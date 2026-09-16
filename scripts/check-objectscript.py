@@ -91,8 +91,11 @@ prose into one checker.
     in a shipped dispatch class's `XData UrlMap`, some class under `src/OcuPilot/Test/` names
     the route and carries all four markers of an over-the-wire assertion: a request through
     `OcuPilot.Test.Http`, a status assertion, a content-type assertion and a body-shape
-    assertion. A literal route is keyed by its own URL; a pattern route (`/(.*)`), which no
-    literal can identify, is keyed by its dispatch class's name. Line-oriented, so it cannot
+    assertion. A literal route is keyed by its own URL, and a `:param` segment is part of that
+    literal (DW-364), so `/agent/definitions/:id` keys on itself rather than falling back; a
+    pattern route (`/(.*)`), which no literal can identify, is keyed by its dispatch class's
+    name. The key does not carry the HTTP method, so two methods on one path are one
+    obligation (DW-400). Line-oriented, so it cannot
     tell which method inside a class made which assertion — what it catches, which is the
     defect it exists for, is a route no wire test names at all.
 
@@ -131,6 +134,18 @@ prose into one checker.
     all. Reaches principals and the console log only; instance mutation through
     `OcuPilot.Install.Installer` (a probe database, a namespace mapping, a web application) is
     outside it.
+
+18. **Restraint-code containment (AD-30, AD-40, Story 3.7).** A restraint code -- the
+    `AGENT.READONLY.*` and `AGENT.KILLSWITCH.*` vocabulary, its `Api.Error` parameters, and the
+    two class methods that resolve it -- may be named only by `Kernel/Restraint.cls`, which
+    selects one, `Api/Error.cls`, which declares them, and a test class, which asserts them.
+    Every other caller consumes the verdict `Kernel.Restraint.Verdict` answers. **It bans a second
+    producer of a restraint code, which is narrower than "one enforcement point"**: a caller that
+    read the two state classes and decided for itself would name no code and pass. Reading
+    `Kernel/State/Switch.cls` or `Hold.cls` is not restricted -- `Api/Switches.cls` does it
+    legitimately -- so the rule cannot be tightened to those class names either. It reads
+    ObjectScript source only, and skips comments and XData bodies within it, so a client naming a
+    code is outside it.
 
 This checker is deliberately line-oriented rather than a full UDL parser: it is exact
 enough to catch the violations above and cheap enough to run on every commit and every
@@ -707,6 +722,54 @@ def check_escalation_containment(problems: list[str]) -> None:
                 )
 
 
+# --- Restraint containment (AD-30, AD-40, Story 3.7) ----------------------------------
+
+# AD-30 gives read-only and the kill switch exactly one enforcement point:
+# OcuPilot.Kernel.Restraint answers "may this write happen, and why not", and every caller
+# consumes that verdict rather than deriving one. The write tools, the turn loop and the confirm
+# transition arrive in Epic 4 and 5, so a source-level rule is what keeps a second producer from
+# being added there. Api/Error.cls declares the codes, Kernel/Restraint.cls is the one place that
+# selects one, and a test class may assert either.
+#
+# What this rule enforces is ONE PRODUCER OF A RESTRAINT CODE, which is narrower than "one
+# enforcement point": a caller that read Kernel/State/Switch.cls and Hold.cls and decided for
+# itself would name no code and pass. Those stores cannot be restricted by class name either --
+# Api/Switches.cls reads both of them legitimately. It also sees ObjectScript source only, and
+# skips comments and XData bodies within it, so a client naming a code is outside it. The wider
+# property is held by review.
+RESTRAINT_CODE_RE = re.compile(
+    r"AGENT\.(READONLY|KILLSWITCH)\.|#AGENTREADONLY|#AGENTKILLSWITCH|ReasonForRestraint|RestraintCodes",
+)
+
+RESTRAINT_ALLOWED = frozenset(
+    {
+        "src/OcuPilot/Kernel/Restraint.cls",
+        "src/OcuPilot/Api/Error.cls",
+    }
+)
+
+# Test classes assert the vocabulary and the verdict, which is the point of having one.
+RESTRAINT_TEST_PREFIX = "src/OcuPilot/Test/"
+
+
+def check_restraint_containment(problems: list[str]) -> None:
+    for p in iter_objectscript_files():
+        rel = p.relative_to(ROOT).as_posix()
+        if rel in RESTRAINT_ALLOWED or rel.startswith(RESTRAINT_TEST_PREFIX):
+            continue
+        text = read_text(p)
+        if text is None:
+            continue
+        for i, raw in iter_code_lines(text):
+            if RESTRAINT_CODE_RE.search(raw):
+                problems.append(
+                    f"{rel}:{i}: a restraint code is produced outside "
+                    f"{' or '.join(sorted(RESTRAINT_ALLOWED))} (AD-30, AD-40) -- ask "
+                    f"OcuPilot.Kernel.Restraint.Verdict and render the verdict it answers, "
+                    f"never a second derivation of one"
+                )
+
+
 def check_state_package_isolation(problems: list[str]) -> None:
     for p in iter_objectscript_files():
         rel = p.relative_to(ROOT).as_posix()
@@ -1022,10 +1085,14 @@ def check_test_class_properties(problems: list[str]) -> None:
 # returns `$$$OK`, and a comment quoting the guard all leave the class running on a live instance.
 #
 # **Six edits fix six classes; this rule fixes the population.** It reads the APIs the tree
-# actually calls, not a list of everything IRIS could do: creating or deleting a user, creating a
-# role, and moving the console log. Deleting a role alone is deliberately outside it -- that is
-# the tail of an install probe (`Test/WebApp.cls` removes a role the installer itself created),
-# not a principal this suite brought into being.
+# actually calls, not a list of everything IRIS could do: creating or deleting a user or a role,
+# registering, modifying or deleting an audit event, moving the console log, and running the
+# production install.
+#
+# Deleting a role was outside the rule until DW-396, on the ground that it is the tail of an
+# install probe rather than a principal this suite brought into being. It is inside it now: the
+# classes that do it are the same classes that run the install, so the exemption was protecting
+# nothing and was one more thing for a reader to check.
 #
 # **The suite's own principal helpers count too.** A class that reaches `Security.Users` through
 # `OcuPilot.Test.Version`'s throwaway-account helpers creates exactly the same account on exactly
@@ -1034,14 +1101,37 @@ def check_test_class_properties(problems: list[str]) -> None:
 # at all. Listed by name rather than followed transitively: a call graph over the whole Test tree
 # is a different checker, and every helper this suite actually has is here.
 #
-# The rule's reach ends at principals and the console log. Instance mutation through
-# `OcuPilot.Install.Installer` -- a probe database, a namespace mapping, a web application -- is
-# real and is outside it; that is a wider population than this AC names.
+# **A production install is the widest effect of all, and it was the one the pattern missed**
+# (DW-396, DW-402). `##class(OcuPilot.Install.Installer).Install("")` creates a database, a
+# resource, a role, three web applications and the audit registrations, and unexpires `_SYSTEM`.
+# `Test/AuditRecord.cls` runs one and names no security class at all, so a rule that read only
+# `Security.*` calls could not see it. The literal `""` is the production profile; a probe-profile
+# install (`Install("probe")`) creates the parallel `Probe*` objects a test owns and is outside
+# this rule, which is why the pattern anchors on the empty argument rather than on the method.
+#
+# **And the suite reaches that install through a helper as well.**
+# `OcuPilot.Test.InstallerProbe` extends `OcuPilot.Install.Installer` and overrides the demo-fixture
+# call site, the unexpire step and the logging -- not `StartPath`, which runs the real production
+# install underneath. `Test/DemoOptIn.cls` drives it and names no installer class of its own.
+# Fourteen classes under `Test/` extend the installer or that probe, so listing the helpers by name
+# is what a later one would be added outside of: `Install` and `StartPath` are matched on ANY
+# `OcuPilot.Test.*` class as well as on the installer itself. `Install()` with no argument is
+# matched too -- `pProfile` defaults to `""`, so the bare call is the production install under
+# another spelling, and anchoring only on the literal `""` read it as a probe install.
+#
+# A probe database, a namespace mapping and a web application created under the probe profile stay
+# outside the rule: they are the test's own objects, and the guard exists for effects on the
+# instance an operator cares about.
 
 DESTRUCTIVE_TEST_RE = re.compile(
     r"##class\(\s*Security\.Users\s*\)\s*\.\s*(?:Create|Delete)\b"
-    r"|##class\(\s*Security\.Roles\s*\)\s*\.\s*Create\b"
+    r"|##class\(\s*Security\.Roles\s*\)\s*\.\s*(?:Create|Delete)\b"
+    r"|##class\(\s*Security\.Events\s*\)\s*\.\s*(?:Create|Delete|Modify)\b"
     r"|##class\(\s*Config\.Startup\s*\)\s*\.\s*MoveConsoleLog\b"
+    r"|##class\(\s*(?:OcuPilot\.Install\.Installer|OcuPilot\.Test\.\w+)\s*\)"
+    r"\s*\.\s*Install\(\s*(?:\"\"\s*)?[,)]"
+    r"|##class\(\s*(?:OcuPilot\.Install\.Installer|OcuPilot\.Test\.\w+)\s*\)"
+    r"\s*\.\s*StartPath\b"
     r"|##class\(\s*OcuPilot\.Test\.Version\s*\)\s*\.\s*(?:CreateThrowawayExpiredAccount|DeleteThrowawayAccount)\b"
 )
 
@@ -1183,7 +1273,13 @@ URLMAP_XDATA_NAME = "UrlMap"
 # A path this checker can look for literally: it starts with "/" and carries at least one
 # character that is not a regex metacharacter. `/(.*)` and `/` do not qualify, and for those the
 # dispatch class's own name is the key instead.
-LITERAL_ROUTE_RE = re.compile(r"^/[A-Za-z0-9][A-Za-z0-9._/-]*$")
+#
+# `:` is admitted (DW-364). `%CSP.REST` writes a route parameter as `:name`, which is an ordinary
+# character in the declared path and one a test can name verbatim -- and without it every route
+# carrying a parameter fell back to the dispatch class, so ONE class naming
+# `OcuPilot.Api.Router` covered all eight of them at once and the rule could not tell two apart.
+# The rule exists to notice a route no wire test names; a key shared by eight routes cannot.
+LITERAL_ROUTE_RE = re.compile(r"^/[A-Za-z0-9][A-Za-z0-9._/:-]*$")
 
 WIRE_MARKERS = (
     ("an over-the-wire request", re.compile(r"\b(?:AbsoluteRequest|MakeRequest|RawRequest)\(")),
@@ -1496,6 +1592,7 @@ CHECKS = (
     check_product_vocabulary,
     check_escalation_containment,
     check_admin_api_containment,
+    check_restraint_containment,
     check_state_package_isolation,
     check_entity_types,
     check_screen_scope,

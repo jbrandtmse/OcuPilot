@@ -12,6 +12,17 @@
 /// (<method>OcuPilot.Install.Installer.InstallLockName</method>, DW-47) cannot be taken by an
 /// account without privilege on <code>IRISSYS</code>
 /// (<method>TestDeniedUserCannotHoldTheInstallLock</method>).</p>
+/// <p><b>The denial is swept over every class extending
+/// <class>OcuPilot.Kernel.State.Base</class></b>, derived from the compiled dictionary
+/// (<method>TestDeniedUserCannotReachAnyStateClass</method>): each class's own SQL table, and the
+/// data global the dictionary gives it, so a store added to
+/// <package>OcuPilot.Kernel.State</package> is asked FR-29's question by existing rather than by
+/// anyone remembering to add a line. <b>The eight classes share one data global</b>
+/// (<code>^OcuPilot.Kernel.State.BaseD</code>, read from
+/// <class>%Dictionary.CompiledStorage</class>), so the discriminating half of the sweep is the
+/// per-class table; the global half is the same reference re-read per class and is kept because
+/// a later class given its own storage widens it without an edit. The named-object tests below
+/// stay as the paired escalation proofs they were.</p>
 /// <p><b>Impersonation is confined to one method frame</b> in each of
 /// <method>AttemptGlobalAccess</method> / <method>AttemptSqlAccess</method> /
 /// <method>AttemptInstallLock</method>:
@@ -299,6 +310,155 @@ Method TestDeniedUserCannotReachTheGlobal()
     Do $$$AssertEquals(tVal, "sentinel-for-denial-test", "the escalated read sees the value set before the denial attempt, not a value the denied write produced")
 }
 
+/// <p>The subscript every sweep below reads, on each class's own data global. A read, never a
+/// write: the derived reference is the <b>real</b> extent, and a write that was not refused would
+/// leave residue in the protected database rather than only failing an assertion.</p>
+Parameter SWEEPSUBSCRIPT = "ocuPilotDenialSweep";
+
+/// <p>Every concrete class extending <class>OcuPilot.Kernel.State.Base</class>, with the SQL table
+/// and the data global the compiled dictionary gives it:
+/// <code>pClasses(i,"class"|"table"|"global")</code>, count in <code>pClasses</code>.</p>
+/// <p><b>Derived, not listed</b> (AC5). A class added to <package>OcuPilot.Kernel.State</package>
+/// is swept by existing; the earlier form of this suite named one global and one table, so seven
+/// of the eight stores were never asked the question FR-29 is about.</p>
+/// <p><code>PrimarySuper</code> holds the whole superclass chain, <code>~</code>-delimited, which
+/// is why the match is anchored on the delimiters rather than on the bare name.</p>
+ClassMethod StateClasses(Output pClasses) As %Status
+{
+    Kill pClasses
+    Set pClasses = 0
+    ; Accumulated rather than returned from inside the loop: an argumented Quit is refused inside a
+    ; block (ERROR #1043), so the refusal is carried out and raised below.
+    Set tRefusal = ""
+    ; Joined on the class's OWN storage definition, not on any row the dictionary holds for it: a
+    ; class carrying more than one would otherwise bind whichever arrived first, and the point of
+    ; this method is that the reference is derived rather than assumed. A class whose storage does
+    ; not resolve reads an empty DataLocation, which the shape filter below refuses by name.
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT c.Name AS ClassName, c.SqlSchemaName AS SchemaName, c.SqlTableName AS TableName, s.DataLocation AS DataLocation FROM %Dictionary.CompiledClass c LEFT JOIN %Dictionary.CompiledStorage s ON s.parent = c.Name AND s.Name = c.StorageStrategy WHERE c.PrimarySuper [ '~OcuPilot.Kernel.State.Base~' AND c.Abstract = 0 ORDER BY c.Name")
+    If tRS.%SQLCODE < 0 Quit $$$ERROR($$$GeneralError, "the state classes could not be read from the dictionary, SQLCODE " _ tRS.%SQLCODE)
+    While tRS.%Next() {
+        Set tClass = tRS.%Get("ClassName")
+        Set tTable = tRS.%Get("SchemaName") _ "." _ tRS.%Get("TableName")
+        Set tGlobal = tRS.%Get("DataLocation")
+        If $Data(pClasses(tClass)) Continue
+        ; Shape-checked before either is used in an indirection or a statement: both come from the
+        ; dictionary rather than from a caller, and neither is concatenated on trust. A name that
+        ; fails the shape is REFUSED rather than skipped: a skip would drop the class from the
+        ; sweep silently, and a sweep that quietly covers seven of eight is the vacuous pass this
+        ; method exists to remove.
+        If '$Match(tTable, "^[A-Za-z][A-Za-z0-9_]*\.[A-Za-z][A-Za-z0-9_]*$") {
+            Set tRefusal = "state class " _ tClass _ " reports the table '" _ tTable _ "', which is not a name this sweep can use; it would have been skipped silently"
+            Quit
+        }
+        If '$Match(tGlobal, "^\^[A-Za-z%][A-Za-z0-9.%]*$") {
+            Set tRefusal = "state class " _ tClass _ " reports the data global '" _ tGlobal _ "', which is not a name this sweep can use; it would have been skipped silently"
+            Quit
+        }
+        Set pClasses(tClass) = ""
+        Set pClasses = pClasses + 1
+        Set pClasses(pClasses, "class") = tClass
+        Set pClasses(pClasses, "table") = tTable
+        Set pClasses(pClasses, "global") = tGlobal
+    }
+    If tRefusal '= "" Quit $$$ERROR($$$GeneralError, tRefusal)
+    Quit $$$OK
+}
+
+/// <p>One method frame: escalate into <var>pUsername</var>'s identity, run one SELECT against
+/// <var>pTable</var>, capture the <code>%SQLCODE</code>, and return. <var>pWhoAmI</var> reports
+/// the identity in force inside the frame. The failure sentinel is
+/// <parameter>NOTDENIED</parameter>, deliberately non-negative, for the reason
+/// <method>AttemptSqlAccess</method> records.</p>
+ClassMethod AttemptSelectOn(pUsername As %String, pTable As %String, Output pSelectCode As %Integer, Output pWhoAmI As %String) [ Private ]
+{
+    Set pSelectCode = ..#NOTDENIED
+    Set pWhoAmI = ""
+    New $ROLES
+    Try {
+        Do $SYSTEM.Security.Login(pUsername)
+        Set pWhoAmI = $Username
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT TOP 1 ID FROM " _ pTable)
+        Set pSelectCode = tRS.%SQLCODE
+    } Catch ex {
+        Set pSelectCode = ..#NOTDENIED
+    }
+    Quit
+}
+
+/// <p>One method frame: escalate into <var>pUsername</var>'s identity, read one subscript of
+/// <var>pGlobal</var> by indirection, capture whatever error it raised, and return. A read only --
+/// the reference is the real extent.</p>
+ClassMethod AttemptGlobalReadOn(pUsername As %String, pGlobal As %String, Output pGetCode As %String, Output pWhoAmI As %String) [ Private ]
+{
+    Set pGetCode = ""
+    Set pWhoAmI = ""
+    Set tRef = pGlobal _ "(""" _ ..#SWEEPSUBSCRIPT _ """)"
+    New $ROLES
+    Try {
+        Do $SYSTEM.Security.Login(pUsername)
+        Set pWhoAmI = $Username
+        Try {
+            Set tValue = $Get(@tRef)
+        } Catch getEx {
+            Set pGetCode = getEx.Code
+        }
+    } Catch ex {
+        Set pGetCode = "LOGIN-FAILED:" _ ex.DisplayString()
+    }
+    Quit
+}
+
+/// <p>AC5 -- <b>the denial sweep, over every class extending
+/// <class>OcuPilot.Kernel.State.Base</class> rather than over one</b>: the denied principal's
+/// SELECT against each class's own table fails with a negative <code>%SQLCODE</code>, and its read
+/// of each class's own data global raises <code>&lt;PROTECT&gt;</code>.</p>
+/// <p>Each half is paired with the suite's own privileged identity making the same access
+/// successfully, so a table or global name that does not exist cannot pass as a denial -- which is
+/// the failure mode a derived sweep introduces and a hand-written one did not have.</p>
+/// <p>The eight classes share one data global, so the SQL half is what discriminates between
+/// them; see this class's header.</p>
+/// <p>Mutation (Rule 19): grant the denial probe <code>%DB_OCUPILOT:R</code> in
+/// <method>OnBeforeOneTest</method> -- every global assertion in the sweep goes red at once, which
+/// is what shows the sweep reaches each class rather than reporting a login that failed. Second
+/// mutation: narrow <method>StateClasses</method>'s query to one class -- the count assertion goes
+/// red.</p>
+Method TestDeniedUserCannotReachAnyStateClass()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the denial user holds %Admin_Operate:U")
+
+    Set tSC = ..StateClasses(.tClasses)
+    Do $$$AssertStatusOK(tSC, "the state classes are derived from the compiled dictionary")
+    If $$$ISERR(tSC) Quit
+    ; A sweep over nothing is the vacuous pass this test exists to make impossible. Eight is what
+    ; the tree carries today; the assertion is on "more than one", so a class added later widens
+    ; the sweep without editing this line and a query that collapsed to one is caught.
+    Do $$$AssertTrue(tClasses > 1, "the sweep covers every state class the tree carries: " _ tClasses)
+
+    For tI = 1:1:tClasses {
+        Set tClass = tClasses(tI, "class")
+        Set tTable = tClasses(tI, "table")
+        Set tGlobal = tClasses(tI, "global")
+
+        Do ..AttemptSelectOn(..#DENIALUSER, tTable, .tSelectCode, .tWhoAmI)
+        Do $$$AssertEquals(tWhoAmI, ..#DENIALUSER, tClass _ ": the impersonation actually took effect")
+        Do $$$AssertTrue(tSelectCode < 0, tClass _ ": the denied user's SELECT against " _ tTable _ " fails with a negative SQLCODE, and read " _ tSelectCode)
+        Set tOwnRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT TOP 1 ID FROM " _ tTable)
+        Do $$$AssertTrue(tOwnRS.%SQLCODE >= 0, tClass _ ": a legitimately-privileged SELECT against the same table succeeds, so the refusal above is about privilege and not about a table that does not exist")
+
+        Do ..AttemptGlobalReadOn(..#DENIALUSER, tGlobal, .tGetCode, .tGlobalWhoAmI)
+        Do $$$AssertEquals(tGlobalWhoAmI, ..#DENIALUSER, tClass _ ": the impersonation took effect for the global half too")
+        Do $$$AssertEquals(tGetCode, 202, tClass _ ": the denied user's read of " _ tGlobal _ " raises <PROTECT> (code 202)")
+        Set tOwnRef = tGlobal _ "(""" _ ..#SWEEPSUBSCRIPT _ """)"
+        Set tOwnValue = "unreadable"
+        Try {
+            Set tOwnValue = $Get(@tOwnRef)
+        } Catch ownEx {
+            Set tOwnValue = "unreadable"
+        }
+        Do $$$AssertEquals(tOwnValue, "", tClass _ ": the suite's own identity reads the same reference, so the refusal above is about privilege and not about a global nothing can reach")
+    }
+}
+
 /// <p>AC4 (table half) -- a denied user's SELECT and INSERT against the stamp table
 /// both fail with a negative %SQLCODE, paired with an escalated success on the same
 /// table so a mistyped table name cannot pass as a denial.</p>
@@ -341,6 +501,55 @@ Method TestGuardedSaveRoundTrips()
     Do $$$AssertEquals(tWhoAmI, ..#DENIALUSER, "the impersonation actually took effect before the invisibility check below")
     Do $$$AssertTrue(tSelectCode < 0, "the denied user cannot select from the round-tripped row's table either")
 }
+
+/// <p><b>DW-388 / DW-362 -- two writers, one row, and the loser is told.</b> Every store on
+/// <class>OcuPilot.Kernel.State.Base</class> saves through the conditional write (Consistency
+/// Conventions: concurrent writes to OcuPilot's own state), so a save against a version the row no
+/// longer carries is refused rather than taken, and the write that got there first survives.</p>
+/// <p><b>Both writers are this process</b>, which is what makes the race deterministic rather than
+/// a timing accident: the version the first writer read is held, a second write moves the row past
+/// it, and the held version is then saved with. Two jobs would be the same test with a sleep in
+/// it.</p>
+/// <p>Driven over <class>OcuPilot.Kernel.State.Egress</class> because it is a one-row store with
+/// nothing else in this class writing it, and because the refusal has to be observed through a
+/// store's own <method>SetGuarded</method> rather than through
+/// <method>OcuPilot.Kernel.State.Base.GuardedSaveIfCurrent</method> directly -- it is the stores
+/// that inherit the idiom.</p>
+/// <p>Mutation: drop <code>AND COALESCE(RowVersion, 0) = ?</code> from
+/// <method>OcuPilot.Kernel.State.Base.GuardedSaveIfCurrent</method> -- the refusal below is taken
+/// instead, and both the status assertion and the surviving-value assertion go red.</p>
+Method TestAStaleGuardedSaveIsRefusedAndTheWinnersWriteSurvives()
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Egress).DeleteGuarded(), "the store starts with no row")
+    Kill tFirst
+    Set tFirst("proxyServer") = ..#RACEFIRST
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Egress).SetGuarded(.tFirst), "the first write creates the row and takes version 1")
+
+    Kill tSecond
+    Set tSecond("proxyServer") = ..#RACESECOND
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Egress).SetGuarded(.tSecond), "a second write over the version it read is taken, and moves the row to version 2")
+
+    ; The snapshot the first writer held. Supplied explicitly because a second process is what
+    ; would otherwise carry it, and this test is one process.
+    Kill tStale
+    Set tStale("proxyServer") = ..#RACESTALE
+    Set tSC = ##class(OcuPilot.Kernel.State.Egress).SetGuarded(.tStale, 1)
+    Do $$$AssertStatusNotOK(tSC, "a save against the version the first writer read is refused")
+    Do $$$AssertTrue(##class(OcuPilot.Kernel.State.Base).IsStaleSave(tSC), "and refused as a stale save, which is what a handler renders 409 on: " _ $System.Status.GetErrorText(tSC))
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Egress).Resolve(.tNow), "the store reads back")
+    Do $$$AssertEquals(tNow("proxyServer"), ..#RACESECOND, "the winner's write survives, and the loser's was not taken")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Egress).DeleteGuarded(), "and the row this method wrote is removed")
+}
+
+/// <p>The three proxy values <method>TestAStaleGuardedSaveIsRefusedAndTheWinnersWriteSurvives</method>
+/// writes, so the surviving one is named rather than spelled twice. Not hosts: nothing resolves or
+/// calls them.</p>
+Parameter RACEFIRST = "ocupilot-race-first.invalid";
+
+Parameter RACESECOND = "ocupilot-race-second.invalid";
+
+Parameter RACESTALE = "ocupilot-race-stale.invalid";
 
 /// <p><method>OcuPilot.Kernel.State.Base.GuardedExistsId</method> reflects presence and
 /// absence through the escalated frame -- a module the diff shipped with no executed
@@ -465,6 +674,104 @@ Method TestDeniedUserCannotHoldTheInstallLock()
     Set tTook = $Test
     If tTook Lock -@tName
     Do $$$AssertTrue(tTook, "the suite's own identity takes the same lock, so nothing else was holding it")
+}
+
+/// <p>AD-15 -- <b>OcuPilot's audit row is written for a principal that is not
+/// <code>%All</code></b>. Every other audit assertion in the suite runs as
+/// <code>%UnitTest</code>'s own account, which holds <code>%All</code> and therefore satisfies
+/// whatever privilege the emission happens to need; that makes them all silent about the question
+/// an operator's instance actually asks.</p>
+/// <p><parameter>DENIALUSER</parameter> is the right subject for the opposite reason to every
+/// other method here. It is shaped like a least-privilege OcuPilot administrator -- it can execute
+/// OcuPilot's code and holds <code>%Admin_Operate</code>, and, as
+/// <method>TestDeniedUserCannotHoldTheInstallLock</method> records, it holds nothing on
+/// <code>IRISSYS</code>. Before this was fixed
+/// <method>OcuPilot.Kernel.Audit.Event.Record</method> entered <code>%SYS</code> to make the call;
+/// that switch raised <code>&lt;PROTECT&gt;</code> for exactly this shape of account, and because
+/// AD-15 makes the emitter swallow its own failure, every configuration change such an
+/// administrator accepted completed with no audit row and only a log line.</p>
+/// <p>The emitter is driven directly rather than over a route: the subject is the privilege the
+/// emission needs, and this account is refused at the gate long before any write.</p>
+/// <p>Mutation (Rule 19): put <code>Set $NAMESPACE = "%SYS"</code> back around
+/// <code>$System.Security.Audit</code> in
+/// <method>OcuPilot.Kernel.Audit.Event.Record</method> -- the status and row assertions here go
+/// red while every other audit assertion in the suite stays green, because they all run as
+/// <code>%All</code>.</p>
+Method TestTheAuditRowIsWrittenForAPrincipalThatIsNotAllPrivileged()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the denial user holds %Admin_Operate:U")
+
+    ; The premise, asserted rather than assumed: with IRISSYS read this account would discriminate
+    ; nothing, because the namespace switch this test exists to keep out would succeed for it.
+    Set tHoldsIrisSys = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tSwitchSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        Do $$$AssertStatusOK(tSwitchSC, "switch to %SYS")
+        Set tHoldsIrisSys = ($SYSTEM.Security.CheckUserPermission(..#DENIALUSER, "%DB_IRISSYS", "READ") = 1)
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Throw ex
+    }
+    Set $NAMESPACE = tOrigNS
+    Do $$$AssertEquals(tHoldsIrisSys, 0, "the denial account holds no %DB_IRISSYS read, so it can tell a privileged emission path from an unprivileged one")
+
+    Set tMarker = "OcuPilotStateAuditProbe" _ $Translate($System.Util.CreateGUID(), "-", "")
+    Set tSince = $ZDateTime($ZTimeStamp, 3, , 3)
+    Do ..AttemptAuditEmission(..#DENIALUSER, tMarker, .tStatus, .tWhoAmI)
+    Do $$$AssertEquals(tWhoAmI, ..#DENIALUSER, "the impersonation actually took effect")
+    Do $$$AssertStatusOK(tStatus, "the emission succeeds for an account that is not %All: " _ $System.Status.GetErrorText(tStatus))
+    Do $$$AssertEquals(..AuditRowsCarrying(tSince, tMarker), 1, "and lands as exactly one row in the audit master map")
+}
+
+/// <p>One method frame escalated into <var>pUsername</var>'s identity, running the shipped
+/// emitter with <var>pMarker</var> as the target id, so the row this call produced is identified
+/// by something only it carries.</p>
+ClassMethod AttemptAuditEmission(pUsername As %String, pMarker As %String, Output pStatus As %Status, Output pWhoAmI As %String) [ Private ]
+{
+    Set pStatus = $$$OK
+    Set pWhoAmI = ""
+    Set tType = ##class(OcuPilot.Api.Definitions).#ENTITYTYPE
+    New $ROLES
+    Try {
+        Do $SYSTEM.Security.Login(pUsername)
+        Set pWhoAmI = $Username
+        Set pStatus = ##class(OcuPilot.Kernel.Audit.Event).Record("update", tType, pMarker, {}, 0)
+    } Catch ex {
+        Set pStatus = ex.AsStatus()
+    }
+    Quit
+}
+
+/// <p>How many rows the audit database's <b>master map</b> holds since <var>pSince</var> whose
+/// <code>EventData</code> carries <var>pMarker</var>. <code>%NOINDEX</code> on the three event
+/// predicates and a <code>UTCTimeStamp</code> bound, because <code>UTCTimeStamp</code> is the
+/// master map's own first subscript while the <code>Event</code> indexes lag by about a minute --
+/// an indexed read misses a row just written (DW-85). <code>-1</code> when the read failed.</p>
+ClassMethod AuditRowsCarrying(pSince As %String, pMarker As %String) As %Integer [ Private ]
+{
+    Set tRows = -1
+    Set tSource = ##class(OcuPilot.Kernel.Audit.Event).Source()
+    Set tType = ##class(OcuPilot.Kernel.Audit.Event).Type()
+    Set tEvent = ##class(OcuPilot.Kernel.Audit.Event).EventNameFor(0)
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT EventData FROM %SYS.Audit WHERE UTCTimeStamp >= ? AND %NOINDEX EventSource = ? AND %NOINDEX EventType = ? AND %NOINDEX Event = ?", pSince, tSource, tType, tEvent)
+        If tRS.%SQLCODE < 0 {
+            Set $NAMESPACE = tOrigNS
+            Quit
+        }
+        Set tRows = 0
+        While tRS.%Next() {
+            If tRS.%Get("EventData") [ pMarker Set tRows = tRows + 1
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tRows = -1
+    }
+    Quit tRows
 }
 
 }

@@ -378,6 +378,22 @@ export class Session {
    */
   private everAdopted = false;
 
+  /**
+   * Whether an authentication has happened in this tab that nothing has acted on yet (FR-28).
+   *
+   * Set by `adopt()` alone -- the one path a genuine authentication takes, from the silent probe
+   * and from an accepted form login -- and read once, by `consumeFreshSignIn()`. A tab resuming a
+   * stored pair reaches `signed-in` through `start()` without `adopt()`, so a reload is not a
+   * sign-in and the requested route survives it.
+   *
+   * **In memory, never in storage.** It records that an authentication happened, never that the
+   * first-login gate was shown: what decides whether that gate fires is the instance's own
+   * definition rows, read afresh, so "never afterwards" is a consequence of the condition rather
+   * than of a remembered decision. A flag in `sessionStorage` would outlive the condition, which
+   * is the defect FR-28 names.
+   */
+  private freshSignIn = false;
+
   constructor(options: SessionOptions) {
     this.http = options.fetch;
     this.tokens = options.tokens;
@@ -483,6 +499,19 @@ export class Session {
     return this.submitUnanswered;
   }
 
+  /**
+   * Whether an authentication has happened that nothing has acted on yet, answered **once**
+   * (FR-28). Every later call answers false until the next `adopt()`.
+   *
+   * The caller is the shell's first-login gate. It is a one-shot rather than a readable flag so
+   * two passes of the same change detection cannot both read it as a sign-in.
+   */
+  consumeFreshSignIn(): boolean {
+    if (!this.freshSignIn) return false;
+    this.freshSignIn = false;
+    return true;
+  }
+
   /** The pair this tab holds, or null. */
   pair(): TokenPair | null {
     return this.tokens.read();
@@ -545,7 +574,8 @@ export class Session {
     }
     this.setState('probing');
     this.refusalState = 'form';
-    void this.probeAndSettle();
+    // No stored pair: whatever this probe mints establishes this tab's principal.
+    void this.probeAndSettle(true);
   }
 
   /**
@@ -554,7 +584,7 @@ export class Session {
    * the one request in this client that carries a cookie, and it carries no token.
    */
   async silentProbe(): Promise<boolean> {
-    return this.probeAndSettle();
+    return this.probeAndSettle(true);
   }
 
   /**
@@ -567,7 +597,7 @@ export class Session {
     this.setState('probing');
     const outcome = await this.post(LOGIN_PATH, JSON.stringify({ user, password }));
     if (outcome.kind === 'ok' && outcome.pair !== null) {
-      this.adopt(outcome.pair);
+      this.adopt(outcome.pair, true);
       return true;
     }
     if (outcome.kind === 'credential-failure') {
@@ -674,7 +704,7 @@ export class Session {
     );
     if (generation !== this.signOutGeneration) return false;
     if (outcome.kind === 'ok' && outcome.pair !== null) {
-      this.adopt(outcome.pair);
+      this.adopt(outcome.pair, false);
       return true;
     }
     if (outcome.kind === 'credential-failure') {
@@ -701,16 +731,21 @@ export class Session {
    */
   private async retryProbeThenEnd(): Promise<boolean> {
     if (this.everAdopted) this.refusalState = 'session-ended';
-    return this.probeAndSettle();
+    // A refused refresh, not a sign-in: this tab already had a principal and is recovering it.
+    return this.probeAndSettle(false);
   }
 
-  private async probeAndSettle(): Promise<boolean> {
+  /**
+   * One empty-body probe, settled into a state. `authenticating` is the caller's answer to "is this
+   * a principal being established, or a tab recovering one it already had" -- see `adopt`.
+   */
+  private async probeAndSettle(authenticating: boolean): Promise<boolean> {
     const generation = this.signOutGeneration;
     if (this.currentState !== 'installing') this.setState('probing');
     const outcome = await this.post(LOGIN_PATH, null);
     if (generation !== this.signOutGeneration) return false;
     if (outcome.kind === 'ok' && outcome.pair !== null) {
-      this.adopt(outcome.pair);
+      this.adopt(outcome.pair, authenticating);
       return true;
     }
     if (outcome.kind === 'credential-failure') {
@@ -798,11 +833,28 @@ export class Session {
       if (generation !== this.signOutGeneration) return;
       if (installGeneration !== this.installGeneration) return;
       this.backoffArmed = false;
-      void this.probeAndSettle();
+      // Recovering for a tab that already had a principal; **establishing** for one that never
+      // did. A cold tab whose first probe met an install in progress reaches its first pair only
+      // here, and that is the very first login on a fresh container -- the one FR-28's gate is
+      // written for. `everAdopted` is the same question `retryProbeThenEnd()` asks.
+      void this.probeAndSettle(!this.everAdopted);
     }, delay);
   }
 
-  private adopt(pair: TokenPair): void {
+  /**
+   * Take a minted pair as this tab's own.
+   *
+   * `authenticating` says whether this pair is a principal being **established** — the cold silent
+   * probe, an accepted form login, and the install-backoff probe of a tab that has never held a
+   * pair — rather than one being **re-established** for a tab that already had one: a renewal, the
+   * silent re-probe after a refused refresh, the install-backoff probe of a tab that was already
+   * signed in, and the renewal a reload of an expired pair runs. Only the first raises the one-shot the
+   * first-login gate reads, and it is the call site that knows which this is: every one of the
+   * second kind reaches here through `setState('probing')`, so the state at this point cannot tell
+   * them apart and a tab recovering mid-session would read as a fresh sign-in (FR-28, AC1b).
+   */
+  private adopt(pair: TokenPair, authenticating: boolean): void {
+    if (authenticating) this.freshSignIn = true;
     this.tokens.write(pair);
     this.everAdopted = true;
     if (pair.sub !== '') this.currentUserName = pair.sub;

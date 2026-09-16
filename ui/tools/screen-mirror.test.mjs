@@ -26,6 +26,7 @@ import {
   declaredStringKeys,
   readProblem,
   readSources,
+  sideBarPositionProblem,
 } from './screen-mirror.mjs';
 import { loadStrings } from './strings.mjs';
 import { CREDENTIAL_RE } from './field-lists.mjs';
@@ -1011,7 +1012,11 @@ test('BuiltArchetypeKey holds the archetypes of built screens only, and is never
   const mixed = buildMirror({
     ...sources,
     screens: [
-      { file: 'Built.cls', className: 'OcuPilot.Screen.Descriptor.Built', declaration: { archetype: 'detail', built: true } },
+      // `sideBarPosition` is declared on the built one because Story 3.5 made it required of a
+      // built screen: 0 is the sentinel for routable-but-unlisted, and an absent key already read
+      // as 0 through `Base.SideBarPosition`'s own `+`, so a forgotten key would have unlisted a
+      // screen silently. The unbuilt fixture is exempt, which is the rule's other half.
+      { file: 'Built.cls', className: 'OcuPilot.Screen.Descriptor.Built', declaration: { archetype: 'detail', built: true, sideBarPosition: 1 } },
       { file: 'Unbuilt.cls', className: 'OcuPilot.Screen.Descriptor.Unbuilt', declaration: { archetype: 'list', built: false } },
     ],
   });
@@ -1026,6 +1031,39 @@ test('BuiltArchetypeKey holds the archetypes of built screens only, and is never
   assert.equal(union(none), 'never');
 
   assert.match(union(readCheckedInMirror()), /'home'/, 'the shipped mirror requires a page for Home');
+});
+
+// Story 3.5: `sideBarPosition` 0 is the sentinel for routable-but-unlisted, and `Base.cls`'s own
+// `+..Field(...)` already answers 0 for an absent key -- so a forgotten key would unlist a screen
+// with nothing red anywhere. The refusals are asserted as values, because a rule that refuses
+// nothing looks exactly like no rule.
+//
+// Mutation (Rule 19): make `sideBarPositionProblem` return `null` unconditionally -> every
+// refusal assertion here goes red, and so does the mirror leg below it.
+test('a built screen must declare sideBarPosition as a whole number of at least 0, and 0 is the sentinel', () => {
+  assert.match(sideBarPositionProblem({ built: true }), /not declared as a number/);
+  assert.match(sideBarPositionProblem({ built: true, sideBarPosition: '1' }), /not declared as a number/);
+  assert.match(sideBarPositionProblem({ built: true, sideBarPosition: -1 }), /whole number of at least 0/);
+  assert.match(sideBarPositionProblem({ built: true, sideBarPosition: 1.5 }), /whole number of at least 0/);
+  assert.equal(sideBarPositionProblem({ built: true, sideBarPosition: 0 }), null, '0 is routable but not listed');
+  assert.equal(sideBarPositionProblem({ built: true, sideBarPosition: 4 }), null);
+  // Nothing lists an unbuilt screen and nothing routes it, so its position says nothing yet --
+  // the rule's other half, and the reason it cannot simply require the key of every declaration.
+  assert.equal(sideBarPositionProblem({ built: false }), null, 'an unbuilt screen is exempt');
+
+  // ...and the generator refuses such a descriptor rather than emitting a silently unlisted one.
+  const sources = readSources();
+  assert.throws(
+    () =>
+      buildMirror({
+        ...sources,
+        screens: [
+          { file: 'Built.cls', className: 'OcuPilot.Screen.Descriptor.Built', declaration: { archetype: 'detail', built: true } },
+        ],
+      }),
+    /sideBarPosition/,
+    'the mirror refuses a built screen with no declared position'
+  );
 });
 
 test('the vocabulary parser reads the kernel parameter, and reports a source that has none', () => {

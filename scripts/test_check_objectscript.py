@@ -734,6 +734,42 @@ class TestHandlerWireTestRule(FixtureTreeCase):
         co.check_handler_wire_tests(problems2)
         self.assertEqual(problems2, [], f"expected the named pattern route accepted, got {problems2}")
 
+    def test_a_param_route_is_keyed_by_its_own_declared_path(self):
+        # DW-364: `:id` is an ordinary character sequence in the declared path, so a route
+        # carrying a parameter keys on itself. Before this, every such route fell back to the
+        # dispatch class, and one test class naming `OcuPilot.Api.Router` covered all of them --
+        # including a route no test had ever driven.
+        self.write(
+            "src/OcuPilot/Api/Router.cls",
+            "Class OcuPilot.Api.Router Extends %CSP.REST\n"
+            "{\n\nXData UrlMap\n{\n<Routes>\n"
+            '  <Route Url="/widgets/:id/detail" Method="GET" Call="WidgetDetail"/>\n'
+            '  <Route Url="/widgets/:id" Method="GET" Call="WidgetRead"/>\n'
+            "</Routes>\n}\n\n}\n",
+        )
+        # A wire test that names the dispatch class and one of the two routes. The other must
+        # still be refused, which is exactly what the class-name key could not express.
+        self.write(
+            "src/OcuPilot/Test/Wire.cls",
+            self.WIRE_BODY.replace(
+                "Method TestRoute()",
+                'Method TestRoute()\n{\n'
+                '    Set tRouter = "OcuPilot.Api.Router"\n'
+                '    Set tCovered = "/widgets/:id"\n'
+                "}\n\nMethod TestRouteTwo()",
+            ),
+        )
+        problems: list[str] = []
+        co.check_handler_wire_tests(problems)
+        self.assertTrue(
+            any("/widgets/:id/detail" in p for p in problems),
+            f"expected the unnamed :param route refused, got {problems}",
+        )
+        self.assertFalse(
+            any("'/widgets/:id'" in p for p in problems),
+            f"expected the named :param route accepted, got {problems}",
+        )
+
     def test_a_doc_comment_naming_the_class_does_not_satisfy_the_rule(self):
         # The rule asks whether a test NAMES the route in code. Over the whole file text a `///`
         # line mentioning the dispatch class satisfied it, so a route's own doc comment could
@@ -942,6 +978,76 @@ class TestAdminApiContainment(FixtureTreeCase):
             self.PORT,
             "Class OcuPilot.Port.AdminPort Extends %RegisteredObject\n"
             '{\n\nParameter ADMINAPICLASS = "%Api.Admin";\n\n}\n',
+        )
+        self.assertEqual(self.containment_problems(), [])
+
+
+class TestRestraintContainment(FixtureTreeCase):
+    """AD-30's one enforcement point: a restraint code is produced by
+    `Kernel/Restraint.cls` alone, declared by `Api/Error.cls`, and asserted by a test class."""
+
+    def containment_problems(self, via_checks: bool = False) -> list[str]:
+        problems: list[str] = []
+        if via_checks:
+            for check in co.CHECKS:
+                check(problems)
+        else:
+            co.check_restraint_containment(problems)
+        return [p for p in problems if "a restraint code is produced outside" in p]
+
+    def test_a_second_producer_in_a_slice_is_refused_through_the_checker_run(self):
+        self.write(
+            "src/OcuPilot/Screen/Tool/Write.cls",
+            "Class OcuPilot.Screen.Tool.Write Extends %RegisteredObject\n"
+            "{\n\nClassMethod Run() As %String\n{\n"
+            '    If ..ReadOnly() Quit "AGENT.READONLY.ENFORCED"\n'
+            "    Quit \"\"\n}\n\n}\n",
+        )
+        problems = self.containment_problems(via_checks=True)
+        self.assertTrue(
+            any(p.startswith("src/OcuPilot/Screen/Tool/Write.cls:6:") for p in problems),
+            f"expected the second producer refused at its line, got {problems}",
+        )
+
+    def test_a_parameter_reference_from_a_handler_is_refused(self):
+        self.write(
+            "src/OcuPilot/Api/Turn.cls",
+            "Class OcuPilot.Api.Turn Extends %RegisteredObject\n"
+            "{\n\nClassMethod Run() As %String\n{\n"
+            "    Quit ##class(OcuPilot.Api.Error).#AGENTKILLSWITCHGLOBAL\n"
+            "}\n\n}\n",
+        )
+        problems = self.containment_problems()
+        self.assertTrue(
+            any(p.startswith("src/OcuPilot/Api/Turn.cls:6:") for p in problems),
+            f"expected the parameter reference refused, got {problems}",
+        )
+
+    def test_the_two_allowed_files_a_test_class_and_a_doc_comment_pass(self):
+        self.write(
+            "src/OcuPilot/Kernel/Restraint.cls",
+            "Class OcuPilot.Kernel.Restraint Extends %RegisteredObject\n"
+            "{\n\nClassMethod Verdict() As %String\n{\n"
+            "    Quit ##class(OcuPilot.Api.Error).#AGENTREADONLYENFORCED\n"
+            "}\n\n}\n",
+        )
+        self.write(
+            "src/OcuPilot/Api/Error.cls",
+            "Class OcuPilot.Api.Error Extends %RegisteredObject\n"
+            '{\n\nParameter AGENTREADONLYENFORCED = "AGENT.READONLY.ENFORCED";\n\n}\n',
+        )
+        self.write(
+            "src/OcuPilot/Test/Restraint.cls",
+            "Class OcuPilot.Test.Restraint Extends %UnitTest.TestCase\n"
+            "{\n\nMethod TestIt()\n{\n"
+            '    Do $$$AssertEquals(tCode, "AGENT.KILLSWITCH.USER", "the per-user code")\n'
+            "}\n\n}\n",
+        )
+        self.write(
+            "src/OcuPilot/Screen/Tool/Base.cls",
+            "/// <p>A write tool asks OcuPilot.Kernel.Restraint rather than deriving\n"
+            "/// AGENT.READONLY.ENFORCED itself.</p>\n"
+            "Class OcuPilot.Screen.Tool.Base Extends %RegisteredObject\n{\n\n}\n",
         )
         self.assertEqual(self.containment_problems(), [])
 
@@ -1379,13 +1485,125 @@ class TestDestructiveTestGuardRule(FixtureTreeCase):
         co.check_destructive_test_guard(problems)
         self.assertEqual(problems, [])
 
-    def test_deleting_a_role_alone_is_outside_the_rule(self):
-        """Deliberately narrow: removing a role the installer itself created is the tail of an
-        install probe (`Test/WebApp.cls`), not a principal this suite brought into being."""
+    def test_deleting_a_role_is_in_the_population(self):
+        """Outside the rule until DW-396, on the ground that it is the tail of an install probe.
+        The classes that delete a role are the same ones that run the install, so the exemption
+        protected nothing."""
         self.write_test_class("RoleRemover", '    Do ##class(Security.Roles).Delete("ProbeRole")')
         problems: list[str] = []
         co.check_destructive_test_guard(problems)
+        self.assertTrue(
+            any("RoleRemover.cls" in p for p in problems),
+            f"expected the role delete refused, got {problems}",
+        )
+
+    def test_a_production_install_is_in_the_population_naming_the_call(self):
+        """DW-402: `Test/AuditRecord.cls` runs a production install and names no security class at
+        all, so a rule reading only `Security.*` could not see the widest effect in the tree."""
+        self.write_test_class(
+            "Installing", '    Set tSC = ##class(OcuPilot.Install.Installer).Install("")'
+        )
+        problems: list[str] = []
+        co.check_destructive_test_guard(problems)
+        self.assertTrue(
+            any("Installing.cls" in p and 'Install("")' in p for p in problems),
+            f"expected the production install refused by name, got {problems}",
+        )
+
+    def test_the_same_production_install_with_the_guard_passes(self):
+        self.write_test_class(
+            "InstallingGuarded",
+            '    Set tSC = ##class(OcuPilot.Install.Installer).Install("")',
+            self.GUARDED_BODY,
+        )
+        problems: list[str] = []
+        co.check_destructive_test_guard(problems)
         self.assertEqual(problems, [])
+
+    def test_the_install_reached_through_the_suites_own_probe_is_in_the_population(self):
+        """`OcuPilot.Test.InstallerProbe` extends the installer and does not override `StartPath`,
+        so a class driving it runs the real production install while naming no installer class --
+        which is how `Test/DemoOptIn.cls` stayed outside the widened pattern."""
+        self.write_test_class(
+            "ProbeStarting", '    Set tSC = ##class(OcuPilot.Test.InstallerProbe).StartPath(0)'
+        )
+        problems: list[str] = []
+        co.check_destructive_test_guard(problems)
+        self.assertTrue(
+            any("ProbeStarting.cls" in p for p in problems),
+            f"expected the helper route to the production install refused, got {problems}",
+        )
+
+    def test_the_zero_argument_install_is_the_production_install_too(self):
+        """`Install` declares `pProfile As %String = ""`, so a bare `Install()` is the production
+        install under another spelling. A pattern anchored on the literal `""` read it as nothing
+        at all, which is the same blind spot DW-402 filed about the method name."""
+        self.write_test_class(
+            "BareInstalling", "    Set tSC = ##class(OcuPilot.Install.Installer).Install()"
+        )
+        problems: list[str] = []
+        co.check_destructive_test_guard(problems)
+        self.assertTrue(
+            any("BareInstalling.cls" in p for p in problems),
+            f"expected the zero-argument production install refused, got {problems}",
+        )
+
+    def test_any_test_helper_reaching_the_install_is_in_the_population(self):
+        """Fourteen classes under `Test/` extend the installer or `InstallerProbe` and inherit
+        `StartPath` and `Install` unchanged. Listing the helpers by name is precisely what the next
+        one is added outside of, so both methods are matched on any `OcuPilot.Test.*` class."""
+        for name, call in (
+            ("MigrateStarting", "    Do ##class(OcuPilot.Test.MigrateFault).StartPath(1)"),
+            ("NamespaceStarting", "    Do ##class(OcuPilot.Test.NamespaceProbe).StartPath(1)"),
+            ("ProbeBareInstalling", '    Set tSC = ##class(OcuPilot.Test.InstallerProbe).Install("")'),
+        ):
+            with self.subTest(name=name):
+                self.write_test_class(name, call)
+                problems: list[str] = []
+                co.check_destructive_test_guard(problems)
+                self.assertTrue(
+                    any(f"{name}.cls" in p for p in problems),
+                    f"expected {name} refused by the widened pattern, got {problems}",
+                )
+
+    def test_a_probe_profile_install_through_a_helper_is_still_outside_the_rule(self):
+        """The widening is by class family, not by method: a probe-profile install through the
+        same helper still creates only the objects the test owns."""
+        self.write_test_class(
+            "HelperProbeInstalling",
+            '    Set tSC = ##class(OcuPilot.Test.InstallerProbe).Install("probe", 1)',
+        )
+        problems: list[str] = []
+        co.check_destructive_test_guard(problems)
+        self.assertEqual(problems, [])
+
+    def test_a_probe_profile_install_is_outside_the_rule(self):
+        """The rule anchors on the empty profile argument, not on the method. A probe install
+        creates the parallel `Probe*` objects a test owns, which is what the suite is for."""
+        self.write_test_class(
+            "ProbeInstalling", '    Set tSC = ##class(OcuPilot.Install.Installer).Install("probe")'
+        )
+        problems: list[str] = []
+        co.check_destructive_test_guard(problems)
+        self.assertEqual(problems, [])
+
+    def test_an_audit_event_registration_is_in_the_population(self):
+        """An unregistered triple drops every row written under it, with no error and no log line,
+        so a class that deletes or disables one silently stops auditing whatever instance it ran
+        on."""
+        for name, call in (
+            ("EventMaker", '    Set tSC = ##class(Security.Events).Create("S", "T", "N")'),
+            ("EventRemover", '    Set tSC = ##class(Security.Events).Delete("S", "T", "N")'),
+            ("EventChanger", '    Set tSC = ##class(Security.Events).Modify("S", "T", "N", .tP)'),
+        ):
+            with self.subTest(name=name):
+                self.write_test_class(name, call)
+                problems: list[str] = []
+                co.check_destructive_test_guard(problems)
+                self.assertTrue(
+                    any(f"{name}.cls" in p for p in problems),
+                    f"expected {name} refused, got {problems}",
+                )
 
     def test_a_class_that_is_not_a_test_case_is_outside_the_rule(self):
         """`Test/ProbeApps.cls` is a helper, not a suite: the runner never lists it, so it runs

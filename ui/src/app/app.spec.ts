@@ -1,14 +1,24 @@
 import { ApplicationRef } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { App } from './app';
+import {
+  CREATE_ACTION,
+  DEFINITION_LIST_DESCRIPTOR,
+  DISABLE_ACTION,
+  ENABLE_ACTION,
+  SET_DEFAULT_ACTION,
+} from './areas/agent/definition-actions';
+import { DefinitionForm } from './areas/agent/definition-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
 import { ErrorLogDrill } from './areas/logs/error-log.store';
+import { AgentStatus } from './core/agent-status';
 import { ApiService } from './core/api';
 import { ChangeBus } from './core/change-bus';
 import { ConnectivityService } from './core/connectivity';
+import { FormDirty } from './core/form-dirty';
 import type { Fault, FaultKind } from './core/fault';
 import { InstanceService, type InstanceStatus } from './core/instance';
 import { NavigationService, type Verdict } from './core/navigation';
@@ -22,6 +32,7 @@ import type { AreaDeclaration, ScreenDeclaration } from './core/screens.generate
 import { Session, type SessionState } from './core/session';
 import { ShellState } from './core/shell-state';
 import { STRINGS } from './core/strings';
+import { stubAgentStatus } from './testing/agent-status';
 import { screenDeclaration } from './testing/screen-declaration';
 
 /**
@@ -45,10 +56,23 @@ const AREAS: readonly AreaDeclaration[] = [
 
 class StubSession {
   current: SessionState = 'signed-in';
+
+  /** What `consumeFreshSignIn()` will answer once. Default false: a reload is not a sign-in. */
+  fresh = false;
+
+  consumed = 0;
+
   private readonly listeners = new Set<() => void>();
 
   state(): SessionState {
     return this.current;
+  }
+
+  consumeFreshSignIn(): boolean {
+    this.consumed += 1;
+    if (!this.fresh) return false;
+    this.fresh = false;
+    return true;
   }
 
   userName(): string {
@@ -130,6 +154,21 @@ class StubInstance {
 }
 
 class StubNavigation {
+  /** Which route verdicts are denials. Everything absent is allowed, as the live map's default is. */
+  readonly denied = new Set<string>();
+
+  /** Whether a map actually arrived. The gate declines without one -- see `App.runFirstLoginGate`. */
+  loadedFlag = true;
+
+  loaded(): boolean {
+    return this.loadedFlag;
+  }
+
+  /** True even for a read that failed, exactly as the live service answers it. */
+  answered(): boolean {
+    return true;
+  }
+
   areas(): readonly AreaDeclaration[] {
     return AREAS;
   }
@@ -150,8 +189,8 @@ class StubNavigation {
     return ALLOWED;
   }
 
-  screenVerdict(): Verdict {
-    return ALLOWED;
+  screenVerdict(route: string): Verdict {
+    return this.denied.has(route) ? { allowed: false, failedPair: 'OcuPilotAdmin:USE' } : ALLOWED;
   }
 
   subscribe(): () => void {
@@ -279,6 +318,10 @@ describe('the shell frame', () => {
   let fixture: ComponentFixture<App>;
   let session: StubSession;
   let instance: StubInstance;
+  let navigation: StubNavigation;
+  let agentStatus: AgentStatus;
+  /** The definitions the stubbed read answers with. Mutated to arrange an Enable. */
+  let definitionRows: { enabled: boolean }[];
   let scope: StubScope;
   let connectivity: StubConnectivity;
   let refresh: RefreshService;
@@ -292,6 +335,12 @@ describe('the shell frame', () => {
   beforeEach(() => {
     session = new StubSession();
     instance = new StubInstance();
+    navigation = new StubNavigation();
+    // Unanswered by default, so the panel renders nothing and every assertion in this file that
+    // predates the panel is about the frame it has always been about. The tests that are about the
+    // panel and the gate `load()` it themselves.
+    definitionRows = [];
+    agentStatus = stubAgentStatus(definitionRows);
     scope = new StubScope();
     connectivity = new StubConnectivity();
     // The real framework, timer seam neutralized: the frame mounts the chip and the stamp, and
@@ -306,13 +355,19 @@ describe('the shell frame', () => {
     overlays = new OverlayStack();
     TestBed.configureTestingModule({
       providers: [
-        provideRouter([{ path: '', children: [] }]),
+        // Three real routes, so "the gate navigated" and "the gate did not" are different
+        // observations rather than the same `/`. The two the gate names are the mirror's own.
+        provideRouter([
+          { path: '', children: [] },
+          { path: 'permissions/users', children: [] },
+          { path: 'agent/definitions/edit', children: [] },
+          // The same screen carrying an id, so "the gate honoured a deep link" is observable.
+          { path: 'agent/definitions/edit/:id', children: [] },
+        ]),
         { provide: Session, useValue: session as unknown as Session },
         { provide: InstanceService, useValue: instance as unknown as InstanceService },
-        {
-          provide: NavigationService,
-          useValue: new StubNavigation() as unknown as NavigationService,
-        },
+        { provide: NavigationService, useValue: navigation as unknown as NavigationService },
+        { provide: AgentStatus, useValue: agentStatus },
         {
           provide: ShellState,
           useValue: new ShellState({ preferences: new PreferenceStore({ storage: memoryStorage() }) }),
@@ -326,6 +381,7 @@ describe('the shell frame', () => {
         { provide: ScreenStores, useValue: screenStores },
         { provide: OverlayStack, useValue: overlays },
         { provide: ScreenActions, useValue: new ScreenActions() },
+        { provide: FormDirty, useValue: new FormDirty() },
         // The application error log's drill (Story 2.12) is the one root-provided store that
         // reads through `ApiService` directly -- it declares no read, so it has no `RefreshRead`
         // to stub. The stub answers an empty page so the drill's state can be driven here without
@@ -354,10 +410,13 @@ describe('the shell frame', () => {
     expect(order).toEqual(['app-header', 'div', 'app-status-bar']);
 
     const shell = root.querySelector('.ocu-shell') as HTMLElement;
+    // The panel is the row's last member, after the content column: the reading order is header,
+    // rail, side bar, content, panel (EXPERIENCE.md's Focus order).
     expect(Array.from(shell.children).map((child) => child.tagName.toLowerCase())).toEqual([
       'app-rail',
       'app-side-bar',
       'div',
+      'app-panel',
     ]);
 
     const content = shell.querySelector('.ocu-shell-content') as HTMLElement;
@@ -544,6 +603,22 @@ describe('the shell frame', () => {
     ]);
   });
 
+  it("AC4: the shell brings the Definitions list's action handlers into existence", () => {
+    // `DefinitionActions` registers the list's four handlers in its own constructor, and nothing
+    // constructs it except `App`'s injection of it -- the descriptor declares the actions, but a
+    // surface offers one only while `ScreenActions` holds a handler for it. `definition-actions`'
+    // own spec injects the service itself, so every assertion there holds whether or not the
+    // shipped shell ever builds it.
+    //
+    // Mutation (Rule 19): delete `private readonly definitionActions = inject(DefinitionActions);`
+    // from `app.ts` -> these four go red, and enable, disable, set-default and Create do nothing
+    // on the real screen while the whole client suite stays green.
+    const actions = TestBed.inject(ScreenActions);
+    for (const id of [ENABLE_ACTION, DISABLE_ACTION, SET_DEFAULT_ACTION, CREATE_ACTION]) {
+      expect(actions.has(DEFINITION_LIST_DESCRIPTOR, id)).toBe(true);
+    }
+  });
+
   it('AD-8: leaving the signed-in state drops this principal\'s namespace list', async () => {
     // The list says which namespaces THIS user may enter, and `ApiService` scopes every call to
     // the answer. Sign-out clears the tab in place, so a list kept across it would scope the
@@ -580,6 +655,26 @@ describe('the shell frame', () => {
     expect(errorLogDrill.level()).toBe('list');
     expect(errorLogDrill.namespace()).toBe('HSCUSTOM');
 
+    // The eighth answer of the same kind (Story 3.5). The Definition form's buffer holds what THIS
+    // principal typed, and `keyValue` holds a provider API key they pasted and have not yet
+    // stored -- a secret, in a root-provided store, in the tab the next principal signs in to
+    // (AD-35). The dirty flag beside it is worse than stale: left standing, the next principal's
+    // first navigation raises "Leave without saving?" about work that is not theirs, and the
+    // guard refuses a route they did ask for.
+    const definitionForm = TestBed.inject(DefinitionForm);
+    const formDirty = TestBed.inject(FormDirty);
+    definitionForm.setValue('name', 'Claude');
+    definitionForm.setKey('sk-ant-a-key-this-principal-pasted');
+    expect(definitionForm.key()).not.toBe('');
+    expect(formDirty.dirty()).toBe(true);
+
+    // The ninth answer of the same kind (Story 3.6, AC5). Whether the instance holds an enabled
+    // definition is a read THIS principal made, and the panel and the rail's dot pick an audience
+    // from it. Left standing, the next principal's first paint shows an administrator's reminder
+    // banner over an answer nobody asked for on their behalf.
+    await agentStatus.load();
+    expect(agentStatus.answered()).toBe(true);
+
     session.move('form');
     fixture.detectChanges();
 
@@ -600,6 +695,13 @@ describe('the shell frame', () => {
     expect(refresh.descriptor()).toBe('');
     expect(refresh.armedFor()).toBe('none');
 
+    // Mutation (Rule 19): delete `this.definitionForm.reset()` and `this.formDirty.reset()` from
+    // `App.verifyWhenSignedIn` -> these three go red, and the shipped shell hands the next
+    // principal a pasted key and a dirty flag over a form they never opened.
+    expect(definitionForm.key()).toBe('');
+    expect(definitionForm.value('name')).toBe('');
+    expect(formDirty.dirty()).toBe(false);
+
     expect(scope.resets).toBe(1);
     // The fourth answer of the same kind (Story 1.13). A re-read parked with connectivity is a
     // request about THIS principal; one left armed across a sign-out fires their map, namespace
@@ -610,6 +712,10 @@ describe('the shell frame', () => {
     // this goes red, and the shipped shell re-reads a departed principal's map on the next
     // probe response.
     expect(connectivity.resets).toBe(1);
+
+    // Mutation (Rule 19): delete `this.agentStatus.reset()` from `App.verifyWhenSignedIn` -> this
+    // goes red, and the next principal's first paint carries the previous one's audience.
+    expect(agentStatus.answered()).toBe(false);
   });
 
   it('DW-248: focus moves into the frame when it arrives, and is never taken from where the user put it', async () => {
@@ -662,5 +768,144 @@ describe('the shell frame', () => {
     await settle();
     expect(document.activeElement).toBe(elsewhere);
     expect(main()).not.toBeNull();
+  });
+
+  // --- The first-login gate (Story 3.6, AC1, AC1b) ---------------------------------------------
+  //
+  // The gate is `App`'s, so this is where it is pinned. What a real browser then does about the
+  // resulting URL -- and that a reload really does not re-fire it -- is
+  // `ui/browser/gate.browser-spec.mjs`, against the real instance.
+
+  /** Let the gate's two awaited reads and the navigation it may issue settle. */
+  const settleGate = async (): Promise<void> => {
+    for (let pass = 0; pass < 6; pass += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      fixture.detectChanges();
+      await fixture.whenStable();
+    }
+  };
+
+  it('AC1: a fresh sign-in with nothing enabled and the verdict allowed lands on the Definition form', async () => {
+    // Mutation (Rule 19): move the gate check out of `consumeFreshSignIn()` so it runs on every
+    // `signed-in` -> AC1b below goes red, because a reload would redirect too.
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/permissions/users');
+    session.fresh = true;
+    session.move('probing');
+    session.move('signed-in');
+    await settleGate();
+    expect(router.url).toBe('/agent/definitions/edit');
+  });
+
+  it('AC1: the gate declines when the map read failed, whatever the default verdict says', async () => {
+    // A completed-but-failed map read leaves every verdict `UNGATED` (allowed). Redirecting on
+    // that takes a caller who may hold nothing to a form the instance will refuse them at.
+    //
+    // Mutation (Rule 19): drop the `if (!this.navigation.loaded()) return;` line -> this goes red.
+    const router = TestBed.inject(Router);
+    navigation.loadedFlag = false;
+    await router.navigateByUrl('/permissions/users');
+    session.fresh = true;
+    session.move('probing');
+    session.move('signed-in');
+    await settleGate();
+    expect(router.url).toBe('/permissions/users');
+  });
+
+  it('AC1: the gate declines for a caller the map refuses, and the requested route stands', async () => {
+    const router = TestBed.inject(Router);
+    navigation.denied.add('agent/definitions');
+    await router.navigateByUrl('/permissions/users');
+    session.fresh = true;
+    session.move('probing');
+    session.move('signed-in');
+    await settleGate();
+    expect(router.url).toBe('/permissions/users');
+  });
+
+  it('AC5: the gate declines on an instance that already holds an enabled definition', async () => {
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/permissions/users');
+    // Arranged the way the instance arranges it: a row with `enabled: true`, not a flag on the
+    // client. Nothing else about the sign-in changes.
+    definitionRows.push({ enabled: true });
+    session.fresh = true;
+    session.move('probing');
+    session.move('signed-in');
+    await settleGate();
+    expect(agentStatus.configured()).toBe(true);
+    expect(router.url).toBe('/permissions/users');
+  });
+
+  it('AC1: a sign-in on a deep link to one definition keeps the id the browser was asked for', async () => {
+    // The gate navigates to the form's id-less route, so firing it over a browser that was asked
+    // for a particular definition would silently drop that definition and open a blank create
+    // form. The condition still holds -- a stored definition that is not enabled leaves the
+    // instance unconfigured -- so this is reachable rather than theoretical.
+    //
+    // Mutation (Rule 19): delete the `routeFromUrl(this.router.url).startsWith(form.route)` guard
+    // from `App.runFirstLoginGate` -> this goes red at `/agent/definitions/edit`.
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/agent/definitions/edit/7');
+    session.fresh = true;
+    session.move('probing');
+    session.move('signed-in');
+    await settleGate();
+    expect(router.url).toBe('/agent/definitions/edit/7');
+  });
+
+  it('AC1b: a reload that resumes a stored pair is not a sign-in, so the requested URL is unchanged', async () => {
+    // Mutation (Rule 19): make `start()`'s resume branch call `adopt()` -> this goes red, because
+    // a reload would then be an authentication and the gate would take the tab off its own route.
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/permissions/users');
+    session.fresh = false;
+    session.move('probing');
+    session.move('signed-in');
+    await settleGate();
+    expect(router.url).toBe('/permissions/users');
+    expect(session.consumed).toBeGreaterThan(0);
+
+    // And the status is still read: the panel and the dot render from it on every route, and a
+    // read left to the gate alone would leave a reloaded tab with no panel at all.
+    //
+    // Mutation (Rule 19): move `agentStatus.load()` inside the `if (!fresh) return;` branch of
+    // `runFirstLoginGate` -> this goes red, and the reminder banner FR-28 says stays until a
+    // definition is enabled is gone after any reload.
+    expect(agentStatus.answered()).toBe(true);
+    expect(agentStatus.configured()).toBe(false);
+  });
+
+  it('AC1: a second authentication in the same tab fires the gate again while the condition still stands', async () => {
+    // FR-28's own words are "every login until one definition is enabled, and never afterwards" --
+    // not "the first login". Nothing about the gate having fired is stored anywhere (the intent
+    // contract's own "Never" clause), so a tab that authenticates twice while the instance stays
+    // unconfigured must be moved to the form both times, not only the first.
+    //
+    // Mutation (Rule 19): add a field such as `private gateFiredOnce = false;` to `App`, guard
+    // `runFirstLoginGate` with `if (this.gateFiredOnce) return;` right after the `fresh` check, and
+    // set it just before the navigation -> the second sign-in below goes red, because the tab would
+    // remember having shown the gate once and "every login" would silently narrow to "the first".
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/permissions/users');
+    session.fresh = true;
+    session.move('probing');
+    session.move('signed-in');
+    await settleGate();
+    expect(router.url).toBe('/agent/definitions/edit');
+
+    // The administrator leaves the gate the way EXPERIENCE.md's "They may leave" allows.
+    await router.navigateByUrl('/permissions/users');
+    expect(router.url).toBe('/permissions/users');
+
+    // A second, independent authentication in the same tab: the instance is still unconfigured --
+    // `definitionRows` was never given an enabled row -- so this is arranged the way the instance
+    // arranges it, exactly as AC5's test is.
+    session.move('signed-out');
+    session.fresh = true;
+    session.move('probing');
+    session.move('signed-in');
+    await settleGate();
+    expect(router.url).toBe('/agent/definitions/edit');
   });
 });

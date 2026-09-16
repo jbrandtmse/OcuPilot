@@ -66,6 +66,15 @@ Parameter ADMINRESOURCE As %String = "OcuPilotAdmin";
 /// <p>Global-mapping prefix pattern for OcuPilot's protected globals (AC3).</p>
 Parameter MAPPINGPATTERN As %String = "OcuPilot*";
 
+/// <p>Name of the TLS configuration every outbound provider call is made through (AD-32).
+/// Kernel-visible for the reason <parameter>APPLICATION</parameter> is: the installer creates
+/// it, the provider port names it on the request, and the uninstall confirmation lists it, so
+/// the three read one literal rather than three copies of it.</p>
+/// <p>The probe profile's equivalent is this value with the profile suffix appended, by the
+/// same derivation <method>OcuPilot.Install.Installer.Names</method> applies to every other
+/// name here.</p>
+Parameter SSLCONFIG As %String = "OcuPilotProvider";
+
 /// <p>Audit event triple (AD-15) -- Source and Type. The event Name carries a
 /// profile-specific suffix; see <method>OcuPilot.Install.Installer.Names</method>.</p>
 Parameter AUDITSOURCE As %String = "OcuPilot";
@@ -73,6 +82,23 @@ Parameter AUDITSOURCE As %String = "OcuPilot";
 Parameter AUDITTYPE As %String = "Security";
 
 Parameter AUDITNAME As %String = "RoleGranted";
+
+/// <p>The row's write counter, raised by one on every write that goes through
+/// <method>GuardedSaveIfCurrent</method> (Consistency Conventions: concurrent writes to
+/// OcuPilot's own state). It is never a wire field and never a client-supplied token: the window
+/// it closes opens and closes inside one request.</p>
+/// <p>Declared on the base so every store inherits one counter rather than each answering the
+/// question again. Rows written before this property existed hold no value at all, which SQL
+/// reads as <code>NULL</code>; <method>GuardedSaveIfCurrent</method>'s
+/// <code>COALESCE(RowVersion, 0)</code> is what makes such a row compare equal to the 0 a caller
+/// reads off it.</p>
+Property RowVersion As %Integer [ InitialExpression = 0 ];
+
+/// <p>The sentence a stale save is refused with. A parameter rather than a literal so the
+/// refusal and <method>IsStaleSave</method> name the same text rather than two copies of it --
+/// the idiom <parameter>OcuPilot.Kernel.State.Agent.DEFAULTDISABLEDREASON</parameter>
+/// established.</p>
+Parameter STALESAVEREASON = "the row changed on this instance after it was read, so the save was refused";
 
 /// <p>Save <var>pObject</var> -- any persistent instance of this class or a subclass --
 /// through the escalated frame.</p>
@@ -88,6 +114,99 @@ ClassMethod GuardedSave(pObject As %Persistent) As %Status
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>Save <var>pObject</var> only while the row still carries the version
+/// <var>pExpected</var> names -- the conditional write every store on this base funnels an edit
+/// through (Consistency Conventions: concurrent writes to OcuPilot's own state; the idiom is
+/// AD-34's, applied to the stores themselves).</p>
+/// <p><b>Exactly one caller wins and the loser is told.</b> Inside one transaction the row's
+/// <property>RowVersion</property> is raised by a conditional <code>UPDATE</code> that matches
+/// only while it still reads <var>pExpected</var>; a row count of 0 means another writer got
+/// there first, the transaction rolls back, nothing is written, and the answer is
+/// <parameter>STALESAVEREASON</parameter> -- a refusal, never a retry and never a silent
+/// overwrite. <method>IsStaleSave</method> is how a caller tells that refusal from a read
+/// failure.</p>
+/// <p><b>A row with no id yet is created</b> rather than refused: there is nothing for it to be
+/// stale against. It takes version 1, so the first edit after it is conditional like any
+/// other.</p>
+/// <p><b>The table name is read from the class dictionary</b>, never transcribed and never taken
+/// from a caller (AD-21): it is <property>%Dictionary.CompiledClass.SqlQualifiedNameQ</property>
+/// for <var>pObject</var>'s own class, which is what makes one method serve every subclass. The
+/// three values that vary are bound, not concatenated.</p>
+/// <p><code>COALESCE(RowVersion, 0)</code> is load-bearing: a row written before the property
+/// existed holds no value, SQL reads that as <code>NULL</code>, and <code>NULL = 0</code> is
+/// never true -- so without it every pre-existing row would be permanently unsaveable.</p>
+ClassMethod GuardedSaveIfCurrent(pObject As Base, pExpected As %Integer = 0) As %Status
+{
+    Set tSC = $$$OK
+    Set tInTx = 0
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Set tNext = +pExpected + 1
+        If pObject.%Id() = "" {
+            Set pObject.RowVersion = 1
+            Set tSC = pObject.%Save()
+            Quit
+        }
+        Set tTable = ..QualifiedTableName(pObject.%ClassName(1))
+        If tTable = "" {
+            Set tSC = $$$ERROR($$$GeneralError, "GuardedSaveIfCurrent found no SQL table for " _ pObject.%ClassName(1))
+            Quit
+        }
+        TSTART
+        Set tInTx = 1
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "UPDATE " _ tTable _ " SET RowVersion = ? WHERE ID = ? AND COALESCE(RowVersion, 0) = ?", tNext, pObject.%Id(), +pExpected)
+        If tRS.%SQLCODE < 0 {
+            Set tSC = $$$ERROR($$$GeneralError, "GuardedSaveIfCurrent failed: SQLCODE=" _ tRS.%SQLCODE _ " " _ tRS.%Message)
+            Quit
+        }
+        If +tRS.%ROWCOUNT = 0 {
+            Set tSC = $$$ERROR($$$GeneralError, ..#STALESAVEREASON)
+            Quit
+        }
+        Set pObject.RowVersion = tNext
+        Set tSC = pObject.%Save()
+        If $$$ISERR(tSC) Quit
+        TCOMMIT
+        Set tInTx = 0
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If tInTx {
+        TROLLBACK 1
+    }
+    Quit tSC
+}
+
+/// <p>Whether <var>pStatus</var> is <method>GuardedSaveIfCurrent</method>'s stale refusal rather
+/// than a read or write failure. One check, so a handler mapping it to
+/// <parameter>OcuPilot.Api.Error.STATECONFLICT</parameter> does not spell the sentence a second
+/// time.</p>
+ClassMethod IsStaleSave(pStatus As %Status) As %Boolean
+{
+    If $$$ISOK(pStatus) Quit 0
+    Quit $System.Status.GetErrorText(pStatus) [ ..#STALESAVEREASON
+}
+
+/// <p>The SQL table <var>pClassName</var> projects to, qualified and quoted as the dictionary
+/// spells it, or <code>""</code> for a class that projects to none.</p>
+/// <p>Read from <class>%Dictionary.CompiledClass</class> rather than from a per-subclass literal:
+/// a transcribed table name is a second source for something the compiler already owns, and the
+/// one place it would be noticed wrong is a conditional update that silently matched nothing.</p>
+ClassMethod QualifiedTableName(pClassName As %String) As %String [ Private ]
+{
+    Set tName = ""
+    Try {
+        Set tClass = ##class(%Dictionary.CompiledClass).%OpenId(pClassName, 0)
+        If $IsObject(tClass) Set tName = tClass.SqlQualifiedNameQ
+        Set tClass = ""
+    } Catch ex {
+        Set tName = ""
+    }
+    Quit tName
 }
 
 /// <p>Open by id through the escalated frame. Invoke as

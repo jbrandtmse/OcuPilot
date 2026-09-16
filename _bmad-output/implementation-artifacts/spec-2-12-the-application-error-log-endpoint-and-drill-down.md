@@ -183,7 +183,7 @@ deferred:
 
 Code review, 2026-09-15. Four layers (blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor) at the `full-opus` tier. 8 patched, 7 ledgered, 23 rejected, 0 high.
 
-**Patched**
+### Patched
 
 - [x] [Review][Patch] `TestTheDatesLevelAnswersOverTheWire` and `TestTheErrorsLevelAnswersOverTheWire` claimed an ordering nothing checked — both compared row 0 with a value taken from row 0 of an identical earlier call, so both sides moved together under any ordering. Replaced with per-row sweeps. [src/OcuPilot/Test/ErrorLogWire.cls:167,191]
 - [x] [Review][Patch] `ErrorLogWire.Prepare` selected the first namespace that answered, which on this instance holds one date, so the sweeps above had nothing to compare — found by applying the reversal mutation and watching them stay green. It now maximises the date count and records it. [src/OcuPilot/Test/ErrorLogWire.cls:73]
@@ -194,7 +194,7 @@ Code review, 2026-09-15. Four layers (blind-hunter, edge-case-hunter, verificati
 - [x] [Review][Patch] `RoutineOf`'s doc said "whitespace-delimited" where the code splits on a space. [src/OcuPilot/Port/LogSourcePort.cls:905]
 - [x] [Review][Patch] A stack row in the page spec still carried `label`, dropped from the projection, the store interface and `absorb` by the previous pass. [ui/src/app/areas/logs/error-log.page.spec.ts:168]
 
-**Ledgered**
+### Ledgered
 
 - [x] [Review][Defer] Every named refusal renders one generic sentence, so a purged date, an unknown entry and a privilege denial read identically — DW-297, `escalated`: branching on `fault.code` needs three new EXPERIENCE.md Fixed-strings rows, the same product call that deferred DW-293.
 - [x] [Review][Defer] The class tool's `View` drops the port's status and fault, and passes a model-supplied `maxRows` to the port unbounded by the context cap — DW-298, `routed` to Story 4.2, which owns dispatch.
@@ -275,7 +275,7 @@ Fix is a spec edit, so out of scope here (triage rule): the descriptor's `%DB_IR
   - `[medium]` `[patch]` (Intent Alignment) "Newest date first" is asserted tautologically — verified: `PreparedDate` is row 0 of an identical earlier call. Replaced with a sweep comparing each row against the one before it, in `$Horolog` day numbers; mutation (reverse the dates at the port) applied and observed red on the sweep alone while the row-0 equality stayed green.
   - `[low]` `[reject]` (Intent Alignment) `maxRows` bounds each detail section rather than the response — each read is bounded, which is what the contract requires; recorded as a residual risk.
   - `[medium]` `[defer]` (Intent Alignment) "Editable" exists only server-side — same surface as the `truncated` row; deferred there.
-  - `[low]` `[reject]` (Intent Alignment) The level tables are not pinned to `DataTable`'s behaviour — spec-explained; the reasons that component cannot serve three levels are recorded at the descriptor and the page.
+  - `[low]` `[reject]` (Intent Alignment) The level tables are not pinned to `DataTable`'s behavior — spec-explained; the reasons that component cannot serve three levels are recorded at the descriptor and the page.
   - `[low]` `[reject]` (Intent Alignment) The diff touches surfaces the intent is silent on — each is recorded in `## Auto Run Result` and none contradicts a prohibition.
 
 ## Design Notes
@@ -285,6 +285,7 @@ Fix is a spec edit, so out of scope here (triage rule): the descriptor's `%DB_IR
 **Consumes:** Story 2.11's `LogSourcePort` (the enum, the gate-before-access prologue, `Refuse`/`Fail` → `Kernel.Fault.Build`, the `LOG.*` vocabulary, the `PairsFor` seam it created for this story by name, and the fixture's counter idiom); Story 1.9's `Screen.Gate` and `Screen.Registry`; Story 1.11's `Api.Namespaces.GlobalDatabase`; Story 1.13's envelope; Story 2.3's descriptor contract and mirror; Story 2.4's `DataTable`; Story 2.10's `AuditList` as the precedent for a screen owning its page and root-provided store; Story 1.4's `Install.Fixture.SeedApplicationError`, which already puts a readable entry in `^ERRORS` on every install.
 
 **Consumed-by:**
+
 - Epic 4 (`4.10`): Home's per-namespace "application errors today" line reads this story's namespaces and dates levels; `4.2` dispatches `logs.applicationerrors.read`, which this story defines but does not invoke.
 - Epic 5: the agent line and row menu, and the confirmed delete scoped from **this screen's** drilled namespace — which is why the namespace has exactly one source here.
 - Epic 6 (`6.14`): owns DW-278 and the messages.log viewer; this screen is the first Logs screen the false denial reaches.

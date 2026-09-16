@@ -45,6 +45,7 @@ import {
   launchOptions,
 } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
+import { leaveFirstLoginGate } from './shell-entry.mjs';
 
 const config = browserConfig();
 let browser = null;
@@ -147,6 +148,9 @@ test('the shell loads with no console error and lays out the rail and the side b
     // card, which is the product working. Waiting for the rail rather than for a delay is what
     // keeps this from being a race dressed as a timeout.
     await page.waitForSelector('app-rail .ocu-rail', { timeout: config.navigationTimeoutMs });
+    // The first-login gate moves an administrator off any route on an instance with no enabled
+    // definition (Story 3.6). Back returns to the one this leg asked for.
+    await leaveFirstLoginGate(page, config.navigationTimeoutMs, SHELL_PATH);
 
     // Non-zero laid-out geometry, which is the whole point: jsdom answers zeros for every one of
     // these, so the component suite cannot tell a rendered shell from an empty one.
@@ -221,6 +225,9 @@ test('"Skip to content" opens the Tab order, shows only while focused, and Enter
     await signInToClassicPortal(page);
     await page.goto(`${config.origin}${SHELL_PATH}`, { waitUntil: 'networkidle2' });
     await page.waitForSelector('app-rail .ocu-rail', { timeout: config.navigationTimeoutMs });
+    // The first-login gate moves an administrator off any route on an instance with no enabled
+    // definition (Story 3.6). Back returns to the one this leg asked for.
+    await leaveFirstLoginGate(page, config.navigationTimeoutMs, SHELL_PATH);
 
     const urlBefore = await page.evaluate(() => window.location.href);
     const unfocused = await page.evaluate(() => {
@@ -327,6 +334,9 @@ test('after signing in through the in-app form, focus lands in the content and t
     await page.click('.ocu-signin-card button[type="submit"]');
 
     await page.waitForSelector('app-rail .ocu-rail', { timeout: config.navigationTimeoutMs });
+    // The first-login gate moves an administrator off any route on an instance with no enabled
+    // definition (Story 3.6). Back returns to the one this leg asked for.
+    await leaveFirstLoginGate(page, config.navigationTimeoutMs, SHELL_PATH);
     await page.waitForFunction(() => document.activeElement?.id === 'ocu-content', {
       timeout: config.navigationTimeoutMs,
     });

@@ -19,12 +19,14 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import {
   ALLOWED_ABSOLUTE_URLS,
+  checkFilterAssertions,
   checkHardcodedColors,
   checkNonAsciiLiterals,
   checkOffOriginUrls,
   checkTemplateLiterals,
   checkTestingImports,
   lintClient,
+  RULE_FAMILIES,
   TOKEN_STYLESHEET_PATH,
 } from './client-lint.mjs';
 
@@ -68,6 +70,84 @@ test('the token stylesheet is exempt by its exact path', () => {
 test('a file that merely looks like the token stylesheet is NOT exempt -- the exemption is exact-path, not a pattern', () => {
   const result = checkHardcodedColors({ path: 'src/styles/tokens.scss', text: ':root { --ocu-shell: #0F3A5F; }' });
   assert.equal(result.ok, false, 'a near-miss path must not be treated as the exempt stylesheet');
+});
+
+// --- checkFilterAssertions (DW-368) -------------------------------------------
+
+const FILTER_SPEC = 'browser/probe.browser-spec.mjs';
+
+test('an exact row count asserted on a filterToSubset result is rejected', () => {
+  const text = "assert.equal(await filterToSubset(page, { ...kept, text: 'demo fixture' }), 1, 'one row');";
+  const result = checkFilterAssertions({ path: FILTER_SPEC, text });
+  assert.equal(result.ok, false);
+  assert.equal(result.errors[0].rule, 'no-exact-filter-count');
+  assert.equal(result.errors[0].line, 1);
+});
+
+test('an exact row count asserted through a name the result was bound to is rejected too', () => {
+  // The inline form is not the only way to write the claim, and the const form is what a spec
+  // reaches for as soon as the call wants a name.
+  const text = [
+    "const kept = await filterToSubset(page, { ...shared, text: 'demo fixture' });",
+    "assert.equal(kept, 1, 'a description substring leaves one row');",
+  ].join('\n');
+  const result = checkFilterAssertions({ path: FILTER_SPEC, text });
+  assert.equal(result.ok, false, 'the bound form must be rejected like the inline one');
+  assert.equal(result.errors[0].rule, 'no-exact-filter-count');
+  assert.equal(result.errors[0].line, 2);
+});
+
+test('a count bound from something other than filterToSubset is left alone', () => {
+  const text = ['const rows = await readRows(page);', 'assert.equal(rows, 1, "one row");'].join(
+    '\n'
+  );
+  assert.equal(checkFilterAssertions({ path: FILTER_SPEC, text }).ok, true);
+});
+
+test('an identifier that merely contains "by" is not a filter leg', () => {
+  // `\\w*[Bb]y\\w+` matched `bytesRead` and `bytesTotal`, so an ordinary size comparison in a
+  // browser spec was reported as a leg-against-leg claim.
+  const text = 'assert.ok(bytesRead < bytesTotal, "the body was truncated");';
+  assert.equal(checkFilterAssertions({ path: FILTER_SPEC, text }).ok, true);
+});
+
+test('the same leg asserted as "it narrowed" passes', () => {
+  const text = [
+    "const byName = await filterToSubset(page, { ...kept, text: 'DemoTLS' });",
+    'assert.ok(byName < total, `narrowed: ${byName} of ${total}`);',
+  ].join('\n');
+  const result = checkFilterAssertions({ path: FILTER_SPEC, text });
+  assert.equal(result.ok, true, `expected no violations, got: ${JSON.stringify(result.errors)}`);
+});
+
+test('one filter leg compared against another is rejected; against total it is not', () => {
+  const legs = checkFilterAssertions({
+    path: FILTER_SPEC,
+    text: 'assert.ok(byName < byRoutine, "narrower");',
+  });
+  assert.equal(legs.ok, false);
+  assert.equal(legs.errors[0].rule, 'no-filter-leg-comparison');
+
+  const against = checkFilterAssertions({
+    path: FILTER_SPEC,
+    text: 'assert.ok(byRoutine < total, "narrowed");',
+  });
+  assert.equal(against.ok, true, `expected no violations, got: ${JSON.stringify(against.errors)}`);
+});
+
+test('the rule reads browser specs alone -- a tool test may count what it likes', () => {
+  const text = "assert.equal(await filterToSubset(page, {}), 1, 'one row');";
+  assert.equal(checkFilterAssertions({ path: 'tools/probe.test.mjs', text }).ok, true);
+  assert.equal(checkFilterAssertions({ path: 'browser/list-spec.mjs', text }).ok, true);
+});
+
+test('a comment explaining why neither shape is used is not itself a violation', () => {
+  const text = "// never assert.equal(await filterToSubset(page, {}), 1, ...) -- the count is the instance's";
+  assert.equal(checkFilterAssertions({ path: FILTER_SPEC, text }).ok, true);
+});
+
+test('the new family is declared in RULE_FAMILIES, which is what the run count is derived from', () => {
+  assert.ok(RULE_FAMILIES.includes('filter-assertions'));
 });
 
 // --- checkTemplateLiterals ------------------------------------------------------
@@ -412,6 +492,27 @@ test('a shipped file importing from src/app/testing/ is refused; a spec, a testi
   ]) {
     const result = checkTestingImports({ path, text });
     assert.equal(result.ok, true, `${path}: ${JSON.stringify(result.errors)}`);
+  }
+});
+
+test('DW-368: client-lint.mjs exits 1 on an exact filter count in a browser spec, through the CLI', () => {
+  // The unit tests above call checkFilterAssertions directly, so they pass whether or not the rule
+  // is registered in lintClient. This drives the binary the prebuild actually runs, which is the
+  // only thing that observes the wiring: delete the rule from lintClient's aggregate and this
+  // reddens while every direct-call test stays green.
+  const root = mkdtempSync(join(tmpdir(), 'ocupilot-client-lint-'));
+  try {
+    mkdirSync(join(root, 'browser'), { recursive: true });
+    mkdirSync(join(root, 'src', 'app'), { recursive: true });
+    writeFileSync(
+      join(root, 'browser', 'probe.browser-spec.mjs'),
+      "assert.equal(await filterToSubset(page, {}), 1, 'one row');\n",
+    );
+    const run = spawnSync(process.execPath, [join(here, 'client-lint.mjs'), '--root', root], { encoding: 'utf8' });
+    assert.equal(run.status, 1, `expected exit 1, got ${run.status}: ${run.stdout}${run.stderr}`);
+    assert.match(run.stderr, /browser\/probe\.browser-spec\.mjs:1: \[no-exact-filter-count\]/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
   }
 });
 

@@ -11,6 +11,32 @@
 Class OcuPilot.Test.ScreenReadWire Extends %UnitTest.TestCase
 {
 
+/// <p>The route every request below is made against, with a concrete screen in the parameter's
+/// place -- the path as <class>OcuPilot.Api.Router</class>'s own <code>UrlMap</code> declares it.</p>
+Parameter READROUTE = "/screens/:screen/read";
+
+/// <p>The shipped router declares <code>GET</code> on <parameter>READROUTE</parameter> -- so the
+/// path the requests below drive is the path the map carries, not one that happens to resolve.</p>
+/// <p>No ordering assertion: <parameter>READROUTE</parameter> shares no leading segment with any
+/// other route in the map, so declaration order between them decides nothing that
+/// <code>%CSP.REST</code> would notice.</p>
+/// <p>Mutation: rename the route's <code>Url</code> in
+/// <class>OcuPilot.Api.Router</class>'s <code>UrlMap</code> -- this goes red, and every request
+/// below answers 404.</p>
+Method TestTheScreenReadRouteIsDeclaredInTheRouter()
+{
+    Set tXData = ##class(%Dictionary.XDataDefinition).IDKEYOpen("OcuPilot.Api.Router", "UrlMap", , .tOpenSC)
+    Do $$$AssertTrue($IsObject(tXData), "the router's UrlMap is readable")
+    If '$IsObject(tXData) Quit
+    Do tXData.Data.Rewind()
+    ; Read to the end: one 32000-character bite would silently truncate a map that outgrew it.
+    Set tMap = ""
+    While 'tXData.Data.AtEnd {
+        Set tMap = tMap _ tXData.Data.Read(32000)
+    }
+    Do $$$AssertTrue(tMap [ ("<Route Url=""" _ ..#READROUTE _ """ Method=""GET"""), "the router declares GET " _ ..#READROUTE _ " (read " _ $Length(tMap) _ " characters of UrlMap)")
+}
+
 /// <p>AC2 -- <code>GET /screens/webapp.list/read</code> answers one JSON envelope whose
 /// <code>fields</code> are the six the descriptor declares and whose every row carries exactly those
 /// keys, with <code>Name</code> and <code>Namespace</code> non-empty strings, <code>Enabled</code> a

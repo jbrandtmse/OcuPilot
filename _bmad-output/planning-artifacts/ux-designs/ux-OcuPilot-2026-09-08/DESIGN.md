@@ -990,7 +990,7 @@ The 48px activity bar on `{colors.shell}` (both modes), flush with the header �
 
 #### `attention-dot`
 
-A disc of `{colors.agent-accent-dark}` in both modes — it sits on the chrome: 8.09:1 light / 10.81:1 dark — with a `{colors.shell}` ring separating it from the icon, at the icon's top-right corner. Never the light-mode `{colors.agent-accent}`, which is 1.80:1 on the shell and would vanish. It appears only on the Agent co-pilot rail entry, and it means one of three things: the agent is unconfigured, the kill switch is on, or a definition needs attention. No counts anywhere on the rail.
+A disc of `{colors.agent-accent-dark}` in both modes — it sits on the chrome: 8.09:1 light / 10.81:1 dark — with a `{colors.shell}` ring separating it from the icon, at the icon's top-right corner. Never the light-mode `{colors.agent-accent}`, which is 1.80:1 on the shell and would vanish. It appears only on the Agent co-pilot rail entry, and it means one of two things: the agent is unconfigured, or the kill switch is on. A failed Test connection is deliberately not a third; `EXPERIENCE.md`'s `attention-dot` row carries the reason. No counts anywhere on the rail.
 
 #### `side-bar`
 

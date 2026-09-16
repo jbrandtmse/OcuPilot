@@ -48,6 +48,12 @@ interface ListView {
         <span class="ocu-banner-message">{{ bannerText }}</span>
       </p>
     }
+    @if (refusalText) {
+      <p class="ocu-banner ocu-list-page-banner ocu-banner-warning" role="alert">
+        <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
+        <span class="ocu-banner-message">{{ refusalText }}</span>
+      </p>
+    }
     @if (list; as view) {
       <app-data-table [screen]="view.screen" [store]="view.store" (focusFilter)="onFocusFilter()" />
     }
@@ -114,6 +120,20 @@ export class ListPage {
     const key = view.store.banner();
     if (key === '') return null;
     return view.screen.banner.cases.find((entry) => entry.messageKey === key) ?? null;
+  }
+
+  /**
+   * The sentence the last refused row action answered with, or `''` when none stands.
+   *
+   * It is the server's own text (AD-39) and is rendered `role="alert"`, because a write the
+   * operator asked for was refused and nothing else on the screen says so: a refused enable or
+   * set-default leaves the row exactly as it was, which is indistinguishable from nothing having
+   * happened. Separate from the declared banner above it, which is a condition a read reports
+   * rather than an answer to something the operator just did.
+   */
+  protected get refusalText(): string {
+    this.generation();
+    return this.list?.store.refusal() ?? '';
   }
 
   /** The strip's sentence, or `''` when none stands. */

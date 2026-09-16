@@ -81,8 +81,14 @@ export async function filterToSubset(page, { text, expectRow, total, timeoutMs }
   await page.keyboard.press('Backspace');
   await page.type(FILTER_SELECTOR, text);
   try {
+    // **The whole text must be in the field before the count is believed.** `page.type` enters the
+    // filter one character at a time and the view re-filters on each, so an intermediate prefix can
+    // satisfy this predicate and be read as the final answer -- `'demo fixture'` passing through
+    // `'d'`, which keeps a different, larger subset that still holds the expected row (DW-374).
     await page.waitForFunction(
-      (rowSelector, unfiltered, target) => {
+      (rowSelector, filterSelector, unfiltered, target, typed) => {
+        const field = document.querySelector(filterSelector);
+        if (field === null || field.value !== typed) return false;
         const grid = document.querySelector('[role="grid"]');
         if (grid === null) return false;
         const kept = Number(grid.getAttribute('aria-rowcount')) - 1;
@@ -92,9 +98,33 @@ export async function filterToSubset(page, { text, expectRow, total, timeoutMs }
       },
       { timeout: timeoutMs },
       ROW_SELECTOR,
+      FILTER_SELECTOR,
       total,
-      expectRow
+      expectRow,
+      text
     );
+    // And the count must have stopped moving: the field can hold the whole text one frame before
+    // the view that text produces has landed.
+    // Bounded on purpose: a list that never stops moving is a defect this helper must report, not
+    // one it should hang on. Ten reads is far more than the one re-render a last keystroke costs.
+    //
+    // **The reads are spaced.** Taken back to back they can both land before the view has begun to
+    // change, so a stale count agrees with itself and reads as settled -- the same defect Story
+    // 3.7 found and fixed in `screensOffered`.
+    let settled = await viewCount(page);
+    let stable = false;
+    for (let read = 0; read < 10 && !stable; read += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 60));
+      const again = await viewCount(page);
+      stable = again === settled;
+      settled = again;
+    }
+    if (!stable) {
+      throw new Error(
+        `filtering on ${JSON.stringify(text)} left a row count that never settled (last ${settled} ` +
+          `of ${total}); the view is still re-rendering after the whole filter text was entered`
+      );
+    }
   } catch {
     const kept = await viewCount(page);
     // Read defensively: this block exists to name the failure, and a row the virtualiser is part

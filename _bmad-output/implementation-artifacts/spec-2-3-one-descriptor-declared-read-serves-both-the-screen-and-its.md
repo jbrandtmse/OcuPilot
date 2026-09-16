@@ -31,6 +31,7 @@ deferred:
 ## Boundaries & Constraints
 
 **Always:**
+
 - The declaration grammar, one example: `"read": {"source": {"port": "admin", "endpoint": "WebApp.App", "type": "LIST"}, "fields": ["Name", "NameSpace", "Enabled"], "filter": ["Name", "NameSpace"], "sort": {"fields": ["Name", "NameSpace"], "default": "Name", "direction": "asc"}, "paging": "cap"}`. `read` is absent or `null` on a screen with no read. `port` is `admin` and `type` is `LIST`; `fields` is non-empty and unique; `filter`, `sort.fields` and `context.secretFields` are subsets of `fields`, and no secret field is in `filter` or `sort.fields` (a filter over a secret field would let a tool probe its value); `sort.default` is in `sort.fields`; `direction` is `asc` or `desc`; `paging` is `cap` (no Release 1 admin LIST accepts a cursor, so `cursor` on an `admin` source is refused).
 - A read-declaring descriptor's `toolIdentifier` matches `^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$`; its tool is `<toolIdentifier>.read`, kind `read`. Refused in both `OcuPilot.Screen.Registry.Validate` and `ui/tools/screen-mirror.mjs`, naming the class.
 - One executor. `Read.Execute(descriptor, maxRows)` calls `AdminPort.Invoke(endpoint, "LIST")` with `maxRows` + 1, answers `{fields, rows, truncated}` with each row projected to `fields` (an absent key is `null`), `truncated` true exactly when more than `maxRows` came back, and at most `maxRows` rows. `maxRows` absent means 1,000; anything but a positive integer is refused before the port is called. A port fault passes through unchanged.
@@ -41,6 +42,7 @@ deferred:
 - ObjectScript under `src/OcuPilot/` only; `uv run scripts/check-objectscript.py` passes; one `iris_execute_tests` call per message, never re-submitted on a client timeout.
 
 **Never:**
+
 - No tool dispatch: no `Dispatch` or `Invoke` on the tool base or registry, no caller context, no call-time gate point, no audit row, no JSON-Schema emission for a provider (Story 4.2).
 - No content half of the context cap (total size, per-field maxima) and no operator setting (Story 4.4).
 - No production descriptor declares a read (Stories 2.5-2.9), no data table or filter field (Story 2.4), no server-side criteria (Story 2.10), no namespace-scoped vendor parameter.
@@ -83,6 +85,7 @@ deferred:
 ## Tasks & Acceptance
 
 **Execution:**
+
 - `src/OcuPilot/Screen/Descriptor/Base.cls` -- read declarations through a per-process cache keyed by class name and `$$$comClassKeyGet(class, $$$cCLASShash)` (`^oddCOM(class, 89)`, 0.13 us per read against 66 us per `DeclarationJson`, probed), so a recompile is read fresh; nested objects handed out are copies; add `Read()` (a copy of `read`, or `""`) -- DW-128.
 - `src/OcuPilot/Screen/Registry.cls` -- public `ReadProblem(pDeclaration)` covering the grammar, subsets and tool-identifier pattern; call it from `Validate` -- AD-5, AD-36.
 - `src/OcuPilot/Screen/Read.cls` -- `DEFAULTMAXROWS` 1000, `Execute(pDescriptor, pMaxRows, Output pResult, Output pHttpStatus, Output pFault) As %Status`, `ApplyView(...)`, overridable `PortClass()` -- AD-2, AD-36.
@@ -106,6 +109,7 @@ deferred:
 - `ui/tools/screen-read.test.mjs` -- corpus read from `ReadViewCorpus.cls` via `extractXData`; bind and tick; fault path.
 
 **Acceptance Criteria:**
+
 - AC1: Given `Test/Read/Canned` and `PortFixture` rows, when the route answers `maxRows=5` and `Tool.Read.View` runs with `{maxRows: 5, filter, sort}` and cap 3, then the tool's `fields` are the route's minus `Secret`, and its rows equal the first three of `ApplyView` over the route's rows with `Secret` removed -- Integration AC: the read tool consumes the screen's one read.
 - AC2: Given `createScreenRead` bound through `RefreshService.bind` on a refreshing declaration with a read, when a tick fires, then exactly one request `GET /api/ocupilot/screens/<id>/read?maxRows=<store maxRows>&ns=<scope>` is issued and the store holds its rows and `truncated` -- Integration AC: the auto-refresh framework consumes the screen read.
 - AC3: Given a registry over `Test/Read/Registry` and the tool fixture package, when `ListTools` loads, then each read-declaring descriptor yields exactly one tool `<toolIdentifier>.read` of kind `read` with no class of its own, a readless descriptor yields none, and `Leaf` is found with its inherited kind.
@@ -118,6 +122,7 @@ deferred:
 - AC10: Given a UrlMap with a catch-all before its guard, a `:param` before its literal sibling, or a shorter route before a longer one it prefixes, when the checker runs, then it names each offending pair; the shipped tree and `RouterFixture` pass (DW-32).
 
 **Review patches (2026-09-14):**
+
 - R1 `Screen/Read.cls` `ApplyView`/`Compare` -- a number sorted against text compares by its ObjectScript form (`.5`), the client by JSON text (`0.5`): keep each key's `TextOf` text and use it in the text branch. `Test/ReadViewCorpus.cls` -- let a case carry its own `rows` (both readers use `case.rows` when present), add a case sorting `0.5` against `"/a"` (expected text order), and correct the header claim that each sortable column holds one kind of value.
 - R2 `scripts/check-objectscript.py` `check_route_ordering` -- split `Method` on commas (a shared verb collides); scan `<Route>` elements over the whole block, line from the match offset, accepting single- or double-quoted attributes; harness case for each.
 - R3 `Api/Router.cls` doc -- invariant 3 cannot be observed by routing (`[^/]+`), so say `check-objectscript.py` enforces it rather than a behavioural test.
@@ -146,6 +151,7 @@ Code review 2026-09-14, tier `full-opus`, layers blind-hunter, edge-case-hunter,
 - [x] [Review][Defer] (low, fix-risk low) Spine Conventions "REST route ordering" still says each invariant has its own routing test; invariant 3 is checker-enforced [ARCHITECTURE-SPINE.md:532] — deferred: DW-257, owner this story, Rule 20 edit is the lead's
 
 Rejected:
+
 - `false` secret fields on the route (blind, auditor) -- AD-36 strips secrets from the tool's view of the screen's view; AD-24's secret-typed fields are never sent to the model; the spine's error-detail rule is the precedent for screen-visible, agent-hidden fields.
 - `false` `maxRows` has no ceiling (blind, edge) -- the intent admits any positive integer; every read is capped and reports truncation, and the tool view is bounded by `contextCap`.
 - `false` tool filter and sort see only the fetched rows (blind) -- AD-36: the tool's view is the screen's view narrowed.
@@ -180,6 +186,7 @@ Rejected:
 ## Review Triage Log
 
 ### 2026-09-14 — Review pass
+
 - verdicts: 64 findings — high 0, medium 17, low 41, false 6, maybe-false 0
 - findings:
   - `[medium]` `[patch]` blind: number-vs-text sort differs server/client; corpus header claim false — R1: `Compare` uses `TextOf` text; own-rows corpus case.
@@ -258,6 +265,7 @@ Rejected:
 **Why N + 1.** The vendor class query stops at `maxRows` and returns a bare array, so one extra row is the only truncation signal that costs no second query.
 
 **Integration ACs:** AC1 and AC2. **Consumed-by:**
+
 - `2-4-the-data-table` -- `applyView`, `createScreenRead`, `truncated`.
 - `2-5-the-web-applications-list` through `2-9-the-processes-list` -- the first production reads; 2.5 is the first read over the wire with a real denied principal.
 - `2-10-the-audit-database-viewer-with-its-agent-marker-filter` -- the async LIST through `Execute`, plus server criteria.
@@ -271,12 +279,14 @@ Rejected:
 ## Verification
 
 **Commands:**
+
 - `cd ui && npm run build` -- expected: prebuild green, `screen-mirror.mjs --check` up to date.
 - `cd ui && npm test` -- expected: `screen-read.test.mjs` and `screen-mirror.test.mjs` green.
 - `uv run scripts/check-objectscript.py` and `uv run scripts/test_check_objectscript.py` -- expected: zero problems, harness OK.
 - On `ocupilot-iris`, one `iris_execute_tests` call per class: `OcuPilot.Test.ScreenRead`, `OcuPilot.Test.ReadTool`, `OcuPilot.Test.ScreenReadWire`, `OcuPilot.Test.Namespaces`, `OcuPilot.Test.Descriptor`, `OcuPilot.Test.Routing` -- expected: zero failures, confirmed in `%UnitTest_Result`.
 
 **Mutations (Rule 19; each applied, observed red, reverted, source byte-identical by `cmp`):**
+
 - AC1: `View` projects `context.fields` instead of the read's fields -> `ReadTool:TestTheToolViewIsTheRouteReadNarrowed` red at `maxRows` 5 (fields and rows).
 - AC2: `createScreenRead` drops `maxRows` from the path -> `screen-read.test.mjs` tick test red.
 - AC3: `NameFor` names the tool from `Route()` -> `ReadTool:TestTheRegistryListsDescriptorReadsAndInheritedKinds` red (both read tools unregistered).

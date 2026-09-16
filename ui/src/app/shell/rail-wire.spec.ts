@@ -2,11 +2,13 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { AgentStatus } from '../core/agent-status';
 import type { ApiService } from '../core/api';
 import { NavigationService } from '../core/navigation';
 import { PreferenceStore } from '../core/preferences';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
+import { stubAgentStatus } from '../testing/agent-status';
 import { Rail } from './rail';
 
 /**
@@ -194,6 +196,7 @@ describe('the rail, wired to the real NavigationService reading a live-captured 
       providers: [
         provideRouter([{ path: '', children: [] }]),
         { provide: NavigationService, useValue: navigation },
+        { provide: AgentStatus, useValue: stubAgentStatus() },
         { provide: ShellState, useValue: shell },
       ],
     });

@@ -184,6 +184,63 @@ Parameter PORTUNAVAILABLE = "PORT.UNAVAILABLE";
 /// within the port's bounded wait. Rendered on the <parameter>UNAVAILABLE</parameter> slug.</p>
 Parameter PORTTIMEOUT = "PORT.TIMEOUT";
 
+/// <p>Machine code (AD-12, AD-39, AD-42): the provider layer could not be configured at all -- no
+/// definition carries the id the caller named, the definition is not usable, or its provider's
+/// catalog row names no adapter class this instance holds. Produced by
+/// <class>OcuPilot.Port.ProviderPort</class> on the <parameter>UNAVAILABLE</parameter> slug.</p>
+/// <p>The nine <code>PROVIDER.*</code> codes and the three endpoint violation codes below are
+/// declared <b>here</b>, with their producers in other classes, for the reason the seven
+/// <code>PORT.*</code> codes are: this class is the one home of the vocabulary.</p>
+Parameter PROVIDERUNCONFIGURED = "PROVIDER.UNCONFIGURED";
+
+/// <p>Machine code (AD-12, AD-39, AD-42, DW-21): the endpoint's <b>resolved</b> address is one
+/// OcuPilot will not call -- loopback, link-local or one of this instance's own interface
+/// addresses without the catalog row's local escape, or a name that resolves to nothing at all.
+/// Produced by <class>OcuPilot.Port.ProviderPort</class>'s call-time re-check on the
+/// <parameter>UNAVAILABLE</parameter> slug, which is what a name repointed after the write was
+/// accepted arrives as.</p>
+/// <p>Distinct from <parameter>AGENTENDPOINTADDRESS</parameter>, which is the same judgement made
+/// at <i>write</i> time on the field the operator typed.</p>
+Parameter PROVIDEREGRESS = "PROVIDER.EGRESS";
+
+/// <p>Machine code (AD-12, AD-35, AD-39): the definition's credential reference resolved to
+/// nothing, so <b>no call is made</b>. The reason names the reference -- the credential type and
+/// the variable or entry name -- and never a value.</p>
+Parameter PROVIDERCREDENTIAL = "PROVIDER.CREDENTIAL";
+
+/// <p>Machine code (AD-12, AD-35, AD-39): the resolved credential does not start with the prefix
+/// the provider's catalog row declares, so <b>no call is made</b>. The reason states the expected
+/// prefix and never any part of the resolved value.</p>
+/// <p>It exists because the harvested original read an unset environment variable's own name as a
+/// value and sent whatever it found; a key-shaped gate turns that into a refusal naming the
+/// reference rather than a request carrying a filesystem path.</p>
+Parameter PROVIDERKEYSHAPE = "PROVIDER.KEYSHAPE";
+
+/// <p>Machine code (AD-12, AD-39, AD-42): the provider answered a status that is not retryable --
+/// it refused the request. The provider's own message rides in the fault's
+/// <code>detail.providerText</code>; the raw body goes to
+/// <method>OcuPilot.Kernel.Fault.LogRaw</method> and nowhere else.</p>
+Parameter PROVIDERREFUSED = "PROVIDER.REFUSED";
+
+/// <p>Machine code (AD-12, AD-39, AD-42): every attempt the stored bound allows answered a
+/// retryable status, so the provider is not serving this call.</p>
+Parameter PROVIDERUNAVAILABLE = "PROVIDER.UNAVAILABLE";
+
+/// <p>Machine code (AD-12, AD-39, AD-42): the provider did not answer within the stored per-call
+/// timeout. <b>Never retried</b>, for the reason a mid-flight throw is not: the request may
+/// already have been processed.</p>
+Parameter PROVIDERTIMEOUT = "PROVIDER.TIMEOUT";
+
+/// <p>Machine code (AD-12, AD-39, AD-42): the request failed in transport -- the call raised, or
+/// returned a status that is neither a timeout nor an HTTP answer. <b>Never retried.</b></p>
+Parameter PROVIDERTRANSPORT = "PROVIDER.TRANSPORT";
+
+/// <p>Machine code (AD-12, AD-32, AD-39): the named TLS configuration is not present on this
+/// instance and the endpoint is HTTPS. The refusal names the configuration, because an
+/// administrator can create it; OcuPilot never falls back to <code>DefaultSSL</code> and never
+/// proceeds unencrypted.</p>
+Parameter PROVIDERTLS = "PROVIDER.TLS";
+
 /// <p>Machine code (AD-12, AD-36, AD-39): a screen read's <code>maxRows</code> is not a whole
 /// number above zero. Rendered on the <parameter>BADREQUEST</parameter> slug by
 /// <class>OcuPilot.Screen.Read</class>'s refusal, before the port is called.</p>
@@ -269,6 +326,393 @@ Parameter LOGENTRY = "LOG.ENTRY";
 /// -- absent means the default, anything else is a whole number above zero -- and there is no
 /// ceiling, so a large value is honoured rather than refused.</p>
 Parameter LOGMAXROWS = "LOG.MAXROWS";
+
+/// <p>Machine code (AD-12, AD-39): the agent configuration the request submitted broke one or more
+/// of the rules <class>OcuPilot.Kernel.AgentRules</class> (a definition) or
+/// <class>OcuPilot.Kernel.SwitchRules</class> (the switches and the per-user holds) applies.
+/// Rendered on the <parameter>VALIDATIONFAILED</parameter> slug by
+/// <class>OcuPilot.Api.Definitions</class> and <class>OcuPilot.Api.Switches</class>, with
+/// every violation as a <code>{field, code}</code> entry in the envelope's
+/// <code>detail.violations</code> -- one response for a submission that breaks four rules, never
+/// four responses (AD-39: a slice adds no envelope field of its own, so the list rides inside
+/// <code>detail</code>).</p>
+/// <p>Distinct from <parameter>PORTVALIDATION</parameter>, which is a <b>vendor</b> refusal
+/// normalized onto the same slug. This one is OcuPilot refusing OcuPilot's own input.</p>
+Parameter AGENTVALIDATION = "AGENT.VALIDATION";
+
+/// <p>Machine code (AD-12, AD-39): no agent definition on this instance carries the id the route
+/// named. Rendered on the <parameter>NOTFOUND</parameter> slug by
+/// <class>OcuPilot.Api.Definitions</class> -- never a 500, and never an empty 200.</p>
+Parameter AGENTNOTFOUND = "AGENT.NOTFOUND";
+
+/// <p>Machine code (AD-12, AD-39): the request body could not be read or parsed at all, so there
+/// is nothing to validate. Rendered on the <parameter>BADREQUEST</parameter> slug, with the
+/// <b>stage</b> <method>OcuPilot.Kernel.Utils.ReadRequestBody</method> reported in the reason, so
+/// a server-side read fault is never presented as malformed client JSON (DW-24).</p>
+Parameter AGENTBADBODY = "AGENT.BADBODY";
+
+/// <p>Violation code (rule 1): a definition needs a name of one to sixty-four characters.
+/// Rendered inside <code>detail.violations</code> on the <parameter>VALIDATIONFAILED</parameter>
+/// slug, on the field <code>name</code>. Covers both an absent name and one over the length the
+/// column holds -- one code, because to the operator both are "the name is not usable".</p>
+Parameter AGENTNAMEREQUIRED = "AGENT.NAME.REQUIRED";
+
+/// <p>Violation code (rule 1): another definition already holds that name. The unique index
+/// refuses it too; the rule answers first so the caller gets a field rather than
+/// <code>#5808</code>.</p>
+Parameter AGENTNAMEDUPLICATE = "AGENT.NAME.DUPLICATE";
+
+/// <p>Violation code (rule 2): the provider is not a key
+/// <class>OcuPilot.Kernel.Provider.Catalog</class> declares.</p>
+Parameter AGENTPROVIDERUNKNOWN = "AGENT.PROVIDER.UNKNOWN";
+
+/// <p>Violation code (rule 3): the maximum token count is not a whole number from 1 to 32000.</p>
+Parameter AGENTMAXTOKENSRANGE = "AGENT.MAXTOKENS.RANGE";
+
+/// <p>Violation code (rule 4): the temperature is not a number from 0 to 2.</p>
+Parameter AGENTTEMPERATURERANGE = "AGENT.TEMPERATURE.RANGE";
+
+/// <p>Violation code (rule 5): the credential type is neither <code>env</code> nor
+/// <code>creds</code>.</p>
+Parameter AGENTCREDTYPEUNKNOWN = "AGENT.CREDTYPE.UNKNOWN";
+
+/// <p>Violation code (rule 6): the credential type is <code>env</code> and no environment
+/// variable is named. Reported <b>after</b> the XOR invariant has normalized the pair, so a body
+/// carrying a credential name instead is told what is actually missing.</p>
+Parameter AGENTENVVARREQUIRED = "AGENT.ENVVAR.REQUIRED";
+
+/// <p>Violation code (rule 7): the credential type is <code>creds</code> and no credential is
+/// named.</p>
+Parameter AGENTCREDNAMEREQUIRED = "AGENT.CREDNAME.REQUIRED";
+
+/// <p>Violation code (DW-344): the credential type is <code>creds</code> and the credential entry
+/// name is longer than <code>Ens.Config.Credentials.SystemName</code> stores. Produced by
+/// <method>OcuPilot.Kernel.AgentRules.Validate</method> on the field <code>credentialName</code>,
+/// and its violation reason states the bound.</p>
+/// <p><b>A server rule rather than a client <code>maxlength</code></b>: without it the store
+/// answered 500 for any caller, and an affordance on one form does not bind the API.</p>
+Parameter AGENTCREDNAMELENGTH = "AGENT.CREDNAME.LENGTH";
+
+/// <p>Violation code (rule 8): the provider's catalog row requires an endpoint and none was
+/// given. Provider-name-free: the rule reads the row's column, so a family that needs one is a
+/// catalog row rather than a branch.</p>
+Parameter AGENTENDPOINTREQUIRED = "AGENT.ENDPOINT.REQUIRED";
+
+/// <p>Violation code (AD-42, OcuPilot's own rather than harvested): the endpoint is not an
+/// absolute <code>https://</code> URL. AD-42's local exception and its resolved-address check are
+/// Story 3.2's; at this floor HTTPS is the only accepted scheme.</p>
+Parameter AGENTENDPOINTSCHEME = "AGENT.ENDPOINT.SCHEME";
+
+/// <p>Violation code (AD-42, DW-21): the endpoint's <b>resolved</b> address is loopback or one of
+/// this instance's own interface addresses, without the catalog row's local escape. Rendered
+/// inside <code>detail.violations</code> on the field <code>endpointUrl</code>.</p>
+/// <p>A name that resolves to nothing is deliberately <b>not</b> this violation: whether a name
+/// resolves is a property of the resolver at that instant rather than of the value the operator
+/// typed. It is refused at call time as <parameter>PROVIDEREGRESS</parameter> instead -- see
+/// <method>OcuPilot.Kernel.AgentRules.AddressViolation</method>.</p>
+/// <p>Every literal is canonicalised through the resolver before it is range-tested, so
+/// <code>https://2130706433/v1</code> and <code>https://127.1/v1</code> are refused as the
+/// loopback addresses they are.</p>
+Parameter AGENTENDPOINTADDRESS = "AGENT.ENDPOINT.ADDRESS";
+
+/// <p>Violation code (AD-42, FR-27): the endpoint resolves into the link-local range
+/// (<code>169.254.0.0/16</code> or <code>fe80::/10</code>), which is refused
+/// <b>unconditionally</b> -- no catalog row and no marked-local flag opens it. That range is
+/// where a cloud instance's metadata service lives, and no local model lives there.</p>
+Parameter AGENTENDPOINTLINKLOCAL = "AGENT.ENDPOINT.LINKLOCAL";
+
+/// <p>Violation code (AD-42): the definition is marked local on a provider whose catalog row does
+/// not allow it. Rendered on the field <code>markedLocal</code>.</p>
+/// <p>Provider-name-free, like rule 8: the escape is the row's <code>allowsLocal</code> column, so
+/// a family that supports a local model is a row rather than a branch.</p>
+Parameter AGENTLOCALUNSUPPORTED = "AGENT.LOCAL.UNSUPPORTED";
+
+/// <p>Violation code (rule 9): the system-prompt override is longer than 8192 characters.</p>
+Parameter AGENTSYSTEMPROMPTLENGTH = "AGENT.SYSTEMPROMPT.LENGTH";
+
+/// <p>Violation code (rule 10): the retention period is not a whole number of days from 1 to
+/// 365.</p>
+Parameter AGENTRETENTIONRANGE = "AGENT.RETENTION.RANGE";
+
+/// <p>Violation code (rule 11): the per-turn iteration ceiling is not a whole number from 1 to
+/// 100.</p>
+Parameter AGENTITERATIONSRANGE = "AGENT.ITERATIONS.RANGE";
+
+/// <p>Violation code (AC5, OcuPilot's own rather than harvested): a definition cannot be enabled
+/// while Test connection has not succeeded against it as currently configured. Story 3.4 is what
+/// clears it, and this code is that story's reason to exist.</p>
+Parameter AGENTENABLEUNVERIFIED = "AGENT.ENABLE.UNVERIFIED";
+
+/// <p>Violation code (DW-330): an explicit set-default named a definition that is not enabled.
+/// The marker means "the definition in force", and a disabled one is not in force. Produced by
+/// <method>OcuPilot.Api.Definitions.HandleSetDefault</method> on the field <code>default</code>,
+/// and refused again underneath it by
+/// <method>OcuPilot.Kernel.State.Agent.SetDefaultGuarded</method>.</p>
+/// <p>The marker <method>OcuPilot.Kernel.State.Agent.GuardedRebalanceDefault</method> places on a
+/// disabled definition when no peer is enabled is unaffected: that is a placeholder, not a
+/// claim.</p>
+Parameter AGENTDEFAULTDISABLED = "AGENT.DEFAULT.DISABLED";
+
+/// <p>Violation code (AD-35): the request to store a key named no key to store -- the body carries
+/// no <code>apiKey</code> member, carries one that is not a JSON string, or carries an empty one.
+/// Produced by <method>OcuPilot.Api.Definitions.CredentialRefusal</method> on the field
+/// <code>apiKey</code>.</p>
+Parameter AGENTCREDENTIALREQUIRED = "AGENT.CREDENTIAL.REQUIRED";
+
+/// <p>Violation code (AD-35, AD-42): the definition reads its secret from an environment variable,
+/// and OcuPilot cannot write one -- <class>%SYSTEM.Util</class> publishes
+/// <method>GetEnviron</method> and no setter, so that rung's store is the operating system and the
+/// operator owns it. Produced by <method>OcuPilot.Api.Definitions.CredentialRefusal</method> on the
+/// field <code>apiKey</code>.</p>
+Parameter AGENTCREDENTIALENVUNWRITABLE = "AGENT.CREDENTIAL.ENVUNWRITABLE";
+
+/// <p>Violation code (AD-35, AD-42): the definition reads its secret from the credentials rung and
+/// that rung is not reachable in this namespace, so there is nowhere to write. Produced by
+/// <method>OcuPilot.Api.Definitions.CredentialRefusal</method> on the field <code>apiKey</code>,
+/// and <b>nothing is written</b>.</p>
+Parameter AGENTCREDENTIALRUNGUNAVAILABLE = "AGENT.CREDENTIAL.RUNGUNAVAILABLE";
+
+/// <p>Violation code (AD-35): the key posted does not start with the prefix the provider's catalog
+/// row declares, so <b>nothing is written</b>. Produced by
+/// <method>OcuPilot.Api.Definitions.CredentialRefusal</method> on the field <code>apiKey</code>,
+/// through the adapter's own argument-free
+/// <method>OcuPilot.Kernel.Provider.Base.IsApiKeyShapeValid</method> seam.</p>
+/// <p>Distinct from <parameter>PROVIDERKEYSHAPE</parameter>, which is the same judgement made at
+/// <i>call</i> time on a key that was already stored.</p>
+Parameter AGENTKEYSHAPE = "AGENT.KEY.SHAPE";
+
+/// <p>Violation code (FR-20): the kill switch was turned on with no reason. The published
+/// kill-switch banner carries the operator's reason in front of everyone it affects, so a switch
+/// with none would leave a sentence with a hole in it. Produced by
+/// <method>OcuPilot.Kernel.SwitchRules.ValidateSwitches</method> on the field
+/// <code>killSwitchReason</code>.</p>
+Parameter AGENTSWITCHREASONREQUIRED = "AGENT.SWITCH.REASONREQUIRED";
+
+/// <p>Violation code (FR-20): a per-user hold named no user. Produced by
+/// <method>OcuPilot.Kernel.SwitchRules.ValidateHold</method> on the field <code>userName</code>.</p>
+Parameter AGENTHOLDUSERREQUIRED = "AGENT.HOLD.USERREQUIRED";
+
+/// <p>Violation code (FR-20): a per-user hold named no reason, which the banner shown to that user
+/// needs for the same reason the instance-wide one does. Produced on the field
+/// <code>reason</code>.</p>
+Parameter AGENTHOLDREASONREQUIRED = "AGENT.HOLD.REASONREQUIRED";
+
+/// <p>Violation code (FR-20): the agent is already switched off for that user. The unique index
+/// refuses a second hold too; the rule answers first so the caller gets a field rather than
+/// <code>#5808</code>. Produced on the field <code>userName</code>.</p>
+Parameter AGENTHOLDDUPLICATE = "AGENT.HOLD.DUPLICATE";
+
+/// <p>Machine code (AD-12, AD-39): no per-user hold on this instance carries the id the route
+/// named. Rendered on the <parameter>NOTFOUND</parameter> slug by
+/// <class>OcuPilot.Api.Switches</class>.</p>
+Parameter AGENTHOLDNOTFOUND = "AGENT.HOLD.NOTFOUND";
+
+/// <p>Machine code (AD-12, AD-39): a write to OcuPilot's own state was refused because the row
+/// moved after this request read it (Consistency Conventions: concurrent writes to OcuPilot's own
+/// state). Rendered on the <parameter>CONFLICT</parameter> slug, HTTP 409, by
+/// <class>OcuPilot.Api.Switches</class> and <class>OcuPilot.Api.Definitions</class>.</p>
+/// <p><b>It is a refusal, never a retry instruction.</b> The screen reloads and the person saves
+/// again, which is the published sentence's own advice; nothing here re-submits.</p>
+Parameter STATECONFLICT = "STATE.CONFLICT";
+
+/// <p>The envelope reason <parameter>STATECONFLICT</parameter> carries. Server-authored, like
+/// every other envelope reason: the client renders EXPERIENCE.md's published conflict sentence on
+/// this code and never this text, which is why this one states the mechanism rather than the
+/// remedy.</p>
+Parameter REASONSTATECONFLICT = "This record changed on the instance after it was read, so the save was refused.";
+
+/// <p>Restraint code (AD-30, FR-19): read-only is enforced on this instance, so no write may be
+/// made through the agent. Produced by <method>OcuPilot.Kernel.Restraint.Verdict</method>, which is
+/// the tree's only producer of a restraint code.</p>
+/// <p>It wins over <parameter>AGENTREADONLYDEFINITION</parameter> when both sources are on:
+/// precedence is broadest scope first.</p>
+Parameter AGENTREADONLYENFORCED = "AGENT.READONLY.ENFORCED";
+
+/// <p>Restraint code (AD-30, FR-19): the agent definition in force is itself restrained to reads
+/// (<property>OcuPilot.Kernel.State.Agent.ReadOnly</property>).</p>
+Parameter AGENTREADONLYDEFINITION = "AGENT.READONLY.DEFINITION";
+
+/// <p>Restraint code (AD-30, FR-20): the kill switch is on for everyone on this instance.</p>
+Parameter AGENTKILLSWITCHGLOBAL = "AGENT.KILLSWITCH.GLOBAL";
+
+/// <p>Restraint code (AD-30, FR-20): the kill switch is on for the acting user alone.</p>
+Parameter AGENTKILLSWITCHUSER = "AGENT.KILLSWITCH.USER";
+
+/// <p>The written sentence one restraint code carries (AD-39), for the same reason
+/// <method>ReasonForViolation</method> exists: one home, so the same refusal cannot be worded two
+/// ways. A tool result renders the code; this is the sentence beside it.</p>
+/// <p><b>Distinct from the panel's published banners and footer line</b>, which are the client's
+/// own copy from EXPERIENCE.md's Fixed strings table and are chosen by the verdict's
+/// <code>footerKey</code> rather than composed from this text.</p>
+/// <p><code>""</code> for a code with no published sentence.</p>
+ClassMethod ReasonForRestraint(pCode As %String) As %String
+{
+    If pCode = ..#AGENTREADONLYENFORCED Quit ..#REASONAGENTREADONLYENFORCED
+    If pCode = ..#AGENTREADONLYDEFINITION Quit ..#REASONAGENTREADONLYDEFINITION
+    If pCode = ..#AGENTKILLSWITCHGLOBAL Quit ..#REASONAGENTKILLSWITCHGLOBAL
+    If pCode = ..#AGENTKILLSWITCHUSER Quit ..#REASONAGENTKILLSWITCHUSER
+    Quit ""
+}
+
+/// <p>Every restraint code, as a <class>%List</class>. Exists so a test can hold
+/// <method>ReasonForRestraint</method> to the vocabulary without re-spelling either, which is what
+/// catches a code added with no sentence behind it.</p>
+ClassMethod RestraintCodes() As %List
+{
+    Quit $ListBuild(..#AGENTREADONLYENFORCED, ..#AGENTREADONLYDEFINITION, ..#AGENTKILLSWITCHGLOBAL, ..#AGENTKILLSWITCHUSER)
+}
+
+/// <p>Written sentence for <parameter>AGENTREADONLYENFORCED</parameter>.</p>
+Parameter REASONAGENTREADONLYENFORCED = "Read-only mode is enforced on this instance, so no write can be made through the agent.";
+
+/// <p>Written sentence for <parameter>AGENTREADONLYDEFINITION</parameter>.</p>
+Parameter REASONAGENTREADONLYDEFINITION = "The agent definition in force is read-only, so no write can be made through the agent.";
+
+/// <p>Written sentence for <parameter>AGENTKILLSWITCHGLOBAL</parameter>.</p>
+Parameter REASONAGENTKILLSWITCHGLOBAL = "The agent is switched off on this instance.";
+
+/// <p>Written sentence for <parameter>AGENTKILLSWITCHUSER</parameter>.</p>
+Parameter REASONAGENTKILLSWITCHUSER = "The agent is switched off for this user.";
+
+/// <p>The refusal sentence one field-level violation code carries (AD-39).</p>
+/// <p><b>Every field-level code has one, and this class is where they live</b> -- beside the codes
+/// themselves and beside the envelope reasons the rest of the tree renders, for the reason the
+/// nine <code>PROVIDER.*</code> sentences live together in
+/// <method>OcuPilot.Kernel.Provider.Base.ReasonFor</method>: one home, so the same refusal cannot
+/// be worded two ways. The envelope's own <code>reason</code> for a validation failure is generic
+/// -- it names no rule, because it stands for a list of them -- so the sentence a form renders on
+/// the field is this one, carried in <code>detail.violations[].reason</code>.</p>
+/// <p><b>The client publishes none of this copy.</b> Server-authored refusal text is data, like
+/// the envelope's <code>reason</code>; <file>ui/tools/strings.test.mjs</file> admits only what
+/// EXPERIENCE.md's Fixed strings table authorizes, and a per-code string table in the client would
+/// be a second source for a sentence the instance already writes (AD-39).</p>
+/// <p>None of them names a credential value, a pasted key or any part of a caller's input
+/// (AD-35); where a bound or a prefix belongs in the sentence, the producing rule appends it to
+/// this base rather than spelling a second sentence.</p>
+/// <p><code>""</code> for a code with no published sentence, which is how a caller tells "there is
+/// no sentence for this" from "the sentence is empty".</p>
+ClassMethod ReasonForViolation(pCode As %String) As %String
+{
+    If pCode = ..#AGENTNAMEREQUIRED Quit ..#REASONAGENTNAMEREQUIRED
+    If pCode = ..#AGENTNAMEDUPLICATE Quit ..#REASONAGENTNAMEDUPLICATE
+    If pCode = ..#AGENTPROVIDERUNKNOWN Quit ..#REASONAGENTPROVIDERUNKNOWN
+    If pCode = ..#AGENTMAXTOKENSRANGE Quit ..#REASONAGENTMAXTOKENSRANGE
+    If pCode = ..#AGENTTEMPERATURERANGE Quit ..#REASONAGENTTEMPERATURERANGE
+    If pCode = ..#AGENTCREDTYPEUNKNOWN Quit ..#REASONAGENTCREDTYPEUNKNOWN
+    If pCode = ..#AGENTENVVARREQUIRED Quit ..#REASONAGENTENVVARREQUIRED
+    If pCode = ..#AGENTCREDNAMEREQUIRED Quit ..#REASONAGENTCREDNAMEREQUIRED
+    If pCode = ..#AGENTCREDNAMELENGTH Quit ..#REASONAGENTCREDNAMELENGTH
+    If pCode = ..#AGENTENDPOINTREQUIRED Quit ..#REASONAGENTENDPOINTREQUIRED
+    If pCode = ..#AGENTENDPOINTSCHEME Quit ..#REASONAGENTENDPOINTSCHEME
+    If pCode = ..#AGENTENDPOINTADDRESS Quit ..#REASONAGENTENDPOINTADDRESS
+    If pCode = ..#AGENTENDPOINTLINKLOCAL Quit ..#REASONAGENTENDPOINTLINKLOCAL
+    If pCode = ..#AGENTLOCALUNSUPPORTED Quit ..#REASONAGENTLOCALUNSUPPORTED
+    If pCode = ..#AGENTSYSTEMPROMPTLENGTH Quit ..#REASONAGENTSYSTEMPROMPTLENGTH
+    If pCode = ..#AGENTRETENTIONRANGE Quit ..#REASONAGENTRETENTIONRANGE
+    If pCode = ..#AGENTITERATIONSRANGE Quit ..#REASONAGENTITERATIONSRANGE
+    If pCode = ..#AGENTENABLEUNVERIFIED Quit ..#REASONAGENTENABLEUNVERIFIED
+    If pCode = ..#AGENTDEFAULTDISABLED Quit ..#REASONAGENTDEFAULTDISABLED
+    If pCode = ..#AGENTCREDENTIALREQUIRED Quit ..#REASONAGENTCREDENTIALREQUIRED
+    If pCode = ..#AGENTCREDENTIALENVUNWRITABLE Quit ..#REASONAGENTCREDENTIALENVUNWRITABLE
+    If pCode = ..#AGENTCREDENTIALRUNGUNAVAILABLE Quit ..#REASONAGENTCREDENTIALRUNGUNAVAILABLE
+    If pCode = ..#AGENTKEYSHAPE Quit ..#REASONAGENTKEYSHAPE
+    If pCode = ..#AGENTSWITCHREASONREQUIRED Quit ..#REASONAGENTSWITCHREASONREQUIRED
+    If pCode = ..#AGENTHOLDUSERREQUIRED Quit ..#REASONAGENTHOLDUSERREQUIRED
+    If pCode = ..#AGENTHOLDREASONREQUIRED Quit ..#REASONAGENTHOLDREASONREQUIRED
+    If pCode = ..#AGENTHOLDDUPLICATE Quit ..#REASONAGENTHOLDDUPLICATE
+    Quit ""
+}
+
+/// <p>Every field-level violation code that carries a sentence, as a <class>%List</class>. Exists
+/// so a test can hold <method>ReasonForViolation</method> to the code vocabulary without
+/// re-spelling either, which is what catches a code added with no sentence behind it.</p>
+ClassMethod ViolationCodes() As %List
+{
+    Quit $ListBuild(..#AGENTNAMEREQUIRED, ..#AGENTNAMEDUPLICATE, ..#AGENTPROVIDERUNKNOWN, ..#AGENTMAXTOKENSRANGE, ..#AGENTTEMPERATURERANGE, ..#AGENTCREDTYPEUNKNOWN, ..#AGENTENVVARREQUIRED, ..#AGENTCREDNAMEREQUIRED, ..#AGENTCREDNAMELENGTH, ..#AGENTENDPOINTREQUIRED, ..#AGENTENDPOINTSCHEME, ..#AGENTENDPOINTADDRESS, ..#AGENTENDPOINTLINKLOCAL, ..#AGENTLOCALUNSUPPORTED, ..#AGENTSYSTEMPROMPTLENGTH, ..#AGENTRETENTIONRANGE, ..#AGENTITERATIONSRANGE, ..#AGENTENABLEUNVERIFIED, ..#AGENTDEFAULTDISABLED, ..#AGENTCREDENTIALREQUIRED, ..#AGENTCREDENTIALENVUNWRITABLE, ..#AGENTCREDENTIALRUNGUNAVAILABLE, ..#AGENTKEYSHAPE, ..#AGENTSWITCHREASONREQUIRED, ..#AGENTHOLDUSERREQUIRED, ..#AGENTHOLDREASONREQUIRED, ..#AGENTHOLDDUPLICATE)
+}
+
+/// <p>Refusal sentence for <parameter>AGENTNAMEREQUIRED</parameter>.</p>
+Parameter REASONAGENTNAMEREQUIRED = "Give the definition a name of 1 to 64 characters.";
+
+/// <p>Refusal sentence for <parameter>AGENTNAMEDUPLICATE</parameter>.</p>
+Parameter REASONAGENTNAMEDUPLICATE = "Another agent definition already carries that name. Choose a different one.";
+
+/// <p>Refusal sentence for <parameter>AGENTPROVIDERUNKNOWN</parameter>.</p>
+Parameter REASONAGENTPROVIDERUNKNOWN = "That provider is not one this instance offers. Choose one from the list.";
+
+/// <p>Refusal sentence for <parameter>AGENTMAXTOKENSRANGE</parameter>.</p>
+Parameter REASONAGENTMAXTOKENSRANGE = "Maximum tokens is a whole number from 1 to 32000.";
+
+/// <p>Refusal sentence for <parameter>AGENTTEMPERATURERANGE</parameter>.</p>
+Parameter REASONAGENTTEMPERATURERANGE = "Temperature is a number from 0 to 2.";
+
+/// <p>Refusal sentence for <parameter>AGENTCREDTYPEUNKNOWN</parameter>.</p>
+Parameter REASONAGENTCREDTYPEUNKNOWN = "Choose where the key is read from: an environment variable, or a credential entry.";
+
+/// <p>Refusal sentence for <parameter>AGENTENVVARREQUIRED</parameter>.</p>
+Parameter REASONAGENTENVVARREQUIRED = "Name the environment variable the key is read from.";
+
+/// <p>Refusal sentence for <parameter>AGENTCREDNAMEREQUIRED</parameter>.</p>
+Parameter REASONAGENTCREDNAMEREQUIRED = "Name the credential entry the key is stored in.";
+
+/// <p>Refusal sentence for <parameter>AGENTCREDNAMELENGTH</parameter>. The bound is appended by
+/// the rule that produces it, so the number is declared once, where it is measured.</p>
+Parameter REASONAGENTCREDNAMELENGTH = "That credential entry name is longer than the credential store accepts";
+
+/// <p>Refusal sentence for <parameter>AGENTENDPOINTREQUIRED</parameter>.</p>
+Parameter REASONAGENTENDPOINTREQUIRED = "This provider needs an endpoint. Enter the address its API is served at.";
+
+/// <p>Refusal sentence for <parameter>AGENTENDPOINTSCHEME</parameter>.</p>
+Parameter REASONAGENTENDPOINTSCHEME = "The endpoint is an absolute https:// address with no user name in it.";
+
+/// <p>Refusal sentence for <parameter>AGENTENDPOINTADDRESS</parameter>.</p>
+Parameter REASONAGENTENDPOINTADDRESS = "That endpoint resolves to this instance or to a loopback address, which OcuPilot will not call.";
+
+/// <p>Refusal sentence for <parameter>AGENTENDPOINTLINKLOCAL</parameter>.</p>
+Parameter REASONAGENTENDPOINTLINKLOCAL = "That endpoint resolves to a link-local address, which OcuPilot never calls.";
+
+/// <p>Refusal sentence for <parameter>AGENTLOCALUNSUPPORTED</parameter>.</p>
+Parameter REASONAGENTLOCALUNSUPPORTED = "This provider serves no local model, so the definition cannot be marked local.";
+
+/// <p>Refusal sentence for <parameter>AGENTSYSTEMPROMPTLENGTH</parameter>.</p>
+Parameter REASONAGENTSYSTEMPROMPTLENGTH = "The system prompt override is 8192 characters or fewer.";
+
+/// <p>Refusal sentence for <parameter>AGENTRETENTIONRANGE</parameter>.</p>
+Parameter REASONAGENTRETENTIONRANGE = "Retention is a whole number of days from 1 to 365.";
+
+/// <p>Refusal sentence for <parameter>AGENTITERATIONSRANGE</parameter>.</p>
+Parameter REASONAGENTITERATIONSRANGE = "Maximum iterations is a whole number from 1 to 100.";
+
+/// <p>Refusal sentence for <parameter>AGENTENABLEUNVERIFIED</parameter>.</p>
+Parameter REASONAGENTENABLEUNVERIFIED = "Run Test connection and let it pass before enabling this definition.";
+
+/// <p>Refusal sentence for <parameter>AGENTDEFAULTDISABLED</parameter>.</p>
+Parameter REASONAGENTDEFAULTDISABLED = "Enable this definition before making it the default.";
+
+/// <p>Refusal sentence for <parameter>AGENTCREDENTIALREQUIRED</parameter>.</p>
+Parameter REASONAGENTCREDENTIALREQUIRED = "Paste the API key before storing it.";
+
+/// <p>Refusal sentence for <parameter>AGENTCREDENTIALENVUNWRITABLE</parameter>.</p>
+Parameter REASONAGENTCREDENTIALENVUNWRITABLE = "This definition reads its key from an environment variable, which an operator sets on the host; OcuPilot cannot write one.";
+
+/// <p>Refusal sentence for <parameter>AGENTCREDENTIALRUNGUNAVAILABLE</parameter>.</p>
+Parameter REASONAGENTCREDENTIALRUNGUNAVAILABLE = "The credential store is not available in this namespace, so there is nowhere to put the key.";
+
+/// <p>Refusal sentence for <parameter>AGENTKEYSHAPE</parameter>. The expected prefix is appended
+/// by the refusal that produces it, from the provider's own catalog row.</p>
+Parameter REASONAGENTKEYSHAPE = "That key is not shaped like a key for this provider";
+
+/// <p>Refusal sentence for <parameter>AGENTSWITCHREASONREQUIRED</parameter>.</p>
+Parameter REASONAGENTSWITCHREASONREQUIRED = "Give a reason for switching the agent off. Everyone it affects is shown it.";
+
+/// <p>Refusal sentence for <parameter>AGENTHOLDUSERREQUIRED</parameter>.</p>
+Parameter REASONAGENTHOLDUSERREQUIRED = "Name the user the agent is switched off for.";
+
+/// <p>Refusal sentence for <parameter>AGENTHOLDREASONREQUIRED</parameter>.</p>
+Parameter REASONAGENTHOLDREASONREQUIRED = "Give a reason for switching the agent off for that user. They are shown it.";
+
+/// <p>Refusal sentence for <parameter>AGENTHOLDDUPLICATE</parameter>.</p>
+Parameter REASONAGENTHOLDDUPLICATE = "The agent is already switched off for that user.";
 
 /// <p>The shape every machine code has: one or more dotted segments, each starting with a
 /// letter and continuing with capitals and digits. No lower case, no underscore, no leading

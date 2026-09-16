@@ -87,6 +87,7 @@ deferred:
 ## Boundaries & Constraints
 
 **Always:**
+
 - The descriptor is the single source (AD-5). The archetype vocabulary is declared once, in `src/OcuPilot/Screen/Archetype.cls`; every other reader parses that file, never a second copy. A vocabulary that cannot be read is **reported**, never treated as an empty set (`check-objectscript.py:663-668` states the rule).
 - `classicPage` stays the classic **class name** (AD-44). It is the AD-8 privilege-union key (`Gate.RequiredPairs():69-78`) and is never a link; no code path derives a URL from it.
 - An exemption is permitted only on an archetype the vocabulary classifies `detail`. `list`, `none`, and any archetype absent from the vocabulary are refused. The default is "may not link out", so a mis-classification fails closed.
@@ -97,6 +98,7 @@ deferred:
 - New-tab links follow the shipped house pattern: `target="_blank" rel="noreferrer"` plus `.ocu-external-glyph` (`instance-notice.ts:51-60`, `_components.scss:289`).
 
 **Never:**
+
 - No derivation of a classic URL from a class name — none is verified, and the `/csp/sys/{exp,mgr,op,sec}` sub-application a portal class is served under is not a function of its class name.
 - No invented UI copy, no growth of `REQUIRED_ALONGSIDE_TABLE`, no edit to EXPERIENCE.md or DESIGN.md (DW-126 and DW-139 are the owner's, escalated).
 - No second archetype list, no second exemption predicate, no per-screen link-out implementation.
@@ -147,6 +149,7 @@ deferred:
 ## Tasks & Acceptance
 
 **Execution:**
+
 - `src/OcuPilot/Screen/Archetype.cls` — **new**: one `XData` block declaring every archetype key EXPERIENCE.md `:507-521` publishes with its link-out class (`list` | `detail` | `none`), plus `Exists()` and `LinkOutClass()` modeled on `Area.cls:113`/`:121` — the single source both the instance and the build read.
 - `src/OcuPilot/Screen/Descriptor/Base.cls` — add `ClassicLinkHref()` and `ClassicLinkLabel()` over `..NestedField("classicLinkExemption", …)`; document that the target is **declared**, never derived from `classicPage`.
 - `src/OcuPilot/Screen/Registry.cls` — add public `ClassicLinkProblem(pArchetype, pClassicPage, pExempt, pReason, pLabel, pHref)` beside `RefreshProblem()` and call it from `Validate()` after the refresh check `:185`, so a malformed exemption fails at install rather than at render.
@@ -166,6 +169,7 @@ deferred:
 - `src/OcuPilot/Test/Descriptor.cls` — extend: `ClassicLinkProblem()` driven as values, the fixture-registry refusal, `Archetype.Exists()` and `LinkOutClass()` over the published vocabulary, and that the sound roster still validates clean.
 
 **Acceptance Criteria:**
+
 - Given the descriptor set, when the build-time check runs, then it names how many descriptors it scanned and how many exemptions it honored — on every run, including one that honors none — so a check that looked at nothing is distinguishable from a check that found nothing wrong.
 - Given a descriptor whose archetype the vocabulary does not classify `detail`, when it declares `classicLinkExemption.exempt` true, then both the build-time check and `Registry.Validate()` refuse it, each naming the descriptor and the archetype.
 - Given the check, when the repository is committed or the bundle is built, then the check has already run: it is named in `ui/package.json`'s `prebuild` and `prestart` chains and in `.githooks/pre-commit`, and a test asserts all three — a checker wired into no gate is the defect this criterion exists to prevent.
@@ -182,7 +186,7 @@ Code review 2026-09-13 (`full-opus`, four layers: blind-hunter, edge-case-hunter
 - [x] [Review][Patch] **QA's DW-183 pin executes none of the code it names, and both of its recorded mutations were false.** The test calls `extractXData` then `JSON.parse` itself; it never calls `readSources()`, which takes no directory argument. Its in-file mutation ("wrap the descriptor walk's `JSON.parse` …") edits code the test does not run, and the spec's line mutated the test's own fixture. **Fixed:** retitled to what it pins, both mutations corrected, and the limitation stated in the test and on DW-183's trailer. [ui/tools/screen-mirror.test.mjs]
 - [x] [Review][Patch] **AC1's greppable count line was missing from the three early-return paths.** `refusedBeforeClassifying()` said "refused before classifying any descriptor" but emitted no `scanned N`. **Fixed:** the stable `classic-links: scanned 0 descriptor(s)` line is now printed on every path. [ui/tools/classic-links.mjs]
 - [x] [Review][Patch] **A wrong claim corrected in two places was left standing in a third.** `screen-mirror.test.mjs`'s new header called `Registry.Validate` one of "three places a declared value fails the build"; the same pass had corrected that exact claim in `Registry.cls` and `classic-link-card.ts`. **Fixed** at its origin. [ui/tools/screen-mirror.test.mjs]
-- [x] [Review][Patch] **`buildMirror` neither refuses nor defaults an absent `archetype`, and the comment justifying it was wrong about `refreshRates`** (which *is* defaulted at emission). Emitting a `SCREENS` entry missing its non-optional `archetype` is the unreadable-`tsc` failure the sibling defaulting exists to prevent. Refusing it was tried and reverted: three pre-existing tests pin partial fixtures as legal by design. **Fixed as a claim correction** — the comment now says what it costs and that `classic-links.mjs` names the refusal in all three gates; the behaviour is loud, not silent. [ui/tools/screen-mirror.mjs, ui/tools/screen-mirror.test.mjs]
+- [x] [Review][Patch] **`buildMirror` neither refuses nor defaults an absent `archetype`, and the comment justifying it was wrong about `refreshRates`** (which *is* defaulted at emission). Emitting a `SCREENS` entry missing its non-optional `archetype` is the unreadable-`tsc` failure the sibling defaulting exists to prevent. Refusing it was tried and reverted: three pre-existing tests pin partial fixtures as legal by design. **Fixed as a claim correction** — the comment now says what it costs and that `classic-links.mjs` names the refusal in all three gates; the behavior is loud, not silent. [ui/tools/screen-mirror.mjs, ui/tools/screen-mirror.test.mjs]
 - [x] [Review][Patch] **`process.exit(1)` can truncate the report it exists to print** when stdout is a pipe, which it is under npm and the hook. **Fixed:** `process.exitCode = 1`. [ui/tools/classic-links.mjs]
 - [x] [Review][Patch] **Two Rule 19 mutation lines corrected in `## Verification`**, one re-demonstrated live — see that section.
 - [x] [Review][Defer] The pre-commit hook runs `classic-links.mjs` but not `screen-mirror.mjs --check`, so a commit can land a descriptor change with the checked-in mirror stale. — deferred: **DW-184** `routed owner=1-17`; caught at the next build, and a new gate dispatch needs its own pin.
@@ -298,6 +302,7 @@ Code review 2026-09-13 (`full-opus`, four layers: blind-hunter, edge-case-hunter
 **What runs live and what runs at a seam.** The ObjectScript half — `Archetype.Exists()` / `LinkOutClass()`, `ClassicLinkProblem()` and the fixture-registry refusal — runs **live** against the `ocupilot` container (`server: "ocupilot-iris"`). The privilege-union path is exercised only through `Test/ScreenGate.cls`'s `ClassicResource()` override (`:49`): **`%SYS.Portal.Resources` is empty on this instance and stays empty**; nothing here reads or writes a real custom resource. Everything else runs at a seam — the check over a synthetic descriptor tree, the card in jsdom, and the DW-173 bound as stylesheet text, because **jsdom computes no layout** and no test in this tree can observe a width (`design-tokens.test.mjs:424-470` records the same).
 
 **Commands:**
+
 - `cd ui && node tools/classic-links.mjs` — expected: exit 0, printing the scanned count, the per-class tally and `0 exemption(s) honored (SM-C1)`.
 - `cd ui && npm run test:tools` — expected: green, including the new `classic-links` suite and the amended `design-tokens` and `screen-mirror` suites.
 - `cd ui && npm run test:components` — expected: green, including the new `classic-link-card` spec.
@@ -308,6 +313,7 @@ Code review 2026-09-13 (`full-opus`, four layers: blind-hunter, edge-case-hunter
 - `bash scripts/lint-docs.sh` — expected: clean.
 
 **Pinning tests (Rule 19).** One mutation per criterion; each to be applied, observed red, reverted, with the tree byte-identical afterwards.
+
 - The check reports its population and its exemptions → `ui/tools/classic-links.test.mjs` "a clean run names the scanned count, the per-class tally and the honored count". mutation: deleted the honored-count `report.push` in `classic-links.mjs` → that test went red on `/^classic-links: 0 exemption\(s\) honored \(SM-C1\)$/m`, and four more with it (re-demonstrated at review: 5 red).
 - A non-detail archetype may not exempt, on both sides → `ui/tools/classic-links.test.mjs` "a list archetype declaring an exemption is refused, naming the archetype" + `OcuPilot.Test.Descriptor` (live) over `OcuPilot.Test.ClassicLinkRegistry`. mutation: guarded `classicLinkProblem`'s `LINK_OUT_DETAIL` comparison with `false &&` and `Registry.ClassicLinkProblem`'s `MayLinkOut` test with `If 0`, recompiled → both went red, the live one on six assertions including the fixture-roster refusal.
 - The check cannot pass by looking at nothing → `ui/tools/classic-links.test.mjs` "a descriptor the reader did not return is a refusal, not a shorter population" + "an unreadable vocabulary is reported, not an empty set". mutation: guarded the `scanned !== fileCount` refusal with `false &&` and made `parseArchetypes` return `archetypes` rather than `null` for an empty vocabulary → three went red, the two named plus "a population larger than the tree is a refusal too".
@@ -344,6 +350,7 @@ caption slot: no planning document publishes that sentence (DW-126), so it is ab
 placeholdered, and `REQUIRED_ALONGSIDE_TABLE` did not grow.
 
 **Files changed.**
+
 - `src/OcuPilot/Screen/Archetype.cls` -- new; the closed vocabulary and its four readers.
 - `src/OcuPilot/Screen/Descriptor/Base.cls` -- the two new exemption accessors.
 - `src/OcuPilot/Screen/Descriptor/Home.cls` -- the exemption states all four fields.

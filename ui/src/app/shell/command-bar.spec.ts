@@ -174,7 +174,9 @@ describe('the command bar', () => {
 
     const primary: HTMLButtonElement = fixture.nativeElement.querySelector('.ocu-command-bar-primary');
     expect(primary).not.toBeNull();
-    expect(primary.textContent?.trim()).toBe('create');
+    // Resolved through `actionLabel`, like every other action on both surfaces: `create` carries
+    // published copy, so the button draws it.
+    expect(primary.textContent?.trim()).toBe(STRINGS.actionCreate);
     // Left of the filter, which is what "primary action left" means in the DOM.
     expect(primary.compareDocumentPosition(fixture.nativeElement.querySelector('.ocu-command-bar-filter')))
       .toBe(Node.DOCUMENT_POSITION_FOLLOWING);
@@ -185,6 +187,32 @@ describe('the command bar', () => {
     unregister();
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.ocu-command-bar-primary')).toBeNull();
+  });
+
+  it("DW-370: a screen's own published words for an action reach the rendered button, not only actionLabel", () => {
+    // The function is pinned in `tools/screen-actions.test.mjs`; this is the surface that draws
+    // it. The stub descriptor every other test here uses publishes nothing of its own, so those
+    // tests resolve identically with or without descriptor scoping -- which is exactly what would
+    // let AC7 ship unmet while `actionLabel` stayed green.
+    //
+    // Mutation (Rule 19): change `actionLabel(screen.descriptor, action.id)` in `command-bar.ts`
+    // to `actionLabel('', action.id)` -> this goes red, the button drawing the bare id.
+    build(
+      screenDeclaration({
+        descriptor: 'OcuPilot.Screen.Descriptor.AgentSwitches',
+        rowActions: [{ id: 'delete', selfProtection: '' }],
+      })
+    );
+
+    const actions: HTMLButtonElement[] = Array.from(
+      fixture.nativeElement.querySelectorAll('.ocu-command-bar-action')
+    );
+    expect(actions.map((action) => action.textContent?.trim())).toEqual([
+      STRINGS.agentSwitchesHoldRemove,
+    ]);
+    // And the same id on a screen that publishes nothing for it still draws the bare id, so the
+    // assertion above is about the descriptor rather than about the id.
+    expect(STRINGS.agentSwitchesHoldRemove).not.toBe('delete');
   });
 
   it('row actions are aria-disabled with "Select a row first" on hover and focus', () => {
@@ -200,7 +228,10 @@ describe('the command bar', () => {
     const actions: HTMLButtonElement[] = Array.from(
       fixture.nativeElement.querySelectorAll('.ocu-command-bar-action')
     );
-    expect(actions.map((action) => action.textContent?.trim())).toEqual(['delete', 'disable']);
+    expect(actions.map((action) => action.textContent?.trim())).toEqual([
+      'delete',
+      STRINGS.agentDefinitionDisable,
+    ]);
 
     for (const action of actions) {
       expect(action.getAttribute('aria-disabled')).toBe('true');
@@ -877,7 +908,12 @@ describe('the command bar', () => {
       option.querySelector('.ocu-command-box-option-label')?.textContent?.trim()
     );
 
-    expect(barActions).toEqual(['create', 'delete', 'disable', STRINGS.actionRefresh]);
+    expect(barActions).toEqual([
+      STRINGS.actionCreate,
+      'delete',
+      STRINGS.agentDefinitionDisable,
+      STRINGS.actionRefresh,
+    ]);
     expect([...boxActions].sort()).toEqual([...barActions].sort());
 
     // Reachable is not the same as available: the box must say what the bar says about the
@@ -888,9 +924,9 @@ describe('the command bar', () => {
         option,
       ])
     );
-    expect(byLabel.get('create')?.getAttribute('aria-disabled')).toBeNull();
+    expect(byLabel.get(STRINGS.actionCreate)?.getAttribute('aria-disabled')).toBeNull();
     expect(byLabel.get(STRINGS.actionRefresh)?.getAttribute('aria-disabled')).toBeNull();
-    for (const rowAction of ['delete', 'disable']) {
+    for (const rowAction of ['delete', STRINGS.agentDefinitionDisable]) {
       const option = byLabel.get(rowAction);
       expect(option?.getAttribute('aria-disabled')).toBe('true');
       expect(option?.textContent).toContain(STRINGS.privilegeSelectRowFirst);

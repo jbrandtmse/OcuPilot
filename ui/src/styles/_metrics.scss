@@ -48,6 +48,11 @@
   --ocu-control-height: 32px;
   --ocu-input-height: 36px;
 
+  // The `form-page` column and its sticky action bar (DESIGN.md's `form-page` block).
+  --ocu-form-max-width: 720px;
+  --ocu-field-max-width: 480px;
+  --ocu-form-bar-height: 56px;
+
   // Content and misc measures.
   --ocu-content-min-width: 640px;
   --ocu-tile-min-width: 168px;

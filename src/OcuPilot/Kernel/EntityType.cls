@@ -13,13 +13,19 @@
 /// server client. The admin API's sixth OAuth 2.0 endpoint,
 /// <code>ResourceServerMapping</code>, relates two of those rather than administering a thing
 /// of its own, so it has no key here; a story that needs one adds it.</p>
+/// <p><code>agent-definition</code> and <code>agent-switch</code> are OcuPilot's own configuration
+/// rather than the instance's, and they are values here for the same reason every other one is: the
+/// Definitions list and the Switches screen publish AD-14's change event on them, and a key a slice
+/// invented would be a second spelling. <code>agent-switch</code> covers the instance-wide switches
+/// and the per-user holds together -- one screen administers both, and a hold is not a thing of its
+/// own outside it.</p>
 Class OcuPilot.Kernel.EntityType Extends %RegisteredObject
 {
 
 /// <p>The vocabulary, comma-separated and in no significant order. Lower-case with hyphens,
 /// the same spelling shape route and area keys use, so a key is never confused with a class
 /// name.</p>
-Parameter TYPES = "web-application,rest-service,user,role,resource,service,ssl-configuration,x509-credential,ldap-configuration,wallet-collection,wallet-secret,oauth2-client-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,oauth2-server-client,audit-event,task,task-history-entry,process,lock,database,device,audit-record,application-error,log-entry";
+Parameter TYPES = "web-application,rest-service,user,role,resource,service,ssl-configuration,x509-credential,ldap-configuration,wallet-collection,wallet-secret,oauth2-client-configuration,oauth2-server-definition,oauth2-resource-server,oauth2-server,oauth2-server-client,audit-event,task,task-history-entry,process,lock,database,device,audit-record,application-error,log-entry,agent-definition,agent-switch";
 
 /// <p>Whether <var>pType</var> is one of the declared values. An empty string is <b>not</b>
 /// known: a screen with no entity type declares the empty string and its descriptor is

@@ -14,6 +14,7 @@ import {
   NavigationService,
   areaByKey,
   formatRequires,
+  isListedScreen,
   withQuery,
 } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
@@ -395,7 +396,11 @@ export class CommandBox {
 
   private screenCandidates(needle: string): readonly CommandRow[] {
     const rows: CommandRow[] = [];
-    for (const screen of this.navigation.builtScreens()) {
+    // Listed screens only (Story 3.5). A screen declaring `sideBarPosition` 0 is routable and
+    // never advertised: the Definition form takes a `single` id, so a search result landing on it
+    // with no id would open a create form the user did not ask for. The seam still answers every
+    // built screen, so the route table is unaffected.
+    for (const screen of this.navigation.builtScreens().filter(isListedScreen)) {
       const label = stringFor(screen.labelKey);
       if (!matchesScreen(screen, label, needle)) continue;
       const area = areaByKey(screen.area);
@@ -443,11 +448,15 @@ export class CommandBox {
       if (action.id !== '') declared.push({ id: action.id, rowScoped: true });
     }
     return declared
-      .filter((action) => needle === '' || actionLabel(action.id).toLowerCase().includes(needle))
+      .filter(
+        (action) =>
+          needle === '' ||
+          actionLabel(screen.descriptor, action.id).toLowerCase().includes(needle)
+      )
       .map((action) => ({
         id: `ocu-command-box-${action.rowScoped ? 'row' : 'action'}-${action.id}`,
         kind: 'action',
-        label: actionLabel(action.id),
+        label: actionLabel(screen.descriptor, action.id),
         detail: '',
         reason: action.rowScoped ? STRINGS.privilegeSelectRowFirst : '',
         gated: action.rowScoped,

@@ -175,6 +175,32 @@ describe('the data table', () => {
     expect(wired.host().querySelector('[role="columnheader"][aria-sort="ascending"]')?.textContent).toContain(STRINGS.fieldUserName);
   });
 
+  it("a list with a paired editor links each name cell at the editor, not at the list's own id route", async () => {
+    // `editorScreenFor` resolves `<list route>/edit` out of the generated mirror, so this needs a
+    // declaration whose route really has a built, unlisted, id-keyed sibling there. The
+    // Definitions list is the first one in the product; the probe fixture's own route has no
+    // editor, so every other case in this file takes the `?? screen` fallback and cannot tell a
+    // regression here from the behaviour it always had.
+    //
+    // Mutation (Rule 19): change `const linkTarget = editorScreenFor(screen) ?? screen;` back to
+    // `const linkTarget = screen;` in `data-table.ts` -> this goes red, and clicking a
+    // definition's name re-renders the list with `id = '<the id>'` instead of opening its form.
+    const wired = await wire(
+      // Only the route is changed: `editorScreenFor` keys off it, and the probe's own columns and
+      // single id keep the row key resolvable without inventing a row shape.
+      tableDeclaration({ route: 'agent/definitions' }),
+      ok(rows(2))
+    );
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+
+    const link = wired
+      .host()
+      .querySelector('[aria-rowindex="2"] [role="gridcell"] a') as HTMLAnchorElement;
+    expect(link).not.toBeNull();
+    expect(link.getAttribute('href')).toContain('/agent/definitions/edit/');
+  });
+
   it('a screen with no id route draws the name as code text with no link, and Enter navigates nowhere; the grid is named by the screen label', async () => {
     // Mutation (Rule 19): build the row URL without `hasIdRoute` -> the link assertion goes red.
     const wired = await wire(tableDeclaration({ id: { kind: 'none', parts: [] } }), ok(rows(2)));

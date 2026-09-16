@@ -35,6 +35,12 @@
  * - `checkTestingImports({path, text})` -- a non-spec `.ts` file under `ui/src` outside
  *   `src/app/testing/` that imports from `src/app/testing/`, which holds test builders and the
  *   data table's browser harness and must be reachable from no shipped entry (AD-47, NFR-10).
+ * - `checkFilterAssertions({path, text})` -- a browser spec asserting an exact row count on a
+ *   `filterToSubset` result (inline, or through a name it was bound to), or comparing one filter
+ *   leg's result against another's. Both are
+ *   assertions about whatever corpus the instance happens to hold rather than about the filter
+ *   (DW-368): the first fails when another installation carries one more matching row, and the
+ *   second passes by accident of the corpus.
  *
  * Scope, stated plainly: this is a regex-based scanner over source text, not an
  * HTML or CSS parser. It is exact enough to catch what this story's own
@@ -426,6 +432,77 @@ export function checkTestingImports({ path, text }) {
   return { ok: errors.length === 0, errors };
 }
 
+// --- Rule family 6: filter assertions in the browser specs (DW-368) -----------------------------
+
+/**
+ * `assert.equal(await filterToSubset(...), <number>, ...)` -- an exact row count on a filter
+ * result. The helper already refuses a leg that keeps nothing, keeps everything, or loses the row
+ * the caller named; what an exact count adds is a claim about how many OTHER rows the instance
+ * holds.
+ */
+const EXACT_FILTER_COUNT_RE = /assert\.(?:equal|strictEqual)\s*\(\s*await\s+filterToSubset\s*\([\s\S]*?\)\s*,\s*-?\d/g;
+
+/**
+ * The same claim written in two statements -- `const kept = await filterToSubset(...)` and then
+ * `assert.equal(kept, 1, ...)`. The inline pattern above cannot see it, and it is the shape a
+ * spec takes the moment the call is long enough to want a name, so a rule that read only the
+ * inline form would be bypassed by an ordinary refactor rather than by an argument.
+ */
+const FILTER_BINDING_RE = /(?:const|let|var)\s+(\w+)\s*=\s*await\s+filterToSubset\s*\(/g;
+
+/**
+ * One filter leg's result compared against another's -- `assert.ok(byName < byRoutine)` and the
+ * like. Each leg runs from the whole list, and the filter is a substring match over every declared
+ * field, so the two have no ordering between them: a comparison that holds does so by accident of
+ * the corpus. The permitted comparison is against `total`, the unfiltered count.
+ */
+const FILTER_LEG_COMPARISON_RE = /assert\.\w+\s*\(\s*(by[A-Z]\w*)\s*(?:<=|>=|===|!==|<|>)\s*(by[A-Z]\w*)\b/g;
+
+/**
+ * Rule family 6: pure. Reports both shapes in a `*.browser-spec.mjs` file. Comments are blanked
+ * first, so a comment explaining why neither is used is not itself a violation.
+ */
+export function checkFilterAssertions({ path, text }) {
+  const errors = [];
+  if (!path.startsWith('browser/') || !path.endsWith('.browser-spec.mjs')) {
+    return { ok: true, errors };
+  }
+  const code = blankComments(text);
+  for (const m of code.matchAll(EXACT_FILTER_COUNT_RE)) {
+    errors.push({
+      file: path,
+      line: lineNumberAt(code, m.index),
+      literal:
+        'exact row count asserted on a filterToSubset result -- assert that it narrowed (< total) instead; how many other rows match is the instance\'s, not the filter\'s',
+      rule: 'no-exact-filter-count',
+    });
+  }
+  for (const binding of code.matchAll(FILTER_BINDING_RE)) {
+    const name = binding[1];
+    const bound = new RegExp(
+      `assert\\.(?:equal|strictEqual)\\s*\\(\\s*${name}\\s*,\\s*-?\\d`,
+      'g'
+    );
+    for (const m of code.matchAll(bound)) {
+      errors.push({
+        file: path,
+        line: lineNumberAt(code, m.index),
+        literal: `exact row count asserted on ${name}, which holds a filterToSubset result -- assert that it narrowed (< total) instead`,
+        rule: 'no-exact-filter-count',
+      });
+    }
+  }
+  for (const m of code.matchAll(FILTER_LEG_COMPARISON_RE)) {
+    errors.push({
+      file: path,
+      line: lineNumberAt(code, m.index),
+      literal: `one filter leg compared against another (${m[1]} against ${m[2]}) -- each leg runs from the whole list, so measure both against total`,
+      rule: 'no-filter-leg-comparison',
+    });
+  }
+  return { ok: errors.length === 0, errors };
+}
+
 // --- Aggregate ----------------------------------------------------------------
 
 const SCAN_EXTENSIONS = new Set(['.ts', '.scss', '.html']);
@@ -492,8 +569,10 @@ export function lintClient({ uiRoot = UI_ROOT } = {}) {
   if (existsSync(join(uiRoot, 'browser'))) {
     walk(join(uiRoot, 'browser'), (fullPath) => {
       const path = toRelative(fullPath);
+      const text = readFileSync(fullPath, 'utf8');
       scanned += 1;
-      errors.push(...checkNonAsciiLiterals({ path, text: readFileSync(fullPath, 'utf8') }).errors);
+      errors.push(...checkNonAsciiLiterals({ path, text }).errors);
+      errors.push(...checkFilterAssertions({ path, text }).errors);
     }, TOOL_SCAN_EXTENSIONS);
   }
   const browserConfig = join(uiRoot, 'browser.config.mjs');
@@ -519,6 +598,7 @@ export const RULE_FAMILIES = [
   'off-origin-urls',
   'non-ascii-literals',
   'testing-imports',
+  'filter-assertions',
 ];
 
 function formatError(e) {

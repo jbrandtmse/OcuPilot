@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -44,6 +44,7 @@ export type BuiltArchetypeKey =
   | 'list'
   | 'list (server criteria)'
   | 'drill-down'
+  | 'form-page'
   | 'home';
 
 export interface PrivilegePair {
@@ -106,9 +107,13 @@ export interface ReadRowGet {
   readonly derived: readonly ReadDerived[];
 }
 
-/** Where a read's rows come from: one admin API LIST (AD-2, AD-36), and optionally its detail call. */
+/**
+ * Where a read's rows come from (AD-36): one admin API LIST (AD-2) with an optional per-row detail
+ * call, or one of OcuPilot's own kernel stores read whole (AD-9). A `state` source names the store
+ * by its own name, declares no `rowGet` and no `criteria`, and is bounded by the same row cap.
+ */
 export interface ReadSource {
-  readonly port: 'admin';
+  readonly port: 'admin' | 'state';
   readonly endpoint: string;
   readonly type: 'LIST';
   readonly rowGet?: ReadRowGet | null;
@@ -297,7 +302,9 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "device",
   "audit-record",
   "application-error",
-  "log-entry"
+  "log-entry",
+  "agent-definition",
+  "agent-switch"
 ];
 
 /** The eight areas, in rail order. */
@@ -432,6 +439,243 @@ export const AREAS: readonly AreaDeclaration[] = [
 
 /** Every declared screen, by descriptor class name. */
 export const SCREENS: readonly ScreenDeclaration[] = [
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AgentDefinitionForm",
+    "route": "agent/definitions/edit",
+    "area": "agent",
+    "labelKey": "agentDefinitionFormLabel",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "OcuPilotAdmin",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "agent-definition",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": [
+        "apiKey"
+      ]
+    },
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "agent.definition",
+    "read": null,
+    "table": null,
+    "banner": null
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AgentDefinitionList",
+    "route": "agent/definitions",
+    "area": "agent",
+    "labelKey": "agentDefinitionListLabel",
+    "sideBarPosition": 1,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "OcuPilotAdmin",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "agent-definition",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "id"
+      ]
+    },
+    "primaryAction": {
+      "id": "create",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "enable",
+        "selfProtection": ""
+      },
+      {
+        "id": "disable",
+        "selfProtection": ""
+      },
+      {
+        "id": "set-default",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [
+        "id",
+        "name",
+        "provider",
+        "model",
+        "enabled",
+        "default"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "agentDefinitionListEmpty",
+    "commandAliases": [
+      "agent definitions",
+      "definitions",
+      "api key"
+    ],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "state",
+        "endpoint": "Agent",
+        "type": "LIST"
+      },
+      "fields": [
+        "id",
+        "name",
+        "provider",
+        "model",
+        "enabled",
+        "default"
+      ],
+      "filter": [
+        "name",
+        "provider",
+        "model"
+      ],
+      "sort": {
+        "fields": [
+          "name",
+          "provider",
+          "model"
+        ],
+        "default": "name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "provider",
+          "labelKey": "tableColumnProvider",
+          "kind": "text"
+        },
+        {
+          "field": "model",
+          "labelKey": "tableColumnModel",
+          "kind": "text"
+        },
+        {
+          "field": "enabled",
+          "labelKey": "tableColumnEnabled",
+          "kind": "status"
+        },
+        {
+          "field": "default",
+          "labelKey": "tableColumnDefault",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "",
+      "emptyAgentKey": "agentDefinitionListEmptyAgent"
+    },
+    "toolIdentifier": "agent.definitions",
+    "banner": null
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AgentSwitches",
+    "route": "agent/switches",
+    "area": "agent",
+    "labelKey": "agentSwitchesLabel",
+    "sideBarPosition": 2,
+    "archetype": "form-page",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "OcuPilotAdmin",
+        "permission": "USE"
+      }
+    ],
+    "entityType": "agent-switch",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "create",
+      "selfProtection": ""
+    },
+    "rowActions": [
+      {
+        "id": "delete",
+        "selfProtection": ""
+      }
+    ],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "emptyStateKey": "",
+    "commandAliases": [
+      "kill switch",
+      "read-only",
+      "switches"
+    ],
+    "classicPage": "",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "agent.switches",
+    "read": null,
+    "table": null,
+    "banner": null
+  },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.AuditList",
     "route": "logs/audit",

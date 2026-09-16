@@ -236,17 +236,23 @@ Method TestRedactKeepsASparseArraySparse()
     Do $$$AssertEquals(tOut.%ToJSON(), tData.%ToJSON(), "a payload with no credential in it round-trips unchanged")
 }
 
-/// <p>The name pattern, row by row. Substring and case-insensitive, because the names that
-/// carry secrets in this tree's own payloads are compounds — a matcher that only caught the
-/// bare word would catch none of them.</p>
+/// <p>The name pattern, row by row. Case-insensitive, and anchored: a key whose name <b>ends</b>
+/// in one of <parameter>OcuPilot.Kernel.Audit.Log.CREDENTIALSUFFIXES</parameter>, or is exactly
+/// one of <parameter>OcuPilot.Kernel.Audit.Log.CREDENTIALEXACTNAMES</parameter>, is masked. The
+/// compounds this tree's own payloads carry all end in a listed word; a name a listed word merely
+/// appears inside does not match.</p>
+/// <p>Mutation (Rule 19): make the suffix comparison a substring one -- the
+/// <code>maxTokens</code> and <code>keyword</code> rows go red.</p>
 Method TestCredentialNameMatching()
 {
-    Set tMatch = $ListBuild("password", "Password", "PASSWORD", "passwd", "pwd", "userPwd", "secret", "ClientSecret", "token", "refresh_token", "credential", "X509Credential", "apikey", "ApiKey", "privatekey")
+    Set tMatch = $ListBuild("password", "Password", "PASSWORD", "passwd", "pwd", "userPwd", "secret", "ClientSecret", "token", "refresh_token", "credential", "X509Credential", "apikey", "ApiKey", "privatekey", "key", "Key", "credentialName")
     For tI = 1:1:$ListLength(tMatch) {
         Set tName = $List(tMatch, tI)
         Do $$$AssertTrue(##class(OcuPilot.Kernel.Audit.Log).IsCredentialName(tName), "'" _ tName _ "' is treated as a credential name")
     }
-    Set tPlain = $ListBuild("user", "name", "count", "status", "route", "namespace", "code", "subsystem")
+    ; maxTokens is the row DW-329 is about: a bound the operator set, which an unanchored matcher
+    ; masked in the record of the change that set it.
+    Set tPlain = $ListBuild("user", "name", "count", "status", "route", "namespace", "code", "subsystem", "maxTokens", "keyword", "monkey", "tokenCount", "envVarName")
     For tI = 1:1:$ListLength(tPlain) {
         Set tName = $List(tPlain, tI)
         Do $$$AssertTrue('##class(OcuPilot.Kernel.Audit.Log).IsCredentialName(tName), "'" _ tName _ "' is not")

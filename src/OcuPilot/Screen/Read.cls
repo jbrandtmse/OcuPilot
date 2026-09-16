@@ -23,6 +23,13 @@
 /// <file>ui/src/app/core/screen-read.ts</file>'s <code>applyView</code>, because the screen sorts
 /// and filters on the client and a tool runs in-process on the server; both are pinned by the one
 /// corpus in <class>OcuPilot.Test.ReadViewCorpus</class>.</p>
+/// <p><b>A declared read names one of two source kinds</b> (AD-36). <code>port: "admin"</code> is
+/// an instance endpoint reached through <method>PortClass</method>; <code>port: "state"</code> is
+/// OcuPilot's own protected state (AD-9), resolved against a kernel store's guarded list through
+/// <method>StateRows</method>. The second changes where the rows come from and nothing else: the
+/// same declared <code>fields</code>, the same secret strip, the same filter, sort and view rule,
+/// the same row cap and the same <code>truncated</code> signal, so a screen over OcuPilot's own
+/// configuration is a declared read like any other rather than a page with a query of its own.</p>
 /// <p>The port is reached through <method>PortClass</method> alone (AD-2, AD-27); a tool never
 /// touches <code>%session</code>, <code>%request</code> or <code>$NAMESPACE</code>, and neither
 /// does this.</p>
@@ -52,11 +59,40 @@ Parameter LOWER = "abcdefghijklmnopqrstuvwxyz";
 /// Refusing it by name is what turns that into an answer the caller can act on (DW-280).</p>
 Parameter DATETIMEFORM = "^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?$";
 
-/// <p>The port class every read is issued through. Overridable so a fixture can reach
+/// <p>The port class every <b>admin</b> read is issued through. Overridable so a fixture can reach
 /// <class>OcuPilot.Test.PortFixture</class>; production never overrides it.</p>
 ClassMethod PortClass() As %String
 {
     Quit "OcuPilot.Port.AdminPort"
+}
+
+/// <p>The <code>read.source.port</code> value naming an instance endpoint reached through a port
+/// (AD-2).</p>
+Parameter SOURCEADMIN = "admin";
+
+/// <p>The <code>read.source.port</code> value naming OcuPilot's own protected state (AD-9,
+/// AD-36).</p>
+Parameter SOURCESTATE = "state";
+
+/// <p>The package a <code>state</code> source's <code>endpoint</code> names a class in, trailing
+/// dot included. A source declares the class's short name -- <code>Agent</code> -- and never a
+/// package-qualified one, so no descriptor can point the read at a class outside the kernel's own
+/// stores.</p>
+Parameter STATEPACKAGE = "OcuPilot.Kernel.State.";
+
+/// <p>The method a kernel store answers a declared read's rows with.</p>
+Parameter STATEROWSMETHOD = "GuardedScreenRows";
+
+/// <p>The class a <code>state</code> source's <var>pEndpoint</var> resolves to.</p>
+/// <p>Composed here rather than declared, so a descriptor names a store rather than a class and
+/// the set of reachable classes is exactly <parameter>STATEPACKAGE</parameter>'s.
+/// <method>OcuPilot.Screen.Registry.ReadProblem</method> refuses an endpoint that names a package
+/// at all; a name that resolves to no compiled class is refused at read time by
+/// <method>StateRows</method>, because whether a class exists is a property of the instance rather
+/// than of the declaration, and the registry rule is the one both engines run.</p>
+ClassMethod StateClass(pEndpoint As %String) As %String
+{
+    Quit ..#STATEPACKAGE _ pEndpoint
 }
 
 /// <p>What is wrong with <var>pMaxRows</var>, or <code>""</code>. Absent (<code>""</code>) is
@@ -122,16 +158,27 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
             Quit
         }
 
-        Set tQuery("maxRows") = tMax + 1
-        Set tCriterionProblem = ..SeedCriteria(tRead, .pCriteria, .tQuery)
-        If tCriterionProblem '= "" {
-            Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#READCRITERION, tCriterionProblem, .pHttpStatus, .pFault)
-            Quit
-        }
-        Set tPortSC = $ClassMethod(..PortClass(), "Invoke", tSource.%Get("endpoint"), ..#READTYPE, .tQuery, "", .tAnswer, .pHttpStatus, .pFault)
-        If $$$ISERR(tPortSC) {
-            Set tSC = tPortSC
-            Quit
+        If tSource.%Get("port") = ..#SOURCESTATE {
+            ; AD-36's second source kind: the rows come from a kernel store's guarded list rather
+            ; than from a port, and everything below this line is unchanged -- the same field
+            ; projection, the same secret strip, the same cap and the same truncation signal.
+            Set tStateSC = ..StateRows(pDescriptor, tSource.%Get("endpoint"), .tAnswer, .pHttpStatus, .pFault)
+            If $$$ISERR(tStateSC) {
+                Set tSC = tStateSC
+                Quit
+            }
+        } Else {
+            Set tQuery("maxRows") = tMax + 1
+            Set tCriterionProblem = ..SeedCriteria(tRead, .pCriteria, .tQuery)
+            If tCriterionProblem '= "" {
+                Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#READCRITERION, tCriterionProblem, .pHttpStatus, .pFault)
+                Quit
+            }
+            Set tPortSC = $ClassMethod(..PortClass(), "Invoke", tSource.%Get("endpoint"), ..#READTYPE, .tQuery, "", .tAnswer, .pHttpStatus, .pFault)
+            If $$$ISERR(tPortSC) {
+                Set tSC = tPortSC
+                Quit
+            }
         }
         If '$IsObject(tAnswer) || 'tAnswer.%IsA("%Library.DynamicArray") {
             Set tSC = ..Internal(pDescriptor _ "'s read answered something other than a list", .pHttpStatus, .pFault)
@@ -170,6 +217,41 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
     } Catch ex {
         Set pResult = ""
         Set tSC = ..Internal("the read failed: " _ ex.DisplayString(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>The rows a <code>state</code> source answers with (AD-9, AD-36): the kernel store
+/// <var>pEndpoint</var> names, asked for its guarded list as a <class>%DynamicArray</class>.</p>
+/// <p><b>Unbounded here and bounded by the caller.</b> A store's guarded list is a SQL read of
+/// OcuPilot's own table, which has no <code>maxRows</code> to send ahead of it, so
+/// <method>Execute</method>'s own cap is what bounds the answer -- it keeps at most the cap's rows
+/// and reports <code>truncated</code> when more came back, exactly as it does for a port answer.
+/// That is the same guarantee reached one step later, not a weaker one.</p>
+/// <p><b>The escalated frame is the store's and stops there</b> (AD-9): this method calls one
+/// class method and touches no <code>$ROLES</code> of its own, and nothing inside that frame
+/// reaches a port, a tool or the provider.</p>
+/// <p>A store that cannot be resolved, or that answers something other than an array, is a 500
+/// with the generic fault and the detail in the status alone.</p>
+ClassMethod StateRows(pDescriptor As %String, pEndpoint As %String, Output pAnswer As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pAnswer = ""
+    Try {
+        Set tClass = ..StateClass(pEndpoint)
+        If '##class(%Dictionary.CompiledClass).%ExistsId(tClass) {
+            Set tSC = ..Internal(pDescriptor _ " declares a state read against " _ tClass _ ", which this instance does not hold", .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tRowsSC = $ClassMethod(tClass, ..#STATEROWSMETHOD, .pAnswer)
+        If $$$ISERR(tRowsSC) {
+            Set pAnswer = ""
+            Set tSC = ..Internal(pDescriptor _ "'s state read failed: " _ $System.Status.GetErrorText(tRowsSC), .pHttpStatus, .pFault)
+            Quit
+        }
+    } Catch ex {
+        Set pAnswer = ""
+        Set tSC = ..Internal("the state read failed: " _ ex.DisplayString(), .pHttpStatus, .pFault)
     }
     Quit tSC
 }

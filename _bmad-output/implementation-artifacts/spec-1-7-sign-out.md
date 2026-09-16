@@ -41,7 +41,7 @@ deferred:
       ui/src/app/core/session.ts (runRefresh, retryProbeThenEnd, probeAndSettle)
     severity: medium
   - summary: >-
-      account-menu.ts has no executed component test host, so its open/close behaviour and the
+      account-menu.ts has no executed component test host, so its open/close behavior and the
       effect-driven focus move to the first item are pinned only by source reads.
     evidence: |-
       Same gap already ledgered as DW-93 for sign-in.ts; Story 1.9 is named as the owner of the
@@ -156,7 +156,7 @@ pin over the real wire that a logout carrying **both** the Bearer and the cookie
   Bearer-only → 200 and it survives; cookie-only → 401. Both credentials are load-bearing.
 - The local half — clear the pair, disarm the renewal, settle the state — runs **first and unconditionally**,
   before the request and never gated on its outcome (DW-5).
-- Every user-facing word from `ui/src/app/core/strings.ts`; every colour an existing `--ocu-*` token; the
+- Every user-facing word from `ui/src/app/core/strings.ts`; every color an existing `--ocu-*` token; the
   session logic stays framework-free in `core/` so `node --test` executes it.
 - No token, cookie value or credential reaches a log, a URL, a status message or an assertion description
   (AD-35) — `%UnitTest.Manager.LogAssert` persists descriptions on pass as well as failure.
@@ -210,7 +210,7 @@ pin over the real wire that a logout carrying **both** the Bearer and the cookie
   `.ocu-banner` `:246`/`-restrained` `:259`. No chrome rules and no `focus-ring.on-chrome` variant exist.
 - `ui/tools/client-lint.mjs` — no literal text node `:175-194`; a control-flow condition must be **paren-free**
   (`@if (open)`, never `@if (isOpen())`) `:154-160`; `aria-label` takes only a whole `{{ STRINGS.<key> }}`
-  `:130-131`, `:256-275`; no colour literal outside `_tokens.scss` `:80-107`.
+  `:130-131`, `:256-275`; no color literal outside `_tokens.scss` `:80-107`.
 - `ui/tools/session.test.mjs` (894) — `:401` and `:425` already pin the two "signed out elsewhere" outcomes.
   `:549`, `:566`, `:580`, `:596`, `:753` and `:854` enumerate the state list or expect `'form'` after
   `signOut()`, and all must gain `signed-out`.
@@ -242,7 +242,7 @@ pin over the real wire that a logout carrying **both** the Bearer and the cookie
 - `ui/src/app/shell/account-menu.ts` — *new*. `app-account-menu`, `OnPush`, the signal bridge `sign-in.ts`
   uses. A trigger button carrying the session's `userName()` plus a down-triangle glyph computed in
   TypeScript as the escape `'\u25BE'`, never a literal byte (Rule 14), and rendered `aria-hidden`, with
-  `aria-haspopup="menu"` and a bound `[attr.aria-expanded]`; a `role="menu"` panel labelled by the
+  `aria-haspopup="menu"` and a bound `[attr.aria-expanded]`; a `role="menu"` panel labeled by the
   trigger's id (no new string), holding one `role="menuitem"` button
   reading `{{ STRINGS.actionSignOut }}` that calls `session.signOut()`. Escape closes and returns focus to
   the trigger (EXPERIENCE.md `:532`); the open flag is a paren-free getter. No literal text node anywhere.
@@ -252,7 +252,7 @@ pin over the real wire that a logout carrying **both** the Bearer and the cookie
 - `ui/src/app/app.ts` — render `<app-account-menu />` inside the `@if (signedIn)` branch, above
   `<router-outlet />`. Leave line `:34` exactly as it is; `build-output.test.mjs:195-226` reads it.
 - `ui/src/styles/_components.scss` — add the account-menu rules (trigger, panel, item, hover, focus ring via
-  the existing mixin) from existing tokens. Add no colour token.
+  the existing mixin) from existing tokens. Add no color token.
 
 **Execution — tests:**
 
@@ -358,7 +358,7 @@ four tests: `npm --prefix ui test` is now **203/203**, superseding the `## Auto 
   `(inference)` label CLAUDE.md requires at each document boundary
   [ARCHITECTURE-SPINE.md:352] — deferred: DW-117, `wontfix-accepted`. The conclusion is
   mechanism-backed (the credentialled logout deletes the group node) and unchanged; only the
-  epistemic labelling is short, and the spine is the lead's under Rule 20.
+  epistemic labeling is short, and the spine is the lead's under Rule 20.
 - [x] [Review][Defer] The sign-out focus-destination defer was appended as a bare `occurrence` on
   DW-103, whose body describes a different mechanism [deferred-work.md:634] — deferred: a note
   trailer was appended to DW-103 preserving its status and owner, so Story 1.10 inherits the
@@ -657,7 +657,7 @@ covering the seven acceptance criteria, seven at review covering the tests the r
 with the tree confirmed byte-identical after each.
 
 **Follow-up review recommended: true.** The named unverified risk is the account menu's *runtime*
-behaviour. `account-menu.ts` has no executed component test host until Story 1.9 (DW-93), so its open/close
+behavior. `account-menu.ts` has no executed component test host until Story 1.9 (DW-93), so its open/close
 cycle, the `effect()` that moves focus to the first item, and the `(keydown.escape)` binding are pinned
 only by source reads — assertions whose removal type-checks and builds clean. The spec's two manual browser
 checks, which would have exercised exactly that path, were not performed: they require the bundle installed

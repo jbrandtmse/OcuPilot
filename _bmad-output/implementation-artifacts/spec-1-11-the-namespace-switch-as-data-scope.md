@@ -133,7 +133,7 @@ Anchors verified 2026-09-12 against the working tree, the live `ocupilot` instan
 - `ui/src/app/core/strings.ts` — `headerNamespaceLabel: 'Namespace'` `:318` (its comment `:315-317` names this story), `privilegeRequiresResource: 'Requires <resource>'` `:196`. `ui/tools/strings.test.mjs` — `extractNamespaceSwitchName` `:123` already derives the name from `EXPERIENCE.md:315`; `EXTRACTED_FROM_PROSE` `:161-167`; `REQUIRED_ALONGSIDE_TABLE` `:255-259` with its do-not-grow comment.
 - `ui/src/app/core/screens.generated.ts` — `entityType` `:58`, `scope` `:60`, and `ENTITY_TYPES` mirrored from `Kernel/EntityType.cls` (`ui/tools/screen-mirror.mjs:276-277`, refusal `:200-205`), so the client validates a type without a second vocabulary.
 - `ui/src/styles/_components.scss` — header band `:827-842`, lockup `:849-864`, namespace slot `:866-887`; popup surfaces to reuse: account menu `:421-441`, command-box sheet `:957-1025`. `_tokens.scss` `--ocu-surface-container-lowest` `:77`, `--ocu-elevation-2` `:196`, `--ocu-on-shell`, `--ocu-shell-edge`; `_metrics.scss` `--ocu-header-height` `:30`, radii `:22-25`.
-- UX anchors: `EXPERIENCE.md:315` (accessible name, list rule, selection behaviour, no rewrite, no dialog), `:66`/`:177` (the route form), `:320` (namespace is not a locator segment), `:326` (context-chip — Epic 5), `:552` (the two bans), `:622` (why it re-fetches rather than rewrites); `DESIGN.md:1007` (eyebrow at 100% over the name in `caption`, dotted 1px underline, `▾`, hover `on-shell` at 8%, focus ring on chrome), `:821` (the contrast figures at the gradient's end).
+- UX anchors: `EXPERIENCE.md:315` (accessible name, list rule, selection behavior, no rewrite, no dialog), `:66`/`:177` (the route form), `:320` (namespace is not a locator segment), `:326` (context-chip — Epic 5), `:552` (the two bans), `:622` (why it re-fetches rather than rewrites); `DESIGN.md:1007` (eyebrow at 100% over the name in `caption`, dotted 1px underline, `▾`, hover `on-shell` at 8%, focus ring on chrome), `:821` (the contrast figures at the gradient's end).
 
 ## Tasks & Acceptance
 
@@ -155,7 +155,7 @@ Anchors verified 2026-09-12 against the working tree, the live `ocupilot` instan
 - `ui/src/app/shell/namespace-switch.ts` *(new)* — the control in the header's slot: a trigger carrying the eyebrow and the current scope per `DESIGN.md:1007` (dotted 1px underline, the `▾` glyph authored as its escape per Rule 14, `on-shell` at 100%), `aria-haspopup="listbox"` / `aria-expanded`, opening a `role="listbox"` named by `STRINGS.headerNamespaceLabel` whose options are the writable namespaces with `aria-selected` on the current one. Registers with the overlay stack in the `command-box.ts:343` shape; watches `router.events` for the route's `ns` and hands it to `scope.setRequested`; `select` navigates with the query alone so the path never changes. When the route's namespace is unresolvable it replaces it with the resolved scope using `replaceUrl`, and where the cause is a missing pair it names it with `formatRequires(STRINGS.privilegeRequiresResource, failedPair)`.
 - `ui/src/app/shell/header.ts` — replace the value span `:60` with `<app-namespace-switch />`, keeping the band and the eyebrow's authority. `namespace()` `:74-80` moves into the switch; the header keeps `homeHref`/`goHome`.
 - `ui/src/app/core/entity-ref.ts` *(new, framework-free)* — the client mirror of the triple: `INSTANCE_SCOPE`, `entityRefKey(type, scope, id)`, `parseEntityRefKey(key)`, validating the type against `ENTITY_TYPES` from `core/screens.generated.ts`. It is what 1.14 routes a re-fetch on.
-- `ui/src/styles/_components.scss` — the switch's trigger and popup from the existing tokens (`--ocu-surface-container-lowest`, `--ocu-elevation-2`, `--ocu-on-shell`, the `radius-sm`/`md` pair). Add no colour token.
+- `ui/src/styles/_components.scss` — the switch's trigger and popup from the existing tokens (`--ocu-surface-container-lowest`, `--ocu-elevation-2`, `--ocu-on-shell`, the `radius-sm`/`md` pair). Add no color token.
 
 **Execution — tests:**
 
@@ -249,7 +249,7 @@ Story status `done`; 2 entries stay open, both ledgered with an owner and non-bl
   principal, and `reset()` bumps the generation and nulls `inFlight`, so it has no changed-input case.
 
 **Closed at emission.** `by-design`: the refusal's persistence into `[attr.title]` — now read as the
-accessible *description* because QA's `aria-labelledby` wins the name — is the behaviour
+accessible *description* because QA's `aria-labelledby` wins the name — is the behavior
 `scope.test.mjs`'s DW-8 row pins and the implement stage's triage deliberately kept.
 `wontfix-theoretical` (each with what would make it real): `choose()` ignoring a rejected
 navigation (a route guard on a shell route); `GlobalDatabase` ignoring `GlobalDB.Mounted`/`Status`
@@ -274,6 +274,7 @@ other end.
 
 **Rejected because the fix is to edit this spec** (recorded for the lead, who owns them): the
 `## Auto Run Result` is a stage stale — it reports 336 Node + 122 component against a measured 345
+
 + 124, omits QA's four files, and its patch tallies do not reconcile with the triage log; the
 frontmatter `status: done` disagrees with `sprint-status.yaml`'s `review` and the `deferred:` list
 carries two closed items; and the task line for `Kernel/Scope.cls` still claims `Set` "kills before
@@ -333,7 +334,7 @@ names. `OcuPilot.Test.Scope.Bad` with `OcuPilot.Test.ScopeRegistry`.
   - `[medium]` `[patch]` `ScopeService` has no generation guard, so `reset()` cannot cancel an in-flight read — verified: `runLoad`/`runVerify` resume past their `await` and write `entries`/`loadedOnce`; `NavigationService:208,328,337,342` carries the counter for this exact hazard. Added the same counter, read across both awaits.
   - `[medium]` `[patch]` Only a presentational component ever loads the namespace list — verified: `scope.load()` was called from `namespace-switch.ts:197` alone. `App.verifyWhenSignedIn()` now calls it too; both reach the same single-flight `load()`.
   - `[low]` `[reject]` The list is never re-read after the first load — real, but a privilege granted mid-session is not everyday use and a list re-read per 403 adds a request to every refusal; the App-level `load()` above gives a later signed-in pass the retry.
-  - `[low]` `[reject]` The refusal is cleared only by `select()`, so its tooltip persists — the persistence is the specified behaviour: the refusal arrives after the URL is corrected, and `scope.test.mjs`'s DW-8 row pins that it survives. I applied the clear-on-listed fix and that row went red; reverted.
+  - `[low]` `[reject]` The refusal is cleared only by `select()`, so its tooltip persists — the persistence is the specified behavior: the refusal arrives after the URL is corrected, and `scope.test.mjs`'s DW-8 row pins that it survives. I applied the clear-on-listed fix and that row went red; reverted.
   - `[medium]` `[patch]` The `role="status"` region is created together with its text, so it does not announce — verified against the project's own `command-bar.ts:73` and its rule at `:152`. Region now mounted unconditionally and empty.
   - `[medium]` `[defer]` The trigger has no accessible name saying what it controls — verified; AC1's listbox name is satisfied, and the fix changes a header control's announced name under DW-139's escalated DESIGN/EXPERIENCE divergence. Deferred with both candidate fixes.
   - `[medium]` `[patch]` `entity-ref.test.mjs`'s corpus is not the corpus its header claims — verified: `Corpus()` carries 17, the file carried 10, and it included `a~b` which `entity-id.test.mjs` deliberately excludes. All 17 now present; the claim states why `a~b` belongs to a key grammar.
@@ -375,7 +376,7 @@ names. `OcuPilot.Test.Scope.Bad` with `OcuPilot.Test.ScopeRegistry`.
   - `[low]` `[reject]` (gap) `screen-outlet.ts` still parses the route's `ns` itself — pre-existing from Story 1.10; no screen reads `data-ns` yet and 1.14 owns the re-fetch routing.
   - `[medium]` `[defer]` (intent) The diff sends the `ns` the matrix's unknown-`ns` row says it never sends — verified; the row's rationale clause and the DW-8 AC cannot both hold literally, the implementation follows the AC, and amending a frozen matrix is the lead's under Rule 5.
   - `[medium]` `[patch]` (intent) The Integration AC is exercised as four disjoint stubs with the joining lines untested — same root cause as the `main.ts` gap above; the composed test closes it.
-  - `[false]` `[reject]` (intent) `screen-outlet.spec.ts` pins code this story did not touch — pinning a behaviour the story depends on is regression pinning; `data-ns` being older does not make the assertion vacuous.
+  - `[false]` `[reject]` (intent) `screen-outlet.spec.ts` pins code this story did not touch — pinning a behavior the story depends on is regression pinning; `data-ns` being older does not make the assertion vacuous.
   - `[low]` `[reject]` (intent) The percent-encoding row asserts the decode pre-applied — the real decode is exercised over HTTP in `Test/Wire.cls` on the denied path, which proves the server saw `%SYS`; a successful `%SYS` entry would need a throwaway principal granted `%DB_IRISSYS:READ`, which this run must not create.
   - `[false]` `[reject]` (intent) The triple crosses no boundary — the spec's Design Notes state exactly that under Rule 1, naming 1.14 and Epic 5 as the first consumers.
   - `[medium]` `[patch]` (intent) The named pair reaches no one — same root cause as the `role="status"` finding; with the region mounted the announcement fires.

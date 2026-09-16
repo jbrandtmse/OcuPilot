@@ -34,7 +34,7 @@ deferred:
       side-bar.ts:219 refuses that same entry in place. Not patched: the I/O matrix specifies
       "router at the first built route", so changing the target is a spec-bound change. The
       pre-existing locator test that covered the screen-verdict case was replaced by the
-      DW-143 area-verdict one, so the behaviour is now unpinned too.
+      DW-143 area-verdict one, so the behavior is now unpinned too.
     location: 'ui/src/app/areas/home/home.page.ts (activate); ui/src/app/shell/locator-bar.ts (open)'
     severity: medium
   - summary: >-
@@ -111,7 +111,7 @@ deferred:
 - `core/navigation.ts` — `Verdict` `:32-39`, `areaVerdict` `:261-263`, `screensForArea` `:234-236`, `formatRequires` `:120-122`, `withQuery` `:142-150`.
 - `shell/rail.ts:119-133,158-162` — the refusal pattern to copy for tiles and for the locator: `gated`, `ariaDisabled`, the reason, an early `return` in activate.
 - `shell/side-bar.ts:146-159` (reason + `aria-describedby`), `:255-270` (`closeFromKeyboard` → `shell.toggleOpen()` — the DW-144 defect).
-- `core/shell-state.ts:82-118` — `activateArea` (its toggle-shut branch is rail behaviour, not tile behaviour) and `setOpen`, which persists; `:82-90` already collapses without persisting, the precedent for DW-144.
+- `core/shell-state.ts:82-118` — `activateArea` (its toggle-shut branch is rail behavior, not tile behavior) and `setOpen`, which persists; `:82-90` already collapses without persisting, the precedent for DW-144.
 - `shell/locator-bar.ts:111-132`, `:185-197` — segments built with `navigates: areaHasSomewhereToGo(...)` and no verdict consulted: the DW-143 defect.
 - `shell/command-bar.ts:64-73` (dangling `aria-describedby`), `:154-156` (`matchCount` returns `''` unconditionally).
 - Instance-line sources, all existing: `core/instance.ts` `serverName()` `:182`, `instanceVersion()` `:158`, `serverFlag()` `:172`; `core/scope.ts` `namespace()` `:193`; `core/session.ts` `userName()` `:276`; `shell/server-flag.ts` is the reusable flag component (words at `strings.ts:329-332`).
@@ -123,6 +123,7 @@ All paths are under `ui/src/app/` unless shown otherwise.
 ## Tasks & Acceptance
 
 **Execution:**
+
 - `ui/src/app/areas/home/home.page.ts` -- new standalone `OnPush` component, first tenant of `areas/` per the spine's Angular-naming convention -- renders the tile grid and instance line from the services above.
 - `ui/src/app/shell/screen-outlet.ts` -- archetype→component map; render the match for an allowed screen -- AD-5: adding a screen must not edit a router.
 - `ui/src/styles/_components.scss` -- `.ocu-area-tile` grid and tile rules (auto-fit, `--ocu-tile-min-width` minimum, `--ocu-space-2` gaps, wrap, 24px icon slot, `--ocu-radius-md`, hover/focus/gated states) and the instance-line rule with the version not ellipsized -- tokens only.
@@ -135,6 +136,7 @@ All paths are under `ui/src/app/` unless shown otherwise.
 - `ui/tools/design-tokens.test.mjs` -- assert the `.ocu-server-flag` bound reaches the stylesheet -- jsdom computes no layout, so the stylesheet tier is where it is falsifiable.
 
 **Acceptance Criteria:**
+
 - **Integration AC (Rule 1).** Given Home's descriptor declares `archetype: "home"` and its verdict is allowed, when the router is at route `''`, then `ScreenOutlet` — the consumer — renders the Home page inside `.ocu-screen-outlet`, resolved through the archetype map and not through a route-table entry naming the component.
 - Given a tile has DOM focus, when Enter or Space is pressed, then activation is identical to a click, including the refusal when the tile is gated.
 - Given the story is complete, when `node tools/client-lint.mjs` and `node --test tools/strings.test.mjs` run, then both pass with `strings.ts` unchanged — no new user-facing copy was introduced.
@@ -151,10 +153,10 @@ DW-145 host fix the implement stage found in its own work.
 - [x] [Review][Patch] DW-145's cap was on the wrong box, so the ellipsis it promises is itself clipped — no global `box-sizing` reset exists, so `max-width: 100%` capped the *content* box and the pill's border box overran the clipping host by its 8px padding and 1px border. A 200-character mode ended in a cut word, not an ellipsis. `box-sizing: border-box`; `line-height` 18px → 16px so the 18px pill has no vertical overflow to clip [ui/src/styles/_components.scss:1425]
 - [x] [Review][Patch] The pill's published `label` type role was inherited, not stated — it held in the 24px bar (`label`) and failed on Home's instance line (`caption`), so this story's second host drew the same badge two sizes and a weight apart from DESIGN.md `:1025` [ui/src/styles/_components.scss:1425]
 - [x] [Review][Patch] The 24px icon slot had no `display`; a `<span>` is an inline box and ignores `width`/`height`, so DESIGN.md `:1102`'s geometry was a property of `.ocu-area-tile` being a flex container. `.ocu-rail-glyph`, which the comment cites as the precedent, does declare one [ui/src/styles/_components.scss:1523]
-- [x] [Review][Patch] `overflow: hidden` moves an inline-block's baseline to its bottom margin edge — the story's own residual risk names this. `vertical-align: middle` on the host makes the placement a property of the rule rather than of two parents that happen to centre their items [ui/src/styles/_components.scss:1419]
+- [x] [Review][Patch] `overflow: hidden` moves an inline-block's baseline to its bottom margin edge — the story's own residual risk names this. `vertical-align: middle` on the host makes the placement a property of the rule rather than of two parents that happen to center their items [ui/src/styles/_components.scss:1419]
 - [x] [Review][Patch] (Rule 19) The gated tile's "does not navigate" **URL** assertion could not fail: `permissions/users` was absent from the file's router table, so `router.url` could never leave `/`. The row reddened only through `visibleArea`. Target route added; the identical defect was fixed one row down by moving that row to `/logs` [ui/src/app/areas/home/home.page.spec.ts:200]
 - [x] [Review][Patch] (Rule 19) DW-146's stylesheet pin carried the append hole the same pass had just closed for DW-145 — appending `text-overflow: ellipsis` inside `.ocu-instance-version` left three presence-only assertions green. `doesNotMatch` guards added [ui/tools/design-tokens.test.mjs]
-- [x] [Review][Patch] (Rule 19) `showArea`'s one contentious behaviour — replacing a stored `false` preference, which its doc comment spends a paragraph justifying — was asserted only from a default-open store [ui/tools/shell-state.test.mjs]
+- [x] [Review][Patch] (Rule 19) `showArea`'s one contentious behavior — replacing a stored `false` preference, which its doc comment spends a paragraph justifying — was asserted only from a default-open store [ui/tools/shell-state.test.mjs]
 - [x] [Review][Patch] (Rule 19) QA's `resolveArchetypePage` guard suite had no `mutation:` row, and the roster's `&& !area.pinBottom` line said "red, alone" when it reddens two rows. Both demonstrated and written into `## Verification` [_bmad-output/implementation-artifacts/spec-1-12-home.md]
 - [x] [Review][Patch] Two dead gated-state class bindings — `.ocu-area-tile-gated` and `.ocu-locator-link-gated` have no stylesheet rule and no test; both new surfaces style off `[aria-disabled='true']` instead. Bindings deleted (the attribute selector cannot drift from the state it styles) [ui/src/app/areas/home/home.page.ts:114, ui/src/app/shell/locator-bar.ts:95]
 - [x] [Review][Patch] The harvest filed five new ledger entries and appended no `occurrence` to any root cause this story re-hit (Rule 15). `occurrence=1-12-home` appended to DW-126, DW-148, DW-149, DW-159 [_bmad-output/implementation-artifacts/deferred-work.md]
@@ -173,14 +175,14 @@ risk paragraph names it.
 - `low` The spec frontmatter's AC4 deferral says "none is built before Epic 4 (Story 4.3)"; DW-160 and `epics.md:2404` say Epic 4 / Story 4.3. The routing target is right and the ledger is what a later gate reads; the fix edits this spec.
 - `low` `## Auto Run Result`'s arithmetic is off — "`ng test` 146 green" (it is 146 since QA's test), "27 mutation lines (26 distinct)" (the roster carries 27 lines, 26 distinct), "seventeen entries patched (7 medium, 10 low)" (the triage log carries 17: 7 medium, 10 low). Narrative only; the fix edits this spec.
 - `low` The frontmatter's DW-164 entry frames the conflict as EXPERIENCE.md `:157` (a *side-bar* rule) against DESIGN.md `:1102`. EXPERIENCE.md `:352` and DESIGN.md `:1102` agree with each other and both enumerate the names; the real conflict is those two against the build-only reading — which is exactly how DW-164's own ledger entry states it. `home.page.ts`'s citation of `:352` + `:157` is correct as written.
-- `low` Design Notes says captions come from "the navigation payload"; they come from the generated mirror (`screensForArea` → `builtScreensForArea` → `SCREENS`), the payload contributing verdicts only. The behaviour is right and Epic 2 cannot break it — the consequence worth carrying forward is that a descriptor must be **regenerated into `screens.generated.ts`** for its name to reach a caption; adding it server-side alone changes nothing on Home.
+- `low` Design Notes says captions come from "the navigation payload"; they come from the generated mirror (`screensForArea` → `builtScreensForArea` → `SCREENS`), the payload contributing verdicts only. The behavior is right and Epic 2 cannot break it — the consequence worth carrying forward is that a descriptor must be **regenerated into `screens.generated.ts`** for its name to reach a caption; adding it server-side alone changes nothing on Home.
 - `low` `wontfix-accepted` `ARCHETYPE_PAGES` holds statically imported components, so every area page joins the initial chunk; no AD covers lazy loading. Bounded by archetype count, not screen count. `reopen_if=ng build reports a bundle-budget warning` (`build-output.test.mjs` runs a real build).
 - `low` `wontfix-theoretical` The DW-145/146 stylesheet extractions bind only the first rule carrying each selector. The regexes are line-anchored, so today's `.ocu-server-flag[data-flag='live']` and `:root.ocu-theme-dark .ocu-server-flag` do not defeat them; a second *bare* rule appended later would. Real when a second bare rule exists.
 - `low` `wontfix-theoretical` A denial with an empty `failedPair` renders "Requires " naming no privilege. Shared verbatim with the rail since 1.9; no denial path in `Screen/Gate.cls` produces one. Real when a gate returns `allowed:false` with no pair.
 - `low` Before the navigation map answers, `areaVerdict` defaults to `UNGATED` and every tile paints allowed. Pre-existing and identical on the rail; AD-8 puts the real refusal on the server.
 - `low` The Integration AC's route-table assertion overlaps `app.routes.spec.ts`. It is the AC's own "not through a route-table entry naming the component" half and belongs where the AC is pinned.
 - `low` `side-bar.spec.ts:419`'s `querySelector('nav')` is captioned about the preference but reopens regardless of it. True and supplementary; the claim is carried by `:420`, which reddens under the spec's named mutation.
-- `low` DW-162 is labelled `in-epic` with an Epic 2 owner while DW-160 is `out-of-footprint` with an Epic 4 owner. The entry body is write-once and neither owner is wrong.
+- `low` DW-162 is labeled `in-epic` with an Epic 2 owner while DW-160 is `out-of-footprint` with an Epic 4 owner. The entry body is write-once and neither owner is wrong.
 - `low` The spec more than doubled while flagged `oversized`. The fix edits this spec, which step 3 excludes; noted so the next re-open appends only open items.
 
 ## Spec Change Log
@@ -188,7 +190,7 @@ risk paragraph names it.
 - 2026-09-12 (lead, Rule 5 amendment during Story 1.13's planning): the tile-activation row said "the first built
   route", which lands an allowed-area user on the refusal page whenever that screen's own verdict denies - the defect
   ledgered as DW-161. The row now reads "the first built route whose screen verdict allows, gated when none does".
-  Story 1.13 implements it; this story's shipped behaviour is the one the row previously described.
+  Story 1.13 implements it; this story's shipped behavior is the one the row previously described.
 
 **Decision (implement) — the tile roster is derived, not enumerated.** Naming `home` and `agent` in the page would be a second source for the area vocabulary beside the mirror, so the filter reads the declaration: Home is the one area whose rail item `navigates`, Agent the one that is `pinBottom`. A ninth area takes a tile without editing the page.
 
@@ -197,6 +199,7 @@ risk paragraph names it.
 ## Review Triage Log
 
 ### 2026-09-12 — Review pass
+
 - verdicts: 37 findings — high 0, medium 16, low 20, false 1, maybe-false 0
 - findings:
   - `[medium]` `[defer]` A tile navigates into a screen the map denies — verified: `screensForArea` is built-only and `activate()` refuses on the area verdict alone, while `side-bar.ts:219` refuses the same entry in place. Filed; the matrix specifies "the first built route", so retargeting is spec-bound.
@@ -227,13 +230,13 @@ risk paragraph names it.
   - `[low]` `[reject]` (verification gap) The "24px icon slot" size is asserted nowhere — the measure is the `--ocu-space-6` token, already pinned in the metrics tier; asserting the consumer too is not worth a row.
   - `[low]` `[reject]` (verification gap) "AC4" names different criteria in two places — the frontmatter wording is the plan's and the dispatch says keep it; the ambiguity is avoided in this section instead.
   - `[low]` `[reject]` (verification gap) The DW-145 re-layout has no executed-code verification — true and already routed to the lead's browser gate; it is this pass's named residual risk.
-  - `[low]` `[reject]` (intent) Three rows' expectations sit at a surface no test reaches — the component-contract reading is chosen openly and labelled, not concealed.
+  - `[low]` `[reject]` (intent) Three rows' expectations sit at a surface no test reaches — the component-contract reading is chosen openly and labeled, not concealed.
   - `[medium]` `[patch]` (intent) DW-145's stated observable cannot fail — verified: `.ocu-status-bar` declares a fixed 24px height and does not wrap, so the height holds either way. The manual check now names the horizontal failure.
   - `[medium]` `[defer]` (intent) The DW-145 change is at a wider selector than the row places it — same root cause as the pill/`title` row.
   - `[low]` `[patch]` (intent) The roster invariant is unasserted — added assertions that exactly one area `navigates` and one is `pinBottom`.
   - `[low]` `[reject]` (intent) The caption's positive case is exercised only against a stub — unavoidable while Home is the only descriptor, and the spec header says so.
   - `[medium]` `[defer]` (intent) DW-141 lost the other branch's coverage — same root cause as the `filterDescribedBy` row.
-  - `[low]` `[patch]` (intent) The keyboard criterion's test is markup, not behaviour — same root cause as the Enter/Space mutation row.
+  - `[low]` `[patch]` (intent) The keyboard criterion's test is markup, not behavior — same root cause as the Enter/Space mutation row.
   - `[low]` `[reject]` (intent) The live tier exercises the payload, not the page — no browser-runtime harness exists (DW-159); named as residual risk.
   - `[low]` `[patch]` (intent) "The running container serves a pre-1.10 bundle" is wrong — the served bundle carries 1.10 and 1.11 markers. Corrected below; the conclusion (a redeploy is needed) stands.
 
@@ -262,11 +265,13 @@ risk paragraph names it.
 ## Verification
 
 **Commands** (one runner invocation per tool call, awaited; never two in one message, never re-submitted on a client-side timeout):
+
 - `cd ui && npm test` -- expected: the `node --test tools/` tier and `ng test` both green.
 - `cd ui && node tools/client-lint.mjs` -- expected: exit 0, proving no literal user-facing text entered a template.
 - `cd ui && node tools/screen-mirror.mjs --check` -- expected: no drift; this story does not change the mirror.
 
 **Pinning tests** (Rule 19 — every mutation below was applied, observed red, reverted, and the tree confirmed byte-identical at the implement stage):
+
 - Outlet renders Home by archetype (Integration AC) -- `screen-outlet.spec.ts`
   - mutation: keyed `ARCHETYPE_PAGES` on `list` instead of `home` → "Integration AC: an allowed screen renders the page its declared archetype names" red, alone in the suite
   - mutation (QA's extracted guard, demonstrated at review): `resolveArchetypePage` back to `pages[archetype] ?? null` → "the archetype map guard (Object.hasOwn, not a bare index)" red, alone
@@ -321,6 +326,7 @@ risk paragraph names it.
 **Live instance vs throwaway principals.** This story changes no ObjectScript, adds no `%UnitTest` class and needs no throwaway principal. The live check is a regression run of the two suites that already pin the payload the tiles consume — `OcuPilot.Test.Navigation`, then `OcuPilot.Test.Wire` (which mints its own throwaway `OcuPilotWire*` principals and deletes them in teardown) — each in its own `iris_execute_tests` call with `server: "ocupilot-iris"`, the second sent only after the first has landed in `%UnitTest_Result`. Do not recreate the `ocupilot` container.
 
 **Manual checks (the lead's browser gate — jsdom computes no layout and there is still no browser-runtime harness, DW-159):**
+
 - The tile grid wraps rather than scrolling horizontally at 1,280 / 1,024 / 900 px, keeping the 168px minimum and 8px gaps.
 - The gated tile's reason appears on hover **and** on keyboard focus, and so does the locator area segment's — the same clipped-to-visible shape, added by DW-143.
 - A 200-character system mode ellipsizes inside the pill and does not push the status bar's right-hand group off the viewport (DW-145). Not the bar's height: `.ocu-status-bar` declares `height: var(--ocu-status-bar-height)` and does not wrap, so 24px holds with or without this fix — the failure DW-145 describes is horizontal.
@@ -370,13 +376,13 @@ pass's output.
 the pill moved from `inline-flex` to `inline-block` with an explicit `line-height`, and both it
 and its host now clip — in the 24px status bar and on Home. No executed test observes rendering:
 jsdom computes no layout, so the stylesheet tier asserts source text only. `overflow` other than
-`visible` also moves an inline-block's baseline, invisible today only because both parents centre
+`visible` also moves an inline-block's baseline, invisible today only because both parents center
 their items. That is the one changed rendering in this diff with no executed-code verification,
 and it is what the browser gate must look at first.
 
 **Left for the lead.** The Manual checks: the grid's wrap at 1,280 / 1,024 / 900 px, the gated
 reason's reveal on hover and focus for both the tile and the locator, and a 200-character system
-mode's behaviour in the status bar. The running container serves a build that predates this story
+mode's behavior in the status bar. The running container serves a build that predates this story
 — its bundle carries Story 1.10 and 1.11 markers but no `ocu-area-tile` — so the browser gate
 needs a redeploy, which is the owner's call. The panel-widening criterion stays deferred in the
 frontmatter, with four findings filed beside it.

@@ -182,9 +182,9 @@ ClassMethod CapturedAllWithData(pLevel As %String) As %String
 
 /// <p>Drive <method>OcuPilot.Install.Installer.AssertApplications</method> over one synthetic
 /// application description, switching to <code>%SYS</code> and restoring (AD-16).</p>
-/// <p><b>Why a seam is needed at all.</b> The install-time assertion is the last step of a
-/// successful install, so on a healthy instance it only ever passes -- every state it refuses
-/// is one the ensure steps just finished making impossible. Its refusal arms are therefore
+/// <p><b>Why a seam is needed at all.</b> On a healthy instance the install-time assertion only
+/// ever passes -- every state it refuses is one the ensure steps before it just finished making
+/// impossible. Its refusal arms are therefore
 /// unreachable end-to-end, and were reached by no test until Story 1.17's matrix audit: an
 /// assertion whose failure path nothing executes is the vacuous gate this story exists to
 /// remove. This calls the real private method through <code>..</code> dispatch, so what the
@@ -204,6 +204,92 @@ ClassMethod AssertOneApplication(pKey As %String, pName As %String, pRole As %St
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
         If $$$ISERR(tSC) Quit
         Set tSC = ..AssertApplications(.tNames, tOrigNS, .tReports)
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p><method>AssertOneApplication</method> with the roster's manifest values supplied, so the
+/// arms that compare the live <code>AutheEnabled</code> and <code>DispatchClass</code> against
+/// what the roster declares are reached. Without a manifest those two arms short-circuit on their
+/// own <code>'= ""</code> guard, which is what every other caller here does.</p>
+/// @param pKey the roster key to describe
+/// @param pName the web application path to assert
+/// @param pRole the matching role name the caller claims the roster declares
+/// @param pAuthe the AutheEnabled value the caller claims the roster declares, or "" to skip that arm
+/// @param pDispatch the DispatchClass the caller claims the roster declares, or "" to skip that arm
+ClassMethod AssertOneApplicationWithManifest(pKey As %String, pName As %String, pRole As %String, pAuthe As %String, pDispatch As %String) As %Status
+{
+    Kill tNames, tReports
+    Set tNames("appKeys") = pKey
+    Set tNames("appName", pKey) = pName
+    Set tNames("appRole", pKey) = pRole
+    If pAuthe '= "" Set tNames("appManifest", pKey, "AutheEnabled") = pAuthe
+    If pDispatch '= "" Set tNames("appManifest", pKey, "DispatchClass") = pDispatch
+    Set tOrigNS = $NAMESPACE
+    Set tSC = $$$OK
+    Try {
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..AssertApplications(.tNames, tOrigNS, .tReports)
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>The live <code>AutheEnabled</code> and <code>DispatchClass</code> of web application
+/// <var>pName</var>, as <code>&lt;AutheEnabled&gt;|&lt;DispatchClass&gt;</code>, read in
+/// <code>%SYS</code> and restored (AD-16). Read from the instance so a test states what the
+/// application really carries rather than what it assumes.</p>
+ClassMethod ApplicationAutheAndDispatch(pName As %String) As %String
+{
+    Set tOut = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        If $$$ISERR(tSC) Quit
+        If ##class(Security.Applications).Exists(pName, .tObj, .tES) {
+            Set tGetSC = ##class(Security.Applications).Get(pName, .tProps)
+            If $$$ISOK(tGetSC) Set tOut = +$Get(tProps("AutheEnabled")) _ "|" _ $Get(tProps("DispatchClass"))
+        }
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tOut = ""
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tOut
+}
+
+/// <p>Drive <method>OcuPilot.Install.Installer.AssertNoForeignOcuPilotRole</method> over one
+/// synthetic profile description, switching to <code>%SYS</code> and restoring (AD-16).</p>
+/// <p>The same seam treatment <method>AssertOneApplication</method> carries, and for the same
+/// reason: on a healthy instance the assertion only ever passes -- every state it refuses is one
+/// the ensure steps before it just finished making impossible -- so its refusal arms are
+/// unreachable end to end. It calls the real private method through <code>..</code> dispatch, so
+/// what the test drives is the shipped code.</p>
+/// @param pAdminRole the administrative role that must be an application role of nothing
+/// @param pKey the roster key to describe
+/// @param pName the web application path that key names
+/// @param pRole the matching role the caller claims that application declares
+ClassMethod AssertNoForeignRole(pAdminRole As %String, pKey As %String, pName As %String, pRole As %String) As %Status
+{
+    Kill tNames, tReports
+    Set tNames("appKeys") = pKey
+    Set tNames("appName", pKey) = pName
+    Set tNames("appRole", pKey) = pRole
+    Set tNames("adminRole") = pAdminRole
+    Set tOrigNS = $NAMESPACE
+    Set tSC = $$$OK
+    Try {
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..AssertNoForeignOcuPilotRole(.tNames, .tReports)
     } Catch ex {
         Set $NAMESPACE = tOrigNS
         Set tSC = ex.AsStatus()

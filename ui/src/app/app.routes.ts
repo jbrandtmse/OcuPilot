@@ -1,8 +1,30 @@
-import { Routes } from '@angular/router';
+import { inject } from '@angular/core';
+import { type CanDeactivateFn, Routes } from '@angular/router';
 
+import { FormDirty } from './core/form-dirty';
 import { builtScreens, hasIdRoute } from './core/navigation';
 import type { ScreenDeclaration } from './core/screens.generated';
 import { ScreenOutlet } from './shell/screen-outlet';
+
+/**
+ * The unsaved-changes guard, on every `form-page` route (AC2, AD-11 rule 3).
+ *
+ * **One guard answers for every caller.** Angular runs a route's `CanDeactivateFn` inside
+ * `Router.navigateByUrl` and lets it return a promise; a `false` cancels the navigation and the
+ * promise `navigateByUrl` returned resolves `false`. Every programmatic navigation in this client
+ * is that method -- the rail, the side bar, the locator bar, the command box, the header, the
+ * fault banner, the data table, Home and the audit page -- so none of them has a guard of its own,
+ * and the agent's navigation tool inherits the answer by construction when it lands, because it
+ * will call the same method.
+ *
+ * It asks `FormDirty`, which resolves `true` at once on a clean form and raises the confirmation
+ * on a dirty one. The question is a store's rather than a component's because the guard runs with
+ * no component to reach (`core/form-dirty.ts`).
+ */
+export const leaveFormGuard: CanDeactivateFn<unknown> = () => inject(FormDirty).requestLeave();
+
+/** The archetype whose routes carry the guard. */
+const GUARDED_ARCHETYPE = 'form-page';
 
 /**
  * The route table, built from the descriptor mirror (AD-5). Adding a screen means adding a
@@ -12,6 +34,13 @@ import { ScreenOutlet } from './shell/screen-outlet';
  * whose id accessor says they are keyed by one (AD-13: the id is one segment, always), plus a
  * wildcard so a URL the client does not know renders the shell's not-found screen rather than a
  * blank page -- the server already answers `index.html` for it.
+ *
+ * **The roster is `builtScreens()`, not an area's listed screens.** A screen declaring
+ * `sideBarPosition` 0 is routable and never advertised (`core/navigation.ts`), so the filter that
+ * keeps it out of the side bar, the command box, Home's tile caption, the locator bar and the rail
+ * must not reach this table or the screen would be unreachable.
+ *
+ * Every `form-page` route carries the unsaved-changes guard above.
  *
  * Home's declared route is the empty string, which is the application root: it is reached from
  * the rail's Home item, the logo lockup and straight after sign-in, all three of which mean
@@ -40,9 +69,10 @@ export function buildRoutes(screens: readonly ScreenDeclaration[]): Routes {
       built.push({ path: '', pathMatch: 'full', component: ScreenOutlet });
       continue;
     }
-    built.push({ path: screen.route, component: ScreenOutlet });
+    const guarded = screen.archetype === GUARDED_ARCHETYPE ? { canDeactivate: [leaveFormGuard] } : {};
+    built.push({ path: screen.route, component: ScreenOutlet, ...guarded });
     if (hasIdRoute(screen)) {
-      built.push({ path: `${screen.route}/:id`, component: ScreenOutlet });
+      built.push({ path: `${screen.route}/:id`, component: ScreenOutlet, ...guarded });
     }
   }
   built.push({ path: '**', component: ScreenOutlet });

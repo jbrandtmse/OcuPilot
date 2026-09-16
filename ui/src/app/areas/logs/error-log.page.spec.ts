@@ -42,27 +42,68 @@ class StubApi {
 
   private bodies: Record<string, unknown> = {};
 
-  private refusals: Record<string, { status: number; code: string }> = {};
+  private refusals: Record<
+    string,
+    { status: number; code: string | null; detail: Record<string, unknown> | null }
+  > = {};
+
+  private installs: Record<string, { status: number; code: string | null }> = {};
 
   /** Every request's `init`, so the scope the store asked for is readable. */
   readonly inits: unknown[] = [];
 
   answer(level: string, body: unknown): void {
     this.bodies[level] = body;
+    delete this.installs[level];
   }
 
-  /** Answer `level` with one refusal envelope, as the port does for a namespace the gate denies. */
-  refuse(level: string, status: number, code: string): void {
-    this.refusals[level] = { status, code };
+  /**
+   * Answer `level` with the third `JsonResult` arm, an `INSTALL.*` 503 (AD-38).
+   *
+   * It is a separate entry point because that arm carries no `detail` and no `reason`, which is
+   * what makes the store's `result.kind === 'error'` narrow necessary rather than defensive.
+   *
+   * `requestJson` consults this map before `refusals`, so `answer()` and `refuse()` clear the
+   * level's entry: re-arming a level must take effect rather than be silently ignored.
+   */
+  install(level: string, status: number, code: string | null): void {
+    this.installs[level] = { status, code };
+  }
+
+  /**
+   * Answer `level` with one refusal envelope, as the port does for a namespace the gate denies.
+   *
+   * `detail` carries the envelope's fourth key, so a 403 that names the pair that failed and one
+   * that names none are both reachable here; the port sends the key only when it has a pair
+   * (`LogSourcePort.DeniedRefusal`), which is why the default is `null` rather than an empty pair.
+   */
+  refuse(
+    level: string,
+    status: number,
+    code: string | null,
+    detail: Record<string, unknown> | null = null
+  ): void {
+    this.refusals[level] = { status, code, detail };
+    delete this.installs[level];
   }
 
   async requestJson<T>(path: string, init: unknown): Promise<JsonResult<T>> {
     this.paths.push(path);
     this.inits.push(init);
     const level = path.replace('/api/ocupilot/logs/errors/', '').split('?')[0];
+    const installing = this.installs[level];
+    if (installing !== undefined) {
+      return { kind: 'installing', status: installing.status, code: installing.code };
+    }
     const refusal = this.refusals[level];
     if (refusal !== undefined) {
-      return { kind: 'error', status: refusal.status, code: refusal.code, reason: null, detail: null };
+      return {
+        kind: 'error',
+        status: refusal.status,
+        code: refusal.code,
+        reason: null,
+        detail: refusal.detail,
+      };
     }
     return { kind: 'ok', status: 200, body: (this.bodies[level] ?? { rows: [] }) as T };
   }
@@ -294,13 +335,13 @@ describe('ErrorLogPage', () => {
 
     // And one it does not — the port's own per-namespace gate (AD-48), which on this screen is the
     // ordinary case rather than an exotic one.
-    api.refuse('dates', 403, 'AUTH.NOPRIVILEGE');
+    api.refuse('dates', 403, 'AUTH.NOPRIVILEGE', { failedPair: '%DB_IRISSYS:READ' });
     await drill.openDates('%SYS');
     fixture.detectChanges();
 
     // Mutation (Rule 19): delete the `showRefusal` branch from `error-log.page.ts` -> this line
     // goes red and a refusal is a blank frame again.
-    expect(refusalText(fixture)).toBe(STRINGS.connectivityRequestRefused);
+    expect(refusalText(fixture)).toBe('You need %DB_IRISSYS:READ to read this log.');
     // Mutation (Rule 19): stop clearing `dateRows` in `ErrorLogDrill.openDates` -> this line goes
     // red with HSCUSTOM's date rendered beneath a scope line reading %SYS.
     expect(rowCells(fixture)).toEqual([]);
@@ -308,6 +349,129 @@ describe('ErrorLogPage', () => {
     // The refusal is not the empty state: "no errors here" and "you may not read this" are
     // different answers and the screen must not conflate them.
     expect(emptyTitle(fixture)).toBe('');
+  });
+
+  it('AC1 (DW-297): each level the log no longer carries renders its own sentence, and no two read alike', async () => {
+    // The defect: the page held the envelope's `code` and threw it away at `showRefusal`, so an
+    // unknown namespace, a purged date and an entry that has gone were one generic sentence.
+    //
+    // "No two read alike" is carried by the three `toBe`s below against three different keys,
+    // plus `ui/tools/strings.test.mjs`'s every-value-is-unique gate. An added
+    // `not.toBe(<the previous key>)` would assert nothing those two do not already entail, so
+    // there is none here.
+    //
+    // Mutation (Rule 19): return `STRINGS.errorLogRefusedEntry` from `refusalMessage`'s `LOG.DATE`
+    // arm -> the purged-date leg goes red naming both sentences, while the entry leg stays green.
+    const api = new StubApi();
+    api.answer('namespaces', { rows: [{ namespace: 'HSCUSTOM' }], truncated: false });
+    const { fixture, drill } = mount(api);
+
+    // A namespace the log does not carry (`LOG.NAMESPACE`).
+    api.refuse('dates', 404, 'LOG.NAMESPACE');
+    await drill.openDates('HSCUSTOM');
+    fixture.detectChanges();
+    expect(refusalText(fixture)).toBe(STRINGS.errorLogRefusedNamespace);
+
+    // A date it has purged since the list was drawn (`LOG.DATE`).
+    api.refuse('list', 404, 'LOG.DATE');
+    await drill.openList('09/14/2026');
+    fixture.detectChanges();
+    expect(refusalText(fixture)).toBe(STRINGS.errorLogRefusedDate);
+
+    // And one error of that date, gone (`LOG.ENTRY`).
+    api.refuse('detail', 404, 'LOG.ENTRY');
+    await drill.openDetail(25);
+    fixture.detectChanges();
+    expect(refusalText(fixture)).toBe(STRINGS.errorLogRefusedEntry);
+
+    // A level that answers clears the notice rather than leaving the last one standing.
+    await drill.openNamespaces();
+    fixture.detectChanges();
+    expect(refusalText(fixture)).toBe('');
+  });
+
+  it('AC1 (DW-297): a privilege denial names the pair it failed on, and one naming none falls back', async () => {
+    // Mutation (Rule 19): drop the non-empty check on `failedPair` in `refusalMessage` -> the
+    // no-pair leg renders the pattern with an empty resource slot and goes red, while the leg that
+    // carries a pair stays green.
+    const api = new StubApi();
+    api.answer('namespaces', { rows: [{ namespace: '%SYS' }], truncated: false });
+    const { fixture, drill } = mount(api);
+
+    api.refuse('dates', 403, 'AUTH.NOPRIVILEGE', { failedPair: '%DB_IRISSYS:READ' });
+    await drill.openDates('%SYS');
+    fixture.detectChanges();
+    // The literal, not `formatDeniedAction(...)` recomputed here: an expectation built from the
+    // same production constants through the same production function moves with every change the
+    // page moves with, so it can never be the assertion that fails. That the pattern resolves is
+    // pinned in `ui/tools/navigation.test.mjs`; this pins what this screen renders.
+    expect(refusalText(fixture)).toBe('You need %DB_IRISSYS:READ to read this log.');
+
+    // The port attaches `detail` only when it has a pair (`LogSourcePort`'s unresolvable outcome
+    // denies with none), so this is a shipped path rather than a hypothetical one. It runs second
+    // deliberately: the pair captured above must not survive into it.
+    api.refuse('dates', 403, 'AUTH.NOPRIVILEGE');
+    await drill.openDates('%SYS');
+    fixture.detectChanges();
+    expect(drill.failedPair()).toBe('');
+    expect(refusalText(fixture)).toBe(STRINGS.connectivityRequestRefused);
+
+    // The matrix's other clearing case: a level that ANSWERS clears the pair along with the
+    // notice. The pair is re-established first, and asserted present, so neither assertion below
+    // is entailed by the pairless leg above.
+    api.refuse('dates', 403, 'AUTH.NOPRIVILEGE', { failedPair: '%DB_IRISSYS:READ' });
+    await drill.openDates('%SYS');
+    fixture.detectChanges();
+    expect(drill.failedPair()).toBe('%DB_IRISSYS:READ');
+
+    api.answer('list', { rows: [], truncated: false });
+    await drill.openList('09/14/2026');
+    fixture.detectChanges();
+    expect(refusalText(fixture)).toBe('');
+    expect(drill.failedPair()).toBe('');
+  });
+
+  it('AC1 (DW-297): a refusal the page cannot name keeps the generic sentence', async () => {
+    // The fallback is the default arm, not an error path: this screen publishes no sentence for a
+    // 400 no shipped client path sends, and an envelope that carried no code has nothing to branch
+    // on at all.
+    //
+    // Mutation (Rule 19): return `STRINGS.errorLogRefusedNamespace` from `refusalMessage`'s final
+    // arm -> all three legs below go red, while the named-code legs in the tests above stay green.
+    const api = new StubApi();
+    const { fixture, drill } = mount(api);
+
+    api.refuse('dates', 400, 'LOG.MAXROWS');
+    await drill.openDates('HSCUSTOM');
+    fixture.detectChanges();
+    expect(refusalText(fixture)).toBe(STRINGS.connectivityRequestRefused);
+
+    api.refuse('list', 400, null);
+    await drill.openList('09/14/2026');
+    fixture.detectChanges();
+    expect(refusalText(fixture)).toBe(STRINGS.connectivityRequestRefused);
+
+    // A pair is established first, so the clearing assertion below has something to clear. Without
+    // it `failedPair()` is `''` from the start of this test and `toBe('')` could not fail whatever
+    // the store did with the installing answer.
+    api.refuse('list', 403, 'AUTH.NOPRIVILEGE', { failedPair: '%DB_IRISSYS:READ' });
+    await drill.openList('09/14/2026');
+    fixture.detectChanges();
+    expect(drill.failedPair()).toBe('%DB_IRISSYS:READ');
+
+    // The matrix's third input for this row, and the one arm no stubbed refusal can produce: an
+    // `INSTALL.*` 503 classifies `not-installed`, which `isBannerFault` excludes, so the shell
+    // draws nothing and this notice is what the user sees. The arm carries no `detail` at all,
+    // which is why the store's `result.kind === 'error'` narrow is required rather than defensive
+    // -- that narrow is held by the compiler, not by this test.
+    //
+    // Mutation (Rule 19): delete `this.failedPairValue = '';` from the top of `read()` -> the pair
+    // established above survives into the installing answer and the last line goes red.
+    api.install('detail', 503, 'INSTALL.RUNNING');
+    await drill.openDetail(25);
+    fixture.detectChanges();
+    expect(refusalText(fixture)).toBe(STRINGS.connectivityRequestRefused);
+    expect(drill.failedPair()).toBe('');
   });
 
   it('DW-293: a level the port cut at the row cap says so, and one it did not says nothing', async () => {

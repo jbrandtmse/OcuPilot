@@ -131,8 +131,9 @@ services:
       # anywhere the variable is absent rather than trusting a doc comment to keep it off a
       # development instance.
       OCUPILOT_ALLOW_LOG_ROTATION: "1"
-      # Arms every test class that creates or deletes IRIS principals: LogSourceDenial,
-      # ErrorLogDenial, State, Token, UnexpireScope, Version, Wire and WireSecurityRead.
+      # Arms every test class that creates or deletes IRIS principals: AgentWireSecurity,
+      # ConfigGate, LogSourceDenial, ErrorLogDenial, State, Token, UnexpireScope, Version, Wire
+      # and WireSecurityRead.
       # Same reasoning, same single home: test classes are selected by package, so a runner
       # pointed at an instance someone cares about would otherwise create principals on it.
       # scripts/check-objectscript.py's destructive-test-guard rule holds the population.
@@ -141,6 +142,36 @@ services:
       # ^ERRORS. Same reasoning again, and one degree worse: an application error cannot be
       # un-logged -- the delete is Epic 5's -- so a runner pointed elsewhere would leave it there.
       OCUPILOT_ALLOW_ERROR_SEED: "1"
+      # Arms OcuPilot.Test.AuditEvent, which deletes OcuPilot's own audit event registrations to
+      # prove an unregistered triple drops its row, then reinstalls to put them back. It deletes
+      # the configuration triple, and in the smoke-check method the BASELINE RoleGranted triple
+      # that every install since Story 1.3 registers and that EnsureGrant itself emits through.
+      # Same reasoning, one degree worse again: while a registration is gone every row OcuPilot
+      # would write under that triple is dropped with no error and no log line, so a runner
+      # pointed at an instance someone cares about would silently stop auditing it.
+      OCUPILOT_ALLOW_AUDIT_EVENTS: "1"
+      # Arms the eleven test classes that run OcuPilot's PRODUCTION install and had no arming
+      # variable of their own: AuditRecord, Static, InstallNamespaceSource, GatewayGapIpmPath,
+      # Manifest, WebApp, UninstallGuard, GrantReadBack, Provenance, Installer and DemoOptIn
+      # (which reaches the install through OcuPilot.Test.InstallerProbe.StartPath rather than by
+      # naming the installer).
+      # It is not the whole population that installs: seven further classes -- ConfigGate, State,
+      # Token, UnexpireScope, Version, Wire and AuditEvent -- run the same install and were already
+      # armed, by OCUPILOT_ALLOW_PRINCIPALS or OCUPILOT_ALLOW_AUDIT_EVENTS. They are protected,
+      # under a variable named for a narrower effect than the one they have.
+      # A production install is not one side effect but a whole set of them -- a database, a
+      # resource, a role, three web applications, the audit registrations and the _SYSTEM unexpire
+      # -- which is why it gets a variable of its own rather than riding on
+      # OCUPILOT_ALLOW_AUDIT_EVENTS: naming it after one of those would mislead the next reader
+      # about what arming it permits.
+      # Consequence, stated plainly: after this, those eleven classes run here and on CI, never on a
+      # development container someone cares about.
+      OCUPILOT_ALLOW_PRODUCTION_INSTALL: "1"
+      # Arms OcuPilot.Test.ProviderSsl, which runs the installer's EnsureSslConfiguration step
+      # under the probe profile and so creates -- and leaves -- a TLS configuration in the
+      # instance's own security database. Same reasoning as the three above: a runner pointed at
+      # an instance someone cares about would otherwise add a security object to it.
+      OCUPILOT_ALLOW_SSL_CONFIG: "1"
     volumes:
       - $DIR/data:/durable
       - $DIR/src:/opt/ocupilot/src:ro

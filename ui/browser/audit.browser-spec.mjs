@@ -37,6 +37,7 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { parseMarkers } from './iris-session.mjs';
 import { ROW_SELECTOR, clickRowCentre, viewCount, waitForRows } from './list-spec.mjs';
+import { leaveFirstLoginGate } from './shell-entry.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -210,6 +211,10 @@ async function signedInAtScreen() {
   await page.type('#ocu-signin-user', config.username);
   await page.type('#ocu-signin-password', config.password);
   await page.click('.ocu-signin-card button[type="submit"]');
+  await page.waitForSelector('app-rail .ocu-rail', { timeout: config.navigationTimeoutMs });
+  // The first-login gate takes an administrator to the Definition form on an instance with no
+  // enabled definition, whatever URL was asked for (Story 3.6). Back returns to this one.
+  await leaveFirstLoginGate(page, config.navigationTimeoutMs, LIST_URL);
   await page.waitForSelector('.ocu-criteria-form', { timeout: config.navigationTimeoutMs });
   return { context, page, reads };
 }

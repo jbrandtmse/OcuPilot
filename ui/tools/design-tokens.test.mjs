@@ -693,3 +693,54 @@ test('the primary button and the skip link carry the on-secondary state layer: 8
   assert.ok(pressed, 'expected one pressed rule for both');
   assert.match(pressed[1], /background:\s*color-mix\(in srgb, var\(--ocu-on-secondary\) 12%, var\(--ocu-secondary\)\)/);
 });
+
+test("the rail tooltip's focus reveal survives a sibling between the button and the tooltip", () => {
+  // EXPERIENCE.md "every item carries": the area name as the item's own label, and the tooltip
+  // beside it, on hover and on focus. The tooltip is
+  // a sibling of the button rather than a child, so the focus half is a combinator -- and Story
+  // 3.6's attention dot renders BETWEEN the two whenever it is lit. Written with `+` that stops
+  // revealing the tooltip on exactly the one item that is asking to be looked at, with nothing
+  // rendered wrong and no assertion anywhere to say so.
+  //
+  // Mutation (Rule 19): change `~` back to `+` in `_components.scss` -> this goes red.
+  const reveal = /\n(\.ocu-rail-item:focus-visible\s*([+~])\s*\.ocu-rail-tooltip)\s*\{/.exec(componentsRaw);
+  assert.ok(reveal, 'expected a focus-visible rule revealing the rail tooltip');
+  assert.equal(
+    reveal[2],
+    '~',
+    'the general sibling combinator: `+` breaks the moment anything renders between the button and its tooltip'
+  );
+
+  // And the dot really is between them, which is what makes the combinator load-bearing rather
+  // than a style preference.
+  const railRaw = readFileSync(join(here, '..', 'src', 'app', 'shell', 'rail.ts'), 'utf8');
+  const button = railRaw.indexOf('</button>');
+  const dot = railRaw.indexOf('class="ocu-rail-dot"');
+  const tooltip = railRaw.indexOf('class="ocu-rail-tooltip"');
+  assert.ok(button > 0 && dot > button && tooltip > dot, 'the dot renders after the button and before the tooltip');
+});
+
+test('the attention dot does not take the rail button\'s pointer events', () => {
+  // The dot is an absolutely-positioned span over the top-right corner of the 48x48 rail item it
+  // annotates, so without this a click or a hover there lands on an inert span instead of the
+  // button. jsdom has no hit testing and the browser suite clicks the item's centre, so this is
+  // the only tier that can say it.
+  //
+  // Mutation (Rule 19): drop `pointer-events: none` from `.ocu-rail-dot` -> this goes red.
+  const dot = /\n\.ocu-rail-dot\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
+  assert.ok(dot, 'expected a .ocu-rail-dot rule');
+  assert.match(dot[1], /\n\s*pointer-events:\s*none;/);
+  assert.match(dot[1], /\n\s*position:\s*absolute;/, 'which is why it needs it');
+});
+
+test("AC8: a required field's asterisk is a rendered glyph, not only a class on the label", () => {
+  // EXPERIENCE.md's legend row: "the asterisk itself is a CSS glyph".
+  // The component spec can assert the class is applied; only the stylesheet says whether the
+  // class draws anything, and jsdom computes no styles.
+  //
+  // Mutation (Rule 19): delete the `.ocu-field-label-required::after` rule -> this goes red,
+  // while `definition-form.page.spec.ts`'s AC8 assertions stay green.
+  const marker = /\n\.ocu-field-label-required::after\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
+  assert.ok(marker, 'expected a .ocu-field-label-required::after rule');
+  assert.match(marker[1], /\n\s*content:\s*'\*';/);
+});

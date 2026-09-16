@@ -167,6 +167,7 @@ new endpoint.
 ## Boundaries & Constraints
 
 **Always:**
+
 - Every grammar rule is held identically by `Screen/Registry.cls` and `ui/tools/screen-mirror.mjs`,
   and pinned by one shared `Test/*Corpus.cls` `Cases` XData that both engines read off disk.
 - Every new or changed sentence adds its EXPERIENCE.md **Fixed strings row** and its `strings.ts`
@@ -184,6 +185,7 @@ new endpoint.
   `%UnitTest_Result`.
 
 **Never:**
+
 - No change widens what the read tool returns, and no error-log captured detail enters screen
   context or the model (AD-48).
 - No descriptor loses a declared pair to make a screen easier to reach; no gate is relaxed to
@@ -197,7 +199,7 @@ new endpoint.
 
 | # | Scenario | Input / State | Expected Output / Behavior | Error Handling |
 |---|---|---|---|---|
-| 1 | **DW-273** list rows are clickable | Any list route in the shell, viewport 1440x900 | The table frame has a definite height; `cdk-virtual-scroll-viewport.clientHeight > 0`; `document.elementFromPoint` at a row's centre is inside that row | Viewport height 0, or the hit landing on `.ocu-data-table-footer`, fails the browser check |
+| 1 | **DW-273** list rows are clickable | Any list route in the shell, viewport 1440x900 | The table frame has a definite height; `cdk-virtual-scroll-viewport.clientHeight > 0`; `document.elementFromPoint` at a row's center is inside that row | Viewport height 0, or the hit landing on `.ocu-data-table-footer`, fails the browser check |
 | 2 | **DW-274** a refused backing query | An admin read whose backing query refuses on its own privilege check, reaching `AdminPort` (a screen that under-declares) | `403` + `PORT.ACCESSDENIED` + `detail.failedPair` naming the pair the query requires | A caller who **holds** the declared query pairs keeps today's `500`/`INTERNAL`; an endpoint with no declared query pairs also keeps it |
 | 3 | **DW-271** top-level key set is closed | A descriptor declaring `banners` or `Banner` | Both engines refuse by name: `the declaration declares the unknown key 'banners'`; the screen does not install and the mirror does not emit | A declaration missing an **optional** key is still sound — the check is unknown-key only, never presence |
 | 4 | **DW-279** an over-long criterion | `pids` = 83 characters on `logs/audit` | `400` + `READ.CRITERION` naming `pids` and its limit, refused in `SeedCriteria` **before** `AdminPort.Invoke` | A value within `maxLength` seeds and reads as today; a criterion declaring no `maxLength` is refused by the grammar at install |
@@ -218,7 +220,8 @@ new endpoint.
 `app-screen-outlet` **`display:inline`, `height:auto`, clientHeight 0** -> `div.ocu-screen-outlet` 94
 -> `app-list-page` 94 (its `height:100%` resolved against `auto`) -> ... -> `cdk-virtual-scroll-viewport`
 **clientHeight 0, scrollHeight 1620**; `.ocu-data-table-footer` rect top 177 h 40; row 2 rect top 176
-h 36, centre (865,194), `document.elementFromPoint` -> `div.ocu-data-table-footer`, `insideRow false`.
+h 36, center (865,194), `document.elementFromPoint` -> `div.ocu-data-table-footer`, `insideRow false`.
+
 - `ui/src/styles/_components.scss` -- the whole cascade. `.ocu-content` `:633-637`; `app-list-page`/
   `app-data-table` `:2002-2015`; frame `:2037-2048`; grid `:2050-2055`; head `:2065-2069`; viewport
   `:2071-2075`; footer `:2358-2368`. **No rule anywhere for `app-screen-outlet` or `.ocu-screen-outlet`**
@@ -235,6 +238,7 @@ h 36, centre (865,194), `document.elementFromPoint` -> `div.ocu-data-table-foote
   used against rows in the harness (`data-table.browser-spec.mjs:515`).
 
 **DW-274 — the port's fault mapping.**
+
 - `src/OcuPilot/Port/AdminPort.cls` -- `Invoke:268`; `RunSequence:521-564`; **`:560-562` is the 500
   site** (an error `tSC` with no or a 2xx HTTP status); `Sequence:568-630`; `ResourcesOR` gate
   `:574-581`; `HoldsResource:423-426`; `<PROTECT>`->403 `:619-623`; `Refuse:686-691` (**takes no
@@ -257,6 +261,7 @@ h 36, centre (865,194), `document.elementFromPoint` -> `div.ocu-data-table-foote
   story updates.
 
 **DW-271 / DW-279 — the grammar, two engines.**
+
 - `src/OcuPilot/Screen/Registry.cls` -- `Validate:133`; `DeclarationJson` read `:143-147`;
   **insertion point `:148`**, before the first accessor. `UnknownKeyProblem:1020` and its thirteen
   call sites (`:378,386,471,479,511,532,655,702,774,810,833,897,912`) -- none on the declaration
@@ -291,6 +296,7 @@ h 36, centre (865,194), `document.elementFromPoint` -> `div.ocu-data-table-foote
   tool schema; `ValidateArguments:129`.
 
 **DW-270 — the banner.**
+
 - `src/OcuPilot/Screen/Read.cls:271-289 BannerKey`; the whole rule is the single equality at **`:283`**.
   Any banner fault answers `""` (`:263-270`).
 - `src/OcuPilot/Screen/Descriptor/TaskScheduleList.cls:93-99` -- `field "Status"`, `equals "Suspended"`,
@@ -306,6 +312,7 @@ h 36, centre (865,194), `document.elementFromPoint` -> `div.ocu-data-table-foote
   shape; `Test/ReadBanner/{Matching,Faulting}.cls` are the read fixtures.
 
 **DW-293 — truncation in the drill.**
+
 - `ui/src/app/areas/logs/error-log.store.ts` -- `absorb:305-348`; `rowsOf:61-65` returns `body.rows`
   only, so `truncated` is dropped at `:306-309` (namespaces), `:311` (dates), `:318` (list); kept but
   unrendered at `:343-347` (detail, `ErrorLogDetail.truncated:55`). The store sends no `maxRows`
@@ -322,6 +329,7 @@ h 36, centre (865,194), `document.elementFromPoint` -> `div.ocu-data-table-foote
   drill needs its own sentence rather than a reuse.
 
 **DW-260 — Refresh.**
+
 - `ui/src/app/shell/command-bar.ts` -- inline template `:126-231`; no inputs/outputs, mounted once at
   `ui/src/app/app.ts:129`; `hasRefreshChip:431-433`; spacer `:220`; chip `:221-230`; every control-flow
   condition must be a paren-free member reference (`:120-122`, enforced by `ui/tools/client-lint.mjs`).
@@ -347,6 +355,7 @@ h 36, centre (865,194), `document.elementFromPoint` -> `div.ocu-data-table-foote
   line shifts.
 
 **DW-248 — focus.**
+
 - `ui/src/app/shell/instance-notice.ts:61` (`<section #surface role="alert" tabindex="-1">`), `:129`
   (`afterNextRender(() => this.surface().nativeElement.focus())` on every non-ready render).
 - `ui/src/app/app.ts` -- `CONTENT_ID:32`; the swap `:111-142` (frame at `:122`, notice at `:137`,
@@ -366,6 +375,7 @@ h 36, centre (865,194), `document.elementFromPoint` -> `div.ocu-data-table-foote
   focus -- which only holds while focus is on `document.body`.
 
 **DW-289 — throwaway guards.**
+
 - The template, verbatim, `src/OcuPilot/Test/LogSourceDenial.cls:73-77` with
   `Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_PRINCIPALS";` at `:29`:
   `If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 { Quit $$$ERROR($$$GeneralError, "...") }`.
@@ -389,6 +399,7 @@ h 36, centre (865,194), `document.elementFromPoint` -> `div.ocu-data-table-foote
   structural guard-presence rule belongs.
 
 **DW-275 — area coverage.**
+
 - `src/OcuPilot/Screen/Registry.cls:318-338 AreaCoverageProblem`, called from `Validate:209`; refusal
   sentence at `:331`; the loop `:323-333` walks the **screen's** pairs only, so a surplus area pair
   stands (doc `:306-307`). **There is no mirror** -- `screen-mirror.mjs:875-882` checks only
@@ -415,6 +426,7 @@ to +30. Plus **14** in `ui/tools/*.mjs`, **5** in `ui/src/styles/_components.scs
 `src/OcuPilot/Test/Token.cls:558`, and **9** ungated prose citations inside `strings.ts` itself
 (`:23,24,27,33,450,451,487,492,498`) -- **149 to convert**. Only 60 of the 120 carry any adjacent
 quote and only 2 of those land on the cited line.
+
 - `ui/tools/strings.test.mjs:493-530` -- the only citation gate in the repository. It resolves the
   `/** EXPERIENCE.md:n */` comments in `strings.ts` **by value**, not by line (`:523-524`), and names
   the correct line on failure (`:525-526`). Those 197 stay as they are. Its neighbours:
@@ -434,7 +446,7 @@ quote and only 2 of those land on the cited line.
    existing `min-height: 0`. -- the chain is the cause; the viewport reads 0 because an inline host
    sits in the middle of it.
 2. `ui/browser/list-spec.mjs`, `ui/browser/{tasks,processes,users,web-applications,audit,error-log}.browser-spec.mjs`
-   -- add a shared "click a row at its centre" helper using `page.click()` and
+   -- add a shared "click a row at its center" helper using `page.click()` and
    `document.elementFromPoint`, and replace every synthetic `dispatchEvent`/`HTMLElement.click()`
    row workaround with it. -- the workarounds are why no spec caught this.
 3. `src/OcuPilot/Port/AdminPort.cls` -- declare, per admin endpoint and request type, the pair set the
@@ -514,7 +526,7 @@ quote and only 2 of those land on the cited line.
 
 - **AC-A (DW-273, integration).** Given every built list route plus the audit viewer and the error-log
   drill, when a browser opens each at 1440x900, then `cdk-virtual-scroll-viewport.clientHeight` is
-  greater than zero on each and a hit-tested click at the centre of a row reaches that row.
+  greater than zero on each and a hit-tested click at the center of a row reaches that row.
 - **AC-B (DW-274, integration).** Given `Screen/Read.cls` and `Screen/Tool/Read.cls` calling
   `AdminPort.Invoke` for an endpoint whose declared query pairs the caller does not hold, when the
   port answers, then it answers 403 / `PORT.ACCESSDENIED` with `detail.failedPair`, and every read
@@ -612,6 +624,8 @@ assertions stand as the evidence meanwhile.
 
 ## Spec Change Log
 
+- 2026-09-15, Story 3.0: this spec's third promised verification step — DW-307's throwaway real-principal observation of `AdminPort`'s own named 403 — was kept there, inside a recorded and reverted mutation window. What `OPERATEUSER` observed is recorded verbatim in `spec-3-0-epic-2-deferred-cleanup.md` › `### DW-307 observation`, and `Test/WireSecurityRead.cls`'s Mutation paragraph now states that observation rather than the derivation this pass left in it.
+
 ## Review Triage Log
 
 ### 2026-09-15 — Review pass
@@ -700,7 +714,7 @@ client, and there is no screen heading -- the screen title is a `<span>` in the 
 decision's own fallback governs, so the destination is `main#ocu-content`, and the heading branch is
 **not** written rather than written unreachable. The consequence is deliberate and must be restated,
 not absorbed: focusing `main` means the next Tab walks forward into the screen, so the skip link stops
-holding the first Tab after a frame arrival -- which is the behaviour `shell.browser-spec.mjs:210`
+holding the first Tab after a frame arrival -- which is the behavior `shell.browser-spec.mjs:210`
 and `:261` (DW-247, itself dropped into DW-248) pin today. Those two cases are rewritten as part of the
 fix. Focus is moved only when it still sits on the body or inside the removed notice, so the fix never
 steals focus a user has already placed.
@@ -754,7 +768,7 @@ and `OCUPILOT_ALLOW_ERROR_SEED`):
   citation gate) and the Angular component runner green.
 - `OCUPILOT_BROWSER_EXECUTABLE="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
   OCUPILOT_BROWSER_ORIGIN=http://localhost:52776 npm run test:browser` -- expected: every spec green
-  against `ocupilot-ci`, including the new centre-of-row hit tests and the restated Tab-order cases.
+  against `ocupilot-ci`, including the new center-of-row hit tests and the restated Tab-order cases.
 - `uv run scripts/check-objectscript.py` and `uv run scripts/test_check_objectscript.py` (repo root) --
   expected: both green, the new guard-presence rule covered by its own harness case.
 - `bash scripts/lint-docs.sh` (repo root) -- expected: green after the EXPERIENCE.md rows are added.
@@ -831,7 +845,7 @@ revert, confirm `git status --short` and `git diff --stat` unchanged):**
   observation no test makes: `WireSecurityRead` observes the area denial itself, which is a **true**
   denial today because the only screen in the area needs that pair. That the denial becomes false
   once a narrow screen is built is an **(inference)** from `Test/NarrowArea`'s own assertions, now
-  labelled as one at both class headers.
+  labeled as one at both class headers.
 - **DW-305** (cr, 2026-09-15) -- `AdminPort.QueryPairsProblem` over `Test/QueryPairCorpus.cls`'s
   sixteen cases, plus the shipped table checked against the instance: every declared endpoint
   resolves through `EndpointClass` and every declared resource exists in `Security.Resources`.
@@ -919,15 +933,19 @@ truncated-level leg, seeded through `OcuPilot.Test.ErrorLogSeed` and cut with an
 `src/OcuPilot/Test/Declaration/Bad.cls` + `Test/DeclarationRegistry.cls` + `Test/ReadTool.cls`
 (`Validate`'s own call to `DeclarationProblem`, over a roster, DW-306), `scripts/test_check_objectscript.py`
 (a real, already-guarded class pinned against `check_destructive_test_guard`, DW-303), `CLAUDE.md`
+
 + `scripts/check-objectscript.py` module docstring (16/15 -> 17/17 rules, DW-310). Mutation: the
 arming guard in `src/OcuPilot/Test/LogSourceDenial.cls`'s `OnBeforeAllTests` replaced with `If 0` ->
 `TestDestructiveTestGuardRealClass`'s clean-class assertion red; reverted, `git status --short` and
-`git diff --stat` confirmed the tree byte-identical. **Not written:** DW-307's third leg, a
-throwaway real-principal observation of `AdminPort`'s own 403 (distinct from the screen gate's
-`AUTH.NOPRIVILEGE`) -- the shipped `ProcessList` descriptor declares exactly the vendor's OR
-requirement, so no real principal can pass the screen gate while still failing the port's probe
-without the descriptor's declared pairs being mutated first, which this pass declined to do to a
-shipped class outside a recorded, reverted mutation window.
+`git diff --stat` confirmed the tree byte-identical. **Deferred to Story 3.0, and written there:**
+DW-307's third leg, a throwaway real-principal observation of `AdminPort`'s own 403 (distinct from
+the screen gate's `AUTH.NOPRIVILEGE`) -- the shipped `ProcessList` descriptor declares exactly the
+vendor's OR requirement, so no real principal can pass the screen gate while still failing the
+port's probe without the descriptor's declared pairs being mutated first, which this pass declined
+to do to a shipped class outside a recorded, reverted mutation window. Story 3.0 opened that window
+on `ocupilot-ci` and recorded what `OPERATEUSER` observed; see
+[spec-3-0-epic-2-deferred-cleanup.md](spec-3-0-epic-2-deferred-cleanup.md) &rsaquo;
+`### DW-307 observation`.
 
 **Mutations applied and observed (Rule 19).** Each applied alone, run, reverted, the tree confirmed
 unchanged. The eleven entry mutations stand as recorded in `## Verification`. This pass added and

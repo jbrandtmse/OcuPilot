@@ -4,9 +4,11 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { App } from './app';
 import { routes } from './app.routes';
+import { AgentStatus } from './core/agent-status';
 import type { ApiService } from './core/api';
 import { ChangeBus } from './core/change-bus';
 import { ConnectivityService } from './core/connectivity';
+import { FormDirty } from './core/form-dirty';
 import { InstanceService, type InstanceStatus } from './core/instance';
 import { NavigationService } from './core/navigation';
 import { OverlayStack } from './core/overlay-stack';
@@ -19,6 +21,7 @@ import type { ScreenDeclaration } from './core/screens.generated';
 import { Session, type SessionState } from './core/session';
 import { ShellState } from './core/shell-state';
 import { STRINGS } from './core/strings';
+import { stubAgentStatus } from './testing/agent-status';
 import { screenDeclaration } from './testing/screen-declaration';
 
 /**
@@ -57,6 +60,11 @@ class StubSession {
 
   state(): SessionState {
     return this.current;
+  }
+
+  /** Never fresh: this file is about the chip and the stamp, not about the first-login gate. */
+  consumeFreshSignIn(): boolean {
+    return false;
   }
 
   userName(): string {
@@ -245,6 +253,10 @@ describe('the real shell, routed to the real Home screen, sharing one real Refre
         },
         { provide: OverlayStack, useValue: new OverlayStack() },
         { provide: ScreenActions, useValue: new ScreenActions() },
+        { provide: FormDirty, useValue: new FormDirty() },
+        // Unanswered on purpose: this file is about the chip and the stamp around the real Home
+        // screen, and a panel that has picked an audience would be a second subject in it.
+        { provide: AgentStatus, useValue: stubAgentStatus() },
       ],
     });
 

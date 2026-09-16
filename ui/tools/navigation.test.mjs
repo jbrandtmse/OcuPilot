@@ -33,12 +33,16 @@ const {
   areaByKey,
   builtScreens,
   builtScreensForArea,
+  editorScreenFor,
+  isListedScreen,
+  listedScreensForArea,
   screenForRoute,
   screenForUrl,
   areaForUrl,
   hasIdRoute,
   routeFromUrl,
   formatArea,
+  formatDeniedAction,
   formatDeniedScreen,
   formatRequires,
   firstAllowedScreen,
@@ -120,8 +124,66 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'permissions/users',
       'web-applications/list',
       'security/ssl',
+      'agent/definitions/edit',
+      'agent/definitions',
+      'agent/switches',
     ],
-    'the built screens are Home, at the application root, then the application error log and the audit database, processes, task schedule, users, web applications and SSL/TLS lists, in area rail order'
+    'the built screens are Home, at the application root, then the application error log and the audit database, processes, task schedule, users, web applications and SSL/TLS lists, and the Agent co-pilot area\'s Definition form, Definitions list and Switches, in area rail order'
+  );
+});
+
+// Story 3.5. `sideBarPosition` 0 is the sentinel for routable-but-unlisted: the route table reads
+// every built screen, and the five navigation surfaces read an area's listed ones.
+//
+// Mutation (Rule 19): change the Definition form descriptor's `sideBarPosition` from 0 to 2 ->
+// the listed-roster assertion below goes red at two entries where one is expected, and the
+// `builtScreens()` roster leg above stays green -- which is what proves the filter is on listing
+// and not on routing.
+test('an unlisted screen is routable and never advertised: the agent area lists two screens and builds three', () => {
+  const built = builtScreensForArea('agent');
+  assert.deepEqual(
+    built.map((screen) => screen.route),
+    ['agent/definitions/edit', 'agent/definitions', 'agent/switches'],
+    'all three agent screens are built, the form first because it takes position 0'
+  );
+  assert.deepEqual(
+    listedScreensForArea('agent').map((screen) => screen.route),
+    ['agent/definitions', 'agent/switches'],
+    'the side bar lists Definitions then Switches -- the form takes no position'
+  );
+  assert.equal(
+    isListedScreen(built.find((screen) => screen.route === 'agent/definitions/edit')),
+    false,
+    'the form is the unlisted one'
+  );
+  assert.equal(
+    screenForRoute('agent/definitions/edit')?.sideBarPosition,
+    0,
+    'and 0 is the sentinel it declares, not an absent key read as 0'
+  );
+  // The service seam the five surfaces reach it through answers the listed set, so a component
+  // test that substitutes a roster substitutes the same thing the shipped mirror answers.
+  const service = new NavigationService({ api: stubApi([ok(mapBody([]))]) });
+  assert.deepEqual(service.screensForArea('agent'), listedScreensForArea('agent'));
+});
+
+// Story 3.5: a list paired with a form is what the name cell opens, by the `<list route>/edit`
+// convention rather than by a declaration key.
+//
+// Mutation (Rule 19): make `editorScreenFor` ignore `isListedScreen` -> nothing reddens today,
+// because no listed screen sits at a `<route>/edit`; make it ignore `hasIdRoute` and the
+// negative assertions below go red, because Home would resolve one.
+test('editorScreenFor resolves a list to its unlisted, id-keyed editor and to nothing else', () => {
+  const list = screenForRoute('agent/definitions');
+  assert.ok(list, 'the Definitions list is declared');
+  assert.equal(editorScreenFor(list).route, 'agent/definitions/edit');
+  const home = screenForRoute('');
+  assert.ok(home, 'Home is declared');
+  assert.equal(editorScreenFor(home), null, 'a screen with no paired editor resolves none');
+  assert.equal(
+    editorScreenFor(screenForRoute('security/ssl')),
+    null,
+    'and neither does a list whose editor is not built yet'
   );
 });
 
@@ -155,11 +217,31 @@ test('the area and resource placeholders resolve, and every occurrence of each',
     formatDeniedScreen(STRINGS.privilegeDeniedScreen, '%Admin_Secure:USE', 'Users'),
     'You need %Admin_Secure:USE to open Users.'
   );
+  // The same pattern with its second slot resolved to an action instead of a screen title: the
+  // inline sentence a 403 carrying a pair renders (AD-8). Pinned here beside its two siblings
+  // rather than only through the one screen that calls it, so a `<resource>`/`<action>` drift
+  // between `navigation.ts` and `strings.ts` goes red where the family is gated.
+  //
+  // Mutation (Rule 19): give ACTION_PLACEHOLDER any other spelling -> this assertion goes red
+  // with the unresolved `<action>` still in the string, while formatRequires and
+  // formatDeniedScreen stay green.
+  assert.equal(
+    formatDeniedAction(STRINGS.privilegeDeniedAction, '%DB_IRISSYS:READ', STRINGS.errorLogRefusedAction),
+    'You need %DB_IRISSYS:READ to read this log.'
+  );
   assert.equal(formatArea('<Area> and <Area>', 'X'), 'X and X', 'every occurrence, not the first');
+  assert.equal(
+    formatDeniedAction('<resource> <action> <resource> <action>', 'R', 'A'),
+    'R A R A',
+    'both slots, every occurrence, not the first of each'
+  );
   assert.ok(
     !formatArea(STRINGS.navSideBarLandmark, 'Tasks').includes('<Area>'),
     'a resolved string never ships its placeholder'
   );
+  // No `includes('<')` check for formatDeniedAction: the literal assertion above already pins the
+  // resolved string exactly, with the same three arguments, and throws first -- so such a check
+  // could never be the assertion that fails. `formatArea`'s above has no literal pin beside it.
 });
 
 // --- The map -------------------------------------------------------------------------------

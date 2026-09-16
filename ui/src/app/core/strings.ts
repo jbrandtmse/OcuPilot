@@ -444,15 +444,106 @@ export const STRINGS = {
   /** EXPERIENCE.md:328 */
   errorLogDetailCapNotice: 'This capture was cut at the row cap \u2014 some values are not shown.',
   /** EXPERIENCE.md:329 */
-  homeStarterPromptExplainScreen: 'What\'s on this screen, and what should I look at first?',
+  errorLogRefusedNamespace: 'That namespace is no longer present in this log. Use Back to see which namespaces are.',
   /** EXPERIENCE.md:329 */
-  homeStarterPromptExplainLog: 'Explain the most recent entries in messages.log.',
+  errorLogRefusedDate: 'That date is no longer present in this log. Use Back to see which dates are.',
   /** EXPERIENCE.md:329 */
-  homeStarterPromptChangeOneThing: 'If you could change one thing on this instance, what would it be, and why?',
+  errorLogRefusedEntry: 'That application error is no longer present in this log. Use Back to see which errors are.',
+  /** EXPERIENCE.md:329 */
+  errorLogRefusedAction: 'read this log',
   /** EXPERIENCE.md:330 */
-  proposalExpectedImpactExample: 'users holding %Development can reach the application',
+  homeStarterPromptExplainScreen: 'What\'s on this screen, and what should I look at first?',
+  /** EXPERIENCE.md:330 */
+  homeStarterPromptExplainLog: 'Explain the most recent entries in messages.log.',
+  /** EXPERIENCE.md:330 */
+  homeStarterPromptChangeOneThing: 'If you could change one thing on this instance, what would it be, and why?',
   /** EXPERIENCE.md:331 */
+  proposalExpectedImpactExample: 'users holding %Development can reach the application',
+  /** EXPERIENCE.md:332 */
   auditMarkerDescription: 'marked as coming through the OcuPilot agent co-pilot',
+  /** EXPERIENCE.md:333 */
+  agentDefinitionListLabel: 'Definitions',
+  /** EXPERIENCE.md:333 */
+  tableColumnProvider: 'Provider',
+  /** EXPERIENCE.md:333 */
+  tableColumnModel: 'Model',
+  /** EXPERIENCE.md:333 */
+  tableColumnDefault: 'Default',
+  /** EXPERIENCE.md:333 */
+  agentDefinitionListEmpty: 'No agent definitions yet.',
+  /** EXPERIENCE.md:333 */
+  agentDefinitionListEmptyAgent: 'create a definition for Claude and test the connection',
+  /** EXPERIENCE.md:333 */
+  agentDefinitionEnable: 'Enable',
+  /** EXPERIENCE.md:333 */
+  agentDefinitionDisable: 'Disable',
+  /** EXPERIENCE.md:333 */
+  agentDefinitionSetDefault: 'Set default',
+  /** EXPERIENCE.md:334 */
+  agentDefinitionFormLabel: 'Definition',
+  /** EXPERIENCE.md:334 */
+  agentDefinitionFieldEndpoint: 'Endpoint',
+  /** EXPERIENCE.md:334 */
+  agentDefinitionFieldApiKey: 'API key',
+  /** EXPERIENCE.md:334 */
+  agentDefinitionAdvanced: 'Advanced',
+  /** EXPERIENCE.md:334 */
+  agentDefinitionFieldMaxTokens: 'Maximum tokens',
+  /** EXPERIENCE.md:334 */
+  agentDefinitionFieldTemperature: 'Temperature',
+  /** EXPERIENCE.md:334 */
+  agentDefinitionFieldMaxIterations: 'Maximum iterations',
+  /** EXPERIENCE.md:334 */
+  agentDefinitionFieldSystemPrompt: 'System prompt override',
+  /** EXPERIENCE.md:334 */
+  agentDefinitionFieldRetention: 'Retention',
+  /** EXPERIENCE.md:334 */
+  actionCreate: 'Create',
+  /** EXPERIENCE.md:335 */
+  agentDefinitionShowKey: 'Show key',
+  /** EXPERIENCE.md:335 */
+  agentDefinitionHideKey: 'Hide key',
+  /** EXPERIENCE.md:335 */
+  agentDefinitionRetentionCaption: 'Transcripts are kept for <n> days.',
+  /** EXPERIENCE.md:336 */
+  proposalCardTitle: 'Proposal \u00b7 <entity type> <name>',
+  /** EXPERIENCE.md:337 */
+  proposalDiffWas: 'was',
+  /** EXPERIENCE.md:337 */
+  proposalDiffNow: 'now',
+  /** EXPERIENCE.md:338 */
+  agentTrustReads: 'It reads with your privileges.',
+  /** EXPERIENCE.md:338 */
+  agentTrustProposes: 'It proposes and you confirm.',
+  /** EXPERIENCE.md:338 */
+  agentTrustAudited: 'Every write is marked in the audit database.',
+  /** EXPERIENCE.md:339 */
+  agentDefinitionRefusedAction: 'change this definition',
+  /** EXPERIENCE.md:340 */
+  formRequiredFieldsLegend: 'Required fields are marked with an asterisk.',
+  /** EXPERIENCE.md:341 */
+  agentSwitchesLabel: 'Switches',
+  /** EXPERIENCE.md:341 */
+  agentSwitchesKillSwitch: 'Kill switch',
+  /** EXPERIENCE.md:341 */
+  agentSwitchesFieldReason: 'Reason',
+  /** EXPERIENCE.md:341 */
+  agentSwitchesEnforcedReadOnly: 'Enforced read-only',
+  /** EXPERIENCE.md:341 */
+  agentSwitchesHoldsHeading: 'Switched off users',
+  /** EXPERIENCE.md:341 */
+  agentSwitchesHoldAdd: 'Switch off a user',
+  /** EXPERIENCE.md:341 */
+  agentSwitchesHoldRemove: 'Switch the agent back on',
+  /** EXPERIENCE.md:341 */
+  agentSwitchesHoldsEmpty: 'No users are switched off.',
+  /** EXPERIENCE.md:342 */
+  agentSwitchesShareContext: 'Screen context is shared by default',
+  /** EXPERIENCE.md:343 */
+  agentSwitchesRefusedAction: 'change the switches',
+  /** EXPERIENCE.md:344 */
+  formStaleSave:
+    'Someone else changed this while you were here. Reload to see the current values, then save again.',
 
   // Not from the Fixed strings table, but required verbatim by this story's task
   // list: the audit-marker-failure fallback text (AD-15 / EXPERIENCE.md "9. **Audit.** Every confirmed"), the

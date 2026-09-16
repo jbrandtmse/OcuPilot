@@ -14,8 +14,30 @@
 /// <p>Every assertion reads the <b>production</b> profile: the roster declares
 /// <code>/ocupilot</code> and <code>/api/ocupilot</code>, and a repeat production install is a
 /// no-op by construction. Nothing here uninstalls.</p>
+/// <p><b>It runs OcuPilot's production install, so it runs on a throwaway container only</b>
+/// (<file>scripts/ci-throwaway.sh</file>, <code>ocupilot-ci</code>), and
+/// <method>OnBeforeAllTests</method> refuses anywhere <parameter>ARMINGVARIABLE</parameter> does
+/// not arm it.</p>
 Class OcuPilot.Test.Manifest Extends %UnitTest.TestCase
 {
+
+/// <p>The environment variable that arms this class, and the one value that arms it:
+/// <code>1</code>. Only <file>scripts/ci-throwaway.sh</file> sets it, so the install this class
+/// runs happens on the container that script builds and nowhere else.</p>
+Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_PRODUCTION_INSTALL";
+
+/// <p>Refuse to run at all unless this instance is armed for a production install.</p>
+/// <p><b>A doc comment does not keep a class that installs from installing.</b> Test classes are
+/// selected by package, so pointing the runner at a container someone cares about would run
+/// OcuPilot's production install on it. Failing here is the honest outcome: nothing is installed
+/// and the reason is named.</p>
+Method OnBeforeAllTests() As %Status
+{
+    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
+        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.Manifest runs OcuPilot's PRODUCTION install on this instance -- a database, a resource, a role, three web applications, the audit registrations and the _SYSTEM unexpire -- and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was installed. Bring one up with scripts/ci-throwaway.sh, which sets it.")
+    }
+    Quit $$$OK
+}
 
 Method OnBeforeOneTest() As %Status
 {

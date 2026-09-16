@@ -40,13 +40,13 @@ deferred:
     location: 'ui/src/app/core/instance.ts (runVerify fall-through); Story 1.13'
     severity: medium
   - summary: >-
-      The `--ocu-*` colour layer is theme-static: `:root.ocu-theme-dark` remaps only `--mat-sys-*`,
-      so every colour in `_components.scss` keeps its light value in dark mode. Pre-existing and
+      The `--ocu-*` color layer is theme-static: `:root.ocu-theme-dark` remaps only `--mat-sys-*`,
+      so every color in `_components.scss` keeps its light value in dark mode. Pre-existing and
       whole-file, newly visible because this story is the first to use the error roles.
     evidence: |-
       Read directly 2026-09-12: _theme.scss:127-128 maps --mat-sys-error-container to
       --ocu-error-container-dark, and the dark block redefines no --ocu-* role; _tokens.scss:66-69
-      holds the -dark values, unreachable from a rule naming --ocu-error-container. Every colour
+      holds the -dark values, unreachable from a rule naming --ocu-error-container. Every color
       in _components.scss uses the --ocu-* form, which is also what this story's intent requires,
       so the fix is a design-system decision, not a component edit. No code applies
       `ocu-theme-dark` yet.
@@ -129,7 +129,7 @@ reachable, so they are closed here.
   response device; `Call=` targets stay thin (Router `:55-56`).
 - The client calls one absolute path through the one API service (AD-20), Bearer only (AD-28), and reads
   the envelope's `code`, never the human `reason` (AD-39).
-- Every user-facing word comes from `ui/src/app/core/strings.ts`; every colour from an existing `--ocu-*`
+- Every user-facing word comes from `ui/src/app/core/strings.ts`; every color from an existing `--ocu-*`
   token. `core/` stays framework-free so `node --test` executes it.
 - No real account is created, modified, locked or expired, and no browser session this story did not mint
   is ever ended. A denial test uses a purpose-built throwaway principal, removed in teardown.
@@ -267,7 +267,7 @@ reachable, so they are closed here.
 - `ui/src/app/app.ts` — inside the `@if (signedIn)` branch `:40-45`, render `<app-instance-notice />` when
   the instance is not `ready` and `<router-outlet />` only when it is; call `InstanceService.verify()` once
   the session reaches `signed-in`.
-- `ui/src/styles/_components.scss` — the `empty-state` rules, from existing tokens only. Add no colour token.
+- `ui/src/styles/_components.scss` — the `empty-state` rules, from existing tokens only. Add no color token.
 
 **Execution — tests:**
 
@@ -386,9 +386,9 @@ through `checking`, so the number never changes without a notify.
   - `[medium]` `[patch]` blind-hunter: a rejected `fetch` becomes an unhandled promise rejection — verified: `requestJson` awaited outside any `try` and callers reach it through `void`; now returns `status: 0` as an outcome, with a test.
   - `[low]` `[reject]` blind-hunter: a non-JSON 2xx is reported as "version 0" — real but unreachable from this route, which always emits JSON; 0 is already the honest "not usable" value, and a guard adds a branch for a proxy fault nothing demonstrates.
   - `[medium]` `[patch]` blind-hunter: three uncoupled copies of the supported version (`APIVERSION`, `REQUIRED_ADMIN_API_VERSION`, the sentence's literal "2") — the client pair is now pinned by a test asserting the sentence names `REQUIRED_ADMIN_API_VERSION`; the cross-language half is deferred.
-  - `[false]` `[reject]` blind-hunter: a broken probe on a healthy v2 instance reports version 0 — that is the matrix's own "Probe contract broken" row verbatim (`adminApiVersion: 0`), so it is the specified behaviour, not a defect.
+  - `[false]` `[reject]` blind-hunter: a broken probe on a healthy v2 instance reports version 0 — that is the matrix's own "Probe contract broken" row verbatim (`adminApiVersion: 0`), so it is the specified behavior, not a defect.
   - `[medium]` `[patch]` blind-hunter: `AdminInventory.Derive` reads a failed query as an empty population — verified: `%Execute` is unchecked, so a failure returns `$$$OK` with no rows and `Regenerate` emits an empty block; now checks `%SQLCODE`, the same discipline the class header states for `SourceState`.
-  - `[low]` `[patch]` blind-hunter: `SourceState`'s CSP column is a substring scan including comments but is documented as a structural claim — corrected the doc to say what it measures, labelled `(inference)` where it generalises.
+  - `[low]` `[patch]` blind-hunter: `SourceState`'s CSP column is a substring scan including comments but is documented as a structural claim — corrected the doc to say what it measures, labeled `(inference)` where it generalises.
   - `[low]` `[reject]` blind-hunter: the spec's "a failed lookup fails the derivation" is not literally what shipped — the fix is an edit to this build's spec; recorded instead as an overnight decision in the Spec Change Log. AC5 is satisfied either way: an unreadable row disagrees with a checked-in `none` and fails the comparison.
   - `[low]` `[reject]` blind-hunter: the `AdminInventoryTest` → `Inventory` rename is not corrected in the Code Map, AC5 and Design Notes — the fix is an edit to this build's spec; the Change Log records it as the lead's to amend.
   - `[low]` `[patch]` blind-hunter: `Payload` reads and then discards `VerifyInstance`'s status with no note — the downgrade is deliberate (a version the client cannot use is still a 200 carrying the number); documented at the method.
@@ -404,7 +404,7 @@ through `checking`, so the number never changes without a notify.
   - `[low]` `[reject]` blind-hunter: `OPTIONS` is now advertised and never pinned — verified at `irissys/%CSP/REST.cls:269-272` that OPTIONS is answered ahead of authorization for the dispatch class as a whole, so mapping a route changed what it reports, not whether it answers; CORS is already pinned off by `Test/Token.TestNeitherDispatchClassEnablesCors`.
   - `[low]` `[reject]` blind-hunter: the install gate's effect on the new route is pinned only client-side — the gate is in `OnPreDispatch`, ahead of dispatch and route-independent, and is already pinned by `Test/Gate` and `Test/GateLadder`; a per-route copy asserts the same branch again.
   - `[low]` `[patch]` blind-hunter: `_components.scss`'s header keeps a closed inventory of sanctioned raw pixel values that the new rules make incomplete — extended the list.
-  - `[medium]` `[defer]` blind-hunter: the new error-coloured surface will not follow the dark theme — verified at `_theme.scss:107-145` and `_tokens.scss:66-69`: dark remaps only `--mat-sys-*`, and every colour in `_components.scss` uses the `--ocu-*` form the intent requires. Pre-existing and whole-file. Deferred.
+  - `[medium]` `[defer]` blind-hunter: the new error-coloured surface will not follow the dark theme — verified at `_theme.scss:107-145` and `_tokens.scss:66-69`: dark remaps only `--mat-sys-*`, and every color in `_components.scss` uses the `--ocu-*` form the intent requires. Pre-existing and whole-file. Deferred.
   - `[low]` `[reject]` blind-hunter: brace-matching template parsing is duplicated in `session.test.mjs` — test-only duplication; extraction is a refactor, not a direct correction.
   - `[low]` `[patch]` blind-hunter: the new string is the first entry to break `strings.mjs`'s documented one-pair-per-line contract — verified: `PAIR_RE` matches only because `\s*` crosses the newline; the entry is now on one line.
   - `[low]` `[patch]` blind-hunter: placeholder substitution is rolled locally and replaces only the first occurrence — folded into the extracted `formatVersionMismatch`, which replaces every occurrence and is executed by a test.
@@ -470,7 +470,7 @@ privilege-driven navigation and will need one.
 
 **Decision (overnight) — the notices are `empty-state` compositions, not banners.** EXPERIENCE.md `:427-428`
 say "empty-state shape with a banner (error)"; DESIGN.md `:1066` says "Neither is a banner". DESIGN.md is
-the authority on appearance and the more specific statement, so "(error)" is the colour treatment
+the authority on appearance and the more specific statement, so "(error)" is the color treatment
 (DESIGN.md `:1201`) on the empty state, not a second stacked component.
 
 **Decision (overnight) — the version-mismatch string ships through `REQUIRED_ALONGSIDE_TABLE`.** The Fixed

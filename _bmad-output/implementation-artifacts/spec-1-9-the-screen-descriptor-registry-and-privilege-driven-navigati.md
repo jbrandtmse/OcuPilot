@@ -56,7 +56,7 @@ deferred:
       which satisfies the AC with an authorized literal but is thinner than EXPERIENCE.md:220's
       "the permission-denied message" implies.
     evidence: |-
-      EXPERIENCE.md:220 and :431 describe the behaviour but name no string; :234 and :437 spell
+      EXPERIENCE.md:220 and :431 describe the behavior but name no string; :234 and :437 spell
       sentences the table's own rule (:248) calls illustrations. Authoring product copy is the
       owner's call.
     location: 'EXPERIENCE.md:220, :431; ui/src/app/shell/screen-denied.ts'
@@ -117,7 +117,7 @@ deferred:
     location: 'src/OcuPilot/Api/Navigation.cls; src/OcuPilot/Screen/Registry.cls (Roster)'
     severity: low
   - summary: >-
-      Smaller shell-behaviour items left as filed: the Ctrl/Cmd+B chord does not exclude shiftKey;
+      Smaller shell-behavior items left as filed: the Ctrl/Cmd+B chord does not exclude shiftKey;
       rail and side-bar navigation drop a `?ns=` selection; ShellState persists Home's collapse as a
       user preference and toggles when no area is visible; the composite-id codec accepts a part
       already containing its own separator with no guard and no adversarial test.
@@ -173,7 +173,7 @@ bar with gated entries that stay reachable. Three routed ledger items close here
   preference store import no `@angular/*` symbol. The descriptor→`Routes` adapter lives outside `core/`.
 - Gated entries are `aria-disabled="true"`, never `disabled`, never hidden, and keep their place in the Tab
   and arrow order (EXPERIENCE.md:214).
-- Every user-facing word from `strings.ts`; every colour from an existing `--ocu-*` token; every geometry
+- Every user-facing word from `strings.ts`; every color from an existing `--ocu-*` token; every geometry
   from `_metrics.scss`, which already declares `--ocu-rail-width` and `--ocu-side-bar-width`.
 - No real account is created, modified, locked or expired, and no browser session this story did not mint
   is ever ended. Denial tests mint throwaway principals and remove them in teardown.
@@ -395,7 +395,7 @@ bar with gated entries that stay reachable. Three routed ledger items close here
   and `.ocu-screen-denied` from existing tokens and metrics only: 48×48 items, the solid 3px
   `--ocu-secondary-dark` rail indicator inset 8px with `0 2px 2px 0` corners (DESIGN.md `:249`, `:984`),
   the 3px `--ocu-secondary` side-bar selected indicator (`:269`), 28px entries, gated copy in
-  `--ocu-restrained` at **full opacity**, and the on-chrome focus variant. Add no colour token.
+  `--ocu-restrained` at **full opacity**, and the on-chrome focus variant. Add no color token.
 
 **Execution — tooling and tests:**
 
@@ -559,7 +559,7 @@ the one `## Residual risks` records as not run. Routed to 1.10 rather than patch
 height arrives with the header and status bar it builds, and choosing a viewport value now cannot
 be verified without the browser check this story defers.
 
-**`[low]` `[patch]`** the `! ~ * ' ( )` family was labelled "the RFC 3986 sub-delimiters" in both
+**`[low]` `[patch]`** the `! ~ * ' ( )` family was labeled "the RFC 3986 sub-delimiters" in both
 corpora (`~` is unreserved; `$ & + , ; =` are sub-delims and absent), and the two files stated the
 result incompatibly ("five of the six" against "four of the five"). Relabelled as the eleven
 characters `encodeURIComponent` leaves literal, and `-` — the tree's own spelling in every area
@@ -658,7 +658,7 @@ re-`OPEN`s a cursor IRIS scopes to the routine, not the process).
   - `[low]` `[patch]` BH/EC/VG: `ui/tools/navigation.test.mjs`'s mutation note named an `inFlight` guard `noteForbidden` deliberately does not have — corrected to name `load()`'s slot ordering, which is the real single-flight rule.
   - `[low]` `[patch]` BH/VG: the spec's pinning row named `screen-denied.spec.ts`, which does not exist — corrected to `screen-outlet.spec.ts` (Rule 19's sanctioned `## Verification` edit; the `mutation:` line beneath it already named it correctly).
   - `[low]` `[patch]` BH: the side bar bound `aria-describedby` on every entry while only gated entries render the reason element — now bound only when one exists; pinned by a new `side-bar.spec.ts` test.
-  - `[low]` `[patch]` BH: the rail's doc claimed the tab stop follows the active area; the code always starts at the first item — doc corrected to match the code rather than changing focus behaviour untested.
+  - `[low]` `[patch]` BH: the rail's doc claimed the tab stop follows the active area; the code always starts at the first item — doc corrected to match the code rather than changing focus behavior untested.
   - `[low]` `[patch]` BH: `Registry`'s doc implied `Validate` runs on the instance; nothing on the serving path calls it — doc now says who calls it and why `Roster` does not.
   - `[low]` `[patch]` BH: `check-objectscript.py`'s docstring listed the new rule as 8 between rules 2 and 3 and still said "seven ACs" — renumbered and corrected.
   - `[low]` `[patch]` BH: the `COMPOSITESEPARATOR` inference label rendered as a bold `(inference` with a stray bold `)` — reduced to the one word CLAUDE.md asks for.
@@ -667,7 +667,7 @@ re-`OPEN`s a cursor IRIS scopes to the routine, not the process).
   - `[low]` `[defer]` BH/EC: `Roster`'s `ScreensForArea` error branch leaves already-pushed areas in the output while the `Catch` clears it — a caller reading the output before the status sees a partial map.
   - `[low]` `[defer]` BH/EC: `Payload` hand-copies each roster field, so a field added to `Roster` is silently absent from the wire.
   - `[low]` `[defer]` BH/EC: `JoinComposite`/`SplitComposite` accept a part already containing `$Char(1)` with no guard, and no adversarial test covers it; nor does `Validate` check `id.kind` against `id.parts`.
-  - `[low]` `[reject]` BH/VG: `Api.Error.AUTHNOPRIVILEGE` has no call site or test — the spec tasks declaring it ahead of its Epic 2 consumer and its doc says so; a constant with no behaviour is not worth a test.
+  - `[low]` `[reject]` BH/VG: `Api.Error.AUTHNOPRIVILEGE` has no call site or test — the spec tasks declaring it ahead of its Epic 2 consumer and its doc says so; a constant with no behavior is not worth a test.
   - `[low]` `[reject]` BH: `tsconfig.spec.json`'s `vitest/globals` types are unused because every spec imports explicitly — harmless, and removing it invites a later spec to fail confusingly.
   - `[low]` `[defer]` EC: `ShellState.activateArea`'s Home branch persists the collapse as a user preference, and `toggleOpen` flips the flag when no area is visible.
   - `[low]` `[defer]` EC: rail and side-bar navigation drop a `?ns=` namespace selection (AD-13 carries it as a query parameter); no namespace switcher exists until a later story.
@@ -707,7 +707,7 @@ declaration — **declared** here, consumed later), AD-27 (every screen keeps it
 devDependency: `@angular/build:unit-test` already ships inside the installed `@angular/build@22.1.5`,
 `vite` is already transitively present, and `angular-json.test.mjs:22-24` accepts an `@angular/build:`
 builder. Three stories deferred this because their client half was small; this story's is almost entirely
-rendered behaviour — keyboard order, ARIA state, focus movement — which source-text regexes cannot pin at
+rendered behavior — keyboard order, ARIA state, focus movement — which source-text regexes cannot pin at
 all. Deferring again would mean shipping the epic's navigation contract with no executed test host. If the
 dependency cannot be installed offline, that is an environment blocker to report, not a reason to re-defer.
 

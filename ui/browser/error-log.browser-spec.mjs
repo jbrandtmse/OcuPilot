@@ -31,6 +31,21 @@
  * outgoing request is rewritten in flight to a namespace no enumeration on this instance carries,
  * so the 404 that comes back is the live endpoint's own answer, not a mock.
  *
+ * **The privilege-denial sentence (DW-323) is asserted here too, against a genuine
+ * `AUTH.NOPRIVILEGE` envelope.** A principal denied one of `LogErrorList`'s own instance-level
+ * pairs (`%Admin_Operate:USE`, `%DB_IRISSYS:READ`) is denied the same pair by the navigation map
+ * and never gets past `screen-outlet.ts`'s own `allowed()` gate to reach this page at all -- so
+ * that half of AD-8's 403 is unreachable by a real principal in a real browser, by construction.
+ * What is reachable is the PER-NAMESPACE half (AD-48): `OcuPilot.Test.ErrorLogDenial`'s own
+ * `SERVEDUSER` holds every instance pair, so it passes the navigation gate and the namespaces
+ * level serves -- but it holds only READ, not WRITE, on a second seeded namespace, so drilling
+ * into that one is refused 403 naming its own WRITE pair. Reusing `SERVEDUSER` (created and
+ * deleted the same way `ErrorLogDenial` itself does, over the whole browser session rather than
+ * one class run) ties this leg to the exact account
+ * `TestOneNamespaceIsServedAndAnotherRefusedInOneSession` already pins over raw HTTP, so the two
+ * halves DW-323 found pinned separately -- the server's envelope, the client's `detail` lift --
+ * are now observed together from the one thing that renders them.
+ *
  * Run: `npm run test:browser` (after `npm run build` and `sh scripts/ci-throwaway.sh up`).
  */
 
@@ -44,9 +59,11 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { parseMarkers } from './iris-session.mjs';
 import { ROW_SELECTOR, clickRowCentre, viewCount } from './list-spec.mjs';
+import { leaveFirstLoginGate } from './shell-entry.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
+const { formatDeniedAction } = await import(join(uiRoot, 'src', 'app', 'core', 'navigation.ts'));
 
 const config = browserConfig();
 const SCREEN_URL = '/ocupilot/logs/errors';
@@ -65,6 +82,10 @@ const UNKNOWN_NAMESPACE = 'OCUPILOTNOSUCHNS';
 /** `OcuPilot.Test.ErrorLogSeed.TARGETNAMESPACE` -- a normal namespace, never the install one, so
  * seeded entries are never confused with whatever install already put in HSCUSTOM. */
 const SEED_NAMESPACE = 'USER';
+
+/** `OcuPilot.Test.ErrorLogDenial.SERVEDUSER` -- reused by name (DW-323) so this leg drives the
+ * exact principal the unit tier already pins over raw HTTP. */
+const SERVED_USER = 'OcuPilotErrServed';
 
 let browser = null;
 
@@ -102,6 +123,64 @@ function seedErrors(count) {
   }
 }
 
+/**
+ * Create `OcuPilot.Test.ErrorLogDenial`'s four throwaway principals by invoking its own
+ * `OnBeforeAllTests` directly rather than through `%UnitTest.Manager` -- this leg needs the
+ * accounts to survive across the whole browser session, not one class run. Answers
+ * `SERVEDUSER`'s password and the per-namespace measurement `OnBeforeAllTests` already
+ * establishes: the seeded namespace and date it holds only READ on, and the WRITE pair that
+ * refuses it there.
+ */
+function createServedUserFixture() {
+  assert.notEqual(config.container, LIVE_CONTAINER, 'this leg creates real IRIS principals through OcuPilot.Test.ErrorLogDenial and never runs against the live instance');
+  const input = `Set tCase = ##class(OcuPilot.Test.ErrorLogDenial).%New()
+Set tSC = tCase.OnBeforeAllTests()
+${mark('OK', '$System.Status.IsOK(tSC)')}
+${mark('ERR', '$Select($System.Status.IsOK(tSC):"",1:$System.Status.GetErrorText(tSC))')}
+${mark('PASSWORD', 'tCase.PreparedPassword')}
+${mark('REFUSEDNS', 'tCase.PreparedRefusedNamespace')}
+${mark('REFUSEDDATE', 'tCase.PreparedRefusedDate')}
+${mark('REFUSEDRESOURCE', 'tCase.PreparedRefusedResource')}
+Halt
+`;
+  const result = spawnSync('docker', ['exec', '-i', config.container, 'iris', 'session', 'iris', '-U', 'HSCUSTOM'], {
+    input,
+    encoding: 'utf8',
+    timeout: 60000,
+  });
+  const output = `${result.stdout ?? ''}${result.stderr ?? ''}`;
+  const values = parseMarkers(output, ['OK', 'ERR', 'PASSWORD', 'REFUSEDNS', 'REFUSEDDATE', 'REFUSEDRESOURCE']);
+  assert.equal(values.OK, '1', `OcuPilot.Test.ErrorLogDenial.OnBeforeAllTests succeeded: ${values.ERR}\n${output}`);
+  return {
+    password: values.PASSWORD,
+    refusedNamespace: values.REFUSEDNS,
+    refusedDate: values.REFUSEDDATE,
+    failedPair: `${values.REFUSEDRESOURCE}:WRITE`,
+  };
+}
+
+/**
+ * Remove `OcuPilot.Test.ErrorLogDenial`'s four throwaway principals the same way the class tears
+ * itself down. `OnAfterAllTests` needs no state from the `OnBeforeAllTests` call that created
+ * them -- only the class's own constant account names -- so a fresh instance can run it.
+ */
+function destroyServedUserFixture() {
+  const input = `Set tCase = ##class(OcuPilot.Test.ErrorLogDenial).%New()
+Set tSC = tCase.OnAfterAllTests()
+${mark('OK', '$System.Status.IsOK(tSC)')}
+${mark('ERR', '$Select($System.Status.IsOK(tSC):"",1:$System.Status.GetErrorText(tSC))')}
+Halt
+`;
+  const result = spawnSync('docker', ['exec', '-i', config.container, 'iris', 'session', 'iris', '-U', 'HSCUSTOM'], {
+    input,
+    encoding: 'utf8',
+    timeout: 60000,
+  });
+  const output = `${result.stdout ?? ''}${result.stderr ?? ''}`;
+  const values = parseMarkers(output, ['OK', 'ERR']);
+  assert.equal(values.OK, '1', `OcuPilot.Test.ErrorLogDenial.OnAfterAllTests left no throwaway objects behind: ${values.ERR}\n${output}`);
+}
+
 /** The dates level's own two rendered columns -- date and count -- read the way the client shows
  * them, never assumed from a vendor query's format. */
 function dateCounts(page) {
@@ -123,8 +202,12 @@ after(async () => {
   if (browser !== null) await browser.close();
 });
 
-/** A fresh context signed in through the shell's own form at the screen's deep link, reads counted. */
-async function signedInAtScreen() {
+/**
+ * A fresh context signed in through the shell's own form at the screen's deep link, reads
+ * counted. `username`/`password` default to the shell's own account; DW-323's leg passes a
+ * throwaway principal's instead, so the same sign-in flow drives both.
+ */
+async function signedInAtScreen(username = config.username, password = config.password) {
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
   page.setDefaultNavigationTimeout(config.navigationTimeoutMs);
@@ -135,9 +218,13 @@ async function signedInAtScreen() {
   });
   await page.goto(`${config.origin}${SCREEN_URL}`, { waitUntil: 'networkidle2' });
   await page.waitForSelector('#ocu-signin-user', { visible: true, timeout: config.navigationTimeoutMs });
-  await page.type('#ocu-signin-user', config.username);
-  await page.type('#ocu-signin-password', config.password);
+  await page.type('#ocu-signin-user', username);
+  await page.type('#ocu-signin-password', password);
   await page.click('.ocu-signin-card button[type="submit"]');
+  await page.waitForSelector('app-rail .ocu-rail', { timeout: config.navigationTimeoutMs });
+  // The first-login gate takes an administrator to the Definition form on an instance with no
+  // enabled definition, whatever URL was asked for (Story 3.6). Back returns to this one.
+  await leaveFirstLoginGate(page, config.navigationTimeoutMs, SCREEN_URL);
   await settled(page, 'namespaces');
   return { context, page, reads };
 }
@@ -177,6 +264,10 @@ async function signedInAtScreenIntercepting() {
   await page.type('#ocu-signin-user', config.username);
   await page.type('#ocu-signin-password', config.password);
   await page.click('.ocu-signin-card button[type="submit"]');
+  await page.waitForSelector('app-rail .ocu-rail', { timeout: config.navigationTimeoutMs });
+  // The first-login gate takes an administrator to the Definition form on an instance with no
+  // enabled definition, whatever URL was asked for (Story 3.6). Back returns to this one.
+  await leaveFirstLoginGate(page, config.navigationTimeoutMs, SCREEN_URL);
   await settled(page, 'namespaces');
   return {
     context,
@@ -399,15 +490,18 @@ test('AC3, AC6: a refused level renders the named refusal, never a blank frame, 
     page.off('response', onResponse);
     assert.equal(refusedStatus, 404, 'the rewritten request was genuinely refused by the real endpoint, not stubbed');
 
-    // Mutation (Rule 19): delete the `showRefusal` branch from `error-log.page.ts` -> the level
-    // frame still switches to `dates` but this element never appears, and the assertion below
-    // times out instead of failing on a false value -- a blank frame, exactly as the risk named
-    // it.
+    // Mutation (Rule 19): render `STRINGS.connectivityRequestRefused` unconditionally at
+    // `error-log.page.ts`'s refusal span -> this goes red against the real 404 from the live
+    // endpoint, which is what makes this leg, and not the stubbed unit cases, the proof that the
+    // shipped bundle branches on the envelope's code. Delete the `showRefusal` branch instead ->
+    // the level frame still switches to `dates` but this element never appears, and the assertion
+    // below times out instead of failing on a false value -- a blank frame, exactly as the risk
+    // named it.
     assert.notEqual(await page.$(REFUSAL_SELECTOR), null, 'the refusal renders its own notice rather than a blank frame');
     assert.equal(
       await page.$eval(REFUSAL_SELECTOR, (node) => node.textContent.trim()),
-      STRINGS.connectivityRequestRefused,
-      'naming the same notice every other refused read on this screen shows'
+      STRINGS.errorLogRefusedNamespace,
+      'naming the refusal the envelope reported -- a namespace this log does not carry -- not the generic sentence every refused read used to show'
     );
 
     // Mutation (Rule 19): stop clearing `dateRows` in `ErrorLogDrill.openDates` -> the real dates
@@ -425,6 +519,47 @@ test('AC3, AC6: a refused level renders the named refusal, never a blank frame, 
     );
   } finally {
     await context.close();
+  }
+});
+
+test('DW-323: a genuine AUTH.NOPRIVILEGE envelope renders the resolved privilege-denial sentence, naming the pair it carried', async () => {
+  // The create is inside the try: `OnBeforeAllTests` builds its four principals one at a time, so
+  // an error partway through leaves some of them on the container unless the teardown still runs.
+  let fixture = null;
+  try {
+    fixture = createServedUserFixture();
+    const { context, page } = await signedInAtScreen(SERVED_USER, fixture.password);
+    try {
+      // SERVEDUSER holds every instance-level pair, so it passed screen-outlet.ts's own
+      // allowed() gate and this level served -- an instance-level denial would never have
+      // reached this render at all (see the file header).
+      const namespaces = await firstCells(page);
+      assert.ok(
+        namespaces.includes(fixture.refusedNamespace),
+        `the seeded second namespace is listed, since SERVEDUSER holds READ on it: ${JSON.stringify(namespaces)}`
+      );
+      assert.equal(await page.$(REFUSAL_SELECTOR), null, 'the served namespaces level shows no refusal');
+
+      await drillInto(page, fixture.refusedNamespace, 'dates');
+
+      // Mutation (Rule 19, observed): disable refusalMessage's AUTH.NOPRIVILEGE arm
+      // (error-log.page.ts) -> this assertion goes red, reading the generic
+      // connectivityRequestRefused fragment ("request refused") instead of the resolved
+      // sentence, while the LOG.NAMESPACE leg above stays green -- it never reaches this arm at
+      // all. (Dropping only the non-empty `failedPair` check does NOT falsify this leg: the real
+      // envelope here always carries a pair, so that guard is exercised by
+      // error-log.page.spec.ts's no-pair case, not by this one.)
+      assert.notEqual(await page.$(REFUSAL_SELECTOR), null, 'the refusal renders its own notice rather than a blank frame');
+      assert.equal(
+        await page.$eval(REFUSAL_SELECTOR, (node) => node.textContent.trim()),
+        formatDeniedAction(STRINGS.privilegeDeniedAction, fixture.failedPair, STRINGS.errorLogRefusedAction),
+        `the resolved privilegeDeniedAction sentence, naming the pair the real envelope carried (${fixture.failedPair}) -- not the generic connectivityRequestRefused fragment`
+      );
+    } finally {
+      await context.close();
+    }
+  } finally {
+    destroyServedUserFixture();
   }
 });
 

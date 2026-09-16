@@ -8,23 +8,29 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Router, RouterOutlet } from '@angular/router';
 
+import { DefinitionActions } from './areas/agent/definition-actions';
+import { DefinitionForm } from './areas/agent/definition-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
 import { ErrorLogDrill } from './areas/logs/error-log.store';
+import { AgentStatus, DEFINITIONS_ROUTE } from './core/agent-status';
 import { ConnectivityService } from './core/connectivity';
+import { FormDirty } from './core/form-dirty';
 import { InstanceService, isInstanceReady } from './core/instance';
-import { NavigationService } from './core/navigation';
+import { NavigationService, editorScreenFor, routeFromUrl, screenForRoute, withQuery } from './core/navigation';
 import { OverlayStack } from './core/overlay-stack';
 import { RefreshService } from './core/refresh';
 import { ScopeService } from './core/scope';
 import { Session, isInstallStateUnreadable, isSignedIn } from './core/session';
+import { ShellState } from './core/shell-state';
 import { STRINGS } from './core/strings';
 import { CommandBar } from './shell/command-bar';
 import { FaultBanner } from './shell/fault-banner';
 import { Header } from './shell/header';
 import { InstanceNotice } from './shell/instance-notice';
 import { LocatorBar } from './shell/locator-bar';
+import { Panel } from './shell/panel';
 import { Rail } from './shell/rail';
 import { SideBar } from './shell/side-bar';
 import { SignIn } from './shell/sign-in';
@@ -108,6 +114,7 @@ const CONTENT_ID = 'ocu-content';
     LocatorBar,
     CommandBar,
     StatusBar,
+    Panel,
   ],
   host: { '(document:keydown.escape)': 'onEscape()' },
   template: `@if (frameShown) {
@@ -133,6 +140,7 @@ const CONTENT_ID = 'ocu-content';
                 <router-outlet />
               </main>
             </div>
+            <app-panel />
           </div>
           <app-status-bar />
         } @else {
@@ -147,12 +155,21 @@ export class App {
   private readonly session = inject(Session);
   private readonly instance = inject(InstanceService);
   private readonly navigation = inject(NavigationService);
+  private readonly agentStatus = inject(AgentStatus);
   private readonly scope = inject(ScopeService);
+  private readonly router = inject(Router);
   private readonly connectivity = inject(ConnectivityService);
   private readonly refresh = inject(RefreshService);
+  private readonly shell = inject(ShellState);
 
   private readonly auditSearch = inject(AuditSearch);
   private readonly errorLogDrill = inject(ErrorLogDrill);
+  private readonly definitionForm = inject(DefinitionForm);
+  private readonly formDirty = inject(FormDirty);
+  // Constructed for its own sake: the Definitions list is served by the generic `ListPage`, so
+  // its three row actions are registered by this service rather than by a page of its own
+  // (`areas/agent/definition-actions.ts`). Injecting it here is what brings it into existence.
+  private readonly definitionActions = inject(DefinitionActions);
   private readonly overlays = inject(OverlayStack);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
 
@@ -321,15 +338,90 @@ export class App {
       // $ROLES and $USERNAME, which on an IRIS for Health instance can hold patient data (AD-48).
       // Left in place it would be on screen for whoever signs in next in the same tab.
       this.errorLogDrill.reset();
+      // The eighth: the Definition form holds an edit buffer THIS principal typed -- including a
+      // pasted API key that has not been stored yet (AD-35) -- and its dirty flag would otherwise
+      // make the next principal's first navigation ask about work that is not theirs.
+      this.definitionForm.reset();
+      this.formDirty.reset();
+      // The ninth: whether the instance holds an enabled definition is a read THIS principal
+      // made, and the panel and the rail's dot pick an audience from it beside the navigation
+      // map's verdict. Dropped in the same gesture as the map, so the two can never be one
+      // principal's answer and another's (AD-8).
+      this.agentStatus.reset();
       return;
     }
     void this.instance.verify();
-    void this.navigation.load();
+    const map = this.navigation.load();
     // The namespace list is the third answer that belongs to this principal, and the scope
     // `ApiService` attaches to every call comes from it. The switch asks for it too, but the
     // switch only exists once the instance probe has settled and it asks exactly once -- so a
     // read that fails has no second chance. Both calls reach the same single-flight `load()`,
     // so asking here costs no extra request and gives a later signed-in pass the retry.
     void this.scope.load();
+    // The fourth read of the same kind, and the one the panel and the rail's dot render from.
+    // Issued on every signed-in pass, not only on a sign-in: a reloaded tab reaches `signed-in`
+    // without an authentication, and a status read left to the gate alone would leave the panel
+    // with nothing to answer from on exactly the path FR-28 says the reminder must survive.
+    const status = this.agentStatus.load();
+    void this.runFirstLoginGate(map, status);
+  }
+
+  /**
+   * The first-login gate (FR-28): an administrator who signs in while no definition is enabled
+   * lands on the Definition form, under its landing banner.
+   *
+   * **It keys off an authentication, never off `signed-in`.** `consumeFreshSignIn()` answers true
+   * once per `adopt()`, which is the one path a genuine authentication takes -- the silent probe
+   * and an accepted form login both. A tab resuming a stored pair reaches `signed-in` through
+   * `start()` without it, so a reload is not a login and the requested URL survives, which is the
+   * promise the withheld outlet already makes.
+   *
+   * **The flag is consumed before anything is awaited.** Several passes of change detection can
+   * reach this method while the two reads are in flight, and exactly one of them may be the
+   * sign-in; reading the one-shot after the await would let a second pass claim it as well.
+   *
+   * **Nothing about the gate is stored.** What decides whether it fires is the instance's own
+   * definition rows and the map's verdict, both re-read on every signed-in pass above; this waits
+   * on those two reads rather than issuing its own, so "never afterwards" is a consequence of the
+   * condition clearing and the gate costs no extra request.
+   *
+   * It declines quietly in every other case: a caller the map refuses, an instance that already
+   * holds an enabled definition, a read that did not answer, and a browser already on the form.
+   */
+  private async runFirstLoginGate(map: Promise<void>, status: Promise<void>): Promise<void> {
+    const fresh = this.session.consumeFreshSignIn();
+    if (!fresh) return;
+    // No screen mounts from here until this method settles, whichever way it settles: the
+    // requested screen would otherwise issue its declared read (AD-36) for rows the navigation
+    // below throws away, and read again when the user came back by Back. `ScreenOutlet` still
+    // resolves the requested route while the hold stands, so the frame around the screen is
+    // unchanged -- only the page waits.
+    const release = this.shell.holdScreen();
+    try {
+      await Promise.all([map, status]);
+      if (!this.agentStatus.answered() || this.agentStatus.configured()) return;
+      // `loaded()`, not `answered()`: a map read that completed with a failure leaves every verdict
+      // `UNGATED`, so reading the verdict alone would take a caller who holds nothing to a form the
+      // instance will refuse them at. Declining is the safe half of that question.
+      if (!this.navigation.loaded()) return;
+      if (!this.navigation.screenVerdict(DEFINITIONS_ROUTE).allowed) return;
+      const list = screenForRoute(DEFINITIONS_ROUTE);
+      const form = list === null ? null : editorScreenFor(list);
+      if (form === null) return;
+      // Already there: a deep link straight to the form is honoured rather than replaced, which
+      // would otherwise drop the id a browser was asked to open.
+      if (routeFromUrl(this.router.url).startsWith(form.route)) return;
+      // An ordinary history entry, never `replaceUrl`. The route the gate moved off is the one the
+      // browser was asked for, and Back is this product's published way out of a screen it did not
+      // choose ("Undo by Back"; EXPERIENCE.md's own "They may leave"). Replacing would erase the
+      // requested route from history, which is the one thing a bypassable gate must not do.
+      //
+      // Awaited, not floated: the hold is released the moment this method settles, so returning
+      // before the router had moved would mount the very screen the gate is leaving. A navigation
+      // the router refuses leaves the browser where it is, which is the same outcome as declining.
+      await this.router.navigateByUrl(withQuery(form.route, this.router.url)).catch(() => false);
+    } finally {
+      release();
+    }
   }
 }

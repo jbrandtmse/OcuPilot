@@ -92,7 +92,7 @@ the token contract over the real wire.
   falsifiable coverage without a component runner. Type-stripping erases types only — no enums, no
   namespaces, no parameter properties, no decorators in those modules.
 - Refresh is **single-flight** and a background concern of the API service; no screen or panel handles it.
-- Every user-facing word comes from `ui/src/app/core/strings.ts`; every colour from an existing
+- Every user-facing word comes from `ui/src/app/core/strings.ts`; every color from an existing
   `--ocu-*` token.
 - Secrets and tokens are never logged, never written to a cookie, never placed in a URL, never posted into a
   frame (AD-35, AD-47).
@@ -102,7 +102,7 @@ the token contract over the real wire.
 - No readiness endpoint, no `/info` call, no version guard — 1.17 and 1.8 own those (AD-45).
 - No header, rail, side bar or agent panel — 1.10 owns the chrome. This story renders only the two states
   sign-in needs: the signing-in skeleton and the form-login card.
-- No new colour token (`ui/tools/design-tokens.test.mjs:76` asserts the exact 64-role set).
+- No new color token (`ui/tools/design-tokens.test.mjs:76` asserts the exact 64-role set).
 - No client component test runner — DW-93 is owned by 1.9. No karma target
   (`ui/tools/angular-json.test.mjs:14` forbids it).
 - No `New $ROLES` and no impersonation in tests; throwaway principals authenticate for real.
@@ -214,7 +214,7 @@ interceptor exists** — verified against the file structure, not one grep; ever
   `keys === literals + 3`. Extending an **existing row** adds literals without shifting a line; adding a
   **new row** pushes a data row past 302 and silently breaks the converse test.
 - `EXPERIENCE.md` — the canonical string owner (`:248`). Action-names row **`:262`** (omits "Sign in"),
-  Form-login row **`:291`**. Behaviour: `:424` silent-login-in-progress (shell chrome, content skeleton,
+  Form-login row **`:291`**. Behavior: `:424` silent-login-in-progress (shell chrome, content skeleton,
   status-bar "Signing in…"), `:425` form login, `:426` expired password, `:490-499` the Session state table,
   `:571` the silent retry before the form, `:582` `role="alert"` for the sign-in failure, `:348` skeletons
   are `aria-hidden` inside an `aria-busy` region and static under reduced motion.
@@ -230,7 +230,7 @@ interceptor exists** — verified against the file structure, not one grep; ever
 - `ui/tools/client-lint.mjs` (348) — wired into `prebuild`/`prestart`, so a violation fails `npm test`
   through `build-output.test.mjs`. `no-literal-text-node` :246, `no-unsourced-interpolation` :229 (an
   interpolation passes only as exactly `STRINGS.<existing key>`, or if it contains no quoted literal),
-  `no-literal-copy-attribute` :256 over `aria-label`/`title`/`placeholder`/`alt`. Colour rule :80-107 exempts
+  `no-literal-copy-attribute` :256 over `aria-label`/`title`/`placeholder`/`alt`. Color rule :80-107 exempts
   only `src/styles/_tokens.scss`.
 - `ui/tools/typography.test.mjs` — tree-wide: no `font-weight: 700` :120, no size below 11px :139, no
   external host in any `url()`/`src=`/`<link>` :230.
@@ -277,7 +277,7 @@ interceptor exists** — verified against the file structure, not one grep; ever
   `STRINGS.statusConnectionSigningIn`, and the form-login card per `DESIGN.md:1064` — lockup, user-name and
   password fields with a reveal toggle, a full-width Sign in button, and beneath them the status slot:
   `authSignInFailed` in `role="alert"`, `authPasswordExpired` and `authSessionEnded` as banners. Every word
-  is `{{ STRINGS.<key> }}`; every colour an existing `--ocu-*`.
+  is `{{ STRINGS.<key> }}`; every color an existing `--ocu-*`.
 - `ui/src/app/app.ts` — edit. Gate `<router-outlet />` behind the session state, rendering `app-sign-in`
   until `signed-in`. **Preserve all three `build-output.test.mjs:195-226` pins**: an inline `template:`
   block, a first `{{ STRINGS.<key> }}` interpolation, and a first `class="…"` whose rule lands in the
@@ -287,7 +287,7 @@ interceptor exists** — verified against the file structure, not one grep; ever
   `provideHttpClient`; the core modules use `fetch` so they stay importable by `node --test`.
 - `ui/src/styles/_components.scss` — *new*, `@use`d from `ui/src/styles.scss` (edit) so its rules reach the
   **global** bundle. Skeleton, focus ring, card, banner and the status line, composed from existing tokens.
-  Add no colour token.
+  Add no color token.
 - `ui/src/assets/lockup/` — *new*. Copy `imports/OcuPilot-Lockup-horizontal.png` from the UX folder and
   reference it from `_components.scss` with a relative `url()`, the same mechanism the fonts use. No
   external host.
@@ -482,7 +482,7 @@ total) and carries **29** after this review; the suite is **186/186**.
   - `[low]` `[patch]` `runRefresh`'s `unavailable` branch left `refusalState` at `form`, so a refresh that 503s and then a probe that 401s showed a bare form instead of `authSessionEnded`. One line.
   - `[low]` `[patch]` The forbidden-channel scan's extension set omitted `.js`/`.mjs` while the test's name claims "no code under ui/src". Added both.
   - `[low]` `[patch]` `_components.scss`'s header claimed "Every value is an existing token" over a file carrying `10px`, `60vh`, `40px`/`195px`, `600` and `1.2s`. Narrowed to what is enforced, and the geometry literals named.
-  - `[low]` `[patch]` `Token.cls` stated cross-application cookie sharing as observed fact; only one application was probed. Labelled `(inference)` with what was actually observed.
+  - `[low]` `[patch]` `Token.cls` stated cross-application cookie sharing as observed fact; only one application was probed. Labeled `(inference)` with what was actually observed.
   - `[low]` `[patch]` `Http.AbsoluteRequest`'s new `pRequestBody` is written to the entity body verbatim, so a non-ASCII body would go out as the wrong bytes. Restriction documented on the `@param`.
   - `[low]` `[patch]` `TestApplyOutputCeilingNeverCutsASurrogatePair` carried two assertions on the same byte, the second with a message about stranded surrogates it did not check. Replaced by a scan for a surrogate half anywhere in the result.
   - `[low]` `[patch]` `assert.equal(init.headers['Cookie'], undefined)` cannot fail while the `deepEqual(Object.keys(...), ['Authorization'])` above it passes. Deleted, its meaning folded into that assertion's message.

@@ -4,9 +4,11 @@ import { provideRouter } from '@angular/router';
 
 import { App } from './app/app';
 import { routes } from './app/app.routes';
+import { AgentStatus } from './app/core/agent-status';
 import { ApiService } from './app/core/api';
 import { ChangeBus } from './app/core/change-bus';
 import { ConnectivityService } from './app/core/connectivity';
+import { FormDirty } from './app/core/form-dirty';
 import { transportFault } from './app/core/fault';
 import { InstanceService } from './app/core/instance';
 import { NavigationService } from './app/core/navigation';
@@ -142,6 +144,11 @@ const refresh = new RefreshService({
   namespace: () => scope.namespace(),
 });
 
+// Whether this instance holds an enabled agent definition (Story 3.6). Built here so the panel,
+// the rail's dot and the Definition form all read one answer, and given the bus so an Enable on
+// the Definitions list re-reads it once rather than once per consumer (AD-14).
+const agentStatus = new AgentStatus({ api, bus, connectivity });
+
 // The one authority over Escape (DW-137). Built here like every other core service so the
 // command box, the account menu and the side bar all register with the same instance --
 // three stacks would be three independent Escape handlers again.
@@ -150,6 +157,11 @@ const overlays = new OverlayStack();
 // The handlers that run a screen's declared actions. One instance, so a handler a screen
 // registers is the one the command bar and the command box both see.
 const screenActions = new ScreenActions();
+
+// The open form's unsaved-changes state (Story 3.5). One instance, because the route guard on
+// every `form-page` route and the form that answers it have to be asking and answering the same
+// question -- two would let a guard refuse a navigation nothing on screen could resolve.
+const formDirty = new FormDirty();
 
 session.start();
 
@@ -171,5 +183,7 @@ bootstrapApplication(App, {
     { provide: ScreenStores, useValue: screenStores },
     { provide: RefreshService, useValue: refresh },
     { provide: ScreenActions, useValue: screenActions },
+    { provide: FormDirty, useValue: formDirty },
+    { provide: AgentStatus, useValue: agentStatus },
   ],
 }).catch((err) => console.error(err));

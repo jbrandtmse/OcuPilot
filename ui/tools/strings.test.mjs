@@ -302,10 +302,22 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   // dialog's three -- and it is the count assertion below, derived from the table itself, that
   // holds strings.ts to it exactly. Story 2.12's four rows carry 17: the application error log's
   // six column and title literals, its three scope-naming empty states, its detail's seven
-  // section and column headings, and its Back control.
+  // section and column headings, and its Back control. Story 3.5's three rows carry 22: the
+  // Definitions list's nine -- its title, three column headers, two empty-state literals and
+  // three row actions -- the Definition form's ten, and the reveal toggle's two names with the
+  // retention caption. Story 3.7's three rows carry 10: the Switches screen's eight -- its title,
+  // the kill switch and its reason field, the enforced-read-only toggle, and the per-user
+  // section's heading, add action, row action and empty state -- the context-sharing default, and
+  // the action slot a refused Switches call resolves. (Story 3.6 added rows but no entry: at 236
+  // literals it still fit the band.)
+  //
+  // Why the upper bound moves to 260 rather than to the 246 the table now holds: the band is a
+  // tripwire against unbounded string growth, not a cap on one screen. It has held because every
+  // widening was deliberate and documented here, and 260 leaves headroom for Story 3.8 and the
+  // burn-down without making the next widening automatic.
   assert.ok(
-    expectedLiterals.length >= 150 && expectedLiterals.length <= 220,
-    `expected roughly 200 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
+    expectedLiterals.length >= 150 && expectedLiterals.length <= 260,
+    `expected roughly 246 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
   );
 });
 
@@ -350,7 +362,7 @@ test('the string source holds nothing the documents do not authorize -- the tabl
   );
 });
 
-test('Story 1.11 adds no string: the switch and its refusal are named by keys that already exist', () => {
+test('Story 1.11 adds no string: the switch and its refusal are named by keys that already exist -- and the namespace-key roster that pins which keys may name one', () => {
   // The namespace switch's accessible name and the sentence a missing privilege is named with
   // are both already here, extracted from EXPERIENCE.md by the two mechanisms above. A story
   // that needed a new word for either would have had to grow one of the three categories, and
@@ -363,23 +375,24 @@ test('Story 1.11 adds no string: the switch and its refusal are named by keys th
   );
   assert.equal(REQUIRED_ALONGSIDE_TABLE.length, 3, 'and the named-extras array is still the three it was');
 
-  // The string table holds exactly one namespace-named key, so nothing was added here for the
-  // unknown-namespace case. That is a tripwire on this one naming convention, not proof that no
-  // sentence exists anywhere: a row added under another key name would pass. The claim it guards
-  // -- EXPERIENCE.md publishes no sentence for a namespace that does not exist, which is why the
-  // shell is silent rather than inventing one -- is filed against DW-126's root cause, and the
-  // count assertion above is what catches a table that grew at all.
-  // Story 2.12 adds the second: the application error log's namespace-scoped empty state, which
-  // names a namespace the user has drilled INTO rather than one that does not exist. The claim
-  // this roster guards is unchanged -- there is still no sentence for an unknown namespace -- so
-  // the entry is listed rather than the assertion relaxed to a count or a prefix.
+  // The roster of every namespace-named key, enumerated rather than counted, so adding one stays
+  // a deliberate act. It is a tripwire on this naming convention, not proof about the document:
+  // a sentence added under another key name would pass it, and the count assertion above is what
+  // catches a table that grew at all.
+  //
+  // Three keys, and each means a different thing about a namespace. `headerNamespaceLabel` is the
+  // switch's accessible name. `errorLogEmptyNamespace` (Story 2.12) names a namespace the user
+  // drilled INTO that records nothing. `errorLogRefusedNamespace` (Story 3.0) is the one the
+  // application error log publishes for a namespace this log does not carry -- so on this screen
+  // there IS now a sentence for an unknown namespace, which supersedes the claim this roster
+  // carried for DW-126: the shell is silent for a namespace only where no screen publishes copy.
   const namespaceSentences = Object.entries(stringsValues).filter(([key]) =>
     key.toLowerCase().includes('namespace')
   );
   assert.deepEqual(
     namespaceSentences.map(([key]) => key).sort(),
-    ['errorLogEmptyNamespace', 'headerNamespaceLabel'],
-    'the namespace-named keys are the switch\'s accessible name and one drilled-scope empty state'
+    ['errorLogEmptyNamespace', 'errorLogRefusedNamespace', 'headerNamespaceLabel'],
+    'the namespace-named keys are the switch\'s accessible name, one drilled-scope empty state and one named refusal'
   );
 });
 
@@ -502,14 +515,22 @@ test("every EXPERIENCE.md line reference resolves to a line that actually carrie
   // Mutation (Rule 19): decrement any one `/** EXPERIENCE.md:n */` in strings.ts by 1 -> this
   // goes red naming that key and both lines.
   const lines = experienceMdRaw.split('\n');
+  // `:\s*'` rather than `: '`: prettier wraps a long literal onto the line after its key, and a
+  // pattern that required the value on the key's own line skipped every such key silently -- so
+  // the longest published sentences, which are exactly the ones a drifting reference hurts most,
+  // were the ones going unchecked.
   const referenced = [
     ...stringsTsRaw.matchAll(
-      /\/\*\* EXPERIENCE\.md:(\d+) \*\/\s*\n\s*(\w+): '((?:[^'\\]|\\.)*)',/g
+      /\/\*\* EXPERIENCE\.md:(\d+) \*\/\s*\n\s*(\w+):\s*'((?:[^'\\]|\\.)*)',/g
     ),
   ];
-  assert.ok(
-    referenced.length >= 100,
-    `expected at least 100 line-referenced keys, matched ${referenced.length} -- the comment convention or the key shape has changed`
+  // Every reference, not "at least a hundred of them": a floor cannot see one key dropping out of
+  // the match, which is how the wrapped keys stayed invisible.
+  const comments = (stringsTsRaw.match(/\/\*\* EXPERIENCE\.md:/g) ?? []).length;
+  assert.equal(
+    referenced.length,
+    comments,
+    `${comments} keys carry an EXPERIENCE.md reference and ${referenced.length} matched -- a key whose value the pattern cannot reach is never checked`
   );
 
   const wrong = [];

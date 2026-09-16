@@ -8,8 +8,30 @@
 /// correct state.</p>
 /// <p><b>No test calls <code>Uninstall("")</code>, and no test writes
 /// <code>AuditEnabled</code>.</b></p>
+/// <p><b>It runs OcuPilot's production install, so it runs on a throwaway container only</b>
+/// (<file>scripts/ci-throwaway.sh</file>, <code>ocupilot-ci</code>), and
+/// <method>OnBeforeAllTests</method> refuses anywhere <parameter>ARMINGVARIABLE</parameter> does
+/// not arm it.</p>
 Class OcuPilot.Test.Installer Extends %UnitTest.TestCase
 {
+
+/// <p>The environment variable that arms this class, and the one value that arms it:
+/// <code>1</code>. Only <file>scripts/ci-throwaway.sh</file> sets it, so the install this class
+/// runs happens on the container that script builds and nowhere else.</p>
+Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_PRODUCTION_INSTALL";
+
+/// <p>Refuse to run at all unless this instance is armed for a production install.</p>
+/// <p><b>A doc comment does not keep a class that installs from installing.</b> Test classes are
+/// selected by package, so pointing the runner at a container someone cares about would run
+/// OcuPilot's production install on it. Failing here is the honest outcome: nothing is installed
+/// and the reason is named.</p>
+Method OnBeforeAllTests() As %Status
+{
+    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
+        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.Installer runs OcuPilot's PRODUCTION install on this instance -- a database, a resource, a role, three web applications, the audit registrations and the _SYSTEM unexpire -- and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was installed. Bring one up with scripts/ci-throwaway.sh, which sets it.")
+    }
+    Quit $$$OK
+}
 
 /// <p>This process's UTC clock (<code>$ZTimeStamp</code>, in ODBC format to the millisecond, the
 /// form <class>%SYS.Audit</class> records <property>UTCTimeStamp</property> in) read just before
@@ -438,6 +460,70 @@ Method TestGrantForRealAccountGrantsAndAudits()
     Do ..LogMessage("DW-85 evidence: since " _ tSince _ " UTC the audit master map holds " _ tRows _ " RoleGrantedProbe row(s); the Event/EventSource indexes serve " _ tIndexed _ " of them so far")
 }
 
+/// <p>AC7 (Story 3.8) -- <b>the grant marker records the grant, not the state</b> (DW-44). The run
+/// that actually grants the administrative role writes exactly one
+/// <code>OcuPilot/Security/RoleGrantedProbe</code> row and stamps <code>granted</code>; a second
+/// install, finding the role already held, grants nothing, writes no second row and stamps
+/// <code>alreadyheld</code>.</p>
+/// <p>Without the already-held branch every container start wrote another row for a grant that did
+/// not happen, and a reader counting them could not tell the run that granted the role from the
+/// hundred that found it already there.</p>
+/// <p>The audit read is <method>TestGrantForRealAccountGrantsAndAudits</method>'s, for the reason
+/// its own comment gives (DW-85): the master map under <code>%NOINDEX</code>, bounded by
+/// <code>UTCTimeStamp</code>.</p>
+/// <p>Mutation (Rule 19): remove <method>OcuPilot.Install.Installer.EnsureGrant</method>'s
+/// already-held branch -- the second install writes a second row and stamps <code>granted</code>,
+/// and both assertions below go red.</p>
+Method TestASecondInstallGrantsNothingAndWritesNoSecondMarker()
+{
+    Set tUser = $Username
+    Set tFirst = ..PreparedProbeInstallSince
+    Do $$$AssertTrue(tFirst '= "", "OnBeforeOneTest recorded when its probe install began")
+    Do $$$AssertEquals(..GrantOutcomeOfLastProbeStamp(), "granted", "the install OnBeforeOneTest ran is the one that granted the role")
+    Do $$$AssertEquals(..ProbeMarkersSince(tFirst), 1, "and it wrote exactly one grant marker")
+
+    Set tSecond = $ZDateTime($ZTimeStamp, 3, , 3)
+    Set tSC = ##class(OcuPilot.Install.Installer).Install("probe")
+    Do $$$AssertStatusOK(tSC, "a second install of the same profile succeeds")
+
+    Do $$$AssertEquals(..GrantOutcomeOfLastProbeStamp(), "alreadyheld", "and records that the role was already held rather than granted again")
+    Do $$$AssertEquals(..ProbeMarkersSince(tSecond), 0, "having written no second grant marker")
+    Do $$$AssertEquals(..ProbeMarkersSince(tFirst), 1, "so the only marker in the audit database is still the one the granting run wrote")
+}
+
+/// <p>The <code>GrantOutcome</code> of the most recent probe-profile install stamp, or
+/// <code>"unreadable"</code>.</p>
+ClassMethod GrantOutcomeOfLastProbeStamp() As %String
+{
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT TOP 1 GrantOutcome FROM OcuPilot_Kernel_State.Stamp WHERE Profile = 'probe' ORDER BY ID DESC")
+    If tRS.%SQLCODE < 0 Quit "unreadable"
+    If 'tRS.%Next() Quit "unreadable"
+    Quit tRS.%Get("GrantOutcome")
+}
+
+/// <p>How many <code>RoleGrantedProbe</code> rows the audit database's master map holds since
+/// <var>pSince</var>, or <code>-1</code> when the read failed. <code>%NOINDEX</code> on the three
+/// event predicates, bounded by <code>UTCTimeStamp</code> (DW-85).</p>
+ClassMethod ProbeMarkersSince(pSince As %String) As %Integer
+{
+    Set tRows = -1
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        If $$$ISERR(tSC) {
+            Set $NAMESPACE = tOrigNS
+            Quit
+        }
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) AS N FROM %SYS.Audit WHERE UTCTimeStamp >= ? AND %NOINDEX EventSource = ? AND %NOINDEX EventType = ? AND %NOINDEX Event = ?", pSince, "OcuPilot", "Security", "RoleGrantedProbe")
+        If (tRS.%SQLCODE >= 0) && tRS.%Next() Set tRows = tRS.%Get("N")
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tRows = -1
+    }
+    Quit tRows
+}
+
 /// <p>(QA) AC10 -- closes a Rule-19 falsifiability gap found while independently
 /// verifying this story's own Verification section: the spec names
 /// <code>TestAuditEventRoundTrips</code> as AC10's first mutation's pinning test, but no
@@ -445,12 +531,12 @@ Method TestGrantForRealAccountGrantsAndAudits()
 /// (<method>TestGrantForRealAccountGrantsAndAudits</method>) cannot stand in for it --
 /// production's audit event was registered by an earlier run and stays registered
 /// regardless of what a later <code>Install()</code> does, so removing
-/// <method>EnsureAuditEvent</method>'s <code>Security.Events.Create</code> call would
+/// <method>EnsureAuditEvents</method>'s <code>Security.Events.Create</code> call would
 /// leave that test green (confirmed empirically: reverting the registration call left it
 /// passing). This test instead deletes the probe's own registration first, so "not yet
 /// registered" is a real, current fact rather than a frozen assumption, confirms the
 /// round trip fails while it is absent, then re-installs (the real, unmutated
-/// <method>EnsureAuditEvent</method>) and confirms the round trip is restored.</p>
+/// <method>EnsureAuditEvents</method>) and confirms the round trip is restored.</p>
 Method TestAuditEventRegistrationRestoresTheRoundTrip()
 {
     Set tOrigNS = $NAMESPACE
@@ -472,7 +558,7 @@ Method TestAuditEventRegistrationRestoresTheRoundTrip()
     Set $NAMESPACE = tOrigNS
 
     Set tSC3 = ##class(OcuPilot.Install.Installer).Install("probe")
-    Do $$$AssertStatusOK(tSC3, "re-install (real, unmutated EnsureAuditEvent) re-registers the missing audit event")
+    Do $$$AssertStatusOK(tSC3, "re-install (real, unmutated EnsureAuditEvents) re-registers the missing audit event")
 
     Set tOrigNS2 = $NAMESPACE
     Try {
@@ -547,6 +633,13 @@ Method TestUninstallLeavesNoResidue()
     Do $$$AssertStatusOK(tSC, "confirmed uninstall succeeds")
 
     Set tInstallNs = ##class(OcuPilot.Install.Installer).ResolveNamespace()
+    ; Resolved BEFORE the switch: a fresh ##class(OcuPilot.*) dispatch issued while $NAMESPACE is
+    ; %SYS raises <CLASS DOES NOT EXIST>, because OcuPilot's code is mapped nowhere but the install
+    ; namespace. Derived from the roster rather than spelled, so a triple added later is asserted
+    ; gone by arriving there.
+    Set tAuditSource = ##class(OcuPilot.Kernel.Audit.Event).Source()
+    Set tAuditType = ##class(OcuPilot.Kernel.Audit.Event).Type()
+    Set tRoster = ##class(OcuPilot.Kernel.Audit.Event).Names("Probe")
     Set tOrigNS = $NAMESPACE
     Try {
         Set tSC2 = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
@@ -558,7 +651,14 @@ Method TestUninstallLeavesNoResidue()
         Do $$$AssertTrue('##class(Security.Resources).Exists("OcuPilotAdminProbe", .t4, .s4), "the administrative resource is gone")
         Do $$$AssertTrue('##class(Security.Resources).Exists("%DB_OCUPILOTPROBE", .t5, .s5), "the database's guarding resource is gone")
         Do $$$AssertTrue('##class(Config.Databases).Exists("OCUPILOTPROBE", .t6, .s6), "the database config entry is gone")
-        Do $$$AssertTrue('##class(Security.Events).Exists("OcuPilot", "Security", "RoleGrantedProbe", .t7, .s7), "the audit event is gone")
+        ; Every triple the roster declares, not only the baseline: before Story 3.8 the uninstall
+        ; loop removed the grant marker alone, so two registrations survived every uninstall and
+        ; this assertion -- which named that one triple -- passed anyway.
+        Do $$$AssertTrue($ListLength(tRoster) > 1, "the probe roster carries more than the baseline triple, so this sweep asserts something: " _ $ListLength(tRoster))
+        For tE = 1:1:$ListLength(tRoster) {
+            Set tEvName = $List(tRoster, tE)
+            Do $$$AssertTrue('##class(Security.Events).Exists(tAuditSource, tAuditType, tEvName, .t7, .s7), "the audit event " _ tEvName _ " is gone")
+        }
 
         Set tDir = ##class(%File).NormalizeDirectory("ocupilotprobe", $System.Util.ManagerDirectory())
         Do $$$AssertTrue('##class(%File).DirectoryExists(tDir), "the database directory is gone")

@@ -118,7 +118,7 @@ above and the container detail below this block are the operational essentials.
   computes no layout, so anything about geometry belongs there. The spine pins Angular 22.1.x,
   TypeScript 6.0.x exactly, and Node `^22.22.3 || ^24.15.0 || ^26.0.0`; Node 20 and TypeScript 5.9
   or 7 are refused by the toolchain.
-- Check ObjectScript with `uv run scripts/check-objectscript.py` (17 rules; the `.githooks/pre-commit`
+- Check ObjectScript with `uv run scripts/check-objectscript.py` (18 rules; the `.githooks/pre-commit`
   hook runs it on staged paths and it blocks the commit) and its own harness with
   `uv run scripts/test_check_objectscript.py`.
 - Ask a running instance whether OcuPilot works: `bash scripts/smoke.sh --container ocupilot
