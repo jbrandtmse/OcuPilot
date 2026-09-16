@@ -97,13 +97,25 @@ ClassMethod Invoke(pDefinitionId As %String = "", ByRef pMessages, ByRef pTools,
             Do ..Refuse(##class(OcuPilot.Api.Error).#PROVIDERUNCONFIGURED, .pHttpStatus, .pFault)
             Quit
         }
-        Do ..Dispatch(.tValues, .pMessages, .pTools, pSystemPrompt, .pResponse, .pHttpStatus, .pFault)
+        Do ..Dispatch(.tValues, .pMessages, .pTools, ..SystemPromptFor(.tValues, pSystemPrompt), .pResponse, .pHttpStatus, .pFault)
         Do ..FlagUnresolvedCredential(pDefinitionId, .tValues, .pFault)
     } Catch ex {
         Do ..Refuse(##class(OcuPilot.Api.Error).#PROVIDERTRANSPORT, .pHttpStatus, .pFault)
         Do ..LogRaw("a provider call failed inside the port", ex.AsStatus(), ##class(OcuPilot.Api.Error).#PROVIDERTRANSPORT)
     }
     Quit $$$OK
+}
+
+/// <p>The system prompt a call against the stored definition <var>pValues</var> sends (AD-11 rule
+/// 1, DW-333): the definition's override, whole, when it has one, and <var>pSystemPrompt</var>
+/// otherwise. Never both. The override is read with the definition at every call, so an edit
+/// takes effect at the next one.</p>
+ClassMethod SystemPromptFor(ByRef pValues, pSystemPrompt As %String) As %String [ Private ]
+{
+    Set tOverride = $Get(pValues("systemPromptOverride"))
+    If tOverride = $Char(0) Set tOverride = ""
+    If tOverride '= "" Quit tOverride
+    Quit pSystemPrompt
 }
 
 /// <p><b>DW-22.</b> A stored definition whose credential reference no longer resolves is disabled

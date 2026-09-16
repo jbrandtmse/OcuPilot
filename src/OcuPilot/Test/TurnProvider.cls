@@ -1,0 +1,112 @@
+/// <p>The scripted adapter behind the armed <code>turnprobe</code> catalog row: an
+/// <class>OcuPilot.Kernel.Provider.Anthropic</class> whose <method>IssueHttpsPost</method> answers
+/// from a script instead of opening a socket. Everything above that one method -- the credential
+/// resolution, the key-shape gate, the body the adapter builds -- is the shipped code.</p>
+/// <p><b>Its state is instance-wide</b>, under <code>^IRIS.Temp.OcuPilotTurnProvider(tag)</code>,
+/// because the process it runs in is a turn job the test did not start in-process; the tag is the
+/// request's <code>model</code>, so each test selects its own script by naming a model.</p>
+/// <p><b>What it records per call</b>, under <code>(tag, "call", n)</code>: <code>user</code>
+/// (<code>$USERNAME</code>), <code>roles</code> (<code>$ROLES</code>), <code>keySha</code> (the
+/// SHA-256 of the key header, hex; the key itself is never recorded), <code>systemPresent</code>,
+/// <code>system</code>, <code>messages</code> (the request's messages as JSON, decoded from the
+/// UTF-8 bytes the adapter wrote), <code>at</code> and, once its hang is over,
+/// <code>returned</code> (both in <method>OcuPilot.Kernel.State.Turn.NowSeconds</method> units).</p>
+/// <p>A script entry is a hang in seconds and a reply body; entries are consumed in call order and
+/// the last one repeats. With no script a call answers a short text reply at once.</p>
+Class OcuPilot.Test.TurnProvider Extends OcuPilot.Kernel.Provider.Anthropic
+{
+
+/// <p>Append a script entry for <var>pTag</var>: hang <var>pHangSeconds</var>, then answer
+/// <var>pReplyBody</var>.</p>
+ClassMethod Script(pTag As %String, pHangSeconds As %Numeric, pReplyBody As %String)
+{
+    Set tIndex = $Increment(^IRIS.Temp.OcuPilotTurnProvider(pTag, "script"))
+    Set ^IRIS.Temp.OcuPilotTurnProvider(pTag, "script", tIndex) = $ListBuild(+pHangSeconds, pReplyBody)
+}
+
+/// <p>Remove <var>pTag</var>'s script and records.</p>
+ClassMethod Forget(pTag As %String)
+{
+    Kill ^IRIS.Temp.OcuPilotTurnProvider(pTag)
+}
+
+/// <p>Whether any node remains for <var>pTag</var>.</p>
+ClassMethod Remains(pTag As %String) As %Boolean
+{
+    Quit ($Data(^IRIS.Temp.OcuPilotTurnProvider(pTag)) > 0)
+}
+
+/// <p>How many calls <var>pTag</var> has answered, or begun answering.</p>
+ClassMethod Calls(pTag As %String) As %Integer
+{
+    Quit +$Get(^IRIS.Temp.OcuPilotTurnProvider(pTag, "calls"))
+}
+
+/// <p>What call <var>pCall</var> for <var>pTag</var> recorded under <var>pField</var>.</p>
+ClassMethod Recorded(pTag As %String, pCall As %Integer, pField As %String) As %String
+{
+    Quit $Get(^IRIS.Temp.OcuPilotTurnProvider(pTag, "call", pCall, pField))
+}
+
+/// <p>A reply body that ends the turn with <var>pText</var>, reporting <var>pInput</var> and
+/// <var>pOutput</var> tokens.</p>
+ClassMethod TextReply(pText As %String, pInput As %Integer = 1, pOutput As %Integer = 2) As %String
+{
+    Set tBody = {"content": [{"type": "text"}], "stop_reason": "end_turn", "usage": {}}
+    Do tBody.content.%Get(0).%Set("text", pText, "string")
+    Do tBody.usage.%Set("input_tokens", +pInput, "number")
+    Do tBody.usage.%Set("output_tokens", +pOutput, "number")
+    Quit tBody.%ToJSON()
+}
+
+/// <p>A reply body that asks for the tool <var>pName</var>.</p>
+ClassMethod ToolUseReply(pName As %String, pInput As %Integer = 1, pOutput As %Integer = 2) As %String
+{
+    Set tBody = {"content": [{"type": "tool_use", "id": "toolu_probe", "input": {}}], "stop_reason": "tool_use", "usage": {}}
+    Do tBody.content.%Get(0).%Set("name", pName, "string")
+    Do tBody.usage.%Set("input_tokens", +pInput, "number")
+    Do tBody.usage.%Set("output_tokens", +pOutput, "number")
+    Quit tBody.%ToJSON()
+}
+
+/// <p>The SHA-256 of <var>pValue</var>'s UTF-8 bytes, as lower-case hex -- the form
+/// <method>IssueHttpsPost</method> records a key header in, computed there inline so the header's
+/// value is never bound to a variable.</p>
+ClassMethod Sha(pValue As %String) As %String
+{
+    Quit $ZConvert(##class(%xsd.hexBinary).LogicalToXSD($System.Encryption.SHAHash(256, $ZConvert(pValue, "O", "UTF8"))), "L")
+}
+
+/// <p>Record what the request carried, hang as scripted, and answer the scripted body.</p>
+Method IssueHttpsPost(pRequest As %Net.HttpRequest, pUrl As %String, Output pStatus As %Integer, Output pBody As %String, Output pRetryAfter As %String) As %Status
+{
+    Set pStatus = 0
+    Set pBody = ""
+    Set pRetryAfter = ""
+    Set tRaw = ""
+    Do pRequest.EntityBody.Rewind()
+    While 'pRequest.EntityBody.AtEnd {
+        Set tRaw = tRaw _ pRequest.EntityBody.Read(32000)
+    }
+    Set tSent = ##class(%DynamicAbstractObject).%FromJSON($ZConvert(tRaw, "I", "UTF8"))
+    Set tTag = tSent.model
+    Set tCall = $Increment(^IRIS.Temp.OcuPilotTurnProvider(tTag, "calls"))
+    Set ^IRIS.Temp.OcuPilotTurnProvider(tTag, "call", tCall, "user") = $Username
+    Set ^IRIS.Temp.OcuPilotTurnProvider(tTag, "call", tCall, "roles") = $Roles
+    Set ^IRIS.Temp.OcuPilotTurnProvider(tTag, "call", tCall, "keySha") = $ZConvert(##class(%xsd.hexBinary).LogicalToXSD($System.Encryption.SHAHash(256, $ZConvert(pRequest.GetHeader("x-api-key"), "O", "UTF8"))), "L")
+    Set ^IRIS.Temp.OcuPilotTurnProvider(tTag, "call", tCall, "systemPresent") = tSent.%IsDefined("system")
+    Set ^IRIS.Temp.OcuPilotTurnProvider(tTag, "call", tCall, "system") = tSent.system
+    Set ^IRIS.Temp.OcuPilotTurnProvider(tTag, "call", tCall, "messages") = tSent.messages.%ToJSON()
+    Set ^IRIS.Temp.OcuPilotTurnProvider(tTag, "call", tCall, "at") = ##class(OcuPilot.Kernel.State.Turn).NowSeconds()
+    Set tIndex = tCall
+    If tIndex > +$Get(^IRIS.Temp.OcuPilotTurnProvider(tTag, "script")) Set tIndex = +$Get(^IRIS.Temp.OcuPilotTurnProvider(tTag, "script"))
+    Set tEntry = $Select(tIndex > 0: $Get(^IRIS.Temp.OcuPilotTurnProvider(tTag, "script", tIndex)), 1: "")
+    If tEntry = "" Set tEntry = $ListBuild(0, ..TextReply("ok"))
+    If $List(tEntry, 1) > 0 Hang $List(tEntry, 1)
+    Set ^IRIS.Temp.OcuPilotTurnProvider(tTag, "call", tCall, "returned") = ##class(OcuPilot.Kernel.State.Turn).NowSeconds()
+    Set pStatus = 200
+    Set pBody = $List(tEntry, 2)
+    Quit $$$OK
+}
+
+}

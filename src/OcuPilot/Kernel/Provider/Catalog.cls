@@ -53,6 +53,23 @@ XData Providers
 ]}
 }
 
+/// <p>The environment variable that arms the <code>ArmedProviders</code> block's rows, and the one
+/// value that arms them: <code>1</code>. Only <file>scripts/ci-throwaway.sh</file> sets it.</p>
+Parameter TESTPROVIDERVARIABLE = "OCUPILOT_ALLOW_TEST_PROVIDER";
+
+/// <p>Rows <method>Row</method> and <method>IsKnown</method> resolve only while
+/// <parameter>TESTPROVIDERVARIABLE</parameter> reads 1, and that <method>Table</method> -- so the
+/// provider list the screens read -- never carries. The <code>turnprobe</code> row names a test
+/// adapter that answers from a script and opens no socket, which is how a turn job, a process no
+/// in-process seam reaches, is driven end to end on a throwaway instance. Its endpoint is a
+/// documentation address (RFC 5737) that is never called.</p>
+XData ArmedProviders
+{
+{"providers":[
+  {"key":"turnprobe","label":"Turn probe","defaultModel":"turnprobe","modelSuggestions":[],"defaultEndpoint":"https://192.0.2.10/v1/messages","endpointRequired":false,"canonicalMaxTokens":1024,"canonicalTemperature":0,"defaultEnvVarName":"","defaultCredentialName":"","keyPrefix":"sk-ant-","adapterClass":"OcuPilot.Test.TurnProvider","allowsLocal":false,"authVersion":"2023-06-01"}
+]}
+}
+
 /// <p>The table as a <class>%DynamicObject</class> carrying a <code>providers</code> array.</p>
 /// <p><b>Overridable</b>, and the only seam any other method here reads the table through, so a
 /// subclass that answers a different table changes what <method>Keys</method>,
@@ -102,7 +119,9 @@ ClassMethod Keys() As %List
 /// and 0 with <var>pRow</var> <code>""</code> when it is not -- an unknown key is an ordinary
 /// answer here, because rule 2 is what turns it into a refusal.</p>
 /// <p><b>The first match wins and the scan ends there</b>, so a table that declared a key twice
-/// resolves to the row a reader sees first rather than to the last one.</p>
+/// resolves to the row a reader sees first rather than to the last one. A key the table does not
+/// declare is looked for in the <code>ArmedProviders</code> block only while
+/// <parameter>TESTPROVIDERVARIABLE</parameter> arms it.</p>
 ClassMethod Row(pKey As %String, Output pRow As %DynamicObject) As %Boolean
 {
     Set pRow = ""
@@ -111,19 +130,33 @@ ClassMethod Row(pKey As %String, Output pRow As %DynamicObject) As %Boolean
         If pKey = "" Quit
         Set tSC = ..Table(.tTable)
         If $$$ISERR(tSC) || '$IsObject(tTable) Quit
-        Set tIterator = tTable.providers.%GetIterator()
-        While tIterator.%GetNext(.tIndex, .tCandidate) {
-            If tCandidate.key = pKey {
-                Set pRow = tCandidate
-                Set tFound = 1
-                Quit
-            }
-        }
+        Set tFound = ..FindRow(tTable, pKey, .pRow)
+        If tFound || ($System.Util.GetEnviron(..#TESTPROVIDERVARIABLE) '= 1) Quit
+        Set tXData = ##class(%Dictionary.XDataDefinition).IDKEYOpen("OcuPilot.Kernel.Provider.Catalog", "ArmedProviders", , .tOpenSC)
+        If '$IsObject(tXData) Quit
+        Do tXData.Data.Rewind()
+        Set tFound = ..FindRow(##class(%DynamicAbstractObject).%FromJSON(tXData.Data), pKey, .pRow)
     } Catch ex {
         Set pRow = ""
         Set tFound = 0
     }
     Quit tFound
+}
+
+/// <p>The first row of <var>pTable</var>'s <code>providers</code> array whose key is
+/// <var>pKey</var>.</p>
+ClassMethod FindRow(pTable As %DynamicObject, pKey As %String, Output pRow As %DynamicObject) As %Boolean [ Private ]
+{
+    Set pRow = ""
+    If '$IsObject(pTable) || '$IsObject(pTable.providers) Quit 0
+    Set tIterator = pTable.providers.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tCandidate) {
+        If tCandidate.key = pKey {
+            Set pRow = tCandidate
+            Quit
+        }
+    }
+    Quit $IsObject(pRow)
 }
 
 /// <p>Whether <var>pKey</var> is a declared provider key.</p>

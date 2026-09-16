@@ -1,0 +1,325 @@
+/// <p>The bounded provider loop a turn job runs (AD-7, AD-30, AD-31, AD-41). It calls the provider
+/// through <method>PortClass</method>, answers each tool call through <method>DispatchTools</method>,
+/// writes progress steps as it goes, and stops at the first step boundary that says so.</p>
+/// <p><b>The boundary</b> runs before every provider call, in this order: the stop flag, the
+/// sign-out flag, the kill switch (<class>OcuPilot.Kernel.Restraint</class>, whose code is recorded
+/// as given), enforced read-only against the snapshot the turn started with, the user's current
+/// grants over the resource list the handler passed, the poll lease, the wall clock and the token
+/// spend. Every one of them is a live read; nothing is cached for the length of the turn.</p>
+/// <p><b>Caller contract:</b> the caller is the turn's job, has begun the turn
+/// (<method>OcuPilot.Kernel.State.Turn.GuardedBegin</method>), and finishes it with the outcome this
+/// answers. Not called from an escalated frame (AD-9).</p>
+/// <p>Seams a subclass overrides: <method>LimitsClass</method>, <method>PortClass</method>,
+/// <method>Restraint</method> and <method>DispatchTools</method>. Production overrides none.</p>
+Class OcuPilot.Kernel.Agent.Loop Extends %RegisteredObject
+{
+
+/// <p>The step name every provider call is recorded under.</p>
+Parameter MODELSTEP = "provider";
+
+/// <p>The class every limit is read from.</p>
+ClassMethod LimitsClass() As %String
+{
+    Quit "OcuPilot.Kernel.Agent.Limits"
+}
+
+/// <p>The port every provider call goes through.</p>
+ClassMethod PortClass() As %String
+{
+    Quit "OcuPilot.Port.ProviderPort"
+}
+
+/// <p>The kill switch and read-only verdict for <var>pUser</var>, read afresh.</p>
+ClassMethod Restraint(pUser As %String, Output pVerdict) As %Status
+{
+    Quit ##class(OcuPilot.Kernel.Restraint).Resolved(pUser, .pVerdict)
+}
+
+/// <p>Answer the model's tool calls. <var>pToolUses</var> is the reply's <code>tool_use</code>
+/// blocks; <var>pResults</var> comes back with one <code>tool_result</code> block per call, in the
+/// same order. This release advertises no tools, so every call answers the fixed error result
+/// <code>{"code":"TOOL.UNAVAILABLE"}</code> and reaches nothing on the instance (AD-11). Story 4.2
+/// replaces this method.</p>
+ClassMethod DispatchTools(pKey As %String, pUser As %String, pToolUses As %DynamicArray, Output pResults As %DynamicArray) As %Status
+{
+    Set pResults = []
+    Set tContent = {}
+    Do tContent.%Set("code", ##class(OcuPilot.Api.Error).#TOOLUNAVAILABLE, "string")
+    Set tIterator = pToolUses.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tBlock) {
+        Set tResult = {}
+        Do tResult.%Set("type", "tool_result", "string")
+        Do tResult.%Set("tool_use_id", $Select($IsObject(tBlock) && (tBlock.id '= ""): tBlock.id, 1: "unknown"), "string")
+        Do tResult.%Set("is_error", 1, "boolean")
+        Do tResult.%Set("content", tContent.%ToJSON(), "string")
+        Do pResults.%Push(tResult)
+    }
+    Quit $$$OK
+}
+
+/// <p>Run turn <var>pKey</var> for <var>pUser</var> under definition <var>pDefinitionId</var>,
+/// starting from <var>pMessage</var>. <var>pReadOnly</var> is enforced read-only as the handler read
+/// it, <var>pResources</var> the comma-separated resources the grants check reads, and
+/// <var>pStartedSeconds</var> the turn's start in
+/// <method>OcuPilot.Kernel.State.Turn.NowSeconds</method> units.</p>
+/// <p><var>pOutcome</var> comes back subscripted by <code>state</code>, <code>code</code>,
+/// <code>limit</code>, <code>reply</code> and <code>errorSeq</code>. An error status means the loop
+/// itself failed; the outcome then reads <code>failed</code>.</p>
+ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMessage As %String, pReadOnly As %Boolean, pResources As %String, pStartedSeconds As %Integer, Output pOutcome) As %Status
+{
+    Set tSC = $$$OK
+    Kill pOutcome
+    Set pOutcome("state") = ##class(OcuPilot.Kernel.State.Turn).#STATEFAILED
+    Set pOutcome("code") = ##class(OcuPilot.Api.Error).#TURNUNAVAILABLE
+    Set pOutcome("limit") = ""
+    Set pOutcome("reply") = ""
+    Set pOutcome("errorSeq") = 0
+    Set tLastSeq = 0
+    Try {
+        Set tLimits = ..LimitsClass()
+        Set tCap = ..IterationCap(pDefinitionId)
+        Kill tMessages
+        Set tMessages = 1
+        Set tMessages(1, "role") = "user"
+        Set tMessages(1, "content") = pMessage
+        Set tIterations = 0
+        Set tInput = 0
+        Set tOutput = 0
+        Set tToolLog = []
+        For {
+            If ..Boundary(pKey, pUser, pReadOnly, pResources, pStartedSeconds, tInput + tOutput, .tState, .tCode) {
+                Set pOutcome("state") = tState
+                Set pOutcome("code") = tCode
+                Set pOutcome("errorSeq") = tLastSeq
+                Quit
+            }
+            Set tIterations = tIterations + 1
+            Set tSC = ##class(OcuPilot.Kernel.State.Step).GuardedAppend(pKey, "model", ..#MODELSTEP, "running", "", "", "", tLimits, .tSeq)
+            If $$$ISERR(tSC) Quit
+            Set tLastSeq = tSeq
+            Kill tTools
+            Do $ClassMethod(..PortClass(), "Invoke", pDefinitionId, .tMessages, .tTools, ##class(OcuPilot.Kernel.Agent.Prompt).Builtin(), .tResponse, .tHttpStatus, .tFault)
+            If $IsObject($Get(tResponse)) {
+                Set tInput = tInput + tResponse.RequestTokens
+                Set tOutput = tOutput + tResponse.ResponseTokens
+            }
+            Set tSC = ##class(OcuPilot.Kernel.State.Turn).GuardedProgress(pKey, tIterations, tInput, tOutput)
+            If $$$ISERR(tSC) Quit
+            If $IsObject($Get(tFault)) {
+                Set tSC = ##class(OcuPilot.Kernel.State.Step).GuardedUpdate(pKey, tSeq, "error", tFault.reason, "", tFault.code, tLimits)
+                If $$$ISERR(tSC) Quit
+                Set pOutcome("state") = ##class(OcuPilot.Kernel.State.Turn).#STATEFAILED
+                Set pOutcome("code") = tFault.code
+                Set pOutcome("errorSeq") = tSeq
+                Quit
+            }
+            Set tToolUses = ..ToolUses(tResponse.ToolCallsJson)
+            Set tSummary = tResponse.StopReason _ "; " _ tResponse.RequestTokens _ " input and " _ tResponse.ResponseTokens _ " output tokens"
+            Set tSC = ##class(OcuPilot.Kernel.State.Step).GuardedUpdate(pKey, tSeq, "ok", tSummary, tResponse.Text, "", tLimits)
+            If $$$ISERR(tSC) Quit
+            If tToolUses.%Size() = 0 {
+                Set pOutcome("state") = ##class(OcuPilot.Kernel.State.Turn).#STATECOMPLETED
+                Set pOutcome("code") = ""
+                Set pOutcome("reply") = tResponse.Text
+                Quit
+            }
+            Set tSC = ..AnswerTools(pKey, pUser, tResponse.Text, tToolUses, tLimits, .tMessages, tToolLog, .tLastSeq)
+            If $$$ISERR(tSC) Quit
+            If tIterations >= tCap {
+                Set pOutcome("state") = ##class(OcuPilot.Kernel.State.Turn).#STATECOMPLETED
+                Set pOutcome("code") = ""
+                Set pOutcome("limit") = ##class(OcuPilot.Kernel.State.Turn).#LIMITITERATIONS
+                Set pOutcome("reply") = ..FallbackReply(tToolLog)
+                Quit
+            }
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) {
+        Set pOutcome("state") = ##class(OcuPilot.Kernel.State.Turn).#STATEFAILED
+        Set pOutcome("code") = ##class(OcuPilot.Api.Error).#TURNUNAVAILABLE
+        Set pOutcome("errorSeq") = tLastSeq
+    }
+    Quit tSC
+}
+
+/// <p>Whether the turn stops here, and if so in which state and with which code. See this class's
+/// header for the order. A read that fails stops the turn <code>failed</code>.</p>
+ClassMethod Boundary(pKey As %String, pUser As %String, pReadOnly As %Boolean, pResources As %String, pStartedSeconds As %Integer, pTokens As %Integer, Output pState As %String, Output pCode As %String) As %Boolean
+{
+    Set pState = ##class(OcuPilot.Kernel.State.Turn).#STATEFAILED
+    Set pCode = ##class(OcuPilot.Api.Error).#TURNUNAVAILABLE
+    Set tAbandoned = ##class(OcuPilot.Kernel.State.Turn).#STATEABANDONED
+    Set tSC = ##class(OcuPilot.Kernel.State.Turn).GuardedSignals(pKey, .tStop, .tAbandon, .tRenewedAt)
+    If $$$ISERR(tSC) Quit 1
+    If tStop {
+        Set pState = ##class(OcuPilot.Kernel.State.Turn).#STATESTOPPED
+        Set pCode = ##class(OcuPilot.Api.Error).#TURNSTOPPED
+        Quit 1
+    }
+    If tAbandon {
+        Set pState = tAbandoned
+        Set pCode = ##class(OcuPilot.Api.Error).#TURNABANDONEDSIGNOUT
+        Quit 1
+    }
+    Set tSC = ..Restraint(pUser, .tVerdict)
+    If $$$ISERR(tSC) Quit 1
+    If +$Get(tVerdict("killSwitch")) {
+        Set pState = ##class(OcuPilot.Kernel.State.Turn).#STATESTOPPED
+        Set pCode = $Get(tVerdict("code"))
+        Quit 1
+    }
+    If ''$Get(tVerdict("enforcedReadOnly")) '= ''pReadOnly {
+        Set pState = tAbandoned
+        Set pCode = ##class(OcuPilot.Api.Error).#TURNABANDONEDREADONLY
+        Quit 1
+    }
+    If '..HoldsAnyResource(pUser, pResources) {
+        Set pState = tAbandoned
+        Set pCode = ##class(OcuPilot.Api.Error).#TURNABANDONEDPRIVILEGE
+        Quit 1
+    }
+    Set tNow = ##class(OcuPilot.Kernel.State.Turn).NowSeconds()
+    Set tLimits = ..LimitsClass()
+    If (tRenewedAt = "") || ((tNow - tRenewedAt) >= $Parameter(tLimits, "LEASESECONDS")) {
+        Set pState = tAbandoned
+        Set pCode = ##class(OcuPilot.Api.Error).#TURNABANDONEDLEASE
+        Quit 1
+    }
+    If (tNow - pStartedSeconds) >= $Parameter(tLimits, "WALLCLOCKSECONDS") {
+        Set pState = tAbandoned
+        Set pCode = ##class(OcuPilot.Api.Error).#TURNLIMITDURATION
+        Quit 1
+    }
+    If pTokens >= $Parameter(tLimits, "MAXTOKENS") {
+        Set pState = tAbandoned
+        Set pCode = ##class(OcuPilot.Api.Error).#TURNLIMITTOKENS
+        Quit 1
+    }
+    Set pState = ""
+    Set pCode = ""
+    Quit 0
+}
+
+/// <p>Whether <var>pUser</var>'s current grants hold <code>USE</code> on any resource in the
+/// comma-separated <var>pResources</var> (AD-8, AD-31). A user the instance no longer holds holds
+/// nothing.</p>
+ClassMethod HoldsAnyResource(pUser As %String, pResources As %String) As %Boolean
+{
+    Set tHolds = 0
+    Try {
+        For tI = 1:1:$Length(pResources, ",") {
+            Set tResource = $Piece(pResources, ",", tI)
+            If tResource = "" Continue
+            If $SYSTEM.Security.CheckUserPermission(pUser, tResource, "USE") = 1 {
+                Set tHolds = 1
+                Quit
+            }
+        }
+    } Catch ex {
+        Set tHolds = 0
+    }
+    Quit tHolds
+}
+
+/// <p>The iteration cap: the lower of the definition's own maximum and the limit. A definition that
+/// cannot be read contributes nothing, and the limit alone applies.</p>
+ClassMethod IterationCap(pDefinitionId As %String) As %Integer
+{
+    Set tCap = +$Parameter(..LimitsClass(), "MAXITERATIONS")
+    Try {
+        Set tSC = ##class(OcuPilot.Kernel.State.Agent).GuardedExistsId(pDefinitionId, .tExists)
+        If $$$ISERR(tSC) || 'tExists Quit
+        Set tSC = ##class(OcuPilot.Kernel.State.Agent).GuardedOpenId(pDefinitionId, .tRow)
+        If $$$ISERR(tSC) || '$IsObject(tRow) Quit
+        If (+tRow.MaxIterationsPerTurn > 0) && (+tRow.MaxIterationsPerTurn < tCap) Set tCap = +tRow.MaxIterationsPerTurn
+        Set tRow = ""
+    } Catch ex {
+    }
+    Quit tCap
+}
+
+/// <p>The <code>tool_use</code> blocks <var>pJson</var> carries, as an array; empty when there are
+/// none or the text is not an array.</p>
+ClassMethod ToolUses(pJson As %String) As %DynamicArray
+{
+    Set tUses = []
+    Try {
+        If pJson = "" Quit
+        Set tParsed = ##class(%DynamicAbstractObject).%FromJSON(pJson)
+        If $IsObject(tParsed) && tParsed.%IsA("%Library.DynamicArray") Set tUses = tParsed
+    } Catch ex {
+        Set tUses = []
+    }
+    Quit tUses
+}
+
+/// <p>Echo the model's reply back as an assistant message of blocks -- its text, then its
+/// <code>tool_use</code> blocks verbatim -- answer the calls through <method>DispatchTools</method>
+/// as one user message of <code>tool_result</code> blocks, and record one <code>tool</code> step
+/// per call. <var>pToolLog</var> collects <code>{name, code}</code> for the fallback reply.</p>
+ClassMethod AnswerTools(pKey As %String, pUser As %String, pText As %String, pToolUses As %DynamicArray, pLimitsClass As %String, ByRef pMessages, pToolLog As %DynamicArray, ByRef pLastSeq As %Integer) As %Status
+{
+    Set tAssistant = []
+    If pText '= "" {
+        Set tTextBlock = {}
+        Do tTextBlock.%Set("type", "text", "string")
+        Do tTextBlock.%Set("text", pText, "string")
+        Do tAssistant.%Push(tTextBlock)
+    }
+    Set tIterator = pToolUses.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tBlock) {
+        Do tAssistant.%Push(tBlock)
+    }
+    Set pMessages = pMessages + 1
+    Set pMessages(pMessages, "role") = "assistant"
+    Set pMessages(pMessages, "blocks") = tAssistant.%ToJSON()
+
+    Set tSC = ..DispatchTools(pKey, pUser, pToolUses, .tResults)
+    If $$$ISERR(tSC) Quit tSC
+    For tI = 0:1:pToolUses.%Size() - 1 {
+        Set tBlock = pToolUses.%Get(tI)
+        Set tResult = tResults.%Get(tI)
+        Set tName = $Select($IsObject(tBlock): tBlock.name, 1: "")
+        Set tIsError = $IsObject(tResult) && tResult."is_error"
+        Set tCode = ""
+        If tIsError {
+            Try {
+                Set tCode = ##class(%DynamicAbstractObject).%FromJSON(tResult.content).code
+            } Catch ex {
+                Set tCode = ""
+            }
+        }
+        Set tSC = ##class(OcuPilot.Kernel.State.Step).GuardedAppend(pKey, "tool", tName, $Select(tIsError: "error", 1: "ok"), tCode, "", tCode, pLimitsClass, .tSeq)
+        If $$$ISERR(tSC) Quit
+        Set pLastSeq = tSeq
+        Set tEntry = {}
+        Do tEntry.%Set("name", tName, "string")
+        Do tEntry.%Set("code", tCode, "string")
+        Do pToolLog.%Push(tEntry)
+    }
+    If $$$ISERR(tSC) Quit tSC
+    Set pMessages = pMessages + 1
+    Set pMessages(pMessages, "role") = "user"
+    Set pMessages(pMessages, "blocks") = tResults.%ToJSON()
+    Quit $$$OK
+}
+
+/// <p>The reply a turn that reached its iteration cap ends with: how many tool calls were made, one
+/// line per call naming the tool and its outcome, and a suggestion for what to do next. The tool
+/// names are the model's own and are rendered as untrusted content.</p>
+ClassMethod FallbackReply(pToolLog As %DynamicArray) As %String
+{
+    Set tCount = pToolLog.%Size()
+    Set tReply = "I reached this turn's limit on steps after " _ tCount _ " tool call" _ $Select(tCount = 1: "", 1: "s") _ "."
+    Set tLines = ""
+    Set tIterator = pToolLog.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tEntry) {
+        Set tLines = tLines _ $Char(10) _ "- " _ tEntry.name _ ": " _ $Select(tEntry.code = "": "answered", 1: tEntry.code)
+    }
+    If tLines = "" Set tLines = $Char(10) _ "- (no tools were called)"
+    Quit tReply _ $Char(10) _ tLines _ $Char(10) _ $Char(10) _ "Ask a narrower question, or send a follow-up to continue from here."
+}
+
+}

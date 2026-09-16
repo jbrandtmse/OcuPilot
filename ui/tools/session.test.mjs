@@ -29,6 +29,8 @@ const {
   LOGIN_PATH,
   REFRESH_PATH,
   LOGOUT_PATH,
+  TURN_ABANDON_PATH,
+  SIGN_OUT_ABANDON_WAIT_MS,
   classifyLoginStatus,
   isInstallInFlight,
   isInstallUnreadable,
@@ -1046,6 +1048,81 @@ test('DW-5: a logout that never settles does not hold the tab signed in', async 
   });
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(settled, false, 'the promise tracks the request, which is still in flight');
+});
+
+// --- Sign-out abandons the caller's turns (AD-31) -----------------------------------------
+//
+// The instance observes no token sign-out, so a running turn would otherwise go on until its lease
+// lapses. The wire half -- what the route does to whose turns -- is OcuPilot.Test.TurnWire's.
+
+test('sign-out abandons the turns before /logout, carrying the same Bearer', async () => {
+  const { session, calls } = makeSession((path) =>
+    path === LOGIN_PATH ? response(200, pairBody('a1', 'r1')) : response(200, '')
+  );
+
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+  await session.signOut();
+
+  const paths = calls.map((c) => c.path);
+  const abandonAt = paths.indexOf(TURN_ABANDON_PATH);
+  assert.ok(abandonAt >= 0, 'the abandon is sent');
+  assert.ok(abandonAt < paths.indexOf(LOGOUT_PATH), 'before the logout');
+  assert.equal(calls[abandonAt].init.method, 'POST');
+  assert.equal(calls[abandonAt].init.headers['Authorization'], 'Bearer a1', 'with the pair the tab held');
+  assert.equal(calls[abandonAt].init.credentials, 'omit', 'and no cookie, as for every data route');
+});
+
+for (const [label, answer] of [
+  ['throws', () => Promise.reject(new TypeError('Failed to fetch'))],
+  ['answers 401', () => response(401, '')],
+]) {
+  test(`an abandon that ${label} still lets /logout go`, async () => {
+    const { session, calls, tokens } = makeSession((path) => {
+      if (path === TURN_ABANDON_PATH) return answer();
+      return path === LOGIN_PATH ? response(200, pairBody('a1', 'r1')) : response(200, '');
+    });
+
+    session.start();
+    await new Promise((resolve) => setImmediate(resolve));
+    await session.signOut();
+
+    assert.ok(calls.some((c) => c.path === LOGOUT_PATH), 'the logout is still sent');
+    assert.equal(tokens.read(), null);
+    assert.equal(session.state(), 'signed-out');
+  });
+}
+
+test('an abandon that never settles lets /logout go once the bound fires', async () => {
+  const { session, calls, scheduled } = makeSession((path) => {
+    if (path === TURN_ABANDON_PATH) return new Promise(() => {});
+    return path === LOGIN_PATH ? response(200, pairBody('a1', 'r1')) : response(200, '');
+  });
+
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+  const pending = session.signOut();
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(session.state(), 'signed-out', 'the tab is signed out while the abandon hangs');
+  assert.ok(!calls.some((c) => c.path === LOGOUT_PATH), 'and the logout waits for the bound');
+  const bound = scheduled.find((entry) => entry.delayMs === SIGN_OUT_ABANDON_WAIT_MS);
+  assert.ok(bound, 'the wait is bounded through the injected scheduler');
+
+  bound.run();
+  await pending;
+  assert.ok(calls.some((c) => c.path === LOGOUT_PATH), 'the logout goes once the bound fires');
+});
+
+test('a tab holding no pair sends neither the abandon nor the logout', async () => {
+  const { session, calls } = makeSession(() => response(401, ''));
+
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+  await session.signOut();
+
+  assert.ok(!calls.some((c) => c.path === TURN_ABANDON_PATH), 'no abandon');
+  assert.ok(!calls.some((c) => c.path === LOGOUT_PATH), 'and no logout');
 });
 
 test('a backoff probe armed before sign-out lands after it and adopts nothing', async () => {

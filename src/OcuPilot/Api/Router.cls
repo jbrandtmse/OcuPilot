@@ -2,11 +2,11 @@
 /// JSON-first.</p>
 /// <p>The <code>UrlMap</code> below holds the five agent-switch routes under
 /// <code>/agent/switches</code> and <code>/agent/restraint</code>, the eight agent-definition
-/// routes under <code>/agent/definitions</code> -- together the map's only write verbs -- the
-/// provider catalog the Definition form cascades from, the generic screen read,
-/// <code>GET /screens/:screen/read</code>, the four application-error-log levels
-/// <code>GET /logs/errors/{namespaces,dates,list,detail}</code>, the console-log page
-/// <code>GET /logs/messages</code>, and the three shell routes, <code>GET /instance</code>,
+/// routes under <code>/agent/definitions</code>, the provider catalog the Definition form cascades
+/// from, the generic screen read, <code>GET /screens/:screen/read</code>, the four
+/// application-error-log levels <code>GET /logs/errors/{namespaces,dates,list,detail}</code>, the
+/// console-log page <code>GET /logs/messages</code>, the three turn routes under
+/// <code>/turn</code>, and the three shell routes, <code>GET /instance</code>,
 /// <code>GET /namespaces</code> and <code>GET /navigation</code>; every other request that clears
 /// <method>OnPreDispatch</method> is answered by the framework 404 override. The three
 /// ordering invariants below are load-bearing from the first route on; the first two are each
@@ -84,6 +84,9 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/logs/errors/list" Method="GET" Call="LogErrorList"/>
   <Route Url="/logs/errors/detail" Method="GET" Call="LogErrorDetail"/>
   <Route Url="/logs/messages" Method="GET" Call="LogMessages"/>
+  <Route Url="/turn/:id/progress" Method="GET" Call="TurnProgress"/>
+  <Route Url="/turn/abandon" Method="POST" Call="TurnAbandon"/>
+  <Route Url="/turn" Method="POST" Call="TurnStart"/>
   <Route Url="/instance" Method="GET" Call="Instance"/>
   <Route Url="/namespaces" Method="GET" Call="Namespaces"/>
   <Route Url="/navigation" Method="GET" Call="Navigation"/>
@@ -244,6 +247,28 @@ ClassMethod LogErrorDetail() As %Status
 ClassMethod LogMessages() As %Status
 {
     Quit ##class(OcuPilot.Api.LogPage).Handle(##class(OcuPilot.Port.LogSourcePort).#MESSAGESKEY)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /turn/:id/progress</code>: delegates to
+/// <class>OcuPilot.Api.Turn</class> and carries no logic of its own. The three turn routes are
+/// declared longest first, for the third ordering invariant.</p>
+ClassMethod TurnProgress(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Api.Turn).HandleProgress(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /turn/abandon</code> -- see
+/// <method>TurnProgress</method>.</p>
+ClassMethod TurnAbandon() As %Status
+{
+    Quit ##class(OcuPilot.Api.Turn).HandleAbandon()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /turn</code> -- see
+/// <method>TurnProgress</method>.</p>
+ClassMethod TurnStart() As %Status
+{
+    Quit ##class(OcuPilot.Api.Turn).HandleStart()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /instance</code>: delegates to

@@ -2,9 +2,10 @@
  * The session state machine behind silent-first sign-in (AD-28), framework-free so
  * `ui/tools/session.test.mjs` can execute it under `node --test`.
  *
- * The states are EXPERIENCE.md's Session table ("Cold start, silent probe in flight"). The three requests are the
- * CSP server's own token endpoints -- `/login`, `/refresh` and `/logout` are intercepted
- * before OcuPilot dispatches, so nothing here talks to OcuPilot code.
+ * The states are EXPERIENCE.md's Session table ("Cold start, silent probe in flight"). Three of
+ * its requests are the CSP server's own token endpoints -- `/login`, `/refresh` and `/logout` are
+ * intercepted before OcuPilot dispatches. The fourth, `/turn/abandon`, is OcuPilot's own, sent at
+ * sign-out because the instance observes no token sign-out (AD-31).
  *
  * Two rules carry the whole design, and both are verified against the live instance in
  * `OcuPilot.Test.Token`:
@@ -34,6 +35,13 @@ export const API_ROOT = '/api/ocupilot';
 export const LOGIN_PATH = `${API_ROOT}/login`;
 export const REFRESH_PATH = `${API_ROOT}/refresh`;
 export const LOGOUT_PATH = `${API_ROOT}/logout`;
+export const TURN_ABANDON_PATH = `${API_ROOT}/turn/abandon`;
+
+/**
+ * How long sign-out waits for `/turn/abandon` before it posts `/logout` anyway. Unbounded, a hung
+ * abandon would keep `/logout` from ever being sent and leave the browser-level login alive.
+ */
+export const SIGN_OUT_ABANDON_WAIT_MS = 3_000;
 
 /**
  * The states EXPERIENCE.md "Cold start, silent probe in flight" names.
@@ -656,6 +664,11 @@ export class Session {
    *
    * The method awaits the request, so a caller that awaits it sees the round trip complete --
    * but nothing the tab shows is waiting on it.
+   *
+   * **Before `/logout`, the caller's running turns are abandoned** (AD-31): the instance
+   * observes no token sign-out, so a turn would otherwise run on until its lease lapses. The
+   * abandon carries the same Bearer, its outcome is not read, and it is waited for at most
+   * `SIGN_OUT_ABANDON_WAIT_MS` -- whichever comes first, `/logout` is posted next.
    */
   async signOut(): Promise<void> {
     const pair = this.tokens.read();
@@ -674,6 +687,7 @@ export class Session {
     this.setState('signed-out');
 
     if (access === '') return;
+    await this.abandonTurns(access);
     try {
       await this.http(LOGOUT_PATH, {
         method: 'POST',
@@ -684,6 +698,33 @@ export class Session {
       // Deliberately unread. The tab was already cleared and settled above; there is no
       // outcome here that should change what the user sees.
     }
+  }
+
+  /**
+   * Post `/turn/abandon` with `access` and no cookie (it is a data route, AD-28), and settle when
+   * it answers, fails, or
+   * `SIGN_OUT_ABANDON_WAIT_MS` passes on the injected scheduler -- whichever is first. Never
+   * rejects, and reads no outcome.
+   */
+  private abandonTurns(access: string): Promise<void> {
+    return new Promise<void>((resolve) => {
+      let settled = false;
+      const settle = () => {
+        if (settled) return;
+        settled = true;
+        resolve();
+      };
+      this.schedule(settle, SIGN_OUT_ABANDON_WAIT_MS);
+      try {
+        this.http(TURN_ABANDON_PATH, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${access}` },
+          credentials: 'omit',
+        }).then(settle, settle);
+      } catch {
+        settle();
+      }
+    });
   }
 
   private async runRefresh(): Promise<boolean> {

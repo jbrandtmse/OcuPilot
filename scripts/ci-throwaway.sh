@@ -193,6 +193,11 @@ services:
       # instance's own security database. Same reasoning as the three above: a runner pointed at
       # an instance someone cares about would otherwise add a security object to it.
       OCUPILOT_ALLOW_SSL_CONFIG: "1"
+      # Arms the turnprobe provider row OcuPilot.Kernel.Provider.Catalog resolves only under it,
+      # and with it OcuPilot.Test.TurnWire, TurnLong and TurnChain, which spawn turn jobs against
+      # that row's scripted adapter. A turn job is a separate process no in-process stub reaches, so
+      # the row is armed by the environment, and only here.
+      OCUPILOT_ALLOW_TEST_PROVIDER: "1"
     volumes:
       - $DIR/data:/durable
       - $DIR/src:/opt/ocupilot/src:ro

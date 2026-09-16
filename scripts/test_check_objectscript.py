@@ -770,6 +770,95 @@ class TestHandlerWireTestRule(FixtureTreeCase):
             f"expected the named :param route accepted, got {problems}",
         )
 
+    def write_turn_router(self) -> None:
+        self.write(
+            "src/OcuPilot/Api/Router.cls",
+            "Class OcuPilot.Api.Router Extends %CSP.REST\n"
+            "{\n\nXData UrlMap\n{\n<Routes>\n"
+            '  <Route Url="/turn/:id/progress" Method="GET" Call="TurnProgress"/>\n'
+            '  <Route Url="/turn/abandon" Method="POST" Call="TurnAbandon"/>\n'
+            '  <Route Url="/turn" Method="POST" Call="TurnStart"/>\n'
+            "</Routes>\n}\n\n}\n",
+        )
+
+    def test_a_shorter_route_is_not_covered_by_a_test_naming_only_longer_ones(self):
+        # DW-400: substring keying let `/turn/abandon` or `/turn/:id/progress` stand in for
+        # `/turn`, so the route that starts a turn could ship with no wire test of its own.
+        self.write_turn_router()
+        self.write(
+            "src/OcuPilot/Test/Wire.cls",
+            self.WIRE_BODY.replace(
+                "Method TestRoute()",
+                'Method TestRoute()\n{\n'
+                '    Set tA = "POST /turn/abandon"\n'
+                '    Set tB = "GET /turn/:id/progress"\n'
+                '    Set tVerbs = "POST"\n'
+                "}\n\nMethod TestRouteTwo()",
+            ),
+        )
+        problems: list[str] = []
+        co.check_handler_wire_tests(problems)
+        self.assertTrue(
+            any("Url='/turn' " in p for p in problems),
+            f"expected /turn refused when only longer routes are named, got {problems}",
+        )
+        self.assertFalse(
+            any("'/turn/abandon'" in p or "'/turn/:id/progress'" in p for p in problems),
+            f"expected the two named routes accepted, got {problems}",
+        )
+
+    def test_a_second_method_on_one_url_is_its_own_obligation(self):
+        # DW-400's other half: GET and POST on one path were one key, so a GET test covered a POST
+        # route no test had ever sent.
+        self.write(
+            "src/OcuPilot/Api/Router.cls",
+            "Class OcuPilot.Api.Router Extends %CSP.REST\n"
+            "{\n\nXData UrlMap\n{\n<Routes>\n"
+            '  <Route Url="/widgets" Method="GET" Call="WidgetList"/>\n'
+            '  <Route Url="/widgets" Method="POST" Call="WidgetCreate"/>\n'
+            "</Routes>\n}\n\n}\n",
+        )
+        self.write(
+            "src/OcuPilot/Test/Wire.cls",
+            self.WIRE_BODY.replace('"/instance"', '"/widgets"'),
+        )
+        problems: list[str] = []
+        co.check_handler_wire_tests(problems)
+        self.assertTrue(
+            any("Call='WidgetCreate'" in p for p in problems),
+            f"expected the POST route refused with only a GET test, got {problems}",
+        )
+        self.assertFalse(
+            any("Call='WidgetList'" in p for p in problems),
+            f"expected the GET route accepted, got {problems}",
+        )
+
+    def test_a_route_at_the_tail_of_a_longer_route_is_not_covered_by_it(self):
+        # DW-400, the other direction: a URL bounded only at its end let `/logs/errors/namespaces`
+        # stand in for `/namespaces`. The API base in front of a route still names it.
+        self.write(
+            "src/OcuPilot/Api/Router.cls",
+            "Class OcuPilot.Api.Router Extends %CSP.REST\n"
+            "{\n\nXData UrlMap\n{\n<Routes>\n"
+            '  <Route Url="/logs/errors/namespaces" Method="GET" Call="LogErrorNamespaces"/>\n'
+            '  <Route Url="/namespaces" Method="GET" Call="Namespaces"/>\n'
+            "</Routes>\n}\n\n}\n",
+        )
+        self.write(
+            "src/OcuPilot/Test/Wire.cls",
+            self.WIRE_BODY.replace('"/instance"', '"/api/ocupilot/logs/errors/namespaces"'),
+        )
+        problems: list[str] = []
+        co.check_handler_wire_tests(problems)
+        self.assertTrue(
+            any("Call='Namespaces'" in p for p in problems),
+            f"expected /namespaces refused when only the longer route is named, got {problems}",
+        )
+        self.assertFalse(
+            any("Call='LogErrorNamespaces'" in p for p in problems),
+            f"expected the route named behind the API base accepted, got {problems}",
+        )
+
     def test_a_doc_comment_naming_the_class_does_not_satisfy_the_rule(self):
         # The rule asks whether a test NAMES the route in code. Over the whole file text a `///`
         # line mentioning the dispatch class satisfied it, so a route's own doc comment could
@@ -837,6 +926,91 @@ class TestHandlerWireTestRule(FixtureTreeCase):
         problems: list[str] = []
         co.check_handler_wire_tests(problems)
         self.assertEqual(problems, [])
+
+
+class TestAgentJobReachRule(FixtureTreeCase):
+    """Story 4.1: the turn job reaches the provider port and OcuPilot's own state and nothing that
+    acts on the instance, and the one spawn in shipped code is the job's own."""
+
+    LOOP = "src/OcuPilot/Kernel/Agent/Loop.cls"
+
+    def write_loop(self, line: str) -> None:
+        self.write(
+            self.LOOP,
+            "Class OcuPilot.Kernel.Agent.Loop Extends %RegisteredObject\n"
+            "{\n\nClassMethod Run()\n{\n    " + line + "\n}\n\n}\n",
+        )
+
+    def test_another_port_named_under_kernel_agent_is_refused(self):
+        self.write_loop('Set tPort = "OcuPilot.Port.AdminPort"')
+        problems: list[str] = []
+        co.check_agent_job_reach(problems)
+        self.assertTrue(
+            any("OcuPilot.Port.AdminPort" in p and "Kernel/Agent/" in p for p in problems),
+            f"expected the admin port refused, got {problems}",
+        )
+
+    def test_a_handler_a_screen_and_a_slice_are_refused(self):
+        for name in ("OcuPilot.Api.Definitions", "OcuPilot.Screen.Registry", "OcuPilot.Area.Task.List"):
+            with self.subTest(name=name):
+                self.write_loop(f"Do ##class({name}).Go()")
+                problems: list[str] = []
+                co.check_agent_job_reach(problems)
+                self.assertTrue(any(name in p for p in problems), f"expected {name} refused, got {problems}")
+
+    def test_the_provider_port_and_the_vocabulary_class_pass(self):
+        self.write_loop(
+            'Do $ClassMethod("OcuPilot.Port.ProviderPort", "Invoke") '
+            "Set tCode = ##class(OcuPilot.Api.Error).#TURNSTOPPED"
+        )
+        problems: list[str] = []
+        co.check_agent_job_reach(problems)
+        self.assertEqual(problems, [], f"expected the port and the vocabulary accepted, got {problems}")
+
+    def test_a_job_outside_the_job_class_is_refused_and_inside_it_passes(self):
+        spawn = "Job ##class(OcuPilot.Kernel.Agent.Job).Run(1)::5"
+        self.write(
+            "src/OcuPilot/Api/Turn.cls",
+            "Class OcuPilot.Api.Turn Extends %RegisteredObject\n{\n\nClassMethod Go()\n{\n    "
+            + spawn
+            + "\n}\n\n}\n",
+        )
+        self.write(
+            "src/OcuPilot/Kernel/Agent/Job.cls",
+            "Class OcuPilot.Kernel.Agent.Job Extends %RegisteredObject\n{\n\nClassMethod Start()\n{\n    "
+            + spawn
+            + "\n}\n\n}\n",
+        )
+        problems: list[str] = []
+        co.check_agent_job_reach(problems)
+        self.assertTrue(any("Api/Turn.cls" in p and "'JOB'" in p for p in problems), f"got {problems}")
+        self.assertFalse(any(p.startswith("src/OcuPilot/Kernel/Agent/Job.cls") for p in problems), f"got {problems}")
+
+    def test_a_state_class_naming_the_agent_package_is_refused(self):
+        # Rule 7: the loop reaches the provider port, so a storage method naming it could re-enter
+        # a provider call from inside an escalated frame (AD-9).
+        self.write(
+            "src/OcuPilot/Kernel/State/Probe.cls",
+            "Class OcuPilot.Kernel.State.Probe Extends %RegisteredObject\n{\n\nClassMethod Go()\n{\n"
+            '    Do ##class(OcuPilot.Kernel.Agent.Loop).Run()\n}\n\n}\n',
+        )
+        problems: list[str] = []
+        co.check_state_package_isolation(problems)
+        self.assertTrue(
+            any("State/Probe.cls" in p and "OcuPilot.Kernel.Agent" in p for p in problems),
+            f"expected the agent package refused under Kernel/State/, got {problems}",
+        )
+
+    def test_a_test_helper_the_job_variable_and_a_string_pass(self):
+        self.write(
+            "src/OcuPilot/Test/Helper.cls",
+            "Class OcuPilot.Test.Helper Extends %RegisteredObject\n{\n\nClassMethod Go()\n{\n"
+            "    Job ##class(OcuPilot.Test.Helper).Other()::5\n}\n\n}\n",
+        )
+        self.write_loop('Set tPid = $Job  Set tText = "the job could not be started"')
+        problems: list[str] = []
+        co.check_agent_job_reach(problems)
+        self.assertEqual(problems, [], f"expected all three accepted, got {problems}")
 
 
 class TestNonAsciiStringLiteralRule(FixtureTreeCase):
@@ -1316,6 +1490,7 @@ class TestShippedTreeIsCleanUnderTheNewRules(unittest.TestCase):
             co.check_non_ascii_literals,
             co.check_tool_kind,
             co.check_route_ordering,
+            co.check_agent_job_reach,
         ):
             with self.subTest(check=check.__name__):
                 problems: list[str] = []
@@ -1484,6 +1659,21 @@ class TestDestructiveTestGuardRule(FixtureTreeCase):
         problems: list[str] = []
         co.check_destructive_test_guard(problems)
         self.assertEqual(problems, [])
+
+    def test_the_turn_principal_helpers_are_in_the_population(self):
+        """`Test/TurnWire.cls` and `Test/TurnLong.cls` create, revoke and delete their principals
+        through `OcuPilot.Test.TurnWireFixture`, naming no security class of their own."""
+        for helper in ("EnsurePrincipal", "DeletePrincipal", "RemovePrincipals", "SetRoleResources"):
+            with self.subTest(helper=helper):
+                self.write_test_class(
+                    "ViaTurnFixture", f'    Do ##class(OcuPilot.Test.TurnWireFixture).{helper}("Probe")'
+                )
+                problems: list[str] = []
+                co.check_destructive_test_guard(problems)
+                self.assertTrue(
+                    any("ViaTurnFixture.cls" in p and helper in p for p in problems),
+                    f"expected {helper} to count, got {problems}",
+                )
 
     def test_deleting_a_role_is_in_the_population(self):
         """Outside the rule until DW-396, on the ground that it is the tail of an install probe.

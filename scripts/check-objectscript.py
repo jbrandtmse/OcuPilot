@@ -94,10 +94,11 @@ prose into one checker.
     assertion. A literal route is keyed by its own URL, and a `:param` segment is part of that
     literal (DW-364), so `/agent/definitions/:id` keys on itself rather than falling back; a
     pattern route (`/(.*)`), which no literal can identify, is keyed by its dispatch class's
-    name. The key does not carry the HTTP method, so two methods on one path are one
-    obligation (DW-400). Line-oriented, so it cannot
-    tell which method inside a class made which assertion — what it catches, which is the
-    defect it exists for, is a route no wire test names at all.
+    name. A literal route is covered only by a class that names its whole URL, bounded so a
+    longer path does not count (`/turn` is not named by `/turn/abandon`), **and** names its
+    method as a literal (`"POST"`), so two methods on one path are two obligations (DW-400).
+    Line-oriented, so it cannot tell which method inside a class made which assertion — what it
+    catches, which is the defect it exists for, is a route no wire test names at all.
 
 13. **No literal non-ASCII byte in a string literal (Story 1.17, DW-43, Rule 14).** Under
     `src/OcuPilot/`, non-ASCII in a string literal is written `$Char(<code point>)`, so the
@@ -146,6 +147,13 @@ prose into one checker.
     legitimately -- so the rule cannot be tightened to those class names either. It reads
     ObjectScript source only, and skips comments and XData bodies within it, so a client naming a
     code is outside it.
+
+19. **The turn job's reach (AD-7, AD-9, Story 4.1).** A file under `OcuPilot/Kernel/Agent/` names
+    no `OcuPilot.Port.*` class but `OcuPilot.Port.ProviderPort`, no `OcuPilot.Area.*` or
+    `OcuPilot.Screen.*` class, and no `OcuPilot.Api.*` class but the vocabulary class
+    `OcuPilot.Api.Error`; and a `JOB` command -- outside a string literal -- appears in shipped
+    code only in `OcuPilot/Kernel/Agent/Job.cls`. Test classes under `Test/` may spawn their own
+    helpers.
 
 This checker is deliberately line-oriented rather than a full UDL parser: it is exact
 enough to catch the violations above and cheap enough to run on every commit and every
@@ -606,12 +614,13 @@ ESCALATION_RE = re.compile(
 # roster's package set if that ever grows.
 STATE_PACKAGE_PREFIX = "src/OcuPilot/Kernel/State/"
 
-# A bare JOB command — same not-a-dotted-call shape as WRITE_RE.
-JOB_RE = re.compile(r"(?<![.\w])job\b", re.IGNORECASE)
+# A bare JOB command — same not-a-dotted-call shape as WRITE_RE, and not the `$JOB` special
+# variable.
+JOB_RE = re.compile(r"(?<![.\w$])job\b", re.IGNORECASE)
 
 # AD-9's second ordering rule: nothing under Kernel/State/ may reference a package that
 # could re-enter a tool, the AdminPort, the ProviderPort, or any code that could.
-REENTRY_TOKENS = ("OcuPilot.Api", "OcuPilot.Port", "OcuPilot.Screen", "OcuPilot.Area")
+REENTRY_TOKENS = ("OcuPilot.Api", "OcuPilot.Port", "OcuPilot.Screen", "OcuPilot.Area", "OcuPilot.Kernel.Agent")
 
 
 # --- Admin API containment (AD-27, Story 1.8) ----------------------------------------
@@ -790,6 +799,47 @@ def check_state_package_isolation(problems: list[str]) -> None:
                         f"{rel}:{i}: reference to {token!r} under Kernel/State/ -- a storage "
                         f"method must never re-enter a tool, a port, a screen or an area (AD-9)"
                     )
+
+
+# --- The turn job's reach (AD-7, AD-9, Story 4.1) --------------------------------------
+#
+# A turn job runs for minutes as the user, outside any request. What it may reach is the provider
+# port and OcuPilot's own state, and nothing that acts on the instance: no other port, no slice, no
+# screen, and no handler -- `OcuPilot.Api.Error` is the vocabulary, not a handler. And the one
+# spawn in shipped code is the job's own, so a second `JOB` cannot quietly start a process from a
+# frame nobody checked for escalation. Test classes spawn their own helpers and are outside it.
+
+AGENT_PACKAGE_PREFIX = "src/OcuPilot/Kernel/Agent/"
+JOB_ALLOWED = frozenset({"src/OcuPilot/Kernel/Agent/Job.cls"})
+AGENT_REACH_RE = re.compile(
+    r"OcuPilot\.Port\.(?!ProviderPort\b)\w+(?:\.\w+)*"
+    r"|OcuPilot\.(?:Area|Screen)\.\w+(?:\.\w+)*"
+    r"|OcuPilot\.Api\.(?!Error\b)\w+(?:\.\w+)*"
+)
+
+
+def check_agent_job_reach(problems: list[str]) -> None:
+    for p in iter_objectscript_files():
+        rel = p.relative_to(ROOT).as_posix()
+        if not rel.startswith("src/OcuPilot/") or rel.startswith(TEST_PACKAGE_PREFIX):
+            continue
+        text = read_text(p)
+        if text is None:
+            continue
+        for i, raw in iter_code_lines(text):
+            if rel.startswith(AGENT_PACKAGE_PREFIX):
+                found = AGENT_REACH_RE.search(raw)
+                if found is not None:
+                    problems.append(
+                        f"{rel}:{i}: {found.group(0)!r} is named under Kernel/Agent/ -- the turn "
+                        f"job reaches the provider through OcuPilot.Port.ProviderPort and nothing "
+                        f"else outside the kernel (AD-7, AD-9)"
+                    )
+            if rel not in JOB_ALLOWED and JOB_RE.search(STRING_LITERAL_RE.sub('""', raw)):
+                problems.append(
+                    f"{rel}:{i}: 'JOB' command outside {', '.join(sorted(JOB_ALLOWED))} -- the turn "
+                    f"job is the one spawn in shipped code (AD-9)"
+                )
 
 
 # "co-pilot" alone is rejected everywhere in this tree (EXPERIENCE.md "**Rejected — the field's agent",
@@ -1133,6 +1183,8 @@ DESTRUCTIVE_TEST_RE = re.compile(
     r"|##class\(\s*(?:OcuPilot\.Install\.Installer|OcuPilot\.Test\.\w+)\s*\)"
     r"\s*\.\s*StartPath\b"
     r"|##class\(\s*OcuPilot\.Test\.Version\s*\)\s*\.\s*(?:CreateThrowawayExpiredAccount|DeleteThrowawayAccount)\b"
+    r"|##class\(\s*OcuPilot\.Test\.TurnWireFixture\s*\)\s*\.\s*"
+    r"(?:EnsurePrincipal|DeletePrincipal|RemovePrincipals|SetRoleResources)\b"
 )
 
 ARMING_GUARD_RE = re.compile(r"\$System\.Util\.GetEnviron\(\s*\.\.#ARMINGVARIABLE\s*\)\s*'=\s*1")
@@ -1311,6 +1363,34 @@ def wire_test_sources() -> dict[str, str]:
     return sources
 
 
+ROUTE_METHOD_RE = re.compile(r"\bMethod\s*=\s*\"([^\"]*)\"", re.IGNORECASE)
+
+
+def route_methods(element: str) -> list[str]:
+    """The verbs a `<Route>` element's `Method` attribute lists, upper-cased; empty when it has
+    none."""
+    found = ROUTE_METHOD_RE.search(element)
+    if found is None:
+        return []
+    return [verb.strip().upper() for verb in found.group(1).split(",") if verb.strip()]
+
+
+def route_name_matcher(url: str, methods: list[str]):
+    """A predicate over a test class's code: whether it names the literal route `url` -- the whole
+    URL, bounded at both ends so a longer route does not name a shorter one, whether it extends the
+    shorter one's tail (`/turn/abandon`) or its head (`/logs/errors/namespaces`); the API base
+    `/api/ocupilot` may precede it -- and every verb in `methods` as a string literal (DW-400)."""
+    url_re = re.compile(
+        r"(?:(?<=/api/ocupilot)|(?<![A-Za-z0-9._/:-]))" + re.escape(url) + r"(?![A-Za-z0-9._/:-])"
+    )
+    verb_res = [re.compile(r'"' + re.escape(verb) + r'"', re.IGNORECASE) for verb in methods]
+
+    def names(source: str) -> bool:
+        return url_re.search(source) is not None and all(v.search(source) for v in verb_res)
+
+    return names
+
+
 def check_handler_wire_tests(problems: list[str]) -> None:
     sources = wire_test_sources()
     for p in iter_objectscript_files():
@@ -1329,15 +1409,20 @@ def check_handler_wire_tests(problems: list[str]) -> None:
         for line, body in iter_named_xdata_blocks(text, URLMAP_XDATA_NAME):
             for m in ROUTE_RE.finditer(body):
                 url, call = m.group(1), m.group(2)
-                key = url if LITERAL_ROUTE_RE.match(url) else dispatch_class
+                literal = LITERAL_ROUTE_RE.match(url) is not None
+                key = url if literal else dispatch_class
+                if literal:
+                    names_key = route_name_matcher(url, route_methods(m.group(0)))
+                else:
+                    names_key = lambda source, key=key: key in source
                 covered = [
                     name
                     for name, source in sources.items()
-                    if key in source and all(pattern.search(source) for _, pattern in WIRE_MARKERS)
+                    if names_key(source) and all(pattern.search(source) for _, pattern in WIRE_MARKERS)
                 ]
                 if covered:
                     continue
-                named = [name for name, source in sources.items() if key in source]
+                named = [name for name, source in sources.items() if names_key(source)]
                 if named:
                     missing = [
                         label
@@ -1603,6 +1688,7 @@ CHECKS = (
     check_non_ascii_literals,
     check_tool_kind,
     check_route_ordering,
+    check_agent_job_reach,
 )
 
 

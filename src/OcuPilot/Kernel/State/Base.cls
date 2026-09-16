@@ -284,6 +284,90 @@ ClassMethod GuardedProbeGet(pKey As %String, Output pValue As %String) As %Statu
     Quit tSC
 }
 
+/// <p>Take the turn slot lock <code>^OcuPilotTurnSlot(</code><var>pUser</var><code>)</code>,
+/// waiting at most <var>pTimeout</var> seconds. <var>pHeld</var> is 1 when this process now holds
+/// it. The lock outlives this frame and is released by <method>GuardedTurnSlotUnlock</method> or
+/// by the process ending. Reach it through <code>..</code> dispatch from
+/// <class>OcuPilot.Kernel.State.Turn</class>.</p>
+ClassMethod GuardedTurnSlotLock(pUser As %String, pTimeout As %Integer, Output pHeld As %Boolean) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pHeld = 0
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Lock +^OcuPilotTurnSlot(pUser):+pTimeout
+        Set pHeld = $Test
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Release one hold of the turn slot lock for <var>pUser</var>. Releasing a lock this process
+/// does not hold changes nothing.</p>
+ClassMethod GuardedTurnSlotUnlock(pUser As %String) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Lock -^OcuPilotTurnSlot(pUser)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Set the scalar signal node <code>^OcuPilotTurnSignal(</code><var>pKey</var><code>,
+/// </code><var>pName</var><code>)</code> to <var>pValue</var>.</p>
+ClassMethod GuardedTurnSignalSet(pKey As %String, pName As %String, pValue As %String) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Set ^OcuPilotTurnSignal(pKey, pName) = pValue
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Read the signal node <var>pKey</var>, <var>pName</var>; <code>""</code> when unset.</p>
+ClassMethod GuardedTurnSignalGet(pKey As %String, pName As %String, Output pValue As %String) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pValue = ""
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Set pValue = $Get(^OcuPilotTurnSignal(pKey, pName))
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Remove every signal node of turn <var>pKey</var>.</p>
+ClassMethod GuardedTurnSignalKill(pKey As %String) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Kill ^OcuPilotTurnSignal(pKey)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>Test-only introspection: returns the process's <code>$ROLES</code> as observed
 /// from <b>inside</b> the escalation frame -- the same frame every guarded method above
 /// uses -- so <class>OcuPilot.Test.State</class> can assert AD-9's ordering rule (the
@@ -508,6 +592,31 @@ ClassMethod GuardedIdsWhere(pSql As %String, pParam As %String, Output pIds) As 
         Set tRS = ##class(%SQL.Statement).%ExecDirect(, pSql, pParam)
         If tRS.%SQLCODE < 0 {
             Set tSC = $$$ERROR($$$GeneralError, "GuardedIdsWhere failed: SQLCODE=" _ tRS.%SQLCODE _ " " _ tRS.%Message)
+            Quit
+        }
+        While tRS.%Next() {
+            Set pIds($Increment(pIds)) = tRS.%GetData(1)
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Two-parameter sibling of <method>GuardedIdsWhere</method>, for a query whose
+/// <code>WHERE</code> clause binds two values (<class>OcuPilot.Kernel.State.Turn</class>'s owner
+/// lookup by turn key and user name). Same call-site-literal and <code>Private</code> rules.</p>
+ClassMethod GuardedIdsWhereTwoParam(pSql As %String, pParam1 As %String, pParam2 As %String, Output pIds) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Kill pIds
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, pSql, pParam1, pParam2)
+        If tRS.%SQLCODE < 0 {
+            Set tSC = $$$ERROR($$$GeneralError, "GuardedIdsWhereTwoParam failed: SQLCODE=" _ tRS.%SQLCODE _ " " _ tRS.%Message)
             Quit
         }
         While tRS.%Next() {

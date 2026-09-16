@@ -15,10 +15,11 @@
 /// <method>DecodeUtf8Stream</method>, the surrogate-pair-safe truncation in
 /// <method>ApplyOutputCeiling</method>, the bracket-depth scan in
 /// <method>SanitizeError</method> and both branches of
-/// <method>ReadRequestBody</method> (DW-24, fixed there). The <b>production</b> call site
-/// is still absent for all four: the token endpoints Story 1.6 builds against are handled
-/// by the CSP server before OcuPilot dispatches, so no OcuPilot route reads a request body
-/// yet. The first route with a body — Story 1.8's — is the first production consumer.</p>
+/// <method>ReadRequestBody</method> (DW-24, fixed there). <method>ReadRequestBody</method>, and
+/// <method>DecodeUtf8Stream</method> through it, are called in production by
+/// <class>OcuPilot.Api.Definitions</class>, <class>OcuPilot.Api.Switches</class> and
+/// <class>OcuPilot.Api.Turn</class>; <method>ApplyOutputCeiling</method> and
+/// <method>SanitizeError</method> have no production caller.</p>
 Class OcuPilot.Kernel.Utils Extends %RegisteredObject
 {
 

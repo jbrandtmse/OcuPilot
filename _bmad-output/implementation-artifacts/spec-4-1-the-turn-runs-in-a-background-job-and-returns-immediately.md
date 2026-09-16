@@ -2,15 +2,30 @@
 title: 'The turn runs in a background job and returns immediately'
 type: 'feature'
 created: '2026-09-16'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'a7a1802c14a9da22f24afd85521c5a6beb98a229'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings:
   - multiple-goals
   - oversized
-deferred: []
+deferred:
+  - summary: >-
+      AD-31 says the poll lease covers disablement and, in the same rule, that it does not; AD-7 still places progress in a temp global, and epics.md Story 4.1 still says the lease covers a disabled account.
+    evidence: |-
+      ARCHITECTURE-SPINE.md AD-31 Rule ("disablement is covered by a poll lease" vs "the lease does not cover disablement"); AD-7 Rule ("a temp global keyed by turn id") vs AD-33 and Kernel.State.Step; epics.md:2698. The 2026-09-16 probe in the spec's Design Notes shows the instance answers a disabled account's Bearer poll.
+    location: >-
+      _bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md AD-31, AD-7; _bmad-output/planning-artifacts/epics.md:2698
+    severity: medium
+  - summary: >-
+      CLAUDE.md still says check-objectscript.py has 18 rules; Story 4.1 added the nineteenth (the turn job's reach).
+    evidence: |-
+      CLAUDE.md "Running and verifying" says 18 rules; the checker now prints "over 19 rule(s)".
+    location: >-
+      CLAUDE.md:132
+    severity: low
 ---
 
 <intent-contract>
@@ -150,6 +165,85 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-16 — Review pass
+
+- verdicts: 74 findings — high 0, medium 21, low 50, false 3, maybe-false 0
+- findings:
+  - `[low]` `[reject]` BH1 echoing an unsolicited `tool_use` with no `tools` would be refused by the real API — unreachable in 4.1: with no tools advertised the provider emits no `tool_use`; 4.2 advertises tools.
+  - `[low]` `[reject]` BH2 no boundary between tool calls of one reply — 4.1 tool calls reach nothing; Tasks place the boundary before each model call; per-tool checks belong to 4.2's `DispatchTools`.
+  - `[false]` `[reject]` BH3 boundary uses `Restraint.Resolved`, not `Verdict(definition)` — the fields `Boundary` reads (`killSwitch`, its `code`, `enforcedReadOnly`) do not depend on the definition (`Restraint.cls` :98-121); Tasks name `Resolved`.
+  - `[low]` `[reject]` BH4 the job gets `$Namespace`, not the `?ns=` scope — nothing in 4.1's job reads a scope namespace.
+  - `[medium]` `[patch]` BH5 `Job.Run` logs nothing and leaves a turn it could not begin queued — `Job.Run` now logs every failure through `Kernel.Fault.LogRaw` and finishes a not-begun turn `failed` `TURN.UNAVAILABLE`; pinned by `TurnWire.TestAJobThatCannotBeginFinishesItsTurnFailed`.
+  - `[low]` `[reject]` BH6 a POST during a poll's reconcile gets a spurious 409 — millisecond window, a resend succeeds; the zero-wait reserve lock is specified in Tasks.
+  - `[medium]` `[patch]` BH7 the Busy row's slot lock is never seen to fail over HTTP — added a held-slot leg to the busy method; mutation recorded.
+  - `[low]` `[patch]` BH8 `TurnWire` and `TurnLong` doc comments name mutations the runs contradicted — both corrected to the observed mutations.
+  - `[low]` `[reject]` BH9 the spec's observed list sits apart from the planned one — the fix is a spec edit; the stale Auto Run Result is written at finalize.
+  - `[low]` `[patch]` BH10 matrix rows with no recorded mutation — every flagged row now has an observed mutation line in `## Verification`.
+  - `[medium]` `[patch]` BH11 `TurnCodes`, `ReasonForTurn` and the poll's `error.reason` are untested — added `TurnStore.TestAnEndedTurnsPollCarriesItsErrorSentence` and `TestEveryTurnCodeHasASentence`.
+  - `[low]` `[reject]` BH12 `TURN.MESSAGE.*` are outside `ViolationCodes`/`ReasonForViolation` — the sentences live beside the codes and are pinned by the `TURN*` sweep; folding them in needs `AgentViolation`'s AGENT-only sweep reworked.
+  - `[medium]` `[patch]` BH13 rule 17 cannot see `TurnWire`/`TurnLong` principal helpers — the helpers are called by `##class(OcuPilot.Test.TurnWireFixture)` and listed in `DESTRUCTIVE_TEST_RE`, with a harness case.
+  - `[low]` `[patch]` BH14 `TurnChain` teardown stops and checks the slot as `$Username`, not the posting account — now `Http.GetTestUsername()`; the unparseable-202 leak and missing `OnAfterOneTest` rejected (one method; `OnAfterAllTests` cleans).
+  - `[low]` `[patch]` BH15 `TurnStore` header claims every turn uses a probe user — header corrected.
+  - `[low]` `[patch]` BH16 missing tests and unused seams — the iteration cap's second leg now asserts `completed|iterations`; `TurnLoopProbe.SetLimitsClass` removed; spawn failure (needs a seam), identity mismatch (unreachable), empty body (same branch as `[1]`) and the 16,000 boundary (cosmetic) rejected.
+  - `[medium]` `[patch]` BH17 `/turn/abandon` sent without `credentials: 'omit'` — added, and asserted in `session.test.mjs`.
+  - `[low]` `[reject]` BH18 `/logout` waits up to 3 s, no `keepalive`, timer not canceled — the wait is specified; a late timer settles a settled promise.
+  - `[low]` `[reject]` BH19 a `running` step survives a job death; the reply has no truncation flag — only an abnormal death leaves one; the panel is 4.5; the reply cap is not a matrix row.
+  - `[low]` `[reject]` BH20 poll cost — bounded by the 100-step cap and 15-minute retention; no measured cost.
+  - `[medium]` `[defer]` BH21 AD-31 says the lease both covers and does not cover disablement; AD-7's temp-global wording and `epics.md` :2698 disagree with the shipped design — planning artifacts, pre-existing; recorded in `deferred`.
+  - `[low]` `[defer]` BH22 `CLAUDE.md` still counts 18 checker rules — agent-context file; recorded in `deferred`.
+  - `[low]` `[reject]` BH23 `J` abbreviation of `JOB` unmatched; no rule-7 harness case for `$Job` — no `J` spelling in the tree; `$Job` in `Turn.cls` is pinned by the shipped-tree test.
+  - `[low]` `[reject]` BH24 a shipped class carries the test-only `turnprobe` row — specified in Tasks; unarmed it resolves nothing (now pinned), and an uncompiled adapter is already refused by `ProviderPort`.
+  - `[low]` `[patch]` BH25 `TurnLong`'s lease test polls 2 s after the stub returns — it now waits for the stored turn to end, then polls once.
+  - `[low]` `[reject]` ECH1 a sign-in within the 3 s abandon wait is ended by the delayed `/logout` — needs a new sign-in within 3 s of signing out; fix adds a guard.
+  - `[low]` `[reject]` ECH2 an expired access token makes the abandon 401 — the lease then ends the turn (AD-31).
+  - `[medium]` `[patch]` ECH3 `Run` does not finish a turn `GuardedBegin` did not begin — grouped with BH5.
+  - `[medium]` `[patch]` ECH4 a failed final `GuardedFinish` is silent and later reads JOBLOST — grouped with BH5 (now logged).
+  - `[low]` `[reject]` ECH5 a message over the string limit answers 500 — a 3.6 MB body; still one envelope.
+  - `[low]` `[reject]` ECH6 a signal or sweep fault after the insert leaves a queued row — a database fault; the row is reconciled as JOBLOST within 10 s.
+  - `[low]` `[reject]` ECH7 a `running` step survives a loop failure — grouped with BH19.
+  - `[low]` `[reject]` ECH8 a `DispatchTools` override answering fewer results — no override in 4.1; 4.2's seam contract.
+  - `[low]` `[reject]` ECH9 whitespace-only text beside `tool_use` echoed — `tool_use` unreachable in 4.1.
+  - `[medium]` `[patch]` ECH10 the route matcher is bounded only at its end — now bounded at both ends, the API base allowed; harness case added; the shipped tree stays clean.
+  - `[low]` `[reject]` ECH11 the verb may be named anywhere in the class — Tasks specify "method literal in the same class".
+  - `[low]` `[reject]` ECH12 `J` abbreviation — grouped with BH23.
+  - `[low]` `[patch]` ECH13 `TurnLong` lease timing — grouped with BH25.
+  - `[medium]` `[patch]` VG1 a poll's lease renewal is never checked — added `TurnStore.TestAPollRenewsOnlyItsOwnersUnfinishedTurn`.
+  - `[medium]` `[patch]` VG2 `error.reason` and `TurnCodes()` untested — grouped with BH11.
+  - `[medium]` `[patch]` VG3 the poll's `limit` and `tokens` are never checked — `TurnLoop` now asserts the view's `limit` and `tokens.input|output`.
+  - `[medium]` `[patch]` VG4 the handler's read-only snapshot is never checked — `TurnWire.TestTheSwitchesAreReadAgainAtEveryStepBoundary` starts a turn under enforced read-only and asserts it completes.
+  - `[medium]` `[patch]` VG5 switches and holds are never turned on mid-turn — the same method turns on a hold, the kill switch and read-only during the first call.
+  - `[medium]` `[patch]` VG6 the catalog's unarmed refusal of `turnprobe` is never checked — added `TurnStore.TestTheTurnProbeRowResolvesOnlyWhenArmed`.
+  - `[medium]` `[patch]` VG7 rule 17 blind to `TurnWireFixture` — grouped with BH13.
+  - `[medium]` `[patch]` VG8 the concurrent pair has never been seen to fail — grouped with BH7.
+  - `[low]` `[reject]` VG9 a failed spawn is never tested — rare; forcing it needs a seam the handler lacks.
+  - `[low]` `[patch]` VG10 Rule 19: ACs and rows with no recorded mutation — grouped with BH10; AC 3 and AC 4 lines added.
+  - `[low]` `[reject]` VG11 the second arming guard is never observable — it refuses on a throwaway that predates the new variable.
+  - `[low]` `[patch]` VG12 `TurnStore` teardown releases a held slot before asserting none is held — the assertion now runs first.
+  - `[low]` `[patch]` VG13 the dropped-step update does not re-read the step count — it does now.
+  - `[low]` `[patch]` VG14 the race posters are terminated but never confirmed ended — the busy method now waits for and asserts their exit.
+  - `[low]` `[reject]` VG15 `TURN.MESSAGE.*` outside `ReasonForViolation` — grouped with BH12.
+  - `[low]` `[patch]` VG16 a refused armed class still runs its teardown on live — `OnAfterAllTests` returns early when unarmed in all three classes.
+  - `[low]` `[reject]` IA1 a final answer arriving after stop, revoke or sign-out completes the turn — the matrix ends a turn "at the next boundary", and no further call is made.
+  - `[low]` `[reject]` IA2 the wall clock does not interrupt a call in flight — boundary semantics per the matrix; one call is bounded by the port's timeout.
+  - `[low]` `[reject]` IA3 the job reads `%SYS` through `ProviderPort.SslConfigurationMissing` — AD-32 binds every port call to that check; it runs with the caller's own privileges and escalates nothing; rewording the Never is a spec edit (noted for the lead).
+  - `[false]` `[reject]` IA4 `JOB` in `Test/TurnWire.cls` — existing test classes (`InstallLock`, `DemoOptIn`) spawn helpers; the Never scopes to shipped code, as the checker does.
+  - `[low]` `[reject]` IA5 stop is observed in process only — no stop route until 4.5; the flag is read the same way at every boundary.
+  - `[medium]` `[patch]` IA6 a kill switch or hold turned on mid-turn is never observed — grouped with VG5.
+  - `[medium]` `[patch]` IA7 read-only changed mid-turn is never observed — grouped with VG5.
+  - `[low]` `[reject]` IA8 bounds run on narrowed limits — Tasks specify a narrowed `Limits` subclass.
+  - `[low]` `[reject]` IA9 provider faults observed through `GuardedView`, not a poll — the view is the poll's projection; the handler adds only `reason`, now pinned.
+  - `[low]` `[reject]` IA10 caps observed on narrowed limits — as IA8.
+  - `[low]` `[reject]` IA11 retention's 404 dispatched in process — `Test.Dispatch` runs the shipped router.
+  - `[low]` `[reject]` IA12 a queued lost turn is observed in process only — over HTTP it needs a spawn that never begins.
+  - `[low]` `[reject]` IA13 sign-out of a queued turn observed in process only — same signal and boundary as a running turn.
+  - `[low]` `[patch]` IA14 the job-side stub's `system` is never asserted — `TurnWire` shape test now asserts the built-in prompt.
+  - `[medium]` `[patch]` IA15 the poll's `error.reason` and `limit` are never asserted — grouped with BH11 and VG3.
+  - `[medium]` `[patch]` IA16 the concurrent pair stayed green under its mutation — grouped with BH7.
+  - `[low]` `[patch]` IA17 identity mutation doc stale; rule 7 does not cover `OcuPilot.Kernel.Agent` — doc grouped with BH8; token added to rule 7 with a harness case.
+  - `[low]` `[reject]` IA18 UTF-8 observed before `%Net.HttpRequest` sends — the vendor send path uses RAW for `application/json` with no charset (`irislib/%Net/HttpRequest.cls` :1290-1305); a real send would leave the container.
+  - `[low]` `[reject]` IA19 step `name` and `reply` are capped beyond the intent — a stored-field cap; no conflict with the intent.
+  - `[false]` `[reject]` IA20 the Auto Run Result reads `ready-for-dev` — written at finalize.
+
 ## Design Notes
 
 **Governing ADs (Rule 6):** AD-7 (job, polling, never mutates), AD-8 (grants checked at call time), AD-9 (spawn and escalation ordering), AD-11 (system prompt, delimited tool results), AD-12/39 (envelope, codes), AD-20 (absolute API paths), AD-21 (bound SQL), AD-28 (sign-out sends Bearer and cookie), AD-30 (switches re-read between steps), AD-31 (identity re-validation, lease, sign-out, limits), AD-33 (progress channel), AD-35 (no key in records), AD-37 (a deleted user abandons), AD-41 (bounds, one concurrent turn), AD-42 (the stored key goes only to the stored endpoint). Conventions: the 29-character cap, row version, route ordering, error shape, dates, opaque turn ids.
@@ -217,11 +311,93 @@ deferred: []
 - DW-422: drop the `Content` assignment -> the `AgentCredential` dispatch legs red.
 - Job reach: reference `OcuPilot.Port.AdminPort` from `Loop.cls` -> the harness rule red.
 
+Observed, each reverted and reloaded after its run (live for `TurnLoop`, `TurnStore` and `AgentCredential`; the throwaway for the armed classes):
+
+- mutation: `HandleStart` runs `Job.Run` in the request process instead of `Job.Start` -> `TurnLong.TestATurnOutlivesTheGatewayResponseTimeout` red (no 202; answered at 60.08 s).
+- mutation: `AddRoles` in `Job.Start` itself -> `TurnWire` identity leg stayed green, because the routine application admits only `Kernel.State.Base`. mutation: the spawn called from an escalated frame added to `Kernel.State.Base` -> `TurnWire.TestAStartRunsAsTheCallerAndThePollAnswersItsShape` red (`$ROLES` carried `%DB_OCUPILOT`).
+- mutation: `ReconcileHeld` drops the queued-window check -> `TurnStore.TestAReserveIsOneQueuedTurnPerUser` red; `TurnWire.TestABusyCallerIsRefusedAndAConcurrentPairStartsOne` stayed green, because the reserve's zero-wait slot lock refuses the simultaneous loser and the running job holds the slot.
+- mutation: `GuardedForOwner` drops the user predicate -> `TurnStore.TestOnlyTheOwnerFindsRenewsAndStopsATurn` red and `TurnWire.TestAnotherPrincipalsTurnAnswersLikeAnUnknownId` red.
+- mutation: `Loop.Boundary` without the grants check -> `TurnLoop.TestAUserNoAccountHoldsIsAbandonedForPrivilege` red and `TurnWire.TestRevokingOrDeletingThePrincipalAbandonsItsTurn` red (both legs).
+- mutation: `Loop.Boundary` without the read-only comparison -> `TurnLoop.TestTheSwitchesEndTheTurnBeforeACall` red.
+- mutation: `Loop.Boundary` without the lease comparison -> `TurnLoop.TestTheLeaseAndTheWallClockAbandonTheTurn` red and `TurnLong.TestALapsedLeaseAbandonsTheTurn` red.
+- mutation: `GuardedAbandonForUser` drops the user predicate -> `TurnStore.TestAnAbandonReachesOnlyItsUser` red and `TurnWire.TestSignOutAbandonsOnlyTheCallersTurn` red.
+- mutation: `signOut()` posts `/logout` before the abandon -> `session.test.mjs` "sign-out abandons the turns before /logout" red (and the never-settles test).
+- mutation: the abandon awaited without the scheduled bound -> `session.test.mjs` "an abandon that never settles lets /logout go once the bound fires" red.
+- mutation: the iteration cap compared with `>` -> `TurnLoop.TestTheIterationCapCompletesWithTheFallbackReply` red (two calls).
+- mutation: `SystemPromptFor` joins the prompt and the override -> `TurnLoop.TestAnOverrideReplacesTheBuiltInPromptWhole` red.
+- mutation: `TurnProvider` hashes `""` -> `TurnChain.TestAKeyStoredOverTheWireReachesTheTurnsProviderCall` red.
+- mutation: literal routes keyed by substring again -> harness `test_a_shorter_route_is_not_covered_by_a_test_naming_only_longer_ones` and `test_a_second_method_on_one_url_is_its_own_obligation` red.
+- mutation: `Test.Dispatch` without the `Content` assignment -> `AgentCredential` red on its three dispatch legs (`TestAReReadThatAnswersNothingStillRecordsWhatTheClearDid`, `TestAStoreWhoseDefinitionVanishesRefusesAndSaysTheKeyWasStored`, `TestASweepStillRunsWhenThePostedDefinitionVanishes`).
+- mutation: `Loop.PortClass` names `OcuPilot.Port.AdminPort` -> harness `test_the_shipped_tree_passes_every_rule_this_story_added` red on `check_agent_job_reach`.
+
+Observed in the review pass. Mutations shared a run only when each targeted a different method, and every other method of that run stayed green:
+
+- mutation: `Loop.Boundary` without the stop flag -> `TurnLoop.TestStopAndSignOutEndTheTurnBeforeACall` red.
+- mutation: `Loop.Boundary` without the wall-clock comparison -> `TurnLoop.TestTheLeaseAndTheWallClockAbandonTheTurn` red on its wall-clock leg.
+- mutation: `Loop.Boundary` without the token comparison -> `TurnLoop.TestTheTokenLimitAbandonsAtTheNextBoundary` red.
+- mutation: `Loop.Run` ignores the fault -> `TurnLoop.TestProviderFaultsFailTheTurnNamingTheModelStep` red.
+- mutation: `Loop.Run` sends `""` as the system prompt -> `TurnLoop.TestAReplyCompletesTheTurnWithTheBuiltInPrompt` red.
+- mutation: `Loop.Boundary` without the kill-switch check -> `TurnWire.TestTheSwitchesAreReadAgainAtEveryStepBoundary` red on its hold and global legs.
+- mutation: `HandleStart` passes 0 as the read-only snapshot -> the same method red on its read-only-from-the-start leg.
+- mutation: `HandleStart` skips `MessageViolation` -> `TurnWire.TestABadBodyIsRefusedAndReservesNothing` red.
+- mutation: `HandleStart` skips the kill-switch refusal -> `TurnWire.TestARefusedStartReservesNothing` red.
+- mutation: `GuardedReserve` skips the slot lock -> `TurnWire.TestABusyCallerIsRefusedAndAConcurrentPairStartsOne` red, the held-slot leg included.
+- mutation: `ReconcileHeld` treats a running turn as live -> `TurnStore.TestALostTurnIsFinishedByTheNextReserveOrReconcile` and `TurnWire.TestALostJobIsAbandonedByTheNextPoll` red.
+- mutation: `GuardedReserve` skips the retention sweep -> `TurnStore.TestRetentionDeletesTheTurnItsStepsAndSignals` red.
+- mutation: `Step.GuardedAppend` ignores the step cap -> `TurnStore.TestStepsAreCappedOnWrite` and `TurnLoop.TestCapsCountDroppedStepsAndCutFields` red.
+- mutation: `HandleProgress` skips `GuardedRenew` -> `TurnStore.TestAPollRenewsOnlyItsOwnersUnfinishedTurn` red.
+- mutation: `HandleProgress` blanks `error.reason` -> `TurnStore.TestAnEndedTurnsPollCarriesItsErrorSentence` red.
+- mutation: `ReasonForTurn` without its `TURN.LIMIT.TOKENS` branch -> `TurnStore.TestEveryTurnCodeHasASentence` red.
+- mutation: `Catalog.Row` without the environment test -> `TurnStore.TestTheTurnProbeRowResolvesOnlyWhenArmed` red on live.
+- mutation: `Anthropic.CallMessages` writes the body without UTF-8 encoding -> `TurnWire.TestAStartRunsAsTheCallerAndThePollAnswersItsShape` red on the message assertion.
+- mutation: `Job.Run` leaves a turn it could not begin unfinished -> `TurnWire.TestAJobThatCannotBeginFinishesItsTurnFailed` red.
+- mutation: the abandon settles only on success -> `session.test.mjs` "an abandon that throws still lets /logout go" red; the abandon without `credentials: 'omit'` -> "sign-out abandons the turns before /logout" red.
+- mutation (AC 3): `TurnLong.OnBeforeAllTests` without its arming guard -> `check-objectscript.py` red (rule 17 on `TurnWireFixture.EnsurePrincipal`).
+- mutation (AC 4): `Turn.GuardedDelete` skips the signal kill -> `TurnStore` teardown red in 8 of 11 methods ("left steps or signals").
+- mutation (AC 2): the route matcher bounded only at its end -> harness `test_a_route_at_the_tail_of_a_longer_route_is_not_covered_by_it` red; `OcuPilot.Kernel.Agent` dropped from rule 7 -> `test_a_state_class_naming_the_agent_package_is_refused` red; `TurnWireFixture` dropped from rule 17 -> `test_the_turn_principal_helpers_are_in_the_population` red.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-- **Disabled-account probe, for the lead:** the instance answers a disabled account's Bearer poll and refresh (Design Notes). The pre-authorized fallback applies: disablement is bounded only by the 600 s wall clock, and the lease does not cover it.
-- **AD-31 needs a correction at its origin before Epic 5 plans confirm.** Its clause "a write still fails at the authenticated confirm (AD-7)" does not hold for a Bearer-authorized confirm (inference): every Bearer request the probe sent as the disabled account was answered. Nothing in 4.1 depends on it.
-- Re-planned only what the answers required: the lease, sign-out route and client edit, limits in one class, grants from a passed resource list, override precedence in the port.
+**Summary.** `POST /turn` reserves the caller's slot, spawns `Kernel/Agent/Job` from the unescalated handler frame, and answers 202. The job runs a bounded loop that re-checks stop, sign-out, switches, read-only, grants, lease, wall clock and tokens before each provider call, and writes capped progress to `Kernel.State.Turn` and `Step`. `GET /turn/:id/progress` answers the owner only and renews the lease. `POST /turn/abandon` is called by `signOut()` before `/logout`, waiting at most 3 s.
+
+**Files.**
+
+- `src/OcuPilot/Api/Turn.cls`, `Router.cls` (3 routes), `Error.cls`: the handler, the routes, and the 14 `TURN.*` codes with their sentences.
+- `src/OcuPilot/Kernel/Agent/Job.cls`, `Loop.cls`, `Limits.cls`, `Prompt.cls`: the spawn, the loop, the limits, and the built-in prompt.
+- `src/OcuPilot/Kernel/State/Turn.cls`, `Step.cls`, `Base.cls`: the turn and step rows, and the slot lock and signal helpers.
+- `src/OcuPilot/Port/ProviderPort.cls`: the override replaces the prompt whole (DW-333).
+- `src/OcuPilot/Kernel/Provider/Anthropic.cls`: block content and a UTF-8 body (DW-23).
+- `src/OcuPilot/Kernel/Provider/Catalog.cls`: the armed `turnprobe` row.
+- `src/OcuPilot/Kernel/Utils.cls`: header corrected. `src/OcuPilot/Test/Dispatch.cls`: body seeded through `Content` (DW-422). `Test/Http.cls`: optional client timeout.
+- `src/OcuPilot/Test/TurnLoop`, `TurnStore`, `TurnWire`, `TurnLong`, `TurnChain`, plus fixtures `TurnFixture`, `TurnWireFixture`, `TurnProvider`, `TurnLimits`, `TurnLoopProbe`.
+- `scripts/check-objectscript.py` and its harness: exact-route wire keying bounded at both ends (DW-400), the job-reach rule, rule 7 covering `OcuPilot.Kernel.Agent`, and rule 17 covering the turn principal helpers.
+- `scripts/ci-throwaway.sh`: `OCUPILOT_ALLOW_TEST_PROVIDER`.
+- `ui/src/app/core/session.ts`, `ui/tools/session.test.mjs`: the sign-out abandon.
+
+**Review.** 74 findings: 0 high, 21 medium, 50 low, 3 false.
+
+- Patched: 11 medium and 11 low entries after grouping.
+- Deferred: 2 (BH21, BH22).
+- Rejected: 38, each with its reason in the triage log.
+- Patched medium entries:
+  - `Job.Run` now logs every failure and finishes a turn it could not begin.
+  - New tests pin lease renewal by a poll, `error.reason` and the `TURN*` sentences, `limit` and `tokens` in the view, the read-only snapshot, switches turned on mid-turn, the catalog's arming gate, and the busy slot lock.
+  - Rule 17 now sees the turn principal helpers, and the route matcher is bounded at its start.
+  - `/turn/abandon` is sent with `credentials: 'omit'`.
+
+**Follow-up review: recommended.** 11 medium entries were patched. `Job.Run`'s failure logging is not asserted by any test, and the roughly 180 lines of test code added in this pass were reviewed by no layer.
+
+**Verification (final tree).**
+
+- Live `ocupilot`: compile clean. `TurnLoop` 10/10 (run 2294), `TurnStore` 11/11 (run 2293). `Utils`, `AgentCredential`, `ProviderPort` and `ProviderConsumer` were green at runs 2280–2283 in this pass. `TurnWire`, `TurnLong` and `TurnChain` refuse by name (runs 2295–2297). Live holds no turn row, step or signal.
+- Throwaway `ocupilot-ci`: all 93 classes green, 883 tests. They ran in three explicit `--class` chunks, runs 204–296, because one sweep exceeds a foreground call. Smoke 19/19.
+- Local: `check-objectscript.py` 0 problems; harness 107 OK; `npm test` and `npm run build` green; `lint-docs` clean.
+- Every review mutation was reverted, and the tree matched its pre-mutation state byte for byte.
+
+**For the lead.**
+
+- AD-31 contradicts itself on whether the lease covers disablement (deferred BH21).
+- The Never "read `%SYS` security state from the job" is crossed by the port's existing AD-32 TLS check, which reads with the caller's own privileges (IA3).

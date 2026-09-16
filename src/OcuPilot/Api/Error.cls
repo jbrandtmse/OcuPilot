@@ -600,6 +600,150 @@ Parameter REASONAGENTKILLSWITCHGLOBAL = "The agent is switched off on this insta
 /// <p>Written sentence for <parameter>AGENTKILLSWITCHUSER</parameter>.</p>
 Parameter REASONAGENTKILLSWITCHUSER = "The agent is switched off for this user.";
 
+/// <p>Machine code (AD-7, AD-12): the turn request's body is absent, unreadable, or not a JSON
+/// object. Rendered on the <parameter>BADREQUEST</parameter> slug by
+/// <class>OcuPilot.Api.Turn</class>; nothing is reserved.</p>
+Parameter TURNBADBODY = "TURN.BADBODY";
+
+/// <p>Violation code (AD-39): the turn request carries no <code>message</code>, one that is not a
+/// JSON string, or one with nothing in it but whitespace. Rendered as the envelope code on the
+/// <parameter>VALIDATIONFAILED</parameter> slug, with the same code on the field
+/// <code>message</code> in <code>detail.violations</code>.</p>
+Parameter TURNMESSAGEREQUIRED = "TURN.MESSAGE.REQUIRED";
+
+/// <p>Violation code (AD-31): the message is longer than
+/// <parameter>OcuPilot.Kernel.Agent.Limits.MESSAGEMAXLENGTH</parameter>. Rendered the way
+/// <parameter>TURNMESSAGEREQUIRED</parameter> is; the producer appends the bound.</p>
+Parameter TURNMESSAGELENGTH = "TURN.MESSAGE.LENGTH";
+
+/// <p>Machine code (AD-41): the caller already has a queued or running turn. Rendered on the
+/// <parameter>CONFLICT</parameter> slug, HTTP 409.</p>
+Parameter TURNBUSY = "TURN.BUSY";
+
+/// <p>Machine code (AD-33): no turn with that id belongs to the caller. Rendered on the
+/// <parameter>NOTFOUND</parameter> slug for an unknown id and for another user's alike.</p>
+Parameter TURNNOTFOUND = "TURN.NOTFOUND";
+
+/// <p>Machine code (AD-7): the turn could not be run on this instance -- the job did not spawn,
+/// did not start as its caller, or failed outside the provider call.</p>
+Parameter TURNUNAVAILABLE = "TURN.UNAVAILABLE";
+
+/// <p>Terminal code (AD-7): the owner stopped the turn.</p>
+Parameter TURNSTOPPED = "TURN.STOPPED";
+
+/// <p>Terminal code (AD-30): enforced read-only changed while the turn ran.</p>
+Parameter TURNABANDONEDREADONLY = "TURN.ABANDONED.READONLY";
+
+/// <p>Terminal code (AD-31): the owner no longer holds any of the resources the turn is checked
+/// against, or no longer exists.</p>
+Parameter TURNABANDONEDPRIVILEGE = "TURN.ABANDONED.PRIVILEGE";
+
+/// <p>Terminal code (AD-31): no authenticated poll by the owner renewed the turn within the
+/// lease.</p>
+Parameter TURNABANDONEDLEASE = "TURN.ABANDONED.LEASE";
+
+/// <p>Terminal code (AD-31): the owner signed out through OcuPilot.</p>
+Parameter TURNABANDONEDSIGNOUT = "TURN.ABANDONED.SIGNOUT";
+
+/// <p>Terminal code (AD-7): no live process held the turn's slot.</p>
+Parameter TURNABANDONEDJOBLOST = "TURN.ABANDONED.JOBLOST";
+
+/// <p>Terminal code (AD-31, AD-41): the turn reached its wall-clock limit.</p>
+Parameter TURNLIMITDURATION = "TURN.LIMIT.DURATION";
+
+/// <p>Terminal code (AD-41): the turn reached its provider token limit.</p>
+Parameter TURNLIMITTOKENS = "TURN.LIMIT.TOKENS";
+
+/// <p>Tool-result code (AD-11): the tool the model named is not available to this turn. Carried
+/// as the content of an error tool result, never as an envelope.</p>
+Parameter TOOLUNAVAILABLE = "TOOL.UNAVAILABLE";
+
+/// <p>Written sentence for <parameter>TURNBADBODY</parameter>.</p>
+Parameter REASONTURNBADBODY = "The request body is not a JSON object carrying a message.";
+
+/// <p>Written sentence for <parameter>TURNMESSAGEREQUIRED</parameter>.</p>
+Parameter REASONTURNMESSAGEREQUIRED = "Type a message before sending it.";
+
+/// <p>Written sentence for <parameter>TURNMESSAGELENGTH</parameter>; the producer appends the
+/// bound.</p>
+Parameter REASONTURNMESSAGELENGTH = "That message is longer than a turn accepts";
+
+/// <p>Written sentence for <parameter>TURNBUSY</parameter>: EXPERIENCE.md's lock banner.</p>
+Parameter REASONTURNBUSY = "A turn is in progress. Wait for it to finish before sending another message.";
+
+/// <p>Written sentence for <parameter>TURNNOTFOUND</parameter>.</p>
+Parameter REASONTURNNOTFOUND = "No turn with that identifier exists for this account.";
+
+/// <p>Written sentence for <parameter>TURNUNAVAILABLE</parameter>.</p>
+Parameter REASONTURNUNAVAILABLE = "The turn could not be run on this instance.";
+
+/// <p>Written sentence for <parameter>TURNSTOPPED</parameter>.</p>
+Parameter REASONTURNSTOPPED = "The turn was stopped.";
+
+/// <p>Written sentence for <parameter>TURNABANDONEDREADONLY</parameter>.</p>
+Parameter REASONTURNABANDONEDREADONLY = "Read-only mode changed while the turn was running, so the turn was abandoned.";
+
+/// <p>Written sentence for <parameter>TURNABANDONEDPRIVILEGE</parameter>.</p>
+Parameter REASONTURNABANDONEDPRIVILEGE = "This account no longer holds the privilege the turn runs with, so the turn was abandoned.";
+
+/// <p>Written sentence for <parameter>TURNABANDONEDLEASE</parameter>.</p>
+Parameter REASONTURNABANDONEDLEASE = "Nothing checked on this turn for too long, so it was abandoned.";
+
+/// <p>Written sentence for <parameter>TURNABANDONEDSIGNOUT</parameter>.</p>
+Parameter REASONTURNABANDONEDSIGNOUT = "The turn was abandoned because its owner signed out.";
+
+/// <p>Written sentence for <parameter>TURNABANDONEDJOBLOST</parameter>.</p>
+Parameter REASONTURNABANDONEDJOBLOST = "The process running this turn ended unexpectedly, so the turn was abandoned.";
+
+/// <p>Written sentence for <parameter>TURNLIMITDURATION</parameter>.</p>
+Parameter REASONTURNLIMITDURATION = "The turn ran as long as a turn may, so it was abandoned.";
+
+/// <p>Written sentence for <parameter>TURNLIMITTOKENS</parameter>.</p>
+Parameter REASONTURNLIMITTOKENS = "The turn spent as many provider tokens as a turn may, so it was abandoned.";
+
+/// <p>Every <code>TURN.*</code> code, as a <class>%List</class>, so a test can hold
+/// <method>ReasonForTurn</method> to the vocabulary.</p>
+ClassMethod TurnCodes() As %List
+{
+    Quit $ListBuild(..#TURNBADBODY, ..#TURNMESSAGEREQUIRED, ..#TURNMESSAGELENGTH, ..#TURNBUSY, ..#TURNNOTFOUND, ..#TURNUNAVAILABLE, ..#TURNSTOPPED, ..#TURNABANDONEDREADONLY, ..#TURNABANDONEDPRIVILEGE, ..#TURNABANDONEDLEASE, ..#TURNABANDONEDSIGNOUT, ..#TURNABANDONEDJOBLOST, ..#TURNLIMITDURATION, ..#TURNLIMITTOKENS)
+}
+
+/// <p>The written sentence a <code>TURN.*</code> code carries, or <code>""</code> for any other
+/// code.</p>
+ClassMethod ReasonForTurn(pCode As %String) As %String
+{
+    If pCode = ..#TURNBADBODY Quit ..#REASONTURNBADBODY
+    If pCode = ..#TURNMESSAGEREQUIRED Quit ..#REASONTURNMESSAGEREQUIRED
+    If pCode = ..#TURNMESSAGELENGTH Quit ..#REASONTURNMESSAGELENGTH
+    If pCode = ..#TURNBUSY Quit ..#REASONTURNBUSY
+    If pCode = ..#TURNNOTFOUND Quit ..#REASONTURNNOTFOUND
+    If pCode = ..#TURNUNAVAILABLE Quit ..#REASONTURNUNAVAILABLE
+    If pCode = ..#TURNSTOPPED Quit ..#REASONTURNSTOPPED
+    If pCode = ..#TURNABANDONEDREADONLY Quit ..#REASONTURNABANDONEDREADONLY
+    If pCode = ..#TURNABANDONEDPRIVILEGE Quit ..#REASONTURNABANDONEDPRIVILEGE
+    If pCode = ..#TURNABANDONEDLEASE Quit ..#REASONTURNABANDONEDLEASE
+    If pCode = ..#TURNABANDONEDSIGNOUT Quit ..#REASONTURNABANDONEDSIGNOUT
+    If pCode = ..#TURNABANDONEDJOBLOST Quit ..#REASONTURNABANDONEDJOBLOST
+    If pCode = ..#TURNLIMITDURATION Quit ..#REASONTURNLIMITDURATION
+    If pCode = ..#TURNLIMITTOKENS Quit ..#REASONTURNLIMITTOKENS
+    Quit ""
+}
+
+/// <p>The sentence a turn's terminal <code>error.reason</code> carries for <var>pCode</var>,
+/// whichever family the code is from: a <code>TURN.*</code> code, a restraint code, or a
+/// <code>PROVIDER.*</code> fault. One lookup, so the progress handler names no family's resolver
+/// of its own.</p>
+ClassMethod ReasonForTurnError(pCode As %String) As %String
+{
+    If pCode = "" Quit ""
+    Set tReason = ..ReasonForTurn(pCode)
+    If tReason '= "" Quit tReason
+    Set tReason = ..ReasonForRestraint(pCode)
+    If tReason '= "" Quit tReason
+    If $Extract(pCode, 1, 9) = "PROVIDER." Quit ##class(OcuPilot.Kernel.Provider.Base).ReasonFor(pCode)
+    Quit ..#REASONTURNUNAVAILABLE
+}
+
 /// <p>The refusal sentence one field-level violation code carries (AD-39).</p>
 /// <p><b>Every field-level code has one, and this class is where they live</b> -- beside the codes
 /// themselves and beside the envelope reasons the rest of the tree renders, for the reason the
