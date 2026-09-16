@@ -4,6 +4,7 @@ type: 'feature'
 created: '2026-09-16'
 status: 'done'
 baseline_revision: 'a7a1802c14a9da22f24afd85521c5a6beb98a229'
+baseline_commit: 'a7a1802c14a9da22f24afd85521c5a6beb98a229'
 review_loop_iteration: 0
 followup_review_recommended: true
 context:
@@ -162,6 +163,7 @@ deferred:
 ## Spec Change Log
 
 - 2026-09-16, plan halt G1/G2 answered by the orchestrator under the owner's standing autonomy instruction. AD-31 amended (existence and privilege from current grants; a 120 s poll lease covers disablement and abandoned tabs; OcuPilot's sign-out calls `POST /turn/abandon` because a token logout fires no session event; limits as named constants). AD-11 rule 1 amended for DW-333 (the override replaces the built-in prompt whole). Story 4.1's AC 4 and AC 6 in `epics.md` amended to match. The Disabled user and Sign-out matrix rows replaced; a Lease row added; the Bounds row caps iterations at 100. DW-250 declined and re-owned to 4-2. Re-plan must re-probe the disabled-account Bearer poll on the throwaway.
+- 2026-09-16, lead at dev_complete: the Boundary 'never read `%SYS` security state from the job' is read as OcuPilot's own identity and grant decisions; the provider port's pre-existing AD-32 TLS-configuration check, run with the caller's own privileges and no elevation, is outside it. AD-31 and AC 4 were corrected at their origin so disablement is bounded by the wall-clock limit and the lease bounds an unwatched turn.
 
 ## Review Triage Log
 

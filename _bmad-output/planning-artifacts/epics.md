@@ -2695,7 +2695,7 @@ So that a ninety-second turn never looks like a hung page and never needs an ope
 
 - **Given** the job holds the `$USERNAME` and `$ROLES` copy it inherited at spawn, for its whole life
 - **When** it moves between steps
-- **Then** it re-checks that the user still exists and still holds the privilege each remaining step needs, read from current grants, and abandons the turn otherwise; a disabled account is covered by the poll lease (AD-31) [AMENDED 2026-09-16 — see the story change log]
+- **Then** it re-checks that the user still exists and still holds the privilege each remaining step needs, read from current grants, and abandons the turn otherwise; a disabled account's turn is bounded by the wall-clock limit, because the instance keeps honouring its token (AD-31) [AMENDED 2026-09-16 — see the story change log]
 - **And** it re-reads enforced read-only, the kill switch and its stop flag **between every step**, abandoning at the next boundary when any has changed
 - **And** it abandons the turn at the next boundary once the owner's authenticated polls have not renewed it within the poll lease.
 

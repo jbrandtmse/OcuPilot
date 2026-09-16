@@ -2890,3 +2890,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-1-the-turn-runs-in-a-background-job-and-returns-immediately.md | severity: med | fix-risk: high | footprint: out-of-footprint
 - evidence: Probed on the slot-A throwaway 2026-09-16: GET /instance 200 before and twice after Enabled read 0; POST /refresh minted a new pair 0 s and 81 s after the disable and its access token answered 200; only a fresh password login answered 401
 - 2026-09-16T19:04:15Z status=decision-pending owner=burndown by=lead note=Product and security call for the decision sheet: accept the vendor token lifetime, or refuse a disabled account per request, which needs an enabled-flag read AD-8 forbids unescalated; Epic 5 confirm depends on the answer
+
+### DW-445: AD-7's Rule still places turn progress in a temp global keyed by turn id, while AD-33 and the shipped Kernel.State.Turn and Step tables keep it in OcuPilot's protected storage
+- source: spec-4-1-the-turn-runs-in-a-background-job-and-returns-immediately.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: AD-7 Rule text versus AD-33 Rule and src/OcuPilot/Kernel/State/Step.cls; the other half of the implement stage's deferred finding, AD-31 and epics.md, was corrected by the lead at harvest
+- 2026-09-16T21:12:49Z status=escalated owner=burndown by=harvest note=A wording change to AD-7's Rule, which the orchestrator reserved because Epic 6 is amending AD-7 in parallel; recommended to replace temp global with AD-33's protected storage at the spine reconcile
+
+### DW-446: CLAUDE.md still says check-objectscript.py carries 18 rules; Story 4.1 added a nineteenth, the turn job's reach rule
+- source: spec-4-1-the-turn-runs-in-a-background-job-and-returns-immediately.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: CLAUDE.md Running and verifying section says 18 rules; uv run scripts/check-objectscript.py now prints over 19 rules
+- 2026-09-16T21:12:49Z status=routed owner=17-2-a-readme-whose-install-steps-work-the-first-time by=harvest note=Developer documentation drift, left for the story that owns the project's install and developer docs rather than an Epic 4 root-file edit
