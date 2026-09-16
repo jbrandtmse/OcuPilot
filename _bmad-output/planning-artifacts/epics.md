@@ -2684,6 +2684,7 @@ So that its answers cannot describe an instance that differs from the one in fro
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-295: The registry's two tool sources expose different `View` arities and `Screen.Tool.Base` declares none, so this dispatcher must reconcile them - declare `View` on the base or key on `KIND` (ledger; routed by harvest 2026-09-15)
+- DW-387: `Kernel/Restraint.Verdict` has no write-path caller yet, so AC1's caller half is open - this is the first story with a write path to gate, and the caller-enumeration test is already there to keep it the only one (ledger; routed by harvest 2026-09-16)
 
 ### Story 4.3: The docked panel, present on every route
 

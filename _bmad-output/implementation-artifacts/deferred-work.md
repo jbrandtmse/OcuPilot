@@ -2425,3 +2425,34 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cr-3-6 | severity: low | fix-risk: low | footprint: in-epic
 - evidence: measured in a real browser at Story 3.6's CI resolution: both requests fire at 44ms on every form sign-in. It is not the read-twice flake's cause - suppressing it moved the gate's last dependency by 2ms against a 36ms structural lag - and it is not free to remove, because on the rejected path that notify is what publishes the cleared password
 - 2026-09-16T03:37:36Z status=routed owner=burndown by=lead note=suppressible on the accepted path alone, where the sign-in card is already gone; one wasted GET per sign-in
+
+### DW-387: AC1's caller half is not implemented: no write path in the tree calls Kernel/Restraint.Verdict, so nothing is gated yet
+- source: spec-3-7 | severity: med | fix-risk: med | footprint: in-epic
+- evidence: Verdict's only non-test caller is Restraint.Resolved, reached from GET /agent/restraint alone, which is a display read; src/OcuPilot/Screen/Tool/ holds no class whose KIND is write. The turn loop is Epic 4's and the confirm transition Epic 5's, which the Design Notes state, but that AC1 is therefore half-open is recorded nowhere a gate reads
+- 2026-09-16T05:46:35Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=harvest note=the tool registry is the story that first has a write path to gate, and the caller-enumeration test is already there to keep it the only one
+
+### DW-388: Two administrators saving the Switches screen concurrently silently lose one write, and the shipped Egress singleton has the same shape
+- source: spec-3-7 | severity: med | fix-risk: med | footprint: cross-epic
+- evidence: Switch.SetGuarded is read-modify-write with no concurrency control, following Kernel/State/Egress.SetGuarded exactly, which the spec named as the pattern to copy; the later save merges over a snapshot taken before the earlier one and nothing demonstrates two writers today
+- 2026-09-16T05:46:35Z status=routed owner=burndown by=harvest note=the fix is project-wide rather than one story's - a version or timestamp check on the singleton stores, which DW-362's concurrent-write window on the definition row is a third instance of
+
+### DW-389: Switches declares create and delete actions its page registers no handler for, so the command bar and box draw a permanently disabled row action on a screen with no rows
+- source: spec-3-7 | severity: med | fix-risk: low | footprint: in-epic
+- evidence: command-bar's resolved() maps every declared rowActions entry with ariaDisabled true and no handler check, and command-box offers it with 'Select a row first'; hasPrimaryAction gates on a registered handler so create draws nowhere
+- 2026-09-16T05:46:35Z status=routed owner=burndown by=harvest note=either the descriptor stops declaring what the page does not handle, or the surfaces stop drawing an action with no handler; the second is the rule that holds for every later screen
+
+### DW-390: Kernel/Restraint.Verdict's fail-closed path has no store seam, so nothing pins what happens when a restraint store cannot be read
+- source: spec-3-7 | severity: med | fix-risk: low | footprint: in-epic
+- evidence: the implement pass recorded it as undriven; the same seam question Story 3.3's DW-352 and Story 3.4's DW-361 raised, and DW-361 was closed without a seam by making a real failure happen instead
+- 2026-09-16T05:46:35Z status=routed owner=burndown by=harvest note=try DW-361's approach first - make a real read failure rather than add a seam
+
+### DW-391: A hold whose user no longer resolves renders faultAbsentEntity, whose second half names a list the Switches screen does not have
+- source: spec-3-7 | severity: low | fix-risk: low | footprint: in-epic
+- evidence: faultAbsentEntity is the one published sentence for AD-37 and ends 'Return to the list to see what is there now'; Switches is a form-page with no list, and an inline marker would be unpublished copy the strings gate refuses
+- 2026-09-16T05:46:35Z status=routed owner=burndown by=harvest note=needs one published sentence for an absent entity on a screen with no list; the copy call is the owner's
+
+### DW-392: CLAUDE.md says check-objectscript.py carries 17 rules where it now carries 18
+- source: spec-3-7 | severity: low | fix-risk: low | footprint: cross-epic
+- evidence: Story 3.7 added a rule; the count in CLAUDE.md's Running and verifying section was not updated with it
+- 2026-09-16T05:46:35Z status=routed owner=burndown by=harvest note=one number; worth a checker if it drifts again
+- 2026-09-16T05:46:56Z status=resolved-by:3-7-switches-the-kill-switch-and-enforced-read-only owner=3-7-switches-the-kill-switch-and-enforced-read-only by=lead note=corrected in place at the harvest; the checker reports 18 rules and CLAUDE.md now says 18. Left as a bare number rather than a checker: one drift in three epics does not earn a gate, and the next drift can file for one

@@ -107,9 +107,14 @@ export async function filterToSubset(page, { text, expectRow, total, timeoutMs }
     // the view that text produces has landed.
     // Bounded on purpose: a list that never stops moving is a defect this helper must report, not
     // one it should hang on. Ten reads is far more than the one re-render a last keystroke costs.
+    //
+    // **The reads are spaced.** Taken back to back they can both land before the view has begun to
+    // change, so a stale count agrees with itself and reads as settled -- the same defect Story
+    // 3.7 found and fixed in `screensOffered`.
     let settled = await viewCount(page);
     let stable = false;
     for (let read = 0; read < 10 && !stable; read += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 60));
       const again = await viewCount(page);
       stable = again === settled;
       settled = again;
