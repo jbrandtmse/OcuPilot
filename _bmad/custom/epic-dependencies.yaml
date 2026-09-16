@@ -8,7 +8,7 @@ analyzed_by: claude-opus-5
 analyzed_at: "2026-09-16T15:02:34Z"
 approved: true
 approved_by: owner (graph pre-approved in the /epic-cycle 4-12 invocation, conservative additions pre-authorized)
-amended_by: owner (2026-09-16, epics.md "Parallel-run amendments": 6.7 UJ-6 replay -> 7.6, 10.2 demo-prompt check -> 17.7, 8.7 -> 7.11; the four edges those references carried are removed below)
+amended_by: "owner (2026-09-16, epics.md 'Parallel-run amendments': 6.7 UJ-6 replay -> 7.6, 10.2 demo-prompt check -> 17.7, 8.7 -> 7.11; the four edges those references carried are removed below)"
 
 owner_graph:  # as approved, never reduced
   epic-4: [epic-3]
