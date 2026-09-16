@@ -2,7 +2,7 @@
 title: 'Story 3.7: Switches — the kill switch and enforced read-only'
 type: 'feature'
 created: '2026-09-16'
-status: 'draft'
+status: 'ready-for-dev'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -107,14 +107,15 @@ Server — all under `src/OcuPilot/`:
 
 Client — all under `ui/src/app/`:
 
-- `core/strings.ts` — flat frozen `STRINGS`, 251 keys. **Already holds and nothing yet renders:**
+- `core/strings.ts` — flat frozen `STRINGS`, 251 keys; the ten this story adds take it to 261.
+  **Already holds and nothing yet renders:**
   `agentReadOnlyEnforcedBanner` (`:189`), `agentKillSwitchBanner` (`:191`), `statusReadOnlyOff` (`:193`),
   `statusReadOnlyEnforced` (`:195`), `statusReadOnlyForYou` (`:197`), `statusReadOnlyByDefinition` (`:199`),
   `agentWriteBlockedByReadOnly` (`:59`), `proposalStatusAgentSwitchedOff` (`:161`).
 - `core/agent-status.ts` — models exactly one fact (any definition enabled), `AGENT_DEFINITIONS_PATH` (`:30`),
-  no timer; reloaded by `app.ts:365`, by the `agent-definition` change event (`:208`) and by
-  `retryWhenReachable`. Carries nothing about read-only or the kill switch — this story adds the
-  restraint fact here or in a sibling with the same lifecycle.
+  no timer; reloaded by `app.ts:365`, by its own `onChange` on the `agent-definition` change event
+  (`:208`) and by `retryWhenReachable` (`:176`). Carries nothing about read-only or the kill switch — this
+  story adds the restraint fact here or in a sibling with the same lifecycle.
 - `shell/panel.ts` — `shown` (`:144`) is `navigation.loaded() && agentStatus.answered() && !configured()`;
   one banner, an if/else on `administrator`; footer composer and Send `aria-disabled` with hard-coded
   literals, both `aria-describedby` = `REASON_ID` (`:13`). No footer read-only line exists.
@@ -130,11 +131,17 @@ Client — all under `ui/src/app/`:
   both of which already hold `screen.descriptor`. **DW-370.**
 - `core/navigation.ts:123` `isListedScreen` = `sideBarPosition > 0`; `:106` `builtScreens()` feeds
   `app.routes.ts:53`, which adds `canDeactivate: [leaveFormGuard]` for `form-page`.
-- `ui/tools/strings.test.mjs:310` — the `expectedLiterals.length >= 150 && <= 240` band; `:349-353` the
-  count equality. `ui/tools/screen-mirror.mjs` regenerates `core/screens.generated.ts` and `--check` refuses
-  drift; a `built: true` archetype with no client page fails `ng build`.
+- `ui/tools/strings.test.mjs:310` — the `expectedLiterals.length >= 150 && <= 240` band, `:311` its stale
+  "roughly 230" message, `:298-308` the comment block each widening documents itself in, and `:349-353` the
+  count equality, whose own failure text states the arithmetic. `ui/tools/screen-mirror.mjs` regenerates
+  `core/screens.generated.ts` and `--check` refuses drift; a `built: true` archetype with no client page
+  fails `ng build`.
 
-Baseline: `npm test` is green — 768 `node --test` tool tests, 357 component tests, 0 failures.
+Baseline: `npm test` is **red at dispatch, by design** — the gate commit published the three `EXPERIENCE.md`
+rows before any key exists, exactly as Story 3.6's gate commit did. `node --test tools/*.test.mjs` reports 768
+tests, 765 passing, **3 failing, all in `strings.test.mjs`**: the band (246 against `<= 240`), the ten literals
+absent from `strings.ts`, and 251 keys against an expected 261. The first client task below is what turns them
+green; no other suite is touched, and the 357 component tests are unchanged.
 
 ## Tasks & Acceptance
 
@@ -159,6 +166,16 @@ Baseline: `npm test` is green — 768 `node --test` tool tests, 357 component te
   `UrlMap` ordering invariants.
 - `src/OcuPilot/Kernel/EntityType.cls` — add the switches entity type (AD-14).
 - `src/OcuPilot/Screen/Descriptor/AgentSwitches.cls` — the second `form-page` descriptor, `sideBarPosition` 2.
+- **Task — the ten keys and the band, one commit.** `ui/src/app/core/strings.ts` and
+  `ui/tools/strings.test.mjs` change together or the tree stays red. Add the ten keys for `EXPERIENCE.md`'s
+  three new rows, taking `strings.ts` to **261** = 246 table literals + 12 extracted from prose + 3 named
+  extras; widen `:310`'s upper bound from 240 to **260**; replace `:311`'s "roughly 230" with the live
+  figure; and append Story 3.7's entry to the `:298-308` comment block in the style of the 2.10, 2.12 and
+  3.5 entries there — the ten literals, and why 260: the band is a tripwire against unbounded string growth
+  rather than a cap on one screen, it has held because every widening was deliberate and documented, and 260
+  leaves headroom for 3.8 and the burn-down without making the next widening automatic. (Story 3.6 added
+  rows but no entry — at 236 it still fit the band.) This task runs first: every client task below renders
+  one of these keys.
 - `ui/src/app/core/screens.generated.ts` — regenerate with `screen-mirror.mjs`; never hand-edit.
 - `ui/src/app/shell/screen-outlet.ts` — key `ARCHETYPE_PAGES` by `screen.descriptor` with the archetype map
   as the fallback, keeping the exhaustiveness guarantee (**DW-369**).
@@ -172,8 +189,6 @@ Baseline: `npm test` is green — 768 `node --test` tool tests, 357 component te
   and kill-switch banners in `EXPERIENCE.md`'s declared order; add the always-shown footer read-only line;
   bind the composer and Send reason to whichever banner applies.
 - `ui/src/app/areas/agent/switches.page.ts` — the Switches form page.
-- `ui/tools/strings.test.mjs` — widen the `<= 240` band to accommodate the new rows, and correct the
-  stale "roughly 230" message.
 - Tests — ObjectScript: one class per concern, run **one `iris_execute_tests` call per message**; client:
   `ui/tools/*.test.mjs` for `core/`, `*.spec.ts` for the panel, rail, outlet and page.
 
@@ -195,10 +210,22 @@ Baseline: `npm test` is green — 768 `node --test` tool tests, 357 component te
   failed pair named.
 - Given the Switches screen, when an administrator opens it, then it renders as its own `form-page` and
   the Definition form still renders as its own (DW-369), and its row actions carry its own labels (DW-370).
-- Integration AC: `ui/src/app/shell/panel.ts` reads the restraint from `core/agent-status.ts` and renders
-  the published footer line, asserted in `panel.spec.ts` against the rendered DOM.
+- Given `EXPERIENCE.md`'s three new rows, when `node --test tools/strings.test.mjs` runs, then the three
+  tests red at dispatch pass, `strings.ts` holds 261 keys, the band reads `<= 260`, and its message names
+  the live count rather than "roughly 230".
+- Integration AC — given `core/agent-status.ts` carries the restraint fact, when `ui/src/app/shell/panel.ts`
+  renders, then it reads that fact rather than issuing a second server call, and the published footer line
+  appears in the DOM — asserted in `panel.spec.ts` against the rendered DOM, not against the store.
 
 ## Spec Change Log
+
+**2026-09-15 — `EXPERIENCE.md` amended (Rule 5, lead).** The halt's blocking condition was that the Fixed
+strings table carried no copy for the Switches screen. The lead appended three rows — commit
+`8874e504711f4add25927548ee68b1917e6af210` — carrying the ten proposed literals verbatim; no existing row
+changed. Table literals 236 → **246**. The band question the halt referred upward is decided: this story
+widens `strings.test.mjs`'s upper bound to **260**, in the named task above. KEEP: these ten literals and
+their two sibling rows are the authorized copy — the client renders the keys and composes no sentence of
+its own.
 
 ## Review Triage Log
 
@@ -250,8 +277,9 @@ the declared one.
 `ACTION_LABELS` scoped by descriptor. DW-383: addressed — the tooltip element renders the attention reason
 beside the area tooltip, which the button's existing `aria-describedby` already points at, so no new
 published literal is needed for the fix itself; the kill switch's reason sentence is the published
-kill-switch banner, and only that row's **Where** cell needs the clause the two unconfigured rows already
-carry.
+kill-switch banner, and the `attention-dot` component row (`EXPERIENCE.md:353`) already authorizes both
+surfaces — "Shown when the agent is unconfigured or the kill switch is on … Tooltip and accessible name
+state the reason."
 
 ## Verification
 
@@ -259,7 +287,8 @@ carry.
 
 - `cd ui && npm run build` — expected: the six `prebuild` checkers pass, including `screen-mirror --check`
   against the regenerated mirror.
-- `cd ui && npm test` — expected: 768+ tool tests and 357+ component tests, 0 failures.
+- `cd ui && npm test` — expected: 768+ tool tests and 357+ component tests, 0 failures — including the
+  three `strings.test.mjs` tests that are red at dispatch.
 - `cd ui && npm run test:browser` — expected: green; anything about geometry belongs here, not jsdom.
 - `uv run scripts/check-objectscript.py` — expected: 17 rules clean on the changed paths.
 - `bash scripts/lint-docs.sh` — expected: clean.
@@ -275,41 +304,24 @@ carry.
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap
+Status: ready-for-dev
 
-Planning is complete — Code Map, decisions and tasks above are ready to execute — and one precondition is
-not satisfiable by this workflow, because `bmad-build-auto` cannot amend a planning artifact mid-run
-(Rule 5). The lead amends `EXPERIENCE.md`, commits, resets this spec to `draft`, and re-dispatches.
+**Precondition met.** `EXPERIENCE.md`'s Fixed strings table now carries the Switches screen's own copy: three
+rows at `:341-343` holding the ten literals verbatim. Re-derived with the test's own extractor rather than by
+grep — the table is 90 rows at `:254-343` and yields **246** literals, no duplicates — and confirmed by the
+count assertion's own failure text, `expected 246 table literals + 12 extracted from prose + 3 named extras,
+found 251 keys`. That is the arithmetic behind 261.
 
-**Missing published copy.** `EXPERIENCE.md`'s Fixed strings table has **no row for the Switches screen**.
-Verified directly, not by grep alone: the table is 87 rows at `:252-340`, contributing **236 distinct
-literals**, and `strings.ts` holds **251 keys** = 236 + 12 extracted from prose + 3 named extras. The eight
-literals this story's panel and footer need are already published and already sit unused in `strings.ts`
-(`agentReadOnlyEnforcedBanner`, `agentKillSwitchBanner`, the four `statusReadOnly*`,
-`agentWriteBlockedByReadOnly`, `proposalStatusAgentSwitchedOff`). The screen's own copy is entirely absent.
-Ten literals are needed, proposed as three rows:
+**Every literal the Code Map needs is authorized.** The ten new ones; the eight panel and footer keys already
+published and still unrendered; and, for the form itself, `actionSave`, `actionCancel`, `formSaved`,
+`formLeaveWithoutSaving` and `formRequiredFieldsLegend` from the `form-page` contract plus `processColumnUser`
+for the user field — each checked against the table and against `strings.ts`, not recalled.
 
-| String | Where |
-|---|---|
-| "Switches" · "Kill switch" · "Reason" · "Enforced read-only" · "Switched off users" · "Switch off a user" · "Switch the agent back on" · "No users are switched off." | Switches (`:169`): its side-bar entry and screen title; the global kill switch's label and the reason field whose value fills the kill-switch banner's `<reason>`; the enforced-read-only toggle's label; the per-user section's heading, its add action, its row action and its empty state. Its user field reuses the Processes row's "User" (`:319`); Save, Cancel, "Saved" and "Leave without saving?" are the `form-page` contract's |
-| "Screen context is shared by default" | Switches: the instance default for context sharing (FR-11), distinct from the panel's own per-session "Share screen context" (`:293`), which it seeds |
-| "change the switches" | the action slot the request-refused pattern resolves — "You need \<resource\> to \<action\>." — when a Switches call is refused for privilege, as "change this definition" does for the Definition form |
+**One documentation asymmetry, carrying no literal and blocking nothing.** The kill-switch banner row's
+**Where** cell (`:287`) still reads only "kill-switch banner", while the two unconfigured rows (`:283`, `:285`)
+name the attention dot. The `attention-dot` component row (`:353`) independently states "Shown when the agent
+is unconfigured or the kill switch is on … Tooltip and accessible name state the reason", which is the
+authority AC4 and DW-383 rest on, and no test reads that Where cell.
 
-Two **Where**-cell amendments carry no new literal: the kill-switch banner row gains "and the Agent
-co-pilot attention dot's accessible name and rail tooltip while the kill switch is on", the clause the two
-unconfigured rows already carry; and the `attention-dot` row at `:350` already says tooltip and accessible
-name state the reason, so DW-383 needs no copy.
-
-**The band moves either way.** `ui/tools/strings.test.mjs:310` pins table literals at `>= 150 && <= 240`.
-At 236 the headroom is **4**. Ten new literals reads 246. Even the most aggressive reuse — "Create" and
-"Delete" for the two per-user actions and no section heading — is 7 new literals and reads 243. The
-`<= 240` bound must widen in the same commit that adds the keys, and the assertion's stale "roughly 230"
-message is already wrong at 236. The band is a deliberate constant, so this is the lead's call, not the
-implementer's.
-
-**Nothing else blocks.** AC4 and AC6's step-boundary half, AC8's precedence, DW-369, DW-370 and DW-383 are
-all settled above against the evidence, and no AD needs amending for this story.
-
-One uncommitted file this run produced: `_bmad-output/implementation-artifacts/epic-3-context.md` was stale
-(three planning artifacts newer) and was recompiled per step-01. The tree was clean at dispatch.
+Planning is otherwise unchanged: every Code Map path and line anchor was re-verified against this tree, and
+the standing decisions stand.
