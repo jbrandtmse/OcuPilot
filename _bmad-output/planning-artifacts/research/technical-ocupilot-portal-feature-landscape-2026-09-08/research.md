@@ -474,7 +474,7 @@ Each recommendation names the artifact it feeds and the basis for its confidence
 | What technology bonuses apply to this contest, and are AI or Angular among them? | Re-run D1 after the 2026-09-14 kick-off; the contest page promises an announcement [1] |
 | Is an entry covering only some of the six areas accepted? | Ask in the announcement comments or the contest Discord channel; approval is discretionary [2] |
 | Will InterSystems keep Group by ID and the browser-id cookie across releases? | Ask at the kick-off; the JWT-only path needs neither, so the exposure is one extra login for portal-first users [46] |
-| Will `/api/admin` survive releases unchanged, and what is InterSystems' support stance? | Ask at the kick-off webinar; keep the generated spec under test; pin v2 and check `apiVersion` [21] |
+| Will `/api/admin` survive releases unchanged, and what is InterSystems' support stance? | Answered at the 2026-09-14 kick-off: v2 is the contest's intended API, experimental until its final form in IRIS 2027.1, with a published spec (`intersystems-community/sysadmin-api-specification`) that matches the 2026.2 instance path for path; keep the generated spec under test; pin v2 and check `apiVersion` [21] |
 | Build-time or start-time install with a durable `%SYS` volume? | Test the vendor template pattern against this repository's compose file with the data directory bind-mounted [29] |
 | What exactly do the eleven legacy CSP pages do (fields, POST actions)? | Copy `csp/sys/mgr`, `csp/sys/sec` and `csp/sys/op` out of the container and read them [11][18] |
 | Which classes back X.509 credentials, messages.log, application errors, journal purge and restore? | Class-dictionary probes on the instance; the exported names do not exist there [20] |

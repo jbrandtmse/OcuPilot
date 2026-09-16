@@ -7,7 +7,7 @@ paradigm: 'Descriptor-driven vertical slices, hexagonal at the edges'
 scope: 'OcuPilot in full: Release 1 (119 P0 rows, contest deadline 2026-09-27) binding; Stages 2-6 decided where their gates are already clear, named as staged decisions where they are not.'
 status: final
 created: '2026-09-08'
-updated: '2026-09-15'
+updated: '2026-09-16'
 binds:
   - 'Areas 5.1-5.12 (shell, agent co-pilot, agent tools, agent config, web apps + REST explorer, permissions, security and secrets, tasks, OS management, logs, packaging, polish)'
   - 'FR-1 through FR-79, NFR-1 through NFR-14'
@@ -332,11 +332,11 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
   Of the five classes touching CSP state: three (`Database.Actions`, `Journal.Record`, `Security.Audit.Record`) use `%request` **only** as `..GetName(%request)` to label the task their own `Run()` queues, and the port's stub request supplies a synthetic label. `Database.AsyncTaskSysBackground` sets `%response.Status` directly, bypassing the base class's `IsRunningAsync` guard, and is reachable only from the async-task path. `Security.Encryption.Settings` is excluded by the v2 pin. A slice that needs an endpoint outside this inventory re-runs the audit before using it.
 
-### AD-27 — The dependency on undocumented vendor internals is confined to the port and always has a fallback
+### AD-27 — The dependency on the experimental admin API is confined to the port and always has a fallback
 
 - **Binds:** `AdminPort`, every screen and tool it backs; NFR-8; PRD Open Question 3 and the top risk in PRD section 11
 - **Prevents:** an IRIS upgrade that changes a `[Hidden]` class turning into a portal-wide outage with no route back, and the dependency spreading beyond one file
-- **Rule:** Every `%Api.Admin.*` class is marked `[ Hidden ]` — absent from the published class reference, undocumented, and carrying no stability contract. That dependency is real and accepted, and it is **contained**:
+- **Rule:** Every `%Api.Admin.*` class is marked `[ Hidden ]` and absent from the class reference; the API itself is **experimental** — named as the contest's intended API at the 2026-09-14 kick-off, specified in `mainspec_v2.json` (`intersystems-community/sysadmin-api-specification`; its 185 v2 paths match the 2026.2 instance's own generated spec path for path), and subject to change until its final form in IRIS 2027.1. That dependency is real and accepted, and it is **contained**:
   - Only `Port/AdminPort` names an `%Api.Admin.*` class. No slice, screen, tool or test references one directly, so the blast radius of a vendor change is one file.
   - `AdminPort` verifies at startup that the API reports v2 and that a named probe endpoint answers, and fails loudly with an actionable message rather than degrading silently.
   - The endpoint inventory this spine relies on — 70 classes, which publish `RequestBodySchema()`, which have an async path, which touch CSP state — is captured as a **test fixture**, not as prose. The test re-derives it from the running instance and fails when the instance disagrees, so an upgrade that moves the ground is caught by the suite rather than by a user.
@@ -369,7 +369,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 - **Prevents:** a state change that the UI honors and the instance does not, and an in-flight turn that keeps acting after the operator has switched the agent off
 - **Rule:** Enforced read-only and the kill switch are instance state in the protected database, and they are evaluated **on the instance at the point of effect** — inside the write path and inside the turn loop — never only in the client and never cached for the length of a turn. The turn job re-reads both **between every step**, alongside its stop flag, and abandons the turn at the next step boundary when either has changed. Confirm re-evaluates them too, so a proposal minted before the switch cannot be applied after it. Both are reachable and changeable without the agent.
 
-  **What "enforced" means at the tool boundary:** while either is in force, every write tool returns a structured "blocked by read-only mode" result, the agent states what it would have changed and on which screen, and **no proposal card is minted**. That behavior belongs to the instance-wide switch (Story 3.7), not to the per-user toggle that sits over it (Story 10.4) — there is exactly one enforcement point. A write already in flight when the switch changes is abandoned at the next step boundary rather than half-applied.
+  **What "enforced" means at the tool boundary:** while either is in force, every write tool returns a structured "blocked by read-only mode" result, the agent states what it would have changed and on which screen, and **no proposal card is minted**. That behavior belongs to the instance-wide switch (Story 3.7), not to the per-user toggle that sits over it (Story 14.5) — there is exactly one enforcement point. A write already in flight when the switch changes is abandoned at the next step boundary rather than half-applied.
 
 ### AD-31 — The turn job re-validates the identity it froze
 

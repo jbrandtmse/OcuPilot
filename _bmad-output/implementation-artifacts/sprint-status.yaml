@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: 09-16-2026 12:35
+last_updated: 09-16-2026 06:43
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -154,6 +154,7 @@ development_status:
   8-6-the-wallet-secret-form: backlog
   8-7-system-and-user-audit-event-configuration: backlog
   8-8-the-device-editor: backlog
+  8-9-plain-iris-community-verification: backlog
   epic-8-retrospective: optional
 
   epic-9: backlog
@@ -172,12 +173,6 @@ development_status:
   10-1-the-message-and-tool-definition-adapters: backlog
   10-2-the-openai-and-google-gemini-adapters: backlog
   10-3-the-openai-compatible-adapter-and-local-models: backlog
-  10-4-the-per-user-read-only-toggle: backlog
-  10-5-per-user-turn-limits-and-the-banner-they-need: backlog
-  10-6-the-target-fingerprint-re-read: backlog
-  10-7-the-typed-name-confirmation-for-destructive-tools: backlog
-  10-8-the-seeded-injection-test: backlog
-  10-9-plain-iris-community-verification: backlog
   epic-10-retrospective: optional
 
   epic-11: backlog
@@ -214,6 +209,10 @@ development_status:
   14-2-the-tool-governance-policy: backlog
   14-3-tool-and-log-content-is-defanged-before-it-reaches-the-model: backlog
   14-4-transcripts-retention-and-administrator-access: backlog
+  14-5-the-per-user-read-only-toggle: backlog
+  14-6-per-user-turn-limits-and-the-banner-they-need: backlog
+  14-7-the-typed-name-confirmation-for-destructive-tools: backlog
+  14-8-the-seeded-injection-test: backlog
   epic-14-retrospective: optional
 
   epic-15: backlog

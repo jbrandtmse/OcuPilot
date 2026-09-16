@@ -380,7 +380,7 @@ test('a footerKey the server may not answer with falls back to the off key', asy
 test('every footer key the verdict may answer with exists in the string source', () => {
   // The server half is `OcuPilot.Test.Restraint`, which pins the same three literals against
   // `OcuPilot.Kernel.Restraint`'s own parameters -- so a key renamed on either side reddens.
-  assert.equal(FOOTER_KEYS.length, 3, 'three now; statusReadOnlyForYou is Story 10.4\'s');
+  assert.equal(FOOTER_KEYS.length, 3, 'three now; statusReadOnlyForYou is Story 14.5\'s');
   for (const key of FOOTER_KEYS) {
     assert.ok(Object.hasOwn(STRINGS, key), `${key} is a published string key`);
     assert.ok(STRINGS[key].length > 0, `${key} carries a sentence`);
