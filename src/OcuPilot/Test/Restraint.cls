@@ -196,6 +196,35 @@ Method TestTheKillSwitchOutranksReadOnly()
     Do $$$AssertEquals(tVerdict("enforcedReadOnly"), 1, "so the enforced banner still appears beside the kill-switch one")
 }
 
+/// <p><b>A per-user hold outranks a read-only definition</b>, which neither existing precedence test
+/// exercises together: the global-kill-switch test never sets a definition, and the
+/// enforced-vs-definition test never holds a user. The held user's code is the per-user
+/// kill-switch one; another user, restrained only by the same definition, still gets the
+/// definition's own code.</p>
+/// <p>Mutation: move the <code>killSwitchAudience = AUDIENCEYOU</code> arm below the
+/// <code>tByDefinition</code> arm in <method>OcuPilot.Kernel.Restraint.Verdict</method> -- this
+/// goes red on the held user's code alone; every other precedence test in this class stays green
+/// because none of them combines a per-user hold with a read-only definition.</p>
+Method TestAPerUserHoldOutranksTheDefinitionsReadOnlyFlag()
+{
+    Set tSC = ##class(OcuPilot.Test.AgentFixture).CreateDefinition(..#PROBEPREFIX _ "HoldVsDef", 0, 0, .tRow)
+    Do $$$AssertStatusOK(tSC, "a read-only probe definition exists")
+    If $$$ISERR(tSC) Quit
+    Set tId = tRow.%Id()
+    Set tRow = ""
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.SwitchFixture).Hold(..#PROBEUSER, "held while the definition is also read-only", .tHoldId), "the probe user is held, with enforced read-only left off")
+
+    Set tSC = ##class(OcuPilot.Kernel.Restraint).Verdict(..#PROBEUSER, tId, .tHeldVerdict)
+    Do $$$AssertStatusOK(tSC, "the held user's verdict is readable")
+    Do $$$AssertEquals(tHeldVerdict("code"), ##class(OcuPilot.Api.Error).#AGENTKILLSWITCHUSER, "the per-user kill-switch code wins over the definition's own code")
+    Do $$$AssertEquals(tHeldVerdict("killSwitchAudience"), ##class(OcuPilot.Kernel.Restraint).#AUDIENCEYOU, "for that user")
+
+    Set tSC = ##class(OcuPilot.Kernel.Restraint).Verdict(..#OTHERUSER, tId, .tOtherVerdict)
+    Do $$$AssertStatusOK(tSC, "the other user's verdict is readable")
+    Do $$$AssertEquals(tOtherVerdict("code"), ##class(OcuPilot.Api.Error).#AGENTREADONLYDEFINITION, "who is not held, so the same definition's own code applies to them")
+    Do $$$AssertEquals(tOtherVerdict("killSwitch"), 0, "with no kill switch of their own")
+}
+
 /// <p><b>Nothing is cached for the length of a process</b> (AD-30). The store is flipped between
 /// two <method>Verdict</method> calls in <b>one</b> process and the second answers the new state.
 /// </p>
