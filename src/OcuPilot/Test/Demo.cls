@@ -114,6 +114,7 @@ Method OnBeforeAllTests() As %Status
     While tN '= "" {
         Set ..PreparedFixtureReports(tN, "level") = tReports(tN, "level")
         Set ..PreparedFixtureReports(tN, "message") = tReports(tN, "message")
+        Set ..PreparedFixtureReports(tN, "data") = $Select($IsObject($Get(tReports(tN, "data"))): tReports(tN, "data").%ToJSON(), 1: "")
         Set tN = $Order(tReports(tN))
     }
     Set ..PreparedErrorEntryId = tErrorEntryId
@@ -599,7 +600,49 @@ Method TestDemoX509CredentialFixtureExists()
     Do $$$AssertTrue(tRS.N > 0, "the X.509 credential fixture has an inventory row")
 }
 
-/// <p>AD-25 -- the demo wallet collection fixture: the probe collection exists, holds exactly one
+/// <p>AD-35 -- the demo wallet secret's generated value is in no report line
+/// <method>OcuPilot.Install.Fixture.Create</method> returned to <method>OnBeforeAllTests</method>,
+/// neither a message nor a data object. The value is read back from the wallet and never put in an
+/// assertion message.</p>
+/// <p>Mutation: add <code>"secret": (tValue)</code> to the data of the report
+/// <method>OcuPilot.Install.Fixture.CreateWalletCollection</method> writes after the secret is
+/// created, and clear <code>tValue</code> after that report -&gt; the scan goes red.</p>
+Method TestDemoWalletSecretValueIsInNoReport()
+{
+    Set tName = ##class(OcuPilot.Install.Fixture).ResolvedPrefix("probe") _ "." _ ##class(OcuPilot.Install.Fixture).#WALLETSECRET
+    Set tValue = ""
+    Set tStored = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        If $$$ISOK(tSC) Set tStored = ##class(%Wallet.KeyValue).GetSecretValue(tName)
+        Set $NAMESPACE = tOrigNS
+        Set tValue = $Select($IsObject(tStored): tStored.%Get("value"), 1: ##class(%DynamicObject).%FromJSON(tStored).%Get("value"))
+        Set tStored = ""
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tStored = ""
+        Set tValue = ""
+    }
+    Do $$$AssertTrue($Length(tValue) >= 16, "the demo secret's generated value is read back from the wallet")
+    Set tFound = 0
+    Set tN = $Order(..PreparedFixtureReports(""))
+    While (tN '= "") && (tValue '= "") {
+        If $Get(..PreparedFixtureReports(tN, "message")) [ tValue Set tFound = 1
+        If $Get(..PreparedFixtureReports(tN, "data")) '= "" {
+            Set tFields = ##class(%DynamicObject).%FromJSON(..PreparedFixtureReports(tN, "data")).%GetIterator()
+            While tFields.%GetNext(.tKey, .tField) {
+                If ('$IsObject(tField)) && (tField [ tValue) Set tFound = 1
+            }
+        }
+        Set tN = $Order(..PreparedFixtureReports(tN))
+    }
+    Set tValue = ""
+    Do $$$AssertTrue('tFound, "no fixture report line carries the secret's value")
+}
+
+/// <p>AD-25 -- the demo wallet collection fixture: the probe collection exists, with
+/// <code>%Admin_Wallet:USE</code> as its use and edit resource, holds exactly one
 /// secret, the <class>%Wallet.KeyValue</class> named by
 /// <parameter>OcuPilot.Install.Fixture.WALLETSECRET</parameter>, and has an inventory row of kind
 /// <code>walletcollection</code>. The secrets are read through the admin port's
@@ -622,6 +665,22 @@ Method TestDemoWalletCollectionFixtureExists()
         Throw ex
     }
     Do $$$AssertTrue(tExists, "the demo wallet collection fixture exists: " _ tName)
+
+    Kill tNoQuery
+    Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke("Wallet.Collection", "LIST", .tNoQuery, "", .tCollections, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the wallet collections list")
+    Set tCollection = ""
+    If $$$ISOK(tSC) && $IsObject(tCollections) {
+        Set tIterator = tCollections.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tEntry) {
+            If tEntry.%Get("Name") = tName Set tCollection = tEntry
+        }
+    }
+    Do $$$AssertTrue($IsObject(tCollection), "the collection is listed")
+    If $IsObject(tCollection) {
+        Do $$$AssertEquals(tCollection.UseResource, "%Admin_Wallet:USE", "its use resource is the wallet administrative resource")
+        Do $$$AssertEquals(tCollection.EditResource, "%Admin_Wallet:USE", "and so is its edit resource")
+    }
 
     Kill tQuery
     Set tQuery("collection") = tName

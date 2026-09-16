@@ -362,8 +362,39 @@ describe('the list page', () => {
     expect(page.paths.length).toBe(2);
   });
 
-  it('Story 6.3: a list with no parent sends no criterion from its URL id', async () => {
-    const page = await mount(tableDeclaration(), named('A'), true, '/web-applications/probe/A?ns=HSCUSTOM');
+  it('Story 6.3: a parent-scoped list opened for another parent holds none of the previous parent\'s rows or selection', async () => {
+    // Mutation (Rule 19): drop the `clearAnswers()` a parent-scoped `ListPage` makes when it opens
+    // -> the rows and selection assertions go red, still holding the first collection's.
+    const base = tableDeclaration();
+    const declaration = tableDeclaration({
+      route: 'security/wallet/secrets',
+      parentScope: 'security/wallet',
+      read: {
+        ...base.read!,
+        criteria: { fields: [{ param: 'collection', labelKey: 'tableColumnName', kind: 'text', maxLength: 64 }] },
+      },
+    });
+    const page = await mount(declaration, named('OcuPilotDemo.Sample'), true, '/security/wallet/secrets/OcuPilotDemo?ns=HSCUSTOM');
+    const store = page.stores.for(declaration.descriptor, declaration.refreshRates);
+    store.setSelection(['OcuPilotDemo.Sample']);
+    expect(store.data().length).toBe(1);
+    page.fixture.destroy();
+
+    await TestBed.inject(Router).navigateByUrl('/security/wallet/secrets/Other?ns=HSCUSTOM');
+    TestBed.createComponent(ListPage);
+    // Read before the new page's read can answer, which is the window the old rows would show in.
+    expect(store.data()).toEqual([]);
+    expect(store.selection()).toEqual([]);
+  });
+
+  it('Story 6.3: a list with no parent sends no criterion from its URL id, whatever it declares', async () => {
+    // Mutation (Rule 19): drop `screen.parentScope === '' ||` from `parentCriteria` -> the path
+    // assertion goes red, carrying the URL id as the declared criterion.
+    const base = tableDeclaration();
+    const declaration = tableDeclaration({
+      read: { ...base.read!, criteria: { fields: [{ param: 'collection', labelKey: 'tableColumnName', kind: 'text', maxLength: 64 }] } },
+    });
+    const page = await mount(declaration, named('A'), true, '/web-applications/probe/A?ns=HSCUSTOM');
     expect(page.paths).toEqual(['/api/ocupilot/screens/stub/read?maxRows=1000']);
   });
 

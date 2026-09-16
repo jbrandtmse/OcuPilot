@@ -347,6 +347,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-13T18:47:58Z status=wontfix-accepted by=merge_gate note=owner decision 2026-09-13 revised: keep the checked-in demo pair for Release 1 and charter generate-at-install as its own later story rather than burn-down work. It is a self-signed CN=OcuPilotDemo prop securing nothing. Burn-down carries only the marking work - state in the class header and beside the literal that the pair is a disposable demo fixture. reopen_if=the pair is ever used for anything but the demo fixture, or a scanner finding is judged unacceptable at launch
 - 2026-09-13T18:48:17Z status=routed owner=burndown by=merge_gate note=correcting the trailer above - it closed the entry terminal while naming residual marking work, which leaves that work owned by nothing (the exact defect DW-223 names). The owner's accept-the-checked-in-pair decision stands; this entry stays open until the class header and the literal say the pair is a disposable demo fixture, and closes then
 - 2026-09-13T21:00:47Z status=routed owner=6-3-the-x-509-ldap-kerberos-and-wallet-lists by=burndown note=owner decision recorded: keep the checked-in demo pair; residual is marking it a disposable fixture in the class header and beside the literal. 6-3 is the story that displays the credential, so the marking lands where its consumer is built
+- 2026-09-16T23:34:21Z status=resolved-by:6-3-the-x-509-ldap-kerberos-and-wallet-lists by=cr note=Fixture.cls header and DemoCertificatePem/DemoPrivateKeyPem docs mark the pair a disposable demo fixture
 
 ### DW-50: AC1-AC3/AC9-AC12's container, health-check, HTTP, and shell-level (demo-flag propagation) surfaces are verified only by a one-off manual throwaway-co…
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: med | fix-risk: med | footprint: in-epic
@@ -2905,13 +2906,25 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T21:25:58Z status=decision-pending owner=burndown by=spec_gate note=product call for the decision sheet: keep the union, or gate a rail item as allowed when any of its screens is allowed while each screen keeps its own gate (AD-8's false admission then applies only to the area label, never to a read)
 - 2026-09-16T21:26:18Z by=spec_gate note=the OS management figure (2 of 3 after 6.8 and 6.10) is Screen/Area.cls's inference, settled when those screens land; the Security and Logs figures are counted from declared pairs
 - 2026-09-16T22:46:47Z occurrence=6-3-the-x-509-ldap-kerberos-and-wallet-lists note=EXPERIENCE.md :221 and :482 still describe the Wallet screen as gated screen by screen; the union gates the whole Security rail item
+- 2026-09-16T23:34:21Z by=cr note=observed slot B: %SecurityAdministrator holds %Admin_Secure:U and %DB_IRISSYS:RW but no %Admin_Wallet; rail gates it
 
 ### DW-1019: Demo-fixture counts and the inventory kind vocabulary are stale outside Fixture.cls after the wallet fixture landed
 - source: spec-6-3-the-x-509-ldap-kerberos-and-wallet-lists.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: README.md, Install/Installer.cls and Kernel/State/Demo.cls still say five fixtures and list the old inventory kinds; README.md and Kernel/** are contended for Epic 6, Installer.cls is not.
 - 2026-09-16T22:46:47Z status=open owner=6-3-the-x-509-ldap-kerberos-and-wallet-lists by=harvest note=code review: patch the in-footprint Installer.cls wording; close the contended remainder with a probe
+- 2026-09-16T23:34:21Z status=wontfix-accepted owner=6-3-the-x-509-ldap-kerberos-and-wallet-lists by=cr note=Installer.cls :11/:958 fixed; README.md:244 contended. reopen_if=README demo-fixture count differs from Fixture.cls
 
 ### DW-1020: The Secrets screen's route id is a wallet collection name while the screen declares entity type wallet-secret, so a screen-context reader could label the collection as a secret
 - source: spec-6-3-the-x-509-ldap-kerberos-and-wallet-lists.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: AD-13's triple pairs the route id with the descriptor's entityType; WalletSecretList declares parentScope security/wallet and entityType wallet-secret, so (wallet-secret, instance, OcuPilotDemo) names a collection as a secret. Unverified until Story 4.4's screen context reads it. Story 6.6's per-task history is the second parent-scoped screen and meets the same question.
 - 2026-09-16T22:46:47Z status=routed owner=6-6-task-history-per-task-and-across-tasks by=harvest note=decide once for both parent-scoped screens how the route id's entity type is declared (AD-5 sub-resource, AD-13 triple)
+
+### DW-1021: A parent-scoped list whose read answers 404, a deleted or unknown wallet collection, shows the generic request refused with a Retry that cannot clear it
+- source: spec-6-3-the-x-509-ldap-kerberos-and-wallet-lists.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: core/fault.ts classifies a 404 as absent and data-table.ts draws every non-banner fault as request refused plus Retry (DW-172); Wallet.Secret LIST answers 404 for an unknown collection, so a stale security/wallet/secrets/<id> reads as a refusal. Distinct copy needs an EXPERIENCE.md row.
+- 2026-09-16T23:34:21Z status=wontfix-accepted owner=6-3-the-x-509-ldap-kerberos-and-wallet-lists by=cr note=reopen_if=OcuPilot can delete a wallet collection (Story 8.6 or later) and a Secrets deep link to it reads request refused
+
+### DW-1022: The wallet fixture's create-side branches are driven by no test: a secret that fails after its collection is recorded, and a collection that already exists
+- source: spec-6-3-the-x-509-ldap-kerberos-and-wallet-lists.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Fixture.CreateWalletCollection calls %Wallet.KeyValue.Create directly, so no seam can fail it, and no test pre-creates a <prefix> collection; moving NoteRow below the secret create, or recording an existing collection, leaves every test green. The SSL/TLS and X.509 existing-object branches share the gap.
+- 2026-09-16T23:34:21Z status=wontfix-accepted owner=6-3-the-x-509-ldap-kerberos-and-wallet-lists by=cr note=reopen_if=a change to CreateWalletCollection moves NoteRow or edits its exists branch with no test driving that branch

@@ -134,7 +134,7 @@ ClassMethod MaxRowsProblem(pMaxRows As %String) As %String
 /// <code>INFO</code> or <code>CERTINFO</code> -- carrying <code>param</code> set to that row's
 /// <code>key</code> value. Its
 /// <code>fields</code> replace the row's with their JSON types, and each <code>derived</code> field
-/// is set from its rule (<method>Derive</method>). A row whose <code>GET</code> answers 404 was
+/// is set from its rule (<method>Derive</method>). A row whose detail call answers 404 was
 /// deleted between the calls and is dropped; <code>truncated</code> still follows the list. Any
 /// other detail fault fails the whole read with that fault and no rows, and a row with no string
 /// key, a detail that is not an object or a value its rule cannot read is a 500.</p>

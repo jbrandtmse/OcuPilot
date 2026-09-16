@@ -7,11 +7,11 @@
 /// <li><b>DW-57.</b> <method>OcuPilot.Install.Fixture.RemoveOne</method>'s status-checked
 /// <code>Delete</code> branches (webapp / sslconfig / x509credential, and walletcollection through
 /// <method>DeleteWalletCollection</method>) go
-/// straight to <code>Security.Applications</code>, <code>Security.SSLConfigs</code> and
-/// <code>%SYS.X509Credentials</code>, which no existing seam can make fail -- so those
-/// branches, and the three <code>warn</code> reports they guard, ran only on their
+/// straight to <code>Security.Applications</code>, <code>Security.SSLConfigs</code>,
+/// <code>%SYS.X509Credentials</code> and <code>%Wallet.Collection</code>, which no existing seam can make fail -- so those
+/// branches, and the four <code>warn</code> reports they guard, ran only on their
 /// success paths and a regression back to a bare <code>Do ...Delete(pName)</code> that
-/// discarded the status left the whole suite green. Overriding the three
+/// discarded the status left the whole suite green. Overriding the four
 /// <code>Delete*</code> wrappers makes each one fail for real while the genuine,
 /// unmodified <method>Remove</method>/<method>RemoveOne</method> pair still runs.</li>
 /// <li><b>DW-52.</b> <method>OcuPilot.Install.Fixture.CreateTask</method> reads an id

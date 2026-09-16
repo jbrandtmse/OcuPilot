@@ -617,8 +617,8 @@ Method AssertSameRowsAsTestAccount(pUser As %String, pTool As %String, pQuery As
 /// Its navigation entries and the area verdict are <method>TestBothPairsReadEveryList</method>'s.</p>
 /// <p>Mutation: drop <code>%Admin_Wallet:USE</code> from
 /// <class>OcuPilot.Screen.Descriptor.WalletCollectionList</class> -&gt; the Wallet entry reads allowed
-/// and its read is refused by the vendor rather than by the screen gate, so the wallet pins and
-/// refusal go red.</p>
+/// and its read is refused by the vendor rather than by the screen gate, so this method's wallet
+/// refusal and <method>TestBothPairsReadEveryList</method>'s wallet pins go red.</p>
 Method TestTheSecurePairsReadX509AndLdapAndNotTheWallet()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the eleven principals' pairs")

@@ -219,6 +219,51 @@ The throwaway has the demo fixture installed. The test account is `_SYSTEM`. "In
   - a deep link to `security/x509` reads
 - Integration: given consumer `Screen.Tool.Read.View`, when it reads `security.x509.read`, `security.ldap.read`, `security.wallet.read` and `security.secrets.read` (with `collection`) live, then it returns the route's fields and rows narrowed by its cap.
 
+### Review Findings
+
+Code review 2026-09-16, tier `full-opus`, four layers (blind, edge, verification-gap, acceptance). 45 raw findings: 16 entries after grouping (0 high, 5 medium, 11 low), 11 patched or closed in-pass, 5 deferred with an owner or a terminal status, 23 rejected.
+
+- [x] [Review][Patch] (medium) A parent-scoped list opened for another parent showed the previous parent's rows and selection until its read answered, and kept them if that read failed, because every parent shares the descriptor's store [ui/src/app/shell/list-page.ts:100]. The page now drops the store's answers when it opens, pinned by a new `list-page.spec.ts` case.
+- [x] [Review][Patch] (medium) Nothing checked that the demo wallet secret's generated value stays out of the fixture reports (AD-35) [src/OcuPilot/Test/Demo.cls]. `TestDemoWalletSecretValueIsInNoReport` reads the value back and scans every report message and data field.
+- [x] [Review][Patch] (low) The demo collection's `%Admin_Wallet:USE` use and edit resource was never asserted [src/OcuPilot/Test/Demo.cls]. Now asserted in `TestDemoWalletCollectionFixtureExists`.
+- [x] [Review][Patch] (low) The Integration AC's only `mutation:` line did not go red [spec `## Verification`]. The over-narrowing mutation is observed red and replaces it. A tool that keeps too many rows is still invisible at one row per list; `PermissionsLists` pins that cut over the same `View`.
+- [x] [Review][Patch] (low) `list-page.spec.ts` "a list with no parent sends no criterion" declared no criterion, so it could not fail on the `parentScope` guard [ui/src/app/shell/list-page.spec.ts]. It now declares one.
+- [x] [Review][Patch] (low) DW-1019: `Installer.cls` still said five demo fixtures [src/OcuPilot/Install/Installer.cls:11,958]. Now six. `README.md:244` is contended and is closed `wontfix-accepted` on DW-1019; `Kernel/State/Demo.cls` lists kinds as examples ("e.g."), so it is not stale.
+- [x] [Review][Patch] (low) `Fixture.cls` and `FixtureFault.cls` headers still counted three `Delete` calls and three warns [src/OcuPilot/Install/Fixture.cls:40; src/OcuPilot/Test/FixtureFault.cls:12]. Now four.
+- [x] [Review][Patch] (low) `Screen.Read.Execute`'s doc still said a row whose `GET` answers 404 is dropped [src/OcuPilot/Screen/Read.cls:137]. Now "detail call".
+- [x] [Review][Patch] (low) `TestTheSecurePairsReadX509AndLdapAndNotTheWallet`'s mutation note named wallet pins that live in `TestBothPairsReadEveryList` [src/OcuPilot/Test/WireSecurityRead.cls:622]. Corrected.
+- [x] [Review][Patch] (low) The smoke skip for an empty X.509 or Wallet list was exercised only by `SmokeListFault`'s faked answer [src/OcuPilot/Install/Smoke.cls:546]. Observed on a real instance with the demo fixture removed (`## Verification`).
+- [x] [Review][Patch] (low) Removing a wallet collection that holds a secret was never observed to remove the secret [src/OcuPilot/Install/Fixture.cls:989]. Observed on the throwaway's real demo fixture (`## Verification`); the vendor's `%Wallet.Collection.%OnDelete` deletes a collection's secrets.
+- [x] [Review][Defer] (medium) The area union gates the Security rail for the stock `%SecurityAdministrator` role, which lacks `%Admin_Wallet` (observed on slot B), and EXPERIENCE.md `:221`/`:482` still describe screen-level Wallet gating [src/OcuPilot/Screen/Area.cls:100] — deferred: the Boundaries mandate the union; DW-1018, `decision-pending`, with the observation appended.
+- [x] [Review][Defer] (medium) The Secrets read tool describes its required single `collection` as an optional comma list with a wildcard [src/OcuPilot/Screen/Tool/Read.cls:103] — deferred: `Screen/Tool/**` is contended; DW-1001, routed to 7-1.
+- [x] [Review][Defer] (medium) `security.browser-spec.mjs` refuses only the `ocupilot` container [ui/browser/security.browser-spec.mjs] — deferred: harness-wide; DW-1015, escalated.
+- [x] [Review][Defer] (low) A Secrets URL for a deleted or unknown collection reads the generic "request refused" with a Retry that cannot clear it [ui/src/app/shell/data-table.ts:150] — deferred: distinct copy needs an EXPERIENCE.md row; DW-1021, `wontfix-accepted`.
+- [x] [Review][Defer] (low) The wallet fixture's create-side branches (a secret failing after `NoteRow`, a pre-existing collection) are driven by no test [src/OcuPilot/Install/Fixture.cls:405] — deferred: needs a create seam; DW-1022, `wontfix-accepted`.
+
+**Rejected:**
+
+- low: WALLETUSER's row equality cannot detect a vendor filter by collection resource. The vendor `ListFetch` filters nothing (`$$$AddSecurityRoleTemporary`); this becomes real only if a build starts filtering wallet LISTs.
+- by-design: the locator's "Secrets" segment routes to the Wallet list. The Boundaries and AC3 require it.
+- false: the one-criterion rule conflicts with 6.6. Per-task history takes one criterion, across-tasks history is not parent-scoped, and DW-1020 already takes the parent-scoped question to 6.6.
+- low: an empty LDAP list fails smoke. The image ships `unknowndomain.com` (observed on a fresh throwaway), and skipping adds a branch; reopen if smoke `ldap` fails on an instance whose LDAP LIST is empty.
+- low: the demo-flag resolution is duplicated in `Smoke`. The fix edits Epic 4's shared `CheckDemoFixture`.
+- low: the failed-secret warn drops its status. The failure is unlikely, and error data would widen an AD-35 report.
+- low: `ScreenRead` needs the demo wallet collection. This is a documented environment need, met on every demo throwaway.
+- by-design: validity dates are shown without a time zone. The Design Notes fix the vendor text.
+- low: a boolean `rowGet.type` gets different sentences in the two engines. No author writes one, and unifying adds a branch to both.
+- false: `INFO` is allowed but never exercised. The Boundaries require it, and `ScreenRead` issues every shipped declared type live.
+- false: the Registry criteria and `rowGet` sentences are stale. The criteria paragraph reads correctly as a whole, the `rowGet` sentence names the required keys, and the refusal sentences are corpus-pinned.
+- false: `parentCriteria` decodes twice. The two decodes stand for the router's pass and the codec's, pinned by the `%Demo_1` round trip and browser AC3.
+- low: SECUREUSER asserts no wallet refusal. That refusal is not a Matrix row, and BOTHUSER and SYSREADUSER assert it.
+- low: the run numbers in `## Verification` repeat. Each set belongs to one throwaway incarnation.
+- rejected: the spec's prose and size. The fix edits the spec.
+- low (theoretical): a parent-scoped read declared at side-bar position above 0 or with id kind `none`, a parent criterion of kind `choice` or `datetime`, and a `parentScope` naming an unbuilt route. None of these is declared.
+- by-design: the two `LIVE_PAYLOAD` copies are held by hand. The epic context names them a tripwire pair.
+- false: the AC1, AC3 and AC5 clauses lack mutation lines. Rule 19 needs one observed mutation per AC, and each AC has one.
+- low: the `ObjectState` wallet arm is asserted only as "already removed". The `x509credential` row has the same shape, and the regression is unlikely.
+- rejected (edits the spec): `## Auto Run Result`'s "the first two skipped" means `x509` and `wallet`, which is what `Smoke.cls:546` skips.
+- low: the PEM lines carry no inline marker. DW-49 asks for the class header and beside the literal, and both are present.
+
 ## Spec Change Log
 
 - 2026-09-16 (spec gate, lead): AD-36 amended to name `CERTINFO`; DW-233 closed `wontfix-accepted` (no generator on the image, verified), DW-59 corrected; the union's aggregate cost filed as DW-1018 for the user.
@@ -357,7 +402,7 @@ The throwaway has the demo fixture installed. The test account is `_SYSTEM`. "In
 - mutation: `ListPage` binds `createScreenRead` without the criteria -> `list-page.spec.ts` parent-scoped case red; bundle rebuilt and redeployed -> browser AC3 red, the read answering 400 and no secret row rendering (observed).
 - mutation: `WalletSecretList` read and context fields add `Value`, loaded -> `SecurityLists.TestEveryRowCarriesTheDeclaredFieldsAndNoSecret` red on the route, tool and raw-row key sets (run 18), with the declaration and Secrets field pins (observed).
 - mutation: `WalletCollectionList` privileges drop `%Admin_Wallet:USE`, loaded -> `WireSecurityRead` red on the SECUREUSER, SYSREADUSER and BOTHUSER Security pins and the BOTHUSER and SYSREADUSER wallet refusals (run 19); browser AC5 red, the command box Wallet entry no longer gated (observed).
-- mutation: `Tool.Read.View` keeps cap+1 rows, loaded into `ocupilot-b-ci` only -> `SecurityLists` stays green (run 22), because each of the four lists answers one row on a fresh throwaway, so no cap of at least one can cut it; the same mutation reddens `PermissionsLists.TestTheReadToolAnswersTheRoutesRowsNarrowedByItsCap` on all three tools (run 23). The tool AC's cap is therefore pinned for these screens only through that shared method (observed).
+- mutation: `Tool.Read.View` stops at cap-1 rows, loaded into `ocupilot-b-ci` only -> `SecurityLists.TestTheReadToolAnswersTheRoutesRowsNarrowedByItsCap` red on the rows assertion for all four tools (code review, run 5; reverted, run 6 green). Keeping cap+1 rows stays green here, because each list answers one row, and `PermissionsLists` pins that cut over the same `View` (observed).
 - mutation: `Registry.RowGetProblem`'s `type` arm disabled, loaded -> `ReadTool.TestEveryRowGetCorpusCaseGetsItsSentence` red on the `certinfo`, `LIST` and `1` cases (run 20); the same arm disabled in `screen-mirror.mjs` -> `screen-mirror.test.mjs` RowGetCorpus case red (observed).
 - mutation: `Registry.CriteriaProblem`'s parent test forced false, loaded -> `ReadTool.TestEveryCriteriaCorpusCaseGetsItsSentence` red on the zero- and two-criteria parent cases (run 21); the same in `screen-mirror.mjs` -> `screen-mirror.test.mjs` CriteriaCorpus case red (observed).
 - mutation: `Smoke.CheckAreaLists` loses its empty-list skip arm, loaded into `ocupilot-b-ci` -> `Test.Smoke.TestAnEmptyDemoListIsSkippedWithoutTheDemo` red on the X.509 and Wallet skips (run 14) (observed).
@@ -369,6 +414,24 @@ The throwaway has the demo fixture installed. The test account is `_SYSTEM`. "In
 - mutation: `ListPage` re-reads with `readNow()` instead of `noteScopeChanged()` on an id change -> `list-page.spec.ts` parent-scoped case red, the selection kept (observed).
 - mutation: `parentListFor` returns the parent without the inverse check -> `navigation.test.mjs` "a screen naming a parent it is not the child of resolves none" red (observed).
 - mutation: `parentCriteria` drops the `parentScope === ''` guard -> `navigation.test.mjs` "a list with no parent fills no criterion, whatever it declares" red (observed).
+
+**QA independent falsification (2026-09-16, `ocupilot-b-ci`), one new mutation per falsifiable AC, none reusing a mutation already recorded above. Every mutation was applied to the running throwaway only (`docker cp` + `%SYSTEM.OBJ.Load`), never to the worktree; `git status --short` and `git diff --stat` were empty before, during and after (QA):**
+
+- mutation (AC1): `WalletCollectionList`'s `area` changed `security` -> `logs`, loaded -> `SecurityLists.TestEachListIsDeclaredAsTheSecurityAreaEntryItReplaces` red on "in the Security and secrets area" (run 2); reverted, run 3 green (observed).
+- mutation (AC2): `X509CredentialList`'s `rowGet.fields` drops `IssuerDN`, loaded -> `SecurityLists.TestTheX509ListReadsItsCertificateFieldsOverTheWire` red on the IssuerDN assertion and its equality to the live `CERTINFO` (run 4); reverted, run 5 green (observed).
+- mutation (AC3): `WalletSecretList`'s `parentScope` changed `security/wallet` -> `""`, loaded -> `SecurityLists.TestEachListIsDeclaredAsTheSecurityAreaEntryItReplaces` red on "declaring its parent, or none" (run 6); reverted, run 7 green (observed).
+- mutation (AC4): `LdapConfigList`'s `read.fields`/`context.fields` drop `LDAPCACertFile`, loaded -> three `SecurityLists` methods red at once (declared-fields pin, route/tool/raw key-set parity, and the LDAP Matrix row's own field count) (run 8); reverted, run 9 green (observed).
+- mutation (AC5): `Area.cls`'s `security` entry drops its `%Admin_Wallet:USE` pair, loaded -> `SecurityLists.TestEachListIsDeclaredAsTheSecurityAreaEntryItReplaces` red on `AreaCoverageProblem` for both wallet screens (run 10); reverted, run 11 green (observed).
+
+**Code review (2026-09-16, `ocupilot-b-ci`, up and down by the review; mutations to the throwaway or the local client only, restored byte-identical):**
+
+- mutation: `Fixture.CreateWalletCollection` reports the secret's value in its success data, and `WALLETRESOURCE` becomes `%Admin_Secure:USE`, one load -> `Demo.TestDemoWalletSecretValueIsInNoReport` red on the scan, and `Demo.TestDemoWalletCollectionFixtureExists` red on the use and edit resource, nothing else (run 2; reverted, run 3 green, 11 tests) (observed).
+- mutation: `ListPage` no longer drops a parent-scoped store's answers when it opens -> `list-page.spec.ts` "opened for another parent" red, still holding `OcuPilotDemo.Sample` (observed).
+- mutation: `parentCriteria` loses its `parentScope === ''` guard -> `list-page.spec.ts` "a list with no parent sends no criterion" red, reading `&collection=A` (observed).
+- observed, real instance: after `Fixture.Remove("")` removed the throwaway's demo fixture (the collection, its secret and the X.509 credential all gone, 0 `%Wallet.Secret` rows left), `Smoke.Run` with the flag `0` skipped `x509` and `wallet` on genuinely empty lists and passed (22 executed, 0 failed, `ssl` and `ldap` passing). With the flag `1` it failed `x509`, `wallet` and `demofixture`.
+- Gates this pass: `check-objectscript` 0; `npm run build` and `npm test` green (802 tool, 399 component); `Demo` 11 and `SecurityLists` 7 green; browser 90/90 on the patched bundle.
+
+Residual, not closed by a test: a tool that keeps more rows than its cap is invisible to `SecurityLists`, where each list answers one row; `PermissionsLists` pins that cut over the same `View`. The smoke skip without the demo is closed by the code review's real-instance observation above.
 
 ## Auto Run Result
 
@@ -382,13 +445,13 @@ Blocking condition: none
 - `src/OcuPilot/Screen/Descriptor/{X509CredentialList,LdapConfigList,WalletCollectionList,WalletSecretList}.cls` (new) -- the four screens.
 - `src/OcuPilot/Port/AdminPort.cls`, `Screen/Read.cls`, `Screen/Registry.cls`, `ui/tools/screen-mirror.mjs`, `ui/src/app/core/screens.generated.ts` -- `CERTINFO`, `rowGet.type`, the parent-criteria rule.
 - `src/OcuPilot/Screen/Area.cls`, `Screen/Descriptor/ProcessList.cls` -- the area pair; a `TYPESUFFIXES` doc correction.
-- `src/OcuPilot/Install/Fixture.cls`, `Install/Smoke.cls` -- the wallet fixture; `x509`, `ldap`, `wallet` checks, the first two skipped on an empty list without the demo.
+- `src/OcuPilot/Install/Fixture.cls`, `Install/Smoke.cls` -- the wallet fixture; `x509`, `ldap`, `wallet` checks, `x509` and `wallet` skipped on an empty list without the demo.
 - `ui/src/app/core/navigation.ts`, `core/strings.ts`, `shell/{data-table,list-page,locator-bar}.ts`, EXPERIENCE.md `:350-353` -- client pairing and strings.
 - Tests: `Test/SecurityLists.cls` and `ui/browser/security.browser-spec.mjs` (new); `Test/{CriteriaCorpus,RowGetCorpus,Demo,DemoFaults,DemoAppProbe,Descriptor,FixtureFault,ReadTool,ScreenRead,Smoke,UninstallGuard,Wire,WireSecurityRead}.cls`, `ui/tools/{navigation,navigation-wire,screen-mirror}.test.mjs`, `shell/{data-table,list-page,rail-wire}.spec.ts`, `ui/browser/ssl.browser-spec.mjs`.
 
 **Review.** 47 findings (Review Triage Log): 12 entries patched (medium 2: smoke demo gating, wallet removal tests; low 10), 4 deferred (frontmatter), the rest rejected with reasons in the log.
 
-**Follow-up review recommended: true** (patched medium 2, low 10). Unverified risk: the smoke skip for an empty X.509 or Wallet list is exercised only through `SmokeListFault`'s faked answer, never on a real instance installed without the demo fixture.
+**Follow-up review recommended: true** (patched medium 2, low 10). The smoke skip for an empty X.509 or Wallet list was later observed on a real instance with the demo fixture removed (code review, `## Verification`).
 
 **Verification (this pass).** `check-objectscript` 0; `lint-docs` clean; full load to `ocupilot-slot-b` and compile clean; on `ocupilot-b-ci` (up and down by this run) SecurityLists 7, WireSecurityRead 9, Wire 20, ReadTool 25, ScreenRead 22, Descriptor 32, Navigation 11, Demo 10, DemoFaults 4, UninstallGuard 3, Smoke 28, AdminPortSync 6, all green in `%UnitTest_Result` after the patches; smoke passed with `x509`, `ldap`, `wallet` passing; `npm run build` and `npm test` green (802 tool, 398 component); browser 90/90 on the rebuilt, redeployed bundle. Nine new mutation lines observed and reverted, tree byte-identical.
 

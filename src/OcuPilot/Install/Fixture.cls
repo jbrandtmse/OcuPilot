@@ -37,7 +37,7 @@
 /// "why no <class>OcuPilot.Test.InstallerProbe</class>-shaped capture subclass" and is
 /// unchanged by <class>DemoAppProbe</class>'s existence.
 /// <class>OcuPilot.Test.FixtureFault</class> (rework iteration 5) is a second such
-/// subclass, for fault injection into the three <code>Delete</code> calls
+/// subclass, for fault injection into the four <code>Delete</code> calls
 /// <method>RemoveOne</method> makes and into <method>OpenTask</method>.</p>
 /// <p><b>Correction at its origin (rework iteration 5, 2026-09-11) -- the error-log
 /// fixture no longer depends on the Task Manager daemon.</b> An earlier version of

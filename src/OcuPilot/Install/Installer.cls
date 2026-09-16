@@ -8,7 +8,7 @@
 /// never through IPM (AC14, DW-73), forward-migrates OcuPilot's own protected state
 /// against a version stamp (<class>OcuPilot.Kernel.State.Version</class>, AD-38, AC5/AC6),
 /// reports the CSP Gateway registration gap and its response timeout as information
-/// (AC8), and, under an explicit opt-in flag, creates and removes the five demo
+/// (AC8), and, under an explicit opt-in flag, creates and removes the six demo
 /// walkthrough fixtures through <class>OcuPilot.Install.Fixture</class> (AD-25, AC9).
 /// <method>StartPath</method> is the container start hook's single install entry point (Story
 /// 1.4); the hook's one other call, <method>MarkInstalling</method> before it recompiles,
@@ -955,7 +955,7 @@ ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0, pBundle
 /// refused identically (AC13) rather than reaching <method>Install</method> and being
 /// refused a frame later. Always installs the production profile
 /// (<code>""</code>); only when that succeeds, and only when <var>pDemo</var> is true,
-/// creates the five opt-in demo fixtures through <class>OcuPilot.Install.Fixture</class>
+/// creates the six opt-in demo fixtures through <class>OcuPilot.Install.Fixture</class>
 /// (AD-25) -- there is no reason to seed a walkthrough on top of a failed install.</p>
 /// <p>It is the one caller that asks <method>Install</method> for the <code>_SYSTEM</code>
 /// unexpire step (<var>pUnexpire</var> = 1; DW-73, AD-17): a fresh Community container

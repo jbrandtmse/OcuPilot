@@ -39,8 +39,9 @@ interface ListView {
  *
  * **A parent-scoped list reads for its route id** (AD-5). A screen declaring a `parentScope` declares
  * exactly one criterion, and the page fills it with the id the URL carries (`parentCriteria`), read
- * at call time so a refresh reads for the id the page is showing. A navigation that keeps this screen
- * and changes its id drops the previous parent's answers and reads again.
+ * at call time so a refresh reads for the id the page is showing. The page drops the store's answers
+ * when it opens, and a navigation that keeps this screen and changes its id drops them again and
+ * reads, so no parent's rows or selection are shown under another parent's id.
  */
 @Component({
   selector: 'app-list-page',
@@ -94,6 +95,9 @@ export class ListPage {
     }
     const store = this.stores.for(screen.descriptor, screen.refreshRates);
     this.list = { screen, store };
+    // Every parent's page shares the descriptor's store, so what it holds may be another parent's
+    // rows and selection: dropped before this parent's read, as an id change drops them.
+    if (screen.parentScope !== '') store.clearAnswers();
     const criteria = () => parentCriteria(screen, this.router.url);
     this.refresh.bind(screen, createScreenRead(this.api, screen, criteria));
     if (this.scope.loaded()) void this.refresh.readNow();
