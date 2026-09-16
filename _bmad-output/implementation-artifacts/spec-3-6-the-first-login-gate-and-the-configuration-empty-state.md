@@ -2,9 +2,10 @@
 title: 'Story 3.6: The first-login gate and the configuration-empty state'
 type: 'feature'
 created: '2026-09-15'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'c2373d3472f223ab942f0c41d512eedadd252d33'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md'
@@ -21,6 +22,81 @@ deferred:
       the client before a save: `Kernel/AgentRules.Validate` and `Api/Error.cls` hold all 17, and
       `Api/Router.cls:66-83` carries no validate route. A client-authored sentence would be a second
       copy source, which AD-39 exists to prevent.
+  - summary: >-
+      The panel is `{spacing.panel-default}` on every route; DESIGN.md gives it
+      `{spacing.panel-home}` on Home over a 120ms width transition, and `--ocu-panel-home` is
+      declared with no consumer.
+    evidence: |-
+      DESIGN.md `:891`, `:898` and `:1112` all state the Home width; `_metrics.scss:39` already
+      computes the token. The panel's width, its resize handle and its transitions are assigned to
+      Story 4.3 by this spec's own Design Notes ("adds width, resize, full-screen"), so a
+      route-aware width rule is that story's, not a gap in this one.
+    location: >-
+      ui/src/styles/_components.scss .ocu-panel
+    severity: medium
+  - summary: >-
+      The administrator reminder banner carries no link, which EXPERIENCE.md publishes for it.
+    evidence: |-
+      EXPERIENCE.md:612 - "it carries a link, cannot be dismissed, and goes the moment the
+      condition clears". No link label exists in the Fixed strings table, and this story's Always
+      clause forbids a literal that is not published, so building it needs a UX amendment (the
+      label, and whether the link is the route or the side-bar entry). `panel.spec.ts`'s banner
+      assertion was narrowed from "nothing focusable" to "no dismiss control" so the published link
+      is no longer pinned out by a test.
+    location: >-
+      ui/src/app/shell/panel.ts
+    severity: medium
+  - summary: >-
+      The "Gate declines" and "Non-administrator" matrix rows are exercised in jsdom only - every
+      browser assertion in this story runs as `_SYSTEM`.
+    evidence: |-
+      `panel.spec.ts`, `rail.spec.ts` and `app.spec.ts` hand-set the verdict to
+      `{allowed: false, failedPair: 'OcuPilotAdmin:USE'}`; `gate.browser-spec.mjs` signs in only as
+      `config.username`. The suite has precedent for a second principal
+      (`users.browser-spec.mjs`'s SECURE_USER, `error-log.browser-spec.mjs`'s SERVED_USER) and the
+      throwaway arms `OCUPILOT_ALLOW_PRINCIPALS`, so the leg is buildable; it is a new fixture
+      rather than an assertion, which is why it is not in this pass.
+    location: >-
+      ui/browser/gate.browser-spec.mjs
+    severity: medium
+  - summary: >-
+      `refusedValues` is snapshotted when a refusal arrives, not when the body was sent, so a field
+      edited while a save is in flight keeps a violation that no longer describes it.
+    evidence: |-
+      `rememberRefusal` calls `snapshotValues()` in `absorbRefusal`, which runs on the response.
+      Edit field X during the request and the server's violation on X arrives against the OLD value
+      while `refusedValues[X]` holds the NEW one, so `dropStaleViolation` sees no change and the
+      refusal stands over a value the reader already replaced. The fix is to capture the snapshot
+      beside the request body; it changes the `save`/`test` signatures, which is why it is not in
+      this pass. Settled by: refuse a save, and edit a field before the response lands.
+    location: >-
+      ui/src/app/areas/agent/definition-form.store.ts rememberRefusal
+    severity: medium
+  - summary: >-
+      A status or map read that fails during sign-in spends the one-shot, so the first-login gate
+      cannot fire later for that authentication even once the parked read succeeds.
+    evidence: |-
+      `App.runFirstLoginGate` consumes `consumeFreshSignIn()` before awaiting - deliberately, so
+      two change-detection passes cannot both claim one sign-in - and then returns on
+      `!answered()` or `!loaded()`. The degradation is bounded: the parked reads now recover, so
+      the reminder banner and the attention dot appear and point at the same screen the redirect
+      would have opened. Fixing it means a one-shot that can be returned unspent, which is a design
+      choice rather than a patch.
+    location: >-
+      ui/src/app/app.ts runFirstLoginGate
+    severity: medium
+  - summary: >-
+      Nothing exercises the rail tooltip's rendered reveal, which is why an adjacent-sibling
+      combinator broke it silently.
+    evidence: |-
+      A `grep` for `ocu-rail-tooltip` over `ui/browser/` and `ui/src/app/` returns the template and
+      the stylesheet only. The source pin added in `design-tokens.test.mjs` refuses a combinator a
+      sibling can break, which catches this exact class; it does not assert that a focused item
+      actually shows its tooltip, and jsdom computes no styles, so that assertion belongs in the
+      browser suite.
+    location: >-
+      ui/browser/shell.browser-spec.mjs
+    severity: medium
 ---
 
 <intent-contract>
@@ -247,128 +323,161 @@ are re-read, never remembered.
 
 ## Review Triage Log
 
-## Design Notes
+### 2026-09-15 — Review pass
 
-**Governing ADs:** AD-8 (privilege is the process's, checked at call time, never cached), AD-11 rule 4
-(nothing rendered issues a request to any host — the example card is inert markup), AD-12/AD-39 (one
-envelope, two renderings; the denied-action sentence is composed from published copy over the envelope's
-`code` and `detail`), AD-14 (a change publishes one event; consumers re-fetch), AD-19 (signals, stores,
-never component fields), AD-28 (per-tab tokens — why `adopt()` is the login), AD-46 (OcuPilot's own rows
-are visible in OcuPilot's own screens, which is why the definitions list is ungated).
+- verdicts: 59 findings — high 1, medium 20, low 17, false 4, maybe-false 0; 17 rejected on the
+  rows below.
+- findings:
+  - `[high]` `[patch]` `session.ts` counts a recovery re-probe as a fresh sign-in — verified:
+    `probeAndSettle` sets `probing` before `adopt()`, so the failed-refresh retry, the
+    install-backoff probe and a reload that renews an expired pair all raised the one-shot and
+    would have moved a reader off their screen mid-session. Fixed: `adopt(pair, authenticating)`,
+    answered by each call site; four new `session.test.mjs` cases; mutation recorded.
+  - `[medium]` `[patch]` the audience is chosen from a map read that may have failed — verified:
+    `NavigationService.answered()` is documented true "with a map **or with a failure**", and a
+    failed read leaves every verdict `UNGATED`, so the panel, the dot, the gate and the form banner
+    would all have addressed a non-administrator as an administrator on any map outage. Fixed: all
+    four read `loaded()`; four new assertions; one mutation, four reds.
+  - `[medium]` `[patch]` the attention dot breaks the rail tooltip's focus reveal — verified:
+    `.ocu-rail-item:focus-visible + .ocu-rail-tooltip` is adjacent-sibling and the dot renders
+    between them. Fixed: `~`, plus a source pin in `design-tokens.test.mjs` that reads the rule out
+    of `_components.scss` and refuses a combinator a sibling can break.
+  - `[medium]` `[patch]` `.ocu-rail-dot` steals the button's pointer events — verified: an absolute
+    span over the 48x48 item with no `pointer-events`. Fixed: `pointer-events: none`.
+  - `[medium]` `[patch]` `app-panel { flex: 0 0 auto }` inverts DESIGN.md's yield order — verified
+    against DESIGN.md `:900`: the panel could never shrink to `panel-min`, so the content column
+    absorbed every narrowing. Fixed: `flex: 0 1 auto`.
+  - `[medium]` `[patch]` the gated composer announces itself inert and accepts typing — verified:
+    no `readonly`, against this form's own precedent (`definition-form.page.ts` retention field).
+    Fixed: `readonly` beside `aria-disabled`, pinned in `panel.spec.ts`.
+  - `[medium]` `[patch]` a refused Test connection raised the **save**'s denied-action sentence —
+    verified: `absorbTestRefusal` called `rememberRefusal`, and the page composes "change this
+    definition" over the code and pair. Fixed: `rememberRefusedValues` keeps the values and not the
+    code; new test; mutation recorded.
+  - `[medium]` `[patch]` AC8's rule is unreachable for the two fields the cascade rewrites and no
+    control renders — verified: `applyProviderDefaults` rewrites `credentialName`/`envVarName`, the
+    template renders neither, the server refuses on both by name. Fixed: `setProvider` clears them;
+    new test; mutation recorded.
+  - `[medium]` `[patch]` `AgentStatus.load()` lets an overtaken read settle the answer — verified:
+    `generation` only moves on `reset()`, and both `App` and the bus issue loads. Fixed: a request
+    sequence; new test.
+  - `[medium]` `[patch]` a failed first status read removed the whole FR-28 surface for the tab —
+    verified: no `retryWhenReachable`, unlike every sibling read, and on an unconfigured instance no
+    bus event can arrive. Fixed: the read is parked; two new tests; `main.ts` wired.
+  - `[medium]` `[patch]` `leaveFirstLoginGate` swallowed its own timeout — verified: a gate slower
+    than the 5 s window returned silently and the caller failed on a missing selector. Fixed: the
+    no-fire path asserts the browser is on the requested route.
+  - `[medium]` `[patch]` `gate.browser-spec.mjs` never checked its deletes and never asserted a
+    clean teardown — verified: an enabled row would survive into the seven files that sort after it.
+    Fixed: every delete checked, `enabledCount() === 0` asserted in `after()`.
+  - `[medium]` `[patch]` `definitions()` answered `[]` on a bad read, so the suite's own premise
+    passed against an unreachable API — fixed: the read is asserted.
+  - `[medium]` `[patch]` the command box's filtered result was read unsettled — verified by
+    observing it: one full-suite run reported all nine screens. Fixed: `screensOffered` requires the
+    whole filter text, a narrowed group and a settled count (DW-374's shape).
+  - `[medium]` `[defer]` the panel is `panel-default` on every route; `--ocu-panel-home` is declared
+    and unused — Design Notes assign width to Story 4.3.
+  - `[medium]` `[defer]` the administrator reminder banner carries no link, which `EXPERIENCE.md`
+    `:612` publishes — no label exists in the Fixed strings table, so building one needs a UX
+    amendment. The over-strict test that pinned the link out was narrowed to AC2's own words.
+  - `[medium]` `[defer]` "Gate declines" and "Non-administrator" are exercised in jsdom only —
+    every browser assertion runs as `_SYSTEM`.
+  - `[medium]` `[defer]` `refusedValues` is snapshotted when the refusal arrives, not when the body
+    was sent, so a field edited during an in-flight save keeps a violation it no longer matches.
+  - `[medium]` `[defer]` a status or map read that fails during sign-in spends the one-shot, so the
+    gate cannot fire later for that authentication.
+  - `[medium]` `[defer]` nothing tested the rail tooltip's reveal, which is why the regression above
+    shipped silently; the source pin added here does not cover the rendered behavior.
+  - `[low]` `[patch]` the `dropStaleViolation` comment named a gap the code could not close and said
+    "five" over a list of six — fixed with the cascade change.
+  - `[low]` `[patch]` `removeProbeDefinitions`' comment described a disable step it never performed
+    — the sentence is deleted.
+  - `[low]` `[patch]` `gate.browser-spec.mjs` kept a second copy of the gate path — fixed: it
+    imports `GATE_PATH`.
+  - `[low]` `[patch]` `markVerified` interpolated an id into an ObjectScript command line — fixed:
+    the id's shape is asserted first.
+  - `[low]` `[patch]` `app.spec.ts`'s new import broke the file's own ordering — fixed.
+  - `[false]` `[reject]` the panel's reminder banner renders on the Definition form beside the
+    landing banner — `EXPERIENCE.md:612` says the banner "stays in the panel on every screen", and
+    the form is a screen. Published behavior, not a defect.
+  - `[false]` `[reject]` a refused GET of a definition shows the envelope reason rather than the
+    composed sentence — correct: "change this definition" is a save's action phrase and would be
+    wrong over a read.
+  - `[false]` `[reject]` the spec says "await, then consume" while the code consumes first — the
+    ordering is deliberate and documented at the site (two change-detection passes must not both
+    claim one sign-in); the fix would be a spec edit.
+  - `[false]` `[reject]` the gate can land after the user has navigated — `EXPERIENCE.md:612`
+    specifies the redirect on a fresh sign-in and says "They may leave"; re-checking the route
+    across the awaits would also race Angular's own initial navigation and could decline AC1.
+  - `[low]` `[reject]` `push` rather than `replaceUrl` diverges from the matrix's word "replaced" —
+    AC1 asks only that the URL become the form's, `EXPERIENCE.md:80` calls the gate bypassable, and
+    the choice is argued at the site. Surfaced to the lead rather than changed.
+  - `[low]` `[reject]` `--ocu-rail-dot`'s 12px offsets are magic numbers — the comment names the
+    derivation from the rail width and the glyph box; a `calc` would add complexity for no
+    observable change.
+  - `[low]` `[reject]` `agentComposerCaption` advertises Enter, Shift+Enter and Ctrl+I, none of
+    which exists — the caption is published copy this story is required to render, and the
+    behaviors belong to the panel that can act.
+  - `[low]` `[reject]` the card renders "0 unchanged fields" when there is nothing to disclose —
+    the only card this story renders has 38; the fix adds a branch for a state Story 5.2 owns.
+  - `[low]` `[reject]` `formatUnchangedCaption` splits on a bare `N` — the published literal
+    contains exactly one, and anchoring it would add complexity to a one-row pattern.
+  - `[low]` `[reject]` `@for (row of changedRows; track row.field)` throws on duplicate labels —
+    field names are unique within one entity's payload; identity tracking is the better code.
+  - `[low]` `[reject]` `openSideBar` polls a toggle with a fixed sleep — it fails loudly through
+    `assert.fail`, never silently.
+  - `[low]` `[reject]` AC1b's fixed 1500 ms wait — proving a redirect did **not** happen needs a
+    bounded wait; there is no event to await.
+  - `[low]` `[reject]` `screensOffered`'s settle loop reads back to back — the `waitForFunction`
+    above it requires the whole filter text and a narrowed group, which is the substantive guard.
+  - `[low]` `[reject]` a composed refusal banner outlives the edits after it — the same lifetime
+    `envelopeReason` already had; unchanged by this story.
+  - `[low]` `[reject]` the spec's `## Auto Run Result
 
-**Consumes:** Story 3.1 (`Kernel/State/Agent`), 3.4 (`ConnectionVerified`), 3.5 (the Definition form, the
-Definitions list, `ChangeBus` publishers, `screens.generated.ts`). **Consumed-by:** Story 3.7 (the panel's
-banner stack and the second `form-page`'s asterisk/legend), Story 4.3 (the docked panel — adds width,
-resize, full-screen, transcript, context chip, header controls, and makes it unconditional), Story 5.2
-(the same `proposal-card`, filling the two slots and turning the unchanged caption into a disclosure).
+Status: done
 
-**What "every login" keys off.** `Session.adopt()` — the one path a genuine authentication takes, from
-both the silent probe and an accepted form login. A tab resuming a stored pair reaches `signed-in` through
-`start()` without `adopt()` (`session.ts:513-526`), so a reload is not a login and the requested route
-survives, as `app.ts:79-82` promises. The state that decides whether the gate fires is **the instance's
-own definition rows** — nothing is stored in the browser, so "never afterwards" is a consequence of the
-condition, not of a remembered decision. The one-shot `consumeFreshSignIn()` records that an
-authentication happened, never that the gate was shown; it lives in memory for the tab's lifetime and
-cannot survive the condition clearing.
+**What shipped.** The two facts and the three surfaces that turn on them, client-only: `AgentStatus`
+reads the ungated definitions list and re-reads on the change bus; `Session.consumeFreshSignIn()`
+answers once per authentication; `App` gates the first login and mounts the panel; `Panel`,
+`ProposalCard`, `example-proposal` and the rail's attention dot render the audience's own empty
+state; and DW-372's composed denied-action sentence, DW-373's legend, asterisks and stale-violation
+drop land on the Definition form. `strings.ts` is at **251 keys = 236 + 12 + 3**, the eight new
+literals pointing at `EXPERIENCE.md:336-340`; the `150-240` band is untouched at 236.
 
-**Why the panel learns the audience from the navigation map.** The map is the existing answer to
-"may this caller edit definitions", recomputed on the instance per call and re-read on any 403
-(`navigation.ts:440 noteForbidden`). Reading `screenVerdict('agent/definitions').allowed` adds no second
-source and no cache. Before the map answers, every verdict defaults to *allowed* (`UNGATED`), which would
-show an administrator's banner to a non-administrator — so the panel renders nothing until
-`navigation.answered()` and `agentStatus.answered()` are both true.
+**Files.** New: `core/agent-status.ts`, `shell/panel.ts`, `shell/proposal-card.ts`,
+`shell/example-proposal.ts`, `testing/agent-status.ts`, `tools/agent-status.test.mjs`,
+`tools/example-proposal.test.mjs`, `browser/gate.browser-spec.mjs`, `browser/shell-entry.mjs`, and
+`panel.spec.ts` / `proposal-card.spec.ts`. Changed: `app.ts` (gate, panel mount, ninth sign-out
+reset), `session.ts` (the one-shot, and `adopt(pair, authenticating)`), `rail.ts` (the dot),
+`definition-form.page.ts` / `.store.ts` (DW-372, DW-373), `strings.ts`, `main.ts`,
+`_components.scss`, and eleven browser specs reconciled for the gate's redirect.
 
-**Written once, for here and Story 5.2.** `proposal-card.ts` renders only what its view model describes
-and owns no interactive node. Everything live-only is a projected slot — `[card-countdown]` and
-`[card-footer]` — which the static example leaves empty, so the static form has no countdown and no
-buttons *by construction* rather than by a disabled flag. The one anatomy element that is interactive in
-a live card, the unchanged-fields disclosure, ships here as its published caption with an `aria-hidden`
-chevron; Story 5.2 makes that same element a button when it adds interactivity. The card ships with no
-unexercised branch. AC3's pinning test queries the card's subtree for the full focusable selector, which
-is what proves "nothing focusable" rather than counting buttons.
+**Review.** 59 findings over four layers; 1 high, 20 medium, 17 low, 4 false, 17 rejected on the
+triage rows. Patched: 25 entries, including the high (a recovery re-probe read as a fresh sign-in
+and moved the reader mid-session) and the audience-from-a-failed-map-read defect that contradicted
+this spec's own Design Note. Deferred: six, in frontmatter. Every rejection carries its reason in
+the triage log.
 
-**The example card's content is data, not copy.** In a live card the entity type, name, field names,
-values, rationale, impact and reverse text come from the instance and the model; none of them can be
-string-table keys. The static example is the same shape with UJ-3's values, so it lives in a fixture and
-`ui/tools/example-proposal.test.mjs` re-derives every value from `EXPERIENCE.md:710` — the technique
-`strings.test.mjs:399-414` already uses for the version-mismatch sentence. The card's *chrome* (the title
-pattern, the direction words, the two headings, `Reverse:`, the unchanged caption, the example band) is
-copy and comes from the table.
+**Verification.** `npm run build` clean over six prebuild checkers; `npm test` **762** node tests and
+**352** component tests, 0 failures; `npm run test:browser` **74/74** against a throwaway
+(`ocupilot-ci`, 52776/1975), torn down after; `lint-docs.sh` and `check-objectscript.py` clean. No
+ObjectScript changed, so nothing was loaded or compiled. Twelve mutations were applied, observed
+red, reverted and confirmed byte-identical — every AC, the Integration AC, and each review patch
+that changed behavior.
 
-**Required published copy — settled.** The five rows landed in `EXPERIENCE.md`'s *Fixed strings* table at
-**:336-340** (commit `184c8ac`), carrying the eight literals Task 13 adds to `strings.ts`, and the two
-*Where*-cell amendments that let the dot name its reason are on the administrator-reminder (`:283`) and
-configuration-empty (`:285`) rows. Every other literal the panel, the card and the form render is an
-existing key: the panel's own name is `navAreaAgent` (the Landmarks line names the panel `complementary`
-"Agent co-pilot"), and `proposalRationaleHeading`, `proposalExpectedImpactHeading`, `proposalReverseLabel`,
-`proposalUnchangedFieldsDisclosure`, `proposalExampleCardTitle`, `agentComposerLabel`, `actionSend`,
-`agentComposerCaption`, `agentGateReminderBanner`, `agentGateLandingBanner`, `agentGateEmptyState` and
-`privilegeDeniedAction` are all present today.
+**Two things worth the lead's eye.** The gate navigates with an **ordinary history entry, not
+`replaceUrl`**: the matrix's word is "replaced", AC1 asks only that the URL become the form's, and
+because the silent probe counts as an authentication a deep link would otherwise be erased from
+history. It is argued at the site, and it is what made eleven browser specs need
+`leaveFirstLoginGate`. Separately, **a browser spec runs against the bundle deployed at
+`ci-throwaway.sh up`, not the working tree** — two mutations read green before the bundle was copied
+into `/durable/iris/csp/ocupilot`; the recipe is in `## Verification`.
 
-**DW-356 — settled: the dot has two conditions.** The attention-dot row (`:350`) now states the decision
-and its reasoning; the dot is shown when the agent is unconfigured (this story) or the kill switch is on
-(Story 3.7), and a failed Test connection is deliberately not a third condition. `Kernel/State/Agent.cls`
-stores no failure record, which is why the row could not have been implemented as written.
+**Follow-up review recommended: true.** A `high` was patched. The named unverified risk is the one
+below — `adopt(pair, authenticating)` re-classifies every authentication path in the client, and no
+browser leg exercises a failed refresh or an expired-pair reload against a real instance.
 
-**DW-372 — addressed.** The published action phrase `"change this definition"` (`:339`) plus the
-`error-log.page.ts:297-308` composition shape: the store keeps the refusal's `code` and
-`detail.failedPair`, the page composes with `formatDeniedAction`.
-
-**DW-373 — half addressed, half declined.** The asterisk and its legend ship here (`:340`; the asterisk is
-a CSS `::after` glyph, so `aria-required` remains the semantics and no key is needed for `*`). "Inline on
-blur for every field but the key" is declined and recorded in frontmatter `deferred:`: every field-level
-sentence is authored once on the server (AD-39), the key field validates on blur only because
-`GET /agent/providers` ships its rule *and* its server-written reason, and no other rule's reason reaches
-the client before a save. What does ship is the honest part — a refusal that no longer describes a field's
-value is dropped on that field's blur rather than left pointing at it.
-
-**Blast radius worth naming.** The panel narrows the content region to about 744px at the browser suite's
-1440×900 viewport, on a throwaway that holds no enabled definition — so every existing browser spec now
-renders with the panel present. Task 15 runs the whole suite and reconciles; any spec touched keeps
-DW-368/DW-374 discipline (a filter leg measured against the whole list, never another leg's survivors; a
-substring asserted to isolate a row naming that row alone; `filterToSubset` requiring the whole filter text
-and a settled count).
-
-## Verification
-
-**Commands:**
-
-- `cd ui && npm run build` — expected: the six prebuild checkers pass; `client-lint` reports no literal
-  text node in the two new templates.
-- `cd ui && npm test` — expected: `node --test tools/*.test.mjs` green including
-  `agent-status.test.mjs`, `example-proposal.test.mjs` and `strings.test.mjs` at **251 keys = 236 + 12 + 3**;
-  then the component runner green.
-- `sh scripts/ci-throwaway.sh up && cd ui && npm run test:browser` — expected: green, including
-  `gate.browser-spec.mjs`; tear the throwaway down afterwards.
-- `bash scripts/lint-docs.sh` — expected: clean.
-- No ObjectScript changes, so no load, compile or `iris_execute_tests` call is part of this story.
-
-**Mutations (Rule 19) — one per AC, each reverted byte-identical:**
-
-- AC1 → move the gate check out of `consumeFreshSignIn()` so it runs on every `signed-in` →
-  `gate.browser-spec.mjs`'s reload leg goes red.
-- AC1b → make `start()`'s resume branch call `adopt()` → the same leg goes red.
-- AC2 → give the reminder banner a dismiss control → `panel.spec.ts`'s no-dismiss assertion goes red.
-- AC3 → render the unchanged caption as a `<button>` → the focusable-selector assertion goes red.
-- AC4 → swap `aria-disabled` for `disabled` on the composer → `panel.spec.ts` goes red.
-- AC5 → require a second condition beside `configured()` → the clear-on-Enable assertion goes red.
-- AC6 → move the dot inside the rail button → `rail.spec.ts`'s accessible-name assertion goes red.
-- AC7 → return `envelopeReason` for `AUTH.NOPRIVILEGE` → `definition-form.page.spec.ts` goes red.
-- AC8 → drop the legend render → the same spec goes red.
-
-## Auto Run Result
-
-Status: ready-for-dev
-
-The one blocking condition is met. `node --test tools/strings.test.mjs` now fails with *expected 236 table
-literals + 12 extracted from prose + 3 named extras, found 243 keys*, and names as missing exactly the
-eight literals this story renders — the amendment standing ahead of the implementation, which Task 13
-closes. The band sanity check passes at 236 inside `150-240`, so it is not widened; the line-reference test
-passes, because `strings.ts` references stop at `:335`. Those two assertions are the only red across
-`node --test tools/*.test.mjs`, so no other checker reads a line the append moved. `bash scripts/lint-docs.sh`
-is clean.
-
-This pass replaced the *Required published copy* table and the DW-356 argument with the settled statements
-and corrected the Code Map's `strings.test.mjs` anchors and counts; the Spec Change Log carries the rest.
-The ACs, the I/O matrix and the fifteen tasks are unchanged, and everything they turn on was settled on the
-first pass.
+**Residual risks.** `adopt(pair, authenticating)` touches every authentication path and is pinned by
+`session.test.mjs` alone: the install-backoff and `install-unreadable` classifications are reasoned
+from the call sites, not observed against a real instance. The spec predicted a layout ripple from
+the narrower content region and none appeared; the ripple it did not predict was the redirect.

@@ -699,6 +699,162 @@ test('a failed refresh resolves every waiter to the session-ended path, once', a
   assert.equal(session.state(), 'session-ended');
 });
 
+// --- The one-shot the first-login gate reads (Story 3.6, FR-28) -------------------------------
+//
+// `consumeFreshSignIn()` is what makes the gate fire on an authentication and not on `signed-in`,
+// and the distinction is `adopt()`: a tab resuming a stored pair reaches `signed-in` without it.
+// `app.spec.ts` pins what the shell does with the answer, over a stubbed session; these pin the
+// answer itself, against the real one.
+//
+// **The discriminator is the call site, not the state.** Every re-establishing path -- the renewal,
+// the silent re-probe after a refused refresh, the install-backoff probe, and the renewal a reload
+// of an expired pair runs -- reaches `adopt()` through `setState('probing')`, so `currentState` at
+// that moment cannot tell a tab recovering its own principal from one authenticating a new person.
+// `adopt(pair, authenticating)` makes each caller answer, and the four tests below are the four
+// answers that are `false`.
+//
+// Mutations (Rule 19):
+// - make `start()`'s resume branch call `adopt()` -> the reloaded-tab test goes red, and a reload
+//   becomes an authentication the gate takes the tab off its own route for (AC1b).
+// - pass `true` from `retryProbeThenEnd()`'s `probeAndSettle` -> the failed-refresh test goes red,
+//   and a session that recovered silently yanks the reader to the Definition form.
+// - pass `true` from `refresh()`'s `adopt` -> the renewal test goes red.
+// - make `consumeFreshSignIn()` a plain getter rather than a one-shot -> the "answered once" leg
+//   of the silent-mint test goes red, and two change-detection passes both claim one sign-in.
+
+test('a reloaded tab that resumes a stored pair is not a sign-in: the gate one-shot never rises', async () => {
+  const tokens = reloadedTokens({
+    accessToken: 'a9',
+    refreshToken: 'r9',
+    sub: 'ann',
+    iat: NOW_MS / 1000,
+    exp: NOW_MS / 1000 + 60,
+  });
+  const { session, calls } = makeSession(() => response(200, pairBody('a1', 'r1')), { tokens });
+
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(session.state(), 'signed-in', 'the tab is signed in');
+  assert.equal(calls.length, 0, 'without having authenticated anything');
+  assert.equal(session.consumeFreshSignIn(), false, 'so the requested route survives the reload');
+});
+
+test('a silent mint IS a sign-in, and the one-shot answers it exactly once', async () => {
+  const { session } = makeSession(() => response(200, pairBody('a1', 'r1')));
+
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(session.state(), 'signed-in');
+  assert.equal(session.consumeFreshSignIn(), true, 'the probe authenticated this tab');
+  assert.equal(session.consumeFreshSignIn(), false, 'and a second reader cannot claim the same one');
+});
+
+test('an accepted form login is a sign-in', async () => {
+  const { session } = makeSession((path) =>
+    path === LOGIN_PATH ? response(200, pairBody('a2', 'r2')) : response(404)
+  );
+
+  session.setUserName('ann');
+  session.setPassword('correct horse');
+  assert.equal(await session.submitForm(), true);
+  assert.equal(session.consumeFreshSignIn(), true);
+});
+
+test('a rejected form login is not a sign-in', async () => {
+  const { session } = makeSession(() => response(401, ''));
+
+  session.setUserName('ann');
+  session.setPassword('wrong');
+  assert.equal(await session.submitForm(), false);
+  assert.equal(session.consumeFreshSignIn(), false);
+});
+
+test('a renewal rotates the pair of a signed-in tab and is not a sign-in', async () => {
+  const { session } = makeSession((path) =>
+    path === REFRESH_PATH ? response(200, pairBody('a5', 'r5')) : response(200, pairBody('a4', 'r4'))
+  );
+
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(session.consumeFreshSignIn(), true, 'the probe was the sign-in');
+
+  assert.equal(await session.refresh(), true);
+  assert.equal(
+    session.consumeFreshSignIn(),
+    false,
+    'and rotating that tab\'s pair is not a second one'
+  );
+});
+
+test('a failed refresh that the silent re-probe recovers is not a sign-in', async () => {
+  // EXPERIENCE.md's "Refresh failed (900 s idle or revoked)": the browser-level login is still
+  // good, so the probe mints a fresh pair and "the user sees nothing". Counting that as an
+  // authentication is the loudest thing the product could do at the moment it promises silence --
+  // on an unconfigured instance it takes the reader off the screen they are on, a quarter of an
+  // hour in, having asked for nothing.
+  let logins = 0;
+  const { session } = makeSession((path) => {
+    if (path === REFRESH_PATH) return response(401, '');
+    logins += 1;
+    return response(200, pairBody(`a${logins}`, `r${logins}`));
+  });
+
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(session.consumeFreshSignIn(), true, 'the cold probe was the sign-in');
+
+  assert.equal(await session.refresh(), true);
+  assert.equal(logins, 2, 'the silent probe ran a second time');
+  assert.equal(session.state(), 'signed-in', 'and the session continued invisibly');
+  assert.equal(session.consumeFreshSignIn(), false, 'so nothing may act on it as a sign-in');
+});
+
+test('a reload that renews an EXPIRED stored pair is still not a sign-in', async () => {
+  // The hole the browser leg cannot see: it reloads seconds after signing in, while the 60 s
+  // access token is still live, so `start()` takes the `setState('signed-in')` branch. A tab
+  // reloaded a minute later takes the renewal branch instead, and that renewal reaches `adopt()`
+  // from `probing` -- the same shape as a genuine authentication, on the one path AC1b is about.
+  const tokens = reloadedTokens({
+    accessToken: 'a9',
+    refreshToken: 'r9',
+    sub: 'ann',
+    iat: NOW_MS / 1000 - 600,
+    exp: NOW_MS / 1000 - 540,
+  });
+  const { session } = makeSession(
+    (path) => (path === REFRESH_PATH ? response(200, pairBody('a10', 'r10')) : response(404)),
+    { tokens }
+  );
+
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(session.state(), 'signed-in');
+  assert.equal(session.pair().accessToken, 'a10', 'the pair really was renewed');
+  assert.equal(session.consumeFreshSignIn(), false, 'and the requested route survives the reload');
+});
+
+test('signing out and in again is a new sign-in, so the gate is entitled to fire for the new principal', async () => {
+  const { session } = makeSession((path) =>
+    path === LOGIN_PATH ? response(200, pairBody('a1', 'r1')) : response(200, '')
+  );
+
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(session.consumeFreshSignIn(), true);
+
+  await session.signOut();
+  assert.equal(session.state(), 'signed-out');
+  assert.equal(session.consumeFreshSignIn(), false, 'a sign-out is not a sign-in');
+
+  session.setUserName('bob');
+  session.setPassword('hunter2');
+  assert.equal(await session.submitForm(), true);
+  assert.equal(session.consumeFreshSignIn(), true, 'the next principal authenticated');
+});
+
 // --- Sign-out ---------------------------------------------------------------------------------
 //
 // The wire half is pinned for real against the live instance by OcuPilot.Test.Token: with
@@ -2145,15 +2301,33 @@ test('Integration AC: app.ts renders the instance notice and withholds the outle
   // never fetched and every entry falls back to UNGATED, so a user who may reach almost
   // nothing sees a fully open rail; without the reset the next principal in the tab inherits
   // the last one's gating (AD-8).
+  // Story 3.6 stopped discarding the map read's promise -- the first-login gate waits on it
+  // beside the definitions read before it decides -- so the call is bound rather than voided.
+  // What is pinned is still the call, not the shape of the line it sits on.
   assert.match(
     source,
-    /void this\.navigation\.load\(\)/,
+    /this\.navigation\.load\(\)/,
     'something has to fetch the navigation map, or every gate falls back to ungated'
   );
   assert.match(
     source,
     /this\.navigation\.reset\(\)/,
     'and the map is dropped when the session leaves signed-in, or the next principal inherits it'
+  );
+
+  // The same pair for the fact the panel, the rail's dot and the gate banner render from
+  // (Story 3.6). It has the same two callers and the same hazard: without the load nothing
+  // answers and all three render nothing; without the reset the next principal in the tab
+  // inherits the last one's audience (AD-8).
+  assert.match(
+    source,
+    /this\.agentStatus\.load\(\)/,
+    'something has to read whether a definition is enabled, or the panel never picks an audience'
+  );
+  assert.match(
+    source,
+    /this\.agentStatus\.reset\(\)/,
+    'and it is dropped when the session leaves signed-in, or the next principal inherits it'
   );
 });
 

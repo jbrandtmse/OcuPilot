@@ -505,6 +505,22 @@ export const STRINGS = {
   agentDefinitionHideKey: 'Hide key',
   /** EXPERIENCE.md:335 */
   agentDefinitionRetentionCaption: 'Transcripts are kept for <n> days.',
+  /** EXPERIENCE.md:336 */
+  proposalCardTitle: 'Proposal \u00b7 <entity type> <name>',
+  /** EXPERIENCE.md:337 */
+  proposalDiffWas: 'was',
+  /** EXPERIENCE.md:337 */
+  proposalDiffNow: 'now',
+  /** EXPERIENCE.md:338 */
+  agentTrustReads: 'It reads with your privileges.',
+  /** EXPERIENCE.md:338 */
+  agentTrustProposes: 'It proposes and you confirm.',
+  /** EXPERIENCE.md:338 */
+  agentTrustAudited: 'Every write is marked in the audit database.',
+  /** EXPERIENCE.md:339 */
+  agentDefinitionRefusedAction: 'change this definition',
+  /** EXPERIENCE.md:340 */
+  formRequiredFieldsLegend: 'Required fields are marked with an asterisk.',
 
   // Not from the Fixed strings table, but required verbatim by this story's task
   // list: the audit-marker-failure fallback text (AD-15 / EXPERIENCE.md "9. **Audit.** Every confirmed"), the

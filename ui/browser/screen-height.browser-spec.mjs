@@ -26,6 +26,7 @@ import puppeteer from 'puppeteer';
 
 import { READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
+import { leaveFirstLoginGate } from './shell-entry.mjs';
 
 const config = browserConfig();
 
@@ -73,6 +74,9 @@ async function signedInAt(route) {
   await page.type('#ocu-signin-password', config.password);
   await page.click('.ocu-signin-card button[type="submit"]');
   await page.waitForSelector('app-rail .ocu-rail', { timeout: config.navigationTimeoutMs });
+  // The first-login gate takes an administrator to the Definition form on an instance with no
+  // enabled definition, whatever URL was asked for (Story 3.6). Back returns to this one.
+  await leaveFirstLoginGate(page, config.navigationTimeoutMs, route);
   return { context, page };
 }
 

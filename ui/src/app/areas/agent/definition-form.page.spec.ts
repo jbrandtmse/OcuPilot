@@ -2,12 +2,14 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { AgentStatus } from '../../core/agent-status';
 import { ApiService, type JsonResult } from '../../core/api';
 import { ChangeBus } from '../../core/change-bus';
 import { FormDirty } from '../../core/form-dirty';
-import { NavigationService } from '../../core/navigation';
+import { NavigationService, UNGATED, type Verdict } from '../../core/navigation';
 import { OverlayStack } from '../../core/overlay-stack';
 import { STRINGS } from '../../core/strings';
+import { stubAgentStatus } from '../../testing/agent-status';
 import { DefinitionFormPage } from './definition-form.page';
 
 /**
@@ -38,6 +40,22 @@ const PROVIDERS_BODY = {
   ],
 };
 
+/** Two rows, so choosing a provider is a cascade rather than a no-op (`setProvider` early-returns). */
+const TWO_PROVIDERS = {
+  providers: [
+    PROVIDERS_BODY.providers[0],
+    {
+      ...PROVIDERS_BODY.providers[0],
+      key: 'openai',
+      label: 'OpenAI',
+      defaultModel: 'gpt-5',
+      modelSuggestions: ['gpt-5'],
+      defaultEndpoint: 'https://ocupilot.invalid/v1/chat',
+      keyPrefix: 'sk-',
+    },
+  ],
+};
+
 const FORM_SCREEN = {
   descriptor: 'OcuPilot.Screen.Descriptor.AgentDefinitionForm',
   route: 'agent/definitions/edit',
@@ -59,7 +77,27 @@ async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
 /** One answer per path prefix; the last matching entry wins so a test can override a default. */
 type Answer = (path: string, init: { method?: string; body?: string }) => JsonResult<unknown>;
 
-async function mount(answer: Answer, url = '/agent/definitions/edit') {
+/**
+ * The map, stubbed down to what this page reads: the screen a URL resolves to, the verdict for
+ * `agent/definitions`, and a subscription so a 403's own re-read can reach the gate banner.
+ */
+function stubNavigation(verdict: Verdict, loaded = true) {
+  return {
+    screenForUrl: () => FORM_SCREEN,
+    // `loaded` and `answered` are separate answers on the live service: a read that FAILED answers
+    // `answered()` true with every verdict `UNGATED`, and the gate banner must not turn on that.
+    loaded: () => loaded,
+    answered: () => true,
+    screenVerdict: () => verdict,
+    subscribe: () => () => {},
+  } as unknown as NavigationService;
+}
+
+async function mount(
+  answer: Answer,
+  url = '/agent/definitions/edit',
+  options: { verdict?: Verdict; definitions?: { enabled: boolean }[]; mapLoaded?: boolean } = {}
+) {
   TestBed.resetTestingModule();
   const calls: { path: string; method: string; body: string }[] = [];
   const api = {
@@ -69,11 +107,16 @@ async function mount(answer: Answer, url = '/agent/definitions/edit') {
     },
   };
   const formDirty = new FormDirty();
+  // Unanswered unless a test says otherwise, so the gate banner is absent from every assertion
+  // in this file that predates it.
+  const agentStatus = stubAgentStatus(options.definitions ?? []);
+  if (options.definitions !== undefined) await agentStatus.load();
   TestBed.configureTestingModule({
     providers: [
       provideRouter([{ path: '**', children: [] }]),
       { provide: ApiService, useValue: api as unknown as ApiService },
-      { provide: NavigationService, useValue: { screenForUrl: () => FORM_SCREEN } as unknown as NavigationService },
+      { provide: NavigationService, useValue: stubNavigation(options.verdict ?? UNGATED, options.mapLoaded ?? true) },
+      { provide: AgentStatus, useValue: agentStatus },
       { provide: FormDirty, useValue: formDirty },
       { provide: ChangeBus, useValue: new ChangeBus() },
       { provide: OverlayStack, useValue: new OverlayStack() },
@@ -84,7 +127,7 @@ async function mount(answer: Answer, url = '/agent/definitions/edit') {
   document.body.appendChild(fixture.nativeElement);
   planted.push(fixture.nativeElement);
   await settle(fixture);
-  return { fixture, calls, formDirty, host: fixture.nativeElement as HTMLElement };
+  return { fixture, calls, formDirty, agentStatus, host: fixture.nativeElement as HTMLElement };
 }
 
 const ok = (body: unknown): JsonResult<unknown> => ({ kind: 'ok', status: 200, body });
@@ -668,5 +711,239 @@ describe('the Definition form', () => {
     expect(host.querySelector('.ocu-banner-warning')?.textContent?.trim()).toBe(
       'OcuPilot could not read that definition.'
     );
+  });
+
+  // --- Story 3.6: the gate banner, the legend and the two DW items -----------------------------
+
+  it('AC7 (DW-372): a 403 naming a pair reads the published denied-action sentence, not the envelope\'s reason', async () => {
+    // Mutation (Rule 19): return `envelopeReason` for `AUTH.NOPRIVILEGE` -> this goes red, and the
+    // form says "Refused" where it could have said which privilege is missing and for what.
+    const answer: Answer = (path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+      if (init.method === 'POST') {
+        return {
+          kind: 'error',
+          status: 403,
+          code: 'AUTH.NOPRIVILEGE',
+          reason: 'The request was refused.',
+          detail: { failedPair: 'OcuPilotAdmin:USE' },
+        };
+      }
+      return ok({ definitions: [] });
+    };
+    const { fixture, host } = await mount(answer);
+    ([...host.querySelectorAll('.ocu-form-bar-actions button')].at(-1) as HTMLButtonElement).click();
+    await settle(fixture);
+
+    const banner = host.querySelector('.ocu-banner-warning') as HTMLElement;
+    expect(banner.textContent?.trim()).toBe('You need OcuPilotAdmin:USE to change this definition.');
+    expect(banner.textContent).not.toContain('The request was refused.');
+    // Both slots resolved: a sentence still carrying a placeholder is the defect the resolver
+    // exists to prevent.
+    expect(banner.textContent).not.toContain('<resource>');
+    expect(banner.textContent).not.toContain('<action>');
+  });
+
+  it("AC7: an AUTH.NOPRIVILEGE that named no pair keeps the server's own reason", async () => {
+    // A resolved sentence with an empty resource slot says less than the one the server wrote.
+    const answer: Answer = (path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+      if (init.method === 'POST') {
+        return { kind: 'error', status: 403, code: 'AUTH.NOPRIVILEGE', reason: 'The request was refused.', detail: null };
+      }
+      return ok({ definitions: [] });
+    };
+    const { fixture, host } = await mount(answer);
+    ([...host.querySelectorAll('.ocu-form-bar-actions button')].at(-1) as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(host.querySelector('.ocu-banner-warning')?.textContent?.trim()).toBe('The request was refused.');
+  });
+
+  it('AC8 (DW-373): name and provider carry the asterisk, and the published legend appears once', async () => {
+    // Mutation (Rule 19): drop the legend render -> this goes red.
+    const { host } = await mount(catalogOnly);
+    const legends = [...host.querySelectorAll('.ocu-form-legend')];
+    expect(legends).toHaveLength(1);
+    expect(legends[0].textContent?.trim()).toBe(STRINGS.formRequiredFieldsLegend);
+
+    // The asterisk is a CSS glyph, so the marked fields are the ones carrying the class -- and
+    // `aria-required` is still the semantics, which is why no star is in any accessible name.
+    const marked = [...host.querySelectorAll('.ocu-field-label-required')].map((label) =>
+      label.textContent?.trim()
+    );
+    expect(marked).toEqual([STRINGS.tableColumnName, STRINGS.tableColumnProvider]);
+    for (const id of ['ocu-definition-name', 'ocu-definition-provider']) {
+      expect(host.querySelector(`#${id}`)?.getAttribute('aria-required')).toBe('true');
+    }
+    expect(host.textContent).not.toContain('*');
+  });
+
+  it('AC8: a field whose value changed since a refusal drops its stale violation on blur', async () => {
+    // The cascade is the case the blur closes: choosing a provider rewrites model, endpoint,
+    // maximum tokens, temperature and both credential-naming fields, and clears only `provider`'s
+    // own violation -- so a refusal on `model` would otherwise stand over a value the form itself
+    // replaced.
+    const answer: Answer = (path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(TWO_PROVIDERS);
+      if (init.method === 'POST') {
+        return refused([
+          { field: 'name', code: 'AGENT.NAME.REQUIRED', reason: 'Give the definition a name of 1 to 64 characters.' },
+          { field: 'model', code: 'AGENT.MODEL.REQUIRED', reason: 'Name the model this definition calls.' },
+        ]);
+      }
+      return ok({ definitions: [] });
+    };
+    const { fixture, host } = await mount(answer);
+    ([...host.querySelectorAll('.ocu-form-bar-actions button')].at(-1) as HTMLButtonElement).click();
+    await settle(fixture);
+
+    const model = host.querySelector('#ocu-definition-model') as HTMLInputElement;
+    expect(model.getAttribute('aria-invalid')).toBe('true');
+
+    const provider = host.querySelector('#ocu-definition-provider') as HTMLSelectElement;
+    provider.value = 'openai';
+    provider.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    // Still standing: the cascade moved the value and nothing told the refusal about it.
+    expect(model.getAttribute('aria-invalid')).toBe('true');
+
+    model.dispatchEvent(new Event('blur'));
+    await settle(fixture);
+    expect(model.getAttribute('aria-invalid')).toBe('false');
+    expect(host.querySelector('#ocu-definition-model-reason')).toBeNull();
+    // And the refusal that still describes its field is untouched -- the cascade never touched
+    // `name`, so nothing here is a "clear all".
+    const name = host.querySelector('#ocu-definition-name') as HTMLInputElement;
+    name.dispatchEvent(new Event('blur'));
+    await settle(fixture);
+    expect(name.getAttribute('aria-invalid')).toBe('true');
+    const remaining = [...host.querySelectorAll('.ocu-form-summary button')].map((entry) =>
+      entry.textContent?.trim()
+    );
+    expect(remaining).toEqual(['Give the definition a name of 1 to 64 characters.']);
+  });
+
+  it('AC8: a blur on a field whose value has not moved keeps its refusal', async () => {
+    const answer: Answer = (path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+      if (init.method === 'POST') {
+        return refused([
+          { field: 'name', code: 'AGENT.NAME.REQUIRED', reason: 'Give the definition a name of 1 to 64 characters.' },
+        ]);
+      }
+      return ok({ definitions: [] });
+    };
+    const { fixture, host } = await mount(answer);
+    ([...host.querySelectorAll('.ocu-form-bar-actions button')].at(-1) as HTMLButtonElement).click();
+    await settle(fixture);
+
+    const name = host.querySelector('#ocu-definition-name') as HTMLInputElement;
+    expect(name.getAttribute('aria-invalid')).toBe('true');
+    name.dispatchEvent(new Event('blur'));
+    await settle(fixture);
+    expect(name.getAttribute('aria-invalid')).toBe('true');
+  });
+
+  it("AC7: a Test connection refused for privilege does not raise the save's action sentence", async () => {
+    // `POST /:id/test` refuses 403 AUTH.NOPRIVILEGE with a `failedPair` of its own
+    // (`src/OcuPilot/Test/AgentWireSecurity.cls`). The published action phrase this screen
+    // resolves is "change this definition", which is what a SAVE does -- so composing it over a
+    // refused test would put a second banner on the screen naming an action nobody took, beside
+    // the test-failure line that already says what happened.
+    //
+    // Mutation (Rule 19): call `rememberRefusal` instead of `rememberRefusedValues` in
+    // `absorbTestRefusal` -> this goes red.
+    const answer: Answer = (path) => {
+      if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+      if (path.endsWith('/test')) {
+        return {
+          kind: 'error',
+          status: 403,
+          code: 'AUTH.NOPRIVILEGE',
+          reason: 'The request was refused.',
+          detail: { failedPair: 'OcuPilotAdmin:USE' },
+        };
+      }
+      return ok(definition());
+    };
+    const { fixture, host } = await mount(answer, '/agent/definitions/edit/7');
+    (host.querySelector('.ocu-form-test button') as HTMLButtonElement).click();
+    await settle(fixture);
+
+    expect(host.querySelector('.ocu-banner-warning')).toBeNull();
+    expect(host.textContent).not.toContain(STRINGS.agentDefinitionRefusedAction);
+    // What the reader gets instead is the server's own sentence, where the test's own result goes.
+    expect(host.querySelector('.ocu-form-test .ocu-form-error')?.textContent?.trim()).toBe(
+      'The request was refused.'
+    );
+  });
+
+  it('AC8: a violation on a field the cascade rewrites and no control can blur is cleared by the cascade', async () => {
+    // `credentialName` and `envVarName` are sent in every body and refused by name on the server,
+    // but the form renders no control for either -- so no blur can ever reach them, and a refusal
+    // the provider cascade has just made untrue would stand in the summary with no way out but
+    // another Save.
+    //
+    // Mutation (Rule 19): drop the `CASCADE_ONLY_FIELDS` loop from `setProvider` -> this goes red.
+    const answer: Answer = (path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(TWO_PROVIDERS);
+      if (init.method === 'PUT' || init.method === 'POST') {
+        return refused([
+          { field: 'credentialName', code: 'AGENT.CREDNAME.REQUIRED', reason: 'Name the stored credential.' },
+          { field: 'name', code: 'AGENT.NAME.REQUIRED', reason: 'Give the definition a name of 1 to 64 characters.' },
+        ]);
+      }
+      return ok(definition());
+    };
+    const { fixture, host } = await mount(answer, '/agent/definitions/edit/7');
+    ([...host.querySelectorAll('.ocu-form-bar-actions button')].at(-1) as HTMLButtonElement).click();
+    await settle(fixture);
+
+    const summary = () =>
+      [...host.querySelectorAll('.ocu-form-summary button')].map((entry) => entry.textContent?.trim());
+    expect(summary()).toEqual(['Name the stored credential.', 'Give the definition a name of 1 to 64 characters.']);
+    // No control carries it, which is exactly why the cascade has to clear it.
+    expect(host.querySelector('#ocu-definition-credentialName')).toBeNull();
+
+    const provider = host.querySelector('#ocu-definition-provider') as HTMLSelectElement;
+    provider.value = 'openai';
+    provider.dispatchEvent(new Event('change'));
+    await settle(fixture);
+
+    expect(summary()).toEqual(['Give the definition a name of 1 to 64 characters.']);
+  });
+
+  it('the gate landing banner is above the form while nothing is enabled and the caller is allowed', async () => {
+    const { host } = await mount(catalogOnly, '/agent/definitions/edit', { definitions: [] });
+    const banner = host.querySelector('.ocu-form-gate-banner') as HTMLElement;
+    expect(banner).not.toBeNull();
+    expect(banner.textContent).toContain(STRINGS.agentGateLandingBanner);
+    // Above the fields, which is what "landing" means: it is the first thing read on arrival.
+    const fields = host.querySelector('.ocu-form-fields') as HTMLElement;
+    expect(banner.compareDocumentPosition(fields) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('the gate landing banner is absent once a definition is enabled, and for a caller the map refuses', async () => {
+    const enabled = await mount(catalogOnly, '/agent/definitions/edit', { definitions: [{ enabled: true }] });
+    expect(enabled.host.querySelector('.ocu-form-gate-banner')).toBeNull();
+
+    const denied = await mount(catalogOnly, '/agent/definitions/edit', {
+      definitions: [],
+      verdict: { allowed: false, failedPair: 'OcuPilotAdmin:USE' },
+    });
+    expect(denied.host.querySelector('.ocu-form-gate-banner')).toBeNull();
+
+    // And an unanswered read shows nothing either: the banner never guesses.
+    const unanswered = await mount(catalogOnly);
+    expect(unanswered.host.querySelector('.ocu-form-gate-banner')).toBeNull();
+
+    // Nor does a map read that completed with a failure, where every verdict reads allowed.
+    //
+    // Mutation (Rule 19): drop the `loaded()` check from `showGateBanner` -> this goes red.
+    const noMap = await mount(catalogOnly, '/agent/definitions/edit', {
+      definitions: [],
+      mapLoaded: false,
+    });
+    expect(noMap.host.querySelector('.ocu-form-gate-banner')).toBeNull();
   });
 });

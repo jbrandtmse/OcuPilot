@@ -4,6 +4,7 @@ import { provideRouter } from '@angular/router';
 
 import { App } from './app/app';
 import { routes } from './app/app.routes';
+import { AgentStatus } from './app/core/agent-status';
 import { ApiService } from './app/core/api';
 import { ChangeBus } from './app/core/change-bus';
 import { ConnectivityService } from './app/core/connectivity';
@@ -143,6 +144,11 @@ const refresh = new RefreshService({
   namespace: () => scope.namespace(),
 });
 
+// Whether this instance holds an enabled agent definition (Story 3.6). Built here so the panel,
+// the rail's dot and the Definition form all read one answer, and given the bus so an Enable on
+// the Definitions list re-reads it once rather than once per consumer (AD-14).
+const agentStatus = new AgentStatus({ api, bus, connectivity });
+
 // The one authority over Escape (DW-137). Built here like every other core service so the
 // command box, the account menu and the side bar all register with the same instance --
 // three stacks would be three independent Escape handlers again.
@@ -178,5 +184,6 @@ bootstrapApplication(App, {
     { provide: RefreshService, useValue: refresh },
     { provide: ScreenActions, useValue: screenActions },
     { provide: FormDirty, useValue: formDirty },
+    { provide: AgentStatus, useValue: agentStatus },
   ],
 }).catch((err) => console.error(err));

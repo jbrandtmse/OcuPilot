@@ -32,6 +32,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { filterToSubset, viewCount, waitForRows } from './list-spec.mjs';
+import { leaveFirstLoginGate } from './shell-entry.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -103,6 +104,10 @@ async function signedInAt(url) {
   await page.type('#ocu-signin-password', password);
   await page.click('.ocu-signin-card button[type="submit"]');
   await page.waitForSelector('app-rail .ocu-rail', { timeout: config.navigationTimeoutMs });
+  // The first-login gate takes an administrator to the Definition form on an instance with no
+  // enabled definition, whatever URL was asked for (Story 3.6). Back returns to this one -- a
+  // no-op for the legs whose own URL already IS the form.
+  await leaveFirstLoginGate(page, config.navigationTimeoutMs, url);
   return { context, page };
 }
 
@@ -116,6 +121,63 @@ async function fill(page, id, value) {
 /** The path the browser is actually on, with no origin and no fragment. */
 function pathOf(page) {
   return new URL(page.url()).pathname;
+}
+
+/** The labels the command box's Screens group is offering, right now. */
+function screensNow(page) {
+  return page.$$eval(
+    '.ocu-command-box-group-screens [role="option"] .ocu-command-box-option-label',
+    (nodes) => nodes.map((node) => node.textContent.trim())
+  );
+}
+
+/**
+ * Type `text` into the open command box and answer the Screens group's labels, once the view that
+ * text produces has actually landed (DW-374, `list-spec.mjs`'s `filterToSubset`).
+ *
+ * **The whole text must be in the field before the result is believed**, and then the option count
+ * must have stopped moving: `page.type` enters one character at a time and the box re-filters on
+ * each, so a read taken between the keystrokes and the re-render answers the *unfiltered* list --
+ * which is a larger set than the one asserted, and so a red that says nothing about the subject.
+ * Observed once in a full-suite run of this file, where the assertion reported all nine screens.
+ */
+async function screensOffered(page, text) {
+  const unfiltered = (await screensNow(page)).length;
+  assert.ok(unfiltered > 1, `the unfiltered box offers more than one screen to narrow: ${unfiltered}`);
+  await page.type('#ocu-command-box-field', text);
+  // Both halves, or an intermediate state passes for the answer: the field holding the whole text
+  // (a prefix filters to a different, larger subset), and a group that has actually narrowed (the
+  // field can hold the whole text one frame before the view that text produces has landed).
+  await page.waitForFunction(
+    (typed, before) => {
+      const field = document.querySelector('#ocu-command-box-field');
+      if (field === null || field.value !== typed) return false;
+      const options = document.querySelectorAll(
+        '.ocu-command-box-group-screens [role="option"] .ocu-command-box-option-label'
+      );
+      return options.length < before;
+    },
+    { timeout: config.navigationTimeoutMs },
+    text,
+    unfiltered
+  );
+  // And then it must have stopped moving.
+  // Bounded on purpose: a list that never stops moving is a defect this helper reports rather than
+  // hangs on. Ten reads is far more than the one re-render a last keystroke costs.
+  let settled = await screensNow(page);
+  let stable = false;
+  for (let read = 0; read < 10 && !stable; read += 1) {
+    const again = await screensNow(page);
+    stable = again.length === settled.length && again.every((label, index) => label === settled[index]);
+    settled = again;
+  }
+  if (!stable) {
+    throw new Error(
+      `the command box's Screens group never settled on ${JSON.stringify(text)} (last ` +
+        `${JSON.stringify(settled)}); it is still re-rendering after the whole filter text was entered`
+    );
+  }
+  return settled;
 }
 
 test('Integration AC: a definition created through the form shows its saved sentence and appears in the list', async () => {
@@ -146,6 +208,9 @@ test('Integration AC: a definition created through the form shows its saved sent
     );
 
     await page.goto(`${config.origin}${LIST_URL}`, { waitUntil: 'networkidle2' });
+    // The first-login gate moves an administrator off any route on an instance with no enabled
+    // definition (Story 3.6). Back returns to the one this leg asked for.
+    await leaveFirstLoginGate(page, config.navigationTimeoutMs, LIST_URL);
     await waitForRows(page, config.navigationTimeoutMs);
     const names = await page.$$eval('[role="grid"] .ocu-data-table-body [role="row"]', (rows) =>
       rows.map((row) => row.textContent)
@@ -310,17 +375,13 @@ test('AC5: the form is routable and listed nowhere -- one side-bar entry, and no
     await page.keyboard.press('KeyK');
     await page.keyboard.up('Control');
     await page.waitForSelector('#ocu-command-box-list', { visible: true, timeout: config.navigationTimeoutMs });
-    await page.type('#ocu-command-box-field', 'Definition');
     // The option's own label element, not the option's whole textContent: an option renders its
     // label span followed by its area-detail span, and Angular drops the whitespace-only node
     // between them, so the whole option reads the label immediately followed by the area name,
     // with no separator -- which starts with neither `"Definition "` nor equals `"Definition"`.
     // Both of the assertions that stood here therefore passed whether or not the form was
     // offered.
-    const offered = await page.$$eval(
-      '.ocu-command-box-group-screens [role="option"] .ocu-command-box-option-label',
-      (nodes) => nodes.map((node) => node.textContent.trim())
-    );
+    const offered = await screensOffered(page, 'Definition');
     assert.deepEqual(
       offered,
       [STRINGS.agentDefinitionListLabel],

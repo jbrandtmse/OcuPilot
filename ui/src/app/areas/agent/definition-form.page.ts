@@ -11,8 +11,9 @@ import {
 } from '@angular/core';
 import { Router } from '@angular/router';
 
+import { AgentStatus, DEFINITIONS_ROUTE } from '../../core/agent-status';
 import { FormDirty } from '../../core/form-dirty';
-import { NavigationService, withQuery } from '../../core/navigation';
+import { NavigationService, formatDeniedAction, withQuery } from '../../core/navigation';
 import { STRINGS } from '../../core/strings';
 import { Dialog } from '../../shell/dialog';
 import { type Violation } from '../../core/violations';
@@ -109,11 +110,18 @@ interface FieldView {
     @if (hasReason) {
       <p class="ocu-banner ocu-banner-warning" role="alert">{{ reason }}</p>
     }
+    @if (showGateBanner) {
+      <p class="ocu-banner ocu-banner-info ocu-form-gate-banner">
+        <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
+        <span class="ocu-banner-message">{{ STRINGS.agentGateLandingBanner }}</span>
+      </p>
+    }
 
     @if (loadedFlag) {
+    <p class="ocu-form-legend">{{ STRINGS.formRequiredFieldsLegend }}</p>
     <div class="ocu-form-fields">
       <div class="ocu-field">
-        <label class="ocu-field-label" [attr.for]="nameField.id">{{ STRINGS.tableColumnName }}</label>
+        <label class="ocu-field-label ocu-field-label-required" [attr.for]="nameField.id">{{ STRINGS.tableColumnName }}</label>
         <div class="ocu-field-control">
           <input
             class="ocu-field-input"
@@ -124,6 +132,7 @@ interface FieldView {
             [attr.aria-invalid]="nameField.invalid"
             [attr.aria-describedby]="nameField.describedBy"
             (input)="onText('name', $event)"
+            (blur)="onFieldBlur('name')"
           />
         </div>
         @if (nameField.invalid) {
@@ -132,7 +141,7 @@ interface FieldView {
       </div>
 
       <div class="ocu-field">
-        <label class="ocu-field-label" [attr.for]="providerField.id">{{ STRINGS.tableColumnProvider }}</label>
+        <label class="ocu-field-label ocu-field-label-required" [attr.for]="providerField.id">{{ STRINGS.tableColumnProvider }}</label>
         <div class="ocu-field-control">
           <select
             class="ocu-field-input"
@@ -142,6 +151,7 @@ interface FieldView {
             [attr.aria-invalid]="providerField.invalid"
             [attr.aria-describedby]="providerField.describedBy"
             (change)="onProvider($event)"
+            (blur)="onFieldBlur('provider')"
           >
             @for (row of providers; track row.key) {
               <option [value]="row.key" [selected]="row.key === providerValue">{{ row.label }}</option>
@@ -165,6 +175,7 @@ interface FieldView {
             [attr.aria-invalid]="modelField.invalid"
             [attr.aria-describedby]="modelField.describedBy"
             (input)="onText('model', $event)"
+            (blur)="onFieldBlur('model')"
           />
           <datalist id="ocu-definition-models">
             @for (suggestion of modelSuggestions; track suggestion) {
@@ -188,6 +199,7 @@ interface FieldView {
             [attr.aria-invalid]="endpointField.invalid"
             [attr.aria-describedby]="endpointField.describedBy"
             (input)="onText('endpointUrl', $event)"
+            (blur)="onFieldBlur('endpointUrl')"
           />
         </div>
         @if (endpointField.invalid) {
@@ -271,6 +283,7 @@ interface FieldView {
                   [attr.aria-invalid]="maxTokensField.invalid"
                   [attr.aria-describedby]="maxTokensField.describedBy"
                   (input)="onText('maxTokens', $event)"
+                  (blur)="onFieldBlur('maxTokens')"
                 />
               </div>
               @if (maxTokensField.invalid) {
@@ -290,6 +303,7 @@ interface FieldView {
                   [attr.aria-invalid]="temperatureField.invalid"
                   [attr.aria-describedby]="temperatureField.describedBy"
                   (input)="onText('temperature', $event)"
+                  (blur)="onFieldBlur('temperature')"
                 />
               </div>
               @if (temperatureField.invalid) {
@@ -309,6 +323,7 @@ interface FieldView {
                   [attr.aria-invalid]="iterationsField.invalid"
                   [attr.aria-describedby]="iterationsField.describedBy"
                   (input)="onText('maxIterationsPerTurn', $event)"
+                  (blur)="onFieldBlur('maxIterationsPerTurn')"
                 />
               </div>
               @if (iterationsField.invalid) {
@@ -327,6 +342,7 @@ interface FieldView {
                   [attr.aria-invalid]="promptField.invalid"
                   [attr.aria-describedby]="promptField.describedBy"
                   (input)="onText('systemPromptOverride', $event)"
+                  (blur)="onFieldBlur('systemPromptOverride')"
                 ></textarea>
               </div>
               @if (promptField.invalid) {
@@ -399,9 +415,13 @@ export class DefinitionFormPage {
   private readonly formDirty = inject(FormDirty);
   private readonly router = inject(Router);
   private readonly navigation = inject(NavigationService);
+  private readonly agentStatus = inject(AgentStatus);
   private readonly injector = inject(Injector);
 
   protected readonly STRINGS = STRINGS;
+
+  /** The banner's glyph, `aria-hidden` so the strip reads as its sentence alone. */
+  protected readonly bannerGlyph = '\u2139';
 
   /** The disclosure's own id, so its button's `aria-controls` resolves. */
   protected readonly advancedId = 'ocu-definition-advanced';
@@ -422,6 +442,12 @@ export class DefinitionFormPage {
   constructor() {
     const stopStore = this.store.subscribe(() => this.generation.update((value) => value + 1));
     const stopDirty = this.formDirty.subscribe(() => this.generation.update((value) => value + 1));
+    // The gate banner turns on two facts that move under this page: the definitions read, which
+    // the change bus re-runs the moment this form's own save publishes, and the map, which a 403
+    // re-reads. Without both subscriptions the banner would still be standing over the definition
+    // that has just cleared it.
+    const stopStatus = this.agentStatus.subscribe(() => this.generation.update((value) => value + 1));
+    const stopNavigation = this.navigation.subscribe(() => this.generation.update((value) => value + 1));
     // The id is the route's last segment, or `''` for the create form. Read once: a form is
     // opened at one id, and a navigation to another builds a new component.
     void this.store.open(this.idFromUrl());
@@ -433,6 +459,8 @@ export class DefinitionFormPage {
     inject(DestroyRef).onDestroy(() => {
       stopStore();
       stopDirty();
+      stopStatus();
+      stopNavigation();
       // Not torn down when the store is being carried across a create's own route replacement:
       // that navigation destroys this component and builds another over the same definition, and
       // a reset would take the saved sentence with it (AC3).
@@ -461,13 +489,49 @@ export class DefinitionFormPage {
     return this.violations.length > 0;
   }
 
+  /**
+   * What an envelope-level refusal reads (DW-372, AD-8, AD-39).
+   *
+   * A privilege denial that named the `(resource, permission)` pair that failed is rendered
+   * through the published `You need <resource> to <action>.` pattern, with this screen's own
+   * published action phrase -- the `error-log.page.ts:297-308` shape: the store keeps the machine
+   * `code` and the pair, and the page composes. Every other code, and an `AUTH.NOPRIVILEGE` whose
+   * envelope named no pair, renders the envelope's own `reason` unchanged, because a sentence
+   * with an empty resource slot says less than the one the server wrote.
+   */
   protected get reason(): string {
     this.generation();
+    const pair = this.store.refusalPair();
+    if (this.store.refusalCode() === NO_PRIVILEGE_CODE && pair !== '') {
+      return formatDeniedAction(
+        STRINGS.privilegeDeniedAction,
+        pair,
+        STRINGS.agentDefinitionRefusedAction
+      );
+    }
     return this.store.reason();
   }
 
   protected get hasReason(): boolean {
     return this.reason !== '';
+  }
+
+  /**
+   * Whether the gate landing banner is above the form (FR-28).
+   *
+   * It turns on the same two facts the panel does -- the instance holds no enabled definition,
+   * and this caller may enable one -- and on nothing about how the form was opened. Storing "the
+   * gate fired" would be a flag that outlives its condition; reading the condition means the
+   * banner is there whenever the sentence is true and gone the moment it is not, including for an
+   * administrator who reached the form from the list rather than from a sign-in.
+   */
+  protected get showGateBanner(): boolean {
+    this.generation();
+    if (!this.agentStatus.answered() || this.agentStatus.configured()) return false;
+    // `loaded()`, not `answered()`, for the reason `panel.ts` records: a failed map read leaves
+    // every verdict `UNGATED`, and this banner tells the reader the instance is theirs to set up.
+    if (!this.navigation.loaded()) return false;
+    return this.navigation.screenVerdict(DEFINITIONS_ROUTE).allowed;
   }
 
   protected get busyFlag(): boolean {
@@ -710,9 +774,23 @@ export class DefinitionFormPage {
     this.store.setKey(target.value);
   }
 
-  /** The inline key-shape check (DW-339): on blur, never on every keystroke. */
+  /**
+   * The inline key-shape check (DW-339): on blur, never on every keystroke. The stale-refusal drop
+   * runs first, so a key replaced since a refusal loses that refusal before the shape of the new
+   * one is judged.
+   */
   protected onKeyBlur(): void {
+    this.store.dropStaleViolation('apiKey');
     this.store.checkKeyShape();
+  }
+
+  /**
+   * Blur on any other field: drop a refusal that no longer describes what the field holds
+   * (DW-373, AC8). Nothing is added -- every field-level sentence is written once on the server
+   * (AD-39), and the only mechanism that hands the client one is a refusal from an actual save.
+   */
+  protected onFieldBlur(field: string): void {
+    this.store.dropStaleViolation(field);
   }
 
   protected toggleAdvanced(): void {
@@ -872,6 +950,9 @@ export class DefinitionFormPage {
     }
   }
 }
+
+/** The machine code a privilege denial carries (AD-39). Never the envelope's human reason. */
+const NO_PRIVILEGE_CODE = 'AUTH.NOPRIVILEGE';
 
 /** The published Test connection result's placeholder. */
 const REPLY_PLACEHOLDER = "<the model's first words>";

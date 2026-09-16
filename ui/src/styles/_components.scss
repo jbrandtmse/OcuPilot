@@ -608,6 +608,23 @@ app-side-bar {
   flex: 0 0 auto;
 }
 
+// The panel is a link in the height chain only while it is showing something. It renders nothing
+// once a definition is enabled (Story 4.3 makes it unconditional), and an empty custom element
+// with a box would reserve `panel-default` of every screen it has nothing to say about -- the
+// same reason `app-fault-banner:empty` exists.
+// It yields before the content column does (DESIGN.md's Yield order: the side bar collapses, then
+// the panel shrinks from its target to `{spacing.panel-min}`, and only then does the content column
+// hold `{spacing.content-min-width}`). `flex-shrink: 1` is what lets step (2) happen at all; the
+// floor is `.ocu-panel`'s own `min-width`, which an `auto` min-width on this host resolves to.
+app-panel {
+  display: flex;
+  flex: 0 1 auto;
+}
+
+app-panel:empty {
+  display: none;
+}
+
 // An absent badge leaves no gap: a flex gap applies between empty items too, and a segment
 // that does not render must not reserve the space it would have taken.
 app-server-flag:empty {
@@ -856,8 +873,11 @@ app-error-log-page {
 
 // Focus reveals it at once: a keyboard user has already committed to the item, and a delay
 // there would read as the tooltip not existing.
+// The general sibling combinator, not the adjacent one: the attention dot renders between the
+// button and its tooltip whenever it is lit (Story 3.6), so `+` would silently stop revealing the
+// tooltip on exactly the one item that is asking to be looked at.
 .ocu-rail-slot:hover .ocu-rail-tooltip,
-.ocu-rail-item:focus-visible + .ocu-rail-tooltip {
+.ocu-rail-item:focus-visible ~ .ocu-rail-tooltip {
   width: auto;
   height: auto;
   padding: 5px 8px;
@@ -2816,4 +2836,318 @@ app-data-table {
   display: flex;
   align-items: center;
   gap: var(--ocu-space-2);
+}
+
+// --- The required-field legend and its asterisk (Story 3.6, DW-373) --------------------------
+//
+// DESIGN.md's `form-page`: "required fields marked with an asterisk in `{colors.on-surface-variant}`
+// and a one-line legend above the form". The asterisk is a CSS glyph rather than a character in the
+// label, so `aria-required` stays the semantics and no screen reader announces a star; the legend
+// is the published sentence that says what it means, shown once.
+
+.ocu-form-legend {
+  @include typo.ocu-type('caption');
+
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-field-label-required::after {
+  color: var(--ocu-on-surface-variant);
+  content: '*';
+}
+
+// The gate landing banner sits above the form's own fields, in the `banner` (info) treatment the
+// rest of the shell already carries (DESIGN.md `:1201`).
+.ocu-form-gate-banner {
+  margin: 0;
+}
+
+// --- The agent co-pilot panel (Story 3.6) ----------------------------------------------------
+//
+// Docked right of every screen on `{colors.surface-container-lowest}` with a 1px
+// `{colors.outline-variant}` left edge, `{spacing.panel-default}` wide and never below
+// `{spacing.panel-min}` (DESIGN.md `:1110`). Story 4.3 adds the header, the resize handle, the
+// full-screen toggle and the transcript; what is here is the body and the footer.
+
+.ocu-panel {
+  box-sizing: border-box;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  width: var(--ocu-panel-default);
+  min-width: var(--ocu-panel-min);
+  min-height: 0;
+  border-left: 1px solid var(--ocu-outline-variant);
+  background: var(--ocu-surface-container-lowest);
+}
+
+// The body scrolls inside itself, so the footer never leaves the viewport and the page body
+// never scrolls (DESIGN.md's yield order).
+.ocu-panel-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--ocu-space-3);
+  min-height: 0;
+  padding: var(--ocu-space-3) var(--ocu-panel-gutter);
+  overflow-y: auto;
+}
+
+// The who-can-configure sentence, in the `empty-state` register: a title-weight line saying what
+// is missing, with the example card beneath it (EXPERIENCE.md's Configuration-empty row).
+.ocu-panel-empty {
+  @include typo.ocu-type('body');
+
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-panel-banner {
+  margin: 0;
+}
+
+// The band and the card read as one object: the band carries the card's top corners and the card
+// squares its own, so the label belongs to the card rather than floating above it.
+.ocu-panel-example {
+  display: flex;
+  flex-direction: column;
+}
+
+.ocu-proposal-card-band {
+  @include typo.ocu-type('label');
+
+  margin: 0;
+  padding: 6px var(--ocu-space-3);
+  border-radius: var(--ocu-radius-md) var(--ocu-radius-md) 0 0;
+  background: var(--ocu-restrained-container);
+  color: var(--ocu-restrained);
+}
+
+.ocu-panel-example .ocu-proposal-card {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+// The three trust sentences beneath the example card. A list, because they are three statements
+// of the same kind read in a stated order (EXPERIENCE.md "the three sentences beneath the").
+.ocu-panel-trust {
+  @include typo.ocu-type('caption');
+
+  margin: 0;
+  padding-left: var(--ocu-space-4);
+  color: var(--ocu-on-surface-variant);
+}
+
+// The footer behind a 1px `{colors.outline-variant}` top edge (DESIGN.md `:1110`). The read-only
+// status line above the composer is Story 3.7's.
+.ocu-panel-footer {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: var(--ocu-space-1);
+  padding: var(--ocu-space-2) var(--ocu-space-3) 10px var(--ocu-space-3);
+  border-top: 1px solid var(--ocu-outline-variant);
+}
+
+.ocu-panel-composer-row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--ocu-space-2);
+}
+
+// Gated, never disabled: `aria-disabled` carries the refusal and the control keeps its box, its
+// border and its place in the Tab order (EXPERIENCE.md's Privilege Gating mechanism). The
+// treatment is `restrained` -- the role for what the portal is holding back -- and never an
+// opacity fade, which would drag the text under 4.5:1 (DESIGN.md `:1265`).
+.ocu-panel-composer {
+  @include typo.ocu-type('body');
+
+  box-sizing: border-box;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: var(--ocu-input-height);
+  padding: var(--ocu-space-2) var(--ocu-space-3);
+  border: 1px solid var(--ocu-outline);
+  border-radius: var(--ocu-radius-md);
+  background: var(--ocu-surface-container-lowest);
+  color: var(--ocu-restrained);
+  resize: none;
+}
+
+.ocu-panel-composer:focus-visible {
+  @include ocu-focus-ring;
+}
+
+.ocu-panel-send[aria-disabled='true'] {
+  background: var(--ocu-restrained-container);
+  color: var(--ocu-restrained);
+}
+
+.ocu-panel-send[aria-disabled='true']:hover,
+.ocu-panel-send[aria-disabled='true']:active {
+  background: var(--ocu-restrained-container);
+}
+
+.ocu-panel-caption {
+  @include typo.ocu-type('caption');
+
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
+}
+
+// --- The proposal card (Story 3.6, reused live by Story 5.2) ----------------------------------
+//
+// `{colors.surface-container-lowest}`, 1px `{colors.outline-variant}`, a 4px `{colors.agent-accent}`
+// bar on the left edge, `{rounded.md}`, elevation 1 (DESIGN.md `:1174`). The example variant is
+// identical to the live card -- same bar, header, diff rows, collapsed disclosure, agent text and
+// Reverse line -- so the example teaches the real thing.
+
+.ocu-proposal-card {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-2);
+  padding: var(--ocu-space-2) var(--ocu-space-3);
+  border: 1px solid var(--ocu-outline-variant);
+  border-left: 4px solid var(--ocu-agent-accent);
+  border-radius: var(--ocu-radius-md);
+  background: var(--ocu-surface-container-lowest);
+  box-shadow: var(--ocu-elevation-1);
+}
+
+.ocu-proposal-card-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ocu-space-2);
+  padding-bottom: var(--ocu-space-2);
+  border-bottom: 1px solid var(--ocu-outline-variant);
+}
+
+.ocu-proposal-card-title {
+  @include typo.ocu-type('title');
+
+  color: var(--ocu-primary);
+}
+
+.ocu-proposal-card-diff {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-1);
+}
+
+// `field - before -> after`, wrapping rather than truncating: a long value grows the row
+// (DESIGN.md `:1197`).
+.ocu-diff-row {
+  @include typo.ocu-type('caption');
+
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--ocu-space-1);
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-diff-field {
+  min-width: 76px;
+}
+
+// The direction words are read, never seen: the strike-through and the weight carry direction
+// visually, and "was" / "now" carry it for anyone who is not looking (EXPERIENCE.md's *Color
+// never alone*).
+.ocu-diff-direction {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.ocu-diff-value {
+  @include typo.ocu-type('code');
+}
+
+.ocu-diff-before .ocu-diff-value {
+  color: var(--ocu-destructive);
+  text-decoration: line-through;
+}
+
+.ocu-diff-after .ocu-diff-value {
+  color: var(--ocu-success);
+  font-weight: 600;
+}
+
+.ocu-diff-arrow {
+  color: var(--ocu-on-surface-variant);
+}
+
+// The unchanged-fields line. Story 5.2 turns this element into a `<button aria-expanded>` when
+// there are rows behind it; here it is the published caption and an `aria-hidden` chevron.
+.ocu-proposal-card-unchanged {
+  @include typo.ocu-type('caption');
+
+  display: flex;
+  align-items: center;
+  gap: var(--ocu-space-1);
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
+}
+
+// The agent's own words, on the tint that marks them as the model's and appears nowhere else
+// (DESIGN.md `:1174` item 3).
+.ocu-proposal-card-agent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-1);
+  padding: var(--ocu-space-2) 10px;
+  border-radius: var(--ocu-radius-sm);
+  background: var(--ocu-agent-container);
+  color: var(--ocu-on-agent-container);
+}
+
+.ocu-proposal-card-agent-heading {
+  @include typo.ocu-type('label');
+
+  color: var(--ocu-agent-accent);
+  text-transform: uppercase;
+}
+
+.ocu-proposal-card-agent-text {
+  @include typo.ocu-type('body');
+}
+
+.ocu-proposal-card-reverse {
+  @include typo.ocu-type('caption');
+
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-proposal-card-reverse-label {
+  color: var(--ocu-on-surface);
+  font-weight: 600;
+}
+
+// --- The rail's attention dot (Story 3.6) ----------------------------------------------------
+//
+// A disc of `{colors.agent-accent-dark}` in BOTH modes with a `{colors.shell}` ring, at the
+// icon's top-right corner offset 2px (DESIGN.md `:991`). Never the light-mode `agent-accent`,
+// which is 1.80:1 on the navy chrome and would vanish. It is a sibling of the rail button so the
+// button keeps the area name as its own accessible name and the dot carries its reason as its.
+
+.ocu-rail-dot {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  // It overlays the top-right corner of the 48x48 rail button, so without this a click or a hover
+  // there would land on an inert span instead of the item it annotates.
+  pointer-events: none;
+  width: 8px;
+  height: 8px;
+  border: 1.5px solid var(--ocu-shell);
+  border-radius: var(--ocu-radius-full);
+  background: var(--ocu-agent-accent-dark);
 }

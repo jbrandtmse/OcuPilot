@@ -1,24 +1,22 @@
 import { Injectable, Injector, inject } from '@angular/core';
 
+import {
+  AGENT_DEFINITIONS_PATH,
+  AGENT_DEFINITION_ENTITY,
+  AGENT_DEFINITION_SCOPE,
+} from '../../core/agent-status';
 import { ApiService, type JsonResult } from '../../core/api';
 import { ChangeBus } from '../../core/change-bus';
 import { FormDirty } from '../../core/form-dirty';
 import { type Violation, reasonForField, violationsOf } from '../../core/violations';
 
-/**
- * The agent-definition routes' common prefix, absolute from the origin root (AD-20). Every route
- * this store calls is this path, or this path with an id and a sub-resource on the end.
- */
-export const AGENT_DEFINITIONS_PATH = '/api/ocupilot/agent/definitions';
+// The route, the entity type and the scope live in `core/agent-status.ts`, which is the other
+// reader of the same list, and are re-exported here so every existing importer is unchanged. Two
+// copies of a path is how one of them ends up pointing somewhere the other does not.
+export { AGENT_DEFINITIONS_PATH, AGENT_DEFINITION_ENTITY, AGENT_DEFINITION_SCOPE };
 
 /** The provider catalog the form cascades from (AD-5). */
 export const AGENT_PROVIDERS_PATH = '/api/ocupilot/agent/providers';
-
-/** The entity type the Definitions list re-fetches on (AD-13, AD-14). */
-export const AGENT_DEFINITION_ENTITY = 'agent-definition';
-
-/** An agent definition is instance configuration, so its references carry AD-13's instance scope. */
-export const AGENT_DEFINITION_SCOPE = 'instance';
 
 /** One catalog row, as `GET /agent/providers` projects it. */
 export interface ProviderRow {
@@ -67,6 +65,15 @@ export type WritableField = (typeof WRITABLE_FIELDS)[number];
 
 /** The fields whose value is a JSON boolean on the wire; anything else is refused by the server. */
 const BOOLEAN_FIELDS: readonly string[] = ['markedLocal', 'readOnly', 'enabled'];
+
+/**
+ * The fields the provider cascade rewrites that the form renders **no control for**.
+ *
+ * They are sent in every body and the server refuses on them by name (`AGENT.CREDNAME.*`,
+ * `AGENT.ENVVAR.*`), so their violations reach the error summary -- but nothing can focus or blur
+ * them, so `dropStaleViolation` can never run on either. `setProvider` clears them itself.
+ */
+const CASCADE_ONLY_FIELDS: readonly string[] = ['credentialName', 'envVarName'];
 
 /** The fields whose value is a JSON number on the wire. */
 const NUMBER_FIELDS: readonly string[] = [
@@ -152,6 +159,22 @@ export class DefinitionForm {
   private violationList: readonly Violation[] = [];
 
   private envelopeReason = '';
+
+  /**
+   * The last refusal's machine `code` and, where it named one, the `(resource, permission)` pair
+   * that failed (AD-39). Kept beside the envelope's human `reason` rather than instead of it: the
+   * page composes the published denied-action sentence over these two and renders the reason for
+   * every other code, which is the `error-log.page.ts:297-308` shape.
+   */
+  private refusalCodeValue = '';
+
+  private refusalPairValue = '';
+
+  /**
+   * What each writable field held when that refusal arrived, so a blur can tell a field whose
+   * value has moved since from one the refusal still describes (DW-373).
+   */
+  private refusedValues: Record<string, string> = {};
 
   private testReply = '';
 
@@ -259,6 +282,16 @@ export class DefinitionForm {
     return this.envelopeReason;
   }
 
+  /** The last refusal's machine code, or `''`. Never its human reason (AD-39). */
+  refusalCode(): string {
+    return this.refusalCodeValue;
+  }
+
+  /** The `(resource, permission)` pair the last refusal named, or `''`. */
+  refusalPair(): string {
+    return this.refusalPairValue;
+  }
+
   /** The provider's first words from the last passing Test connection, or `''`. */
   reply(): string {
     return this.testReply;
@@ -324,6 +357,9 @@ export class DefinitionForm {
     this.loadedRecord = null;
     this.violationList = [];
     this.envelopeReason = '';
+    this.refusalCodeValue = '';
+    this.refusalPairValue = '';
+    this.refusedValues = {};
     this.testReply = '';
     this.testFailure = '';
     this.failureFromProvider = false;
@@ -410,6 +446,12 @@ export class DefinitionForm {
     if (this.value('provider') === key) return;
     this.applyProviderDefaults(key);
     this.clearFieldViolation('provider');
+    // The cascade rewrites the two credential-naming fields as well, and neither renders a control
+    // -- so no blur can ever reach `dropStaleViolation` for them, and a refusal the cascade has
+    // just made untrue would stand in the summary with no way to clear it but another Save. The
+    // four rewritten fields that DO render a control keep their violations until the reader blurs
+    // them, which is where they can see what replaced the value.
+    for (const field of CASCADE_ONLY_FIELDS) this.clearFieldViolation(field);
     this.markDirty();
     this.notify();
   }
@@ -448,6 +490,35 @@ export class DefinitionForm {
   }
 
   /**
+   * On blur: drop a refusal that no longer describes what the field holds (DW-373, AC8).
+   *
+   * **The comparison is against the values the refusal arrived over**, not against whatever the
+   * field held a moment ago, so a value edited and then typed back is still described by the
+   * refusal and keeps it. Nothing is added here -- a field-level sentence is written once on the
+   * server (AD-39) and the client has none to invent -- so the only outcome is a stale one going.
+   *
+   * It is the blur-time guarantee, not the only path: `setValue`, `setFlag`, `setProvider` and
+   * `setKey` each drop their own field's violation as the value moves. The gap it closes is the
+   * cascade -- `setProvider` rewrites model, endpoint, maximum tokens and temperature beside its
+   * own field, so a refusal on any of those four would otherwise stand over a value the form
+   * itself replaced. The two the cascade also rewrites and no control can blur, `credentialName`
+   * and `envVarName`, are cleared by `setProvider` instead.
+   */
+  dropStaleViolation(field: string): void {
+    const refused = this.refusedValues[field];
+    if (refused === undefined) return;
+    const now = field === 'apiKey'
+      ? this.keyValue
+      : BOOLEAN_FIELDS.includes(field)
+        ? String(this.flag(field))
+        : this.value(field);
+    if (now === refused) return;
+    if (this.violationList.every((entry) => entry.field !== field)) return;
+    this.clearFieldViolation(field);
+    this.notify();
+  }
+
+  /**
    * Save: the whole writable field set to the route the form's mode names (AD-4), and the response
    * body rendered in place of what was sent.
    *
@@ -461,7 +532,7 @@ export class DefinitionForm {
     const creating = this.creating();
     this.savingValue = true;
     this.violationList = [];
-    this.envelopeReason = '';
+    this.clearRefusal();
     this.outcomeValue = '';
     this.notify();
 
@@ -503,7 +574,7 @@ export class DefinitionForm {
     const generation = this.generation;
     this.testingValue = true;
     this.violationList = [];
-    this.envelopeReason = '';
+    this.clearRefusal();
     this.testReply = '';
     this.testFailure = '';
     this.failureFromProvider = false;
@@ -704,6 +775,62 @@ export class DefinitionForm {
     this.violationList = violationsOf(result);
     this.envelopeReason =
       this.violationList.length === 0 && result.kind === 'error' ? (result.reason ?? '') : '';
+    this.rememberRefusal(result);
+  }
+
+  /**
+   * Keep the refusal's machine `code`, the pair it named and the values the fields held when it
+   * arrived (AD-39, DW-372, DW-373).
+   *
+   * The pair travels in the envelope's structured `detail`, which is an untyped record, so it is
+   * narrowed rather than cast -- a `failedPair` that is not a string leaves the slot empty and the
+   * page falls back to the envelope's own reason rather than rendering a sentence with a hole in
+   * it.
+   */
+  private rememberRefusal(result: JsonResult<unknown>): void {
+    if (result.kind !== 'error') {
+      this.clearRefusal();
+      return;
+    }
+    this.refusalCodeValue = result.code ?? '';
+    const pair = result.detail === null ? undefined : result.detail['failedPair'];
+    this.refusalPairValue = typeof pair === 'string' ? pair : '';
+    this.refusedValues = this.snapshotValues();
+  }
+
+  /**
+   * The same memory, minus the code and the pair, for a refused **Test connection**.
+   *
+   * A blur still needs to know what each field held when the refusal arrived, so the values are
+   * kept. The code and the pair are not: the page composes them into the published denied-action
+   * sentence with **this screen's save phrase** ("change this definition"), and a test that was
+   * refused for privilege did not try to change anything. Rendering it would put a second banner
+   * on the screen, describing an action nobody took, over a `Test connection` failure line that
+   * already says what happened.
+   */
+  private rememberRefusedValues(result: JsonResult<unknown>): void {
+    if (result.kind !== 'error') {
+      this.clearRefusal();
+      return;
+    }
+    this.refusedValues = this.snapshotValues();
+  }
+
+  private clearRefusal(): void {
+    this.envelopeReason = '';
+    this.refusalCodeValue = '';
+    this.refusalPairValue = '';
+    this.refusedValues = {};
+  }
+
+  /** Every writable field's current text, plus the key, as one flat record. */
+  private snapshotValues(): Record<string, string> {
+    const out: Record<string, string> = {};
+    for (const field of WRITABLE_FIELDS) {
+      out[field] = BOOLEAN_FIELDS.includes(field) ? String(this.flag(field)) : this.value(field);
+    }
+    out['apiKey'] = this.keyValue;
+    return out;
   }
 
   /**
@@ -713,6 +840,7 @@ export class DefinitionForm {
    */
   private absorbTestRefusal(result: JsonResult<unknown>): void {
     this.violationList = violationsOf(result);
+    this.rememberRefusedValues(result);
     if (this.violationList.length > 0) return;
     if (result.kind !== 'error') return;
     const text = result.detail === null ? undefined : result.detail['providerText'];

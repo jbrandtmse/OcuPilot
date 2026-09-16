@@ -4,6 +4,7 @@ import { Router, RouterOutlet, provideRouter } from '@angular/router';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { routes } from './app.routes';
+import { AgentStatus } from './core/agent-status';
 import { ApiService, type JsonResult } from './core/api';
 import { ChangeBus } from './core/change-bus';
 import { FormDirty } from './core/form-dirty';
@@ -11,6 +12,7 @@ import { NavigationService } from './core/navigation';
 import { OverlayStack } from './core/overlay-stack';
 import { ShellState } from './core/shell-state';
 import { STRINGS } from './core/strings';
+import { stubAgentStatus } from './testing/agent-status';
 
 /**
  * The unsaved-changes guard (AC2, AD-11 rule 3), wired the way `app.routes.ts` actually ships it:
@@ -129,6 +131,10 @@ describe('the unsaved-changes guard, on the real route table (AC2, AD-11 rule 3)
         { provide: ChangeBus, useValue: new ChangeBus() },
         { provide: FormDirty, useValue: new FormDirty() },
         { provide: NavigationService, useValue: navigation },
+        // The guard's crossing is not about the agent's configuration; the form injects the
+        // status because it decides whether the gate banner is above it, and an unanswered one
+        // renders no banner at all.
+        { provide: AgentStatus, useValue: stubAgentStatus() },
         { provide: OverlayStack, useValue: new OverlayStack() },
         // Inert: this crossing is not about which area is active, and the real class needs a
         // preference store this test has no reason to construct.
@@ -250,6 +256,7 @@ describe('the unsaved-changes guard, on the real route table (AC2, AD-11 rule 3)
         { provide: ChangeBus, useValue: new ChangeBus() },
         { provide: FormDirty, useValue: new FormDirty() },
         { provide: NavigationService, useValue: navigation },
+        { provide: AgentStatus, useValue: stubAgentStatus() },
         { provide: OverlayStack, useValue: new OverlayStack() },
         { provide: ShellState, useValue: { setActiveArea: () => {} } as unknown as ShellState },
       ],

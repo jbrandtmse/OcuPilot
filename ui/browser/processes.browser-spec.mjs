@@ -34,6 +34,7 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { parseMarkers } from './iris-session.mjs';
 import { ROW_SELECTOR, clearFilter, clickRowCentre, filterToSubset, viewCount, waitForRows } from './list-spec.mjs';
+import { leaveFirstLoginGate } from './shell-entry.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -128,6 +129,9 @@ async function signedInAtList(user, password) {
   await page.type('#ocu-signin-password', password);
   await page.click('.ocu-signin-card button[type="submit"]');
   await page.waitForSelector('app-rail .ocu-rail', { timeout: config.navigationTimeoutMs });
+  // The first-login gate takes an administrator to the Definition form on an instance with no
+  // enabled definition, whatever URL was asked for (Story 3.6). Back returns to this one.
+  await leaveFirstLoginGate(page, config.navigationTimeoutMs, LIST_URL);
   return { context, page, reads };
 }
 
@@ -333,8 +337,14 @@ test('AC2: the command bar sorts the table by a chosen field, the header announc
 
     // Leaving and re-entering the screen: the store is keyed by descriptor and outlives the route.
     await page.goto(`${config.origin}/ocupilot/tasks/schedule?ns=HSCUSTOM`, { waitUntil: 'networkidle2' });
+    // The first-login gate moves an administrator off any route on an instance with no enabled
+    // definition (Story 3.6). Back returns to the one this leg asked for.
+    await leaveFirstLoginGate(page, config.navigationTimeoutMs, '/ocupilot/tasks/schedule?ns=HSCUSTOM');
     await page.waitForSelector('app-rail .ocu-rail', { timeout: config.navigationTimeoutMs });
     await page.goto(`${config.origin}${LIST_URL}`, { waitUntil: 'networkidle2' });
+    // The first-login gate moves an administrator off any route on an instance with no enabled
+    // definition (Story 3.6). Back returns to the one this leg asked for.
+    await leaveFirstLoginGate(page, config.navigationTimeoutMs, LIST_URL);
     await waitForRows(page, config.navigationTimeoutMs);
     assert.deepEqual(
       (await describeSort(page)).sorts,

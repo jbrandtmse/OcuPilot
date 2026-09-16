@@ -9,6 +9,7 @@ import {
 } from '@angular/core';
 import { Router } from '@angular/router';
 
+import { AgentStatus, DEFINITIONS_ROUTE } from '../core/agent-status';
 import { NavigationService, formatArea, formatRequires, withQuery } from '../core/navigation';
 import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
@@ -27,7 +28,16 @@ interface RailItem {
   readonly ariaDisabled: string | null;
   readonly ariaCurrent: string | null;
   readonly tabIndex: number;
+  /**
+   * The attention dot's accessible name, or `''` for an item that carries no dot. The name IS
+   * the reason (DESIGN.md's `attention-dot`: "Tooltip and accessible name state the reason"),
+   * so an empty string is the whole of "no dot".
+   */
+  readonly attention: string;
 }
+
+/** The area the attention dot belongs to. The only badge on the rail, ever. */
+export const AGENT_AREA_KEY = 'agent';
 
 /** The id a side bar uses to return focus to an area's rail item (EXPERIENCE.md "**Focus destinations.** No control"). */
 export function railItemDomId(areaKey: string): string {
@@ -58,7 +68,10 @@ export function railItemDomId(areaKey: string): string {
  * expresses without a second flag.
  *
  * **No count badge, ever** (EXPERIENCE.md "`{spacing.rail-width}` icon"). The one rail badge in the design is the
- * attention dot on Agent co-pilot, and it belongs to the agent's own stories.
+ * attention dot on Agent co-pilot, and this is the story that lights it. It is a **sibling of the
+ * button, not a child**: inside the button it would be inside that button's own `aria-label` and
+ * silenced, and the button's name has to stay the area's. Outside it, the dot carries its own
+ * name -- the published sentence for this caller's audience -- and is announced as itself.
  *
  * The glyph is the area name's first letter, produced in TypeScript and `aria-hidden`, standing
  * in for the owner's icon set: DESIGN.md's interim set is one Material Symbols glyph per area,
@@ -91,6 +104,9 @@ export function railItemDomId(areaKey: string): string {
         >
           <span class="ocu-rail-glyph" aria-hidden="true">{{ item.initial }}</span>
         </button>
+        @if (item.attention) {
+          <span class="ocu-rail-dot" role="img" [attr.aria-label]="item.attention"></span>
+        }
         <span class="ocu-rail-tooltip" role="tooltip" [id]="item.tipId">{{ item.tooltip }}</span>
       </span>
     }
@@ -98,6 +114,7 @@ export function railItemDomId(areaKey: string): string {
 })
 export class Rail {
   private readonly navigation = inject(NavigationService);
+  private readonly agentStatus = inject(AgentStatus);
   private readonly shell = inject(ShellState);
   private readonly router = inject(Router);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
@@ -114,6 +131,7 @@ export class Rail {
     this.generation();
     const focused = this.focusedIndex();
     const active = this.shell.activeArea();
+    const attention = this.attentionReason();
     return this.navigation.areas().map((area, index) => {
       const label = stringFor(area.labelKey);
       const verdict = this.navigation.areaVerdict(area.key);
@@ -133,6 +151,7 @@ export class Rail {
         ariaDisabled: verdict.allowed ? null : 'true',
         ariaCurrent: isActive ? 'page' : null,
         tabIndex: index === focused ? 0 : -1,
+        attention: area.key === AGENT_AREA_KEY ? attention : '',
       };
     });
   });
@@ -140,10 +159,33 @@ export class Rail {
   constructor() {
     const stopNavigation = this.navigation.subscribe(() => this.bump());
     const stopShell = this.shell.subscribe(() => this.bump());
+    const stopStatus = this.agentStatus.subscribe(() => this.bump());
     inject(DestroyRef).onDestroy(() => {
       stopNavigation();
       stopShell();
+      stopStatus();
     });
+  }
+
+  /**
+   * Why the Agent co-pilot item is showing a dot, or `''` when it is not (FR-28, DW-356).
+   *
+   * The dot is lit while the agent is unconfigured; Story 3.7 adds the kill switch as its second
+   * condition. A failed Test connection is deliberately not a third: nothing on the instance
+   * records one, so nothing could ever clear it.
+   *
+   * The reason is the same published sentence the panel shows that audience, chosen by the same
+   * verdict, so the dot and the panel can never say two different things about one state. Neither
+   * names an audience until the map has actually arrived -- `loaded()`, not `answered()`, for the
+   * reason the panel records: a read that completed with a failure leaves every verdict *allowed*,
+   * which is the right default for gating and the wrong one for deciding whose job this is.
+   */
+  private attentionReason(): string {
+    if (!this.navigation.loaded() || !this.agentStatus.answered()) return '';
+    if (this.agentStatus.configured()) return '';
+    return this.navigation.screenVerdict(DEFINITIONS_ROUTE).allowed
+      ? STRINGS.agentGateReminderBanner
+      : STRINGS.agentGateEmptyState;
   }
 
   protected get items(): readonly RailItem[] {

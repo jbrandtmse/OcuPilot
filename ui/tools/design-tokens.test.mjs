@@ -693,3 +693,29 @@ test('the primary button and the skip link carry the on-secondary state layer: 8
   assert.ok(pressed, 'expected one pressed rule for both');
   assert.match(pressed[1], /background:\s*color-mix\(in srgb, var\(--ocu-on-secondary\) 12%, var\(--ocu-secondary\)\)/);
 });
+
+test("the rail tooltip's focus reveal survives a sibling between the button and the tooltip", () => {
+  // EXPERIENCE.md "every item carries": the area name as the item's own label, and the tooltip
+  // beside it, on hover and on focus. The tooltip is
+  // a sibling of the button rather than a child, so the focus half is a combinator -- and Story
+  // 3.6's attention dot renders BETWEEN the two whenever it is lit. Written with `+` that stops
+  // revealing the tooltip on exactly the one item that is asking to be looked at, with nothing
+  // rendered wrong and no assertion anywhere to say so.
+  //
+  // Mutation (Rule 19): change `~` back to `+` in `_components.scss` -> this goes red.
+  const reveal = /\n(\.ocu-rail-item:focus-visible\s*([+~])\s*\.ocu-rail-tooltip)\s*\{/.exec(componentsRaw);
+  assert.ok(reveal, 'expected a focus-visible rule revealing the rail tooltip');
+  assert.equal(
+    reveal[2],
+    '~',
+    'the general sibling combinator: `+` breaks the moment anything renders between the button and its tooltip'
+  );
+
+  // And the dot really is between them, which is what makes the combinator load-bearing rather
+  // than a style preference.
+  const railRaw = readFileSync(join(here, '..', 'src', 'app', 'shell', 'rail.ts'), 'utf8');
+  const button = railRaw.indexOf('</button>');
+  const dot = railRaw.indexOf('class="ocu-rail-dot"');
+  const tooltip = railRaw.indexOf('class="ocu-rail-tooltip"');
+  assert.ok(button > 0 && dot > button && tooltip > dot, 'the dot renders after the button and before the tooltip');
+});
