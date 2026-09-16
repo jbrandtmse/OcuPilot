@@ -1,0 +1,200 @@
+// OcuPilot color tokens -- Lantern, theme V3.
+//
+// This is the ONE file in ui/ permitted to contain a literal color value (AD-12's
+// "one writer" shape applied to color; ui/tools/client-lint.mjs exempts this exact
+// path and no other). Every hex below is transcribed verbatim from
+// _bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/DESIGN.md,
+// frontmatter `colors:` lines 35-162 -- never recomputed, never invented. The light
+// value sits on the bare `--ocu-<role>` custom property; the dark value sits on
+// `--ocu-<role>-dark`. Both are declared unconditionally here, on the bare `:root`
+// (Design Notes' "the mechanism, in short"), which is what lets the dark *scope*
+// (applied in _theme.scss) be a plain class flip once the polish-week theme toggle
+// lands (spine `## Deferred` -> "Theme toggle wiring -> Polish week, FR-73").
+//
+// 64 color roles, each declared twice, for 128 custom properties: 30 Material 3
+// roles (DESIGN.md "Material 3 roles" table) plus 34 OcuPilot roles (DESIGN.md
+// "OcuPilot roles" table). ui/tools/design-tokens.mjs's COLOR_ROLES is the
+// machine-checked roster this file must equal exactly.
+//
+// Two more literal colors live here because they are colors, not because they are
+// roles -- DESIGN.md rule 2 and 8 (Design Notes #8) are explicit that neither is a
+// color role:
+//   - `--ocu-logo-gradient-stop`: the logo's vivid teal #2090A0, the header
+//     gradient's far stop and the two hairlines' far stop. Kept out of the 64-role
+//     set deliberately (white on it is 3.78:1; it must never sit under text or fill
+//     an area) but still needs a single named source so Story 1.10 and Epic 5 draw
+//     it from a token, not a second literal.
+//   - `--ocu-elevation-{1,2,3}` (and their `-dark` sides): the shadow values
+//     DESIGN.md's Elevation & Depth table states. Level 0 is `none` and carries no
+//     color, so it is not declared here.
+// ui/tools/design-tokens.mjs's NON_ROLE_TOKENS names both and excludes them from the
+// 64-role count.
+
+:root {
+  // --- Material 3 roles (30) --------------------------------------------------
+  --ocu-primary: #12456f;
+  --ocu-primary-dark: #9cc5ea;
+  --ocu-on-primary: #ffffff;
+  --ocu-on-primary-dark: #0b2440;
+  --ocu-primary-container: #d5e5f4;
+  --ocu-primary-container-dark: #234a6c;
+  --ocu-on-primary-container: #0b2440;
+  --ocu-on-primary-container-dark: #d5e5f4;
+
+  --ocu-secondary: #0b7080;
+  --ocu-secondary-dark: #6fd3dc;
+  --ocu-on-secondary: #ffffff;
+  --ocu-on-secondary-dark: #003238;
+  --ocu-secondary-container: #c4ecf1;
+  --ocu-secondary-container-dark: #00515a;
+  --ocu-on-secondary-container: #00363d;
+  --ocu-on-secondary-container-dark: #b9eef3;
+
+  --ocu-tertiary: #6b5e00;
+  --ocu-tertiary-dark: #e5d25a;
+  --ocu-on-tertiary: #ffffff;
+  --ocu-on-tertiary-dark: #2a2500;
+  --ocu-tertiary-container: #f7efa6;
+  --ocu-tertiary-container-dark: #4a4200;
+  --ocu-on-tertiary-container: #2a2500;
+  --ocu-on-tertiary-container-dark: #f7efa6;
+
+  --ocu-error: #b3261e;
+  --ocu-error-dark: #f2b8b5;
+  --ocu-on-error: #ffffff;
+  --ocu-on-error-dark: #601410;
+  --ocu-error-container: #f9dedc;
+  --ocu-error-container-dark: #8c1d18;
+  --ocu-on-error-container: #410e0b;
+  --ocu-on-error-container-dark: #f9dedc;
+
+  --ocu-surface: #fafbfc;
+  --ocu-surface-dark: #141719;
+  --ocu-surface-dim: #dce0e3;
+  --ocu-surface-dim-dark: #0e1113;
+  --ocu-surface-bright: #ffffff;
+  --ocu-surface-bright-dark: #33383c;
+  --ocu-surface-container-lowest: #ffffff;
+  --ocu-surface-container-lowest-dark: #0b0e10;
+  --ocu-surface-container-low: #f3f5f7;
+  --ocu-surface-container-low-dark: #1b1f22;
+  --ocu-surface-container: #eceff2;
+  --ocu-surface-container-dark: #212528;
+  --ocu-surface-container-high: #e2e7eb;
+  --ocu-surface-container-high-dark: #2a2f33;
+  --ocu-surface-container-highest: #d8dee3;
+  --ocu-surface-container-highest-dark: #34393e;
+  --ocu-on-surface: #1a1f24;
+  --ocu-on-surface-dark: #e4e7ea;
+  --ocu-on-surface-variant: #4a555e;
+  --ocu-on-surface-variant-dark: #b7bec4;
+
+  --ocu-outline: #6b7780;
+  --ocu-outline-dark: #858d94;
+  --ocu-outline-variant: #c7ced4;
+  --ocu-outline-variant-dark: #464c52;
+
+  --ocu-inverse-surface: #2c3238;
+  --ocu-inverse-surface-dark: #e4e7ea;
+  --ocu-inverse-on-surface: #f0f3f5;
+  --ocu-inverse-on-surface-dark: #212528;
+
+  // --- OcuPilot roles (34) -----------------------------------------------------
+  --ocu-shell: #0f3a5f;
+  --ocu-shell-dark: #0b2440;
+  --ocu-on-shell: #eaf2f7;
+  --ocu-on-shell-dark: #e1eaf0;
+  --ocu-shell-edge: #1c6a88;
+  --ocu-shell-edge-dark: #155874;
+
+  --ocu-agent-accent: #6b5e00;
+  --ocu-agent-accent-dark: #f2d64b;
+  --ocu-on-agent-accent: #ffffff;
+  --ocu-on-agent-accent-dark: #2a2500;
+  --ocu-agent-container: #fff6c8;
+  --ocu-agent-container-dark: #3a3200;
+  --ocu-on-agent-container: #2a2500;
+  --ocu-on-agent-container-dark: #fff2b0;
+
+  --ocu-change-highlight: #fff3b8;
+  --ocu-change-highlight-dark: #4a4200;
+
+  --ocu-egress-warning: #8f4300;
+  --ocu-egress-warning-dark: #ffb870;
+  --ocu-egress-warning-container: #ffe6cf;
+  --ocu-egress-warning-container-dark: #4a2600;
+
+  --ocu-restrained: #535f68;
+  --ocu-restrained-dark: #b0b8bf;
+  --ocu-restrained-container: #e6eaed;
+  --ocu-restrained-container-dark: #2a2f33;
+
+  --ocu-destructive: #b3261e;
+  --ocu-destructive-dark: #f2b8b5;
+  --ocu-on-destructive: #ffffff;
+  --ocu-on-destructive-dark: #601410;
+  --ocu-destructive-container: #f9dedc;
+  --ocu-destructive-container-dark: #8c1d18;
+  --ocu-on-destructive-container: #410e0b;
+  --ocu-on-destructive-container-dark: #f9dedc;
+
+  --ocu-success: #1b6b39;
+  --ocu-success-dark: #86dda1;
+  --ocu-success-container: #d6f1df;
+  --ocu-success-container-dark: #0f3a22;
+
+  --ocu-warning: #7a5000;
+  --ocu-warning-dark: #f5c858;
+  --ocu-warning-container: #ffefc2;
+  --ocu-warning-container-dark: #4a3600;
+
+  --ocu-info: #1e5c9e;
+  --ocu-info-dark: #9cc8f7;
+  --ocu-info-container: #dcebfa;
+  --ocu-info-container-dark: #123a63;
+
+  --ocu-code-surface: #1e252b;
+  --ocu-code-surface-dark: #07090b;
+  --ocu-on-code-surface: #dce3e8;
+  --ocu-on-code-surface-dark: #d3d9de;
+
+  --ocu-focus-ring: #12456f;
+  --ocu-focus-ring-dark: #9cc5ea;
+  --ocu-focus-ring-inner: #ffffff;
+  --ocu-focus-ring-inner-dark: #141719;
+
+  --ocu-server-flag-live: #b3261e;
+  --ocu-server-flag-live-dark: #ff9b93;
+  --ocu-server-flag-live-container: #fbe1df;
+  --ocu-server-flag-live-container-dark: #5a1410;
+
+  --ocu-server-flag-test: #7a5000;
+  --ocu-server-flag-test-dark: #f5c858;
+  --ocu-server-flag-test-container: #ffefc2;
+  --ocu-server-flag-test-container-dark: #4a3600;
+
+  --ocu-server-flag-failover: #5f37a6;
+  --ocu-server-flag-failover-dark: #cdb8f7;
+  --ocu-server-flag-failover-container: #ece4fa;
+  --ocu-server-flag-failover-container-dark: #33205c;
+
+  --ocu-server-flag-development: #1b6b39;
+  --ocu-server-flag-development-dark: #86dda1;
+  --ocu-server-flag-development-container: #d6f1df;
+  --ocu-server-flag-development-container-dark: #0f3a22;
+
+  // --- Non-role literals (not color roles -- see header) ------------------------
+  // The logo's vivid teal. Never under text, never filling an area (DESIGN.md rule 2).
+  --ocu-logo-gradient-stop: #2090a0;
+
+  // Elevation & Depth shadow values (DESIGN.md, "Elevation & Depth"). Tinted with
+  // the shell navy in light mode so shadows read as the chrome's, not gray smoke;
+  // plain black in dark mode. Level 0 is "none, hairline border" and carries no
+  // color literal, so it is not declared here.
+  --ocu-elevation-1: 0 1px 3px rgba(15, 58, 95, 0.12);
+  --ocu-elevation-1-dark: 0 1px 3px rgba(0, 0, 0, 0.5);
+  --ocu-elevation-2: 0 3px 10px rgba(15, 58, 95, 0.28);
+  --ocu-elevation-2-dark: 0 3px 10px rgba(0, 0, 0, 0.6);
+  --ocu-elevation-3: 0 12px 40px rgba(15, 58, 95, 0.25);
+  --ocu-elevation-3-dark: 0 12px 40px rgba(0, 0, 0, 0.7);
+}

@@ -694,6 +694,8 @@ OcuPilot is the ship's bridge for an IRIS instance: a dense, light instrument su
 
 This document and EXPERIENCE.md take precedence over any mock, wireframe or import.
 
+**When this document and EXPERIENCE.md disagree.** EXPERIENCE.md wins on behavior and copy — what happens, in what order, and the words on screen, the accessible name among them. This document wins on visual treatment — color, type, spacing, radius, elevation, and placement within a region. A fact that is both is split along that seam rather than decided wholesale: EXPERIENCE.md says a notice appears and what it reads, this document says what it looks like and where it sits. Where one document contradicts itself, the other resolves it. Neither document states the other's kind of fact without pointing at it.
+
 Three colors carry three meanings, and they never trade places:
 
 | Color | Meaning | Where |
@@ -983,12 +985,12 @@ The 48px activity bar on `{colors.shell}` (both modes), flush with the header �
 | Hover | Background `{colors.on-shell}` at 8%; icon at 100%; tooltip with the area name after 300ms, `{colors.inverse-on-surface}` on `{colors.inverse-surface}`, `{rounded.sm}`, 5px 8px padding, `{typography.caption}`, to the right of the rail. |
 | Active (the area of the current route, or the open side bar) | Icon `{colors.on-shell}` at 100%; a solid 3px `{colors.secondary-dark}` indicator on the rail's left edge (both modes: 6.72:1 light / 8.97:1 dark on the shell), inset 8px top and bottom, corners `0 2px 2px 0`. Not a gradient — the former `shell-edge` → `#2090A0` hairline was 1.94–2.47:1 over its upper half. The programmatic state (`aria-current`) is EXPERIENCE.md's. |
 | Focus | `{components.focus-ring.on-chrome}`: 2px `{colors.focus-ring-dark}` outside a 2px `{colors.shell}` halo, drawn inside the 48px cell. |
-| Privilege-gated | Icon `{colors.on-shell}` at 45%; no hover background; the tooltip names the required resource ("Requires %Admin_Secure") and shows on hover and focus. The item stays in the tab order. |
+| Privilege-gated | Icon `{colors.on-shell}` at 45%; no hover background; the tooltip names the required resource ("Requires %Admin_Secure:USE") and shows on hover and focus. The item stays in the tab order. |
 | Agent entry with attention | The `attention-dot` at the icon's top-right. |
 
 #### `attention-dot`
 
-A disc of `{colors.agent-accent-dark}` in both modes — it sits on the chrome: 8.09:1 light / 10.81:1 dark — with a `{colors.shell}` ring separating it from the icon, at the icon's top-right corner. Never the light-mode `{colors.agent-accent}`, which is 1.80:1 on the shell and would vanish. It appears only on the Agent co-pilot rail entry, and it means one of three things: the agent is unconfigured, the kill switch is on, or a definition needs attention. No counts anywhere on the rail.
+A disc of `{colors.agent-accent-dark}` in both modes — it sits on the chrome: 8.09:1 light / 10.81:1 dark — with a `{colors.shell}` ring separating it from the icon, at the icon's top-right corner. Never the light-mode `{colors.agent-accent}`, which is 1.80:1 on the shell and would vanish. It appears only on the Agent co-pilot rail entry, and it means one of two things: the agent is unconfigured, or the kill switch is on. A failed Test connection is deliberately not a third; `EXPERIENCE.md`'s `attention-dot` row carries the reason. No counts anywhere on the rail.
 
 #### `side-bar`
 

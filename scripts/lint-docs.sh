@@ -26,7 +26,7 @@ if [ ${#FILES[@]} -eq 0 ]; then
 fi
 
 STATUS=0
-npx --yes markdownlint-cli2 $FIX -- "${FILES[@]}" || STATUS=1
+npx --yes markdownlint-cli2@0.23.2 $FIX -- "${FILES[@]}" || STATUS=1
 uv run scripts/check-prose.py || STATUS=1
 
 exit $STATUS

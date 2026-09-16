@@ -1,0 +1,147 @@
+// OcuPilot typography -- the vendored faces and the six-role type ramp.
+//
+// Vendored, never a CDN (NFR-10, AD-47, AD-11 rule 4): the five `woff2` files under
+// `ui/src/assets/fonts/`, referenced here by a path relative to this partial so the
+// Angular application builder's own CSS asset pipeline resolves, hashes and copies
+// them into the emitted bundle without any entry in `angular.json`'s `assets` array
+// (that array is for files with no CSS/JS reference; a `url()` reference is enough
+// for the builder to treat a file as a build input).
+//
+// DESIGN.md's own two fallback stacks are carried verbatim in `$ocu-font-text` and
+// `$ocu-font-code` below (Rule: transcribe, never respell). "Five faces, not four"
+// (Design Notes #7): the ramp below declares only weights 400 and 600 -- 700 never
+// appears anywhere in this product -- but two of DESIGN.md's own *component* values
+// use a fifth and sixth face not covered by the six-role ramp itself: `caption` at
+// weight 500 (`area-tile.label-typography`) and `code` at weight 600 (already the
+// ramp's own `code` role -- no separate file, kept as one of the two 600 faces
+// below). Vendoring Inter 500 stops a later story from silently synthesizing a
+// faux weight the browser fakes by scaling 400.
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../assets/fonts/Inter-Regular.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('../assets/fonts/Inter-Medium.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('../assets/fonts/Inter-SemiBold.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../assets/fonts/JetBrainsMono-Regular.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('../assets/fonts/JetBrainsMono-SemiBold.woff2') format('woff2');
+}
+
+// DESIGN.md's two fallback stacks, verbatim (Typography frontmatter and prose).
+$ocu-font-text: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+$ocu-font-code: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas,
+  monospace;
+
+// The six text roles and no others (DESIGN.md Typography table, lines 861-877).
+// Exactly six is an AC, so the roles are custom properties a checker can enumerate
+// rather than something only implied by the utility classes below.
+:root {
+  // display -- 16px / 600 / 1.25, -0.01em -- the largest text in the product.
+  --ocu-type-display-family: #{$ocu-font-text};
+  --ocu-type-display-size: 16px;
+  --ocu-type-display-weight: 600;
+  --ocu-type-display-line-height: 1.25;
+  --ocu-type-display-tracking: -0.01em;
+
+  // title -- 14px / 600 / 1.3.
+  --ocu-type-title-family: #{$ocu-font-text};
+  --ocu-type-title-size: 14px;
+  --ocu-type-title-weight: 600;
+  --ocu-type-title-line-height: 1.3;
+  --ocu-type-title-tracking: normal;
+
+  // body -- 13px / 400 / 1.4 -- the floor for running text.
+  --ocu-type-body-family: #{$ocu-font-text};
+  --ocu-type-body-size: 13px;
+  --ocu-type-body-weight: 400;
+  --ocu-type-body-line-height: 1.4;
+  --ocu-type-body-tracking: normal;
+
+  // caption -- 12px / 400 / 1.35.
+  --ocu-type-caption-family: #{$ocu-font-text};
+  --ocu-type-caption-size: 12px;
+  --ocu-type-caption-weight: 400;
+  --ocu-type-caption-line-height: 1.35;
+  --ocu-type-caption-tracking: normal;
+
+  // label -- 11px / 600 / 1.2, +0.04em -- the smallest text in the product; nothing
+  // readable is set below this.
+  --ocu-type-label-family: #{$ocu-font-text};
+  --ocu-type-label-size: 11px;
+  --ocu-type-label-weight: 600;
+  --ocu-type-label-line-height: 1.2;
+  --ocu-type-label-tracking: 0.04em;
+
+  // code -- 12px / 400 / 1.5, monospace.
+  --ocu-type-code-family: #{$ocu-font-code};
+  --ocu-type-code-size: 12px;
+  --ocu-type-code-weight: 400;
+  --ocu-type-code-line-height: 1.5;
+  --ocu-type-code-tracking: normal;
+}
+
+@mixin ocu-type($role) {
+  font-family: var(--ocu-type-#{$role}-family);
+  font-size: var(--ocu-type-#{$role}-size);
+  font-weight: var(--ocu-type-#{$role}-weight);
+  line-height: var(--ocu-type-#{$role}-line-height);
+  letter-spacing: var(--ocu-type-#{$role}-tracking);
+}
+
+.ocu-type-display {
+  @include ocu-type('display');
+}
+.ocu-type-title {
+  @include ocu-type('title');
+}
+.ocu-type-body {
+  @include ocu-type('body');
+}
+.ocu-type-caption {
+  @include ocu-type('caption');
+}
+.ocu-type-label {
+  @include ocu-type('label');
+}
+.ocu-type-code {
+  @include ocu-type('code');
+}
+
+// DESIGN.md Typography rule: "Numbers in tables are tabular
+// (font-variant-numeric: tabular-nums) and right-aligned." No table exists yet to
+// apply it to (Story 1.9 onward); the rule ships as a token-backed utility so the
+// first table consumes it rather than re-deciding it.
+.ocu-numeric-cell {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}

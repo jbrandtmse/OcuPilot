@@ -159,7 +159,7 @@ inherited from upstream documents and are **not** restated there, so they are ex
 #### PRD 5.10 - Logs
 
 - FR-60: alerts.log viewer - entries reported since the last monitoring scrape from the monitoring API merged with a bounded tail of the file through the OcuPilot API. Catalog: LG-01.
-- FR-61: Audit database viewer - search by time range, source, type and name, user, process id, namespace, authentication and text; filter to events carrying the agent marker; open an event's full detail including description and any JSON payload. Catalog: LG-02, SS-14.
+- FR-61: Audit database viewer - search by time range, source, type and name, user, process id, namespace and authentication (the audit API offers no free-text search); filter to events carrying the agent marker; open an event's full detail including description and any JSON payload. Catalog: LG-02, SS-14.
 - FR-62: messages.log viewer - search, highlight, go to top and bottom and tail, served in bounded pages so the whole file never loads into the browser, from a manager-directory path no request can change. Catalog: LG-03.
 - FR-63: Application error log - drill from namespaces to dates to errors showing text, time and, where recorded, routine and line; delete by namespace or individually as a confirmable agent write, which is what gives the Logs area its own confirmed write; access through `SYS.ApplicationError`. Catalog: LG-04.
 
@@ -229,7 +229,7 @@ Technical requirements from the architecture spine (48 ADs, binding on every uni
 
 #### AdminPort: the vendor endpoint contract
 
-- **`AdminPort` is the only code that names an `%Api.Admin.*` class** (AD-2, AD-27). It reproduces `%Api.Admin.Dispatch.v1:Main()` exactly once, in eight steps, four of which are load-bearing and easy to omit: supply stub `%request`/`%response` objects with `IsRunningAsync = 0` (under the async flag every status an endpoint sets is discarded - probed: a GET for a missing web application reads 404 from the stub and 200 under the flag); call `ValidateQueryParams()` (it is what populates the endpoint's identifying property, and skipping it yields a misleading "Invalid Application name"); wrap `Run()` in `BeginCaptureOutput`/`EndCaptureOutput` (device output otherwise corrupts the envelope); and read the outcome from **both** `tSC` **and** `%response.Status` (a non-2xx status is a failure even when `tSC` is OK).
+- **`AdminPort` is the only code that names an `%Api.Admin.*` class** (AD-2, AD-27). It reproduces `%Api.Admin.Dispatch.v1:Main()` exactly once, in eight steps, four of which are load-bearing and easy to omit: supply stub `%request`/`%response`/`%session` objects with `IsRunningAsync = 0` (under the async flag every status an endpoint sets is discarded - probed: a GET for a missing web application reads 404 from the stub and 200 under the flag); seed query parameters into `%request.Data` and call `ValidateQueryParams()` (it is what populates the endpoint's identifying property, and skipping it yields an error that does not name the cause); wrap `Run()` in `BeginCaptureOutput`/`EndCaptureOutput` (device output otherwise corrupts the envelope); and read the outcome from **both** `tSC` **and** `%response.Status` (a non-2xx status is a failure even when `tSC` is OK).
 - **Write payload field lists are derived at build time, never transcribed** (AD-3). The endpoint's body-template method returns a prototype of placeholder values, not JSON Schema: no `required`, no `enum`, no `description`. Those three are authored **once per tool**, reviewed, and are the only hand-written part of a schema. The method is not uniformly named - `RequestBodySchema` (21), `PutRequestBodySchema` (17), `PutAndPostSchema` (1), `Schema` (1) across 70 classes - and the port resolves whichever exists in that order. "Generated" means a checked-in, reviewed artifact from a build step, never runtime reflection. **A write tool whose field list was typed by a human, for an endpoint that publishes a template, is a review failure.**
 - **Derivation is where credential fields are removed.** Generation classifies every derived field as ordinary or secret and emits the classification into the descriptor; a field the generator cannot classify is treated as secret; a field whose name matches the credential pattern emitted as ordinary fails the build.
 - **16 mutating endpoints publish no template; five are Release 1.** `Wallet.Secret` (FR-46) and `Security.Audit.Event` (FR-47) are field-bearing and need their field lists derived from the underlying `Security.*`/`%SYS.*` class and pinned by a test that fails when the instance disagrees; `Process` (FR-55), `Lock` (FR-57) and `Task.Manager` (FR-51) are action-style with trivial or empty bodies and need no template.
@@ -249,7 +249,7 @@ Technical requirements from the architecture spine (48 ADs, binding on every uni
 - **Privilege is the process's, checked at call time, never cached** (AD-8). No service account and no elevation on the request path. One resource name is not enough on 2026.2 - the security APIs need `%DB_IRISSYS:R` **and** `%Admin_Secure:U` together - so the descriptor declares the full set of pairs, the gate requires all of it, and a denial names the pair that failed.
 - **Read-only and the kill switch are evaluated at the point of effect** (AD-30), inside the write path and inside the turn loop, never only in the client and never cached for a turn. The turn job re-reads both between every step alongside its stop flag and abandons at the next boundary when either changes. Confirm re-evaluates them too.
 - **Turns and the ledger are bounded resources** (AD-41). One concurrent turn per user in Release 1, **enforced on the instance** (the UX's conversation lock is the affordance, not the enforcement); bounded iterations, wall clock and total provider tokens; the ledger bounded by rate and size per turn with overflow recorded as a count. **The ledger row is finalized after the write**, recording what was actually executed - resolved target, fields actually sent, privileges actually exercised - not what the proposal predicted.
-- **Every agent write is marked with a correlatable audit event** (AD-15). Events are registered with `Security.Events.Create()` at install - without registration `$System.Security.Audit()` silently returns 0 and drops the event. The marker carries the proposal id, tool, target identity and user, alongside the vendor's own `%System/%Security/*Change` event, so either record locates the other. Audit emission never fails a write and never propagates; a failed marker surfaces as "done - audit not marked".
+- **Every agent write is marked with a correlatable audit event** (AD-15). Events are registered with `Security.Events.Create()` at install - without registration `$System.Security.Audit()` silently returns 0 and drops the event. The marker carries the proposal id, tool, target identity and user, alongside the vendor's own `%System/%Security/*Change` event, so either record locates the other. Audit emission never fails a write and never propagates; a failed marker surfaces as "done · audit not marked".
 - **OcuPilot's own records are visible in OcuPilot's own screens, deliberately** (AD-46). Agent markers are ordinary rows in the audit database and are **never hidden** from the audit screen; the agent-marker filter is an affordance, not a default. The ledger is different: protected state, scoped per user, an administrator's view of another user's rows gated by the resources recorded on the row itself, with that gate living with the ledger rather than the screen.
 
 #### State protection, install and operations
@@ -439,7 +439,7 @@ Actionable work items from the UX design contract (`DESIGN.md` for how it looks,
 - UX-DR46: `message-user` - right-aligned at most 86% width on `primary-container`, corners `lg lg 2px lg` (the small corner pointing at the composer), whitespace preserved, **no avatar, no name, no timestamp**, not editable after send. A message refused by the turn lock is not rendered.
 - UX-DR47: `message-agent` - the avatar left, an 8px gap, then text at up to 96% width with **no bubble**; sanitized Markdown with teal underlined-on-hover links, **external links inert with the full host visible in caption after the link text**, inline code on `surface-container`, code blocks on `code-surface` with a copy button, and **images only from same-origin or inline sources**. Row names the agent cites are set in `code`. A turn-ending error renders as an error `banner` in the agent's slot; a turn the user stopped is not an error and takes the tool-call card's Stopped status instead.
 - UX-DR48: `avatar-agent` - the robot crop at 24px beside messages and 20px in the panel header and on card headers, `md` corners cut by CSS (both files are opaque), no border and no ring. **Never scales above 32px, never appears in the header or on the rail, never used as a button**, never beside a user message. `alt="Agent"`. The human has no avatar.
-- UX-DR49: `tool-call-card` - one per tool call appended in order, as an **expandable disclosure** (`<button aria-expanded>`): a 36px collapsed line with a chevron, the tool name and target in `code`, and the status at the right in `label`; the running card is expanded and collapses on completion; click, Enter and Space toggle. Expanded it adds the arguments summary and the result on `code-surface`, at most twelve lines before scrolling inside itself. Implement the six statuses - running (12px spinner + "running"), done (and "done - audit marked" for a write), failed with the error sentence beneath, blocked by read-only mode with a 3px `restrained` left bar, **"done - audit not marked" in `warning` with a warning glyph always on the collapsed line, never only in the body**, and stopped-by-the-user with no body and no expansion (not an error - nothing went wrong). The status text is part of the accessible name and updates in place. **The first card - or, for a turn that calls no tool, the first reply text - appears within 10 seconds of Send.** The card is never the same color as a proposal card and its collapsed line never hides the status.
+- UX-DR49: `tool-call-card` - one per tool call appended in order, as an **expandable disclosure** (`<button aria-expanded>`): a 36px collapsed line with a chevron, the tool name and target in `code`, and the status at the right in `label`; the running card is expanded and collapses on completion; click, Enter and Space toggle. Expanded it adds the arguments summary and the result on `code-surface`, at most twelve lines before scrolling inside itself. Implement the six statuses - running (12px spinner + "running"), done (and "done · audit marked" for a write), failed with the error sentence beneath, blocked by read-only mode with a 3px `restrained` left bar, **"done · audit not marked" in `warning` with a warning glyph always on the collapsed line, never only in the body**, and stopped-by-the-user with no body and no expansion (not an error - nothing went wrong). The status text is part of the accessible name and updates in place. **The first card - or, for a turn that calls no tool, the first reply text - appears within 10 seconds of Send.** The card is never the same color as a proposal card and its collapsed line never hides the status.
 - UX-DR50: `proposal-card` - the one thing in the transcript asking for a decision: the sheet with a 4px `agent-accent` left bar at elevation 1, reflowing at any panel width. Six anatomy parts: header (avatar, "Proposal - <entity type> <name>" in `title`/`primary` with the entity in `code`, the countdown caption turning `warning` at 1:00 and staying so to 0:00); the diff, changed fields first, with the fields the payload also sends unchanged collapsed under a "N unchanged fields" disclosure closed by default (the card's default height is two changed rows plus one disclosure line, whatever the payload carries); two agent-text blocks on `agent-container` under uppercase `label` headings in `agent-accent` with a small "agent" tag - **this tint marks the model's words and appears nowhere else**; the Reverse line where a reversal exists; confirmation inputs when required, a destructive proposal also taking a 3px `destructive` bar under the header rule and a `button-destructive` Confirm; and a footer that is **also the card's status line and the focus destination** after Confirm, Cancel and expiry. Implement all nine card states including **Example** (identical to Live with a full-width label band, no countdown, no buttons, nothing focusable, keeping live colors so the example teaches the real card).
 - UX-DR51: `diff-row` - a 24px row with the field label in a 76px caption column, the before value in `code`/`destructive` with a line-through, an `aria-hidden` arrow, and the after value in `code` at 600 in `success`. Long values **wrap rather than truncate** and the row grows. Secret values render as eight bullets on both sides; empty values read "(none)". A **delete proposal has no after-state**: it shows the target's identifying fields as `field - value -> (removed)`, reads "<field>: <value>, removed", and carries **no Reverse line**. The accessible rendering is "<field>: was <before>, now <after>" with visually hidden "was"/"now"; unchanged rows read "<field>: <value>, unchanged". The strike-through and weight carry the direction, not color alone. **The `on-surface-variant` / `on-surface` diff pairing is retired.**
 - UX-DR52: `banner` - an inline notice, never floating: `md` radius, a 14px glyph, text wrapping at any width, an optional `button-text` link. **Not dismissible while its condition persists, gone the moment it clears.** Implement seven kinds - lock (info), auditing off (warning, with "Auditing configuration" for every user and "Turn auditing on" for administrators, opening that screen with the enable control focused), administrator reminder (info, raised for an OcuPilot administrator while no agent definition is enabled, reading "No agent definition is enabled. Configure one in Agent co-pilot > Definitions." per `EXPERIENCE.md` -> *Fixed strings*), gate landing (info, above the Definition form), enforced read-only and kill switch (restrained), Task Manager suspended (warning, with Resume), and form error summary (error, receiving focus, `role="alert"`, each entry a link to its field) - plus the egress variant for the plain-HTTP acknowledgment. The auditing-off and kill-switch banners are **not dismissible**. Banners in the panel span its width minus the gutter; in content they span the form or table width.
@@ -458,7 +458,7 @@ Actionable work items from the UX design contract (`DESIGN.md` for how it looks,
 
 - UX-DR60: Implement the **privilege-gating mechanism** as the accessibility contract: a gated control stays focusable and arrow-reachable with `aria-disabled="true"` - **never the `disabled` attribute** - and names its reason. Where the control takes DOM focus (rail item, side bar entry, area-tile, button) the reason is a tooltip on **hover and focus** via `aria-describedby`; in the side bar and command box it is **also inline after the label**; in menus and result lists, where Material's key managers skip disabled items and no tooltip can ever show, gated entries render as non-selectable rows with the reason inline as part of the accessible name (`skipPredicate` overridden so they are announced). The same mechanism serves command bar actions with nothing selected and self-protection refusals. **Gated controls are never hidden.** Cover the eight documented cases including a deep link to a gated route (the screen renders its title and the permission-denied message while the rest of the shell works) and the Wallet screen-level gate.
 - UX-DR61: Implement **live-data behavior** as one framework: change event -> silent re-fetch in place preserving sort, filter, selection and scroll; the changed row or field taking `change-highlight` and the "Changed" tag within 2s, scrolled into view, settling over 2s and holding until the next interaction with that row or field; a deleted row leaving the list and clearing the selection and locator segment if it was selected; a created row appearing highlighted and selected; the off-screen toast per UX-DR54; the auto-refresh chip switching between off and a rate from a short fixed list (5s - 10s - 30s - 60s, default off) on Processes, Databases, Database details, Task schedule, Task details and System usage, with setting, sort, filter and max rows persisted per screen and **refresh silent** - no spinner, no skeleton, no announcement; **pause under an open proposal** on that screen's entity type with the chip saying so, resuming on confirm, cancel or expiry; async values filling their skeleton cells as they land **without the table reflowing**, and meters showing "-" until their first value; and **tail, not live** - log viewers load bounded pages with "Load newer" and nothing streams in Release 1.
-- UX-DR62: Implement the **ten-step agent write lifecycle** as the user experiences it: propose (tool-call card then proposal card, several stacking in order each with its own Confirm/Cancel and **no "Confirm all"**, the screen pausing auto-refresh); review (the full card per UX-DR50, with a proposal to disable auditing carrying its warning inside the card); confirm (a separate authenticated request, the button showing progress with `aria-disabled` and focus kept, then the status line taking focus, the write's card reading "done - audit marked", the screen re-fetching and highlighting within 2s, and the reply ending "Shall I show you the audit entry?" - answering yes taking the user to the audit database with the agent-marker filter applied); cancel (Cancel, **a new message, or New conversation** cancels every live proposal, which is why the card carries its guard caption, Send drops to secondary, and the agent's message points at Confirm - a user who types "yes" from habit cancels the card, and the next reply must say so and offer to re-propose); expiry (10 minutes, announced to assistive tech **once, at 1:00**, then the restrained treatment with "Expired" and **Re-propose** as a fresh turn - the limit is essential to the security model under WCAG 2.2.1 and Re-propose is the accommodation, and a card restored from a reloaded transcript is **always** shown expired); target changed (step 7); read-only (no card at all - the agent says what it would have changed and on which screen); kill switch (the panel disabled, live proposals no longer confirmable, screens still working); audit (the marker, its failure surfaced, and enabling auditing itself being a write); and the polish-week additions (copy-out draft, governance-disabled results). **Confirming one proposal cancels its siblings on the same entity. Stop is not a new turn and cancels nothing.**
+- UX-DR62: Implement the **ten-step agent write lifecycle** as the user experiences it: propose (tool-call card then proposal card, several stacking in order each with its own Confirm/Cancel and **no "Confirm all"**, the screen pausing auto-refresh); review (the full card per UX-DR50, with a proposal to disable auditing carrying its warning inside the card); confirm (a separate authenticated request, the button showing progress with `aria-disabled` and focus kept, then the status line taking focus, the write's card reading "done · audit marked", the screen re-fetching and highlighting within 2s, and the reply ending "Shall I show you the audit entry?" - answering yes taking the user to the audit database with the agent-marker filter applied); cancel (Cancel, **a new message, or New conversation** cancels every live proposal, which is why the card carries its guard caption, Send drops to secondary, and the agent's message points at Confirm - a user who types "yes" from habit cancels the card, and the next reply must say so and offer to re-propose); expiry (10 minutes, announced to assistive tech **once, at 1:00**, then the restrained treatment with "Expired" and **Re-propose** as a fresh turn - the limit is essential to the security model under WCAG 2.2.1 and Re-propose is the accommodation, and a card restored from a reloaded transcript is **always** shown expired); target changed (step 7); read-only (no card at all - the agent says what it would have changed and on which screen); kill switch (the panel disabled, live proposals no longer confirmable, screens still working); audit (the marker, its failure surfaced, and enabling auditing itself being a write); and the polish-week additions (copy-out draft, governance-disabled results). **Confirming one proposal cancels its siblings on the same entity. Stop is not a new turn and cancels nothing.**
 
 #### Copy, voice and interaction primitives
 
@@ -748,7 +748,7 @@ A user opens each of the six areas and sees real data from the instance they are
 
 **Implementation notes:** `AdminPort` is built here and is the **only** code that will ever name an `%Api.Admin.*` class (AD-2, AD-27) - eight steps reproducing the vendor dispatcher, four of them load-bearing and each easy to omit silently. AD-27's endpoint-inventory fixture goes into CI in this epic, which is what retires "exercise the payload on the instance" as a per-story task. **Two source readings resolved here, both flagged for the user:** (1) PRD section 10.1 requires one live list per area including Logs, while `EXPERIENCE.md`'s IA table puts every Logs screen at step 3 - section 10.1 is authoritative by the IA table's own note, so Logs gets screens in this epic; (2) the Logs area needs **two** surfaces this early, not one - the audit database viewer, because UJ-3's resolution and SM-4's one-minute demo both end at a marked audit event, and the application error drill-down, because AD-48 requires the delete's namespace to come from the level the user has drilled to, which needs the screen to exist before Epic 5's confirmed write can be AD-48-compliant.
 
-### Epic 3: Configure the agent, and hold the switches that restrain it
+## Epic 3: Configure the agent, and hold the switches that restrain it
 
 An OcuPilot administrator picks a provider, pastes a key, proves it works before enabling it, and from then on holds two switches that restrain or silence the agent instance-wide without any screen losing function - while a user with no agent configured still gets every screen and a panel that shows them what a proposal would look like. First half of build step 2, and a prerequisite for every turn.
 
@@ -950,7 +950,23 @@ So that every later story compiles against a settled stack and cannot invent a s
 - **Given** the harvested `Response`, `Error` and `Log` classes from iris-couch and `Utils` from iris-execute-mcp-v2
 - **When** they are loaded into `Api/` and `Kernel/`
 - **Then** no name from the rename checklist appears anywhere in the tree - not `SessionAgent.*`, `ExecuteMCPv2.*`, `IRISCouch.*`, `/iris-couch/`, `^UnitTestRoot`, `iris_` or any `IRIS_*` environment variable
-- **And** `Utils`' `%Atelier` coupling is dropped.
+- **And** no `%Atelier` coupling enters the tree with them - `Utils.cls` carries none to drop (it extends `%RegisteredObject`; the coupling lives in `REST/Base.cls`, `Setup.cls`, `Tests/BaseTest.cls` and six other classes this story does not copy), so the criterion is met as a **guard**: `%Atelier` is a forbidden token in the tree checker, failing the day a later harvest drags the `{status, console, result}` envelope in (AD-23).
+
+- **Given** the `Api/Router.cls` thin wrapper harvested from iris-couch
+- **When** its `UrlMap` is declared
+- **Then** it preserves all three ordering invariants `%CSP.REST` requires, each asserted by its own test: explicit 405 method guards **before** the catch-all, sub-resource routes before single-segment `:param` routes, and N-segment routes before (N-1)-segment routes
+- **And** every `Call=` target is a thin wrapper that only delegates, with no business logic in the Router
+- **And** `ReportHttpStatusCode` and `Http405` are overridden so a framework 404 or 405 returns the one JSON envelope rather than the IRIS HTML error page, the 405 carrying an `Allow` header.
+
+- **Given** `OnPreDispatch`
+- **When** any request enters the API
+- **Then** it authenticates the caller and resolves the namespace **once**, in that one place, the namespace switched by explicit save and restore (AD-16) with `$NAMESPACE` restored as the first line of every `Catch`
+- **And** on denial it sets `pContinue = 0` and returns through `Error.Render` (AD-12, AD-29), never by writing to the response device itself.
+
+- **Given** an entity id carrying characters that must be percent-encoded
+- **When** it arrives in exactly one path segment (AD-13)
+- **Then** a routing test asserts it reaches the intended handler with the id decoded exactly once, and not twice
+- **And** `ReadRequestBody` and `DecodeUtf8Stream` from the harvested `Utils` are the only readers of a request body.
 
 - **Given** any handler in the tree
 - **When** it produces a response
@@ -1004,7 +1020,7 @@ So that nothing shipped later has to be recolored or reworded, and both floors -
 - **When** any animated state changes
 - **Then** transitions are instant, skeletons do not pulse, the panel width does not animate, the change highlight does not settle, and spinners are replaced by the word "running".
 
-- **Given** the canonical Fixed strings table - roughly 60 strings including "blocked by read-only mode", "Confirm here; sending a message cancels this proposal", "done - audit not marked" and "no administrative privileges on this instance"
+- **Given** the canonical Fixed strings table - roughly 60 strings including "blocked by read-only mode", "Confirm here; sending a message cancels this proposal", "done · audit not marked" and "no administrative privileges on this instance"
 - **When** the copy layer is built
 - **Then** every one of them exists as a named entry in **one** string source, which is canonical over `DESIGN.md` and over every inline quotation anywhere else
 - **And** a placeholder may be **resolved** by a caller (`<user name>` becoming `_SYSTEM`) but the string itself may **not be respelled**
@@ -1060,6 +1076,11 @@ So that the agent's records cannot be read or forged by the developers the porta
 - **When** it completes
 - **Then** nothing changes, every created object was guarded by an existence check, and the namespace is restored as the first line of every `Catch` on any error path.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-16: Installer creates the administrative resource and role but grants the role to nobody (ledger; routed by load 2026-09-09)
+- DW-23: OcuPilot.Kernel.Utils has no dedicated test suite and no production call site in this story, so none of its non-trivial logic has ever actually execu… (ledger; re-owned from Story 1.5 by spec_gate 2026-09-09)
+
 ### Story 1.4: One command brings up an instance with OcuPilot installed
 
 As a judge evaluating the entry,
@@ -1099,6 +1120,12 @@ So that the README's first promise holds before I have read anything else.
 - **Then** the walkthrough fixtures exist - a disabled `/csp/myapp` carrying no resource, a demo SSL/TLS configuration and a self-signed X.509 credential - namespaced so they cannot collide with a real application
 - **And** with the flag absent, as on every other install path including IPM, no fixture is created.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-13: Operator's instance already carries a real /csp/myapp application (ledger; routed by load 2026-09-09)
+- DW-14: Fixture list omits the suspended task Stories 2.8 and 5.11 require (ledger; routed by load 2026-09-09)
+- DW-15: Clean install has no application errors for the Logs area's confirmed write (ledger; routed by load 2026-09-09)
+
 ### Story 1.5: The static shell serves the SPA, including deep links
 
 As a developer-administrator,
@@ -1109,7 +1136,8 @@ So that a bookmark, a shared link or a browser refresh behaves the way every oth
 
 - **Given** the `/ocupilot` static application
 - **When** it is created
-- **Then** it serves files unauthenticated with a non-root base href set at build time, like the vendor's own `/ui/interop`, and carries no application or matching roles.
+- **Then** it serves files unauthenticated with a non-root base href set at build time, like the vendor's own `/ui/interop`, and carries no application roles and exactly one matching role: a purpose-built read-only role granting read on the install namespace's database and nothing else, which IRIS requires to load the dispatch class for an anonymous caller (AD-9, AD-21)
+- **And** the installer creates that role and uninstall removes it, and the install-time test asserts it is the only role either OcuPilot application carries.
 
 - **Given** the `/api/ocupilot` application - the settings silent-first sign-in depends on (FR-65)
 - **When** it is created
@@ -1135,6 +1163,14 @@ So that a bookmark, a shared link or a browser refresh behaves the way every oth
 - **When** any OcuPilot gate evaluates a caller
 - **Then** it resolves the **authenticated** user and rejects the `UnknownUser` and `_PUBLIC` placeholders explicitly, never inferring authorization from roles alone
 - **And** the static application serves only files.
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-3: Container restarts and upgrades OcuPilot while a browser holds the old bundle (ledger; routed by load 2026-09-09)
+- DW-23: OcuPilot.Kernel.Utils has no dedicated test suite and no production call site in this story, so none of its non-trivial logic has ever actually execu… (ledger; routed by harvest 2026-09-09)
+- DW-25: OcuPilot.Api.Router.ReportHttpStatusCode's new $$$ISERR(pSC) branch (rendering an internal-error envelope when %CSP.REST itself passes a failing stat… (ledger; routed by harvest 2026-09-09)
+- DW-31: Kernel.EntityId is a byte/Latin-1 percent codec, so a browser-encoded (UTF-8) entity id does not round-trip through the pair AD-13 designates as the only one (ledger; routed by cr 2026-09-09)
+- DW-34: Api.Router.ReportHttpStatusCode's Else branch and Api.Error.GetSlugForStatus ship reachable but untested, and emit a numeric machine code the Design Notes rule out (ledger; routed by cr 2026-09-09)
 
 ### Story 1.6: Silent-first sign-in
 
@@ -1177,6 +1213,13 @@ So that moving between the old portal and the new one costs me nothing.
 - **Then** it proxies through the IRIS origin rather than serving from a second origin, because the browser-id cookie is `SameSite=Strict`
 - **And** no CORS allowance exists in either the development or the production configuration.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-1: Silent probe or form login runs while install is still running (ledger; routed by load 2026-09-09)
+- DW-4: Several in-flight calls return 401 at once, each triggering its own refresh (ledger; routed by load 2026-09-09)
+- DW-6: Tab duplication copies sessionStorage, including token pair and conversation id (ledger; routed by load 2026-09-09)
+- DW-24: Kernel.Utils.ReadRequestBody's inner fallback Catch (around %request.Content) silently reports a genuine read fault as an empty, successful body inst… (ledger; routed by harvest 2026-09-09)
+
 ### Story 1.7: Sign-out
 
 As a production administrator,
@@ -1202,6 +1245,10 @@ So that leaving a shared machine does not leave an authenticated session behind.
 - **Given** the user was signed out elsewhere - by the classic `?IRISLogout=end` or by another JWT application revoking the session
 - **When** OcuPilot makes its next call
 - **Then** it discovers the condition, runs the silent retry once, and either recovers silently or lands on the form login with the session-ended message.
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-5: Logout call fails or the instance is unreachable during sign-out (ledger; routed by load 2026-09-09)
 
 ### Story 1.8: Instance identity and the API version guard
 
@@ -1233,6 +1280,13 @@ So that I never see a screen of half-working data and mistake it for the truth.
 - **When** the endpoint-inventory fixture executes
 - **Then** it re-derives from the running instance which classes exist, which publish a body-template method, which have an async path and which touch CSP state, and fails the build when the instance disagrees with the checked-in inventory.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-3: Container restarts and upgrades OcuPilot while a browser holds the old bundle - Story 1.5 delivered the cache half (`index.html` no-store, hashed assets immutable); the residue is the API reporting its build stamp and the client prompting a mismatched bundle to reload (ledger; routed by adjudication 2026-09-11)
+- DW-101: The INSTALL.* classifier `isInstallInFlight` has no production call site - `ApiService` never reads an envelope code, so a 503 during install reaches the caller raw; this story's first data call is where it becomes observable (ledger; routed by harvest 2026-09-12)
+- DW-102: Two concurrent install-backoff probe chains become reachable with this story's first data call, each minting its own sid, the loser overwriting the winner's stored pair (ledger; routed by harvest 2026-09-12)
+- DW-107: A refresh started after sign-out falls through to probeAndSettle() and could re-mint from a browser-level login a failed logout left alive - unreachable until this story's first data call (ledger; routed by harvest 2026-09-12)
+
 ### Story 1.9: The screen descriptor registry and privilege-driven navigation
 
 As a developer-administrator,
@@ -1256,7 +1310,7 @@ So that I learn the instance's permission model from the portal instead of from 
 - **When** its descriptor is declared
 - **Then** it declares a **primary** entity type plus any **secondary** types, all of which participate in change-event routing; a **parent-scope reference** where it is a sub-resource; and an id accessor returning a composite key that round-trips through the one shared encode/decode pair
 - **And** the tool name is declared **independently of the screen name**, so a screen can be renamed without renaming its tool
-- **And** these are declared here rather than retrofitted: the OAuth 2.0 screen (Story 6.4) needs the multi-entity form, task history (Story 6.6) the sub-resource form, and the web applications list (Story 2.5) the composite id.
+- **And** these are declared here rather than retrofitted: the OAuth 2.0 screen (Story 6.4) needs the multi-entity form, task history (Story 6.6) the sub-resource form, and the web applications list (Story 2.5) a single id that carries a slash (`/csp/myapp`) through the one encode/decode pair.
 
 - **Given** the entity-type vocabulary
 - **When** a descriptor selects one
@@ -1276,6 +1330,12 @@ So that I learn the instance's permission model from the portal instead of from 
 - **Then** the rail carries eight items in daily-use order with Agent co-pilot pinned bottom, is one Tab stop with Up/Down moving between items, marks the active area with `aria-current="page"` and a solid 3px `secondary-dark` left indicator, and shows no count badge
 - **And** a rail item opens its area's side bar without navigating, while clicking the active item collapses it; Home is the exception and navigates
 - **And** the side bar is fixed at 240px with no sash, grip or resize cursor, lists only screens that are built, remembers its open state per browser, and toggles with Ctrl/Cmd+B.
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-9: Roles or classic-page custom resources change after the startup-resolved privilege set (ledger; routed by load 2026-09-09)
+- DW-93: The client half of the deep-link criterion has no executed test host - this story rewrites `app.routes.ts` and the deep-link placeholder, so it is the first story whose own gate fails while the client has no component test runner (ledger; routed by adjudication 2026-09-11)
+- DW-97: An entity id containing `..` cannot deep-link, because the static handler's traversal rejection sees the encoded id in the path (ledger; routed by cr 2026-09-11)
 
 ### Story 1.10: Header, status bar and page chrome
 
@@ -1317,6 +1377,13 @@ So that I never make a change on the wrong instance because the screen looked th
 - **When** this story is built
 - **Then** the height and color are confirmed against the shell layout and the contrast floor rather than carried as an assumption, and the confirmed values go into the design tokens.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-10: Instance reports no server flag, or one outside the four named (ledger; routed by load 2026-09-09)
+- DW-103: A rejected sign-in loses keyboard focus - the form re-renders through the probing state and leaves focus on the document body, so a keyboard-only user must re-find the field after every failed attempt (ledger; routed by harvest 2026-09-12)
+- DW-109: The account menu stays open when the user clicks or tabs outside it, with `aria-expanded="true"` and Escape no longer reachable - this story moves the component into the real status bar and owns its dismissal behavior (ledger; routed by harvest 2026-09-12)
+- DW-134: Shell behavior details left open by Story 1.9 - the Ctrl/Cmd+B chord does not exclude `shiftKey`, rail and side-bar navigation drop a `?ns=` selection, and `ShellState` persists Home's collapse as a real state (ledger; routed by harvest 2026-09-12)
+
 ### Story 1.11: The namespace switch as data scope
 
 As a developer-administrator managing several namespaces on one instance,
@@ -1348,6 +1415,12 @@ So that a change I make lands where I am looking.
 - **Then** it occupies exactly one path segment, percent-encoded and decoded by one shared pair of functions used by every slice
 - **And** a round-trip test over that fixed corpus passes.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-7: User can read a namespace but not write it (ledger; routed by load 2026-09-09)
+- DW-8: Route carries an ns that does not exist or the user cannot enter (ledger; routed by load 2026-09-09)
+- DW-33: OnPreDispatch validates the resolved namespace and discards it, though the spec's Task item and Design Notes both say it stashes the result (ledger; routed by cr 2026-09-09)
+
 ### Story 1.12: Home
 
 As a developer-administrator arriving at OcuPilot,
@@ -1374,6 +1447,15 @@ So that I can reach anything in one step without learning a menu.
 - **When** the panel is present
 - **Then** the panel widens to `min(50vw, viewport - rail - content-min-width)` over a 120ms transition and restores its remembered width on leaving Home
 - **And** under reduced motion the width change is instant.
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-141: The command bar's filter field has neither an accessible name nor a non-empty description - the name needs a Fixed-strings row (DW-126) (ledger; routed by adjudication 2026-09-12)
+- DW-143: The locator's area segment navigates into an area's first built screen without checking its privilege verdict, where the rail and side bar both refuse (ledger; routed by adjudication 2026-09-12)
+- DW-144: Escape collapses the side bar through `toggleOpen()`, so a transient dismissal is written to the stored preference (ledger; routed by adjudication 2026-09-12)
+- DW-145: An unrecognised system mode is drawn verbatim, uncapped, in the 24px status bar (ledger; routed by adjudication 2026-09-12)
+- DW-146: The truncated instance-version segment is recoverable only through a `title` attribute, unreachable by keyboard (ledger; routed by adjudication 2026-09-12)
+- DW-147: The command bar's view-options control is named by the AC and DESIGN.md but is not rendered (ledger; routed by adjudication 2026-09-12)
 
 ### Story 1.13: Uniform error handling and the connectivity probe
 
@@ -1407,6 +1489,15 @@ So that I can act on an error instead of guessing at it or leaving for the docum
 - **When** it crosses the port boundary
 - **Then** it is mapped to an OcuPilot slug and a written reason, the raw text kept only for the log and the ledger.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-11: Detail route or deep link loaded for an entity that no longer exists (ledger; routed by load 2026-09-09)
+- DW-119: An identity call that fails in a way that is neither `AUTH.NOADMIN` nor `INSTALL.*` leaves the shell on `checking` with nothing scheduled to ask again, so a signed-in tab can sit on a blank content area - this story owns the retry (ledger; routed by adjudication 2026-09-12)
+- DW-161: A tile and the locator's area segment navigate into an area's first built screen without consulting that screen's own verdict, landing an allowed-area user on the refusal page (ledger; routed by harvest 2026-09-12)
+- DW-104: A form submit that meets an unreachable instance is discarded with no way to recover what the user typed (ledger; routed by cr 2026-09-12)
+- DW-105: The password-expired branch is unreachable and its banner is unrendered, so an expired password reads as an ordinary rejection (ledger; routed by cr 2026-09-12)
+- DW-135: A failed navigation-map read is indistinguishable from an un-privileged one, so an instance that is merely unreachable renders as an instance the user has no rights on (ledger; routed by cr 2026-09-12)
+
 ### Story 1.14: The auto-refresh framework
 
 As a production administrator watching a live instance,
@@ -1437,6 +1528,10 @@ So that I can watch a process or a task without re-sorting and re-filtering ever
 - **When** the framework is built
 - **Then** it already subscribes to that channel and suspends its timer while a proposal against its entity type is live, resuming on close - so the pause has a channel to travel on before there is anything to pause for.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-157: `NavigationService.reload()` joins a map read already in flight rather than queueing one, so a scope change inside that window leaves the map computed against the previous namespace - the fix is mark-dirty-and-re-run-once, not a second load (ledger; routed by cr 2026-09-12)
+
 ### Story 1.15: Classic portal fallback links
 
 As a developer-administrator,
@@ -1452,7 +1547,9 @@ So that a screen OcuPilot lacks never becomes a task I cannot do.
 
 - **Given** a list screen in any of the six areas
 - **When** it renders
-- **Then** it carries **no** link out to the classic portal, and an automated check asserts this across every list descriptor.
+- **Then** it carries **no** link out to the classic portal, and an automated check asserts this across every list descriptor
+- **And** the check's exemption predicate is defined once, in the descriptor: a descriptor may declare `classicLinkExemption` with a reason, and **only a descriptor whose archetype is a detail view may declare it** - a list archetype that declares one fails the check
+- **And** the check reports every exemption it honors rather than passing silently, and that count is recorded against SM-C1.
 
 - **Given** any classic page in the six areas that OcuPilot has not rebuilt
 - **When** the user looks for it
@@ -1461,6 +1558,10 @@ So that a screen OcuPilot lacks never becomes a task I cannot do.
 - **Given** an editor that is cut
 - **When** it ships reduced
 - **Then** its agent write tool ships regardless, so the change is still reachable through a confirmed proposal.
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-173: The paused refresh chip is a 55-character sentence in a `nowrap` flex item with no max-width, so it cannot fit a narrow command bar (ledger; routed by harvest 2026-09-13)
 
 ### Story 1.16: The IPM module, generated from one roster
 
@@ -1487,6 +1588,11 @@ So that adopting it costs me nothing beyond the install.
 - **When** install resolves it
 - **Then** the installer picks `HSCUSTOM` if present and `USER` otherwise, in installer code rather than in `module.xml`, because the manifest is evaluated after the namespace is fixed
 - **And** the README documents how to override it.
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-12: Neither HSCUSTOM nor USER exists, or the documented override names a missing namespace (ledger; routed by load 2026-09-09)
+- DW-92: The IPM `<Invoke>` calls `Install()` with no second argument, never `StartPath`, so an IPM install never unexpires `_SYSTEM` (AD-17, DW-73); pin that an IPM install never reaches `EnsureUnexpired` (ledger; routed by code review round 4 of Story 1.4, 2026-09-11)
 
 ### Story 1.17: The smoke script, the readiness endpoint and CI
 
@@ -1525,9 +1631,107 @@ So that "this step is complete" means the same thing every time and the cut line
 
 ---
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-2: Install fails; readiness reports only installed, version and running (ledger; routed by load 2026-09-09)
+- DW-35: check-objectscript.py is the pinning gate for four ACs and has no test of its own; AC-5 is evidenced only by one-off manual runs against throwaway scratch trees (ledger; routed by cr 2026-09-09)
+- DW-43: Literal non-ASCII characters remain in four Story 1.1 source files, against the Rule 14 escape convention the spine now fixes (ledger; routed by cr 2026-09-09)
+- DW-50: AC1-AC3/AC9-AC12's container, health-check, HTTP, and shell-level (demo-flag propagation) surfaces are verified only by a one-off manual throwaway-co… (ledger; routed by harvest 2026-09-10)
+- DW-54: iris_execute_tests appears to re-submit on client-side timeout, producing several concurrent server-side runs of the same class that race on shared fixtures and make latest-run attribution unreliable (ledger; routed by cr 2026-09-10)
+- DW-94: Install must refuse to adopt a web application at `/ocupilot`, `/api/ocupilot` or the readiness path that install did not create - report it as a conflict, and remove only what install created - which needs a provenance record this story's third application also depends on (owner decision 2026-09-11; ledger; routed by checkin 2026-09-11)
+- DW-167: The connectivity probe has no timeout, so a connection accepted and never answered stalls the backoff chain indefinitely - this story owns readiness and CI, where a probe timeout is testable against a real endpoint (ledger; routed by harvest 2026-09-12)
+- DW-192: The roster is one source for the manifest half only - `Names()` resolves the keys `shell` and `api` literally, so a third roster application reaches `module.xml` but never `Install()`; this story adds exactly that third application (ledger; routed by harvest 2026-09-13)
+- DW-193: No test starts a gate or a container - prebuild, prestart, the pre-commit hook and the container start hook are asserted as source text, and `OCUPILOT_NAMESPACE` has never been set on a real container start (ledger; routed by harvest 2026-09-13)
+- DW-196: The pre-commit checks read the working tree, not the index, so a partially staged pair passes the hook (ledger; routed by harvest 2026-09-13)
+- DW-191, DW-195, DW-197, DW-198, DW-199: install-path residue Story 1.16 pinned but did not fix - `Uninstall`'s missing namespace guard, a system-namespace `OCUPILOT_NAMESPACE` compiling before it refuses, the manifest never parsed as XML, the gateway-gap report on the IPM path, and an application `Description` that is never repaired (ledger; routed by adjudication 2026-09-13)
+
+### Story 1.18: Epic 1 burn-down
+
+As the builder,
+I want the Epic 1 findings that threaten a first install, a silent refusal, the public release or CI's reliability closed before Epic 2 starts,
+So that the next epic builds on an install path, a gate and a pipeline that tell the truth.
+
+**Acceptance Criteria:**
+
+- **Given** a Linux host with no `iris-data` directory yet
+- **When** the documented `docker compose up -d --wait` runs
+- **Then** IRIS can write its durable directory and the install completes, as the CI throwaway already does
+- **And** the fix is pinned by something that fails on a Linux-ownership regression, not by a text assertion.
+
+- **Given** the install gate cannot read OcuPilot's own state (for example the SQL grant on its schema was revoked)
+- **When** any API request or the readiness endpoint asks the gate
+- **Then** it answers a distinct, named state that says waiting will not help, never `installing`
+- **And** install reads the grant back after granting and fails loudly if it did not take, and the schema name is derived rather than hand-transcribed.
+
+- **Given** the release bundle
+- **When** it is built and packaged
+- **Then** the npm third-party license notices travel inside the served root alongside the code they cover.
+
+- **Given** CI on every push
+- **When** its gates run
+- **Then** every tool it invokes is pinned, its shell scripts are syntax-checked on the shells they declare, and no test in the suite is known to flake.
+
+- **Given** the lead's per-story smoke against the live instance
+- **When** `scripts/smoke.sh` mints a token pair
+- **Then** it signs that pair out before it exits, so a smoke run leaves no session behind.
+
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-234: docker-compose.yml's own `iris-data` mount carries the Linux bind-mount ownership defect the CI throwaway fixed, so the documented quickstart fails on any Linux host (ledger; routed by burndown 2026-09-13)
+- DW-96: The install gate maps every state-read failure to `installing`, so a revoked SQL grant makes a healthy instance refuse every caller with nothing saying why; distinguish an unreadable state, read the grant back at install, derive the schema name (owner decision 2026-09-13; ledger; routed by merge_gate 2026-09-13)
+- DW-217: The npm third-party license file is generated by the build and never distributed (owner-delegated decision; ledger; routed by merge_gate 2026-09-13)
+- DW-126: EXPERIENCE.md's Fixed strings table lacks rows for strings the shell already renders - area names, permission-denied, status-bar labels, filter and result-group labels, 1.13's failure copy, refresh-rate chip copy, the classic-link card caption (ledger; routed by merge_gate 2026-09-13)
+- DW-230: A client test flakes - reproduced with its site captured in the connectivity probe's abort-timeout test - and CI now runs the suite on three Node bands per push (ledger; routed by burndown 2026-09-13)
+- DW-229: Four shell gates are pinned as text only and CI runs no shell syntax check, which is how the credential guard shipped broken (ledger; routed by burndown 2026-09-13)
+- DW-228: smoke.sh mints a token pair it never signs out, and its spec scopes it to throwaway containers while the per-story smoke gate runs it live (owner-delegated decision; ledger; routed by merge_gate 2026-09-13)
+- DW-207: RosterNames' non-absolute-path and empty-asserted-set refusals are exercised by nothing; needs an overridable roster seam (ledger; routed by merge_gate 2026-09-13)
+- DW-213: Fixture.Create's namespace fix is pinned by a source-text assertion read from the instance's compiled copy; needs a Fixture namespace seam (ledger; routed by merge_gate 2026-09-13)
+- DW-222: DW-108's announcement changes and DW-163's server-flag disclosure are observed by no executing assertion (ledger; routed by burndown 2026-09-13)
+- DW-218: CI's Python interpreter is the one tool in the workflow that is not pinned (owner-delegated decision; ledger; routed by merge_gate 2026-09-13)
+- DW-215: lint-docs.sh runs an unpinned `npx markdownlint-cli2` while every other tool CI runs is pinned exactly (ledger; routed by burndown 2026-09-13)
+
 ## Epic 2: Every area shows live instance data
 
 A user opens each of the six areas and sees real data from the instance they are on - not a mockup - with the first page inside two seconds at a thousand rows, sort and filter preserved across refresh, and every list backed by exactly one descriptor-declared read that the agent's read tool will later share. Build step 1; completing it makes the listing build submittable.
+
+### Story 2.0: Epic 1 Deferred Cleanup
+
+As the builder,
+I want the small Epic 1 defects that sit directly under Epic 2's work closed before that work starts,
+So that the descriptors Epic 2 adds in bulk land on tooling that reports its own failures and a shell whose controls tell the truth.
+
+**Acceptance Criteria:**
+
+- **Given** the descriptor tooling that every Epic 2 screen passes through
+- **When** a descriptor's XData holds a brace inside a JSON string, or is valid UDL but invalid JSON
+- **Then** extraction reads the whole block, and a parse failure names the file it came from.
+
+- **Given** a descriptor declaring an archetype, a primary action, or a classic page name
+- **When** the archetype is misspelled, the primary action has no handler, or the page name is long
+- **Then** the build refuses the unknown archetype by name, the action is not offered as usable, and the card's label stays inside its pill.
+
+- **Given** a keyboard user on any screen
+- **When** they press Tab first
+- **Then** a Skip to content link is the first stop and moves focus to main.
+
+- **Given** the client component specs
+- **When** a descriptor field is added
+- **Then** one shared fixture builder changes, not eight spec files.
+
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-204: `extractXData` counts braces per line without understanding JSON strings, so a brace inside a string value ends the block early - three readers now depend on it and this story adds descriptors in bulk (ledger; routed by x0 2026-09-14, first routed by harvest 2026-09-13)
+- DW-183: `screen-mirror.mjs`'s `readSources()` throws without naming the file when a descriptor's XData is valid UDL but invalid JSON, so the guarantee the link-out check leans on holds only for a missing block (ledger; routed by x0 2026-09-14, first routed by harvest 2026-09-13)
+- DW-174: A `ScreenDeclaration` fixture is hand-built in eight spec files, so each new descriptor field costs eight edits - this story adds the first descriptor-declared read and feels it immediately (ledger; routed by x0 2026-09-14, first routed by harvest 2026-09-13)
+- DW-180: The classic-link card's action label has no width bound, so a long declared classic page name wraps or overruns the fixed-height pill - the third sighting of a bounded container meeting an unbounded string (ledger; routed by x0 2026-09-14, first routed by harvest 2026-09-13)
+- DW-149: No Skip to content link while banner, rail and side bar precede main in Tab order (ledger; routed by x0 2026-09-14, first routed by burndown 2026-09-13)
+- DW-153: A primary action draws fully enabled with no click handler, and the command box offers it then silently closes (ledger; routed by x0 2026-09-14, first routed by burndown 2026-09-13)
+- DW-165: A screen's declared archetype is never validated against ARCHETYPE_PAGES, so a mistyped archetype routes, builds and renders a blank content area with no message - from the second archetype on, a typo is a silently blank screen (ledger; routed by x0 2026-09-14)
+- DW-185: The classic-link card's action has no visible hover: `.ocu-button-secondary:hover` and `.ocu-classic-link-card` both resolve to `--ocu-surface-container-low`, and the shared hover diverges from DESIGN.md's 8% secondary state layer (ledger; routed by x0 2026-09-14)
 
 ### Story 2.1: The AdminPort reproduces the vendor's dispatcher, exactly once
 
@@ -1544,7 +1748,7 @@ So that seventy vendor endpoints are not reimplemented, and a failure never arri
 
 - **Given** the port invokes an endpoint
 - **When** it runs the sequence
-- **Then** it constructs `%Api.Admin.Endpoints.<X>.%New(type, 2)`, supplies stub `%request` and `%response` objects with `IsRunningAsync = 0`, seeds query parameters and calls `ValidateQueryParams()`, evaluates `ResourcesOR()` with `$System.Security.Check(res, "U")` and refuses on failure, calls `ValidateRequest(body)` then `ValidateSemantics()`, wraps `Run()` in `BeginCaptureOutput`/`EndCaptureOutput`, maps a `<PROTECT>` exception to 403, and reads the outcome from **both** `tSC` **and** `%response.Status`.
+- **Then** it runs in `%SYS` by explicit save and restore, constructs `%Api.Admin.Endpoints.<X>.%New(type, 2)`, supplies stub `%request`, `%response` and `%session` objects with `IsRunningAsync = 0`, evaluates `ResourcesOR()` with `$System.Security.Check(res, "U")` and refuses on failure, seeds query parameters into `%request.Data` and calls `SaveQueryParams()` then `ValidateQueryParams()`, calls `ValidateRequest(body)` then `ValidateSemantics()`, wraps `Run()` in `BeginCaptureOutput`/`EndCaptureOutput`, maps a `<PROTECT>` exception to 403, and reads the outcome from **both** `tSC` **and** `%response.Status`.
 
 - **Given** `IsRunningAsync` were left at 1
 - **When** an endpoint sets a status
@@ -1552,21 +1756,27 @@ So that seventy vendor endpoints are not reimplemented, and a failure never arri
 
 - **Given** `ValidateQueryParams()` were skipped
 - **When** the call runs
-- **Then** the endpoint's identifying property would be empty and the call would fail with a misleading "Invalid Application name" - so a test asserts the identifying property is populated before `Run()`.
+- **Then** the endpoint's identifying property would be empty and the call would fail with an error that does not name the cause (`ERROR #5813: Null oid` on 2026.2) - so a test asserts the identifying property is populated before `Run()`.
 
 - **Given** an endpoint returns a non-2xx `%response.Status` while `tSC` is `$$$OK`
 - **When** the port evaluates the outcome
 - **Then** it raises the failure and never returns an empty success.
 
-- **Given** `ShouldRunAsync()` is evaluated **per request type, never per class**
-- **When** it returns true
-- **Then** the port hands off through `%Api.Admin.Util.AsyncTaskEndpoint` and polls, exposing the result to slices as an ordinary call that resolves later - **no slice writes polling logic**
-- **And** for the three classes that use `%request` only as `..GetName(%request)` to label an async task, the port supplies a synthetic label instead
-- **And** exactly two Release 1 paths take this branch: the audit record LIST and the database directory info call.
+- **Given** an endpoint call the vendor answers asynchronously for its request type - either `ShouldRunAsync()` is true (the port hands off through `%Api.Admin.Util.AsyncTaskEndpoint`) or its `Run()` queues its own task and answers 202 with an `async-result` location
+- **When** the port runs it
+- **Then** it polls the task through the `AsyncResult` endpoint and exposes the result to slices as an ordinary call that resolves later, a bounded wait that fails with `PORT.TIMEOUT` rather than a partial result - **no slice writes polling logic**
+- **And** for the three classes that label their own task with `..GetName(%request)`, the port's stub request supplies a synthetic label
+- **And** exactly two Release 1 paths are asynchronous: the audit record LIST (self-queued) and the database directory info call (`ShouldRunAsync()`).
 
 - **Given** the port starts
 - **When** it verifies the instance
 - **Then** it confirms the admin API reports v2 and that a named probe endpoint answers, failing loudly with an actionable message rather than degrading silently.
+
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-60: GateStatus does a full escalated SQL round trip on every API request with no cache once the phase is terminal and no index on Version.Profile (ledger; routed by burndown 2026-09-13)
 
 ### Story 2.2: Write-tool field lists are derived at build time and pinned in CI
 
@@ -1578,7 +1788,7 @@ So that forty write forms cannot drift from the vendor, and "exercise the payloa
 
 - **Given** a build step that reads the running instance
 - **When** it runs
-- **Then** it emits each endpoint's field list and each field's JSON type **as committed source**, reviewed like any other code - nothing derives a schema at runtime, so a tool's contract cannot change under a running instance.
+- **Then** it emits each endpoint's field list and each field's JSON shape (scalar, object or array, with the placeholder's type as information only) **as committed source**, reviewed like any other code - nothing derives a schema at runtime, so a tool's contract cannot change under a running instance.
 
 - **Given** the body-template method is not uniformly named
 - **When** the generator resolves it
@@ -1589,19 +1799,19 @@ So that forty write forms cannot drift from the vendor, and "exercise the payloa
 - **Then** those three are authored **once per tool**, reviewed, and are the only hand-written part
 - **And** a write tool whose field list was typed by a human for an endpoint that publishes a template fails review.
 
-- **Given** generation classifies each derived field as ordinary or secret
+- **Given** generation classifies each derived field from a reviewed per-tool entry as ordinary, secret or opaque (an object or array the template does not describe member by member)
 - **When** it emits the descriptor
-- **Then** a field the generator cannot classify is treated as **secret**, and a field whose name matches the credential pattern emitted as ordinary **fails the build** - so a classification miss fails the build rather than reaching the model, the proposal store, the diff or the ledger
-- **And** the vendor templates' own credential fields, `Security.User`'s `Password` among them, are removed at derivation rather than anywhere downstream.
+- **Then** a derived field with no entry is emitted **secret**, and a field with a string placeholder whose name matches the credential pattern (the spine's Conventions › Secrets suffix pattern) emitted as anything but secret **fails the build** - so a classification miss fails the build rather than reaching the model, the proposal store, the diff or the ledger
+- **And** derivation reads the template methods only, so the credential fields a vendor endpoint builds outside its template (`Security.User`'s POST `Password`, the change-password `NewPassword`) never enter a derived list, and the three credential fields templates do carry are classified secret.
 
-- **Given** sixteen mutating endpoints publish no template at all, five of them in Release 1
+- **Given** sixteen mutating endpoints (classes that themselves define `RunPut`, `RunPost`, `RunDelete` or `RunPatch`) publish no template at all, five of them in Release 1
 - **When** those five are handled
-- **Then** `Wallet.Secret` and `Security.Audit.Event`, which are field-bearing, have their field lists derived from the underlying `Security.*` / `%SYS.*` class and pinned by a test that fails when the instance disagrees
+- **Then** `Wallet.Secret` and `Security.Audit.Event`, which are field-bearing, have their field lists derived from the underlying classes - `Security.Events` for the audit event, and one list per wallet `Type` (`%Wallet.KeyValue`, `%Wallet.RSA`, `%Wallet.SymmetricKey`) - and pinned by a test that fails when the instance disagrees
 - **And** `Process`, `Lock` and `Task.Manager`, which are action-style with trivial or empty bodies, are recorded as needing no template.
 
 - **Given** CI runs
 - **When** the endpoint-inventory fixture executes
-- **Then** it re-derives the inventory - which classes exist, which publish a template, which have an async path, which touch CSP state - from the running instance and **fails the build** when the instance disagrees, so an upgrade that moves the ground is caught by the suite rather than by a user.
+- **Then** it re-derives the inventory - which classes exist, which publish a template, which have an async path (a `ShouldRunAsync()` override or a `Run()` that queues its own task), which touch CSP state - from the running instance and **fails the build** when the instance disagrees, so an upgrade that moves the ground is caught by the suite rather than by a user.
 
 ### Story 2.3: One descriptor-declared read serves both the screen and its read tool
 
@@ -1631,11 +1841,17 @@ So that its answer can never describe data I am not looking at.
 
 - **Given** the tools registered in this epic
 - **When** they are invoked
-- **Then** they are not yet dispatchable, because the registry, the caller context and the turn that calls them arrive in Epic 4 - and no story here depends on that arriving.
+- **Then** they are not yet dispatchable, because dispatch, the caller context and the turn that calls them arrive in Epic 4 - this story ports the registry's discovery and validation half - and no story here depends on that arriving.
 
 - **Given** the tool registry harvested from iris-session-agent
 - **When** it is ported
 - **Then** its flat-`Super` equality SQL is replaced with `%IsA` or a recursive walk, and the schema-driven argument validator the original lacks is added.
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-128: The navigation map is rebuilt from the class dictionary on every accessor call - each descriptor accessor reopens its XData and re-parses the JSON - measured 2.3 ms at one descriptor and scaling with descriptors x areas; this story is the first to add descriptors in bulk (ledger; routed by adjudication 2026-09-12)
+- DW-32: Build the structural UrlMap route-ordering check in check-objectscript.py that Story 1.1's Design Notes promised; this story adds the first descriptor-declared routes to validate it against (ledger; routed by merge_gate 2026-09-13)
+- DW-156: GET /namespaces calls GetAllNSInfo with DontConnect defaulted to 0, so an ECP- or remote-mapped namespace makes every list read attempt a connection; set DontConnect=1 (ledger; routed by merge_gate 2026-09-13)
 
 ### Story 2.4: The data table
 
@@ -1645,9 +1861,9 @@ So that learning one screen teaches me all sixty.
 
 **Acceptance Criteria:**
 
-- **Given** any list screen on a Community container holding a thousand rows
+- **Given** the data table over a read answering a thousand rows
 - **When** the user navigates to it
-- **Then** its first page renders within two seconds.
+- **Then** its first page renders within two seconds in the pinned browser (the end-to-end instance read at a thousand rows is measured by Story 2.10, the first list that holds that many).
 
 - **Given** the table renders
 - **When** it draws
@@ -1673,6 +1889,14 @@ So that learning one screen teaches me all sixty.
 - **When** the empty state renders
 - **Then** it names the scope in one `title` sentence, says what to do next, offers the single primary action where one exists, and - on a **write-capable** list - invites the agent on its second line
 - **And** a permission-denied screen or a refused document is **not** an empty state; it shows the refusal.
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-17: User types an arbitrarily large value into the editable max-rows field (ledger; routed by load 2026-09-09)
+- DW-18: Active row vanishes on a silent re-fetch or filter change, not a delete (ledger; routed by load 2026-09-09)
+- DW-162: The command bar's filter-to-count pairing is asserted in no state - the `aria-describedby` branch is unreachable until a screen has rows, which this story first provides (ledger; routed by harvest 2026-09-12)
+- DW-172: A tick that meets a fault kind the banner has no published copy for suspends auto-refresh for the rest of the session while the chip goes on reading its rate (ledger; routed by harvest 2026-09-13)
+- DW-141: The command bar's filter field has no accessible name, and its description points at an empty match count until a screen has rows - fix with DW-162 on the same control (ledger; routed by x0 2026-09-14)
 
 ### Story 2.5: The web applications list
 
@@ -1704,6 +1928,12 @@ So that I can tell at a glance which ones are reachable and which are not.
 - **When** it is used in a route
 - **Then** it round-trips as one percent-encoded path segment.
 
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-148: The command box and the locator's area segment bypass ShellState.activateArea, leaving the side bar on the previous area (ledger; routed by burndown 2026-09-13)
+
 ### Story 2.6: The users list
 
 As a developer-administrator,
@@ -1714,9 +1944,9 @@ So that I can answer "who has access here?" without opening each account.
 
 - **Given** the Users screen
 - **When** it loads
-- **Then** it lists name, full name, enabled, type and roles from `GET /security/users` through `AdminPort`, with a filter.
+- **Then** it lists name, full name, enabled, type and roles through `AdminPort`, with a filter - name, full name, enabled and type from the users list call and roles from the per-user detail call the read declares (AD-36's `rowGet`).
 
-- **Given** a user account that is disabled or expired
+- **Given** a user account that is disabled, or expired - its `ExpirationDate` is set and earlier than today on the instance clock
 - **When** the row renders
 - **Then** the state is readable as a word, never by color alone - which is what makes UJ-1's question answerable from the list.
 
@@ -1727,6 +1957,13 @@ So that I can answer "who has access here?" without opening each account.
 - **Given** a user name with a leading underscore, such as `_SYSTEM`
 - **When** it is used in a route
 - **Then** it round-trips as one percent-encoded path segment.
+
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-186: The link-out rule is two hand-maintained copies that already disagree on a JSON-numeric exempt flag; one shared corpus both engines read (ledger; routed by merge_gate 2026-09-13)
+- DW-262: WebAppList's gate may under-declare - the port runs in `%SYS`, whose `%DB_IRISSYS` has no public permission; prove the security read pair set with a real principal on the throwaway and add `%DB_IRISSYS:READ` to WebAppList if confirmed (ledger; routed by harvest 2026-09-14)
 
 ### Story 2.7: The SSL/TLS configurations list
 
@@ -1752,6 +1989,13 @@ So that the area the contest names most specifically has live data from the firs
 - **When** the side bar renders
 - **Then** only SSL/TLS appears - a screen that is not built does not appear, and there are no dead entries.
 
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-264: Prove this list's privilege pair set with a real principal on the throwaway - `AdminPort` runs in `%SYS`, so an admin-port read may need `%DB_IRISSYS:READ` beside its `%Admin_*` pair; if every admin-port read does, the read grammar should refuse a declaration without it (ledger; routed by harvest 2026-09-14)
+- DW-266: Nothing checks that an area's declared privilege pair set covers the union of its screens' sets, so a screen needing a pair its area does not name leaves the area allowed while that screen is refused; `Registry.Validate` should refuse that (ledger; routed by harvest 2026-09-14)
+
 ### Story 2.8: The task schedule list
 
 As a developer-administrator,
@@ -1766,8 +2010,9 @@ So that I can tell whether the instance's housekeeping is actually happening.
 
 - **Given** the Task Manager is suspended
 - **When** the screen renders
-- **Then** a warning banner above the table reads "The Task Manager is suspended - no scheduled task will run until it is resumed." with a Resume action, privilege-gated
-- **And** the rows still list.
+- **Then** a warning banner above the table reads "The Task Manager is suspended - no scheduled task will run until it is resumed."
+- **And** the rows still list
+- **And** the Resume control itself arrives with Epic 7's three Task Manager controls (FR-51), because Epic 2 ships read tools only and no document specifies a visible-but-unwired action.
 
 - **Given** the demo fixture ran
 - **When** the list renders
@@ -1776,6 +2021,12 @@ So that I can tell whether the instance's housekeeping is actually happening.
 - **Given** the screen declares auto-refresh
 - **When** the user turns it on
 - **Then** it refreshes through the shared framework, silently, preserving sort, filter, selection and scroll.
+
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-267: The list browser specs' filter step is triplicated and vacuous in two copies; share one helper when this story adds the next list spec, and make it fail when the filter matches nothing (ledger; routed by harvest 2026-09-14)
 
 ### Story 2.9: The processes list
 
@@ -1807,7 +2058,7 @@ So that the claim "every agent write is marked" is checkable the moment the agen
 
 - **Given** the Audit database screen
 - **When** it opens
-- **Then** it presents a criteria form first - time range, source, type and name, user, process id, namespace, authentication and text - and shows a skeleton only after Search is pressed, because this list searches on the server and does not auto-refresh.
+- **Then** it presents a criteria form first - time range, source, type and name, user, process id, namespace and authentication, the eight the audit API actually filters on - and shows a skeleton only after Search is pressed, because this list searches on the server and does not auto-refresh.
 
 - **Given** a search
 - **When** it executes
@@ -1828,6 +2079,11 @@ So that the claim "every agent write is marked" is checkable the moment the agen
 - **Given** no events match
 - **When** the list renders
 - **Then** it reads "No events match." rather than a generic empty message.
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-249: A caller holding `%Admin_Secure` without `%Admin_Operate` can queue an audit LIST task, be refused its AsyncResult poll and leave the row behind; the audit screen's privilege set requires both, or the port forgets a task whose poll is refused (ledger; routed by harvest 2026-09-14)
+- DW-258: NFR-1 end to end - a thousand-row instance read through the screen route plus the table's first render within two seconds on the throwaway Community container - is first measurable here (ledger; routed by spec_gate 2026-09-14)
 
 ### Story 2.11: The messages.log paging endpoint
 
@@ -1857,6 +2113,10 @@ So that I can find a warning in the log the instance actually writes.
 - **Given** anything OcuPilot itself writes to messages.log
 - **When** it is written
 - **Then** it carries no credential material, because OcuPilot will later display this file and hand it to a read tool. The test that proves it belongs to Story 3.2, which is where a provider first exists to fail.
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-19: messages.log absent, unreadable, or the manager directory moved between calls (ledger; routed by load 2026-09-09)
 
 ### Story 2.12: The application error log endpoint and drill-down
 
@@ -1897,9 +2157,96 @@ So that I can read a fault in context - and so the Logs area has a screen its co
 
 ---
 
+### Story 2.13: Epic 2 burn-down
+
+As the builder,
+I want the Epic 2 findings that mislead a user, hide a refusal or let a misdeclaration ship closed before Epic 3 starts,
+So that the agent epics build on screens that say what is true and a grammar that refuses what it cannot serve.
+
+**Acceptance Criteria:**
+
+- **Given** any list screen in the shell
+- **When** a user clicks a row at its center
+- **Then** the click reaches that row - the table frame has a definite height, its virtual-scroll viewport measures more than zero, and the footer does not paint over the rows
+- **And** a browser check fails if the viewport's measured height returns to zero.
+
+- **Given** a read whose backing query refuses on its own privilege check
+- **When** the port answers
+- **Then** it is a named 403 carrying the resource the query named, never a 500 that hides it.
+
+- **Given** a screen descriptor
+- **When** it declares a key outside the closed set - a misspelling such as `banners` or `Banner`
+- **Then** both engines refuse it by name, so a screen whose strip would never raise cannot install.
+
+- **Given** a list level that was cut at its cap
+- **When** it renders
+- **Then** the screen says so, rather than presenting a truncated list as the complete set.
+
+- **Given** the Task Manager is stopped rather than suspended
+- **When** the task schedule renders
+- **Then** it says so in its own sentence, because a stopped scheduler runs nothing either.
+
+- **Given** any list
+- **When** the user wants the current data
+- **Then** a manual Refresh action re-reads it, on the screens that auto-refresh and the screens that do not.
+
+- **Given** sign-in or instance recovery replaces the instance notice
+- **When** the frame arrives
+- **Then** focus moves to the screen's heading, the destination a route arrival already uses.
+
+- **Given** a criterion value longer than the column behind it
+- **When** it is searched
+- **Then** the grammar refuses it by name before the port is called.
+
+- **Given** a test class that creates principals or rotates a log
+- **When** it is discovered by a package-level run
+- **Then** it refuses to run anywhere but a throwaway, with no doc comment standing in for a guard.
+
+- **Given** the OS management area's pair set once its later screens land
+- **When** an operator holding only `%Admin_Operate` opens the rail
+- **Then** the gating decision is recorded and applied deliberately, not inherited by accident.
+
+- **Given** EXPERIENCE.md's line citations in source
+- **When** a Fixed strings row is inserted
+- **Then** a gate catches the ones that no longer resolve, so a citation cannot quietly point at the wrong row.
+
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-273: A list screen's table frame collapses to its header's height, so the virtual-scroll viewport reads `clientHeight` 0 and a click at a row's center reaches the footer (ledger; routed by burndown 2026-09-15)
+- DW-274: `AdminPort` answers 500 when the query behind an endpoint refuses on its own privilege check, so a privilege refusal arrives disguised as a server fault (ledger; routed by burndown 2026-09-15)
+- DW-271: A descriptor's top-level keys are not a closed set, so a misspelled optional key installs a screen that never raises its strip (ledger; routed by burndown 2026-09-15)
+- DW-293: Every level of the application error log computes `truncated` and the client drops it (ledger; routed by burndown 2026-09-15)
+- DW-270: A stopped Task Manager raises no banner, because the strip matches only `Suspended` (ledger; routed by burndown 2026-09-15)
+- DW-260: No list offers the manual Refresh action EXPERIENCE.md requires (ledger; routed by burndown 2026-09-15)
+
 ## Epic 3: Configure the agent, and hold the switches that restrain it
 
 An OcuPilot administrator picks a provider, pastes a key, proves it works before enabling it, and from then on holds two switches that restrain or silence the agent instance-wide without any screen losing function - while a user with no agent configured still gets every screen and a panel that shows them what a proposal would look like. First half of build step 2, and a prerequisite for every turn.
+
+### Story 3.0: Epic 2 Deferred Cleanup
+
+As the builder,
+I want the Epic 2 work that its burn-down could not finish closed before the agent stories build on it,
+So that a promise recorded in a spec's Verification is either kept or struck, and the ports the agent will call refuse what they cannot serve.
+
+**Acceptance Criteria:**
+
+- **Given** a verification step a spec promises
+- **When** the story that promised it closes
+- **Then** the step exists as a test, or the promise is struck from the spec with the reason in its change log.
+
+- **Given** a caller that passes a screen's own gate but not the backing query's
+- **When** the port answers
+- **Then** a real principal on the throwaway observes the named 403 over HTTP - its status, `code` and `detail.failedPair` recorded - inside a recorded and reverted mutation window, rather than the refusal being observable only through the port's stubbed seam.
+
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-307: The burn-down's third promised verification step - a throwaway real-principal observation of the port's named 403 - was never written; the declining reason does not hold, because a recorded and reverted mutation window is how a shipped class is exercised (ledger; routed by burndown 2026-09-15)
+- DW-297: Every named refusal on the application error log renders one generic sentence, so a purged date, an unknown entry and a privilege denial read identically; each gets its own published sentence and its Fixed strings row (ledger; decided at the merge gate 2026-09-15)
 
 ### Story 3.1: Agent definitions, and the rules that keep them honest
 
@@ -1913,6 +2260,11 @@ So that every user works against one deliberate, reviewed choice of model rather
 - **When** it is created or edited
 - **Then** it holds name, provider, model, endpoint URL where the provider needs one, credential type and reference, maximum tokens, temperature, maximum iterations per turn, an optional system prompt override, a read-only flag, a transcript retention period and an enabled flag
 - **And** it carries **no `ApiKey` property at all** - that absence is the schema invariant, harvested deliberately from iris-session-agent.
+
+- **Given** the transcript retention period field
+- **When** the Definition form renders in Release 1
+- **Then** it is **disabled**, captioned "Retention is not yet enforced", because the purge task ships only in Story 14.4 - the field must not promise behavior nothing performs
+- **And** Story 14.4 enables it and creates the scheduled task that Story 13.1's uninstall hook already expects to remove.
 
 - **Given** the eleven server-side validation rules and the XOR credential invariant harvested from iris-session-agent's configuration form
 - **When** a save is attempted
@@ -1933,6 +2285,10 @@ So that every user works against one deliberate, reviewed choice of model rather
 - **Given** OcuPilot's state lifecycle
 - **When** a definition references something that has since been deleted
 - **Then** the reference is **weak** - recorded as scoped identity data, never a foreign key - and renders as "no longer present" rather than failing the screen.
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-20: The single default definition is disabled by an endpoint change or deleted (ledger; routed by load 2026-09-09)
 
 ### Story 3.2: The provider contract and the Anthropic adapter
 
@@ -1970,6 +2326,10 @@ So that adding a provider is adapter work rather than a rewrite.
 - **Then** the key never enters an exception, a status, a log line or a trap - it is fetched at the point of use, held in a variable cleared before return, and never interpolated into a URL, a message or an error
 - **And** a test asserts that a forced provider failure leaves no credential material in the application error log or messages.log, both of which OcuPilot itself displays.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-21: Endpoint hostname resolves to loopback, link-local or the instance itself (ledger; routed by load 2026-09-09)
+
 ### Story 3.3: Credentials resolve at call time and are never stored where OcuPilot can show them
 
 As an operator in a regulated shop,
@@ -1984,7 +2344,8 @@ So that adopting it does not create a new place secrets live.
 
 - **Given** a key entered through the form
 - **When** it is saved
-- **Then** it is written once to the chosen credential store and is returned by **no** OcuPilot API call, ever.
+- **Then** it is written once to the chosen credential store and is returned by **no** OcuPilot API call, ever
+- **And** because IRIS publishes `GetEnviron` and no setter, only the IRIS-credentials store is writable from OcuPilot: a save against the environment-variable rung is refused with a code naming that, and the operator sets the variable on the host.
 
 - **Given** the credential ladder harvested from iris-session-agent
 - **When** it resolves a key at call time
@@ -1999,6 +2360,11 @@ So that adopting it does not create a new place secrets live.
 - **Given** the key field
 - **When** it renders after a save
 - **Then** it is empty and captioned "Stored. Enter a new value to replace it.", never pre-filled and never echoing a stored value, with a labeled reveal toggle and pastes accepted without trimming.
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-22: Referenced environment variable or IRIS credential is missing when a turn runs (ledger; routed by load 2026-09-09)
+- DW-335: `EnsureSslConfiguration`'s drift repair re-enables a disabled TLS configuration and no test pins that branch (ledger; routed by QA 2026-09-15)
 
 ### Story 3.4: Test connection
 
@@ -2023,12 +2389,19 @@ So that a bad key surfaces at setup rather than in the middle of a demo.
 
 - **Given** an endpoint in the link-local metadata range
 - **When** it is tested
-- **Then** it is refused
-- **And** loopback and private-network hosts are **allowed**, because local models are a supported case.
+- **Then** it is refused, with no escape, because that range is the instance metadata service
+- **And** private-network hosts are **allowed** outright, because local models are a supported case and the classifier does not refuse RFC-1918
+- **And** a loopback or instance address is allowed only where the definition is **marked local** and its provider's catalog row admits it - the same judgement `OcuPilot.Kernel.Egress` applies at write time and at call time (AD-42), because AC1 requires this to exercise the path a real turn does.
 
 - **Given** the button is pressed
 - **When** the request is in flight
 - **Then** it shows an inline progress indicator and is `aria-disabled` for the duration, with focus staying on it.
+
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-330: An explicit set-default onto a disabled definition is accepted and then silently relocated by the next unrelated write; refuse it, or say in the response that the marker will move (ledger; routed by cr 2026-09-15)
 
 ### Story 3.5: The Definition form
 
@@ -2060,6 +2433,17 @@ So that setup is a minute's work rather than a form-filling exercise.
 - **When** they look for Definitions
 - **Then** the side bar entry is gated naming the OcuPilot administrative resource
 - **And** the Agent co-pilot rail item itself **never** gates - its attention dot is the signal.
+
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-339: AC4's inline key-shape rendering - `aria-invalid` wired through `aria-describedby`, evaluated on blur - over the `AGENT.KEY.SHAPE` refusal Story 3.3 already returns (ledger; routed by harvest 2026-09-15)
+- DW-340: AC5's key field - empty after save, the published caption, a labeled reveal toggle, pastes accepted without trimming (ledger; routed by harvest 2026-09-15)
+- DW-344: a definition's `credentialName` holds 128 characters where the credential entry's `SystemName` holds 50, so an over-long reference is refused at store time with a 500 rather than at save time with a 422 (ledger; routed by harvest 2026-09-15)
+- DW-354: AC5's inline progress indicator, `aria-disabled` for the duration and focus staying on the button, plus the call order the test route imposes on the form - create disabled, store the key, test, then save enabled (ledger; routed by harvest 2026-09-15)
+- DW-355: the published failure sentence assumes the provider supplied text, and only one of the nine `PROVIDER.*` codes ever carries it - decide what the form renders for the other eight (ledger; routed by harvest 2026-09-15)
+- DW-359: `connectionVerified` in the test route's 200 body is the stored flag, so it can read `true` beside `testedAsStored: false` (ledger; routed by harvest 2026-09-15)
 
 ### Story 3.6: The first-login gate and the configuration-empty state
 
@@ -2096,6 +2480,14 @@ So that I reach a working agent without reading documentation to find out what i
 - **When** the rail renders
 - **Then** the attention dot shows on the Agent co-pilot item in `agent-accent-dark` with a `shell` ring, naming its reason in its accessible name, and clears the moment a definition is enabled.
 
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-356: the rail attention dot's third condition - "Test connection failed since the last save" - has no stored source, because a failed test deliberately records nothing (ledger; routed by harvest 2026-09-15)
+- DW-372: a 403 on the Definition form renders the envelope's generic reason instead of naming the resource and the action, because no published action phrase exists for this form (ledger; routed by cr 2026-09-16)
+- DW-373: the `form-page` contract's required-field asterisk with its legend, and inline-on-blur validation for every field but the key, are unimplemented (ledger; routed by cr 2026-09-16)
+
 ### Story 3.7: Switches - the kill switch and enforced read-only
 
 As a production administrator,
@@ -2114,6 +2506,15 @@ So that I can adopt OcuPilot on a change-controlled system on my own terms.
 - **Then** it carries the banner "Read-only mode is enforced on this instance. The agent can read and explain, not change." and the footer status line reads "Read-only: on - enforced on this instance"
 - **And** the footer's read-only status line is **always** present, in both states, so the mode is learnable.
 
+- **Given** enforced read-only is on
+- **When** the agent attempts any change
+- **Then** every write tool returns a structured "blocked by read-only mode" result, the agent states **what it would have changed and on which screen**, and **no proposal card appears** (FR-19)
+- **And** this story is the enforcement point for the instance-wide state, evaluated on the instance at the point of effect (AD-30) - Story 10.4 adds the per-user toggle over this gate, it does not add a second one.
+
+- **Given** a write tool is already in flight when enforced read-only is switched on
+- **When** the switch takes effect
+- **Then** the turn stops at its next step boundary, the in-flight write is **not** applied, and the user sees the blocked result rather than a silent success or a half-applied change.
+
 - **Given** the kill switch is on, globally or for that user
 - **When** they open the panel
 - **Then** it enters its disabled state with the banner "The agent is switched off for <everyone / you>: <reason>.", the transcript becomes read-only, the composer and Send stay **focusable and `aria-disabled`** with the reason, and the attention dot lights
@@ -2131,6 +2532,14 @@ So that I can adopt OcuPilot on a change-controlled system on my own terms.
 - **Given** a definition carries its own read-only flag
 - **When** that definition is in use
 - **Then** it has the same effect as read-only mode while it is in use, and the footer line reads "Read-only: on - by the definition".
+
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-369: `ARCHETYPE_PAGES` maps the `form-page` archetype to a single page component, and Switches is the second form-page screen (ledger; routed by harvest 2026-09-15)
+- DW-370: `ACTION_LABELS` is keyed by bare action id across every descriptor, so a later screen's actions inherit the Definitions wording (ledger; routed by harvest 2026-09-15)
+- DW-383: the attention dot's reason reaches its accessible name but not the rail tooltip, which `EXPERIENCE.md` requires of both (ledger; routed by cr 2026-09-16)
 
 ### Story 3.8: Every configuration change is resource-gated and audited
 
@@ -2162,6 +2571,62 @@ So that the governance surface is itself governed.
 - **Then** every attempt is refused, as Story 1.3's test already proves - and this story adds the endpoint-level half: every configuration read and write is refused at the API too.
 
 ---
+
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-44: Install re-emits RoleGranted on every run; emit only on an actual grant and reword Story 1.3's AC9 (ledger; routed by merge_gate 2026-09-13)
+- DW-329: The audit redactor matches a credential name as a substring, so `maxTokens` is masked in a change record; anchor it the way the build-time credential pattern is anchored (ledger; routed by harvest 2026-09-15)
+- DW-331: A create's change record is diffed against the class `InitialExpression`s, so every field created at its default is absent from the record this story's audit row is built on (ledger; routed by cr 2026-09-15)
+- DW-358: a Test connection made against values that are not the stored ones records nothing, and the `test` verb's change record classifies itself `securityChange: false` (ledger; routed by harvest 2026-09-15)
+- DW-363: `SecurityFieldNames` silently skips a state property with no wire field, which is documented for `IsSecurityChange` but is silent data loss where it decides whether a row may be marked verified (ledger; routed by harvest 2026-09-15)
+- DW-364: `check_handler_wire_tests` keys a `:param` route on its dispatch class, so a new one passes the gate on a sibling's assertions (ledger; routed by harvest 2026-09-15)
+
+### Story 3.9: Epic 3 burn-down
+
+As the team that has to live with Epic 3,
+I want the residue the epic's own gates found closed before it merges,
+So that the agent configuration surface is not shipped with known holes in the places that hold secrets.
+
+**Acceptance Criteria:**
+
+- **Given** the twelve entries this story charters
+- **When** each is closed
+- **Then** it is either fixed with a demonstrated mutation, or made terminal with the reason recorded on the entry - never left `routed`.
+
+- **Given** the secret-lifecycle entries (DW-345, DW-346, DW-350, DW-353)
+- **When** they are settled
+- **Then** a stored key does not outlive the definition that named it, a refused create leaves nothing in the secondary store, OcuPilot does not write where the vendor cannot clean up, and no definition stays verified against a key it never verified.
+
+- **Given** the two concurrency entries (DW-362, DW-388)
+- **When** they are settled
+- **Then** the singleton stores and the verification write refuse a lost update rather than silently taking the later snapshot - one fix, since `Egress`, `Switch` and the definition row share the shape.
+
+- **Given** the gate entries (DW-368, DW-384, DW-396)
+- **When** they are settled
+- **Then** each gate catches the defect that reached CI or a spec while it was green: a browser spec asserting a corpus accident, a spec losing whole sections, and a test registering an audit event type unarmed.
+
+- **Given** the coverage entries (DW-338, DW-343, DW-352)
+- **When** they are settled
+- **Then** each is pinned by a test that reddens under a named mutation, or the entry records why it cannot be and is made terminal.
+
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-345: nothing removes a stored key, so deleting a definition leaves its secret on the instance indefinitely (ledger; chartered by the burn-down gate 2026-09-16)
+- DW-346: a refused create persists the password to the secondary store first and the tests assert only that no credential row survives (ledger; chartered by the burn-down gate 2026-09-16)
+- DW-350: OcuPilot can write to the vendor credential store where the vendor cannot clean up (ledger; chartered by the burn-down gate 2026-09-16)
+- DW-353: a credential store clears only the definition it was posted to, so a sibling stays verified against a key it never verified (ledger; chartered by the burn-down gate 2026-09-16)
+- DW-362: a concurrent write during the provider call can leave a definition marked verified against values it was never tested with (ledger; chartered by the burn-down gate 2026-09-16)
+- DW-388: two administrators saving Switches concurrently lose one write, and the shipped `Egress` singleton has the same shape (ledger; chartered by the burn-down gate 2026-09-16)
+- DW-384: `lint-docs.sh` does not read the implementation-artifact specs - three occurrences, three stories (ledger; chartered by the burn-down gate 2026-09-16)
+- DW-368: browser list specs assert facts that hold only by accident of the corpus - three CI reds this epic (ledger; chartered by the burn-down gate 2026-09-16)
+- DW-396: `check_destructive_test_guard` does not see `Security.Events.Create` or `Delete`, which is how DW-402 happened (ledger; chartered by the burn-down gate 2026-09-16)
+- DW-338: `Egress.Addresses`' multi-record lookup is unpinned - deleting it leaves every test green (ledger; chartered by the burn-down gate 2026-09-16)
+- DW-343: a transient credential read failure is indistinguishable from a removed entry and disables a working definition (ledger; chartered by the burn-down gate 2026-09-16)
+- DW-352: `HandleStoreCredential`'s two failure arms are driven by no test (ledger; chartered by the burn-down gate 2026-09-16)
 
 ## Epic 4: Ask the agent about the screen you are on
 
@@ -2212,6 +2677,15 @@ So that a ninety-second turn never looks like a hung page and never needs an ope
 - **Then** they live in OcuPilot's protected storage keyed by turn and owned by the user who started it, are capped in size per turn, and die with the turn
 - **And** a poll for a turn the caller does not own returns **404, not 403**.
 
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-23: `Kernel.Utils.ReadRequestBody` has no production call site - every route before this one is a GET or is intercepted by the CSP server, so this story's `POST /api/ocupilot/turn` is where the request-body read path first executes in production (ledger; routed by spec_gate 2026-09-12)
+- DW-250: `AdminPort.Invoke` fails 500 when its caller already holds a `%SYS.Capture` with buffered output; if the turn job or tool executor captures around a tool call, release or nest it (ledger; routed by harvest 2026-09-14)
+- DW-333: `ProviderPort` carries a definition's `systemPromptOverride` and nothing reads it back; settle precedence between it and the turn's own system prompt, and consume it (ledger; routed by harvest 2026-09-15)
+- DW-334: every endpoint judgement costs four resolver lookups plus a `GetInterfacesInfo` read, unbounded and uncached, on every provider call (ledger; routed by the burn-down gate 2026-09-16)
+- DW-397: a Test connection that faults against values the row does not hold records nothing, so a call carrying the credential elsewhere leaves no trace (ledger; routed by the burn-down gate 2026-09-16)
+
 ### Story 4.2: The tool registry, its one gate point, and the three shell reads
 
 As a developer-administrator,
@@ -2251,6 +2725,17 @@ So that its answers cannot describe an instance that differs from the one in fro
 - **When** it executes
 - **Then** it binds every caller value as a parameter, uses only fixed catalog queries, and runs no free-form SQL in Release 1
 - **And** it carries the anti-runaway-query guard harvested from iris-session-agent's bounded where-clause builder.
+
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-295: The registry's two tool sources expose different `View` arities and `Screen.Tool.Base` declares none, so this dispatcher must reconcile them - declare `View` on the base or key on `KIND` (ledger; routed by harvest 2026-09-15)
+- DW-387: `Kernel/Restraint.Verdict` has no write-path caller yet, so AC1's caller half is open - this is the first story with a write path to gate, and the caller-enumeration test is already there to keep it the only one (ledger; routed by harvest 2026-09-16)
+- DW-393: `check_restraint_containment`'s code regex is single-line, so a restraint code assembled across a concatenation is not seen (ledger; routed by qa 2026-09-16)
+- DW-394: the containment rule reads ObjectScript only and skips comments and XData, so a client naming a restraint code and refusing for itself passes every gate (ledger; routed by cr 2026-09-16)
+- DW-400: `check_handler_wire_tests` still keys a route by substring, so a route whose path is a leading prefix of another's is covered by its sibling's assertions (ledger; routed by harvest 2026-09-16)
+- DW-390: `Kernel/Restraint.Verdict`'s fail-closed path has no seam, and 4.2 adds the first real caller that could drive one (ledger; routed by the burn-down gate 2026-09-16)
 
 ### Story 4.3: The docked panel, present on every route
 
@@ -2297,6 +2782,15 @@ So that asking about a screen never means leaving it.
 - **When** this story is built
 - **Then** the figure is confirmed against the panel's docked and resized widths on the narrowest supported viewport rather than carried as an assumption.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-160: Home's panel-widening criterion could not be surface-anchored in Epic 1 - no panel existed; this story builds the docked panel and owns the remembered width it restores on leaving Home (ledger; routed by harvest 2026-09-12)
+- DW-379: the panel is the default width on every route where `DESIGN.md` gives it a wider Home width over a 120ms transition, and `--ocu-panel-home` is declared with no consumer (ledger; routed by harvest 2026-09-16)
+- DW-382: `DESIGN.md`'s Yield order is two thirds unbuilt - no media query, `matchMedia` or `ResizeObserver` exists in `ui/src`, and the panel is what first puts the row into the width budget (ledger; routed by cr 2026-09-16)
+- DW-377: the administrator reminder banner carries no link, which `EXPERIENCE.md` publishes for it (ledger; routed by the burn-down gate 2026-09-16)
+- DW-386: a form sign-in issues two definitions reads, because `runSubmit` notifies again after `adopt` already did (ledger; routed by the burn-down gate 2026-09-16)
+- DW-371: the initial bundle is 551 kB against a 500 kB warning and no gate pins the figure (ledger; routed by the burn-down gate 2026-09-16)
+
 ### Story 4.4: Screen context on every turn, capped, with its toggle and chip
 
 As a developer-administrator,
@@ -2339,6 +2833,13 @@ So that "what am I looking at?" is a question I can just ask - and so I can stop
 - **Given** the user is on a screen carrying secret-typed fields
 - **When** their draft looks like a password or key
 - **Then** an inline warning appears above the input - "This looks like a password or key. Send anyway?" - with Send anyway and Edit.
+
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-398: the anchored credential backstop cannot mask a secret word that is not final in a key name (ledger; routed by the burn-down gate 2026-09-16)
+- DW-399: nothing compares the audit redactor's suffix list with `field-lists.mjs`'s `CREDENTIAL_RE`, which its own doc says it mirrors (ledger; routed by the burn-down gate 2026-09-16)
 
 ### Story 4.5: A turn, watched: progress cards and the conversation lock
 
@@ -2554,6 +3055,12 @@ So that the agent is useful before I have thought of a question.
 ## Epic 5: Propose, confirm, and find it in the audit database
 
 A user asks the agent to change something, reviews a diff the instance computed from a fresh read, presses Confirm, watches the affected screen refresh and highlight what changed, and then finds that same change in the IRIS audit database marked as having come through the agent - in **each** of the six areas. This is the product's entire claim, and SM-3 and SM-4 are both met at its end.
+
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-269: The tasks LIST reports every task as not suspended, so this story's "tasks suspended after an error" line has no source; declare a `rowGet` of type `INFO` (AD-36) or drop the line (ledger; routed by spec_gate 2026-09-14)
 
 ### Story 5.1: The proposal is minted on the instance, from a fresh read
 
@@ -2792,7 +3299,7 @@ So that I can prove what changed and how, from the instance's own record.
 
 - **Given** the marker fails to emit
 - **When** the write has already succeeded
-- **Then** **the write does not fail and the failure does not propagate** - the condition is recorded on the ledger row and shown on the tool-call card as "done - audit not marked" in `warning` on its **collapsed** line, never only in the body, and the reply mentions it
+- **Then** **the write does not fail and the failure does not propagate** - the condition is recorded on the ledger row and shown on the tool-call card as "done · audit not marked" in `warning` on its **collapsed** line, never only in the body, and the reply mentions it
 - **And** the emission's return value is checked, because `$System.Security.Audit()` silently returns 0 and drops the event when the source, type and name triple was never registered.
 
 - **Given** auditing is off on the instance, or OcuPilot's own audit events are disabled
@@ -2871,7 +3378,7 @@ So that the product's central claim is visible in under a minute.
 - **Given** the user presses Confirm
 - **When** the write runs
 - **Then** it runs as that user through the same endpoint the screen's editor uses, sending the **complete merged property set** rather than the two changed fields
-- **And** the status line reads "Confirmed by <user name> - hh:mm:ss" and takes focus, the write's tool-call card reads "done - audit marked", and the `/csp/myapp` row re-fetches and highlights within two seconds showing Enabled Yes with %Development.
+- **And** the status line reads "Confirmed by <user name> - hh:mm:ss" and takes focus, the write's tool-call card reads "done · audit marked", and the `/csp/myapp` row re-fetches and highlights within two seconds showing Enabled Yes with %Development.
 
 - **Given** the write completed
 - **When** the agent replies
@@ -3132,6 +3639,13 @@ So that the area the contest names most specifically reads completely.
 - **When** they reach the Wallet screen by side bar or deep link
 - **Then** the whole screen is gated: the entry names the resource, and a deep link renders the title and a permission-denied message naming it, with no table.
 
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-49: Mark the checked-in demo X.509 pair a disposable fixture in Install/Fixture.cls's header and beside the literal (owner decision: keep it checked in) (ledger; routed by burndown 2026-09-13)
+- DW-233: Generate the demo X.509 pair at install through %SYS.X509Credentials.LoadCertificate, which also fills the metadata DW-59 accepted as empty; AD-21's path constraint is the open question (owner decision) (ledger; routed by merge_gate 2026-09-13)
+
 ### Story 6.4: The OAuth 2.0 screen
 
 As a developer-administrator,
@@ -3142,7 +3656,7 @@ So that "OAuth setup" is somewhere I can actually look.
 
 - **Given** the OAuth 2.0 screen
 - **When** it loads
-- **Then** it renders five lists as tabs of one screen - client server descriptions, client configurations, resource servers, the authorization server view, and server client descriptions - each tab behaving as a list.
+- **Then** it renders five tabs of one screen - client server descriptions, client configurations, resource servers, the authorization server view, and server client descriptions - each tab presenting its entries in a table but declared as a **detail view** archetype, which is what carries its classic-link exemption (Story 1.15).
 
 - **Given** the authorization server tab
 - **When** it renders
@@ -3154,7 +3668,9 @@ So that "OAuth setup" is somewhere I can actually look.
 
 - **Given** each entry
 - **When** the user wants to edit it
-- **Then** its name cell links to the classic portal editor in a new tab, until the polish-week editors ship - and this is the one place in the six areas where a **list** carries an outbound link, recorded against the counter-metric and removed in Epic 12.
+- **Then** its name cell links to the classic portal editor in a new tab, until the polish-week editors ship
+- **And** the five tabs are declared as **detail views, not lists** - they administer a configuration the operator reads and edits entry by entry - so each declares `classicLinkExemption` with its reason and Story 1.15's check honors it instead of failing
+- **And** the exemption is recorded against the counter-metric SM-C1 and removed in Epic 12.
 
 ### Story 6.5: On-demand and upcoming tasks
 
@@ -3368,6 +3884,11 @@ So that I can find a repeating warning and ask the agent what it means.
 - **Then** it is confirmed against a real messages.log tail at the densest severity mix rather than carried as an assumption.
 
 ---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-148: The fault banner's "Open messages.log" link navigates without `ShellState.showArea`, leaving the side bar on the previous area; this story builds the screen it reaches (ledger; routed by adjudication 2026-09-14)
+- DW-278: The Logs area gates on `%Admin_Secure:USE` for the audit viewer, which this screen does not need; decide whether this screen declares the pair or the area splits (ledger; routed by spec_gate 2026-09-14)
 
 ## Epic 7: Act on any row
 
@@ -3604,6 +4125,11 @@ So that standing up a new REST service is a first-class action here.
 - **When** this first full form is built
 - **Then** both figures are confirmed against a real field set at the longest label and value rather than carried as an assumption, and the confirmed values bind every later form in Epics 8 and 9.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-246: A `ScreenActions` handler registered from a routed page's lifecycle may notify during change detection (NG0100) or outlive its page; this story registers the first real handler, so pin register-in-page, unregister via DestroyRef, navigate away and back, one run per click (ledger; routed by harvest 2026-09-14)
+- DW-376: inline-on-blur validation for every field but the key is unreachable without a validate-only endpoint (ledger; routed by the burn-down gate 2026-09-16)
+
 ### Story 8.2: Create a user
 
 As a developer-administrator,
@@ -3788,9 +4314,9 @@ So that account administration does not send me back to the classic portal.
 - **When** a two-field change is saved
 - **Then** the complete property set is sent, and a test proves every other field survives.
 
-- **Given** the derived field list carries `Password`
-- **When** the schema is generated
-- **Then** that field is classified **secret at derivation**, excluded from the model's arguments, from screen context, from the proposal's stored arguments and from the ledger - and filled by the user at confirmation when the agent proposes a password change.
+- **Given** `Security.User`'s password travels in the vendor's POST wrapper and change-password body, outside the derived template
+- **When** the tool's schema is authored
+- **Then** `Password` and `NewPassword` are authored as **secret** fields of the tool, excluded from the model's arguments, from screen context, from the proposal's stored arguments and from the ledger - and filled by the user at confirmation when the agent proposes a password change.
 
 - **Given** this is the first large editor built
 - **When** it lands
@@ -3871,6 +4397,14 @@ So that the instance's outbound and inbound TLS is manageable from the portal.
 - **Given** the named SSL configuration the installer created for `ProviderPort`
 - **When** it is edited here
 - **Then** editing it is possible but its role is visible, because the agent's own outbound calls depend on it.
+
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-268: The build's credential-name guard is suffix-anchored, so it misses `PrivateKeyFile`, `PrivateKeyType`, `CertificateFile`, `CAFile` and `CAPath` - the fields this editor's detail read carries (ledger; routed by adjudication 2026-09-14)
+- DW-332: the destructive-test guard does not cover `Security.SSLConfigs` create or delete, so three classes act unarmed (ledger; routed by the burn-down gate 2026-09-16)
+- DW-391: a form-page with no list has no published sentence for an absent entity (ledger; routed by the burn-down gate 2026-09-16)
 
 ### Story 9.6: The LDAP and Kerberos editor
 
@@ -4056,7 +4590,7 @@ So that I can explore without any possibility of changing something.
 
 - **Given** the panel
 - **When** the toggle is used
-- **Then** the user's session enters read-only, the footer line reads "Read-only: on - for you", and every write tool returns "blocked by read-only mode" with the agent stating what it would have changed and on which screen, and **no proposal card appearing**.
+- **Then** the user's session enters read-only and the footer line reads "Read-only: on - for you", the blocked-result behavior being the one already built and enforced in Story 3.7 rather than a second enforcement point introduced here.
 
 - **Given** enforced instance-wide read-only is on
 - **When** a user tries to turn their own toggle off
@@ -4799,6 +5333,12 @@ So that nothing I relied on there is simply missing here.
 - **When** they render
 - **Then** they carry the fixed shortcuts and the documentation, support and InterSystems links, each filtered by what the user may reach.
 
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-3: A real build identity (Installer.cls:73 is the literal `dev`) and the stale-bundle reload prompt with its copy (ledger; routed by merge_gate 2026-09-13)
+
 ### Story 15.4: Home's System Information panel
 
 As a developer-administrator arriving in the morning,
@@ -4862,6 +5402,10 @@ So that the portal is usable in the conditions I actually use it in.
 The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Polish week, last, as time allows.
 
 **Applies to every story in this epic.** Nothing here may break a Release 1 screen or a Release 1 agent write; anything that risks either waits for Stage 2. Each screen is one descriptor with its derived read tool; each action ships with its confirmed write tool and is added to Epic 14's governance baseline rather than left to default.
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-118: The `--ocu-*` color layer is theme-static - `:root.ocu-theme-dark` remaps only `--mat-sys-*`, so every color in `_components.scss` keeps its light value in dark mode (ledger; routed by harvest 2026-09-12)
 
 ### Story 16.1: The try-it request console
 
@@ -5049,6 +5593,10 @@ So that the last unmapped polish-week area is covered.
 
 ---
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-253: LanguageServer's template is evaluated at its default type, so its `Custom` object derives member-less; derive one field list per language-server type as `Wallet.Secret` does, amending AD-3 (ledger; routed by harvest 2026-09-14)
+
 ## Epic 17: The Open Exchange listing and the contest submission
 
 A judge finds OcuPilot on Open Exchange, follows a README whose install steps work the first time on a clean machine, and reads a walkthrough that shows what an agent write looks like even without an API key. **Floating** - not a build step and not sequenced against one. It runs when the owner decides to release, which is why it sits after the polish week: nothing it publishes should depict a build that is not yet finished.
@@ -5112,6 +5660,16 @@ So that I never have to work out what the author forgot to write down.
 - **Given** the README is tagged at the release
 - **When** the listing is prepared from it
 - **Then** its content is already final enough to link, because the listing quotes it rather than duplicating it.
+
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-48: The start hook compiles every Test.* class into the production instance, so a test-class compile error fails every start and DemoTask ships with the demo flag off; move tests to a sibling tree excluded from the hook and module.xml (ledger; routed by merge_gate 2026-09-13)
+- DW-216: Install.Smoke.Port assumes the instance's own web-server port, so every HTTP check fails behind an external Web Gateway (ledger; routed by burndown 2026-09-13)
+- DW-235: ci-throwaway.sh's scratch-root guard admits any absolute path when TMPDIR is /, and now deletes through a root container (ledger; routed by burndown 2026-09-13)
+- DW-309: the citation gate covers `EXPERIENCE.md` only and cannot reach a reference that names no document (ledger; routed by the burn-down gate 2026-09-16)
+- DW-375: `EXPERIENCE.md`'s own `(:nnn)` back-references have drifted and nothing checks them (ledger; routed by the burn-down gate 2026-09-16)
 
 ### Story 17.3: The Open Exchange listing, submitted for review
 
@@ -5504,6 +6062,12 @@ So that it is not confined to the one the installer picks.
 - **Then** nothing changed, as everywhere else.
 
 ---
+
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-219: Uninstall's contract on an instance OcuPilot does not wholly own has three half-state paths (ledger; routed by merge_gate 2026-09-13)
 
 ## Epic 19: Stage 3 - System Explorer over the Atelier API
 

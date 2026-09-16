@@ -1,0 +1,166 @@
+# OcuPilot's CI (Story 1.17).
+#
+# The first place in this repository where a gate is RUN rather than described. Every checker
+# the epic built -- the five `prebuild` checks, both Python harnesses, the client suite, the
+# ObjectScript suite, the container start path, the smoke script -- was asserted as source text
+# and run by a human at most once; `/epic-cycle` recorded `ci=none` for all sixteen stories
+# before this one.
+#
+# Three jobs, and the split is by what each needs rather than by taste:
+#
+#   gates     nothing but a checkout, Node and uv. Every mechanical checker, and the build and
+#             the client suite they gate -- once per Node band `ui/package.json` declares, at
+#             each band's floor, because a suite that runs on one Node only proves one Node.
+#   instance  a throwaway container. The ObjectScript suite, the smoke script and the one
+#             real-browser spec, none of which means anything without an installed instance.
+#   images    both stock Community editions at the pinned version: src/OcuPilot/ compiles, and
+#             the admin API reports v2 through the port's own version read, so no
+#             HealthShare-only dependency can go unnoticed (NFR-13).
+#
+# NOTHING HERE PUBLISHES, LISTS, RELEASES OR PUSHES TO ANY REGISTRY. No Open Exchange step, no
+# `npm publish`, no container push, no GitHub release, no `secrets.` reference of any kind
+# (stealth policy until the owner's 2026-09-24 release). `ui/tools/ci.test.mjs` asserts each of
+# those absences, and asserts the equality in both directions between the gates it declares and
+# the `run:` commands here -- a gate deleted from either side is red.
+#
+# No step carries `continue-on-error`, and no command is followed by `|| true`: a gate that
+# cannot fail the job is a gate that reports rather than gates.
+#
+# Every tool is pinned exactly (DW-215, DW-218): each action to the commit its tag resolved to,
+# the tag kept as a trailing comment; the runner image; uv; Python through `.python-version`.
+# Each script runs under the shell its shebang declares (DW-229). `ui/tools/ci.test.mjs` asserts
+# every pin and every shell.
+
+name: ci
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gates:
+    name: gates (node ${{ matrix.node }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    # One leg per band `ui/package.json` declares in `engines.node`, at that band's FLOOR -- the
+    # oldest Node the project claims to support is the one least likely to run it. Run
+    # 34773637146 is why this is a matrix rather than a single pin: `npm test` ran `node --test`
+    # over a DIRECTORY, which the local Node 26 scans and the pinned Node 22 loads as a module,
+    # so the gates job died over a suite it never opened while every local gate stayed green. A
+    # single-version job cannot tell "this works" from "this works on the one version we run",
+    # and the declared floor is exactly where that difference lives.
+    #
+    # `ui/tools/ci.test.mjs` holds this list and `engines.node` equal in both directions: a band
+    # declared with no leg here, or a leg for a band nothing declares, is red.
+    strategy:
+      fail-fast: false
+      matrix:
+        node:
+          - '22.22.3'
+          - '24.15.0'
+          - '26.0.0'
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+        with:
+          version: "0.12.9"
+      - name: install client dependencies
+        working-directory: ui
+        run: npm ci
+      - name: build the client
+        working-directory: ui
+        run: npm run build
+      - name: client suite
+        working-directory: ui
+        run: npm test
+      - name: objectscript and ui checkers
+        run: uv run scripts/check-objectscript.py
+      - name: the checkers' own harness
+        run: uv run scripts/test_check_objectscript.py
+      - name: document gates
+        run: bash scripts/lint-docs.sh
+
+  instance:
+    name: instance
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      # First, before anything else can mask it: the Linux ownership reproduction for the durable
+      # directory (DW-234). A named volume whose root only root may write, a negative control that
+      # IRIS's own user cannot write it, then durable-init.sh making it writable.
+      - name: durable directory ownership on Linux
+        run: sh scripts/ci-durable-ownership.sh --image intersystems/irishealth-community:2026.2
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 22.22.3
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+      - name: install client dependencies
+        working-directory: ui
+        run: npm ci
+      - name: build the client bundle the container installs
+        working-directory: ui
+        run: npm run build
+      - name: install the pinned headless browser
+        working-directory: ui
+        run: npx puppeteer browsers install chrome
+      - name: bring up a throwaway container
+        run: sh scripts/ci-throwaway.sh up
+      - name: wait for readiness to report installed
+        run: sh scripts/wait-readiness.sh --url http://localhost:52776/api/ocupilot/readiness/
+      - name: objectscript suite, one class at a time
+        working-directory: ui
+        run: node tools/ci-runner.mjs --container ocupilot-ci
+      - name: smoke
+        run: sh scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS
+      - name: browser spec
+        working-directory: ui
+        env:
+          OCUPILOT_BROWSER_ORIGIN: http://localhost:52776
+        run: npm run test:browser
+      # Before the teardown, and only when something above it went wrong: the teardown removes the
+      # container, so whatever it was doing is unrecoverable a step later. In run 34773637146 the
+      # failing step printed `container ocupilot-ci is unhealthy` and nothing else; the cause
+      # reached the job only inside the teardown's own 80-line tail, under a step named for
+      # removing things.
+      #
+      # `failure() || cancelled()`, not `failure()`: a job that hits `timeout-minutes` is
+      # CANCELLED, not failed, and so is one this workflow's own `cancel-in-progress` supersedes.
+      # A container hung long enough to reach the 45-minute timeout is the case where the capture
+      # is worth the most, and `failure()` alone is false for exactly that case while the
+      # `always()` teardown still removes the evidence.
+      - name: capture the throwaway on failure
+        if: ${{ failure() || cancelled() }}
+        run: sh scripts/ci-throwaway.sh logs
+      - name: tear the throwaway down
+        if: always()
+        run: sh scripts/ci-throwaway.sh down
+
+  images:
+    name: images
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - intersystems/irishealth-community:2026.2
+          - intersystems/iris-community:2026.2
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: compile and read the admin API version on this edition
+        run: sh scripts/ci-image-compile.sh --image ${{ matrix.image }}

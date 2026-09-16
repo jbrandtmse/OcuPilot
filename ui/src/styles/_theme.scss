@@ -1,0 +1,146 @@
+// Wires Lantern's color roles into Angular Material 3's own token system.
+//
+// `mat.theme(...)` is Material 3's own theming API (verified on disk, not recalled:
+// `@mixin theme($config, $overrides)` at
+// ui/node_modules/@angular/material/core/tokens/_system.scss:57, forwarded from
+// _index.scss:21-23). Its own doc comment states: "The application variables
+// emitted use the namespace prefix `--mat-sys`." Calling it once lets Material emit
+// its *complete* `--mat-sys-*` system -- surface layering, `on-` pairing, container
+// tints, state-layer opacities (8/10/12%), ripple, scrim, the 38% disabled opacity,
+// shape and density, plus every role Lantern does not value (`scrim`, `shadow`,
+// `surface-tint`, `inverse-primary`, `background`/`on-background`, the
+// `*-fixed*` family) -- none of which DESIGN.md publishes a hex for, so none of
+// which this file touches (Design Notes #4: "invent no hex").
+//
+// The palette and typography family passed into `mat.theme(...)` below are
+// deliberately irrelevant: every one of the 30 Material-3-role `--mat-sys-*`
+// variables Lantern *does* value is re-pointed at an `--ocu-*` custom property
+// immediately afterward, at higher specificity (`:root`'s (0,1,0) beats the `html`
+// selector's (0,0,1) that `mat.theme` itself is included under -- Design Notes'
+// "the mechanism, in short"). `mat.$violet-palette` is used only so
+// `system-level-colors` has a structurally valid Material palette to compute its
+// *other* emitted roles (state layers, containers Lantern doesn't override) from;
+// its own hue never reaches a Lantern-valued role.
+//
+// Typography weights are pinned to 400/600 (never 700 -- DESIGN.md: "700 does not
+// exist in the UI") so Material's own emitted `--mat-sys-*-weight` variables never
+// introduce the one weight this product's type ramp forbids.
+
+@use '@angular/material' as mat;
+
+html {
+  @include mat.theme(
+    (
+      color: mat.$violet-palette,
+      typography: (
+        plain-family:
+          "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+        brand-family:
+          "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+        bold-weight: 600,
+        medium-weight: 600,
+        regular-weight: 400,
+      ),
+      density: 0,
+    )
+  );
+}
+
+// Light -- the bare role. Declared first, matching the mechanism note's
+// stated order -- though source order is not what makes dark win: `:root`'s
+// specificity is (0,1,0) and `:root.ocu-theme-dark`'s is (0,2,0), so the dark
+// block below overrides these on specificity alone regardless of which one
+// comes first in the cascade.
+:root {
+  // `mat.theme` defaults `theme-type` to `color-scheme`, so every --mat-sys-*
+  // role this file does NOT re-point ships as `light-dark(<light>, <dark>)` --
+  // 49 of them. `light-dark()` reads the used `color-scheme`, and with none
+  // declared it resolves to the light half unconditionally: Material's own dark
+  // values would never appear, and the dark class flip would be a no-op for
+  // exactly the roles DESIGN.md publishes no hex for (Design Notes #4, "invent
+  // no hex"). Declaring the scheme in each scope is what makes "Material 3's
+  // meaning inherited unchanged" true in both modes. It also tells the UA which
+  // way to draw scrollbars and form controls.
+  color-scheme: light;
+
+  --mat-sys-primary: var(--ocu-primary);
+  --mat-sys-on-primary: var(--ocu-on-primary);
+  --mat-sys-primary-container: var(--ocu-primary-container);
+  --mat-sys-on-primary-container: var(--ocu-on-primary-container);
+
+  --mat-sys-secondary: var(--ocu-secondary);
+  --mat-sys-on-secondary: var(--ocu-on-secondary);
+  --mat-sys-secondary-container: var(--ocu-secondary-container);
+  --mat-sys-on-secondary-container: var(--ocu-on-secondary-container);
+
+  --mat-sys-tertiary: var(--ocu-tertiary);
+  --mat-sys-on-tertiary: var(--ocu-on-tertiary);
+  --mat-sys-tertiary-container: var(--ocu-tertiary-container);
+  --mat-sys-on-tertiary-container: var(--ocu-on-tertiary-container);
+
+  --mat-sys-error: var(--ocu-error);
+  --mat-sys-on-error: var(--ocu-on-error);
+  --mat-sys-error-container: var(--ocu-error-container);
+  --mat-sys-on-error-container: var(--ocu-on-error-container);
+
+  --mat-sys-surface: var(--ocu-surface);
+  --mat-sys-surface-dim: var(--ocu-surface-dim);
+  --mat-sys-surface-bright: var(--ocu-surface-bright);
+  --mat-sys-surface-container-lowest: var(--ocu-surface-container-lowest);
+  --mat-sys-surface-container-low: var(--ocu-surface-container-low);
+  --mat-sys-surface-container: var(--ocu-surface-container);
+  --mat-sys-surface-container-high: var(--ocu-surface-container-high);
+  --mat-sys-surface-container-highest: var(--ocu-surface-container-highest);
+  --mat-sys-on-surface: var(--ocu-on-surface);
+  --mat-sys-on-surface-variant: var(--ocu-on-surface-variant);
+
+  --mat-sys-outline: var(--ocu-outline);
+  --mat-sys-outline-variant: var(--ocu-outline-variant);
+
+  --mat-sys-inverse-surface: var(--ocu-inverse-surface);
+  --mat-sys-inverse-on-surface: var(--ocu-inverse-on-surface);
+}
+
+// Dark -- the scope is a root class, not a media query, so the polish-week theme
+// toggle (spine `## Deferred`, FR-73) is a class flip. Ship the scope; the control
+// is not this story's to build.
+:root.ocu-theme-dark {
+  color-scheme: dark;
+
+  --mat-sys-primary: var(--ocu-primary-dark);
+  --mat-sys-on-primary: var(--ocu-on-primary-dark);
+  --mat-sys-primary-container: var(--ocu-primary-container-dark);
+  --mat-sys-on-primary-container: var(--ocu-on-primary-container-dark);
+
+  --mat-sys-secondary: var(--ocu-secondary-dark);
+  --mat-sys-on-secondary: var(--ocu-on-secondary-dark);
+  --mat-sys-secondary-container: var(--ocu-secondary-container-dark);
+  --mat-sys-on-secondary-container: var(--ocu-on-secondary-container-dark);
+
+  --mat-sys-tertiary: var(--ocu-tertiary-dark);
+  --mat-sys-on-tertiary: var(--ocu-on-tertiary-dark);
+  --mat-sys-tertiary-container: var(--ocu-tertiary-container-dark);
+  --mat-sys-on-tertiary-container: var(--ocu-on-tertiary-container-dark);
+
+  --mat-sys-error: var(--ocu-error-dark);
+  --mat-sys-on-error: var(--ocu-on-error-dark);
+  --mat-sys-error-container: var(--ocu-error-container-dark);
+  --mat-sys-on-error-container: var(--ocu-on-error-container-dark);
+
+  --mat-sys-surface: var(--ocu-surface-dark);
+  --mat-sys-surface-dim: var(--ocu-surface-dim-dark);
+  --mat-sys-surface-bright: var(--ocu-surface-bright-dark);
+  --mat-sys-surface-container-lowest: var(--ocu-surface-container-lowest-dark);
+  --mat-sys-surface-container-low: var(--ocu-surface-container-low-dark);
+  --mat-sys-surface-container: var(--ocu-surface-container-dark);
+  --mat-sys-surface-container-high: var(--ocu-surface-container-high-dark);
+  --mat-sys-surface-container-highest: var(--ocu-surface-container-highest-dark);
+  --mat-sys-on-surface: var(--ocu-on-surface-dark);
+  --mat-sys-on-surface-variant: var(--ocu-on-surface-variant-dark);
+
+  --mat-sys-outline: var(--ocu-outline-dark);
+  --mat-sys-outline-variant: var(--ocu-outline-variant-dark);
+
+  --mat-sys-inverse-surface: var(--ocu-inverse-surface-dark);
+  --mat-sys-inverse-on-surface: var(--ocu-inverse-on-surface-dark);
+}

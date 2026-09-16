@@ -7,6 +7,15 @@ in commits `160d7a2`, `f410600`, `e0f65ab` and `da7be8c`; the full four-lens rep
 
 Ordered by when the decision is needed. Every item carries a recommendation so it can be decided quickly.
 
+> **Status 2026-09-09.** The owner decided **D2, D4, D5 and D7** at the start of `/epic-cycle` epic 1
+> (branch `OCU-1-epic1`), each as its stated recommendation. All four are **applied** to `epics.md`;
+> D2 is also reconciled in the PRD (FR-9, FR-44); D2 and D4 carry Rule 20 writes into the architecture
+> spine (AD-44, AD-30) plus two new Consistency Conventions rows. They are no longer open decisions -
+> do not re-mine them as such. **D1 remains accepted-unresolved** (no sizing exists; the capacity
+> question stands). D3, D6, D8 and D9 are untouched and still open, each falling outside epics 1-3.
+> Section 3's edge conditions are now **filed in the deferred-work ledger**, owner-routed to the story
+> that must address or decline each one.
+
 ---
 
 ## 1. Decide before sprint planning
