@@ -38,10 +38,10 @@ Method TestTheFormDeclaresApiKeyAsItsOneSecretField()
 /// <p>The rest of the declaration a form-page reached from its own list carries: no
 /// <code>read</code> and no <code>table</code> (AD-36 -- a form is one entity, not a list of
 /// rows), a single id (the route's own id segment), and no classic equivalent (AD-44).</p>
-/// <p>Mutation: give the declaration a <code>"table"</code> key -> the first assertion below goes
-/// red on the unknown-key refusal <method>OcuPilot.Screen.Registry.DeclarationProblem</method>
-/// reports for it, since <code>table</code> with no <code>read</code> is what that rule exists
-/// to catch.</p>
+/// <p>Mutation: give the declaration a <code>"table"</code> key -> the second assertion below goes
+/// red on <code>table</code> no longer reading <code>unassigned</code>, and the last one goes red
+/// on the refusal <method>OcuPilot.Screen.Registry.DeclarationProblem</method> reports for it,
+/// since <code>table</code> with no <code>read</code> is what that rule exists to catch.</p>
 Method TestTheFormDeclaresNoReadOrTableAndOneIdAndNoClassicPage()
 {
     Set tSC = $ClassMethod(..#DESCRIPTOR, "DeclarationJson", .tDeclaration)

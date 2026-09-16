@@ -51,6 +51,7 @@ export function actionLabel(actionId: string): string {
  */
 const ACTION_LABELS: Readonly<Record<string, string>> = {
   [REFRESH_ACTION_ID]: STRINGS.actionRefresh,
+  create: STRINGS.actionCreate,
   enable: STRINGS.agentDefinitionEnable,
   disable: STRINGS.agentDefinitionDisable,
   'set-default': STRINGS.agentDefinitionSetDefault,

@@ -10,7 +10,7 @@
  * and survive leaving and returning to the screen (EXPERIENCE.md, Screen Synchronization): the
  * rate through `PreferenceStore`'s rate map and the other four through its view map, restored when
  * the store is created. `data`, `truncated`, `banner`, `lastUpdate`, `selection`, `active`,
- * `changed` and
+ * `changed`, `refusal` and
  * `scroll` are what the instance last said and where the user last was, so they live for as long
  * as the tab holds the store and are never persisted -- a remembered scroll offset into rows that
  * have since changed is worse than none, and a remembered `lastUpdate` would claim a freshness the
@@ -60,6 +60,7 @@ export class ScreenStore {
   private rows: readonly ScreenRow[] = [];
   private truncatedFlag = false;
   private bannerKey = '';
+  private refusalText = '';
   private lastUpdateAt: Date | null = null;
   private selected: readonly string[] = [];
   private activeKey = '';
@@ -124,6 +125,29 @@ export class ScreenStore {
   }
 
   /**
+   * The sentence the last refused row action answered with, `''` for none.
+   *
+   * **Server text, never client copy** (AD-39): a refused write answers a violation's own `reason`
+   * or the envelope's, and this slot carries whichever the handler read. It is the screen's, not
+   * the table's, because the action that raised it acts on the screen's selection and the row it
+   * refused is still on screen.
+   *
+   * Written only by the action handler that issued the write -- never by `applyTick`, so a silent
+   * re-fetch neither raises nor clears one -- and dropped by `clearAnswers`, because a refusal
+   * about a row in a namespace the shell has left is about nothing.
+   */
+  refusal(): string {
+    return this.refusalText;
+  }
+
+  /** Raise or clear the refusal sentence. A handler clears it before it issues its write. */
+  setRefusal(text: string): void {
+    if (this.refusalText === text) return;
+    this.refusalText = text;
+    this.notify();
+  }
+
+  /**
    * Record one read. The four slots a re-fetch owns, and no others: a tick that also cleared
    * the selection or reset the scroll would be visible to the user, which is what "refresh is
    * silent" forbids (EXPERIENCE.md "**Auto-refresh controls.** On Processes").
@@ -148,6 +172,7 @@ export class ScreenStore {
     this.rows = [];
     this.truncatedFlag = false;
     this.bannerKey = '';
+    this.refusalText = '';
     this.lastUpdateAt = null;
     this.selected = [];
     this.activeKey = '';

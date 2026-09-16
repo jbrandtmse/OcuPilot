@@ -11,7 +11,11 @@
 /// <p><b>It is also the project's first write-capable descriptor.</b> Three row actions --
 /// <code>enable</code>, <code>disable</code> and <code>set-default</code> -- act on the selected
 /// row in place and publish AD-14's <code>(agent-definition, instance, id)</code> change event, so
-/// the row re-fetches without a reload. Being write-capable is what makes the empty state invite
+/// the row re-fetches without a reload. Its primary action is <code>create</code>, which opens
+/// <class>OcuPilot.Screen.Descriptor.AgentDefinitionForm</class>: that form takes no side-bar
+/// position, so this list's Create and its name cell are the two ways to reach it, and without
+/// the primary action an instance holding no definition has no way in at all. Being write-capable
+/// is what makes the empty state invite
 /// the agent: <code>table.emptyAgentKey</code> is declared and <code>emptyNextKey</code> is empty,
 /// which <method>OcuPilot.Screen.Registry.TableProblem</method> requires of each other.</p>
 /// <p><b>Its id is <code>composite</code> over one part, <code>id</code></b>, and that is not a
@@ -55,7 +59,7 @@ XData Declaration
   "scope": "instance",
   "parentScope": "",
   "id": {"kind": "composite", "parts": ["id"]},
-  "primaryAction": {"id": "", "selfProtection": ""},
+  "primaryAction": {"id": "create", "selfProtection": ""},
   "rowActions": [
     {"id": "enable", "selfProtection": ""},
     {"id": "disable", "selfProtection": ""},

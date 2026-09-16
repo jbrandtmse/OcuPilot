@@ -435,21 +435,6 @@ function nameListProblem(where, list, allowed) {
 }
 
 /**
- * What is wrong with a declaration's `read`, or `null` when nothing is (AD-36).
- *
- * The rules `OcuPilot.Screen.Registry.ReadProblem` applies on the instance: an absent or `null`
- * read is a screen with no read; otherwise `source` is `{port: "admin", endpoint, type: "LIST"}`,
- * `fields` is non-empty and unique, `filter`, `sort.fields` and `context.secretFields` name only
- * declared fields, no secret field is filterable or sortable, `sort.default` is a sort field,
- * `sort.direction` is `asc` or `desc`, `paging` is `cap` (no admin LIST accepts a cursor), and the
- * `toolIdentifier` is `<area>.<screen>` in lower case. `read`, `read.source`, `read.sort` and
- * `context` carry only their declared keys, and `context.secretFields` is declared, so a misspelt
- * key is refused rather than read as no secret field. `read.source.rowGet` is `rowGetProblem`'s. A
- * read declares its table (`tableProblem`), and a table with no read is refused. Last of all, a
- * read on the `admin` port whose `privileges` omit `%DB_IRISSYS:READ` is refused, because the port
- * runs every endpoint in `%SYS`; `OcuPilot.Test.AdminPairCorpus` is the corpus both engines run.
- */
-/**
  * What is wrong with a **built** declaration's `sideBarPosition`, or `null` when nothing is: it
  * must be declared, a number, a whole number, and at least 0.
  *
@@ -479,6 +464,25 @@ export function sideBarPositionProblem(declaration) {
   return null;
 }
 
+/**
+ * What is wrong with a declaration's `read`, or `null` when nothing is (AD-36).
+ *
+ * The rules `OcuPilot.Screen.Registry.ReadProblem` applies on the instance: an absent or `null`
+ * read is a screen with no read; otherwise `source` is `{port, endpoint, type: "LIST"}` naming one
+ * of AD-36's two source kinds -- `admin`, an instance endpoint reached through the port, with a
+ * dotted endpoint name and an optional `rowGet` (`rowGetProblem`); or `state`, one of OcuPilot's
+ * own kernel stores named without a package, which declares neither a `rowGet` nor `criteria`.
+ * `fields` is non-empty and unique, `filter`, `sort.fields` and `context.secretFields` name only
+ * declared fields, no secret field is filterable or sortable, `sort.default` is a sort field,
+ * `sort.direction` is `asc` or `desc`, `paging` is `cap` (no LIST accepts a cursor), and the
+ * `toolIdentifier` is `<area>.<screen>` in lower case. `read`, `read.source`, `read.sort` and
+ * `context` carry only their declared keys, and `context.secretFields` is declared, so a misspelt
+ * key is refused rather than read as no secret field. A read declares its table (`tableProblem`),
+ * and a table with no read is refused. Last of all, a read on the `admin` port whose `privileges`
+ * omit `%DB_IRISSYS:READ` is refused, because the port runs every endpoint in `%SYS` -- a `state`
+ * read runs in the install namespace and needs no such pair, so the rule is on the source kind
+ * rather than on every read; `OcuPilot.Test.AdminPairCorpus` is the corpus both engines run.
+ */
 export function readProblem(declaration) {
   const { read } = declaration;
   if (read === undefined || read === null) {
@@ -571,7 +575,7 @@ export function readProblem(declaration) {
     return `read.sort.direction '${sort.direction}' is neither 'asc' nor 'desc'`;
   }
   if (read.paging === 'cursor') {
-    return "read.paging 'cursor' is refused on an admin source, which accepts no cursor; declare 'cap' (AD-36)";
+    return "read.paging 'cursor' is refused: neither declared source kind accepts a cursor; declare 'cap' (AD-36)";
   }
   if (read.paging !== 'cap') return `read.paging '${read.paging}' is not 'cap'`;
   if (typeof declaration.toolIdentifier !== 'string' || !READ_TOOL_IDENTIFIER_RE.test(declaration.toolIdentifier)) {

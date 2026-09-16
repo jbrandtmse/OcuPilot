@@ -55,6 +55,39 @@ Method TestEveryViolationCodeHasAPublishedSentence()
     Do $$$AssertEquals(##class(OcuPilot.Api.Error).ReasonForViolation("AGENT.NO.SUCH.CODE"), "", "and a code the vocabulary does not hold carries none, which is how a caller tells 'no sentence' from 'an empty one'")
 }
 
+/// <p><b>The vocabulary is every <code>AGENT*</code> code the class declares</b>, less the three
+/// that are envelope-level, and <method>OcuPilot.Api.Error.ViolationCodes</method> holds exactly
+/// that set.</p>
+/// <p>Without this, the sentence check above is a roster checking itself: its population is
+/// <method>ViolationCodes</method>, so a field-level code declared as a parameter and emitted by a
+/// rule but never added to that hand-written list is in neither the population nor the resolver,
+/// and every assertion passes while the form renders a blank line under the field it names. The
+/// codes are read from the writer's own parameter list here, the way
+/// <method>OcuPilot.Test.Envelope.TestEveryDeclaredCodeMatchesTheFormat</method> reads them.</p>
+/// <p>Mutation: add a <code>Parameter AGENTPROBERANGE = "AGENT.PROBE.RANGE"</code> to
+/// <class>OcuPilot.Api.Error</class> and nothing else -- this goes red naming it, where the
+/// sentence check above stays green.</p>
+Method TestViolationCodesHoldsEveryDeclaredFieldLevelCode()
+{
+    ; The three AGENT codes that ride on the envelope rather than on a field. Named here, because
+    ; "which codes are envelope-level" is the one fact this check cannot derive.
+    Set tEnvelope = $ListBuild("AGENTVALIDATION", "AGENTNOTFOUND", "AGENTBADBODY")
+    Set tDeclared = ##class(OcuPilot.Api.Error).ViolationCodes()
+    Set tFound = 0
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT Name FROM %Dictionary.CompiledParameter WHERE parent = ?", "OcuPilot.Api.Error")
+    While tRS.%Next() {
+        Set tName = tRS.%Get("Name")
+        If $Extract(tName, 1, 5) '= "AGENT" Continue
+        If $ListFind(tEnvelope, tName) Continue
+        Set tCode = $Parameter("OcuPilot.Api.Error", tName)
+        Set tFound = tFound + 1
+        Do $$$AssertTrue($ListFind(tDeclared, tCode) > 0, "field-level code '" _ tName _ "' = '" _ tCode _ "' is in ViolationCodes(), so the sentence check reaches it")
+    }
+    ; A sweep that found nothing would pass every row above having tested nothing.
+    Do $$$AssertTrue(tFound >= 23, "the sweep read the declared parameters rather than an empty roster (found " _ tFound _ ")")
+    Do $$$AssertEquals($ListLength(tDeclared), tFound, "and ViolationCodes() holds no code the class does not declare")
+}
+
 /// <p><b>The violation the wire carries is <code>{field, code, reason}</code>, in that order</b>,
 /// and the reason is the published sentence for that code.</p>
 /// <p>Asserted over HTTP rather than on <method>OcuPilot.Kernel.AgentRules.ViolationsJson</method>

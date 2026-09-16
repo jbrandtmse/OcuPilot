@@ -363,6 +363,18 @@ ones.
 
 ## Review Triage Log
 
+**Code review, 2026-09-15.** Four layers over `17d3a75..e675bf1`. Three HIGH and eleven MED were
+applied in the pass; three MED were ledgered (DW-372, DW-373, DW-374) and one occurrence appended
+(DW-370). The HIGHs: the Definitions list declared no `create` primary action, so on an instance
+with no definition the form was reachable only by typing its URL, against EXPERIENCE.md's Definition
+form row and the spine's own `sideBarPosition` 0 Conventions row; the three row actions returned
+silently on a refusal, so `AGENT.DEFAULT.DISABLED` and `AGENT.ENABLE.UNVERIFIED` reached no surface
+(the matrix row and DW-366); and Save cleared the dirty flag over an unstored pasted key, so the
+leave guard waved the operator off the page and dropped it. `ScreenStore` gained a `refusal` slot
+and `ListPage` renders it, which is the surface a write-capable list needed and every later one
+will use.
+
+
 ## Design Notes
 
 **Governing ADs:** AD-4 (send the complete property set), AD-5 (one descriptor), AD-8 (privilege
@@ -634,6 +646,37 @@ suite never exercised because it forces the render the defect races against.
 
 - `docker compose exec` -based inspection only; the live `ocupilot` container holds zero definitions
   and zero `OcuPilot`-named credential entries before and after this story.
+
+**Mutations added at the code review (Rule 19), as applied.** Each was run, observed red and
+reverted to a byte-identical tree.
+
+- **The list's Create** -- **run:** `primaryAction.id` back to `""`, and the `CREATE_ACTION`
+  registration removed, each reddened `definition-actions.spec.ts`'s Create leg.
+- **A refused row action** -- **run:** restoring `if (result.kind !== 'ok') return;` reddened
+  `definition-actions.spec.ts`'s DW-366 leg on the store's refusal sentence.
+- **The unstored key** -- **run:** `setDirty(false)` in `save()` reddened the new
+  `definition-form.page.spec.ts` leg that saves with a key in the field.
+- **Go to Home on the gate's own path** -- **run:** removing `firstSaveValue` from
+  `testConnection()`'s create branch reddened the new Test-connection-first leg.
+- **The Advanced disclosure on a refusal** -- **run:** disabling `focusField`'s `ADVANCED_FIELDS`
+  branch reddened the new `maxTokens` leg on the disclosure, the focus and the inline sentence.
+- **The create's URL after a refused test** -- **run:** moving the replacement back behind
+  `if (!passed) return;` reddened the new leg on `Router.url`.
+- **The "Stored." caption** -- **run:** `showStoredCaption` returning `true` reddened the
+  create-route leg; the edit-route leg is the other half of the pair.
+- **The form over an unread definition** -- **run:** `@if (true)` for `@if (loadedFlag)` reddened
+  the new failed-read leg.
+- **The shell's own wiring** -- **run:** deleting `inject(DefinitionActions)` from `app.ts`
+  reddened `app.spec.ts`'s new registration leg, which the area spec could not.
+- **`ViolationCodes()`** -- **run:** a new `AGENTPROBERANGE` parameter with no entry in the list
+  reddened only the new `AgentViolation` sweep (run 78); the sentence check stayed green, which is
+  the blind spot it closes.
+- **`GET /agent/providers`** -- **run:** deleting the `IsAdministrator()` arm served the whole
+  catalog, `keyPrefix` included, to an `%Admin_Operate` principal and reddened only the new
+  `AgentWireSecurity` leg (run 79).
+- **The missing store** -- **run:** neutering `StateRows`' not-compiled arm reddened the rewritten
+  `StateRead` leg (run 80), which now drives `Execute` over `OcuPilot.Test.ReadState.NoStore`
+  instead of asserting a string concatenation.
 
 ## Auto Run Result
 

@@ -2715,7 +2715,7 @@ app-data-table {
 // are the closed set a screen *descriptor* may declare, and a form summary is not one of them --
 // `ui/tools/screen-mirror.test.mjs` holds that set and the stylesheet equal in both directions.
 .ocu-form-summary {
-  padding: var(--ocu-space-3) 10px;
+  padding: var(--ocu-space-3);
   background: var(--ocu-destructive-container);
   color: var(--ocu-destructive);
 }

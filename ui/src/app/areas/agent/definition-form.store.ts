@@ -5,7 +5,10 @@ import { ChangeBus } from '../../core/change-bus';
 import { FormDirty } from '../../core/form-dirty';
 import { type Violation, reasonForField, violationsOf } from '../../core/violations';
 
-/** The eight routes this store calls, all absolute from the origin root (AD-20). */
+/**
+ * The agent-definition routes' common prefix, absolute from the origin root (AD-20). Every route
+ * this store calls is this path, or this path with an id and a sub-resource on the end.
+ */
 export const AGENT_DEFINITIONS_PATH = '/api/ocupilot/agent/definitions';
 
 /** The provider catalog the form cascades from (AD-5). */
@@ -398,8 +401,10 @@ export class DefinitionForm {
   }
 
   /**
-   * Choose a provider, cascading the catalog row's canonical values into the fields the operator
-   * has not already set away from the previous row's (AD-5: the catalog is the one table).
+   * Choose a provider, cascading that catalog row's canonical values into the model, endpoint,
+   * maximum tokens, temperature and the two credential-naming fields (AD-5: the catalog is the one
+   * table). The cascade overwrites whatever those fields held, because the row it came from no
+   * longer applies; the fields the catalog says nothing about are left alone.
    */
   setProvider(key: string): void {
     if (this.value('provider') === key) return;
@@ -469,9 +474,12 @@ export class DefinitionForm {
       this.notify();
       return false;
     }
-    this.firstSaveValue = creating && this.instanceWasEmpty;
+    if (creating) this.firstSaveValue = this.instanceWasEmpty;
     this.outcomeValue = flagAt(this.loadedRecord, 'enabled') ? 'saved' : 'pending-test';
-    this.formDirty.setDirty(false);
+    // A key the operator pasted is NOT part of this body -- it travels on its own route -- so a
+    // save that succeeds leaves it unstored, and clearing the dirty flag over it would let the
+    // leave guard wave them off the page and drop it without a word (DW-340, AC2).
+    this.formDirty.setDirty(this.keyValue !== '');
     this.publishChange();
     this.notify();
     return true;
@@ -514,6 +522,11 @@ export class DefinitionForm {
       if (!this.absorbAnswer(created)) return finish(false);
       this.formDirty.setDirty(false);
       this.outcomeValue = 'pending-test';
+      // The gate's own path stores the first definition here rather than through Save, so the
+      // "first successful definition Save" offer is set where that save actually happens (AC3,
+      // EXPERIENCE.md's sticky-bar row). Save on the editor this replaces the route with runs
+      // with `creating` false and no longer clears it.
+      this.firstSaveValue = this.instanceWasEmpty;
       this.publishChange();
     }
 
@@ -539,8 +552,11 @@ export class DefinitionForm {
     }
     this.testReply = textAt(tested.body, 'reply');
     // The row's own verification, re-read: the test body's `connectionVerified` describes the
-    // stored row rather than the values just tested (DW-359).
-    await this.reload();
+    // stored row rather than the values just tested (DW-359). Skipped while the buffer holds
+    // unsaved edits -- re-reading rewrites every field from the stored record, which would revert
+    // the operator's work under them and leave the dirty flag standing over changes that are no
+    // longer on screen.
+    if (!this.formDirty.dirty()) await this.reload();
     return finish(true);
   }
 

@@ -246,6 +246,32 @@ Method TestEveryOtherRouteIsRefusedByNameAndWritesNothing()
     Do $$$AssertEquals(tRow.Model, "claude-opus-5", "and the refused update did not change its model")
 }
 
+/// <p><code>GET /agent/providers</code> is refused the same way, and it is not under
+/// <code>/agent/definitions</code>, so the sweep above cannot reach it.</p>
+/// <p><b>Why it needs a gate of its own to be checked.</b> <method>OnPreDispatch</method> admits a
+/// principal holding USE on any <code>%Admin_</code> resource, so this one reaches the handler and
+/// only <method>OcuPilot.Api.Definitions.IsAdministrator</method> refuses it. The catalog is
+/// OcuPilot's own configuration vocabulary -- every provider's key prefix, default endpoint,
+/// default credential entry and environment-variable name -- and the two tests that do call this
+/// route call it as the suite's own privileged account and assert 200, so with the gate removed
+/// nothing in the tree reddens.</p>
+/// <p>Mutation: delete the <code>IsAdministrator()</code> arm from
+/// <method>OcuPilot.Api.Definitions.HandleProviders</method> -- this goes red on the status.</p>
+Method TestTheProviderCatalogIsRefusedToANonAdministrator()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the principal holds %Admin_Operate and not OcuPilot's administrative resource")
+    Set tExpectedPair = ##class(OcuPilot.Kernel.State.Base).#ADMINRESOURCE _ ":USE"
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", ..#APIBASE _ "/agent/providers", ..#OPERATEUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the request completes")
+    Do $$$AssertEquals(tStatus, 403, "and the catalog is refused (" _ tBody _ ")")
+    If tStatus '= 403 Quit
+    Do $$$AssertEquals($ZConvert($Get(tHeaders("CONTENT-TYPE")), "L") [ "application/json", 1, "as JSON")
+    Set tRefusal = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tRefusal.code, "AUTH.NOPRIVILEGE", "on the screen-privilege code")
+    Do $$$AssertEquals($Select($IsObject(tRefusal.detail): tRefusal.detail.failedPair, 1: ""), tExpectedPair, "naming " _ tExpectedPair)
+    Do $$$AssertTrue(tBody '[ "keyPrefix", "and no catalog column reaches the body")
+}
+
 /// <p>Whether a definition named <var>pName</var> exists, read by SQL as the suite's own account
 /// so the check does not go through the code it is checking up on.</p>
 ClassMethod NameExists(pName As %String) As %Boolean

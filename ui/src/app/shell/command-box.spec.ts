@@ -350,7 +350,9 @@ describe('the command box', () => {
     const label = (option: HTMLElement) =>
       option.querySelector('.ocu-command-box-option-label')?.textContent?.trim();
 
-    const primary = actions.find((option) => label(option) === 'create');
+    // `create` carries published copy in `ACTION_LABELS`, so both surfaces draw it as "Create"
+    // -- the same resolution `disable` already goes through.
+    const primary = actions.find((option) => label(option) === STRINGS.actionCreate);
     const rowAction = actions.find((option) => label(option) === 'delete');
     expect(primary?.getAttribute('aria-disabled')).toBeNull();
     expect(rowAction?.getAttribute('aria-disabled')).toBe('true');

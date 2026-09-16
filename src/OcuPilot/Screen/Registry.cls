@@ -729,7 +729,7 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
         }
 
         If (tRead.%GetTypeOf("paging") = "string") && (tRead.%Get("paging") = "cursor") {
-            Set tProblem = "read.paging 'cursor' is refused on an admin source, which accepts no cursor; declare 'cap' (AD-36)"
+            Set tProblem = "read.paging 'cursor' is refused: neither declared source kind accepts a cursor; declare 'cap' (AD-36)"
             Quit
         }
         If (tRead.%GetTypeOf("paging") '= "string") || (tRead.%Get("paging") '= "cap") {

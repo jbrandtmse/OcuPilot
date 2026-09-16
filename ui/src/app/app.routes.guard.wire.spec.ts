@@ -192,4 +192,98 @@ describe('the unsaved-changes guard, on the real route table (AC2, AD-11 rule 3)
     expect(await accepted).toBe(true);
     expect(router.url).toBe('/not-a-screen');
   });
+
+  it('the editor route with an id carries the guard too, which is the route most editing happens on', async () => {
+    // `buildRoutes` pushes a `form-page` twice -- the bare route and `<route>/:id` -- and the
+    // guard is spread onto each push separately. The case above occupies the bare create route;
+    // an operator who opens an existing definition from the list's name cell, or who is moved to
+    // the editor by a create, is on this one for every edit they make afterwards.
+    //
+    // Mutation (Rule 19): drop `...guarded` from the `:id` push alone in `app.routes.ts` -> this
+    // goes red (the navigation resolving `true` and the route moving) while the case above stays
+    // green, which is what says the two pushes are pinned separately.
+    TestBed.resetTestingModule();
+    const api = {
+      requestJson: async (path: string): Promise<JsonResult<unknown>> => {
+        if (path.endsWith('/agent/providers')) {
+          return { kind: 'ok', status: 200, body: PROVIDERS_BODY };
+        }
+        if (path.endsWith('/agent/definitions/7')) {
+          return {
+            kind: 'ok',
+            status: 200,
+            body: {
+              id: '7',
+              name: 'Claude',
+              provider: 'anthropic',
+              model: 'claude-opus-5',
+              endpointUrl: 'https://ocupilot.invalid/v1/messages',
+              markedLocal: false,
+              credType: 'creds',
+              envVarName: '',
+              credentialName: 'OcuPilotAnthropic',
+              maxTokens: 32000,
+              temperature: 0,
+              maxIterationsPerTurn: 10,
+              systemPromptOverride: '',
+              readOnly: true,
+              retentionDays: 30,
+              enabled: false,
+              connectionVerified: false,
+              default: false,
+            },
+          };
+        }
+        return { kind: 'ok', status: 200, body: { definitions: [] } };
+      },
+    };
+    const navigation = new NavigationService({
+      api: api as unknown as ApiService,
+      namespace: () => 'HSCUSTOM',
+    });
+    await navigation.load();
+
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter(routes),
+        { provide: ApiService, useValue: api as unknown as ApiService },
+        { provide: ChangeBus, useValue: new ChangeBus() },
+        { provide: FormDirty, useValue: new FormDirty() },
+        { provide: NavigationService, useValue: navigation },
+        { provide: OverlayStack, useValue: new OverlayStack() },
+        { provide: ShellState, useValue: { setActiveArea: () => {} } as unknown as ShellState },
+      ],
+    });
+
+    const fixture = TestBed.createComponent(GuardWireHost);
+    document.body.appendChild(fixture.nativeElement);
+    planted.push(fixture.nativeElement);
+    fixture.detectChanges();
+    const router = TestBed.inject(Router);
+
+    await router.navigateByUrl('/agent/definitions/edit/7');
+    await settle(fixture);
+
+    const host = fixture.nativeElement as HTMLElement;
+    const name = host.querySelector('#ocu-definition-name') as HTMLInputElement;
+    expect(name, 'the editor mounted on the id route').not.toBeNull();
+    expect(name.value, 'over the definition the route names').toBe('Claude');
+    name.value = 'Claude renamed';
+    name.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    expect(TestBed.inject(FormDirty).dirty()).toBe(true);
+
+    const declined = router.navigateByUrl('/not-a-screen');
+    await pump(fixture);
+    const dialog = host.querySelector('[role="dialog"]') as HTMLElement | null;
+    expect(dialog, 'the guard raised its confirmation on the id route as well').not.toBeNull();
+    (dialog!.querySelectorAll('.ocu-dialog-actions button')[0] as HTMLButtonElement).click();
+    await settle(fixture);
+
+    expect(await declined).toBe(false);
+    expect(router.url).toBe('/agent/definitions/edit/7');
+    expect((host.querySelector('#ocu-definition-name') as HTMLInputElement).value).toBe(
+      'Claude renamed'
+    );
+  });
 });

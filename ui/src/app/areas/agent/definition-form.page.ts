@@ -24,6 +24,20 @@ const RETENTION_PLACEHOLDER = '<n>';
 /** The route the list lives at, which Cancel and the leave confirmation return to. */
 const LIST_ROUTE = 'agent/definitions';
 
+/**
+ * The wire names of the fields the Advanced disclosure holds, in the order it draws them.
+ *
+ * A refusal on one of these has to open the disclosure before it can focus anything, because the
+ * controls are behind the `@if` that keeps it closed on first render (AC1).
+ */
+const ADVANCED_FIELDS: readonly string[] = [
+  'maxTokens',
+  'temperature',
+  'maxIterationsPerTurn',
+  'systemPromptOverride',
+  'retentionDays',
+];
+
 /** The application root, which the first-save offer goes to. */
 const HOME_ROUTE = '';
 
@@ -38,6 +52,10 @@ interface FieldView {
 /**
  * The Definition form: the product's first `form-page`, and the surface every agent-definition
  * route drives (FR-24 to FR-27, AC1 to AC3).
+ *
+ * **The two fields the rules require carry `aria-required`** -- name and provider, which
+ * `OcuPilot.Kernel.AgentRules.Validate` refuses a definition without. Every other control the form
+ * draws is optional, or carries a default the cascade fills in.
  *
  * **Field order is the acceptance criterion.** Name, provider, model, endpoint, the key field and
  * Test connection are in the document before the Advanced disclosure; maximum tokens, temperature,
@@ -92,6 +110,7 @@ interface FieldView {
       <p class="ocu-banner ocu-banner-warning" role="alert">{{ reason }}</p>
     }
 
+    @if (loadedFlag) {
     <div class="ocu-form-fields">
       <div class="ocu-field">
         <label class="ocu-field-label" [attr.for]="nameField.id">{{ STRINGS.tableColumnName }}</label>
@@ -101,6 +120,7 @@ interface FieldView {
             type="text"
             [id]="nameField.id"
             [value]="nameValue"
+            aria-required="true"
             [attr.aria-invalid]="nameField.invalid"
             [attr.aria-describedby]="nameField.describedBy"
             (input)="onText('name', $event)"
@@ -116,6 +136,7 @@ interface FieldView {
         <div class="ocu-field-control">
           <select
             class="ocu-field-input"
+            aria-required="true"
             [id]="providerField.id"
             [value]="providerValue"
             [attr.aria-invalid]="providerField.invalid"
@@ -123,7 +144,7 @@ interface FieldView {
             (change)="onProvider($event)"
           >
             @for (row of providers; track row.key) {
-              <option [value]="row.key">{{ row.label }}</option>
+              <option [value]="row.key" [selected]="row.key === providerValue">{{ row.label }}</option>
             }
           </select>
         </div>
@@ -198,7 +219,9 @@ interface FieldView {
             <span aria-hidden="true">{{ revealGlyph }}</span>
           </button>
         </div>
-        <p class="ocu-field-caption" [id]="keyField.id + '-caption'">{{ STRINGS.formSecretStored }}</p>
+        @if (showStoredCaption) {
+          <p class="ocu-field-caption" [id]="keyField.id + '-caption'">{{ STRINGS.formSecretStored }}</p>
+        }
         @if (keyField.invalid) {
           <p class="ocu-form-error" [id]="keyField.id + '-reason'">{{ keyField.reason }}</p>
         }
@@ -356,6 +379,7 @@ interface FieldView {
         </button>
       </div>
     </div>
+    }
 
     @if (leavePending) {
       <app-dialog
@@ -401,6 +425,11 @@ export class DefinitionFormPage {
     // The id is the route's last segment, or `''` for the create form. Read once: a form is
     // opened at one id, and a navigation to another builds a new component.
     void this.store.open(this.idFromUrl());
+    // A refused Test connection that had already created the definition replaces the route, which
+    // destroys the component that raised the refusal and builds this one over the retained store.
+    // The summary is on screen with nothing having focused it, so this component finishes the job
+    // (AC2). A form opened any other way has no violations here, because `open` resets the store.
+    afterNextRender(() => this.focusRefusal(), { injector: this.injector });
     inject(DestroyRef).onDestroy(() => {
       stopStore();
       stopDirty();
@@ -499,6 +528,20 @@ export class DefinitionFormPage {
   protected get showGoHome(): boolean {
     this.generation();
     return this.store.outcome() !== '' && this.store.firstSave();
+  }
+
+  /**
+   * Whether the definition this route names has been read.
+   *
+   * The fields and the sticky bar are drawn only then. Before the read resolves the buffer holds
+   * the class's own defaults, and after a failed read it still does -- so drawing them would offer
+   * an editable form over a definition nobody has seen, whose Save sends those defaults to the
+   * instance under the id in the URL. A create resolves as soon as the catalog cascade has run,
+   * which is the whole of what a create has to load.
+   */
+  protected get loadedFlag(): boolean {
+    this.generation();
+    return this.store.loaded();
   }
 
   protected get leavePending(): boolean {
@@ -613,6 +656,20 @@ export class DefinitionFormPage {
     return this.fieldView('apiKey');
   }
 
+  /**
+   * Whether the key field carries the published "Stored." caption.
+   *
+   * EXPERIENCE.md publishes it as the masked-secret field's state **after save**, and it says
+   * something specific: a key is held and typing replaces it. On a create route nothing is stored
+   * and nothing can be replaced, so the sentence would be false on the one field where a false
+   * statement matters most -- and it is wired into the field's `aria-describedby`, so it would be
+   * read out as well as shown.
+   */
+  protected get showStoredCaption(): boolean {
+    this.generation();
+    return !this.store.creating();
+  }
+
   protected get maxTokensField(): FieldView {
     return this.fieldView('maxTokens');
   }
@@ -686,17 +743,42 @@ export class DefinitionFormPage {
     if (this.store.busy()) return;
     const creating = this.store.creating();
     const passed = await this.store.testConnection();
-    if (!passed) {
-      this.afterRefusal();
-      return;
-    }
+    // The first leg of this sequence creates the definition, so once it has an id the route names
+    // it whether or not the legs after it passed. Leaving the browser on the create route over a
+    // definition that already exists means a reload opens an empty create form and the next Save
+    // writes a second one; the matrix's "URL replaced with the new id" is about the create, not
+    // about the test's verdict.
     if (creating && this.store.id() !== '') {
       this.store.retainAcrossRouteReplacement();
       void this.router.navigateByUrl(this.editorUrl(this.store.id()), { replaceUrl: true });
     }
+    if (!passed) this.afterRefusal();
   }
 
+  /**
+   * Focus the control `field` names, opening the Advanced disclosure first when the control is
+   * inside it.
+   *
+   * EXPERIENCE.md's `form-page` validation rule is "the first invalid field is then focused **and
+   * its tab opened**"; the disclosure is this form's version of that tab. Without the open, a
+   * refusal on a field inside it -- which happens whenever the catalog did not load and the
+   * cascade left maximum tokens and temperature empty -- gives a summary link that focuses nothing
+   * and an inline sentence that is not in the document to read.
+   *
+   * The focus is deferred to the next render when the disclosure had to be opened, because the
+   * control does not exist in the DOM until the `@if` has been painted.
+   */
   protected focusField(field: string): void {
+    if (ADVANCED_FIELDS.includes(field) && !this.advancedOpen()) {
+      this.advancedOpen.set(true);
+      afterNextRender(
+        () => {
+          document.getElementById(this.controlId(field))?.focus();
+        },
+        { injector: this.injector }
+      );
+      return;
+    }
     document.getElementById(this.controlId(field))?.focus();
   }
 
@@ -729,18 +811,26 @@ export class DefinitionFormPage {
    * in the DOM to be focused.
    */
   private afterRefusal(): void {
+    if (this.store.violations()[0] === undefined) return;
+    this.focusedSummary = false;
+    afterNextRender(() => this.focusRefusal(), { injector: this.injector });
+  }
+
+  /**
+   * Focus the summary and then the first invalid field, once, for the refusal now on screen.
+   *
+   * Separate from `afterRefusal` because it is reached two ways: from a refused write on this
+   * component, and from the constructor when a refused create has replaced the route and built
+   * this component over the retained store -- in which case the summary is already on screen and
+   * the component that raised it is gone.
+   */
+  private focusRefusal(): void {
+    if (this.focusedSummary) return;
     const first = this.store.violations()[0];
     if (first === undefined) return;
-    this.focusedSummary = false;
-    afterNextRender(
-      () => {
-        if (this.focusedSummary) return;
-        this.focusedSummary = true;
-        this.summary()?.nativeElement.focus();
-        this.focusField(first.field);
-      },
-      { injector: this.injector }
-    );
+    this.focusedSummary = true;
+    this.summary()?.nativeElement.focus();
+    this.focusField(first.field);
   }
 
   private fieldView(field: string): FieldView {
@@ -749,7 +839,7 @@ export class DefinitionFormPage {
     const reason = this.store.violationFor(field);
     const invalid = reason !== '';
     const described: string[] = [];
-    if (field === 'apiKey') described.push(`${id}-caption`);
+    if (field === 'apiKey' && this.showStoredCaption) described.push(`${id}-caption`);
     if (invalid) described.push(`${id}-reason`);
     return {
       id,

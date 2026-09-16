@@ -2167,11 +2167,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-3-3 | severity: med | fix-risk: low | footprint: in-epic
 - evidence: the server-side AGENT.KEY.SHAPE refusal on the apiKey field ships in 3.3; epics.md already makes inline validation on blur plus aria-invalid and aria-describedby Story 3.5's own acceptance criterion
 - 2026-09-15T18:06:30Z status=routed owner=3-5-the-definition-form by=harvest note=the form renders the refusal 3.3 already returns on the field it names
+- 2026-09-16T00:46:22Z status=resolved-by:3-5-the-definition-form owner=3-5-the-definition-form by=lead note=the catalog's keyPrefix on blur and the server's AGENT.KEY.SHAPE render through one aria-invalid/aria-describedby wiring on the same field; pinned in definition-form.page.spec.ts against the server-provided reason text rather than attribute presence alone
 
 ### DW-340: AC5's key-field rendering is entirely client work with no surface in Story 3.3: empty after save, the published caption, a labeled reveal toggle, and pastes accepted without trimming
 - source: spec-3-3 | severity: med | fix-risk: low | footprint: in-epic
 - evidence: the server half that makes it true -- no route returns a stored value -- ships in 3.3 and is pinned; the copy is already published in EXPERIENCE.md and the strings.ts key lands with the component
 - 2026-09-15T18:06:30Z status=routed owner=3-5-the-definition-form by=harvest note=same split Story 3.1 recorded for its validation copy
+- 2026-09-16T00:46:22Z status=resolved-by:3-5-the-definition-form owner=3-5-the-definition-form by=lead note=the key field is empty after save under the published caption, carries a labeled reveal toggle and accepts a paste untrimmed; QA pinned all three, including that opening an existing definition never echoes a key - the shipped test had mounted only a create route, which issues no GET, so it could not tell discarded from never read
 
 ### DW-341: The AD-48 no-frame-binds-key-material property is measured only on the read path: no forced ^ERRORS entry is taken while the store endpoint's own frames are live
 - source: spec-3-3 | severity: med | fix-risk: low | footprint: in-epic
@@ -2194,6 +2196,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-3-3 | severity: med | fix-risk: low | footprint: in-epic
 - evidence: measured on this build: a 76-character reference is refused by %Save; Story 3.3 pins the resulting 500 but adds no validation rule, which would need a new violation code and a change to Story 3.1's validator
 - 2026-09-15T18:06:30Z status=routed owner=3-5-the-definition-form by=harvest note=the form is where the name is typed and where a field-level violation already renders
+- 2026-09-16T00:46:22Z status=resolved-by:3-5-the-definition-form owner=3-5-the-definition-form by=lead note=the server rule ships: AGENT.CREDNAME.LENGTH at most the credential entry's SystemName length, declared as a parameter carrying the measured 50 with a test that reddens if the vendor limit changes. The client maxlength is an affordance, never the enforcement, because a client-only fix leaves the API able to 500 for any other caller
 
 ### DW-345: Nothing removes a stored key: deleting a definition leaves its credential entry and its secret on the instance indefinitely
 - source: spec-3-3 | severity: med | fix-risk: low | footprint: in-epic
@@ -2247,11 +2250,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-3-4 | severity: med | fix-risk: low | footprint: in-epic
 - evidence: ui/src/app/areas/ holds home and logs only; epics.md Story 3.5 already owns the form-page contract and EXPERIENCE.md states the progress/aria-disabled/focus rule. The key cannot be stored before the definition exists, so the order is create disabled, store the key, test, then save enabled
 - 2026-09-15T20:24:38Z status=routed owner=3-5-the-definition-form by=harvest note=the server half ships in 3.4; 3.5 renders it and imposes the order
+- 2026-09-16T00:46:22Z status=resolved-by:3-5-the-definition-form owner=3-5-the-definition-form by=lead note=the inline progress indicator, aria-disabled for the duration and focus on the button ship with the two-button call order the routes impose - Test connection performs create then store key then test and replaces the URL, so no button asks for a step the previous one could have taken
 
 ### DW-355: The published failure sentence assumes the provider supplied text, and only one of the nine PROVIDER.* codes ever carries detail.providerText, so what the form renders for the other eight is undecided
 - source: spec-3-4 | severity: med | fix-risk: low | footprint: in-epic
 - evidence: strings.ts publishes one failure string ending Provider said: <text>; Base.Fault attaches the field only when a caller passes text and the one caller that does is the non-retryable HTTP branch, whose code is always PROVIDER.REFUSED; every other Fault call site passes empty and PROVIDER.TLS builds a fault with no detail at all
 - 2026-09-15T20:24:38Z status=routed owner=3-5-the-definition-form by=harvest note=the envelope's own reason is OcuPilot's written sentence for each of the eight; 3.5 decides which one the form shows
+- 2026-09-16T00:46:22Z status=resolved-by:3-5-the-definition-form owner=3-5-the-definition-form by=lead note=settled at the plan gate and shipped: envelope-level codes render the envelope's own reason verbatim, formTestConnectionFailure only for PROVIDER.REFUSED and only when detail.providerText is present, and field-level violations carry a server-authored reason under amended AD-39. The strings live on the server, which is what the strings gate forces
 
 ### DW-356: The rail attention dot's third condition - Test connection failed since the last save - has no stored source, because Story 3.4 deliberately records nothing on a failed test
 - source: spec-3-4 | severity: low | fix-risk: low | footprint: in-epic
@@ -2272,6 +2277,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-3-4 | severity: med | fix-risk: low | footprint: in-epic
 - evidence: ConnectionOutcome sets tVerified from the stored flag when the values were not the stored ones; both facts are true of the row but rendered as one sentence they read as verified against what you just tested
 - 2026-09-15T20:24:45Z status=routed owner=3-5-the-definition-form by=harvest note=the form decides how to render two fields that are individually true and jointly misleading
+- 2026-09-16T00:46:22Z status=resolved-by:3-5-the-definition-form owner=3-5-the-definition-form by=lead note=the form never renders connectionVerified from the test body and never as a field; the result sentence describes the call just made via testedAsStored, and verification shows only through whether Enabled can be ticked. Two individually-true facts no longer render as one false sentence
 
 ### DW-360: The test route's 200 answer, and HandleTest's own merge-pin-validate arrangement, are exercised by no test: the in-process legs call ConnectionOutcome directly and every wire leg is a refusal
 - source: spec-3-4 | severity: med | fix-risk: med | footprint: in-epic
@@ -2304,11 +2310,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: ad-gate-3-4 | severity: med | fix-risk: low | footprint: in-epic
 - evidence: measured on the live ocupilot container 2026-09-15: Security.SSLConfigs holds only ISC.FHIRExplorer.SSL.Config and ISC.FeatureTracker.SSL.Config, so TestAnUnresolvableCredentialIsRefusedBeforeTheTransport and TestABodyCarryingEnabledDoesNotRefuseTheTest answer PROVIDER.TLS where they assert PROVIDER.CREDENTIAL; both pass on the CI throwaway, whose install creates the configuration
 - 2026-09-15T20:26:10Z status=routed owner=3-5-the-definition-form by=harvest note=make the two legs arrange the configuration or skip and say so, the way the OCUPILOT_ALLOW_* guarded classes already do; do not create an SSL configuration on a live instance to satisfy a test
+- 2026-09-16T00:46:22Z status=resolved-by:3-5-the-definition-form owner=3-5-the-definition-form by=lead note=the two AgentConnection legs assert the OcuPilotProvider configuration is present before claiming to test a credential refusal and record a named skip when it is not; no SSL configuration is created on a live instance to satisfy a test
 
 ### DW-366: The AGENT.DEFAULT.DISABLED violation Story 3.4 introduced has no published client sentence, so the form has nothing to render for the one refusal a Make default action can now earn
 - source: code review of spec-3-4 | severity: med | fix-risk: low | footprint: in-epic
 - evidence: ui/src/app/core/strings.ts publishes formTestConnectionResult, formTestConnectionFailure and formSavedPendingTest and no per-violation-code text; DW-339 routed the same problem for AGENT.KEY.SHAPE and DW-355 for the PROVIDER.* codes, so this is the third sighting of a code with no sentence rather than a new kind of gap
 - 2026-09-15T21:04:12Z status=routed owner=3-5-the-definition-form by=cr note=ledger-only: 3-5 already holds routed_story_max bullets; decide it with DW-339 and DW-355 rather than separately
+- 2026-09-16T00:46:22Z status=resolved-by:3-5-the-definition-form owner=3-5-the-definition-form by=lead note=the review found the refusal had no surface at all - both row-action handlers ended in a bare return on a non-ok result, so a 422 reached nothing and an unchanged row was indistinguishable from nothing happening. A refusal slot on ScreenStore rendered by ListPage as a role=alert strip now carries the server's own sentence, which is AD-39's half and needs no new published copy
 
 ### DW-367: OcuPilot.Test.AgentConnection is past the roughly-500-line guidance for a test class and this review added to it
 - source: code review of spec-3-4 | severity: low | fix-risk: low | footprint: in-story
@@ -2329,8 +2337,27 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-3-5 | severity: low | fix-risk: low | footprint: in-epic
 - evidence: shipped by Story 3.5 as the first write-capable descriptor; the three row actions are the first entries and nothing scopes a label to the screen that declares it
 - 2026-09-15T23:12:56Z status=routed owner=3-7-switches-the-kill-switch-and-enforced-read-only by=harvest note=Switches declares its own actions and is where the collision first becomes visible
+- 2026-09-16T00:45:01Z occurrence=3-5-the-definition-form
 
 ### DW-371: The client's initial bundle is 551.35 kB against angular.json's 500 kB maximumWarning, and no gate pins the figure, so it can drift to the 1 MB error threshold unobserved
 - source: spec-3-5 | severity: low | fix-risk: low | footprint: cross-epic
 - evidence: measured at Story 3.5's build: the build exits 0 because 551 kB is over the warning and under the error, and ui/tools carries no checker asserting the number, so every later screen adds to it silently
 - 2026-09-15T23:12:56Z status=routed owner=burndown by=harvest note=either raise the warning deliberately with a recorded reason or add a checker that pins the figure the way ci.test.mjs pins the Node bands
+
+### DW-372: A 403 on the Definition form renders the envelope's generic reason instead of naming the resource and the action, because no published action phrase exists for this form
+- source: spec-3-5-the-definition-form.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: EXPERIENCE.md's form-page State Patterns row reads '403 on Save names the resource', and the spec's Design Notes say AUTH.NOPRIVILEGE keeps privilegeDeniedAction with detail.failedPair. definition-form.store.ts absorbRefusal sets envelopeReason from result.reason; grep for privilegeDeniedAction and failedPair under areas/agent returns nothing. formatDeniedAction exists in navigation.ts and error-log.page.ts uses it with the published errorLogRefusedAction; this form has no such phrase, and strings.test.mjs pins the key count at 243.
+- 2026-09-16T00:44:53Z status=routed owner=3-7-switches-the-kill-switch-and-enforced-read-only by=cr note=needs one published action phrase in EXPERIENCE.md Fixed strings; 3.7 is the second form-page
+- 2026-09-16T00:46:45Z status=routed owner=3-6-the-first-login-gate-and-the-configuration-empty-state by=lead note=re-owned from the review's in-epic routing to the next client story, which is where the published copy both entries need can land with its screen
+
+### DW-373: The form-page contract's required-field asterisk with its legend, and inline-on-blur validation for every field but the key, are unimplemented and were not recorded
+- source: spec-3-5-the-definition-form.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: EXPERIENCE.md's form-page Validation rule reads 'Inline on blur and on Save' and 'required fields carry aria-required and the asterisk has a legend'. The review added aria-required to name and provider (the two AgentRules.Validate requires); the asterisk and its legend need published copy the Fixed strings table does not carry, and strings.test.mjs pins the key count at 243. grep for '(blur)' under ui/src/app outside specs returns the key field's own DW-339 check and the data table's max-rows field, so no other field validates before Save.
+- 2026-09-16T00:44:56Z status=routed owner=3-7-switches-the-kill-switch-and-enforced-read-only by=cr note=the machine-readable half is shipped; the visual legend needs one published string
+- 2026-09-16T00:46:45Z status=routed owner=3-6-the-first-login-gate-and-the-configuration-empty-state by=lead note=re-owned from the review's in-epic routing to the next client story, which is where the published copy both entries need can land with its screen
+
+### DW-374: ssl.browser-spec.mjs's description-filter leg intermittently keeps two rows where it asserts one, in a full-suite run only
+- source: spec-3-5-the-definition-form.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Observed once here: node --test browser/*.browser-spec.mjs failed at ssl.browser-spec.mjs:131 'a description substring leaves one row', 2 !== 1; the same file alone passed 4 of 4, and the next full run passed 69 of 69. The throwaway's corpus holds four SSL configurations and only OcuPilotDemoTLS carries 'demo fixture' in its description, so the filter text does isolate one row and the count is being read before the filter has settled. Story 2.7 owns this spec; nothing in Story 3.5 touches the SSL list.
+- 2026-09-16T00:44:59Z status=routed owner=burndown by=cr note=flaky, order-dependent; filterToSubset appears to read the count before the filtered render lands
+- 2026-09-16T00:46:40Z status=resolved-by:3-5-the-definition-form owner=3-5-the-definition-form by=lead note=root cause is not order dependence: page.type enters the filter one character at a time and the view re-filters on each keystroke, so waitForFunction returned on the first intermediate prefix satisfying its predicate - 'demo fixture' passing through 'd', which keeps a larger subset that still holds the expected row. filterToSubset now requires the field to hold the whole text and the count to have stopped moving before it answers. Fixed out of footprint deliberately: it is a shared helper every list spec's exact-count assertion depends on, and a flake there costs a CI rerun on every remaining push of the epic

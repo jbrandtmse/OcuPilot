@@ -514,7 +514,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       ]
     },
     "primaryAction": {
-      "id": "",
+      "id": "create",
       "selfProtection": ""
     },
     "rowActions": [

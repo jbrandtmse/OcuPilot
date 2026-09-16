@@ -381,11 +381,15 @@ export class CommandBar {
   }
 
   /**
-   * The primary action's label is its declared identifier until a screen carries a label key
-   * for it (Epic 2). It is descriptor data, not copy typed into this component.
+   * The primary action's label, resolved through `actionLabel` exactly as the row actions above
+   * and the command box both resolve theirs: an id with published copy draws that copy, and one
+   * without draws its own identifier. Reading the bare id here let this surface and the command
+   * box name the same action two ways -- which is the disagreement `actionLabel` exists to
+   * prevent, and which this file's own reachability assertion compares.
    */
   protected get primaryActionLabel(): string {
-    return this.screen()?.primaryAction.id ?? '';
+    const id = this.screen()?.primaryAction.id ?? '';
+    return id === '' ? '' : actionLabel(id);
   }
 
   protected get rowActions(): readonly CommandAction[] {

@@ -174,7 +174,9 @@ describe('the command bar', () => {
 
     const primary: HTMLButtonElement = fixture.nativeElement.querySelector('.ocu-command-bar-primary');
     expect(primary).not.toBeNull();
-    expect(primary.textContent?.trim()).toBe('create');
+    // Resolved through `actionLabel`, like every other action on both surfaces: `create` carries
+    // published copy, so the button draws it.
+    expect(primary.textContent?.trim()).toBe(STRINGS.actionCreate);
     // Left of the filter, which is what "primary action left" means in the DOM.
     expect(primary.compareDocumentPosition(fixture.nativeElement.querySelector('.ocu-command-bar-filter')))
       .toBe(Node.DOCUMENT_POSITION_FOLLOWING);
@@ -880,7 +882,12 @@ describe('the command bar', () => {
       option.querySelector('.ocu-command-box-option-label')?.textContent?.trim()
     );
 
-    expect(barActions).toEqual(['create', 'delete', STRINGS.agentDefinitionDisable, STRINGS.actionRefresh]);
+    expect(barActions).toEqual([
+      STRINGS.actionCreate,
+      'delete',
+      STRINGS.agentDefinitionDisable,
+      STRINGS.actionRefresh,
+    ]);
     expect([...boxActions].sort()).toEqual([...barActions].sort());
 
     // Reachable is not the same as available: the box must say what the bar says about the
@@ -891,7 +898,7 @@ describe('the command bar', () => {
         option,
       ])
     );
-    expect(byLabel.get('create')?.getAttribute('aria-disabled')).toBeNull();
+    expect(byLabel.get(STRINGS.actionCreate)?.getAttribute('aria-disabled')).toBeNull();
     expect(byLabel.get(STRINGS.actionRefresh)?.getAttribute('aria-disabled')).toBeNull();
     for (const rowAction of ['delete', STRINGS.agentDefinitionDisable]) {
       const option = byLabel.get(rowAction);

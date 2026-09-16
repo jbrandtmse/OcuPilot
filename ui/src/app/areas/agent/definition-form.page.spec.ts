@@ -178,12 +178,18 @@ describe('the Definition form', () => {
     );
   });
 
-  it('DW-340: the key field is masked, empty, captioned Stored., and its reveal toggle is labelled', async () => {
+  it('DW-340: the key field is masked and empty, and its reveal toggle is labelled', async () => {
     const { fixture, host } = await mount(catalogOnly);
     const key = host.querySelector('#ocu-definition-apiKey') as HTMLInputElement;
     expect(key.getAttribute('type')).toBe('password');
     expect(key.value).toBe('');
-    expect(host.querySelector('#ocu-definition-apiKey-caption')?.textContent?.trim()).toBe(STRINGS.formSecretStored);
+    // The published "Stored." caption is the masked field's state AFTER save, and this is a create
+    // route: nothing is stored, so there is nothing a new value would replace. Rendering it here
+    // would state a falsehood on the one field where a false statement matters most, and it is
+    // wired into `aria-describedby`, so it would be read out as well as shown. The edit route's
+    // own case below is where the caption is asserted to appear.
+    expect(host.querySelector('#ocu-definition-apiKey-caption')).toBeNull();
+    expect(key.getAttribute('aria-describedby')).toBeNull();
 
     const toggle = host.querySelector('.ocu-reveal-toggle') as HTMLButtonElement;
     expect(toggle.getAttribute('aria-label')).toBe(STRINGS.agentDefinitionShowKey);
@@ -215,6 +221,15 @@ describe('the Definition form', () => {
     expect(key.getAttribute('type')).toBe('password');
     expect(host.textContent).not.toContain('sk-ant-hidden-leak-should-never-render');
 
+    // On an edit route a key IS stored, so the published caption is true here and describes the
+    // field. Mutation (Rule 19): make `showStoredCaption` return `true` unconditionally -> the
+    // create-route case above goes red instead, which is the pair that says the caption tracks
+    // the form's mode rather than being absent or present everywhere.
+    expect(host.querySelector('#ocu-definition-apiKey-caption')?.textContent?.trim()).toBe(
+      STRINGS.formSecretStored
+    );
+    expect(key.getAttribute('aria-describedby')).toBe('ocu-definition-apiKey-caption');
+
     // Mutation (Rule 19): read `apiKey` off the loaded record into the key field in `absorb()`
     // (e.g. `this.keyValue = textAt(record, 'apiKey')`) -> this goes red, the stray value
     // rendering in the input DW-340 requires to stay write-only.
@@ -234,7 +249,8 @@ describe('the Definition form', () => {
     expect(reason?.textContent?.trim()).toBe(PROVIDERS_BODY.providers[0].keyShapeReason);
     const field = host.querySelector('#ocu-definition-apiKey') as HTMLInputElement;
     expect(field.getAttribute('aria-invalid')).toBe('true');
-    expect(field.getAttribute('aria-describedby')).toBe('ocu-definition-apiKey-caption ocu-definition-apiKey-reason');
+    // A create route carries no "Stored." caption, so the refusal is the whole description.
+    expect(field.getAttribute('aria-describedby')).toBe('ocu-definition-apiKey-reason');
   });
 
   it('AC2: a refused Save shows the error summary, names each field, and wires aria-invalid and aria-describedby', async () => {
@@ -513,5 +529,144 @@ describe('the Definition form', () => {
     expect(host.querySelector('.ocu-form-bar-status')?.textContent?.trim()).toBe(STRINGS.formSavedPendingTest);
     // The flag is not a field and reaches no surface at all (DW-359's decision).
     expect(host.textContent).not.toContain('connectionVerified');
+  });
+
+  it('AC2: a Save that leaves a pasted key unstored keeps the form dirty', async () => {
+    // Save posts `WRITABLE_FIELDS`, and the key is not one of them -- it travels on its own
+    // route, spent only by Test connection. So a Save with a key in the field succeeds while the
+    // key is still unstored work, and clearing the dirty flag over it would let the leave guard
+    // wave the operator off the page and drop it without a word (DW-340).
+    const answer: Answer = (path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+      if (init.method === 'POST') return created(definition());
+      return ok({ definitions: [] });
+    };
+    const { fixture, host, formDirty } = await mount(answer);
+    const key = host.querySelector('#ocu-definition-apiKey') as HTMLInputElement;
+    key.value = 'sk-ant-pasted-and-never-stored';
+    key.dispatchEvent(new Event('input'));
+    await settle(fixture);
+
+    ([...host.querySelectorAll('.ocu-form-bar-actions button')].at(-1) as HTMLButtonElement).click();
+    await settle(fixture);
+
+    expect(host.querySelector('.ocu-form-bar-status')?.textContent).toContain(STRINGS.formSavedPendingTest);
+    // Mutation (Rule 19): put back `this.formDirty.setDirty(false)` in `save()` -> this goes red,
+    // and the pasted key leaves with the operator on the next navigation, unasked about.
+    expect(formDirty.dirty()).toBe(true);
+    expect((host.querySelector('#ocu-definition-apiKey') as HTMLInputElement).value).toBe(
+      'sk-ant-pasted-and-never-stored'
+    );
+  });
+
+  it('AC3: the first definition, created by Test connection rather than by Save, is offered Go to Home', async () => {
+    // The published gate landing tells the administrator to paste a key and press Test connection,
+    // with no Save between, so the first definition on an instance is created by that sequence.
+    const answer: Answer = (path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+      if (path.endsWith('/test')) {
+        return ok({ connected: true, reply: 'Hello', replyTruncated: false, latencyMs: 9, connectionVerified: true, testedAsStored: true });
+      }
+      if (init.method === 'POST') return created(definition());
+      return ok({ definitions: [] });
+    };
+    const { fixture, host } = await mount(answer);
+    (host.querySelector('.ocu-form-test button') as HTMLButtonElement).click();
+    await settle(fixture);
+
+    // Mutation (Rule 19): remove `this.firstSaveValue = this.instanceWasEmpty;` from
+    // `testConnection()`'s create branch -> this goes red, and the offer never appears on the one
+    // path the gate actually takes: by the time Save runs, the route is an editor and the store
+    // is no longer creating.
+    expect(host.querySelector('.ocu-form-bar-status')?.textContent).toContain(STRINGS.formGoToHome);
+  });
+
+  it('a Test connection refused after the definition was created still puts the new id in the route', async () => {
+    // The first leg of the sequence creates the definition. Leaving the browser on the create
+    // route over a definition that now exists means a reload opens an empty create form, and the
+    // next Save writes a second one.
+    const answer: Answer = (path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+      if (path.endsWith('/credential')) {
+        return refused([
+          { field: 'apiKey', code: 'AGENT.KEY.SHAPE', reason: 'That key is not shaped like a key for this provider.' },
+        ]);
+      }
+      if (init.method === 'POST') return created(definition());
+      return ok({ definitions: [] });
+    };
+    const { fixture, host } = await mount(answer);
+    const key = host.querySelector('#ocu-definition-apiKey') as HTMLInputElement;
+    key.value = 'nope';
+    key.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    (host.querySelector('.ocu-form-test button') as HTMLButtonElement).click();
+    await settle(fixture);
+
+    // Mutation (Rule 19): move the route replacement back behind `if (!passed) return;` in
+    // `onTest` -> this goes red, the URL still naming the create route.
+    expect(TestBed.inject(Router).url).toContain('agent/definitions/edit/7');
+    // The refusal is still the one the operator has to act on, and it survives the replacement.
+    expect(host.querySelector('.ocu-form-summary')?.textContent).toContain(
+      'That key is not shaped like a key for this provider.'
+    );
+  });
+
+  it('AC2: a refusal on an Advanced field opens the disclosure before focusing it', async () => {
+    // The five tuning fields are behind the `@if` that keeps the disclosure closed on first
+    // render (AC1), so a refusal on one of them has nothing in the document to focus or to read
+    // the inline sentence from. EXPERIENCE.md's form-page rule is that the first invalid field is
+    // focused "and its tab opened"; the disclosure is this form's version of that tab.
+    const answer: Answer = (path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+      if (init.method === 'POST') {
+        return refused([
+          { field: 'maxTokens', code: 'AGENT.MAXTOKENS.RANGE', reason: 'Maximum tokens must be between 1 and 200000.' },
+        ]);
+      }
+      return ok({ definitions: [] });
+    };
+    const { fixture, host } = await mount(answer);
+    expect(host.querySelector('#ocu-definition-maxTokens')).toBeNull();
+
+    ([...host.querySelectorAll('.ocu-form-bar-actions button')].at(-1) as HTMLButtonElement).click();
+    await settle(fixture);
+
+    // Mutation (Rule 19): drop the `ADVANCED_FIELDS` branch from `focusField` -> these three go
+    // red, the summary offering a link that focuses nothing and a sentence that is not rendered.
+    expect(host.querySelector('.ocu-form-disclosure')?.getAttribute('aria-expanded')).toBe('true');
+    const field = host.querySelector('#ocu-definition-maxTokens') as HTMLInputElement;
+    expect(field).not.toBeNull();
+    expect(document.activeElement).toBe(field);
+    expect(host.querySelector('#ocu-definition-maxTokens-reason')?.textContent?.trim()).toBe(
+      'Maximum tokens must be between 1 and 200000.'
+    );
+  });
+
+  it('a definition that could not be read draws its refusal, and no editable form over it', async () => {
+    // Before the read resolves, and after it fails, the buffer holds the class's own defaults --
+    // an empty name, no provider, credType `creds`, readOnly true. Drawing the fields over them
+    // offers an editable form for a definition nobody has seen, under the id in the URL, and its
+    // Save sends those defaults to the instance.
+    const answer: Answer = (path) =>
+      path.endsWith('/agent/providers')
+        ? ok(PROVIDERS_BODY)
+        : {
+            kind: 'error',
+            status: 503,
+            code: 'INTERNAL',
+            reason: 'OcuPilot could not read that definition.',
+            detail: null,
+          };
+    const { host } = await mount(answer, '/agent/definitions/edit/7');
+
+    // Mutation (Rule 19): drop the `@if (loadedFlag)` around the fields and the sticky bar -> the
+    // first two go red, a blank form and an enabled Save rendering over a definition that was
+    // never read.
+    expect(host.querySelector('#ocu-definition-name')).toBeNull();
+    expect(host.querySelector('.ocu-form-bar')).toBeNull();
+    expect(host.querySelector('.ocu-banner-warning')?.textContent?.trim()).toBe(
+      'OcuPilot could not read that definition.'
+    );
   });
 });

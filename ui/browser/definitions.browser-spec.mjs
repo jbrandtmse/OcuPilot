@@ -311,16 +311,20 @@ test('AC5: the form is routable and listed nowhere -- one side-bar entry, and no
     await page.keyboard.up('Control');
     await page.waitForSelector('#ocu-command-box-list', { visible: true, timeout: config.navigationTimeoutMs });
     await page.type('#ocu-command-box-field', 'Definition');
-    const offered = await page.$$eval('.ocu-command-box-group-screens [role="option"]', (nodes) =>
-      nodes.map((node) => node.textContent.trim())
+    // The option's own label element, not the option's whole textContent: an option renders its
+    // label span followed by its area-detail span, and Angular drops the whitespace-only node
+    // between them, so the whole option reads the label immediately followed by the area name,
+    // with no separator -- which starts with neither `"Definition "` nor equals `"Definition"`.
+    // Both of the assertions that stood here therefore passed whether or not the form was
+    // offered.
+    const offered = await page.$$eval(
+      '.ocu-command-box-group-screens [role="option"] .ocu-command-box-option-label',
+      (nodes) => nodes.map((node) => node.textContent.trim())
     );
-    assert.ok(
-      offered.every((text) => !text.startsWith(STRINGS.agentDefinitionFormLabel + ' ')),
-      `the command box offers no Definition form: ${JSON.stringify(offered)}`
-    );
-    assert.ok(
-      !offered.includes(STRINGS.agentDefinitionFormLabel),
-      `and not as a bare label either: ${JSON.stringify(offered)}`
+    assert.deepEqual(
+      offered,
+      [STRINGS.agentDefinitionListLabel],
+      `the command box offers the list alone, and no Definition form: ${JSON.stringify(offered)}`
     );
 
     await page.keyboard.press('Escape');

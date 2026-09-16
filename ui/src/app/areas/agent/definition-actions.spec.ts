@@ -3,16 +3,23 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { ApiService, type ApiRequestInit, type JsonResult } from '../../core/api';
 import { ChangeBus, type ChangeEvent } from '../../core/change-bus';
+import { entityRefKey } from '../../core/entity-ref';
 import { PreferenceStore } from '../../core/preferences';
 import { ScreenActions } from '../../core/screen-actions';
 import { ScreenStores } from '../../core/screen-store';
+import { screenForRoute } from '../../core/navigation';
 import {
+  CREATE_ACTION,
   DEFINITION_LIST_DESCRIPTOR,
+  DEFINITION_LIST_ROUTE,
   DISABLE_ACTION,
   DefinitionActions,
   ENABLE_ACTION,
   SET_DEFAULT_ACTION,
 } from './definition-actions';
+
+/** The list's own generated declaration, read from the mirror rather than restated here. */
+const DEFINITION_LIST_SCREEN = screenForRoute(DEFINITION_LIST_ROUTE);
 
 /**
  * AC4: the Definitions list's three row actions act on the selected row in place and publish the
@@ -95,7 +102,9 @@ describe('the Definitions list row actions', () => {
         type: 'agent-definition',
         scope: 'instance',
         id: '7',
-        key: events[0]?.key,
+        // Composed from the triple, not read back out of the event under test: reading the actual
+        // into the expected made this one field assert nothing.
+        key: entityRefKey('agent-definition', 'instance', '7'),
         proposalId: '',
         expiresAt: 0,
       },
@@ -139,5 +148,64 @@ describe('the Definitions list row actions', () => {
     actions.run(DEFINITION_LIST_DESCRIPTOR, SET_DEFAULT_ACTION);
     await settle();
     expect(events).toEqual([]);
+  });
+
+  it("DW-366: a refused write puts the violation's own sentence on the screen", async () => {
+    const { actions, stores } = mount({
+      kind: 'error',
+      status: 422,
+      code: 'AGENT.VALIDATION',
+      reason: 'The agent definition was refused',
+      detail: {
+        violations: [
+          {
+            field: 'default',
+            code: 'AGENT.DEFAULT.DISABLED',
+            reason: 'Enable this definition before making it the default.',
+          },
+        ],
+      },
+    });
+    const store = stores.for(DEFINITION_LIST_DESCRIPTOR, []);
+    store.setSelection(['3']);
+    actions.run(DEFINITION_LIST_DESCRIPTOR, SET_DEFAULT_ACTION);
+    await settle();
+    // Mutation (Rule 19): put back `if (result.kind !== 'ok') return;` in `setDefault` -> this
+    // goes red, and the refusal reaches no surface at all: the row is unchanged, which is what
+    // the screen looks like when nothing happened.
+    expect(store.refusal()).toBe('Enable this definition before making it the default.');
+  });
+
+  it('a refusal with no violations falls back to the envelope reason, and the next run clears it', async () => {
+    const { actions, stores, calls } = mount({
+      kind: 'error',
+      status: 403,
+      code: 'AUTH.NOPRIVILEGE',
+      reason: 'This account does not hold OcuPilot administrative privilege',
+      detail: null,
+    });
+    const store = stores.for(DEFINITION_LIST_DESCRIPTOR, []);
+    store.setSelection(['3']);
+    actions.run(DEFINITION_LIST_DESCRIPTOR, ENABLE_ACTION);
+    await settle();
+    expect(store.refusal()).toBe('This account does not hold OcuPilot administrative privilege');
+    expect(calls).toHaveLength(1);
+
+    store.setSelection([]);
+    actions.run(DEFINITION_LIST_DESCRIPTOR, ENABLE_ACTION);
+    await settle();
+    // Nothing was selected, so nothing was issued and the standing sentence is still the one the
+    // instance last said -- it is cleared where a write is actually attempted, not on every click.
+    expect(calls).toHaveLength(1);
+    expect(store.refusal()).toBe('This account does not hold OcuPilot administrative privilege');
+  });
+
+  it("EXPERIENCE.md's Definition form row: Create is registered as the list's primary action", () => {
+    const { actions } = mount();
+    // Mutation (Rule 19): set the descriptor's `primaryAction.id` back to `""` -> the command bar
+    // draws no Create, and on an instance with no definition the form is reachable only by typing
+    // its URL, because its `sideBarPosition` 0 keeps it out of every navigation surface.
+    expect(actions.has(DEFINITION_LIST_DESCRIPTOR, CREATE_ACTION)).toBe(true);
+    expect(DEFINITION_LIST_SCREEN?.primaryAction.id).toBe(CREATE_ACTION);
   });
 });

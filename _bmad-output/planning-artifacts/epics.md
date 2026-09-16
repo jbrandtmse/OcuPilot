@@ -2485,6 +2485,8 @@ So that I reach a working agent without reading documentation to find out what i
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-356: the rail attention dot's third condition - "Test connection failed since the last save" - has no stored source, because a failed test deliberately records nothing (ledger; routed by harvest 2026-09-15)
+- DW-372: a 403 on the Definition form renders the envelope's generic reason instead of naming the resource and the action, because no published action phrase exists for this form (ledger; routed by cr 2026-09-16)
+- DW-373: the `form-page` contract's required-field asterisk with its legend, and inline-on-blur validation for every field but the key, are unimplemented (ledger; routed by cr 2026-09-16)
 
 ### Story 3.7: Switches - the kill switch and enforced read-only
 

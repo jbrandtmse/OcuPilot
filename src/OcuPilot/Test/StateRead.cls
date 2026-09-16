@@ -168,13 +168,26 @@ Method TestTheScreenReadRouteServesTheStateSource()
 
 /// <p>A state source naming a store this instance does not hold is a 500 with the generic fault,
 /// and the detail stays in the status (AD-12).</p>
-/// <p>Driven through <class>OcuPilot.Test.Read.Registry</class>'s fixture descriptor rather than
-/// by editing a shipped one: the refusal is the executor's, and the shipped declaration is the
-/// thing that must not change.</p>
+/// <p>Driven through <class>OcuPilot.Test.ReadState.NoStore</class>'s fixture descriptor rather than by
+/// editing a shipped one: the refusal is the executor's, and the shipped declaration is the thing
+/// that must not change.</p>
+/// <p>Mutation: make <method>OcuPilot.Screen.Read.StateRows</method>'s missing-class arm answer
+/// <code>$$$OK</code> with no rows -- the read falls through to the "answered something other than
+/// a list" arm and this goes red on the reason, which then names no store.</p>
 Method TestAStateSourceNamingNoStoreIsAnInternalFault()
 {
     Do $$$AssertEquals(##class(OcuPilot.Screen.Read).StateClass("NoSuchStore"), "OcuPilot.Kernel.State.NoSuchStore", "the endpoint resolves inside the state package")
     Do $$$AssertTrue('##class(%Dictionary.CompiledClass).%ExistsId("OcuPilot.Kernel.State.NoSuchStore"), "and this instance holds no such class, which is the precondition this leg needs")
+
+    Set tSC = ##class(OcuPilot.Screen.Read).Execute("OcuPilot.Test.ReadState.NoStore", "", .tResult, .tHttp, .tFault)
+    Do $$$AssertStatusNotOK(tSC, "executing the read is an error")
+    Do $$$AssertEquals(tHttp, 500, "answering 500")
+    Do $$$AssertTrue($IsObject(tFault), "with a fault object")
+    If '$IsObject(tFault) Quit
+    Do $$$AssertEquals(tFault.code, "INTERNAL", "carrying the generic internal code")
+    Do $$$AssertTrue(tFault.reason '[ "NoSuchStore", "and a reason that names no class of ours: '" _ tFault.reason _ "'")
+    Do $$$AssertTrue($System.Status.GetErrorText(tSC) [ "NoSuchStore", "while the detail stays in the status (AD-12)")
+    Do $$$AssertTrue('$IsObject(tResult), "and no rows are answered")
 }
 
 }

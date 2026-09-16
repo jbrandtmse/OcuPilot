@@ -4,6 +4,14 @@ import { provideRouter } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { App } from './app';
+import {
+  CREATE_ACTION,
+  DEFINITION_LIST_DESCRIPTOR,
+  DISABLE_ACTION,
+  ENABLE_ACTION,
+  SET_DEFAULT_ACTION,
+} from './areas/agent/definition-actions';
+import { DefinitionForm } from './areas/agent/definition-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
 import { ErrorLogDrill } from './areas/logs/error-log.store';
 import { ApiService } from './core/api';
@@ -546,6 +554,22 @@ describe('the shell frame', () => {
     ]);
   });
 
+  it("AC4: the shell brings the Definitions list's action handlers into existence", () => {
+    // `DefinitionActions` registers the list's four handlers in its own constructor, and nothing
+    // constructs it except `App`'s injection of it -- the descriptor declares the actions, but a
+    // surface offers one only while `ScreenActions` holds a handler for it. `definition-actions`'
+    // own spec injects the service itself, so every assertion there holds whether or not the
+    // shipped shell ever builds it.
+    //
+    // Mutation (Rule 19): delete `private readonly definitionActions = inject(DefinitionActions);`
+    // from `app.ts` -> these four go red, and enable, disable, set-default and Create do nothing
+    // on the real screen while the whole client suite stays green.
+    const actions = TestBed.inject(ScreenActions);
+    for (const id of [ENABLE_ACTION, DISABLE_ACTION, SET_DEFAULT_ACTION, CREATE_ACTION]) {
+      expect(actions.has(DEFINITION_LIST_DESCRIPTOR, id)).toBe(true);
+    }
+  });
+
   it('AD-8: leaving the signed-in state drops this principal\'s namespace list', async () => {
     // The list says which namespaces THIS user may enter, and `ApiService` scopes every call to
     // the answer. Sign-out clears the tab in place, so a list kept across it would scope the
@@ -582,6 +606,19 @@ describe('the shell frame', () => {
     expect(errorLogDrill.level()).toBe('list');
     expect(errorLogDrill.namespace()).toBe('HSCUSTOM');
 
+    // The eighth answer of the same kind (Story 3.5). The Definition form's buffer holds what THIS
+    // principal typed, and `keyValue` holds a provider API key they pasted and have not yet
+    // stored -- a secret, in a root-provided store, in the tab the next principal signs in to
+    // (AD-35). The dirty flag beside it is worse than stale: left standing, the next principal's
+    // first navigation raises "Leave without saving?" about work that is not theirs, and the
+    // guard refuses a route they did ask for.
+    const definitionForm = TestBed.inject(DefinitionForm);
+    const formDirty = TestBed.inject(FormDirty);
+    definitionForm.setValue('name', 'Claude');
+    definitionForm.setKey('sk-ant-a-key-this-principal-pasted');
+    expect(definitionForm.key()).not.toBe('');
+    expect(formDirty.dirty()).toBe(true);
+
     session.move('form');
     fixture.detectChanges();
 
@@ -601,6 +638,13 @@ describe('the shell frame', () => {
     // two go red, and the shipped shell keeps ticking the previous principal's screen.
     expect(refresh.descriptor()).toBe('');
     expect(refresh.armedFor()).toBe('none');
+
+    // Mutation (Rule 19): delete `this.definitionForm.reset()` and `this.formDirty.reset()` from
+    // `App.verifyWhenSignedIn` -> these three go red, and the shipped shell hands the next
+    // principal a pasted key and a dirty flag over a form they never opened.
+    expect(definitionForm.key()).toBe('');
+    expect(definitionForm.value('name')).toBe('');
+    expect(formDirty.dirty()).toBe(false);
 
     expect(scope.resets).toBe(1);
     // The fourth answer of the same kind (Story 1.13). A re-read parked with connectivity is a
