@@ -1,0 +1,75 @@
+# Epic dependency graph for the parallel /epic-cycle orchestrator (range 4-12).
+# depends_on is the EFFECTIVE graph the dispatch loop reads: the owner-approved graph plus the
+# edges the orchestrator's analysis added, per the owner's standing instruction (2026-09-16):
+# "If your analysis adds an edge, take the more conservative graph and note the difference in the
+# parallel log; if it would remove one of these, keep mine."
+epics_md_hash: "da4598560db323760f0e2088fb5992bfbafb61751aa6daa508d93b153f3babd2"
+analyzed_by: claude-opus-5
+analyzed_at: "2026-09-16T15:02:34Z"
+approved: true
+approved_by: owner (graph pre-approved in the /epic-cycle 4-12 invocation, conservative additions pre-authorized)
+
+owner_graph:  # as approved, never reduced
+  epic-4: [epic-3]
+  epic-5: [epic-4]
+  epic-6: [epic-2]
+  epic-7: [epic-5, epic-6]
+  epic-8: [epic-5, epic-6]
+  epic-9: [epic-8]
+  epic-10: [epic-3]
+  epic-11: [epic-4, epic-5]
+  epic-12: [epic-6, epic-8]
+
+added_edges:
+  hard:
+    - {epic: 6, depends_on: 5, evidence: "epics.md:3739-3741 Story 6.7 re-points 5.11's navigation target and replays UJ-6 end to end; epics.md 5.11 says 'Task details does not exist until Story 6.7'; 6.7 AC2 pauses refresh while a proposal (Epic 5) is live"}
+    - {epic: 8, depends_on: 7, evidence: "epics.md:4265-4267 Story 8.7 acts on rows of the system-event list that Story 7.4 (epics.md:3981) first builds; no earlier epic builds the Auditing configuration screen"}
+    - {epic: 10, depends_on: 4, evidence: "epics.md:4573 Story 10.2 'a turn completes with tool calls' (Epic 4 turn + tool registry); 10.3 edits the context chip from Story 4.4"}
+    - {epic: 10, depends_on: 5, evidence: "epics.md:4576-4577 Story 10.2 runs the UJ-3 demo prompt (Story 5.8's confirmed write) against each provider"}
+    - {epic: 10, depends_on: 6, evidence: "epics.md:4576-4577 Story 10.2 runs the UJ-6 demo prompt, completed by Story 6.7"}
+    - {epic: 11, depends_on: 10, evidence: "epics.md:4759-4761 Story 11.7 ships only if build step 7 (Epic 10) finished; epics.md:823"}
+    - {epic: 11, depends_on: 6, evidence: "epics.md:4651 Story 11.2 explains rows of the log viewers built by Stories 6.13/6.14"}
+    - {epic: 12, depends_on: 7, evidence: "epics.md:3951 Story 7.3 'So that the area has a write before its editors ship'; 12.2 revoke sits on 7.2's Users row menu"}
+    - {epic: 12, depends_on: 9, evidence: "epics.md:4455 Story 9.6 defers the LDAP test action to 12.1; epics.md:4785 Epic 12 editors use the form-page tabs contract Story 9.1 sets"}
+    - {epic: 9, depends_on: 7, evidence: "epics.md:3932 Story 7.2 actions available from both the row menu and the 9.1 editor (also implied transitively via 8->7)"}
+  soft:  # footprint_overlap_threshold 0.20 exceeded with semantic overlap (estimates, inference)
+    - {epic: 11, depends_on: 9, pairs: "7-11 0.34, 8-11 0.32, 9-11 0.33", why: "Story 11.3 declares suggested prompts in every screen descriptor that 7/8/9 edit or add; 11.2 and 7.10 both land on the error-log drill-down"}
+    - {epic: 12, depends_on: 11, pairs: "11-12 0.31", why: "11.3 prompts go into 12's editor descriptors; 12.3 and 11.2 both land on the audit viewer; order follows the Epic List's polish-week ranking (11 first)"}
+
+epics:
+  epic-4:
+    depends_on: [epic-3]
+    submodules: []
+    paths_hint: ["src/OcuPilot/Kernel/Agent/**", "src/OcuPilot/Kernel/State/**", "src/OcuPilot/Kernel/Audit/**", "src/OcuPilot/Kernel/Restraint.cls", "src/OcuPilot/Kernel/Utils.cls", "src/OcuPilot/Kernel/Egress.cls", "src/OcuPilot/Kernel/Secret/Ladder.cls", "src/OcuPilot/Kernel/Provider/**", "src/OcuPilot/Port/ProviderPort.cls", "src/OcuPilot/Port/AdminPort.cls", "src/OcuPilot/Screen/Tool/**", "src/OcuPilot/Screen/Read.cls", "src/OcuPilot/Screen/Registry.cls", "src/OcuPilot/Screen/Descriptor/Base.cls", "src/OcuPilot/Screen/Descriptor/Home.cls", "src/OcuPilot/Api/Turn*.cls", "src/OcuPilot/Api/Router.cls", "src/OcuPilot/Api/Error.cls", "src/OcuPilot/Api/Definitions.cls", "src/OcuPilot/Install/Installer.cls", "src/OcuPilot/Install/Smoke.cls", "src/OcuPilot/Test/**", "scripts/check-objectscript.py", "scripts/test_check_objectscript.py", "ui/src/app/shell/**", "ui/src/app/app.ts", "ui/src/app/app.spec.ts", "ui/src/app/core/**", "ui/src/app/areas/home/**", "ui/src/styles/**", "ui/package.json", "ui/package-lock.json", "ui/angular.json", "ui/tools/**", "ui/browser/**"]
+  epic-5:
+    depends_on: [epic-4]
+    submodules: []
+    paths_hint: ["src/OcuPilot/Kernel/Proposal/**", "src/OcuPilot/Kernel/State/**", "src/OcuPilot/Kernel/Agent/**", "src/OcuPilot/Kernel/Audit/**", "src/OcuPilot/Kernel/Restraint.cls", "src/OcuPilot/Screen/Tool/**", "src/OcuPilot/Screen/Read.cls", "src/OcuPilot/Screen/Registry.cls", "src/OcuPilot/Screen/Descriptor/**", "src/OcuPilot/Port/AdminPort.cls", "src/OcuPilot/Port/LogSourcePort.cls", "src/OcuPilot/Api/**", "src/OcuPilot/Install/**", "src/OcuPilot/Test/**", "ui/tools/**", "ui/src/app/shell/**", "ui/src/app/core/**", "ui/src/app/areas/logs/**", "ui/src/styles/**", "ui/browser/**"]
+  epic-6:
+    depends_on: [epic-2, epic-5]
+    submodules: []
+    paths_hint: ["src/OcuPilot/Screen/Descriptor/**", "src/OcuPilot/Screen/Read.cls", "src/OcuPilot/Screen/Registry.cls", "src/OcuPilot/Screen/Area.cls", "src/OcuPilot/Port/MonitorPort.cls", "src/OcuPilot/Port/MgmntPort.cls", "src/OcuPilot/Port/AdminPort.cls", "src/OcuPilot/Port/LogSourcePort.cls", "src/OcuPilot/Api/**", "src/OcuPilot/Install/**", "src/OcuPilot/Test/**", "ui/src/app/areas/**", "ui/src/app/shell/**", "ui/src/app/core/**", "ui/tools/**", "ui/src/styles/**", "ui/browser/**"]
+  epic-7:
+    depends_on: [epic-5, epic-6]
+    submodules: []
+    paths_hint: ["src/OcuPilot/Screen/Descriptor/**", "src/OcuPilot/Screen/Tool/**", "src/OcuPilot/Kernel/Proposal/**", "src/OcuPilot/Kernel/Restraint.cls", "src/OcuPilot/Port/AdminPort.cls", "src/OcuPilot/Port/LogSourcePort.cls", "src/OcuPilot/Api/**", "src/OcuPilot/Install/Smoke.cls", "src/OcuPilot/Test/**", "ui/src/app/areas/security/**", "ui/src/app/areas/permissions/**", "ui/src/app/areas/tasks/**", "ui/src/app/areas/os-management/**", "ui/src/app/areas/logs/**", "ui/src/app/shell/**", "ui/src/app/core/**", "ui/tools/**", "ui/src/styles/**", "ui/browser/**"]
+  epic-8:
+    depends_on: [epic-5, epic-6, epic-7]
+    submodules: []
+    paths_hint: ["src/OcuPilot/Screen/Descriptor/**", "src/OcuPilot/Screen/Tool/**", "ui/tools/field-lists.mjs", "ui/tools/field-lists.test.mjs", "scripts/field-lists.sh", "src/OcuPilot/Port/AdminPort.cls", "src/OcuPilot/Api/**", "src/OcuPilot/Install/**", "src/OcuPilot/Kernel/Secret/Ladder.cls", ".github/workflows/ci.yml", "scripts/ci-*.sh", "README.md", "src/OcuPilot/Test/**", "ui/src/app/areas/web-applications/**", "ui/src/app/areas/permissions/**", "ui/src/app/areas/security/**", "ui/src/app/areas/os-management/**", "ui/src/app/shell/**", "ui/src/app/core/**", "ui/tools/**", "ui/src/styles/**", "ui/browser/**"]
+  epic-9:
+    depends_on: [epic-7, epic-8]
+    submodules: []
+    paths_hint: ["src/OcuPilot/Screen/Descriptor/**", "src/OcuPilot/Screen/Tool/**", "ui/tools/field-lists.mjs", "scripts/check-objectscript.py", "src/OcuPilot/Port/AdminPort.cls", "src/OcuPilot/Api/**", "src/OcuPilot/Install/Smoke.cls", "src/OcuPilot/Test/**", "ui/src/app/shell/**", "ui/src/app/areas/permissions/**", "ui/src/app/areas/web-applications/**", "ui/src/app/areas/tasks/**", "ui/src/app/areas/security/**", "ui/src/app/core/**", "ui/tools/**", "ui/src/styles/**", "ui/browser/**"]
+  epic-10:
+    depends_on: [epic-3, epic-4, epic-5, epic-6]
+    submodules: []
+    paths_hint: ["src/OcuPilot/Kernel/Provider/**", "src/OcuPilot/Port/ProviderPort.cls", "src/OcuPilot/Kernel/AgentRules.cls", "src/OcuPilot/Kernel/Egress.cls", "src/OcuPilot/Kernel/State/Agent.cls", "src/OcuPilot/Api/Definitions.cls", "src/OcuPilot/Api/Error.cls", "src/OcuPilot/Screen/Tool/Registry.cls", "src/OcuPilot/Test/OpenAI*.cls", "src/OcuPilot/Test/Gemini*.cls", "src/OcuPilot/Test/Compatible*.cls", "src/OcuPilot/Test/Adapter*.cls", "src/OcuPilot/Test/CatalogProbe*.cls", "src/OcuPilot/Test/AgentRules*.cls", "src/OcuPilot/Test/Provider*.cls", "src/OcuPilot/Test/Egress*.cls", "ui/src/app/areas/agent/definition-form.*", "ui/src/app/shell/panel/context-chip*", "ui/src/app/core/strings.ts", "ui/tools/strings.test.mjs", "ui/browser/definitions.browser-spec.mjs", "README.md"]
+  epic-11:
+    depends_on: [epic-4, epic-5, epic-6, epic-9, epic-10]
+    submodules: []
+    paths_hint: ["ui/src/app/shell/**", "ui/src/app/core/**", "ui/src/app/areas/logs/**", "src/OcuPilot/Screen/Descriptor/**", "src/OcuPilot/Screen/Registry.cls", "ui/tools/**", "src/OcuPilot/Api/**", "src/OcuPilot/Kernel/Audit/**", "src/OcuPilot/Kernel/Agent/**", "src/OcuPilot/Kernel/Provider/**", "src/OcuPilot/Port/ProviderPort.cls", "src/OcuPilot/Kernel/Egress.cls", "src/OcuPilot/Install/Smoke.cls", "src/OcuPilot/Test/**", "ui/src/styles/**", "ui/browser/**"]
+  epic-12:
+    depends_on: [epic-6, epic-7, epic-8, epic-9, epic-11]
+    submodules: []
+    paths_hint: ["src/OcuPilot/Screen/Descriptor/**", "src/OcuPilot/Screen/Tool/**", "ui/tools/field-lists.mjs", "ui/tools/field-lists.test.mjs", "ui/tools/classic-links.mjs", "ui/tools/classic-links.test.mjs", "src/OcuPilot/Port/AdminPort.cls", "src/OcuPilot/Api/**", "src/OcuPilot/Install/Smoke.cls", "src/OcuPilot/Test/**", "ui/src/app/areas/security/**", "ui/src/app/areas/permissions/**", "ui/src/app/areas/logs/**", "ui/src/app/shell/**", "ui/src/app/core/**", "ui/tools/**", "ui/src/styles/**", "ui/browser/**"]
