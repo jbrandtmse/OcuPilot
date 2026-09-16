@@ -9,3 +9,4 @@
 2026-09-16T15:28:17Z	Epic 6	retro_review_skipped	reason=handled_by_epic_4 note=story_4.0_closes_epic_3s_retro_ledger_and_action_items;no_story_6.0_created
 2026-09-16T15:34:44Z	Epic 6	protocol_violation	stage=epic_context_prewarm depth=2 agent=compile-epic-6-context violation=spawned_without_run_in_background_false_so_the_harness_backgrounded_it consequence=none;the_runner_blocked_on_a_foreground_poll_of_the_output_file_and_took_no_other_action_until_it_returned detected_by=runner outcome=every_later_stage_spawn_passes_run_in_background_false
 2026-09-16T15:34:44Z	Epic 6	epic_context_compiled	reason=initial model=claude-opus-5(opus) bytes=17777 header=ok
+2026-09-16T15:35:13Z	Story 6.1	stage_spawned	stage=plan spawn_at=2026-09-16T15:35:13Z model=opus agent_name=6-1-plan-1 cycle_iteration=1 ledger_inbox=none
