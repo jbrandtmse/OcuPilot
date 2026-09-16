@@ -166,3 +166,5 @@
 2026-09-16T09:40:10Z	Story 3.7	ledger_adjudicated	owned=3 resolved=3 reowned=0 terminal=0 entries=DW-369_DESCRIPTOR_PAGES_keyed_by_descriptor;DW-370_ACTION_LABELS_scoped_by_descriptor_and_pinned_at_both_surfaces;DW-383_addressed_by_composition_with_no_new_copy;DW-384_gains_its_second_occurrence_and_DW-395_is_terminal_as_its_duplicate slice_empty=true
 2026-09-16T09:45:20Z	Story 3.7	smoke_complete	method=cli result=pass iterations=1 defects_caught=1 evidence=smoke.sh_PASSED_18_executed_18_passed_0_failed_with_agentswitches_pass;the_defect_smoke_caught_was_its_own_new_check,_found_at_review_before_it_could_fire;live_holds_0_switch_rows_0_holds_0_definitions model=claude-opus-5
 2026-09-16T09:47:10Z	Story 3.7	committed	sha=497f284 branch=OCU-1-epic3 ci=pending run=35064319937
+2026-09-16T10:15:10Z	Story 3.7	ci_green	run=35064319937 sha=497f284 result=success note=green_on_the_first_push
+2026-09-16T10:15:10Z	Story 3.8	stage_spawned	stage=plan spawn_at=2026-09-16T10:15:10Z model=opus agent_name=3-8-plan-1 cycle_iteration=1 note=story_3.7_ci_resolved_green_before_this_spawn;last_story_before_the_burn_down_gate
