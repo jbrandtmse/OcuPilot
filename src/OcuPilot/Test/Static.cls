@@ -70,8 +70,20 @@ Method OnBeforeOneTest() As %Status
     Quit ##class(OcuPilot.Install.Installer).Install("probe", 0, ..SourceDirectory())
 }
 
+/// <p><b>Armed exactly as <method>OnBeforeAllTests</method> is.</b>
+/// <class>%UnitTest.Manager</class> invokes this method even when
+/// <method>OnBeforeAllTests</method> returned an error -- the <code>exit</code> label of
+/// <method>%UnitTest.Manager.RunOneTestCase</method> calls it on the error path -- so without
+/// the same guard a class that refused to install would still run a probe uninstall on an
+/// unarmed instance: a database delete under <var>pConfirmDataLoss</var> and a purge of this
+/// profile's rows out of the <i>production</i> protected database. It is the only armed class
+/// with an <method>OnAfterAllTests</method>; the other ten tear down per test, which the manager
+/// never reaches once <method>OnBeforeAllTests</method> has thrown.</p>
 Method OnAfterAllTests() As %Status
 {
+    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
+        Quit $$$OK
+    }
     Set tSC = ##class(OcuPilot.Install.Installer).Uninstall("probe", 1)
     Do ##class(%File).RemoveDirectoryTree(..SourceDirectory())
     Quit tSC

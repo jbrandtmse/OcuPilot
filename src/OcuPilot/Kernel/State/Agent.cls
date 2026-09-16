@@ -609,13 +609,21 @@ ClassMethod RefreshMark(pObject As OcuPilot.Kernel.State.Agent) As %Status [ Pri
 /// <code>UPDATE</code> reads back through the object layer as <code>$Char(0)</code>, which is a
 /// non-empty one-character string that every ordinary emptiness guard passes
 /// (<file>.claude/rules/objectscript-basics.md</file>).</p>
+/// <p><b>Conditional on the version it just read</b>, like every other write to this store
+/// (Consistency Conventions: concurrent writes to OcuPilot's own state). The point is not this
+/// method's own window, which is one statement wide: it is that this write moves
+/// <property>DefaultMark</property> and <property>UpdatedAt</property> on a live row, so a
+/// marker write that left <property>RowVersion</property> alone would leave every other writer's
+/// "still current" check answering true about a row that had in fact changed -- and
+/// <method>GuardedMarkedId</method> takes the lowest marked id, so a stale save restoring an old
+/// marker leaves two rows marked and silently overrides the operator's explicit choice.</p>
 ClassMethod MarkRow(pId As %String, pMark As %String) As %Status [ Private ]
 {
     Set tSC = ..GuardedOpenId(pId, .tRow)
     If $$$ISERR(tSC) Quit tSC
     Set tRow.DefaultMark = pMark
     Set tRow.UpdatedAt = ..Timestamp()
-    Quit ..GuardedSave(tRow)
+    Quit ..GuardedSaveIfCurrent(tRow, +tRow.RowVersion)
 }
 
 /// <p>The id carrying the default marker, or <code>""</code>. Says nothing about whether that

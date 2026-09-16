@@ -366,6 +366,31 @@ Method TestASiblingNamingTheReferenceKeepsTheKey()
 /// <p>Mutation: drop the ownership test from
 /// <method>OcuPilot.Api.Definitions.ClearOwnedCredential</method> -- this goes red, the operator's
 /// own entry gone.</p>
+/// <p>AD-37's ownership half, driven through the route that sets the mark rather than around it.
+/// An operator keeps their own entry, points a definition at it, and then rotates the key from
+/// that definition's form -- the ordinary flow. The store writes over an entry that already
+/// existed, so it created nothing, so the definition never owns it and deleting the definition
+/// must leave it standing.</p>
+/// <p><b>Why the sibling test above does not cover this.</b> That one keeps the entry because a
+/// survivor still names the reference. This one has no survivor: the only thing standing between
+/// the operator's entry and <method>OcuPilot.Kernel.Secret.Ladder.Clear</method> is
+/// <var>pCreated</var> having answered 0 on the overwrite.</p>
+Method TestAStoreOverAnOperatorsOwnEntryDoesNotClaimIt()
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Secret.Ladder).Store(..#PROBECREDENTIAL, ##class(OcuPilot.Test.CredentialFixture).Payload(..#PROBEKEY), "apiKey"), "the operator's own entry is written outside OcuPilot's route")
+    Set tId = ..CreateCredsDefinition("Rotator")
+    If tId = "" Quit
+
+    ; The rotation: a store through the route, onto a reference that already holds an entry.
+    Do ..StoreKey(tId, "Rotator")
+    Do $$$AssertEquals(##class(OcuPilot.Test.CredentialFixture).Exists(..#PROBECREDENTIAL), 1, "the entry still exists after the rotation")
+
+    Set tSC = ..Call("DELETE", "/" _ tId, "", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the delete request completes")
+    Do $$$AssertEquals(tStatus, 200, "and is accepted: " _ tBody)
+    Do $$$AssertEquals(##class(OcuPilot.Test.CredentialFixture).Exists(..#PROBECREDENTIAL), 1, "and the operator's own entry survives the definition that rotated its key")
+}
+
 Method TestAnEntryOcuPilotDidNotCreateSurvivesTheDelete()
 {
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Secret.Ladder).Store(..#PROBECREDENTIAL, ##class(OcuPilot.Test.CredentialFixture).Payload(..#PROBEKEY), "apiKey"), "the operator's own entry is written outside OcuPilot's route")
@@ -412,6 +437,35 @@ Method TestAStoreSweepsEveryDefinitionNamingTheReference()
 /// <p>Mutation: let the <code>$$$ISERR(tClearSC)</code> branch fall through in
 /// <method>OcuPilot.Api.Definitions.HandleStoreCredential</method> -- this goes red, answering 200
 /// for a definition that no longer exists.</p>
+/// <p>A store whose posted definition vanishes still sweeps the siblings. The handler attempts
+/// every clear before it reports any failure, so the definition it could not reach does not
+/// decide the fate of the ones it could -- a sibling left enabled would go on serving turns with
+/// the key this store has already put behind the shared reference.</p>
+Method TestASweepStillRunsWhenThePostedDefinitionVanishes()
+{
+    Set tPosted = ..CreateCredsDefinition("VanishPosted")
+    Set tSibling = ..CreateCredsDefinition("VanishSibling")
+    If (tPosted = "") || (tSibling = "") Quit
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.AgentFixture).SetFlags(tSibling, 1, 1), "the sibling is enabled and verified before the store")
+
+    Do ##class(OcuPilot.Test.DefinitionsProbe).Forget()
+    Do ##class(OcuPilot.Test.DefinitionsProbe).SetSecretClass("OcuPilot.Test.SecretDeletingStore")
+    Do ##class(OcuPilot.Test.SecretDeletingStore).ArmDeletion(tPosted)
+
+    Set tSC = ..Dispatch(tPosted, .tStatus, .tBody)
+    Do $$$AssertStatusOK(tSC, "the dispatch completes")
+    Do $$$AssertEquals(tStatus, 500, "the vanished posted definition is reported: " _ tBody)
+
+    Set tRead = ..ReadDefinition(tSibling, "VanishSibling")
+    If $IsObject(tRead) {
+        Do $$$AssertEquals(tRead.enabled, 0, "the sibling is still disabled, although the posted definition could not be")
+        Do $$$AssertEquals(tRead.connectionVerified, 0, "and its verification is still cleared")
+    }
+
+    Do ##class(OcuPilot.Test.SecretDeletingStore).Forget()
+    Do ##class(OcuPilot.Test.DefinitionsProbe).Forget()
+}
+
 Method TestAStoreWhoseDefinitionVanishesRefusesAndSaysTheKeyWasStored()
 {
     Set tId = ..CreateCredsDefinition("ArmA")

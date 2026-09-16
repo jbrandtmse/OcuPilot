@@ -25,7 +25,7 @@ ClassMethod SetValue(pValue As %String)
 
 /// <p>Answer the credentials-rung availability predicate with <var>pState</var> from now on:
 /// <code>1</code>, <code>0</code>, or <code>raise</code> to make it throw. Anything else, including
-/// the unset state <method>Clear</method> leaves, falls through to the shipped predicate.</p>
+/// the unset state <method>Forget</method> leaves, falls through to the shipped predicate.</p>
 /// <p><b><code>raise</code> is what makes "the <code>env</code> arm consults no rung predicate"
 /// falsifiable from one namespace.</b> An arm that merely ignored a <code>0</code> answer and an arm
 /// that never asked are the same observation; an arm that would have thrown is not.</p>

@@ -1534,6 +1534,49 @@ class TestDestructiveTestGuardRule(FixtureTreeCase):
             f"expected the helper route to the production install refused, got {problems}",
         )
 
+    def test_the_zero_argument_install_is_the_production_install_too(self):
+        """`Install` declares `pProfile As %String = ""`, so a bare `Install()` is the production
+        install under another spelling. A pattern anchored on the literal `""` read it as nothing
+        at all, which is the same blind spot DW-402 filed about the method name."""
+        self.write_test_class(
+            "BareInstalling", "    Set tSC = ##class(OcuPilot.Install.Installer).Install()"
+        )
+        problems: list[str] = []
+        co.check_destructive_test_guard(problems)
+        self.assertTrue(
+            any("BareInstalling.cls" in p for p in problems),
+            f"expected the zero-argument production install refused, got {problems}",
+        )
+
+    def test_any_test_helper_reaching_the_install_is_in_the_population(self):
+        """Fourteen classes under `Test/` extend the installer or `InstallerProbe` and inherit
+        `StartPath` and `Install` unchanged. Listing the helpers by name is precisely what the next
+        one is added outside of, so both methods are matched on any `OcuPilot.Test.*` class."""
+        for name, call in (
+            ("MigrateStarting", "    Do ##class(OcuPilot.Test.MigrateFault).StartPath(1)"),
+            ("NamespaceStarting", "    Do ##class(OcuPilot.Test.NamespaceProbe).StartPath(1)"),
+            ("ProbeBareInstalling", '    Set tSC = ##class(OcuPilot.Test.InstallerProbe).Install("")'),
+        ):
+            with self.subTest(name=name):
+                self.write_test_class(name, call)
+                problems: list[str] = []
+                co.check_destructive_test_guard(problems)
+                self.assertTrue(
+                    any(f"{name}.cls" in p for p in problems),
+                    f"expected {name} refused by the widened pattern, got {problems}",
+                )
+
+    def test_a_probe_profile_install_through_a_helper_is_still_outside_the_rule(self):
+        """The widening is by class family, not by method: a probe-profile install through the
+        same helper still creates only the objects the test owns."""
+        self.write_test_class(
+            "HelperProbeInstalling",
+            '    Set tSC = ##class(OcuPilot.Test.InstallerProbe).Install("probe", 1)',
+        )
+        problems: list[str] = []
+        co.check_destructive_test_guard(problems)
+        self.assertEqual(problems, [])
+
     def test_a_probe_profile_install_is_outside_the_rule(self):
         """The rule anchors on the empty profile argument, not on the method. A probe install
         creates the parallel `Probe*` objects a test owns, which is what the suite is for."""

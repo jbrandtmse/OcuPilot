@@ -2222,6 +2222,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-15T18:34:55Z status=routed owner=burndown by=qa note=QA added the assertion (^Ens.SecondaryData.Password reads empty after a refused save, green) and traced the mechanism: PasswordSet writes the secondary node immediately but the vendor's own %OnClose deletes it whenever the object closes unsaved, and Store drops tRow right after %Save. No OcuPilot-code mutation reddens it, so the assertion is a regression pin rather than a Rule 19 closure; the safety is the vendor's. Remaining work is only to decide whether an unfalsifiable pin is worth keeping
 - 2026-09-16T10:21:42Z status=routed owner=3-9-epic-3-burn-down by=burndown_gate note=chartered into Epic 3's burn-down story by priority - the secret lifecycle, the shared lost-update shape, the three gates that were green while a defect passed them, and the coverage a named mutation can redden
 - 2026-09-16T11:42:11Z status=terminal owner=3-9-epic-3-burn-down by=lead note=made terminal by the burn-down rather than fixed: the assertion exists and is green, and the cleanup it observes is the vendor's own %OnClose, so no OcuPilot mutation can redden it. It stays as a vendor-behavior regression pin, and its one reachable hole was DW-350's, which is fixed
+- 2026-09-16T12:24:30Z status=wontfix-theoretical owner=burndown by=cr note=Restated in the grammar: the story set status=terminal, which ledger.sh does not recognise (by-design|wontfix-theoretical|wontfix-accepted|dropped|resolved-by:), so the entry counted as non-terminal and slice 3-9-epic-3-burn-down did not read empty for Rule 17's adjudication gate. The judgement is unchanged and correct. What would make it real: an OcuPilot path that reads the secondary store for a reference whose row creation was refused.
+- 2026-09-16T12:25:25Z status=wontfix-theoretical owner=burndown by=cr note=Supersedes the previous line, whose note quoted the word terminal in key-equals-value form and so was re-read by the parser as the entry's own state. Judgement unchanged. What would make it real: an OcuPilot path that reads the secondary store for a reference whose row creation was refused.
 
 ### DW-347: AC6's chain is asserted in two halves that meet at Ladder.Store rather than at the wire: no single test carries a key from POST /agent/definitions/:id/credential through to a served turn
 - source: spec-3-3 | severity: med | fix-risk: low | footprint: in-epic
@@ -2234,6 +2236,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-3-3 | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Test/Secret, Test/AgentCredential and Test/ProviderConsumer each own it in their own before/after hooks; the runner serializes one class per call, so the hazard needs a concurrent run the tooling already refuses
 - 2026-09-15T18:06:38Z status=terminal owner=3-3-credentials-resolve-at-call-time-and-are-never-stored-where by=harvest note=closed as LOW at harvest: reachable only by the concurrent run .claude/rules/objectscript-testing.md forbids and the MCP runner serializes; any future class touching this name should take its own
+- 2026-09-16T12:24:46Z status=wontfix-accepted owner=burndown by=cr note=Restated in the grammar (was status=terminal, which ledger.sh does not recognise, so this counted as non-terminal Epic 3 work). Decision unchanged - closed as LOW at harvest. reopen_if=a further test class takes the OcuPilotProbeCredential name instead of its own.
+- 2026-09-16T12:25:25Z status=wontfix-accepted owner=burndown by=cr note=Supersedes the previous line for the same parser reason. Judgement unchanged - closed as LOW at harvest. reopen_if=a further test class takes the OcuPilotProbeCredential name instead of its own.
 
 ### DW-349: The credential store needs %Ens_Credentials:WRITE, which nothing grants and no named refusal covers, so an OcuPilot administrator without %All gets an opaque 500 from POST /agent/definitions/:id/credential
 - source: code review of spec-3-3 | severity: med | fix-risk: high | footprint: in-story
@@ -2522,6 +2526,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: the markdownlint document set is fixed in scripts/check-prose.py and covers 19 root and planning files; spec-3-7 reached code review with ## Design Notes and ## Verification deleted and ## Auto Run Result swallowed by an unterminated inline-code span in a list item, and lint-docs.sh reported 0 issues in 19 files
 - 2026-09-16T06:31:33Z status=routed owner=burndown by=cr note=the lead reads ## Auto Run Result and Rule 19 reads ## Verification; a structure check over spec-*.md would have caught this at the dev_complete commit
 - 2026-09-16T06:33:29Z status=terminal owner=burndown by=lead note=duplicate of DW-384, which was filed at Story 3.6's review for the identical gap and now carries this as its second occurrence
+- 2026-09-16T12:24:46Z status=dropped owner=burndown by=cr note=Restated in the grammar (was status=terminal, which ledger.sh does not recognise). Decision unchanged - duplicate of DW-384, which carries this as its second occurrence.
+- 2026-09-16T12:25:25Z status=dropped owner=burndown by=cr note=Supersedes the previous line for the same parser reason. Judgement unchanged - duplicate of DW-384, which carries this as its second occurrence.
 
 ### DW-396: check_destructive_test_guard does not see Security.Events.Create or Delete, so a test that registers or deletes an audit event type passes the gate unarmed
 - source: spec-3-8 | severity: med | fix-risk: med | footprint: cross-epic
@@ -2598,11 +2604,16 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-3-9 | severity: med | fix-risk: med | footprint: in-epic
 - evidence: MarkRow, GuardedCreate, Hold and WebApp bypass GuardedSaveIfCurrent; the convention was written for the read-modify-write window the burn-down closed, and these four were not in that window
 - 2026-09-16T11:42:03Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=harvest note=either bring the four under the conditional write or narrow the Conventions row to say which writes it governs; a convention that overstates its reach is the shape AD-21 just had
+- 2026-09-16T12:22:01Z status=routed owner=burndown by=cr note=The harmful one is fixed: Agent.MarkRow now saves through GuardedSaveIfCurrent, so a marker write raises the version and no other writer's conditional save can match a row it changed. Residual is create paths (Agent, Hold, WebApp) plus WebApp.GuardedMarkGatewayReported; none shares a table with a conditional writer, so no false positive is reachable. The Conventions row still reads every write.
+- 2026-09-16T12:29:17Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=merge_gate note=re-owned off burndown at the Epic 3 close. This is optimistic-concurrency residue on OcuPilot's own stores, and 5-3 is the story whose whole subject is that a confirmed write happens once against the state it was minted from
 
 ### DW-408: The sibling credential query folds case where the credential store does not, so two references differing only in case are siblings to OcuPilot and different entries to the vendor
 - source: spec-3-9 | severity: med | fix-risk: med | footprint: in-epic
 - evidence: IRIS SQL string comparison is case-insensitive by default and the sweep does not wrap the column in %EXACT; Ens.Config.Credentials keys exactly
 - 2026-09-16T11:42:03Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=harvest note=the project's own SQL rule prescribes %EXACT where case matters
+- 2026-09-16T12:22:01Z occurrence=3-9-epic-3-burn-down
+- 2026-09-16T12:22:01Z status=routed owner=burndown by=cr note=Code review adds evidence against the shipped doc comment: GuardedIdsByCredentialName's header states the entry id folds case as fact. irislib/Ens/Config/Credentials.cls:119-123 resolves the correct case via LOWER(SystemName) before %OpenId, a step only needed because %OpenId is case-sensitive. The comment contradicts this entry and the vendor source.
+- 2026-09-16T12:29:14Z status=routed owner=4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=merge_gate note=re-owned off burndown at the Epic 3 close. The credential ladder's next real caller is the turn, which resolves a credential at call time and is the first code that will be standing in this path with a reason to care
 
 ### DW-409: A credential store under a shared reference disables sibling definitions the change record never names, so a configuration change reaches the instance unaudited
 - source: spec-3-9 | severity: med | fix-risk: med | footprint: in-epic
@@ -2619,6 +2630,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-3-9 | severity: med | fix-risk: low | footprint: in-epic
 - evidence: both halves are silent on the path where the key survives the definition that named it, which is the condition DW-345 exists to prevent
 - 2026-09-16T11:42:04Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=harvest note=log the no-op; a silent failure to remove a secret is the failure mode the entry was filed about
+- 2026-09-16T12:22:01Z status=routed owner=burndown by=cr note=Code review adds the other half: a credential entry OcuPilot SUCCESSFULLY deletes is recorded nowhere either. ClearOwnedCredential logs only on its failure branches and LogChange names only the definition's own fields, so AD-37's bounded deletion removes a row from Ens.Config.Credentials with no change record and no audit row.
+- 2026-09-16T12:29:14Z status=routed owner=4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=merge_gate note=re-owned off burndown at the Epic 3 close. The credential ladder's next real caller is the turn, which resolves a credential at call time and is the first code that will be standing in this path with a reason to care
 
 ### DW-412: GuardedSaveIfCurrent leaves the in-memory RowVersion raised after a rolled-back save, so a caller retrying with the same object is refused permanently
 - source: spec-3-9 | severity: med | fix-risk: low | footprint: in-epic
@@ -2649,6 +2662,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-3-9 | severity: med | fix-risk: low | footprint: in-epic
 - evidence: a fenced block or a table cell can carry a backtick run the check reads as unpaired, and the converse
 - 2026-09-16T11:42:04Z status=routed owner=17-2-a-readme-whose-install-steps-work-the-first-time by=harvest note=same file, same story as the harness
+- 2026-09-16T12:22:01Z status=routed owner=burndown by=cr note=Fence half fixed in the code review pass: check_spec_structure now flushes the paragraph block at a fence boundary as the blank-line branch does. Verified 2 reported where 0 were before, 61 documents still clean. Residual is the other CommonMark inline-context boundaries (headings, list items, table rows).
+- 2026-09-16T12:29:17Z status=routed owner=17-2-a-readme-whose-install-steps-work-the-first-time by=merge_gate note=re-owned off burndown at the Epic 3 close. Doc tooling and developer-visible behaviour that is currently documented only in a shell comment and eleven class headers; 17-2 is the story that has to make the written instructions true
 
 ### DW-418: The British-spelling list holds base forms only, so the sweep left repaired specs internally inconsistent
 - source: spec-3-9 | severity: med | fix-risk: low | footprint: in-epic
@@ -2664,11 +2679,15 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-3-9 | severity: med | fix-risk: low | footprint: in-epic
 - evidence: the rung predicate's third condition reads the live licence and no probe can answer it, so deleting it leaves the suite green
 - 2026-09-16T11:42:04Z status=routed owner=4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=harvest note=a seam beside the two the predicate already has
+- 2026-09-16T12:22:01Z status=routed owner=burndown by=cr note=Code review names the vacuity precisely: Test/Secret.cls:126 asserts CredentialsRungAvailable() equals (tCompiled && tEnsemble && tLicensed) recomputed in the test from the same three sources, so on every namespace the suite runs on both sides read 1 and deleting any one condition leaves it green. The discrimination comes only from the SecretNotInterop legs.
+- 2026-09-16T12:29:14Z status=routed owner=4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=merge_gate note=re-owned off burndown at the Epic 3 close. The credential ladder's next real caller is the turn, which resolves a credential at call time and is the first code that will be standing in this path with a reason to care
 
 ### DW-421: Three matrix error-handling shapes in the burn-down's own changes are implemented and driven by no test
 - source: spec-3-9 | severity: med | fix-risk: low | footprint: in-epic
 - evidence: recorded by the implement pass's review rather than discovered later
 - 2026-09-16T11:42:04Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=harvest note=drive them or record why each cannot be
+- 2026-09-16T12:22:01Z status=routed owner=burndown by=cr note=Code review found a fourth undriven shape: Api/Definitions' new GuardedVersion-unreadable refusal (500 INTERNAL, no provider call) is reachable by no test, because DefinitionsProbe.ArmMissingOpen counts OpenDefinition and GuardedVersion goes to GuardedExistsId/GuardedOpenId directly.
+- 2026-09-16T12:29:23Z status=routed owner=4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=merge_gate note=re-owned off burndown at the Epic 3 close. The three undriven shapes are error handling on the credential and definition handlers the turn calls, so they get their first real caller there
 
 ### DW-422: Test/Dispatch seeds the request body through %CSP.Request.InsertMimeData, which the vendor marks Final and Internal
 - source: spec-3-9 | severity: low | fix-risk: low | footprint: in-epic
@@ -2679,3 +2698,91 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: lead verification probe at Story 3.9's QA gate | severity: low | fix-risk: low | footprint: one class plus whatever prunes it
 - evidence: SELECT COUNT(*) FROM OcuPilot_Kernel_State.Stamp WHERE Profile IS NULL on the live ocupilot container reads 3306, all production rows, on a container up four days with RestartCount 0; the growth is tests calling Install("") rather than real starts, which DW-396's arming now bounds, but nothing prunes the table and AD-9 protected state has no retention rule
 - 2026-09-16T12:04:52Z status=routed owner=burndown by=lead note=Found while verifying that Story 3.9's eleven armed classes installed nothing on live - the count is the byproduct, not the finding. Production growth is modest (one row per container start or upgrade), so this is a housekeeping question rather than a defect: decide whether Stamp keeps every run forever, and if not what prunes it and on whose authority, since AD-9 makes it OcuPilot's own protected state.
+- 2026-09-16T12:29:17Z status=routed owner=18-13-multi-namespace-install by=merge_gate note=re-owned off burndown at the Epic 3 close. Stamp is the per-install-run record, so the story that installs into more than one namespace is the one that has to say what the table keeps
+
+### DW-424: CredentialsRungAvailable's own Try/Catch answers 0 on a raise, so a credential store that FAILS is reported to Credential() as an absence and the definition is disabled
+- source: bmad-code-review Story 3.9 (blind-hunter) | severity: med | fix-risk: med | footprint: in-epic
+- evidence: Before this change the predicate was one unguarded %ExistsId, so a raise propagated to Credential's own Catch -- the arm that sets pTransient 1. The new Catch (Ladder.cls, CredentialsRungAvailable) swallows it to 0, and Credential's 'If '..CredentialsRungAvailable() Return ""' leaves pTransient 0, which ProviderPort.FlagUnresolvedCredential disables on. Both transient-path tests drive SecretProbe's override, which throws OUTSIDE the new Catch, so the arm under test is not the arm production takes. Distinct from DW-410: that is the predicate answering false, this is the predicate raising.
+- 2026-09-16T12:21:34Z status=routed owner=burndown by=cr note=Fix locus is the predicate's Catch, not Credential(); DW-410 is the same symptom from a different cause. Deciding what an unreachable-vs-unreadable rung means is a product call, so both want one answer.
+- 2026-09-16T12:29:14Z status=routed owner=4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=merge_gate note=re-owned off burndown at the Epic 3 close. The credential ladder's next real caller is the turn, which resolves a credential at call time and is the first code that will be standing in this path with a reason to care
+
+### DW-425: The published stale-save sentence tells the operator to reload, but pressing Save again with the same stale values succeeds and completes the lost update the refusal announced
+- source: bmad-code-review Story 3.9 (blind-hunter) | severity: med | fix-risk: med | footprint: in-epic
+- evidence: STRINGS.formStaleSave (EXPERIENCE.md:344) reads 'Reload to see the current values, then save again.' Api/Switches.HandleUpdate and Api/Definitions.HandleUpdate read the row version fresh on every request, so the second save matches and writes. That is exactly what the Conventions row scopes to ('the window it closes is within a request'), so the code is as designed and the published copy is not.
+- 2026-09-16T12:21:34Z status=escalated owner=burndown by=cr note=For the SC-4 decision sheet: either the copy stops promising a reload, or the client carries the version it read. Do not patch the copy without the product call - it is EXPERIENCE.md's published sentence.
+
+### DW-426: HandleTest reads the row version AFTER the stored values it is meant to pin, so a writer landing between the two reads leaves a matching version and a verified row holding values it never tested
+- source: bmad-code-review Story 3.9 (edge-case-hunter) | severity: med | fix-risk: med | footprint: in-epic
+- evidence: Api/Definitions.HandleTest calls ValuesFromRow(tRow,.tStored) at the open, then ConnectionOutcome reads GuardedVersion later -- after the body read, merge and validation. Api/Switches.HandleUpdate does the opposite and its own comment says the order 'is the whole guarantee'. The two handlers disagree about which read comes first.
+- 2026-09-16T12:21:39Z status=routed owner=burndown by=cr note=Fix is to capture the version at the open beside ValuesFromRow and pass it down, matching Switches. In-epic because Epic 3 owns both handlers.
+- 2026-09-16T12:29:17Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=merge_gate note=re-owned off burndown at the Epic 3 close. This is optimistic-concurrency residue on OcuPilot's own stores, and 5-3 is the story whose whole subject is that a confirmed write happens once against the state it was minted from
+
+### DW-427: The Test-connection version guard is over-broad on the branch that never writes and absent on the branch that does, so an unreadable version aborts a read-only call with 500 while a row that moves mid-call is recorded undetected
+- source: bmad-code-review Story 3.9 (blind-hunter) | severity: med | fix-risk: med | footprint: in-epic
+- evidence: Api/Definitions: GuardedVersion is read unconditionally, so a failed read answers 500 INTERNAL even on the 'tTestedAsStored branch where the version is never used and nothing is written. On that same branch LogChange(TESTVERB, pId, .pStored, .tTested, 1) writes a security change record diffed against a pStored the row may no longer hold, with no conflict check.
+- 2026-09-16T12:21:39Z status=routed owner=burndown by=cr note=Narrow the read to the branch that uses it, or extend the conflict check to both; today it is inconsistent in opposite directions on the two branches.
+- 2026-09-16T12:29:17Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=merge_gate note=re-owned off burndown at the Epic 3 close. This is optimistic-concurrency residue on OcuPilot's own stores, and 5-3 is the story whose whole subject is that a confirmed write happens once against the state it was minted from
+
+### DW-428: A surviving sibling never inherits the CredentialCreated mark, so an entry OcuPilot created can outlive every definition that ever named it
+- source: bmad-code-review Story 3.9 (edge-case-hunter) | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Api/Definitions.ClearOwnedCredential keeps the entry when siblings remain (correct, AD-37), but the ownership mark stays on the row being deleted. Delete the owner first and the surviving sibling carries CredentialCreated 0, so deleting IT later leaves the entry standing forever with no definition naming it.
+- 2026-09-16T12:21:39Z status=routed owner=burndown by=cr note=Move the mark to a surviving sibling when the owner is deleted, or record ownership against the reference rather than the definition. The AD-37 bound is not violated - nothing is wrongly deleted - so this is a tidy-up leak, not an over-deletion.
+- 2026-09-16T12:29:14Z status=routed owner=4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=merge_gate note=re-owned off burndown at the Epic 3 close. The credential ladder's next real caller is the turn, which resolves a credential at call time and is the first code that will be standing in this path with a reason to care
+
+### DW-429: The sibling-clear and sibling-query failure branches of HandleStoreCredential are reached by no test, and reaching them needs the handler seam DW-352 refused
+- source: bmad-code-review Story 3.9 (verification-gap) | severity: med | fix-risk: med | footprint: in-epic
+- evidence: SecretDeletingStore.ArmDeletion deletes a definition AFTER the store, so the sibling id query -- which runs later -- never sees the deleted row; no probe can fail GuardedIdsByCredentialName or a sibling's GuardedClearVerification. The code review restructured the handler so every clear is attempted before any failure is reported and pinned that with TestASweepStillRunsWhenThePostedDefinitionVanishes, but the two error branches' own messages and records stay undriven.
+- 2026-09-16T12:21:45Z status=routed owner=burndown by=cr note=Named so the next reader does not mistake the new sweep test for coverage of the failure branches. Adding a seam here was refused once already (DW-352); a probe on the state class rather than the handler may be the way in.
+- 2026-09-16T12:29:14Z status=routed owner=4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=merge_gate note=re-owned off burndown at the Epic 3 close. The credential ladder's next real caller is the turn, which resolves a credential at call time and is the first code that will be standing in this path with a reason to care
+
+### DW-430: Agent.GuardedVersion and Switch.GuardedVersion answer the same question with different types and different no-row sentinels, and neither new Guarded method on Agent traps
+- source: bmad-code-review Story 3.9 (blind-hunter) | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Agent.GuardedVersion declares Output pVersion As %String and answers "" for no row; Switch.GuardedVersion declares As %Integer and answers 0. Each handler is written against its own convention, so the two cannot be read interchangeably. Agent.GuardedVersion and Agent.GuardedIdsByCredentialName also lack the Try/Catch every other Guarded method on those classes carries, so a raise leaves by exception instead of as a %Status.
+- 2026-09-16T12:21:45Z status=routed owner=burndown by=cr note=Two sentinels for one question across the store pair the same epic introduced; cheap to align while both are fresh.
+- 2026-09-16T12:29:17Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=merge_gate note=re-owned off burndown at the Epic 3 close. This is optimistic-concurrency residue on OcuPilot's own stores, and 5-3 is the story whose whole subject is that a confirmed write happens once against the state it was minted from
+
+### DW-431: The British-to-American sweep rewrote a quoted literal the sentence was about, destroying the finding it recorded
+- source: bmad-code-review Story 3.9 (blind-hunter) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: spec-1-18-epic-1-burn-down.md:374 now reads 'The license spec skips the readiness precondition and spells "license"', which asserts nothing. The file it is about is ui/browser/licence.browser-spec.mjs (same spec, :728), so the original said the spec spells "licence". A mechanical substitution has to skip quoted and code-span text the sentence is about. One casualty across all 42 swept specs.
+- 2026-09-16T12:21:45Z status=routed owner=burndown by=cr note=Distinct from DW-418, which is about base forms leaving documents internally inconsistent; this one changed what a sentence claims. Fix edits another story's spec, so it is not patched here.
+- 2026-09-16T12:29:17Z status=routed owner=17-2-a-readme-whose-install-steps-work-the-first-time by=merge_gate note=re-owned off burndown at the Epic 3 close. Doc tooling and developer-visible behaviour that is currently documented only in a shell comment and eleven class headers; 17-2 is the story that has to make the written instructions true
+
+### DW-432: OCUPILOT_ALLOW_PRODUCTION_INSTALL is a developer-visible behaviour change documented only in a shell comment and eleven class headers
+- source: bmad-code-review Story 3.9 (blind-hunter) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Eleven test classes now fail on any instance that is not the ci-throwaway container. Neither CLAUDE.md's 'Running and verifying' section nor .claude/rules/objectscript-testing.md mentions the variable, so someone running ui/tools/ci-runner.mjs --container ocupilot gets eleven reds with nothing saying that is the intended outcome.
+- 2026-09-16T12:21:50Z status=routed owner=burndown by=cr note=Fix edits agent-context files (CLAUDE.md and a rule), which a code review does not patch; routed so the owner makes the call.
+- 2026-09-16T12:29:17Z status=routed owner=17-2-a-readme-whose-install-steps-work-the-first-time by=merge_gate note=re-owned off burndown at the Epic 3 close. Doc tooling and developer-visible behaviour that is currently documented only in a shell comment and eleven class headers; 17-2 is the story that has to make the written instructions true
+
+### DW-433: RowVersion and CredentialCreated change the shape of AD-9 protected state with no recorded decision about SCHEMAVERSION
+- source: bmad-code-review Story 3.9 (blind-hunter) | severity: low | fix-risk: low | footprint: in-epic
+- evidence: RowVersion on Kernel/State/Base reaches all eight State subclasses and CredentialCreated is new on Agent, while OcuPilot.Install.Installer.SCHEMAVERSION stays 1. COALESCE(RowVersion,0) makes the upgrade safe, so nothing is broken; what is missing is the sentence saying why no bump was needed, which is what the next schema change will look for.
+- 2026-09-16T12:21:50Z status=decision-pending owner=burndown by=cr note=For the SC-4 decision sheet: record the rule for when SCHEMAVERSION moves, or bump it. A one-line answer either way.
+
+### DW-434: Two browser-spec files hardcode the server's STATE.CONFLICT reason text, and their load-bearing assertions are not.toContain, so a server-side wording change makes them vacuous rather than red
+- source: bmad-code-review Story 3.9 (blind-hunter) | severity: med | fix-risk: low | footprint: in-epic
+- evidence: switches.page.spec.ts:52 and definition-form.page.spec.ts:146 each transcribe OcuPilot.Api.Error.REASONSTATECONFLICT. The assertions read expect(...).not.toContain(CONFLICT_ENVELOPE_REASON), so if the server reason changes they go on passing while asserting the absence of a string the server no longer sends.
+- 2026-09-16T12:21:50Z status=routed owner=burndown by=cr note=The failure mode is silent: the screens' never-render-the-server-reason guarantee stops being checked with every gate green.
+- 2026-09-16T12:29:23Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=merge_gate note=re-owned off burndown at the Epic 3 close. The specs hardcode the STATE.CONFLICT reason text, and 5-3 owns what a conflict on a confirmed write means and says
+
+### DW-435: Two first writers to a singleton store can both create a row, and GuardedCurrent's TOP 1 then hides the second
+- source: bmad-code-review Story 3.9 (edge-case-hunter) | severity: med | fix-risk: med | footprint: in-epic
+- evidence: Kernel/State/Switch.cls:100 and Kernel/State/Egress.cls:112 route a first write through GuardedSaveIfCurrent's no-id branch, which creates rather than refuses -- correct for one writer. Two concurrent first writers would each create, and GuardedCurrent reads SELECT TOP 1, so one administrator's flip is silently invisible. UNVERIFIED: no probe was run and the window exists only before the singleton row exists.
+- 2026-09-16T12:22:08Z status=routed owner=burndown by=cr note=What would settle it: two concurrent first writes on a store with no row, then SELECT COUNT(*). A unique discriminator index would refuse the second create if it is real.
+- 2026-09-16T12:29:17Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=merge_gate note=re-owned off burndown at the Epic 3 close. This is optimistic-concurrency residue on OcuPilot's own stores, and 5-3 is the story whose whole subject is that a confirmed write happens once against the state it was minted from
+
+### DW-436: A row deleted between a caller's read and its conditional save is refused as a stale save, so the operator is told to reload and save a row that is gone
+- source: bmad-code-review Story 3.9 (edge-case-hunter) | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Kernel/State/Base.GuardedSaveIfCurrent treats %ROWCOUNT 0 as STALESAVEREASON without distinguishing a changed row from an absent one, so the 409 renders formStaleSave ('Reload to see the current values, then save again') for a definition another administrator deleted.
+- 2026-09-16T12:22:08Z status=wontfix-accepted owner=burndown by=cr note=reopen_if=a 409 telling an operator to reload a deleted definition is reported, or a screen starts branching on the difference. The message is wrong but the refusal is right, and separating the two costs an existence check on every conditional save.
+
+### DW-437: The filter-leg comparison rule only recognises legs bound to names beginning 'by', so a leg-against-leg assertion under any other name ships unflagged
+- source: bmad-code-review Story 3.9 (edge-case-hunter) | severity: low | fix-risk: low | footprint: in-epic
+- evidence: ui/tools/client-lint.mjs FILTER_LEG_COMPARISON_RE matches /by[A-Z]\w*/ on both sides, while FILTER_BINDING_RE captures whatever name the leg was bound to. Building the comparison pattern from the captured names would cover any binding.
+- 2026-09-16T12:23:25Z status=wontfix-accepted owner=burndown by=cr note=reopen_if=a leg-against-leg assertion reaches a browser spec under a name that does not start with 'by'. The rule catches the shape the repo actually writes today; widening it is a five-line change whenever that stops being true.
+
+### DW-438: ledger.sh validates owner on write but not status, so an entry written with a status outside the grammar counts as neither terminal nor non-terminal and is invisible to the drain's arithmetic
+- source: bmad-code-review Story 3.9 (reviewer probe) | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Three entries carried status=terminal, which is not one of by-design|wontfix-theoretical|wontfix-accepted|dropped|resolved-by:. LEDGER load's counts summed to 434 of total=437 with no warning, and slice listed all three as non-terminal -- DW-346 under this story's own key, which is what Rule 17 (2) requires to read empty before smoke. Owners are refused on write for exactly this reason; statuses are not.
+- 2026-09-16T12:24:46Z status=routed owner=burndown by=cr note=All three restated by hand in this review. The fix is the same guard the owner check already has, plus load reporting a status_unknown count so the arithmetic gap is a number rather than something a reader has to notice.
+- 2026-09-16T12:25:30Z status=routed owner=burndown by=cr note=Second and sharper half, found by walking into it: the trailer parser scans every whitespace-separated field on the line and takes the LAST key-equals-value match, so writing one of those key names inside the free-text note silently reassigns the entry. Three restatement lines written in this review each corrupted the entry they were fixing. A note is prose and must not be scanned for keys - stop at the first note= and treat the rest of the line as text.
+- 2026-09-16T12:29:23Z status=escalated owner=burndown by=merge_gate note=escalated to the Epic 3 decision sheet rather than re-owned, because it is a defect in the /epic-cycle kit's own ledger.sh and not in OcuPilot. It silently mis-counted the drain for three entries this epic and corrupted two more through the trailer parser taking the last key=value token out of free text. The owner is doing a correct-course and a possible kit re-install at this exact boundary, so this belongs in front of them now rather than in Epic 4's burn-down

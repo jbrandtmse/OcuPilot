@@ -164,7 +164,7 @@ services:
       # -- which is why it gets a variable of its own rather than riding on
       # OCUPILOT_ALLOW_AUDIT_EVENTS: naming it after one of those would mislead the next reader
       # about what arming it permits.
-      # Consequence, stated plainly: after this, those ten classes run here and on CI, never on a
+      # Consequence, stated plainly: after this, those eleven classes run here and on CI, never on a
       # development container someone cares about.
       OCUPILOT_ALLOW_PRODUCTION_INSTALL: "1"
       # Arms OcuPilot.Test.ProviderSsl, which runs the installer's EnsureSslConfiguration step

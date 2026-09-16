@@ -1112,10 +1112,12 @@ def check_test_class_properties(problems: list[str]) -> None:
 # **And the suite reaches that install through a helper as well.**
 # `OcuPilot.Test.InstallerProbe` extends `OcuPilot.Install.Installer` and overrides the demo-fixture
 # call site, the unexpire step and the logging -- not `StartPath`, which runs the real production
-# install underneath. `Test/DemoOptIn.cls` drives it and names no installer class of its own, so the
-# rule lists the helper by name for the same reason it lists `OcuPilot.Test.Version`'s account
-# helpers: a call graph over the whole Test tree is a different checker, and every helper this suite
-# actually has is here.
+# install underneath. `Test/DemoOptIn.cls` drives it and names no installer class of its own.
+# Fourteen classes under `Test/` extend the installer or that probe, so listing the helpers by name
+# is what a later one would be added outside of: `Install` and `StartPath` are matched on ANY
+# `OcuPilot.Test.*` class as well as on the installer itself. `Install()` with no argument is
+# matched too -- `pProfile` defaults to `""`, so the bare call is the production install under
+# another spelling, and anchoring only on the literal `""` read it as a probe install.
 #
 # A probe database, a namespace mapping and a web application created under the probe profile stay
 # outside the rule: they are the test's own objects, and the guard exists for effects on the
@@ -1126,8 +1128,10 @@ DESTRUCTIVE_TEST_RE = re.compile(
     r"|##class\(\s*Security\.Roles\s*\)\s*\.\s*(?:Create|Delete)\b"
     r"|##class\(\s*Security\.Events\s*\)\s*\.\s*(?:Create|Delete|Modify)\b"
     r"|##class\(\s*Config\.Startup\s*\)\s*\.\s*MoveConsoleLog\b"
-    r"|##class\(\s*OcuPilot\.Install\.Installer\s*\)\s*\.\s*Install\(\s*\"\"\s*\)"
-    r"|##class\(\s*OcuPilot\.Test\.InstallerProbe\s*\)\s*\.\s*StartPath\b"
+    r"|##class\(\s*(?:OcuPilot\.Install\.Installer|OcuPilot\.Test\.\w+)\s*\)"
+    r"\s*\.\s*Install\(\s*(?:\"\"\s*)?[,)]"
+    r"|##class\(\s*(?:OcuPilot\.Install\.Installer|OcuPilot\.Test\.\w+)\s*\)"
+    r"\s*\.\s*StartPath\b"
     r"|##class\(\s*OcuPilot\.Test\.Version\s*\)\s*\.\s*(?:CreateThrowawayExpiredAccount|DeleteThrowawayAccount)\b"
 )
 

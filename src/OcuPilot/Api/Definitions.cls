@@ -562,26 +562,25 @@ ClassMethod HandleStoreCredential(pId As %String) As %Status
             }
         }
         ; Every definition naming this reference was verified against the key that was there
-        ; before, so every one of them must pass Test connection again -- not only the one the
-        ; route named. A sibling left enabled would go on serving turns with a key it was never
-        ; tested against.
-        Set tSiblingSC = ##class(OcuPilot.Kernel.State.Agent).GuardedIdsByCredentialName(tCredentialName, pId, .tSiblings)
-        If $$$ISERR(tSiblingSC) {
-            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("The key was stored, and the agent definitions sharing its reference could not be read; run Test connection against them", ##class(%Exception.StatusException).CreateFromStatus(tSiblingSC))
-            Quit
-        }
-        Set tSiblingFailure = ""
-        For tI = 1:1:+$Get(tSiblings) {
-            Set tOneSC = ##class(OcuPilot.Kernel.State.Agent).GuardedClearVerification(tSiblings(tI))
-            If $$$ISERR(tOneSC) Set tSiblingFailure = tOneSC
-        }
-        If tSiblingFailure '= "" {
-            ; Nothing is recorded: the sweep is incomplete, so a change record naming this write
-            ; would describe a transition the instance did not make.
-            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("The key was stored, and an agent definition sharing its reference could not be disabled; run Test connection against them", ##class(%Exception.StatusException).CreateFromStatus(tSiblingFailure))
-            Quit
-        }
+        ; before, so every one of them must pass Test connection again -- the one the route named
+        ; and its siblings alike. A sibling left enabled would go on serving turns with a key it
+        ; was never tested against, and so would the posted definition.
+        ;
+        ; Every clear is attempted before any failure is reported. Returning at the first one
+        ; leaves whatever the sweep had not reached yet enabled against a key that is already in
+        ; the store, and that is true whichever end it starts from: sweeping siblings first
+        ; abandons the definition the operator acted on, and clearing the posted row first
+        ; abandons the siblings. Neither is a state this handler may leave behind, so the order
+        ; stops deciding anything -- only which message is reported.
         Set tClearSC = ##class(OcuPilot.Kernel.State.Agent).GuardedClearVerification(pId)
+        Set tSiblingSC = ##class(OcuPilot.Kernel.State.Agent).GuardedIdsByCredentialName(tCredentialName, pId, .tSiblings)
+        Set tSiblingFailure = ""
+        If $$$ISOK(tSiblingSC) {
+            For tI = 1:1:+$Get(tSiblings) {
+                Set tOneSC = ##class(OcuPilot.Kernel.State.Agent).GuardedClearVerification(tSiblings(tI))
+                If $$$ISERR(tOneSC) Set tSiblingFailure = tOneSC
+            }
+        }
         If $$$ISERR(tClearSC) {
             ; The key is already behind the reference, so this is not "nothing was saved": the
             ; definition is still enabled against the key it replaced, and the reason says so
@@ -590,6 +589,8 @@ ClassMethod HandleStoreCredential(pId As %String) As %Status
             Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("The key was stored, and the agent definition could not be disabled; run Test connection against it", ##class(%Exception.StatusException).CreateFromStatus(tClearSC))
             Quit
         }
+        ; The posted definition was cleared, so its transition is recorded before any sibling
+        ; problem is reported -- the record is about this row, and it did move.
         Kill tAfter
         Set tReopenSC = ..OpenDefinition(pId, .tAfterRow, .tAfterFound)
         If $$$ISOK(tReopenSC) && tAfterFound {
@@ -606,6 +607,16 @@ ClassMethod HandleStoreCredential(pId As %String) As %Status
         ; No value and no key-bearing field: the change set is built from the definition's own
         ; projection, which has nowhere to put a secret (AD-35).
         Do ..LogChange(..#CREDENTIALVERB, pId, .tBefore, .tAfter)
+        If $$$ISERR(tSiblingSC) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("The key was stored, and the agent definitions sharing its reference could not be read; run Test connection against them", ##class(%Exception.StatusException).CreateFromStatus(tSiblingSC))
+            Quit
+        }
+        If tSiblingFailure '= "" {
+            ; The siblings this sweep did clear are still unrecorded -- DW-411's open half, which
+            ; this ordering does not settle.
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("The key was stored, and an agent definition sharing its reference could not be disabled; run Test connection against them", ##class(%Exception.StatusException).CreateFromStatus(tSiblingFailure))
+            Quit
+        }
         Set tAnswer = {}
         Do tAnswer.%Set("stored", 1, "boolean")
         Set tSC = ##class(OcuPilot.Api.Response).JSON(tAnswer)

@@ -133,6 +133,48 @@ Method TestANameDifferingOnlyInCaseIsRefusedByTheNameIndex()
 /// <p>AC4 -- moving the marker clears the old one <b>before</b> setting the new one, inside one
 /// transaction. Setting before clearing collides with <code>DefaultIdx</code> and raises
 /// <code>#5808</code> on a legitimate request, so a success here is the order.</p>
+/// <p>The marker write raises <property>RowVersion</property> like every other write to this
+/// store, so a writer that read the row before the marker moved is refused instead of silently
+/// winning (Consistency Conventions: concurrent writes to OcuPilot's own state).</p>
+/// <p>This is about the OTHER writer, not about the marker. <method>MarkRow</method> saving
+/// unconditionally left the row changed at an unchanged version, so a held conditional save still
+/// matched -- and because <method>GuardedMarkedId</method> takes the lowest marked id, the stale
+/// save restored an old marker and left two rows marked, overriding the operator's explicit
+/// choice with no refusal.</p>
+Method TestAMarkerWriteRaisesTheVersionSoAHeldSaveIsRefused()
+{
+    Do $$$AssertTrue(..PreparedInstanceEmpty, "the instance holds no agent definitions before this method")
+    Set tA = ..MakeDefinition("A", 1, 1)
+    Set tB = ..MakeDefinition("B", 1, 1)
+
+    ; What a request that read A before anything moved would be holding.
+    Set tOpenSC = ##class(OcuPilot.Kernel.State.Agent).GuardedOpenId(tA, .tHeld)
+    Do $$$AssertStatusOK(tOpenSC, "the first definition opens: " _ $System.Status.GetErrorText(tOpenSC))
+    Set tHeldVersion = +tHeld.RowVersion
+    Do ##class(OcuPilot.Kernel.State.Agent).SnapshotSecurityFields(tHeld, .tSnapshot)
+    Set tHeld = ""
+
+    ; Another administrator moves the default. A carries the marker, so this clears A's.
+    Set tMoveSC = ##class(OcuPilot.Kernel.State.Agent).SetDefaultGuarded(tB)
+    Do $$$AssertStatusOK(tMoveSC, "the marker moves to the second definition: " _ $System.Status.GetErrorText(tMoveSC))
+    Do $$$AssertEquals(..MarkOf(tA), "", "the first definition's marker is cleared")
+
+    Set tAfterSC = ##class(OcuPilot.Kernel.State.Agent).GuardedOpenId(tA, .tAfter)
+    Do $$$AssertStatusOK(tAfterSC, "the first definition re-opens: " _ $System.Status.GetErrorText(tAfterSC))
+    Do $$$AssertTrue(+tAfter.RowVersion > tHeldVersion, "the marker write raised the row version above the one the held read saw")
+
+    ; The held writer now saves against the version it read. It must be refused.
+    Set tAfter.Model = "ocupilot-probe-model"
+    Set tStaleSC = ##class(OcuPilot.Kernel.State.Agent).GuardedUpdate(tAfter, .tSnapshot, tHeldVersion)
+    Do $$$AssertStatusNotOK(tStaleSC, "the save held across the marker write is refused")
+    Do $$$AssertTrue(##class(OcuPilot.Kernel.State.Base).IsStaleSave(tStaleSC), "and refused as a stale save, not as a read failure")
+    Set tAfter = ""
+
+    ; The marker the other administrator set is still the only one.
+    Do $$$AssertEquals(..MarkOf(tA), "", "the refused save did not restore the old marker")
+    Do $$$AssertEquals(..MarkOf(tB), "1", "and the second definition is still the default")
+}
+
 Method TestSetDefaultClearsTheOldMarkerBeforeSettingTheNew()
 {
     Do $$$AssertTrue(..PreparedInstanceEmpty, "the instance holds no agent definitions before this method")

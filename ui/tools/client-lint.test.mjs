@@ -495,6 +495,27 @@ test('a shipped file importing from src/app/testing/ is refused; a spec, a testi
   }
 });
 
+test('DW-368: client-lint.mjs exits 1 on an exact filter count in a browser spec, through the CLI', () => {
+  // The unit tests above call checkFilterAssertions directly, so they pass whether or not the rule
+  // is registered in lintClient. This drives the binary the prebuild actually runs, which is the
+  // only thing that observes the wiring: delete the rule from lintClient's aggregate and this
+  // reddens while every direct-call test stays green.
+  const root = mkdtempSync(join(tmpdir(), 'ocupilot-client-lint-'));
+  try {
+    mkdirSync(join(root, 'browser'), { recursive: true });
+    mkdirSync(join(root, 'src', 'app'), { recursive: true });
+    writeFileSync(
+      join(root, 'browser', 'probe.browser-spec.mjs'),
+      "assert.equal(await filterToSubset(page, {}), 1, 'one row');\n",
+    );
+    const run = spawnSync(process.execPath, [join(here, 'client-lint.mjs'), '--root', root], { encoding: 'utf8' });
+    assert.equal(run.status, 1, `expected exit 1, got ${run.status}: ${run.stdout}${run.stderr}`);
+    assert.match(run.stderr, /browser\/probe\.browser-spec\.mjs:1: \[no-exact-filter-count\]/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('AC10: client-lint.mjs exits 1 naming a file under src/app/shell/ that imports ../testing/', () => {
   const root = mkdtempSync(join(tmpdir(), 'ocupilot-client-lint-'));
   try {

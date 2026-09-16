@@ -421,6 +421,19 @@ consumers: Epic 4's transcript and ledger stores inherit `RowVersion` from `Base
 
 **Mutations (Rule 19) -- one per acceptance group:**
 
+*Added at code review, for the three pinning tests that pass added:*
+
+- `Agent.MarkRow` back to the unconditional `GuardedSave` -> `Test/AgentState`
+  `TestAMarkerWriteRaisesTheVersionSoAHeldSaveIsRefused` red (run 2189), reverted green (run 2190).
+- `HandleStoreCredential`'s sweep guarded on `$$$ISOK(tClearSC)` too, so it is skipped when the
+  posted clear fails -> `Test/AgentCredential` `TestASweepStillRunsWhenThePostedDefinitionVanishes`
+  red (run 2193), reverted green (run 2194).
+- `Ladder.Store` setting `pCreated` 1 above the `%ExistsId` branch, so every store claims creation ->
+  `Test/AgentCredential` `TestAStoreOverAnOperatorsOwnEntryDoesNotClaimIt` red (run 2198), reverted
+  green (run 2199).
+- `checkFilterAssertions` unregistered from `lintClient` -> `client-lint.test.mjs`'s CLI wiring test
+  red (49/50), reverted green (50/50).
+
 - Concurrency: drop `AND RowVersion = ?` from `GuardedSaveIfCurrent` -> the two-writer refusal test in
   `Test/State` goes red. The second writer is the same process: establish version 1, hold that
   snapshot, call `SetGuarded` again to reach version 2, then save the held snapshot with
@@ -588,3 +601,58 @@ gained a test whose red was observed.
   - `[maybe-false]` `[defer]` A sibling deleted between the id query and the clear fails the whole store with 500 although every surviving sibling was disabled; what would settle it is whether `GuardedClearVerification` distinguishes "no such row" from a read failure.
   - `[maybe-false]` `[defer]` `ConnectionOutcome` captures the version a few statements after `HandleTest` took the security-field snapshot, so a move inside that gap is judged against stale values; what would settle it is whether validation between the two can observe the row.
   - `[low]` `[reject]` Twenty-two further low observations across the four layers -- wording of individual doc comments, naming of locals, the shape of a message, repeated literals inside test classes, and restatements of rows already above -- each a direct-correction-or-nothing case whose fix is larger than the defect and which no user or developer meets in ordinary use.
+
+### Review Findings
+
+`bmad-code-review`, `full` mode, four layers over `d8999c8..HEAD` (2026-09-16). Every `patch` item
+below was applied in the review pass and is checked off; every `defer` item is a ledger row, not a
+bullet here.
+
+- [x] [Review][Patch] `Test/Static.OnAfterAllTests` runs a probe uninstall on an instance that
+  refused the install [src/OcuPilot/Test/Static.cls:73] — `%UnitTest.Manager` calls it on the
+  `OnBeforeAllTests` error path, so the one armed class with an `OnAfterAllTests` did the
+  destructive half only. Armed with the same guard.
+- [x] [Review][Patch] `Agent.MarkRow` saved unconditionally, so a marker write left the row changed
+  at an unchanged version and every other writer's conditional save matched a row it had changed
+  [src/OcuPilot/Kernel/State/Agent.cls:626] — now `GuardedSaveIfCurrent`. Pinned by
+  `TestAMarkerWriteRaisesTheVersionSoAHeldSaveIsRefused`.
+- [x] [Review][Patch] `HandleStoreCredential` returned at the first clear failure, leaving whatever
+  it had not reached enabled against a key already in the store [src/OcuPilot/Api/Definitions.cls:564]
+  — every clear is now attempted before any failure is reported. Pinned by
+  `TestASweepStillRunsWhenThePostedDefinitionVanishes`.
+- [x] [Review][Patch] AD-37's ownership bound had no end-to-end test through the route that sets the
+  mark [src/OcuPilot/Test/AgentCredential.cls] — added
+  `TestAStoreOverAnOperatorsOwnEntryDoesNotClaimIt`.
+- [x] [Review][Patch] `check_spec_structure` did not flush the paragraph block at a fence boundary,
+  so a stray backtick on each side of a fence canceled [scripts/check-prose.py:235].
+- [x] [Review][Patch] `DESTRUCTIVE_TEST_RE` missed `Install()` with no argument and every installer
+  helper but one [scripts/check-objectscript.py:1124] — matched on any `OcuPilot.Test.*` class, with
+  three harness cases.
+- [x] [Review][Patch] The new `filter-assertions` rule's registration in `lintClient` was observed by
+  nothing [ui/tools/client-lint.test.mjs] — added a CLI test in the `AC10` shape.
+- [x] [Review][Patch] `scripts/ci-throwaway.sh:167` said "those ten classes" one paragraph below
+  "the eleven test classes".
+- [x] [Review][Patch] `Test/SecretProbe.cls:28` named the renamed `Clear` rather than `Forget`.
+
+**Deferred:** DW-424 … DW-438 filed through `ledger.sh`, plus trailers on DW-407, DW-408, DW-411,
+DW-417, DW-420 and DW-421. DW-407 and DW-417 are partly closed by the patches above; their residuals
+are restated in their own trailer lines.
+
+**Ledger integrity, fixed in this pass.** DW-346, DW-348 and DW-395 carried `status=terminal`, which
+is not one of the five terminal statuses `ledger.sh` recognises, so all three counted as non-terminal
+— DW-346 under this story's own key, which Rule 17 (2) requires to read empty before smoke. All three
+are restated in the grammar with their recorded judgement unchanged, and `LEDGER load` now balances
+(354 + 76 + 6 + 2 = 438). DW-438 carries both causes: the writer does not validate a status the way
+it validates an owner, and the trailer parser reads key-name tokens out of the free-text note, which
+is how the first three restatement lines each corrupted the entry they were fixing.
+
+**Rejected:**
+
+- `[false]` "`EXACT_FILTER_COUNT_RE`'s lazy `[\s\S]*?\)` stops at the first `)`, so a
+  `filterToSubset` call containing a nested paren escapes the rule" — disproved by running the
+  regex: a lazy quantifier backtracks, and `filterToSubset(page, { total: count(rows) })`,
+  `filterToSubset(page, (r) => r.ok)` and the paren-free form all match.
+- `[low]` "`SPEC_HEADINGS` requires seven of the template's nine headings" — `## Auto Run Result`'s
+  absence is explained at the constant, and requiring `## Review Triage Log` and `## Spec Change Log`
+  would fail a spec at the moment it is drafted, which is the condition the comment already reasons
+  about.

@@ -233,6 +233,12 @@ def check_spec_structure(path: Path, lines: list[str]) -> list[str]:
     block: list[tuple[int, str]] = []
     for i, raw in enumerate(lines):
         if FENCE.match(raw):
+            # A fence ends the paragraph block, exactly as a blank line does. Without this flush
+            # the prose before a fence and the prose after it share one block, so a stray backtick
+            # on each side pairs with the other and both go unreported -- the pairing this check
+            # exists to find, cancelled by the fence between them.
+            problems.extend(unpaired_backticks(path, block))
+            block = []
             in_fence = not in_fence
             if in_fence:
                 fence_opened_at = i + 1
