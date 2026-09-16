@@ -2732,6 +2732,7 @@ So that asking about a screen never means leaving it.
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-160: Home's panel-widening criterion could not be surface-anchored in Epic 1 - no panel existed; this story builds the docked panel and owns the remembered width it restores on leaving Home (ledger; routed by harvest 2026-09-12)
+- DW-379: the panel is the default width on every route where `DESIGN.md` gives it a wider Home width over a 120ms transition, and `--ocu-panel-home` is declared with no consumer (ledger; routed by harvest 2026-09-16)
 
 ### Story 4.4: Screen context on every turn, capped, with its toggle and chip
 

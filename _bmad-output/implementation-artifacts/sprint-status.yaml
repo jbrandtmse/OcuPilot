@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: 09-16-2026 01:45
+last_updated: 09-16-2026 03:00
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -80,7 +80,7 @@ development_status:
   3-3-credentials-resolve-at-call-time-and-are-never-stored-where: done
   3-4-test-connection: done
   3-5-the-definition-form: done
-  3-6-the-first-login-gate-and-the-configuration-empty-state: in-progress
+  3-6-the-first-login-gate-and-the-configuration-empty-state: review
   3-7-switches-the-kill-switch-and-enforced-read-only: backlog
   3-8-every-configuration-change-is-resource-gated-and-audited: backlog
   epic-3-retrospective: optional

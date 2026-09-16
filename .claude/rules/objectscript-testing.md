@@ -173,3 +173,23 @@ did not redden as unproven until you have confirmed which copy ran.
 - Compile before running; a stale class produces confusing results.
 - Round-trip anything with a format or encoding (timestamps, Base64, JSON) rather than
   asserting only on the encode direction.
+
+## A browser spec runs against the deployed bundle, not the working tree
+
+`npm run test:browser` drives a real browser against the throwaway instance, which serves the
+client bundle that was copied in when the container came up — **not** the files you just edited.
+A Rule 19 mutation to client code therefore proves nothing until the bundle is rebuilt and
+redeployed: the spec reads green because it is still running the old bundle, and a mutation that
+reddens nothing looks like a test that was never load-bearing.
+
+Rebuild and redeploy before reading any browser result you intend to report:
+
+```bash
+cd ui && npm run build                       # the bundle the spec will actually load
+docker cp dist/ocupilot/browser/. \
+  <throwaway-container>:/durable/iris/csp/ocupilot/     # then re-run npm run test:browser
+```
+
+This is the client-side twin of *A mutation means nothing until the whole tree is recompiled*
+above: in both cases the thing under test is a compiled artifact, and editing the source without
+rebuilding leaves the old artifact answering.
