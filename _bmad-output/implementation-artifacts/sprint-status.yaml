@@ -117,7 +117,7 @@ development_status:
 
   epic-6: in-progress
   6-1-the-rest-api-explorer-and-its-openapi-document-viewer: done
-  6-2-the-roles-resources-and-services-lists: ready-for-dev
+  6-2-the-roles-resources-and-services-lists: in-progress
   6-3-the-x-509-ldap-kerberos-and-wallet-lists: backlog
   6-4-the-oauth-2-0-screen: backlog
   6-5-on-demand-and-upcoming-tasks: backlog
