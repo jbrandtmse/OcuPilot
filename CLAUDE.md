@@ -133,7 +133,8 @@ above and the container detail below this block are the operational essentials.
   hook runs it on staged paths and it blocks the commit) and its own harness with
   `uv run scripts/test_check_objectscript.py`.
 - Ask a running instance whether OcuPilot works: `bash scripts/smoke.sh --container ocupilot
-  --user _SYSTEM --password SYS`. The assertions live in `OcuPilot.Install.Smoke` inside the
+  --user _SYSTEM --password SYS` — `ocupilot` is slot A's dev container; a slot B runner passes
+  `ocupilot-slot-b`, and under `/epic-cycle` the name comes from your spawn prompt, never from this line. The assertions live in `OcuPilot.Install.Smoke` inside the
   instance, so CI and a local run ask the same question; zero executed checks is a failure, never
   a pass.
 - **CI runs all of the above on every push** (`.github/workflows/ci.yml`, three jobs: `gates`,
@@ -248,7 +249,9 @@ bring it back with `docker compose up -d --wait`.
 
 **Slot instances and throwaways.** `ocupilot-slot-b` (52775/1974, defined in
 `../OcuPilot-slot-b/compose.yml`) is the owner-managed development instance a second parallel
-`/epic-cycle` runner compiles into — the role `ocupilot` plays for slot A. **Never stop, remove,
+`/epic-cycle` runner compiles into — the role `ocupilot` plays for slot A. Each slot's dev
+container name, profile and ports are the `slots:` table in `_bmad/custom/parallel.yaml`; a runner
+learns its own slot only from its spawn prompt. **Never stop, remove,
 recreate or `down` any `ocupilot-slot-*` container**; the owner refreshes its source mounts from the
 feature branch and restarts it at an epic boundary. Throwaways (`scripts/ci-throwaway.sh`) are per
 slot — `ocupilot-ci` on 52776/1975 for slot A, `ocupilot-b-ci` on 52777/1976 for slot B — and an

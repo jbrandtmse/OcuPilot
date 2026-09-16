@@ -33,6 +33,7 @@ runtime_locks:
 slots:
   - name: a
     mcp_profile: ocupilot-slot-a          # the live `ocupilot` container
+    dev_container: ocupilot               # for smoke.sh --container and any docker exec against the dev instance
     dev_web_port: 52774
     dev_super_port: 1973
     throwaway:
@@ -44,6 +45,7 @@ slots:
       browser_origin: http://localhost:52776
   - name: b
     mcp_profile: ocupilot-slot-b          # ../OcuPilot-slot-b/compose.yml, owner-managed
+    dev_container: ocupilot-slot-b
     dev_web_port: 52775
     dev_super_port: 1974
     throwaway:
