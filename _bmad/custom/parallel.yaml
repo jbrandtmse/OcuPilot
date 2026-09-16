@@ -43,6 +43,7 @@ slots:
       web: 52776
       super: 1975
       browser_origin: http://localhost:52776
+      browser_container: ocupilot-ci        # OCUPILOT_BROWSER_CONTAINER for npm run test:browser (ui/browser.config.mjs defaults to ocupilot-ci)
   - name: b
     mcp_profile: ocupilot-slot-b          # ../OcuPilot-slot-b/compose.yml, owner-managed
     dev_container: ocupilot-slot-b
@@ -55,3 +56,4 @@ slots:
       web: 52777
       super: 1976
       browser_origin: http://localhost:52777
+      browser_container: ocupilot-b-ci      # OCUPILOT_BROWSER_CONTAINER -- without it a slot B browser run execs into slot A's throwaway (2026-09-16)
