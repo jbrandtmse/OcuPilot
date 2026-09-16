@@ -4,14 +4,12 @@
 
 ## Goal
 
-A user on any screen types a question into a docked panel that already knows the screen, namespace,
-selection and visible rows, watches the agent read through the same declared reads the screen uses
-(in-process, as the user), and gets an answer that names the rows it used, with every model and tool
-call recorded in a per-user ledger and nothing on the instance changed. This is the second half of
-build step 2 and completes UJ-1 plus the read-only half of UJ-4. It is also a real risk boundary: an
-agent that reads and explains but never writes is a complete product that can ship even if Epic 5's
-write model slips. The epic opens by putting in place the credential and egress decisions taken at
-Epic 3's merge gate, before the first turn sends a stored key anywhere.
+A user on any screen asks a docked panel that already knows the screen, namespace, selection and visible
+rows. The agent reads through the same declared reads the screen uses, in-process and as the user, and
+answers naming the rows it used. Every model and tool call lands in a per-user ledger, and nothing on the
+instance changes. This completes build step 2, UJ-1 and the read-only half of UJ-4, and ships on its own
+if Epic 5's write model slips. Story 4.0 (done) put Epic 3's merge-gate credential and egress decisions
+in place before any turn sends a stored key.
 
 ## Stories
 
@@ -29,219 +27,131 @@ Epic 3's merge gate, before the first turn sends a stored key anywhere.
 
 ## Requirements & Constraints
 
-- **Credentials and egress first (4.0).** OcuPilot refuses by name to store a key into a credential
-  entry it did not create. Naming an existing entry as a reference is still allowed and writes
-  nothing. A store without `%Ens_Credentials:WRITE` gets a named refusal that names the resource to
-  grant, never a 500 and never a grant at install time. A stored key goes only to the stored
-  endpoint. The proxy host is judged by the same egress policy, and an https endpoint tunnels
-  through it with CONNECT. A credential rung that cannot be reached, or that raises, fails with a
-  named reason and does **not** disable the definition. A configuration write that disables or
-  deletes something else names it in the change record. A delete that removed nothing says so, and
-  a test reads back every write verb's audit row. Where `_SYSTEM`'s `%All` would hide a behavior,
-  test it under a stripped role.
-- **The turn never holds a request open.** `POST` returns a turn id at once and a background job does
-  the work. A turn longer than the stock 60-second gateway timeout must complete on an unmodified
-  container, and a test proves it. The gateway timeout value is reported as information only. The
-  job never changes the instance: it writes only OcuPilot's own state, such as progress records.
-- **Every turn is bounded.** Each turn has limits on iterations, wall-clock time and total provider
-  tokens. Each user may run one turn at a time, and the instance enforces that. Signing out, or
-  deleting the user, abandons their running turns. Between every step the job re-checks that the
-  user is still enabled and still holds the privilege the next step needs. It also re-reads
-  enforced read-only, the kill switch and its stop flag, and abandons the turn at the next step
-  boundary when any of them has changed. Stop is not a new turn and cancels nothing.
-- **Progress** lives in protected storage, keyed by turn and owned by the user who started it. It
-  is capped in size per turn and is deleted when the turn ends. A poll for someone else's turn
-  answers **404, not 403**. The first visible progress appears within 10 s of Send against a
-  current cloud model.
-- **Tools.** A registry over the tool base discovers every tool with its name, input schema and
-  result shape. A tool that declares neither `read` nor `write` fails the build. Three shell reads
-  get read tools: the privilege map, the namespace list and instance identity. Navigation tools are
-  read tools that run client-side. Every call passes **one** call-time gate point, after the
-  caller's identity is resolved and before any port is touched. In Release 1 that gate allows
-  everything that is not prohibited. SQL-backed reads bind every value as a parameter, use fixed
-  catalog queries only (no free-form SQL) and carry the harvested anti-runaway-query guard.
-- **Screen context** is built fresh from the screen the user is on at the moment of Send: route,
-  namespace, selected entity, and the visible rows with their active sort and filter. It is capped
-  at 200 rows instance-wide (an operator can change the cap), truncated rather than refused, and
-  the number actually sent is recorded. The payload is also bounded by total size, and each field
-  is cut to a declared maximum with the cut marked. A serializer with an uncapped collection or an
-  unbounded field fails review. Fields the descriptor types as secret are **always** excluded, and
-  a screen that has any sends only its route and entity identity. The exclusion comes from the
-  schema. A name-pattern matcher is only a backstop that can add redaction, never remove it.
-  Context sharing is on by default and remembered per user. An OcuPilot administrator can set the
-  instance default to off.
-- **Replies cannot reach out.** Replies render as sanitized Markdown with code highlighting. The
-  renderer, highlighter and sanitizer are vendored in the bundle, and the page loads with no CDN.
-  A test asserts that a remote image produces no network request. The bundle is already over its
-  500 kB warning with no gate pinning the size, and this pipeline is the next large addition.
-- **Provider trouble costs time, not the answer.** A 429 or 5xx is retried with exponential backoff
-  up to a bounded count, waiting the greater of the backoff and `Retry-After`. A call that threw
-  mid-flight is never retried. A call that exceeds the fixed timeout ends the turn with an error that
-  names the step. Every failure reaches the client as a turn error, never as an exception.
-- **The ledger** writes one row per LLM call and per tool call: user, ISO-8601 UTC timestamp, screen
-  route, tool or provider name, arguments, result status, and token usage where the provider reports
-  it. Tool rows also record the IRIS resource the tool required. Redaction is by schema, and
-  LLM-call arguments are stored after the screen-context secret exclusion. Rows are limited in rate
-  and size per turn, and overflow is recorded as a count. Users see their own rows. An
-  administrator's view of another user's rows is gated by the resources recorded on each row, and
-  the ledger enforces that gate itself, not a screen. Rows outlive a deleted user.
+- **Credential and egress rules now in force. Keep them true.**
+  - A stored key goes only to the stored endpoint. A call to a body-supplied endpoint carries the
+    body's own key or none, and says which.
+  - A proxy is a destination: its host is judged by the same egress policy as the endpoint, and an
+    https endpoint tunnels through it with CONNECT, so the proxy never terminates the session that
+    carries the key.
+  - A key is stored only into an entry OcuPilot created or an unused reference. An entry someone else
+    created may be named but is never overwritten; the store is refused by name. A missing
+    credential-store privilege is a named refusal naming the resource, and install never grants it.
+  - Moving the default marker is a security change, because it selects the endpoint and key a turn uses.
+  - An unreadable credential store is transient: it faults `PROVIDER.CREDENTIALSTORE` (503) and leaves
+    the definition enabled. Only an absent entry (`PROVIDER.CREDENTIAL`) disables the definition.
+- **The turn never holds a request open.** `POST` returns a turn id at once, and a background job does
+  the work. A turn longer than the stock 60-second gateway timeout completes on an unmodified container,
+  and a test proves it. The job never changes the instance. It writes only OcuPilot's own state
+  (progress, bookkeeping). A vendor migration triggered by reading a credential is not a mutation;
+  reading the vendor's secondary credential global directly to avoid it is refused.
+- **Every turn is bounded and re-checked.** Limits on iterations, wall-clock time and total provider
+  tokens. One concurrent turn per user, enforced on the instance. Sign-out or user deletion abandons
+  running turns. Between every step the job re-checks that the user is enabled and holds the next
+  step's privilege, and re-reads enforced read-only, the kill switch and its stop flag. It abandons at
+  the next boundary when any has changed. Stop is not a new turn and cancels nothing.
+- **Progress** lives in protected storage, keyed by turn, owned by its starter, capped per turn and
+  deleted with the turn. A poll for another user's turn answers 404, not 403. The first visible progress
+  appears within 10 s. Anything from the model or a tool renders as data, never markup.
+- **Tools.** A registry over the tool base discovers each tool's name, input schema and result shape. A
+  tool that declares neither `read` nor `write` fails the build. The privilege map, namespace list and
+  instance identity get read tools. Navigation tools are read tools that run client-side and accept only
+  registry route ids and entity ids, never a URL. Every call passes one gate point, after identity is
+  resolved and before any port; in Release 1 it allows everything not prohibited. SQL-backed reads bind
+  every value, use fixed catalog queries only, and carry the anti-runaway-query guard.
+- **Screen context** is built fresh at Send: route, namespace, selected entity, visible rows with sort and
+  filter. It is capped at 200 rows instance-wide (operator-settable), truncated rather than refused, and
+  the count sent is recorded. Total size and each field are bounded too, with cuts marked. Secret-typed
+  fields are always excluded, by descriptor schema; a screen with any sends only route and entity
+  identity. A name matcher may only add redaction. Sharing is on by default, remembered per user, and an
+  administrator can default it off.
+- **Replies cannot reach out.** Sanitized Markdown with highlighting, all vendored, no CDN. A remote image
+  makes no request, and a test asserts it. The CSP allows only the instance's origin. The bundle is
+  already over its 500 kB warning with no size gate.
+- **Provider trouble costs time, not the answer.** Retry 429 and 5xx with exponential backoff up to a
+  bounded count, waiting the greater of backoff and `Retry-After`. Never retry a call that threw
+  mid-flight. A timeout ends the turn with an error naming the step. Every failure reaches the client as
+  a turn error.
+- **The ledger** writes one row per LLM call and per tool call, and tool rows record the IRIS resource
+  required. Redaction is by schema. Rows are bounded in rate and size per turn, with overflow as a
+  count. An administrator's view of another user's rows is gated by each row's recorded resources,
+  enforced by the ledger. Rows outlive a deleted user.
 
 ## Technical Decisions
 
-- **Governing ADs by story.**
-  - 4.0: AD-7 (the credential-migration exception), AD-35, AD-37, AD-42.
-  - 4.1: AD-7, AD-9, AD-12/AD-39, AD-28, AD-30, AD-31, AD-33, AD-41.
-  - 4.2: AD-1, AD-5, AD-8, AD-11, AD-21, AD-22, AD-29, AD-36, AD-39.
-  - 4.3: AD-19, AD-20.
-  - 4.4: AD-5, AD-24, AD-36, AD-42, AD-48.
-  - 4.5: AD-11, AD-19, AD-33, AD-41.
-  - 4.6: AD-11, AD-47.
-  - 4.7: AD-5, AD-11, AD-13, AD-44.
-  - 4.8: AD-32, AD-35, AD-39, AD-42.
-  - 4.9: AD-3, AD-9, AD-15, AD-37, AD-41, AD-46.
-  - 4.10: AD-36.
-  - This epic carries AD-11's invariants 1, 3 and 4.
-- **`AgentLoop` is a rewrite, not a port.** iris-session-agent's loop is synchronous and never trims
-  its context window. Take its 10-step flow and max-iteration fallback as the design, and run them
-  inside the background job. The per-conversation lock is harvested from the same project: an
-  exclusive open that returns an identically locked reference from both the new-row and
-  existing-row branches, released on every exit path. The panel's lock banner is only the
-  affordance; the instance enforces the lock.
-- **Job startup ordering (AD-9).** A `JOB` inherits `$USERNAME` and `$ROLES` at spawn and keeps
-  them for its whole life. So spawn before any escalated read, or from a frame that has already
-  unwound, and take every state read first and pass it in as values. A storage method never calls a
-  tool, a port or the provider from inside its escalated frame.
-- **Tools run in-process (AD-1).** Tools reach the instance through the ports. No tool makes an
-  HTTP call to `/api/admin`, `/api/mgmnt` or `/api/ocupilot`, and no token is used mid-turn.
-  Privilege belongs to the calling process and is checked at call time against `(resource,
-  permission)` pairs. The full tool set is always advertised. A 403 from a tool is the same 403 a
-  screen gets, and it is reported, never retried.
-- **Keep the system prompt constant (AD-11).** The system prompt is fixed at build time and nothing
-  read at runtime is concatenated into it. Tool results enter only as delimited tool-result content,
-  never as the system prompt or the user role. That means 4.1 must decide what precedence a
-  definition's `systemPromptOverride` takes. Tool schemas keep the harvested cross-vendor
-  JSON-Schema subset verbatim: a top-level object with `additionalProperties:false`, and no `$ref`,
-  `oneOf`, `anyOf`, `allOf` or `pattern`.
-- **One read serves screen and tool (AD-36).** A tool sees the screen's view, narrowed by the context
-  cap and stripped of secret-typed fields. The read is bounded and reports truncation. A per-row
-  detail call is allowed where the list is wrong: for example, the task LIST forces `Suspended` to
-  false, so read it through `INFO`. The application error log's captured variable tables never
-  enter context or tool results; the tool returns summary fields only (AD-48).
-- **Provider.** One base with adapters behind it, using Anthropic's message shape and the named SSL
-  configuration. The key is fetched at the point of use, cleared before return, and never placed in
-  a status, log or trap (AD-35). The chip's "leaves the instance" statement is computed from the
-  same configuration the request uses.
+- **Governing ADs.** 4.1: AD-7, 9, 12/39, 28, 30, 31, 33, 41. 4.2: AD-1, 5, 8, 11, 21, 22, 29,
+  36, 39. 4.3: AD-19, 20. 4.4: AD-5, 24, 36, 42, 48. 4.5: AD-11, 19, 33, 41. 4.6: AD-11, 47. 4.7: AD-5,
+  11, 13, 44. 4.8: AD-32, 35, 39, 42. 4.9: AD-3, 9, 15, 37, 41, 46. 4.10: AD-36. The epic carries
+  AD-11's invariants 1, 3 and 4.
+- **`AgentLoop` is a rewrite.** iris-session-agent's loop is synchronous and never trims context. Keep
+  its 10-step flow and max-iteration fallback, run inside the job. Harvest its per-conversation lock: an
+  exclusive open returning an identically locked reference from both the new-row and existing-row
+  branches, released on every exit path.
+- **Job startup ordering.** A `JOB` keeps the `$USERNAME` and `$ROLES` it had at spawn. Spawn before any
+  escalated read or from an unwound frame, and pass every state read in as values. A storage method never
+  calls a tool, port or provider from its escalated frame.
+- **Tools run in-process.** No tool makes an HTTP call to `/api/admin`, `/api/mgmnt` or `/api/ocupilot`,
+  and no token is used mid-turn. Privilege is the process's, checked at call time against
+  `(resource, permission)` pairs. The full tool set is always advertised; a tool's 403 is reported, never
+  retried.
+- **System prompt is a build-time constant.** Nothing read at runtime is concatenated into it; tool
+  results enter only as delimited tool-result content. 4.1 decides the precedence of a definition's
+  `systemPromptOverride`. Tool schemas keep the harvested cross-vendor subset: top-level object,
+  `additionalProperties:false`, no `$ref`, `oneOf`, `anyOf`, `allOf` or `pattern`.
+- **One read serves screen and tool.** The tool's view is the screen's, narrowed by the context cap and
+  stripped of secret fields, bounded, reporting truncation. A declared per-row detail call covers a
+  wrong list (the task LIST forces `Suspended` false; use `INFO`). Application-error variable tables
+  never reach context or tool results.
+- **Provider.** One base, Anthropic's message shape, the named SSL configuration. The key is fetched at
+  use, cleared before return, never in a status, log or trap. The chip's "leaves the instance" is
+  computed from the same configuration the request uses.
 - **Errors.** One envelope `{error, reason, code, detail}`: screens render `reason`, tool results
-  render `code`, and vendor text is normalized at the port boundary. Handlers never `Write` to the
-  response.
-- **Routes.** `POST /api/ocupilot/turn` and `GET /api/ocupilot/turn/{id}/progress`. In the router,
-  sub-resource routes come before single-segment `:param` routes, and every handler gets an HTTP
-  integration test.
-- **Stores and schema.** New stores (progress, conversation, ledger) use `Kernel/State`'s save,
-  which is conditional on row version and refuses a stale write with `STATE.CONFLICT` 409. A
-  `%Persistent` class name, package included, is at most 29 characters. Storage sections are never
-  hand-written. `SCHEMAVERSION` moves only when the meaning of a stored row changes.
-- **Client.** Zoneless and `OnPush`. Panel and conversation state live in framework-free stores in
-  `core/` that components mirror into signals, never in component fields. API paths are absolute
-  and go through the one API service. Token refresh runs in the API service's background, so a
-  turn that outlives an access token needs nothing from the panel. The CSP allows only the
-  instance's own origin, and nothing evaluates fetched text at runtime. Use design tokens only. User
-  strings come from `core/strings.ts`, with non-ASCII characters written as `\uXXXX`. Any assertion
-  about geometry belongs in the browser runner, because jsdom computes no layout.
+  `code`; vendor text is normalized at the port. Handlers never `Write` to the response.
+- **Routes.** `POST /api/ocupilot/turn`, `GET /api/ocupilot/turn/{id}/progress`. Sub-resource routes
+  precede `:param` routes; every handler has an HTTP integration test.
+- **Stores.** Progress, conversation and ledger use `Kernel/State`'s row-versioned save (`STATE.CONFLICT`
+  409). `%Persistent` class names, package included, stay within 29 characters. No hand-written storage.
+  `SCHEMAVERSION` moves only when a stored row's meaning changes.
+- **Client.** Zoneless, `OnPush`. Panel and conversation state live in framework-free `core/` stores
+  mirrored into signals. Absolute API paths through the one API service, whose background token refresh
+  means a long turn needs nothing from the panel. Geometry assertions run in the browser runner.
 
 ## UX & Interaction Patterns
 
-- **Geometry.**
-  - The panel is docked right on every route: 400 px by default, never below 320 px, width
-    remembered per browser. Content keeps a 640 px minimum.
-  - On Home the width is `min(50vw, viewport − rail − 640)`, animated over 120 ms (no animation
-    under reduced motion). Leaving Home restores the remembered width.
-  - There is no close control. The full-screen toggle fills the app area below the header, makes
-    the hidden content `inert`, sets `aria-expanded`, and restores the same width.
-  - The resize handle is the shell's only sash: `role="separator"`, vertical, focusable, with
-    `aria-valuenow/min/max` in px. Left and Right change the width by 16 px, Escape releases the
-    handle, and the grip turns `restrained` at the stop.
-  - When space runs short, the side bar collapses first, then the panel shrinks toward 320 px, then
-    content scrolls inside its own region. The panel never collapses or overlays, and the page body
-    never scrolls horizontally.
-- **Anatomy.** From top to bottom:
-  - A header with the avatar, "Agent co-pilot", New conversation and Full screen.
-  - Banners in this fixed order: kill switch, enforced read-only, "not being marked",
-    administrator reminder, lock.
-  - The context chip.
-  - The transcript: `role="log"`, polite, labeled "Conversation", `tabindex="0"`, newest message at
-    the bottom.
-  - A footer with the always-present read-only line, the composer ("Message to the agent", growing
-    to four lines), Send, and the key-hint caption.
-
-  Ctrl/Cmd+I focuses the composer from anywhere, even mid-turn, except while a dialog or the
-  command box is open.
-- **During a turn.**
-  - Send becomes Stop and keeps focus. The composer stays editable and `aria-disabled`; never
-    natively disable or remove a control that holds focus.
-  - A second send shows the lock banner, keeps the draft, leaves focus where it is, and does not
-    render the refused message.
-  - Stop halts the turn at its next step, and the last card reads "Stopped by you at <step>" with
-    no body.
-  - New conversation is `aria-disabled` with the reason "Stop the turn first".
-  - A reload restores the tab's conversation with no running cards. A new tab starts a new
-    conversation.
-- **Tool-call cards.** Each card is a `<button aria-expanded>` disclosure, added in order. The
-  running card is expanded, and a completed card collapses to one line. The status is part of the
-  accessible name and updates in place. The body shows the arguments summary and the result on the
-  code surface, scrolling after 12 lines. A read card also shows the rows returned and the number
-  of context rows sent.
-- **Chip.** Reads `<Screen>, <NAMESPACE> · <N rows> · <provider> · <endpoint host>`. When the host
-  is not on a private network it adds the "leaves the instance" pill, with the tooltip "Screen
-  context is sent to <host>". Screens with secret-typed fields get a key glyph. With sharing off it
-  reads "Screen context off — nothing from this screen is sent." It updates on every route,
-  namespace, selection or row change. On a screen with secret fields, a draft that looks like a
-  password or key triggers an inline warning with Send anyway and Edit.
-- **Replies.** External links are inert, show the full host after the link text, and open only on
-  an explicit click. Cited rows appear as `code` text with an offer to select them. A turn error is
-  an error banner in the agent's slot: "The turn stopped at <step>: <reason>." A stopped turn is
-  not an error.
-- **Navigation.** The agent first commits "I'm opening <screen> for <entity> — use Back to return."
-  About 1 s later the route changes, and the new heading takes focus and announces "<title> —
-  opened by the agent; Back returns". Back returns with the previous selection intact. There is no
-  in-app undo.
-- **Home.**
-  - "Suggested view" sits above the transcript as 32 px lines, each count in `code`.
-  - A line appears only once its read exists. The line text is a button separate from "Open ›",
-    and it fills the composer without sending.
-  - When every count is zero, three starter prompts replace the lines, and the agent-status line
-    stays.
-  - An empty transcript shows "I'm ready. Ask about this screen, or try one of these." over three
-    prompts and the row-selection hint.
+- **Panel.** Docked right on every route, 400 px default, 320 px minimum, width remembered per browser;
+  content keeps 640 px. No close control. Full screen fills the app area and makes hidden content
+  `inert`. The resize handle is the shell's only sash. When space runs short the side bar collapses first,
+  then the panel shrinks, then content scrolls in its own region; the panel never overlays and the body
+  never scrolls horizontally. On Home the panel widens over 120 ms (none under reduced motion).
+- **Order.** Header; banners (kill switch, enforced read-only, "not being marked", administrator
+  reminder, lock); context chip; transcript as a polite `role="log"`; footer with the read-only line,
+  composer and Send. Ctrl/Cmd+I focuses the composer, even mid-turn.
+- **During a turn.** Send becomes Stop and keeps focus. Never natively disable or remove a focused
+  control; use `aria-disabled`. A second send shows the lock banner, keeps the draft and renders nothing.
+  Tool calls appear as ordered disclosure cards whose status is part of the accessible name.
+- **Chip and replies.** The chip names screen, namespace, rows sent, provider and endpoint host, with a
+  "leaves the instance" pill for a non-private host. Reply links are inert and show their host. A turn
+  error reads "The turn stopped at <step>: <reason>."; a stopped turn is not an error.
+- **Navigation.** Announce first, route about 1 s later, focus the new heading. Back restores the prior
+  screen and selection; there is no in-app undo.
 
 ## Cross-Story Dependencies
 
-- **Order within the epic.**
-  - 4.0 closes before any turn calls a provider.
-  - 4.1 (job, progress, lock) and 4.2 (registry, dispatch, gate) are the server base.
-  - 4.3's panel hosts 4.4's chip, 4.5's cards, 4.6's replies, 4.7's announcements and 4.10's
-    suggested view.
-  - 4.5 renders 4.1's progress records.
-  - 4.7's navigation tool registers through 4.2.
-  - 4.9's ledger records the calls 4.1, 4.2 and 4.8 make.
-  - 4.1's test provider seam is the first place a key can be carried from the credential endpoint
-    through to a served turn.
-- **What this epic needs from earlier epics.**
-  - Epic 2: the descriptor-registered read tools and the declared reads (2.3), plus AdminPort.
-  - Epic 3: the provider contract, the egress policy, and the switches that 4.1's between-step
-    re-reads consult. 4.2's gate point gives the restraint verdict its first real caller.
-  - Epic 1: the protected storage, the CSP, the string table, and the audit events registered at
-    install.
-  - Epic 3's form-page unsaved-changes guard is what may refuse 4.7's navigation.
-  - 4.10's lines read the task schedule (2.8), application errors (2.12) and agent status (3.7).
-    Its alerts line joins with Story 6.13, so build the block to accept new lines.
-- **What later epics build on this one.**
-  - Epic 5 threads AD-40's "acting on behalf of the model" marker through this turn job and every
-    tool call. It also mints proposals from the turn, adds AD-11's confirmation invariant, and
-    makes the panel's proposal states live.
-  - Epic 11 replaces plain-text cited rows with citation chips and adds streaming over the same
-    polling contract.
-  - Epic 14 adds the per-user read-only toggle, turn limits, governance on 4.2's gate point,
-    transcripts gated by 4.9's per-row resource, and the seeded-injection test.
-- **Ledger entries.** Every ledger entry routed onto a story binds that story: address it there, or
-  decline it with a written reason.
+- **Within the epic.** 4.1 (job, progress, lock) and 4.2 (registry, dispatch, gate) are the server base.
+  4.3's panel hosts 4.4's chip, 4.5's cards, 4.6's replies, 4.7's announcements and 4.10's suggested
+  view. 4.5 renders 4.1's progress. 4.7 registers through 4.2. 4.9 records the calls 4.1, 4.2 and 4.8
+  make.
+- **From 4.0.** 4.1 resolves keys through `ProviderPort.Invoke` and must keep `PROVIDER.CREDENTIALSTORE`
+  (transient, definition stays enabled) apart from `PROVIDER.CREDENTIAL`. Its test provider seam is the
+  first place a key can travel from the credential endpoint to a served turn. 4.8 reworks the request
+  path and owns DW-441: a configured proxy is still applied to a marked-local plain-http endpoint, which
+  then goes through the proxy in cleartext.
+- **From earlier epics.** Epic 2's descriptor read tools, declared reads and AdminPort. Epic 3's
+  provider contract, egress policy and the switches 4.1 re-reads; 4.2's gate gives the restraint verdict
+  its first caller. Epic 1's protected storage, CSP, string table and audit events. Epic 3's
+  unsaved-changes guard may refuse 4.7's navigation. 4.10 reads tasks (2.8), application errors (2.12)
+  and agent status (3.7); its alerts line joins with 6.13, so the block must accept new lines.
+- **Later epics build here.** Epic 5 threads the "acting on behalf of the model" marker through the job
+  and tool calls and mints proposals. Epic 11 adds citation chips and streaming over the same polling
+  contract. Epic 14 adds governance on 4.2's gate, turn limits, transcripts gated by 4.9's per-row
+  resource, and the seeded-injection test.
+- **Ledger entries** routed onto a story bind it: address each there, or decline it with a reason.
