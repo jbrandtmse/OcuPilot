@@ -3037,6 +3037,7 @@ So that transient provider trouble is not indistinguishable from a broken produc
 
 - DW-334: every endpoint judgement costs four resolver lookups plus a `GetInterfacesInfo` read, unbounded and uncached, on every provider call; a slow resolver is a slow step (ledger; routed by x0 2026-09-16)
 - DW-413: `Egress.Addresses`' single-form `HostNameToAddr` fallback sits outside the `MultiLookup` seam, so a probe cannot control the whole address set (ledger; routed by x0 2026-09-16)
+- DW-441: a configured proxy is applied to a marked-local plain-http endpoint too, which then goes through the proxy in cleartext (ledger; routed by harvest 2026-09-16)
 
 ### Story 4.9: The agent audit ledger
 
