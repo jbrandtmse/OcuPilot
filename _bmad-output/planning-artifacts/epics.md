@@ -3649,7 +3649,7 @@ So that the area the contest names most specifically reads completely.
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-49: Mark the checked-in demo X.509 pair a disposable fixture in Install/Fixture.cls's header and beside the literal (owner decision: keep it checked in) (ledger; routed by burndown 2026-09-13)
-- DW-233: Generate the demo X.509 pair at install through %SYS.X509Credentials.LoadCertificate, which also fills the metadata DW-59 accepted as empty; AD-21's path constraint is the open question (owner decision) (ledger; routed by merge_gate 2026-09-13)
+- DW-233: Generate the demo X.509 pair at install instead of shipping a checked-in one (owner decision, with the checked-in pair as the fallback) (ledger; routed by merge_gate 2026-09-13) [AMENDED 2026-09-16, Story 6.3 spec gate: no supported certificate-generation API exists on the pinned 2026.2 image (no `PKI.*` class compiled in `%SYS` or `HSCUSTOM`), and the demo credential's subject, issuer, validity and private-key flag are already populated, so the owner's fallback stands and the entry is closed]
 
 ### Story 6.4: The OAuth 2.0 screen
 
