@@ -250,6 +250,61 @@ Method TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow()
     Do $$$AssertTrue(tChecked > 0, "at least one production descriptor declares an admin LIST read: " _ tChecked)
 }
 
+/// <p>AC3, Story 6.10 -- "No <code>ns</code> in the read" (Boundaries) means the Locks read
+/// declares no <code>criteria</code> block at all, so no caller-supplied value -- <code>ns</code>
+/// included -- can reach the vendor query: <method>OcuPilot.Screen.Read.SeedCriteria</method> only
+/// ever seeds a param the descriptor's own <code>read.criteria</code> names. This is the whole of
+/// AC3 that anything can pin. Two further mechanisms were probed and neither can carry a namespace
+/// into this read either -- the admin-LIST branch of <method>OcuPilot.Screen.Read.Execute</method>
+/// never reads <method>OcuPilot.Kernel.Scope.Current</method> (only the <code>mgmnt</code> branch
+/// does), and <method>OcuPilot.Api.Router.OnPreDispatch</method> switches no real
+/// <code>$NAMESPACE</code> -- so a two-read comparison across namespaces is green by construction
+/// and was removed rather than kept as evidence (Rule 19).</p>
+/// <p>Mutation: add a <code>criteria</code> block naming <code>ns</code> to
+/// <class>OcuPilot.Screen.Descriptor.LockList</class>'s read -> this goes red on the type check.</p>
+Method TestTheLocksReadDeclaresNoCriteriaAtAll()
+{
+    Set tRead = ##class(OcuPilot.Screen.Descriptor.LockList).Read()
+    Do $$$AssertTrue($IsObject(tRead), "the Locks list declares a read")
+    If '$IsObject(tRead) Quit
+    Do $$$AssertEquals(tRead.%GetTypeOf("criteria"), "unassigned", "no criteria block at all, so no caller-supplied value -- ns included -- can reach the vendor query through the declared-criteria path")
+}
+
+/// <p>AC2, Story 6.10 -- the Locks read's column fields carry <b>values</b> on the live row, not
+/// keys defaulted to the empty string. <method>TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow</method>
+/// above asserts key presence only, and <method>OcuPilot.Screen.Read.Project</method> emits a
+/// declared field the vendor row does not carry as JSON <code>null</code> -- which reads back as
+/// <code>""</code> and still satisfies that key check -- so a projection or endpoint
+/// change that stopped answering a column would leave every gate green with a permanently blank
+/// column.</p>
+/// <p>Six of the eight declared fields are asserted. <code>System</code> is empty on every local
+/// lock by design (that is what the column's <code>emptyKey</code> is for, AC10), and
+/// <code>RoutineInfo</code> is the vendor's own optional line-and-routine string, so neither is a
+/// value this can require.
+/// <code>OSUserName</code> is asserted because it is the one the vendor appends conditionally --
+/// <code>%SYS.LockQuery.WebListFilterFetch</code> adds it only when
+/// <code>%SYS.ProcessQuery.%OpenId</code> succeeds for the row's pid -- and so the one most likely
+/// to arrive empty.</p>
+/// <p>Mutation: make <method>OcuPilot.Screen.Read.Project</method> emit <code>""</code> for every
+/// declared field -> this goes red while
+/// <method>TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow</method> stays green.</p>
+Method TestTheLocksReadAnswersValuesNotEmptyKeys()
+{
+    Kill tNoCriteria
+    Set tSC = ##class(OcuPilot.Screen.Read).Execute("OcuPilot.Screen.Descriptor.LockList", 1000, .tAnswer, .tHttp, .tFault, .tNoCriteria)
+    Do $$$AssertStatusOK(tSC, "the Locks read completes")
+    Do $$$AssertEquals(tHttp, 200, "at 200")
+    If tHttp '= 200 Quit
+    Do $$$AssertTrue($IsObject(tAnswer) && $IsObject(tAnswer.rows), "it answers a rows array")
+    If '($IsObject(tAnswer) && $IsObject(tAnswer.rows)) Quit
+    Do $$$AssertTrue(tAnswer.rows.%Size() > 0, "with at least one row -- every running instance's daemons hold locks of their own: " _ tAnswer.rows.%Size())
+    If tAnswer.rows.%Size() = 0 Quit
+    Set tRow = tAnswer.rows.%Get(0)
+    For tField = "Pid", "OSUserName", "ModeCount", "Reference", "Directory", "DeleteID" {
+        Do $$$AssertTrue(tRow.%Get(tField) '= "", "the live first row's '" _ tField _ "' carries a value, not an empty key: " _ tRow.%ToJSON())
+    }
+}
+
 /// <p>Every production <code>mgmnt</code> read's declared read and context fields are keys of the live
 /// management API port's first row in this namespace; a read that declares the
 /// <code>application</code> criterion is read for <code>/api/ocupilot</code>, which every install
@@ -375,7 +430,7 @@ Method TestEveryAccessorReadsTheDeclarationOnce()
     Set tClass = "OcuPilot.Test.Read.Readless"
     Do $ClassMethod(tClass, "ForgetDeclaration")
     Do $ClassMethod(tClass, "ResetReadCount")
-    Set tAccessors = $ListBuild("Route", "AreaKey", "LabelKey", "SideBarPosition", "Archetype", "IsBuilt", "PrivilegePairs", "PrimaryEntityType", "SecondaryEntityTypes", "EntityTypes", "Scope", "ParentScope", "IdKind", "IdParts", "ContextFields", "ContextSecretFields", "PrimaryActionId", "PrimaryActionSelfProtection", "RowActionIds", "EmptyStateKey", "CommandAliases", "ClassicPage", "ClassicLinkExempt", "ClassicLinkExemptionReason", "ClassicLinkHref", "ClassicLinkLabel", "Refreshes", "RefreshRates", "ToolIdentifier", "Read")
+    Set tAccessors = $ListBuild("Route", "AreaKey", "LabelKey", "SideBarPosition", "Archetype", "IsBuilt", "PrivilegePairs", "PrimaryEntityType", "SecondaryEntityTypes", "EntityTypes", "Scope", "ParentScope", "IdKind", "IdParts", "ContextFields", "ContextSecretFields", "PrimaryActionId", "PrimaryActionSelfProtection", "RowActionIds", "EmptyStateKey", "CommandAliases", "ClassicPage", "ClassicLinkExempt", "ClassicLinkExemptionReason", "ClassicLinkHref", "ClassicLinkLabel", "Refreshes", "RefreshRates", "ToolIdentifier", "Read", "RowTarget")
     For tRound = 1, 2 {
         For tI = 1:1:$ListLength(tAccessors) {
             Set tIgnored = $ClassMethod(tClass, $List(tAccessors, tI))

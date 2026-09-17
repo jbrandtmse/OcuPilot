@@ -3030,3 +3030,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-6-10-the-locks-view.md | severity: low | fix-risk: med | footprint: in-footprint
 - evidence: A lock whose RemoteOwner is true has no local pid, so the owner link lands on Process details' AD-37 'This process no longer exists.' Needs an ECP client to observe; the branch is read from the vendor source, not seen. Conditional row-link grammar is the alternative and was declined
 - 2026-09-17T19:46:01Z status=escalated owner=burndown by=plan note=orchestrator-decided at the 6.10 spec gate (Q3 option a): accepted rather than inventing conditional-link grammar
+
+### DW-1078: rowTarget admits a target screen whose composite id has more than one part, and one field value is encoded as that whole id
+- source: spec-6-10-the-locks-view.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Both engines check only that the target's id.kind is not 'none' (Registry.RowTargetResolutionProblem, screen-mirror.mjs rowTargetResolutionProblem). Four shipped screens are keyed by a multi-part composite id (AuditList, TaskRunList, TaskHistoryList, the error list); a rowTarget naming one would have data-table.ts encode a single field value as that screen's whole id. Today's only rowTarget targets ProcessDetails (composite, one part), so nothing is wrong now.
+- 2026-09-17T22:21:40Z status=escalated owner=burndown by=cr note=13th refusal; fix edits AD-5's rowTarget bullet, Boundaries' 'Refusals, twelve' and AC6 -- spine work (Rule 20), not a reviewer patch
+
+### DW-1079: A Wallet test appears to delete the demo collection on the shared dev instance, leaving two suites red there
+- source: spec-6-10-the-locks-view.md | severity: med | fix-risk: low | footprint: in-footprint
+- evidence: On ocupilot-slot-b (OCUPILOT_DEMO=1) WalletCollectionList answers zero rows, so Test/ScreenRead.TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow and Test/Smoke.TestTheSecurityListsAreLiveChecks fail there; both are green on a fresh throwaway, where the installer creates the collection. A Wallet test's own cleanup deleting the demo collection is the likely cause (inference). Reproduce: run Test/Wallet* on a demo instance, then the two tests above
+- 2026-09-17T22:27:39Z status=routed owner=burndown by=runner note=observed twice during Story 6.10 (implement and code review both read it as a story signal first); a test that deletes demo fixture data leaves every later story on that instance reading a false red

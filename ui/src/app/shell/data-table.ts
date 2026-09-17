@@ -26,12 +26,12 @@ import { Router } from '@angular/router';
 
 import { encodeEntityId } from '../core/entity-id';
 import { isBannerFault } from '../core/fault';
-import { childListFor, detailScreenFor, documentScreenFor, editorScreenFor, hasIdRoute, withQuery } from '../core/navigation';
+import { childListFor, detailScreenFor, documentScreenFor, editorScreenFor, hasIdRoute, screenForRoute, withQuery } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
 import { RefreshService } from '../core/refresh';
 import { ScopeService } from '../core/scope';
 import { ScreenActions } from '../core/screen-actions';
-import { applyView } from '../core/screen-read';
+import { applyView, textOf } from '../core/screen-read';
 import type { ScreenStore } from '../core/screen-store';
 import type { ScreenDeclaration, TableColumn } from '../core/screens.generated';
 import { STRINGS, stringFor } from '../core/strings';
@@ -419,7 +419,10 @@ export class DataTable implements OnInit {
     const changed = store.changed();
     const activeColumn = this.activeColumn();
     const menuKey = this.menuIsOpen() ? this.menuKey() : null;
-    // The name cell opens the entity's own surface: the classic editor where the screen declares a
+    // The name cell opens the entity's own surface: a declared rowTarget first (Story 6.10's
+    // cross-screen row link, whose field -- not the row's own id -- data-table.ts encodes, because
+    // a list keyed by something other than the linked entity, such as Locks by its removal id,
+    // would otherwise link to the wrong place), then the classic editor where the screen declares a
     // row link under its exemption (AD-44), which no in-app target replaces and whose blank-value
     // guard leaves the cell as text; otherwise the list's paired editor where it declares
     // one (Story 3.5's `editorScreenFor`), its paired document viewer where it declares one
@@ -429,9 +432,13 @@ export class DataTable implements OnInit {
     // all, and neither is a parent-scoped list that pairs no editor, viewer or detail screen: its
     // own route's id is its parent's, so a row's id there would name the wrong thing.
     const rowLinked = screen.classicLinkExemption.exempt && (screen.classicLinkExemption.rowLink ?? null) !== null;
+    const rowTarget = screen.rowTarget;
+    const rowTargetField = rowTarget?.field ?? '';
+    const rowTargetScreen = rowLinked || rowTarget === null ? null : screenForRoute(rowTarget.route);
     const linkTarget = rowLinked
       ? null
-      : editorScreenFor(screen) ??
+      : rowTargetScreen ??
+        editorScreenFor(screen) ??
         documentScreenFor(screen) ??
         detailScreenFor(screen) ??
         childListFor(screen) ??
@@ -444,7 +451,8 @@ export class DataTable implements OnInit {
       const id = `${this.tableId}-row-${index}`;
       const isActive = key !== '' && key === active;
       const isChanged = changed.has(key);
-      const url = linkable && key !== '' ? withQuery(`${linkRoute}/${encodeEntityId(key)}`, currentUrl) : '';
+      const linkValue = rowTargetScreen !== null ? textOf(fieldOf(row, rowTargetField)) : key;
+      const url = linkable && linkValue !== '' ? withQuery(`${linkRoute}/${encodeEntityId(linkValue)}`, currentUrl) : '';
       const classicHref = rowLinked ? classicRowHref(row, screen) : '';
       return {
         key,

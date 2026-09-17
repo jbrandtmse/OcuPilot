@@ -507,17 +507,17 @@ Method TestTheProcessesListsPairSetIsEnforcedForARealPrincipal()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the twelve principals' pairs")
 
-    Do $$$AssertEquals(..ScreensFor(..#OPERATEUSER, "os-management"), "[{""route"":""os-management/processes/details"",""labelKey"":""processDetailsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/processes"",""labelKey"":""processListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/system-usage"",""labelKey"":""systemUsageLabel"",""sideBarPosition"":3,""allowed"":true}]", "%Admin_Operate and the database read: Process details and the processes list are both denied on %Admin_Manage:USE, since Story 6.8 declares the same three pairs in the same order, while System usage -- Story 6.9's own two-pair set -- is allowed")
+    Do $$$AssertEquals(..ScreensFor(..#OPERATEUSER, "os-management"), "[{""route"":""os-management/processes/details"",""labelKey"":""processDetailsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/processes"",""labelKey"":""processListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/locks"",""labelKey"":""lockListLabel"",""sideBarPosition"":2,""allowed"":true},{""route"":""os-management/system-usage"",""labelKey"":""systemUsageLabel"",""sideBarPosition"":3,""allowed"":true}]", "%Admin_Operate and the database read: Process details and the processes list are both denied on %Admin_Manage:USE, since Story 6.8 declares the same three pairs in the same order, while Locks and System usage -- both two-pair sets -- are allowed")
     Do $$$AssertEquals(..AreaVerdictFor(..#OPERATEUSER, "os-management"), "false:%Admin_Manage:USE", "and so is the OS management area")
     Do ..AssertReadRefused(..#OPERATEUSER, "osmgmt.processes", "%Admin_Manage:USE")
 
     ; The pair ORDER, read by a principal holding neither administrative resource: %Admin_Operate:USE
     ; is declared first, so it is the pair the gate names. A descriptor that declared the first two
     ; the other way round would name %Admin_Manage:USE here, and nothing else in this class would move.
-    Do $$$AssertEquals(..ScreensFor(..#SECUREUSER, "os-management"), "[{""route"":""os-management/processes/details"",""labelKey"":""processDetailsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""os-management/processes"",""labelKey"":""processListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""os-management/system-usage"",""labelKey"":""systemUsageLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%Admin_Operate:USE""}]", "a principal holding neither administrative resource is denied on the first pair declared, on all three screens")
+    Do $$$AssertEquals(..ScreensFor(..#SECUREUSER, "os-management"), "[{""route"":""os-management/processes/details"",""labelKey"":""processDetailsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""os-management/processes"",""labelKey"":""processListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""os-management/locks"",""labelKey"":""lockListLabel"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""os-management/system-usage"",""labelKey"":""systemUsageLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%Admin_Operate:USE""}]", "a principal holding neither administrative resource is denied on the first pair declared, on all four screens")
     Do $$$AssertEquals(..AreaVerdictFor(..#SECUREUSER, "os-management"), "false:%Admin_Operate:USE", "and so is the area, which declares them in the same order")
 
-    Do $$$AssertEquals(..ScreensFor(..#PROCESSUSER, "os-management"), "[{""route"":""os-management/processes/details"",""labelKey"":""processDetailsLabel"",""sideBarPosition"":0,""allowed"":true},{""route"":""os-management/processes"",""labelKey"":""processListLabel"",""sideBarPosition"":1,""allowed"":true},{""route"":""os-management/system-usage"",""labelKey"":""systemUsageLabel"",""sideBarPosition"":3,""allowed"":true}]", "all three pairs: Process details, the processes list and System usage are all listed allowed")
+    Do $$$AssertEquals(..ScreensFor(..#PROCESSUSER, "os-management"), "[{""route"":""os-management/processes/details"",""labelKey"":""processDetailsLabel"",""sideBarPosition"":0,""allowed"":true},{""route"":""os-management/processes"",""labelKey"":""processListLabel"",""sideBarPosition"":1,""allowed"":true},{""route"":""os-management/locks"",""labelKey"":""lockListLabel"",""sideBarPosition"":2,""allowed"":true},{""route"":""os-management/system-usage"",""labelKey"":""systemUsageLabel"",""sideBarPosition"":3,""allowed"":true}]", "all three pairs: Process details, the processes list, Locks and System usage are all listed allowed")
     Do $$$AssertEquals(..AreaVerdictFor(..#PROCESSUSER, "os-management"), "true", "and so is the OS management area")
 
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/osmgmt.processes/read?maxRows=1000", ..#PROCESSUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
@@ -613,6 +613,37 @@ Method TestTheSystemUsagePairSetIsEnforcedForARealPrincipal()
     Do $$$AssertEquals(tAnswer.fields.%Size(), 18, "all eighteen declared fields")
     Do $$$AssertEquals(tRow.%GetTypeOf("Usage.AllGlobalReferences"), "number", "the counter arrives as a JSON number")
     Do $$$AssertEquals(tRow.%GetTypeOf("SharedMemory.SMHAllocated"), "number", "and so does the shared-memory allocation")
+}
+
+/// <p>AC7, Story 6.10 -- the Locks list declares the same two pairs as System usage
+/// (<code>%Admin_Operate:USE</code> then <code>%DB_IRISSYS:READ</code>), so the principals that
+/// prove that pair set also prove this one, in both directions:
+/// <parameter>OPERATEONLYUSER</parameter> holds only the first and is refused naming the second;
+/// <parameter>BOTHUSER</parameter> holds the second, plus <code>%Admin_Secure:USE</code> so it
+/// clears the API's own any-<code>%Admin_</code> gate, but not the first, and is refused naming
+/// it -- the direction System usage's own test does not need, since it already has
+/// <parameter>OPERATEONLYUSER</parameter> for the one direction that pair order can produce
+/// without a spare administrative resource; <parameter>OPERATEUSER</parameter> holds exactly both
+/// and is served. No third principal is created for this test: AD-29's declared pair set is
+/// already what a real least-privileged caller needs, confirmed by these three answering as
+/// named rather than with a 500.</p>
+/// <p>Mutation: remove <code>%DB_IRISSYS:READ</code> from
+/// <class>OcuPilot.Screen.Descriptor.LockList</class> -> the operate-only principal's refusal
+/// assertions go red.</p>
+Method TestTheLocksListPairSetIsEnforcedForARealPrincipal()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the twelve principals' pairs")
+
+    Do ..AssertReadRefused(..#OPERATEONLYUSER, "osmgmt.locks", "%DB_IRISSYS:READ")
+    Do ..AssertReadRefused(..#BOTHUSER, "osmgmt.locks", "%Admin_Operate:USE")
+
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/osmgmt.locks/read?maxRows=1000", ..#OPERATEUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the Locks read completes")
+    Do $$$AssertEquals(tStatus, 200, "and answers")
+    If tStatus '= 200 Quit
+    Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertTrue(tAnswer.rows.%Size() > 0, "at least one row -- this instance always holds at least a system lock")
+    Do $$$AssertEquals(tAnswer.fields.%Size(), 8, "all eight declared fields")
 }
 
 /// <p>AC6 -- <code>%Admin_Secure:USE</code> alone: the security lists -- users, roles, resources,

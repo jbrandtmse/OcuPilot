@@ -201,6 +201,26 @@ describe('the data table', () => {
     expect(link.getAttribute('href')).toContain('/agent/definitions/edit/');
   });
 
+  it("Story 6.10: a declared rowTarget links the name cell at the field it names, not the row's own id", async () => {
+    // `screenForRoute` resolves a declared `rowTarget.route` out of the generated mirror, so this
+    // needs a route with a real, built, id-keyed screen -- the Definitions editor, already proven
+    // above, serves as the target. `rowTarget.field` names `Count`, a field the row's own id
+    // (`Name`) is not, so a link keyed by the wrong field is easy to tell from the right one.
+    //
+    // Mutation (Rule 19): encode `rowKey(row, screen)` instead of `fieldOf(row, rowTarget.field)`
+    // in `data-table.ts` -> this goes red, encoding `/csp/app00` instead of `0`.
+    const wired = await wire(
+      tableDeclaration({ rowTarget: { route: 'agent/definitions/edit', field: 'Count' } }),
+      ok(rows(2))
+    );
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+
+    const link = wired.host().querySelector('[aria-rowindex="2"] [role="gridcell"] a') as HTMLAnchorElement;
+    expect(link).not.toBeNull();
+    expect(link.getAttribute('href')).toBe('/agent/definitions/edit/0?ns=HSCUSTOM');
+  });
+
   it('Story 6.3: the Wallet list links each name cell at its Secrets list, and the parent-scoped Secrets list links nothing', async () => {
     // `childListFor` resolves the built, unlisted, id-keyed screen whose `parentScope` is the list's
     // route out of the generated mirror, so the Wallet list's own route is what is needed here.

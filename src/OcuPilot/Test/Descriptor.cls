@@ -1213,6 +1213,125 @@ Method TestANarrowOsManagementScreenIsSoundInsideTheUnion()
     If $$$ISOK(tListSC) Do $$$AssertEquals($ListFind(tRoster, tClass), 0, "and it is outside it, because it sits under OcuPilot.Test.")
 }
 
+/// <p>AC5, AC6 -- every case in <class>OcuPilot.Test.RowTargetCorpus</class>'s <code>Cases</code>
+/// half gets its exact sentence, or none, from
+/// <method>OcuPilot.Screen.Registry.RowTargetProblem</method>, and every roster in its
+/// <code>Rosters</code> half from <method>OcuPilot.Screen.Registry.RowTargetResolutionProblem</method>
+/// -- the same corpus <file>ui/tools/screen-mirror.test.mjs</file> runs through
+/// <code>rowTargetProblem</code> and <code>rowTargetResolutionProblem</code>.</p>
+/// <p>Mutation: drop one word from <method>RowTargetProblem</method>'s "this screen's own route"
+/// sentence -> the self-route case goes red. Make
+/// <method>RowTargetResolutionProblem</method> return <code>""</code> for an unbuilt target ->
+/// the roster case goes red in both engines.</p>
+Method TestEveryRowTargetCorpusCaseGetsItsSentence()
+{
+    Set tSC = ##class(OcuPilot.Test.RowTargetCorpus).Corpus(.tCorpus)
+    Do $$$AssertStatusOK(tSC, "the Cases corpus reads")
+    If '$IsObject(tCorpus) Quit
+    Do $$$AssertTrue(tCorpus.cases.%Size() > 0, "the corpus carries cases: " _ tCorpus.cases.%Size())
+    Set tRefusals = 0
+    Set tIterator = tCorpus.cases.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tCase) {
+        Set tDeclaration = ##class(OcuPilot.Test.RowTargetCorpus).DeclarationFor(tCorpus, tCase)
+        Set tExpected = $Select(tCase.%GetTypeOf("expected") = "null": "", 1: tCase.expected)
+        If tExpected '= "" Set tRefusals = tRefusals + 1
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).RowTargetProblem(tDeclaration), tExpected, tCase.name)
+    }
+    Do $$$AssertTrue(tRefusals > 0, "the Cases corpus carries at least one refusing case: " _ tRefusals)
+
+    ; The corpus's own sound rowTarget carries exactly the declared nested vocabulary, so
+    ; ROWTARGETKEYS cannot gain, lose or rename a key on one side of the two engines without a
+    ; case going red -- the same tie ui/tools/screen-mirror.test.mjs holds for DECLARATION_KEYS.
+    Set tTargetKeys = ""
+    Set tSoundTarget = tCorpus.declaration.%Get("rowTarget")
+    If $IsObject(tSoundTarget) {
+        Set tKeyIterator = tSoundTarget.%GetIterator()
+        While tKeyIterator.%GetNext(.tTargetKey, .tTargetValue) { Set tTargetKeys = tTargetKeys _ $ListBuild(tTargetKey) }
+    }
+    Do $$$AssertEquals($ListToString(tTargetKeys, ","), ##class(OcuPilot.Screen.Registry).#ROWTARGETKEYS, "the corpus's sound rowTarget carries exactly the declared rowTarget vocabulary")
+
+    Set tSC = ##class(OcuPilot.Test.RowTargetCorpus).RostersBlock(.tRosters)
+    Do $$$AssertStatusOK(tSC, "the Rosters block reads")
+    If '$IsObject(tRosters) Quit
+    Do $$$AssertTrue(tRosters.rosters.%Size() > 0, "and rosters: " _ tRosters.rosters.%Size())
+    Set tRosterRefusals = 0
+    Set tIterator = tRosters.rosters.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRoster) {
+        Set tExpected = $Select(tRoster.%GetTypeOf("expected") = "null": "", 1: tRoster.expected)
+        If tExpected '= "" Set tRosterRefusals = tRosterRefusals + 1
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).RowTargetResolutionProblem(tRoster.screens), tExpected, tRoster.name)
+    }
+    Do $$$AssertTrue(tRosterRefusals > 0, "the Rosters block carries at least one refusing roster: " _ tRosterRefusals)
+}
+
+/// <p>AC9 -- the Locks descriptor's read and table are exactly the eight fields and seven columns
+/// Boundaries names: no transaction column, no <code>Removable</code>, <code>CanBeExamined</code>
+/// or <code>RemoteOwner</code> field, no derived field, and no <code>$zu(67,19</code> anywhere in
+/// this descriptor's own source -- the class this test reads, not the whole read path.</p>
+/// <p>Mutation: add an eighth column to <code>table.columns</code> in
+/// <class>OcuPilot.Screen.Descriptor.LockList</class> -> the column-set assertion goes red.</p>
+Method TestTheLocksListDeclaresExactlyItsEightFieldsAndSevenColumns()
+{
+    Set tClass = "OcuPilot.Screen.Descriptor.LockList"
+    Set tRead = $ClassMethod(tClass, "Read")
+    Do $$$AssertTrue($IsObject(tRead), "the Locks list declares a read")
+    If '$IsObject(tRead) Quit
+    Set tFields = ""
+    Set tIterator = tRead.%Get("fields").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tField) { Set tFields = tFields _ $ListBuild(tField) }
+    Do $$$AssertEquals($ListToString(tFields, ","), "Pid,OSUserName,RoutineInfo,ModeCount,Reference,Directory,System,DeleteID", "exactly the eight declared fields, no transaction column and no Removable, CanBeExamined or RemoteOwner")
+
+    Set tTable = $ClassMethod(tClass, "Field", "table")
+    Do $$$AssertTrue($IsObject(tTable), "the Locks list declares a table")
+    If '$IsObject(tTable) Quit
+    Set tColumns = ""
+    Set tIterator = tTable.%Get("columns").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tColumn) { Set tColumns = tColumns _ $ListBuild(tColumn.%Get("field")) }
+    Do $$$AssertEquals($ListToString(tColumns, ","), "Pid,OSUserName,RoutineInfo,ModeCount,Reference,Directory,System", "exactly the seven declared columns")
+
+    Set tSourceSC = ##class(%Compiler.UDL.TextServices).GetTextAsString($Namespace, tClass, .tSource)
+    Do $$$AssertStatusOK(tSourceSC, "the class source reads")
+    If $$$ISOK(tSourceSC) Do $$$AssertTrue('(tSource [ "$zu(67,19"), "no $zu(67,19 transaction check anywhere in this descriptor's own source (DW-1073)")
+
+    ; The server-side accessor both arms of OcuPilot.Screen.Descriptor.Base.RowTarget answer
+    ; through: the declared object here, and the empty string for a screen that declares none.
+    Set tRowTarget = ##class(OcuPilot.Screen.Descriptor.LockList).RowTarget()
+    Do $$$AssertTrue($IsObject(tRowTarget), "the RowTarget accessor answers the declared object")
+    If $IsObject(tRowTarget) {
+        Do $$$AssertEquals(tRowTarget.%Get("route"), "os-management/processes/details", "at Process details' route")
+        Do $$$AssertEquals(tRowTarget.%Get("field"), "Pid", "keyed by Pid, not by this row's own DeleteID")
+    }
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Descriptor.ProcessList).RowTarget(), "", "and a screen that declares no row target answers the empty string")
+}
+
+/// <p>AC5, AC6 -- both new rules reach the roster through
+/// <method>OcuPilot.Screen.Registry.Validate</method>, each naming the offending class. The corpus
+/// test above calls the two rules directly, so deleting either call from <code>Validate</code>
+/// reddens nothing there; these are the fixture registries those two call sites' own wiring
+/// needed, the same way <class>OcuPilot.Test.DeclarationRegistry</class> closes it for
+/// <method>DeclarationProblem</method> (DW-306).</p>
+/// <p>Mutation: delete the <method>OcuPilot.Screen.Registry.RowTargetProblem</method> call from
+/// <method>OcuPilot.Screen.Registry.Validate</method> -> the shape assertions go red; delete the
+/// <method>OcuPilot.Screen.Registry.RowTargetResolutionProblem</method> call -> the roster
+/// assertions go red; either way
+/// <method>TestEveryRowTargetCorpusCaseGetsItsSentence</method> and the shipped roster stay
+/// green.</p>
+Method TestARowTargetOutsideTheGrammarIsRefusedByTheRoster()
+{
+    Set tSC = ##class(OcuPilot.Test.RowTargetShapeRegistry).Validate(.tShapeProblem)
+    Do $$$AssertStatusNotOK(tSC, "a roster carrying a rowTarget outside the grammar is refused")
+    Do $$$AssertTrue(tShapeProblem [ "OcuPilot.Test.RowTargetShape.Bad", "the refusal names the offending class: " _ tShapeProblem)
+    Do $$$AssertTrue(tShapeProblem [ "rowTarget.field 'Bogus' is not one of read.fields", "and the sentence RowTargetProblem returns: " _ tShapeProblem)
+
+    Set tSC = ##class(OcuPilot.Test.RowTargetRosterRegistry).Validate(.tRosterProblem)
+    Do $$$AssertStatusNotOK(tSC, "and a roster whose rowTarget.route resolves to nothing is refused")
+    Do $$$AssertTrue(tRosterProblem [ "OcuPilot.Test.RowTargetRoster.A", "naming that class: " _ tRosterProblem)
+    Do $$$AssertTrue(tRosterProblem [ "rowTarget.route 'security/row-target-nowhere' names no declared screen (AD-5)", "and the sentence RowTargetResolutionProblem returns: " _ tRosterProblem)
+
+    Set tProdSC = ##class(OcuPilot.Screen.Registry).Validate(.tProdProblem)
+    Do $$$AssertStatusOK(tProdSC, "while the shipped roster still validates: " _ tProdProblem)
+}
+
 /// <p>Area <var>pKey</var>'s declared privilege pairs as <code>resource:permission</code> joined
 /// by <code>, </code> in declared order, empty when the area never gates. An assertion over this
 /// pins the set by content: a length alone passes a set that swapped one pair for another.</p>

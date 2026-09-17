@@ -402,6 +402,7 @@ export const DECLARATION_KEYS = [
   'banner',
   'tab',
   'toolIdentifier',
+  'rowTarget',
 ];
 
 /**
@@ -1342,6 +1343,112 @@ export function parentScopeResolutionProblem(screens) {
   return null;
 }
 
+/** The keys a declared `rowTarget` may carry (AD-5, Story 6.10). */
+export const ROW_TARGET_KEYS = ['route', 'field'];
+
+/**
+ * What is wrong with `declaration`'s declared `rowTarget`, or `null` when nothing is, including
+ * when none is declared (AD-5, Story 6.10). A row target is a list's single cross-screen row
+ * link: the field its name cell encodes and the route that link opens, resolved ahead of the
+ * paired-surface chain in `data-table.ts` -- because a list keyed by something other than the
+ * linked entity (the Locks list's removal id, say) would otherwise link its own id route, which
+ * names the wrong thing.
+ *
+ * Declarable only on a `list` archetype that also declares a `table`, since exactly one column's
+ * `kind` is `name` and a row target replaces what that column would otherwise link to. Its
+ * `route` is a non-empty string other than the declaring screen's own route, and its `field` is a
+ * non-empty string that is one of `read.fields`. Whether the named route resolves is
+ * `rowTargetResolutionProblem`'s question. `OcuPilot.Screen.Registry.RowTargetProblem` returns
+ * the same sentence for every case in `OcuPilot.Test.RowTargetCorpus`.
+ */
+export function rowTargetProblem(declaration) {
+  const { rowTarget } = declaration;
+  if (rowTarget === undefined || rowTarget === null) return null;
+  if (!isObject(rowTarget)) return 'rowTarget is not an object naming its route and field (AD-5)';
+  const keysFault = unknownKeyProblem('rowTarget', rowTarget, ROW_TARGET_KEYS);
+  if (keysFault !== null) return keysFault;
+  if (declaration.archetype !== 'list') {
+    return `rowTarget is declared on a '${shown(declaration.archetype)}' archetype, and a row target is a list's own row link (AD-5)`;
+  }
+  if (!isObject(declaration.table)) {
+    return "rowTarget is declared without a table, and a row target replaces the table's name column's own link (AD-5)";
+  }
+  if (typeof rowTarget.route !== 'string' || rowTarget.route === '') {
+    return 'rowTarget.route is empty, and a row target names the route it opens';
+  }
+  if (rowTarget.route === declaration.route) {
+    return `rowTarget.route '${rowTarget.route}' is this screen's own route, and a row already reaches it through its own id (AD-5)`;
+  }
+  if (typeof rowTarget.field !== 'string' || rowTarget.field === '') {
+    return 'rowTarget.field is empty, and a row target names the field its link encodes';
+  }
+  const fields = Array.isArray(declaration.read?.fields) ? declaration.read.fields : [];
+  if (!fields.includes(rowTarget.field)) {
+    return `rowTarget.field '${rowTarget.field}' is not one of read.fields`;
+  }
+  return null;
+}
+
+/**
+ * Whether some other built entry in `screens` already pairs `route`'s own surface -- an editor or
+ * document viewer at `<route>/edit` or `<route>/document`, or a detail screen or child list whose
+ * `parentScope` is `route` -- the four surfaces `editorScreenFor`, `documentScreenFor`,
+ * `detailScreenFor` and `childListFor` pair a list with, named by route and `parentScope` alone.
+ * Deliberately broader than those four, which each also require the candidate to be unlisted and
+ * id-keyed: this rule counts a built candidate at either route, so it refuses a declaration the
+ * client would have left unpaired rather than admitting one it would pair. A row's name cell links
+ * to one place, so a screen that already has one of these declares no `rowTarget` as well.
+ */
+function rowTargetPairsOwnSurface(route, screens) {
+  for (const screen of screens) {
+    const candidate = screen.declaration;
+    if (candidate.built !== true) continue;
+    if (candidate.route === `${route}/edit` || candidate.route === `${route}/document`) return true;
+    if (route !== '' && candidate.parentScope === route) return true;
+  }
+  return false;
+}
+
+/**
+ * What is wrong with how `screens`' declared `rowTarget`s resolve, or `null` (AD-5, Story 6.10).
+ * `screens` is `[{className, declaration}]` in roster order.
+ *
+ * A declared `rowTarget.route` must name some other entry's `route`, that entry must be `built`,
+ * its `id.kind` must not be `none`, and the declaring screen must not already pair its own
+ * surface (`rowTargetPairsOwnSurface`) -- a row's name cell links to one place.
+ * `OcuPilot.Screen.Registry.RowTargetResolutionProblem` returns the same sentence for every
+ * roster case in `OcuPilot.Test.RowTargetCorpus`.
+ */
+export function rowTargetResolutionProblem(screens) {
+  for (let outer = 0; outer < screens.length; outer += 1) {
+    const screen = screens[outer];
+    const declaration = screen.declaration;
+    if (!isObject(declaration.rowTarget)) continue;
+    const { route } = declaration.rowTarget;
+    const ownRoute = declaration.route;
+    let candidate = null;
+    for (let inner = 0; inner < screens.length; inner += 1) {
+      if (inner === outer) continue;
+      const candidateDeclaration = screens[inner].declaration;
+      if (candidateDeclaration.route === route) candidate = candidateDeclaration;
+    }
+    if (candidate === null) {
+      return `${screen.className}: rowTarget.route '${route}' names no declared screen (AD-5)`;
+    }
+    if (candidate.built !== true) {
+      return `${screen.className}: rowTarget.route '${route}' names a screen that is not built (AD-5)`;
+    }
+    const idKind = isObject(candidate.id) ? candidate.id.kind : undefined;
+    if (idKind === undefined || idKind === null || idKind === '' || idKind === 'none') {
+      return `${screen.className}: rowTarget.route '${route}' names a screen with no id, and a row target's field decodes into that screen's own id (AD-5)`;
+    }
+    if (rowTargetPairsOwnSurface(ownRoute, screens)) {
+      return `${screen.className}: rowTarget is declared on a screen that already pairs its own surface, and a row's name cell links to one place (AD-5)`;
+    }
+  }
+  return null;
+}
+
 /** The rules a `read.source.rowGet` derived field may name (AD-36). */
 export const ROW_GET_RULES = ['beforeToday'];
 
@@ -1652,6 +1759,10 @@ export function buildMirror({ entityTypes, scopeWords, archetypes, areas, screen
     if (tabFault !== null) {
       throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${tabFault}`);
     }
+    const rowTargetFault = rowTargetProblem(screen.declaration);
+    if (rowTargetFault !== null) {
+      throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${rowTargetFault}`);
+    }
   }
   const tabGroupFault = tabGroupProblem(screens);
   if (tabGroupFault !== null) throw new Error(`src/OcuPilot/Screen/Descriptor: ${tabGroupFault}`);
@@ -1660,6 +1771,10 @@ export function buildMirror({ entityTypes, scopeWords, archetypes, areas, screen
   // an id for that resolution to answer anything.
   const parentScopeFault = parentScopeResolutionProblem(screens);
   if (parentScopeFault !== null) throw new Error(`src/OcuPilot/Screen/Descriptor: ${parentScopeFault}`);
+  // AD-5, Story 6.10: a declared rowTarget's route has to resolve to a built, id-keyed screen that
+  // does not already pair its own surface, which only the whole roster can say.
+  const rowTargetResolutionFault = rowTargetResolutionProblem(screens);
+  if (rowTargetResolutionFault !== null) throw new Error(`src/OcuPilot/Screen/Descriptor: ${rowTargetResolutionFault}`);
 
   // `refreshes` / `refreshRates` are defaulted rather than spread verbatim, because `refreshProblem`
   // calls an omitted pair sound and `Base.Refreshes()` answers 0 for one: without these the mirror
@@ -1691,6 +1806,7 @@ export function buildMirror({ entityTypes, scopeWords, archetypes, areas, screen
     table: screen.declaration.table ?? null,
     banner: screen.declaration.banner ?? null,
     tab: screen.declaration.tab ?? null,
+    rowTarget: screen.declaration.rowTarget ?? null,
   }));
 
   const builtArchetypeKeys = archetypeKeys.filter((key) =>
@@ -2015,6 +2131,8 @@ export interface ScreenDeclaration {
   /** The tab group this screen is one tab of, or \`null\` for a screen that is no tab (AD-5). */
   readonly tab: TabDeclaration | null;
   readonly toolIdentifier: string;
+  /** This list's one declared cross-screen row target, or \`null\` for a screen with none (AD-5, Story 6.10). */
+  readonly rowTarget: ScreenRowTarget | null;
 }
 
 /**
@@ -2025,6 +2143,16 @@ export interface TabDeclaration {
   readonly group: string;
   readonly position: number;
   readonly labelKey: string;
+}
+
+/**
+ * A list's single declared cross-screen row target (AD-5, Story 6.10): the route its name cell
+ * opens and the row field, read with \`fieldOf\` and encoded with \`encodeEntityId\`, that route's
+ * id is drawn from -- resolved ahead of the paired-surface chain in \`shell/data-table.ts\`.
+ */
+export interface ScreenRowTarget {
+  readonly route: string;
+  readonly field: string;
 }
 
 /** The closed entity-type vocabulary, mirrored from OcuPilot.Kernel.EntityType. */

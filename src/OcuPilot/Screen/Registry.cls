@@ -21,9 +21,11 @@
 /// whose banner is not the declared grammar (<method>BannerProblem</method>),
 /// whose archetype or classic link-out is not a permitted shape (AD-44,
 /// <method>ClassicLinkProblem</method>), whose <code>tab</code> is not the declared grammar (AD-5,
-/// <method>TabProblem</method>), or whose route or tool identifier collides with
+/// <method>TabProblem</method>), whose <code>rowTarget</code> is not the declared grammar (AD-5,
+/// <method>RowTargetProblem</method>), or whose route or tool identifier collides with
 /// another's; and, over the whole roster, whose tab groups do not fit together
-/// (<method>TabGroupProblem</method>). For both the
+/// (<method>TabGroupProblem</method>) and whose <code>rowTarget</code> does not resolve
+/// (<method>RowTargetResolutionProblem</method>). For both the
 /// <b>entity type</b> and the
 /// <b>scope</b>, <file>scripts/check-objectscript.py</file> and
 /// <file>ui/tools/screen-mirror.mjs</file> refuse the same value before it ever compiles, each
@@ -269,6 +271,14 @@ ClassMethod Validate(Output pProblem As %String) As %Status
                 Set pProblem = tClass _ ": " _ tTabProblem
                 Quit
             }
+            ; AD-5, Story 6.10: a list's one declared cross-screen row target. The roster-wide
+            ; half (whether the named route resolves) runs later, once every entry's own shape is
+            ; known sound.
+            Set tRowTargetProblem = ..RowTargetProblem(tObject)
+            If tRowTargetProblem '= "" {
+                Set pProblem = tClass _ ": " _ tRowTargetProblem
+                Quit
+            }
             Set tRoute = $ClassMethod(tClass, "Route")
             If $ListFind(tRoutes, tRoute) > 0 {
                 Set pProblem = tClass _ ": route '" _ tRoute _ "' is already declared by another descriptor"
@@ -284,6 +294,9 @@ ClassMethod Validate(Output pProblem As %String) As %Status
         ; whole roster, because a stale parentScope would otherwise be caught piecemeal by whatever
         ; rule happened to read it first.
         If (pProblem = "") && $$$ISOK(tSC) Set pProblem = ..ParentScopeResolutionProblem(tRoster)
+        ; AD-5, Story 6.10: a declared rowTarget's route has to resolve to a built, id-keyed
+        ; screen that does not already pair its own surface, which only the whole roster can say.
+        If (pProblem = "") && $$$ISOK(tSC) Set pProblem = ..RowTargetResolutionProblem(tRoster)
     } Catch ex {
         Set pProblem = "the descriptor roster could not be validated: " _ ex.DisplayString()
         Set tSC = ex.AsStatus()
@@ -302,7 +315,7 @@ ClassMethod Validate(Output pProblem As %String) As %Status
 /// <code>read</code>, <code>table</code>, <code>banner</code>, <code>tab</code> -- is sound, and a
 /// declaration missing a required one is already refused by the rule that reads it, with a sentence
 /// naming what it was for.</p>
-Parameter DECLARATIONKEYS = "route,area,labelKey,sideBarPosition,archetype,built,refreshes,refreshRates,privileges,entityType,secondaryEntityTypes,scope,parentScope,id,context,primaryAction,rowActions,emptyStateKey,commandAliases,classicPage,classicLinkExemption,read,table,banner,tab,toolIdentifier";
+Parameter DECLARATIONKEYS = "route,area,labelKey,sideBarPosition,archetype,built,refreshes,refreshRates,privileges,entityType,secondaryEntityTypes,scope,parentScope,id,context,primaryAction,rowActions,emptyStateKey,commandAliases,classicPage,classicLinkExemption,read,table,banner,tab,toolIdentifier,rowTarget";
 
 /// <p>What is wrong with <var>pDeclaration</var>'s own top-level keys, or <code>""</code> when
 /// nothing is (DW-271). Every key must be one of <parameter>DECLARATIONKEYS</parameter>.</p>
@@ -2261,6 +2274,171 @@ ClassMethod ParentScopeResolutionProblem(pRoster As %DynamicArray) As %String [ 
         }
     } Catch ex {
         Set tProblem = "the parentScope roster could not be validated: " _ ex.DisplayString()
+    }
+    Quit tProblem
+}
+
+/// <p>The keys a declared <code>rowTarget</code> may carry (AD-5, Story 6.10).</p>
+Parameter ROWTARGETKEYS = "route,field";
+
+/// <p>What is wrong with <var>pDeclaration</var>'s declared <code>rowTarget</code>, or
+/// <code>""</code> when nothing is, including when none is declared (AD-5, Story 6.10). A row
+/// target is a list's single cross-screen row link: the field its name cell encodes and the
+/// route that link opens, resolved ahead of the paired-surface chain in
+/// <file>ui/src/app/shell/data-table.ts</file> -- because a list keyed by something other than
+/// the linked entity (the Locks list's removal id, say) would otherwise link its own id route,
+/// which names the wrong thing.</p>
+/// <p>Declarable only on a <code>list</code> archetype that also declares a <code>table</code>,
+/// since exactly one column's <code>kind</code> is <code>name</code>
+/// (<method>TableProblem</method>) and a row target replaces what that column would otherwise
+/// link to. Its <code>route</code> is a non-empty string other than the declaring screen's own
+/// route -- a row already reaches its own route through the id chain -- and its <code>field</code>
+/// is a non-empty string that is one of <code>read.fields</code>, since
+/// <file>data-table.ts</file> reads it off the row.</p>
+/// <p>Whether the named route resolves to a built, id-keyed screen that does not already pair
+/// its own surface is <method>RowTargetResolutionProblem</method>'s question, checked over the
+/// whole roster once every declaration's own shape is sound.
+/// <file>ui/tools/screen-mirror.mjs</file>'s <code>rowTargetProblem</code> returns the same
+/// sentence for every case in <class>OcuPilot.Test.RowTargetCorpus</class>.</p>
+/// <p><b>Public, unlike <method>MalformedPair</method></b>, so the shapes above can be exercised
+/// as values rather than as a fixture descriptor per shape.</p>
+ClassMethod RowTargetProblem(pDeclaration As %DynamicObject) As %String
+{
+    Set tProblem = ""
+    Try {
+        Set tType = pDeclaration.%GetTypeOf("rowTarget")
+        If (tType = "unassigned") || (tType = "null") Quit
+        If tType '= "object" {
+            Set tProblem = "rowTarget is not an object naming its route and field (AD-5)"
+            Quit
+        }
+        Set tTarget = pDeclaration.%Get("rowTarget")
+        Set tProblem = ..UnknownKeyProblem(tTarget, "rowTarget", $ListFromString(..#ROWTARGETKEYS))
+        If tProblem '= "" Quit
+        If pDeclaration.%Get("archetype") '= "list" {
+            Set tProblem = "rowTarget is declared on a '" _ pDeclaration.%Get("archetype") _ "' archetype, and a row target is a list's own row link (AD-5)"
+            Quit
+        }
+        If pDeclaration.%GetTypeOf("table") '= "object" {
+            Set tProblem = "rowTarget is declared without a table, and a row target replaces the table's name column's own link (AD-5)"
+            Quit
+        }
+        If (tTarget.%GetTypeOf("route") '= "string") || (tTarget.%Get("route") = "") {
+            Set tProblem = "rowTarget.route is empty, and a row target names the route it opens"
+            Quit
+        }
+        If tTarget.%Get("route") = pDeclaration.%Get("route") {
+            Set tProblem = "rowTarget.route '" _ tTarget.%Get("route") _ "' is this screen's own route, and a row already reaches it through its own id (AD-5)"
+            Quit
+        }
+        If (tTarget.%GetTypeOf("field") '= "string") || (tTarget.%Get("field") = "") {
+            Set tProblem = "rowTarget.field is empty, and a row target names the field its link encodes"
+            Quit
+        }
+        Set tFields = ""
+        Set tFieldsArray = pDeclaration.%Get("read").%Get("fields")
+        If $IsObject(tFieldsArray) && tFieldsArray.%IsA("%Library.DynamicArray") {
+            Set tFieldIterator = tFieldsArray.%GetIterator()
+            While tFieldIterator.%GetNext(.tFieldIndex, .tFieldValue) {
+                If '$IsObject(tFieldValue) Set tFields = tFields _ $ListBuild(tFieldValue)
+            }
+        }
+        If '$ListFind(tFields, tTarget.%Get("field")) {
+            Set tProblem = "rowTarget.field '" _ tTarget.%Get("field") _ "' is not one of read.fields"
+            Quit
+        }
+    } Catch ex {
+        Set tProblem = "rowTarget could not be read: " _ ex.DisplayString()
+    }
+    Quit tProblem
+}
+
+/// <p>Whether some other built entry in <var>pRoster</var> already pairs <var>pRoute</var>'s own
+/// surface -- an editor or document viewer at <code>&lt;pRoute&gt;/edit</code> or
+/// <code>&lt;pRoute&gt;/document</code> (Story 3.5's and Story 6.2's route conventions), or a
+/// detail screen or child list whose <code>parentScope</code> is <var>pRoute</var> -- the four
+/// surfaces <file>ui/src/app/core/navigation.ts</file>'s <code>editorScreenFor</code>,
+/// <code>documentScreenFor</code>, <code>detailScreenFor</code> and <code>childListFor</code>
+/// pair a list with, named by route and <code>parentScope</code> alone. Deliberately broader than
+/// those four, which each also require the candidate to be unlisted and id-keyed: this rule counts
+/// a built candidate at either route, so it refuses a declaration the client would have left
+/// unpaired rather than admitting one it would pair. A row's name cell links to one place, so a
+/// screen that already has one of these declares no <code>rowTarget</code> as well
+/// (<method>RowTargetResolutionProblem</method>).</p>
+ClassMethod RowTargetPairsOwnSurface(pRoute As %String, pRoster As %DynamicArray) As %Boolean [ Private ]
+{
+    Set tFound = 0
+    Try {
+        Set tIterator = pRoster.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tEntry) {
+            Set tCandidate = tEntry.%Get("declaration")
+            If ''tCandidate.%Get("built") = 0 Continue
+            Set tCandidateRoute = tCandidate.%Get("route")
+            If (tCandidateRoute = (pRoute _ "/edit")) || (tCandidateRoute = (pRoute _ "/document")) {
+                Set tFound = 1
+                Quit
+            }
+            If (tCandidate.%GetTypeOf("parentScope") = "string") && (tCandidate.%Get("parentScope") = pRoute) && (pRoute '= "") {
+                Set tFound = 1
+                Quit
+            }
+        }
+    } Catch {
+        Set tFound = 0
+    }
+    Quit tFound
+}
+
+/// <p>What is wrong with how <var>pRoster</var>'s declared <code>rowTarget</code>s resolve, or
+/// <code>""</code> (AD-5, Story 6.10). <var>pRoster</var> is <method>Validate</method>'s own
+/// array of <code>{descriptor, declaration}</code> entries, one per descriptor in the package.</p>
+/// <p>A declared <code>rowTarget.route</code> must name some other entry's <code>route</code>,
+/// that entry must be <code>built</code>, its <code>id.kind</code> must not be <code>none</code>,
+/// and the declaring screen must not already pair its own surface
+/// (<method>RowTargetPairsOwnSurface</method>) -- a row's name cell links to one place.
+/// <file>ui/tools/screen-mirror.mjs</file>'s <code>rowTargetResolutionProblem</code> returns the
+/// same sentence for every roster case in <class>OcuPilot.Test.RowTargetCorpus</class>.</p>
+/// <p><b>Public, like <method>TabGroupProblem</method></b>, so a corpus roster can be run through
+/// it directly rather than through a fixture registry per roster.</p>
+ClassMethod RowTargetResolutionProblem(pRoster As %DynamicArray) As %String
+{
+    Set tProblem = ""
+    Try {
+        Set tOuter = pRoster.%GetIterator()
+        While tOuter.%GetNext(.tOuterIndex, .tEntry) {
+            Set tDeclaration = tEntry.%Get("declaration")
+            If tDeclaration.%GetTypeOf("rowTarget") '= "object" Continue
+            Set tTarget = tDeclaration.%Get("rowTarget")
+            Set tRoute = tTarget.%Get("route")
+            Set tOwnRoute = tDeclaration.%Get("route")
+            Set tCandidate = ""
+            Set tInner = pRoster.%GetIterator()
+            While tInner.%GetNext(.tInnerIndex, .tCandidateEntry) {
+                If tInnerIndex = tOuterIndex Continue
+                Set tCandidateDecl = tCandidateEntry.%Get("declaration")
+                If tCandidateDecl.%Get("route") = tRoute Set tCandidate = tCandidateDecl
+            }
+            If tCandidate = "" {
+                Set tProblem = tEntry.%Get("descriptor") _ ": rowTarget.route '" _ tRoute _ "' names no declared screen (AD-5)"
+                Quit
+            }
+            If ''tCandidate.%Get("built") = 0 {
+                Set tProblem = tEntry.%Get("descriptor") _ ": rowTarget.route '" _ tRoute _ "' names a screen that is not built (AD-5)"
+                Quit
+            }
+            Set tIdKind = ""
+            If tCandidate.%GetTypeOf("id") = "object" Set tIdKind = tCandidate.%Get("id").%Get("kind")
+            If (tIdKind = "") || (tIdKind = "none") {
+                Set tProblem = tEntry.%Get("descriptor") _ ": rowTarget.route '" _ tRoute _ "' names a screen with no id, and a row target's field decodes into that screen's own id (AD-5)"
+                Quit
+            }
+            If ..RowTargetPairsOwnSurface(tOwnRoute, pRoster) {
+                Set tProblem = tEntry.%Get("descriptor") _ ": rowTarget is declared on a screen that already pairs its own surface, and a row's name cell links to one place (AD-5)"
+                Quit
+            }
+        }
+    } Catch ex {
+        Set tProblem = "the rowTarget roster could not be validated: " _ ex.DisplayString()
     }
     Quit tProblem
 }

@@ -27,6 +27,9 @@ import {
   declaredStringKeys,
   readProblem,
   readSources,
+  ROW_TARGET_KEYS,
+  rowTargetProblem,
+  rowTargetResolutionProblem,
   sideBarPositionProblem,
   tabGroupProblem,
   tabProblem,
@@ -513,6 +516,87 @@ test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorp
     ['security/oauth/server-clients', 'security/oauth', 5, 0],
   ]);
   assert.ok(emitted.every((screen) => 'tab' in screen), 'every screen emits tab, null when it is no tab');
+});
+
+/** The corpus declaration with `testCase`'s own `rowTarget`, `archetype` or `table`, mirroring `OcuPilot.Test.RowTargetCorpus.DeclarationFor`. */
+function rowTargetDeclarationFor(corpus, testCase) {
+  const declaration = structuredClone(corpus.declaration);
+  if ('rowTarget' in testCase) declaration.rowTarget = structuredClone(testCase.rowTarget);
+  if (testCase.archetype !== undefined) declaration.archetype = testCase.archetype;
+  if ('table' in testCase) declaration.table = testCase.table;
+  return declaration;
+}
+
+// AD-5, Story 6.10: every case in `OcuPilot.Test.RowTargetCorpus`'s `Cases` half gets its exact
+// sentence, or none, from `rowTargetProblem`, and every roster in its `Rosters` half from
+// `rowTargetResolutionProblem`; and both refusals reach the generator.
+//
+// Mutation (Rule 19): drop the "screen's own route" arm from `rowTargetProblem` -> the
+// self-route case goes red. Drop the `rowTargetResolutionProblem` call from `buildMirror` -> the
+// roster-refusal assertion goes red.
+test('rowTargetProblem and rowTargetResolutionProblem return every sentence OcuPilot.Test.RowTargetCorpus declares', () => {
+  const corpus = testCorpus(['Test', 'RowTargetCorpus.cls'], 'Cases');
+  assert.ok(corpus.cases.length > 0, 'the corpus carries cases');
+  let caseRefusals = 0;
+  for (const testCase of corpus.cases) {
+    const declaration = rowTargetDeclarationFor(corpus, testCase);
+    assert.equal(rowTargetProblem(declaration), testCase.expected, testCase.name);
+    if (testCase.expected !== null) caseRefusals += 1;
+  }
+  assert.ok(caseRefusals > 0, 'the Cases half carries at least one refusing case');
+
+  // The corpus's own sound rowTarget carries exactly the declared nested vocabulary, so
+  // ROW_TARGET_KEYS cannot gain, lose or rename a key on one side of the two engines without a
+  // case going red -- the same tie this file holds for DECLARATION_KEYS.
+  assert.deepEqual(
+    Object.keys(corpus.declaration.rowTarget).sort(),
+    [...ROW_TARGET_KEYS].sort(),
+    "the corpus's sound rowTarget carries exactly the declared rowTarget vocabulary"
+  );
+
+  const rosters = testCorpus(['Test', 'RowTargetCorpus.cls'], 'Rosters');
+  assert.ok(rosters.rosters.length > 0, 'the corpus carries rosters');
+  let rosterRefusals = 0;
+  for (const roster of rosters.rosters) {
+    const screens = roster.screens.map((entry) => ({ className: entry.descriptor, declaration: entry.declaration }));
+    assert.equal(rowTargetResolutionProblem(screens), roster.expected, roster.name);
+    if (roster.expected !== null) rosterRefusals += 1;
+  }
+  assert.ok(rosterRefusals > 0, 'the Rosters half carries at least one refusing roster');
+
+  const sources = readSources();
+  for (const screen of sources.screens) {
+    assert.equal(rowTargetProblem(screen.declaration), null, `${screen.className}'s rowTarget passes`);
+  }
+  assert.equal(rowTargetResolutionProblem(sources.screens), null, 'and the shipped rowTargets resolve');
+
+  const locks = sources.screens.find((screen) => screen.declaration.route === 'os-management/locks');
+  assert.ok(locks !== undefined, 'the Locks list is declared');
+  const withLocks = (declaration) =>
+    sources.screens.map((screen) => (screen.className === locks.className ? { ...screen, declaration } : screen));
+  const hostile = structuredClone(locks.declaration);
+  hostile.rowTarget = { ...hostile.rowTarget, field: 'Bogus' };
+  assert.throws(
+    () => buildMirror({ ...sources, screens: withLocks(hostile) }),
+    /rowTarget\.field 'Bogus' is not one of read\.fields/
+  );
+
+  // And the roster-wide rule's own call site, which the shape refusal above reaches past: the
+  // I/O matrix's own scenario, a mistyped target route. `rowTargetProblem` calls this sound --
+  // the route is a non-empty string that is not this screen's own and the field is declared --
+  // so only `rowTargetResolutionProblem` can refuse it.
+  const unresolved = structuredClone(locks.declaration);
+  unresolved.rowTarget = { ...unresolved.rowTarget, route: 'os-management/process/details' };
+  assert.equal(rowTargetProblem(unresolved), null, 'a mistyped target route is a sound shape');
+  assert.throws(
+    () => buildMirror({ ...sources, screens: withLocks(unresolved) }),
+    /rowTarget\.route 'os-management\/process\/details' names no declared screen \(AD-5\)/
+  );
+
+  const emitted = JSON.parse(generate().split('export const SCREENS: readonly ScreenDeclaration[] = ')[1].replace(/;\s*$/, ''));
+  const emittedLocks = emitted.find((screen) => screen.route === 'os-management/locks');
+  assert.deepEqual(emittedLocks.rowTarget, { route: 'os-management/processes/details', field: 'Pid' });
+  assert.ok(emitted.every((screen) => 'rowTarget' in screen), 'every screen emits rowTarget, null when it declares none');
 });
 
 // Story 6.6 (DW-1020): `parentScopeResolutionProblem` refuses a built descriptor's `parentScope`
@@ -1574,7 +1658,7 @@ test('declarationProblem returns every sentence OcuPilot.Test.DeclarationCorpus 
   }
   assert.ok(refusals > 0, 'the corpus carries at least one refusing case');
 
-  // The corpus's own sound declaration exercises all twenty-six keys, so the vocabulary cannot
+  // The corpus's own sound declaration exercises all twenty-seven keys, so the vocabulary cannot
   // drift by one without a case going red.
   assert.deepEqual(
     Object.keys(corpus.declaration).sort(),

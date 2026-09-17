@@ -40,10 +40,11 @@ XData Cases
     },
     "banner": {"source": {"port": "admin", "endpoint": "Task.Manager", "type": "GET"}, "field": "Status", "cases": [{"equals": "Suspended", "messageKey": "taskManagerSuspendedBanner", "severity": "warning"}]},
     "tab": null,
-    "toolIdentifier": "tasks.declarationcorpus"
+    "toolIdentifier": "tasks.declarationcorpus",
+    "rowTarget": null
   },
   "cases": [
-    {"name": "the sound shape, all twenty-six keys", "addKey": "", "dropKey": "", "expected": null},
+    {"name": "the sound shape, all twenty-seven keys", "addKey": "", "dropKey": "", "expected": null},
     {"name": "a pluralised banner, the misspelling that installed a screen whose strip never raises", "addKey": "banners", "dropKey": "", "expected": "the declaration declares the unknown key 'banners'"},
     {"name": "a capitalised banner", "addKey": "Banner", "dropKey": "", "expected": "the declaration declares the unknown key 'Banner'"},
     {"name": "a pluralised read", "addKey": "reads", "dropKey": "", "expected": "the declaration declares the unknown key 'reads'"},
@@ -56,6 +57,7 @@ XData Cases
     {"name": "an absent optional refreshes is sound", "addKey": "", "dropKey": "refreshes", "expected": null},
     {"name": "an absent optional refreshRates is sound", "addKey": "", "dropKey": "refreshRates", "expected": null},
     {"name": "an absent optional tab is sound", "addKey": "", "dropKey": "tab", "expected": null},
+    {"name": "an absent optional rowTarget is sound", "addKey": "", "dropKey": "rowTarget", "expected": null},
     {"name": "a pluralised tab", "addKey": "tabs", "dropKey": "", "expected": "the declaration declares the unknown key 'tabs'"},
     {"name": "an absent required route is sound here, because this rule is unknown-key only", "addKey": "", "dropKey": "route", "expected": null},
     {"name": "an absent required toolIdentifier is sound here, for the same reason", "addKey": "", "dropKey": "toolIdentifier", "expected": null},

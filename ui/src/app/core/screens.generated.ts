@@ -349,6 +349,8 @@ export interface ScreenDeclaration {
   /** The tab group this screen is one tab of, or `null` for a screen that is no tab (AD-5). */
   readonly tab: TabDeclaration | null;
   readonly toolIdentifier: string;
+  /** This list's one declared cross-screen row target, or `null` for a screen with none (AD-5, Story 6.10). */
+  readonly rowTarget: ScreenRowTarget | null;
 }
 
 /**
@@ -359,6 +361,16 @@ export interface TabDeclaration {
   readonly group: string;
   readonly position: number;
   readonly labelKey: string;
+}
+
+/**
+ * A list's single declared cross-screen row target (AD-5, Story 6.10): the route its name cell
+ * opens and the row field, read with `fieldOf` and encoded with `encodeEntityId`, that route's
+ * id is drawn from -- resolved ahead of the paired-surface chain in `shell/data-table.ts`.
+ */
+export interface ScreenRowTarget {
+  readonly route: string;
+  readonly field: string;
 }
 
 /** The closed entity-type vocabulary, mirrored from OcuPilot.Kernel.EntityType. */
@@ -589,7 +601,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "read": null,
     "table": null,
     "banner": null,
-    "tab": null
+    "tab": null,
+    "rowTarget": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.AgentDefinitionList",
@@ -722,7 +735,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "toolIdentifier": "agent.definitions",
     "banner": null,
-    "tab": null
+    "tab": null,
+    "rowTarget": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.AgentSwitches",
@@ -779,7 +793,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "read": null,
     "table": null,
     "banner": null,
-    "tab": null
+    "tab": null,
+    "rowTarget": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.AuditList",
@@ -1043,7 +1058,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "toolIdentifier": "logs.audit",
     "banner": null,
-    "tab": null
+    "tab": null,
+    "rowTarget": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.Home",
@@ -1089,7 +1105,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "read": null,
     "table": null,
     "banner": null,
-    "tab": null
+    "tab": null,
+    "rowTarget": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.LdapConfigList",
@@ -1193,6 +1210,157 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "toolIdentifier": "security.ldap",
     "banner": null,
+    "tab": null,
+    "rowTarget": null
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.LockList",
+    "route": "os-management/locks",
+    "area": "os-management",
+    "labelKey": "lockListLabel",
+    "sideBarPosition": 2,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "lock",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "DeleteID"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Pid",
+        "OSUserName",
+        "RoutineInfo",
+        "ModeCount",
+        "Reference",
+        "Directory",
+        "System",
+        "DeleteID"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "lockListEmpty",
+    "commandAliases": [
+      "locks",
+      "lock table"
+    ],
+    "classicPage": "%CSP.UI.Portal.LocksView",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Lock",
+        "type": "LIST"
+      },
+      "fields": [
+        "Pid",
+        "OSUserName",
+        "RoutineInfo",
+        "ModeCount",
+        "Reference",
+        "Directory",
+        "System",
+        "DeleteID"
+      ],
+      "filter": [
+        "Pid",
+        "OSUserName",
+        "RoutineInfo",
+        "ModeCount",
+        "Reference",
+        "Directory",
+        "System"
+      ],
+      "sort": {
+        "fields": [
+          "Pid",
+          "OSUserName",
+          "RoutineInfo",
+          "ModeCount",
+          "Reference",
+          "Directory",
+          "System"
+        ],
+        "default": "Pid",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Pid",
+          "labelKey": "processColumnPid",
+          "kind": "name"
+        },
+        {
+          "field": "OSUserName",
+          "labelKey": "processColumnUser",
+          "kind": "text"
+        },
+        {
+          "field": "RoutineInfo",
+          "labelKey": "processColumnRoutine",
+          "kind": "identifier"
+        },
+        {
+          "field": "ModeCount",
+          "labelKey": "lockColumnMode",
+          "kind": "text"
+        },
+        {
+          "field": "Reference",
+          "labelKey": "lockColumnReference",
+          "kind": "identifier"
+        },
+        {
+          "field": "Directory",
+          "labelKey": "lockColumnDirectory",
+          "kind": "identifier"
+        },
+        {
+          "field": "System",
+          "labelKey": "lockColumnSystem",
+          "kind": "text",
+          "emptyKey": "lockSystemLocal"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "rowTarget": {
+      "route": "os-management/processes/details",
+      "field": "Pid"
+    },
+    "toolIdentifier": "osmgmt.locks",
+    "banner": null,
     "tab": null
   },
   {
@@ -1257,7 +1425,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "read": null,
     "table": null,
     "banner": null,
-    "tab": null
+    "tab": null,
+    "rowTarget": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.OAuthClientTab",
@@ -1407,7 +1576,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "labelKey": "oauthTabClients"
     },
     "toolIdentifier": "security.oauthclients",
-    "banner": null
+    "banner": null,
+    "rowTarget": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.OAuthResourceServerTab",
@@ -1514,7 +1684,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "labelKey": "oauthTabResourceServers"
     },
     "toolIdentifier": "security.oauthresourceservers",
-    "banner": null
+    "banner": null,
+    "rowTarget": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.OAuthServerClientTab",
@@ -1648,7 +1819,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "labelKey": "oauthTabServerClients"
     },
     "toolIdentifier": "security.oauthserverclients",
-    "banner": null
+    "banner": null,
+    "rowTarget": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab",
@@ -1767,7 +1939,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "labelKey": "oauthTabServerDescriptions"
     },
     "toolIdentifier": "security.oauthserverdescriptions",
-    "banner": null
+    "banner": null,
+    "rowTarget": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.OAuthServerTab",
@@ -1912,7 +2085,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "labelKey": "oauthTabServer"
     },
     "toolIdentifier": "security.oauthserver",
-    "banner": null
+    "banner": null,
+    "rowTarget": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.OpenApiViewer",
@@ -2029,7 +2203,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "toolIdentifier": "webapp.openapi",
     "banner": null,
-    "tab": null
+    "tab": null,
+    "rowTarget": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.ProcessDetails",
@@ -2371,7 +2546,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "toolIdentifier": "osmgmt.processdetails",
     "banner": null,
-    "tab": null
+    "tab": null,
+    "rowTarget": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.ProcessList",
@@ -2518,7 +2694,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "toolIdentifier": "osmgmt.processes",
     "banner": null,
-    "tab": null
+    "tab": null,
+    "rowTarget": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.ResourceList",
@@ -2638,7 +2815,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "toolIdentifier": "permissions.resources",
     "banner": null,
-    "tab": null
+    "tab": null,
+    "rowTarget": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.RestApiList",
@@ -2757,7 +2935,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "toolIdentifier": "webapp.restapis",
     "banner": null,
-    "tab": null
+    "tab": null,
+    "rowTarget": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.RoleList",
@@ -2868,7 +3047,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "toolIdentifier": "permissions.roles",
     "banner": null,
-    "tab": null
+    "tab": null,
+    "rowTarget": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.ServiceList",
@@ -2993,7 +3173,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "toolIdentifier": "permissions.services",
     "banner": null,
-    "tab": null
+    "tab": null,
+    "rowTarget": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.SslConfigList",
@@ -3104,7 +3285,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "toolIdentifier": "security.ssl",
     "banner": null,
-    "tab": null
+    "tab": null,
+    "rowTarget": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.SystemUsage",
@@ -3365,7 +3547,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "toolIdentifier": "osmgmt.systemusage",
     "banner": null,
-    "tab": null
+    "tab": null,
+    "rowTarget": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.TaskDetails",
@@ -3624,7 +3807,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "toolIdentifier": "tasks.taskdetails",
     "banner": null,
-    "tab": null
+    "tab": null,
+    "rowTarget": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.TaskHistoryList",
@@ -3801,7 +3985,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "toolIdentifier": "tasks.history",
     "banner": null,
-    "tab": null
+    "tab": null,
+    "rowTarget": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.TaskOnDemandList",
@@ -3927,7 +4112,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "toolIdentifier": "tasks.ondemand",
     "banner": null,
-    "tab": null
+    "tab": null,
+    "rowTarget": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.TaskRunList",
@@ -4091,7 +4277,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "toolIdentifier": "tasks.taskhistory",
     "banner": null,
-    "tab": null
+    "tab": null,
+    "rowTarget": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.TaskScheduleList",
@@ -4243,7 +4430,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       ]
     },
     "toolIdentifier": "tasks.schedule",
-    "tab": null
+    "tab": null,
+    "rowTarget": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.TaskUpcomingList",
@@ -4383,7 +4571,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "toolIdentifier": "tasks.upcoming",
     "banner": null,
-    "tab": null
+    "tab": null,
+    "rowTarget": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.UserList",
@@ -4527,7 +4716,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "toolIdentifier": "permissions.users",
     "banner": null,
-    "tab": null
+    "tab": null,
+    "rowTarget": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.WalletCollectionList",
@@ -4631,7 +4821,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "toolIdentifier": "security.wallet",
     "banner": null,
-    "tab": null
+    "tab": null,
+    "rowTarget": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.WalletSecretList",
@@ -4734,7 +4925,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "toolIdentifier": "security.secrets",
     "banner": null,
-    "tab": null
+    "tab": null,
+    "rowTarget": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.WebAppList",
@@ -4863,7 +5055,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "toolIdentifier": "webapp.list",
     "banner": null,
-    "tab": null
+    "tab": null,
+    "rowTarget": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.X509CredentialList",
@@ -5000,6 +5193,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "toolIdentifier": "security.x509",
     "banner": null,
-    "tab": null
+    "tab": null,
+    "rowTarget": null
   }
 ];

@@ -95,6 +95,13 @@ const LIVE_PAYLOAD = {
           failedPair: '%Admin_Manage:USE',
         },
         {
+          route: 'os-management/locks',
+          labelKey: 'lockListLabel',
+          sideBarPosition: 2,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
+        },
+        {
           route: 'os-management/system-usage',
           labelKey: 'systemUsageLabel',
           sideBarPosition: 3,

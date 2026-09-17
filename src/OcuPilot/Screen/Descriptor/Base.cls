@@ -288,6 +288,19 @@ ClassMethod ContextSecretFields() As %List
     Quit ..NestedStringList("context", "secretFields")
 }
 
+/// <p>This screen's declared <code>rowTarget</code> as a copy, or <code>""</code> for a screen
+/// that declares none (AD-5, Story 6.10). A row target is a list's single cross-screen row link,
+/// resolved ahead of the paired-surface chain in <file>ui/src/app/shell/data-table.ts</file> and
+/// validated by <method>OcuPilot.Screen.Registry.RowTargetProblem</method> and
+/// <method>OcuPilot.Screen.Registry.RowTargetResolutionProblem</method>.</p>
+ClassMethod RowTarget() As %DynamicObject
+{
+    Set tTarget = ..Field("rowTarget")
+    If '$IsObject(tTarget) Quit ""
+    If 'tTarget.%IsA("%Library.DynamicObject") Quit ""
+    Quit tTarget
+}
+
 /// <p>The primary action's identifier (Create, Import, or <code>""</code> for none).</p>
 ClassMethod PrimaryActionId() As %String
 {

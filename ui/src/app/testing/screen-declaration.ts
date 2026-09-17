@@ -39,6 +39,7 @@ export function screenDeclaration(overrides: Partial<ScreenDeclaration> = {}): S
     banner: null,
     tab: null,
     toolIdentifier: 'stub',
+    rowTarget: null,
     ...overrides,
   };
 }

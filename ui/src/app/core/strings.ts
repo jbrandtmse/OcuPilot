@@ -883,6 +883,20 @@ export const STRINGS = {
   systemUsageWriteDaemon: 'Write daemon',
   /** EXPERIENCE.md:363 */
   systemUsageEmpty: 'System usage is unavailable.',
+  /** EXPERIENCE.md:364 */
+  lockListLabel: 'Locks',
+  /** EXPERIENCE.md:364 */
+  lockColumnMode: 'Mode',
+  /** EXPERIENCE.md:364 */
+  lockColumnReference: 'Reference',
+  /** EXPERIENCE.md:364 */
+  lockColumnDirectory: 'Directory',
+  /** EXPERIENCE.md:364 */
+  lockColumnSystem: 'System',
+  /** EXPERIENCE.md:364 */
+  lockSystemLocal: 'This instance',
+  /** EXPERIENCE.md:364 */
+  lockListEmpty: 'No locks on this instance.',
 
   // Not from the Fixed strings table, but required verbatim by this story's task
   // list: the audit-marker-failure fallback text (AD-15 / EXPERIENCE.md "9. **Audit.** Every confirmed"), the

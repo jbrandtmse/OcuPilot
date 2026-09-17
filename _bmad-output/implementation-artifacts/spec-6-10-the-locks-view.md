@@ -2,10 +2,10 @@
 title: 'The locks view'
 type: 'feature'
 created: '2026-09-17'
-status: 'ready-for-dev'
+status: 'done'
 baseline_revision: 'e581cd8ea51ec04009a18a8cd3499964d7bb0919'
 baseline_commit: 'e581cd8ea51ec04009a18a8cd3499964d7bb0919'
-review_loop_iteration: 0
+review_loop_iteration: 1
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-6-context.md'
@@ -36,7 +36,7 @@ deferred: []
   - `emptyStateKey` `lockListEmpty`; `table.emptyNextKey` `tableReadOnlyEmptyNext` (reused), `table.emptyAgentKey` `""` (not write-capable)
   - `commandAliases` `["locks", "lock table"]`; `toolIdentifier` `osmgmt.locks`
   - `classicPage` `%CSP.UI.Portal.LocksView` — the key `##class(%SYS.Portal.Resources).NormalizePage("/csp/sys/op/%CSP.UI.Portal.LocksView.zen")` answers on slot B; a `.zen` page normalizes to its bare class name, unlike Story 6.9's `%cspapp.*` key. `classicLinkExemption.exempt` false with empty `reason`/`label`/`href` — a list links out to nothing (AD-44), and Manage Locks is Story 16.12's page
-  - `context.fields` = the seven column fields; `context.secretFields` `[]`
+  - `context.fields` = the eight read fields (the seven columns plus `DeleteID`, as every other composite-id list carries its own id parts); `context.secretFields` `[]`
   - **`rowTarget`** `{"route": "os-management/processes/details", "field": "Pid"}`
 - **Read** — `source` `{"port": "admin", "endpoint": "Lock", "type": "LIST"}`, `paging` `"cap"`, no `criteria`, no `rowGet`, no `query`, no `parts`, no `forEach`:
   - `fields` exactly these eight: `Pid`, `OSUserName`, `RoutineInfo`, `ModeCount`, `Reference`, `Directory`, `System`, `DeleteID`
@@ -139,7 +139,7 @@ Vendor, read-only reference:
 
 - **AC1** — Given the compiled descriptor, when `OcuPilot.Screen.Registry.Validate` runs over the roster, then `LockList` validates, appears in the OS-management side bar at position 2 between Processes and System usage, and `screens.generated.ts` carries it with `rowTarget` `{route: 'os-management/processes/details', field: 'Pid'}`. Pinned by `Test/Descriptor.cls` (validation) and `ui/tools/navigation.test.mjs:115` (order).
 - **AC2** — Given the read runs against slot B, when `/screens/osmgmt.locks/read` answers, then every one of the eight declared fields is a key of the live first row and the seven column fields hold real values, not null-filled keys. Pinned by `Test/ScreenRead.cls:187` (self-discovering) plus `Install/Smoke.cls` `CheckAreaLists`.
-- **AC3** — Given the same read issued twice, when it is issued once with `ns=HSCUSTOM` and once with `ns=USER`, then the two row sets are identical, because the read declares no `ns` criterion and the lock table is instance-wide. Pinned by a `Test/ScreenRead` method comparing the two results.
+- **AC3** — Given the same read issued twice, when it is issued once with `ns=HSCUSTOM` and once with `ns=USER`, then the two row sets are identical, because the read declares no `ns` criterion and the lock table is instance-wide. Pinned by `Test/ScreenRead.TestTheLocksReadDeclaresNoCriteriaAtAll`, which pins the structural fact; a two-read comparison across namespaces is green by construction and was removed at code review.
 - **AC4** — Given a row whose `Pid` is 905 and whose `DeleteID` is `313131776,39,P905,`, when the owner cell's link is computed, then its route is `os-management/processes/details/905` — the pid encoded once by `encodeEntityId`, not the removal id — and following it in a browser opens Process details for pid 905. Pinned by `ui/src/app/shell/data-table.spec.ts` (the computed `url`) and `ui/browser/locks.browser-spec.mjs` (the navigation).
 - **AC5** — Given `Test/RowTargetCorpus`'s `Cases`, when each is run through `Registry.RowTargetProblem` and through `screen-mirror.mjs`'s `rowTargetProblem`, then both return the corpus's `expected` sentence for every refusal, character for character, and `null` for both sound cases. Pinned by `Test/Descriptor.cls` and `ui/tools/screen-mirror.test.mjs`.
 - **AC6** — Given `Test/RowTargetCorpus`'s `Rosters`, when each roster is run through `Registry.RowTargetResolutionProblem` and through `rowTargetResolutionProblem`, then both refuse an undeclared route, an unbuilt target, an `id.kind: none` target and a declaring screen that already pairs its own surface, with identical sentences. Pinned by the same two tests.
@@ -148,9 +148,44 @@ Vendor, read-only reference:
 - **AC9** — Given the descriptor, when its read and table are inspected, then `read.fields` is exactly the eight named fields and `table.columns` is exactly the seven named columns: no transaction column, no `Removable`, `CanBeExamined` or `RemoteOwner`, no derived field, and no `$zu(67,19` anywhere in the read path. Pinned by the exact-set test in `Test/Descriptor.cls`.
 - **AC10** — Given an instance with no locks, when the screen loads, then the empty state reads "No locks on this instance." with the shared read-only second line and no agent invitation; and given a local lock, its `System` cell reads "This instance". Pinned by `ui/browser/locks.browser-spec.mjs`, with the string set pinned by `ui/tools/strings.test.mjs`.
 
+### Review Findings
+
+Code review 2026-09-17 (Tier 1, full-opus; layers: blind-hunter, edge-case-hunter, verification-gap,
+acceptance-auditor). Every patch below is applied; every mutation cited was observed red and reverted.
+
+- [x] [Review][Patch] Neither engine's roster wiring was pinned: no `RowTarget*` fixture registry, and `screen-mirror.test.mjs` had only a shape-rule `assert.throws` while its own comment claimed the roster call site was covered [src/OcuPilot/Screen/Registry.cls:277, ui/tools/screen-mirror.test.mjs:536] — added `OcuPilot.Test.RowTargetShape.Bad` + `RowTargetShapeRegistry`, `OcuPilot.Test.RowTargetRoster.A` + `RowTargetRosterRegistry`, `Test/Descriptor.TestARowTargetOutsideTheGrammarIsRefusedByTheRoster`, and the roster `assert.throws` over the I/O matrix's own mistyped-route scenario
+- [x] [Review][Patch] AC3's two pinning assertions could not fail — QA's note called the `pCriteria("ns")` comparison vacuous and the `Kernel.Scope` variant says so in its own header — and both compared two live reads of a volatile instance-wide table byte-for-byte [src/OcuPilot/Test/ScreenRead.cls:262,316] — both removed; `TestTheLocksReadDeclaresNoCriteriaAtAll` is the falsifiable pin and AC3's `Pinned by` now names it
+- [x] [Review][Patch] AC2's "hold real values, not null-filled keys" was asserted nowhere, and the vendor makes a null-filled row reachable (`%SYS.LockQuery.WebListFilterFetch` appends `OSUserName` only when `%SYS.ProcessQuery.%OpenId` succeeds) [src/OcuPilot/Test/ScreenRead.cls:239] — added `TestTheLocksReadAnswersValuesNotEmptyKeys` over six of the eight fields
+- [x] [Review][Patch] AC8's recorded mutation could not redden the test AC8 names; no assertion in `Test/ReadTool` reads this screen's `read.fields` [_bmad-output/implementation-artifacts/spec-6-10-the-locks-view.md:189] — mutation line replaced with the `toolIdentifier` rename, observed red
+- [x] [Review][Patch] `Base.RowTarget()` had no caller and no assertion — the only one of thirty accessors outside `TestEveryAccessorReadsTheDeclarationOnce`'s roster [src/OcuPilot/Screen/Descriptor/Base.cls:296] — added to that roster, plus both arms asserted in `Test/Descriptor`
+- [x] [Review][Patch] `ROWTARGETKEYS` / `ROW_TARGET_KEYS` had no parity assertion, unlike `DECLARATION_KEYS` [src/OcuPilot/Screen/Registry.cls:2337, ui/tools/screen-mirror.mjs:1347] — the corpus's sound `rowTarget` is now pinned against each engine's vocabulary
+- [x] [Review][Patch] The mirror corpus test counted both halves' refusals in one variable, so a `Rosters` block that lost every refusing entry still satisfied it [ui/tools/screen-mirror.test.mjs:545] — one counter per half, as the ObjectScript twin has
+- [x] [Review][Patch] Both `pairsOwnSurface` doc comments claimed to resolve "the same four surfaces" as `navigation.ts`, which additionally require the candidate to be unlisted and id-keyed [src/OcuPilot/Screen/Registry.cls:2413, ui/tools/screen-mirror.mjs:1396] — comments now state the rule is deliberately broader and fails closed
+- [x] [Review][Patch] `Install/Smoke.cls` asserted "a real instance always holds at least one lock" from one probe [src/OcuPilot/Install/Smoke.cls:140] — replaced with what was observed (seven rows, all daemon-held, slot B 2026-09-17) and how to read a failure; the exactly-one-row check is kept
+- [x] [Review][Patch] `LockList.cls` named the backing query `SYS.LockQuery`; it is `%SYS.LockQuery` [src/OcuPilot/Screen/Descriptor/LockList.cls:28]
+- [x] [Review][Patch] Boundaries said `context.fields` is the seven column fields; the descriptor declares eight, which is what every other composite-id list does [src/OcuPilot/Screen/Descriptor/LockList.cls:33] — Boundaries corrected
+- [x] [Review][Patch] The `$zu(67,19` assertion claimed "anywhere in the read path" but reads one class's source [src/OcuPilot/Test/Descriptor.cls:1259]; `screen-mirror.test.mjs:1635` still said "twenty-six keys"; `WireSecurityRead`'s `OPERATEUSER` message had lost the reason the assertion exists — all three corrected
+- [x] [Review][Defer] DW-1078 `rowTarget` admits a target screen whose composite id has several parts, and one field value is encoded as that whole id [src/OcuPilot/Screen/Registry.cls:2427] — deferred: `escalated owner=burndown`; a thirteenth refusal edits AD-5's `rowTarget` bullet, Boundaries' "Refusals, twelve" and AC6, which is spine work (Rule 20), not a reviewer patch. Four shipped screens are keyed by a multi-part composite id; today's only `rowTarget` targets `ProcessDetails`, which has one part, so nothing is wrong now
+
+**Rejected.**
+
+- `false` — "a remote-owner row renders no link": `%SYS.LockQuery.WebListFilter`'s ROWSPEC takes `Pid` from the lock table and `WebListFilterFetch` numeric-coerces it (`+$listget(Row)`), so `Pid` is populated for a remote owner too. The descriptor's "the link still renders" is consistent with the vendor; DW-1074 stands.
+- `false` — "AC7's mutation is unfalsifiable because `Validate`/`buildMirror` refuse it": `Validate` is called from no production path (its own class comment says so; the only callers are tests), so the denial-order assertions do run and do redden.
+- `false` — "the two engines diverge for a `rowTarget` with a `table` and no `read`": `ReadProblem` refuses "table is declared while read is not" at `Registry.cls:813`, dispatched before `RowTargetProblem`, and `readProblem` likewise precedes `rowTargetProblem` in `buildMirror`. Both fail closed and the shape is unreachable.
+- `low`, not worth a guard — the `rowLinked ||` disjunct in `rowTargetScreen` is unreachable (AD-44 forbids an exemption on a `list`; `rowTarget` is list-only).
+- `low`, `wontfix-accepted` `reopen_if=` the User column reads "(none)" on a real instance — `OSUserName` declares no `emptyKey`; adding one needs a new EXPERIENCE.md string, which this story may not edit.
+- `low`, `wontfix-accepted` `reopen_if=` two surfaces claim the phrase — the `"lock table"` alias overlaps System usage's meter label; no alias-uniqueness rule exists in either engine, and adding one is not this story's grammar.
+- `by-design` — the vendor `filter` parameter left undeclared with its per-row `%SYS.ProcessQuery` cost at the cap; `secondaryEntityTypes` `[]`; `DeleteID` in `context.fields`; a remote-owner row landing on "This process no longer exists." (DW-1074). All settled in Boundaries or by the orchestrator.
+- `low` — Execution 6 asked for two mirror tests and one was written covering both halves; AC5 and AC6 are each asserted per case inside it.
+
 ## Spec Change Log
 
+- 2026-09-17, lead: `EXPERIENCE.md:364` Fixed strings row applied before dispatch (Execution item 1).
+- 2026-09-17, code review: AC3's two comparisons removed and its `Pinned by` corrected; the `context.fields` sentence corrected; five `mutation:` lines recorded.
+
 ## Review Triage Log
+
+- 2026-09-17 full review (four layers): 0 high, 12 patched in pass, 1 escalated (DW-1078), 8 rejected at emission. Two layer claims were rejected on evidence: a remote-owner row does render a link, and AC7's mutation is falsifiable because `Validate` runs from no production path.
 
 ## Design Notes
 
@@ -181,18 +216,31 @@ Vendor, read-only reference:
 
 - AC1 — mutation: change `sideBarPosition` to 4 in `LockList.cls` → `navigation.test.mjs`'s route-roster assertion goes red
 - AC2 — mutation: add `"Removable"` to `read.fields` without adding it to the projection → `Test/ScreenRead.TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow` goes red (and revert: the field is not shipped)
-- AC3 — mutation: add an `ns` criterion to the read → the two-namespace comparison in `Test/ScreenRead` goes red
+- AC2 — mutation: make `Screen/Read.Project` emit every declared field as JSON `null` → `Test/ScreenRead.TestTheLocksReadAnswersValuesNotEmptyKeys` goes red naming the null-filled row (observed 2026-09-17, code review)
+- AC3 — mutation: add a `criteria` block naming `ns` to the read → `Test/ScreenRead.TestTheLocksReadDeclaresNoCriteriaAtAll` goes red on its type check
 - AC4 — mutation: in `data-table.ts`, encode `rowKey(row, screen)` instead of `fieldOf(row, rowTarget.field)` → `data-table.spec.ts`'s URL assertion goes red (the URL becomes the removal id); rebuild and redeploy before re-running the browser leg
 - AC5 — mutation: drop one word from `RowTargetProblem`'s "route is this screen's own route" sentence → `Test/Descriptor`'s corpus test goes red; do the mirror half by dropping the same word from `rowTargetProblem` → `screen-mirror.test.mjs` goes red
 - AC6 — mutation: make `RowTargetResolutionProblem` return `""` for an unbuilt target → the roster test goes red in both engines
+- AC5, AC6 — mutation: delete the `RowTargetProblem` call from `Registry.Validate` → `Test/Descriptor.TestARowTargetOutsideTheGrammarIsRefusedByTheRoster`'s shape-sentence assertion goes red; delete the `RowTargetResolutionProblem` call → its roster assertions go red; delete the `rowTargetResolutionProblem` call from `buildMirror` → `screen-mirror.test.mjs`'s roster `assert.throws` goes red (all three observed 2026-09-17, code review)
 - AC7 — mutation: remove `%DB_IRISSYS:READ` from `privileges` → `WireSecurityRead`'s denial-order assertion goes red
-- AC8 — mutation: change the tool's declared field list to six fields → `Test/ReadTool` goes red
+- AC8 — mutation: rename `LockList`'s `toolIdentifier` to `osmgmt.lock` → `Test/ReadTool.TestTheRegistryListsDescriptorReadsAndInheritedKinds` goes red on its tool-name roster (observed 2026-09-17, code review; the six-field mutation recorded here before reddened nothing in that class, which reads no screen's `read.fields`)
 - AC9 — mutation: add an eighth column to `table.columns` → the exact-set test in `Test/Descriptor` goes red
 - AC10 — mutation: drop `"emptyKey": "lockSystemLocal"` from the `System` column → the browser leg's "This instance" assertion goes red (the cell reads "(none)")
 
 Recompile the whole `OcuPilot` package after any mutation to an inherited method before reading a result, and confirm which compiled copy ran.
 
+**QA falsification pass (2026-09-17), one different mutation per AC from the row above, against `ocupilot-b-ci`:**
+
+- AC2 — mutation: append `"NotARealField"` to `read.fields` in `LockList.cls` (a field the vendor genuinely never answers, unlike `PidInternal`, which the endpoint merely excludes) → `Test/ScreenRead.TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow` goes red naming `OcuPilot.Screen.Descriptor.LockList` and the field (observed, reverted)
+- AC3 — **Rule 19 finding, not a redder mutation.** The recorded mutation (an `ns` criterion) stays green because the vendor's `WebListFilterFetch` reads only `filter`; probed further by forwarding `pCriteria("ns")` straight onto the vendor query inside `Read.Execute`'s admin branch, bypassing `SeedCriteria` entirely — still green (observed, reverted). Structurally, the admin-LIST branch never reads `OcuPilot.Kernel.Scope.Current()` (only the `mgmnt` branch does), and `OcuPilot.Api.Router.OnPreDispatch` never switches real `$NAMESPACE` for any request. **The existing `TestTheLocksReadIsTheSameFromEveryNamespace` is vacuous by construction**: its `pCriteria("ns")` value is read by nothing on either call, so the two calls are byte-identical regardless of what "ns" it carries — it cannot fail through this path for any reachable reason, not merely the one already tried. Closed by two additive tests in `Test/ScreenRead.cls`: `TestTheLocksReadDeclaresNoCriteriaAtAll` pins the structural fact ("No `ns` in the read" literally means no `criteria` block at all) and reddens on the very regression the original test could not catch — verified live: adding `{"criteria": {"fields": [{"param": "ns", "kind": "text"}]}}` to the read reddens the new test while `TestTheLocksReadIsTheSameFromEveryNamespace` stays green (observed, reverted); `TestTheLocksReadIgnoresTheResolvedNamespaceScope` replaces the inert `pCriteria` key with the real per-request mechanism (`OcuPilot.Kernel.Scope.Set`), documented as unfalsifiable today for the same architectural reason, rather than left as a silent assumption
+- AC7 — mutation: remove `%Admin_Operate:USE` (the first pair, not the second) from `privileges` → `WireSecurityRead.TestTheLocksListPairSetIsEnforcedForARealPrincipal` goes red on `..#BOTHUSER`'s refusal, and `TestTheProcessesListsPairSetIsEnforcedForARealPrincipal`'s screen-roster assertion goes red too (observed, reverted)
+- AC10 — mutation: point the `System` column's `emptyKey` at a different declared string (`lockListEmpty`) instead of dropping it → the browser leg's every row reads "No locks on this instance." instead of "This instance" (observed against a rebuilt, redeployed bundle; reverted)
+
+No new gap: both AC2's and AC7's fresh mutations reddened for the right reason on the first try; AC3's did not, and is closed by the two tests above rather than filed to the ledger.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+Implemented on Sonnet, falsified by an independent QA pass, then reviewed on Opus with four layers. The review added the two roster fixture registries that pin each engine's wiring, an assertion that the read answers values rather than null-filled keys, and removed AC3's two comparisons, which could not fail and compared two live reads of a volatile table; `TestTheLocksReadDeclaresNoCriteriaAtAll` is the pin. DW-1078 is escalated to the burn-down gate: the grammar still admits a target screen whose composite id has more than one part.
