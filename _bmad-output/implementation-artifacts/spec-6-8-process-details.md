@@ -2,7 +2,7 @@
 title: 'Process details'
 type: 'feature'
 created: '2026-09-17'
-status: 'blocked'
+status: 'draft'
 baseline_revision: 'd1a3340cf5a197c9f215b02d26d835475f9e0260'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -111,6 +111,8 @@ Reads are `GET /api/ocupilot/screens/osmgmt.processdetails/read`. A stable pid: 
 - Integration: given the tool `osmgmt.processdetails.read` with the test's own `$J`, when called in process, then it answers the row the screen's read answers for the same pid over the declared fields, with no `Variables` key.
 
 ## Spec Change Log
+
+- 2026-09-17 (spec gate, orchestrator answers): intent gap resolved. AC1 narrowed in epics.md as the intent block already states (a cached SQL query named by its routine; statement text is Story 19.10's). AD-43's roster grows to seven with Process details (spine amended; EXPERIENCE.md Auto-refresh controls row and Process details row updated; the meter row no longer names Process details). Plan-level decisions (dashboard values, the three pairs confirmed by a real principal on `ocupilot-b-ci`, never-named fields, reuse of 6.7's grammar, 6.10 as consumer) accepted. Status reset to `draft` for re-plan.
 
 ## Review Triage Log
 

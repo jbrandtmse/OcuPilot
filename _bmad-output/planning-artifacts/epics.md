@@ -3756,7 +3756,7 @@ So that I can decide whether to act on it before I act on it.
 
 - **Given** Process details
 - **When** it opens
-- **Then** it shows the dashboard meters, the client executable and address, open devices, and the current SQL statement where the instance makes it available.
+- **Then** it shows the dashboard meters, the client executable and address, open devices, and whether the process is executing a cached SQL query, named by its routine; the statement text is Story 19.10's. [AMENDED 2026-09-17, Story 6.8 spec gate (orchestrator-approved): no admin API endpoint or port carries statement text, which lives only in `INFORMATION_SCHEMA.CURRENT_STATEMENTS` behind Story 19.10's SQL activity screen; was "and the current SQL statement where the instance makes it available"]
 
 - **Given** the Locks view's owner link
 - **When** it is followed
