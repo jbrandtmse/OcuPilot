@@ -2968,3 +2968,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Screen/Registry.cls names Kernel.EntityType and Kernel.Scope; Screen/Read.cls names Kernel.State and Kernel.Fault; Screen/Tool/Base.cls names Kernel.Fault and Api.Error, all shipped in Epics 1 to 3, against the Invariants line that the registry never depends on the kernel
 - 2026-09-17T01:34:32Z status=escalated owner=burndown by=lead note=Recommended: amend the direction line to admit kernel value types, stores and the error vocabulary as shared leaves, since Epic 6 builds more screens on the same edges
 - 2026-09-17T02:40:32Z occurrence=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea
+
+### DW-457: The objectscript-testing rule file names the client bundle path as dist/ocupilot/browser, while the build writes dist/ocupilot-ui/browser
+- source: spec-4-3-the-docked-panel-present-on-every-route.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: The rule's redeploy recipe in .claude/rules/objectscript-testing.md copies dist/ocupilot/browser; ui/angular.json and scripts/ci-throwaway.sh use dist/ocupilot-ui/browser
+- 2026-09-17T03:37:30Z status=routed owner=17-2-a-readme-whose-install-steps-work-the-first-time by=lead note=Developer documentation drift for the story that owns the developer docs, beside DW-446

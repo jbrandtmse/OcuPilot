@@ -2797,7 +2797,7 @@ So that asking about a screen never means leaving it.
 
 - **Given** the panel's left edge
 - **When** the user drags it
-- **Then** it resizes between the minimum and the point where content reaches its 640px minimum, with a `col-resize` cursor and a grip that turns `restrained` at the stop, and the width persists per browser
+- **Then** it resizes between the minimum and the point where content reaches its 640px minimum, with a `col-resize` cursor and a grip that turns `restrained` at either stop - the minimum and the 640px content point [AMENDED 2026-09-17 — see the story change log] - and the width persists per browser
 - **And** it is the **only** resizable edge in the shell - the side bar has no sash, grip or resize cursor
 - **And** the handle is `role="separator"`, `aria-orientation="vertical"`, focusable, with `aria-valuenow/min/max` in px, Left and Right arrows changing width by 16px, Escape releasing, and the new width announced through the value.
 
@@ -2821,7 +2821,7 @@ So that asking about a screen never means leaving it.
 
 - **Given** the assumed **640px content minimum**, below which content scrolls horizontally (UX-DR80)
 - **When** this story is built
-- **Then** the figure is confirmed against the panel's docked and resized widths on the narrowest supported viewport rather than carried as an assumption.
+- **Then** the figure is confirmed against the panel's docked and resized widths on the narrowest supported viewport, 1,280px (EXPERIENCE.md's Full shell row), rather than carried as an assumption [AMENDED 2026-09-17 — see the story change log].
 
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 

@@ -342,6 +342,9 @@ Microcopy. Brand voice and aesthetic posture live in `DESIGN.md`.
 | "Screen context is shared by default" | the instance default for context sharing (FR-11) on Switches - distinct from the panel's per-session "Share screen context", which this seeds |
 | "change the switches" | the action slot the request-refused pattern resolves - "You need <resource> to <action>." - when a Switches call is refused for privilege, as "change this definition" does for the Definition form |
 | "Someone else changed this while you were here. Reload to see the current values, then save again." | the stale-save refusal, shown when a conditional write is refused because the row moved after it was read; one sentence for every screen over OcuPilot's own state, Switches and the Definition form first |
+| "Definitions" | the administrator reminder banner's link, to Agent co-pilot › Definitions |
+| "Full screen" | the panel header's full-screen toggle name; its state is `aria-expanded` (UX-DR42) |
+| "Resize the agent co-pilot panel" | panel-resize-handle accessible name; its value is the width in px |
 
 ## Component Patterns
 
