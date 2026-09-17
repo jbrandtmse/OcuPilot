@@ -84,3 +84,6 @@
 2026-09-17T02:52:11Z	Story 6.4	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 slice_after=empty note=no_entry_owned_by_6-4;occurrences_only(DW-332,DW-1015,DW-1018)
 2026-09-17T02:52:11Z	Story 6.4	smoke_complete	method=cli+api+browser result=pass iterations=1 defects_caught=0 evidence=fresh_ocupilot-b-ci(up_and_down_by_runner);smoke.sh_executed=31_passed=31_incl_five_oauth_checks;OAuthTabs_9/9;oauth.browser-spec_4/4;HTTP_JWT_five_OAuth_tools_200_declared_fields_no_secret_key_in_any_body(stock_instance_empty) lead_doc_fix=spec_Matrix_and_Task_SSL_name_OcuPilotDemoTLS model=claude-opus-5
 2026-09-17T02:52:40Z	Story 6.4	committed	sha=bfc7fdd branch=OCU-1-epic6 pushed=origin/OCU-1-epic6 submodules= ci=pending run=35176051006 amendments=ARCHITECTURE-SPINE.md:AD-5,AD-36,AD-44(orchestrator_option_a),EXPERIENCE.md:Fixed_strings_rows footprint_extensions=scripts/ci-throwaway.sh(comment),ui/src/app/testing/screen-declaration.ts
+2026-09-17T03:06:12Z	Epic 6	epic_context_compiled	reason=planning_artifact_newer(AD-5,AD-36,AD-44) model=claude-opus-5(opus) bytes=14863 header=ok
+2026-09-17T03:06:12Z	Story 6.4	ci_resolved	story=6.4 run=35176051006 result=success resolved_at=next_plan
+2026-09-17T03:06:12Z	Story 6.5	stage_spawned	stage=plan spawn_at=2026-09-17T03:06:12Z model=opus agent_name=6-5-plan-1 cycle_iteration=1 ledger_inbox=none

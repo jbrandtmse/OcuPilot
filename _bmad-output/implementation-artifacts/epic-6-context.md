@@ -14,7 +14,7 @@ arrive in Epics 7, 8, 9 and 12. It depends on Epic 2 alone and runs in parallel 
 - Story 6.1: The REST API explorer and its OpenAPI document viewer (done)
 - Story 6.2: The roles, resources and services lists (done)
 - Story 6.3: The X.509, LDAP/Kerberos and wallet lists (done)
-- Story 6.4: The OAuth 2.0 screen
+- Story 6.4: The OAuth 2.0 screen (done)
 - Story 6.5: On-demand and upcoming tasks
 - Story 6.6: Task history, per task and across tasks
 - Story 6.7: Task details
@@ -57,9 +57,9 @@ These apply to every story, and the story specs do not repeat them:
 
 Story traps:
 
-- **6.4:** archetype `detail` with five tabs; the descriptor declares several entity types, and the
-  primary drives the route and change-event key. Name cells open the classic editor in a new tab under
-  `classicLinkExemption` with its reason: Release 1's only exemption, counted against SM-C1.
+- **No new classic link-out.** Release 1's one `classicLinkExemption` (counted once against SM-C1,
+  removed in Epic 12) is the OAuth 2.0 screen's, declared by its five tab descriptors; no later story
+  in this epic adds another.
 - **6.6:** per-task history is the second parent-scoped screen (after Wallet's Secrets). **DW-1020:**
   a parent-scoped route id names the parent while the descriptor's entity type names the rows, so the
   `(entity type, scope, id)` triple can label a collection as a secret; decide once, for both screens,
@@ -104,11 +104,22 @@ Story traps:
   add what is still refused (a stricter backing query goes in `AdminPort`'s `QUERYPAIRS`). An `admin`
   read must declare `%DB_IRISSYS:READ`. An empty pair set admits everyone. Append pairs, since the
   gate names the first unheld one.
+- **Tabbed screens.** One `detail` descriptor per tab, grouped by a declared `tab`
+  (`{group, position, labelKey}`); each tab has its own primary entity type (secondaries allowed),
+  read, tool and pair set. The group's listed member is the side-bar entry, the rest are unlisted
+  routes, and the shared `DetailPage` draws the tab strip over `ListPage`. Grouping is declared, never
+  hand-routed. A detail's `classicLinkExemption.rowLink` maps row fields to editor params, and a row
+  with any blank param renders plain text.
 - **One read contract.** Sources are `admin`, `mgmnt` and `state`. An `admin` read may name one
   per-row detail call (`rowGet`) after the cap, with an optional `type`: `GET` (default), `INFO` where
   the list row is wrong (`Task.CRUD` LIST reports every task as not suspended) or `CERTINFO` where only
   that type carries the fields; a type the port issues must be in `AdminPort`'s `TYPESUFFIXES`. A 404
-  row is dropped and any other row fault fails the read. Server criteria travel on `admin` and `mgmnt`
+  row is dropped and any other row fault fails the read. For endpoints with no plain LIST: a
+  single-object `GET` source (404 reads as zero rows; no `rowGet`, `forEach` or criteria); a `forEach`
+  source listing a parent endpoint then the child list per parent, bounded by the row cap on rows held
+  and cap+1 on parents listed, reporting truncation (a child 404 is skipped, any other fault fails the
+  read); and `<object>.<member>` fields projecting one member of an object field. A secret-bearing
+  object is never named whole, only its non-secret members. Server criteria travel on `admin` and `mgmnt`
   only. The cap bounds rows; one screen-only payload from a single named vendor object may sit beside
   them, never in the tool view or context.
 - **Read-triggered vendor writes.** AD-7 permits exactly two: the credential password migration and
@@ -166,7 +177,9 @@ Story traps:
 
 - **Upstream:** Epic 2 (`AdminPort` sync and async, `LogSourcePort`, the declared read, `ListPage`,
   command bar, refresh framework, gate), 6.1 (`MgmntPort`, the `mgmnt` source, `<list>/document`),
-  6.2 (column `emptyKey`) and 6.3 (`rowGet.type`, the parent-scoped list grammar and child link).
+  6.2 (column `emptyKey`) 6.3 (`rowGet.type`, the parent-scoped list grammar and child link) and 6.4 (`tab`, `GET`,
+  `forEach`, member fields, `rowLink`, `DetailPage`, registered for the `detail` archetype but
+  built for tabbed tables over `ListPage`)).
 - **Epic 4 in parallel:** `Screen/Tool/**` is outside this epic's footprint, so a derived-tool change
   routes to a later story (descriptor-declared field descriptions are Story 7.1's, DW-1001 and
   DW-1013). Both epics edit `Registry`, `Read`, `AdminPort`, `Install/Smoke`, `Test/` and the
