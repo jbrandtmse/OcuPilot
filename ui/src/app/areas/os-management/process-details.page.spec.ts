@@ -271,6 +271,6 @@ describe('ProcessDetailsPage', () => {
     const declaration = SCREENS.find((screen) => screen.descriptor === DESCRIPTOR);
     expect(declaration?.rowActions).toEqual([]);
     expect(declaration?.primaryAction.id).toBe('');
-    expect(host.querySelector('.ocu-details-link')).toBeNull();
+    expect(host.querySelector('.ocu-details-field-value a')).toBeNull();
   });
 });

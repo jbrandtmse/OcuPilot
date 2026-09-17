@@ -5,9 +5,10 @@
 /// <code>process</code> for it; and the integration AC, the read tool answering the same row the
 /// route does with no <code>Variables</code> key.</p>
 /// <p>Needs the API application installed in <code>HSCUSTOM</code>. Uses this test process's own
-/// <code>$Job</code> as the stable pid every matrix case but "Gone" reads, since it is a real, live
-/// process on this instance for the length of each request (Design Notes: "Stable pids"). Issues
-/// reads only.</p>
+/// <code>$Job</code> as the stable pid for the "Live process" matrix case and the integration AC,
+/// since it is a real, live process on this instance for the length of each request (Design
+/// Notes: "Stable pids"); "No id" sends no pid at all and "Bad id" sends a fixed eleven-character
+/// literal. Issues reads only.</p>
 Class OcuPilot.Test.ProcessDetails Extends %UnitTest.TestCase
 {
 

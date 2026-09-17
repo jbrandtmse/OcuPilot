@@ -2,7 +2,7 @@
 title: 'Process details'
 type: 'feature'
 created: '2026-09-17'
-status: 'in-review'
+status: 'done'
 baseline_revision: 'c75bf657633ccfbf916cddff73f79a448f4af7fa'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -138,6 +138,20 @@ Reads are `GET /api/ocupilot/screens/osmgmt.processdetails/read`. A stable pid: 
   - `[false]` `reject` Intent Alignment: the intent's "SQL clause ... pending the lead" sentence allegedly has no corresponding artifact in the diff — the spec's Design Notes "Settled at the gate" entry records this as adopted and covered by AC1/AC1b through the `Routine` field, and AC1b's component-spec test (`process-details.page.spec.ts`) exercises exactly that.
   - `[medium]` `patch` Intent Alignment: same InTransaction Yes-branch gap noted as a "minor, same-shape gap." Grouped with the Blind Hunter and Edge Case Hunter rows above; same fix, applied.
 
+### 2026-09-17 — Review pass
+
+Re-dispatched after a containment incident (Rule 18): a returned implement-stage subagent resumed its own returned handoff subagent by message, then ran again itself, leaving five patch edits no review layer had seen (`cycle-log-epic-6.md` `protocol_violation`/`orphan_reconciled` rows). The lead's reconcile commit (`05074de`) folded those edits in unchanged; this pass re-verified all of `c75bf65..HEAD` from scratch (fresh `## Verification` run, fresh Matrix Test Audit, fresh four-layer review) rather than trusting the prior pass's own claims. All five of that pass's `applied` patch items were confirmed correctly present by reading the diff and, where feasible, by falsifying the test they touch (the InTransaction Yes-branch fix and the mutation-note reword both go red under the mutation their own docblocks now name); none needed further work.
+
+- verdicts: 6 findings — high 0, medium 1, low 1, false 4, maybe-false 0
+- findings:
+  - `[low]` `patch` Blind Hunter: `Test/ProcessDetails.cls`'s class doc comment claimed `$Job` is the stable pid "every matrix case but 'Gone' reads," but "No id" sends no pid at all and "Bad id" sends a fixed eleven-character literal, not `$Job`. Fix: reworded to name exactly the "Live process" case and the integration AC, applied.
+  - `[false]` `reject` Blind Hunter: `processes.browser-spec.mjs`'s new AC3 test allegedly should compose `'Auto-refresh: every 5 s'` from `STRINGS` rather than hardcode it — the identical literal already ships unchanged at this same file's pre-existing line 463 (an earlier story's AC3 test) and twice more in `tasks.browser-spec.mjs`.
+  - `[false]` `reject` Blind Hunter: a possibly-dangling `textOf` import in `areas/tasks/details.store.ts` after the highlight-tracker extraction — `textOf` is still called at `details.store.ts:54` inside `nextRunText`, confirmed by direct read.
+  - `[false]` `reject` Blind Hunter: `strings.test.mjs`'s comment claims the table now holds exactly 399 literals but the assertion only bounds 150–400, so the number could be stale — an instrumented run of the actual extractor (`node --test`, temporary counter, reverted) printed exactly 399.
+  - `[false]` `reject` Blind Hunter: part of this diff's history passed through an unsupervised orphan-writer window, named as a provenance concern rather than a code defect — the incident is fully recorded and already closed by the lead's own reconcile commit (`05074de`) this dispatch resumes from; no residual code or spec defect follows from it.
+  - `[medium]` `patch` Verification Gap: `process-details.page.spec.ts`'s "offers Refresh and no other action, and no name-cell link" test asserted `host.querySelector('.ocu-details-link')` is null, but `.ocu-details-link` is a class only `TaskDetailsPage` ever emits (its History/Edit links) — `ProcessDetailsPage`'s template has no `<a>` element and no conditional link branch at all, so the assertion passes regardless of what the page renders and cannot catch a regression that turns the Pid field into a link. Fix: assert `host.querySelector('.ocu-details-field-value a')` is null instead; confirmed this now reddens when the Pid field is wrapped in an anchor, applied.
+  - Edge Case Hunter and Intent Alignment reported zero findings each after tracing every changed call site and every reading of the intent against the diff.
+
 ## Design Notes
 
 **Governing ADs:**
@@ -193,7 +207,82 @@ Stateful steps run on the slot B throwaway `ocupilot-b-ci` only; `ocupilot-slot-
 - Integration: `Variables` added to read fields.
 - Transaction words: non-zero read as "No".
 
+**Observed (review, 2026-09-17), each applied and reverted with `git diff --stat` empty afterward:**
+
+- mutation: `process-details.store.ts` `EXECUTION_FIELDS` drops `Routine` -> `process-details-store.test.mjs`'s `groupFor` test and `process-details.page.spec.ts`'s AC1b test both red (observed).
+- mutation: `inTransactionText` swaps its Yes/No branches -> `process-details-store.test.mjs`'s `inTransactionText` test and `process-details.page.spec.ts`'s InTransaction test both red (observed).
+- mutation: `process-details.page.ts`'s `criteria` closure passed `''` instead of `this.router.url` -> 3 of 9 `process-details.page.spec.ts` tests red, including the pid-switch case (observed).
+- mutation: `process-details.page.ts`'s `refresh.bind` call omitted -> 8 of 9 `process-details.page.spec.ts` tests red, including AC3's tick test (observed).
+- mutation: `ProcessDetails.cls` drops `%Admin_Manage:USE` from `privileges` (loaded onto `ocupilot-b-ci` directly, `%SYSTEM.OBJ.Load`) -> `WireSecurityRead.TestTheProcessDetailsPairSetIsEnforcedForARealPrincipal` and `TestTheProcessesListsPairSetIsEnforcedForARealPrincipal` both red (observed).
+- mutation: `ProcessDetails.cls` adds `Variables` to `read.fields`/`filter` (same load path) -> `Test.ProcessDetails`'s `TestALiveProcessReadsOverTheWire`, `TestTheDeclarationValidatesAndIsDeclaredAsProcessDetails` and `TestTheReadToolAnswersTheSameRowAsTheRoute` all red (observed).
+- mutation: `Read.cls`'s AD-37 branch (`If tHttp '= 404`) forced to always fault (same load path; a shared file, restored the same way) -> `Test.ProcessDetails.TestAnUnknownPidReadsAsNoRows` red (observed).
+- mutation, AC1: the literal "parentScope emptied", and a wrong-but-nonempty parentScope, are both refused before a bundle can even be produced -- `screen-mirror.mjs`'s own pre-existing AD-36/DW-1020 grammar guards (Story 6.7, shared engine) refuse a GET source with a declared criterion and no matching parent-scoped list, which is a stronger guarantee than a runtime assertion. A buildable equivalent was used instead: `screen-outlet.ts`'s `DESCRIPTOR_PAGES` entry for `ProcessDetails` removed, rebuilt and redeployed -> 3 of `processes.browser-spec.mjs`'s Story 6.8 tests red (AC1, AC2, AC3; the route no longer resolves to a rendered page) (observed).
+- mutation, this pass's own patch: `process-details.page.spec.ts`'s "no name-cell link" assertion, changed from `.ocu-details-link` (a class this page never emits) to `.ocu-details-field-value a` -> confirmed red when the Pid field is wrapped in an `<a>` (observed).
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Summary.** Implemented Process details end to end: the unlisted `ProcessDetails` descriptor
+(parent-scoped under Processes, keyed by `Pid`, the same three-pair set as `ProcessList`), its page
+and grouping store (three labeled value groups mirroring the classic page, no meter), the
+`TaskDetailsHighlights` tracker generalized to `core/detail-highlights.ts` as `DetailHighlights` so
+both detail pages share it, the new Fixed strings row, the `processdetails` smoke check, and the
+full test surface (an ObjectScript matrix-and-declaration test class, a real-principal pair-set
+wire test, a component spec, four new browser-spec cases, and the roster extensions the Code Map
+names). A prior implement stage's return was mishandled (Rule 18 containment incident, recorded in
+`cycle-log-epic-6.md`); the lead reconciled the resulting tree into one commit and re-dispatched
+this build at review. This pass treated `c75bf657...HEAD` as an unverified diff: it re-ran every
+`## Verification` command and the Matrix Test Audit from scratch, confirmed all five of the prior
+review pass's `applied` patches directly against the code, and ran all four review layers again.
+
+**Files changed** (the whole `c75bf65..HEAD` diff; this pass added the two files listed under
+"this pass" below):
+
+- `src/OcuPilot/Screen/Descriptor/ProcessDetails.cls` (new) -- the declaration.
+- `src/OcuPilot/Screen/Descriptor/ProcessList.cls` -- two doc-comment sentences updated to point at the now-real detail screen.
+- `src/OcuPilot/Test/ProcessDetails.cls` (new) -- the declaration, I/O matrix and Integration AC tests.
+- `src/OcuPilot/Test/WireSecurityRead.cls` -- the Pairs row, real-principal proof.
+- `src/OcuPilot/Test/Navigation.cls`, `Test/ReadTool.cls`, `Test/Wire.cls`, `Test/Smoke.cls` -- roster/count updates for the new screen and tool.
+- `src/OcuPilot/Install/Smoke.cls` -- the `processdetails` live check.
+- `ui/src/app/areas/os-management/process-details.page.ts`, `.store.ts`, `.page.spec.ts` (all new) -- the page, its group/transaction-word store, and its component spec.
+- `ui/src/app/core/detail-highlights.ts` (new) -- `DetailHighlights`, moved out of `areas/tasks/details.store.ts`; `ui/src/app/areas/tasks/details.page.ts`/`details.store.ts` updated to import it.
+- `ui/src/app/shell/screen-outlet.ts` -- registers `ProcessDetailsPage`.
+- `ui/src/app/core/strings.ts`, `ui/tools/strings.test.mjs`, `EXPERIENCE.md` -- the new Fixed strings row.
+- `ui/tools/navigation.test.mjs`, `navigation-wire.test.mjs`, `screen-mirror.test.mjs`, `ui/src/app/shell/rail-wire.spec.ts` -- pin the new screen's position and pairs.
+- `ui/tools/detail-highlights.test.mjs` (new), `details-store.test.mjs` -- the moved highlight tracker, pure-function tested.
+- `ui/tools/process-details-store.test.mjs` (new) -- `groupFor`/`inTransactionText`, pure-function tested.
+- `ui/browser/processes.browser-spec.mjs` -- four new Story 6.8 cases (AC1-AC4).
+- This pass: `src/OcuPilot/Test/ProcessDetails.cls` (doc-comment correction) and `ui/src/app/areas/os-management/process-details.page.spec.ts` (unfalsifiable-assertion fix) -- see Review findings below.
+
+**Review findings.** First pass (2026-09-17, log above): 16 findings -- 5 patched (medium x4,
+low x1: the InTransaction Yes-branch test gap, both missing `LIVE_PAYLOAD` roster entries, and two
+stale doc comments), 4 low rejected (untested non-digit `pid`, a smoke two-read race, a barred
+spec-wording complaint, an out-of-scope AC5-coverage complaint), 7 false (refuted with cited
+evidence in the log). This pass (2026-09-17, log above): 6 findings -- 1 patched low (a doc comment
+overstating which test methods use `$Job`), 1 patched medium (an unfalsifiable "no name-cell link"
+assertion checking a CSS class this page never emits), 4 false (refuted with cited evidence,
+including one confirmed by an instrumented rerun of the literal-count extractor). Edge Case Hunter
+and Intent Alignment reported zero findings on this pass.
+
+**Follow-up review recommendation:** false. This pass patched one low and one medium entry, no
+high; the rule's threshold (a patched high, or two-or-more patched medium) is not met, and no
+unverified risk survives this pass's own re-verification.
+
+**Verification performed.** `uv run scripts/check-objectscript.py` clean (357 files); the full
+`src/` tree loaded and the nine changed classes compiled clean on `ocupilot-slot-b`; on a fresh
+`ocupilot-b-ci` throwaway, `ci-runner.mjs` green for ProcessDetails (6), WireSecurityRead (13), Wire
+(20), ReadTool (26), ScreenRead (22), Descriptor (35) and Smoke (32); `bash scripts/smoke.sh`
+PASSED (36/36, including `processdetails`); `cd ui && npm run build && npm test` green (839 tool
+tests, 445 component tests); `processes.browser-spec.mjs` and `tasks.browser-spec.mjs` green
+(107/107 total) against a rebuilt-and-redeployed bundle; `bash scripts/lint-docs.sh` clean. Every
+Matrix row (Live process, Gone, No id, Bad id, Pairs) is covered by a test that ran and passed. All
+eight `## Verification` mutations were applied on the throwaway, observed red, and reverted to a
+byte-identical tree (see Observed above); the AC1 mutation as literally specified turned out to be
+refused at build time by a pre-existing cross-engine grammar guard, so a buildable equivalent was
+substituted and is recorded as such. The two patches from this pass were each re-verified in
+isolation (compiled/loaded onto the throwaway and onto `ocupilot-slot-b`; `ng test` on the changed
+spec file) and the whole gate set was re-run clean afterward.
+
+**Residual risks:** none identified.
