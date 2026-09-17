@@ -14,8 +14,8 @@
 /// (<method>OcuPilot.Kernel.State.Turn.GuardedBegin</method>), and finishes it with the outcome this
 /// answers. Not called from an escalated frame (AD-9).</p>
 /// <p>Seams a subclass overrides: <method>LimitsClass</method>, <method>PortClass</method>,
-/// <method>DispatchClass</method>, <method>Restraint</method> and <method>DispatchTools</method>.
-/// Production overrides none.</p>
+/// <method>DispatchClass</method>, <method>Restraint</method>, <method>DispatchTools</method> and
+/// <method>LogFault</method>. Production overrides none.</p>
 Class OcuPilot.Kernel.Agent.Loop Extends %RegisteredObject
 {
 
@@ -38,6 +38,12 @@ ClassMethod PortClass() As %String
 ClassMethod DispatchClass() As %String
 {
     Quit "OcuPilot.Kernel.Agent.Dispatch"
+}
+
+/// <p>Log a loop failure with the code the turn ends with.</p>
+ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String)
+{
+    Do ##class(OcuPilot.Kernel.Fault).LogRaw("turn", pMessage, pStatus, pCode)
 }
 
 /// <p>The kill switch and read-only verdict for <var>pUser</var>, read afresh.</p>
@@ -88,7 +94,7 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
         Kill tTools
         Set tAdvertiseSC = $ClassMethod(..DispatchClass(), "Advertise", .tTools)
         If $$$ISERR(tAdvertiseSC) {
-            Do ##class(OcuPilot.Kernel.Fault).LogRaw("turn", "the turn's tools could not be advertised", tAdvertiseSC, pOutcome("code"))
+            Do ..LogFault("the turn's tools could not be advertised", tAdvertiseSC, pOutcome("code"))
             Quit
         }
         For {
@@ -157,7 +163,7 @@ ClassMethod Boundary(pKey As %String, pUser As %String, pReadOnly As %Boolean, p
     Set tAbandoned = ##class(OcuPilot.Kernel.State.Turn).#STATEABANDONED
     Set tSC = ##class(OcuPilot.Kernel.State.Turn).GuardedSignals(pKey, .tStop, .tAbandon, .tRenewedAt)
     If $$$ISERR(tSC) {
-        Do ##class(OcuPilot.Kernel.Fault).LogRaw("turn", "a step boundary could not read the turn's signals", tSC, pCode)
+        Do ..LogFault("a step boundary could not read the turn's signals", tSC, pCode)
         Quit 1
     }
     If tStop {
@@ -172,7 +178,7 @@ ClassMethod Boundary(pKey As %String, pUser As %String, pReadOnly As %Boolean, p
     }
     Set tSC = ..Restraint(pUser, .tVerdict)
     If $$$ISERR(tSC) {
-        Do ##class(OcuPilot.Kernel.Fault).LogRaw("turn", "a step boundary could not read the switches", tSC, pCode)
+        Do ..LogFault("a step boundary could not read the switches", tSC, pCode)
         Quit 1
     }
     If +$Get(tVerdict("killSwitch")) {
@@ -317,8 +323,9 @@ ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %Str
 }
 
 /// <p>The reply a turn that reached its iteration cap ends with: how many tool calls were made, one
-/// line per call naming the tool and its outcome, and a suggestion for what to do next. The tool
-/// names are the model's own and are rendered as untrusted content.</p>
+/// line per call naming the tool and its outcome, and a suggestion for what to do next. A name is the
+/// tool's canonical name, or the model's own for a call that resolved to no tool, and is rendered as
+/// untrusted content.</p>
 ClassMethod FallbackReply(pToolLog As %DynamicArray) As %String
 {
     Set tCount = pToolLog.%Size()

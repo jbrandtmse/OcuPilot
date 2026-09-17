@@ -4,9 +4,11 @@
 /// observes whether the dispatcher reached the tool at all.</p>
 /// <p>The view answers <code>{marker, rows, truncated}</code>: <code>rows</code> is the input's
 /// <code>rows</code> objects, each carrying a <code>text</code> of <code>width</code> characters.
-/// Input <code>blob</code> answers <code>{text}</code> of that many characters and no rows. An armed
-/// fault (<method>ArmFault</method>) answers an error with that fault instead. Its pairs are two
-/// probe pairs, or unresolved once <method>ArmUnresolvedPairs</method> is called.</p>
+/// Input <code>blob</code> answers <code>{text}</code> of that many characters, plus the
+/// <code>rows</code> when <code>rows</code> is also given. Input <code>throw</code> 1 makes the view
+/// throw, and <code>empty</code> 1 makes it answer success with no result. An armed fault
+/// (<method>ArmFault</method>) answers an error with that fault instead. Its pairs are two probe
+/// pairs, or unresolved once <method>ArmUnresolvedPairs</method> is called.</p>
 /// <p>State lives in <code>^||OcuPilotDispatchTool</code>; <method>Clear</method> forgets it.</p>
 Class OcuPilot.Test.DispatchTool.Counter Extends OcuPilot.Screen.Tool.Base [ Abstract ]
 {
@@ -53,7 +55,9 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
             "marker": {"type": "string", "maxLength": 64, "description": "Echoed in the result."},
             "rows": {"type": "integer", "minimum": 0, "maximum": 5000, "description": "Rows to answer."},
             "width": {"type": "integer", "minimum": 0, "maximum": 100000, "description": "Characters per row."},
-            "blob": {"type": "integer", "minimum": 0, "maximum": 1000000, "description": "Characters of a rowless result."}
+            "blob": {"type": "integer", "minimum": 0, "maximum": 1000000, "description": "Characters of the result's text."},
+            "throw": {"type": "integer", "minimum": 0, "maximum": 1, "description": "1 makes the view throw."},
+            "empty": {"type": "integer", "minimum": 0, "maximum": 1, "description": "1 makes the view answer no result."}
         },
         "required": [],
         "additionalProperties": false
@@ -107,9 +111,8 @@ ClassMethod View(pDescriptor As %String, pArgs As %DynamicAbstractObject, pConte
         If $List(tFault, 3) '= "" Do pFault.%Set("detail", ##class(%DynamicAbstractObject).%FromJSON($List(tFault, 3)))
         Quit $$$ERROR($$$GeneralError, "the probe fault")
     }
-    If +pArgs.%Get("blob") > 0 {
-        Set pResult = {}
-        Do pResult.%Set("text", $Translate($Justify("", +pArgs.%Get("blob")), " ", "b"), "string")
+    If +pArgs.%Get("throw") Throw ##class(%Exception.General).%New("the probe view threw")
+    If +pArgs.%Get("empty") {
         Set pHttpStatus = 200
         Quit $$$OK
     }
@@ -120,6 +123,13 @@ ClassMethod View(pDescriptor As %String, pArgs As %DynamicAbstractObject, pConte
         Do tRow.%Set("n", tI, "number")
         Do tRow.%Set("text", tText, "string")
         Do tRows.%Push(tRow)
+    }
+    If +pArgs.%Get("blob") > 0 {
+        Set pResult = {}
+        Do pResult.%Set("text", $Translate($Justify("", +pArgs.%Get("blob")), " ", "b"), "string")
+        If tRows.%Size() > 0 Do pResult.%Set("rows", tRows)
+        Set pHttpStatus = 200
+        Quit $$$OK
     }
     Set pResult = {}
     Do pResult.%Set("marker", pArgs.%Get("marker"), "string")

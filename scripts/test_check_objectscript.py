@@ -1290,6 +1290,23 @@ class TestRestraintContainmentReach(FixtureTreeCase):
         self.assertFalse(any("refusal.spec.ts" in p for p in problems), f"a spec asserts codes, got {problems}")
         self.assertFalse(any("ui/tools/" in p for p in problems), f"outside ui/src, got {problems}")
 
+    def test_a_testing_helper_names_a_code_and_passes(self):
+        self.write("ui/src/app/testing/agent-status.ts", "export const KILLED = { code: 'AGENT.KILLSWITCH.GLOBAL' };\n")
+        self.assertEqual(self.containment_problems(), [], "a spec builder under ui/src/app/testing/ is test code")
+
+    def test_a_family_named_without_its_trailing_dot_is_refused(self):
+        self.write("ui/src/app/shell/panel/refusal.ts", "export const off = (code: string) => code.startsWith('AGENT.KILLSWITCH');\n")
+        self.write(
+            "src/OcuPilot/Kernel/Agent/Probe.cls",
+            "Class OcuPilot.Kernel.Agent.Probe Extends %RegisteredObject\n"
+            "{\n\nClassMethod Run(pCode As %String) As %Boolean\n{\n"
+            '    Quit $Piece(pCode, ".", 1, 2) = "AGENT.READONLY"\n'
+            "}\n\n}\n",
+        )
+        problems = self.containment_problems()
+        self.assertTrue(any(p.startswith("ui/src/app/shell/panel/refusal.ts:1:") for p in problems), f"got {problems}")
+        self.assertTrue(any(p.startswith("src/OcuPilot/Kernel/Agent/Probe.cls:6:") for p in problems), f"got {problems}")
+
     def test_every_declared_restraint_code_is_seen_by_its_tail(self):
         # The tail alternatives are written out by hand; this holds them to the codes Api/Error.cls
         # declares, so a new restraint code cannot slip past the tail match.
@@ -1379,6 +1396,10 @@ class TestStateSqlLiteralRule(FixtureTreeCase):
                 self.store("src/OcuPilot/Kernel/State/Probe.cls", "OcuPilot.Kernel.State.Probe", f"Set tSC = ..{helper}(tSql, pName, .tIds)")
                 problems = self.problems()
                 self.assertTrue(any(p.startswith("src/OcuPilot/Kernel/State/Probe.cls:6:") and helper in p for p in problems), f"got {problems}")
+
+    def test_a_call_through_a_store_variable_is_refused(self):
+        self.store("src/OcuPilot/Kernel/State/Probe.cls", "OcuPilot.Kernel.State.Probe", "Set tSC = tStore.GuardedIdsWhere(tSql, pName, .tIds)")
+        self.assertTrue(any("Probe.cls:6:" in p for p in self.problems()), "a call through a store variable is read as well")
 
     def test_a_concatenated_sql_argument_is_refused(self):
         self.store("src/OcuPilot/Kernel/State/Probe.cls", "OcuPilot.Kernel.State.Probe", 'Set tSC = ##class(OcuPilot.Kernel.State.Agent).GuardedIdsWhere(tFragment _ " ORDER BY ID", pName, .tIds)')

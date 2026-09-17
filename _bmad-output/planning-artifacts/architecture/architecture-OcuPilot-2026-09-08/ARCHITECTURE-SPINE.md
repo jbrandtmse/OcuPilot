@@ -634,7 +634,8 @@ OcuPilot/
   src/OcuPilot/
     Api/            # %CSP.REST router, thin wrappers, OnPreDispatch seam, static handler
     Kernel/
-      Agent/        # turn job, loop, caller context, turn result, progress
+      Agent/        # turn job, loop, caller context, turn result, progress, tool dispatch
+      Shell/        # shell reads (instance identity, namespaces, privilege map) shared by the API and their read tools
       Provider/     # provider base and the four adapters, retry, message and tool adapters
       Proposal/     # mint, fingerprint, diff, confirm, expiry
       Governance/   # keys, baseline, cascade, presets, call-time gate
@@ -643,7 +644,7 @@ OcuPilot/
       State/        # protected-storage base, the only class that escalates
     Screen/
       Descriptor/   # one class per screen; the registry
-      Tool/         # tool base, generated schemas, dispatch
+      Tool/         # tool base, generated schemas, the registry of dispatchable tools
     Area/
       WebApp/  Permissions/  Security/  Task/  OsMgmt/  Log/
     Port/           # AdminPort, MonitorPort, MgmntPort, LogSourcePort, ProviderPort

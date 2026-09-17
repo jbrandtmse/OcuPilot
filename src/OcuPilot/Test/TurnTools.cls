@@ -141,7 +141,9 @@ Method TestEveryRequestAdvertisesEveryTool()
 }
 
 /// <p>Advertise, refused -- a registry that cannot list ends the turn <code>failed</code>
-/// <code>TURN.UNAVAILABLE</code> with no provider call.</p>
+/// <code>TURN.UNAVAILABLE</code>, logged, with no provider call.</p>
+/// <p>Mutation: <method>OcuPilot.Kernel.Agent.Loop.Run</method> ends the turn without logging -> this
+/// goes red.</p>
 Method TestAListingThatFailsEndsTheTurnBeforeAProviderCall()
 {
     Do $ClassMethod(..#LOOP, "SetDispatchClass", ..#DISPATCH)
@@ -150,6 +152,7 @@ Method TestAListingThatFailsEndsTheTurnBeforeAProviderCall()
     Set tKey = ..RunTurn(.tOutcome)
     Do $$$AssertEquals(tOutcome("state") _ "|" _ tOutcome("code") _ "|" _ tOutcome("errorSeq"), "failed|TURN.UNAVAILABLE|0", "the turn fails before any step")
     Do $$$AssertEquals($ClassMethod(..#STUB, "Calls"), 0, "with no provider call")
+    Do $$$AssertTrue($ClassMethod(..#LOOP, "Logged") [ "the turn's tools could not be advertised | TURN.UNAVAILABLE", "and the refusal is logged: " _ $ClassMethod(..#LOOP, "Logged"))
 }
 
 /// <p>Several calls -- one reply's three calls are answered by three <code>tool_result</code> blocks

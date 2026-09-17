@@ -2933,3 +2933,30 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Loop.AnswerTools records a tool step's name, status and code only; neither the row count sent nor truncated is kept
 - 2026-09-17T00:36:44Z status=routed owner=4-5-a-turn-watched-progress-cards-and-the-conversation-lock by=harvest note=The progress-card story shows rows returned and context rows sent for a read
+- 2026-09-17T01:30:47Z status=routed owner=4-5-a-turn-watched-progress-cards-and-the-conversation-lock by=cr note=also detail.failedPair: the tool step drops the pair AD-8 needs the card to name
+
+### DW-452: One model reply's tool results have no aggregate bound, so a few capped reads can overflow the provider context and 56 reach IRIS's string limit
+- source: spec-4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: Dispatch.Answer caps each result at 65,536 characters but bounds neither the count nor the sum, and every later request resends them. About 13 capped results pass a 200K-token context (inference); 56 pass 3,641,144 characters and Loop.AnswerTools' %ToJSON throws <MAXSTRING> after every tool ran.
+- 2026-09-17T01:30:47Z status=routed owner=4-4-screen-context-on-every-turn-capped-with-its-toggle-and-chip by=cr note=4.4 makes AD-24's caps operator-settable; an aggregate per-request tool-result budget belongs with them
+
+### DW-453: The shell privilege and namespace reads evaluate the job's frozen $ROLES while the dispatcher checks the user's current grants
+- source: spec-4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: ShellPrivileges calls Api.Navigation.Payload, which reaches Screen.Gate.HoldsPrivilege ($System.Security.Check); ShellNamespaces reaches EvaluatePairs the same way. After a mid-turn revocation shell.privileges.read can call a screen allowed that the dispatcher then refuses.
+- 2026-09-17T01:30:47Z status=by-design owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=cr note=Shell reads row requires each Payload unchanged; the boundary re-checks the turn gate from current grants
+
+### DW-454: The built-in system prompt says the agent's tools change nothing, which the first write tool makes untrue
+- source: spec-4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Prompt.BUILTIN now reads 'Your tools read this instance and change nothing: say so when a request needs a change'. True while the registry holds read tools only (AD-7, AD-11 rule 1); a proposal-minting tool needs the constant to say what a proposal is.
+- 2026-09-17T01:30:47Z status=routed owner=5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read by=cr note=5.1 registers the first write tool; restate the prompt's tool sentence in the same change
+
+### DW-455: The spine's Structural Seed places tool dispatch under Screen/Tool/, while the registry-never-depends-on-the-kernel rule puts it in Kernel/Agent/
+- source: spec-4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: ARCHITECTURE-SPINE.md source tree: 'Tool/ # tool base, generated schemas, dispatch'. Dispatch.cls needs Kernel.Governance.Gate and Kernel.Restraint, and the Invariants section says the registry never depends on the kernel.
+- 2026-09-17T01:30:47Z status=open owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=cr note=Rule 20 candidate for the lead: correct the seed comment to name Kernel/Agent/ for dispatch
+- 2026-09-17T01:34:32Z status=resolved-by:4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=lead note=the spine source tree now places dispatch in Kernel/Agent and shell reads in Kernel/Shell, with a memlog decision entry
+
+### DW-456: Shipped registry-layer classes already name kernel and API classes the spine's direction line forbids them to depend on
+- source:  | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Screen/Registry.cls names Kernel.EntityType and Kernel.Scope; Screen/Read.cls names Kernel.State and Kernel.Fault; Screen/Tool/Base.cls names Kernel.Fault and Api.Error, all shipped in Epics 1 to 3, against the Invariants line that the registry never depends on the kernel
+- 2026-09-17T01:34:32Z status=escalated owner=burndown by=lead note=Recommended: amend the direction line to admit kernel value types, stores and the error vocabulary as shared leaves, since Epic 6 builds more screens on the same edges

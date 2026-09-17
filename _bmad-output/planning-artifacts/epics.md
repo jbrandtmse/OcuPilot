@@ -2882,6 +2882,7 @@ So that "what am I looking at?" is a question I can just ask - and so I can stop
 - DW-281: AD-24's field-level bound is unimplemented, so a read tool's payload carries an unbounded `EventData` blob per row (ledger; routed by harvest 2026-09-15)
 - DW-398: the anchored credential backstop cannot mask a secret word that is not final in a key name (ledger; routed by the burn-down gate 2026-09-16)
 - DW-399: nothing compares the audit redactor's suffix list with `field-lists.mjs`'s `CREDENTIAL_RE`, which its own doc says it mirrors (ledger; routed by the burn-down gate 2026-09-16)
+- DW-452: one model reply's tool results have no aggregate bound, so a few capped reads can overflow the provider context or the string limit (ledger; routed by cr 2026-09-17)
 
 ### Story 4.5: A turn, watched: progress cards and the conversation lock
 

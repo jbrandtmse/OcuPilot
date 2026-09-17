@@ -1,9 +1,9 @@
 /// <p>Test-only <class>OcuPilot.Kernel.Agent.Loop</class> subclass whose seams are switches, so the
 /// loop runs in process with no socket: the port is <class>OcuPilot.Test.ProviderPortProbe</class>,
 /// the limits are <class>OcuPilot.Test.TurnLimits</class> unless a test names others, the dispatcher
-/// is the shipped one unless a test names another, and the restraint verdict is the real one unless
-/// a test forces the kill switch on or the read to fail. No method of the loop itself is
-/// replaced.</p>
+/// is the shipped one unless a test names another, the restraint verdict is the real one unless
+/// a test forces the kill switch on or the read to fail, and a logged failure is recorded here
+/// instead of written. No method of the loop itself is replaced.</p>
 Class OcuPilot.Test.TurnLoopProbe Extends OcuPilot.Kernel.Agent.Loop
 {
 
@@ -38,6 +38,22 @@ ClassMethod SetDispatchClass(pClass As %String)
 ClassMethod SetLimitsClass(pClass As %String)
 {
     Set ^||OcuPilotTurnLoopProbe("limits") = pClass
+}
+
+/// <p>Every logged failure since the last <method>Reset</method>, one <code>message | code</code>
+/// per line.</p>
+ClassMethod Logged() As %String
+{
+    Set tLines = ""
+    For tI = 1:1:+$Get(^||OcuPilotTurnLoopProbe("log")) {
+        Set tLines = tLines _ $Select(tI = 1: "", 1: $Char(10)) _ $Get(^||OcuPilotTurnLoopProbe("log", tI))
+    }
+    Quit tLines
+}
+
+ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String)
+{
+    Set ^||OcuPilotTurnLoopProbe("log", $Increment(^||OcuPilotTurnLoopProbe("log"))) = pMessage _ " | " _ pCode
 }
 
 ClassMethod LimitsClass() As %String

@@ -70,6 +70,7 @@ Method TestAStateReadFetchesOneRowMoreThanItAnswers()
         Do $$$AssertStatusOK(##class(OcuPilot.Test.AgentFixture).CreateDefinition(..#PROBEPREFIX _ "RoundTrip" _ tI), "probe definition " _ tI _ " is created")
     }
     Do $$$AssertStatusOK($ClassMethod(..#REGISTRY, "Resolve", "agent.definitions.read", .tTool), "the definitions read tool resolves")
+    Do $$$AssertTrue($IsObject(tTool), "to a registered tool")
     If '$IsObject(tTool) Quit
     Set tProbe = {"kind": "read", "class": "OcuPilot.Test.StateReadToolProbe"}
     Do tProbe.%Set("name", tTool.name)

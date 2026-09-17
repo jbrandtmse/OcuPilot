@@ -147,7 +147,7 @@ prose into one checker.
     `Kernel/State/Switch.cls` or `Hold.cls` is not restricted -- `Api/Switches.cls` does it
     legitimately -- so the rule cannot be tightened to those class names either. It reads
     ObjectScript source, skipping comments and XData bodies, and the client's `.ts` and `.html`
-    under `ui/src` whole, `.spec.ts` excepted (DW-393, DW-394).
+    under `ui/src` whole, `.spec.ts` and `ui/src/app/testing/` excepted (DW-393, DW-394).
 
 19. **The turn job's reach (AD-7, AD-9, Story 4.1).** A file under `OcuPilot/Kernel/Agent/` names
     no `OcuPilot.Port.*` class but `OcuPilot.Port.ProviderPort`, no `OcuPilot.Area.*` class, no
@@ -164,7 +164,8 @@ prose into one checker.
 
 21. **Literal state SQL (AD-21, Story 4.2).** Under `Kernel/State/`, outside `Base.cls`, which
     defines the helpers, the SQL argument of every `Guarded*Where*` or `GuardedExecute*` call is a
-    string literal, so no caller value can reach a statement's text.
+    string literal. It reads direct method calls (`..`, `).` or `tStore.`), not a name passed to
+    `$ClassMethod`.
 
 This checker is deliberately line-oriented rather than a full UDL parser: it is exact
 enough to catch the violations above and cheap enough to run on every commit and every
@@ -760,7 +761,7 @@ def check_escalation_containment(problems: list[str]) -> None:
 # templates are read whole (DW-394). ObjectScript comments and XData bodies are skipped. The wider
 # property is held by review.
 RESTRAINT_CODE_RE = re.compile(
-    r"AGENT\.(READONLY|KILLSWITCH)\."
+    r"AGENT\.(READONLY|KILLSWITCH)\b"
     r"|KILLSWITCH\.(GLOBAL|USER)\b|READONLY\.(ENFORCED|DEFINITION)\b"
     r"|AGENT(READONLY|KILLSWITCH)"
     r"|ReasonForRestraint|RestraintCodes",
@@ -770,6 +771,8 @@ RESTRAINT_CODE_RE = re.compile(
 RESTRAINT_CLIENT_ROOT = "ui/src/"
 RESTRAINT_CLIENT_SUFFIXES = (".ts", ".html")
 RESTRAINT_CLIENT_EXCLUDED_SUFFIX = ".spec.ts"
+# The specs' builders and harness; client-lint.mjs refuses a shipped file importing from here.
+RESTRAINT_CLIENT_EXCLUDED_ROOT = "ui/src/app/testing/"
 
 RESTRAINT_ALLOWED = frozenset(
     {
@@ -801,6 +804,7 @@ def check_restraint_containment(problems: list[str]) -> None:
             rel.startswith(RESTRAINT_CLIENT_ROOT)
             and rel.endswith(RESTRAINT_CLIENT_SUFFIXES)
             and not rel.endswith(RESTRAINT_CLIENT_EXCLUDED_SUFFIX)
+            and not rel.startswith(RESTRAINT_CLIENT_EXCLUDED_ROOT)
         ):
             is_client = True
         else:
@@ -934,7 +938,7 @@ def check_tool_dispatch(problems: list[str]) -> None:
 # guarded helpers in Base.cls take the text as an argument, so a call site passing a variable is
 # the one place a caller value could reach the text; the rule holds every call site to a literal.
 
-STATE_SQL_CALL_RE = re.compile(r"(?:\.\.|\)\.)(Guarded\w*Where\w*|GuardedExecute\w*)\(")
+STATE_SQL_CALL_RE = re.compile(r"\.(Guarded\w*Where\w*|GuardedExecute\w*)\(")
 # The SQL argument is one whole string literal (a doubled quote is an escaped quote) followed by the
 # next argument or the call's close -- so a literal joined to a caller value is refused too.
 STATE_SQL_LITERAL_ARG_RE = re.compile(r'\s*"(?:[^"]|"")*"\s*[,)]')

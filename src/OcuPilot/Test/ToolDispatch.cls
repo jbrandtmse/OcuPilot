@@ -1,6 +1,7 @@
 /// <p>The tool dispatcher's order, one refusal at a time (AD-1, AD-8, AD-11, AD-22, AD-24, AD-30,
 /// AD-39): a registered call, an unknown tool, another user, a gate denial, a restrained write, a
-/// denied or unreadable pair, refused arguments, a tool fault, and both result caps -- each observed on
+/// denied or unreadable pair, refused arguments, a tool fault, a failure inside the dispatch path, and
+/// both result caps -- each observed on
 /// the <code>tool_result</code> content <method>OcuPilot.Kernel.Agent.Dispatch.Answer</method> renders
 /// and on the counting fixtures' record of what was reached.</p>
 /// <p>Driven through <class>OcuPilot.Test.ToolDispatchProbe</class> over
@@ -220,6 +221,33 @@ Method TestAToolFaultAnswersItsCodeAndDetailOnly()
     Do ..Call("probe_counter_read", {}, .tResult, .tName)
     Do $$$AssertEquals(tResult.content, "{""code"":""INTERNAL""}", "an internal failure answers its code alone")
     Do $$$AssertTrue($ClassMethod(..#PROBE, "Logged") [ "failed on the instance | INTERNAL", "and is logged, so the cause is kept: " _ $ClassMethod(..#PROBE, "Logged"))
+}
+
+/// <p>A failure inside the dispatch path -- a registry that cannot list, a view that throws and a view
+/// that answers no result -- each answers <code>TOOL.UNAVAILABLE</code> and is logged; a result whose
+/// part outside its rows is over the size cap answers <code>TOOL.RESULTTOOLARGE</code>.</p>
+/// <p>Mutation: <method>OcuPilot.Kernel.Agent.Dispatch.AnswerOne</method> without its registry-error
+/// branch -> this goes red.</p>
+Method TestAFailureInsideTheDispatchPathIsUnavailableAndLogged()
+{
+    Do $ClassMethod(..#PROBE, "SetRegistryClass", "OcuPilot.Test.ReadTwinToolRegistry")
+    Do ..Call("probe_counter_read", {}, .tResult, .tName)
+    Do $$$AssertEquals(tResult."is_error" _ "|" _ tResult.content, "1|{""code"":""TOOL.UNAVAILABLE""}", "a registry that cannot list is unavailable")
+    Do $$$AssertTrue($ClassMethod(..#PROBE, "Logged") [ "the tool registry could not be read | TOOL.UNAVAILABLE", "and is logged: " _ $ClassMethod(..#PROBE, "Logged"))
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Count", "gate"), 0, "and reaches no gate")
+
+    For tCase = $ListBuild("throw", "failed with no fault"), $ListBuild("empty", "answered no result") {
+        Do $ClassMethod(..#PROBE, "Reset")
+        Set tInput = {}
+        Do tInput.%Set($List(tCase, 1), 1, "number")
+        Do ..Call("probe_counter_read", tInput, .tResult, .tName)
+        Do $$$AssertEquals(tResult."is_error" _ "|" _ tResult.content, "1|{""code"":""TOOL.UNAVAILABLE""}", $List(tCase, 1) _ ": unavailable")
+        Do $$$AssertTrue($ClassMethod(..#PROBE, "Logged") [ ($List(tCase, 2) _ " | TOOL.UNAVAILABLE"), $List(tCase, 1) _ ": logged: " _ $ClassMethod(..#PROBE, "Logged"))
+    }
+
+    Set tMax = $Parameter(..#LIMITS, "TOOLRESULTMAXLENGTH")
+    Do ..Call("probe_counter_read", {"rows": 2, "width": 1, "blob": (tMax + 10)}, .tResult, .tName)
+    Do $$$AssertEquals(tResult."is_error" _ "|" _ tResult.content, "1|{""code"":""TOOL.RESULTTOOLARGE""}", "a result over the cap once every row is dropped is refused")
 }
 
 /// <p>Row cap -- a result holding more rows than the cap is cut to it and marked truncated; one at

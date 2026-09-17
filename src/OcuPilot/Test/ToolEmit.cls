@@ -57,6 +57,24 @@ Method TestEveryLiveToolHasAReversibleWireName()
     }
 }
 
+/// <p>No two tools share a wire name -- two tool classes declaring the same canonical name refuse
+/// the whole listing, naming both claimants, with nothing listed and nothing advertised; over
+/// <class>OcuPilot.Test.ClashTool.Registry</class>.</p>
+/// <p>Mutation: <method>OcuPilot.Screen.Tool.Registry.Claim</method>'s duplicate-name check
+/// removed -> this goes red.</p>
+Method TestTwoToolsSharingANameRefuseTheWholeListing()
+{
+    Set tRegistry = "OcuPilot.Test.ClashTool.Registry"
+    Set tSC = $ClassMethod(tRegistry, "ListTools", .tTools)
+    Do $$$AssertStatusNotOK(tSC, "two tools claiming the same name refuse the listing")
+    Set tText = $System.Status.GetErrorText(tSC)
+    Do $$$AssertTrue((tText [ "OcuPilot.Test.ClashTool.First") && (tText [ "OcuPilot.Test.ClashTool.Second"), "naming both claimants: " _ tText)
+    Do $$$AssertEquals(tTools, "", "and nothing is listed")
+    Set tSC = $ClassMethod(tRegistry, "ProviderTools", .tAdvertised)
+    Do $$$AssertStatusNotOK(tSC, "and nothing is advertised either")
+    Do $$$AssertEquals(+$Get(tAdvertised), 0, "with a count of zero")
+}
+
 /// <p>Advertise -- the provider tool array holds every live tool in name order, each with its wire
 /// name, a description, and a schema using only the emitted subset; a declared <code>maxLength</code>
 /// is gone from the schema and stated in the property's description. A read tool's description
