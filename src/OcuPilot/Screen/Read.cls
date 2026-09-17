@@ -40,6 +40,16 @@
 /// member of an object field (<method>CopyValue</method>). Every other admin read issues its
 /// declared type, <code>LIST</code>, <code>UPCOMING</code> or <code>HISTORY</code>, under the same
 /// cap.</p>
+/// <p><b>A single-object <code>GET</code> may also declare up to three <code>parts</code></b>
+/// (AD-36, Story 6.9): <method>PartsObject</method> issues one call per part, in declared order,
+/// each carrying its own request type -- possibly one the endpoint names without the vendor's
+/// usual <code>TYPE</code> prefix (<class>OcuPilot.Port.AdminPort</class>'s <code>BARETYPES</code>)
+/// -- and merges the answer under the part's <code>as</code>: an object answer whole, an array
+/// answer as its one row whose <code>Description</code> is exactly <code>Total</code>
+/// (<method>TotalRow</method>). Any part's fault, a missing <code>Total</code> row included, fails
+/// the whole read; there is no partial row. A part field composes
+/// <code>&lt;as&gt;.&lt;member&gt;</code> with the existing <code>&lt;object&gt;.&lt;member&gt;</code>
+/// projection to at most two members deep.</p>
 /// <p><b>A parent-scoped <code>GET</code> takes its one criterion from the route id</b> (Story
 /// 6.7): the value is required, refused 400 <code>READ.CRITERION</code> before the port is called
 /// when it is missing, and is then seeded onto the fetched object under two independent names,
@@ -268,31 +278,44 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
                     Quit
                 }
             }
-            Set tPortSC = $ClassMethod(..PortClass(), "Invoke", tSource.%Get("endpoint"), ..#OBJECTTYPE, .tQuery, "", .tObject, .tHttp, .tFault)
-            If $$$ISERR(tPortSC) {
-                If tHttp '= 404 {
-                    Set pHttpStatus = tHttp
-                    Set pFault = tFault
-                    Set tSC = tPortSC
+            Set tParts = tSource.%Get("parts")
+            If $IsObject(tParts) && tParts.%IsA("%Library.DynamicArray") {
+                ; AD-36, Story 6.9: parts replace the single GET call with one call per part, merged
+                ; into one object under each part's own `as` -- never the 404-as-zero-rows exception
+                ; below, since a part answering anything but 2xx fails the whole read (AD-36).
+                Set tPartsSC = ..PartsObject(tSource.%Get("endpoint"), tParts, .tQuery, .tObject, .pHttpStatus, .pFault)
+                If $$$ISERR(tPartsSC) {
+                    Set tSC = tPartsSC
                     Quit
                 }
-                Set tAnswer = []
-            } ElseIf '$IsObject(tObject) || 'tObject.%IsA("%Library.DynamicObject") {
-                Set tSC = ..Internal(pDescriptor _ "'s read answered something other than an object", .pHttpStatus, .pFault)
-                Quit
-            } Else {
-                ; The GET's own answer carries no property naming the object itself -- Task.CRUD's
-                ; TaskToJson sets no Id -- so the criterion's own value is seeded onto it under
-                ; whichever field names identify the row: a declared single-part composite id (used
-                ; to compute this row's own key, the same way any other composite id is) and a
-                ; declared rowGet's key (used to issue its detail call), independently.
-                If tObjectParam '= "" {
-                    Set tIdParts = $ClassMethod(pDescriptor, "IdParts")
-                    If $ListLength(tIdParts) = 1 Do tObject.%Set($List(tIdParts, 1), tCriterionValue)
-                }
-                Set tRowGet = tSource.%Get("rowGet")
-                If $IsObject(tRowGet) && tRowGet.%IsA("%Library.DynamicObject") Do tObject.%Set(tRowGet.%Get("key"), tCriterionValue)
                 Set tAnswer = [(tObject)]
+            } Else {
+                Set tPortSC = $ClassMethod(..PortClass(), "Invoke", tSource.%Get("endpoint"), ..#OBJECTTYPE, .tQuery, "", .tObject, .tHttp, .tFault)
+                If $$$ISERR(tPortSC) {
+                    If tHttp '= 404 {
+                        Set pHttpStatus = tHttp
+                        Set pFault = tFault
+                        Set tSC = tPortSC
+                        Quit
+                    }
+                    Set tAnswer = []
+                } ElseIf '$IsObject(tObject) || 'tObject.%IsA("%Library.DynamicObject") {
+                    Set tSC = ..Internal(pDescriptor _ "'s read answered something other than an object", .pHttpStatus, .pFault)
+                    Quit
+                } Else {
+                    ; The GET's own answer carries no property naming the object itself -- Task.CRUD's
+                    ; TaskToJson sets no Id -- so the criterion's own value is seeded onto it under
+                    ; whichever field names identify the row: a declared single-part composite id (used
+                    ; to compute this row's own key, the same way any other composite id is) and a
+                    ; declared rowGet's key (used to issue its detail call), independently.
+                    If tObjectParam '= "" {
+                        Set tIdParts = $ClassMethod(pDescriptor, "IdParts")
+                        If $ListLength(tIdParts) = 1 Do tObject.%Set($List(tIdParts, 1), tCriterionValue)
+                    }
+                    Set tRowGet = tSource.%Get("rowGet")
+                    If $IsObject(tRowGet) && tRowGet.%IsA("%Library.DynamicObject") Do tObject.%Set(tRowGet.%Get("key"), tCriterionValue)
+                    Set tAnswer = [(tObject)]
+                }
             }
             Set tTruncated = 0
         } ElseIf $IsObject(tForEach) {
@@ -472,6 +495,75 @@ ClassMethod ForEachRows(pDescriptor As %String, pSource As %DynamicObject, pMax 
         Set tSC = ..Internal("the per-parent read failed: " _ ex.DisplayString(), .pHttpStatus, .pFault)
     }
     Quit tSC
+}
+
+/// <p>The single-object read's one row assembled from <var>pParts</var> (<code>source.parts</code>,
+/// AD-36, Story 6.9): one call per declared part, issued in declared order against
+/// <var>pEndpoint</var> with the same <var>pQuery</var>, merged into <var>pObject</var> under each
+/// part's own <code>as</code>. An object answer is merged whole; an array answer is merged as the
+/// one row whose <code>Description</code> is exactly <code>Total</code>
+/// (<method>TotalRow</method>), and a part with no such row is a 500 -- like any other structural
+/// read failure, this is never sent to the wire. Any part whose call answers a non-2xx status,
+/// <b>404 included</b>, fails the whole read with that call's own fault; there is no partial
+/// row.</p>
+ClassMethod PartsObject(pEndpoint As %String, pParts As %DynamicArray, ByRef pQuery, Output pObject As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pObject = {}
+    Try {
+        Set tIterator = pParts.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tPart) {
+            Set tType = tPart.%Get("type")
+            Set tAs = tPart.%Get("as")
+            Set tAnswer = ""
+            Set tHttp = 0
+            Set tFault = ""
+            Set tPortSC = $ClassMethod(..PortClass(), "Invoke", pEndpoint, tType, .pQuery, "", .tAnswer, .tHttp, .tFault)
+            If $$$ISERR(tPortSC) {
+                Set pObject = ""
+                Set pHttpStatus = tHttp
+                Set pFault = tFault
+                Set tSC = tPortSC
+                Quit
+            }
+            If $IsObject(tAnswer) && tAnswer.%IsA("%Library.DynamicArray") {
+                Set tRow = ..TotalRow(tAnswer)
+                If '$IsObject(tRow) {
+                    Set pObject = ""
+                    Set tSC = ..Internal(pEndpoint _ "'s part '" _ tType _ "' answered no row whose Description is 'Total'", .pHttpStatus, .pFault)
+                    Quit
+                }
+                Do pObject.%Set(tAs, tRow)
+            } ElseIf $IsObject(tAnswer) && tAnswer.%IsA("%Library.DynamicObject") {
+                Do pObject.%Set(tAs, tAnswer)
+            } Else {
+                Set pObject = ""
+                Set tSC = ..Internal(pEndpoint _ "'s part '" _ tType _ "' answered something other than an object or a list", .pHttpStatus, .pFault)
+                Quit
+            }
+        }
+    } Catch ex {
+        Set pObject = ""
+        Set tSC = ..Internal("the parts read failed: " _ ex.DisplayString(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>The first row of <var>pRows</var> whose <code>Description</code> is the exact (case-sensitive,
+/// untrimmed) string <code>Total</code>, or <code>$$$NULLOREF</code> when none matches -- an array
+/// part's other trailer rows (<code>Available SMT &amp; GST</code>, and the two <code>Total ...
+/// Allocated</code> rows) are never mistaken for it (AD-36, Story 6.9).</p>
+ClassMethod TotalRow(pRows As %DynamicArray) As %DynamicObject [ Private ]
+{
+    Set tFound = $$$NULLOREF
+    Set tIterator = pRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If $IsObject(tRow) && tRow.%IsA("%Library.DynamicObject") && (tRow.%GetTypeOf("Description") = "string") && (tRow.%Get("Description") = "Total") {
+            Set tFound = tRow
+            Quit
+        }
+    }
+    Quit tFound
 }
 
 /// <p>The query parameter names <var>pDescriptor</var>'s read declares as server-search criteria,
@@ -779,18 +871,37 @@ ClassMethod CopyValue(pFrom As %DynamicObject, pKey As %String, pTo As %DynamicO
 /// <p>Copy <var>pFromKey</var> of <var>pFrom</var>, resolved as <method>CopyValue</method> resolves a
 /// key, to <var>pToKey</var> of <var>pTo</var>, keeping its JSON type; <code>null</code> when it is
 /// absent.</p>
+/// <p><b>A part field</b> (AD-36, Story 6.9): <code>&lt;as&gt;.&lt;member&gt;</code> composes with
+/// the member-field projection, so a dotted key not present literally is resolved by descending
+/// one segment at a time through each intermediate object -- <code>Dashboard.Performance.GlobalRefsPerSecond</code>
+/// reads <code>Performance</code> off the <code>Dashboard</code> part's own object, then
+/// <code>GlobalRefsPerSecond</code> off that -- to at most two members deep, the grammar's own bound
+/// (<method>OcuPilot.Screen.Registry.PartsProblem</method>).</p>
 ClassMethod CopyAs(pFrom As %DynamicObject, pFromKey As %String, pTo As %DynamicObject, pToKey As %String) [ Private ]
 {
-    Set tSource = ""
+    Set tSource = pFrom
     Set tKey = pFromKey
     Set tType = "unassigned"
     If $IsObject(pFrom) && pFrom.%IsA("%Library.DynamicObject") {
-        Set tSource = pFrom
         Set tType = pFrom.%GetTypeOf(pFromKey)
-        If (tType = "unassigned") && (pFromKey [ ".") && (pFrom.%GetTypeOf($Piece(pFromKey, ".", 1)) = "object") {
-            Set tSource = pFrom.%Get($Piece(pFromKey, ".", 1))
-            Set tKey = $Piece(pFromKey, ".", 2, *)
-            Set tType = tSource.%GetTypeOf(tKey)
+        If (tType = "unassigned") && (pFromKey [ ".") {
+            Set tCursor = pFrom
+            Set tRemaining = pFromKey
+            Set tDescended = 1
+            While (tRemaining [ ".") && tDescended {
+                Set tHead = $Piece(tRemaining, ".", 1)
+                If $IsObject(tCursor) && tCursor.%IsA("%Library.DynamicObject") && (tCursor.%GetTypeOf(tHead) = "object") {
+                    Set tCursor = tCursor.%Get(tHead)
+                    Set tRemaining = $Piece(tRemaining, ".", 2, *)
+                } Else {
+                    Set tDescended = 0
+                }
+            }
+            If tDescended && $IsObject(tCursor) && tCursor.%IsA("%Library.DynamicObject") {
+                Set tSource = tCursor
+                Set tKey = tRemaining
+                Set tType = tSource.%GetTypeOf(tKey)
+            }
         }
     }
     If (tType = "unassigned") || (tType = "null") {

@@ -536,14 +536,14 @@ Method TestAnEmptyDemoListIsSkippedWithoutTheDemo()
 /// <code>ssl</code>, <code>tasks</code>, <code>processes</code>, <code>audit</code>,
 /// <code>webapp.restapis</code>, <code>roles</code>, <code>resources</code>, <code>services</code>,
 /// <code>x509</code>, <code>ldap</code>, <code>wallet</code>, five OAuth 2.0 tab, <code>ondemand</code>,
-/// <code>upcoming</code> and <code>taskhistory</code> checks issue exactly those twenty-one screen reads, in that order, and nothing else in
+/// <code>upcoming</code>, <code>taskhistory</code> and <code>systemusage</code> checks issue exactly those twenty-two screen reads, in that order, and nothing else in
 /// <method>CheckAreaLists</method> reads a screen. <method>OcuPilot.Install.Smoke.CheckTaskDetails</method>
-/// (Story 6.7) runs after it and re-reads the task schedule for an id first, a twenty-second
+/// (Story 6.7) runs after it and re-reads the task schedule for an id first, a twenty-third
 /// screen path; under this fixture's one-row, no-<code>Id</code> body that lookup finds none, so
 /// <code>taskdetails</code> itself fails without reading its own path. <code>CheckProcessDetails</code>
-/// (Story 6.8) runs after that and re-reads the processes list for a pid, a twenty-third screen
+/// (Story 6.8) runs after that and re-reads the processes list for a pid, a twenty-fourth screen
 /// path; under the same one-row, no-<code>Pid</code> body that lookup also finds none, so
-/// <code>processdetails</code> fails too, without a twenty-fourth path for its own read.</p>
+/// <code>processdetails</code> fails too, without a twenty-fifth path for its own read.</p>
 /// <p><b>Why the report cannot say this.</b> A report line carries the check's name and its
 /// outcome, never the tool behind it, so transposing two <code>$Select</code> arms leaves every
 /// name-and-outcome assertion in this class green while each check reads the other's list. Driven
@@ -560,7 +560,7 @@ Method TestEachAreaListCheckReadsItsOwnScreen()
     Set tPaths = ##class(OcuPilot.Test.SmokeListFault).Paths()
     Do ##class(OcuPilot.Test.SmokeListFault).ClearPaths()
 
-    For tName = "webapplications", "users", "ssl", "tasks", "processes", "audit", "webapp.restapis", "roles", "resources", "services", "x509", "ldap", "wallet", "oauthdescriptions", "oauthclients", "oauthresourceservers", "oauthserver", "oauthserverclients", "ondemand", "upcoming", "taskhistory" {
+    For tName = "webapplications", "users", "ssl", "tasks", "processes", "audit", "webapp.restapis", "roles", "resources", "services", "x509", "ldap", "wallet", "oauthdescriptions", "oauthclients", "oauthresourceservers", "oauthserver", "oauthserverclients", "ondemand", "upcoming", "taskhistory", "systemusage" {
         Do $$$AssertTrue(tReport [ ("  pass     " _ tName), "a one-row body passes the " _ tName _ " check (run ok=" _ tOk _ "): " _ ..Line(tReport, tName))
     }
     ; taskdetails and processdetails both fail under this fixture: the armed row carries no Id and
@@ -568,10 +568,10 @@ Method TestEachAreaListCheckReadsItsOwnScreen()
     ; there.
     Do $$$AssertTrue(tReport [ ("  fail     taskdetails"), "and taskdetails fails for lack of an id to key its read by: " _ ..Line(tReport, "taskdetails"))
     Do $$$AssertTrue(tReport [ ("  fail     processdetails"), "and processdetails fails for lack of a pid to key its read by: " _ ..Line(tReport, "processdetails"))
-    Do $$$AssertEquals($ListLength(tPaths), 23, "a credentialed run reads exactly twenty-three screens, the twenty-second being taskdetails' own re-read of the task schedule and the twenty-third processdetails' own re-read of the processes list: " _ $ListToString(tPaths, " | "))
-    If $ListLength(tPaths) '= 23 Quit
-    Set tExpected = $ListBuild(##class(OcuPilot.Install.Smoke).#WEBAPPLISTTOOL, ##class(OcuPilot.Install.Smoke).#USERLISTTOOL, ##class(OcuPilot.Install.Smoke).#SSLLISTTOOL, ##class(OcuPilot.Install.Smoke).#TASKLISTTOOL, ##class(OcuPilot.Install.Smoke).#PROCESSLISTTOOL, ##class(OcuPilot.Install.Smoke).#AUDITLISTTOOL, ##class(OcuPilot.Install.Smoke).#RESTAPILISTTOOL, ##class(OcuPilot.Install.Smoke).#ROLELISTTOOL, ##class(OcuPilot.Install.Smoke).#RESOURCELISTTOOL, ##class(OcuPilot.Install.Smoke).#SERVICELISTTOOL, ##class(OcuPilot.Install.Smoke).#X509LISTTOOL, ##class(OcuPilot.Install.Smoke).#LDAPLISTTOOL, ##class(OcuPilot.Install.Smoke).#WALLETLISTTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHDESCRIPTIONSTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHCLIENTSTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHRESOURCESERVERSTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHSERVERTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHSERVERCLIENTSTOOL, ##class(OcuPilot.Install.Smoke).#TASKONDEMANDTOOL, ##class(OcuPilot.Install.Smoke).#TASKUPCOMINGTOOL, ##class(OcuPilot.Install.Smoke).#TASKHISTORYTOOL, ##class(OcuPilot.Install.Smoke).#TASKLISTTOOL, ##class(OcuPilot.Install.Smoke).#PROCESSLISTTOOL)
-    For tI = 1:1:23 {
+    Do $$$AssertEquals($ListLength(tPaths), 24, "a credentialed run reads exactly twenty-four screens, the twenty-third being taskdetails' own re-read of the task schedule and the twenty-fourth processdetails' own re-read of the processes list: " _ $ListToString(tPaths, " | "))
+    If $ListLength(tPaths) '= 24 Quit
+    Set tExpected = $ListBuild(##class(OcuPilot.Install.Smoke).#WEBAPPLISTTOOL, ##class(OcuPilot.Install.Smoke).#USERLISTTOOL, ##class(OcuPilot.Install.Smoke).#SSLLISTTOOL, ##class(OcuPilot.Install.Smoke).#TASKLISTTOOL, ##class(OcuPilot.Install.Smoke).#PROCESSLISTTOOL, ##class(OcuPilot.Install.Smoke).#AUDITLISTTOOL, ##class(OcuPilot.Install.Smoke).#RESTAPILISTTOOL, ##class(OcuPilot.Install.Smoke).#ROLELISTTOOL, ##class(OcuPilot.Install.Smoke).#RESOURCELISTTOOL, ##class(OcuPilot.Install.Smoke).#SERVICELISTTOOL, ##class(OcuPilot.Install.Smoke).#X509LISTTOOL, ##class(OcuPilot.Install.Smoke).#LDAPLISTTOOL, ##class(OcuPilot.Install.Smoke).#WALLETLISTTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHDESCRIPTIONSTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHCLIENTSTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHRESOURCESERVERSTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHSERVERTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHSERVERCLIENTSTOOL, ##class(OcuPilot.Install.Smoke).#TASKONDEMANDTOOL, ##class(OcuPilot.Install.Smoke).#TASKUPCOMINGTOOL, ##class(OcuPilot.Install.Smoke).#TASKHISTORYTOOL, ##class(OcuPilot.Install.Smoke).#SYSTEMUSAGETOOL, ##class(OcuPilot.Install.Smoke).#TASKLISTTOOL, ##class(OcuPilot.Install.Smoke).#PROCESSLISTTOOL)
+    For tI = 1:1:24 {
         Set tWanted = "/screens/" _ $List(tExpected, tI) _ "/read?maxRows=1"
         Do $$$AssertTrue($List(tPaths, tI) [ tWanted, "check " _ tI _ " reads " _ tWanted _ ", not " _ $List(tPaths, tI))
     }
@@ -666,7 +666,7 @@ ClassMethod Line(pReport As %String, pName As %String) As %String
 Method TestNoCredentialsSkipsRatherThanPasses()
 {
     Set tOk = ##class(OcuPilot.Install.Smoke).Run("", "", "0", .tReport, .tCounts)
-    For tName = "signin", "instance", "namespaces", "navigation", "webapplications", "users", "ssl", "tasks", "processes", "audit", "webapp.restapis", "roles", "resources", "services", "x509", "ldap", "wallet", "oauthdescriptions", "oauthclients", "oauthresourceservers", "oauthserver", "oauthserverclients", "ondemand", "upcoming", "taskhistory", "taskdetails", "processdetails", "messageslog", "applicationerrors", "sign-out" {
+    For tName = "signin", "instance", "namespaces", "navigation", "webapplications", "users", "ssl", "tasks", "processes", "audit", "webapp.restapis", "roles", "resources", "services", "x509", "ldap", "wallet", "oauthdescriptions", "oauthclients", "oauthresourceservers", "oauthserver", "oauthserverclients", "ondemand", "upcoming", "taskhistory", "systemusage", "taskdetails", "processdetails", "messageslog", "applicationerrors", "sign-out" {
         Do $$$AssertTrue(tReport [ ("  skipped  " _ tName), tName _ " is skipped: " _ ..Line(tReport, tName))
     }
     Do $$$AssertTrue(tReport [ "no credentials were supplied", "and the report says why")

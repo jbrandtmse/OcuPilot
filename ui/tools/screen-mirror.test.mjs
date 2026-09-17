@@ -435,7 +435,11 @@ test('readProblem returns every rowGet sentence OcuPilot.Test.RowGetCorpus decla
 //
 // Mutation (Rule 19): drop the `forEach` rowGet refusal from `forEachProblem` -> the "a parent list
 // beside a detail call" case goes red.
-test('readProblem returns every source-type, forEach and query sentence OcuPilot.Test.ReadSourceCorpus declares', () => {
+//
+// Story 6.9: a parts case may also override `fields`, `filter`, `sort`, `table` and `context`
+// together, because the shared OAuth declaration's own fields cannot start with a declared
+// `parts.as` -- see `OcuPilot.Test.ReadSourceCorpus.DeclarationFor`.
+test('readProblem returns every source-type, forEach, query and parts sentence OcuPilot.Test.ReadSourceCorpus declares', () => {
   const corpus = testCorpus(['Test', 'ReadSourceCorpus.cls'], 'Cases');
   assert.ok(corpus.cases.length > 0, `the corpus carries cases (read ${corpus.cases.length})`);
   let refusals = 0;
@@ -444,6 +448,11 @@ test('readProblem returns every source-type, forEach and query sentence OcuPilot
     declaration.read.source = structuredClone(testCase.source);
     if (testCase.criteria !== undefined) declaration.read.criteria = structuredClone(testCase.criteria);
     if (testCase.parentScope !== undefined) declaration.parentScope = testCase.parentScope;
+    if (testCase.fields !== undefined) declaration.read.fields = structuredClone(testCase.fields);
+    if (testCase.filter !== undefined) declaration.read.filter = structuredClone(testCase.filter);
+    if (testCase.sort !== undefined) declaration.read.sort = structuredClone(testCase.sort);
+    if (testCase.table !== undefined) declaration.table = structuredClone(testCase.table);
+    if (testCase.context !== undefined) declaration.context = structuredClone(testCase.context);
     assert.equal(readProblem(declaration), testCase.expected, testCase.name);
     if (testCase.expected !== null) refusals += 1;
   }

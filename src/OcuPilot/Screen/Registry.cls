@@ -813,7 +813,7 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
             Quit
         }
         Set tSource = tRead.%Get("source")
-        Set tProblem = ..UnknownKeyProblem(tSource, "read.source", $ListBuild("port", "endpoint", "type", "rowGet", "forEach", "query"))
+        Set tProblem = ..UnknownKeyProblem(tSource, "read.source", $ListBuild("port", "endpoint", "type", "rowGet", "forEach", "query", "parts"))
         If tProblem '= "" Quit
         Set tPort = tSource.%Get("port")
         If (tSource.%GetTypeOf("port") '= "string") || '$ListFind($ListBuild(##class(OcuPilot.Screen.Read).#SOURCEADMIN, ##class(OcuPilot.Screen.Read).#SOURCESTATE, ##class(OcuPilot.Screen.Read).#SOURCEMGMNT), tPort) {
@@ -941,6 +941,10 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
         Set tProblem = ..RowGetProblem(tSource, tFields, tRowGetKeyAllowed)
         If tProblem '= "" Quit
         Set tProblem = ..ForEachProblem(tRead, tSource, tFields)
+        If tProblem '= "" Quit
+        ; AD-36 (Story 6.9): a single-object GET may also declare up to three parts, each
+        ; answering one object merged into the read's one row as <as>.<member> fields.
+        Set tProblem = ..PartsProblem(tRead, tSource, tFields)
         If tProblem '= "" Quit
 
         If pDeclaration.%GetTypeOf("context") '= "object" {
@@ -1482,6 +1486,118 @@ ClassMethod ForEachProblem(pRead As %DynamicObject, pSource As %DynamicObject, p
             Set tProblem = tAt _ " from is empty, and a parent field is copied from a named key of the parent"
             Quit
         }
+    }
+    Quit tProblem
+}
+
+/// <p>The shape a declared part's <code>type</code> takes (AD-36): the vendor's own upper-case
+/// request-type name, resolved through <class>OcuPilot.Port.AdminPort</class>'s
+/// <code>BARETYPES</code> map when it carries no <code>TYPE</code> prefix of its own (System
+/// usage, Story 6.9).</p>
+Parameter PARTTYPEPATTERN = "^[A-Z]+$";
+
+/// <p>The shape a declared part's <code>as</code> takes (AD-36): the object key its answer is
+/// merged under, and the prefix every <code>&lt;as&gt;.&lt;member&gt;</code> field starts with.</p>
+Parameter PARTASPATTERN = "^[A-Z][A-Za-z0-9]*$";
+
+/// <p>The most parts a single-object <code>GET</code> may declare (AD-36).</p>
+Parameter MAXPARTS As INTEGER = 3;
+
+/// <p>What is wrong with <var>pSource</var>'s <code>parts</code>, or <code>""</code> (AD-36,
+/// Story 6.9). <var>pRead</var> is the declared read and <var>pFields</var> its declared fields.</p>
+/// <p>An absent or <code>null</code> <code>parts</code> declares none. Otherwise it is a
+/// non-empty array of 1 to <parameter>MAXPARTS</parameter> objects carrying only <code>type</code>
+/// (<parameter>PARTTYPEPATTERN</parameter>) and <code>as</code>
+/// (<parameter>PARTASPATTERN</parameter>, unique across the block), declared on a single-object
+/// <code>GET</code> source with no <code>criteria</code> or <code>query</code> -- either would
+/// name the read's one criterion or a fixed parameter, and a parts read's row is assembled from
+/// the parts alone. A <code>GET</code> source already guarantees an <code>admin</code> port and
+/// already refuses <code>rowGet</code> and <code>forEach</code> outright unless a parent-scoped
+/// route-id <code>criteria</code> is also declared, in which case this method's own criteria
+/// check fires first, so neither needs its own arm here. Every
+/// declared field then starts with one of the block's <code>as</code> values, followed by one or
+/// two further dot-separated segments, since <method>OcuPilot.Screen.Read.CopyAs</method>
+/// composes a part field's <code>&lt;as&gt;.&lt;member&gt;</code> with the existing
+/// <code>&lt;object&gt;.&lt;member&gt;</code> projection to at most two members deep.
+/// <file>ui/tools/screen-mirror.mjs</file>'s <code>partsProblem</code> returns the same sentence
+/// for every case in <class>OcuPilot.Test.ReadSourceCorpus</class>.</p>
+ClassMethod PartsProblem(pRead As %DynamicObject, pSource As %DynamicObject, pFields As %List) As %String
+{
+    Set tProblem = ""
+    Try {
+        Set tWhere = "read.source.parts"
+        Set tType = pSource.%GetTypeOf("parts")
+        If (tType = "unassigned") || (tType = "null") Quit
+        If tType '= "array" {
+            Set tProblem = tWhere _ " is not an array of {type, as} parts (AD-36)"
+            Quit
+        }
+        If pSource.%Get("type") '= "GET" {
+            Set tProblem = tWhere _ " is declared on a '" _ pSource.%Get("type") _ "' source, and parts merge into a single-object GET's one row (AD-36)"
+            Quit
+        }
+        ; A GET source's own rules already guarantee the port is admin by this point, and already
+        ; refuse rowGet and forEach outright on a GET source unless a parent-scoped route-id
+        ; criterion is also declared -- in which case the criteria check just below fires first.
+        ; So parts and rowGet or forEach cannot reach here together; only criteria and query can.
+        If pRead.%GetTypeOf("criteria") = "object" {
+            Set tProblem = tWhere _ " is declared with read.criteria, and a parts read takes no criterion (AD-36)"
+            Quit
+        }
+        If pSource.%GetTypeOf("query") = "object" {
+            Set tProblem = tWhere _ " is declared with read.source.query, and a parts read fixes no query parameter (AD-36)"
+            Quit
+        }
+        Set tParts = pSource.%Get("parts")
+        Set tCount = tParts.%Size()
+        If (tCount < 1) || (tCount > ..#MAXPARTS) {
+            Set tProblem = tWhere _ " declares " _ tCount _ " part(s), and a parts read names 1 to " _ ..#MAXPARTS
+            Quit
+        }
+        Set tSeenAs = ""
+        Set tAsList = ""
+        Set tIterator = tParts.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tPart, .tPartType) {
+            Set tAt = tWhere _ " entry #" _ (tIndex + 1)
+            If tPartType '= "object" {
+                Set tProblem = tAt _ " is not an object declaring its type and as"
+                Quit
+            }
+            Set tProblem = ..UnknownKeyProblem(tPart, tAt, $ListBuild("type", "as"))
+            If tProblem '= "" Quit
+            Set tPartType2 = tPart.%Get("type")
+            If (tPart.%GetTypeOf("type") '= "string") || '$Match(tPartType2, ..#PARTTYPEPATTERN) {
+                Set tProblem = tAt _ " type '" _ tPartType2 _ "' is not upper-case letters"
+                Quit
+            }
+            Set tAs = tPart.%Get("as")
+            If (tPart.%GetTypeOf("as") '= "string") || '$Match(tAs, ..#PARTASPATTERN) {
+                Set tProblem = tAt _ " as '" _ tAs _ "' is not an upper camel-case identifier"
+                Quit
+            }
+            If $ListFind(tSeenAs, tAs) {
+                Set tProblem = tAt _ " names the as '" _ tAs _ "' twice, and every part's as is unique"
+                Quit
+            }
+            Set tSeenAs = tSeenAs _ $ListBuild(tAs)
+            Set tAsList = tAsList _ $ListBuild(tAs)
+        }
+        If tProblem '= "" Quit
+
+        For tI = 1:1:$ListLength(pFields) {
+            Set tField = $List(pFields, tI)
+            Set tMatched = 0
+            For tJ = 1:1:$ListLength(tAsList) {
+                Set tAs = $List(tAsList, tJ)
+                If $Match(tField, "^" _ tAs _ "\.[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)?$") Set tMatched = 1
+            }
+            If 'tMatched {
+                Set tProblem = "read.fields '" _ tField _ "' does not start with a declared parts.as followed by one or two segments (AD-36)"
+                Quit
+            }
+        }
+    } Catch ex {
+        Set tProblem = "the parts declaration could not be read: " _ ex.DisplayString()
     }
     Quit tProblem
 }

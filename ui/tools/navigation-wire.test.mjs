@@ -94,6 +94,13 @@ const LIVE_PAYLOAD = {
           allowed: false,
           failedPair: '%Admin_Manage:USE',
         },
+        {
+          route: 'os-management/system-usage',
+          labelKey: 'systemUsageLabel',
+          sideBarPosition: 3,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
+        },
       ],
     },
     {
@@ -344,6 +351,10 @@ test('DW-132: the real NavigationService reads a live-captured payload the way O
     assert.deepEqual(service.screenVerdict(route), { allowed: false, failedPair: '%Admin_Task:USE' }, route);
   }
   assert.deepEqual(service.screenVerdict('os-management/processes'), { allowed: false, failedPair: '%Admin_Manage:USE' });
+  // Story 6.9: System usage declares no `%Admin_Manage:USE` at all, so this principal, which
+  // holds `%Admin_Operate:USE`, is denied on its second pair instead -- the same shape as the
+  // application error log below.
+  assert.deepEqual(service.screenVerdict('os-management/system-usage'), { allowed: false, failedPair: '%DB_IRISSYS:READ' });
   assert.deepEqual(service.screenVerdict('logs/audit'), { allowed: false, failedPair: '%Admin_Secure:USE' });
   // Story 2.12: the application error log declares `%Admin_Operate:USE` -- which this principal
   // holds -- and `%DB_IRISSYS:READ`, which it does not, so it is denied on the second. That pair is

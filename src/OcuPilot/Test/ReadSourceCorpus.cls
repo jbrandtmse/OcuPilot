@@ -1,11 +1,14 @@
-/// <p>The one corpus both engines of the <code>read.source</code> type, <code>forEach</code> and <code>query</code> grammar
+/// <p>The one corpus both engines of the <code>read.source</code> type, <code>forEach</code>,
+/// <code>query</code> and <code>parts</code> grammar
 /// run (AD-36): <method>OcuPilot.Screen.Registry.ReadProblem</method> in
 /// <class>OcuPilot.Test.ReadTool</class> and <code>readProblem</code> in
 /// <file>ui/tools/screen-mirror.test.mjs</file>, which reads this block off disk. Each case replaces
 /// <code>declaration.read.source</code> with its own <code>source</code>, sets
 /// <code>declaration.read.criteria</code> when it carries one, sets <code>declaration.parentScope</code>
-/// when it carries one (Story 6.7's route-id GET cases), and names the exact sentence both
-/// engines return, or <code>null</code> for a sound shape.</p>
+/// when it carries one (Story 6.7's route-id GET cases), sets <code>declaration.read.fields</code>,
+/// <code>filter</code>, <code>sort</code>, <code>table</code> and <code>context</code> when it carries
+/// them (Story 6.9's parts cases, whose fields cannot start with the shared declaration's own), and
+/// names the exact sentence both engines return, or <code>null</code> for a sound shape.</p>
 Class OcuPilot.Test.ReadSourceCorpus Extends %RegisteredObject
 {
 
@@ -102,7 +105,20 @@ XData Cases
     {"name": "a key a criterion's vendorParam also declares, case-folded", "source": {"port": "admin", "endpoint": "Task.CRUD", "type": "HISTORY", "query": {"Who": "1"}}, "criteria": {"fields": [{"param": "search", "vendorParam": "who", "labelKey": "tableColumnName", "kind": "text", "maxLength": 100}]}, "expected": "read.source.query key 'Who' is also a read.criteria param, and no caller can change a fixed parameter (AD-36)"},
     {"name": "a number value", "source": {"port": "admin", "endpoint": "Task.CRUD", "type": "LIST", "query": {"onDemand": 1}}, "expected": "read.source.query 'onDemand' is not a non-empty string of at most 50 characters"},
     {"name": "an empty value", "source": {"port": "admin", "endpoint": "Task.CRUD", "type": "LIST", "query": {"onDemand": ""}}, "expected": "read.source.query 'onDemand' is not a non-empty string of at most 50 characters"},
-    {"name": "a value of fifty-one characters", "source": {"port": "admin", "endpoint": "Task.CRUD", "type": "LIST", "query": {"onDemand": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"}}, "expected": "read.source.query 'onDemand' is not a non-empty string of at most 50 characters"}
+    {"name": "a value of fifty-one characters", "source": {"port": "admin", "endpoint": "Task.CRUD", "type": "LIST", "query": {"onDemand": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"}}, "expected": "read.source.query 'onDemand' is not a non-empty string of at most 50 characters"},
+    {"name": "three sound parts merged into <as>.<member> fields (Story 6.9)", "source": {"port": "admin", "endpoint": "Monitor", "type": "GET", "parts": [{"type": "SYSTEMUSAGE", "as": "Usage"}, {"type": "SYSTEMUSAGESHM", "as": "SharedMemory"}, {"type": "DASHBOARDMAIN", "as": "Dashboard"}]}, "fields": ["Usage.AllGlobalReferences", "SharedMemory.SMHUsed", "Dashboard.Performance.GlobalRefsPerSecond"], "filter": [], "sort": {"fields": ["Usage.AllGlobalReferences"], "default": "Usage.AllGlobalReferences", "direction": "asc"}, "table": {"columns": [{"field": "Usage.AllGlobalReferences", "labelKey": "tableColumnName", "kind": "name"}], "emptyNextKey": "tableReadOnlyEmptyNext", "emptyAgentKey": ""}, "context": {"fields": ["Usage.AllGlobalReferences", "SharedMemory.SMHUsed", "Dashboard.Performance.GlobalRefsPerSecond"], "secretFields": []}, "expected": null},
+    {"name": "parts is not an array", "source": {"port": "admin", "endpoint": "Monitor", "type": "GET", "parts": "Usage"}, "expected": "read.source.parts is not an array of {type, as} parts (AD-36)"},
+    {"name": "parts on a LIST source", "source": {"port": "admin", "endpoint": "Monitor", "type": "LIST", "parts": [{"type": "SYSTEMUSAGE", "as": "Usage"}]}, "expected": "read.source.parts is declared on a 'LIST' source, and parts merge into a single-object GET's one row (AD-36)"},
+    {"name": "parts beside a parent-scoped route-id criterion", "source": {"port": "admin", "endpoint": "Monitor", "type": "GET", "parts": [{"type": "SYSTEMUSAGE", "as": "Usage"}]}, "criteria": {"fields": [{"param": "x", "labelKey": "tableColumnName", "kind": "text", "maxLength": 10}]}, "parentScope": "tasks/schedule", "expected": "read.source.parts is declared with read.criteria, and a parts read takes no criterion (AD-36)"},
+    {"name": "parts beside a fixed query", "source": {"port": "admin", "endpoint": "Monitor", "type": "GET", "parts": [{"type": "SYSTEMUSAGE", "as": "Usage"}], "query": {"a": "1"}}, "expected": "read.source.parts is declared with read.source.query, and a parts read fixes no query parameter (AD-36)"},
+    {"name": "four parts", "source": {"port": "admin", "endpoint": "Monitor", "type": "GET", "parts": [{"type": "SYSTEMUSAGE", "as": "Usage"}, {"type": "SYSTEMUSAGESHM", "as": "SharedMemory"}, {"type": "DASHBOARDMAIN", "as": "Dashboard"}, {"type": "FOO", "as": "Extra"}]}, "expected": "read.source.parts declares 4 part(s), and a parts read names 1 to 3"},
+    {"name": "zero parts", "source": {"port": "admin", "endpoint": "Monitor", "type": "GET", "parts": []}, "expected": "read.source.parts declares 0 part(s), and a parts read names 1 to 3"},
+    {"name": "a part that is not an object", "source": {"port": "admin", "endpoint": "Monitor", "type": "GET", "parts": ["Usage"]}, "expected": "read.source.parts entry #1 is not an object declaring its type and as"},
+    {"name": "a part with an unknown key", "source": {"port": "admin", "endpoint": "Monitor", "type": "GET", "parts": [{"type": "SYSTEMUSAGE", "as": "Usage", "label": "x"}]}, "expected": "read.source.parts entry #1 declares the unknown key 'label'"},
+    {"name": "a part type that is not upper-case", "source": {"port": "admin", "endpoint": "Monitor", "type": "GET", "parts": [{"type": "systemusage", "as": "Usage"}]}, "expected": "read.source.parts entry #1 type 'systemusage' is not upper-case letters"},
+    {"name": "a part as that is not upper camel-case", "source": {"port": "admin", "endpoint": "Monitor", "type": "GET", "parts": [{"type": "SYSTEMUSAGE", "as": "usage"}]}, "expected": "read.source.parts entry #1 as 'usage' is not an upper camel-case identifier"},
+    {"name": "a repeated part as", "source": {"port": "admin", "endpoint": "Monitor", "type": "GET", "parts": [{"type": "SYSTEMUSAGE", "as": "Usage"}, {"type": "SYSTEMUSAGESHM", "as": "Usage"}]}, "expected": "read.source.parts entry #2 names the as 'Usage' twice, and every part's as is unique"},
+    {"name": "a field outside every declared part's as", "source": {"port": "admin", "endpoint": "Monitor", "type": "GET", "parts": [{"type": "SYSTEMUSAGE", "as": "Usage"}]}, "fields": ["Usage.AllGlobalReferences", "Other.Foo"], "expected": "read.fields 'Other.Foo' does not start with a declared parts.as followed by one or two segments (AD-36)"}
   ]
 }
 }
@@ -130,12 +146,22 @@ ClassMethod Corpus(Output pCorpus As %DynamicObject) As %Status
 /// <p>The corpus declaration with <var>pCase</var>'s <code>source</code> in place, its
 /// <code>criteria</code> when it carries one, and its <code>parentScope</code> when it carries one
 /// (Story 6.7), as a new object.</p>
+/// <p>A part-shaped case may also override <code>fields</code>, <code>filter</code>,
+/// <code>sort</code>, <code>table</code> and <code>context</code> -- the corpus's shared OAuth
+/// declaration carries fields no parts field can start with, so a case that exercises a parts
+/// field or the sound shape supplies a self-consistent set of these five together, replacing the
+/// default rather than colliding with it (Story 6.9).</p>
 ClassMethod DeclarationFor(pCorpus As %DynamicObject, pCase As %DynamicObject) As %DynamicObject
 {
     Set tDeclaration = ##class(%DynamicObject).%FromJSON(pCorpus.declaration.%ToJSON())
     Do tDeclaration.read.%Set("source", ##class(%DynamicObject).%FromJSON(pCase.source.%ToJSON()))
     If pCase.%GetTypeOf("criteria") = "object" Do tDeclaration.read.%Set("criteria", ##class(%DynamicObject).%FromJSON(pCase.criteria.%ToJSON()))
     If pCase.%GetTypeOf("parentScope") = "string" Do tDeclaration.%Set("parentScope", pCase.parentScope)
+    If pCase.%GetTypeOf("fields") = "array" Do tDeclaration.read.%Set("fields", ##class(%DynamicAbstractObject).%FromJSON(pCase.fields.%ToJSON()))
+    If pCase.%GetTypeOf("filter") = "array" Do tDeclaration.read.%Set("filter", ##class(%DynamicAbstractObject).%FromJSON(pCase.filter.%ToJSON()))
+    If pCase.%GetTypeOf("sort") = "object" Do tDeclaration.read.%Set("sort", ##class(%DynamicObject).%FromJSON(pCase.sort.%ToJSON()))
+    If pCase.%GetTypeOf("table") = "object" Do tDeclaration.%Set("table", ##class(%DynamicObject).%FromJSON(pCase.table.%ToJSON()))
+    If pCase.%GetTypeOf("context") = "object" Do tDeclaration.%Set("context", ##class(%DynamicObject).%FromJSON(pCase.context.%ToJSON()))
     Quit tDeclaration
 }
 

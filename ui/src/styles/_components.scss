@@ -3523,3 +3523,118 @@ app-data-table {
 .ocu-details-link:focus-visible {
   @include ocu-focus-ring;
 }
+
+// --- Meter (Story 6.9) -- shared by System usage and, from 6.11, Database details -------------
+//
+// EXPERIENCE.md's meter row: "never animates the needle". A 6px fully-rounded track over
+// `surface-container-high`, the label in caption type above it and the value in code type beside
+// it. The fill and the value text both take the state's token (`success` maps from the meter's
+// own `normal`); `.ocu-meter-fill` never transitions or animates a width change (AC2) --
+// `meter.spec.ts` reads this rule's own text rather than a jsdom computed style, which resolves
+// no external stylesheet.
+
+.ocu-meter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-1);
+  min-width: 0;
+}
+
+.ocu-meter-label {
+  @include typo.ocu-type('caption');
+
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-meter-track {
+  position: relative;
+  height: 6px;
+  border-radius: 9999px;
+  overflow: hidden;
+  background: var(--ocu-surface-container-high);
+}
+
+.ocu-meter-fill-skeleton {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  border-radius: 9999px;
+  background: var(--ocu-surface-container-high);
+  animation: ocu-skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ocu-meter-fill-skeleton {
+    animation: none;
+  }
+}
+
+.ocu-meter-fill {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  transition: none;
+  animation: none;
+}
+
+.ocu-meter-fill-normal {
+  background: var(--ocu-success);
+}
+
+.ocu-meter-fill-warning {
+  background: var(--ocu-warning);
+}
+
+.ocu-meter-fill-error {
+  background: var(--ocu-error);
+}
+
+.ocu-meter-readout {
+  display: flex;
+  align-items: baseline;
+  gap: var(--ocu-space-2);
+}
+
+.ocu-meter-value {
+  @include typo.ocu-type('code');
+
+  color: var(--ocu-on-surface);
+}
+
+.ocu-meter-value-normal {
+  color: var(--ocu-success);
+}
+
+.ocu-meter-value-warning {
+  color: var(--ocu-warning);
+}
+
+.ocu-meter-value-error {
+  color: var(--ocu-error);
+}
+
+.ocu-meter-word {
+  @include typo.ocu-type('label');
+}
+
+.ocu-meter-word-normal {
+  color: var(--ocu-success);
+}
+
+.ocu-meter-word-warning {
+  color: var(--ocu-warning);
+}
+
+.ocu-meter-word-error {
+  color: var(--ocu-error);
+}
+
+// --- System usage (Story 6.9) -- the counters group plus a grid of meters ----------------------
+
+.ocu-system-usage-meters {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--ocu-space-4);
+  padding: var(--ocu-space-4);
+  box-sizing: border-box;
+}

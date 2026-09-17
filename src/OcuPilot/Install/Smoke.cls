@@ -133,6 +133,10 @@ Parameter TASKDETAILSTOOL = "tasks.taskdetails";
 /// check issues, keyed by the processes list's own first row (Story 6.8).</p>
 Parameter PROCESSDETAILSTOOL = "osmgmt.processdetails";
 
+/// <p>The tool identifier of System usage, read generically by <method>CheckAreaLists</method>
+/// like any other single-object list, since it needs no parent id (Story 6.9).</p>
+Parameter SYSTEMUSAGETOOL = "osmgmt.systemusage";
+
 /// <p>The console-log page's path under the API application, and the window the
 /// <code>messageslog</code> check asks for. Small: the check is that the endpoint serves the
 /// instance's own log, not that it serves much of it.</p>
@@ -566,16 +570,20 @@ ClassMethod CheckApiReads(ByRef pChecks, pAccessToken As %String) [ Private ]
 /// them as it fails every other list.</p>
 /// <p>The audit read is the one that crosses the port's async path (AD-26), so it is also the
 /// check that says the self-queued LIST is polled to an answer on a live instance.</p>
+/// <p><b>System usage</b> (<code>systemusage</code>, Story 6.9) reads the same way at
+/// <code>maxRows=1</code> with no criteria and expects exactly one row, like
+/// <code>processes</code>: the vendor's <code>Monitor</code> endpoint always answers, so an
+/// instance with no row is a real failure, not an empty-fixture case.</p>
 ClassMethod CheckAreaLists(ByRef pChecks, pAccessToken As %String, pDemo As %String = "") [ Private ]
 {
     Set tDemoWanted = ($Select(pDemo '= "": pDemo, 1: $System.Util.GetEnviron("OCUPILOT_DEMO")) = "1")
     Set tBase = ..RosterPath("api")
-    For tI = 1:1:21 {
-        Set tName = $Piece("webapplications,users,ssl,tasks,processes,audit,webapp.restapis,roles,resources,services,x509,ldap,wallet,oauthdescriptions,oauthclients,oauthresourceservers,oauthserver,oauthserverclients,ondemand,upcoming,taskhistory", ",", tI)
+    For tI = 1:1:22 {
+        Set tName = $Piece("webapplications,users,ssl,tasks,processes,audit,webapp.restapis,roles,resources,services,x509,ldap,wallet,oauthdescriptions,oauthclients,oauthresourceservers,oauthserver,oauthserverclients,ondemand,upcoming,taskhistory,systemusage", ",", tI)
         ; Every index names its own tool and the last arm names none: a list added to the bound and
         ; the name list without its own arm reads an empty path and fails, rather than re-reading
         ; the previous list under the new name and passing.
-        Set tTool = $Select(tI = 1: ..#WEBAPPLISTTOOL, tI = 2: ..#USERLISTTOOL, tI = 3: ..#SSLLISTTOOL, tI = 4: ..#TASKLISTTOOL, tI = 5: ..#PROCESSLISTTOOL, tI = 6: ..#AUDITLISTTOOL, tI = 7: ..#RESTAPILISTTOOL, tI = 8: ..#ROLELISTTOOL, tI = 9: ..#RESOURCELISTTOOL, tI = 10: ..#SERVICELISTTOOL, tI = 11: ..#X509LISTTOOL, tI = 12: ..#LDAPLISTTOOL, tI = 13: ..#WALLETLISTTOOL, tI = 14: ..#OAUTHDESCRIPTIONSTOOL, tI = 15: ..#OAUTHCLIENTSTOOL, tI = 16: ..#OAUTHRESOURCESERVERSTOOL, tI = 17: ..#OAUTHSERVERTOOL, tI = 18: ..#OAUTHSERVERCLIENTSTOOL, tI = 19: ..#TASKONDEMANDTOOL, tI = 20: ..#TASKUPCOMINGTOOL, tI = 21: ..#TASKHISTORYTOOL, 1: "")
+        Set tTool = $Select(tI = 1: ..#WEBAPPLISTTOOL, tI = 2: ..#USERLISTTOOL, tI = 3: ..#SSLLISTTOOL, tI = 4: ..#TASKLISTTOOL, tI = 5: ..#PROCESSLISTTOOL, tI = 6: ..#AUDITLISTTOOL, tI = 7: ..#RESTAPILISTTOOL, tI = 8: ..#ROLELISTTOOL, tI = 9: ..#RESOURCELISTTOOL, tI = 10: ..#SERVICELISTTOOL, tI = 11: ..#X509LISTTOOL, tI = 12: ..#LDAPLISTTOOL, tI = 13: ..#WALLETLISTTOOL, tI = 14: ..#OAUTHDESCRIPTIONSTOOL, tI = 15: ..#OAUTHCLIENTSTOOL, tI = 16: ..#OAUTHRESOURCESERVERSTOOL, tI = 17: ..#OAUTHSERVERTOOL, tI = 18: ..#OAUTHSERVERCLIENTSTOOL, tI = 19: ..#TASKONDEMANDTOOL, tI = 20: ..#TASKUPCOMINGTOOL, tI = 21: ..#TASKHISTORYTOOL, tI = 22: ..#SYSTEMUSAGETOOL, 1: "")
         If tBase = "" {
             Do ..Note(.pChecks, tName, "fail", "the roster on this instance declares no API path, so there was nothing to read")
             Continue

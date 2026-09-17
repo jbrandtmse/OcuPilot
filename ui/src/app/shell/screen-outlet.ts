@@ -14,6 +14,7 @@ import { ActivatedRoute } from '@angular/router';
 import { DefinitionFormPage } from '../areas/agent/definition-form.page';
 import { SwitchesPage } from '../areas/agent/switches.page';
 import { ProcessDetailsPage } from '../areas/os-management/process-details.page';
+import { SystemUsagePage } from '../areas/os-management/system-usage.page';
 import { TaskDetailsPage } from '../areas/tasks/details.page';
 import { HistoryPage } from '../areas/tasks/history.page';
 import { UpcomingPage } from '../areas/tasks/upcoming.page';
@@ -59,6 +60,7 @@ export const ARCHETYPE_PAGES: ArchetypePages = {
   'form-page': DefinitionFormPage,
   'viewer (OpenAPI)': OpenApiViewerPage,
   detail: DetailPage,
+  meters: SystemUsagePage,
 };
 
 /**

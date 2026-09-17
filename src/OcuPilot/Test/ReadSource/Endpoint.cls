@@ -4,7 +4,12 @@
 /// the endpoint name: <code>Test.Object</code> a GET, <code>Test.Parents</code> the parent LIST and
 /// <code>Test.Children</code> one parent's child LIST, read for its <code>parentKey</code>;
 /// <code>Test.Fixed</code>, <code>Test.Upcoming</code> and <code>Test.History</code> record the query
-/// and request type they were issued with and answer the armed <code>rows</code>.</p>
+/// and request type they were issued with and answer the armed <code>rows</code>; and
+/// <code>Monitor</code> -- reusing the real endpoint name so a fixture descriptor's
+/// <code>source.parts</code> resolves through <class>OcuPilot.Port.AdminPort</class>'s real
+/// <code>BARETYPES</code> map unchanged -- answers by the vendor numeric type alone (Story 6.9),
+/// since a parts read's several calls at one endpoint carry no other distinguishing path or
+/// query.</p>
 /// <p>It extends no vendor class (AD-27). State lives in <code>^||OcuPilotReadSource</code>, armed by
 /// <method>Arm</method> and cleared by <method>Clear</method>, because the port constructs this class
 /// itself and runs it in <code>%SYS</code>.</p>
@@ -124,6 +129,15 @@ Method Run(ByRef pSC As %Status, pBody As %DynamicAbstractObject) As %DynamicAbs
         Do ..Note("type", ..Type)
         Do ..NoteQuery("query")
         Quit ..Capped($Get(^||OcuPilotReadSource("rows"), "[]"), tMax)
+    }
+    If tPath = "monitor" {
+        ; Story 6.9: a parts read issues several calls at the same endpoint, told apart only by
+        ; the vendor's own numeric type -- there is no per-call path or query to key an armed
+        ; answer by, so this dispatches on `..Type` alone, the way `%Api.Admin.Endpoints.Monitor`
+        ; itself does.
+        Do ..Note("monitorTypes", ..Type)
+        If ..Faulted($Get(^||OcuPilotReadSource("byTypeFault", ..Type), ""), .pSC) Quit {}
+        Quit ##class(%DynamicAbstractObject).%FromJSON($Get(^||OcuPilotReadSource("byType", ..Type), "{}"))
     }
     If tPath = "test/children" {
         Set tParent = $Get(%request.Data("parentKey", 1))

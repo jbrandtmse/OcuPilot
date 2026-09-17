@@ -326,9 +326,14 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   // carries 24: the screen title, the "no longer exists" empty state, three group headings and
   // nineteen field labels beyond the shared Process ID, User, Namespace, Priority, Routine, State,
   // Commands and "Started" -- and takes the table to 399, still inside the 400 bound Story 6.7 set.
+  // Story 6.9's one row carries 17: the screen title, eight counters-group labels beyond the
+  // Process details row's "Global references", seven meter labels and the empty state -- the
+  // meter state word itself (Normal / Warning / Troubled) is vendor data rendered as reported
+  // rather than a translated string, so it carries no literal here -- and takes the table to 416,
+  // past the 400 bound, so the bound moves to 450.
   assert.ok(
-    expectedLiterals.length >= 150 && expectedLiterals.length <= 400,
-    `expected between 150 and 400 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
+    expectedLiterals.length >= 150 && expectedLiterals.length <= 450,
+    `expected between 150 and 450 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
   );
 });
 

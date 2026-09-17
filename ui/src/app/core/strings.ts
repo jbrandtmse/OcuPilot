@@ -849,6 +849,41 @@ export const STRINGS = {
   /** EXPERIENCE.md:362 */
   processDetailsClientIpAddress: 'Client IP address',
 
+  /** EXPERIENCE.md:363 */
+  systemUsageLabel: 'System usage',
+  /** EXPERIENCE.md:363 */
+  systemUsageGlobalUpdates: 'Global updates',
+  /** EXPERIENCE.md:363 */
+  systemUsageRoutineCalls: 'Routine calls',
+  /** EXPERIENCE.md:363 */
+  systemUsageLogicalBlockRequests: 'Logical block requests',
+  /** EXPERIENCE.md:363 */
+  systemUsageBlockReads: 'Block reads',
+  /** EXPERIENCE.md:363 */
+  systemUsageBlockWrites: 'Block writes',
+  /** EXPERIENCE.md:363 */
+  systemUsageJournalEntries: 'Journal entries',
+  /** EXPERIENCE.md:363 */
+  systemUsageJournalBlockWrites: 'Journal block writes',
+  /** EXPERIENCE.md:363 */
+  systemUsageLastUpdate: 'Last update',
+  /** EXPERIENCE.md:363 */
+  systemUsageSharedMemory: 'Shared memory',
+  /** EXPERIENCE.md:363 */
+  systemUsageGlobalRefsPerSecond: 'Global references per second',
+  /** EXPERIENCE.md:363 */
+  systemUsageCacheEfficiency: 'Cache efficiency',
+  /** EXPERIENCE.md:363 */
+  systemUsageDatabaseSpace: 'Database space',
+  /** EXPERIENCE.md:363 */
+  systemUsageJournalSpace: 'Journal space',
+  /** EXPERIENCE.md:363 */
+  systemUsageLockTable: 'Lock table',
+  /** EXPERIENCE.md:363 */
+  systemUsageWriteDaemon: 'Write daemon',
+  /** EXPERIENCE.md:363 */
+  systemUsageEmpty: 'System usage is unavailable.',
+
   // Not from the Fixed strings table, but required verbatim by this story's task
   // list: the audit-marker-failure fallback text (AD-15 / EXPERIENCE.md "9. **Audit.** Every confirmed"), the
   // reduced-motion word that replaces a running spinner (EXPERIENCE.md "**Reduced motion.** The highlight"), and

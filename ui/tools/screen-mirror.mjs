@@ -508,7 +508,7 @@ export function readProblem(declaration) {
   if (source === null || typeof source !== 'object' || Array.isArray(source)) {
     return 'read.source is not an object naming its port, endpoint and type (AD-36)';
   }
-  const sourceKeysFault = unknownKeyProblem('read.source', source, ['port', 'endpoint', 'type', 'rowGet', 'forEach', 'query']);
+  const sourceKeysFault = unknownKeyProblem('read.source', source, ['port', 'endpoint', 'type', 'rowGet', 'forEach', 'query', 'parts']);
   if (sourceKeysFault !== null) return sourceKeysFault;
   if (!READ_SOURCE_PORTS.includes(source.port)) {
     return (
@@ -620,6 +620,10 @@ export function readProblem(declaration) {
   if (rowGetFault !== null) return rowGetFault;
   const forEachFault = forEachProblem(read, source, read.fields);
   if (forEachFault !== null) return forEachFault;
+  // AD-36 (Story 6.9): a single-object GET may also declare up to three parts, each answering one
+  // object merged into the read's one row as <as>.<member> fields.
+  const partsFault = partsProblem(read, source, read.fields);
+  if (partsFault !== null) return partsFault;
 
   const { context } = declaration;
   if (context === null || typeof context !== 'object' || Array.isArray(context)) {
@@ -1136,6 +1140,80 @@ export function forEachProblem(read, source, fields) {
     seen.push(entry.field);
     if (typeof entry.from !== 'string' || entry.from === '') {
       return `${at} from is empty, and a parent field is copied from a named key of the parent`;
+    }
+  }
+  return null;
+}
+
+/** The shape a declared part's `type` takes, byte for byte `OcuPilot.Screen.Registry`'s `PARTTYPEPATTERN`. */
+export const PART_TYPE_RE = /^[A-Z]+$/;
+
+/** The shape a declared part's `as` takes, byte for byte `OcuPilot.Screen.Registry`'s `PARTASPATTERN`. */
+export const PART_AS_RE = /^[A-Z][A-Za-z0-9]*$/;
+
+/** The most parts a single-object `GET` may declare, `OcuPilot.Screen.Registry`'s `MAXPARTS`. */
+export const MAX_PARTS = 3;
+
+/**
+ * What is wrong with `source.parts`, or `null` (AD-36, Story 6.9). `read` is the declared read and
+ * `fields` its declared fields.
+ *
+ * An absent or `null` `parts` declares none. Otherwise it is a non-empty array of 1 to `MAX_PARTS`
+ * objects carrying only `type` (`PART_TYPE_RE`) and `as` (`PART_AS_RE`, unique across the block),
+ * declared on a single-object `GET` source with no `criteria` or `query` -- either would name the
+ * read's one criterion or a fixed parameter, and a parts read's row is assembled from the parts
+ * alone. A `GET` source already guarantees an `admin` port and already refuses `rowGet` and
+ * `forEach` outright unless a parent-scoped route-id `criteria` is also declared, in which case
+ * this function's own criteria check fires first, so neither needs its own arm here. Every
+ * declared field then starts with one of the
+ * block's `as` values, followed by one or two further dot-separated segments, since
+ * `OcuPilot.Screen.Read.CopyAs` composes a part field's `<as>.<member>` with the existing
+ * `<object>.<member>` projection to at most two members deep. `OcuPilot.Screen.Registry.PartsProblem`
+ * returns the same sentence for every case in `OcuPilot.Test.ReadSourceCorpus`.
+ */
+export function partsProblem(read, source, fields) {
+  const where = 'read.source.parts';
+  const { parts } = source;
+  if (parts === undefined || parts === null) return null;
+  if (!Array.isArray(parts)) return `${where} is not an array of {type, as} parts (AD-36)`;
+  if (source.type !== 'GET') {
+    return `${where} is declared on a '${shown(source.type)}' source, and parts merge into a single-object GET's one row (AD-36)`;
+  }
+  // A GET source's own rules already guarantee the port is admin by this point, and already
+  // refuse rowGet and forEach outright on a GET source unless a parent-scoped route-id criterion
+  // is also declared -- in which case the criteria check just below fires first. So parts and
+  // rowGet or forEach cannot reach here together; only criteria and query can.
+  if (isObject(read.criteria)) {
+    return `${where} is declared with read.criteria, and a parts read takes no criterion (AD-36)`;
+  }
+  if (isObject(source.query)) {
+    return `${where} is declared with read.source.query, and a parts read fixes no query parameter (AD-36)`;
+  }
+  if (parts.length < 1 || parts.length > MAX_PARTS) {
+    return `${where} declares ${parts.length} part(s), and a parts read names 1 to ${MAX_PARTS}`;
+  }
+  const seenAs = [];
+  for (let index = 0; index < parts.length; index += 1) {
+    const part = parts[index];
+    const at = `${where} entry #${index + 1}`;
+    if (!isObject(part)) return `${at} is not an object declaring its type and as`;
+    const keysFault = unknownKeyProblem(at, part, ['type', 'as']);
+    if (keysFault !== null) return keysFault;
+    if (typeof part.type !== 'string' || !PART_TYPE_RE.test(part.type)) {
+      return `${at} type '${shown(part.type)}' is not upper-case letters`;
+    }
+    if (typeof part.as !== 'string' || !PART_AS_RE.test(part.as)) {
+      return `${at} as '${shown(part.as)}' is not an upper camel-case identifier`;
+    }
+    if (seenAs.includes(part.as)) {
+      return `${at} names the as '${part.as}' twice, and every part's as is unique`;
+    }
+    seenAs.push(part.as);
+  }
+  for (const field of fields) {
+    const matched = seenAs.some((as) => new RegExp(`^${as}\\.[A-Za-z][A-Za-z0-9]*(\\.[A-Za-z][A-Za-z0-9]*)?$`).test(field));
+    if (!matched) {
+      return `read.fields '${field}' does not start with a declared parts.as followed by one or two segments (AD-36)`;
     }
   }
   return null;
@@ -1717,6 +1795,16 @@ export interface ReadRowGet {
 }
 
 /**
+ * One \`{type, as}\` part a single-object \`GET\` may declare (AD-36, Story 6.9): \`type\` is the
+ * vendor's own upper-case request type, possibly one the endpoint names without its usual \`TYPE\`
+ * prefix, and \`as\` is the object key its answer is merged under.
+ */
+export interface ReadSourcePart {
+  readonly type: string;
+  readonly as: string;
+}
+
+/**
  * Where a read's rows come from (AD-36): one admin API LIST (AD-2) with an optional per-row detail
  * call, one of OcuPilot's own kernel stores read whole (AD-9), or the management API's port. A
  * \`state\` source names the store by its own name, declares no \`rowGet\` and no \`criteria\`, and
@@ -1733,6 +1821,11 @@ export interface ReadSource {
   readonly rowGet?: ReadRowGet | null;
   /** The parent list a per-parent read issues its source once per parent for, bounded by the cap. */
   readonly forEach?: ReadForEach | null;
+  /**
+   * Up to three \`{type, as}\` parts a single-object \`GET\` merges into the read's one row as
+   * \`<as>.<member>\` fields (AD-36, Story 6.9).
+   */
+  readonly parts?: readonly ReadSourcePart[] | null;
   /** Query parameters sent on the read's own list, UPCOMING, HISTORY or GET call and each per-parent child list (never a parent list or a rowGet call), which no caller can change or remove. */
   readonly query?: Readonly<Record<string, string>> | null;
 }

@@ -46,6 +46,7 @@ export type BuiltArchetypeKey =
   | 'drill-down'
   | 'detail'
   | 'form-page'
+  | 'meters'
   | 'viewer (OpenAPI)'
   | 'home';
 
@@ -128,6 +129,16 @@ export interface ReadRowGet {
 }
 
 /**
+ * One `{type, as}` part a single-object `GET` may declare (AD-36, Story 6.9): `type` is the
+ * vendor's own upper-case request type, possibly one the endpoint names without its usual `TYPE`
+ * prefix, and `as` is the object key its answer is merged under.
+ */
+export interface ReadSourcePart {
+  readonly type: string;
+  readonly as: string;
+}
+
+/**
  * Where a read's rows come from (AD-36): one admin API LIST (AD-2) with an optional per-row detail
  * call, one of OcuPilot's own kernel stores read whole (AD-9), or the management API's port. A
  * `state` source names the store by its own name, declares no `rowGet` and no `criteria`, and
@@ -144,6 +155,11 @@ export interface ReadSource {
   readonly rowGet?: ReadRowGet | null;
   /** The parent list a per-parent read issues its source once per parent for, bounded by the cap. */
   readonly forEach?: ReadForEach | null;
+  /**
+   * Up to three `{type, as}` parts a single-object `GET` merges into the read's one row as
+   * `<as>.<member>` fields (AD-36, Story 6.9).
+   */
+  readonly parts?: readonly ReadSourcePart[] | null;
   /** Query parameters sent on the read's own list, UPCOMING, HISTORY or GET call and each per-parent child list (never a parent list or a rowGet call), which no caller can change or remove. */
   readonly query?: Readonly<Record<string, string>> | null;
 }
@@ -3087,6 +3103,267 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "security.ssl",
+    "banner": null,
+    "tab": null
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.SystemUsage",
+    "route": "os-management/system-usage",
+    "area": "os-management",
+    "labelKey": "systemUsageLabel",
+    "sideBarPosition": 3,
+    "archetype": "meters",
+    "built": true,
+    "refreshes": true,
+    "refreshRates": [
+      5,
+      10,
+      30,
+      60
+    ],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Usage.AllGlobalReferences",
+        "Usage.GlobalUpdateReferences",
+        "Usage.RoutineCalls",
+        "Usage.LogicalBlockRequests",
+        "Usage.BlockReads",
+        "Usage.BlockWrites",
+        "Usage.JournalEntries",
+        "Usage.JournalBlockWrites",
+        "Usage.LastUpdate",
+        "SharedMemory.SMHAllocated",
+        "SharedMemory.SMHUsed",
+        "SharedMemory.SMHAvailable",
+        "Dashboard.Performance.GlobalRefsPerSecond",
+        "Dashboard.Performance.CacheEfficiency",
+        "Dashboard.SystemUsage.DatabaseSpace",
+        "Dashboard.SystemUsage.JournalSpace",
+        "Dashboard.SystemUsage.LockTable",
+        "Dashboard.SystemUsage.WriteDaemon"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "systemUsageEmpty",
+    "commandAliases": [
+      "system usage",
+      "memory",
+      "shared memory",
+      "global references"
+    ],
+    "classicPage": "%cspapp.op.utilsysmonitor",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Monitor",
+        "type": "GET",
+        "parts": [
+          {
+            "type": "SYSTEMUSAGE",
+            "as": "Usage"
+          },
+          {
+            "type": "SYSTEMUSAGESHM",
+            "as": "SharedMemory"
+          },
+          {
+            "type": "DASHBOARDMAIN",
+            "as": "Dashboard"
+          }
+        ]
+      },
+      "fields": [
+        "Usage.AllGlobalReferences",
+        "Usage.GlobalUpdateReferences",
+        "Usage.RoutineCalls",
+        "Usage.LogicalBlockRequests",
+        "Usage.BlockReads",
+        "Usage.BlockWrites",
+        "Usage.JournalEntries",
+        "Usage.JournalBlockWrites",
+        "Usage.LastUpdate",
+        "SharedMemory.SMHAllocated",
+        "SharedMemory.SMHUsed",
+        "SharedMemory.SMHAvailable",
+        "Dashboard.Performance.GlobalRefsPerSecond",
+        "Dashboard.Performance.CacheEfficiency",
+        "Dashboard.SystemUsage.DatabaseSpace",
+        "Dashboard.SystemUsage.JournalSpace",
+        "Dashboard.SystemUsage.LockTable",
+        "Dashboard.SystemUsage.WriteDaemon"
+      ],
+      "filter": [
+        "Usage.AllGlobalReferences",
+        "Usage.GlobalUpdateReferences",
+        "Usage.RoutineCalls",
+        "Usage.LogicalBlockRequests",
+        "Usage.BlockReads",
+        "Usage.BlockWrites",
+        "Usage.JournalEntries",
+        "Usage.JournalBlockWrites",
+        "Usage.LastUpdate",
+        "SharedMemory.SMHAllocated",
+        "SharedMemory.SMHUsed",
+        "SharedMemory.SMHAvailable",
+        "Dashboard.Performance.GlobalRefsPerSecond",
+        "Dashboard.Performance.CacheEfficiency",
+        "Dashboard.SystemUsage.DatabaseSpace",
+        "Dashboard.SystemUsage.JournalSpace",
+        "Dashboard.SystemUsage.LockTable",
+        "Dashboard.SystemUsage.WriteDaemon"
+      ],
+      "sort": {
+        "fields": [
+          "Usage.AllGlobalReferences",
+          "Usage.GlobalUpdateReferences",
+          "Usage.RoutineCalls",
+          "Usage.LogicalBlockRequests",
+          "Usage.BlockReads",
+          "Usage.BlockWrites",
+          "Usage.JournalEntries",
+          "Usage.JournalBlockWrites",
+          "Usage.LastUpdate",
+          "SharedMemory.SMHAllocated",
+          "SharedMemory.SMHUsed",
+          "SharedMemory.SMHAvailable",
+          "Dashboard.Performance.GlobalRefsPerSecond",
+          "Dashboard.Performance.CacheEfficiency",
+          "Dashboard.SystemUsage.DatabaseSpace",
+          "Dashboard.SystemUsage.JournalSpace",
+          "Dashboard.SystemUsage.LockTable",
+          "Dashboard.SystemUsage.WriteDaemon"
+        ],
+        "default": "Usage.LastUpdate",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Usage.AllGlobalReferences",
+          "labelKey": "processDetailsGlobalReferences",
+          "kind": "number"
+        },
+        {
+          "field": "Usage.GlobalUpdateReferences",
+          "labelKey": "systemUsageGlobalUpdates",
+          "kind": "number"
+        },
+        {
+          "field": "Usage.RoutineCalls",
+          "labelKey": "systemUsageRoutineCalls",
+          "kind": "number"
+        },
+        {
+          "field": "Usage.LogicalBlockRequests",
+          "labelKey": "systemUsageLogicalBlockRequests",
+          "kind": "number"
+        },
+        {
+          "field": "Usage.BlockReads",
+          "labelKey": "systemUsageBlockReads",
+          "kind": "number"
+        },
+        {
+          "field": "Usage.BlockWrites",
+          "labelKey": "systemUsageBlockWrites",
+          "kind": "number"
+        },
+        {
+          "field": "Usage.JournalEntries",
+          "labelKey": "systemUsageJournalEntries",
+          "kind": "number"
+        },
+        {
+          "field": "Usage.JournalBlockWrites",
+          "labelKey": "systemUsageJournalBlockWrites",
+          "kind": "number"
+        },
+        {
+          "field": "Usage.LastUpdate",
+          "labelKey": "systemUsageLastUpdate",
+          "kind": "name"
+        },
+        {
+          "field": "SharedMemory.SMHAllocated",
+          "labelKey": "systemUsageSharedMemory",
+          "kind": "number"
+        },
+        {
+          "field": "SharedMemory.SMHUsed",
+          "labelKey": "systemUsageSharedMemory",
+          "kind": "number"
+        },
+        {
+          "field": "SharedMemory.SMHAvailable",
+          "labelKey": "systemUsageSharedMemory",
+          "kind": "number"
+        },
+        {
+          "field": "Dashboard.Performance.GlobalRefsPerSecond",
+          "labelKey": "systemUsageGlobalRefsPerSecond",
+          "kind": "number"
+        },
+        {
+          "field": "Dashboard.Performance.CacheEfficiency",
+          "labelKey": "systemUsageCacheEfficiency",
+          "kind": "number"
+        },
+        {
+          "field": "Dashboard.SystemUsage.DatabaseSpace",
+          "labelKey": "systemUsageDatabaseSpace",
+          "kind": "text"
+        },
+        {
+          "field": "Dashboard.SystemUsage.JournalSpace",
+          "labelKey": "systemUsageJournalSpace",
+          "kind": "text"
+        },
+        {
+          "field": "Dashboard.SystemUsage.LockTable",
+          "labelKey": "systemUsageLockTable",
+          "kind": "text"
+        },
+        {
+          "field": "Dashboard.SystemUsage.WriteDaemon",
+          "labelKey": "systemUsageWriteDaemon",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "osmgmt.systemusage",
     "banner": null,
     "tab": null
   },

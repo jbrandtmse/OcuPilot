@@ -2,8 +2,8 @@
 title: 'System usage and the dashboard meters'
 type: 'feature'
 created: '2026-09-17'
-status: 'ready-for-dev'
-baseline_revision: 'ab754db8824ec1d51a110dbc678b10ec7b92b0ee'
+status: 'done'
+baseline_revision: '12cd5949cb352ac11b121267db8e18a9577e6a9a'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -140,6 +140,33 @@ Reads are `GET /api/ocupilot/screens/osmgmt.systemusage/read`.
 
 ## Review Triage Log
 
+### 2026-09-17 — Review pass
+
+- verdicts: 22 findings — high 0, medium 0, low 9, false 13, maybe-false 0
+- findings:
+  - `low` `patch` blind-hunter: `AdminPort.BareType` loops every `BARETYPES` entry after a match instead of stopping, so a future duplicate key would silently resolve to whichever sorts last — added `Quit` after the match in `AdminPort.cls:156`; recompiled on slot B and the throwaway, `OcuPilot.Test.SystemUsage` and `OcuPilot.Test.WireSecurityRead` re-run green.
+  - `false` `reject` blind-hunter: three `SharedMemory.*` table columns share one `labelKey` — refuted: `system-usage.page.ts`'s `counterViews` filters to `isCounterField` (`Usage.*` only), so those columns and their shared label are never rendered; the underlying field keys stay distinct wherever consumed.
+  - `false` `reject` blind-hunter: `SharedMemory.SMHAvailable` is read but never rendered — refuted: it is part of the declared 18-field read/tool contract (`osmgmt.systemusage.read` in `Test/ReadTool.cls`) by design (Read.cls: "one row for screen and tool"); not every declared field must reach the page.
+  - `false` `reject` blind-hunter: `Meter.displayValue`'s bare `String(value)` skips `cellView`'s number formatting — refuted: `cellView`'s "number" kind formatting is `textOf(value)` = `JSON.stringify(number)`, functionally identical to `String(value)`; neither path rounds or groups.
+  - `low` `reject` blind-hunter: no ARIA meter/progressbar role on the track — real gap, but EXPERIENCE.md's Accessibility Floor names "meter state" only under "Color never alone" (already satisfied by the shown word) and does not require a range role here, unlike the resize-handle where the design doc explicitly does; a correct role would also have to span the non-numeric status-meter shape, which is more than a direct fix.
+  - `false` `reject` blind-hunter: `emptyStateKey`/`systemUsageEmpty` looks unreachable — refuted: every read-declaring descriptor must declare `emptyStateKey` as a structural (`TableProblem`) obligation regardless of runtime reachability; the story's own test comment already documents that zero rows never occurs for this archetype.
+  - `low` `reject` blind-hunter: the two value meters show no unit — real minor ambiguity, but the code comment documents the deliberate choice not to invent copy absent from EXPERIENCE.md's Fixed strings (project convention); low everyday impact and the fix (minting new UI copy) is more than a direct correction.
+  - `false` `reject` blind-hunter: bare-type test coverage looks asymmetric (only `SYSTEMUSAGE` gets a negative "elsewhere" case) — refuted: `BareType`/`EndpointType` resolution is suffix-generic, so one representative negative case covers the shared path for all three `BARETYPES` entries; the other two are additionally proven correct end-to-end by the live parts-merge test.
+  - `false` `reject` blind-hunter: no `ARCHITECTURE-SPINE.md` change accompanies the new `parts` grammar — refuted: `ARCHITECTURE-SPINE.md:411`'s AD-36 already states the exact extension, naming "System usage, Story 6.9" by name, predating this diff's baseline.
+  - `low` `reject` blind-hunter: `Meter`'s `state === null` overload has no runtime guard — real but speculative: the invariant is enforced by TypeScript's type system and documented at the sole existing caller; a runtime guard for a currently-single, correct caller is unrequested extra complexity.
+  - `false` `reject` blind-hunter: `meterStateFromWord`'s fallback looks visually indistinguishable from a real "Warning" — refuted: the fallback preserves the vendor's original word verbatim (`meter-state.ts:29`), so an unrecognized value reads with its own text even though it shares warning's color, exactly as Boundaries specify.
+  - `false` `reject` blind-hunter: `OcuPilot.Test.Read.ReadFixture`'s wiring "isn't visible in this diff" — refuted: it is a pre-existing class (used by `Test/ErrorLog.cls` before this story); independently re-ran `OcuPilot.Test.SystemUsage` (6/6 pass) confirming the wiring works.
+  - `false` `reject` edge-case-hunter: `PartsObject` has no lower-bound guard against a zero-length `parts` array — refuted: it is only ever called with the descriptor's installed, `Registry.PartsProblem`-validated array (`Read.cls:286`), the same install-time-validate/runtime-trust pattern every other grammar rule in `Registry.cls` uses.
+  - `low` `patch` edge-case-hunter: same `AdminPort.BareType` no-short-circuit finding as above — grouped with the blind-hunter row; same fix.
+  - `false` `reject` edge-case-hunter: `CopyAs`'s new descent loop might not resolve a dotted field whose later segment is a literal flat key rather than a nested object — refuted: none of the 18 declared fields need that shape (each is single-level or a genuinely nested two-level vendor object per the Code Map), the new algorithm matches its own doc comment exactly, and the pre-diff baseline (`git show`) could not have resolved a genuine two-level field like `Dashboard.Performance.GlobalRefsPerSecond` at all, so there is no regression versus any field this or a prior story declares.
+  - `low` `patch` edge-case-hunter: `meterViewFor`'s `'percent'` branch calls the hardcoded `sharedMemoryPercent(row)` instead of reading `config.field`/`config.denominatorField`, contradicting the type's own doc comment that `denominatorField` is used by the percent kind — added a generic `percentFromFields` helper, had `sharedMemoryPercent` delegate to it (preserving its existing exported signature and test), and switched `meterViewFor` to call it with `config.field`/`config.denominatorField`; `system-usage-store.test.mjs` (9/9), `npm test` (1312/1312) and the browser spec (3/3) re-run green.
+  - `false` `reject` edge-case-hunter: `CopyAs` sets `tSource = pFrom` before confirming `pFrom` is an object — refuted: when `pFrom` is not an object, `tType` stays `"unassigned"` throughout, so the `"unassigned"` branch fires and `tSource` is never dereferenced.
+  - `low` `reject` edge-case-hunter (claim): the task list says the browser spec covers "AC1 to AC3", but it only exercises AC1, AC2 and the denied deep link — true as far as the browser spec alone goes, but AC3 (silent tick, no `aria-live`) is genuinely verified by `system-usage.page.spec.ts`'s dedicated AC3 test, so there is no functional gap; the only fix is correcting the spec's own task-list wording, which is out of scope for a code patch.
+  - `low` `reject` verification-gap (other finding): same `AdminPort.BareType` no-short-circuit finding as above, independently — grouped with the blind-hunter/edge-case-hunter rows; same fix.
+  - `false` `reject` intent-alignment: the Matrix's "last values kept with the refusal strip" phrase might mean a page-level banner rather than the per-meter tooltip the code implements — refuted on the spec's own text: the more precise Boundaries section is unambiguous ("Failed: '—' with the error in its tooltip"), the implementation is internally consistent with it and documented, and no other archetype or EXPERIENCE.md row uses "refusal strip" as a defined term; any fix would be to the spec's own loose wording, not the code.
+  - `false` `reject` intent-alignment: "no CSS transition or animation on the fill, ever" might also bar the pending skeleton's animation — refuted: the same Boundaries sentence already distinguishes "the fill" from "a skeleton in place of the fill" as different elements, and the codebase's universal skeleton pattern (`_components.scss`'s `ocu-skeleton-pulse`, honoring `prefers-reduced-motion`) already animates skeletons everywhere else in the app.
+  - `false` `reject` intent-alignment: the Matrix's "parts with rowGet" refusal scenario has no dedicated corpus case — refuted: `Registry.cls`'s `RowGetProblem` runs before `PartsProblem` (`:936` vs `:947`) and already refuses any `rowGet` lacking a valid route-id `criteria`; since `parts` structurally excludes `criteria`, the combination is caught by the pre-existing, already-tested `RowGetProblem` rule before `PartsProblem` ever runs, so no dedicated case is needed for the two engines to agree.
+
 ## Design Notes
 
 **Governing ADs:**
@@ -193,7 +220,39 @@ Stateful steps run on the slot B throwaway `ocupilot-b-ci` only. `ocupilot-slot-
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Re-planned around the orchestrator's Q1-Q4 answers. Nothing remains open for planning.
+**Summary:** Implemented the System usage screen: an admin `GET` on `Monitor` with three merged `parts` (`SYSTEMUSAGE`, `SYSTEMUSAGESHM`, `DASHBOARDMAIN`) feeding one bounded 18-field row, a new `SystemUsage` descriptor under `os-management`, a shared framework-free `meter-state` module and `app-meter` component, and a page with a counters group plus seven meters, auto-refreshing at 5/10/30/60 s.
+
+**Files changed:**
+
+- `src/OcuPilot/Port/AdminPort.cls` — per-endpoint bare-type map (`BARETYPES`) so `Monitor`'s unprefixed vendor types resolve; short-circuits on the first match (review patch).
+- `src/OcuPilot/Screen/Registry.cls`, `ui/tools/screen-mirror.mjs`, `src/OcuPilot/Test/ReadSourceCorpus.cls`, `src/OcuPilot/Test/ReadSource/Parts.cls` (new), `src/OcuPilot/Test/ReadSource/Endpoint.cls` — admit and validate `source.parts` identically in both engines, with corpus coverage.
+- `src/OcuPilot/Screen/Read.cls` — issues declared parts in order, merges them (object, or exact `Total` row), fails the whole read on any part fault, and projects `<as>.<member>[.<member>]`.
+- `src/OcuPilot/Screen/Descriptor/SystemUsage.cls` (new) — the descriptor: route, pairs, tool, table of 18 fields.
+- `ui/src/app/core/meter-state.ts` + `ui/tools/meter-state.test.mjs` (new) — word/percent-to-severity mapping, framework-free.
+- `ui/src/app/shell/meter.ts` + `meter.spec.ts` (new) — the shared meter component (OnPush, tokens only, no transition/animation on the fill).
+- `ui/src/app/areas/os-management/system-usage.page.ts`, `system-usage.store.ts`, `system-usage.page.spec.ts`, `ui/tools/system-usage-store.test.mjs` (new); `ui/src/app/shell/screen-outlet.ts` — the page, its store, and `meters` archetype registration; `meterViewFor`'s percent branch reads `config.field`/`config.denominatorField` generically (review patch).
+- `EXPERIENCE.md`, `ui/src/app/core/strings.ts`, `ui/tools/strings.test.mjs` — Fixed strings row and raised bound.
+- `src/OcuPilot/Test/SystemUsage.cls` (new) — Live, Tick, Pairs, Bare-type-elsewhere, parts-merge/Total-row/whole-read-fault, and the Integration AC.
+- `src/OcuPilot/Test/WireSecurityRead.cls` — the Pairs row against a real least-privileged principal.
+- Roster tripwires: `Test/ReadTool.cls`, `Test/Wire.cls`, `Install/Smoke.cls`, `Test/Smoke.cls`, `ui/tools/navigation.test.mjs`, `ui/tools/navigation-wire.test.mjs`, `ui/tools/screen-mirror.test.mjs`, `ui/src/app/shell/rail-wire.spec.ts`.
+- `ui/browser/system-usage.browser-spec.mjs` (new) — AC1, AC2 (including a real computed-style check on the fill), and the denied deep link.
+
+**Review findings breakdown (22 findings across 4 layers):** 2 patched (both `low`): `AdminPort.BareType` now stops at its first `BARETYPES` match instead of silently taking a future duplicate's last entry; `meterViewFor`'s percent branch now computes generically from `config.field`/`config.denominatorField` instead of a hardcoded field pair, matching its own type's doc comment. 20 rejected — 13 refuted on verification (false), 7 real-but-cosmetic or spec-wording issues where the fix would be more than a direct code correction or would mean editing this spec (ARIA meter semantics, no unit on the two value meters, no runtime guard on `Meter`'s `state === null` contract, asymmetric-looking bare-type test coverage, and three intent-alignment wording ambiguities all resolved by the spec's own more precise text or by a pre-existing rule that already covers the scenario). Full detail in `## Review Triage Log` above.
+
+**Follow-up review recommendation:** false. Only two `low` entries were patched (no `high`, no two-or-more `medium`), so this has converged.
+
+**Verification performed:**
+
+- `uv run scripts/check-objectscript.py` — 0 problems, 360 files (re-run after the patches).
+- `bash scripts/lint-docs.sh` — clean (re-run after the patches).
+- Full `src/OcuPilot/` loaded and compiled on `ocupilot-slot-b`, HSCUSTOM — clean; `AdminPort.cls`'s patch additionally loaded and compiled directly onto the throwaway `ocupilot-b-ci`.
+- `node tools/ci-runner.mjs --container ocupilot-b-ci`, one class per call: `SystemUsage` 6/6, `WireSecurityRead` 14/14 (both re-run after the `BareType` patch) — plus, before the patch, `Wire` 20/20, `ReadTool` 26/26, `ScreenRead` 22/22, `Descriptor` 35/35, `OcuPilot.Test.Inventory` (the runnable class behind "AdminInventory") 5/5, `Smoke` 32/32 — 160 ObjectScript unit tests total, 0 failed.
+- `bash scripts/smoke.sh --container ocupilot-b-ci` — 36 passed, 0 failed, 2 pending (Epic 3), 1 skipped (agentswitches, instance-state-dependent); `systemusage` explicit pass (re-run after the patches).
+- `cd ui && npm run build && npm test` — build green (260.95 kB over the pre-existing 500 kB initial-bundle budget, unrelated to this story), 851 `node --test` + 461 vitest = 1312 tests, 0 failures (re-run after the `meterViewFor` patch, including `system-usage-store.test.mjs`'s 9/9).
+- Bundle rebuilt and redeployed to `ocupilot-b-ci`; `system-usage.browser-spec.mjs` 3/3 (AC1, AC2 with a real `getComputedStyle` check, the denied deep link) — re-run after both patches.
+- I/O & Edge-Case Matrix: every row covered by a passing test (Live/Tick/Bare-type-elsewhere/Integration in `Test.SystemUsage`; Pairs in `Test.WireSecurityRead`; Parts grammar in `ReadSourceCorpus`'s 13 cases; Meter state in `meter-state.test.mjs`; Meter fault across `meter.spec.ts`, `system-usage.page.spec.ts` and `system-usage-store.test.mjs`).
+
+**Residual risks:** none identified. The throwaway `ocupilot-b-ci` is left running (healthy) since this run's own implementation subagent brought it up.

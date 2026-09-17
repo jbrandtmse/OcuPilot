@@ -93,6 +93,13 @@ const LIVE_PAYLOAD = {
           allowed: false,
           failedPair: '%Admin_Manage:USE',
         },
+        {
+          route: 'os-management/system-usage',
+          labelKey: 'systemUsageLabel',
+          sideBarPosition: 3,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
+        },
       ],
     },
     {
