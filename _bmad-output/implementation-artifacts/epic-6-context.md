@@ -63,10 +63,12 @@ Story traps:
 - **Stale parent ids.** A parent-scoped route whose id answers 404 draws the generic "request
   refused" with a Retry that cannot clear it (accepted for Secrets as DW-1021; Task details and the
   one-task History meet the same path, inference).
-- **6.8, settle at spec time:** the story asks for auto-refresh, but Process details is not in the
-  roster (Processes, Databases, Database details, Task schedule, Task details, System usage). A
-  screen joins only by declaring it **and** appearing there, so amend EXPERIENCE.md and AD-43
-  together or drop the declaration.
+- **6.8, settled:** the auto-refresh roster is now seven (Processes, Process details, Databases,
+  Database details, Task schedule, Task details, System usage), so Process details declares
+  auto-refresh; a screen joins only by declaring it **and** appearing in that roster. It shows
+  dashboard values, not the meter component, plus client executable and address, open devices, and
+  whether a cached SQL query is executing, named by its routine. No admin endpoint carries statement
+  text; that is Story 19.10's SQL activity screen, so do not reach for it here.
 - **6.9:** meter names and thresholds come from the 25 definitions in
   `%CSP.UI.Portal.EnsembleMonitor`; confirm the assumed 80% and 95% there.
 - **6.14:** confirm the assumed 28 px log row against a real tail at the densest severity mix.
@@ -174,7 +176,11 @@ Story traps:
   `list (server criteria)`: criteria form first, skeleton on Search, never auto-refreshes (Refresh
   re-reads the form's current values, not the last submitted search, as the audit page does).
   `log-viewer`: "No entries." / "No matches.", new rows only via "Load newer".
-- **Meter.** Label, value and unit with its state as a word and a color at the thresholds; the needle
+- **Auto-refresh.** Only the seven roster screens carry it: a command-bar chip switches off or a
+  rate from a short fixed list (5/10/30/60 s assumed, default off), the status bar stamps the last
+  update, the setting persists per screen, and refresh is silent (no spinner, skeleton or
+  announcement). The shared framework pauses it while a proposal on the screen's entity type is live.
+- **Meter.** Used on System usage and Database details (not Process details). Label, value and unit with its state as a word and a color at the thresholds; the needle
   never animates. EXPERIENCE.md and 6.9 show "—" until the first value while DESIGN.md shows "…" for
   values still arriving; settle which at spec time.
 - **Log viewer.** Rows are time, pid, severity chip, text. Sticky search with highlight and a polite
@@ -209,7 +215,7 @@ Story traps:
   DW-1013). Both epics edit `Registry`, `Read`, `AdminPort`, `Install/Smoke`, `Test/` and the
   client's core, shell and tools; expect reconciliation at merge. Story 4.4's screen context reads the parent-scoped
   route-id entity type 6.6 settled.
-- **Within this epic:** 6.10's owner link opens 6.8; one meter component serves 6.8, 6.9 and 6.11; one log-viewer serves 6.13 and
+- **Within this epic:** 6.10's owner link opens 6.8; one meter component serves 6.9 and 6.11's Database details; one log-viewer serves 6.13 and
   6.14, built by whichever lands first.
 - **Downstream:** Epic 7 (on-demand Run in Story 7.5, process actions in 7.8, OAuth deletes, 7.6's
   UJ-6 replay on 6.7's route); Epic 8 (resource, X.509, device and wallet-secret editors); Epic 9
