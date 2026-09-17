@@ -2,8 +2,8 @@
  * The Upcoming tasks horizon (AD-19): whether the screen reads a number of hours ahead or up to a
  * date, which of the six hour choices is chosen, and which date.
  *
- * **Framework-free and provided by the page.** It imports nothing from Angular, so it runs under
- * `node --test`, and the page holds it for its own life.
+ * **Framework-free and held beside the screen's store.** It imports nothing from Angular, so it runs
+ * under `node --test`, and the page keeps one per screen store, so it outlives the page as the rows do.
  *
  * **It answers the read's criteria, never both.** The vendor answers 24 hours when neither is sent
  * and honours the hours when both are, so `criteria` sends exactly one: `hoursOffset` in hours

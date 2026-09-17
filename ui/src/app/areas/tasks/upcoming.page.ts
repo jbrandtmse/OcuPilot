@@ -29,6 +29,25 @@ interface HorizonOption {
 /** The horizon control's value for date mode, which no hour choice can take. */
 export const DATE_MODE_VALUE = 'date';
 
+/** A screen store's horizon and the criteria its read last sent. */
+interface HeldHorizon {
+  readonly horizon: UpcomingHorizon;
+  applied: ScreenReadCriteria;
+}
+
+/** One horizon per screen store, dropped with it at sign-out. */
+const HELD_HORIZONS = new WeakMap<ScreenStore, HeldHorizon>();
+
+/** The horizon held for `store`, created at 24 hours on first ask. */
+function heldFor(store: ScreenStore | null): HeldHorizon {
+  const known = store === null ? undefined : HELD_HORIZONS.get(store);
+  if (known !== undefined) return known;
+  const horizon = new UpcomingHorizon();
+  const held = { horizon, applied: horizon.criteria(localDateText(new Date())) ?? {} };
+  if (store !== null) HELD_HORIZONS.set(store, held);
+  return held;
+}
+
 /** The string key each hour choice is labelled with, in `UPCOMING_HOURS` order. */
 const HOUR_LABEL_KEYS: Readonly<Record<string, string>> = {
   '1': 'taskUpcomingHours1',
@@ -50,6 +69,10 @@ const HOUR_LABEL_KEYS: Readonly<Record<string, string>> = {
  * leaves the table as it was. The read closure sends the criteria of the last horizon that yielded
  * any, so Refresh and a namespace switch re-read what the table shows.
  *
+ * The horizon lives as long as the screen's store, not the page: leaving the screen, or following a
+ * row's name link to its id route, re-creates the page over the store's rows, and the horizon those
+ * rows were read for comes back with them. Sign-out drops the stores, and the horizon with them.
+ *
  * It does not auto-refresh (AD-43) and carries no row action (AD-10).
  *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
@@ -59,7 +82,6 @@ const HOUR_LABEL_KEYS: Readonly<Record<string, string>> = {
   selector: 'app-upcoming-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [DataTable],
-  providers: [{ provide: UpcomingHorizon, useFactory: () => new UpcomingHorizon() }],
   template: `<section class="ocu-list-page">
     @if (list; as view) {
       <form class="ocu-criteria-form" (submit)="onSubmit($event)">
@@ -98,7 +120,10 @@ export class UpcomingPage {
   private readonly api = inject(ApiService);
   private readonly scope = inject(ScopeService);
   private readonly actions = inject(ScreenActions);
-  private readonly horizon = inject(UpcomingHorizon);
+  private readonly horizon: UpcomingHorizon;
+
+  /** The horizon and the criteria the bound read sends: the last horizon that yielded any. */
+  private readonly held: HeldHorizon;
 
   protected readonly STRINGS = STRINGS;
 
@@ -116,21 +141,21 @@ export class UpcomingPage {
   /** Bumped by the two stores, so the form and the table re-render under `OnPush`. */
   private readonly generation = signal(0);
 
-  /** The criteria the bound read sends: the last horizon that yielded any. */
-  private applied: ScreenReadCriteria;
-
   constructor() {
-    this.applied = this.horizon.criteria(localDateText(new Date())) ?? {};
     const screen = this.navigation.screenForUrl(this.router.url);
     if (screen === null || screen.read === null || screen.table === null) {
+      this.held = heldFor(null);
+      this.horizon = this.held.horizon;
       this.list = null;
       return;
     }
     const store = this.stores.for(screen.descriptor, screen.refreshRates);
+    this.held = heldFor(store);
+    this.horizon = this.held.horizon;
     this.list = { screen, store };
     this.refresh.bind(
       screen,
-      createScreenRead(this.api, screen, () => this.applied)
+      createScreenRead(this.api, screen, () => this.held.applied)
     );
     if (this.scope.loaded()) void this.refresh.readNow();
     const stopRefreshAction = this.actions.register(screen.descriptor, REFRESH_ACTION_ID, () => {
@@ -193,8 +218,8 @@ export class UpcomingPage {
   /** Read once for the horizon as it stands, when it yields criteria that differ from the last. */
   private apply(): void {
     const next = this.horizon.criteria(localDateText(new Date()));
-    if (next === null || JSON.stringify(next) === JSON.stringify(this.applied)) return;
-    this.applied = next;
+    if (next === null || JSON.stringify(next) === JSON.stringify(this.held.applied)) return;
+    this.held.applied = next;
     if (this.scope.loaded()) this.refresh.noteScopeChanged();
   }
 

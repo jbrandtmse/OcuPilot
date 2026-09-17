@@ -186,8 +186,8 @@ Method TestOnDemandReadsTheVendorsOnDemandTasks()
 /// <code>Datetime</code> is <code>YYYY-MM-DD HH:MM:SS</code>, and each row's <code>Suspended</code>
 /// is what <code>Task.CRUD</code>'s INFO answers for that task.</p>
 /// <p>Mutation: issue <code>LIST</code> for every admin read in
-/// <method>OcuPilot.Screen.Read.Execute</method> -&gt; the read answers task rows and the field and
-/// occurrence assertions go red.</p>
+/// <method>OcuPilot.Screen.Read.Execute</method> -&gt; the read answers task rows and the occurrence
+/// and <code>Datetime</code> assertions go red.</p>
 Method TestUpcomingAtTheDefaultHorizonIsTheVendorsOccurrences()
 {
     Set tSC = ..Read("tasks.upcoming", "maxRows=1000&hoursOffset=24", .tStatus, .tAnswer)

@@ -162,6 +162,32 @@ The throwaway has the demo fixture. Reads are `GET /api/ocupilot/screens/<tool>/
 - **AC4 (gating).** Given the throwaway principal holding install-DB read and `%Admin_Task:USE` only, when it deep-links to either route, then it sees "You need %DB_IRISSYS:READ to open <title>." with no table and no read.
 - **Integration.** Given consumer `Screen.Tool.Read.View`, when it reads `tasks.ondemand.read` and `tasks.upcoming.read` (with `hoursOffset` `24`) live, then it returns each route's fields and rows narrowed by its cap. Its input schema offers `hoursOffset` as an enum of the six options.
 
+### Review Findings
+
+Code review 2026-09-17 (`review_tier: full-opus`; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor).
+
+- [x] [Review][Patch] (medium) The horizon lives shorter than the store's rows: a Name link opens `tasks/upcoming/<id>`, a separate route config, so the page is re-created at 24 hours over the cached rows of the horizon the user chose, and a chosen occurrence beyond 24 hours is re-read away [ui/src/app/areas/tasks/upcoming.page.ts:62]
+- [x] [Review][Patch] (low, DW-1023) A `query` key equal to `forEach.param` is overwritten on each child list, and the `GET` and per-parent seeding is pinned by no test [src/OcuPilot/Screen/Registry.cls:1323]
+- [x] [Review][Patch] (low) `SeedSourceQuery`'s doc, `Read`'s class doc and the generated `ReadSource.query` doc still overstate where the fixed query travels [src/OcuPilot/Screen/Read.cls:462]
+- [x] [Review][Patch] (low) `CheckAreaLists`' doc gives the wrong reason both lists hold a row [src/OcuPilot/Install/Smoke.cls:540]
+- [x] [Review][Patch] (low) Two mutation notes name assertions that do not go red (the Upcoming fixture answers 200, not 501; `fields` come from the declaration) [src/OcuPilot/Test/ScreenReadSource.cls:295]
+- [x] [Review][Patch] (low) The browser spec's `after` asserts the principal cleanup before restoring the Task Manager, so a failed cleanup leaves it suspended [ui/browser/tasks.browser-spec.mjs:150]
+- [x] [Review][Patch] (low) Browser AC3's hour leg discriminates only when the hour and day answers differ in size, which nothing asserts [ui/browser/tasks.browser-spec.mjs]
+- [x] [Review][Patch] (low, Rule 19) No observed `mutation:` line for the Matrix rows Until a date, Bad criterion and Cap [src/OcuPilot/Test/TaskLists.cls:224]
+
+Rejected:
+
+- Spec Auto Run Result counts, the stale "Unverified risk" sentence and the oversized narration: the fix edits the spec under review.
+- (false) The Fixed-param test cannot fail: `SeedCriteria` copying every caller key turned it red at the AD gate.
+- (false) "The vendor answers 24 hours when neither is sent" is unpinned: read from `RunUpcoming`'s source (Code Map), not an inference.
+- (low) Browser AC3's date leg asserts the request, not the render: AC3 names the request; rendering is the hour leg's shared `apply()` path.
+- (low) On-demand's `onDemand=1` has no live pin: the vendor answers every task on this build (gate decision; residual risk recorded).
+- (false) `TaskLists` date test mixes instance and browser dates: it takes both the URL and the vendor query from `$Horolog`; the browser clock is DW-1024.
+- (low) `apply()` before the scope loads and `today` past midnight: the read closure reads `applied` at call time; midnight rejected in the implement review.
+- (low) The page spec's AD-10 case echoes the declaration: browser AC3 probes the rendered command bar (mutation observed).
+- (false) EXPERIENCE `:105` "Run per row" is stale: it describes the screen Story 7.5 completes.
+- (false) Re-choosing the applied horizon after an empty date mode reads nothing: the table already shows that horizon's answer.
+
 ## Spec Change Log
 
 - 2026-09-17 (spec gate, lead): AD-36 amended with the two source shapes (`UPCOMING`, `source.query`); epics.md Story 6.5's "offering Run" AC amended to name Story 7.5 as where Run ships; the other gate decisions (vendor on-demand definition, six hour choices plus a date, plain `list`, the Suspended cross-check) accepted as planned.
@@ -295,6 +321,14 @@ The throwaway has the demo fixture. Reads are `GET /api/ocupilot/screens/<tool>/
 - mutation: `UpcomingPage.apply()` issues the hour read without applying it, leaving the 24-hour table, bundle rebuilt and redeployed -> browser Story 6.5 AC3 "the table renders the next hour's answer" red, 445 against 19 (observed)
 - mutation: TaskUpcomingList declares a `run` row action, mirror regenerated, bundle rebuilt and redeployed -> browser Story 6.5 AC3 "the command bar offers Refresh alone" red (observed)
 - mutation: `UpcomingPage.apply()` calls `readNow()` in place of `noteScopeChanged()` -> `upcoming.page.spec.ts` "a horizon change clears the rows before the new answer lands" red (observed)
+- mutation (QA, Pairs row): TaskUpcomingList's `privileges` gains a third, unheld entry `{"resource": "%Admin_Operate", "permission": "USE"}` (loaded and compiled on `ocupilot-b-ci` from a scratch copy, never touching the worktree) -> `WireSecurityRead.TestOnDemandAndUpcomingTasksPairSetsAreEnforcedForARealPrincipal` red at `AssertSameRowsAsTestAccount`'s "OcuPilotWireTaskBoth tasks.upcoming: and answers" (both-pairs caller now refused instead of 200), and `TestTheTaskSchedulesPairSetIsEnforcedForARealPrincipal`'s "both pairs: the three task screens are listed allowed" red too; reverted the same way, `ocupilot-b-ci`'s recompiled declaration confirmed back to two privileges, suite back to 10/10, working tree confirmed byte-identical (observed)
+- mutation (review): `heldFor` never returns a held horizon -> `upcoming.page.spec.ts` "a page re-created over the same store, as a name link does, keeps the chosen horizon" red (observed)
+- mutation (review): `forEachProblem`'s query-key arm disabled -> `screen-mirror.test.mjs` corpus case "a param a fixed query also names, case-folded" red; the same arm in `Registry.ForEachProblem`, recompiled with subclasses -> `ReadTool.TestEveryReadSourceCorpusCaseGetsItsSentence` red on that case (observed)
+- mutation (review): `Read.Execute` skips `SeedSourceQuery` on the GET branch and `ForEachRows` skips it on child lists -> `ScreenReadSource.TestAnObjectReadsAsOneRowProjectingMemberFields` and `TestAPerParentReadSkipsAChildNotFoundAndFailsOnAnyOtherFault` red (observed)
+- mutation (review, Until a date): `SeedCriteria` skips `toDatetime` -> `TaskLists.TestADateHorizonAndBothCriteriaReadAsTheVendorAnswers` "its occurrences run to the end of tomorrow" red, and `TestAnUndeclaredHorizonIsRefusedByName` toDatetime leg (observed)
+- mutation (review, Bad criterion): `5` added to TaskUpcomingList's `hoursOffset` options -> `TaskLists.TestAnUndeclaredHorizonIsRefusedByName` and the Integration enum assertion red (observed)
+- mutation (review, Cap): `Read.Execute` reports `truncated` 0 always -> `TaskLists.TestEachListIsCutAtACapOfOne` red (observed)
+- review verification (recycled `ocupilot-b-ci`, each mutation loaded from a scratch copy and restored from the worktree): ScreenReadSource 9, ReadTool 26, TaskLists 7 green after restore (runs 7-9); `npm run build`, `npm test` (812 node, 417 component) green; bundle redeployed, `tasks.browser-spec.mjs` 9/9; `check-objectscript` 0; `lint-docs` clean.
 
 ## Auto Run Result
 

@@ -2936,6 +2936,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-6-5-on-demand-and-upcoming-tasks.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: SeedSourceQuery runs on the GET branch and in ForEachRows; the only query fixture is a plain LIST, so deleting either call leaves every test green. No shipped descriptor combines query with GET or forEach.
 - 2026-09-17T04:11:49Z status=open owner=6-5-on-demand-and-upcoming-tasks by=harvest note=code review: pin or refuse the collision if a two-way door, else wontfix-accepted with a probe
+- 2026-09-17T04:40:43Z status=resolved-by:6-5-on-demand-and-upcoming-tasks by=cr note=ForEachProblem and forEachProblem refuse a param equal to a query key (corpus case); Object and Children fixtures pin GET and child seeding
 
 ### DW-1024: The Upcoming tasks page takes today from the browser clock rather than the instance's, so a user in a different time zone who picks today can see an empty horizon
 - source: spec-6-5-on-demand-and-upcoming-tasks.md | severity: low | fix-risk: med | footprint: in-story

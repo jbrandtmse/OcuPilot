@@ -140,15 +140,18 @@ before(async () => {
 after(async () => {
   if (browser !== null) await browser.close();
   if (config.container === LIVE_CONTAINER) return;
-  const { values, output } = irisSession(
-    [
-      ...deletePrincipalLines,
-      mark('CLEAN', `('##class(Security.Users).Exists("${TASK_USER}"))&&('##class(Security.Roles).Exists("${TASK_ROLE}"))`),
-    ],
-    ['CLEAN']
-  );
-  assert.equal(values.CLEAN, '1', `the principal and its role are gone:\n${output}`);
-  assert.equal(setTaskManagerSuspended(false), RUNNING, 'the Task Manager is left running whatever the legs did');
+  try {
+    const { values, output } = irisSession(
+      [
+        ...deletePrincipalLines,
+        mark('CLEAN', `('##class(Security.Users).Exists("${TASK_USER}"))&&('##class(Security.Roles).Exists("${TASK_ROLE}"))`),
+      ],
+      ['CLEAN']
+    );
+    assert.equal(values.CLEAN, '1', `the principal and its role are gone:\n${output}`);
+  } finally {
+    assert.equal(setTaskManagerSuspended(false), RUNNING, 'the Task Manager is left running whatever the legs did');
+  }
 });
 
 /**
@@ -698,6 +701,7 @@ test('Story 6.5 AC3: Upcoming tasks reads at 24 hours in ascending order, re-rea
     await page.waitForNetworkIdle({ timeout: config.navigationTimeoutMs });
     const hourAnswer = (await Promise.all(answers)).find((answer) => new URL(answer.url).searchParams.get('hoursOffset') === '1');
     assert.ok(Array.isArray(hourAnswer?.body?.rows), `the next hour's read answers rows: ${JSON.stringify(hourAnswer)}`);
+    assert.notEqual(hourAnswer.body.rows.length, first.body.rows.length, 'the hour and day answers differ in size, so a table left at 24 hours is detectable');
     // An answer with no rows draws the empty state in place of the grid, which is a count of 0.
     const renderedCount = async () => ((await page.$('.ocu-data-table-empty')) !== null ? 0 : viewCount(page));
     await page

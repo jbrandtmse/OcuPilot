@@ -995,7 +995,7 @@ export function sourceQueryProblem(read, source) {
  *
  * An absent or `null` `forEach` lists no parents. Otherwise it is an object carrying only `endpoint`
  * (the parent endpoint), `key` (the parent row field each child list is read for), `param` (the query
- * parameter that key's text is sent as) and `fields`, an array of objects carrying only `field` (one of
+ * parameter that key's text is sent as, equal, case-folded, to no `source.query` key) and `fields`, an array of objects carrying only `field` (one of
  * `fields`, not repeated) and `from` (the parent row field copied into it), declared on an `admin`
  * `LIST` source with no `rowGet` and no `criteria`. `OcuPilot.Screen.Registry.ForEachProblem` returns
  * the same sentence for every case in `OcuPilot.Test.ReadSourceCorpus`.
@@ -1024,6 +1024,9 @@ export function forEachProblem(read, source, fields) {
   }
   if (typeof forEach.param !== 'string' || !PARAM_RE.test(forEach.param)) {
     return `${where}.param '${shown(forEach.param)}' is not a query parameter name`;
+  }
+  if (isObject(source.query) && Object.keys(source.query).some((key) => key.toLowerCase() === forEach.param.toLowerCase())) {
+    return `${where}.param '${forEach.param}' is also a read.source.query key, which each child list would overwrite (AD-36)`;
   }
   if (!Array.isArray(forEach.fields)) return `${where}.fields is not an array of parent fields`;
   const seen = [];
@@ -1585,7 +1588,7 @@ export interface ReadSource {
   readonly rowGet?: ReadRowGet | null;
   /** The parent list a per-parent read issues its source once per parent for, bounded by the cap. */
   readonly forEach?: ReadForEach | null;
-  /** Query parameters sent on every call of the read, which no caller can change or remove. */
+  /** Query parameters sent on the read's own list, UPCOMING or GET call and each per-parent child list (never a parent list or a rowGet call), which no caller can change or remove. */
   readonly query?: Readonly<Record<string, string>> | null;
 }
 

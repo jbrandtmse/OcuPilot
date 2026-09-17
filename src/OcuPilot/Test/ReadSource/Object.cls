@@ -31,7 +31,7 @@ XData Declaration
   "classicPage": "",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
-    "source": {"port": "admin", "endpoint": "Test.Object", "type": "GET"},
+    "source": {"port": "admin", "endpoint": "Test.Object", "type": "GET", "query": {"fixed": "1"}},
     "fields": ["Name", "Metadata.scopes_supported", "Missing.member"],
     "filter": ["Name"],
     "sort": {"fields": ["Name"], "default": "Name", "direction": "asc"},

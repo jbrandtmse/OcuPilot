@@ -384,6 +384,10 @@ Method TestTheTaskSchedulesPairSetIsEnforcedForARealPrincipal()
 /// <p>Mutation: remove <code>%DB_IRISSYS:READ</code> from
 /// <class>OcuPilot.Screen.Descriptor.TaskUpcomingList</class> -&gt; its read answers 500 and the
 /// refusal assertions go red.</p>
+/// <p>Mutation: add a third, unheld privilege to <class>OcuPilot.Screen.Descriptor.TaskUpcomingList</class>
+/// (<code>%Admin_Operate:USE</code>) -&gt; <method>AssertSameRowsAsTestAccount</method>'s "and answers"
+/// assertion for the both-pairs caller goes red instead, since the over-declared set now refuses a
+/// principal holding exactly the documented pair.</p>
 Method TestOnDemandAndUpcomingTasksPairSetsAreEnforcedForARealPrincipal()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the principals' pairs")

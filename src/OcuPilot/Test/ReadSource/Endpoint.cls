@@ -46,7 +46,9 @@ ClassMethod Arm(pKey As %String, pValue As %String, pParent As %String = "")
 /// lists were issued for, comma-separated, in order), <code>childMaxRows</code> (their
 /// <code>maxRows</code>, likewise), or, for <code>Test.Fixed</code> and <code>Test.Upcoming</code>,
 /// <code>type</code> (the request type number) and <code>query</code> (every query parameter as
-/// <code>name=value</code>, comma-separated, in name order). <code>""</code> when never recorded.</p>
+/// <code>name=value</code>, comma-separated, in name order), which <code>Test.Object</code> and each
+/// child list also record, and <code>parentQuery</code>, the parent list's. <code>""</code> when never
+/// recorded.</p>
 ClassMethod Recorded(pKey As %String) As %String
 {
     Quit $Get(^||OcuPilotReadSource("recorded", pKey), "")
@@ -105,33 +107,43 @@ Method Run(ByRef pSC As %Status, pBody As %DynamicAbstractObject) As %DynamicAbs
     Set tPath = $ZConvert($Piece(%request.URL, "/ocupilot/", 2), "L")
     Set tMax = +$Get(%request.Data("maxRows", 1))
     If tPath = "test/object" {
+        Do ..NoteQuery("query")
         If ..Faulted($Get(^||OcuPilotReadSource("objectFault"), ""), .pSC) Quit {}
         Quit ##class(%DynamicObject).%FromJSON($Get(^||OcuPilotReadSource("object"), "{}"))
     }
     If tPath = "test/parents" {
         Do ..Note("parentMaxRows", tMax)
+        Do ..NoteQuery("parentQuery")
         If ..Faulted($Get(^||OcuPilotReadSource("parentFault"), ""), .pSC) Quit {}
         Quit ..Capped($Get(^||OcuPilotReadSource("parents"), "[]"), $Select($Get(^||OcuPilotReadSource("parentsUncapped")): 0, 1: tMax))
     }
     If (tPath = "test/fixed") || (tPath = "test/upcoming") {
         Do ..Note("type", ..Type)
-        Set tName = ""
-        For {
-            Set tName = $Order(%request.Data(tName))
-            If tName = "" Quit
-            Do ..Note("query", tName _ "=" _ $Get(%request.Data(tName, 1)))
-        }
+        Do ..NoteQuery("query")
         Quit ..Capped($Get(^||OcuPilotReadSource("rows"), "[]"), tMax)
     }
     If tPath = "test/children" {
         Set tParent = $Get(%request.Data("parentKey", 1))
         Do ..Note("childKeys", tParent)
         Do ..Note("childMaxRows", tMax)
+        Do ..NoteQuery("query")
         If ..Faulted($Get(^||OcuPilotReadSource("childFault", tParent), ""), .pSC) Quit {}
         Quit ..Capped($Get(^||OcuPilotReadSource("children", tParent), "[]"), tMax)
     }
     Do ..SetRespStatus("404 Not Found")
     Quit {}
+}
+
+/// <p>Append every query parameter of this request to the record <var>pKey</var>, as
+/// <code>name=value</code> in name order.</p>
+Method NoteQuery(pKey As %String) [ Private ]
+{
+    Set tName = ""
+    For {
+        Set tName = $Order(%request.Data(tName))
+        If tName = "" Quit
+        Do ..Note(pKey, tName _ "=" _ $Get(%request.Data(tName, 1)))
+    }
 }
 
 /// <p>Whether the armed fault <var>pFault</var> answers this request, setting its response status or,

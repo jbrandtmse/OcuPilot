@@ -4,7 +4,8 @@
 /// <class>OcuPilot.Test.ReadSource.Children</class> lists the parents at the cap plus one, issues one
 /// child list per parent in order with the parent's fields copied in, skips a child 404, fails with
 /// any other child or parent-list fault, and reports truncation from the rows held and from the
-/// parent list.</p>
+/// parent list. Both carry their declared <code>source.query</code> where the read's own endpoint is
+/// called.</p>
 /// <p>Over <class>OcuPilot.Test.ReadSource.Fixed</class> a declared <code>source.query</code> reaches
 /// the port whatever the caller supplies, and over <class>OcuPilot.Test.ReadSource.Upcoming</class> an
 /// <code>UPCOMING</code> source is issued as that type under the cap.</p>
@@ -103,9 +104,11 @@ Method TestAnObjectFaultOtherThanNotFoundFailsTheRead()
 /// <p>Member fields: the object reads as one row carrying exactly the declared fields,
 /// <code>Metadata.scopes_supported</code> read from the <code>Metadata</code> object with its JSON
 /// type, an absent member <code>null</code>, and nothing else of the object; a literal dotted key the
-/// object carries is read as itself.</p>
+/// object carries is read as itself. The GET carries the declared <code>source.query</code>.</p>
 /// <p>Mutation: drop the member resolution from <method>OcuPilot.Screen.Read.CopyAs</method> -&gt; the
-/// row's scopes read <code>null</code> and the row assertion goes red.</p>
+/// row's scopes read <code>null</code> and the row assertion goes red. Skip
+/// <method>OcuPilot.Screen.Read.SeedSourceQuery</method> on the GET branch -&gt; the query assertion
+/// goes red.</p>
 Method TestAnObjectReadsAsOneRowProjectingMemberFields()
 {
     Do ##class(OcuPilot.Test.ReadSource.Endpoint).Arm("object", {"Name": "srv", "Metadata": {"scopes_supported": ["openid", "profile"], "client_secret": "never"}, "ServerPassword": "never"}.%ToJSON())
@@ -114,6 +117,7 @@ Method TestAnObjectReadsAsOneRowProjectingMemberFields()
     If '$IsObject(tResult) Quit
     Do $$$AssertEquals(tResult.rows.%ToJSON(), "[{""Name"":""srv"",""Metadata.scopes_supported"":[""openid"",""profile""],""Missing.member"":null}]", "one row of exactly the declared fields, the member read from its object")
     Do $$$AssertEquals(tResult.truncated, 0, "not truncated")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ReadSource.Endpoint).Recorded("query"), "fixed=1", "the GET carries the fixed query")
 
     Do ##class(OcuPilot.Test.ReadSource.Endpoint).Arm("object", {"Name": "srv", "Metadata.scopes_supported": "literal", "Metadata": {"scopes_supported": ["openid"]}}.%ToJSON())
     Set tSC = ##class(OcuPilot.Test.Read.ReadFixture).Execute(..#OBJECT, "", .tResult, .tHttp, .tFault)
@@ -123,9 +127,11 @@ Method TestAnObjectReadsAsOneRowProjectingMemberFields()
 
 /// <p>Matrix row "forEach faults": parents P and Q, P's child list answering 404 and Q's one row,
 /// answer that one row with Q's fields copied in; Q's answering an error or a 400 instead fails the
-/// read with that fault, the 400 as 400 <code>PORT.VALIDATION</code>.</p>
+/// read with that fault, the 400 as 400 <code>PORT.VALIDATION</code>. Each child list carries the
+/// declared <code>source.query</code> beside its parent key; the parent list does not.</p>
 /// <p>Mutation: stop skipping a child 404 in <method>OcuPilot.Screen.Read.ForEachRows</method> -&gt;
-/// the read fails and the first half goes red. Answer a non-404 child fault with
+/// the read fails and the first half goes red. Skip <method>OcuPilot.Screen.Read.SeedSourceQuery</method>
+/// in <method>OcuPilot.Screen.Read.ForEachRows</method> -&gt; the child query assertion goes red. Answer a non-404 child fault with
 /// <method>OcuPilot.Screen.Read.Internal</method> -&gt; the 400 assertions go red.</p>
 Method TestAPerParentReadSkipsAChildNotFoundAndFailsOnAnyOtherFault()
 {
@@ -140,6 +146,8 @@ Method TestAPerParentReadSkipsAChildNotFoundAndFailsOnAnyOtherFault()
         Do $$$AssertEquals(tResult.truncated, 0, "not truncated")
     }
     Do $$$AssertEquals(##class(OcuPilot.Test.ReadSource.Endpoint).Recorded("childKeys"), "P,Q", "each parent's child list was read, in parent order")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ReadSource.Endpoint).Recorded("query"), "fixed=1,maxRows=1001,parentKey=P,fixed=1,maxRows=1001,parentKey=Q", "each child list carries the fixed query")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ReadSource.Endpoint).Recorded("parentQuery"), "maxRows=1001", "and the parent list does not")
 
     Do ##class(OcuPilot.Test.ReadSource.Endpoint).Clear()
     Do ##class(OcuPilot.Test.ReadSource.Endpoint).Arm("parents", [{"ID": "P", "IssuerEndpoint": "https://p"}, {"ID": "Q", "IssuerEndpoint": "https://q"}].%ToJSON())
@@ -293,8 +301,8 @@ Method TestAFixedQueryParameterReachesThePortWhateverTheCallerSends()
 /// <p>An <code>UPCOMING</code> source is issued as that request type with its criterion and the cap
 /// plus one, answers its rows under the cap and reports truncation.</p>
 /// <p>Mutation: issue <parameter>OcuPilot.Screen.Read.READTYPE</parameter> for every admin read in
-/// <method>OcuPilot.Screen.Read.Execute</method> -&gt; the port answers 501 and the type assertion
-/// goes red.</p>
+/// <method>OcuPilot.Screen.Read.Execute</method> -&gt; the fixture still answers 200 and the type
+/// assertion goes red.</p>
 Method TestAnUpcomingSourceIsIssuedAsItsOwnType()
 {
     Do ##class(OcuPilot.Test.ReadSource.Endpoint).Arm("rows", [{"Id": 3, "Datetime": "2026-09-17 01:00:00"}, {"Id": 3, "Datetime": "2026-09-17 02:00:00"}].%ToJSON())

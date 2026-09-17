@@ -144,7 +144,7 @@ export interface ReadSource {
   readonly rowGet?: ReadRowGet | null;
   /** The parent list a per-parent read issues its source once per parent for, bounded by the cap. */
   readonly forEach?: ReadForEach | null;
-  /** Query parameters sent on every call of the read, which no caller can change or remove. */
+  /** Query parameters sent on the read's own list, UPCOMING or GET call and each per-parent child list (never a parent list or a rowGet call), which no caller can change or remove. */
   readonly query?: Readonly<Record<string, string>> | null;
 }
 

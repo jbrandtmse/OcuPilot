@@ -42,8 +42,9 @@
 /// <p><b>A source may fix query parameters</b> (<code>source.query</code>, AD-36):
 /// <method>SeedSourceQuery</method> puts every entry into the read's <code>LIST</code> or
 /// <code>UPCOMING</code> call, a single-object <code>GET</code> and each per-parent child list, never
-/// into a per-parent read's parent list or a <code>rowGet</code> detail call, before the criteria, and the registry refuses a key a criterion or a caller could also send, so
-/// no caller changes or removes one.</p>
+/// into a per-parent read's parent list or a <code>rowGet</code> detail call, and always before the
+/// criteria. The registry refuses a key that a criterion, a reserved parameter or
+/// <code>forEach.param</code> also names, so no caller changes or removes one.</p>
 /// <p>Each port is reached through its own class method alone (AD-2, AD-27, AD-29); a tool never
 /// touches <code>%session</code>, <code>%request</code> or <code>$NAMESPACE</code>, and neither
 /// does this.</p>
@@ -460,7 +461,9 @@ ClassMethod CriteriaParams(pDescriptor As %String) As %List
 
 /// <p>Seed <var>pQuery</var> with every entry of <var>pSource</var>'s <code>query</code>, the
 /// parameters a declaration fixes (AD-36); nothing for a source that declares none. Called before any
-/// caller-supplied value is seeded, on every call of the read's own endpoint.</p>
+/// caller-supplied value is seeded, on the read's <code>LIST</code>, <code>UPCOMING</code> or
+/// <code>GET</code> call and on each per-parent child list, never on a parent list or a
+/// <code>rowGet</code> detail call.</p>
 ClassMethod SeedSourceQuery(pSource As %DynamicObject, ByRef pQuery)
 {
     If '$IsObject(pSource) Quit

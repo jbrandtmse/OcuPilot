@@ -35,6 +35,7 @@ XData Declaration
       "port": "admin",
       "endpoint": "Test.Children",
       "type": "LIST",
+      "query": {"fixed": "1"},
       "forEach": {
         "endpoint": "Test.Parents",
         "key": "ID",

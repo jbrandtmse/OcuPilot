@@ -1295,7 +1295,8 @@ ClassMethod SourceQueryProblem(pRead As %DynamicObject, pSource As %DynamicObjec
 /// <p>An absent or <code>null</code> <code>forEach</code> lists no parents. Otherwise it is an object
 /// carrying only <code>endpoint</code> (the parent endpoint, a package-relative name),
 /// <code>key</code> (the parent row field whose text each child list is read for), <code>param</code>
-/// (the query parameter that text is sent as) and <code>fields</code>, an array of objects carrying
+/// (the query parameter that text is sent as, equal, case-folded, to no <code>read.source.query</code>
+/// key, which it would overwrite) and <code>fields</code>, an array of objects carrying
 /// only <code>field</code> (one of <var>pFields</var>, not repeated) and <code>from</code> (the
 /// parent row field copied into it). It is declared on an <code>admin</code> <code>LIST</code> source
 /// only, with no <code>rowGet</code> and no <code>criteria</code>.
@@ -1320,6 +1321,13 @@ ClassMethod ForEachProblem(pRead As %DynamicObject, pSource As %DynamicObject, p
     If (tForEach.%GetTypeOf("key") '= "string") || (tForEach.%Get("key") = "") Quit tWhere _ ".key is empty, and a per-parent list reads each parent's key by name"
     If (tForEach.%GetTypeOf("param") '= "string") || '$Match(tForEach.%Get("param"), "^[A-Za-z][A-Za-z0-9]*$") {
         Quit tWhere _ ".param '" _ tForEach.%Get("param") _ "' is not a query parameter name"
+    }
+    If pSource.%GetTypeOf("query") = "object" {
+        Set tQueryIterator = pSource.%Get("query").%GetIterator()
+        While tQueryIterator.%GetNext(.tQueryKey) {
+            If $ZConvert(tQueryKey, "L") = $ZConvert(tForEach.%Get("param"), "L") Set tProblem = tWhere _ ".param '" _ tForEach.%Get("param") _ "' is also a read.source.query key, which each child list would overwrite (AD-36)"
+        }
+        If tProblem '= "" Quit tProblem
     }
     If tForEach.%GetTypeOf("fields") '= "array" Quit tWhere _ ".fields is not an array of parent fields"
     Set tSeen = ""

@@ -175,6 +175,20 @@ describe('UpcomingPage', () => {
     expect(renderedRows(host)).toHaveLength(2);
   });
 
+  it('a page re-created over the same store, as a name link does, keeps the chosen horizon', async () => {
+    const { fixture, paths, host } = await mount();
+    choose(select(host), '168');
+    await settle(fixture);
+    fixture.destroy();
+    const again = TestBed.createComponent(UpcomingPage);
+    planted.push(again.nativeElement);
+    again.detectChanges();
+    await settle(again);
+    expect(paths).toHaveLength(3);
+    expect(paths[2]).toContain('&hoursOffset=168');
+    expect(select(again.nativeElement as HTMLElement).value).toBe('168');
+  });
+
   it('AC3: Until a date reads nothing until a date is chosen, then reads to the end of that day alone', async () => {
     const { fixture, paths, host } = await mount();
     choose(select(host), 'date');

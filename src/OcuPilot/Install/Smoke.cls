@@ -537,9 +537,10 @@ ClassMethod CheckApiReads(ByRef pChecks, pAccessToken As %String) [ Private ]
 /// the fourth and <code>%Admin_OAuth2_Registration:USE</code> for the fifth, each with
 /// <code>%DB_IRISSYS:READ</code>.</p>
 /// <p><b>The On-demand and Upcoming tasks lists</b> (<code>ondemand</code>, <code>upcoming</code>) read
-/// the same way, needing the task schedule's pairs, and expect exactly one row: the stock system
-/// tasks run daily, so both lists hold one on a clean container. Upcoming is read with no horizon, which
-/// the vendor answers as 24 hours.</p>
+/// the same way at <code>maxRows=1</code>, needing the task schedule's pairs, and expect exactly one
+/// row: the vendor answers every task as on demand, and several stock system tasks run within any
+/// 24 hours, so both hold one on a clean container. Upcoming is read with no horizon, which the vendor
+/// answers as 24 hours.</p>
 /// <p><b>The X.509 and Wallet lists hold a row only where the demo fixture put one</b> (AD-25), so
 /// when the demo was not requested (<var>pDemo</var>, resolved as
 /// <method>CheckDemoFixture</method> resolves it) a 200 answering an empty <code>rows</code> array
