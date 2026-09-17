@@ -2410,6 +2410,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-15T23:12:56Z status=routed owner=burndown by=harvest note=either raise the warning deliberately with a recorded reason or add a checker that pins the figure the way ci.test.mjs pins the Node bands
 - 2026-09-16T10:21:58Z status=routed owner=4-3-the-docked-panel-present-on-every-route by=burndown_gate note=the panel is the next substantial addition to the bundle, so it is where an unpinned size figure first bites
 - 2026-09-16T15:11:12Z status=routed owner=4-6-replies-render-safely-and-offline by=x0 note=vendoring the renderer highlighter and sanitizer is the next large bundle addition
+- 2026-09-17T04:37:08Z occurrence=4-3-the-docked-panel-present-on-every-route
 
 ### DW-372: A 403 on the Definition form renders the envelope's generic reason instead of naming the resource and the action, because no published action phrase exists for this form
 - source: spec-3-5-the-definition-form.md | severity: med | fix-risk: med | footprint: in-epic
@@ -2973,3 +2974,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-3-the-docked-panel-present-on-every-route.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: The rule's redeploy recipe in .claude/rules/objectscript-testing.md copies dist/ocupilot/browser; ui/angular.json and scripts/ci-throwaway.sh use dist/ocupilot-ui/browser
 - 2026-09-17T03:37:30Z status=routed owner=17-2-a-readme-whose-install-steps-work-the-first-time by=lead note=Developer documentation drift for the story that owns the developer docs, beside DW-446
+- 2026-09-17T04:37:08Z occurrence=4-3-the-docked-panel-present-on-every-route
+
+### DW-458: At a viewport where the remembered width makes the side bar yield, narrowing the panel to 352 or less brings the side bar back and the panel can no longer be widened without closing the side bar
+- source: spec-4-3-the-docked-panel-present-on-every-route.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: resolveLayout decides the side-bar fit from the remembered width and applyWidth clamps to the resulting maximum; at 1,280px a run went 400 to 336 with the bar shown and max 352, then widening stuck at 352
+- 2026-09-17T04:37:08Z status=decision-pending owner=burndown by=harvest note=Two published DESIGN.md rules both hold; recommended that the panel width the user drags wins and the side bar yields again when the drag needs the room
+
+### DW-459: The first-login gate leaves the fresh-sign-in flag unspent after a failed read and retries on every later navigation or agent-status change with no bound, so a user mid-task can be redirected to the Definition form long after sign-in
+- source: spec-4-3-the-docked-panel-present-on-every-route.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: App.retryFirstLoginGate runs on every navigation and agentStatus notification while hasFreshSignIn is true; a read failing at sign-in and succeeding minutes later triggers the redirect
+- 2026-09-17T04:37:08Z status=open owner=4-3-the-docked-panel-present-on-every-route by=harvest note=Lead decision: the redirect belongs to sign-in, so the retry stops at the user's first navigation after sign-in; for code review to patch in-story
