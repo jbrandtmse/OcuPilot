@@ -283,6 +283,11 @@ Method TestAnAreaGatesOnItsOwnDeclaredSet()
 /// with nothing said. The denied shape is asserted over the wire by
 /// <class>OcuPilot.Test.Wire</class>, which is the only place a principal without
 /// <code>%All</code> evaluates the real check.</p>
+/// <p><b>The os-management roster below is pinned by literal index and count, deliberately</b>
+/// -- it is what catches a screen landing at the wrong <code>sideBarPosition</code>, which a
+/// pin derived from the roster could not. Adding, removing or reordering a <b>built</b>
+/// <code>Screen/Descriptor/*.cls</code> whose <code>area</code> is <code>"os-management"</code>
+/// therefore requires updating this method's count and per-index assertions with it.</p>
 Method TestThePayloadCarriesEveryAreaWithAVerdict()
 {
     Set tSC = ##class(OcuPilot.Api.Navigation).Payload(.tObject)
@@ -316,18 +321,20 @@ Method TestThePayloadCarriesEveryAreaWithAVerdict()
     Do $$$AssertEquals(tHome.screens.%Get(0).route, "", "whose route is the application root")
 
     ; OS management proves the screen half follows the roster rather than a fixed list: it
-    ; carries its three built screens sorted by sideBarPosition, the unlisted Process details
-    ; ahead of the processes list, System usage sorting last.
+    ; carries its four built screens sorted by sideBarPosition, the unlisted Process details
+    ; ahead of the processes list, then Locks, System usage sorting last.
     Set tOsMgmt = ##class(OcuPilot.Test.Descriptor).AreaEntry(tObject.areas, "os-management")
     Do $$$AssertTrue($IsObject(tOsMgmt), "the payload carries the os-management area")
     If $IsObject(tOsMgmt) {
-        Do $$$AssertEquals(tOsMgmt.screens.%Size(), 3, "which carries its three built screens")
+        Do $$$AssertEquals(tOsMgmt.screens.%Size(), 4, "which carries its four built screens -- an added os-management screen updates this count and the per-index assertions below with it")
         Do $$$AssertEquals(tOsMgmt.screens.%Get(0).route, "os-management/processes/details", "the unlisted process details")
         Do $$$AssertEquals(tOsMgmt.screens.%Get(0).labelKey, "processDetailsLabel", "under its own label key")
         Do $$$AssertEquals(tOsMgmt.screens.%Get(1).route, "os-management/processes", "then the processes list")
         Do $$$AssertEquals(tOsMgmt.screens.%Get(1).labelKey, "processListLabel", "under its own label key")
-        Do $$$AssertEquals(tOsMgmt.screens.%Get(2).route, "os-management/system-usage", "then system usage")
-        Do $$$AssertEquals(tOsMgmt.screens.%Get(2).labelKey, "systemUsageLabel", "under its own label key")
+        Do $$$AssertEquals(tOsMgmt.screens.%Get(2).route, "os-management/locks", "then Locks")
+        Do $$$AssertEquals(tOsMgmt.screens.%Get(2).labelKey, "lockListLabel", "under its own label key")
+        Do $$$AssertEquals(tOsMgmt.screens.%Get(3).route, "os-management/system-usage", "then system usage")
+        Do $$$AssertEquals(tOsMgmt.screens.%Get(3).labelKey, "systemUsageLabel", "under its own label key")
     }
 }
 
