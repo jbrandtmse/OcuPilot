@@ -47,8 +47,9 @@ These apply to every story, and the story specs do not repeat them:
   first pair the user lacks; a refusal is never a 500 or an empty state. Security reads on 2026.2
   need `%DB_IRISSYS:READ` and `%Admin_Secure:USE` together. The log endpoints require the resource
   the classic portal's log pages require, resolved per namespace where the source is a global. The
-  per-process variable read needs `%Admin_Manage:USE`, which the spine's wording still attributes to
-  `%SYS.ProcessQuery` rather than to `VariableByPid` (DW-1050).
+  per-process variable read needs `%Admin_Manage:USE` outright — stricter than
+  `%SYS.ProcessQuery.AllowToOpen`, which also admits IRISSYS write, IRISSYS read or the caller's own
+  pid (corrected in the spine; DW-1050 closed).
 - **An area covers its screens' pairs.** A screen that adds a pair its area lacks appends it to the
   area; coverage is not relaxed. The union currently gates OS management on `%Admin_Manage:USE`, Logs
   on `%Admin_Secure:USE` and Security on `%Admin_Wallet:USE`, and a gated rail item opens no side bar
@@ -58,17 +59,24 @@ These apply to every story, and the story specs do not repeat them:
   Release 1's one exemption is the OAuth 2.0 screen's (counted once against SM-C1, removed in Epic
   12); no remaining story in this epic adds another.
 - **No inert controls.** A row action or primary action ships only with its handler — lock removal is
-  16.12, the device editor is 8.8, process actions are 7.8 — as On-demand tasks shipped without Run.
+  16.12, the device editor is 8.8, process actions are 7.8.
 - **Untrusted text** (log lines, entity names, vendor status words) reaches the model only as
   delimited tool-result content.
 
 Story traps, for the five that remain:
 
-- **6.10 Locks** is namespace-scoped: `ns` is the read's data scope, and switching it re-fetches. The
-  owner cell links to Process details (`os-management/processes/details/<pid>`). The owning process's
-  in-transaction condition is a visible column, so 16.12's removal warning is not the first the user
-  hears of it — the story text still says the warning is Epic 7's; read that as 16.12. The empty state
-  names the namespace ("No locks in HSCUSTOM.").
+- **6.10 Locks** is settled: `%Api.Admin.Endpoints.Lock` `LIST` through `AdminPort`, and that
+  endpoint has no `GET` or `INFO` type, so no `rowGet`. Scope `instance` — the lock table is
+  instance-wide and a row's scope marker is its database directory and system, not a namespace — row
+  id composite `["DeleteID"]`, since one process commonly holds several locks. The owner cell links
+  to `os-management/processes/details/<pid>` through the cross-screen row target, carrying `Pid`, not
+  the row key; a remote owner's link lands on Process details' "This process no longer exists.",
+  accepted as DW-1074. Pair set `%Admin_Operate:USE` plus `%DB_IRISSYS:READ`, to be confirmed with a
+  least-privileged principal at implement time. `classicPage` is the read-only View Locks page, no
+  exemption; `sideBarPosition` 2; `refreshes` false; no row or primary action. Its filter is the
+  shared client-side one, so the vendor's `filter` parameter is not declared. **No transaction
+  column ships:** that condition is a removal concern, and 16.12 warns from the admin endpoint's own
+  409 "is currently in a transaction" refusal. Empty state: "No locks on this instance."
 - **6.11 Databases** is `list (two views)`: a command-bar View control over General and Free-space,
   showing size, maximum, free space, status, directory and mounted state. The free-space figures come
   from `Database.SysCRUD` `TYPEINFO`, async per request type: `AdminPort` polls with a bounded wait
@@ -97,8 +105,8 @@ Story traps, for the five that remain:
   details meet the same path, inference).
 - **Auto-refresh roster is seven:** Processes, Process details, Databases, Database details, Task
   schedule, Task details, System usage. A screen joins only by declaring it in its descriptor **and**
-  appearing in that roster. Of the five remaining stories only 6.11 touches it (Databases and
-  Database details); Locks, Devices and the two log viewers do not auto-refresh.
+  appearing in that roster. Of the five remaining only 6.11 touches it (Databases and Database
+  details); the other four do not auto-refresh.
 
 ## Technical Decisions
 
@@ -117,6 +125,10 @@ Story traps, for the five that remain:
   surfaces by route suffix (`<list>/edit`, `<list>/document`, `<list>/details/<id>`,
   `<list>/history/<id>`). Task details and Process details are the precedents for an id-keyed detail
   screen with its own page, opened from a list's name cell.
+- **Cross-screen row targets.** A list may declare exactly one: another screen's route plus the row
+  field holding its id — the field need not be the row's own key — so the shared table links that
+  cell through the shared encoder and keeps one cell-rendering path. Validated identically in
+  `Screen/Registry.cls` and `ui/tools/screen-mirror.mjs`, resolved ahead of the paired-surface chain.
 - **Ids and scope.** Routes are `/ocupilot/<area>/<screen>[/<id>]?ns=`, the id one segment through
   the shared encoder only (encode twice, decode once). References carry `(entity type, scope, id)`,
   scope `instance` for configuration objects and the namespace where the object is namespace-scoped.
@@ -179,31 +191,28 @@ Story traps, for the five that remain:
 ## UX & Interaction Patterns
 
 - **States.** `list`: skeleton, then empty-state; an error keeps the data on screen.
-  `list (two views)`: per view, and Databases adds *async values arriving* — per-row skeleton cells
-  filling as each figure lands, with no reflow. `detail`: skeleton fields, errors keep last values,
+  `list (two views)`: per view, plus Databases' async-values-arriving state (above). `detail`: skeleton fields, errors keep last values,
   auto-refresh in place with a field highlight. `log-viewer`: skeleton rows, then "No entries." /
   "No matches."; new rows only via "Load newer"; nothing streams.
 - **Auto-refresh.** Only the seven roster screens carry it: a command-bar chip switches off or a
   rate from a short fixed list (5/10/30/60 s assumed, default off), the status bar stamps the last
-  update, the setting persists per screen with sort, filter and max rows, and refresh is silent — no
-  spinner, skeleton or announcement, and sort, filter, selection and scroll survive it. The shared
+  update, and refresh is silent — no spinner, skeleton or announcement, and sort, filter, selection and scroll survive it. The shared
   framework pauses it while a proposal on the screen's entity type is live and says so in the chip.
-- **Meter.** One component, on System usage and Database details only. A 6 px fully rounded track
-  (`surface-container-high`) with a `success` fill, the label in caption above and the value in code
-  type to its right. A percentage meter fills `warning` at 85% and `error` at 95% (an assumption on
-  the numbers, borrowed from the vendor's lock-table cut-off, not on the behavior) and the value text
-  takes the same color so meaning survives without the bar; a status meter takes the dashboard's own
-  word (Normal / Warning / Troubled), which is vendor data rendered as the source reports it. Until a
-  value arrives it shows a skeleton in place of the fill and "—" as the value; a failed meter shows
-  "—" with the error in its tooltip. The needle never animates.
+- **Meter.** One component, on System usage and Database details only: a 6 px rounded
+  `surface-container-high` track with a `success` fill, label in caption above, value in code type
+  beside it. A percentage meter fills `warning` at 85% and `error` at 95% (the numbers an assumption,
+  not the behavior) with the value text in the same color so meaning survives without the bar; a
+  status meter takes the dashboard's own word (Normal / Warning / Troubled) as reported. Pending
+  shows a skeleton fill and "—"; a failed meter shows "—" with the error in its tooltip. Never
+  animates.
 - **Log viewer.** Rows are time (code type), pid (code type), severity chip, text (body, wrapping),
   at the 28 px log row height. Sticky search in the command bar with highlight and a polite "n of N",
   next and previous, jump to top and bottom, "Load newer" at the tail, and a Raw toggle onto the code
   surface with a line-number gutter, no wrapping and horizontal scroll inside its own block. The
   severity chip is the column's whole content and the word is always present; clicking it applies
   that severity as the filter, with Clear in the command bar.
-- **Empty, loading and refused.** An empty state names its scope ("No locks in HSCUSTOM."), with a
-  second line saying what to do next and the agent invitation only on a write-capable list. A
+- **Empty, loading and refused.** An empty state names its scope ("No locks on this instance." when
+  instance-wide, "No REST applications in HSCUSTOM." when namespace-scoped), with a second line saying what to do next and the agent invitation only on a write-capable list. A
   refused, denied, faulted or filtered-to-zero view is never an empty state. Skeletons show on first
   load only. A denied deep link renders the title and "You need <pair> to open <title>." with no
   table and no read.
@@ -212,9 +221,8 @@ Story traps, for the five that remain:
   does not appear.
 - **Strings.** Add each EXPERIENCE.md Fixed strings row with its `strings.ts` key in one pass;
   `strings.test.mjs` demands exact set equality, and values are unique, so reuse an existing row's
-  string rather than repeating it. Rows exist through Story 6.9 (System usage was added with it), so
-  the five remaining screens author their own row as part of the story (inference). Aliases come from
-  the contest wording ("CPU", "disks").
+  string rather than repeating it. Rows exist through Story 6.9, so the five remaining screens author their
+  own row as part of the story (inference).
 - **Color never alone:** severity, meter state and changed rows each carry a word or tag.
 
 ## Cross-Story Dependencies
@@ -233,13 +241,12 @@ Story traps, for the five that remain:
   routes to a later story (descriptor-declared field descriptions are Story 7.1's, DW-1001 and
   DW-1013). Both epics edit `Registry`, `Read`, `AdminPort`, `Install/Smoke`, `Test/` and the
   client's core, shell and tools; expect reconciliation at merge.
-- **Within this epic:** 6.10's owner link opens 6.8's route; 6.11's Database details reuses 6.9's
-  meter component; one log-viewer serves 6.13 and 6.14, built by whichever lands first, and 6.13 adds
+- **Within this epic:** 6.11's Database details reuses 6.9's meter component; one log-viewer serves 6.13 and 6.14, built by whichever lands first, and 6.13 adds
   the `MonitorPort` 6.14 does not need.
 - **Downstream:** Epic 7 (process actions in 7.8, on-demand Run in 7.5, 7.6's UJ-6 replay on 6.7's
   route); Epic 8 (the device editor in 8.8, plus the resource, X.509 and wallet-secret editors);
   Epic 9 (role editor and Edit task); Epic 11 (11.2 explains a 6.13 or 6.14 row); Epic 12 (OAuth
   editors, removing 6.4's exemption); Epic 16's polish week (16.11 Task Manager control, 16.12 lock
-  removal — which needs 6.10's transaction flag and is action-style with no body template, 16.13 the
+  removal — which warns from the endpoint's own 409 and is action-style with no body template, 16.13 the
   service editor whose diff-row must read an empty allowed-address list as "Unrestricted", DW-1016,
   and 16.14 the LDAP and Kerberos editor).
