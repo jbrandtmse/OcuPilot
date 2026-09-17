@@ -15,7 +15,7 @@ arrive in Epics 7, 8, 9 and 12. It depends on Epic 2 alone and runs in parallel 
 - Story 6.2: The roles, resources and services lists (done)
 - Story 6.3: The X.509, LDAP/Kerberos and wallet lists (done)
 - Story 6.4: The OAuth 2.0 screen (done)
-- Story 6.5: On-demand and upcoming tasks
+- Story 6.5: On-demand and upcoming tasks (done)
 - Story 6.6: Task history, per task and across tasks
 - Story 6.7: Task details
 - Story 6.8: Process details
@@ -75,7 +75,12 @@ Story traps:
 - **6.14:** confirm the assumed 28 px log row against a real tail at the densest severity mix.
   **DW-148:** the fault banner's "Open messages.log" link skips `ShellState.showArea`, leaving the
   side bar on the previous area. **DW-278:** the Logs area's accepted union carries
-  `%Admin_Secure:USE`; decide only whether this screen declares it.
+  `%Admin_Secure:USE`; decide only whether this screen declares it. **DW-1025:** a fresh instance logs
+  repeated `<PROTECT>%DeleteData` from the audit LIST's async-task cleanup; find whether it originates
+  in `AdminPort`'s poll (fix at the port) or the vendor's own cleanup (close with vendor evidence)
+  before this viewer shows it.
+- **No inert controls.** A row action ships only with its handler: On-demand tasks carries no Run
+  (Story 7.5 declares it), as Task schedule carried no Resume before its handler.
 
 ## Technical Decisions
 
@@ -115,7 +120,10 @@ Story traps:
   the list row is wrong (`Task.CRUD` LIST reports every task as not suspended) or `CERTINFO` where only
   that type carries the fields; a type the port issues must be in `AdminPort`'s `TYPESUFFIXES`. A 404
   row is dropped and any other row fault fails the read. For endpoints with no plain LIST: a
-  single-object `GET` source (404 reads as zero rows; no `rowGet`, `forEach` or criteria); a `forEach`
+  single-object `GET` source (404 reads as zero rows; no `rowGet`, `forEach` or criteria); a
+  list-shaped admin type other than `LIST` (`UPCOMING`: admin only, no `rowGet` or `forEach`);
+  fixed `source.query` parameters seeded before criteria that no caller can change or remove
+  (`onDemand=1`), whose keys may not collide with reserved or declared criteria params; a `forEach`
   source listing a parent endpoint then the child list per parent, bounded by the row cap on rows held
   and cap+1 on parents listed, reporting truncation (a child 404 is skipped, any other fault fails the
   read); and `<object>.<member>` fields projecting one member of an object field. A secret-bearing
@@ -136,7 +144,9 @@ Story traps:
   restarts cleanly after rotation.
 - **Client.** A list over a declared read and table needs only its descriptor and the regenerated
   mirror (`ListPage` renders it). Other archetypes get `<screen>.page.ts` and `<screen>.store.ts` in
-  the area folder: a framework-free store mirrored into signals, zoneless, OnPush, tokens only.
+  the area folder: a framework-free store mirrored into signals, zoneless, OnPush, tokens only. A
+  list that needs a control above the shared table (Upcoming's horizon form) registers a small page in
+  `DESCRIPTOR_PAGES` over ListPage's binding; a change yielding new criteria clears rows and reads once.
   Auto-refresh is the one shared framework.
 - **Tripwires per screen:** `Test/ReadTool`, `Test/Descriptor`, `Test/ScreenRead` (every declared
   field is a key of the live row, issuing the declared detail type; parent-scoped reads are held by
@@ -170,16 +180,18 @@ Story traps:
   On-demand tasks · Upcoming tasks · Task history. Security: SSL/TLS · X.509 · LDAP / Kerberos ·
   Wallet · OAuth 2.0 · Auditing (Epic 7).
 - **Strings.** Add each EXPERIENCE.md Fixed strings row with its `strings.ts` key in one pass;
-  `strings.test.mjs` demands exact set equality. Values are unique, so reuse an existing row's
+  `strings.test.mjs` demands exact set equality. The task screens' rows for On-demand and Upcoming
+  tasks exist; add Task history and Task details rows when those screens are built. Values are unique, so reuse an existing row's
   string rather than repeating it. Aliases come from the contest wording ("x509", "CPU", "disks").
 
 ## Cross-Story Dependencies
 
 - **Upstream:** Epic 2 (`AdminPort` sync and async, `LogSourcePort`, the declared read, `ListPage`,
   command bar, refresh framework, gate), 6.1 (`MgmntPort`, the `mgmnt` source, `<list>/document`),
-  6.2 (column `emptyKey`) 6.3 (`rowGet.type`, the parent-scoped list grammar and child link) and 6.4 (`tab`, `GET`,
+  6.2 (column `emptyKey`), 6.3 (`rowGet.type`, the parent-scoped list grammar and child link) and 6.4 (`tab`, `GET`,
   `forEach`, member fields, `rowLink`, `DetailPage`, registered for the `detail` archetype but
-  built for tabbed tables over `ListPage`)).
+  built for tabbed tables over `ListPage`) and 6.5 (`source.query`, `UPCOMING`, the Tasks area's
+  criteria page precedent).
 - **Epic 4 in parallel:** `Screen/Tool/**` is outside this epic's footprint, so a derived-tool change
   routes to a later story (descriptor-declared field descriptions are Story 7.1's, DW-1001 and
   DW-1013). Both epics edit `Registry`, `Read`, `AdminPort`, `Install/Smoke`, `Test/` and the
@@ -188,7 +200,7 @@ Story traps:
 - **Within this epic:** 6.10's owner link opens 6.8; 6.7 links to 6.6's per-task history, which reuses
   6.3's `parentScope`; one meter component serves 6.8, 6.9 and 6.11; one log-viewer serves 6.13 and
   6.14, built by whichever lands first.
-- **Downstream:** Epic 7 (on-demand Run, lock removal, which needs 6.10's transaction flag, process
+- **Downstream:** Epic 7 (on-demand Run in Story 7.5, lock removal, which needs 6.10's transaction flag, process
   actions, OAuth deletes, 7.6's UJ-6 replay on 6.7's route); Epic 8 (resource, X.509, device and
   wallet-secret editors); Epic 9 (role, service, LDAP editors and Edit task; 9.4's diff-row must read
   an empty allowed-address list as "Unrestricted", DW-1016); Epic 11 (explains 6.13 and 6.14 rows);
