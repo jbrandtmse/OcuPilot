@@ -2978,6 +2978,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ARCHITECTURE-SPINE.md:463-464 vs its own Rule at :467; AD-29 at :367 vs ProcessDetails.cls doc and spec Code Map (ProcessQuery.cls:423 AllowToOpen, :1494 VariableByPid)
 - 2026-09-17T14:25:12Z status=wontfix-accepted owner=6-8-process-details by=cr note=reopen_if=a later story's plan cites AD-43 Binds for a count or AD-29 for the Manage check; lead may correct at Rule 20 bookkeeping
 - 2026-09-17T14:26:39Z status=resolved-by:6-8-process-details by=adjudication note=lead corrected AD-43 Binds and Prevents to seven screens in the spine; AD-29 stands, since VariableByPid (ProcessQuery.cls:1494) is a method of %SYS.ProcessQuery, which AD-29 already names
+- 2026-09-17T19:46:01Z status=decision-pending owner=burndown by=runner note=AD-29 corrected at its origin 2026-09-17: AllowToOpen admits %Admin_Manage:USE or IRISSYS write or IRISSYS read or the caller's own pid (ProcessQuery.cls:425); Story 6.8's pair set stands
+- 2026-09-17T19:46:09Z status=resolved-by:6-8-process-details by=runner note=the trailer above was meant as a note only and must not reopen this entry: the AD-29 correction is applied, so the entry stays resolved
 
 ### DW-1065: A parts read never checks at runtime that each projected value is a scalar of at most 1,000 characters
 - source: spec-6-9-system-usage-and-the-dashboard-meters.md | severity: low | fix-risk: med | footprint: in-story
@@ -3018,3 +3020,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-6-9-system-usage-and-the-dashboard-meters.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: shell/screen-outlet.ts ARCHETYPE_PAGES meters: SystemUsagePage; METER_CONFIGS is hardcoded, so a second meters descriptor would render dashes.
 - 2026-09-17T17:05:54Z status=wontfix-theoretical owner=6-9-system-usage-and-the-dashboard-meters by=cr note=real when a second descriptor declares archetype meters (FR-76 dashboard, P1)
+
+### DW-1073: Warn before a lock removal when the owning process is in a transaction, from the admin endpoint's own 409 refusal
+- source: spec-6-10-the-locks-view.md | severity: med | fix-risk: low | footprint: in-footprint
+- evidence: The endpoint's delete path answers 409 'is currently in a transaction' and the classic Manage Locks page asks the same before its Remove confirm; probed on slot B, $zu(67,19,$Job) reads non-zero inside a transaction and 0 outside, 100 calls cost 0.01 ms against 116 ms for 100 %SYS.ProcessQuery opens, so the check belongs at the confirm and not in the list read
+- 2026-09-17T19:45:52Z status=routed owner=16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client by=plan note=orchestrator-decided at the 6.10 spec gate (Q2 option c): 6.10 ships no transaction column; the warning is this story's, taken from the endpoint's refusal rather than a $zu probe
+
+### DW-1074: A remote-owner lock row links to Process details, which then says the process no longer exists
+- source: spec-6-10-the-locks-view.md | severity: low | fix-risk: med | footprint: in-footprint
+- evidence: A lock whose RemoteOwner is true has no local pid, so the owner link lands on Process details' AD-37 'This process no longer exists.' Needs an ECP client to observe; the branch is read from the vendor source, not seen. Conditional row-link grammar is the alternative and was declined
+- 2026-09-17T19:46:01Z status=escalated owner=burndown by=plan note=orchestrator-decided at the 6.10 spec gate (Q3 option a): accepted rather than inventing conditional-link grammar

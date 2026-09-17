@@ -3800,15 +3800,15 @@ So that I can find the owner of a blocked operation.
 
 - **Given** the Locks screen
 - **When** it loads
-- **Then** it lists locks for the selected namespace with a filter and owner details.
+- **Then** it lists every lock the instance holds, with a filter, owner details, and each lock's database directory and system, so a row says where its lock lives. [AMENDED 2026-09-17, Story 6.10 spec gate (orchestrator-approved): the lock table is instance-wide and a lock's scope marker is a database directory, not a namespace - the same read answers the identical rows from HSCUSTOM and USER, and the vendor's own View Locks page is pinned to `%SYS` (`AUTONS = 0`); a namespace filter over `Directory` would have hidden all seven locks held on the probed instance, since globals mapped in from IRISSYS keep their own database's directory; was "it lists locks for the selected namespace with a filter and owner details"]
 
 - **Given** a lock's owner
 - **When** the user follows it
 - **Then** it links to that process's details.
 
 - **Given** a lock whose owning process is in a transaction
-- **When** the row renders
-- **Then** that condition is visible, so the removal warning in Epic 7 is not the first the user hears of it.
+- **When** its removal is proposed in Story 16.12
+- **Then** that story warns before the confirm, from the admin endpoint's own 409 `is currently in a transaction` refusal. [AMENDED 2026-09-17, Story 6.10 spec gate (orchestrator-approved): the condition is a removal concern, as FR-57 states it, and no field the locks list returns carries it - buying a column would cost new read-source grammar and an undocumented per-row probe for a warning about an action Release 1 does not ship, so 6.10 ships no transaction column; removal is Story 16.12, not Epic 7; was "when the row renders / then that condition is visible, so the removal warning in Epic 7 is not the first the user hears of it"]
 
 ### Story 6.11: Databases, with free space arriving as it lands
 

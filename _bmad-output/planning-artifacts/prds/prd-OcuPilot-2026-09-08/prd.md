@@ -816,7 +816,7 @@ A user can view system usage counters and shared memory, and the CPU, memory and
 
 #### FR-57: Locks view and removal
 
-A user can view locks by namespace with filter and owner details, and remove one lock, all locks of a process, or all locks from a remote client. Catalog: OS-06, OS-07.
+A user can view every lock the instance holds, with filter, owner details and each lock's database directory, and remove one lock, all locks of a process, or all locks from a remote client. Catalog: OS-06, OS-07. [AMENDED 2026-09-17, Story 6.10 spec gate (orchestrator-approved): the lock table is instance-wide and a lock's scope marker is a database directory, not a namespace - the same read answers identical rows from two namespaces and the vendor's own page is pinned to `%SYS`; was "view locks by namespace"]
 
 **Consequences (testable):**
 
