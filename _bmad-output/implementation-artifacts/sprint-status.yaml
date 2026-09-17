@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: 09-17-2026 11:35
+last_updated: '09-17-2026 11:38'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -139,9 +139,7 @@ development_status:
   7-4-turn-auditing-on-and-off-from-the-screen: backlog
   7-5-run-an-on-demand-task: backlog
   7-6-run-suspend-resume-and-delete-a-task: backlog
-  7-7-start-suspend-and-resume-the-task-manager: backlog
   7-8-terminate-suspend-and-resume-a-process: backlog
-  7-9-remove-locks-one-all-of-a-process-all-of-a-remote-client: backlog
   7-10-the-remaining-application-error-delete-scopes: backlog
   7-11-system-and-user-audit-event-configuration: backlog
   epic-7-retrospective: optional
@@ -161,9 +159,7 @@ development_status:
   9-1-the-user-editor: backlog
   9-2-the-web-application-editor: backlog
   9-3-the-role-editor: backlog
-  9-4-the-service-editor: backlog
   9-5-the-ssl-tls-editor: backlog
-  9-6-the-ldap-and-kerberos-editor: backlog
   9-7-the-new-task-wizard: backlog
   9-8-edit-task: backlog
   9-9-a-cut-editor-ships-reduced-never-half-working: backlog
@@ -180,8 +176,6 @@ development_status:
   11-2-explain-a-log-or-audit-entry: backlog
   11-3-suggested-prompts-per-screen: backlog
   11-4-citation-chips-with-click-through: backlog
-  11-5-the-data-egress-line: backlog
-  11-6-the-agent-audit-viewer: backlog
   11-7-token-streaming: backlog
   epic-11-retrospective: optional
 
@@ -235,6 +229,12 @@ development_status:
   16-8-the-six-secondary-log-viewers: backlog
   16-9-the-unified-log-hub: backlog
   16-10-external-language-servers: backlog
+  16-11-start-suspend-and-resume-the-task-manager: backlog
+  16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client: backlog
+  16-13-the-service-editor: backlog
+  16-14-the-ldap-and-kerberos-editor: backlog
+  16-15-the-data-egress-line: backlog
+  16-16-the-agent-audit-viewer: backlog
   epic-16-retrospective: optional
 
   epic-17: backlog

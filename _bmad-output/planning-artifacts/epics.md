@@ -553,14 +553,14 @@ Where an FR is split, the epic that first delivers user-visible value from it is
 - FR-38: Epic 6 (the roles list), then Epic 9 (the role editor).
 - FR-39: Epic 8 - role create, resource grants and delete.
 - FR-40: Epic 6 (the resources list), then Epic 8 (the resource editor).
-- FR-41: Epic 6 (the services list), then Epic 9 (the service editor with its self-lockout warning).
+- FR-41: Epic 6 (the services list), then Epic 16 (the service editor with its self-lockout warning, 16.13; Story 9.9 ships the reduced form).
 
 #### Security and secrets
 
 - FR-42: Epic 2 (the SSL/TLS list), then Epic 9 (the SSL/TLS editor).
 - FR-43: Epic 6 (the X.509 list), then Epic 8 (import, edit and delete).
 - FR-44: Epic 6 (the four lists and the authorization-server view), then Epic 7 (the two deletes), then Epic 12 (the five full editors).
-- FR-45: Epic 6 (the LDAP and Kerberos list), then Epic 9 (the editor).
+- FR-45: Epic 6 (the LDAP and Kerberos list), then Epic 16 (the editor, 16.14; Story 9.9 ships the reduced form).
 - FR-46: Epic 6 (collections and secrets lists), then Epic 8 (the write-only secret form).
 - FR-47: Epic 5 (this area's step-2 confirmed agent write - auditing disable and re-enable, carrying its mandated warning), then Epic 7 (auditing on and off from the screen, and system and user event configuration with the selective SQL auditing wizard, Story 7.11).
 
@@ -569,7 +569,7 @@ Where an FR is split, the epic that first delivers user-visible value from it is
 - FR-48: Epic 2 (the task schedule list), then Epic 6 (on-demand and upcoming), then Epic 7 (run an on-demand task).
 - FR-49: Epic 6 - task history, per task and across tasks.
 - FR-50: Epic 6 - task details under auto-refresh.
-- FR-51: Epic 5 (this area's step-2 confirmed agent write - UJ-6's resume), then Epic 7 (run, suspend, delete and the three Task Manager controls).
+- FR-51: Epic 5 (this area's step-2 confirmed agent write - UJ-6's resume), then Epic 7 (run, suspend, delete) and Epic 16 (the three Task Manager controls, 16.11).
 - FR-52: Epic 9 - the New Task wizard over `%SYS.TaskSuper`'s documented property set.
 - FR-53: Epic 9 - Edit task, built from the same model so the field list matches by construction.
 
@@ -578,7 +578,7 @@ Where an FR is split, the epic that first delivers user-visible value from it is
 - FR-54: Epic 2 (the processes list), then Epic 6 (process details with its meters and open devices).
 - FR-55: Epic 5 (this area's step-2 confirmed agent write), then Epic 7 (terminate with its error-to-job flag, and the remaining controls).
 - FR-56: Epic 6 - system usage counters and the 25 dashboard meters.
-- FR-57: Epic 6 (the locks view), then Epic 7 (the three removal scopes with the transaction warning).
+- FR-57: Epic 6 (the locks view), then Epic 16 (the three removal scopes with the transaction warning, 16.12).
 - FR-58: Epic 6 - databases in both views, with free space arriving asynchronously.
 - FR-59: Epic 6 (the devices list), then Epic 8 (the device editor).
 
@@ -592,7 +592,7 @@ Where an FR is split, the epic that first delivers user-visible value from it is
 #### Polish week
 
 - FR-70: Epic 11 - "Explain this screen", per-entry explain entry points and suggested prompts.
-- FR-71: Epic 11 - citation chips, the data-egress line and the agent audit viewer.
+- FR-71: Epic 11 (citation chips), then Epic 16 (the data-egress line and the agent audit viewer, 16.15 and 16.16).
 - FR-72: Epic 14 - copy-out drafts, the governance policy, the sanitizer with its seeded-injection test, and transcripts with retention.
 - FR-73: Epic 15 - the eleven shell conveniences and the light or dark theme.
 - FR-74: Epic 16 - try-it, web sessions, effective privileges and the permission-check tool.
@@ -613,7 +613,7 @@ Where an FR is split, the epic that first delivers user-visible value from it is
 - NFR-3 token hygiene: Epic 1.
 - NFR-4 no SQL or path from the caller: Epic 1 (the rule and the static handler), Epic 2 (the log endpoints' fixed enum).
 - NFR-5 secrets never leave: Epic 3 (credentials), Epic 5 (proposal and ledger), Epic 8 (the wallet and X.509 forms).
-- NFR-6 untrusted content boundary: Epic 4 (invariants 1, 3 and 4), Epic 5 (invariant 2), Epic 10 (the seeded-injection test), Epic 14 (the polish-week sanitizer, which is additional and not the defense).
+- NFR-6 untrusted content boundary: Epic 4 (invariants 1, 3 and 4), Epic 5 (invariant 2), Epic 14 (the seeded-injection test, Story 14.8, and the polish-week sanitizer, which is additional and not the defense).
 - NFR-7 auditability: Epic 5.
 - NFR-8 API pinning: Epic 1 (the v2 guard), Epic 2 (the endpoint-inventory fixture in CI).
 - NFR-9 idempotence: Epic 1.
@@ -629,23 +629,23 @@ The epic-level map above says *which epic* owns each requirement and why it is s
 
 | FR | Stories | FR | Stories |
 |---|---|---|---|
-| FR-1 | 1.6 | FR-41 | 6.2, 9.4 |
+| FR-1 | 1.6 | FR-41 | 6.2, 16.13 |
 | FR-2 | 1.7 | FR-42 | 2.7, 9.5 |
 | FR-3 | 1.8 | FR-43 | 6.3, 8.5 |
 | FR-4 | 1.9 | FR-44 | 6.4, 7.3, 12.4-12.8 |
-| FR-5 | 1.10, 1.11 | FR-45 | 6.3, 9.6 |
+| FR-5 | 1.10, 1.11 | FR-45 | 6.3, 16.14 |
 | FR-6 | 1.10 | FR-46 | 6.3, 8.6 |
 | FR-7 | 1.14 | FR-47 | 5.10, 7.4, 7.11 |
 | FR-8 | 1.13 | FR-48 | 2.8, 6.5, 7.5 |
 | FR-9 | 1.15, 9.9 | FR-49 | 6.6 |
 | FR-10 | 4.3 | FR-50 | 6.7 |
-| FR-11 | 4.4 | FR-51 | 5.11, 7.6, 7.7 |
+| FR-11 | 4.4 | FR-51 | 5.11, 7.6, 16.11 |
 | FR-12 | 4.5 | FR-52 | 9.7 |
 | FR-13 | 4.6 | FR-53 | 9.8 |
 | FR-14 | 5.7 | FR-54 | 2.9, 6.8 |
 | FR-15 | 4.7 | FR-55 | 5.12, 7.8 |
 | FR-16 | 2.3, 4.2, 6.1-6.14 | FR-56 | 6.9 |
-| FR-17 | 5.1, 5.2, 5.3, 7.10, 14.7 | FR-57 | 6.10, 7.9 |
+| FR-17 | 5.1, 5.2, 5.3, 7.10, 14.7 | FR-57 | 6.10, 16.12 |
 | FR-18 | 5.4, 5.5 | FR-58 | 6.11 |
 | FR-19 | 3.7, 14.5, 14.6 | FR-59 | 6.12, 8.8 |
 | FR-20 | 3.7 | FR-60 | 6.13 |
@@ -659,7 +659,7 @@ The epic-level map above says *which epic* owns each requirement and why it is s
 | FR-28 | 3.6 | FR-68 | 1.17, 8.9 |
 | FR-29 | 1.3, 3.8 | FR-69 | 17.1-17.7 |
 | FR-30 | 2.5, 9.2 | FR-70 | 11.1-11.3 |
-| FR-31 | 8.1 | FR-71 | 11.4-11.6 |
+| FR-31 | 8.1 | FR-71 | 11.4, 16.15, 16.16 |
 | FR-32 | 5.8, 7.1 | FR-72 | 14.1-14.4 |
 | FR-33 | 6.1 | FR-73 | 15.1-15.6 |
 | FR-34 | 6.1 | FR-74 | 16.1-16.3 |
@@ -728,6 +728,8 @@ Every UX Design Requirement is owned by at least one story. Where a UX-DR is a *
 
 **Parallel-run amendments, 2026-09-16.** Three forward references that serialized the epics under the parallel orchestrator moved to the story that has both halves: Story 6.7's UJ-6 replay to Story 7.6, Story 10.2's per-provider demo-prompt check to Story 17.7, and Story 8.7 to Epic 7 as Story 7.11. Nothing changed in what is built, only in which story verifies it, so Epic 6 depends on Epic 2 alone, Epic 10 on Epics 3 and 4, and Epic 8 on Epics 5 and 6.
 
+**Parallel-run amendments, 2026-09-17.** Two more forward references moved so Epic 12 runs beside Epic 9 rather than after Epic 11: the SSL/TLS test connection from Story 12.1 to Story 9.5, and suggested prompts, which every editor now declares in its own descriptor per Story 11.3's contract. Six stories above the floor moved to the polish week as Stories 16.11 to 16.16: Task Manager control (7.7) and lock removal (7.9), which build step 4's list never named; the service editor (9.4) and the LDAP and Kerberos editor (9.6), last in step 6's order, with their reduced forms in Story 9.9 and the LDAP test authentication following its editor; the data-egress line (11.5) and the agent audit viewer (11.6). Epic 11 depends on Epics 4, 5, 6 and 10; Epic 12 on Epics 6, 7 and 8.
+
 That choice was weighed against organizing by portal area instead - one epic each for Web applications, Permissions, Security, Tasks, OS management and Logs. Area epics would touch fewer files per epic, but they cannot express the floor, which demands one live list in **every** area before any area's editors, and one confirmed agent write in **every** area by the end of step 2. An area-shaped plan would let the project arrive at 2026-09-27 with two finished areas and four empty ones, which is the thin interface the contest rules reject.
 
 **On file overlap.** Epics 2, 6, 7, 8 and 9 do each touch the same area slices. That overlap is additive rather than churning, because AD-5 makes a screen one declarative descriptor: adding a row action adds a declaration and a derived tool schema, not a rewrite of the list page. This is the "fully pre-designed, no feedback loop" case - the pre-design is what removes the pressure to consolidate.
@@ -786,7 +788,7 @@ A user reaches every list, detail and viewer the six areas offer - no dead side 
 
 ### Epic 7: Act on any row
 
-A user does the small things that make up most daily administration - enable, disable, run, suspend, resume, terminate, remove and delete - from the row or from the command bar, with the row updating in place, and can ask the agent to do any of them instead through a confirmed proposal. Build step 4; completing it clears the last floor requirement below the create-and-edit line.
+A user does the small things that make up most daily administration - enable, disable, run, suspend, resume, terminate, remove and delete - from the row or from the command bar, with the row updating in place, and can ask the agent to do any of them instead through a confirmed proposal. Build step 4; completing it clears the last floor requirement below the create-and-edit line. Task Manager control and lock removal moved to Epic 16 (16.11, 16.12) on 2026-09-17: build step 4's list never named them.
 
 **FRs covered:** FR-32 (screen actions), FR-37 (remaining), FR-44 (deletes), FR-47 (auditing on and off, system and user event configuration), FR-48 (on-demand run), FR-51 (remaining, plus Task Manager control), FR-55 (remaining), FR-57 (removal), FR-63 (remaining delete scopes)
 
@@ -802,7 +804,7 @@ A user creates the things the six areas administer - a web application, a user, 
 
 ### Epic 9: The full editors
 
-A user opens the editors that carry the classic portal's whole field set - user, web application, role, service, SSL/TLS, LDAP, and the task wizard and its editor - and edits an instance the way an administrator actually does. Build step 6, in that order; the eight largest forms in Release 1 and the first place FR-9's reduced-form rule may be exercised.
+A user opens the editors that carry the classic portal's whole field set - user, web application, role, service, SSL/TLS, LDAP, and the task wizard and its editor - and edits an instance the way an administrator actually does. Build step 6, in that order; the six largest forms in Release 1 and the first place FR-9's reduced-form rule may be exercised. The service editor and the LDAP and Kerberos editor moved to Epic 16 (16.13, 16.14) on 2026-09-17; Story 9.9 ships their reduced forms.
 
 **FRs covered:** FR-30 (editor), FR-35 (editor), FR-38 (editor), FR-41 (editor), FR-42 (editor), FR-45 (editor), FR-52, FR-53, FR-9 (per cut editor)
 
@@ -818,7 +820,7 @@ An operator runs the agent on OpenAI, Google Gemini or a local model on their ow
 
 ### Epic 11: The agent explains itself, cites its work, and streams
 
-During the voting week a user can ask what any screen or log entry means in one click, follow a citation chip straight to the row the agent used, see on every turn whether their screen data leaves the instance, and watch a reply arrive token by token. Polish week, ranked first after any step-7 leftovers, because these are what voters see.
+During the voting week a user can ask what any screen or log entry means in one click, follow a citation chip straight to the row the agent used, see on every turn whether their screen data leaves the instance, and watch a reply arrive token by token. Polish week, ranked first after any step-7 leftovers, because these are what voters see. The data-egress line and the agent audit viewer moved to Epic 16 (16.15, 16.16) on 2026-09-17.
 
 **FRs covered:** FR-70, FR-71, NFR-2 (token streaming)
 
@@ -858,7 +860,7 @@ A user makes the portal their own - own password, favorites, recents, menu searc
 
 ### Epic 16: The remaining polish-week extras
 
-The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Polish week, last, as time allows.
+The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Polish week, last, as time allows. Six stories deferred from the contest build on 2026-09-17 close the epic: Task Manager control, lock removal, the service editor, the LDAP and Kerberos editor, the data-egress line and the agent audit viewer (16.11 to 16.16).
 
 **FRs covered:** FR-74, FR-76, FR-77, FR-78
 
@@ -3900,7 +3902,7 @@ So that I can find a repeating warning and ask the agent what it means.
 
 ## Epic 7: Act on any row
 
-A user does the small things that make up most daily administration - enable, disable, run, suspend, resume, terminate, remove and delete - from the row or from the command bar, with the row updating in place, and can ask the agent to do any of them instead through a confirmed proposal. Build step 4; completing it clears the last floor requirement below the create-and-edit line.
+A user does the small things that make up most daily administration - enable, disable, run, suspend, resume, terminate, remove and delete - from the row or from the command bar, with the row updating in place, and can ask the agent to do any of them instead through a confirmed proposal. Build step 4; completing it clears the last floor requirement below the create-and-edit line. Task Manager control and lock removal moved to Epic 16 (16.11, 16.12) on 2026-09-17: build step 4's list never named them.
 
 **Applies to every story in this epic.** Each action is **two callers of one operation** - the row (or command bar) and the agent's write tool - so a story is not done when the button works. Every action's write tool follows the full model: a server-minted proposal from a fresh read, an instance-computed diff, an explicit confirmation on a separate authenticated request executed from stored arguments, the prohibited set and both switches evaluated at the write inside the atomic transition, and the agent marker. Every action updates the row in place through the change-event bus, and a destructive one confirms by name in a dialog whose action button is `button-destructive` labeled with the verb and target. Self-protection refusals are UI affordances, never prohibitions - the instance refuses them regardless. These are not restated per story.
 
@@ -4021,26 +4023,6 @@ So that fixing a stopped task does not need an editor.
 - **When** the agent's navigation target for a suspended task is re-pointed from the schedule list to Task details
 - **Then** UJ-6 is replayed end to end: the agent navigates to **Task details**, the Status **field** highlights, and a toast reads the change with "Open in Task schedule" - completing the journey as the PRD writes it, with no earlier story left unverified.
 
-### Story 7.7: Start, suspend and resume the Task Manager
-
-As a production administrator,
-I want to stop and start the instance's scheduler,
-So that I can hold maintenance during a change window.
-
-**Acceptance Criteria:**
-
-- **Given** the Task schedule command bar
-- **When** the user suspends the Task Manager
-- **Then** a warning dialog states that **no scheduled task will run until it is resumed**, before proceeding.
-
-- **Given** the Task Manager is suspended
-- **When** the screen renders
-- **Then** the warning banner sits above the table with a Resume action, privilege-gated, and the rows still list.
-
-- **Given** `Task.Manager` publishes no body template
-- **When** the tool is built
-- **Then** it is recorded as action-style with a trivial body needing no template, rather than being given a hand-typed field list.
-
 ### Story 7.8: Terminate, suspend and resume a process
 
 As a production administrator,
@@ -4060,26 +4042,6 @@ So that I can recover an instance without a terminal.
 - **Given** the target is an IRIS system process
 - **When** a terminate is attempted
 - **Then** it is refused on the instance and was never advertised as a tool.
-
-### Story 7.9: Remove locks - one, all of a process, all of a remote client
-
-As a production administrator,
-I want to clear a stuck lock,
-So that a blocked operation can proceed.
-
-**Acceptance Criteria:**
-
-- **Given** a lock row
-- **When** the user removes it
-- **Then** the three scopes are offered - this lock, all locks of the owning process, all locks from a remote client - each naming what it will remove.
-
-- **Given** the owning process is in a transaction
-- **When** removal is requested
-- **Then** the dialog **warns** before proceeding, because removing such a lock has consequences beyond the lock itself.
-
-- **Given** `Lock` publishes no body template
-- **When** the tool is built
-- **Then** it is recorded as action-style needing no template.
 
 ### Story 7.10: The remaining application error delete scopes
 
@@ -4335,9 +4297,9 @@ So that a claim in the README is either true or corrected before anyone relies o
 
 ## Epic 9: The full editors
 
-A user opens the editors that carry the classic portal's whole field set - user, web application, role, service, SSL/TLS, LDAP, and the task wizard and its editor - and edits an instance the way an administrator actually does. Build step 6, **in that order**; the eight largest forms in Release 1 and the first place FR-9's reduced-form rule may be exercised.
+A user opens the editors that carry the classic portal's whole field set - user, web application, role, service, SSL/TLS, LDAP, and the task wizard and its editor - and edits an instance the way an administrator actually does. Build step 6, **in that order**; the six largest forms in Release 1 and the first place FR-9's reduced-form rule may be exercised. The service editor and the LDAP and Kerberos editor moved to Epic 16 (16.13, 16.14) on 2026-09-17; Story 9.9 ships their reduced forms.
 
-**Applies to every story in this epic.** Each editor is a full-page route following the `form-page` contract, with its sections in Material tabs mirroring the classic editor's tab names. **One form spans all tabs** - Save applies everything; a validation error switches to the tab holding it, that tab showing a `destructive` dot and adding ", N errors" to its accessible name. Every save reads fresh, applies the diff and sends the **complete property set**, because most of these endpoints do not merge. Every editor ships with its agent write tool over the derived field list. These are not restated per story.
+**Applies to every story in this epic.** Each editor is a full-page route following the `form-page` contract, with its sections in Material tabs mirroring the classic editor's tab names. **One form spans all tabs** - Save applies everything; a validation error switches to the tab holding it, that tab showing a `destructive` dot and adding ", N errors" to its accessible name. Every save reads fresh, applies the diff and sends the **complete property set**, because most of these endpoints do not merge. Every editor ships with its agent write tool over the derived field list, and declares its suggested prompts in its descriptor per Story 11.3's contract whether or not Epic 11 has landed. These are not restated per story.
 
 ### Story 9.1: The user editor
 
@@ -4399,26 +4361,6 @@ So that I can audit and adjust access from one screen.
 - **When** the dialog opens
 - **Then** it shows the current grant and the resulting grant, as it does from the create path.
 
-### Story 9.4: The service editor
-
-As a developer-administrator,
-I want to configure a service's state, addresses, roles and authentication,
-So that service administration is complete here.
-
-**Acceptance Criteria:**
-
-- **Given** the editor
-- **When** it opens
-- **Then** it covers enabled state, allowed IP addresses with add and delete, roles, and authentication methods.
-
-- **Given** the user disables the web service OcuPilot itself depends on
-- **When** they attempt it from the screen
-- **Then** a warning dialog states that it will lock them out of OcuPilot, before proceeding.
-
-- **Given** the same disable is proposed **by the agent**
-- **When** it reaches the write path
-- **Then** it is **refused on the instance and was never advertised as a tool** - the warning is the screen's affordance for a human decision; the prohibition is absolute for the agent, and covers the web application, the web service behind it and the superserver.
-
 ### Story 9.5: The SSL/TLS editor
 
 As a developer-administrator,
@@ -4439,6 +4381,10 @@ So that the instance's outbound and inbound TLS is manageable from the portal.
 - **When** it is edited here
 - **Then** editing it is possible but its role is visible, because the agent's own outbound calls depend on it.
 
+- **Given** an SSL/TLS configuration
+- **When** the user runs its test connection
+- **Then** the instance's own result text is reported, success or failure (moved from Story 12.1 by the 2026-09-17 amendment).
+
 ---
 
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
@@ -4446,22 +4392,6 @@ So that the instance's outbound and inbound TLS is manageable from the portal.
 - DW-268: The build's credential-name guard is suffix-anchored, so it misses `PrivateKeyFile`, `PrivateKeyType`, `CertificateFile`, `CAFile` and `CAPath` - the fields this editor's detail read carries (ledger; routed by adjudication 2026-09-14)
 - DW-332: the destructive-test guard does not cover `Security.SSLConfigs` create or delete, so three classes act unarmed (ledger; routed by the burn-down gate 2026-09-16)
 - DW-391: a form-page with no list has no published sentence for an absent entity (ledger; routed by the burn-down gate 2026-09-16)
-
-### Story 9.6: The LDAP and Kerberos editor
-
-As a developer-administrator,
-I want to configure directory authentication,
-So that the instance can be joined to an existing identity system from here.
-
-**Acceptance Criteria:**
-
-- **Given** the editor
-- **When** it opens
-- **Then** it covers the fields of the classic LDAP page, whose exported source in `irislib/` is the field list.
-
-- **Given** the `Security.LDAP` endpoint's **test connection** request type is asynchronous while its list, get and put are not
-- **When** this editor is built
-- **Then** list, get and put stay synchronous, and the test action is a polish-week item rather than being wired here.
 
 ### Story 9.7: The New Task wizard
 
@@ -4543,6 +4473,10 @@ So that a gap reads as a decision rather than a defect.
 - **When** it is assessed
 - **Then** **at least one create or edit form per area** exists, and **no list screen in the six areas links out** - a link-out on a list counts against the counter-metric, and one on an editor is a recorded cost.
 
+- **Given** the service editor and the LDAP and Kerberos editor, deferred to Stories 16.13 and 16.14 by the 2026-09-17 amendment
+- **When** this story ships
+- **Then** each has its reduced form plus `classic-link-card` here, and its agent write tool.
+
 ---
 
 ## Epic 10: Run on any model, and harden the write path
@@ -4621,7 +4555,7 @@ So that screen data and log text never leave the instance at all.
 
 ## Epic 11: The agent explains itself, cites its work, and streams
 
-During the voting week a user can ask what any screen or log entry means in one click, follow a citation chip straight to the row the agent used, see on every turn whether their screen data leaves the instance, and watch a reply arrive token by token. Polish week, ranked first after any step-7 leftovers, because these are what voters see.
+During the voting week a user can ask what any screen or log entry means in one click, follow a citation chip straight to the row the agent used, see on every turn whether their screen data leaves the instance, and watch a reply arrive token by token. Polish week, ranked first after any step-7 leftovers, because these are what voters see. The data-egress line and the agent audit viewer moved to Epic 16 (16.15, 16.16) on 2026-09-17.
 
 **Applies to every story in this epic.** All of these modify the same panel transcript render path, which is why they are one epic rather than three. Nothing here may break a Release 1 screen or a Release 1 agent write; anything that risks either waits for Stage 2. Every new tool declares `read` or `write` at definition time or the build fails, and every new write key is added to the governance baseline in Epic 14 rather than left to default.
 
@@ -4683,7 +4617,7 @@ So that the agent is useful before I have thought of a question.
 
 - **Given** the screen contract
 - **When** a screen is added after this story
-- **Then** its prompts are declared in its descriptor alongside its command box aliases, so a new screen arrives with prompts rather than needing them retrofitted.
+- **Then** its prompts are declared in its descriptor alongside its command box aliases, so a new screen arrives with prompts rather than needing them retrofitted. This story covers every screen that exists when it runs; the editors of Epics 9 and 12 declare their own, whichever order the epics land in.
 
 ### Story 11.4: Citation chips with click-through
 
@@ -4708,50 +4642,6 @@ So that verifying the agent's answer costs one click rather than a search.
 - **Given** a chip's target no longer exists
 - **When** it is clicked
 - **Then** it reports that the row is no longer present rather than failing the screen - stored references are weak by contract.
-
-### Story 11.5: The data-egress line
-
-As a security-minded operator,
-I want each turn to tell me whether my screen data left the instance,
-So that egress is visible per turn rather than only in a chip I might not read.
-
-**Acceptance Criteria:**
-
-- **Given** a turn with context sharing on
-- **When** it runs
-- **Then** the panel shows a data-egress line naming the provider in use and stating whether screen data leaves the instance.
-
-- **Given** the statement
-- **When** it is computed
-- **Then** it derives from the **same configuration the request actually uses**, so the line and the destination cannot disagree.
-
-- **Given** a local provider on a private network
-- **When** the line renders
-- **Then** it says the data did not leave the instance, matching the context chip's absence of the egress pill.
-
-### Story 11.6: The agent audit viewer
-
-As an OcuPilot administrator,
-I want to see what the agent has been doing across the instance,
-So that the ledger is readable without SQL.
-
-**Acceptance Criteria:**
-
-- **Given** the agent audit viewer
-- **When** it opens
-- **Then** it lists ledger rows with filters by user, screen and date, and opens the arguments and result of any row.
-
-- **Given** an ordinary user
-- **When** they open it
-- **Then** they see **their own** rows.
-
-- **Given** an OcuPilot administrator
-- **When** they open another user's rows
-- **Then** they see them, and their access is gated by the **resources recorded on each row** - the gate living with the ledger rather than with the screen.
-
-- **Given** any row
-- **When** it renders
-- **Then** secrets are absent, because they were excluded at write time by schema rather than redacted afterwards.
 
 ### Story 11.7: Token streaming
 
@@ -4787,31 +4677,23 @@ So that a slow model reads as thinking rather than as a hang.
 
 A user completes the area the contest names most specifically: five OAuth 2.0 editors that round-trip create, edit and delete, plus the test and detail actions that make SSL/TLS, X.509 and LDAP administration self-checking. Polish week, ranked next, because the task statement names OAuth setup.
 
-**Applies to every story in this epic.** All four `Security.OAuth2.*` endpoints and `Security.X509Credential` are among the 28 that do **not** merge, so every save here reads fresh, applies the diff and sends the **complete property set**. Each editor is a full-page route on the `form-page` contract with tabs mirroring the classic editor, ships with its agent write tool over the derived field list, and publishes to the change-event bus. Every secret - a client secret, a private key, an initial access token - is write-only end to end and never returned by any read. The four OAuth 2.0 editors derive their `Metadata.*` field sets from the published spec (`mainspec_v2.json`), which enumerates 30 to 70 members each where the derived lists carry `Metadata` as one opaque object; `ClientId`, `JWTInterval` and `ServerDefinition` are in the template lists and absent from the spec's PUT, so their fate is verified on the instance before the form is built. These are not restated per story.
+**Applies to every story in this epic.** All four `Security.OAuth2.*` endpoints and `Security.X509Credential` are among the 28 that do **not** merge, so every save here reads fresh, applies the diff and sends the **complete property set**. Each editor is a full-page route on the `form-page` contract with tabs mirroring the classic editor, ships with its agent write tool over the derived field list, and publishes to the change-event bus. Every secret - a client secret, a private key, an initial access token - is write-only end to end and never returned by any read. The four OAuth 2.0 editors derive their `Metadata.*` field sets from the published spec (`mainspec_v2.json`), which enumerates 30 to 70 members each where the derived lists carry `Metadata` as one opaque object; `ClientId`, `JWTInterval` and `ServerDefinition` are in the template lists and absent from the spec's PUT, which names the last `OAuth2ServerDefinition`; verified on the instance on 2026-09-16, the endpoint reads and returns all three under the template's names and rejects an unrecognized key, so the derived list is the wire contract and the spec supplies only `Metadata.*`. Each editor declares its suggested prompts in its descriptor per Story 11.3's contract, and the tabbed `form-page` behavior is UX-DR32 and UX-DR33's, so whichever of Story 9.1 and Story 12.4 lands first sets the shared tab component and the other adopts it at its merge; this epic therefore depends on Epics 6, 7 and 8 only and runs beside Epic 9. These are not restated per story.
 
 ### Story 12.1: The security-area test and detail actions
 
 As a developer-administrator,
-I want to prove a TLS configuration or a directory binding works from the screen that defines it,
+I want the security screens' detail and test actions on the screen that defines each configuration,
 So that a misconfiguration surfaces here rather than in whatever fails later.
 
 **Acceptance Criteria:**
-
-- **Given** an SSL/TLS configuration
-- **When** the user runs its test connection
-- **Then** the instance's own result text is reported, success or failure.
 
 - **Given** an X.509 credential
 - **When** the user opens its details
 - **Then** the certificate's details render - and the private key does not.
 
-- **Given** an LDAP configuration
-- **When** the user runs test authentication
-- **Then** the instance's own result text is reported.
-
-- **Given** `Security.LDAP`'s test-connection request type is **asynchronous** while its list, get and put are not
-- **When** the test runs
-- **Then** it goes through `AdminPort`'s async path, which the port exposes as an ordinary call resolving later - the slice writes no polling logic.
+- **Given** the SSL/TLS test connection and the LDAP test authentication
+- **When** this story is assessed
+- **Then** neither is built here: the SSL/TLS test is Story 9.5's, on the editor that defines the configuration, and the LDAP test moved with its editor to Story 16.14 - so this epic depends on Epics 6, 7 and 8 only.
 
 ### Story 12.2: Revoke a user's OAuth 2.0 tokens
 
@@ -5393,7 +5275,7 @@ So that the portal is usable in the conditions I actually use it in.
 
 ## Epic 16: The remaining polish-week extras
 
-The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Polish week, last, as time allows.
+The second-tier screens and actions across five areas: a try-it console, web sessions, effective privileges, a permission-check tool, task export and import, background tasks, broadcast, license usage, the full dashboard, six secondary log viewers with a unified hub, and external language servers. Polish week, last, as time allows. Six stories deferred from the contest build on 2026-09-17 close the epic: Task Manager control, lock removal, the service editor, the LDAP and Kerberos editor, the data-egress line and the agent audit viewer (16.11 to 16.16).
 
 **Applies to every story in this epic.** Nothing here may break a Release 1 screen or a Release 1 agent write; anything that risks either waits for Stage 2. Each screen is one descriptor with its derived read tool; each action ships with its confirmed write tool and is added to Epic 14's governance baseline rather than left to default.
 
@@ -5590,6 +5472,140 @@ So that the last unmapped polish-week area is covered.
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-253: LanguageServer's template is evaluated at its default type, so its `Custom` object derives member-less; derive one field list per language-server type as `Wallet.Secret` does, amending AD-3 (ledger; routed by harvest 2026-09-14)
+
+### Story 16.11: Start, suspend and resume the Task Manager
+
+As a production administrator,
+I want to stop and start the instance's scheduler,
+So that I can hold maintenance during a change window.
+*Moved here from Story 7.7 by the 2026-09-17 parallel-run amendment; above the 2026-09-27 floor.*
+
+**Acceptance Criteria:**
+
+- **Given** the Task schedule command bar
+- **When** the user suspends the Task Manager
+- **Then** a warning dialog states that **no scheduled task will run until it is resumed**, before proceeding.
+
+- **Given** the Task Manager is suspended
+- **When** the screen renders
+- **Then** the warning banner sits above the table with a Resume action, privilege-gated, and the rows still list.
+
+- **Given** `Task.Manager` publishes no body template
+- **When** the tool is built
+- **Then** it is recorded as action-style with a trivial body needing no template, rather than being given a hand-typed field list.
+
+### Story 16.12: Remove locks - one, all of a process, all of a remote client
+
+As a production administrator,
+I want to clear a stuck lock,
+So that a blocked operation can proceed.
+*Moved here from Story 7.9 by the 2026-09-17 parallel-run amendment; above the 2026-09-27 floor.*
+
+**Acceptance Criteria:**
+
+- **Given** a lock row
+- **When** the user removes it
+- **Then** the three scopes are offered - this lock, all locks of the owning process, all locks from a remote client - each naming what it will remove.
+
+- **Given** the owning process is in a transaction
+- **When** removal is requested
+- **Then** the dialog **warns** before proceeding, because removing such a lock has consequences beyond the lock itself.
+
+- **Given** `Lock` publishes no body template
+- **When** the tool is built
+- **Then** it is recorded as action-style needing no template.
+
+### Story 16.13: The service editor
+
+As a developer-administrator,
+I want to configure a service's state, addresses, roles and authentication,
+So that service administration is complete here.
+*Moved here from Story 9.4 by the 2026-09-17 parallel-run amendment; above the 2026-09-27 floor.*
+
+**Acceptance Criteria:**
+
+- **Given** the editor
+- **When** it opens
+- **Then** it covers enabled state, allowed IP addresses with add and delete, roles, and authentication methods.
+
+- **Given** the user disables the web service OcuPilot itself depends on
+- **When** they attempt it from the screen
+- **Then** a warning dialog states that it will lock them out of OcuPilot, before proceeding.
+
+- **Given** the same disable is proposed **by the agent**
+- **When** it reaches the write path
+- **Then** it is **refused on the instance and was never advertised as a tool** - the warning is the screen's affordance for a human decision; the prohibition is absolute for the agent, and covers the web application, the web service behind it and the superserver.
+
+### Story 16.14: The LDAP and Kerberos editor
+
+As a developer-administrator,
+I want to configure directory authentication,
+So that the instance can be joined to an existing identity system from here.
+*Moved here from Story 9.6 by the 2026-09-17 parallel-run amendment; above the 2026-09-27 floor.*
+
+**Acceptance Criteria:**
+
+- **Given** the editor
+- **When** it opens
+- **Then** it covers the fields of the classic LDAP page, whose exported source in `irislib/` is the field list.
+
+- **Given** the `Security.LDAP` endpoint's **test connection** request type is asynchronous while its list, get and put are not
+- **When** this editor is built
+- **Then** list, get and put stay synchronous, and the test action below goes through the async path.
+
+- **Given** an LDAP configuration
+- **When** the user runs test authentication
+- **Then** the instance's own result text is reported.
+
+- **Given** `Security.LDAP`'s test-connection request type is **asynchronous** while its list, get and put are not
+- **When** the test runs
+- **Then** it goes through `AdminPort`'s async path, which the port exposes as an ordinary call resolving later - the slice writes no polling logic.
+
+### Story 16.15: The data-egress line
+
+As a security-minded operator,
+I want each turn to tell me whether my screen data left the instance,
+So that egress is visible per turn rather than only in a chip I might not read.
+*Moved here from Story 11.5 by the 2026-09-17 parallel-run amendment; above the 2026-09-27 floor.*
+
+**Acceptance Criteria:**
+
+- **Given** a turn with context sharing on
+- **When** it runs
+- **Then** the panel shows a data-egress line naming the provider in use and stating whether screen data leaves the instance.
+
+- **Given** the statement
+- **When** it is computed
+- **Then** it derives from the **same configuration the request actually uses**, so the line and the destination cannot disagree.
+
+- **Given** a local provider on a private network
+- **When** the line renders
+- **Then** it says the data did not leave the instance, matching the context chip's absence of the egress pill.
+
+### Story 16.16: The agent audit viewer
+
+As an OcuPilot administrator,
+I want to see what the agent has been doing across the instance,
+So that the ledger is readable without SQL.
+*Moved here from Story 11.6 by the 2026-09-17 parallel-run amendment; above the 2026-09-27 floor.*
+
+**Acceptance Criteria:**
+
+- **Given** the agent audit viewer
+- **When** it opens
+- **Then** it lists ledger rows with filters by user, screen and date, and opens the arguments and result of any row.
+
+- **Given** an ordinary user
+- **When** they open it
+- **Then** they see **their own** rows.
+
+- **Given** an OcuPilot administrator
+- **When** they open another user's rows
+- **Then** they see them, and their access is gated by the **resources recorded on each row** - the gate living with the ledger rather than with the screen.
+
+- **Given** any row
+- **When** it renders
+- **Then** secrets are absent, because they were excluded at write time by schema rather than redacted afterwards.
 
 ## Epic 17: The Open Exchange listing and the contest submission
 
