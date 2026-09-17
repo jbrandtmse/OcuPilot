@@ -122,8 +122,7 @@ describe('the locator bar', () => {
         },
         { provide: ShellState, useValue: shell },
         // Story 6.7: the locator injects ScreenStores to read a parent-scoped detail screen's
-        // loaded row for its entity label; none of this file's fixture screens are that archetype,
-        // so it is never called here, but the token still needs a provider to construct at all.
+        // loaded row for its entity label.
         { provide: ScreenStores, useValue: new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) }) },
       ],
     });
@@ -245,15 +244,17 @@ describe('the locator bar', () => {
     };
 
     // Before the row has loaded: the id, decoded, exactly as any other entity segment.
-    await go('/permissions/users/details/99');
+    await go('/permissions/users/details/42');
     let entity = fixture.nativeElement.querySelector('.ocu-locator-entity');
-    expect(entity.textContent.trim()).toBe('99');
+    expect(entity.textContent.trim()).toBe('42');
 
-    // Once the row is on the shared store the page's own read would have populated: the entity
-    // segment reads its name column instead of the id in the URL.
+    // The row lands on the shared store with no navigation after it, as the page's own read does
+    // on a cold deep link: the entity segment reads its name column instead of the id.
     const store = TestBed.inject(ScreenStores).for(DETAIL.descriptor, DETAIL.refreshRates);
     store.applyTick([{ Id: 42, Name: 'The forty-second row' }], false, '', new Date());
-    await go('/permissions/users/details/42');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
     entity = fixture.nativeElement.querySelector('.ocu-locator-entity');
     expect(entity.textContent.trim()).toBe('The forty-second row');
   });

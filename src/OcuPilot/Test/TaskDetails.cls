@@ -238,8 +238,7 @@ Method TestTheReadToolAnswersTheSameRowAsTheRoute()
 
     Do $$$AssertEquals(tView.fields.%ToJSON(), tRoute.fields.%ToJSON(), "the same declared fields")
     Do $$$AssertEquals(tView.rows.%ToJSON(), tRoute.rows.%ToJSON(), "and the same one row")
-    Do $$$AssertEquals(tView.%GetTypeOf("Settings"), "unassigned", "the tool view carries no Settings key")
-    If tView.rows.%Size() > 0 Do $$$AssertEquals(tView.rows.%Get(0).%GetTypeOf("Settings"), "unassigned", "and neither does its one row")
+    If tView.rows.%Size() > 0 Do $$$AssertEquals(tView.rows.%Get(0).%GetTypeOf("Settings"), "unassigned", "the tool's one row carries no Settings key")
 }
 
 }

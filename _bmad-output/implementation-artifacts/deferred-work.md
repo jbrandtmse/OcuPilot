@@ -2813,6 +2813,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Screen/Tool/Read.cls AddCriteria gives every text criterion the audit comma-list description; MgmntPort answers a list, a wildcard or an absent value with 400 PORT.VALIDATION whose reason names the one-name rule, so a model self-corrects after one refused call. Screen/Tool/** is contended for Epic 6.
 - 2026-09-16T17:43:04Z status=routed owner=7-1-enable-disable-and-delete-a-web-application by=harvest note=route: first later-epic story in the web-applications area that works in Screen/Tool/**; the fix is a per-criterion description declared by the descriptor or a single-name text kind
 - 2026-09-16T22:46:47Z occurrence=6-3-the-x-509-ldap-kerberos-and-wallet-lists note=the security.secrets tool's required single collection criterion is described as an optional comma list with a * wildcard
+- 2026-09-17T11:34:58Z occurrence=6-7-task-details
 
 ### DW-1002: AD-8 says no elevation anywhere on the request path, while the vendor path MgmntPort reaches adds all roles temporarily inside %SYS.REST and %REST.API
 - source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -2953,6 +2954,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-6-6-task-history-per-task-and-across-tasks.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: TaskHistory TestAllTasks/UserOnly/NoTaskId and WireSecurityRead AssertSameRowsAsTestAccount on tasks.history/taskhistory read twice in ms and compare order or counts
 - 2026-09-17T08:31:31Z status=wontfix-accepted owner=6-6-task-history-per-task-and-across-tasks by=cr note=window is milliseconds on a fresh throwaway; reopen_if=CI or a local run reds one of those assertions on a row mismatch
+- 2026-09-17T11:34:58Z occurrence=6-7-task-details
 
 ### DW-1027: Task history's Refresh and revisit re-read with whatever the form holds now, not the last submitted search
 - source: spec-6-6-task-history-per-task-and-across-tasks.md | severity: low | fix-risk: med | footprint: in-story

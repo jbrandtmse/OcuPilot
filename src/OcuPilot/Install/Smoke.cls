@@ -621,7 +621,8 @@ ClassMethod CheckAreaLists(ByRef pChecks, pAccessToken As %String, pDemo As %Str
 /// the <code>taskId</code> its parent-scoped read requires, so this check reads
 /// <parameter>TASKLISTTOOL</parameter> again at <code>maxRows=1</code> to find one, needing the
 /// same pairs <code>tasks</code> already checked, and then reads
-/// <parameter>TASKDETAILSTOOL</parameter> for that id, expecting exactly one row. Skipped, like
+/// <parameter>TASKDETAILSTOOL</parameter> for that id, expecting exactly one row that names that
+/// <code>Id</code> and carries the task's own <code>TimePeriod</code>. Skipped, like
 /// <method>CheckMessagesLog</method>, when no token was minted; failed, naming why, when the
 /// schedule read answers no row to key the second read by -- a fresh container without even the
 /// stock system tasks is not one this check can pass on, unlike the zero-or-one lists above.</p>
@@ -668,14 +669,20 @@ ClassMethod CheckTaskDetails(ByRef pChecks, pAccessToken As %String) [ Private ]
         Quit
     }
     Set tCount = -1
+    Set tSameTask = 0
     Try {
         Set tRows = ##class(%DynamicAbstractObject).%FromJSON(tText).%Get("rows")
         If $IsObject(tRows) && tRows.%IsA("%Library.DynamicArray") Set tCount = tRows.%Size()
+        If tCount = 1 Set tSameTask = (tRows.%Get(0).%Get("Id") = tTaskId) && (tRows.%Get(0).%GetTypeOf("TimePeriod") '= "unassigned")
     } Catch {
         Set tCount = -1
     }
     If tCount '= 1 {
         Do ..Note(.pChecks, "taskdetails", "fail", "GET " _ tPath _ " answered 200 without a rows array of exactly one row")
+        Quit
+    }
+    If 'tSameTask {
+        Do ..Note(.pChecks, "taskdetails", "fail", "GET " _ tPath _ " answered a row that is not task " _ tTaskId _ "'s details")
         Quit
     }
     Do ..Note(.pChecks, "taskdetails", "pass")

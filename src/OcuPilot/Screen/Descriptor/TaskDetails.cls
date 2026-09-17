@@ -22,9 +22,8 @@
 /// <class>OcuPilot.Screen.Descriptor.TaskScheduleList</class>), so this screen's
 /// <code>Type</code>, <code>Suspended</code>, <code>Error</code>, <code>LastStarted</code>,
 /// <code>LastFinished</code> and <code>NextScheduled</code> come from the declared
-/// <code>rowGet</code>'s <code>INFO</code> call instead, keyed by <code>taskId</code> -- the one
-/// route-id criterion's own param, not a property GET's own answer carries, per the widened
-/// single-object grammar (AD-36, Story 6.7). <code>Error</code> is the vendor's raw
+/// <code>rowGet</code>'s <code>INFO</code> call instead, keyed by <code>taskId</code>, the route-id
+/// criterion's param, because GET's own answer carries no property to key it by (AD-36, Story 6.7). <code>Error</code> is the vendor's raw
 /// <code>&lt;THROW&gt;</code> text and is untrusted (AD-11). GET's own answer carries no
 /// <code>Id</code> either -- <code>TaskToJson</code> sets none -- so <code>Id</code> is seeded from
 /// the same criterion value, which is what this screen's composite <code>id</code> reads its row's
@@ -45,9 +44,8 @@
 /// <code>%DB_IRISSYS:READ</code> (AD-8, AD-29).</p>
 /// <p><b>The classic page is <code>%CSP.UI.Portal.TaskInfo</code></b>, spelled in the class's own
 /// case (AD-44); this screen declares no exemption, so it links out to nothing.</p>
-/// <p>It declares no primary or row action, so its empty state names what to do next rather than
-/// inviting the agent; a deleted or unrecognized id reads as zero rows (AD-37) rather than a
-/// refusal, and the page shows "This task no longer exists."</p>
+/// <p>It declares no primary or row action. A deleted or unrecognized id reads as zero rows (AD-37)
+/// rather than a refusal, and the page shows "This task no longer exists."</p>
 Class OcuPilot.Screen.Descriptor.TaskDetails Extends OcuPilot.Screen.Descriptor.Base
 {
 

@@ -297,7 +297,7 @@ test('routeEntityType resolves through parentScope for a sub-resource screen, an
 //
 // Mutation (Rule 19): Task schedule's id kind `single` in the mirror -> the key assertion goes red;
 // History's `Result` column renamed in the mirror -> the column assertion goes red.
-test("Task schedule keys on Id and opens History, whose columns are Task history's", () => {
+test("Task schedule keys on Id and its child list is History, whose columns are Task history's", () => {
   const schedule = screenForRoute('tasks/schedule');
   const taskRun = screenForRoute('tasks/schedule/history');
   const history = screenForRoute('tasks/history');

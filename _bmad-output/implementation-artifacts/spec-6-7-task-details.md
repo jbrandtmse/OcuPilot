@@ -134,6 +134,47 @@ The throwaway has the demo fixture. `OcuPilotDemo nightly purge` is Daily, every
 - Given a principal lacking `%DB_IRISSYS:READ`, when it opens the deep link, then the denied view names that pair and no read is issued.
 - Integration: given the tool `tasks.taskdetails.read` with the demo Id, when called in process, then it answers the same row the screen's read answers, with no `Settings` key.
 
+### Review Findings
+
+Code review 2026-09-17 (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). 0 decision-needed, 18 patch (all applied), 2 defer, 13 rejected.
+
+- [x] [Review][Patch] A read fault never re-rendered the page, so the refusal and Retry did not show (med) [ui/src/app/areas/tasks/details.page.ts:190]
+- [x] [Review][Patch] A changed-field highlight cleared on the next store notification or unchanged tick, against EXPERIENCE.md "Highlight." (med) [ui/src/app/areas/tasks/details.store.ts:195]
+- [x] [Review][Patch] AC3 had no timer-tick test on Task details (med) [ui/src/app/areas/tasks/details.page.spec.ts:197]
+- [x] [Review][Patch] AC2's cold deep link was untested, and the locator spec re-navigated after the store tick (med) [ui/browser/tasks.browser-spec.mjs:582]
+- [x] [Review][Patch] AC1's Namespace and Last error asserts could not fail; Started and Completed were unasserted (med) [ui/browser/tasks.browser-spec.mjs:516]
+- [x] [Review][Patch] The smoke `taskdetails` check passed on any one-row read, including the wrong tool's (med) [src/OcuPilot/Install/Smoke.cls:672]
+- [x] [Review][Patch] The changed tint had no rule for a details field (low) [ui/src/styles/_components.scss:3479]
+- [x] [Review][Patch] The per-store highlight `WeakMap` was always reset, so its doc was false (low) [ui/src/app/areas/tasks/details.page.ts:39]
+- [x] [Review][Patch] Two template conditions were not member references (low) [ui/src/app/areas/tasks/details.page.ts:126]
+- [x] [Review][Patch] No corpus case kept the rowGet-key widening to GET sources (low) [src/OcuPilot/Test/ReadSourceCorpus.cls:53]
+- [x] [Review][Patch] A top-level `Settings` assertion could not fail (low) [src/OcuPilot/Test/TaskDetails.cls:241]
+- [x] [Review][Patch] Descriptor doc: an ungrammatical sentence and a false empty-state claim (low) [src/OcuPilot/Screen/Descriptor/TaskDetails.cls:24]
+- [x] [Review][Patch] Locator spec provider comment was false (low) [ui/src/app/shell/locator-bar.spec.ts:124]
+- [x] [Review][Patch] Navigation test title still said the name cell opens History (low) [ui/tools/navigation.test.mjs:300]
+- [x] [Review][Patch] `describeBanner`'s JSDoc sat above the wrong function (low) [ui/browser/tasks.browser-spec.mjs:241]
+- [x] [Review][Patch] Browser test titles misnumbered the ACs they cover (low) [ui/browser/tasks.browser-spec.mjs:461]
+- [x] [Review][Patch] `details-store.test.mjs` header named a mutation that reddens differently (low) [ui/tools/details-store.test.mjs:20]
+- [x] [Review][Patch] Rule 19 mutation lines missing for AC1, AC3, AC4, AC5, Integration, Words and the grammar arms (low, closed in-pass under Verification)
+- [x] [Review][Defer] The derived tool describes the required `taskId` as an optional comma list [src/OcuPilot/Screen/Tool/Read.cls] — deferred: DW-1001 occurrence (contended `Screen/Tool/**`, routed 7-1)
+- [x] [Review][Defer] The integration test compares two live reads of the demo task [src/OcuPilot/Test/TaskDetails.cls:220] — deferred: DW-1026 occurrence (runs after the Suspended poll)
+
+Rejected:
+
+- low: `StartDate`/`EndDate` not rendered -- the spec's column list is the field list (spec-bound).
+- false: skeleton forever when the screen has no read -- the page is registered only for TaskDetails, which declares both.
+- low: `Read.cls` seeds the rowGet key outside the criterion guard -- the grammar refuses a GET rowGet without a criterion.
+- low: 22 filter and sort fields on a one-row read -- tool schema is contended `Screen/Tool/**`; no user harm shown.
+- low: tests read `tAnswer.code` without `$IsObject` -- a non-JSON body still reds the test.
+- low: no tool-path test of the missing criterion -- tool and route share `Read.Execute`, whose refusal is tested.
+- low: schedule lines take no highlight -- a schedule changes only through Epic 9's editor.
+- low (maybe-false): Monthly day 31 as "last day" -- vendor semantics unconfirmed; the vendor's text renders as it stands.
+- low: empty Monthly `TimePeriodDay` -- the vendor requires a day.
+- false: the detail call is keyed from the row -- `Read` seeds the criterion value under the key, so the call sends that value.
+- low: `detailScreenFor` tests the literal `detail` -- a form-page child is `editorScreenFor`'s.
+- rejected: spec counts and Auto Run Result length -- the fix edits the spec under review.
+- false: chain order unpinned -- the browser leg reddens on the swap (Verification).
+
 ## Spec Change Log
 
 - 2026-09-17 (spec gate, lead): AD-36 amended with the route-id criterion on a single-object `GET`, its keyed detail call and refresh; the other gate decisions (own details page, name cell re-pointed through `detailScreenFor`, Edit task control only once `tasks/schedule/edit` is built, locator names the task by name, schedule words built in the client, no `Settings` field) accepted as planned.
@@ -213,6 +254,27 @@ The throwaway has the demo fixture. `OcuPilotDemo nightly purge` is Daily, every
 - Integration: `rowGet` sent with `row.(key)` instead of the criterion.
 - Words: Weekly day digits read from 0.
 - Each new grammar arm disabled in turn, in both engines.
+
+**Observed (QA, 2026-09-17):**
+
+- mutation: `details.page.ts`'s `showSkeleton` getter changed from `!this.loaded && !this.showRefusal` to `!this.showRefusal` (skeleton no longer gated on first-load-only) -> `details.page.spec.ts`'s `a silent tick highlights only the field whose value changed` went red (skeleton reappeared on the silent tick), along with two other tests asserting no skeleton; reverted, tree byte-identical, `ng test --include='src/app/areas/tasks/details.page.spec.ts'` back to 9/9 green.
+- mutation: `locator-bar.ts`'s `entityLabel` changed from `return text === '' ? entity : text;` to `return entity;` (entity segment never reads the loaded row's name column) -> `locator-bar.spec.ts`'s `Story 6.7: on a parent-scoped detail screen the entity segment names the loaded row, and the decoded id until then` went red (`'42'` instead of `'The forty-second row'`); reverted, tree byte-identical, `ng test --include='src/app/shell/locator-bar.spec.ts'` back to 16/16 green.
+
+**Observed (code review, 2026-09-17):** each reverted, tree byte-identical; ObjectScript mutations loaded into `ocupilot-b-ci` from `/tmp` and restored from source; the client mutation in `data-table.ts` rebuilt and redeployed before the browser run.
+
+- mutation: `data-table.ts` chain puts `childListFor` before `detailScreenFor` -> `tasks.browser-spec.mjs` "Story 6.7 AC1/AC2/AC4" and "Story 6.7 AC2" red (observed).
+- mutation: `locator-bar.ts` store subscription made a no-op -> `locator-bar.spec.ts` "Story 6.7: ... names the loaded row" red (observed).
+- mutation: `details.page.ts` refresh binding omitted -> 10 of 11 `details.page.spec.ts` tests red, AC3's tick test among them (observed).
+- mutation: `TaskDetailsHighlights.update` replaces the set on an unchanged tick -> `details.page.spec.ts` AC3 and `details-store.test.mjs` highlight test red (observed).
+- mutation: `details.page.ts` refresh subscription dropped -> "a fault on a re-read shows the refusal" red (observed).
+- mutation: Edit link `@if (true)` -> "no Edit task control exists yet" red (observed).
+- mutation: `%DB_IRISSYS:READ` dropped from TaskDetails -> `WireSecurityRead.TestTaskDetailsPairSetIsEnforcedForARealPrincipal` red (observed).
+- mutation: `Read.cls` rowGet-key seeding disabled -> `TaskDetails.TestTheReadToolAnswersTheSameRowAsTheRoute` and `TestTheDemoTaskReadsOverTheWire` red (observed).
+- mutation: `weekdayName` reads digits from 0 -> `details-store.test.mjs` Weekly and Monthly Special red (observed).
+- mutation: `Smoke.TASKDETAILSTOOL` = `tasks.taskhistory` -> `Test.Smoke.TestTheTaskDetailsIsALiveCheck` red (observed).
+- mutation, each grammar arm in both engines (`Registry.cls` / `screen-mirror.mjs`): GET criteria without parentScope, GET rowGet without criteria, route-id rowGet key, parent-scoped refresh, GET-only key widening -> `ReadTool` and `screen-mirror.test.mjs` corpus tests red on the named case (observed, 5 of 5 per engine).
+
+**Review re-verification:** `check-objectscript.py` 0; `npm run build` and `npm test` green (836 tool tests, 38 component files); on a fresh `ocupilot-b-ci`: ReadTool 26, TaskDetails 6, WireSecurityRead 12, Smoke 31, all green; `smoke.sh` 35/35; `tasks.browser-spec.mjs` 14/14.
 
 ## Auto Run Result
 

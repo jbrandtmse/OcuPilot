@@ -238,7 +238,6 @@ function findRowIndexByName(page, name) {
   );
 }
 
-/** The banner strip above the table, or `null` when none stands. */
 /**
  * Task details' own rendered Suspended field text, or `null` when the field is not on the page.
  */
@@ -263,6 +262,25 @@ async function suspendedFieldText(page) {
  * `OcuPilot.Test.TaskDetails.TestTheDemoTaskReadsOverTheWire`'s own wait for the same gap, rather
  * than assuming it has already closed.
  */
+/** Task details' rendered fields, label to value. */
+function detailsFields(page) {
+  return page.evaluate(() => {
+    const out = {};
+    for (const field of document.querySelectorAll('.ocu-details-field')) {
+      const label = field.querySelector('.ocu-details-field-label')?.textContent?.trim();
+      const value = field.querySelector('.ocu-details-field-value')?.textContent?.trim();
+      if (label) out[label] = value;
+    }
+    return out;
+  });
+}
+
+/** `fields[label]` is rendered and carries a value rather than the empty-value marker. */
+function assertValued(fields, label, message) {
+  assert.equal(typeof fields[label], 'string', `${message}: the ${label} field is rendered (${JSON.stringify(fields)})`);
+  assert.ok(fields[label] !== '' && fields[label] !== STRINGS.tableEmptyValue, `${message}: ${JSON.stringify(fields[label])}`);
+}
+
 async function waitForDemoTaskSuspended(page, budgetMs = 180000, pollMs = 5000) {
   const deadline = Date.now() + budgetMs;
   while (Date.now() < deadline) {
@@ -273,6 +291,7 @@ async function waitForDemoTaskSuspended(page, budgetMs = 180000, pollMs = 5000) 
   }
 }
 
+/** The banner strip above the table, or `null` when none stands. */
 function describeBanner(page) {
   return page.evaluate(() => {
     const strip = document.querySelector('app-list-page .ocu-banner');
@@ -458,7 +477,7 @@ test('Story 6.6 AC1: Task history renders its form first with no read, Search is
   }
 });
 
-test('Story 6.7 AC1/AC2: activating the demo task\'s name cell opens Task details, showing its properties, schedule and locator name, and its History link opens the per-task history', async () => {
+test('Story 6.7 AC1/AC2/AC4: activating the demo task\'s name cell opens Task details, showing its properties, schedule and locator name, and its History link opens the per-task history', async () => {
   const { context, page, reads } = await signedInAtList(config.username, config.password, LIST_URL);
   try {
     await waitForRows(page, config.navigationTimeoutMs);
@@ -479,19 +498,13 @@ test('Story 6.7 AC1/AC2: activating the demo task\'s name cell opens Task detail
 
     await waitForDemoTaskSuspended(page);
 
-    const fields = await page.evaluate(() => {
-      const out = {};
-      for (const field of document.querySelectorAll('.ocu-details-field')) {
-        const label = field.querySelector('.ocu-details-field-label')?.textContent?.trim();
-        const value = field.querySelector('.ocu-details-field-value')?.textContent?.trim();
-        if (label) out[label] = value;
-      }
-      return out;
-    });
+    const fields = await detailsFields(page);
     assert.equal(fields[STRINGS.tableColumnName], DEMO_TASK, "the Name field is the fixture's own");
-    assert.notEqual(fields[STRINGS.headerNamespaceLabel], '', 'and it carries a namespace');
+    assertValued(fields, STRINGS.headerNamespaceLabel, 'and it carries a namespace');
     assert.equal(fields[STRINGS.taskColumnSuspended], STRINGS.tableStatusYes, 'Suspended reads Yes, after the fixture\'s failed install run');
-    assert.notEqual(fields[STRINGS.taskDetailsLastError], '', 'Last error is non-empty, since the fixture fails by design');
+    assertValued(fields, STRINGS.taskDetailsLastError, 'Last error carries text, since the fixture fails by design');
+    assertValued(fields, STRINGS.taskHistoryColumnStarted, 'Started carries the failed run\'s start');
+    assertValued(fields, STRINGS.taskHistoryColumnCompleted, 'Completed carries the failed run\'s end');
     assert.equal(fields[STRINGS.taskColumnNextRun], STRINGS.taskDetailsNextSuspended, 'Next run reads the suspended sentence, not a stale timestamp');
 
     const schedule = await page.$eval('.ocu-details-schedule', (section) => section.textContent);
@@ -558,6 +571,51 @@ test('Story 6.7 AC1/AC2: activating the demo task\'s name cell opens Task detail
   }
 });
 
+test('Story 6.7 AC2: a cold deep link to Task details shows the demo task, the locator bar names it, and its screen segment returns to Task schedule', async () => {
+  let detailsPath = '';
+  {
+    const { context, page } = await signedInAtList(config.username, config.password, LIST_URL);
+    try {
+      await waitForRows(page, config.navigationTimeoutMs);
+      await clickRowCentre(page, { text: DEMO_TASK, link: true });
+      await page.waitForFunction(
+        () => /^\/ocupilot\/tasks\/schedule\/details\/[^/]+$/.test(window.location.pathname),
+        { timeout: config.navigationTimeoutMs }
+      );
+      detailsPath = new URL(page.url()).pathname;
+    } finally {
+      await context.close();
+    }
+  }
+
+  const { context, page, reads } = await signedInAtList(config.username, config.password, `${detailsPath}?ns=HSCUSTOM`);
+  try {
+    await page.waitForSelector('.ocu-details-fields', { timeout: config.navigationTimeoutMs });
+    const routeId = detailsPath.split('/').pop();
+    const detailsReads = reads.filter((url) => new URL(url).pathname === TASK_DETAILS_READ_PATH);
+    assert.ok(detailsReads.length >= 1, `the cold load reads tasks.taskdetails: ${JSON.stringify(reads)}`);
+    assert.equal(new URL(detailsReads[0]).searchParams.get('taskId'), routeId, 'keyed by the route id');
+    const fields = await detailsFields(page);
+    assert.equal(fields[STRINGS.tableColumnName], DEMO_TASK, 'the same task is shown');
+
+    await page.waitForFunction(
+      (name) => document.querySelector('app-locator-bar .ocu-locator-entity')?.textContent?.trim() === name,
+      { timeout: config.navigationTimeoutMs },
+      DEMO_TASK
+    );
+
+    await page.evaluate((label) => {
+      const links = Array.from(document.querySelectorAll('app-locator-bar .ocu-locator-link'));
+      links.find((candidate) => candidate.textContent.trim() === label).click();
+    }, STRINGS.taskDetailsLabel);
+    await page.waitForFunction(() => window.location.pathname === '/ocupilot/tasks/schedule', {
+      timeout: config.navigationTimeoutMs,
+    });
+  } finally {
+    await context.close();
+  }
+});
+
 test('Story 6.6 AC3: activating a row\'s name cell on Task history opens a dialog listing every read field, and closing it restores the searched rows without a new read', async () => {
   const { context, page, reads } = await signedInAtList(config.username, config.password, HISTORY_URL);
   try {
@@ -588,7 +646,7 @@ test('Story 6.6 AC3: activating a row\'s name cell on Task history opens a dialo
   }
 });
 
-test('Story 6.6/6.7 AC4: a principal holding install-database read and %Admin_Task:USE alone is refused Task history, per-task history and Task details by name and issues no read', async () => {
+test('Story 6.6 AC4 / 6.7 AC5: a principal holding install-database read and %Admin_Task:USE alone is refused Task history, per-task history and Task details by name and issues no read', async () => {
   for (const [url, label] of [
     [HISTORY_URL, STRINGS.taskHistoryLabel],
     ['/ocupilot/tasks/schedule/history/1?ns=HSCUSTOM', STRINGS.taskRunsLabel],

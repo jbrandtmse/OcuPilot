@@ -17,8 +17,9 @@ import { dirname, join } from 'node:path';
 //   naming the wrong ordinal and weekday.
 // - drop the `suspended === true` check from `nextRunText` -> the suspended case goes red, reading
 //   the stale `NextScheduled` text instead of the sentence.
-// - make `TaskDetailsHighlights.update` compare against `current` instead of the held
-//   `previousRow` -> every field reads as changed on the very first call.
+// - make `TaskDetailsHighlights.update` compare `row` with itself instead of the held
+//   `previousRow` -> the second update highlights nothing and the `['Description']` assertion goes
+//   red.
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const store = await import(join(uiRoot, 'src', 'app', 'areas', 'tasks', 'details.store.ts'));
@@ -127,7 +128,7 @@ test('TaskDetailsHighlights: the first update highlights nothing, a later one hi
 
   const third = { Name: 'A', Description: 'second', Suspended: false };
   highlights.update(third, fields);
-  assert.deepEqual([...highlights.changed()], [], 'no change since the last update, nothing highlighted');
+  assert.deepEqual([...highlights.changed()], ['Description'], 'a tick that changes nothing keeps the highlight (EXPERIENCE.md "Highlight.")');
 
   highlights.reset();
   highlights.update({ Name: 'B', Description: 'brand new task', Suspended: true }, fields);

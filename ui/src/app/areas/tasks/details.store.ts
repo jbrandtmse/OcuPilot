@@ -6,8 +6,7 @@
  *
  * Framework-free, like the rest of `core/` and `areas/tasks/history.store.ts`, so
  * `ui/tools/details-store.test.mjs` executes the vocabulary under `node --test` without an Angular
- * test bed. `details.page.ts` holds one `TaskDetailsHighlights` per `ScreenStore`, in a `WeakMap`,
- * the same shape `history.page.ts`'s `HELD_SEARCHES` takes.
+ * test bed. `details.page.ts` holds one `TaskDetailsHighlights` per page instance.
  */
 
 import { fieldOf } from '../../core/table-model.ts';
@@ -178,9 +177,8 @@ function changedFields(previous: unknown, current: unknown, fields: readonly str
 
 /**
  * The field-level highlight a silent auto-refresh tick raises (EXPERIENCE.md "Highlight."),
- * applied to Task details' field list rather than to a table row. One instance is held per
- * `ScreenStore`, the same shape `history.store.ts`'s `TaskHistorySearch` takes, so it survives the
- * route's destroy-and-recreate cycle across navigations that keep the same task.
+ * applied to Task details' field list rather than to a table row. A highlight holds across ticks
+ * that change nothing and is replaced by the next tick that changes a field; `reset()` clears it.
  */
 export class TaskDetailsHighlights {
   private previousRow: unknown = null;
@@ -188,16 +186,20 @@ export class TaskDetailsHighlights {
   private highlightedFields: ReadonlySet<string> = new Set();
 
   /**
-   * Recompute the highlighted set against `row`, over `fields`. The first call after `reset()` (or
-   * ever) highlights nothing -- there is no earlier value to have changed from, which is what
-   * keeps a first load or a fresh id from reading as every field having just changed.
+   * Compare `row` with the last one, over `fields`. The first call after `reset()` (or ever)
+   * highlights nothing -- there is no earlier value to have changed from, which is what keeps a
+   * first load or a fresh id from reading as every field having just changed. A call that finds
+   * no change keeps the fields already highlighted.
    */
   update(row: unknown, fields: readonly string[]): void {
-    this.highlightedFields = this.previousRow === null ? new Set() : changedFields(this.previousRow, row, fields);
+    if (this.previousRow !== null) {
+      const changed = changedFields(this.previousRow, row, fields);
+      if (changed.size > 0) this.highlightedFields = changed;
+    }
     this.previousRow = row;
   }
 
-  /** The fields `update` found changed on its last call. */
+  /** The fields the last change-bearing `update` found changed. */
   changed(): ReadonlySet<string> {
     return this.highlightedFields;
   }

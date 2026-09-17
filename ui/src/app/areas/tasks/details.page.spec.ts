@@ -89,11 +89,13 @@ async function mount(initialRows: unknown[] = [row()], url = '/tasks/schedule/de
   TestBed.resetTestingModule();
   const declaration = SCREENS.find((screen) => screen.descriptor === DESCRIPTOR) ?? null;
   let answerRows = initialRows;
+  let failing = false;
   const paths: string[] = [];
   const scheduled: (() => void)[] = [];
   const api = {
     requestJson: async <T,>(path: string): Promise<JsonResult<T>> => {
       paths.push(path);
+      if (failing) return { kind: 'error', status: 500, code: 'SERVER.INTERNAL', reason: null, detail: null };
       return { kind: 'ok', status: 200, body: { fields: [], rows: answerRows, truncated: false, banner: '' } as T };
     },
   };
@@ -131,6 +133,14 @@ async function mount(initialRows: unknown[] = [row()], url = '/tasks/schedule/de
     paths,
     setRows: (rows: unknown[]) => {
       answerRows = rows;
+    },
+    setFailing: (next: boolean) => {
+      failing = next;
+    },
+    refresh,
+    fireTick: async () => {
+      scheduled[scheduled.length - 1]();
+      await settle(fixture);
     },
     actions: TestBed.inject(ScreenActions),
     host: fixture.nativeElement as HTMLElement,
@@ -191,6 +201,34 @@ describe('TaskDetailsPage', () => {
     expect(fieldValue(host, 'tableColumnDescription')).toBe('Changed on this tick');
     expect(changedLabels(host)).toEqual([stringFor('tableColumnDescription')]);
     // Silent: no skeleton is redrawn over a view that already has values.
+    expect(host.querySelector('.ocu-data-table-skeleton')).toBeNull();
+  });
+
+  it('AC3: with the chip at 5 s a timer tick re-reads silently and highlights the changed field', async () => {
+    const { fixture, paths, refresh, setRows, fireTick, host } = await mount();
+    expect(refresh.setRate(5)).toBe(true);
+    setRows([row({ Description: 'Changed by the timer' })]);
+    await fireTick();
+    expect(paths).toHaveLength(2);
+    expect(paths[1]).toContain('&taskId=1002');
+    expect(fieldValue(host, 'tableColumnDescription')).toBe('Changed by the timer');
+    expect(changedLabels(host)).toEqual([stringFor('tableColumnDescription')]);
+    expect(host.querySelector('.ocu-data-table-skeleton')).toBeNull();
+    expect(host.querySelector('[role="alert"]')).toBeNull();
+
+    // A store notification that applies no new row (the chip moving) keeps the highlight.
+    expect(refresh.setRate(10)).toBe(true);
+    await settle(fixture);
+    expect(changedLabels(host)).toEqual([stringFor('tableColumnDescription')]);
+  });
+
+  it('a fault on a re-read shows the refusal with Retry and keeps the last values', async () => {
+    const { fixture, setFailing, actions, host } = await mount();
+    setFailing(true);
+    expect(actions.run(DESCRIPTOR, REFRESH_ACTION_ID)).toBe(true);
+    await settle(fixture);
+    expect(host.querySelector('.ocu-data-table-refusal')?.textContent).toContain(STRINGS.connectivityRequestRefused);
+    expect(fieldValue(host, 'tableColumnName')).toBe('OcuPilotDemo nightly purge');
     expect(host.querySelector('.ocu-data-table-skeleton')).toBeNull();
   });
 

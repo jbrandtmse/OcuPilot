@@ -37,23 +37,6 @@ interface FieldView {
 }
 
 /**
- * One `TaskDetailsHighlights` per screen store, dropped with it at sign-out -- the same
- * `WeakMap`-per-store pattern `history.page.ts`'s `HELD_SEARCHES` takes, for the same reason: the
- * highlight state must survive this component's destroy-and-recreate cycle across a navigation
- * that changes the route's id but not the descriptor.
- */
-const HELD_HIGHLIGHTS = new WeakMap<ScreenStore, TaskDetailsHighlights>();
-
-/** The highlight tracker held for `store`, created on first ask. */
-function heldFor(store: ScreenStore | null): TaskDetailsHighlights {
-  const known = store === null ? undefined : HELD_HIGHLIGHTS.get(store);
-  if (known !== undefined) return known;
-  const highlights = new TaskDetailsHighlights();
-  if (store !== null) HELD_HIGHLIGHTS.set(store, highlights);
-  return highlights;
-}
-
-/**
  * Task details (Story 6.7): one task's properties and schedule, read on open through the route's
  * one criterion (`parentCriteria`) and bound to the shared auto-refresh framework like any other
  * refreshing screen -- the field list stands in for `DataTable`'s table, since `TableProblem`
@@ -123,12 +106,12 @@ function heldFor(store: ScreenStore | null): TaskDetailsHighlights {
         </div>
       </section>
       <nav class="ocu-details-links">
-        @if (historyHref !== '') {
+        @if (hasHistory) {
           <a class="ocu-details-link" [href]="historyHref" (click)="onOpenHistory($event)">{{
             STRINGS.taskRunsLabel
           }}</a>
         }
-        @if (editHref !== '') {
+        @if (hasEdit) {
           <a class="ocu-details-link" [href]="editHref" (click)="onOpenEdit($event)">{{
             STRINGS.taskDetailsEdit
           }}</a>
@@ -162,14 +145,13 @@ export class TaskDetailsPage {
     const screen = this.navigation.screenForUrl(this.router.url);
     if (screen === null || screen.read === null || screen.table === null) {
       this.view = null;
-      this.highlights = heldFor(null);
+      this.highlights = new TaskDetailsHighlights();
       return;
     }
     const store = this.stores.for(screen.descriptor, screen.refreshRates);
     this.view = { screen, store };
-    this.highlights = heldFor(store);
+    this.highlights = new TaskDetailsHighlights();
     store.clearAnswers();
-    this.highlights.reset();
 
     const criteria = () => parentCriteria(screen, this.router.url);
     this.refresh.bind(screen, createScreenRead(this.api, screen, criteria));
@@ -198,9 +180,14 @@ export class TaskDetailsPage {
       this.generation.update((value) => value + 1);
     });
 
+    // A fault changes the refresh service and never the store, so the refusal strip needs its own
+    // signal to render under `OnPush`.
+    const stopRefresh = this.refresh.subscribe(() => this.generation.update((value) => value + 1));
+
     inject(DestroyRef).onDestroy(() => {
       stopIdChange.unsubscribe();
       stopStore();
+      stopRefresh();
       stopRefreshAction();
       if (this.refresh.descriptor() === screen.descriptor) this.refresh.unbind();
     });
@@ -306,6 +293,14 @@ export class TaskDetailsPage {
     this.generation();
     const url = this.editUrl();
     return url === '' ? '' : this.locationStrategy.prepareExternalUrl(url);
+  }
+
+  protected get hasHistory(): boolean {
+    return this.historyHref !== '';
+  }
+
+  protected get hasEdit(): boolean {
+    return this.editHref !== '';
   }
 
   protected onRetry(): void {

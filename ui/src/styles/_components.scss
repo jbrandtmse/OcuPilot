@@ -3476,6 +3476,12 @@ app-data-table {
   gap: var(--ocu-space-1);
 }
 
+// A field a silent tick changed takes the data table's changed-row tint (EXPERIENCE.md "Highlight.").
+.ocu-details-field.ocu-data-table-row-changed {
+  background: var(--ocu-change-highlight);
+  transition: background-color var(--ocu-motion-change-highlight-duration) ease-out;
+}
+
 .ocu-details-field-label {
   @include typo.ocu-type('caption');
 
