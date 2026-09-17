@@ -552,6 +552,14 @@ export const STRINGS = {
   agentPanelFullScreen: 'Full screen',
   /** EXPERIENCE.md:347 */
   agentPanelResizeHandle: 'Resize the agent co-pilot panel',
+  /** EXPERIENCE.md:349 */
+  agentPanelSecretWarning: 'This looks like a password or key. Send anyway?',
+  /** EXPERIENCE.md:349 */
+  agentPanelSecretWarningSend: 'Send anyway',
+  /** EXPERIENCE.md:349 */
+  agentPanelSecretWarningEdit: 'Edit',
+  /** EXPERIENCE.md:350 */
+  agentContextChipSecretGlyph: 'Secret fields on this screen are never sent',
 
   // Not from the Fixed strings table, but required verbatim by this story's task
   // list: the audit-marker-failure fallback text (AD-15 / EXPERIENCE.md "9. **Audit.** Every confirmed"), the
