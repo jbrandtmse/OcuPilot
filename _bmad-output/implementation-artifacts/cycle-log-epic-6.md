@@ -142,3 +142,4 @@
 2026-09-17T11:54:33Z	Epic 6	epic_context_compiled	reason=planning_artifact_newer_after_integrate_forward(AD-36,epics.md_0dc7c48) model=claude-opus-5(opus) bytes=17359 header=ok
 2026-09-17T11:54:33Z	Story 6.7	ci_resolved	story=6.7 run=35216689046 result=success resolved_at=next_plan
 2026-09-17T11:54:33Z	Story 6.8	stage_spawned	stage=plan spawn_at=2026-09-17T11:54:33Z model=opus agent_name=6-8-plan-1 cycle_iteration=1 ledger_inbox=none
+2026-09-17T12:01:26Z	Story 6.8	plan_clarification_requested	spawn_at=2026-09-17T11:54:33Z model=opus path=_bmad-output/implementation-artifacts/spec-6-8-process-details.md build_status=blocked condition=intent_gap:AC1_current_SQL_statement_has_no_admin_API_source(statement_text_only_in_INFORMATION_SCHEMA.CURRENT_STATEMENTS,no_port);recommended_amendment_narrows_the_AC_(Rule_5_ask-first) also=AD-43_roster_six_to_seven_to_add_Process_details(AC_says_it_auto-refreshes) subagent_tokens=299770 routed_to=orchestrator by=runner-6
