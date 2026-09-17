@@ -90,7 +90,7 @@ development_status:
   4-0-epic-3-deferred-cleanup: done
   4-1-the-turn-runs-in-a-background-job-and-returns-immediately: done
   4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea: done
-  4-3-the-docked-panel-present-on-every-route: ready-for-dev
+  4-3-the-docked-panel-present-on-every-route: in-progress
   4-4-screen-context-on-every-turn-capped-with-its-toggle-and-chip: backlog
   4-5-a-turn-watched-progress-cards-and-the-conversation-lock: backlog
   4-6-replies-render-safely-and-offline: backlog
