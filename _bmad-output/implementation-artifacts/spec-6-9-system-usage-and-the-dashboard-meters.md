@@ -2,7 +2,7 @@
 title: 'System usage and the dashboard meters'
 type: 'feature'
 created: '2026-09-17'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '12cd5949cb352ac11b121267db8e18a9577e6a9a'
 baseline_commit: '12cd5949cb352ac11b121267db8e18a9577e6a9a'
 review_loop_iteration: 0
@@ -125,6 +125,7 @@ Reads are `GET /api/ocupilot/screens/osmgmt.systemusage/read`.
 - [ ] `src/OcuPilot/Test/WireSecurityRead.cls` -- the Pairs row with real principals on the throwaway; append any pair the instance still refuses (descriptor, `Screen/Area.cls` union if needed).
 - [ ] Rosters in the Code Map, plus the Smoke check `systemusage` -- roster tripwires.
 - [ ] `ui/browser/system-usage.browser-spec.mjs` (new) -- AC1 to AC3 and the denied deep link for the `%Admin_Operate:USE`-only principal.
+- [ ] [CI] instance: `OcuPilot.Test.Navigation.TestThePayloadCarriesEveryAreaWithAVerdict` -- the os-management screen count and roster this test pins are stale: the area now has three built screens, `os-management/system-usage` sorting last at `sideBarPosition` 3. Correct the count, the roster assertions and the comment above them, and demonstrate a mutation on the corrected assertion (Rule 19) -- run 35251489312.
 
 **Acceptance Criteria:**
 
