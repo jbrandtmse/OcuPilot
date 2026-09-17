@@ -3896,6 +3896,7 @@ So that I can find a repeating warning and ask the agent what it means.
 
 - DW-148: The fault banner's "Open messages.log" link navigates without `ShellState.showArea`, leaving the side bar on the previous area; this story builds the screen it reaches (ledger; routed by adjudication 2026-09-14)
 - DW-278: The Logs area gates on `%Admin_Secure:USE` for the audit viewer, which this screen does not need; decide whether this screen declares the pair or the area splits (ledger; routed by spec_gate 2026-09-14)
+- DW-1025: A fresh instance logs repeated `<PROTECT>%DeleteData` errors from the audit LIST's async-task cleanup; find whether they originate in `AdminPort`'s poll before this viewer shows them (ledger; routed by harvest 2026-09-17)
 
 ## Epic 7: Act on any row
 

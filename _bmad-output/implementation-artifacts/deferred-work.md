@@ -2941,3 +2941,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-6-5-on-demand-and-upcoming-tasks.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: upcoming.page date mode refuses a date before the browser's today and sends <date> 23:59:59 in instance local time; no endpoint gives the page the instance's calendar date (implement review rejected with a reopen condition).
 - 2026-09-17T04:11:49Z status=wontfix-accepted owner=6-5-on-demand-and-upcoming-tasks by=harvest note=reopen_if=a user whose browser time zone differs from the instance's picks today in Until a date and reads an empty or refused horizon, or an instance-date field reaches the client (e.g. the instance identity endpoint)
+
+### DW-1025: A fresh slot B throwaway logs repeated <PROTECT>%DeleteData errors from %Api.Admin.Endpoints.Security.Audit.RecordListTask's async-task cleanup while idle
+- source: spec-6-5-on-demand-and-upcoming-tasks.md (QA) | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Observed by Story 6.5's QA on ocupilot-b-ci; unrelated to 6.5's code and not investigated. The audit LIST is the self-queued async path AdminPort polls (AD-26); if the cleanup runs under a caller without the privilege, the errors reach messages.log, which Story 6.14 displays.
+- 2026-09-17T04:25:10Z status=routed owner=6-14-the-messages-log-viewer by=harvest note=investigate whether the PROTECT originates in AdminPort's async poll or the vendor's own task cleanup; fix at the port if ours, else close by-design with the vendor evidence
