@@ -200,3 +200,4 @@
 2026-09-17T22:26:28Z	Story 4.11	lead_error	my_first_full_suite_run_showed_1_red(licence_DW-217_3rdpartylicenses.txt_missing) cause=I_deployed_an_npx_ng_build_bundle_which_skips_the_licence_copy_step_that_npm_run_build_runs lesson=deploy_the_npm_run_build_output_before_a_full_browser_suite_run resolution=rebuilt_with_npm_run_build,redeployed,107/107
 2026-09-17T22:26:28Z	Story 4.11	ledger_adjudicated	story=4.11 entries=DW-1075_routed_burndown,DW-1076_routed_burndown,DW-1077_decision-pending_owner_sheet open=0 decision_pending_total=5
 2026-09-17T22:26:28Z	Story 4.11	smoke_complete	browser=107/107 smoke_throwaway=18_passed_0_failed_2_pending_1_skipped_PASSED smoke_live_ocupilot=18_passed_0_failed_2_pending_1_skipped_PASSED objectscript_unchanged=check-objectscript_0/357
+2026-09-17T22:27:48Z	Story 4.6	stage_spawned	stage=plan model=opus attempt=1 job=4-6-plan-1 epic_context=reused(sha_of_18:03Z_compile,no_planning_artifact_changed_since)
