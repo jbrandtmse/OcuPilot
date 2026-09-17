@@ -3188,3 +3188,21 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-5-a-turn-watched-progress-cards-and-the-conversation-lock.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Only Api.Turn's GuardedOwner check guards ownership before the job opens the row
 - 2026-09-17T16:50:52Z status=wontfix-theoretical owner=4-5-a-turn-watched-progress-cards-and-the-conversation-lock by=cr note=Becomes real if a caller other than the turn handler passes an unverified id to Job or LoadOrCreate
+
+### DW-1075: turn.browser-spec.mjs reads MarkedDefault() from the raw IRIS session transcript and never checks RemoveDefinition's status, so its after-hook cleanup silently does nothing
+- source: code review of story 4.11 | severity: med | fix-risk: low | footprint: in-epic
+- evidence: turn.browser-spec.mjs:46 assigns priorDefault from runIris([...]).trim(), which is the whole session transcript ('Node: ..., Instance: IRIS\n\n%SYS>\n\nHSCUSTOM>\n925\nHSCUSTOM>'); embedding it in :53's ObjectScript string literal breaks that script, so RemoveDefinition never runs and an enabled default-marked turnprobe definition survives. The identical bug in context-chip.browser-spec.mjs was verified and fixed under this review; turn sorts after switches in the CI glob order, so this copy is latent today. Probe: run browser/turn.browser-spec.mjs then GET /api/ocupilot/agent/definitions.
+- 2026-09-17T21:58:17Z status=routed owner=burndown by=cr note=same fix as context-chip: read through markerValue and assert RemoveDefinition's status
+- 2026-09-17T22:26:06Z status=routed owner=burndown by=adjudication note=lead confirms: the identical transcript-read bug in turn.browser-spec.mjs is real but latent in the CI glob order; epic burn-down, not a 4.11 rework
+
+### DW-1076: No live leg proves the context chip's provider, endpoint host and egress pill follow a real default-marker move (AD-42)
+- source: code review of story 4.11 | severity: med | fix-risk: low | footprint: in-epic
+- evidence: AgentContext now re-reads on agent-definition as well as agent-switch, fixed under this review and pinned by agent-context.test.mjs's AD-14 test with a demonstrated mutation. That pin is store-level: no browser leg drives definition-actions.ts's mark-default or a form Save and asserts the chip's host and pill follow. A leg needs a second enabled definition on a different endpoint host, which TurnWireFixture does not create today.
+- 2026-09-17T21:58:25Z status=routed owner=burndown by=cr note=needs a fixture that makes two definitions on different hosts; server change, so not a review patch
+- 2026-09-17T22:26:06Z status=routed owner=burndown by=adjudication note=lead confirms: the AD-42 agent-definition re-read is pinned store-level with a demonstrated mutation; the live leg needs a two-host fixture, so burn-down
+
+### DW-1077: On Home the context chip names a screen and namespace that no turn carries, because Home's declared route is the empty string
+- source: code review of story 4.11 | severity: low | fix-risk: med | footprint: in-story
+- evidence: screens.generated.ts gives Home route '', and Api.Turn.ContextViolation refuses an empty route with 422, so assembleScreenContext omits context entirely there (screen-context.ts:123). The chip still renders 'Home, HSCUSTOM . provider . host' plus the egress pill, which EXPERIENCE.md:712 mandates verbatim. No data leaves that the chip does not claim, so it under-claims rather than over-claims. The three exits each cost something: a non-empty route is a server change the intent contract's Never list forbids; reading contextChipSharingOff on Home contradicts EXPERIENCE.md:712; accepting it leaves the sentence inaccurate on the one screen every user starts on.
+- 2026-09-17T21:58:32Z status=decision-pending owner=burndown by=cr note=product call for the decision sheet; reviewer will not pick between a server change and a UX contract
+- 2026-09-17T22:26:06Z status=decision-pending owner=burndown by=adjudication note=lead agrees this is a product call between a server change and EXPERIENCE.md:712; carried to the owner decision sheet, not decided here
