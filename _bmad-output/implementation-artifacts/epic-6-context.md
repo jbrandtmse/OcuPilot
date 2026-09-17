@@ -69,13 +69,18 @@ Story traps:
   appearing in that roster; no other screen in this epic declares it.
 - **Statement text is not this epic's.** No admin endpoint carries a running SQL statement's text;
   that is Story 19.10's SQL activity screen. Process details names a cached query by its routine only.
-- **6.9, the meter component:** names and thresholds come from the 25 meter definitions in
-  `%CSP.UI.Portal.EnsembleMonitor`, never the classic `UtilSysMonitor` page. The assumed 80% warning
-  and 95% error thresholds must be confirmed there (the behavior is decided, the numbers are not).
-  The planning docs disagree on detail, so settle at spec time: the meter's state words (the
-  dashboard's own normal / warning / alert, per EXPERIENCE.md) and its normal fill color
-  (`success` in EXPERIENCE.md, `secondary` in DESIGN.md), and the pending-value glyph ("—" with a
-  skeleton in EXPERIENCE.md and 6.9, "…" in DESIGN.md for values still arriving).
+- **6.9, System usage and the meters:** counters, names and values come from the admin API's
+  `Monitor` answers (`SYSTEMUSAGE`, `SYSTEMUSAGESHM`, `DASHBOARDMAIN`) through `AdminPort`: global
+  references per second and cache efficiency, shared memory as a percentage of allocated, and the
+  database space, journal space, lock table and write daemon status meters in the vendor's own
+  words. CPU is not this story's (it belongs to the full System Dashboard, FR-76). Never source
+  names or thresholds from `%CSP.UI.Portal.EnsembleMonitor` (the Interoperability production
+  monitor: no CPU, memory or performance meters, no thresholds) or the unrecoverable classic
+  `UtilSysMonitor` page; the epic's implementation note still names EnsembleMonitor and is
+  superseded. A percentage meter turns warning at 85% and error at 95%, borrowed from the vendor's
+  lock-table cut-off (an assumption on the numbers, not the behavior); 6.9's own threshold AC still
+  says 80%, so settle it against the design at spec time. A status meter takes the dashboard's own
+  word (Normal / Warning / Troubled).
 - **6.14:** confirm the assumed 28 px log row against a real tail at the densest severity mix.
   **DW-148:** the fault banner's "Open messages.log" link skips `ShellState.showArea`, leaving the
   side bar on the previous area. **DW-278:** the Logs area's accepted union carries
@@ -133,7 +138,9 @@ Story traps:
   that type carries the fields; a type the port issues must be in `AdminPort`'s `TYPESUFFIXES`. A 404
   row is dropped and any other row fault fails the read. For endpoints with no plain LIST: a
   single-object `GET` source (404 reads as zero rows; no `forEach`, and no criteria or detail call
-  except the parent-scoped route-id form above); a list-shaped admin type other than `LIST`
+  except the parent-scoped route-id form above), which may also declare up to three `parts`
+  (`{type, as}`), each answering one object, merged into its one row as `<as>.<member>` fields, a
+  part's type possibly one the endpoint names without the `TYPE` prefix (System usage); a list-shaped admin type other than `LIST`
   (`UPCOMING`: admin only, no `rowGet` or `forEach`); fixed `source.query` parameters seeded before
   criteria that no caller can change or remove (`onDemand=1`), whose keys may not collide with
   reserved or declared criteria params or a `forEach.param`; list-shaped `HISTORY` the same way; a
@@ -179,7 +186,7 @@ Story traps:
 ## UX & Interaction Patterns
 
 - **States.** `detail`: skeleton fields, errors keep last values, auto-refresh in place with a field
-  highlight. `meters`: skeleton per meter, a failed meter shows "—" with the error in its tooltip.
+  highlight. `meters`: skeleton per meter (see Meter below).
   `list (two views)`: async figures fill per-row skeleton cells and the table never reflows.
   `list (server criteria)`: criteria form first, skeleton on Search, never auto-refreshes (Refresh
   re-reads the form's current values, not the last submitted search, as the audit page does).
@@ -189,10 +196,13 @@ Story traps:
   update, the setting persists per screen, and refresh is silent (no spinner, skeleton or
   announcement). The shared framework pauses it while a proposal on the screen's entity type is live.
 - **Meter.** One component, used on System usage and Database details only; Process details shows
-  labeled value groups with no meters. A 6px rounded track with the label in caption above and the
-  value in code type beside it; label, value and unit with its state as a **word** and a color, the
-  warning and error states applied to both the fill and the value text so meaning survives without
-  the bar; the needle never animates; it refreshes on the screen's interval.
+  labeled value groups with no meters. A 6px fully rounded track (`surface-container-high`) with a
+  `success` fill, the label in caption above and the value in code type to its right. Label, value
+  and unit with its state as a **word** (Normal / Warning / Troubled) and a color
+  (`success` / `warning` / `error`); a percentage meter fills `warning` at 85% and `error` at 95%, and
+  the value text takes the same color so meaning survives without the bar. Until a value arrives it
+  shows a skeleton in place of the fill and "—" as the value; a failed meter shows "—" with the error
+  in its tooltip. The needle never animates; it refreshes on the screen's interval.
 - **Log viewer.** Rows are time, pid, severity chip, text. Sticky search with highlight and a polite
   "n of N"; jump to top and bottom; "Load newer"; a Raw toggle on the code surface with a line-number
   gutter and no wrapping. A severity chip click sets the filter, shown in the command bar with Clear.
