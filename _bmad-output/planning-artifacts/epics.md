@@ -2936,6 +2936,7 @@ So that a slow answer is legible as work rather than as a hang.
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-451: a tool step records no count of rows actually sent, which the read card shows (ledger; routed by harvest 2026-09-16)
+- DW-1048: the sign-out browser leg reads the composer before it renders once in a full browser-suite run; wait for the composer before reading it (ledger; routed by lead 2026-09-17)
 
 ### Story 4.11: The context chip, its toggle and the paste warning
 
