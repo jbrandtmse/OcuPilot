@@ -191,6 +191,7 @@ Method TestTwoPartsMergeAndTheTotalRowAndWholeReadFaultRules()
     If tResult.rows.%Size() '= 1 Quit
     Do $$$AssertEquals(tResult.rows.%Get(0).%Get("Usage.AllGlobalReferences"), 42, "the object part's own field")
     Do $$$AssertEquals(tResult.rows.%Get(0).%Get("SharedMemory.SMHUsed"), 7, "the array part's exact-Total row, not the look-alike prefixed row or the trailer row")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ReadSource.Endpoint).Recorded("monitorTypes"), "15,14", "only the declared parts are issued, in declared order")
 
     ; No row is exactly "Total": the whole read fails, even though the object part succeeded.
     Do ##class(OcuPilot.Test.ReadSource.Endpoint).Clear()
@@ -210,6 +211,7 @@ Method TestTwoPartsMergeAndTheTotalRowAndWholeReadFaultRules()
     Do $$$AssertStatusNotOK(tSC3, "a 404 on one part fails the whole read -- parts take no 404-as-empty exception")
     Do $$$AssertEquals(tHttp3, 404, "with that part's own status")
     Do $$$AssertEquals(tResult3, "", "and no partial row")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ReadSource.Endpoint).Recorded("monitorTypes"), "15", "and the second part is never issued")
 
     ; A non-404 part fault fails the same way.
     Do ##class(OcuPilot.Test.ReadSource.Endpoint).Clear()

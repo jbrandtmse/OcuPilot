@@ -38,13 +38,6 @@ export interface MeterView {
   readonly error: string | null;
 }
 
-/** One rendered counter: a label and its formatted text. */
-export interface CounterView {
-  readonly field: string;
-  readonly label: string;
-  readonly value: string;
-}
-
 /** The three shapes a meter on this screen takes. */
 export type MeterKind = 'percent' | 'status' | 'value';
 
@@ -60,9 +53,8 @@ export interface MeterConfig {
 
 /**
  * The screen's seven meters, in the order EXPERIENCE.md and the spec's Boundaries declare them:
- * Shared memory, the four status meters, then the two value meters. No unit is authorized for any
- * of them in the Fixed strings table, so every one declares none (an assumption named in the
- * story's own report, not invented copy).
+ * Shared memory, the four status meters, then the two value meters. Shared memory reads as a
+ * percentage of allocated, so its value carries the `%` sign; no other meter declares a unit.
  */
 export const METER_CONFIGS: readonly MeterConfig[] = [
   {
@@ -92,7 +84,8 @@ export function stringField(row: unknown, field: string): string | null {
 }
 
 /**
- * A percent meter's numerator (`field`) over its `denominatorField`, as a percentage -- `null`,
+ * A percent meter's numerator (`field`) over its `denominatorField`, as a percentage rounded to one
+ * decimal so the readout, the fill and the state agree -- `null`,
  * read as still pending, never as zero -- when either figure has not arrived, `denominatorField`
  * is undeclared, or the denominator reads zero, which a percentage of it cannot express.
  */
@@ -101,7 +94,7 @@ function percentFromFields(row: unknown, field: string, denominatorField: string
   const numerator = numberField(row, field);
   const denominator = numberField(row, denominatorField);
   if (numerator === null || denominator === null || denominator === 0) return null;
-  return (numerator / denominator) * 100;
+  return Math.round((numerator / denominator) * 1000) / 10;
 }
 
 /**
@@ -124,7 +117,8 @@ export function meterViewFor(config: MeterConfig, row: unknown, faultText: strin
     const known = percent === null ? null : meterStateFromPercent(percent);
     return {
       ...base,
-      value: numberField(row, config.field),
+      unit: '%',
+      value: percent,
       percent,
       state: known?.state ?? PENDING_STATE,
       word: known?.word ?? null,

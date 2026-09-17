@@ -155,7 +155,7 @@ function meters(page) {
 test('AC1: System usage reads once and shows live counters, seven meters, and a refresh chip offering 5/10/30/60 s', async () => {
   const { context, page, reads } = await signedInAt(config.username, config.password, PAGE_URL);
   try {
-    await page.waitForSelector('app-meter', { timeout: config.navigationTimeoutMs });
+    await page.waitForSelector('.ocu-meter-fill', { timeout: config.navigationTimeoutMs });
 
     const usageReads = reads.filter((url) => new URL(url).pathname === READ_PATH);
     assert.equal(usageReads.length, 1, `exactly one osmgmt.systemusage read: ${JSON.stringify(reads)}`);
@@ -178,7 +178,7 @@ test('AC1: System usage reads once and shows live counters, seven meters, and a 
 
     const sharedMemory = meterViews.find((meter) => meter.label === STRINGS.systemUsageSharedMemory);
     assert.ok(sharedMemory !== undefined, 'the Shared memory meter is rendered');
-    assert.ok(/^[0-9]+$/.test(sharedMemory.value), `Shared memory carries a live number, got ${JSON.stringify(sharedMemory.value)}`);
+    assert.ok(/^[0-9]+(\.[0-9])? %$/.test(sharedMemory.value), `Shared memory carries a live percentage, got ${JSON.stringify(sharedMemory.value)}`);
     assert.notEqual(sharedMemory.word, null, 'and its computed Normal/Warning/Troubled word');
 
     for (const label of [
@@ -216,7 +216,7 @@ test('AC1: System usage reads once and shows live counters, seven meters, and a 
 test('AC2: the page never gets stuck on a skeleton once the meters have rendered, and a live fill never transitions or animates', async () => {
   const { context, page } = await signedInAt(config.username, config.password, PAGE_URL);
   try {
-    await page.waitForSelector('app-meter', { timeout: config.navigationTimeoutMs });
+    await page.waitForSelector('.ocu-meter-fill', { timeout: config.navigationTimeoutMs });
     assert.equal(await page.$('.ocu-data-table-skeleton'), null, 'no skeleton is left showing once the meters have rendered');
     assert.equal(await page.$('[aria-busy="true"]'), null, 'and nothing is marked busy');
 

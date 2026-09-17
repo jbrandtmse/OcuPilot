@@ -2892,6 +2892,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T20:44:45Z status=escalated owner=burndown by=cr note=harness-wide: one predicate in browser.config.mjs refusing ocupilot and ocupilot-slot-*, used by every docker-exec spec
 - 2026-09-16T22:46:47Z occurrence=6-3-the-x-509-ldap-kerberos-and-wallet-lists note=security.browser-spec.mjs creates and deletes a probe role and user and refuses only ocupilot
 - 2026-09-17T02:48:30Z occurrence=6-4-the-oauth-2-0-screen note=oauth.browser-spec.mjs:116 creates a principal and OAuth objects and refuses only ocupilot
+- 2026-09-17T17:05:54Z occurrence=6-9-system-usage-and-the-dashboard-meters note=system-usage.browser-spec.mjs:80 creates a principal and refuses only LIVE_CONTAINER
 
 ### DW-1016: A proposal diff-row has no empty-cell word, so a service-editor proposal restricting AllowedConnections would read (none) -> 10.0.0.1
 - source: spec-6-2-the-roles-resources-and-services-lists.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -2977,3 +2978,43 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ARCHITECTURE-SPINE.md:463-464 vs its own Rule at :467; AD-29 at :367 vs ProcessDetails.cls doc and spec Code Map (ProcessQuery.cls:423 AllowToOpen, :1494 VariableByPid)
 - 2026-09-17T14:25:12Z status=wontfix-accepted owner=6-8-process-details by=cr note=reopen_if=a later story's plan cites AD-43 Binds for a count or AD-29 for the Manage check; lead may correct at Rule 20 bookkeeping
 - 2026-09-17T14:26:39Z status=resolved-by:6-8-process-details by=adjudication note=lead corrected AD-43 Binds and Prevents to seven screens in the spine; AD-29 stands, since VariableByPid (ProcessQuery.cls:1494) is a method of %SYS.ProcessQuery, which AD-29 already names
+
+### DW-1065: A parts read never checks at runtime that each projected value is a scalar of at most 1,000 characters
+- source: spec-6-9-system-usage-and-the-dashboard-meters.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Read.cls CopyAs copies any string length and copies objects as they are; the Boundaries clause is pinned only by Test.SystemUsage Live and Integration against the real Monitor answers.
+- 2026-09-17T17:05:54Z status=wontfix-theoretical owner=6-9-system-usage-and-the-dashboard-meters by=cr note=real if a vendor release answers an object or >1,000 chars at a declared Monitor member; Live test goes red
+
+### DW-1066: Every System usage meter tooltip carries the connectivity text whatever the fault (403, 500 or offline)
+- source: spec-6-9-system-usage-and-the-dashboard-meters.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: system-usage.page.ts faultText maps any refresh fault to STRINGS.connectivityRequestRefused, the same string process-details.page.ts shows in its refusal strip.
+- 2026-09-17T17:05:54Z status=wontfix-accepted owner=6-9-system-usage-and-the-dashboard-meters by=cr note=reopen_if=a meter tooltip must name a missing privilege pair or distinguish a 500 from a refusal
+
+### DW-1067: app-meter exposes no meter role or aria-value attributes, and its fault reason is a hover-only title
+- source: spec-6-9-system-usage-and-the-dashboard-meters.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: meter.ts template has no role=meter/aria-valuenow; the error is [attr.title] on a non-focusable host. The state word satisfies EXPERIENCE.md Color never alone.
+- 2026-09-17T17:05:54Z status=wontfix-accepted owner=6-9-system-usage-and-the-dashboard-meters by=cr note=reopen_if=an accessibility audit (axe or screen reader pass) flags app-meter on System usage or Database details
+
+### DW-1068: The parts grammar accepts any upper-case part type, so a typo or an endpoint-foreign type installs and fails only at read time with 501
+- source: spec-6-9-system-usage-and-the-dashboard-meters.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Registry.PartsProblem and screen-mirror partsProblem check only ^[A-Z]+$; AdminPort resolves the type at Invoke and refuses with 501 PORT.NOTIMPLEMENTED.
+- 2026-09-17T17:05:54Z status=wontfix-accepted owner=6-9-system-usage-and-the-dashboard-meters by=cr note=reopen_if=a second parts descriptor ships whose read answers 501 on an installed instance
+
+### DW-1069: Smoke check systemusage asserts only that the read answers one row, not its fields or status words
+- source: spec-6-9-system-usage-and-the-dashboard-meters.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Install/Smoke.cls CheckAreaLists systemusage follows the processdetails model (row count); field shape is pinned by Test.SystemUsage and WireSecurityRead.
+- 2026-09-17T17:05:54Z status=wontfix-accepted owner=6-9-system-usage-and-the-dashboard-meters by=cr note=reopen_if=smoke.sh passes systemusage while Test.SystemUsage Live is red on the same instance
+
+### DW-1070: The System usage Tick test passes when AllGlobalReferences is null on both reads
+- source: spec-6-9-system-usage-and-the-dashboard-meters.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Test.SystemUsage TestTwoReadsFiveSecondsApartAreNonDecreasing compares tAfter >= tBefore; two empty strings compare true. Live in the same class asserts non-null scalars.
+- 2026-09-17T17:05:54Z status=wontfix-accepted owner=6-9-system-usage-and-the-dashboard-meters by=cr note=reopen_if=the Live test is removed or no longer asserts Usage.AllGlobalReferences non-null
+
+### DW-1071: No read-source corpus case declares parts together with rowGet or forEach
+- source: spec-6-9-system-usage-and-the-dashboard-meters.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ReadSourceCorpus has 13 parts cases; the Matrix row 'parts with rowGet' is met only because RowGetProblem runs before PartsProblem in both engines.
+- 2026-09-17T17:05:54Z status=wontfix-accepted owner=6-9-system-usage-and-the-dashboard-meters by=cr note=reopen_if=RowGetProblem and PartsProblem change order in either engine, or rowGet admits a criterion-free form
+
+### DW-1072: screen-outlet maps every meters-archetype descriptor to SystemUsagePage, whose meter list is System usage's own
+- source: spec-6-9-system-usage-and-the-dashboard-meters.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: shell/screen-outlet.ts ARCHETYPE_PAGES meters: SystemUsagePage; METER_CONFIGS is hardcoded, so a second meters descriptor would render dashes.
+- 2026-09-17T17:05:54Z status=wontfix-theoretical owner=6-9-system-usage-and-the-dashboard-meters by=cr note=real when a second descriptor declares archetype meters (FR-76 dashboard, P1)

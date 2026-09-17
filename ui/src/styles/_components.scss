@@ -3546,7 +3546,15 @@ app-data-table {
   color: var(--ocu-on-surface-variant);
 }
 
+// The value sits right of the track (DESIGN.md `meter`).
+.ocu-meter-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--ocu-space-2);
+}
+
 .ocu-meter-track {
+  flex: 1 1 auto;
   position: relative;
   height: 6px;
   border-radius: 9999px;

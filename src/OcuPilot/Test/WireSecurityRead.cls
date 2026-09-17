@@ -594,8 +594,8 @@ Method TestTheProcessDetailsPairSetIsEnforcedForARealPrincipal()
 /// parts-merged fields, its <code>Usage.AllGlobalReferences</code> and
 /// <code>SharedMemory.SMHAllocated</code> both JSON numbers (AD-29, AD-36).</p>
 /// <p>Mutation: remove <code>%DB_IRISSYS:READ</code> from
-/// <class>OcuPilot.Screen.Descriptor.SystemUsage</class> -&gt; the registry refuses to validate the
-/// roster (AD-2, AD-8), before any read is served.</p>
+/// <class>OcuPilot.Screen.Descriptor.SystemUsage</class> -&gt; the operate-only principal's refusal
+/// assertions go red.</p>
 Method TestTheSystemUsagePairSetIsEnforcedForARealPrincipal()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the twelve principals' pairs")

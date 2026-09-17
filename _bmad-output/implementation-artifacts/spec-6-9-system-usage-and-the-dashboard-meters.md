@@ -134,6 +134,30 @@ Reads are `GET /api/ocupilot/screens/osmgmt.systemusage/read`.
 - AC4 (thresholds): given a shared-memory percentage of 85 or 95, when the meter renders, then it reads Warning or Troubled. The numbers are DESIGN.md's labeled assumption, borrowed from the vendor's lock-table cut-off. They replace the story's "80%", which no meter definition carries.
 - Integration: given `osmgmt.systemusage.read` called in process as the same user, when compared with the route's answer, then both carry the same 18 field keys and one row, and every value is scalar and at most 1,000 characters.
 
+### Review Findings
+
+Code review 2026-09-17 (full, four layers). Patched in the review pass; no decision-needed, no defer.
+
+- [x] [Review][Patch] `BARETYPES` copied the vendor's type numbers and claimed `Monitor` publishes no parameter; it publishes `SYSTEMUSAGE` 15, `SYSTEMUSAGESHM` 14 and `DASHBOARDMAIN` 12 (probed on slot B). Now a per-endpoint list resolved through the bare parameter [src/OcuPilot/Port/AdminPort.cls:132]
+- [x] [Review][Patch] Shared memory's readout was the raw `SMHUsed` (400 beside a 40% fill), and a zero allocation drew a full green fill; the readout is now the percentage with `%` [ui/src/app/areas/os-management/system-usage.store.ts:117]
+- [x] [Review][Patch] A loaded status meter showed the pending dash beside its word; the word is now its whole readout [ui/src/app/shell/meter.ts:180]
+- [x] [Review][Patch] A fault before the first success left the counters skeleton and `aria-busy` on for good [ui/src/app/areas/os-management/system-usage.page.ts:173]
+- [x] [Review][Patch] "Issues only its parts, in declared order" had no assertion; the fixture's recorded types are now asserted [src/OcuPilot/Test/SystemUsage.cls:193]
+- [x] [Review][Patch] The meter readout sat under the track; DESIGN.md puts the value right of it [ui/src/styles/_components.scss:3549]
+- [x] [Review][Patch] Browser AC1/AC2 asserted before the read landed (waited only for `app-meter`) [ui/browser/system-usage.browser-spec.mjs:158]
+- [x] [Review][Patch] The store test's `PENDING_STATE` assertion passed with the fallback removed (`undefined !== null`) [ui/tools/system-usage-store.test.mjs:109]
+- [x] [Review][Patch] Stale comments and titles (the meter's "refusal strip elsewhere", the Pairs mutation note, "nine counters", "keeps the last values on every meter") and dead code (store `CounterView`, page `STRINGS`, `void fixture`) [ui/src/app/shell/meter.ts:34]
+- [x] [Review][Patch] Rule 19: AC1, AC2, AC3, Pairs, Parts and Integration had no recorded mutation; run and recorded under Verification [spec ## Verification]
+
+Closed without a patch (ledger, `by=cr`): DW-1065 runtime scalar/1,000 check (wontfix-theoretical), DW-1066 generic fault tooltip, DW-1067 no meter role, DW-1068 part type unchecked at install, DW-1069 smoke row count only, DW-1070 Tick null-null, DW-1071 no parts+rowGet corpus case (wontfix-accepted), DW-1072 `meters` archetype bound to one page (wontfix-theoretical). DW-1015 occurrence appended.
+
+Rejected:
+
+- by-design: a fault after a success dashes the meter number and draws no refusal strip, per Boundaries "Failed" and EXPERIENCE.md's `meters` row.
+- by-design: value meters draw no skeleton (Boundaries: no track); `>= 85`/`>= 95` are the gate's inclusive cut-offs; the percentage words are the spec's own Normal/Warning/Troubled; the skeleton and the track share `surface-container-high` per DESIGN.md.
+- false: `CopyAs` regresses a literal dotted key (no other descriptor declares a field with two dots); `CopyAs` depth is unbounded (the grammar bounds it to two members).
+- low: the browser spec does not cover AC3 (the page spec does); the denied deep-link test compares a constant string (its page assertions carry it).
+
 ## Spec Change Log
 
 - 2026-09-17 (spec gate, orchestrator answers): Q1 (a) meter names and values from the admin `Monitor` answers through `AdminPort`, CPU to FR-76, epics.md 6.9 AC2 and prd.md FR-56 amended; Q2 (a) status meters take the vendor's word, percentage meters 85/95 labeled in DESIGN.md as borrowed from the vendor lock-table cut-off; Q3 accepted (Normal/Warning/Troubled, `success` fill, "—" with a skeleton; DESIGN.md and EXPERIENCE.md amended); Q4 accepted (AD-36 `parts`, at most 3, merged into one bounded row; `AdminPort` maps unprefixed request types). Status reset to `draft` for re-plan.
@@ -211,13 +235,13 @@ Stateful steps run on the slot B throwaway `ocupilot-b-ci` only. `ocupilot-slot-
 
 **Mutations to record (Rule 19):**
 
-- AC1: `Usage.BlockReads` dropped from the read fields.
-- AC2: the warning branch returns normal; a transition added to the fill.
-- AC3: refresh binding omitted.
-- AC4: the 85 comparison changed to 86.
-- Pairs: `%DB_IRISSYS:READ` dropped.
-- Parts: the `Total` match loosened to a prefix.
-- Integration: a part `as` misspelled.
+- AC1: `Usage.BlockReads` dropped from the read fields. `mutation: system-usage.store.ts isCounterField excludes Usage.BlockReads → system-usage.page.spec.ts "AC1: reads once, and renders the counters…" red; reverted.`
+- AC2: the warning branch returns normal; a transition added to the fill. `mutation: meterStateFromPercent's 85 branch returns state normal → page spec "AC2: a warning or error state colors…" red; .ocu-meter-fill transition: none → width 0.2s → meter.spec.ts ".ocu-meter-fill sets transition and animation to none" red; both reverted.`
+- AC3: refresh binding omitted. `mutation: SystemUsagePage refresh.bind removed → page spec "AC3: with the chip at 5 s…" red; reverted.`
+- AC4: the 85 comparison changed to 86. `mutation: meter-state.ts's meterStateFromPercent 85 bound raised to 86 → ui/tools/meter-state.test.mjs "meterStateFromPercent: below 85 is Normal, at or above 85 is Warning, at or above 95 is Troubled" went red (85 read as Normal instead of Warning); reverted, tree byte-identical.`
+- Pairs: `%DB_IRISSYS:READ` dropped. `mutation: SystemUsage descriptor privileges without %DB_IRISSYS:READ, compiled on ocupilot-b-ci → WireSecurityRead.TestTheSystemUsagePairSetIsEnforcedForARealPrincipal red on the operate-only refusal assertions; reverted, class re-run green.`
+- Parts: the `Total` match loosened to a prefix. `mutation: Read.TotalRow matches $Extract(Description,1,5)="Total" → SystemUsage.TestTwoPartsMerge… red; an extra base GET issued before the parts → the same test red on "only the declared parts are issued, in declared order"; both reverted.`
+- Integration: a part `as` misspelled. `mutation: Read.CopyAs stops one member short and projects the group object → SystemUsage.TestTheReadToolAnswersTheSameRowAsTheRoute (and Live) red on the scalar assertion; reverted, class re-run green.`
 
 ## Auto Run Result
 

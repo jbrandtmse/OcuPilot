@@ -28,6 +28,15 @@ Parameter TYPEUPCOMING As INTEGER = 13;
 /// <p><code>Task.CRUD</code>'s task-run history type number (Story 6.6).</p>
 Parameter TYPEHISTORY As INTEGER = 10;
 
+/// <p><code>Monitor</code>'s unprefixed system-usage type number (Story 6.9).</p>
+Parameter SYSTEMUSAGE As INTEGER = 15;
+
+/// <p><code>Monitor</code>'s unprefixed shared-memory type number (Story 6.9).</p>
+Parameter SYSTEMUSAGESHM As INTEGER = 14;
+
+/// <p><code>Monitor</code>'s unprefixed dashboard type number (Story 6.9).</p>
+Parameter DASHBOARDMAIN As INTEGER = 12;
+
 Property Type As %Integer;
 
 Property ApiVersion As %Integer;

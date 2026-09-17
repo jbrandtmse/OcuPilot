@@ -79,13 +79,13 @@ describe('Meter', () => {
     expect(word?.classList.contains('ocu-meter-word-warning')).toBe(true);
   });
 
-  it('a loaded status meter (no numeric value, percent null) fills fully, dashes the value and shows the word', () => {
+  it('a loaded status meter (no numeric value, percent null) fills fully and shows the word as its only readout', () => {
     const { host } = mount({ label: 'Write daemon', value: null, percent: null, state: 'normal', word: 'Normal' });
     const fill = host.querySelector('.ocu-meter-fill') as HTMLElement | null;
     expect(fill).not.toBeNull();
     expect(fill?.classList.contains('ocu-meter-fill-normal')).toBe(true);
     expect(fill?.style.width).toBe('100%');
-    expect(host.querySelector('.ocu-meter-value')?.textContent?.trim()).toBe('\u2014');
+    expect(host.querySelector('.ocu-meter-value')).toBeNull();
     expect(host.querySelector('.ocu-meter-word')?.textContent?.trim()).toBe('Normal');
   });
 

@@ -80,11 +80,11 @@ function row(overrides: Record<string, unknown> = {}) {
   };
 }
 
-async function mount(initialRows: unknown[] = [row()], url = '/os-management/system-usage?ns=HSCUSTOM') {
+async function mount(initialRows: unknown[] = [row()], url = '/os-management/system-usage?ns=HSCUSTOM', failFirst = false) {
   TestBed.resetTestingModule();
   const declaration = SCREENS.find((screen) => screen.descriptor === DESCRIPTOR) ?? null;
   let answerRows = initialRows;
-  let failing = false;
+  let failing = failFirst;
   const paths: string[] = [];
   const scheduled: (() => void)[] = [];
   const api = {
@@ -163,7 +163,7 @@ afterEach(() => {
 });
 
 describe('SystemUsagePage', () => {
-  it('AC1: reads once, and renders the nine counters and the seven meters, with the chip offering 5/10/30/60 s', async () => {
+  it('AC1: reads once, and renders the counters and the seven meters, with the chip offering 5/10/30/60 s', async () => {
     const { paths, host, refresh } = await mount();
     expect(paths).toHaveLength(1);
     expect(paths[0]).toContain(READ_PATH);
@@ -179,7 +179,7 @@ describe('SystemUsagePage', () => {
     expect(host.querySelectorAll('app-meter').length).toBe(7);
     const sharedMemory = meterByLabel(host, STRINGS.systemUsageSharedMemory);
     expect(sharedMemory).not.toBeNull();
-    expect(sharedMemory?.querySelector('.ocu-meter-value')?.textContent?.trim()).toBe('400');
+    expect(sharedMemory?.querySelector('.ocu-meter-value')?.textContent?.trim()).toBe('40 %');
 
     expect(refresh.rates()).toEqual([5, 10, 30, 60]);
   });
@@ -210,12 +210,13 @@ describe('SystemUsagePage', () => {
 
     const daemon = meterByLabel(host, STRINGS.systemUsageWriteDaemon);
     expect(daemon?.querySelector('.ocu-meter-fill')?.classList.contains('ocu-meter-fill-error')).toBe(true);
-    expect(daemon?.querySelector('.ocu-meter-value')?.classList.contains('ocu-meter-value-error')).toBe(true);
+    expect(daemon?.querySelector('.ocu-meter-word')?.classList.contains('ocu-meter-word-error')).toBe(true);
     expect(daemon?.querySelector('.ocu-meter-word')?.textContent?.trim()).toBe('Troubled');
+    expect(daemon?.querySelector('.ocu-meter-value')).toBeNull();
   });
 
   it('AC3: with the chip at 5 s a timer tick re-reads silently, with no skeleton and no aria-live', async () => {
-    const { fixture, paths, refresh, setRows, fireTick, host } = await mount();
+    const { paths, refresh, setRows, fireTick, host } = await mount();
     expect(refresh.setRate(5)).toBe(true);
     setRows([row({ 'Usage.AllGlobalReferences': 222222 })]);
     await fireTick();
@@ -226,10 +227,18 @@ describe('SystemUsagePage', () => {
     // "No announcement" (AC3): no element in this page ever carries `aria-live`, the same
     // guarantee `process-details.page.spec.ts` asserts for its own silent tick.
     expect(host.querySelector('[aria-live]')).toBeNull();
-    void fixture;
   });
 
-  it('a read fault after a success keeps the last values on every meter and on every counter, and carries the tooltip', async () => {
+  it('a read fault before any success leaves no skeleton and nothing busy, and every meter shows a dash with the tooltip', async () => {
+    const { host } = await mount([row()], '/os-management/system-usage?ns=HSCUSTOM', true);
+    expect(host.querySelector('.ocu-data-table-skeleton')).toBeNull();
+    expect(host.querySelector('[aria-busy="true"]')).toBeNull();
+    const daemon = meterByLabel(host, STRINGS.systemUsageWriteDaemon);
+    expect(daemon?.querySelector('.ocu-meter-value')?.textContent?.trim()).toBe('\u2014');
+    expect(daemon?.getAttribute('title')).toBe(STRINGS.connectivityRequestRefused);
+  });
+
+  it('a read fault after a success keeps every counter and the last word and color on each meter, dashes the number, and carries the tooltip', async () => {
     const { actions, fixture, host, setFailing } = await mount();
     expect(counterValue(host, 'processDetailsGlobalReferences')).toBe('111111');
     setFailing(true);

@@ -109,8 +109,6 @@ export class SystemUsagePage {
   private readonly scope = inject(ScopeService);
   private readonly actions = inject(ScreenActions);
 
-  protected readonly STRINGS = STRINGS;
-
   protected readonly skeletonRows = [0, 1, 2];
 
   private readonly view: UsageView | null;
@@ -172,8 +170,13 @@ export class SystemUsagePage {
     return this.refresh.fault() !== null ? STRINGS.connectivityRequestRefused : null;
   }
 
+  /** Waiting on the first answer: not loaded and not faulted, so a refused first read is never left busy. */
+  private get waiting(): boolean {
+    return !this.loaded && this.faultText === null;
+  }
+
   protected get busy(): boolean {
-    return !this.loaded;
+    return this.waiting;
   }
 
   protected get showCounters(): boolean {
@@ -181,7 +184,7 @@ export class SystemUsagePage {
   }
 
   protected get showCounterSkeleton(): boolean {
-    return !this.loaded;
+    return this.waiting;
   }
 
   protected get counterViews(): readonly CounterView[] {

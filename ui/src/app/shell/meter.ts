@@ -28,15 +28,15 @@ const DASH = '\u2014';
  *
  * **Content, not `value` alone, decides pending.** A status meter's `value` is permanently `null`
  * -- it carries no numeric quantity, only a word -- so "pending" is "neither a value nor a word has
- * ever arrived, and nothing is refused" (`pending`/`hasContent` below), which is what keeps a
- * loaded status meter from being read as still loading.
+ * ever arrived, and nothing is refused" (`pending`/`hasContent` below). A loaded status meter
+ * draws no value text at all (`showValue`): its word is its readout, so it never shows the
+ * pending dash.
  *
  * **A fault keeps the last severity and dashes only the number.** `system-usage.store.ts` never
  * blanks `state`/`word`/`percent` on a fault -- only `value`'s *display* is forced to a dash while
  * `error` is set (`displayValue`), which is what lets the fill and the word stay on their last
- * known color while the tooltip explains why the number is a dash (the spec's "Meter fault" row:
- * last values kept, with the refusal surfaced through the tooltip here and the page's own
- * refusal strip elsewhere).
+ * known color while the tooltip explains why the number is a dash (EXPERIENCE.md's `meters` row:
+ * per meter "\u2014" with the error in its tooltip; the page draws no refusal strip).
  *
  * **The fill never transitions or animates** (AC2): `.ocu-meter-fill` sets `transition: none` and
  * `animation: none` explicitly in `_components.scss`, regardless of what a future global rule
@@ -52,40 +52,44 @@ const DASH = '\u2014';
   host: { '[attr.title]': 'tooltip' },
   template: `<div class="ocu-meter">
     <span class="ocu-meter-label">{{ label() }}</span>
-    @if (isTrack) {
-      <div class="ocu-meter-track">
-        @if (showSkeletonFill) {
-          <span class="ocu-meter-fill-skeleton" aria-hidden="true"></span>
-        }
-        @if (showColoredFill) {
-          <span
-            class="ocu-meter-fill"
-            [class.ocu-meter-fill-normal]="isNormal"
-            [class.ocu-meter-fill-warning]="isWarning"
-            [class.ocu-meter-fill-error]="isError"
-            [style.width.%]="fillPercent"
-          ></span>
-        }
-      </div>
-    }
-    <span class="ocu-meter-readout">
-      <span
-        class="ocu-meter-value"
-        [class.ocu-meter-value-normal]="valueColored && isNormal"
-        [class.ocu-meter-value-warning]="valueColored && isWarning"
-        [class.ocu-meter-value-error]="valueColored && isError"
-        >{{ displayValue }}</span
-      >
-      @if (showWord) {
-        <span
-          class="ocu-meter-word"
-          [class.ocu-meter-word-normal]="isNormal"
-          [class.ocu-meter-word-warning]="isWarning"
-          [class.ocu-meter-word-error]="isError"
-          >{{ wordText }}</span
-        >
+    <div class="ocu-meter-bar">
+      @if (isTrack) {
+        <div class="ocu-meter-track">
+          @if (showSkeletonFill) {
+            <span class="ocu-meter-fill-skeleton" aria-hidden="true"></span>
+          }
+          @if (showColoredFill) {
+            <span
+              class="ocu-meter-fill"
+              [class.ocu-meter-fill-normal]="isNormal"
+              [class.ocu-meter-fill-warning]="isWarning"
+              [class.ocu-meter-fill-error]="isError"
+              [style.width.%]="fillPercent"
+            ></span>
+          }
+        </div>
       }
-    </span>
+      <span class="ocu-meter-readout">
+        @if (showValue) {
+          <span
+            class="ocu-meter-value"
+            [class.ocu-meter-value-normal]="valueColored && isNormal"
+            [class.ocu-meter-value-warning]="valueColored && isWarning"
+            [class.ocu-meter-value-error]="valueColored && isError"
+            >{{ displayValue }}</span
+          >
+        }
+        @if (showWord) {
+          <span
+            class="ocu-meter-word"
+            [class.ocu-meter-word-normal]="isNormal"
+            [class.ocu-meter-word-warning]="isWarning"
+            [class.ocu-meter-word-error]="isError"
+            >{{ wordText }}</span
+          >
+        }
+      </span>
+    </div>
   </div>`,
 })
 export class Meter {
@@ -170,6 +174,11 @@ export class Meter {
     if (value === null) return DASH;
     const unit = this.unit();
     return unit === '' ? String(value) : `${value} ${unit}`;
+  }
+
+  /** The value text, except on a loaded, unfaulted status meter, whose word is its whole readout. */
+  protected get showValue(): boolean {
+    return this.value() !== null || this.word() === null || this.failed;
   }
 
   /** The word beside the value, once one has arrived, on a track meter only. */

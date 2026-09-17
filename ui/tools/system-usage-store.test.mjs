@@ -10,7 +10,7 @@ import { dirname, join } from 'node:path';
 // track meter as pending (no value, no word, no error).
 //
 // Mutations (Rule 19):
-// - divide by zero instead of guarding `allocated === 0` in `sharedMemoryPercent` -> the "zero
+// - divide by zero instead of guarding `denominator === 0` in `percentFromFields` -> the "zero
 //   allocation reads pending, not a percentage" case below goes red with `Infinity` or `NaN`.
 // - drop the `PENDING_STATE` fallback from `meterViewFor`'s 'status'/'percent' branches, reading
 //   `state: null` before load -> the "before any success" case goes red, since `meter.ts` would
@@ -73,7 +73,8 @@ test('meterViewFor: a value meter carries no percent, state or word, whatever th
 test('meterViewFor: a percent meter (Shared memory) computes state and word from the percentage once loaded', () => {
   const config = { kind: 'percent', label: 'Shared memory', field: 'SharedMemory.SMHUsed', denominatorField: 'SharedMemory.SMHAllocated' };
   const view = store.meterViewFor(config, LOADED_ROW, null);
-  assert.equal(view.value, 900);
+  assert.equal(view.value, 90, 'the readout is the percentage, not the used figure');
+  assert.equal(view.unit, '%');
   assert.equal(view.percent, 90);
   assert.equal(view.state, 'warning', '90 is at or above the 85 cut-off');
   assert.equal(view.word, 'Warning');
@@ -106,7 +107,7 @@ test('meterViewFor: before any success, a track meter (percent or status) carrie
     const view = store.meterViewFor(config, undefined, null);
     assert.equal(view.value, null, `${config.label}: no value yet`);
     assert.equal(view.word, null, `${config.label}: no word yet`);
-    assert.notEqual(view.state, null, `${config.label}: state is never null for a track meter (meter.ts reads null as "value meter")`);
+    assert.equal(view.state, 'normal', `${config.label}: state is the non-null placeholder for a track meter (meter.ts reads null as "value meter")`);
     assert.equal(view.error, null, `${config.label}: no fault yet either`);
   }
 });

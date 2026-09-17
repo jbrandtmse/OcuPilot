@@ -129,35 +129,16 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY";
 /// <class>OcuPilot.Test.AdminPortFault</class>.</p>
 Parameter QUERYPAIRS = "Process/LIST=%Admin_Manage:USE|%DB_IRISSYS:WRITE";
 
-/// <p>The per-endpoint map from a request type this port admits to the vendor's own numeric
-/// <code>%New()</code> type argument, for an endpoint whose types carry no <code>TYPE</code>
-/// prefix parameter of their own (System usage, Story 6.9). Comma-separated entries of the form
-/// <code>&lt;endpoint&gt;/&lt;type&gt;=&lt;vendorType&gt;</code>, the same
-/// <code>&lt;endpoint&gt;/&lt;type&gt;</code> grammar <parameter>QUERYPAIRS</parameter> uses.</p>
-/// <p><code>%Api.Admin.Endpoints.Monitor</code> dispatches <code>Run()</code> on a
-/// <code>$CASE</code> over its own unprefixed numbers rather than on a published
-/// <code>TYPE&lt;suffix&gt;</code> class parameter, so <method>EndpointType</method> cannot
-/// resolve <code>SYSTEMUSAGE</code>, <code>SYSTEMUSAGESHM</code> or <code>DASHBOARDMAIN</code> the
-/// way it resolves <code>GET</code> or <code>LIST</code>. This map stands in for that missing
-/// parameter, one endpoint at a time, without widening <parameter>TYPESUFFIXES</parameter> --
-/// which every other suffix still resolves through the vendor's own parameter.</p>
-Parameter BARETYPES = "Monitor/SYSTEMUSAGE=15,Monitor/SYSTEMUSAGESHM=14,Monitor/DASHBOARDMAIN=12";
-
-/// <p>The vendor numeric type <parameter>BARETYPES</parameter> maps <var>pEndpoint</var>'s
-/// <var>pSuffix</var> to, or <code>""</code> when the map declares no such entry.</p>
-ClassMethod BareType(pEndpoint As %String, pSuffix As %String) As %String [ Private ]
-{
-    Set tFound = ""
-    Set tWanted = pEndpoint _ "/" _ pSuffix
-    Set tEntries = $ListFromString(..#BARETYPES)
-    For tI = 1:1:$ListLength(tEntries) {
-        Set tEntry = $ListGet(tEntries, tI)
-        If $Piece(tEntry, "=", 1) '= tWanted Continue
-        Set tFound = $Piece(tEntry, "=", 2, *)
-        Quit
-    }
-    Quit tFound
-}
+/// <p>The request types this port admits, per endpoint, without the vendor's <code>TYPE</code>
+/// prefix (System usage, Story 6.9). Comma-separated entries of the form
+/// <code>&lt;endpoint&gt;/&lt;type&gt;</code>, the grammar <parameter>QUERYPAIRS</parameter> uses.</p>
+/// <p><code>%Api.Admin.Endpoints.Monitor</code> publishes its request types as unprefixed class
+/// parameters (<code>SYSTEMUSAGE</code>, <code>SYSTEMUSAGESHM</code>, <code>DASHBOARDMAIN</code>)
+/// rather than as <code>TYPE&lt;suffix&gt;</code>. A type listed here for an endpoint resolves
+/// through that bare parameter on the endpoint's class, without widening
+/// <parameter>TYPESUFFIXES</parameter>; every other suffix still resolves through the
+/// <code>TYPE</code>-prefixed parameter.</p>
+Parameter BARETYPES = "Monitor/SYSTEMUSAGE,Monitor/SYSTEMUSAGESHM,Monitor/DASHBOARDMAIN";
 
 /// <p>The body-template method names, in the order <method>TemplateMethod</method> resolves them
 /// (AD-3): the first one an endpoint class defines itself is its template.</p>
@@ -700,19 +681,17 @@ ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String =
 }
 
 /// <p>The vendor type number for suffix <var>pSuffix</var> on <var>pEndpoint</var>'s class
-/// <var>pClass</var>, or <code>""</code> when the suffix is not in
-/// <parameter>TYPESUFFIXES</parameter> and <parameter>BARETYPES</parameter> names no entry for
-/// it, the class declares no <code>TYPE&lt;suffix&gt;</code> parameter, or
-/// <method>ImplementsRead</method> says the class does not implement that read.</p>
-/// <p><parameter>BARETYPES</parameter> is consulted first: a suffix it maps for
-/// <var>pEndpoint</var> is the vendor's own unprefixed request type (System usage, Story 6.9),
-/// resolved without ever widening <parameter>TYPESUFFIXES</parameter>.</p>
+/// <var>pClass</var>, or <code>""</code> when the class declares no such parameter or
+/// <method>ImplementsRead</method> says the class does not implement that read. A suffix
+/// <parameter>BARETYPES</parameter> lists for <var>pEndpoint</var> resolves through the bare
+/// parameter of that name; any other suffix must be in <parameter>TYPESUFFIXES</parameter> and
+/// resolves through <code>TYPE&lt;suffix&gt;</code>.</p>
 ClassMethod EndpointType(pEndpoint As %String, pClass As %String, pSuffix As %String) As %String [ Private ]
 {
     If '$Match(pSuffix, "^[A-Z]+$") Quit ""
-    Set tBare = ..BareType(pEndpoint, pSuffix)
-    If tBare '= "" {
-        If '..ImplementsRead(pClass, pSuffix) Quit ""
+    If $ListFind($ListFromString(..#BARETYPES), pEndpoint _ "/" _ pSuffix) {
+        Set tBare = $Parameter(pClass, pSuffix)
+        If (tBare = "") || '..ImplementsRead(pClass, pSuffix) Quit ""
         Quit tBare
     }
     If '$ListFind($ListFromString(..#TYPESUFFIXES), pSuffix) Quit ""
