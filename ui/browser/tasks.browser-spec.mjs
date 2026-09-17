@@ -14,7 +14,12 @@
  * the row AC3 is asserted on.
  *
  * AC5's denial -- a principal holding `%Admin_Task:USE` without `%DB_IRISSYS:READ` -- is proven over
- * HTTP by `OcuPilot.Test.WireSecurityRead`, which creates the principals; this spec creates none.
+ * HTTP by `OcuPilot.Test.WireSecurityRead`.
+ *
+ * **Story 6.5** adds On-demand tasks and Upcoming tasks: the side bar's three entries (AC1), the
+ * On-demand table offering no action but Refresh (AC2), the Upcoming horizon's reads (AC3), and each
+ * route's denied deep link (AC4). AC4 needs a principal holding install-database read and
+ * `%Admin_Task:USE` alone, which `before` creates on the throwaway and `after` deletes.
  *
  * Run: `npm run test:browser` (after `npm run build` and `sh scripts/ci-throwaway.sh up`).
  */
@@ -38,6 +43,13 @@ const config = browserConfig();
 const LIST_URL = '/ocupilot/tasks/schedule?ns=HSCUSTOM';
 const READ_PATH = '/api/ocupilot/screens/tasks.schedule/read';
 const DEMO_TASK = 'OcuPilotDemo nightly purge';
+const ON_DEMAND_URL = '/ocupilot/tasks/on-demand?ns=HSCUSTOM';
+const ON_DEMAND_READ_PATH = '/api/ocupilot/screens/tasks.ondemand/read';
+const UPCOMING_URL = '/ocupilot/tasks/upcoming?ns=HSCUSTOM';
+const UPCOMING_READ_PATH = '/api/ocupilot/screens/tasks.upcoming/read';
+const TASK_USER = 'OcuPilotTasksTaskOnly';
+const TASK_ROLE = 'OcuPilotTasksTaskOnlyRole';
+const TASK_PASSWORD = 'OcuPilotTasks1';
 const SYSTEM_TASK = 'Switch Journal';
 
 /** `%SYS.Task.TASKMGRStatus()`: 0 not running, 1 running, 2 suspended. */
@@ -91,6 +103,12 @@ function setTaskManagerSuspended(suspended) {
   return taskManagerStateFrom(values, suspended, output);
 }
 
+/** Delete the Story 6.5 principal and its role, whichever of them exists. */
+const deletePrincipalLines = [
+  `If ##class(Security.Users).Exists("${TASK_USER}") Do ##class(Security.Users).Delete("${TASK_USER}")`,
+  `If ##class(Security.Roles).Exists("${TASK_ROLE}") Do ##class(Security.Roles).Delete("${TASK_ROLE}")`,
+];
+
 before(async () => {
   assert.notEqual(
     config.container,
@@ -100,25 +118,62 @@ before(async () => {
   const ready = await (await fetch(`${config.origin}${READINESS_PATH}`)).json();
   assert.equal(ready.state, 'installed', `the throwaway must be installed, not ${JSON.stringify(ready)}`);
   assert.equal(setTaskManagerSuspended(false), RUNNING, 'the Task Manager starts this run running');
+  const { values, output } = irisSession(
+    [
+      ...deletePrincipalLines,
+      'Set tNS=$Select(##class(%SYS.Namespace).Exists("HSCUSTOM"):"HSCUSTOM",1:"USER")',
+      'Set tRes=##class(SYS.Database).%OpenId(##class(Config.Databases).Open(##class(Config.Namespaces).Open(tNS).Routines).Directory).ResourceName',
+      `Set tSC1=##class(Security.Roles).Create("${TASK_ROLE}","OcuPilot tasks browser spec probe (throwaway)",tRes_":R,%Admin_Task:U","")`,
+      `Set tSC2=##class(Security.Users).Create("${TASK_USER}","${TASK_ROLE}","${TASK_PASSWORD}","OcuPilot tasks browser spec probe (throwaway)","","","",0,1,"")`,
+      mark('CREATED', '$System.Status.IsOK(tSC1)&&$System.Status.IsOK(tSC2)'),
+      mark('TASK', `$SYSTEM.Security.CheckUserPermission("${TASK_USER}","%Admin_Task","USE")`),
+      mark('SYSREAD', `$SYSTEM.Security.CheckUserPermission("${TASK_USER}","%DB_IRISSYS","READ")`),
+    ],
+    ['CREATED', 'TASK', 'SYSREAD']
+  );
+  assert.equal(values.CREATED, '1', `the role and principal were created:\n${output}`);
+  assert.equal(values.TASK, '1', 'the probe holds %Admin_Task:USE');
+  assert.equal(values.SYSREAD, '0', 'and not %DB_IRISSYS:READ');
   browser = await puppeteer.launch(launchOptions(config));
 });
 
 after(async () => {
   if (browser !== null) await browser.close();
   if (config.container === LIVE_CONTAINER) return;
+  const { values, output } = irisSession(
+    [
+      ...deletePrincipalLines,
+      mark('CLEAN', `('##class(Security.Users).Exists("${TASK_USER}"))&&('##class(Security.Roles).Exists("${TASK_ROLE}"))`),
+    ],
+    ['CLEAN']
+  );
+  assert.equal(values.CLEAN, '1', `the principal and its role are gone:\n${output}`);
   assert.equal(setTaskManagerSuspended(false), RUNNING, 'the Task Manager is left running whatever the legs did');
 });
 
-/** A fresh context signed in through the shell's own form at the list's deep link, reads counted. */
-async function signedInAtList(user, password) {
+/**
+ * A fresh context signed in through the shell's own form at `url`, the list's deep link unless
+ * named, reads counted and each read's answer body kept.
+ */
+async function signedInAtList(user, password, url = LIST_URL) {
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
   page.setDefaultNavigationTimeout(config.navigationTimeoutMs);
   const reads = [];
+  const answers = [];
   page.on('request', (request) => {
     if (new URL(request.url()).pathname.startsWith('/api/ocupilot/screens/')) reads.push(request.url());
   });
-  await page.goto(`${config.origin}${LIST_URL}`, { waitUntil: 'networkidle2' });
+  page.on('response', (response) => {
+    if (!new URL(response.url()).pathname.startsWith('/api/ocupilot/screens/')) return;
+    answers.push(
+      response
+        .json()
+        .then((body) => ({ url: response.url(), body }))
+        .catch(() => ({ url: response.url(), body: null }))
+    );
+  });
+  await page.goto(`${config.origin}${url}`, { waitUntil: 'networkidle2' });
   await page.waitForSelector('#ocu-signin-user', { visible: true, timeout: config.navigationTimeoutMs });
   await page.type('#ocu-signin-user', user);
   await page.type('#ocu-signin-password', password);
@@ -126,8 +181,8 @@ async function signedInAtList(user, password) {
   await page.waitForSelector('app-rail .ocu-rail', { timeout: config.navigationTimeoutMs });
   // The first-login gate takes an administrator to the Definition form on an instance with no
   // enabled definition, whatever URL was asked for (Story 3.6). Back returns to this one.
-  await leaveFirstLoginGate(page, config.navigationTimeoutMs, LIST_URL);
-  return { context, page, reads };
+  await leaveFirstLoginGate(page, config.navigationTimeoutMs, url);
+  return { context, page, reads, answers };
 }
 
 /** The rendered row whose name cell reads `name`, described cell by cell. */
@@ -512,5 +567,195 @@ test('AC-DW260: clicking Refresh re-reads the rows in place, keeping sort, filte
     assert.notEqual(after.stamp, before.stamp, `Refresh moved the stamp: ${JSON.stringify(before.stamp)} -> ${JSON.stringify(after.stamp)}`);
   } finally {
     await context.close();
+  }
+});
+
+/** The side bar as rendered: its entry labels and its current entry, opening it first. */
+async function sideBarOf(page) {
+  if ((await page.$('app-side-bar nav.ocu-side-bar')) === null) {
+    await page.keyboard.down('Control');
+    await page.keyboard.press('b');
+    await page.keyboard.up('Control');
+  }
+  await page.waitForSelector('app-side-bar nav.ocu-side-bar', { timeout: config.navigationTimeoutMs });
+  return page.evaluate(() => {
+    const nav = document.querySelector('app-side-bar nav.ocu-side-bar');
+    const current = nav.querySelector('.ocu-side-bar-item[aria-current="page"] .ocu-side-bar-label');
+    return {
+      entries: Array.from(nav.querySelectorAll('.ocu-side-bar-item .ocu-side-bar-label')).map((label) => label.textContent.trim()),
+      current: current === null ? null : current.textContent.trim(),
+    };
+  });
+}
+
+/** Wait until a screen read whose URL satisfies `matches` has been issued, and answer its URL. */
+async function readMatching(reads, matches) {
+  const deadline = Date.now() + config.navigationTimeoutMs;
+  while (Date.now() < deadline) {
+    const found = reads.find((url) => matches(new URL(url)));
+    if (found !== undefined) return new URL(found);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  assert.fail(`no matching screen read within the timeout: ${JSON.stringify(reads)}`);
+}
+
+/** Assert no row, command bar or command box on the open screen offers an action but Refresh. */
+async function assertRefreshAlone(page) {
+  const offered = await page.evaluate(() => ({
+    rowTriggers: document.querySelectorAll('.ocu-data-table-trigger').length,
+    barActions: Array.from(document.querySelectorAll('.ocu-command-bar-action')).map((button) => ({
+      refresh: button.classList.contains('ocu-command-bar-refresh-action'),
+      label: button.textContent.trim(),
+    })),
+  }));
+  assert.equal(offered.rowTriggers, 0, 'no row carries an action menu');
+  assert.deepEqual(offered.barActions.map((action) => action.refresh), [true], `the command bar offers Refresh alone: ${JSON.stringify(offered.barActions)}`);
+
+  await page.keyboard.down('Control');
+  await page.keyboard.press('KeyK');
+  await page.keyboard.up('Control');
+  await page.waitForSelector('#ocu-command-box-list', { visible: true, timeout: config.navigationTimeoutMs });
+  const boxActions = await page.$$eval('.ocu-command-box-group-actions [role="option"] .ocu-command-box-option-label', (nodes) =>
+    nodes.map((node) => node.textContent.trim())
+  );
+  const refreshLabel = offered.barActions[0].label;
+  assert.deepEqual(
+    boxActions.filter((label) => label !== refreshLabel),
+    [],
+    `the command box offers no action but Refresh: ${JSON.stringify(boxActions)}`
+  );
+  await page.keyboard.press('Escape');
+}
+
+test('Story 6.5 AC1: the Tasks side bar reads Task schedule, On-demand tasks, Upcoming tasks, and each entry opens its screen', async () => {
+  const { context, page } = await signedInAtList(config.username, config.password, ON_DEMAND_URL);
+  try {
+    await waitForRows(page, config.navigationTimeoutMs);
+    const wanted = [STRINGS.taskListLabel, STRINGS.taskOnDemandLabel, STRINGS.taskUpcomingLabel];
+    const sideBar = await sideBarOf(page);
+    assert.deepEqual(sideBar.entries, wanted, 'the three entries in their declared order');
+    assert.deepEqual(sideBar.entries, ['Task schedule', 'On-demand tasks', 'Upcoming tasks']);
+    const routes = ['/ocupilot/tasks/schedule', '/ocupilot/tasks/on-demand', '/ocupilot/tasks/upcoming'];
+    for (let index = 0; index < wanted.length; index += 1) {
+      await page.evaluate((label) => {
+        const items = Array.from(document.querySelectorAll('app-side-bar .ocu-side-bar-item'));
+        const item = items.find((candidate) => candidate.querySelector('.ocu-side-bar-label')?.textContent.trim() === label);
+        item.click();
+      }, wanted[index]);
+      await page.waitForFunction((path) => location.pathname === path, { timeout: config.navigationTimeoutMs }, routes[index]);
+      const opened = await sideBarOf(page);
+      assert.equal(opened.current, wanted[index], `${wanted[index]} opens its own screen`);
+    }
+  } finally {
+    await context.close();
+  }
+});
+
+test('Story 6.5 AC2: On-demand tasks reads once under its headers, lists the demo task, and offers no action but Refresh', async () => {
+  const { context, page, reads } = await signedInAtList(config.username, config.password, ON_DEMAND_URL);
+  try {
+    await waitForRows(page, config.navigationTimeoutMs);
+    const headers = await page.$$eval('.ocu-data-table-header-label', (labels) => labels.map((label) => label.textContent.trim()));
+    assert.deepEqual(headers, [
+      STRINGS.tableColumnName,
+      STRINGS.headerNamespaceLabel,
+      STRINGS.tableColumnType,
+      STRINGS.tableColumnDescription,
+      STRINGS.taskColumnLastRun,
+    ]);
+    assert.deepEqual(headers, ['Name', 'Namespace', 'Type', 'Description', 'Last run']);
+    await filterToSubset(page, { text: 'nightly purge', expectRow: DEMO_TASK, total: await viewCount(page), timeoutMs: config.navigationTimeoutMs });
+    assert.ok((await describeRow(page, DEMO_TASK)) !== null, `the ${DEMO_TASK} row is rendered`);
+    assert.deepEqual(reads.map((url) => new URL(url).pathname), [ON_DEMAND_READ_PATH], 'exactly one tasks.ondemand read');
+    await assertRefreshAlone(page);
+  } finally {
+    await context.close();
+  }
+});
+
+test('Story 6.5 AC3: Upcoming tasks reads at 24 hours in ascending order, re-reads for the next hour, and reads to the end of a chosen date alone', async () => {
+  const { context, page, reads, answers } = await signedInAtList(config.username, config.password, UPCOMING_URL);
+  try {
+    await waitForRows(page, config.navigationTimeoutMs);
+    assert.equal(reads.length, 1, `one read on open: ${JSON.stringify(reads)}`);
+    const opened = new URL(reads[0]);
+    assert.equal(opened.pathname, UPCOMING_READ_PATH);
+    assert.equal(opened.searchParams.get('hoursOffset'), '24', 'at 24 hours');
+    assert.equal(opened.searchParams.has('toDatetime'), false, 'and no date');
+
+    const [first] = await Promise.all(answers);
+    assert.ok(Array.isArray(first.body?.rows), `the first read answers rows: ${JSON.stringify(first.body)}`);
+    const datetimes = first.body.rows.map((row) => row.Datetime);
+    const rendered = await page.$$eval(ROW_SELECTOR, (rows) => rows.map((row) => row.querySelector('[role="gridcell"]').textContent.trim()));
+    assert.ok(rendered.length > 0, 'occurrences render');
+    assert.deepEqual(rendered, [...rendered].sort(), `rows render in ascending Scheduled for: ${JSON.stringify(rendered)}`);
+    assert.equal(rendered[0], [...datetimes].sort()[0], 'starting from the earliest occurrence the read answered');
+    const atDay = await viewCount(page);
+
+    await page.select('#ocu-upcoming-horizon', '1');
+    const hour = await readMatching(reads, (url) => url.searchParams.get('hoursOffset') === '1');
+    assert.equal(hour.searchParams.has('toDatetime'), false, 'the next hour sends no date');
+    await page.waitForNetworkIdle({ timeout: config.navigationTimeoutMs });
+    const hourAnswer = (await Promise.all(answers)).find((answer) => new URL(answer.url).searchParams.get('hoursOffset') === '1');
+    assert.ok(Array.isArray(hourAnswer?.body?.rows), `the next hour's read answers rows: ${JSON.stringify(hourAnswer)}`);
+    // An answer with no rows draws the empty state in place of the grid, which is a count of 0.
+    const renderedCount = async () => ((await page.$('.ocu-data-table-empty')) !== null ? 0 : viewCount(page));
+    await page
+      .waitForFunction(
+        (wanted) =>
+          (wanted === 0 && document.querySelector('.ocu-data-table-empty') !== null) ||
+          Number(document.querySelector('[role="grid"]')?.getAttribute('aria-rowcount')) - 1 === wanted,
+        { timeout: config.navigationTimeoutMs },
+        hourAnswer.body.rows.length
+      )
+      .catch(() => {});
+    const atHour = await renderedCount();
+    assert.equal(atHour, hourAnswer.body.rows.length, 'the table renders the next hour\'s answer');
+    assert.ok(atHour <= atDay, `the next hour renders no more rows than 24 hours: ${atHour} against ${atDay}`);
+
+    await page.select('#ocu-upcoming-horizon', 'date');
+    const tomorrow = await page.evaluate(() => {
+      const day = new Date();
+      day.setDate(day.getDate() + 1);
+      return `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+    });
+    await page.$eval(
+      '#ocu-upcoming-date',
+      (input, value) => {
+        input.value = value;
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      },
+      tomorrow
+    );
+    const dated = await readMatching(reads, (url) => url.searchParams.has('toDatetime'));
+    assert.equal(dated.searchParams.get('toDatetime'), `${tomorrow} 23:59:59`, 'the end of tomorrow');
+    assert.equal(dated.searchParams.has('hoursOffset'), false, 'and no hours');
+
+    await assertRefreshAlone(page);
+  } finally {
+    await context.close();
+  }
+});
+
+test('Story 6.5 AC4: a principal holding install-database read and %Admin_Task:USE alone is refused each deep link by name and issues no read', async () => {
+  for (const [url, label] of [
+    [ON_DEMAND_URL, STRINGS.taskOnDemandLabel],
+    [UPCOMING_URL, STRINGS.taskUpcomingLabel],
+  ]) {
+    const { context, page, reads } = await signedInAtList(TASK_USER, TASK_PASSWORD, url);
+    try {
+      await page.waitForSelector('app-screen-denied .ocu-screen-denied-title', { timeout: config.navigationTimeoutMs });
+      const denied = await page.evaluate(() => ({
+        title: document.querySelector('app-screen-denied .ocu-screen-denied-title').textContent.trim(),
+        reason: document.querySelector('app-screen-denied .ocu-screen-denied-reason').textContent.trim(),
+        grid: document.querySelector('[role="grid"]') !== null,
+      }));
+      assert.equal(denied.title, label, `${label}: the deep link renders the screen title`);
+      assert.equal(denied.reason, `You need %DB_IRISSYS:READ to open ${label}.`, `${label}: naming the pair`);
+      assert.equal(denied.grid, false, `${label}: and no table`);
+      assert.deepEqual(reads, [], `${label}: no screen read was issued`);
+    } finally {
+      await context.close();
+    }
   }
 });

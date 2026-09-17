@@ -2,7 +2,9 @@
 /// through <method>OcuPilot.Test.PortFixture.SetEndpointClass</method> by
 /// <class>OcuPilot.Test.Read.ReadFixture</class>. It answers by the request path the port builds from
 /// the endpoint name: <code>Test.Object</code> a GET, <code>Test.Parents</code> the parent LIST and
-/// <code>Test.Children</code> one parent's child LIST, read for its <code>parentKey</code>.</p>
+/// <code>Test.Children</code> one parent's child LIST, read for its <code>parentKey</code>;
+/// <code>Test.Fixed</code> and <code>Test.Upcoming</code> record the query and request type they were
+/// issued with and answer the armed <code>rows</code>.</p>
 /// <p>It extends no vendor class (AD-27). State lives in <code>^||OcuPilotReadSource</code>, armed by
 /// <method>Arm</method> and cleared by <method>Clear</method>, because the port constructs this class
 /// itself and runs it in <code>%SYS</code>.</p>
@@ -15,13 +17,17 @@ Parameter TYPELIST As INTEGER = 0;
 /// <p>The vendor's get type number.</p>
 Parameter TYPEGET As INTEGER = 1;
 
+/// <p><code>Task.CRUD</code>'s scheduled-occurrence type number.</p>
+Parameter TYPEUPCOMING As INTEGER = 13;
+
 Property Type As %Integer;
 
 Property ApiVersion As %Integer;
 
 Property IsRunningAsync As %Boolean;
 
-/// <p>Arm <var>pKey</var> with <var>pValue</var>: <code>parents</code> (a JSON array),
+/// <p>Arm <var>pKey</var> with <var>pValue</var>: <code>rows</code> (a JSON array),
+/// <code>parents</code> (a JSON array),
 /// <code>parentsUncapped</code> (<code>1</code> answers every parent whatever <code>maxRows</code>
 /// asks), <code>parentFault</code>, <code>object</code> (a JSON object), <code>objectFault</code>,
 /// or, with <var>pParent</var>, <code>children</code> (a JSON array) or <code>childFault</code> for
@@ -37,8 +43,10 @@ ClassMethod Arm(pKey As %String, pValue As %String, pParent As %String = "")
 }
 
 /// <p>A recorded value: <code>parentMaxRows</code>, <code>childKeys</code> (the parent keys the child
-/// lists were issued for, comma-separated, in order) or <code>childMaxRows</code> (their
-/// <code>maxRows</code>, likewise). <code>""</code> when never recorded.</p>
+/// lists were issued for, comma-separated, in order), <code>childMaxRows</code> (their
+/// <code>maxRows</code>, likewise), or, for <code>Test.Fixed</code> and <code>Test.Upcoming</code>,
+/// <code>type</code> (the request type number) and <code>query</code> (every query parameter as
+/// <code>name=value</code>, comma-separated, in name order). <code>""</code> when never recorded.</p>
 ClassMethod Recorded(pKey As %String) As %String
 {
     Quit $Get(^||OcuPilotReadSource("recorded", pKey), "")
@@ -104,6 +112,16 @@ Method Run(ByRef pSC As %Status, pBody As %DynamicAbstractObject) As %DynamicAbs
         Do ..Note("parentMaxRows", tMax)
         If ..Faulted($Get(^||OcuPilotReadSource("parentFault"), ""), .pSC) Quit {}
         Quit ..Capped($Get(^||OcuPilotReadSource("parents"), "[]"), $Select($Get(^||OcuPilotReadSource("parentsUncapped")): 0, 1: tMax))
+    }
+    If (tPath = "test/fixed") || (tPath = "test/upcoming") {
+        Do ..Note("type", ..Type)
+        Set tName = ""
+        For {
+            Set tName = $Order(%request.Data(tName))
+            If tName = "" Quit
+            Do ..Note("query", tName _ "=" _ $Get(%request.Data(tName, 1)))
+        }
+        Quit ..Capped($Get(^||OcuPilotReadSource("rows"), "[]"), tMax)
     }
     If tPath = "test/children" {
         Set tParent = $Get(%request.Data("parentKey", 1))

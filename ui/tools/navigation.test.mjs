@@ -128,6 +128,8 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'logs/audit',
       'os-management/processes',
       'tasks/schedule',
+      'tasks/on-demand',
+      'tasks/upcoming',
       'permissions/users',
       'permissions/roles',
       'permissions/resources',

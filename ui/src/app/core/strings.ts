@@ -670,6 +670,34 @@ export const STRINGS = {
   oauthServerEmpty: 'No authorization server is configured on this instance.',
   /** EXPERIENCE.md:356 */
   oauthServerClientsEmpty: 'No server client descriptions on this instance.',
+  /** EXPERIENCE.md:357 */
+  taskOnDemandLabel: 'On-demand tasks',
+  /** EXPERIENCE.md:357 */
+  taskOnDemandEmpty: 'No tasks on this instance can be run on demand.',
+  /** EXPERIENCE.md:358 */
+  taskUpcomingLabel: 'Upcoming tasks',
+  /** EXPERIENCE.md:358 */
+  taskUpcomingColumnAt: 'Scheduled for',
+  /** EXPERIENCE.md:358 */
+  taskColumnSuspended: 'Suspended',
+  /** EXPERIENCE.md:358 */
+  taskUpcomingHorizon: 'Scheduled to run within',
+  /** EXPERIENCE.md:358 */
+  taskUpcomingHours1: 'The next hour',
+  /** EXPERIENCE.md:358 */
+  taskUpcomingHours4: 'The next 4 hours',
+  /** EXPERIENCE.md:358 */
+  taskUpcomingHours12: 'The next 12 hours',
+  /** EXPERIENCE.md:358 */
+  taskUpcomingHours24: 'The next 24 hours',
+  /** EXPERIENCE.md:358 */
+  taskUpcomingHours72: 'The next 3 days',
+  /** EXPERIENCE.md:358 */
+  taskUpcomingHours168: 'The next 7 days',
+  /** EXPERIENCE.md:358 */
+  taskUpcomingUntil: 'Until a date',
+  /** EXPERIENCE.md:358 */
+  taskUpcomingEmpty: 'No tasks are scheduled to run within this horizon.',
 
   // Not from the Fixed strings table, but required verbatim by this story's task
   // list: the audit-marker-failure fallback text (AD-15 / EXPERIENCE.md "9. **Audit.** Every confirmed"), the

@@ -136,11 +136,16 @@ export interface ReadRowGet {
 export interface ReadSource {
   readonly port: 'admin' | 'state' | 'mgmnt';
   readonly endpoint: string;
-  /** `LIST` reads rows; `GET` reads one object as the one row, and a 404 reads as none. */
-  readonly type: 'LIST' | 'GET';
+  /**
+   * `LIST` reads rows; `GET` reads one object as the one row, and a 404 reads as none;
+   * `UPCOMING` reads an admin endpoint's scheduled occurrences as rows.
+   */
+  readonly type: 'LIST' | 'GET' | 'UPCOMING';
   readonly rowGet?: ReadRowGet | null;
   /** The parent list a per-parent read issues its source once per parent for, bounded by the cap. */
   readonly forEach?: ReadForEach | null;
+  /** Query parameters sent on every call of the read, which no caller can change or remove. */
+  readonly query?: Readonly<Record<string, string>> | null;
 }
 
 /** One parent field a per-parent read copies into each of that parent's rows. */
@@ -2737,6 +2742,132 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.TaskOnDemandList",
+    "route": "tasks/on-demand",
+    "area": "tasks",
+    "labelKey": "taskOnDemandLabel",
+    "sideBarPosition": 2,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Task",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "task",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Name",
+        "Namespace",
+        "Type",
+        "Description",
+        "Id",
+        "LastFinished"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "taskOnDemandEmpty",
+    "commandAliases": [
+      "on demand",
+      "run task"
+    ],
+    "classicPage": "%CSP.UI.Portal.TasksOnDemand",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Task.CRUD",
+        "type": "LIST",
+        "query": {
+          "onDemand": "1"
+        }
+      },
+      "fields": [
+        "Name",
+        "Namespace",
+        "Type",
+        "Description",
+        "Id",
+        "LastFinished"
+      ],
+      "filter": [
+        "Name",
+        "Namespace",
+        "Type",
+        "Description"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Namespace",
+          "Type",
+          "LastFinished"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Namespace",
+          "labelKey": "headerNamespaceLabel",
+          "kind": "text"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "Description",
+          "labelKey": "tableColumnDescription",
+          "kind": "text"
+        },
+        {
+          "field": "LastFinished",
+          "labelKey": "taskColumnLastRun",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "tasks.ondemand",
+    "banner": null,
+    "tab": null
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.TaskScheduleList",
     "route": "tasks/schedule",
     "area": "tasks",
@@ -2884,6 +3015,146 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       ]
     },
     "toolIdentifier": "tasks.schedule",
+    "tab": null
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.TaskUpcomingList",
+    "route": "tasks/upcoming",
+    "area": "tasks",
+    "labelKey": "taskUpcomingLabel",
+    "sideBarPosition": 3,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Task",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "task",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Id",
+        "Datetime"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Id",
+        "Name",
+        "Namespace",
+        "Datetime",
+        "Suspended"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "taskUpcomingEmpty",
+    "commandAliases": [
+      "upcoming",
+      "next runs"
+    ],
+    "classicPage": "%CSP.UI.Portal.TasksUpcoming",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Task.CRUD",
+        "type": "UPCOMING"
+      },
+      "fields": [
+        "Id",
+        "Name",
+        "Namespace",
+        "Datetime",
+        "Suspended"
+      ],
+      "filter": [
+        "Name",
+        "Namespace"
+      ],
+      "sort": {
+        "fields": [
+          "Datetime",
+          "Name",
+          "Namespace"
+        ],
+        "default": "Datetime",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "hoursOffset",
+            "labelKey": "taskUpcomingHorizon",
+            "kind": "choice",
+            "maxLength": 3,
+            "options": [
+              "1",
+              "4",
+              "12",
+              "24",
+              "72",
+              "168"
+            ]
+          },
+          {
+            "param": "toDatetime",
+            "labelKey": "taskUpcomingUntil",
+            "kind": "datetime",
+            "maxLength": 19
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Datetime",
+          "labelKey": "taskUpcomingColumnAt",
+          "kind": "text"
+        },
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Namespace",
+          "labelKey": "headerNamespaceLabel",
+          "kind": "text"
+        },
+        {
+          "field": "Suspended",
+          "labelKey": "taskColumnSuspended",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "tasks.upcoming",
+    "banner": null,
     "tab": null
   },
   {

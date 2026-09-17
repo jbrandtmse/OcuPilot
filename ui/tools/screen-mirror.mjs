@@ -471,8 +471,10 @@ export function sideBarPositionProblem(declaration) {
  * What is wrong with a declaration's `read`, or `null` when nothing is (AD-36).
  *
  * The rules `OcuPilot.Screen.Registry.ReadProblem` applies on the instance: an absent or `null`
- * read is a screen with no read; otherwise `source` is `{port, endpoint, type: "LIST"}` naming one
- * of three sources -- `admin`, an instance endpoint reached through the port, with a dotted
+ * read is a screen with no read; otherwise `source` is `{port, endpoint, type}`, `type` one of
+ * `READ_SOURCE_TYPES`. `GET` and `UPCOMING` are admin only and declare no `rowGet` or `forEach`, and
+ * an optional `query` fixes parameters (`sourceQueryProblem`). The source is one of three kinds:
+ * `admin`, an instance endpoint reached through the port, with a dotted
  * endpoint name and an optional `rowGet` (`rowGetProblem`); `mgmnt`, the management API reached
  * through its own port, which declares no `rowGet`; or `state`, one of OcuPilot's own kernel stores
  * named without a package, which declares neither a `rowGet` nor `criteria`.
@@ -503,7 +505,7 @@ export function readProblem(declaration) {
   if (source === null || typeof source !== 'object' || Array.isArray(source)) {
     return 'read.source is not an object naming its port, endpoint and type (AD-36)';
   }
-  const sourceKeysFault = unknownKeyProblem('read.source', source, ['port', 'endpoint', 'type', 'rowGet', 'forEach']);
+  const sourceKeysFault = unknownKeyProblem('read.source', source, ['port', 'endpoint', 'type', 'rowGet', 'forEach', 'query']);
   if (sourceKeysFault !== null) return sourceKeysFault;
   if (!READ_SOURCE_PORTS.includes(source.port)) {
     return (
@@ -521,7 +523,7 @@ export function readProblem(declaration) {
     );
   }
   if (typeof source.type !== 'string' || !READ_SOURCE_TYPES.includes(source.type)) {
-    return `read.source.type '${shown(source.type)}' is not 'LIST' or 'GET'`;
+    return `read.source.type '${shown(source.type)}' is not 'LIST', 'GET' or 'UPCOMING'`;
   }
   // A GET source reads one named object of an admin endpoint as the read's one row (AD-36), so it
   // has no row list to issue a detail call for, no parents to list and no server search.
@@ -539,6 +541,21 @@ export function readProblem(declaration) {
       return 'read.criteria is declared on a GET source, whose one object takes no server search (AD-36)';
     }
   }
+  // An UPCOMING source lists an admin endpoint's scheduled occurrences (AD-36): a row is an
+  // occurrence rather than an object, so there is no detail call to issue and no parent to list.
+  if (source.type === 'UPCOMING') {
+    if (source.port !== SOURCE_ADMIN) {
+      return `read.source.type 'UPCOMING' is declared on a '${source.port}' source, and a list-shaped request type other than LIST issues an admin endpoint (AD-36)`;
+    }
+    if (isObject(source.rowGet)) {
+      return 'read.source.rowGet is declared on an UPCOMING source, whose rows are occurrences with no detail call to issue (AD-36)';
+    }
+    if (isObject(source.forEach)) {
+      return 'read.source.forEach is declared on an UPCOMING source, which lists no parents (AD-36)';
+    }
+  }
+  const queryFault = sourceQueryProblem(read, source);
+  if (queryFault !== null) return queryFault;
   // A mgmnt source answers whole rows from the management API, which offers no per-row detail call
   // to issue.
   if (source.port === SOURCE_MGMNT && isObject(source.rowGet)) {
@@ -917,9 +934,60 @@ function criteriaMarkerProblem(criteria, params) {
 
 /**
  * The request types a `read.source` may issue (AD-36), byte for byte `OcuPilot.Screen.Registry`'s own
- * `READSOURCETYPES`: `LIST`, a list of rows, and `GET`, one object read as the read's one row.
+ * `READSOURCETYPES`: `LIST`, a list of rows; `GET`, one object read as the read's one row; and
+ * `UPCOMING`, an admin endpoint's list of scheduled occurrences, issued as a list is.
  */
-export const READ_SOURCE_TYPES = ['LIST', 'GET'];
+export const READ_SOURCE_TYPES = ['LIST', 'GET', 'UPCOMING'];
+
+/** The longest value a `read.source.query` entry may fix, `OcuPilot.Screen.Registry`'s `SOURCEQUERYMAXLENGTH`. */
+export const SOURCE_QUERY_MAX_LENGTH = 50;
+
+/**
+ * What is wrong with `source.query`, or `null` (AD-36). `read` is the declared read, whose `criteria`
+ * the keys are compared to.
+ *
+ * An absent or `null` `query` fixes no parameter. Otherwise it is a non-empty object on an `admin`
+ * source; each key is a query parameter name that equals, case-folded, neither a
+ * `CRITERIA_RESERVED_PARAMS` name nor a declared `read.criteria` param; and each value is a non-empty
+ * string of at most `SOURCE_QUERY_MAX_LENGTH` characters. `OcuPilot.Screen.Read.Execute` sends every
+ * entry on the read's `LIST` or `UPCOMING` call, on a single-object `GET` and on each per-parent child
+ * list, never on a per-parent read's parent list or a `rowGet` detail call, so no caller can change or
+ * remove one.
+ * `OcuPilot.Screen.Registry.SourceQueryProblem` returns the same sentence for every case in
+ * `OcuPilot.Test.ReadSourceCorpus`.
+ */
+export function sourceQueryProblem(read, source) {
+  const where = 'read.source.query';
+  const { query } = source;
+  if (query === undefined || query === null) return null;
+  if (!isObject(query)) return `${where} is not an object of fixed query parameters (AD-36)`;
+  if (source.port !== SOURCE_ADMIN) {
+    return `${where} is declared on a '${shown(source.port)}' source, and fixed query parameters travel on admin endpoints (AD-36)`;
+  }
+  const keys = Object.keys(query);
+  if (keys.length === 0) return `${where} is empty, and a declared query fixes at least one parameter (AD-36)`;
+  const criteriaParams = [];
+  if (isObject(read.criteria) && Array.isArray(read.criteria.fields)) {
+    for (const field of read.criteria.fields) {
+      if (isObject(field) && typeof field.param === 'string') criteriaParams.push(field.param.toLowerCase());
+    }
+  }
+  for (const key of keys) {
+    if (!PARAM_RE.test(key)) return `${where} key '${key}' is not a query parameter name`;
+    const folded = key.toLowerCase();
+    if (CRITERIA_RESERVED_PARAMS.some((name) => name.toLowerCase() === folded)) {
+      return `${where} key '${key}' collides with a name the read's own callers already send`;
+    }
+    if (criteriaParams.includes(folded)) {
+      return `${where} key '${key}' is also a read.criteria param, and no caller can change a fixed parameter (AD-36)`;
+    }
+    const value = query[key];
+    if (typeof value !== 'string' || value === '' || value.length > SOURCE_QUERY_MAX_LENGTH) {
+      return `${where} '${key}' is not a non-empty string of at most ${SOURCE_QUERY_MAX_LENGTH} characters`;
+    }
+  }
+  return null;
+}
 
 /**
  * What is wrong with `source.forEach`, or `null` (AD-36). `read` is the declared read and `fields`
@@ -1509,11 +1577,16 @@ export interface ReadRowGet {
 export interface ReadSource {
   readonly port: ${READ_SOURCE_PORTS.map((value) => `'${value}'`).join(' | ')};
   readonly endpoint: string;
-  /** \`LIST\` reads rows; \`GET\` reads one object as the one row, and a 404 reads as none. */
+  /**
+   * \`LIST\` reads rows; \`GET\` reads one object as the one row, and a 404 reads as none;
+   * \`UPCOMING\` reads an admin endpoint's scheduled occurrences as rows.
+   */
   readonly type: ${READ_SOURCE_TYPES.map((value) => `'${value}'`).join(' | ')};
   readonly rowGet?: ReadRowGet | null;
   /** The parent list a per-parent read issues its source once per parent for, bounded by the cap. */
   readonly forEach?: ReadForEach | null;
+  /** Query parameters sent on every call of the read, which no caller can change or remove. */
+  readonly query?: Readonly<Record<string, string>> | null;
 }
 
 /** One parent field a per-parent read copies into each of that parent's rows. */

@@ -343,11 +343,11 @@ Method TestTheTaskSchedulesPairSetIsEnforcedForARealPrincipal()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the eleven principals' pairs")
 
-    Do $$$AssertEquals(..ScreensFor(..#TASKUSER, "tasks"), "[{""route"":""tasks/schedule"",""labelKey"":""taskListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}]", "%Admin_Task alone: the task schedule is denied on %DB_IRISSYS:READ")
+    Do $$$AssertEquals(..ScreensFor(..#TASKUSER, "tasks"), "[{""route"":""tasks/schedule"",""labelKey"":""taskListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""tasks/on-demand"",""labelKey"":""taskOnDemandLabel"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""tasks/upcoming"",""labelKey"":""taskUpcomingLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}]", "%Admin_Task alone: the three task screens are denied on %DB_IRISSYS:READ")
     Do $$$AssertEquals(..AreaVerdictFor(..#TASKUSER, "tasks"), "false:%DB_IRISSYS:READ", "and so is the Tasks area")
     Do ..AssertReadRefused(..#TASKUSER, "tasks.schedule", "%DB_IRISSYS:READ")
 
-    Do $$$AssertEquals(..ScreensFor(..#TASKBOTHUSER, "tasks"), "[{""route"":""tasks/schedule"",""labelKey"":""taskListLabel"",""sideBarPosition"":1,""allowed"":true}]", "both pairs: the task schedule is listed allowed")
+    Do $$$AssertEquals(..ScreensFor(..#TASKBOTHUSER, "tasks"), "[{""route"":""tasks/schedule"",""labelKey"":""taskListLabel"",""sideBarPosition"":1,""allowed"":true},{""route"":""tasks/on-demand"",""labelKey"":""taskOnDemandLabel"",""sideBarPosition"":2,""allowed"":true},{""route"":""tasks/upcoming"",""labelKey"":""taskUpcomingLabel"",""sideBarPosition"":3,""allowed"":true}]", "both pairs: the three task screens are listed allowed")
     Do $$$AssertEquals(..AreaVerdictFor(..#TASKBOTHUSER, "tasks"), "true", "and so is the Tasks area")
 
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/tasks.schedule/read?maxRows=1000", ..#TASKBOTHUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
@@ -374,6 +374,24 @@ Method TestTheTaskSchedulesPairSetIsEnforcedForARealPrincipal()
     ; running it is the empty string, and the suspended half is the browser spec's.
     Do $$$AssertEquals(tAnswer.%GetTypeOf("banner"), "string", "the answer carries the banner key as a string")
     Do $$$AssertEquals(tAnswer.banner, "", "empty while the Task Manager is running")
+}
+
+/// <p>Story 6.5 -- the Pairs row: On-demand tasks and Upcoming tasks declare the task schedule's pair
+/// set, proved with the same principals. <code>%Admin_Task:USE</code> alone is refused 403
+/// <code>AUTH.NOPRIVILEGE</code> naming <code>%DB_IRISSYS:READ</code> on both routes, never 500; with
+/// both pairs each route answers 200 with the rows the configured test account reads over the wire
+/// for the same cap and horizon (<method>AssertSameRowsAsTestAccount</method>).</p>
+/// <p>Mutation: remove <code>%DB_IRISSYS:READ</code> from
+/// <class>OcuPilot.Screen.Descriptor.TaskUpcomingList</class> -&gt; its read answers 500 and the
+/// refusal assertions go red.</p>
+Method TestOnDemandAndUpcomingTasksPairSetsAreEnforcedForARealPrincipal()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the principals' pairs")
+    Do ..AssertReadRefused(..#TASKUSER, "tasks.ondemand", "%DB_IRISSYS:READ")
+    Do ..AssertReadRefused(..#TASKUSER, "tasks.upcoming", "%DB_IRISSYS:READ", "&hoursOffset=24")
+
+    Do ..AssertSameRowsAsTestAccount(..#TASKBOTHUSER, "tasks.ondemand")
+    Do ..AssertSameRowsAsTestAccount(..#TASKBOTHUSER, "tasks.upcoming", "&hoursOffset=24")
 }
 
 /// <p>Story 2.9 AC5 -- the processes list's three-pair set, proved with real principals. A caller

@@ -745,11 +745,14 @@ Parameter READTOOLIDENTIFIERPATTERN = "^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$";
 /// reach <code>context.secretFields</code> and <code>toolIdentifier</code> as well.</p>
 /// <p>A <code>read</code> that is absent or <code>null</code> is a screen with no read. Otherwise:
 /// <code>source</code> is <code>{port, endpoint, type}</code>, whose <code>type</code> is one of
-/// <parameter>READSOURCETYPES</parameter> -- <code>GET</code> reads one object of an
+/// <parameter>READSOURCETYPES</parameter>. A <code>GET</code> source reads one object of an
 /// <code>admin</code> endpoint and declares no <code>rowGet</code>, <code>forEach</code> or
-/// <code>criteria</code> -- and whose optional <code>forEach</code> lists a parent endpoint first
-/// (<method>ForEachProblem</method>). It names one of three sources
-/// -- <code>admin</code>, an instance endpoint reached through the port, with a
+/// <code>criteria</code>. An <code>UPCOMING</code> source lists an admin endpoint's scheduled
+/// occurrences and declares no <code>rowGet</code> or <code>forEach</code>. A source's optional
+/// <code>forEach</code> lists a parent endpoint first (<method>ForEachProblem</method>), and its
+/// optional <code>query</code> fixes parameters no caller can change
+/// (<method>SourceQueryProblem</method>). The source is one of three kinds:
+/// <code>admin</code>, an instance endpoint reached through the port, with a
 /// dotted endpoint name and an optional <code>rowGet</code> (<method>RowGetProblem</method>);
 /// <code>mgmnt</code>, the management API reached through its own port, which declares no
 /// <code>rowGet</code>; or
@@ -800,7 +803,7 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
             Quit
         }
         Set tSource = tRead.%Get("source")
-        Set tProblem = ..UnknownKeyProblem(tSource, "read.source", $ListBuild("port", "endpoint", "type", "rowGet", "forEach"))
+        Set tProblem = ..UnknownKeyProblem(tSource, "read.source", $ListBuild("port", "endpoint", "type", "rowGet", "forEach", "query"))
         If tProblem '= "" Quit
         Set tPort = tSource.%Get("port")
         If (tSource.%GetTypeOf("port") '= "string") || '$ListFind($ListBuild(##class(OcuPilot.Screen.Read).#SOURCEADMIN, ##class(OcuPilot.Screen.Read).#SOURCESTATE, ##class(OcuPilot.Screen.Read).#SOURCEMGMNT), tPort) {
@@ -816,7 +819,7 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
             Quit
         }
         If (tSource.%GetTypeOf("type") '= "string") || '$ListFind($ListFromString(..#READSOURCETYPES), tSource.%Get("type")) {
-            Set tProblem = "read.source.type '" _ tSource.%Get("type") _ "' is not 'LIST' or 'GET'"
+            Set tProblem = "read.source.type '" _ tSource.%Get("type") _ "' is not 'LIST', 'GET' or 'UPCOMING'"
             Quit
         }
         ; A GET source reads one named object of an admin endpoint as the read's one row (AD-36), so
@@ -839,6 +842,24 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
                 Quit
             }
         }
+        ; An UPCOMING source lists an admin endpoint's scheduled occurrences (AD-36): a row is an
+        ; occurrence rather than an object, so there is no detail call to issue and no parent to list.
+        If tSource.%Get("type") = "UPCOMING" {
+            If tPort '= ##class(OcuPilot.Screen.Read).#SOURCEADMIN {
+                Set tProblem = "read.source.type 'UPCOMING' is declared on a '" _ tPort _ "' source, and a list-shaped request type other than LIST issues an admin endpoint (AD-36)"
+                Quit
+            }
+            If tSource.%GetTypeOf("rowGet") = "object" {
+                Set tProblem = "read.source.rowGet is declared on an UPCOMING source, whose rows are occurrences with no detail call to issue (AD-36)"
+                Quit
+            }
+            If tSource.%GetTypeOf("forEach") = "object" {
+                Set tProblem = "read.source.forEach is declared on an UPCOMING source, which lists no parents (AD-36)"
+                Quit
+            }
+        }
+        Set tProblem = ..SourceQueryProblem(tRead, tSource)
+        If tProblem '= "" Quit
         ; A state source's rows are OcuPilot's own, read whole: there is no detail endpoint to
         ; issue per row and no vendor query to search on the server, so declaring either is
         ; refused where it is declared rather than ignored at read time (AD-36).
@@ -1203,8 +1224,71 @@ ClassMethod CriteriaMarkerProblem(pCriteria As %DynamicObject, pParams As %List)
 }
 
 /// <p>The request types a <code>read.source</code> may issue (AD-36): <code>LIST</code>, a list of
-/// rows, and <code>GET</code>, one object read as the read's one row.</p>
-Parameter READSOURCETYPES = "LIST,GET";
+/// rows; <code>GET</code>, one object read as the read's one row; and <code>UPCOMING</code>, an admin
+/// endpoint's list of scheduled occurrences, issued as a list is.</p>
+Parameter READSOURCETYPES = "LIST,GET,UPCOMING";
+
+/// <p>The longest value a <code>read.source.query</code> entry may fix.</p>
+Parameter SOURCEQUERYMAXLENGTH As INTEGER = 50;
+
+/// <p>What is wrong with <var>pSource</var>'s <code>query</code>, or <code>""</code> (AD-36).
+/// <var>pRead</var> is the declared read, whose <code>criteria</code> the keys are compared to.</p>
+/// <p>An absent or <code>null</code> <code>query</code> fixes no parameter. Otherwise it is a
+/// non-empty object on an <code>admin</code> source; each key is a query parameter name that equals,
+/// case-folded, neither a <parameter>CRITERIARESERVEDPARAMS</parameter> name nor a declared
+/// <code>read.criteria</code> param; and each value is a non-empty string of at most
+/// <parameter>SOURCEQUERYMAXLENGTH</parameter> characters.
+/// <method>OcuPilot.Screen.Read.Execute</method> sends every entry on the read's <code>LIST</code> or
+/// <code>UPCOMING</code> call, on a single-object <code>GET</code> and on each per-parent child list,
+/// never on a per-parent read's parent list or a <code>rowGet</code> detail call, so no caller can
+/// change or remove one. <file>ui/tools/screen-mirror.mjs</file>'s
+/// <code>sourceQueryProblem</code> returns the same sentence for every case in
+/// <class>OcuPilot.Test.ReadSourceCorpus</class>.</p>
+ClassMethod SourceQueryProblem(pRead As %DynamicObject, pSource As %DynamicObject) As %String
+{
+    Set tWhere = "read.source.query"
+    Set tType = pSource.%GetTypeOf("query")
+    If (tType = "unassigned") || (tType = "null") Quit ""
+    If tType '= "object" Quit tWhere _ " is not an object of fixed query parameters (AD-36)"
+    Set tPort = pSource.%Get("port")
+    If tPort '= ##class(OcuPilot.Screen.Read).#SOURCEADMIN Quit tWhere _ " is declared on a '" _ tPort _ "' source, and fixed query parameters travel on admin endpoints (AD-36)"
+    Set tQuery = pSource.%Get("query")
+    If tQuery.%Size() = 0 Quit tWhere _ " is empty, and a declared query fixes at least one parameter (AD-36)"
+
+    Set tCriteriaParams = ""
+    Set tCriteria = pRead.%Get("criteria")
+    If $IsObject(tCriteria) && tCriteria.%IsA("%Library.DynamicObject") && (tCriteria.%GetTypeOf("fields") = "array") {
+        Set tFieldIterator = tCriteria.%Get("fields").%GetIterator()
+        While tFieldIterator.%GetNext(.tFieldIndex, .tField, .tFieldType) {
+            If (tFieldType '= "object") || (tField.%GetTypeOf("param") '= "string") Continue
+            Set tCriteriaParams = tCriteriaParams _ $ListBuild($ZConvert(tField.%Get("param"), "L"))
+        }
+    }
+    Set tReserved = $ListFromString($ZConvert(..#CRITERIARESERVEDPARAMS, "L"))
+
+    Set tProblem = ""
+    Set tIterator = tQuery.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tValue, .tValueType) {
+        If '$Match(tKey, "^[A-Za-z][A-Za-z0-9]*$") {
+            Set tProblem = tWhere _ " key '" _ tKey _ "' is not a query parameter name"
+            Quit
+        }
+        Set tFolded = $ZConvert(tKey, "L")
+        If $ListFind(tReserved, tFolded) {
+            Set tProblem = tWhere _ " key '" _ tKey _ "' collides with a name the read's own callers already send"
+            Quit
+        }
+        If $ListFind(tCriteriaParams, tFolded) {
+            Set tProblem = tWhere _ " key '" _ tKey _ "' is also a read.criteria param, and no caller can change a fixed parameter (AD-36)"
+            Quit
+        }
+        If (tValueType '= "string") || (tValue = "") || ($Length(tValue) > ..#SOURCEQUERYMAXLENGTH) {
+            Set tProblem = tWhere _ " '" _ tKey _ "' is not a non-empty string of at most " _ ..#SOURCEQUERYMAXLENGTH _ " characters"
+            Quit
+        }
+    }
+    Quit tProblem
+}
 
 /// <p>What is wrong with <var>pSource</var>'s <code>forEach</code>, or <code>""</code> (AD-36).
 /// <var>pRead</var> is the declared read and <var>pFields</var> its declared fields.</p>

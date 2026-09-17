@@ -167,8 +167,9 @@ Method TestTheRealWebApplicationListTruncatesAtTwo()
     Do $$$AssertTrue(tResult.rows.%Get(0).Name '= "", "each row carries its application name")
 }
 
-/// <p>Field drift -- for every production descriptor whose read is an admin <code>LIST</code>, each
-/// declared read field and context field is a key of the live endpoint's first row.
+/// <p>Field drift -- for every production descriptor whose read is an admin <code>LIST</code> or
+/// <code>UPCOMING</code>, issued with its fixed <code>source.query</code>, each declared read field and
+/// context field is a key of the live endpoint's first row.
 /// <method>OcuPilot.Screen.Read.Project</method> writes <code>null</code> for a missing key, so a
 /// misspelt field would otherwise ship as an empty column. A read that declares
 /// <code>source.rowGet</code> holds its detail fields to the live detail call of that first row's
@@ -193,13 +194,14 @@ Method TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow()
         Set tRead = $ClassMethod(tClass, "Read")
         If '$IsObject(tRead) Continue
         Set tSource = tRead.%Get("source")
-        If '$IsObject(tSource) || (tSource.%Get("port") '= "admin") || (tSource.%Get("type") '= "LIST") Continue
+        If '$IsObject(tSource) || (tSource.%Get("port") '= "admin") || '$ListFind($ListBuild("LIST", "UPCOMING"), tSource.%Get("type")) Continue
         If $ClassMethod(tClass, "ParentScope") '= "" Continue
         If $ListFind($ListBuild("OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab", "OcuPilot.Screen.Descriptor.OAuthClientTab", "OcuPilot.Screen.Descriptor.OAuthResourceServerTab", "OcuPilot.Screen.Descriptor.OAuthServerTab", "OcuPilot.Screen.Descriptor.OAuthServerClientTab"), tClass) Continue
         Set tChecked = tChecked + 1
         Kill tQuery
-        Set tPortSC = ##class(OcuPilot.Port.AdminPort).Invoke(tSource.%Get("endpoint"), "LIST", .tQuery, "", .tAnswer, .tHttp, .tFault)
-        Do $$$AssertStatusOK(tPortSC, tClass _ ": the live " _ tSource.%Get("endpoint") _ " LIST answers")
+        Do ##class(OcuPilot.Screen.Read).SeedSourceQuery(tSource, .tQuery)
+        Set tPortSC = ##class(OcuPilot.Port.AdminPort).Invoke(tSource.%Get("endpoint"), tSource.%Get("type"), .tQuery, "", .tAnswer, .tHttp, .tFault)
+        Do $$$AssertStatusOK(tPortSC, tClass _ ": the live " _ tSource.%Get("endpoint") _ " " _ tSource.%Get("type") _ " answers")
         If $$$ISERR(tPortSC) Continue
         Set tHasRow = $IsObject(tAnswer) && tAnswer.%IsA("%Library.DynamicArray") && (tAnswer.%Size() > 0)
         Do $$$AssertTrue(tHasRow, tClass _ ": and answers at least one row to hold the declared fields to")

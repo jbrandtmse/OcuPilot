@@ -592,6 +592,8 @@ Method TestTheSslConfigurationsListIsDeniedToAPrincipalWithoutAdminSecure()
 /// <file>ui/tools/navigation-wire.test.mjs</file> and <file>ui/src/app/shell/rail-wire.spec.ts</file>
 /// carry it -- which is what makes those two hand-added fixtures a record of a live response rather
 /// than a hand-written string.</p>
+/// <p>Story 6.5 -- On-demand tasks and Upcoming tasks follow at positions 2 and 3, each denied on the
+/// same first pair.</p>
 /// <p>This principal holds neither of the screen's pairs, so it is the one that reads the
 /// <b>descriptor's</b> pair order; <class>OcuPilot.Test.WireSecurityRead</class>'s task principals
 /// each hold <code>%Admin_Task</code>, for which <code>%DB_IRISSYS:READ</code> is the first unheld
@@ -618,7 +620,7 @@ Method TestTheTaskScheduleIsDeniedToAPrincipalWithoutAdminTask()
             }
         }
     }
-    Do $$$AssertEquals(tScreens, "[{""route"":""tasks/schedule"",""labelKey"":""taskListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Task:USE""}]", "the tasks area lists its one built screen, denied on its first pair")
+    Do $$$AssertEquals(tScreens, "[{""route"":""tasks/schedule"",""labelKey"":""taskListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Task:USE""},{""route"":""tasks/on-demand"",""labelKey"":""taskOnDemandLabel"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%Admin_Task:USE""},{""route"":""tasks/upcoming"",""labelKey"":""taskUpcomingLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%Admin_Task:USE""}]", "the tasks area lists its three built screens in side-bar order, each denied on its first pair")
     Do $$$AssertEquals(tArea, "false:%Admin_Task:USE", "and the area itself is denied on the same pair")
 
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/tasks.schedule/read?maxRows=5", ..#ADMINUSER, ..PreparedPassword, .tStatus2, .tBody2, .tHeaders2)

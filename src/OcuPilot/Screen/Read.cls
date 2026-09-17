@@ -37,7 +37,13 @@
 /// <code>forEach</code> source lists a parent endpoint and then the read's own endpoint once per
 /// parent (<method>ForEachRows</method>), bounded by the cap on the rows held and by the cap plus one
 /// on the parents listed; and a declared field <code>&lt;object&gt;.&lt;member&gt;</code> projects one
-/// member of an object field (<method>CopyValue</method>).</p>
+/// member of an object field (<method>CopyValue</method>). Every other admin read issues its
+/// declared type, <code>LIST</code> or <code>UPCOMING</code>, under the same cap.</p>
+/// <p><b>A source may fix query parameters</b> (<code>source.query</code>, AD-36):
+/// <method>SeedSourceQuery</method> puts every entry into the read's <code>LIST</code> or
+/// <code>UPCOMING</code> call, a single-object <code>GET</code> and each per-parent child list, never
+/// into a per-parent read's parent list or a <code>rowGet</code> detail call, before the criteria, and the registry refuses a key a criterion or a caller could also send, so
+/// no caller changes or removes one.</p>
 /// <p>Each port is reached through its own class method alone (AD-2, AD-27, AD-29); a tool never
 /// touches <code>%session</code>, <code>%request</code> or <code>$NAMESPACE</code>, and neither
 /// does this.</p>
@@ -47,9 +53,13 @@ Class OcuPilot.Screen.Read Extends %RegisteredObject
 /// <p>The cap a read is bounded by when its caller names none.</p>
 Parameter DEFAULTMAXROWS As INTEGER = 1000;
 
-/// <p>The request type a read issues for its rows, and the one every source but an admin
-/// <code>GET</code> issues.</p>
+/// <p>The request type a <code>mgmnt</code> read and both lists of a per-parent read issue, and the
+/// one an admin source most often declares.</p>
 Parameter READTYPE = "LIST";
+
+/// <p>The list-shaped admin request type other than <parameter>READTYPE</parameter> a source may
+/// declare (AD-36): an endpoint's scheduled occurrences, issued as a list is.</p>
+Parameter UPCOMINGTYPE = "UPCOMING";
 
 /// <p>The request type a single-object read issues (AD-36): one named object of an admin endpoint,
 /// answered as the read's one row, and a 404 answered as none.</p>
@@ -186,7 +196,7 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
         Set tRead = $ClassMethod(pDescriptor, "Read")
         Set tSource = $Select($IsObject(tRead): tRead.%Get("source"), 1: "")
         Set tSourceType = $Select($IsObject(tSource): tSource.%Get("type"), 1: "")
-        If '$IsObject(tSource) || ((tSourceType '= ..#READTYPE) && ((tSourceType '= ..#OBJECTTYPE) || (tSource.%Get("port") '= ..#SOURCEADMIN))) {
+        If '$IsObject(tSource) || ((tSourceType '= ..#READTYPE) && (((tSourceType '= ..#OBJECTTYPE) && (tSourceType '= ..#UPCOMINGTYPE)) || (tSource.%Get("port") '= ..#SOURCEADMIN))) {
             Set tSC = ..Internal(pDescriptor _ " declares no read this executor can issue", .pHttpStatus, .pFault)
             Quit
         }
@@ -222,6 +232,7 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
             ; with no rows rather than a fault, because a singleton the instance has not configured
             ; is an empty screen, not a failed one.
             Kill tQuery
+            Do ..SeedSourceQuery(tSource, .tQuery)
             Set tPortSC = $ClassMethod(..PortClass(), "Invoke", tSource.%Get("endpoint"), ..#OBJECTTYPE, .tQuery, "", .tObject, .tHttp, .tFault)
             If $$$ISERR(tPortSC) {
                 If tHttp '= 404 {
@@ -242,13 +253,15 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
             Set tSC = ..ForEachRows(pDescriptor, tSource, tMax, .tAnswer, .tTruncated, .pHttpStatus, .pFault)
             If $$$ISERR(tSC) Quit
         } Else {
+            ; An admin LIST or UPCOMING: the declared type, the fixed query and then the criteria.
+            Do ..SeedSourceQuery(tSource, .tQuery)
             Set tQuery("maxRows") = tMax + 1
             Set tCriterionProblem = ..SeedCriteria(tRead, .pCriteria, .tQuery)
             If tCriterionProblem '= "" {
                 Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#READCRITERION, tCriterionProblem, .pHttpStatus, .pFault)
                 Quit
             }
-            Set tPortSC = $ClassMethod(..PortClass(), "Invoke", tSource.%Get("endpoint"), ..#READTYPE, .tQuery, "", .tAnswer, .pHttpStatus, .pFault)
+            Set tPortSC = $ClassMethod(..PortClass(), "Invoke", tSource.%Get("endpoint"), tSourceType, .tQuery, "", .tAnswer, .pHttpStatus, .pFault)
             If $$$ISERR(tPortSC) {
                 Set tSC = tPortSC
                 Quit
@@ -376,6 +389,7 @@ ClassMethod ForEachRows(pDescriptor As %String, pSource As %DynamicObject, pMax 
                 Quit
             }
             Kill tChildQuery
+            Do ..SeedSourceQuery(pSource, .tChildQuery)
             Set tChildQuery(tForEach.%Get("param")) = ..ValueText(tParent.%Get(tKeyField), tKeyType)
             Set tChildQuery("maxRows") = pMax + 1 - tHeld.%Size()
             Set tChildren = ""
@@ -442,6 +456,20 @@ ClassMethod CriteriaParams(pDescriptor As %String) As %List
         Set tParams = ""
     }
     Quit tParams
+}
+
+/// <p>Seed <var>pQuery</var> with every entry of <var>pSource</var>'s <code>query</code>, the
+/// parameters a declaration fixes (AD-36); nothing for a source that declares none. Called before any
+/// caller-supplied value is seeded, on every call of the read's own endpoint.</p>
+ClassMethod SeedSourceQuery(pSource As %DynamicObject, ByRef pQuery)
+{
+    If '$IsObject(pSource) Quit
+    Set tFixed = pSource.%Get("query")
+    If '$IsObject(tFixed) || 'tFixed.%IsA("%Library.DynamicObject") Quit
+    Set tIterator = tFixed.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tValue) {
+        Set pQuery(tKey) = tValue
+    }
 }
 
 /// <p>Seed <var>pQuery</var> with every declared criterion <var>pSupplied</var> carries a non-empty

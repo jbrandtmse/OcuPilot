@@ -104,6 +104,20 @@ const LIVE_PAYLOAD = {
           allowed: false,
           failedPair: '%Admin_Task:USE',
         },
+        {
+          route: 'tasks/on-demand',
+          labelKey: 'taskOnDemandLabel',
+          sideBarPosition: 2,
+          allowed: false,
+          failedPair: '%Admin_Task:USE',
+        },
+        {
+          route: 'tasks/upcoming',
+          labelKey: 'taskUpcomingLabel',
+          sideBarPosition: 3,
+          allowed: false,
+          failedPair: '%Admin_Task:USE',
+        },
       ],
     },
     {
@@ -319,6 +333,15 @@ describe('the rail, wired to the real NavigationService reading a live-captured 
       expect(item.hasAttribute('disabled')).toBe(false);
       const tip = fixture.nativeElement.querySelector(`#${item.getAttribute('aria-describedby')}`);
       expect(tip.textContent.trim()).toBe(`Requires ${pair}`);
+    }
+  });
+
+  it('Story 6.5: reads each Tasks screen verdict the live payload carries', () => {
+    // The same three entries OcuPilot.Test.Wire compares the live map to, each denied on the
+    // `%Admin_Task:USE` pair it declares first.
+    const navigation = TestBed.inject(NavigationService);
+    for (const route of ['tasks/schedule', 'tasks/on-demand', 'tasks/upcoming']) {
+      expect(navigation.screenVerdict(route)).toEqual({ allowed: false, failedPair: '%Admin_Task:USE' });
     }
   });
 

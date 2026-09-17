@@ -105,6 +105,20 @@ const LIVE_PAYLOAD = {
           allowed: false,
           failedPair: '%Admin_Task:USE',
         },
+        {
+          route: 'tasks/on-demand',
+          labelKey: 'taskOnDemandLabel',
+          sideBarPosition: 2,
+          allowed: false,
+          failedPair: '%Admin_Task:USE',
+        },
+        {
+          route: 'tasks/upcoming',
+          labelKey: 'taskUpcomingLabel',
+          sideBarPosition: 3,
+          allowed: false,
+          failedPair: '%Admin_Task:USE',
+        },
       ],
     },
     {
@@ -295,6 +309,10 @@ test('DW-132: the real NavigationService reads a live-captured payload the way O
     assert.deepEqual(service.screenVerdict(route), { allowed: false, failedPair: '%Admin_Secure:USE' }, route);
   }
   assert.deepEqual(service.screenVerdict('tasks/schedule'), { allowed: false, failedPair: '%Admin_Task:USE' });
+  // Story 6.5: On-demand and Upcoming tasks declare the task schedule's pairs in its order.
+  for (const route of ['tasks/on-demand', 'tasks/upcoming']) {
+    assert.deepEqual(service.screenVerdict(route), { allowed: false, failedPair: '%Admin_Task:USE' }, route);
+  }
   assert.deepEqual(service.screenVerdict('os-management/processes'), { allowed: false, failedPair: '%Admin_Manage:USE' });
   assert.deepEqual(service.screenVerdict('logs/audit'), { allowed: false, failedPair: '%Admin_Secure:USE' });
   // Story 2.12: the application error log declares `%Admin_Operate:USE` -- which this principal

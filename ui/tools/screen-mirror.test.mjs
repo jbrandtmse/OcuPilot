@@ -361,7 +361,7 @@ test('AD-36: the generator refuses a read outside the declared grammar, naming t
     [(d) => (d.read.sort.default = 'Enabled'), /read\.sort\.default 'Enabled'/],
     [(d) => (d.read.sort.direction = 'up'), /direction 'up'/],
     [(d) => (d.read.source.port = 'monitor'), /port 'monitor'/],
-    [(d) => (d.read.source.type = 'POST'), /type 'POST' is not 'LIST' or 'GET'/],
+    [(d) => (d.read.source.type = 'POST'), /type 'POST' is not 'LIST', 'GET' or 'UPCOMING'/],
     [(d) => (d.context.secretFields = ['Other']), /context\.secretFields names 'Other'/],
     [(d) => (d.read.secretFields = ['Secret']), /read declares the unknown key 'secretFields'/],
     [(d) => (d.read.source.maxRows = 5), /read\.source declares the unknown key 'maxRows'/],
@@ -429,11 +429,12 @@ test('readProblem returns every rowGet sentence OcuPilot.Test.RowGetCorpus decla
 
 // Story 6.4, AD-36: every case in `OcuPilot.Test.ReadSourceCorpus`, read off disk from the XData block
 // `OcuPilot.Test.ReadTool` reads through the class dictionary, gets its exact sentence or `null` from
-// `readProblem`: a source's LIST or GET type and its per-parent list.
+// `readProblem`: a source's LIST, GET or UPCOMING type, its per-parent list and its fixed query
+// (Story 6.5).
 //
 // Mutation (Rule 19): drop the `forEach` rowGet refusal from `forEachProblem` -> the "a parent list
 // beside a detail call" case goes red.
-test('readProblem returns every source-type and forEach sentence OcuPilot.Test.ReadSourceCorpus declares', () => {
+test('readProblem returns every source-type, forEach and query sentence OcuPilot.Test.ReadSourceCorpus declares', () => {
   const corpus = testCorpus(['Test', 'ReadSourceCorpus.cls'], 'Cases');
   assert.ok(corpus.cases.length > 0, `the corpus carries cases (read ${corpus.cases.length})`);
   let refusals = 0;
@@ -533,11 +534,17 @@ test('readProblem returns every admin-privilege sentence OcuPilot.Test.AdminPair
   assert.equal(declarationProblem(''), 'the declaration is not an object', 'and neither is a string');
 
   const { screens } = readSources();
-  for (const name of ['AuditList', 'ProcessList', 'SslConfigList', 'TaskScheduleList', 'UserList', 'WebAppList', 'RestApiList', 'OpenApiViewer', 'RoleList', 'ResourceList', 'ServiceList', 'X509CredentialList', 'LdapConfigList', 'WalletCollectionList', 'WalletSecretList', 'OAuthServerDescriptionTab', 'OAuthClientTab', 'OAuthResourceServerTab', 'OAuthServerTab', 'OAuthServerClientTab']) {
+  for (const name of ['AuditList', 'ProcessList', 'SslConfigList', 'TaskScheduleList', 'UserList', 'WebAppList', 'RestApiList', 'OpenApiViewer', 'RoleList', 'ResourceList', 'ServiceList', 'X509CredentialList', 'LdapConfigList', 'WalletCollectionList', 'WalletSecretList', 'OAuthServerDescriptionTab', 'OAuthClientTab', 'OAuthResourceServerTab', 'OAuthServerTab', 'OAuthServerClientTab', 'TaskOnDemandList', 'TaskUpcomingList']) {
     const screen = screens.find((candidate) => candidate.className === `OcuPilot.Screen.Descriptor.${name}`);
     assert.ok(screen !== undefined, `${name} is declared`);
     assert.equal(readProblem(screen.declaration), null, `${name}'s read passes`);
   }
+  // Story 6.5: the two source shapes the mirror carries -- the vendor's fixed onDemand and the
+  // UPCOMING request type.
+  const onDemand = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.TaskOnDemandList');
+  assert.deepEqual(onDemand.declaration.read.source, { port: 'admin', endpoint: 'Task.CRUD', type: 'LIST', query: { onDemand: '1' } });
+  const upcoming = screens.find((candidate) => candidate.className === 'OcuPilot.Screen.Descriptor.TaskUpcomingList');
+  assert.equal(upcoming.declaration.read.source.type, 'UPCOMING');
   // Story 2.12: a descriptor that declares NO read is a supported shape, and the generator has to
   // emit it rather than refuse it -- the declared-read pipeline is admin-port-only by two
   // independent hard-codings, so the application error log could not use it whatever port it
@@ -664,7 +671,12 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
   const withCriteria = emittedScreens.filter((screen) => (screen.read?.criteria ?? null) !== null);
   assert.deepEqual(
     withCriteria.map((screen) => screen.descriptor),
-    ['OcuPilot.Screen.Descriptor.AuditList', 'OcuPilot.Screen.Descriptor.OpenApiViewer', 'OcuPilot.Screen.Descriptor.WalletSecretList']
+    [
+      'OcuPilot.Screen.Descriptor.AuditList',
+      'OcuPilot.Screen.Descriptor.OpenApiViewer',
+      'OcuPilot.Screen.Descriptor.TaskUpcomingList',
+      'OcuPilot.Screen.Descriptor.WalletSecretList',
+    ]
   );
   const secrets = emittedScreens.find((screen) => screen.descriptor === 'OcuPilot.Screen.Descriptor.WalletSecretList');
   assert.equal(secrets.parentScope, 'security/wallet', 'the Secrets list declares its parent');

@@ -5,6 +5,9 @@
 /// child list per parent in order with the parent's fields copied in, skips a child 404, fails with
 /// any other child or parent-list fault, and reports truncation from the rows held and from the
 /// parent list.</p>
+/// <p>Over <class>OcuPilot.Test.ReadSource.Fixed</class> a declared <code>source.query</code> reaches
+/// the port whatever the caller supplies, and over <class>OcuPilot.Test.ReadSource.Upcoming</class> an
+/// <code>UPCOMING</code> source is issued as that type under the cap.</p>
 /// <p>Answers come from <class>OcuPilot.Test.ReadSource.Endpoint</class> through
 /// <class>OcuPilot.Test.PortFixture</class> and <class>OcuPilot.Test.Read.ReadFixture</class>, so
 /// nothing on the instance is read or changed. Needs <code>%Admin_Operate:U</code> or
@@ -17,6 +20,12 @@ Parameter OBJECT = "OcuPilot.Test.ReadSource.Object";
 
 /// <p>The fixture descriptor whose read lists children per parent.</p>
 Parameter CHILDREN = "OcuPilot.Test.ReadSource.Children";
+
+/// <p>The fixture descriptor whose LIST fixes <code>onDemand=1</code>.</p>
+Parameter FIXED = "OcuPilot.Test.ReadSource.Fixed";
+
+/// <p>The fixture descriptor whose read issues <code>UPCOMING</code>.</p>
+Parameter UPCOMING = "OcuPilot.Test.ReadSource.Upcoming";
 
 /// <p>The fixture endpoint.</p>
 Parameter ENDPOINT = "OcuPilot.Test.ReadSource.Endpoint";
@@ -254,6 +263,52 @@ Method TestAParentKeyIsANonEmptyStringOrANumber()
     Do $$$AssertStatusNotOK(tSC, "a parent with an empty key fails the read")
     Do $$$AssertEquals(tHttp3, 500, "as an internal fault")
     Do $$$AssertEquals(##class(OcuPilot.Test.ReadSource.Endpoint).Recorded("childMaxRows"), "", "and no child list is read for the empty key")
+}
+
+/// <p>Matrix row "Fixed param": a caller supplying <code>onDemand=0</code> beside the declared
+/// criterion <code>name</code> still sends <code>onDemand=1</code>, with the criterion and the cap
+/// plus one; and a read with no caller values sends it too.</p>
+/// <p>Mutation: skip <method>OcuPilot.Screen.Read.SeedSourceQuery</method> in
+/// <method>OcuPilot.Screen.Read.Execute</method> -&gt; both query assertions go red.</p>
+Method TestAFixedQueryParameterReachesThePortWhateverTheCallerSends()
+{
+    Do ##class(OcuPilot.Test.ReadSource.Endpoint).Arm("rows", [{"Name": "a"}].%ToJSON())
+    Kill tCriteria
+    Set tCriteria("onDemand") = "0"
+    Set tCriteria("name") = "a"
+    Set tSC = ##class(OcuPilot.Test.Read.ReadFixture).Execute(..#FIXED, 5, .tResult, .tHttp, .tFault, .tCriteria)
+    Do $$$AssertStatusOK(tSC, "the read succeeds")
+    Do $$$AssertEquals(tHttp, 200, "at 200")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ReadSource.Endpoint).Recorded("query"), "maxRows=6,name=a,onDemand=1", "the port receives onDemand=1, the declared criterion and the cap plus one")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ReadSource.Endpoint).Recorded("type"), 0, "as a LIST")
+    If $IsObject(tResult) Do $$$AssertEquals(tResult.rows.%ToJSON(), "[{""Name"":""a""}]", "and its rows")
+
+    Do ##class(OcuPilot.Test.ReadSource.Endpoint).Clear()
+    Kill tNone
+    Set tSC = ##class(OcuPilot.Test.Read.ReadFixture).Execute(..#FIXED, "", .tResult2, .tHttp2, .tFault2, .tNone)
+    Do $$$AssertStatusOK(tSC, "a read with no caller values succeeds")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ReadSource.Endpoint).Recorded("query"), "maxRows=1001,onDemand=1", "and still sends onDemand=1")
+}
+
+/// <p>An <code>UPCOMING</code> source is issued as that request type with its criterion and the cap
+/// plus one, answers its rows under the cap and reports truncation.</p>
+/// <p>Mutation: issue <parameter>OcuPilot.Screen.Read.READTYPE</parameter> for every admin read in
+/// <method>OcuPilot.Screen.Read.Execute</method> -&gt; the port answers 501 and the type assertion
+/// goes red.</p>
+Method TestAnUpcomingSourceIsIssuedAsItsOwnType()
+{
+    Do ##class(OcuPilot.Test.ReadSource.Endpoint).Arm("rows", [{"Id": 3, "Datetime": "2026-09-17 01:00:00"}, {"Id": 3, "Datetime": "2026-09-17 02:00:00"}].%ToJSON())
+    Kill tCriteria
+    Set tCriteria("hoursOffset") = "24"
+    Set tSC = ##class(OcuPilot.Test.Read.ReadFixture).Execute(..#UPCOMING, 1, .tResult, .tHttp, .tFault, .tCriteria)
+    Do $$$AssertStatusOK(tSC, "the read succeeds")
+    Do $$$AssertEquals(tHttp, 200, "at 200")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ReadSource.Endpoint).Recorded("type"), ##class(OcuPilot.Test.ReadSource.Endpoint).#TYPEUPCOMING, "issued as UPCOMING")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ReadSource.Endpoint).Recorded("query"), "hoursOffset=24,maxRows=2", "with its criterion and the cap plus one")
+    If $IsObject(tResult) {
+        Do $$$AssertEquals(tResult.rows.%ToJSON(), "[{""Id"":3,""Datetime"":""2026-09-17 01:00:00""}]", "the cap's one occurrence")
+        Do $$$AssertEquals(tResult.truncated, 1, "truncated")
+    }
 }
 
 }
