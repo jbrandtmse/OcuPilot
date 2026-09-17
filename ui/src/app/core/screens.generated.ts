@@ -2016,6 +2016,348 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.ProcessDetails",
+    "route": "os-management/processes/details",
+    "area": "os-management",
+    "labelKey": "processDetailsLabel",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": true,
+    "refreshRates": [
+      5,
+      10,
+      30,
+      60
+    ],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "process",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "os-management/processes",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Pid"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Pid",
+        "ParentPid",
+        "UserName",
+        "LoginRoles",
+        "EscalatedRoles",
+        "OSUserName",
+        "NameSpace",
+        "Priority",
+        "StartTimeUTC",
+        "CPUTime",
+        "CommandsExecuted",
+        "GlobalReferences",
+        "PrivateGlobalReferences",
+        "PrivateGlobalBlockCount",
+        "MemoryAllocated",
+        "MemoryPeak",
+        "MemoryUsed",
+        "CurrentDevice",
+        "OpenDevices",
+        "State",
+        "InTransaction",
+        "Routine",
+        "CurrentLineAndRoutine",
+        "Location",
+        "ClientNodeName",
+        "ClientExecutableName",
+        "ClientIPAddress"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "processDetailsGone",
+    "commandAliases": [
+      "process details"
+    ],
+    "classicPage": "%CSP.UI.Portal.ProcessDetails",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Process",
+        "type": "GET"
+      },
+      "fields": [
+        "Pid",
+        "ParentPid",
+        "UserName",
+        "LoginRoles",
+        "EscalatedRoles",
+        "OSUserName",
+        "NameSpace",
+        "Priority",
+        "StartTimeUTC",
+        "CPUTime",
+        "CommandsExecuted",
+        "GlobalReferences",
+        "PrivateGlobalReferences",
+        "PrivateGlobalBlockCount",
+        "MemoryAllocated",
+        "MemoryPeak",
+        "MemoryUsed",
+        "CurrentDevice",
+        "OpenDevices",
+        "State",
+        "InTransaction",
+        "Routine",
+        "CurrentLineAndRoutine",
+        "Location",
+        "ClientNodeName",
+        "ClientExecutableName",
+        "ClientIPAddress"
+      ],
+      "filter": [
+        "Pid",
+        "ParentPid",
+        "UserName",
+        "LoginRoles",
+        "EscalatedRoles",
+        "OSUserName",
+        "NameSpace",
+        "Priority",
+        "StartTimeUTC",
+        "CPUTime",
+        "CommandsExecuted",
+        "GlobalReferences",
+        "PrivateGlobalReferences",
+        "PrivateGlobalBlockCount",
+        "MemoryAllocated",
+        "MemoryPeak",
+        "MemoryUsed",
+        "CurrentDevice",
+        "OpenDevices",
+        "State",
+        "InTransaction",
+        "Routine",
+        "CurrentLineAndRoutine",
+        "Location",
+        "ClientNodeName",
+        "ClientExecutableName",
+        "ClientIPAddress"
+      ],
+      "sort": {
+        "fields": [
+          "Pid",
+          "ParentPid",
+          "UserName",
+          "LoginRoles",
+          "EscalatedRoles",
+          "OSUserName",
+          "NameSpace",
+          "Priority",
+          "StartTimeUTC",
+          "CPUTime",
+          "CommandsExecuted",
+          "GlobalReferences",
+          "PrivateGlobalReferences",
+          "PrivateGlobalBlockCount",
+          "MemoryAllocated",
+          "MemoryPeak",
+          "MemoryUsed",
+          "CurrentDevice",
+          "OpenDevices",
+          "State",
+          "InTransaction",
+          "Routine",
+          "CurrentLineAndRoutine",
+          "Location",
+          "ClientNodeName",
+          "ClientExecutableName",
+          "ClientIPAddress"
+        ],
+        "default": "Pid",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "pid",
+            "labelKey": "processColumnPid",
+            "kind": "text",
+            "maxLength": 10,
+            "vendorParam": "id"
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Pid",
+          "labelKey": "processColumnPid",
+          "kind": "name"
+        },
+        {
+          "field": "ParentPid",
+          "labelKey": "processDetailsParentPid",
+          "kind": "text"
+        },
+        {
+          "field": "UserName",
+          "labelKey": "processColumnUser",
+          "kind": "text"
+        },
+        {
+          "field": "LoginRoles",
+          "labelKey": "processDetailsLoginRoles",
+          "kind": "text"
+        },
+        {
+          "field": "EscalatedRoles",
+          "labelKey": "processDetailsEscalatedRoles",
+          "kind": "text"
+        },
+        {
+          "field": "OSUserName",
+          "labelKey": "processDetailsOsUser",
+          "kind": "text"
+        },
+        {
+          "field": "NameSpace",
+          "labelKey": "headerNamespaceLabel",
+          "kind": "text"
+        },
+        {
+          "field": "Priority",
+          "labelKey": "taskDetailsPriority",
+          "kind": "number"
+        },
+        {
+          "field": "StartTimeUTC",
+          "labelKey": "taskHistoryColumnStarted",
+          "kind": "text"
+        },
+        {
+          "field": "CPUTime",
+          "labelKey": "processDetailsCpuTime",
+          "kind": "number"
+        },
+        {
+          "field": "CommandsExecuted",
+          "labelKey": "processColumnCommands",
+          "kind": "number"
+        },
+        {
+          "field": "GlobalReferences",
+          "labelKey": "processDetailsGlobalReferences",
+          "kind": "number"
+        },
+        {
+          "field": "PrivateGlobalReferences",
+          "labelKey": "processDetailsPrivateGlobalReferences",
+          "kind": "number"
+        },
+        {
+          "field": "PrivateGlobalBlockCount",
+          "labelKey": "processDetailsPrivateGlobalBlocks",
+          "kind": "number"
+        },
+        {
+          "field": "MemoryAllocated",
+          "labelKey": "processDetailsMemoryLimit",
+          "kind": "number"
+        },
+        {
+          "field": "MemoryPeak",
+          "labelKey": "processDetailsMemoryPeak",
+          "kind": "number"
+        },
+        {
+          "field": "MemoryUsed",
+          "labelKey": "processDetailsMemoryUsed",
+          "kind": "number"
+        },
+        {
+          "field": "CurrentDevice",
+          "labelKey": "processDetailsCurrentDevice",
+          "kind": "text"
+        },
+        {
+          "field": "OpenDevices",
+          "labelKey": "processDetailsOpenDevices",
+          "kind": "text"
+        },
+        {
+          "field": "State",
+          "labelKey": "processColumnState",
+          "kind": "text"
+        },
+        {
+          "field": "InTransaction",
+          "labelKey": "processDetailsInTransaction",
+          "kind": "text"
+        },
+        {
+          "field": "Routine",
+          "labelKey": "processColumnRoutine",
+          "kind": "identifier"
+        },
+        {
+          "field": "CurrentLineAndRoutine",
+          "labelKey": "processDetailsSourceLocation",
+          "kind": "identifier"
+        },
+        {
+          "field": "Location",
+          "labelKey": "processDetailsLocation",
+          "kind": "text"
+        },
+        {
+          "field": "ClientNodeName",
+          "labelKey": "processDetailsClientName",
+          "kind": "text"
+        },
+        {
+          "field": "ClientExecutableName",
+          "labelKey": "processDetailsClientExecutable",
+          "kind": "text"
+        },
+        {
+          "field": "ClientIPAddress",
+          "labelKey": "processDetailsClientIpAddress",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "osmgmt.processdetails",
+    "banner": null,
+    "tab": null
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.ProcessList",
     "route": "os-management/processes",
     "area": "os-management",

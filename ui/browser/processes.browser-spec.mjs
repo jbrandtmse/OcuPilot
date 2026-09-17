@@ -13,6 +13,13 @@
  * `%Admin_Manage:USE` -- is proven over HTTP by `OcuPilot.Test.WireSecurityRead`, which creates the
  * principals; this spec creates none.
  *
+ * **Story 6.8** adds Process details: activating the write daemon's Pid cell (AC1), a cold deep
+ * link to the same route (AC2), a refresh tick leaving no skeleton behind (AC3, the highlight
+ * itself is `process-details.page.spec.ts`'s), and an exited process's pid read cold (AC4). AC5's
+ * denial is the same pair set as the list's own, so it is proven the same way, over HTTP, by
+ * `OcuPilot.Test.WireSecurityRead.TestTheProcessDetailsPairSetIsEnforcedForARealPrincipal` -- this
+ * spec creates no principal for it either.
+ *
  * **Nothing here asserts that the row set survives a tick.** This is the first list whose rows
  * change with no write behind them: processes start and end, and a browser run drives CSP worker
  * and SQL query processes into and out of the very list it is reading. AC3 therefore asserts the
@@ -42,6 +49,7 @@ const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'
 const config = browserConfig();
 const LIST_URL = '/ocupilot/os-management/processes?ns=HSCUSTOM';
 const READ_PATH = '/api/ocupilot/screens/osmgmt.processes/read';
+const PROCESS_DETAILS_READ_PATH = '/api/ocupilot/screens/osmgmt.processdetails/read';
 
 /**
  * The write daemon's routine name. IRIS starts it before anything signs in and it runs for the
@@ -114,8 +122,11 @@ after(async () => {
   if (browser !== null) await browser.close();
 });
 
-/** A fresh context signed in through the shell's own form at the list's deep link, reads counted. */
-async function signedInAtList(user, password) {
+/**
+ * A fresh context signed in through the shell's own form at `url`, the list's deep link unless
+ * named, reads counted.
+ */
+async function signedInAtList(user, password, url = LIST_URL) {
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
   page.setDefaultNavigationTimeout(config.navigationTimeoutMs);
@@ -123,7 +134,7 @@ async function signedInAtList(user, password) {
   page.on('request', (request) => {
     if (new URL(request.url()).pathname.startsWith('/api/ocupilot/screens/')) reads.push(request.url());
   });
-  await page.goto(`${config.origin}${LIST_URL}`, { waitUntil: 'networkidle2' });
+  await page.goto(`${config.origin}${url}`, { waitUntil: 'networkidle2' });
   await page.waitForSelector('#ocu-signin-user', { visible: true, timeout: config.navigationTimeoutMs });
   await page.type('#ocu-signin-user', user);
   await page.type('#ocu-signin-password', password);
@@ -131,7 +142,7 @@ async function signedInAtList(user, password) {
   await page.waitForSelector('app-rail .ocu-rail', { timeout: config.navigationTimeoutMs });
   // The first-login gate takes an administrator to the Definition form on an instance with no
   // enabled definition, whatever URL was asked for (Story 3.6). Back returns to this one.
-  await leaveFirstLoginGate(page, config.navigationTimeoutMs, LIST_URL);
+  await leaveFirstLoginGate(page, config.navigationTimeoutMs, url);
   return { context, page, reads };
 }
 
@@ -225,6 +236,19 @@ async function chooseSort(page, label) {
   );
   assert.equal(chosen, null, `the sort menu offers ${JSON.stringify(label)}; it offered ${JSON.stringify(chosen)}`);
   await page.waitForFunction((selector) => document.querySelector(selector) === null, {}, SORT_ITEM);
+}
+
+/** Every `.ocu-details-field` on Process details, keyed by its own label text. */
+function detailsFields(page) {
+  return page.evaluate(() => {
+    const out = {};
+    for (const field of document.querySelectorAll('.ocu-details-field')) {
+      const label = field.querySelector('.ocu-details-field-label')?.textContent?.trim();
+      const value = field.querySelector('.ocu-details-field-value')?.textContent?.trim();
+      if (label !== undefined) out[label] = value ?? '';
+    }
+    return out;
+  });
 }
 
 test('AC1: the list reads once under the declared headers, filters to a proper subset, and re-reads at a new max-rows cap', async () => {
@@ -537,6 +561,137 @@ test('AC4: a row paints its Process ID and Routine in the code face, its two cou
       )
     );
     assert.deepEqual(blanks, [], `every rendered cell carries a word: ${JSON.stringify(blanks)}`);
+  } finally {
+    await context.close();
+  }
+});
+
+test('Story 6.8 AC1: activating the write daemon\'s Pid cell opens Process details, showing its groups and identity', async () => {
+  const { context, page, reads } = await signedInAtList(config.username, config.password);
+  try {
+    await waitForRows(page, config.navigationTimeoutMs);
+    await clickRowCentre(page, { text: daemonPid, link: true });
+    await page.waitForFunction(
+      () => /^\/ocupilot\/os-management\/processes\/details\/[^/]+$/.test(window.location.pathname),
+      { timeout: config.navigationTimeoutMs }
+    );
+    await page.waitForSelector('.ocu-details-fields', { timeout: config.navigationTimeoutMs });
+
+    // Asserted before anything else touches the page: the load itself is exactly one
+    // osmgmt.processdetails read (AC1).
+    const detailsReads = reads.filter((url) => new URL(url).pathname === PROCESS_DETAILS_READ_PATH);
+    assert.equal(detailsReads.length, 1, `exactly one osmgmt.processdetails read: ${JSON.stringify(reads)}`);
+    const routeId = new URL(page.url()).pathname.split('/').pop();
+    assert.equal(routeId, daemonPid, 'the route id is the write daemon\'s own pid');
+    assert.equal(new URL(detailsReads[0]).searchParams.get('pid'), routeId, 'the read carries pid=<Pid>');
+
+    const headings = await page.$$eval('.ocu-details-heading', (nodes) => nodes.map((node) => node.textContent.trim()));
+    assert.deepEqual(
+      headings,
+      [STRINGS.processDetailsGroupGeneral, STRINGS.processDetailsGroupExecution, STRINGS.processDetailsGroupClientApplication],
+      'the three declared groups, in order'
+    );
+
+    const fields = await detailsFields(page);
+    assert.equal(fields[STRINGS.processColumnPid], daemonPid, 'Process ID is the write daemon\'s own pid');
+    assert.equal(fields[STRINGS.processColumnRoutine], DAEMON_ROUTINE, 'Routine is the write daemon\'s own routine');
+    assert.notEqual(fields[STRINGS.processDetailsOpenDevices], undefined, 'Open devices carries text');
+    assert.notEqual(fields[STRINGS.processDetailsOpenDevices], '', 'and it is not blank');
+
+    // The locator bar's screen segment links back to Processes (DW-142's shape, Story 6.7's
+    // precedent).
+    const segment = await page.evaluate((label) => {
+      const links = Array.from(document.querySelectorAll('app-locator-bar .ocu-locator-link'));
+      const link = links.find((candidate) => candidate.textContent.trim() === label);
+      return link === undefined ? null : link.textContent.trim();
+    }, STRINGS.processDetailsLabel);
+    assert.equal(segment, STRINGS.processDetailsLabel, "the locator bar's screen segment is a link, labelled Process details");
+  } finally {
+    await context.close();
+  }
+});
+
+test('Story 6.8 AC2: a cold deep link to Process details shows the write daemon, and the locator bar\'s screen segment returns to Processes', async () => {
+  const detailsUrl = `/ocupilot/os-management/processes/details/${daemonPid}?ns=HSCUSTOM`;
+  const { context, page, reads } = await signedInAtList(config.username, config.password, detailsUrl);
+  try {
+    await page.waitForSelector('.ocu-details-fields', { timeout: config.navigationTimeoutMs });
+
+    const detailsReads = reads.filter((url) => new URL(url).pathname === PROCESS_DETAILS_READ_PATH);
+    assert.ok(detailsReads.length >= 1, `the cold load reads osmgmt.processdetails: ${JSON.stringify(reads)}`);
+    assert.equal(new URL(detailsReads[0]).searchParams.get('pid'), daemonPid, 'keyed by the route id');
+    const fields = await detailsFields(page);
+    assert.equal(fields[STRINGS.processColumnPid], daemonPid, 'the same process is shown');
+
+    const segment = await page.evaluate((label) => {
+      const links = Array.from(document.querySelectorAll('app-locator-bar .ocu-locator-link'));
+      const link = links.find((candidate) => candidate.textContent.trim() === label);
+      return link === undefined ? null : link.textContent.trim();
+    }, STRINGS.processDetailsLabel);
+    assert.equal(segment, STRINGS.processDetailsLabel, "the locator bar's screen segment is a link, labelled Process details");
+    await page.evaluate((label) => {
+      const links = Array.from(document.querySelectorAll('app-locator-bar .ocu-locator-link'));
+      links.find((candidate) => candidate.textContent.trim() === label).click();
+    }, STRINGS.processDetailsLabel);
+    await page.waitForFunction(
+      () => window.location.pathname === '/ocupilot/os-management/processes',
+      { timeout: config.navigationTimeoutMs }
+    );
+    assert.equal(new URL(page.url()).pathname, '/ocupilot/os-management/processes', 'and it leads back to Processes');
+  } finally {
+    await context.close();
+  }
+});
+
+test('Story 6.8 AC3: an auto-refresh tick on Process details re-reads with no skeleton', async () => {
+  const { context, page, reads } = await signedInAtList(config.username, config.password);
+  try {
+    await waitForRows(page, config.navigationTimeoutMs);
+    await clickRowCentre(page, { text: daemonPid, link: true });
+    await page.waitForFunction(
+      () => /^\/ocupilot\/os-management\/processes\/details\/[^/]+$/.test(window.location.pathname),
+      { timeout: config.navigationTimeoutMs }
+    );
+    await page.waitForSelector('.ocu-details-fields', { timeout: config.navigationTimeoutMs });
+
+    const chip = await page.$('.ocu-command-bar-refresh');
+    assert.ok(chip !== null, 'Process details carries the auto-refresh chip too');
+    const readsBefore = reads.filter((url) => new URL(url).pathname === PROCESS_DETAILS_READ_PATH).length;
+    await chip.click();
+    await page.waitForFunction(
+      () => document.querySelector('.ocu-command-bar-refresh').textContent.trim() === 'Auto-refresh: every 5 s',
+      { timeout: config.navigationTimeoutMs }
+    );
+
+    const deadline = Date.now() + config.navigationTimeoutMs;
+    while (
+      reads.filter((url) => new URL(url).pathname === PROCESS_DETAILS_READ_PATH).length <= readsBefore &&
+      Date.now() < deadline
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+    assert.ok(
+      reads.filter((url) => new URL(url).pathname === PROCESS_DETAILS_READ_PATH).length > readsBefore,
+      'the tick issued a further osmgmt.processdetails read'
+    );
+    assert.equal(await page.$('.ocu-data-table-skeleton'), null, 'no skeleton is shown on a re-fetch');
+    assert.equal(await page.$('[aria-busy="true"]'), null, 'and nothing is marked busy');
+  } finally {
+    await context.close();
+  }
+});
+
+test('Story 6.8 AC4: a cold deep link to an exited pid shows "This process no longer exists."', async () => {
+  const goneUrl = '/ocupilot/os-management/processes/details/999999999?ns=HSCUSTOM';
+  const { context, page } = await signedInAtList(config.username, config.password, goneUrl);
+  try {
+    await page.waitForFunction(
+      (sentence) => document.body.textContent.includes(sentence),
+      { timeout: config.navigationTimeoutMs },
+      STRINGS.processDetailsGone
+    );
+    assert.equal(await page.$('.ocu-data-table-skeleton'), null, 'no skeleton is left showing');
+    assert.equal(await page.$('[role="alert"]'), null, 'and this is not read as a refusal');
   } finally {
     await context.close();
   }

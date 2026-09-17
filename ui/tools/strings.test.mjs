@@ -322,7 +322,10 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   // row carries 38: eleven Task details field and chrome labels, ten TimePeriod/DailyFrequency
   // phrase templates, five DailyFrequencyTime phrase templates, seven weekday names and five
   // ordinals -- the schedule-in-words vocabulary AD-3 has the client compose rather than take from
-  // the vendor -- and takes the table past 350, so the bound moves to 400.
+  // the vendor -- and takes the table past 350, so the bound moves to 400. Story 6.8's one row
+  // carries 24: the screen title, the "no longer exists" empty state, three group headings and
+  // nineteen field labels beyond the shared Process ID, User, Namespace, Priority, Routine, State,
+  // Commands and "Started" -- and takes the table to 399, still inside the 400 bound Story 6.7 set.
   assert.ok(
     expectedLiterals.length >= 150 && expectedLiterals.length <= 400,
     `expected between 150 and 400 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`

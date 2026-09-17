@@ -18,9 +18,10 @@ import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
 import { createScreenRead } from '../../core/screen-read';
 import { ScreenStores, type ScreenStore } from '../../core/screen-store';
 import { cellView, fieldOf, rowKey } from '../../core/table-model';
+import { DetailHighlights } from '../../core/detail-highlights';
 import type { ScreenDeclaration, TableColumn } from '../../core/screens.generated';
 import { STRINGS, stringFor } from '../../core/strings';
-import { nextRunText, scheduleWords, TaskDetailsHighlights, type ScheduleWords } from './details.store';
+import { nextRunText, scheduleWords, type ScheduleWords } from './details.store';
 
 /** The screen this page renders and the store its fields read. */
 interface DetailsView {
@@ -47,7 +48,7 @@ interface FieldView {
  * refused" with Retry above them (the same sentence and control `DataTable` gives a list); zero
  * rows -- a deleted or unrecognized id, answered as a 404 the port reads as none (AD-37) -- show
  * "This task no longer exists." instead of the fields. A silent tick highlights each field whose
- * value changed (EXPERIENCE.md "Highlight."), tracked by `TaskDetailsHighlights` rather than by
+ * value changed (EXPERIENCE.md "Highlight."), tracked by `DetailHighlights` rather than by
  * `ScreenStore.changed()`, which marks whole rows.
  *
  * **Edit task is absent until Epic 9 builds it**: found by the existing `<list>/edit` pairing on
@@ -136,7 +137,7 @@ export class TaskDetailsPage {
 
   private readonly view: DetailsView | null;
 
-  private readonly highlights: TaskDetailsHighlights;
+  private readonly highlights: DetailHighlights;
 
   /** Bumped by the store, so the fields re-render under `OnPush`. */
   private readonly generation = signal(0);
@@ -145,12 +146,12 @@ export class TaskDetailsPage {
     const screen = this.navigation.screenForUrl(this.router.url);
     if (screen === null || screen.read === null || screen.table === null) {
       this.view = null;
-      this.highlights = new TaskDetailsHighlights();
+      this.highlights = new DetailHighlights();
       return;
     }
     const store = this.stores.for(screen.descriptor, screen.refreshRates);
     this.view = { screen, store };
-    this.highlights = new TaskDetailsHighlights();
+    this.highlights = new DetailHighlights();
     store.clearAnswers();
 
     const criteria = () => parentCriteria(screen, this.router.url);

@@ -4,9 +4,9 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 // Pins Task details' own state (`areas/tasks/details.store.ts`, Story 6.7): the schedule-in-words
-// vocabulary AD-3 has the client compose from GET's own display values, and the field-level
-// highlight a silent tick raises, tracked apart from `ScreenStore.changed()`, which marks whole
-// rows.
+// vocabulary AD-3 has the client compose from GET's own display values. The field-level highlight
+// a silent tick raises moved to `core/detail-highlights.ts` as `DetailHighlights` (Story 6.8),
+// pinned by `ui/tools/detail-highlights.test.mjs` instead.
 //
 // Mutations (Rule 19):
 // - drop the `every > 1` branch from `oftenText`'s `Daily` case -> the "Every {n} days" case goes
@@ -17,9 +17,6 @@ import { dirname, join } from 'node:path';
 //   naming the wrong ordinal and weekday.
 // - drop the `suspended === true` check from `nextRunText` -> the suspended case goes red, reading
 //   the stale `NextScheduled` text instead of the sentence.
-// - make `TaskDetailsHighlights.update` compare `row` with itself instead of the held
-//   `previousRow` -> the second update highlights nothing and the `['Description']` assertion goes
-//   red.
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const store = await import(join(uiRoot, 'src', 'app', 'areas', 'tasks', 'details.store.ts'));
@@ -115,22 +112,3 @@ test('nextRunText falls back to the shared empty-value marker for a not-suspende
   assert.equal(store.nextRunText(row({ Suspended: false, NextScheduled: '' })), '(none)');
 });
 
-test('TaskDetailsHighlights: the first update highlights nothing, a later one highlights only the changed field, and reset forgets it', () => {
-  const highlights = new store.TaskDetailsHighlights();
-  const fields = ['Name', 'Description', 'Suspended'];
-  const first = { Name: 'A', Description: 'first', Suspended: false };
-  highlights.update(first, fields);
-  assert.deepEqual([...highlights.changed()], [], 'nothing to compare against yet');
-
-  const second = { Name: 'A', Description: 'second', Suspended: false };
-  highlights.update(second, fields);
-  assert.deepEqual([...highlights.changed()], ['Description'], 'only the field whose value changed');
-
-  const third = { Name: 'A', Description: 'second', Suspended: false };
-  highlights.update(third, fields);
-  assert.deepEqual([...highlights.changed()], ['Description'], 'a tick that changes nothing keeps the highlight (EXPERIENCE.md "Highlight.")');
-
-  highlights.reset();
-  highlights.update({ Name: 'B', Description: 'brand new task', Suspended: true }, fields);
-  assert.deepEqual([...highlights.changed()], [], 'a fresh task after reset is not a change from the last one');
-});

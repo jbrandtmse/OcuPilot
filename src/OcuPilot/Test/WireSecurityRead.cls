@@ -494,17 +494,17 @@ Method TestTheProcessesListsPairSetIsEnforcedForARealPrincipal()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the eleven principals' pairs")
 
-    Do $$$AssertEquals(..ScreensFor(..#OPERATEUSER, "os-management"), "[{""route"":""os-management/processes"",""labelKey"":""processListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}]", "%Admin_Operate and the database read: the processes list is denied on %Admin_Manage:USE")
+    Do $$$AssertEquals(..ScreensFor(..#OPERATEUSER, "os-management"), "[{""route"":""os-management/processes/details"",""labelKey"":""processDetailsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/processes"",""labelKey"":""processListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}]", "%Admin_Operate and the database read: Process details and the processes list are both denied on %Admin_Manage:USE, since Story 6.8 declares the same three pairs in the same order")
     Do $$$AssertEquals(..AreaVerdictFor(..#OPERATEUSER, "os-management"), "false:%Admin_Manage:USE", "and so is the OS management area")
     Do ..AssertReadRefused(..#OPERATEUSER, "osmgmt.processes", "%Admin_Manage:USE")
 
     ; The pair ORDER, read by a principal holding neither administrative resource: %Admin_Operate:USE
     ; is declared first, so it is the pair the gate names. A descriptor that declared the first two
     ; the other way round would name %Admin_Manage:USE here, and nothing else in this class would move.
-    Do $$$AssertEquals(..ScreensFor(..#SECUREUSER, "os-management"), "[{""route"":""os-management/processes"",""labelKey"":""processListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Operate:USE""}]", "a principal holding neither administrative resource is denied on the first pair declared")
+    Do $$$AssertEquals(..ScreensFor(..#SECUREUSER, "os-management"), "[{""route"":""os-management/processes/details"",""labelKey"":""processDetailsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""os-management/processes"",""labelKey"":""processListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Operate:USE""}]", "a principal holding neither administrative resource is denied on the first pair declared, on both screens")
     Do $$$AssertEquals(..AreaVerdictFor(..#SECUREUSER, "os-management"), "false:%Admin_Operate:USE", "and so is the area, which declares them in the same order")
 
-    Do $$$AssertEquals(..ScreensFor(..#PROCESSUSER, "os-management"), "[{""route"":""os-management/processes"",""labelKey"":""processListLabel"",""sideBarPosition"":1,""allowed"":true}]", "all three pairs: the processes list is listed allowed")
+    Do $$$AssertEquals(..ScreensFor(..#PROCESSUSER, "os-management"), "[{""route"":""os-management/processes/details"",""labelKey"":""processDetailsLabel"",""sideBarPosition"":0,""allowed"":true},{""route"":""os-management/processes"",""labelKey"":""processListLabel"",""sideBarPosition"":1,""allowed"":true}]", "all three pairs: Process details and the processes list are both listed allowed")
     Do $$$AssertEquals(..AreaVerdictFor(..#PROCESSUSER, "os-management"), "true", "and so is the OS management area")
 
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/osmgmt.processes/read?maxRows=1000", ..#PROCESSUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
@@ -545,6 +545,33 @@ Method TestTheProcessesListsPairSetIsEnforcedForARealPrincipal()
     ; value because an absent key reads back as "" too, so the value alone cannot tell the two apart.
     Do $$$AssertEquals(tAnswer.%GetTypeOf("banner"), "string", "the answer carries a banner key rather than omitting it")
     Do $$$AssertEquals(tAnswer.banner, "", "and the screen declares no banner, so none is raised")
+}
+
+/// <p>Story 6.8, Matrix "Pairs" -- Process details declares the processes list's own three-pair
+/// set, proved with the same real principals: <parameter>OPERATEUSER</parameter> (holding
+/// <code>%Admin_Operate:USE</code> and <code>%DB_IRISSYS:READ</code>, not
+/// <code>%Admin_Manage:USE</code>) is refused naming <code>%Admin_Manage:USE</code>, and
+/// <parameter>PROCESSUSER</parameter> (holding exactly the three) reads 200 with one row for this
+/// test process's own <code>$Job</code> -- a real, live process on this instance for the length of
+/// the request -- which is AD-29's real-principal confirmation for the screen's own pair set.</p>
+/// <p>Mutation: remove <code>%DB_IRISSYS:READ</code> from
+/// <class>OcuPilot.Screen.Descriptor.ProcessDetails</class> -&gt; the registry refuses to validate
+/// the roster, naming that descriptor's missing pair, before any read is served.</p>
+Method TestTheProcessDetailsPairSetIsEnforcedForARealPrincipal()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the eleven principals' pairs")
+    Set tPid = $Job
+
+    Do ..AssertReadRefused(..#OPERATEUSER, "osmgmt.processdetails", "%Admin_Manage:USE", "&pid=" _ tPid)
+
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/osmgmt.processdetails/read?maxRows=5&pid=" _ tPid, ..#PROCESSUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the process details read completes")
+    Do $$$AssertEquals(tStatus, 200, "and answers")
+    If tStatus '= 200 Quit
+    Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tAnswer.rows.%Size(), 1, "exactly one row, for this test process's own live pid")
+    If tAnswer.rows.%Size() '= 1 Quit
+    Do $$$AssertEquals(tAnswer.rows.%Get(0).Pid, tPid, "naming this test process's own Pid")
 }
 
 /// <p>AC6 -- <code>%Admin_Secure:USE</code> alone: the security lists -- users, roles, resources,

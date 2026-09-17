@@ -13,6 +13,7 @@ import { ActivatedRoute } from '@angular/router';
 
 import { DefinitionFormPage } from '../areas/agent/definition-form.page';
 import { SwitchesPage } from '../areas/agent/switches.page';
+import { ProcessDetailsPage } from '../areas/os-management/process-details.page';
 import { TaskDetailsPage } from '../areas/tasks/details.page';
 import { HistoryPage } from '../areas/tasks/history.page';
 import { UpcomingPage } from '../areas/tasks/upcoming.page';
@@ -80,6 +81,7 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.TaskUpcomingList': UpcomingPage,
   'OcuPilot.Screen.Descriptor.TaskHistoryList': HistoryPage,
   'OcuPilot.Screen.Descriptor.TaskDetails': TaskDetailsPage,
+  'OcuPilot.Screen.Descriptor.ProcessDetails': ProcessDetailsPage,
 };
 
 /**

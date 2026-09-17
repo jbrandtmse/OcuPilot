@@ -672,7 +672,7 @@ Method TestTheProcessesListIsDeniedToAPrincipalWithoutAdminManage()
             }
         }
     }
-    Do $$$AssertEquals(tScreens, "[{""route"":""os-management/processes"",""labelKey"":""processListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}]", "the os-management area lists its one built screen, denied on the first pair this principal lacks")
+    Do $$$AssertEquals(tScreens, "[{""route"":""os-management/processes/details"",""labelKey"":""processDetailsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Manage:USE""},{""route"":""os-management/processes"",""labelKey"":""processListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Manage:USE""}]", "the os-management area lists its two built screens (the unlisted process details first), each denied on the first pair this principal lacks")
     Do $$$AssertEquals(tArea, "false:%Admin_Manage:USE", "and the area itself is denied on the same pair")
 
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/osmgmt.processes/read?maxRows=5", ..#ADMINUSER, ..PreparedPassword, .tStatus2, .tBody2, .tHeaders2)

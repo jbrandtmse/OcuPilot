@@ -128,6 +128,7 @@ test('a side bar lists only built screens, in side-bar order', () => {
       '',
       'logs/errors',
       'logs/audit',
+      'os-management/processes/details',
       'os-management/processes',
       'tasks/schedule/details',
       'tasks/schedule/history',
@@ -156,7 +157,7 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'agent/definitions',
       'agent/switches',
     ],
-    'the built screens are Home, at the application root, then the application error log and the audit database, processes, the unlisted task details and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, users, roles, resources, services, OpenAPI document viewer, web applications, REST API explorer, the four unlisted OAuth 2.0 tabs, Secrets, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, and the Agent co-pilot area\'s Definition form, Definitions list and Switches, in area rail order'
+    'the built screens are Home, at the application root, then the application error log and the audit database, the unlisted process details, processes, the unlisted task details and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, users, roles, resources, services, OpenAPI document viewer, web applications, REST API explorer, the four unlisted OAuth 2.0 tabs, Secrets, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, and the Agent co-pilot area\'s Definition form, Definitions list and Switches, in area rail order'
   );
 });
 
@@ -341,6 +342,16 @@ test('detailScreenFor pairs Task schedule with Task details, childListFor still 
   assert.equal(detailScreenFor(taskRun), null, 'History is not itself a detail screen');
   assert.equal(details.archetype, 'detail', 'Task details is the detail archetype');
   assert.equal(details.tab, null, 'and declares no tab');
+});
+
+// Story 6.8: the same pairing for the processes list and Process details.
+test('detailScreenFor pairs Processes with Process details', () => {
+  const processes = screenForRoute('os-management/processes');
+  const details = screenForRoute('os-management/processes/details');
+  assert.ok(processes && details, 'both screens are declared');
+  assert.equal(detailScreenFor(processes)?.route, 'os-management/processes/details', "Processes' detail screen is Process details");
+  assert.equal(parentListFor(details)?.route, 'os-management/processes', 'Process details names Processes as its parent');
+  assert.equal(details.archetype, 'detail', 'Process details is the detail archetype');
 });
 
 // Story 6.4, AD-5: a tabbed screen is one descriptor per tab. `tabMembersFor` reads the group's built

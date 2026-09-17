@@ -732,16 +732,18 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
     'and it overrides one of them'
   );
   // Every other shipped screen declares none but the OpenAPI document viewer, whose one criterion
-  // names the application its document is read for; Task details, Task history (all) and Task
-  // history (one task), whose criteria are Story 6.7's and 6.6's; Upcoming tasks, whose two
-  // criteria are the horizon; and the Secrets list, whose one criterion is its parent collection,
-  // filled from the route id (Story 6.3).
+  // names the application its document is read for; Process details, whose one criterion is
+  // Story 6.8's route-id pid; Task details, Task history (all) and Task history (one task), whose
+  // criteria are Story 6.7's and 6.6's; Upcoming tasks, whose two criteria are the horizon; and the
+  // Secrets list, whose one criterion is its parent collection, filled from the route id
+  // (Story 6.3).
   const withCriteria = emittedScreens.filter((screen) => (screen.read?.criteria ?? null) !== null);
   assert.deepEqual(
     withCriteria.map((screen) => screen.descriptor),
     [
       'OcuPilot.Screen.Descriptor.AuditList',
       'OcuPilot.Screen.Descriptor.OpenApiViewer',
+      'OcuPilot.Screen.Descriptor.ProcessDetails',
       'OcuPilot.Screen.Descriptor.TaskDetails',
       'OcuPilot.Screen.Descriptor.TaskHistoryList',
       'OcuPilot.Screen.Descriptor.TaskRunList',

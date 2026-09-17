@@ -81,6 +81,13 @@ const LIVE_PAYLOAD = {
       failedPair: '%Admin_Manage:USE',
       screens: [
         {
+          route: 'os-management/processes/details',
+          labelKey: 'processDetailsLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
           route: 'os-management/processes',
           labelKey: 'processListLabel',
           sideBarPosition: 1,

@@ -317,13 +317,16 @@ Method TestThePayloadCarriesEveryAreaWithAVerdict()
 
     ; OS management is the area Story 2.9 gave its first screen to, so it is the one that proves
     ; the screen half follows the roster rather than a fixed list: it answered an empty array
-    ; through Epic 1 and four stories of Epic 2, and answers an entry now.
+    ; through Epic 1 and four stories of Epic 2, and answers two entries now -- Story 6.8's
+    ; unlisted Process details sorts first at sideBarPosition 0, ahead of the processes list.
     Set tOsMgmt = ##class(OcuPilot.Test.Descriptor).AreaEntry(tObject.areas, "os-management")
     Do $$$AssertTrue($IsObject(tOsMgmt), "the payload carries the os-management area")
     If $IsObject(tOsMgmt) {
-        Do $$$AssertEquals(tOsMgmt.screens.%Size(), 1, "which now carries its one built screen")
-        Do $$$AssertEquals(tOsMgmt.screens.%Get(0).route, "os-management/processes", "the processes list")
-        Do $$$AssertEquals(tOsMgmt.screens.%Get(0).labelKey, "processListLabel", "under its own label key")
+        Do $$$AssertEquals(tOsMgmt.screens.%Size(), 2, "which now carries its two built screens")
+        Do $$$AssertEquals(tOsMgmt.screens.%Get(0).route, "os-management/processes/details", "the unlisted process details")
+        Do $$$AssertEquals(tOsMgmt.screens.%Get(0).labelKey, "processDetailsLabel", "under its own label key")
+        Do $$$AssertEquals(tOsMgmt.screens.%Get(1).route, "os-management/processes", "then the processes list")
+        Do $$$AssertEquals(tOsMgmt.screens.%Get(1).labelKey, "processListLabel", "under its own label key")
     }
 }
 

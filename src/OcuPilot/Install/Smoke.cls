@@ -129,6 +129,10 @@ Parameter TASKHISTORYTOOL = "tasks.history";
 /// issues, keyed by the task schedule's own first row (Story 6.7).</p>
 Parameter TASKDETAILSTOOL = "tasks.taskdetails";
 
+/// <p>The tool identifier of Process details, whose screen read the <code>processdetails</code>
+/// check issues, keyed by the processes list's own first row (Story 6.8).</p>
+Parameter PROCESSDETAILSTOOL = "osmgmt.processdetails";
+
 /// <p>The console-log page's path under the API application, and the window the
 /// <code>messageslog</code> check asks for. Small: the check is that the endpoint serves the
 /// instance's own log, not that it serves much of it.</p>
@@ -164,6 +168,7 @@ ClassMethod Run(pUsername As %String = "", pPassword As %String = "", pDemo As %
         Do ..CheckApiReads(.tChecks, tAccessToken)
         Do ..CheckAreaLists(.tChecks, tAccessToken, pDemo)
         Do ..CheckTaskDetails(.tChecks, tAccessToken)
+        Do ..CheckProcessDetails(.tChecks, tAccessToken)
         Do ..CheckMessagesLog(.tChecks, tAccessToken)
         Do ..CheckApplicationErrors(.tChecks, tAccessToken)
     } Catch ex {
@@ -686,6 +691,77 @@ ClassMethod CheckTaskDetails(ByRef pChecks, pAccessToken As %String) [ Private ]
         Quit
     }
     Do ..Note(.pChecks, "taskdetails", "pass")
+}
+
+/// <p>Process details (<code>processdetails</code>, Story 6.8): the processes list's own first row
+/// supplies the <code>pid</code> its parent-scoped read requires, so this check reads
+/// <parameter>PROCESSLISTTOOL</parameter> again at <code>maxRows=1</code> to find one, needing the
+/// same pairs <code>processes</code> already checked, and then reads
+/// <parameter>PROCESSDETAILSTOOL</parameter> for that pid, expecting exactly one row that names
+/// that <code>Pid</code>. Skipped, like <method>CheckMessagesLog</method>, when no token was
+/// minted; failed, naming why, when the extracted <code>pid</code> is empty -- no row, or a row
+/// with no <code>Pid</code> key -- to key the second read by. A live instance always has at
+/// least one process (this one), so that is a real failure.</p>
+ClassMethod CheckProcessDetails(ByRef pChecks, pAccessToken As %String) [ Private ]
+{
+    Set tBase = ..RosterPath("api")
+    If tBase = "" {
+        Do ..Note(.pChecks, "processdetails", "fail", "the roster on this instance declares no API path, so there was nothing to read")
+        Quit
+    }
+    If pAccessToken = "" {
+        Do ..Note(.pChecks, "processdetails", "skipped", "no token pair was minted by this run, so the authenticated read was not attempted")
+        Quit
+    }
+    Set tListPath = tBase _ "/screens/" _ ..#PROCESSLISTTOOL _ "/read?maxRows=1"
+    Set tSC = ..Request("GET", tListPath, "Bearer " _ pAccessToken, "", .tListStatus, .tListText)
+    If $$$ISERR(tSC) {
+        Do ..Note(.pChecks, "processdetails", "fail", "the processes list could not be reached to find a pid: " _ $System.Status.GetErrorText(tSC))
+        Quit
+    }
+    If tListStatus '= 200 {
+        Do ..Note(.pChecks, "processdetails", "fail", "GET " _ tListPath _ " answered HTTP " _ tListStatus)
+        Quit
+    }
+    Set tPid = ""
+    Try {
+        Set tRows = ##class(%DynamicAbstractObject).%FromJSON(tListText).%Get("rows")
+        If $IsObject(tRows) && tRows.%IsA("%Library.DynamicArray") && (tRows.%Size() > 0) Set tPid = tRows.%Get(0).%Get("Pid")
+    } Catch {
+        Set tPid = ""
+    }
+    If tPid = "" {
+        Do ..Note(.pChecks, "processdetails", "fail", "the processes list answered no row to read a pid from")
+        Quit
+    }
+    Set tPath = tBase _ "/screens/" _ ..#PROCESSDETAILSTOOL _ "/read?maxRows=1&pid=" _ tPid
+    Set tSC = ..Request("GET", tPath, "Bearer " _ pAccessToken, "", .tStatus, .tText)
+    If $$$ISERR(tSC) {
+        Do ..Note(.pChecks, "processdetails", "fail", "the read could not be reached: " _ $System.Status.GetErrorText(tSC))
+        Quit
+    }
+    If tStatus '= 200 {
+        Do ..Note(.pChecks, "processdetails", "fail", "GET " _ tPath _ " answered HTTP " _ tStatus)
+        Quit
+    }
+    Set tCount = -1
+    Set tSamePid = 0
+    Try {
+        Set tRows = ##class(%DynamicAbstractObject).%FromJSON(tText).%Get("rows")
+        If $IsObject(tRows) && tRows.%IsA("%Library.DynamicArray") Set tCount = tRows.%Size()
+        If tCount = 1 Set tSamePid = (tRows.%Get(0).%Get("Pid") = tPid)
+    } Catch {
+        Set tCount = -1
+    }
+    If tCount '= 1 {
+        Do ..Note(.pChecks, "processdetails", "fail", "GET " _ tPath _ " answered 200 without a rows array of exactly one row")
+        Quit
+    }
+    If 'tSamePid {
+        Do ..Note(.pChecks, "processdetails", "fail", "GET " _ tPath _ " answered a row that is not process " _ tPid _ "'s details")
+        Quit
+    }
+    Do ..Note(.pChecks, "processdetails", "pass")
 }
 
 /// <p>The console-log page, read with the minted access token: one bounded page of the instance's

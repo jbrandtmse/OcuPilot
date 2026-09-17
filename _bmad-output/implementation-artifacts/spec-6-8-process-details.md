@@ -2,8 +2,8 @@
 title: 'Process details'
 type: 'feature'
 created: '2026-09-17'
-status: 'ready-for-dev'
-baseline_revision: 'd1a3340cf5a197c9f215b02d26d835475f9e0260'
+status: 'in-review'
+baseline_revision: 'c75bf657633ccfbf916cddff73f79a448f4af7fa'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -116,6 +116,27 @@ Reads are `GET /api/ocupilot/screens/osmgmt.processdetails/read`. A stable pid: 
 - 2026-09-17 (spec gate, orchestrator answers): intent gap resolved. AC1 narrowed in epics.md as the intent block already states (a cached SQL query named by its routine; statement text is Story 19.10's). AD-43's roster grows to seven with Process details (spine amended; EXPERIENCE.md Auto-refresh controls row and Process details row updated; the meter row no longer names Process details). Plan-level decisions (dashboard values, the three pairs confirmed by a real principal on `ocupilot-b-ci`, never-named fields, reuse of 6.7's grammar, 6.10 as consumer) accepted. Status reset to `draft` for re-plan.
 
 ## Review Triage Log
+
+### 2026-09-17 — Review pass
+
+- verdicts: 16 findings — high 0, medium 5, low 4, false 7, maybe-false 0
+- findings:
+  - `[false]` `reject` Blind Hunter: `process-details.page.ts`'s `cellView(fieldOf(row, column.field), column.kind, column.emptyKey ?? '').text` is a 3-arg call against a supposedly 2-arg `cellView`, and `TableColumn` supposedly has no `emptyKey` — `table-model.ts:71-76` declares `cellView(value, kind, emptyKey = '', lookup = stringFor)`, and `screens.generated.ts:289` declares `readonly emptyKey?: string` on `TableColumn`; the identical 3-arg pattern already ships unchanged in `areas/tasks/details.page.ts:245` and `shell/data-table.ts:461`.
+  - `[medium]` `patch` Blind Hunter: `process-details.page.spec.ts`'s `'InTransaction reads Yes for non-zero and No for zero'` test never asserts the "Yes" branch — after `setRows([row({ InTransaction: 1 })])` it calls `detectChanges`/`settle` and ends with no further assertion. Grouped with the Edge Case Hunter and Intent Alignment rows below (same defect). Fix: trigger a real refresh (`actions.run(DESCRIPTOR, REFRESH_ACTION_ID)`) after `setRows` and assert `fieldValue(host, 'processDetailsInTransaction')` equals `STRINGS.tableStatusYes`, applied.
+  - `[low]` `reject` Blind Hunter: `pid` criterion (`text`, `maxLength` 10, no digit-only constraint) is untested against a non-numeric value. The criterion shape is the intent-contract's own explicit requirement (mirrors `TaskDetails`' `taskId` and the Secrets list's parent-collection criterion), and the intent's 5-row I/O matrix is its own deliberately exhaustive edge-case set with no such row; no evidence of an actual 500 or vendor-forwarding defect.
+  - `[false]` `reject` Blind Hunter: the `MemoryAllocated`/`MemoryPeak`/`MemoryUsed`/`CPUTime` labels claim units (KB, ms) allegedly unverified against the vendor — `irissys/%CSP/UI/Portal/ProcessDetails.cls:533-536` (the vendor classic page this screen mirrors) labels these meters with tooltips "Amount of memory (Kbytes)..." and "System+User CPU Time (ms)", confirming the shipped units exactly.
+  - `[false]` `reject` Blind Hunter: "Memory limit" for `MemoryAllocated` allegedly mismatched vendor terminology — same vendor source, line 533: `BuildMeter($$$Text("Memory Limit"),"MemoryAllocated",...)` — the vendor's own label for this field is "Memory Limit" verbatim.
+  - `[low]` `patch` Blind Hunter: `Install/Smoke.cls`'s `CheckProcessDetails` doc comment describes the failure guard as triggering "when the list read answers no row," but the code actually guards on the extracted `Pid` string being empty. Fix: reword the comment to name the actual guard, applied.
+  - `[low]` `reject` Verification Gap: `Install/Smoke.cls:726-757` — the pid a smoke run keys the second read by could exit between the two reads. The chosen pid is the processes list's first (lowest-numbered, typically long-lived) row, making the real trigger window very unlikely, and a robust fix (retry/stability logic) is more than a direct correction.
+  - `[false]` `reject` Verification Gap: the task list's "the browser legs of AC1-AC5" allegedly overstates coverage since AC5 is proven only via `WireSecurityRead` over HTTP, not the browser spec. AC5 is a denial-view requirement already proven server-side, matching this codebase's established pattern (other screens' denial paths are proven the same way); the underlying requirement is satisfied, only the task-list's shorthand wording invites the reading. Also barred outright: its only fix would edit this build's spec.
+  - `[medium]` `patch` Verification Gap: `ui/tools/navigation-wire.test.mjs`'s `LIVE_PAYLOAD` (the `os-management` area's `screens` array) was not extended with the new `os-management/processes/details` entry the way 6.7 added `tasks/schedule/details` — the Code Map's "Rosters to extend" bullet names this file explicitly. Grouped with the `rail-wire.spec.ts` row below. Fix: add the entry ahead of `os-management/processes`, mirroring the `tasks/schedule/details` shape, applied.
+  - `[medium]` `patch` Verification Gap: `ui/src/app/shell/rail-wire.spec.ts`'s `LIVE_PAYLOAD` has the same gap as the row above, also named explicitly by the Code Map. Fix applied the same way.
+  - `[medium]` `patch` Edge Case Hunter: confirmed by direct code reading — `process-details.page.spec.ts`'s InTransaction test calls neither `actions.run(...)` nor `fireTick()` after `setRows`, so no new read is ever issued and the assertion is simply absent; the Rule-19 mutation this test's docblock claims it would catch ("Read `InTransaction` as zero for non-zero -> the transaction-word assertion goes red") cannot actually go red, since there is no such assertion. Same fix as the grouped Blind Hunter row, applied.
+  - `[low]` `patch` Edge Case Hunter (other finding): the file's mutation-note doc comment says dropping `CurrentLineAndRoutine` from `EXECUTION_FIELDS` would redden "the AC1b assertion," but AC1b's test never references `CurrentLineAndRoutine` — that mutation is actually caught by `ui/tools/process-details-store.test.mjs`'s `groupFor` test. Fix: reword the comment to name the correct test, applied.
+  - `[false]` `reject` Intent Alignment: EXPERIENCE.md's auto-refresh bullet (`:620`) allegedly not updated to include Process details — the line already lists "Process details" second in the roster of seven ("On Processes, Process details, Databases, Database details, Task schedule, Task details, System usage"), committed by an upstream stage before this story's `baseline_revision`, per the spec's own Design Notes ("Settled at the gate ... no task edits `:92` or `:620`").
+  - `[false]` `reject` Intent Alignment: EXPERIENCE.md's Process details IA row (`:92`) allegedly not narrowed to what 6.8 ships — the row already reads the narrowed text ("whether a cached SQL query is executing (named by its routine; statement text is Story 19.10's)") on disk, from the same upstream commit the Spec Change Log's 2026-09-17 entry records.
+  - `[false]` `reject` Intent Alignment: the intent's "SQL clause ... pending the lead" sentence allegedly has no corresponding artifact in the diff — the spec's Design Notes "Settled at the gate" entry records this as adopted and covered by AC1/AC1b through the `Routine` field, and AC1b's component-spec test (`process-details.page.spec.ts`) exercises exactly that.
+  - `[medium]` `patch` Intent Alignment: same InTransaction Yes-branch gap noted as a "minor, same-shape gap." Grouped with the Blind Hunter and Edge Case Hunter rows above; same fix, applied.
 
 ## Design Notes
 

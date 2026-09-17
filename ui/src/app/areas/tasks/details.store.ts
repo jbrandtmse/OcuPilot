@@ -1,12 +1,13 @@
 /**
  * Task details' own state (AD-19): the schedule-in-words vocabulary, composed on the client from
  * GET's own display values rather than taken from the vendor's `%SYS.Task` `DisplayRunCalc` /
- * `DisplayIntervalCalc` (Design Notes), and the field-level change highlight a silent auto-refresh
- * tick raises.
+ * `DisplayIntervalCalc` (Design Notes).
  *
  * Framework-free, like the rest of `core/` and `areas/tasks/history.store.ts`, so
  * `ui/tools/details-store.test.mjs` executes the vocabulary under `node --test` without an Angular
- * test bed. `details.page.ts` holds one `TaskDetailsHighlights` per page instance.
+ * test bed. The field-level change highlight a silent auto-refresh tick raises moved to
+ * `core/detail-highlights.ts` as `DetailHighlights` (Story 6.8), which `details.page.ts` imports
+ * directly; nothing here carries it any more.
  */
 
 import { fieldOf } from '../../core/table-model.ts';
@@ -162,51 +163,3 @@ export function nextRunText(row: unknown): string {
   return text === '' ? STRINGS.tableEmptyValue : text;
 }
 
-/**
- * Which of `fields` differ, as text, between `previous` and `current`. Held by
- * `TaskDetailsHighlights` rather than called bare, so a page can tell "first load" (nothing to
- * compare against) from "nothing changed" (compared and equal).
- */
-function changedFields(previous: unknown, current: unknown, fields: readonly string[]): ReadonlySet<string> {
-  const changed = new Set<string>();
-  for (const field of fields) {
-    if (textOf(fieldOf(previous, field)) !== textOf(fieldOf(current, field))) changed.add(field);
-  }
-  return changed;
-}
-
-/**
- * The field-level highlight a silent auto-refresh tick raises (EXPERIENCE.md "Highlight."),
- * applied to Task details' field list rather than to a table row. A highlight holds across ticks
- * that change nothing and is replaced by the next tick that changes a field; `reset()` clears it.
- */
-export class TaskDetailsHighlights {
-  private previousRow: unknown = null;
-
-  private highlightedFields: ReadonlySet<string> = new Set();
-
-  /**
-   * Compare `row` with the last one, over `fields`. The first call after `reset()` (or ever)
-   * highlights nothing -- there is no earlier value to have changed from, which is what keeps a
-   * first load or a fresh id from reading as every field having just changed. A call that finds
-   * no change keeps the fields already highlighted.
-   */
-  update(row: unknown, fields: readonly string[]): void {
-    if (this.previousRow !== null) {
-      const changed = changedFields(this.previousRow, row, fields);
-      if (changed.size > 0) this.highlightedFields = changed;
-    }
-    this.previousRow = row;
-  }
-
-  /** The fields the last change-bearing `update` found changed. */
-  changed(): ReadonlySet<string> {
-    return this.highlightedFields;
-  }
-
-  /** Forget the last row, so the next `update` highlights nothing -- a new task is not a change. */
-  reset(): void {
-    this.previousRow = null;
-    this.highlightedFields = new Set();
-  }
-}

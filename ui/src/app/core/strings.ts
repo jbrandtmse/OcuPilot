@@ -800,6 +800,54 @@ export const STRINGS = {
   ordinalFourth: 'fourth',
   /** EXPERIENCE.md:361 */
   ordinalFifth: 'fifth',
+  /** EXPERIENCE.md:362 */
+  processDetailsLabel: 'Process details',
+  /** EXPERIENCE.md:362 */
+  processDetailsGone: 'This process no longer exists.',
+  /** EXPERIENCE.md:362 */
+  processDetailsGroupGeneral: 'General',
+  /** EXPERIENCE.md:362 */
+  processDetailsGroupExecution: 'Execution',
+  /** EXPERIENCE.md:362 */
+  processDetailsGroupClientApplication: 'Client application',
+  /** EXPERIENCE.md:362 */
+  processDetailsParentPid: 'Parent process ID',
+  /** EXPERIENCE.md:362 */
+  processDetailsLoginRoles: 'Login roles',
+  /** EXPERIENCE.md:362 */
+  processDetailsEscalatedRoles: 'Escalated roles',
+  /** EXPERIENCE.md:362 */
+  processDetailsOsUser: 'OS user',
+  /** EXPERIENCE.md:362 */
+  processDetailsCpuTime: 'CPU time (ms)',
+  /** EXPERIENCE.md:362 */
+  processDetailsGlobalReferences: 'Global references',
+  /** EXPERIENCE.md:362 */
+  processDetailsPrivateGlobalReferences: 'Private global references',
+  /** EXPERIENCE.md:362 */
+  processDetailsPrivateGlobalBlocks: 'Private global blocks',
+  /** EXPERIENCE.md:362 */
+  processDetailsMemoryLimit: 'Memory limit (KB)',
+  /** EXPERIENCE.md:362 */
+  processDetailsMemoryPeak: 'Memory peak (KB)',
+  /** EXPERIENCE.md:362 */
+  processDetailsMemoryUsed: 'Memory used (KB)',
+  /** EXPERIENCE.md:362 */
+  processDetailsCurrentDevice: 'Current device',
+  /** EXPERIENCE.md:362 */
+  processDetailsOpenDevices: 'Open devices',
+  /** EXPERIENCE.md:362 */
+  processDetailsInTransaction: 'In transaction',
+  /** EXPERIENCE.md:362 */
+  processDetailsSourceLocation: 'Source location',
+  /** EXPERIENCE.md:362 */
+  processDetailsLocation: 'Location',
+  /** EXPERIENCE.md:362 */
+  processDetailsClientName: 'Client name',
+  /** EXPERIENCE.md:362 */
+  processDetailsClientExecutable: 'Client executable',
+  /** EXPERIENCE.md:362 */
+  processDetailsClientIpAddress: 'Client IP address',
 
   // Not from the Fixed strings table, but required verbatim by this story's task
   // list: the audit-marker-failure fallback text (AD-15 / EXPERIENCE.md "9. **Audit.** Every confirmed"), the
