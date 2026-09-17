@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: 09-17-2026 04:40
+last_updated: 09-17-2026 05:09
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -121,7 +121,7 @@ development_status:
   6-3-the-x-509-ldap-kerberos-and-wallet-lists: done
   6-4-the-oauth-2-0-screen: done
   6-5-on-demand-and-upcoming-tasks: done
-  6-6-task-history-per-task-and-across-tasks: backlog
+  6-6-task-history-per-task-and-across-tasks: ready-for-dev
   6-7-task-details: backlog
   6-8-process-details: backlog
   6-9-system-usage-and-the-dashboard-meters: backlog

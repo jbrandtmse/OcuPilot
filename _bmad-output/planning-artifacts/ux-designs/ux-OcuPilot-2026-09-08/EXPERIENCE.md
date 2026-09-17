@@ -101,7 +101,7 @@ Step = PRD §10.1 build step ("1/3" = the area's one step-1 list, otherwise step
 | Broadcast · License usage · Dashboard main panel · External language servers list → editor | OS management | Processes multi-select (Broadcast) · side-bar | FR-76, FR-78 | dialog · meters · list · form-page | **P1** |
 | Task schedule | Tasks | side-bar › Task schedule | name, namespace, type, last run, next run; Task Manager status (a warning banner while it is suspended; its Resume control arrives with Epic 7's Task Manager controls, FR-51); filter; auto-refresh (FR-48) | list | 1/3 · P0 (control 4) |
 | Task details | Tasks | Task schedule name cell · agent navigation (UJ-6) | properties, schedule, last/next run; auto-refresh; links to history and Edit (FR-50) | detail | 3 · P0 |
-| Task history (one task) | Tasks | Task details › History | start, end, status, error text, running user | list (server criteria) | 3 · P0 |
+| Task history (one task) | Tasks | Task details › History | start, end, status, error text, running user; its one criterion is the task in the route, so it reads on open | list | 3 · P0 |
 | On-demand tasks | Tasks | side-bar › On-demand tasks | Run per row | list | 3 / 4 · P0 |
 | Upcoming tasks | Tasks | side-bar › Upcoming tasks | horizon (hours or date); ordered by next run | list | 3 · P0 |
 | Task history (all) | Tasks | side-bar › Task history | filter | list (server criteria) | 3 · P0 |
