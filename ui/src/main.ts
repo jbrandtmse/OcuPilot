@@ -22,6 +22,7 @@ import { ScreenStores } from './app/core/screen-store';
 import { Session } from './app/core/session';
 import { ShellState } from './app/core/shell-state';
 import { TokenStore, readNavigationKind, readSessionStorage } from './app/core/token-store';
+import { TurnStore } from './app/core/turn';
 
 // Zoneless, standalone bootstrap (AD-19), with the transport layer constructed over the
 // real browser and provided as values.
@@ -137,6 +138,18 @@ const shell = new ShellState({ preferences });
 // viewport width; the side bar, the rail and the panel read the layout it resolves.
 const panel = new PanelState({ preferences, shell });
 
+// The turn store (Story 4.5): send, poll, stop, restore and New conversation, over the same API
+// service and the same per-tab `sessionStorage` the token pair uses (a second, independent read
+// of it for the conversation id's own key). `restore()` is fired here, not awaited -- the same
+// "already in flight while Angular is still painting" shape the silent probe above uses -- so a
+// reload's transcript is often there by the time the panel first renders.
+const turn = new TurnStore({
+  api,
+  storage: readSessionStorage(),
+  navigationType: readNavigationKind,
+});
+void turn.restore();
+
 // Story 1.14's three (AD-43, AD-19, AD-14): the one client bus, the one store per descriptor, and
 // the one refresh framework over both. Built here like every other core service so the command
 // bar's chip, the status bar's stamp and whatever screen binds all reach the same instance --
@@ -185,6 +198,7 @@ bootstrapApplication(App, {
     { provide: PreferenceStore, useValue: preferences },
     { provide: ShellState, useValue: shell },
     { provide: PanelState, useValue: panel },
+    { provide: TurnStore, useValue: turn },
     { provide: OverlayStack, useValue: overlays },
     { provide: ChangeBus, useValue: bus },
     { provide: ScreenStores, useValue: screenStores },

@@ -110,6 +110,10 @@ Parameter AUTHNOADMIN = "AUTH.NOADMIN";
 /// request. The code is fixed now so the first of those reads does not mint a second one.</p>
 Parameter AUTHNOPRIVILEGE = "AUTH.NOPRIVILEGE";
 
+/// <p>Written sentence for <parameter>AUTHNOPRIVILEGE</parameter> when it reaches a tool step's
+/// <code>reason</code> (Story 4.5) rather than an envelope's <code>detail.failedPair</code> alone.</p>
+Parameter REASONAUTHNOPRIVILEGE = "This account does not hold the privilege that tool call requires.";
+
 /// <p>Machine code (AD-12, AD-39): the request carried no authenticated caller, so
 /// <class>OcuPilot.Api.Router</class>'s identity gate refuses before any route runs (AD-21).
 /// Rendered on the <parameter>UNAUTHORIZED</parameter> slug.</p>
@@ -639,6 +643,17 @@ Parameter TURNMESSAGELENGTH = "TURN.MESSAGE.LENGTH";
 /// reserved.</p>
 Parameter TURNCONTEXTINVALID = "TURN.CONTEXT.INVALID";
 
+/// <p>Violation code (Story 4.5): the turn request carries no <code>conversationId</code>, or one
+/// that is not a JSON string. Rendered the way <parameter>TURNMESSAGEREQUIRED</parameter> is, on
+/// the field <code>conversationId</code>; nothing is reserved. Checked before
+/// <parameter>TURNCONVERSATIONNOTFOUND</parameter> and before the turn slot is reserved.</p>
+Parameter TURNCONVERSATIONREQUIRED = "TURN.CONVERSATION.REQUIRED";
+
+/// <p>Machine code (Story 4.5): the request's <code>conversationId</code> does not name a
+/// conversation the caller owns. Rendered on the <parameter>NOTFOUND</parameter> slug, HTTP 404 --
+/// the same envelope shape an unknown turn id answers -- and nothing is reserved.</p>
+Parameter TURNCONVERSATIONNOTFOUND = "TURN.CONVERSATION.NOTFOUND";
+
 /// <p>Machine code (AD-41): the caller already has a queued or running turn. Rendered on the
 /// <parameter>CONFLICT</parameter> slug, HTTP 409.</p>
 Parameter TURNBUSY = "TURN.BUSY";
@@ -709,6 +724,12 @@ Parameter REASONTURNMESSAGELENGTH = "That message is longer than a turn accepts"
 /// <p>Written sentence for <parameter>TURNCONTEXTINVALID</parameter>.</p>
 Parameter REASONTURNCONTEXTINVALID = "The screen context is not shaped as the turn expects.";
 
+/// <p>Written sentence for <parameter>TURNCONVERSATIONREQUIRED</parameter>.</p>
+Parameter REASONTURNCONVERSATIONREQUIRED = "Start or choose a conversation before sending a message.";
+
+/// <p>Written sentence for <parameter>TURNCONVERSATIONNOTFOUND</parameter>.</p>
+Parameter REASONTURNCONVERSATIONNOTFOUND = "No conversation with that identifier exists for this account.";
+
 /// <p>Written sentence for <parameter>TURNBUSY</parameter>: EXPERIENCE.md's lock banner.</p>
 Parameter REASONTURNBUSY = "A turn is in progress. Wait for it to finish before sending another message.";
 
@@ -761,7 +782,7 @@ Parameter REASONTOOLRESULTTOOLARGE = "The tool's result is larger than a tool re
 /// <method>ReasonForTurn</method> to the vocabulary.</p>
 ClassMethod TurnCodes() As %List
 {
-    Quit $ListBuild(..#TURNBADBODY, ..#TURNMESSAGEREQUIRED, ..#TURNMESSAGELENGTH, ..#TURNCONTEXTINVALID, ..#TURNBUSY, ..#TURNNOTFOUND, ..#TURNUNAVAILABLE, ..#TURNSTOPPED, ..#TURNABANDONEDREADONLY, ..#TURNABANDONEDPRIVILEGE, ..#TURNABANDONEDLEASE, ..#TURNABANDONEDSIGNOUT, ..#TURNABANDONEDJOBLOST, ..#TURNLIMITDURATION, ..#TURNLIMITTOKENS)
+    Quit $ListBuild(..#TURNBADBODY, ..#TURNMESSAGEREQUIRED, ..#TURNMESSAGELENGTH, ..#TURNCONTEXTINVALID, ..#TURNCONVERSATIONREQUIRED, ..#TURNCONVERSATIONNOTFOUND, ..#TURNBUSY, ..#TURNNOTFOUND, ..#TURNUNAVAILABLE, ..#TURNSTOPPED, ..#TURNABANDONEDREADONLY, ..#TURNABANDONEDPRIVILEGE, ..#TURNABANDONEDLEASE, ..#TURNABANDONEDSIGNOUT, ..#TURNABANDONEDJOBLOST, ..#TURNLIMITDURATION, ..#TURNLIMITTOKENS)
 }
 
 /// <p>The written sentence a <code>TURN.*</code> code carries, or <code>""</code> for any other
@@ -772,6 +793,8 @@ ClassMethod ReasonForTurn(pCode As %String) As %String
     If pCode = ..#TURNMESSAGEREQUIRED Quit ..#REASONTURNMESSAGEREQUIRED
     If pCode = ..#TURNMESSAGELENGTH Quit ..#REASONTURNMESSAGELENGTH
     If pCode = ..#TURNCONTEXTINVALID Quit ..#REASONTURNCONTEXTINVALID
+    If pCode = ..#TURNCONVERSATIONREQUIRED Quit ..#REASONTURNCONVERSATIONREQUIRED
+    If pCode = ..#TURNCONVERSATIONNOTFOUND Quit ..#REASONTURNCONVERSATIONNOTFOUND
     If pCode = ..#TURNBUSY Quit ..#REASONTURNBUSY
     If pCode = ..#TURNNOTFOUND Quit ..#REASONTURNNOTFOUND
     If pCode = ..#TURNUNAVAILABLE Quit ..#REASONTURNUNAVAILABLE
@@ -804,6 +827,23 @@ ClassMethod ReasonForTool(pCode As %String) As %String
     If pCode = ..#TOOLARGUMENTS Quit ..#REASONTOOLARGUMENTS
     If pCode = ..#TOOLRESULTTOOLARGE Quit ..#REASONTOOLRESULTTOOLARGE
     Quit ""
+}
+
+/// <p>The sentence a tool step's <code>reason</code> carries for <var>pCode</var> (Story 4.5),
+/// whichever family produced it: a <code>TOOL.*</code> code, <code>AUTH.NOPRIVILEGE</code>, or a
+/// restraint code (a blocked write tool's verdict is passed through as the tool result code
+/// unchanged). Mirrors <method>ReasonForTurnError</method> for the tool-result vocabulary, so
+/// <class>OcuPilot.Kernel.Agent.Dispatch</class> and <class>OcuPilot.Kernel.Agent.Loop</class>
+/// name no family's resolver of their own.</p>
+ClassMethod ReasonForToolCode(pCode As %String) As %String
+{
+    If pCode = "" Quit ""
+    If pCode = ..#AUTHNOPRIVILEGE Quit ..#REASONAUTHNOPRIVILEGE
+    Set tReason = ..ReasonForTool(pCode)
+    If tReason '= "" Quit tReason
+    Set tReason = ..ReasonForRestraint(pCode)
+    If tReason '= "" Quit tReason
+    Quit ..#REASONTOOLUNAVAILABLE
 }
 
 /// <p>The sentence a turn's terminal <code>error.reason</code> carries for <var>pCode</var>,

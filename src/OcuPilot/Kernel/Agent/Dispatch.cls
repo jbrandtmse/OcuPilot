@@ -112,17 +112,27 @@ ClassMethod Advertise(Output pTools) As %Status
 /// <var>pLimitsClass</var>'s own <code>TOOLROWS</code> / <code>TOOLRESULTMAXLENGTH</code>, so a
 /// caller resolving <code>Switch.ContextRowCap</code> or a shrinking per-reply budget can hand it
 /// down without every existing caller having to change.</p>
-ClassMethod Answer(pKey As %String, pUser As %String, pDefinitionId As %String, pToolUses As %DynamicArray, pLimitsClass As %String, Output pResults As %DynamicArray, Output pNames As %DynamicArray, pRowCap As %Integer = 0, pMaxLength As %Integer = 0) As %Status
+/// <p><var>pDetails</var> comes back parallel to <var>pResults</var>/<var>pNames</var>, one
+/// <code>{target, arguments, argumentsTruncated, result, reason, failedPair}</code> per call
+/// (Story 4.5, DW-451): <code>target</code> and <code>arguments</code> describe the call itself
+/// and are present whether it succeeded or failed; <code>argumentsTruncated</code> is
+/// <method>RedactedArguments</method>'s own cap answer, threaded through so the caller storing
+/// <code>arguments</code> never has to re-cap it to learn whether it was cut; <code>result</code>
+/// is <code>{rowsReturned, rowsSent, truncated}</code> when the call succeeded with a rows-shaped
+/// result, else <code>""</code>; <code>reason</code> and <code>failedPair</code> are set only on
+/// failure, the latter only when the failure carries <code>detail.failedPair</code>.</p>
+ClassMethod Answer(pKey As %String, pUser As %String, pDefinitionId As %String, pToolUses As %DynamicArray, pLimitsClass As %String, Output pResults As %DynamicArray, Output pNames As %DynamicArray, pRowCap As %Integer = 0, pMaxLength As %Integer = 0, Output pDetails As %DynamicArray) As %Status
 {
     Set tSC = $$$OK
     Set pResults = []
     Set pNames = []
+    Set pDetails = []
     Try {
         Set tRows = $Select(+pRowCap > 0: +pRowCap, 1: +$Parameter(pLimitsClass, "TOOLROWS"))
         Set tMaxLength = $Select(+pMaxLength > 0: +pMaxLength, 1: +$Parameter(pLimitsClass, "TOOLRESULTMAXLENGTH"))
         Set tIterator = pToolUses.%GetIterator()
         While tIterator.%GetNext(.tIndex, .tBlock) {
-            Set tIsError = ..AnswerOne(pKey, pUser, pDefinitionId, tBlock, tRows, tMaxLength, pLimitsClass, .tName, .tContent)
+            Set tIsError = ..AnswerOne(pKey, pUser, pDefinitionId, tBlock, tRows, tMaxLength, pLimitsClass, .tName, .tContent, .tTarget, .tArguments, .tResultInfo, .tReason, .tFailedPair, .tArgumentsTruncated)
             Set tResult = {}
             Do tResult.%Set("type", "tool_result", "string")
             Do tResult.%Set("tool_use_id", $Select($IsObject(tBlock) && (tBlock.%Get("id") '= ""): tBlock.%Get("id"), 1: "unknown"), "string")
@@ -130,6 +140,14 @@ ClassMethod Answer(pKey As %String, pUser As %String, pDefinitionId As %String, 
             Do tResult.%Set("content", tContent, "string")
             Do pResults.%Push(tResult)
             Do pNames.%Push(tName, "string")
+            Set tDetail = {}
+            Do tDetail.%Set("target", tTarget, "string")
+            Do tDetail.%Set("arguments", tArguments, "string")
+            Do tDetail.%Set("argumentsTruncated", ''tArgumentsTruncated, "boolean")
+            Do tDetail.%Set("result", tResultInfo, "string")
+            Do tDetail.%Set("reason", tReason, "string")
+            Do tDetail.%Set("failedPair", tFailedPair, "string")
+            Do pDetails.%Push(tDetail)
         }
     } Catch ex {
         Set tSC = ex.AsStatus()
@@ -143,11 +161,24 @@ ClassMethod Answer(pKey As %String, pUser As %String, pDefinitionId As %String, 
 /// class -- the descriptor branch reads <code>FIELDMAXLENGTH</code> from it, the same way
 /// <method>Answer</method> reads <code>TOOLROWS</code>/<code>TOOLRESULTMAXLENGTH</code> from it,
 /// so a test overriding the limits class sees its override here too.</p>
-ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %String, pBlock As %DynamicObject, pRows As %Integer, pMaxLength As %Integer, pLimitsClass As %String, Output pName As %String, Output pContent As %String) As %Boolean [ Private ]
+/// <p><var>pTarget</var> and <var>pArguments</var> (Story 4.5, DW-451) describe the call and are
+/// set as soon as its input is parsed, whichever branch below answers it; <var>pArgumentsTruncated</var>
+/// is <method>RedactedArguments</method>'s own answer for whether its cap cut <var>pArguments</var>.
+/// <var>pResultInfo</var> is JSON <code>{rowsReturned, rowsSent, truncated}</code> on a rows-shaped
+/// success, else <code>""</code>. <var>pReason</var> is the failing code's published sentence
+/// (<method>OcuPilot.Api.Error.ReasonForToolCode</method>), set on every failure branch;
+/// <var>pFailedPair</var> is set only by the two privilege-pair refusals.</p>
+ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %String, pBlock As %DynamicObject, pRows As %Integer, pMaxLength As %Integer, pLimitsClass As %String, Output pName As %String, Output pContent As %String, Output pTarget As %String, Output pArguments As %String, Output pResultInfo As %String, Output pReason As %String, Output pFailedPair As %String, Output pArgumentsTruncated As %Boolean) As %Boolean [ Private ]
 {
     Set tUnavailable = ##class(OcuPilot.Api.Error).#TOOLUNAVAILABLE
     Set pName = ""
     Set pContent = ..ErrorContent(tUnavailable)
+    Set pTarget = ""
+    Set pArguments = ""
+    Set pArgumentsTruncated = 0
+    Set pResultInfo = ""
+    Set pReason = ##class(OcuPilot.Api.Error).ReasonForToolCode(tUnavailable)
+    Set pFailedPair = ""
     Set tIsError = 1
     Try {
         Set tWire = ""
@@ -157,6 +188,8 @@ ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %Strin
             Set tInput = pBlock.%Get("input")
         }
         Set pName = tWire
+        Set pTarget = ..TargetOf(tInput)
+        Set pArguments = ..RedactedArguments(tInput, +$Parameter(pLimitsClass, "SUMMARYMAXLENGTH"), .pArgumentsTruncated)
         Set tRegistry = ..RegistryClass()
 
         Set tSC = $ClassMethod(tRegistry, "ResolveWire", tWire, .tTool)
@@ -166,6 +199,7 @@ ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %Strin
         }
         If '$IsObject(tTool) {
             Set pContent = ..ErrorContent(##class(OcuPilot.Api.Error).#TOOLUNKNOWN)
+            Set pReason = ##class(OcuPilot.Api.Error).ReasonForToolCode(##class(OcuPilot.Api.Error).#TOOLUNKNOWN)
             Quit
         }
         Set pName = tTool.%Get("name")
@@ -183,7 +217,9 @@ ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %Strin
         }
         If '$Get(tDecision("allowed")) {
             Set tCode = $Get(tDecision("code"))
-            Set pContent = ..ErrorContent($Select(tCode '= "": tCode, 1: ##class(OcuPilot.Api.Error).#TOOLDENIED))
+            Set tCode = $Select(tCode '= "": tCode, 1: ##class(OcuPilot.Api.Error).#TOOLDENIED)
+            Set pContent = ..ErrorContent(tCode)
+            Set pReason = ##class(OcuPilot.Api.Error).ReasonForToolCode(tCode)
             Quit
         }
 
@@ -195,7 +231,10 @@ ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %Strin
                 Quit
             }
             If +$Get(tVerdict("blocked")) {
-                If $Get(tVerdict("code")) '= "" Set pContent = ..ErrorContent(tVerdict("code"))
+                If $Get(tVerdict("code")) '= "" {
+                    Set pContent = ..ErrorContent(tVerdict("code"))
+                    Set pReason = ##class(OcuPilot.Api.Error).ReasonForToolCode(tVerdict("code"))
+                }
                 Quit
             }
         }
@@ -208,6 +247,8 @@ ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %Strin
         Set tFailedPair = ..MissingPair(pUser, tPairs)
         If tFailedPair '= "" {
             Set pContent = ..DeniedContent(tFailedPair)
+            Set pReason = ##class(OcuPilot.Api.Error).ReasonForToolCode(##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE)
+            Set pFailedPair = tFailedPair
             Quit
         }
 
@@ -216,6 +257,7 @@ ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %Strin
             Set tDetail = {}
             Do tDetail.%Set("problem", tProblem, "string")
             Set pContent = ..ErrorContent(##class(OcuPilot.Api.Error).#TOOLARGUMENTS, tDetail)
+            Set pReason = ##class(OcuPilot.Api.Error).ReasonForToolCode(##class(OcuPilot.Api.Error).#TOOLARGUMENTS)
             Quit
         }
 
@@ -227,6 +269,8 @@ ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %Strin
         Set tFailedPair = ..MissingPair(pUser, tArgumentPairs)
         If tFailedPair '= "" {
             Set pContent = ..DeniedContent(tFailedPair)
+            Set pReason = ##class(OcuPilot.Api.Error).ReasonForToolCode(##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE)
+            Set pFailedPair = tFailedPair
             Quit
         }
 
@@ -234,6 +278,7 @@ ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %Strin
         If $$$ISERR(tSC) {
             If $IsObject(tFault) && (tFault.%Get("code") '= "") {
                 Set pContent = ..ErrorContent(tFault.%Get("code"), $Select(tFault.%GetTypeOf("detail") = "object": tFault.%Get("detail"), 1: ""))
+                Set pReason = ##class(OcuPilot.Api.Error).ReasonForToolCode(tFault.%Get("code"))
                 If +$Get(tHttp) >= 500 Do ..LogFault("turn " _ pKey _ ": " _ pName _ " failed on the instance", tSC, tFault.%Get("code"))
             } Else {
                 Do ..LogFault("turn " _ pKey _ ": " _ pName _ " failed with no fault", tSC, tUnavailable)
@@ -253,25 +298,82 @@ ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %Strin
         ; row-and-size cut unchanged, byte for byte: Bound would otherwise stamp
         ; rows/rowsSent/rowsAvailable/truncatedFields onto a payload that never declared them.
         Set tResultRows = tResult.%Get("rows")
-        If $IsObject(tResultRows) && tResultRows.%IsA("%Library.DynamicArray") {
+        Set tRowsShaped = $IsObject(tResultRows) && tResultRows.%IsA("%Library.DynamicArray")
+        If tRowsShaped {
             Do ##class(OcuPilot.Screen.Tool.Registry).FieldMaxLengths(tTool, .tFieldMax)
             Set tDefaultFieldMax = +$Parameter(pLimitsClass, "FIELDMAXLENGTH")
             If '##class(OcuPilot.Kernel.Agent.Bound).Apply(tResult, pRows, .tFieldMax, tDefaultFieldMax, pMaxLength, .tJson) {
                 Set pContent = ..ErrorContent(##class(OcuPilot.Api.Error).#TOOLRESULTTOOLARGE)
+                Set pReason = ##class(OcuPilot.Api.Error).ReasonForToolCode(##class(OcuPilot.Api.Error).#TOOLRESULTTOOLARGE)
                 Quit
             }
         } ElseIf '..Capped(tResult, pRows, pMaxLength, .tJson) {
             Set pContent = ..ErrorContent(##class(OcuPilot.Api.Error).#TOOLRESULTTOOLARGE)
+            Set pReason = ##class(OcuPilot.Api.Error).ReasonForToolCode(##class(OcuPilot.Api.Error).#TOOLRESULTTOOLARGE)
             Quit
         }
         Set pContent = tJson
+        Set pReason = ""
+        If tRowsShaped {
+            Set tResultInfoObj = {}
+            Do tResultInfoObj.%Set("rowsReturned", +tResult.%Get("rowsAvailable"), "number")
+            Do tResultInfoObj.%Set("rowsSent", +tResult.%Get("rowsSent"), "number")
+            Do tResultInfoObj.%Set("truncated", ''tResult.%Get("truncated"), "boolean")
+            Set pResultInfo = tResultInfoObj.%ToJSON()
+        }
         Set tIsError = 0
     } Catch ex {
         Set tIsError = 1
         Set pContent = ..ErrorContent(tUnavailable)
+        Set pReason = ##class(OcuPilot.Api.Error).ReasonForToolCode(tUnavailable)
         Do ..LogFault("turn " _ pKey _ ": a tool call failed inside the dispatcher", ex.AsStatus(), tUnavailable)
     }
     Quit tIsError
+}
+
+/// <p>A tool step's target (Story 4.5): <var>pInput</var>'s <code>id</code>, else
+/// <code>entity</code>, else <code>route</code>, else <code>""</code> -- whichever is present
+/// first and is a non-empty string. Public so <class>OcuPilot.Kernel.Agent.Loop</class> can
+/// derive the same target for a step that never reached dispatch (the size-budget refusal, and a
+/// stop that trips before the call).</p>
+ClassMethod TargetOf(pInput As %DynamicObject) As %String
+{
+    Set tTarget = ""
+    Try {
+        If $IsObject(pInput) && pInput.%IsA("%Library.DynamicObject") {
+            If (pInput.%GetTypeOf("id") = "string") && (pInput.%Get("id") '= "") {
+                Set tTarget = pInput.%Get("id")
+            } ElseIf (pInput.%GetTypeOf("entity") = "string") && (pInput.%Get("entity") '= "") {
+                Set tTarget = pInput.%Get("entity")
+            } ElseIf (pInput.%GetTypeOf("route") = "string") && (pInput.%Get("route") '= "") {
+                Set tTarget = pInput.%Get("route")
+            }
+        }
+    } Catch ex {
+        Set tTarget = ""
+    }
+    Quit tTarget
+}
+
+/// <p>A tool step's arguments (Story 4.5, AD-11, AD-39): compact JSON of <var>pInput</var>, every
+/// key matching <method>OcuPilot.Kernel.Audit.Log.IsCredentialName</method> redacted the same way
+/// that class redacts a log entry, cut at <var>pMaxLength</var> characters with a trailing
+/// U+2026. Public for the same reason <method>TargetOf</method> is. <var>pTruncated</var> answers
+/// whether that cut cut anything, so a caller that stores the result
+/// (<method>OcuPilot.Kernel.State.Step.GuardedAppend</method>) does not have to re-cap it to learn.</p>
+ClassMethod RedactedArguments(pInput As %DynamicObject, pMaxLength As %Integer, Output pTruncated As %Boolean) As %String
+{
+    Set tOut = ""
+    Set pTruncated = 0
+    Try {
+        If '$IsObject(pInput) Quit
+        Set tJson = ##class(OcuPilot.Kernel.Audit.Log).Redact(pInput).%ToJSON()
+        Set tOut = ##class(OcuPilot.Kernel.State.Turn).Cap(tJson, pMaxLength, .pTruncated)
+    } Catch ex {
+        Set tOut = ""
+        Set pTruncated = 0
+    }
+    Quit tOut
 }
 
 /// <p>The first pair in <var>pPairs</var>, spelled <code>resource:permission</code>, that

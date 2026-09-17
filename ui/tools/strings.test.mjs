@@ -187,6 +187,47 @@ function extractMacComposerCaption(rows) {
   return [row.literals[0].replace('Ctrl+I', chord)];
 }
 
+/**
+ * The tool-call-card's "done" and "failed — <reason>" status words, from its Component
+ * Patterns row's own status list: `"running" (spinner) · "done" · "done · audit marked" ·
+ * "done · audit not marked" (...) · "failed — <reason>" · "blocked by read-only mode" ·
+ * "Stopped by you at <step>"`. Read positionally off every quoted span on that row rather than
+ * typed here, so a reworded status list is what goes red, not a copy of it.
+ */
+function extractToolCallCardStatuses(markdown) {
+  const row = markdown.split('\n').find((line) => line.startsWith('| tool-call-card |'));
+  assert.ok(row, 'EXPERIENCE.md must carry the tool-call-card Component Patterns row');
+  const quoted = [...row.matchAll(/"([^"]*)"/g)].map((m) => m[1]);
+  assert.equal(
+    quoted.length,
+    7,
+    `expected 7 quoted statuses on the tool-call-card row, found ${quoted.length}: ${JSON.stringify(quoted)}`
+  );
+  assert.equal(quoted[0], 'running', 'the first status must be "running"');
+  assert.equal(quoted[4].startsWith('failed'), true, 'the fifth status must be the failed template');
+  return [quoted[1], quoted[4]];
+}
+
+/**
+ * Story 4.5's composer-locked reason, from the panel's Busy State Patterns row: `the composer
+ * stays focusable and editable (\`aria-disabled\`, reason "A turn is in progress")`.
+ */
+function extractComposerLockedReason(markdown) {
+  const match = /reason "([^"]+)"\); New conversation/.exec(markdown);
+  assert.ok(match, 'EXPERIENCE.md\'s Busy row must publish the composer\'s locked reason');
+  return [match[1]];
+}
+
+/**
+ * Story 4.5's New-conversation locked reason, from the panel header row: `while a turn runs
+ * it is \`aria-disabled\` with the reason "Stop the turn first"`.
+ */
+function extractNewConversationLockedReason(markdown) {
+  const match = /with the reason "([^"]+)" `\[ASSUMPTION\]`\./.exec(markdown);
+  assert.ok(match, 'EXPERIENCE.md\'s panel header row must publish New conversation\'s locked reason');
+  return [match[1]];
+}
+
 const fixedStringsRows = extractFixedStringsTable(experienceMdRaw);
 const expectedLiterals = fixedStringsRows.flatMap((row) => row.literals);
 const expectedLandmarkNames = extractLandmarkNames(experienceMdRaw);
@@ -200,6 +241,9 @@ const [expectedServerFaultSentence, ...expectedServerFaultActions] =
   extractServerFaultBanner(experienceMdRaw);
 const expectedTranscriptName = extractTranscriptName(experienceMdRaw);
 const expectedMacComposerCaption = extractMacComposerCaption(fixedStringsRows);
+const [expectedToolCallDone, expectedToolCallFailed] = extractToolCallCardStatuses(experienceMdRaw);
+const expectedComposerLockedReason = extractComposerLockedReason(experienceMdRaw);
+const expectedNewConversationLockedReason = extractNewConversationLockedReason(experienceMdRaw);
 
 /**
  * The third category: literals EXPERIENCE.md states in prose rather than in the Fixed strings
@@ -216,6 +260,10 @@ const EXTRACTED_FROM_PROSE = [
   expectedServerFaultSentence,
   ...expectedTranscriptName,
   ...expectedMacComposerCaption,
+  expectedToolCallDone,
+  expectedToolCallFailed,
+  ...expectedComposerLockedReason,
+  ...expectedNewConversationLockedReason,
 ];
 
 test('the three navigation landmarks are named in EXPERIENCE.md and reach the string source', () => {
@@ -274,6 +322,14 @@ test("the panel's transcript name and the macOS composer caption are EXPERIENCE.
     stringsValues.agentComposerCaption,
     'and differs from the published caption by the chord alone'
   );
+});
+
+test("Story 4.5's tool-call status words and the two locked-control reasons are EXPERIENCE.md's own", () => {
+  assert.equal(stringsValues.toolCallStatusDone, expectedToolCallDone);
+  assert.equal(stringsValues.toolCallStatusFailed, expectedToolCallFailed);
+  assert.ok(stringsValues.toolCallStatusFailed.includes('<reason>'));
+  assert.equal(stringsValues.agentComposerLockedReason, expectedComposerLockedReason[0]);
+  assert.equal(stringsValues.agentNewConversationLockedReason, expectedNewConversationLockedReason[0]);
 });
 
 test("the connectivity banners' sentences and actions are EXPERIENCE.md's own, from the rows that publish them", () => {

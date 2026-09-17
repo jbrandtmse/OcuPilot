@@ -5,10 +5,12 @@ import { AgentStatus, DEFINITIONS_ROUTE, formatKillSwitch } from '../core/agent-
 import { NavigationService, screenForRoute, withQuery } from '../core/navigation';
 import { PanelState } from '../core/panel-layout';
 import { STRINGS, stringFor } from '../core/strings';
+import { TurnStore, type TurnStep, turnErrorBanner } from '../core/turn';
 import { isApplePlatform } from './command-box';
 import { EXAMPLE_PROPOSAL } from './example-proposal';
 import { PanelResizeHandle } from './panel-resize-handle';
 import { ProposalCard } from './proposal-card';
+import { ToolCallCard } from './tool-call-card';
 
 /** The composer's control id: its label, both `aria-describedby` wires and the Ctrl/Cmd+I target. */
 export const COMPOSER_ID = 'ocu-panel-composer';
@@ -22,28 +24,52 @@ const KILL_SWITCH_ID = 'ocu-panel-kill-switch';
 /** The enforced-read-only banner's own id. */
 const READ_ONLY_ID = 'ocu-panel-read-only';
 
+/** The composer's and Send's reason while a turn runs (Story 4.5). */
+const BUSY_REASON_ID = 'ocu-panel-busy-reason';
+
+/** New conversation's reason while a turn runs (Story 4.5). */
+const NEW_CONVERSATION_REASON_ID = 'ocu-panel-new-conversation-reason';
+
+/** One turn's rendered view, precomputed once per read so the template does no substitution. */
+interface PanelTurnView {
+  readonly message: string;
+  readonly steps: readonly TurnStep[];
+  readonly reply: string | null;
+  readonly errorBanner: string | null;
+}
+
 /**
  * The agent co-pilot panel, docked right of every signed-in route (EXPERIENCE.md panel).
  *
  * **Anatomy, top to bottom.** The resize handle on the left edge (absent in full screen); the
- * header with the avatar, "Agent co-pilot" and the full-screen toggle; the banner slots in
- * EXPERIENCE.md's fixed order -- kill switch, enforced read-only, "not being marked" (Epic 5),
- * administrator reminder, lock (Story 4.5); the context-chip slot (Story 4.4); the transcript, a
- * polite `role="log"` named "Conversation" that scrolls by itself; and the footer with the read-only
- * line, the composer, Send and the caption. There is no close control.
+ * header with the avatar, "Agent co-pilot", **New conversation** and the full-screen toggle
+ * (Story 4.5 fills the first of those two icon buttons); the banner slots in EXPERIENCE.md's
+ * fixed order -- kill switch, enforced read-only, "not being marked" (Epic 5); administrator
+ * reminder, lock (Story 4.5); the context-chip slot (Story 4.4); the transcript, a polite
+ * `role="log"` named "Conversation" that scrolls by itself; and the footer with the read-only
+ * line, the composer and Send. There is no close control.
  *
  * **Every fact is read, none remembered here.** Whether a definition is enabled and the restraint
  * verdict come from `AgentStatus`; whether this caller may configure one is the navigation map's
- * verdict for `agent/definitions` (AD-8); the draft, the width and full screen are `PanelState`'s.
- * The gate sentences render only once the map has loaded and the status has answered, so no
- * audience is guessed at: `loaded()`, not `answered()`, because a failed map read leaves every
- * verdict allowed.
+ * verdict for `agent/definitions` (AD-8); the draft, the width and full screen are `PanelState`'s;
+ * the transcript, whether a turn is running and the lock banner are `TurnStore`'s (Story 4.5). The
+ * gate sentences render only once the map has loaded and the status has answered, so no audience
+ * is guessed at: `loaded()`, not `answered()`, because a failed map read leaves every verdict
+ * allowed.
  *
  * **The composer** is editable while a definition is enabled and the kill switch is off, and its
  * text is `PanelState`'s draft, so a route change keeps it. Read-only changes only the footer line
- * (DESIGN.md panel Read-only row). Otherwise it is `readonly` beside
- * `aria-disabled`, described by the sentence that says why, and never natively disabled. Send stays
- * `aria-disabled` until turns exist (Story 4.5).
+ * (DESIGN.md panel Read-only row). Otherwise it is `readonly` beside `aria-disabled`, described by
+ * the sentence that says why, and never natively disabled. **A turn running is not one of those
+ * reasons** -- the composer stays focusable and editable while busy, described instead by "A turn
+ * is in progress"; Send becomes Stop and keeps focus (same element, only its label and handler
+ * change).
+ *
+ * **Send / Enter / Stop, in one place.** `onSendOrStop` is Stop while a turn runs, else Send;
+ * `onComposerKeydown` gives Enter (without Shift) the same Send behavior and lets Shift+Enter
+ * insert a newline as a textarea always does. Both funnel into `TurnStore.send`, which is the one
+ * place that decides sent vs. locally-locked vs. refused by the instance (409) -- this component
+ * never guesses which.
  *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records: `ui/tools/client-lint.mjs`'s blanker matches `@if` plus one parenthesised group.
@@ -51,7 +77,7 @@ const READ_ONLY_ID = 'ocu-panel-read-only';
 @Component({
   selector: 'app-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ProposalCard, PanelResizeHandle],
+  imports: [ProposalCard, PanelResizeHandle, ToolCallCard],
   template: `<aside class="ocu-panel" [class.ocu-panel-full-screen]="fullScreen" [attr.aria-label]="panelName">
     @if (docked) {
       <app-panel-resize-handle />
@@ -61,6 +87,16 @@ const READ_ONLY_ID = 'ocu-panel-read-only';
       <h2 class="ocu-panel-title">{{ panelName }}</h2>
       <button
         type="button"
+        class="ocu-panel-icon-button ocu-panel-new-conversation"
+        [attr.aria-label]="STRINGS.actionNewConversation"
+        [attr.aria-disabled]="newConversationAriaDisabled"
+        [attr.aria-describedby]="newConversationDescribedBy"
+        (click)="onNewConversation()"
+      >
+        <span class="ocu-panel-icon-glyph" aria-hidden="true">{{ newConversationGlyph }}</span>
+      </button>
+      <button
+        type="button"
         class="ocu-panel-icon-button ocu-panel-full-screen-toggle"
         [attr.aria-label]="STRINGS.agentPanelFullScreen"
         [attr.aria-expanded]="fullScreenExpanded"
@@ -68,6 +104,11 @@ const READ_ONLY_ID = 'ocu-panel-read-only';
       >
         <span class="ocu-panel-icon-glyph" aria-hidden="true">{{ fullScreenGlyph }}</span>
       </button>
+      @if (busy) {
+        <span [id]="newConversationReasonId" class="ocu-visually-hidden">{{
+          STRINGS.agentNewConversationLockedReason
+        }}</span>
+      }
     </div>
 
     <div class="ocu-panel-body">
@@ -94,7 +135,14 @@ const READ_ONLY_ID = 'ocu-panel-read-only';
             }}</a>
           </p>
         }
-        <div class="ocu-panel-banner-slot" data-slot="lock"></div>
+        <div class="ocu-panel-banner-slot" data-slot="lock">
+          @if (locked) {
+            <p class="ocu-banner ocu-banner-info ocu-panel-banner" role="status" [id]="lockBannerId">
+              <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
+              <span class="ocu-banner-message">{{ STRINGS.agentTurnLockBanner }}</span>
+            </p>
+          }
+        </div>
       </div>
 
       <div class="ocu-panel-chip-slot"></div>
@@ -114,6 +162,27 @@ const READ_ONLY_ID = 'ocu-panel-read-only';
             <li>{{ STRINGS.agentTrustProposes }}</li>
             <li>{{ STRINGS.agentTrustAudited }}</li>
           </ul>
+        } @else {
+          @for (turn of turns; track $index) {
+            <div class="ocu-panel-turn">
+              <p class="ocu-panel-message-user">{{ turn.message }}</p>
+              @for (step of turn.steps; track step.seq) {
+                <app-tool-call-card [step]="step" />
+              }
+              @if (turn.reply !== null) {
+                <div class="ocu-panel-message-agent">
+                  <span class="ocu-panel-message-avatar" aria-hidden="true"></span>
+                  <p class="ocu-panel-message-agent-text">{{ turn.reply }}</p>
+                </div>
+              }
+              @if (turn.errorBanner !== null) {
+                <div class="ocu-panel-message-agent">
+                  <span class="ocu-panel-message-avatar" aria-hidden="true"></span>
+                  <p class="ocu-panel-error-banner" role="alert">{{ turn.errorBanner }}</p>
+                </div>
+              }
+            </div>
+          }
         }
       </div>
     </div>
@@ -132,16 +201,21 @@ const READ_ONLY_ID = 'ocu-panel-read-only';
           [attr.readonly]="composerReadonly"
           [attr.aria-describedby]="describedBy"
           (input)="onDraft($event)"
+          (keydown)="onComposerKeydown($event)"
         ></textarea>
         <button
           type="button"
           class="ocu-button-primary ocu-panel-send"
-          aria-disabled="true"
+          [attr.aria-disabled]="sendAriaDisabled"
           [attr.aria-describedby]="describedBy"
+          (click)="onSendOrStop()"
         >
-          {{ STRINGS.actionSend }}
+          {{ sendLabel }}
         </button>
       </div>
+      @if (busy) {
+        <span [id]="busyReasonId" class="ocu-visually-hidden">{{ STRINGS.agentComposerLockedReason }}</span>
+      }
       <p class="ocu-panel-caption">{{ caption }}</p>
     </div>
   </aside>`,
@@ -150,6 +224,7 @@ export class Panel {
   private readonly navigation = inject(NavigationService);
   private readonly agentStatus = inject(AgentStatus);
   private readonly panel = inject(PanelState);
+  private readonly turn = inject(TurnStore);
   private readonly router = inject(Router);
 
   protected readonly STRINGS = STRINGS;
@@ -165,8 +240,19 @@ export class Panel {
 
   protected readonly readOnlyId = READ_ONLY_ID;
 
+  protected readonly busyReasonId = BUSY_REASON_ID;
+
+  protected readonly newConversationReasonId = NEW_CONVERSATION_REASON_ID;
+
+  /** The lock banner's own id (Story 4.5). Nothing currently points to it with `aria-describedby`;
+   * `role="status"` is what makes it self-announcing. */
+  protected readonly lockBannerId = 'ocu-panel-lock';
+
   /** The banner's glyph, `aria-hidden` so the strip reads as its sentence alone. */
   protected readonly bannerGlyph = '\u2139';
+
+  /** New conversation's glyph, `aria-hidden`; its name is the button's own `aria-label`. */
+  protected readonly newConversationGlyph = '\u2795';
 
   /** The caption, with the chord spelled the way the platform spells it. */
   protected readonly caption = isApplePlatform() ? STRINGS.agentComposerCaptionMac : STRINGS.agentComposerCaption;
@@ -182,6 +268,7 @@ export class Panel {
       this.navigation.subscribe(() => this.bump()),
       this.agentStatus.subscribe(() => this.bump()),
       this.panel.subscribe(() => this.bump()),
+      this.turn.subscribe(() => this.bump()),
     ];
     const routed = this.router.events.subscribe(() => this.bump());
     inject(DestroyRef).onDestroy(() => {
@@ -263,7 +350,7 @@ export class Panel {
   }
 
   protected get composerAriaDisabled(): string | null {
-    return this.composerUnavailable ? 'true' : null;
+    return this.composerUnavailable || this.busy ? 'true' : null;
   }
 
   protected get composerReadonly(): string | null {
@@ -272,17 +359,65 @@ export class Panel {
 
   /**
    * What describes the composer and Send: the topmost reason showing, in EXPERIENCE.md's own
-   * order, because that is the one that says why they cannot act. Nothing while nothing is showing.
+   * order, because that is the one that says why they cannot act. A turn running is the fourth
+   * (Story 4.5) -- it never wins over the kill switch or the configuration gate, both of which
+   * also make the control unavailable, which busy alone does not. Nothing while nothing is showing.
    */
   protected get describedBy(): string | null {
     if (this.killSwitch) return KILL_SWITCH_ID;
     if (this.unconfigured) return REASON_ID;
+    if (this.busy) return BUSY_REASON_ID;
     return null;
   }
 
   protected get draft(): string {
     this.generation();
     return this.panel.draft();
+  }
+
+  /** Whether this tab has a turn running (Story 4.5). */
+  protected get busy(): boolean {
+    this.generation();
+    return this.turn.busy();
+  }
+
+  /** Whether the lock banner shows (Story 4.5): this tab's own busy state, or a refused attempt. */
+  protected get locked(): boolean {
+    this.generation();
+    return this.turn.locked();
+  }
+
+  protected get sendLabel(): string {
+    return this.busy ? STRINGS.actionStop : STRINGS.actionSend;
+  }
+
+  /**
+   * Send is unavailable for the same reasons the composer is, plus an empty draft while idle --
+   * never while busy, when it is Stop and must stay reachable.
+   */
+  protected get sendAriaDisabled(): string | null {
+    if (this.busy) return null;
+    if (this.composerUnavailable) return 'true';
+    return this.draft.trim() === '' ? 'true' : null;
+  }
+
+  protected get newConversationAriaDisabled(): string | null {
+    return this.busy || this.composerUnavailable ? 'true' : null;
+  }
+
+  protected get newConversationDescribedBy(): string | null {
+    return this.busy ? NEW_CONVERSATION_REASON_ID : null;
+  }
+
+  /** The transcript's turns, oldest first, with the live one last while a turn runs (Story 4.5). */
+  protected get turns(): readonly PanelTurnView[] {
+    this.generation();
+    return this.turn.entries().map((entry) => ({
+      message: entry.message,
+      steps: entry.steps.filter((step) => step.kind === 'tool'),
+      reply: entry.reply,
+      errorBanner: turnErrorBanner(entry, STRINGS.agentTurnStoppedBanner),
+    }));
   }
 
   protected get fullScreen(): boolean {
@@ -326,6 +461,45 @@ export class Panel {
   protected onDraft(event: Event): void {
     if (this.composerUnavailable) return;
     this.panel.setDraft((event.target as HTMLTextAreaElement).value);
+  }
+
+  /**
+   * Enter (without Shift) sends, exactly like clicking Send; Shift+Enter is left alone, so the
+   * textarea inserts a newline the way it always does. Nothing while the composer is unavailable
+   * -- there is no gate sentence to answer by sending.
+   */
+  protected onComposerKeydown(event: KeyboardEvent): void {
+    if (event.key !== 'Enter' || event.shiftKey) return;
+    event.preventDefault();
+    if (this.composerUnavailable) return;
+    void this.sendCurrentDraft();
+  }
+
+  /** Stop while a turn runs; otherwise Send -- the one control, the one branch (Story 4.5). */
+  protected onSendOrStop(): void {
+    if (this.busy) {
+      void this.turn.stop();
+      return;
+    }
+    void this.sendCurrentDraft();
+  }
+
+  /**
+   * `TurnStore.send` decides sent, locally-locked or refused; this only clears the draft on
+   * `'sent'` -- a locked or refused attempt leaves it exactly where the user left it (Boundaries
+   * & Constraints).
+   */
+  private async sendCurrentDraft(): Promise<void> {
+    if (this.composerUnavailable) return;
+    const text = this.panel.draft();
+    if (text.trim() === '') return;
+    const outcome = await this.turn.send(text);
+    if (outcome === 'sent') this.panel.setDraft('');
+  }
+
+  protected onNewConversation(): void {
+    if (this.busy || this.composerUnavailable) return;
+    void this.turn.newConversation();
   }
 
   protected toggleFullScreen(): void {

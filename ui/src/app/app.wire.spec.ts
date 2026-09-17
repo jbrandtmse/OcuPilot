@@ -20,9 +20,11 @@ import { ScreenStores } from './core/screen-store';
 import type { ScreenDeclaration } from './core/screens.generated';
 import { Session, type SessionState } from './core/session';
 import { PanelState } from './core/panel-layout';
+import { TurnStore } from './core/turn';
 import { ShellState } from './core/shell-state';
 import { STRINGS } from './core/strings';
 import { stubAgentStatus } from './testing/agent-status';
+import { stubTurnStore } from './testing/turn';
 import { screenDeclaration } from './testing/screen-declaration';
 
 /**
@@ -256,6 +258,7 @@ describe('the real shell, routed to the real Home screen, sharing one real Refre
         { provide: ScreenStores, useValue: screenStores },
         { provide: ShellState, useValue: shellState },
         { provide: PanelState, useValue: new PanelState({ preferences: shellPreferences, shell: shellState }) },
+        { provide: TurnStore, useValue: stubTurnStore() },
         { provide: OverlayStack, useValue: new OverlayStack() },
         { provide: ScreenActions, useValue: new ScreenActions() },
         { provide: FormDirty, useValue: new FormDirty() },

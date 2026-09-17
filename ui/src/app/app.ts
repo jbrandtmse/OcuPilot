@@ -21,6 +21,7 @@ import { InstanceService, isInstanceReady } from './core/instance';
 import { NavigationService, editorScreenFor, routeFromUrl, screenForRoute, withQuery } from './core/navigation';
 import { OverlayStack } from './core/overlay-stack';
 import { PanelState } from './core/panel-layout';
+import { TurnStore } from './core/turn';
 import { RefreshService } from './core/refresh';
 import { ScopeService } from './core/scope';
 import { Session, isInstallStateUnreadable, isSignedIn } from './core/session';
@@ -195,6 +196,7 @@ export class App {
   private readonly definitionActions = inject(DefinitionActions);
   private readonly overlays = inject(OverlayStack);
   private readonly panel = inject(PanelState);
+  private readonly turn = inject(TurnStore);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
 
   private readonly injector = inject(Injector);
@@ -435,6 +437,10 @@ export class App {
       this.agentStatus.reset();
       // The draft and full screen are this principal's too; the remembered width is the browser's.
       this.panel.endSession();
+      // The tenth: the conversation id and transcript are this principal's own (Story 4.5); the
+      // next sign-in in this tab must start fresh rather than adopting a departed principal's
+      // conversation (AD-8), and any poll this principal's turn left running must stop.
+      this.turn.endSession();
       return;
     }
     void this.instance.verify();

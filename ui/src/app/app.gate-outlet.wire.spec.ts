@@ -19,7 +19,9 @@ import { ScreenActions } from './core/screen-actions';
 import { ScreenStores } from './core/screen-store';
 import { Session, type SessionState } from './core/session';
 import { PanelState } from './core/panel-layout';
+import { TurnStore } from './core/turn';
 import { ShellState } from './core/shell-state';
+import { stubTurnStore } from './testing/turn';
 
 /**
  * The first-login gate against the requested screen's declared read (FR-28, AD-36).
@@ -298,6 +300,7 @@ describe('the first-login gate and the requested screen it may move off', () => 
         { provide: PreferenceStore, useValue: preferences },
         { provide: ShellState, useValue: shellState },
         { provide: PanelState, useValue: new PanelState({ preferences, shell: shellState }) },
+        { provide: TurnStore, useValue: stubTurnStore() },
         { provide: OverlayStack, useValue: new OverlayStack() },
         { provide: ScreenActions, useValue: new ScreenActions() },
         { provide: FormDirty, useValue: new FormDirty() },

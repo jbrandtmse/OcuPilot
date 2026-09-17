@@ -16,6 +16,10 @@ Parameter MESSAGEFIELD = "message";
 /// on.</p>
 Parameter CONTEXTFIELD = "context";
 
+/// <p>The body member a start's conversation id arrives on, and the field its violation lands on
+/// (Story 4.5).</p>
+Parameter CONVERSATIONFIELD = "conversationId";
+
 /// <p>The loop whose limits class every bound here is read from.</p>
 Parameter LOOPCLASS = "OcuPilot.Kernel.Agent.Loop";
 
@@ -58,6 +62,21 @@ ClassMethod HandleStart() As %Status
             Quit
         }
         Set tUser = ..CallerUsername()
+        Set tConversationViolation = ..ConversationViolation(tBody)
+        If tConversationViolation '= "" {
+            Set tSC = ..RenderViolation(..#CONVERSATIONFIELD, tConversationViolation, ##class(OcuPilot.Api.Error).ReasonForTurn(tConversationViolation))
+            Quit
+        }
+        Set tConversationId = tBody.%Get(..#CONVERSATIONFIELD)
+        Set tConvoOwnerSC = ##class(OcuPilot.Kernel.State.Convo).GuardedOwner(tConversationId, tUser, .tConvoOwned)
+        If $$$ISERR(tConvoOwnerSC) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tConvoOwnerSC))
+            Quit
+        }
+        If 'tConvoOwned {
+            Set tSC = ##class(OcuPilot.Api.Error).Render(404, ##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#REASONTURNCONVERSATIONNOTFOUND, ##class(OcuPilot.Api.Error).#TURNCONVERSATIONNOTFOUND)
+            Quit
+        }
         Set tVerdictSC = ##class(OcuPilot.Kernel.Restraint).Resolved(tUser, .tVerdict)
         If $$$ISERR(tVerdictSC) {
             Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tVerdictSC))
@@ -140,6 +159,7 @@ ClassMethod HandleStart() As %Status
         Set tValues("scope") = ##class(OcuPilot.Kernel.Scope).Current()
         Set tValues("context") = tContextJson
         Set tValues("contextRowCap") = tRowCap
+        Set tValues("conversationId") = tConversationId
         Set tStartSC = ##class(OcuPilot.Kernel.Agent.Job).Start(.tValues, .tStarted)
         If $$$ISERR(tStartSC) || 'tStarted Do ##class(OcuPilot.Kernel.Fault).LogRaw("turn", "the turn job could not be started", $Select($$$ISERR(tStartSC): tStartSC, 1: $$$ERROR($$$GeneralError, "the spawn was not accepted within its timeout")), ##class(OcuPilot.Api.Error).#TURNUNAVAILABLE)
         If 'tStarted {
@@ -199,6 +219,42 @@ ClassMethod HandleProgress(pId As %String) As %Status
     Quit tSC
 }
 
+/// <p>Answer <code>POST /turn/:id/stop</code> (Story 4.5): ask the caller's own turn <var>pId</var>
+/// to stop at its next step boundary, and answer 200 <code>{stopRequested}</code>.
+/// <var>stopRequested</var> is <code>false</code>, never an error, for a turn that has already
+/// ended -- there is nothing left to stop. An id the caller does not own, matched exactly, is 404
+/// <code>TURN.NOTFOUND</code>, the same as an unknown one.</p>
+ClassMethod HandleStop(pId As %String) As %Status
+{
+    Set tSC = $$$OK
+    Try {
+        Set tUser = ..CallerUsername()
+        Set tOwnerSC = ##class(OcuPilot.Kernel.State.Turn).GuardedForOwner(pId, tUser, .tFound, .tValues)
+        If $$$ISERR(tOwnerSC) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tOwnerSC))
+            Quit
+        }
+        If 'tFound {
+            Set tSC = ..RenderNotFound()
+            Quit
+        }
+        Set tStopRequested = 0
+        If '##class(OcuPilot.Kernel.State.Turn).IsTerminal(tValues("state")) {
+            Set tStopSC = ##class(OcuPilot.Kernel.State.Turn).GuardedRequestStop(pId, tUser, .tStopRequested)
+            If $$$ISERR(tStopSC) {
+                Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tStopSC))
+                Quit
+            }
+        }
+        Set tAnswer = {}
+        Do tAnswer.%Set("stopRequested", ''tStopRequested, "boolean")
+        Set tSC = ##class(OcuPilot.Api.Response).JSON(tAnswer)
+    } Catch ex {
+        Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
+    }
+    Quit tSC
+}
+
 /// <p>Answer <code>POST /turn/abandon</code>: ask every queued or running turn of the caller to
 /// abandon at its next step boundary, and answer <code>{"abandoned": n}</code>. Sign-out sends it,
 /// because the instance observes no token sign-out (AD-31).</p>
@@ -234,6 +290,18 @@ ClassMethod MessageViolation(pBody As %DynamicObject, pLimitsClass As %String, O
     If $Length(pBody.%Get(..#MESSAGEFIELD)) > tMax {
         Set pReason = ##class(OcuPilot.Api.Error).#REASONTURNMESSAGELENGTH _ ": at most " _ tMax _ " characters."
         Quit ##class(OcuPilot.Api.Error).#TURNMESSAGELENGTH
+    }
+    Quit ""
+}
+
+/// <p>The violation code <var>pBody</var>'s <code>conversationId</code> earns, or <code>""</code>
+/// (Story 4.5): required when it is absent, not a JSON string, or empty. Ownership is checked
+/// separately, after this passes (<method>OcuPilot.Kernel.State.Convo.GuardedOwner</method>) --
+/// this method reports only the shape.</p>
+ClassMethod ConversationViolation(pBody As %DynamicObject) As %String
+{
+    If (pBody.%GetTypeOf(..#CONVERSATIONFIELD) '= "string") || (pBody.%Get(..#CONVERSATIONFIELD) = "") {
+        Quit ##class(OcuPilot.Api.Error).#TURNCONVERSATIONREQUIRED
     }
     Quit ""
 }

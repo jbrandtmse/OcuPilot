@@ -177,7 +177,11 @@ test('AC1: docked right at 400 on a list route, content reflowing beside it, and
     const buttons = await page.$$eval('app-panel aside.ocu-panel button', (nodes) =>
       nodes.map((node) => node.getAttribute('aria-label') ?? node.textContent.trim())
     );
-    assert.deepEqual(buttons, [STRINGS.agentPanelFullScreen, STRINGS.actionSend], 'no close control');
+    assert.deepEqual(
+      buttons,
+      [STRINGS.actionNewConversation, STRINGS.agentPanelFullScreen, STRINGS.actionSend],
+      'no close control'
+    );
   } finally {
     await context.close();
   }
@@ -402,6 +406,10 @@ test('Signing out clears the panel draft and full screen; the next sign-in start
     await page.click('.ocu-signin-card button[type="submit"]');
     await page.waitForSelector('app-panel aside.ocu-panel', { timeout: config.navigationTimeoutMs });
     await leaveFirstLoginGate(page, config.navigationTimeoutMs, USERS_URL);
+    // DW-1048: the gate's own navigation remounts the frame, and the panel with it -- an evaluate
+    // that ran the instant `leaveFirstLoginGate` resolved could still find the composer the OLD
+    // frame rendered, gone by the time the query ran. Wait for the new frame's own composer.
+    await page.waitForSelector('#ocu-panel-composer', { timeout: config.navigationTimeoutMs });
 
     const after = await page.evaluate(() => ({
       draft: document.querySelector('#ocu-panel-composer').value,

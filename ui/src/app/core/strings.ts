@@ -173,6 +173,15 @@ export const STRINGS = {
   agentTurnStoppedBanner: 'The turn stopped at <step>: <reason>.',
   /** EXPERIENCE.md:280 */
   agentTurnLockBanner: 'A turn is in progress. Wait for it to finish before sending another message.',
+  // Story 4.5's four: from the tool-call-card Component Patterns row (:378) and the panel's
+  // Busy and header rows (:424, :511), each authorized by its own targeted extractor in
+  // `ui/tools/strings.test.mjs` rather than by being added to REQUIRED_ALONGSIDE_TABLE.
+  toolCallStatusDone: 'done',
+  toolCallStatusFailed: 'failed \u2014 <reason>',
+  agentComposerLockedReason: 'A turn is in progress',
+  agentNewConversationLockedReason: 'Stop the turn first',
+  /** EXPERIENCE.md:351 */
+  toolCallReadResultLine: '<n> rows returned \u00b7 <m> sent',
   /** EXPERIENCE.md:281 */
   agentNavigationAnnouncement: 'I\'m opening <screen> for <entity> \u2014 use Back to return.',
   /** EXPERIENCE.md:281 */

@@ -87,8 +87,9 @@ Method TestATurnOutlivesTheGatewayResponseTimeout()
     Do $$$AssertEquals(tTimeout, 60, "the gateway's response timeout is the stock 60 seconds (" _ tSource _ ")")
     Do ##class(OcuPilot.Test.TurnProvider).Script(..#TAG, 70, ##class(OcuPilot.Test.TurnProvider).TextReply("done"))
 
+    Set tConvId = $ClassMethod(..#FIXTURE, "StartConversation", tUser, ..PreparedPassword, .tConvStatus, .tConvText)
     Set tBegan = $ZHorolog
-    Do $ClassMethod(..#FIXTURE, "Call", "POST", "/turn", tUser, ..PreparedPassword, $ClassMethod(..#FIXTURE, "StartBody", "long"), .tStatus, .tText, .tHeaders, 120)
+    Do $ClassMethod(..#FIXTURE, "Call", "POST", "/turn", tUser, ..PreparedPassword, $ClassMethod(..#FIXTURE, "StartBody", "long", tConvId), .tStatus, .tText, .tHeaders, 120)
     Do $$$AssertEquals(tStatus, 202, "the start is accepted: " _ tText)
     Do $$$AssertTrue(($ZHorolog - tBegan) < 5, "within five seconds: " _ ($ZHorolog - tBegan))
     If tStatus '= 202 Quit
@@ -122,7 +123,8 @@ Method TestALapsedLeaseAbandonsTheTurn()
     Set tUser = $Parameter(..#FIXTURE, "USERA")
     Do ##class(OcuPilot.Test.TurnProvider).Script(..#TAG, 125, ##class(OcuPilot.Test.TurnProvider).ToolUseReply("probe.tool"))
     Do ##class(OcuPilot.Test.TurnProvider).Script(..#TAG, 0, ##class(OcuPilot.Test.TurnProvider).TextReply("done"))
-    Do $ClassMethod(..#FIXTURE, "Call", "POST", "/turn", tUser, ..PreparedPassword, $ClassMethod(..#FIXTURE, "StartBody", "unwatched"), .tStatus, .tText, .tHeaders)
+    Set tConvId = $ClassMethod(..#FIXTURE, "StartConversation", tUser, ..PreparedPassword, .tConvStatus, .tConvText)
+    Do $ClassMethod(..#FIXTURE, "Call", "POST", "/turn", tUser, ..PreparedPassword, $ClassMethod(..#FIXTURE, "StartBody", "unwatched", tConvId), .tStatus, .tText, .tHeaders)
     Do $$$AssertEquals(tStatus, 202, "the start is accepted")
     If tStatus '= 202 Quit
     Set tId = ##class(%DynamicObject).%FromJSON(tText).turnId

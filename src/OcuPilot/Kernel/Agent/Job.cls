@@ -12,6 +12,13 @@ Class OcuPilot.Kernel.Agent.Job Extends %RegisteredObject
 /// <p>Seconds <method>Start</method> waits for the spawn to be accepted.</p>
 Parameter SPAWNTIMEOUT As %Integer = 5;
 
+/// <p>Seconds <method>Run</method> waits for the turn's conversation lock
+/// (<method>OcuPilot.Kernel.State.Convo.LoadOrCreate</method>) -- an inference, not a governing
+/// AD: AD-41's slot lock already bounds one user to one turn, so this lock is not contended in
+/// production traffic (inference) (Design Notes: lock reconciliation), and this is only how long
+/// a turn waits in the one case it ever would be.</p>
+Parameter CONVERSATIONLOCKSECONDS As %Integer = 5;
+
 /// <p>The loop the job runs.</p>
 ClassMethod LoopClass() As %String
 {
@@ -23,8 +30,10 @@ ClassMethod LoopClass() As %String
 /// <code>message</code>, <code>readOnly</code> (the enforced read-only snapshot),
 /// <code>resources</code>, <code>scope</code> (the request's resolved scope,
 /// <method>OcuPilot.Kernel.Scope.Current</method> as the handler read it), <code>context</code>
-/// (the already-bounded screen-context payload JSON, or <code>""</code>) and
-/// <code>contextRowCap</code> (<code>Switch.ContextRowCap</code> as the handler resolved it).
+/// (the already-bounded screen-context payload JSON, or <code>""</code>),
+/// <code>contextRowCap</code> (<code>Switch.ContextRowCap</code> as the handler resolved it) and
+/// <code>conversationId</code> (Story 4.5: the caller-owned conversation
+/// <class>OcuPilot.Api.Turn</class> has already verified).
 /// <var>pStarted</var> is 1 when the spawn was accepted; when it was not, the turn is finished
 /// <code>failed</code> with <code>TURN.UNAVAILABLE</code> here.</p>
 /// <p><b>Caller contract:</b> no <code>New $ROLES</code> escalation is in effect in any frame of
@@ -37,7 +46,7 @@ ClassMethod Start(ByRef pValues, Output pStarted As %Boolean) As %Status
     Set tUser = $Get(pValues("user"))
     Try {
         Set tNamespace = $Get(pValues("namespace"))
-        Job ##class(OcuPilot.Kernel.Agent.Job).Run(tKey, tUser, $Get(pValues("definitionId")), tNamespace, $Get(pValues("message")), ''$Get(pValues("readOnly")), $Get(pValues("resources")), $Get(pValues("scope")), $Get(pValues("context")), +$Get(pValues("contextRowCap"))):(tNamespace):..#SPAWNTIMEOUT
+        Job ##class(OcuPilot.Kernel.Agent.Job).Run(tKey, tUser, $Get(pValues("definitionId")), tNamespace, $Get(pValues("message")), ''$Get(pValues("readOnly")), $Get(pValues("resources")), $Get(pValues("scope")), $Get(pValues("context")), +$Get(pValues("contextRowCap")), $Get(pValues("conversationId"))):(tNamespace):..#SPAWNTIMEOUT
         Set pStarted = $Test
     } Catch ex {
         Set tSC = ex.AsStatus()
@@ -56,10 +65,18 @@ ClassMethod Start(ByRef pValues, Output pStarted As %Boolean) As %Status
 /// is finished <code>failed</code> with <code>TURN.UNAVAILABLE</code> here; a row that already
 /// ended is left as it is. Every failure the job meets is logged, because no request is waiting to
 /// report it.</p>
-ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pNamespace As %String, pMessage As %String, pReadOnly As %Boolean, pResources As %String, pScope As %String = "", pContext As %String = "", pContextRowCap As %Integer = 0)
+/// <p><b>The conversation (Story 4.5).</b> After the turn begins, this opens
+/// <var>pConversationId</var> exclusively (<method>OcuPilot.Kernel.State.Convo.LoadOrCreate</method>)
+/// and holds the OREF for the rest of this method: its history seeds the loop's messages, and its
+/// entry is appended once the loop ends, before the OREF is dropped on every exit path, including
+/// the catch. A lock conflict opening it finishes the turn <code>failed</code> /
+/// <code>TURN.BUSY</code> rather than running with no conversation; a persistence failure finishes
+/// it <code>failed</code> / <code>TURN.UNAVAILABLE</code>, the same as any other open failure here.</p>
+ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pNamespace As %String, pMessage As %String, pReadOnly As %Boolean, pResources As %String, pScope As %String = "", pContext As %String = "", pContextRowCap As %Integer = 0, pConversationId As %String = "")
 {
     Set tBegun = 0
     Set tLimits = ""
+    Set tConvo = ""
     Set tUnavailable = ##class(OcuPilot.Api.Error).#TURNUNAVAILABLE
     Try {
         Set tLoop = ..LoopClass()
@@ -77,7 +94,14 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pNa
             Do ..Finish(pKey, pUser, tFailed, tUnavailable, "", "", 0, tLimits)
             Quit
         }
-        Set tSC = $ClassMethod(tLoop, "Run", pKey, pUser, pDefinitionId, pMessage, pReadOnly, pResources, tStarted, .tOutcome, pContext, pContextRowCap)
+        Set tConvo = ##class(OcuPilot.Kernel.State.Convo).LoadOrCreate(pConversationId, pUser, ..#CONVERSATIONLOCKSECONDS, .tConvoStatus, .tLockConflict)
+        If '$IsObject(tConvo) {
+            Do ..Log("the turn's conversation could not be opened", tConvoStatus)
+            Set tBegun = 0
+            Do ..Finish(pKey, pUser, tFailed, $Select(tLockConflict: ##class(OcuPilot.Api.Error).#TURNBUSY, 1: tUnavailable), "", "", 0, tLimits)
+            Quit
+        }
+        Set tSC = $ClassMethod(tLoop, "Run", pKey, pUser, pDefinitionId, pMessage, pReadOnly, pResources, tStarted, .tOutcome, pContext, pContextRowCap, tConvo)
         Set tState = $Get(tOutcome("state"), tFailed)
         Set tCode = $Get(tOutcome("code"), tUnavailable)
         If $$$ISERR(tSC) {
@@ -86,12 +110,42 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pNa
             Set tCode = tUnavailable
         }
         Set tBegun = 0
+        Do ..AppendConvoEntry(tConvo, pKey, pMessage, tState, $Get(tOutcome("reply")), tCode, +$Get(tOutcome("errorSeq")), tLimits)
+        Set tConvo = ""
         Do ..Finish(pKey, pUser, tState, tCode, $Get(tOutcome("limit")), $Get(tOutcome("reply")), +$Get(tOutcome("errorSeq")), tLimits)
     } Catch ex {
         Do ..Log("the turn job failed", ex.AsStatus())
+        // Mirrors the normal-completion path above: append the conversation entry, then drop the
+        // OREF, then finish the turn -- every exit path, catch included, leaves the same trail.
+        If tBegun && (tLimits '= "") {
+            Do ..AppendConvoEntry(tConvo, pKey, pMessage, ##class(OcuPilot.Kernel.State.Turn).#STATEFAILED, "", tUnavailable, 0, tLimits)
+        }
+        Set tConvo = ""
         If tBegun && (tLimits '= "") {
             Do ..Finish(pKey, pUser, ##class(OcuPilot.Kernel.State.Turn).#STATEFAILED, tUnavailable, "", "", 0, tLimits)
         }
+    }
+}
+
+/// <p>Append turn <var>pKey</var>'s conversation entry onto <var>pConvo</var>: its final step
+/// projection (<method>OcuPilot.Kernel.State.Step.GuardedRows</method>) and dropped count. A
+/// no-op when <var>pConvo</var> is not an open OREF. Failures are logged, never thrown -- the
+/// turn's own outcome does not depend on its conversation entry having been written.</p>
+ClassMethod AppendConvoEntry(pConvo As OcuPilot.Kernel.State.Convo, pKey As %String, pMessage As %String, pState As %String, pReply As %String, pCode As %String, pErrorSeq As %Integer, pLimitsClass As %String) [ Private ]
+{
+    Try {
+        If '$IsObject(pConvo) Quit
+        Set tSC = ##class(OcuPilot.Kernel.State.Step).GuardedRows(pKey, .tSteps)
+        If $$$ISERR(tSC) {
+            Do ..Log("the turn's steps could not be read for its conversation entry", tSC)
+            Quit
+        }
+        Set tSC = ##class(OcuPilot.Kernel.State.Turn).GuardedDropped(pKey, .tDropped)
+        If $$$ISERR(tSC) Set tDropped = 0
+        Set tSC = ##class(OcuPilot.Kernel.State.Convo).AppendEntry(pConvo, pMessage, pState, pReply, pCode, pErrorSeq, tSteps, +tDropped, pLimitsClass)
+        If $$$ISERR(tSC) Do ..Log("the turn's conversation entry could not be appended", tSC)
+    } Catch ex {
+        Do ..Log("appending the turn's conversation entry failed", ex.AsStatus())
     }
 }
 

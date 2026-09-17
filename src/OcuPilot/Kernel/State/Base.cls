@@ -1,3 +1,5 @@
+Include %occErrors
+
 /// <p>The tree's <b>only</b> escalation point (AD-9). Abstract persistent base providing
 /// guarded save / open / exists and guarded global access, each performing
 /// <code>New $ROLES</code> and <code>$SYSTEM.Security.AddRoles(&lt;application&gt;)</code>
@@ -241,6 +243,33 @@ ClassMethod GuardedOpenId(pId As %String, Output pObject As Base) As %Status
         If '$IsObject(pObject) {
             Set tSC = $$$ERROR($$$GeneralError, "Object not found: " _ pId)
         }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The text of stream property <var>pProperty</var> on already-open guarded object
+/// <var>pObject</var>, escalated in this frame (AD-9). A stream is read lazily: the object's
+/// scalar properties are already in memory once <method>GuardedOpenId</method> returns, but a
+/// stream property's bytes are fetched from protected storage only when read, which is why this
+/// exists as its own escalated call rather than being folded into the caller's own frame --
+/// <code>AddRoles</code> authorizes by the calling routine's identity (AC6,
+/// <file>scripts/check-objectscript.py</file>), never by who is holding the reference, so the
+/// read has to happen inside a method compiled into this class's own routine. Answers
+/// <code>""</code> for a null object, an unknown or non-stream property, or an empty stream.</p>
+ClassMethod GuardedStreamText(pObject As %RegisteredObject, pProperty As %String, Output pText As %String) As %Status
+{
+    Set pText = ""
+    Set tSC = $$$OK
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        If '$IsObject(pObject) Quit
+        Set tStream = $Property(pObject, pProperty)
+        If '$IsObject(tStream) Quit
+        If tStream.Size > 0 Set pText = tStream.Read(tStream.Size)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
@@ -715,6 +744,66 @@ ClassMethod GuardedIdsWhereNoParam(pSql As %String, Output pIds) As %Status [ Pr
         }
     } Catch ex {
         Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Whether <var>pStatus</var> carries IRIS's own lock-timeout error (5803,
+/// <code>$$$LockFailedToAcquireExclusive</code>) rather than any other failure. Public so
+/// <class>OcuPilot.Test.Convo</class> can pin the classification directly against a status this
+/// class's own error macro built, without needing genuine lock contention from a second process
+/// (Test/Convo.cls is spawn-free) -- <method>GuardedOpenIdExclusive</method> uses this same
+/// method rather than a second copy of the test.</p>
+ClassMethod IsLockConflict(pStatus As %Status) As %Boolean
+{
+    If $$$ISOK(pStatus) Quit 0
+    Quit $System.Status.GetErrorText(pStatus) [ ("#" _ $$$LockFailedToAcquireExclusive)
+}
+
+/// <p>Open the row whose <code>%Id()</code> is <var>pId</var>, for the calling subclass, at
+/// concurrency 4 (exclusive, retained), waiting up to <var>pTimeout</var> seconds for the row's
+/// lock -- the primitive behind the harvested <code>Chat.History.LoadOrCreate</code>
+/// per-conversation lock protocol (Story 4.5, <class>OcuPilot.Kernel.State.Convo</class>).</p>
+/// <p><var>pObject</var> is <code>$$$NULLOREF</code> on any failure. <var>pLockConflict</var>
+/// distinguishes IRIS's own lock-timeout status -- error 5803,
+/// <code>$$$LockFailedToAcquireExclusive</code>, raised from inside <code>%OpenId</code>'s own
+/// concurrency escalation (verified against <code>irislib/%occErrors.inc</code>) -- from every
+/// other open failure, so a caller can tell a busy row from a persistence problem.</p>
+/// <p><code>%OpenId</code> takes no timeout argument on this build (<code>%Library.Persistent</code>'s
+/// signature is <code>%OpenId(id, concurrency, ByRef sc)</code>); the wait is bounded instead by
+/// temporarily lowering the process's own default lock timeout -- <code>$ZUtil(115,4)</code>, the
+/// value <code>LOCK</code> uses when none is given, and what <code>%OpenId</code>'s internal
+/// concurrency lock uses too -- around the call, restoring it whatever the outcome. The same
+/// save/set/restore idiom is already in the exported system source at
+/// <code>irislib/Ens/DTL/Utils.cls</code>.</p>
+ClassMethod GuardedOpenIdExclusive(pId As %String, pTimeout As %Integer, Output pObject, Output pLockConflict As %Boolean) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pObject = $$$NULLOREF
+    Set pLockConflict = 0
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Set tSaved = $ZUtil(115, 4)
+        Do $ZUtil(115, 4, +pTimeout)
+        Try {
+            Set pObject = ..%OpenId(pId, 4, .tSC)
+        } Catch inner {
+            Set tSC = inner.AsStatus()
+        }
+        Do $ZUtil(115, 4, tSaved)
+        If $$$ISERR(tSC) || '$IsObject(pObject) {
+            Set pObject = $$$NULLOREF
+            If $$$ISERR(tSC) {
+                Set pLockConflict = ..IsLockConflict(tSC)
+            } Else {
+                Set tSC = $$$ERROR($$$GeneralError, "the row could not be opened")
+            }
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+        Set pObject = $$$NULLOREF
     }
     Quit tSC
 }

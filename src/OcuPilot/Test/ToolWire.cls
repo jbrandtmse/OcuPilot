@@ -97,7 +97,8 @@ Method Teardown() As %String
 /// <p>Post a start as <var>pUser</var> with <var>pPassword</var>; the turn id when it answered 202.</p>
 Method Start(pUser As %String, pPassword As %String, pMessage As %String, Output pStatus As %Integer, Output pText As %String) As %String
 {
-    Do $ClassMethod(..#FIXTURE, "Call", "POST", "/turn", pUser, pPassword, $ClassMethod(..#FIXTURE, "StartBody", pMessage), .pStatus, .pText, .tHeaders)
+    Set tConvId = $ClassMethod(..#FIXTURE, "StartConversation", pUser, pPassword, .tConvStatus, .tConvText)
+    Do $ClassMethod(..#FIXTURE, "Call", "POST", "/turn", pUser, pPassword, $ClassMethod(..#FIXTURE, "StartBody", pMessage, tConvId), .pStatus, .pText, .tHeaders)
     If pStatus '= 202 Quit ""
     Quit ##class(%DynamicObject).%FromJSON(pText).turnId
 }
@@ -164,6 +165,10 @@ Method TestATurnAnswersTheShellAndUsersReads()
 /// recorded <code>$ROLES</code> still names the role; the turn reaches call 2 and completes.</p>
 /// <p>Mutation: <method>OcuPilot.Kernel.Agent.Dispatch.HoldsPair</method> uses
 /// <code>$System.Security.Check</code> -> this goes red.</p>
+/// <p>Also pins the I/O & Edge-Case Matrix's "Failed tool" row (spec-4-5): the failed step's own
+/// <property>OcuPilot.Kernel.State.Step.FailedPair</property> and <property>Reason</property>
+/// (Story 4.5) reach the turn's wire view, not only the tool_result content already asserted
+/// above.</p>
 Method TestARoleRemovedMidTurnIsRefusedFromCurrentGrants()
 {
     Set tUser = $Parameter(..#FIXTURE, "USERA")
@@ -184,6 +189,9 @@ Method TestARoleRemovedMidTurnIsRefusedFromCurrentGrants()
     Set tResult = tMessages.%Get(2).content.%Get(0)
     Do $$$AssertEquals(tResult."is_error" _ "|" _ tResult.content, "1|{""code"":""AUTH.NOPRIVILEGE"",""detail"":{""failedPair"":""%Admin_Secure:USE""}}", "the users read is refused naming the pair")
     Do $$$AssertEquals(..Steps(tView), "model:provider:ok:;tool:permissions.users.read:error:AUTH.NOPRIVILEGE;model:provider:ok:;", "recorded as an error tool step, not retried")
+    Set tFailedStep = tView.steps.%Get(1)
+    Do $$$AssertEquals(tFailedStep.failedPair, "%Admin_Secure:USE", "the step itself carries the failed pair, not only the tool_result content")
+    Do $$$AssertNotEquals(tFailedStep.reason, "", "and a published reason for the card's failed status")
 }
 
 }

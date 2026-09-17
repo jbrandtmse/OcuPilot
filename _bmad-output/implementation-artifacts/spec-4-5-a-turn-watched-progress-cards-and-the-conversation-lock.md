@@ -2,9 +2,10 @@
 title: 'A turn, watched: progress cards and the conversation lock'
 type: 'feature'
 created: '2026-09-17'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'da29e0ddccdb768d74ce08f288c2c101c0802979'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-4-context.md'
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/harvest/iris-session-agent.md'
@@ -100,6 +101,39 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-17 — Review pass
+
+- verdicts: 27 findings — high 5, medium 8, low 7, false 7, maybe-false 0
+- findings:
+
+  - `[medium]` `[patch]` Blind Hunter: `TurnStore.send()` races `endSession()` around `createConversation()`'s await, resurrecting a stale conversation id into storage after sign-out — fix: check the epoch inside `createConversation()` itself.
+  - `[medium]` `[patch]` Blind Hunter: `TurnStore.newConversation()` has the same missing generation guard around `createConversation()` — same fix as above closes it.
+  - `[medium]` `[patch]` Blind Hunter: no test exercises either sign-out race above — a case is added alongside the fix.
+  - `[low]` `[patch]` Blind Hunter: a tool step's `Truncated` can never register for over-long redacted arguments — `RedactedArguments` caps and discards its own `tTruncated`, then `Step.GuardedAppend` re-caps the already-capped string at the identical `SUMMARYMAXLENGTH`, so its own `tCutArgs` can never come back true.
+  - `[low]` `[patch]` Blind Hunter: "New conversation" is gated only on `busy`, unlike Send's `composerUnavailable`+`busy`+draft chain — add the same `composerUnavailable` guard.
+  - `[low]` `[patch]` Blind Hunter: two Story 4.5 doc comments (`Job.CONVERSATIONLOCKSECONDS`, `Convo`'s lock-reconciliation paragraph) assert a forward-looking claim without the literal `(inference)` tag CLAUDE.md's Prose Discipline requires.
+  - `[low]` `[patch]` Blind Hunter: `Entry.GuardedRows` swallows a `StepsJson` parse failure to `[]` with no `Fault.LogRaw` breadcrumb, unlike other silent-fallback paths in the codebase.
+  - `[false]` `[reject]` Blind Hunter: `ToolCallCard.statusText` has no explicit branch for an unrecognized status — `parseStep` in `core/turn.ts` already normalizes any unrecognized wire status to `'running'` before a `TurnStep` ever reaches the component, so the claimed fallthrough to "done" cannot occur via the real parsing path.
+  - `[medium]` `[patch]` Edge Case Hunter: `turn.ts:371-396` — `send()`'s sign-out race (duplicate of the Blind Hunter row above; same fix).
+  - `[medium]` `[patch]` Edge Case Hunter: `turn.ts:450-457` — `newConversation()`'s sign-out race (duplicate; same fix).
+  - `[high]` `[patch]` Edge Case Hunter: `turn.ts:423-428` — `lockedValue` is reset only at the top of a fresh `send()`; neither `pollUntilTerminal`'s completion callback nor `finalizeLive()` clears it, so a same-tab Enter-while-busy leaves the lock banner stuck after the blocking turn finishes, contradicting "The banner clears when the turn ends" — verified by reading `send()`/`finalizeLive()` in full.
+  - `[false]` `[reject]` Edge Case Hunter: `turn.ts` `parseState` defaults an unrecognized state to `'queued'`, risking an indefinite poll — `Turn.State`'s wire vocabulary is server-controlled and fixed; no path in this diff makes the server emit a value outside it, so the claimed outcome is not reachable today.
+  - `[low]` `[patch]` Edge Case Hunter: `panel.ts:398-405` — `sendAriaDisabled` checks `composerUnavailable` before `busy`, so a live kill-switch/unconfigured transition mid-turn marks Stop `aria-disabled` even though `onSendOrStop`'s own busy-first branch still lets the click stop the turn — verified against the actual getter order; reorder so busy wins for Send-as-Stop.
+  - `[high]` `[patch]` Edge Case Hunter: `Job.cls:117-123` — the `Catch` block only clears `tConvo` and conditionally calls `Finish`; it never calls `AppendConvoEntry`, so a turn that throws mid-flight vanishes from the conversation's history entirely — verified by reading `Job.Run` in full.
+  - `[false]` `[reject]` Edge Case Hunter: `Error.cls:838-850` — an unrecognized tool fault code falls back to the generic `REASONTOOLUNAVAILABLE` sentence — this is the deliberate, safe default AD-39 calls for (never leaking a raw code), not a defect.
+  - `[low]` `[patch]` Edge Case Hunter: `Convo.cls:95-116` — `AppendEntry`'s own defensive re-cap trims an over-long step array without incrementing `stepsDropped` — the branch is never reached by any real caller (`Step.GuardedRows` already caps at `MAXSTEPS`, per the class's own doc comment), so add the increment as a direct correction.
+  - `[high]` `[patch]` Edge Case Hunter (claim): `Job.cls:117-123` — "It appends the turn's entry, then drops every reference on every exit path, catch included" vs. the actual catch path (same defect as the `Job.cls` row above; grouped).
+  - `[false]` `[reject]` Edge Case Hunter (claim): `Entry`/`Convo.GuardedView` — "the job's entry records ... `{code, reason}` error" vs. `Entry` storing no `Reason` property — deliberate (AD-9's re-entry rule: the State package cannot name `Api.Error`); `Api.Conversation.HandleRead` computes `reason` from the stored code on every read, so the wire response the "Always" bullet actually promises still carries it correctly.
+  - `[medium]` `[patch]` Edge Case Hunter (claim): `panel.ts`/`panel.spec.ts` — "the composer stays focusable and editable, with `aria-disabled=\"true\"` ... while busy" vs. `composerAriaDisabled` reading only `composerUnavailable`, never `busy`, with `panel.spec.ts` pinning `hasAttribute('aria-disabled') === false` while busy — verified directly against `panel.ts`'s `composerAriaDisabled` getter and the spec's literal "Always" text.
+  - `[high]` `[patch]` Edge Case Hunter (claim): `turn.ts:423-428` — "the banner clears when the turn ends" (same defect as the `lockedValue` row above; grouped).
+  - `[medium]` `[patch]` Verification Gap Reviewer: `TargetOf`'s id/entity/route priority is never exercised to produce a non-empty value — every scripted `ToolUseReply` input lacks all three keys, so a broken or reordered extraction would pass every test unchanged; add a scripted input carrying one.
+  - `[high]` `[patch]` Verification Gap Reviewer: the panel renders a tool-call card for every step, including the model/"provider" step — `turns`'s `entry.steps` (every `kind`) feeds the `@for` loop unfiltered, contradicting the intent-contract's "Each tool step becomes a card" — independently confirmed against `panel.ts`'s `turns` getter and template; filter to `kind === 'tool'`.
+  - `[low]` `[patch]` Verification Gap Reviewer: `send()`'s conversation-creation-failure path (`created === null`) is never exercised — the reset-on-failure code is correct on inspection, so this is a coverage gap, not an active defect; add the missing case.
+  - `[medium]` `[patch]` Verification Gap Reviewer (other finding): no scripted tool call anywhere uses a credential-shaped input key, so the AD-11/AD-39 redaction control's wiring from `Dispatch.RedactedArguments` through to `Step.Arguments`/the wire is unverified at the integration point even though `Log.Redact` itself is unit-tested; add one scripted call.
+  - `[false]` `[reject]` Verification Gap Reviewer (other finding): `Job.cls`'s `TURN.BUSY`-on-lock-conflict branch is untestable without a second process — correctly disclosed by `Test/Convo.cls`'s own header and consistent with the project's spawn-free unit-test constraint; not a hidden gap.
+  - `[false]` `[reject]` Intent Alignment Auditor: "Send returns when the turn ends" is implemented as control-state (the button), not promise-timing — the alternative would contradict the explicit "the draft is cleared" on accepted Send; the diff's own doc comment names and justifies the choice, and the button's eventual reversion to "Send" is tested.
+  - `[false]` `[reject]` Intent Alignment Auditor: the cross-tab lock-clearing case has no wire signal to key a clear on — an accepted, disclosed limit of the polling design the intent-contract's own "Never: ... streaming" forbids replacing; already documented in `turn.ts`'s own comment as a judgment call.
+
 ## Design Notes
 
 **Governing ADs:** AD-7 (unchanged; Stop sets the flag), AD-9 (the job opens the store after its spawn, never from an escalated frame), AD-11 and AD-33 (text-only rendering, no egress), AD-19 (framework-free store, mirrored), AD-20 (absolute API paths), AD-24 (rows sent on the read card), AD-31 (polls renew the lease), AD-39 (`reason` for the screen, `code` for tools), AD-41 (slot lock enforces; the banner is the affordance), and Conventions (29-character names, `RowVersion`, an HTTP test per handler).
@@ -131,7 +165,26 @@ deferred: []
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned only. Ledger inbox: DW-451 addressed (tool step fields), DW-1048 addressed (composer wait). Lead actions before implement: land the proposed EXPERIENCE.md row in Design Notes. The history-in-scope decision and the lock reconciliation are recorded there for review.
+**Summary.** Built the per-conversation store and lock (`Convo`/`Entry`), the two conversation routes, `POST /turn/:id/stop`, richer tool-step fields (target, arguments, result, reason, failedPair), bounded history replay, and the client's framework-free turn store mirrored into cards, messages, the lock banner and Send/Stop -- all seven I/O & Edge-Case Matrix rows pass, each with at least one covering, currently-green test.
+
+**Files changed** (see the diff for the full list; highlights only):
+
+- New: `Kernel/State/Convo.cls`, `Entry.cls`, `Api/Conversation.cls`, `Test/Convo.cls`, `Test/TurnConversation.cls`, `ui/src/app/core/turn.ts` (+`turn.test.mjs`), `ui/src/app/shell/tool-call-card.ts`, `ui/browser/turn.browser-spec.mjs`, `ui/src/app/testing/turn.ts`.
+- Changed: `Api/Turn.cls`, `Api/Router.cls`, `Api/Error.cls` (routes/codes); `Kernel/State/Step.cls`, `Kernel/Agent/Dispatch.cls`, `Kernel/Agent/Loop.cls`, `Kernel/Agent/Limits.cls` (tool-step fields, history, stopped step); `Kernel/Agent/Job.cls` (opens/appends/releases the conversation on every exit path, catch included); `Kernel/State/Base.cls` (`GuardedOpenIdExclusive`, `IsLockConflict`, `GuardedStreamText`); the `TurnWireFixture`/`TurnWire`/`TurnLong`/`TurnContext`/`ToolWire`/`TurnChain`/`TurnLoopProbe` ripple for the now-required `conversationId`; `ui/src/app/shell/panel.ts` (+`tool-call-card.ts`), `main.ts`, `app.ts`, `_components.scss`, `strings.ts`.
+
+**Review findings breakdown** (27 findings across four layers; full evidence in `## Review Triage Log` above):
+
+- **Patched (20):** the sign-out race in `TurnStore.createConversation()` (shared by `send()`/`newConversation()`); the lock banner not clearing when this tab's own turn ends; the panel rendering a card for every step including the model/"provider" step (not only tool steps); `Job.Run`'s catch path never appending the conversation entry; the composer's missing `aria-disabled="true"` while busy; Send-as-Stop's `aria-disabled` ordering; New conversation not gated on `composerUnavailable`; a tool step's `Truncated` never registering for over-long arguments (double-capped at an identical length); `Convo.AppendEntry`'s defensive re-cap undercounting `stepsDropped`; two missing `(inference)` tags; `Entry.GuardedRows`'s silent corrupt-read with no fault log; and five test-coverage gaps (`TargetOf`'s priority order, a credential-shaped argument's redaction, `send()`'s conversation-creation failure path, plus the sign-out-race and lock-banner tests already counted above).
+- **Rejected as false (7):** `ToolCallCard`'s unrecognized-status branch (mitigated upstream by `parseStep`); `parseState`'s `'queued'` default (no reachable path emits an out-of-vocabulary state); `Error.cls`'s generic fallback for an unrecognized tool fault code (the deliberate AD-39 default); `Entry`'s persisted shape omitting `reason` (deliberately computed at the API layer per AD-9, and the wire response is correct); the `TURN.BUSY`-lock-conflict branch's untestability (correctly disclosed, not a hidden gap); and the Intent Alignment Auditor's two flagged ambiguities (Send-returns semantics; cross-tab lock-clearing), both sound, documented, and inside the "Never: streaming" boundary.
+- **Deferred:** none.
+
+**Follow-up review recommendation:** `true` (five entries patched at `high`, first pass). Unverified risk: `Job.Run`'s catch-path fix (append the conversation entry before dropping the OREF on an exception) has no automated red/green test -- forcing `tLoop.Run` to throw requires a fault-injection seam this codebase does not have, and none was added. Verified only by code inspection and a clean full-tree compile; every other patched item has a passing pinning test.
+
+**Verification performed** (all re-run independently after the patch pass, not only reported by a subagent): `uv run scripts/check-objectscript.py` 0 problems (355 files); `uv run scripts/test_check_objectscript.py` OK; `cd ui && npm test` 847 node + 417 vitest, all green; `cd ui && npm run build` clean (pre-existing 629 kB budget warning, no new regression); full tree (355 classes) compiled clean on `ocupilot-slot-a`; `OcuPilot.Test.Convo` 7/7 on `ocupilot-slot-a`; on the throwaway `ocupilot-ci`, one class per call: `TurnConversation` 8/8, `ToolDispatch` 17/17, `TurnWire` 11/11, `ToolWire` 2/2, `TurnLoop` 11/11, `TurnStore` 11/11, `TurnTools` 8/8, `TurnChain` 1/1, `TurnLong` 2/2, `TurnContext` 16/16; browser suite against the deployed bundle: `turn.browser-spec.mjs` 6/6, `panel.browser-spec.mjs` 10/10; `bash scripts/smoke.sh --container ocupilot-ci` 19/19 passed, 2 pending (Epic 3/5, expected); `bash scripts/lint-docs.sh` clean. `OcuPilot.Test.State` could not run on `ocupilot-slot-a` (requires arming) -- a pre-existing characteristic of that class, not introduced here.
+
+Rule 19 mutations recorded during implementation: `stepLabel` (dropped target) reddened `turn.test.mjs`'s stepLabel test, reverted byte-identical; `tool-call-card.ts`'s `expanded` getter (dropped manual override) reddened `panel.spec.ts`'s running-card-expanded test, reverted byte-identical.
+
+**Residual risks:** the Job.cls catch-path fix noted above is unverified by test. The cross-tab lock-banner clearing (tab A locked by tab B's 409) has no wire signal to key a clear on and is out of scope per "Never: streaming" -- documented, not a defect. `OcuPilot.Test.State`'s arming requirement on the dev instance is pre-existing and unrelated to this story.

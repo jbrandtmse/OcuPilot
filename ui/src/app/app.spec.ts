@@ -31,9 +31,11 @@ import { ScreenStores } from './core/screen-store';
 import type { AreaDeclaration, ScreenDeclaration } from './core/screens.generated';
 import { Session, type SessionState } from './core/session';
 import { PanelState } from './core/panel-layout';
+import { TurnStore } from './core/turn';
 import { ShellState } from './core/shell-state';
 import { STRINGS } from './core/strings';
 import { stubAgentStatus } from './testing/agent-status';
+import { stubTurnStore } from './testing/turn';
 import { screenDeclaration } from './testing/screen-declaration';
 
 /**
@@ -341,6 +343,8 @@ describe('the shell frame', () => {
   let refresh: RefreshService;
   let overlays: OverlayStack;
   let panelState: PanelState;
+  let turn: TurnStore;
+  let turnStorage: Map<string, string>;
   const planted: HTMLElement[] = [];
 
   /** The connectivity banner's own alert, never another component's. */
@@ -371,6 +375,17 @@ describe('the shell frame', () => {
     const shellPreferences = new PreferenceStore({ storage: memoryStorage() });
     const shellState = new ShellState({ preferences: shellPreferences });
     panelState = new PanelState({ preferences: shellPreferences, shell: shellState });
+    // A reload-adopted id, so the sign-out test below can observe `App` dropping it -- the same
+    // shape the real `readNavigationKind`/`readSessionStorage` pair produces in `main.ts`.
+    turnStorage = new Map([['ocupilot.conversation', 'convo-1']]);
+    turn = stubTurnStore({
+      storage: {
+        getItem: (key) => (turnStorage.has(key) ? (turnStorage.get(key) as string) : null),
+        setItem: (key, value) => turnStorage.set(key, value),
+        removeItem: (key) => turnStorage.delete(key),
+      },
+      navigationType: () => 'reload',
+    });
     TestBed.configureTestingModule({
       providers: [
         // Three real routes, so "the gate navigated" and "the gate did not" are different
@@ -388,6 +403,7 @@ describe('the shell frame', () => {
         { provide: AgentStatus, useValue: agentStatus },
         { provide: ShellState, useValue: shellState },
         { provide: PanelState, useValue: panelState },
+        { provide: TurnStore, useValue: turn },
         { provide: ScopeService, useValue: scope as unknown as ScopeService },
         {
           provide: ConnectivityService,
@@ -650,6 +666,7 @@ describe('the shell frame', () => {
     panelState.resizeBy(16);
     panelState.setDraft('Why is /csp/myapp disabled?');
     panelState.toggleFullScreen();
+    expect(turn.conversationId()).toBe('convo-1');
 
     session.move('form');
     fixture.detectChanges();
@@ -657,6 +674,10 @@ describe('the shell frame', () => {
     expect(panelState.draft()).toBe('');
     expect(panelState.fullScreen()).toBe(false);
     expect(panelState.remembered()).toBe(416);
+    // Mutation (Rule 19): delete `this.turn.endSession()` from the same branch -> this goes red,
+    // and the next principal to sign in on this tab would adopt a departed principal's
+    // conversation (AD-8).
+    expect(turn.conversationId()).toBe(null);
   });
 
   it('an unverified instance renders the blocking notice and none of the frame', () => {

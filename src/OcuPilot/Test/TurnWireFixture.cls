@@ -269,13 +269,25 @@ ClassMethod Call(pMethod As %String, pPath As %String, pUser As %String, pPasswo
 }
 
 /// <p>The body a start posts for <var>pMessage</var>, as the UTF-8 bytes a browser sends.
+/// <var>pConversationId</var> (Story 4.5) is required by <class>OcuPilot.Api.Turn</class>; every
+/// caller supplies one, normally minted by <method>StartConversation</method> first.
 /// <var>pContext</var>, when supplied, is the wire <code>context</code> object (Story 4.4).</p>
-ClassMethod StartBody(pMessage As %String, pContext As %DynamicObject = "") As %String
+ClassMethod StartBody(pMessage As %String, pConversationId As %String, pContext As %DynamicObject = "") As %String
 {
     Set tBody = {}
     Do tBody.%Set("message", pMessage, "string")
+    Do tBody.%Set("conversationId", pConversationId, "string")
     If $IsObject(pContext) Do tBody.%Set("context", pContext)
     Quit $ZConvert(tBody.%ToJSON(), "O", "UTF8")
+}
+
+/// <p>Create a conversation as <var>pUser</var> over HTTP (Story 4.5) and answer its id, or
+/// <code>""</code> when the create did not answer 201.</p>
+ClassMethod StartConversation(pUser As %String, pPassword As %String, Output pStatus As %Integer, Output pText As %String) As %String
+{
+    Do ..Call("POST", "/conversation", pUser, pPassword, "", .pStatus, .pText, .tHeaders)
+    If pStatus '= 201 Quit ""
+    Quit ##class(%DynamicObject).%FromJSON(pText).conversationId
 }
 
 /// <p>Poll turn <var>pTurnId</var> as <var>pUser</var> every second until it ends or

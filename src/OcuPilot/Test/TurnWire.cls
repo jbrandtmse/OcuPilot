@@ -93,7 +93,8 @@ Method Call(pMethod As %String, pPath As %String, pUser As %String, pBody As %St
 /// <p>Post a start as <var>pUser</var>; the turn id when it answered 202, else <code>""</code>.</p>
 Method Start(pUser As %String, pMessage As %String, Output pStatus As %Integer, Output pText As %String) As %String
 {
-    Do ..Call("POST", "/turn", pUser, $ClassMethod(..#FIXTURE, "StartBody", pMessage), .pStatus, .pText, .tHeaders)
+    Set tConvId = $ClassMethod(..#FIXTURE, "StartConversation", pUser, ..PreparedPassword, .tConvStatus, .tConvText)
+    Do ..Call("POST", "/turn", pUser, $ClassMethod(..#FIXTURE, "StartBody", pMessage, tConvId), .pStatus, .pText, .tHeaders)
     If pStatus '= 202 Quit ""
     Quit ##class(%DynamicObject).%FromJSON(pText).turnId
 }
@@ -131,7 +132,7 @@ Method TestAStartRunsAsTheCallerAndThePollAnswersItsShape()
     Set tView = ##class(%DynamicObject).%FromJSON(tText)
     Do $$$AssertEquals(..KeysOf(tView), "turnId,state,startedAt,endedAt,iterations,tokens,limit,steps,stepsDropped,reply,error", "with the declared keys")
     Do $$$AssertEquals(..KeysOf(tView.tokens), "input,output", "and the token keys")
-    Do $$$AssertEquals(..KeysOf(tView.steps.%Get(0)), "seq,kind,name,status,summary,text,code,truncated", "and the step keys")
+    Do $$$AssertEquals(..KeysOf(tView.steps.%Get(0)), "seq,kind,name,status,summary,text,code,truncated,target,arguments,result,reason,failedPair", "and the step keys")
     Do $$$AssertEquals(tView.reply _ "|" _ tView.iterations _ "|" _ tView.%GetTypeOf("error"), "done|1|null", "reply, iterations and no error")
     Do $$$AssertEquals(##class(OcuPilot.Test.TurnProvider).Recorded(..#TAG, 1, "user"), tUser, "the provider call ran as the principal")
     Set tRoles = $ZConvert(##class(OcuPilot.Test.TurnProvider).Recorded(..#TAG, 1, "roles"), "U")
@@ -207,11 +208,12 @@ Method TestABusyCallerIsRefusedAndAConcurrentPairStartsOne()
     Do $$$AssertEquals(tStatus, 409, "a start while the slot is held elsewhere is refused")
     Do $$$AssertEquals(##class(OcuPilot.Test.TurnFixture).TurnCount(tUser), 1, "and inserts nothing")
 
+    Set tRaceConvId = $ClassMethod(..#FIXTURE, "StartConversation", tUser, ..PreparedPassword, .tRaceConvStatus, .tRaceConvText)
     Set tGate = $Job
     Kill ^IRIS.Temp.OcuPilotTurnWireRace(tGate)
     Lock +^IRIS.Temp.OcuPilotTurnWireRace(tGate)
     For tSlot = 1, 2 {
-        Job ##class(OcuPilot.Test.TurnWire).RacePost(tUser, ..PreparedPassword, tGate, tSlot)::10
+        Job ##class(OcuPilot.Test.TurnWire).RacePost(tUser, ..PreparedPassword, tGate, tSlot, tRaceConvId)::10
         Set tPid(tSlot) = $Select($Test: $ZChild, 1: "")
     }
     Hang 1
@@ -234,12 +236,15 @@ Method TestABusyCallerIsRefusedAndAConcurrentPairStartsOne()
     Do $$$AssertEquals(##class(OcuPilot.Test.TurnFixture).TurnCount(tUser), 2, "so the pair added one turn")
 }
 
-/// <p>The body of one concurrent start: wait on the gate the test holds, post, record the status.</p>
-ClassMethod RacePost(pUser As %String, pPassword As %String, pGate As %String, pSlot As %Integer)
+/// <p>The body of one concurrent start: wait on the gate the test holds, post, record the status.
+/// Both racing posts share <var>pConversationId</var> -- exactly one of them will actually reach
+/// <method>OcuPilot.Kernel.Agent.Job.Run</method>, and the AD-41 slot lock is what this test
+/// pins, not the conversation lock.</p>
+ClassMethod RacePost(pUser As %String, pPassword As %String, pGate As %String, pSlot As %Integer, pConversationId As %String)
 {
     Lock +^IRIS.Temp.OcuPilotTurnWireRace(pGate)#"S":30
     Lock -^IRIS.Temp.OcuPilotTurnWireRace(pGate)#"S"
-    Do ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", "/api/ocupilot/turn", pUser, pPassword, .tStatus, .tText, .tHeaders, "{""message"":""race""}", "application/json")
+    Do ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", "/api/ocupilot/turn", pUser, pPassword, .tStatus, .tText, .tHeaders, "{""message"":""race"",""conversationId"":""" _ pConversationId _ """}", "application/json")
     Set ^IRIS.Temp.OcuPilotTurnWireRace(pGate, pSlot) = +$Get(tStatus)
 }
 

@@ -113,7 +113,8 @@ Method CallAs(pMethod As %String, pPath As %String, pUser As %String, pBody As %
 /// <p>Post a start carrying <var>pContext</var>; the turn id when it answered 202.</p>
 Method Start(pMessage As %String, pContext As %DynamicObject, Output pStatus As %Integer, Output pText As %String) As %String
 {
-    Do ..Call("POST", "/turn", $ClassMethod(..#FIXTURE, "StartBody", pMessage, pContext), .pStatus, .pText, .tHeaders)
+    Set tConvId = $ClassMethod(..#FIXTURE, "StartConversation", $Parameter(..#FIXTURE, "USERA"), ..PreparedPassword, .tConvStatus, .tConvText)
+    Do ..Call("POST", "/turn", $ClassMethod(..#FIXTURE, "StartBody", pMessage, tConvId, pContext), .pStatus, .pText, .tHeaders)
     If pStatus '= 202 Quit ""
     Quit ##class(%DynamicObject).%FromJSON(pText).turnId
 }
@@ -554,7 +555,8 @@ Method TestATurnStartedUnderNsSetsTheJobsScope()
 {
     Do ##class(OcuPilot.Test.TurnProvider).Script(..#TAG, 0, ##class(OcuPilot.Test.TurnProvider).ToolUseReply("shell_namespaces_read"))
     Do ##class(OcuPilot.Test.TurnProvider).Script(..#TAG, 0, ##class(OcuPilot.Test.TurnProvider).TextReply("ok"))
-    Do ..Call("POST", "/turn?ns=HSLIB", $ClassMethod(..#FIXTURE, "StartBody", "which namespace"), .tStatus, .tText, .tHeaders)
+    Set tConvId = $ClassMethod(..#FIXTURE, "StartConversation", $Parameter(..#FIXTURE, "USERA"), ..PreparedPassword, .tConvStatus, .tConvText)
+    Do ..Call("POST", "/turn?ns=HSLIB", $ClassMethod(..#FIXTURE, "StartBody", "which namespace", tConvId), .tStatus, .tText, .tHeaders)
     Do $$$AssertEquals(tStatus, 202, "the start under ?ns=HSLIB is accepted: " _ tText)
     Set tTurnId = ##class(%DynamicObject).%FromJSON(tText).turnId
     Set tState = ..AwaitEnd(tTurnId, 15, .tView)

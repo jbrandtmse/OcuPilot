@@ -101,8 +101,10 @@ Method TestAKeyStoredOverTheWireReachesTheTurnsProviderCall()
     Do ..Expect("enable", "PUT", "/agent/definitions/" _ tId, "{""enabled"":true}", 200)
     Do ..Expect("default", "POST", "/agent/definitions/" _ tId _ "/default", "", 200)
 
+    Set tConvCreated = ..Expect("conversation", "POST", "/conversation", "", 201)
+    Set tConvId = $Select($IsObject(tConvCreated): tConvCreated.conversationId, 1: "")
     Set tCallsBefore = ##class(OcuPilot.Test.TurnProvider).Calls(..#TAG)
-    Set tStarted = ..Expect("turn", "POST", "/turn", "{""message"":""chain""}", 202)
+    Set tStarted = ..Expect("turn", "POST", "/turn", "{""message"":""chain"",""conversationId"":""" _ tConvId _ """}", 202)
     If '$IsObject(tStarted) Quit
     Set ..PreparedKey = tStarted.turnId
     Set tState = ##class(OcuPilot.Test.TurnWireFixture).AwaitEnd(..PreparedKey, ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), 30, .tView)

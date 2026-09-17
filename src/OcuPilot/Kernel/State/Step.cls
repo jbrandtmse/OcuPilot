@@ -32,12 +32,49 @@ Property Code As %String(MAXLEN = 64);
 
 Property Truncated As %Boolean [ InitialExpression = 0 ];
 
+/// <p>A tool step's target (Story 4.5): the input's <code>id</code>, else <code>entity</code>,
+/// else <code>route</code>, else <code>""</code>. Empty for a model step.</p>
+/// <p><b>Added with no <code>SCHEMAVERSION</code> move.</b> This and the four properties below are
+/// safe-default additions: every existing row reads back <code>$Char(0)</code> from SQL for a
+/// column that predates it, which <method>Text</method> already normalizes to <code>""</code> the
+/// way it does for every other property here, so an old row and a row with nothing to report both
+/// answer the same empty value.</p>
+Property Target As %String(MAXLEN = "");
+
+/// <p>A tool step's arguments (Story 4.5, AD-11, AD-39): compact JSON of the call's input, any key
+/// matching <method>OcuPilot.Kernel.Audit.Log.IsCredentialName</method> replaced with the same
+/// redaction mark that class uses, cut at the summary cap. Empty for a model step.</p>
+Property Arguments As %String(MAXLEN = "");
+
+/// <p>A successful, rows-shaped tool step's result (Story 4.5, AD-24): JSON
+/// <code>{rowsReturned, rowsSent, truncated}</code> from
+/// <method>OcuPilot.Kernel.Agent.Bound.Apply</method>'s own <code>rowsAvailable</code>,
+/// <code>rowsSent</code> and <code>truncated</code>. Empty for a model step, a failed step, or a
+/// tool step whose result carries no rows.</p>
+Property Result As %String(MAXLEN = "");
+
+/// <p>A failed step's published sentence for <property>Code</property> (Story 4.5, AD-39) --
+/// never vendor text, and never carried to the model, only to this record for the panel's card.
+/// Empty for a step that did not fail.</p>
+Property Reason As %String(MAXLEN = "");
+
+/// <p>A failed tool step's <code>detail.failedPair</code> (Story 4.5, AD-8), spelled
+/// <code>resource:permission</code>, when the failure carries one. Empty otherwise.</p>
+Property FailedPair As %String(MAXLEN = 128);
+
 Index TurnSeqIdx On (TurnKey, Seq) [ Unique ];
 
 /// <p>Append a step to turn <var>pKey</var>. <var>pSeq</var> is its position whether or not it was
 /// stored; <var>pStored</var> is 0 when the turn already holds the step cap, in which case the
 /// turn's dropped count is raised instead.</p>
-ClassMethod GuardedAppend(pKey As %String, pKind As %String, pName As %String, pStatus As %String, pSummary As %String, pText As %String, pCode As %String, pLimitsClass As %String, Output pSeq As %Integer, Output pStored As %Boolean) As %Status
+/// <p><var>pTarget</var>, <var>pArguments</var>, <var>pResult</var>, <var>pReason</var> and
+/// <var>pFailedPair</var> are the tool-step fields (Story 4.5), trailing and optional so a model
+/// step's append -- which carries none of them -- calls this unchanged. <var>pArguments</var> is
+/// stored verbatim: the caller has already capped it at the summary cap
+/// (<method>OcuPilot.Kernel.Agent.Dispatch.RedactedArguments</method>), so this does not re-cap it
+/// a second time. <var>pArgumentsTruncated</var> is the caller's own answer to whether that cap cut
+/// it, and sets <property>Truncated</property> when true, the same as a cut name or summary does.</p>
+ClassMethod GuardedAppend(pKey As %String, pKind As %String, pName As %String, pStatus As %String, pSummary As %String, pText As %String, pCode As %String, pLimitsClass As %String, Output pSeq As %Integer, Output pStored As %Boolean, pTarget As %String = "", pArguments As %String = "", pResult As %String = "", pReason As %String = "", pFailedPair As %String = "", pArgumentsTruncated As %Boolean = 0) As %Status
 {
     Set pSeq = 0
     Set pStored = 0
@@ -60,7 +97,13 @@ ClassMethod GuardedAppend(pKey As %String, pKind As %String, pName As %String, p
         Set tRow.Kind = pKind
         Set tRow.Status = pStatus
         Set tRow.Code = pCode
+        Set tRow.Target = pTarget
+        Set tRow.Arguments = pArguments
+        Set tRow.Result = pResult
+        Set tRow.Reason = pReason
+        Set tRow.FailedPair = pFailedPair
         Do ..ApplyContent(tRow, pName, pSummary, pText, pLimitsClass)
+        If pArgumentsTruncated Set tRow.Truncated = 1
         Set tSC = ..GuardedSaveIfCurrent(tRow, 0)
         If $$$ISERR(tSC) Quit
         Set pSeq = tRow.Seq
@@ -87,7 +130,10 @@ ClassMethod GuardedUpdate(pKey As %String, pSeq As %Integer, pStatus As %String,
 }
 
 /// <p>Every stored step of turn <var>pKey</var>, in sequence order, as
-/// <code>{seq, kind, name, status, summary, text, code, truncated}</code>.</p>
+/// <code>{seq, kind, name, status, summary, text, code, truncated, target, arguments, result,
+/// reason, failedPair}</code> (Story 4.5). <code>result</code> is the parsed <code>{rowsReturned,
+/// rowsSent, truncated}</code> object when the step recorded one, else JSON null; every other new
+/// field is the empty string when the step carries none.</p>
 ClassMethod GuardedRows(pKey As %String, Output pRows As %DynamicArray) As %Status
 {
     Set pRows = []
@@ -105,6 +151,24 @@ ClassMethod GuardedRows(pKey As %String, Output pRows As %DynamicArray) As %Stat
         Do tOut.%Set("text", ..Text(tRow.Text), "string")
         Do tOut.%Set("code", ..Text(tRow.Code), "string")
         Do tOut.%Set("truncated", ''tRow.Truncated, "boolean")
+        Do tOut.%Set("target", ..Text(tRow.Target), "string")
+        Do tOut.%Set("arguments", ..Text(tRow.Arguments), "string")
+        Set tResultText = ..Text(tRow.Result)
+        Set tResultObj = ""
+        If tResultText '= "" {
+            Try {
+                Set tResultObj = ##class(%DynamicAbstractObject).%FromJSON(tResultText)
+            } Catch {
+                Set tResultObj = ""
+            }
+        }
+        If $IsObject(tResultObj) {
+            Do tOut.%Set("result", tResultObj)
+        } Else {
+            Do tOut.%Set("result", "", "null")
+        }
+        Do tOut.%Set("reason", ..Text(tRow.Reason), "string")
+        Do tOut.%Set("failedPair", ..Text(tRow.FailedPair), "string")
         Set tRow = ""
         Do pRows.%Push(tOut)
     }

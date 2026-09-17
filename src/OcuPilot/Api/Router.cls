@@ -87,8 +87,11 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/logs/errors/detail" Method="GET" Call="LogErrorDetail"/>
   <Route Url="/logs/messages" Method="GET" Call="LogMessages"/>
   <Route Url="/turn/:id/progress" Method="GET" Call="TurnProgress"/>
+  <Route Url="/turn/:id/stop" Method="POST" Call="TurnStop"/>
   <Route Url="/turn/abandon" Method="POST" Call="TurnAbandon"/>
   <Route Url="/turn" Method="POST" Call="TurnStart"/>
+  <Route Url="/conversation/:id" Method="GET" Call="ConversationRead"/>
+  <Route Url="/conversation" Method="POST" Call="ConversationCreate"/>
   <Route Url="/instance" Method="GET" Call="Instance"/>
   <Route Url="/namespaces" Method="GET" Call="Namespaces"/>
   <Route Url="/navigation" Method="GET" Call="Navigation"/>
@@ -273,6 +276,13 @@ ClassMethod TurnProgress(pId As %String) As %Status
     Quit ##class(OcuPilot.Api.Turn).HandleProgress(pId)
 }
 
+/// <p>Thin <code>Call=</code> target for <code>POST /turn/:id/stop</code> -- see
+/// <method>TurnProgress</method>.</p>
+ClassMethod TurnStop(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Api.Turn).HandleStop(pId)
+}
+
 /// <p>Thin <code>Call=</code> target for <code>POST /turn/abandon</code> -- see
 /// <method>TurnProgress</method>.</p>
 ClassMethod TurnAbandon() As %Status
@@ -285,6 +295,21 @@ ClassMethod TurnAbandon() As %Status
 ClassMethod TurnStart() As %Status
 {
     Quit ##class(OcuPilot.Api.Turn).HandleStart()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /conversation/:id</code>: delegates to
+/// <class>OcuPilot.Api.Conversation</class> and carries no logic of its own. Declared before
+/// <code>POST /conversation</code>, for the third ordering invariant.</p>
+ClassMethod ConversationRead(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Api.Conversation).HandleRead(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /conversation</code> -- see
+/// <method>ConversationRead</method>.</p>
+ClassMethod ConversationCreate() As %Status
+{
+    Quit ##class(OcuPilot.Api.Conversation).HandleCreate()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /instance</code>: delegates to

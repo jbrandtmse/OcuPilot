@@ -53,4 +53,10 @@ Parameter TOOLRESULTMAXLENGTH As %Integer = 65536;
 /// one.</p>
 Parameter FIELDMAXLENGTH As %Integer = 1000;
 
+/// <p>Characters the next turn's model request replays from prior turns of the same conversation
+/// (Story 4.5, AD-24): each turn with a reply contributes its user message then its reply, oldest
+/// first, and whole turns are dropped from the oldest end until the total fits. A turn with no
+/// reply is skipped; tool results and screen context are never replayed.</p>
+Parameter HISTORYMAXLENGTH As %Integer = 65536;
+
 }
