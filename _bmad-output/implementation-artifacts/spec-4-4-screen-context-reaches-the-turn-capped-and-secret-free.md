@@ -311,13 +311,13 @@ reachable harm is named. Four findings were `false` on verification (a spurious-
 `maxLength<=0` claim, a documentation-staging non-issue, and a DW-399 parity claim resolved by the
 live-checkout test that is the actual verification mechanism).
 
-**Follow-up review recommendation: true.** Three high-severity entries were patched in this pass
-(the criterion that alone sets this true). Named unverified risk: the `%Set` type-hint bug fixed in
-`Bound.Apply` was a repo-wide-shaped mistake (passing a JSON type hint from an iterator alongside an
-already-object-valued OREF) caught only by a full-suite regression sweep, not by search; this pass
-did not grep the rest of the shipped tree (outside this story's own diff) for the same `%Set(...,
-tValueType)` pattern on a value that could be object/array-typed. A follow-up should run that search
-once, project-wide.
+**Follow-up review recommendation: true.** Three high-severity entries were patched in this pass,
+which alone sets this true regardless of what follows. The one risk this would otherwise leave
+unverified was checked before finalizing: grepped every `.cls` under `src/OcuPilot` (excluding
+`Test/`) for `%Set(..., <a %GetNext-captured type variable>)`; the only two hits are `Bound.cls`'s
+own now-guarded `Else` arm (reachable only for `number`/`boolean`/`null`, all safe with an explicit
+hint) and `Screen/Context.cls:103`, which already `Continue`s away `object`/`array` before its own
+`%Set` call. No other instance of the pattern exists in the shipped tree.
 
 **Verification performed.** `cd ui && npm test`: 820/822 green, the 2 failures pre-existing Story
 4.11 string gaps (confirmed via `git stash` against baseline). `npm run build`: clean, all six
@@ -329,18 +329,20 @@ all green across multiple re-runs as fixes landed; `State` refuses outright with
 brought up and torn down four times across this pass as fixes required re-verification, the last
 run from a completely fresh container with no prior state. **The definitive final run: a full
 102-class, 946-test sweep on that fresh throwaway, 0 failed, 0 probe leftovers, 0 overlaps** --
-including `TurnContext` (12/12), `TurnWire` (2/2), `SwitchState` (11/11), `AgentViolation` (8/8) and
-`ConfigGate` (3/3), the classes this review's own fixes touched or that regressed and were fixed.
+including `TurnContext` (12/12), `ToolWire` (2/2, the suite that caught the `%Set` regression via
+`permissions.users.read`), `SwitchState` (11/11), `AgentViolation` (8/8) and `ConfigGate` (3/3), the
+classes this review's own fixes touched or that regressed and were fixed.
 `switches.browser-spec.mjs` (4/4) and `scripts/smoke.sh` (18/18 executed, 2 pending pre-existing
 Epic 3 gaps, 0 skipped) both green on that same throwaway before teardown. Nine Rule 19 mutations
 demonstrated and reverted byte-identical (see `## Verification` above): four in the implementation
 pass, five in this review pass, including the two most consequential (the descriptor-branch
 per-field cut and the `%Set` object/array fix).
 
-**Residual risks:** the project-wide `%Set(...,type)` grep named above; the four low-severity
-`reject`/`defer` items in the triage log, each with a `reopen_if` or reasoning already recorded; the
-`TestAReadToolResultsOwnFieldIsBound` case remains conditional on live audit data (the underlying
-mechanism is otherwise now deterministically pinned via `ToolDispatch.TestADescriptorDerivedToolResultGetsThePerFieldCut`).
+**Residual risks:** the four low-severity `reject`/`defer` items in the triage log, each with a
+`reopen_if` or reasoning already recorded; the `TestAReadToolResultsOwnFieldIsBound` case remains
+conditional on live audit data (the underlying mechanism is otherwise now deterministically pinned
+via `ToolDispatch.TestADescriptorDerivedToolResultGetsThePerFieldCut`). The project-wide `%Set`
+search named above is closed, not open.
 
 Status: done
 Blocking condition: none.
