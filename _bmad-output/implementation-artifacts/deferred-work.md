@@ -3089,3 +3089,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-4-screen-context-reaches-the-turn-capped-and-secret-free.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Anthropic.cls omits tools when none are advertised; ProviderTools advertises the whole registry independent of the caller.
 - 2026-09-17T10:02:44Z status=wontfix-theoretical owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=cr note=real only if the shipped registry advertises zero tools
+
+### DW-1046: Bound.Apply's per-field cut walks fields inside rows only, so a large top-level field beside rows gets only the whole-payload size cut
+- source: spec-4-4-screen-context-reaches-the-turn-capped-and-secret-free.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Kernel/Agent/Bound.cls cuts row fields; no shipped read result carries a large top-level field beside rows today
+- 2026-09-17T11:25:11Z status=wontfix-theoretical owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=harvest note=Real once a tool answers a large scalar beside its rows
+
+### DW-1047: A descriptor-derived read tool whose result omits rows or answers a non-array falls back to the row and size only Capped path with no per-field cut
+- source: spec-4-4-screen-context-reaches-the-turn-capped-and-secret-free.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Kernel/Agent/Dispatch.cls falls back to Capped when rows is absent; every shipped descriptor read answers a rows array
+- 2026-09-17T11:25:11Z status=wontfix-theoretical owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=harvest note=Real once a declared read answers without a rows array
