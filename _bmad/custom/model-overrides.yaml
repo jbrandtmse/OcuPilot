@@ -13,6 +13,11 @@ overrides:
                           # 2026-09-16, cost). `plan` and code review stay on opus via the stage map;
                           # `qa` stays on sonnet.
 
+checkpoint:               # pre-answered end-of-epic checkpoint offers (owner instruction 2026-09-16; Rule 23).
+  recommend_escalate: decline   # implement stays on sonnet through the 4-12 range; the lead logs the
+                                # checkpoint as usual with answer=pre_answered_decline and leaves overrides alone.
+  offer_mixed: decline          # review_tier stays full-opus (the owner refused the mixed offer at Epic 2 too).
+
 history:
   - date: 2026-09-11
     action: escalate-implement-to-opus
@@ -35,6 +40,14 @@ history:
       Opus tier; the implement stage 48.8% of all stage-subagent spend, at 110 turns and a context
       growing from 57K to 427K tokens per run. The Epic 2 checkpoint on implement=opus(override)
       recorded unresolved_high_med_mean 0.33. The escalation threshold (unresolved_high_med >= 2
-      per story on a Sonnet tier) is re-evaluated at the next epic close on Sonnet data; the owner
-      expects a possible re-escalation offer then and has not pre-answered it.
+      per story on a Sonnet tier) is still evaluated at every epic close; its offers are pre-answered
+      in the checkpoint map above (next entry).
+    approved_by: user
+  - date: 2026-09-16
+    action: pre-answer-checkpoint
+    evidence: >-
+      Owner instruction: both checkpoint offers are pre-answered decline in the checkpoint map, so
+      the 4-12 range runs without a tier pause; evaluation and telemetry continue. Supporting
+      telemetry: Epic 3's checkpoint, with implement on opus, measured mean high+med 9.8 per story,
+      the same as Epic 1 on sonnet, so the 2026-09-11 escalation did not move that number.
     approved_by: user
