@@ -270,6 +270,13 @@ test('AC1: the side bar lists OAuth 2.0 fifth; its strip reads the five tabs, an
     await page.keyboard.press('Enter');
     await atTab(page, TABS[1]);
     assert.deepEqual(reads.slice(beforeEnter), [TABS[1].read], 'Enter opens it, under its headers, from one read of its own tool');
+    await page.waitForFunction(
+      (route) => document.activeElement?.getAttribute('data-route') === route,
+      { timeout: 5000 },
+      TABS[1].route
+    ).catch(() => undefined);
+    const arrived = await page.evaluate(() => document.activeElement?.getAttribute('data-route') ?? document.activeElement?.tagName ?? null);
+    assert.equal(arrived, TABS[1].route, 'and the tab it opened holds focus on the page that replaced the strip');
     assert.equal((await sideBarOf(page)).current, STRINGS.oauthLabel, 'and the side bar still marks OAuth 2.0 current');
 
     for (const index of [2, 3, 4, 0, 1]) {

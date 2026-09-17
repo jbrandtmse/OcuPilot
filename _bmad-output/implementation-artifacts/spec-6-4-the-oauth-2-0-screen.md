@@ -75,7 +75,7 @@ deferred: []
 The throwaway has the demo fixture installed. `OcuPilot.Test.OAuthProbe.Create()` has made the following objects:
 
 - server definitions `https://ocupilottest.invalid/a` (A) and `/b` (B)
-- client configurations `OcuPilotTestA` on A and `OcuPilotTestB` on B, both using SSL configuration `OcuPilotDemo`
+- client configurations `OcuPilotTestA` on A and `OcuPilotTestB` on B, both using SSL configuration `OcuPilotDemoTLS`
 - resource server `OcuPilotTestResource` on A
 - an authorization server configuration, created only when none exists, with scopes `openid` and `profile` and grant types `authorization_code` and `client_credentials`
 - server client `OcuPilotTestRegistration`, type `resource`
@@ -205,7 +205,7 @@ Reads are `GET /screens/<tool>/read`.
 - [ ] `src/OcuPilot/Test/OAuthProbe.cls` (new) -- `Create()` and `Remove()` for the Matrix objects, in `%SYS` by explicit save and restore (AD-16).
   - A pre-existing authorization server configuration is used and never modified or deleted.
   - `Remove` deletes only what `Create` made, and each vendor failure is returned in the status.
-- [ ] `src/OcuPilot/Test/OAuthTabs.cls` (new; needs the API app over HTTP, `_SYSTEM`, and the demo's `OcuPilotDemo` SSL configuration; it creates and removes its objects in the before-all and after-all hooks) -- covers these rows, on the `SecurityLists` pattern:
+- [ ] `src/OcuPilot/Test/OAuthTabs.cls` (new; needs the API app over HTTP, `_SYSTEM`, and the demo's `OcuPilotDemoTLS` SSL configuration; it creates and removes its objects in the before-all and after-all hooks) -- covers these rows, on the `SecurityLists` pattern:
   - each descriptor passes `ReadProblem`, `ClassicLinkProblem` and `TabProblem`
   - the classic page compiles
   - `AreaCoverageProblem` is empty
@@ -238,6 +238,37 @@ Reads are `GET /screens/<tool>/read`.
   - a deep link to `security/oauth/resource-servers` reads, and its tab strip shows the other four tabs gated with "Requires <pair>" and focusable
   - a deep link to `security/oauth/server-clients` renders "You need %Admin_OAuth2_Registration:USE to open Server client descriptions." with no table and no read
 - **Integration.** Given consumer `Screen.Tool.Read.View`, when it reads the five `security.oauth*.read` tools live, then it returns each route's fields and rows narrowed by its cap.
+
+### Review Findings
+
+Code review 2026-09-17, tier `full-opus` (blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor). 26 rows (25 from the layers, 1 from triage), grouped into 23 entries: medium 4, low 16, false 2, maybe-false 1. Result: 6 patched, 2 deferred as ledger occurrences, 15 rejected.
+
+- [x] [Review][Patch] Opening a tab replaces the page and removes the focused tab with no focus destination (EXPERIENCE.md Accessibility Floor, *Focus destinations*). The page that arrives now focuses the tab `open` opened. Without the fix, focus fell to `BODY` on `ocupilot-b-ci`. [ui/src/app/shell/detail-page.ts:150]
+- [x] [Review][Patch] No assertion pins `ForEachRows`' held-rows stop, so a later parent's child list goes out after the cap's rows are held. Added an arm. [src/OcuPilot/Test/ScreenReadSource.cls:229]
+- [x] [Review][Patch] No assertion pins an empty-string parent key as a 500. Added an arm. [src/OcuPilot/Test/ScreenReadSource.cls:256]
+- [x] [Review][Patch] `OAuthTabs.PreparedProbe` was set and never read. Removed. [src/OcuPilot/Test/OAuthTabs.cls:29]
+- [x] [Review][Patch] `Read.Execute`'s doc did not state the `GET` 404 or the `forEach` child-404 behavior. Documented. [src/OcuPilot/Screen/Read.cls:152]
+- [x] [Review][Patch] AC5's rail verdict naming `%Admin_Wallet:USE` depends on the area's pair order and had no `mutation:` line. Observed and written under Verification. [src/OcuPilot/Screen/Area.cls:106]
+- [x] [Review][Defer] The destructive-test-guard rule does not enforce `OAuthTabs`' arming guard: `OAuthProbe.Create` matches no rule pattern. [scripts/check-objectscript.py:1189] — deferred: the checker is a contended file; filed as an occurrence on DW-332 (routed to 9-5-the-ssl-tls-editor).
+- [x] [Review][Defer] `oauth.browser-spec.mjs` creates a principal and OAuth objects but refuses only `ocupilot`, not `ocupilot-slot-*`. [ui/browser/oauth.browser-spec.mjs:116] — deferred: harness-wide; filed as an occurrence on DW-1015 (escalated to burndown).
+
+**Rejected:**
+
+- `maybe-false` edge: the anchor's `aria-description` may go unannounced while the grid's active descendant is the row or cell. The spec binds the attribute to the anchor. If true it is low: the new-tab notice is advisory at AA. An accessibility-tree probe of the active descendant would settle it.
+- `low` blind: the `GET` non-object, parent non-list and child non-list 500 arms are untested. These are guards on vendor answer shapes, and no fixture answers those shapes.
+- `low` blind+edge: `truncated` is true when parents exceed the cap though every row fits. This is by design: Boundaries say "or the parent list itself exceeded the cap", and AD-36 lists at most cap+1 parents, so an exact answer would need a cap+2 listing.
+- `low` blind+edge: SM-C1 groups exemptions by reason text. The shipped test pins the honored set to exactly the five tab files, so any new exemption turns it red.
+- `low` blind: the OAuth smoke checks' more-than-one-row failure is unreachable at `maxRows=1`. This is by design (spec: pass on 0 or 1 rows), and the 13 existing checks share the pattern.
+- `low` blind+edge: the Auto Run Result's patch counts (12 entries, medium 4) disagree with the triage log (14 entries). The fix would edit the implement stage's section of the spec under review.
+- `false` blind: the spine's `updated: 2026-09-17` is future-dated. Commit 4a60687 landed at 2026-09-17 00:18 UTC.
+- `false` blind: EXPERIENCE.md `:566`'s detail row contradicts the tabs. `:576` names OAuth 2.0 as that row's exception, and later detail screens register their own page.
+- `low` blind: browser AC2 dereferences `Metadata.scopes_supported` without checking `MadeServer()`. A fresh throwaway guarantees the probe made the server, and the spec still goes red either way.
+- `low` edge: a member of an object named in `secretFields` would reach the rows. No shipped descriptor declares a secret object field, and `CREDENTIAL_RE` catches credential-shaped member names.
+- `low` edge: a dotted `forEach.key` passes the grammar but every read answers 500. It fails loudly, and no shipped declaration does it.
+- `low` edge: a `forEach` field overwrites a child key of the same name. The copy is declared intent, and the shipped child keys do not collide.
+- `low` edge: the two engines word a boolean `tab.group` or `rowLink` value differently. Declarations are hand-written, and every corpus case matches in both engines.
+- `low` auditor: `OAuthProbe.Remove` deletes probe-named objects that `Create` did not make. Only earlier probe runs leave such objects, and the one object not named by the probe, the authorization server, follows the recorded-make rule.
+- `low` auditor: the grammar does not require a later tab's route to sit under `tab.group` (AD-5 wording). No shipped tab breaks this, Boundaries list no such rule, and adding one means a rule in both engines.
 
 ## Spec Change Log
 
@@ -364,7 +395,7 @@ Reads are `GET /screens/<tool>/read`.
 
   Expected: all green, with totals confirmed from `%UnitTest_Result`.
 - `bash scripts/smoke.sh --container ocupilot-b-ci --user _SYSTEM --password SYS` -- expected: the five `oauth*` checks pass, with no failures.
-- `cd ui && npm run build && npm test` -- expected: green. `screen-mirror --check` is clean, and `classic-links` reports 5 honored.
+- `cd ui && npm run build && npm test` -- expected: green. `screen-mirror --check` is clean, and `classic-links` reports 1 exemption honored (SM-C1), declared by 5 descriptors (AD-44).
 - From `ui/`, `docker cp dist/ocupilot-ui/browser/. ocupilot-b-ci:/durable/iris/csp/ocupilot/`, then `OCUPILOT_BROWSER_ORIGIN=http://localhost:52777 OCUPILOT_BROWSER_CONTAINER=ocupilot-b-ci npm run test:browser` -- expected: `oauth.browser-spec.mjs` and `security.browser-spec.mjs` green.
 - `bash scripts/lint-docs.sh` -- expected: clean.
 
@@ -382,6 +413,8 @@ Reads are `GET /screens/<tool>/read`.
 - mutation: side bar compares only the current route; locator bar drops `tabGroupFor`; `DetailPage` drops the gated refusal and `[disabled]` -> `side-bar.spec.ts` "every tab of a tabbed screen marks its group's one entry current", `locator-bar.spec.ts` "on a tab of a tabbed screen, the screen segment routes to the group" and `detail-page.spec.ts` "AC5: a gated tab stays listed and focusable..." red (observed).
 - mutation: `Install.Smoke`'s `OAUTHSERVERTOOL` names `security.nosuch`, or an OAuth check demands exactly one row -> `Smoke.TestTheOAuthTabsAreLiveChecks` / `TestAnOAuthTabCheckPassesOnZeroOrOneRow` red (observed).
 - mutation: `OAuthTabs` secret leg: add `Metadata` to `OAuthServerTab`'s fields -> `OAuthTabs.TestEveryRowCarriesTheDeclaredFieldsAndNoSecret` red (observed). Match `SECRETKEYS` against whole keys only -> the member-field secret assertion red (observed).
+- mutation (code review, client): `DetailPage` computes `active` as `member.route !== screen.route` -> three AC1 cases in `detail-page.spec.ts` red (observed). `describedBy` always `null` -> `detail-page.spec.ts` "AC5: a gated tab stays listed and focusable..." red (observed). The classic anchor drops `rel="noreferrer"` -> `data-table.spec.ts` "Story 6.4 AC4: a declared row link..." red (observed). Drop `oauth2-resource-server` from `security/oauth`'s secondaries, mirror regenerated -> `refresh.test.mjs` "AC3: ..." red (observed). Drop `focusOnArrival = tab.route` from `DetailPage.open` -> `detail-page.spec.ts` "AC1: the tab Enter opened takes focus..." red; bundle rebuilt and redeployed on `ocupilot-b-ci` -> `oauth.browser-spec.mjs` AC1 red, with focus on `BODY` (observed).
+- mutation (code review, `ocupilot-b-ci`): `OAuthServerTab` declares no `ServerCredentials` -> `OAuthTabs.TestTheAuthorizationServerTabIsTheLiveGetProjected` ("the seven declared fields"), `TestEachTabIsDeclaredAsTheOAuthScreenTab` and `TestEveryRowCarriesTheDeclaredFieldsAndNoSecret` red (observed). `Tool.Read.View` adds a key to its answer -> `OAuthTabs.TestTheReadToolAnswersTheRoutesRowsNarrowedByItsCap` "and nothing else" red for all five tools (observed). The security area lists the three OAuth pairs before `%Admin_Wallet:USE` -> `WireOAuthRead.TestTheSecurePairsReadTheResourceServersTab` "the area names the first area pair it lacks" red (observed; AC5's rail verdict). `ForEachRows` without the held-rows stop -> `ScreenReadSource.TestAPerParentReadIsBoundedByTheCapOnRowsAndParents` "lists no child once the cap plus one rows are held" red. `ForEachRows` accepting an empty string key -> `TestAParentKeyIsANonEmptyStringOrANumber` "no child list is read for the empty key" red. `Read` mutations were recompiled with its two fixture descendants, and the `Tool.Read` mutation with `ToolFixture`. Each was restored and re-run green (observed).
 
 ## Auto Run Result
 

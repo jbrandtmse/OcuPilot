@@ -121,6 +121,31 @@ describe('the detail page', () => {
     expect(router.url).toBe('/security/oauth/clients?ns=HSCUSTOM');
   });
 
+  it('AC1: the tab Enter opened takes focus on the page that replaces the strip', async () => {
+    // Each tab is its own route, so the router replaces this page and the focused tab with it.
+    // Mutation (Rule 19): drop `focusOnArrival = tab.route` from `DetailPage.open` -> focus stays on
+    // the body and the activeElement assertion goes red.
+    const leaving = await build('/security/oauth?ns=HSCUSTOM');
+    const router = TestBed.inject(Router);
+    const first = tabs(leaving)[0];
+    first.focus();
+    first.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', keyCode: 39, bubbles: true }));
+    await settle(leaving);
+    tabs(leaving)[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, bubbles: true }));
+    await settle(leaving);
+    expect(router.url).toBe('/security/oauth/clients?ns=HSCUSTOM');
+    leaving.destroy();
+    (leaving.nativeElement as HTMLElement).remove();
+    (document.activeElement as HTMLElement | null)?.blur();
+
+    const arriving = TestBed.createComponent(DetailPage);
+    document.body.appendChild(arriving.nativeElement);
+    planted.push(arriving.nativeElement);
+    await settle(arriving);
+    expect(document.activeElement).toBe(tabs(arriving)[1]);
+    expect(tabs(arriving)[1].getAttribute('aria-selected')).toBe('true');
+  });
+
   it('AC5: a gated tab stays listed and focusable, names its pair, and opens nothing', async () => {
     // Mutation (Rule 19): drop the `tab.gated` refusal from `DetailPage.open` and the `[disabled]`
     // binding -> the click navigates and the url assertion goes red.

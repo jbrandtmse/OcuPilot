@@ -171,13 +171,14 @@ Method TestAParentListFaultFailsTheRead()
 /// <p>The bounds (AD-36): at a cap of 1, one parent holding two children answers one row, truncated
 /// by the rows held; at a cap of 2, five parents are listed at <code>maxRows</code> 3, so exactly
 /// three child lists are issued, and the read is truncated by the parent list, also when the parent
-/// list answers more parents than it was asked for; and each child list asks for no more rows than
-/// are still wanted.</p>
+/// list answers more parents than it was asked for; each child list asks for no more rows than
+/// are still wanted; and once a parent's children fill the cap plus one, no later parent's
+/// children are listed.</p>
 /// <p>Mutation: compute <code>truncated</code> from the parent list alone in
 /// <method>OcuPilot.Screen.Read.ForEachRows</method> -&gt; the held-rows assertion goes red. List
 /// the parents with the cap rather than the cap plus one -&gt; the parent-bound assertions go
 /// red. Drop the parent-count stop -&gt; the uncapped parent list's child-list assertion goes
-/// red.</p>
+/// red. Drop the held-rows stop -&gt; the last arm's child-list assertion goes red.</p>
 Method TestAPerParentReadIsBoundedByTheCapOnRowsAndParents()
 {
     Do ##class(OcuPilot.Test.ReadSource.Endpoint).Arm("parents", [{"ID": "A", "IssuerEndpoint": "https://a"}].%ToJSON())
@@ -219,10 +220,18 @@ Method TestAPerParentReadIsBoundedByTheCapOnRowsAndParents()
         Do $$$AssertEquals(..Values(tResult.rows, "Name"), "a1,a2,b1", "the cap's rows, in parent order")
         Do $$$AssertEquals(tResult.truncated, 1, "truncated, since a fourth row was held")
     }
+
+    Do ##class(OcuPilot.Test.ReadSource.Endpoint).Clear()
+    Do ##class(OcuPilot.Test.ReadSource.Endpoint).Arm("parents", [{"ID": "A"}, {"ID": "B"}].%ToJSON())
+    Do ##class(OcuPilot.Test.ReadSource.Endpoint).Arm("children", [{"Name": "a1"}, {"Name": "a2"}, {"Name": "a3"}].%ToJSON(), "A")
+    Set tSC = ##class(OcuPilot.Test.Read.ReadFixture).Execute(..#CHILDREN, 2, .tResult, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the read whose first parent fills the cap succeeds")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ReadSource.Endpoint).Recorded("childKeys"), "A", "and lists no child once the cap plus one rows are held")
+    If $IsObject(tResult) Do $$$AssertEquals(tResult.truncated, 1, "truncated by the rows held")
 }
 
-/// <p>A parent whose key is a number is read for its JSON text; a parent with no key is an internal
-/// fault, never a child list read for an empty key.</p>
+/// <p>A parent whose key is a number is read for its JSON text; a parent with no key, or an empty
+/// one, is an internal fault, never a child list read for an empty key.</p>
 Method TestAParentKeyIsANonEmptyStringOrANumber()
 {
     Do ##class(OcuPilot.Test.ReadSource.Endpoint).Arm("parents", [{"ID": 7, "IssuerEndpoint": "https://seven"}].%ToJSON())
@@ -238,6 +247,13 @@ Method TestAParentKeyIsANonEmptyStringOrANumber()
     Do $$$AssertStatusNotOK(tSC, "a parent with no key fails the read")
     Do $$$AssertEquals(tHttp2, 500, "as an internal fault")
     Do $$$AssertEquals(##class(OcuPilot.Test.ReadSource.Endpoint).Recorded("childKeys"), "", "and no child list is read")
+
+    Do ##class(OcuPilot.Test.ReadSource.Endpoint).Clear()
+    Do ##class(OcuPilot.Test.ReadSource.Endpoint).Arm("parents", [{"ID": "", "IssuerEndpoint": "https://blank"}].%ToJSON())
+    Set tSC = ##class(OcuPilot.Test.Read.ReadFixture).Execute(..#CHILDREN, "", .tResult3, .tHttp3, .tFault3)
+    Do $$$AssertStatusNotOK(tSC, "a parent with an empty key fails the read")
+    Do $$$AssertEquals(tHttp3, 500, "as an internal fault")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ReadSource.Endpoint).Recorded("childMaxRows"), "", "and no child list is read for the empty key")
 }
 
 }

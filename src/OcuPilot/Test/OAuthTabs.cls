@@ -26,25 +26,12 @@ Parameter SECRETKEYS = "Metadata,ClientSecret,ClientPassword,PrivateJWKS,Symmetr
 /// <p>The reason the one Release 1 exemption carries, declared by all five tabs (AD-44).</p>
 Parameter EXEMPTIONREASON = "Edited in the classic portal until the OAuth 2.0 editors ship (Epic 12); counted against SM-C1";
 
-/// <p>Whether <method>OnBeforeAllTests</method> made the probe objects.</p>
-Property PreparedProbe As %Boolean [ InitialExpression = 0 ];
-
-Method %OnNew(initvalue As %String = "") As %Status
-{
-    Set tSC = ##super(initvalue)
-    If $$$ISERR(tSC) Quit tSC
-    Set ..PreparedProbe = 0
-    Quit $$$OK
-}
-
 Method OnBeforeAllTests() As %Status
 {
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
         Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.OAuthTabs makes and removes OAuth 2.0 objects on this instance and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was made. Bring one up with scripts/ci-throwaway.sh, which sets it.")
     }
-    Set tSC = ##class(OcuPilot.Test.OAuthProbe).Create()
-    Set ..PreparedProbe = $$$ISOK(tSC)
-    Quit tSC
+    Quit ##class(OcuPilot.Test.OAuthProbe).Create()
 }
 
 /// <p>Remove the probe objects, <b>returning a failing status</b> if the removal fails, since

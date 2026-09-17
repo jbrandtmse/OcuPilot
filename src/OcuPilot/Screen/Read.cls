@@ -149,6 +149,10 @@ ClassMethod MaxRowsProblem(pMaxRows As %String) As %String
 /// deleted between the calls and is dropped; <code>truncated</code> still follows the list. Any
 /// other detail fault fails the whole read with that fault and no rows, and a row with no string
 /// key, a detail that is not an object or a value its rule cannot read is a 500.</p>
+/// <p>A <code>GET</code> source reads its one object as the one row: a 404 answers no rows with
+/// <code>truncated</code> false, any other fault passes through, and an answer that is not an object
+/// is a 500. A <code>source.forEach</code> read takes its rows and truncation from
+/// <method>ForEachRows</method>, where a child list's 404 skips that parent.</p>
 /// <p><var>pCriteria</var> supplies the read's declared server-search parameters (AD-21), keyed by
 /// the descriptor's own <code>read.criteria</code> parameter names. Only a declared name is read --
 /// the roster is the allow-list, so a key nothing declares reaches no port -- and an empty value is

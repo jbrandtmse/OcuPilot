@@ -2137,6 +2137,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: check_destructive_test_guard's pattern omits SSLConfigs; Test/UninstallGuard.cls, Test/Installer.cls and Test/Demo.cls create one; CLAUDE.md states the rule in prose and nothing enforces it
 - 2026-09-15T15:13:40Z status=routed owner=burndown by=spec_gate note=same family as DW-289: widen the rule's pattern and arm the three classes; it reddens three classes outside Story 3.2's footprint, so it is burn-down work
 - 2026-09-16T10:21:58Z status=routed owner=9-5-the-ssl-tls-editor by=burndown_gate note=the SSL/TLS editor is the story that next creates and deletes SSL configurations, so it is where an unarmed destructive test costs most
+- 2026-09-17T02:48:30Z occurrence=6-4-the-oauth-2-0-screen note=OAuthTabs arms on OCUPILOT_ALLOW_PRINCIPALS but its OAuthProbe.Create call matches no rule pattern, so its guard is unenforced
 
 ### DW-333: ProviderPort reads a stored definition's systemPromptOverride into the call values and nothing reads it back, so a definition's own system prompt is silently dropped on the Invoke path
 - source: spec-3-2-the-provider-contract-and-the-anthropic-adapter.md | severity: med | fix-risk: low | footprint: in-epic
@@ -2889,6 +2890,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ui/browser.config.mjs LIVE_CONTAINER is 'ocupilot' and every docker-exec spec asserts only notEqual to it; ORIGIN=http://localhost:52775 with CONTAINER=ocupilot-slot-b passes browserConfig, so permissions.browser-spec would create principals and restrict %Service_Shadow on slot B. ci-throwaway.sh already refuses slot names.
 - 2026-09-16T20:44:45Z status=escalated owner=burndown by=cr note=harness-wide: one predicate in browser.config.mjs refusing ocupilot and ocupilot-slot-*, used by every docker-exec spec
 - 2026-09-16T22:46:47Z occurrence=6-3-the-x-509-ldap-kerberos-and-wallet-lists note=security.browser-spec.mjs creates and deletes a probe role and user and refuses only ocupilot
+- 2026-09-17T02:48:30Z occurrence=6-4-the-oauth-2-0-screen note=oauth.browser-spec.mjs:116 creates a principal and OAuth objects and refuses only ocupilot
 
 ### DW-1016: A proposal diff-row has no empty-cell word, so a service-editor proposal restricting AllowedConnections would read (none) -> 10.0.0.1
 - source: spec-6-2-the-roles-resources-and-services-lists.md | severity: med | fix-risk: low | footprint: out-of-footprint

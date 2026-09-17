@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterNextRender, computed, inject, signal } from '@angular/core';
 import { MatTabLink, MatTabNav, MatTabNavPanel } from '@angular/material/tabs';
 import { Router } from '@angular/router';
 
@@ -19,6 +19,12 @@ interface DetailTab {
 }
 
 /**
+ * The route of the tab `open` last navigated to, until the page that route renders has read it. Each
+ * tab is its own route, so opening one replaces this page, and the tab that held focus with it.
+ */
+let focusOnArrival: string | null = null;
+
+/**
  * The page every `detail` archetype renders (AD-5): the current screen's declared read through
  * `ListPage`, under a tab strip when the screen is one tab of a group.
  *
@@ -29,7 +35,9 @@ interface DetailTab {
  *
  * **Keyboard.** The strip is Material's tab nav bar: one Tab stop, Left and Right move between tabs,
  * Enter or Space opens the focused one (EXPERIENCE.md tabs, DESIGN.md tabs). A strip wider than the
- * content column pages, and the focused tab is scrolled into view.
+ * content column pages, and the focused tab is scrolled into view. The tab a strip opened takes
+ * focus on the page that replaces it, when focus has nowhere else to be (EXPERIENCE.md Accessibility
+ * Floor, *Focus destinations*).
  *
  * **A gated tab stays listed and focusable** with `aria-disabled` and its failed pair inline as
  * "Requires <pair>", the side bar's own shape, and does not navigate: the refusal is here, not in
@@ -110,6 +118,15 @@ export class DetailPage {
       stopNavigation();
       stopRouter.unsubscribe();
     });
+    const host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+    afterNextRender(() => {
+      const route = focusOnArrival;
+      focusOnArrival = null;
+      const active = document.activeElement;
+      if (route === null || (active !== null && active !== document.body && active.isConnected)) return;
+      const tabs = Array.from(host.querySelectorAll<HTMLElement>('.ocu-detail-tab'));
+      tabs.find((tab) => tab.getAttribute('data-route') === route)?.focus();
+    });
   }
 
   protected get hasTabs(): boolean {
@@ -130,7 +147,15 @@ export class DetailPage {
   /** Open a tab. A gated tab does nothing, and the current tab is already open. */
   protected open(tab: DetailTab): void {
     if (tab.gated || tab.active) return;
-    void this.router.navigateByUrl(withQuery(tab.route, this.router.url));
+    focusOnArrival = tab.route;
+    void this.router.navigateByUrl(withQuery(tab.route, this.router.url)).then(
+      (opened) => {
+        if (!opened) focusOnArrival = null;
+      },
+      () => {
+        focusOnArrival = null;
+      }
+    );
   }
 
   private bump(): void {
