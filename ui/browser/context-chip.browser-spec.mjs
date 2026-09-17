@@ -2,8 +2,11 @@
  * The context chip, its toggle and the paste warning, in a real browser against the throwaway
  * instance (Story 4.11): chip text on the Users list, the egress pill and its tooltip, the key
  * glyph on the Definition form, the toggle surviving a reload, the paste warning's two buttons,
- * and the Integration AC -- a sent turn's recorded provider messages carry the synthetic
- * `screen_context` pair naming the route, the namespace and exactly the rows the chip displayed.
+ * the Integration AC -- a sent turn's recorded provider messages carry the synthetic
+ * `screen_context` pair naming the route, the namespace and exactly the rows the chip displayed --
+ * and two legs proven only at component level until now: the row cap following a real Switches
+ * save with no reload, and a live 409 refusal (the AD-41 single-turn-slot conflict) leaving an
+ * acknowledged paste warning un-re-armed.
  *
  * Uses the same `turnprobe` wire fixture `turn.browser-spec.mjs` drives
  * (`OcuPilot.Test.TurnWireFixture`): one definition, enabled and marked default, backed by
@@ -35,6 +38,7 @@ const STRINGS = loadStrings();
 const USERS_URL = '/ocupilot/permissions/users?ns=HSCUSTOM';
 const FORM_URL = '/ocupilot/agent/definitions/edit?ns=HSCUSTOM';
 const CONTEXT_PATH = '/api/ocupilot/agent/context';
+const SWITCHES_PATH = '/api/ocupilot/agent/switches';
 const TAG_PREFIX = 'chipbrowser';
 
 let browser = null;
@@ -164,6 +168,38 @@ async function putShare(share) {
     body: JSON.stringify({ share }),
   });
   assert.ok(answer.ok, `PUT /agent/context {share:${share}} (HTTP ${answer.status})`);
+}
+
+/** Writes only `contextRowCap` -- `/agent/switches` patches the fields supplied, per
+ * `switches.browser-spec.mjs`'s own partial `setSwitches` calls. */
+async function putContextRowCap(cap) {
+  const answer = await fetch(`${config.origin}${SWITCHES_PATH}`, {
+    method: 'PUT',
+    headers: { Authorization: authHeader(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contextRowCap: cap }),
+  });
+  assert.ok(answer.ok, `PUT /agent/switches {contextRowCap:${cap}} (HTTP ${answer.status})`);
+}
+
+/** Click a rail item, then the named side-bar entry it reveals -- both agent's and permissions'
+ * areas declare `"navigates": false`, so neither auto-selects a screen on the rail click alone
+ * (the same two-step pattern `context-chip.browser-spec.mjs`'s "Fresh at Send" test already
+ * uses for os-management/Processes). The entry itself is clicked through Puppeteer's own
+ * `page.click` (a real simulated pointer event) rather than an in-page `element.click()`: the
+ * synthetic call was observed to leave `Router.navigateByUrl` never invoked when the click
+ * landed right after a Switches save, where the real click reliably navigates. */
+async function navigateViaSideBar(page, railItemId, sideBarLabel) {
+  await page.click(railItemId);
+  await page.waitForFunction(
+    (label) => [...document.querySelectorAll('.ocu-side-bar-item')].some((el) => el.textContent.includes(label)),
+    { timeout: config.navigationTimeoutMs },
+    sideBarLabel
+  );
+  const index = await page.evaluate((label) => {
+    return [...document.querySelectorAll('.ocu-side-bar-item')].findIndex((el) => el.textContent.includes(label));
+  }, sideBarLabel);
+  assert.ok(index >= 0, `a side-bar entry named "${sideBarLabel}" exists`);
+  await page.click(`.ocu-side-bar-item:nth-of-type(${index + 1})`);
 }
 
 /** A fresh context signed in as the configured user, standing on `url` with the panel laid out. */
@@ -387,6 +423,124 @@ test('Fresh at Send: context is assembled at the moment of the click, not cached
     );
   } finally {
     await context.close();
+    forgetTag(tag);
+  }
+});
+
+test('Cap follows agent-switch: raising the row cap through the Switches screen updates the mounted chip and the next Send, with no reload', async () => {
+  const tag = nextTag();
+  setTag(tag);
+  scriptReply(tag, 0, textReply('counted'));
+  await putContextRowCap(1);
+  const { context, page } = await signedInAt(USERS_URL);
+  try {
+    // The row segment is a middle segment, not the last one (provider and host follow it), so
+    // this reads the count out rather than matching against the end of the string.
+    await page.waitForFunction(
+      () => {
+        const match = /(\d+) rows/.exec(document.querySelector('.ocu-context-chip-text')?.textContent ?? '');
+        return match !== null && Number(match[1]) === 1;
+      },
+      { timeout: config.navigationTimeoutMs }
+    );
+
+    // The whole leg stays on this one document: an in-app navigation to Switches, raising the
+    // cap and Save -- `switches.store.ts` publishes `agent-switch` on the one client bus (AD-14)
+    // in this same running app, which is what `AgentContext` re-reads on (Story 4.11), not a
+    // page reload navigating back to Users would also explain away.
+    await navigateViaSideBar(page, '#ocu-rail-item-agent', STRINGS.agentSwitchesLabel);
+    await page.waitForSelector('#ocu-switches-contextRowCap', { visible: true, timeout: config.navigationTimeoutMs });
+    await page.waitForFunction(() => document.querySelector('#ocu-switches-contextRowCap')?.value === '1', {
+      timeout: config.navigationTimeoutMs,
+    });
+    await page.$eval('#ocu-switches-contextRowCap', (node) => {
+      node.value = '200';
+      node.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await page.click('.ocu-form-bar-actions .ocu-button-primary');
+    await page.waitForFunction(() => document.querySelector('#ocu-switches-contextRowCap')?.value === '200', {
+      timeout: config.navigationTimeoutMs,
+    });
+
+    await navigateViaSideBar(page, '#ocu-rail-item-permissions', STRINGS.userListLabel);
+    await page.waitForFunction(() => new URL(window.location.href).pathname === '/ocupilot/permissions/users', {
+      timeout: config.navigationTimeoutMs,
+    });
+    // `1` was the pre-raise reading; anything higher proves the re-read actually landed on the
+    // mounted chip rather than a value it happened to start with.
+    await page.waitForFunction(
+      () => {
+        const match = /(\d+) rows/.exec(document.querySelector('.ocu-context-chip-text')?.textContent ?? '');
+        return match !== null && Number(match[1]) > 1;
+      },
+      { timeout: config.navigationTimeoutMs }
+    );
+    const shownAfterRaise = await page.evaluate(() => {
+      const match = /(\d+) rows/.exec(document.querySelector('.ocu-context-chip-text').textContent);
+      return Number(match[1]);
+    });
+
+    await typeAndSend(page, 'how many users');
+    await page.waitForFunction(
+      () => (document.querySelector('.ocu-panel-message-agent-text')?.textContent ?? '') === 'counted',
+      { timeout: config.navigationTimeoutMs }
+    );
+    const payload = screenContextPayload(recordedMessages(tag, 1));
+    assert.ok(payload, 'a screen_context pair was recorded');
+    assert.equal(payload.route, 'permissions/users');
+    assert.equal(payload.rows.length, shownAfterRaise, "the posted rows follow the raised cap, not the pre-raise one");
+    assert.equal(payload.rowsAvailable, shownAfterRaise, 'the raised cap (200) is not below the real population');
+  } finally {
+    await context.close();
+    forgetTag(tag);
+    await putContextRowCap(200);
+  }
+});
+
+test('A failed send preserves the paste-warning acknowledgment: a live 409 (AD-41\'s one-turn-slot conflict) does not re-arm the warning', async () => {
+  const tag = nextTag();
+  setTag(tag);
+  scriptReply(tag, 15, textReply('done'));
+  const holder = await signedInAt(USERS_URL);
+  const { context, page } = await signedInAt(USERS_URL);
+  const secret = 'sk-ant-api03-abcdefghijklmnopqrstuvwxyz';
+  try {
+    // Occupy this user's one AD-41 turn slot for the whole leg below, from a second tab -- the
+    // same live refusal `turn.browser-spec.mjs`'s "Second send" test drives, here used as the
+    // "failed send" this story's follow-up risk names, not a stubbed/mocked failure.
+    await typeAndSend(holder.page, 'holding the turn slot');
+    await holder.page.waitForSelector('.ocu-panel-message-user', { timeout: config.navigationTimeoutMs });
+
+    await page.type('#ocu-panel-composer', secret);
+    await page.click('.ocu-panel-send');
+    await page.waitForSelector('.ocu-panel-warning[role="status"]', { timeout: config.navigationTimeoutMs });
+
+    // Send anyway: records the acknowledgment and attempts the send, which the instance refuses
+    // 409 because the other tab still holds the slot -- a genuine network refusal, not a client
+    // guess. The warning must clear (the attempt was made) and the draft must survive (nothing
+    // was sent).
+    await page.click('.ocu-panel-warning-send');
+    await page.waitForSelector('[data-slot="lock"] .ocu-banner[role="status"]', { timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$('.ocu-panel-warning'), null, 'the warning cleared once the attempt was made');
+    const composerValue = await page.evaluate(() => document.querySelector('#ocu-panel-composer').value);
+    assert.equal(composerValue, secret, 'the failed send kept the draft');
+
+    // The immediate retry of the identical, still-acknowledged text must not re-raise the
+    // warning -- the acknowledgment survived the 409, exactly the fix this leg proves live.
+    await page.click('.ocu-panel-send');
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    assert.equal(await page.$('.ocu-panel-warning'), null, 'no warning on the retry: the acknowledgment was not forgotten');
+  } finally {
+    await context.close();
+    // The holder's turn keeps the AD-41 slot until it finishes; wait it out before closing, the
+    // same discipline `turn.browser-spec.mjs`'s "Second send" test follows, so the slot is free
+    // for whichever test runs next.
+    await holder.page
+      .waitForFunction(() => (document.querySelector('.ocu-panel-message-agent-text')?.textContent ?? '') === 'done', {
+        timeout: config.navigationTimeoutMs,
+      })
+      .catch(() => {});
+    await holder.context.close();
     forgetTag(tag);
   }
 });
