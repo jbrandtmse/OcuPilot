@@ -39,4 +39,12 @@ Parameter TEXTMAXLENGTH As %Integer = 131072;
 /// lost; also how long a starting job waits for the slot.</p>
 Parameter QUEUEDSECONDS As %Integer = 10;
 
+/// <p>Rows one tool result carries at most (AD-24, AD-36). A tool is asked for no more, and a result
+/// that still holds more is cut and marked <code>truncated</code>.</p>
+Parameter TOOLROWS As %Integer = 200;
+
+/// <p>Characters one serialized tool result carries at most (AD-24). Trailing rows are dropped until
+/// it fits; a result that cannot fit is refused <code>TOOL.RESULTTOOLARGE</code>.</p>
+Parameter TOOLRESULTMAXLENGTH As %Integer = 65536;
+
 }

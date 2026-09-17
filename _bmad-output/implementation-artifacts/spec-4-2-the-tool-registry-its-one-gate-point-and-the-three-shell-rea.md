@@ -2,7 +2,8 @@
 title: 'The tool registry, its one gate point, and the three shell reads'
 type: 'feature'
 created: '2026-09-16'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '84a9c94c7ffee5039f70161c18e86aebba81c257'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -10,7 +11,42 @@ context:
 warnings:
   - multiple-goals
   - oversized
-deferred: []
+deferred:
+  - summary: >-
+      BoundedWhere has no guarded helper that runs its fragment with a parameter array, and rule 21 refuses joining the fragment to a literal outside Kernel/State/Base.cls.
+    evidence: |-
+      Every Guarded* helper in Base.cls binds 0-3 scalar parameters; BoundedWhere returns text plus a %DynamicArray. Its first consumer (Story 4.9's ledger view, inference) needs a Base.cls helper that takes both.
+    location: >-
+      src/OcuPilot/Kernel/State/Base.cls BoundedWhere
+    severity: medium
+  - summary: >-
+      The dispatcher's write branch is only exercised with a forced restraint verdict; no test reads the real Kernel.Restraint.Verdict for a write call.
+    evidence: |-
+      ToolDispatchProbe.Restraint answers a forced verdict in every write leg, and no write tool ships in Release 1's registry, so an argument-order slip in Dispatch.Restraint stays green. Story 5.1's first write tool should pin the branch through the real verdict on the throwaway.
+    location: >-
+      src/OcuPilot/Kernel/Agent/Dispatch.cls Restraint
+    severity: medium
+  - summary: >-
+      A tool fault's detail object reaches the model whole, so a validation envelope's violations[].reason would reach it too.
+    evidence: |-
+      Dispatch.AnswerOne renders tFault.detail unchanged. Today's read faults carry only detail.failedPair or detail.problem; AD-39 envelopes from Api handlers carry violations[]{field, code, reason}. Becomes real when Story 5.1's write tools answer one.
+    location: >-
+      src/OcuPilot/Kernel/Agent/Dispatch.cls AnswerOne
+    severity: medium (unverified)
+  - summary: >-
+      AD-24's "recording the number actually sent so the read tool-call card can show it" is not recorded on a tool step.
+    evidence: |-
+      Loop.AnswerTools records a tool step's name, status and code only; neither the row count sent nor truncated is kept. The read tool-call card story (4.5, inference) consumes it.
+    location: >-
+      src/OcuPilot/Kernel/Agent/Loop.cls AnswerTools
+    severity: medium
+  - summary: >-
+      CLAUDE.md still says check-objectscript.py has 18 rules; it has 21.
+    evidence: |-
+      `uv run scripts/check-objectscript.py` reports 21 rules after this story. Agent-context file; tracked as DW-446.
+    location: >-
+      CLAUDE.md
+    severity: low
 ---
 
 <intent-contract>
@@ -177,6 +213,69 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-16 — Review pass
+
+- verdicts: 58 findings — high 0, medium 23, low 32, false 3, maybe-false 0 (rows marked "same as" share one root cause and its route)
+- findings:
+  - `[medium]` `[reject]` BH: `Read.View` filters and sorts at most 200 fetched rows where the screen uses 1,000 — by-design: the intent's Row cap row requires the port be asked for at most 201 rows; `truncated` reports the cut and server-side criteria still apply first (residual risk below).
+  - `[low]` `[patch]` BH: `Read.View`'s context-cap cut is now unreachable and `ReadTool` texts still describe it — fixed the stale assertion message and replaced the stale mutation line on `TestTheToolViewIsTheRouteReadNarrowed` with an observed one.
+  - `[medium]` `[patch]` BH: `BoundedWhere` binds a space-separated cutoff, while OcuPilot's time columns store `YYYY-MM-DDTHH:MM:SSZ`, so a string compare leaks up to a day — cutoff now ISO `T`/`Z`; `StateBound` asserts the form.
+  - `[medium]` `[defer]` BH: `BoundedWhere` has no guarded helper that runs its fragment with a parameter array — recorded in `deferred`; Story 4.9 adds the helper in `Base.cls`.
+  - `[medium]` `[patch]` BH: rule 21 checks only the first character, so a literal joined to a caller value passes — the SQL argument must now be one whole literal followed by `,` or `)`; harness case added.
+  - `[low]` `[reject]` BH: rule 20 does not stop a shipped direct call to a tool's `View` — no shipped caller does; it becomes real only if shipped code calls `View` outside the registry.
+  - `[medium]` `[reject]` BH: the shell privilege and namespace payloads use the job's frozen `$ROLES` while the dispatcher uses current grants — by-design: the intent requires each `Payload` unchanged (residual risk below).
+  - `[low]` `[reject]` BH: `Capped` cuts only a top-level `rows` array — by-design: the Size cap row answers a rowless result over the cap `TOOL.RESULTTOOLARGE`; namespace and area lists are far below 65,536 characters.
+  - `[medium]` `[defer]` BH: a fault's `detail` reaches the model whole, so a future validation envelope's `violations[].reason` would too — no read path carries one today; recorded in `deferred` for Story 5.1.
+  - `[low]` `[reject]` BH: `HoldsPair` reads a `CheckUserPermission` error as not held — fail-closed, and the user asked about is `$USERNAME`, which exists.
+  - `[low]` `[reject]` BH: resolve runs before identity, so an unknown name under a mismatched user answers `TOOL.UNKNOWN` — by-design: the intent's Approach orders resolve before identity, and a job cannot run as another user.
+  - `[low]` `[reject]` BH: `ResolveWire` lists the registry on every call — measured at a few milliseconds per listing on live.
+  - `[medium]` `[patch]` BH: dispatcher branches untested (gate error, gate code, internal fault) — `ToolDispatch` gained the gate-code, gate-error and internal-fault legs; a blocked verdict with no code is closed by the `TOOL.UNAVAILABLE` default.
+  - `[medium]` `[patch]` BH: `ProviderTools` refusals untested beyond the listing failure — `ToolEmit.TestAToolTheProviderCannotTakeRefusesTheListing` over the new `Test/AdvertiseTool` fixture covers subset, description and result-schema refusals; the loop's log line and its audit row on live follow `TurnLoop`'s existing pattern.
+  - `[medium]` `[patch]` BH: `ToolRoundTrip` passes with 8 of 11 tools and any code — every tool must now conform except those `REFUSEEMPTY` names with their code.
+  - `[low]` `[patch]` BH: the restraint tail alternatives are hand-copied and the comment overclaims — harness ties them to the codes `Api/Error.cls` declares; comment narrowed to a split at the `AGENT.` prefix.
+  - `[medium]` `[defer]` BH: AD-24's "number actually sent" is not on the tool step — recorded in `deferred` for the tool-call card story.
+  - `[low]` `[patch]` BH: `Read.Description` ignores `DESCRIPTION` — it now substitutes the screen into `DESCRIPTION`.
+  - `[low]` `[reject]` BH: `ValidateSchema` is public with a test as its only caller — harmless helper; `SchemaProblem` is private.
+  - `[low]` `[reject]` BH: `TurnTools` asserts the literal "At most 50 characters." — fails loudly if the descriptor changes.
+  - `[low]` `[reject]` BH: spec bookkeeping (stale Auto Run Result, duplicated mutation list, sweep not run) — the fix edits this build's spec; the sweep and smoke ran at verification.
+  - `[low]` `[defer]` BH: `CLAUDE.md` says the checker has 18 rules — agent-context file; recorded in `deferred` (DW-446).
+  - `[low]` `[patch]` BH: `lines` used as a mode flag — renamed `is_client`.
+  - `[low]` `[patch]` BH: `ToolWire.Teardown` discards `RemovePrincipals`' answer — it now uses it.
+  - `[low]` `[patch]` ECH: an `OR` inside a `BoundedWhere` predicate escapes the window — each predicate is parenthesized.
+  - `[low]` `[reject]` ECH: rule 20 and a direct `View` call — same as the BH row above.
+  - `[medium]` `[reject]` ECH: shell payloads and frozen roles — same as the BH row above.
+  - `[medium]` `[patch]` ECH: an internal tool failure answers `INTERNAL` and logs nothing — a fault at 500 or above is logged with the view's status.
+  - `[low]` `[reject]` ECH: `Base.PrivilegePairs` defaults to none, resolved — by-design: the spec's task sets that default; shell reads rely on it.
+  - `[low]` `[reject]` ECH: a row deleted between `TOP ?` and open leaves `truncated` false — a concurrent-delete race; the row is gone either way.
+  - `[false]` `[reject]` ECH: an absent or null `input` is refused `TOOL.ARGUMENTS` — the intent's Arguments row requires exactly that for a non-object input.
+  - `[low]` `[reject]` ECH: `ValidateArguments`' catch text could reach the model — no input bounded by the turn's token limit makes it throw.
+  - `[low]` `[reject]` ECH: an error result's `detail` is not size-capped — a problem string over 65,536 characters needs a key that long.
+  - `[low]` `[reject]` ECH: a limits class answering 0 breaks every result — production `Limits` is fixed at 200 and 65,536.
+  - `[low]` `[patch]` ECH: the restraint regex split claim — same as the BH row above.
+  - `[low]` `[reject]` ECH: `ToolRoundTrip` has no arming guard — its effects are those of opening the audit, process, SSL and web-application screens plus probe definitions it removes.
+  - `[medium]` `[reject]` ECH: filter and sort over at most 200 rows — same as the first BH row.
+  - `[medium]` `[patch]` ECH: rule 21 first-character check — same as the BH row above.
+  - `[medium]` `[patch]` VG: the gate's own refusal code is never tested — `ToolDispatch` gate-code leg added.
+  - `[medium]` `[patch]` VG: `ErrorRead`'s pairs are never checked — `ToolEmit.TestEveryLiveToolRequiresItsScreensPairs` pins every live tool's pairs.
+  - `[medium]` `[defer]` VG: the write branch only ever reads a forced verdict — no write tool ships; recorded in `deferred` for Story 5.1.
+  - `[medium]` `[patch]` VG: `ToolRoundTrip` accepts `INTERNAL` — same as the BH row above.
+  - `[medium]` `[patch]` VG: rule 21 lets caller values into SQL text — same as the BH row above.
+  - `[low]` `[reject]` VG: the listing-failure test asserts `Run`'s initial outcome — `Calls` 0 is the discriminating leg, and skipping the refusal makes a provider call.
+  - `[low]` `[reject]` VG: `ToolShell`'s refusal method passes empty with no shell tools — its sibling method asserts registration.
+  - `[low]` `[reject]` VG: sub-legs with no `mutation:` line — Rule 19 asks one per AC and each AC has one; the legs added in this pass have theirs.
+  - `[low]` `[patch]` VG: `Read.View` dead code and stale test message — same as the BH row above.
+  - `[low]` `[reject]` IA: identity after resolve — same as the BH row above.
+  - `[low]` `[reject]` IA: only top-level `rows` are cut — same as the BH row above.
+  - `[medium]` `[defer]` IA: `BoundedWhere` has no consumer path — same as the BH row above.
+  - `[medium]` `[patch]` IA: rule 21 admits a joined literal — same as the BH row above.
+  - `[false]` `[reject]` IA: `Prompt.BUILTIN` rewritten outside the Code Map — no document pins the text, the old sentence told the model it had no tools while tools are advertised, and the prompt stays a build-time constant sent whole (AD-11).
+  - `[medium]` `[defer]` IA: a fault's `detail` passes whole — same as the BH row above.
+  - `[low]` `[reject]` IA: `Advertise` runs before the first boundary — by-design: the spec's task advertises once before the loop.
+  - `[low]` `[patch]` IA: a schema breaking the subset is tested only at `EmitSchema` — same as the `ProviderTools` BH row above.
+  - `[medium]` `[defer]` IA: the restraint verdict is always forced — same as the VG row above.
+  - `[false]` `[reject]` IA: the shell reads are not tested through `Dispatch` — `ToolWire` answers `shell_instance_read` through the dispatcher in a real job.
+  - `[low]` `[reject]` IA: SQL bound observed through counts rather than the `TOP ?` text — the two-id fetch for `maxRows` 1 over three definitions discriminates, with its mutation recorded.
+
 ## Design Notes
 
 **Governing ADs (Rule 6):**
@@ -282,10 +381,69 @@ Conventions: Tool naming, Error shape, 29-character cap. AD-7's Rule is unchange
 - AC 4: `ToolWire.OnBeforeAllTests` without its arming guard -> `check-objectscript.py` rule 17 red.
 - AC 5: `ToolWire` teardown skips role removal -> its teardown assertion red.
 
+Observed at implement, green: live runs 2309-2317 read back from `%UnitTest_Result` (`ToolDispatch` 11, `ToolEmit` 8, `ToolShell` 2, `TurnTools` 4, `StateBound` 3, `ReadTool` 23, `TurnLoop` 11, `TurnStore` 11, `ErrorLog` 15); `ToolWire` refused by name on live (run 2318); on the throwaway, `ToolWire`, `ToolRoundTrip`, `TurnWire`, `StateRead`, `SwitchState` and `TurnChain` one class each; the checker (21 rules, 0 problems), its harness (119 tests), `lint-docs.sh` and `npm test` (798 node tests, 382 component tests). Not run here: the full throwaway sweep, `TurnLong`, and `smoke.sh`.
+
+Observed at implement. ObjectScript mutations were made only to the throwaway's copy under `/tmp/ocupilot-ci/src`, loaded with `ckb` so subclasses recompiled, run through `ci-runner.mjs` one class at a time (throwaway runs 7-32), then restored from the worktree, reloaded, and `cmp`-checked. Checker mutations were made to `scripts/check-objectscript.py` and restored from a saved copy.
+
+- mutation: `Loop.Run` keeps `Kill tTools` before each call -> `TurnTools.TestEveryRequestAdvertisesEveryTool` red (neither call carries a tool array).
+- mutation: `Registry.WireName` keeps the dots -> `ToolEmit.TestEveryLiveToolHasAReversibleWireName` red, and `TestEveryLiveToolIsAdvertisedInTheSubset` red (the listing refuses).
+- mutation: `Registry.EmitProperty` leaves `maxLength` -> `ToolEmit.TestEveryLiveToolIsAdvertisedInTheSubset` red on `logs.audit.read`, and `TestTheEmissionCorpus` red.
+- mutation: `Dispatch.Answer` renders `is_error` for every call -> `ToolWire.TestATurnAnswersTheShellAndUsersReads` red.
+- mutation: `Dispatch.Answer` reverses its results -> `TurnTools.TestSeveralCallsAreAnsweredInOrderInOneMessage` red.
+- mutation: `Registry.ResolveWire` falls back to the first tool -> `ToolDispatch.TestAnUnknownToolReachesNothing` red, and `TestARegisteredReadCallAnswersItsResult` red on the unknown call's name.
+- mutation: the `$USERNAME` check removed -> `ToolDispatch.TestAnotherUsersCallIsRefusedAndLogged` red.
+- mutation: `InvokeTool` called before `Decide` -> `ToolDispatch.TestAGateDenialReachesNothingAndTheToolStaysAdvertised` red, with five other methods whose counts the early call moved.
+- mutation: `Gate.Decide` answers 0 -> `ToolDispatch.TestTheShippedGateAllowsEveryLiveTool` red, with seven methods whose probe delegates to the shipped gate.
+- mutation: the write branch skipped -> `ToolDispatch.TestARestrainedWriteIsNotRun` red on its blocked leg. mutation: the branch trusts `blocked` and not the status -> the same method red, alone.
+- mutation: `Dispatch.HoldsPair` uses `$System.Security.Check` -> `ToolWire.TestARoleRemovedMidTurnIsRefusedFromCurrentGrants` red on "the users read is refused naming the pair". mutation: the pair check removed -> `ToolDispatch.TestADeniedPairIsNamedAndNothingRuns` red.
+- mutation: argument validation skipped -> `ToolDispatch.TestRefusedArgumentsReachNoTool` red.
+- mutation: the fault rendered whole, `reason` included -> `ToolDispatch.TestAToolFaultAnswersItsCodeAndDetailOnly` red.
+- mutation: `Read.View` passes the model's `maxRows` -> `ToolEmit.TestTheReadToolClampsMaxRowsToTheCap` red. mutation: `ErrorRead.View` likewise -> `ToolEmit.TestTheErrorToolClampsAndPassesItsPortsFault` red.
+- mutation: the `Capped` check removed -> `ToolDispatch.TestTheSizeCapDropsTrailingRows` red, and `TestTheRowCapCutsAndMarks` red.
+- mutation: `ShellNamespaces` drops `writable` -> `ToolShell.TestEachShellToolAnswersItsHandlersPayload` red.
+- mutation: `Loop.Run` joins the last message's blocks to the system prompt -> `TurnTools.TestNoToolResultReachesTheSystemPrompt` red.
+- mutation: `Agent.GuardedScreenRows` reads every id instead of `TOP ?` -> `ToolRoundTrip.TestAStateReadFetchesOneRowMoreThanItAnswers` red. mutation: `BoundedWhere` writes the cutoff into the text -> `StateBound.TestAWindowBindsItsCutoff` red. mutation: the 720 check removed -> `StateBound.TestAWindowOutsideTheBoundIsRefused` red.
+- mutation: `AGENT_REACH_RE` bans every `OcuPilot.Screen.*` again -> harness `test_the_tool_registry_passes_and_every_other_screen_class_is_refused` and `test_the_shipped_tree_passes_every_rule_this_story_added` red.
+- mutation: `check_tool_dispatch`'s `InvokeTool`, HTTP and capture branches each disabled -> harness `test_invoke_tool_outside_the_registry_and_the_dispatcher_is_refused`, `test_an_http_request_or_api_path_on_the_dispatch_path_is_refused` and `test_a_capture_outside_the_admin_port_is_refused` red, one each.
+- mutation: `check_state_sql_literal` disabled -> harness `test_a_variable_sql_argument_is_refused` and `test_a_concatenated_sql_argument_is_refused` red.
+- mutation: DW-393's regex reverted -> harness `test_a_code_assembled_across_a_concatenation_is_refused`, `test_a_parameter_named_without_its_hash_is_refused` and `test_a_client_naming_a_code_is_refused_and_a_spec_is_not` red. mutation: DW-394's client scan disabled -> `test_a_client_naming_a_code_is_refused_and_a_spec_is_not` red.
+- mutation: `RemoveSecondRole` dropped from `DESTRUCTIVE_TEST_RE` -> harness `test_the_turn_principal_helpers_are_in_the_population` red.
+- mutation (AC 4): `ToolWire.OnBeforeAllTests` without its `ARMINGVARIABLE` guard -> `check-objectscript.py` rule 17 red at `ToolWire.cls:52`.
+- mutation (AC 5): `ToolWire.Teardown` skips `RemovePrincipals` -> `ToolWire` red in both methods on the teardown assertion; a clean re-run (throwaway run 33) removed what it left.
+
+Observed at review, on the patched tree: live runs 2329-2332 (`ToolEmit` 10, `ToolDispatch` 11, `StateBound` 3, `ReadTool` 23), checker 0 problems, harness 121 tests. Mutations as above, on the throwaway copy (runs 101-109) or the checker, each restored and compared:
+
+- mutation: the gate's own code replaced by `TOOL.DENIED` in `Dispatch.AnswerOne` -> `ToolDispatch.TestAGateDenialReachesNothingAndTheToolStaysAdvertised` red on "a denial carrying its own code answers that code".
+- mutation: the 500-and-above `LogFault` removed from `Dispatch.AnswerOne` -> `ToolDispatch.TestAToolFaultAnswersItsCodeAndDetailOnly` red.
+- mutation: `ErrorRead.PrivilegePairs` deleted -> `ToolEmit.TestEveryLiveToolRequiresItsScreensPairs` red on `logs.applicationerrors.read`.
+- mutation: `Registry.ProviderTools` ignores `EmitSchema`'s status -> `ToolEmit.TestAToolTheProviderCannotTakeRefusesTheListing` red on its subset leg.
+- mutation: `BoundedWhere` stops parenthesizing predicates -> `StateBound.TestAWindowBindsItsCutoff` and `TestAKeyedReadEmitsNoTimePredicate` red. mutation: the cutoff left space-separated -> `StateBound.TestAWindowBindsItsCutoff` red.
+- mutation: `Read.View` answers every call as an internal failure -> `ToolRoundTrip.TestEveryToolConformsToItsResultSchemaOrAnswersACode` red.
+- mutation: `Read.View` passes no filter to `ApplyView` -> `ReadTool.TestTheToolViewIsTheRouteReadNarrowed` red.
+- mutation: rule 21 checks only the first character of the SQL argument -> harness `test_a_literal_joined_to_a_caller_value_is_refused` red. mutation: `USER` dropped from the restraint tail alternatives -> harness `test_every_declared_restraint_code_is_seen_by_its_tail` red.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Change.** The turn job advertises every registered tool (wire names, emitted subset, `maxLength` in descriptions) and answers each `tool_use` through `Kernel/Agent/Dispatch.cls`: resolve, identity, `Kernel/Governance/Gate.cls`, restraint for writes, pairs from current grants, arguments, then `Registry.InvokeTool`, with both caps and `{code, detail?}` failures. Both tool sources share `Tool/Base.cls`'s contract; three shell reads wrap the handlers' payloads; state reads bind `SELECT TOP ?`; `BoundedWhere` ships tested and unconsumed; checker rules 20 and 21 are new and rules 18 and 19 widened.
+
+**Files.**
+
+- `Kernel/Agent/Dispatch.cls`, `Kernel/Governance/Gate.cls` (new) -- the dispatcher and the gate point.
+- `Kernel/Agent/Loop.cls`, `Limits.cls`, `Prompt.cls` -- advertise once, delegate, caps; the built-in prompt no longer says there are no tools.
+- `Screen/Tool/Base.cls`, `Read.cls`, `ErrorRead.cls`, `Registry.cls`; `Shell.cls`, `ShellInstance.cls`, `ShellNamespaces.cls`, `ShellPrivileges.cls` (new) -- one contract, clamps, wire names, emission, the shell reads.
+- `Kernel/State/Base.cls`, `Agent.cls`, `Hold.cls`, `Screen/Read.cls` -- `BoundedWhere`, bounded state reads.
+- `Api/Error.cls`, `Kernel/Restraint.cls` -- `TOOL.*` codes and sentences; doc corrections.
+- `scripts/check-objectscript.py`, `scripts/test_check_objectscript.py` -- rules 18-21 and their harness.
+- Tests: `ToolDispatch`, `ToolEmit`, `ToolShell`, `TurnTools`, `StateBound`, `ToolRoundTrip`, `ToolWire` (new); fixtures `DispatchTool/`, `AdvertiseTool/`, `ToolDispatchProbe`, `ErrorReadStub`, `StateReadProbe`, `StateReadToolProbe`; `ReadTool`, `TurnLoop`, `TurnLoopProbe`, `TurnProvider`, `TurnWireFixture` updated.
+
+**Review.** 58 findings: 21 rows patched (distinct entries: medium 8, low 6), 8 rows deferred (5 items in `deferred`), 29 rejected with the reason in the triage log. Patches: ISO cutoff and grouped predicates in `BoundedWhere`; rule 21 requires a whole literal; internal tool faults logged; gate-code, gate-error, pairs, advertise-refusal and strict round-trip tests; restraint tails tied to the declared codes; stale test texts and `Read.Description` corrected. Follow-up review: `false` -- every patch was observed red under its mutation, and the full sweep and smoke passed on the patched tree, so no unverified risk can be named.
+
+**Verification.** Live `ocupilot`: whole-tree compile clean; runs 2319-2332 green (`ToolDispatch`, `ToolEmit`, `ToolShell`, `TurnTools`, `StateBound`, `ReadTool`, `ErrorLog`, `TurnLoop`, `TurnStore`); `ToolWire` refused by name (run 2328). Checker 21 rules, 0 problems; harness 121 OK; `lint-docs.sh` clean; `npm test` 798 node and 382 component tests. Throwaway `ocupilot-ci`, fresh `up` from the final tree: full sweep 100 classes, 918 tests, 0 failed; `smoke.sh` executed 19, passed 19; torn down after.
+
+**Residual risks.** The read tool filters and sorts at most 200 fetched rows where the screen uses 1,000 (intent Row cap; `truncated` signals it). The shell privilege and namespace reads evaluate the job's frozen `$ROLES` while the dispatcher checks current grants, so they can disagree after a mid-turn role change. Both are recorded as by-design in the triage log.
 
 **For the lead (Rule 20 candidates, decided in planning and not written to the spine):**
 

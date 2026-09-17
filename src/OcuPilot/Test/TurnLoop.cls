@@ -159,8 +159,9 @@ Method TestAnOverrideReplacesTheBuiltInPromptWhole()
 }
 
 /// <p>The iteration cap completes the turn with the fallback reply after exactly that many calls:
-/// the definition's own maximum when it is lower than the limit, the limit otherwise. A tool call
-/// is answered <code>TOOL.UNAVAILABLE</code> and echoed back on the next request.</p>
+/// the definition's own maximum when it is lower than the limit, the limit otherwise. A call to a
+/// tool no registered tool is advertised as is answered <code>TOOL.UNKNOWN</code> and echoed back
+/// on the next request.</p>
 /// <p>Mutation: compare the cap with <code>&gt;</code> in <method>OcuPilot.Kernel.Agent.Loop.Run</method>
 /// -- the one-call leg goes red, making a second call.</p>
 Method TestTheIterationCapCompletesWithTheFallbackReply()
@@ -172,7 +173,7 @@ Method TestTheIterationCapCompletesWithTheFallbackReply()
     Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 1, "the definition's cap of one allows one call")
     Do $$$AssertEquals(tOutcome("state") _ "|" _ tOutcome("limit"), "completed|iterations", "and completes at the iteration limit")
     Do $$$AssertTrue(tOutcome("reply") [ "limit on steps after 1 tool call", "with the fallback reply: " _ tOutcome("reply"))
-    Do $$$AssertTrue(tOutcome("reply") [ "probe.tool1: TOOL.UNAVAILABLE", "naming the tool and its outcome")
+    Do $$$AssertTrue(tOutcome("reply") [ "probe.tool1: TOOL.UNKNOWN", "naming the tool and its outcome")
     Do $$$AssertEquals(##class(OcuPilot.Test.TurnFixture).Field(tKey, "LimitHit"), "iterations", "and the row records the limit")
     Do ##class(OcuPilot.Kernel.State.Turn).GuardedView(tKey, $Username, .tFound, .tView)
     Do $$$AssertEquals(tView.limit, "iterations", "and the progress names it")
@@ -191,7 +192,7 @@ Method TestTheIterationCapCompletesWithTheFallbackReply()
     Do $$$AssertEquals(tSecond.messages.%Get(1).content.%Get(0).type, "tool_use", "the assistant's tool call, verbatim")
     Set tResult = tSecond.messages.%Get(2).content.%Get(0)
     Do $$$AssertEquals(tResult.type _ "|" _ tResult."tool_use_id" _ "|" _ tResult."is_error", "tool_result|toolu_1|1", "one error result per call")
-    Do $$$AssertEquals(tResult.content, "{""code"":""TOOL.UNAVAILABLE""}", "with the fixed content")
+    Do $$$AssertEquals(tResult.content, "{""code"":""TOOL.UNKNOWN""}", "with the unknown tool's content")
 }
 
 /// <p>A stop request and a sign-out each end the turn at the first boundary with no provider

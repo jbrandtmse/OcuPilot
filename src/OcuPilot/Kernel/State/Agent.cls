@@ -442,20 +442,27 @@ ClassMethod ScreenRow(pObject As OcuPilot.Kernel.State.Agent) As %DynamicObject
 
 /// <p>Every definition as a <method>ScreenRow</method>, in the order
 /// <method>GuardedList</method> answers -- the rows a descriptor-declared read over OcuPilot's own
-/// protected state resolves to (AD-9, AD-36).</p>
+/// protected state resolves to (AD-9, AD-36). A positive <var>pMaxRows</var> reads at most that
+/// many ids, bound into <code>SELECT TOP ?</code> (AD-21); <code>""</code> reads every one.</p>
 /// <p><b>The contract a state-backed read source is resolved through.</b>
-/// <method>OcuPilot.Screen.Read.Execute</method> asks a kernel store for this and applies the same
-/// field projection, filter, sort, row cap and truncation signal it applies to a port answer, so
-/// the second source kind changes where the rows come from and nothing else. A store that wants a
-/// declared read implements this method and declares nothing else.</p>
+/// <method>OcuPilot.Screen.Read.Execute</method> asks a kernel store for at most one row more than its
+/// cap and applies the same field projection, filter, sort, row cap and truncation signal it applies
+/// to a port answer, so the second source kind changes where the rows come from and nothing else. A
+/// store that wants a declared read implements this method and declares nothing else.</p>
 /// <p><b>A row that cannot be opened is skipped rather than failing the read</b>, the way
 /// <method>OcuPilot.Api.Definitions.HandleList</method> skips it: the id came from this instance's
 /// own enumeration a moment ago, so a row that has gone was deleted between the two calls and is
 /// not on the list any more.</p>
-ClassMethod GuardedScreenRows(Output pRows As %DynamicArray) As %Status
+ClassMethod GuardedScreenRows(Output pRows As %DynamicArray, pMaxRows As %String = "") As %Status
 {
     Set pRows = ""
-    Set tSC = ..GuardedList(.tIds)
+    If pMaxRows = "" {
+        Set tSC = ..GuardedList(.tIds)
+    } ElseIf $Match(pMaxRows, "^[1-9][0-9]*$") {
+        Set tSC = ..GuardedIdsWhere("SELECT TOP ? ID FROM OcuPilot_Kernel_State.Agent ORDER BY ID", +pMaxRows, .tIds)
+    } Else {
+        Set tSC = $$$ERROR($$$GeneralError, "maxRows must be empty or a whole number above zero")
+    }
     If $$$ISERR(tSC) Quit tSC
     Set pRows = []
     For tI = 1:1:+$Get(tIds) {

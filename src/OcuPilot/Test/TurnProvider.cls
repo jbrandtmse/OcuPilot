@@ -9,7 +9,8 @@
 /// (<code>$USERNAME</code>), <code>roles</code> (<code>$ROLES</code>), <code>keySha</code> (the
 /// SHA-256 of the key header, hex; the key itself is never recorded), <code>systemPresent</code>,
 /// <code>system</code>, <code>messages</code> (the request's messages as JSON, decoded from the
-/// UTF-8 bytes the adapter wrote), <code>at</code> and, once its hang is over,
+/// UTF-8 bytes the adapter wrote), <code>tools</code> (the request's tool array as JSON, or
+/// <code>""</code> when it carried none), <code>at</code> and, once its hang is over,
 /// <code>returned</code> (both in <method>OcuPilot.Kernel.State.Turn.NowSeconds</method> units).</p>
 /// <p>A script entry is a hang in seconds and a reply body; entries are consumed in call order and
 /// the last one repeats. With no script a call answers a short text reply at once.</p>
@@ -59,11 +60,26 @@ ClassMethod TextReply(pText As %String, pInput As %Integer = 1, pOutput As %Inte
     Quit tBody.%ToJSON()
 }
 
-/// <p>A reply body that asks for the tool <var>pName</var>.</p>
-ClassMethod ToolUseReply(pName As %String, pInput As %Integer = 1, pOutput As %Integer = 2) As %String
+/// <p>A reply body that asks for tools. <var>pCalls</var> is one tool's name, called with id
+/// <code>toolu_probe</code> and input <code>{}</code>, or a <class>%DynamicArray</class> of
+/// <code>{name, id, input}</code>, one <code>tool_use</code> block each, in order.</p>
+ClassMethod ToolUseReply(pCalls As %RawString, pInput As %Integer = 1, pOutput As %Integer = 2) As %String
 {
-    Set tBody = {"content": [{"type": "tool_use", "id": "toolu_probe", "input": {}}], "stop_reason": "tool_use", "usage": {}}
-    Do tBody.content.%Get(0).%Set("name", pName, "string")
+    Set tBody = {"content": [], "stop_reason": "tool_use", "usage": {}}
+    Set tCalls = pCalls
+    If '$IsObject(tCalls) {
+        Set tCalls = []
+        Do tCalls.%Push({"id": "toolu_probe", "input": {}})
+        Do tCalls.%Get(0).%Set("name", pCalls, "string")
+    }
+    Set tIterator = tCalls.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tCall) {
+        Set tBlock = {"type": "tool_use"}
+        Do tBlock.%Set("id", tCall.%Get("id"), "string")
+        Do tBlock.%Set("name", tCall.%Get("name"), "string")
+        Do tBlock.%Set("input", $Select($IsObject(tCall.%Get("input")): tCall.%Get("input"), 1: {}))
+        Do tBody.content.%Push(tBlock)
+    }
     Do tBody.usage.%Set("input_tokens", +pInput, "number")
     Do tBody.usage.%Set("output_tokens", +pOutput, "number")
     Quit tBody.%ToJSON()
@@ -97,6 +113,7 @@ Method IssueHttpsPost(pRequest As %Net.HttpRequest, pUrl As %String, Output pSta
     Set ^IRIS.Temp.OcuPilotTurnProvider(tTag, "call", tCall, "systemPresent") = tSent.%IsDefined("system")
     Set ^IRIS.Temp.OcuPilotTurnProvider(tTag, "call", tCall, "system") = tSent.system
     Set ^IRIS.Temp.OcuPilotTurnProvider(tTag, "call", tCall, "messages") = tSent.messages.%ToJSON()
+    Set ^IRIS.Temp.OcuPilotTurnProvider(tTag, "call", tCall, "tools") = $Select($IsObject(tSent.tools): tSent.tools.%ToJSON(), 1: "")
     Set ^IRIS.Temp.OcuPilotTurnProvider(tTag, "call", tCall, "at") = ##class(OcuPilot.Kernel.State.Turn).NowSeconds()
     Set tIndex = tCall
     If tIndex > +$Get(^IRIS.Temp.OcuPilotTurnProvider(tTag, "script")) Set tIndex = +$Get(^IRIS.Temp.OcuPilotTurnProvider(tTag, "script"))

@@ -654,9 +654,24 @@ Parameter TURNLIMITDURATION = "TURN.LIMIT.DURATION";
 /// <p>Terminal code (AD-41): the turn reached its provider token limit.</p>
 Parameter TURNLIMITTOKENS = "TURN.LIMIT.TOKENS";
 
-/// <p>Tool-result code (AD-11): the tool the model named is not available to this turn. Carried
-/// as the content of an error tool result, never as an envelope.</p>
+/// <p>Tool-result code (AD-11): the tool could not be answered on this instance -- the registry,
+/// the caller's identity, the gate, the restraint verdict or the tool itself could not be read.
+/// Carried as the content of an error tool result, never as an envelope.</p>
 Parameter TOOLUNAVAILABLE = "TOOL.UNAVAILABLE";
+
+/// <p>Tool-result code (AD-11): the model named a tool no registered tool is advertised as.</p>
+Parameter TOOLUNKNOWN = "TOOL.UNKNOWN";
+
+/// <p>Tool-result code (AD-22): the governance gate point refused the call. The tool stays
+/// advertised.</p>
+Parameter TOOLDENIED = "TOOL.DENIED";
+
+/// <p>Tool-result code (AD-11): the call's input is not an object, or does not satisfy the tool's
+/// input schema. <code>detail.problem</code> names the argument and the rule.</p>
+Parameter TOOLARGUMENTS = "TOOL.ARGUMENTS";
+
+/// <p>Tool-result code (AD-24): the result exceeds the size cap and has no rows to drop.</p>
+Parameter TOOLRESULTTOOLARGE = "TOOL.RESULTTOOLARGE";
 
 /// <p>Written sentence for <parameter>TURNBADBODY</parameter>.</p>
 Parameter REASONTURNBADBODY = "The request body is not a JSON object carrying a message.";
@@ -701,6 +716,21 @@ Parameter REASONTURNLIMITDURATION = "The turn ran as long as a turn may, so it w
 /// <p>Written sentence for <parameter>TURNLIMITTOKENS</parameter>.</p>
 Parameter REASONTURNLIMITTOKENS = "The turn spent as many provider tokens as a turn may, so it was abandoned.";
 
+/// <p>Written sentence for <parameter>TOOLUNAVAILABLE</parameter>.</p>
+Parameter REASONTOOLUNAVAILABLE = "That tool could not be answered on this instance.";
+
+/// <p>Written sentence for <parameter>TOOLUNKNOWN</parameter>.</p>
+Parameter REASONTOOLUNKNOWN = "No tool by that name is available to this turn.";
+
+/// <p>Written sentence for <parameter>TOOLDENIED</parameter>.</p>
+Parameter REASONTOOLDENIED = "That tool is not permitted on this instance.";
+
+/// <p>Written sentence for <parameter>TOOLARGUMENTS</parameter>.</p>
+Parameter REASONTOOLARGUMENTS = "The tool call's arguments do not match what the tool accepts.";
+
+/// <p>Written sentence for <parameter>TOOLRESULTTOOLARGE</parameter>.</p>
+Parameter REASONTOOLRESULTTOOLARGE = "The tool's result is larger than a tool result may be.";
+
 /// <p>Every <code>TURN.*</code> code, as a <class>%List</class>, so a test can hold
 /// <method>ReasonForTurn</method> to the vocabulary.</p>
 ClassMethod TurnCodes() As %List
@@ -726,6 +756,26 @@ ClassMethod ReasonForTurn(pCode As %String) As %String
     If pCode = ..#TURNABANDONEDJOBLOST Quit ..#REASONTURNABANDONEDJOBLOST
     If pCode = ..#TURNLIMITDURATION Quit ..#REASONTURNLIMITDURATION
     If pCode = ..#TURNLIMITTOKENS Quit ..#REASONTURNLIMITTOKENS
+    Quit ""
+}
+
+/// <p>Every <code>TOOL.*</code> code, as a <class>%List</class>, so a test can hold
+/// <method>ReasonForTool</method> to the vocabulary.</p>
+ClassMethod ToolCodes() As %List
+{
+    Quit $ListBuild(..#TOOLUNAVAILABLE, ..#TOOLUNKNOWN, ..#TOOLDENIED, ..#TOOLARGUMENTS, ..#TOOLRESULTTOOLARGE)
+}
+
+/// <p>The written sentence a <code>TOOL.*</code> code carries, or <code>""</code> for any other
+/// code. A tool result renders the code alone (AD-39); this is the sentence a screen shows beside
+/// it.</p>
+ClassMethod ReasonForTool(pCode As %String) As %String
+{
+    If pCode = ..#TOOLUNAVAILABLE Quit ..#REASONTOOLUNAVAILABLE
+    If pCode = ..#TOOLUNKNOWN Quit ..#REASONTOOLUNKNOWN
+    If pCode = ..#TOOLDENIED Quit ..#REASONTOOLDENIED
+    If pCode = ..#TOOLARGUMENTS Quit ..#REASONTOOLARGUMENTS
+    If pCode = ..#TOOLRESULTTOOLARGE Quit ..#REASONTOOLRESULTTOOLARGE
     Quit ""
 }
 

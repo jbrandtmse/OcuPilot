@@ -119,14 +119,22 @@ ClassMethod ScreenRow(pObject As OcuPilot.Kernel.State.Hold) As %DynamicObject
 }
 
 /// <p>Every hold as a <method>ScreenRow</method>, in the order <method>GuardedList</method>
-/// answers.</p>
+/// answers. A positive <var>pMaxRows</var> reads at most that many ids, bound into
+/// <code>SELECT TOP ?</code> (AD-21); <code>""</code> reads every one, which is what
+/// <class>OcuPilot.Api.Switches</class> asks for.</p>
 /// <p><b>A row that cannot be opened is skipped rather than failing the read</b>: the id came from
 /// this instance's own enumeration a moment ago, so a row that has gone was deleted between the two
 /// calls and is not on the list any more.</p>
-ClassMethod GuardedScreenRows(Output pRows As %DynamicArray) As %Status
+ClassMethod GuardedScreenRows(Output pRows As %DynamicArray, pMaxRows As %String = "") As %Status
 {
     Set pRows = ""
-    Set tSC = ..GuardedList(.tIds)
+    If pMaxRows = "" {
+        Set tSC = ..GuardedList(.tIds)
+    } ElseIf $Match(pMaxRows, "^[1-9][0-9]*$") {
+        Set tSC = ..GuardedIdsWhere("SELECT TOP ? ID FROM OcuPilot_Kernel_State.Hold ORDER BY ID", +pMaxRows, .tIds)
+    } Else {
+        Set tSC = $$$ERROR($$$GeneralError, "maxRows must be empty or a whole number above zero")
+    }
     If $$$ISERR(tSC) Quit tSC
     Set pRows = []
     For tI = 1:1:+$Get(tIds) {

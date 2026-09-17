@@ -1,6 +1,10 @@
-/// <p>The bounded provider loop a turn job runs (AD-7, AD-30, AD-31, AD-41). It calls the provider
-/// through <method>PortClass</method>, answers each tool call through <method>DispatchTools</method>,
-/// writes progress steps as it goes, and stops at the first step boundary that says so.</p>
+/// <p>The bounded provider loop a turn job runs (AD-7, AD-30, AD-31, AD-41). Before the first call it
+/// takes the tool array from <method>DispatchClass</method>'s <code>Advertise</code> once, and every
+/// provider request carries it; a turn whose tools cannot be advertised ends <code>failed</code>
+/// with no provider call. It calls the provider through <method>PortClass</method>, answers each
+/// tool call through <method>DispatchTools</method>, writes progress steps as it goes, and stops at
+/// the first step boundary that says so. The system prompt is the built-in one or the definition's
+/// override, whole; no tool result is ever joined to it (AD-11).</p>
 /// <p><b>The boundary</b> runs before every provider call, in this order: the stop flag, the
 /// sign-out flag, the kill switch (<class>OcuPilot.Kernel.Restraint</class>, whose code is recorded
 /// as given), enforced read-only against the snapshot the turn started with, the user's current
@@ -10,7 +14,8 @@
 /// (<method>OcuPilot.Kernel.State.Turn.GuardedBegin</method>), and finishes it with the outcome this
 /// answers. Not called from an escalated frame (AD-9).</p>
 /// <p>Seams a subclass overrides: <method>LimitsClass</method>, <method>PortClass</method>,
-/// <method>Restraint</method> and <method>DispatchTools</method>. Production overrides none.</p>
+/// <method>DispatchClass</method>, <method>Restraint</method> and <method>DispatchTools</method>.
+/// Production overrides none.</p>
 Class OcuPilot.Kernel.Agent.Loop Extends %RegisteredObject
 {
 
@@ -29,6 +34,12 @@ ClassMethod PortClass() As %String
     Quit "OcuPilot.Port.ProviderPort"
 }
 
+/// <p>The dispatcher that advertises the tools and answers every tool call.</p>
+ClassMethod DispatchClass() As %String
+{
+    Quit "OcuPilot.Kernel.Agent.Dispatch"
+}
+
 /// <p>The kill switch and read-only verdict for <var>pUser</var>, read afresh.</p>
 ClassMethod Restraint(pUser As %String, Output pVerdict) As %Status
 {
@@ -36,25 +47,13 @@ ClassMethod Restraint(pUser As %String, Output pVerdict) As %Status
 }
 
 /// <p>Answer the model's tool calls. <var>pToolUses</var> is the reply's <code>tool_use</code>
-/// blocks; <var>pResults</var> comes back with one <code>tool_result</code> block per call, in the
-/// same order. This release advertises no tools, so every call answers the fixed error result
-/// <code>{"code":"TOOL.UNAVAILABLE"}</code> and reaches nothing on the instance (AD-11). Story 4.2
-/// replaces this method.</p>
-ClassMethod DispatchTools(pKey As %String, pUser As %String, pToolUses As %DynamicArray, Output pResults As %DynamicArray) As %Status
+/// blocks; <var>pResults</var> comes back with one <code>tool_result</code> block per call and
+/// <var>pNames</var> with each call's canonical tool name, both in the same order, from
+/// <method>DispatchClass</method>'s <code>Answer</code> for <var>pUser</var> under
+/// <var>pDefinitionId</var> and the caps <var>pLimitsClass</var> declares.</p>
+ClassMethod DispatchTools(pKey As %String, pUser As %String, pDefinitionId As %String, pToolUses As %DynamicArray, pLimitsClass As %String, Output pResults As %DynamicArray, Output pNames As %DynamicArray) As %Status
 {
-    Set pResults = []
-    Set tContent = {}
-    Do tContent.%Set("code", ##class(OcuPilot.Api.Error).#TOOLUNAVAILABLE, "string")
-    Set tIterator = pToolUses.%GetIterator()
-    While tIterator.%GetNext(.tIndex, .tBlock) {
-        Set tResult = {}
-        Do tResult.%Set("type", "tool_result", "string")
-        Do tResult.%Set("tool_use_id", $Select($IsObject(tBlock) && (tBlock.id '= ""): tBlock.id, 1: "unknown"), "string")
-        Do tResult.%Set("is_error", 1, "boolean")
-        Do tResult.%Set("content", tContent.%ToJSON(), "string")
-        Do pResults.%Push(tResult)
-    }
-    Quit $$$OK
+    Quit $ClassMethod(..DispatchClass(), "Answer", pKey, pUser, pDefinitionId, pToolUses, pLimitsClass, .pResults, .pNames)
 }
 
 /// <p>Run turn <var>pKey</var> for <var>pUser</var> under definition <var>pDefinitionId</var>,
@@ -86,6 +85,12 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
         Set tInput = 0
         Set tOutput = 0
         Set tToolLog = []
+        Kill tTools
+        Set tAdvertiseSC = $ClassMethod(..DispatchClass(), "Advertise", .tTools)
+        If $$$ISERR(tAdvertiseSC) {
+            Do ##class(OcuPilot.Kernel.Fault).LogRaw("turn", "the turn's tools could not be advertised", tAdvertiseSC, pOutcome("code"))
+            Quit
+        }
         For {
             If ..Boundary(pKey, pUser, pReadOnly, pResources, pStartedSeconds, tInput + tOutput, .tState, .tCode) {
                 Set pOutcome("state") = tState
@@ -97,7 +102,6 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
             Set tSC = ##class(OcuPilot.Kernel.State.Step).GuardedAppend(pKey, "model", ..#MODELSTEP, "running", "", "", "", tLimits, .tSeq)
             If $$$ISERR(tSC) Quit
             Set tLastSeq = tSeq
-            Kill tTools
             Do $ClassMethod(..PortClass(), "Invoke", pDefinitionId, .tMessages, .tTools, ##class(OcuPilot.Kernel.Agent.Prompt).Builtin(), .tResponse, .tHttpStatus, .tFault)
             If $IsObject($Get(tResponse)) {
                 Set tInput = tInput + tResponse.RequestTokens
@@ -123,7 +127,7 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
                 Set pOutcome("reply") = tResponse.Text
                 Quit
             }
-            Set tSC = ..AnswerTools(pKey, pUser, tResponse.Text, tToolUses, tLimits, .tMessages, tToolLog, .tLastSeq)
+            Set tSC = ..AnswerTools(pKey, pUser, pDefinitionId, tResponse.Text, tToolUses, tLimits, .tMessages, tToolLog, .tLastSeq)
             If $$$ISERR(tSC) Quit
             If tIterations >= tCap {
                 Set pOutcome("state") = ##class(OcuPilot.Kernel.State.Turn).#STATECOMPLETED
@@ -263,9 +267,10 @@ ClassMethod ToolUses(pJson As %String) As %DynamicArray
 
 /// <p>Echo the model's reply back as an assistant message of blocks -- its text, then its
 /// <code>tool_use</code> blocks verbatim -- answer the calls through <method>DispatchTools</method>
-/// as one user message of <code>tool_result</code> blocks, and record one <code>tool</code> step
-/// per call. <var>pToolLog</var> collects <code>{name, code}</code> for the fallback reply.</p>
-ClassMethod AnswerTools(pKey As %String, pUser As %String, pText As %String, pToolUses As %DynamicArray, pLimitsClass As %String, ByRef pMessages, pToolLog As %DynamicArray, ByRef pLastSeq As %Integer) As %Status
+/// as one user message of <code>tool_result</code> blocks and nothing else, and record one
+/// <code>tool</code> step per call under the tool's canonical name. <var>pToolLog</var> collects
+/// <code>{name, code}</code> for the fallback reply.</p>
+ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %String, pText As %String, pToolUses As %DynamicArray, pLimitsClass As %String, ByRef pMessages, pToolLog As %DynamicArray, ByRef pLastSeq As %Integer) As %Status
 {
     Set tAssistant = []
     If $ZStrip(pText, "<>WC") '= "" {
@@ -282,12 +287,11 @@ ClassMethod AnswerTools(pKey As %String, pUser As %String, pText As %String, pTo
     Set pMessages(pMessages, "role") = "assistant"
     Set pMessages(pMessages, "blocks") = tAssistant.%ToJSON()
 
-    Set tSC = ..DispatchTools(pKey, pUser, pToolUses, .tResults)
+    Set tSC = ..DispatchTools(pKey, pUser, pDefinitionId, pToolUses, pLimitsClass, .tResults, .tNames)
     If $$$ISERR(tSC) Quit tSC
     For tI = 0:1:pToolUses.%Size() - 1 {
-        Set tBlock = pToolUses.%Get(tI)
         Set tResult = tResults.%Get(tI)
-        Set tName = $Select($IsObject(tBlock): tBlock.name, 1: "")
+        Set tName = tNames.%Get(tI)
         Set tIsError = $IsObject(tResult) && tResult."is_error"
         Set tCode = ""
         If tIsError {

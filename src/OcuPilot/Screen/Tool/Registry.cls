@@ -1,7 +1,12 @@
-/// <p>The tool registry's discovery and validation half (AD-5, AD-22, AD-36): which tools exist,
-/// what each is called and of which kind, and whether a set of arguments satisfies a tool's input
-/// schema. Dispatch, its caller context, its call-time gate point and its audit row are Story
-/// 4.2's; nothing here invokes a tool.</p>
+/// <p>The tool registry (AD-5, AD-22, AD-36): which tools exist, what each is called and of which
+/// kind, the tool array a provider request advertises, whether a set of arguments satisfies a
+/// tool's input schema, and the one call into a tool, <method>InvokeTool</method>. Its one caller is
+/// <class>OcuPilot.Kernel.Agent.Dispatch</class>, which checks the governance gate, the restraint
+/// verdict, the privilege pairs and the arguments first; nothing here checks any of them.</p>
+/// <p><b>Wire names.</b> A provider's tool-name grammar refuses dots, so a tool is advertised under
+/// <method>WireName</method>, every dot an underscore, and resolved by comparing wire names
+/// (<method>ResolveWire</method>). The dotted name stays canonical everywhere else; a canonical
+/// name holds no underscore, so the mapping is reversible (Conventions, Tool naming).</p>
 /// <p><b>Two sources, one list.</b> A tool with a class of its own is every compiled, non-abstract
 /// class in <method>ToolPackage</method> that <code>%Extends</code>
 /// <class>OcuPilot.Screen.Tool.Base</class>, however many abstract classes stand between them, so
@@ -37,6 +42,18 @@ Parameter SCHEMAKEYWORDS = "type,properties,required,additionalProperties,descri
 
 /// <p>The JSON types a schema may name.</p>
 Parameter SCHEMATYPES = "string,integer,number,boolean,array,object";
+
+/// <p>The keywords an advertised schema's top level carries, and no others: the cross-vendor
+/// subset every provider adapter accepts.</p>
+Parameter EMITTEDTOPKEYWORDS = "type,properties,required,additionalProperties";
+
+/// <p>The keywords an advertised schema's property carries, and no others -- the harvested subset
+/// verbatim. <code>maxLength</code>, which the validator enforces, is moved into the property's
+/// description by <method>EmitSchema</method> rather than advertised as a keyword.</p>
+Parameter EMITTEDKEYWORDS = "type,description,enum,items,minimum,maximum,minItems,maxItems";
+
+/// <p>The tool-name grammar of a provider request.</p>
+Parameter WIRENAMEPATTERN = "^[a-zA-Z0-9_-]{1,64}$";
 
 /// <p>The package tool classes are discovered in. Overridable so a fixture registry can point at
 /// fixture tools; production never overrides it.</p>
@@ -150,6 +167,237 @@ ClassMethod Resolve(pName As %String, Output pTool As %DynamicObject) As %Status
         }
     }
     Quit $$$OK
+}
+
+/// <p><var>pName</var> as a provider request spells it: every dot an underscore.</p>
+ClassMethod WireName(pName As %String) As %String
+{
+    Quit $Translate(pName, ".", "_")
+}
+
+/// <p>The tool whose <method>WireName</method> is exactly <var>pWireName</var>, as
+/// <method>ListTools</method> lists it, or <code>""</code> in <var>pTool</var> when none is. The
+/// status is an error only when the list itself could not be built.</p>
+ClassMethod ResolveWire(pWireName As %String, Output pTool As %DynamicObject) As %Status
+{
+    Set pTool = ""
+    Set tSC = ..ListTools(.tTools)
+    If $$$ISERR(tSC) Quit tSC
+    Set tIterator = tTools.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tEntry) {
+        If ..WireName(tEntry.name) = pWireName {
+            Set pTool = tEntry
+            Quit
+        }
+    }
+    Quit $$$OK
+}
+
+/// <p>Every tool as a provider request advertises it, in <method>ListTools</method>'s name order:
+/// <code>pTools(n, "name")</code> the wire name, <code>pTools(n, "description")</code> and
+/// <code>pTools(n, "inputSchema")</code> the emitted schema as JSON text, with the count in
+/// <code>pTools</code> -- the shape <class>OcuPilot.Kernel.Provider.Base</class> reads.</p>
+/// <p>Refuses, with <var>pTools</var> 0: a list that cannot be built; a tool whose wire name breaks
+/// <parameter>WIRENAMEPATTERN</parameter>, whose canonical name holds an underscore, or whose wire
+/// name another tool shares; a tool with no description; an input or result schema the validator
+/// does not admit; and an input schema <method>EmitSchema</method> refuses.</p>
+ClassMethod ProviderTools(Output pTools) As %Status
+{
+    Set tSC = $$$OK
+    Kill pTools
+    Set pTools = 0
+    Try {
+        Set tSC = ..ListTools(.tList)
+        If $$$ISERR(tSC) Quit
+        Kill tSeen
+        Set tIterator = tList.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tTool) {
+            Set tName = tTool.%Get("name")
+            Set tWire = ..WireName(tName)
+            If (tName [ "_") || '$Match(tWire, ..#WIRENAMEPATTERN) {
+                Set tSC = $$$ERROR($$$GeneralError, "tool '" _ tName _ "' has no reversible wire name matching " _ ..#WIRENAMEPATTERN)
+                Quit
+            }
+            If $Data(tSeen(tWire)) {
+                Set tSC = $$$ERROR($$$GeneralError, "tools '" _ tSeen(tWire) _ "' and '" _ tName _ "' share the wire name '" _ tWire _ "'")
+                Quit
+            }
+            Set tSeen(tWire) = tName
+            Set tDescription = ..DescriptionOf(tTool)
+            If $ZStrip(tDescription, "<>W") = "" {
+                Set tSC = $$$ERROR($$$GeneralError, "tool '" _ tName _ "' declares no description")
+                Quit
+            }
+            Set tInput = ..InputSchemaOf(tTool)
+            Set tProblem = ..SchemaProblem(tInput, tName _ " input schema", 1)
+            If tProblem = "" Set tProblem = ..SchemaProblem(..ResultSchemaOf(tTool), tName _ " result schema", 1)
+            If tProblem '= "" {
+                Set tSC = $$$ERROR($$$GeneralError, tProblem)
+                Quit
+            }
+            Set tEmitSC = ..EmitSchema(tInput, .tEmitted, .tProblem)
+            If $$$ISERR(tEmitSC) {
+                Set tSC = $$$ERROR($$$GeneralError, tName _ " input schema: " _ tProblem)
+                Quit
+            }
+            Set pTools = pTools + 1
+            Set pTools(pTools, "name") = tWire
+            Set pTools(pTools, "description") = tDescription
+            Set pTools(pTools, "inputSchema") = tEmitted.%ToJSON()
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) {
+        Kill pTools
+        Set pTools = 0
+    }
+    Quit tSC
+}
+
+/// <p><var>pSchema</var> as a provider request advertises it, as a copy in <var>pEmitted</var>:
+/// the top level carries <parameter>EMITTEDTOPKEYWORDS</parameter> and is
+/// <code>{type: "object", properties, required, additionalProperties: false}</code>; every property,
+/// and every <code>items</code> below one, carries only <parameter>EMITTEDKEYWORDS</parameter>. A
+/// property's <code>maxLength</code> is removed and stated at the end of its description as
+/// <code>At most N characters.</code>. Any other keyword refuses the schema, naming it in
+/// <var>pProblem</var>; <var>pSchema</var> itself is never changed.</p>
+ClassMethod EmitSchema(pSchema As %DynamicObject, Output pEmitted As %DynamicObject, Output pProblem As %String) As %Status
+{
+    Set pEmitted = ""
+    Set pProblem = ""
+    Try {
+        If '$IsObject(pSchema) || 'pSchema.%IsA("%Library.DynamicObject") {
+            Set pProblem = "the schema is not an object"
+            Quit
+        }
+        Set tCopy = ##class(%DynamicAbstractObject).%FromJSON(pSchema.%ToJSON())
+        Set tTop = $ListFromString(..#EMITTEDTOPKEYWORDS)
+        Set tIterator = tCopy.%GetIterator()
+        While tIterator.%GetNext(.tKey, .tValue) {
+            If '$ListFind(tTop, tKey) {
+                Set pProblem = "the top level uses keyword '" _ tKey _ "', which the emitted subset does not admit"
+                Quit
+            }
+        }
+        If pProblem '= "" Quit
+        If (tCopy.%Get("type") '= "object") || (tCopy.%GetTypeOf("properties") '= "object") || (tCopy.%GetTypeOf("required") '= "array") || (tCopy.%GetTypeOf("additionalProperties") '= "boolean") || tCopy.%Get("additionalProperties") {
+            Set pProblem = "the top level is not {type: object, properties, required, additionalProperties: false}"
+            Quit
+        }
+        Set tIterator = tCopy.%Get("properties").%GetIterator()
+        While tIterator.%GetNext(.tKey, .tProperty) {
+            Set pProblem = ..EmitProperty(tProperty, "properties." _ tKey)
+            If pProblem '= "" Quit
+        }
+        If pProblem '= "" Quit
+        Set pEmitted = tCopy
+    } Catch ex {
+        Set pProblem = "the schema could not be emitted: " _ ex.DisplayString()
+    }
+    If pProblem = "" Quit $$$OK
+    Set pEmitted = ""
+    Quit $$$ERROR($$$GeneralError, pProblem)
+}
+
+/// <p>What <var>pProperty</var>, at <var>pPath</var>, carries that an emitted schema may not, or
+/// <code>""</code> -- having moved its <code>maxLength</code> into its description, and its
+/// <code>items</code>' likewise.</p>
+ClassMethod EmitProperty(pProperty As %DynamicObject, pPath As %String) As %String [ Private ]
+{
+    If '$IsObject(pProperty) || 'pProperty.%IsA("%Library.DynamicObject") Quit pPath _ " is not a schema object"
+    Set tAllowed = $ListFromString(..#EMITTEDKEYWORDS)
+    Set tProblem = ""
+    Set tIterator = pProperty.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tValue) {
+        If (tKey '= "maxLength") && '$ListFind(tAllowed, tKey) {
+            Set tProblem = pPath _ " uses keyword '" _ tKey _ "', which the emitted subset does not admit"
+            Quit
+        }
+    }
+    If tProblem '= "" Quit tProblem
+    If pProperty.%GetTypeOf("maxLength") '= "unassigned" {
+        Set tSentence = "At most " _ pProperty.%Get("maxLength") _ " characters."
+        Set tDescription = $Select(pProperty.%GetTypeOf("description") = "string": pProperty.%Get("description"), 1: "")
+        Do pProperty.%Remove("maxLength")
+        Do pProperty.%Set("description", $Select(tDescription = "": tSentence, 1: tDescription _ " " _ tSentence), "string")
+    }
+    If pProperty.%GetTypeOf("items") '= "unassigned" Set tProblem = ..EmitProperty(pProperty.%Get("items"), pPath _ ".items")
+    Quit tProblem
+}
+
+/// <p><var>pTool</var>'s input schema, as its class answers it for its descriptor.</p>
+ClassMethod InputSchemaOf(pTool As %DynamicObject) As %DynamicObject
+{
+    Quit $ClassMethod(pTool.%Get("class"), "InputSchema", pTool.%Get("descriptor"))
+}
+
+/// <p><var>pTool</var>'s result schema, as its class answers it for its descriptor.</p>
+ClassMethod ResultSchemaOf(pTool As %DynamicObject) As %DynamicObject
+{
+    Quit $ClassMethod(pTool.%Get("class"), "ResultSchema", pTool.%Get("descriptor"))
+}
+
+/// <p><var>pTool</var>'s description, as its class answers it for its descriptor.</p>
+ClassMethod DescriptionOf(pTool As %DynamicObject) As %String
+{
+    Quit $ClassMethod(pTool.%Get("class"), "Description", pTool.%Get("descriptor"))
+}
+
+/// <p>The <code>(resource, permission)</code> pairs <var>pTool</var> requires, as its class answers
+/// them for its descriptor. <var>pResolved</var> is 0 when they could not be read, and a caller must
+/// then refuse rather than read the empty list as "requires nothing".</p>
+ClassMethod RequiredPairs(pTool As %DynamicObject, Output pResolved As %Boolean) As %List
+{
+    Set pResolved = 0
+    Set tPairs = ""
+    Try {
+        Set tPairs = $ClassMethod(pTool.%Get("class"), "PrivilegePairs", pTool.%Get("descriptor"), .pResolved)
+        If '$ListValid(tPairs) {
+            Set tPairs = ""
+            Set pResolved = 0
+        }
+    } Catch {
+        Set tPairs = ""
+        Set pResolved = 0
+    }
+    Quit tPairs
+}
+
+/// <p>Call <var>pTool</var>'s view with <var>pArgs</var> under the row cap <var>pContextCap</var>,
+/// in the calling process (AD-1). Outputs are the view's (<method>OcuPilot.Screen.Tool.Base.View</method>);
+/// a view that throws answers an error status with <var>pFault</var> <code>""</code>.</p>
+/// <p><b>Caller contract:</b> <class>OcuPilot.Kernel.Agent.Dispatch</class> alone, after its gate
+/// point, restraint, pair and argument checks.</p>
+ClassMethod InvokeTool(pTool As %DynamicObject, pArgs As %DynamicAbstractObject, pContextCap As %Integer, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Try {
+        Set tSC = $ClassMethod(pTool.%Get("class"), "View", pTool.%Get("descriptor"), pArgs, pContextCap, .pResult, .pHttpStatus, .pFault)
+    } Catch ex {
+        Set pResult = ""
+        Set pFault = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Whether <var>pSchema</var> is a top-level schema the validator admits (the checks
+/// <method>ValidateArguments</method> makes before reading any argument). <var>pProblem</var> is
+/// <code>""</code> exactly when the status is OK.</p>
+ClassMethod ValidateSchema(pSchema As %DynamicObject, Output pProblem As %String) As %Status
+{
+    Set pProblem = ""
+    Try {
+        Set pProblem = ..SchemaProblem(pSchema, "schema", 1)
+    } Catch ex {
+        Set pProblem = "the schema could not be validated: " _ ex.DisplayString()
+    }
+    If pProblem = "" Quit $$$OK
+    Quit $$$ERROR($$$GeneralError, pProblem)
 }
 
 /// <p>What is wrong with <var>pClass</var> declaring kind <var>pKind</var>, or <code>""</code>

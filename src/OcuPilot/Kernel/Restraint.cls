@@ -3,18 +3,19 @@
 /// <method>Verdict</method>; none of them re-derives it, and <b>nothing else in the ObjectScript
 /// source produces a restraint code</b> -- <file>scripts/check-objectscript.py</file>'s
 /// restraint-code containment rule refuses a second producer.</p>
-/// <p><b>That rule is narrower than the property it serves</b>, in three named ways. It bans a
+/// <p><b>That rule is narrower than the property it serves</b>, in two named ways. It bans a
 /// second producer of a restraint <i>code</i>: a caller that read
 /// <class>OcuPilot.Kernel.State.Switch</class> and <class>OcuPilot.Kernel.State.Hold</class> and
 /// decided for itself would name no code and pass it, and those stores cannot be restricted by
-/// class name because <class>OcuPilot.Api.Switches</class> reads both of them legitimately. It
-/// reads <file>.cls</file>, <file>.mac</file> and <file>.inc</file> only, so a client that named a
-/// code would pass it. And within those it skips comments and XData bodies. The wider property is
-/// held by review.</p>
+/// class name because <class>OcuPilot.Api.Switches</class> reads both of them legitimately. And it
+/// skips comments and XData bodies in ObjectScript source; the client's TypeScript and templates
+/// under <file>ui/src</file> it reads whole, specs excepted. The wider property is held by
+/// review.</p>
 /// <p>It sits beside <class>OcuPilot.Kernel.Egress</class>, which is the shipped layout of a policy
 /// class over a <package>OcuPilot.Kernel.State</package> store: the store answers what is written
-/// down, the policy class decides what follows from it. <package>OcuPilot.Kernel.Governance</package>
-/// is AD-22's polish-week folder and stays empty.</p>
+/// down, the policy class decides what follows from it. It is a separate step from AD-22's gate
+/// point, <class>OcuPilot.Kernel.Governance.Gate</class>: the tool dispatcher asks that gate first
+/// and this verdict second, for a write tool.</p>
 /// <p><b>Read on every call, returned as values.</b> No memo, no process-private cache and no held
 /// object: an OREF kept across a call makes <method>%OpenId</method> hand back the stale copy
 /// (<file>.claude/rules/objectscript-basics.md</file>), and AD-30's rule is that neither switch is

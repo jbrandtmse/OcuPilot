@@ -1,7 +1,8 @@
 /// <p>Test-only <class>OcuPilot.Kernel.Agent.Loop</class> subclass whose seams are switches, so the
 /// loop runs in process with no socket: the port is <class>OcuPilot.Test.ProviderPortProbe</class>,
-/// the limits are <class>OcuPilot.Test.TurnLimits</class>, and the restraint verdict is the real one
-/// unless a test forces the kill switch on or the read to fail. No method of the loop itself is
+/// the limits are <class>OcuPilot.Test.TurnLimits</class> unless a test names others, the dispatcher
+/// is the shipped one unless a test names another, and the restraint verdict is the real one unless
+/// a test forces the kill switch on or the read to fail. No method of the loop itself is
 /// replaced.</p>
 Class OcuPilot.Test.TurnLoopProbe Extends OcuPilot.Kernel.Agent.Loop
 {
@@ -25,9 +26,30 @@ ClassMethod ForceRestraintError()
     Set ^||OcuPilotTurnLoopProbe("restraintError") = 1
 }
 
+/// <p>Answer <var>pClass</var> as the dispatcher from now on; <code>""</code> restores the shipped
+/// one.</p>
+ClassMethod SetDispatchClass(pClass As %String)
+{
+    Set ^||OcuPilotTurnLoopProbe("dispatch") = pClass
+}
+
+/// <p>Answer <var>pClass</var> as the limits from now on; <code>""</code> restores
+/// <class>OcuPilot.Test.TurnLimits</class>.</p>
+ClassMethod SetLimitsClass(pClass As %String)
+{
+    Set ^||OcuPilotTurnLoopProbe("limits") = pClass
+}
+
 ClassMethod LimitsClass() As %String
 {
+    If $Get(^||OcuPilotTurnLoopProbe("limits")) '= "" Quit ^||OcuPilotTurnLoopProbe("limits")
     Quit "OcuPilot.Test.TurnLimits"
+}
+
+ClassMethod DispatchClass() As %String
+{
+    If $Get(^||OcuPilotTurnLoopProbe("dispatch")) '= "" Quit ^||OcuPilotTurnLoopProbe("dispatch")
+    Quit ##super()
 }
 
 ClassMethod PortClass() As %String

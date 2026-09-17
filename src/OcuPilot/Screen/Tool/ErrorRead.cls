@@ -17,9 +17,10 @@
 /// fetched, because the summary path calls <code>ErrorList</code> and
 /// <code>ErrorDetail</code> is reachable only from the detail route. A user reads that table on
 /// screen; the agent does not.</p>
-/// <p><b>Nothing here dispatches.</b> The dispatch path, its caller context, its call-time gate
-/// point and its audit row are Story 4.2's; this class answers a schema and rows, and the port's own
-/// per-namespace gate is what decides whether it may (AD-8, AD-29).</p>
+/// <p><b>It answers the one tool contract</b> (<class>OcuPilot.Screen.Tool.Base</class>): its pairs
+/// are its descriptor's, the dispatcher checks them against the caller's current grants, and the
+/// port's own per-namespace gate still decides whether the read may run (AD-8, AD-29). A port
+/// refusal reaches the caller as the port's own HTTP status and fault.</p>
 Class OcuPilot.Screen.Tool.ErrorRead Extends OcuPilot.Screen.Tool.Base
 {
 
@@ -34,8 +35,8 @@ Parameter KIND = "read";
 
 Parameter DESCRIPTION = "Read one namespace and date's application errors, bounded, with the summary fields only: error number, time, error text, routine and code line. The captured variable table is never returned.";
 
-/// <p>The screen this tool reads for. Declared so the tool and the descriptor are one screen's, and
-/// read by nothing on the serving path: this tool's rows come from the port, not from a declared
+/// <p>The screen this tool reads for. Its pairs are this tool's (<method>PrivilegePairs</method>);
+/// its rows are not, because this tool's rows come from the port rather than from a declared
 /// read.</p>
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.LogErrorList";
 
@@ -67,40 +68,70 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
         "properties": {
             "namespace": {"type": "string", "description": "The namespace to read errors for, exactly as this instance's own namespace list reports it. A namespace it does not report is refused."},
             "date": {"type": "string", "description": "The date to read errors for, exactly as this instance's own date list reports it for that namespace (MM/DD/YYYY in the instance's clock). A date it does not report is refused."},
-            "maxRows": {"type": "integer", "minimum": 1, "description": "The most rows to read. Absent means 1,000; there is no ceiling."}
+            "maxRows": {"type": "integer", "minimum": 1, "description": "The most rows to read. Absent, or above the tool's row cap, reads the cap."}
         },
         "required": ["namespace", "date"],
         "additionalProperties": false
     }
 }
 
+/// <p>What the caller must hold: <parameter>DESCRIPTORCLASS</parameter>'s pairs, unioned with its
+/// classic page's custom resource (<method>OcuPilot.Screen.Gate.RequiredPairs</method>).</p>
+ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boolean) As %List
+{
+    Quit ##class(OcuPilot.Screen.Gate).RequiredPairs(..#DESCRIPTORCLASS, .pResolved)
+}
+
+/// <p>The result <method>View</method> answers: <code>{fields, rows, truncated}</code>, the fields
+/// being <parameter>SUMMARYFIELDS</parameter>.</p>
+ClassMethod ResultSchema(pDescriptor As %String = "") As %DynamicObject
+{
+    Quit {
+        "type": "object",
+        "properties": {
+            "fields": {"type": "array", "items": {"type": "string"}, "description": "The five summary field names."},
+            "rows": {"type": "array", "items": {"type": "object"}, "description": "One object per error, carrying exactly the summary fields."},
+            "truncated": {"type": "boolean", "description": "True when rows were cut by a cap."}
+        },
+        "required": ["fields", "rows", "truncated"],
+        "additionalProperties": false
+    }
+}
+
 /// <p>The tool's view of one namespace and date's errors. <var>pArgs</var> is validated against
-/// <method>InputSchema</method> before anything is read; a refusal is an error status naming the
-/// argument and the rule, and no port is called. <var>pContextCap</var> is the row cap on what the
-/// tool returns (AD-24), supplied by the caller; it is a whole number above zero.</p>
+/// <method>InputSchema</method> before anything is read; a refusal is 400
+/// <code>TOOL.ARGUMENTS</code> naming the argument and the rule, and no port is called.
+/// <var>pContextCap</var> is the row cap on what the tool returns (AD-24), supplied by the caller;
+/// it is a whole number above zero. <var>pDescriptor</var> is ignored.</p>
+/// <p>The port is asked for the model's <code>maxRows</code> or the cap, whichever is smaller
+/// (DW-298).</p>
 /// <p><var>pResult</var> is <code>{fields, rows, truncated}</code>: the five summary fields, each
 /// row carrying exactly those keys, at most <var>pContextCap</var> rows in the port's own
 /// newest-first order, and <code>truncated</code> true when the port truncated or the cap cut rows.
-/// A port refusal is returned as its error status, with <var>pResult</var> empty.</p>
-ClassMethod View(pArgs As %DynamicObject, pContextCap As %Integer, Output pResult As %DynamicObject) As %Status
+/// A port refusal is returned as the port's status, HTTP status and fault, with
+/// <var>pResult</var> empty.</p>
+ClassMethod View(pDescriptor As %String, pArgs As %DynamicAbstractObject, pContextCap As %Integer, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
     Set tSC = $$$OK
     Set pResult = ""
+    Set pHttpStatus = 0
+    Set pFault = ""
     Try {
         If '$Match(pContextCap, "^[1-9][0-9]*$") {
-            Set tSC = $$$ERROR($$$GeneralError, "the context cap must be a whole number above zero")
+            Set tSC = ..InternalRefusal("the context cap must be a whole number above zero", .pHttpStatus, .pFault)
             Quit
         }
         Set tArgs = $Select($IsObject(pArgs): pArgs, pArgs = "": {}, 1: pArgs)
-        Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ValidateArguments(..InputSchema(), tArgs, .tProblem)
-        If $$$ISERR(tSC) Quit
+        Set tValidSC = ##class(OcuPilot.Screen.Tool.Registry).ValidateArguments(..InputSchema(), tArgs, .tProblem)
+        If $$$ISERR(tValidSC) {
+            Set tSC = ..ArgumentsRefusal(tProblem, .pHttpStatus, .pFault)
+            Quit
+        }
 
-        Set tMaxRows = ""
-        If tArgs.%GetTypeOf("maxRows") = "number" Set tMaxRows = tArgs.%Get("maxRows")
-        Set tSC = $ClassMethod(..PortClass(), "Errors", ##class(OcuPilot.Port.LogSourcePort).#LEVELLIST, tArgs.%Get("namespace"), tArgs.%Get("date"), "", tMaxRows, .tAnswer, .tHttpStatus, .tFault)
+        Set tSC = $ClassMethod(..PortClass(), "Errors", ##class(OcuPilot.Port.LogSourcePort).#LEVELLIST, tArgs.%Get("namespace"), tArgs.%Get("date"), "", ..BoundedMaxRows(tArgs, pContextCap), .tAnswer, .pHttpStatus, .pFault)
         If $$$ISERR(tSC) Quit
         If '$IsObject(tAnswer) {
-            Set tSC = $$$ERROR($$$GeneralError, "the application error log answered no payload")
+            Set tSC = ..InternalRefusal("the application error log answered no payload", .pHttpStatus, .pFault)
             Quit
         }
 
@@ -134,9 +165,11 @@ ClassMethod View(pArgs As %DynamicObject, pContextCap As %Integer, Output pResul
         Do pResult.%Set("fields", tFields)
         Do pResult.%Set("rows", tRows)
         Do pResult.%Set("truncated", ''tTruncated, "boolean")
+        Set pHttpStatus = 200
+        Set pFault = ""
     } Catch ex {
         Set pResult = ""
-        Set tSC = ex.AsStatus()
+        Set tSC = ..InternalRefusal("the application error read tool failed: " _ ex.DisplayString(), .pHttpStatus, .pFault)
     }
     Quit tSC
 }

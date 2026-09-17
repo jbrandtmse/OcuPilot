@@ -6,6 +6,8 @@
 /// database the credential entries live in, <code>%Admin_Operate:USE</code> and
 /// <code>%Ens_Credentials:READ</code></b> -- enough to clear the router's floor, to resolve the
 /// definition's key inside a turn job, and nothing of OcuPilot's own.</p>
+/// <p>A principal may hold a second role, <parameter>SECONDROLE</parameter>, which
+/// <method>RemoveSecondRole</method> takes away while its turn runs.</p>
 /// <p><b>Not a <class>%UnitTest.TestCase</class></b>: its callers are, and each refuses in
 /// <method>OnBeforeAllTests</method> unless both arming variables read 1.</p>
 Class OcuPilot.Test.TurnWireFixture Extends %RegisteredObject
@@ -16,6 +18,9 @@ Parameter USERA = "OcuPilotProbeTurnWireA";
 Parameter USERB = "OcuPilotProbeTurnWireB";
 
 Parameter ROLE = "OcuPilotProbeTurnWireRole";
+
+/// <p>The role a two-role principal holds beside <parameter>ROLE</parameter>.</p>
+Parameter SECONDROLE = "OcuPilotProbeTurnWireSecond";
 
 Parameter CREDENTIAL = "OcuPilotProbeTurnCredential";
 
@@ -53,8 +58,10 @@ ClassMethod Resources(pOperate As %Boolean = 1) As %String
 }
 
 /// <p>Create or reset the role with <var>pResources</var>, and create <var>pUser</var> holding it
-/// with <var>pPassword</var>, replacing any account of that name.</p>
-ClassMethod EnsurePrincipal(pUser As %String, pPassword As %String, pResources As %String) As %Status
+/// with <var>pPassword</var>, replacing any account of that name. A non-empty
+/// <var>pSecondResources</var> also creates or resets <parameter>SECONDROLE</parameter> with those
+/// resources and grants it to <var>pUser</var> as well.</p>
+ClassMethod EnsurePrincipal(pUser As %String, pPassword As %String, pResources As %String, pSecondResources As %String = "") As %Status
 {
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
@@ -62,11 +69,23 @@ ClassMethod EnsurePrincipal(pUser As %String, pPassword As %String, pResources A
         Set $NAMESPACE = "%SYS"
         Set tSC = ..SetRole(pResources)
         If $$$ISERR(tSC) Quit
+        Set tRoles = ..#ROLE
+        If pSecondResources '= "" {
+            If ##class(Security.Roles).Exists(..#SECONDROLE, .tR, .tRS) {
+                Set tProps("Resources") = pSecondResources
+                Set tProps("GrantedRoles") = ""
+                Set tSC = ##class(Security.Roles).Modify(..#SECONDROLE, .tProps)
+            } Else {
+                Set tSC = ##class(Security.Roles).Create(..#SECONDROLE, "OcuPilot turn test principal second role (throwaway)", pSecondResources, "")
+            }
+            If $$$ISERR(tSC) Quit
+            Set tRoles = tRoles _ "," _ ..#SECONDROLE
+        }
         If ##class(Security.Users).Exists(pUser, .tU, .tUS) {
             Set tSC = ##class(Security.Users).Delete(pUser)
             If $$$ISERR(tSC) Quit
         }
-        Set tSC = ##class(Security.Users).Create(pUser, ..#ROLE, pPassword, "OcuPilot turn test principal (throwaway)", "", "", "", 0, 1, "Created by OcuPilot.Test.TurnWireFixture")
+        Set tSC = ##class(Security.Users).Create(pUser, tRoles, pPassword, "OcuPilot turn test principal (throwaway)", "", "", "", 0, 1, "Created by OcuPilot.Test.TurnWireFixture")
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
@@ -100,6 +119,23 @@ ClassMethod SetRoleResources(pResources As %String) As %Status
     Quit tSC
 }
 
+/// <p>Take <parameter>SECONDROLE</parameter> away from <var>pUser</var>, leaving
+/// <parameter>ROLE</parameter>.</p>
+ClassMethod RemoveSecondRole(pUser As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tProps("Roles") = ..#ROLE
+        Set tSC = ##class(Security.Users).Modify(pUser, .tProps)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
 /// <p>Delete <var>pUser</var> when the instance holds it.</p>
 ClassMethod DeletePrincipal(pUser As %String) As %Status
 {
@@ -115,8 +151,8 @@ ClassMethod DeletePrincipal(pUser As %String) As %Status
     Quit tSC
 }
 
-/// <p>Delete both principals and the role, and answer what survives, <code>""</code> when
-/// nothing does.</p>
+/// <p>Delete both principals and both roles, and answer what survives
+/// (<method>PrincipalsLeft</method>).</p>
 ClassMethod RemovePrincipals() As %String
 {
     Set tLeft = ""
@@ -125,11 +161,29 @@ ClassMethod RemovePrincipals() As %String
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = "%SYS"
-        If ##class(Security.Roles).Exists(..#ROLE, .tR, .tRS) Do ##class(Security.Roles).Delete(..#ROLE)
+        For tRole = ..#ROLE, ..#SECONDROLE {
+            If ##class(Security.Roles).Exists(tRole, .tR, .tRS) Do ##class(Security.Roles).Delete(tRole)
+        }
+    } Catch ex {
+        Set tLeft = " (" _ ex.DisplayString() _ ")"
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tLeft _ ..PrincipalsLeft()
+}
+
+/// <p>Which probe principals and roles the instance holds, <code>""</code> when none.</p>
+ClassMethod PrincipalsLeft() As %String
+{
+    Set tLeft = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
         For tName = ..#USERA, ..#USERB {
             If ##class(Security.Users).Exists(tName, .tU, .tUS) Set tLeft = tLeft _ " user " _ tName
         }
-        If ##class(Security.Roles).Exists(..#ROLE, .tR2, .tRS2) Set tLeft = tLeft _ " role " _ ..#ROLE
+        For tRole = ..#ROLE, ..#SECONDROLE {
+            If ##class(Security.Roles).Exists(tRole, .tR, .tRS) Set tLeft = tLeft _ " role " _ tRole
+        }
     } Catch ex {
         Set tLeft = tLeft _ " (" _ ex.DisplayString() _ ")"
     }

@@ -100,6 +100,20 @@ Property RowVersion As %Integer [ InitialExpression = 0 ];
 /// established.</p>
 Parameter STALESAVEREASON = "the row changed on this instance after it was read, so the save was refused";
 
+/// <p>The window <method>BoundedWhere</method> applies when its caller asks for 0 hours.</p>
+Parameter BOUNDEDDEFAULTHOURS As %Integer = 24;
+
+/// <p>The widest window <method>BoundedWhere</method> admits, in hours: thirty days.</p>
+Parameter BOUNDEDMAXHOURS As %Integer = 720;
+
+/// <p>The window value that selects keyed mode: no time predicate, the caller's own keyed predicate
+/// being the bound.</p>
+Parameter BOUNDEDKEYED As %Integer = -1;
+
+/// <p>The shape a time column name passed to <method>BoundedWhere</method> must take: a column, or
+/// an alias and a column.</p>
+Parameter BOUNDEDCOLUMNPATTERN = "^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)?$";
+
 /// <p>Save <var>pObject</var> -- any persistent instance of this class or a subclass --
 /// through the escalated frame.</p>
 ClassMethod GuardedSave(pObject As %Persistent) As %Status
@@ -570,6 +584,58 @@ ClassMethod GuardedOpenOneWhereThreeParam(pSql As %String, pParam1 As %String, p
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>A bounded <code>WHERE</code> fragment, without the keyword, for a read over a time-indexed
+/// table, so no search runs unbounded. It runs no SQL and does not escalate.</p>
+/// <p><var>pWindowHours</var> selects the mode: <code>0</code> is the last
+/// <parameter>BOUNDEDDEFAULTHOURS</parameter> hours; <code>1</code> to
+/// <parameter>BOUNDEDMAXHOURS</parameter> is that many hours; <parameter>BOUNDEDKEYED</parameter>
+/// is keyed mode, which emits no time predicate and requires at least one of
+/// <var>pPredicates</var>. A windowed fragment leads with <code>&lt;pTimeColumn&gt; &gt; ?</code>
+/// and pushes the cutoff -- UTC, <code>YYYY-MM-DDTHH:MM:SSZ</code>, the form OcuPilot's own time
+/// columns store -- onto <var>pParams</var>, a <class>%DynamicArray</class> created when absent; the
+/// cutoff is never in the text. Each non-empty entry of <var>pPredicates</var> follows in
+/// parentheses, joined by <code>AND</code>, so an <code>OR</code> inside one cannot escape the
+/// window.</p>
+/// <p>Any other window, a <var>pTimeColumn</var> outside <parameter>BOUNDEDCOLUMNPATTERN</parameter>
+/// in a windowed mode, or keyed mode with no predicate answers <code>""</code> with
+/// <var>pProblem</var> naming the bound, and pushes nothing.</p>
+/// <p><b>Caller contract:</b> <var>pTimeColumn</var> and every predicate are literals the caller
+/// wrote, with <code>?</code> for each value, whose values the caller pushes onto
+/// <var>pParams</var> after this returns (AD-21).</p>
+ClassMethod BoundedWhere(pWindowHours As %String = 0, pTimeColumn As %String, ByRef pParams As %DynamicArray, Output pProblem As %String, pPredicates...) As %String
+{
+    Set pProblem = ""
+    If '$IsObject($Get(pParams)) Set pParams = []
+    Set tKeyed = (pWindowHours = ..#BOUNDEDKEYED) && $Match(pWindowHours, "^-1$")
+    If 'tKeyed && '($Match(pWindowHours, "^(0|[1-9][0-9]*)$") && (pWindowHours <= ..#BOUNDEDMAXHOURS)) {
+        Set pProblem = "the window must be " _ ..#BOUNDEDKEYED _ " for a keyed read, 0 for the last " _ ..#BOUNDEDDEFAULTHOURS _ " hours, or a whole number of hours from 1 to " _ ..#BOUNDEDMAXHOURS
+        Quit ""
+    }
+    Set tPredicates = ""
+    For tI = 1:1:$Get(pPredicates) {
+        Set tPredicate = $Get(pPredicates(tI))
+        If tPredicate = "" Continue
+        Set tPredicates = tPredicates _ $ListBuild("(" _ tPredicate _ ")")
+    }
+    If tKeyed {
+        If tPredicates = "" {
+            Set pProblem = "a keyed read (window " _ ..#BOUNDEDKEYED _ ") needs a keyed predicate to bound it"
+            Quit ""
+        }
+        Quit $ListToString(tPredicates, " AND ")
+    }
+    If '$Match(pTimeColumn, ..#BOUNDEDCOLUMNPATTERN) {
+        Set pProblem = "the time column must be a column name, optionally qualified by one alias"
+        Quit ""
+    }
+    Set tHours = $Select(+pWindowHours = 0: ..#BOUNDEDDEFAULTHOURS, 1: +pWindowHours)
+    Set tNow = $ZTimeStamp
+    Set tSeconds = ((+$Piece(tNow, ",", 1)) * 86400) + ($Piece(tNow, ",", 2) \ 1) - (tHours * 3600)
+    Set tCutoff = $Translate($ZDateTime((tSeconds \ 86400) _ "," _ (tSeconds # 86400), 3, 1), " ", "T") _ "Z"
+    Do pParams.%Push(tCutoff, "string")
+    Quit $ListToString($ListBuild(pTimeColumn _ " > ?") _ tPredicates, " AND ")
 }
 
 /// <p>Escalated: run <var>pSql</var> (a caller literal returning exactly one ID column,
