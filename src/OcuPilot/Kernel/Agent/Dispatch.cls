@@ -244,12 +244,16 @@ ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %Strin
             Do ..LogFault("turn " _ pKey _ ": " _ pName _ " answered no result", $$$ERROR($$$GeneralError, "no result object"), tUnavailable)
             Quit
         }
-        ; A descriptor-derived read tool's result (AD-36) is bounded through the kernel cutter
-        ; shared with screen context (AD-24, DW-281): the per-field cut and the richer report. A
-        ; tool with a class of its own -- including every fixture in this suite -- has no
-        ; descriptor and no per-field bound to apply, so it keeps the plain row-and-size cut
-        ; unchanged, byte for byte.
-        If tTool.%Get("descriptor") '= "" {
+        ; Every rows-shaped read result (AD-36) is bounded through the kernel cutter shared with
+        ; screen context (AD-24, DW-281): the per-field cut and the richer report. This is a
+        ; descriptor-derived read, or a class-of-its-own tool whose own result still carries a
+        ; rows array (OcuPilot.Screen.Tool.ErrorRead among them) -- FieldMaxLengths answers empty
+        ; for a tool with no descriptor, so such a tool falls back everywhere to FIELDMAXLENGTH. A
+        ; result with no rows array at all (a shell read's opaque payload) keeps the plain
+        ; row-and-size cut unchanged, byte for byte: Bound would otherwise stamp
+        ; rows/rowsSent/rowsAvailable/truncatedFields onto a payload that never declared them.
+        Set tResultRows = tResult.%Get("rows")
+        If $IsObject(tResultRows) && tResultRows.%IsA("%Library.DynamicArray") {
             Do ##class(OcuPilot.Screen.Tool.Registry).FieldMaxLengths(tTool, .tFieldMax)
             Set tDefaultFieldMax = +$Parameter(pLimitsClass, "FIELDMAXLENGTH")
             If '##class(OcuPilot.Kernel.Agent.Bound).Apply(tResult, pRows, .tFieldMax, tDefaultFieldMax, pMaxLength, .tJson) {

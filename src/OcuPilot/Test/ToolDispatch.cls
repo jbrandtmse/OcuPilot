@@ -34,10 +34,12 @@ Method OnAfterOneTest() As %Status
     Quit $$$OK
 }
 
-/// <p>Answer one call to wire name <var>pWire</var> with <var>pInput</var>, as <var>pUser</var>.
-/// <var>pResult</var> is the <code>tool_result</code> block and <var>pName</var> the name recorded
-/// for it.</p>
-Method Call(pWire As %String, pInput As %RawString, Output pResult As %DynamicObject, Output pName As %String, pUser As %String = {$Username})
+/// <p>Answer one call to wire name <var>pWire</var> with <var>pInput</var>, as <var>pUser</var>,
+/// under row cap <var>pRowCap</var> (<code>0</code> falls back to <var>LIMITS</var>' own
+/// <code>TOOLROWS</code>, the shipped <method>OcuPilot.Kernel.Agent.Dispatch.Answer</method>
+/// default). <var>pResult</var> is the <code>tool_result</code> block and <var>pName</var> the
+/// name recorded for it.</p>
+Method Call(pWire As %String, pInput As %RawString, Output pResult As %DynamicObject, Output pName As %String, pUser As %String = {$Username}, pRowCap As %Integer = 0)
 {
     Set tUse = {"type": "tool_use", "id": "toolu_1"}
     Do tUse.%Set("name", pWire, "string")
@@ -48,7 +50,7 @@ Method Call(pWire As %String, pInput As %RawString, Output pResult As %DynamicOb
     }
     Set tUses = []
     Do tUses.%Push(tUse)
-    Set tSC = $ClassMethod(..#PROBE, "Answer", "probe", pUser, "", tUses, ..#LIMITS, .tResults, .tNames)
+    Set tSC = $ClassMethod(..#PROBE, "Answer", "probe", pUser, "", tUses, ..#LIMITS, .tResults, .tNames, pRowCap)
     Do $$$AssertStatusOK(tSC, "the dispatcher answers")
     Do $$$AssertEquals($Select($IsObject($Get(tResults)): tResults.%Size(), 1: 0), 1, "with one result for one call")
     Set pResult = $Select($IsObject($Get(tResults)): tResults.%Get(0), 1: {})
@@ -62,7 +64,10 @@ Method TestARegisteredReadCallAnswersItsResult()
 {
     Do ..Call("probe_counter_read", {"marker": "m1", "rows": 2, "width": 3}, .tResult, .tName)
     Do $$$AssertEquals(tResult."tool_use_id" _ "|" _ tResult."is_error" _ "|" _ tResult.type, "toolu_1|0|tool_result", "one result block, under the call's id, not an error")
-    Do $$$AssertEquals(tResult.content, "{""marker"":""m1"",""rows"":[{""n"":1,""text"":""rrr""},{""n"":2,""text"":""rrr""}],""truncated"":false}", "carrying the tool's result JSON")
+    ; This tool's result carries a rows array, so it now goes through Bound like any other
+    ; rows-shaped read result (Review item 1, AD-24, DW-281): the same fields, marker and rows
+    ; unchanged, plus the richer report Bound always adds.
+    Do $$$AssertEquals(tResult.content, "{""marker"":""m1"",""rows"":[{""n"":1,""text"":""rrr""},{""n"":2,""text"":""rrr""}],""truncated"":false,""rowsSent"":2,""rowsAvailable"":2,""truncatedFields"":[]}", "carrying the tool's result JSON, now bounded")
     Do $$$AssertEquals(tName, ..#READER, "recorded under the dotted name")
     Do $$$AssertEquals($ClassMethod(..#COUNTER, "Calls", ..#READER), 1, "the tool ran once")
     Do $$$AssertEquals($ClassMethod(..#COUNTER, "Last", ..#READER, "cap"), $Parameter(..#LIMITS, "TOOLROWS"), "under the row cap")
@@ -312,16 +317,18 @@ Method TestTheSizeCapDropsTrailingRows()
     Do $$$AssertEquals(tResult."is_error", 0, "and one under it is answered")
 }
 
-/// <p>Per-field cut for a descriptor-derived read tool (AD-24, DW-281, Story 4.4) -- unlike the row
-/// cap and size cap above, which a class-of-its-own tool shares (this class's own fixture has no
-/// descriptor), a value over its field's own maximum is cut to that maximum minus one character
-/// plus U+2026 only for a tool with a descriptor -- <method>OcuPilot.Kernel.Agent.Dispatch.AnswerOne</method>
-/// routes it through <class>OcuPilot.Kernel.Agent.Bound</class> instead of the row/size-only
-/// <code>Capped()</code>. Driven through a real (test-only) descriptor and read tool, so the cut
-/// runs independent of any live data.</p>
-/// <p>Mutation: change <method>OcuPilot.Kernel.Agent.Dispatch.AnswerOne</method>'s descriptor check
-/// so a descriptor-derived tool also takes the <code>Capped()</code> path -> the U+2026 assertion
-/// below goes red, since <code>Capped()</code> cuts rows and total size only, never a field's own
+/// <p>Per-field cut for a descriptor-derived read tool (AD-24, DW-281, Story 4.4) -- a value over
+/// its field's own maximum is cut to that maximum minus one character plus U+2026:
+/// <method>OcuPilot.Kernel.Agent.Dispatch.AnswerOne</method> routes any rows-shaped read result
+/// through <class>OcuPilot.Kernel.Agent.Bound</class> instead of the row/size-only
+/// <code>Capped()</code>, so a class-of-its-own tool with a <code>rows</code> result gets the same
+/// cut (pinned separately, without live data, by
+/// <method>TestARowsShapedClassOfItsOwnToolGetsThePerFieldCut</method> below). Driven through a real
+/// (test-only) descriptor and read tool, so the cut here runs independent of any live data too.</p>
+/// <p>Mutation: force <method>OcuPilot.Kernel.Agent.Dispatch.AnswerOne</method>'s rows-shaped
+/// routing condition off (skip <class>OcuPilot.Kernel.Agent.Bound</class> and always take the
+/// <code>Capped()</code> path) -> the U+2026 assertion below goes red, since <code>Capped()</code>
+/// cuts rows and total size only, never a field's own
 /// value.</p>
 Method TestADescriptorDerivedToolResultGetsThePerFieldCut()
 {
@@ -341,6 +348,73 @@ Method TestADescriptorDerivedToolResultGetsThePerFieldCut()
         Do $$$AssertEquals(tContent.truncatedFields.%ToJSON(), "[""Name""]", "the cut field is named")
         Do $$$AssertEquals(tContent.rowsSent, 1, "one row sent")
         Do $$$AssertEquals(tContent.rowsAvailable, 1, "one row available")
+    } Catch ex {
+        Do $$$AssertTrue(0, "unexpected exception: " _ ex.DisplayString())
+    }
+    Do ##class(OcuPilot.Test.PortFixture).Clear()
+    Do ##class(OcuPilot.Test.EndpointFixture).Clear()
+}
+
+/// <p>Review item 1 (AD-24, DW-281): a rows-shaped result from a tool with a class of its own --
+/// this class's own counter fixture, which declares no descriptor -- gets the same per-field cut
+/// and report as a descriptor-derived read once <method>OcuPilot.Kernel.Agent.Dispatch.AnswerOne</method>
+/// routes every result carrying a <code>rows</code> array through <class>OcuPilot.Kernel.Agent.Bound</class>,
+/// not only a descriptor-derived one. <class>OcuPilot.Screen.Tool.ErrorRead</class> is the shipped
+/// example this closes; the fixture here pins the same mechanism without depending on the live
+/// audit log.</p>
+/// <p>Mutation: <method>OcuPilot.Kernel.Agent.Dispatch.AnswerOne</method>'s routing condition
+/// narrowed back to <code>tTool.%Get("descriptor") '= ""</code> -> this goes red (no per-field
+/// cut, no <code>rowsSent</code>/<code>rowsAvailable</code>/<code>truncatedFields</code> on a
+/// class-of-its-own tool's result).</p>
+/// <p>Also validates the dispatched, <code>Bound</code>-augmented content against the tool's own
+/// declared <method>ResultSchema</method> (review pass finding: the general schema round-trip
+/// check, <class>OcuPilot.Test.ToolRoundTrip</class>, calls <method>InvokeTool</method> directly and
+/// never exercises what <method>Dispatch.AnswerOne</method> actually answers). Every class-of-its-
+/// own tool with a <code>rows</code> result -- <class>OcuPilot.Screen.Tool.ErrorRead</class> among
+/// them -- goes through the same <class>OcuPilot.Kernel.Agent.Bound</class> call this fixture does,
+/// so pinning the schema match here pins it for all of them.</p>
+/// <p>Mutation: <method>OcuPilot.Test.DispatchTool.Counter.ResultSchema</method>'s three added
+/// properties removed -> the schema check below goes red on <code>additionalProperties: false</code>.</p>
+Method TestARowsShapedClassOfItsOwnToolGetsThePerFieldCut()
+{
+    Do ..Call("probe_counter_read", {"marker": "m", "rows": 1, "width": 1200}, .tResult, .tName)
+    Do $$$AssertEquals(tResult."is_error", 0, "the read answers: " _ tResult.content)
+    Set tContent = ##class(%DynamicAbstractObject).%FromJSON(tResult.content)
+    Set tCut = tContent.rows.%Get(0).text
+    Do $$$AssertEquals($Length(tCut), 1000, "cut to the default field maximum")
+    Do $$$AssertEquals($Extract(tCut, 1000), $Char(8230), "ending U+2026")
+    Do $$$AssertEquals(tContent.truncatedFields.%ToJSON(), "[""text""]", "the cut field is named")
+    Do $$$AssertEquals(tContent.rowsSent, 1, "one row sent")
+    Do $$$AssertEquals(tContent.rowsAvailable, 1, "one row available")
+
+    Do $$$AssertStatusOK($ClassMethod("OcuPilot.Test.DispatchTool.Registry", "ResolveWire", "probe_counter_read", .tTool), "the wire name resolves to a tool")
+    Do $$$AssertStatusOK(##class(OcuPilot.Screen.Tool.Registry).ValidateArguments(##class(OcuPilot.Screen.Tool.Registry).ResultSchemaOf(tTool), tContent, .tProblem), "the Bound-augmented result still conforms to the tool's own declared ResultSchema: " _ tProblem)
+}
+
+/// <p>DW-1035 -- <method>OcuPilot.Screen.Tool.Read.View</method> reports <code>rowsAvailable</code>
+/// as the real count before its own row cap, not the capped <code>rows</code> array's own size, and
+/// that real count survives through <method>OcuPilot.Kernel.Agent.Dispatch.Answer</method> and
+/// <class>OcuPilot.Kernel.Agent.Bound</class> to the dispatched result.</p>
+/// <p>Mutation: <method>OcuPilot.Screen.Tool.Read.View</method> stops setting
+/// <code>rowsAvailable</code> ahead of its own cap (leaves it to <class>OcuPilot.Kernel.Agent.Bound</class>'s
+/// own default) -> the assertion below goes red, reading 3 (the capped row count) instead of 8.</p>
+Method TestReadViewRowsAvailableAboveTheCapIsTheRealCount()
+{
+    Do $ClassMethod(..#PROBE, "SetRegistryClass", "OcuPilot.Test.Read.ToolRegistry")
+    Do ##class(OcuPilot.Test.PortFixture).SetEndpointClass("OcuPilot.Test.EndpointFixture")
+    Do ##class(OcuPilot.Test.EndpointFixture).SetMode("list")
+    Set tRows = []
+    For tI = 1:1:8 {
+        Do tRows.%Push({"Name": ("app" _ tI), "NameSpace": "USER", "Enabled": true, "Secret": "shh"})
+    }
+    Do ##class(OcuPilot.Test.EndpointFixture).SetRows(tRows.%ToJSON())
+    Try {
+        Do ..Call("webapp_canned_read", {"maxRows": 10}, .tResult, .tName, $Username, 3)
+        Do $$$AssertEquals(tResult."is_error", 0, "the read answers: " _ tResult.content)
+        Set tContent = ##class(%DynamicAbstractObject).%FromJSON(tResult.content)
+        Do $$$AssertEquals(tContent.rows.%Size() _ "|" _ tContent.rowsSent, "3|3", "cut to the row cap passed to this call")
+        Do $$$AssertEquals(tContent.rowsAvailable, 8, "rowsAvailable is the real pre-cut count, not the capped rows array's size")
+        Do $$$AssertEquals(tContent.truncated, 1, "and marked truncated")
     } Catch ex {
         Do $$$AssertTrue(0, "unexpected exception: " _ ex.DisplayString())
     }

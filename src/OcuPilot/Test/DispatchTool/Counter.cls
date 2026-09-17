@@ -73,6 +73,11 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
     }
 }
 
+/// <p>Includes <code>rowsSent</code>, <code>rowsAvailable</code> and <code>truncatedFields</code>
+/// (Story 4.4 rework, review item 1, AD-24/DW-281): a rows-shaped result from this class-of-its-own
+/// tool is now dispatched through <class>OcuPilot.Kernel.Agent.Bound</class>, which always stamps
+/// these three fields alongside <code>rows</code>/<code>truncated</code>, so the schema this
+/// fixture advertises must admit what it actually answers.</p>
 ClassMethod ResultSchema(pDescriptor As %String = "") As %DynamicObject
 {
     Quit {
@@ -81,7 +86,10 @@ ClassMethod ResultSchema(pDescriptor As %String = "") As %DynamicObject
             "marker": {"type": "string"},
             "rows": {"type": "array", "items": {"type": "object"}},
             "truncated": {"type": "boolean"},
-            "text": {"type": "string"}
+            "text": {"type": "string"},
+            "rowsSent": {"type": "integer"},
+            "rowsAvailable": {"type": "integer"},
+            "truncatedFields": {"type": "array", "items": {"type": "string"}}
         },
         "required": [],
         "additionalProperties": false

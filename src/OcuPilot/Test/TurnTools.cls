@@ -69,11 +69,16 @@ Method OnAfterOneTest() As %Status
 /// <p>Create an enabled probe definition on the stub transport, reserve, begin and run one turn as
 /// the suite's own account, finish it, and answer its key with the outcome in <var>pOutcome</var>.
 /// The turn's read-only snapshot is <var>pReadOnly</var>, or the instance's switch when that is
-/// <code>""</code>.</p>
-Method RunTurn(Output pOutcome, pReadOnly As %String = "") As %String
+/// <code>""</code>. <var>pContextRowCap</var> is the resolved row cap every dispatched call in
+/// this turn is answered under (DW-1032, AD-24), <code>0</code> falling back to
+/// <var>LOOP</var>'s own <code>TOOLROWS</code>, exactly as <method>OcuPilot.Kernel.Agent.Loop.Run</method>
+/// takes it.</p>
+Method RunTurn(Output pOutcome, pReadOnly As %String = "", pContextRowCap As %Integer = 0) As %String
 {
     Set tRow = ##class(OcuPilot.Kernel.State.Agent).%New()
-    Set tRow.Name = "OcuPilotProbeAgentTurnTools"
+    ; Unique per call, so a test that calls RunTurn more than once (Name carries a unique index)
+    ; does not collide with itself before the next OnBeforeOneTest sweeps every probe definition.
+    Set tRow.Name = "OcuPilotProbeAgentTurnTools" _ $Increment(^||OcuPilotTurnToolsRunTurn)
     Set tRow.Provider = "probe-local"
     Set tRow.Model = "probe-local-model-1"
     Set tRow.EndpointUrl = "https://api.anthropic.com/v1/messages"
@@ -93,7 +98,7 @@ Method RunTurn(Output pOutcome, pReadOnly As %String = "") As %String
     Do ##class(OcuPilot.Kernel.State.Switch).Resolve(.tSwitches)
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedBegin(tKey, $Username, tLimits, .tBegun, .tStarted), "the turn begins")
     Set tReadOnly = $Select(pReadOnly '= "": ''pReadOnly, 1: ''$Get(tSwitches("enforcedReadOnly")))
-    Set tSC = $ClassMethod(..#LOOP, "Run", tKey, $Username, tId, "what is on this instance", tReadOnly, ##class(OcuPilot.Api.Router).#ADMINRESOURCES, tStarted, .pOutcome)
+    Set tSC = $ClassMethod(..#LOOP, "Run", tKey, $Username, tId, "what is on this instance", tReadOnly, ##class(OcuPilot.Api.Router).#ADMINRESOURCES, tStarted, .pOutcome, "", pContextRowCap)
     Do $$$AssertStatusOK(tSC, "the loop returns")
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedFinish(tKey, $Username, pOutcome("state"), pOutcome("code"), pOutcome("limit"), pOutcome("reply"), pOutcome("errorSeq"), tLimits), "and the turn is finished")
     Quit tKey
@@ -316,6 +321,36 @@ Method TestAReplysToolResultsShareOneBudget()
         Set tSteps = tSteps _ tStep.kind _ ":" _ tStep.name _ ":" _ tStep.status _ ";"
     }
     Do $$$AssertEquals(tSteps, "model:provider:ok;tool:probe.counter.read:ok;tool:probe.counter.read:ok;tool:probe.counter.read:error;model:provider:ok;", "the refused third call is still recorded as an error step")
+}
+
+/// <p>contextRowCap bounds every tool result answered in a turn, not only screen context
+/// (DW-1032, AD-24, Story 4.4): a resolved row cap smaller than <parameter>TOOLROWS</parameter> is
+/// the cap the tool's own view is asked under, and its result is cut to it and marked truncated;
+/// with no override, the cap a tool is asked under is <parameter>TOOLROWS</parameter> itself,
+/// unchanged.</p>
+/// <p>Mutation: <method>OcuPilot.Kernel.Agent.Loop.Run</method> stops passing
+/// <var>pContextRowCap</var> into <method>AnswerTools</method> -- the resolved-cap leg below goes
+/// red (the tool is asked under TOOLROWS instead of 5, and the result is not cut).</p>
+Method TestContextRowCapBoundsToolResultsInATurn()
+{
+    Do $ClassMethod(..#LOOP, "SetDispatchClass", ..#DISPATCH)
+    Do $ClassMethod(..#LOOP, "SetLimitsClass", "OcuPilot.Kernel.Agent.Limits")
+    Set tCap = $Parameter("OcuPilot.Kernel.Agent.Limits", "TOOLROWS")
+    Set tCalls = [{"id": "toolu_1", "name": "probe_counter_read", "input": {"rows": (tCap)}}]
+    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("looking", tCalls))
+    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("done"))
+    Do ..RunTurn(.tOutcome, "", 5)
+    Do $$$AssertEquals(tOutcome("state"), "completed", "the turn completes")
+    Do $$$AssertEquals(##class(OcuPilot.Test.DispatchTool.Counter).Last("probe.counter.read", "cap"), 5, "the tool is asked for the resolved row cap, not TOOLROWS")
+    Set tSent = ##class(%DynamicAbstractObject).%FromJSON($ClassMethod(..#STUB, "Recorded", "body", 2))
+    Set tResult = tSent.messages.%Get(2).content.%Get(0)
+    Set tContent = ##class(%DynamicAbstractObject).%FromJSON(tResult.content)
+    Do $$$AssertEquals(tContent.rows.%Size() _ "|" _ tContent.truncated, "5|1", "the result is cut to the resolved cap and marked")
+
+    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("looking", tCalls))
+    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("done"))
+    Do ..RunTurn(.tOutcome2)
+    Do $$$AssertEquals(##class(OcuPilot.Test.DispatchTool.Counter).Last("probe.counter.read", "cap"), tCap, "with no override, the tool is still asked under TOOLROWS")
 }
 
 }

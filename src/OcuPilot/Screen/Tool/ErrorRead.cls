@@ -96,7 +96,9 @@ ClassMethod ArgumentPairs(pDescriptor As %String = "", pArgs As %DynamicObject, 
 }
 
 /// <p>The result <method>View</method> answers: <code>{fields, rows, truncated}</code>, the fields
-/// being <parameter>SUMMARYFIELDS</parameter>.</p>
+/// being <parameter>SUMMARYFIELDS</parameter>. Dispatched through the kernel cutter like any other
+/// rows-shaped read result (AD-24, DW-281), so the answer a caller actually sees also carries
+/// <code>rowsSent</code>, <code>rowsAvailable</code> and <code>truncatedFields</code>.</p>
 ClassMethod ResultSchema(pDescriptor As %String = "") As %DynamicObject
 {
     Quit {
@@ -104,7 +106,10 @@ ClassMethod ResultSchema(pDescriptor As %String = "") As %DynamicObject
         "properties": {
             "fields": {"type": "array", "items": {"type": "string"}, "description": "The five summary field names."},
             "rows": {"type": "array", "items": {"type": "object"}, "description": "One object per error, carrying exactly the summary fields."},
-            "truncated": {"type": "boolean", "description": "True when rows were cut by a cap."}
+            "truncated": {"type": "boolean", "description": "True when rows were cut by a cap or a field value was shortened."},
+            "rowsSent": {"type": "integer", "description": "How many rows this result carries."},
+            "rowsAvailable": {"type": "integer", "description": "How many rows were available before this tool's own row cap."},
+            "truncatedFields": {"type": "array", "items": {"type": "string"}, "description": "Field names whose value was shortened in this result, if any."}
         },
         "required": ["fields", "rows", "truncated"],
         "additionalProperties": false

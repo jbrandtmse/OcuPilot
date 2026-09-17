@@ -2,11 +2,11 @@
 title: 'Story 4.4: Screen context reaches the turn, capped and secret-free'
 type: 'feature'
 created: '2026-09-16'
-status: 'in-progress'
-baseline_revision: 'd568b5cd6c7a1f1a80e1a2ea125aa2c2f59f5bf9'
-baseline_commit: 'd568b5cd6c7a1f1a80e1a2ea125aa2c2f59f5bf9'
+status: 'done'
+baseline_revision: '27c32ff710e7fb03ee6db2aa809755f94299b078'
+baseline_commit: '27c32ff710e7fb03ee6db2aa809755f94299b078'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context: []
 warnings: ['oversized']
 deferred:
@@ -18,6 +18,24 @@ deferred:
       shared by every switch field, not something this story introduced.
     location: >-
       src/OcuPilot/Api/Switches.cls (MergeBody)
+    severity: low
+  - summary: >-
+      `Bound.Apply`'s per-field cut walks fields inside `rows` only; a large top-level field beside
+      `rows` gets no per-field cut, only the whole-payload size cut.
+    evidence: |-
+      `Bound.cls` is untouched by this rework and the boundary predates it. No shipped tool has such
+      a field today (checked `ErrorRead` and `Read`'s schemas); reopen if one ships.
+    location: >-
+      src/OcuPilot/Kernel/Agent/Bound.cls (Apply)
+    severity: low
+  - summary: >-
+      A descriptor-derived read tool whose result omits `rows` (or answers a non-array) falls back
+      to the row/size-only `Capped()` path with no per-field cut, unguarded.
+    evidence: |-
+      `Screen.Tool.Read.View` is the only descriptor-derived read implementation today and always
+      answers a `rows` array; unchanged from before this rework's routing widening.
+    location: >-
+      src/OcuPilot/Kernel/Agent/Dispatch.cls (AnswerOne)
     severity: low
 ---
 
@@ -148,14 +166,14 @@ deferred:
 
 Code review 2026-09-17 (four layers, `review_tier: full-opus`). Unchecked items are this story's rework iteration.
 
-- [ ] [Review][Patch] HIGH (AD-24, DW-281): a read tool with a class of its own (`Screen.Tool.ErrorRead`, `errorText`) skips `Bound` and gets no per-field cut or report; route every rows-shaped read result through `Bound` and update `ErrorRead.ResultSchema` [src/OcuPilot/Kernel/Agent/Dispatch.cls:253]
-- [ ] [Review][Patch] MED: AC3 has no two-principal wire test over `/agent/context` (DW-1030) [src/OcuPilot/Test/TurnContext.cls]
-- [ ] [Review][Patch] MED: `Job.Run`'s `Scope.Set` is pinned by no `?ns=` turn test (DW-1031) [src/OcuPilot/Kernel/Agent/Job.cls]
-- [ ] [Review][Patch] MED: `contextRowCap` bounding tool results in a turn is untested; the default equals `TOOLROWS` (DW-1032) [src/OcuPilot/Test/TurnTools.cls]
-- [ ] [Review][Patch] MED: `TestAReadToolResultsOwnFieldIsBound` stayed green with the per-field cut disabled (DW-1033) [src/OcuPilot/Test/TurnContext.cls]
-- [ ] [Review][Patch] MED: `/agent/context` `shareDefault`, `contextRowCap`, marked-local and `defaultEndpoint` legs unasserted (DW-1034) [src/OcuPilot/Test/TurnContext.cls]
-- [ ] [Review][Patch] MED: `Read.View` `rowsAvailable` above the cap untested (DW-1035) [src/OcuPilot/Test/ToolDispatch.cls]
-- [ ] [Review][Patch] LOW fix pack: sharing-off and model-issued rows need demonstrated mutations (DW-1036) [src/OcuPilot/Test/TurnContext.cls]
+- [x] [Review][Patch] HIGH (AD-24, DW-281): a read tool with a class of its own (`Screen.Tool.ErrorRead`, `errorText`) skips `Bound` and gets no per-field cut or report; route every rows-shaped read result through `Bound` and update `ErrorRead.ResultSchema` [src/OcuPilot/Kernel/Agent/Dispatch.cls:253]
+- [x] [Review][Patch] MED: AC3 has no two-principal wire test over `/agent/context` (DW-1030) [src/OcuPilot/Test/TurnContext.cls]
+- [x] [Review][Patch] MED: `Job.Run`'s `Scope.Set` is pinned by no `?ns=` turn test (DW-1031) [src/OcuPilot/Kernel/Agent/Job.cls]
+- [x] [Review][Patch] MED: `contextRowCap` bounding tool results in a turn is untested; the default equals `TOOLROWS` (DW-1032) [src/OcuPilot/Test/TurnTools.cls]
+- [x] [Review][Patch] MED: `TestAReadToolResultsOwnFieldIsBound` stayed green with the per-field cut disabled (DW-1033) [src/OcuPilot/Test/TurnContext.cls]
+- [x] [Review][Patch] MED: `/agent/context` `shareDefault`, `contextRowCap`, marked-local and `defaultEndpoint` legs unasserted (DW-1034) [src/OcuPilot/Test/TurnContext.cls]
+- [x] [Review][Patch] MED: `Read.View` `rowsAvailable` above the cap untested (DW-1035) [src/OcuPilot/Test/ToolDispatch.cls]
+- [x] [Review][Patch] LOW fix pack: sharing-off and model-issued rows need demonstrated mutations (DW-1036) [src/OcuPilot/Test/TurnContext.cls]
 - [x] [Review][Patch] HIGH (AD-42): `leavesInstance` ignored a configured proxy; `LeavesInstance` now judges the proxy, and `ResolveEndpoint`/`Dispatch` share `EndpointOf`/`ProxyHostOf` [src/OcuPilot/Kernel/Egress.cls:408]
 - [x] [Review][Patch] MED: an over-long `view.filter`/`sort`/`direction` made `Bound.Apply` answer 0 and context vanished silently; refused at `FIELDMAXLENGTH` like `entity` [src/OcuPilot/Api/Turn.cls:271]
 - [x] [Review][Patch] MED: `ContextViolation` refusals (negative, fractional, too-small `rowsAvailable`, non-array `rows`, long members) untested; `ContextBound.TestContextViolationRefusesEachBadShape` [src/OcuPilot/Test/ContextBound.cls]
@@ -237,6 +255,24 @@ Rejected: `strings.ts` 4.11 keys (false: added by the lead for Story 4.11); brow
   - `[medium]` `[patch]` (self-caught, full-suite regression sweep) `AgentViolation.cls` pinned the field-level violation-code vocabulary at 29, and its own `tEnvelope` exclusion list did not name the new envelope-level `AGENTCONTEXTSHARE` code, so both closed-vocabulary tests failed once `AGENTSWITCHCONTEXTROWCAP` (field-level) and `AGENTCONTEXTSHARE` (envelope-level) were added — evidence: reproduced on a fresh throwaway. Fixed by updating the count to 30 and adding `AGENTCONTEXTSHARE` to the exclusion list, the same way `AGENTHOLDNOTFOUND` already is.
   - `[medium]` `[patch]` (self-caught, full-suite regression sweep) `SwitchState.cls` calls `SwitchRules.ValidateSwitches` directly with a partial value set that never included `contextRowCap`, so the new unconditional row-cap check added a second violation to every call and broke the "refused once" assertions — evidence: reproduced on a fresh throwaway. Fixed by adding a valid `contextRowCap` to both value sets the method builds.
 
+### 2026-09-17 — Review pass (rework iteration 1)
+
+- verdicts: 13 findings — high 0, medium 1, low 8, false 4, maybe-false 0
+- findings:
+  - `[low]` `[patch]` (blind-hunter) `TestADescriptorDerivedToolResultGetsThePerFieldCut`'s doc comment claimed the per-field cut runs "only for a tool with a descriptor," now false since this pass's own routing widening and its own next test disprove it — evidence: read the routing condition and the sibling test. Fixed: rewrote the doc comment [src/OcuPilot/Test/ToolDispatch.cls].
+  - `[false]` (blind-hunter) the routing widened to any rows-shaped result perturbs pre-existing byte-budget-tuned tests with no evidence they still pass — evidence: independently ran the full `ToolDispatch` (16/16) and `TurnTools` (8/8) classes on both the live instance and the throwaway; `TestTheSizeCapDropsTrailingRows`, `TestTheRowCapCutsAndMarks`, `TestAFailureInsideTheDispatchPathIsUnavailableAndLogged` and `TestAReplysToolResultsShareOneBudget` all pass unchanged.
+  - `[low]` `[patch]` (blind-hunter) `TestAReadToolResultsOwnFieldIsBound`'s uniqueness marker used a real, non-process-private global (`^OcuPilotProbeFieldBoundSeq`) that is never killed, unlike the sibling fix in the same diff (`^||OcuPilotTurnToolsRunTurn`) — evidence: grepped both globals. Fixed: switched to `^||OcuPilotProbeFieldBoundSeq` [src/OcuPilot/Test/TurnContext.cls].
+  - `[false]` (blind-hunter) the same test's seeded audit row is left uncleaned, unlike the class's job/turn/slot/stub teardown discipline — evidence: `$System.Security.Audit` rows are append-only by design and this codebase already seeds real, uncleaned audit rows from other tests for the same reason (e.g. `AuditRecord`'s switch-boundary test); the class's own teardown check covers a different category of state (fixture-owned objects), never audit rows.
+  - `[low]` `[patch]` (blind-hunter) `RestorePreparedDefinition` repeats the endpoint literal `https://192.0.2.10/v1/messages` instead of reading it from `TurnWireFixture.EnsureDefinition`, risking silent desync — evidence: confirmed the literal is duplicated verbatim in both places. Fixed: added `TurnWireFixture.#ENDPOINTURL` and referenced it from both sites [src/OcuPilot/Test/TurnWireFixture.cls, src/OcuPilot/Test/TurnContext.cls].
+  - `[low]` `[patch]` (blind-hunter) `TestATurnStartedUnderNsSetsTheJobsScope`'s doc comment calls the account it runs as "this class's least-privileged principal," but it runs via `..Call` (USERA), while this same diff just coined that phrase for the new `USERB` — evidence: read `Call`'s hardcoded USERA and the fresh `OnBeforeAllTests` comment. Fixed: reworded to name USERA directly [src/OcuPilot/Test/TurnContext.cls].
+  - `[low]` `[defer]` (blind-hunter) `Bound.Apply`'s per-field cut only walks fields inside `rows`; a large top-level field beside `rows` gets no per-field cut, only the whole-payload size cut — evidence: read `Bound.Apply`; `Bound.cls` is untouched by this diff and the boundary predates it. No shipped tool has such a field today (confirmed against `ErrorRead`'s and `Read`'s schemas); the whole-payload cap still bounds the pathological case via the existing zero-row refusal. reopen_if: a tool ships a large top-level field beside `rows`.
+  - `[false]` (blind-hunter) `TestAReadToolResultsOwnFieldIsBound` (live-audit path) and `TestARowsShapedClassOfItsOwnToolGetsThePerFieldCut` (deterministic `Counter` fixture) duplicate coverage of the same mechanism with no stated reason both are kept — evidence: they exercise different levels (a full turn/model/live-audit wire path required by DW-1033 and the matrix's "Read tool field bound" row, versus a fast deterministic in-process pin) — not duplicative.
+  - `[low]` `[defer]` (edge-case-hunter) a descriptor-derived tool whose result omits `rows` (or answers a non-array) falls back to the row/size-only `Capped()` path with no per-field cut, unguarded — evidence: `Screen.Tool.Read.View` is the only descriptor-derived read implementation today and always answers a `rows` array; the condition itself is unchanged for that case from before this diff's routing widening. reopen_if: a second descriptor-derived tool class ships that can answer without `rows`.
+  - `[medium]` `[patch]` (verification-gap, pre-verified) the schema round-trip check (`ToolRoundTrip.TestEveryToolConformsToItsResultSchemaOrAnswersACode`) calls `InvokeTool` directly and never exercises what `Dispatch.AnswerOne`/`Bound.Apply` actually answers, so `ErrorRead.ResultSchema`'s three new properties (this pass's own HIGH fix) ship with no round-trip check at the surface a real caller sees — evidence: traced `InvokeTool`'s call chain and confirmed `Test.DispatchTool.Counter.ResultSchema` (the mechanism's own fixture) still lacked the three fields too, so the Bound-augmented shape had never been round-trip-checked for any tool. Fixed: added the three properties to `Counter.ResultSchema` and a schema-conformance assertion (`Registry.ValidateArguments`/`ResultSchemaOf`) to `TestARowsShapedClassOfItsOwnToolGetsThePerFieldCut`, which exercises the identical `Dispatch.AnswerOne`/`Bound.Apply` path `ErrorRead` takes [src/OcuPilot/Test/DispatchTool/Counter.cls, src/OcuPilot/Test/ToolDispatch.cls].
+  - `[low]` `[patch]` (verification-gap, pre-verified) `TestContextStatusUnassertedLegs` (DW-1034) had a Rule 19 mutation on only its `contextRowCap` leg; the `shareDefault`, marked-local-override and `defaultEndpoint`-fallback legs had none, and `shareDefault`'s own assertion would still pass under a hardcoded `1` — evidence: checked every mutation line in this spec; none touches the other three legs. Fixed: added a second-read negative case for `shareDefault` and ran and recorded all three missing mutations [src/OcuPilot/Test/TurnContext.cls; see `## Verification`].
+  - `[low]` `[reject]` (intent-alignment) finding #1's own test evidence lives on the `Counter` stand-in fixture, never on the concretely named `ErrorRead`/`logs.applicationerrors.read` dispatched for real — evidence: traced every existing `ErrorRead` test; all call `View`/`InvokeTool` directly. Building a live-safe `Dispatch`-level fixture for `ErrorRead` itself (a new test registry mapping its wire name to `ErrorReadStub`) is more than a direct correction; the mechanism-level fix above exercises the identical code path `ErrorRead` takes (routing is by result shape, not tool identity), and `ErrorRead.ResultSchema`'s three properties were independently confirmed by inspection to match what `Bound.Apply` adds. reopen_if: `Dispatch.AnswerOne`'s routing is ever made tool-identity-specific.
+  - `[false]` (intent-alignment) finding #8's "demonstrated" mutations are satisfied only as spec prose, not independently verifiable from the diff — evidence: this pass independently re-ran and confirmed all four of this triage's own mutations against the running throwaway and live instance, matching the recorded prose exactly; the recording convention is the same one this whole spec has used at every prior review round, not a defect this diff introduced.
+
 ## Design Notes
 
 **Governing ADs:** AD-5, AD-9, AD-11 (rule 1), AD-19, AD-21, AD-24, AD-36, AD-39, AD-42, AD-44, AD-48 (error detail never enters context), Conventions › Secrets, AD-7 unchanged.
@@ -281,8 +317,8 @@ Rejected: `strings.ts` 4.11 keys (false: added by the lead for Story 4.11); brow
 
 - Skip the per-field cut in `Bound` → TurnContext Integration. mutation: not run against the Integration test itself; the same code path is now pinned by a deterministic mutation instead -- see "descriptor-branch condition" below.
 - Drop the secret-descriptor identity-only branch → secret screen case. mutation: not run; verified green on the throwaway instead (`OcuPilot.Test.TurnContext.TestASecretScreenAnswersIdentityOnly`), and the branch's own boundary (the `entity` length check ahead of it) is separately mutation-tested below.
-- Ignore the `Sharing` row → sharing-off case. mutation: not run; verified green on the throwaway instead (`TestSharingOffSuppressesContext`).
-- Advertise or resolve `screen_context` → model-issued case. mutation: not run; verified green on the throwaway instead (`TestAModelIssuedScreenContextCallIsUnknown`).
+- Ignore the `Sharing` row → sharing-off case. mutation: applied to `OcuPilot.Api.Turn.HandleStart` on the throwaway (commented out `If tShareFound Set tShareEffective = ''tShareValue`); `OcuPilot.Test.TurnContext.TestSharingOffSuppressesContext` went red (the context reached the turn's messages despite the caller's stored `share:false`); reverted, byte-identical (`diff`/`git status --short` confirmed), recompiled, re-verified green.
+- Advertise or resolve `screen_context` → model-issued case. mutation: applied to `OcuPilot.Kernel.Agent.Dispatch.AnswerOne` on the throwaway (after `ResolveWire`, added `If (tWire = "screen_context") Set tTool = {...}` resolving it to the real `shell.instance.read` tool); `OcuPilot.Test.TurnContext.TestAModelIssuedScreenContextCallIsUnknown` went red (the call answered a real result instead of `TOOL.UNKNOWN`); reverted, byte-identical, recompiled, re-verified green. (A collision through ordinary tool registration is structurally impossible: every valid `<area>.<screen>.<verb>` name has two dots, so its wire name always has two underscores and can never equal the one-underscore `screen_context`; this mutation instead proves the dispatcher's own resolution path would be caught if it ever special-cased the name.)
 - Remove the budget subtraction in `AnswerTools` → reply-budget case. mutation: applied to `OcuPilot.Kernel.Agent.Loop.AnswerTools` on `ocupilot-slot-a` (dropped the `Set tBudget = tBudget - $Length(...)` line); `OcuPilot.Test.TurnTools.TestAReplysToolResultsShareOneBudget` went red on five of its assertions (the second call no longer cut, the third never refused); reverted, byte-identical (`git diff --stat` confirmed unchanged), recompiled, re-verified green on both the live instance and a throwaway.
 - Accept 1,001 in `Registry` → descriptor-bound corpus. mutation: applied to `OcuPilot.Screen.Registry.ContextMaxLengthProblem` (dropped the `|| (tValue > 1000)` arm) on `ocupilot-slot-a`; `OcuPilot.Test.ContextBound.TestTheDescriptorMaxLengthIsBoundedByTheRegistry` went red (`AssertTrue: 1,001 is refused`); reverted, byte-identical (`diff` confirmed), recompiled, re-verified green.
 - Drop `credential` from `field-lists.mjs` → credential-lists test. mutation: applied (removed the `'credential',` suffix entry); `node --test tools/credential-lists.test.mjs` went red on the suffix-list mismatch; reverted, byte-identical, re-verified green.
@@ -373,6 +409,23 @@ could distinguish.
 - mutation: `MergeBody` integer guard narrowed to booleans → `SwitchesWire.TestTheContextRowCapValidatesItsRange` red on the numeric string.
 - mutation: `token` removed from the spine's Secrets row → `credential-lists.test.mjs` spine case red alone.
 
+**Rework iteration 1 mutations (Rule 19), each reverted and recompiled green, `git status --short`/`diff` confirmed byte-identical before the re-verify:**
+
+- mutation: `Dispatch.AnswerOne`'s routing condition narrowed from "the result carries a `rows` array" back to `tTool.%Get("descriptor") '= ""`, on `ocupilot-slot-a` → `OcuPilot.Test.ToolDispatch.TestARowsShapedClassOfItsOwnToolGetsThePerFieldCut` (new) went red (`<INVALID OREF>`, no per-field cut) and `TestARegisteredReadCallAnswersItsResult` (materially changed to assert the now-bounded shape) went red too (old, unbounded JSON); reverted, byte-identical, recompiled, re-verified green (both tests, full class).
+- mutation: `Screen.Tool.Read.View` stops setting `rowsAvailable` ahead of its own row cap, on `ocupilot-slot-a` → `OcuPilot.Test.ToolDispatch.TestReadViewRowsAvailableAboveTheCapIsTheRealCount` (new) went red (`rowsAvailable` read 3, the capped count, not 8); reverted, byte-identical, recompiled, re-verified green.
+- mutation: `Kernel.State.Sharing.GuardedForUser`'s `WHERE UserName = ?` widened to `WHERE (UserName = ?) OR (1=1)`, on the throwaway → `OcuPilot.Test.TurnContext.TestTwoPrincipalsGetTheirOwnSharingChoiceOverTheWire` (new) went red (user B read user A's stored choice instead of the instance default); reverted, byte-identical, recompiled, re-verified green.
+- mutation: `Kernel.Agent.Job.Run`'s `Do ##class(OcuPilot.Kernel.Scope).Set(pScope)` commented out, on the throwaway → `OcuPilot.Test.TurnContext.TestATurnStartedUnderNsSetsTheJobsScope` (new) went red (the job's reported scope was its own execution namespace, not the route's `?ns=HSLIB`); reverted, byte-identical, recompiled, re-verified green.
+- mutation: the per-field cut disabled in `Bound.Apply` (`If 0 && ...`), on the throwaway → `OcuPilot.Test.TurnContext.TestAReadToolResultsOwnFieldIsBound` (rewritten to seed its own long-`EventData` audit row rather than depend on whatever the live log holds) now also went red alongside `TestTheIntegrationAcceptanceCriterion` (the seeded row's field came back whole, un-cut); reverted, byte-identical, recompiled, re-verified green.
+- mutation: `Api.Context.Body`'s resolved `tRowCap` hardcoded to `200`, on the throwaway → `OcuPilot.Test.TurnContext.TestContextStatusUnassertedLegs` (new) went red (`contextRowCap` read 200, not the switch's 37); reverted, byte-identical, recompiled, re-verified green.
+- mutation: `Kernel.Agent.Loop.Run` stops passing `pContextRowCap` into `AnswerTools`, on the throwaway → `OcuPilot.Test.TurnTools.TestContextRowCapBoundsToolResultsInATurn` (new) went red (the tool was asked under `TOOLROWS`, not the resolved cap of 5, and its result was not cut); reverted, byte-identical, recompiled, re-verified green.
+
+**Review pass (of this rework iteration) mutations (Rule 19), closing three LOW findings on `TestContextStatusUnassertedLegs`'s missing mutation lines and one on the new schema round-trip assertion, each reverted and recompiled green, `git status --short` confirmed byte-identical before the re-verify:**
+
+- mutation: `Api.Context.Body`'s `Set tShareDefault = ''tSwitchValues("shareContextByDefault")` hardcoded to `Set tShareDefault = 1`, on the throwaway → the new second-read assertion in `OcuPilot.Test.TurnContext.TestContextStatusUnassertedLegs` ("shareDefault follows the switch off") went red, and `TestDefaultOffBehavesLikeSharingOff` went red too; reverted, byte-identical, recompiled, re-verified green.
+- mutation: `Api.Context.Body`'s `LeavesInstance(tHost, tMarkedLocal, tProxyHost)` call changed to pass a literal `0` instead of `tMarkedLocal`, on the throwaway → `TestContextStatusUnassertedLegs`'s "but marked local overrides it" assertion went red (`leavesInstance` read 1, not 0); reverted, byte-identical, recompiled, re-verified green.
+- mutation: `Port.ProviderPort.EndpointOf`'s empty-`pEndpointUrl` fallback to `pRow.defaultEndpoint` removed (always `Quit pEndpointUrl`), on the throwaway → `TestContextStatusUnassertedLegs`'s "an empty EndpointUrl falls back to the catalog's own defaultEndpoint" assertion went red (`endpointHost` empty); reverted, byte-identical, recompiled, re-verified green.
+- mutation: `Test.DispatchTool.Counter.ResultSchema`'s three added properties (`rowsSent`, `rowsAvailable`, `truncatedFields`) removed, on the throwaway → the new schema round-trip assertion in `OcuPilot.Test.ToolDispatch.TestARowsShapedClassOfItsOwnToolGetsThePerFieldCut` went red (`ERROR #5001: argument 'rowsSent' is not a declared property`); reverted, byte-identical, recompiled, re-verified green.
+
 ## Auto Run Result
 
 **Summary.** Implemented the full server-side story: `Kernel.Agent.Bound` (the shared cutter),
@@ -452,10 +505,37 @@ pass, five in this review pass, including the two most consequential (the descri
 per-field cut and the `%Set` object/array fix).
 
 **Residual risks:** the four low-severity `reject`/`defer` items in the triage log, each with a
-`reopen_if` or reasoning already recorded; the `TestAReadToolResultsOwnFieldIsBound` case remains
-conditional on live audit data (the underlying mechanism is otherwise now deterministically pinned
-via `ToolDispatch.TestADescriptorDerivedToolResultGetsThePerFieldCut`). The project-wide `%Set`
-search named above is closed, not open.
+`reopen_if` or reasoning already recorded; the project-wide `%Set` search named above is closed,
+not open. (The `TestAReadToolResultsOwnFieldIsBound` live-data conditionality named here is closed
+by the rework pass below.)
+
+### Rework iteration 1 (2026-09-17)
+
+Closed the eight unchecked Review Findings items (one HIGH -- AD-24/DW-281, six MED test gaps,
+one LOW fix pack) from the prior review round, plus this pass's own re-review findings.
+
+**Files changed:** `Kernel/Agent/Dispatch.cls` (route every rows-shaped result through `Bound`,
+not only descriptor-derived ones), `Screen/Tool/ErrorRead.cls` (`ResultSchema` gains the three
+`Bound`-added fields), `Test/DispatchTool/Counter.cls` (matching schema update, for the round-trip
+check below), `Test/ToolDispatch.cls` (two new tests, one schema-conformance assertion, one doc
+correction), `Test/TurnContext.cls` (four new tests -- two-principal sharing, job scope, status
+legs, and a rewrite of the field-bound test to seed its own row -- plus a marker-global and a
+doc-wording fix), `Test/TurnTools.cls` (one new test), `Test/TurnWireFixture.cls` (a shared
+endpoint constant).
+
+**Review findings this pass:** 13 -- 1 medium and 7 low patched in-pass (4 new Rule 19 mutations
+demonstrated and reverted, see `## Verification`), 2 low deferred as pre-existing/theoretical with
+a `reopen_if`, 1 low rejected as excessive engineering for marginal confidence gain, 4 false on
+verification. No high.
+
+**Verification.** Compiled all 7 touched classes clean on `ocupilot-slot-a`. Throwaway
+`ocupilot-ci`: `ToolDispatch` (16/16), `TurnContext` (15/15), `TurnTools` (8/8) green, re-verified
+after every mutation round-trip. `check-objectscript.py` (0 problems, 350 files) and its own
+harness (125/125) clean. `scripts/smoke.sh --container ocupilot-ci`: 19/19 executed, 0 failed, 2
+pre-existing pending (Epic 3). No `ui/` file touched, so `npm test`/`npm run build` were not
+required.
+
+**Follow-up review recommendation: false.** No high was patched this pass, and only one medium.
 
 Status: done
 Blocking condition: none.

@@ -24,6 +24,12 @@ Parameter SECONDROLE = "OcuPilotProbeTurnWireSecond";
 
 Parameter CREDENTIAL = "OcuPilotProbeTurnCredential";
 
+/// <p>The <code>turnprobe</code> definition's public-looking, non-routable endpoint
+/// (RFC 5737 TEST-NET-1). <method>EnsureDefinition</method> sets it, and anything that restores
+/// this definition after a security-field edit (e.g. <method>OcuPilot.Test.TurnContext.RestorePreparedDefinition</method>)
+/// reads it from here rather than repeating the literal.</p>
+Parameter ENDPOINTURL = "https://192.0.2.10/v1/messages";
+
 /// <p>A fabricated key of the shape the <code>turnprobe</code> row's prefix requires. It reaches no
 /// provider.</p>
 Parameter PROBEKEY = "sk-ant-ocupilotturnprobe0000000000";
@@ -218,7 +224,7 @@ ClassMethod EnsureDefinition(pTag As %String, Output pId As %String) As %Status
     Set tRow.Name = ..#DEFINITIONNAME
     Set tRow.Provider = "turnprobe"
     Set tRow.Model = pTag
-    Set tRow.EndpointUrl = "https://192.0.2.10/v1/messages"
+    Set tRow.EndpointUrl = ..#ENDPOINTURL
     Set tRow.CredType = "creds"
     Set tRow.CredentialName = ..#CREDENTIAL
     Set tRow.MaxTokens = 1024
