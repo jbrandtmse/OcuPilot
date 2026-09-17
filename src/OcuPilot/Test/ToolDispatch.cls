@@ -1,7 +1,7 @@
 /// <p>The tool dispatcher's order, one refusal at a time (AD-1, AD-8, AD-11, AD-22, AD-24, AD-30,
 /// AD-39): a registered call, an unknown tool, another user, a gate denial, a restrained write, a
-/// denied or unreadable pair, refused arguments, a tool fault, a failure inside the dispatch path, and
-/// both result caps -- each observed on
+/// denied or unreadable pair, refused arguments, a pair an argument adds, a tool fault, a failure
+/// inside the dispatch path, and both result caps -- each observed on
 /// the <code>tool_result</code> content <method>OcuPilot.Kernel.Agent.Dispatch.Answer</method> renders
 /// and on the counting fixtures' record of what was reached.</p>
 /// <p>Driven through <class>OcuPilot.Test.ToolDispatchProbe</class> over
@@ -185,6 +185,34 @@ Method TestADeniedPairIsNamedAndNothingRuns()
     Do ..Call("probe_counter_read", {}, .tResult, .tName)
     Do $$$AssertEquals(tResult."is_error" _ "|" _ tResult.content, "1|{""code"":""TOOL.UNAVAILABLE""}", "unreadable pairs are unavailable")
     Do $$$AssertEquals($ClassMethod(..#PROBE, "Count", "pair") _ "|" _ $ClassMethod(..#COUNTER, "Calls", ..#READER), "0|0", "with no pair checked and no tool run")
+}
+
+/// <p>Pair denied, by an argument (AD-8, AD-48) -- a pair a call's arguments add is checked against
+/// the user's current grants after the arguments are validated: a missing one is named in
+/// <code>detail.failedPair</code> and no tool runs, arguments the schema refuses answer
+/// <code>TOOL.ARGUMENTS</code> first, an added pair the grants hold runs the tool, and added pairs
+/// that cannot be read answer <code>TOOL.UNAVAILABLE</code>, logged.</p>
+/// <p>Mutation: the argument pair check removed from
+/// <method>OcuPilot.Kernel.Agent.Dispatch.AnswerOne</method> -> the denial leg goes red.</p>
+Method TestAPairAnArgumentAddsIsCheckedAfterTheArguments()
+{
+    Do $ClassMethod(..#PROBE, "DenyPair", "OcuPilotProbeScopeX", "WRITE")
+    Do ..Call("probe_counter_read", {"scope": "X"}, .tResult, .tName)
+    Do $$$AssertEquals(tResult."is_error" _ "|" _ tResult.content, "1|{""code"":""AUTH.NOPRIVILEGE"",""detail"":{""failedPair"":""OcuPilotProbeScopeX:WRITE""}}", "the pair the scope adds is named")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Count", "pair") _ "|" _ $ClassMethod(..#COUNTER, "Calls", ..#READER), "3|0", "after the two declared pairs, and the tool did not run")
+
+    Do ..Call("probe_counter_read", {"scope": "X", "bogus": 1}, .tResult, .tName)
+    Do $$$AssertEquals(tResult."is_error" _ "|" _ ##class(%DynamicAbstractObject).%FromJSON(tResult.content).code, "1|TOOL.ARGUMENTS", "arguments the schema refuses are refused before the pairs they would add")
+
+    Do ..Call("probe_counter_read", {"scope": "Y", "marker": "y"}, .tResult, .tName)
+    Do $$$AssertEquals(tResult."is_error" _ "|" _ $ClassMethod(..#COUNTER, "Calls", ..#READER), "0|1", "a scope whose pair the grants hold runs the tool")
+
+    Do $ClassMethod(..#PROBE, "Reset")
+    Do $ClassMethod(..#COUNTER, "ArmUnresolvedArgumentPairs")
+    Do ..Call("probe_counter_read", {"scope": "Y"}, .tResult, .tName)
+    Do $$$AssertEquals(tResult."is_error" _ "|" _ tResult.content, "1|{""code"":""TOOL.UNAVAILABLE""}", "argument pairs that cannot be read are unavailable")
+    Do $$$AssertEquals($ClassMethod(..#COUNTER, "Calls", ..#READER), 1, "and run no tool")
+    Do $$$AssertTrue($ClassMethod(..#PROBE, "Logged") [ "arguments of probe.counter.read add could not be read | TOOL.UNAVAILABLE", "and are logged: " _ $ClassMethod(..#PROBE, "Logged"))
 }
 
 /// <p>Arguments -- an input that is not an object, an undeclared argument and an over-long one each

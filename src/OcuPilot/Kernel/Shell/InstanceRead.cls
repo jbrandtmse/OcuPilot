@@ -1,6 +1,7 @@
 /// <p><code>shell.instance.read</code>: the instance the shell identifies itself with, as
-/// <method>OcuPilot.Api.Instance.Payload</method> answers <code>GET /api/ocupilot/instance</code>.</p>
-Class OcuPilot.Screen.Tool.ShellInstance Extends OcuPilot.Screen.Tool.Shell
+/// <method>OcuPilot.Kernel.Shell.Instance.Payload</method> builds it for
+/// <code>GET /api/ocupilot/instance</code>.</p>
+Class OcuPilot.Kernel.Shell.InstanceRead Extends OcuPilot.Kernel.Shell.ReadTool
 {
 
 Parameter TOOLNAME = "shell.instance.read";
@@ -9,7 +10,7 @@ Parameter DESCRIPTION = "Read this instance's name, IRIS version, admin API vers
 
 ClassMethod Payload(Output pObject As %DynamicObject) As %Status
 {
-    Quit ##class(OcuPilot.Api.Instance).Payload(.pObject)
+    Quit ##class(OcuPilot.Kernel.Shell.Instance).Payload(.pObject)
 }
 
 /// <p>The payload's seven keys, every one always present.</p>

@@ -1352,15 +1352,29 @@ class TestToolDispatchRule(FixtureTreeCase):
         self.assertEqual([p for p in problems if not p.startswith("src/OcuPilot/Kernel/Agent/Loop.cls:")], [], f"got {problems}")
 
     def test_an_http_request_or_api_path_on_the_dispatch_path_is_refused(self):
-        self.cls("src/OcuPilot/Screen/Tool/Shell.cls", "OcuPilot.Screen.Tool.Shell", "Set tRequest = ##class(%Net.HttpRequest).%New()")
+        self.cls("src/OcuPilot/Screen/Tool/Read.cls", "OcuPilot.Screen.Tool.Read", "Set tRequest = ##class(%Net.HttpRequest).%New()")
+        self.cls("src/OcuPilot/Kernel/Shell/InstanceRead.cls", "OcuPilot.Kernel.Shell.InstanceRead", 'Set tPath = "/api/ocupilot/instance"')
         self.cls("src/OcuPilot/Kernel/Governance/Gate.cls", "OcuPilot.Kernel.Governance.Gate", 'Set tPath = "/api/ocupilot/turn"')
         self.cls("src/OcuPilot/Kernel/Agent/Dispatch.cls", "OcuPilot.Kernel.Agent.Dispatch", 'Set tPath = "/API/admin"')
         self.cls("src/OcuPilot/Api/Turn.cls", "OcuPilot.Api.Turn", 'Set tPath = "/api/ocupilot/turn"')
         problems = self.problems()
-        for rel in ("Screen/Tool/Shell.cls", "Kernel/Governance/Gate.cls", "Kernel/Agent/Dispatch.cls"):
+        for rel in ("Screen/Tool/Read.cls", "Kernel/Shell/InstanceRead.cls", "Kernel/Governance/Gate.cls", "Kernel/Agent/Dispatch.cls"):
             with self.subTest(rel=rel):
                 self.assertTrue(any(p.startswith("src/OcuPilot/" + rel + ":6:") and "HTTP" in p for p in problems), f"got {problems}")
         self.assertFalse(any(p.startswith("src/OcuPilot/Api/Turn.cls") for p in problems), f"a handler is outside the rule, got {problems}")
+
+    def test_a_shell_read_naming_a_handler_is_refused(self):
+        self.cls("src/OcuPilot/Kernel/Shell/InstanceRead.cls", "OcuPilot.Kernel.Shell.InstanceRead", "Quit ##class(OcuPilot.Api.Instance).Payload(.pObject)")
+        self.cls("src/OcuPilot/Kernel/Shell/Instance.cls", "OcuPilot.Kernel.Shell.Instance", 'Do ##class(OcuPilot.Api.Error).LogError("adminport", "detail", {})')
+        self.write(
+            "src/OcuPilot/Kernel/Shell/Navigation.cls",
+            "/// <p><class>OcuPilot.Api.Navigation</class> answers this map.</p>\n"
+            "Class OcuPilot.Kernel.Shell.Navigation Extends %RegisteredObject\n{\n\n}\n",
+        )
+        self.cls("src/OcuPilot/Api/Instance.cls", "OcuPilot.Api.Instance", "Quit ##class(OcuPilot.Api.Response).Success({})")
+        problems = self.problems()
+        self.assertTrue(any(p.startswith("src/OcuPilot/Kernel/Shell/InstanceRead.cls:6:") and "OcuPilot.Api.Instance" in p for p in problems), f"got {problems}")
+        self.assertEqual([p for p in problems if not p.startswith("src/OcuPilot/Kernel/Shell/InstanceRead.cls:")], [], f"the vocabulary class, a doc comment and a handler pass, got {problems}")
 
     def test_a_capture_outside_the_admin_port_is_refused(self):
         self.cls("src/OcuPilot/Kernel/Agent/Dispatch.cls", "OcuPilot.Kernel.Agent.Dispatch", "Set tSC = $$BeginCapture^%SYS.Capture(.tCookie)")

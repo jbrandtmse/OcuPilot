@@ -2,8 +2,9 @@
 /// loop runs in process with no socket: the port is <class>OcuPilot.Test.ProviderPortProbe</class>,
 /// the limits are <class>OcuPilot.Test.TurnLimits</class> unless a test names others, the dispatcher
 /// is the shipped one unless a test names another, the restraint verdict is the real one unless
-/// a test forces the kill switch on or the read to fail, and a logged failure is recorded here
-/// instead of written. No method of the loop itself is replaced.</p>
+/// a test forces the kill switch on -- from the start, or once a number of tool calls have been
+/// answered -- or the read to fail, and a logged failure is recorded here instead of written. No
+/// method of the loop itself is replaced.</p>
 Class OcuPilot.Test.TurnLoopProbe Extends OcuPilot.Kernel.Agent.Loop
 {
 
@@ -17,6 +18,13 @@ ClassMethod Reset()
 ClassMethod ForceKillSwitch(pCode As %String)
 {
     Set ^||OcuPilotTurnLoopProbe("killSwitch") = pCode
+}
+
+/// <p>Answer the kill switch on, with <var>pCode</var> as its code, once <var>pCalls</var> tool calls
+/// have been answered through <method>DispatchTools</method>.</p>
+ClassMethod ForceKillSwitchAfterCalls(pCalls As %Integer, pCode As %String)
+{
+    Set ^||OcuPilotTurnLoopProbe("killAfter") = $ListBuild(pCalls, pCode)
 }
 
 /// <p>Answer the restraint read as failed from now on, with the verdict a failed read leaves:
@@ -54,6 +62,17 @@ ClassMethod Logged() As %String
 ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String)
 {
     Set ^||OcuPilotTurnLoopProbe("log", $Increment(^||OcuPilotTurnLoopProbe("log"))) = pMessage _ " | " _ pCode
+}
+
+/// <p>The shipped dispatch, counting the calls it answers and arming the kill switch when
+/// <method>ForceKillSwitchAfterCalls</method>' count is reached.</p>
+ClassMethod DispatchTools(pKey As %String, pUser As %String, pDefinitionId As %String, pToolUses As %DynamicArray, pLimitsClass As %String, Output pResults As %DynamicArray, Output pNames As %DynamicArray) As %Status
+{
+    Set tSC = ##super(pKey, pUser, pDefinitionId, pToolUses, pLimitsClass, .pResults, .pNames)
+    Set tAnswered = $Increment(^||OcuPilotTurnLoopProbe("answered"), pToolUses.%Size())
+    Set tAfter = $Get(^||OcuPilotTurnLoopProbe("killAfter"))
+    If (tAfter '= "") && (tAnswered >= $List(tAfter, 1)) Do ..ForceKillSwitch($List(tAfter, 2))
+    Quit tSC
 }
 
 ClassMethod LimitsClass() As %String

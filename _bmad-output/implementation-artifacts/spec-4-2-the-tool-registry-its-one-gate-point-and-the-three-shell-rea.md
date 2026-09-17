@@ -2,8 +2,8 @@
 title: 'The tool registry, its one gate point, and the three shell reads'
 type: 'feature'
 created: '2026-09-16'
-status: 'in-progress'
-baseline_revision: '84a9c94c7ffee5039f70161c18e86aebba81c257'
+status: 'done'
+baseline_revision: 'e9b0e7a1d089f445cf4383f3c989bcb3145a58a9'
 baseline_commit: '84a9c94c7ffee5039f70161c18e86aebba81c257'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -48,6 +48,14 @@ deferred:
     location: >-
       CLAUDE.md
     severity: low
+  - summary: >-
+      LogSourcePort resolves a namespace's database through OcuPilot.Api.Namespaces, so the error tool's view and its argument-pair check reach the API layer from a port.
+    evidence: |-
+      Parameter NAMESPACERESOLVER = "OcuPilot.Api.Namespaces" predates this story (2-12); GlobalDatabase now lives in Kernel.Shell.Namespaces, which Api.Namespaces extends.
+      Dispatch -> Registry -> ErrorRead.ArgumentPairs -> LogSourcePort.PairsFor -> Api.Namespaces.GlobalDatabase at runtime, against the spine's dependency direction.
+    location: >-
+      src/OcuPilot/Port/LogSourcePort.cls:175
+    severity: medium
 ---
 
 <intent-contract>
@@ -212,10 +220,10 @@ deferred:
 
 Code review 2026-09-17, tier `full-opus`: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor, plus the lead's three dispositioned findings. 46 raw findings, 37 rows after grouping: 18 kept, 19 rejected.
 
-- [ ] [Review] AD-36 row cap (high; decided by the lead, Row cap row amended) -- `Screen/Tool/Read.cls` `View` -- ask the executor for min(`maxRows`, the declared read's cap) plus one rows, filter and sort over them as the screen does, return at most 200 with `truncated`; flip the recorded clamp mutation on `ToolEmit`, and make `ReadTool.TestAContextCapCutAloneIsTruncated` able to fail. `ErrorRead` keeps its clamp (it neither filters nor sorts).
-- [ ] [Review] Shell tools depend on the API layer (high; decided by the lead, no spine amendment) -- `Screen/Tool/Shell*.cls`, `Api/Instance.cls`, `Api/Namespaces.cls`, `Api/Navigation.cls` -- move the three payload builders into `Kernel/Shell/` (the spine's source tree: Kernel holds the shell), have the three handlers call them (API to Kernel), and move the three shell tool classes into `Kernel/Shell/` extending `Screen.Tool.Base` (Kernel to Registry); the registry keeps discovering them by superclass and names no Kernel class. Extend the story's tool-code checker rules to cover `Kernel/Shell/` tools, and keep every payload byte-identical (the existing handler wire tests stay green).
-- [ ] [Review][Patch] No step boundary between the tool calls of one reply (high, fix-risk med) — `AnswerTools` passes every `tool_use` to `Answer` at once. `Boundary` (stop flag, sign-out, kill switch, read-only, grants, lease, wall clock, tokens) runs only before the next provider call. AD-30 says the job re-reads the switches "between every step", each call is a recorded `tool` step, and 4.1's review routed per-tool checks here. After Stop or the kill switch, the remaining reads still run, each up to AdminPort's 30 s async wait. Fix: run `Boundary` before each call and end the turn with its state. If it also runs before the first call, `TurnLoop.TestTheTokenLimitAbandonsAtTheNextBoundary`'s `errorSeq` expectation moves. [src/OcuPilot/Kernel/Agent/Loop.cls:296]
-- [ ] [Review][Patch] The application-error tool's namespace pair is not checked against current grants (high, fix-risk med) — `ErrorRead.PrivilegePairs` returns only `LogErrorList`'s fixed pairs. `%DB_<NS>:READ` is decided inside `LogSourcePort` by `EvaluatePairs` → `$System.Security.Check`, which reads the job's frozen `$ROLES`, so revoking that resource mid-turn is not honoured (AD-31, AD-48). Fix: add an argument-dependent pair check after argument validation, for example a `Base` method that `ErrorRead` answers from `LogSourcePort.PairsFor(ERRORSKEY, namespace)`. The dispatcher checks it through `HoldsPair`, and `ToolDispatch` pins it with `DenyPair`. [src/OcuPilot/Screen/Tool/ErrorRead.cls:131]
+- [x] [Review] AD-36 row cap (high; decided by the lead, Row cap row amended) -- `Screen/Tool/Read.cls` `View` -- ask the executor for min(`maxRows`, the declared read's cap) plus one rows, filter and sort over them as the screen does, return at most 200 with `truncated`; flip the recorded clamp mutation on `ToolEmit`, and make `ReadTool.TestAContextCapCutAloneIsTruncated` able to fail. `ErrorRead` keeps its clamp (it neither filters nor sorts). -- closed in `Read.View` (`ReadCap`), pinned by `ToolEmit.TestTheReadToolReadsTheScreensRowsThenNarrows` and `ReadTool.TestAContextCapCutAloneIsTruncated`.
+- [x] [Review] Shell tools depend on the API layer (high; decided by the lead, no spine amendment) -- `Screen/Tool/Shell*.cls`, `Api/Instance.cls`, `Api/Namespaces.cls`, `Api/Navigation.cls` -- move the three payload builders into `Kernel/Shell/` (the spine's source tree: Kernel holds the shell), have the three handlers call them (API to Kernel), and move the three shell tool classes into `Kernel/Shell/` extending `Screen.Tool.Base` (Kernel to Registry); the registry keeps discovering them by superclass and names no Kernel class. Extend the story's tool-code checker rules to cover `Kernel/Shell/` tools, and keep every payload byte-identical (the existing handler wire tests stay green). -- closed: builders `Kernel/Shell/Instance`, `Namespaces`, `Navigation`, which the three handlers extend; tools `Kernel/Shell/ReadTool`, `InstanceRead`, `NamespacesRead`, `PrivilegesRead`; rule 20 covers `Kernel/Shell/`.
+- [x] [Review][Patch] No step boundary between the tool calls of one reply (high, fix-risk med) — `AnswerTools` passes every `tool_use` to `Answer` at once. `Boundary` (stop flag, sign-out, kill switch, read-only, grants, lease, wall clock, tokens) runs only before the next provider call. AD-30 says the job re-reads the switches "between every step", each call is a recorded `tool` step, and 4.1's review routed per-tool checks here. After Stop or the kill switch, the remaining reads still run, each up to AdminPort's 30 s async wait. Fix: run `Boundary` before each call and end the turn with its state. If it also runs before the first call, `TurnLoop.TestTheTokenLimitAbandonsAtTheNextBoundary`'s `errorSeq` expectation moves. [src/OcuPilot/Kernel/Agent/Loop.cls:296] -- closed: `Loop.AnswerTools` runs `Boundary` before every call, pinned by `TurnTools.TestTheKillSwitchStopsTheTurnBetweenTwoCalls` and the token test's `errorSeq` 1.
+- [x] [Review][Patch] The application-error tool's namespace pair is not checked against current grants (high, fix-risk med) — `ErrorRead.PrivilegePairs` returns only `LogErrorList`'s fixed pairs. `%DB_<NS>:READ` is decided inside `LogSourcePort` by `EvaluatePairs` → `$System.Security.Check`, which reads the job's frozen `$ROLES`, so revoking that resource mid-turn is not honoured (AD-31, AD-48). Fix: add an argument-dependent pair check after argument validation, for example a `Base` method that `ErrorRead` answers from `LogSourcePort.PairsFor(ERRORSKEY, namespace)`. The dispatcher checks it through `HoldsPair`, and `ToolDispatch` pins it with `DenyPair`. [src/OcuPilot/Screen/Tool/ErrorRead.cls:131] -- closed: `Tool.Base.ArgumentPairs`, answered by `ErrorRead` from `PairsFor` and checked after the arguments in `Dispatch.AnswerOne`, pinned by `ToolDispatch.TestAPairAnArgumentAddsIsCheckedAfterTheArguments` and `ToolEmit.TestEveryLiveToolRequiresItsScreensPairs`.
 - [x] [Review][Patch] The dispatcher's failure branches were untested: a registry error during dispatch, a view that throws, a view that answers no result, and a result still over the size cap once every row is dropped (med, fix-risk low) — added `ToolDispatch.TestAFailureInsideTheDispatchPathIsUnavailableAndLogged` and `throw`/`empty`/`blob`-with-rows inputs on `DispatchTool.Counter`. [src/OcuPilot/Kernel/Agent/Dispatch.cls:152]
 - [x] [Review][Patch] `ToolRoundTrip`'s SQL-bound test passed when the tool did not resolve (med, fix-risk low) — it now asserts the tool resolves. [src/OcuPilot/Test/ToolRoundTrip.cls:73]
 - [x] [Review][Patch] `Hold.GuardedScreenRows`' bounded branch had no test (med, fix-risk low) — `SwitchState.TestHoldsListInCreationOrder` now reads a bound of 2 over three holds and refuses 0. [src/OcuPilot/Kernel/State/Hold.cls:134]
@@ -324,6 +332,55 @@ Rejected:
   - `[false]` `[reject]` IA: the shell reads are not tested through `Dispatch` — `ToolWire` answers `shell_instance_read` through the dispatcher in a real job.
   - `[low]` `[reject]` IA: SQL bound observed through counts rather than the `TOP ?` text — the two-id fetch for `maxRows` 1 over three definitions discriminates, with its mutation recorded.
 
+### 2026-09-16 — Review pass (rework iteration 1)
+
+- verdicts: 44 findings — high 0, medium 9, low 30, false 5, maybe-false 0 (rows marked "same as" share one root cause and its route)
+- findings:
+  - `[medium]` `[defer]` BH: the argument-pair check reaches `Api.Namespaces` through `LogSourcePort.NAMESPACERESOLVER` -- pre-existing Port-to-API edge from Story 2-12, which the view path already took; recorded in `deferred`.
+  - `[low]` `[reject]` BH: `ErrorRead.ArgumentPairs` names `LogSourcePort` rather than `..PortClass()` -- production's seam is that class, no test dispatches a stubbed error tool, and `ErrorReadStub` answers no `PairsFor`.
+  - `[low]` `[reject]` BH: `ErrorRead.ArgumentPairs` answers resolved when the namespace does not resolve -- the port then refuses by its own enumeration and reads nothing; a divergence needs a transient `GetAllNSInfo` failure between two reads microseconds apart.
+  - `[low]` `[reject]` BH: the added pairs repeat the two instance pairs already declared -- two extra `CheckUserPermission` calls answering the same pair; no caller diverges.
+  - `[medium]` `[patch]` BH: `ToolEmit`'s pairs test passes `$Namespace` only and hands every tool the error tool's arguments -- added a leg naming another namespace whose database resource differs; non-error tools now get `{}`.
+  - `[low]` `[reject]` BH: `Registry.ArgumentPairs`' `$ListValid` and `Catch` branches are untested -- both fail closed, and without them `Dispatch.AnswerOne`'s own `Catch` answers `TOOL.UNAVAILABLE`.
+  - `[low]` `[patch]` BH: `ToolDispatch`'s header lists the argument-pair step before refused arguments -- order corrected.
+  - `[low]` `[reject]` BH: the spec still names the moved shell classes -- the fix edits this build's spec; the planned-mutations line was corrected with this pass's tracking lines.
+  - `[low]` `[reject]` BH: the Auto Run Result describes the earlier pass -- rewritten at this pass's finalize.
+  - `[false]` `[reject]` BH: no passing runs recorded for the rework -- live runs 2333-2348 and two full throwaway sweeps (100 classes, including `Instance`, `Namespaces`, `Navigation`, `Routing`, `Wire`, `ErrorLog`, `ToolWire`, `ToolRoundTrip`, `TurnWire`) ran green; recorded in the Auto Run Result.
+  - `[low]` `[reject]` BH: rework mutation lines were updated inside the implement-time list -- the fix edits this build's spec, and each updated line names its pass and run.
+  - `[low]` `[reject]` BH: the handlers extend the shell builders rather than call them -- the decided direction (API to Kernel) holds, the seams were already public on the handlers, and delegation would cut the fixtures that override them.
+  - `[low]` `[reject]` BH: a stale compiled `Screen.Tool.Shell*` class would refuse every listing -- no instance carries one (deleted on live and checked by SQL; throwaways recreated; never merged or released); reopen_if a released build moves a tool class and keeps its name.
+  - `[low]` `[reject]` BH: a read tool without `maxRows` now fetches 1,001 rows, and its description names no number -- by-design: the amended Row cap row requires the screen's rows.
+  - `[low]` `[reject]` BH: the intent has no row for the argument-pair step or the boundary between calls -- the fix edits this build's spec; the items that decide both are under Tasks & Acceptance.
+  - `[medium]` `[patch]` BH: two legs of `ToolEmit.TestTheReadToolReadsTheScreensRowsThenNarrows` pass when the view answers no result -- each now asserts a result first.
+  - `[low]` `[patch]` BH: a long header line and an ungrammatical `DispatchTools` doc in `Loop.cls`; `Kernel/Shell/Instance.cls` docs still speak of a response and a 500 -- reworded.
+  - `[low]` `[reject]` ECH: `AUTH.NOPRIVILEGE` naming `%DB_<NS>:READ` shows that a namespace the route answers 404 for exists -- it follows item 4's prescribed check and tells an account holding `%Admin_Operate` a namespace and database resource name; reopen_if namespace names must be hidden from such accounts.
+  - `[low]` `[reject]` ECH: a `rowGet` read without `maxRows` issues up to 1,000 detail GETs -- by-design: AD-36 issues the detail call per surviving row, as the screen does (probed 100 GETs in 30.5 ms).
+  - `[low]` `[reject]` ECH: `ErrorRead.ArgumentPairs` bypasses `PortClass` -- same as the BH row above.
+  - `[low]` `[reject]` ECH: Tasks name the deleted shell files -- same as the BH spec row above.
+  - `[low]` `[reject]` ECH: the intent's Approach omits the argument-pair step -- same as the BH intent row above.
+  - `[low]` `[reject]` ECH: `deferred-work.md` DW-453 evidence names deleted classes -- this workflow never writes the ledger (Rule 15); the lead's trailer can note the move.
+  - `[medium]` `[patch]` VG: nothing pins `Run` keeping a stop that lands on the iteration cap -- `TurnLoop.TestTheTokenLimitAbandonsAtTheNextBoundary` now runs under a one-iteration definition and asserts an empty `limit`.
+  - `[medium]` `[patch]` VG: no rule stops `Kernel/Shell/` naming a handler again -- rule 20 refuses `OcuPilot.Api.*` other than `Api.Error` in code under `Kernel/Shell/`; harness case added.
+  - `[medium]` `[patch]` VG: the error tool's argument pairs are only tested with `$Namespace` -- same as the BH `ToolEmit` row above.
+  - `[medium]` `[defer]` VG: the argument-pair path reaches `Api.Namespaces` -- same as the first BH row.
+  - `[low]` `[reject]` VG: the planned-mutations list names `ShellNamespaces` -- same as the BH spec row above.
+  - `[low]` `[reject]` IA: the row cap is observed on fixtures with a context cap of 3 -- the executor's recorded `maxRows` and the filter leg discriminate, `ToolDispatch` pins the 200 cap, and one `ApplyView` call sorts what it filters.
+  - `[low]` `[reject]` IA: `rowGet` cost -- same as the ECH row above.
+  - `[low]` `[reject]` IA: "cap" means the screen's cap in `Read` and the tool's in `ErrorRead` -- each description is true of its own tool.
+  - `[low]` `[reject]` IA: handlers inherit -- same as the BH row above.
+  - `[false]` `[reject]` IA: fixture seams no longer reach the tool path -- before this pass the tools called `Api.*.Payload` directly, so no fixture override reached them then either.
+  - `[false]` `[reject]` IA: `Kernel/Shell/Instance.cls` names `Port.AdminPort` and `Api.Error` -- the spine forbids slice-to-slice and registry-to-kernel only, and `Api.Error` is the vocabulary class rule 19 admits for the kernel.
+  - `[medium]` `[defer]` IA: the dispatch path still reaches `Api/` -- same as the first BH row.
+  - `[false]` `[reject]` IA: no evidence the handler wire tests stayed green -- same as the BH runs row above.
+  - `[low]` `[reject]` IA: only the kill switch and token limit are tested between calls -- one `Boundary` method, each branch pinned before a provider call in `TurnLoop`.
+  - `[low]` `[reject]` IA: `Dispatch.Answer`'s multi-call order is tested only in `ToolDispatch` -- that test pins it, and the loop's own order is pinned by `TurnTools`.
+  - `[false]` `[reject]` IA: the Integration and Revoked rows were not re-run -- `ToolWire` ran green in both sweeps.
+  - `[low]` `[reject]` IA: the argument-pair step is not in the intent -- same as the BH intent row above.
+  - `[low]` `[reject]` IA: an unresolved namespace still invokes the tool -- same as the BH row above.
+  - `[low]` `[reject]` IA: no end-to-end revoke of `%DB_<NS>` on a real principal -- `ToolWire` pins `HoldsPair` on current grants and `ToolDispatch` the argument-pair branch; the new `ToolEmit` leg pins the named namespace.
+  - `[medium]` `[patch]` IA: `ToolEmit` hands every tool the error tool's arguments -- same as the BH `ToolEmit` row above.
+  - `[low]` `[reject]` IA: stale spec record -- same as the BH spec row above.
+
 ## Design Notes
 
 **Governing ADs (Rule 6):**
@@ -420,9 +477,9 @@ Conventions: Tool naming, Error shape, 29-character cap. AD-7's Rule is unchange
 - Pairs: `HoldsPair` uses `$System.Security.Check` -> `ToolWire` revoked leg red. Pair check removed -> `ToolDispatch` pair leg red.
 - Arguments: validation skipped -> arguments leg red.
 - Tool fault: the fault's `reason` rendered -> fault-shape leg red.
-- Row cap: `Read.View` passes the model's `maxRows` -> `ToolEmit` clamp leg red. `ErrorRead` likewise -> its clamp leg red.
+- Row cap: `Read.View` bounds the read by the context cap -> `ToolEmit` row-bound leg red. `ErrorRead` passes the model's `maxRows` -> its clamp leg red.
 - Size cap: cap check removed -> size leg red.
-- Shell reads: `ShellNamespaces.View` drops `writable` -> `ToolShell` red.
+- Shell reads: `Kernel.Shell.NamespacesRead` drops `writable` -> `ToolShell` red.
 - Prompt: `Run` appends the last tool result to the system prompt -> `TurnTools` prompt leg red.
 - SQL bound: `GuardedScreenRows` drops `TOP ?` -> `ToolRoundTrip` fetch-count leg red. `BoundedWhere` writes the cutoff into the text -> `StateBound` red. The 720 check removed -> `StateBound` refusal leg red.
 - Checker: each rule change reverted -> its harness case red. DW-393 and DW-394 fixtures reverted -> their cases red.
@@ -437,7 +494,7 @@ Observed at implement. ObjectScript mutations were made only to the throwaway's 
 - mutation: `Registry.WireName` keeps the dots -> `ToolEmit.TestEveryLiveToolHasAReversibleWireName` red, and `TestEveryLiveToolIsAdvertisedInTheSubset` red (the listing refuses).
 - mutation: `Registry.EmitProperty` leaves `maxLength` -> `ToolEmit.TestEveryLiveToolIsAdvertisedInTheSubset` red on `logs.audit.read`, and `TestTheEmissionCorpus` red.
 - mutation: `Dispatch.Answer` renders `is_error` for every call -> `ToolWire.TestATurnAnswersTheShellAndUsersReads` red.
-- mutation: `Dispatch.Answer` reverses its results -> `TurnTools.TestSeveralCallsAreAnsweredInOrderInOneMessage` red.
+- mutation: `Loop.AnswerTools` puts each result ahead of the earlier ones -> `TurnTools.TestSeveralCallsAreAnsweredInOrderInOneMessage` red (rework pass 1, run 12).
 - mutation: `Registry.ResolveWire` falls back to the first tool -> `ToolDispatch.TestAnUnknownToolReachesNothing` red, and `TestARegisteredReadCallAnswersItsResult` red on the unknown call's name.
 - mutation: the `$USERNAME` check removed -> `ToolDispatch.TestAnotherUsersCallIsRefusedAndLogged` red.
 - mutation: `InvokeTool` called before `Decide` -> `ToolDispatch.TestAGateDenialReachesNothingAndTheToolStaysAdvertised` red, with five other methods whose counts the early call moved.
@@ -446,9 +503,9 @@ Observed at implement. ObjectScript mutations were made only to the throwaway's 
 - mutation: `Dispatch.HoldsPair` uses `$System.Security.Check` -> `ToolWire.TestARoleRemovedMidTurnIsRefusedFromCurrentGrants` red on "the users read is refused naming the pair". mutation: the pair check removed -> `ToolDispatch.TestADeniedPairIsNamedAndNothingRuns` red.
 - mutation: argument validation skipped -> `ToolDispatch.TestRefusedArgumentsReachNoTool` red.
 - mutation: the fault rendered whole, `reason` included -> `ToolDispatch.TestAToolFaultAnswersItsCodeAndDetailOnly` red.
-- mutation: `Read.View` passes the model's `maxRows` -> `ToolEmit.TestTheReadToolClampsMaxRowsToTheCap` red. mutation: `ErrorRead.View` likewise -> `ToolEmit.TestTheErrorToolClampsAndPassesItsPortsFault` red.
+- mutation: `Read.View` bounds the read by the context cap -> `ToolEmit.TestTheReadToolReadsTheScreensRowsThenNarrows` red (rework pass 1, run 8). mutation: `ErrorRead.View` passes the model's `maxRows` -> `ToolEmit.TestTheErrorToolClampsAndPassesItsPortsFault` red.
 - mutation: the `Capped` check removed -> `ToolDispatch.TestTheSizeCapDropsTrailingRows` red, and `TestTheRowCapCutsAndMarks` red.
-- mutation: `ShellNamespaces` drops `writable` -> `ToolShell.TestEachShellToolAnswersItsHandlersPayload` red.
+- mutation: `Kernel.Shell.NamespacesRead` drops `writable` -> `ToolShell.TestEachShellToolAnswersItsHandlersPayload` red (rework pass 1, run 15).
 - mutation: `Loop.Run` joins the last message's blocks to the system prompt -> `TurnTools.TestNoToolResultReachesTheSystemPrompt` red.
 - mutation: `Agent.GuardedScreenRows` reads every id instead of `TOP ?` -> `ToolRoundTrip.TestAStateReadFetchesOneRowMoreThanItAnswers` red. mutation: `BoundedWhere` writes the cutoff into the text -> `StateBound.TestAWindowBindsItsCutoff` red. mutation: the 720 check removed -> `StateBound.TestAWindowOutsideTheBoundIsRefused` red.
 - mutation: `AGENT_REACH_RE` bans every `OcuPilot.Screen.*` again -> harness `test_the_tool_registry_passes_and_every_other_screen_class_is_refused` and `test_the_shipped_tree_passes_every_rule_this_story_added` red.
@@ -524,31 +581,43 @@ Observed at code review, 2026-09-17, on the throwaway `ocupilot-ci` (runs 17-32,
 - mutation: `Loop.Run` ends an unadvertised turn without `LogFault` -> `TurnTools.TestAListingThatFailsEndsTheTurnBeforeAProviderCall` red (run 27).
 - mutation: `RESTRAINT_CODE_RE`'s family again needs its trailing dot -> harness `test_a_family_named_without_its_trailing_dot_is_refused` red. mutation: the `ui/src/app/testing/` exclusion removed -> `test_a_testing_helper_names_a_code_and_passes` red. mutation: `STATE_SQL_CALL_RE` back to `..` and `).` -> `test_a_call_through_a_store_variable_is_refused` red.
 
+Rework pass 1 (review items 1-4), on the throwaway `ocupilot-ci` (one class per run, each mutation loaded with its subclasses, restored and `cmp`-checked) or the checker (restored from a saved copy):
+
+- mutation: `Read.View` sets `truncated` from the read alone -> `ReadTool.TestAContextCapCutAloneIsTruncated` red (run 9).
+- mutation: `Loop.AnswerTools` runs no `Boundary` before a call -> `TurnTools.TestTheKillSwitchStopsTheTurnBetweenTwoCalls` red (run 10). mutation: it skips the boundary before a reply's first call -> `TurnLoop.TestTheTokenLimitAbandonsAtTheNextBoundary` red (run 11).
+- mutation: `Dispatch.AnswerOne` without its argument-pair check -> `ToolDispatch.TestAPairAnArgumentAddsIsCheckedAfterTheArguments` red (run 13).
+- mutation: `ErrorRead.ArgumentPairs` removed -> `ToolEmit.TestEveryLiveToolRequiresItsScreensPairs` red (run 14).
+- mutation: `Kernel/Shell/` dropped from rule 20's HTTP scope -> harness `test_an_http_request_or_api_path_on_the_dispatch_path_is_refused` red.
+
+Rework pass 1, review patches, on a throwaway recreated from the tree (runs 101-103, one class each, restored and `diff -rq`-checked) or the checker (restored from a saved copy and `cmp`-checked):
+
+- mutation: `Loop.Run` ignores the stop state `AnswerTools` hands back -> `TurnLoop.TestTheTokenLimitAbandonsAtTheNextBoundary` red, the turn completing at its one-iteration cap (run 101).
+- mutation: `ErrorRead.ArgumentPairs` resolves `$Namespace` instead of the named namespace -> `ToolEmit.TestEveryLiveToolRequiresItsScreensPairs` red on "a call naming %SYS adds that namespace's database pairs" (run 102).
+- mutation: `Read.View` answers success with no result -> `ToolEmit.TestTheReadToolReadsTheScreensRowsThenNarrows` red on "the view answers a result" (run 103).
+- mutation: rule 20's `Kernel/Shell/` reach clause disabled -> harness `test_a_shell_read_naming_a_handler_is_refused` red.
+
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-**Change.** The turn job advertises every registered tool (wire names, emitted subset, `maxLength` in descriptions) and answers each `tool_use` through `Kernel/Agent/Dispatch.cls`: resolve, identity, `Kernel/Governance/Gate.cls`, restraint for writes, pairs from current grants, arguments, then `Registry.InvokeTool`, with both caps and `{code, detail?}` failures. Both tool sources share `Tool/Base.cls`'s contract; three shell reads wrap the handlers' payloads; state reads bind `SELECT TOP ?`; `BoundedWhere` ships tested and unconsumed; checker rules 20 and 21 are new and rules 18 and 19 widened.
+**Change (rework iteration 1).** The four open review items:
+
+- Row cap: `Read.View` asks the executor for min(`maxRows`, `Screen.Read.DEFAULTMAXROWS`) plus one rows, filters and sorts over them, then cuts to the context cap. `ErrorRead` keeps its clamp.
+- Shell reads: the payload builders are `Kernel/Shell/Instance`, `Namespaces` and `Navigation`, which `Api/Instance`, `Api/Namespaces` and `Api/Navigation` extend; the tools are `Kernel/Shell/ReadTool`, `InstanceRead`, `NamespacesRead` and `PrivilegesRead`, moved from `Screen/Tool/Shell*.cls`, whose compiled copies were deleted on live. Rule 20 covers `Kernel/Shell/` for HTTP and refuses a handler named there.
+- Step boundary: `Loop.AnswerTools` answers one call at a time and runs `Boundary` before each; a stop ends the turn with its state and code.
+- Argument pairs: `Tool.Base.ArgumentPairs`, answered by `ErrorRead` from `LogSourcePort.PairsFor`, checked in `Dispatch.AnswerOne` against current grants after the arguments.
 
 **Files.**
 
-- `Kernel/Agent/Dispatch.cls`, `Kernel/Governance/Gate.cls` (new) -- the dispatcher and the gate point.
-- `Kernel/Agent/Loop.cls`, `Limits.cls`, `Prompt.cls` -- advertise once, delegate, caps; the built-in prompt no longer says there are no tools.
-- `Screen/Tool/Base.cls`, `Read.cls`, `ErrorRead.cls`, `Registry.cls`; `Shell.cls`, `ShellInstance.cls`, `ShellNamespaces.cls`, `ShellPrivileges.cls` (new) -- one contract, clamps, wire names, emission, the shell reads.
-- `Kernel/State/Base.cls`, `Agent.cls`, `Hold.cls`, `Screen/Read.cls` -- `BoundedWhere`, bounded state reads.
-- `Api/Error.cls`, `Kernel/Restraint.cls` -- `TOOL.*` codes and sentences; doc corrections.
-- `scripts/check-objectscript.py`, `scripts/test_check_objectscript.py` -- rules 18-21 and their harness.
-- Tests: `ToolDispatch`, `ToolEmit`, `ToolShell`, `TurnTools`, `StateBound`, `ToolRoundTrip`, `ToolWire` (new); fixtures `DispatchTool/`, `AdvertiseTool/`, `ToolDispatchProbe`, `ErrorReadStub`, `StateReadProbe`, `StateReadToolProbe`; `ReadTool`, `TurnLoop`, `TurnLoopProbe`, `TurnProvider`, `TurnWireFixture` updated.
+- `Screen/Tool/Read.cls`, `Base.cls`, `ErrorRead.cls`, `Registry.cls` -- the read's own cap; the `ArgumentPairs` contract and its registry call.
+- `Kernel/Shell/` (new and moved), `Api/Instance.cls`, `Api/Namespaces.cls`, `Api/Navigation.cls` -- builders and tools; the handlers keep `Handle` and `MayEnter`.
+- `Kernel/Agent/Loop.cls`, `Dispatch.cls` -- the boundary per call; the argument-pair check.
+- `scripts/check-objectscript.py`, `scripts/test_check_objectscript.py` -- rule 20's shell scope and reach clause, with harness cases.
+- Tests: `ToolEmit`, `ReadTool`, `ToolDispatch`, `ToolShell`, `TurnTools`, `TurnLoop`, `TurnLoopProbe`, `DispatchTool/Counter`.
 
-**Review.** 58 findings: 21 rows patched (distinct entries: medium 8, low 6), 8 rows deferred (5 items in `deferred`), 29 rejected with the reason in the triage log. Patches: ISO cutoff and grouped predicates in `BoundedWhere`; rule 21 requires a whole literal; internal tool faults logged; gate-code, gate-error, pairs, advertise-refusal and strict round-trip tests; restraint tails tied to the declared codes; stale test texts and `Read.Description` corrected. Follow-up review: `false` -- every patch was observed red under its mutation, and the full sweep and smoke passed on the patched tree, so no unverified risk can be named.
+**Review.** 44 findings: high 0, medium 9, low 30, false 5. Patched entries: medium 4 (`ToolEmit`'s second-namespace leg and per-tool arguments, `ToolEmit`'s result guards, the iteration-cap stop in `TurnLoop`, rule 20's shell reach clause), low 2 (`ToolDispatch`'s header order, `Loop` and `Kernel/Shell/Instance` docs). Deferred: 1 entry, `LogSourcePort`'s resolver naming `Api.Namespaces`. Rejected: 33 rows, each with its reason in the triage log. Follow-up review: `false` -- a follow-up pass that patched no high.
 
-**Verification.** Live `ocupilot`: whole-tree compile clean; runs 2319-2332 green (`ToolDispatch`, `ToolEmit`, `ToolShell`, `TurnTools`, `StateBound`, `ReadTool`, `ErrorLog`, `TurnLoop`, `TurnStore`); `ToolWire` refused by name (run 2328). Checker 21 rules, 0 problems; harness 121 OK; `lint-docs.sh` clean; `npm test` 798 node and 382 component tests. Throwaway `ocupilot-ci`, fresh `up` from the final tree: full sweep 100 classes, 918 tests, 0 failed; `smoke.sh` executed 19, passed 19; torn down after.
+**Verification.** Live `ocupilot`: whole-tree compile clean; runs 2333-2348 green one class each, read from `%UnitTest_Result`; no `Screen.Tool.Shell*` class remains. Checker 21 rules, 0 problems; harness 125 OK; `lint-docs.sh` clean; `npm test` 798 node and 382 component tests. Throwaway `ocupilot-ci`, recreated from the tree before and again after the review patches: each full sweep 100 classes, 922 tests, 0 failed; each `smoke.sh` 19 of 19; torn down after. Mutations: the two rework-pass blocks under Verification. The implement subagent sent three throwaway runner calls in one message (runs 17-19); the runner recorded no overlap.
 
-**Residual risks.** The read tool filters and sorts at most 200 fetched rows where the screen uses 1,000 (intent Row cap; `truncated` signals it). The shell privilege and namespace reads evaluate the job's frozen `$ROLES` while the dispatcher checks current grants, so they can disagree after a mid-turn role change. Both are recorded as by-design in the triage log.
-
-**For the lead (Rule 20 candidates, decided in planning and not written to the spine):**
-
-- Conventions › Tool naming: the wire spelling replaces dots with underscores, because the provider's tool-name grammar refuses dots.
-- The harvested bounded-where guard lives in `Kernel/State/Base.cls`, not `Screen/Tool/`, because `check_state_package_isolation` refuses a State class naming `Screen`.
-- The emitted schema moves `maxLength` into the property's description, so the validator's subset and the harvested verbatim subset differ by that one keyword.
+**Residual risks.** A read tool call without `maxRows` reads up to 1,001 rows, and a `rowGet` read issues one detail call per row, as the screen does (AD-36). An error-tool call naming a namespace the account cannot read answers `AUTH.NOPRIVILEGE` naming its database pair where the route answers 404.

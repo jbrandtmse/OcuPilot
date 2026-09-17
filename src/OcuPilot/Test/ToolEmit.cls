@@ -1,8 +1,8 @@
 /// <p>What a provider request advertises and what a tool is asked for (AD-5, AD-22, AD-24, AD-36,
 /// AD-39; Conventions, Tool naming): every live tool's wire name, emitted schema, result schema and
-/// description; the emission rule over a corpus of keywords; the read tools' row clamp and fault
+/// description; the emission rule over a corpus of keywords; the read tools' row bounds and fault
 /// pass-through over fixtures; and a sentence for every <code>TOOL.*</code> code.</p>
-/// <p><b>Live-safe</b>: it runs no live tool. The clamps run against
+/// <p><b>Live-safe</b>: it runs no live tool. The row bounds run against
 /// <class>OcuPilot.Test.PortFixture</class> and <class>OcuPilot.Test.ErrorReadStub</class>.</p>
 Class OcuPilot.Test.ToolEmit Extends %UnitTest.TestCase
 {
@@ -144,9 +144,13 @@ Method TestAToolTheProviderCannotTakeRefusesTheListing()
 
 /// <p>Every live tool's privilege pairs are read, and are its screen's: a descriptor-derived read
 /// tool's are its descriptor's, the application error tool's are its screen descriptor's, and a shell
-/// read declares none (AD-8).</p>
-/// <p>Mutation: delete <method>OcuPilot.Screen.Tool.ErrorRead.PrivilegePairs</method> -> this goes
-/// red.</p>
+/// read declares none (AD-8). The application error tool's arguments add the pairs its port requires
+/// for the namespace they name, database pairs included -- this namespace's, and another namespace's
+/// when a call names that one; no other live tool's arguments add any (AD-48).</p>
+/// <p>Mutations: delete <method>OcuPilot.Screen.Tool.ErrorRead.PrivilegePairs</method> -> this goes
+/// red. Delete <method>OcuPilot.Screen.Tool.ErrorRead.ArgumentPairs</method> -> this goes red.
+/// <method>OcuPilot.Screen.Tool.ErrorRead.ArgumentPairs</method> resolves <code>$Namespace</code>
+/// instead of the named namespace -> this goes red.</p>
 Method TestEveryLiveToolRequiresItsScreensPairs()
 {
     Do $$$AssertStatusOK($ClassMethod(..#REGISTRY, "ListTools", .tTools), "the live tools list")
@@ -155,19 +159,51 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
     While tIterator.%GetNext(.tIndex, .tTool) {
         Set tPairs = $ClassMethod(..#REGISTRY, "RequiredPairs", tTool, .tResolved)
         Do $$$AssertEquals(tResolved, 1, tTool.name _ ": its pairs are read")
+        Set tArgs = {}
+        If tTool.class = "OcuPilot.Screen.Tool.ErrorRead" Set tArgs = {"namespace": ($Namespace), "date": "09/16/2026"}
+        Set tAdded = $ClassMethod(..#REGISTRY, "ArgumentPairs", tTool, tArgs, .tAddedResolved)
+        Do $$$AssertEquals(tAddedResolved, 1, tTool.name _ ": the pairs its arguments add are read")
+        Set tExpectedAdded = ""
         If tTool.descriptor '= "" {
             Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs(tTool.descriptor, .tExpectedResolved)
         } ElseIf tTool.class = "OcuPilot.Screen.Tool.ErrorRead" {
             Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
             Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
-        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.Shell") {
+            Set tExpectedAdded = ##class(OcuPilot.Port.LogSourcePort).PairsFor(##class(OcuPilot.Port.LogSourcePort).#ERRORSKEY, $Namespace)
+            Do $$$AssertTrue(##class(OcuPilot.Kernel.Shell.Namespaces).GlobalDatabase($Namespace, .tResource, .tReadOnly) && $ListFind(tAdded, $ListBuild(tResource, "WRITE")), tTool.name _ ": its arguments add the named namespace's database pairs")
+            Set tOther = ..OtherNamespace(tResource, .tOtherResource)
+            Do $$$AssertTrue(tOther '= "", tTool.name _ ": this instance has a namespace whose globals database another resource guards")
+            If tOther '= "" {
+                Set tOtherAdded = $ClassMethod(..#REGISTRY, "ArgumentPairs", tTool, {"namespace": (tOther), "date": "09/16/2026"}, .tOtherResolved)
+                Do $$$AssertTrue(tOtherResolved && $ListFind(tOtherAdded, $ListBuild(tOtherResource, "WRITE")) && '$ListFind(tOtherAdded, $ListBuild(tResource, "WRITE")), tTool.name _ ": a call naming " _ tOther _ " adds that namespace's database pairs, not this one's")
+            }
+        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Kernel.Shell.ReadTool") {
             Set tExpected = ""
         } Else {
             Do $$$AssertTrue(0, tTool.name _ ": a live tool of a source this test does not know, " _ tTool.class)
             Continue
         }
         Do $$$AssertEquals(tPairs, tExpected, tTool.name _ ": requires exactly its screen's pairs")
+        Do $$$AssertEquals(tAdded, tExpectedAdded, tTool.name _ ": and exactly the pairs its arguments add")
     }
+}
+
+/// <p>A namespace other than <code>$Namespace</code> whose globals database a resource other than
+/// <var>pResource</var> guards, with that resource in <var>pOtherResource</var>, or <code>""</code>
+/// when the instance has none.</p>
+Method OtherNamespace(pResource As %String, Output pOtherResource As %String) As %String
+{
+    Set pOtherResource = ""
+    If $$$ISERR(##class(OcuPilot.Kernel.Shell.Namespaces).NamespaceNames(.tNames)) Quit ""
+    For tI = 1:1:$ListLength(tNames) {
+        Set tName = $List(tNames, tI)
+        If ($Extract(tName) = "^") || (tName = $Namespace) Continue
+        If '##class(OcuPilot.Kernel.Shell.Namespaces).GlobalDatabase(tName, .tOtherResource, .tReadOnly) Continue
+        If tOtherResource = pResource Continue
+        Set pOtherResource = tOtherResource
+        Quit
+    }
+    Quit $Select(pOtherResource '= "": tName, 1: "")
 }
 
 /// <p>The emission corpus -- each keyword outside the subset refuses a schema naming it, at the top
@@ -197,21 +233,33 @@ Method TestTheEmissionCorpus()
     Do $$$AssertEquals(tSchema.%ToJSON(), tBefore, "and the declared schema is unchanged")
 }
 
-/// <p>Row cap -- the read tool asks its executor for the smaller of the model's
-/// <code>maxRows</code> and the cap, so the port is asked for at most one row more than the cap.</p>
-/// <p>Mutation: <method>OcuPilot.Screen.Tool.Read.View</method> passes the model's
-/// <code>maxRows</code> -> this goes red.</p>
-Method TestTheReadToolClampsMaxRowsToTheCap()
+/// <p>Row cap (AD-36) -- the read tool asks its executor for the rows the screen reads, the smaller
+/// of the model's <code>maxRows</code> and the read's own cap, so the port is asked for one row more
+/// than that; the filter runs over those rows, and the result is then cut to the context cap. Over
+/// eight rows under a context cap of three, a filter matching only the eighth row finds it.</p>
+/// <p>Mutation: <method>OcuPilot.Screen.Tool.Read.View</method> bounds the read by the context cap
+/// -> this goes red.</p>
+Method TestTheReadToolReadsTheScreensRowsThenNarrows()
 {
-    For tCase = "500|201", "|201", "5|6" {
+    Set tCap = ##class(OcuPilot.Screen.Read).#DEFAULTMAXROWS
+    For tCase = "500|501", "|" _ (tCap + 1), (tCap * 5) _ "|" _ (tCap + 1), "5|6" {
         Do ##class(OcuPilot.Test.EndpointFixture).Clear()
         Do ..ArmRows()
         Set tArgs = {}
         If $Piece(tCase, "|", 1) '= "" Do tArgs.%Set("maxRows", +$Piece(tCase, "|", 1), "number")
-        Set tSC = ##class(OcuPilot.Test.Read.ToolFixture).View(..#CANNED, tArgs, 200, .tView, .tHttp, .tFault)
+        Set tSC = ##class(OcuPilot.Test.Read.ToolFixture).View(..#CANNED, tArgs, 3, .tView, .tHttp, .tFault)
         Do $$$AssertStatusOK(tSC, tArgs.%ToJSON() _ ": the view runs")
         Do $$$AssertEquals(##class(OcuPilot.Test.EndpointFixture).Recorded("maxRows"), $Piece(tCase, "|", 2), tArgs.%ToJSON() _ ": the port is asked for " _ $Piece(tCase, "|", 2) _ " rows")
+        Do $$$AssertTrue($IsObject(tView), tArgs.%ToJSON() _ ": the view answers a result")
+        If $IsObject(tView) Do $$$AssertEquals(tView.rows.%Size() _ "|" _ tView.truncated, "3|1", tArgs.%ToJSON() _ ": and the result is cut to the context cap and marked")
     }
+    Do ##class(OcuPilot.Test.EndpointFixture).Clear()
+    Do ..ArmRows()
+    Set tSC = ##class(OcuPilot.Test.Read.ToolFixture).View(..#CANNED, {"filter": "csp/h"}, 3, .tView, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the filtered view runs")
+    Do $$$AssertTrue($IsObject(tView), "the filtered view answers a result")
+    If '$IsObject(tView) Quit
+    Do $$$AssertEquals(tView.rows.%Size() _ "|" _ tView.rows.%Get(0).Name _ "|" _ tView.truncated, "1|/csp/h|0", "the filter finds the eighth row, past the context cap, and nothing was cut")
 }
 
 /// <p>Tool fault -- the read tool answers the executor's own HTTP status and fault, and a refused

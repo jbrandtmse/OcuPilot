@@ -276,17 +276,23 @@ Method TestTheLeaseAndTheWallClockAbandonTheTurn()
     Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 0, "and neither turn called the provider")
 }
 
-/// <p>The token spend is checked at the boundary after the call that reached it, and the error
-/// names the last step written.</p>
+/// <p>The token spend is checked at the boundary after the call that reached it -- the one before
+/// that reply's first tool call -- and the error names the last step written. The definition allows
+/// one iteration, so a stop there is kept rather than read as the iteration cap.</p>
+/// <p>Mutations: <method>OcuPilot.Kernel.Agent.Loop.AnswerTools</method> runs no boundary before a
+/// reply's first call -> this goes red, a tool step being written first.
+/// <method>OcuPilot.Kernel.Agent.Loop.Run</method> ignores the state <method>OcuPilot.Kernel.Agent.Loop.AnswerTools</method>
+/// hands back -> this goes red, the turn completing at the iteration cap.</p>
 Method TestTheTokenLimitAbandonsAtTheNextBoundary()
 {
-    Set tId = ..Definition()
+    Set tId = ..Definition(1)
     Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..Reply("tool_use", "", 1, 3))
     Set tKey = ..Reserve(tId)
     Do ..Run(tKey, tId, .tOutcome)
-    Do $$$AssertEquals(tOutcome("state") _ "|" _ tOutcome("code"), "abandoned|TURN.LIMIT.TOKENS", "the turn is abandoned for tokens")
+    Do $$$AssertEquals(tOutcome("state") _ "|" _ tOutcome("code") _ "|" _ tOutcome("limit"), "abandoned|TURN.LIMIT.TOKENS|", "the turn is abandoned for tokens, not completed at its one-iteration cap")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 1, "after the one call that spent them")
-    Do $$$AssertEquals(tOutcome("errorSeq"), 2, "naming the tool step the turn stopped after")
+    Do $$$AssertEquals(tOutcome("errorSeq"), 1, "naming the model step, before any tool step was written")
+    Do $$$AssertEquals(##class(OcuPilot.Test.TurnFixture).StepCount(tKey), 1, "and no tool step was written")
     Do $$$AssertEquals(##class(OcuPilot.Test.TurnFixture).Field(tKey, "InputTokens"), 3, "and the spend is on the row")
     Do ##class(OcuPilot.Kernel.State.Turn).GuardedView(tKey, $Username, .tFound, .tView)
     Do $$$AssertEquals(tView.tokens.input _ "|" _ tView.tokens.output, "3|0", "and in the progress, input and output apart")

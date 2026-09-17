@@ -1,7 +1,7 @@
 /// <p><code>shell.privileges.read</code>: every area and built screen with whether the caller may
-/// reach it, as <method>OcuPilot.Api.Navigation.Payload</method> answers
+/// reach it, as <method>OcuPilot.Kernel.Shell.Navigation.Payload</method> builds it for
 /// <code>GET /api/ocupilot/navigation</code>, evaluated in the calling process (AD-8).</p>
-Class OcuPilot.Screen.Tool.ShellPrivileges Extends OcuPilot.Screen.Tool.Shell
+Class OcuPilot.Kernel.Shell.PrivilegesRead Extends OcuPilot.Kernel.Shell.ReadTool
 {
 
 Parameter TOOLNAME = "shell.privileges.read";
@@ -10,7 +10,7 @@ Parameter DESCRIPTION = "Read every area and screen of this portal, whether this
 
 ClassMethod Payload(Output pObject As %DynamicObject) As %Status
 {
-    Quit ##class(OcuPilot.Api.Navigation).Payload(.pObject)
+    Quit ##class(OcuPilot.Kernel.Shell.Navigation).Payload(.pObject)
 }
 
 /// <p><code>{areas}</code>, each area carrying its screens, and each area and screen carrying

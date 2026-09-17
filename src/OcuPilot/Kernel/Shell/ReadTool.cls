@@ -1,11 +1,10 @@
-/// <p>The base of the three shell read tools (AD-1, AD-36): each answers one shell handler's
-/// <code>Payload</code>, unchanged, in the calling process. A payload builds its body without
-/// writing to the response and without reading <code>%request</code>, so the tool and the route
-/// answer the same object.</p>
+/// <p>The base of the three shell read tools (AD-1, AD-36): each answers one shell read's
+/// <code>Payload</code> in this package, unchanged, in the calling process -- the object the
+/// shell's own route answers. A payload writes nothing and reads no <code>%request</code>.</p>
 /// <p>A shell read takes no arguments and declares no pairs of its own: what it reads is what the
 /// router's gate already admits the caller to read over HTTP, and each payload evaluates its own
 /// per-entry privileges in the calling process.</p>
-Class OcuPilot.Screen.Tool.Shell Extends OcuPilot.Screen.Tool.Base [ Abstract ]
+Class OcuPilot.Kernel.Shell.ReadTool Extends OcuPilot.Screen.Tool.Base [ Abstract ]
 {
 
 Parameter KIND = "read";
@@ -16,7 +15,7 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
     Quit {"type": "object", "properties": {}, "required": [], "additionalProperties": false}
 }
 
-/// <p>The handler payload this tool answers. Each shell tool names its own.</p>
+/// <p>The shell read payload this tool answers. Each shell tool names its own.</p>
 ClassMethod Payload(Output pObject As %DynamicObject) As %Status [ Abstract ]
 {
     Set pObject = ""

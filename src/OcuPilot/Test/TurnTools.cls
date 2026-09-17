@@ -1,7 +1,8 @@
 /// <p>The turn loop's tools, in process (AD-11, AD-22): every provider request advertises every
 /// registered tool, a registry that cannot list ends the turn before any provider call, several calls
-/// are answered in order in one message, and no tool result reaches the system prompt -- each
-/// observed on the requests <class>OcuPilot.Test.ProviderStub</class> recorded.</p>
+/// are answered in order in one message, the step boundary runs between two calls, and no tool result
+/// reaches the system prompt -- each observed on the requests <class>OcuPilot.Test.ProviderStub</class>
+/// recorded and on the turn's steps.</p>
 /// <p>Driven through <class>OcuPilot.Test.TurnLoopProbe</class>, with the shipped dispatcher or
 /// <class>OcuPilot.Test.ToolDispatchProbe</class> over the counting fixture tools. <b>Live-safe</b>:
 /// it spawns nothing and opens no socket; it writes probe agent definitions and turn rows in
@@ -158,8 +159,8 @@ Method TestAListingThatFailsEndsTheTurnBeforeAProviderCall()
 /// <p>Several calls -- one reply's three calls are answered by three <code>tool_result</code> blocks
 /// in the same order, in one user message holding no text block, and recorded as three tool steps
 /// under their dotted names.</p>
-/// <p>Mutation: <method>OcuPilot.Kernel.Agent.Dispatch.Answer</method> answers in reverse order ->
-/// this goes red.</p>
+/// <p>Mutation: <method>OcuPilot.Kernel.Agent.Loop.AnswerTools</method> puts each result ahead of the
+/// ones before it -> this goes red.</p>
 Method TestSeveralCallsAreAnsweredInOrderInOneMessage()
 {
     Do $ClassMethod(..#LOOP, "SetDispatchClass", ..#DISPATCH)
@@ -189,6 +190,33 @@ Method TestSeveralCallsAreAnsweredInOrderInOneMessage()
         Set tSteps = tSteps _ tStep.kind _ ":" _ tStep.name _ ":" _ tStep.status _ ";"
     }
     Do $$$AssertEquals(tSteps, "model:provider:ok;tool:probe.counter.read:ok;tool:probe_nosuch_read:error;tool:probe.counter.read:ok;model:provider:ok;", "three tool steps under their dotted names")
+}
+
+/// <p>Step boundary (AD-30) -- the kill switch turned on while a reply's first call is answered stops
+/// the turn at the boundary before its second call: the second call's tool never runs, no step is
+/// recorded for it, no further provider call is made, and the error names the first call's step.</p>
+/// <p>Mutation: <method>OcuPilot.Kernel.Agent.Loop.AnswerTools</method> runs no boundary before a
+/// call -> this goes red.</p>
+Method TestTheKillSwitchStopsTheTurnBetweenTwoCalls()
+{
+    Do $ClassMethod(..#LOOP, "SetDispatchClass", ..#DISPATCH)
+    Do $ClassMethod(..#LOOP, "SetLimitsClass", "OcuPilot.Kernel.Agent.Limits")
+    Do $ClassMethod(..#LOOP, "ForceKillSwitchAfterCalls", 1, "AGENT.KILLSWITCH.USER")
+    Set tCalls = [{"id": "toolu_1", "name": "probe_counter_read", "input": {"marker": "m1"}}, {"id": "toolu_2", "name": "probe_counter_read", "input": {"marker": "m2"}}]
+    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("looking", tCalls))
+    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("done"))
+    Set tKey = ..RunTurn(.tOutcome)
+    Do $$$AssertEquals(tOutcome("state") _ "|" _ tOutcome("code"), "stopped|AGENT.KILLSWITCH.USER", "the turn stops with the switch's code")
+    Do $$$AssertEquals($ClassMethod(..#STUB, "Calls"), 1, "with no further provider call")
+    Do $$$AssertEquals(##class(OcuPilot.Test.DispatchTool.Counter).Calls("probe.counter.read"), 1, "and the second call's tool never ran")
+    Do ##class(OcuPilot.Kernel.State.Turn).GuardedView(tKey, $Username, .tFound, .tView)
+    Set tSteps = ""
+    For tI = 0:1:tView.steps.%Size() - 1 {
+        Set tStep = tView.steps.%Get(tI)
+        Set tSteps = tSteps _ tStep.kind _ ":" _ tStep.name _ ":" _ tStep.status _ ";"
+    }
+    Do $$$AssertEquals(tSteps, "model:provider:ok;tool:probe.counter.read:ok;", "one tool step, the first call's")
+    Do $$$AssertEquals(tOutcome("errorSeq"), 2, "and the error names it")
 }
 
 /// <p>Prompt -- a tool result appears in the next request only inside its <code>tool_result</code>

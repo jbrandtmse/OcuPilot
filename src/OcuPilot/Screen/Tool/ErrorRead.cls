@@ -18,9 +18,9 @@
 /// <code>ErrorDetail</code> is reachable only from the detail route. A user reads that table on
 /// screen; the agent does not.</p>
 /// <p><b>It answers the one tool contract</b> (<class>OcuPilot.Screen.Tool.Base</class>): its pairs
-/// are its descriptor's, the dispatcher checks them against the caller's current grants, and the
-/// port's own per-namespace gate still decides whether the read may run (AD-8, AD-29). A port
-/// refusal reaches the caller as the port's own HTTP status and fault.</p>
+/// are its descriptor's plus the named namespace's, the dispatcher checks both against the caller's
+/// current grants, and the port's own per-namespace gate still decides whether the read may run
+/// (AD-8, AD-29). A port refusal reaches the caller as the port's own HTTP status and fault.</p>
 Class OcuPilot.Screen.Tool.ErrorRead Extends OcuPilot.Screen.Tool.Base
 {
 
@@ -80,6 +80,19 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
 ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boolean) As %List
 {
     Quit ##class(OcuPilot.Screen.Gate).RequiredPairs(..#DESCRIPTORCLASS, .pResolved)
+}
+
+/// <p>What a call naming <var>pArgs</var>'s <code>namespace</code> requires beyond
+/// <method>PrivilegePairs</method>: the pairs <method>OcuPilot.Port.LogSourcePort.PairsFor</method>
+/// answers for that namespace, the database pairs included, so the dispatcher checks them against
+/// the caller's current grants before the port runs (AD-8, AD-31, AD-48).</p>
+/// <p>A namespace whose requirement the instance cannot resolve adds no pair here, and is not
+/// admitted by that: the port refuses it by its own enumeration and gate before it reads
+/// anything.</p>
+ClassMethod ArgumentPairs(pDescriptor As %String = "", pArgs As %DynamicObject, Output pResolved As %Boolean) As %List
+{
+    Set pResolved = 1
+    Quit ##class(OcuPilot.Port.LogSourcePort).PairsFor(##class(OcuPilot.Port.LogSourcePort).#ERRORSKEY, pArgs.%Get("namespace"))
 }
 
 /// <p>The result <method>View</method> answers: <code>{fields, rows, truncated}</code>, the fields

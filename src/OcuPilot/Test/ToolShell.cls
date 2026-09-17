@@ -21,7 +21,7 @@ Method OnAfterOneTest() As %Status
 /// <p>Shell reads -- each shell tool, called through the registry with <code>{}</code>, answers 200
 /// and exactly the object its handler's payload builds, and that object conforms to the tool's result
 /// schema.</p>
-/// <p>Mutation: <class>OcuPilot.Screen.Tool.ShellNamespaces</class> drops <code>writable</code> from
+/// <p>Mutation: <class>OcuPilot.Kernel.Shell.NamespacesRead</class> drops <code>writable</code> from
 /// the payload it answers -> this goes red.</p>
 Method TestEachShellToolAnswersItsHandlersPayload()
 {

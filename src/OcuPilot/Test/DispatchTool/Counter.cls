@@ -8,7 +8,9 @@
 /// <code>rows</code> when <code>rows</code> is also given. Input <code>throw</code> 1 makes the view
 /// throw, and <code>empty</code> 1 makes it answer success with no result. An armed fault
 /// (<method>ArmFault</method>) answers an error with that fault instead. Its pairs are two probe
-/// pairs, or unresolved once <method>ArmUnresolvedPairs</method> is called.</p>
+/// pairs, or unresolved once <method>ArmUnresolvedPairs</method> is called; input <code>scope</code>
+/// adds the pair <code>OcuPilotProbeScope&lt;scope&gt;:WRITE</code>, unresolved once
+/// <method>ArmUnresolvedArgumentPairs</method> is called.</p>
 /// <p>State lives in <code>^||OcuPilotDispatchTool</code>; <method>Clear</method> forgets it.</p>
 Class OcuPilot.Test.DispatchTool.Counter Extends OcuPilot.Screen.Tool.Base [ Abstract ]
 {
@@ -47,12 +49,19 @@ ClassMethod ArmUnresolvedPairs()
     Set ^||OcuPilotDispatchTool("unresolved") = 1
 }
 
+/// <p>Answer every call's argument pairs as unresolved.</p>
+ClassMethod ArmUnresolvedArgumentPairs()
+{
+    Set ^||OcuPilotDispatchTool("unresolvedArguments") = 1
+}
+
 ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
 {
     Quit {
         "type": "object",
         "properties": {
             "marker": {"type": "string", "maxLength": 64, "description": "Echoed in the result."},
+            "scope": {"type": "string", "maxLength": 32, "description": "A scope whose probe pair the call also requires."},
             "rows": {"type": "integer", "minimum": 0, "maximum": 5000, "description": "Rows to answer."},
             "width": {"type": "integer", "minimum": 0, "maximum": 100000, "description": "Characters per row."},
             "blob": {"type": "integer", "minimum": 0, "maximum": 1000000, "description": "Characters of the result's text."},
@@ -92,6 +101,17 @@ ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boo
         Set tPairs = tPairs _ $ListBuild($ListBuild($Piece(tPair, ":", 1), $Piece(tPair, ":", 2)))
     }
     Quit tPairs
+}
+
+ClassMethod ArgumentPairs(pDescriptor As %String = "", pArgs As %DynamicObject, Output pResolved As %Boolean) As %List
+{
+    If $Get(^||OcuPilotDispatchTool("unresolvedArguments")) {
+        Set pResolved = 0
+        Quit ""
+    }
+    Set pResolved = 1
+    If pArgs.%Get("scope") = "" Quit ""
+    Quit $ListBuild($ListBuild("OcuPilotProbeScope" _ pArgs.%Get("scope"), "WRITE"))
 }
 
 ClassMethod View(pDescriptor As %String, pArgs As %DynamicAbstractObject, pContextCap As %Integer, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status

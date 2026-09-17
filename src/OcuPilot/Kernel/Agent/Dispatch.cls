@@ -16,6 +16,8 @@
 /// cannot be read are <code>TOOL.UNAVAILABLE</code>;</li>
 /// <li>the arguments against the tool's input schema -- <code>TOOL.ARGUMENTS</code> with
 /// <code>detail.problem</code>;</li>
+/// <li>the pairs the arguments add (a namespace a read names, for instance), against the same
+/// current grants and answered the same way;</li>
 /// <li>the tool's view, in this process, through
 /// <method>OcuPilot.Screen.Tool.Registry.InvokeTool</method> -- a fault answers its own code and
 /// detail, and one at HTTP 500 or above is also logged with the view's status.</li>
@@ -195,18 +197,9 @@ ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %Strin
             Do ..LogFault("turn " _ pKey _ ": the privilege pairs of " _ pName _ " could not be read", $$$ERROR($$$GeneralError, "unresolved pairs"), tUnavailable)
             Quit
         }
-        Set tFailedPair = ""
-        For tI = 1:1:$ListLength(tPairs) {
-            Set tPair = $List(tPairs, tI)
-            If '..HoldsPair(pUser, $List(tPair, 1), $List(tPair, 2)) {
-                Set tFailedPair = $List(tPair, 1) _ ":" _ $List(tPair, 2)
-                Quit
-            }
-        }
+        Set tFailedPair = ..MissingPair(pUser, tPairs)
         If tFailedPair '= "" {
-            Set tDetail = {}
-            Do tDetail.%Set("failedPair", tFailedPair, "string")
-            Set pContent = ..ErrorContent(##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE, tDetail)
+            Set pContent = ..DeniedContent(tFailedPair)
             Quit
         }
 
@@ -215,6 +208,17 @@ ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %Strin
             Set tDetail = {}
             Do tDetail.%Set("problem", tProblem, "string")
             Set pContent = ..ErrorContent(##class(OcuPilot.Api.Error).#TOOLARGUMENTS, tDetail)
+            Quit
+        }
+
+        Set tArgumentPairs = $ClassMethod(tRegistry, "ArgumentPairs", tTool, tInput, .tResolved)
+        If 'tResolved {
+            Do ..LogFault("turn " _ pKey _ ": the privilege pairs the arguments of " _ pName _ " add could not be read", $$$ERROR($$$GeneralError, "unresolved argument pairs"), tUnavailable)
+            Quit
+        }
+        Set tFailedPair = ..MissingPair(pUser, tArgumentPairs)
+        If tFailedPair '= "" {
+            Set pContent = ..DeniedContent(tFailedPair)
             Quit
         }
 
@@ -244,6 +248,31 @@ ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %Strin
         Do ..LogFault("turn " _ pKey _ ": a tool call failed inside the dispatcher", ex.AsStatus(), tUnavailable)
     }
     Quit tIsError
+}
+
+/// <p>The first pair in <var>pPairs</var>, spelled <code>resource:permission</code>, that
+/// <var>pUser</var>'s current grants do not hold (<method>HoldsPair</method>), or <code>""</code>
+/// when they hold every one.</p>
+ClassMethod MissingPair(pUser As %String, pPairs As %List) As %String [ Private ]
+{
+    Set tFailedPair = ""
+    For tI = 1:1:$ListLength(pPairs) {
+        Set tPair = $List(pPairs, tI)
+        If '..HoldsPair(pUser, $List(tPair, 1), $List(tPair, 2)) {
+            Set tFailedPair = $List(tPair, 1) _ ":" _ $List(tPair, 2)
+            Quit
+        }
+    }
+    Quit tFailedPair
+}
+
+/// <p>The content of a pair refusal: <code>AUTH.NOPRIVILEGE</code> naming
+/// <var>pFailedPair</var> as <code>detail.failedPair</code> (AD-8).</p>
+ClassMethod DeniedContent(pFailedPair As %String) As %String [ Private ]
+{
+    Set tDetail = {}
+    Do tDetail.%Set("failedPair", pFailedPair, "string")
+    Quit ..ErrorContent(##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE, tDetail)
 }
 
 /// <p>The content of an error <code>tool_result</code>: <code>{code}</code>, plus

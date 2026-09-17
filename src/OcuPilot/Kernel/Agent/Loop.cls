@@ -5,11 +5,12 @@
 /// tool call through <method>DispatchTools</method>, writes progress steps as it goes, and stops at
 /// the first step boundary that says so. The system prompt is the built-in one or the definition's
 /// override, whole; no tool result is ever joined to it (AD-11).</p>
-/// <p><b>The boundary</b> runs before every provider call, in this order: the stop flag, the
-/// sign-out flag, the kill switch (<class>OcuPilot.Kernel.Restraint</class>, whose code is recorded
-/// as given), enforced read-only against the snapshot the turn started with, the user's current
-/// grants over the resource list the handler passed, the poll lease, the wall clock and the token
-/// spend. Every one of them is a live read; nothing is cached for the length of the turn.</p>
+/// <p><b>The boundary</b> runs before every provider call and before every tool call (AD-30: between
+/// every step), in this order: the stop flag, the sign-out flag, the kill switch
+/// (<class>OcuPilot.Kernel.Restraint</class>, whose code is recorded as given), enforced read-only
+/// against the snapshot the turn started with, the user's current grants over the resource list the
+/// handler passed, the poll lease, the wall clock and the token spend. Every one of them is a live
+/// read; nothing is cached for the length of the turn.</p>
 /// <p><b>Caller contract:</b> the caller is the turn's job, has begun the turn
 /// (<method>OcuPilot.Kernel.State.Turn.GuardedBegin</method>), and finishes it with the outcome this
 /// answers. Not called from an escalated frame (AD-9).</p>
@@ -52,9 +53,10 @@ ClassMethod Restraint(pUser As %String, Output pVerdict) As %Status
     Quit ##class(OcuPilot.Kernel.Restraint).Resolved(pUser, .pVerdict)
 }
 
-/// <p>Answer the model's tool calls. <var>pToolUses</var> is the reply's <code>tool_use</code>
-/// blocks; <var>pResults</var> comes back with one <code>tool_result</code> block per call and
-/// <var>pNames</var> with each call's canonical tool name, both in the same order, from
+/// <p>Answer tool calls. <var>pToolUses</var> holds <code>tool_use</code> blocks of the reply --
+/// <method>AnswerTools</method> passes one at a time; <var>pResults</var> comes back with one
+/// <code>tool_result</code> block per call and <var>pNames</var> with each call's canonical tool
+/// name, both in the same order, from
 /// <method>DispatchClass</method>'s <code>Answer</code> for <var>pUser</var> under
 /// <var>pDefinitionId</var> and the caps <var>pLimitsClass</var> declares.</p>
 ClassMethod DispatchTools(pKey As %String, pUser As %String, pDefinitionId As %String, pToolUses As %DynamicArray, pLimitsClass As %String, Output pResults As %DynamicArray, Output pNames As %DynamicArray) As %Status
@@ -133,8 +135,14 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
                 Set pOutcome("reply") = tResponse.Text
                 Quit
             }
-            Set tSC = ..AnswerTools(pKey, pUser, pDefinitionId, tResponse.Text, tToolUses, tLimits, .tMessages, tToolLog, .tLastSeq)
+            Set tSC = ..AnswerTools(pKey, pUser, pDefinitionId, tResponse.Text, tToolUses, tLimits, .tMessages, tToolLog, .tLastSeq, pReadOnly, pResources, pStartedSeconds, tInput + tOutput, .tState, .tCode)
             If $$$ISERR(tSC) Quit
+            If tState '= "" {
+                Set pOutcome("state") = tState
+                Set pOutcome("code") = tCode
+                Set pOutcome("errorSeq") = tLastSeq
+                Quit
+            }
             If tIterations >= tCap {
                 Set pOutcome("state") = ##class(OcuPilot.Kernel.State.Turn).#STATECOMPLETED
                 Set pOutcome("code") = ""
@@ -272,12 +280,19 @@ ClassMethod ToolUses(pJson As %String) As %DynamicArray
 }
 
 /// <p>Echo the model's reply back as an assistant message of blocks -- its text, then its
-/// <code>tool_use</code> blocks verbatim -- answer the calls through <method>DispatchTools</method>
-/// as one user message of <code>tool_result</code> blocks and nothing else, and record one
-/// <code>tool</code> step per call under the tool's canonical name. <var>pToolLog</var> collects
-/// <code>{name, code}</code> for the fallback reply.</p>
-ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %String, pText As %String, pToolUses As %DynamicArray, pLimitsClass As %String, ByRef pMessages, pToolLog As %DynamicArray, ByRef pLastSeq As %Integer) As %Status
+/// <code>tool_use</code> blocks verbatim -- answer the calls one at a time through
+/// <method>DispatchTools</method> as one user message of <code>tool_result</code> blocks and nothing
+/// else, and record one <code>tool</code> step per call under the tool's canonical name.
+/// <var>pToolLog</var> collects <code>{name, code}</code> for the fallback reply.</p>
+/// <p><b>Each call is a step, and <method>Boundary</method> runs before it</b> (AD-30, AD-31), with
+/// <var>pReadOnly</var>, <var>pResources</var>, <var>pStartedSeconds</var> and <var>pTokens</var> as
+/// <method>Run</method> holds them. When it stops the turn, no later call runs and
+/// <var>pState</var> and <var>pCode</var> carry its answer; otherwise both are
+/// <code>""</code>.</p>
+ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %String, pText As %String, pToolUses As %DynamicArray, pLimitsClass As %String, ByRef pMessages, pToolLog As %DynamicArray, ByRef pLastSeq As %Integer, pReadOnly As %Boolean, pResources As %String, pStartedSeconds As %Integer, pTokens As %Integer, Output pState As %String, Output pCode As %String) As %Status
 {
+    Set pState = ""
+    Set pCode = ""
     Set tAssistant = []
     If $ZStrip(pText, "<>WC") '= "" {
         Set tTextBlock = {}
@@ -293,11 +308,20 @@ ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %Str
     Set pMessages(pMessages, "role") = "assistant"
     Set pMessages(pMessages, "blocks") = tAssistant.%ToJSON()
 
-    Set tSC = ..DispatchTools(pKey, pUser, pDefinitionId, pToolUses, pLimitsClass, .tResults, .tNames)
-    If $$$ISERR(tSC) Quit tSC
+    Set tSC = $$$OK
+    Set tAnswered = []
     For tI = 0:1:pToolUses.%Size() - 1 {
-        Set tResult = tResults.%Get(tI)
-        Set tName = tNames.%Get(tI)
+        If ..Boundary(pKey, pUser, pReadOnly, pResources, pStartedSeconds, pTokens, .tStopState, .tStopCode) {
+            Set pState = tStopState
+            Set pCode = tStopCode
+            Quit
+        }
+        Set tCall = []
+        Do tCall.%Push(pToolUses.%Get(tI))
+        Set tSC = ..DispatchTools(pKey, pUser, pDefinitionId, tCall, pLimitsClass, .tResults, .tNames)
+        If $$$ISERR(tSC) Quit
+        Set tResult = tResults.%Get(0)
+        Set tName = tNames.%Get(0)
         Set tIsError = $IsObject(tResult) && tResult."is_error"
         Set tCode = ""
         If tIsError {
@@ -314,11 +338,13 @@ ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %Str
         Do tEntry.%Set("name", tName, "string")
         Do tEntry.%Set("code", tCode, "string")
         Do pToolLog.%Push(tEntry)
+        Do tAnswered.%Push(tResult)
     }
     If $$$ISERR(tSC) Quit tSC
+    If pState '= "" Quit $$$OK
     Set pMessages = pMessages + 1
     Set pMessages(pMessages, "role") = "user"
-    Set pMessages(pMessages, "blocks") = tResults.%ToJSON()
+    Set pMessages(pMessages, "blocks") = tAnswered.%ToJSON()
     Quit $$$OK
 }
 

@@ -2,7 +2,8 @@
 /// kind, the tool array a provider request advertises, whether a set of arguments satisfies a
 /// tool's input schema, and the one call into a tool, <method>InvokeTool</method>. Its one caller is
 /// <class>OcuPilot.Kernel.Agent.Dispatch</class>, which checks the governance gate, the restraint
-/// verdict, the privilege pairs and the arguments first; nothing here checks any of them.</p>
+/// verdict, the privilege pairs, the arguments and the pairs the arguments add first; nothing here
+/// checks any of them.</p>
 /// <p><b>Wire names.</b> A provider's tool-name grammar refuses dots, so a tool is advertised under
 /// <method>WireName</method>, every dot an underscore, and resolved by comparing wire names
 /// (<method>ResolveWire</method>). The dotted name stays canonical everywhere else; a canonical
@@ -364,11 +365,33 @@ ClassMethod RequiredPairs(pTool As %DynamicObject, Output pResolved As %Boolean)
     Quit tPairs
 }
 
+/// <p>The pairs <var>pTool</var> requires for a call with arguments <var>pArgs</var> beyond
+/// <method>RequiredPairs</method>, as its class answers them for its descriptor.
+/// <var>pResolved</var> is 0 when they could not be read, and a caller must then refuse.
+/// <b>Caller contract:</b> <var>pArgs</var> has passed <method>ValidateArguments</method> against
+/// the tool's input schema.</p>
+ClassMethod ArgumentPairs(pTool As %DynamicObject, pArgs As %DynamicObject, Output pResolved As %Boolean) As %List
+{
+    Set pResolved = 0
+    Set tPairs = ""
+    Try {
+        Set tPairs = $ClassMethod(pTool.%Get("class"), "ArgumentPairs", pTool.%Get("descriptor"), pArgs, .pResolved)
+        If '$ListValid(tPairs) {
+            Set tPairs = ""
+            Set pResolved = 0
+        }
+    } Catch {
+        Set tPairs = ""
+        Set pResolved = 0
+    }
+    Quit tPairs
+}
+
 /// <p>Call <var>pTool</var>'s view with <var>pArgs</var> under the row cap <var>pContextCap</var>,
 /// in the calling process (AD-1). Outputs are the view's (<method>OcuPilot.Screen.Tool.Base.View</method>);
 /// a view that throws answers an error status with <var>pFault</var> <code>""</code>.</p>
 /// <p><b>Caller contract:</b> <class>OcuPilot.Kernel.Agent.Dispatch</class> alone, after its gate
-/// point, restraint, pair and argument checks.</p>
+/// point, restraint, pair, argument and argument-pair checks.</p>
 ClassMethod InvokeTool(pTool As %DynamicObject, pArgs As %DynamicAbstractObject, pContextCap As %Integer, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
     Set tSC = $$$OK

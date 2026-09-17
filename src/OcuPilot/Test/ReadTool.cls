@@ -95,7 +95,7 @@ Method TestTheRegistryListsDescriptorReadsAndInheritedKinds()
     }
     Do $$$AssertEquals(tProduction.%Size(), 11, "the production registry holds eleven tools, fixtures excluded")
     Do $$$AssertEquals(tNames, "agent.definitions.read,logs.applicationerrors.read,logs.audit.read,osmgmt.processes.read,permissions.users.read,security.ssl.read,shell.instance.read,shell.namespaces.read,shell.privileges.read,tasks.schedule.read,webapp.list.read", "the Definitions list's read tool -- the first over OcuPilot's own state (AD-36) -- the application error log's own class tool, the audit database, processes, users and SSL/TLS lists' read tools, the three shell reads, and the task schedule and web applications lists' read tools")
-    For tPair = $ListBuild("shell.instance.read", "OcuPilot.Screen.Tool.ShellInstance"), $ListBuild("shell.namespaces.read", "OcuPilot.Screen.Tool.ShellNamespaces"), $ListBuild("shell.privileges.read", "OcuPilot.Screen.Tool.ShellPrivileges") {
+    For tPair = $ListBuild("shell.instance.read", "OcuPilot.Kernel.Shell.InstanceRead"), $ListBuild("shell.namespaces.read", "OcuPilot.Kernel.Shell.NamespacesRead"), $ListBuild("shell.privileges.read", "OcuPilot.Kernel.Shell.PrivilegesRead") {
         Set tName = $List(tPair, 1)
         If '$Data(tProductionByName(tName)) Continue
         Do $$$AssertEquals(tProductionByName(tName).class _ "|" _ tProductionByName(tName).descriptor _ "|" _ tProductionByName(tName).kind, $List(tPair, 2) _ "||read", tName _ " is a read tool with a class of its own and no descriptor")
@@ -693,15 +693,19 @@ Method TestAFetchTruncationSurvivesTheView()
     Do $$$AssertEquals(tView.truncated, 1, "reported truncated because the read was")
 }
 
-/// <p>A <code>maxRows</code> above the context cap reads the cap, and the view is truncated because
-/// the read held more rows.</p>
+/// <p>A <code>maxRows</code> above the context cap reads <code>maxRows</code>, so the read answers all
+/// eight rows uncut; the context cap alone keeps three of them, and that cut alone reports the view
+/// truncated.</p>
+/// <p>Mutation: <method>OcuPilot.Screen.Tool.Read.View</method> sets <code>truncated</code> from the
+/// read alone -> this goes red.</p>
 Method TestAContextCapCutAloneIsTruncated()
 {
     Do ..ArmRows()
     Set tSC = ##class(OcuPilot.Test.Read.ToolFixture).View(..#CANNED, {"maxRows": 50}, 3, .tView, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "the view runs")
+    Do $$$AssertEquals(##class(OcuPilot.Test.EndpointFixture).Recorded("maxRows"), 51, "the read is asked for maxRows, so its eight rows come back uncut")
     Do $$$AssertEquals(tView.rows.%Size(), 3, "the context cap keeps three of the eight rows")
-    Do $$$AssertEquals(tView.truncated, 1, "reported truncated, because the read was cut at the cap")
+    Do $$$AssertEquals(tView.truncated, 1, "reported truncated, because the context cap cut rows")
 }
 
 /// <p>A view that neither the read's cap nor the context cap cuts is not truncated.</p>

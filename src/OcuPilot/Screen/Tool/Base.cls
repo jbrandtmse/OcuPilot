@@ -2,7 +2,8 @@
 /// (DW-295). A tool declares, at definition time, its name (<parameter>TOOLNAME</parameter>,
 /// <code>&lt;area&gt;.&lt;screen&gt;.&lt;verb&gt;</code> in lower case), its kind
 /// (<parameter>KIND</parameter>, <code>read</code> or <code>write</code>) and a description, and it
-/// answers its input schema, its result schema, its privilege pairs and its view. A concrete tool
+/// answers its input schema, its result schema, its privilege pairs -- declared, and any an argument
+/// adds -- and its view. A concrete tool
 /// whose nearest <parameter>KIND</parameter> is neither fails the build in
 /// <file>scripts/check-objectscript.py</file> and is refused by
 /// <method>OcuPilot.Screen.Tool.Registry.KindProblem</method> on the instance.</p>
@@ -11,7 +12,8 @@
 /// <p><b>A tool is called only through <method>OcuPilot.Screen.Tool.Registry.InvokeTool</method></b>,
 /// whose one caller is <class>OcuPilot.Kernel.Agent.Dispatch</class>. The dispatcher has already
 /// checked the governance gate, the restraint verdict for a write tool, the declared pairs against
-/// the caller's current grants and the arguments before <method>View</method> runs.</p>
+/// the caller's current grants, the arguments, and the pairs the arguments add before
+/// <method>View</method> runs.</p>
 /// <p><b>A tool never touches <code>%session</code>, <code>%request</code> or
 /// <code>$NAMESPACE</code>, and issues no HTTP request.</b> It runs in the caller's process with the
 /// caller's identity (AD-1), and anything it needs about the caller or the scope is handed to it as
@@ -61,6 +63,17 @@ ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boo
     Quit ""
 }
 
+/// <p>The pairs a call with arguments <var>pArgs</var> requires beyond
+/// <method>PrivilegePairs</method>, where the requirement depends on an argument -- a namespace a
+/// read names, for instance (AD-8, AD-48) -- in the same shape. <var>pArgs</var> is an object the
+/// input schema admits. <var>pResolved</var> is 1 only when the requirement was read; a call whose
+/// pairs cannot be read is refused. None, resolved, here.</p>
+ClassMethod ArgumentPairs(pDescriptor As %String = "", pArgs As %DynamicObject, Output pResolved As %Boolean) As %List
+{
+    Set pResolved = 1
+    Quit ""
+}
+
 /// <p>Answer the tool. <var>pArgs</var> is the model's input, <var>pContextCap</var> the most rows
 /// the result may carry (AD-24), a whole number above zero supplied by the caller.</p>
 /// <p>On success <var>pResult</var> is an object conforming to <method>ResultSchema</method>,
@@ -97,11 +110,11 @@ ClassMethod InternalRefusal(pDetail As %String, Output pHttpStatus As %Integer, 
     Quit $$$ERROR($$$GeneralError, pDetail)
 }
 
-/// <p>The most rows a view asks its source for: <var>pContextCap</var>, or the model's
+/// <p>The most rows a view asks its source for: <var>pCap</var>, or the model's
 /// <code>maxRows</code> in <var>pArgs</var> when that is a smaller whole number.</p>
-ClassMethod BoundedMaxRows(pArgs As %DynamicAbstractObject, pContextCap As %Integer) As %Integer
+ClassMethod BoundedMaxRows(pArgs As %DynamicAbstractObject, pCap As %Integer) As %Integer
 {
-    Set tMax = +pContextCap
+    Set tMax = +pCap
     If '$IsObject(pArgs) Quit tMax
     If pArgs.%GetTypeOf("maxRows") '= "number" Quit tMax
     Set tWanted = pArgs.%Get("maxRows")

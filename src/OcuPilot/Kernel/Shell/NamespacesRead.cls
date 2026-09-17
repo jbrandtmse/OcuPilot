@@ -1,7 +1,8 @@
 /// <p><code>shell.namespaces.read</code>: the namespaces the caller may read, as
-/// <method>OcuPilot.Api.Namespaces.Payload</method> answers <code>GET /api/ocupilot/namespaces</code>.
-/// In a turn job <code>scope</code> is the job's own namespace.</p>
-Class OcuPilot.Screen.Tool.ShellNamespaces Extends OcuPilot.Screen.Tool.Shell
+/// <method>OcuPilot.Kernel.Shell.Namespaces.Payload</method> builds them for
+/// <code>GET /api/ocupilot/namespaces</code>. In a turn job <code>scope</code> is the job's own
+/// namespace.</p>
+Class OcuPilot.Kernel.Shell.NamespacesRead Extends OcuPilot.Kernel.Shell.ReadTool
 {
 
 Parameter TOOLNAME = "shell.namespaces.read";
@@ -10,7 +11,7 @@ Parameter DESCRIPTION = "Read the namespaces this account may read on this insta
 
 ClassMethod Payload(Output pObject As %DynamicObject) As %Status
 {
-    Quit ##class(OcuPilot.Api.Namespaces).Payload(.pObject)
+    Quit ##class(OcuPilot.Kernel.Shell.Namespaces).Payload(.pObject)
 }
 
 /// <p><code>{scope, namespaces}</code>, each namespace <code>{name, writable}</code> plus

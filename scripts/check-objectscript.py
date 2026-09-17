@@ -159,8 +159,10 @@ prose into one checker.
 20. **Tool dispatch (AD-1, AD-22, Story 4.2).** Outside `Test/`, `InvokeTool` is named only in
     `Screen/Tool/Registry.cls`, which defines it, and `Kernel/Agent/Dispatch.cls`, its one caller;
     `%Net.HttpRequest` and an `/api/` literal appear nowhere under `Screen/Tool/`, under
-    `Kernel/Governance/` or in `Kernel/Agent/Dispatch.cls`; and `BeginCapture` or `%SYS.Capture`
-    appears only in `Port/AdminPort.cls`.
+    `Kernel/Shell/` (the shell reads and their tools), under `Kernel/Governance/` or in
+    `Kernel/Agent/Dispatch.cls`; a file under `Kernel/Shell/` names no `OcuPilot.Api.*` class but
+    the vocabulary class `OcuPilot.Api.Error`, because the handlers depend on the shell reads and
+    never the reverse; and `BeginCapture` or `%SYS.Capture` appears only in `Port/AdminPort.cls`.
 
 21. **Literal state SQL (AD-21, Story 4.2).** Under `Kernel/State/`, outside `Base.cls`, which
     defines the helpers, the SQL argument of every `Guarded*Where*` or `GuardedExecute*` call is a
@@ -898,8 +900,10 @@ INVOKE_TOOL_ALLOWED = frozenset(
     }
 )
 TOOL_HTTP_RE = re.compile(r"%Net\.HttpRequest|/api/", re.IGNORECASE)
-TOOL_HTTP_PREFIXES = ("src/OcuPilot/Screen/Tool/", "src/OcuPilot/Kernel/Governance/")
+TOOL_HTTP_PREFIXES = ("src/OcuPilot/Screen/Tool/", "src/OcuPilot/Kernel/Shell/", "src/OcuPilot/Kernel/Governance/")
 TOOL_HTTP_FILES = frozenset({"src/OcuPilot/Kernel/Agent/Dispatch.cls"})
+SHELL_PACKAGE_PREFIX = "src/OcuPilot/Kernel/Shell/"
+SHELL_API_REACH_RE = re.compile(r"OcuPilot\.Api\.(?!Error\b)\w+(?:\.\w+)*")
 CAPTURE_RE = re.compile(r"BeginCapture|%SYS\.Capture", re.IGNORECASE)
 CAPTURE_ALLOWED = frozenset({"src/OcuPilot/Port/AdminPort.cls"})
 
@@ -925,6 +929,14 @@ def check_tool_dispatch(problems: list[str]) -> None:
                     f"{rel}:{i}: an HTTP request or an '/api/' path on the tool dispatch path -- a "
                     f"tool runs in process and calls the management surface directly (AD-1)"
                 )
+            if rel.startswith(SHELL_PACKAGE_PREFIX):
+                found = SHELL_API_REACH_RE.search(raw)
+                if found is not None:
+                    problems.append(
+                        f"{rel}:{i}: {found.group(0)!r} is named under Kernel/Shell/ -- a handler "
+                        f"calls the shell reads, never the reverse, and OcuPilot.Api.Error is the "
+                        f"only API class a shell read names (dependency direction)"
+                    )
             if rel not in CAPTURE_ALLOWED and CAPTURE_RE.search(raw):
                 problems.append(
                     f"{rel}:{i}: an output capture outside {', '.join(sorted(CAPTURE_ALLOWED))} -- "
