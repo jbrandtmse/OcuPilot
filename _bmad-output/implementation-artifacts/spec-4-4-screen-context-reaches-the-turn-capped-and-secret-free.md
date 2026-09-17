@@ -2,7 +2,7 @@
 title: 'Story 4.4: Screen context on every turn, capped, with its toggle and chip'
 type: 'feature'
 created: '2026-09-16'
-status: 'blocked'
+status: 'draft'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
@@ -92,6 +92,8 @@ Pending re-plan.
 Pending re-plan.
 
 ## Spec Change Log
+
+- 2026-09-17, the orchestrator answered the plan halt's ten questions under the owner's standing autonomy instruction: the story splits (this story is the server side; the chip, toggle and paste warning are Story 4.11 after 4.5) and is retitled; toggle per user on the instance with the instance default as fallback; `contextRowCap` 1-1,000 default 200 on Switches, also bounding read tool results; 65,536 characters total by whole rows, 1,000 per field unless declared lower, U+2026 cut mark, `rowsSent`/`rowsAvailable`/`truncated`/`truncatedFields`; AD-24 amended to kernel-enforced bounds with the registry refusing a context field declared above the default (context fields only; Epic 6's criteria and parameter `maxLength` declarations are untouched); visible rows mean the filtered and sorted view cut to the cap; the leaves-the-instance classification per the amended Story 4.4 AC on the status read; context enters as a synthetic `screen.context` tool call and result (AD-11 rule 1), a model-issued call with that name refused as unknown; DW-399 reconciles both credential lists to the spine's Secrets row. The paste heuristic and its strings belong to Story 4.11. Re-plan from the amended ACs; the Intent gaps section is superseded.
 
 ## Review Triage Log
 
