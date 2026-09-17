@@ -731,7 +731,7 @@ ClassMethod CheckProcessDetails(ByRef pChecks, pAccessToken As %String) [ Privat
         Set tPid = ""
     }
     If tPid = "" {
-        Do ..Note(.pChecks, "processdetails", "fail", "the processes list answered no row to read a pid from")
+        Do ..Note(.pChecks, "processdetails", "fail", "the processes list answered no row with a Pid to read")
         Quit
     }
     Set tPath = tBase _ "/screens/" _ ..#PROCESSDETAILSTOOL _ "/read?maxRows=1&pid=" _ tPid

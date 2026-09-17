@@ -460,8 +460,8 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 
 ### AD-43 — Live data has one framework, and the proposal pause is part of it
 
-- **Binds:** FR-7, FR-14, AD-14; the six auto-refreshing screens EXPERIENCE.md `:561` enumerates
-- **Prevents:** six screens each implementing refresh, and the UX's "pause auto-refresh while a proposal is live" having no channel to travel on
+- **Binds:** FR-7, FR-14, AD-14; the seven auto-refreshing screens EXPERIENCE.md's Auto-refresh controls row enumerates
+- **Prevents:** seven screens each implementing refresh, and the UX's "pause auto-refresh while a proposal is live" having no channel to travel on
 - **Rule:** Auto-refresh is one shared framework, not a per-screen behavior: a screen declares in its descriptor whether it refreshes and its permitted rates, and the framework owns the timer, the persisted per-screen setting, the silent re-fetch, and preservation of sort, filter, selection and scroll. It refreshes through the same read as everything else (AD-36).
 
   **The set is seven, and EXPERIENCE.md's Auto-refresh controls row is the roster:** Processes, Process details, Databases, Database details, Task schedule, Task details, System usage (the owner-decided six of DW-175, plus Process details on 2026-09-17, whose classic page refreshes). This AD said "ten" until 2026-09-13, a count with no list behind it against an enumeration that names every member; the enumeration governs. A screen joins the set by declaring it in its descriptor and appearing in that roster, never by either alone.

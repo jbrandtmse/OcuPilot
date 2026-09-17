@@ -33,6 +33,17 @@ Method OnAfterOneTest() As %Status
     Quit $$$OK
 }
 
+/// <p><var>pObject</var>'s keys, in order, comma-separated.</p>
+ClassMethod KeysOf(pObject As %DynamicObject) As %String
+{
+    Set tKeys = ""
+    Set tIterator = pObject.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tValue) {
+        Set tKeys = tKeys _ $Select(tKeys = "": "", 1: ",") _ tKey
+    }
+    Quit tKeys
+}
+
 /// <p>Request <var>pTool</var>'s read at <var>pMaxRows</var>, with <var>pQuery</var> appended, as
 /// <code>_SYSTEM</code>. <var>pAnswer</var> is the parsed body, or <code>""</code> when it does not
 /// parse, which is a failed assertion on its own.</p>
@@ -104,8 +115,13 @@ Method TestTheDeclarationValidatesAndIsDeclaredAsProcessDetails()
 }
 
 /// <p>Matrix "Live process" -- this test process's own live <code>$Job</code> answers every
-/// declared field as a key, with <code>Pid</code> equal to it, <code>OpenDevices</code> an array,
-/// and no <code>Variables</code> or <code>CSPSessionID</code> key.</p>
+/// declared field with a vendor value, with <code>Pid</code> equal to it, <code>OpenDevices</code>
+/// an array, and no <code>Variables</code> or <code>CSPSessionID</code> key.</p>
+/// <p>The projection writes every declared field as a key, <code>null</code> when the vendor does not
+/// answer it, and the read seeds <code>Pid</code> from the criterion, so neither proves the vendor
+/// answered: a non-null value per field and <code>NameSpace</code> (vendor-only) do.</p>
+/// <p>Mutation: rename <code>ClientIPAddress</code> to <code>ClientIPAdress</code> throughout the
+/// descriptor -&gt; the non-null assertion for that field goes red.</p>
 Method TestALiveProcessReadsOverTheWire()
 {
     Set tPid = $Job
@@ -120,9 +136,11 @@ Method TestALiveProcessReadsOverTheWire()
     Do $$$AssertEquals(tRow.Pid, tPid, "Pid equals the pid asked for")
     Do $$$AssertEquals(tRow.%GetTypeOf("OpenDevices"), "array", "OpenDevices is an array")
 
+    Do $$$AssertEquals(tRow.NameSpace, $Namespace, "the vendor answers this test process's own namespace")
+
     Set tFieldIterator = $ClassMethod(..#DESCRIPTOR, "Read").fields.%GetIterator()
     While tFieldIterator.%GetNext(.tIndex, .tField) {
-        Do $$$AssertTrue(tRow.%IsDefined(tField), "declared field '" _ tField _ "' is a key of the live row")
+        Do $$$AssertNotEquals(tRow.%GetTypeOf(tField), "null", "declared field '" _ tField _ "' carries a vendor value on the live row")
     }
     Do $$$AssertEquals(tRow.%GetTypeOf("Variables"), "unassigned", "no Variables key reaches the row")
     Do $$$AssertEquals(tRow.%GetTypeOf("CSPSessionID"), "unassigned", "no CSPSessionID key reaches the row")
@@ -161,6 +179,7 @@ Method TestAnOverLongIdIsRefused()
     Do $$$AssertEquals(tStatus, 400, "refused")
     If tStatus '= 400 Quit
     Do $$$AssertEquals(tAnswer.code, "READ.CRITERION", "naming the criterion code")
+    Do $$$AssertTrue(tAnswer.reason [ "pid", "and naming pid: " _ tAnswer.reason)
 }
 
 /// <p>The integration AC -- the read tool, called in process with this test process's own live
@@ -169,8 +188,11 @@ Method TestAnOverLongIdIsRefused()
 /// <p><b>Field values are not compared whole</b>, unlike <class>OcuPilot.Test.TaskDetails</class>'s
 /// own integration AC: a task's properties are static between two reads, but this row is a live
 /// process's own metrics, and issuing the tool call and then the route's read in sequence advances
-/// counters like <code>CommandsExecuted</code> and <code>CPUTime</code> between them. The identity
-/// (<code>Pid</code>) and the field-key set are what "the same row" means here.</p>
+/// counters like <code>CommandsExecuted</code> and <code>CPUTime</code> between them, and the in-process
+/// tool reads this process while its port call runs in <code>%SYS</code>, so even
+/// <code>NameSpace</code> differs. The row's keys, in order, and its vendor-answered
+/// <code>UserName</code> are what "the same row" means here; <code>Pid</code> is seeded from the
+/// criterion on both paths.</p>
 Method TestTheReadToolAnswersTheSameRowAsTheRoute()
 {
     Set tPid = $Job
@@ -192,6 +214,9 @@ Method TestTheReadToolAnswersTheSameRowAsTheRoute()
     If (tView.rows.%Size() '= 1) || (tRoute.rows.%Size() '= 1) Quit
     Do $$$AssertEquals(tView.rows.%Get(0).Pid, tPid, "the tool's row names this test process's own Pid")
     Do $$$AssertEquals(tRoute.rows.%Get(0).Pid, tPid, "and so does the route's")
+    Do $$$AssertEquals(..KeysOf(tView.rows.%Get(0)), ..KeysOf(tRoute.rows.%Get(0)), "the tool's row carries the route row's keys, in order")
+    Do $$$AssertEquals(tRoute.rows.%Get(0).NameSpace, $Namespace, "the route's row is this test process's, by its vendor-answered namespace")
+    Do $$$AssertEquals(tView.rows.%Get(0).UserName, tRoute.rows.%Get(0).UserName, "and the tool's row names the same vendor-answered user")
     Do $$$AssertEquals(tView.rows.%Get(0).%GetTypeOf("Variables"), "unassigned", "the tool's one row carries no Variables key")
 }
 

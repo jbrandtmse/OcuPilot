@@ -112,6 +112,42 @@ Reads are `GET /api/ocupilot/screens/osmgmt.processdetails/read`. A stable pid: 
 - AC5: Given a principal lacking `%Admin_Manage:USE`, when it opens the deep link, then the denied view names that pair and no read is issued.
 - Integration: given the tool `osmgmt.processdetails.read` with the test's own `$J`, when called in process, then it answers the row the screen's read answers for the same pid over the declared fields, with no `Variables` key.
 
+### Review Findings
+
+Code review 2026-09-17 (full, `review_tier: full-opus`; Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor): 0 decision-needed, 9 patch (applied), 2 ledgered, 25 rejected.
+
+- [x] [Review][Patch] (med) Live-row and integration assertions could not fail: `Read.Project` writes every declared field (null when absent) and `Read` seeds `Pid` from the criterion, so a misspelled vendor field shipped blank with every test green -- now non-null per field, route `NameSpace` = `$Namespace`, and tool/route key order plus `UserName` compared [src/OcuPilot/Test/ProcessDetails.cls]
+- [x] [Review][Patch] (low) A process that exits while open, then answers under its reused pid, highlighted every field as changed -- highlights reset on zero rows, with a component test [ui/src/app/areas/os-management/process-details.page.ts]
+- [x] [Review][Patch] (low) Component AC4 did not assert no refusal and no fields [process-details.page.spec.ts]
+- [x] [Review][Patch] (low) Fault test named Retry but never asserted it [process-details.page.spec.ts]
+- [x] [Review][Patch] (low) Pid-switch test did not assert the re-read carries `pid=5151` [process-details.page.spec.ts]
+- [x] [Review][Patch] (low) Stale mutation note (`parentCriteria` takes no pid) and a manual refresh titled as a tick [process-details.page.spec.ts]
+- [x] [Review][Patch] (low) Bad id test did not assert the refusal names `pid` [src/OcuPilot/Test/ProcessDetails.cls]
+- [x] [Review][Patch] (low) Smoke failure text said "no row" for a row without `Pid` [src/OcuPilot/Install/Smoke.cls]
+- [x] [Review][Patch] (low) Doc comments narrated the move's history [ui/src/app/core/detail-highlights.ts, ui/tools/detail-highlights.test.mjs]
+- [x] [Review][Defer] (low) AC5 has no browser leg [ui/browser/processes.browser-spec.mjs] -- deferred: DW-1049 wontfix-accepted
+- [x] [Review][Defer] (low) Spine AD-43 Binds/Prevents still say six; AD-29 names ProcessQuery for the Manage check [ARCHITECTURE-SPINE.md:367,463] -- deferred: DW-1050 wontfix-accepted, out of footprint
+
+Rejected:
+
+- false: spec bookkeeping (Auto Run Result counts, `followup_review_recommended`, `baseline_revision`, files list, "on the throwaway" wording, prose) -- fixes edit the spec under review.
+- false: `Test.Navigation` never run -- run here, 11/11 green.
+- false: epics.md AC1 still says "dashboard meters" -- the gate defined them as the value groups.
+- false: extra vendor keys could leak -- `Project` emits only declared fields.
+- false: the `%DB_IRISSYS:READ` mutation notes are wrong -- `Registry.cls:1024` refuses an admin-port read without it.
+- false: browser AC1 locator check always passes -- it answers null when the link is absent.
+- false: non-numeric pid gives a fault -- probed on `ocupilot-b-ci`, `pid=abc` reads zero rows.
+- false: Code Map rosters `Test/Descriptor.cls`, `Test/ScreenRead.cls` unextended -- parent-scoped reads are held by their area's own test.
+- false: "Never named" forbids the absence assertions -- the I/O matrix requires them.
+- low: AC3 skeleton not observed mid-read -- `RefreshService.loadedOnce` never resets on a tick; shared framework.
+- low: AC1/AC2 mutations do not target parent scope or the back link -- each AC has an observed mutation; the back link is 6.7's.
+- low: smoke's first-row pid may exit between reads; Smoke and WireSecurityRead `Pid` comparisons are seeded -- a real failure needs a vendor answering another process.
+- low: `0123` shows as the Pid -- hand-typed URL only; the fix is in the shared `Read.cls`.
+- low: InTransaction never checked live -- vendor `%Integer`, mapped by a pure tested function.
+- low: `StartTimeUTC` under "Started" and task label keys reused -- the spec's Always row directs both.
+- low: `Pid` in `read.filter`/`sort` unlike TaskDetails -- no named harm.
+- low: strings literal count 399 of a 400 bound -- the bound is the test's own tripwire.
+
 ## Spec Change Log
 
 - 2026-09-17 (spec gate, orchestrator answers): intent gap resolved. AC1 narrowed in epics.md as the intent block already states (a cached SQL query named by its routine; statement text is Story 19.10's). AD-43's roster grows to seven with Process details (spine amended; EXPERIENCE.md Auto-refresh controls row and Process details row updated; the meter row no longer names Process details). Plan-level decisions (dashboard values, the three pairs confirmed by a real principal on `ocupilot-b-ci`, never-named fields, reuse of 6.7's grammar, 6.10 as consumer) accepted. Status reset to `draft` for re-plan.
@@ -219,6 +255,18 @@ Stateful steps run on the slot B throwaway `ocupilot-b-ci` only; `ocupilot-slot-
 - mutation: `Read.cls`'s AD-37 branch (`If tHttp '= 404`) forced to always fault (same load path; a shared file, restored the same way) -> `Test.ProcessDetails.TestAnUnknownPidReadsAsNoRows` red (observed).
 - mutation, AC1: the literal "parentScope emptied", and a wrong-but-nonempty parentScope, are both refused before a bundle can even be produced -- `screen-mirror.mjs`'s own pre-existing AD-36/DW-1020 grammar guards (Story 6.7, shared engine) refuse a GET source with a declared criterion and no matching parent-scoped list, which is a stronger guarantee than a runtime assertion. A buildable equivalent was used instead: `screen-outlet.ts`'s `DESCRIPTOR_PAGES` entry for `ProcessDetails` removed, rebuilt and redeployed -> 3 of `processes.browser-spec.mjs`'s Story 6.8 tests red (AC1, AC2, AC3; the route no longer resolves to a rendered page) (observed).
 - mutation, this pass's own patch: `process-details.page.spec.ts`'s "no name-cell link" assertion, changed from `.ocu-details-link` (a class this page never emits) to `.ocu-details-field-value a` -> confirmed red when the Pid field is wrapped in an `<a>` (observed).
+
+**QA pass (2026-09-17) — independent falsification, one mutation per candidate AC facet not yet exercised by a recorded mutation:**
+
+- AC1b (Client application group, the half of the compound assertion the recorded Routine/Execution mutation does not touch): `process-details.store.ts`'s `CLIENT_FIELDS` drops `ClientExecutableName` -> `process-details-store.test.mjs`'s `groupFor` test and `process-details.page.spec.ts`'s AC1b test both red (observed; `git diff --stat` empty after revert).
+- AC3 ("no announcement" -- the codebase's own established convention, `shell/status-bar.spec.ts` / `shell/command-bar.spec.ts`, of asserting the absence of `aria-live` on a silent tick had no counterpart here): added `expect(host.querySelector('[aria-live]')).toBeNull()` to the AC3 tick test in `process-details.page.spec.ts` (the one sanctioned QA test addition -- no prior assertion covered this facet); mutation: `process-details.page.ts`'s `.ocu-details-fields` wrapper gains `aria-live="polite"` -> the new assertion red (observed; source reverted, `git diff --stat` empty for `process-details.page.ts`).
+
+**Code review (2026-09-17), each applied and reverted, tree byte-identical:**
+
+- mutation: `ClientIPAddress` renamed to `ClientIPAdress` throughout `ProcessDetails.cls` (loaded onto `ocupilot-b-ci`) -> `Test.ProcessDetails.TestALiveProcessReadsOverTheWire` red on that field's non-null assertion (observed).
+- mutation: `process-details.page.ts` drops the zero-row `highlights.reset()` -> the exits-then-answers-again component test red (observed).
+- mutation: `showRefusal` also true on a loaded zero-row read -> the component AC4 test red (observed).
+- Re-run: `Test.ProcessDetails` 6/6, `Test.Navigation` 11/11, `Test.Smoke` 32/32; `smoke.sh` PASSED; `npm run build` and `npm test` green (446 component tests); `processes.browser-spec.mjs` 8/8 on a redeployed bundle; check-objectscript and lint-docs clean.
 
 ## Auto Run Result
 

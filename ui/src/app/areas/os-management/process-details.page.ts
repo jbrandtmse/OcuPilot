@@ -154,7 +154,10 @@ export class ProcessDetailsPage {
 
     const stopStore = store.subscribe(() => {
       const row = store.data()[0];
-      if (row !== undefined) this.highlights.update(row, this.fieldNames(screen));
+      // Zero rows: the process exited. A process that later answers under the same pid is a new
+      // one, so it starts with nothing highlighted.
+      if (row === undefined) this.highlights.reset();
+      else this.highlights.update(row, this.fieldNames(screen));
       this.generation.update((value) => value + 1);
     });
 

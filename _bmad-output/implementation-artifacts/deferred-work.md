@@ -2966,3 +2966,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-6-6-task-history-per-task-and-across-tasks.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: CriteriaFieldsProblem reserves maxRows and ns only; Read.cls mgmnt branch sets tQuery(namespace) after SeedCriteria; no mgmnt read declares criteria
 - 2026-09-17T08:31:31Z status=wontfix-theoretical owner=6-6-task-history-per-task-and-across-tasks by=cr note=real once a mgmnt-port descriptor declares a criterion named namespace
+
+### DW-1049: Process details AC5 has no browser leg: the denied deep link is proven only by the navigation payload and the 403 over HTTP
+- source: spec-6-8-process-details.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: processes.browser-spec.mjs creates no principal; WireSecurityRead pins ScreensFor(OPERATEUSER) failedPair %Admin_Manage:USE and the read 403; tasks.browser-spec.mjs:649 renders app-screen-denied for 6.7
+- 2026-09-17T14:25:12Z status=wontfix-accepted owner=6-8-process-details by=cr note=reopen_if=a %Admin_Operate+%DB_IRISSYS principal on /os-management/processes/details/<pid> renders anything but app-screen-denied
+
+### DW-1050: Spine AD-43 Binds/Prevents still say six screens at EXPERIENCE.md :561 after the roster-of-seven amendment; AD-29 names %SYS.ProcessQuery where 6.8 found VariableByPid needs %Admin_Manage:USE
+- source: spec-6-8-process-details.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: ARCHITECTURE-SPINE.md:463-464 vs its own Rule at :467; AD-29 at :367 vs ProcessDetails.cls doc and spec Code Map (ProcessQuery.cls:423 AllowToOpen, :1494 VariableByPid)
+- 2026-09-17T14:25:12Z status=wontfix-accepted owner=6-8-process-details by=cr note=reopen_if=a later story's plan cites AD-43 Binds for a count or AD-29 for the Manage check; lead may correct at Rule 20 bookkeeping
+- 2026-09-17T14:26:39Z status=resolved-by:6-8-process-details by=adjudication note=lead corrected AD-43 Binds and Prevents to seven screens in the spine; AD-29 stands, since VariableByPid (ProcessQuery.cls:1494) is a method of %SYS.ProcessQuery, which AD-29 already names

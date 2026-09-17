@@ -3,10 +3,8 @@ import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-// Pins `core/detail-highlights.ts`'s `DetailHighlights` (Story 6.8): moved out of
-// `areas/tasks/details.store.ts` (Story 6.7's `TaskDetailsHighlights`, same behavior) so the OS
-// management slice's Process details page imports it without a cross-slice import onto
-// `areas/tasks/`.
+// Pins `core/detail-highlights.ts`'s `DetailHighlights`, the field-level change highlight every
+// detail page holds.
 //
 // Mutation (Rule 19): make `update` compare `row` with itself instead of the held `previousRow`
 // -> the second update highlights nothing and the `['Description']` assertion goes red.

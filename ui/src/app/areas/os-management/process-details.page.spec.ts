@@ -23,7 +23,7 @@ import { ProcessDetailsPage } from './process-details.page';
  * read straight out of the mirror, so the field list and criterion are the ones the instance
  * validates.
  *
- * Mutations (Rule 19): drop the `pid` criterion from `parentCriteria`'s call in
+ * Mutations (Rule 19): pass `''` instead of `this.router.url` to `parentCriteria` in
  * `ProcessDetailsPage` -> the first path assertion goes red, carrying no `pid`. Drop
  * `CurrentLineAndRoutine` from `EXECUTION_FIELDS` in `process-details.store.ts` -> not this
  * file's own assertions, which never reference that field, but `ui/tools/process-details-store.test.mjs`'s
@@ -215,7 +215,7 @@ describe('ProcessDetailsPage', () => {
     expect(fieldValue(host, 'processDetailsInTransaction')).toBe(STRINGS.tableStatusYes);
   });
 
-  it('a silent tick highlights only the field whose value changed', async () => {
+  it('a silent re-read highlights only the field whose value changed', async () => {
     const { fixture, setRows, actions, host } = await mount();
     expect(changedLabels(host)).toEqual([]);
     setRows([row({ CommandsExecuted: 999 })]);
@@ -238,6 +238,10 @@ describe('ProcessDetailsPage', () => {
     expect(changedLabels(host)).toEqual([stringFor('processColumnCommands')]);
     expect(host.querySelector('.ocu-data-table-skeleton')).toBeNull();
     expect(host.querySelector('[role="alert"]')).toBeNull();
+    // "No announcement" (AC3): no element in this page ever carries `aria-live`, the same
+    // guarantee `shell/status-bar.spec.ts` and `shell/command-bar.spec.ts` assert for their own
+    // silent ticks.
+    expect(host.querySelector('[aria-live]')).toBeNull();
   });
 
   it('a fault on a re-read shows the refusal with Retry and keeps the last values', async () => {
@@ -246,6 +250,7 @@ describe('ProcessDetailsPage', () => {
     expect(actions.run(DESCRIPTOR, REFRESH_ACTION_ID)).toBe(true);
     await settle(fixture);
     expect(host.querySelector('.ocu-data-table-refusal')?.textContent).toContain(STRINGS.connectivityRequestRefused);
+    expect(host.querySelector('.ocu-data-table-refusal button')?.textContent?.trim()).toBe(STRINGS.actionRetry);
     expect(fieldValue(host, 'processColumnPid')).toBe('4242');
     expect(host.querySelector('.ocu-data-table-skeleton')).toBeNull();
   });
@@ -254,13 +259,29 @@ describe('ProcessDetailsPage', () => {
     const { host } = await mount([]);
     expect(host.querySelector('.ocu-data-table-skeleton')).toBeNull();
     expect(host.textContent).toContain(STRINGS.processDetailsGone);
+    expect(host.querySelector('[role="alert"]')).toBeNull();
+    expect(host.querySelector('.ocu-details-field')).toBeNull();
+  });
+
+  it('a process that exits while open, then answers again under its pid, shows no field marked changed', async () => {
+    const { fixture, setRows, actions, host } = await mount();
+    setRows([]);
+    expect(actions.run(DESCRIPTOR, REFRESH_ACTION_ID)).toBe(true);
+    await settle(fixture);
+    expect(host.textContent).toContain(STRINGS.processDetailsGone);
+    setRows([row({ Routine: 'OTHER', CommandsExecuted: 1 })]);
+    expect(actions.run(DESCRIPTOR, REFRESH_ACTION_ID)).toBe(true);
+    await settle(fixture);
+    expect(fieldValue(host, 'processColumnRoutine')).toBe('OTHER');
+    expect(changedLabels(host)).toEqual([]);
   });
 
   it('a pid switch shows the new process with no field marked changed', async () => {
-    const { fixture, setRows, host } = await mount();
+    const { fixture, paths, setRows, host } = await mount();
     setRows([row({ Pid: 5151, Routine: 'DIFFERENT' })]);
     await TestBed.inject(Router).navigateByUrl('/os-management/processes/details/5151?ns=HSCUSTOM');
     await settle(fixture);
+    expect(paths.at(-1)).toContain('&pid=5151');
     expect(fieldValue(host, 'processColumnPid')).toBe('5151');
     expect(changedLabels(host)).toEqual([]);
   });
