@@ -2,7 +2,7 @@
 title: 'The locks view'
 type: 'feature'
 created: '2026-09-17'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'e581cd8ea51ec04009a18a8cd3499964d7bb0919'
 baseline_commit: 'e581cd8ea51ec04009a18a8cd3499964d7bb0919'
 review_loop_iteration: 1
@@ -134,6 +134,8 @@ Vendor, read-only reference:
 16. `ui/browser/locks.browser-spec.mjs` — headers, rows, the owner link's navigation, and the empty `System` cell. Both `OCUPILOT_BROWSER_ORIGIN=http://localhost:52777` and `OCUPILOT_BROWSER_CONTAINER=ocupilot-b-ci` on every browser and `ci-runner` call. Rebuild and redeploy the bundle before believing any result.
 17. `src/OcuPilot/Install/Smoke.cls` — the `osmgmt.locks` live-read check, per Code Map.
 18. Verification pass: the commands in `## Verification`, then the throwaway teardown.
+
+- [ ] [CI] instance: `OcuPilot.Test.Navigation.TestThePayloadCarriesEveryAreaWithAVerdict` -- the os-management roster this test pins by index is stale for the second story running: Locks is a fourth built screen at `sideBarPosition` 2, so the area's screens are Process details, Processes, Locks, System usage. Correct the count, the roster assertions and the comment, demonstrate a mutation on the corrected assertion (Rule 19), and sweep for any other test that pins a per-area roster by index and was missed -- run 35282177175.
 
 **Acceptance Criteria:**
 
