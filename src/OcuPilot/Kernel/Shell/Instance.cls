@@ -165,7 +165,7 @@ ClassMethod ReadSource(pField As %String) As %String
 ClassMethod LogSourceFailure(pField As %String, pException As %Exception.AbstractException)
 {
     Try {
-        Do ##class(OcuPilot.Api.Error).LogError(..#LOGSUBSYSTEM, "A status-bar source could not be read", {"field": (pField), "detail": (pException.DisplayString())})
+        Do ##class(OcuPilot.Kernel.Audit.Log).Error(..#LOGSUBSYSTEM, "A status-bar source could not be read", {"field": (pField), "detail": (pException.DisplayString())})
     } Catch {
     }
 }
@@ -175,7 +175,7 @@ ClassMethod LogSourceFailure(pField As %String, pException As %Exception.Abstrac
 /// production never overrides it.</p>
 ClassMethod LogDetail(pDetail As %String)
 {
-    Do ##class(OcuPilot.Api.Error).LogError(..#LOGSUBSYSTEM, "Admin API verification reported a problem", {"detail": (pDetail)})
+    Do ##class(OcuPilot.Kernel.Audit.Log).Error(..#LOGSUBSYSTEM, "Admin API verification reported a problem", {"detail": (pDetail)})
 }
 
 }

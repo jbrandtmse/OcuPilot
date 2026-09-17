@@ -1933,6 +1933,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: descriptor-derived read tools and class tools (logs.applicationerrors.read) answer View with different signatures; Base declares none
 - 2026-09-15T07:50:14Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=harvest note=Story 4.2 builds the dispatcher: declare View on Screen.Tool.Base so both sources satisfy one signature, or have the dispatcher key on KIND
 - 2026-09-16T15:11:11Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=x0 note=kept, the registry dispatcher and its gate point are where this closes
+- 2026-09-17T02:59:46Z status=resolved-by:4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=adjudication note=Screen.Tool.Base declares one View contract both tool sources satisfy; ToolRoundTrip and ToolEmit drive every registered tool through it
 
 ### DW-296: The client bundle is 511.45 kB against Angular's 500 kB warning budget, so every build prints a budget warning that no longer means anything
 - source: spec-2-12-the-application-error-log-endpoint-and-drill-down.md | severity: low | fix-risk: low | footprint: in-epic
@@ -1952,6 +1953,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Screen/Tool/ErrorRead.View returns only a %Status, so a dispatcher cannot tell a 403 from a 404 or name the failing pair (AD-39's machine half); and it passes tArgs maxRows straight to Errors while DESCRIPTION advertises no ceiling, so the port materialises that many rows before View keeps pContextCap
 - 2026-09-15T08:23:42Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=cr note=Story 4.2 owns dispatch by this story's own contract; settle the result shape there, beside DW-295's View arity
 - 2026-09-16T15:11:11Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=x0 note=kept, the registry dispatcher and its gate point are where this closes
+- 2026-09-17T02:59:46Z status=resolved-by:4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=adjudication note=View passes the port status and fault through and the read tool reads the screen rows then narrows to 200 per AD-36; ToolDispatch and ToolEmit legs pinned by mutation
 
 ### DW-299: The date-ordering sweep compares nothing on the CI throwaway, which carries exactly one error date, so a reordering at the port would ship green through CI
 - source: spec-2-12-the-application-error-log-endpoint-and-drill-down.md | severity: low | fix-risk: med | footprint: in-story
@@ -2515,6 +2517,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Verdict's only non-test caller is Restraint.Resolved, reached from GET /agent/restraint alone, which is a display read; src/OcuPilot/Screen/Tool/ holds no class whose KIND is write. The turn loop is Epic 4's and the confirm transition Epic 5's, which the Design Notes state, but that AC1 is therefore half-open is recorded nowhere a gate reads
 - 2026-09-16T05:46:35Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=harvest note=the tool registry is the story that first has a write path to gate, and the caller-enumeration test is already there to keep it the only one
 - 2026-09-16T15:11:11Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=x0 note=kept, the registry dispatcher and its gate point are where this closes
+- 2026-09-17T02:59:46Z status=resolved-by:4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=adjudication note=Kernel.Agent.Dispatch calls Kernel.Restraint.Verdict for every write-kind tool before invoking it, driven by a fixture write tool; the real-verdict leg is DW-449 on 5-1
 
 ### DW-388: Two administrators saving the Switches screen concurrently silently lose one write, and the shipped Egress singleton has the same shape
 - source: spec-3-7 | severity: med | fix-risk: med | footprint: cross-epic
@@ -2536,6 +2539,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T05:46:35Z status=routed owner=burndown by=harvest note=try DW-361's approach first - make a real read failure rather than add a seam
 - 2026-09-16T10:21:59Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=burndown_gate note=4.2 adds the first real Verdict caller, which is when a fail-closed seam can be driven
 - 2026-09-16T15:11:11Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=x0 note=kept, the registry dispatcher and its gate point are where this closes
+- 2026-09-17T02:59:46Z status=wontfix-theoretical by=adjudication note=no input drives the Verdict store-read failure on 2026.2 and both callers close on its error status, pinned by a probe; real only with damaged protected storage
 
 ### DW-391: A hold whose user no longer resolves renders faultAbsentEntity, whose second half names a list the Switches screen does not have
 - source: spec-3-7 | severity: low | fix-risk: low | footprint: in-epic
@@ -2555,12 +2559,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T06:03:39Z status=routed owner=burndown by=qa note=case (a) is the already-disclosed, review-held narrowing (bans a second producer of a restraint CODE, not of an independently-derived verdict) and needs no new work; case (b) is a second, narrower gap in the same rule's own mechanism -- RESTRAINT_CODE_RE never sees a code split across a concatenation. Not fixed here: the realistic accidental-duplication path (a macro reference, or the literal string on one line, both already caught) is what Epic 4's first real caller is likely to write; case (b) needs deliberate obfuscation to trigger, so a regex fix now is complexity against a state not shown reachable -- try the mutation again once Epic 4 adds the first real caller before deciding whether to close it
 - 2026-09-16T10:21:59Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=burndown_gate note=sits with DW-394 and DW-400, the same checker's other reach gaps
 - 2026-09-16T15:11:11Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=x0 note=kept, the registry dispatcher and its gate point are where this closes
+- 2026-09-17T02:59:46Z status=resolved-by:4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=adjudication note=check_restraint_containment catches a code assembled across a concatenation; harness case red when the regex is reverted
 
 ### DW-394: AD-30's containment rule sees ObjectScript source only, and skips comments and XData within it, so a client that names a restraint code and refuses for itself passes the gate
 - source: cr-3-7 | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: check_restraint_containment iterates iter_objectscript_files(), which yields .cls/.mac/.inc only, and iter_code_lines skips doc comments and XData bodies. Verified at review by planting a restraint code in two shipped classes (both caught, both reverted); no equivalent gate exists over ui/. The spec's Boundaries forbid a client-side refusal standing in for the server's, and nothing enforces that.
 - 2026-09-16T06:31:33Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=cr note=the three disclosures were corrected at review to say ObjectScript source; the gate itself is unchanged. Decide with Epic 4's first real caller, beside DW-393
 - 2026-09-16T15:11:11Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=x0 note=kept, the registry dispatcher and its gate point are where this closes
+- 2026-09-17T02:59:46Z status=resolved-by:4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=adjudication note=the containment rule scans client sources under ui/src besides ObjectScript; harness case red when the client scan is narrowed
 
 ### DW-395: scripts/lint-docs.sh does not lint the implementation-artifact specs, so a spec that loses required sections to a malformed list bullet passes every gate
 - source: cr-3-7 | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -2939,6 +2945,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: Dispatch.Answer caps each result at 65,536 characters but bounds neither the count nor the sum, and every later request resends them. About 13 capped results pass a 200K-token context (inference); 56 pass 3,641,144 characters and Loop.AnswerTools' %ToJSON throws <MAXSTRING> after every tool ran.
 - 2026-09-17T01:30:47Z status=routed owner=4-4-screen-context-on-every-turn-capped-with-its-toggle-and-chip by=cr note=4.4 makes AD-24's caps operator-settable; an aggregate per-request tool-result budget belongs with them
+- 2026-09-17T02:57:29Z status=routed owner=4-4-screen-context-on-every-turn-capped-with-its-toggle-and-chip by=cr note=Loop.AnswerTools now dispatches one call at a time, so a per-reply budget belongs there, not in Dispatch.Answer
 
 ### DW-453: The shell privilege and namespace reads evaluate the job's frozen $ROLES while the dispatcher checks the user's current grants
 - source: spec-4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea.md | severity: med | fix-risk: med | footprint: in-story

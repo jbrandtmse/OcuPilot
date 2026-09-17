@@ -261,9 +261,37 @@ Rejected:
 - IA identity is checked after resolve — low: same as the earlier triage.
 - IA `ToolRoundTrip` has no arming guard — low: same as the earlier triage.
 
+### Review Findings (rework re-review 1)
+
+Code review 2026-09-17, tier `full-opus`, over `e9b0e7a..HEAD`: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor, plus the lead's namespace note. 21 raw findings, 20 rows after grouping: 6 kept, 14 rejected, no high. The four open items are confirmed closed: the row cap in `Read.View` (`ErrorRead` keeps its clamp); the shell reads in `Kernel/Shell/`, where the handlers extend the builders, so the edge is API to Kernel and nothing in `Kernel/Shell/` names a handler; `Boundary` before each call; and `ArgumentPairs` checked through `HoldsPair`.
+
+- [x] [Review][Patch] A turn that starts read-only and calls a tool is untested, so passing 0 as `AnswerTools`' snapshot would abandon every tool call under read-only with the suites green (med, fix-risk low) — `TurnLoopProbe.ForceReadOnly` and `TurnTools.TestATurnStartedReadOnlyAnswersItsCalls`. [src/OcuPilot/Kernel/Agent/Loop.cls:138]
+- [x] [Review][Patch] Rule 20's handler-reach clause covered `Kernel/Shell/` only, not `Screen/Tool/`, where the removed edge lived (low) — the clause covers both; harness case added. [scripts/check-objectscript.py:905]
+- [x] [Review][Patch] The harness did not pin the `\b` that keeps `OcuPilot.Api.ErrorLog` out of the vocabulary exception, and its docstring omitted the clause (low) — case and docstring added. [scripts/test_check_objectscript.py:1366]
+- [x] [Review][Patch] `Kernel/Shell/Instance` logged through `Api.Error.LogError`, a kernel-to-API method edge that only forwards to `Kernel.Audit.Log.Error` (low) — it calls the kernel logger. [src/OcuPilot/Kernel/Shell/Instance.cls:168]
+- [x] [Review][Patch] DW-452 locates the per-reply budget in `Dispatch.Answer`, which now receives one call at a time (low) — trailer added naming `Loop.AnswerTools`. [src/OcuPilot/Kernel/Agent/Loop.cls:319]
+- [x] [Review][Patch] No `mutation:` line shows a handler test reddening on a moved payload builder (low, Rule 19) — recorded under Verification. [src/OcuPilot/Kernel/Shell/Namespaces.cls:126]
+
+Rejected:
+
+- BH `Screen/Tool/Base` calls `Kernel.Fault.Build` — already ledgered: DW-456 names that edge.
+- BH test mutation comments, fixture headers and `LogSourcePort` still name `Api.Instance`/`Api.Namespaces` methods — wontfix-accepted: each still resolves on the handler by inheritance; reopen_if a handler stops extending its `Kernel/Shell` builder.
+- BH `ToolEmit`'s pairs leg needs a second namespace with another resource, unstated — false: every instance has `%SYS` on `IRISSYS`.
+- BH `ToolEmit` probes other tools with `{}` and derives the error tool's expectation from `PairsFor` — low: the `$ListFind` legs discriminate, and a tool overriding `ArgumentPairs` is visible by class.
+- BH the row-cap test's `500|501` leg assumes `DEFAULTMAXROWS` above 500 — low: it fails loudly if the constant moves.
+- ECH a `rowGet` read without `maxRows` issues up to 1,000 detail calls with no boundary — by-design: AD-36, same as the earlier triage.
+- ECH a `ReadClass` without `DEFAULTMAXROWS` reads 0 rows — false: every `ReadClass` answer extends `Screen.Read`.
+- ECH `Import OcuPilot.Api` evades rule 20 — low: no shipped class imports a package.
+- ECH stale compiled `Screen.Tool.Shell*` classes refuse every listing — low: same as the earlier triage and its reopen_if.
+- VG two new legs of `TestAPairAnArgumentAddsIsCheckedAfterTheArguments` have no `mutation:` line — low: Rule 19 asks one per AC.
+- IA the Spec Change Log says no Registry to API edge exists, while `ArgumentPairs` reaches `Api.Namespaces` through `LogSourcePort` — already ledgered: DW-456's `LogSourcePort` occurrence; the fix is a spine decision.
+- IA the handlers extend the builders rather than call them — low: the edge is API to Kernel, `Kernel/Shell/` names no handler (rule 20), and inheritance keeps the port's resolver seam working.
+- IA `ErrorRead.ArgumentPairs` answers resolved with no pairs for an invented namespace — low: the port then answers `LOG.NAMESPACE` or its refusal before reading, which serves the model better than `TOOL.UNAVAILABLE`, and the class doc states it.
+- Lead: a namespace the account cannot read answers `AUTH.NOPRIVILEGE` naming its database pair where the route answers not found — wontfix-accepted: only an account holding `%Admin_Operate:USE` and `%DB_IRISSYS:READ` can ask, and the namespace level already lists every namespace holding errors to it; reopen_if namespace names must be hidden from such accounts.
+
 ## Spec Change Log
 
-- 2026-09-17, lead after review round 1 (rework iteration 1): the Row cap row amended to follow AD-36 (the tool reads what the screen reads and narrows the result); the shell tools move to `Kernel/Shell/` with their payload builders, so no Registry to API edge exists and the spine's direction line stands. The spine's source tree now places dispatch in `Kernel/Agent/` and shell reads in `Kernel/Shell/` (DW-455). Open items: the four unchecked `[Review]` items under Review Findings.
+- 2026-09-17, lead after review round 1 (rework iteration 1): the Row cap row amended to follow AD-36 (the tool reads what the screen reads and narrows the result); the shell tools move to `Kernel/Shell/` with their payload builders, so the shell tools add no Registry to API edge (the pre-existing edges are DW-456). The spine's source tree now places dispatch in `Kernel/Agent/` and shell reads in `Kernel/Shell/` (DW-455). Open items: the four unchecked `[Review]` items under Review Findings.
 
 - 2026-09-16, lead at spec gate: Conventions › Tool naming amended in the spine (wire spelling replaces dots with underscores; the dotted name stays canonical); one Tasks item added to pin reversibility. DW-250 closed wontfix-theoretical at the gate; DW-390 stays owned and is adjudicated against the delivered caller probe.
 
@@ -595,6 +623,12 @@ Rework pass 1, review patches, on a throwaway recreated from the tree (runs 101-
 - mutation: `ErrorRead.ArgumentPairs` resolves `$Namespace` instead of the named namespace -> `ToolEmit.TestEveryLiveToolRequiresItsScreensPairs` red on "a call naming %SYS adds that namespace's database pairs" (run 102).
 - mutation: `Read.View` answers success with no result -> `ToolEmit.TestTheReadToolReadsTheScreensRowsThenNarrows` red on "the view answers a result" (run 103).
 - mutation: rule 20's `Kernel/Shell/` reach clause disabled -> harness `test_a_shell_read_naming_a_handler_is_refused` red.
+
+Rework re-review 1, 2026-09-17, on the throwaway `ocupilot-ci` (runs 4-9, one class each, loaded with subclasses, restored and `diff -rq`-checked) or the checker (restored and `cmp`-checked). Green: `TurnTools` 6, `Instance` 21, `Namespaces` 8; checker 0 problems; harness 125 OK.
+
+- mutation: `Loop.Run` passes 0 as `AnswerTools`' read-only snapshot -> `TurnTools.TestATurnStartedReadOnlyAnswersItsCalls` red, alone (run 5).
+- mutation: `Kernel.Shell.Namespaces.Payload` answers a read-only mount writable -> `Namespaces.TestAReadOnlyMountIsNotWritableAndNamesNoPair` red through the handler (run 8).
+- mutation: rule 20's reach clause drops `Screen/Tool/` -> harness `test_a_shell_read_naming_a_handler_is_refused` red on `Screen/Tool/ErrorRead.cls`. mutation: `(?!Error\b)` loses its `\b` -> the same test red on `Kernel/Shell/NamespacesRead.cls`.
 
 ## Auto Run Result
 

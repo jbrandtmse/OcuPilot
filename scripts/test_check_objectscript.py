@@ -1330,8 +1330,8 @@ class TestRestraintContainmentReach(FixtureTreeCase):
 
 
 class TestToolDispatchRule(FixtureTreeCase):
-    """Story 4.2: one caller of `InvokeTool`, no HTTP on the dispatch path, and no output capture
-    outside the admin port."""
+    """Story 4.2: one caller of `InvokeTool`, no HTTP on the dispatch path, no handler named by a
+    shell read or a tool, and no output capture outside the admin port."""
 
     def cls(self, rel: str, name: str, line: str) -> None:
         self.write(rel, f"Class {name} Extends %RegisteredObject\n{{\n\nClassMethod Go()\n{{\n    {line}\n}}\n\n}}\n")
@@ -1371,10 +1371,15 @@ class TestToolDispatchRule(FixtureTreeCase):
             "/// <p><class>OcuPilot.Api.Navigation</class> answers this map.</p>\n"
             "Class OcuPilot.Kernel.Shell.Navigation Extends %RegisteredObject\n{\n\n}\n",
         )
+        self.cls("src/OcuPilot/Kernel/Shell/NamespacesRead.cls", "OcuPilot.Kernel.Shell.NamespacesRead", 'Do ##class(OcuPilot.Api.ErrorLog).Write("detail")')
+        self.cls("src/OcuPilot/Screen/Tool/ErrorRead.cls", "OcuPilot.Screen.Tool.ErrorRead", "Quit ##class(OcuPilot.Api.Namespaces).Payload(.pObject)")
         self.cls("src/OcuPilot/Api/Instance.cls", "OcuPilot.Api.Instance", "Quit ##class(OcuPilot.Api.Response).Success({})")
         problems = self.problems()
-        self.assertTrue(any(p.startswith("src/OcuPilot/Kernel/Shell/InstanceRead.cls:6:") and "OcuPilot.Api.Instance" in p for p in problems), f"got {problems}")
-        self.assertEqual([p for p in problems if not p.startswith("src/OcuPilot/Kernel/Shell/InstanceRead.cls:")], [], f"the vocabulary class, a doc comment and a handler pass, got {problems}")
+        refused = ("Kernel/Shell/InstanceRead.cls", "Kernel/Shell/NamespacesRead.cls", "Screen/Tool/ErrorRead.cls")
+        for rel, name in zip(refused, ("OcuPilot.Api.Instance", "OcuPilot.Api.ErrorLog", "OcuPilot.Api.Namespaces")):
+            with self.subTest(rel=rel):
+                self.assertTrue(any(p.startswith("src/OcuPilot/" + rel + ":6:") and name in p for p in problems), f"got {problems}")
+        self.assertEqual([p for p in problems if not p.startswith(tuple("src/OcuPilot/" + r + ":" for r in refused))], [], f"the vocabulary class, a doc comment and a handler pass, got {problems}")
 
     def test_a_capture_outside_the_admin_port_is_refused(self):
         self.cls("src/OcuPilot/Kernel/Agent/Dispatch.cls", "OcuPilot.Kernel.Agent.Dispatch", "Set tSC = $$BeginCapture^%SYS.Capture(.tCookie)")

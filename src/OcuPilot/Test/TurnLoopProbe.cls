@@ -3,7 +3,8 @@
 /// the limits are <class>OcuPilot.Test.TurnLimits</class> unless a test names others, the dispatcher
 /// is the shipped one unless a test names another, the restraint verdict is the real one unless
 /// a test forces the kill switch on -- from the start, or once a number of tool calls have been
-/// answered -- or the read to fail, and a logged failure is recorded here instead of written. No
+/// answered -- enforced read-only on, or the read to fail, and a logged failure is recorded here
+/// instead of written. No
 /// method of the loop itself is replaced.</p>
 Class OcuPilot.Test.TurnLoopProbe Extends OcuPilot.Kernel.Agent.Loop
 {
@@ -25,6 +26,12 @@ ClassMethod ForceKillSwitch(pCode As %String)
 ClassMethod ForceKillSwitchAfterCalls(pCalls As %Integer, pCode As %String)
 {
     Set ^||OcuPilotTurnLoopProbe("killAfter") = $ListBuild(pCalls, pCode)
+}
+
+/// <p>Answer enforced read-only on from now on.</p>
+ClassMethod ForceReadOnly()
+{
+    Set ^||OcuPilotTurnLoopProbe("readOnly") = 1
 }
 
 /// <p>Answer the restraint read as failed from now on, with the verdict a failed read leaves:
@@ -92,8 +99,8 @@ ClassMethod PortClass() As %String
     Quit "OcuPilot.Test.ProviderPortProbe"
 }
 
-/// <p>The real verdict, with the kill switch forced on or the read failed when a test asked for
-/// it.</p>
+/// <p>The real verdict, with the kill switch or read-only forced on, or the read failed, when a test
+/// asked for it.</p>
 ClassMethod Restraint(pUser As %String, Output pVerdict) As %Status
 {
     If $Get(^||OcuPilotTurnLoopProbe("restraintError")) {
@@ -104,6 +111,7 @@ ClassMethod Restraint(pUser As %String, Output pVerdict) As %Status
         Quit $$$ERROR($$$GeneralError, "the probe answered the switches as unreadable")
     }
     Set tSC = ##super(pUser, .pVerdict)
+    If $Get(^||OcuPilotTurnLoopProbe("readOnly")) Set pVerdict("enforcedReadOnly") = 1
     If $Get(^||OcuPilotTurnLoopProbe("killSwitch")) '= "" {
         Set pVerdict("killSwitch") = 1
         Set pVerdict("code") = ^||OcuPilotTurnLoopProbe("killSwitch")

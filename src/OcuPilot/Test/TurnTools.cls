@@ -1,6 +1,7 @@
 /// <p>The turn loop's tools, in process (AD-11, AD-22): every provider request advertises every
 /// registered tool, a registry that cannot list ends the turn before any provider call, several calls
-/// are answered in order in one message, the step boundary runs between two calls, and no tool result
+/// are answered in order in one message, the step boundary runs between two calls and holds a turn
+/// that started read-only to that snapshot, and no tool result
 /// reaches the system prompt -- each observed on the requests <class>OcuPilot.Test.ProviderStub</class>
 /// recorded and on the turn's steps.</p>
 /// <p>Driven through <class>OcuPilot.Test.TurnLoopProbe</class>, with the shipped dispatcher or
@@ -66,8 +67,10 @@ Method OnAfterOneTest() As %Status
 }
 
 /// <p>Create an enabled probe definition on the stub transport, reserve, begin and run one turn as
-/// the suite's own account, finish it, and answer its key with the outcome in <var>pOutcome</var>.</p>
-Method RunTurn(Output pOutcome) As %String
+/// the suite's own account, finish it, and answer its key with the outcome in <var>pOutcome</var>.
+/// The turn's read-only snapshot is <var>pReadOnly</var>, or the instance's switch when that is
+/// <code>""</code>.</p>
+Method RunTurn(Output pOutcome, pReadOnly As %String = "") As %String
 {
     Set tRow = ##class(OcuPilot.Kernel.State.Agent).%New()
     Set tRow.Name = "OcuPilotProbeAgentTurnTools"
@@ -89,7 +92,8 @@ Method RunTurn(Output pOutcome) As %String
     Set ..PreparedKeys(tKey) = ""
     Do ##class(OcuPilot.Kernel.State.Switch).Resolve(.tSwitches)
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedBegin(tKey, $Username, tLimits, .tBegun, .tStarted), "the turn begins")
-    Set tSC = $ClassMethod(..#LOOP, "Run", tKey, $Username, tId, "what is on this instance", ''$Get(tSwitches("enforcedReadOnly")), ##class(OcuPilot.Api.Router).#ADMINRESOURCES, tStarted, .pOutcome)
+    Set tReadOnly = $Select(pReadOnly '= "": ''pReadOnly, 1: ''$Get(tSwitches("enforcedReadOnly")))
+    Set tSC = $ClassMethod(..#LOOP, "Run", tKey, $Username, tId, "what is on this instance", tReadOnly, ##class(OcuPilot.Api.Router).#ADMINRESOURCES, tStarted, .pOutcome)
     Do $$$AssertStatusOK(tSC, "the loop returns")
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedFinish(tKey, $Username, pOutcome("state"), pOutcome("code"), pOutcome("limit"), pOutcome("reply"), pOutcome("errorSeq"), tLimits), "and the turn is finished")
     Quit tKey
@@ -217,6 +221,25 @@ Method TestTheKillSwitchStopsTheTurnBetweenTwoCalls()
     }
     Do $$$AssertEquals(tSteps, "model:provider:ok;tool:probe.counter.read:ok;", "one tool step, the first call's")
     Do $$$AssertEquals(tOutcome("errorSeq"), 2, "and the error names it")
+}
+
+/// <p>Step boundary under read-only (AD-30) -- a turn that started with enforced read-only on, still
+/// on, answers both calls of a reply and completes: the boundary before each call compares the
+/// switch with the snapshot the turn started with.</p>
+/// <p>Mutation: <method>OcuPilot.Kernel.Agent.Loop.Run</method> passes 0 as the read-only snapshot to
+/// <method>OcuPilot.Kernel.Agent.Loop.AnswerTools</method> -> this goes red.</p>
+Method TestATurnStartedReadOnlyAnswersItsCalls()
+{
+    Do $ClassMethod(..#LOOP, "SetDispatchClass", ..#DISPATCH)
+    Do $ClassMethod(..#LOOP, "SetLimitsClass", "OcuPilot.Kernel.Agent.Limits")
+    Do $ClassMethod(..#LOOP, "ForceReadOnly")
+    Set tCalls = [{"id": "toolu_1", "name": "probe_counter_read", "input": {"marker": "m1"}}, {"id": "toolu_2", "name": "probe_counter_read", "input": {"marker": "m2"}}]
+    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("looking", tCalls))
+    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("done"))
+    Set tKey = ..RunTurn(.tOutcome, 1)
+    Do $$$AssertEquals(tOutcome("state") _ "|" _ tOutcome("code") _ "|" _ tOutcome("reply"), "completed||done", "the turn completes")
+    Do $$$AssertEquals($ClassMethod(..#STUB, "Calls"), 2, "after two provider calls")
+    Do $$$AssertEquals(##class(OcuPilot.Test.DispatchTool.Counter).Calls("probe.counter.read"), 2, "and both calls' tools ran")
 }
 
 /// <p>Prompt -- a tool result appears in the next request only inside its <code>tool_result</code>
