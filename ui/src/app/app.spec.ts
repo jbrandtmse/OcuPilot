@@ -14,6 +14,7 @@ import {
 import { DefinitionForm } from './areas/agent/definition-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
 import { ErrorLogDrill } from './areas/logs/error-log.store';
+import { AgentContext } from './core/agent-context';
 import { AgentStatus } from './core/agent-status';
 import { ApiService } from './core/api';
 import { ChangeBus } from './core/change-bus';
@@ -34,6 +35,7 @@ import { PanelState } from './core/panel-layout';
 import { TurnStore } from './core/turn';
 import { ShellState } from './core/shell-state';
 import { STRINGS } from './core/strings';
+import { stubAgentContext } from './testing/agent-context';
 import { stubAgentStatus } from './testing/agent-status';
 import { stubTurnStore } from './testing/turn';
 import { screenDeclaration } from './testing/screen-declaration';
@@ -336,6 +338,7 @@ describe('the shell frame', () => {
   let instance: StubInstance;
   let navigation: StubNavigation;
   let agentStatus: AgentStatus;
+  let agentContext: AgentContext;
   /** The definitions the stubbed read answers with. Mutated to arrange an Enable. */
   let definitionRows: { enabled: boolean }[];
   let scope: StubScope;
@@ -360,6 +363,9 @@ describe('the shell frame', () => {
     // panel and the gate `load()` it themselves.
     definitionRows = [];
     agentStatus = stubAgentStatus(definitionRows);
+    // Unanswered by default too, for the same reason: the chip renders nothing until a test that
+    // is about it loads it.
+    agentContext = stubAgentContext();
     scope = new StubScope();
     connectivity = new StubConnectivity();
     // The real framework, timer seam neutralized: the frame mounts the chip and the stamp, and
@@ -401,6 +407,7 @@ describe('the shell frame', () => {
         { provide: InstanceService, useValue: instance as unknown as InstanceService },
         { provide: NavigationService, useValue: navigation as unknown as NavigationService },
         { provide: AgentStatus, useValue: agentStatus },
+        { provide: AgentContext, useValue: agentContext },
         { provide: ShellState, useValue: shellState },
         { provide: PanelState, useValue: panelState },
         { provide: TurnStore, useValue: turn },
@@ -659,7 +666,7 @@ describe('the shell frame', () => {
     expect(document.activeElement).toBe(toggle);
   });
 
-  it('leaving the signed-in state clears the draft and full screen, and keeps the remembered width', () => {
+  it('leaving the signed-in state clears the draft and full screen, and keeps the remembered width', async () => {
     // Mutation (Rule 19): delete `this.panel.endSession()` from `App.verifyWhenSignedIn` -> the draft
     // and full-screen assertions go red.
     panelState.setViewport(1920);
@@ -667,6 +674,11 @@ describe('the shell frame', () => {
     panelState.setDraft('Why is /csp/myapp disabled?');
     panelState.toggleFullScreen();
     expect(turn.conversationId()).toBe('convo-1');
+
+    // The context chip's sharing choice is this principal's own (Story 4.11); loaded here so the
+    // sign-out assertion below observes a real drop rather than a value that started false.
+    await agentContext.load();
+    expect(agentContext.answered()).toBe(true);
 
     session.move('form');
     fixture.detectChanges();
@@ -678,6 +690,10 @@ describe('the shell frame', () => {
     // and the next principal to sign in on this tab would adopt a departed principal's
     // conversation (AD-8).
     expect(turn.conversationId()).toBe(null);
+    // Mutation (Rule 19): delete `this.agentContext.reset()` from the same branch -> this goes
+    // red, and the next principal's first paint would carry the previous principal's sharing
+    // choice and provider answer.
+    expect(agentContext.answered()).toBe(false);
   });
 
   it('an unverified instance renders the blocking notice and none of the frame', () => {

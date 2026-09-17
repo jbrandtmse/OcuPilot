@@ -4,6 +4,7 @@ import { provideRouter } from '@angular/router';
 
 import { App } from './app/app';
 import { routes } from './app/app.routes';
+import { AgentContext } from './app/core/agent-context';
 import { AgentStatus } from './app/core/agent-status';
 import { ApiService } from './app/core/api';
 import { ChangeBus } from './app/core/change-bus';
@@ -168,6 +169,12 @@ const refresh = new RefreshService({
 // the Definitions list re-reads it once rather than once per consumer (AD-14).
 const agentStatus = new AgentStatus({ api, bus, connectivity });
 
+// The context chip's one source (Story 4.11): the caller's sharing choice, the resolved row cap,
+// and where a turn's provider call goes. Built here beside `agentStatus` for the same reason --
+// the chip and the Send path both read one answer, and the bus is what keeps a changed row cap
+// or default definition from going stale.
+const agentContext = new AgentContext({ api, bus, connectivity });
+
 // The one authority over Escape (DW-137). Built here like every other core service so the
 // command box, the account menu and the side bar all register with the same instance --
 // three stacks would be three independent Escape handlers again.
@@ -206,5 +213,6 @@ bootstrapApplication(App, {
     { provide: ScreenActions, useValue: screenActions },
     { provide: FormDirty, useValue: formDirty },
     { provide: AgentStatus, useValue: agentStatus },
+    { provide: AgentContext, useValue: agentContext },
   ],
 }).catch((err) => console.error(err));

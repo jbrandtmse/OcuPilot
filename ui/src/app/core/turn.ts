@@ -36,6 +36,7 @@
  */
 
 import type { ApiService, JsonResult } from './api';
+import type { ScreenContextPayload } from './screen-context';
 import type { NavigationKind, TokenStorage } from './token-store';
 
 export const CONVERSATION_PATH = '/api/ocupilot/conversation';
@@ -373,10 +374,13 @@ export class TurnStore {
   }
 
   /**
-   * Send `message`. Refused locally (no request at all) when this tab already has a turn
-   * running; refused by the instance with 409 when another tab does. Both refusals raise the
-   * lock banner and leave the draft to the caller -- this store never reads or clears it
-   * (`PanelState` owns the draft, and clears it itself on `'sent'`).
+   * Send `message`, with `context` (Story 4.11) attached to the body when it is not `null` --
+   * `panel.ts` assembles it fresh at the moment Send is pressed (`assembleScreenContext`), so a
+   * turn always carries the screen the user was on when they sent it, never a cached one. Refused
+   * locally (no request at all) when this tab already has a turn running; refused by the instance
+   * with 409 when another tab does. Both refusals raise the lock banner and leave the draft to
+   * the caller -- this store never reads or clears it (`PanelState` owns the draft, and clears it
+   * itself on `'sent'`).
    *
    * **Resolves as soon as the outcome is known** -- accepted, locked or refused -- not once the
    * turn ends: `busy()` and `entries()` already reflect an accepted send by the time this
@@ -384,7 +388,7 @@ export class TurnStore {
    * detached from this call; `busy()` clears itself, and the finished turn lands in `entries()`,
    * whenever the poll loop reaches a terminal state.
    */
-  async send(message: string): Promise<SendOutcome> {
+  async send(message: string, context: ScreenContextPayload | null = null): Promise<SendOutcome> {
     if (this.busyValue) {
       this.lockedValue = true;
       this.notify();
@@ -407,7 +411,11 @@ export class TurnStore {
     }
     const started = await this.api.requestJson<{ turnId: string }>(TURN_PATH, {
       method: 'POST',
-      body: JSON.stringify({ message, conversationId: this.conversationIdValue }),
+      body: JSON.stringify({
+        message,
+        conversationId: this.conversationIdValue,
+        ...(context !== null ? { context } : {}),
+      }),
     });
     if (generation !== this.pollGeneration) {
       // Superseded by `endSession()` while the request was in flight -- already reset.

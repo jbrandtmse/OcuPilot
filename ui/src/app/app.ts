@@ -14,6 +14,7 @@ import { DefinitionActions } from './areas/agent/definition-actions';
 import { DefinitionForm } from './areas/agent/definition-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
 import { ErrorLogDrill } from './areas/logs/error-log.store';
+import { AgentContext } from './core/agent-context';
 import { AgentStatus, DEFINITIONS_ROUTE } from './core/agent-status';
 import { ConnectivityService } from './core/connectivity';
 import { FormDirty } from './core/form-dirty';
@@ -180,6 +181,7 @@ export class App {
   private readonly instance = inject(InstanceService);
   private readonly navigation = inject(NavigationService);
   private readonly agentStatus = inject(AgentStatus);
+  private readonly agentContext = inject(AgentContext);
   private readonly scope = inject(ScopeService);
   private readonly router = inject(Router);
   private readonly connectivity = inject(ConnectivityService);
@@ -441,6 +443,10 @@ export class App {
       // next sign-in in this tab must start fresh rather than adopting a departed principal's
       // conversation (AD-8), and any poll this principal's turn left running must stop.
       this.turn.endSession();
+      // The eleventh: the context chip's sharing choice is per user (Story 4.11), and the
+      // instance's own answer about where a turn's provider call goes belongs to no one until
+      // the next principal reads it fresh.
+      this.agentContext.reset();
       return;
     }
     void this.instance.verify();
@@ -456,6 +462,9 @@ export class App {
     // without an authentication, and a status read left to the gate alone would leave the panel
     // with nothing to answer from on exactly the path FR-28 says the reminder must survive.
     const status = this.agentStatus.load();
+    // The fifth: the context chip's own answer, read beside the status so the chip is never
+    // showing off a definition that Enable/kill-switch just changed underneath it.
+    void this.agentContext.load();
     void this.runFirstLoginGate(map, status);
   }
 

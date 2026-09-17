@@ -241,6 +241,31 @@ test('Send, one read: ensures a conversation, posts the turn, polls to a card th
   assert.equal(turnErrorBanner(finished, STRINGS.agentTurnStoppedBanner), null, 'a completed turn shows no error banner');
 });
 
+// --- Story 4.11: `context` reaches the POST body ---------------------------------------------
+
+test('send(message, context): a non-null context reaches the POST body verbatim; a null one omits the key', async () => {
+  const context = { route: 'permissions/users', namespace: 'HSCUSTOM', view: { rows: [], rowsAvailable: 0, sort: '', direction: '', filter: '' } };
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202), ok({ turnId: 'turn-2' }, 202)],
+    [turnProgressPath('turn-1')]: [ok({ turnId: 'turn-1', state: 'completed', steps: [], stepsDropped: 0, reply: 'ok', error: null })],
+    [turnProgressPath('turn-2')]: [ok({ turnId: 'turn-2', state: 'completed', steps: [], stepsDropped: 0, reply: 'ok', error: null })],
+  });
+  const { schedule, scheduled } = fakeSchedule();
+  const turn = new TurnStore({ api, storage: memoryStorage(), navigationType: freshTab(), schedule });
+
+  await turn.send('with context', context);
+  const firstBody = JSON.parse(api.calls.find((c) => c.path === TURN_PATH).body);
+  assert.deepEqual(firstBody.context, context);
+  scheduled.shift().run();
+  await settle();
+
+  await turn.send('no context');
+  const secondCall = api.calls.filter((c) => c.path === TURN_PATH).at(-1);
+  const secondBody = JSON.parse(secondCall.body);
+  assert.equal('context' in secondBody, false, 'a null context omits the key entirely');
+});
+
 test("send()'s promise settles as soon as the turn is accepted, not once it ends -- panel.ts clears the draft on this", async () => {
   const { schedule, scheduled } = fakeSchedule();
   const api = fakeApi({

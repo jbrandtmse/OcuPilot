@@ -1,12 +1,18 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, inject, signal, viewChild } from '@angular/core';
 import { Router } from '@angular/router';
 
+import { AgentContext } from '../core/agent-context';
 import { AgentStatus, DEFINITIONS_ROUTE, formatKillSwitch } from '../core/agent-status';
-import { NavigationService, screenForRoute, withQuery } from '../core/navigation';
+import { decodeEntityId } from '../core/entity-id';
+import { NavigationService, screenForRoute, screenForUrl, withQuery } from '../core/navigation';
 import { PanelState } from '../core/panel-layout';
+import { ScopeService, onScopeChange } from '../core/scope';
+import { assembleScreenContext, looksLikeSecret, type ScreenContextPayload } from '../core/screen-context';
+import { ScreenStores } from '../core/screen-store';
 import { STRINGS, stringFor } from '../core/strings';
 import { TurnStore, type TurnStep, turnErrorBanner } from '../core/turn';
 import { isApplePlatform } from './command-box';
+import { ContextChip } from './context-chip';
 import { EXAMPLE_PROPOSAL } from './example-proposal';
 import { PanelResizeHandle } from './panel-resize-handle';
 import { ProposalCard } from './proposal-card';
@@ -45,9 +51,10 @@ interface PanelTurnView {
  * header with the avatar, "Agent co-pilot", **New conversation** and the full-screen toggle
  * (Story 4.5 fills the first of those two icon buttons); the banner slots in EXPERIENCE.md's
  * fixed order -- kill switch, enforced read-only, "not being marked" (Epic 5); administrator
- * reminder, lock (Story 4.5); the context-chip slot (Story 4.4); the transcript, a polite
- * `role="log"` named "Conversation" that scrolls by itself; and the footer with the read-only
- * line, the composer and Send. There is no close control.
+ * reminder, lock (Story 4.5); the context chip, filled in by Story 4.11; the transcript, a
+ * polite `role="log"` named "Conversation" that scrolls by itself; and the footer with the
+ * read-only line, the inline paste warning (Story 4.11), the composer and Send. There is no
+ * close control.
  *
  * **Every fact is read, none remembered here.** Whether a definition is enabled and the restraint
  * verdict come from `AgentStatus`; whether this caller may configure one is the navigation map's
@@ -77,7 +84,7 @@ interface PanelTurnView {
 @Component({
   selector: 'app-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ProposalCard, PanelResizeHandle, ToolCallCard],
+  imports: [ProposalCard, PanelResizeHandle, ToolCallCard, ContextChip],
   template: `<aside class="ocu-panel" [class.ocu-panel-full-screen]="fullScreen" [attr.aria-label]="panelName">
     @if (docked) {
       <app-panel-resize-handle />
@@ -145,7 +152,11 @@ interface PanelTurnView {
         </div>
       </div>
 
-      <div class="ocu-panel-chip-slot"></div>
+      <div class="ocu-panel-chip-slot">
+        @if (contextChipVisible) {
+          <app-context-chip [killSwitch]="killSwitch" />
+        }
+      </div>
 
       <div class="ocu-panel-transcript" role="log" aria-live="polite" tabindex="0" [attr.aria-label]="STRINGS.agentConversationLabel">
         @if (unconfigured) {
@@ -189,9 +200,24 @@ interface PanelTurnView {
 
     <div class="ocu-panel-footer">
       <p class="ocu-panel-read-only" [class.ocu-panel-read-only-on]="readOnlyOn">{{ readOnlyLine }}</p>
+      <div class="ocu-panel-warning-slot">
+        @if (secretWarningVisible) {
+          <p class="ocu-banner ocu-banner-warning ocu-panel-warning" role="status">
+            <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
+            <span class="ocu-banner-message">{{ STRINGS.agentPanelSecretWarning }}</span>
+            <button type="button" class="ocu-button-text ocu-panel-warning-send" (click)="onSendAnyway()">{{
+              STRINGS.agentPanelSecretWarningSend
+            }}</button>
+            <button type="button" class="ocu-button-text ocu-panel-warning-edit" (click)="onEditDraft()">{{
+              STRINGS.agentPanelSecretWarningEdit
+            }}</button>
+          </p>
+        }
+      </div>
       <label class="ocu-field-label" [attr.for]="composerId">{{ STRINGS.agentComposerLabel }}</label>
       <div class="ocu-panel-composer-row">
         <textarea
+          #composer
           class="ocu-panel-composer"
           rows="1"
           [class.ocu-panel-composer-unavailable]="composerUnavailable"
@@ -223,9 +249,14 @@ interface PanelTurnView {
 export class Panel {
   private readonly navigation = inject(NavigationService);
   private readonly agentStatus = inject(AgentStatus);
+  private readonly agentContext = inject(AgentContext);
   private readonly panel = inject(PanelState);
   private readonly turn = inject(TurnStore);
   private readonly router = inject(Router);
+  private readonly scope = inject(ScopeService);
+  private readonly screenStores = inject(ScreenStores);
+
+  private readonly composerEl = viewChild<ElementRef<HTMLTextAreaElement>>('composer');
 
   protected readonly STRINGS = STRINGS;
 
@@ -263,12 +294,35 @@ export class Panel {
   /** Bumped by every source, so the template re-reads them under `OnPush`. */
   private readonly generation = signal(0);
 
+  /** Whether the inline paste warning is showing (Story 4.11): a view-only signal, like
+   * `tool-call-card.ts`'s `manualExpanded`. */
+  private readonly secretWarningVisibleSignal = signal(false);
+
+  /** The text a "Send anyway" click last acknowledged, or `null`. Cleared on a sent turn and
+   * whenever this tab's conversation resets (`syncSecretRecord`) -- never recorded by Edit, so an
+   * unchanged text is warned about again (Boundaries & Constraints). */
+  private readonly acknowledgedSecretText = signal<string | null>(null);
+
+  /**
+   * `turn.conversationId()` as of the last `turn.subscribe` notification, so `syncSecretRecord`
+   * can tell a genuine reset (`endSession()` dropping a held conversation) apart from a failed
+   * send that never had one -- both leave `conversationId() === null`, but only the reset case
+   * transitions away from a conversation this tab actually held.
+   */
+  private lastConversationId: string | null = null;
+
   constructor() {
+    this.lastConversationId = this.turn.conversationId();
     const stops = [
       this.navigation.subscribe(() => this.bump()),
       this.agentStatus.subscribe(() => this.bump()),
+      this.agentContext.subscribe(() => this.bump()),
       this.panel.subscribe(() => this.bump()),
-      this.turn.subscribe(() => this.bump()),
+      this.turn.subscribe(() => {
+        this.syncSecretRecord();
+        this.bump();
+      }),
+      onScopeChange(this.scope, () => this.bump()),
     ];
     const routed = this.router.events.subscribe(() => this.bump());
     inject(DestroyRef).onDestroy(() => {
@@ -459,6 +513,37 @@ export class Panel {
     return screen === null ? '' : withQuery(screen.route, this.router.url);
   }
 
+  /**
+   * The chip slot's own gate (Boundaries & Constraints "Absent chip"): an enabled definition, an
+   * answered `AgentContext`, and a resolved namespace -- the third avoids a 422
+   * `TURN.CONTEXT.INVALID` the chip would otherwise advertise sending.
+   */
+  protected get contextChipVisible(): boolean {
+    this.generation();
+    return this.agentStatus.configured() && this.agentContext.answered() && this.scope.namespace() !== '';
+  }
+
+  protected get secretWarningVisible(): boolean {
+    return this.secretWarningVisibleSignal();
+  }
+
+  /**
+   * "Send anyway": record this exact draft as acknowledged, hide the warning, then run the
+   * ordinary send path again -- which now passes its own check because the text matches.
+   */
+  protected onSendAnyway(): void {
+    this.acknowledgedSecretText.set(this.panel.draft());
+    this.secretWarningVisibleSignal.set(false);
+    void this.sendCurrentDraft();
+  }
+
+  /** "Edit": hide the warning and return focus to the composer. Nothing is recorded, so an
+   * unchanged text is warned about again on the next Send (Boundaries & Constraints). */
+  protected onEditDraft(): void {
+    this.secretWarningVisibleSignal.set(false);
+    this.composerEl()?.nativeElement.focus();
+  }
+
   protected onDraft(event: Event): void {
     if (this.composerUnavailable) return;
     this.panel.setDraft((event.target as HTMLTextAreaElement).value);
@@ -490,13 +575,74 @@ export class Panel {
    * `TurnStore.send` decides sent, locally-locked or refused; this only clears the draft on
    * `'sent'` -- a locked or refused attempt leaves it exactly where the user left it (Boundaries
    * & Constraints).
+   *
+   * **The paste warning gates this, not `onSendOrStop`.** A draft that looks like a secret and
+   * has not been acknowledged by this tab's last "Send anyway" raises the warning and returns
+   * without sending, keeping the draft and moving no focus (Story 4.11). Screen context is
+   * assembled fresh here, at the moment the send actually goes out, never earlier.
    */
   private async sendCurrentDraft(): Promise<void> {
     if (this.composerUnavailable) return;
     const text = this.panel.draft();
     if (text.trim() === '') return;
-    const outcome = await this.turn.send(text);
-    if (outcome === 'sent') this.panel.setDraft('');
+    if (looksLikeSecret(text) && text !== this.acknowledgedSecretText()) {
+      this.secretWarningVisibleSignal.set(true);
+      return;
+    }
+    this.secretWarningVisibleSignal.set(false);
+    const outcome = await this.turn.send(text, this.assembleContext());
+    if (outcome === 'sent') {
+      this.panel.setDraft('');
+      this.acknowledgedSecretText.set(null);
+    }
+  }
+
+  /**
+   * The `context` this send carries (Story 4.11, AD-24, AD-42): the screen the user is on right
+   * now, read fresh from the router, `ScopeService` and that screen's own `ScreenStore` -- never
+   * a value cached from an earlier render.
+   */
+  private assembleContext(): ScreenContextPayload | null {
+    const screen = screenForUrl(this.router.url);
+    const store = screen === null ? null : this.screenStores.for(screen.descriptor, screen.refreshRates);
+    return assembleScreenContext({
+      descriptor: screen,
+      namespace: this.scope.namespace(),
+      entity: this.currentEntityId(),
+      share: this.agentContext.share(),
+      rows: store === null ? [] : store.data(),
+      filter: store === null ? '' : store.filter(),
+      sort: store === null ? '' : store.sort(),
+      direction: store === null ? '' : store.direction(),
+      rowCap: this.agentContext.contextRowCap(),
+    });
+  }
+
+  /** The selected entity's id, decoded once (AD-13), the same way `locator-bar.ts` reads it. */
+  private currentEntityId(): string {
+    let route = this.router.routerState.root;
+    while (route.firstChild !== null) route = route.firstChild;
+    const raw = route.snapshot.paramMap.get('id');
+    return raw === null ? '' : decodeEntityId(raw);
+  }
+
+  /**
+   * Forget the acknowledged text only on a genuine reset -- `endSession()` dropping a
+   * conversation this tab actually held. A failed send (a conversation-creation failure, or a
+   * non-404 refusal of `POST /turn`) can leave the same "no conversation, no entries, not busy"
+   * shape without ever having reset anything, so the trigger is the *transition* away from a
+   * previously-held conversation id, not the shape alone -- otherwise a transient failure would
+   * silently forget an acknowledgment and warn again on an identical retry (Boundaries &
+   * Constraints: "The record clears on a sent turn and on `endSession()`").
+   */
+  private syncSecretRecord(): void {
+    const current = this.turn.conversationId();
+    const wasReset = this.lastConversationId !== null && current === null && this.turn.entries().length === 0 && !this.turn.busy();
+    this.lastConversationId = current;
+    if (wasReset) {
+      this.acknowledgedSecretText.set(null);
+      this.secretWarningVisibleSignal.set(false);
+    }
   }
 
   protected onNewConversation(): void {

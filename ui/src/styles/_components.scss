@@ -3320,6 +3320,134 @@ app-data-table {
   clip-path: inset(50%);
 }
 
+// --- The context chip, its toggle and the paste warning (Story 4.11) --------------------------
+//
+// DESIGN.md `context-chip`: a `{colors.surface-container}` box under the panel header with a
+// Material-shaped switch at its right; the pill and the key glyph are additions to its text, not
+// separate elements with their own layout. Kill switch on turns the chip restrained, matching the
+// header and footer (DESIGN.md "Kill switch on", `:1132`).
+
+.ocu-context-chip {
+  display: flex;
+  align-items: center;
+  gap: var(--ocu-space-2);
+  margin: 0 var(--ocu-panel-gutter);
+  padding: 8px 8px 8px 10px;
+  border: 1px solid var(--ocu-outline-variant);
+  border-radius: var(--ocu-radius-md);
+  background: var(--ocu-surface-container);
+}
+
+.ocu-context-chip-restrained {
+  border-color: var(--ocu-restrained);
+}
+
+.ocu-context-chip-text {
+  @include typo.ocu-type('caption');
+
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--ocu-on-surface);
+}
+
+.ocu-context-chip-restrained .ocu-context-chip-text {
+  color: var(--ocu-restrained);
+}
+
+.ocu-context-chip-glyph {
+  margin-left: var(--ocu-space-1);
+  font-size: 14px;
+  line-height: 1;
+  color: var(--ocu-on-surface-variant);
+}
+
+// DESIGN.md context-chip: the egress pill, "leaves the instance" -- an element after the chip's
+// text, not a text segment, so no separator literal sits between the host and it.
+.ocu-context-chip-pill {
+  @include typo.ocu-type('label');
+
+  display: inline-block;
+  margin-left: var(--ocu-space-1);
+  padding: 0 6px;
+  border-radius: var(--ocu-radius-full);
+  background: var(--ocu-egress-warning-container);
+  color: var(--ocu-egress-warning);
+}
+
+.ocu-context-chip-toggle {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+}
+
+// A native checkbox styled as a Material-shaped switch (track and thumb): `appearance: none`
+// drops the native box, and the track and thumb are drawn on the element and a `::before`.
+.ocu-context-chip-switch {
+  appearance: none;
+  position: relative;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 18px;
+  margin: 0;
+  border: 1px solid var(--ocu-outline);
+  border-radius: var(--ocu-radius-full);
+  background: transparent;
+  cursor: pointer;
+}
+
+.ocu-context-chip-switch::before {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--ocu-outline);
+  transition: transform 120ms ease;
+  content: '';
+}
+
+.ocu-context-chip-switch:checked {
+  border-color: var(--ocu-secondary);
+  background: var(--ocu-secondary);
+}
+
+.ocu-context-chip-switch:checked::before {
+  background: var(--ocu-on-secondary);
+  transform: translateX(14px);
+}
+
+.ocu-context-chip-switch:focus-visible {
+  @include ocu-focus-ring;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ocu-context-chip-switch::before {
+    transition: none;
+  }
+}
+
+// The inline paste warning (DESIGN.md `banner`'s `warning` variant, `:1203`): a persistent slot,
+// like the panel's own lock banner, so its `role="status"` announces a change to a region already
+// on screen (`command-bar.ts`'s `matchCount` is the same precedent for a status region).
+.ocu-panel-warning-slot:empty {
+  display: none;
+}
+
+.ocu-panel-warning {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--ocu-space-2);
+  margin: 0;
+}
+
+.ocu-panel-warning-send,
+.ocu-panel-warning-edit {
+  height: auto;
+  padding: 0 var(--ocu-space-2);
+}
+
 // --- The transcript: messages, cards and the turn error banner (Story 4.5) --------------------
 //
 // DESIGN.md `message-user`, `message-agent` and `tool-call-card`. The transcript itself already

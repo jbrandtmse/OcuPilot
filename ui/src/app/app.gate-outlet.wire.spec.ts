@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { App } from './app';
 import { routes } from './app.routes';
+import { AgentContext } from './core/agent-context';
 import { AgentStatus } from './core/agent-status';
 import { ApiService } from './core/api';
 import { ChangeBus } from './core/change-bus';
@@ -284,6 +285,7 @@ describe('the first-login gate and the requested screen it may move off', () => 
           useValue: new NavigationService({ api: stub.api, connectivity, namespace: () => 'HSCUSTOM' }),
         },
         { provide: AgentStatus, useValue: new AgentStatus({ api: stub.api }) },
+        { provide: AgentContext, useValue: new AgentContext({ api: stub.api }) },
         { provide: ScopeService, useValue: new StubScope() as unknown as ScopeService },
         { provide: ConnectivityService, useValue: connectivity },
         {

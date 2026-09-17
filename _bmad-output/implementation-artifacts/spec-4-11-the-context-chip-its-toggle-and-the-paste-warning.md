@@ -2,9 +2,10 @@
 title: 'The context chip, its toggle and the paste warning'
 type: 'feature'
 created: '2026-09-17'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'f20224304b177b00d5706949d1d2102a364e58ad'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-4-context.md'
 warnings: ['oversized']
@@ -100,11 +101,38 @@ deferred: []
 - Given a draft that trips the warning, when Send anyway is pressed, then that exact text is sent and the warning does not return for it; when Edit is pressed instead, focus lands on the composer, the draft is unchanged, and a further Send warns again.
 - Given the three non-triggers in the matrix, when each is sent, then no warning appears and the turn is accepted.
 
+**Review pass (2026-09-17) -- patch items to apply, smallest fix per item:**
+
+- `panel.ts`: `contextChipVisible`'s generation never bumps on a namespace change -- `Panel`'s constructor subscribes to navigation/agentStatus/agentContext/panel/turn/router.events but not `onScopeChange`, unlike `context-chip.ts`'s own subscription, and `scope.ts`'s own doc says a namespace change re-fetches in place rather than re-routing (no `router.events` fires). `app.ts` issues `scope.load()`, `agentStatus.load()` and `agentContext.load()` as three independent, unordered async reads, so a namespace resolving after the other two can leave the chip absent until an unrelated event re-renders the panel. Fix: subscribe to `onScopeChange(this.scope, () => this.bump())` in `Panel`'s constructor and unsubscribe on destroy, mirroring `context-chip.ts`.
+- `panel.spec.ts`: no test exercises "the cap follows `agent-switch` without a reload" at the component level -- only `agent-context.test.mjs`'s store-level AD-14 test covers it. Fix: add a Story 4.11 test constructing a real `AgentContext` over a stub API (the existing "a refused PUT reverts the mirror" test is the precedent), changing `contextRowCap` live while `ContextChip`/`Panel` are mounted, and asserting both the rendered row count and the next Send's posted `rows`/`rowsAvailable` follow the new value.
+- `panel.ts`: `syncSecretRecord()` treats "no conversation id, no entries, not busy" as a session reset, but a failed send (a conversation-creation failure, or a non-404 refusal of `POST /turn`) on a tab's first turn produces that exact state without `endSession()` or a new conversation ever happening -- so a "Send anyway" acknowledgment is wiped by a transient failure and an immediate identical retry is warned about again, contradicting "the record clears on a sent turn and on `endSession()`". Fix: clear `acknowledgedSecretText` only on `sendCurrentDraft()`'s own `'sent'` outcome (already present) and on the explicit sign-out / new-conversation paths, not from a generic `turn.subscribe` heuristic; add a test sending an acknowledged secret, forcing the send to fail, and asserting the record survives.
+- No test asserts `.ocu-context-chip-restrained` toggles with the chip's `killSwitch` input. Fix: add a case mounting with `killSwitch` true and false and asserting the class's presence/absence.
+- `agent-context.ts`: `setShare()` returns `true` whenever the PUT answers `kind: 'ok'`, even when `infoOf(result.body)` is `null` (a malformed 200 body) -- the optimistic mirror stands but is never actually adopted from the server, and the caller is told the write succeeded. Fix: when `next === null` on an otherwise-ok response, revert to `previous` and return `false`, matching the refusal branch; add a test for a 200 with a malformed body.
+- `app.spec.ts`: the existing "leaving the signed-in state..." test pins `agentStatus.reset()` and `turn.endSession()` at the sign-out site but not the new `agentContext.reset()` call alongside them. Fix: extend that test with a real `AgentContext` and assert `answered()` is `false` immediately after the state leaves signed-in.
+
 ## Spec Change Log
 
 - 2026-09-17, lead at spec gate: EXPERIENCE.md's Secret-like message warning row widened to any screen and given the trigger, once-per-draft, Send anyway and Edit semantics the story's AC carries, so the UX row and the AC agree.
 
 ## Review Triage Log
+
+### 2026-09-17 — Review pass
+
+- verdicts: 13 findings — high 0, medium 5, low 5, false 3, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` blind-hunter: `Panel.contextChipVisible` does not react to a `ScopeService` namespace change (no `onScopeChange` subscription in `Panel`'s constructor, unlike `context-chip.ts`) — applied: subscribed to `onScopeChange` in `Panel`'s constructor.
+  - `[false]` `[reject]` blind-hunter: `looksLikeSecret`'s exclusion of tokens containing `/ . : ^ (` produces false negatives on JWTs and slash-bearing secrets — refuted: this exact algorithm, including the exclusion list, is specified byte-for-byte in the spec's frozen `<intent-contract>`; the code matches it exactly, so this is the specified behavior, not a defect.
+  - `[low]` `[patch]` blind-hunter: no test covers the kill-switch/"restrained" chip state — applied: added a test asserting `.ocu-context-chip-restrained` toggles with `killSwitch`.
+  - `[medium]` `[patch]` blind-hunter: no end-to-end test for "the chip's row count follows `agent-switch` without a reload" — applied: added a `panel.spec.ts` test with a real `AgentContext`, changing `contextRowCap` live and asserting the rendered count and the next Send's posted `rows`/`rowsAvailable`.
+  - `[medium]` `[patch]` edge-case-hunter: `panel.ts`'s `syncSecretRecord()` clears the "Send anyway" acknowledgment on a failed send (conversation-creation failure or a non-404 `POST /turn` refusal), not only on `endSession()`, contradicting the frozen "clears on a sent turn and on `endSession()`" — applied: the automatic clear now fires only from `sendCurrentDraft()`'s own `'sent'` outcome and the explicit sign-out/new-conversation paths; added a test forcing a send to fail and asserting the acknowledgment survives.
+  - `[low]` `[patch]` edge-case-hunter: `agent-context.ts`'s `setShare()` returns `true` on a 200 PUT whose body is malformed, without adopting it — applied: reverts the mirror and returns `false` when the body cannot be parsed, matching the refusal branch; added a covering test.
+  - `[false]` `[reject]` edge-case-hunter: `contextRowCap` is not clamped to 1-1000 client-side — refuted: the range is a server-enforced invariant (`Switches.contextRowCap`, unchanged since Story 4.4, AD-24); the client already guards non-positive values from crashing, and adding a further client-side clamp would itself be the "client re-derivation of a server-enforced bound" the intent-contract's Never list forbids.
+  - `[low]` `[patch]` verification-gap: `app.ts`'s sign-out call to `agentContext.reset()` has no `app.spec.ts` pin, unlike the sibling `agentStatus.reset()`/`turn.endSession()` calls at the same site — applied: extended the existing sign-out test with a real `AgentContext` asserting `answered()` is `false` after sign-out.
+  - `[medium]` `[patch]` verification-gap: same root cause as the blind-hunter "cap follows `agent-switch`" entry above — grouped, same fix.
+  - `[low]` `[reject]` verification-gap: `Panel.currentEntityId()`'s wiring into `context.entity` has no test — rejected: no built screen today combines an entity-detail route with declared `context.fields`, so this path is unreachable in the shipped product, and a proper test needs new synthetic route/descriptor scaffolding beyond a direct correction; reopen if a future screen combines the two.
+  - `[medium]` `[patch]` intent-alignment: same root cause as the blind-hunter "`contextChipVisible` does not react to scope" entry above — grouped, same fix.
+  - `[low]` `[reject]` intent-alignment: same root cause as the verification-gap "`currentEntityId()` untested" entry above — grouped, same disposition.
+  - `[false]` `[reject]` intent-alignment: the pill/glyph use a visually-hidden sibling span rather than `aria-describedby`/`aria-labelledby` — refuted: this matches the codebase's established `.ocu-visually-hidden` sibling-span convention (pre-existing, used elsewhere for icon+hidden-text pairs) and satisfies the intent-contract's literal "a visually-hidden description"/"name" wording without requiring an ARIA relationship attribute.
 
 ## Design Notes
 
@@ -146,5 +174,40 @@ deferred: []
 
 ## Auto Run Result
 
-Status: ready-for-dev
+**Summary.** Implemented: `core/agent-context.ts` (the store over `GET/PUT /agent/context`), `core/screen-context.ts` (`assembleScreenContext`, `contextRowsSent`, `contextViewDeclared`, `looksLikeSecret`), `shell/context-chip.ts` (the chip component), `turn.ts` widened to `send(message, context?)`, `panel.ts` wired to render the chip, gate Send behind the paste warning, and assemble context fresh at the click, plus the sign-in/sign-out wiring in `main.ts`/`app.ts` and the SCSS block for the chip, pill, switch and warning. A real defect was found and fixed during implementation: `assembleScreenContext` originally posted `route: ''` for Home, which the server's `ContextViolation` refuses with 422 -- fixed by adding "route is `''`" to the omission conditions.
+
+**Files changed:**
+
+- `ui/src/app/core/agent-context.ts` (new) -- the `AgentContext` store.
+- `ui/src/app/core/screen-context.ts` (new) -- the payload assembler and secret-draft check.
+- `ui/src/app/shell/context-chip.ts` (new) -- the chip component.
+- `ui/src/app/testing/agent-context.ts` (new) -- `stubAgentContext()`.
+- `ui/tools/agent-context.test.mjs`, `ui/tools/screen-context.test.mjs` (new) -- unit suites.
+- `ui/browser/context-chip.browser-spec.mjs` (new) -- real-instance specs, including the Integration AC.
+- `ui/src/app/core/turn.ts`, `ui/tools/turn.test.mjs` -- `context` parameter and its pinning test.
+- `ui/src/app/shell/panel.ts`, `ui/src/app/shell/panel.spec.ts` -- chip slot, paste warning, Send-path wiring, and the Story 4.11 test suite.
+- `ui/src/main.ts`, `ui/src/app/app.ts`, `ui/src/app/app.spec.ts`, `ui/src/app/app.wire.spec.ts`, `ui/src/app/app.gate-outlet.wire.spec.ts` -- construction, load/reset wiring, and DI updates for unrelated specs.
+- `ui/src/styles/_components.scss` -- the chip/switch/warning CSS block.
+
+**Review findings breakdown (13 findings, 4 review layers -- full detail in `## Review Triage Log`):**
+
+- Patched (6, grouped into 6 fix entries): `contextChipVisible` missing an `onScopeChange` subscription (medium); no component-level test for "cap follows `agent-switch`" (medium); `syncSecretRecord()` clearing an acknowledgment on a failed send rather than only on a genuine reset (medium); no test for the kill-switch/restrained chip state (low); `setShare()` not reverting on a malformed 200 body (low); no `app.spec.ts` pin for `agentContext.reset()` on sign-out (low). Each fix verified: full `npm test` (889 `node --test` + 439 vitest, all green), `npm run build` clean, and all 24 browser-spec tests (`context-chip`, `panel`, `turn`) green against the rebuilt/redeployed throwaway bundle.
+- Rejected as false (3): `looksLikeSecret`'s excluded-character list producing JWT/AWS-secret false negatives (the exact algorithm is specified byte-for-byte in the frozen `<intent-contract>`); `contextRowCap` not clamped client-side to 1-1000 (the range is a server-enforced invariant this story must not re-derive, per AD-24's Never list); the pill/glyph using a visually-hidden sibling span rather than an ARIA relationship attribute (matches the codebase's established convention and the intent-contract's literal wording).
+- Rejected as low/unreachable (2, one root cause): `Panel.currentEntityId()`'s wiring into `context.entity` has no test -- no built screen today combines an entity-detail route with declared `context.fields`, so the path is unreachable in the shipped product; reopen if a future screen combines the two.
+
+**Follow-up review recommendation: true.** Two or more medium-severity entries were patched in this pass (the `onScopeChange` subscription, the live-cap component test, and the `syncSecretRecord` reset-detection fix), which this template's rule makes `true` regardless of how thoroughly the patches were re-verified here. Named unverified risk: the two most recently patched medium fixes -- "cap follows `agent-switch` without a reload" and "a failed send preserves the paste-warning acknowledgment" -- are proven only at the component (vitest) level; neither has a browser-spec leg exercising it against the live throwaway (an operator actually changing `Switches.contextRowCap`, or a live network failure on `POST /turn`), so a regression in either wiring path at the real-DOM/real-instance layer would not be caught until a future pass adds one.
+
+**Verification performed:**
+
+- `cd ui && npm test` -- 889 `node --test` + 439 vitest component tests, all green (post-patch; 888/436 pre-patch).
+- `cd ui && npm run build` -- clean; pre-existing 500 kB budget warning only (142.89 kB over, unchanged in nature from before this story).
+- `uv run scripts/check-objectscript.py` -- 0 findings (no ObjectScript touched).
+- Rebuilt (`npx ng build`), `docker cp`'d into `ocupilot-ci`, confirmed the served bundle hash via `curl`, then ran against the live throwaway: `context-chip.browser-spec.mjs` 6/6, `panel.browser-spec.mjs` 10/10, `turn.browser-spec.mjs` 8/8 -- all pass, both before and after the patch pass.
+- `bash scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS` -- 19 passed, 0 failed, 2 pending (Epic 3, unrelated) -- both before and after the patch pass.
+- Matrix Test Audit: every I/O & Edge-Case Matrix row has at least one covering test that ran and passed (unit and/or browser).
+- Four review layers (blind-hunter, edge-case-hunter, verification-gap, intent-alignment) ran in parallel against the full diff; 13 findings triaged, 6 patched, 4 rejected as false, 2 rejected as unreachable-today (one root cause) -- detail in `## Review Triage Log`.
+
+**Residual risks:** the named follow-up-review risk above (two patched medium fixes proven only at component level, not browser level); and the pre-existing 142.89 kB bundle-size budget overage, unrelated to this story and not worsened by it.
+
+Status: done
 Blocking condition: none

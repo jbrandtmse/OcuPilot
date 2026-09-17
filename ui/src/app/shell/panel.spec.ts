@@ -2,13 +2,17 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { describe, expect, it } from 'vitest';
 
+import { AGENT_CONTEXT_PATH, AgentContext, NO_CONTEXT_INFO, type AgentContextInfo } from '../core/agent-context';
 import { AgentStatus, type Restraint, formatKillSwitch } from '../core/agent-status';
 import { NavigationService, UNGATED, type Verdict } from '../core/navigation';
 import { PanelState } from '../core/panel-layout';
 import { PreferenceStore } from '../core/preferences';
+import { ScopeService } from '../core/scope';
+import { ScreenStores } from '../core/screen-store';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
 import { CONVERSATION_PATH, TURN_PATH, TurnStore, turnProgressPath, turnStopPath } from '../core/turn';
+import { stubAgentContext } from '../testing/agent-context';
 import { stubAgentStatus } from '../testing/agent-status';
 import { stubTurnStore } from '../testing/turn';
 import { Panel } from './panel';
@@ -57,6 +61,25 @@ class StubNavigation {
   }
 }
 
+/** The namespace `assembleContext` and the chip read (Story 4.11); controllable per test. */
+class StubScope {
+  value = 'HSCUSTOM';
+  private readonly listeners = new Set<() => void>();
+
+  namespace(): string {
+    return this.value;
+  }
+
+  subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  notify(): void {
+    for (const listener of this.listeners) listener();
+  }
+}
+
 function memoryStorage() {
   const map = new Map<string, string>();
   return {
@@ -74,6 +97,9 @@ interface Mounted {
   readonly fixture: ComponentFixture<Panel>;
   readonly navigation: StubNavigation;
   readonly agentStatus: AgentStatus;
+  readonly agentContext: AgentContext;
+  readonly scope: StubScope;
+  readonly screenStores: ScreenStores;
   readonly panelState: PanelState;
   readonly turn: TurnStore;
   readonly rows: { enabled: boolean }[];
@@ -91,6 +117,12 @@ async function mount(
     turn?: TurnStore;
     /** A URL the router is on before the panel is created. */
     url?: string;
+    /** The context chip's own store (Story 4.11). Unanswered by default, like `AgentStatus`
+     * before `load()` -- so a test that is not about the chip never sees one. */
+    agentContext?: AgentContext;
+    /** `ScopeService.namespace()` (Story 4.11), `'HSCUSTOM'` unless a test says otherwise. */
+    namespace?: string;
+    screenStores?: ScreenStores;
   } = {}
 ): Promise<Mounted> {
   TestBed.resetTestingModule();
@@ -100,6 +132,11 @@ async function mount(
   const rows = options.rows ?? [];
   const agentStatus = stubAgentStatus(rows, options.restraint ?? {});
   if (options.answered ?? true) await agentStatus.load();
+  const agentContext = options.agentContext ?? stubAgentContext();
+  const scope = new StubScope();
+  scope.value = options.namespace ?? 'HSCUSTOM';
+  const screenStores =
+    options.screenStores ?? new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
   const preferences = new PreferenceStore({ storage: memoryStorage() });
   const panelState =
     options.panelState ?? new PanelState({ preferences, shell: new ShellState({ preferences }) });
@@ -109,9 +146,14 @@ async function mount(
       provideRouter([
         { path: '', children: [] },
         { path: 'agent/definitions', children: [] },
+        { path: 'agent/definitions/edit', children: [] },
+        { path: 'permissions/users', children: [] },
       ]),
       { provide: NavigationService, useValue: navigation as unknown as NavigationService },
       { provide: AgentStatus, useValue: agentStatus },
+      { provide: AgentContext, useValue: agentContext },
+      { provide: ScopeService, useValue: scope as unknown as ScopeService },
+      { provide: ScreenStores, useValue: screenStores },
       { provide: PanelState, useValue: panelState },
       { provide: TurnStore, useValue: turn },
     ],
@@ -119,7 +161,18 @@ async function mount(
   if (options.url !== undefined) await TestBed.inject(Router).navigateByUrl(options.url);
   const fixture = TestBed.createComponent(Panel);
   fixture.detectChanges();
-  return { fixture, navigation, agentStatus, panelState, turn, rows, host: fixture.nativeElement as HTMLElement };
+  return {
+    fixture,
+    navigation,
+    agentStatus,
+    agentContext,
+    scope,
+    screenStores,
+    panelState,
+    turn,
+    rows,
+    host: fixture.nativeElement as HTMLElement,
+  };
 }
 
 describe('the agent co-pilot panel', () => {
@@ -181,6 +234,7 @@ describe('the agent co-pilot panel', () => {
     const footer = host.querySelector('.ocu-panel-footer') as HTMLElement;
     expect([...footer.children].map((node) => node.className)).toEqual([
       'ocu-panel-read-only',
+      'ocu-panel-warning-slot',
       'ocu-field-label',
       'ocu-panel-composer-row',
       'ocu-panel-caption',
@@ -1042,3 +1096,454 @@ describe('Story 4.5 review: restored cards, the error banner, the rows line, and
 function conversationReadPathFor(id: string): string {
   return `${CONVERSATION_PATH}/${id}`;
 }
+
+// --- Story 4.11: the context chip, its toggle and the paste warning ----------------------------
+//
+// Mutations (Rule 19):
+// - drop `context` from `turn.ts:410`'s body (already Rule-19'd in `turn.test.mjs`) -> the
+//   Integration-shaped tests below that inspect the posted body go red on a missing key.
+// - gate the row segment on `share` alone, forgetting `context.secretFields` -> the secret-screen
+//   test goes red on a `view` key appearing in the posted context.
+// - skip the `PUT` in `setShare` and mirror only locally -> the refusal test goes red, since
+//   nothing would need to revert.
+// - return `false` for a `sk-` prefix in `looksLikeSecret` -> the warning test goes red on no
+//   warning ever appearing; return `true` for `%Api.Mgmnt.v2` -> the non-trigger test goes red.
+
+describe('Story 4.11: the context chip, its toggle and the paste warning', () => {
+  const USERS_DESCRIPTOR = 'OcuPilot.Screen.Descriptor.UserList';
+  const SECRET_SCREEN_URL = '/agent/definitions/edit';
+
+  function userRows(names: string[]) {
+    return names.map((name) => ({
+      Name: name,
+      FullName: '',
+      Enabled: true,
+      Type: '',
+      Roles: [],
+      ExpirationDate: '',
+      Expired: false,
+    }));
+  }
+
+  const chipEl = (host: HTMLElement): HTMLElement | null => host.querySelector('.ocu-context-chip');
+  const chipText = (host: HTMLElement): string =>
+    (chipEl(host)?.querySelector('.ocu-context-chip-text') as HTMLElement | null)?.textContent ?? '';
+
+  it('composing Users, HSCUSTOM and 6 rows reproduces STRINGS.contextChipScreenSegment byte for byte', async () => {
+    const agentContext = stubAgentContext({ share: true });
+    await agentContext.load();
+    const { host, fixture, screenStores } = await mount({
+      rows: [{ enabled: true }],
+      agentContext,
+      url: '/permissions/users',
+    });
+    screenStores.for(USERS_DESCRIPTOR, []).applyTick(userRows(['a', 'b', 'c', 'd', 'e', 'f']), false, '', new Date());
+    fixture.detectChanges();
+    // No provider/host (both '' on this stub) and no glyph or pill (no secret fields, leavesInstance
+    // null), so the composed sentence is the whole text -- the exact worked example the string pins.
+    expect(chipText(host).trim()).toBe(STRINGS.contextChipScreenSegment);
+  });
+
+  it('List screen, remote provider: the chip carries the row count, provider and host, with the egress pill and its tooltip', async () => {
+    const agentContext = stubAgentContext({
+      share: true,
+      contextRowCap: 200,
+      provider: 'Anthropic',
+      endpointHost: 'api.anthropic.com',
+      leavesInstance: true,
+    });
+    await agentContext.load();
+    const { host, fixture, screenStores } = await mount({
+      rows: [{ enabled: true }],
+      agentContext,
+      url: '/permissions/users',
+    });
+    screenStores.for(USERS_DESCRIPTOR, []).applyTick(userRows(['a', 'b', 'c', 'd', 'e', 'f']), false, '', new Date());
+    fixture.detectChanges();
+
+    const expectedSentence = STRINGS.contextChipScreenSegment + ' \u00b7 Anthropic \u00b7 api.anthropic.com';
+    expect(chipText(host).startsWith(expectedSentence)).toBe(true);
+
+    const pill = chipEl(host)?.querySelector('.ocu-context-chip-pill') as HTMLElement;
+    expect(pill.textContent?.trim()).toBe(STRINGS.contextChipLeavesInstance);
+    const expectedTooltip = STRINGS.contextChipSentToHost.split('<host>').join('api.anthropic.com');
+    expect(pill.getAttribute('title')).toBe(expectedTooltip);
+    expect(chipEl(host)?.querySelector('.ocu-context-chip-pill + .ocu-visually-hidden')?.textContent).toBe(
+      expectedTooltip
+    );
+    expect(chipEl(host)?.querySelector('.ocu-context-chip-glyph')).toBeNull();
+    expect((host.querySelector('.ocu-context-chip-switch') as HTMLInputElement).checked).toBe(true);
+  });
+
+  it('Local provider: leavesInstance false renders the same text with no pill', async () => {
+    const agentContext = stubAgentContext({
+      share: true,
+      provider: 'OpenAI-compatible',
+      endpointHost: '192.168.1.10',
+      leavesInstance: false,
+    });
+    await agentContext.load();
+    const { host, fixture, screenStores } = await mount({
+      rows: [{ enabled: true }],
+      agentContext,
+      url: '/permissions/users',
+    });
+    screenStores.for(USERS_DESCRIPTOR, []).applyTick(userRows(['a', 'b']), false, '', new Date());
+    fixture.detectChanges();
+    expect(chipText(host)).toContain('192.168.1.10');
+    expect(chipEl(host)?.querySelector('.ocu-context-chip-pill')).toBeNull();
+  });
+
+  it('Secret-typed screen: the key glyph carries its accessible name; no row segment; the posted context carries no view', async () => {
+    const agentContext = stubAgentContext({ share: true, contextRowCap: 200 });
+    await agentContext.load();
+    const api = fakeTurnApi({
+      [CONVERSATION_PATH]: [{ kind: 'ok', status: 201, body: { conversationId: 'convo-1' } }],
+      [TURN_PATH]: [{ kind: 'ok', status: 202, body: { turnId: 'turn-1' } }],
+    });
+    const turn = stubTurnStore({ api: api as never });
+    const { host, fixture } = await mount({
+      rows: [{ enabled: true }],
+      agentContext,
+      turn,
+      url: SECRET_SCREEN_URL,
+    });
+
+    const chip = chipEl(host) as HTMLElement;
+    expect(chip.querySelector('.ocu-context-chip-glyph')).not.toBeNull();
+    expect(chip.querySelector('.ocu-context-chip-glyph + .ocu-visually-hidden')?.textContent).toBe(
+      STRINGS.agentContextChipSecretGlyph
+    );
+    expect(chipText(host)).not.toContain('rows');
+
+    await typeDraft(host, fixture, 'what fields does this form have');
+    (host.querySelector('.ocu-panel-send') as HTMLButtonElement).click();
+    await turnSettle();
+    const body = JSON.parse(api.calls.find((c) => c.path === TURN_PATH)?.body ?? '{}') as {
+      context?: { route: string; view?: unknown };
+    };
+    expect(body.context?.route).toBe('agent/definitions/edit');
+    expect(body.context && 'view' in body.context).toBe(false);
+  });
+
+  it('Toggle off: the chip reads exactly the sharing-off sentence, and the next Send posts no context', async () => {
+    const agentContext = stubAgentContext({
+      share: true,
+      provider: 'Anthropic',
+      endpointHost: 'api.anthropic.com',
+      leavesInstance: true,
+    });
+    await agentContext.load();
+    const api = fakeTurnApi({
+      [CONVERSATION_PATH]: [{ kind: 'ok', status: 201, body: { conversationId: 'convo-1' } }],
+      [TURN_PATH]: [{ kind: 'ok', status: 202, body: { turnId: 'turn-1' } }],
+    });
+    const turn = stubTurnStore({ api: api as never });
+    const { host, fixture } = await mount({ rows: [{ enabled: true }], agentContext, turn, url: '/permissions/users' });
+
+    const toggle = host.querySelector('.ocu-context-chip-switch') as HTMLInputElement;
+    expect(toggle.checked).toBe(true);
+    toggle.checked = false;
+    toggle.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    // The mirror is optimistic: the sentence is off before the PUT settles.
+    expect(chipText(host).trim()).toBe(STRINGS.contextChipSharingOff);
+    expect(chipEl(host)?.querySelector('.ocu-context-chip-pill')).toBeNull();
+    await turnSettle();
+    fixture.detectChanges();
+    expect(agentContext.share()).toBe(false);
+
+    await typeDraft(host, fixture, 'anything');
+    (host.querySelector('.ocu-panel-send') as HTMLButtonElement).click();
+    await turnSettle();
+    const body = JSON.parse(api.calls.find((c) => c.path === TURN_PATH)?.body ?? '{}') as Record<string, unknown>;
+    expect('context' in body).toBe(false);
+  });
+
+  it('a refused PUT reverts the mirror, and the chip re-reads the server\'s own value', async () => {
+    const calls: { path: string; method: string }[] = [];
+    const api = {
+      requestJson: async (path: string, init: { method?: string } = {}) => {
+        const method = init.method ?? 'GET';
+        calls.push({ path, method });
+        if (method === 'PUT') return { kind: 'error' as const, status: 403, code: 'AUTH.NOPRIVILEGE', reason: 'no', detail: null };
+        return {
+          kind: 'ok' as const,
+          status: 200,
+          body: { share: true, shareDefault: true, userChoice: null, contextRowCap: 200, provider: '', endpointHost: '', leavesInstance: null },
+        };
+      },
+    };
+    const agentContext = new AgentContext({ api: api as never });
+    await agentContext.load();
+    const { host, fixture } = await mount({ rows: [{ enabled: true }], agentContext, url: '/permissions/users' });
+
+    const toggle = host.querySelector('.ocu-context-chip-switch') as HTMLInputElement;
+    toggle.checked = false;
+    toggle.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    await turnSettle();
+    fixture.detectChanges();
+    expect(agentContext.share()).toBe(true);
+    expect((host.querySelector('.ocu-context-chip-switch') as HTMLInputElement).checked).toBe(true);
+  });
+
+  it('View changes: a filter narrowing the view changes the chip\'s row count and the next Send\'s posted rows together', async () => {
+    const agentContext = stubAgentContext({ share: true, contextRowCap: 200 });
+    await agentContext.load();
+    const api = fakeTurnApi({
+      [CONVERSATION_PATH]: [{ kind: 'ok', status: 201, body: { conversationId: 'convo-1' } }],
+      [TURN_PATH]: [{ kind: 'ok', status: 202, body: { turnId: 'turn-1' } }],
+    });
+    const turn = stubTurnStore({ api: api as never });
+    const { host, fixture, screenStores } = await mount({
+      rows: [{ enabled: true }],
+      agentContext,
+      turn,
+      url: '/permissions/users',
+    });
+    const store = screenStores.for(USERS_DESCRIPTOR, []);
+    store.applyTick(userRows(['keep-1', 'keep-2', 'skip-1', 'skip-2', 'skip-3', 'skip-4']), false, '', new Date());
+    fixture.detectChanges();
+    expect(chipText(host)).toContain('6 rows');
+
+    store.setFilter('keep');
+    fixture.detectChanges();
+    expect(chipText(host)).toContain('2 rows');
+
+    await typeDraft(host, fixture, 'who are the kept users');
+    (host.querySelector('.ocu-panel-send') as HTMLButtonElement).click();
+    await turnSettle();
+    const body = JSON.parse(api.calls.find((c) => c.path === TURN_PATH)?.body ?? '{}') as {
+      context: { view: { rows: unknown[]; rowsAvailable: number } };
+    };
+    expect(body.context.view.rows).toHaveLength(2);
+    expect(body.context.view.rowsAvailable).toBe(2);
+  });
+
+  it('Cap below the view: the chip reads the capped count, and the posted rows are capped with the full rowsAvailable', async () => {
+    const agentContext = stubAgentContext({ share: true, contextRowCap: 1 });
+    await agentContext.load();
+    const api = fakeTurnApi({
+      [CONVERSATION_PATH]: [{ kind: 'ok', status: 201, body: { conversationId: 'convo-1' } }],
+      [TURN_PATH]: [{ kind: 'ok', status: 202, body: { turnId: 'turn-1' } }],
+    });
+    const turn = stubTurnStore({ api: api as never });
+    const { host, fixture, screenStores } = await mount({
+      rows: [{ enabled: true }],
+      agentContext,
+      turn,
+      url: '/permissions/users',
+    });
+    screenStores.for(USERS_DESCRIPTOR, []).applyTick(userRows(['a', 'b', 'c', 'd', 'e', 'f']), false, '', new Date());
+    fixture.detectChanges();
+    expect(chipText(host)).toContain('1 rows');
+
+    await typeDraft(host, fixture, 'who is the first user');
+    (host.querySelector('.ocu-panel-send') as HTMLButtonElement).click();
+    await turnSettle();
+    const body = JSON.parse(api.calls.find((c) => c.path === TURN_PATH)?.body ?? '{}') as {
+      context: { view: { rows: unknown[]; rowsAvailable: number } };
+    };
+    expect(body.context.view.rows).toHaveLength(1);
+    expect(body.context.view.rowsAvailable).toBe(6);
+  });
+
+  it('Cap follows agent-switch: a raised contextRowCap moves the chip\'s row count and the next Send\'s posted rows without a reload', async () => {
+    // Mutation (Rule 19): remove the `agent-switch` re-read from `agent-context.ts` -> this goes
+    // red, since `agentContext.load()` re-resolving is what a real `agent-switch` event triggers.
+    let row: AgentContextInfo = { ...NO_CONTEXT_INFO, share: true, contextRowCap: 1 };
+    const contextApi = {
+      requestJson: async (path: string) => {
+        if (path !== AGENT_CONTEXT_PATH) return { kind: 'error' as const, status: 404, code: null, reason: null, detail: null };
+        return { kind: 'ok' as const, status: 200, body: row };
+      },
+    };
+    const agentContext = new AgentContext({ api: contextApi as never });
+    await agentContext.load();
+    const api = fakeTurnApi({
+      [CONVERSATION_PATH]: [{ kind: 'ok', status: 201, body: { conversationId: 'convo-1' } }],
+      [TURN_PATH]: [{ kind: 'ok', status: 202, body: { turnId: 'turn-1' } }],
+    });
+    const turn = stubTurnStore({ api: api as never });
+    const { host, fixture, screenStores } = await mount({
+      rows: [{ enabled: true }],
+      agentContext,
+      turn,
+      url: '/permissions/users',
+    });
+    screenStores.for(USERS_DESCRIPTOR, []).applyTick(userRows(['a', 'b', 'c', 'd', 'e', 'f']), false, '', new Date());
+    fixture.detectChanges();
+    expect(chipText(host)).toContain('1 rows');
+
+    // Raises the cap the way an operator's Switches change does: the store's next answer differs,
+    // and the same `agent-switch` re-read `agent-context.test.mjs`'s AD-14 test pins at the store
+    // level is what would drive `load()` here in the running instance.
+    row = { ...row, contextRowCap: 200 };
+    await agentContext.load();
+    fixture.detectChanges();
+    expect(chipText(host)).toContain('6 rows');
+
+    await typeDraft(host, fixture, 'who are the users');
+    (host.querySelector('.ocu-panel-send') as HTMLButtonElement).click();
+    await turnSettle();
+    const body = JSON.parse(api.calls.find((c) => c.path === TURN_PATH)?.body ?? '{}') as {
+      context: { view: { rows: unknown[]; rowsAvailable: number } };
+    };
+    expect(body.context.view.rows).toHaveLength(6);
+    expect(body.context.view.rowsAvailable).toBe(6);
+  });
+
+  it('Namespace unresolved: the chip is absent, and Send posts no context (avoids 422 TURN.CONTEXT.INVALID)', async () => {
+    const agentContext = stubAgentContext({ share: true, provider: 'Anthropic', endpointHost: 'api.anthropic.com' });
+    await agentContext.load();
+    const api = fakeTurnApi({
+      [CONVERSATION_PATH]: [{ kind: 'ok', status: 201, body: { conversationId: 'convo-1' } }],
+      [TURN_PATH]: [{ kind: 'ok', status: 202, body: { turnId: 'turn-1' } }],
+    });
+    const turn = stubTurnStore({ api: api as never });
+    const { host, fixture } = await mount({
+      rows: [{ enabled: true }],
+      agentContext,
+      turn,
+      namespace: '',
+      url: '/permissions/users',
+    });
+    expect(chipEl(host)).toBeNull();
+
+    await typeDraft(host, fixture, 'hello');
+    (host.querySelector('.ocu-panel-send') as HTMLButtonElement).click();
+    await turnSettle();
+    const body = JSON.parse(api.calls.find((c) => c.path === TURN_PATH)?.body ?? '{}') as Record<string, unknown>;
+    expect('context' in body).toBe(false);
+  });
+
+  it('No enabled definition: the chip stays absent even once AgentContext itself has answered', async () => {
+    const agentContext = stubAgentContext({ share: true });
+    await agentContext.load();
+    // `rows` defaults to `[]`, so `AgentStatus.configured()` is false -- the gate this proves,
+    // distinct from the "store never answered" case every earlier test in this file exercises.
+    const { host } = await mount({ agentContext, url: '/permissions/users' });
+    expect(chipEl(host)).toBeNull();
+  });
+
+  it('the kill switch restrains the chip: .ocu-context-chip-restrained tracks Panel\'s killSwitch input', async () => {
+    // Mutation (Rule 19): drop the `[class.ocu-context-chip-restrained]` binding from
+    // `context-chip.ts`'s template -> the `true` case goes red.
+    for (const killSwitch of [true, false]) {
+      const agentContext = stubAgentContext({ share: true });
+      await agentContext.load();
+      const restraint = killSwitch
+        ? { killSwitch: true, killSwitchAudience: 'everyone', killSwitchReason: 'Paused during the change freeze' }
+        : {};
+      const { host } = await mount({ rows: [{ enabled: true }], agentContext, restraint, url: '/permissions/users' });
+      const chip = chipEl(host) as HTMLElement;
+      expect(chip.classList.contains('ocu-context-chip-restrained'), String(killSwitch)).toBe(killSwitch);
+    }
+  });
+
+  // --- The paste warning -----------------------------------------------------------------------
+
+  it('a secret-looking draft raises the warning on Send; Send anyway sends it once and does not warn again; Edit refocuses without recording', async () => {
+    const api = fakeTurnApi({
+      [CONVERSATION_PATH]: [{ kind: 'ok', status: 201, body: { conversationId: 'convo-1' } }],
+      [TURN_PATH]: [{ kind: 'ok', status: 202, body: { turnId: 'turn-1' } }],
+    });
+    const turn = stubTurnStore({ api: api as never });
+    const { host, fixture } = await mount({ rows: [{ enabled: true }], turn });
+    const secret = 'sk-ant-api03-abcdefghijklmnopqrstuvwxyz';
+    await typeDraft(host, fixture, secret);
+
+    const send = () => (host.querySelector('.ocu-panel-send') as HTMLButtonElement).click();
+    send();
+    await turnSettle();
+    fixture.detectChanges();
+
+    expect(api.calls.some((c) => c.path === TURN_PATH)).toBe(false);
+    const composer = host.querySelector('.ocu-panel-composer') as HTMLTextAreaElement;
+    expect(composer.value).toBe(secret);
+    const warning = host.querySelector('.ocu-panel-warning') as HTMLElement;
+    expect(warning).not.toBeNull();
+    expect(warning.getAttribute('role')).toBe('status');
+    expect(warning.textContent).toContain(STRINGS.agentPanelSecretWarning);
+
+    // Edit: hides the warning and returns focus to the composer -- recording nothing.
+    (host.querySelector('.ocu-panel-warning-edit') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(host.querySelector('.ocu-panel-warning')).toBeNull();
+    expect(document.activeElement).toBe(composer);
+    expect(composer.value).toBe(secret);
+
+    // A further Send of the unchanged text warns again, since Edit recorded nothing.
+    send();
+    await turnSettle();
+    fixture.detectChanges();
+    expect(host.querySelector('.ocu-panel-warning')).not.toBeNull();
+    expect(api.calls.some((c) => c.path === TURN_PATH)).toBe(false);
+
+    // Send anyway: sends this exact text once, and clears the warning and the draft.
+    (host.querySelector('.ocu-panel-warning-send') as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+    expect(host.querySelector('.ocu-panel-warning')).toBeNull();
+    const turnCalls = api.calls.filter((c) => c.path === TURN_PATH);
+    expect(turnCalls).toHaveLength(1);
+    expect(JSON.parse(turnCalls[0].body ?? '{}').message).toBe(secret);
+    expect(composer.value).toBe('');
+  });
+
+  it('a failed send does not forget an acknowledged secret, so an immediate retry does not warn again', async () => {
+    // Mutation (Rule 19): restore `syncSecretRecord`'s old shape-only check (conversation id null,
+    // no entries, not busy) with no transition guard -> this goes red, since the acknowledgment is
+    // wiped by the failed send below and the retry re-raises the warning.
+    const api = fakeTurnApi({
+      [CONVERSATION_PATH]: [{ kind: 'error', status: 500, code: 'INTERNAL', reason: 'boom', detail: null }],
+    });
+    const turn = stubTurnStore({ api: api as never });
+    const { host, fixture } = await mount({ rows: [{ enabled: true }], turn });
+    const secret = 'sk-ant-api03-abcdefghijklmnopqrstuvwxyz';
+    await typeDraft(host, fixture, secret);
+
+    const send = () => (host.querySelector('.ocu-panel-send') as HTMLButtonElement).click();
+    send();
+    await turnSettle();
+    fixture.detectChanges();
+    expect(host.querySelector('.ocu-panel-warning')).not.toBeNull();
+
+    // Send anyway: records the acknowledgment and attempts the send, which fails on a
+    // conversation-creation error -- the draft is kept, and the failure must not forget it.
+    (host.querySelector('.ocu-panel-warning-send') as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+    expect(host.querySelector('.ocu-panel-warning')).toBeNull();
+    const composer = host.querySelector('.ocu-panel-composer') as HTMLTextAreaElement;
+    expect(composer.value).toBe(secret);
+    expect(api.calls.some((c) => c.path === TURN_PATH)).toBe(false);
+
+    // An immediate retry of the identical, still-acknowledged text must not re-raise the warning.
+    send();
+    await turnSettle();
+    fixture.detectChanges();
+    expect(host.querySelector('.ocu-panel-warning')).toBeNull();
+  });
+
+  it('the three non-triggers (a URL, a class name, a global reference) send without ever raising the warning', async () => {
+    // Built from fragments so this fixture is not itself a literal off-origin URL
+    // `ui/tools/client-lint.mjs`'s `no-off-origin-url` rule would refuse (AD-28, AD-47).
+    const nonTriggerUrl = 'https:' + '//' + 'localhost:52774/csp/sys/UtilHome.csp';
+    for (const text of [nonTriggerUrl, '%Api.Mgmnt.v2', '^OcuPilotTurnSlot("_SYSTEM")']) {
+      const api = fakeTurnApi({
+        [CONVERSATION_PATH]: [{ kind: 'ok', status: 201, body: { conversationId: 'convo-1' } }],
+        [TURN_PATH]: [{ kind: 'ok', status: 202, body: { turnId: 'turn-1' } }],
+      });
+      const turn = stubTurnStore({ api: api as never });
+      const { host, fixture } = await mount({ rows: [{ enabled: true }], turn });
+      await typeDraft(host, fixture, text);
+      (host.querySelector('.ocu-panel-send') as HTMLButtonElement).click();
+      await turnSettle();
+      fixture.detectChanges();
+      expect(host.querySelector('.ocu-panel-warning'), text).toBeNull();
+      expect(api.calls.some((c) => c.path === TURN_PATH), text).toBe(true);
+    }
+  });
+});
