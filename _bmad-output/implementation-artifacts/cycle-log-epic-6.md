@@ -162,3 +162,6 @@
 2026-09-17T14:28:04Z	Story 6.8	ledger_adjudicated	owned=2(DW-1049,DW-1050) resolved=1(DW-1050:lead_corrected_AD-43_Binds_and_Prevents_to_seven) reowned=0 terminal=1(DW-1049) slice_after=empty
 2026-09-17T14:28:04Z	Story 6.8	smoke_complete	method=cli+browser result=pass iterations=1 defects_caught=0 evidence=fresh_ocupilot-b-ci(up_and_down_by_runner);smoke.sh_executed=36_passed=36_incl_processdetails;processes.browser-spec_8/8;a_lead_HTTP_probe_used_wrong_tool_names(osmanagement.*_instead_of_osmgmt.*)_and_read_nothing,so_it_is_not_counted_as_evidence model=claude-opus-5
 2026-09-17T14:28:33Z	Story 6.8	committed	sha=e118df6 branch=OCU-1-epic6 pushed=origin/OCU-1-epic6 submodules= ci=pending run=35233793731 amendments=epics.md:Story_6.8_AC1,ARCHITECTURE-SPINE.md:AD-43(roster_seven,Binds,Prevents),EXPERIENCE.md:Auto-refresh_controls_row,Process_details_row,meter_row,Fixed_strings_row footprint_extensions=none
+2026-09-17T14:44:46Z	Epic 6	epic_context_compiled	reason=planning_artifact_newer(AD-43_Binds_Prevents) model=claude-opus-5(opus) bytes=19416 header=ok
+2026-09-17T14:44:46Z	Story 6.8	ci_resolved	story=6.8 run=35233793731 result=success resolved_at=next_plan
+2026-09-17T14:44:46Z	Story 6.9	stage_spawned	stage=plan spawn_at=2026-09-17T14:44:46Z model=opus agent_name=6-9-plan-1 cycle_iteration=1 ledger_inbox=none

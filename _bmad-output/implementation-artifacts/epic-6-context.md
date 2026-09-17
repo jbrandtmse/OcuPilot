@@ -18,7 +18,7 @@ arrive in Epics 7, 8, 9 and 12. It depends on Epic 2 alone and runs in parallel 
 - Story 6.5: On-demand and upcoming tasks (done)
 - Story 6.6: Task history, per task and across tasks (done)
 - Story 6.7: Task details (done)
-- Story 6.8: Process details
+- Story 6.8: Process details (done)
 - Story 6.9: System usage and the dashboard meters
 - Story 6.10: The locks view
 - Story 6.11: Databases, with free space arriving as it lands
@@ -44,7 +44,8 @@ These apply to every story, and the story specs do not repeat them:
 - **Gating.** Gated entries stay listed and focusable and name their resource; a denial names the
   first pair the user lacks; a refusal is never a 500 or an empty state. Security reads on 2026.2
   need `%DB_IRISSYS:READ` and `%Admin_Secure:USE` together. The log endpoints require the resource
-  the classic portal's log pages require.
+  the classic portal's log pages require. Per-process variable reads (`VariableByPid`) need
+  `%Admin_Manage:USE`, which the spine's process-query wording does not yet say (DW-1050).
 - **An area covers its screens' pairs.** A screen that adds a pair its area lacks appends it to the
   area; coverage is not relaxed. The union currently gates OS management on `%Admin_Manage:USE`, Logs
   on `%Admin_Secure:USE` and Security on `%Admin_Wallet:USE`, and a gated rail item opens no side bar
@@ -63,14 +64,18 @@ Story traps:
 - **Stale parent ids.** A parent-scoped route whose id answers 404 draws the generic "request
   refused" with a Retry that cannot clear it (accepted for Secrets as DW-1021; Task details and the
   one-task History meet the same path, inference).
-- **6.8, settled:** the auto-refresh roster is now seven (Processes, Process details, Databases,
-  Database details, Task schedule, Task details, System usage), so Process details declares
-  auto-refresh; a screen joins only by declaring it **and** appearing in that roster. It shows
-  dashboard values, not the meter component, plus client executable and address, open devices, and
-  whether a cached SQL query is executing, named by its routine. No admin endpoint carries statement
-  text; that is Story 19.10's SQL activity screen, so do not reach for it here.
-- **6.9:** meter names and thresholds come from the 25 definitions in
-  `%CSP.UI.Portal.EnsembleMonitor`; confirm the assumed 80% and 95% there.
+- **Auto-refresh roster is seven:** Processes, Process details, Databases, Database details, Task
+  schedule, Task details, System usage. A screen joins only by declaring it in its descriptor **and**
+  appearing in that roster; no other screen in this epic declares it.
+- **Statement text is not this epic's.** No admin endpoint carries a running SQL statement's text;
+  that is Story 19.10's SQL activity screen. Process details names a cached query by its routine only.
+- **6.9, the meter component:** names and thresholds come from the 25 meter definitions in
+  `%CSP.UI.Portal.EnsembleMonitor`, never the classic `UtilSysMonitor` page. The assumed 80% warning
+  and 95% error thresholds must be confirmed there (the behavior is decided, the numbers are not).
+  The planning docs disagree on detail, so settle at spec time: the meter's state words (the
+  dashboard's own normal / warning / alert, per EXPERIENCE.md) and its normal fill color
+  (`success` in EXPERIENCE.md, `secondary` in DESIGN.md), and the pending-value glyph ("—" with a
+  skeleton in EXPERIENCE.md and 6.9, "…" in DESIGN.md for values still arriving).
 - **6.14:** confirm the assumed 28 px log row against a real tail at the densest severity mix.
   **DW-148:** the fault banner's "Open messages.log" link skips `ShellState.showArea`, leaving the
   side bar on the previous area. **DW-278:** the Logs area's accepted union carries
@@ -94,8 +99,8 @@ Story traps:
 - **Unlisted screens.** `sideBarPosition` 0 is routable but never listed: Task, Process and Database
   details, per-task History, Secrets. The client pairs a list with its surfaces by route suffix
   (`<list>/edit`, `<list>/document`, `<list>/details/<id>`, `<list>/history/<id>`). Task details
-  (`tasks/schedule/details/<Id>`) is the precedent for a detail screen opened from a list's name cell
-  and linking onward to a sibling id-keyed screen.
+  (`tasks/schedule/details/<Id>`) and Process details (`os-management/processes/details/<pid>`) are
+  the precedents for an id-keyed detail screen with its own page, opened from a list's name cell.
 - **Parent-scoped lists.** A sub-resource list declares `parentScope` naming its parent list's route
   and, with a read, exactly one `read.criteria` field, which the client fills from the route id (both
   engines refuse any other count). The parent's name cell links to the built, unlisted, id-keyed
@@ -107,7 +112,7 @@ Story traps:
   parent-scoped list whose only criterion comes from the route is a plain `list` that reads on open.
   A parent-scoped single-object `GET` takes the route id as its one criterion and may name one
   detail call keyed by it; that route-id criterion does not bar auto-refresh, since it reads on open
-  rather than from a search form (Task details).
+  rather than from a search form (Task details, Process details).
 - **Ids and scope.** Routes are `/ocupilot/<area>/<screen>[/<id>]?ns=`, the id one segment through
   the shared encoder only. References carry `(entity type, scope, id)`, scope `instance` for
   configuration objects. `ns` is data scope: switching re-fetches.
@@ -128,19 +133,18 @@ Story traps:
   that type carries the fields; a type the port issues must be in `AdminPort`'s `TYPESUFFIXES`. A 404
   row is dropped and any other row fault fails the read. For endpoints with no plain LIST: a
   single-object `GET` source (404 reads as zero rows; no `forEach`, and no criteria or detail call
-  except the parent-scoped route-id form above); a
-  list-shaped admin type other than `LIST` (`UPCOMING`: admin only, no `rowGet` or `forEach`);
-  fixed `source.query` parameters seeded before criteria that no caller can change or remove
-  (`onDemand=1`), whose keys may not collide with reserved or declared criteria params or a
-  `forEach.param`; list-shaped `HISTORY` the same way; a criterion's `vendorParam`, sending its value
-  under the vendor's name where that name is reserved for the read's own arguments (`maxRows` and `ns`
-  are reserved; on a `mgmnt` source, avoid a criterion named `namespace`, DW-1028); a `forEach`
-  source listing a parent endpoint then the child list per parent, bounded by the row cap on rows held
-  and cap+1 on parents listed, reporting truncation (a child 404 is skipped, any other fault fails the
-  read); and `<object>.<member>` fields projecting one member of an object field. A secret-bearing
-  object is never named whole, only its non-secret members. Server criteria travel on `admin` and `mgmnt`
-  only. The cap bounds rows; one screen-only payload from a single named vendor object may sit beside
-  them, never in the tool view or context.
+  except the parent-scoped route-id form above); a list-shaped admin type other than `LIST`
+  (`UPCOMING`: admin only, no `rowGet` or `forEach`); fixed `source.query` parameters seeded before
+  criteria that no caller can change or remove (`onDemand=1`), whose keys may not collide with
+  reserved or declared criteria params or a `forEach.param`; list-shaped `HISTORY` the same way; a
+  criterion's `vendorParam`, sending its value under the vendor's name where that name is reserved for
+  the read's own arguments (`maxRows` and `ns` are reserved; on a `mgmnt` source, avoid a criterion
+  named `namespace`, DW-1028); a `forEach` source listing a parent endpoint then the child list per
+  parent, bounded by the row cap on rows held and cap+1 on parents listed, reporting truncation (a
+  child 404 is skipped, any other fault fails the read); and `<object>.<member>` fields projecting one
+  member of an object field. A secret-bearing object is never named whole, only its non-secret
+  members. Server criteria travel on `admin` and `mgmnt` only. The cap bounds rows; one screen-only
+  payload from a single named vendor object may sit beside them, never in the tool view or context.
 - **Read-triggered vendor writes.** AD-7 permits exactly two: the credential password migration and
   the REST discovery cache. Any other needs a spine amendment first.
 - **AdminPort** alone names `%Api.Admin.*`, turns non-2xx into a named fault and rewrites vendor
@@ -158,12 +162,16 @@ Story traps:
   the area folder: a framework-free store mirrored into signals, zoneless, OnPush, tokens only. A
   list that needs a control above the shared table (Upcoming's horizon form) registers a small page in
   `DESCRIPTOR_PAGES` over ListPage's binding; a change yielding new criteria clears rows and reads once.
-  Auto-refresh is the one shared framework.
+  Auto-refresh is the one shared framework. The auto-refresh field highlight is the shared
+  `ui/src/app/core/detail-highlights.ts` helper; reuse it rather than diffing per page (a changed
+  entity id, such as a reused pid, must not mark every field changed).
 - **Tripwires per screen:** `Test/ReadTool`, `Test/Descriptor`, `Test/ScreenRead` (every declared
   field is a key of the live row, issuing the declared detail type; parent-scoped reads are held by
-  their area's own test), `Test/Wire` with `navigation.test.mjs`, `screen-mirror.test.mjs` and the two
-  client `LIVE_PAYLOAD` copies (neither goes red alone), and `Install/Smoke` (one live read per built
-  list, skipping without credentials). A denial test needs a real principal on the throwaway.
+  their area's own test, and a live-entity test asserts real values, not null-filled keys),
+  `Test/Wire` with `navigation.test.mjs`, `screen-mirror.test.mjs` and the two client `LIVE_PAYLOAD`
+  copies (neither goes red alone), and `Install/Smoke` (one live read per built list, skipping without
+  credentials). A denial test needs a real principal on the throwaway; a denied deep link wants a
+  browser leg, not only the payload and the HTTP 403 (DW-1049).
 - **Browser specs** against a non-default origin need `OCUPILOT_BROWSER_CONTAINER`. Their docker-exec
   legs create principals and refuse only the live `ocupilot` container, not a slot instance
   (DW-1015), so point them only at your own slot's throwaway.
@@ -180,9 +188,11 @@ Story traps:
   rate from a short fixed list (5/10/30/60 s assumed, default off), the status bar stamps the last
   update, the setting persists per screen, and refresh is silent (no spinner, skeleton or
   announcement). The shared framework pauses it while a proposal on the screen's entity type is live.
-- **Meter.** Used on System usage and Database details (not Process details). Label, value and unit with its state as a word and a color at the thresholds; the needle
-  never animates. EXPERIENCE.md and 6.9 show "—" until the first value while DESIGN.md shows "…" for
-  values still arriving; settle which at spec time.
+- **Meter.** One component, used on System usage and Database details only; Process details shows
+  labeled value groups with no meters. A 6px rounded track with the label in caption above and the
+  value in code type beside it; label, value and unit with its state as a **word** and a color, the
+  warning and error states applied to both the fill and the value text so meaning survives without
+  the bar; the needle never animates; it refreshes on the screen's interval.
 - **Log viewer.** Rows are time, pid, severity chip, text. Sticky search with highlight and a polite
   "n of N"; jump to top and bottom; "Load newer"; a Raw toggle on the code surface with a line-number
   gutter and no wrapping. A severity chip click sets the filter, shown in the command bar with Clear.
@@ -197,26 +207,29 @@ Story traps:
   Wallet · OAuth 2.0 · Auditing (Epic 7).
 - **Strings.** Add each EXPERIENCE.md Fixed strings row with its `strings.ts` key in one pass;
   `strings.test.mjs` demands exact set equality. Rows for On-demand, Upcoming, Task history (all),
-  the one-task History (title "History") and Task details exist. Values are unique, so reuse an existing row's
-  string rather than repeating it. Aliases come from the contest wording ("x509", "CPU", "disks").
+  the one-task History (title "History"), Task details and Process details exist. Values are unique,
+  so reuse an existing row's string rather than repeating it. Aliases come from the contest wording
+  ("x509", "CPU", "disks").
 
 ## Cross-Story Dependencies
 
 - **Upstream:** Epic 2 (`AdminPort` sync and async, `LogSourcePort`, the declared read, `ListPage`,
   command bar, refresh framework, gate), 6.1 (`MgmntPort`, the `mgmnt` source, `<list>/document`),
-  6.2 (column `emptyKey`), 6.3 (`rowGet.type`, the parent-scoped list grammar and child link) and 6.4 (`tab`, `GET`,
-  `forEach`, member fields, `rowLink`, `DetailPage`, registered for the `detail` archetype but
-  built for tabbed tables over `ListPage`) 6.5 (`source.query`, `UPCOMING`, the Tasks area's
-  criteria page precedent) and 6.6 (`HISTORY`, `vendorParam`, route-id entity type via the parent,
-  Task schedule keyed on `Id`) and 6.7 (parent-scoped single-object `GET` with a keyed detail call and
-  auto-refresh, the name-cell-to-detail link, Task details' own page).
+  6.2 (column `emptyKey`), 6.3 (`rowGet.type`, the parent-scoped list grammar and child link), 6.4
+  (`tab`, `GET`, `forEach`, member fields, `rowLink`, `DetailPage`, registered for the `detail`
+  archetype but built for tabbed tables over `ListPage`), 6.5 (`source.query`, `UPCOMING`, the Tasks
+  area's criteria page precedent), 6.6 (`HISTORY`, `vendorParam`, route-id entity type via the parent,
+  Task schedule keyed on `Id`), 6.7 (parent-scoped single-object `GET` with a keyed detail call and
+  auto-refresh, the name-cell-to-detail link, Task details' own page) and 6.8 (Process details' own
+  page with silent auto-refresh, the shared `detail-highlights` helper in `ui/src/app/core/`).
 - **Epic 4 in parallel:** `Screen/Tool/**` is outside this epic's footprint, so a derived-tool change
   routes to a later story (descriptor-declared field descriptions are Story 7.1's, DW-1001 and
   DW-1013). Both epics edit `Registry`, `Read`, `AdminPort`, `Install/Smoke`, `Test/` and the
-  client's core, shell and tools; expect reconciliation at merge. Story 4.4's screen context reads the parent-scoped
-  route-id entity type 6.6 settled.
-- **Within this epic:** 6.10's owner link opens 6.8; one meter component serves 6.9 and 6.11's Database details; one log-viewer serves 6.13 and
-  6.14, built by whichever lands first.
+  client's core, shell and tools; expect reconciliation at merge. Story 4.4's screen context reads the
+  parent-scoped route-id entity type 6.6 settled.
+- **Within this epic:** 6.10's owner link opens 6.8's route (`os-management/processes/details/<pid>`);
+  6.9 builds the one meter component that 6.11's Database details reuses; one log-viewer serves 6.13
+  and 6.14, built by whichever lands first.
 - **Downstream:** Epic 7 (on-demand Run in Story 7.5, process actions in 7.8, OAuth deletes, 7.6's
   UJ-6 replay on 6.7's route); Epic 8 (resource, X.509, device and wallet-secret editors); Epic 9
   (role editor and Edit task); Epic 11 (explains 6.13 and 6.14 rows); Epic 12 (OAuth editors,
