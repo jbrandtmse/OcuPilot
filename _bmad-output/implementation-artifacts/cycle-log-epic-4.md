@@ -104,3 +104,5 @@
 2026-09-17T03:37:48Z	Story 4.3	plan_clarification_requested	spawn_at=2026-09-17T03:28:32Z model=opus condition=intent_gap(narrowest_supported_viewport_undefined;grip_restrained_at_which_stop) answered_by=runner(rule5_tier1:_the_value_restates_EXPERIENCE.md's_published_Full_shell_row_1280px;both_stops_restates_DESIGN.md_with_the_AC) subagent_tokens=212222
 2026-09-17T03:37:48Z	Story 4.3	rule5_amendment	files=epics.md:2800(grip_at_either_stop),epics.md:2824(narrowest_viewport_1280px),EXPERIENCE.md:345-347(three_Fixed_strings_rows:Definitions,Full_screen,Resize_the_agent_co-pilot_panel) tier=1 marker=[AMENDED_2026-09-17]_on_epics.md;UX_rows_appended_after_the_tables_last_row
 2026-09-17T03:37:48Z	Story 4.3	ledger_filed	DW-457=routed_17-2(low:the_testing_rule_file_names_dist/ocupilot/browser;the_build_writes_dist/ocupilot-ui/browser)
+2026-09-17T03:38:52Z	Epic 4	epic_context_compiled	sha=c849992 reason=nfr_amendment(4.3_viewport,UX_rows) bytes=14762 model=opus subagent_tokens=97743
+2026-09-17T03:38:52Z	Story 4.3	stage_spawned	stage=plan spawn_at=2026-09-17T03:38:52Z model=opus agent_name=4-3-plan-2 cycle_iteration=1 note=re-dispatch_on_spec_path_status_draft
