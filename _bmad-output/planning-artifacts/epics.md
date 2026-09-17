@@ -3687,7 +3687,7 @@ So that I can plan around the instance's schedule rather than discover it.
 
 - **Given** the On-demand tasks screen
 - **When** it loads
-- **Then** it lists on-demand tasks, each row offering Run - the action itself arriving in Epic 7.
+- **Then** it lists on-demand tasks, each row offering Run - the action itself arriving in Epic 7. [AMENDED 2026-09-17, Story 6.5 spec gate: no inert Run control ships; Story 7.5 declares the Run row action together with its handler, as Story 2.8 did for Resume]
 
 - **Given** the Upcoming tasks screen
 - **When** it loads
