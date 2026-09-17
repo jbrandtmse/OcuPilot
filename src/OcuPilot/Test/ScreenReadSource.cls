@@ -8,7 +8,10 @@
 /// called.</p>
 /// <p>Over <class>OcuPilot.Test.ReadSource.Fixed</class> a declared <code>source.query</code> reaches
 /// the port whatever the caller supplies, and over <class>OcuPilot.Test.ReadSource.Upcoming</class> an
-/// <code>UPCOMING</code> source is issued as that type under the cap.</p>
+/// <code>UPCOMING</code> source is issued as that type under the cap. Over
+/// <class>OcuPilot.Test.ReadSource.History</class> a <code>HISTORY</code> source is issued the same
+/// way, and its <code>search</code> criterion's declared <code>vendorParam</code> reaches the port
+/// as <code>filter</code> (Story 6.6).</p>
 /// <p>Answers come from <class>OcuPilot.Test.ReadSource.Endpoint</class> through
 /// <class>OcuPilot.Test.PortFixture</class> and <class>OcuPilot.Test.Read.ReadFixture</class>, so
 /// nothing on the instance is read or changed. Needs <code>%Admin_Operate:U</code> or
@@ -27,6 +30,10 @@ Parameter FIXED = "OcuPilot.Test.ReadSource.Fixed";
 
 /// <p>The fixture descriptor whose read issues <code>UPCOMING</code>.</p>
 Parameter UPCOMING = "OcuPilot.Test.ReadSource.Upcoming";
+
+/// <p>The fixture descriptor whose read issues <code>HISTORY</code> with a <code>vendorParam</code>
+/// criterion (Story 6.6).</p>
+Parameter HISTORY = "OcuPilot.Test.ReadSource.History";
 
 /// <p>The fixture endpoint.</p>
 Parameter ENDPOINT = "OcuPilot.Test.ReadSource.Endpoint";
@@ -316,6 +323,28 @@ Method TestAnUpcomingSourceIsIssuedAsItsOwnType()
     If $IsObject(tResult) {
         Do $$$AssertEquals(tResult.rows.%ToJSON(), "[{""Id"":3,""Datetime"":""2026-09-17 01:00:00""}]", "the cap's one occurrence")
         Do $$$AssertEquals(tResult.truncated, 1, "truncated")
+    }
+}
+
+/// <p>Story 6.6 -- a <code>HISTORY</code> source is issued as that request type, and a criterion
+/// declaring <code>vendorParam</code> reaches the port under that name, never under its own
+/// <code>param</code>.</p>
+/// <p>Mutation: drop the <code>vendorParam</code> lookup in
+/// <method>OcuPilot.Screen.Read.SeedCriteria</method> and seed under <var>tParam</var> always -&gt;
+/// the query assertion below goes red, reading <code>search=OcuPilotDemo</code> instead of
+/// <code>filter=OcuPilotDemo</code>.</p>
+Method TestAHistorySourceIsIssuedAsItsOwnTypeAndVendorParamReachesThePort()
+{
+    Do ##class(OcuPilot.Test.ReadSource.Endpoint).Arm("rows", [{"Name": "OcuPilotDemoTask"}].%ToJSON())
+    Kill tCriteria
+    Set tCriteria("search") = "OcuPilotDemo"
+    Set tSC = ##class(OcuPilot.Test.Read.ReadFixture).Execute(..#HISTORY, "", .tResult, .tHttp, .tFault, .tCriteria)
+    Do $$$AssertStatusOK(tSC, "the read succeeds")
+    Do $$$AssertEquals(tHttp, 200, "at 200")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ReadSource.Endpoint).Recorded("type"), ##class(OcuPilot.Test.ReadSource.Endpoint).#TYPEHISTORY, "issued as HISTORY")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ReadSource.Endpoint).Recorded("query"), "filter=OcuPilotDemo,maxRows=1001", "the vendorParam name reaches the port, not the criterion's own param")
+    If $IsObject(tResult) {
+        Do $$$AssertEquals(tResult.rows.%ToJSON(), "[{""Name"":""OcuPilotDemoTask""}]", "the armed row")
     }
 }
 

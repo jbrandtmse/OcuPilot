@@ -20,6 +20,7 @@ import {
   extractXData,
   generate,
   malformedPair,
+  parentScopeResolutionProblem,
   parseEntityTypes,
   parseScopeWords,
   readCheckedInMirror,
@@ -361,7 +362,7 @@ test('AD-36: the generator refuses a read outside the declared grammar, naming t
     [(d) => (d.read.sort.default = 'Enabled'), /read\.sort\.default 'Enabled'/],
     [(d) => (d.read.sort.direction = 'up'), /direction 'up'/],
     [(d) => (d.read.source.port = 'monitor'), /port 'monitor'/],
-    [(d) => (d.read.source.type = 'POST'), /type 'POST' is not 'LIST', 'GET' or 'UPCOMING'/],
+    [(d) => (d.read.source.type = 'POST'), /type 'POST' is not 'LIST', 'GET', 'UPCOMING' or 'HISTORY'/],
     [(d) => (d.context.secretFields = ['Other']), /context\.secretFields names 'Other'/],
     [(d) => (d.read.secretFields = ['Secret']), /read declares the unknown key 'secretFields'/],
     [(d) => (d.read.source.maxRows = 5), /read\.source declares the unknown key 'maxRows'/],
@@ -502,6 +503,64 @@ test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorp
     ['security/oauth/server-clients', 'security/oauth', 5, 0],
   ]);
   assert.ok(emitted.every((screen) => 'tab' in screen), 'every screen emits tab, null when it is no tab');
+});
+
+// Story 6.6 (DW-1020): `parentScopeResolutionProblem` refuses a built descriptor's `parentScope`
+// that names no built descriptor with that route and an id, over the four ways that can happen --
+// the route is not declared at all, it is declared but not built, it is declared and built but
+// carries `id.kind` `none`, and it names the checked descriptor's own route -- and passes a roster
+// of only sound declarations. The sentences are byte for byte
+// `OcuPilot.Screen.Registry.ParentScopeResolutionProblem`'s own, exercised there by
+// `OcuPilot.Test.ParentScopeNotFoundRegistry`, `ParentScopeNotBuiltRegistry`,
+// `ParentScopeNoIdRegistry` and `ParentScopeSelfRegistry` over the equivalent fixture routes and
+// parentScope values.
+//
+// Mutation (Rule 19): make `parentScopeResolutionProblem` return `null` unconditionally -> every
+// refusing case below goes red.
+test('parentScopeResolutionProblem refuses a parentScope that does not resolve, and passes a sound roster', () => {
+  const notFound = [{ className: 'OcuPilot.Test.ParentScope.NotFound.Child', declaration: { built: true, route: 'parent-scope/not-found/child', parentScope: 'parent-scope/not-found/nonexistent', id: { kind: 'single' } } }];
+  assert.equal(
+    parentScopeResolutionProblem(notFound),
+    "OcuPilot.Test.ParentScope.NotFound.Child: parentScope 'parent-scope/not-found/nonexistent' names no built descriptor with that route and an id (DW-1020)",
+    'a parentScope naming a route nothing declares is refused'
+  );
+
+  const notBuilt = [
+    { className: 'OcuPilot.Test.ParentScope.NotBuilt.Parent', declaration: { built: false, route: 'parent-scope/not-built/parent', parentScope: '', id: { kind: 'single' } } },
+    { className: 'OcuPilot.Test.ParentScope.NotBuilt.Child', declaration: { built: true, route: 'parent-scope/not-built/child', parentScope: 'parent-scope/not-built/parent', id: { kind: 'single' } } },
+  ];
+  assert.equal(
+    parentScopeResolutionProblem(notBuilt),
+    "OcuPilot.Test.ParentScope.NotBuilt.Child: parentScope 'parent-scope/not-built/parent' names no built descriptor with that route and an id (DW-1020)",
+    'a parentScope naming a route that is declared but not built is refused'
+  );
+
+  const noId = [
+    { className: 'OcuPilot.Test.ParentScope.NoId.Parent', declaration: { built: true, route: 'parent-scope/no-id/parent', parentScope: '', id: { kind: 'none' } } },
+    { className: 'OcuPilot.Test.ParentScope.NoId.Child', declaration: { built: true, route: 'parent-scope/no-id/child', parentScope: 'parent-scope/no-id/parent', id: { kind: 'single' } } },
+  ];
+  assert.equal(
+    parentScopeResolutionProblem(noId),
+    "OcuPilot.Test.ParentScope.NoId.Child: parentScope 'parent-scope/no-id/parent' names no built descriptor with that route and an id (DW-1020)",
+    'a parentScope naming a built route with id.kind none is refused'
+  );
+
+  const self = [{ className: 'OcuPilot.Test.ParentScope.Self.Child', declaration: { built: true, route: 'parent-scope/self/child', parentScope: 'parent-scope/self/child', id: { kind: 'single' } } }];
+  assert.equal(
+    parentScopeResolutionProblem(self),
+    "OcuPilot.Test.ParentScope.Self.Child: parentScope 'parent-scope/self/child' names no built descriptor with that route and an id (DW-1020)",
+    'a parentScope naming its own route cannot resolve against itself'
+  );
+
+  const sound = [
+    { className: 'OcuPilot.Test.ParentScope.Sound.Parent', declaration: { built: true, route: 'parent-scope/sound/parent', parentScope: '', id: { kind: 'single' } } },
+    { className: 'OcuPilot.Test.ParentScope.Sound.Child', declaration: { built: true, route: 'parent-scope/sound/child', parentScope: 'parent-scope/sound/parent', id: { kind: 'single' } } },
+    { className: 'OcuPilot.Test.ParentScope.Sound.NoParent', declaration: { built: true, route: 'parent-scope/sound/no-parent', parentScope: '', id: { kind: 'single' } } },
+  ];
+  assert.equal(parentScopeResolutionProblem(sound), null, 'a roster of resolving and empty parentScope declarations passes');
+
+  const sources = readSources();
+  assert.equal(parentScopeResolutionProblem(sources.screens), null, 'and the shipped roster resolves too');
 });
 
 // DW-264, Story 2.7 AC5: every case in `OcuPilot.Test.AdminPairCorpus`, read off disk from the
@@ -666,14 +725,18 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
     'and it overrides one of them'
   );
   // Every other shipped screen declares none but the OpenAPI document viewer, whose one criterion
-  // names the application its document is read for, and the Secrets list, whose one criterion is
-  // its parent collection, filled from the route id (Story 6.3).
+  // names the application its document is read for; Task history (all) and Task history (one
+  // task), whose criteria are Story 6.6's; Upcoming tasks, whose two criteria are the horizon; and
+  // the Secrets list, whose one criterion is its parent collection, filled from the route id
+  // (Story 6.3).
   const withCriteria = emittedScreens.filter((screen) => (screen.read?.criteria ?? null) !== null);
   assert.deepEqual(
     withCriteria.map((screen) => screen.descriptor),
     [
       'OcuPilot.Screen.Descriptor.AuditList',
       'OcuPilot.Screen.Descriptor.OpenApiViewer',
+      'OcuPilot.Screen.Descriptor.TaskHistoryList',
+      'OcuPilot.Screen.Descriptor.TaskRunList',
       'OcuPilot.Screen.Descriptor.TaskUpcomingList',
       'OcuPilot.Screen.Descriptor.WalletSecretList',
     ]

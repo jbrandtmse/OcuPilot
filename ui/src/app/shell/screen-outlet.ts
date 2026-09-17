@@ -13,6 +13,7 @@ import { ActivatedRoute } from '@angular/router';
 
 import { DefinitionFormPage } from '../areas/agent/definition-form.page';
 import { SwitchesPage } from '../areas/agent/switches.page';
+import { HistoryPage } from '../areas/tasks/history.page';
 import { UpcomingPage } from '../areas/tasks/upcoming.page';
 import { HomePage } from '../areas/home/home.page';
 import { AuditPage } from '../areas/logs/audit.page';
@@ -76,6 +77,7 @@ export const ARCHETYPE_PAGES: ArchetypePages = {
 export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.AgentSwitches': SwitchesPage,
   'OcuPilot.Screen.Descriptor.TaskUpcomingList': UpcomingPage,
+  'OcuPilot.Screen.Descriptor.TaskHistoryList': HistoryPage,
 };
 
 /**

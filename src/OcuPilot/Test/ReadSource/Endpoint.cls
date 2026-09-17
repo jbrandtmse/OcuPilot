@@ -3,8 +3,8 @@
 /// <class>OcuPilot.Test.Read.ReadFixture</class>. It answers by the request path the port builds from
 /// the endpoint name: <code>Test.Object</code> a GET, <code>Test.Parents</code> the parent LIST and
 /// <code>Test.Children</code> one parent's child LIST, read for its <code>parentKey</code>;
-/// <code>Test.Fixed</code> and <code>Test.Upcoming</code> record the query and request type they were
-/// issued with and answer the armed <code>rows</code>.</p>
+/// <code>Test.Fixed</code>, <code>Test.Upcoming</code> and <code>Test.History</code> record the query
+/// and request type they were issued with and answer the armed <code>rows</code>.</p>
 /// <p>It extends no vendor class (AD-27). State lives in <code>^||OcuPilotReadSource</code>, armed by
 /// <method>Arm</method> and cleared by <method>Clear</method>, because the port constructs this class
 /// itself and runs it in <code>%SYS</code>.</p>
@@ -19,6 +19,9 @@ Parameter TYPEGET As INTEGER = 1;
 
 /// <p><code>Task.CRUD</code>'s scheduled-occurrence type number.</p>
 Parameter TYPEUPCOMING As INTEGER = 13;
+
+/// <p><code>Task.CRUD</code>'s task-run history type number (Story 6.6).</p>
+Parameter TYPEHISTORY As INTEGER = 10;
 
 Property Type As %Integer;
 
@@ -117,7 +120,7 @@ Method Run(ByRef pSC As %Status, pBody As %DynamicAbstractObject) As %DynamicAbs
         If ..Faulted($Get(^||OcuPilotReadSource("parentFault"), ""), .pSC) Quit {}
         Quit ..Capped($Get(^||OcuPilotReadSource("parents"), "[]"), $Select($Get(^||OcuPilotReadSource("parentsUncapped")): 0, 1: tMax))
     }
-    If (tPath = "test/fixed") || (tPath = "test/upcoming") {
+    If (tPath = "test/fixed") || (tPath = "test/upcoming") || (tPath = "test/history") {
         Do ..Note("type", ..Type)
         Do ..NoteQuery("query")
         Quit ..Capped($Get(^||OcuPilotReadSource("rows"), "[]"), tMax)

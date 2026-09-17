@@ -7,10 +7,10 @@
 /// namespace the route names, each row carrying its own <code>Namespace</code> as a column (AD-13).
 /// That is also why the empty state names the instance rather than a namespace: a
 /// <code>&lt;NAMESPACE&gt;</code> sentence would be false here.</p>
-/// <p><b>Its id is <code>single</code>:</b> one percent-encoded path segment, with no second part.
-/// Epic 6's Task details resolves a task by the vendor's numeric <code>Id</code>, which this read
-/// already carries as a field, so the accessor is settled when that screen lands rather than guessed
-/// at now <i>(inference)</i>.</p>
+/// <p><b>Its id is <code>composite</code> over the single part <code>Id</code></b>: one
+/// percent-encoded path segment carrying the vendor's own numeric task id, because Story 6.6's
+/// per-task history and Story 6.7's task details both key on it. The name cell's link therefore
+/// carries the numeric id rather than the task's name; Story 6.7 re-points it at task details.</p>
 /// <p><b><code>Suspended</code> is deliberately absent</b> from the read fields, the filter, the sort
 /// and the columns. The vendor LIST answers <code>"Suspended":false</code> for every task on this
 /// build, genuinely suspended ones included: <code>RunList</code> applies a Yes/No coercion to a
@@ -72,7 +72,7 @@ XData Declaration
   "secondaryEntityTypes": [],
   "scope": "instance",
   "parentScope": "",
-  "id": {"kind": "single", "parts": []},
+  "id": {"kind": "composite", "parts": ["Id"]},
   "primaryAction": {"id": "", "selfProtection": ""},
   "rowActions": [],
   "context": {"fields": ["Name", "Type", "Namespace", "Description", "Id", "LastFinished", "NextScheduled"], "secretFields": []},

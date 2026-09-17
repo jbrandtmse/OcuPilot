@@ -506,8 +506,8 @@ Method TestAnEmptyDemoListIsSkippedWithoutTheDemo()
 /// screen its name stands for: the <code>webapplications</code>, <code>users</code>,
 /// <code>ssl</code>, <code>tasks</code>, <code>processes</code>, <code>audit</code>,
 /// <code>webapp.restapis</code>, <code>roles</code>, <code>resources</code>, <code>services</code>,
-/// <code>x509</code>, <code>ldap</code>, <code>wallet</code>, five OAuth 2.0 tab, <code>ondemand</code>
-/// and <code>upcoming</code> checks issue exactly those twenty screen reads, in that order, and nothing else in a run reads a screen.</p>
+/// <code>x509</code>, <code>ldap</code>, <code>wallet</code>, five OAuth 2.0 tab, <code>ondemand</code>,
+/// <code>upcoming</code> and <code>taskhistory</code> checks issue exactly those twenty-one screen reads, in that order, and nothing else in a run reads a screen.</p>
 /// <p><b>Why the report cannot say this.</b> A report line carries the check's name and its
 /// outcome, never the tool behind it, so transposing two <code>$Select</code> arms leaves every
 /// name-and-outcome assertion in this class green while each check reads the other's list. Driven
@@ -524,13 +524,13 @@ Method TestEachAreaListCheckReadsItsOwnScreen()
     Set tPaths = ##class(OcuPilot.Test.SmokeListFault).Paths()
     Do ##class(OcuPilot.Test.SmokeListFault).ClearPaths()
 
-    For tName = "webapplications", "users", "ssl", "tasks", "processes", "audit", "webapp.restapis", "roles", "resources", "services", "x509", "ldap", "wallet", "oauthdescriptions", "oauthclients", "oauthresourceservers", "oauthserver", "oauthserverclients", "ondemand", "upcoming" {
+    For tName = "webapplications", "users", "ssl", "tasks", "processes", "audit", "webapp.restapis", "roles", "resources", "services", "x509", "ldap", "wallet", "oauthdescriptions", "oauthclients", "oauthresourceservers", "oauthserver", "oauthserverclients", "ondemand", "upcoming", "taskhistory" {
         Do $$$AssertTrue(tReport [ ("  pass     " _ tName), "a one-row body passes the " _ tName _ " check (run ok=" _ tOk _ "): " _ ..Line(tReport, tName))
     }
-    Do $$$AssertEquals($ListLength(tPaths), 20, "a credentialed run reads exactly twenty screens: " _ $ListToString(tPaths, " | "))
-    If $ListLength(tPaths) '= 20 Quit
-    Set tExpected = $ListBuild(##class(OcuPilot.Install.Smoke).#WEBAPPLISTTOOL, ##class(OcuPilot.Install.Smoke).#USERLISTTOOL, ##class(OcuPilot.Install.Smoke).#SSLLISTTOOL, ##class(OcuPilot.Install.Smoke).#TASKLISTTOOL, ##class(OcuPilot.Install.Smoke).#PROCESSLISTTOOL, ##class(OcuPilot.Install.Smoke).#AUDITLISTTOOL, ##class(OcuPilot.Install.Smoke).#RESTAPILISTTOOL, ##class(OcuPilot.Install.Smoke).#ROLELISTTOOL, ##class(OcuPilot.Install.Smoke).#RESOURCELISTTOOL, ##class(OcuPilot.Install.Smoke).#SERVICELISTTOOL, ##class(OcuPilot.Install.Smoke).#X509LISTTOOL, ##class(OcuPilot.Install.Smoke).#LDAPLISTTOOL, ##class(OcuPilot.Install.Smoke).#WALLETLISTTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHDESCRIPTIONSTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHCLIENTSTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHRESOURCESERVERSTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHSERVERTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHSERVERCLIENTSTOOL, ##class(OcuPilot.Install.Smoke).#TASKONDEMANDTOOL, ##class(OcuPilot.Install.Smoke).#TASKUPCOMINGTOOL)
-    For tI = 1:1:20 {
+    Do $$$AssertEquals($ListLength(tPaths), 21, "a credentialed run reads exactly twenty-one screens: " _ $ListToString(tPaths, " | "))
+    If $ListLength(tPaths) '= 21 Quit
+    Set tExpected = $ListBuild(##class(OcuPilot.Install.Smoke).#WEBAPPLISTTOOL, ##class(OcuPilot.Install.Smoke).#USERLISTTOOL, ##class(OcuPilot.Install.Smoke).#SSLLISTTOOL, ##class(OcuPilot.Install.Smoke).#TASKLISTTOOL, ##class(OcuPilot.Install.Smoke).#PROCESSLISTTOOL, ##class(OcuPilot.Install.Smoke).#AUDITLISTTOOL, ##class(OcuPilot.Install.Smoke).#RESTAPILISTTOOL, ##class(OcuPilot.Install.Smoke).#ROLELISTTOOL, ##class(OcuPilot.Install.Smoke).#RESOURCELISTTOOL, ##class(OcuPilot.Install.Smoke).#SERVICELISTTOOL, ##class(OcuPilot.Install.Smoke).#X509LISTTOOL, ##class(OcuPilot.Install.Smoke).#LDAPLISTTOOL, ##class(OcuPilot.Install.Smoke).#WALLETLISTTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHDESCRIPTIONSTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHCLIENTSTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHRESOURCESERVERSTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHSERVERTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHSERVERCLIENTSTOOL, ##class(OcuPilot.Install.Smoke).#TASKONDEMANDTOOL, ##class(OcuPilot.Install.Smoke).#TASKUPCOMINGTOOL, ##class(OcuPilot.Install.Smoke).#TASKHISTORYTOOL)
+    For tI = 1:1:21 {
         Set tWanted = "/screens/" _ $List(tExpected, tI) _ "/read?maxRows=1"
         Do $$$AssertTrue($List(tPaths, tI) [ tWanted, "check " _ tI _ " reads " _ tWanted _ ", not " _ $List(tPaths, tI))
     }
@@ -563,7 +563,7 @@ Method TestCheckAreaListsHasOneSelectArmPerNameAndAnEmptyCatchAll()
     Set tNameMarker = "Set tName = $Piece(" _ tQuote
     Set tNameMarkerAt = ..LastMarkerAt(tPrefix, tNameMarker)
     Do $$$AssertTrue(tNameMarkerAt > 0, "CheckAreaLists' comma-separated name list is found immediately before the tool lookup")
-    Set tNames = $Piece($Extract(tText, tNameMarkerAt, tNameMarkerAt + 200), tQuote, 1)
+    Set tNames = $Piece($Extract(tText, tNameMarkerAt, tNameMarkerAt + 300), tQuote, 1)
     Set tNameCount = $Length(tNames, ",")
     Do $$$AssertTrue(tNameCount > 0, "the name list read from the source is not empty: " _ tNames)
 
@@ -625,7 +625,7 @@ ClassMethod Line(pReport As %String, pName As %String) As %String
 Method TestNoCredentialsSkipsRatherThanPasses()
 {
     Set tOk = ##class(OcuPilot.Install.Smoke).Run("", "", "0", .tReport, .tCounts)
-    For tName = "signin", "instance", "namespaces", "navigation", "webapplications", "users", "ssl", "tasks", "processes", "audit", "webapp.restapis", "roles", "resources", "services", "x509", "ldap", "wallet", "oauthdescriptions", "oauthclients", "oauthresourceservers", "oauthserver", "oauthserverclients", "ondemand", "upcoming", "messageslog", "applicationerrors", "sign-out" {
+    For tName = "signin", "instance", "namespaces", "navigation", "webapplications", "users", "ssl", "tasks", "processes", "audit", "webapp.restapis", "roles", "resources", "services", "x509", "ldap", "wallet", "oauthdescriptions", "oauthclients", "oauthresourceservers", "oauthserver", "oauthserverclients", "ondemand", "upcoming", "taskhistory", "messageslog", "applicationerrors", "sign-out" {
         Do $$$AssertTrue(tReport [ ("  skipped  " _ tName), tName _ " is skipped: " _ ..Line(tReport, tName))
     }
     Do $$$AssertTrue(tReport [ "no credentials were supplied", "and the report says why")

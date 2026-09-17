@@ -677,7 +677,8 @@ app-screen-outlet,
 app-home-page,
 app-audit-page,
 app-error-log-page,
-app-detail-page {
+app-detail-page,
+app-task-history-page {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;

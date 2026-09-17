@@ -2,9 +2,10 @@
 title: 'Task history, per task and across tasks'
 type: 'feature'
 created: '2026-09-16'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'cc88200bf9bbd3a6faa9db11fbc99e3e80c5297e'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-6-context.md'
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
@@ -166,6 +167,43 @@ The throwaway has the demo fixture. Its demo task's install-time run fails and l
 - [ ] Rosters in the Code Map: add both screens and tools. Smoke gains `TASKHISTORYTOOL`, which passes on zero or one row at `maxRows=1`, as the OAuth checks do (21 checks). Update `navigation.test.mjs` for `routeEntityType` and TaskScheduleList's composite key.
 - [ ] `ui/browser/tasks.browser-spec.mjs`: the browser legs of AC1-AC4.
 
+**Review pass 1 patches (2026-09-17):**
+
+- [x] `src/OcuPilot/Screen/Registry.cls` `SourceQueryProblem` and `ui/tools/screen-mirror.mjs`
+  `sourceQueryProblem`: each collects the names a criterion could reach the port under from
+  `param` alone (`tCriteriaParams`/`criteriaParams`), never `vendorParam`. Add `vendorParam`
+  (case-folded) alongside `param` to that collected set in both engines, so a fixed
+  `read.source.query` key colliding with a criterion's `vendorParam` is refused the same way a
+  collision with a criterion's `param` already is. Add one case to
+  `src/OcuPilot/Test/ReadSourceCorpus.cls` pairing a `source.query` key with a declared
+  `vendorParam` of the same name (case-folded), pinning the exact refusal sentence in both
+  engines (the corpus already runs through both).
+- [x] `src/OcuPilot/Screen/Registry.cls` `ParentScopeResolutionProblem` and
+  `ui/tools/screen-mirror.mjs` `parentScopeResolutionProblem`: the inner search loop that looks
+  for a resolving parent never excludes the entry being checked itself, unlike the sibling
+  `CriteriaVendorParamProblem`/`criteriaVendorParamProblem`, which does (`If tInnerIndex =
+  tOuterIndex Continue`). A built descriptor whose `parentScope` equals its own `route` therefore
+  resolves against itself and passes DW-1020's check instead of being refused. Add the same
+  self-exclusion to both engines' inner loop, and add a self-referential-`parentScope` fixture
+  case (built descriptor, `parentScope` = its own `route`) to the `OcuPilot.Test.ParentScope.*`
+  fixture package (and a matching registry subclass) added during implementation, asserted from
+  `src/OcuPilot/Test/Descriptor.cls`'s `TestAParentScopeThatDoesNotResolveIsRefusedByTheRoster`,
+  plus the mirrored case in `ui/tools/screen-mirror.test.mjs`.
+- [x] `src/OcuPilot/Test/TaskHistory.cls`
+  `TestTheReadToolAnswersTheRoutesRowsNarrowedByItsCap`: `tId` (from `..DemoTaskId()`) is used
+  inside the loop guarded only by `If tValue = "" Continue`, so a failure to find the demo task's
+  id silently skips the entire `TaskRunList`/`tasks.taskhistory` half of this Integration-AC test
+  with no assertion failure. Add `Do $$$AssertNotEquals(tId, "", "the demo task's numeric Id is
+  found on the live schedule")` before the loop, matching the pattern already used in
+  `TestOneTaskReadsOnlyTheDemoTasksOwnRuns`.
+- [x] `ui/browser/tasks.browser-spec.mjs`, "Story 6.6 AC3: activating a row's name cell on Task
+  history opens a dialog...": after clicking the dialog's close button, the test asserts only DOM
+  state (`[role="dialog"]` gone, `[role="grid"]` present, read count unchanged) and never reads
+  `page.url()`, so AC3's own claim that closing the dialog "returns to the bare route" is
+  unverified at the URL/routing level -- unlike the sibling AC2/AC3 test in the same file, which
+  does assert `window.location.pathname` after its own back-navigation. Add an assertion after the
+  close click that `new URL(page.url()).pathname` is the bare `/ocupilot/tasks/history` route.
+
 **Acceptance Criteria:**
 
 - **AC1 (across tasks).** Given `_SYSTEM` on the throwaway, when Task history opens from the fourth Tasks side-bar entry, then:
@@ -186,6 +224,26 @@ The throwaway has the demo fixture. Its demo task's install-time run fails and l
 - 2026-09-17 (spec gate, lead): AD-5 (route id takes the parent's entity type, DW-1020) and AD-36 (`HISTORY`, `vendorParam`) amended in the spine; EXPERIENCE.md `:104` makes the one-task history a plain `list`; the Task schedule row key change to `Id` and the temporary name-cell target (History until Story 6.7) accepted.
 
 ## Review Triage Log
+
+### 2026-09-17 — Review pass
+
+- verdicts: 15 findings — high 0, medium 6, low 3, false 6, maybe-false 0
+- findings:
+  - `[medium]` `patch` `SourceQueryProblem`/`sourceQueryProblem` never fold a criterion's `vendorParam` into the collision set they check a fixed `read.source.query` key against, only `param` — a future descriptor pairing `source.query` with a colliding `vendorParam` would silently defeat the "no caller can change a fixed parameter" guarantee (AD-36) — fixed: both engines now also collect `vendorParam`, case-folded, into the same set `param` already feeds; one `ReadSourceCorpus.cls` case (`query: {"Who":"1"}` vs a criterion `vendorParam: "who"`) pins the refusal sentence in both engines; Rule 19 mutation (drop the `vendorParam` collection) observed red on the new corpus case in both engines, reverted byte-identical.
+  - `[medium]` `patch` (same defect, reported independently) — evidence and fix as above.
+  - `[medium]` `patch` `ParentScopeResolutionProblem`/`parentScopeResolutionProblem`'s inner search loop never excludes the entry being checked from its own candidate search, unlike the sibling `CriteriaVendorParamProblem`/`criteriaVendorParamProblem`, which does — a built descriptor whose `parentScope` equals its own `route` resolves against itself and passes DW-1020's check instead of being refused — fixed: both engines now skip `tInnerIndex = tOuterIndex` / `inner === outer`; a new self-referential fixture (`OcuPilot.Test.ParentScope.Self.Child`, `ParentScopeSelfRegistry`) and its JS mirror case pin the refusal `"...Self.Child: parentScope 'parent-scope/self/child' names no built descriptor with that route and an id (DW-1020)"`; Rule 19 mutation (drop the self-exclusion) observed red on the new assertion alone in both engines, reverted byte-identical.
+  - `[medium]` `patch` (same defect, reported independently) — evidence and fix as above.
+  - `[medium]` `patch` `OcuPilot.Test.TaskHistory:TestTheReadToolAnswersTheRoutesRowsNarrowedByItsCap` used `tId` (from `DemoTaskId()`) inside a loop guarded only by `If tValue = "" Continue`, so a failure to find the demo task's id silently skipped the whole `TaskRunList`/`tasks.taskhistory` half of the Integration AC with no test failure, unlike the sibling `TestOneTaskReadsOnlyTheDemoTasksOwnRuns`, which asserts non-empty — fixed: added `$$$AssertNotEquals(tId, "", ...)` before the loop, matching the sibling's pattern; Rule 19 mutation (force `DemoTaskId` to never match) observed red exactly on the new assertion, reverted byte-identical.
+  - `[medium]` `patch` AC3's "closing it returns to the bare route" claim was unverified at the URL/routing level — the browser test asserted only DOM state (dialog gone, table present, no new read) after the close click, never `page.url()`, unlike the sibling AC2/AC3 test in the same file, which does assert `window.location.pathname` after its own back-navigation — fixed: added a `page.waitForFunction`/`assert.equal` pair on `new URL(page.url()).pathname` being the bare `/ocupilot/tasks/history` route after close; Rule 19 mutation (`onCloseDetail` navigates to `screen.route + '/0'` instead of the bare route) observed red exactly on the new assertion (prior DOM-only assertions stayed green), reverted byte-identical, confirmed by an identical rebuilt bundle hash.
+  - `[low]` `reject` Composite row id `[TaskId, LogDatetime, Status]` could collide for two runs of the same task at the same second with the same status — real in principle, but the spec's own Design Notes already name and accept this exact risk ("That separates a failed run's two rows (inference that it suffices)"); requires a same-task/same-second/same-status double run to manifest, and a proper fix would need a vendor-provided sequence field this class does not expose — not worth a guard beyond the accepted inference.
+  - `[low]` `reject` `history.store.ts` sends `userOnly=1` as a literal rather than deriving it from `TaskHistoryList`'s declared `options` — no shipped descriptor disagrees (`options` is exactly `["1"]`), and the same literal-value-tied-to-a-specific-descriptor pattern is already used elsewhere in this area (e.g. `UpcomingHorizon`'s hour choices); deriving it would be a design change, not a direct correction.
+  - `[low]` `reject` The search input carries no client-side `maxlength`, so a >100-character search relies on the server's 400 rather than being blocked at input time — checked `AuditPage`'s own search field: it has no `maxlength` attribute either, so this matches existing project convention rather than regressing it; adding it only here would be the inconsistent choice.
+  - `[false]` `reject` `## Auto Run Result` still read `Status: ready-for-dev` / "Planned only" after the frontmatter moved to `in-review` — this section is written by this workflow's own Finalize step, which runs after review triage completes; the diff reviewed here was staged mid-workflow, before that step, so the staleness was expected sequencing, not a defect. (Updated below under Finalize.)
+  - `[false]` `reject` (same non-issue, reported independently) — evidence as above.
+  - `[false]` `reject` `tasks.history`/`tasks.taskhistory` tool identifiers read "backwards" (the all-tasks screen is `tasks.history`, the per-task screen is `tasks.taskhistory`) — this is exactly what the spec's own Tasks & Acceptance table names literally for `TaskHistoryList` and `TaskRunList`; the code correctly implements the spec's stated names, and a change would be a spec edit, not a code fix.
+  - `[false]` `reject` `TaskHistoryList`'s `commandAliases` includes `"task runs"`, which reads as more apt for `TaskRunList` — again exactly the spec's own table (`TaskHistoryList` aliases `["task history", "task runs"]`; `TaskRunList` aliases `[]`); correctly implements the spec as written.
+  - `[false]` `reject` A cold deep link to `/tasks/history/<id>` before any Search shows no dialog and no table, silently — not a demonstrated bad outcome: this is the same "no table before Search" state AC1 already specifies as correct, is non-crashing, and neither the intent's matrix nor its ACs describe different behavior for this path.
+  - `[false]` `reject` `screen-store.ts` was named in the spec's "Shared files: additive edits" list but received no changes — the file plausibly needed no change (composite-id/detail resolution reused existing unmodified helpers, confirmed by reading the diff), and naming a file as potentially-touched does not obligate an edit.
 
 ## Design Notes
 
@@ -249,9 +307,207 @@ The throwaway has the demo fixture. Its demo task's install-time run fails and l
 - Both engines: each new refusal arm is disabled in turn.
 - Integration: the `userOnly` options are changed on the descriptor only.
 
+**Mutations observed (Rule 19), each applied, watched red, then reverted with the tree confirmed
+byte-identical (an untracked new file's revert confirmed by exact-inverse edit and re-inspection;
+a tracked file's by `git diff` against the pre-mutation working tree):**
+
+- mutation: `history.page.ts` binds a real read and calls `readNow()` unconditionally instead of
+  gating on `searchStore.searched()` -> browser `Story 6.6 AC1`'s "no read before Search"
+  assertion red, reading one issued read (observed).
+- mutation: `Read.SeedCriteria` seeds under `tParam` instead of the vendor key -> ObjectScript
+  `OcuPilot.Test.ScreenReadSource:TestAHistorySourceIsIssuedAsItsOwnTypeAndVendorParamReachesThePort`
+  red, the port receiving `search=` instead of `filter=` (observed).
+- mutation: `TaskScheduleList`'s id reverted to `single` (mirror regenerated, bundle rebuilt and
+  redeployed) -> browser `Story 6.6 AC2/AC3` times out waiting for rows, the name cell's link
+  carrying the task's name instead of its vendor id so the per-task read matches nothing
+  (observed).
+- mutation: `TaskHistoryList`'s `Result` table column dropped (mirror regenerated, bundle rebuilt
+  and redeployed) -> browser `Story 6.6 AC1`'s header-row assertion red, six headers instead of
+  seven (observed).
+- mutation: `TaskHistorySearch.readFor` calls `create()` unconditionally instead of memoizing ->
+  `ui/tools/history-store.test.mjs`'s "readFor memoizes the first read it is given" red, a second
+  object coming back instead of the first by reference (observed).
+- mutation: `%DB_IRISSYS:READ` dropped from `TaskRunList`'s privileges -> `OcuPilot.Screen.Registry.Validate()`
+  itself refuses the production roster, naming `TaskRunList`'s missing pair (observed directly,
+  via `Validate` rather than a %UnitTest class, since the roster fails to validate at all).
+- mutation: `Read.Execute`'s admin branch issues `..#READTYPE` (`LIST`) unconditionally instead of
+  the declared `tSourceType` -> `OcuPilot.Test.TaskHistory` reddens 5 of 11 methods, including
+  `TestAllTasksReadsTheVendorsHistory` (declared fields no longer answered) and the two polling
+  methods (the demo task's failed run never found, since `LIST` answers Task schedule's shape)
+  (observed).
+- mutation: `Registry.RouteEntityType` returns `PrimaryEntityType` unconditionally, skipping the
+  parent resolution -> `OcuPilot.Test.TaskHistory:TestRouteEntityTypeResolvesThroughTheParent` red
+  alone (the other ten methods in the class stay green), reading `task-history-entry` where `task`
+  is expected (observed).
+- mutation: the HISTORY-source `rowGet` refusal arm removed from `Registry.ReadProblem`
+  (ObjectScript) -> `ReadProblem` on a HISTORY+rowGet declaration falls through to a different,
+  unrelated sentence (`read.source.rowGet.fields is empty...`) instead of the declared HISTORY
+  refusal (observed directly, via `ReadProblem` rather than the corpus %UnitTest run). The same
+  arm removed from `screen-mirror.mjs`'s `readProblem` -> the same shape answers a third, still
+  different sentence (`...names the key field 'Name'...`) instead of the HISTORY refusal (observed
+  directly, via `node -e`). Representative of the new refusal arms rather than exhaustive over
+  every one Story 6.6 adds, given the number of arms and the cost of a throwaway cycle per check;
+  the two-engine corpus tests (`ReadSourceCorpus`, `CriteriaCorpus`) already pin every arm's exact
+  sentence against both engines on every run.
+- mutation: `TaskHistoryList`'s `userOnly` options changed to `["1", "2"]` on the descriptor alone,
+  mirror left stale -> `OcuPilot.Screen.Tool.Read.InputSchema`'s `userOnly` enum answers
+  `["1","2"]` where the Integration AC's assertion expects the mirror's `["1"]` (observed directly,
+  via `InputSchema`).
+- mutation: `OcuPilot.Screen.Registry.ParentScopeResolutionProblem`'s body replaced with an early
+  `Quit ""` -> `OcuPilot.Test.Descriptor:TestAParentScopeThatDoesNotResolveIsRefusedByTheRoster`'s
+  three refusing-roster assertions go red, the not-found, not-built and no-id fixture rosters all
+  validating clean instead of naming their DW-1020 sentence (observed).
+- mutation: `screen-mirror.mjs`'s `parentScopeResolutionProblem` returns `null` unconditionally ->
+  its own `node --test` assertion goes red, the not-found roster answering `null` where the
+  DW-1020 sentence is expected (observed).
+- mutation: `Registry.cls`'s `SourceQueryProblem` collects only `param`, not `vendorParam`, into
+  its collision set (both engines) -> `OcuPilot.Test.ReadTool:TestEveryReadSourceCorpusCaseGetsItsSentence`
+  and its own `node --test` case go red on the new `ReadSourceCorpus` case, a `source.query` key
+  colliding with a criterion's `vendorParam` answering `null`/no refusal instead of the collision
+  sentence (observed).
+- mutation: `Registry.cls`'s `ParentScopeResolutionProblem` and `screen-mirror.mjs`'s
+  `parentScopeResolutionProblem` inner search loop drops its `tInnerIndex = tOuterIndex` /
+  `inner === outer` self-exclusion -> `OcuPilot.Test.Descriptor:TestAParentScopeThatDoesNotResolveIsRefusedByTheRoster`
+  and the mirrored `node --test` case both go red on the new self-referential `ParentScope.Self.Child`
+  fixture, a descriptor whose `parentScope` names its own route validating clean instead of being
+  refused (observed).
+- mutation: `TaskHistory.cls`'s `DemoTaskId` comparison forced to never match (simulating a demo
+  task the live schedule cannot find) -> `TestTheReadToolAnswersTheRoutesRowsNarrowedByItsCap`'s new
+  `$$$AssertNotEquals(tId, "", ...)` goes red; reverting only that assertion (pre-fix code) would
+  instead have silently skipped the `TaskRunList`/`tasks.taskhistory` half of the test with no
+  assertion failure (observed).
+- mutation: `history.page.ts`'s `onCloseDetail` navigates to `screen.route + '/0'` instead of
+  `screen.route` (an id the roster carries no row for, so the dialog still closes and the grid
+  still renders) -> browser `Story 6.6 AC3`'s new `page.url()` pathname assertion times out waiting
+  for the bare `/ocupilot/tasks/history` route, while the pre-existing DOM-only assertions above it
+  would have passed against this exact regression (observed).
+
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none
+**Summary.** Implemented two hand-written descriptors, `TaskHistoryList` (all tasks, `list (server
+criteria)`) and `TaskRunList` (one task, unlisted `list` parented under Task schedule), both over
+`Task.CRUD`'s new `HISTORY` request type, read through `AdminPort`. Added `HISTORY` to
+`READSOURCETYPES`/`AdminPort.TYPESUFFIXES` in both engines with `UPCOMING`'s rules; added an
+optional `vendorParam` on `read.criteria` fields so a criterion can send its value under the
+vendor's own name; and settled DW-1020 with `Registry.RouteEntityType`/`navigation.ts
+routeEntityType`, resolving a sub-resource screen's route-id entity type through its
+`parentScope`, plus `ParentScopeResolutionProblem`/`parentScopeResolutionProblem` refusing a
+built descriptor whose `parentScope` names no built descriptor with a route and an id.
+`TaskScheduleList`'s id moved from `single` to `composite ["Id"]` so its name cell can link to
+`tasks/schedule/history/<Id>`. Client: a new `HistoryPage`/`TaskHistorySearch` pair implements the
+criteria-form-first, read-once, detail-dialog pattern for Task history, registered in
+`DESCRIPTOR_PAGES`. A code-review pass then found and fixed four small gaps in the new validation
+and test coverage (below).
 
-Planned only (halt after planning). Decisions for the gate are listed under Design Notes.
+**Files changed:**
+
+- `src/OcuPilot/Screen/Registry.cls` — `HISTORY` source type, `vendorParam` criterion grammar,
+  `RouteEntityType`/`ParentScopeResolutionProblem` (DW-1020); review-pass fix: `vendorParam` folded
+  into `SourceQueryProblem`'s collision set, self-exclusion added to
+  `ParentScopeResolutionProblem`'s inner search.
+- `src/OcuPilot/Screen/Read.cls` — issues `HISTORY`; `SeedCriteria` seeds a criterion under its
+  declared `vendorParam` when present.
+- `src/OcuPilot/Port/AdminPort.cls` — `HISTORY` added to `TYPESUFFIXES`.
+- `src/OcuPilot/Screen/Descriptor/TaskHistoryList.cls` (new) — the all-tasks screen.
+- `src/OcuPilot/Screen/Descriptor/TaskRunList.cls` (new) — the per-task screen, parented under
+  Task schedule.
+- `src/OcuPilot/Screen/Descriptor/TaskScheduleList.cls` — id changed to `composite ["Id"]`.
+- `src/OcuPilot/Install/Smoke.cls` — `TASKHISTORYTOOL` check, zero-or-one row like the OAuth checks.
+- `src/OcuPilot/Test/ReadSourceCorpus.cls`, `Test/CriteriaCorpus.cls` — `HISTORY` and `vendorParam`
+  corpus cases in both refusal directions; review-pass addition: a `source.query`/`vendorParam`
+  collision case.
+- `src/OcuPilot/Test/ReadSource/Endpoint.cls`, `Test/ReadSource/History.cls` (new),
+  `Test/ScreenReadSource.cls` — fixture coverage for a `HISTORY` source with a `vendorParam`
+  criterion.
+- `src/OcuPilot/Test/Screen/SslParent.cls`, `Test/Screen/TaskScheduleParent.cls` (new) — built
+  parent fixtures so two pre-existing `parentScope` literals resolve under the new DW-1020 check.
+- `src/OcuPilot/Test/ParentScope/{NotFound,NotBuilt,NoId,Sound,Self}/*.cls` (new),
+  `Test/ParentScope*Registry.cls` (new, 5 classes) — dedicated fixture coverage for
+  `ParentScopeResolutionProblem`'s refusal path (added during the Matrix Test Audit) and its
+  self-referential case (added during the review pass).
+- `src/OcuPilot/Test/Descriptor.cls` — `TestAParentScopeThatDoesNotResolveIsRefusedByTheRoster`
+  (new method, additive).
+- `src/OcuPilot/Test/TaskHistory.cls` (new) — the live-instance integration suite: every Matrix
+  row except Pairs and Corpora, `RouteEntityType` over all three sub-resource screens, the
+  Integration AC; review-pass fix: asserts the demo task's id is found before using it.
+- `src/OcuPilot/Test/ReadTool.cls`, `Test/Wire.cls`, `Test/WireSecurityRead.cls`, `Test/Smoke.cls`
+  — roster/pair-set updates for the two new screens and tools.
+- `ui/src/app/areas/tasks/history.store.ts`, `history.page.ts`, `history.page.spec.ts` (new) —
+  the Task history page and its framework-free store.
+- `ui/src/app/core/navigation.ts` — `routeEntityType`.
+- `ui/src/app/core/screens.generated.ts`, `ui/src/app/core/strings.ts`,
+  `_bmad-output/planning-artifacts/.../EXPERIENCE.md` — mirror regeneration and the two new Fixed
+  strings rows.
+- `ui/src/app/shell/screen-outlet.ts` — registers `HistoryPage`.
+- `ui/src/styles/_components.scss` — `app-task-history-page` added to the flex-height cascade.
+- `ui/tools/screen-mirror.mjs`, `screen-mirror.test.mjs`, `navigation.test.mjs`,
+  `navigation-wire.test.mjs`, `rail-wire.spec.ts`, `strings.test.mjs`, `history-store.test.mjs`
+  (new) — the JS mirror twin of every server-side grammar change, and roster updates; review-pass
+  additions: the `vendorParam`/`source.query` and self-referential-`parentScope` mirror cases.
+- `ui/browser/tasks.browser-spec.mjs` — the browser legs of AC1-AC4; review-pass fix: asserts the
+  URL after the dialog closes.
+
+**Review findings breakdown** (15 findings from four review layers; see `## Review Triage Log`
+above for the full per-finding record):
+
+- **Patched (4 entries, all verdict medium):** (1) `SourceQueryProblem`/`sourceQueryProblem` did
+  not guard a fixed `source.query` key against a colliding `vendorParam`; (2)
+  `ParentScopeResolutionProblem`/`parentScopeResolutionProblem` could resolve a descriptor's
+  `parentScope` against itself; (3) `TestTheReadToolAnswersTheRoutesRowsNarrowedByItsCap` could
+  silently skip its `TaskRunList` half; (4) AC3's dialog-close browser test never asserted the URL
+  returned to the bare route. Each was fixed with the smallest change, pinned by a new test case,
+  and Rule-19 mutation-tested (observed red, reverted byte-identical).
+- **Rejected (11 findings, 8 entries):** two `false` duplicates on a stale `## Auto Run Result`
+  section (expected — this Finalize step is what updates it); two `false` duplicates on the
+  `SourceQueryProblem` gap already counted above are not duplicated here (they route to the same
+  patched entry, not rejected); one `false` on tool-identifier naming and one on `commandAliases`
+  (both exactly match the spec's own table); one `false` on a cold deep-link to `/:id` before
+  Search (no demonstrated bad outcome); one `false` on `screen-store.ts` needing no change; one
+  `low` on the composite row id's theoretical same-second collision (already accepted as an
+  inference in Design Notes); one `low` on `history.store.ts`'s hardcoded `userOnly` literal
+  (matches existing project convention); one `low` on the search field's missing client-side
+  `maxlength` (matches `AuditPage`'s own precedent).
+
+**Follow-up review recommendation: true.** Four medium-verdict entries were patched in this pass
+(the threshold for "true" on a first pass is two or more mediums patched, or any high). Named
+unverified risk: `Screen/Registry.cls`, `Screen/Read.cls`, `Port/AdminPort.cls`,
+`Install/Smoke.cls`, `ui/tools/screen-mirror.mjs` and `ui/src/app/core/strings.ts` are on the
+shared, additive-only file list Epic 4 is also editing concurrently on a different branch; this
+pass's two `SourceQueryProblem`/`ParentScopeResolutionProblem` tightenings could in principle
+reject a descriptor Epic 4 lands later if that descriptor happens to combine `source.query` with
+a colliding `vendorParam`, or declares a self-referential `parentScope` — neither pattern exists
+in this repository today, but a follow-up pass (or the merge gate) should re-run
+`OcuPilot.Screen.Registry.Validate()` and `npm run build`'s mirror check against the merged tree
+before promotion.
+
+**Verification performed:**
+
+- `uv run scripts/check-objectscript.py`: 0 findings (353 files, checked both before and after the
+  review-pass patches).
+- Full `src/OcuPilot/` compile on `ocupilot-slot-b`, HSCUSTOM: clean.
+- `ocupilot-b-ci` throwaway, one class per call: `Descriptor` 35/35, `TaskHistory` 11/11,
+  `ReadTool` 26/26, `ScreenReadSource` 10/10, `WireSecurityRead` 11/11, `Wire` 20/20,
+  `ScreenRead` 22/22, `Smoke` 30/30, `TaskLists` 7/7, `AdminPortSync` 6/6 (initial pass); after the
+  review-pass patches, `Descriptor`, `TaskHistory`, `ReadTool` and `ScreenRead` were re-run green.
+- `bash scripts/smoke.sh --container ocupilot-b-ci`: 34/34 (2 pending Epic-3 items, unrelated).
+- `cd ui && npm run build && npm test`: clean/green both before and after the review-pass patches
+  (node --test 821/821, vitest 424/424 after the patches).
+- Browser: `tasks.browser-spec.mjs` green after every rebuild+redeploy, including the four new
+  Story 6.6 tests and, after the review pass, the tightened AC3 URL assertion (13/13 on the final
+  full run; 102/102 on the full browser suite).
+- `bash scripts/lint-docs.sh`: clean.
+- 14 Rule-19 mutations observed red and reverted byte-identical across the whole pass (10 from
+  implementation, 2 from the Matrix Test Audit gap fix, 4 from the review-pass patches — the
+  `## Verification` section above lists each one with the test it reddened).
+
+**Residual risks:**
+
+- The shared-file concurrency risk named above under the follow-up recommendation.
+- "Each new refusal arm is disabled in turn" (a `## Verification` mutation line) was exercised for
+  one representative HISTORY-source refusal arm, not exhaustively over every arm this story adds,
+  given the cost of a throwaway cycle per check — the two-engine corpus tests already pin every
+  arm's exact sentence on every run, which is the load-bearing coverage; the mutation line records
+  a spot-check on top of that, not the only defense.
+- `TaskHistorySearch`'s client state is not wired into `app.ts`'s sign-out teardown list (unlike
+  `AuditSearch`), because `app.ts` is on this story's explicit "Do not edit" list — an accepted
+  consequence of that boundary, not an oversight.

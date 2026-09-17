@@ -40,6 +40,7 @@ const {
   listedScreensForArea,
   parentCriteria,
   parentListFor,
+  routeEntityType,
   screenForRoute,
   screenForUrl,
   tabGroupFor,
@@ -127,9 +128,11 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'logs/errors',
       'logs/audit',
       'os-management/processes',
+      'tasks/schedule/history',
       'tasks/schedule',
       'tasks/on-demand',
       'tasks/upcoming',
+      'tasks/history',
       'permissions/users',
       'permissions/roles',
       'permissions/resources',
@@ -151,7 +154,7 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'agent/definitions',
       'agent/switches',
     ],
-    'the built screens are Home, at the application root, then the application error log and the audit database, processes, task schedule, users, roles, resources, services, OpenAPI document viewer, web applications, REST API explorer, the four unlisted OAuth 2.0 tabs, Secrets, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, and the Agent co-pilot area\'s Definition form, Definitions list and Switches, in area rail order'
+    'the built screens are Home, at the application root, then the application error log and the audit database, processes, the unlisted per-task history, task schedule, on-demand tasks, upcoming tasks, task history, users, roles, resources, services, OpenAPI document viewer, web applications, REST API explorer, the four unlisted OAuth 2.0 tabs, Secrets, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, and the Agent co-pilot area\'s Definition form, Definitions list and Switches, in area rail order'
   );
 });
 
@@ -264,6 +267,24 @@ test('childListFor pairs the Wallet list with its Secrets list, parentListFor in
   assert.equal(screenForUrl('/security/wallet/secrets/OcuPilotDemo?ns=HSCUSTOM')?.route, 'security/wallet/secrets', 'a secrets URL with a collection id resolves to the Secrets list');
   assert.equal(screenForUrl('/security/wallet/secrets?ns=HSCUSTOM')?.route, 'security/wallet/secrets', 'and so does the route with no id, never the Wallet list with an id of "secrets"');
   assert.equal(screenForUrl('/security/wallet/OcuPilotDemo')?.route, 'security/wallet', 'while a Wallet URL with an id is the Wallet list');
+});
+
+// Story 6.6, DW-1020: a sub-resource screen's route id names an entity of its parent's own
+// primary entity type, resolved through parentScope, while its rows keep their own type.
+//
+// Mutation (Rule 19): make routeEntityType return `screen.entityType` unconditionally -> the two
+// parented assertions go red, reading `task-history-entry` and `wallet-secret`, while the
+// unparented assertion stays green by coincidence.
+test('routeEntityType resolves through parentScope for a sub-resource screen, and answers its own type otherwise', () => {
+  const taskRun = screenForRoute('tasks/schedule/history');
+  const secrets = screenForRoute('security/wallet/secrets');
+  const history = screenForRoute('tasks/history');
+  assert.ok(taskRun && secrets && history, 'all three screens are declared');
+  assert.equal(routeEntityType(taskRun), 'task', "History (one task)'s route id names the task it is scoped to");
+  assert.equal(routeEntityType(secrets), 'wallet-collection', 'and the Secrets list\'s names the wallet collection');
+  assert.equal(routeEntityType(history), 'task-history-entry', 'a screen with no parent answers its own primary type');
+  assert.equal(taskRun.entityType, 'task-history-entry', "its rows keep their own type regardless");
+  assert.equal(secrets.entityType, 'wallet-secret', "and so do the Secrets list's");
 });
 
 // Story 6.4, AD-5: a tabbed screen is one descriptor per tab. `tabMembersFor` reads the group's built

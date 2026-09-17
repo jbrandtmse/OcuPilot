@@ -47,6 +47,9 @@ const ON_DEMAND_URL = '/ocupilot/tasks/on-demand?ns=HSCUSTOM';
 const ON_DEMAND_READ_PATH = '/api/ocupilot/screens/tasks.ondemand/read';
 const UPCOMING_URL = '/ocupilot/tasks/upcoming?ns=HSCUSTOM';
 const UPCOMING_READ_PATH = '/api/ocupilot/screens/tasks.upcoming/read';
+const HISTORY_URL = '/ocupilot/tasks/history?ns=HSCUSTOM';
+const HISTORY_READ_PATH = '/api/ocupilot/screens/tasks.history/read';
+const TASK_HISTORY_READ_PATH = '/api/ocupilot/screens/tasks.taskhistory/read';
 const TASK_USER = 'OcuPilotTasksTaskOnly';
 const TASK_ROLE = 'OcuPilotTasksTaskOnlyRole';
 const TASK_PASSWORD = 'OcuPilotTasks1';
@@ -212,6 +215,24 @@ function describeRow(page, name) {
   }, name, ROW_SELECTOR);
 }
 
+/**
+ * The index of the rendered row whose Name cell reads `name`, or `-1`. Task history and History
+ * (one task) both declare Name third (Boundaries' column order: LastStart, Completed, Name, ...),
+ * unlike Task schedule and On-demand tasks, where it is first -- so `describeRow` and
+ * `clickRowCentre`'s own `text` match (the row's *first* gridcell) cannot find a row by name on
+ * either of Story 6.6's two screens, and every lookup on them goes through this instead.
+ */
+function findRowIndexByName(page, name) {
+  return page.evaluate(
+    (wanted, rowSelector) => {
+      const rows = Array.from(document.querySelectorAll(rowSelector));
+      return rows.findIndex((row) => row.querySelectorAll('[role="gridcell"]')[2]?.textContent.trim() === wanted);
+    },
+    name,
+    ROW_SELECTOR
+  );
+}
+
 /** The banner strip above the table, or `null` when none stands. */
 function describeBanner(page) {
   return page.evaluate(() => {
@@ -355,6 +376,140 @@ test('AC3: the demo fixture\'s task appears among the scheduled tasks', async ()
     assert.notEqual(demo.cells[1].text, '', 'and it carries a namespace');
   } finally {
     await context.close();
+  }
+});
+
+test('Story 6.6 AC1: Task history renders its form first with no read, Search issues one read carrying search, and the demo task\'s failed run is present', async () => {
+  const { context, page, reads } = await signedInAtList(config.username, config.password, HISTORY_URL);
+  try {
+    await page.waitForSelector('#ocu-task-history-search', { timeout: config.navigationTimeoutMs });
+    assert.equal(await page.$('[role="grid"]'), null, 'no table before Search');
+    assert.equal(await page.$('.ocu-data-table-skeleton'), null, 'no skeleton before Search');
+    assert.deepEqual(reads, [], 'no read before Search');
+
+    await page.type('#ocu-task-history-search', 'OcuPilotDemo');
+    await page.click('.ocu-criteria-controls button[type="submit"]');
+    await waitForRows(page, config.navigationTimeoutMs);
+
+    assert.equal(reads.length, 1, `exactly one read was issued by Search: ${JSON.stringify(reads)}`);
+    const url = new URL(reads[0]);
+    assert.equal(url.pathname, HISTORY_READ_PATH);
+    assert.equal(url.searchParams.get('search'), 'OcuPilotDemo', 'carrying search=OcuPilotDemo');
+
+    const headers = await page.$$eval('.ocu-data-table-header-label', (labels) => labels.map((label) => label.textContent.trim()));
+    assert.deepEqual(headers, [
+      STRINGS.taskHistoryColumnStarted,
+      STRINGS.taskHistoryColumnCompleted,
+      STRINGS.tableColumnName,
+      STRINGS.taskHistoryColumnStatus,
+      STRINGS.taskHistoryColumnResult,
+      STRINGS.processColumnUser,
+      STRINGS.headerNamespaceLabel,
+    ]);
+    assert.deepEqual(headers, ['Started', 'Completed', 'Name', 'Status', 'Result', 'User', 'Namespace']);
+
+    assert.ok(
+      (await findRowIndexByName(page, DEMO_TASK)) >= 0,
+      `the ${DEMO_TASK} row -- its failed install-time run -- is rendered`
+    );
+
+    await assertRefreshAlone(page);
+  } finally {
+    await context.close();
+  }
+});
+
+test('Story 6.6 AC2/AC3: activating the demo task\'s name cell opens its own history, reading taskId once, every row naming it, with a dialog on the name cell', async () => {
+  const { context, page, reads } = await signedInAtList(config.username, config.password, LIST_URL);
+  try {
+    await waitForRows(page, config.navigationTimeoutMs);
+    await clickRowCentre(page, { text: DEMO_TASK, link: true });
+    await page.waitForFunction(
+      () => /^\/ocupilot\/tasks\/schedule\/history\/[^/]+$/.test(window.location.pathname),
+      { timeout: config.navigationTimeoutMs }
+    );
+    await waitForRows(page, config.navigationTimeoutMs);
+
+    const historyReads = reads.filter((url) => new URL(url).pathname === TASK_HISTORY_READ_PATH);
+    assert.equal(historyReads.length, 1, `exactly one tasks.taskhistory read: ${JSON.stringify(reads)}`);
+    assert.notEqual(new URL(historyReads[0]).searchParams.get('taskId'), null, 'the read carries a taskId');
+
+    const names = await page.$$eval(ROW_SELECTOR, (rows) =>
+      rows.map((row) => row.querySelectorAll('[role="gridcell"]')[2]?.textContent.trim())
+    );
+    assert.ok(names.length > 0, 'at least one run is rendered');
+    for (const name of names) assert.equal(name, DEMO_TASK, `every row names the demo task: ${JSON.stringify(names)}`);
+
+    // The locator bar's screen segment is a link back to Task schedule, this screen's parent
+    // (AC2, DW-142) -- labelled with History's own name, the same shape the Secrets list's own
+    // segment takes over the Wallet list.
+    const segment = await page.evaluate((label) => {
+      const links = Array.from(document.querySelectorAll('app-locator-bar .ocu-locator-link'));
+      const link = links.find((candidate) => candidate.textContent.trim() === label);
+      return link === undefined ? null : link.textContent.trim();
+    }, STRINGS.taskRunsLabel);
+    assert.equal(segment, STRINGS.taskRunsLabel, "the locator bar's screen segment is a link, labelled History");
+    await page.evaluate((label) => {
+      const links = Array.from(document.querySelectorAll('app-locator-bar .ocu-locator-link'));
+      links.find((candidate) => candidate.textContent.trim() === label).click();
+    }, STRINGS.taskRunsLabel);
+    await page.waitForFunction(() => window.location.pathname === '/ocupilot/tasks/schedule', { timeout: config.navigationTimeoutMs });
+    assert.equal(new URL(page.url()).pathname, '/ocupilot/tasks/schedule', 'and it leads back to Task schedule');
+  } finally {
+    await context.close();
+  }
+});
+
+test('Story 6.6 AC3: activating a row\'s name cell on Task history opens a dialog listing every read field, and closing it restores the searched rows without a new read', async () => {
+  const { context, page, reads } = await signedInAtList(config.username, config.password, HISTORY_URL);
+  try {
+    await page.waitForSelector('#ocu-task-history-search', { timeout: config.navigationTimeoutMs });
+    await page.type('#ocu-task-history-search', 'OcuPilotDemo');
+    await page.click('.ocu-criteria-controls button[type="submit"]');
+    await waitForRows(page, config.navigationTimeoutMs);
+    const readsBefore = reads.length;
+
+    const rowIndex = await findRowIndexByName(page, DEMO_TASK);
+    assert.ok(rowIndex >= 0, `the ${DEMO_TASK} row is rendered`);
+    await clickRowCentre(page, { index: rowIndex, link: true });
+    await page.waitForSelector('[role="dialog"]', { timeout: config.navigationTimeoutMs });
+    const dialogText = await page.$eval('[role="dialog"]', (dialog) => dialog.textContent);
+    assert.ok(dialogText.includes(STRINGS.taskHistoryColumnResult), 'the dialog lists the Result field');
+    assert.ok(dialogText.includes(STRINGS.processColumnUser), 'and the User field');
+    assert.equal(reads.length, readsBefore, 'no second read for the dialog');
+
+    await page.click('[role="dialog"] button');
+    await page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: config.navigationTimeoutMs });
+    assert.notEqual(await page.$('[role="grid"]'), null, 'the table is still rendered once the dialog closes');
+    assert.equal(reads.length, readsBefore, 'closing the dialog issues no new read either');
+    assert.ok((await findRowIndexByName(page, DEMO_TASK)) >= 0, 'the searched rows are still rendered');
+    await page.waitForFunction(() => window.location.pathname === '/ocupilot/tasks/history', { timeout: config.navigationTimeoutMs });
+    assert.equal(new URL(page.url()).pathname, '/ocupilot/tasks/history', 'and the URL is back on the bare route');
+  } finally {
+    await context.close();
+  }
+});
+
+test('Story 6.6 AC4: a principal holding install-database read and %Admin_Task:USE alone is refused Task history and per-task history by name and issues no read', async () => {
+  for (const [url, label] of [
+    [HISTORY_URL, STRINGS.taskHistoryLabel],
+    ['/ocupilot/tasks/schedule/history/1?ns=HSCUSTOM', STRINGS.taskRunsLabel],
+  ]) {
+    const { context, page, reads } = await signedInAtList(TASK_USER, TASK_PASSWORD, url);
+    try {
+      await page.waitForSelector('app-screen-denied .ocu-screen-denied-title', { timeout: config.navigationTimeoutMs });
+      const denied = await page.evaluate(() => ({
+        title: document.querySelector('app-screen-denied .ocu-screen-denied-title').textContent.trim(),
+        reason: document.querySelector('app-screen-denied .ocu-screen-denied-reason').textContent.trim(),
+        grid: document.querySelector('[role="grid"]') !== null,
+      }));
+      assert.equal(denied.title, label, `${label}: the deep link renders the screen title`);
+      assert.equal(denied.reason, `You need %DB_IRISSYS:READ to open ${label}.`, `${label}: naming the pair`);
+      assert.equal(denied.grid, false, `${label}: and no table`);
+      assert.deepEqual(reads, [], `${label}: no screen read was issued`);
+    } finally {
+      await context.close();
+    }
   }
 });
 
@@ -630,15 +785,15 @@ async function assertRefreshAlone(page) {
   await page.keyboard.press('Escape');
 }
 
-test('Story 6.5 AC1: the Tasks side bar reads Task schedule, On-demand tasks, Upcoming tasks, and each entry opens its screen', async () => {
+test('Story 6.5/6.6 AC1: the Tasks side bar reads Task schedule, On-demand tasks, Upcoming tasks, Task history, and each entry opens its screen', async () => {
   const { context, page } = await signedInAtList(config.username, config.password, ON_DEMAND_URL);
   try {
     await waitForRows(page, config.navigationTimeoutMs);
-    const wanted = [STRINGS.taskListLabel, STRINGS.taskOnDemandLabel, STRINGS.taskUpcomingLabel];
+    const wanted = [STRINGS.taskListLabel, STRINGS.taskOnDemandLabel, STRINGS.taskUpcomingLabel, STRINGS.taskHistoryLabel];
     const sideBar = await sideBarOf(page);
-    assert.deepEqual(sideBar.entries, wanted, 'the three entries in their declared order');
-    assert.deepEqual(sideBar.entries, ['Task schedule', 'On-demand tasks', 'Upcoming tasks']);
-    const routes = ['/ocupilot/tasks/schedule', '/ocupilot/tasks/on-demand', '/ocupilot/tasks/upcoming'];
+    assert.deepEqual(sideBar.entries, wanted, 'the four entries in their declared order');
+    assert.deepEqual(sideBar.entries, ['Task schedule', 'On-demand tasks', 'Upcoming tasks', 'Task history']);
+    const routes = ['/ocupilot/tasks/schedule', '/ocupilot/tasks/on-demand', '/ocupilot/tasks/upcoming', '/ocupilot/tasks/history'];
     for (let index = 0; index < wanted.length; index += 1) {
       await page.evaluate((label) => {
         const items = Array.from(document.querySelectorAll('app-side-bar .ocu-side-bar-item'));

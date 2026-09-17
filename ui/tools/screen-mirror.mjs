@@ -472,7 +472,7 @@ export function sideBarPositionProblem(declaration) {
  *
  * The rules `OcuPilot.Screen.Registry.ReadProblem` applies on the instance: an absent or `null`
  * read is a screen with no read; otherwise `source` is `{port, endpoint, type}`, `type` one of
- * `READ_SOURCE_TYPES`. `GET` and `UPCOMING` are admin only and declare no `rowGet` or `forEach`, and
+ * `READ_SOURCE_TYPES`. `GET`, `UPCOMING` and `HISTORY` are admin only and declare no `rowGet` or `forEach`, and
  * an optional `query` fixes parameters (`sourceQueryProblem`). The source is one of three kinds:
  * `admin`, an instance endpoint reached through the port, with a dotted
  * endpoint name and an optional `rowGet` (`rowGetProblem`); `mgmnt`, the management API reached
@@ -523,7 +523,7 @@ export function readProblem(declaration) {
     );
   }
   if (typeof source.type !== 'string' || !READ_SOURCE_TYPES.includes(source.type)) {
-    return `read.source.type '${shown(source.type)}' is not 'LIST', 'GET' or 'UPCOMING'`;
+    return `read.source.type '${shown(source.type)}' is not 'LIST', 'GET', 'UPCOMING' or 'HISTORY'`;
   }
   // A GET source reads one named object of an admin endpoint as the read's one row (AD-36), so it
   // has no row list to issue a detail call for, no parents to list and no server search.
@@ -552,6 +552,20 @@ export function readProblem(declaration) {
     }
     if (isObject(source.forEach)) {
       return 'read.source.forEach is declared on an UPCOMING source, which lists no parents (AD-36)';
+    }
+  }
+  // A HISTORY source lists an admin endpoint's task-run history (AD-36), Task.CRUD's own request
+  // type: a row is a run rather than an object, so there is no detail call to issue and no parent
+  // to list -- the same rules UPCOMING takes, for the same reason.
+  if (source.type === 'HISTORY') {
+    if (source.port !== SOURCE_ADMIN) {
+      return `read.source.type 'HISTORY' is declared on a '${source.port}' source, and a list-shaped request type other than LIST issues an admin endpoint (AD-36)`;
+    }
+    if (isObject(source.rowGet)) {
+      return 'read.source.rowGet is declared on a HISTORY source, whose rows are task runs with no detail call to issue (AD-36)';
+    }
+    if (isObject(source.forEach)) {
+      return 'read.source.forEach is declared on a HISTORY source, which lists no parents (AD-36)';
     }
   }
   const queryFault = sourceQueryProblem(read, source);
@@ -800,6 +814,8 @@ export function criteriaProblem(declaration) {
   const params = [];
   const fieldsFault = criteriaFieldsProblem(criteria, params);
   if (fieldsFault !== null) return fieldsFault;
+  const vendorParamFault = criteriaVendorParamProblem(criteria);
+  if (vendorParamFault !== null) return vendorParamFault;
   const markerFault = criteriaMarkerProblem(criteria, params);
   if (markerFault !== null) return markerFault;
   if (parented && params.length !== 1) return parentCriteriaProblem(declaration);
@@ -839,8 +855,8 @@ function criteriaFieldsProblem(criteria, params) {
     if (!isObject(field)) return `${where} is not an object declaring its param, labelKey and kind`;
     const allowed =
       field.kind === 'choice'
-        ? ['param', 'labelKey', 'kind', 'maxLength', 'options']
-        : ['param', 'labelKey', 'kind', 'maxLength'];
+        ? ['param', 'labelKey', 'kind', 'maxLength', 'vendorParam', 'options']
+        : ['param', 'labelKey', 'kind', 'maxLength', 'vendorParam'];
     const fieldKeysFault = unknownKeyProblem(where, field, allowed);
     if (fieldKeysFault !== null) return fieldKeysFault;
 
@@ -854,6 +870,20 @@ function criteriaFieldsProblem(criteria, params) {
     if (seen.has(folded)) return `${where} names the param '${field.param}' twice`;
     seen.add(folded);
     params.push(field.param);
+
+    // Story 6.6: a criterion may send its value to the vendor under a declared name of its own,
+    // because the vendor's own name is reserved for the read's two callers. Only shape and the two
+    // names every read's own machinery sends are checked here; a collision with another field's
+    // param or vendorParam is checked once every field is known (criteriaVendorParamProblem).
+    if (field.vendorParam !== undefined) {
+      if (typeof field.vendorParam !== 'string' || !PARAM_RE.test(field.vendorParam)) {
+        return `${where} vendorParam '${shown(field.vendorParam)}' is not a query parameter name`;
+      }
+      const vendorFolded = field.vendorParam.toLowerCase();
+      if (vendorFolded === 'maxrows' || vendorFolded === 'ns') {
+        return `${where} vendorParam '${field.vendorParam}' collides with a name the read's own callers already send`;
+      }
+    }
 
     if (typeof field.labelKey !== 'string' || field.labelKey === '') {
       return `${where} labelKey is empty, and a criterion's control names a string key`;
@@ -910,6 +940,44 @@ function criteriaOptionsProblem(field, where) {
   return null;
 }
 
+/**
+ * What is wrong with `criteria`'s declared `vendorParam`s taken together, or `null` (Story 6.6).
+ * Each field's own shape is already sound (`criteriaFieldsProblem`); this is the one check that
+ * needs every field's name known first -- a `vendorParam` may not equal, case-folded, another
+ * field's `param` or `vendorParam`, because both values reach the same vendor query and a
+ * collision would let one field's value silently overwrite another's.
+ * `OcuPilot.Screen.Registry.CriteriaVendorParamProblem` returns the same sentence.
+ */
+function criteriaVendorParamProblem(criteria) {
+  const fields = criteria.fields;
+  if (!Array.isArray(fields)) return null;
+  for (let outer = 0; outer < fields.length; outer += 1) {
+    const outerField = fields[outer];
+    if (!isObject(outerField) || typeof outerField.vendorParam !== 'string' || outerField.vendorParam === '') {
+      continue;
+    }
+    const vendorFolded = outerField.vendorParam.toLowerCase();
+    for (let inner = 0; inner < fields.length; inner += 1) {
+      if (inner === outer) continue;
+      const innerField = fields[inner];
+      if (!isObject(innerField)) continue;
+      const sameParam =
+        typeof innerField.param === 'string' && innerField.param !== '' && innerField.param.toLowerCase() === vendorFolded;
+      const sameVendorParam =
+        typeof innerField.vendorParam === 'string' &&
+        innerField.vendorParam !== '' &&
+        innerField.vendorParam.toLowerCase() === vendorFolded;
+      if (sameParam || sameVendorParam) {
+        return (
+          `read.criteria.fields entry #${outer + 1} vendorParam '${outerField.vendorParam}' collides with ` +
+          "another field's param or vendorParam"
+        );
+      }
+    }
+  }
+  return null;
+}
+
 /** What is wrong with `criteria.marker`, or `null`. `params` is the declared parameter names. */
 function criteriaMarkerProblem(criteria, params) {
   const { marker } = criteria;
@@ -934,10 +1002,11 @@ function criteriaMarkerProblem(criteria, params) {
 
 /**
  * The request types a `read.source` may issue (AD-36), byte for byte `OcuPilot.Screen.Registry`'s own
- * `READSOURCETYPES`: `LIST`, a list of rows; `GET`, one object read as the read's one row; and
- * `UPCOMING`, an admin endpoint's list of scheduled occurrences, issued as a list is.
+ * `READSOURCETYPES`: `LIST`, a list of rows; `GET`, one object read as the read's one row;
+ * `UPCOMING`, an admin endpoint's list of scheduled occurrences, issued as a list is; and
+ * `HISTORY`, `Task.CRUD`'s task-run history, issued the same way (Story 6.6).
  */
-export const READ_SOURCE_TYPES = ['LIST', 'GET', 'UPCOMING'];
+export const READ_SOURCE_TYPES = ['LIST', 'GET', 'UPCOMING', 'HISTORY'];
 
 /** The longest value a `read.source.query` entry may fix, `OcuPilot.Screen.Registry`'s `SOURCEQUERYMAXLENGTH`. */
 export const SOURCE_QUERY_MAX_LENGTH = 50;
@@ -948,9 +1017,10 @@ export const SOURCE_QUERY_MAX_LENGTH = 50;
  *
  * An absent or `null` `query` fixes no parameter. Otherwise it is a non-empty object on an `admin`
  * source; each key is a query parameter name that equals, case-folded, neither a
- * `CRITERIA_RESERVED_PARAMS` name nor a declared `read.criteria` param; and each value is a non-empty
- * string of at most `SOURCE_QUERY_MAX_LENGTH` characters. `OcuPilot.Screen.Read.Execute` sends every
- * entry on the read's `LIST` or `UPCOMING` call, on a single-object `GET` and on each per-parent child
+ * `CRITERIA_RESERVED_PARAMS` name nor a declared `read.criteria` field's `param` or `vendorParam`;
+ * and each value is a non-empty string of at most `SOURCE_QUERY_MAX_LENGTH` characters.
+ * `OcuPilot.Screen.Read.Execute` sends every
+ * entry on the read's `LIST`, `UPCOMING` or `HISTORY` call, on a single-object `GET` and on each per-parent child
  * list, never on a per-parent read's parent list or a `rowGet` detail call, so no caller can change or
  * remove one.
  * `OcuPilot.Screen.Registry.SourceQueryProblem` returns the same sentence for every case in
@@ -969,7 +1039,9 @@ export function sourceQueryProblem(read, source) {
   const criteriaParams = [];
   if (isObject(read.criteria) && Array.isArray(read.criteria.fields)) {
     for (const field of read.criteria.fields) {
-      if (isObject(field) && typeof field.param === 'string') criteriaParams.push(field.param.toLowerCase());
+      if (!isObject(field)) continue;
+      if (typeof field.param === 'string') criteriaParams.push(field.param.toLowerCase());
+      if (typeof field.vendorParam === 'string') criteriaParams.push(field.vendorParam.toLowerCase());
     }
   }
   for (const key of keys) {
@@ -1129,6 +1201,43 @@ export function tabGroupProblem(screens) {
         `${head.className}: tab.group '${group}' declares positions ${positions.join(',')}, and a tab group's ` +
         `positions run 1 to ${members.length} with no gap or repeat (AD-5)`
       );
+    }
+  }
+  return null;
+}
+
+/**
+ * What is wrong with how a roster's `parentScope` declarations resolve, or `null` (DW-1020, AD-5).
+ * `screens` is `[{className, declaration}]` in roster order.
+ *
+ * A built descriptor's non-empty `parentScope` must name the route of some other **built**
+ * descriptor whose own `id.kind` is not `none` -- a route with nothing to identify resolves no
+ * entity for the child's id to name. The entry being checked is excluded from its own candidate
+ * search, so a descriptor cannot resolve its `parentScope` against itself by declaring one equal
+ * to its own `route`. An unbuilt descriptor's `parentScope` is not checked: it routes nothing yet,
+ * so a stale reference in a declaration still being drafted is not this rule's problem.
+ * `OcuPilot.Screen.Registry.ParentScopeResolutionProblem` returns the same sentence.
+ */
+export function parentScopeResolutionProblem(screens) {
+  for (let outer = 0; outer < screens.length; outer += 1) {
+    const screen = screens[outer];
+    const declaration = screen.declaration;
+    if (declaration.built !== true) continue;
+    const parentScope = declaration.parentScope;
+    if (typeof parentScope !== 'string' || parentScope === '') continue;
+    let found = false;
+    for (let inner = 0; inner < screens.length; inner += 1) {
+      if (inner === outer) continue;
+      const candidateDeclaration = screens[inner].declaration;
+      if (candidateDeclaration.route !== parentScope || candidateDeclaration.built !== true) continue;
+      const idKind = isObject(candidateDeclaration.id) ? candidateDeclaration.id.kind : undefined;
+      if (idKind !== undefined && idKind !== 'none') {
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      return `${screen.className}: parentScope '${parentScope}' names no built descriptor with that route and an id (DW-1020)`;
     }
   }
   return null;
@@ -1437,6 +1546,11 @@ export function buildMirror({ entityTypes, scopeWords, archetypes, areas, screen
   }
   const tabGroupFault = tabGroupProblem(screens);
   if (tabGroupFault !== null) throw new Error(`src/OcuPilot/Screen/Descriptor: ${tabGroupFault}`);
+  // DW-1020: a sub-resource screen's route id names an entity of its parent's primary entity type
+  // (AD-5), resolved through parentScope, so the parent it names has to exist, be built and carry
+  // an id for that resolution to answer anything.
+  const parentScopeFault = parentScopeResolutionProblem(screens);
+  if (parentScopeFault !== null) throw new Error(`src/OcuPilot/Screen/Descriptor: ${parentScopeFault}`);
 
   // `refreshes` / `refreshRates` are defaulted rather than spread verbatim, because `refreshProblem`
   // calls an omitted pair sound and `Base.Refreshes()` answers 0 for one: without these the mirror
@@ -1582,13 +1696,13 @@ export interface ReadSource {
   readonly endpoint: string;
   /**
    * \`LIST\` reads rows; \`GET\` reads one object as the one row, and a 404 reads as none;
-   * \`UPCOMING\` reads an admin endpoint's scheduled occurrences as rows.
+   * \`UPCOMING\` reads an admin endpoint's scheduled occurrences as rows; \`HISTORY\` reads its task-run history.
    */
   readonly type: ${READ_SOURCE_TYPES.map((value) => `'${value}'`).join(' | ')};
   readonly rowGet?: ReadRowGet | null;
   /** The parent list a per-parent read issues its source once per parent for, bounded by the cap. */
   readonly forEach?: ReadForEach | null;
-  /** Query parameters sent on the read's own list, UPCOMING or GET call and each per-parent child list (never a parent list or a rowGet call), which no caller can change or remove. */
+  /** Query parameters sent on the read's own list, UPCOMING, HISTORY or GET call and each per-parent child list (never a parent list or a rowGet call), which no caller can change or remove. */
   readonly query?: Readonly<Record<string, string>> | null;
 }
 
@@ -1637,6 +1751,13 @@ export interface ReadCriterion {
    * the port and named nothing.
    */
   readonly maxLength: number;
+  /**
+   * The query parameter name the value is sent to the vendor under, instead of \`param\`, where the
+   * vendor's own name is reserved for the read's own arguments (Story 6.6). Absent means the value
+   * is sent as \`param\` itself; the caller, the refusal text and the read tool's schema all keep
+   * using \`param\` regardless.
+   */
+  readonly vendorParam?: string;
   readonly options?: readonly string[];
 }
 

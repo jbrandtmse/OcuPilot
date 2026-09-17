@@ -698,6 +698,32 @@ export const STRINGS = {
   taskUpcomingUntil: 'Until a date',
   /** EXPERIENCE.md:358 */
   taskUpcomingEmpty: 'No tasks are scheduled to run within this horizon.',
+  /** EXPERIENCE.md:359 */
+  taskHistoryLabel: 'Task history',
+  /** EXPERIENCE.md:359 */
+  taskHistoryColumnStarted: 'Started',
+  /** EXPERIENCE.md:359 */
+  taskHistoryColumnCompleted: 'Completed',
+  /** EXPERIENCE.md:359 */
+  taskHistoryColumnStatus: 'Status',
+  /** EXPERIENCE.md:359 */
+  taskHistoryColumnResult: 'Result',
+  /** EXPERIENCE.md:359 */
+  taskHistoryColumnTaskId: 'Task ID',
+  /** EXPERIENCE.md:359 */
+  taskHistoryColumnErrDate: 'Error date',
+  /** EXPERIENCE.md:359 */
+  taskHistoryColumnLogged: 'Logged',
+  /** EXPERIENCE.md:359 */
+  taskHistorySearch: 'Contains',
+  /** EXPERIENCE.md:359 */
+  taskHistoryUserOnly: 'User-defined tasks only',
+  /** EXPERIENCE.md:359 */
+  taskHistoryEmpty: 'No task runs match.',
+  /** EXPERIENCE.md:360 */
+  taskRunsLabel: 'History',
+  /** EXPERIENCE.md:360 */
+  taskRunsEmpty: 'This task has no recorded runs.',
 
   // Not from the Fixed strings table, but required verbatim by this story's task
   // list: the audit-marker-failure fallback text (AD-15 / EXPERIENCE.md "9. **Audit.** Every confirmed"), the

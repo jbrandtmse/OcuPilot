@@ -316,10 +316,12 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   // widening was deliberate and documented here, and 260 leaves headroom for Story 3.8 and the
   // burn-down without making the next widening automatic. Story 6.1's two rows carry 14 -- the REST
   // API explorer's three and the OpenAPI document viewer's eleven -- and take the table to 261, so
-  // the bound moves to 300, the headroom Epic 6's remaining screens need. Story 6.4's three OAuth 2.0 rows carry 22 and take the table past 300, so the bound moves to 330.
+  // the bound moves to 300, the headroom Epic 6's remaining screens need. Story 6.4's three OAuth 2.0 rows carry 22 and take the table past 300, so the bound moves to 330. Story 6.6's two rows
+  // carry 13 distinct literals -- "Error number" is reused from the Application errors row rather
+  // than counted again -- and take the table past 330, so the bound moves to 350.
   assert.ok(
-    expectedLiterals.length >= 150 && expectedLiterals.length <= 330,
-    `expected between 150 and 330 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
+    expectedLiterals.length >= 150 && expectedLiterals.length <= 350,
+    `expected between 150 and 350 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
   );
 });
 

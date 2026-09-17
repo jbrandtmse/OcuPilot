@@ -38,7 +38,8 @@
 /// parent (<method>ForEachRows</method>), bounded by the cap on the rows held and by the cap plus one
 /// on the parents listed; and a declared field <code>&lt;object&gt;.&lt;member&gt;</code> projects one
 /// member of an object field (<method>CopyValue</method>). Every other admin read issues its
-/// declared type, <code>LIST</code> or <code>UPCOMING</code>, under the same cap.</p>
+/// declared type, <code>LIST</code>, <code>UPCOMING</code> or <code>HISTORY</code>, under the same
+/// cap.</p>
 /// <p><b>A source may fix query parameters</b> (<code>source.query</code>, AD-36):
 /// <method>SeedSourceQuery</method> puts every entry into the read's <code>LIST</code> or
 /// <code>UPCOMING</code> call, a single-object <code>GET</code> and each per-parent child list, never
@@ -61,6 +62,12 @@ Parameter READTYPE = "LIST";
 /// <p>The list-shaped admin request type other than <parameter>READTYPE</parameter> a source may
 /// declare (AD-36): an endpoint's scheduled occurrences, issued as a list is.</p>
 Parameter UPCOMINGTYPE = "UPCOMING";
+
+/// <p>The other list-shaped admin request type a source may declare (AD-36, Story 6.6):
+/// <code>Task.CRUD</code>'s task-run history, issued the same way <parameter>UPCOMINGTYPE</parameter>
+/// is -- synchronously, since <code>Task.CRUD</code> defines no <code>ShouldRunAsync</code> and its
+/// <code>RunHistory</code> queues nothing (AD-26).</p>
+Parameter HISTORYTYPE = "HISTORY";
 
 /// <p>The request type a single-object read issues (AD-36): one named object of an admin endpoint,
 /// answered as the read's one row, and a 404 answered as none.</p>
@@ -197,7 +204,7 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
         Set tRead = $ClassMethod(pDescriptor, "Read")
         Set tSource = $Select($IsObject(tRead): tRead.%Get("source"), 1: "")
         Set tSourceType = $Select($IsObject(tSource): tSource.%Get("type"), 1: "")
-        If '$IsObject(tSource) || ((tSourceType '= ..#READTYPE) && (((tSourceType '= ..#OBJECTTYPE) && (tSourceType '= ..#UPCOMINGTYPE)) || (tSource.%Get("port") '= ..#SOURCEADMIN))) {
+        If '$IsObject(tSource) || ((tSourceType '= ..#READTYPE) && (((tSourceType '= ..#OBJECTTYPE) && (tSourceType '= ..#UPCOMINGTYPE) && (tSourceType '= ..#HISTORYTYPE)) || (tSource.%Get("port") '= ..#SOURCEADMIN))) {
             Set tSC = ..Internal(pDescriptor _ " declares no read this executor can issue", .pHttpStatus, .pFault)
             Quit
         }
@@ -254,7 +261,7 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
             Set tSC = ..ForEachRows(pDescriptor, tSource, tMax, .tAnswer, .tTruncated, .pHttpStatus, .pFault)
             If $$$ISERR(tSC) Quit
         } Else {
-            ; An admin LIST or UPCOMING: the declared type, the fixed query and then the criteria.
+            ; An admin LIST, UPCOMING or HISTORY: the declared type, the fixed query and then the criteria.
             Do ..SeedSourceQuery(tSource, .tQuery)
             Set tQuery("maxRows") = tMax + 1
             Set tCriterionProblem = ..SeedCriteria(tRead, .pCriteria, .tQuery)
@@ -493,6 +500,10 @@ ClassMethod SeedSourceQuery(pSource As %DynamicObject, ByRef pQuery)
 /// <method>OcuPilot.Screen.Registry.RefreshProblem</method> is: the seeding and the refusal are
 /// exercised as values -- a declared value, an empty one and an off-list one against the shipped
 /// declaration -- rather than through three port round trips.</p>
+/// <p><b>A criterion declaring <code>vendorParam</code> is seeded under that name instead of its
+/// own <code>param</code></b> (Story 6.6): the caller, the refusal text above and
+/// <method>OcuPilot.Screen.Tool.Read.InputSchema</method> all keep using <code>param</code>, and
+/// only the query key <var>pQuery</var> reaches the port under changes.</p>
 ClassMethod SeedCriteria(pRead As %DynamicObject, ByRef pSupplied, ByRef pQuery) As %String
 {
     Set tProblem = ""
@@ -502,6 +513,7 @@ ClassMethod SeedCriteria(pRead As %DynamicObject, ByRef pSupplied, ByRef pQuery)
     Set tFields = tCriteria.%Get("fields")
     If '$IsObject(tFields) || 'tFields.%IsA("%Library.DynamicArray") Quit tProblem
     Kill tSeed
+    Kill tSeedKey
     Set tIterator = tFields.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tField) {
         If '$IsObject(tField) Continue
@@ -530,6 +542,7 @@ ClassMethod SeedCriteria(pRead As %DynamicObject, ByRef pSupplied, ByRef pQuery)
             }
         }
         Set tSeed(tParam) = tValue
+        Set tSeedKey(tParam) = $Select(tField.%Get("vendorParam") '= "": tField.%Get("vendorParam"), 1: tParam)
     }
     ; Nothing is seeded until every value has been read, so a refused criterion leaves the query
     ; exactly as it was and the port is never called with half a search.
@@ -538,7 +551,7 @@ ClassMethod SeedCriteria(pRead As %DynamicObject, ByRef pSupplied, ByRef pQuery)
     For {
         Set tParam = $Order(tSeed(tParam))
         If tParam = "" Quit
-        Set pQuery(tParam) = tSeed(tParam)
+        Set pQuery(tSeedKey(tParam)) = tSeed(tParam)
     }
     Quit ""
 }

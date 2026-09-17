@@ -121,6 +121,10 @@ Parameter TASKONDEMANDTOOL = "tasks.ondemand";
 /// check issues.</p>
 Parameter TASKUPCOMINGTOOL = "tasks.upcoming";
 
+/// <p>The tool identifier of Task history (all tasks), whose screen read the
+/// <code>taskhistory</code> check issues (Story 6.6).</p>
+Parameter TASKHISTORYTOOL = "tasks.history";
+
 /// <p>The console-log page's path under the API application, and the window the
 /// <code>messageslog</code> check asks for. Small: the check is that the endpoint serves the
 /// instance's own log, not that it serves much of it.</p>
@@ -541,6 +545,10 @@ ClassMethod CheckApiReads(ByRef pChecks, pAccessToken As %String) [ Private ]
 /// row: the vendor answers every task as on demand, and several stock system tasks run within any
 /// 24 hours, so both hold one on a clean container. Upcoming is read with no horizon, which the vendor
 /// answers as 24 hours.</p>
+/// <p><b>Task history</b> (<code>taskhistory</code>) reads the same way at <code>maxRows=1</code>
+/// with no criteria, needing the task schedule's pairs, and passes on zero or one row like the OAuth
+/// 2.0 checks: a fresh container may hold no run history yet, so an empty answer is not a
+/// failure.</p>
 /// <p><b>The X.509 and Wallet lists hold a row only where the demo fixture put one</b> (AD-25), so
 /// when the demo was not requested (<var>pDemo</var>, resolved as
 /// <method>CheckDemoFixture</method> resolves it) a 200 answering an empty <code>rows</code> array
@@ -552,12 +560,12 @@ ClassMethod CheckAreaLists(ByRef pChecks, pAccessToken As %String, pDemo As %Str
 {
     Set tDemoWanted = ($Select(pDemo '= "": pDemo, 1: $System.Util.GetEnviron("OCUPILOT_DEMO")) = "1")
     Set tBase = ..RosterPath("api")
-    For tI = 1:1:20 {
-        Set tName = $Piece("webapplications,users,ssl,tasks,processes,audit,webapp.restapis,roles,resources,services,x509,ldap,wallet,oauthdescriptions,oauthclients,oauthresourceservers,oauthserver,oauthserverclients,ondemand,upcoming", ",", tI)
+    For tI = 1:1:21 {
+        Set tName = $Piece("webapplications,users,ssl,tasks,processes,audit,webapp.restapis,roles,resources,services,x509,ldap,wallet,oauthdescriptions,oauthclients,oauthresourceservers,oauthserver,oauthserverclients,ondemand,upcoming,taskhistory", ",", tI)
         ; Every index names its own tool and the last arm names none: a list added to the bound and
         ; the name list without its own arm reads an empty path and fails, rather than re-reading
         ; the previous list under the new name and passing.
-        Set tTool = $Select(tI = 1: ..#WEBAPPLISTTOOL, tI = 2: ..#USERLISTTOOL, tI = 3: ..#SSLLISTTOOL, tI = 4: ..#TASKLISTTOOL, tI = 5: ..#PROCESSLISTTOOL, tI = 6: ..#AUDITLISTTOOL, tI = 7: ..#RESTAPILISTTOOL, tI = 8: ..#ROLELISTTOOL, tI = 9: ..#RESOURCELISTTOOL, tI = 10: ..#SERVICELISTTOOL, tI = 11: ..#X509LISTTOOL, tI = 12: ..#LDAPLISTTOOL, tI = 13: ..#WALLETLISTTOOL, tI = 14: ..#OAUTHDESCRIPTIONSTOOL, tI = 15: ..#OAUTHCLIENTSTOOL, tI = 16: ..#OAUTHRESOURCESERVERSTOOL, tI = 17: ..#OAUTHSERVERTOOL, tI = 18: ..#OAUTHSERVERCLIENTSTOOL, tI = 19: ..#TASKONDEMANDTOOL, tI = 20: ..#TASKUPCOMINGTOOL, 1: "")
+        Set tTool = $Select(tI = 1: ..#WEBAPPLISTTOOL, tI = 2: ..#USERLISTTOOL, tI = 3: ..#SSLLISTTOOL, tI = 4: ..#TASKLISTTOOL, tI = 5: ..#PROCESSLISTTOOL, tI = 6: ..#AUDITLISTTOOL, tI = 7: ..#RESTAPILISTTOOL, tI = 8: ..#ROLELISTTOOL, tI = 9: ..#RESOURCELISTTOOL, tI = 10: ..#SERVICELISTTOOL, tI = 11: ..#X509LISTTOOL, tI = 12: ..#LDAPLISTTOOL, tI = 13: ..#WALLETLISTTOOL, tI = 14: ..#OAUTHDESCRIPTIONSTOOL, tI = 15: ..#OAUTHCLIENTSTOOL, tI = 16: ..#OAUTHRESOURCESERVERSTOOL, tI = 17: ..#OAUTHSERVERTOOL, tI = 18: ..#OAUTHSERVERCLIENTSTOOL, tI = 19: ..#TASKONDEMANDTOOL, tI = 20: ..#TASKUPCOMINGTOOL, tI = 21: ..#TASKHISTORYTOOL, 1: "")
         If tBase = "" {
             Do ..Note(.pChecks, tName, "fail", "the roster on this instance declares no API path, so there was nothing to read")
             Continue
@@ -587,7 +595,7 @@ ClassMethod CheckAreaLists(ByRef pChecks, pAccessToken As %String, pDemo As %Str
             Do ..Note(.pChecks, tName, "skipped", "the list is empty and the demo opt-in flag is not set for this instance, so no demo fixture row was expected (AD-25)")
             Continue
         }
-        Set tZeroOrOne = ''$ListFind($ListBuild("oauthdescriptions", "oauthclients", "oauthresourceservers", "oauthserver", "oauthserverclients"), tName)
+        Set tZeroOrOne = ''$ListFind($ListBuild("oauthdescriptions", "oauthclients", "oauthresourceservers", "oauthserver", "oauthserverclients", "taskhistory"), tName)
         If tZeroOrOne && ((tCount = 0) || (tCount = 1)) {
             Do ..Note(.pChecks, tName, "pass")
             Continue

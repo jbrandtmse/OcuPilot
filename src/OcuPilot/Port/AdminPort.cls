@@ -4,7 +4,7 @@
 /// <p><method>Invoke</method> is the one way to call an admin endpoint. A caller names the
 /// endpoint package-relative (<code>WebApp.App</code>) and the request type by its vendor
 /// parameter suffix (<code>GET</code>, <code>LIST</code>, <code>INFO</code>, <code>CERTINFO</code>,
-/// <code>UPCOMING</code>), and receives
+/// <code>UPCOMING</code>, <code>HISTORY</code>), and receives
 /// either the endpoint's result or an error <class>%Status</class> with a wire-safe fault. The
 /// call reproduces <code>Dispatch.v1:Main()</code> on the pinned build, in its order: construct
 /// at <parameter>APIVERSION</parameter>, gate on <code>ResourcesOR()</code>, seed
@@ -96,7 +96,9 @@ Parameter ASYNCLOCATION = "async-result?id=";
 /// <p><code>UPCOMING</code> is <code>Task.CRUD</code>'s scheduled-occurrence list, a list-shaped read
 /// the endpoint answers synchronously: it defines no <code>ShouldRunAsync</code> and its
 /// <code>RunUpcoming</code> queues nothing (AD-26, AD-36).</p>
-Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING";
+/// <p><code>HISTORY</code> is the same endpoint's task-run history (Story 6.6), dispatched to
+/// <code>RunHistory</code>: synchronous for the same reason <code>UPCOMING</code> is.</p>
+Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY";
 
 /// <p>The pair set the <b>backing query or class</b> of an endpoint requires, beyond the
 /// endpoint's own <code>ResourcesOR()</code> gate (AD-29). Comma-separated entries of the form

@@ -138,13 +138,13 @@ export interface ReadSource {
   readonly endpoint: string;
   /**
    * `LIST` reads rows; `GET` reads one object as the one row, and a 404 reads as none;
-   * `UPCOMING` reads an admin endpoint's scheduled occurrences as rows.
+   * `UPCOMING` reads an admin endpoint's scheduled occurrences as rows; `HISTORY` reads its task-run history.
    */
-  readonly type: 'LIST' | 'GET' | 'UPCOMING';
+  readonly type: 'LIST' | 'GET' | 'UPCOMING' | 'HISTORY';
   readonly rowGet?: ReadRowGet | null;
   /** The parent list a per-parent read issues its source once per parent for, bounded by the cap. */
   readonly forEach?: ReadForEach | null;
-  /** Query parameters sent on the read's own list, UPCOMING or GET call and each per-parent child list (never a parent list or a rowGet call), which no caller can change or remove. */
+  /** Query parameters sent on the read's own list, UPCOMING, HISTORY or GET call and each per-parent child list (never a parent list or a rowGet call), which no caller can change or remove. */
   readonly query?: Readonly<Record<string, string>> | null;
 }
 
@@ -193,6 +193,13 @@ export interface ReadCriterion {
    * the port and named nothing.
    */
   readonly maxLength: number;
+  /**
+   * The query parameter name the value is sent to the vendor under, instead of `param`, where the
+   * vendor's own name is reserved for the read's own arguments (Story 6.6). Absent means the value
+   * is sent as `param` itself; the caller, the refusal text and the read tool's schema all keep
+   * using `param` regardless.
+   */
+  readonly vendorParam?: string;
   readonly options?: readonly string[];
 }
 
@@ -2742,6 +2749,183 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.TaskHistoryList",
+    "route": "tasks/history",
+    "area": "tasks",
+    "labelKey": "taskHistoryLabel",
+    "sideBarPosition": 4,
+    "archetype": "list (server criteria)",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Task",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "task-history-entry",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "TaskId",
+        "LogDatetime",
+        "Status"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "LastStart",
+        "Completed",
+        "Name",
+        "Status",
+        "Result",
+        "TaskId",
+        "Namespace",
+        "Routine",
+        "Pid",
+        "ErrDate",
+        "ErrNumber",
+        "Username",
+        "LogDatetime"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "taskHistoryEmpty",
+    "commandAliases": [
+      "task history",
+      "task runs"
+    ],
+    "classicPage": "%CSP.UI.Portal.TaskHistory",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Task.CRUD",
+        "type": "HISTORY"
+      },
+      "fields": [
+        "LastStart",
+        "Completed",
+        "Name",
+        "Status",
+        "Result",
+        "TaskId",
+        "Namespace",
+        "Routine",
+        "Pid",
+        "ErrDate",
+        "ErrNumber",
+        "Username",
+        "LogDatetime"
+      ],
+      "filter": [
+        "Name",
+        "Namespace",
+        "Status",
+        "Result",
+        "Username",
+        "Routine"
+      ],
+      "sort": {
+        "fields": [
+          "LastStart",
+          "Completed",
+          "Name",
+          "Namespace",
+          "Status",
+          "Result",
+          "Username",
+          "LogDatetime"
+        ],
+        "default": "LogDatetime",
+        "direction": "desc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "search",
+            "labelKey": "taskHistorySearch",
+            "kind": "text",
+            "maxLength": 100,
+            "vendorParam": "filter"
+          },
+          {
+            "param": "userOnly",
+            "labelKey": "taskHistoryUserOnly",
+            "kind": "choice",
+            "maxLength": 1,
+            "options": [
+              "1"
+            ]
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "LastStart",
+          "labelKey": "taskHistoryColumnStarted",
+          "kind": "text"
+        },
+        {
+          "field": "Completed",
+          "labelKey": "taskHistoryColumnCompleted",
+          "kind": "text"
+        },
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Status",
+          "labelKey": "taskHistoryColumnStatus",
+          "kind": "text"
+        },
+        {
+          "field": "Result",
+          "labelKey": "taskHistoryColumnResult",
+          "kind": "text"
+        },
+        {
+          "field": "Username",
+          "labelKey": "processColumnUser",
+          "kind": "text"
+        },
+        {
+          "field": "Namespace",
+          "labelKey": "headerNamespaceLabel",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "tasks.history",
+    "banner": null,
+    "tab": null
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.TaskOnDemandList",
     "route": "tasks/on-demand",
     "area": "tasks",
@@ -2868,6 +3052,170 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.TaskRunList",
+    "route": "tasks/schedule/history",
+    "area": "tasks",
+    "labelKey": "taskRunsLabel",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Task",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "task-history-entry",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "tasks/schedule",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "TaskId",
+        "LogDatetime",
+        "Status"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "LastStart",
+        "Completed",
+        "Name",
+        "Status",
+        "Result",
+        "TaskId",
+        "Namespace",
+        "Routine",
+        "Pid",
+        "ErrDate",
+        "ErrNumber",
+        "Username",
+        "LogDatetime"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "taskRunsEmpty",
+    "commandAliases": [],
+    "classicPage": "%CSP.UI.Portal.TaskHistoryId",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Task.CRUD",
+        "type": "HISTORY"
+      },
+      "fields": [
+        "LastStart",
+        "Completed",
+        "Name",
+        "Status",
+        "Result",
+        "TaskId",
+        "Namespace",
+        "Routine",
+        "Pid",
+        "ErrDate",
+        "ErrNumber",
+        "Username",
+        "LogDatetime"
+      ],
+      "filter": [
+        "Name",
+        "Namespace",
+        "Status",
+        "Result",
+        "Username",
+        "Routine"
+      ],
+      "sort": {
+        "fields": [
+          "LastStart",
+          "Completed",
+          "Name",
+          "Namespace",
+          "Status",
+          "Result",
+          "Username",
+          "LogDatetime"
+        ],
+        "default": "LogDatetime",
+        "direction": "desc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "taskId",
+            "labelKey": "taskHistoryColumnTaskId",
+            "kind": "text",
+            "maxLength": 10
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "LastStart",
+          "labelKey": "taskHistoryColumnStarted",
+          "kind": "text"
+        },
+        {
+          "field": "Completed",
+          "labelKey": "taskHistoryColumnCompleted",
+          "kind": "text"
+        },
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Status",
+          "labelKey": "taskHistoryColumnStatus",
+          "kind": "text"
+        },
+        {
+          "field": "Result",
+          "labelKey": "taskHistoryColumnResult",
+          "kind": "text"
+        },
+        {
+          "field": "Username",
+          "labelKey": "processColumnUser",
+          "kind": "text"
+        },
+        {
+          "field": "Namespace",
+          "labelKey": "headerNamespaceLabel",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "tasks.taskhistory",
+    "banner": null,
+    "tab": null
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.TaskScheduleList",
     "route": "tasks/schedule",
     "area": "tasks",
@@ -2897,8 +3245,10 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "scope": "instance",
     "parentScope": "",
     "id": {
-      "kind": "single",
-      "parts": []
+      "kind": "composite",
+      "parts": [
+        "Id"
+      ]
     },
     "primaryAction": {
       "id": "",

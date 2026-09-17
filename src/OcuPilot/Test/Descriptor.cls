@@ -911,6 +911,44 @@ Method TestASubResourceDescriptorNamesItsParentScope()
     Do $$$AssertEquals($ClassMethod("OcuPilot.Test.Screen.Multi", "ParentScope"), "", "a screen that is nobody's sub-resource declares no parent")
 }
 
+/// <p>Story 6.6 (DW-1020) -- <method>OcuPilot.Screen.Registry.Validate</method> refuses a roster
+/// whose built descriptor's <code>parentScope</code> names no built descriptor with that route
+/// and an id, over the four ways that can happen: the route is not declared at all
+/// (<class>OcuPilot.Test.ParentScopeNotFoundRegistry</class>), it is declared but not built
+/// (<class>OcuPilot.Test.ParentScopeNotBuiltRegistry</class>), it is declared and built but
+/// carries <code>id.kind</code> <code>none</code>
+/// (<class>OcuPilot.Test.ParentScopeNoIdRegistry</class>), and it names the checked descriptor's
+/// own route (<class>OcuPilot.Test.ParentScopeSelfRegistry</class>) -- the entry being checked is
+/// excluded from its own candidate search, so it cannot resolve against itself. A fifth roster of
+/// only sound declarations (<class>OcuPilot.Test.ParentScopeSoundRegistry</class>) validates
+/// clean; the production roster's own sound path is
+/// <method>TestTheProductionRosterValidates</method>'s.</p>
+/// <p>Mutation: delete the <method>OcuPilot.Screen.Registry.ParentScopeResolutionProblem</method>
+/// call from <method>OcuPilot.Screen.Registry.Validate</method> -&gt; the four refusing rosters'
+/// assertions go red.</p>
+Method TestAParentScopeThatDoesNotResolveIsRefusedByTheRoster()
+{
+    Set tSC = ##class(OcuPilot.Test.ParentScopeNotFoundRegistry).Validate(.tNotFoundProblem)
+    Do $$$AssertStatusNotOK(tSC, "a parentScope naming a route nothing declares is refused")
+    Do $$$AssertEquals(tNotFoundProblem, "OcuPilot.Test.ParentScope.NotFound.Child: parentScope 'parent-scope/not-found/nonexistent' names no built descriptor with that route and an id (DW-1020)", "naming the child and the unresolved route")
+
+    Set tSC = ##class(OcuPilot.Test.ParentScopeNotBuiltRegistry).Validate(.tNotBuiltProblem)
+    Do $$$AssertStatusNotOK(tSC, "a parentScope naming a route that is declared but not built is refused")
+    Do $$$AssertEquals(tNotBuiltProblem, "OcuPilot.Test.ParentScope.NotBuilt.Child: parentScope 'parent-scope/not-built/parent' names no built descriptor with that route and an id (DW-1020)", "naming the child and the unbuilt parent's route")
+
+    Set tSC = ##class(OcuPilot.Test.ParentScopeNoIdRegistry).Validate(.tNoIdProblem)
+    Do $$$AssertStatusNotOK(tSC, "a parentScope naming a built route with id.kind none is refused")
+    Do $$$AssertEquals(tNoIdProblem, "OcuPilot.Test.ParentScope.NoId.Child: parentScope 'parent-scope/no-id/parent' names no built descriptor with that route and an id (DW-1020)", "naming the child and the id-less parent's route")
+
+    Set tSC = ##class(OcuPilot.Test.ParentScopeSelfRegistry).Validate(.tSelfProblem)
+    Do $$$AssertStatusNotOK(tSC, "a parentScope naming its own route cannot resolve against itself")
+    Do $$$AssertEquals(tSelfProblem, "OcuPilot.Test.ParentScope.Self.Child: parentScope 'parent-scope/self/child' names no built descriptor with that route and an id (DW-1020)", "the entry being checked is excluded from its own candidate search")
+
+    Set tSC = ##class(OcuPilot.Test.ParentScopeSoundRegistry).Validate(.tSoundProblem)
+    Do $$$AssertStatusOK(tSC, "a roster of resolving and empty parentScope declarations validates")
+    Do $$$AssertEquals(tSoundProblem, "", "with no problem reported")
+}
+
 /// <p>AC3, the composite-id form -- the descriptor names the parts and the <b>one</b> shared
 /// codec joins them, and the result is still a single path segment that survives the wire trip
 /// byte for byte (AD-13). A slice never invents a second composite grammar, which is why the

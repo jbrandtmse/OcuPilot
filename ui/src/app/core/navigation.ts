@@ -287,6 +287,24 @@ export function hasIdRoute(screen: ScreenDeclaration): boolean {
   return screen.id.kind !== 'none';
 }
 
+/**
+ * The entity type `screen`'s route id identifies (DW-1020, AD-5, AD-13): the parent screen's own
+ * `entityType` for a sub-resource screen, resolved through `parentScope` and never declared a
+ * second time -- task history is not a task, and its route id names the task `parentListFor`
+ * resolves to, while its rows keep their own `entityType`. A screen with no parent answers its own
+ * `entityType`, which is also what a stale or unresolved `parentScope` falls back to, since this
+ * function has no refusal of its own to raise (`OcuPilot.Screen.Registry.RouteEntityType`'s
+ * server-side twin, and `OcuPilot.Screen.Registry.ParentScopeResolutionProblem` is what keeps the
+ * production roster from ever needing that fallback).
+ */
+export function routeEntityType(screen: ScreenDeclaration): string {
+  if (screen.parentScope !== '') {
+    const parent = screenForRoute(screen.parentScope);
+    if (parent !== null) return parent.entityType;
+  }
+  return screen.entityType;
+}
+
 /** The placeholder the Fixed strings table leaves for an area's own name. */
 export const AREA_PLACEHOLDER = '<Area>';
 

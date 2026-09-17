@@ -278,6 +278,12 @@ ClassMethod Validate(Output pProblem As %String) As %Status
             Do tRoster.%Push({"descriptor": (tClass), "declaration": (tObject)})
         }
         If (pProblem = "") && $$$ISOK(tSC) Set pProblem = ..TabGroupProblem(tRoster)
+        ; DW-1020: a sub-resource screen's route id names an entity of its parent's primary entity
+        ; type (AD-5), resolved through parentScope -- so the parent it names has to exist, be
+        ; built and carry an id for that resolution to answer anything. Checked last, over the
+        ; whole roster, because a stale parentScope would otherwise be caught piecemeal by whatever
+        ; rule happened to read it first.
+        If (pProblem = "") && $$$ISOK(tSC) Set pProblem = ..ParentScopeResolutionProblem(tRoster)
     } Catch ex {
         Set pProblem = "the descriptor roster could not be validated: " _ ex.DisplayString()
         Set tSC = ex.AsStatus()
@@ -747,8 +753,9 @@ Parameter READTOOLIDENTIFIERPATTERN = "^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$";
 /// <code>source</code> is <code>{port, endpoint, type}</code>, whose <code>type</code> is one of
 /// <parameter>READSOURCETYPES</parameter>. A <code>GET</code> source reads one object of an
 /// <code>admin</code> endpoint and declares no <code>rowGet</code>, <code>forEach</code> or
-/// <code>criteria</code>. An <code>UPCOMING</code> source lists an admin endpoint's scheduled
-/// occurrences and declares no <code>rowGet</code> or <code>forEach</code>. A source's optional
+/// <code>criteria</code>. An <code>UPCOMING</code> or <code>HISTORY</code> source lists an admin
+/// endpoint's rows -- scheduled occurrences and task-run history respectively -- and declares no
+/// <code>rowGet</code> or <code>forEach</code> either. A source's optional
 /// <code>forEach</code> lists a parent endpoint first (<method>ForEachProblem</method>), and its
 /// optional <code>query</code> fixes parameters no caller can change
 /// (<method>SourceQueryProblem</method>). The source is one of three kinds:
@@ -819,7 +826,7 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
             Quit
         }
         If (tSource.%GetTypeOf("type") '= "string") || '$ListFind($ListFromString(..#READSOURCETYPES), tSource.%Get("type")) {
-            Set tProblem = "read.source.type '" _ tSource.%Get("type") _ "' is not 'LIST', 'GET' or 'UPCOMING'"
+            Set tProblem = "read.source.type '" _ tSource.%Get("type") _ "' is not 'LIST', 'GET', 'UPCOMING' or 'HISTORY'"
             Quit
         }
         ; A GET source reads one named object of an admin endpoint as the read's one row (AD-36), so
@@ -855,6 +862,23 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
             }
             If tSource.%GetTypeOf("forEach") = "object" {
                 Set tProblem = "read.source.forEach is declared on an UPCOMING source, which lists no parents (AD-36)"
+                Quit
+            }
+        }
+        ; A HISTORY source lists an admin endpoint's task-run history (AD-36), Task.CRUD's own
+        ; request type: a row is a run rather than an object, so there is no detail call to issue
+        ; and no parent to list -- the same rules UPCOMING takes, for the same reason.
+        If tSource.%Get("type") = "HISTORY" {
+            If tPort '= ##class(OcuPilot.Screen.Read).#SOURCEADMIN {
+                Set tProblem = "read.source.type 'HISTORY' is declared on a '" _ tPort _ "' source, and a list-shaped request type other than LIST issues an admin endpoint (AD-36)"
+                Quit
+            }
+            If tSource.%GetTypeOf("rowGet") = "object" {
+                Set tProblem = "read.source.rowGet is declared on a HISTORY source, whose rows are task runs with no detail call to issue (AD-36)"
+                Quit
+            }
+            If tSource.%GetTypeOf("forEach") = "object" {
+                Set tProblem = "read.source.forEach is declared on a HISTORY source, which lists no parents (AD-36)"
                 Quit
             }
         }
@@ -1007,7 +1031,12 @@ Parameter CRITERIARESERVEDPARAMS = "maxRows,filter,sort,direction,ns";
 /// and never one of <parameter>CRITERIARESERVEDPARAMS</parameter>), a non-empty
 /// <code>labelKey</code>, a <code>kind</code> from <parameter>CRITERIONKINDS</parameter> and a
 /// <code>maxLength</code> (a whole number above zero, required on every criterion whatever its
-/// kind -- <method>CriteriaMaxLengthProblem</method>), plus
+/// kind -- <method>CriteriaMaxLengthProblem</method>), an optional <code>vendorParam</code> (a
+/// query parameter name the value is sent to the vendor under instead of <code>param</code>, never
+/// <code>maxRows</code> or <code>ns</code> and never another field's <code>param</code> or
+/// <code>vendorParam</code> -- <method>CriteriaVendorParamProblem</method>, Story 6.6: this is how
+/// Task history sends the vendor's own <code>filter</code>, a name
+/// <parameter>CRITERIARESERVEDPARAMS</parameter> reserves for the tool), plus
 /// <code>options</code> -- a non-empty array of unique non-empty strings -- exactly when
 /// <code>kind</code> is <code>choice</code>. <code>marker</code>, when declared, carries only
 /// <code>param</code> (one of the declared criteria), a non-empty <code>value</code> and a
@@ -1066,6 +1095,8 @@ ClassMethod CriteriaProblem(pDeclaration As %DynamicObject) As %String
 
         Set tProblem = ..CriteriaFieldsProblem(tCriteria, .tParams)
         If tProblem '= "" Quit
+        Set tProblem = ..CriteriaVendorParamProblem(tCriteria)
+        If tProblem '= "" Quit
         Set tProblem = ..CriteriaMarkerProblem(tCriteria, tParams)
         If tProblem '= "" Quit
         If tParented && ($ListLength(tParams) '= 1) {
@@ -1110,7 +1141,7 @@ ClassMethod CriteriaFieldsProblem(pCriteria As %DynamicObject, Output pParams As
             Quit
         }
         Set tKind = tField.%Get("kind")
-        Set tAllowed = $ListBuild("param", "labelKey", "kind", "maxLength")
+        Set tAllowed = $ListBuild("param", "labelKey", "kind", "maxLength", "vendorParam")
         If tKind = "choice" Set tAllowed = tAllowed _ $ListBuild("options")
         Set tProblem = ..UnknownKeyProblem(tField, tWhere, tAllowed)
         If tProblem '= "" Quit
@@ -1131,6 +1162,25 @@ ClassMethod CriteriaFieldsProblem(pCriteria As %DynamicObject, Output pParams As
         }
         Set tSeen = tSeen _ $ListBuild(tFolded)
         Set pParams = pParams _ $ListBuild(tParam)
+
+        ; Story 6.6: a criterion may send its value to the vendor under a declared name of its own,
+        ; because the vendor's own name is reserved for the read's two callers (Task history sends
+        ; `filter`, which CRITERIARESERVEDPARAMS reserves for the tool's own view argument). Only
+        ; shape and the two names every read's own machinery sends are checked here; a collision
+        ; with another field's param or vendorParam is checked once every field is known
+        ; (CriteriaVendorParamProblem).
+        If (tField.%GetTypeOf("vendorParam") '= "unassigned") {
+            Set tVendorParam = tField.%Get("vendorParam")
+            If (tField.%GetTypeOf("vendorParam") '= "string") || '$Match(tVendorParam, "^[A-Za-z][A-Za-z0-9]*$") {
+                Set tProblem = tWhere _ " vendorParam '" _ tVendorParam _ "' is not a query parameter name"
+                Quit
+            }
+            Set tVendorFolded = $ZConvert(tVendorParam, "L")
+            If (tVendorFolded = "maxrows") || (tVendorFolded = "ns") {
+                Set tProblem = tWhere _ " vendorParam '" _ tVendorParam _ "' collides with a name the read's own callers already send"
+                Quit
+            }
+        }
 
         If (tField.%GetTypeOf("labelKey") '= "string") || (tField.%Get("labelKey") = "") {
             Set tProblem = tWhere _ " labelKey is empty, and a criterion's control names a string key"
@@ -1197,6 +1247,47 @@ ClassMethod CriteriaOptionsProblem(pField As %DynamicObject, pWhere As %String) 
     Quit tProblem
 }
 
+/// <p>What is wrong with <var>pCriteria</var>'s declared <code>vendorParam</code>s taken together,
+/// or <code>""</code> (Story 6.6). Each field's own shape is already sound
+/// (<method>CriteriaFieldsProblem</method>); this is the one check that needs every field's name
+/// known first -- a <code>vendorParam</code> may not equal, case-folded, another field's
+/// <code>param</code> or <code>vendorParam</code>, because both values reach the same vendor query
+/// and a collision would let one field's value silently overwrite another's.</p>
+ClassMethod CriteriaVendorParamProblem(pCriteria As %DynamicObject) As %String [ Private ]
+{
+    Set tProblem = ""
+    Try {
+        Set tFields = pCriteria.%Get("fields")
+        If '$IsObject(tFields) || 'tFields.%IsA("%Library.DynamicArray") Quit
+        Set tOuter = tFields.%GetIterator()
+        While tOuter.%GetNext(.tOuterIndex, .tOuterField) {
+            If '$IsObject(tOuterField) Continue
+            If tOuterField.%GetTypeOf("vendorParam") '= "string" Continue
+            Set tVendorParam = tOuterField.%Get("vendorParam")
+            If tVendorParam = "" Continue
+            Set tVendorFolded = $ZConvert(tVendorParam, "L")
+            Set tInner = tFields.%GetIterator()
+            While tInner.%GetNext(.tInnerIndex, .tInnerField) {
+                If tInnerIndex = tOuterIndex Continue
+                If '$IsObject(tInnerField) Continue
+                Set tOtherParam = tInnerField.%Get("param")
+                If (tInnerField.%GetTypeOf("param") = "string") && (tOtherParam '= "") && ($ZConvert(tOtherParam, "L") = tVendorFolded) {
+                    Set tProblem = "read.criteria.fields entry #" _ (tOuterIndex + 1) _ " vendorParam '" _ tVendorParam _ "' collides with another field's param or vendorParam"
+                    Quit
+                }
+                If (tInnerField.%GetTypeOf("vendorParam") = "string") && (tInnerField.%Get("vendorParam") '= "") && ($ZConvert(tInnerField.%Get("vendorParam"), "L") = tVendorFolded) {
+                    Set tProblem = "read.criteria.fields entry #" _ (tOuterIndex + 1) _ " vendorParam '" _ tVendorParam _ "' collides with another field's param or vendorParam"
+                    Quit
+                }
+            }
+            If tProblem '= "" Quit
+        }
+    } Catch ex {
+        Set tProblem = "the vendorParam declarations could not be validated: " _ ex.DisplayString()
+    }
+    Quit tProblem
+}
+
 /// <p>What is wrong with <var>pCriteria</var>'s <code>marker</code>, or <code>""</code>.
 /// <var>pParams</var> is the declared parameter names.</p>
 /// <p>An absent or <code>null</code> marker is a criteria block with no agent-marker affordance.
@@ -1224,9 +1315,10 @@ ClassMethod CriteriaMarkerProblem(pCriteria As %DynamicObject, pParams As %List)
 }
 
 /// <p>The request types a <code>read.source</code> may issue (AD-36): <code>LIST</code>, a list of
-/// rows; <code>GET</code>, one object read as the read's one row; and <code>UPCOMING</code>, an admin
-/// endpoint's list of scheduled occurrences, issued as a list is.</p>
-Parameter READSOURCETYPES = "LIST,GET,UPCOMING";
+/// rows; <code>GET</code>, one object read as the read's one row; <code>UPCOMING</code>, an admin
+/// endpoint's list of scheduled occurrences, issued as a list is; and <code>HISTORY</code>,
+/// <code>Task.CRUD</code>'s task-run history, issued the same way (Story 6.6).</p>
+Parameter READSOURCETYPES = "LIST,GET,UPCOMING,HISTORY";
 
 /// <p>The longest value a <code>read.source.query</code> entry may fix.</p>
 Parameter SOURCEQUERYMAXLENGTH As INTEGER = 50;
@@ -1236,7 +1328,8 @@ Parameter SOURCEQUERYMAXLENGTH As INTEGER = 50;
 /// <p>An absent or <code>null</code> <code>query</code> fixes no parameter. Otherwise it is a
 /// non-empty object on an <code>admin</code> source; each key is a query parameter name that equals,
 /// case-folded, neither a <parameter>CRITERIARESERVEDPARAMS</parameter> name nor a declared
-/// <code>read.criteria</code> param; and each value is a non-empty string of at most
+/// <code>read.criteria</code> field's <code>param</code> or <code>vendorParam</code>; and each value
+/// is a non-empty string of at most
 /// <parameter>SOURCEQUERYMAXLENGTH</parameter> characters.
 /// <method>OcuPilot.Screen.Read.Execute</method> sends every entry on the read's <code>LIST</code> or
 /// <code>UPCOMING</code> call, on a single-object <code>GET</code> and on each per-parent child list,
@@ -1260,8 +1353,13 @@ ClassMethod SourceQueryProblem(pRead As %DynamicObject, pSource As %DynamicObjec
     If $IsObject(tCriteria) && tCriteria.%IsA("%Library.DynamicObject") && (tCriteria.%GetTypeOf("fields") = "array") {
         Set tFieldIterator = tCriteria.%Get("fields").%GetIterator()
         While tFieldIterator.%GetNext(.tFieldIndex, .tField, .tFieldType) {
-            If (tFieldType '= "object") || (tField.%GetTypeOf("param") '= "string") Continue
-            Set tCriteriaParams = tCriteriaParams _ $ListBuild($ZConvert(tField.%Get("param"), "L"))
+            If tFieldType '= "object" Continue
+            If tField.%GetTypeOf("param") = "string" {
+                Set tCriteriaParams = tCriteriaParams _ $ListBuild($ZConvert(tField.%Get("param"), "L"))
+            }
+            If tField.%GetTypeOf("vendorParam") = "string" {
+                Set tCriteriaParams = tCriteriaParams _ $ListBuild($ZConvert(tField.%Get("vendorParam"), "L"))
+            }
         }
     }
     Set tReserved = $ListFromString($ZConvert(..#CRITERIARESERVEDPARAMS, "L"))
@@ -1941,6 +2039,76 @@ ClassMethod DescriptorForRoute(pRoute As %String) As %String
         Set tFound = ""
     }
     Quit tFound
+}
+
+/// <p>The entity type <var>pDescriptor</var>'s route id identifies (DW-1020, AD-5, AD-13):
+/// <var>pDescriptor</var>'s own <method>OcuPilot.Screen.Descriptor.Base.PrimaryEntityType</method>
+/// for a screen declaring no <code>parentScope</code>, or the entity type of the descriptor
+/// declared at that route otherwise -- resolved through the parent declaration and never declared
+/// a second time. A sub-resource screen's <b>rows</b> keep their own primary entity type
+/// regardless; this answers what the id in the URL names, not what the rows are (task history is
+/// not a task).</p>
+/// <p>A <code>parentScope</code> that resolves to no descriptor -- which
+/// <method>ParentScopeResolutionProblem</method> refuses in the production roster -- falls back to
+/// <var>pDescriptor</var>'s own primary entity type rather than throwing, since this method has no
+/// refusal of its own to raise.</p>
+ClassMethod RouteEntityType(pDescriptor As %String) As %String
+{
+    Set tType = ""
+    Try {
+        Set tParentScope = $ClassMethod(pDescriptor, "ParentScope")
+        If tParentScope '= "" {
+            Set tParentClass = ..DescriptorForRoute(tParentScope)
+            If tParentClass '= "" Set tType = $ClassMethod(tParentClass, "PrimaryEntityType")
+        }
+        If tType = "" Set tType = $ClassMethod(pDescriptor, "PrimaryEntityType")
+    } Catch {
+        Set tType = ""
+    }
+    Quit tType
+}
+
+/// <p>What is wrong with <var>pRoster</var>'s <code>parentScope</code> declarations taken
+/// together, or <code>""</code> (DW-1020, AD-5). <var>pRoster</var> is
+/// <method>Validate</method>'s own array of <code>{descriptor, declaration}</code> entries, one
+/// per descriptor in the package.</p>
+/// <p>A built descriptor's non-empty <code>parentScope</code> must name the route of some other
+/// <b>built</b> descriptor whose own <code>id.kind</code> is not <code>none</code> -- a route with
+/// nothing to identify resolves no entity for the child's id to name. The entry being checked is
+/// excluded from its own candidate search, so a descriptor cannot resolve its <code>parentScope</code>
+/// against itself by declaring one equal to its own <code>route</code>. An unbuilt descriptor's
+/// <code>parentScope</code> is not checked: it routes nothing yet, so a stale reference in a
+/// declaration still being drafted is not this rule's problem.</p>
+ClassMethod ParentScopeResolutionProblem(pRoster As %DynamicArray) As %String [ Private ]
+{
+    Set tProblem = ""
+    Try {
+        Set tOuter = pRoster.%GetIterator()
+        While tOuter.%GetNext(.tOuterIndex, .tEntry) {
+            Set tDeclaration = tEntry.%Get("declaration")
+            If ''tDeclaration.%Get("built") = 0 Continue
+            Set tParentScope = tDeclaration.%Get("parentScope")
+            If (tDeclaration.%GetTypeOf("parentScope") '= "string") || (tParentScope = "") Continue
+            Set tFound = 0
+            Set tInner = pRoster.%GetIterator()
+            While tInner.%GetNext(.tInnerIndex, .tCandidateEntry) {
+                If tInnerIndex = tOuterIndex Continue
+                Set tCandidate = tCandidateEntry.%Get("declaration")
+                If tCandidate.%Get("route") '= tParentScope Continue
+                If ''tCandidate.%Get("built") = 0 Continue
+                Set tIdKind = ""
+                If tCandidate.%GetTypeOf("id") = "object" Set tIdKind = tCandidate.%Get("id").%Get("kind")
+                If (tIdKind '= "") && (tIdKind '= "none") Set tFound = 1
+            }
+            If 'tFound {
+                Set tProblem = tEntry.%Get("descriptor") _ ": parentScope '" _ tParentScope _ "' names no built descriptor with that route and an id (DW-1020)"
+                Quit
+            }
+        }
+    } Catch ex {
+        Set tProblem = "the parentScope roster could not be validated: " _ ex.DisplayString()
+    }
+    Quit tProblem
 }
 
 }
