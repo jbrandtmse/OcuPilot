@@ -206,6 +206,9 @@ Rejected:
 - `bash scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS` -- expected: every check passes and more than zero checks run.
 - Rule 19: record one `mutation:` line per AC here as each pinning test lands.
 
+- mutation (lead AD gate, AD-41): `Base.GuardedOpenIdExclusive` opens the conversation row at concurrency 1 instead of 4 -> `TurnConversation.TestAConversationHeldElsewhereTimesOutAsALockConflict` red alone (throwaway run 2); reverted byte-identical, reloaded, 9/9 (run 3).
+- mutation (lead AD gate, AD-33): the agent reply bound with `[innerHTML]` in `panel.ts`, app bundle rebuilt and redeployed -> `turn.browser-spec.mjs` markup-as-text leg red (the `<img>` element was created); reverted, rebuilt, redeployed, 8/8.
+
 ## Auto Run Result
 
 Status: done
