@@ -3788,7 +3788,7 @@ So that I can see load without leaving for the classic portal.
 
 - **Given** the assumed 80% and 95% thresholds
 - **When** this story is built
-- **Then** they are confirmed against the meter definitions rather than carried as an assumption - the behavior is decided, the numbers are not.
+- **Then** they are confirmed against the meter definitions rather than carried as an assumption - the behavior is decided, the numbers are not. [AMENDED 2026-09-17, Story 6.9 spec gate (orchestrator-approved): no meter definition carries a threshold; status meters take the dashboard's own word, and percentage meters use 85% and 95%, recorded in DESIGN.md as an assumption borrowed from the vendor's lock-table cut-off (`SYS.Stats.Dashboard.cls:92`)]
 
 ### Story 6.10: The locks view
 
