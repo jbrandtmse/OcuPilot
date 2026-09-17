@@ -9,8 +9,9 @@ stack_risk: uncommon      # ObjectScript / IRIS for Health. Arms the end-of-epic
 review_tier: full-opus    # every bmad-code-review layer stays on the parent (Opus) tier
 
 overrides:
-  implement: opus         # bmad-build-auto's implement stage. `plan` already resolves to opus via the stage map.
-                          # `qa` deliberately left on sonnet - not part of the approved change.
+  implement: sonnet       # bmad-build-auto's implement stage, back on the stage map's tier (owner decision,
+                          # 2026-09-16, cost). `plan` and code review stay on opus via the stage map;
+                          # `qa` stays on sonnet.
 
 history:
   - date: 2026-09-11
@@ -25,4 +26,15 @@ history:
       recurring defect class was a fix applied to one site of several and pinning tests that
       could not fail - four separate vacuous gates across the epic, twice inside tests written
       specifically to pin a previous correction.
+    approved_by: user
+  - date: 2026-09-16
+    action: de-escalate-implement-to-sonnet
+    evidence: >-
+      Owner decision on cost, not on defect telemetry. Transcript measurement over the 36 hours to
+      2026-09-16 (first parallel run, Epics 4 and 6 in flight): 92.8% of weighted token spend on the
+      Opus tier; the implement stage 48.8% of all stage-subagent spend, at 110 turns and a context
+      growing from 57K to 427K tokens per run. The Epic 2 checkpoint on implement=opus(override)
+      recorded unresolved_high_med_mean 0.33. The escalation threshold (unresolved_high_med >= 2
+      per story on a Sonnet tier) is re-evaluated at the next epic close on Sonnet data; the owner
+      expects a possible re-escalation offer then and has not pre-answered it.
     approved_by: user

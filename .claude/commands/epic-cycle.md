@@ -296,6 +296,7 @@ Dispatch: invoke /bmad-build-auto via the Skill tool with the argument `<story-k
 
 Rules for this stage (from skill-rules.md):
 
+- Rule 26 (read once): read the spine, the spec, the rules and any diff you generate once and work from the copy you hold; re-read only a region you or a subagent changed since, by line range, never the whole file — and pass this rule into every subagent you spawn.
 - Rule 1/2 (Integration ACs, Consumed-by/Consumes): if this story introduces a service, module, or shared component, the spec MUST carry at least one Integration AC (an I/O & Edge-Case Matrix row or a Tasks & Acceptance item of the form "consumer X reads from this and produces observable effect Y") — or an explicit "No consumers in this story; the first consumer will be Story X.Y." note under ## Design Notes — plus `Consumed-by:` / `Consumes:` lists under ## Design Notes.
 - Rule 5 (NFR tripwire): an NFR that is unmeasurable, contradictory, or impossible as worded is an `intent gap` HALT that names the NFR and your recommended amendment — never plan around it.
 - Rule 6 (architecture decisions): consult the spine at the path above and record the `AD-n` ids that govern this story under ## Design Notes (create the section if the template would omit it), so the implement stage and the reviewer can check against each AD's Rule. If an AC contradicts an AD's Rule, that is an `intent gap` HALT naming the AD — never plan around it.
@@ -315,6 +316,7 @@ Dispatch: invoke /bmad-build-auto via the Skill tool with the argument = the spe
 
 Rules for this stage (from skill-rules.md):
 
+- Rule 26 (read once): read the spine, the spec, the rules and any diff you generate once and work from the copy you hold; re-read only a region you or a subagent changed since, by line range, never the whole file — and pass this rule into every subagent you spawn.
 - Rule 5 (NFR tripwire): an un-implementable NFR is an `intent gap` HALT with your recommended amendment; do NOT work around with code comments + deferred-work.md.
 - Rule 6 (architecture decisions): match the implementation to the `AD-n` Rules recorded under the spec's ## Design Notes and any other AD whose `Binds:` covers this story's area (spine path above). An AD conflict you cannot resolve within the spec is an `intent gap`, not a judgment call.
 - Rule 13 (working directory): operate from the absolute working directory stated above; verify `git rev-parse --show-toplevel` matches before editing anything, and pass the same path + verification requirement into the handoff subagent and every review-layer subagent.
@@ -341,6 +343,7 @@ Pre-answered checkpoint (Rule 9): the skill's first step asks what to test — a
 
 Rules for this stage (from skill-rules.md):
 
+- Rule 26 (read once): read the spine, the spec, the rules and any diff you generate once and work from the copy you hold; re-read only a region you or a subagent changed since, by line range, never the whole file — and pass this rule into every subagent you spawn.
 - Rule 8 (test discoverability): generated tests MUST be discoverable by the project's default test suite — (a) correct naming convention, (b) not excluded by ignore files, (c) not tagged in a way that opts them out of the default run.
 - Rule 19 (falsifiability): for each acceptance criterion, name the mutation that would make its pinning test fail, apply it, confirm red, revert, and confirm the tree is byte-identical to before the mutation (`git status --short` / `git diff --stat` unchanged — a leaked mutation is a defect you shipped). Record it next to the test in the spec's `## Verification` as `mutation: <what> → <test that went red>` (create that section if the planner omitted it — the spec template deletes it for trivial stories). One mutation per AC, not per assertion. A test whose red you have not observed is not evidence; an assertion that cannot fail (expected value forced by the type, subject never constructed, two empty runs compared) is a defect to fix, not a test to count. Report `mutations_demonstrated=<N>` in ## Decisions.
 - File-list completeness: append every test file you create to the spec's `## Verification` section (marked `(QA)`), so the spec remains the complete record of the story's files — not just your closing summary.
@@ -385,6 +388,7 @@ Pre-answered checkpoints (Rule 9 — the skill halts at each of these; take the 
 
 Rules for this stage (from skill-rules.md):
 
+- Rule 26 (read once): read the spine, the spec, the rules and any diff you generate once and work from the copy you hold; re-read only a region you or a subagent changed since, by line range, never the whole file — and pass this rule into every subagent you spawn.
 - Rule 3 (real-runtime test evidence): user-facing surface approved without a real-runtime test in the QA suite = high finding. (Distinct from the lead's manual per-story smoke, which is a separate later gate.)
 - Rule 5 (NFR tripwire): unmeasurable NFR worked around with code comments + deferred-work.md instead of planning-artifact amendment = high finding.
 - Rule 6 (AD violations): for each AC constrained by an `AD-n` in the spec's ## Design Notes — and any AD in the spine whose `Binds:` covers this story — verify the implementation matches the AD's Rule. Mismatch = high (not a low deferrable).
