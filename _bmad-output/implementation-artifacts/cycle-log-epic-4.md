@@ -124,3 +124,6 @@
 2026-09-17T05:19:12Z	Story 4.3	throwaway_down	by=runner project=ocupilot-ci container=241c12ee017c
 2026-09-17T05:19:58Z	Epic 4	integrate_forward	reason=owner_directed commit=3a02891,6a6d3c2 pre_merge=9b7483d merge_sha=b6d54e9 conflicts=sprint-status.yaml(took_feature_side,generate,re-set_epic-4_in-progress_and_4-0..4-3_done,validate_ok) ledger=owner_unknown_0 ancestors_verified=true ci=pending run=35185292657(covers_story_4.3;its_own_run_35185248116_superseded_by_cancel-in-progress) policy_from_4.4=implement_sonnet,Rule_26_bullet_in_every_stage_prompt,LEDGER_ID_COUNTER_prefix
 2026-09-17T05:19:58Z	Epic 4	model_policy_changed_by_owner	stages=implement from=opus to=sonnet source=owner_commit_3a02891 applies_from=4-4 note=runner_does_not_edit_overrides
+2026-09-17T05:21:37Z	Epic 4	epic_context_compiled	sha=591429b reason=planning_artifact_newer(integrate_forward)+4.3_seams bytes=13027 model=opus subagent_tokens=109080
+2026-09-17T05:37:09Z	Story 4.3	ci_resolved	story=4.3 run=35185292657(merge_head_b6d54e9_containing_c38d7bd) result=success resolved_at=next_plan note=4.3s_own_run_35185248116_cancelled_by_the_merge_push
+2026-09-17T05:37:09Z	Story 4.4	stage_spawned	stage=plan spawn_at=2026-09-17T05:37:09Z model=opus agent_name=4-4-plan-1 cycle_iteration=1
