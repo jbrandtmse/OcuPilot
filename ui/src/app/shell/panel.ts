@@ -515,12 +515,20 @@ export class Panel {
 
   /**
    * The chip slot's own gate (Boundaries & Constraints "Absent chip"): an enabled definition, an
-   * answered `AgentContext`, and a resolved namespace -- the third avoids a 422
-   * `TURN.CONTEXT.INVALID` the chip would otherwise advertise sending.
+   * answered `AgentContext`, a resolved namespace, and a URL that resolves to a built descriptor.
+   * The third avoids a 422 `TURN.CONTEXT.INVALID` the chip would otherwise advertise sending; the
+   * fourth is `assembleScreenContext`'s own "no descriptor resolved" omission -- `app.routes.ts`
+   * ends in a `**` route that keeps this panel mounted, and with no screen the chip's
+   * `<Screen>, <NAMESPACE>` would read as a sentence with no screen in it.
    */
   protected get contextChipVisible(): boolean {
     this.generation();
-    return this.agentStatus.configured() && this.agentContext.answered() && this.scope.namespace() !== '';
+    return (
+      this.agentStatus.configured() &&
+      this.agentContext.answered() &&
+      this.scope.namespace() !== '' &&
+      screenForUrl(this.router.url) !== null
+    );
   }
 
   protected get secretWarningVisible(): boolean {
@@ -645,8 +653,12 @@ export class Panel {
     }
   }
 
+  /** A fresh conversation is an explicit reset, so the acknowledgment does not carry into it --
+   * `newConversation()` settles a *new* non-null id, which `syncSecretRecord()` cannot read as one. */
   protected onNewConversation(): void {
     if (this.busy || this.composerUnavailable) return;
+    this.acknowledgedSecretText.set(null);
+    this.secretWarningVisibleSignal.set(false);
     void this.turn.newConversation();
   }
 

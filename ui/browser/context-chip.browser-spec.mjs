@@ -4,9 +4,11 @@
  * glyph on the Definition form, the toggle surviving a reload, the paste warning's two buttons,
  * the Integration AC -- a sent turn's recorded provider messages carry the synthetic
  * `screen_context` pair naming the route, the namespace and exactly the rows the chip displayed --
- * and two legs proven only at component level until now: the row cap following a real Switches
- * save with no reload, and a live 409 refusal (the AD-41 single-turn-slot conflict) leaving an
- * acknowledged paste warning un-re-armed.
+ * and two legs the component suite could only approximate: the row cap following a real Switches
+ * save with no reload -- which the bus wiring alone explains, so it is this file's pin for that
+ * AC -- and a live 409 refusal (the AD-41 single-turn-slot conflict) leaving an acknowledged
+ * paste warning un-re-armed, which is the observable behavior end to end but not a falsification
+ * of `syncSecretRecord()`'s guard (see that test's own note).
  *
  * Uses the same `turnprobe` wire fixture `turn.browser-spec.mjs` drives
  * (`OcuPilot.Test.TurnWireFixture`): one definition, enabled and marked default, backed by
@@ -51,8 +53,8 @@ before(async () => {
   const ready = await (await fetch(`${config.origin}${READINESS_PATH}`)).json();
   assert.equal(ready.state, 'installed', `the throwaway must be installed, not ${JSON.stringify(ready)}`);
   browser = await puppeteer.launch(launchOptions(config));
-  runIris(['Do ##class(OcuPilot.Test.TurnWireFixture).RemoveDefinition("")']);
-  priorDefault = runIris(['Write ##class(OcuPilot.Test.TurnWireFixture).MarkedDefault()']).trim();
+  removeDefinition('');
+  priorDefault = markedDefault();
   preparedId = ensureDefinition(nextTag());
   await putShare(true);
 });
@@ -61,7 +63,7 @@ after(async () => {
   if (browser !== null) await browser.close();
   if (config.container === LIVE_CONTAINER) return;
   await putShare(true);
-  runIris([`Do ##class(OcuPilot.Test.TurnWireFixture).RemoveDefinition("${escapeOs(priorDefault)}")`]);
+  removeDefinition(priorDefault);
 });
 
 function nextTag() {
@@ -90,6 +92,36 @@ function runIris(lines) {
 function markerValue(output, marker) {
   const re = new RegExp(`${marker}-START:(.*?):${marker}-END`);
   return re.exec(output)?.[1] ?? null;
+}
+
+/**
+ * The id currently carrying the default marker, or `''`. Read through the marker convention like
+ * every other value here: `runIris` answers the whole IRIS session transcript, so a bare `Write`
+ * yields the banner and the prompts as well -- and a multi-line value embedded in the next
+ * script's string literal breaks that script instead of failing loudly.
+ */
+function markedDefault() {
+  const output = runIris([
+    'Write "OCUCHIP-PRIOR-START:"_##class(OcuPilot.Test.TurnWireFixture).MarkedDefault()_":OCUCHIP-PRIOR-END",!',
+  ]);
+  const value = markerValue(output, 'OCUCHIP-PRIOR');
+  assert.notEqual(value, null, `MarkedDefault answered: ${output}`);
+  return value;
+}
+
+/**
+ * Remove every probe definition and restore `prior` as the default marker, asserting that none
+ * survived. The assertion is the point: a leftover enabled, default-marked definition is
+ * instance-wide state that changes what later specs see -- `switches.browser-spec.mjs`'s AC2
+ * reads the panel's read-only line on the stated assumption that nothing is configured -- and a
+ * cleanup whose status nobody reads is how that reaches them.
+ */
+function removeDefinition(prior) {
+  const output = runIris([
+    `Set sc=##class(OcuPilot.Test.TurnWireFixture).RemoveDefinition("${escapeOs(prior)}")`,
+    'Write "OCUCHIP-RM-START:"_$System.Status.IsOK(sc)_":OCUCHIP-RM-END",!',
+  ]);
+  assert.equal(markerValue(output, 'OCUCHIP-RM'), '1', `RemoveDefinition succeeded: ${output}`);
 }
 
 function ensureDefinition(tag) {
@@ -431,9 +463,13 @@ test('Cap follows agent-switch: raising the row cap through the Switches screen 
   const tag = nextTag();
   setTag(tag);
   scriptReply(tag, 0, textReply('counted'));
-  await putContextRowCap(1);
-  const { context, page } = await signedInAt(USERS_URL);
+  // `contextRowCap` is instance-wide, so the lowering and the sign-in both sit inside the `try`:
+  // a throw between them would otherwise leave every later spec in this run reading a cap of 1.
+  let context = null;
+  let page = null;
   try {
+    await putContextRowCap(1);
+    ({ context, page } = await signedInAt(USERS_URL));
     // The row segment is a middle segment, not the last one (provider and host follow it), so
     // this reads the count out rather than matching against the end of the string.
     await page.waitForFunction(
@@ -491,7 +527,7 @@ test('Cap follows agent-switch: raising the row cap through the Switches screen 
     assert.equal(payload.rows.length, shownAfterRaise, "the posted rows follow the raised cap, not the pre-raise one");
     assert.equal(payload.rowsAvailable, shownAfterRaise, 'the raised cap (200) is not below the real population');
   } finally {
-    await context.close();
+    await context?.close();
     forgetTag(tag);
     await putContextRowCap(200);
   }
@@ -501,10 +537,16 @@ test('A failed send preserves the paste-warning acknowledgment: a live 409 (AD-4
   const tag = nextTag();
   setTag(tag);
   scriptReply(tag, 15, textReply('done'));
-  const holder = await signedInAt(USERS_URL);
-  const { context, page } = await signedInAt(USERS_URL);
   const secret = 'sk-ant-api03-abcdefghijklmnopqrstuvwxyz';
+  // Both contexts open inside the `try`: the holder's 15-second scripted turn occupies this
+  // user's one AD-41 turn slot, so a throw before the `finally` would hold that slot -- and leak
+  // the browser context -- for whichever spec runs next.
+  let holder = null;
+  let context = null;
+  let page = null;
   try {
+    holder = await signedInAt(USERS_URL);
+    ({ context, page } = await signedInAt(USERS_URL));
     // Occupy this user's one AD-41 turn slot for the whole leg below, from a second tab -- the
     // same live refusal `turn.browser-spec.mjs`'s "Second send" test drives, here used as the
     // "failed send" this story's follow-up risk names, not a stubbed/mocked failure.
@@ -526,21 +568,27 @@ test('A failed send preserves the paste-warning acknowledgment: a live 409 (AD-4
     assert.equal(composerValue, secret, 'the failed send kept the draft');
 
     // The immediate retry of the identical, still-acknowledged text must not re-raise the
-    // warning -- the acknowledgment survived the 409, exactly the fix this leg proves live.
+    // warning. What this leg proves live is that observable behavior end to end: a real 409, a
+    // kept draft, a cleared warning and a silent retry. It does NOT falsify
+    // `syncSecretRecord()`'s transition guard -- `TurnStore.send()` creates the conversation
+    // before it posts the turn, so `conversationId()` is non-null throughout, and the guard's
+    // `current === null` leg is false here either way. That guard's pin is the component test
+    // "a failed send preserves the paste-warning acknowledgment" in `panel.spec.ts`, which
+    // drives the conversation POST to a 500 and so leaves the id null.
     await page.click('.ocu-panel-send');
     await new Promise((resolve) => setTimeout(resolve, 500));
     assert.equal(await page.$('.ocu-panel-warning'), null, 'no warning on the retry: the acknowledgment was not forgotten');
   } finally {
-    await context.close();
+    await context?.close();
     // The holder's turn keeps the AD-41 slot until it finishes; wait it out before closing, the
     // same discipline `turn.browser-spec.mjs`'s "Second send" test follows, so the slot is free
     // for whichever test runs next.
-    await holder.page
+    await holder?.page
       .waitForFunction(() => (document.querySelector('.ocu-panel-message-agent-text')?.textContent ?? '') === 'done', {
         timeout: config.navigationTimeoutMs,
       })
       .catch(() => {});
-    await holder.context.close();
+    await holder?.context.close();
     forgetTag(tag);
   }
 });

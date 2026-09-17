@@ -148,6 +148,9 @@ async function mount(
         { path: 'agent/definitions', children: [] },
         { path: 'agent/definitions/edit', children: [] },
         { path: 'permissions/users', children: [] },
+        // `app.routes.ts` ends in this, and it is what keeps the shell -- and this panel --
+        // mounted on a URL that names no built descriptor.
+        { path: '**', children: [] },
       ]),
       { provide: NavigationService, useValue: navigation as unknown as NavigationService },
       { provide: AgentStatus, useValue: agentStatus },
@@ -1350,8 +1353,12 @@ describe('Story 4.11: the context chip, its toggle and the paste warning', () =>
   });
 
   it('Cap follows agent-switch: a raised contextRowCap moves the chip\'s row count and the next Send\'s posted rows without a reload', async () => {
-    // Mutation (Rule 19): remove the `agent-switch` re-read from `agent-context.ts` -> this goes
-    // red, since `agentContext.load()` re-resolving is what a real `agent-switch` event triggers.
+    // Mutation (Rule 19): remove `agentContext.subscribe(() => this.bump())` from
+    // `context-chip.ts`'s constructor -> this goes red on the post-raise `6 rows`, because a
+    // re-resolved cap no longer repaints the mounted chip. What drives `load()` in the running
+    // instance is the `agent-switch` bus event; that wiring is pinned at the store level by
+    // `agent-context.test.mjs`'s AD-14 test and live by `context-chip.browser-spec.mjs`'s
+    // "Cap follows agent-switch" leg -- this component test has no bus and cannot stand for it.
     let row: AgentContextInfo = { ...NO_CONTEXT_INFO, share: true, contextRowCap: 1 };
     const contextApi = {
       requestJson: async (path: string) => {
@@ -1525,6 +1532,90 @@ describe('Story 4.11: the context chip, its toggle and the paste warning', () =>
     await turnSettle();
     fixture.detectChanges();
     expect(host.querySelector('.ocu-panel-warning')).toBeNull();
+  });
+
+  it('a namespace resolving after the chip\'s other two answers brings the chip in, and moves its sentence', async () => {
+    // `app.ts` issues `scope.load()`, `agentStatus.load()` and `agentContext.load()` unordered,
+    // and a namespace change re-fetches in place without a `router.events`, so `Panel` and
+    // `ContextChip` each subscribe to `onScopeChange`. Mutation (Rule 19): drop
+    // `onScopeChange(this.scope, () => this.bump())` from `Panel`'s constructor -> the first
+    // assertion below goes red; drop it from `ContextChip`'s -> the last one does.
+    const agentContext = stubAgentContext({ share: true });
+    await agentContext.load();
+    const { host, fixture, scope } = await mount({
+      rows: [{ enabled: true }],
+      agentContext,
+      namespace: '',
+      url: '/permissions/users',
+    });
+    expect(chipEl(host)).toBeNull();
+
+    scope.value = 'HSCUSTOM';
+    scope.notify();
+    fixture.detectChanges();
+    expect(chipEl(host)).not.toBeNull();
+    expect(chipText(host)).toContain('HSCUSTOM');
+
+    scope.value = 'USER';
+    scope.notify();
+    fixture.detectChanges();
+    expect(chipText(host)).toContain('USER');
+  });
+
+  it('a URL naming no built descriptor leaves the chip out, the same omission the payload makes', async () => {
+    // Mutation (Rule 19): drop `screenForUrl(this.router.url) !== null` from
+    // `contextChipVisible` -> this goes red, and the chip renders ', HSCUSTOM' -- a sentence with
+    // no screen in it -- while `assembleScreenContext` posts nothing for the same URL.
+    const agentContext = stubAgentContext({ share: true, provider: 'Anthropic' });
+    await agentContext.load();
+    const { host } = await mount({ rows: [{ enabled: true }], agentContext, url: '/not/a/screen' });
+    expect(chipEl(host)).toBeNull();
+  });
+
+  it('sharing off colors the sentence restrained, and only the sentence', async () => {
+    // DESIGN.md's `context-chip` "When off" state. Mutation (Rule 19): drop the
+    // `ocu-context-chip-off` class from `context-chip.ts`'s off branch -> this goes red.
+    const agentContext = stubAgentContext({ share: false });
+    await agentContext.load();
+    const { host } = await mount({ rows: [{ enabled: true }], agentContext, url: '/permissions/users' });
+    const off = chipEl(host)?.querySelector('.ocu-context-chip-off') as HTMLElement | null;
+    expect(off?.textContent).toBe(STRINGS.contextChipSharingOff);
+    expect(chipEl(host)?.classList.contains('ocu-context-chip-restrained')).toBe(false);
+  });
+
+  it('New conversation forgets an acknowledged secret, so the same draft warns again in the fresh conversation', async () => {
+    // The spec's review-pass item names sign-out and new-conversation as the explicit reset
+    // paths. Mutation (Rule 19): drop `acknowledgedSecretText.set(null)` from
+    // `onNewConversation()` -> this goes red, because the retry sends with no warning.
+    // The acknowledged send has to fail, or a `'sent'` outcome would clear the record on its own
+    // and there would be nothing left for New conversation to forget.
+    const api = fakeTurnApi({
+      [CONVERSATION_PATH]: [
+        { kind: 'error', status: 500, code: 'INTERNAL', reason: 'boom', detail: null },
+        { kind: 'ok', status: 201, body: { conversationId: 'convo-2' } },
+      ],
+    });
+    const turn = stubTurnStore({ api: api as never });
+    const { host, fixture } = await mount({ rows: [{ enabled: true }], turn });
+    const secret = 'sk-ant-api03-abcdefghijklmnopqrstuvwxyz';
+    await typeDraft(host, fixture, secret);
+    const send = () => (host.querySelector('.ocu-panel-send') as HTMLButtonElement).click();
+    send();
+    await turnSettle();
+    fixture.detectChanges();
+    expect(host.querySelector('.ocu-panel-warning')).not.toBeNull();
+    (host.querySelector('.ocu-panel-warning-send') as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+    expect(host.querySelector('.ocu-panel-warning')).toBeNull();
+
+    (host.querySelector('.ocu-panel-new-conversation') as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+    send();
+    await turnSettle();
+    fixture.detectChanges();
+    expect(host.querySelector('.ocu-panel-warning')).not.toBeNull();
   });
 
   it('the three non-triggers (a URL, a class name, a global reference) send without ever raising the warning', async () => {

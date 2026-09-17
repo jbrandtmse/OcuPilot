@@ -56,7 +56,7 @@ import { formatRowCount } from '../core/table-model';
           <span class="ocu-visually-hidden">{{ pillTitle }}</span>
         }
       } @else {
-        <span>{{ STRINGS.contextChipSharingOff }}</span>
+        <span class="ocu-context-chip-off">{{ STRINGS.contextChipSharingOff }}</span>
       }
     </div>
     <label class="ocu-context-chip-toggle">

@@ -250,8 +250,18 @@ test('subscribers hear an answer that moved, and are left alone by one that did 
   assert.equal(notifications, 2, 'and one that moved does');
 });
 
-test('AD-14: an `agent-switch` `changed` event re-reads; a definition\'s own change does not', async () => {
-  const api = stubApi([ok(FULL_INFO), ok({ ...FULL_INFO, contextRowCap: 400 })]);
+test('AD-14: both an `agent-switch` and an `agent-definition` `changed` event re-read', async () => {
+  // AD-42: `provider`, `endpointHost` and `leavesInstance` are the DEFAULT DEFINITION's, and the
+  // default marker moves on `agent-definition` (`definition-actions.ts`), not on `agent-switch`.
+  // A chip that did not re-read there would name the previous host, or show no "leaves the
+  // instance" pill for an endpoint that now has one, which AD-42's rule forbids.
+  // Mutation (Rule 19): drop the `AGENT_DEFINITION_ENTITY` leg from `onChange` -> the middle
+  // assertion goes red at 1 call, and the chip keeps the old egress facts.
+  const api = stubApi([
+    ok(FULL_INFO),
+    ok({ ...FULL_INFO, provider: 'OpenAI-compatible', endpointHost: '192.168.1.10', leavesInstance: false }),
+    ok({ ...FULL_INFO, contextRowCap: 400 }),
+  ]);
   const bus = new ChangeBus();
   const context = new AgentContext({ api, bus });
   await context.load();
@@ -259,10 +269,31 @@ test('AD-14: an `agent-switch` `changed` event re-reads; a definition\'s own cha
 
   bus.publish({ kind: 'changed', type: AGENT_DEFINITION_ENTITY, scope: AGENT_DEFINITION_SCOPE, id: '1' });
   await SETTLE();
-  assert.equal(api.calls.length, 1, 'a definition changing is not what this store listens for');
+  assert.equal(api.calls.length, 2, 'a moved default marker or a saved endpoint is');
+  assert.equal(context.endpointHost(), '192.168.1.10', 'and the chip follows it');
+  assert.equal(context.leavesInstance(), false);
 
   bus.publish({ kind: 'changed', type: AGENT_SWITCH_ENTITY, scope: AGENT_DEFINITION_SCOPE, id: 'instance' });
   await SETTLE();
-  assert.equal(api.calls.length, 2, 'a changed row cap or default is');
+  assert.equal(api.calls.length, 3, 'a changed row cap or sharing default is too');
   assert.equal(context.contextRowCap(), 400);
+});
+
+test('a `setShare` that overtakes a read in flight still lets that read settle', async () => {
+  // `setShare` bumps the same `request` counter a read does, so it must also become `newest`:
+  // the overtaken read resolves on `newest`, and a write that left `newest` pointing at the read
+  // itself would leave that read awaiting its own promise -- a `load()` that never settles.
+  // Mutation (Rule 19): drop the `this.newest = run.then(...)` assignment from `setShare` ->
+  // this test times out, because `inFlight` below never resolves.
+  const release = [];
+  const context = new AgentContext({ api: releasableApi(release) });
+  const inFlight = context.load();
+  const written = context.setShare(false);
+  assert.equal(release.length, 2, 'the GET and the PUT are both out');
+
+  release[1].resolve(ok({ ...FULL_INFO, share: false, userChoice: false }));
+  assert.equal(await written, true);
+  release[0].resolve(ok(FULL_INFO));
+  await inFlight;
+  assert.equal(context.share(), false, "the overtaken read does not undo the write's answer");
 });

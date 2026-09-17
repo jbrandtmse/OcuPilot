@@ -4,7 +4,8 @@
  * where a turn's provider call goes (Story 4.11, AD-42).
  *
  * Mirrors `agent-status.ts`'s shape -- the ungated-caller-own read, the answered/unanswered
- * gate, the generation/request/newest stale-answer guard, and the `agent-switch` re-read -- over
+ * gate, the generation/request/newest stale-answer guard, and the re-read on both agent change
+ * types -- over
  * `GET/PUT /api/ocupilot/agent/context` (Story 4.4) instead of the definitions list and the
  * restraint verdict. `leavesInstance`, `provider` and `endpointHost` come only from this read;
  * nothing downstream re-derives them (AD-42's "the chip cannot disagree with where the request
@@ -14,7 +15,7 @@
  * executes it under `node --test`.
  */
 
-import { AGENT_SWITCH_ENTITY } from './agent-status.ts';
+import { AGENT_DEFINITION_ENTITY, AGENT_SWITCH_ENTITY } from './agent-status.ts';
 import type { ApiService } from './api';
 import type { ChangeBus, ChangeEvent } from './change-bus';
 import type { ConnectivityService } from './connectivity';
@@ -100,7 +101,7 @@ function sameInfo(a: AgentContextInfo, b: AgentContextInfo): boolean {
 
 export interface AgentContextOptions {
   readonly api: ApiService;
-  /** The one client bus (AD-14): re-reads on `agent-switch` (a changed row cap or default). */
+  /** The one client bus (AD-14): re-reads on `agent-switch` and on `agent-definition`. */
   readonly bus?: ChangeBus;
   /** Where a failed read is parked (DW-135's shape). Optional so a narrow test can leave it out. */
   readonly connectivity?: ConnectivityService;
@@ -119,7 +120,11 @@ export class AgentContext {
   /** Bumped by every `load()` and `setShare()`, read across the await, so only the newest settles. */
   private request = 0;
 
-  /** The newest read in flight, so a superseded one resolves on it rather than on itself. */
+  /**
+   * The newest request in flight -- read or write -- so a superseded read resolves on it rather
+   * than on itself. Every bump of `request` must move this too: a bump that did not would leave
+   * the read it superseded awaiting its own promise, which never settles.
+   */
   private newest: Promise<void> = Promise.resolve();
 
   private readonly listeners = new Set<() => void>();
@@ -210,7 +215,19 @@ export class AgentContext {
    * & Constraints, AD-20, AD-28). A refusal reverts the mirror and adds no new error surface --
    * the caller (`context-chip.ts`) reports nothing further. Answers whether the write landed.
    */
-  async setShare(share: boolean): Promise<boolean> {
+  setShare(share: boolean): Promise<boolean> {
+    const run = this.write(share);
+    // This write bumps `request`, so it is now the newest request and `read()`'s superseded
+    // branch must await it. A rejection is not that barrier's business -- the caller's own `run`
+    // answers for it -- so it is absorbed here rather than thrown into an unrelated read.
+    this.newest = run.then(
+      () => undefined,
+      () => undefined
+    );
+    return run;
+  }
+
+  private async write(share: boolean): Promise<boolean> {
     const generation = this.generation;
     const previous = this.info;
     this.info = { ...this.info, share };
@@ -256,10 +273,19 @@ export class AgentContext {
     this.notify();
   }
 
-  /** A switch changed: re-read (AD-14). Only `agent-switch` can move a row cap or the default. */
+  /**
+   * A switch or a definition changed: re-read (AD-14), the same pair `AgentStatus.onChange`
+   * listens to. Both move something in this answer. `agent-switch` carries the row cap and
+   * `shareContextByDefault`; `agent-definition` carries Enable/Disable, the **default marker**
+   * and a saved endpoint -- and `provider`, `endpointHost` and `leavesInstance` are all the
+   * *default definition's*. AD-42 makes the chip's egress statement uncomputable from anything
+   * else and says it "cannot disagree with where the request actually goes", so a moved default
+   * this store did not re-read would leave the chip naming the previous host, or showing no
+   * "leaves the instance" pill for an endpoint that now has one, until a reload.
+   */
   private onChange(event: ChangeEvent): void {
     if (event.kind !== 'changed') return;
-    if (event.type !== AGENT_SWITCH_ENTITY) return;
+    if (event.type !== AGENT_SWITCH_ENTITY && event.type !== AGENT_DEFINITION_ENTITY) return;
     void this.load();
   }
 

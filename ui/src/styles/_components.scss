@@ -3354,6 +3354,12 @@ app-data-table {
   color: var(--ocu-restrained);
 }
 
+// Sharing off: DESIGN.md's `context-chip` "When off" state colors the sentence itself, and
+// leaves the box and its border alone -- the kill switch above is what restrains the border.
+.ocu-context-chip-off {
+  color: var(--ocu-restrained);
+}
+
 .ocu-context-chip-glyph {
   margin-left: var(--ocu-space-1);
   font-size: 14px;
