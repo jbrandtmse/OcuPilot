@@ -2930,6 +2930,10 @@ So that a slow answer is legible as work rather than as a hang.
 - **When** the panel renders it
 - **Then** it is rendered as **data, never as markup and never as OcuPilot's own voice**, and no rendered progress causes a request to any host.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-451: a tool step records no count of rows actually sent, which the read card shows (ledger; routed by harvest 2026-09-16)
+
 ### Story 4.6: Replies render safely and offline
 
 As a security-minded operator,
@@ -3075,6 +3079,10 @@ So that what the agent did is recoverable afterwards without correlating across 
 - **Given** OcuPilot's state lifecycle
 - **When** a user referenced by ledger rows is deleted
 - **Then** the rows survive - the ledger is an audit record and outlives its subject - while that user's sessions are invalidated and their running turns abandoned.
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-448: `BoundedWhere` has no guarded helper that runs its fragment with a parameter array, so the ledger view's time window has no path yet (ledger; routed by harvest 2026-09-16)
 
 ### Story 4.10: Home's suggested view and the starter prompts
 

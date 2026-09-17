@@ -2907,8 +2907,29 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-1-the-turn-runs-in-a-background-job-and-returns-immediately.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: CLAUDE.md Running and verifying section says 18 rules; uv run scripts/check-objectscript.py now prints over 19 rules
 - 2026-09-16T21:12:49Z status=routed owner=17-2-a-readme-whose-install-steps-work-the-first-time by=harvest note=Developer documentation drift, left for the story that owns the project's install and developer docs rather than an Epic 4 root-file edit
+- 2026-09-17T00:36:44Z occurrence=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea
 
 ### DW-447: Api.Definitions and Api.Switches render ReadRequestBody's vendor exception text (ex.DisplayString) in their 400 bad-body reason, against AD-39's normalization rule
 - source: spec-4-1-the-turn-runs-in-a-background-job-and-returns-immediately.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Definitions.RenderBadBody appends GetErrorText of the read status, which carries e.g. <THROW>%FromJSON+n^%Library.DynamicAbstractObject.1 for malformed JSON; Switches delegates to it. Api.Turn had the same copy and was fixed in 4.1's review by logging the raw status and rendering its written sentence.
 - 2026-09-16T22:11:28Z status=routed owner=burndown by=cr note=Same fix as Api.Turn in 4.1: parse stage keeps the written 400 sentence, read and decode stages render internal and log raw
+
+### DW-448: BoundedWhere has no guarded helper that runs its fragment with a parameter array, so no read can use the time-window guard yet
+- source: spec-4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Every Guarded helper in Kernel/State/Base.cls binds 0-3 scalar parameters while BoundedWhere returns text plus a dynamic array; rule 21 refuses joining the fragment to a literal outside Base.cls
+- 2026-09-17T00:36:43Z status=routed owner=4-9-the-agent-audit-ledger by=harvest note=The ledger view is the first read with a time window
+
+### DW-449: The dispatcher's write branch is exercised only with a forced restraint verdict, so an argument-order slip in Dispatch.Restraint stays green
+- source: spec-4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: ToolDispatchProbe.Restraint forces the verdict in every write leg and Release 1 ships no write tool
+- 2026-09-17T00:36:43Z status=routed owner=5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read by=harvest note=The first write tool pins the branch through the real Kernel.Restraint.Verdict on the throwaway
+
+### DW-450: A tool fault's detail object reaches the model whole, so a validation envelope's violation reasons would reach it too
+- source: spec-4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Dispatch.AnswerOne renders the fault detail unchanged; read faults carry only failedPair or problem today, while Api validation envelopes carry violations with reason text
+- 2026-09-17T00:36:44Z status=routed owner=5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read by=harvest note=Real once a write tool answers a validation envelope
+
+### DW-451: AD-24's rows-actually-sent count is not recorded on a tool step, so the read tool-call card has nothing to show
+- source: spec-4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Loop.AnswerTools records a tool step's name, status and code only; neither the row count sent nor truncated is kept
+- 2026-09-17T00:36:44Z status=routed owner=4-5-a-turn-watched-progress-cards-and-the-conversation-lock by=harvest note=The progress-card story shows rows returned and context rows sent for a read
