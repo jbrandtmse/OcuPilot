@@ -9,8 +9,8 @@ rows. The agent reads through the same declared reads the screen uses, in-proces
 answers naming the rows it used. Every model and tool call lands in a per-user ledger, and nothing on the
 instance changes. This completes build step 2, UJ-1 and the read-only half of UJ-4, and ships on its own
 if Epic 5's write model slips. Story 4.0 (done) put Epic 3's merge-gate credential and egress decisions
-in place before any turn sends a stored key; Story 4.1 (done) shipped the turn job and its progress store;
-Story 4.2 (done) shipped tool advertising, dispatch, the gate point and the three shell reads.
+in place; 4.1 (done) shipped the turn job and progress store; 4.2 (done) shipped tool advertising,
+dispatch, the gate point and the three shell reads.
 
 ## Stories
 
@@ -35,7 +35,7 @@ Story 4.2 (done) shipped tool advertising, dispatch, the gate point and the thre
   only an absent entry (`PROVIDER.CREDENTIAL`) disables the definition.
 - **The turn never holds a request open.** `POST` returns a turn id at once, and a background job does
   the work, past the stock 60-second gateway timeout on an unmodified container. The job never changes
-  the instance. It writes only OcuPilot's own state (progress, bookkeeping). A vendor migration triggered
+  the instance; it writes only OcuPilot's own state. A vendor migration triggered
   by reading a credential is not a mutation; reading the vendor's secondary credential global directly
   to avoid it is refused.
 - **Every turn is bounded and re-checked.** The limits live in `Kernel.Agent.Limits` until per-user
@@ -43,16 +43,15 @@ Story 4.2 (done) shipped tool advertising, dispatch, the gate point and the thre
   tokens; poll lease 120 s; a message at most 16,000 characters. One concurrent turn per user, enforced
   on the instance. Before each model call the job re-checks its stop flag, sign-out, the kill switch and
   holds, enforced read-only, the user's current grants (`$SYSTEM.Security.CheckUserPermission`; 0 for
-  a deleted user), the lease, time and tokens, and abandons at that boundary when one
-  fails. A least-privileged job cannot read its account's enabled flag, and the instance keeps honouring
-  a disabled account's token (its access token and `/refresh` keep working), so a disabled account's
-  turn is bounded by the wall-clock limit alone. The poll lease bounds a turn nobody is watching: only
+  a deleted user), the lease, time and tokens, and abandons there when one fails. A
+  least-privileged job cannot read its account's enabled flag, and a disabled account's token (access
+  and `/refresh`) keeps working, so its turn is bounded by the wall-clock limit alone. The poll lease bounds a turn nobody is watching: only
   the owner's authenticated polls renew it. The instance never sees a token sign-out, so OcuPilot's
   sign-out first sends `POST /api/ocupilot/turn/abandon`; a session that ends any other way lapses the
   lease. Stop is not a new turn and cancels nothing.
 - **Progress** lives in protected storage, keyed by turn, owned by its starter, capped per turn (100
-  steps, the rest counted), kept 15 minutes after the turn ends and deleted with it. A poll for another
-  user's turn answers 404, not 403. The first visible progress appears within 10 s. Anything from the
+  steps, the rest counted), kept 15 minutes after the turn ends and deleted with it. Another user's turn
+  polls 404, not 403. The first visible progress appears within 10 s. Anything from the
   model or a tool renders as data, never markup.
 - **Tools.** Navigation tools are read tools that run client-side and accept only registry route ids and
   entity ids, never a URL. They register like any other tool and pass the same dispatch. SQL-backed reads
@@ -131,13 +130,15 @@ Story 4.2 (done) shipped tool advertising, dispatch, the gate point and the thre
 ## UX & Interaction Patterns
 
 - **Panel.** Docked right on every route, 400 px default, 320 px minimum, width remembered per browser;
-  content keeps 640 px. No close control. Full screen fills the app area and makes hidden content
-  `inert`. The resize handle is the shell's only sash. When space runs short the side bar collapses first,
-  then the panel shrinks, then content scrolls in its own region; the panel never overlays and the body
-  never scrolls horizontally. On Home the panel widens over 120 ms (none under reduced motion).
+  content keeps 640 px, confirmed at the narrowest supported viewport, 1,280 px. No close control. "Full
+  screen" (`aria-expanded`) fills the app area and makes hidden content `inert`. The handle ("Resize the
+  agent co-pilot panel", value in px) is the shell's only sash; its grip turns `restrained` at either stop.
+  Short of space, the side bar collapses, then the panel shrinks, then content scrolls in its region;
+  the panel never overlays or scrolls the body sideways. On Home it widens over 120 ms (none
+  under reduced motion).
 - **Order.** Header; banners (kill switch, enforced read-only, "not being marked", administrator
-  reminder, lock); context chip; transcript as a polite `role="log"`; footer with the read-only line,
-  composer and Send. Ctrl/Cmd+I focuses the composer, even mid-turn.
+  reminder linking "Definitions", lock); context chip; transcript as a polite `role="log"`; footer with
+  the read-only line, composer and Send. Ctrl/Cmd+I focuses the composer, even mid-turn.
 - **During a turn.** Send becomes Stop and keeps focus. Never natively disable or remove a focused
   control; use `aria-disabled`. A second send shows the lock banner, keeps the draft and renders nothing.
   Tool calls appear as ordered disclosure cards whose status is part of the accessible name.
