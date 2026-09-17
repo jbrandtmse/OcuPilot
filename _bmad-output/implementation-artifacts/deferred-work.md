@@ -2960,3 +2960,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source:  | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: Screen/Registry.cls names Kernel.EntityType and Kernel.Scope; Screen/Read.cls names Kernel.State and Kernel.Fault; Screen/Tool/Base.cls names Kernel.Fault and Api.Error, all shipped in Epics 1 to 3, against the Invariants line that the registry never depends on the kernel
 - 2026-09-17T01:34:32Z status=escalated owner=burndown by=lead note=Recommended: amend the direction line to admit kernel value types, stores and the error vocabulary as shared leaves, since Epic 6 builds more screens on the same edges
+- 2026-09-17T02:40:32Z occurrence=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea
