@@ -62,7 +62,7 @@ Method OnBeforeAllTests() As %Status
     Set ..PreparedPassword = $ClassMethod(..#FIXTURE, "NewPassword")
     Set tSC = $ClassMethod(..#FIXTURE, "EnsurePrincipal", $Parameter(..#FIXTURE, "USERA"), ..PreparedPassword, $ClassMethod(..#FIXTURE, "Resources"), ..#AUDITRESOURCES)
     If $$$ISERR(tSC) Quit tSC
-    ; A second, least-privileged principal, for AC3's two-principal wire test (DW-1030): the
+    ; A second, least-privileged principal, for AC3's two-principal wire test: the
     ; sharing choice is per user, so a wire-level check needs a second caller who has stored none.
     Set tSC = $ClassMethod(..#FIXTURE, "EnsurePrincipal", $Parameter(..#FIXTURE, "USERB"), ..PreparedPassword, $ClassMethod(..#FIXTURE, "Resources"))
     If $$$ISERR(tSC) Quit tSC
@@ -389,11 +389,10 @@ Method TestAnUnknownRouteBuildsNoContext()
     Do $$$AssertEquals(tMessages.%Size(), 1, "no screen_context was built")
 }
 
-/// <p>Read tool field bound (DW-1033) -- the real <code>logs.audit.read</code> tool, called by the
+/// <p>Read tool field bound -- the real <code>logs.audit.read</code> tool, called by the
 /// model, carries a value cut with U+2026 when the underlying row's field is over 1,000
 /// characters, and names the field in <code>truncatedFields</code>.</p>
-/// <p><b>Deterministic, not conditional on whatever the live audit log happens to hold.</b> This
-/// method writes its own audit row first (<method>OcuPilot.Kernel.Audit.Event.Record</method>, a
+/// <p>This method writes its own audit row first (<method>OcuPilot.Kernel.Audit.Event.Record</method>, a
 /// real <code>$System.Security.Audit</code> call under this project's own registered Source), with
 /// an <code>EventData</code> payload built past 1,000 characters and carrying a marker unique to
 /// this run, then asks the tool for that Source alone (<code>eventSources</code>, a declared
@@ -404,7 +403,7 @@ Method TestAnUnknownRouteBuildsNoContext()
 /// this goes red (the seeded row's own field is found whole, not cut to 1,000 characters).</p>
 Method TestAReadToolResultsOwnFieldIsBound()
 {
-    Set tMarker = "OcuPilotProbeFieldBound" _ $Increment(^||OcuPilotProbeFieldBoundSeq)
+    Set tMarker = "OcuPilotProbeFieldBound" _ $Translate($System.Util.CreateGUID(), "-", "")
     Set tChanges = {}
     Do tChanges.%Set("note", (tMarker _ $TR($Justify("", 1500), " ", "d")))
     Set tRecordSC = ##class(OcuPilot.Kernel.Audit.Event).Record("update", "agent-switch", "OcuPilotProbeTurnContextFieldBound", tChanges, 0)
@@ -435,6 +434,34 @@ Method TestAReadToolResultsOwnFieldIsBound()
     Do $$$AssertTrue(tFoundSeeded, "this test's own seeded row is in the result: " _ tContent.%ToJSON())
     Do $$$AssertTrue(tSeededCut, "the seeded row's own EventData is cut to 1,000 characters, ending U+2026")
     Do $$$AssertTrue(tContent.truncatedFields.%ToJSON() [ """EventData""", "EventData is named in truncatedFields: " _ tContent.truncatedFields.%ToJSON())
+}
+
+/// <p>The resolved <code>contextRowCap</code> reaches a tool result through the handler, the job and
+/// the loop (AD-24): with the cap at 2 and three rows of this project's audit source seeded, the
+/// real <code>logs.audit.read</code> tool answers two rows.</p>
+/// <p>Mutation: <method>OcuPilot.Kernel.Agent.Job.Start</method> passes <code>0</code> for
+/// <code>contextRowCap</code> -> the job falls back to <code>TOOLROWS</code> and this goes red.</p>
+Method TestTheRowCapReachesAToolResultThroughTheJob()
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.SwitchFixture).SetSwitches(0, "", 0), "start clean")
+    Set tRow("contextRowCap") = 2
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Switch).SetGuarded(.tRow), "the row cap is 2")
+    For tI = 1:1:3 {
+        Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Audit.Event).Record("update", "agent-switch", "OcuPilotProbeTurnContextRowCap", {"note": ("row " _ tI)}, 0), "audit row " _ tI _ " is seeded")
+    }
+    Set tCalls = [{"name": "logs_audit_read", "input": {"eventSources": (##class(OcuPilot.Kernel.Audit.Event).Source())}}]
+    Do ##class(OcuPilot.Test.TurnProvider).Script(..#TAG, 0, ##class(OcuPilot.Test.TurnProvider).ToolUseReply(tCalls))
+    Do ##class(OcuPilot.Test.TurnProvider).Script(..#TAG, 0, ##class(OcuPilot.Test.TurnProvider).TextReply("ok"))
+    Set tTurnId = ..Start("read the audit log", "", .tStatus, .tText)
+    Do $$$AssertEquals(tStatus, 202, "the start is accepted: " _ tText)
+    Set tState = ..AwaitEnd(tTurnId, 20, .tView)
+    Do $$$AssertEquals(tState, "completed", "the turn completes: " _ $Select($IsObject($Get(tView)): tView.%ToJSON(), 1: ""))
+    Do $$$AssertTrue($ClassMethod(..#FIXTURE, "AwaitCall", ..#TAG, 2, 10), "call 2 lands")
+    Set tMessages = ##class(%DynamicAbstractObject).%FromJSON(##class(OcuPilot.Test.TurnProvider).Recorded(..#TAG, 2, "messages"))
+    Set tResultBlock = tMessages.%Get(tMessages.%Size() - 1).content.%Get(0)
+    Do $$$AssertEquals(tResultBlock."is_error", 0, "the read tool answers, not an error: " _ tResultBlock.content)
+    Set tContent = ##class(%DynamicAbstractObject).%FromJSON(tResultBlock.content)
+    Do $$$AssertEquals($Select($IsObject(tContent.rows): tContent.rows.%Size(), 1: -1) _ "|" _ tContent.rowsSent _ "|" _ tContent.truncated, "2|2|1", "the tool result is cut to the resolved row cap and marked")
 }
 
 /// <p><code>GET</code>/<code>PUT /agent/context</code> over the wire: a stored choice reads back
@@ -487,7 +514,7 @@ Method TestContextStatusWithNoEnabledDefault()
     Do $$$AssertStatusOK(##class(OcuPilot.Test.AgentFixture).SetFlags(..PreparedDefinitionId, 1, 1), "the prepared definition is re-enabled")
 }
 
-/// <p>AC3, two principals over the wire (DW-1030): user A's <code>PUT {share:false}</code> is read
+/// <p>AC3, two principals over the wire: user A's <code>PUT {share:false}</code> is read
 /// back by A alone; user B, who has stored no choice, reads the instance default with
 /// <code>userChoice</code> null, never A's.</p>
 /// <p>Mutation: <method>OcuPilot.Kernel.State.Sharing.GuardedForUser</method>'s per-user lookup
@@ -510,10 +537,10 @@ Method TestTwoPrincipalsGetTheirOwnSharingChoiceOverTheWire()
     Do $$$AssertEquals(tBStatus, 200, "B reads back: " _ tBText)
     Set tB = ##class(%DynamicObject).%FromJSON(tBText)
     Do $$$AssertEquals(tB.share, 1, "B, with no row, follows the instance default, on")
-    Do $$$AssertEquals(tB.%Get("userChoice"), "", "B's userChoice is null, not A's stored false")
+    Do $$$AssertEquals(tB.%GetTypeOf("userChoice"), "null", "B's userChoice is JSON null, not A's stored false")
 }
 
-/// <p>Job scope (DW-1031) -- a turn started with <code>?ns=HSLIB</code> runs the shell namespaces
+/// <p>Job scope -- a turn started with <code>?ns=HSLIB</code> runs the shell namespaces
 /// read tool inside the spawned job, whose execution namespace is always the install namespace;
 /// the tool's own <code>scope</code> field is <code>OcuPilot.Kernel.Scope.Current()</code> as the
 /// job reads it, which is <code>HSLIB</code> only if <method>OcuPilot.Kernel.Agent.Job.Run</method>
@@ -546,17 +573,18 @@ Method TestATurnStartedUnderNsSetsTheJobsScope()
 Method RestorePreparedDefinition()
 {
     Set tSC = ##class(OcuPilot.Kernel.State.Agent).GuardedOpenId(..PreparedDefinitionId, .tRow)
+    Do $$$AssertStatusOK(tSC, "the prepared definition opens for its restore")
     If $$$ISOK(tSC) && $IsObject(tRow) {
         Do ##class(OcuPilot.Kernel.State.Agent).SnapshotSecurityFields(tRow, .tSnapshot)
         Set tRow.MarkedLocal = 0
         Set tRow.EndpointUrl = ##class(OcuPilot.Test.TurnWireFixture).#ENDPOINTURL
-        Do ##class(OcuPilot.Kernel.State.Agent).GuardedUpdate(tRow, .tSnapshot)
+        Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Agent).GuardedUpdate(tRow, .tSnapshot), "the prepared definition's endpoint and local flag are restored")
         Set tRow = ""
     }
-    Do ##class(OcuPilot.Test.AgentFixture).SetFlags(..PreparedDefinitionId, 1, 1)
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.AgentFixture).SetFlags(..PreparedDefinitionId, 1, 1), "the prepared definition is re-enabled")
 }
 
-/// <p>Legs of <code>GET /agent/context</code>'s body left unasserted elsewhere (DW-1034):
+/// <p>Legs of <code>GET /agent/context</code>'s body left unasserted elsewhere:
 /// <code>shareDefault</code> distinct from the caller's own effective <code>share</code>,
 /// <code>contextRowCap</code> against a resolved value, a definition marked local overriding a
 /// public-looking host, and an empty <code>EndpointUrl</code> falling back to the catalog's own
@@ -578,9 +606,7 @@ Method TestContextStatusUnassertedLegs()
     Do $$$AssertEquals(tAnswer.shareDefault, 1, "shareDefault is the instance's, distinct from share")
     Do $$$AssertEquals(tAnswer.contextRowCap, 37, "contextRowCap is the resolved switch value")
 
-    ; A second read with the switch flipped off, so shareDefault is pinned against the switch it
-    ; actually reads, not merely against a value a hardcoded constant would also produce (review
-    ; pass finding: the first read alone cannot fail a hardcoded shareDefault=1 regression).
+    ; A second read with the switch off, so shareDefault is pinned to the switch it reads.
     Set tRowOff("shareContextByDefault") = 0
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Switch).SetGuarded(.tRowOff), "the instance default flips off")
     Do ..Call("GET", "/agent/context", "", .tOffStatus, .tOffText, .tOffHeaders)

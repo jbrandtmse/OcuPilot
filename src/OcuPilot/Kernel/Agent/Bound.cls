@@ -1,4 +1,4 @@
-/// <p>The one bounds cutter serving screen context and descriptor-derived read tool results
+/// <p>The one bounds cutter serving screen context and every rows-shaped read tool result
 /// (AD-24, DW-281, DW-452). Given a payload object carrying a <code>rows</code> array of flat row
 /// objects, it cuts rows to a row cap, cuts each row's over-long string values to a per-field
 /// maximum with a trailing U+2026, and then cuts whole rows from the end until the serialized

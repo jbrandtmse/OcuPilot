@@ -1,7 +1,7 @@
 /// <p><code>shell.namespaces.read</code>: the namespaces the caller may read, as
 /// <method>OcuPilot.Kernel.Shell.Namespaces.Payload</method> builds them for
-/// <code>GET /api/ocupilot/namespaces</code>. In a turn job <code>scope</code> is the job's own
-/// namespace.</p>
+/// <code>GET /api/ocupilot/namespaces</code>. In a turn job <code>scope</code> is the scope the
+/// turn was started under, which <method>OcuPilot.Kernel.Agent.Job.Run</method> sets.</p>
 Class OcuPilot.Kernel.Shell.NamespacesRead Extends OcuPilot.Kernel.Shell.ReadTool
 {
 

@@ -108,7 +108,7 @@ ClassMethod ResultSchema(pDescriptor As %String = "") As %DynamicObject
             "rows": {"type": "array", "items": {"type": "object"}, "description": "One object per error, carrying exactly the summary fields."},
             "truncated": {"type": "boolean", "description": "True when rows were cut by a cap or a field value was shortened."},
             "rowsSent": {"type": "integer", "description": "How many rows this result carries."},
-            "rowsAvailable": {"type": "integer", "description": "How many rows were available before this tool's own row cap."},
+            "rowsAvailable": {"type": "integer", "description": "How many rows this read produced before the result was bounded. The log is asked for no more than the row cap, so this is not a count of the whole log."},
             "truncatedFields": {"type": "array", "items": {"type": "string"}, "description": "Field names whose value was shortened in this result, if any."}
         },
         "required": ["fields", "rows", "truncated"],

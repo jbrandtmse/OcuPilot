@@ -70,7 +70,7 @@ Method OnAfterOneTest() As %Status
 /// the suite's own account, finish it, and answer its key with the outcome in <var>pOutcome</var>.
 /// The turn's read-only snapshot is <var>pReadOnly</var>, or the instance's switch when that is
 /// <code>""</code>. <var>pContextRowCap</var> is the resolved row cap every dispatched call in
-/// this turn is answered under (DW-1032, AD-24), <code>0</code> falling back to
+/// this turn is answered under (AD-24), <code>0</code> falling back to
 /// <var>LOOP</var>'s own <code>TOOLROWS</code>, exactly as <method>OcuPilot.Kernel.Agent.Loop.Run</method>
 /// takes it.</p>
 Method RunTurn(Output pOutcome, pReadOnly As %String = "", pContextRowCap As %Integer = 0) As %String
@@ -324,7 +324,7 @@ Method TestAReplysToolResultsShareOneBudget()
 }
 
 /// <p>contextRowCap bounds every tool result answered in a turn, not only screen context
-/// (DW-1032, AD-24, Story 4.4): a resolved row cap smaller than <parameter>TOOLROWS</parameter> is
+/// (AD-24): a resolved row cap smaller than <parameter>TOOLROWS</parameter> is
 /// the cap the tool's own view is asked under, and its result is cut to it and marked truncated;
 /// with no override, the cap a tool is asked under is <parameter>TOOLROWS</parameter> itself,
 /// unchanged.</p>
@@ -350,6 +350,7 @@ Method TestContextRowCapBoundsToolResultsInATurn()
     Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("looking", tCalls))
     Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("done"))
     Do ..RunTurn(.tOutcome2)
+    Do $$$AssertEquals(tOutcome2("state"), "completed", "the second turn completes")
     Do $$$AssertEquals(##class(OcuPilot.Test.DispatchTool.Counter).Last("probe.counter.read", "cap"), tCap, "with no override, the tool is still asked under TOOLROWS")
 }
 

@@ -200,6 +200,21 @@ Code review 2026-09-17 (four layers, `review_tier: full-opus`). Unchecked items 
 
 Rejected: `strings.ts` 4.11 keys (false: added by the lead for Story 4.11); browser spec leaves the cap at 500 (false: `after()` restores it); sharing read on a turn without context (low, negligible cost); `Read.View` still cuts before `Bound` (low: the report is correct).
 
+Code review 2026-09-17, rework re-review (four layers, `review_tier: full-opus`). All eight rework items confirmed closed; no HIGH.
+
+- [x] [Review][Patch] MED (Rule 19): `ErrorRead.ResultSchema`'s three new fields were pinned by no test; `ToolDispatch.TestTheErrorToolsBoundResultConformsToItsResultSchema` [src/OcuPilot/Test/ToolDispatch.cls]
+- [x] [Review][Patch] MED (Rule 19): `contextRowCap` through handler, `Job.Start` and `Job.Run` to a tool result was unpinned; `TurnContext.TestTheRowCapReachesAToolResultThroughTheJob` [src/OcuPilot/Test/TurnContext.cls]
+- [x] [Review][Patch] LOW: `ErrorRead`'s `rowsAvailable` description claimed a pre-cap count the tool never has [src/OcuPilot/Screen/Tool/ErrorRead.cls:111]
+- [x] [Review][Patch] LOW: stale doc claims: `Bound` header said descriptor-derived only; `NamespacesRead` said scope is the job's namespace [src/OcuPilot/Kernel/Agent/Bound.cls:1]
+- [x] [Review][Patch] LOW: new doc comments named review items and DW ids (prose discipline) [src/OcuPilot/Test/ToolDispatch.cls]
+- [x] [Review][Patch] LOW: the field-bound marker restarted per process and could match an earlier run's row; now a GUID [src/OcuPilot/Test/TurnContext.cls]
+- [x] [Review][Patch] LOW: `userChoice` null could not be told from a missing key; asserts `%GetTypeOf` null [src/OcuPilot/Test/TurnContext.cls]
+- [x] [Review][Patch] LOW: `RestorePreparedDefinition` discarded its statuses [src/OcuPilot/Test/TurnContext.cls]
+- [x] [Review][Patch] LOW: `TestContextRowCapBoundsToolResultsInATurn`'s second turn state unasserted [src/OcuPilot/Test/TurnTools.cls]
+- [x] [Review][Patch] LOW (Rule 19): stale "not run" mutation lines for the Integration and secret-screen rows [spec ## Verification]
+
+Rejected: non-object rows break a class tool (false: `Bound` passes non-object rows through, and only `Read`/`ErrorRead` answer rows); fake audit rows on the live instance (false: `TurnContext` is armed, throwaway only); seeded row may fall outside the result (low, green on every run; reopen if flaky); one-way sharing isolation, `Try` placement, `<INVALID OREF>` on an error result (low: tests still go red); `%DB_HSLIB` READ claim unlabeled (false: the test ran green and red on the throwaway); `TurnContext` over 500 lines (low: a split is more than a direct correction); spec counts, status, baseline and follow-up wording (fix edits the spec); `Dispatch` comment wording (false: `Bound` does set `rows`).
+
 ## Spec Change Log
 
 - 2026-09-17, lead after review round 1 (rework iteration 1): re-opened for the eight unchecked `[Review]` items under Review Findings (one HIGH, six MED, one LOW fix pack). Nothing else changes.
@@ -315,8 +330,8 @@ Rejected: `strings.ts` 4.11 keys (false: added by the lead for Story 4.11); brow
 
 **Mutations to demonstrate (Rule 19), each recorded as a `mutation:` line when its test lands:**
 
-- Skip the per-field cut in `Bound` → TurnContext Integration. mutation: not run against the Integration test itself; the same code path is now pinned by a deterministic mutation instead -- see "descriptor-branch condition" below.
-- Drop the secret-descriptor identity-only branch → secret screen case. mutation: not run; verified green on the throwaway instead (`OcuPilot.Test.TurnContext.TestASecretScreenAnswersIdentityOnly`), and the branch's own boundary (the `entity` length check ahead of it) is separately mutation-tested below.
+- Skip the per-field cut in `Bound` → TurnContext Integration. mutation: per-field cut disabled in `Bound.Apply` → `TurnContext.TestTheIntegrationAcceptanceCriterion` red (see the code review mutations below).
+- Drop the secret-descriptor identity-only branch → secret screen case. mutation: secret-field branch disabled in `Screen.Context.Build` → `TurnContext.TestASecretScreenAnswersIdentityOnly` red (see the code review mutations below).
 - Ignore the `Sharing` row → sharing-off case. mutation: applied to `OcuPilot.Api.Turn.HandleStart` on the throwaway (commented out `If tShareFound Set tShareEffective = ''tShareValue`); `OcuPilot.Test.TurnContext.TestSharingOffSuppressesContext` went red (the context reached the turn's messages despite the caller's stored `share:false`); reverted, byte-identical (`diff`/`git status --short` confirmed), recompiled, re-verified green.
 - Advertise or resolve `screen_context` → model-issued case. mutation: applied to `OcuPilot.Kernel.Agent.Dispatch.AnswerOne` on the throwaway (after `ResolveWire`, added `If (tWire = "screen_context") Set tTool = {...}` resolving it to the real `shell.instance.read` tool); `OcuPilot.Test.TurnContext.TestAModelIssuedScreenContextCallIsUnknown` went red (the call answered a real result instead of `TOOL.UNKNOWN`); reverted, byte-identical, recompiled, re-verified green. (A collision through ordinary tool registration is structurally impossible: every valid `<area>.<screen>.<verb>` name has two dots, so its wire name always has two underscores and can never equal the one-underscore `screen_context`; this mutation instead proves the dispatcher's own resolution path would be caught if it ever special-cased the name.)
 - Remove the budget subtraction in `AnswerTools` → reply-budget case. mutation: applied to `OcuPilot.Kernel.Agent.Loop.AnswerTools` on `ocupilot-slot-a` (dropped the `Set tBudget = tBudget - $Length(...)` line); `OcuPilot.Test.TurnTools.TestAReplysToolResultsShareOneBudget` went red on five of its assertions (the second call no longer cut, the third never refused); reverted, byte-identical (`git diff --stat` confirmed unchanged), recompiled, re-verified green on both the live instance and a throwaway.
@@ -425,6 +440,11 @@ could distinguish.
 - mutation: `Api.Context.Body`'s `LeavesInstance(tHost, tMarkedLocal, tProxyHost)` call changed to pass a literal `0` instead of `tMarkedLocal`, on the throwaway → `TestContextStatusUnassertedLegs`'s "but marked local overrides it" assertion went red (`leavesInstance` read 1, not 0); reverted, byte-identical, recompiled, re-verified green.
 - mutation: `Port.ProviderPort.EndpointOf`'s empty-`pEndpointUrl` fallback to `pRow.defaultEndpoint` removed (always `Quit pEndpointUrl`), on the throwaway → `TestContextStatusUnassertedLegs`'s "an empty EndpointUrl falls back to the catalog's own defaultEndpoint" assertion went red (`endpointHost` empty); reverted, byte-identical, recompiled, re-verified green.
 - mutation: `Test.DispatchTool.Counter.ResultSchema`'s three added properties (`rowsSent`, `rowsAvailable`, `truncatedFields`) removed, on the throwaway → the new schema round-trip assertion in `OcuPilot.Test.ToolDispatch.TestARowsShapedClassOfItsOwnToolGetsThePerFieldCut` went red (`ERROR #5001: argument 'rowsSent' is not a declared property`); reverted, byte-identical, recompiled, re-verified green.
+
+**Rework re-review mutations (Rule 19), throwaway `ocupilot-ci`, each reverted, `diff -rq` clean, reloaded and re-verified green:**
+
+- mutation: `rowsSent` removed from `Screen.Tool.ErrorRead.ResultSchema` → `ToolDispatch.TestTheErrorToolsBoundResultConformsToItsResultSchema` red (run 58, 1 of 17).
+- mutation: `Kernel.Agent.Job.Start` passes `0` for `contextRowCap` → `TurnContext.TestTheRowCapReachesAToolResultThroughTheJob` red alone (run 60, 1 of 16).
 
 ## Auto Run Result
 

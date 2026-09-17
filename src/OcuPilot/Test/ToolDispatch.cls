@@ -64,9 +64,8 @@ Method TestARegisteredReadCallAnswersItsResult()
 {
     Do ..Call("probe_counter_read", {"marker": "m1", "rows": 2, "width": 3}, .tResult, .tName)
     Do $$$AssertEquals(tResult."tool_use_id" _ "|" _ tResult."is_error" _ "|" _ tResult.type, "toolu_1|0|tool_result", "one result block, under the call's id, not an error")
-    ; This tool's result carries a rows array, so it now goes through Bound like any other
-    ; rows-shaped read result (Review item 1, AD-24, DW-281): the same fields, marker and rows
-    ; unchanged, plus the richer report Bound always adds.
+    ; A rows-shaped result goes through Bound (AD-24): the tool's own fields, marker and rows
+    ; unchanged, plus the report fields Bound adds.
     Do $$$AssertEquals(tResult.content, "{""marker"":""m1"",""rows"":[{""n"":1,""text"":""rrr""},{""n"":2,""text"":""rrr""}],""truncated"":false,""rowsSent"":2,""rowsAvailable"":2,""truncatedFields"":[]}", "carrying the tool's result JSON, now bounded")
     Do $$$AssertEquals(tName, ..#READER, "recorded under the dotted name")
     Do $$$AssertEquals($ClassMethod(..#COUNTER, "Calls", ..#READER), 1, "the tool ran once")
@@ -355,24 +354,18 @@ Method TestADescriptorDerivedToolResultGetsThePerFieldCut()
     Do ##class(OcuPilot.Test.EndpointFixture).Clear()
 }
 
-/// <p>Review item 1 (AD-24, DW-281): a rows-shaped result from a tool with a class of its own --
-/// this class's own counter fixture, which declares no descriptor -- gets the same per-field cut
-/// and report as a descriptor-derived read once <method>OcuPilot.Kernel.Agent.Dispatch.AnswerOne</method>
-/// routes every result carrying a <code>rows</code> array through <class>OcuPilot.Kernel.Agent.Bound</class>,
-/// not only a descriptor-derived one. <class>OcuPilot.Screen.Tool.ErrorRead</class> is the shipped
-/// example this closes; the fixture here pins the same mechanism without depending on the live
-/// audit log.</p>
+/// <p>A rows-shaped result from a tool with a class of its own -- this class's counter fixture,
+/// which declares no descriptor -- gets the same per-field cut and report as a descriptor-derived
+/// read (AD-24): <method>OcuPilot.Kernel.Agent.Dispatch.AnswerOne</method> routes every result
+/// carrying a <code>rows</code> array through <class>OcuPilot.Kernel.Agent.Bound</class>.</p>
 /// <p>Mutation: <method>OcuPilot.Kernel.Agent.Dispatch.AnswerOne</method>'s routing condition
 /// narrowed back to <code>tTool.%Get("descriptor") '= ""</code> -> this goes red (no per-field
 /// cut, no <code>rowsSent</code>/<code>rowsAvailable</code>/<code>truncatedFields</code> on a
 /// class-of-its-own tool's result).</p>
-/// <p>Also validates the dispatched, <code>Bound</code>-augmented content against the tool's own
-/// declared <method>ResultSchema</method> (review pass finding: the general schema round-trip
-/// check, <class>OcuPilot.Test.ToolRoundTrip</class>, calls <method>InvokeTool</method> directly and
-/// never exercises what <method>Dispatch.AnswerOne</method> actually answers). Every class-of-its-
-/// own tool with a <code>rows</code> result -- <class>OcuPilot.Screen.Tool.ErrorRead</class> among
-/// them -- goes through the same <class>OcuPilot.Kernel.Agent.Bound</class> call this fixture does,
-/// so pinning the schema match here pins it for all of them.</p>
+/// <p>Also validates the dispatched, <code>Bound</code>-augmented content against the fixture's own
+/// declared <method>ResultSchema</method>. Each tool declares its own schema;
+/// <class>OcuPilot.Screen.Tool.ErrorRead</class>'s is pinned by
+/// <method>TestTheErrorToolsBoundResultConformsToItsResultSchema</method>.</p>
 /// <p>Mutation: <method>OcuPilot.Test.DispatchTool.Counter.ResultSchema</method>'s three added
 /// properties removed -> the schema check below goes red on <code>additionalProperties: false</code>.</p>
 Method TestARowsShapedClassOfItsOwnToolGetsThePerFieldCut()
@@ -391,7 +384,7 @@ Method TestARowsShapedClassOfItsOwnToolGetsThePerFieldCut()
     Do $$$AssertStatusOK(##class(OcuPilot.Screen.Tool.Registry).ValidateArguments(##class(OcuPilot.Screen.Tool.Registry).ResultSchemaOf(tTool), tContent, .tProblem), "the Bound-augmented result still conforms to the tool's own declared ResultSchema: " _ tProblem)
 }
 
-/// <p>DW-1035 -- <method>OcuPilot.Screen.Tool.Read.View</method> reports <code>rowsAvailable</code>
+/// <p><method>OcuPilot.Screen.Tool.Read.View</method> reports <code>rowsAvailable</code>
 /// as the real count before its own row cap, not the capped <code>rows</code> array's own size, and
 /// that real count survives through <method>OcuPilot.Kernel.Agent.Dispatch.Answer</method> and
 /// <class>OcuPilot.Kernel.Agent.Bound</class> to the dispatched result.</p>
@@ -420,6 +413,26 @@ Method TestReadViewRowsAvailableAboveTheCapIsTheRealCount()
     }
     Do ##class(OcuPilot.Test.PortFixture).Clear()
     Do ##class(OcuPilot.Test.EndpointFixture).Clear()
+}
+
+/// <p><class>OcuPilot.Screen.Tool.ErrorRead</class>'s result, once bounded the way
+/// <method>OcuPilot.Kernel.Agent.Dispatch.AnswerOne</method> bounds any rows-shaped result, still
+/// conforms to the tool's own declared <method>ResultSchema</method>, which forbids undeclared
+/// properties. Driven through <class>OcuPilot.Test.ErrorReadStub</class>, so no error log is read.</p>
+/// <p>Mutation: remove <code>rowsSent</code> from <method>OcuPilot.Screen.Tool.ErrorRead.ResultSchema</method>
+/// -> the conformance assertion below goes red.</p>
+Method TestTheErrorToolsBoundResultConformsToItsResultSchema()
+{
+    Do ##class(OcuPilot.Test.ErrorReadStub).Clear()
+    Set tSC = ##class(OcuPilot.Test.ErrorReadStub).View("", {"namespace": "USER", "date": "09/16/2026"}, 2, .tResult, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the error tool's view runs")
+    If '$IsObject(tResult) Quit
+    Set tFits = ##class(OcuPilot.Kernel.Agent.Bound).Apply(tResult, 2, .tNoFieldMax, $Parameter(..#LIMITS, "FIELDMAXLENGTH"), $Parameter(..#LIMITS, "TOOLRESULTMAXLENGTH"), .tJson)
+    Do $$$AssertTrue(tFits, "the bounded result fits")
+    Set tContent = ##class(%DynamicAbstractObject).%FromJSON(tJson)
+    Do $$$AssertEquals(tContent.rowsSent _ "|" _ tContent.%IsDefined("rowsAvailable") _ "|" _ tContent.%IsDefined("truncatedFields"), "2|1|1", "Bound added its report fields")
+    Do $$$AssertStatusOK(##class(OcuPilot.Screen.Tool.Registry).ValidateArguments(##class(OcuPilot.Screen.Tool.ErrorRead).ResultSchema(), tContent, .tProblem), "the bounded result conforms to ErrorRead's own ResultSchema: " _ $Get(tProblem))
+    Do ##class(OcuPilot.Test.ErrorReadStub).Clear()
 }
 
 }

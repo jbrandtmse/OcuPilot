@@ -73,11 +73,9 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
     }
 }
 
-/// <p>Includes <code>rowsSent</code>, <code>rowsAvailable</code> and <code>truncatedFields</code>
-/// (Story 4.4 rework, review item 1, AD-24/DW-281): a rows-shaped result from this class-of-its-own
-/// tool is now dispatched through <class>OcuPilot.Kernel.Agent.Bound</class>, which always stamps
-/// these three fields alongside <code>rows</code>/<code>truncated</code>, so the schema this
-/// fixture advertises must admit what it actually answers.</p>
+/// <p>Includes <code>rowsSent</code>, <code>rowsAvailable</code> and <code>truncatedFields</code>:
+/// a rows-shaped result is dispatched through <class>OcuPilot.Kernel.Agent.Bound</class>, which adds
+/// them (AD-24), so the schema admits what a caller actually receives.</p>
 ClassMethod ResultSchema(pDescriptor As %String = "") As %DynamicObject
 {
     Quit {

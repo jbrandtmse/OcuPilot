@@ -1857,6 +1857,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-17T05:48:12Z status=routed owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=spec_gate note=retitled when the chip and its toggle split into Story 4.11; the work stays server-side in 4.4
 - 2026-09-17T10:02:29Z occurrence=4-4-screen-context-reaches-the-turn-capped-and-secret-free
 - 2026-09-17T10:02:29Z status=open owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=cr note=class-of-its-own read tools (ErrorRead errorText) still bypass the per-field cut; re-opens 4.4 for its rework iteration
+- 2026-09-17T11:35:06Z status=resolved-by:4-4-screen-context-reaches-the-turn-capped-and-secret-free owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=cr note=Dispatch routes rows-shaped results via Bound; ToolDispatch Counter and ErrorRead schema tests red under mutation
 
 ### DW-282: A criteria-bearing screen owns its state in a root-provided store because the detail route re-creates the component, and nothing stops the next such screen re-deriving that
 - source: spec-2-10-the-audit-database-viewer-with-its-agent-marker-filter.md | severity: low | fix-risk: low | footprint: in-epic
@@ -2617,6 +2618,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T10:21:59Z status=routed owner=4-4-screen-context-on-every-turn-capped-with-its-toggle-and-chip by=burndown_gate note=the two credential lists are the same corpus the context cap reads
 - 2026-09-16T15:11:12Z status=routed owner=4-4-screen-context-on-every-turn-capped-with-its-toggle-and-chip by=x0 note=kept, the context cap and secret exclusion own this
 - 2026-09-17T05:48:12Z status=routed owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=spec_gate note=retitled when the chip and its toggle split into Story 4.11; the work stays server-side in 4.4
+- 2026-09-17T11:36:30Z status=resolved-by:4-4-screen-context-reaches-the-turn-capped-and-secret-free by=adjudication note=CREDENTIAL_RE is built from exported lists that credential-lists.test.mjs holds equal to Log.cls and the spine Secrets row; suffix and spine mutations red
 
 ### DW-400: check_handler_wire_tests still keys a route by substring, so a route whose declared path is a leading prefix of another's is covered by its sibling's wire assertions
 - source: spec-3-8 | severity: low | fix-risk: low | footprint: in-epic
@@ -2960,6 +2962,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-17T01:30:47Z status=routed owner=4-4-screen-context-on-every-turn-capped-with-its-toggle-and-chip by=cr note=4.4 makes AD-24's caps operator-settable; an aggregate per-request tool-result budget belongs with them
 - 2026-09-17T02:57:29Z status=routed owner=4-4-screen-context-on-every-turn-capped-with-its-toggle-and-chip by=cr note=Loop.AnswerTools now dispatches one call at a time, so a per-reply budget belongs there, not in Dispatch.Answer
 - 2026-09-17T05:48:12Z status=routed owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=spec_gate note=retitled when the chip and its toggle split into Story 4.11; the work stays server-side in 4.4
+- 2026-09-17T11:36:30Z status=resolved-by:4-4-screen-context-reaches-the-turn-capped-and-secret-free by=adjudication note=Loop.AnswerTools gives each reply a 65,536-character tool-result budget and refuses a call under 256 with TOOL.RESULTTOOLARGE; TurnTools budget case red when the subtraction is dropped
 
 ### DW-453: The shell privilege and namespace reads evaluate the job's frozen $ROLES while the dispatcher checks the user's current grants
 - source: spec-4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea.md | severity: med | fix-risk: med | footprint: in-story
@@ -3014,36 +3017,43 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-4-screen-context-reaches-the-turn-capped-and-secret-free.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: TurnContext.TestContextStatusOverTheWire uses one principal; the per-user isolation is pinned only in process via Sharing.GuardedForUser, never through Api.Context.
 - 2026-09-17T10:02:29Z status=open owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=cr note=rework iteration adds the two-principal case with its mutation line
+- 2026-09-17T11:35:06Z status=resolved-by:4-4-screen-context-reaches-the-turn-capped-and-secret-free owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=cr note=TurnContext two-principal wire test red with GuardedForUser widened; userChoice now asserted as JSON null
 
 ### DW-1031: The request scope carried into the turn job (Job.Run Scope.Set) is pinned by no test
 - source: spec-4-4-screen-context-reaches-the-turn-capped-and-secret-free.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: No turn or tool test starts a turn with ?ns= and observes the scope inside the job; deleting the Scope.Set line in Job.Run leaves every test green (verification-gap).
 - 2026-09-17T10:02:29Z status=open owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=cr note=rework iteration adds a ?ns= turn whose tool call observes the scope
+- 2026-09-17T11:35:06Z status=resolved-by:4-4-screen-context-reaches-the-turn-capped-and-secret-free owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=cr note=TurnContext ns turn test red with Scope.Set dropped from Job.Run
 
 ### DW-1032: contextRowCap bounding read tool results inside a turn is pinned by no test
 - source: spec-4-4-screen-context-reaches-the-turn-capped-and-secret-free.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: TurnTools runs at the default cap, which equals TOOLROWS 200, so passing 0 for pContextRowCap in Job.Run falls back to the same value and nothing reddens.
 - 2026-09-17T10:02:29Z status=open owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=cr note=rework iteration adds a cap-5 turn whose tool result reports rowsSent 5
+- 2026-09-17T11:35:06Z status=resolved-by:4-4-screen-context-reaches-the-turn-capped-and-secret-free owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=cr note=TurnTools test red via Loop.Run; new TurnContext wire test red with Job.Start passing a zero row cap
 
 ### DW-1033: TurnContext.TestAReadToolResultsOwnFieldIsBound passes vacuously when no live audit row exceeds 1,000 characters
 - source: spec-4-4-screen-context-reaches-the-turn-capped-and-secret-free.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: Observed in review: with the per-field cut disabled in Bound.Apply the test stayed green (throwaway run 13) while the Integration test went red.
 - 2026-09-17T10:02:29Z status=open owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=cr note=rework iteration plants a long audit row or removes the vacuous branch
+- 2026-09-17T11:35:06Z status=resolved-by:4-4-screen-context-reaches-the-turn-capped-and-secret-free owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=cr note=field-bound test seeds its own GUID-marked row and went red with the per-field cut disabled
 
 ### DW-1034: GET /agent/context shareDefault, contextRowCap, marked-local and defaultEndpoint fallback are never asserted
 - source: spec-4-4-screen-context-reaches-the-turn-capped-and-secret-free.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: No test reads shareDefault or contextRowCap from /agent/context, and ResolveEndpoint's markedLocal and catalog-default legs have no wire or in-process case (verification-gap).
 - 2026-09-17T10:02:29Z status=open owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=cr note=rework iteration asserts each member
+- 2026-09-17T11:35:06Z status=resolved-by:4-4-screen-context-reaches-the-turn-capped-and-secret-free owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=cr note=TestContextStatusUnassertedLegs red on each of four legs under its recorded mutation
 
 ### DW-1035: Read.View rowsAvailable above the row cap is pinned by no test
 - source: spec-4-4-screen-context-reaches-the-turn-capped-and-secret-free.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: ToolDispatch.TestADescriptorDerivedToolResultGetsThePerFieldCut uses one row, so deleting the rowsAvailable set in Read.View leaves it green.
 - 2026-09-17T10:02:29Z status=open owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=cr note=rework iteration extends the ToolDispatch case past the cap
+- 2026-09-17T11:35:07Z status=resolved-by:4-4-screen-context-reaches-the-turn-capped-and-secret-free owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=cr note=ToolDispatch rowsAvailable test red when Read.View stops setting the pre-cap count
 
 ### DW-1036: Sharing-off and model-issued screen_context matrix rows carry no demonstrated mutation
 - source: spec-4-4-screen-context-reaches-the-turn-capped-and-secret-free.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Spec Verification records both as not run; green runs only (TurnContext TestSharingOffSuppressesContext, TestAModelIssuedScreenContextCallIsUnknown).
 - 2026-09-17T10:02:43Z status=open owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=cr note=fix pack in the rework iteration: run each mutation on the throwaway and record the line
+- 2026-09-17T11:35:07Z status=resolved-by:4-4-screen-context-reaches-the-turn-capped-and-secret-free owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=cr note=sharing-off and model-issued mutations recorded in the spec Verification section, both went red
 
 ### DW-1037: ProviderPort.ResolveEndpoint answers 0 on a read fault with nothing logged, indistinguishable from no enabled default
 - source: spec-4-4-screen-context-reaches-the-turn-capped-and-secret-free.md | severity: low | fix-risk: low | footprint: in-story
@@ -3099,3 +3109,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-4-screen-context-reaches-the-turn-capped-and-secret-free.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Kernel/Agent/Dispatch.cls falls back to Capped when rows is absent; every shipped descriptor read answers a rows array
 - 2026-09-17T11:25:11Z status=wontfix-theoretical owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=harvest note=Real once a declared read answers without a rows array
+
+### DW-1048: The sign-out browser leg reads the composer right after the first-login gate settles, and once in the full suite the composer was not yet rendered
+- source: spec-4-3-the-docked-panel-present-on-every-route.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: panel.browser-spec.mjs line 406 threw reading value of null in a full browser-suite run on the throwaway; the file alone passed 10 of 10 and the full suite re-run passed 91 of 91
+- 2026-09-17T11:54:13Z status=routed owner=4-5-a-turn-watched-progress-cards-and-the-conversation-lock by=lead note=Wait for the composer selector before reading it; 4.5 rebuilds the composer and Send, so it owns this spec
