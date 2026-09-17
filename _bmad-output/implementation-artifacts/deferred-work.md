@@ -2897,6 +2897,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-6-2-the-roles-resources-and-services-lists.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Story 6.2's emptyKey is a table-column attribute only; EXPERIENCE.md:378's diff-row (and its '(none) -> %Development' demo at :719) renders an empty before-value as (none), which for [] says no address rather than Unrestricted (inference: 9.4's card is unbuilt).
 - 2026-09-16T20:44:45Z status=routed owner=9-4-the-service-editor by=cr note=medium unverified; 9.4's proposal card must read an empty AllowedConnections as Unrestricted, as the Services column does
+- 2026-09-17T11:38:32Z owner=16-13-the-service-editor by=load note=retitle_repair: Story 9.4 moved to Epic 16 as 16.13 (owner amendment 0dc7c48)
 
 ### DW-1017: The two client LIVE_PAYLOAD copies are compared with nothing but themselves, so a server navigation pin change can leave both stale and green
 - source: spec-6-2-the-roles-resources-and-services-lists.md | severity: low | fix-risk: low | footprint: in-epic
