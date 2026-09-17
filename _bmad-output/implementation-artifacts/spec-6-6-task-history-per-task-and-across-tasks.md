@@ -2,7 +2,7 @@
 title: 'Task history, per task and across tasks'
 type: 'feature'
 created: '2026-09-16'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'cc88200bf9bbd3a6faa9db11fbc99e3e80c5297e'
 baseline_commit: 'cc88200bf9bbd3a6faa9db11fbc99e3e80c5297e'
 review_loop_iteration: 0
@@ -167,6 +167,7 @@ The throwaway has the demo fixture. Its demo task's install-time run fails and l
 - [ ] `src/OcuPilot/Test/WireSecurityRead.cls`: the Pairs row on both routes with the existing task principals, and the Tasks side-bar verdict with four listed entries.
 - [ ] Rosters in the Code Map: add both screens and tools. Smoke gains `TASKHISTORYTOOL`, which passes on zero or one row at `maxRows=1`, as the OAuth checks do (21 checks). Update `navigation.test.mjs` for `routeEntityType` and TaskScheduleList's composite key.
 - [ ] `ui/browser/tasks.browser-spec.mjs`: the browser legs of AC1-AC4.
+- [ ] [CI] instance: `ui/browser/tasks.browser-spec.mjs:619` "Story 6.6 AC3" -- the assertion `the table is still rendered once the dialog closes` races the page's own documented destroy-and-re-create on dialog close (`history.page.ts:209`): it queries `[role="grid"]` in the same tick the dialog leaves, and CI's slower runner lost that race. Wait for the grid to come back, as `audit.browser-spec.mjs` already does after its own close, sweep the browser specs for the same immediate-assert-after-close shape, and demonstrate a mutation on the corrected wait -- run 35257071703.
 
 **Review pass 1 patches (2026-09-17):**
 
