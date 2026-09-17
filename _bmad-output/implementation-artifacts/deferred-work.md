@@ -2931,3 +2931,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-6-3-the-x-509-ldap-kerberos-and-wallet-lists.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: Fixture.CreateWalletCollection calls %Wallet.KeyValue.Create directly, so no seam can fail it, and no test pre-creates a <prefix> collection; moving NoteRow below the secret create, or recording an existing collection, leaves every test green. The SSL/TLS and X.509 existing-object branches share the gap.
 - 2026-09-16T23:34:21Z status=wontfix-accepted owner=6-3-the-x-509-ldap-kerberos-and-wallet-lists by=cr note=reopen_if=a change to CreateWalletCollection moves NoteRow or edits its exists branch with no test driving that branch
+
+### DW-1023: A fixed read.source.query on a single-object GET or a per-parent forEach read is seeded but pinned by no test, and a query key equal to forEach.param is silently overwritten on each child call
+- source: spec-6-5-on-demand-and-upcoming-tasks.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: SeedSourceQuery runs on the GET branch and in ForEachRows; the only query fixture is a plain LIST, so deleting either call leaves every test green. No shipped descriptor combines query with GET or forEach.
+- 2026-09-17T04:11:49Z status=open owner=6-5-on-demand-and-upcoming-tasks by=harvest note=code review: pin or refuse the collision if a two-way door, else wontfix-accepted with a probe
+
+### DW-1024: The Upcoming tasks page takes today from the browser clock rather than the instance's, so a user in a different time zone who picks today can see an empty horizon
+- source: spec-6-5-on-demand-and-upcoming-tasks.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: upcoming.page date mode refuses a date before the browser's today and sends <date> 23:59:59 in instance local time; no endpoint gives the page the instance's calendar date (implement review rejected with a reopen condition).
+- 2026-09-17T04:11:49Z status=wontfix-accepted owner=6-5-on-demand-and-upcoming-tasks by=harvest note=reopen_if=a user whose browser time zone differs from the instance's picks today in Until a date and reads an empty or refused horizon, or an instance-date field reaches the client (e.g. the instance identity endpoint)
