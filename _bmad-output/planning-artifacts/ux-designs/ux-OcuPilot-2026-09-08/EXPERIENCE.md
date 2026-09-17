@@ -348,6 +348,7 @@ Microcopy. Brand voice and aesthetic posture live in `DESIGN.md`.
 | "Context rows sent with a turn" | Switches: the operator's row cap for screen context and read tool results (1 to 1,000, default 200) |
 | "This looks like a password or key. Send anyway?" · "Send anyway" · "Edit" | the inline secret-like message warning above the composer and its two actions |
 | "Secret fields on this screen are never sent" | the context chip's key glyph accessible name |
+| "<n> rows returned · <m> sent" | the result line on an expanded read tool-call card: rows the read returned, and rows actually sent to the model |
 
 ## Component Patterns
 
