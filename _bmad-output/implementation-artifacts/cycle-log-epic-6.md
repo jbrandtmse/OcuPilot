@@ -121,3 +121,6 @@
 2026-09-17T08:34:48Z	Story 6.6	ledger_adjudicated	owned=4(DW-1020,DW-1026,DW-1027,DW-1028) resolved=1(DW-1020_by_cr) reowned=0 terminal=3 slice_after=empty
 2026-09-17T08:34:48Z	Story 6.6	smoke_complete	method=cli+api+browser result=pass iterations=1 defects_caught=0 evidence=fresh_ocupilot-b-ci(up_and_down_by_runner);smoke.sh_executed=34_passed=34_incl_taskhistory;HTTP_JWT:tasks.history_46_rows_13_fields_incl_the_demo_task,tasks.taskhistory_for_the_demo_task_id_1_row;tasks.browser-spec_green model=claude-opus-5
 2026-09-17T08:35:18Z	Story 6.6	committed	sha=c2ff6ac branch=OCU-1-epic6 pushed=origin/OCU-1-epic6 submodules= ci=pending run=35200459143 amendments=ARCHITECTURE-SPINE.md:AD-5(parent_route_entity_type),AD-36(HISTORY,vendorParam),EXPERIENCE.md:104,EXPERIENCE.md:Fixed_strings_rows footprint_extensions=none
+2026-09-17T08:49:50Z	Epic 6	epic_context_compiled	reason=planning_artifact_newer(AD-5,AD-36,EXPERIENCE.md) model=claude-opus-5(opus) bytes=17102 header=ok
+2026-09-17T08:49:50Z	Story 6.6	ci_resolved	story=6.6 run=35200459143 result=success resolved_at=next_plan
+2026-09-17T08:49:50Z	Story 6.7	stage_spawned	stage=plan spawn_at=2026-09-17T08:49:50Z model=opus agent_name=6-7-plan-1 cycle_iteration=1 ledger_inbox=none
