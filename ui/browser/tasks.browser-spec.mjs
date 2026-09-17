@@ -21,6 +21,10 @@
  * route's denied deep link (AC4). AC4 needs a principal holding install-database read and
  * `%Admin_Task:USE` alone, which `before` creates on the throwaway and `after` deletes.
  *
+ * **Story 6.7** re-points the name cell at Task details -- the demo task's properties, schedule in
+ * words and locator name (AC1, AC2) -- whose own History link is what now reaches the per-task
+ * history Story 6.6 exercised directly.
+ *
  * Run: `npm run test:browser` (after `npm run build` and `sh scripts/ci-throwaway.sh up`).
  */
 
@@ -50,6 +54,7 @@ const UPCOMING_READ_PATH = '/api/ocupilot/screens/tasks.upcoming/read';
 const HISTORY_URL = '/ocupilot/tasks/history?ns=HSCUSTOM';
 const HISTORY_READ_PATH = '/api/ocupilot/screens/tasks.history/read';
 const TASK_HISTORY_READ_PATH = '/api/ocupilot/screens/tasks.taskhistory/read';
+const TASK_DETAILS_READ_PATH = '/api/ocupilot/screens/tasks.taskdetails/read';
 const TASK_USER = 'OcuPilotTasksTaskOnly';
 const TASK_ROLE = 'OcuPilotTasksTaskOnlyRole';
 const TASK_PASSWORD = 'OcuPilotTasks1';
@@ -234,6 +239,40 @@ function findRowIndexByName(page, name) {
 }
 
 /** The banner strip above the table, or `null` when none stands. */
+/**
+ * Task details' own rendered Suspended field text, or `null` when the field is not on the page.
+ */
+async function suspendedFieldText(page) {
+  return page.evaluate((label) => {
+    for (const field of document.querySelectorAll('.ocu-details-field')) {
+      if (field.querySelector('.ocu-details-field-label')?.textContent?.trim() === label) {
+        return field.querySelector('.ocu-details-field-value')?.textContent?.trim() ?? null;
+      }
+    }
+    return null;
+  }, STRINGS.taskColumnSuspended);
+}
+
+/**
+ * Poll Task details' own Suspended field until it reads Yes, clicking the manual Refresh action
+ * between checks -- auto-refresh is off until the chip is set (AC4's own "Auto-refresh: off"), so
+ * nothing re-reads the page on its own. Reproduced live against a throwaway freshly reported
+ * healthy: the demo fixture's own `RunNow` request does not wait for the Task Manager's next
+ * once-a-minute pass (`OcuPilot.Install.Fixture.CreateTask`, the owner's decision), so the first
+ * read can answer Suspended false with no Error yet. Mirrors
+ * `OcuPilot.Test.TaskDetails.TestTheDemoTaskReadsOverTheWire`'s own wait for the same gap, rather
+ * than assuming it has already closed.
+ */
+async function waitForDemoTaskSuspended(page, budgetMs = 180000, pollMs = 5000) {
+  const deadline = Date.now() + budgetMs;
+  while (Date.now() < deadline) {
+    if ((await suspendedFieldText(page)) === STRINGS.tableStatusYes) return;
+    const action = await page.$('.ocu-command-bar-refresh-action');
+    if (action !== null) await action.click();
+    await new Promise((resolve) => setTimeout(resolve, pollMs));
+  }
+}
+
 function describeBanner(page) {
   return page.evaluate(() => {
     const strip = document.querySelector('app-list-page .ocu-banner');
@@ -419,11 +458,67 @@ test('Story 6.6 AC1: Task history renders its form first with no read, Search is
   }
 });
 
-test('Story 6.6 AC2/AC3: activating the demo task\'s name cell opens its own history, reading taskId once, every row naming it under Task history\'s columns', async () => {
+test('Story 6.7 AC1/AC2: activating the demo task\'s name cell opens Task details, showing its properties, schedule and locator name, and its History link opens the per-task history', async () => {
   const { context, page, reads } = await signedInAtList(config.username, config.password, LIST_URL);
   try {
     await waitForRows(page, config.navigationTimeoutMs);
     await clickRowCentre(page, { text: DEMO_TASK, link: true });
+    await page.waitForFunction(
+      () => /^\/ocupilot\/tasks\/schedule\/details\/[^/]+$/.test(window.location.pathname),
+      { timeout: config.navigationTimeoutMs }
+    );
+    await page.waitForSelector('.ocu-details-fields', { timeout: config.navigationTimeoutMs });
+
+    // Asserted before any wait-driven refresh below adds its own reads: the page's own load is
+    // exactly one tasks.taskdetails read (AC1), whatever waitForDemoTaskSuspended does next.
+    const detailsReads = reads.filter((url) => new URL(url).pathname === TASK_DETAILS_READ_PATH);
+    assert.equal(detailsReads.length, 1, `exactly one tasks.taskdetails read: ${JSON.stringify(reads)}`);
+    const routeId = new URL(page.url()).pathname.split('/').pop();
+    assert.match(routeId, /^\d+$/, "the route id is the task's numeric vendor Id");
+    assert.equal(new URL(detailsReads[0]).searchParams.get('taskId'), routeId, 'the read carries taskId=<Id>');
+
+    await waitForDemoTaskSuspended(page);
+
+    const fields = await page.evaluate(() => {
+      const out = {};
+      for (const field of document.querySelectorAll('.ocu-details-field')) {
+        const label = field.querySelector('.ocu-details-field-label')?.textContent?.trim();
+        const value = field.querySelector('.ocu-details-field-value')?.textContent?.trim();
+        if (label) out[label] = value;
+      }
+      return out;
+    });
+    assert.equal(fields[STRINGS.tableColumnName], DEMO_TASK, "the Name field is the fixture's own");
+    assert.notEqual(fields[STRINGS.headerNamespaceLabel], '', 'and it carries a namespace');
+    assert.equal(fields[STRINGS.taskColumnSuspended], STRINGS.tableStatusYes, 'Suspended reads Yes, after the fixture\'s failed install run');
+    assert.notEqual(fields[STRINGS.taskDetailsLastError], '', 'Last error is non-empty, since the fixture fails by design');
+    assert.equal(fields[STRINGS.taskColumnNextRun], STRINGS.taskDetailsNextSuspended, 'Next run reads the suspended sentence, not a stale timestamp');
+
+    const schedule = await page.$eval('.ocu-details-schedule', (section) => section.textContent);
+    assert.ok(schedule.includes(STRINGS.taskScheduleEveryDay), `How often reads "Every day": ${schedule}`);
+    assert.ok(schedule.includes('Once at 03:00:00'), `Time of day reads the fixture's own start time: ${schedule}`);
+
+    // No Edit task control until Epic 9 builds Task schedule's editor (Design Notes).
+    const linkLabels = await page.$$eval('.ocu-details-link', (links) => links.map((link) => link.textContent.trim()));
+    assert.ok(!linkLabels.includes(STRINGS.taskDetailsEdit), `no Edit task control exists yet: ${JSON.stringify(linkLabels)}`);
+
+    // The locator bar names the task by its own name, not its id (Story 6.7), and its screen
+    // segment is a link back to Task schedule, labelled with Task details' own title -- the same
+    // shape the per-task history's own segment takes over Task schedule.
+    const entity = await page.$eval('app-locator-bar .ocu-locator-entity', (node) => node.textContent.trim());
+    assert.equal(entity, DEMO_TASK, "the locator bar's entity segment names the task, not its id");
+    const segment = await page.evaluate((label) => {
+      const links = Array.from(document.querySelectorAll('app-locator-bar .ocu-locator-link'));
+      const link = links.find((candidate) => candidate.textContent.trim() === label);
+      return link === undefined ? null : link.textContent.trim();
+    }, STRINGS.taskDetailsLabel);
+    assert.equal(segment, STRINGS.taskDetailsLabel, "the locator bar's screen segment is a link, labelled Task details");
+
+    // The History link opens the per-task history for the same task (AC4).
+    await page.evaluate((label) => {
+      const links = Array.from(document.querySelectorAll('.ocu-details-link'));
+      links.find((candidate) => candidate.textContent.trim() === label).click();
+    }, STRINGS.taskRunsLabel);
     await page.waitForFunction(
       () => /^\/ocupilot\/tasks\/schedule\/history\/[^/]+$/.test(window.location.pathname),
       { timeout: config.navigationTimeoutMs }
@@ -432,8 +527,7 @@ test('Story 6.6 AC2/AC3: activating the demo task\'s name cell opens its own his
 
     const historyReads = reads.filter((url) => new URL(url).pathname === TASK_HISTORY_READ_PATH);
     assert.equal(historyReads.length, 1, `exactly one tasks.taskhistory read: ${JSON.stringify(reads)}`);
-    const routeId = new URL(page.url()).pathname.split('/').pop();
-    assert.match(routeId, /^\d+$/, "the route id is the task's numeric vendor Id");
+    assert.equal(new URL(page.url()).pathname.split('/').pop(), routeId, 'History opens for the same task id');
     assert.equal(new URL(historyReads[0]).searchParams.get('taskId'), routeId, 'the read carries taskId=<Id>');
 
     const headers = await page.$$eval('.ocu-data-table-header-label', (labels) => labels.map((label) => label.textContent.trim()));
@@ -445,15 +539,14 @@ test('Story 6.6 AC2/AC3: activating the demo task\'s name cell opens its own his
     assert.ok(names.length > 0, 'at least one run is rendered');
     for (const name of names) assert.equal(name, DEMO_TASK, `every row names the demo task: ${JSON.stringify(names)}`);
 
-    // The locator bar's screen segment is a link back to Task schedule, this screen's parent
-    // (AC2, DW-142) -- labelled with History's own name, the same shape the Secrets list's own
-    // segment takes over the Wallet list.
-    const segment = await page.evaluate((label) => {
+    // History's own locator screen segment still links back to Task schedule directly (DW-142) --
+    // its parentScope is unchanged by Story 6.7.
+    const historySegment = await page.evaluate((label) => {
       const links = Array.from(document.querySelectorAll('app-locator-bar .ocu-locator-link'));
       const link = links.find((candidate) => candidate.textContent.trim() === label);
       return link === undefined ? null : link.textContent.trim();
     }, STRINGS.taskRunsLabel);
-    assert.equal(segment, STRINGS.taskRunsLabel, "the locator bar's screen segment is a link, labelled History");
+    assert.equal(historySegment, STRINGS.taskRunsLabel, "History's own locator screen segment is a link, labelled History");
     await page.evaluate((label) => {
       const links = Array.from(document.querySelectorAll('app-locator-bar .ocu-locator-link'));
       links.find((candidate) => candidate.textContent.trim() === label).click();
@@ -495,10 +588,11 @@ test('Story 6.6 AC3: activating a row\'s name cell on Task history opens a dialo
   }
 });
 
-test('Story 6.6 AC4: a principal holding install-database read and %Admin_Task:USE alone is refused Task history and per-task history by name and issues no read', async () => {
+test('Story 6.6/6.7 AC4: a principal holding install-database read and %Admin_Task:USE alone is refused Task history, per-task history and Task details by name and issues no read', async () => {
   for (const [url, label] of [
     [HISTORY_URL, STRINGS.taskHistoryLabel],
     ['/ocupilot/tasks/schedule/history/1?ns=HSCUSTOM', STRINGS.taskRunsLabel],
+    ['/ocupilot/tasks/schedule/details/1?ns=HSCUSTOM', STRINGS.taskDetailsLabel],
   ]) {
     const { context, page, reads } = await signedInAtList(TASK_USER, TASK_PASSWORD, url);
     try {

@@ -125,6 +125,10 @@ Parameter TASKUPCOMINGTOOL = "tasks.upcoming";
 /// <code>taskhistory</code> check issues (Story 6.6).</p>
 Parameter TASKHISTORYTOOL = "tasks.history";
 
+/// <p>The tool identifier of Task details, whose screen read the <code>taskdetails</code> check
+/// issues, keyed by the task schedule's own first row (Story 6.7).</p>
+Parameter TASKDETAILSTOOL = "tasks.taskdetails";
+
 /// <p>The console-log page's path under the API application, and the window the
 /// <code>messageslog</code> check asks for. Small: the check is that the endpoint serves the
 /// instance's own log, not that it serves much of it.</p>
@@ -159,6 +163,7 @@ ClassMethod Run(pUsername As %String = "", pPassword As %String = "", pDemo As %
         Do ..CheckSignIn(.tChecks, pUsername, pPassword, .tAccessToken, .tRefreshToken)
         Do ..CheckApiReads(.tChecks, tAccessToken)
         Do ..CheckAreaLists(.tChecks, tAccessToken, pDemo)
+        Do ..CheckTaskDetails(.tChecks, tAccessToken)
         Do ..CheckMessagesLog(.tChecks, tAccessToken)
         Do ..CheckApplicationErrors(.tChecks, tAccessToken)
     } Catch ex {
@@ -610,6 +615,70 @@ ClassMethod CheckAreaLists(ByRef pChecks, pAccessToken As %String, pDemo As %Str
         }
         Do ..Note(.pChecks, tName, "pass")
     }
+}
+
+/// <p>Task details (<code>taskdetails</code>, Story 6.7): the task schedule's own first row supplies
+/// the <code>taskId</code> its parent-scoped read requires, so this check reads
+/// <parameter>TASKLISTTOOL</parameter> again at <code>maxRows=1</code> to find one, needing the
+/// same pairs <code>tasks</code> already checked, and then reads
+/// <parameter>TASKDETAILSTOOL</parameter> for that id, expecting exactly one row. Skipped, like
+/// <method>CheckMessagesLog</method>, when no token was minted; failed, naming why, when the
+/// schedule read answers no row to key the second read by -- a fresh container without even the
+/// stock system tasks is not one this check can pass on, unlike the zero-or-one lists above.</p>
+ClassMethod CheckTaskDetails(ByRef pChecks, pAccessToken As %String) [ Private ]
+{
+    Set tBase = ..RosterPath("api")
+    If tBase = "" {
+        Do ..Note(.pChecks, "taskdetails", "fail", "the roster on this instance declares no API path, so there was nothing to read")
+        Quit
+    }
+    If pAccessToken = "" {
+        Do ..Note(.pChecks, "taskdetails", "skipped", "no token pair was minted by this run, so the authenticated read was not attempted")
+        Quit
+    }
+    Set tSchedulePath = tBase _ "/screens/" _ ..#TASKLISTTOOL _ "/read?maxRows=1"
+    Set tSC = ..Request("GET", tSchedulePath, "Bearer " _ pAccessToken, "", .tScheduleStatus, .tScheduleText)
+    If $$$ISERR(tSC) {
+        Do ..Note(.pChecks, "taskdetails", "fail", "the task schedule could not be reached to find an id: " _ $System.Status.GetErrorText(tSC))
+        Quit
+    }
+    If tScheduleStatus '= 200 {
+        Do ..Note(.pChecks, "taskdetails", "fail", "GET " _ tSchedulePath _ " answered HTTP " _ tScheduleStatus)
+        Quit
+    }
+    Set tTaskId = ""
+    Try {
+        Set tRows = ##class(%DynamicAbstractObject).%FromJSON(tScheduleText).%Get("rows")
+        If $IsObject(tRows) && tRows.%IsA("%Library.DynamicArray") && (tRows.%Size() > 0) Set tTaskId = tRows.%Get(0).%Get("Id")
+    } Catch {
+        Set tTaskId = ""
+    }
+    If tTaskId = "" {
+        Do ..Note(.pChecks, "taskdetails", "fail", "the task schedule answered no row to read a task id from")
+        Quit
+    }
+    Set tPath = tBase _ "/screens/" _ ..#TASKDETAILSTOOL _ "/read?maxRows=1&taskId=" _ tTaskId
+    Set tSC = ..Request("GET", tPath, "Bearer " _ pAccessToken, "", .tStatus, .tText)
+    If $$$ISERR(tSC) {
+        Do ..Note(.pChecks, "taskdetails", "fail", "the read could not be reached: " _ $System.Status.GetErrorText(tSC))
+        Quit
+    }
+    If tStatus '= 200 {
+        Do ..Note(.pChecks, "taskdetails", "fail", "GET " _ tPath _ " answered HTTP " _ tStatus)
+        Quit
+    }
+    Set tCount = -1
+    Try {
+        Set tRows = ##class(%DynamicAbstractObject).%FromJSON(tText).%Get("rows")
+        If $IsObject(tRows) && tRows.%IsA("%Library.DynamicArray") Set tCount = tRows.%Size()
+    } Catch {
+        Set tCount = -1
+    }
+    If tCount '= 1 {
+        Do ..Note(.pChecks, "taskdetails", "fail", "GET " _ tPath _ " answered 200 without a rows array of exactly one row")
+        Quit
+    }
+    Do ..Note(.pChecks, "taskdetails", "pass")
 }
 
 /// <p>The console-log page, read with the minted access token: one bounded page of the instance's

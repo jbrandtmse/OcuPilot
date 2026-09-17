@@ -40,6 +40,14 @@
 /// member of an object field (<method>CopyValue</method>). Every other admin read issues its
 /// declared type, <code>LIST</code>, <code>UPCOMING</code> or <code>HISTORY</code>, under the same
 /// cap.</p>
+/// <p><b>A parent-scoped <code>GET</code> takes its one criterion from the route id</b> (Story
+/// 6.7): the value is required, refused 400 <code>READ.CRITERION</code> before the port is called
+/// when it is missing, and is then seeded onto the fetched object under two independent names,
+/// since the object's own answer carries neither: a declared single-part composite <code>id</code>
+/// (the field the client's <code>rowKey</code> reads this row's own key from), and, when the source
+/// also declares a <code>rowGet</code> keyed by that criterion's own param
+/// (<method>ObjectCriterionParam</method>), the field <method>DetailRow</method>'s detail call reads
+/// it from.</p>
 /// <p><b>A source may fix query parameters</b> (<code>source.query</code>, AD-36):
 /// <method>SeedSourceQuery</method> puts every entry into the read's <code>LIST</code>,
 /// <code>UPCOMING</code> or <code>HISTORY</code> call, a single-object <code>GET</code> and each per-parent child list, never
@@ -241,6 +249,25 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
             ; is an empty screen, not a failed one.
             Kill tQuery
             Do ..SeedSourceQuery(tSource, .tQuery)
+            ; Story 6.7: a parent-scoped GET's one criterion is the route id, required rather than
+            ; optional -- unlike a search criterion, an absent value has no vendor default to stand
+            ; in for it, so it is refused before the port is asked. Its seeded value is what a
+            ; declared rowGet's detail call is keyed by below, since the GET's own answer carries no
+            ; such property of its own.
+            Set tObjectParam = ..ObjectCriterionParam(tRead)
+            Set tCriterionValue = ""
+            If tObjectParam '= "" {
+                Set tCriterionValue = $Get(pCriteria(tObjectParam))
+                If tCriterionValue = "" {
+                    Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#READCRITERION, tObjectParam _ " is required", .pHttpStatus, .pFault)
+                    Quit
+                }
+                Set tCriterionProblem = ..SeedCriteria(tRead, .pCriteria, .tQuery)
+                If tCriterionProblem '= "" {
+                    Set tSC = ..Refuse(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#READCRITERION, tCriterionProblem, .pHttpStatus, .pFault)
+                    Quit
+                }
+            }
             Set tPortSC = $ClassMethod(..PortClass(), "Invoke", tSource.%Get("endpoint"), ..#OBJECTTYPE, .tQuery, "", .tObject, .tHttp, .tFault)
             If $$$ISERR(tPortSC) {
                 If tHttp '= 404 {
@@ -254,6 +281,17 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
                 Set tSC = ..Internal(pDescriptor _ "'s read answered something other than an object", .pHttpStatus, .pFault)
                 Quit
             } Else {
+                ; The GET's own answer carries no property naming the object itself -- Task.CRUD's
+                ; TaskToJson sets no Id -- so the criterion's own value is seeded onto it under
+                ; whichever field names identify the row: a declared single-part composite id (used
+                ; to compute this row's own key, the same way any other composite id is) and a
+                ; declared rowGet's key (used to issue its detail call), independently.
+                If tObjectParam '= "" {
+                    Set tIdParts = $ClassMethod(pDescriptor, "IdParts")
+                    If $ListLength(tIdParts) = 1 Do tObject.%Set($List(tIdParts, 1), tCriterionValue)
+                }
+                Set tRowGet = tSource.%Get("rowGet")
+                If $IsObject(tRowGet) && tRowGet.%IsA("%Library.DynamicObject") Do tObject.%Set(tRowGet.%Get("key"), tCriterionValue)
                 Set tAnswer = [(tObject)]
             }
             Set tTruncated = 0
@@ -464,6 +502,27 @@ ClassMethod CriteriaParams(pDescriptor As %String) As %List
         Set tParams = ""
     }
     Quit tParams
+}
+
+/// <p>The one <code>read.criteria</code> field's <code>param</code> a parent-scoped
+/// single-object <code>GET</code> source declares (Story 6.7), or <code>""</code> for a
+/// <var>pRead</var> that declares no criterion. The registry's grammar guarantees at most one
+/// field when it is declared at all, so this reads the first and only entry rather than
+/// re-checking the count.</p>
+ClassMethod ObjectCriterionParam(pRead As %DynamicObject) As %String [ Private ]
+{
+    Set tParam = ""
+    Try {
+        Set tCriteria = pRead.%Get("criteria")
+        If '$IsObject(tCriteria) Quit
+        Set tFields = tCriteria.%Get("fields")
+        If '$IsObject(tFields) || 'tFields.%IsA("%Library.DynamicArray") || (tFields.%Size() '= 1) Quit
+        Set tField = tFields.%Get(0)
+        If $IsObject(tField) Set tParam = tField.%Get("param")
+    } Catch {
+        Set tParam = ""
+    }
+    Quit tParam
 }
 
 /// <p>Seed <var>pQuery</var> with every entry of <var>pSource</var>'s <code>query</code>, the

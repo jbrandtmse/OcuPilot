@@ -98,6 +98,13 @@ const LIVE_PAYLOAD = {
       failedPair: '%Admin_Task:USE',
       screens: [
         {
+          route: 'tasks/schedule/details',
+          labelKey: 'taskDetailsLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Task:USE',
+        },
+        {
           route: 'tasks/schedule/history',
           labelKey: 'taskRunsLabel',
           sideBarPosition: 0,
@@ -350,12 +357,12 @@ describe('the rail, wired to the real NavigationService reading a live-captured 
     }
   });
 
-  it('Story 6.5/6.6: reads each Tasks screen verdict the live payload carries', () => {
-    // The same five entries OcuPilot.Test.Wire compares the live map to, each denied on the
+  it('Story 6.5/6.6/6.7: reads each Tasks screen verdict the live payload carries', () => {
+    // The same six entries OcuPilot.Test.Wire compares the live map to, each denied on the
     // `%Admin_Task:USE` pair it declares first -- Task history (all) and the unlisted per-task
-    // history joined the roster with Story 6.6.
+    // history joined the roster with Story 6.6, and the unlisted Task details with Story 6.7.
     const navigation = TestBed.inject(NavigationService);
-    for (const route of ['tasks/schedule', 'tasks/on-demand', 'tasks/upcoming', 'tasks/history', 'tasks/schedule/history']) {
+    for (const route of ['tasks/schedule', 'tasks/on-demand', 'tasks/upcoming', 'tasks/history', 'tasks/schedule/history', 'tasks/schedule/details']) {
       expect(navigation.screenVerdict(route)).toEqual({ allowed: false, failedPair: '%Admin_Task:USE' });
     }
   });

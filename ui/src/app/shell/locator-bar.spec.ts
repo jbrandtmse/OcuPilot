@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { NavigationService, screenForRoute, type Verdict } from '../core/navigation';
 import { PreferenceStore } from '../core/preferences';
+import { ScreenStores } from '../core/screen-store';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
@@ -110,6 +111,7 @@ describe('the locator bar', () => {
           { path: 'permissions/users/:id', children: [] },
           // DW-161's second screen: the area segment's target when the first one is refused.
           { path: 'permissions/roles', children: [] },
+          { path: 'permissions/users/details/:id', children: [] },
           { path: 'web-applications/rest-apis/document/:id', children: [] },
           { path: 'security/oauth/clients/:id', children: [] },
           { path: '**', children: [] },
@@ -119,6 +121,10 @@ describe('the locator bar', () => {
           useValue: navigation as unknown as NavigationService,
         },
         { provide: ShellState, useValue: shell },
+        // Story 6.7: the locator injects ScreenStores to read a parent-scoped detail screen's
+        // loaded row for its entity label; none of this file's fixture screens are that archetype,
+        // so it is never called here, but the token still needs a provider to construct at all.
+        { provide: ScreenStores, useValue: new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) }) },
       ],
     });
     fixture = TestBed.createComponent(LocatorBar);
@@ -216,6 +222,40 @@ describe('the locator bar', () => {
 
     await go('/permissions/users');
     expect(fixture.nativeElement.querySelector('.ocu-locator-entity')).toBeNull();
+  });
+
+  it('Story 6.7: on a parent-scoped detail screen the entity segment names the loaded row, and the decoded id until then', async () => {
+    const DETAIL: ScreenDeclaration = screenDeclaration({
+      descriptor: 'OcuPilot.Screen.Descriptor.DetailStub',
+      route: 'permissions/users/details',
+      area: 'permissions',
+      labelKey: 'navAreaPermissions',
+      archetype: 'detail',
+      parentScope: 'permissions/users',
+      id: { kind: 'composite', parts: ['Id'] },
+      table: {
+        columns: [{ field: 'Name', labelKey: 'tableColumnName', kind: 'name' }],
+        emptyNextKey: '',
+        emptyAgentKey: '',
+      },
+    });
+    navigation.screenForUrl = (url: string) => {
+      const path = url.split('?')[0].replace(/^\/+/, '');
+      return path.startsWith('permissions/users/details') ? DETAIL : null;
+    };
+
+    // Before the row has loaded: the id, decoded, exactly as any other entity segment.
+    await go('/permissions/users/details/99');
+    let entity = fixture.nativeElement.querySelector('.ocu-locator-entity');
+    expect(entity.textContent.trim()).toBe('99');
+
+    // Once the row is on the shared store the page's own read would have populated: the entity
+    // segment reads its name column instead of the id in the URL.
+    const store = TestBed.inject(ScreenStores).for(DETAIL.descriptor, DETAIL.refreshRates);
+    store.applyTick([{ Id: 42, Name: 'The forty-second row' }], false, '', new Date());
+    await go('/permissions/users/details/42');
+    entity = fixture.nativeElement.querySelector('.ocu-locator-entity');
+    expect(entity.textContent.trim()).toBe('The forty-second row');
   });
 
   it('DW-142: once an entity is selected, the screen segment becomes a link back to the list', async () => {

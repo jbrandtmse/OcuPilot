@@ -34,6 +34,7 @@ const {
   builtScreens,
   builtScreensForArea,
   childListFor,
+  detailScreenFor,
   documentScreenFor,
   editorScreenFor,
   isListedScreen,
@@ -128,6 +129,7 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'logs/errors',
       'logs/audit',
       'os-management/processes',
+      'tasks/schedule/details',
       'tasks/schedule/history',
       'tasks/schedule',
       'tasks/on-demand',
@@ -154,7 +156,7 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'agent/definitions',
       'agent/switches',
     ],
-    'the built screens are Home, at the application root, then the application error log and the audit database, processes, the unlisted per-task history, task schedule, on-demand tasks, upcoming tasks, task history, users, roles, resources, services, OpenAPI document viewer, web applications, REST API explorer, the four unlisted OAuth 2.0 tabs, Secrets, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, and the Agent co-pilot area\'s Definition form, Definitions list and Switches, in area rail order'
+    'the built screens are Home, at the application root, then the application error log and the audit database, processes, the unlisted task details and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, users, roles, resources, services, OpenAPI document viewer, web applications, REST API explorer, the four unlisted OAuth 2.0 tabs, Secrets, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, and the Agent co-pilot area\'s Definition form, Definitions list and Switches, in area rail order'
   );
 });
 
@@ -287,8 +289,11 @@ test('routeEntityType resolves through parentScope for a sub-resource screen, an
   assert.equal(secrets.entityType, 'wallet-secret', "and so do the Secrets list's");
 });
 
-// Story 6.6: Task schedule keys its rows on the vendor's numeric `Id`, so its name cell opens the
-// one-task History, which renders the same columns Task history does (AC2, AC3).
+// Story 6.6: Task schedule keys its rows on the vendor's numeric `Id`, so History (one task) --
+// reached from Task details' own History link since Story 6.7 re-pointed the name cell there --
+// renders the same columns Task history does (AC2, AC3). `childListFor` still resolves Task
+// schedule's child list to History; only the name cell's own target moved (`detailScreenFor`,
+// pinned separately below).
 //
 // Mutation (Rule 19): Task schedule's id kind `single` in the mirror -> the key assertion goes red;
 // History's `Result` column renamed in the mirror -> the column assertion goes red.
@@ -298,7 +303,7 @@ test("Task schedule keys on Id and opens History, whose columns are Task history
   const history = screenForRoute('tasks/history');
   assert.ok(schedule && taskRun && history, 'all three screens are declared');
   assert.deepEqual(schedule.id, { kind: 'composite', parts: ['Id'] }, "Task schedule's row key is the vendor's numeric Id");
-  assert.equal(childListFor(schedule)?.route, 'tasks/schedule/history', 'its name cell opens History');
+  assert.equal(childListFor(schedule)?.route, 'tasks/schedule/history', "its child list is History");
   assert.equal(parentListFor(taskRun)?.route, 'tasks/schedule', 'which names Task schedule as its parent');
   assert.deepEqual(
     taskRun.table?.columns.map((column) => [column.field, column.labelKey]),
@@ -314,6 +319,28 @@ test("Task schedule keys on Id and opens History, whose columns are Task history
     'History shows Started, Completed, Name, Status, Result, User and Namespace'
   );
   assert.deepEqual(taskRun.table?.columns, history.table?.columns, "the same columns as Task history's");
+});
+
+// Story 6.7: Task schedule's name cell opens Task details rather than the one-task History, which
+// stays reachable only from Task details' own History link. `detailScreenFor` is the pairing a
+// `detail`-class parentScope screen takes; `childListFor` skips it, so the two screens that both
+// declare `parentScope` `tasks/schedule` resolve through their own functions rather than one
+// picking whichever sorts first.
+//
+// Mutation (Rule 19): drop `child.archetype !== 'detail'` from `childListFor` -> this test's first
+// assertion goes red, reading `tasks/schedule/details` instead of `tasks/schedule/history`.
+test('detailScreenFor pairs Task schedule with Task details, childListFor still finds History, and both invert through parentListFor', () => {
+  const schedule = screenForRoute('tasks/schedule');
+  const details = screenForRoute('tasks/schedule/details');
+  const taskRun = screenForRoute('tasks/schedule/history');
+  assert.ok(schedule && details && taskRun, 'all three screens are declared');
+  assert.equal(detailScreenFor(schedule)?.route, 'tasks/schedule/details', "Task schedule's detail screen is Task details");
+  assert.equal(childListFor(schedule)?.route, 'tasks/schedule/history', 'and its child list is still History, not Task details');
+  assert.equal(parentListFor(details)?.route, 'tasks/schedule', 'Task details names Task schedule as its parent');
+  assert.equal(parentListFor(taskRun)?.route, 'tasks/schedule', 'and so does History, through the same inverse');
+  assert.equal(detailScreenFor(taskRun), null, 'History is not itself a detail screen');
+  assert.equal(details.archetype, 'detail', 'Task details is the detail archetype');
+  assert.equal(details.tab, null, 'and declares no tab');
 });
 
 // Story 6.4, AD-5: a tabbed screen is one descriptor per tab. `tabMembersFor` reads the group's built

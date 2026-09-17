@@ -2749,6 +2749,265 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.TaskDetails",
+    "route": "tasks/schedule/details",
+    "area": "tasks",
+    "labelKey": "taskDetailsLabel",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": true,
+    "refreshRates": [
+      5,
+      10,
+      30,
+      60
+    ],
+    "privileges": [
+      {
+        "resource": "%Admin_Task",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "task",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "tasks/schedule",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Id"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Id",
+        "Name",
+        "Description",
+        "NameSpace",
+        "TaskClass",
+        "Priority",
+        "RunAsUser",
+        "TimePeriod",
+        "TimePeriodEvery",
+        "TimePeriodDay",
+        "DailyFrequency",
+        "DailyFrequencyTime",
+        "DailyIncrement",
+        "DailyStartTime",
+        "DailyEndTime",
+        "StartDate",
+        "EndDate",
+        "Type",
+        "Suspended",
+        "Error",
+        "LastStarted",
+        "LastFinished",
+        "NextScheduled"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "taskDetailsGone",
+    "commandAliases": [
+      "task details"
+    ],
+    "classicPage": "%CSP.UI.Portal.TaskInfo",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Task.CRUD",
+        "type": "GET",
+        "rowGet": {
+          "key": "taskId",
+          "param": "id",
+          "type": "INFO",
+          "fields": [
+            "Type",
+            "Suspended",
+            "Error",
+            "LastStarted",
+            "LastFinished",
+            "NextScheduled"
+          ],
+          "derived": []
+        }
+      },
+      "fields": [
+        "Id",
+        "Name",
+        "Description",
+        "NameSpace",
+        "TaskClass",
+        "Priority",
+        "RunAsUser",
+        "TimePeriod",
+        "TimePeriodEvery",
+        "TimePeriodDay",
+        "DailyFrequency",
+        "DailyFrequencyTime",
+        "DailyIncrement",
+        "DailyStartTime",
+        "DailyEndTime",
+        "StartDate",
+        "EndDate",
+        "Type",
+        "Suspended",
+        "Error",
+        "LastStarted",
+        "LastFinished",
+        "NextScheduled"
+      ],
+      "filter": [
+        "Name",
+        "Description",
+        "NameSpace",
+        "TaskClass",
+        "Priority",
+        "RunAsUser",
+        "TimePeriod",
+        "TimePeriodEvery",
+        "TimePeriodDay",
+        "DailyFrequency",
+        "DailyFrequencyTime",
+        "DailyIncrement",
+        "DailyStartTime",
+        "DailyEndTime",
+        "StartDate",
+        "EndDate",
+        "Type",
+        "Suspended",
+        "Error",
+        "LastStarted",
+        "LastFinished",
+        "NextScheduled"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "Description",
+          "NameSpace",
+          "TaskClass",
+          "Priority",
+          "RunAsUser",
+          "TimePeriod",
+          "TimePeriodEvery",
+          "TimePeriodDay",
+          "DailyFrequency",
+          "DailyFrequencyTime",
+          "DailyIncrement",
+          "DailyStartTime",
+          "DailyEndTime",
+          "StartDate",
+          "EndDate",
+          "Type",
+          "Suspended",
+          "Error",
+          "LastStarted",
+          "LastFinished",
+          "NextScheduled"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "taskId",
+            "labelKey": "taskHistoryColumnTaskId",
+            "kind": "text",
+            "maxLength": 10,
+            "vendorParam": "id"
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "Description",
+          "labelKey": "tableColumnDescription",
+          "kind": "text"
+        },
+        {
+          "field": "NameSpace",
+          "labelKey": "headerNamespaceLabel",
+          "kind": "text"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "Suspended",
+          "labelKey": "taskColumnSuspended",
+          "kind": "status"
+        },
+        {
+          "field": "TaskClass",
+          "labelKey": "taskDetailsTaskClass",
+          "kind": "text"
+        },
+        {
+          "field": "Priority",
+          "labelKey": "taskDetailsPriority",
+          "kind": "text"
+        },
+        {
+          "field": "RunAsUser",
+          "labelKey": "taskDetailsRunAs",
+          "kind": "text"
+        },
+        {
+          "field": "LastStarted",
+          "labelKey": "taskHistoryColumnStarted",
+          "kind": "text"
+        },
+        {
+          "field": "LastFinished",
+          "labelKey": "taskHistoryColumnCompleted",
+          "kind": "text"
+        },
+        {
+          "field": "NextScheduled",
+          "labelKey": "taskColumnNextRun",
+          "kind": "text"
+        },
+        {
+          "field": "Error",
+          "labelKey": "taskDetailsLastError",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "tasks.taskdetails",
+    "banner": null,
+    "tab": null
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.TaskHistoryList",
     "route": "tasks/history",
     "area": "tasks",

@@ -752,8 +752,11 @@ Parameter READTOOLIDENTIFIERPATTERN = "^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$";
 /// <p>A <code>read</code> that is absent or <code>null</code> is a screen with no read. Otherwise:
 /// <code>source</code> is <code>{port, endpoint, type}</code>, whose <code>type</code> is one of
 /// <parameter>READSOURCETYPES</parameter>. A <code>GET</code> source reads one object of an
-/// <code>admin</code> endpoint and declares no <code>rowGet</code>, <code>forEach</code> or
-/// <code>criteria</code>. An <code>UPCOMING</code> or <code>HISTORY</code> source lists an admin
+/// <code>admin</code> endpoint and declares no <code>forEach</code>; it declares
+/// <code>criteria</code> -- exactly one field, whose value the route id fills -- and a paired
+/// <code>rowGet</code> keyed by that field's own <code>param</code> only when <code>parentScope</code>
+/// names the route it is fetched under (Story 6.7), and refuses both otherwise. An
+/// <code>UPCOMING</code> or <code>HISTORY</code> source lists an admin
 /// endpoint's rows -- scheduled occurrences and task-run history respectively -- and declares no
 /// <code>rowGet</code> or <code>forEach</code> either. A source's optional
 /// <code>forEach</code> lists a parent endpoint first (<method>ForEachProblem</method>), and its
@@ -836,16 +839,24 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
                 Set tProblem = "read.source.type 'GET' is declared on a '" _ tPort _ "' source, and a single-object read issues an admin endpoint's GET (AD-36)"
                 Quit
             }
-            If tSource.%GetTypeOf("rowGet") = "object" {
-                Set tProblem = "read.source.rowGet is declared on a GET source, which reads one object and has no rows to issue a detail call for (AD-36)"
-                Quit
-            }
             If tSource.%GetTypeOf("forEach") = "object" {
                 Set tProblem = "read.source.forEach is declared on a GET source, which reads one object and lists no parents (AD-36)"
                 Quit
             }
-            If tRead.%GetTypeOf("criteria") = "object" {
-                Set tProblem = "read.criteria is declared on a GET source, whose one object takes no server search (AD-36)"
+            ; Story 6.7: a single-object GET may take its one criterion from the route id, but only
+            ; when parentScope names that route -- without one there is no id to fill it from, so
+            ; the refusal below still stands for every other GET source.
+            Set tGetParented = (pDeclaration.%GetTypeOf("parentScope") = "string") && (pDeclaration.%Get("parentScope") '= "")
+            If (tRead.%GetTypeOf("criteria") = "object") && 'tGetParented {
+                Set tProblem = "read.criteria is declared on a GET source with no parentScope, and a single-object read takes its one criterion from the route id only when parent-scoped (AD-36, Story 6.7)"
+                Quit
+            }
+            ; A parent-scoped GET may pair its route-id criterion with one rowGet, keyed by that
+            ; criterion's own param rather than by a list row's field (RowGetProblem, below). Every
+            ; other GET keeps refusing rowGet outright, because it reads one object and has no
+            ; per-row detail call to issue at all.
+            If (tRead.%GetTypeOf("criteria") '= "object") && (tSource.%GetTypeOf("rowGet") = "object") {
+                Set tProblem = "read.source.rowGet is declared on a GET source with no read.criteria, and a single-object read issues a detail call only alongside its one parent-scoped route-id criterion (AD-36, Story 6.7)"
                 Quit
             }
         }
@@ -913,7 +924,21 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
             Set tProblem = "read.fields is empty, and a read projects at least one field"
             Quit
         }
-        Set tProblem = ..RowGetProblem(tSource, tFields)
+        ; Story 6.7: a parent-scoped GET's rowGet.key names the read's one route-id criterion
+        ; rather than a read.fields entry -- the GET's own answer carries no such property -- so
+        ; the allowed set is that one param exactly when the criteria block is sound enough to name
+        ; it. A malformed criteria block still leaves this "", which falls back to checking key
+        ; against read.fields and refuses there instead; either way the declaration is refused, and
+        ; CriteriaProblem is what names the malformed block itself.
+        Set tRowGetKeyAllowed = ""
+        If (tSource.%Get("type") = "GET") && (tRead.%GetTypeOf("criteria") = "object") {
+            Set tCritFields = tRead.%Get("criteria").%Get("fields")
+            If $IsObject(tCritFields) && tCritFields.%IsA("%Library.DynamicArray") && (tCritFields.%Size() = 1) {
+                Set tCritFirst = tCritFields.%Get(0)
+                If $IsObject(tCritFirst) && (tCritFirst.%GetTypeOf("param") = "string") Set tRowGetKeyAllowed = $ListBuild(tCritFirst.%Get("param"))
+            }
+        }
+        Set tProblem = ..RowGetProblem(tSource, tFields, tRowGetKeyAllowed)
         If tProblem '= "" Quit
         Set tProblem = ..ForEachProblem(tRead, tSource, tFields)
         If tProblem '= "" Quit
@@ -1050,14 +1075,16 @@ Parameter CRITERIARESERVEDPARAMS = "maxRows,filter,sort,direction,ns";
 /// outside <code>options</code> before the port is called, because the vendor's own
 /// <code>$$AuthenticationDisplayToLogical^%SYS.SECURITY</code> answers <code>-1</code> for a name it
 /// does not know and <code>-1</code> matches nearly every row.</p>
-/// <p><b>A criteria-bearing screen never auto-refreshes</b> (AD-43): it renders nothing until
-/// Search is pressed, so a timer would have no rows to re-read and
-/// <file>EXPERIENCE.md</file> exempts it by name.</p>
+/// <p><b>A server-search screen never auto-refreshes</b> (AD-43): it renders nothing until Search
+/// is pressed, so a timer would have no rows to re-read and <file>EXPERIENCE.md</file> exempts it
+/// by name.</p>
 /// <p><b>A parent-scoped read declares exactly one criterion</b> (AD-5). A declaration with a
-/// non-empty <code>parentScope</code> and a <code>read</code> is a sub-resource list whose one
+/// non-empty <code>parentScope</code> and a <code>read</code> is a sub-resource screen whose one
 /// criterion the client fills from the route id, so a read declaring none, or more than one, is
 /// refused with <method>ParentCriteriaProblem</method>'s sentence. Such a read runs when its page
-/// opens, with no Search to press, and never auto-refreshes either.</p>
+/// opens, with no Search to press, and may still auto-refresh in place -- it takes its one value
+/// from the route rather than from a search the user ran, so a timer has rows to re-read (Story
+/// 6.7); a screen with a server-search criterion of its own still never does.</p>
 /// <p><file>ui/tools/screen-mirror.mjs</file>'s <code>criteriaProblem</code> returns the same
 /// sentence for every case in <class>OcuPilot.Test.CriteriaCorpus</class>, the corpus both engines
 /// run.</p>
@@ -1104,8 +1131,11 @@ ClassMethod CriteriaProblem(pDeclaration As %DynamicObject) As %String
             Quit
         }
 
-        ; The last arm, so no earlier refusal changes which sentence a declaration gets.
-        If ''pDeclaration.%Get("refreshes") {
+        ; The last arm, so no earlier refusal changes which sentence a declaration gets. A
+        ; parent-scoped screen's only criterion is the route id rather than a server search --
+        ; already confirmed above, since tParented reaching here means exactly one criterion -- so
+        ; it may refresh in place (Story 6.7).
+        If ''pDeclaration.%Get("refreshes") && 'tParented {
             Set tProblem = "refreshes is declared with read.criteria, and a screen that searches on the server renders nothing until Search and does not auto-refresh (AD-43)"
         }
     } Catch ex {
@@ -1465,9 +1495,13 @@ Parameter ROWGETRULES = "beforeToday";
 Parameter ROWGETTYPES = "GET,INFO,CERTINFO";
 
 /// <p>What is wrong with <var>pSource</var>'s <code>rowGet</code>, or <code>""</code> (AD-36).
-/// <var>pFields</var> is the read's declared fields.</p>
+/// <var>pFields</var> is the read's declared fields. <var>pKeyAllowed</var> is non-empty only for a
+/// parent-scoped GET's route-id criterion (Story 6.7): when it is, <code>key</code> must equal that
+/// one param instead of naming one of <var>pFields</var>, because the GET's own answer carries no
+/// such property for a per-row detail call to key off.</p>
 /// <p>An absent or <code>null</code> <code>rowGet</code> declares no detail call. Otherwise it is an
-/// object carrying only <code>key</code> (one of <var>pFields</var>), <code>param</code> (a query
+/// object carrying only <code>key</code> (one of <var>pFields</var>, or <var>pKeyAllowed</var> where
+/// that is non-empty), <code>param</code> (a query
 /// parameter name), an optional <code>type</code> (one of <parameter>ROWGETTYPES</parameter>, spelled
 /// exactly; absent means <code>GET</code>), <code>fields</code> (a non-empty array of unique names
 /// from <var>pFields</var>, without <code>key</code>) and <code>derived</code>, an array of objects
@@ -1476,7 +1510,7 @@ Parameter ROWGETTYPES = "GET,INFO,CERTINFO";
 /// <code>from</code> (one of the detail fields). <file>ui/tools/screen-mirror.mjs</file>'s
 /// <code>rowGetProblem</code> returns the same sentence for every case in
 /// <class>OcuPilot.Test.RowGetCorpus</class>.</p>
-ClassMethod RowGetProblem(pSource As %DynamicObject, pFields As %List) As %String
+ClassMethod RowGetProblem(pSource As %DynamicObject, pFields As %List, pKeyAllowed As %List = "") As %String
 {
     Set tWhere = "read.source.rowGet"
     Set tType = pSource.%GetTypeOf("rowGet")
@@ -1488,7 +1522,11 @@ ClassMethod RowGetProblem(pSource As %DynamicObject, pFields As %List) As %Strin
 
     If tRowGet.%GetTypeOf("key") '= "string" Quit tWhere _ ".key is not a string"
     Set tKey = tRowGet.%Get("key")
-    If '$ListFind(pFields, tKey) Quit tWhere _ ".key '" _ tKey _ "' is not one of read.fields"
+    If pKeyAllowed '= "" {
+        If '$ListFind(pKeyAllowed, tKey) Quit tWhere _ ".key '" _ tKey _ "' must equal the read's one route-id criterion param (AD-36, Story 6.7)"
+    } ElseIf '$ListFind(pFields, tKey) {
+        Quit tWhere _ ".key '" _ tKey _ "' is not one of read.fields"
+    }
     If tRowGet.%GetTypeOf("param") '= "string" Quit tWhere _ ".param is not a string"
     If '$Match(tRowGet.%Get("param"), "^[A-Za-z][A-Za-z0-9]*$") Quit tWhere _ ".param '" _ tRowGet.%Get("param") _ "' is not a query parameter name"
     If tRowGet.%GetTypeOf("type") '= "unassigned" {

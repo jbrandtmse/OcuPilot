@@ -3,7 +3,8 @@
 /// <class>OcuPilot.Test.ReadTool</class> and <code>readProblem</code> in
 /// <file>ui/tools/screen-mirror.test.mjs</file>, which reads this block off disk. Each case replaces
 /// <code>declaration.read.source</code> with its own <code>source</code>, sets
-/// <code>declaration.read.criteria</code> when it carries one, and names the exact sentence both
+/// <code>declaration.read.criteria</code> when it carries one, sets <code>declaration.parentScope</code>
+/// when it carries one (Story 6.7's route-id GET cases), and names the exact sentence both
 /// engines return, or <code>null</code> for a sound shape.</p>
 Class OcuPilot.Test.ReadSourceCorpus Extends %RegisteredObject
 {
@@ -45,9 +46,12 @@ XData Cases
     {"name": "a missing type", "source": {"port": "admin", "endpoint": "Security.OAuth2.Server"}, "expected": "read.source.type '' is not 'LIST', 'GET', 'UPCOMING' or 'HISTORY'"},
     {"name": "a GET on the management port", "source": {"port": "mgmnt", "endpoint": "Applications", "type": "GET"}, "expected": "read.source.type 'GET' is declared on a 'mgmnt' source, and a single-object read issues an admin endpoint's GET (AD-36)"},
     {"name": "a GET on a state source", "source": {"port": "state", "endpoint": "Agent", "type": "GET"}, "expected": "read.source.type 'GET' is declared on a 'state' source, and a single-object read issues an admin endpoint's GET (AD-36)"},
-    {"name": "a GET with a detail call", "source": {"port": "admin", "endpoint": "Security.OAuth2.Server", "type": "GET", "rowGet": {"key": "Name", "param": "name", "fields": ["IssuerEndpoint"], "derived": []}}, "expected": "read.source.rowGet is declared on a GET source, which reads one object and has no rows to issue a detail call for (AD-36)"},
+    {"name": "a GET with a detail call and no criteria", "source": {"port": "admin", "endpoint": "Security.OAuth2.Server", "type": "GET", "rowGet": {"key": "Name", "param": "name", "fields": ["IssuerEndpoint"], "derived": []}}, "expected": "read.source.rowGet is declared on a GET source with no read.criteria, and a single-object read issues a detail call only alongside its one parent-scoped route-id criterion (AD-36, Story 6.7)"},
     {"name": "a GET with a parent list", "source": {"port": "admin", "endpoint": "Security.OAuth2.Server", "type": "GET", "forEach": {"endpoint": "Security.OAuth2.Client.ServerDefinition", "key": "ID", "param": "serverId", "fields": []}}, "expected": "read.source.forEach is declared on a GET source, which reads one object and lists no parents (AD-36)"},
-    {"name": "a GET with server criteria", "source": {"port": "admin", "endpoint": "Security.OAuth2.Server", "type": "GET"}, "criteria": {"fields": [{"param": "serverId", "labelKey": "tableColumnName", "kind": "text", "maxLength": 64}]}, "expected": "read.criteria is declared on a GET source, whose one object takes no server search (AD-36)"},
+    {"name": "a GET with server criteria but no parentScope", "source": {"port": "admin", "endpoint": "Security.OAuth2.Server", "type": "GET"}, "criteria": {"fields": [{"param": "serverId", "labelKey": "tableColumnName", "kind": "text", "maxLength": 64}]}, "expected": "read.criteria is declared on a GET source with no parentScope, and a single-object read takes its one criterion from the route id only when parent-scoped (AD-36, Story 6.7)"},
+    {"name": "a parent-scoped GET with its one route-id criterion is sound (Story 6.7)", "source": {"port": "admin", "endpoint": "Task.CRUD", "type": "GET"}, "criteria": {"fields": [{"param": "taskId", "labelKey": "taskHistoryColumnTaskId", "kind": "text", "maxLength": 10, "vendorParam": "id"}]}, "parentScope": "tasks/schedule", "expected": null},
+    {"name": "a parent-scoped GET's rowGet keyed by that same criterion param is sound (Story 6.7)", "source": {"port": "admin", "endpoint": "Task.CRUD", "type": "GET", "rowGet": {"key": "taskId", "param": "id", "type": "INFO", "fields": ["IssuerEndpoint"], "derived": []}}, "criteria": {"fields": [{"param": "taskId", "labelKey": "taskHistoryColumnTaskId", "kind": "text", "maxLength": 10, "vendorParam": "id"}]}, "parentScope": "tasks/schedule", "expected": null},
+    {"name": "a parent-scoped GET's rowGet key must equal the criterion's own param (Story 6.7)", "source": {"port": "admin", "endpoint": "Task.CRUD", "type": "GET", "rowGet": {"key": "wrongKey", "param": "id", "type": "INFO", "fields": ["IssuerEndpoint"], "derived": []}}, "criteria": {"fields": [{"param": "taskId", "labelKey": "taskHistoryColumnTaskId", "kind": "text", "maxLength": 10, "vendorParam": "id"}]}, "parentScope": "tasks/schedule", "expected": "read.source.rowGet.key 'wrongKey' must equal the read's one route-id criterion param (AD-36, Story 6.7)"},
     {"name": "an array is not a parent list", "source": {"port": "admin", "endpoint": "Security.OAuth2.Client.ClientConfiguration", "type": "LIST", "forEach": []}, "expected": "read.source.forEach is not an object declaring its endpoint, key, param and fields (AD-36)"},
     {"name": "an endpoint name alone is not a parent list", "source": {"port": "admin", "endpoint": "Security.OAuth2.Client.ClientConfiguration", "type": "LIST", "forEach": "Security.OAuth2.Client.ServerDefinition"}, "expected": "read.source.forEach is not an object declaring its endpoint, key, param and fields (AD-36)"},
     {"name": "a parent list with an unknown key", "source": {"port": "admin", "endpoint": "Security.OAuth2.Client.ClientConfiguration", "type": "LIST", "forEach": {"endpoint": "Security.OAuth2.Client.ServerDefinition", "key": "ID", "param": "serverId", "fields": [], "maxRows": 5}}, "expected": "read.source.forEach declares the unknown key 'maxRows'"},
@@ -122,13 +126,15 @@ ClassMethod Corpus(Output pCorpus As %DynamicObject) As %Status
     Quit tSC
 }
 
-/// <p>The corpus declaration with <var>pCase</var>'s <code>source</code> in place, and its
-/// <code>criteria</code> when it carries one, as a new object.</p>
+/// <p>The corpus declaration with <var>pCase</var>'s <code>source</code> in place, its
+/// <code>criteria</code> when it carries one, and its <code>parentScope</code> when it carries one
+/// (Story 6.7), as a new object.</p>
 ClassMethod DeclarationFor(pCorpus As %DynamicObject, pCase As %DynamicObject) As %DynamicObject
 {
     Set tDeclaration = ##class(%DynamicObject).%FromJSON(pCorpus.declaration.%ToJSON())
     Do tDeclaration.read.%Set("source", ##class(%DynamicObject).%FromJSON(pCase.source.%ToJSON()))
     If pCase.%GetTypeOf("criteria") = "object" Do tDeclaration.read.%Set("criteria", ##class(%DynamicObject).%FromJSON(pCase.criteria.%ToJSON()))
+    If pCase.%GetTypeOf("parentScope") = "string" Do tDeclaration.%Set("parentScope", pCase.parentScope)
     Quit tDeclaration
 }
 

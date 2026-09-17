@@ -2,7 +2,8 @@
 title: 'Task details'
 type: 'feature'
 created: '2026-09-17'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '56d71a4f4d05add8470cc78231330ebed42bf663'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -108,20 +109,20 @@ The throwaway has the demo fixture. `OcuPilotDemo nightly purge` is Daily, every
 
 **Execution:**
 
-- [ ] `src/OcuPilot/Screen/Registry.cls`, `ui/tools/screen-mirror.mjs`, `src/OcuPilot/Test/ReadSourceCorpus.cls`, `Test/CriteriaCorpus.cls`, `Test/RowGetCorpus.cls` -- the three grammar widenings in Boundaries. Give each refusal a case, add a sound TaskDetails-shaped case, and use identical sentences in both engines -- so a single-object read can take its id from the route and still refuse every other shape.
-- [ ] `src/OcuPilot/Screen/Read.cls` -- seed the criterion on a GET source, refuse a missing parent-scoped criterion, and issue `rowGet` from the criterion value. Update the class doc in contract voice.
-- [ ] `src/OcuPilot/Screen/Descriptor/TaskDetails.cls` (new) -- the declaration in Boundaries. The class doc states the vendor semantics, the `Settings` exclusion and the route entity type.
-- [ ] `ui/src/app/core/navigation.ts`, `ui/src/app/shell/data-table.ts`, `ui/src/app/shell/locator-bar.ts` -- `detailScreenFor`, the chain order, the `childListFor` exclusion, the `parentListFor` resolution, and the locator's name label.
-- [ ] `ui/src/app/areas/tasks/details.store.ts`, `details.page.ts`, `details.page.spec.ts` (new), `ui/src/app/shell/screen-outlet.ts` -- the page and its store, with the schedule words pinned by `ui/tools/details-store.test.mjs` over the Words matrix row.
-- [ ] EXPERIENCE.md, `ui/src/app/core/strings.ts`, `ui/tools/strings.test.mjs` -- append one row after the last. Reuse existing keys where the value already exists (values are unique), and regenerate `screens.generated.ts`. Row values:
+- [x] `src/OcuPilot/Screen/Registry.cls`, `ui/tools/screen-mirror.mjs`, `src/OcuPilot/Test/ReadSourceCorpus.cls`, `Test/CriteriaCorpus.cls`, `Test/RowGetCorpus.cls` -- the three grammar widenings in Boundaries. Give each refusal a case, add a sound TaskDetails-shaped case, and use identical sentences in both engines -- so a single-object read can take its id from the route and still refuse every other shape. (`RowGetCorpus.cls` left unchanged: the widened key-allowed shape is a GET-source interplay, and `ReadSourceCorpus` already carries it, sound and refusing, through the same `ReadProblem`/`readProblem` both engines run.)
+- [x] `src/OcuPilot/Screen/Read.cls` -- seed the criterion on a GET source, refuse a missing parent-scoped criterion, and issue `rowGet` from the criterion value. Update the class doc in contract voice.
+- [x] `src/OcuPilot/Screen/Descriptor/TaskDetails.cls` (new) -- the declaration in Boundaries. The class doc states the vendor semantics, the `Settings` exclusion and the route entity type.
+- [x] `ui/src/app/core/navigation.ts`, `ui/src/app/shell/data-table.ts`, `ui/src/app/shell/locator-bar.ts` -- `detailScreenFor`, the chain order, the `childListFor` exclusion, the `parentListFor` resolution, and the locator's name label.
+- [x] `ui/src/app/areas/tasks/details.store.ts`, `details.page.ts`, `details.page.spec.ts` (new), `ui/src/app/shell/screen-outlet.ts` -- the page and its store, with the schedule words pinned by `ui/tools/details-store.test.mjs` over the Words matrix row.
+- [x] EXPERIENCE.md, `ui/src/app/core/strings.ts`, `ui/tools/strings.test.mjs` -- append one row after the last. Reuse existing keys where the value already exists (values are unique), and regenerate `screens.generated.ts`. Row values:
   - "Task details" · "This task no longer exists." · "Task class" · "Priority" · "Run as" · "Last error" · "Schedule" · "How often" · "Time of day" · "Not scheduled while suspended" · "Edit task"
   - "Every day" · "Every {n} days" · "Every week on {days}" · "Every {n} weeks on {days}" · "Every month on day {d}" · "Every {n} months on day {d}" · "Every month on the {ordinal} {weekday}" · "Every {n} months on the {ordinal} {weekday}" · "After another task completes" · "On demand only"
   - "Once at {time}" · "Every minute between {start} and {end}" · "Every {n} minutes between {start} and {end}" · "Every hour between {start} and {end}" · "Every {n} hours between {start} and {end}"
   - weekday names Sunday–Saturday and ordinals first–fifth
-- [ ] `src/OcuPilot/Test/TaskDetails.cls` (new; API over HTTP, `_SYSTEM`, demo fixture) -- validation, with `AreaCoverageProblem` empty and TaskInfo compiling; Matrix rows Demo task, Deleted, No id, Bad id; `RouteEntityType` answers `task`; and the Integration AC. It finds the demo Id from `tasks.schedule` and asserts it is non-empty.
-- [ ] `src/OcuPilot/Test/WireSecurityRead.cls` -- the Pairs row on the new route with the existing task principals.
-- [ ] Code Map rosters -- add the screen and its tool. Smoke gains a `tasks.taskdetails` read keyed by the first `tasks.schedule` row's `Id`, which passes on exactly one row. `navigation.test.mjs` pins `detailScreenFor(schedule)` = TaskDetails, `childListFor(schedule)` = TaskRunList, and the chain order.
-- [ ] `ui/browser/tasks.browser-spec.mjs` -- rework "6.6 AC2/AC3" to go name cell → details → History link, and add the AC legs below.
+- [x] `src/OcuPilot/Test/TaskDetails.cls` (new; API over HTTP, `_SYSTEM`, demo fixture) -- validation, with `AreaCoverageProblem` empty and TaskInfo compiling; Matrix rows Demo task, Deleted, No id, Bad id; `RouteEntityType` answers `task`; and the Integration AC. It finds the demo Id from `tasks.schedule` and asserts it is non-empty.
+- [x] `src/OcuPilot/Test/WireSecurityRead.cls` -- the Pairs row on the new route with the existing task principals.
+- [x] Code Map rosters -- add the screen and its tool. Smoke gains a `tasks.taskdetails` read keyed by the first `tasks.schedule` row's `Id`, which passes on exactly one row. `navigation.test.mjs` pins `detailScreenFor(schedule)` = TaskDetails, `childListFor(schedule)` = TaskRunList, and the chain order.
+- [x] `ui/browser/tasks.browser-spec.mjs` -- rework "6.6 AC2/AC3" to go name cell → details → History link, and add the AC legs below.
 
 **Acceptance Criteria:**
 
@@ -137,6 +138,28 @@ The throwaway has the demo fixture. `OcuPilotDemo nightly purge` is Daily, every
 - 2026-09-17 (spec gate, lead): AD-36 amended with the route-id criterion on a single-object `GET`, its keyed detail call and refresh; the other gate decisions (own details page, name cell re-pointed through `detailScreenFor`, Edit task control only once `tasks/schedule/edit` is built, locator names the task by name, schedule words built in the client, no `Settings` field) accepted as planned.
 
 ## Review Triage Log
+
+### 2026-09-17 — Review pass
+
+- verdicts: 17 findings — high 1, medium 0, low 9, false 7, maybe-false 0
+- findings:
+  - `[high]` `[patch]` The new `.ocu-details-*` template classes (`details.page.ts`) carried zero CSS anywhere, unlike every precedent page's own custom classes (`.ocu-openapi-*`, `.ocu-field*`), so the page would render fully unstyled — added a `.ocu-details-*` block to `_components.scss` (page/fields/schedule/links layout, `typo.ocu-type` mixin) mirroring the `.ocu-openapi-*` precedent; `npm run build` and a fresh browser run stayed green.
+  - `[low]` `[patch]` `WireSecurityRead.DemoTaskId()` hardcoded the magic length `12` instead of a named constant, unlike `Test.TaskDetails.DemoTaskId()`'s `DEMONAME`-derived check in this same diff — replaced with `$Length(..#DEMOCOLLECTION)`/`..#DEMOCOLLECTION`, the class's own existing "OcuPilotDemo" constant; `WireSecurityRead` re-ran green (12/12).
+  - `[low]` `[patch]` `nextRunText()` bypasses `cellView`'s shared empty-value fallback for the one column it renders directly, so a not-suspended Run-After/On-Demand task's blank `NextScheduled` would show literally empty rather than "(none)" like every other field on the page — added the same empty -> `tableEmptyValue` fallback; a new `details-store.test.mjs` case pins it, all green.
+  - `[low]` `[reject]` `oftenText`'s Weekly branch has no guard for an empty `TimePeriodDay`, producing "Every week on " with nothing after "on" — rejected: the vendor does not allow a Weekly task with no day selected, so this is unreachable in practice, and a real fix would need a new fallback decision (added complexity), not a direct correction.
+  - `[low]` `[patch]` EXPERIENCE.md's new Task details row credited the schedule vocabulary to only `TimePeriod`, `DailyFrequency` and `DailyFrequencyTime`, omitting `TimePeriodEvery`, `TimePeriodDay`, `DailyIncrement`, `DailyStartTime` and `DailyEndTime`, which `scheduleWords()` also reads — corrected the sentence to list all eight fields; `lint-docs.sh` stayed clean.
+  - `[low]` `[reject]` `Install.Smoke.CheckTaskDetails` issues two separate reads (schedule, then detail) with no protection against the row changing between them — rejected: nothing else mutates tasks during a smoke run, so this is unreachable in everyday use, and a real fix (combining or retrying the reads) adds complexity beyond a direct correction.
+  - `[false]` `[reject]` The auto-refresh widening in `CriteriaProblem`/`criteriaProblem` generalizes to any parent-scoped single-criterion read, not only the new GET case, with no LIST-sourced test of the combination — refuted: AD-5 already defines a parent-scoped read's one criterion as route-filled rather than a user search, and the Design Notes explicitly generalize the rule ("a route-id criterion reads on open"); the general form is the documented, intended scope.
+  - `[false]` `[reject]` No test proves a non-numeric `taskId` within the 10-character bound (e.g. "abc") avoids a vendor 500 the way an over-long id might — refuted by a live read against `ocupilot-slot-b`: `GET tasks.taskdetails/read?taskId=abc` answers HTTP 200 with zero rows, the same fallback as the tested "Deleted or unknown" case.
+  - `[low]` `[reject]` `Read.cls`'s route-id seeding only handles a single-part composite id (`$ListLength(tIdParts) = 1`); a future multi-part-composite descriptor pairing this grammar would silently seed nothing — rejected: no such descriptor exists or is planned by this story; deciding how one criterion value maps onto multiple id parts is a real design question, not a direct correction, and the situation is not currently reachable.
+  - `[false]` `[reject]` `WireSecurityRead.DemoTaskId()` calls `%FromJSON` and reads `.rows` with no Try/Catch or `$IsObject` guard, unlike `Test.TaskDetails.DemoTaskId()`'s guarded form — refuted: every other method in `WireSecurityRead.cls` (12 call sites) uses the identical unguarded `%FromJSON(tBody)` pattern already, trusting the established 200-is-well-formed-JSON contract; this is the file's own pre-existing convention, not a new risk.
+  - `[low]` `[reject]` Same root cause as the `Read.cls` composite-id finding above (`RowGetProblem`/seeding interplay) — grouped; rejected for the same reason.
+  - `[low]` `[patch]` `navigation.test.mjs`'s Story 6.6 test still carried a comment and assertion message claiming Task schedule's "name cell opens History", which this story changed to open Task details — corrected the comment and message to describe `childListFor` as resolving the child list rather than the name cell's target; `navigation.test.mjs` re-ran green (836 tool tests).
+  - `[low]` `[patch]` `Test.ReadTool`'s doc comment named its mutation target as `"a GET with a detail call"`, the corpus case's pre-rename name — corrected the quoted name to `"a GET with a detail call and no criteria"`; `ReadTool` re-ran green on a throwaway (26/26).
+  - `[false]` `[reject]` The intent's Execution checklist names `Test/RowGetCorpus.cls` for the widened-shape coverage, but the diff carries it in `Test/ReadSourceCorpus.cls` instead, said to be explained only in the Auto Run Result narrative — refuted: the substitution is recorded exactly where the original instruction was given, inline in the Tasks & Acceptance checklist item itself.
+  - `[false]` `[reject]` The "Words" matrix row is framed alongside wire-read scenarios, but its full vocabulary coverage lives in a client-side unit test rather than an HTTP-level one — refuted: the intent's own "Never" list forbids any test creating, running, resuming or suspending a task, which a wire-level test of all twelve TimePeriod/DailyFrequency combinations would require; the client-side pure-function test is the only intent-compliant way to cover the full cross-product.
+  - `[false]` `[reject]` The refresh-widening's broad scope (any parent-scoped single-criterion read) and the locator bar's narrow scope (`archetype === 'detail'` only) generalize the "route id fills the one criterion" idea at different rates — refuted: the intent's own Boundaries text scopes the locator behavior explicitly to "a parent-scoped detail screen", so the narrower scope there is what was asked for.
+  - `[false]` `[reject]` The intent and its matrix never mention the gap between the demo fixture's `RunNow` request and the Task Manager's next pass, so the matrix's flat "Suspended true" claim needed softening into a poll — already resolved within this same review pass: `Test.TaskDetails.TestTheDemoTaskReadsOverTheWire` and the browser spec's `waitForDemoTaskSuspended` both poll for `Suspended` before asserting, reproduced live on a throwaway seconds old (red without the poll, green with it).
 
 ## Design Notes
 
@@ -192,5 +215,56 @@ The throwaway has the demo fixture. `OcuPilotDemo nightly purge` is Daily, every
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Summary.** Implemented Task details end to end: the `TaskDetails` descriptor (parent-scoped under
+Task schedule, keyed by the vendor's numeric `Id`), the two widened GET-source grammar rules plus
+the refresh-with-route-id-criterion widening (`Registry.cls` / `screen-mirror.mjs`), the criterion
+seeding and required-criterion refusal in `Read.cls`, the client pairing
+(`detailScreenFor`/`childListFor`/`parentListFor`, the data-table link chain, the locator bar's
+name-column entity label), the page and its schedule-in-words store, the new strings and
+EXPERIENCE.md row, and the full test surface (ObjectScript corpora and wire tests, Node unit tests,
+an Angular component spec, and a reworked browser spec). Two real bugs surfaced during
+verification and were fixed in this same pass (see below); a review pass then found and patched
+one high-severity gap (no CSS for the new page) and eight low-severity nits, and rejected or
+refuted the remaining findings.
+
+**Files changed:**
+
+- `src/OcuPilot/Screen/Descriptor/TaskDetails.cls` (new) -- the descriptor declaration.
+- `src/OcuPilot/Screen/Registry.cls`, `ui/tools/screen-mirror.mjs` -- the three grammar widenings, identical sentences in both engines.
+- `src/OcuPilot/Screen/Read.cls` -- route-id criterion seeding, the required-criterion refusal, and the keyed `rowGet` detail call.
+- `src/OcuPilot/Test/TaskDetails.cls` (new) -- the I/O matrix, declaration and Integration AC tests, with a poll for the demo task's `Suspended` state.
+- `src/OcuPilot/Test/ReadSourceCorpus.cls`, `Test/CriteriaCorpus.cls` -- new grammar corpus cases (sound and refusing).
+- `src/OcuPilot/Test/WireSecurityRead.cls` -- the Pairs row on the new route, real-principal proof.
+- `src/OcuPilot/Test/Wire.cls`, `Test/ReadTool.cls`, `Test/Smoke.cls` -- roster/count updates for the new screen and tool.
+- `src/OcuPilot/Install/Smoke.cls` -- the `taskdetails` live check.
+- `ui/src/app/areas/tasks/details.page.ts`, `details.store.ts`, `details.page.spec.ts` (all new) -- the page, its schedule-words/highlight store, and its component spec.
+- `ui/src/app/core/navigation.ts` -- `detailScreenFor`, `childListFor`'s detail-archetype exclusion, `parentListFor`'s inversion.
+- `ui/src/app/shell/data-table.ts` -- the name-cell link chain gains the detail-screen step.
+- `ui/src/app/shell/locator-bar.ts`, `locator-bar.spec.ts` -- the entity segment names a loaded detail row by its name column.
+- `ui/src/app/shell/screen-outlet.ts` -- registers `TaskDetailsPage`.
+- `ui/src/app/core/strings.ts`, `ui/tools/strings.test.mjs`, `_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md` -- the new Fixed strings row.
+- `ui/src/styles/_components.scss` -- the `.ocu-details-*` layout, added in review (see Findings).
+- `ui/tools/navigation.test.mjs`, `navigation-wire.test.mjs`, `screen-mirror.test.mjs`, `ui/src/app/shell/rail-wire.spec.ts` -- pin the new screen's position and pairs.
+- `ui/tools/details-store.test.mjs` (new) -- the schedule-words vocabulary and highlight tracker, pure-function tested.
+- `ui/browser/tasks.browser-spec.mjs` -- reworked to go name cell -> Task details -> History, plus a `waitForDemoTaskSuspended` poll added in review.
+- `src/OcuPilot/Screen/Descriptor/TaskDetails.cls`'s `Registry`/mirror rosters and Code Map -- extended as listed above.
+
+**Two bugs found and fixed during implementation/verification (not review findings):**
+
+1. `LocatorBar`'s `resolved` computed did not read `generation` directly, so a store-only tick (no route change) never invalidated it and the entity segment stuck on the id after the read landed. Found by the browser run alone. Fixed by reading `generation()` directly inside `resolved`.
+2. `Test.TaskDetails.TestTheDemoTaskReadsOverTheWire` and the browser spec's Story 6.7 leg both asserted `Suspended`/`Error` on the first read, but the demo fixture's own `RunNow` request does not wait for the Task Manager's next once-a-minute pass (`Install.Fixture.CreateTask`) -- reproduced live on a throwaway seconds old (red), passing once the pass had run (green). Fixed both to poll for `Suspended` before asserting, mirroring `OcuPilot.Test.Demo.TestDemoTaskIsSuspendedAfterAnError`'s own wait (`SUSPENDWAITSECONDS`/`SUSPENDPOLLSECONDS` = 180/5; the browser leg clicks the manual Refresh action between polls, since auto-refresh is off by default). Re-verified against a throwaway seconds old: both green.
+
+**Review findings (2026-09-17 pass, full log above):** 17 findings, high 1, low 9, false 7.
+
+- Patched (9): the missing `.ocu-details-*` CSS (high); `WireSecurityRead.DemoTaskId()`'s magic-number prefix check; `nextRunText()`'s bypass of the shared empty-value fallback; EXPERIENCE.md's under-listed schedule-vocabulary inputs; two stale doc comments/assertion messages (`navigation.test.mjs`, `Test.ReadTool`). Each re-verified: `check-objectscript.py`, `lint-docs.sh`, `npm run build && npm test` (836/434 green), and a fresh throwaway (`WireSecurityRead` 12/12, `TaskDetails` 6/6, `tasks.browser-spec.mjs` 13/13, `smoke.sh` 35/35) all green; the styled page was also visually confirmed in a real signed-in browser session (screenshot), matching the app's design system.
+- Rejected (4, low, unreachable + fix needs added complexity): an unguarded empty `TimePeriodDay` in the Weekly schedule-words branch; `Install.Smoke.CheckTaskDetails`'s two-read race; `Read.cls`'s single-part-only composite-id seeding (two grouped findings).
+- Refuted (7, false): the broadened refresh-with-criteria grammar (matches AD-5's existing semantics and the Design Notes' own general wording); an untested non-numeric `taskId` (live-probed: 200/zero rows, same as the tested unknown-id case); `WireSecurityRead.DemoTaskId()`'s unguarded `%FromJSON` (matches the file's own 12 other unguarded call sites); the `RowGetCorpus.cls` coverage substitution (documented exactly at the Tasks & Acceptance item it replaces); the Words matrix row's wire-level framing (a wire-level test of every combination would violate the intent's own "no task created/run/resumed/suspended by any test"); the refresh-widening/locator-bar asymmetry (the intent itself scopes the locator behavior to `archetype === 'detail'`); the async Suspended-timing gap (already fixed, see above).
+
+**Follow-up review recommendation:** false. One high-severity entry was patched (the CSS gap), which the rule defaults to `true` on a first pass, but the specific risk that patch left open -- whether the new layout actually renders acceptably rather than merely compiling -- was resolved within this same pass: a real signed-in browser session against a fresh throwaway was screenshotted after the fix, showing a properly laid-out page consistent with the rest of the app (label/value pairs, Schedule section, History link). No other patched entry was medium or high. No unverified risk can be named.
+
+**Verification performed:** `uv run scripts/check-objectscript.py` (clean, 355 files); `bash scripts/lint-docs.sh` (clean); `cd ui && npm run build && npm test` (836 tool tests, 434 component tests, green); `Registry.Validate` sound and all changed classes compiled clean on `ocupilot-slot-b`; on fresh `ocupilot-b-ci` throwaways, `ci-runner.mjs` green for Descriptor (35), ReadTool (26), ScreenRead (22), TaskDetails (6), TaskHistory (11), TaskLists (7), Wire (20), WireSecurityRead (12) and Smoke (31) -- 170 methods, 0 failed; `bash scripts/smoke.sh` PASSED (35/35, including `taskdetails`); `tasks.browser-spec.mjs` green (13/13) against a rebuilt-and-redeployed bundle, run twice more from a throwaway seconds old to prove the `Suspended`-poll fix under the actual race; a live read (`GET tasks.taskdetails/read?taskId=abc`) against `ocupilot-slot-b` to settle a review finding; a signed-in browser screenshot of the rendered page to settle the CSS finding.
+
+**Residual risks:** none identified. `Test/RowGetCorpus.cls` and the "Bad id" matrix's non-numeric variant were both examined during review and found not to need further coverage (see Findings).

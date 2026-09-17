@@ -212,21 +212,58 @@ export function listForDocumentScreen(screen: ScreenDeclaration): ScreenDeclarat
  * the list's route as its `parentScope`. The same three halves as `editorScreenFor` hold -- built,
  * unlisted and keyed by an id -- because the child is reached from the name cell with the row's id
  * and never from a navigation surface. The Wallet list's Secrets list is the first.
+ *
+ * **Skips a `detail`-class screen** (Story 6.7): `detailScreenFor` is the pairing for one, so a
+ * parent naming both a per-row detail screen and a sub-resource list -- Task schedule's Task
+ * details and its per-task History both declare `parentScope` `tasks/schedule` -- resolves each
+ * through its own function rather than this one picking whichever sorts first.
  */
 export function childListFor(screen: ScreenDeclaration): ScreenDeclaration | null {
   if (screen.route === '') return null;
   return (
     SCREENS.find(
-      (child) => child.parentScope === screen.route && child.built && !isListedScreen(child) && hasIdRoute(child)
+      (child) =>
+        child.parentScope === screen.route &&
+        child.built &&
+        !isListedScreen(child) &&
+        hasIdRoute(child) &&
+        child.archetype !== 'detail'
     ) ?? null
   );
 }
 
-/** The list `screen` is the sub-resource list of (`childListFor`'s inverse), or `null`. */
+/**
+ * The built, unlisted, id-keyed `detail`-archetype screen a list's rows open, or `null` when the
+ * list has none (Story 6.7). The same pairing `childListFor` is, narrowed to the one archetype a
+ * per-row detail screen takes: no `tab`, since a tabbed screen's own group is a different pairing
+ * (`tabGroupFor`), and one entity is a field list rather than a table of rows.
+ */
+export function detailScreenFor(screen: ScreenDeclaration): ScreenDeclaration | null {
+  if (screen.route === '') return null;
+  return (
+    SCREENS.find(
+      (child) =>
+        child.parentScope === screen.route &&
+        child.built &&
+        !isListedScreen(child) &&
+        hasIdRoute(child) &&
+        child.archetype === 'detail' &&
+        child.tab === null
+    ) ?? null
+  );
+}
+
+/**
+ * The list `screen` is the sub-resource list or per-row detail screen of (`childListFor`'s and
+ * `detailScreenFor`'s shared inverse), or `null`.
+ */
 export function parentListFor(screen: ScreenDeclaration): ScreenDeclaration | null {
   if (screen.parentScope === '') return null;
   const parent = screenForRoute(screen.parentScope);
-  return parent !== null && childListFor(parent)?.route === screen.route ? parent : null;
+  if (parent === null) return null;
+  if (childListFor(parent)?.route === screen.route) return parent;
+  if (detailScreenFor(parent)?.route === screen.route) return parent;
+  return null;
 }
 
 /**

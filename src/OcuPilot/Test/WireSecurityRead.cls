@@ -343,11 +343,11 @@ Method TestTheTaskSchedulesPairSetIsEnforcedForARealPrincipal()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the eleven principals' pairs")
 
-    Do $$$AssertEquals(..ScreensFor(..#TASKUSER, "tasks"), "[{""route"":""tasks/schedule/history"",""labelKey"":""taskRunsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""tasks/schedule"",""labelKey"":""taskListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""tasks/on-demand"",""labelKey"":""taskOnDemandLabel"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""tasks/upcoming"",""labelKey"":""taskUpcomingLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""tasks/history"",""labelKey"":""taskHistoryLabel"",""sideBarPosition"":4,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}]", "%Admin_Task alone: the five task screens (the unlisted per-task history first) are denied on %DB_IRISSYS:READ")
+    Do $$$AssertEquals(..ScreensFor(..#TASKUSER, "tasks"), "[{""route"":""tasks/schedule/details"",""labelKey"":""taskDetailsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""tasks/schedule/history"",""labelKey"":""taskRunsLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""tasks/schedule"",""labelKey"":""taskListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""tasks/on-demand"",""labelKey"":""taskOnDemandLabel"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""tasks/upcoming"",""labelKey"":""taskUpcomingLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""},{""route"":""tasks/history"",""labelKey"":""taskHistoryLabel"",""sideBarPosition"":4,""allowed"":false,""failedPair"":""%DB_IRISSYS:READ""}]", "%Admin_Task alone: the six task screens (the unlisted task details and per-task history first) are denied on %DB_IRISSYS:READ")
     Do $$$AssertEquals(..AreaVerdictFor(..#TASKUSER, "tasks"), "false:%DB_IRISSYS:READ", "and so is the Tasks area")
     Do ..AssertReadRefused(..#TASKUSER, "tasks.schedule", "%DB_IRISSYS:READ")
 
-    Do $$$AssertEquals(..ScreensFor(..#TASKBOTHUSER, "tasks"), "[{""route"":""tasks/schedule/history"",""labelKey"":""taskRunsLabel"",""sideBarPosition"":0,""allowed"":true},{""route"":""tasks/schedule"",""labelKey"":""taskListLabel"",""sideBarPosition"":1,""allowed"":true},{""route"":""tasks/on-demand"",""labelKey"":""taskOnDemandLabel"",""sideBarPosition"":2,""allowed"":true},{""route"":""tasks/upcoming"",""labelKey"":""taskUpcomingLabel"",""sideBarPosition"":3,""allowed"":true},{""route"":""tasks/history"",""labelKey"":""taskHistoryLabel"",""sideBarPosition"":4,""allowed"":true}]", "both pairs: the five task screens (the unlisted per-task history first) are listed allowed")
+    Do $$$AssertEquals(..ScreensFor(..#TASKBOTHUSER, "tasks"), "[{""route"":""tasks/schedule/details"",""labelKey"":""taskDetailsLabel"",""sideBarPosition"":0,""allowed"":true},{""route"":""tasks/schedule/history"",""labelKey"":""taskRunsLabel"",""sideBarPosition"":0,""allowed"":true},{""route"":""tasks/schedule"",""labelKey"":""taskListLabel"",""sideBarPosition"":1,""allowed"":true},{""route"":""tasks/on-demand"",""labelKey"":""taskOnDemandLabel"",""sideBarPosition"":2,""allowed"":true},{""route"":""tasks/upcoming"",""labelKey"":""taskUpcomingLabel"",""sideBarPosition"":3,""allowed"":true},{""route"":""tasks/history"",""labelKey"":""taskHistoryLabel"",""sideBarPosition"":4,""allowed"":true}]", "both pairs: the six task screens (the unlisted task details and per-task history first) are listed allowed")
     Do $$$AssertEquals(..AreaVerdictFor(..#TASKBOTHUSER, "tasks"), "true", "and so is the Tasks area")
 
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/tasks.schedule/read?maxRows=1000", ..#TASKBOTHUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
@@ -414,6 +414,42 @@ Method TestTaskHistoryPairSetsAreEnforcedForARealPrincipal()
 
     Do ..AssertSameRowsAsTestAccount(..#TASKBOTHUSER, "tasks.history")
     Do ..AssertSameRowsAsTestAccount(..#TASKBOTHUSER, "tasks.taskhistory")
+}
+
+/// <p>The demo fixture task's own numeric <code>Id</code>, read through the test account's
+/// <code>tasks.schedule</code> list -- the same discovery <class>OcuPilot.Test.TaskDetails</class>
+/// performs on its own throwaway. <code>""</code> when the row cannot be found or read.</p>
+Method DemoTaskId() As %String
+{
+    Set tId = ""
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/tasks.schedule/read?maxRows=1000", ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tBody, .tHeaders)
+    If $$$ISERR(tSC) || (tStatus '= 200) Quit tId
+    Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+    Set tIterator = tAnswer.rows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If $Extract(tRow.Name, 1, $Length(..#DEMOCOLLECTION)) = ..#DEMOCOLLECTION {
+            Set tId = tRow.Id
+            Quit
+        }
+    }
+    Quit tId
+}
+
+/// <p>Story 6.7, Matrix "Pairs" -- Task details declares the task schedule's own pair set, proved
+/// with the same real principals: a caller holding <code>%Admin_Task:USE</code> alone is denied by
+/// name, and granting <code>%DB_IRISSYS:READ</code> too serves the same row the test account
+/// reads.</p>
+/// <p>Mutation: remove <code>%DB_IRISSYS:READ</code> from
+/// <class>OcuPilot.Screen.Descriptor.TaskDetails</class> -&gt; the registry refuses to validate the
+/// roster, naming that descriptor's missing pair, before any read is served.</p>
+Method TestTaskDetailsPairSetIsEnforcedForARealPrincipal()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the principals' pairs")
+    Set tTaskId = ..DemoTaskId()
+    Do $$$AssertTrue(tTaskId '= "", "the demo task's Id was found")
+    If tTaskId = "" Quit
+    Do ..AssertReadRefused(..#TASKUSER, "tasks.taskdetails", "%DB_IRISSYS:READ", "&taskId=" _ tTaskId)
+    Do ..AssertSameRowsAsTestAccount(..#TASKBOTHUSER, "tasks.taskdetails", "&taskId=" _ tTaskId)
 }
 
 /// <p>Story 2.9 AC5 -- the processes list's three-pair set, proved with real principals. A caller

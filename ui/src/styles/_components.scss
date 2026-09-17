@@ -3452,3 +3452,68 @@ app-data-table {
 .ocu-openapi-raw:focus-visible {
   @include ocu-focus-ring;
 }
+
+// --- Task details (Story 6.7) -- a field list standing in for `DataTable`'s table -------------------
+
+.ocu-details-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-4);
+  min-width: 0;
+  padding: var(--ocu-space-4);
+  box-sizing: border-box;
+}
+
+.ocu-details-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-3);
+}
+
+.ocu-details-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-1);
+}
+
+.ocu-details-field-label {
+  @include typo.ocu-type('caption');
+
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-details-field-value {
+  @include typo.ocu-type('body');
+
+  color: var(--ocu-on-surface);
+  overflow-wrap: anywhere;
+}
+
+.ocu-details-schedule {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-2);
+}
+
+.ocu-details-heading {
+  @include typo.ocu-type('label');
+
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-details-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ocu-space-3);
+}
+
+.ocu-details-link {
+  @include typo.ocu-type('label');
+
+  color: var(--ocu-secondary);
+}
+
+.ocu-details-link:focus-visible {
+  @include ocu-focus-ring;
+}

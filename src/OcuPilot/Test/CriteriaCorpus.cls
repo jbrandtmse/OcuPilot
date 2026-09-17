@@ -104,7 +104,8 @@ XData Cases
     {"name": "a parent-scoped read declaring no criterion", "criteria": null, "parentScope": "logs/audit", "expected": "parentScope 'logs/audit' is declared with a read, and a parent-scoped read declares exactly one read.criteria field, which its route id fills (AD-5)"},
     {"name": "a parent-scoped read declaring exactly one criterion is sound", "criteria": {"fields": [{"param": "eventSources", "labelKey": "auditColumnEventSource", "kind": "text", "maxLength": 50}]}, "parentScope": "logs/audit", "expected": null},
     {"name": "a parent-scoped read declaring two criteria", "criteria": {"fields": [{"param": "eventSources", "labelKey": "auditColumnEventSource", "kind": "text", "maxLength": 50}, {"param": "events", "labelKey": "auditColumnEventName", "kind": "text", "maxLength": 50}]}, "parentScope": "logs/audit", "expected": "parentScope 'logs/audit' is declared with a read, and a parent-scoped read declares exactly one read.criteria field, which its route id fills (AD-5)"},
-    {"name": "an empty parentScope declares no parent, so no criterion is required", "criteria": null, "parentScope": "", "expected": null}
+    {"name": "an empty parentScope declares no parent, so no criterion is required", "criteria": null, "parentScope": "", "expected": null},
+    {"name": "a parent-scoped screen's one route-id criterion may auto-refresh (Story 6.7)", "criteria": {"fields": [{"param": "eventSources", "labelKey": "auditColumnEventSource", "kind": "text", "maxLength": 50}]}, "parentScope": "logs/audit", "refreshes": true, "expected": null}
   ]
 }
 }

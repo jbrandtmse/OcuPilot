@@ -318,10 +318,14 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   // API explorer's three and the OpenAPI document viewer's eleven -- and take the table to 261, so
   // the bound moves to 300, the headroom Epic 6's remaining screens need. Story 6.4's three OAuth 2.0 rows carry 22 and take the table past 300, so the bound moves to 330. Story 6.6's two rows
   // carry 13 distinct literals -- "Error number" is reused from the Application errors row rather
-  // than counted again -- and take the table past 330, so the bound moves to 350.
+  // than counted again -- and take the table past 330, so the bound moves to 350. Story 6.7's one
+  // row carries 38: eleven Task details field and chrome labels, ten TimePeriod/DailyFrequency
+  // phrase templates, five DailyFrequencyTime phrase templates, seven weekday names and five
+  // ordinals -- the schedule-in-words vocabulary AD-3 has the client compose rather than take from
+  // the vendor -- and takes the table past 350, so the bound moves to 400.
   assert.ok(
-    expectedLiterals.length >= 150 && expectedLiterals.length <= 350,
-    `expected between 150 and 350 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
+    expectedLiterals.length >= 150 && expectedLiterals.length <= 400,
+    `expected between 150 and 400 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
   );
 });
 

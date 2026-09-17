@@ -99,6 +99,13 @@ const LIVE_PAYLOAD = {
       failedPair: '%Admin_Task:USE',
       screens: [
         {
+          route: 'tasks/schedule/details',
+          labelKey: 'taskDetailsLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Task:USE',
+        },
+        {
           route: 'tasks/schedule/history',
           labelKey: 'taskRunsLabel',
           sideBarPosition: 0,
@@ -325,7 +332,8 @@ test('DW-132: the real NavigationService reads a live-captured payload the way O
   assert.deepEqual(service.screenVerdict('tasks/schedule'), { allowed: false, failedPair: '%Admin_Task:USE' });
   // Story 6.5: On-demand and Upcoming tasks declare the task schedule's pairs in its order.
   // Story 6.6: so do Task history (all) and the per-task history, unlisted at position 0.
-  for (const route of ['tasks/on-demand', 'tasks/upcoming', 'tasks/history', 'tasks/schedule/history']) {
+  // Story 6.7: and so does Task details, also unlisted at position 0.
+  for (const route of ['tasks/on-demand', 'tasks/upcoming', 'tasks/history', 'tasks/schedule/history', 'tasks/schedule/details']) {
     assert.deepEqual(service.screenVerdict(route), { allowed: false, failedPair: '%Admin_Task:USE' }, route);
   }
   assert.deepEqual(service.screenVerdict('os-management/processes'), { allowed: false, failedPair: '%Admin_Manage:USE' });

@@ -26,7 +26,7 @@ import { Router } from '@angular/router';
 
 import { encodeEntityId } from '../core/entity-id';
 import { isBannerFault } from '../core/fault';
-import { childListFor, documentScreenFor, editorScreenFor, hasIdRoute, withQuery } from '../core/navigation';
+import { childListFor, detailScreenFor, documentScreenFor, editorScreenFor, hasIdRoute, withQuery } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
 import { RefreshService } from '../core/refresh';
 import { ScopeService } from '../core/scope';
@@ -423,14 +423,19 @@ export class DataTable implements OnInit {
     // row link under its exemption (AD-44), which no in-app target replaces and whose blank-value
     // guard leaves the cell as text; otherwise the list's paired editor where it declares
     // one (Story 3.5's `editorScreenFor`), its paired document viewer where it declares one
-    // (`documentScreenFor`), the sub-resource list whose parent it is (`childListFor`), and
-    // otherwise the list's own route with the row's id. A screen with none is not linkable at all,
-    // and neither is a parent-scoped list that pairs no editor or viewer: its own route's id is its
-    // parent's, so a row's id there would name the wrong thing.
+    // (`documentScreenFor`), its paired per-row detail screen where it declares one
+    // (Story 6.7's `detailScreenFor`), the sub-resource list whose parent it is (`childListFor`),
+    // and otherwise the list's own route with the row's id. A screen with none is not linkable at
+    // all, and neither is a parent-scoped list that pairs no editor, viewer or detail screen: its
+    // own route's id is its parent's, so a row's id there would name the wrong thing.
     const rowLinked = screen.classicLinkExemption.exempt && (screen.classicLinkExemption.rowLink ?? null) !== null;
     const linkTarget = rowLinked
       ? null
-      : editorScreenFor(screen) ?? documentScreenFor(screen) ?? childListFor(screen) ?? (screen.parentScope === '' ? screen : null);
+      : editorScreenFor(screen) ??
+        documentScreenFor(screen) ??
+        detailScreenFor(screen) ??
+        childListFor(screen) ??
+        (screen.parentScope === '' ? screen : null);
     const linkRoute = linkTarget?.route ?? '';
     const linkable = linkTarget !== null && hasIdRoute(linkTarget);
     const currentUrl = this.router.url;

@@ -443,6 +443,7 @@ test('readProblem returns every source-type, forEach and query sentence OcuPilot
     const declaration = structuredClone(corpus.declaration);
     declaration.read.source = structuredClone(testCase.source);
     if (testCase.criteria !== undefined) declaration.read.criteria = structuredClone(testCase.criteria);
+    if (testCase.parentScope !== undefined) declaration.parentScope = testCase.parentScope;
     assert.equal(readProblem(declaration), testCase.expected, testCase.name);
     if (testCase.expected !== null) refusals += 1;
   }
@@ -731,16 +732,17 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
     'and it overrides one of them'
   );
   // Every other shipped screen declares none but the OpenAPI document viewer, whose one criterion
-  // names the application its document is read for; Task history (all) and Task history (one
-  // task), whose criteria are Story 6.6's; Upcoming tasks, whose two criteria are the horizon; and
-  // the Secrets list, whose one criterion is its parent collection, filled from the route id
-  // (Story 6.3).
+  // names the application its document is read for; Task details, Task history (all) and Task
+  // history (one task), whose criteria are Story 6.7's and 6.6's; Upcoming tasks, whose two
+  // criteria are the horizon; and the Secrets list, whose one criterion is its parent collection,
+  // filled from the route id (Story 6.3).
   const withCriteria = emittedScreens.filter((screen) => (screen.read?.criteria ?? null) !== null);
   assert.deepEqual(
     withCriteria.map((screen) => screen.descriptor),
     [
       'OcuPilot.Screen.Descriptor.AuditList',
       'OcuPilot.Screen.Descriptor.OpenApiViewer',
+      'OcuPilot.Screen.Descriptor.TaskDetails',
       'OcuPilot.Screen.Descriptor.TaskHistoryList',
       'OcuPilot.Screen.Descriptor.TaskRunList',
       'OcuPilot.Screen.Descriptor.TaskUpcomingList',

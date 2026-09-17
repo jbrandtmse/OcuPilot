@@ -472,8 +472,11 @@ export function sideBarPositionProblem(declaration) {
  *
  * The rules `OcuPilot.Screen.Registry.ReadProblem` applies on the instance: an absent or `null`
  * read is a screen with no read; otherwise `source` is `{port, endpoint, type}`, `type` one of
- * `READ_SOURCE_TYPES`. `GET`, `UPCOMING` and `HISTORY` are admin only and declare no `rowGet` or `forEach`, and
- * an optional `query` fixes parameters (`sourceQueryProblem`). The source is one of three kinds:
+ * `READ_SOURCE_TYPES`. `GET`, `UPCOMING` and `HISTORY` are admin only and declare no `forEach`;
+ * `UPCOMING` and `HISTORY` also declare no `rowGet`, and so does `GET` unless `parentScope` names
+ * the route its one route-id criterion is fetched under, in which case it may pair one `rowGet`
+ * keyed by that criterion's own param (Story 6.7). An optional `query` fixes parameters
+ * (`sourceQueryProblem`). The source is one of three kinds:
  * `admin`, an instance endpoint reached through the port, with a dotted
  * endpoint name and an optional `rowGet` (`rowGetProblem`); `mgmnt`, the management API reached
  * through its own port, which declares no `rowGet`; or `state`, one of OcuPilot's own kernel stores
@@ -526,19 +529,23 @@ export function readProblem(declaration) {
     return `read.source.type '${shown(source.type)}' is not 'LIST', 'GET', 'UPCOMING' or 'HISTORY'`;
   }
   // A GET source reads one named object of an admin endpoint as the read's one row (AD-36), so it
-  // has no row list to issue a detail call for, no parents to list and no server search.
+  // lists no parents. It may take its one criterion from the route id, and pair a rowGet keyed by
+  // that criterion's own param, only when parentScope names the route it is fetched under (Story
+  // 6.7); every other GET refuses both, having no row list to issue a detail call for and no
+  // server search of its own.
   if (source.type === 'GET') {
     if (source.port !== SOURCE_ADMIN) {
       return `read.source.type 'GET' is declared on a '${source.port}' source, and a single-object read issues an admin endpoint's GET (AD-36)`;
     }
-    if (isObject(source.rowGet)) {
-      return 'read.source.rowGet is declared on a GET source, which reads one object and has no rows to issue a detail call for (AD-36)';
-    }
     if (isObject(source.forEach)) {
       return 'read.source.forEach is declared on a GET source, which reads one object and lists no parents (AD-36)';
     }
-    if (isObject(read.criteria)) {
-      return 'read.criteria is declared on a GET source, whose one object takes no server search (AD-36)';
+    const getParented = typeof declaration.parentScope === 'string' && declaration.parentScope !== '';
+    if (isObject(read.criteria) && !getParented) {
+      return "read.criteria is declared on a GET source with no parentScope, and a single-object read takes its one criterion from the route id only when parent-scoped (AD-36, Story 6.7)";
+    }
+    if (!isObject(read.criteria) && isObject(source.rowGet)) {
+      return "read.source.rowGet is declared on a GET source with no read.criteria, and a single-object read issues a detail call only alongside its one parent-scoped route-id criterion (AD-36, Story 6.7)";
     }
   }
   // An UPCOMING source lists an admin endpoint's scheduled occurrences (AD-36): a row is an
@@ -599,7 +606,17 @@ export function readProblem(declaration) {
   const fieldsFault = nameListProblem('read.fields', read.fields);
   if (fieldsFault !== null) return fieldsFault;
   if (read.fields.length === 0) return 'read.fields is empty, and a read projects at least one field';
-  const rowGetFault = rowGetProblem(source, read.fields);
+  // Story 6.7: a parent-scoped GET's rowGet.key names the read's one route-id criterion rather
+  // than a read.fields entry. The allowed set is that one param exactly when the criteria block is
+  // sound enough to name it; a malformed block leaves this empty, and rowGetProblem falls back to
+  // checking key against read.fields, which still refuses -- criteriaProblem is what names the
+  // malformed block itself.
+  let rowGetKeyAllowed = [];
+  if (source.type === 'GET' && isObject(read.criteria) && Array.isArray(read.criteria.fields) && read.criteria.fields.length === 1) {
+    const first = read.criteria.fields[0];
+    if (isObject(first) && typeof first.param === 'string') rowGetKeyAllowed = [first.param];
+  }
+  const rowGetFault = rowGetProblem(source, read.fields, rowGetKeyAllowed);
   if (rowGetFault !== null) return rowGetFault;
   const forEachFault = forEachProblem(read, source, read.fields);
   if (forEachFault !== null) return forEachFault;
@@ -788,8 +805,9 @@ export const CRITERIA_RESERVED_PARAMS = ['maxRows', 'filter', 'sort', 'direction
  * `CRITERION_KINDS`, plus `options` -- a non-empty array of unique non-empty strings -- exactly
  * when `kind` is `choice`; `marker`, when declared, carries only `param` (one of the declared
  * criteria), a non-empty `value` and a non-empty `labelKey`; a declaration with a non-empty
- * `parentScope` and a read declares exactly one criterion (AD-5); and a criteria-bearing declaration
- * does not declare `refreshes` (AD-43). `OcuPilot.Test.CriteriaCorpus` is the corpus both engines
+ * `parentScope` and a read declares exactly one criterion (AD-5), which may auto-refresh in place
+ * since it takes its one value from the route rather than from a search the user ran (Story 6.7);
+ * any other criteria-bearing declaration does not declare `refreshes` (AD-43). `OcuPilot.Test.CriteriaCorpus` is the corpus both engines
  * run.
  *
  * The roster is the allow-list a route and a read tool are both filtered through, which is why a
@@ -820,8 +838,11 @@ export function criteriaProblem(declaration) {
   if (markerFault !== null) return markerFault;
   if (parented && params.length !== 1) return parentCriteriaProblem(declaration);
 
-  // The last arm, so no earlier refusal changes which sentence a declaration gets.
-  if (declaration.refreshes === true) {
+  // The last arm, so no earlier refusal changes which sentence a declaration gets. A
+  // parent-scoped screen's only criterion is the route id rather than a server search -- already
+  // confirmed above, since `parented` reaching here means exactly one criterion -- so it may
+  // refresh in place (Story 6.7).
+  if (declaration.refreshes === true && !parented) {
     return (
       'refreshes is declared with read.criteria, and a screen that searches on the server renders ' +
       'nothing until Search and does not auto-refresh (AD-43)'
@@ -1262,16 +1283,20 @@ function isObject(value) {
 
 /**
  * What is wrong with `source.rowGet`, or `null` (AD-36). `fields` is the read's declared fields.
+ * `keyAllowed` is non-empty only for a parent-scoped GET's route-id criterion (Story 6.7): when it
+ * is, `key` must equal that one param instead of naming one of `fields`, because the GET's own
+ * answer carries no such property for a per-row detail call to key off.
  *
  * An absent or `null` `rowGet` declares no detail call. Otherwise it is an object carrying only
- * `key` (one of `fields`), `param` (a query parameter name), an optional `type` (one of
+ * `key` (one of `fields`, or `keyAllowed` where that is non-empty), `param` (a query parameter
+ * name), an optional `type` (one of
  * `ROW_GET_TYPES`, spelled exactly; absent means `GET`), `fields` (a non-empty array of unique
  * names from `fields`, without `key`) and `derived`, an array of objects carrying only `field` (one
  * of `fields`, neither `key` nor a detail field, and not repeated), `rule` (one of `ROW_GET_RULES`)
  * and `from` (one of the detail fields). `OcuPilot.Screen.Registry.RowGetProblem` returns the same
  * sentence for every case in `OcuPilot.Test.RowGetCorpus`.
  */
-export function rowGetProblem(source, fields) {
+export function rowGetProblem(source, fields, keyAllowed = []) {
   const where = 'read.source.rowGet';
   const { rowGet } = source;
   if (rowGet === undefined || rowGet === null) return null;
@@ -1280,7 +1305,13 @@ export function rowGetProblem(source, fields) {
   if (keysFault !== null) return keysFault;
 
   if (typeof rowGet.key !== 'string') return `${where}.key is not a string`;
-  if (!fields.includes(rowGet.key)) return `${where}.key '${rowGet.key}' is not one of read.fields`;
+  if (keyAllowed.length > 0) {
+    if (!keyAllowed.includes(rowGet.key)) {
+      return `${where}.key '${rowGet.key}' must equal the read's one route-id criterion param (AD-36, Story 6.7)`;
+    }
+  } else if (!fields.includes(rowGet.key)) {
+    return `${where}.key '${rowGet.key}' is not one of read.fields`;
+  }
   if (typeof rowGet.param !== 'string') return `${where}.param is not a string`;
   if (!PARAM_RE.test(rowGet.param)) return `${where}.param '${rowGet.param}' is not a query parameter name`;
   if (Object.hasOwn(rowGet, 'type') && (typeof rowGet.type !== 'string' || !ROW_GET_TYPES.includes(rowGet.type))) {

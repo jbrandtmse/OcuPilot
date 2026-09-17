@@ -724,6 +724,82 @@ export const STRINGS = {
   taskRunsLabel: 'History',
   /** EXPERIENCE.md:360 */
   taskRunsEmpty: 'This task has no recorded runs.',
+  /** EXPERIENCE.md:361 */
+  taskDetailsLabel: 'Task details',
+  /** EXPERIENCE.md:361 */
+  taskDetailsGone: 'This task no longer exists.',
+  /** EXPERIENCE.md:361 */
+  taskDetailsTaskClass: 'Task class',
+  /** EXPERIENCE.md:361 */
+  taskDetailsPriority: 'Priority',
+  /** EXPERIENCE.md:361 */
+  taskDetailsRunAs: 'Run as',
+  /** EXPERIENCE.md:361 */
+  taskDetailsLastError: 'Last error',
+  /** EXPERIENCE.md:361 */
+  taskDetailsSchedule: 'Schedule',
+  /** EXPERIENCE.md:361 */
+  taskDetailsHowOften: 'How often',
+  /** EXPERIENCE.md:361 */
+  taskDetailsTimeOfDay: 'Time of day',
+  /** EXPERIENCE.md:361 */
+  taskDetailsNextSuspended: 'Not scheduled while suspended',
+  /** EXPERIENCE.md:361 */
+  taskDetailsEdit: 'Edit task',
+  /** EXPERIENCE.md:361 */
+  taskScheduleEveryDay: 'Every day',
+  /** EXPERIENCE.md:361 */
+  taskScheduleEveryNDays: 'Every {n} days',
+  /** EXPERIENCE.md:361 */
+  taskScheduleWeekly: 'Every week on {days}',
+  /** EXPERIENCE.md:361 */
+  taskScheduleWeeklyEveryN: 'Every {n} weeks on {days}',
+  /** EXPERIENCE.md:361 */
+  taskScheduleMonthlyDay: 'Every month on day {d}',
+  /** EXPERIENCE.md:361 */
+  taskScheduleMonthlyDayEveryN: 'Every {n} months on day {d}',
+  /** EXPERIENCE.md:361 */
+  taskScheduleMonthlySpecial: 'Every month on the {ordinal} {weekday}',
+  /** EXPERIENCE.md:361 */
+  taskScheduleMonthlySpecialEveryN: 'Every {n} months on the {ordinal} {weekday}',
+  /** EXPERIENCE.md:361 */
+  taskScheduleRunAfter: 'After another task completes',
+  /** EXPERIENCE.md:361 */
+  taskScheduleOnDemand: 'On demand only',
+  /** EXPERIENCE.md:361 */
+  taskScheduleOnceAt: 'Once at {time}',
+  /** EXPERIENCE.md:361 */
+  taskScheduleEveryMinute: 'Every minute between {start} and {end}',
+  /** EXPERIENCE.md:361 */
+  taskScheduleEveryNMinutes: 'Every {n} minutes between {start} and {end}',
+  /** EXPERIENCE.md:361 */
+  taskScheduleEveryHour: 'Every hour between {start} and {end}',
+  /** EXPERIENCE.md:361 */
+  taskScheduleEveryNHours: 'Every {n} hours between {start} and {end}',
+  /** EXPERIENCE.md:361 */
+  weekdaySunday: 'Sunday',
+  /** EXPERIENCE.md:361 */
+  weekdayMonday: 'Monday',
+  /** EXPERIENCE.md:361 */
+  weekdayTuesday: 'Tuesday',
+  /** EXPERIENCE.md:361 */
+  weekdayWednesday: 'Wednesday',
+  /** EXPERIENCE.md:361 */
+  weekdayThursday: 'Thursday',
+  /** EXPERIENCE.md:361 */
+  weekdayFriday: 'Friday',
+  /** EXPERIENCE.md:361 */
+  weekdaySaturday: 'Saturday',
+  /** EXPERIENCE.md:361 */
+  ordinalFirst: 'first',
+  /** EXPERIENCE.md:361 */
+  ordinalSecond: 'second',
+  /** EXPERIENCE.md:361 */
+  ordinalThird: 'third',
+  /** EXPERIENCE.md:361 */
+  ordinalFourth: 'fourth',
+  /** EXPERIENCE.md:361 */
+  ordinalFifth: 'fifth',
 
   // Not from the Fixed strings table, but required verbatim by this story's task
   // list: the audit-marker-failure fallback text (AD-15 / EXPERIENCE.md "9. **Audit.** Every confirmed"), the
