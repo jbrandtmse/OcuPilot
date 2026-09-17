@@ -3780,7 +3780,7 @@ So that I can see load without leaving for the classic portal.
 
 - **Given** the CPU, memory and performance meters
 - **When** they render
-- **Then** their names and thresholds come from `%CSP.UI.Portal.EnsembleMonitor`'s 25 meter definitions, already readable in `irislib/` - **not** from the classic `UtilSysMonitor` page, whose source is unrecoverable and is not needed.
+- **Then** their names and values come from the admin API's `Monitor` answers (`SYSTEMUSAGE`, `SYSTEMUSAGESHM`, `DASHBOARDMAIN`) through `AdminPort`: global references per second and cache efficiency, shared memory used as a percentage of allocated, and the database space, journal space, lock table and write daemon status meters in the vendor's own words; CPU belongs to FR-76's full System Dashboard - **not** the classic `UtilSysMonitor` page, whose source is unrecoverable and is not needed. [AMENDED 2026-09-17, Story 6.9 spec gate (orchestrator-approved): `%CSP.UI.Portal.EnsembleMonitor` is the Interoperability production monitor, with 28 meters, none of them CPU, memory or performance, and no thresholds; was "their names and thresholds come from `%CSP.UI.Portal.EnsembleMonitor`'s 25 meter definitions, already readable in `irislib/`"]
 
 - **Given** a meter
 - **When** it renders

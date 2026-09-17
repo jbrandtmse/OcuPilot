@@ -2,7 +2,7 @@
 title: 'System usage and the dashboard meters'
 type: 'feature'
 created: '2026-09-17'
-status: 'blocked'
+status: 'draft'
 baseline_revision: 'ab754db8824ec1d51a110dbc678b10ec7b92b0ee'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -116,6 +116,8 @@ Provisional. Re-derived once the lead decides Q1-Q4.
 - Integration: given `osmgmt.systemusage.read` in process, when called, then it answers the row the route answers over the declared fields. 6.11 is the meter's second consumer.
 
 ## Spec Change Log
+
+- 2026-09-17 (spec gate, orchestrator answers): Q1 (a) meter names and values from the admin `Monitor` answers through `AdminPort`, CPU to FR-76, epics.md 6.9 AC2 and prd.md FR-56 amended; Q2 (a) status meters take the vendor's word, percentage meters 85/95 labeled in DESIGN.md as borrowed from the vendor lock-table cut-off; Q3 accepted (Normal/Warning/Troubled, `success` fill, "—" with a skeleton; DESIGN.md and EXPERIENCE.md amended); Q4 accepted (AD-36 `parts`, at most 3, merged into one bounded row; `AdminPort` maps unprefixed request types). Status reset to `draft` for re-plan.
 
 ## Review Triage Log
 

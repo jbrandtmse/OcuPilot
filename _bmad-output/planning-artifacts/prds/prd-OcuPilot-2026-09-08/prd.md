@@ -812,7 +812,7 @@ A user can view system usage counters and shared memory, and the CPU, memory and
 **Consequences (testable):**
 
 - Counters cover global references, routine calls, block reads and writes and journal entries.
-- Meter names and thresholds come from `%CSP.UI.Portal.EnsembleMonitor`, a readable Zen class already in the reference export, which defines the twenty-five dashboard meters and their thresholds. The classic `UtilSysMonitor` page source is not available and is not needed (Open Question 7).
+- Meter names and values come from the admin API's `Monitor` system-usage and dashboard answers: performance (global references per second, cache efficiency), shared memory as a percentage of allocated, and the database space, journal space, lock table and write daemon status in the vendor's own words. CPU is FR-76's. The classic `UtilSysMonitor` page source is not available and is not needed (Open Question 7). [AMENDED 2026-09-17, Story 6.9: `%CSP.UI.Portal.EnsembleMonitor` is the Interoperability production monitor and defines neither these meters nor thresholds]
 
 #### FR-57: Locks view and removal
 

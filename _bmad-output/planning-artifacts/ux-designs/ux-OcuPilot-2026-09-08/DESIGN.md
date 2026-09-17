@@ -631,7 +631,7 @@ components:
     height: 6px
     radius: '{rounded.full}'
     track: '{colors.surface-container-high}'
-    fill: '{colors.secondary}'
+    fill: '{colors.success}'
     fill-warning: '{colors.warning}'
     fill-error: '{colors.error}'
     value-typography: '{typography.code}'
@@ -961,7 +961,7 @@ Every component below is either a Material 3 component with OcuPilot's tokens ap
 | `[ASSUMPTION]` | `{spacing.log-row-height}` · §Layout & Spacing › Scale · `log-viewer` | Confirm 28px log rows against a real tail. |
 | `[ASSUMPTION]` | `{spacing.content-min-width}` | Confirm 640px as the width below which the content scrolls horizontally. |
 | `[ASSUMPTION]` | §Layout & Spacing › Content column · `form-page` | Confirm the 720px form and 480px field widths; the sticky action bar itself is decided. |
-| `[ASSUMPTION]` | `meter` | Confirm the 80% warning and 95% error thresholds; the behavior is decided. |
+| `[ASSUMPTION]` | `meter` | A percentage meter's 85% warning and 95% error are borrowed from the vendor's lock-table cut-off (`SYS.Stats.Dashboard.cls:92`), not a vendor threshold for memory; the behavior is decided. |
 | `[NOTE FOR ARCHITECTURE]` | `form-page` › Form login | **Release-blocking.** The installer must unexpire `_SYSTEM`'s password, or the first screen a judge meets is the expired-password variant. |
 | `[NOTE FOR ARCHITECTURE]` | `empty-state` | **Release-blocking.** The installer must seed a demo SSL/TLS configuration, a self-signed X.509 credential and `/csp/myapp`, or the README walkthrough has no data to show. |
 | `[NOTE FOR ARCHITECTURE]` | `panel` › Auditing off | **Release-blocking.** The installer must enable auditing and register OcuPilot's events, or the warning banner is the panel's first words on every screenshot. |
@@ -1085,7 +1085,7 @@ For messages.log, alerts.log, the tail views and the parsed audit list. A sticky
 
 #### `meter`
 
-For CPU, memory, disk, database free space and license usage: a 6px `{rounded.full}` track in `{colors.surface-container-high}` with a `{colors.secondary}` fill, the value in `{typography.code}` right of the track and the label in `{typography.caption}` above. The fill turns `{colors.warning}` at 80% and `{colors.error}` at 95% **[ASSUMPTION]** (the thresholds, not the behavior), and the value text takes the same color so the meaning survives without the bar. Values still arriving (asynchronous free-space calls) show a `skeleton` bar in place of the fill and "…" as the value.
+For memory, disk, database free space and license usage: a 6px `{rounded.full}` track in `{colors.surface-container-high}` with a `{colors.success}` fill, the value in `{typography.code}` right of the track and the label in `{typography.caption}` above. A percentage meter's fill turns `{colors.warning}` at 85% and `{colors.error}` at 95% **[ASSUMPTION]** (borrowed from the vendor's lock-table cut-off, `SYS.Stats.Dashboard.cls:92`; the thresholds, not the behavior); a status meter takes the dashboard's own word (Normal, Warning, Troubled) as its state. The value text takes the same color so the meaning survives without the bar. Values still arriving (asynchronous free-space calls) show a `skeleton` bar in place of the fill and "—" as the value. [AMENDED 2026-09-17, Story 6.9: fill `success`, thresholds 85/95 with their source, dashboard state words, "—" while pending]
 
 #### `empty-state`
 
