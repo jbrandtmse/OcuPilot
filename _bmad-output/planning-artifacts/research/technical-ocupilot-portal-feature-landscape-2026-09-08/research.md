@@ -52,7 +52,7 @@ sources: 46
 > - All the logs - what's being reported to the user from various sub-systems
 > - Feel free to add any other screens or actions you frequently use!
 
-The Open Exchange (OE) page carries the shorter form "for certain Management Portal tasks" [1]. Whether an entry covering only some of the six areas is accepted is not stated; approval is at the experts' discretion "based on the criteria of complexity and usefulness", final and not subject to appeal [2].
+The Open Exchange (OE) page carries the shorter form "for certain Management Portal tasks" [1]. The 2026-09-14 kick-off webinar stated the six areas as the minimum requirement for an entry (owner's report, recorded 2026-09-16); approval remains at the experts' discretion "based on the criteria of complexity and usefulness", final and not subject to appeal [2].
 
 **Timeline** (verified: two InterSystems sources for every dated row except the webinar; both pages write the timezone as "EST") [1][2][4]:
 
@@ -472,7 +472,7 @@ Each recommendation names the artifact it feeds and the basis for its confidence
 | Question | What it would take |
 | --- | --- |
 | What technology bonuses apply to this contest, and are AI or Angular among them? | Re-run D1 after the 2026-09-14 kick-off; the contest page promises an announcement [1] |
-| Is an entry covering only some of the six areas accepted? | Ask in the announcement comments or the contest Discord channel; approval is discretionary [2] |
+| Is an entry covering only some of the six areas accepted? | No - the 2026-09-14 kick-off stated the six areas as the minimum (owner's report); approval remains discretionary [2] |
 | Will InterSystems keep Group by ID and the browser-id cookie across releases? | Ask at the kick-off; the JWT-only path needs neither, so the exposure is one extra login for portal-first users [46] |
 | Will `/api/admin` survive releases unchanged, and what is InterSystems' support stance? | Answered at the 2026-09-14 kick-off: v2 is the contest's intended API, experimental until its final form in IRIS 2027.1, with a published spec (`intersystems-community/sysadmin-api-specification`) that matches the 2026.2 instance path for path; keep the generated spec under test; pin v2 and check `apiVersion` [21] |
 | Build-time or start-time install with a durable `%SYS` volume? | Test the vendor template pattern against this repository's compose file with the data directory bind-mounted [29] |
