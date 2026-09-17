@@ -2,7 +2,7 @@
 title: 'Process details'
 type: 'feature'
 created: '2026-09-17'
-status: 'draft'
+status: 'ready-for-dev'
 baseline_revision: 'd1a3340cf5a197c9f215b02d26d835475f9e0260'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -71,43 +71,44 @@ Reads are `GET /api/ocupilot/screens/osmgmt.processdetails/read`. A stable pid: 
 
 - **Vendor** (`%Api.Admin.Endpoints.Process`, hidden; read on slot B, read-only):
   - `GET` takes query `id` (`ValidateQueryParams`). An unknown pid answers 404, so the source reads zero rows (`Read.cls` GET branch `:246-297`).
-  - `ObjToJson` answers the keys above. `LoginRoles`, `EscalatedRoles`, `Roles` and `OpenDevices` are arrays. `StartTimeUTC` is `YYYY-MM-DD HH:MM:SS`. It has no `ElapsedTime` and no SQL table or statement.
-  - It also runs `SYS.Process:VariableByPid` into `Variables` (vendor cap 1,000 rows, `ClassQuery.GetMaxRows`).
+  - `ObjToJson` answers the keys above. `LoginRoles`, `EscalatedRoles`, `Roles` and `OpenDevices` are arrays. `StartTimeUTC` is `YYYY-MM-DD HH:MM:SS`. It has no SQL table or statement; a process running SQL names its cached query in `Routine` (`%sqlcq.*` or `%SYS.sqlcq.*`).
+  - It also runs `SYS.Process:VariableByPid` into `Variables` (vendor cap 1,000 rows).
   - `ResourcesOR` is `%Admin_Operate`. `%SYS.ProcessQuery.AllowToOpen` (`irissys/%SYS/ProcessQuery.cls:423`) admits IRISSYS read. `VariableByPid` (`:1494`) requires `%Admin_Manage:USE` or IRISSYS write.
-- **Classic page** `irissys/%CSP/UI/Portal/ProcessDetails.cls`: `RESOURCE %Admin_Operate`, auto-refresh (`OnDrawRibbon :236`), and the "dashboard meters" are the `HTMLDashboardPane` value groups (`GetDetailPane :457-558`: General Information, Execution Details, Client Application Details). The "SQL table & statement info" toggle adds only `LastSQLReference` from `SYS.Metrics.GetSQLProcessMetrics`, a table name rather than a statement.
+- **Classic page** `irissys/%CSP/UI/Portal/ProcessDetails.cls`: `RESOURCE %Admin_Operate`, auto-refresh (`OnDrawRibbon :236`), value groups in `GetDetailPane :457-558` (General Information, Execution Details, Client Application Details).
 - **Precedents:**
-  - `Screen/Descriptor/TaskDetails.cls` (whole shape) and `ProcessList.cls` (pairs rationale, `:40-65`; its Pid-cell comment `:15-18` becomes stale).
-  - `Test/TaskDetails.cls` (matrix and integration tests). `Test/WireSecurityRead.cls:482-515` (`OPERATEUSER`, `PROCESSUSER` principals).
-- **Client:** `areas/tasks/details.page.ts` and `details.store.ts` (`TaskDetailsHighlights :183`, `changedFields :170`); `shell/screen-outlet.ts` `DESCRIPTOR_PAGES :75`; `core/navigation.ts` `detailScreenFor`/`parentListFor` (built in 6.7, unchanged); `core/table-model.ts` `cellView :71`; `shell/locator-bar.ts` (names a parent-scoped detail by its first `name` column: the pid).
-- **Rosters to extend** (6.7's list, same files): `Test/ReadTool.cls:94,100,263`, `Test/Wire.cls`, `Test/Descriptor.cls`, `Test/ScreenRead.cls`, `Install/Smoke.cls:62` (+ `Test/Smoke.cls`), `navigation.test.mjs`, `screen-mirror.test.mjs:603`, `navigation-wire.test.mjs` and `shell/rail-wire.spec.ts` `LIVE_PAYLOAD`s, `strings.test.mjs`, `classic-links.test.mjs` (count unchanged).
-- **UX:** EXPERIENCE.md `:92` (IA row), `:620` (auto-refresh roster), last Fixed strings row (after the Task details row).
+  - `src/OcuPilot/Screen/Descriptor/TaskDetails.cls` (whole shape); `ProcessList.cls` (pairs rationale `:40-65`; its Pid-cell sentence `:15-18` and the Story 6.8 sentence `:70` go stale).
+  - `src/OcuPilot/Test/TaskDetails.cls` (`TestTheDeclarationValidates… :92`, `TestTheDemoTaskReadsOverTheWire :141`, `TestAnUnknownIdReadsAsNoRows :184`, `TestNoIdIsRefused :195`, `TestAnOverLongIdIsRefused :209`, `TestTheReadToolAnswersTheSameRowAsTheRoute :220`).
+  - `src/OcuPilot/Test/WireSecurityRead.cls`: `AssertReadRefused` (asserts `:324-328`) (403 `AUTH.NOPRIVILEGE`, `detail.failedPair`), `TestTheProcessesListsPairSetIsEnforcedForARealPrincipal :493` (`OPERATEUSER` lacks `%Admin_Manage:USE`; `PROCESSUSER` holds all three).
+- **Client:**
+  - `ui/src/app/areas/tasks/details.page.ts` (`:23` import, `:139-153` highlights) and `details.store.ts` (`changedFields :170`, `TaskDetailsHighlights :183`); `ui/tools/details-store.test.mjs:118` pins the tracker.
+  - `ui/src/app/shell/screen-outlet.ts` `DESCRIPTOR_PAGES :78`; `core/navigation.ts` `detailScreenFor`/`parentListFor` (unchanged); `core/table-model.ts` `cellView`; `shell/locator-bar.ts` (names a parent-scoped detail by its first `name` column).
+  - `ui/src/app/areas/os-management/` does not exist yet (Processes renders through `ListPage`); this story creates it.
+  - `core/strings.ts`: reusable keys `tableStatusYes :307`, `tableStatusNo :309`, `taskHistoryColumnStarted :704`.
+- **Rosters to extend** (6.7's list): `Test/ReadTool.cls`, `Test/Wire.cls`, `Test/Descriptor.cls`, `Test/ScreenRead.cls`, `Install/Smoke.cls` (+ `Test/Smoke.cls`), `ui/tools/navigation.test.mjs`, `screen-mirror.test.mjs`, `navigation-wire.test.mjs` and `shell/rail-wire.spec.ts` `LIVE_PAYLOAD`s, `strings.test.mjs`, `classic-links.test.mjs` (count unchanged).
+- **UX:** EXPERIENCE.md `:92` (IA row) and `:620` (auto-refresh roster) already amended; Fixed strings table ends at `:361` (Task details row).
 - **Browser:** `ui/browser/processes.browser-spec.mjs` (`DAEMON_ROUTINE :51`, `readDaemonPid :88`).
 
 ## Tasks & Acceptance
 
 **Execution:**
 
-- [ ] `src/OcuPilot/Screen/Descriptor/ProcessDetails.cls` (new) -- the declaration above. The class doc gives the vendor semantics, the never-named fields and why, the pair set, and the route entity type. Refresh `ProcessList.cls`'s stale Pid-cell sentence.
-- [ ] `ui/src/app/core/detail-highlights.ts` (new), `areas/tasks/details.store.ts`, `details.page.ts` -- move the highlight tracker. Its tests move with it.
-- [ ] `ui/src/app/areas/os-management/process-details.store.ts`, `process-details.page.ts`, `process-details.page.spec.ts` (new), `shell/screen-outlet.ts` -- the page, the groups and the transaction words. Pin the store in `ui/tools/process-details-store.test.mjs`.
-- [ ] EXPERIENCE.md, `core/strings.ts`, `tools/strings.test.mjs`:
-  - Append one Fixed strings row: "Process details" · "This process no longer exists." · "General" · "Execution" · "Client application" · "Parent process ID" · "Login roles" · "Escalated roles" · "OS user" · "CPU time (ms)" · "Global references" · "Private global references" · "Private global blocks" · "Memory limit (KB)" · "Memory peak (KB)" · "Memory used (KB)" · "Current device" · "Open devices" · "In transaction" · "Source location" · "Location" · "Client name" · "Client executable" · "Client IP address".
-  - Reuse existing keys wherever the value already exists: Process ID, User, Namespace, Priority, Routine, State, Commands, and "Started" (`taskHistoryColumnStarted`) for `StartTimeUTC`.
-  - Amend `:92` and `:620` for auto-refresh, and regenerate the mirror.
-- [ ] `src/OcuPilot/Test/ProcessDetails.cls` (new; HTTP, `_SYSTEM`) -- validation with `AreaCoverageProblem` empty, and `RouteEntityType` answering `process`. Cover the matrix rows Live, Gone, No id and Bad id, plus the Integration AC.
-- [ ] `src/OcuPilot/Test/WireSecurityRead.cls` -- the Pairs row with the existing principals.
-- [ ] Code Map rosters:
-  - Smoke gains an `osmgmt.processdetails` read keyed by the first `osmgmt.processes` row's `Pid`, and passes on exactly one row whose `Pid` matches.
-  - `navigation.test.mjs` pins `detailScreenFor(processes)` = ProcessDetails.
-- [ ] `ui/browser/processes.browser-spec.mjs` -- the AC legs below, against the write daemon.
+- [ ] `src/OcuPilot/Screen/Descriptor/ProcessDetails.cls` (new) -- the declaration in Always. Class doc: vendor semantics, the never-named fields and why, the pair set, the route entity type. Replace `ProcessList.cls`'s stale Pid-cell and Story 6.8 sentences with the current fact.
+- [ ] `ui/src/app/core/detail-highlights.ts` (new), `areas/tasks/details.store.ts`, `details.page.ts`, `ui/tools/details-store.test.mjs` -> `ui/tools/detail-highlights.test.mjs` (new) -- move the tracker as `DetailHighlights` with its test and mutation note; behavior unchanged.
+- [ ] `ui/src/app/areas/os-management/process-details.store.ts`, `process-details.page.ts`, `process-details.page.spec.ts` (new), `ui/src/app/shell/screen-outlet.ts` -- the page, its group map (unnamed column falls to General) and the transaction words; register in `DESCRIPTOR_PAGES`. Pin the store in `ui/tools/process-details-store.test.mjs` (new).
+- [ ] EXPERIENCE.md (after `:361`), `ui/src/app/core/strings.ts`, `ui/tools/strings.test.mjs` -- append one Fixed strings row: "Process details" · "This process no longer exists." · "General" · "Execution" · "Client application" · "Parent process ID" · "Login roles" · "Escalated roles" · "OS user" · "CPU time (ms)" · "Global references" · "Private global references" · "Private global blocks" · "Memory limit (KB)" · "Memory peak (KB)" · "Memory used (KB)" · "Current device" · "Open devices" · "In transaction" · "Source location" · "Location" · "Client name" · "Client executable" · "Client IP address". Reuse existing keys for Process ID, User, Namespace, Priority, Routine, State, Commands, and "Started" for `StartTimeUTC`. Regenerate the mirror.
+- [ ] `src/OcuPilot/Test/ProcessDetails.cls` (new; HTTP, `_SYSTEM`) -- declaration validates with `AreaCoverageProblem` empty and `RouteEntityType` = `process`; matrix rows Live, Gone, No id, Bad id; the Integration AC.
+- [ ] `src/OcuPilot/Test/WireSecurityRead.cls` -- the Pairs row: `OPERATEUSER` refused on `osmgmt.processdetails` naming `%Admin_Manage:USE`; `PROCESSUSER` (exactly the three pairs) reads 200 with one row for the test's own `$J`, which is AD-29's real-principal confirmation.
+- [ ] Rosters -- extend each Code Map roster by the new descriptor. Smoke gains an `osmgmt.processdetails` read keyed by the first `osmgmt.processes` row's `Pid`, passing on exactly one row whose `Pid` matches. `navigation.test.mjs` pins `detailScreenFor(processes)` = ProcessDetails.
+- [ ] `ui/browser/processes.browser-spec.mjs` -- the browser legs of AC1-AC5 against the write daemon.
 
 **Acceptance Criteria:**
 
-- Given Processes on the throwaway, when the write daemon's Pid cell is activated, then the URL is `/ocupilot/os-management/processes/details/<pid>`, one `osmgmt.processdetails` read is issued, and the page shows the General, Execution and Client application groups with Process ID `<pid>`, Routine `WRTDMN`, and Open devices text.
-- Given a cold deep link to that route with the write daemon's pid (the route the Locks owner link will open, Story 6.10), when it loads, then that process is shown and the locator bar's screen segment links back to Processes.
-- Given the refresh chip at 5 s, when a tick fires, then the process is re-read with no skeleton and no announcement, and a changed field carries the highlight class (component spec with a fake tick; the browser leg asserts no skeleton after a tick).
-- Given a pid that has exited, when the route opens, then "This process no longer exists." shows and no refusal renders.
-- Given a principal lacking `%Admin_Manage:USE`, when it opens the deep link, then the denied view names that pair and no read is issued.
+- AC1: Given Processes on the throwaway, when the write daemon's Pid cell is activated, then the URL is `/ocupilot/os-management/processes/details/<pid>`, one `osmgmt.processdetails` read is issued, and the page shows the General, Execution and Client application groups with Process ID `<pid>`, Routine `WRTDMN`, and Open devices text.
+- AC1b: Given a read row whose `Routine` is `%sqlcq.HSCUSTOM.cls1` and `ClientExecutableName`/`ClientIPAddress` set (component spec), when the page renders, then the Execution group shows that routine verbatim and the Client application group shows both values.
+- AC2: Given a cold deep link to that route with the write daemon's pid (the route 6.10's owner link opens), when it loads, then that process is shown and the locator bar's screen segment links back to Processes.
+- AC3: Given the refresh chip at 5 s, when a tick fires, then the process is re-read with no skeleton and no announcement, and a changed field carries the highlight class (component spec with a fake tick; the browser leg asserts no skeleton after a tick).
+- AC4: Given a pid that has exited, when the route opens, then "This process no longer exists." shows and no refusal renders.
+- AC5: Given a principal lacking `%Admin_Manage:USE`, when it opens the deep link, then the denied view names that pair and no read is issued.
 - Integration: given the tool `osmgmt.processdetails.read` with the test's own `$J`, when called in process, then it answers the row the screen's read answers for the same pid over the declared fields, with no `Variables` key.
 
 ## Spec Change Log
@@ -120,54 +121,50 @@ Reads are `GET /api/ocupilot/screens/osmgmt.processdetails/read`. A stable pid: 
 
 **Governing ADs:**
 
-- AD-2, AD-26 and AD-27: a synchronous `Process` GET through `AdminPort` only.
-- AD-5, AD-8 and AD-29: the pair set is taken from the backing class's checks and confirmed with a real principal.
-- AD-11: every text value is untrusted.
-- AD-13, AD-14 (entity type `process`, scope `instance`), AD-19, AD-24, AD-35 and AD-36 (6.7's GET grammar, reused unchanged; no new shape).
+- AD-2, AD-26, AD-27: a synchronous `Process` GET through `AdminPort` only.
+- AD-5, AD-8, AD-29: pairs from the backing class's checks, confirmed by a real principal.
+- AD-11: every text value is untrusted. AD-24, AD-35, AD-48 (by analogy): the never-named fields.
+- AD-13, AD-14 (entity `process`, scope `instance`), AD-19, AD-36 (6.7's parent-scoped GET grammar, unchanged).
 - AD-37: an exited process reads as zero rows.
-- AD-43 (roster, below) and AD-44 (ProcessDetails, no link-out).
+- AD-43 (roster of seven, Process details included) and AD-44 (ProcessDetails key, no link-out).
 
-**Intent gap -- the SQL clause (blocking).** AC1 asks for "the current SQL statement where the instance makes it available".
+**Settled at the gate (2026-09-17, commit `581ddff4949732c6177fbb6f9891968525a0e137`):** the intent contract's "SQL clause … pending the lead" is adopted (AC1 amended, covered by AC1/AC1b through `Routine`); "AD-43's roster wording is the lead's" is done in the spine; the Always bullet on EXPERIENCE.md's auto-refresh bullet and IA row is already true, so no task edits `:92` or `:620`.
 
-- **Evidence:** no admin API endpoint carries statement text, and `Process` GET carries none (probed on slot B; the 70 `%Api.Admin.Endpoints.*` classes list none for SQL). The classic toggle shows only `LastSQLReference`, a table name from `SYS.Metrics`, which GET also lacks. Statement text lives in `INFORMATION_SCHEMA.CURRENT_STATEMENTS`, which no port reaches. Epics.md Story 19.10 (SQL activity, catalog OS-23) owns that screen.
-- **Readings with different outcomes:**
-  - (a) Show nothing for SQL on 2026.2. This is vacuous.
-  - (b) Add a statement source, which needs a new port or source kind (an AD-36 and paradigm amendment), a pair set to establish, and a decision on whether statement literals, which can hold patient data, enter context.
-  - (c) Show what GET does carry: a process running SQL names its cached query in `Routine` (`%sqlcq.*` or `%SYS.sqlcq.*`, observed), and the statement text is deferred to 19.10.
-- **Recommended amendment (c).** Epics.md 6.8 AC1: "…open devices, and whether the process is executing a cached SQL query, named by its routine; the statement text is Story 19.10's." This narrows an AC, so it is Rule 5 ask-first. The contract above is written to (c) and needs no other change.
+**Decisions:**
 
-**Decisions for the gate:**
+- **"Dashboard meters"** are the classic page's labeled value groups, no thresholds; 6.9 builds the meter component.
+- **Never-named fields.** `Variables` and `CSPSessionID` are excluded outright; `CurrentSrcLine` (source with literals) and `LastGlobalReference` (subscripts can hold patient identifiers) are omitted, since `secretFields` also strips the screen and no screen-only field grammar exists. `UserInfo`, `Roles`, `LicenseUserId` are not asked for.
+- **Id is `Pid`**, the list's own id; GET answers `Pid`, so `Read`'s seeding writes the same value.
+- **The highlight tracker moves to `core/`** so the OS management slice imports no Tasks file.
+- **Stable pids:** ObjectScript tests use their own `$J`; browser specs use the write daemon.
 
-- **AD-43 roster (Rule 20).** Recommend: "The set is seven: Processes, Process details, Databases, Database details, Task schedule, Task details, System usage", with EXPERIENCE.md `:620` and `:92` amended to match. Evidence the AC intends it: the classic page auto-refreshes (`OnDrawRibbon`), catalog OS-08 marks it, and `reconcile-catalog.md` G-13 records FR-7 omitting it as a low gap. Process metrics change with no write behind them.
-- **"Dashboard meters"** are the classic page's `HTMLDashboardPane` value groups, labeled values with no thresholds, so no meter component is built here. 6.9 builds the threshold meter from `EnsembleMonitor`. EXPERIENCE.md `:405` listing Process details as a meter consumer is then stale (inference that it meant these groups), and the lead may drop Process details there.
-- **Never-named fields (AD-24, AD-35, AD-11).** `Variables` and `CSPSessionID` are excluded outright. `CurrentSrcLine` (source text with literals) and `LastGlobalReference` (subscripts can hold patient identifiers on IRIS for Health) are omitted rather than shown. `secretFields` strips from the screen too, and no screen-only field grammar exists (AD-48's split is a port's, not a descriptor's). Neither is in the AC. `UserInfo`, `Roles` and `LicenseUserId` are omitted as not asked for.
-- **Id is `Pid`**, the list's own id. GET answers `Pid` itself, so `Read`'s seeding writes the same value.
-- **The highlight tracker moves to `core/`** so the OS management slice does not import the Tasks slice.
+**Ledger inbox:** `slice 6-8-process-details` is empty. DW-1001 and DW-1018 are not re-filed.
 
-**Ledger inbox:** `slice 6-8-process-details` is empty. DW-1001 (derived tool describes the required `pid` as optional) and DW-1018 are not re-filed.
+**Integration ACs:** the Integration AC, plus AC1 and AC2 through the page against the throwaway.
 
-**Integration ACs:** the Integration AC, plus AC1 and AC2 through the page. The Locks owner link is 6.10's; this story pins the route it will open.
+**Consumes:** `AdminPort` (2.1), `Screen.Read` with the GET route-id grammar and `detailScreenFor` (6.7), the refresh framework (1.14), `cellView` (2.4), the gate (1.9).
 
-**Consumes:** `AdminPort` (2.1), `Screen.Read` with the GET route-id grammar and `detailScreenFor` (6.7), the refresh framework (1.14), `cellView` (2.4), and the gate (1.9).
-
-**Consumed-by:** 6.10 (owner link opens this route), 7.8 and 5.12 (process actions and the terminate dialog, hosted here), 4.4 (screen context via `RouteEntityType`), and 19.10 (a statement link, if amended as recommended).
+**Consumed-by:** 6.10 (owner link opens this route), 7.8 and 5.12 (process actions and the terminate dialog, hosted here), 4.4 (screen context via `RouteEntityType`).
 
 ## Verification
+
+Stateful steps run on the slot B throwaway `ocupilot-b-ci` only; `ocupilot-slot-b` is compiled into and read, never changed otherwise.
 
 **Commands:**
 
 - `uv run scripts/check-objectscript.py` -- expected: 0 findings.
-- Load and compile `src/OcuPilot/` through the IRIS MCP tools with `server: "ocupilot-slot-b"`, namespace HSCUSTOM -- expected: a clean compile. Slot B is compiled into and read only.
-- `sh scripts/ci-throwaway.sh up --dir /tmp/ocupilot-b-ci --project ocupilot-b-ci --web 52777 --super 1976` -- expected: healthy. Every principal and every state-creating step lives on this slot B throwaway only. Teardown: `sh scripts/ci-throwaway.sh down --dir /tmp/ocupilot-b-ci --project ocupilot-b-ci`.
-- From `ui/`, run `node tools/ci-runner.mjs --container ocupilot-b-ci --class <Class>`, one class per call, for ProcessDetails, WireSecurityRead, Wire, ReadTool, ScreenRead, Descriptor and Smoke -- expected: green, totals confirmed from `%UnitTest_Result`.
-- `bash scripts/smoke.sh --container ocupilot-b-ci --user _SYSTEM --password SYS` -- expected: the processdetails check passes, with no failures.
-- `cd ui && npm run build && npm test` -- expected: green, and `screen-mirror --check` clean.
-- From `ui/`, `docker cp dist/ocupilot-ui/browser/. ocupilot-b-ci:/durable/iris/csp/ocupilot/`, then `OCUPILOT_BROWSER_ORIGIN=http://localhost:52777 OCUPILOT_BROWSER_CONTAINER=ocupilot-b-ci npm run test:browser` -- expected: `processes.browser-spec.mjs` and `tasks.browser-spec.mjs` green.
+- Load and compile `src/OcuPilot/` through the IRIS MCP tools with `server: "ocupilot-slot-b"`, namespace HSCUSTOM -- expected: clean compile.
+- `sh scripts/ci-throwaway.sh up --dir /tmp/ocupilot-b-ci --project ocupilot-b-ci --web 52777 --super 1976` -- expected: healthy. Teardown (only if this run's `up`): `sh scripts/ci-throwaway.sh down --dir /tmp/ocupilot-b-ci --project ocupilot-b-ci`.
+- From `ui/`: `node tools/ci-runner.mjs --container ocupilot-b-ci --class <Class>`, one class per call, for ProcessDetails, WireSecurityRead, Wire, ReadTool, ScreenRead, Descriptor, Smoke -- expected: green, totals confirmed from `%UnitTest_Result`.
+- `bash scripts/smoke.sh --container ocupilot-b-ci --user _SYSTEM --password SYS` -- expected: processdetails check passes, no failures.
+- `cd ui && npm run build && npm test` -- expected: green, `screen-mirror --check` clean.
+- From `ui/`: `docker cp dist/ocupilot-ui/browser/. ocupilot-b-ci:/durable/iris/csp/ocupilot/`, then `OCUPILOT_BROWSER_ORIGIN=http://localhost:52777 OCUPILOT_BROWSER_CONTAINER=ocupilot-b-ci npm run test:browser` -- expected: `processes.browser-spec.mjs` and `tasks.browser-spec.mjs` green.
 - `bash scripts/lint-docs.sh` -- expected: clean.
 
 **Mutations to record (Rule 19)**, each as `mutation: <change> -> <test red> (observed)`, tree byte-identical after:
 
 - AC1: `ProcessDetails` `parentScope` emptied (bundle rebuilt and redeployed).
+- AC1b: `Routine` dropped from the Execution group map.
 - AC2: route id not passed to `parentCriteria`.
 - AC3: the refresh binding omitted.
 - AC4: 404 mapped to a fault.
@@ -177,5 +174,5 @@ Reads are `GET /api/ocupilot/screens/osmgmt.processdetails/read`. A stable pid: 
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap -- Story 6.8 AC1's "the current SQL statement where the instance makes it available" cannot be met through the admin API (no endpoint or `Process` GET key carries statement text; statement text lives only in `INFORMATION_SCHEMA.CURRENT_STATEMENTS`, which no port reaches). Recommended amendment (Rule 5, ask-first, it narrows an AC): "...open devices, and whether the process is executing a cached SQL query, named by its routine; the statement text is Story 19.10's." The intent contract is already written to that amendment; on acceptance reset `status` to `draft` and re-dispatch. Alternatives and evidence under Design Notes.
+Status: ready-for-dev
+Blocking condition: none
