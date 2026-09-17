@@ -73,9 +73,9 @@ ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String)
 
 /// <p>The shipped dispatch, counting the calls it answers and arming the kill switch when
 /// <method>ForceKillSwitchAfterCalls</method>' count is reached.</p>
-ClassMethod DispatchTools(pKey As %String, pUser As %String, pDefinitionId As %String, pToolUses As %DynamicArray, pLimitsClass As %String, Output pResults As %DynamicArray, Output pNames As %DynamicArray) As %Status
+ClassMethod DispatchTools(pKey As %String, pUser As %String, pDefinitionId As %String, pToolUses As %DynamicArray, pLimitsClass As %String, Output pResults As %DynamicArray, Output pNames As %DynamicArray, pRowCap As %Integer = 0, pMaxLength As %Integer = 0) As %Status
 {
-    Set tSC = ##super(pKey, pUser, pDefinitionId, pToolUses, pLimitsClass, .pResults, .pNames)
+    Set tSC = ##super(pKey, pUser, pDefinitionId, pToolUses, pLimitsClass, .pResults, .pNames, pRowCap, pMaxLength)
     Set tAnswered = $Increment(^||OcuPilotTurnLoopProbe("answered"), pToolUses.%Size())
     Set tAfter = $Get(^||OcuPilotTurnLoopProbe("killAfter"))
     If (tAfter '= "") && (tAnswered >= $List(tAfter, 1)) Do ..ForceKillSwitch($List(tAfter, 2))

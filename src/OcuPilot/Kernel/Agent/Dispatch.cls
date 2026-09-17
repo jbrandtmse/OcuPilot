@@ -107,17 +107,22 @@ ClassMethod Advertise(Output pTools) As %Status
 /// <code>content</code>. <var>pNames</var> carries, in the same order, the canonical dotted name of
 /// each resolved tool, or the name the model sent for one that did not resolve.</p>
 /// <p>An error status means the dispatcher itself failed; every refusal is a result.</p>
-ClassMethod Answer(pKey As %String, pUser As %String, pDefinitionId As %String, pToolUses As %DynamicArray, pLimitsClass As %String, Output pResults As %DynamicArray, Output pNames As %DynamicArray) As %Status
+/// <p><var>pRowCap</var> and <var>pMaxLength</var> are optional overrides of the row cap and the
+/// per-call size budget (AD-24, DW-452): a value above zero is used in place of
+/// <var>pLimitsClass</var>'s own <code>TOOLROWS</code> / <code>TOOLRESULTMAXLENGTH</code>, so a
+/// caller resolving <code>Switch.ContextRowCap</code> or a shrinking per-reply budget can hand it
+/// down without every existing caller having to change.</p>
+ClassMethod Answer(pKey As %String, pUser As %String, pDefinitionId As %String, pToolUses As %DynamicArray, pLimitsClass As %String, Output pResults As %DynamicArray, Output pNames As %DynamicArray, pRowCap As %Integer = 0, pMaxLength As %Integer = 0) As %Status
 {
     Set tSC = $$$OK
     Set pResults = []
     Set pNames = []
     Try {
-        Set tRows = +$Parameter(pLimitsClass, "TOOLROWS")
-        Set tMaxLength = +$Parameter(pLimitsClass, "TOOLRESULTMAXLENGTH")
+        Set tRows = $Select(+pRowCap > 0: +pRowCap, 1: +$Parameter(pLimitsClass, "TOOLROWS"))
+        Set tMaxLength = $Select(+pMaxLength > 0: +pMaxLength, 1: +$Parameter(pLimitsClass, "TOOLRESULTMAXLENGTH"))
         Set tIterator = pToolUses.%GetIterator()
         While tIterator.%GetNext(.tIndex, .tBlock) {
-            Set tIsError = ..AnswerOne(pKey, pUser, pDefinitionId, tBlock, tRows, tMaxLength, .tName, .tContent)
+            Set tIsError = ..AnswerOne(pKey, pUser, pDefinitionId, tBlock, tRows, tMaxLength, pLimitsClass, .tName, .tContent)
             Set tResult = {}
             Do tResult.%Set("type", "tool_result", "string")
             Do tResult.%Set("tool_use_id", $Select($IsObject(tBlock) && (tBlock.%Get("id") '= ""): tBlock.%Get("id"), 1: "unknown"), "string")
@@ -134,8 +139,11 @@ ClassMethod Answer(pKey As %String, pUser As %String, pDefinitionId As %String, 
 
 /// <p>Answer one <code>tool_use</code> block in the order this class's header gives. Returns 1 when
 /// the answer is an error, with <var>pName</var> the tool's name and <var>pContent</var> the
-/// <code>tool_result</code> content.</p>
-ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %String, pBlock As %DynamicObject, pRows As %Integer, pMaxLength As %Integer, Output pName As %String, Output pContent As %String) As %Boolean [ Private ]
+/// <code>tool_result</code> content. <var>pLimitsClass</var> is the caller's configurable limits
+/// class -- the descriptor branch reads <code>FIELDMAXLENGTH</code> from it, the same way
+/// <method>Answer</method> reads <code>TOOLROWS</code>/<code>TOOLRESULTMAXLENGTH</code> from it,
+/// so a test overriding the limits class sees its override here too.</p>
+ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %String, pBlock As %DynamicObject, pRows As %Integer, pMaxLength As %Integer, pLimitsClass As %String, Output pName As %String, Output pContent As %String) As %Boolean [ Private ]
 {
     Set tUnavailable = ##class(OcuPilot.Api.Error).#TOOLUNAVAILABLE
     Set pName = ""
@@ -236,7 +244,19 @@ ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %Strin
             Do ..LogFault("turn " _ pKey _ ": " _ pName _ " answered no result", $$$ERROR($$$GeneralError, "no result object"), tUnavailable)
             Quit
         }
-        If '..Capped(tResult, pRows, pMaxLength, .tJson) {
+        ; A descriptor-derived read tool's result (AD-36) is bounded through the kernel cutter
+        ; shared with screen context (AD-24, DW-281): the per-field cut and the richer report. A
+        ; tool with a class of its own -- including every fixture in this suite -- has no
+        ; descriptor and no per-field bound to apply, so it keeps the plain row-and-size cut
+        ; unchanged, byte for byte.
+        If tTool.%Get("descriptor") '= "" {
+            Do ##class(OcuPilot.Screen.Tool.Registry).FieldMaxLengths(tTool, .tFieldMax)
+            Set tDefaultFieldMax = +$Parameter(pLimitsClass, "FIELDMAXLENGTH")
+            If '##class(OcuPilot.Kernel.Agent.Bound).Apply(tResult, pRows, .tFieldMax, tDefaultFieldMax, pMaxLength, .tJson) {
+                Set pContent = ..ErrorContent(##class(OcuPilot.Api.Error).#TOOLRESULTTOOLARGE)
+                Quit
+            }
+        } ElseIf '..Capped(tResult, pRows, pMaxLength, .tJson) {
             Set pContent = ..ErrorContent(##class(OcuPilot.Api.Error).#TOOLRESULTTOOLARGE)
             Quit
         }

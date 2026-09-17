@@ -54,7 +54,7 @@ Parameter RELEASEVERB = "release";
 /// changes no restraint.</p>
 ClassMethod Fields() As %List
 {
-    Quit $ListBuild($ListBuild("killSwitch", "KillSwitch", "boolean", 1), $ListBuild("killSwitchReason", "KillSwitchReason", "string", 0), $ListBuild("enforcedReadOnly", "EnforcedReadOnly", "boolean", 1), $ListBuild("shareContextByDefault", "ShareContextByDefault", "boolean", 1))
+    Quit $ListBuild($ListBuild("killSwitch", "KillSwitch", "boolean", 1), $ListBuild("killSwitchReason", "KillSwitchReason", "string", 0), $ListBuild("enforcedReadOnly", "EnforcedReadOnly", "boolean", 1), $ListBuild("shareContextByDefault", "ShareContextByDefault", "boolean", 1), $ListBuild("contextRowCap", "ContextRowCap", "integer", 1))
 }
 
 /// <p>The wire names of the switch fields whose change is a security change, derived from
@@ -314,6 +314,8 @@ ClassMethod Projection(ByRef pValues, pHolds As %DynamicArray) As %DynamicObject
         Set tValue = $Get(pValues(tField))
         If $List(tEntry, 3) = "boolean" {
             Do tOut.%Set(tField, $Select(+tValue: 1, 1: 0), "boolean")
+        } ElseIf $List(tEntry, 3) = "integer" {
+            Do tOut.%Set(tField, +tValue, "number")
         } Else {
             Do tOut.%Set(tField, tValue, "string")
         }
@@ -391,6 +393,14 @@ ClassMethod MergeBody(pBody As %DynamicObject, ByRef pValues)
         If ($List(tEntry, 3) = "string") && (tType '= "string") Continue
         Set tValue = pBody.%Get(tField)
         If $List(tEntry, 3) = "boolean" Set tValue = $Select(+tValue: 1, 1: 0)
+        ; A JSON boolean reads back through %Get() as the ObjectScript value 1 or 0,
+        ; indistinguishable from the JSON numbers 1 and 0 by the time
+        ; OcuPilot.Kernel.SwitchRules.ValidateSwitches's regex sees it -- so on its own it would
+        ; pass as a plausible row cap instead of being refused as the wrongly-typed value it is.
+        ; Forcing it to "" here funnels it into ValidateSwitches's existing empty-value refusal
+        ; instead, the same 422 a malformed string already gets, rather than this method silently
+        ; keeping the stored value under a type check of its own.
+        If ($List(tEntry, 3) = "integer") && (tType = "boolean") Set tValue = ""
         Set pValues(tField) = tValue
     }
 }

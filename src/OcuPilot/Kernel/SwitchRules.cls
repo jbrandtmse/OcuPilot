@@ -33,12 +33,24 @@ Parameter MAXUSERNAMELENGTH As %Integer = 160;
 /// limit rather than the banner's: a reason longer than <parameter>MAXREASONLENGTH</parameter>
 /// fails <method>%Save</method> on the datatype, so a rule that skipped it while the switch was off
 /// would answer 500 where every other bad field on this surface answers 422.</p>
+/// <p><b>The row cap must be a whole number from 1 to 1,000</b> (Story 4.4, AD-24): the bound a
+/// turn's screen context and every read tool result are cut to. A value of the wrong JSON type --
+/// <method>OcuPilot.Api.Switches.MergeBody</method> lets an integer field's raw value through for
+/// most JSON types, unlike a boolean or a string field, precisely so this rule can refuse it on
+/// the field rather than silently keeping the stored value (a JSON boolean is the one type
+/// <code>MergeBody</code> excludes itself, since it would otherwise read back as a plausible 1 or
+/// 0 before this rule ever saw it) -- fails the same
+/// whole-number match a string outside the range does.</p>
 ClassMethod ValidateSwitches(ByRef pValues, Output pViolations) As %Integer
 {
     Kill pViolations
     Set tReason = $Get(pValues("killSwitchReason"))
     If (''+$Get(pValues("killSwitch")) && ($ZStrip(tReason, "<>W") = "")) || ($Length(tReason) > ..#MAXREASONLENGTH) {
         Do ..Add(.pViolations, "killSwitchReason", ##class(OcuPilot.Api.Error).#AGENTSWITCHREASONREQUIRED)
+    }
+    Set tRowCap = $Get(pValues("contextRowCap"))
+    If (tRowCap = "") || '$Match(tRowCap, "^[0-9]+$") || (+tRowCap < 1) || (+tRowCap > 1000) {
+        Do ..Add(.pViolations, "contextRowCap", ##class(OcuPilot.Api.Error).#AGENTSWITCHCONTEXTROWCAP)
     }
     Quit +$Get(pViolations)
 }

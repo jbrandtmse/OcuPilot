@@ -311,6 +311,41 @@ ClassMethod Dispatch(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt
     Set tAdapter = ""
 }
 
+/// <p>The provider and endpoint host of the enabled stored definition <var>pId</var> (Story 4.4's
+/// context status read shares this with <method>Invoke</method>'s own resolution): the row's
+/// <code>endpointUrl</code>, else the catalog row's <code>defaultEndpoint</code>, exactly as
+/// <method>Dispatch</method> resolves it -- <var>pProvider</var> the catalog key,
+/// <var>pHost</var> the resolved URL's authority (<method>OcuPilot.Kernel.Egress.HostOf</method>)
+/// and <var>pMarkedLocal</var> the definition's own flag. Answers 0, with every output
+/// <code>""</code>/0, for an id no row holds, a disabled definition, or a provider whose catalog
+/// row cannot be read.</p>
+ClassMethod ResolveEndpoint(pDefinitionId As %String, Output pProvider As %String, Output pHost As %String, Output pMarkedLocal As %Boolean) As %Boolean
+{
+    Set pProvider = ""
+    Set pHost = ""
+    Set pMarkedLocal = 0
+    Set tOk = 0
+    Try {
+        If pDefinitionId = "" Quit
+        Set tSC = ..ValuesFor(pDefinitionId, .tValues, .tFound)
+        If $$$ISERR(tSC) || 'tFound || '+$Get(tValues("enabled")) Quit
+        If '$ClassMethod(..CatalogClass(), "Row", $Get(tValues("provider")), .tRow) Quit
+        Set pProvider = $Get(tValues("provider"))
+        Set pMarkedLocal = ''$Get(tValues("markedLocal"))
+        Set tEndpoint = $Get(tValues("endpointUrl"))
+        If tEndpoint = "" Set tEndpoint = tRow.defaultEndpoint
+        If tEndpoint = "" Quit
+        Set pHost = ##class(OcuPilot.Kernel.Egress).HostOf(tEndpoint)
+        Set tOk = 1
+    } Catch ex {
+        Set pProvider = ""
+        Set pHost = ""
+        Set pMarkedLocal = 0
+        Set tOk = 0
+    }
+    Quit tOk
+}
+
 /// <p>The stored definition <var>pId</var> as the ByRef value array the adapter reads.
 /// <var>pFound</var> is 0 for an id no row holds -- an ordinary answer, never an error, so a
 /// deleted definition and a failed read stay distinguishable.</p>

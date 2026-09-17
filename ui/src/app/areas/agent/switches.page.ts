@@ -141,6 +141,30 @@ interface FieldView {
             <span>{{ STRINGS.agentSwitchesShareContext }}</span>
           </label>
         </div>
+
+        <div class="ocu-field">
+          <label class="ocu-field-label" [attr.for]="contextRowCapField.id">{{
+            STRINGS.agentSwitchesContextRowCap
+          }}</label>
+          <div class="ocu-field-control">
+            <input
+              class="ocu-field-input"
+              type="number"
+              min="1"
+              max="1000"
+              [id]="contextRowCapField.id"
+              [value]="contextRowCapValue"
+              [attr.aria-invalid]="contextRowCapField.invalid"
+              [attr.aria-describedby]="contextRowCapField.describedBy"
+              (input)="onText('contextRowCap', $event)"
+            />
+          </div>
+          @if (contextRowCapField.invalid) {
+            <p class="ocu-form-error" [id]="contextRowCapField.id + '-reason'">
+              {{ contextRowCapField.reason }}
+            </p>
+          }
+        </div>
       </div>
 
       <section class="ocu-switches-holds">
@@ -373,6 +397,15 @@ export class SwitchesPage {
   protected get reasonValue(): string {
     this.generation();
     return this.store.value('killSwitchReason');
+  }
+
+  protected get contextRowCapValue(): string {
+    this.generation();
+    return this.store.value('contextRowCap');
+  }
+
+  protected get contextRowCapField(): FieldView {
+    return this.field('contextRowCap');
   }
 
   protected get holdUserValue(): string {

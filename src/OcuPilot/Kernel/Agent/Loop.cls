@@ -59,9 +59,11 @@ ClassMethod Restraint(pUser As %String, Output pVerdict) As %Status
 /// name, both in the same order, from
 /// <method>DispatchClass</method>'s <code>Answer</code> for <var>pUser</var> under
 /// <var>pDefinitionId</var> and the caps <var>pLimitsClass</var> declares.</p>
-ClassMethod DispatchTools(pKey As %String, pUser As %String, pDefinitionId As %String, pToolUses As %DynamicArray, pLimitsClass As %String, Output pResults As %DynamicArray, Output pNames As %DynamicArray) As %Status
+/// <p><var>pRowCap</var> and <var>pMaxLength</var> are optional overrides
+/// (<method>OcuPilot.Kernel.Agent.Dispatch.Answer</method>'s own), passed through unchanged.</p>
+ClassMethod DispatchTools(pKey As %String, pUser As %String, pDefinitionId As %String, pToolUses As %DynamicArray, pLimitsClass As %String, Output pResults As %DynamicArray, Output pNames As %DynamicArray, pRowCap As %Integer = 0, pMaxLength As %Integer = 0) As %Status
 {
-    Quit $ClassMethod(..DispatchClass(), "Answer", pKey, pUser, pDefinitionId, pToolUses, pLimitsClass, .pResults, .pNames)
+    Quit $ClassMethod(..DispatchClass(), "Answer", pKey, pUser, pDefinitionId, pToolUses, pLimitsClass, .pResults, .pNames, pRowCap, pMaxLength)
 }
 
 /// <p>Run turn <var>pKey</var> for <var>pUser</var> under definition <var>pDefinitionId</var>,
@@ -72,7 +74,14 @@ ClassMethod DispatchTools(pKey As %String, pUser As %String, pDefinitionId As %S
 /// <p><var>pOutcome</var> comes back subscripted by <code>state</code>, <code>code</code>,
 /// <code>limit</code>, <code>reply</code> and <code>errorSeq</code>. An error status means the loop
 /// itself failed; the outcome then reads <code>failed</code>.</p>
-ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMessage As %String, pReadOnly As %Boolean, pResources As %String, pStartedSeconds As %Integer, Output pOutcome) As %Status
+/// <p><var>pContext</var> is the already-bounded screen-context payload JSON <method>OcuPilot.Screen.Context.Build</method>
+/// answered, or <code>""</code> for a turn with none; with one, the messages this turn opens with
+/// carry the synthetic <code>screen_context</code> tool call and result ahead of the caller's own
+/// message (AD-11 rule 1). <var>pContextRowCap</var> is the resolved row cap
+/// (<code>Switch.ContextRowCap</code>) every tool call in this turn is answered under (AD-24);
+/// <code>0</code> falls back to <var>pLimitsClass</var>'s own <code>TOOLROWS</code>. Both are
+/// optional and trailing so an existing caller with no context keeps calling this unchanged.</p>
+ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMessage As %String, pReadOnly As %Boolean, pResources As %String, pStartedSeconds As %Integer, Output pOutcome, pContext As %String = "", pContextRowCap As %Integer = 0) As %Status
 {
     Set tSC = $$$OK
     Kill pOutcome
@@ -86,9 +95,36 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
         Set tLimits = ..LimitsClass()
         Set tCap = ..IterationCap(pDefinitionId)
         Kill tMessages
-        Set tMessages = 1
-        Set tMessages(1, "role") = "user"
-        Set tMessages(1, "content") = pMessage
+        If pContext '= "" {
+            Set tMessages = 3
+            Set tMessages(1, "role") = "user"
+            Set tMessages(1, "content") = ##class(OcuPilot.Kernel.Agent.Prompt).ContextPreamble()
+            Set tUseBlocks = []
+            Set tUseBlock = {}
+            Do tUseBlock.%Set("type", "tool_use", "string")
+            Do tUseBlock.%Set("id", "ocupilot_screen_context", "string")
+            Do tUseBlock.%Set("name", "screen_context", "string")
+            Do tUseBlock.%Set("input", {})
+            Do tUseBlocks.%Push(tUseBlock)
+            Set tMessages(2, "role") = "assistant"
+            Set tMessages(2, "blocks") = tUseBlocks.%ToJSON()
+            Set tUserBlocks = []
+            Set tResultBlock = {}
+            Do tResultBlock.%Set("type", "tool_result", "string")
+            Do tResultBlock.%Set("tool_use_id", "ocupilot_screen_context", "string")
+            Do tResultBlock.%Set("content", pContext, "string")
+            Do tUserBlocks.%Push(tResultBlock)
+            Set tTextBlock = {}
+            Do tTextBlock.%Set("type", "text", "string")
+            Do tTextBlock.%Set("text", pMessage, "string")
+            Do tUserBlocks.%Push(tTextBlock)
+            Set tMessages(3, "role") = "user"
+            Set tMessages(3, "blocks") = tUserBlocks.%ToJSON()
+        } Else {
+            Set tMessages = 1
+            Set tMessages(1, "role") = "user"
+            Set tMessages(1, "content") = pMessage
+        }
         Set tIterations = 0
         Set tInput = 0
         Set tOutput = 0
@@ -135,7 +171,7 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
                 Set pOutcome("reply") = tResponse.Text
                 Quit
             }
-            Set tSC = ..AnswerTools(pKey, pUser, pDefinitionId, tResponse.Text, tToolUses, tLimits, .tMessages, tToolLog, .tLastSeq, pReadOnly, pResources, pStartedSeconds, tInput + tOutput, .tState, .tCode)
+            Set tSC = ..AnswerTools(pKey, pUser, pDefinitionId, tResponse.Text, tToolUses, tLimits, .tMessages, tToolLog, .tLastSeq, pReadOnly, pResources, pStartedSeconds, tInput + tOutput, .tState, .tCode, pContextRowCap)
             If $$$ISERR(tSC) Quit
             If tState '= "" {
                 Set pOutcome("state") = tState
@@ -289,7 +325,15 @@ ClassMethod ToolUses(pJson As %String) As %DynamicArray
 /// <method>Run</method> holds them. When it stops the turn, no later call runs and
 /// <var>pState</var> and <var>pCode</var> carry its answer; otherwise both are
 /// <code>""</code>.</p>
-ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %String, pText As %String, pToolUses As %DynamicArray, pLimitsClass As %String, ByRef pMessages, pToolLog As %DynamicArray, ByRef pLastSeq As %Integer, pReadOnly As %Boolean, pResources As %String, pStartedSeconds As %Integer, pTokens As %Integer, Output pState As %String, Output pCode As %String) As %Status
+/// <p><b>The reply budget</b> (DW-452): this reply's tool results share
+/// <parameter>OcuPilot.Kernel.Agent.Limits.TOOLRESULTMAXLENGTH</parameter> characters between
+/// them, starting fresh each call to this method. Each dispatched call's own size cap is what
+/// remains of the budget; once fewer than 256 characters remain, the next call is answered
+/// <code>TOOL.RESULTTOOLARGE</code> without being dispatched at all, and is still recorded as an
+/// error step. <var>pContextRowCap</var> is the row cap every dispatched call in this turn is
+/// answered under (<code>0</code> falls back to <var>pLimitsClass</var>'s own
+/// <code>TOOLROWS</code>).</p>
+ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %String, pText As %String, pToolUses As %DynamicArray, pLimitsClass As %String, ByRef pMessages, pToolLog As %DynamicArray, ByRef pLastSeq As %Integer, pReadOnly As %Boolean, pResources As %String, pStartedSeconds As %Integer, pTokens As %Integer, Output pState As %String, Output pCode As %String, pContextRowCap As %Integer = 0) As %Status
 {
     Set pState = ""
     Set pCode = ""
@@ -310,15 +354,42 @@ ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %Str
 
     Set tSC = $$$OK
     Set tAnswered = []
+    Set tBudget = +$Parameter(pLimitsClass, "TOOLRESULTMAXLENGTH")
     For tI = 0:1:pToolUses.%Size() - 1 {
         If ..Boundary(pKey, pUser, pReadOnly, pResources, pStartedSeconds, pTokens, .tStopState, .tStopCode) {
             Set pState = tStopState
             Set pCode = tStopCode
             Quit
         }
+        Set tBlock = pToolUses.%Get(tI)
+        If tBudget < 256 {
+            ; The remaining budget cannot answer even a minimal call: refused without dispatch,
+            ; and still recorded as an error step (DW-452).
+            Set tCode = ##class(OcuPilot.Api.Error).#TOOLRESULTTOOLARGE
+            Set tName = $Select($IsObject(tBlock): tBlock.%Get("name"), 1: "")
+            Kill tResolvedTool
+            Do $ClassMethod($ClassMethod(..DispatchClass(), "RegistryClass"), "ResolveWire", tName, .tResolvedTool)
+            If $IsObject(tResolvedTool) Set tName = tResolvedTool.%Get("name")
+            Set tResult = {}
+            Do tResult.%Set("type", "tool_result", "string")
+            Do tResult.%Set("tool_use_id", $Select($IsObject(tBlock) && (tBlock.%Get("id") '= ""): tBlock.%Get("id"), 1: "unknown"), "string")
+            Do tResult.%Set("is_error", 1, "boolean")
+            Set tContentObj = {}
+            Do tContentObj.%Set("code", tCode, "string")
+            Do tResult.%Set("content", tContentObj.%ToJSON(), "string")
+            Set tSC = ##class(OcuPilot.Kernel.State.Step).GuardedAppend(pKey, "tool", tName, "error", tCode, "", tCode, pLimitsClass, .tSeq)
+            If $$$ISERR(tSC) Quit
+            Set pLastSeq = tSeq
+            Set tEntry = {}
+            Do tEntry.%Set("name", tName, "string")
+            Do tEntry.%Set("code", tCode, "string")
+            Do pToolLog.%Push(tEntry)
+            Do tAnswered.%Push(tResult)
+            Continue
+        }
         Set tCall = []
-        Do tCall.%Push(pToolUses.%Get(tI))
-        Set tSC = ..DispatchTools(pKey, pUser, pDefinitionId, tCall, pLimitsClass, .tResults, .tNames)
+        Do tCall.%Push(tBlock)
+        Set tSC = ..DispatchTools(pKey, pUser, pDefinitionId, tCall, pLimitsClass, .tResults, .tNames, pContextRowCap, tBudget)
         If $$$ISERR(tSC) Quit
         Set tResult = tResults.%Get(0)
         Set tName = tNames.%Get(0)
@@ -339,6 +410,8 @@ ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %Str
         Do tEntry.%Set("code", tCode, "string")
         Do pToolLog.%Push(tEntry)
         Do tAnswered.%Push(tResult)
+        Set tBudget = tBudget - $Length($Select($IsObject(tResult): tResult.%Get("content"), 1: ""))
+        If tBudget < 0 Set tBudget = 0
     }
     If $$$ISERR(tSC) Quit tSC
     If pState '= "" Quit $$$OK

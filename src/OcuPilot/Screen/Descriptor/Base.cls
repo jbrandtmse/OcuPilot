@@ -286,6 +286,26 @@ ClassMethod ContextSecretFields() As %List
     Quit ..NestedStringList("context", "secretFields")
 }
 
+/// <p>This screen's declared <code>context.maxLength</code> map, as <var>pLengths</var>
+/// subscripted by field name -> the declared whole number (AD-24). A field this screen's
+/// <code>context.fields</code> names but <code>maxLength</code> does not is simply absent; a
+/// caller falls back to <parameter>OcuPilot.Kernel.Agent.Limits.FIELDMAXLENGTH</parameter> for
+/// it.</p>
+ClassMethod ContextMaxLengths(Output pLengths)
+{
+    Kill pLengths
+    Try {
+        Set tMap = ..NestedField("context", "maxLength")
+        If '$IsObject(tMap) || 'tMap.%IsA("%Library.DynamicObject") Quit
+        Set tIterator = tMap.%GetIterator()
+        While tIterator.%GetNext(.tField, .tValue) {
+            If tField '= "" Set pLengths(tField) = +tValue
+        }
+    } Catch {
+        Kill pLengths
+    }
+}
+
 /// <p>The primary action's identifier (Create, Import, or <code>""</code> for none).</p>
 ClassMethod PrimaryActionId() As %String
 {

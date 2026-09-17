@@ -282,6 +282,7 @@ Method TestTheValidatorsRefuseWhatThePublishedCopyCannotRender()
     Kill tValues
     Set tValues("killSwitch") = 1
     Set tValues("killSwitchReason") = ""
+    Set tValues("contextRowCap") = 200
     Do $$$AssertEquals(##class(OcuPilot.Kernel.SwitchRules).ValidateSwitches(.tValues, .tViolations), 1, "a kill switch with no reason is refused once")
     Do $$$AssertEquals($List(tViolations(1), 1), "killSwitchReason", "on the reason field")
     Do $$$AssertEquals($List(tViolations(1), 2), ##class(OcuPilot.Api.Error).#AGENTSWITCHREASONREQUIRED, "with its own code")
@@ -295,6 +296,7 @@ Method TestTheValidatorsRefuseWhatThePublishedCopyCannotRender()
     Kill tOff
     Set tOff("killSwitch") = 0
     Set tOff("killSwitchReason") = ""
+    Set tOff("contextRowCap") = 200
     Do $$$AssertEquals(##class(OcuPilot.Kernel.SwitchRules).ValidateSwitches(.tOff, .tViolations), 0, "and turning the switch off needs no reason")
 
     Kill tHold

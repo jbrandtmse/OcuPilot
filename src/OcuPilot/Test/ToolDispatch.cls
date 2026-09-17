@@ -312,4 +312,40 @@ Method TestTheSizeCapDropsTrailingRows()
     Do $$$AssertEquals(tResult."is_error", 0, "and one under it is answered")
 }
 
+/// <p>Per-field cut for a descriptor-derived read tool (AD-24, DW-281, Story 4.4) -- unlike the row
+/// cap and size cap above, which a class-of-its-own tool shares (this class's own fixture has no
+/// descriptor), a value over its field's own maximum is cut to that maximum minus one character
+/// plus U+2026 only for a tool with a descriptor -- <method>OcuPilot.Kernel.Agent.Dispatch.AnswerOne</method>
+/// routes it through <class>OcuPilot.Kernel.Agent.Bound</class> instead of the row/size-only
+/// <code>Capped()</code>. Driven through a real (test-only) descriptor and read tool, so the cut
+/// runs independent of any live data.</p>
+/// <p>Mutation: change <method>OcuPilot.Kernel.Agent.Dispatch.AnswerOne</method>'s descriptor check
+/// so a descriptor-derived tool also takes the <code>Capped()</code> path -> the U+2026 assertion
+/// below goes red, since <code>Capped()</code> cuts rows and total size only, never a field's own
+/// value.</p>
+Method TestADescriptorDerivedToolResultGetsThePerFieldCut()
+{
+    Do $ClassMethod(..#PROBE, "SetRegistryClass", "OcuPilot.Test.Read.ToolRegistry")
+    Do ##class(OcuPilot.Test.PortFixture).SetEndpointClass("OcuPilot.Test.EndpointFixture")
+    Do ##class(OcuPilot.Test.EndpointFixture).SetMode("list")
+    Set tLong = $TR($J("", 1200), " ", "x")
+    Set tRows = [{"Name": (tLong), "NameSpace": "USER", "Enabled": true, "Secret": "shh"}]
+    Do ##class(OcuPilot.Test.EndpointFixture).SetRows(tRows.%ToJSON())
+    Try {
+        Do ..Call("webapp_canned_read", {"maxRows": 10}, .tResult, .tName)
+        Do $$$AssertEquals(tResult."is_error", 0, "the read answers: " _ tResult.content)
+        Set tContent = ##class(%DynamicAbstractObject).%FromJSON(tResult.content)
+        Set tCut = tContent.rows.%Get(0).Name
+        Do $$$AssertEquals($Length(tCut), 1000, "cut to the default field maximum")
+        Do $$$AssertEquals($Extract(tCut, 1000), $Char(8230), "ending U+2026")
+        Do $$$AssertEquals(tContent.truncatedFields.%ToJSON(), "[""Name""]", "the cut field is named")
+        Do $$$AssertEquals(tContent.rowsSent, 1, "one row sent")
+        Do $$$AssertEquals(tContent.rowsAvailable, 1, "one row available")
+    } Catch ex {
+        Do $$$AssertTrue(0, "unexpected exception: " _ ex.DisplayString())
+    }
+    Do ##class(OcuPilot.Test.PortFixture).Clear()
+    Do ##class(OcuPilot.Test.EndpointFixture).Clear()
+}
+
 }

@@ -85,11 +85,13 @@ Method TestTheSwitchesReadAnswersTheDefaultsOnACleanInstance()
     While tIterator.%GetNext(.tKey, .tValue) {
         Set tKeys = tKeys _ $Select(tKeys = "": "", 1: ",") _ tKey
     }
-    Do $$$AssertEquals(tKeys, "killSwitch,killSwitchReason,enforcedReadOnly,shareContextByDefault,updatedAt,holds", "the six keys the screen reads")
+    Do $$$AssertEquals(tKeys, "killSwitch,killSwitchReason,enforcedReadOnly,shareContextByDefault,contextRowCap,updatedAt,holds", "the seven keys the screen reads")
     Do $$$AssertEquals(tAnswer.%GetTypeOf("killSwitch"), "boolean", "a flag arrives as a JSON boolean")
     Do $$$AssertEquals(tAnswer.killSwitch, 0, "the kill switch is off")
     Do $$$AssertEquals(tAnswer.enforcedReadOnly, 0, "read-only is not enforced")
     Do $$$AssertEquals(tAnswer.shareContextByDefault, 1, "and screen context is shared by default")
+    Do $$$AssertEquals(tAnswer.%GetTypeOf("contextRowCap"), "number", "the row cap arrives as a JSON number")
+    Do $$$AssertEquals(tAnswer.contextRowCap, 200, "at the default")
     Do $$$AssertTrue($IsObject(tAnswer.holds), "the holds arrive as an array")
     Do $$$AssertEquals(tAnswer.holds.%Size(), 0, "which is empty")
     Do $$$AssertEquals(##class(OcuPilot.Test.SwitchFixture).SwitchRowCount(), 0, "and the read wrote no row")
@@ -481,6 +483,49 @@ Method TestTheSwitchRoutesAreDeclaredInTheShippedRouter()
     For tRoute = "<Route Url=""/agent/switches/holds/:id"" Method=""DELETE"" Call=""AgentSwitchHoldDelete""/>", "<Route Url=""/agent/switches/holds"" Method=""POST"" Call=""AgentSwitchHoldCreate""/>", "<Route Url=""/agent/switches"" Method=""GET"" Call=""AgentSwitchesRead""/>", "<Route Url=""/agent/switches"" Method=""PUT"" Call=""AgentSwitchesUpdate""/>", "<Route Url=""/agent/restraint"" Method=""GET"" Call=""AgentRestraint""/>" {
         Do $$$AssertTrue(tMap [ tRoute, "the router declares " _ tRoute)
     }
+}
+
+/// <p><b>The context row cap is a whole number from 1 to 1,000</b> (Story 4.4, AD-24): <code>0</code>,
+/// <code>1,001</code> and a non-numeric string are each refused on the field
+/// <code>contextRowCap</code> with <code>AGENT.SWITCH.CONTEXTROWCAP</code>, and nothing is written;
+/// <code>500</code> is accepted and reads back.</p>
+/// <p>Mutation: widen the range check in <method>OcuPilot.Kernel.SwitchRules.ValidateSwitches</method>
+/// -- one of the three refused values goes green where 422 is expected.</p>
+Method TestTheContextRowCapValidatesItsRange()
+{
+    For tCase = 0, 1001 {
+        Set tSC = ..Call("PUT", "/agent/switches", "{""contextRowCap"":" _ tCase _ "}", .tStatus, .tBody, .tHeaders)
+        Do $$$AssertStatusOK(tSC, tCase _ ": the request completes")
+        Do $$$AssertEquals(tStatus, 422, tCase _ ": is refused as a validation failure: " _ tBody)
+        If tStatus '= 422 Continue
+        Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+        Do $$$AssertEquals(tAnswer.detail.violations.%Size(), 1, tCase _ ": with one violation")
+        Set tFirst = tAnswer.detail.violations.%Get(0)
+        Do $$$AssertEquals(tFirst.field, "contextRowCap", tCase _ ": on its own field")
+        Do $$$AssertEquals(tFirst.code, ##class(OcuPilot.Api.Error).#AGENTSWITCHCONTEXTROWCAP, tCase _ ": with its own machine code")
+    }
+
+    Set tSC = ..Call("PUT", "/agent/switches", "{""contextRowCap"":""x""}", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "a non-numeric string completes")
+    Do $$$AssertEquals(tStatus, 422, "and is refused: " _ tBody)
+    Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tAnswer.detail.violations.%Get(0).code, ##class(OcuPilot.Api.Error).#AGENTSWITCHCONTEXTROWCAP, "the string is refused, not silently kept")
+
+    ; A JSON boolean reads back as 1 or 0, the same as the JSON numbers 1 and 0 -- refused here
+    ; specifically so it cannot pass as a plausible row cap.
+    Set tSC = ..Call("PUT", "/agent/switches", "{""contextRowCap"":true}", .tBoolStatus, .tBoolBody, .tBoolHeaders)
+    Do $$$AssertStatusOK(tSC, "a boolean completes")
+    Do $$$AssertEquals(tBoolStatus, 422, "and is refused: " _ tBoolBody)
+    Set tBoolAnswer = ##class(%DynamicObject).%FromJSON(tBoolBody)
+    Do $$$AssertEquals(tBoolAnswer.detail.violations.%Get(0).code, ##class(OcuPilot.Api.Error).#AGENTSWITCHCONTEXTROWCAP, "the boolean is refused, not accepted as 1")
+
+    Do $$$AssertEquals(##class(OcuPilot.Test.SwitchFixture).SwitchRowCount(), 0, "none of the four refused writes wrote a row")
+
+    Set tSC = ..Call("PUT", "/agent/switches", "{""contextRowCap"":500}", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "a value in range completes")
+    Do $$$AssertEquals(tStatus, 200, "and is accepted: " _ tBody)
+    Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tAnswer.contextRowCap, 500, "and reads back as a number")
 }
 
 }

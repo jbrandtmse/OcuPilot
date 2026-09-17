@@ -20,9 +20,13 @@ ClassMethod LoopClass() As %String
 
 /// <p>Spawn the job for the reserved turn <var>pValues("key")</var>. <var>pValues</var> also
 /// carries <code>user</code>, <code>definitionId</code>, <code>namespace</code>,
-/// <code>message</code>, <code>readOnly</code> (the enforced read-only snapshot) and
-/// <code>resources</code>. <var>pStarted</var> is 1 when the spawn was accepted; when it was not,
-/// the turn is finished <code>failed</code> with <code>TURN.UNAVAILABLE</code> here.</p>
+/// <code>message</code>, <code>readOnly</code> (the enforced read-only snapshot),
+/// <code>resources</code>, <code>scope</code> (the request's resolved scope,
+/// <method>OcuPilot.Kernel.Scope.Current</method> as the handler read it), <code>context</code>
+/// (the already-bounded screen-context payload JSON, or <code>""</code>) and
+/// <code>contextRowCap</code> (<code>Switch.ContextRowCap</code> as the handler resolved it).
+/// <var>pStarted</var> is 1 when the spawn was accepted; when it was not, the turn is finished
+/// <code>failed</code> with <code>TURN.UNAVAILABLE</code> here.</p>
 /// <p><b>Caller contract:</b> no <code>New $ROLES</code> escalation is in effect in any frame of
 /// the caller's stack (AD-9).</p>
 ClassMethod Start(ByRef pValues, Output pStarted As %Boolean) As %Status
@@ -33,7 +37,7 @@ ClassMethod Start(ByRef pValues, Output pStarted As %Boolean) As %Status
     Set tUser = $Get(pValues("user"))
     Try {
         Set tNamespace = $Get(pValues("namespace"))
-        Job ##class(OcuPilot.Kernel.Agent.Job).Run(tKey, tUser, $Get(pValues("definitionId")), tNamespace, $Get(pValues("message")), ''$Get(pValues("readOnly")), $Get(pValues("resources"))):(tNamespace):..#SPAWNTIMEOUT
+        Job ##class(OcuPilot.Kernel.Agent.Job).Run(tKey, tUser, $Get(pValues("definitionId")), tNamespace, $Get(pValues("message")), ''$Get(pValues("readOnly")), $Get(pValues("resources")), $Get(pValues("scope")), $Get(pValues("context")), +$Get(pValues("contextRowCap"))):(tNamespace):..#SPAWNTIMEOUT
         Set pStarted = $Test
     } Catch ex {
         Set tSC = ex.AsStatus()
@@ -52,7 +56,7 @@ ClassMethod Start(ByRef pValues, Output pStarted As %Boolean) As %Status
 /// is finished <code>failed</code> with <code>TURN.UNAVAILABLE</code> here; a row that already
 /// ended is left as it is. Every failure the job meets is logged, because no request is waiting to
 /// report it.</p>
-ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pNamespace As %String, pMessage As %String, pReadOnly As %Boolean, pResources As %String)
+ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pNamespace As %String, pMessage As %String, pReadOnly As %Boolean, pResources As %String, pScope As %String = "", pContext As %String = "", pContextRowCap As %Integer = 0)
 {
     Set tBegun = 0
     Set tLimits = ""
@@ -66,13 +70,14 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pNa
             Do ..Finish(pKey, pUser, tFailed, tUnavailable, "", "", 0, tLimits)
             Quit
         }
+        Do ##class(OcuPilot.Kernel.Scope).Set(pScope)
         Set tSC = ##class(OcuPilot.Kernel.State.Turn).GuardedBegin(pKey, pUser, tLimits, .tBegun, .tStarted)
         If $$$ISERR(tSC) || 'tBegun {
             Do ..Log("the turn could not be begun", $Select($$$ISERR(tSC): tSC, 1: $$$ERROR($$$GeneralError, "the slot stayed held past the queued limit, or the turn was no longer queued for this user")))
             Do ..Finish(pKey, pUser, tFailed, tUnavailable, "", "", 0, tLimits)
             Quit
         }
-        Set tSC = $ClassMethod(tLoop, "Run", pKey, pUser, pDefinitionId, pMessage, pReadOnly, pResources, tStarted, .tOutcome)
+        Set tSC = $ClassMethod(tLoop, "Run", pKey, pUser, pDefinitionId, pMessage, pReadOnly, pResources, tStarted, .tOutcome, pContext, pContextRowCap)
         Set tState = $Get(tOutcome("state"), tFailed)
         Set tCode = $Get(tOutcome("code"), tUnavailable)
         If $$$ISERR(tSC) {

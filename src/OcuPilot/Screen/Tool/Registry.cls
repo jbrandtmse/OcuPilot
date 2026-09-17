@@ -345,6 +345,21 @@ ClassMethod DescriptionOf(pTool As %DynamicObject) As %String
     Quit $ClassMethod(pTool.%Get("class"), "Description", pTool.%Get("descriptor"))
 }
 
+/// <p><var>pTool</var>'s descriptor's declared <code>context.maxLength</code> map (AD-24), as
+/// <var>pLengths</var> subscripted by field name, or empty for a tool with no descriptor -- a
+/// class tool of its own, which declares no such map and so falls back everywhere to
+/// <parameter>OcuPilot.Kernel.Agent.Limits.FIELDMAXLENGTH</parameter>.</p>
+ClassMethod FieldMaxLengths(pTool As %DynamicObject, Output pLengths)
+{
+    Kill pLengths
+    Try {
+        Set tDescriptor = pTool.%Get("descriptor")
+        If tDescriptor '= "" Do $ClassMethod(tDescriptor, "ContextMaxLengths", .pLengths)
+    } Catch {
+        Kill pLengths
+    }
+}
+
 /// <p>The <code>(resource, permission)</code> pairs <var>pTool</var> requires, as its class answers
 /// them for its descriptor. <var>pResolved</var> is 0 when they could not be read, and a caller must
 /// then refuse rather than read the empty list as "requires nothing".</p>

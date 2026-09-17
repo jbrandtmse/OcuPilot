@@ -68,7 +68,10 @@ ClassMethod ResultSchema(pDescriptor As %String = "") As %DynamicObject
         "properties": {
             "fields": {"type": "array", "items": {"type": "string"}, "description": "The read's field names, secret fields removed."},
             "rows": {"type": "array", "items": {"type": "object"}, "description": "One object per row, carrying exactly the fields."},
-            "truncated": {"type": "boolean", "description": "True when rows were cut by a cap."}
+            "truncated": {"type": "boolean", "description": "True when rows were cut by a cap or a field value was shortened."},
+            "rowsSent": {"type": "integer", "description": "How many rows this result carries."},
+            "rowsAvailable": {"type": "integer", "description": "How many rows matched, before any cap."},
+            "truncatedFields": {"type": "array", "items": {"type": "string"}, "description": "Field names whose value was shortened in this result, if any."}
         },
         "required": ["fields", "rows", "truncated"],
         "additionalProperties": false
@@ -206,6 +209,9 @@ ClassMethod View(pDescriptor As %String, pArgs As %DynamicAbstractObject, pConte
         Do pResult.%Set("fields", tFetched.fields)
         Do pResult.%Set("rows", tRows)
         Do pResult.%Set("truncated", ''tFetched.truncated || (tView.%Size() > +pContextCap), "boolean")
+        ; The real count before this cut, so the kernel cutter downstream (AD-24) can report a
+        ; true rowsAvailable rather than one already narrowed by this method's own cap.
+        Do pResult.%Set("rowsAvailable", tView.%Size(), "number")
         Set pHttpStatus = 200
         Set pFault = ""
     } Catch ex {

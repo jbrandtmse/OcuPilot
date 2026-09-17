@@ -69,6 +69,8 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/agent/switches" Method="GET" Call="AgentSwitchesRead"/>
   <Route Url="/agent/switches" Method="PUT" Call="AgentSwitchesUpdate"/>
   <Route Url="/agent/restraint" Method="GET" Call="AgentRestraint"/>
+  <Route Url="/agent/context" Method="GET" Call="AgentContextRead"/>
+  <Route Url="/agent/context" Method="PUT" Call="AgentContextUpdate"/>
   <Route Url="/agent/definitions/:id/default" Method="POST" Call="AgentDefinitionSetDefault"/>
   <Route Url="/agent/definitions/:id/credential" Method="POST" Call="AgentDefinitionStoreCredential"/>
   <Route Url="/agent/definitions/:id/test" Method="POST" Call="AgentDefinitionTest"/>
@@ -132,6 +134,20 @@ ClassMethod AgentSwitchesUpdate() As %Status
 ClassMethod AgentRestraint() As %Status
 {
     Quit ##class(OcuPilot.Api.Switches).HandleRestraint()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /agent/context</code>: delegates to
+/// <class>OcuPilot.Api.Context</class> and carries no logic of its own.</p>
+ClassMethod AgentContextRead() As %Status
+{
+    Quit ##class(OcuPilot.Api.Context).HandleRead()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /agent/context</code> -- see
+/// <method>AgentContextRead</method>.</p>
+ClassMethod AgentContextUpdate() As %Status
+{
+    Quit ##class(OcuPilot.Api.Context).HandleUpdate()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>POST /agent/definitions/:id/default</code>:

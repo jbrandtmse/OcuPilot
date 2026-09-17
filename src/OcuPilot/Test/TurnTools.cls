@@ -265,4 +265,57 @@ Method TestNoToolResultReachesTheSystemPrompt()
     Do $$$AssertEquals(tResult.type _ "|" _ (tResult.content [ tMarker), "tool_result|1", "inside the tool_result block")
 }
 
+/// <p>Reply budget (DW-452, Story 4.4) -- one reply's three identical calls, each sized so its full
+/// result is more than half of <parameter>OcuPilot.Kernel.Agent.Limits.TOOLRESULTMAXLENGTH</parameter>,
+/// share that one total: the first is answered in full, the second is cut to what remains, and by
+/// the third the remaining budget is under 256 characters, so it is answered
+/// <code>TOOL.RESULTTOOLARGE</code> without the tool running at all -- and still recorded as an
+/// error step.</p>
+/// <p>Mutation: <method>OcuPilot.Kernel.Agent.Loop.AnswerTools</method> drops the budget subtraction
+/// after a call -> this goes red (the third call would then run and answer in full).</p>
+Method TestAReplysToolResultsShareOneBudget()
+{
+    Do $ClassMethod(..#LOOP, "SetDispatchClass", ..#DISPATCH)
+    Do $ClassMethod(..#LOOP, "SetLimitsClass", "OcuPilot.Kernel.Agent.Limits")
+    ; 200 rows of 200 characters each: comfortably over half of the 65,536 budget (so the first
+    ; call fits whole but leaves less than a second copy needs), and each row's own JSON size is
+    ; comfortably under 256 characters (so packing rows to fit a shrunk budget can never leave more
+    ; than one row's slack behind -- always under 256).
+    Set tInput = {"rows": 200, "width": 200}
+    Set tCalls = [{"id": "toolu_1", "name": "probe_counter_read", "input": (tInput)}, {"id": "toolu_2", "name": "probe_counter_read", "input": (tInput)}, {"id": "toolu_3", "name": "probe_counter_read", "input": (tInput)}]
+    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("looking", tCalls))
+    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("done"))
+    Set tKey = ..RunTurn(.tOutcome)
+    Do $$$AssertEquals(tOutcome("state") _ "|" _ tOutcome("reply"), "completed|done", "the turn completes")
+
+    Set tSent = ##class(%DynamicAbstractObject).%FromJSON($ClassMethod(..#STUB, "Recorded", "body", 2))
+    Set tResults = tSent.messages.%Get(2).content
+    Do $$$AssertEquals(tResults.%Size(), 3, "three tool results, one per call")
+
+    Set tMax = $Parameter("OcuPilot.Kernel.Agent.Limits", "TOOLRESULTMAXLENGTH")
+    Set tFirst = tResults.%Get(0)
+    Set tFirstContent = ##class(%DynamicAbstractObject).%FromJSON(tFirst.content)
+    Do $$$AssertEquals(tFirst."is_error", 0, "the first call is answered")
+    Do $$$AssertEquals(tFirstContent.truncated, 0, "in full, uncut")
+    Set tFirstLength = $Length(tFirst.content)
+
+    Set tSecond = tResults.%Get(1)
+    Set tSecondContent = ##class(%DynamicAbstractObject).%FromJSON(tSecond.content)
+    Do $$$AssertEquals(tSecond."is_error", 0, "the second call is still answered")
+    Do $$$AssertEquals(tSecondContent.truncated, 1, "but cut to what the first call left of the budget")
+    Do $$$AssertTrue((tFirstLength + $Length(tSecond.content)) <= tMax, "the two answered results together stay inside the one budget")
+
+    Set tThird = tResults.%Get(2)
+    Do $$$AssertEquals(tThird."is_error" _ "|" _ tThird.content, "1|{""code"":""TOOL.RESULTTOOLARGE""}", "the third finds under 256 characters left and is refused without running")
+    Do $$$AssertEquals(##class(OcuPilot.Test.DispatchTool.Counter).Calls("probe.counter.read"), 2, "so the tool itself ran only twice")
+
+    Do ##class(OcuPilot.Kernel.State.Turn).GuardedView(tKey, $Username, .tFound, .tView)
+    Set tSteps = ""
+    For tI = 0:1:tView.steps.%Size() - 1 {
+        Set tStep = tView.steps.%Get(tI)
+        Set tSteps = tSteps _ tStep.kind _ ":" _ tStep.name _ ":" _ tStep.status _ ";"
+    }
+    Do $$$AssertEquals(tSteps, "model:provider:ok;tool:probe.counter.read:ok;tool:probe.counter.read:ok;tool:probe.counter.read:error;model:provider:ok;", "the refused third call is still recorded as an error step")
+}
+
 }

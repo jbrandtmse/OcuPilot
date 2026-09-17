@@ -382,6 +382,45 @@ ClassMethod V6Groups(pAddress As %String, Output pGroups) As %Boolean [ Private 
     Quit tOk
 }
 
+/// <p>Whether <var>pAddress</var> is a private-range address: <code>10.0.0.0/8</code>,
+/// <code>172.16.0.0/12</code>, <code>192.168.0.0/16</code> (RFC 1918), or <code>fc00::/7</code>
+/// (unique local IPv6). Distinct from <method>IsLoopback</method> and
+/// <method>IsLinkLocal</method>, and from <method>IsPermitted</method>'s own judgement, which does
+/// not refuse a private address at all (AD-42 names the instance, loopback and link-local, and
+/// nothing else).</p>
+ClassMethod IsPrivate(pAddress As %String) As %Boolean
+{
+    Set tAddress = ..Canonical(pAddress)
+    If ..IsDottedQuad(tAddress) {
+        Set tOctet1 = +$Piece(tAddress, ".", 1)
+        Set tOctet2 = +$Piece(tAddress, ".", 2)
+        Quit (tOctet1 = 10) || ((tOctet1 = 172) && (tOctet2 >= 16) && (tOctet2 <= 31)) || ((tOctet1 = 192) && (tOctet2 = 168))
+    }
+    If '..V6Groups(tAddress, .tGroups) Quit 0
+    ; fc00::/7 is the top seven bits 1111 110x, i.e. the first group's value in 0xFC00-0xFDFF.
+    Quit (tGroups(1) >= 64512) && (tGroups(1) <= 65023)
+}
+
+/// <p>Whether an endpoint at <var>pHost</var> leaves this instance (Story 4.4's context status
+/// read): false when <var>pMarkedLocal</var>, or when the host resolves and every resolved
+/// address is loopback, link-local, or private (<method>IsPrivate</method>); true when the host is
+/// unresolvable, or any resolved address is none of those.</p>
+ClassMethod LeavesInstance(pHost As %String, pMarkedLocal As %Boolean) As %Boolean
+{
+    If pMarkedLocal Quit 0
+    Do ..Addresses(pHost, .tAddresses)
+    If '$Data(tAddresses) Quit 1
+    Set tLeaves = 0
+    Set tAddress = $Order(tAddresses(""))
+    While tAddress '= "" {
+        If '(..IsLoopback(tAddress) || ..IsLinkLocal(tAddress) || ..IsPrivate(tAddress)) {
+            Set tLeaves = 1
+        }
+        Set tAddress = $Order(tAddresses(tAddress))
+    }
+    Quit tLeaves
+}
+
 /// <p>The value of one IPv6 group written as one to four hexadecimal digits, or <code>-1</code>
 /// for anything else.</p>
 ClassMethod HexGroup(pPiece As %String) As %Integer [ Private ]

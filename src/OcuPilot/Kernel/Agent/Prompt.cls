@@ -13,4 +13,16 @@ ClassMethod Builtin() As %String [ CodeMode = expression ]
 ..#BUILTIN
 }
 
+/// <p>The user-role message that opens a turn carrying screen context, a build-time constant
+/// (AD-11 rule 1): the Anthropic Messages API requires the first message to use the user role, so
+/// the synthetic <code>screen_context</code> tool call cannot open the conversation on its
+/// own.</p>
+Parameter CONTEXTPREAMBLE = "Here is the screen the user is currently viewing in the management portal.";
+
+/// <p>The context preamble.</p>
+ClassMethod ContextPreamble() As %String [ CodeMode = expression ]
+{
+..#CONTEXTPREAMBLE
+}
+
 }

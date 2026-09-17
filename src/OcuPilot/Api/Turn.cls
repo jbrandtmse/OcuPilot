@@ -12,6 +12,10 @@ Class OcuPilot.Api.Turn Extends %RegisteredObject
 /// <p>The body member a start reads, and the field its violations land on.</p>
 Parameter MESSAGEFIELD = "message";
 
+/// <p>The body member a start's screen context arrives on, and the field its violations land
+/// on.</p>
+Parameter CONTEXTFIELD = "context";
+
 /// <p>The loop whose limits class every bound here is read from.</p>
 Parameter LOOPCLASS = "OcuPilot.Kernel.Agent.Loop";
 
@@ -45,7 +49,12 @@ ClassMethod HandleStart() As %Status
         Set tLimits = $ClassMethod(..#LOOPCLASS, "LimitsClass")
         Set tViolation = ..MessageViolation(tBody, tLimits, .tReason)
         If tViolation '= "" {
-            Set tSC = ..RenderViolation(tViolation, tReason)
+            Set tSC = ..RenderViolation(..#MESSAGEFIELD, tViolation, tReason)
+            Quit
+        }
+        Set tContextViolation = ..ContextViolation(tBody, tLimits)
+        If tContextViolation '= "" {
+            Set tSC = ..RenderViolation(..#CONTEXTFIELD, tContextViolation, ##class(OcuPilot.Api.Error).ReasonForTurn(tContextViolation))
             Quit
         }
         Set tUser = ..CallerUsername()
@@ -68,6 +77,60 @@ ClassMethod HandleStart() As %Status
             Set tSC = ##class(OcuPilot.Api.Error).Render(503, ##class(OcuPilot.Api.Error).#UNAVAILABLE, ##class(OcuPilot.Kernel.Provider.Base).ReasonFor(tCode), tCode)
             Quit
         }
+        Set tSwitchSC = ##class(OcuPilot.Kernel.State.Switch).Resolve(.tSwitchValues)
+        If $$$ISERR(tSwitchSC) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tSwitchSC))
+            Quit
+        }
+        Set tRowCap = +tSwitchValues("contextRowCap")
+        Set tShareEffective = ''tSwitchValues("shareContextByDefault")
+        Set tSharingSC = ##class(OcuPilot.Kernel.State.Sharing).GuardedForUser(tUser, .tShareFound, .tShareValue)
+        If $$$ISERR(tSharingSC) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tSharingSC))
+            Quit
+        }
+        If tShareFound Set tShareEffective = ''tShareValue
+
+        Set tContextJson = ""
+        If tShareEffective && tBody.%IsDefined(..#CONTEXTFIELD) && $IsObject(tBody.%Get(..#CONTEXTFIELD)) {
+            Set tContextBuildSC = ##class(OcuPilot.Screen.Context).Build(tBody.%Get(..#CONTEXTFIELD), .tContextBuilt, .tContextPayload, .tFieldMaxLengths, .tDroppedFields)
+            If $$$ISERR(tContextBuildSC) {
+                Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tContextBuildSC))
+                Quit
+            }
+            If tContextBuilt && 'tContextPayload.%IsDefined("rows") {
+                ; A descriptor declaring context.secretFields (AD-24): identity only, and the
+                ; kernel cutter never runs over it -- there are no rows to bound. rowsSent is still
+                ; reported, 0, so a consumer reading it need not special-case "no rows key at all".
+                Do tContextPayload.%Set("rowsSent", 0, "number")
+                Set tContextJson = tContextPayload.%ToJSON()
+            } ElseIf tContextBuilt {
+                Set tDefaultFieldMax = +$Parameter(tLimits, "FIELDMAXLENGTH")
+                Set tTotalMax = +$Parameter(tLimits, "TOOLRESULTMAXLENGTH")
+                Do ##class(OcuPilot.Kernel.Agent.Bound).Apply(tContextPayload, tRowCap, .tFieldMaxLengths, tDefaultFieldMax, tTotalMax, .tContextJson)
+                If (tContextJson '= "") && ($ListLength(tDroppedFields) > 0) {
+                    Set tParsed = ##class(%DynamicAbstractObject).%FromJSON(tContextJson)
+                    Kill tAllFields
+                    If $IsObject(tParsed.%Get("truncatedFields")) {
+                        Set tExistingIterator = tParsed.%Get("truncatedFields").%GetIterator()
+                        While tExistingIterator.%GetNext(.tExIndex, .tExName) {
+                            If tExName '= "" Set tAllFields(tExName) = ""
+                        }
+                    }
+                    For tI = 1:1:$ListLength(tDroppedFields) Set tAllFields($List(tDroppedFields, tI)) = ""
+                    Set tOutFields = []
+                    Set tFieldName = $Order(tAllFields(""))
+                    While tFieldName '= "" {
+                        Do tOutFields.%Push(tFieldName)
+                        Set tFieldName = $Order(tAllFields(tFieldName))
+                    }
+                    Do tParsed.%Set("truncatedFields", tOutFields)
+                    Do tParsed.%Set("truncated", 1, "boolean")
+                    Set tContextJson = tParsed.%ToJSON()
+                }
+            }
+        }
+
         Set tReserveSC = ##class(OcuPilot.Kernel.State.Turn).GuardedReserve(tUser, tDefinitionId, ##class(OcuPilot.Api.Error).#TURNABANDONEDJOBLOST, tLimits, .tKey, .tBusy, .tSweepSC)
         If $$$ISERR(tSweepSC) Do ##class(OcuPilot.Kernel.Fault).LogRaw("turn", "terminal turns past retention could not be swept", tSweepSC, ##class(OcuPilot.Api.Error).#INTERNAL)
         If $$$ISERR(tReserveSC) {
@@ -86,6 +149,9 @@ ClassMethod HandleStart() As %Status
         Set tValues("message") = tBody.%Get(..#MESSAGEFIELD)
         Set tValues("readOnly") = ''$Get(tVerdict("enforcedReadOnly"))
         Set tValues("resources") = ##class(OcuPilot.Api.Router).#ADMINRESOURCES
+        Set tValues("scope") = ##class(OcuPilot.Kernel.Scope).Current()
+        Set tValues("context") = tContextJson
+        Set tValues("contextRowCap") = tRowCap
         Set tStartSC = ##class(OcuPilot.Kernel.Agent.Job).Start(.tValues, .tStarted)
         If $$$ISERR(tStartSC) || 'tStarted Do ##class(OcuPilot.Kernel.Fault).LogRaw("turn", "the turn job could not be started", $Select($$$ISERR(tStartSC): tStartSC, 1: $$$ERROR($$$GeneralError, "the spawn was not accepted within its timeout")), ##class(OcuPilot.Api.Error).#TURNUNAVAILABLE)
         If 'tStarted {
@@ -184,12 +250,64 @@ ClassMethod MessageViolation(pBody As %DynamicObject, pLimitsClass As %String, O
     Quit ""
 }
 
+/// <p>The violation code <var>pBody</var>'s <code>context</code> earns, or <code>""</code>
+/// (Story 4.4, AD-24): checked only when <code>context</code> is present at all. The wire shape is
+/// <code>{route, namespace, entity?, view?: {sort?, direction?, filter?, rows, rowsAvailable?}}</code>;
+/// every present member must carry its declared JSON type, <code>view.rows</code> is required when
+/// <code>view</code> is present, and <code>namespace</code> must equal the request's resolved
+/// scope (<method>OcuPilot.Kernel.Scope.Current</method>, from <code>?ns=</code>) -- a caller
+/// naming a different namespace could otherwise carry rows from one scope into a turn running in
+/// another.</p>
+/// <p><b>entity is bounded here, not by the cutter.</b> <class>OcuPilot.Kernel.Agent.Bound</class>
+/// only cuts a <code>view.rows</code> row's own field values; it never touches the payload's own
+/// top-level fields, so an unbounded <code>entity</code> would reach the identity-only secret-screen
+/// payload with no cut at all, and could push even a rowless non-secret payload over the total
+/// budget with nothing left to trim -- refused here instead, at <var>pLimitsClass</var>'s
+/// <code>FIELDMAXLENGTH</code>, before either path runs.</p>
+ClassMethod ContextViolation(pBody As %DynamicObject, pLimitsClass As %String) As %String
+{
+    If 'pBody.%IsDefined(..#CONTEXTFIELD) Quit ""
+    Set tCode = ##class(OcuPilot.Api.Error).#TURNCONTEXTINVALID
+    Set tContext = pBody.%Get(..#CONTEXTFIELD)
+    If '$IsObject(tContext) || 'tContext.%IsA("%Library.DynamicObject") Quit tCode
+    If (tContext.%GetTypeOf("route") '= "string") || (tContext.%Get("route") = "") Quit tCode
+    If tContext.%GetTypeOf("namespace") '= "string" Quit tCode
+    If tContext.%Get("namespace") '= ##class(OcuPilot.Kernel.Scope).Current() Quit tCode
+    If tContext.%IsDefined("entity") {
+        Set tEntityType = tContext.%GetTypeOf("entity")
+        If (tEntityType '= "string") && (tEntityType '= "null") Quit tCode
+        If (tEntityType = "string") && ($Length(tContext.%Get("entity")) > +$Parameter(pLimitsClass, "FIELDMAXLENGTH")) Quit tCode
+    }
+    If 'tContext.%IsDefined("view") Quit ""
+    Set tView = tContext.%Get("view")
+    If '$IsObject(tView) || 'tView.%IsA("%Library.DynamicObject") Quit tCode
+    If tView.%IsDefined("sort") && (tView.%GetTypeOf("sort") '= "string") Quit tCode
+    If tView.%IsDefined("direction") && (tView.%GetTypeOf("direction") '= "string") Quit tCode
+    If tView.%IsDefined("filter") && (tView.%GetTypeOf("filter") '= "string") Quit tCode
+    If tView.%GetTypeOf("rows") '= "array" Quit tCode
+    Set tRows = tView.%Get("rows")
+    Set tBadRow = 0
+    Set tIterator = tRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If '$IsObject(tRow) || 'tRow.%IsA("%Library.DynamicObject") {
+            Set tBadRow = 1
+            Quit
+        }
+    }
+    If tBadRow Quit tCode
+    If tView.%IsDefined("rowsAvailable") {
+        If tView.%GetTypeOf("rowsAvailable") '= "number" Quit tCode
+        If (tView.%Get("rowsAvailable") < 0) || (tView.%Get("rowsAvailable") < tRows.%Size()) Quit tCode
+    }
+    Quit ""
+}
+
 /// <p>Refuse with 422: the violation's code on the envelope, and the same code with its sentence on
-/// the field <parameter>MESSAGEFIELD</parameter> in <code>detail.violations</code> (AD-39).</p>
-ClassMethod RenderViolation(pCode As %String, pReason As %String) As %Status [ Private ]
+/// <var>pField</var> in <code>detail.violations</code> (AD-39).</p>
+ClassMethod RenderViolation(pField As %String, pCode As %String, pReason As %String) As %Status [ Private ]
 {
     Set tEntry = {}
-    Do tEntry.%Set("field", ..#MESSAGEFIELD, "string")
+    Do tEntry.%Set("field", pField, "string")
     Do tEntry.%Set("code", pCode, "string")
     Do tEntry.%Set("reason", pReason, "string")
     Set tViolations = []

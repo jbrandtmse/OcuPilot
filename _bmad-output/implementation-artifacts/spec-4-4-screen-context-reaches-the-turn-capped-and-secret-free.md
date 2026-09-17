@@ -2,12 +2,22 @@
 title: 'Story 4.4: Screen context reaches the turn, capped and secret-free'
 type: 'feature'
 created: '2026-09-16'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'd568b5cd6c7a1f1a80e1a2ea125aa2c2f59f5bf9'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context: []
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      `Switches.MergeBody` silently treats a JSON object or array sent for any switch field
+      (including `contextRowCap`) as absent, keeping the stored value rather than refusing.
+    evidence: |-
+      Verified the object/array short-circuit at the top of `MergeBody` predates Story 4.4 and is
+      shared by every switch field, not something this story introduced.
+    location: >-
+      src/OcuPilot/Api/Switches.cls (MergeBody)
+    severity: low
 ---
 
 # Story 4.4: Screen context reaches the turn, capped and secret-free
@@ -150,6 +160,42 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-17 — Review pass
+
+- verdicts: 31 findings (27 from the four review layers, plus 4 self-caught during this pass's own full-suite regression sweep) — high 3, medium 12, low 12, false 4
+- findings:
+  - `[low]` `[reject]` (blind-hunter) `HandleStart`'s dropped-field merge re-serializes the context payload after `Bound.Apply` has already fit it to the byte, so appending newly-collected `truncatedFields` names can in principle push it back over 65,536 — evidence: confirmed the merge runs after the size cut with no re-check; grouped with edge-case-hunter's same claim below. Real but narrow (needs the per-field cut, the size-drop, and several previously-unseen dropped-field names, all on one payload sitting at the boundary), and the correct fix (re-invoking the size trim after the merge) is more than a direct correction. Not fixed. reopen_if: a `screen_context` tool-result payload is observed over 65,536 characters.
+  - `[low]` `[reject]` (edge-case-hunter) Same claim, same evidence and disposition as the row above.
+  - `[high]` `[patch]` (edge-case-hunter) `Bound.Apply`'s boolean return is discarded with `Do` in `Turn.cls`, so a context that cannot fit even with zero rows silently vanishes with no signal to the caller — evidence: reachable because no field bounds `entity`, so an oversized `entity` alone can push even a zero-row payload over the total cap. Fixed by refusing an over-length `entity` in `ContextViolation` against `FIELDMAXLENGTH` (AD-24), before either branch runs. Mutation demonstrated on the new refusal case.
+  - `[high]` `[patch]` (edge-case-hunter) The secret-descriptor identity-only branch never runs `Bound.Apply`, so `entity` has no size cut at all for a secret screen — evidence: same root cause as the row above (the only unbounded top-level string in either branch); the same `entity` bound, applied before either branch runs, closes it.
+  - `[medium]` `[patch]` (edge-case-hunter, claim) The spec's "one cutter... at most 65,536 characters" claim does not hold for the secret-screen branch — evidence: same root cause; closed by the same fix.
+  - `[low]` `[defer]` (edge-case-hunter) `contextRowCap` sent as a JSON object or array is silently treated as absent in `Switches.MergeBody` — evidence: the object/array short-circuit at the top of `MergeBody` predates this story and is shared by every switch field; not something this story introduced.
+  - `[medium]` `[patch]` (edge-case-hunter) `contextRowCap` sent as a JSON boolean reads back as 1/0 through `%Get()` and is silently accepted as a valid row cap instead of refused — evidence: reproduced `{"contextRowCap":true}` reaching `ValidateSwitches` as the number 1. Fixed by forcing a boolean value to `""` in `MergeBody` so the existing empty-value refusal catches it; new test case added and mutation demonstrated (removed the guard, the new refusal assertion went red).
+  - `[false]` (edge-case-hunter) Every descriptor-derived tool is routed through `Bound.Apply` regardless of whether its result has a `rows` array — evidence: `Screen.Tool.Registry.ListTools` sets `descriptor` non-empty only for a read-declaring descriptor, whose `class` is always `ReadToolClass()`, so `descriptor != ""` is exactly the population whose result is always rows-shaped.
+  - `[low]` `[patch]` (edge-case-hunter) `screen-mirror.mjs`'s `contextMaxLengthProblem` refuses an explicit JSON `null` for `context.maxLength` that the server (`Registry.ContextMaxLengthProblem`) accepts as absent — evidence: reproduced the asymmetry directly. Fixed by treating `null` the same as `undefined` on the client; mutation demonstrated (reverted the fix, the new null-case assertion went red).
+  - `[low]` `[patch]` (edge-case-hunter, claim) The spec's "twin validators refuse the same shapes" claim does not hold for an explicit `null` — evidence: same root cause as the row above; closed by the same fix.
+  - `[false]` (edge-case-hunter) A stored `context.maxLength` of 0 or non-numeric disables the per-field cut instead of falling back to the default — evidence: `ListTools` runs `Registry.ReadProblem` (which includes `ContextMaxLengthProblem`) on every descriptor at advertise time, and a value outside 1-1,000 fails that call and refuses the whole tool listing before `Bound.Apply` ever runs; the branch this finding names is unreachable through any compiled descriptor.
+  - `[medium]` `[patch]` (blind-hunter) `Dispatch.AnswerOne`'s descriptor branch and `Api.Turn.HandleStart`'s context-building both hardcode the literal class name `"OcuPilot.Kernel.Agent.Limits"` for `FIELDMAXLENGTH`/`TOOLRESULTMAXLENGTH` instead of the caller's configurable `pLimitsClass`, breaking the overridable-limits seam every other bound in this code honors — evidence: read both call sites. Fixed by threading `pLimitsClass` through `AnswerOne` and using the already-in-scope `tLimits` in `Turn.cls`.
+  - `[false]` (blind-hunter) Spec frontmatter `status` and the `## Auto Run Result` "Status:" line disagree mid-review — evidence: this is the workflow's own staged documentation (frontmatter tracks the stage; the section's status line is rewritten at Finalize), not a defect in the implementation.
+  - `[low]` `[reject]` (blind-hunter) No operation clears a per-user sharing choice back to following the instance default — out of scope: the wire contract is explicit and closed (`PUT /agent/context {share: boolean}`, "anything else... gets 422"); the intent contract never describes a reset operation.
+  - `[low]` `[reject]` (blind-hunter) The new `/agent/context` GET/PUT has no client consumer in this diff beyond `contextRowCap` on the Switches page — out of scope: the intent contract's "Never" list excludes "client context assembly" to Story 4.11 by name, and Design Notes' `Consumed-by` names 4.11 for exactly this.
+  - `[medium]` `[patch]` (blind-hunter) `ResolveEndpoint`/`Api.Context.Body`'s no-enabled-default fallback (`provider`/`endpointHost` `""`, `leavesInstance` null) is an explicit AC with no test — evidence: read `TurnContext.cls`; only the armed happy path was exercised. Fixed by adding `TestContextStatusWithNoEnabledDefault`, toggling the prepared definition off for the one call via `AgentFixture.SetFlags`.
+  - `[low]` `[reject]` (blind-hunter) `context` rows are type-checked and field-filtered before the row cap runs, so an oversized post pays full processing cost before being cut — evidence: no realistic reachable harm named beyond a bounded, authenticated caller's own request. reopen_if: an unauthenticated or pre-auth path is found to reach `ContextViolation`/`Screen.Context.Build`.
+  - `[low]` `[reject]` (blind-hunter) `truncatedFields` can name a field whose only over-length occurrence was in a row the total-size cut later dropped — evidence: `Bound.Apply` finalizes `truncatedFields` before the size-cut step re-selects surviving rows; real but narrow (per-field cut and size-drop must both land on the same field), and the correct fix (recomputing the set from only-surviving rows) is more than a direct correction. reopen_if: `truncatedFields` is observed naming a field absent from every row in a real payload.
+  - `[medium]` `[patch]` (blind-hunter) `TestAReadToolResultsOwnFieldIsBound`'s cut-shape assertion is conditional on the live audit log holding a field over 1,000 characters, so the descriptor-branch wiring in `AnswerOne` has no assertion that can fail on a broken build — evidence: traced every test reaching a real descriptor-derived tool through `AnswerOne`; only this one does, and its `Else` branch is `AssertTrue(1, ...)`. Fixed with a new, deterministic, live-safe test (`ToolDispatch.TestADescriptorDerivedToolResultGetsThePerFieldCut`, a real `Screen.Tool.Read` subclass over a canned port) and a demonstrated mutation (the descriptor-branch condition forced false; the new test went red on `<INVALID OREF>`).
+  - `[medium]` `[patch]` (verification-gap, pre-verified, same root as the row above) Same finding, filed independently: no acceptance criterion's pinning test for the descriptor-branch field cut can fail on a broken build — evidence: pre-verified per this layer's own evidence rule; same fix and mutation as the row above.
+  - `[low]` `[reject]` (blind-hunter) The Switches store's number-field parsing accepts whitespace-as-zero and non-integer input (`"1e2"`, `"500.5"`) without a client-side integer check — evidence: traced both cases through the server's own `ValidateSwitches`; a non-integer value still fails `$Match(...,"^[0-9]+$")` there and is refused with the same code and message a client-side check would produce, so no incorrect data is ever accepted; the only cost is an avoidable round trip.
+  - `[medium]` `[patch]` (verification-gap, pre-verified) `screen-mirror.mjs`'s new `contextMaxLengthProblem` has no test case in `screen-mirror.test.mjs`, and no shipped descriptor declares `context.maxLength` for `--check` to exercise it against real data — evidence: grepped the test file and every descriptor; neither covers it. Fixed by adding four cases to the existing mutation table (unknown field, out of range, non-integer, not an object) plus two positive assertions (absent, explicit null).
+  - `[medium]` `[patch]` (verification-gap, pre-verified) The non-scalar dropped-field merge into `truncatedFields` in `Turn.cls` is never exercised — every context row any test builds uses only scalar values — evidence: read `TurnContext.cls` in full. Fixed by adding `TestANonScalarRowFieldIsDroppedAndNamedInTruncatedFields` and demonstrating the mutation (disabled the merge branch; the new field-name and `truncated` assertions went red).
+  - `[low]` `[patch]` (intent-alignment) `Switch.ContextRowCap`'s own doc comment claims the row cap is scoped to "screen context, and every descriptor-derived read tool result," but `Dispatch.Answer` computes one `tRows` shared by both the descriptor (`Bound.Apply`) and class-of-its-own (`Capped`) branches, so the switch bounds every read tool's row count — matching the spec's own literal "context and read tool results" with no descriptor qualifier — evidence: read `Dispatch.Answer`; confirmed `OcuPilot.Screen.Tool.ErrorRead` (a shipped class-of-its-own tool) is bounded by it too. The code matches the spec; only the property doc comment over-narrowed the claim. Fixed by correcting the doc comments in `Switch.cls` and `SwitchRules.cls`.
+  - `[medium]` `[patch]` (intent-alignment) The Secret screen matrix row's literal `rowsSent` 0 is not implemented — the identity-only branch never sets `rowsSent` at all — evidence: read `Turn.cls`'s secret branch and `TestASecretScreenAnswersIdentityOnly`, which asserted only "no `rows` key," not `rowsSent`. Fixed by setting `rowsSent: 0` in the identity-only payload and adding the assertion.
+  - `[low]` `[patch]` (intent-alignment) Four of the spec's eight Rule 19 mutations were not run in the implementation pass — evidence: the spec's own Mutations list recorded them "not run." Addressed in this pass: ran the reply-budget, entity-length, boolean-guard and dropped-field-merge mutations (see `## Verification`), plus two more this review's own fixes required (the descriptor-branch check and the array/object `%Set` fix below) — ten mutations now demonstrated in total across the story.
+  - `[false]` (intent-alignment) DW-399 credential-list parity cannot be confirmed from the diff alone because `Log.cls` never appears in it — evidence: `Log.cls`'s `CREDENTIALSUFFIXES`/`CREDENTIALEXACTNAMES` are pre-existing and correctly untouched; `credential-lists.test.mjs` reads both sides live from the checkout at test time and passed in every run of `npm test` in this pass, which is the intended verification mechanism, not the diff.
+  - `[high]` `[patch]` (self-caught, full-suite regression sweep) `Bound.Apply`'s per-field cut called `%Set(field, value, valueType)` for an array- or object-valued row field, passing the JSON type hint alongside an already-object-valued OREF; IRIS raises `<ILLEGAL VALUE>` for that combination. This broke every real descriptor-derived read tool whose result contains an array or object field, in production use — reproduced live on `permissions.users.read`'s `Roles` column via `OcuPilot.Test.ToolWire`, a suite the story's own diff never touched but silently regressed. Fixed by calling `%Set(field, value)` with no type hint for object/array values; added `ContextBound.TestAnArrayOrObjectFieldSurvivesThePerFieldCutUntouched` and demonstrated the mutation (restored the type hint; both the new test and `ToolWire` went red).
+  - `[medium]` `[patch]` (self-caught, full-suite regression sweep) `ConfigGate.cls`'s closed exception list did not name the two new ungated `/agent/context` routes, so its administrative-gate sweep refused them as a false regression, and the exception check's own `AssertEquals(tStatus, 200, ...)` does not hold for `PUT /agent/context`'s trivial `{}` sweep body, which is refused 422 on shape before ever reaching the admin gate — evidence: reproduced both failures on a fresh throwaway. Fixed by adding both routes to `Exceptions()` and relaxing the check to `AssertNotEquals(tStatus, 403, ...)`, which is what the sweep actually proves.
+  - `[medium]` `[patch]` (self-caught, full-suite regression sweep) `AgentViolation.cls` pinned the field-level violation-code vocabulary at 29, and its own `tEnvelope` exclusion list did not name the new envelope-level `AGENTCONTEXTSHARE` code, so both closed-vocabulary tests failed once `AGENTSWITCHCONTEXTROWCAP` (field-level) and `AGENTCONTEXTSHARE` (envelope-level) were added — evidence: reproduced on a fresh throwaway. Fixed by updating the count to 30 and adding `AGENTCONTEXTSHARE` to the exclusion list, the same way `AGENTHOLDNOTFOUND` already is.
+  - `[medium]` `[patch]` (self-caught, full-suite regression sweep) `SwitchState.cls` calls `SwitchRules.ValidateSwitches` directly with a partial value set that never included `contextRowCap`, so the new unconditional row-cap check added a second violation to every call and broke the "refused once" assertions — evidence: reproduced on a fresh throwaway. Fixed by adding a valid `contextRowCap` to both value sets the method builds.
+
 ## Design Notes
 
 **Governing ADs:** AD-5, AD-9, AD-11 (rule 1), AD-19, AD-21, AD-24, AD-36, AD-39, AD-42, AD-44, AD-48 (error detail never enters context), Conventions › Secrets, AD-7 unchanged.
@@ -192,16 +238,109 @@ deferred: []
 
 **Mutations to demonstrate (Rule 19), each recorded as a `mutation:` line when its test lands:**
 
-- Skip the per-field cut in `Bound` → TurnContext Integration.
-- Drop the secret-descriptor identity-only branch → secret screen case.
-- Ignore the `Sharing` row → sharing-off case.
-- Advertise or resolve `screen_context` → model-issued case.
-- Remove the budget subtraction in `AnswerTools` → reply-budget case.
-- Accept 1,001 in `Registry` → descriptor-bound corpus.
-- Drop `credential` from `field-lists.mjs` → credential-lists test.
-- Treat `172.16/12` as public → leaves-instance case.
+- Skip the per-field cut in `Bound` → TurnContext Integration. mutation: not run against the Integration test itself; the same code path is now pinned by a deterministic mutation instead -- see "descriptor-branch condition" below.
+- Drop the secret-descriptor identity-only branch → secret screen case. mutation: not run; verified green on the throwaway instead (`OcuPilot.Test.TurnContext.TestASecretScreenAnswersIdentityOnly`), and the branch's own boundary (the `entity` length check ahead of it) is separately mutation-tested below.
+- Ignore the `Sharing` row → sharing-off case. mutation: not run; verified green on the throwaway instead (`TestSharingOffSuppressesContext`).
+- Advertise or resolve `screen_context` → model-issued case. mutation: not run; verified green on the throwaway instead (`TestAModelIssuedScreenContextCallIsUnknown`).
+- Remove the budget subtraction in `AnswerTools` → reply-budget case. mutation: applied to `OcuPilot.Kernel.Agent.Loop.AnswerTools` on `ocupilot-slot-a` (dropped the `Set tBudget = tBudget - $Length(...)` line); `OcuPilot.Test.TurnTools.TestAReplysToolResultsShareOneBudget` went red on five of its assertions (the second call no longer cut, the third never refused); reverted, byte-identical (`git diff --stat` confirmed unchanged), recompiled, re-verified green on both the live instance and a throwaway.
+- Accept 1,001 in `Registry` → descriptor-bound corpus. mutation: applied to `OcuPilot.Screen.Registry.ContextMaxLengthProblem` (dropped the `|| (tValue > 1000)` arm) on `ocupilot-slot-a`; `OcuPilot.Test.ContextBound.TestTheDescriptorMaxLengthIsBoundedByTheRegistry` went red (`AssertTrue: 1,001 is refused`); reverted, byte-identical (`diff` confirmed), recompiled, re-verified green.
+- Drop `credential` from `field-lists.mjs` → credential-lists test. mutation: applied (removed the `'credential',` suffix entry); `node --test tools/credential-lists.test.mjs` went red on the suffix-list mismatch; reverted, byte-identical, re-verified green.
+- Treat `172.16/12` as public → leaves-instance case. mutation: applied to `OcuPilot.Kernel.Egress.IsPrivate` (dropped the `172.16/12` arm) on `ocupilot-slot-a`; `OcuPilot.Test.ContextBound.TestIsPrivateClassifiesRfc1918AndUniqueLocal` went red on both 172.16.0.1 and 172.31.255.255; reverted, byte-identical, recompiled, re-verified green.
+
+**Mutations added during review (Rule 19), each for a pinning test this pass added:**
+
+- Descriptor-branch condition (`Dispatch.AnswerOne`'s `tTool.%Get("descriptor") '= ""` forced to `If 0`) → `OcuPilot.Test.ToolDispatch.TestADescriptorDerivedToolResultGetsThePerFieldCut` went red (`<INVALID OREF>`); reverted, byte-identical, recompiled, re-verified green.
+- `entity` length check dropped from `Api.Turn.ContextViolation` → the new over-long-entity case in `TestBadContextIsRefusedAndNothingIsReserved` went red (202 instead of 422); reverted, byte-identical, recompiled, re-verified green on the throwaway.
+- Boolean type guard dropped from `Api.Switches.MergeBody`'s integer-kind branch → `TestTheContextRowCapValidatesItsRange`'s new boolean case went red (200 with `contextRowCap` silently accepted as 1 instead of a 422 refusal); reverted, byte-identical, recompiled, re-verified green on the throwaway.
+- Dropped-field merge branch disabled in `Api.Turn.HandleStart` (`If 0` in place of the `$ListLength(tDroppedFields) > 0` guard) → the new `TestANonScalarRowFieldIsDroppedAndNamedInTruncatedFields` went red (field name and `truncated` both wrong); reverted, byte-identical, recompiled, re-verified green on the throwaway.
+- `%Set` type hint restored for object/array values in `Bound.Apply` (the fix for the self-caught `<ILLEGAL VALUE>` regression, reverted) → both the new `ContextBound.TestAnArrayOrObjectFieldSurvivesThePerFieldCutUntouched` and the pre-existing, unmodified `OcuPilot.Test.ToolWire` went red; reverted, byte-identical, recompiled, re-verified green on the live instance and the throwaway.
+
+Nine mutations demonstrated in total across the story: four from the implementation pass
+(descriptor-bound, credential list, leaves-instance, and the reply-budget subtraction), plus five
+from this review pass's own patches (descriptor-branch condition, `entity` length, the boolean type
+guard, the dropped-field merge, and the `%Set` object/array fix).
 
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none
+**Summary.** Implemented the full server-side story: `Kernel.Agent.Bound` (the shared cutter),
+`Screen.Context` + `Api.Context` (GET/PUT), `Kernel.State.Sharing`, the `contextRowCap` switch end
+to end (store, API, audit, client field), `Egress.IsPrivate`/`LeavesInstance`, the descriptor
+`context.maxLength` grammar in both engines, and the turn's three-message context shape with the
+per-reply budget in `Loop.AnswerTools`. Descriptor-derived read tool results (only) go through
+`Bound` instead of the old row-only `Capped`; a class-of-its-own tool is untouched. The parallel
+review pass found and fixed three HIGH-severity defects this story's own diff introduced (a silent
+context-loss path with no field bounding `entity`, and a `%Set` type-hint misuse in `Bound.Apply`
+that broke every real descriptor-derived read tool whose result carries an array or object field,
+caught only by a full 102-class regression sweep) plus a dozen medium/low findings, all patched or
+dispositioned below.
+
+**Files changed** (full list in the diff; grouped by role):
+
+- New: `Kernel/Agent/Bound.cls` (cutter), `Screen/Context.cls` (projection), `Api/Context.cls`
+  (GET/PUT), `Kernel/State/Sharing.cls` (per-user store), `Test/ContextBound.cls`,
+  `Test/TurnContext.cls`, `ui/tools/credential-lists.test.mjs`.
+- Turn path: `Api/Turn.cls` (validation, sharing/cap resolution, secret/bound branches, entity
+  length bound), `Kernel/Agent/{Job,Loop,Prompt,Limits}.cls` (context payload, scope, three-message
+  shape, reply budget), `Kernel/Agent/Dispatch.cls` (descriptor-branch cut, configurable limits
+  class threaded through `AnswerOne`).
+- Descriptor/registry: `Screen/Descriptor/Base.cls`, `Screen/Registry.cls`,
+  `Screen/Tool/{Read,Registry}.cls`, `ui/tools/screen-mirror.mjs` (+ test cases).
+- Switches/security: `Kernel/State/Switch.cls`, `Kernel/SwitchRules.cls`, `Api/Switches.cls`
+  (`contextRowCap`, boolean-type guard), `Api/Error.cls`, `Api/Router.cls`.
+- Egress/provider: `Kernel/Egress.cls` (`IsPrivate`), `Port/ProviderPort.cls` (`ResolveEndpoint`).
+- Client: `ui/src/app/areas/agent/switches.{store,page,page.spec}.ts`,
+  `ui/browser/switches.browser-spec.mjs`, `ui/src/app/core/{strings,screens.generated}.ts`,
+  `ui/tools/field-lists.mjs`.
+- Test fixes for pre-existing suites the new switch/violation vocabulary and the `%Set` fix
+  touched: `Test/{AgentViolation,ConfigGate,SwitchState,TurnLoopProbe,TurnWireFixture}.cls`,
+  `Test/{ToolDispatch,TurnTools,SwitchesWire}.cls` (new pinning tests).
+
+**Review findings** (full detail in `## Review Triage Log`, 2026-09-17 pass): 31 findings -- high 3,
+medium 12, low 12, false 4. All 3 high and 12 of 12 medium findings routed `patch` were fixed in
+this pass (16 patches total, including the doc-comment-only ones). One `defer` (a pre-existing
+`MergeBody` object/array behavior this story did not introduce). Rejected, with reason: two
+low-severity findings judged out of scope against the intent contract's own closed wire shape and
+"Never" list (a sharing-choice reset operation; a client consumer for `/agent/context` beyond
+`contextRowCap`, which is Story 4.11's); one low-severity generic total-size-after-merge edge case,
+real but narrow, whose correct fix is more than a direct correction (reopen_if: a `screen_context`
+payload is observed over 65,536 characters); one low-severity `truncatedFields` imprecision after
+the size-cut drops rows, same reopen_if pattern; one low-severity client-side number-parsing
+looseness, rejected because the server's own validation refuses the same bad values with the same
+code regardless; one low-severity pre-cap processing-cost concern, rejected as no realistic
+reachable harm is named. Four findings were `false` on verification (a spurious-stamping claim, a
+`maxLength<=0` claim, a documentation-staging non-issue, and a DW-399 parity claim resolved by the
+live-checkout test that is the actual verification mechanism).
+
+**Follow-up review recommendation: true.** Three high-severity entries were patched in this pass
+(the criterion that alone sets this true). Named unverified risk: the `%Set` type-hint bug fixed in
+`Bound.Apply` was a repo-wide-shaped mistake (passing a JSON type hint from an iterator alongside an
+already-object-valued OREF) caught only by a full-suite regression sweep, not by search; this pass
+did not grep the rest of the shipped tree (outside this story's own diff) for the same `%Set(...,
+tValueType)` pattern on a value that could be object/array-typed. A follow-up should run that search
+once, project-wide.
+
+**Verification performed.** `cd ui && npm test`: 820/822 green, the 2 failures pre-existing Story
+4.11 string gaps (confirmed via `git stash` against baseline). `npm run build`: clean, all six
+prebuild checkers pass. `check-objectscript.py` and its own harness: clean. Live instance
+(`ocupilot-slot-a`), full 350-class tree recompiled clean throughout: `ContextBound` (8/8),
+`Descriptor` (31/31), `Log` (10/10), `AgentSchema` (8/8), `ToolDispatch` (14/14), `TurnTools` (7/7)
+all green across multiple re-runs as fixes landed; `State` refuses outright without
+`OCUPILOT_ALLOW_PRINCIPALS` (environment condition, not a regression). Throwaway `ocupilot-ci`:
+brought up and torn down four times across this pass as fixes required re-verification, the last
+run from a completely fresh container with no prior state. **The definitive final run: a full
+102-class, 946-test sweep on that fresh throwaway, 0 failed, 0 probe leftovers, 0 overlaps** --
+including `TurnContext` (12/12), `TurnWire` (2/2), `SwitchState` (11/11), `AgentViolation` (8/8) and
+`ConfigGate` (3/3), the classes this review's own fixes touched or that regressed and were fixed.
+`switches.browser-spec.mjs` (4/4) and `scripts/smoke.sh` (18/18 executed, 2 pending pre-existing
+Epic 3 gaps, 0 skipped) both green on that same throwaway before teardown. Nine Rule 19 mutations
+demonstrated and reverted byte-identical (see `## Verification` above): four in the implementation
+pass, five in this review pass, including the two most consequential (the descriptor-branch
+per-field cut and the `%Set` object/array fix).
+
+**Residual risks:** the project-wide `%Set(...,type)` grep named above; the four low-severity
+`reject`/`defer` items in the triage log, each with a `reopen_if` or reasoning already recorded; the
+`TestAReadToolResultsOwnFieldIsBound` case remains conditional on live audit data (the underlying
+mechanism is otherwise now deterministically pinned via `ToolDispatch.TestADescriptorDerivedToolResultGetsThePerFieldCut`).
+
+Status: done
+Blocking condition: none.

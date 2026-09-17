@@ -262,11 +262,13 @@ ClassMethod Call(pMethod As %String, pPath As %String, pUser As %String, pPasswo
     Quit ##class(OcuPilot.Test.Http).AbsoluteRequest(pMethod, ..#APIBASE _ pPath, pUser, pPassword, .pStatus, .pText, .pHeaders, pBody, "application/json", , pTimeout)
 }
 
-/// <p>The body a start posts for <var>pMessage</var>, as the UTF-8 bytes a browser sends.</p>
-ClassMethod StartBody(pMessage As %String) As %String
+/// <p>The body a start posts for <var>pMessage</var>, as the UTF-8 bytes a browser sends.
+/// <var>pContext</var>, when supplied, is the wire <code>context</code> object (Story 4.4).</p>
+ClassMethod StartBody(pMessage As %String, pContext As %DynamicObject = "") As %String
 {
     Set tBody = {}
     Do tBody.%Set("message", pMessage, "string")
+    If $IsObject(pContext) Do tBody.%Set("context", pContext)
     Quit $ZConvert(tBody.%ToJSON(), "O", "UTF8")
 }
 

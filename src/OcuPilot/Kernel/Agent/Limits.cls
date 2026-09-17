@@ -47,4 +47,10 @@ Parameter TOOLROWS As %Integer = 200;
 /// it fits; a result that cannot fit is refused <code>TOOL.RESULTTOOLARGE</code>.</p>
 Parameter TOOLRESULTMAXLENGTH As %Integer = 65536;
 
+/// <p>Characters one field's string value carries at most, when the descriptor declares no
+/// <code>context.maxLength</code> for that field (AD-24, DW-281). A value cut to this bound loses
+/// one character to the trailing U+2026 mark, so the kept text is this many characters minus
+/// one.</p>
+Parameter FIELDMAXLENGTH As %Integer = 1000;
+
 }

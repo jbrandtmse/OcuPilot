@@ -55,8 +55,33 @@ function isEmptyValue(value) {
 /** `<area>.<screen>.<verb>`, lower case, dots only (Conventions, Tool naming). */
 export const TOOL_NAME_RE = /^[a-z][a-z0-9]*\.[a-z][a-z0-9]*\.[a-z][a-z0-9]*$/;
 
+/**
+ * The suffix half of the credential pattern (Conventions, Secrets), held equal by
+ * `credential-lists.test.mjs` to `OcuPilot.Kernel.Audit.Log.CREDENTIALSUFFIXES` (DW-399).
+ */
+export const CREDENTIAL_SUFFIXES = [
+  'password',
+  'passwd',
+  'pwd',
+  'secret',
+  'secret64',
+  'apikey',
+  'privatekey',
+  'token',
+  'credential',
+];
+
+/**
+ * The exact-name half of the credential pattern, held equal by `credential-lists.test.mjs` to
+ * `OcuPilot.Kernel.Audit.Log.CREDENTIALEXACTNAMES` (DW-399).
+ */
+export const CREDENTIAL_EXACT_NAMES = ['key', 'credentialname'];
+
 /** The credential pattern (Conventions, Secrets), matched against a path's last segment. */
-export const CREDENTIAL_RE = /(password|passwd|pwd|secret|secret64|apikey|privatekey|token)$|^key$/i;
+export const CREDENTIAL_RE = new RegExp(
+  `(${CREDENTIAL_SUFFIXES.join('|')})$|^(${CREDENTIAL_EXACT_NAMES.join('|')})$`,
+  'i'
+);
 
 const SHAPES = ['literal', 'object', 'array'];
 const SOURCES = ['template', 'class', 'none'];

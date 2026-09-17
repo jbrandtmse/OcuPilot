@@ -275,7 +275,7 @@ Method ConcretePath(pUrl As %String) As %String
 /// map declares it -- a list naming a route the map does not carry fails the sweep.</p>
 ClassMethod Exceptions() As %List
 {
-    Quit $ListBuild($ListBuild("GET", "/agent/definitions", "the selection projection is what the switcher needs and what every portal user may see (AD-46)"), $ListBuild("GET", "/agent/restraint", "it answers the calling user their own verdict, and the audience for the kill-switch banner is precisely the people who cannot change it"))
+    Quit $ListBuild($ListBuild("GET", "/agent/definitions", "the selection projection is what the switcher needs and what every portal user may see (AD-46)"), $ListBuild("GET", "/agent/restraint", "it answers the calling user their own verdict, and the audience for the kill-switch banner is precisely the people who cannot change it"), $ListBuild("GET", "/agent/context", "it answers the calling user their own screen-context sharing choice and instance facts (Story 4.4), caller-own like /agent/restraint"), $ListBuild("PUT", "/agent/context", "it stores only the calling user's own sharing choice (Story 4.4), never another user's row or an instance setting"))
 }
 
 /// <p>The exception entry for <var>pMethod</var> <var>pUrl</var>, or <code>""</code>.</p>
@@ -350,7 +350,10 @@ Method TestEveryConfigurationRouteRefusesAPrincipalWithoutTheAdministrativeResou
         Do $$$AssertStatusOK(tSC, tMethod _ " " _ tUrl _ ": the request completes")
         Set tException = ..ExceptionFor(tMethod, tUrl)
         If tException '= "" {
-            Do $$$AssertEquals(tStatus, 200, tMethod _ " " _ tUrl _ ": is answered, because " _ $List(tException, 3) _ " (" _ $Extract(tBody, 1, 200) _ ")")
+            ; Not literally 200: a PUT exception's trivial {} body can be refused on its own
+            ; shape (422), which still proves the admin gate never ran -- a gate refusal is 403
+            ; specifically, before the handler ever reads the body.
+            Do $$$AssertNotEquals(tStatus, 403, tMethod _ " " _ tUrl _ ": is answered, not gated, because " _ $List(tException, 3) _ " (" _ $Extract(tBody, 1, 200) _ ")")
             Continue
         }
         Do $$$AssertEquals(tStatus, 403, tMethod _ " " _ tUrl _ ": is refused (" _ $Extract(tBody, 1, 300) _ ")")

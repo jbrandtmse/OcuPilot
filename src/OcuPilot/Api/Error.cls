@@ -363,6 +363,15 @@ Parameter AGENTNOTFOUND = "AGENT.NOTFOUND";
 /// a server-side read fault is never presented as malformed client JSON (DW-24).</p>
 Parameter AGENTBADBODY = "AGENT.BADBODY";
 
+/// <p>Machine code (Story 4.4, AD-39): <code>PUT /agent/context</code>'s body carries anything
+/// other than exactly the boolean member <code>share</code> -- an absent, badly typed or extra
+/// member. Rendered on the <parameter>VALIDATIONFAILED</parameter> slug by
+/// <class>OcuPilot.Api.Context</class>; nothing is written.</p>
+Parameter AGENTCONTEXTSHARE = "AGENT.CONTEXT.SHARE";
+
+/// <p>The envelope's <code>reason</code> for <parameter>AGENTCONTEXTSHARE</parameter>.</p>
+Parameter REASONAGENTCONTEXTSHARE = "The body must carry exactly one member, the boolean share.";
+
 /// <p>Violation code (rule 1): a definition needs a name of one to sixty-four characters.
 /// Rendered inside <code>detail.violations</code> on the <parameter>VALIDATIONFAILED</parameter>
 /// slug, on the field <code>name</code>. Covers both an absent name and one over the length the
@@ -514,6 +523,11 @@ Parameter AGENTCREDENTIALNOPRIVILEGE = "AGENT.CREDENTIAL.NOPRIVILEGE";
 /// <code>killSwitchReason</code>.</p>
 Parameter AGENTSWITCHREASONREQUIRED = "AGENT.SWITCH.REASONREQUIRED";
 
+/// <p>Violation code (Story 4.4, AD-24): <code>contextRowCap</code> is not a whole number from 1
+/// to 1,000. Produced by <method>OcuPilot.Kernel.SwitchRules.ValidateSwitches</method> on the
+/// field <code>contextRowCap</code>.</p>
+Parameter AGENTSWITCHCONTEXTROWCAP = "AGENT.SWITCH.CONTEXTROWCAP";
+
 /// <p>Violation code (FR-20): a per-user hold named no user. Produced by
 /// <method>OcuPilot.Kernel.SwitchRules.ValidateHold</method> on the field <code>userName</code>.</p>
 Parameter AGENTHOLDUSERREQUIRED = "AGENT.HOLD.USERREQUIRED";
@@ -616,6 +630,15 @@ Parameter TURNMESSAGEREQUIRED = "TURN.MESSAGE.REQUIRED";
 /// <parameter>TURNMESSAGEREQUIRED</parameter> is; the producer appends the bound.</p>
 Parameter TURNMESSAGELENGTH = "TURN.MESSAGE.LENGTH";
 
+/// <p>Violation code (Story 4.4, AD-24): the turn request's <code>context</code> is not shaped as
+/// <code>{route, namespace, entity?, view?}</code> declares, a member carries the wrong JSON type,
+/// <code>view.rowsAvailable</code> is negative or below the number of rows sent, or
+/// <code>namespace</code> differs from the request's resolved scope
+/// (<method>OcuPilot.Kernel.Scope.Current</method>). Rendered the way
+/// <parameter>TURNMESSAGEREQUIRED</parameter> is, on the field <code>context</code>; nothing is
+/// reserved.</p>
+Parameter TURNCONTEXTINVALID = "TURN.CONTEXT.INVALID";
+
 /// <p>Machine code (AD-41): the caller already has a queued or running turn. Rendered on the
 /// <parameter>CONFLICT</parameter> slug, HTTP 409.</p>
 Parameter TURNBUSY = "TURN.BUSY";
@@ -683,6 +706,9 @@ Parameter REASONTURNMESSAGEREQUIRED = "Type a message before sending it.";
 /// bound.</p>
 Parameter REASONTURNMESSAGELENGTH = "That message is longer than a turn accepts";
 
+/// <p>Written sentence for <parameter>TURNCONTEXTINVALID</parameter>.</p>
+Parameter REASONTURNCONTEXTINVALID = "The screen context is not shaped as the turn expects.";
+
 /// <p>Written sentence for <parameter>TURNBUSY</parameter>: EXPERIENCE.md's lock banner.</p>
 Parameter REASONTURNBUSY = "A turn is in progress. Wait for it to finish before sending another message.";
 
@@ -735,7 +761,7 @@ Parameter REASONTOOLRESULTTOOLARGE = "The tool's result is larger than a tool re
 /// <method>ReasonForTurn</method> to the vocabulary.</p>
 ClassMethod TurnCodes() As %List
 {
-    Quit $ListBuild(..#TURNBADBODY, ..#TURNMESSAGEREQUIRED, ..#TURNMESSAGELENGTH, ..#TURNBUSY, ..#TURNNOTFOUND, ..#TURNUNAVAILABLE, ..#TURNSTOPPED, ..#TURNABANDONEDREADONLY, ..#TURNABANDONEDPRIVILEGE, ..#TURNABANDONEDLEASE, ..#TURNABANDONEDSIGNOUT, ..#TURNABANDONEDJOBLOST, ..#TURNLIMITDURATION, ..#TURNLIMITTOKENS)
+    Quit $ListBuild(..#TURNBADBODY, ..#TURNMESSAGEREQUIRED, ..#TURNMESSAGELENGTH, ..#TURNCONTEXTINVALID, ..#TURNBUSY, ..#TURNNOTFOUND, ..#TURNUNAVAILABLE, ..#TURNSTOPPED, ..#TURNABANDONEDREADONLY, ..#TURNABANDONEDPRIVILEGE, ..#TURNABANDONEDLEASE, ..#TURNABANDONEDSIGNOUT, ..#TURNABANDONEDJOBLOST, ..#TURNLIMITDURATION, ..#TURNLIMITTOKENS)
 }
 
 /// <p>The written sentence a <code>TURN.*</code> code carries, or <code>""</code> for any other
@@ -745,6 +771,7 @@ ClassMethod ReasonForTurn(pCode As %String) As %String
     If pCode = ..#TURNBADBODY Quit ..#REASONTURNBADBODY
     If pCode = ..#TURNMESSAGEREQUIRED Quit ..#REASONTURNMESSAGEREQUIRED
     If pCode = ..#TURNMESSAGELENGTH Quit ..#REASONTURNMESSAGELENGTH
+    If pCode = ..#TURNCONTEXTINVALID Quit ..#REASONTURNCONTEXTINVALID
     If pCode = ..#TURNBUSY Quit ..#REASONTURNBUSY
     If pCode = ..#TURNNOTFOUND Quit ..#REASONTURNNOTFOUND
     If pCode = ..#TURNUNAVAILABLE Quit ..#REASONTURNUNAVAILABLE
@@ -839,6 +866,7 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If pCode = ..#AGENTCREDENTIALNOTOWNED Quit ..#REASONAGENTCREDENTIALNOTOWNED
     If pCode = ..#AGENTCREDENTIALNOPRIVILEGE Quit ..#REASONAGENTCREDENTIALNOPRIVILEGE
     If pCode = ..#AGENTSWITCHREASONREQUIRED Quit ..#REASONAGENTSWITCHREASONREQUIRED
+    If pCode = ..#AGENTSWITCHCONTEXTROWCAP Quit ..#REASONAGENTSWITCHCONTEXTROWCAP
     If pCode = ..#AGENTHOLDUSERREQUIRED Quit ..#REASONAGENTHOLDUSERREQUIRED
     If pCode = ..#AGENTHOLDREASONREQUIRED Quit ..#REASONAGENTHOLDREASONREQUIRED
     If pCode = ..#AGENTHOLDDUPLICATE Quit ..#REASONAGENTHOLDDUPLICATE
@@ -850,7 +878,7 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
 /// re-spelling either, which is what catches a code added with no sentence behind it.</p>
 ClassMethod ViolationCodes() As %List
 {
-    Quit $ListBuild(..#AGENTNAMEREQUIRED, ..#AGENTNAMEDUPLICATE, ..#AGENTPROVIDERUNKNOWN, ..#AGENTMAXTOKENSRANGE, ..#AGENTTEMPERATURERANGE, ..#AGENTCREDTYPEUNKNOWN, ..#AGENTENVVARREQUIRED, ..#AGENTCREDNAMEREQUIRED, ..#AGENTCREDNAMELENGTH, ..#AGENTENDPOINTREQUIRED, ..#AGENTENDPOINTSCHEME, ..#AGENTENDPOINTADDRESS, ..#AGENTENDPOINTLINKLOCAL, ..#AGENTLOCALUNSUPPORTED, ..#AGENTSYSTEMPROMPTLENGTH, ..#AGENTRETENTIONRANGE, ..#AGENTITERATIONSRANGE, ..#AGENTENABLEUNVERIFIED, ..#AGENTDEFAULTDISABLED, ..#AGENTCREDENTIALREQUIRED, ..#AGENTCREDENTIALENVUNWRITABLE, ..#AGENTCREDENTIALRUNGUNAVAILABLE, ..#AGENTKEYSHAPE, ..#AGENTCREDENTIALNOTOWNED, ..#AGENTCREDENTIALNOPRIVILEGE, ..#AGENTSWITCHREASONREQUIRED, ..#AGENTHOLDUSERREQUIRED, ..#AGENTHOLDREASONREQUIRED, ..#AGENTHOLDDUPLICATE)
+    Quit $ListBuild(..#AGENTNAMEREQUIRED, ..#AGENTNAMEDUPLICATE, ..#AGENTPROVIDERUNKNOWN, ..#AGENTMAXTOKENSRANGE, ..#AGENTTEMPERATURERANGE, ..#AGENTCREDTYPEUNKNOWN, ..#AGENTENVVARREQUIRED, ..#AGENTCREDNAMEREQUIRED, ..#AGENTCREDNAMELENGTH, ..#AGENTENDPOINTREQUIRED, ..#AGENTENDPOINTSCHEME, ..#AGENTENDPOINTADDRESS, ..#AGENTENDPOINTLINKLOCAL, ..#AGENTLOCALUNSUPPORTED, ..#AGENTSYSTEMPROMPTLENGTH, ..#AGENTRETENTIONRANGE, ..#AGENTITERATIONSRANGE, ..#AGENTENABLEUNVERIFIED, ..#AGENTDEFAULTDISABLED, ..#AGENTCREDENTIALREQUIRED, ..#AGENTCREDENTIALENVUNWRITABLE, ..#AGENTCREDENTIALRUNGUNAVAILABLE, ..#AGENTKEYSHAPE, ..#AGENTCREDENTIALNOTOWNED, ..#AGENTCREDENTIALNOPRIVILEGE, ..#AGENTSWITCHREASONREQUIRED, ..#AGENTSWITCHCONTEXTROWCAP, ..#AGENTHOLDUSERREQUIRED, ..#AGENTHOLDREASONREQUIRED, ..#AGENTHOLDDUPLICATE)
 }
 
 /// <p>Refusal sentence for <parameter>AGENTNAMEREQUIRED</parameter>.</p>
@@ -943,6 +971,9 @@ ClassMethod ReasonForCredentialPrivilege(pPair As %String = "") As %String
 
 /// <p>Refusal sentence for <parameter>AGENTSWITCHREASONREQUIRED</parameter>.</p>
 Parameter REASONAGENTSWITCHREASONREQUIRED = "Give a reason for switching the agent off. Everyone it affects is shown it.";
+
+/// <p>Refusal sentence for <parameter>AGENTSWITCHCONTEXTROWCAP</parameter>.</p>
+Parameter REASONAGENTSWITCHCONTEXTROWCAP = "Context rows sent with a turn is a whole number from 1 to 1,000.";
 
 /// <p>Refusal sentence for <parameter>AGENTHOLDUSERREQUIRED</parameter>.</p>
 Parameter REASONAGENTHOLDUSERREQUIRED = "Name the user the agent is switched off for.";

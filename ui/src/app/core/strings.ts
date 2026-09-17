@@ -539,6 +539,8 @@ export const STRINGS = {
   agentSwitchesHoldsEmpty: 'No users are switched off.',
   /** EXPERIENCE.md:342 */
   agentSwitchesShareContext: 'Screen context is shared by default',
+  /** EXPERIENCE.md:348 */
+  agentSwitchesContextRowCap: 'Context rows sent with a turn',
   /** EXPERIENCE.md:343 */
   agentSwitchesRefusedAction: 'change the switches',
   /** EXPERIENCE.md:344 */

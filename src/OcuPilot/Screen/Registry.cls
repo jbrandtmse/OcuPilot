@@ -689,13 +689,15 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
             Quit
         }
         Set tContext = pDeclaration.%Get("context")
-        Set tProblem = ..UnknownKeyProblem(tContext, "context", $ListBuild("fields", "secretFields"))
+        Set tProblem = ..UnknownKeyProblem(tContext, "context", $ListBuild("fields", "secretFields", "maxLength"))
         If tProblem '= "" Quit
         Set tSecretProblem = ..NameArrayProblem(tContext, "secretFields", tFields, .tSecrets)
         If tSecretProblem '= "" {
             Set tProblem = "context." _ tSecretProblem
             Quit
         }
+        Set tProblem = ..ContextMaxLengthProblem(tContext, tFields)
+        If tProblem '= "" Quit
 
         Set tFilterProblem = ..NameArrayProblem(tRead, "filter", tFields, .tFilter)
         If tFilterProblem '= "" {
@@ -1232,6 +1234,31 @@ ClassMethod UnknownKeyProblem(pObject As %DynamicObject, pWhere As %String, pAll
         If $ListFind(pAllowed, tKey) Continue
         Set tProblem = pWhere _ " declares the unknown key '" _ tKey _ "'"
         Quit
+    }
+    Quit tProblem
+}
+
+/// <p>What is wrong with <var>pContext</var>'s <code>maxLength</code> map, or <code>""</code>
+/// (AD-24, Story 4.4). Optional; when declared it is an object whose every key is one of
+/// <var>pFields</var> and whose every value is a whole number from 1 to 1,000 -- the same bound the
+/// kernel cutter enforces by default, so a declared value can only lower it, never raise it.</p>
+ClassMethod ContextMaxLengthProblem(pContext As %DynamicObject, pFields As %List) As %String [ Private ]
+{
+    Set tType = pContext.%GetTypeOf("maxLength")
+    If (tType = "unassigned") || (tType = "null") Quit ""
+    If tType '= "object" Quit "context.maxLength is not an object"
+    Set tMap = pContext.%Get("maxLength")
+    Set tProblem = ""
+    Set tIterator = tMap.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tValue, .tValueType) {
+        If '$ListFind(pFields, tKey) {
+            Set tProblem = "context.maxLength names '" _ tKey _ "', which is not in context.fields"
+            Quit
+        }
+        If (tValueType '= "number") || (tValue '= (tValue \ 1)) || (tValue < 1) || (tValue > 1000) {
+            Set tProblem = "context.maxLength." _ tKey _ " is not a whole number from 1 to 1,000"
+            Quit
+        }
     }
     Quit tProblem
 }

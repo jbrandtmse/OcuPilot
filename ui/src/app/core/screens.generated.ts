@@ -69,6 +69,9 @@ export interface IdAccessor {
 export interface ContextDeclaration {
   readonly fields: readonly string[];
   readonly secretFields: readonly string[];
+  /** Per-field length overrides (Story 4.4, AD-24), each a whole number from 1 to 1,000. Absent
+   * for a screen that declares none. */
+  readonly maxLength?: Readonly<Record<string, number>>;
 }
 
 export interface ActionDeclaration {

@@ -83,6 +83,7 @@ async function restoreSwitches() {
       killSwitchReason: '',
       enforcedReadOnly: false,
       shareContextByDefault: true,
+      contextRowCap: 200,
     }),
   });
   assert.equal(answer.status, 200, `the switches were restored: ${await answer.text()}`);
@@ -247,6 +248,50 @@ test('AC3, AC4: the kill switch reaches the panel banner and the rail dot, with 
     assert.ok(
       stillBannered.some((text) => text.includes(expected)),
       `the second screen rendered with the kill switch still on: ${JSON.stringify(stillBannered)}`
+    );
+  } finally {
+    await context.close();
+  }
+});
+
+test('Story 4.4: the context row cap saves as a number and renders the server violation', async () => {
+  await restoreSwitches();
+  const { context, page } = await signedInAt(SWITCHES_URL);
+  try {
+    await page.waitForSelector('#ocu-switches-contextRowCap', { visible: true, timeout: config.navigationTimeoutMs });
+    assert.equal(
+      await page.$eval('#ocu-switches-contextRowCap', (node) => node.value),
+      '200',
+      'the stored default renders on load'
+    );
+
+    await page.$eval('#ocu-switches-contextRowCap', (node) => {
+      node.value = '500';
+      node.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await page.click('.ocu-form-bar-actions .ocu-button-primary');
+    await page.waitForFunction(
+      () => document.querySelector('#ocu-switches-contextRowCap')?.value === '500',
+      { timeout: config.navigationTimeoutMs }
+    );
+    const stored = await (
+      await fetch(`${config.origin}${SWITCHES_PATH}`, { headers: { Authorization: authHeader() } })
+    ).json();
+    assert.equal(stored.contextRowCap, 500, 'the instance holds the number the browser saved');
+
+    // A refused value renders on its own field, not the reason field.
+    await page.$eval('#ocu-switches-contextRowCap', (node) => {
+      node.value = '5000';
+      node.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await page.click('.ocu-form-bar-actions .ocu-button-primary');
+    await page.waitForSelector('#ocu-switches-contextRowCap-reason', { timeout: config.navigationTimeoutMs });
+    const reason = await page.$eval('#ocu-switches-contextRowCap-reason', (node) => node.textContent.trim());
+    assert.ok(reason.length > 0, 'the row-cap violation renders beside its own control');
+    assert.equal(
+      await page.$eval('#ocu-switches-contextRowCap', (node) => node.getAttribute('aria-invalid')),
+      'true',
+      'and the control itself is marked invalid'
     );
   } finally {
     await context.close();
