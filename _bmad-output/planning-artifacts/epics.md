@@ -562,7 +562,7 @@ Where an FR is split, the epic that first delivers user-visible value from it is
 - FR-44: Epic 6 (the four lists and the authorization-server view), then Epic 7 (the two deletes), then Epic 12 (the five full editors).
 - FR-45: Epic 6 (the LDAP and Kerberos list), then Epic 9 (the editor).
 - FR-46: Epic 6 (collections and secrets lists), then Epic 8 (the write-only secret form).
-- FR-47: Epic 5 (this area's step-2 confirmed agent write - auditing disable and re-enable, carrying its mandated warning), then Epic 7 (auditing on and off from the screen), then Epic 8 (system and user event configuration and the selective SQL auditing wizard).
+- FR-47: Epic 5 (this area's step-2 confirmed agent write - auditing disable and re-enable, carrying its mandated warning), then Epic 7 (auditing on and off from the screen, and system and user event configuration with the selective SQL auditing wizard, Story 7.11).
 
 #### Tasks
 
@@ -635,7 +635,7 @@ The epic-level map above says *which epic* owns each requirement and why it is s
 | FR-4 | 1.9 | FR-44 | 6.4, 7.3, 12.4-12.8 |
 | FR-5 | 1.10, 1.11 | FR-45 | 6.3, 9.6 |
 | FR-6 | 1.10 | FR-46 | 6.3, 8.6 |
-| FR-7 | 1.14 | FR-47 | 5.10, 7.4, 8.7 |
+| FR-7 | 1.14 | FR-47 | 5.10, 7.4, 7.11 |
 | FR-8 | 1.13 | FR-48 | 2.8, 6.5, 7.5 |
 | FR-9 | 1.15, 9.9 | FR-49 | 6.6 |
 | FR-10 | 4.3 | FR-50 | 6.7 |
@@ -726,6 +726,8 @@ Every UX Design Requirement is owned by at least one story. Where a UX-DR is a *
 
 **Owner re-sequence, 2026-09-16.** Step 7 is reduced to the provider adapters (Epic 10, three stories, needing only Epic 3); the plain-Community check is Story 8.9, the last act of the floor; the per-user restraints and the remaining write-path hardening are Stories 14.5 to 14.8 in the polish week, ranked after the OAuth 2.0 editors; and the target fingerprint re-read is closed as delivered by Stories 5.1, 5.3 and 7.10. Two things drove it: the kick-off named "OAuth setup" verbatim, and a judge holding an OpenAI key should be able to run the agent live before the release.
 
+**Parallel-run amendments, 2026-09-16.** Three forward references that serialized the epics under the parallel orchestrator moved to the story that has both halves: Story 6.7's UJ-6 replay to Story 7.6, Story 10.2's per-provider demo-prompt check to Story 17.7, and Story 8.7 to Epic 7 as Story 7.11. Nothing changed in what is built, only in which story verifies it, so Epic 6 depends on Epic 2 alone, Epic 10 on Epics 3 and 4, and Epic 8 on Epics 5 and 6.
+
 That choice was weighed against organizing by portal area instead - one epic each for Web applications, Permissions, Security, Tasks, OS management and Logs. Area epics would touch fewer files per epic, but they cannot express the floor, which demands one live list in **every** area before any area's editors, and one confirmed agent write in **every** area by the end of step 2. An area-shaped plan would let the project arrive at 2026-09-27 with two finished areas and four empty ones, which is the thin interface the contest rules reject.
 
 **On file overlap.** Epics 2, 6, 7, 8 and 9 do each touch the same area slices. That overlap is additive rather than churning, because AD-5 makes a screen one declarative descriptor: adding a row action adds a declaration and a derived tool schema, not a rewrite of the list page. This is the "fully pre-designed, no feedback loop" case - the pre-design is what removes the pressure to consolidate.
@@ -786,17 +788,17 @@ A user reaches every list, detail and viewer the six areas offer - no dead side 
 
 A user does the small things that make up most daily administration - enable, disable, run, suspend, resume, terminate, remove and delete - from the row or from the command bar, with the row updating in place, and can ask the agent to do any of them instead through a confirmed proposal. Build step 4; completing it clears the last floor requirement below the create-and-edit line.
 
-**FRs covered:** FR-32 (screen actions), FR-37 (remaining), FR-44 (deletes), FR-47 (auditing on and off), FR-48 (on-demand run), FR-51 (remaining, plus Task Manager control), FR-55 (remaining), FR-57 (removal), FR-63 (remaining delete scopes)
+**FRs covered:** FR-32 (screen actions), FR-37 (remaining), FR-44 (deletes), FR-47 (auditing on and off, system and user event configuration), FR-48 (on-demand run), FR-51 (remaining, plus Task Manager control), FR-55 (remaining), FR-57 (removal), FR-63 (remaining delete scopes)
 
 **Implementation notes:** Every action here is two callers of one operation - the row and the write tool - so a story is not done when the button works. The self-protection rules are UI affordances, **not** prohibitions: refusing to disable the current user, act on the user's own process or delete OcuPilot's own applications is enforced on the instance by AD-10 and merely explained in the row menu. Three warnings carry consequences the user must see before proceeding: suspending the Task Manager, disabling auditing, and disabling the web service OcuPilot itself runs on. AD-48's three delete scopes complete here - by namespace, **by date** and by error - with `DeleteByDate` either implemented or explicitly refused, never left for a builder to discover, and the fingerprint always the enumerated id set rather than a count.
 
 ### Epic 8: Create and import
 
-A user creates the things the six areas administer - a web application, a user, a role and its grants, a resource, a device, a wallet secret, an X.509 credential, an audit event - through medium forms that validate server-side and open the new entity on success. Build step 5; **at least one create or edit form per area from this step is part of the 2026-09-27 floor.**
+A user creates the things the six areas administer - a web application, a user, a role and its grants, a resource, a device, a wallet secret, an X.509 credential - through medium forms that validate server-side and open the new entity on success. Build step 5; **at least one create or edit form per area from this step is part of the 2026-09-27 floor.**
 
-**FRs covered:** FR-31, FR-36, FR-39, FR-40 (editor), FR-43 (import, edit, delete), FR-46 (secret form), FR-47 (event configuration), FR-59 (device editor), FR-68 (the plain-Community verification, Story 8.9)
+**FRs covered:** FR-31, FR-36, FR-39, FR-40 (editor), FR-43 (import, edit, delete), FR-46 (secret form), FR-59 (device editor), FR-68 (the plain-Community verification, Story 8.9)
 
-**Implementation notes:** Two of the five Release 1 endpoints that publish **no** body template are in this epic - `Wallet.Secret` and `Security.Audit.Event` - so their field lists derive from the underlying `Security.*` / `%SYS.*` class and are pinned by a test that fails when the instance disagrees. Both are also **upserts**, so a body sent against a target deleted since the read silently creates a stub rather than failing - which is what the fresh read plus fingerprint covers. Every secret field here - the wallet value, the X.509 private key, the new user's password - is write-only end to end and excluded from screen context by schema declaration, never by name matching. Story 8.9 runs the plain-Community check as the floor's last act, by owner decision, with the late-failure risk accepted.
+**Implementation notes:** Two of the five Release 1 endpoints that publish **no** body template are built here and in Story 7.11 - `Wallet.Secret` in this epic, `Security.Audit.Event` there - so their field lists derive from the underlying `Security.*` / `%SYS.*` class and are pinned by a test that fails when the instance disagrees. Both are also **upserts**, so a body sent against a target deleted since the read silently creates a stub rather than failing - which is what the fresh read plus fingerprint covers. Every secret field here - the wallet value, the X.509 private key, the new user's password - is write-only end to end and excluded from screen context by schema declaration, never by name matching. Story 8.9 runs the plain-Community check as the floor's last act, by owner decision, with the late-failure risk accepted.
 
 ### Epic 9: The full editors
 
@@ -3543,7 +3545,7 @@ So that a question becomes a fix without me navigating anywhere myself.
 - **Given** the user says yes
 - **When** the agent navigates
 - **Then** it posts its announcement first, the route changes about a second later, and the heading announces it was opened by the agent
-- **And** the destination at this point is the **Task schedule list** with that task selected, because Task details does not exist until Story 6.7 - the navigation tool takes allow-listed route identifiers, so pointing it at the details route is a one-line change in that later story rather than a rewrite here
+- **And** the destination at this point is the **Task schedule list** with that task selected, because Task details does not exist until Story 6.7 - the navigation tool takes allow-listed route identifiers, so pointing it at the details route is a one-line change Story 7.6 makes once both screens exist, rather than a rewrite here
 - **And** a proposal follows with the diff row Status: Suspended to Scheduled, the rationale citing the last error, and the expected impact.
 
 - **Given** the user confirms
@@ -3791,7 +3793,7 @@ So that the agent has somewhere to take me when it finds one that stopped.
 
 - **Given** the screen declares auto-refresh
 - **When** the user turns it on
-- **Then** it refreshes silently through the shared framework, and pauses while a proposal against a task is live.
+- **Then** it refreshes silently through the shared framework - the pause while a proposal against a task is live is Story 5.7's rule for every auto-refreshing screen.
 
 - **Given** the screen
 - **When** it renders
@@ -3800,10 +3802,6 @@ So that the agent has somewhere to take me when it finds one that stopped.
 - **Given** the agent navigates here
 - **When** it arrives
 - **Then** the route carries the task's scoped identity, the row is selected, and the locator bar names it - which is what UJ-6 depends on.
-
-- **Given** this screen now exists
-- **When** the agent's navigation target for a suspended task is re-pointed from the schedule list to Task details
-- **Then** UJ-6 is replayed end to end: the agent navigates to **Task details**, the Status **field** highlights, and a toast reads the change with "Open in Task schedule" - completing the journey as the PRD writes it, with no earlier story left unverified.
 
 ### Story 6.8: Process details
 
@@ -4077,6 +4075,10 @@ So that fixing a stopped task does not need an editor.
 - **When** the write completes
 - **Then** its history records the manual resume attributed to that user.
 
+- **Given** Task details (Story 6.7) and the agent's resume proposal (Story 5.11) both exist
+- **When** the agent's navigation target for a suspended task is re-pointed from the schedule list to Task details
+- **Then** UJ-6 is replayed end to end: the agent navigates to **Task details**, the Status **field** highlights, and a toast reads the change with "Open in Task schedule" - completing the journey as the PRD writes it, with no earlier story left unverified.
+
 ### Story 7.7: Start, suspend and resume the Task Manager
 
 As a production administrator,
@@ -4161,11 +4163,39 @@ So that clearing the error log is precise rather than all-or-nothing.
 - **When** it is evaluated
 - **Then** it resolves **per namespace** - `%Admin_Operate` plus read and write on the database holding that namespace's `^ERRORS` global - because a single static descriptor resource cannot express it.
 
+### Story 7.11: System and user audit event configuration
+
+As a developer-administrator,
+I want to choose which events this instance audits,
+So that the audit database records what matters here rather than everything or nothing.
+
+**Acceptance Criteria:**
+
+- **Given** the system events list
+- **When** the user acts on a row
+- **Then** an event can be enabled, disabled and have its counter reset.
+
+- **Given** the selective SQL auditing wizard
+- **When** it is used
+- **Then** it configures the SQL audit events it covers.
+
+- **Given** the user events list
+- **When** the user acts
+- **Then** an event can be created, configured and deleted.
+
+- **Given** `Security.Audit.Event` publishes **no** body template and its PUT is an **upsert**
+- **When** the write tool is built
+- **Then** its field list is derived from the underlying class and pinned by a test, and the upsert path is covered.
+
+- **Given** OcuPilot's own audit event types
+- **When** a disable is attempted
+- **Then** the consequence is stated - agent writes stop being marked - and the panel's banner appears the moment it takes effect.
+
 ---
 
 ## Epic 8: Create and import
 
-A user creates the things the six areas administer - a web application, a user, a role and its grants, a resource, a device, a wallet secret, an X.509 credential, an audit event - through medium forms that validate server-side and open the new entity on success. Build step 5; **at least one create or edit form per area from this step is part of the 2026-09-27 floor.**
+A user creates the things the six areas administer - a web application, a user, a role and its grants, a resource, a device, a wallet secret, an X.509 credential - through medium forms that validate server-side and open the new entity on success. Build step 5; **at least one create or edit form per area from this step is part of the 2026-09-27 floor.**
 
 **Applies to every story in this epic.** Each form is a full-page route under the locator bar following the `form-page` contract: one column at most 720px wide with fields no wider than 480px, fields in **the classic order**, Material outlined fields with labels above and helper text beneath, an asterisk plus a legend for required fields, and a sticky 56px action bar with Save as the one primary and Cancel as a text button. Validation is inline on blur and on Save with server rules landing on the field they name; a failed Save moves focus to an error summary banner with a link per field, sets `aria-invalid` and `aria-describedby`, and focuses the first invalid field. Save on a create route opens the new entity's editor. Navigating away with unsaved changes asks first - **and agent navigation waits for the same answer**. Every write ships with its agent write tool over the derived field list, and a save publishes to the change-event bus so an open list updates. These are not restated per story.
 
@@ -4318,34 +4348,6 @@ So that the wallet area the contest names can actually hold something.
 - **Given** the wallet secret's wire shape
 - **When** the story is planned
 - **Then** `Usage` and `Secret` are settled on the instance first: the class-derived rows read `Usage` as a number and `Secret` as a string, while the published spec's example sends `Usage: ["HTTP"]` and `Secret: {user, password}`.
-
-### Story 8.7: System and user audit event configuration
-
-As a developer-administrator,
-I want to choose which events this instance audits,
-So that the audit database records what matters here rather than everything or nothing.
-
-**Acceptance Criteria:**
-
-- **Given** the system events list
-- **When** the user acts on a row
-- **Then** an event can be enabled, disabled and have its counter reset.
-
-- **Given** the selective SQL auditing wizard
-- **When** it is used
-- **Then** it configures the SQL audit events it covers.
-
-- **Given** the user events list
-- **When** the user acts
-- **Then** an event can be created, configured and deleted.
-
-- **Given** `Security.Audit.Event` publishes **no** body template and its PUT is an **upsert**
-- **When** the write tool is built
-- **Then** its field list is derived from the underlying class and pinned by a test, and the upsert path is covered.
-
-- **Given** OcuPilot's own audit event types
-- **When** a disable is attempted
-- **Then** the consequence is stated - agent writes stop being marked - and the panel's banner appears the moment it takes effect.
 
 ### Story 8.8: The device editor
 
@@ -4636,10 +4638,6 @@ So that adopting it does not mean opening a new vendor relationship.
 - **Given** either adapter
 - **When** it is configured and tested
 - **Then** Test connection succeeds and reports the model's reply, and a turn completes with tool calls.
-
-- **Given** the write path needs a model that makes reliable multi-field tool calls
-- **When** the UJ-3 and UJ-6 demo prompts are run against each shipped provider
-- **Then** they pass **before the demo freeze**, and the README's primary path names a capable model.
 
 - **Given** each adapter
 - **When** it handles a failure
@@ -5867,6 +5865,10 @@ So that the one pass in which collateral is made is made against a build that wi
 - **When** it is made
 - **Then** the application is in, the description is final, and a video is linked **if one was recorded in this pass** - the video remaining optional by owner decision, and being the only point at which one is recorded at all
 - **And** 2026-09-27 23:59 US Eastern is the hard bound this pass must complete inside.
+
+- **Given** the write path needs a model that makes reliable multi-field tool calls, and each shipped provider (Story 10.2)
+- **When** the UJ-3 and UJ-6 demo prompts are run against each of them
+- **Then** they pass **before the demo freeze**, and the README's primary path names a capable model.
 
 ---
 
