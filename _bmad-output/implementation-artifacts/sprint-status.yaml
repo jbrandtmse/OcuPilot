@@ -93,7 +93,7 @@ development_status:
   4-3-the-docked-panel-present-on-every-route: done
   4-4-screen-context-reaches-the-turn-capped-and-secret-free: done
   4-5-a-turn-watched-progress-cards-and-the-conversation-lock: done
-  4-11-the-context-chip-its-toggle-and-the-paste-warning: ready-for-dev
+  4-11-the-context-chip-its-toggle-and-the-paste-warning: in-progress
   4-6-replies-render-safely-and-offline: backlog
   4-7-the-agent-takes-you-to-a-screen: backlog
   4-8-a-slow-or-rate-limited-provider-degrades-the-turn-rather-tha: backlog
