@@ -7,8 +7,9 @@
 /// <p><b>The user is a weak reference</b> (AD-37): <property>UserName</property> is the scoped
 /// identity recorded as data, never a foreign key. A name that no longer resolves still reads back
 /// verbatim and answers no read.</p>
-/// <p><b>Nothing here is a gate.</b> <class>OcuPilot.Api.Turn</class> reads this row alone to
-/// decide whether context is discarded before a turn starts; this class stores and answers.</p>
+/// <p><b>Nothing here is a gate.</b> <class>OcuPilot.Api.Turn</class> reads this row, falling back
+/// to the instance default, to decide whether context is discarded before a turn starts; this
+/// class stores and answers.</p>
 /// <p>Named scalars only -- no <code>list Of</code> -- per the persistent-storage rule, and no
 /// hand-written Storage.</p>
 Class OcuPilot.Kernel.State.Sharing Extends OcuPilot.Kernel.State.Base
@@ -28,7 +29,7 @@ Index SharingUserNameIdx On UserName [ Unique ];
 /// and <var>pShare</var> 0 when no row names the user -- the ordinary answer, never an error; the
 /// caller then falls back to the instance default.</p>
 /// <p><b>Matched the way the unique index matches</b>, which is case-insensitively (IRIS SQL
-/// string comparison folds case by default and <property>UserNameIdx</property> collates the same
+/// string comparison folds case by default and <code>SharingUserNameIdx</code> collates the same
 /// way).</p>
 ClassMethod GuardedForUser(pUserName As %String, Output pFound As %Boolean, Output pShare As %Boolean) As %Status
 {
@@ -70,8 +71,8 @@ ClassMethod GuardedSetForUser(pUserName As %String, pShare As %Boolean) As %Stat
     Quit tSC
 }
 
-/// <p>Remove every row this suite wrote, so a test leaves the instance default in force for every
-/// user again.</p>
+/// <p>Remove every user's row, so the instance default is in force for every user again. For test
+/// set-up and tear-down only.</p>
 ClassMethod DeleteAllGuarded() As %Status
 {
     Quit ..GuardedExecuteNoParam("DELETE FROM OcuPilot_Kernel_State.Sharing")

@@ -2,7 +2,7 @@
 title: 'Story 4.4: Screen context reaches the turn, capped and secret-free'
 type: 'feature'
 created: '2026-09-16'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'd568b5cd6c7a1f1a80e1a2ea125aa2c2f59f5bf9'
 baseline_commit: 'd568b5cd6c7a1f1a80e1a2ea125aa2c2f59f5bf9'
 review_loop_iteration: 0
@@ -144,7 +144,47 @@ deferred:
 - Given `PUT /agent/context {share:false}` by user A, when user B (no row) calls `GET /agent/context`, then A reads `share` false and `userChoice` false, and B reads the instance default with `userChoice` null.
 - Given `CREDENTIAL_SUFFIXES` edited on only one side, when `npm test` runs, then `credential-lists.test.mjs` fails naming the difference.
 
+### Review Findings
+
+Code review 2026-09-17 (four layers, `review_tier: full-opus`). Unchecked items are this story's rework iteration.
+
+- [ ] [Review][Patch] HIGH (AD-24, DW-281): a read tool with a class of its own (`Screen.Tool.ErrorRead`, `errorText`) skips `Bound` and gets no per-field cut or report; route every rows-shaped read result through `Bound` and update `ErrorRead.ResultSchema` [src/OcuPilot/Kernel/Agent/Dispatch.cls:253]
+- [ ] [Review][Patch] MED: AC3 has no two-principal wire test over `/agent/context` (DW-1030) [src/OcuPilot/Test/TurnContext.cls]
+- [ ] [Review][Patch] MED: `Job.Run`'s `Scope.Set` is pinned by no `?ns=` turn test (DW-1031) [src/OcuPilot/Kernel/Agent/Job.cls]
+- [ ] [Review][Patch] MED: `contextRowCap` bounding tool results in a turn is untested; the default equals `TOOLROWS` (DW-1032) [src/OcuPilot/Test/TurnTools.cls]
+- [ ] [Review][Patch] MED: `TestAReadToolResultsOwnFieldIsBound` stayed green with the per-field cut disabled (DW-1033) [src/OcuPilot/Test/TurnContext.cls]
+- [ ] [Review][Patch] MED: `/agent/context` `shareDefault`, `contextRowCap`, marked-local and `defaultEndpoint` legs unasserted (DW-1034) [src/OcuPilot/Test/TurnContext.cls]
+- [ ] [Review][Patch] MED: `Read.View` `rowsAvailable` above the cap untested (DW-1035) [src/OcuPilot/Test/ToolDispatch.cls]
+- [ ] [Review][Patch] LOW fix pack: sharing-off and model-issued rows need demonstrated mutations (DW-1036) [src/OcuPilot/Test/TurnContext.cls]
+- [x] [Review][Patch] HIGH (AD-42): `leavesInstance` ignored a configured proxy; `LeavesInstance` now judges the proxy, and `ResolveEndpoint`/`Dispatch` share `EndpointOf`/`ProxyHostOf` [src/OcuPilot/Kernel/Egress.cls:408]
+- [x] [Review][Patch] MED: an over-long `view.filter`/`sort`/`direction` made `Bound.Apply` answer 0 and context vanished silently; refused at `FIELDMAXLENGTH` like `entity` [src/OcuPilot/Api/Turn.cls:271]
+- [x] [Review][Patch] MED: `ContextViolation` refusals (negative, fractional, too-small `rowsAvailable`, non-array `rows`, long members) untested; `ContextBound.TestContextViolationRefusesEachBadShape` [src/OcuPilot/Test/ContextBound.cls]
+- [x] [Review][Patch] MED: projection's `context.fields` filter and undeclared-sort drop untested; `ContextBound.TestProjectionKeepsOnlyDeclaredContextFields` [src/OcuPilot/Test/ContextBound.cls]
+- [x] [Review][Patch] MED: a stored zero `contextRowCap` resolving to the default untested; added to `TestSwitchResolveDefaultsAndClampsOutOfRangeContextRowCap` [src/OcuPilot/Test/ContextBound.cls]
+- [x] [Review][Patch] MED: `LeavesInstance` loopback and link-local legs and `fe00::1` untested, and the test's mutation note named a leg it has no case for [src/OcuPilot/Test/ContextBound.cls]
+- [x] [Review][Patch] MED: `credential-lists.test.mjs` never compared the spine's Secrets row (DW-399 task) [ui/tools/credential-lists.test.mjs]
+- [x] [Review][Patch] LOW: both `context.maxLength` validators checked keys against `read.fields`, not `context.fields` [src/OcuPilot/Screen/Registry.cls:699]
+- [x] [Review][Patch] LOW: dropped-field names were merged after `Bound.Apply`, able to exceed 65,536; now set on the payload before the cut [src/OcuPilot/Api/Turn.cls:110]
+- [x] [Review][Patch] LOW: the per-field cut could end on a lone high surrogate [src/OcuPilot/Kernel/Agent/Bound.cls:79]
+- [x] [Review][Patch] LOW: `MergeBody` accepted a numeric string for `contextRowCap` (AD-4) [src/OcuPilot/Api/Switches.cls:399]
+- [x] [Review][Patch] LOW: `PUT /agent/context` reported a server read or decode fault as 422; now 400 `AGENT.BADBODY` [src/OcuPilot/Api/Context.cls:44]
+- [x] [Review][Patch] LOW: `ConfigGate` accepted any non-403 on GET exceptions; GET asserts 200, PUT refuses 403 and 5xx [src/OcuPilot/Test/ConfigGate.cls:353]
+- [x] [Review][Patch] LOW: doc corrections: `Sharing` index name, header and `DeleteAllGuarded`; `ContextBound` header; `Loop` no longer names `Screen.Context`; `Read` `rowsAvailable` schema text; `switches.page.spec.ts` title [src/OcuPilot/Kernel/State/Sharing.cls]
+- [x] [Review][Defer] `ResolveEndpoint` hides read faults — wontfix-accepted DW-1037
+- [x] [Review][Defer] synchronous DNS on every status read — wontfix-accepted DW-1038
+- [x] [Review][Defer] first-time sharing insert race — wontfix-theoretical DW-1039
+- [x] [Review][Defer] test classes delete every `Sharing` row — wontfix-accepted DW-1040
+- [x] [Review][Defer] IPv4-mapped private address reads as leaving — wontfix-theoretical DW-1041
+- [x] [Review][Defer] case-sensitive namespace match — wontfix-theoretical DW-1042
+- [x] [Review][Defer] `context: null` refused — by-design DW-1043
+- [x] [Review][Defer] share refusal has no `detail.violations` — by-design DW-1044
+- [x] [Review][Defer] `screen_context` with no tools array — wontfix-theoretical DW-1045
+
+Rejected: `strings.ts` 4.11 keys (false: added by the lead for Story 4.11); browser spec leaves the cap at 500 (false: `after()` restores it); sharing read on a turn without context (low, negligible cost); `Read.View` still cuts before `Bound` (low: the report is correct).
+
 ## Spec Change Log
+
+- 2026-09-17, lead after review round 1 (rework iteration 1): re-opened for the eight unchecked `[Review]` items under Review Findings (one HIGH, six MED, one LOW fix pack). Nothing else changes.
 
 - 2026-09-17, the orchestrator answered the plan halt's ten questions under the owner's standing autonomy instruction:
   - The story splits. This story is the server side; the chip, toggle and paste warning are Story 4.11, after 4.5. The story is retitled.
@@ -260,6 +300,78 @@ Nine mutations demonstrated in total across the story: four from the implementat
 (descriptor-bound, credential list, leaves-instance, and the reply-budget subtraction), plus five
 from this review pass's own patches (descriptor-branch condition, `entity` length, the boolean type
 guard, the dropped-field merge, and the `%Set` object/array fix).
+
+**QA independent-falsification mutations (Rule 19), each a fresh named mutation distinct from the
+nine above, on the same pinning test's own AC:**
+
+- Total-size cut disabled (`Bound.Apply`'s `Set tFits = ($Length(pJson) <= pTotalMax)` forced to
+  `Set tFits = 1`) → `ContextBound.TestTheTotalSizeCutDropsTrailingRowsAndRefusesWhenNothingFits`
+  went red (payload over 65,536 characters, and the rowless-refusal case wrongly answered fit);
+  reverted, byte-identical, recompiled, re-verified green on the live instance. (QA)
+- Per-field cut off-by-one (`Bound.Apply`'s `$Extract(tValue, 1, tMax - 1)` widened to
+  `$Extract(tValue, 1, tMax)`) → `ContextBound.TestThePerFieldCutMarksTruncatedFields` went red (cut
+  length 1,001, not 1,000); reverted, byte-identical, recompiled, re-verified green on the live
+  instance. (QA)
+- `contextRowCap` lower-bound off-by-one (`SwitchRules.ValidateSwitches`'s `(+tRowCap < 1)` narrowed
+  to `(+tRowCap < 2)`) → the new `AuditRecord.TestAContextRowCapWriteAtItsBoundariesIsRecordedAsASecurityChange`
+  went red (the boundary value 1 refused where 200 accepted was expected); reverted, byte-identical,
+  recompiled, re-verified green on the throwaway. (QA)
+- Per-user sharing isolation dropped (`Sharing.GuardedForUser`'s `WHERE UserName = ?` clause removed)
+  → the new `ContextBound.TestSharingIsPerUserAndFallsBackWhenNoRowExists` went red (a second,
+  never-stored user read the first user's row instead of not-found); reverted, byte-identical,
+  recompiled, re-verified green on the live instance. (QA)
+- Unresolvable-host leg flipped (`Egress.LeavesInstance`'s `If '$Data(tAddresses) Quit 1` changed to
+  `Quit 0`) → `ContextBound.TestLeavesInstanceClassification` went red on the unresolvable-host
+  assertion alone; reverted, byte-identical, recompiled, re-verified green on the live instance. (QA)
+- Criteria `maxLength` ceiling widened to match context's (`Registry.CriteriaMaxLengthProblem`
+  gained `|| (tValue > 1000)`) → the new
+  `ContextBound.TestCriteriaMaxLengthAboveOneThousandStaysAcceptedByTheRegistry` went red (a real
+  shipped criterion's `maxLength` raised past 1,000 was wrongly refused), while
+  `TestTheDescriptorMaxLengthIsBoundedByTheRegistry` (the `context.maxLength` case) stayed green,
+  confirming the two ceilings are independently enforced; reverted, byte-identical, recompiled,
+  re-verified green on the live instance. (QA)
+- Reply-budget floor widened (`Loop.AnswerTools`'s `If tBudget < 256` changed to `If tBudget < 0`) →
+  `TurnTools.TestAReplysToolResultsShareOneBudget` went red on the third call's refusal, its call
+  count and its recorded error step; reverted, byte-identical, recompiled, re-verified green on the
+  throwaway. (QA)
+- `CREDENTIALEXACTNAMES` edited on the server side alone (`Log.cls`'s parameter narrowed from
+  `"key,credentialname"` to `"key"`) → `credential-lists.test.mjs`'s exact-names case went red
+  naming the difference, while its suffix case stayed green; reverted, byte-identical, re-verified
+  green. (QA)
+
+Eight further mutations demonstrated by this QA pass, each distinct from the nine above and from
+each other's own root cause, bringing the story's total to seventeen.
+
+**Tests added by this QA pass** (new methods on existing test classes, no new files): (QA)
+
+- `src/OcuPilot/Test/ContextBound.cls` -- `TestSharingIsPerUserAndFallsBackWhenNoRowExists` (per-user
+  sharing store isolation, AC3's mechanism) and
+  `TestCriteriaMaxLengthAboveOneThousandStaysAcceptedByTheRegistry` (the "criteria/parameter
+  `maxLength` stays accepted" half of AC2, on the shipped `logs/audit` descriptor's live
+  declaration).
+- `src/OcuPilot/Test/AuditRecord.cls` --
+  `TestAContextRowCapWriteAtItsBoundariesIsRecordedAsASecurityChange` (the row-cap matrix row's 1
+  and 1,000 boundaries, and its own "audited" claim, against the real `%SYS.Audit` row -- neither
+  was previously pinned by name).
+
+**Not added, and why:** a dedicated non-admin-403 case for `contextRowCap` specifically --
+`Api.Switches.HandleUpdate`'s administrative gate runs before the body is parsed (read: `IsAdministrator`
+at the top of the method, ahead of `MergeBody`/`ValidateSwitches`), so the existing generic
+`AgentWireSecurity` 403 case over `PUT /agent/switches` already exercises the same code path any
+field's value would reach; a second case naming `contextRowCap` would assert nothing a mutation
+could distinguish.
+
+**Code review mutations (Rule 19), throwaway `ocupilot-ci`, each reverted and recompiled green:**
+
+- mutation: per-field cut disabled in `Bound.Apply` (`If 0 && ...`) → `TurnContext.TestTheIntegrationAcceptanceCriterion` red (cut field named, 1,000 characters, U+2026); `TestAReadToolResultsOwnFieldIsBound` stayed green.
+- mutation: secret-field branch disabled in `Screen.Context.Build` → `TurnContext.TestASecretScreenAnswersIdentityOnly` red alone (lead's AD verification).
+- mutation: proxy leg removed from `Egress.LeavesInstance` → `ContextBound.TestAPublicProxyLeavesTheInstance` red.
+- mutation: member length check removed from `Api.Turn.ContextViolation` → `ContextBound.TestContextViolationRefusesEachBadShape` red on the three long members.
+- mutation: `context.fields` filter removed from `Screen.Context.Build` → `ContextBound.TestProjectionKeepsOnlyDeclaredContextFields` red.
+- mutation: `ContextMaxLengthProblem` given `read.fields` → `ContextBound.TestTheDescriptorMaxLengthIsBoundedByTheRegistry` red; the same in `screen-mirror.mjs` → `screen-mirror.test.mjs` AD-36 case red.
+- mutation: surrogate check removed from `Bound.Apply` → `ContextBound.TestThePerFieldCutNeverSplitsASurrogatePair` red.
+- mutation: `MergeBody` integer guard narrowed to booleans → `SwitchesWire.TestTheContextRowCapValidatesItsRange` red on the numeric string.
+- mutation: `token` removed from the spine's Secrets row → `credential-lists.test.mjs` spine case red alone.
 
 ## Auto Run Result
 

@@ -76,7 +76,11 @@ ClassMethod Apply(pPayload As %DynamicObject, pRowCap As %Integer, ByRef pFieldM
                 Set tMax = pDefaultFieldMax
                 If $Data(pFieldMaxLengths(tField)) Set tMax = +pFieldMaxLengths(tField)
                 If (tMax > 0) && ($Length(tValue) > tMax) {
-                    Set tValue = $Extract(tValue, 1, tMax - 1) _ ..Ellipsis()
+                    Set tValue = $Extract(tValue, 1, tMax - 1)
+                    ; Never end the kept text on the high half of a UTF-16 surrogate pair.
+                    Set tLast = $Ascii($Extract(tValue, *))
+                    If (tLast >= 55296) && (tLast <= 56319) Set tValue = $Extract(tValue, 1, *-1)
+                    Set tValue = tValue _ ..Ellipsis()
                     Set tTruncated = 1
                     Set tFieldSet(tField) = ""
                 }

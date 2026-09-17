@@ -41,7 +41,12 @@ ClassMethod HandleUpdate() As %Status
 {
     Set tSC = $$$OK
     Try {
-        Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.tRequestBody)
+        Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.tRequestBody, .tStage)
+        If $$$ISERR(tReadSC) && (tStage '= "parse") {
+            ; A server-side read or decode fault is never reported as the client's body (DW-24).
+            Set tSC = ##class(OcuPilot.Api.Switches).RenderBadBody(tReadSC)
+            Quit
+        }
         If $$$ISERR(tReadSC) {
             Set tSC = ..RenderShareViolation()
             Quit
@@ -101,8 +106,8 @@ ClassMethod Body(pUser As %String, Output pBody As %DynamicObject) As %Status [ 
         Set tSC = ##class(OcuPilot.Kernel.State.Agent).ResolveDefault(.tDefinitionId)
         If $$$ISERR(tSC) Quit
         If tDefinitionId '= "" {
-            If ##class(OcuPilot.Port.ProviderPort).ResolveEndpoint(tDefinitionId, .tProvider, .tHost, .tMarkedLocal) {
-                Set tLeaves = ##class(OcuPilot.Kernel.Egress).LeavesInstance(tHost, tMarkedLocal)
+            If ##class(OcuPilot.Port.ProviderPort).ResolveEndpoint(tDefinitionId, .tProvider, .tHost, .tMarkedLocal, .tProxyHost) {
+                Set tLeaves = ##class(OcuPilot.Kernel.Egress).LeavesInstance(tHost, tMarkedLocal, tProxyHost)
             } Else {
                 Set tProvider = ""
                 Set tHost = ""

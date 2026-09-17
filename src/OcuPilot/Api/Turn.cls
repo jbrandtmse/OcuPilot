@@ -107,27 +107,15 @@ ClassMethod HandleStart() As %Status
             } ElseIf tContextBuilt {
                 Set tDefaultFieldMax = +$Parameter(tLimits, "FIELDMAXLENGTH")
                 Set tTotalMax = +$Parameter(tLimits, "TOOLRESULTMAXLENGTH")
-                Do ##class(OcuPilot.Kernel.Agent.Bound).Apply(tContextPayload, tRowCap, .tFieldMaxLengths, tDefaultFieldMax, tTotalMax, .tContextJson)
-                If (tContextJson '= "") && ($ListLength(tDroppedFields) > 0) {
-                    Set tParsed = ##class(%DynamicAbstractObject).%FromJSON(tContextJson)
-                    Kill tAllFields
-                    If $IsObject(tParsed.%Get("truncatedFields")) {
-                        Set tExistingIterator = tParsed.%Get("truncatedFields").%GetIterator()
-                        While tExistingIterator.%GetNext(.tExIndex, .tExName) {
-                            If tExName '= "" Set tAllFields(tExName) = ""
-                        }
-                    }
-                    For tI = 1:1:$ListLength(tDroppedFields) Set tAllFields($List(tDroppedFields, tI)) = ""
-                    Set tOutFields = []
-                    Set tFieldName = $Order(tAllFields(""))
-                    While tFieldName '= "" {
-                        Do tOutFields.%Push(tFieldName)
-                        Set tFieldName = $Order(tAllFields(tFieldName))
-                    }
-                    Do tParsed.%Set("truncatedFields", tOutFields)
-                    Do tParsed.%Set("truncated", 1, "boolean")
-                    Set tContextJson = tParsed.%ToJSON()
+                ; A non-scalar value Build dropped is reported before the cutter runs, so the
+                ; size cut counts it and Apply ORs it into truncatedFields.
+                If $ListLength(tDroppedFields) > 0 {
+                    Set tDropped = []
+                    For tI = 1:1:$ListLength(tDroppedFields) Do tDropped.%Push($List(tDroppedFields, tI))
+                    Do tContextPayload.%Set("truncatedFields", tDropped)
+                    Do tContextPayload.%Set("truncated", 1, "boolean")
                 }
+                Do ##class(OcuPilot.Kernel.Agent.Bound).Apply(tContextPayload, tRowCap, .tFieldMaxLengths, tDefaultFieldMax, tTotalMax, .tContextJson)
             }
         }
 
@@ -258,12 +246,11 @@ ClassMethod MessageViolation(pBody As %DynamicObject, pLimitsClass As %String, O
 /// scope (<method>OcuPilot.Kernel.Scope.Current</method>, from <code>?ns=</code>) -- a caller
 /// naming a different namespace could otherwise carry rows from one scope into a turn running in
 /// another.</p>
-/// <p><b>entity is bounded here, not by the cutter.</b> <class>OcuPilot.Kernel.Agent.Bound</class>
-/// only cuts a <code>view.rows</code> row's own field values; it never touches the payload's own
-/// top-level fields, so an unbounded <code>entity</code> would reach the identity-only secret-screen
-/// payload with no cut at all, and could push even a rowless non-secret payload over the total
-/// budget with nothing left to trim -- refused here instead, at <var>pLimitsClass</var>'s
-/// <code>FIELDMAXLENGTH</code>, before either path runs.</p>
+/// <p><b>entity, sort, direction and filter are bounded here, not by the cutter.</b>
+/// <class>OcuPilot.Kernel.Agent.Bound</class> only cuts a <code>view.rows</code> row's own field
+/// values and never the payload's top-level strings, so each is refused above
+/// <var>pLimitsClass</var>'s <code>FIELDMAXLENGTH</code>; with them bounded, a rowless payload
+/// always fits the total budget. <code>rowsAvailable</code> is a whole number.</p>
 ClassMethod ContextViolation(pBody As %DynamicObject, pLimitsClass As %String) As %String
 {
     If 'pBody.%IsDefined(..#CONTEXTFIELD) Quit ""
@@ -281,9 +268,12 @@ ClassMethod ContextViolation(pBody As %DynamicObject, pLimitsClass As %String) A
     If 'tContext.%IsDefined("view") Quit ""
     Set tView = tContext.%Get("view")
     If '$IsObject(tView) || 'tView.%IsA("%Library.DynamicObject") Quit tCode
-    If tView.%IsDefined("sort") && (tView.%GetTypeOf("sort") '= "string") Quit tCode
-    If tView.%IsDefined("direction") && (tView.%GetTypeOf("direction") '= "string") Quit tCode
-    If tView.%IsDefined("filter") && (tView.%GetTypeOf("filter") '= "string") Quit tCode
+    Set tBadMember = 0
+    For tMember = "sort", "direction", "filter" {
+        If 'tView.%IsDefined(tMember) Continue
+        If (tView.%GetTypeOf(tMember) '= "string") || ($Length(tView.%Get(tMember)) > +$Parameter(pLimitsClass, "FIELDMAXLENGTH")) Set tBadMember = 1
+    }
+    If tBadMember Quit tCode
     If tView.%GetTypeOf("rows") '= "array" Quit tCode
     Set tRows = tView.%Get("rows")
     Set tBadRow = 0
@@ -297,7 +287,8 @@ ClassMethod ContextViolation(pBody As %DynamicObject, pLimitsClass As %String) A
     If tBadRow Quit tCode
     If tView.%IsDefined("rowsAvailable") {
         If tView.%GetTypeOf("rowsAvailable") '= "number" Quit tCode
-        If (tView.%Get("rowsAvailable") < 0) || (tView.%Get("rowsAvailable") < tRows.%Size()) Quit tCode
+        Set tRowsAvailable = tView.%Get("rowsAvailable")
+        If (tRowsAvailable < 0) || (tRowsAvailable '= (tRowsAvailable \ 1)) || (tRowsAvailable < tRows.%Size()) Quit tCode
     }
     Quit ""
 }

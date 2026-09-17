@@ -486,7 +486,7 @@ Method TestTheSwitchRoutesAreDeclaredInTheShippedRouter()
 }
 
 /// <p><b>The context row cap is a whole number from 1 to 1,000</b> (Story 4.4, AD-24): <code>0</code>,
-/// <code>1,001</code> and a non-numeric string are each refused on the field
+/// <code>1,001</code>, a boolean and any string, numeric or not, are each refused on the field
 /// <code>contextRowCap</code> with <code>AGENT.SWITCH.CONTEXTROWCAP</code>, and nothing is written;
 /// <code>500</code> is accepted and reads back.</p>
 /// <p>Mutation: widen the range check in <method>OcuPilot.Kernel.SwitchRules.ValidateSwitches</method>
@@ -519,7 +519,12 @@ Method TestTheContextRowCapValidatesItsRange()
     Set tBoolAnswer = ##class(%DynamicObject).%FromJSON(tBoolBody)
     Do $$$AssertEquals(tBoolAnswer.detail.violations.%Get(0).code, ##class(OcuPilot.Api.Error).#AGENTSWITCHCONTEXTROWCAP, "the boolean is refused, not accepted as 1")
 
-    Do $$$AssertEquals(##class(OcuPilot.Test.SwitchFixture).SwitchRowCount(), 0, "none of the four refused writes wrote a row")
+    ; A numeric string is not a JSON number (AD-4).
+    Set tSC = ..Call("PUT", "/agent/switches", "{""contextRowCap"":""500""}", .tStrStatus, .tStrBody, .tStrHeaders)
+    Do $$$AssertStatusOK(tSC, "a numeric string completes")
+    Do $$$AssertEquals(tStrStatus, 422, "and is refused, not stored as 500: " _ tStrBody)
+
+    Do $$$AssertEquals(##class(OcuPilot.Test.SwitchFixture).SwitchRowCount(), 0, "none of the five refused writes wrote a row")
 
     Set tSC = ..Call("PUT", "/agent/switches", "{""contextRowCap"":500}", .tStatus, .tBody, .tHeaders)
     Do $$$AssertStatusOK(tSC, "a value in range completes")

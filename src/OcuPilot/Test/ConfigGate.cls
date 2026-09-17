@@ -350,10 +350,13 @@ Method TestEveryConfigurationRouteRefusesAPrincipalWithoutTheAdministrativeResou
         Do $$$AssertStatusOK(tSC, tMethod _ " " _ tUrl _ ": the request completes")
         Set tException = ..ExceptionFor(tMethod, tUrl)
         If tException '= "" {
-            ; Not literally 200: a PUT exception's trivial {} body can be refused on its own
-            ; shape (422), which still proves the admin gate never ran -- a gate refusal is 403
-            ; specifically, before the handler ever reads the body.
-            Do $$$AssertNotEquals(tStatus, 403, tMethod _ " " _ tUrl _ ": is answered, not gated, because " _ $List(tException, 3) _ " (" _ $Extract(tBody, 1, 200) _ ")")
+            ; A GET exception is answered 200. A PUT exception's trivial {} body can be refused on
+            ; its own shape (422), which still proves the admin gate, a 403, never ran.
+            If tMethod = "GET" {
+                Do $$$AssertEquals(tStatus, 200, tMethod _ " " _ tUrl _ ": is answered, because " _ $List(tException, 3) _ " (" _ $Extract(tBody, 1, 200) _ ")")
+            } Else {
+                Do $$$AssertTrue((tStatus '= 403) && (tStatus < 500), tMethod _ " " _ tUrl _ ": is answered, not gated, because " _ $List(tException, 3) _ " (" _ tStatus _ ": " _ $Extract(tBody, 1, 200) _ ")")
+            }
             Continue
         }
         Do $$$AssertEquals(tStatus, 403, tMethod _ " " _ tUrl _ ": is refused (" _ $Extract(tBody, 1, 300) _ ")")

@@ -15,6 +15,22 @@ import { CREDENTIAL_EXACT_NAMES, CREDENTIAL_SUFFIXES } from './field-lists.mjs';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const LOG_CLASS_PATH = join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'Audit', 'Log.cls');
+const SPINE_PATH = join(
+  REPO_ROOT,
+  '_bmad-output',
+  'planning-artifacts',
+  'architecture',
+  'architecture-OcuPilot-2026-09-08',
+  'ARCHITECTURE-SPINE.md'
+);
+
+/** The backticked names in `text` between `from` and `to`, lower-cased. */
+function backticked(text, from, to) {
+  const start = text.indexOf(from);
+  const end = text.indexOf(to, start + from.length);
+  if (start < 0 || end < 0) throw new Error(`${SPINE_PATH}: the Secrets row no longer reads '${from}...${to}'`);
+  return [...text.slice(start + from.length, end).matchAll(/`([^`]+)`/g)].map((m) => m[1].toLowerCase());
+}
 
 /** The comma-separated string value of `Parameter <name> = "...";` in `text`, split on commas. */
 function parameterList(text, name) {
@@ -45,4 +61,13 @@ test('the client exact credential names equal Log.cls CREDENTIALEXACTNAMES', () 
   const text = readFileSync(LOG_CLASS_PATH, 'utf8');
   const serverExactNames = parameterList(text, 'CREDENTIALEXACTNAMES');
   sameMembers(CREDENTIAL_EXACT_NAMES, serverExactNames);
+});
+
+test('both lists equal the spine Conventions Secrets row', () => {
+  const row = readFileSync(SPINE_PATH, 'utf8')
+    .split('\n')
+    .find((line) => line.startsWith('| Secrets |'));
+  assert.ok(row !== undefined, `${SPINE_PATH}: no Secrets row`);
+  sameMembers(CREDENTIAL_SUFFIXES, backticked(row, 'a name ending in', ', or a name that is exactly'));
+  sameMembers(CREDENTIAL_EXACT_NAMES, backticked(row, ', or a name that is exactly', ', and the server'));
 });

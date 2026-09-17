@@ -570,7 +570,7 @@ export function readProblem(declaration) {
   const contextFault =
     unknownKeyProblem('context', context, ['fields', 'secretFields', 'maxLength']) ??
     nameListProblem('context.secretFields', context.secretFields, read.fields) ??
-    contextMaxLengthProblem(context, read.fields);
+    contextMaxLengthProblem(context, Array.isArray(context.fields) ? context.fields : []);
   if (contextFault !== null) return contextFault;
   const secrets = context.secretFields;
   const overlap = (where, names) => {

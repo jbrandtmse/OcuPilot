@@ -369,6 +369,7 @@ test('AD-36: the generator refuses a read outside the declared grammar, naming t
     [(d) => delete d.context.secretFields, /context\.secretFields is not an array/],
     [(d) => delete d.context, /context is not an object/],
     [(d) => (d.context.maxLength = { Nope: 5 }), /context\.maxLength names 'Nope'/],
+    [(d) => (d.context.maxLength = { NameSpace: 5 }), /context\.maxLength names 'NameSpace'/],
     [(d) => (d.context.maxLength = { Name: 1001 }), /context\.maxLength\.Name is not a whole number/],
     [(d) => (d.context.maxLength = { Name: '5' }), /context\.maxLength\.Name is not a whole number/],
     [(d) => (d.context.maxLength = 5), /context\.maxLength is not an object/],

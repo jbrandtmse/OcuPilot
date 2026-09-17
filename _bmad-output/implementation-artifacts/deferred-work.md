@@ -1855,6 +1855,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-15T08:23:44Z occurrence=2-12-the-application-error-log-endpoint-and-drill-down
 - 2026-09-16T15:11:12Z status=routed owner=4-4-screen-context-on-every-turn-capped-with-its-toggle-and-chip by=x0 note=kept, the context cap and secret exclusion own this
 - 2026-09-17T05:48:12Z status=routed owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=spec_gate note=retitled when the chip and its toggle split into Story 4.11; the work stays server-side in 4.4
+- 2026-09-17T10:02:29Z occurrence=4-4-screen-context-reaches-the-turn-capped-and-secret-free
+- 2026-09-17T10:02:29Z status=open owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=cr note=class-of-its-own read tools (ErrorRead errorText) still bypass the per-field cut; re-opens 4.4 for its rework iteration
 
 ### DW-282: A criteria-bearing screen owns its state in a root-provided store because the detail route re-creates the component, and nothing stops the next such screen re-deriving that
 - source: spec-2-10-the-audit-database-viewer-with-its-agent-marker-filter.md | severity: low | fix-risk: low | footprint: in-epic
@@ -3007,3 +3009,83 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-4-screen-context-reaches-the-turn-capped-and-secret-free.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: The object and array short-circuit at the top of Api/Switches.cls MergeBody predates Story 4.4 and is shared by every switch field
 - 2026-09-17T09:17:02Z status=wontfix-accepted owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=harvest note=Kept as is since a client never sends a structured value; reopen_if a Switches PUT with an object value is reported to have changed nothing silently
+
+### DW-1030: AC3 has no two-principal wire test: user A PUT share false then user B GET over /agent/context
+- source: spec-4-4-screen-context-reaches-the-turn-capped-and-secret-free.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: TurnContext.TestContextStatusOverTheWire uses one principal; the per-user isolation is pinned only in process via Sharing.GuardedForUser, never through Api.Context.
+- 2026-09-17T10:02:29Z status=open owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=cr note=rework iteration adds the two-principal case with its mutation line
+
+### DW-1031: The request scope carried into the turn job (Job.Run Scope.Set) is pinned by no test
+- source: spec-4-4-screen-context-reaches-the-turn-capped-and-secret-free.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: No turn or tool test starts a turn with ?ns= and observes the scope inside the job; deleting the Scope.Set line in Job.Run leaves every test green (verification-gap).
+- 2026-09-17T10:02:29Z status=open owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=cr note=rework iteration adds a ?ns= turn whose tool call observes the scope
+
+### DW-1032: contextRowCap bounding read tool results inside a turn is pinned by no test
+- source: spec-4-4-screen-context-reaches-the-turn-capped-and-secret-free.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: TurnTools runs at the default cap, which equals TOOLROWS 200, so passing 0 for pContextRowCap in Job.Run falls back to the same value and nothing reddens.
+- 2026-09-17T10:02:29Z status=open owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=cr note=rework iteration adds a cap-5 turn whose tool result reports rowsSent 5
+
+### DW-1033: TurnContext.TestAReadToolResultsOwnFieldIsBound passes vacuously when no live audit row exceeds 1,000 characters
+- source: spec-4-4-screen-context-reaches-the-turn-capped-and-secret-free.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Observed in review: with the per-field cut disabled in Bound.Apply the test stayed green (throwaway run 13) while the Integration test went red.
+- 2026-09-17T10:02:29Z status=open owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=cr note=rework iteration plants a long audit row or removes the vacuous branch
+
+### DW-1034: GET /agent/context shareDefault, contextRowCap, marked-local and defaultEndpoint fallback are never asserted
+- source: spec-4-4-screen-context-reaches-the-turn-capped-and-secret-free.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: No test reads shareDefault or contextRowCap from /agent/context, and ResolveEndpoint's markedLocal and catalog-default legs have no wire or in-process case (verification-gap).
+- 2026-09-17T10:02:29Z status=open owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=cr note=rework iteration asserts each member
+
+### DW-1035: Read.View rowsAvailable above the row cap is pinned by no test
+- source: spec-4-4-screen-context-reaches-the-turn-capped-and-secret-free.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: ToolDispatch.TestADescriptorDerivedToolResultGetsThePerFieldCut uses one row, so deleting the rowsAvailable set in Read.View leaves it green.
+- 2026-09-17T10:02:29Z status=open owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=cr note=rework iteration extends the ToolDispatch case past the cap
+
+### DW-1036: Sharing-off and model-issued screen_context matrix rows carry no demonstrated mutation
+- source: spec-4-4-screen-context-reaches-the-turn-capped-and-secret-free.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Spec Verification records both as not run; green runs only (TurnContext TestSharingOffSuppressesContext, TestAModelIssuedScreenContextCallIsUnknown).
+- 2026-09-17T10:02:43Z status=open owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=cr note=fix pack in the rework iteration: run each mutation on the throwaway and record the line
+
+### DW-1037: ProviderPort.ResolveEndpoint answers 0 on a read fault with nothing logged, indistinguishable from no enabled default
+- source: spec-4-4-screen-context-reaches-the-turn-capped-and-secret-free.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The Catch and the ValuesFor error path return 0 silently, so GET /agent/context shows provider empty and leavesInstance null.
+- 2026-09-17T10:02:43Z status=wontfix-accepted owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=cr note=reopen_if=GET /agent/context shows an empty provider while an enabled default definition exists
+
+### DW-1038: GET /agent/context resolves the provider host through DNS synchronously on every call
+- source: spec-4-4-screen-context-reaches-the-turn-capped-and-secret-free.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Egress.LeavesInstance calls Addresses inside the request with no cache or timeout of its own.
+- 2026-09-17T10:02:44Z status=wontfix-accepted owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=cr note=reopen_if=a GET /agent/context over one second is observed with the provider host resolving slowly
+
+### DW-1039: Two concurrent first-time PUT /agent/context from one user can collide on the unique index and answer 500
+- source: spec-4-4-screen-context-reaches-the-turn-capped-and-secret-free.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: GuardedSetForUser reads then inserts with no lock; the second insert fails SharingUserNameIdx.
+- 2026-09-17T10:02:44Z status=wontfix-theoretical owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=cr note=real only if a client double-submits the first toggle; the Hold store has the same shape
+
+### DW-1040: ContextBound and TurnContext delete every user's Sharing row in set-up and tear-down
+- source: spec-4-4-screen-context-reaches-the-turn-capped-and-secret-free.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Sharing.DeleteAllGuarded removes all rows; the classes run on a throwaway, and the ContextBound header now says so.
+- 2026-09-17T10:02:44Z status=wontfix-accepted owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=cr note=reopen_if=a sharing-writing test class is run against an instance holding real users' choices
+
+### DW-1041: An IPv4-mapped IPv6 private address is classified as leaving the instance
+- source: spec-4-4-screen-context-reaches-the-turn-capped-and-secret-free.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: IsPrivate reads ::ffff:10.0.0.1 by its IPv6 groups, which are not fc00::/7.
+- 2026-09-17T10:02:44Z status=wontfix-theoretical owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=cr note=conservative answer; real only for a provider host resolving to a mapped address
+
+### DW-1042: ContextViolation compares context.namespace to the scope case-sensitively
+- source: spec-4-4-screen-context-reaches-the-turn-capped-and-secret-free.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: A client sending hscustom against the resolved HSCUSTOM is refused 422.
+- 2026-09-17T10:02:44Z status=wontfix-theoretical owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=cr note=the client sends the scope the instance gave it; real only if a client lower-cases it
+
+### DW-1043: A body of context null is refused 422 rather than run without context
+- source: spec-4-4-screen-context-reaches-the-turn-capped-and-secret-free.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ContextViolation refuses any non-object context.
+- 2026-09-17T10:02:44Z status=by-design owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=cr note=spec Boundaries: context that is not an object is refused TURN.CONTEXT.INVALID
+
+### DW-1044: PUT /agent/context refusal carries no detail.violations
+- source: spec-4-4-screen-context-reaches-the-turn-capped-and-secret-free.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: RenderShareViolation renders the envelope-level AGENT.CONTEXT.SHARE, which AgentViolation pins as envelope-level.
+- 2026-09-17T10:02:44Z status=by-design owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=cr note=spec names one envelope code for any other body
+
+### DW-1045: A synthetic screen_context tool_use sent with no tools array would be refused by the Anthropic API
+- source: spec-4-4-screen-context-reaches-the-turn-capped-and-secret-free.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Anthropic.cls omits tools when none are advertised; ProviderTools advertises the whole registry independent of the caller.
+- 2026-09-17T10:02:44Z status=wontfix-theoretical owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=cr note=real only if the shipped registry advertises zero tools

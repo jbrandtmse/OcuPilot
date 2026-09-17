@@ -74,8 +74,8 @@ ClassMethod DispatchTools(pKey As %String, pUser As %String, pDefinitionId As %S
 /// <p><var>pOutcome</var> comes back subscripted by <code>state</code>, <code>code</code>,
 /// <code>limit</code>, <code>reply</code> and <code>errorSeq</code>. An error status means the loop
 /// itself failed; the outcome then reads <code>failed</code>.</p>
-/// <p><var>pContext</var> is the already-bounded screen-context payload JSON <method>OcuPilot.Screen.Context.Build</method>
-/// answered, or <code>""</code> for a turn with none; with one, the messages this turn opens with
+/// <p><var>pContext</var> is the already-bounded screen-context payload JSON the turn request
+/// built, or <code>""</code> for a turn with none; with one, the messages this turn opens with
 /// carry the synthetic <code>screen_context</code> tool call and result ahead of the caller's own
 /// message (AD-11 rule 1). <var>pContextRowCap</var> is the resolved row cap
 /// (<code>Switch.ContextRowCap</code>) every tool call in this turn is answered under (AD-24);

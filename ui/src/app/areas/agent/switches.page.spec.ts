@@ -179,7 +179,7 @@ describe('the Switches screen', () => {
     expect(events.map((event) => `${event.kind}:${event.type}`)).toContain('changed:agent-switch');
   });
 
-  it('Story 4.4: the context row cap renders the stored value, round-trips as a number, and shows the server violation on its own field', async () => {
+  it('Story 4.4: the context row cap renders the stored value and round-trips as a number', async () => {
     const { fixture, host, calls } = await mount((path, init) => {
       if (init.method === 'PUT') {
         return ok(switches({ contextRowCap: 500 }));

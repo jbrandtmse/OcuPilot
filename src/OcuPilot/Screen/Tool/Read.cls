@@ -70,7 +70,7 @@ ClassMethod ResultSchema(pDescriptor As %String = "") As %DynamicObject
             "rows": {"type": "array", "items": {"type": "object"}, "description": "One object per row, carrying exactly the fields."},
             "truncated": {"type": "boolean", "description": "True when rows were cut by a cap or a field value was shortened."},
             "rowsSent": {"type": "integer", "description": "How many rows this result carries."},
-            "rowsAvailable": {"type": "integer", "description": "How many rows matched, before any cap."},
+            "rowsAvailable": {"type": "integer", "description": "How many rows the filtered view held before the row cap of this tool; the row cap of the read itself may already have limited it."},
             "truncatedFields": {"type": "array", "items": {"type": "string"}, "description": "Field names whose value was shortened in this result, if any."}
         },
         "required": ["fields", "rows", "truncated"],

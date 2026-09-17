@@ -234,7 +234,7 @@ ClassMethod Dispatch(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt
     Set tMarkedLocal = ''+$Get(pValues("markedLocal"))
 
     ; The endpoint a create left empty is the row's canonical one, exactly as a create resolves it.
-    If $Get(pValues("endpointUrl")) = "" Set pValues("endpointUrl") = tRow.defaultEndpoint
+    Set pValues("endpointUrl") = ..EndpointOf($Get(pValues("endpointUrl")), tRow)
     Set tEndpoint = $Get(pValues("endpointUrl"))
     If tEndpoint = "" {
         Do ..Refuse(##class(OcuPilot.Api.Error).#PROVIDERUNCONFIGURED, .pHttpStatus, .pFault)
@@ -262,11 +262,8 @@ ClassMethod Dispatch(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt
         ; it could not read the stored row goes to the log.
         Do ..LogRaw("the instance's outbound settings could not be read; the shipped defaults are in force for this call", tSettingsSC, "")
     }
-    If $Get(tSettings("proxyServer")) '= "" {
-        ; The stored proxy is a bare host, and Egress.HostOf cuts a bare host at its first colon, so
-        ; a bare IPv6 literal is bracketed before it is judged.
-        Set tProxyHost = tSettings("proxyServer")
-        If ($Length(tProxyHost, ":") > 2) && ($Extract(tProxyHost) '= "[") Set tProxyHost = "[" _ tProxyHost _ "]"
+    Set tProxyHost = ..ProxyHostOf(.tSettings)
+    If tProxyHost '= "" {
         If '##class(OcuPilot.Kernel.Egress).IsPermitted(tProxyHost, tMarkedLocal, tAllowsLocal, .tProxyKind) {
             Do ##class(OcuPilot.Kernel.Provider.Base).Fault(##class(OcuPilot.Api.Error).#PROVIDEREGRESS, ##class(OcuPilot.Kernel.Provider.Base).#REASONPROXYEGRESS, "", .pFault, .pHttpStatus)
             Do ..LogRaw("the proxy this call would go through was refused by the address policy", $$$ERROR($$$GeneralError, "resolved address kind: " _ tProxyKind), ##class(OcuPilot.Api.Error).#PROVIDEREGRESS)
@@ -311,39 +308,63 @@ ClassMethod Dispatch(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt
     Set tAdapter = ""
 }
 
-/// <p>The provider and endpoint host of the enabled stored definition <var>pId</var> (Story 4.4's
-/// context status read shares this with <method>Invoke</method>'s own resolution): the row's
-/// <code>endpointUrl</code>, else the catalog row's <code>defaultEndpoint</code>, exactly as
-/// <method>Dispatch</method> resolves it -- <var>pProvider</var> the catalog key,
-/// <var>pHost</var> the resolved URL's authority (<method>OcuPilot.Kernel.Egress.HostOf</method>)
-/// and <var>pMarkedLocal</var> the definition's own flag. Answers 0, with every output
-/// <code>""</code>/0, for an id no row holds, a disabled definition, or a provider whose catalog
-/// row cannot be read.</p>
-ClassMethod ResolveEndpoint(pDefinitionId As %String, Output pProvider As %String, Output pHost As %String, Output pMarkedLocal As %Boolean) As %Boolean
+/// <p>The provider, endpoint host and proxy host of the enabled stored definition
+/// <var>pDefinitionId</var>, resolved by the same <method>EndpointOf</method> and
+/// <method>ProxyHostOf</method> <method>Dispatch</method> uses (Story 4.4's context status read,
+/// AD-42): <var>pProvider</var> the catalog key, <var>pHost</var> the endpoint's authority
+/// (<method>OcuPilot.Kernel.Egress.HostOf</method>), <var>pMarkedLocal</var> the definition's own
+/// flag and <var>pProxyHost</var> the configured proxy or <code>""</code>. Answers 0, with every
+/// output <code>""</code>/0, for an id no row holds, a disabled definition, or a provider whose
+/// catalog row cannot be read.</p>
+ClassMethod ResolveEndpoint(pDefinitionId As %String, Output pProvider As %String, Output pHost As %String, Output pMarkedLocal As %Boolean, Output pProxyHost As %String) As %Boolean
 {
     Set pProvider = ""
     Set pHost = ""
     Set pMarkedLocal = 0
+    Set pProxyHost = ""
     Set tOk = 0
     Try {
         If pDefinitionId = "" Quit
         Set tSC = ..ValuesFor(pDefinitionId, .tValues, .tFound)
         If $$$ISERR(tSC) || 'tFound || '+$Get(tValues("enabled")) Quit
         If '$ClassMethod(..CatalogClass(), "Row", $Get(tValues("provider")), .tRow) Quit
+        Set tEndpoint = ..EndpointOf($Get(tValues("endpointUrl")), tRow)
+        If tEndpoint = "" Quit
+        Do ##class(OcuPilot.Kernel.State.Egress).Resolve(.tSettings)
         Set pProvider = $Get(tValues("provider"))
         Set pMarkedLocal = ''$Get(tValues("markedLocal"))
-        Set tEndpoint = $Get(tValues("endpointUrl"))
-        If tEndpoint = "" Set tEndpoint = tRow.defaultEndpoint
-        If tEndpoint = "" Quit
         Set pHost = ##class(OcuPilot.Kernel.Egress).HostOf(tEndpoint)
+        Set pProxyHost = ..ProxyHostOf(.tSettings)
         Set tOk = 1
     } Catch ex {
         Set pProvider = ""
         Set pHost = ""
         Set pMarkedLocal = 0
+        Set pProxyHost = ""
         Set tOk = 0
     }
     Quit tOk
+}
+
+/// <p>The endpoint a call goes to: the stored <var>pEndpointUrl</var>, else the catalog row
+/// <var>pRow</var>'s <code>defaultEndpoint</code>.</p>
+ClassMethod EndpointOf(pEndpointUrl As %String, pRow) As %String [ Private ]
+{
+    If pEndpointUrl '= "" Quit pEndpointUrl
+    Quit pRow.defaultEndpoint
+}
+
+/// <p>The configured proxy from <class>OcuPilot.Kernel.State.Egress</class>'s resolved
+/// <var>pSettings</var>, ready for <method>OcuPilot.Kernel.Egress.IsPermitted</method>, or
+/// <code>""</code> when none is set. The stored proxy is a bare host, and
+/// <method>OcuPilot.Kernel.Egress.HostOf</method> cuts a bare host at its first colon, so a bare
+/// IPv6 literal is bracketed.</p>
+ClassMethod ProxyHostOf(ByRef pSettings) As %String [ Private ]
+{
+    Set tProxyHost = $Get(pSettings("proxyServer"))
+    If tProxyHost = "" Quit ""
+    If ($Length(tProxyHost, ":") > 2) && ($Extract(tProxyHost) '= "[") Set tProxyHost = "[" _ tProxyHost _ "]"
+    Quit tProxyHost
 }
 
 /// <p>The stored definition <var>pId</var> as the ByRef value array the adapter reads.

@@ -401,13 +401,21 @@ ClassMethod IsPrivate(pAddress As %String) As %Boolean
     Quit (tGroups(1) >= 64512) && (tGroups(1) <= 65023)
 }
 
-/// <p>Whether an endpoint at <var>pHost</var> leaves this instance (Story 4.4's context status
-/// read): false when <var>pMarkedLocal</var>, or when the host resolves and every resolved
-/// address is loopback, link-local, or private (<method>IsPrivate</method>); true when the host is
-/// unresolvable, or any resolved address is none of those.</p>
-ClassMethod LeavesInstance(pHost As %String, pMarkedLocal As %Boolean) As %Boolean
+/// <p>Whether a provider call to <var>pHost</var>, through the proxy <var>pProxyHost</var> when
+/// one is configured, leaves this instance (Story 4.4's context status read, AD-42). A proxy is a
+/// destination too, judged by its addresses alone: when it leaves, the call leaves. Otherwise false
+/// when <var>pMarkedLocal</var>, and else <var>pHost</var> is judged the same way.</p>
+ClassMethod LeavesInstance(pHost As %String, pMarkedLocal As %Boolean, pProxyHost As %String = "") As %Boolean
 {
+    If (pProxyHost '= "") && ..HostLeaves(pProxyHost) Quit 1
     If pMarkedLocal Quit 0
+    Quit ..HostLeaves(pHost)
+}
+
+/// <p>Whether <var>pHost</var> is unresolvable or resolves to any address that is not loopback,
+/// link-local or private (<method>IsPrivate</method>).</p>
+ClassMethod HostLeaves(pHost As %String) As %Boolean [ Private ]
+{
     Do ..Addresses(pHost, .tAddresses)
     If '$Data(tAddresses) Quit 1
     Set tLeaves = 0

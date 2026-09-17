@@ -393,14 +393,10 @@ ClassMethod MergeBody(pBody As %DynamicObject, ByRef pValues)
         If ($List(tEntry, 3) = "string") && (tType '= "string") Continue
         Set tValue = pBody.%Get(tField)
         If $List(tEntry, 3) = "boolean" Set tValue = $Select(+tValue: 1, 1: 0)
-        ; A JSON boolean reads back through %Get() as the ObjectScript value 1 or 0,
-        ; indistinguishable from the JSON numbers 1 and 0 by the time
-        ; OcuPilot.Kernel.SwitchRules.ValidateSwitches's regex sees it -- so on its own it would
-        ; pass as a plausible row cap instead of being refused as the wrongly-typed value it is.
-        ; Forcing it to "" here funnels it into ValidateSwitches's existing empty-value refusal
-        ; instead, the same 422 a malformed string already gets, rather than this method silently
-        ; keeping the stored value under a type check of its own.
-        If ($List(tEntry, 3) = "integer") && (tType = "boolean") Set tValue = ""
+        ; An integer field takes a JSON number only (AD-4). A boolean or a numeric string would
+        ; otherwise read back as a plausible value by the time ValidateSwitches's regex sees it, so
+        ; any other type becomes "" and meets that rule's empty-value refusal.
+        If ($List(tEntry, 3) = "integer") && (tType '= "number") Set tValue = ""
         Set pValues(tField) = tValue
     }
 }

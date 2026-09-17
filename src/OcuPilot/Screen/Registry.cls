@@ -696,7 +696,8 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
             Set tProblem = "context." _ tSecretProblem
             Quit
         }
-        Set tProblem = ..ContextMaxLengthProblem(tContext, tFields)
+        Do ..NameArrayProblem(tContext, "fields", "", .tContextFields)
+        Set tProblem = ..ContextMaxLengthProblem(tContext, tContextFields)
         If tProblem '= "" Quit
 
         Set tFilterProblem = ..NameArrayProblem(tRead, "filter", tFields, .tFilter)
@@ -1240,7 +1241,7 @@ ClassMethod UnknownKeyProblem(pObject As %DynamicObject, pWhere As %String, pAll
 
 /// <p>What is wrong with <var>pContext</var>'s <code>maxLength</code> map, or <code>""</code>
 /// (AD-24, Story 4.4). Optional; when declared it is an object whose every key is one of
-/// <var>pFields</var> and whose every value is a whole number from 1 to 1,000 -- the same bound the
+/// <var>pFields</var>, the declaration's <code>context.fields</code>, and whose every value is a whole number from 1 to 1,000 -- the same bound the
 /// kernel cutter enforces by default, so a declared value can only lower it, never raise it.</p>
 ClassMethod ContextMaxLengthProblem(pContext As %DynamicObject, pFields As %List) As %String [ Private ]
 {
