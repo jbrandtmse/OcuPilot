@@ -17,7 +17,7 @@ arrive in Epics 7, 8, 9 and 12. It depends on Epic 2 alone and runs in parallel 
 - Story 6.4: The OAuth 2.0 screen (done)
 - Story 6.5: On-demand and upcoming tasks (done)
 - Story 6.6: Task history, per task and across tasks (done)
-- Story 6.7: Task details
+- Story 6.7: Task details (done)
 - Story 6.8: Process details
 - Story 6.9: System usage and the dashboard meters
 - Story 6.10: The locks view
@@ -60,13 +60,9 @@ Story traps:
 - **No new classic link-out.** Release 1's one `classicLinkExemption` (counted once against SM-C1,
   removed in Epic 12) is the OAuth 2.0 screen's, declared by its five tab descriptors; no later story
   in this epic adds another.
-- **6.7:** re-point Task schedule's name cell from the one-task History (its temporary target) to
-  Task details, and put the History link on Task details, which targets
-  `tasks/schedule/history/<Id>`. Key on the numeric task `Id`, Task schedule's row key since 6.6; until
-  6.7 the locator's entity segment on History reads that id, not the task name. The route must carry
-  the task's scoped identity with the row selected and the locator naming it (UJ-6). A stale parent id
-  whose read answers 404 draws the generic "request refused" with a Retry that cannot clear it
-  (accepted for Secrets as DW-1021; a deleted task meets the same path, inference).
+- **Stale parent ids.** A parent-scoped route whose id answers 404 draws the generic "request
+  refused" with a Retry that cannot clear it (accepted for Secrets as DW-1021; Task details and the
+  one-task History meet the same path, inference).
 - **6.8, settle at spec time:** the story asks for auto-refresh, but Process details is not in the
   roster (Processes, Databases, Database details, Task schedule, Task details, System usage). A
   screen joins only by declaring it **and** appearing there, so amend EXPERIENCE.md and AD-43
@@ -95,8 +91,9 @@ Story traps:
   No column kind is a date, so vendor timestamps render as `text`.
 - **Unlisted screens.** `sideBarPosition` 0 is routable but never listed: Task, Process and Database
   details, per-task History, Secrets. The client pairs a list with its surfaces by route suffix
-  (`<list>/edit`, `<list>/document`), so a name cell opening a detail screen needs the same kind of
-  pairing (inference).
+  (`<list>/edit`, `<list>/document`, `<list>/details/<id>`, `<list>/history/<id>`). Task details
+  (`tasks/schedule/details/<Id>`) is the precedent for a detail screen opened from a list's name cell
+  and linking onward to a sibling id-keyed screen.
 - **Parent-scoped lists.** A sub-resource list declares `parentScope` naming its parent list's route
   and, with a read, exactly one `read.criteria` field, which the client fills from the route id (both
   engines refuse any other count). The parent's name cell links to the built, unlisted, id-keyed
@@ -106,6 +103,9 @@ Story traps:
   declaration and never declared twice, while the rows keep the screen's own type (Secrets' id is a
   `wallet-collection`, a task's History id is a `task`); both engines refuse an unresolvable parent. A
   parent-scoped list whose only criterion comes from the route is a plain `list` that reads on open.
+  A parent-scoped single-object `GET` takes the route id as its one criterion and may name one
+  detail call keyed by it; that route-id criterion does not bar auto-refresh, since it reads on open
+  rather than from a search form (Task details).
 - **Ids and scope.** Routes are `/ocupilot/<area>/<screen>[/<id>]?ns=`, the id one segment through
   the shared encoder only. References carry `(entity type, scope, id)`, scope `instance` for
   configuration objects. `ns` is data scope: switching re-fetches.
@@ -125,7 +125,8 @@ Story traps:
   the list row is wrong (`Task.CRUD` LIST reports every task as not suspended) or `CERTINFO` where only
   that type carries the fields; a type the port issues must be in `AdminPort`'s `TYPESUFFIXES`. A 404
   row is dropped and any other row fault fails the read. For endpoints with no plain LIST: a
-  single-object `GET` source (404 reads as zero rows; no `rowGet`, `forEach` or criteria); a
+  single-object `GET` source (404 reads as zero rows; no `forEach`, and no criteria or detail call
+  except the parent-scoped route-id form above); a
   list-shaped admin type other than `LIST` (`UPCOMING`: admin only, no `rowGet` or `forEach`);
   fixed `source.query` parameters seeded before criteria that no caller can change or remove
   (`onDemand=1`), whose keys may not collide with reserved or declared criteria params or a
@@ -189,8 +190,8 @@ Story traps:
   On-demand tasks · Upcoming tasks · Task history. Security: SSL/TLS · X.509 · LDAP / Kerberos ·
   Wallet · OAuth 2.0 · Auditing (Epic 7).
 - **Strings.** Add each EXPERIENCE.md Fixed strings row with its `strings.ts` key in one pass;
-  `strings.test.mjs` demands exact set equality. Rows for On-demand, Upcoming, Task history (all)
-  and the one-task History exist, the latter's title "History"; add Task details' row when it is built. Values are unique, so reuse an existing row's
+  `strings.test.mjs` demands exact set equality. Rows for On-demand, Upcoming, Task history (all),
+  the one-task History (title "History") and Task details exist. Values are unique, so reuse an existing row's
   string rather than repeating it. Aliases come from the contest wording ("x509", "CPU", "disks").
 
 ## Cross-Story Dependencies
@@ -201,17 +202,19 @@ Story traps:
   `forEach`, member fields, `rowLink`, `DetailPage`, registered for the `detail` archetype but
   built for tabbed tables over `ListPage`) 6.5 (`source.query`, `UPCOMING`, the Tasks area's
   criteria page precedent) and 6.6 (`HISTORY`, `vendorParam`, route-id entity type via the parent,
-  Task schedule keyed on `Id`).
+  Task schedule keyed on `Id`) and 6.7 (parent-scoped single-object `GET` with a keyed detail call and
+  auto-refresh, the name-cell-to-detail link, Task details' own page).
 - **Epic 4 in parallel:** `Screen/Tool/**` is outside this epic's footprint, so a derived-tool change
   routes to a later story (descriptor-declared field descriptions are Story 7.1's, DW-1001 and
   DW-1013). Both epics edit `Registry`, `Read`, `AdminPort`, `Install/Smoke`, `Test/` and the
   client's core, shell and tools; expect reconciliation at merge. Story 4.4's screen context reads the parent-scoped
   route-id entity type 6.6 settled.
-- **Within this epic:** 6.10's owner link opens 6.8; 6.7 re-points Task schedule's name cell to itself
-  and links to 6.6's per-task History; one meter component serves 6.8, 6.9 and 6.11; one log-viewer serves 6.13 and
+- **Within this epic:** 6.10's owner link opens 6.8; one meter component serves 6.8, 6.9 and 6.11; one log-viewer serves 6.13 and
   6.14, built by whichever lands first.
-- **Downstream:** Epic 7 (on-demand Run in Story 7.5, lock removal, which needs 6.10's transaction flag, process
-  actions, OAuth deletes, 7.6's UJ-6 replay on 6.7's route); Epic 8 (resource, X.509, device and
-  wallet-secret editors); Epic 9 (role, service, LDAP editors and Edit task; 9.4's diff-row must read
-  an empty allowed-address list as "Unrestricted", DW-1016); Epic 11 (explains 6.13 and 6.14 rows);
-  Epic 12 (OAuth editors, removing 6.4's exemption).
+- **Downstream:** Epic 7 (on-demand Run in Story 7.5, process actions in 7.8, OAuth deletes, 7.6's
+  UJ-6 replay on 6.7's route); Epic 8 (resource, X.509, device and wallet-secret editors); Epic 9
+  (role editor and Edit task); Epic 11 (explains 6.13 and 6.14 rows); Epic 12 (OAuth editors,
+  removing 6.4's exemption). Deferred to the polish week in Epic 16: Task Manager control (16.11),
+  lock removal (16.12, which needs 6.10's transaction flag), the service editor (16.13, whose diff-row
+  must read an empty allowed-address list as "Unrestricted", DW-1016) and the LDAP and Kerberos editor
+  (16.14). 6.10's text still says the removal warning is Epic 7's; read that as 16.12.

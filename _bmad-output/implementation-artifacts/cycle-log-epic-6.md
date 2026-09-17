@@ -139,3 +139,6 @@
 2026-09-17T11:37:54Z	Story 6.7	committed	sha=a990dd4 branch=OCU-1-epic6 pushed=origin/OCU-1-epic6 submodules= ci=pending run=35216689046 amendments=ARCHITECTURE-SPINE.md:AD-36(route-id_criterion_on_parent-scoped_GET),EXPERIENCE.md:Fixed_strings_rows footprint_extensions=none
 2026-09-17T11:38:34Z	Epic 6	integrate_forward	reason=owner_directed commit=0dc7c48,0d2071d merge_sha=d7f8ea5 pre_merge=86804a3 conflicts=sprint-status.yaml(resolved:feature_side,SPRINT_PLAN_generate,re-set_epic-6_in-progress_and_6-1..6-7_done,validate_valid) epic6_story_blocks_changed=none
 2026-09-17T11:38:34Z	Epic 6	ledger_owner_repaired	repaired=1(DW-1016:9-4-the-service-editor->16-13-the-service-editor) halted=0
+2026-09-17T11:54:33Z	Epic 6	epic_context_compiled	reason=planning_artifact_newer_after_integrate_forward(AD-36,epics.md_0dc7c48) model=claude-opus-5(opus) bytes=17359 header=ok
+2026-09-17T11:54:33Z	Story 6.7	ci_resolved	story=6.7 run=35216689046 result=success resolved_at=next_plan
+2026-09-17T11:54:33Z	Story 6.8	stage_spawned	stage=plan spawn_at=2026-09-17T11:54:33Z model=opus agent_name=6-8-plan-1 cycle_iteration=1 ledger_inbox=none
