@@ -404,8 +404,8 @@ Method TestOnDemandAndUpcomingTasksPairSetsAreEnforcedForARealPrincipal()
 /// <code>%DB_IRISSYS:READ</code> too serves the same rows the test account reads.</p>
 /// <p>Mutation: remove <code>%DB_IRISSYS:READ</code> from
 /// <class>OcuPilot.Screen.Descriptor.TaskHistoryList</class> or
-/// <class>OcuPilot.Screen.Descriptor.TaskRunList</class> -&gt; that screen's read answers 500 and
-/// its refusal assertion goes red.</p>
+/// <class>OcuPilot.Screen.Descriptor.TaskRunList</class> -&gt; the registry refuses to validate the
+/// roster, naming that descriptor's missing pair, before any read is served.</p>
 Method TestTaskHistoryPairSetsAreEnforcedForARealPrincipal()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the principals' pairs")

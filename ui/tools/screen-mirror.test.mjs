@@ -544,6 +544,12 @@ test('parentScopeResolutionProblem refuses a parentScope that does not resolve, 
     "OcuPilot.Test.ParentScope.NoId.Child: parentScope 'parent-scope/no-id/parent' names no built descriptor with that route and an id (DW-1020)",
     'a parentScope naming a built route with id.kind none is refused'
   );
+  const emptyKind = [{ ...noId[0], declaration: { ...noId[0].declaration, id: { kind: '' } } }, noId[1]];
+  assert.equal(
+    parentScopeResolutionProblem(emptyKind),
+    "OcuPilot.Test.ParentScope.NoId.Child: parentScope 'parent-scope/no-id/parent' names no built descriptor with that route and an id (DW-1020)",
+    "and so is one whose id.kind is empty, as the server's twin reads an empty kind"
+  );
 
   const self = [{ className: 'OcuPilot.Test.ParentScope.Self.Child', declaration: { built: true, route: 'parent-scope/self/child', parentScope: 'parent-scope/self/child', id: { kind: 'single' } } }];
   assert.equal(

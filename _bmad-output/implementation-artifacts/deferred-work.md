@@ -2921,6 +2921,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-6-3-the-x-509-ldap-kerberos-and-wallet-lists.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: AD-13's triple pairs the route id with the descriptor's entityType; WalletSecretList declares parentScope security/wallet and entityType wallet-secret, so (wallet-secret, instance, OcuPilotDemo) names a collection as a secret. Unverified until Story 4.4's screen context reads it. Story 6.6's per-task history is the second parent-scoped screen and meets the same question.
 - 2026-09-16T22:46:47Z status=routed owner=6-6-task-history-per-task-and-across-tasks by=harvest note=decide once for both parent-scoped screens how the route id's entity type is declared (AD-5 sub-resource, AD-13 triple)
+- 2026-09-17T08:31:31Z status=resolved-by:6-6-task-history-per-task-and-across-tasks by=cr note=Registry.RouteEntityType + navigation.ts routeEntityType (task/wallet-collection), ParentScopeResolutionProblem both engines; TaskHistory + navigation.test pins
 
 ### DW-1021: A parent-scoped list whose read answers 404, a deleted or unknown wallet collection, shows the generic request refused with a Retry that cannot clear it
 - source: spec-6-3-the-x-509-ldap-kerberos-and-wallet-lists.md | severity: low | fix-risk: med | footprint: in-story
@@ -2947,3 +2948,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-6-5-on-demand-and-upcoming-tasks.md (QA) | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Observed by Story 6.5's QA on ocupilot-b-ci; unrelated to 6.5's code and not investigated. The audit LIST is the self-queued async path AdminPort polls (AD-26); if the cleanup runs under a caller without the privilege, the errors reach messages.log, which Story 6.14 displays.
 - 2026-09-17T04:25:10Z status=routed owner=6-14-the-messages-log-viewer by=harvest note=investigate whether the PROTECT originates in AdminPort's async poll or the vendor's own task cleanup; fix at the port if ours, else close by-design with the vendor evidence
+
+### DW-1026: Live-instance task-history tests compare two separate reads of a growing history exactly, so a Task Manager run landing between them fails the comparison
+- source: spec-6-6-task-history-per-task-and-across-tasks.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: TaskHistory TestAllTasks/UserOnly/NoTaskId and WireSecurityRead AssertSameRowsAsTestAccount on tasks.history/taskhistory read twice in ms and compare order or counts
+- 2026-09-17T08:31:31Z status=wontfix-accepted owner=6-6-task-history-per-task-and-across-tasks by=cr note=window is milliseconds on a fresh throwaway; reopen_if=CI or a local run reds one of those assertions on a row mismatch
+
+### DW-1027: Task history's Refresh and revisit re-read with whatever the form holds now, not the last submitted search
+- source: spec-6-6-task-history-per-task-and-across-tasks.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: history.page.ts boundRead passes searchStore.criteria(), the live field values; AuditPage reads live criteria the same way
+- 2026-09-17T08:31:31Z status=wontfix-accepted owner=6-6-task-history-per-task-and-across-tasks by=cr note=matches AuditPage; a fix adds an applied-criteria snapshot to both; reopen_if=a user or UX review reports Refresh running unsubmitted text
+
+### DW-1028: A criterion param or vendorParam named namespace on a mgmnt source would be overwritten by Read.Execute's own namespace query key
+- source: spec-6-6-task-history-per-task-and-across-tasks.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: CriteriaFieldsProblem reserves maxRows and ns only; Read.cls mgmnt branch sets tQuery(namespace) after SeedCriteria; no mgmnt read declares criteria
+- 2026-09-17T08:31:31Z status=wontfix-theoretical owner=6-6-task-history-per-task-and-across-tasks by=cr note=real once a mgmnt-port descriptor declares a criterion named namespace

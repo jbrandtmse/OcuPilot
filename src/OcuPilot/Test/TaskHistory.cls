@@ -202,7 +202,7 @@ Method TestAllTasksReadsTheVendorsHistory()
     Set tField = ""
     Set tIterator = tAnswer.rows.%Get(0).%GetIterator()
     While tIterator.%GetNext(.tKey, .tValue) { Set tField = tField _ $Select(tField = "": "", 1: ",") _ tKey }
-    Do $$$AssertEquals($ListToString($ListFromString(tField)), $ListToString($ListFromString("LastStart,Completed,Name,Status,Result,TaskId,Namespace,Routine,Pid,ErrDate,ErrNumber,Username,LogDatetime")), "every declared field is a key of the live row (order aside)")
+    Do $$$AssertEquals($ListToString($ListFromString(tField)), $ListToString($ListFromString("LastStart,Completed,Name,Status,Result,TaskId,Namespace,Routine,Pid,ErrDate,ErrNumber,Username,LogDatetime")), "every declared field is a key of the live row, in declared order")
 
     Set tOrigNS = $NAMESPACE
     Set tVendor = ""
@@ -241,6 +241,7 @@ Method TestSearchReachesTheVendorAsFilterAndFindsTheDemoTasksFailedRun()
     If 'tRows.%Size() Quit
 
     Set tDemo = 0
+    Set tDemoFailed = 0
     Set tBad = ""
     Set tIterator = tRows.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tRow) {
@@ -249,16 +250,16 @@ Method TestSearchReachesTheVendorAsFilterAndFindsTheDemoTasksFailedRun()
         If tBad '= "" Quit
         If tRow.Name = ..#DEMOTASK {
             Set tDemo = 1
-            If +tRow.Status '= 0 Do $$$AssertNotEquals(tRow.Result, "Success", "the demo task's failed run does not read Success")
+            If (tRow.Result '= "") && (tRow.Result '= "Success") Set tDemoFailed = 1
         }
     }
     Do $$$AssertEquals(tBad, "", "every row's joined text contains the search text")
     Do $$$AssertTrue(tDemo, "and the demo task's own run is among the rows")
+    Do $$$AssertTrue(tDemoFailed, "with a failed run whose Result carries error text rather than Success")
 }
 
-/// <p>Matrix "User-defined only" -- <code>userOnly=1</code> answers the same rows, by
-/// <code>(TaskId, LogDatetime, Status)</code>, as the vendor's own
-/// <code>DescendingTaskHistoryFilter("", 1)</code>.</p>
+/// <p>Matrix "User-defined only" -- <code>userOnly=1</code> answers the same number of rows, under
+/// the cap, as the vendor's own <code>DescendingTaskHistoryFilter("", 1)</code>.</p>
 Method TestUserOnlyMatchesTheVendorsUserOnlyQuery()
 {
     Set tSC = ..Read("tasks.history", "maxRows=1000&userOnly=1", .tStatus, .tAnswer)
@@ -284,9 +285,8 @@ Method TestUserOnlyMatchesTheVendorsUserOnlyQuery()
 }
 
 /// <p>Matrix "Bad criterion" -- <code>userOnly=2</code> and a 101-character <code>search</code> are
-/// each refused 400 <code>READ.CRITERION</code> naming the parameter, and neither reaches the port
-/// (asserted by the refusal carrying no rows, since a port call that somehow ran would still have
-/// answered a body with a <code>rows</code> key).</p>
+/// each refused 400 <code>READ.CRITERION</code> naming the parameter, with no rows in the
+/// refusal.</p>
 Method TestBadCriteriaAreRefusedByNameBeforeThePort()
 {
     Set tLong = ""
@@ -299,7 +299,7 @@ Method TestBadCriteriaAreRefusedByNameBeforeThePort()
         If '$IsObject(tAnswer) Continue
         Do $$$AssertEquals(tAnswer.code, "READ.CRITERION", tParam _ ": on the criterion code")
         Do $$$AssertTrue(tAnswer.reason [ tParam, tParam _ ": naming the parameter: " _ tAnswer.reason)
-        Do $$$AssertEquals(tAnswer.%GetTypeOf("rows"), "unassigned", tParam _ ": with no rows, so the port was never called")
+        Do $$$AssertEquals(tAnswer.%GetTypeOf("rows"), "unassigned", tParam _ ": with no rows")
     }
 }
 
@@ -326,10 +326,10 @@ Method TestOneTaskReadsOnlyTheDemoTasksOwnRuns()
         If tBad '= "" Quit
         If tRow.Username = "" Set tBad = "row " _ tIndex _ " carries no Username"
         If tBad '= "" Quit
-        If +tRow.Status '= 0 Set tFailed = 1
+        If (tRow.Result '= "") && (tRow.Result '= "Success") Set tFailed = 1
     }
     Do $$$AssertEquals(tBad, "", "every row names the demo task and carries a user")
-    Do $$$AssertTrue(tFailed, "the demo task's failed run is among its rows")
+    Do $$$AssertTrue(tFailed, "the demo task's failed run, its Result carrying error text, is among its rows")
 }
 
 /// <p>Matrix "Unknown task" -- <code>taskId=999999</code> and <code>taskId=abc</code> each answer
@@ -398,6 +398,7 @@ Method TestTheReadToolAnswersTheRoutesRowsNarrowedByItsCap()
         Do $$$AssertTrue(tRunSchema.properties.%IsDefined("taskId"), "offering taskId")
     }
 
+    Do $$$AssertTrue(..DemoHistoryRow(.tIgnored, .tWaited), "the demo task's run has landed before the tool is asked for it")
     Set tId = ..DemoTaskId()
     Do $$$AssertNotEquals(tId, "", "the demo task's numeric Id is found on the live schedule")
     For tCase = $ListBuild(..#HISTORY, "tasks.history", "search", "OcuPilotDemo"), $ListBuild(..#TASKRUN, "tasks.taskhistory", "taskId", tId) {
@@ -415,6 +416,7 @@ Method TestTheReadToolAnswersTheRoutesRowsNarrowedByItsCap()
         Do ##class(OcuPilot.Kernel.Scope).Clear()
         Do $$$AssertStatusOK(tSC, tTool _ ": the tool reads")
         If $$$ISERR(tSC) || '$IsObject(tView) Continue
+        Do $$$AssertTrue(tView.rows.%Size() > 0, tTool _ ": and answers at least one of the demo task's rows")
 
         Set tSC = ..Read($List(tCase, 2), "maxRows=1000&" _ tCriterion _ "=" _ tValue, .tStatus, .tRoute)
         Do $$$AssertEquals(tStatus, 200, tTool _ ": the route answers the same read")

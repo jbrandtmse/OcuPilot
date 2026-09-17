@@ -287,6 +287,35 @@ test('routeEntityType resolves through parentScope for a sub-resource screen, an
   assert.equal(secrets.entityType, 'wallet-secret', "and so do the Secrets list's");
 });
 
+// Story 6.6: Task schedule keys its rows on the vendor's numeric `Id`, so its name cell opens the
+// one-task History, which renders the same columns Task history does (AC2, AC3).
+//
+// Mutation (Rule 19): Task schedule's id kind `single` in the mirror -> the key assertion goes red;
+// History's `Result` column renamed in the mirror -> the column assertion goes red.
+test("Task schedule keys on Id and opens History, whose columns are Task history's", () => {
+  const schedule = screenForRoute('tasks/schedule');
+  const taskRun = screenForRoute('tasks/schedule/history');
+  const history = screenForRoute('tasks/history');
+  assert.ok(schedule && taskRun && history, 'all three screens are declared');
+  assert.deepEqual(schedule.id, { kind: 'composite', parts: ['Id'] }, "Task schedule's row key is the vendor's numeric Id");
+  assert.equal(childListFor(schedule)?.route, 'tasks/schedule/history', 'its name cell opens History');
+  assert.equal(parentListFor(taskRun)?.route, 'tasks/schedule', 'which names Task schedule as its parent');
+  assert.deepEqual(
+    taskRun.table?.columns.map((column) => [column.field, column.labelKey]),
+    [
+      ['LastStart', 'taskHistoryColumnStarted'],
+      ['Completed', 'taskHistoryColumnCompleted'],
+      ['Name', 'tableColumnName'],
+      ['Status', 'taskHistoryColumnStatus'],
+      ['Result', 'taskHistoryColumnResult'],
+      ['Username', 'processColumnUser'],
+      ['Namespace', 'headerNamespaceLabel'],
+    ],
+    'History shows Started, Completed, Name, Status, Result, User and Namespace'
+  );
+  assert.deepEqual(taskRun.table?.columns, history.table?.columns, "the same columns as Task history's");
+});
+
 // Story 6.4, AD-5: a tabbed screen is one descriptor per tab. `tabMembersFor` reads the group's built
 // members in position order, and `tabGroupFor` names the group's first tab for every member.
 //

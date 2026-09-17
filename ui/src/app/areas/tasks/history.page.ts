@@ -109,7 +109,6 @@ function heldFor(store: ScreenStore | null): TaskHistorySearch {
           </div>
         </div>
         <div class="ocu-criteria-controls">
-          <button type="submit" class="ocu-button-primary">{{ STRINGS.auditCriteriaSearch }}</button>
           <label class="ocu-criteria-marker">
             <input
               type="checkbox"
@@ -119,6 +118,7 @@ function heldFor(store: ScreenStore | null): TaskHistorySearch {
             />
             {{ STRINGS.taskHistoryUserOnly }}
           </label>
+          <button type="submit" class="ocu-button-primary">{{ STRINGS.auditCriteriaSearch }}</button>
         </div>
       </form>
       @if (searched) {

@@ -1231,7 +1231,7 @@ export function parentScopeResolutionProblem(screens) {
       const candidateDeclaration = screens[inner].declaration;
       if (candidateDeclaration.route !== parentScope || candidateDeclaration.built !== true) continue;
       const idKind = isObject(candidateDeclaration.id) ? candidateDeclaration.id.kind : undefined;
-      if (idKind !== undefined && idKind !== 'none') {
+      if (idKind !== undefined && idKind !== null && idKind !== '' && idKind !== 'none') {
         found = true;
         break;
       }

@@ -205,6 +205,38 @@ The throwaway has the demo fixture. Its demo task's install-time run fails and l
   does assert `window.location.pathname` after its own back-navigation. Add an assertion after the
   close click that `new URL(page.url()).pathname` is the bare `/ocupilot/tasks/history` route.
 
+### Review Findings
+
+Code review 2026-09-17 (full-opus, four layers). Patches applied in-pass; no decision-needed.
+
+- [x] [Review][Patch] Integration AC: the tool/route comparison passed on two empty reads (Rule 19, med) [src/OcuPilot/Test/TaskHistory.cls:TestTheReadToolAnswersTheRoutesRowsNarrowedByItsCap]
+- [x] [Review][Patch] Search and One task keyed "failed run" on `Status` non-zero and never asserted `Result`; both now require a demo row whose `Result` is error text [src/OcuPilot/Test/TaskHistory.cls]
+- [x] [Review][Patch] AC2 browser leg checked only that `taskId` exists and never read History's columns; now `taskId` equals the numeric route id and the headers are Task history's [ui/browser/tasks.browser-spec.mjs]
+- [x] [Review][Patch] No client pin on Task schedule's `composite ["Id"]` key, its `childListFor` pairing or History's columns [ui/tools/navigation.test.mjs]
+- [x] [Review][Patch] Detail dialog labels unpinned; a missing `FIELD_LABEL_KEYS` entry rendered a blank label green [ui/src/app/areas/tasks/history.page.spec.ts]
+- [x] [Review][Patch] Page spec header claimed a mutation against a test that does not exist, and one title claimed a close it never performs [ui/src/app/areas/tasks/history.page.spec.ts]
+- [x] [Review][Patch] `Read.cls` (two) and `Registry.SourceQueryProblem` docs still said `LIST` or `UPCOMING` [src/OcuPilot/Screen/Read.cls, src/OcuPilot/Screen/Registry.cls]
+- [x] [Review][Patch] The user-defined-only checkbox rendered after Search; Boundaries order is field, checkbox, Search [ui/src/app/areas/tasks/history.page.ts]
+- [x] [Review][Patch] Test docs overclaimed: "order aside", userOnly "same rows", "port never called", WireSecurityRead "answers 500" [src/OcuPilot/Test/TaskHistory.cls, src/OcuPilot/Test/WireSecurityRead.cls]
+- [x] [Review][Patch] TaskRunList doc misnamed AD-43's roster and gave the wrong reason for `hasIdRoute` [src/OcuPilot/Screen/Descriptor/TaskRunList.cls]
+- [x] [Review][Patch] EXPERIENCE.md `:359` omitted the reused "Process ID" [EXPERIENCE.md:359]
+- [x] [Review][Patch] Mirror `parentScopeResolutionProblem` accepted an empty `id.kind` the server refuses [ui/tools/screen-mirror.mjs, ui/tools/screen-mirror.test.mjs]
+- [x] [Review][Defer] Live history comparisons race the Task Manager -- DW-1026 wontfix-accepted
+- [x] [Review][Defer] Refresh and revisit read the live form, as AuditPage does -- DW-1027 wontfix-accepted
+- [x] [Review][Defer] A `namespace` criterion on a mgmnt source would be overwritten -- DW-1028 wontfix-theoretical
+- DW-1020 closed `resolved-by` this story.
+
+Rejected:
+
+- `RouteEntityType` has no production caller: by design, Design Notes name 4.4 as its first consumer.
+- History with no `taskId` shows every task's runs, `taskId` is free text, the smoke passes on zero rows: each is the spec's Matrix or table as written.
+- `HISTORY` duplicates `UPCOMING`'s refusal block: the spec requires a sentence per type; no divergence named.
+- Smoke source-scan window of 300 characters, `DemoTaskId` above 1000 tasks, the search-join column set, an `<INVALID OREF>` after the zero-row assertion: theoretical or already a loud failure.
+- JS parentScope rosters inline rather than read from the fixture classes: both engines pin the same sentences.
+- AC1 browser checks the demo row by name only: the ObjectScript Search test pins the failed run.
+- Spec counts and a residual-risk line are wrong: fixing them edits the spec.
+- Page spec fixture pairs `Status` 0 with Success: cosmetic.
+
 **Acceptance Criteria:**
 
 - **AC1 (across tasks).** Given `_SYSTEM` on the throwaway, when Task history opens from the fourth Tasks side-bar entry, then:
@@ -382,6 +414,49 @@ a tracked file's by `git diff` against the pre-mutation working tree):**
   still renders) -> browser `Story 6.6 AC3`'s new `page.url()` pathname assertion times out waiting
   for the bare `/ocupilot/tasks/history` route, while the pre-existing DOM-only assertions above it
   would have passed against this exact regression (observed).
+
+**QA independent falsification pass (2026-09-17).** One further mutation per AC/Integration, each
+distinct from the mutations above, applied against a fresh `ocupilot-b-ci` throwaway (ObjectScript)
+or locally via `ng test` (client), watched red, reverted, and the tree confirmed byte-identical
+(`git status --short` clean) after each:
+
+- mutation (AC1): `TaskHistoryList`'s declared `refreshes` flipped `false` -> `true` (with its
+  server-criteria read left declared) -> `OcuPilot.Test.TaskHistory:TestBothDescriptorsValidateAsTheTasksEntriesTheyReplace`
+  red: the registry refuses to validate at all (`ERROR #5001: ... refreshes is declared with
+  read.criteria, and a screen that searches on the server renders nothing until Search and does
+  not auto-refresh (AD-43)`), and its own "and it does not refresh" assertion reads `1` where `0`
+  is expected (observed).
+- mutation (AC2): `TaskScheduleList`'s `id.parts` changed from `["Id"]` to `["id"]` (composite
+  kind unchanged) -> the same test's "one part, Id" assertion goes red, and the registry refuses
+  to validate (`id.parts names 'id', which is not one of read.fields, so a row's key could not be
+  read from it`) -- the name cell's link would resolve no row key at all, rather than the already-
+  recorded "id back to single" regression's wrong-value link (observed).
+- mutation (AC3): `history.page.ts`'s `detail` getter reads `view.screen.table?.columns.map((c) =>
+  c.field)` instead of `view.screen.read?.fields` -> `history.page.spec.ts`'s "opens the detail
+  dialog listing every declared read field" test red, the dialog showing only the seven table
+  columns and missing `Error number` (`ErrNumber`, a `context.fields`-only field), confirmed via
+  `ng test --include=src/app/areas/tasks/history.page.spec.ts` (observed).
+- mutation (AC4): `TaskRunList`'s `privileges` narrowed to `%DB_IRISSYS:READ` alone (dropping
+  `%Admin_Task:USE`, the other half of the pair the already-recorded AC4 mutation left standing)
+  -> `TestBothDescriptorsValidateAsTheTasksEntriesTheyReplace`'s "its pair set is the task
+  schedule's" assertion for `TaskRunList` goes red alone, the whole class otherwise green
+  (observed).
+- mutation (Integration): `Read.cls`'s admin-branch cap arithmetic changed from `Set
+  tQuery("maxRows") = tMax + 1` to `tMax` (dropping the one-extra-row truncation probe) ->
+  `TestEachRouteIsCutAtACapOfOne`'s "reported truncated" assertion goes red on both routes at
+  `maxRows=1`, the Matrix "Cap" row's own pinning test and the code path the Integration AC's
+  cap-narrowing claim shares (observed).
+
+**Review pass mutations (2026-09-17, code review).** Each applied, observed red, reverted; tree
+confirmed identical:
+
+- mutation: `Read.SeedCriteria` appends `999` to a `taskId` value (throwaway `ocupilot-b-ci`) -> `OcuPilot.Test.TaskHistory:TestTheReadToolAnswersTheRoutesRowsNarrowedByItsCap` red on the new "answers at least one of the demo task's rows" assertion alone, and `TestOneTaskReadsOnlyTheDemoTasksOwnRuns` red on its row and error-text assertions (observed).
+- mutation: `navigation.ts` `routeEntityType` returns `screen.entityType` -> `navigation.test.mjs` "routeEntityType resolves through parentScope" red (observed).
+- mutation: Task schedule's mirrored id kind `single`, then History's mirrored `Result` column renamed -> `navigation.test.mjs` "Task schedule keys on Id and opens History" red each time (observed).
+- mutation: `screen-mirror.mjs` vendorParam reserved-name arm disabled, then the vendorParam collision arm disabled -> `screen-mirror.test.mjs` CriteriaCorpus test red each time (observed).
+- mutation: the mirror's empty-`id.kind` guard removed -> `screen-mirror.test.mjs` parentScope test red on the empty-kind case (observed).
+- mutation: `heldFor` hands back a fresh `TaskHistorySearch` (AC3, store cleared on re-creation) -> `history.page.spec.ts` "re-reads on a return to the screen" red; a `FIELD_LABEL_KEYS` entry dropped -> the dialog label test red (observed).
+- mutation: `boundRead` bypasses `readFor` (bundle rebuilt and redeployed) -> browser `Story 6.6 AC3` red on "no second read for the dialog"; the component spec stays green (observed).
 
 ## Auto Run Result
 

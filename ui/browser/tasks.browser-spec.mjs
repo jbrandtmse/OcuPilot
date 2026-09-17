@@ -419,7 +419,7 @@ test('Story 6.6 AC1: Task history renders its form first with no read, Search is
   }
 });
 
-test('Story 6.6 AC2/AC3: activating the demo task\'s name cell opens its own history, reading taskId once, every row naming it, with a dialog on the name cell', async () => {
+test('Story 6.6 AC2/AC3: activating the demo task\'s name cell opens its own history, reading taskId once, every row naming it under Task history\'s columns', async () => {
   const { context, page, reads } = await signedInAtList(config.username, config.password, LIST_URL);
   try {
     await waitForRows(page, config.navigationTimeoutMs);
@@ -432,7 +432,12 @@ test('Story 6.6 AC2/AC3: activating the demo task\'s name cell opens its own his
 
     const historyReads = reads.filter((url) => new URL(url).pathname === TASK_HISTORY_READ_PATH);
     assert.equal(historyReads.length, 1, `exactly one tasks.taskhistory read: ${JSON.stringify(reads)}`);
-    assert.notEqual(new URL(historyReads[0]).searchParams.get('taskId'), null, 'the read carries a taskId');
+    const routeId = new URL(page.url()).pathname.split('/').pop();
+    assert.match(routeId, /^\d+$/, "the route id is the task's numeric vendor Id");
+    assert.equal(new URL(historyReads[0]).searchParams.get('taskId'), routeId, 'the read carries taskId=<Id>');
+
+    const headers = await page.$$eval('.ocu-data-table-header-label', (labels) => labels.map((label) => label.textContent.trim()));
+    assert.deepEqual(headers, ['Started', 'Completed', 'Name', 'Status', 'Result', 'User', 'Namespace'], 'History shows the same columns');
 
     const names = await page.$$eval(ROW_SELECTOR, (rows) =>
       rows.map((row) => row.querySelectorAll('[role="gridcell"]')[2]?.textContent.trim())

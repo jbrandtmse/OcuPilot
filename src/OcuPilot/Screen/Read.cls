@@ -41,8 +41,8 @@
 /// declared type, <code>LIST</code>, <code>UPCOMING</code> or <code>HISTORY</code>, under the same
 /// cap.</p>
 /// <p><b>A source may fix query parameters</b> (<code>source.query</code>, AD-36):
-/// <method>SeedSourceQuery</method> puts every entry into the read's <code>LIST</code> or
-/// <code>UPCOMING</code> call, a single-object <code>GET</code> and each per-parent child list, never
+/// <method>SeedSourceQuery</method> puts every entry into the read's <code>LIST</code>,
+/// <code>UPCOMING</code> or <code>HISTORY</code> call, a single-object <code>GET</code> and each per-parent child list, never
 /// into a per-parent read's parent list or a <code>rowGet</code> detail call, and always before the
 /// criteria. The registry refuses a key that a criterion, a reserved parameter or
 /// <code>forEach.param</code> also names, so no caller changes or removes one.</p>
@@ -468,8 +468,8 @@ ClassMethod CriteriaParams(pDescriptor As %String) As %List
 
 /// <p>Seed <var>pQuery</var> with every entry of <var>pSource</var>'s <code>query</code>, the
 /// parameters a declaration fixes (AD-36); nothing for a source that declares none. Called before any
-/// caller-supplied value is seeded, on the read's <code>LIST</code>, <code>UPCOMING</code> or
-/// <code>GET</code> call and on each per-parent child list, never on a parent list or a
+/// caller-supplied value is seeded, on the read's <code>LIST</code>, <code>UPCOMING</code>,
+/// <code>HISTORY</code> or <code>GET</code> call and on each per-parent child list, never on a parent list or a
 /// <code>rowGet</code> detail call.</p>
 ClassMethod SeedSourceQuery(pSource As %DynamicObject, ByRef pQuery)
 {

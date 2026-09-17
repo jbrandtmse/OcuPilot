@@ -1331,8 +1331,8 @@ Parameter SOURCEQUERYMAXLENGTH As INTEGER = 50;
 /// <code>read.criteria</code> field's <code>param</code> or <code>vendorParam</code>; and each value
 /// is a non-empty string of at most
 /// <parameter>SOURCEQUERYMAXLENGTH</parameter> characters.
-/// <method>OcuPilot.Screen.Read.Execute</method> sends every entry on the read's <code>LIST</code> or
-/// <code>UPCOMING</code> call, on a single-object <code>GET</code> and on each per-parent child list,
+/// <method>OcuPilot.Screen.Read.Execute</method> sends every entry on the read's <code>LIST</code>,
+/// <code>UPCOMING</code> or <code>HISTORY</code> call, on a single-object <code>GET</code> and on each per-parent child list,
 /// never on a per-parent read's parent list or a <code>rowGet</code> detail call, so no caller can
 /// change or remove one. <file>ui/tools/screen-mirror.mjs</file>'s
 /// <code>sourceQueryProblem</code> returns the same sentence for every case in

@@ -29,9 +29,11 @@ import { HistoryPage } from './history.page';
  * Mutations (Rule 19), each applied and observed red here alone:
  * call `refresh.readNow()` in the constructor -> "reads nothing, and renders no table" red; drop
  * the `userOnly` translation to `'1'` -> "the checkbox sends userOnly=1 only when checked" red;
- * make `boundRead` call `createScreenRead` fresh every time instead of going through
- * `TaskHistorySearch.readFor` -> "re-opens the dialog without a second read" red, because `bind`
- * would then see a different `read` reference and clear `hasLoaded`.
+ * make `heldFor` hand back a fresh `TaskHistorySearch` on every call -> "re-reads on a return to the
+ * screen" red; drop a `FIELD_LABEL_KEYS` entry -> "opens the detail dialog ... under its own label"
+ * red. `boundRead` bypassing `TaskHistorySearch.readFor` turns nothing here red, because these
+ * dialog tests move `paramMap` on one instance rather than re-creating the page; the browser AC3
+ * leg pins it ("no second read for the dialog").
  */
 
 function memoryStorage() {
@@ -212,7 +214,7 @@ describe('task history, across every task', () => {
     expect(paths[1]).not.toContain('userOnly=');
   });
 
-  it('opens the detail dialog listing every declared read field, with no second request, and closes back to the bare route', async () => {
+  it('opens the detail dialog listing every declared read field under its own label, with no second request, and renders none for a key no row carries', async () => {
     const failed = row('OcuPilotDemoTask', {
       Status: 1,
       Result: '<THROW> demo failure',
@@ -234,6 +236,9 @@ describe('task history, across every task', () => {
     expect(dialog.textContent).toContain(STRINGS.taskHistoryLabel);
     expect(dialog.textContent).toContain('<THROW> demo failure');
     expect(dialog.textContent).toContain(STRINGS.errorLogColumnNumber);
+    const labels = Array.from(dialog.querySelectorAll('.ocu-dialog-field')).map((field) => field.textContent?.trim() ?? '');
+    expect(labels).toHaveLength(HISTORY.read?.fields.length ?? -1);
+    expect(labels.filter((label) => label === '')).toEqual([]);
     // No second request: every field the dialog shows is already in the row the list read.
     expect(paths).toHaveLength(before);
 
