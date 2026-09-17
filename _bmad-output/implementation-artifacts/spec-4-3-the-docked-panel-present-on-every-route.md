@@ -2,7 +2,7 @@
 title: 'The docked panel, present on every route'
 type: 'feature'
 created: '2026-09-16'
-status: 'draft'
+status: 'ready-for-dev'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -77,7 +77,7 @@ Widths: rail 48, side bar 240, content minimum 640, panel minimum 320, remembere
 - `ui/src/app/core/strings.ts` -- present: `navAreaAgent`, `agentComposerLabel`, `agentComposerCaption` :275, `agentGateReminderBanner` :183, `agentDefinitionListLabel` :465. Absent: "Conversation", the macOS caption, full-screen and handle names, the reminder link label.
 - `ui/browser.config.mjs` -- fixed 1440x900 viewport; `OCUPILOT_BROWSER_USER/PASSWORD` default `_SYSTEM`/`SYS`; container `ocupilot-ci`. `ui/browser/gate.browser-spec.mjs` :150-190 -- sign-in steps and the `docker exec … iris session` fixture idiom; `browser/shell-entry.mjs` `leaveFirstLoginGate`.
 - `src/OcuPilot/Test/TurnWireFixture.cls` -- `EnsurePrincipal(user, pw, resources)` :64, `Resources(0)` :42 (no admin resource), `DeletePrincipal` :140; armed by `OCUPILOT_ALLOW_PRINCIPALS=1`, set only by `scripts/ci-throwaway.sh` :161.
-- Bundle deploy: `angular.json` :20 → `ui/dist/ocupilot-ui/browser`; `scripts/container-start.sh` :81; throwaway target `/durable/iris/csp/ocupilot/`. (`.claude/rules/objectscript-testing.md` names `dist/ocupilot/browser/`, which is wrong.)
+- Bundle deploy: `angular.json` :20 → `ui/dist/ocupilot-ui/browser`; `scripts/ci-throwaway.sh` :124-126 copies `ui/dist` at `up` only, mounted at `/opt/ocupilot/ui` (`container-start.sh` :81); the install copies it to `${dataDir}csp/ocupilot/` (`Install/Roster.cls` :103), i.e. `/durable/iris/csp/ocupilot/` — the `docker cp` target after a rebuild. (`.claude/rules/objectscript-testing.md` names `dist/ocupilot/browser/`, which is wrong.)
 - UX assets: `_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/imports/robot-avatar-64.png` (header avatar, name "Agent").
 
 ## Tasks & Acceptance
@@ -87,14 +87,14 @@ Widths: rail 48, side bar 240, content minimum 640, panel minimum 320, remembere
 - `ui/src/app/core/panel-layout.ts` (new) + `ui/tools/panel-layout.test.mjs` -- pure `resolveLayout({viewport, sideBarPreferred, sideBarReopened, remembered, fullScreen})` returning side bar shown, panel width, panel max, content width, content scrolls; and a subscribable `PanelState` store (remembered width via `Preferences`, draft text, full-screen, drag/keyboard resize intents clamped to the bounds). Test every Matrix width row and the stored-width edge cases under `node --test`.
 - `ui/src/app/core/preferences.ts` -- add `ocupilot.panel.width` to `PREFERENCE_KEYS` with a validated numeric reader.
 - `ui/src/main.ts` -- provide `PanelState`; a single viewport listener (`resize` on `window`, read in a shell component, never in `core/`) feeds the viewport width into it.
-- `ui/src/app/shell/panel.ts` + `panel.spec.ts` -- always render on the signed-in frame: header (avatar, "Agent co-pilot", full-screen toggle with `aria-expanded`), banner slots in fixed order, empty context-chip slot, transcript `role="log"` `aria-live="polite"` `aria-label="Conversation"` `tabindex="0"` scrolling independently (holds the configuration-empty sentence and example card when unconfigured), footer (read-only line, composer growing to four lines, Send, platform caption). Composer is editable when a definition is enabled and nothing restrains the agent, with its draft in `PanelState`; Send stays `aria-disabled` until Story 4.5. Administrator reminder banner gains its link to the Definitions route (DW-377, label per the lead's UX row). Rewrite AC5 and the render-nothing cases for the always-present panel.
-- `ui/src/app/shell/panel-resize-handle.ts` (new) + spec -- `role="separator"`, `aria-orientation="vertical"`, focusable, `aria-valuenow/min/max` in px, pointer drag with capture, Left/Right ±16px, Escape ends a drag at its current width; grip `restrained` at a stop; `col-resize` cursor; named from `strings.ts`.
+- `ui/src/app/shell/panel.ts` + `panel.spec.ts` -- always render on the signed-in frame: header (avatar, "Agent co-pilot", full-screen toggle with `aria-expanded`), banner slots in fixed order, empty context-chip slot, transcript `role="log"` `aria-live="polite"` `aria-label="Conversation"` `tabindex="0"` scrolling independently (holds the configuration-empty sentence and example card when unconfigured), footer (read-only line, composer growing to four lines, Send, platform caption). Composer is editable when a definition is enabled and nothing restrains the agent, with its draft in `PanelState`; Send stays `aria-disabled` until Story 4.5. Administrator reminder banner gains its link "Definitions" to the Definitions route (DW-377). Rewrite AC5 and the render-nothing cases for the always-present panel.
+- `ui/src/app/shell/panel-resize-handle.ts` (new) + spec -- `role="separator"`, `aria-orientation="vertical"`, focusable, `aria-valuenow/min/max` in px, pointer drag with capture, Left/Right ±16px, Escape ends a drag at its current width; grip `restrained` at either stop (320, and the width that leaves content at 640); `col-resize` cursor; named "Resize the agent co-pilot panel" from `strings.ts`.
 - `ui/src/app/app.ts` + `app.spec.ts` -- bind panel width, side-bar shown and `inert` on side bar and content from `PanelState`; Ctrl/Cmd+I handler per the Matrix; `runFirstLoginGate` spends the fresh-sign-in flag only when both reads answered (DW-380).
 - `ui/src/app/shell/side-bar.ts` -- shown only when preferred and not yielded; Ctrl/Cmd+B while yielded records the user's reopen (next concession) without changing the stored preference.
 - `ui/src/styles/_components.scss` -- `.ocu-shell-content` scroll region with an inner 640px floor; panel header, handle, grip, full-screen layout, composer growth; width transition 120ms honouring reduced motion.
 - `ui/src/app/core/session.ts` + `ui/tools/session.test.mjs` -- `runSubmit` skips its second `notify()` on the accepted path only (DW-386).
 - `ui/src/app/areas/agent/definition-form.store.ts` + spec -- snapshot the refused values when the request is sent and attribute a refusal to that snapshot (DW-380).
-- `ui/src/app/core/strings.ts` -- add "Conversation", the macOS caption variant, and the strings named in Design Notes' UX rows once the lead has applied them.
+- `ui/src/app/core/strings.ts` -- add "Conversation" and the ⌘I caption variant (EXPERIENCE.md :308, :422-424), and "Definitions", "Full screen", "Resize the agent co-pilot panel" (Fixed strings rows :345-347).
 - `ui/src/assets/avatar/robot-avatar-64.png` -- copy from UX imports.
 - `ui/browser/panel.browser-spec.mjs` (new) -- geometry, resize, persistence across reload and navigation, full screen, Ctrl/Cmd+I, yield order at each Matrix width via `page.setViewport`, the 640px measurement (below).
 - `ui/browser/panel-principal.browser-spec.mjs` (new) -- creates a least-privileged principal through `TurnWireFixture.EnsurePrincipal` with `Resources(0)` and a spec-generated password over `docker exec` on `config.container` (refusing `LIVE_CONTAINER`), signs in, asserts the panel on two routes shows the configuration-empty sentence and no reminder banner, then deletes the principal (DW-378).
@@ -104,7 +104,7 @@ Widths: rail 48, side bar 240, content minimum 640, panel minimum 320, remembere
 
 - Given any signed-in route, when it renders, then `aside.ocu-panel` is docked right at the stored width (400 when none, never below 320), content reflows to the remaining width, and no close control exists.
 - Given a draft typed in the composer and a resized width, when the user navigates to another route, then the same panel element, draft and width remain; after a reload the width remains.
-- Given the handle, when dragged or driven by Left/Right, then width moves only between 320 and the 640px-content point, the grip is `restrained` at a stop, and the stored width updates; the side bar has no sash, grip or `col-resize` cursor.
+- Given the handle, when dragged or driven by Left/Right, then width moves only between 320 and the 640px-content point, the grip is `restrained` at either stop, and the stored width updates; the side bar has no sash, grip or `col-resize` cursor.
 - Given full screen, when toggled on and off, then side bar and content are `inert` only while on, `aria-expanded` matches, and the width after restore equals the width before.
 - Given the panel body, when rendered as an administrator with no enabled definition and the kill switch on, then banner DOM order is kill switch, (read-only if on), reminder; then the chip slot, the log region, then the footer with read-only line, composer labeled "Message to the agent", Send and the caption.
 - Given Ctrl/Cmd+I, when pressed from content, side bar or rail, including while a Send is `aria-disabled`, then the composer has focus; with a dialog or the command box open it does not move.
@@ -125,13 +125,9 @@ Widths: rail 48, side bar 240, content minimum 640, panel minimum 320, remembere
 
 **Full screen.** DESIGN.md's Full screen row (rail, header and status bar stay; panel covers side bar and content) is read as the concrete form of EXPERIENCE.md's "app area below the header".
 
-**Ledger inbox.** DW-377 addressed (link, pending the lead's UX row). DW-378 addressed (`panel-principal.browser-spec.mjs`). DW-380 addressed (both windows). DW-381 addressed (`rail.browser-spec.mjs`). DW-382 addressed (`resolveLayout` and the content floor). DW-386 addressed (accepted-path notify only).
+**Measurement point.** The 640px confirmation is taken at 1,280px, the narrowest supported viewport (EXPERIENCE.md Full shell row; `epics.md` Story 4.3 as amended). There the side bar yields, the panel docks at 400 (content 832) and resizes to 592 (content 640). 900-1,279px is asserted as yield order only.
 
-**UX rows for the lead** (append after the Fixed strings table's last row, EXPERIENCE.md :344, as Story 3.9 did):
-
-- `| "Definitions" | the administrator reminder banner's link, to Agent co-pilot › Definitions (DW-377) |`
-- `| "Full screen" | the panel header's full-screen toggle name; its state is \`aria-expanded\` (UX-DR42) |`
-- `| "Resize the agent co-pilot panel" | panel-resize-handle accessible name; its value is the width in px |`
+**Ledger inbox.** DW-377 addressed (link "Definitions"). DW-378 addressed (`panel-principal.browser-spec.mjs`). DW-380 addressed (both windows). DW-381 addressed (`rail.browser-spec.mjs`). DW-382 addressed (`resolveLayout` and the content floor). DW-386 addressed (accepted-path notify only).
 
 ## Verification
 
@@ -150,5 +146,7 @@ Widths: rail 48, side bar 240, content minimum 640, panel minimum 320, remembere
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap -- "the narrowest supported viewport" (Story 4.3's UX-DR80 AC) is not defined in any planning artifact. EXPERIENCE.md › Responsive & Platform tables 1,280 / 1,440 / 1,920px and a "< ~900 px" squeeze band; DESIGN.md's Yield order table's narrowest row is 900px, where the panel is pinned at 320 and has no resized width; PRD NFR-11 names desktop Chrome only. The readings measure different things (900: docked 320, no resize range, content 532 of 640; 1,024: docked 336, range 320-336; 1,280: docked 400, resizable to 592 at content 640). Recommended amendment: state the narrowest supported viewport as 1,280px (EXPERIENCE.md's "≥ 1,280 px Full shell" row and worked table; reconcile-vscode-reference.md's "1,280 px laptop"), keeping 900-1,279px as yield-order behavior asserted but not the measurement point. Secondary, with a recommendation, for the same amendment: the AC's "a grip that turns restrained at the stop" versus DESIGN.md's "At panel-min the grip turns restrained" -- recommend both stops (320 and the 640px-content maximum). The spec is otherwise planned; three Fixed strings rows for the lead are under Design Notes.
+Status: ready-for-dev
+Blocking condition: none
+
+Re-plan after the lead's answer: measurement point set to 1,280px (AC, Design Notes), grip restrained at either stop (handle task, AC), the three Fixed strings rows (EXPERIENCE.md :345-347) named in the strings, panel and handle tasks, DW-377's pending label resolved, and the bundle deploy path confirmed against `ci-throwaway.sh`, `container-start.sh` and `Install/Roster.cls`. Intent contract preserved verbatim.
