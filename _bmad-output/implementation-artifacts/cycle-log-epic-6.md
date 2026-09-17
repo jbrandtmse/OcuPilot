@@ -202,3 +202,5 @@
 2026-09-17T19:06:30Z	Story 6.6	ledger_adjudicated	owned=0 resolved=0 reowned=0 terminal=0 slice_after=empty note=rework_filed_nothing
 2026-09-17T19:06:30Z	Story 6.6	smoke_complete	method=browser+cli result=pass iterations=1 defects_caught=0 evidence=fresh_ocupilot-b-ci(up_and_down_by_runner);bundle_redeployed;tasks.browser-spec_14/14_after_the_review_patch;smoke.sh_executed=37_passed=37 model=claude-opus-5 note=row_wait_itself_not_separately_mutated:the_assertion_it_guards_is_already_pinned_by_the_existing_close-clears-the-search_mutation
 2026-09-17T19:07:07Z	Story 6.6	committed	sha=451f3e3 branch=OCU-1-epic6 pushed=origin/OCU-1-epic6 submodules= ci=pending run=35262951202 amendments=none footprint_extensions=none rework=ci_run_35257071703_browser_leg
+2026-09-17T19:23:54Z	Story 6.9	ci_resolved	run=35262951202 sha=451f3e3 conclusion=success note=covers_6.9(navigation_roster)_and_6.6(browser_wait);earlier_runs_35251489312_and_35257071703_were_red_and_are_both_closed_by_this_one jobs=gates_x3+instance+images_x2_all_success
+2026-09-17T19:23:54Z	Story 6.6	ci_resolved	run=35262951202 sha=451f3e3 conclusion=success
