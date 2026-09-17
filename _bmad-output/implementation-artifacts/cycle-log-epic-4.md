@@ -159,3 +159,6 @@
 2026-09-17T11:56:06Z	Story 4.4	throwaway_down	by=runner project=ocupilot-ci container=2be800652a5d
 2026-09-17T11:56:37Z	Epic 4	integrate_forward	reason=owner_directed commit=0dc7c48 pre_merge=78b9bf1 merge_sha=8fe0f21 conflicts=epics.md_FR-11/FR-51_index_row(kept_both:4.4,4.11_and_16.11),sprint-status.yaml(took_feature_side,generate,re-set_epic-4_in-progress_and_4-0..4-4_done,validate_ok) epic4_story_blocks_changed_by_the_merge=0 ledger_owner_unknown=0
 2026-09-17T11:56:55Z	Story 4.4	ledger_routed_planned	story=4-5-a-turn-watched-progress-cards-and-the-conversation-lock entries=1(DW-1048) excess=0 by=lead
+2026-09-17T11:58:18Z	Epic 4	epic_context_compiled	sha=095e492 reason=planning_artifact_newer(integrate_forward_0dc7c48,DW-1048_bullet)+4.4_seams bytes=13652 model=opus subagent_tokens=104996
+2026-09-17T12:14:36Z	Story 4.4	ci_resolved	story=4.4 run=35218360966(merge_head_8fe0f21_containing_8355d0d) result=success resolved_at=next_plan
+2026-09-17T12:14:36Z	Story 4.5	stage_spawned	stage=plan spawn_at=2026-09-17T12:14:36Z model=opus agent_name=4-5-plan-1 cycle_iteration=1
