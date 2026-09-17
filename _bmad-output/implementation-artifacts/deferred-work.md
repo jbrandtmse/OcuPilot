@@ -3114,3 +3114,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-3-the-docked-panel-present-on-every-route.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: panel.browser-spec.mjs line 406 threw reading value of null in a full browser-suite run on the throwaway; the file alone passed 10 of 10 and the full suite re-run passed 91 of 91
 - 2026-09-17T11:54:13Z status=routed owner=4-5-a-turn-watched-progress-cards-and-the-conversation-lock by=lead note=Wait for the composer selector before reading it; 4.5 rebuilds the composer and Send, so it owns this spec
+
+### DW-1051: Job.Run's catch path that appends the turn's conversation entry when the loop throws has no automated test, because no fault-injection seam reaches the job
+- source: spec-4-5-a-turn-watched-progress-cards-and-the-conversation-lock.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: The implement stage fixed the missing append on a thrown loop and verified it by inspection and compile only; followup_review_recommended is true for this reason
+- 2026-09-17T16:00:19Z status=open owner=4-5-a-turn-watched-progress-cards-and-the-conversation-lock by=harvest note=For code review to pin with a probe or record why no seam can reach it
