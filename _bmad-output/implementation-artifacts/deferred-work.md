@@ -1854,6 +1854,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-15T02:56:12Z status=routed owner=4-4-screen-context-on-every-turn-capped-with-its-toggle-and-chip by=harvest note=the context cap story owns AD-24's bounds; a per-field truncation belongs with the row cap it already applies
 - 2026-09-15T08:23:44Z occurrence=2-12-the-application-error-log-endpoint-and-drill-down
 - 2026-09-16T15:11:12Z status=routed owner=4-4-screen-context-on-every-turn-capped-with-its-toggle-and-chip by=x0 note=kept, the context cap and secret exclusion own this
+- 2026-09-17T05:48:12Z status=routed owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=spec_gate note=retitled when the chip and its toggle split into Story 4.11; the work stays server-side in 4.4
 
 ### DW-282: A criteria-bearing screen owns its state in a root-provided store because the detail route re-creates the component, and nothing stops the next such screen re-deriving that
 - source: spec-2-10-the-audit-database-viewer-with-its-agent-marker-filter.md | severity: low | fix-risk: low | footprint: in-epic
@@ -2604,6 +2605,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T08:03:59Z status=routed owner=burndown by=harvest note=a word-boundary match rather than a suffix match would hold both ends; measure against the whole shipped key set before changing it
 - 2026-09-16T10:21:59Z status=routed owner=4-4-screen-context-on-every-turn-capped-with-its-toggle-and-chip by=burndown_gate note=the redactor's reach is what decides what leaves on a turn's context
 - 2026-09-16T15:11:12Z status=routed owner=4-4-screen-context-on-every-turn-capped-with-its-toggle-and-chip by=x0 note=kept, the context cap and secret exclusion own this
+- 2026-09-17T05:48:12Z status=routed owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=spec_gate note=retitled when the chip and its toggle split into Story 4.11; the work stays server-side in 4.4
 
 ### DW-399: Nothing compares Kernel/Audit/Log's credential-suffix list with ui/tools/field-lists.mjs's CREDENTIAL_RE, which its own doc comment says it mirrors
 - source: spec-3-8 | severity: med | fix-risk: low | footprint: cross-epic
@@ -2611,6 +2613,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T08:03:59Z status=routed owner=burndown by=harvest note=the screen-mirror twin already solves this shape; the same technique applies
 - 2026-09-16T10:21:59Z status=routed owner=4-4-screen-context-on-every-turn-capped-with-its-toggle-and-chip by=burndown_gate note=the two credential lists are the same corpus the context cap reads
 - 2026-09-16T15:11:12Z status=routed owner=4-4-screen-context-on-every-turn-capped-with-its-toggle-and-chip by=x0 note=kept, the context cap and secret exclusion own this
+- 2026-09-17T05:48:12Z status=routed owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=spec_gate note=retitled when the chip and its toggle split into Story 4.11; the work stays server-side in 4.4
 
 ### DW-400: check_handler_wire_tests still keys a route by substring, so a route whose declared path is a leading prefix of another's is covered by its sibling's wire assertions
 - source: spec-3-8 | severity: low | fix-risk: low | footprint: in-epic
@@ -2953,6 +2956,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Dispatch.Answer caps each result at 65,536 characters but bounds neither the count nor the sum, and every later request resends them. About 13 capped results pass a 200K-token context (inference); 56 pass 3,641,144 characters and Loop.AnswerTools' %ToJSON throws <MAXSTRING> after every tool ran.
 - 2026-09-17T01:30:47Z status=routed owner=4-4-screen-context-on-every-turn-capped-with-its-toggle-and-chip by=cr note=4.4 makes AD-24's caps operator-settable; an aggregate per-request tool-result budget belongs with them
 - 2026-09-17T02:57:29Z status=routed owner=4-4-screen-context-on-every-turn-capped-with-its-toggle-and-chip by=cr note=Loop.AnswerTools now dispatches one call at a time, so a per-reply budget belongs there, not in Dispatch.Answer
+- 2026-09-17T05:48:12Z status=routed owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=spec_gate note=retitled when the chip and its toggle split into Story 4.11; the work stays server-side in 4.4
 
 ### DW-453: The shell privilege and namespace reads evaluate the job's frozen $ROLES while the dispatcher checks the user's current grants
 - source: spec-4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea.md | severity: med | fix-risk: med | footprint: in-story

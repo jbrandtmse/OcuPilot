@@ -639,7 +639,7 @@ The epic-level map above says *which epic* owns each requirement and why it is s
 | FR-8 | 1.13 | FR-48 | 2.8, 6.5, 7.5 |
 | FR-9 | 1.15, 9.9 | FR-49 | 6.6 |
 | FR-10 | 4.3 | FR-50 | 6.7 |
-| FR-11 | 4.4 | FR-51 | 5.11, 7.6, 7.7 |
+| FR-11 | 4.4, 4.11 | FR-51 | 5.11, 7.6, 7.7 |
 | FR-12 | 4.5 | FR-52 | 9.7 |
 | FR-13 | 4.6 | FR-53 | 9.8 |
 | FR-14 | 5.7 | FR-54 | 2.9, 6.8 |
@@ -696,7 +696,7 @@ Every UX Design Requirement is owned by at least one story. Where a UX-DR is a *
 | 40 (classic-link card) | Stories 1.15 and 9.9 |
 | 41 (area tile) | Story 1.12 |
 | 42-44 (panel, Send control, resize handle) | Story 4.3 |
-| 45 (context chip) | Story 4.4 |
+| 45 (context chip) | Story 4.11, over Story 4.4's server-side context |
 | 46-48 (user message, agent message, avatar) | Stories 4.5, 4.6 |
 | 49 (tool-call card) | Story 4.5 |
 | 50-51 (proposal card, diff row) | Story 5.2 |
@@ -715,7 +715,7 @@ Every UX Design Requirement is owned by at least one story. Where a UX-DR is a *
 | 78 (theme toggle) | Story 15.6 |
 | 79 (polish-week UX) | All of Epic 11, plus Story 14.1 |
 | 80 (the five assumption confirmations) | Story 1.10 (status bar height), Story 4.3 (content minimum), Story 6.9 (meter thresholds), Story 6.14 (log row height), Story 8.1 (form and field widths) |
-| 81 (the two PRD notes) | Story 4.4 (bounded visible rows, and the chip's row count) and Story 14.6 (the turn-limit banner, a blocking precondition) |
+| 81 (the two PRD notes) | Story 4.4 (bounded visible rows), Story 4.11 (the chip's row count) and Story 14.6 (the turn-limit banner, a blocking precondition) |
 | 82 (the three release-blocking installer asks) | Stories 1.3, 1.4 and 17.6 |
 
 ---
@@ -2834,23 +2834,26 @@ So that asking about a screen never means leaving it.
 - DW-382: `DESIGN.md`'s Yield order is two thirds unbuilt - no media query, `matchMedia` or `ResizeObserver` exists in `ui/src`, and the panel is what first puts the row into the width budget (ledger; routed by cr 2026-09-16)
 - DW-386: a form sign-in issues two definitions reads, because `runSubmit` notifies again after `adopt` already did (ledger; routed by the burn-down gate 2026-09-16)
 
-### Story 4.4: Screen context on every turn, capped, with its toggle and chip
+### Story 4.4: Screen context reaches the turn, capped and secret-free
 
 As a developer-administrator,
 I want the agent to know which screen I am on without me describing it, and to be able to switch that off,
 So that "what am I looking at?" is a question I can just ask - and so I can stop sending anything when I need to.
 
+The chip that shows this context, its toggle and the paste warning are Story 4.11; this story is the server side they read from. [AMENDED 2026-09-17 — see the story change log]
+
 **Acceptance Criteria:**
 
-- **Given** a turn is sent
-- **When** context is assembled
-- **Then** it is built **fresh from the screen the user is on at that moment** - so navigating between turns changes what the agent sees - and carries route, namespace, selected entity, and the visible rows with the active sort and filter.
+- **Given** a turn is posted with its screen context
+- **When** the context is accepted
+- **Then** it carries route, namespace, selected entity, and the screen's filtered and sorted view with the active sort and filter, cut to the row cap - the client builds it fresh from the screen the user is on when Send is pressed (Story 4.11) [AMENDED 2026-09-17 — see the story change log].
 
-- **Given** a screen descriptor declares its context serializer
-- **When** the kernel serializes
-- **Then** it enforces an instance-wide cap of **200 rows**, operator-settable, **truncating rather than refusing** and recording the number actually sent
-- **And** the cap is on **content, not only rows**: the payload is bounded by total size as well, and each field is truncated to a declared maximum with the truncation marked
-- **And** a serializer that emits an uncapped collection or an unbounded field fails review.
+- **Given** a context payload or a read tool's result
+- **When** the kernel bounds it
+- **Then** rows are cut at the instance-wide row cap, operator-settable on Switches as an integer from 1 to 1,000 (default 200), gated by the OcuPilot administrative resource and audited, **truncating rather than refusing**; the same cap bounds a read tool's result
+- **And** the cap is on **content, not only rows**: the payload is at most 65,536 characters, cut by whole rows from the end, and each field is cut at 1,000 characters unless its descriptor declares a lower maximum, a cut value ending in U+2026
+- **And** the payload reports `rowsSent`, `rowsAvailable`, `truncated` and `truncatedFields`
+- **And** the kernel applies these bounds itself, so no serializer's output leaves unbounded, and the descriptor registry refuses a context field whose declared maximum exceeds the default (AD-24). [AMENDED 2026-09-17 — see the story change log]
 
 - **Given** any field the descriptor types as secret - a password, private key, secret value, API key or token
 - **When** context is assembled
@@ -2858,24 +2861,19 @@ So that "what am I looking at?" is a question I can just ask - and so I can stop
 - **And** a screen carrying such fields sends route and entity identity only, never form values
 - **And** the exclusion is schema-driven from the descriptor, never a name-pattern match, because a wallet secret field named `Value` defeats any matcher - a name matcher runs only as a backstop that can add redaction and never remove it.
 
-- **Given** the context chip
-- **When** it renders with sharing on
-- **Then** it reads `<Screen>, <NAMESPACE> - <N rows> - <provider> - <endpoint host>`
-- **And** when the endpoint host is not on a private network it carries the pill "leaves the instance" with the tooltip "Screen context is sent to <host>", computed from the same configuration the request actually uses so the two cannot disagree
-- **And** a screen with secret-typed fields adds a key glyph.
+- **Given** the context reaches the model
+- **When** the turn's messages are built
+- **Then** it enters as a synthetic `screen.context` tool call and its result, placed before the user's message in the canonical message shape and never advertised as a tool
+- **And** a model-issued call with that name is refused as an unknown tool (AD-11). [AMENDED 2026-09-17 — see the story change log]
 
-- **Given** the user turns sharing off
-- **When** subsequent turns are sent
-- **Then** no screen data is sent, and the chip reads "Screen context off - nothing from this screen is sent."
-- **And** the toggle defaults to on, is remembered per user, and an OcuPilot administrator can set the instance default to off.
+- **Given** the user has turned sharing off
+- **When** subsequent turns are posted
+- **Then** no screen data is sent
+- **And** the choice is remembered per user on the instance, and a user who has not chosen follows the instance default, which an OcuPilot administrator can set to off. [AMENDED 2026-09-17 — see the story change log]
 
-- **Given** the chip is live
-- **When** the route, namespace, selection or visible rows change
-- **Then** it updates.
-
-- **Given** the user is on a screen carrying secret-typed fields
-- **When** their draft looks like a password or key
-- **Then** an inline warning appears above the input - "This looks like a password or key. Send anyway?" - with Send anyway and Edit.
+- **Given** the default definition's status read
+- **When** it resolves
+- **Then** it exposes `provider`, `endpointHost` and `leavesInstance`, computed on the instance from the provider port's own resolution: the context stays on the instance only when the definition is marked local, or every resolved address of the host is loopback, link-local, RFC 1918 or `fc00::/7`; an unresolvable host leaves. [AMENDED 2026-09-17 — see the story change log]
 
 ---
 
@@ -2936,6 +2934,39 @@ So that a slow answer is legible as work rather than as a hang.
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-451: a tool step records no count of rows actually sent, which the read card shows (ledger; routed by harvest 2026-09-16)
+
+### Story 4.11: The context chip, its toggle and the paste warning
+
+As a developer-administrator,
+I want to see what screen context the next turn will carry and where it goes, and to be warned before I paste a secret,
+So that sharing is a visible choice rather than an assumption.
+
+Split from Story 4.4 on 2026-09-17 (see its change log); it follows Story 4.5, whose Send it attaches to. [AMENDED 2026-09-17 — see the story change log]
+
+**Acceptance Criteria:**
+
+- **Given** a turn is sent from the panel
+- **When** context is assembled
+- **Then** it is built **fresh from the screen the user is on at that moment** - so navigating between turns changes what the agent sees - and posted with the turn as Story 4.4 accepts it.
+
+- **Given** the context chip
+- **When** it renders with sharing on
+- **Then** it reads `<Screen>, <NAMESPACE> - <N rows> - <provider> - <endpoint host>`, where `<N rows>` is the count the next turn would send
+- **And** when Story 4.4's status read says the context leaves the instance it carries the pill "leaves the instance" with the tooltip "Screen context is sent to <host>", from the same configuration the request uses so the two cannot disagree
+- **And** a screen with secret-typed fields adds a key glyph named "Secret fields on this screen are never sent".
+
+- **Given** the user turns sharing off
+- **When** the toggle changes
+- **Then** the chip reads "Screen context off - nothing from this screen is sent." and the choice is stored per user on the instance.
+
+- **Given** the chip is live
+- **When** the route, namespace, selection, or the screen's filtered and sorted view changes
+- **Then** it updates.
+
+- **Given** the user's draft
+- **When** it starts with `sk-`, `-----BEGIN`, `AKIA`, `ghp_`, `xox` or `AIza`, or holds a whitespace-free run of at least 24 characters using at least three of lower case, upper case, digit and symbol and containing none of `/ . : ^ (`
+- **Then** an inline warning appears above the input - "This looks like a password or key. Send anyway?" - with Send anyway, which sends that text, and Edit, which returns focus to the composer, once per draft text
+- **And** a URL, a dotted class name and a global reference do not raise it, each pinned by a test.
 
 ### Story 4.6: Replies render safely and offline
 
