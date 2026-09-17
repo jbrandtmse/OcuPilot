@@ -636,8 +636,18 @@ test('Story 6.6 AC3: activating a row\'s name cell on Task history opens a dialo
 
     await page.click('[role="dialog"] button');
     await page.waitForFunction(() => document.querySelector('[role="dialog"]') === null, { timeout: config.navigationTimeoutMs });
-    assert.notEqual(await page.$('[role="grid"]'), null, 'the table is still rendered once the dialog closes');
+    // history.page.ts documents the dialog route as a second config over the same screen, so
+    // closing it destroys and re-creates the page component: the grid is legitimately absent for
+    // a tick after the dialog leaves. Wait for it to come back rather than sampling that tick.
+    try {
+      await page.waitForSelector('[role="grid"]', { timeout: config.navigationTimeoutMs });
+    } catch {
+      throw new Error('the table did not come back once the dialog closed');
+    }
     assert.equal(reads.length, readsBefore, 'closing the dialog issues no new read either');
+    // `cdkVirtualFor` renders its range only once the viewport has measured itself, so a body row
+    // can lag the grid element by a pass (inference); wait for one before sampling the rows.
+    await waitForRows(page, config.navigationTimeoutMs);
     assert.ok((await findRowIndexByName(page, DEMO_TASK)) >= 0, 'the searched rows are still rendered');
     await page.waitForFunction(() => window.location.pathname === '/ocupilot/tasks/history', { timeout: config.navigationTimeoutMs });
     assert.equal(new URL(page.url()).pathname, '/ocupilot/tasks/history', 'and the URL is back on the bare route');

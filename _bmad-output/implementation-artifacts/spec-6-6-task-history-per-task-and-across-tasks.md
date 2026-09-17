@@ -2,7 +2,7 @@
 title: 'Task history, per task and across tasks'
 type: 'feature'
 created: '2026-09-16'
-status: 'in-progress'
+status: 'done'
 baseline_revision: 'cc88200bf9bbd3a6faa9db11fbc99e3e80c5297e'
 baseline_commit: 'cc88200bf9bbd3a6faa9db11fbc99e3e80c5297e'
 review_loop_iteration: 0
@@ -167,7 +167,7 @@ The throwaway has the demo fixture. Its demo task's install-time run fails and l
 - [ ] `src/OcuPilot/Test/WireSecurityRead.cls`: the Pairs row on both routes with the existing task principals, and the Tasks side-bar verdict with four listed entries.
 - [ ] Rosters in the Code Map: add both screens and tools. Smoke gains `TASKHISTORYTOOL`, which passes on zero or one row at `maxRows=1`, as the OAuth checks do (21 checks). Update `navigation.test.mjs` for `routeEntityType` and TaskScheduleList's composite key.
 - [ ] `ui/browser/tasks.browser-spec.mjs`: the browser legs of AC1-AC4.
-- [ ] [CI] instance: `ui/browser/tasks.browser-spec.mjs:619` "Story 6.6 AC3" -- the assertion `the table is still rendered once the dialog closes` races the page's own documented destroy-and-re-create on dialog close (`history.page.ts:209`): it queries `[role="grid"]` in the same tick the dialog leaves, and CI's slower runner lost that race. Wait for the grid to come back, as `audit.browser-spec.mjs` already does after its own close, sweep the browser specs for the same immediate-assert-after-close shape, and demonstrate a mutation on the corrected wait -- run 35257071703.
+- [x] [CI] instance: `ui/browser/tasks.browser-spec.mjs:619` "Story 6.6 AC3" -- the assertion `the table is still rendered once the dialog closes` races the page's own documented destroy-and-re-create on dialog close (`history.page.ts:209`): it queries `[role="grid"]` in the same tick the dialog leaves, and CI's slower runner lost that race. Wait for the grid to come back, as `audit.browser-spec.mjs` already does after its own close, sweep the browser specs for the same immediate-assert-after-close shape, and demonstrate a mutation on the corrected wait -- run 35257071703.
 
 **Review pass 1 patches (2026-09-17):**
 
@@ -415,6 +415,22 @@ a tracked file's by `git diff` against the pre-mutation working tree):**
   still renders) -> browser `Story 6.6 AC3`'s new `page.url()` pathname assertion times out waiting
   for the bare `/ocupilot/tasks/history` route, while the pre-existing DOM-only assertions above it
   would have passed against this exact regression (observed).
+- mutation (rework of CI run 35257071703's `tasks.browser-spec.mjs` failure): re-applied the
+  `onCloseDetail` -> `screen.route + '/RULE19-MUTATION'` variant of the mutation above against the
+  corrected AC3 test -- the immediate `assert.notEqual(await page.$('[role="grid"]'), null, ...)`
+  that raced the component's destroy-and-recreate cycle on CI's slower runner was replaced with a
+  bounded `waitForSelector('[role="grid"]')` (named failure on timeout), matching
+  `audit.browser-spec.mjs`'s own precedent for the same route-as-second-config shape -> still reddens
+  at the same `page.url()` pathname wait, confirming the fix does not regress existing coverage
+  (observed). CPU-throttled (20x) and tight in-page polling attempts to catch the grid legitimately
+  absent after a genuine close found none in 13 samples on this machine, consistent with the race
+  only losing on CI's slower runner, not locally (observed, race not reproduced).
+- mutation (lead, Rule 19 on the corrected assertion itself): `onCloseDetail` navigates to
+  `/ocupilot`, so the close leaves a screen that renders no grid (bundle rebuilt and redeployed) ->
+  browser `Story 6.6 AC3` red at the new wait with its own message, "the table did not come back
+  once the dialog closed", after 33.6 s; reverted, rebuilt, redeployed, and the whole spec file
+  green 14/14 (observed). The stage's mutation above reddens a later assertion, so this one is what
+  pins the new wait.
 
 **QA independent falsification pass (2026-09-17).** One further mutation per AC/Integration, each
 distinct from the mutations above, applied against a fresh `ocupilot-b-ci` throwaway (ObjectScript)
