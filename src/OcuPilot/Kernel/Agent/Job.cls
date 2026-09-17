@@ -13,10 +13,8 @@ Class OcuPilot.Kernel.Agent.Job Extends %RegisteredObject
 Parameter SPAWNTIMEOUT As %Integer = 5;
 
 /// <p>Seconds <method>Run</method> waits for the turn's conversation lock
-/// (<method>OcuPilot.Kernel.State.Convo.LoadOrCreate</method>) -- an inference, not a governing
-/// AD: AD-41's slot lock already bounds one user to one turn, so this lock is not contended in
-/// production traffic (inference) (Design Notes: lock reconciliation), and this is only how long
-/// a turn waits in the one case it ever would be.</p>
+/// (<method>OcuPilot.Kernel.State.Convo.LoadOrCreate</method>). AD-41's slot lock already bounds
+/// one user to one turn, so this lock is not contended in production traffic (inference).</p>
 Parameter CONVERSATIONLOCKSECONDS As %Integer = 5;
 
 /// <p>The loop the job runs.</p>
@@ -115,8 +113,8 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pNa
         Do ..Finish(pKey, pUser, tState, tCode, $Get(tOutcome("limit")), $Get(tOutcome("reply")), +$Get(tOutcome("errorSeq")), tLimits)
     } Catch ex {
         Do ..Log("the turn job failed", ex.AsStatus())
-        // Mirrors the normal-completion path above: append the conversation entry, then drop the
-        // OREF, then finish the turn -- every exit path, catch included, leaves the same trail.
+        ; Mirrors the normal-completion path above: append the conversation entry, then drop the
+        ; OREF, then finish the turn.
         If tBegun && (tLimits '= "") {
             Do ..AppendConvoEntry(tConvo, pKey, pMessage, ##class(OcuPilot.Kernel.State.Turn).#STATEFAILED, "", tUnavailable, 0, tLimits)
         }

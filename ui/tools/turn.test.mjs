@@ -17,10 +17,10 @@ import { dirname, join } from 'node:path';
 // - stop clearing `lockedValue` at the start of a fresh `send()` -> "the lock clears on the next
 //   attempt" goes red, and a stale 409 would lock the composer forever.
 // - answer the error banner for a `stopped` entry -> "a stop is never an error" goes red.
-// - drop the `generation` check in `pollOnce`/`finally` -> "endSession cancels a pending poll"
-//   goes red, a stray tick would resurrect a turn after sign-out.
-// - read `continuesThisTab` without checking the stored id -> "a fresh tab ignores a stray key"
-//   goes red.
+// - adopt the stored id whatever the navigation kind -> "a fresh or duplicated tab starts with no
+//   conversation and drops a stray stored id" goes red.
+// - drop the `generation` check after `restore()`'s read -> "restore() lands nothing when
+//   endSession() ran while its read was in flight" goes red.
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const corePath = (name) => join(uiRoot, 'src', 'app', 'core', name);
@@ -317,6 +317,7 @@ test('Stop mid-call: the tool step the loop was about to run becomes a stopped s
         error: { seq: 1, code: 'TURN.STOPPED', reason: 'Stopped by the caller' },
       }),
     ],
+    [turnStopPath('turn-1')]: [ok({ stopRequested: true })],
   });
   const turn = new TurnStore({ api, storage: memoryStorage(), navigationType: freshTab(), schedule });
 
@@ -327,7 +328,7 @@ test('Stop mid-call: the tool step the loop was about to run becomes a stopped s
   const stopResult = turn.stop();
   scheduled.shift().run();
   await settle();
-  assert.equal(await stopResult, false, 'the fake stop endpoint answers the default ok({}) body');
+  assert.equal(await stopResult, true, 'the stop endpoint answered stopRequested true');
 
   const outcome = await sent;
   assert.equal(outcome, 'sent');
@@ -430,9 +431,20 @@ test('locked() clears when the turn that was busy finishes, without a second sen
 
 // --- New conversation -----------------------------------------------------------------------
 
-test('newConversation() is refused while busy, and clears the transcript when it is not', async () => {
-  const api = fakeApi({ [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201), ok({ conversationId: 'convo-2' }, 201)] });
-  const turn = new TurnStore({ api, storage: memoryStorage(), navigationType: freshTab() });
+test('newConversation() is refused while busy, and clears the transcript and the lock when it is not', async () => {
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'convo-0' });
+  const api = fakeApi({
+    [conversationReadPath('convo-0')]: [
+      ok({ conversationId: 'convo-0', turns: [{ seq: 1, message: 'hi', state: 'completed', reply: 'hello', error: null, steps: [], stepsDropped: 0 }] }),
+    ],
+    [TURN_PATH]: [err(409, 'TURN.BUSY')],
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+  });
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab() });
+  await turn.restore();
+  assert.equal(await turn.send('another tab is busy'), 'locked');
+  assert.equal(turn.entries().length, 1);
+  assert.equal(turn.locked(), true);
 
   const { schedule } = fakeSchedule();
   const busyApi = fakeApi({
@@ -449,6 +461,100 @@ test('newConversation() is refused while busy, and clears the transcript when it
   assert.equal(await turn.newConversation(), true);
   assert.equal(turn.conversationId(), 'convo-1');
   assert.deepEqual(turn.entries(), []);
+  assert.equal(turn.locked(), false);
+});
+
+test('restore() lands nothing when endSession() ran while its read was in flight', async () => {
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'convo-1' });
+  let release;
+  const gate = new Promise((resolve) => {
+    release = resolve;
+  });
+  const api = {
+    calls: [],
+    requestJson: async () => {
+      await gate;
+      return ok({ conversationId: 'convo-1', turns: [{ seq: 1, message: 'theirs', state: 'completed', reply: 'secret', error: null, steps: [], stepsDropped: 0 }] });
+    },
+  };
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab() });
+  const restoring = turn.restore();
+  turn.endSession();
+  release();
+  await restoring;
+  assert.deepEqual(turn.entries(), []);
+  assert.equal(turn.restored(), false);
+});
+
+test('restore() and a finished live turn settle a step still running into a failed one', async () => {
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'convo-1' });
+  const abandoned = { seq: 1, code: 'TURN.ABANDONED.LEASE', reason: 'The turn was abandoned.' };
+  const api = fakeApi({
+    [conversationReadPath('convo-1')]: [
+      ok({ conversationId: 'convo-1', turns: [{ seq: 1, message: 'hi', state: 'abandoned', reply: null, error: abandoned, steps: [step({ status: 'running' })], stepsDropped: 0 }] }),
+    ],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+    [turnProgressPath('turn-1')]: [
+      ok({ turnId: 'turn-1', state: 'running', steps: [step({ status: 'running' })], stepsDropped: 0, reply: null, error: null }),
+      ok({ turnId: 'turn-1', state: 'abandoned', steps: [step({ status: 'running' })], stepsDropped: 0, reply: null, error: abandoned }),
+    ],
+  });
+  const { schedule, scheduled } = fakeSchedule();
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab(), schedule });
+  await turn.restore();
+  assert.equal(turn.entries()[0].steps[0].status, 'error');
+  assert.equal(turn.entries()[0].steps[0].reason, 'The turn was abandoned.');
+
+  const sent = turn.send('again');
+  await settle();
+  scheduled.shift().run();
+  await settle();
+  assert.equal(turn.entries().at(-1).steps[0].status, 'running', 'the live turn still shows its running step');
+  scheduled.shift().run();
+  await settle();
+  await sent;
+  assert.equal(turn.entries().at(-1).steps[0].status, 'error', 'and settles it once the turn ends');
+});
+
+test('a transient poll failure keeps polling; the turn still ends on its terminal state', async () => {
+  const { schedule, scheduled } = fakeSchedule();
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+    [turnProgressPath('turn-1')]: [
+      err(0, null),
+      err(503, null),
+      ok({ turnId: 'turn-1', state: 'completed', steps: [], stepsDropped: 0, reply: 'done', error: null }),
+    ],
+  });
+  const turn = new TurnStore({ api, storage: memoryStorage(), navigationType: freshTab(), schedule });
+  const sent = turn.send('hi');
+  await settle();
+  await settle();
+  for (let tick = 0; tick < 2; tick += 1) {
+    scheduled.shift().run();
+    await settle();
+    assert.equal(turn.busy(), true, `still busy after transient failure ${tick + 1}`);
+  }
+  scheduled.shift().run();
+  await settle();
+  await sent;
+  assert.equal(turn.busy(), false);
+  assert.equal(turn.entries().at(-1).state, 'completed');
+  assert.equal(turn.entries().at(-1).reply, 'done');
+});
+
+test('a send refused 404 (the conversation is gone) drops the id, so the next send starts a fresh one', async () => {
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'gone' });
+  const api = fakeApi({
+    [conversationReadPath('gone')]: [err(0, null)],
+    [TURN_PATH]: [err(404, 'TURN.CONVERSATION.NOTFOUND')],
+  });
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab() });
+  await turn.restore();
+  assert.equal(await turn.send('hi'), 'error');
+  assert.equal(turn.conversationId(), null);
+  assert.equal(storage.getItem(CONVERSATION_STORAGE_KEY), null);
 });
 
 // --- endSession ------------------------------------------------------------------------------

@@ -200,18 +200,30 @@ function parseState(value: unknown): TurnState {
   return 'queued';
 }
 
+/**
+ * `steps` as a finished turn shows them: a step still `running` when its turn ended (its job died
+ * mid-call) is shown `error`, carrying the turn's own error reason, so no finished turn renders a
+ * running card.
+ */
+function settledSteps(steps: readonly TurnStep[], error: TurnErrorInfo | null): TurnStep[] {
+  return steps.map((step): TurnStep =>
+    step.status === 'running' ? { ...step, status: 'error', reason: step.reason || (error?.reason ?? '') } : step
+  );
+}
+
 /** One restored conversation entry (`OcuPilot.Kernel.State.Convo.GuardedView`'s `turns[]`). */
 function parseRestoredEntry(value: unknown): TurnEntry | null {
   const row = asRecord(value);
   if (row === null) return null;
   const replyRaw = row['reply'];
+  const error = parseError(row['error']);
   return {
     seq: numberAt(row, 'seq'),
     message: textAt(row, 'message'),
     state: parseState(row['state']),
     reply: typeof replyRaw === 'string' ? replyRaw : null,
-    error: parseError(row['error']),
-    steps: parseSteps(row['steps']),
+    error,
+    steps: settledSteps(parseSteps(row['steps']), error),
     stepsDropped: numberAt(row, 'stepsDropped'),
     live: false,
   };
@@ -332,9 +344,13 @@ export class TurnStore {
       this.notify();
       return;
     }
+    const generation = this.pollGeneration;
     const result = await this.api.requestJson<Record<string, unknown>>(
       conversationReadPath(this.conversationIdValue)
     );
+    // Superseded by `endSession()` while the read was in flight: the transcript is the signed-out
+    // principal's, and must not land.
+    if (generation !== this.pollGeneration) return;
     if (result.kind === 'error' && result.status === 404) {
       this.conversationIdValue = null;
       this.removeItem(CONVERSATION_STORAGE_KEY);
@@ -404,6 +420,11 @@ export class TurnStore {
       return 'locked';
     }
     if (started.kind !== 'ok') {
+      if (started.kind === 'error' && started.status === 404) {
+        // The conversation is gone; the next send starts a fresh one.
+        this.conversationIdValue = null;
+        this.removeItem(CONVERSATION_STORAGE_KEY);
+      }
       this.busyValue = false;
       this.notify();
       return 'error';
@@ -453,6 +474,7 @@ export class TurnStore {
     const created = await this.createConversation();
     if (created === null) return false;
     this.entriesValue = [];
+    this.lockedValue = false;
     this.notify();
     return true;
   }
@@ -510,9 +532,14 @@ export class TurnStore {
       turnProgressPath(this.currentTurnId)
     );
     if (generation !== this.pollGeneration) return true;
+    if (result.kind === 'installing' || (result.kind === 'error' && (result.status === 0 || result.status >= 500))) {
+      // A transport fault or a server error is transient: keep polling, which also keeps the
+      // turn's lease renewed (AD-31).
+      return false;
+    }
     if (result.kind !== 'ok') {
-      // A 404 (the turn's own record swept, or an error reading it) ends the wait; there is
-      // nothing further this tab can learn about a turn it can no longer see.
+      // A refusal (404: the turn's own record swept; 401/403) ends the wait; there is nothing
+      // further this tab can learn about a turn it can no longer see.
       this.finalizeLive('abandoned', null, null);
       return true;
     }
@@ -540,6 +567,7 @@ export class TurnStore {
       state,
       reply,
       error,
+      steps: settledSteps(this.liveEntryValue.steps, error),
       live: false,
     };
     this.entriesValue = [...this.entriesValue, finished];

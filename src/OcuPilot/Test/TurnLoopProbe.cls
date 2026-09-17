@@ -71,10 +71,24 @@ ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String)
     Set ^||OcuPilotTurnLoopProbe("log", $Increment(^||OcuPilotTurnLoopProbe("log"))) = pMessage _ " | " _ pCode
 }
 
+/// <p>The latest step of the turn, as <code>kind:name:status</code>, when dispatch call
+/// <var>pCall</var> (1-based) began.</p>
+ClassMethod AtDispatch(pCall As %Integer) As %String
+{
+    Quit $Get(^||OcuPilotTurnLoopProbe("atDispatch", pCall))
+}
+
 /// <p>The shipped dispatch, counting the calls it answers and arming the kill switch when
-/// <method>ForceKillSwitchAfterCalls</method>' count is reached.</p>
+/// <method>ForceKillSwitchAfterCalls</method>' count is reached, and recording the turn's latest
+/// step as each call begins (<method>AtDispatch</method>).</p>
 ClassMethod DispatchTools(pKey As %String, pUser As %String, pDefinitionId As %String, pToolUses As %DynamicArray, pLimitsClass As %String, Output pResults As %DynamicArray, Output pNames As %DynamicArray, pRowCap As %Integer = 0, pMaxLength As %Integer = 0, Output pDetails As %DynamicArray) As %Status
 {
+    Set tSeen = ""
+    If $$$ISOK(##class(OcuPilot.Kernel.State.Step).GuardedRows(pKey, .tRows)) && (tRows.%Size() > 0) {
+        Set tLast = tRows.%Get(tRows.%Size() - 1)
+        Set tSeen = tLast.kind _ ":" _ tLast.name _ ":" _ tLast.status
+    }
+    Set ^||OcuPilotTurnLoopProbe("atDispatch", $Increment(^||OcuPilotTurnLoopProbe("atDispatch"))) = tSeen
     Set tSC = ##super(pKey, pUser, pDefinitionId, pToolUses, pLimitsClass, .pResults, .pNames, pRowCap, pMaxLength, .pDetails)
     Set tAnswered = $Increment(^||OcuPilotTurnLoopProbe("answered"), pToolUses.%Size())
     Set tAfter = $Get(^||OcuPilotTurnLoopProbe("killAfter"))

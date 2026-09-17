@@ -113,6 +113,8 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
                     Set tMessages(tHistoryCount, "role") = tHistoryMsg.%Get("role")
                     Set tMessages(tHistoryCount, "content") = tHistoryMsg.%Get("content")
                 }
+            } Else {
+                Do ..LogFault("the conversation's history could not be read; the turn runs without it", tHistorySC, pOutcome("code"))
             }
         }
         If pContext '= "" {
@@ -342,7 +344,8 @@ ClassMethod ToolUses(pJson As %String) As %DynamicArray
 /// <p>Echo the model's reply back as an assistant message of blocks -- its text, then its
 /// <code>tool_use</code> blocks verbatim -- answer the calls one at a time through
 /// <method>DispatchTools</method> as one user message of <code>tool_result</code> blocks and nothing
-/// else, and record one <code>tool</code> step per call under the tool's canonical name.
+/// else, and record one <code>tool</code> step per call under the tool's canonical name: appended
+/// <code>running</code> before the call is dispatched, then set to its outcome.
 /// <var>pToolLog</var> collects <code>{name, code}</code> for the fallback reply.</p>
 /// <p><b>Each call is a step, and <method>Boundary</method> runs before it</b> (AD-30, AD-31), with
 /// <var>pReadOnly</var>, <var>pResources</var>, <var>pStartedSeconds</var> and <var>pTokens</var> as
@@ -429,10 +432,25 @@ ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %Str
             Do tAnswered.%Push(tResult)
             Continue
         }
+        ; The step is recorded running before the call is dispatched, so a poll during a slow call
+        ; shows the card it is waiting on, then set to the call's outcome.
+        Set tRunningName = $Select($IsObject(tBlock): tBlock.%Get("name"), 1: "")
+        Kill tRunningResolved
+        Do $ClassMethod($ClassMethod(..DispatchClass(), "RegistryClass"), "ResolveWire", tRunningName, .tRunningResolved)
+        If $IsObject(tRunningResolved) Set tRunningName = tRunningResolved.%Get("name")
+        Set tRunningInput = $Select($IsObject(tBlock): tBlock.%Get("input"), 1: "")
+        Set tRunningArgs = $ClassMethod(..DispatchClass(), "RedactedArguments", tRunningInput, +$Parameter(pLimitsClass, "SUMMARYMAXLENGTH"), .tRunningArgsTruncated)
+        Set tSC = ##class(OcuPilot.Kernel.State.Step).GuardedAppend(pKey, "tool", tRunningName, "running", "", "", "", pLimitsClass, .tSeq, .tStored, $ClassMethod(..DispatchClass(), "TargetOf", tRunningInput), tRunningArgs, , , , tRunningArgsTruncated)
+        If $$$ISERR(tSC) Quit
+        Set pLastSeq = tSeq
         Set tCall = []
         Do tCall.%Push(tBlock)
         Set tSC = ..DispatchTools(pKey, pUser, pDefinitionId, tCall, pLimitsClass, .tResults, .tNames, pContextRowCap, tBudget, .tDetails)
-        If $$$ISERR(tSC) Quit
+        If $$$ISERR(tSC) {
+            Set tUnavailableCode = ##class(OcuPilot.Api.Error).#TOOLUNAVAILABLE
+            Do ##class(OcuPilot.Kernel.State.Step).GuardedFinishTool(pKey, tSeq, tRunningName, "error", tUnavailableCode, pLimitsClass, $ClassMethod(..DispatchClass(), "TargetOf", tRunningInput), tRunningArgs, "", ##class(OcuPilot.Api.Error).ReasonForToolCode(tUnavailableCode), "", tRunningArgsTruncated)
+            Quit
+        }
         Set tResult = tResults.%Get(0)
         Set tName = tNames.%Get(0)
         Set tDetail = tDetails.%Get(0)
@@ -445,9 +463,8 @@ ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %Str
                 Set tCode = ""
             }
         }
-        Set tSC = ##class(OcuPilot.Kernel.State.Step).GuardedAppend(pKey, "tool", tName, $Select(tIsError: "error", 1: "ok"), tCode, "", tCode, pLimitsClass, .tSeq, .tStored, tDetail.target, tDetail.arguments, tDetail.result, tDetail.reason, tDetail.failedPair, tDetail.argumentsTruncated)
+        Set tSC = ##class(OcuPilot.Kernel.State.Step).GuardedFinishTool(pKey, tSeq, tName, $Select(tIsError: "error", 1: "ok"), tCode, pLimitsClass, tDetail.target, tDetail.arguments, tDetail.result, tDetail.reason, tDetail.failedPair, tDetail.argumentsTruncated)
         If $$$ISERR(tSC) Quit
-        Set pLastSeq = tSeq
         Set tEntry = {}
         Do tEntry.%Set("name", tName, "string")
         Do tEntry.%Set("code", tCode, "string")

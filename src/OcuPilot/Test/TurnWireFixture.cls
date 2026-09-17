@@ -321,8 +321,8 @@ ClassMethod AwaitCall(pTag As %String, pCall As %Integer, pSeconds As %Integer) 
 /// <p>Signal every probe user's turns to abandon, wait up to ten seconds for each job to end and
 /// terminate any that has not, remove every probe turn and the stub nodes of each tag in
 /// <var>pTags</var>, and answer
-/// what was left, <code>""</code> when nothing was: a live job, a turn, a held slot or a stub
-/// node.</p>
+/// what was left, <code>""</code> when nothing was: a live job, a turn, a held slot, a held
+/// conversation lock or a stub node. Every probe user's conversations are removed too.</p>
 ClassMethod Sweep(pTags As %List) As %String
 {
     Set tLeft = ""
@@ -347,9 +347,32 @@ ClassMethod Sweep(pTags As %List) As %String
     Set tSC = ##class(OcuPilot.Test.TurnFixture).RemoveTurns(.tRemaining)
     If $$$ISERR(tSC) || (tRemaining '= 0) Set tLeft = tLeft _ " turns (" _ tRemaining _ ")"
     If ##class(OcuPilot.Test.TurnFixture).AnyProbeSlotHeld() Set tLeft = tLeft _ " a slot"
+    Set tLeft = tLeft _ ..SweepConversations()
     For tI = 1:1:$ListLength(pTags) {
         Do ##class(OcuPilot.Test.TurnProvider).Forget($List(pTags, tI))
         If ##class(OcuPilot.Test.TurnProvider).Remains($List(pTags, tI)) Set tLeft = tLeft _ " stub " _ $List(pTags, tI)
+    }
+    Quit tLeft
+}
+
+/// <p>Remove every conversation of <parameter>USERA</parameter> and <parameter>USERB</parameter>
+/// with its entries (Story 4.5), and answer <code>" a conversation lock"</code> when any job still
+/// held one of their rows' locks, else <code>""</code>. The lock is read on the
+/// <package>OcuPilot.Kernel.State</package> classes' shared storage global, as
+/// <class>OcuPilot.Test.Convo</class> reads it.</p>
+ClassMethod SweepConversations() As %String
+{
+    Set tLeft = ""
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT ID, ConvKey FROM OcuPilot_Kernel_State.Convo WHERE %EXACT(UserName) = ? OR %EXACT(UserName) = ?", ..#USERA, ..#USERB)
+    If tRS.%SQLCODE < 0 Quit " conversations (SQLCODE=" _ tRS.%SQLCODE _ ")"
+    Kill tKeys
+    While tRS.%Next() {
+        If $Data(^$LOCK($Name(^OcuPilot.Kernel.State.BaseD(tRS.%GetData(1))))) Set tLeft = " a conversation lock"
+        Set tKeys($Increment(tKeys)) = tRS.%GetData(2)
+    }
+    For tI = 1:1:$Get(tKeys) {
+        Set tSC = ##class(OcuPilot.Kernel.State.Convo).GuardedDelete(tKeys(tI))
+        If $$$ISERR(tSC) Set tLeft = tLeft _ " conversation " _ tKeys(tI)
     }
     Quit tLeft
 }

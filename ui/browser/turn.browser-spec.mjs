@@ -1,8 +1,9 @@
 /**
  * A turn, watched, in a real browser against the throwaway instance (Story 4.5): Send through a
- * completed reply within NFR-1's 10 s budget, Stop mid-call, the lock banner on a second send (in
- * this tab and from another), reload restoring the transcript with no running card, New
- * conversation, and markup rendered as literal text with no off-origin request.
+ * completed reply within NFR-1's 10 s budget, a read card's rows line, Stop mid-call, the lock banner
+ * on a second send in this tab and from another, a failed tool whose name is markup, reload restoring the transcript with no running card, a navigation
+ * that is not a reload starting fresh, New conversation, and markup rendered as literal text with no
+ * off-origin request.
  *
  * jsdom computes no layout and issues no real network request, so the wall-clock budget (NFR-1)
  * and "no request left this origin" are only observable here. Every test scripts its own
@@ -12,7 +13,7 @@
  *
  * Run: `npm run build` then `docker cp` the bundle into the throwaway, then
  * `OCUPILOT_BROWSER_ORIGIN=... OCUPILOT_BROWSER_CONTAINER=... node --test browser/turn.browser-spec.mjs`
- * (`ui/tools/testing/objectscript-testing.md`'s "a browser spec runs against the deployed bundle").
+ * (`.claude/rules/objectscript-testing.md`'s "a browser spec runs against the deployed bundle").
  */
 
 import { test, before, after } from 'node:test';
@@ -58,7 +59,7 @@ function nextTag() {
   return `${TAG_PREFIX}${tagCounter}`;
 }
 
-/** `"` and `$Char(0)` cannot appear in these fixture-generated ids in practice; escaped anyway. */
+/** Doubles `"` for an ObjectScript string literal. */
 function escapeOs(value) {
   return String(value).replace(/"/g, '""');
 }
@@ -225,13 +226,13 @@ test('Stop mid-call: the running card becomes "Stopped by you at <step>", no rep
 test('Second send: Enter while busy shows the lock banner, keeps the draft, appends nothing', async () => {
   const tag = nextTag();
   setTag(tag);
-  scriptReply(tag, 8, textReply('done'));
+  scriptReply(tag, 15, textReply('done'));
   const { context, page } = await signedInAt(HOME_URL);
   try {
     await page.type('#ocu-panel-composer', 'first message');
     await page.click('.ocu-panel-send');
     // Wait for the turn to be genuinely accepted (see the Stop-mid-call test's own note), with an
-    // 8 s hang behind it so there is a comfortable margin before it completes on its own.
+    // 15 s hang behind it, so the other tab below signs in and sends before it completes.
     await page.waitForSelector('.ocu-panel-message-user', { timeout: config.navigationTimeoutMs });
 
     await page.type('#ocu-panel-composer', 'second, while busy');
@@ -243,9 +244,23 @@ test('Second send: Enter while busy shows the lock banner, keeps the draft, appe
     const userMessages = await page.evaluate(() => document.querySelectorAll('.ocu-panel-message-user').length);
     assert.equal(userMessages, 1, 'no second message was appended');
 
+    // The same user's other tab: the instance refuses its send 409, and it shows the same banner.
+    const other = await signedInAt(HOME_URL);
+    try {
+      await typeAndSend(other.page, 'from the other tab');
+      await other.page.waitForSelector('[data-slot="lock"] .ocu-banner[role="status"]', { timeout: config.navigationTimeoutMs });
+      const otherState = await other.page.evaluate(() => ({
+        draft: document.querySelector('#ocu-panel-composer').value,
+        messages: document.querySelectorAll('.ocu-panel-message-user').length,
+      }));
+      assert.deepEqual(otherState, { draft: 'from the other tab', messages: 0 }, 'the other tab keeps its draft and appends nothing');
+    } finally {
+      await other.context.close();
+    }
+
     // Closing the context does not end the server-side job: every test here signs in as the same
     // configured user and so shares one AD-41 turn slot. Waiting for this turn to actually finish
-    // is what keeps this test's own 8 s hang from still holding that slot when the next test's
+    // is what keeps this test's own hang from still holding that slot when the next test's
     // own Send lands, which would otherwise answer 409 for a reason this test never touches.
     await page.waitForFunction(() => (document.querySelector('.ocu-panel-message-agent-text')?.textContent ?? '') === 'done', {
       timeout: config.navigationTimeoutMs,
@@ -256,9 +271,66 @@ test('Second send: Enter while busy shows the lock banner, keeps the draft, appe
   }
 });
 
-test('Reload restores a completed turn with no running card; a new tab starts empty', async () => {
+test('AC2: a read card, expanded, shows the rows the read returned and the rows it sent', async () => {
   const tag = nextTag();
   setTag(tag);
+  scriptReply(tag, 0, toolUseReply('osmgmt_processes_read'));
+  scriptReply(tag, 0, textReply('Read the processes.'));
+  const { context, page } = await signedInAt(HOME_URL);
+  try {
+    await typeAndSend(page, 'list the processes');
+    await page.waitForFunction(
+      () => (document.querySelector('.ocu-panel-message-agent-text')?.textContent ?? '') === 'Read the processes.',
+      { timeout: config.navigationTimeoutMs }
+    );
+    const label = await page.evaluate(() => document.querySelector('.ocu-tool-call-name')?.textContent ?? '');
+    assert.equal(label, 'osmgmt.processes.read');
+    await page.click('.ocu-tool-call-toggle');
+    await page.waitForSelector('.ocu-tool-call-rows', { timeout: config.navigationTimeoutMs });
+    const rowsLine = await page.evaluate(() => document.querySelector('.ocu-tool-call-rows').textContent.trim());
+    assert.match(rowsLine, /^\d+ rows returned \u00b7 \d+ sent$/, `the rows line: ${rowsLine}`);
+  } finally {
+    await context.close();
+    forgetTag(tag);
+  }
+});
+
+test('Failed tool: an unknown tool named with markup renders "failed \u2014 <reason>" as literal text, with no off-origin request', async () => {
+  const tag = nextTag();
+  setTag(tag);
+  const markup = '<img src="' + 'http:' + '//' + '203.0.113.9' + '/y">';
+  scriptReply(tag, 0, toolUseReply(markup));
+  scriptReply(tag, 0, textReply('That tool does not exist.'));
+  const { context, page } = await signedInAt(HOME_URL);
+  const offOriginRequests = [];
+  page.on('request', (request) => {
+    if (new URL(request.url()).hostname === '203.0.113.9') offOriginRequests.push(request.url());
+  });
+  try {
+    await typeAndSend(page, 'call a missing tool');
+    await page.waitForFunction(
+      () => (document.querySelector('.ocu-panel-message-agent-text')?.textContent ?? '') === 'That tool does not exist.',
+      { timeout: config.navigationTimeoutMs }
+    );
+    const card = await page.evaluate(() => ({
+      name: document.querySelector('.ocu-tool-call-name')?.textContent ?? '',
+      status: document.querySelector('.ocu-tool-call-status-word')?.textContent?.trim() ?? '',
+      images: document.querySelectorAll('.ocu-tool-call-card img').length,
+    }));
+    assert.equal(card.name, markup, 'the unknown name renders as literal text');
+    assert.match(card.status, /^failed \u2014 \S/, `the status names the failure and its reason: ${card.status}`);
+    assert.equal(card.images, 0, 'no <img> element was created from it');
+    assert.deepEqual(offOriginRequests, [], 'no request left the origin');
+  } finally {
+    await context.close();
+    forgetTag(tag);
+  }
+});
+
+test('Reload restores a completed turn with no running card; a navigation that is not a reload starts fresh', async () => {
+  const tag = nextTag();
+  setTag(tag);
+  scriptReply(tag, 0, toolUseReply('shell_namespaces_read'));
   scriptReply(tag, 0, textReply('reload me'));
   const { context, page } = await signedInAt(HOME_URL);
   try {
@@ -274,20 +346,20 @@ test('Reload restores a completed turn with no running card; a new tab starts em
       () => (document.querySelector('.ocu-panel-message-agent-text')?.textContent ?? '') === 'reload me',
       { timeout: config.navigationTimeoutMs }
     );
-    const runningAfterReload = await page.evaluate(
-      () => document.querySelector('.ocu-tool-call-toggle[aria-expanded="true"]') !== null
-    );
-    assert.equal(runningAfterReload, false, 'no card is running after a restore');
+    const cards = await page.evaluate(() => ({
+      toggles: document.querySelectorAll('.ocu-tool-call-toggle').length,
+      expanded: document.querySelectorAll('.ocu-tool-call-toggle[aria-expanded="true"]').length,
+      spinners: document.querySelectorAll('.ocu-tool-call-spinner').length,
+    }));
+    assert.deepEqual(cards, { toggles: 1, expanded: 0, spinners: 0 }, 'the restored card is there, and not running');
 
-    const fresh = await signedInAt(HOME_URL);
-    try {
-      const freshMessages = await fresh.page.evaluate(
-        () => document.querySelectorAll('.ocu-panel-message-user, .ocu-panel-message-agent-text').length
-      );
-      assert.equal(freshMessages, 0, 'a new tab starts with an empty transcript');
-    } finally {
-      await fresh.context.close();
-    }
+    // A new or duplicated tab navigates rather than reloads, so it must not adopt the id this tab
+    // stored: the same tab, navigated, reads it the same way.
+    const storedBefore = await page.evaluate(() => sessionStorage.getItem('ocupilot.conversation'));
+    assert.ok(storedBefore, 'this tab stored its conversation id');
+    await page.goto(`${config.origin}${HOME_URL}`, { waitUntil: 'networkidle2' });
+    const storedAfter = await page.evaluate(() => sessionStorage.getItem('ocupilot.conversation'));
+    assert.equal(storedAfter, null, 'a navigation that is not a reload drops the stored id, so it starts empty');
   } finally {
     await context.close();
     forgetTag(tag);

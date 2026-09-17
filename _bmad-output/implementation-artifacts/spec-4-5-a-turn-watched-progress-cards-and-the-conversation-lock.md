@@ -96,6 +96,48 @@ deferred: []
 - Given a reply or step carrying markup and an off-origin image URL, when it renders, then the text is literal and the browser records no request to any other origin.
 - DW-451 is closed by the tool step fields above; DW-1048 by the composer wait, with the full browser suite green once.
 
+### Review Findings
+
+Code review 2026-09-17 (four layers, `full-opus`): 3 decision or routed, 27 patched, 10 closed in the ledger, 24 rejected.
+
+- [x] [Review][Decision] The card's result block is never populated -- no tool step stores the tool's output, so the 12-line code surface never renders. Persisting output is a product and AD-24 retention call: DW-1052 `decision-pending owner=burndown`.
+- [x] [Review][Defer] The error banner reads "The turn stopped at : reason." when `error.seq` names no step [ui/src/app/core/turn.ts:252] -- deferred: DW-1053, routed to 4.8, which owns the banner copy.
+- [x] [Review][Defer] A Send refused with anything but 409 shows nothing [ui/src/app/shell/panel.ts:497] -- deferred: DW-1054, routed to 4.8.
+- [x] [Review][Patch] (high) No tool card was ever `running` over the wire: tool steps were appended only after dispatch. Now appended running, then finished (`Step.GuardedFinishTool`), and settled on a finished turn [src/OcuPilot/Kernel/Agent/Loop.cls:432]
+- [x] [Review][Patch] (high) A stop caught before a model call rendered nothing: the panel filtered out the `provider` stopped step [ui/src/app/shell/panel.ts:418]
+- [x] [Review][Patch] AC2 had no pinning test: rows result untested on the server, in the component and in the browser [src/OcuPilot/Test/TurnTools.cls]
+- [x] [Review][Patch] Any non-ok poll (transport blip, 5xx, installing) ended the watch as abandoned and let the lease lapse [ui/src/app/core/turn.ts:524]
+- [x] [Review][Patch] `Sweep` neither removed nor checked conversation rows or locks (Code Map, AC4) [src/OcuPilot/Test/TurnWireFixture.cls:326]
+- [x] [Review][Patch] Untested: a stopped entry and `error.reason` read back over `GET /conversation/:id` [src/OcuPilot/Test/TurnConversation.cls:341]
+- [x] [Review][Patch] Untested: history before the screen-context pair [src/OcuPilot/Test/TurnTools.cls]
+- [x] [Review][Patch] Untested: a real lock timeout from a second process [src/OcuPilot/Test/TurnConversation.cls]
+- [x] [Review][Patch] DW-1051: `Job.Run`'s catch path pinned through `Test.JobThrowProbe` and `Test.LoopThrowProbe` [src/OcuPilot/Test/TurnTools.cls]
+- [x] [Review][Patch] The panel's error banner was only ever asserted absent [ui/src/app/shell/panel.spec.ts]
+- [x] [Review][Patch] Browser rows missing: the other tab's 409, and a failed tool with markup in the step [ui/browser/turn.browser-spec.mjs]
+- [x] [Review][Patch] `restore()` had no generation guard: sign-out during its read landed the old transcript [ui/src/app/core/turn.ts:335]
+- [x] [Review][Patch] A 404 on `POST /turn` kept a dead conversation id forever [ui/src/app/core/turn.ts:420]
+- [x] [Review][Patch] Enter committing an IME composition sent the message [ui/src/app/shell/panel.ts:473]
+- [x] [Review][Patch] New conversation left the lock banner up [ui/src/app/core/turn.ts:470]
+- [x] [Review][Patch] `IsLockConflict` matched error text; now `$System.Status.Equals` [src/OcuPilot/Kernel/State/Base.cls:760]
+- [x] [Review][Patch] `GuardedOpenIdExclusive`'s doc misdescribed `$ZUtil(115,4)` [src/OcuPilot/Kernel/State/Base.cls]
+- [x] [Review][Patch] `GuardedStreamText` was a public escalated read of any object; now `[ Private ]` over `Base` (AD-9) [src/OcuPilot/Kernel/State/Base.cls:261]
+- [x] [Review][Patch] `Target` was stored uncapped [src/OcuPilot/Kernel/State/Step.cls:98]
+- [x] [Review][Patch] `Step`'s doc gave the wrong mechanism for pre-existing rows [src/OcuPilot/Kernel/State/Step.cls:37]
+- [x] [Review][Patch] A failed history read was not logged [src/OcuPilot/Kernel/Agent/Loop.cls:118]
+- [x] [Review][Patch] `//` comments in `Job.Run`'s catch; doubled inference tag [src/OcuPilot/Kernel/Agent/Job.cls]
+- [x] [Review][Patch] Capped arguments carried no U+2026 [src/OcuPilot/Kernel/Agent/Dispatch.cls:357]
+- [x] [Review][Patch] `TargetOf`'s entity and route fallbacks were unpinned [src/OcuPilot/Test/TurnTools.cls]
+- [x] [Review][Patch] New conversation's busy state was unasserted [ui/src/app/shell/panel.spec.ts]
+- [x] [Review][Patch] Assertions that could not fail: reload with no card, new tab in a fresh context, New conversation over an empty transcript, a stop fake that could only answer false; false mutation claims in `turn.test.mjs`'s header; stale comments in `TurnConversation` and the browser spec header [ui/browser/turn.browser-spec.mjs]
+- [x] [Review][Patch] `mutation:` lines missing for AC2 to AC7 [spec Verification]
+
+Closed in the ledger (low): DW-1055 steps over the maximum string length, DW-1056 unpaged conversation read, DW-1057 Stop before the start answers, DW-1058 typing during a send, DW-1059 double New conversation, DW-1060 restore refused before sign-in, DW-1061 empty-draft Enter, all `wontfix-accepted`; DW-1062 job with no conversation id, DW-1063 open failure appends nothing, DW-1064 load branch without owner check, all `wontfix-theoretical`.
+
+Rejected:
+
+- false: `ReasonForToolCode`'s fallback (the AD-39 default); `parseState`'s `queued` default (server vocabulary is fixed); `rowsAvailable` unset (`Bound.Apply` always sets it); a failed entry keeping a reply (the reply is set only on completion); composer `aria-disabled` while busy (already fixed and asserted); "failed -- " with an empty reason (every tool error carries one, and a settled step takes the turn's); a kill-switch stop with no stopped step (the spec scopes it to `TURN.STOPPED`); `POST /conversation` locking to create (the spec requires it).
+- low: credential keys masked rather than dropped (the value never shows either way); `Convo`/`Entry` keyed rather than a `Relationship` (one row per entry, SQL-joinable); `TurnLimits` not overriding `HISTORYMAXLENGTH` (inherits it); the stopped bar's missing status word and chevron (spec UX choice); `HandleStop`'s repeated ownership read; `ConvKey`/`ConvoKey` naming; a stray comment count in `strings.ts` and `panel.ts`; `Test/Convo` naming the storage global (documented there); discarded `StartConversation` statuses in wire helpers; `runIris` ignoring spawn status; budget-refusal step fields untested; unbounded conversation creation (Story 14.4); `Entry.GuardedRows` skipping a row it cannot open; the markup store test echoing its input (the component and browser tests pin rendering); `Loop`'s doc omitting `argumentsTruncated`; `AppendEntry` recording the loop's outcome where `Finish` leaves an already-ended row (no path ends it first).
+
 ## Spec Change Log
 
 - 2026-09-17, lead at spec gate: EXPERIENCE.md's Fixed strings table gained the row "<n> rows returned · <m> sent" the plan asked for; AD-24 now records the history rule this spec plans (message and final reply only, 65,536 characters, oldest dropped first, no tool results or screen context replayed). No other change.
@@ -187,5 +229,21 @@ Blocking condition: none
 **Verification performed** (all re-run independently after the patch pass, not only reported by a subagent): `uv run scripts/check-objectscript.py` 0 problems (355 files); `uv run scripts/test_check_objectscript.py` OK; `cd ui && npm test` 847 node + 417 vitest, all green; `cd ui && npm run build` clean (pre-existing 629 kB budget warning, no new regression); full tree (355 classes) compiled clean on `ocupilot-slot-a`; `OcuPilot.Test.Convo` 7/7 on `ocupilot-slot-a`; on the throwaway `ocupilot-ci`, one class per call: `TurnConversation` 8/8, `ToolDispatch` 17/17, `TurnWire` 11/11, `ToolWire` 2/2, `TurnLoop` 11/11, `TurnStore` 11/11, `TurnTools` 8/8, `TurnChain` 1/1, `TurnLong` 2/2, `TurnContext` 16/16; browser suite against the deployed bundle: `turn.browser-spec.mjs` 6/6, `panel.browser-spec.mjs` 10/10; `bash scripts/smoke.sh --container ocupilot-ci` 19/19 passed, 2 pending (Epic 3/5, expected); `bash scripts/lint-docs.sh` clean. `OcuPilot.Test.State` could not run on `ocupilot-slot-a` (requires arming) -- a pre-existing characteristic of that class, not introduced here.
 
 Rule 19 mutations recorded during implementation: `stepLabel` (dropped target) reddened `turn.test.mjs`'s stepLabel test, reverted byte-identical; `tool-call-card.ts`'s `expanded` getter (dropped manual override) reddened `panel.spec.ts`'s running-card-expanded test, reverted byte-identical.
+
+mutation: `Turn.cls GuardedReserve` -- `'tHeld` branch set `pBusy = 0` instead of `1` (AD-41 lock-contention refusal disabled) → `OcuPilot.Test.TurnWire.TestABusyCallerIsRefusedAndAConcurrentPairStartsOne` went red (3 failed asserts, incl. "exactly one of two concurrent starts is accepted: 202,202"), reverted byte-identical, class green 11/11 (QA)
+mutation: `Loop.cls Boundary` -- `If tStop {` changed to `If 0 {` (Stop signal ignored at the step boundary) → `OcuPilot.Test.TurnConversation.TestStopRequestsAStopAndRecordsAStoppedStep` went red (3 failed asserts: turn does not stop, no stopped step recorded), reverted byte-identical, class green 8/8 (QA)
+mutation: `core/turn.ts parseStep` -- dropped `'stopped'` from the recognized wire statuses (falls back to `'running'`) → `ui/tools/turn.test.mjs`'s reload test ("no restored step is running") and its Stop-mid-call test both went red, reverted byte-identical, 23/23 green (QA)
+mutation: `core/turn.ts` -- default `pollMs` changed from `1000` to `12000` (first poll delayed past the NFR-1 budget) → `ui/browser/turn.browser-spec.mjs`'s `AC1/NFR-1` test went red (first card at 12,075 ms, budget 10,000 ms), reverted byte-identical, rebuilt/redeployed, browser suite green 6/6 (QA)
+mutation: `shell/tool-call-card.ts` -- the arguments paragraph bound `[innerHTML]="argumentsText"` instead of interpolating it (AD-33 markup-as-data) → no existing test caught it, so a new test was added (`panel.spec.ts`, "markup in a running step's name, arguments and result..."); with the mutation in place the new test went red (sanitizer stripped the `<img>` tag, textContent came back empty), reverted byte-identical, component suite green 418/418 including the new test (QA)
+
+mutation: `Loop.cls AnswerTools` -- the pre-dispatch tool step appended `ok` instead of `running` → `OcuPilot.Test.TurnTools.TestAToolStepRunsThenCarriesItsTargetAndRows` went red, reverted, class green 12/12 (CR)
+mutation: AC2 -- `Dispatch.cls AnswerOne` sets no `pResultInfo` → `TurnTools.TestAToolStepRunsThenCarriesItsTargetAndRows` went red; `tool-call-card.ts` without its rows block → `panel.spec.ts` "an expanded read card shows the rows-returned and rows-sent line" went red; both reverted (CR)
+mutation: AC3 -- `turn.ts send()` without its `busyValue` guard → `turn.test.mjs` "Second send: a second send while this tab is busy is refused locally" went red, reverted byte-identical (CR)
+mutation: AC4 -- `Base.cls GuardedOpenIdExclusive` opens at concurrency 1 → `OcuPilot.Test.Convo` `TestLoadOrCreateLocksTheRowUntilTheReferenceIsDropped` and `TestLoadOrCreateReturnsAnOrefAtConcurrencyFourFromBothBranches` went red, reverted, 7/7 (CR); the `Job.cls` catch appends no entry → `TurnTools.TestAJobWhoseLoopThrowsStillAppendsAndReleases` went red (DW-1051); `IsLockConflict` answers 0 → `TurnConversation.TestAConversationHeldElsewhereTimesOutAsALockConflict` went red, reverted, 9/9 (CR)
+mutation: AC5 -- `turn.ts` adopts the stored id whatever the navigation kind → `turn.test.mjs` "a fresh or duplicated tab starts with no conversation" went red; `newConversation()` skips the create → "newConversation() is refused while busy, and clears the transcript and the lock" went red; both reverted byte-identical (CR)
+mutation: AC6 -- `panel.ts` binds the reply with `[innerHTML]` → `panel.spec.ts` "markup in a reply renders as literal text" went red, reverted byte-identical (CR)
+mutation: AC7 (DW-451) -- as AC2's server leg: without the result info the tool-step fields test goes red (CR)
+mutation: `panel.ts turns` filtered to `kind === 'tool'` alone → `panel.spec.ts` "a stop caught before a model call renders its Stopped by you at provider bar" went red; `Loop.cls Run` appends no stopped step at its own boundary → `TurnTools.TestAStopBeforeTheModelCallRecordsAProviderStep` went red; the context pair numbered from 1 → `TurnTools.TestHistorySitsBeforeTheScreenContextPair` went red; the three `Loop`/`Job`/`Dispatch` mutations were applied together, each reddening only its own method, and reverted (CR)
+mutation: `turn.ts pollOnce` finalizes on a transient failure → "a transient poll failure keeps polling" went red; without `restore()`'s generation check → "restore() lands nothing when endSession() ran" went red; without `settledSteps` → "settle a step still running into a failed one" went red; without the 404 id drop → "a send refused 404 drops the id" went red; `panel.ts` without the `isComposing` check → "an Enter that commits an IME composition does not send" went red; the banner answered null → "a failed turn renders the error banner" went red; each reverted byte-identical (CR)
 
 **Residual risks:** the Job.cls catch-path fix noted above is unverified by test. The cross-tab lock-banner clearing (tab A locked by tab B's 409) has no wire signal to key a clear on and is out of scope per "Never: streaming" -- documented, not a defect. `OcuPilot.Test.State`'s arming requirement on the dev instance is pre-existing and unrelated to this story.

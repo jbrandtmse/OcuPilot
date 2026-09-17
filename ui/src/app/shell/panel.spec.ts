@@ -777,6 +777,49 @@ describe('Story 4.5: Send/Stop, the lock banner, Enter vs Shift+Enter, cards, an
     expect(reply.querySelector('img')).toBeNull();
   });
 
+  it('markup in a running step\'s name, arguments and result renders as literal text -- no innerHTML, no element created from it (AD-33)', async () => {
+    // QA (Story 4.5): no existing spec covers a tool-call card's own fields the way the reply is
+    // covered above -- tool-call-card.ts's doc comment claims interpolation-only rendering for
+    // name/arguments/text, but nothing pins it. Built from fragments, as above, so this fixture is
+    // not itself a literal off-origin URL (`ui/tools/client-lint.mjs`'s `no-off-origin-url` rule).
+    const markup = '<img src="' + 'http:' + '//' + '203.0.113.9' + '/x">';
+    const { schedule, scheduled } = fakeTurnSchedule();
+    const api = fakeTurnApi({
+      [CONVERSATION_PATH]: [{ kind: 'ok', status: 201, body: { conversationId: 'convo-1' } }],
+      [TURN_PATH]: [{ kind: 'ok', status: 202, body: { turnId: 'turn-1' } }],
+      [turnProgressPath('turn-1')]: [
+        {
+          kind: 'ok',
+          status: 200,
+          body: {
+            turnId: 'turn-1',
+            state: 'running',
+            steps: [turnStep({ status: 'running', name: markup, arguments: markup, text: markup })],
+            stepsDropped: 0,
+            reply: null,
+            error: null,
+          },
+        },
+      ],
+    });
+    const turn = stubTurnStore({ api: api as never, schedule });
+    const { host, fixture } = await mount({ rows: [{ enabled: true }], turn });
+    await typeDraft(host, fixture, 'go');
+    (host.querySelector('.ocu-panel-send') as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+
+    scheduled.shift()?.run();
+    await turnSettle();
+    fixture.detectChanges();
+
+    const card = host.querySelector('.ocu-tool-call-card') as HTMLElement;
+    expect(card.querySelector('.ocu-tool-call-name')?.textContent).toBe(markup);
+    expect(card.querySelector('.ocu-tool-call-arguments')?.textContent).toBe(markup);
+    expect(card.querySelector('.ocu-tool-call-result')?.textContent).toBe(markup);
+    expect(card.querySelector('img')).toBeNull();
+  });
+
   it('clicking Send does nothing while the composer is unavailable, even with text in the draft', async () => {
     // Mutation (Rule 19): drop the `composerUnavailable` guard from `sendCurrentDraft` -> this
     // goes red, and a stray click while unconfigured or kill-switched would still start a turn.
@@ -884,6 +927,115 @@ describe('Story 4.5: Send/Stop, the lock banner, Enter vs Shift+Enter, cards, an
 
     expect(host.querySelectorAll('.ocu-tool-call-card')).toHaveLength(0);
     expect(host.querySelectorAll('.ocu-tool-call-toggle')).toHaveLength(0);
+  });
+});
+
+describe('Story 4.5 review: restored cards, the error banner, the rows line, and IME Enter', () => {
+  /** Mount the panel over a conversation restored with `turns`. */
+  async function mountRestored(turns: unknown[]) {
+    const storage = new Map<string, string>([['ocupilot.conversation', 'convo-1']]);
+    const memory = {
+      getItem: (key: string) => (storage.has(key) ? (storage.get(key) as string) : null),
+      setItem: (key: string, value: string) => storage.set(key, value),
+      removeItem: (key: string) => storage.delete(key),
+    };
+    const api = fakeTurnApi({
+      [conversationReadPathFor('convo-1')]: [{ kind: 'ok', status: 200, body: { conversationId: 'convo-1', turns } }],
+    });
+    const turn = stubTurnStore({ api: api as never, storage: memory, navigationType: () => 'reload' });
+    await turn.restore();
+    return mount({ rows: [{ enabled: true }], turn });
+  }
+
+  function restoredTurn(overrides: Record<string, unknown>) {
+    return { seq: 1, message: 'go', state: 'completed', reply: null, error: null, steps: [], stepsDropped: 0, ...overrides };
+  }
+
+  it('a stop caught before a model call renders its "Stopped by you at provider" bar', async () => {
+    // Mutation (Rule 19): filter the `turns` getter to `kind === 'tool'` alone -> this goes red.
+    const { host } = await mountRestored([
+      restoredTurn({
+        state: 'stopped',
+        error: { seq: 1, code: 'TURN.STOPPED', reason: 'Stopped.' },
+        steps: [turnStep({ kind: 'model', name: 'provider', status: 'stopped' })],
+      }),
+    ]);
+    const bars = host.querySelectorAll('.ocu-tool-call-card-stopped');
+    expect(bars).toHaveLength(1);
+    expect(bars[0].textContent?.trim()).toBe('Stopped by you at provider');
+  });
+
+  it('a failed turn renders the error banner naming the step at error.seq and its reason', async () => {
+    const { host } = await mountRestored([
+      restoredTurn({
+        state: 'failed',
+        error: { seq: 2, code: 'TOOL.UNAVAILABLE', reason: 'The tool is unavailable.' },
+        steps: [turnStep({ seq: 2, status: 'error', target: 'USER', reason: 'The tool is unavailable.' })],
+      }),
+    ]);
+    const banner = host.querySelector('.ocu-panel-error-banner') as HTMLElement;
+    expect(banner).not.toBeNull();
+    expect(banner.getAttribute('role')).toBe('alert');
+    expect(banner.textContent?.trim()).toBe('The turn stopped at shell.namespaces.read USER: The tool is unavailable.');
+  });
+
+  it('an expanded read card shows the rows-returned and rows-sent line', async () => {
+    const { host, fixture } = await mountRestored([
+      restoredTurn({ reply: 'ok', steps: [turnStep({ result: { rowsReturned: 5, rowsSent: 3, truncated: true } })] }),
+    ]);
+    expect(host.querySelector('.ocu-tool-call-rows')).toBeNull();
+    (host.querySelector('.ocu-tool-call-toggle') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(host.querySelector('.ocu-tool-call-rows')?.textContent?.trim()).toBe('5 rows returned \u00b7 3 sent');
+  });
+
+  it('a step still running when its turn ended renders as failed, never as a running card', async () => {
+    const { host } = await mountRestored([
+      restoredTurn({
+        state: 'abandoned',
+        error: { seq: 1, code: 'TURN.ABANDONED.LEASE', reason: 'The turn was abandoned.' },
+        steps: [turnStep({ status: 'running' })],
+      }),
+    ]);
+    expect(host.querySelector('.ocu-tool-call-spinner')).toBeNull();
+    expect(host.querySelector('.ocu-tool-call-toggle')?.getAttribute('aria-expanded')).toBe('false');
+    expect(host.querySelector('.ocu-tool-call-status-word')?.textContent?.trim()).toBe(
+      STRINGS.toolCallStatusFailed.split('<reason>').join('The turn was abandoned.')
+    );
+  });
+
+  it('New conversation is aria-disabled and described by "Stop the turn first" while busy', async () => {
+    const { schedule } = fakeTurnSchedule();
+    const api = fakeTurnApi({
+      [CONVERSATION_PATH]: [{ kind: 'ok', status: 201, body: { conversationId: 'convo-1' } }],
+      [TURN_PATH]: [{ kind: 'ok', status: 202, body: { turnId: 'turn-1' } }],
+    });
+    const turn = stubTurnStore({ api: api as never, schedule });
+    const { host, fixture } = await mount({ rows: [{ enabled: true }], turn });
+    const newConversation = host.querySelector('.ocu-panel-new-conversation') as HTMLButtonElement;
+    expect(newConversation.hasAttribute('aria-disabled')).toBe(false);
+    await typeDraft(host, fixture, 'go');
+    (host.querySelector('.ocu-panel-send') as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+    expect(newConversation.getAttribute('aria-disabled')).toBe('true');
+    const describedBy = newConversation.getAttribute('aria-describedby') as string;
+    expect((host.querySelector(`#${describedBy}`) as HTMLElement).textContent).toBe(STRINGS.agentNewConversationLockedReason);
+  });
+
+  it('an Enter that commits an IME composition does not send', async () => {
+    const api = fakeTurnApi({
+      [CONVERSATION_PATH]: [{ kind: 'ok', status: 201, body: { conversationId: 'convo-1' } }],
+      [TURN_PATH]: [{ kind: 'ok', status: 202, body: { turnId: 'turn-1' } }],
+    });
+    const turn = stubTurnStore({ api: api as never });
+    const { host, fixture } = await mount({ rows: [{ enabled: true }], turn });
+    await typeDraft(host, fixture, 'nihon');
+    const composer = host.querySelector('.ocu-panel-composer') as HTMLTextAreaElement;
+    composer.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', isComposing: true, cancelable: true }));
+    await turnSettle();
+    expect(api.calls.some((c) => c.path === TURN_PATH || c.path === CONVERSATION_PATH)).toBe(false);
+    expect(composer.value).toBe('nihon');
   });
 });
 

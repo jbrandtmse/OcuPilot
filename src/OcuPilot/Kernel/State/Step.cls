@@ -20,7 +20,7 @@ Property Kind As %String(MAXLEN = 16);
 /// <p>What the step names: the provider call, or the tool the model asked for.</p>
 Property Name As %String(MAXLEN = "");
 
-/// <p><code>running</code>, <code>ok</code> or <code>error</code>.</p>
+/// <p><code>running</code>, <code>ok</code>, <code>error</code> or <code>stopped</code>.</p>
 Property Status As %String(MAXLEN = 16);
 
 Property Summary As %String(MAXLEN = "");
@@ -35,10 +35,8 @@ Property Truncated As %Boolean [ InitialExpression = 0 ];
 /// <p>A tool step's target (Story 4.5): the input's <code>id</code>, else <code>entity</code>,
 /// else <code>route</code>, else <code>""</code>. Empty for a model step.</p>
 /// <p><b>Added with no <code>SCHEMAVERSION</code> move.</b> This and the four properties below are
-/// safe-default additions: every existing row reads back <code>$Char(0)</code> from SQL for a
-/// column that predates it, which <method>Text</method> already normalizes to <code>""</code> the
-/// way it does for every other property here, so an old row and a row with nothing to report both
-/// answer the same empty value.</p>
+/// safe-default additions: a row stored before they existed reads each back as <code>""</code>,
+/// the same value a row with nothing to report holds.</p>
 Property Target As %String(MAXLEN = "");
 
 /// <p>A tool step's arguments (Story 4.5, AD-11, AD-39): compact JSON of the call's input, any key
@@ -97,13 +95,13 @@ ClassMethod GuardedAppend(pKey As %String, pKind As %String, pName As %String, p
         Set tRow.Kind = pKind
         Set tRow.Status = pStatus
         Set tRow.Code = pCode
-        Set tRow.Target = pTarget
+        Set tRow.Target = ##class(OcuPilot.Kernel.State.Turn).Cap(pTarget, +$Parameter(pLimitsClass, "SUMMARYMAXLENGTH"), .tTargetCut)
         Set tRow.Arguments = pArguments
         Set tRow.Result = pResult
         Set tRow.Reason = pReason
         Set tRow.FailedPair = pFailedPair
         Do ..ApplyContent(tRow, pName, pSummary, pText, pLimitsClass)
-        If pArgumentsTruncated Set tRow.Truncated = 1
+        If pArgumentsTruncated || $Get(tTargetCut) Set tRow.Truncated = 1
         Set tSC = ..GuardedSaveIfCurrent(tRow, 0)
         If $$$ISERR(tSC) Quit
         Set pSeq = tRow.Seq
@@ -124,6 +122,29 @@ ClassMethod GuardedUpdate(pKey As %String, pSeq As %Integer, pStatus As %String,
     Set tRow.Status = pStatus
     Set tRow.Code = pCode
     Do ..ApplyContent(tRow, tRow.Name, pSummary, pText, pLimitsClass)
+    Set tSC = ..GuardedSaveIfCurrent(tRow, +tRow.RowVersion)
+    Set tRow = ""
+    Quit tSC
+}
+
+/// <p>Set tool step <var>pSeq</var> of turn <var>pKey</var>, appended <code>running</code> before
+/// its call was dispatched, to its outcome: <var>pStatus</var>, <var>pCode</var>, the canonical
+/// <var>pName</var> dispatch resolved, and the tool-step fields as
+/// <method>GuardedAppend</method> takes them. A step that was dropped past the cap has no row, and
+/// nothing is written.</p>
+ClassMethod GuardedFinishTool(pKey As %String, pSeq As %Integer, pName As %String, pStatus As %String, pCode As %String, pLimitsClass As %String, pTarget As %String = "", pArguments As %String = "", pResult As %String = "", pReason As %String = "", pFailedPair As %String = "", pArgumentsTruncated As %Boolean = 0) As %Status
+{
+    Set tSC = ..GuardedOpenOneWhereTwoParam("SELECT ID FROM OcuPilot_Kernel_State.Step WHERE %EXACT(TurnKey) = ? AND Seq = ?", pKey, pSeq, .tRow)
+    If $$$ISERR(tSC) || '$IsObject(tRow) Quit tSC
+    Set tRow.Status = pStatus
+    Set tRow.Code = pCode
+    Set tRow.Target = ##class(OcuPilot.Kernel.State.Turn).Cap(pTarget, +$Parameter(pLimitsClass, "SUMMARYMAXLENGTH"), .tTargetCut)
+    Set tRow.Arguments = pArguments
+    Set tRow.Result = pResult
+    Set tRow.Reason = pReason
+    Set tRow.FailedPair = pFailedPair
+    Do ..ApplyContent(tRow, pName, "", "", pLimitsClass)
+    If pArgumentsTruncated || $Get(tTargetCut) Set tRow.Truncated = 1
     Set tSC = ..GuardedSaveIfCurrent(tRow, +tRow.RowVersion)
     Set tRow = ""
     Quit tSC

@@ -2955,6 +2955,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Loop.AnswerTools records a tool step's name, status and code only; neither the row count sent nor truncated is kept
 - 2026-09-17T00:36:44Z status=routed owner=4-5-a-turn-watched-progress-cards-and-the-conversation-lock by=harvest note=The progress-card story shows rows returned and context rows sent for a read
 - 2026-09-17T01:30:47Z status=routed owner=4-5-a-turn-watched-progress-cards-and-the-conversation-lock by=cr note=also detail.failedPair: the tool step drops the pair AD-8 needs the card to name
+- 2026-09-17T16:52:55Z status=resolved-by:4-5-a-turn-watched-progress-cards-and-the-conversation-lock by=adjudication note=Step records target, arguments summary, rowsReturned, rowsSent, truncated, reason and failedPair on a tool step; the AC7 tool-step fields test goes red without the result info
 
 ### DW-452: One model reply's tool results have no aggregate bound, so a few capped reads can overflow the provider context and 56 reach IRIS's string limit
 - source: spec-4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea.md | severity: med | fix-risk: med | footprint: in-epic
@@ -3114,8 +3115,76 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-3-the-docked-panel-present-on-every-route.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: panel.browser-spec.mjs line 406 threw reading value of null in a full browser-suite run on the throwaway; the file alone passed 10 of 10 and the full suite re-run passed 91 of 91
 - 2026-09-17T11:54:13Z status=routed owner=4-5-a-turn-watched-progress-cards-and-the-conversation-lock by=lead note=Wait for the composer selector before reading it; 4.5 rebuilds the composer and Send, so it owns this spec
+- 2026-09-17T16:52:55Z status=resolved-by:4-5-a-turn-watched-progress-cards-and-the-conversation-lock by=adjudication note=the sign-out leg waits for the composer before reading it; judged green in the smoke full browser-suite run
+- 2026-09-17T17:26:31Z status=routed owner=burndown by=adjudication note=not closed; the composer wait now times out after 30 s in one of two full-suite runs and the aborted leg leaves an enabled probe definition that fails the next specs; residual is the leg's state leak and cleanup
 
 ### DW-1051: Job.Run's catch path that appends the turn's conversation entry when the loop throws has no automated test, because no fault-injection seam reaches the job
 - source: spec-4-5-a-turn-watched-progress-cards-and-the-conversation-lock.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: The implement stage fixed the missing append on a thrown loop and verified it by inspection and compile only; followup_review_recommended is true for this reason
 - 2026-09-17T16:00:19Z status=open owner=4-5-a-turn-watched-progress-cards-and-the-conversation-lock by=harvest note=For code review to pin with a probe or record why no seam can reach it
+- 2026-09-17T16:51:00Z status=resolved-by:4-5-a-turn-watched-progress-cards-and-the-conversation-lock owner=4-5-a-turn-watched-progress-cards-and-the-conversation-lock by=cr note=Pinned by TurnTools.TestAJobWhoseLoopThrowsStillAppendsAndReleases via JobThrowProbe; red with the catch append removed
+
+### DW-1052: The expanded tool-call card's result block on the code surface is never populated, because no tool step stores the tool's output
+- source: spec-4-5-a-turn-watched-progress-cards-and-the-conversation-lock.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Every tool-step append and finish passes an empty text, so tool-call-card.ts's 12-line result pre never renders; showing it means persisting tool output in Step and Convo entries (AD-24, retention)
+- 2026-09-17T16:50:36Z status=decision-pending owner=burndown by=cr note=Product call: persist and show tool output on the card, or amend the spec body to arguments plus the rows line
+
+### DW-1053: The turn error banner reads 'The turn stopped at : reason.' when error.seq names no recorded step
+- source: spec-4-5-a-turn-watched-progress-cards-and-the-conversation-lock.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Job-level failures (conversation open failure, tool advertise failure) finish with errorSeq 0; turnErrorBanner substitutes an empty step label and the spec gives no wording for that case
+- 2026-09-17T16:50:36Z status=routed owner=4-8-a-slow-or-rate-limited-provider-degrades-the-turn-rather-tha by=cr note=Story 4.8 owns the error banner and step naming; needs a fixed string for a failure that names no step
+
+### DW-1054: A Send the instance refuses with anything but 409 (401, 404, 422, 500) shows the user nothing
+- source: spec-4-5-a-turn-watched-progress-cards-and-the-conversation-lock.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: panel.ts sendCurrentDraft ignores the 'error' outcome of TurnStore.send; the draft is kept and busy clears, with no banner or message
+- 2026-09-17T16:50:36Z status=routed owner=4-8-a-slow-or-rate-limited-provider-degrades-the-turn-rather-tha by=cr note=Story 4.8 owns how a refused or degraded turn is surfaced in the panel
+
+### DW-1055: A conversation entry whose step projection exceeds the maximum string length is lost on append, or restores with no steps
+- source: spec-4-5-a-turn-watched-progress-cards-and-the-conversation-lock.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Convo.AppendEntry serializes steps with %ToJSON into a string and GuardedStreamText reads Read(Size); 100 steps at the 131,072-character text cap exceed about 3.6 MB
+- 2026-09-17T16:50:52Z status=wontfix-accepted owner=4-5-a-turn-watched-progress-cards-and-the-conversation-lock by=cr note=Real model replies stay far below the cap per step. reopen_if=a fault log line 'the turn's conversation entry could not be appended' carrying MAXSTRING
+
+### DW-1056: GET /conversation/:id and each turn's history read load every entry and its step stream, unpaged
+- source: spec-4-5-a-turn-watched-progress-cards-and-the-conversation-lock.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Convo.GuardedView and HistoryMessages both go through Entry.GuardedRows, which opens every entry and reads its StepsJson stream
+- 2026-09-17T16:50:52Z status=wontfix-accepted owner=4-5-a-turn-watched-progress-cards-and-the-conversation-lock by=cr note=Conversations are short until Story 14.4 adds retention. reopen_if=GET /conversation/:id taking over 1 s on a conversation the panel restores
+
+### DW-1057: Stop clicked after Send but before POST /turn answers is silently dropped
+- source: spec-4-5-a-turn-watched-progress-cards-and-the-conversation-lock.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: busy is set before POST /turn resolves, so the button already reads Stop, but TurnStore.stop returns false while currentTurnId is null
+- 2026-09-17T16:50:52Z status=wontfix-accepted owner=4-5-a-turn-watched-progress-cards-and-the-conversation-lock by=cr note=The window is one request long. reopen_if=a user report or browser test showing a Stop click that did not stop a turn
+
+### DW-1058: Text typed into the composer while a Send is in flight is cleared with the sent draft
+- source: spec-4-5-a-turn-watched-progress-cards-and-the-conversation-lock.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: panel.ts clears the whole draft on 'sent' after awaiting the conversation create and turn start requests
+- 2026-09-17T16:50:52Z status=wontfix-accepted owner=4-5-a-turn-watched-progress-cards-and-the-conversation-lock by=cr note=Keeping the tail would leave the sent text in the draft. reopen_if=a user report of lost typing after Send
+
+### DW-1059: Two quick New conversation clicks create two conversations, one never used
+- source: spec-4-5-a-turn-watched-progress-cards-and-the-conversation-lock.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: TurnStore.newConversation has no in-flight guard; each click posts /conversation before the first answers
+- 2026-09-17T16:50:52Z status=wontfix-accepted owner=4-5-a-turn-watched-progress-cards-and-the-conversation-lock by=cr note=An unused row costs nothing until retention. reopen_if=orphan conversations with no entries counted in Story 14.4's retention report
+
+### DW-1060: A restore at bootstrap that is refused before sign-in is never retried, so the reloaded transcript stays empty
+- source: spec-4-5-a-turn-watched-progress-cards-and-the-conversation-lock.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: main.ts calls turn.restore() once; a 401 keeps the id but sets restored with no entries, and nothing restores after sign-in
+- 2026-09-17T16:50:52Z status=wontfix-accepted owner=4-5-a-turn-watched-progress-cards-and-the-conversation-lock by=cr note=The session token normally survives a reload. reopen_if=a reload after an expired session shows an empty transcript for a conversation that has turns
+
+### DW-1061: Enter while a turn runs with an empty draft shows no lock banner
+- source: spec-4-5-a-turn-watched-progress-cards-and-the-conversation-lock.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: sendCurrentDraft returns on an empty draft before TurnStore.send can raise the lock
+- 2026-09-17T16:50:52Z status=wontfix-accepted owner=4-5-a-turn-watched-progress-cards-and-the-conversation-lock by=cr note=There is nothing to send, so nothing is refused. reopen_if=an accessibility review asks for the banner on an empty Enter
+
+### DW-1062: Job.Run without a conversation id creates a fresh conversation for that turn
+- source: spec-4-5-a-turn-watched-progress-cards-and-the-conversation-lock.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: LoadOrCreate treats an empty id as create; Api.Turn refuses a start with no conversationId, so only direct test callers reach it
+- 2026-09-17T16:50:52Z status=wontfix-theoretical owner=4-5-a-turn-watched-progress-cards-and-the-conversation-lock by=cr note=Becomes real if a second caller of Job.Start is added that does not pass a verified conversation id
+
+### DW-1063: A turn whose conversation cannot be opened appends no entry, so it is missing after a reload
+- source: spec-4-5-a-turn-watched-progress-cards-and-the-conversation-lock.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Job.Run finishes the turn failed when LoadOrCreate returns no OREF and has nothing to append to; a lock conflict cannot happen under AD-41's slot lock
+- 2026-09-17T16:50:52Z status=wontfix-theoretical owner=4-5-a-turn-watched-progress-cards-and-the-conversation-lock by=cr note=Becomes real once per-user turn limits allow two turns on one conversation, or on a persistence failure
+
+### DW-1064: Convo.LoadOrCreate's load branch does not check the caller owns the conversation
+- source: spec-4-5-a-turn-watched-progress-cards-and-the-conversation-lock.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Only Api.Turn's GuardedOwner check guards ownership before the job opens the row
+- 2026-09-17T16:50:52Z status=wontfix-theoretical owner=4-5-a-turn-watched-progress-cards-and-the-conversation-lock by=cr note=Becomes real if a caller other than the turn handler passes an unverified id to Job or LoadOrCreate

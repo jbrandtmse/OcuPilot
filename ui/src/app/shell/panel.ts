@@ -414,7 +414,8 @@ export class Panel {
     this.generation();
     return this.turn.entries().map((entry) => ({
       message: entry.message,
-      steps: entry.steps.filter((step) => step.kind === 'tool'),
+      // Tool steps, plus a stop caught before a model call, which is the only record of that stop.
+      steps: entry.steps.filter((step) => step.kind === 'tool' || step.status === 'stopped'),
       reply: entry.reply,
       errorBanner: turnErrorBanner(entry, STRINGS.agentTurnStoppedBanner),
     }));
@@ -469,7 +470,8 @@ export class Panel {
    * -- there is no gate sentence to answer by sending.
    */
   protected onComposerKeydown(event: KeyboardEvent): void {
-    if (event.key !== 'Enter' || event.shiftKey) return;
+    // An Enter that commits an IME composition is not a send.
+    if (event.key !== 'Enter' || event.shiftKey || event.isComposing) return;
     event.preventDefault();
     if (this.composerUnavailable) return;
     void this.sendCurrentDraft();

@@ -258,7 +258,7 @@ ClassMethod GuardedOpenId(pId As %String, Output pObject As Base) As %Status
 /// <file>scripts/check-objectscript.py</file>), never by who is holding the reference, so the
 /// read has to happen inside a method compiled into this class's own routine. Answers
 /// <code>""</code> for a null object, an unknown or non-stream property, or an empty stream.</p>
-ClassMethod GuardedStreamText(pObject As %RegisteredObject, pProperty As %String, Output pText As %String) As %Status
+ClassMethod GuardedStreamText(pObject As Base, pProperty As %String, Output pText As %String) As %Status [ Private ]
 {
     Set pText = ""
     Set tSC = $$$OK
@@ -757,7 +757,7 @@ ClassMethod GuardedIdsWhereNoParam(pSql As %String, Output pIds) As %Status [ Pr
 ClassMethod IsLockConflict(pStatus As %Status) As %Boolean
 {
     If $$$ISOK(pStatus) Quit 0
-    Quit $System.Status.GetErrorText(pStatus) [ ("#" _ $$$LockFailedToAcquireExclusive)
+    Quit $System.Status.Equals(pStatus, $$$ERRORCODE($$$LockFailedToAcquireExclusive))
 }
 
 /// <p>Open the row whose <code>%Id()</code> is <var>pId</var>, for the calling subclass, at
@@ -771,9 +771,8 @@ ClassMethod IsLockConflict(pStatus As %Status) As %Boolean
 /// other open failure, so a caller can tell a busy row from a persistence problem.</p>
 /// <p><code>%OpenId</code> takes no timeout argument on this build (<code>%Library.Persistent</code>'s
 /// signature is <code>%OpenId(id, concurrency, ByRef sc)</code>); the wait is bounded instead by
-/// temporarily lowering the process's own default lock timeout -- <code>$ZUtil(115,4)</code>, the
-/// value <code>LOCK</code> uses when none is given, and what <code>%OpenId</code>'s internal
-/// concurrency lock uses too -- around the call, restoring it whatever the outcome. The same
+/// temporarily lowering the process's default object and SQL lock timeout -- <code>$ZUtil(115,4)</code>,
+/// which <code>%OpenId</code>'s internal concurrency lock uses -- around the call, restoring it whatever the outcome. The same
 /// save/set/restore idiom is already in the exported system source at
 /// <code>irislib/Ens/DTL/Utils.cls</code>.</p>
 ClassMethod GuardedOpenIdExclusive(pId As %String, pTimeout As %Integer, Output pObject, Output pLockConflict As %Boolean) As %Status [ Private ]

@@ -1,7 +1,7 @@
 /// <p>The two conversation routes and <code>/turn/:id/stop</code> over HTTP (Story 4.5, AD-7,
 /// AD-9, AD-33, AD-41), plus the tool-step fields DW-451 added and the history a second turn on
 /// the same conversation replays -- driven the way <class>OcuPilot.Test.TurnWire</class> drives
-/// the three original turn routes: one principal, a real <code>turnprobe</code> row, real turn
+/// the three original turn routes: two principals, a real <code>turnprobe</code> row, real turn
 /// jobs.</p>
 /// <p><b>It spawns turn jobs, so <method>OnBeforeAllTests</method> refuses to run unless both
 /// <parameter>ARMINGVARIABLE</parameter> and <parameter>PROVIDERVARIABLE</parameter> read 1.</b>
@@ -186,10 +186,9 @@ Method TestToolStepFieldsAndHistoryAcrossTwoTurns()
     Set tToolStep = tView1.steps.%Get(1)
     Do $$$AssertEquals(tToolStep.kind _ "|" _ tToolStep.status, "tool|ok", "the tool step is ok")
     Do $$$AssertNotEquals(tToolStep.arguments, "", "with a recorded (redacted) arguments string")
-    ; shell.namespaces.read's own payload is {scope, namespaces} -- a shell read "carries no rows"
-    ; (OcuPilot.Kernel.Shell.ReadTool.View's own doc comment) -- so its step's result is null, not
-    ; a rows-shaped {rowsReturned, rowsSent, truncated} object. That path is
-    ; OcuPilot.Test.ToolDispatch's, over a tool whose result genuinely carries a "rows" array.
+    ; shell.namespaces.read's own payload is {scope, namespaces} -- a shell read carries no rows --
+    ; so its step's result is null. The rows-shaped result is OcuPilot.Test.TurnTools'
+    ; TestAToolStepRunsThenCarriesItsTargetAndRows.
     Do $$$AssertEquals(tToolStep.%GetTypeOf("result"), "null", "and no result -- a shell read carries no rows")
     Do $$$AssertEquals(tView1.reply, "first reply", "the turn's reply")
 
@@ -314,6 +313,7 @@ Method TestOverLongArgumentsAreCappedAndMarkedTruncated()
     Set tStep = tView.steps.%Get(1)
     Do $$$AssertEquals(tStep.truncated, 1, "the cut is recorded as truncated")
     Do $$$AssertTrue($Length(tStep.arguments) <= $Parameter("OcuPilot.Kernel.Agent.Limits", "SUMMARYMAXLENGTH"), "and the stored text is actually capped: " _ $Length(tStep.arguments))
+    Do $$$AssertEquals($Extract(tStep.arguments, *), $Char(8230), "ending in U+2026")
 }
 
 /// <p><code>POST /turn/:id/stop</code> answers <code>stopRequested</code> true for a running
@@ -343,6 +343,14 @@ Method TestStopRequestsAStopAndRecordsAStoppedStep()
     Do $$$AssertEquals(tStoppedStep.status, "stopped", "the last step is stopped")
     Do $$$AssertEquals(tStoppedStep.kind _ "|" _ tStoppedStep.name, "tool|shell.namespaces.read", "naming what it was about to run")
 
+    Do ..Call("GET", ..ConversationPath(tConvId), tUser, "", .tStatus, .tConvText, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "the conversation reads back: " _ tConvText)
+    Do $$$AssertEquals($ZConvert($Get(tHeaders("CONTENT-TYPE")), "L") [ "application/json", 1, "as JSON")
+    Set tEntry = ##class(%DynamicObject).%FromJSON(tConvText).turns.%Get(0)
+    Do $$$AssertEquals(tEntry.state _ "|" _ tEntry.%GetTypeOf("reply") _ "|" _ tEntry.error.code, "stopped|null|TURN.STOPPED", "the stopped turn's entry was appended, with no reply")
+    Do $$$AssertNotEquals(tEntry.error.reason, "", "its error carries the published reason")
+    Do $$$AssertEquals(tEntry.steps.%Get(tEntry.steps.%Size() - 1).status, "stopped", "and its steps end with the stopped step")
+
     Do ..Call("POST", ..StopPath(tId), tUser, "", .tStatus, .tText, .tHeaders)
     Do $$$AssertEquals(tStatus, 200, "stopping an already-terminal turn still answers 200")
     Do $$$AssertEquals(##class(%DynamicObject).%FromJSON(tText).stopRequested, 0, "requested false, not an error")
@@ -350,6 +358,49 @@ Method TestStopRequestsAStopAndRecordsAStoppedStep()
     Do ..Call("POST", ..StopPath("0123456789abcdef0123456789abcdef"), tUser, "", .tStatus, .tText, .tHeaders)
     Do $$$AssertEquals(tStatus, 404, "an unknown turn id is not found")
     Do $$$AssertEquals(##class(%DynamicObject).%FromJSON(tText).code, "TURN.NOTFOUND", "by code")
+}
+
+/// <p>Hold conversation <var>pKey</var> exclusively for <var>pSeconds</var>, from a job, marking
+/// <code>^OcuPilotTestConvoHeld(pKey)</code> while it holds it.</p>
+ClassMethod HoldConversation(pKey As %String, pSeconds As %Integer)
+{
+    Set tConvo = ##class(OcuPilot.Kernel.State.Convo).LoadOrCreate(pKey, "", 5, .tStatus, .tConflict)
+    Set ^OcuPilotTestConvoHeld(pKey) = $IsObject(tConvo)
+    Hang pSeconds
+    Set tConvo = ""
+    Kill ^OcuPilotTestConvoHeld(pKey)
+}
+
+/// <p>A conversation another process holds is refused within the caller's own timeout, as a lock
+/// conflict rather than any other failure (<method>OcuPilot.Kernel.State.Convo.LoadOrCreate</method>).</p>
+/// <p>Mutation: <method>OcuPilot.Kernel.State.Base.IsLockConflict</method> answers 0 -> this goes
+/// red.</p>
+Method TestAConversationHeldElsewhereTimesOutAsALockConflict()
+{
+    Set tUser = $Parameter(..#FIXTURE, "USERA")
+    Set tConvId = ..NewConversation(tUser)
+    Do $$$AssertNotEquals(tConvId, "", "the conversation was created")
+    Kill ^OcuPilotTestConvoHeld(tConvId)
+    Job ##class(OcuPilot.Test.TurnConversation).HoldConversation(tConvId, 6)::5
+    Do $$$AssertTrue($Test, "the holding job started")
+    Set tDeadline = $ZHorolog + 10
+    While '$Get(^OcuPilotTestConvoHeld(tConvId)) && ($ZHorolog < tDeadline) {
+        Hang 0.1
+    }
+    Do $$$AssertEquals($Get(^OcuPilotTestConvoHeld(tConvId)), 1, "another process holds the conversation")
+    Set tStart = $ZHorolog
+    Set tConvo = ##class(OcuPilot.Kernel.State.Convo).LoadOrCreate(tConvId, tUser, 1, .tStatus, .tConflict)
+    Set tWaited = $ZHorolog - tStart
+    Do $$$AssertTrue('$IsObject(tConvo), "no OREF is answered")
+    Do $$$AssertStatusNotOK(tStatus, "with an error status")
+    Do $$$AssertEquals(tConflict, 1, "classified as a lock conflict: " _ $System.Status.GetErrorText(tStatus))
+    Do $$$AssertTrue(tWaited < 4, "after the caller's own timeout, not the holder's hold: " _ tWaited)
+    Set tConvo = ""
+    Set tDeadline = $ZHorolog + 15
+    While $Data(^OcuPilotTestConvoHeld(tConvId)) && ($ZHorolog < tDeadline) {
+        Hang 0.25
+    }
+    Do $$$AssertEquals($Data(^OcuPilotTestConvoHeld(tConvId)), 0, "the holder released it")
 }
 
 }

@@ -6,8 +6,8 @@
 /// recorded and on the turn's steps.</p>
 /// <p>Driven through <class>OcuPilot.Test.TurnLoopProbe</class>, with the shipped dispatcher or
 /// <class>OcuPilot.Test.ToolDispatchProbe</class> over the counting fixture tools. <b>Live-safe</b>:
-/// it spawns nothing and opens no socket; it writes probe agent definitions and turn rows in
-/// OcuPilot's own database and removes every one after each method.</p>
+/// it spawns nothing and opens no socket; it writes probe agent definitions, turn rows and
+/// conversations in OcuPilot's own database and removes every one after each method.</p>
 Class OcuPilot.Test.TurnTools Extends %UnitTest.TestCase
 {
 
@@ -72,8 +72,9 @@ Method OnAfterOneTest() As %Status
 /// <code>""</code>. <var>pContextRowCap</var> is the resolved row cap every dispatched call in
 /// this turn is answered under (AD-24), <code>0</code> falling back to
 /// <var>LOOP</var>'s own <code>TOOLROWS</code>, exactly as <method>OcuPilot.Kernel.Agent.Loop.Run</method>
-/// takes it.</p>
-Method RunTurn(Output pOutcome, pReadOnly As %String = "", pContextRowCap As %Integer = 0) As %String
+/// takes it. With <var>pStopFirst</var> the turn is asked to stop after it begins and before the
+/// loop runs; <var>pContext</var> and <var>pConvo</var> pass through to the loop unchanged.</p>
+Method RunTurn(Output pOutcome, pReadOnly As %String = "", pContextRowCap As %Integer = 0, pStopFirst As %Boolean = 0, pContext As %String = "", pConvo As OcuPilot.Kernel.State.Convo = "") As %String
 {
     Set tRow = ##class(OcuPilot.Kernel.State.Agent).%New()
     ; Unique per call, so a test that calls RunTurn more than once (Name carries a unique index)
@@ -98,7 +99,8 @@ Method RunTurn(Output pOutcome, pReadOnly As %String = "", pContextRowCap As %In
     Do ##class(OcuPilot.Kernel.State.Switch).Resolve(.tSwitches)
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedBegin(tKey, $Username, tLimits, .tBegun, .tStarted), "the turn begins")
     Set tReadOnly = $Select(pReadOnly '= "": ''pReadOnly, 1: ''$Get(tSwitches("enforcedReadOnly")))
-    Set tSC = $ClassMethod(..#LOOP, "Run", tKey, $Username, tId, "what is on this instance", tReadOnly, ##class(OcuPilot.Api.Router).#ADMINRESOURCES, tStarted, .pOutcome, "", pContextRowCap)
+    If pStopFirst Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedRequestStop(tKey, $Username, .tFound), "a stop is requested")
+    Set tSC = $ClassMethod(..#LOOP, "Run", tKey, $Username, tId, "what is on this instance", tReadOnly, ##class(OcuPilot.Api.Router).#ADMINRESOURCES, tStarted, .pOutcome, pContext, pContextRowCap, pConvo)
     Do $$$AssertStatusOK(tSC, "the loop returns")
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedFinish(tKey, $Username, pOutcome("state"), pOutcome("code"), pOutcome("limit"), pOutcome("reply"), pOutcome("errorSeq"), tLimits), "and the turn is finished")
     Quit tKey
@@ -352,6 +354,123 @@ Method TestContextRowCapBoundsToolResultsInATurn()
     Do ..RunTurn(.tOutcome2)
     Do $$$AssertEquals(tOutcome2("state"), "completed", "the second turn completes")
     Do $$$AssertEquals(##class(OcuPilot.Test.DispatchTool.Counter).Last("probe.counter.read", "cap"), tCap, "with no override, the tool is still asked under TOOLROWS")
+}
+
+/// <p>Tool steps (Story 4.5) -- each call's step is already recorded <code>running</code> when its
+/// call is dispatched, then carries its outcome: the target is the input's <code>id</code>, else
+/// <code>entity</code>, else <code>route</code>, and a rows-shaped result carries
+/// <code>{rowsReturned, rowsSent, truncated}</code>.</p>
+/// <p>Mutations: <method>OcuPilot.Kernel.Agent.Loop.AnswerTools</method> appends the step only after
+/// dispatch -> the running leg goes red; <method>OcuPilot.Kernel.Agent.Dispatch.AnswerOne</method>
+/// sets no result info -> the rows leg goes red.</p>
+Method TestAToolStepRunsThenCarriesItsTargetAndRows()
+{
+    Do $ClassMethod(..#LOOP, "SetDispatchClass", ..#DISPATCH)
+    Do $ClassMethod(..#LOOP, "SetLimitsClass", "OcuPilot.Kernel.Agent.Limits")
+    Set tCalls = [{"id": "toolu_1", "name": "probe_counter_read", "input": {"entity": "e-1", "route": "r-1"}}, {"id": "toolu_2", "name": "probe_counter_read", "input": {"route": "r-2"}}, {"id": "toolu_3", "name": "probe_counter_read", "input": {"marker": "m3", "rows": 3}}]
+    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("looking", tCalls))
+    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("done"))
+    Set tKey = ..RunTurn(.tOutcome)
+    Do $$$AssertEquals(tOutcome("state"), "completed", "the turn completes")
+    Do $$$AssertEquals($ClassMethod(..#LOOP, "AtDispatch", 1) _ ";" _ $ClassMethod(..#LOOP, "AtDispatch", 2) _ ";" _ $ClassMethod(..#LOOP, "AtDispatch", 3), "tool:probe.counter.read:running;tool:probe.counter.read:running;tool:probe.counter.read:running", "each call's step is running while it is dispatched")
+    Do ##class(OcuPilot.Kernel.State.Turn).GuardedView(tKey, $Username, .tFound, .tView)
+    Set tTargets = ""
+    For tI = 1:1:3 {
+        Set tStep = tView.steps.%Get(tI)
+        Set tTargets = tTargets _ tStep.target _ ";"
+    }
+    Do $$$AssertEquals(tTargets, "e-1;r-2;;", "entity, else route, else no target")
+    Do $$$AssertEquals(tView.steps.%Get(3).status, "ok", "and the step is set to its outcome")
+    Set tRows = tView.steps.%Get(3).result
+    Do $$$AssertTrue($IsObject(tRows), "the rows-shaped read carries a result")
+    If $IsObject(tRows) Do $$$AssertEquals(tRows.rowsReturned _ "|" _ tRows.rowsSent _ "|" _ tRows.truncated, "3|3|0", "rows returned, rows sent, not truncated")
+}
+
+/// <p>Stop (Story 4.5) -- a stop that trips at the boundary before the model call records a
+/// <code>stopped</code> step named <code>provider</code>, and the error names it.</p>
+/// <p>Mutation: <method>OcuPilot.Kernel.Agent.Loop.Run</method> appends no stopped step at its own
+/// boundary -> this goes red.</p>
+Method TestAStopBeforeTheModelCallRecordsAProviderStep()
+{
+    Set tKey = ..RunTurn(.tOutcome, "", 0, 1)
+    Do $$$AssertEquals(tOutcome("state") _ "|" _ tOutcome("code") _ "|" _ tOutcome("errorSeq"), "stopped|TURN.STOPPED|1", "the turn stops, naming step 1")
+    Do $$$AssertEquals($ClassMethod(..#STUB, "Calls"), 0, "with no provider call")
+    Do ##class(OcuPilot.Kernel.State.Turn).GuardedView(tKey, $Username, .tFound, .tView)
+    Set tStep = tView.steps.%Get(0)
+    Do $$$AssertEquals(tView.steps.%Size() _ "|" _ tStep.kind _ ":" _ tStep.name _ ":" _ tStep.status, "1|model:provider:stopped", "one stopped provider step")
+}
+
+/// <p>History (Story 4.5, AD-24) -- a conversation's earlier turn is replayed ahead of the
+/// screen-context pair, and the caller's message comes last.</p>
+/// <p>Mutation: <method>OcuPilot.Kernel.Agent.Loop.Run</method> numbers the context pair from 1
+/// rather than after the history -> this goes red.</p>
+Method TestHistorySitsBeforeTheScreenContextPair()
+{
+    Set tConvo = ##class(OcuPilot.Kernel.State.Convo).LoadOrCreate("", $Username, 5, .tConvoSC, .tConflict)
+    Do $$$AssertStatusOK(tConvoSC, "a conversation is created")
+    If '$IsObject(tConvo) Quit
+    Set tConvKey = tConvo.ConvKey
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Convo).AppendEntry(tConvo, "earlier question", "completed", "earlier answer", "", 0, [], 0, "OcuPilot.Kernel.Agent.Limits"), "an earlier turn is appended")
+    Do $ClassMethod(..#STUB, "QueueAnswer", 200, ..Reply("done"))
+    Do ..RunTurn(.tOutcome, "", 0, 0, "{""route"":""logs/audit""}", tConvo)
+    Set tConvo = ""
+    Do $$$AssertEquals(tOutcome("state"), "completed", "the turn completes")
+    Set tMessages = ##class(%DynamicAbstractObject).%FromJSON($ClassMethod(..#STUB, "Recorded", "body", 1)).messages
+    Set tShape = ""
+    For tI = 0:1:tMessages.%Size() - 1 {
+        Set tMsg = tMessages.%Get(tI)
+        Set tShape = tShape _ tMsg.role _ ":" _ $Select(tMsg.%GetTypeOf("content") = "string": tMsg.content, 1: "blocks") _ ";"
+    }
+    Set tPreamble = ##class(OcuPilot.Kernel.Agent.Prompt).ContextPreamble()
+    Do $$$AssertEquals(tShape, "user:earlier question;assistant:earlier answer;user:" _ tPreamble _ ";assistant:blocks;user:blocks;", "history, then the context pair, then the message")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Convo).GuardedDelete(tConvKey), "the conversation is removed")
+}
+
+/// <p>The job's catch path (Story 4.5, DW-1051) -- a loop that throws out of
+/// <method>OcuPilot.Kernel.Agent.Job.Run</method>'s own frame still appends the turn's
+/// conversation entry, finishes the turn <code>failed</code>, and leaves no conversation lock and
+/// no turn slot held. Driven in process through <class>OcuPilot.Test.JobThrowProbe</class>.</p>
+/// <p>Mutation: the catch in <method>OcuPilot.Kernel.Agent.Job.Run</method> appends no entry ->
+/// this goes red.</p>
+Method TestAJobWhoseLoopThrowsStillAppendsAndReleases()
+{
+    Set tRow = ##class(OcuPilot.Kernel.State.Agent).%New()
+    Set tRow.Name = "OcuPilotProbeAgentTurnTools" _ $Increment(^||OcuPilotTurnToolsRunTurn)
+    Set tRow.Provider = "probe-local"
+    Set tRow.Model = "probe-local-model-1"
+    Set tRow.EndpointUrl = "https://api.anthropic.com/v1/messages"
+    Set tRow.CredType = "env"
+    Set tRow.EnvVarName = "OCUPILOT_PROBE_LOCAL_KEY"
+    Set tRow.MaxTokens = 4000
+    Set tRow.MaxIterationsPerTurn = 10
+    Set tRow.Enabled = 1
+    Set tRow.ConnectionVerified = 1
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Agent).GuardedCreate(tRow), "a probe definition is created")
+    Set tId = tRow.%Id()
+    Set tRow = ""
+    Set tLimits = $ClassMethod("OcuPilot.Test.LoopThrowProbe", "LimitsClass")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedReserve($Username, tId, "TURN.ABANDONED.JOBLOST", tLimits, .tKey, .tBusy, .tSweep), "the turn is reserved")
+    If $Get(tKey) = "" Quit
+    Set ..PreparedKeys(tKey) = ""
+    Set tConvo = ##class(OcuPilot.Kernel.State.Convo).LoadOrCreate("", $Username, 5, .tConvoSC, .tConflict)
+    Do $$$AssertStatusOK(tConvoSC, "a conversation is created")
+    If '$IsObject(tConvo) Quit
+    Set tConvKey = tConvo.ConvKey
+    Set tConvRef = $Name(^OcuPilot.Kernel.State.BaseD(tConvo.%Id()))
+    Set tConvo = ""
+    Do ##class(OcuPilot.Test.LoopThrowProbe).ResetThrows()
+
+    Do ##class(OcuPilot.Test.JobThrowProbe).Run(tKey, $Username, tId, $Namespace, "boom", 0, ##class(OcuPilot.Api.Router).#ADMINRESOURCES, "", "", 0, tConvKey)
+
+    Do $$$AssertEquals(##class(OcuPilot.Test.LoopThrowProbe).Throws(), 1, "the probe loop ran and threw")
+    Do $$$AssertEquals(##class(OcuPilot.Test.TurnFixture).Field(tKey, "State"), "failed", "the turn is finished failed")
+    Do $$$AssertEquals($Data(^$LOCK(tConvRef)), 0, "no conversation lock is left")
+    Do $$$AssertEquals(##class(OcuPilot.Test.TurnFixture).SlotOwner($Username), "", "no turn slot is left held")
+    Do ##class(OcuPilot.Kernel.State.Convo).GuardedView(tConvKey, $Username, .tFound, .tView)
+    Set tEntries = $Select($IsObject($Get(tView)): tView.turns, 1: [])
+    Do $$$AssertEquals(tEntries.%Size(), 1, "one entry is appended")
+    If tEntries.%Size() = 1 Do $$$AssertEquals(tEntries.%Get(0).state _ "|" _ tEntries.%Get(0).message _ "|" _ tEntries.%Get(0).error.code, "failed|boom|TURN.UNAVAILABLE", "recording the failed turn")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Convo).GuardedDelete(tConvKey), "the conversation is removed")
 }
 
 }

@@ -369,6 +369,7 @@ ClassMethod RedactedArguments(pInput As %DynamicObject, pMaxLength As %Integer, 
         If '$IsObject(pInput) Quit
         Set tJson = ##class(OcuPilot.Kernel.Audit.Log).Redact(pInput).%ToJSON()
         Set tOut = ##class(OcuPilot.Kernel.State.Turn).Cap(tJson, pMaxLength, .pTruncated)
+        If pTruncated Set tOut = ##class(OcuPilot.Kernel.State.Turn).Cap(tJson, pMaxLength - 1, .pTruncated) _ $Char(8230)
     } Catch ex {
         Set tOut = ""
         Set pTruncated = 0
