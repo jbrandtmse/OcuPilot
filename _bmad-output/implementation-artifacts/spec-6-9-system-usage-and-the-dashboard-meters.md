@@ -2,7 +2,7 @@
 title: 'System usage and the dashboard meters'
 type: 'feature'
 created: '2026-09-17'
-status: 'in-progress'
+status: 'done'
 baseline_revision: '12cd5949cb352ac11b121267db8e18a9577e6a9a'
 baseline_commit: '12cd5949cb352ac11b121267db8e18a9577e6a9a'
 review_loop_iteration: 0
@@ -113,19 +113,19 @@ Reads are `GET /api/ocupilot/screens/osmgmt.systemusage/read`.
 
 **Execution:**
 
-- [ ] `src/OcuPilot/Port/AdminPort.cls` -- add the per-endpoint bare-type map and pass the endpoint into `EndpointType` -- `Monitor`'s types carry no `TYPE` prefix.
-- [ ] `src/OcuPilot/Screen/Registry.cls`, `ui/tools/screen-mirror.mjs`, `src/OcuPilot/Test/ReadSourceCorpus.cls` -- admit and validate `source.parts` per Boundaries, with identical sentences and one corpus case per refusal plus one sound case -- AD-36 grammar in both engines.
-- [ ] `src/OcuPilot/Screen/Read.cls` -- issue the parts, merge them (object, or exact `Total` row), fail whole on any part fault or a missing `Total`, and project `<as>.<member>[.<member>]` -- one row for screen and tool.
-- [ ] `src/OcuPilot/Screen/Descriptor/SystemUsage.cls` (new) -- the declaration per Boundaries. `table` lists all 18 fields with `Usage.LastUpdate` as the `name` column, `emptyNextKey` `tableReadOnlyEmptyNext`, and a new `emptyStateKey`.
-- [ ] `ui/src/app/core/meter-state.ts` + `ui/tools/meter-state.test.mjs` (new) -- word and percentage to `{state, word}` per Boundaries -- pure, reused by 6.11.
-- [ ] `ui/src/app/shell/meter.ts` + `meter.spec.ts` (new) -- the component per Boundaries (OnPush, tokens only).
-- [ ] `ui/src/app/areas/os-management/system-usage.page.ts`, `system-usage.store.ts`, `system-usage.page.spec.ts`, `ui/tools/system-usage-store.test.mjs` (new); `ui/src/app/shell/screen-outlet.ts` -- counters group plus the seven meters from the row, bound like Process details; register `meters`.
-- [ ] `_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md` (one Fixed strings row after `:362`), `ui/src/app/core/strings.ts`, `ui/tools/strings.test.mjs` -- title, labels, units, Normal/Warning/Troubled, empty state; reuse existing values; raise the bound; regenerate the mirror.
-- [ ] `src/OcuPilot/Test/SystemUsage.cls` (new) -- matrix rows Live, Tick and Bare type elsewhere, a two-part fixture pinning the `Total`-row rule and the whole-read fault, and the Integration AC.
-- [ ] `src/OcuPilot/Test/WireSecurityRead.cls` -- the Pairs row with real principals on the throwaway; append any pair the instance still refuses (descriptor, `Screen/Area.cls` union if needed).
-- [ ] Rosters in the Code Map, plus the Smoke check `systemusage` -- roster tripwires.
-- [ ] `ui/browser/system-usage.browser-spec.mjs` (new) -- AC1 to AC3 and the denied deep link for the `%Admin_Operate:USE`-only principal.
-- [ ] [CI] instance: `OcuPilot.Test.Navigation.TestThePayloadCarriesEveryAreaWithAVerdict` -- the os-management screen count and roster this test pins are stale: the area now has three built screens, `os-management/system-usage` sorting last at `sideBarPosition` 3. Correct the count, the roster assertions and the comment above them, and demonstrate a mutation on the corrected assertion (Rule 19) -- run 35251489312.
+- [x] `src/OcuPilot/Port/AdminPort.cls` -- add the per-endpoint bare-type map and pass the endpoint into `EndpointType` -- `Monitor`'s types carry no `TYPE` prefix.
+- [x] `src/OcuPilot/Screen/Registry.cls`, `ui/tools/screen-mirror.mjs`, `src/OcuPilot/Test/ReadSourceCorpus.cls` -- admit and validate `source.parts` per Boundaries, with identical sentences and one corpus case per refusal plus one sound case -- AD-36 grammar in both engines.
+- [x] `src/OcuPilot/Screen/Read.cls` -- issue the parts, merge them (object, or exact `Total` row), fail whole on any part fault or a missing `Total`, and project `<as>.<member>[.<member>]` -- one row for screen and tool.
+- [x] `src/OcuPilot/Screen/Descriptor/SystemUsage.cls` (new) -- the declaration per Boundaries. `table` lists all 18 fields with `Usage.LastUpdate` as the `name` column, `emptyNextKey` `tableReadOnlyEmptyNext`, and a new `emptyStateKey`.
+- [x] `ui/src/app/core/meter-state.ts` + `ui/tools/meter-state.test.mjs` (new) -- word and percentage to `{state, word}` per Boundaries -- pure, reused by 6.11.
+- [x] `ui/src/app/shell/meter.ts` + `meter.spec.ts` (new) -- the component per Boundaries (OnPush, tokens only).
+- [x] `ui/src/app/areas/os-management/system-usage.page.ts`, `system-usage.store.ts`, `system-usage.page.spec.ts`, `ui/tools/system-usage-store.test.mjs` (new); `ui/src/app/shell/screen-outlet.ts` -- counters group plus the seven meters from the row, bound like Process details; register `meters`.
+- [x] `_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md` (one Fixed strings row after `:362`), `ui/src/app/core/strings.ts`, `ui/tools/strings.test.mjs` -- title, labels, units, Normal/Warning/Troubled, empty state; reuse existing values; raise the bound; regenerate the mirror.
+- [x] `src/OcuPilot/Test/SystemUsage.cls` (new) -- matrix rows Live, Tick and Bare type elsewhere, a two-part fixture pinning the `Total`-row rule and the whole-read fault, and the Integration AC.
+- [x] `src/OcuPilot/Test/WireSecurityRead.cls` -- the Pairs row with real principals on the throwaway; append any pair the instance still refuses (descriptor, `Screen/Area.cls` union if needed).
+- [x] Rosters in the Code Map, plus the Smoke check `systemusage` -- roster tripwires.
+- [x] `ui/browser/system-usage.browser-spec.mjs` (new) -- AC1 to AC3 and the denied deep link for the `%Admin_Operate:USE`-only principal.
+- [x] [CI] instance: `OcuPilot.Test.Navigation.TestThePayloadCarriesEveryAreaWithAVerdict` -- the os-management screen count and roster this test pins are stale: the area now has three built screens, `os-management/system-usage` sorting last at `sideBarPosition` 3. Correct the count, the roster assertions and the comment above them, and demonstrate a mutation on the corrected assertion (Rule 19) -- run 35251489312.
 
 **Acceptance Criteria:**
 
@@ -243,6 +243,7 @@ Stateful steps run on the slot B throwaway `ocupilot-b-ci` only. `ocupilot-slot-
 - Pairs: `%DB_IRISSYS:READ` dropped. `mutation: SystemUsage descriptor privileges without %DB_IRISSYS:READ, compiled on ocupilot-b-ci → WireSecurityRead.TestTheSystemUsagePairSetIsEnforcedForARealPrincipal red on the operate-only refusal assertions; reverted, class re-run green.`
 - Parts: the `Total` match loosened to a prefix. `mutation: Read.TotalRow matches $Extract(Description,1,5)="Total" → SystemUsage.TestTwoPartsMerge… red; an extra base GET issued before the parts → the same test red on "only the declared parts are issued, in declared order"; both reverted.`
 - Integration: a part `as` misspelled. `mutation: Read.CopyAs stops one member short and projects the group object → SystemUsage.TestTheReadToolAnswersTheSameRowAsTheRoute (and Live) red on the scalar assertion; reverted, class re-run green.`
+- CI (os-management roster count): `mutation: Descriptor/SystemUsage.cls's built flipped to false on the throwaway → Navigation.TestThePayloadCarriesEveryAreaWithAVerdict red on "which carries its three built screens"; reverted, class re-run green (11/11).`
 
 ## Auto Run Result
 
@@ -282,3 +283,15 @@ Blocking condition: none
 - I/O & Edge-Case Matrix: every row covered by a passing test (Live/Tick/Bare-type-elsewhere/Integration in `Test.SystemUsage`; Pairs in `Test.WireSecurityRead`; Parts grammar in `ReadSourceCorpus`'s 13 cases; Meter state in `meter-state.test.mjs`; Meter fault across `meter.spec.ts`, `system-usage.page.spec.ts` and `system-usage-store.test.mjs`).
 
 **Residual risks:** none identified. The throwaway `ocupilot-b-ci` is left running (healthy) since this run's own implementation subagent brought it up.
+
+### Rework 1 (CI run 35251489312)
+
+Fixed the one stale roster assertion in `src/OcuPilot/Test/Navigation.cls`: the os-management
+screen count corrected 2→3, a third roster assertion pair added for `os-management/system-usage`
+(`systemUsageLabel`) at index 2, and the comment above them rewritten to state what the assertion
+pins rather than its history. Reproduced the CI failure first by loading the pre-fix class into
+`ocupilot-b-ci` (red on "which now carries its two built screens"), then loaded the fix (green,
+11/11). `Test.Descriptor` (35/35) and `Test.ScreenRead` (22/22) re-run clean; `Test.Roster` does
+not exist. Smoke: 37 passed, 0 failed, `systemusage` explicit pass. `check-objectscript.py`: 0
+problems, 360 files. Mutation recorded in `## Verification` above. No production class, client
+file, or other test touched.
