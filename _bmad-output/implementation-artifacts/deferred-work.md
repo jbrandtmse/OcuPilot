@@ -2606,6 +2606,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T10:21:59Z status=routed owner=4-4-screen-context-on-every-turn-capped-with-its-toggle-and-chip by=burndown_gate note=the redactor's reach is what decides what leaves on a turn's context
 - 2026-09-16T15:11:12Z status=routed owner=4-4-screen-context-on-every-turn-capped-with-its-toggle-and-chip by=x0 note=kept, the context cap and secret exclusion own this
 - 2026-09-17T05:48:12Z status=routed owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=spec_gate note=retitled when the chip and its toggle split into Story 4.11; the work stays server-side in 4.4
+- 2026-09-17T05:59:34Z status=routed owner=burndown by=spec_gate note=declined by 4.4 because the amended Secrets row defines the backstop as suffix or exact; a boundary match must be measured against the shipped key set so maxTokens stays unmasked, for the burn-down gate
 
 ### DW-399: Nothing compares Kernel/Audit/Log's credential-suffix list with ui/tools/field-lists.mjs's CREDENTIAL_RE, which its own doc comment says it mirrors
 - source: spec-3-8 | severity: med | fix-risk: low | footprint: cross-epic
