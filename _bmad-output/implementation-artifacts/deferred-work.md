@@ -2907,6 +2907,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T21:26:18Z by=spec_gate note=the OS management figure (2 of 3 after 6.8 and 6.10) is Screen/Area.cls's inference, settled when those screens land; the Security and Logs figures are counted from declared pairs
 - 2026-09-16T22:46:47Z occurrence=6-3-the-x-509-ldap-kerberos-and-wallet-lists note=EXPERIENCE.md :221 and :482 still describe the Wallet screen as gated screen by screen; the union gates the whole Security rail item
 - 2026-09-16T23:34:21Z by=cr note=observed slot B: %SecurityAdministrator holds %Admin_Secure:U and %DB_IRISSYS:RW but no %Admin_Wallet; rail gates it
+- 2026-09-17T00:18:27Z occurrence=6-4-the-oauth-2-0-screen note=Story 6.4 appends %Admin_OAuth2_Client, %Admin_OAuth2_Server and %Admin_OAuth2_Registration (USE) to the security area: a holder of the Secure, IRISSYS and Wallet pairs without any OAuth resource sees the Security rail gated though 6 of its 10 built screens would serve them; %Manager and %SecurityAdministrator hold all three OAuth resources (observed on slot B by the 6.4 plan)
 
 ### DW-1019: Demo-fixture counts and the inventory kind vocabulary are stale outside Fixture.cls after the wallet fixture landed
 - source: spec-6-3-the-x-509-ldap-kerberos-and-wallet-lists.md | severity: low | fix-risk: low | footprint: in-epic

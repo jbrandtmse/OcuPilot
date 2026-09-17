@@ -40,12 +40,13 @@ deferred: []
   - A 404 answers zero rows with `truncated` false. Any other fault fails the read.
 - **`forEach` source (same corpus).**
   - `read.source.forEach` is `{endpoint, key, param, fields: [{field, from}]}`. It is admin `LIST` only, with no `rowGet` or `criteria`, and every `field` is one of `read.fields`.
-  - **Parents.** `Execute` lists `forEach.endpoint` with `maxRows` cap+1. A parent whose `key` is not a non-empty string or number is a 500.
+  - **Parents.** `Execute` lists `forEach.endpoint` with `maxRows` cap+1, so at most cap+1 parents are listed and at most cap+1 child calls are issued (AD-36's explicit bound). A parent whose `key` is not a non-empty string or number is a 500.
   - **Children.** In parent order, it lists the source endpoint with `param` set to the parent's `key` text. Each child row gets each `from` value copied in as `field`. It stops once cap+1 rows are held.
   - **Faults and truncation.** A child 404 skips that parent. Any other fault fails the read. `truncated` is true when more than cap rows were held or the parent list itself exceeded the cap.
 - **Member fields.** A declared field `<object>.<member>` that the row does not carry as a literal key is read from `<member>` of the row's object field `<object>` (`Read.CopyValue`). The row key keeps the dotted name.
 - **`rowLink` (both engines, `Test/ClassicLinkCorpus.cls`).**
   - `classicLinkExemption.rowLink` is either absent or `{params: [{name, field}]}`. It is allowed only with `exempt` true on a declaration with a read.
+  - **Blank-value guard.** A row in which any `rowLink` param's field reads empty (`null`, absent, `""`) renders its name cell as plain text, never a link, so a classic editor is never opened with a blank key (the client editor turns an empty `IssuerEndpointID` into a new server definition). Pinned by a `data-table.spec.ts` case.
   - `name` matches `^[A-Za-z][A-Za-z0-9]*$` and appears once. `field` is one of `read.fields` and is not secret.
   - The name cell's `href` is the exemption's `href`, followed by `?` or `&` and each `name=encodeURIComponent(text of the row's field)`. It opens with `target="_blank"` and `rel="noreferrer"`, never through the router and never through `window.open`.
 - **`DetailPage`.**
@@ -238,6 +239,8 @@ Reads are `GET /screens/<tool>/read`.
 
 ## Spec Change Log
 
+- 2026-09-17 (spec gate): five tab descriptors accepted (orchestrator option a); AD-5, AD-36 and AD-44 amended in the spine; `forEach`'s parent bound stated explicitly; the blank-`IssuerEndpointID` guard gets its own pinning test and mutation; the Security rail cost is a DW-1018 note.
+
 ## Review Triage Log
 
 ## Design Notes
@@ -258,11 +261,12 @@ Reads are `GET /screens/<tool>/read`.
 
 **Why five descriptors.** One descriptor with five reads would need five tools from one descriptor, and `Screen/Tool/Registry.cls:108-119` with `Api/ScreenRead.cls:48` map one `toolIdentifier` to one read. That is in `Screen/Tool/**`, which is out of bounds. A single union read would share one cap, field set and privilege set across five entity kinds, against AD-24 and AD-36. The ACs also word it per tab: "each tab ... declared as a detail view archetype" and "each declares `classicLinkExemption`". Per-tab pairs and classic pages also keep AD-44's custom-resource union per classic key.
 
-**Spine (lead, spec gate, Rule 20).** Three clarifications, each apply-and-report:
+**Spine (lead, spec gate, Rule 20; orchestrator option a, 2026-09-17).** Applied in the spine, ids kept:
 
-- **AD-5:** "A screen of several tabs is one descriptor per tab, grouped by `tab`; its listed member is the side-bar entry."
-- **AD-36:** the source may be a singleton `GET` (404 is no rows); `forEach` is a per-parent list (a child 404 skips that parent, and truncation counts the parent list); a field may be `<object>.<member>`.
-- **AD-44:** "the OAuth 2.0 tabs" are one exemption declared by each of the five tab descriptors, so the check reports five honored declarations.
+- **AD-5:** a tabbed screen is one descriptor per tab, grouped by a declared `tab`; each tab carries its own primary entity type, read, tool and privilege set; the listed member is the side-bar entry and the other tabs are unlisted routes under it. The multi-entity bullet stands: secondary types still participate in AD-14 routing, and this story's Descriptions and Clients tabs consume it.
+- **AD-36:** a single-object `GET` source whose 404 reads as zero rows; a `forEach` source bounded by the row cap and by cap+1 parents listed (at most that many child calls), reporting truncation; `<object>.<member>` fields.
+- **AD-44:** "the OAuth 2.0 tabs" is one Release 1 exemption declared by five descriptors; the check reports the five declarations under the one exemption, so SM-C1 counts one.
+- **`rowLink` and the blank-`IssuerEndpointID` guard** are approved; the guard is pinned by a test with a named mutation (Tasks).
 
 **Choices.**
 
@@ -323,6 +327,7 @@ Reads are `GET /screens/<tool>/read`.
 - AC2: `Metadata.grant_types_supported` becomes `Metadata.grant_types` -> `OAuthTabs` grant types red; browser AC2 red.
 - AC3: drop `oauth2-client-configuration` from `security/oauth`'s secondaries -> `refresh.test.mjs` red.
 - AC4: `data-table.ts` ignores `rowLink` -> `data-table.spec.ts` red; browser AC4 red. Remove one tab's exemption -> `classic-links.test.mjs` red.
+- Blank-value guard: `data-table.ts` builds the row link even when a param's field is empty -> the `data-table.spec.ts` blank-`IssuerEndpointID` case red.
 - AC5: `OAuthServerClientTab` drops `%Admin_OAuth2_Registration:USE` -> `WireOAuthRead` red.
 - Integration: `Tool.Read.View` keeps cap-1 rows -> `OAuthTabs` tool test red.
 - Matrix: `Execute` fails on a `GET` 404 -> `ScreenReadSource` unconfigured red. `forEach` stops skipping a child 404 -> forEach-faults red. Truncation ignores the held rows -> Clients cap red.
