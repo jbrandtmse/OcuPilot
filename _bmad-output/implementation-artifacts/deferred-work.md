@@ -3002,3 +3002,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-3-the-docked-panel-present-on-every-route.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: Rail.activate has no fullScreen guard while SideBar.onGlobalKeydown ignores Ctrl/Cmd+B in full screen; clicking the visible area's rail item writes ocupilot.side-bar.open=false unseen
 - 2026-09-17T05:12:20Z status=decision-pending owner=burndown by=cr note=Product call: a rail click in full screen is ignored for side-bar areas, or exits full screen and shows the area
+
+### DW-1029: Switches.MergeBody treats a JSON object or array sent for any switch field, contextRowCap included, as absent and keeps the stored value instead of refusing
+- source: spec-4-4-screen-context-reaches-the-turn-capped-and-secret-free.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The object and array short-circuit at the top of Api/Switches.cls MergeBody predates Story 4.4 and is shared by every switch field
+- 2026-09-17T09:17:02Z status=wontfix-accepted owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=harvest note=Kept as is since a client never sends a structured value; reopen_if a Switches PUT with an object value is reported to have changed nothing silently
