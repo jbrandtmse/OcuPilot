@@ -486,7 +486,7 @@ function matchesScreen(screen: ScreenDeclaration, label: string, needle: string)
  * the only synchronous signal every supported browser answers; a miss costs the chip's
  * spelling and nothing else, so there is no fallback worth a round trip.
  */
-function isApplePlatform(): boolean {
+export function isApplePlatform(): boolean {
   const source = `${navigator.platform ?? ''} ${navigator.userAgent ?? ''}`;
   return /mac|iphone|ipad|ipod/i.test(source);
 }

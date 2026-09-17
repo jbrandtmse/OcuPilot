@@ -160,6 +160,33 @@ function extractServerFaultBanner(markdown) {
   return [match[1], ...match[2].split(' and ').map((name) => name.trim())];
 }
 
+/**
+ * The transcript's accessible name, from the panel's Body rule: `(\`role="log"\`, polite,
+ * \`aria-label="Conversation"\`, ...)`. Anchored on the Body paragraph so the Accessibility Floor's
+ * second statement of the same attribute cannot stand in for a reworded first one.
+ */
+function extractTranscriptName(markdown) {
+  const body = markdown.split('\n').find((line) => line.startsWith('**Body.** Banners, in order'));
+  assert.ok(body, "EXPERIENCE.md must carry the panel's Body rule");
+  const match = /`aria-label="([^"]*)"`/.exec(body);
+  assert.ok(match, "the panel's Body rule must name the transcript");
+  return [match[1]];
+}
+
+/**
+ * The composer caption as macOS spells it. The table row publishes the Ctrl+I form and says, in its
+ * Where cell, which chord replaces it there -- `(\u2318I on macOS)` -- so the macOS value is that
+ * substitution over the row's own literal, never a second spelling typed here.
+ */
+function extractMacComposerCaption(rows) {
+  const row = rows.find((candidate) => /^composer caption \((\S+) on macOS\)$/.test(candidate.where));
+  assert.ok(row, 'the Fixed strings table carries the composer caption row with its macOS chord');
+  const chord = /^composer caption \((\S+) on macOS\)$/.exec(row.where)[1];
+  assert.equal(row.literals.length, 1, 'the caption row publishes one literal');
+  assert.ok(row.literals[0].includes('Ctrl+I'), 'and it carries the Ctrl+I chord the macOS form replaces');
+  return [row.literals[0].replace('Ctrl+I', chord)];
+}
+
 const fixedStringsRows = extractFixedStringsTable(experienceMdRaw);
 const expectedLiterals = fixedStringsRows.flatMap((row) => row.literals);
 const expectedLandmarkNames = extractLandmarkNames(experienceMdRaw);
@@ -171,6 +198,8 @@ const [expectedUnreachableSentence, expectedRetryAction] =
   extractUnreachableBanner(experienceMdRaw);
 const [expectedServerFaultSentence, ...expectedServerFaultActions] =
   extractServerFaultBanner(experienceMdRaw);
+const expectedTranscriptName = extractTranscriptName(experienceMdRaw);
+const expectedMacComposerCaption = extractMacComposerCaption(fixedStringsRows);
 
 /**
  * The third category: literals EXPERIENCE.md states in prose rather than in the Fixed strings
@@ -185,6 +214,8 @@ const EXTRACTED_FROM_PROSE = [
   ...expectedServerFlagWords,
   expectedUnreachableSentence,
   expectedServerFaultSentence,
+  ...expectedTranscriptName,
+  ...expectedMacComposerCaption,
 ];
 
 test('the three navigation landmarks are named in EXPERIENCE.md and reach the string source', () => {
@@ -232,6 +263,17 @@ test("the header's two accessible names and the four flag words are EXPERIENCE.m
   assert.equal(stringsValues.serverFlagTest, expectedServerFlagWords[1]);
   assert.equal(stringsValues.serverFlagFailover, expectedServerFlagWords[2]);
   assert.equal(stringsValues.serverFlagDevelopment, expectedServerFlagWords[3]);
+});
+
+test("the panel's transcript name and the macOS composer caption are EXPERIENCE.md's own", () => {
+  assert.equal(stringsValues.agentConversationLabel, expectedTranscriptName[0]);
+  assert.equal(stringsValues.agentComposerCaptionMac, expectedMacComposerCaption[0]);
+  assert.ok(stringsValues.agentComposerCaptionMac.includes('\u2318I'), 'the macOS form spells the command glyph');
+  assert.equal(
+    stringsValues.agentComposerCaptionMac.replace('\u2318I', 'Ctrl+I'),
+    stringsValues.agentComposerCaption,
+    'and differs from the published caption by the chord alone'
+  );
 });
 
 test("the connectivity banners' sentences and actions are EXPERIENCE.md's own, from the rows that publish them", () => {
@@ -355,10 +397,14 @@ test('the string source holds nothing the documents do not authorize -- the tabl
     [],
     `values in strings.ts that appear in no source document: ${JSON.stringify(unauthorized, null, 2)}`
   );
+  // Distinct literals: a table row may publish a word another row already does ("Definitions" is
+  // both the Definitions list's title and the reminder banner's link), and every value here is
+  // held by exactly one key.
+  const distinctLiterals = new Set(expectedLiterals).size;
   assert.equal(
     Object.keys(stringsValues).length,
-    expectedLiterals.length + EXTRACTED_FROM_PROSE.length + REQUIRED_ALONGSIDE_TABLE.length,
-    `expected ${expectedLiterals.length} table literals + ${EXTRACTED_FROM_PROSE.length} extracted from prose + ${REQUIRED_ALONGSIDE_TABLE.length} named extras, found ${Object.keys(stringsValues).length} keys`
+    distinctLiterals + EXTRACTED_FROM_PROSE.length + REQUIRED_ALONGSIDE_TABLE.length,
+    `expected ${distinctLiterals} distinct table literals + ${EXTRACTED_FROM_PROSE.length} extracted from prose + ${REQUIRED_ALONGSIDE_TABLE.length} named extras, found ${Object.keys(stringsValues).length} keys`
   );
 });
 

@@ -19,6 +19,7 @@ import { ScreenActions } from './core/screen-actions';
 import { ScreenStores } from './core/screen-store';
 import type { ScreenDeclaration } from './core/screens.generated';
 import { Session, type SessionState } from './core/session';
+import { PanelState } from './core/panel-layout';
 import { ShellState } from './core/shell-state';
 import { STRINGS } from './core/strings';
 import { stubAgentStatus } from './testing/agent-status';
@@ -63,6 +64,10 @@ class StubSession {
   }
 
   /** Never fresh: this file is about the chip and the stamp, not about the first-login gate. */
+  hasFreshSignIn(): boolean {
+    return false;
+  }
+
   consumeFreshSignIn(): boolean {
     return false;
   }
@@ -237,6 +242,8 @@ describe('the real shell, routed to the real Home screen, sharing one real Refre
     } as unknown as ApiService;
     const navigation = new NavigationService({ api, connectivity, namespace: () => 'HSCUSTOM' });
 
+    const shellPreferences = new PreferenceStore({ storage: memoryStorage() });
+    const shellState = new ShellState({ preferences: shellPreferences });
     TestBed.configureTestingModule({
       providers: [
         provideRouter(routes),
@@ -247,10 +254,8 @@ describe('the real shell, routed to the real Home screen, sharing one real Refre
         { provide: ConnectivityService, useValue: connectivity },
         { provide: RefreshService, useValue: refresh },
         { provide: ScreenStores, useValue: screenStores },
-        {
-          provide: ShellState,
-          useValue: new ShellState({ preferences: new PreferenceStore({ storage: memoryStorage() }) }),
-        },
+        { provide: ShellState, useValue: shellState },
+        { provide: PanelState, useValue: new PanelState({ preferences: shellPreferences, shell: shellState }) },
         { provide: OverlayStack, useValue: new OverlayStack() },
         { provide: ScreenActions, useValue: new ScreenActions() },
         { provide: FormDirty, useValue: new FormDirty() },

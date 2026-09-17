@@ -608,21 +608,19 @@ app-side-bar {
   flex: 0 0 auto;
 }
 
-// The panel is a link in the height chain only while it is showing something. It renders nothing
-// once a definition is enabled (Story 4.3 makes it unconditional), and an empty custom element
-// with a box would reserve `panel-default` of every screen it has nothing to say about -- the
-// same reason `app-fault-banner:empty` exists.
-// It yields before the content column does (DESIGN.md's Yield order: the side bar collapses, then
-// the panel shrinks from its target to `{spacing.panel-min}`, and only then does the content column
-// hold `{spacing.content-min-width}`). `flex-shrink: 1` is what lets step (2) happen at all; the
-// floor is `.ocu-panel`'s own `min-width`, which an `auto` min-width on this host resolves to.
+// The panel's width is bound on this host from `PanelState`'s resolved layout (DESIGN.md's Yield
+// order computed once, in `core/panel-layout.ts`), so the host neither grows nor shrinks by flex.
+// The width change animates over the motion token, which reduced motion zeroes.
 app-panel {
   display: flex;
-  flex: 0 1 auto;
+  flex: 0 0 auto;
+  min-width: var(--ocu-panel-min);
+  transition: width var(--ocu-motion-panel-width-duration) ease;
 }
 
-app-panel:empty {
-  display: none;
+// While a drag is in progress the width follows the pointer, not a transition.
+app-panel:has(.ocu-panel-resize-handle-dragging) {
+  transition: none;
 }
 
 // An absent badge leaves no gap: a flex gap applies between empty items too, and a segment
@@ -632,18 +630,46 @@ app-server-flag:empty {
 }
 
 .ocu-shell {
+  position: relative;
   display: flex;
   flex: 1 1 auto;
   align-items: stretch;
   min-height: 0;
 }
 
+// The content region: it narrows below its floor rather than widening the row, and scrolls that
+// floor horizontally inside itself, so the page body never does (DESIGN.md's Yield order, step 3).
 .ocu-shell-content {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+// The content minimum, held inside the scrolling region.
+.ocu-shell-content-floor {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: var(--ocu-content-min-width);
+  min-height: 0;
+}
+
+// Full screen: the panel covers the side bar and the content column, below the header and above the
+// status bar, beside the rail (DESIGN.md panel Full screen row). What it covers stays laid out
+// underneath and is `inert`.
+.ocu-shell-full-screen app-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: var(--ocu-rail-width);
+  z-index: 1;
+  width: auto;
+  transition: none;
 }
 
 // The routed screen's own region: it scrolls inside itself, so neither band ever moves. It is
@@ -906,7 +932,10 @@ app-error-log-page {
 // Fixed at 240px with no sash, grip or `col-resize` cursor: the panel is the only resizable
 // edge in the shell (DESIGN.md `:271`, `:1265`).
 
+// Border-box, so the 1px edge is inside the 240px the yield order budgets for (DESIGN.md's
+// Yield order table).
 .ocu-side-bar {
+  box-sizing: border-box;
   flex: 0 0 auto;
   width: var(--ocu-side-bar-width);
   padding: 10px 0;
@@ -1646,6 +1675,8 @@ app-error-log-page {
 // bar takes 24 of it), and the shell colour is the same `on-shell`-on-`shell` pair the rail
 // already draws at 10.35:1.
 
+// Clipped rather than widening the page: below the widths its segments fit, the band keeps the
+// viewport's width and the page body still never scrolls horizontally (DESIGN.md's Yield order).
 .ocu-status-bar {
   @include typo.ocu-type('label');
 
@@ -1654,6 +1685,8 @@ app-error-log-page {
   align-items: center;
   justify-content: space-between;
   gap: var(--ocu-space-3);
+  min-width: 0;
+  overflow: hidden;
   height: var(--ocu-status-bar-height);
   padding: 0 var(--ocu-space-3);
   background: var(--ocu-shell);
@@ -2958,39 +2991,183 @@ app-data-table {
   margin-top: var(--ocu-space-2);
 }
 
-// --- The agent co-pilot panel (Story 3.6) ----------------------------------------------------
+// --- The agent co-pilot panel (Stories 3.6, 4.3) ----------------------------------------------
 //
 // Docked right of every screen on `{colors.surface-container-lowest}` with a 1px
-// `{colors.outline-variant}` left edge, `{spacing.panel-default}` wide and never below
-// `{spacing.panel-min}` (DESIGN.md `:1110`). Story 4.3 adds the header, the resize handle, the
-// full-screen toggle and the transcript; what is here is the body and the footer.
+// `{colors.outline-variant}` left edge and the resize handle on that edge (DESIGN.md panel). The
+// width is the host's; the panel fills it.
 
 .ocu-panel {
+  position: relative;
   box-sizing: border-box;
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
-  width: var(--ocu-panel-default);
-  min-width: var(--ocu-panel-min);
+  width: 100%;
+  min-width: 0;
   min-height: 0;
   border-left: 1px solid var(--ocu-outline-variant);
   background: var(--ocu-surface-container-lowest);
 }
 
-// The body scrolls inside itself, so the footer never leaves the viewport and the page body
-// never scrolls (DESIGN.md's yield order).
+// Header: 44px, the avatar at 20px, the title, and the icon buttons at the right, over a 2px rule in
+// the logo gradient (DESIGN.md panel `header-rule`).
+.ocu-panel-header {
+  box-sizing: border-box;
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--ocu-space-2);
+  min-height: var(--ocu-panel-header-height);
+  padding: 0 var(--ocu-space-2) 0 var(--ocu-space-4);
+  border-bottom: 2px solid transparent;
+  border-image: linear-gradient(90deg, var(--ocu-shell), var(--ocu-shell-edge), var(--ocu-logo-gradient-stop)) 1;
+}
+
+// The robot avatar at its 20px header size, corners cut by CSS because the file is opaque
+// (DESIGN.md avatar-agent). A background for the reason the lockup is one: the `url()` makes the
+// builder hash and bundle the file.
+.ocu-panel-avatar {
+  display: block;
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--ocu-radius-md);
+  background-image: url('../assets/avatar/robot-avatar-64.png');
+  background-size: cover;
+}
+
+.ocu-panel-title {
+  @include typo.ocu-type('title');
+
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  color: var(--ocu-primary);
+}
+
+.ocu-panel-icon-button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: var(--ocu-icon-button-size);
+  height: var(--ocu-icon-button-size);
+  padding: 0;
+  border: none;
+  border-radius: var(--ocu-radius-md);
+  background: transparent;
+  color: var(--ocu-on-surface-variant);
+  cursor: pointer;
+}
+
+.ocu-panel-icon-button:hover {
+  background: var(--ocu-surface-container-high);
+}
+
+.ocu-panel-icon-button:focus-visible {
+  @include ocu-focus-ring;
+}
+
+.ocu-panel-icon-glyph {
+  font-size: 20px;
+  line-height: 1;
+}
+
+// The resize handle: a 6px strip over the panel's left edge with an 8px hit area, carrying the
+// docked-edge stripe; the grip shows on hover and while dragging and turns restrained at either
+// stop. The only sash in the shell (DESIGN.md panel-resize-handle).
+.ocu-panel-resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -4px;
+  z-index: 1;
+  width: 8px;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.ocu-panel-resize-handle::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 2px;
+  background: linear-gradient(0deg, var(--ocu-shell), var(--ocu-shell-edge), var(--ocu-logo-gradient-stop));
+  content: '';
+}
+
+.ocu-panel-resize-grip {
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  display: none;
+  width: 3px;
+  height: 28px;
+  border-radius: 2px;
+  background: var(--ocu-outline);
+  transform: translateY(-50%);
+}
+
+.ocu-panel-resize-handle:hover .ocu-panel-resize-grip,
+.ocu-panel-resize-handle-dragging .ocu-panel-resize-grip,
+.ocu-panel-resize-handle:focus-visible .ocu-panel-resize-grip {
+  display: block;
+}
+
+.ocu-panel-resize-handle-at-stop .ocu-panel-resize-grip {
+  background: var(--ocu-restrained);
+}
+
+.ocu-panel-resize-handle:focus-visible {
+  @include ocu-focus-ring;
+}
+
+// The body: the banners and the chip slot hold their place, and the transcript scrolls by itself,
+// so neither the header nor the footer ever leaves the viewport.
 .ocu-panel-body {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
-  gap: var(--ocu-space-3);
   min-height: 0;
-  padding: var(--ocu-space-3) var(--ocu-panel-gutter);
+}
+
+.ocu-panel-banners {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: var(--ocu-space-2);
+  padding: 0 var(--ocu-panel-gutter);
+}
+
+.ocu-panel-banners:has(.ocu-panel-banner) {
+  padding-top: var(--ocu-space-3);
+}
+
+.ocu-panel-banner-slot:empty,
+.ocu-panel-chip-slot:empty {
+  display: none;
+}
+
+// The transcript (DESIGN.md panel: `{spacing.3} {spacing.panel-gutter} {spacing.2} {spacing.4}`
+// padding, `{spacing.2}` between messages and cards). Newest at the bottom; it scrolls on its own.
+.ocu-panel-transcript {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--ocu-space-2);
+  min-height: 0;
+  padding: var(--ocu-space-3) var(--ocu-panel-gutter) var(--ocu-space-2) var(--ocu-space-4);
   overflow-y: auto;
 }
 
-// The who-can-configure sentence, in the `empty-state` register: a title-weight line saying what
-// is missing, with the example card beneath it (EXPERIENCE.md's Configuration-empty row).
+.ocu-panel-transcript:focus-visible {
+  @include ocu-focus-ring;
+
+  outline-offset: -2px;
+}
+
 .ocu-panel-empty {
   @include typo.ocu-type('body');
 
@@ -2999,7 +3176,17 @@ app-data-table {
 }
 
 .ocu-panel-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--ocu-space-2);
   margin: 0;
+}
+
+// The reminder banner's link, `button-text`-shaped at the banner's end (DESIGN.md banner).
+.ocu-panel-banner-link {
+  height: auto;
+  padding: 0 var(--ocu-space-2);
 }
 
 // The band and the card read as one object: the band carries the card's top corners and the card
@@ -3060,10 +3247,7 @@ app-data-table {
   gap: var(--ocu-space-2);
 }
 
-// Gated, never disabled: `aria-disabled` carries the refusal and the control keeps its box, its
-// border and its place in the Tab order (EXPERIENCE.md's Privilege Gating mechanism). The
-// treatment is `restrained` -- the role for what the portal is holding back -- and never an
-// opacity fade, which would drag the text under 4.5:1 (DESIGN.md `:1265`).
+// The composer grows with its text to four lines, then scrolls (DESIGN.md panel footer).
 .ocu-panel-composer {
   @include typo.ocu-type('body');
 
@@ -3071,12 +3255,22 @@ app-data-table {
   flex: 1 1 auto;
   min-width: 0;
   min-height: var(--ocu-input-height);
+  max-height: calc(4lh + 2 * var(--ocu-space-2) + 2px);
   padding: var(--ocu-space-2) var(--ocu-space-3);
   border: 1px solid var(--ocu-outline);
   border-radius: var(--ocu-radius-md);
   background: var(--ocu-surface-container-lowest);
-  color: var(--ocu-restrained);
+  color: var(--ocu-on-surface);
+  field-sizing: content;
   resize: none;
+}
+
+// Gated, never disabled: `aria-disabled` carries the refusal and the control keeps its box, its
+// border and its place in the Tab order (EXPERIENCE.md's Privilege Gating mechanism). The
+// treatment is `restrained` -- the role for what the portal is holding back -- and never an
+// opacity fade, which would drag the text under 4.5:1 (DESIGN.md `:1265`).
+.ocu-panel-composer-unavailable {
+  color: var(--ocu-restrained);
 }
 
 .ocu-panel-composer:focus-visible {

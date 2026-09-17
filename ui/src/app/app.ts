@@ -20,6 +20,7 @@ import { FormDirty } from './core/form-dirty';
 import { InstanceService, isInstanceReady } from './core/instance';
 import { NavigationService, editorScreenFor, routeFromUrl, screenForRoute, withQuery } from './core/navigation';
 import { OverlayStack } from './core/overlay-stack';
+import { PanelState } from './core/panel-layout';
 import { RefreshService } from './core/refresh';
 import { ScopeService } from './core/scope';
 import { Session, isInstallStateUnreadable, isSignedIn } from './core/session';
@@ -30,14 +31,24 @@ import { FaultBanner } from './shell/fault-banner';
 import { Header } from './shell/header';
 import { InstanceNotice } from './shell/instance-notice';
 import { LocatorBar } from './shell/locator-bar';
-import { Panel } from './shell/panel';
+import { COMPOSER_ID, Panel } from './shell/panel';
 import { Rail } from './shell/rail';
-import { SideBar } from './shell/side-bar';
+import { SIDE_BAR_OVERLAY_ID, SideBar } from './shell/side-bar';
 import { SignIn } from './shell/sign-in';
 import { StatusBar } from './shell/status-bar';
 
 /** The content area's own element, which Escape returns focus to when nothing is open. */
 const CONTENT_ID = 'ocu-content';
+
+/** The chord that focuses the composer, on both platforms (EXPERIENCE.md Keyboard model: Ctrl/Cmd+I). */
+export function isComposerChord(event: KeyboardEvent): boolean {
+  return (
+    (event.ctrlKey || event.metaKey) &&
+    !event.altKey &&
+    !event.shiftKey &&
+    event.key.toLowerCase() === 'i'
+  );
+}
 
 /**
  * The root component: the two gates between a browser and the product, and the page frame
@@ -79,6 +90,12 @@ const CONTENT_ID = 'ocu-content';
  * return focus to the screen". No overlay handles Escape itself, so one key press closes one
  * thing.
  *
+ * **The row's widths are `PanelState`'s** (Story 4.3). This component is the one viewport listener:
+ * it feeds the measured width into the store, binds the panel's width from the layout the store
+ * resolves, and marks the side bar and the content column `inert` while the panel is full screen.
+ * Ctrl/Cmd+I focuses the composer from anywhere unless a dialog, the command box or the account
+ * menu is open.
+ *
  * **The requested route is preserved by doing nothing to it.** The router resolves the URL
  * the server answered with `index.html`, and this component withholds the outlet rather
  * than redirecting, so the address never changes and the screen appears at the moment both
@@ -116,7 +133,11 @@ const CONTENT_ID = 'ocu-content';
     StatusBar,
     Panel,
   ],
-  host: { '(document:keydown.escape)': 'onEscape()' },
+  host: {
+    '(document:keydown.escape)': 'onEscape()',
+    '(document:keydown)': 'onComposerChord($event)',
+    '(window:resize)': 'measureViewport()',
+  },
   template: `@if (frameShown) {
       <a class="ocu-skip-link" [href]="skipHref" (click)="onSkipToContent($event)">{{
         STRINGS.navSkipToContent
@@ -130,17 +151,19 @@ const CONTENT_ID = 'ocu-content';
       @if (signedIn) {
         @if (instanceReady) {
           <app-header />
-          <div class="ocu-shell">
+          <div class="ocu-shell" [class.ocu-shell-full-screen]="fullScreen">
             <app-rail />
-            <app-side-bar />
-            <div class="ocu-shell-content">
-              <app-locator-bar />
-              <app-command-bar />
-              <main [id]="contentId" class="ocu-content" tabindex="-1">
-                <router-outlet />
-              </main>
+            <app-side-bar [attr.inert]="coveredInert" />
+            <div class="ocu-shell-content" [attr.inert]="coveredInert">
+              <div class="ocu-shell-content-floor">
+                <app-locator-bar />
+                <app-command-bar />
+                <main [id]="contentId" class="ocu-content" tabindex="-1">
+                  <router-outlet />
+                </main>
+              </div>
             </div>
-            <app-panel />
+            <app-panel [style.width.px]="panelWidth" />
           </div>
           <app-status-bar />
         } @else {
@@ -171,6 +194,7 @@ export class App {
   // (`areas/agent/definition-actions.ts`). Injecting it here is what brings it into existence.
   private readonly definitionActions = inject(DefinitionActions);
   private readonly overlays = inject(OverlayStack);
+  private readonly panel = inject(PanelState);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
 
   private readonly injector = inject(Injector);
@@ -197,6 +221,9 @@ export class App {
 
   private readonly instanceStatus = signal(this.instance.status());
 
+  /** Bumped by `PanelState`, so the row's bindings re-read it under `OnPush`. */
+  private readonly panelGeneration = signal(0);
+
   constructor() {
     const stopSession = this.session.subscribe(() => {
       this.sessionState.set(this.session.state());
@@ -207,10 +234,18 @@ export class App {
       this.instanceStatus.set(this.instance.status());
       this.focusOnFrameArrival();
     });
+    const stopPanel = this.panel.subscribe(() => this.panelGeneration.update((value) => value + 1));
+    // A read that settles after the fresh-sign-in flag was left unspent gives the gate its next pass.
+    const stopStatus = this.agentStatus.subscribe(() => this.retryFirstLoginGate());
+    const stopNavigation = this.navigation.subscribe(() => this.retryFirstLoginGate());
     inject(DestroyRef).onDestroy(() => {
       stopSession();
       stopInstance();
+      stopPanel();
+      stopStatus();
+      stopNavigation();
     });
+    this.measureViewport();
 
     // The tab may already be signed in when this component is constructed -- a reload
     // holding a live pair never changes state, so the subscription above would never fire.
@@ -238,12 +273,51 @@ export class App {
     return !this.installUnreadable && this.signedIn && this.instanceReady;
   }
 
+  /** Whether the panel covers the side bar and the content. */
+  protected get fullScreen(): boolean {
+    this.panelGeneration();
+    return this.panel.fullScreen();
+  }
+
+  /** `inert` on what full screen covers, and no attribute at all otherwise. */
+  protected get coveredInert(): string | null {
+    return this.fullScreen ? '' : null;
+  }
+
+  /** The docked panel's width; full screen sizes the panel by the row instead. */
+  protected get panelWidth(): number | null {
+    this.panelGeneration();
+    return this.panel.fullScreen() ? null : this.panel.layout().panelWidth;
+  }
+
+  /** The one viewport listener: the root element's width, which excludes a scrollbar the page never has. */
+  protected measureViewport(): void {
+    const width = document.documentElement.clientWidth;
+    if (width > 0) this.panel.setViewport(width);
+  }
+
+  /**
+   * Ctrl/Cmd+I focuses the composer from content, side bar or rail. Ignored while a dialog is open
+   * or anything but the side bar is on the overlay stack -- the command box and the account menu.
+   */
+  protected onComposerChord(event: KeyboardEvent): void {
+    if (!isComposerChord(event)) return;
+    if (document.querySelector('[role="dialog"]') !== null) return;
+    const top = this.overlays.top();
+    if (top !== '' && top !== SIDE_BAR_OVERLAY_ID) return;
+    const composer = this.host.nativeElement.querySelector<HTMLElement>('#' + COMPOSER_ID);
+    if (composer === null) return;
+    event.preventDefault();
+    composer.focus();
+  }
+
   /**
    * Move focus to the content area without navigating. The default is prevented because the
    * document's base href would resolve the fragment into a different URL.
    */
   protected onSkipToContent(event: Event): void {
     event.preventDefault();
+    if (this.panel.fullScreen()) return;
     this.focusContent();
   }
 
@@ -254,6 +328,13 @@ export class App {
    * focus to it never adds a Tab stop.
    */
   protected onEscape(): void {
+    // Full screen covers the side bar and the content, both `inert`: Escape neither collapses the
+    // covered bar nor moves focus into content that cannot hold it, so focus stays where it is.
+    if (this.panel.fullScreen()) {
+      const top = this.overlays.top();
+      if (top !== '' && top !== SIDE_BAR_OVERLAY_ID) this.overlays.closeTop();
+      return;
+    }
     if (this.overlays.closeTop()) return;
     this.focusContent();
   }
@@ -348,6 +429,8 @@ export class App {
       // map's verdict. Dropped in the same gesture as the map, so the two can never be one
       // principal's answer and another's (AD-8).
       this.agentStatus.reset();
+      // The draft and full screen are this principal's too; the remembered width is the browser's.
+      this.panel.endSession();
       return;
     }
     void this.instance.verify();
@@ -370,15 +453,16 @@ export class App {
    * The first-login gate (FR-28): an administrator who signs in while no definition is enabled
    * lands on the Definition form, under its landing banner.
    *
-   * **It keys off an authentication, never off `signed-in`.** `consumeFreshSignIn()` answers true
-   * once per `adopt()`, which is the one path a genuine authentication takes -- the silent probe
-   * and an accepted form login both. A tab resuming a stored pair reaches `signed-in` through
-   * `start()` without it, so a reload is not a login and the requested URL survives, which is the
-   * promise the withheld outlet already makes.
+   * **It keys off an authentication, never off `signed-in`.** `Session` raises its fresh-sign-in
+   * flag once per `adopt()`, which is the one path a genuine authentication takes -- the silent
+   * probe and an accepted form login both. A tab resuming a stored pair reaches `signed-in` through
+   * `start()` without it, so a reload is not a login and the requested URL survives.
    *
-   * **The flag is consumed before anything is awaited.** Several passes of change detection can
-   * reach this method while the two reads are in flight, and exactly one of them may be the
-   * sign-in; reading the one-shot after the await would let a second pass claim it as well.
+   * **The flag is spent only once both reads have answered.** A pass that finds the map unloaded
+   * or the definitions unanswered returns with the flag still raised, and the next read to settle
+   * gives the gate another pass (`retryFirstLoginGate`). The flag is claimed with
+   * `consumeFreshSignIn()` after the awaits and before anything else, so of several passes awaiting
+   * the same reads exactly one acts.
    *
    * **Nothing about the gate is stored.** What decides whether it fires is the instance's own
    * definition rows and the map's verdict, both re-read on every signed-in pass above; this waits
@@ -386,11 +470,10 @@ export class App {
    * condition clearing and the gate costs no extra request.
    *
    * It declines quietly in every other case: a caller the map refuses, an instance that already
-   * holds an enabled definition, a read that did not answer, and a browser already on the form.
+   * holds an enabled definition, and a browser already on the form.
    */
   private async runFirstLoginGate(map: Promise<void>, status: Promise<void>): Promise<void> {
-    const fresh = this.session.consumeFreshSignIn();
-    if (!fresh) return;
+    if (!this.session.hasFreshSignIn()) return;
     // No screen mounts from here until this method settles, whichever way it settles: the
     // requested screen would otherwise issue its declared read (AD-36) for rows the navigation
     // below throws away, and read again when the user came back by Back. `ScreenOutlet` still
@@ -399,11 +482,13 @@ export class App {
     const release = this.shell.holdScreen();
     try {
       await Promise.all([map, status]);
-      if (!this.agentStatus.answered() || this.agentStatus.configured()) return;
       // `loaded()`, not `answered()`: a map read that completed with a failure leaves every verdict
       // `UNGATED`, so reading the verdict alone would take a caller who holds nothing to a form the
-      // instance will refuse them at. Declining is the safe half of that question.
-      if (!this.navigation.loaded()) return;
+      // instance will refuse them at. Either read unanswered leaves the flag for a later pass.
+      if (!this.agentStatus.answered() || !this.navigation.loaded()) return;
+      if (!isSignedIn(this.session.state())) return;
+      if (!this.session.consumeFreshSignIn()) return;
+      if (this.agentStatus.configured()) return;
       if (!this.navigation.screenVerdict(DEFINITIONS_ROUTE).allowed) return;
       const list = screenForRoute(DEFINITIONS_ROUTE);
       const form = list === null ? null : editorScreenFor(list);
@@ -423,5 +508,16 @@ export class App {
     } finally {
       release();
     }
+  }
+
+  /**
+   * Another pass at the gate once a read settles, for a sign-in whose flag a failed read left
+   * unspent. Taken only when both reads now answer, so a pass never holds the screen for a read
+   * that is still out.
+   */
+  private retryFirstLoginGate(): void {
+    if (!isSignedIn(this.session.state()) || !this.session.hasFreshSignIn()) return;
+    if (!this.agentStatus.answered() || !this.navigation.loaded()) return;
+    void this.runFirstLoginGate(Promise.resolve(), Promise.resolve());
   }
 }

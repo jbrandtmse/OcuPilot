@@ -2,9 +2,10 @@
 title: 'The docked panel, present on every route'
 type: 'feature'
 created: '2026-09-16'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '831861e1e4a995280e26c8eb6d5f280ab26efdbb'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/DESIGN.md'
@@ -12,7 +13,28 @@ context:
 warnings:
   - multiple-goals
   - oversized
-deferred: []
+deferred:
+  - summary: >-
+      At a viewport where the remembered width makes the side bar yield (e.g. 1,280px), narrowing the panel to 352 or less brings the side bar back, panelMax drops to 352, and the panel cannot be widened again without closing the side-bar preference.
+    evidence: |-
+      resolveLayout decides the side-bar fit from the remembered width and applyWidth clamps to the resulting panelMax; a scratch run showed 400 -> 336 (bar shown, max 352) -> widen stuck at 352. Both published rules hold (the yield is undone "when the width allows"; the handle stops at the 640px content point beside a shown bar), so the fix is a product call on which rule gives way.
+    location: >-
+      ui/src/app/core/panel-layout.ts resolveLayout / applyWidth
+    severity: medium
+  - summary: >-
+      The first-login gate now leaves the fresh-sign-in flag unspent when a read fails and retries on any later navigation or agent-status notification, with no time or route bound, so a user mid-task can be moved to the Definition form long after sign-in.
+    evidence: |-
+      App.retryFirstLoginGate runs on every navigation/agentStatus notify while hasFreshSignIn() is true; a map read that fails at sign-in and succeeds minutes later (scope change, connectivity back) triggers the redirect. Bounding it (first route only, time window, FormDirty check) is not settled by the spec or DW-380.
+    location: >-
+      ui/src/app/app.ts retryFirstLoginGate
+    severity: medium
+  - summary: >-
+      .claude/rules/objectscript-testing.md names the bundle deploy path as dist/ocupilot/browser/; the real path is dist/ocupilot-ui/browser/.
+    evidence: |-
+      angular.json outputPath is dist/ocupilot-ui and the spec's Code Map records the rule as wrong; the fix edits an agent-context rules file.
+    location: >-
+      .claude/rules/objectscript-testing.md "A browser spec runs against the deployed bundle"
+    severity: low
 ---
 
 <intent-contract>
@@ -117,6 +139,51 @@ Widths: rail 48, side bar 240, content minimum 640, panel minimum 320, remembere
 
 ## Review Triage Log
 
+### 2026-09-17 — Review pass
+
+- verdicts: 40 findings — high 0, medium 12, low 21, false 7, maybe-false 0
+- findings:
+  - `[medium]` `[defer]` (blind) narrowing at 1,280px brings the side bar back and caps the panel at 352 — product call between two published rules; frontmatter `deferred`.
+  - `[medium]` `[patch]` (blind) full screen: Escape collapsed the covered side bar and focused inert content; skip link and Ctrl/Cmd+B acted on covered regions — guarded in `App.onEscape`, `onSkipToContent`, `SideBar.onGlobalKeydown`; app/side-bar specs.
+  - `[low]` `[patch]` (blind) browser-spec `after` hooks clean up even when `before` refused the live container — early return on `LIVE_CONTAINER`.
+  - `[low]` `[reject]` (blind) specs refuse only `ocupilot`, not slot B — the guard is `browser.config.mjs`'s, shared by every existing spec.
+  - `[low]` `[reject]` (blind) principal fixture uses `Resources(1)`/`RemovePrincipals()`, not the Code Map's `Resources(0)` — fix edits this spec; `Resources(0)` is refused `AUTH.NOADMIN` before the panel renders, recorded in Auto Run Result.
+  - `[medium]` `[defer]` (blind) first-login gate can redirect long after sign-in — bound not settled by DW-380; frontmatter `deferred`.
+  - `[false]` `[reject]` (blind) `signOut()` leaves `freshSignIn` set — the next sign-in's `adopt()` sets it anyway and `start()` resumes only at bootstrap on a new `Session`.
+  - `[medium]` `[patch]` (blind) rail click on a reopened bar persisted "closed" unlike Ctrl/Cmd+B; comment wrong on `showArea` — `Rail.activate` releases the reopen; comment corrected; `rail.spec.ts` test.
+  - `[low]` `[reject]` (blind) each composer keystroke notifies layout readers — signal bumps under OnPush; splitting listeners adds surface.
+  - `[low]` `[patch]` (blind) caption assertion accepts either platform — two platform-pinned cases in `panel.spec.ts`.
+  - `[low]` `[reject]` (blind) `isApplePlatform` imported from `command-box.ts` — cosmetic; `core/` may not read `navigator`.
+  - `[low]` `[reject]` (blind) composer growth and reduced-motion transition untested — CSS-only, Chromium is the pinned browser.
+  - `[low]` `[patch]` (blind) Ctrl/Cmd+I account-menu leg untested — `app.spec.ts` leg added.
+  - `[false]` `[reject]` (blind) Story 3.6's "no control clears the state" lost — `panel.spec.ts` AC1 pins the aside's buttons as exactly Full screen and Send.
+  - `[low]` `[patch]` (blind) DW-377 no mutation line — line added; test mounts on `?ns=USER`.
+  - `[low]` `[patch]` (blind) `Math.min` mutation records disagree — re-run: six tests red; both records corrected.
+  - `[false]` `[reject]` (blind) Auto Run Result stale — written at finalize.
+  - `[low]` `[defer]` (blind) rule file names the wrong deploy path — agent-context file; frontmatter `deferred`.
+  - `[low]` `[reject]` (blind) composer undescribed before both reads answer — transient load window; a reason needs a new string.
+  - `[medium]` `[patch]` (edge) rail click on reopened active area persists closed — same entry as the rail row above.
+  - `[medium]` `[patch]` (edge) a no-op step at a stop overwrote the remembered width — `applyWidth` returns when the rendered width is unchanged; `panel-layout.test.mjs`.
+  - `[false]` `[reject]` (edge) `event.key` undefined on autofill keydown — `ctrlKey || metaKey` short-circuits first.
+  - `[low]` `[reject]` (edge) non-Latin layouts miss Ctrl+I — the spec's chord idiom (`isSideBarChord`) uses `event.key` the same way.
+  - `[medium]` `[defer]` (edge) late gate redirect / flag not bounded — same entry as the gate row above.
+  - `[medium]` `[patch]` (edge) draft and full screen survive sign-out into the next user — `PanelState.endSession()` from `App`; `app.spec.ts`.
+  - `[low]` `[patch]` (edge) full-screen toggle mid-drag dropped the stored width — `toggleFullScreen` calls `endDrag()`.
+  - `[low]` `[reject]` (edge) arrow key during a pointer drag snaps back — needs a simultaneous pointer and key; fix adds a guard.
+  - `[false]` `[reject]` (edge) `definitionsUrl` empty gives `href=""` — `screenForRoute('agent/definitions')` is a generated registry entry, never null.
+  - `[medium]` `[patch]` (gap) rail click reopen untested — same entry as the rail row; `rail.spec.ts` at 1,280px.
+  - `[low]` `[patch]` (gap) Ctrl/Cmd+B from a closed preference and the shell-close reset untested — `side-bar.spec.ts` and `panel-layout.test.mjs` cases.
+  - `[medium]` `[patch]` (gap) DW-380 snapshot tested at Save only — Test connection case added.
+  - `[low]` `[patch]` (gap) Definitions link `?ns=` untested — same entry as the DW-377 row.
+  - `[low]` `[patch]` (gap) caption assertion unfalsifiable — same entry as the caption row.
+  - `[medium]` `[defer]` (gap) panel cannot grow back past 352 at 1,280px — same entry as the first row.
+  - `[low]` `[reject]` (gap) `Resources(1)` differs from the spec text — same as the fixture row.
+  - `[low]` `[patch]` (intent) 640px measurement did not record the routed screen's own scroll — `main.ocu-content` widths recorded in MEASURE and Verification.
+  - `[false]` `[reject]` (intent) DW items, rail reopen and `AgentFixture.SetFlags` exceed the intent — the spec's Tasks carry the DW items; a test fixture call is not server code.
+  - `[false]` `[reject]` (intent) the macOS caption is not a quoted string — EXPERIENCE.md :308's row publishes "(⌘I on macOS)" and the spec task names it.
+  - `[low]` `[reject]` (intent) some Matrix rows checked below the browser — stored-width parsing and dialog detection carry no geometry.
+  - `[medium]` `[patch]` (intent) a resize at a narrow viewport rewrites the remembered width — same entry as the no-op step row.
+
 ## Design Notes
 
 **Governing ADs:** AD-19 (core stores mirrored into signals; no component state), AD-20 (no new API call; any added read goes through the one API service), AD-47 (no inline script; width through property bindings, which the CSP permits), AD-5 (the Definitions link resolves from the screen registry, not a literal path).
@@ -144,9 +211,44 @@ Widths: rail 48, side bar 240, content minimum 640, panel minimum 320, remembere
 - The 640px measurement: at the narrowest supported viewport (1,280px), record panel width, content region width, inner content width and `scrollWidth` for the panel docked at 400 and resized to maximum, on the Users list and the Definition form; record whether 640 held or needs amendment.
 - One `mutation:` line per AC, written by the implement stage.
 
+**640px measurement (1,280px viewport, throwaway, `panel.browser-spec.mjs`):** Users list and Definition form measured identically. Docked: side bar yielded (0), panel 400, content region 832, floor 832, content `scrollWidth` 832, routed screen `main.ocu-content` `clientWidth` 832 and `scrollWidth` 832, page `scrollWidth` 1,280. Resized to maximum (592): content region 640, floor 640, content `scrollWidth` 640, `main.ocu-content` `clientWidth` 640 and `scrollWidth` 640, page `scrollWidth` 1,280. The 640px figure held: at the maximum the content is exactly 640, and neither the content region nor the routed screen scrolls inside itself on either route.
+
+**Mutations** (each applied, observed red, reverted; `ui/src` mutations rebuilt and redeployed before the browser run, and the reverted bundle rebuilt and redeployed after):
+
+- mutation: AC1 -- drop `[style.width.px]="panelWidth"` from `app.ts` -> `panel.browser-spec.mjs` AC1 red.
+- mutation: AC2 -- make `PreferenceStore.setPanelWidth` write nothing -> `panel.browser-spec.mjs` AC2 red (width after reload).
+- mutation: AC3 -- clamp `PanelState.applyWidth` to `Number.MAX_SAFE_INTEGER` instead of `panelMax` -> `panel.browser-spec.mjs` AC3 red.
+- mutation: AC4 -- drop `[attr.inert]` from `.ocu-shell-content` -> `panel.browser-spec.mjs` AC4 red.
+- mutation: AC5 -- move the reminder banner block above the kill-switch block in `panel.ts` -> `panel.spec.ts` AC5 red.
+- mutation: AC6 -- drop `composer.focus()` from `App.onComposerChord` -> `panel.browser-spec.mjs` AC6 red; dropping the overlay-stack check -> `app.spec.ts` Ctrl/Cmd+I red.
+- mutation: AC7 -- `panelMax` computed as `available - CONTENT_MIN_WIDTH + 16` -> `panel.browser-spec.mjs` 640px measurement red.
+- mutation: AC8 -- `reminder` ignores the map verdict -> `panel-principal.browser-spec.mjs` DW-378 red.
+- mutation: yield order -- side bar never collapses in `resolveLayout` -> `panel.browser-spec.mjs` Yield order red; dropping `Math.min(target, panelMax)` -> six `panel-layout.test.mjs` tests red (the 1,280 reopened, 1,024 and 900 rows, the clamped stored width, the reopen that writes no preference, the unchanged step).
+- mutation: DW-380 -- `rememberRefusal` snapshots at arrival -> `definition-form.page.spec.ts` DW-380 red; gate spends the flag before its awaits -> `app.spec.ts` DW-380 red.
+- mutation: DW-380 -- `testConnection` takes `sentToTest` after the awaited `/test` post -> `definition-form.page.spec.ts` DW-380 Test connection red.
+- mutation: DW-377 -- `Panel.definitionsUrl` returns `screen.route` without `withQuery` -> `panel.spec.ts` DW-377 red (href `agent/definitions`, not `agent/definitions?ns=USER`).
+- mutation: AC5 caption -- `!isApplePlatform()` -> `panel.spec.ts` caption Mac leg red; always the Mac caption -> non-Mac leg red.
+- mutation: AC6 -- the chord ignored only when the top is `command-box` -> `app.spec.ts` Ctrl/Cmd+I account-menu leg red.
+- mutation: yield order -- drop the `sideBarReopened()` branch from `Rail.activate` -> `rail.spec.ts` Yield order red; drop the reopen after `shell.toggleOpen()` in `SideBar.toggleFromKeyboard` -> `side-bar.spec.ts` Yield order red; drop `if (!this.shell.open()) this.reopened = false;` from `PanelState` -> `panel-layout.test.mjs` closing-ends-a-reopen red.
+- mutation: resize at a stop -- drop the rendered-width early return from `PanelState.applyWidth` -> `panel-layout.test.mjs` unchanged-step red.
+- mutation: full screen -- drop the `fullScreen()` branch from `App.onEscape`, or keep it but focus content -> `app.spec.ts` full-screen Escape red; drop the `fullScreen()` return from `App.onSkipToContent` -> same test red on the skip link; drop it from `SideBar.onGlobalKeydown` -> `side-bar.spec.ts` full-screen chord red.
+- mutation: sign-out -- delete `this.panel.endSession()` from `App.verifyWhenSignedIn` -> `app.spec.ts` sign-out draft red.
+- mutation: DW-381 -- drop `pointer-events: none` from `.ocu-rail-dot` -> `rail.browser-spec.mjs` red.
+- mutation: DW-386 -- unconditional `notify()` in `runSubmit` -> `session.test.mjs` DW-386 red.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Re-plan after the lead's answer: measurement point set to 1,280px (AC, Design Notes), grip restrained at either stop (handle task, AC), the three Fixed strings rows (EXPERIENCE.md :345-347) named in the strings, panel and handle tasks, DW-377's pending label resolved, and the bundle deploy path confirmed against `ci-throwaway.sh`, `container-start.sh` and `Install/Roster.cls`. Intent contract preserved verbatim.
+**Change.** The panel renders on every signed-in route with header, fixed banner slots, chip slot, `role="log"` transcript and footer; a resize handle (pointer, Left/Right, stops, stored `ocupilot.panel.width`); full screen with `inert`; Ctrl/Cmd+I; the yield order computed once by `resolveLayout`/`PanelState`; DW-377, 378, 380, 381, 382, 386.
+
+**Files.** `core/panel-layout.ts` (new: layout and panel store) · `core/preferences.ts` (width key) · `core/session.ts` (`hasFreshSignIn`, accepted-path notify) · `core/strings.ts` (four strings) · `app.ts` (viewport listener, width/`inert` bindings, chord, gate retry, full-screen Escape, sign-out reset) · `shell/panel.ts` (always-present anatomy) · `shell/panel-resize-handle.ts` (new) · `shell/side-bar.ts`, `shell/rail.ts` (yield and reopen) · `shell/command-box.ts` (export `isApplePlatform`) · `areas/agent/definition-form.store.ts` (refusal snapshot at send) · `_components.scss` (content floor, panel chrome, full screen) · `assets/avatar/robot-avatar-64.png` · specs: `panel-layout.test.mjs`, `panel-resize-handle.spec.ts`, `panel.spec.ts`, `app.spec.ts`, `rail.spec.ts`, `side-bar.spec.ts`, `definition-form.page.spec.ts`, `session.test.mjs`, `strings.test.mjs`, `api.test.mjs`, browser `panel`, `panel-principal`, `rail`, `gate`.
+
+**Review.** 40 findings: 13 entries patched (5 medium, 8 low), 3 deferred (frontmatter), 17 rejected with reasons in the triage log. `panel-principal.browser-spec.mjs` uses `TurnWireFixture.Resources(1)` (adds only `%Admin_Operate:USE`), because a `Resources(0)` principal is refused `AUTH.NOADMIN` and never reaches the panel; the Code Map's `Resources(0)` is stale.
+
+**Follow-up review: true** (patched: medium 5, low 8). Unverified risk: the patched full-screen Escape/skip-link/Ctrl+B guards, the rail release of a reopened bar and the sign-out reset are pinned in jsdom only, with no browser spec driving them.
+
+**Verification.** `npm test`: node 820/820, vitest 398/398. `npm run build`: green (initial-bundle 500 kB warning, 608 kB, under the 1 MB error). Bundle redeployed to `ocupilot-ci`; `npm run test:browser`: 86/86. 640px measurement and mutation lines under `## Verification`.
+
+**Residual risks.** The two medium deferrals above; composer disabled under enforced read-only follows the spec's "nothing restrains" wording; the avatar is `aria-hidden` beside the title.

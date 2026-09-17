@@ -544,6 +544,12 @@ export const STRINGS = {
   /** EXPERIENCE.md:344 */
   formStaleSave:
     'Someone else changed this while you were here. Reload to see the current values, then save again.',
+  // "Definitions" (:345), the administrator reminder banner's link, is the same literal as the
+  // Definitions list's own label and renders `agentDefinitionListLabel`: one key per value.
+  /** EXPERIENCE.md:346 */
+  agentPanelFullScreen: 'Full screen',
+  /** EXPERIENCE.md:347 */
+  agentPanelResizeHandle: 'Resize the agent co-pilot panel',
 
   // Not from the Fixed strings table, but required verbatim by this story's task
   // list: the audit-marker-failure fallback text (AD-15 / EXPERIENCE.md "9. **Audit.** Every confirmed"), the
@@ -617,6 +623,15 @@ export const STRINGS = {
   // The generic server-fault body, from the Generic-internal-error State Patterns row (:457).
   // The browser is told this and nothing more; the detail is on the instance (AD-12, AD-39).
   connectivityServerFault: 'Something failed on the instance. Retry; if it keeps failing, check messages.log.',
+
+  // The transcript's accessible name, from the panel's Body rule: `role="log"`, polite,
+  // `aria-label="Conversation"`. Authorized by its own targeted extractor in
+  // `ui/tools/strings.test.mjs`.
+  agentConversationLabel: 'Conversation',
+
+  // The composer caption as macOS spells its chord: the table's caption row carries "(\u2318I on
+  // macOS)" beside the Ctrl+I form, and the extractor derives this value from that row.
+  agentComposerCaptionMac: 'Enter to send \u00b7 Shift+Enter for a new line \u00b7 \u2318I to focus',
 
 } as const;
 

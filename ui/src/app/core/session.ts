@@ -390,7 +390,7 @@ export class Session {
    * Whether an authentication has happened in this tab that nothing has acted on yet (FR-28).
    *
    * Set by `adopt()` alone -- the one path a genuine authentication takes, from the silent probe
-   * and from an accepted form login -- and read once, by `consumeFreshSignIn()`. A tab resuming a
+   * and from an accepted form login -- and spent once, by `consumeFreshSignIn()`. A tab resuming a
    * stored pair reaches `signed-in` through `start()` without `adopt()`, so a reload is not a
    * sign-in and the requested route survives it.
    *
@@ -482,7 +482,10 @@ export class Session {
     // DW-104: the password is cleared on every answered outcome and kept on the one unanswered
     // one, so a user whose instance was unreachable presses Retry rather than typing it again.
     if (!this.submitUnanswered) this.currentPassword = '';
-    this.notify();
+    // Only a submit that did not sign in has something left to publish: the cleared password on the
+    // form still on screen. An accepted one reached `signed-in` through `adopt()`, which notified,
+    // and a second notification re-runs every signed-in reader (DW-386).
+    if (!accepted) this.notify();
     return accepted;
   }
 
@@ -508,11 +511,20 @@ export class Session {
   }
 
   /**
+   * Whether an authentication is waiting to be acted on, without spending it. The gate reads this
+   * before its two reads settle and spends the flag only once both have answered, so a read that
+   * failed during sign-in leaves the sign-in for the gate's next pass.
+   */
+  hasFreshSignIn(): boolean {
+    return this.freshSignIn;
+  }
+
+  /**
    * Whether an authentication has happened that nothing has acted on yet, answered **once**
    * (FR-28). Every later call answers false until the next `adopt()`.
    *
    * The caller is the shell's first-login gate. It is a one-shot rather than a readable flag so
-   * two passes of the same change detection cannot both read it as a sign-in.
+   * two passes of the same change detection cannot both claim one sign-in.
    */
   consumeFreshSignIn(): boolean {
     if (!this.freshSignIn) return false;

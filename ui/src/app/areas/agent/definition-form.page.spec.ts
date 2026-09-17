@@ -906,6 +906,64 @@ describe('the Definition form', () => {
     expect(name.getAttribute('aria-invalid')).toBe('true');
   });
 
+  it('DW-380: a refusal describes the values the request carried, not an edit typed while it was out', async () => {
+    // The operator types a name while the save is in flight. The refusal judged the empty name the
+    // request carried, so the first blur after it arrives finds the field moved and drops it.
+    //
+    // Mutation (Rule 19): snapshot the refused values in `rememberRefusal` when the answer arrives
+    // rather than taking the `sent` record -> this goes red, the violation standing over a name the
+    // refusal never saw.
+    const answer: Answer = (path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+      if (init.method === 'POST') {
+        const typed = document.querySelector('#ocu-definition-name') as HTMLInputElement;
+        typed.value = 'Typed while saving';
+        typed.dispatchEvent(new Event('input'));
+        return refused([
+          { field: 'name', code: 'AGENT.NAME.REQUIRED', reason: 'Give the definition a name of 1 to 64 characters.' },
+        ]);
+      }
+      return ok({ definitions: [] });
+    };
+    const { fixture, host } = await mount(answer);
+    ([...host.querySelectorAll('.ocu-form-bar-actions button')].at(-1) as HTMLButtonElement).click();
+    await settle(fixture);
+
+    const name = host.querySelector('#ocu-definition-name') as HTMLInputElement;
+    expect(name.value).toBe('Typed while saving');
+    expect(name.getAttribute('aria-invalid')).toBe('true');
+    name.dispatchEvent(new Event('blur'));
+    await settle(fixture);
+    expect(name.getAttribute('aria-invalid')).toBe('false');
+  });
+
+  it('DW-380: a refused Test connection describes the values the request carried, not an edit typed while it was out', async () => {
+    // Mutation (Rule 19): take `sentToTest` after the awaited `/test` post in `testConnection` rather
+    // than before it -> this goes red, the violation standing over a name the refusal never saw.
+    const answer: Answer = (path) => {
+      if (path.endsWith('/agent/providers')) return ok(PROVIDERS_BODY);
+      if (path.endsWith('/test')) {
+        const typed = document.querySelector('#ocu-definition-name') as HTMLInputElement;
+        typed.value = 'Typed while testing';
+        typed.dispatchEvent(new Event('input'));
+        return refused([
+          { field: 'name', code: 'AGENT.NAME.REQUIRED', reason: 'Give the definition a name of 1 to 64 characters.' },
+        ]);
+      }
+      return ok(definition());
+    };
+    const { fixture, host } = await mount(answer, '/agent/definitions/edit/7');
+    (host.querySelector('.ocu-form-test button') as HTMLButtonElement).click();
+    await settle(fixture);
+
+    const name = host.querySelector('#ocu-definition-name') as HTMLInputElement;
+    expect(name.value).toBe('Typed while testing');
+    expect(name.getAttribute('aria-invalid')).toBe('true');
+    name.dispatchEvent(new Event('blur'));
+    await settle(fixture);
+    expect(name.getAttribute('aria-invalid')).toBe('false');
+  });
+
   it("AC7: a Test connection refused for privilege does not raise the save's action sentence", async () => {
     // `POST /:id/test` refuses 403 AUTH.NOPRIVILEGE with a `failedPair` of its own
     // (`src/OcuPilot/Test/AgentWireSecurity.cls`). The published action phrase this screen

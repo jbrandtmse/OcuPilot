@@ -40,12 +40,20 @@ export const SCREEN_REFRESH_RATES_KEY = 'ocupilot.screen.refresh-rates';
  */
 export const SCREEN_VIEWS_KEY = 'ocupilot.screen.views';
 
+/** The agent co-pilot panel's remembered width in px (EXPERIENCE.md panel-resize-handle: "Width persists per browser"). */
+export const PANEL_WIDTH_KEY = 'ocupilot.panel.width';
+
 /**
  * Every key this store will read or write. A key that is not here is a programming error, not
  * a miss: the store throws rather than silently reading `null`, so a typo fails where it is
  * made instead of quietly turning a remembered preference into a default.
  */
-export const PREFERENCE_KEYS: readonly string[] = [SIDE_BAR_OPEN_KEY, SCREEN_REFRESH_RATES_KEY, SCREEN_VIEWS_KEY];
+export const PREFERENCE_KEYS: readonly string[] = [
+  SIDE_BAR_OPEN_KEY,
+  SCREEN_REFRESH_RATES_KEY,
+  SCREEN_VIEWS_KEY,
+  PANEL_WIDTH_KEY,
+];
 
 /** What a screen remembers of its table's view: its sort, direction, filter and max rows. */
 export interface ScreenViewPreference {
@@ -136,6 +144,23 @@ export class PreferenceStore {
 
   setSideBarOpen(open: boolean): void {
     this.write(SIDE_BAR_OPEN_KEY, open ? 'true' : 'false');
+  }
+
+  /**
+   * The panel's remembered width in px, or `fallback` when there is no usable one: nothing stored,
+   * a value that is not a finite number, or one below `minimum`. The upper bound depends on the
+   * viewport, so the layout clamps it rather than this reader.
+   */
+  panelWidth(fallback: number, minimum: number): number {
+    const stored = this.read(PANEL_WIDTH_KEY);
+    if (stored === null || stored.trim() === '') return fallback;
+    const width = Number(stored);
+    if (!Number.isFinite(width) || width < minimum) return fallback;
+    return Math.round(width);
+  }
+
+  setPanelWidth(width: number): void {
+    this.write(PANEL_WIDTH_KEY, String(Math.round(width)));
   }
 
   /**

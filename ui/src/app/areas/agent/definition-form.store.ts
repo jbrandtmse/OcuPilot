@@ -177,8 +177,9 @@ export class DefinitionForm {
   private refusalPairValue = '';
 
   /**
-   * What each writable field held when that refusal arrived, so a blur can tell a field whose
-   * value has moved since from one the refusal still describes (DW-373).
+   * What each writable field held when the refused request was sent, so a blur can tell a field
+   * whose value has moved since from one the refusal still describes (DW-373). Taken at send rather
+   * than at arrival: an edit typed while the request was out is not what the refusal judged.
    */
   private refusedValues: Record<string, string> = {};
 
@@ -554,12 +555,13 @@ export class DefinitionForm {
     this.outcomeValue = '';
     this.notify();
 
+    const sent = this.snapshotValues();
     const result = creating
       ? await this.post(AGENT_DEFINITIONS_PATH, this.body({ omitEnabled: true }))
       : await this.put(`${AGENT_DEFINITIONS_PATH}/${encodeURIComponent(this.idValue)}`, this.body({}));
     if (generation !== this.generation) return false;
     this.savingValue = false;
-    if (!this.absorbAnswer(result)) {
+    if (!this.absorbAnswer(result, sent)) {
       this.notify();
       return false;
     }
@@ -606,9 +608,10 @@ export class DefinitionForm {
     };
 
     if (this.creating()) {
+      const sentToCreate = this.snapshotValues();
       const created = await this.post(AGENT_DEFINITIONS_PATH, this.body({ omitEnabled: true }));
       if (generation !== this.generation) return false;
-      if (!this.absorbAnswer(created)) return finish(false);
+      if (!this.absorbAnswer(created, sentToCreate)) return finish(false);
       this.formDirty.setDirty(false);
       this.outcomeValue = 'pending-test';
       // The gate's own path stores the first definition here rather than through Save, so the
@@ -620,23 +623,25 @@ export class DefinitionForm {
     }
 
     if (this.keyValue !== '') {
+      const sentToStore = this.snapshotValues();
       const stored = await this.post(
         `${AGENT_DEFINITIONS_PATH}/${encodeURIComponent(this.idValue)}/credential`,
         { apiKey: this.keyValue }
       );
       if (generation !== this.generation) return false;
       if (stored.kind !== 'ok') {
-        this.absorbRefusal(stored);
+        this.absorbRefusal(stored, sentToStore);
         return finish(false);
       }
       // Write-only: the field is cleared the moment the instance has it (DW-340).
       this.keyValue = '';
     }
 
+    const sentToTest = this.snapshotValues();
     const tested = await this.post(`${AGENT_DEFINITIONS_PATH}/${encodeURIComponent(this.idValue)}/test`, {});
     if (generation !== this.generation) return false;
     if (tested.kind !== 'ok') {
-      this.absorbTestRefusal(tested);
+      this.absorbTestRefusal(tested, sentToTest);
       return finish(false);
     }
     this.testReply = textAt(tested.body, 'reply');
@@ -779,33 +784,33 @@ export class DefinitionForm {
     return out;
   }
 
-  /** Absorb one write's answer, and report whether it succeeded. */
-  private absorbAnswer(result: JsonResult<unknown>): boolean {
+  /** Absorb one write's answer, and report whether it succeeded. `sent` is the fields as the request carried them. */
+  private absorbAnswer(result: JsonResult<unknown>, sent: Record<string, string>): boolean {
     if (result.kind !== 'ok') {
-      this.absorbRefusal(result);
+      this.absorbRefusal(result, sent);
       return false;
     }
     this.absorb(result.body);
     return true;
   }
 
-  private absorbRefusal(result: JsonResult<unknown>): void {
+  private absorbRefusal(result: JsonResult<unknown>, sent: Record<string, string>): void {
     this.violationList = violationsOf(result);
     this.envelopeReason =
       this.violationList.length === 0 && result.kind === 'error' ? (result.reason ?? '') : '';
-    this.rememberRefusal(result);
+    this.rememberRefusal(result, sent);
   }
 
   /**
-   * Keep the refusal's machine `code`, the pair it named and the values the fields held when it
-   * arrived (AD-39, DW-372, DW-373).
+   * Keep the refusal's machine `code`, the pair it named and the values the fields held when the
+   * refused request was sent (AD-39, DW-372, DW-373).
    *
    * The pair travels in the envelope's structured `detail`, which is an untyped record, so it is
    * narrowed rather than cast -- a `failedPair` that is not a string leaves the slot empty and the
    * page falls back to the envelope's own reason rather than rendering a sentence with a hole in
    * it.
    */
-  private rememberRefusal(result: JsonResult<unknown>): void {
+  private rememberRefusal(result: JsonResult<unknown>, sent: Record<string, string>): void {
     if (result.kind !== 'error') {
       this.clearRefusal();
       return;
@@ -813,25 +818,25 @@ export class DefinitionForm {
     this.refusalCodeValue = result.code ?? '';
     const pair = result.detail === null ? undefined : result.detail['failedPair'];
     this.refusalPairValue = typeof pair === 'string' ? pair : '';
-    this.refusedValues = this.snapshotValues();
+    this.refusedValues = sent;
   }
 
   /**
    * The same memory, minus the code and the pair, for a refused **Test connection**.
    *
-   * A blur still needs to know what each field held when the refusal arrived, so the values are
+   * A blur still needs to know what each field held when the refused request was sent, so the values are
    * kept. The code and the pair are not: the page composes them into the published denied-action
    * sentence with **this screen's save phrase** ("change this definition"), and a test that was
    * refused for privilege did not try to change anything. Rendering it would put a second banner
    * on the screen, describing an action nobody took, over a `Test connection` failure line that
    * already says what happened.
    */
-  private rememberRefusedValues(result: JsonResult<unknown>): void {
+  private rememberRefusedValues(result: JsonResult<unknown>, sent: Record<string, string>): void {
     if (result.kind !== 'error') {
       this.clearRefusal();
       return;
     }
-    this.refusedValues = this.snapshotValues();
+    this.refusedValues = sent;
   }
 
   private clearRefusal(): void {
@@ -856,9 +861,9 @@ export class DefinitionForm {
    * the published failure sentence is written around; every other code renders the envelope's own
    * `reason`, verbatim (DW-355).
    */
-  private absorbTestRefusal(result: JsonResult<unknown>): void {
+  private absorbTestRefusal(result: JsonResult<unknown>, sent: Record<string, string>): void {
     this.violationList = violationsOf(result);
-    this.rememberRefusedValues(result);
+    this.rememberRefusedValues(result, sent);
     if (this.violationList.length > 0) return;
     if (result.kind !== 'error') return;
     const text = result.detail === null ? undefined : result.detail['providerText'];

@@ -1,0 +1,105 @@
+/**
+ * The rail's tooltip reveal with the attention dot lit, rendered rather than read out of the
+ * stylesheet (Story 4.3, DW-381).
+ *
+ * The dot renders between the Agent co-pilot button and its tooltip, over the button's top-right
+ * corner. Two things only a laid-out, hit-tested page can say: that hovering and keyboard-focusing
+ * the item still reveals the tooltip with the dot in between, and that a pointer at the dot lands
+ * on the button rather than on the dot.
+ *
+ * It needs an instance with no enabled definition, so the dot is lit for `_SYSTEM`.
+ *
+ * Run: `npm run test:browser` (after `npm run build`, the bundle copied into the throwaway).
+ */
+
+import { test, before, after } from 'node:test';
+import assert from 'node:assert/strict';
+import puppeteer from 'puppeteer';
+
+import { READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
+import { loadStrings } from '../tools/strings.mjs';
+import { leaveFirstLoginGate } from './shell-entry.mjs';
+
+const config = browserConfig();
+const STRINGS = loadStrings();
+const USERS_URL = '/ocupilot/permissions/users?ns=HSCUSTOM';
+
+let browser = null;
+
+before(async () => {
+  const ready = await (await fetch(`${config.origin}${READINESS_PATH}`)).json();
+  assert.equal(ready.state, 'installed', `the throwaway must be installed, not ${JSON.stringify(ready)}`);
+  browser = await puppeteer.launch(launchOptions(config));
+});
+
+after(async () => {
+  if (browser !== null) await browser.close();
+});
+
+/** Whether the Agent co-pilot item's tooltip is rendered visible: a real box, not clipped away. */
+function tooltipState(page) {
+  return page.evaluate((label) => {
+    const button = document.querySelector(`.ocu-rail-item[aria-label="${label}"]`);
+    const tooltip = button.closest('.ocu-rail-slot').querySelector('.ocu-rail-tooltip');
+    const rect = tooltip.getBoundingClientRect();
+    const style = getComputedStyle(tooltip);
+    return { width: rect.width, height: rect.height, clipPath: style.clipPath, text: tooltip.textContent.trim() };
+  }, STRINGS.navAreaAgent);
+}
+
+test('DW-381: with the attention dot lit, hover and keyboard focus both reveal the tooltip, and the dot does not take the pointer', async () => {
+  // Mutation (Rule 19): drop `pointer-events: none` from `.ocu-rail-dot` -> the hit-test goes red;
+  // change the focus reveal's `~` to `+` -> the keyboard leg goes red.
+  const context = await browser.createBrowserContext();
+  const page = await context.newPage();
+  page.setDefaultNavigationTimeout(config.navigationTimeoutMs);
+  try {
+    await page.goto(`${config.origin}${USERS_URL}`, { waitUntil: 'networkidle2' });
+    await page.waitForSelector('#ocu-signin-user', { visible: true, timeout: config.navigationTimeoutMs });
+    await page.type('#ocu-signin-user', config.username);
+    await page.type('#ocu-signin-password', config.password);
+    await page.click('.ocu-signin-card button[type="submit"]');
+    await page.waitForSelector('app-rail .ocu-rail', { timeout: config.navigationTimeoutMs });
+    await leaveFirstLoginGate(page, config.navigationTimeoutMs, USERS_URL);
+    await page.waitForSelector('.ocu-rail-dot', { timeout: config.navigationTimeoutMs });
+
+    const resting = await tooltipState(page);
+    assert.ok(resting.width <= 1 && resting.height <= 1, `hidden at rest: ${JSON.stringify(resting)}`);
+
+    // The hit test: the dot's own centre belongs to the button it annotates.
+    const hit = await page.evaluate((label) => {
+      const dot = document.querySelector('.ocu-rail-dot').getBoundingClientRect();
+      const target = document.elementFromPoint(dot.left + dot.width / 2, dot.top + dot.height / 2);
+      const button = document.querySelector(`.ocu-rail-item[aria-label="${label}"]`);
+      return { onButton: target === button || button.contains(target), dotSize: dot.width };
+    }, STRINGS.navAreaAgent);
+    assert.ok(hit.dotSize > 0, 'the dot is laid out');
+    assert.equal(hit.onButton, true, 'a pointer at the dot lands on the rail button');
+
+    // Hover: revealed after the 300ms delay.
+    const button = await page.$(`.ocu-rail-item[aria-label="${STRINGS.navAreaAgent}"]`);
+    await button.hover();
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    const hovered = await tooltipState(page);
+    assert.ok(hovered.width > 1 && hovered.height > 1, `revealed on hover: ${JSON.stringify(hovered)}`);
+    assert.equal(hovered.clipPath, 'none');
+    assert.ok(hovered.text.includes(STRINGS.navAreaAgent), 'and names the area');
+
+    // Keyboard focus, pointer moved away: revealed at once through `:focus-visible`.
+    await page.mouse.move(700, 450);
+    await page.focus('main#ocu-content');
+    await page.keyboard.down('Shift');
+    await page.keyboard.up('Shift');
+    await page.evaluate((label) => {
+      document.querySelector(`.ocu-rail-item[aria-label="${label}"]`).focus({ focusVisible: true });
+    }, STRINGS.navAreaAgent);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const focused = await tooltipState(page);
+    const focusVisible = await page.evaluate(() => document.activeElement.matches(':focus-visible'));
+    assert.equal(focusVisible, true, 'the item holds keyboard focus');
+    assert.ok(focused.width > 1 && focused.height > 1, `revealed on keyboard focus: ${JSON.stringify(focused)}`);
+    assert.equal(focused.clipPath, 'none');
+  } finally {
+    await context.close();
+  }
+});

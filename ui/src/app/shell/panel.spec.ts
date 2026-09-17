@@ -1,24 +1,26 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { Router, provideRouter } from '@angular/router';
 import { describe, expect, it } from 'vitest';
 
 import { AgentStatus, type Restraint, formatKillSwitch } from '../core/agent-status';
 import { NavigationService, UNGATED, type Verdict } from '../core/navigation';
+import { PanelState } from '../core/panel-layout';
+import { PreferenceStore } from '../core/preferences';
+import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
 import { stubAgentStatus } from '../testing/agent-status';
 import { Panel } from './panel';
 
 /**
- * The panel's two unconfigured states, asserted against the DOM (AC2 to AC5).
- *
- * The two facts it turns on are arranged the way the instance produces them: a definitions list
- * body with the rows it names, and a navigation map with a verdict for `agent/definitions`. There
- * is no third input, because the panel reads no third source -- which is the property AC5 is
- * about: the only exit from this state is a definition being enabled.
+ * The panel on every signed-in route, asserted against the DOM: its anatomy and banner order, the
+ * gate states it carries until a definition is enabled, the restraint banners, and the composer's
+ * two modes. It needs a navigation map with a verdict for `agent/definitions`, a definitions list
+ * body, and a `PanelState`; nothing else.
  */
 
 const DENIED: Verdict = { allowed: false, failedPair: 'OcuPilotAdmin:USE' };
 
-/** Everything that would be a way into the example card. AC3's own selector, verbatim. */
+/** Everything that would be a way into the example card. */
 const FOCUSABLE = 'a[href], button, input, select, textarea, [tabindex], [contenteditable]';
 
 class StubNavigation {
@@ -32,9 +34,8 @@ class StubNavigation {
 
   /**
    * Always true, deliberately. The live service answers true once a read COMPLETES -- including a
-   * read that failed, which leaves every verdict `UNGATED` -- so a panel keyed off this would name
-   * an audience it has no map for. Pinning it true here is what makes `loadedFlag` the only signal
-   * the panel can be reading.
+   * read that failed, which leaves every verdict `UNGATED` -- so pinning it true makes `loadedFlag`
+   * the only signal the panel can be reading.
    */
   answered(): boolean {
     return true;
@@ -54,10 +55,24 @@ class StubNavigation {
   }
 }
 
+function memoryStorage() {
+  const map = new Map<string, string>();
+  return {
+    getItem: (key: string) => map.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      map.set(key, value);
+    },
+    removeItem: (key: string) => {
+      map.delete(key);
+    },
+  };
+}
+
 interface Mounted {
   readonly fixture: ComponentFixture<Panel>;
   readonly navigation: StubNavigation;
   readonly agentStatus: AgentStatus;
+  readonly panelState: PanelState;
   readonly rows: { enabled: boolean }[];
   readonly host: HTMLElement;
 }
@@ -68,6 +83,10 @@ async function mount(
     verdict?: Verdict;
     loaded?: boolean;
     restraint?: Partial<Restraint>;
+    answered?: boolean;
+    panelState?: PanelState;
+    /** A URL the router is on before the panel is created. */
+    url?: string;
   } = {}
 ): Promise<Mounted> {
   TestBed.resetTestingModule();
@@ -76,196 +95,255 @@ async function mount(
   navigation.loadedFlag = options.loaded ?? true;
   const rows = options.rows ?? [];
   const agentStatus = stubAgentStatus(rows, options.restraint ?? {});
-  await agentStatus.load();
+  if (options.answered ?? true) await agentStatus.load();
+  const preferences = new PreferenceStore({ storage: memoryStorage() });
+  const panelState =
+    options.panelState ?? new PanelState({ preferences, shell: new ShellState({ preferences }) });
   TestBed.configureTestingModule({
     providers: [
+      provideRouter([
+        { path: '', children: [] },
+        { path: 'agent/definitions', children: [] },
+      ]),
       { provide: NavigationService, useValue: navigation as unknown as NavigationService },
       { provide: AgentStatus, useValue: agentStatus },
+      { provide: PanelState, useValue: panelState },
     ],
   });
+  if (options.url !== undefined) await TestBed.inject(Router).navigateByUrl(options.url);
   const fixture = TestBed.createComponent(Panel);
   fixture.detectChanges();
-  return { fixture, navigation, agentStatus, rows, host: fixture.nativeElement as HTMLElement };
+  return { fixture, navigation, agentStatus, panelState, rows, host: fixture.nativeElement as HTMLElement };
 }
 
 describe('the agent co-pilot panel', () => {
-  it('AC2: an administrator sees the reminder banner, with no dismiss control', async () => {
-    // Mutation (Rule 19): give the reminder banner a dismiss control -> the no-button assertion
-    // below goes red, and the banner becomes a switch the condition does not own.
-    const { host } = await mount();
-    const banner = host.querySelector('.ocu-panel-banner') as HTMLElement;
-    expect(banner).not.toBeNull();
-    expect(banner.textContent).toContain(STRINGS.agentGateReminderBanner);
-    // No control that dismisses it -- which is what AC2 says, and is deliberately narrower than
-    // "nothing focusable". EXPERIENCE.md's own description of this banner is "it carries a link,
-    // cannot be dismissed, and goes the moment the condition clears", so an assertion that forbade
-    // every focusable node would pin out published behaviour a later story has to add.
-    expect(banner.querySelectorAll('button')).toHaveLength(0);
-    // And the other audience's sentence is not also on screen.
-    expect(host.textContent).not.toContain(STRINGS.agentGateEmptyState);
+  it('AC1: an aside named for the area, with a header carrying the avatar, the title and Full screen, and no close control', async () => {
+    const { host } = await mount({ rows: [{ enabled: true }] });
+    const aside = host.querySelector('aside.ocu-panel') as HTMLElement;
+    expect(aside.getAttribute('aria-label')).toBe(STRINGS.navAreaAgent);
+
+    const header = aside.querySelector('.ocu-panel-header') as HTMLElement;
+    expect(header.querySelector('.ocu-panel-avatar')).not.toBeNull();
+    expect(header.querySelector('.ocu-panel-title')?.textContent?.trim()).toBe(STRINGS.navAreaAgent);
+    const toggle = header.querySelector('.ocu-panel-full-screen-toggle') as HTMLButtonElement;
+    expect(toggle.getAttribute('aria-label')).toBe(STRINGS.agentPanelFullScreen);
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+
+    // Two controls in the header, neither of which closes anything; and nothing of Story 4.4 or 4.5.
+    const labels = [...aside.querySelectorAll('button')].map(
+      (button) => button.getAttribute('aria-label') ?? button.textContent?.trim()
+    );
+    expect(labels).toEqual([STRINGS.agentPanelFullScreen, STRINGS.actionSend]);
+    expect(aside.textContent).not.toContain(STRINGS.actionNewConversation);
+    expect(aside.querySelector('.ocu-context-chip')).toBeNull();
+    expect(aside.querySelector('app-panel-resize-handle [role="separator"]')).not.toBeNull();
   });
 
-  it('AC3: a caller the map refuses sees the configuration-empty sentence and the three trust sentences', async () => {
+  it('AC5: an administrator with nothing enabled and the kill switch on reads kill switch, reminder, chip slot, log, then the footer', async () => {
+    // Mutation (Rule 19): move the reminder banner above the kill-switch banner in the template ->
+    // this goes red on the order.
+    const restraint = {
+      killSwitch: true,
+      killSwitchAudience: 'everyone',
+      killSwitchReason: 'Paused during the change freeze',
+      blocked: true,
+    };
+    const { host } = await mount({ restraint });
+    const body = host.querySelector('.ocu-panel-body') as HTMLElement;
+    const ids = [...body.querySelectorAll('.ocu-panel-banner')].map((node) => node.id);
+    expect(ids).toEqual(['ocu-panel-kill-switch', 'ocu-panel-reason']);
+
+    // The two slots this story leaves empty sit where EXPERIENCE.md puts them.
+    const slots = [...body.querySelectorAll('.ocu-panel-banners > *')].map(
+      (node) => node.id || node.getAttribute('data-slot')
+    );
+    expect(slots).toEqual(['ocu-panel-kill-switch', 'not-marked', 'ocu-panel-reason', 'lock']);
+
+    const order = [...host.querySelectorAll('.ocu-panel-banners, .ocu-panel-chip-slot, [role="log"], .ocu-panel-footer')].map(
+      (node) => node.className
+    );
+    expect(order).toEqual(['ocu-panel-banners', 'ocu-panel-chip-slot', 'ocu-panel-transcript', 'ocu-panel-footer']);
+
+    const log = host.querySelector('[role="log"]') as HTMLElement;
+    expect(log.getAttribute('aria-live')).toBe('polite');
+    expect(log.getAttribute('aria-label')).toBe(STRINGS.agentConversationLabel);
+    expect(log.getAttribute('tabindex')).toBe('0');
+
+    const footer = host.querySelector('.ocu-panel-footer') as HTMLElement;
+    expect([...footer.children].map((node) => node.className)).toEqual([
+      'ocu-panel-read-only',
+      'ocu-field-label',
+      'ocu-panel-composer-row',
+      'ocu-panel-caption',
+    ]);
+    const composer = footer.querySelector('textarea') as HTMLTextAreaElement;
+    expect(footer.querySelector(`label[for="${composer.id}"]`)?.textContent?.trim()).toBe(STRINGS.agentComposerLabel);
+    expect(footer.querySelector('.ocu-panel-send')?.textContent?.trim()).toBe(STRINGS.actionSend);
+  });
+
+  it('AC5: the caption spells the chord the way the platform does, for a Mac and for anything else', async () => {
+    // Mutation (Rule 19): pick the caption with `!isApplePlatform()` in `Panel` -> the Mac leg goes red;
+    // always pick the Mac caption -> the non-Mac leg goes red.
+    const cases = [
+      { platform: 'MacIntel', userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)', caption: STRINGS.agentComposerCaptionMac },
+      { platform: 'Win32', userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', caption: STRINGS.agentComposerCaption },
+    ];
+    for (const { platform, userAgent, caption } of cases) {
+      Object.defineProperty(navigator, 'platform', { value: platform, configurable: true });
+      Object.defineProperty(navigator, 'userAgent', { value: userAgent, configurable: true });
+      try {
+        const { host } = await mount();
+        expect(host.querySelector('.ocu-panel-caption')?.textContent?.trim()).toBe(caption);
+      } finally {
+        delete (navigator as unknown as Record<string, unknown>)['platform'];
+        delete (navigator as unknown as Record<string, unknown>)['userAgent'];
+      }
+    }
+  });
+
+  it('AC2 (3.6), DW-377: the administrator reminder banner carries its Definitions link and no dismiss control', async () => {
+    // Mutation (Rule 19): resolve `definitionsUrl` from `screen.route` without `withQuery` -> the href
+    // and the router URL lose `?ns=USER`, and both assertions go red.
+    const { host, fixture } = await mount({ url: '/?ns=USER' });
+    const banner = host.querySelector('#ocu-panel-reason') as HTMLElement;
+    expect(banner.classList).toContain('ocu-panel-banner');
+    expect(banner.textContent).toContain(STRINGS.agentGateReminderBanner);
+    expect(banner.querySelectorAll('button')).toHaveLength(0);
+    const link = banner.querySelector('a') as HTMLAnchorElement;
+    expect(link.textContent?.trim()).toBe(STRINGS.agentDefinitionListLabel);
+    expect(link.getAttribute('href')).toBe('agent/definitions?ns=USER');
+    expect(host.textContent).not.toContain(STRINGS.agentGateEmptyState);
+
+    link.click();
+    await fixture.whenStable();
+    expect(TestBed.inject(Router).url).toBe('/agent/definitions?ns=USER');
+  });
+
+  it('AC3 (3.6): a caller the map refuses reads the configuration-empty sentence in the log, and no reminder banner', async () => {
     const { host } = await mount({ verdict: DENIED });
     expect(host.querySelector('.ocu-panel-banner')).toBeNull();
-    const empty = host.querySelector('.ocu-panel-empty') as HTMLElement;
+    const empty = host.querySelector('[role="log"] .ocu-panel-empty') as HTMLElement;
     expect(empty.textContent?.trim()).toBe(STRINGS.agentGateEmptyState);
-
-    const trust = Array.from(host.querySelectorAll('.ocu-panel-trust li')).map((node) =>
+    const trust = Array.from(host.querySelectorAll('[role="log"] .ocu-panel-trust li')).map((node) =>
       node.textContent?.trim()
     );
-    expect(trust).toEqual([
-      STRINGS.agentTrustReads,
-      STRINGS.agentTrustProposes,
-      STRINGS.agentTrustAudited,
-    ]);
+    expect(trust).toEqual([STRINGS.agentTrustReads, STRINGS.agentTrustProposes, STRINGS.agentTrustAudited]);
   });
 
-  it('AC3: the example card is labelled with the published band and holds nothing focusable', async () => {
+  it('AC3 (3.6): the example card is labelled with the published band and holds nothing focusable', async () => {
     const { host } = await mount({ verdict: DENIED });
     const example = host.querySelector('.ocu-panel-example') as HTMLElement;
-    expect(example.querySelector('.ocu-proposal-card-band')?.textContent?.trim()).toBe(
-      STRINGS.proposalExampleCardTitle
-    );
+    expect(example.querySelector('.ocu-proposal-card-band')?.textContent?.trim()).toBe(STRINGS.proposalExampleCardTitle);
     const card = example.querySelector('.ocu-proposal-card') as HTMLElement;
-    expect(card).not.toBeNull();
     expect(card.querySelectorAll(FOCUSABLE)).toHaveLength(0);
     expect(card.textContent).not.toContain('Expires in');
   });
 
-  it('AC4: the composer and Send are focusable and aria-disabled, never disabled, with no context chip', async () => {
+  it('AC4 (3.6): unconfigured, the composer and Send are focusable and aria-disabled, never disabled, described by the sentence showing', async () => {
     // Mutation (Rule 19): swap `aria-disabled` for `disabled` on the composer -> this goes red.
     for (const verdict of [UNGATED, DENIED]) {
       const { host } = await mount({ verdict });
       const composer = host.querySelector('.ocu-panel-composer') as HTMLTextAreaElement;
       const send = host.querySelector('.ocu-panel-send') as HTMLButtonElement;
-
       for (const control of [composer, send]) {
         expect(control.getAttribute('aria-disabled')).toBe('true');
         expect(control.hasAttribute('disabled')).toBe(false);
         expect(control.hasAttribute('tabindex')).toBe(false);
       }
-      // And the composer cannot be typed into: `aria-disabled` announces it as inert, so letting
-      // a message be composed in it would be the announcement and the behaviour disagreeing.
-      // `readonly` keeps it focusable and in the Tab order, which `disabled` would not.
       expect(composer.hasAttribute('readonly')).toBe(true);
-
-      // The reason a control cannot act is the sentence the panel is showing that audience --
-      // one element, not a second copy of the words.
       const described = composer.getAttribute('aria-describedby');
       expect(send.getAttribute('aria-describedby')).toBe(described);
-      const reason = host.querySelector(`#${described}`) as HTMLElement;
-      expect(reason.textContent).toContain(
+      expect((host.querySelector(`#${described}`) as HTMLElement).textContent).toContain(
         verdict.allowed ? STRINGS.agentGateReminderBanner : STRINGS.agentGateEmptyState
       );
-
-      // The composer is labelled, and the published caption is beneath it.
-      const label = host.querySelector(`label[for="${composer.id}"]`) as HTMLElement;
-      expect(label.textContent?.trim()).toBe(STRINGS.agentComposerLabel);
-      expect(host.querySelector('.ocu-panel-caption')?.textContent?.trim()).toBe(
-        STRINGS.agentComposerCaption
-      );
-
-      // Story 4.3's panel, and nothing of it here: no chip, no resize handle, no full-screen
-      // toggle, no transcript and no New conversation.
-      expect(host.textContent).not.toContain(STRINGS.agentShareContextLabel);
-      expect(host.querySelector('.ocu-context-chip')).toBeNull();
-      expect(host.textContent).not.toContain(STRINGS.actionNewConversation);
     }
   });
 
-  it('AC5: the panel offers no control that clears the state, and Enable clears all of it together', async () => {
-    // Mutation (Rule 19): require a second condition beside `configured()` -> this goes red.
-    const { fixture, host, agentStatus, rows } = await mount();
-    const controls = Array.from(host.querySelectorAll(FOCUSABLE)) as HTMLElement[];
-    // Two, and they are the composer and Send -- neither of which can act. Nothing here is an
-    // exit: the state is the instance's, and only the instance can leave it. (The banner's
-    // published link is not built yet, so this list is still exactly the footer's two controls;
-    // when it lands, this assertion is what says it is not an exit either.)
-    expect(controls.map((node) => node.className)).toEqual([
-      'ocu-panel-composer',
-      'ocu-button-primary ocu-panel-send',
-    ]);
-
+  it('Enable clears the gate state together and leaves the panel, with an editable composer whose draft is the store\'s', async () => {
+    // Mutation (Rule 19): restore the `shown` getter that rendered nothing once configured -> this
+    // goes red, the panel gone from a configured instance.
+    const { fixture, host, agentStatus, rows, panelState } = await mount();
     rows.push({ enabled: true });
     await agentStatus.load();
     fixture.detectChanges();
-    expect(agentStatus.configured()).toBe(true);
-    expect(host.querySelector('.ocu-panel')).toBeNull();
+    expect(host.querySelector('aside.ocu-panel')).not.toBeNull();
+    expect(host.querySelector('.ocu-panel-banner')).toBeNull();
     expect(host.querySelector('.ocu-proposal-card')).toBeNull();
-    expect(host.textContent?.trim()).toBe('');
+
+    const composer = host.querySelector('.ocu-panel-composer') as HTMLTextAreaElement;
+    expect(composer.hasAttribute('aria-disabled')).toBe(false);
+    expect(composer.hasAttribute('readonly')).toBe(false);
+    expect(composer.hasAttribute('aria-describedby')).toBe(false);
+    composer.value = 'Why is /csp/myapp disabled?';
+    composer.dispatchEvent(new Event('input'));
+    expect(panelState.draft()).toBe('Why is /csp/myapp disabled?');
+    expect((host.querySelector('.ocu-panel-send') as HTMLElement).getAttribute('aria-disabled')).toBe('true');
+
+    // A second panel over the same store -- what a remount would be -- shows the same draft.
+    const again = await mount({ rows: [{ enabled: true }], panelState });
+    expect((again.host.querySelector('.ocu-panel-composer') as HTMLTextAreaElement).value).toBe(
+      'Why is /csp/myapp disabled?'
+    );
   });
 
-  it('renders nothing until both facts have answered, so no audience is guessed at', async () => {
-    // No map yet: every verdict defaults to *allowed*, which would show an administrator's banner
-    // to somebody who cannot act on it. The stub answers `answered()` true throughout, so this
-    // also says the panel is reading `loaded()` -- the signal that is false when the read failed.
-    //
-    // Mutation (Rule 19): read `navigation.answered()` in `shown` -> this goes red, and a map
-    // outage tells every non-administrator that configuring the agent is their job.
+  it('draws its chrome before either fact has answered, and names no audience until both have', async () => {
+    // Mutation (Rule 19): read `navigation.answered()` rather than `loaded()` -> this goes red, and a
+    // map outage tells every non-administrator that configuring the agent is their job.
     const unansweredMap = await mount({ loaded: false, verdict: DENIED });
-    expect(unansweredMap.host.querySelector('.ocu-panel')).toBeNull();
+    expect(unansweredMap.host.querySelector('aside.ocu-panel')).not.toBeNull();
+    expect(unansweredMap.host.querySelector('.ocu-panel-empty')).toBeNull();
+    expect(unansweredMap.host.querySelector('.ocu-panel-example')).toBeNull();
+    expect(
+      (unansweredMap.host.querySelector('.ocu-panel-composer') as HTMLElement).getAttribute('aria-disabled')
+    ).toBe('true');
     unansweredMap.navigation.loadedFlag = true;
     unansweredMap.navigation.notify();
     unansweredMap.fixture.detectChanges();
-    expect(unansweredMap.host.querySelector('.ocu-panel')).not.toBeNull();
+    expect(unansweredMap.host.querySelector('.ocu-panel-empty')).not.toBeNull();
 
-    // And the definitions read unanswered: `configured()` is false before any answer, so a panel
-    // that did not wait would show an empty state over a configured instance.
-    TestBed.resetTestingModule();
-    const navigation = new StubNavigation();
-    const agentStatus = stubAgentStatus([]);
-    TestBed.configureTestingModule({
-      providers: [
-        { provide: NavigationService, useValue: navigation as unknown as NavigationService },
-        { provide: AgentStatus, useValue: agentStatus },
-      ],
-    });
-    const fixture = TestBed.createComponent(Panel);
+    const unansweredStatus = await mount({ answered: false });
+    expect(unansweredStatus.agentStatus.answered()).toBe(false);
+    expect(unansweredStatus.host.querySelector('aside.ocu-panel')).not.toBeNull();
+    expect(unansweredStatus.host.querySelector('.ocu-panel-banner')).toBeNull();
+    expect(unansweredStatus.host.querySelector('.ocu-panel-example')).toBeNull();
+  });
+
+  it('AC4: the full-screen toggle flips aria-expanded and the store, and the resize handle leaves while it is on', async () => {
+    const { host, fixture, panelState } = await mount({ rows: [{ enabled: true }] });
+    const toggle = host.querySelector('.ocu-panel-full-screen-toggle') as HTMLButtonElement;
+    toggle.click();
     fixture.detectChanges();
-    expect(agentStatus.answered()).toBe(false);
-    expect((fixture.nativeElement as HTMLElement).querySelector('.ocu-panel')).toBeNull();
+    expect(panelState.fullScreen()).toBe(true);
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(host.querySelector('[role="separator"]')).toBeNull();
+    toggle.click();
+    fixture.detectChanges();
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(host.querySelector('[role="separator"]')).not.toBeNull();
   });
 
   // --- Story 3.7: the restraint half ----------------------------------------------------------
 
   it('AC2 (3.7): enforced read-only raises its published banner and the enforced footer line, on a configured instance', async () => {
-    // Configured, so the only reason the panel draws anything at all is the restraint -- which is
-    // what "widen `shown` to unconfigured OR restrained" has to mean.
-    //
-    // Mutation (Rule 19): leave `shown` reading `!configured()` alone -> the panel is absent and
-    // every assertion here goes red.
     const { host } = await mount({
       rows: [{ enabled: true }],
       restraint: { enforcedReadOnly: true, blocked: true, footerKey: 'statusReadOnlyEnforced' },
     });
-    expect(host.querySelector('.ocu-panel')).not.toBeNull();
     const banner = host.querySelector('#ocu-panel-read-only') as HTMLElement;
     expect(banner.textContent).toContain(STRINGS.agentReadOnlyEnforcedBanner);
     expect(banner.getAttribute('role')).toBe('alert');
     expect(banner.className).toContain('ocu-banner-restrained');
-
-    // The footer line, rendered from the key the verdict chose rather than composed here.
-    const line = host.querySelector('.ocu-panel-read-only') as HTMLElement;
-    expect(line.textContent?.trim()).toBe(STRINGS.statusReadOnlyEnforced);
-    // And the empty state is not also on screen: the instance is configured.
+    expect((host.querySelector('.ocu-panel-read-only') as HTMLElement).textContent?.trim()).toBe(
+      STRINGS.statusReadOnlyEnforced
+    );
     expect(host.querySelector('.ocu-panel-example')).toBeNull();
   });
 
   it('AC2 (3.7): the footer line reads the off key when nothing restrains, and the definition key when the definition does', async () => {
-    // Mutation (Rule 19): compose the line from `enforcedReadOnly` in the panel rather than
-    // rendering `footerKey` -> the by-the-definition case goes red, because no flag on the wire
-    // distinguishes it.
     const off = await mount();
-    expect(
-      (off.host.querySelector('.ocu-panel-read-only') as HTMLElement).textContent?.trim()
-    ).toBe(STRINGS.statusReadOnlyOff);
-
-    // The by-the-definition key on a state the server can actually answer. A `byDefinition` footer
-    // key needs a resolved default definition, which is an enabled one, which makes the instance
-    // configured -- so the panel is drawn only because something else restrains it, and the kill
-    // switch is the source that does without being a read-only source itself. Mounting it over an
-    // unconfigured instance would pin a pair `Kernel/Restraint.Verdict` never produces.
+    expect((off.host.querySelector('.ocu-panel-read-only') as HTMLElement).textContent?.trim()).toBe(
+      STRINGS.statusReadOnlyOff
+    );
     const byDefinition = await mount({
       rows: [{ enabled: true }],
       restraint: {
@@ -276,18 +354,14 @@ describe('the agent co-pilot panel', () => {
         killSwitchReason: 'Paused during the change freeze',
       },
     });
-    expect(
-      (byDefinition.host.querySelector('.ocu-panel-read-only') as HTMLElement).textContent?.trim()
-    ).toBe(STRINGS.statusReadOnlyByDefinition);
-    // A definition that is read-only carries no banner of its own -- the footer line is where it
-    // shows, and the banner that is up belongs to the kill switch.
+    expect((byDefinition.host.querySelector('.ocu-panel-read-only') as HTMLElement).textContent?.trim()).toBe(
+      STRINGS.statusReadOnlyByDefinition
+    );
     expect(byDefinition.host.querySelector('#ocu-panel-read-only')).toBeNull();
     expect(byDefinition.host.querySelector('#ocu-panel-kill-switch')).not.toBeNull();
   });
 
   it('AC3 (3.7): the kill switch raises its published banner with the stored reason, and describes the composer and Send', async () => {
-    // Mutation (Rule 19): drop `killSwitchReason` from the banner -> the reason assertion goes
-    // red, and the operator's own words never reach the person they were written for.
     const restraint = {
       killSwitch: true,
       killSwitchAudience: 'everyone',
@@ -297,20 +371,10 @@ describe('the agent co-pilot panel', () => {
     const { host } = await mount({ rows: [{ enabled: true }], restraint });
     const banner = host.querySelector('#ocu-panel-kill-switch') as HTMLElement;
     expect(banner.textContent).toContain(
-      formatKillSwitch(
-        STRINGS.agentKillSwitchBanner,
-        restraint.killSwitchAudience,
-        restraint.killSwitchReason
-      )
+      formatKillSwitch(STRINGS.agentKillSwitchBanner, restraint.killSwitchAudience, restraint.killSwitchReason)
     );
-    expect(banner.textContent).toContain(restraint.killSwitchReason);
     expect(banner.getAttribute('role')).toBe('alert');
-
-    // The composer and Send stay focusable and aria-disabled, described by the banner that says
-    // why they cannot act.
-    const composer = host.querySelector('.ocu-panel-composer') as HTMLTextAreaElement;
-    const send = host.querySelector('.ocu-panel-send') as HTMLButtonElement;
-    for (const control of [composer, send]) {
+    for (const control of [host.querySelector('.ocu-panel-composer'), host.querySelector('.ocu-panel-send')] as HTMLElement[]) {
       expect(control.getAttribute('aria-disabled')).toBe('true');
       expect(control.hasAttribute('disabled')).toBe(false);
       expect(control.getAttribute('aria-describedby')).toBe('ocu-panel-kill-switch');
@@ -332,9 +396,7 @@ describe('the agent co-pilot panel', () => {
     expect(banner.textContent).not.toContain('everyone');
   });
 
-  it('AC2 (3.7): both banners appear in EXPERIENCE.md\'s order, and the kill switch is the reason the controls name', async () => {
-    // Mutation (Rule 19): put enforced read-only first in the template, or first in
-    // `describedBy` -> this goes red on the order and on the described id.
+  it("AC2 (3.7): both restraint banners appear in EXPERIENCE.md's order, and the kill switch is the reason the controls name", async () => {
     const { host } = await mount({
       rows: [{ enabled: true }],
       restraint: {
@@ -348,20 +410,12 @@ describe('the agent co-pilot panel', () => {
     });
     const ids = Array.from(host.querySelectorAll('.ocu-panel-banner')).map((node) => node.id);
     expect(ids).toEqual(['ocu-panel-kill-switch', 'ocu-panel-read-only']);
-    expect(
-      (host.querySelector('.ocu-panel-composer') as HTMLElement).getAttribute('aria-describedby')
-    ).toBe('ocu-panel-kill-switch');
+    expect((host.querySelector('.ocu-panel-composer') as HTMLElement).getAttribute('aria-describedby')).toBe(
+      'ocu-panel-kill-switch'
+    );
   });
 
-  it('Integration AC: the panel reads the restraint off AgentStatus and issues no call of its own', async () => {
-    // The stub's API is the only transport in the fixture, and `AgentStatus` is the only thing
-    // holding it -- so a panel that fetched its own verdict could not render one here at all.
-    // The published footer line is asserted against the rendered DOM, not against the store.
-    //
-    // Mutation (Rule 19): give `Panel` its own `ApiService` read -> it has none to inject and the
-    // fixture fails to construct.
-    // The verdict object is read on every call rather than snapshotted, so clearing a key here
-    // is what an administrator turning the switch off looks like to this service.
+  it('Integration AC (3.7): the panel reads the restraint off AgentStatus and follows it when it clears', async () => {
     const restraint: Record<string, unknown> = {
       enforcedReadOnly: true,
       blocked: true,
@@ -371,27 +425,16 @@ describe('the agent co-pilot panel', () => {
       rows: [{ enabled: true }],
       restraint: restraint as Partial<Restraint>,
     });
-    expect(agentStatus.restraint().enforcedReadOnly).toBe(true);
-    expect(agentStatus.restrained()).toBe(true);
-    expect(
-      (host.querySelector('.ocu-panel-read-only') as HTMLElement).textContent?.trim()
-    ).toBe(STRINGS.statusReadOnlyEnforced);
-
-    // And it follows the service: a re-read on THIS service, after the switch is cleared, clears
-    // the panel with it -- because the panel stores no flag of its own. Mounting a second, fresh
-    // fixture would assert only that an unrestrained instance draws nothing, which is a different
-    // claim and one already covered above.
+    expect(host.querySelector('#ocu-panel-read-only')).not.toBeNull();
     delete restraint['enforcedReadOnly'];
     delete restraint['blocked'];
     delete restraint['footerKey'];
     await agentStatus.load();
     fixture.detectChanges();
-    expect(host.querySelector('.ocu-panel')).toBeNull();
-  });
-
-  it('names its landmark with the area name, so the panel is a named complementary region', async () => {
-    const { host } = await mount();
-    const aside = host.querySelector('aside') as HTMLElement;
-    expect(aside.getAttribute('aria-label')).toBe(STRINGS.navAreaAgent);
+    expect(host.querySelector('#ocu-panel-read-only')).toBeNull();
+    expect((host.querySelector('.ocu-panel-read-only') as HTMLElement).textContent?.trim()).toBe(
+      STRINGS.statusReadOnlyOff
+    );
+    expect((host.querySelector('.ocu-panel-composer') as HTMLElement).hasAttribute('aria-disabled')).toBe(false);
   });
 });

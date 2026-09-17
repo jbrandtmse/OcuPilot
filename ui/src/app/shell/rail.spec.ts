@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { AgentStatus, formatKillSwitch } from '../core/agent-status';
 import { NavigationService, type Verdict } from '../core/navigation';
 import { PreferenceStore } from '../core/preferences';
+import { PanelState } from '../core/panel-layout';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
 import type { AreaDeclaration, ScreenDeclaration } from '../core/screens.generated';
@@ -110,6 +111,9 @@ describe('the activity rail', () => {
   /** The verdict the stubbed restraint read answers with. Mutated to arrange a kill switch. */
   let restraint: Record<string, unknown>;
   let shell: ShellState;
+  let panel: PanelState;
+  /** The storage behind both the shell's and the panel's preferences. */
+  let storage: ReturnType<typeof memoryStorage>;
 
   /** The attention dot, or null. There is at most one on the whole rail, ever. */
   const dot = (): HTMLElement | null => fixture.nativeElement.querySelector('.ocu-rail-dot');
@@ -122,7 +126,10 @@ describe('the activity rail', () => {
     definitionRows = [];
     restraint = {};
     agentStatus = stubAgentStatus(definitionRows, restraint);
-    shell = new ShellState({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
+    storage = memoryStorage();
+    const preferences = new PreferenceStore({ storage });
+    shell = new ShellState({ preferences });
+    panel = new PanelState({ preferences, shell });
     TestBed.configureTestingModule({
       providers: [
         // Two real routes, so a navigation that does not happen is observable. With an empty
@@ -135,6 +142,7 @@ describe('the activity rail', () => {
         { provide: NavigationService, useValue: navigation as unknown as NavigationService },
         { provide: AgentStatus, useValue: agentStatus },
         { provide: ShellState, useValue: shell },
+        { provide: PanelState, useValue: panel },
       ],
     });
     fixture = TestBed.createComponent(Rail);
@@ -276,6 +284,29 @@ describe('the activity rail', () => {
     // Home is the one rail item that moves the router, and this is the assertion that makes
     // the routing half of `Rail.activate` falsifiable at all.
     expect(router.url).toBe('/');
+  });
+
+  it('Yield order: the visible area\'s item reopens a yielded side bar and releases it again, writing no preference either time', () => {
+    // Mutation (Rule 19): drop the `sideBarReopened()` branch from `Rail.activate` -> the second
+    // click goes through `activateArea`, which closes the bar and stores "false", and this goes red.
+    shell.showArea('logs');
+    panel.setViewport(1280);
+    fixture.detectChanges();
+    expect(panel.sideBarYielded()).toBe(true);
+    const stored = storage.getItem('ocupilot.side-bar.open');
+    expect(stored).toBe('true');
+
+    items()[1].click();
+    fixture.detectChanges();
+    expect(panel.sideBarReopened()).toBe(true);
+    expect(storage.getItem('ocupilot.side-bar.open')).toBe(stored);
+
+    items()[1].click();
+    fixture.detectChanges();
+    expect(panel.sideBarReopened()).toBe(false);
+    expect(panel.sideBarYielded()).toBe(true);
+    expect(shell.open()).toBe(true);
+    expect(storage.getItem('ocupilot.side-bar.open')).toBe(stored);
   });
 
   it('DW-134: a rail navigation keeps the namespace the route is scoped to', async () => {

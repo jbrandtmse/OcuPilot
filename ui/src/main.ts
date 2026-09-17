@@ -13,6 +13,7 @@ import { transportFault } from './app/core/fault';
 import { InstanceService } from './app/core/instance';
 import { NavigationService } from './app/core/navigation';
 import { OverlayStack } from './app/core/overlay-stack';
+import { PanelState } from './app/core/panel-layout';
 import { PreferenceStore, readPreferenceStorage } from './app/core/preferences';
 import { RefreshService } from './app/core/refresh';
 import { ScopeService, onScopeChange } from './app/core/scope';
@@ -131,6 +132,11 @@ onScopeChange(scope, () => {
 const preferences = new PreferenceStore({ storage: readPreferenceStorage() });
 const shell = new ShellState({ preferences });
 
+// The row's width budget and the panel's own state (Story 4.3): the remembered width, the draft,
+// full screen and the yield order, over the same preferences and the same shell. `App` feeds it the
+// viewport width; the side bar, the rail and the panel read the layout it resolves.
+const panel = new PanelState({ preferences, shell });
+
 // Story 1.14's three (AD-43, AD-19, AD-14): the one client bus, the one store per descriptor, and
 // the one refresh framework over both. Built here like every other core service so the command
 // bar's chip, the status bar's stamp and whatever screen binds all reach the same instance --
@@ -178,6 +184,7 @@ bootstrapApplication(App, {
     { provide: ScopeService, useValue: scope },
     { provide: PreferenceStore, useValue: preferences },
     { provide: ShellState, useValue: shell },
+    { provide: PanelState, useValue: panel },
     { provide: OverlayStack, useValue: overlays },
     { provide: ChangeBus, useValue: bus },
     { provide: ScreenStores, useValue: screenStores },

@@ -18,6 +18,7 @@ import { ScopeService, type NamespaceEntry, type UnresolvedScope } from './core/
 import { ScreenActions } from './core/screen-actions';
 import { ScreenStores } from './core/screen-store';
 import { Session, type SessionState } from './core/session';
+import { PanelState } from './core/panel-layout';
 import { ShellState } from './core/shell-state';
 
 /**
@@ -60,6 +61,10 @@ class StubSession {
 
   state(): SessionState {
     return 'signed-in';
+  }
+
+  hasFreshSignIn(): boolean {
+    return this.fresh;
   }
 
   consumeFreshSignIn(): boolean {
@@ -266,6 +271,7 @@ describe('the first-login gate and the requested screen it may move off', () => 
     const connectivity = new StubConnectivity() as unknown as ConnectivityService;
     const preferences = new PreferenceStore({ storage: memoryStorage() });
     const screenStores = new ScreenStores({ preferences });
+    const shellState = new ShellState({ preferences });
     TestBed.configureTestingModule({
       providers: [
         provideRouter(routes),
@@ -290,7 +296,8 @@ describe('the first-login gate and the requested screen it may move off', () => 
         },
         { provide: ScreenStores, useValue: screenStores },
         { provide: PreferenceStore, useValue: preferences },
-        { provide: ShellState, useValue: new ShellState({ preferences }) },
+        { provide: ShellState, useValue: shellState },
+        { provide: PanelState, useValue: new PanelState({ preferences, shell: shellState }) },
         { provide: OverlayStack, useValue: new OverlayStack() },
         { provide: ScreenActions, useValue: new ScreenActions() },
         { provide: FormDirty, useValue: new FormDirty() },
