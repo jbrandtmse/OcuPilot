@@ -77,3 +77,5 @@
 2026-09-17T00:36:59Z	Story 4.2	ledger_routed_planned	story=4-5-a-turn-watched-progress-cards-and-the-conversation-lock entries=1(DW-451) excess=0 by=harvest
 2026-09-17T00:36:59Z	Story 4.2	ledger_routed_planned	story=4-9-the-agent-audit-ledger entries=1(DW-448) excess=0 by=harvest
 2026-09-17T00:36:59Z	Story 4.2	throwaway_up_started	by=runner project=ocupilot-ci dir=/tmp/ocupilot-ci web=52776 super=1975 purpose=adr_gate,qa,cr,smoke
+2026-09-17T00:37:48Z	Story 4.2	adr_verifications_complete	tool=AD-8/AD-29_real_principal_role_removed_mid-turn_on_the_slot-A_throwaway(4cbdbc9d423f) acs=integration_AC_role-removed_leg(AD-8) result=pass evidence=ToolWire_2/2_run1 mutations=Dispatch.HoldsPair_answers_1_without_CheckUserPermission(throwaway_copy,reloaded)->ToolWire.TestARoleRemovedMidTurnIsRefusedFromCurrentGrants_red_alone(run2);restored_byte-identical,reloaded,2/2(run3);worktree_untouched model=claude-opus-5
+2026-09-17T00:37:48Z	Story 4.2	stage_spawned	stage=qa spawn_at=2026-09-17T00:37:48Z model=sonnet agent_name=4-2-qa-1 cycle_iteration=1
