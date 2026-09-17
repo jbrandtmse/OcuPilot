@@ -86,3 +86,4 @@
 2026-09-17T01:34:54Z	Story 4.2	ledger_filed	DW-456=escalated_burndown(pre-existing_Registry_to_Kernel_and_Api_edges_vs_the_spine_direction_line;for_the_decision_sheet) lead_bookkeeping_error=its_source_field_was_written_empty(an_unset_shell_variable);the_evidence_line_names_the_classes
 2026-09-17T01:34:54Z	Story 4.2	ledger_routed_planned	story=4-4-screen-context-on-every-turn-capped-with-its-toggle-and-chip entries=1(DW-452) excess=0 by=cr
 2026-09-17T01:34:54Z	Story 4.2	rework_opened	cycle_iteration=2 iteration=1 trigger=high items=AD-36_row_cap,shell_tools_to_Kernel/Shell,boundary_between_tool_calls,ErrorRead_namespace_pair_current_grants scope_baseline=pending_rework_commit
+2026-09-17T01:35:32Z	Story 4.2	stage_spawned	stage=implement spawn_at=2026-09-17T01:35:32Z model=opus(override) agent_name=4-2-implement-2 cycle_iteration=2 rework_iteration=1 rework_commit=fdf4fdf
