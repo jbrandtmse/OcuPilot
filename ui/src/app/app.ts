@@ -8,7 +8,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { Router, RouterOutlet } from '@angular/router';
+import { NavigationStart, Router, RouterOutlet } from '@angular/router';
 
 import { DefinitionActions } from './areas/agent/definition-actions';
 import { DefinitionForm } from './areas/agent/definition-form.store';
@@ -238,12 +238,16 @@ export class App {
     // A read that settles after the fresh-sign-in flag was left unspent gives the gate its next pass.
     const stopStatus = this.agentStatus.subscribe(() => this.retryFirstLoginGate());
     const stopNavigation = this.navigation.subscribe(() => this.retryFirstLoginGate());
+    const stopRouter = this.router.events.subscribe((event) => {
+      if (event instanceof NavigationStart) this.spendSignInOnNavigation();
+    });
     inject(DestroyRef).onDestroy(() => {
       stopSession();
       stopInstance();
       stopPanel();
       stopStatus();
       stopNavigation();
+      stopRouter.unsubscribe();
     });
     this.measureViewport();
 
@@ -460,7 +464,8 @@ export class App {
    *
    * **The flag is spent only once both reads have answered.** A pass that finds the map unloaded
    * or the definitions unanswered returns with the flag still raised, and the next read to settle
-   * gives the gate another pass (`retryFirstLoginGate`). The flag is claimed with
+   * gives the gate another pass (`retryFirstLoginGate`), until the user's own first navigation
+   * spends it (`spendSignInOnNavigation`). The flag is claimed with
    * `consumeFreshSignIn()` after the awaits and before anything else, so of several passes awaiting
    * the same reads exactly one acts.
    *
@@ -515,6 +520,19 @@ export class App {
    * unspent. Taken only when both reads now answer, so a pass never holds the screen for a read
    * that is still out.
    */
+  /**
+   * The redirect belongs to the sign-in: the user's first navigation after it spends the flag, so a
+   * read that settles later never moves them off a screen they chose. The router's own first
+   * navigation and a `replaceUrl` correction (the scope replacing a namespace the instance will not
+   * admit) are not the user's and leave the flag alone.
+   */
+  private spendSignInOnNavigation(): void {
+    if (!this.router.navigated) return;
+    if (!isSignedIn(this.session.state()) || !this.session.hasFreshSignIn()) return;
+    if (this.router.currentNavigation()?.extras.replaceUrl === true) return;
+    this.session.consumeFreshSignIn();
+  }
+
   private retryFirstLoginGate(): void {
     if (!isSignedIn(this.session.state()) || !this.session.hasFreshSignIn()) return;
     if (!this.agentStatus.answered() || !this.navigation.loaded()) return;

@@ -179,7 +179,11 @@ export class SideBar {
   constructor() {
     const stopNavigation = this.navigation.subscribe(() => this.bump());
     const stopShell = this.shell.subscribe(() => this.bump());
-    const stopPanel = this.panel.subscribe(() => this.bump());
+    // A width that yields the bar removes it at the next render; focus inside leaves first.
+    const stopPanel = this.panel.subscribe(() => {
+      if (!this.panel.layout().sideBarShown) this.yieldFocusToRail();
+      this.bump();
+    });
     const stopRouter = this.router.events.subscribe(() => this.bump());
     inject(DestroyRef).onDestroy(() => {
       stopNavigation();

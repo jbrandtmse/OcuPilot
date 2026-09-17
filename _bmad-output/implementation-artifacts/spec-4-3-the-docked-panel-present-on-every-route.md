@@ -134,6 +134,27 @@ Widths: rail 48, side bar 240, content minimum 640, panel minimum 320, remembere
 - Given the narrowest supported viewport (1,280px), when the panel is docked and then resized to its maximum, then the rendered content width and whether content scrolls are measured and recorded in `## Verification` against 640px.
 - Given a least-privileged principal, when signed in through the real browser, then the panel is present with the non-administrator configuration-empty state (DW-378).
 
+### Review Findings
+
+Code review 2026-09-17 (four layers, full-opus, no model override). 1 high, 4 medium and 6 low patched; 1 decision-pending filed (DW-460); 25 rejected.
+
+- [x] [Review][Patch] `high` The status bar's `overflow: hidden` clipped the upward account menu, so Sign out was unreachable by pointer (probe on `main-YH7EGDGQ.js`: `elementFromPoint` at the menu hit the data-table footer) -- `overflow-x: clip` [ui/src/styles/_components.scss:1689]; sign-out browser leg now clicks and hit-tests for real.
+- [x] [Review][Patch] `medium` Enforced read-only made the composer unavailable; DESIGN.md panel Read-only row says only the footer line changes, and EXPERIENCE.md Agent Write Lifecycle 8 reserves `aria-disabled` for the kill switch -- `composerUnavailable` keys on the kill switch; composer no longer described by the read-only banner [ui/src/app/shell/panel.ts:253].
+- [x] [Review][Patch] `medium` DW-459: the gate's retry had no bound -- `App.spendSignInOnNavigation` spends the flag on the user's first navigation after sign-in (not the router's first, not a `replaceUrl` correction) [ui/src/app/app.ts:518].
+- [x] [Review][Patch] `medium` A width that yields the side bar removed it while an entry held focus -- `SideBar`'s `PanelState` listener hands focus to the rail item first [ui/src/app/shell/side-bar.ts:183].
+- [x] [Review][Patch] `medium` The status-read half of DW-380's retry had no test -- `app.spec.ts` status-read case [ui/src/app/app.spec.ts:966].
+- [x] [Review][Patch] `low` The footer line never turned `{colors.restrained}` while read-only applies (DESIGN.md panel footer) -- `.ocu-panel-read-only-on` [ui/src/app/shell/panel.ts:121].
+- [x] [Review][Patch] `low` A lost pointer capture left the drag armed -- `(lostpointercapture)` ends it [ui/src/app/shell/panel-resize-handle.ts:31].
+- [x] [Review][Patch] `low` Composer growth to four lines had no browser evidence -- new `panel.browser-spec.mjs` leg [ui/browser/panel.browser-spec.mjs].
+- [x] [Review][Patch] `low` Sign-out leg asserted an unchanged 400 width, and a message said "stays 400" over a `null` check -- assertion removed, message corrected [ui/browser/panel.browser-spec.mjs].
+- [x] [Review][Patch] `low` Full-screen browser leg claimed the skip-link mutation goes red; it does not -- comment corrected [ui/browser/panel.browser-spec.mjs:322].
+- [x] [Review][Patch] `low` `rail.browser-spec.mjs`'s `~`→`+` mutation claim was unobserved -- observed red, line below.
+- [x] [Review][Defer] `medium` DW-460: the rail stays live in full screen and acts on the covered side bar -- decision-pending owner=burndown (ignore, or exit full screen) [ui/src/app/shell/rail.ts:226].
+- [x] [Review][Defer] DW-458 re-checked, unchanged: the code matches EXPERIENCE.md :657 ("Reopened by the user: panel 352") and the yield rule's "undone in reverse as width returns"; only `panel-layout.test.mjs` (keyboard 352 cap, 1,920 drag), `PanelResizeHandle.atStop`, the rail/side-bar reopen paths and Story 4.10's `panel-home` input depend on the choice.
+- [x] [Review][Defer] `low` DESIGN.md `panel-resize-handle` still names only the minimum stop; the Spec Change Log amended `epics.md` only -- planning-artifact correction for the lead.
+
+Rejected: Send has no reason while configured (Story 4.5 owns Send and its reason string); Ctrl/Cmd+I ignored under the account menu (spec Matrix, by-design); `strings.test.mjs` distinct-literal count (low); sent-value snapshots on Test connection's create and credential posts untested (low, `wontfix-accepted`, reopen_if a refused create or credential post is reported against a field edited in flight); `Resources(1)` vs the Tasks text (fix edits this spec); rail and chord reopen write different preference values (same effective value); probe definition left by a failed setup (`after` removes it); unchecked instance preconditions (low); `MEASURE` output (the AC7 record); no `aria-controls` or Home/End on the separator (not in EXPERIENCE.md); onboarding content inside the `role="log"` (spec Tasks put it there); footer line before status answers (Story 3.7, unchanged); content-column popups clipped (false: the sort menu opens down, left-aligned, inside the full-height region); 4px handle overlap (low); router-event re-renders (low); accepted submit into `install-unreadable` not notified (low, `adopt` path unchanged for that state); duplicated fixture helpers (low); negative `contentWidth` below 368px (theoretical); a reopen surviving a Home visit (low); arrow during a pointer drag (low, rejected before); a step at a yielded width storing the rendered width (by-design, the user chose it); retry pass remounting the page (bounded by DW-459); `signOut` leaving the flag (false: `adopt` raises it and the navigation now spends it); skip link inert in full screen (low); DOM draft divergence (false: `readonly` blocks input); empty `definitionsHref` (false: registry entry always exists).
+
 ## Spec Change Log
 
 - 2026-09-17, lead at the plan halt: the narrowest supported viewport is 1,280px (EXPERIENCE.md's Full shell row), and the grip turns restrained at either stop (panel minimum and the 640px content point); Story 4.3's two ACs in `epics.md` amended to match, and 900-1,279px stays yield-order behavior asserted but not the measurement point. The three proposed Fixed strings rows were appended to EXPERIENCE.md.
@@ -236,6 +257,15 @@ Widths: rail 48, side bar 240, content minimum 640, panel minimum 320, remembere
 - mutation: sign-out -- delete `this.panel.endSession()` from `App.verifyWhenSignedIn` -> `app.spec.ts` sign-out draft red.
 - mutation: DW-381 -- drop `pointer-events: none` from `.ocu-rail-dot` -> `rail.browser-spec.mjs` red.
 - mutation: DW-386 -- unconditional `notify()` in `runSubmit` -> `session.test.mjs` DW-386 red.
+- mutation: full screen (QA) -- drop the `fullScreen()` branch from `App.onEscape` -> `panel.browser-spec.mjs` "Full screen: Escape, the skip link and Ctrl/Cmd+B" red (the covered side bar does not survive the exit-full-screen check); drop the `fullScreen()` guard from `SideBar.onGlobalKeydown` -> the same browser test red (Ctrl/Cmd+B closes the covered bar). The same test's skip-link assertion stayed green under a corresponding `App.onSkipToContent` mutation: `main#ocu-content` is `inert` while full screen regardless of that guard, and a real browser (unlike the jsdom suite) refuses `.focus()` on an inert element, so the guard's own falsification for that one line remains the existing `app.spec.ts` mutation.
+- mutation: yield order (QA) -- drop the `sideBarReopened()` branch from `Rail.activate` -> `rail.browser-spec.mjs` "Yield order: clicking the visible area's rail item" red (the release click persists "false" instead of leaving the stored preference unchanged).
+- mutation: sign-out (QA) -- delete `this.panel.endSession()` from `App.verifyWhenSignedIn` -> `panel.browser-spec.mjs` "Signing out clears the panel draft and full screen" red (the draft survives into the next sign-in).
+- mutation: DW-459 (CR) -- delete `consumeFreshSignIn()` from `App.spendSignInOnNavigation` -> `app.spec.ts` DW-459 first-navigation red; drop its `replaceUrl` check -> DW-459 `replaceUrl` red.
+- mutation: DW-380 status read (CR) -- remove `App`'s `agentStatus.subscribe(() => this.retryFirstLoginGate())` -> `app.spec.ts` "a status read that answers after sign-in" red.
+- mutation: read-only composer (CR) -- `composerUnavailable` on `agentStatus.restrained()` -> `panel.spec.ts` "Read-only changes only the footer line" red; `readOnlyOn` returning `false` -> same test red.
+- mutation: yield focus (CR) -- drop `yieldFocusToRail()` from `SideBar`'s `PanelState` listener -> `side-bar.spec.ts` "a width that yields the bar moves focus" red.
+- mutation: lost capture (CR) -- drop `(lostpointercapture)` -> `panel-resize-handle.spec.ts` lost-capture red.
+- mutation: account menu (CR) -- `.ocu-status-bar` back to `overflow: hidden`, rebuilt and redeployed -> `panel.browser-spec.mjs` sign-out leg red at the hit test; `field-sizing: content` removed in the same bundle -> composer-growth leg red (36px to 36px); `.ocu-rail-item:focus-visible ~` changed to `+` -> `rail.browser-spec.mjs` DW-381 keyboard leg red. Final bundle redeployed; `panel` 10/10, `rail` 2/2, `gate` 5/5, `panel-principal` 1/1.
 
 ## Auto Run Result
 
@@ -248,8 +278,13 @@ Blocking condition: none
 
 **Review.** 40 findings: 13 entries patched (5 medium, 8 low), 3 deferred (frontmatter), 17 rejected with reasons in the triage log. `panel-principal.browser-spec.mjs` uses `TurnWireFixture.Resources(1)` (adds only `%Admin_Operate:USE`), because a `Resources(0)` principal is refused `AUTH.NOADMIN` and never reaches the panel; the Code Map's `Resources(0)` is stale.
 
-**Follow-up review: true** (patched: medium 5, low 8). Unverified risk: the patched full-screen Escape/skip-link/Ctrl+B guards, the rail release of a reopened bar and the sign-out reset are pinned in jsdom only, with no browser spec driving them.
+**Follow-up review: true** (patched: medium 5, low 8). The full-screen Escape and Ctrl/Cmd+B guards, the rail release of a reopened bar, and the sign-out reset now each carry a `panel.browser-spec.mjs` or `rail.browser-spec.mjs` leg (QA pass) beside the jsdom pin; the skip-link guard stays jsdom-only because `main#ocu-content` is `inert` while full screen and a real browser already refuses focus into it regardless of the guard.
 
-**Verification.** `npm test`: node 820/820, vitest 398/398. `npm run build`: green (initial-bundle 500 kB warning, 608 kB, under the 1 MB error). Bundle redeployed to `ocupilot-ci`; `npm run test:browser`: 86/86. 640px measurement and mutation lines under `## Verification`.
+**Verification.** `npm test`: node 820/820, vitest 398/398. `npm run build`: green (initial-bundle 500 kB warning, 608 kB, under the 1 MB error). Bundle redeployed to `ocupilot-ci`; `npm run test:browser`: 86/86. 640px measurement and mutation lines under `## Verification`. QA pass (2026-09-16): `panel.browser-spec.mjs` 9/9, `rail.browser-spec.mjs` 2/2 after adding the three legs below; four new mutations applied, observed red, reverted, and re-verified green with the bundle rebuilt and redeployed each time; `git status --short` clean against baseline afterward.
 
 **Residual risks.** The two medium deferrals above; composer disabled under enforced read-only follows the spec's "nothing restrains" wording; the avatar is `aria-hidden` beside the title.
+
+**QA pass test files (2026-09-16):**
+
+- `ui/browser/panel.browser-spec.mjs` -- two tests added: full-screen Escape/skip-link/Ctrl-Cmd-B, and the sign-out reset of draft and full screen. (QA)
+- `ui/browser/rail.browser-spec.mjs` -- one test added: the rail click reopen/release of a yielded side bar. (QA)

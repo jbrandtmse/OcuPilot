@@ -105,4 +105,18 @@ describe('the panel resize handle', () => {
     pointer('pointermove', 600);
     expect(handle().getAttribute('aria-valuenow')).toBe('430');
   });
+
+  it('AC3: a drag whose pointer capture is lost ends there, so a later hover does not resize', () => {
+    // Mutation (Rule 19): drop the `(lostpointercapture)` binding -> the last move resizes and this goes red.
+    const pointer = (type: string, clientX: number) => {
+      handle().dispatchEvent(new PointerEvent(type, { clientX, button: 0, pointerId: 1, bubbles: true, cancelable: true }));
+      fixture.detectChanges();
+    };
+    pointer('pointerdown', 880);
+    pointer('pointermove', 850);
+    pointer('lostpointercapture', 850);
+    expect(handle().classList).not.toContain('ocu-panel-resize-handle-dragging');
+    pointer('pointermove', 600);
+    expect(handle().getAttribute('aria-valuenow')).toBe('430');
+  });
 });

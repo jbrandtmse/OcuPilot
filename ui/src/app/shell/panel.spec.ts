@@ -339,6 +339,25 @@ describe('the agent co-pilot panel', () => {
     expect(host.querySelector('.ocu-panel-example')).toBeNull();
   });
 
+  it('Read-only changes only the footer line: the composer stays editable and the line turns restrained', async () => {
+    // Mutation (Rule 19): gate `composerUnavailable` on `agentStatus.restrained()` again -> this goes
+    // red on the composer; always `false` from `readOnlyOn` -> red on the footer line.
+    const { host, panelState } = await mount({
+      rows: [{ enabled: true }],
+      restraint: { enforcedReadOnly: true, blocked: true, footerKey: 'statusReadOnlyEnforced' },
+    });
+    const composer = host.querySelector('.ocu-panel-composer') as HTMLTextAreaElement;
+    expect(composer.hasAttribute('aria-disabled')).toBe(false);
+    expect(composer.hasAttribute('readonly')).toBe(false);
+    composer.value = 'Why is this blocked?';
+    composer.dispatchEvent(new Event('input'));
+    expect(panelState.draft()).toBe('Why is this blocked?');
+    expect((host.querySelector('.ocu-panel-read-only') as HTMLElement).classList.contains('ocu-panel-read-only-on')).toBe(true);
+
+    const off = await mount({ rows: [{ enabled: true }] });
+    expect((off.host.querySelector('.ocu-panel-read-only') as HTMLElement).classList.contains('ocu-panel-read-only-on')).toBe(false);
+  });
+
   it('AC2 (3.7): the footer line reads the off key when nothing restrains, and the definition key when the definition does', async () => {
     const off = await mount();
     expect((off.host.querySelector('.ocu-panel-read-only') as HTMLElement).textContent?.trim()).toBe(

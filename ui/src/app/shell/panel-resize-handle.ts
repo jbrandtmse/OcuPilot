@@ -7,9 +7,9 @@ import { STRINGS } from '../core/strings';
  * The panel's left edge: the only sash in the shell (EXPERIENCE.md panel-resize-handle).
  *
  * A focusable `role="separator"` whose value is the panel width in px, bounded by the panel
- * minimum and the width that leaves the content at its minimum. Pointer drag uses pointer capture;
- * Left and Right move 16px; Escape ends a drag at the width it reached. The grip reads restrained at
- * either stop. Every width, and the drag itself, is `PanelState`'s; this component holds none.
+ * minimum and the width that leaves the content at its minimum. Pointer drag uses pointer capture and
+ * ends when the capture is lost; Left and Right move 16px; Escape ends a drag at the width it reached.
+ * The grip reads restrained at either stop. Every width, and the drag itself, is `PanelState`'s; this component holds none.
  */
 @Component({
   selector: 'app-panel-resize-handle',
@@ -29,6 +29,7 @@ import { STRINGS } from '../core/strings';
     (pointermove)="onPointerMove($event)"
     (pointerup)="onPointerEnd($event)"
     (pointercancel)="onPointerEnd($event)"
+    (lostpointercapture)="onPointerEnd($event)"
     (keydown)="onKeydown($event)"
   >
     <span class="ocu-panel-resize-grip" aria-hidden="true"></span>

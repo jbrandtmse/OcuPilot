@@ -2450,6 +2450,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T02:20:06Z status=routed owner=burndown by=harvest note=one Fixed strings row and one anchor; the narrowed test is already shaped to admit it
 - 2026-09-16T10:21:59Z status=routed owner=4-3-the-docked-panel-present-on-every-route by=burndown_gate note=the panel owns the reminder banner the published link belongs to
 - 2026-09-16T15:11:12Z status=routed owner=4-3-the-docked-panel-present-on-every-route by=x0 note=kept, panel and shell chrome this story rebuilds
+- 2026-09-17T05:14:11Z status=resolved-by:4-3-the-docked-panel-present-on-every-route by=adjudication note=the administrator reminder banner links Definitions with the namespace query; panel.spec DW-377 leg pinned by mutation
 
 ### DW-378: Every browser assertion in Epic 3 runs as _SYSTEM, so the gate-declines and non-administrator rows are exercised in jsdom only and no browser run ever sees the non-administrator panel
 - source: spec-3-6 | severity: med | fix-risk: med | footprint: in-epic
@@ -2457,6 +2458,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T02:20:06Z status=routed owner=burndown by=harvest note=the ObjectScript suite already proves denials with a real principal on the throwaway; the browser suite could sign in as the same one
 - 2026-09-16T10:21:59Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=burndown_gate note=the gate-point story is where a browser run as a least-privileged principal proves something
 - 2026-09-16T15:11:12Z status=routed owner=4-3-the-docked-panel-present-on-every-route by=x0 note=the panel on every route is the first browser surface a least-privileged principal must see
+- 2026-09-17T05:14:11Z status=resolved-by:4-3-the-docked-panel-present-on-every-route by=adjudication note=panel-principal browser spec signs in as a least-privileged principal on the throwaway and sees the non-administrator panel; pinned by mutation
 
 ### DW-379: The panel is the default width on every route where DESIGN.md gives it a wider Home width over a 120ms transition, and --ocu-panel-home is declared with no consumer
 - source: spec-3-6 | severity: med | fix-risk: low | footprint: in-epic
@@ -2470,6 +2472,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T02:20:06Z status=routed owner=burndown by=harvest note=two small windows worth closing together when someone is next in that code
 - 2026-09-16T10:21:59Z status=routed owner=4-3-the-docked-panel-present-on-every-route by=burndown_gate note=both windows are in the panel and session code 4.3 rewrites
 - 2026-09-16T15:11:12Z status=routed owner=4-3-the-docked-panel-present-on-every-route by=x0 note=kept, panel and shell chrome this story rebuilds
+- 2026-09-17T05:14:11Z status=resolved-by:4-3-the-docked-panel-present-on-every-route by=adjudication note=refusedValues snapshots at send and the fresh-sign-in flag survives a failed read until the first navigation; definition-form and app specs pinned by mutation
 
 ### DW-381: Nothing exercises the rail tooltip's rendered reveal, so the attention dot's effect on the tooltip is asserted only through CSS the tests read rather than render
 - source: spec-3-6 | severity: low | fix-risk: low | footprint: in-epic
@@ -2477,12 +2480,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T02:20:06Z status=routed owner=burndown by=harvest note=a browser leg hovering the rail item would pin both
 - 2026-09-16T10:21:59Z status=routed owner=4-3-the-docked-panel-present-on-every-route by=burndown_gate note=the rail tooltip is panel chrome
 - 2026-09-16T15:11:12Z status=routed owner=4-3-the-docked-panel-present-on-every-route by=x0 note=kept, panel and shell chrome this story rebuilds
+- 2026-09-17T05:14:11Z status=resolved-by:4-3-the-docked-panel-present-on-every-route by=adjudication note=rail browser spec hovers and focuses a rail item with the dot lit and hit-tests the button; pinned by the pointer-events mutation
 
 ### DW-382: DESIGN.md's Yield order is two thirds unbuilt: nothing collapses the side bar and the content column has no content-min-width floor
 - source: spec-3-6-the-first-login-gate-and-the-configuration-empty-state.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: The order is (1) side bar collapses, (2) panel shrinks to panel-min, (3) content holds content-min-width and scrolls inside itself. ui/src has no media query, matchMedia or ResizeObserver, and .ocu-shell-content carries min-width 0 while --ocu-content-min-width is consumed only inside the panel-home calc: only step (2) exists. Story 3.6's panel is what puts the row into the width budget; the browser suite runs at 1440x900, the one width where a list route yields nothing.
 - 2026-09-16T02:51:40Z status=routed owner=4-3-the-docked-panel-present-on-every-route by=cr note=4.3 owns the panel width, the resize handle and the transitions
 - 2026-09-16T15:11:12Z status=routed owner=4-3-the-docked-panel-present-on-every-route by=x0 note=kept, panel and shell chrome this story rebuilds
+- 2026-09-17T05:14:11Z status=resolved-by:4-3-the-docked-panel-present-on-every-route by=adjudication note=core/panel-layout resolveLayout implements the yield order with a 640px content floor; panel-layout tests per DESIGN.md row and panel browser spec at each width, lead mutation red
 
 ### DW-383: The attention dot's reason reaches its accessible name but not the rail tooltip, which the published attention-dot row also requires
 - source: spec-3-6-the-first-login-gate-and-the-configuration-empty-state.md | severity: med | fix-risk: med | footprint: in-epic
@@ -2512,6 +2517,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T03:37:36Z status=routed owner=burndown by=lead note=suppressible on the accepted path alone, where the sign-in card is already gone; one wasted GET per sign-in
 - 2026-09-16T10:21:59Z status=routed owner=4-3-the-docked-panel-present-on-every-route by=burndown_gate note=the duplicate read is a session notification the panel story is already in
 - 2026-09-16T15:11:12Z status=routed owner=4-3-the-docked-panel-present-on-every-route by=x0 note=kept, panel and shell chrome this story rebuilds
+- 2026-09-17T05:14:11Z status=resolved-by:4-3-the-docked-panel-present-on-every-route by=adjudication note=runSubmit skips the second notify on an accepted sign-in; session.test DW-386 pinned by mutation
 
 ### DW-387: AC1's caller half is not implemented: no write path in the tree calls Kernel/Restraint.Verdict, so nothing is gated yet
 - source: spec-3-7 | severity: med | fix-risk: med | footprint: in-epic
@@ -2985,3 +2991,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-3-the-docked-panel-present-on-every-route.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: App.retryFirstLoginGate runs on every navigation and agentStatus notification while hasFreshSignIn is true; a read failing at sign-in and succeeding minutes later triggers the redirect
 - 2026-09-17T04:37:08Z status=open owner=4-3-the-docked-panel-present-on-every-route by=harvest note=Lead decision: the redirect belongs to sign-in, so the retry stops at the user's first navigation after sign-in; for code review to patch in-story
+- 2026-09-17T05:12:20Z status=resolved-by:4-3-the-docked-panel-present-on-every-route by=cr note=App.spendSignInOnNavigation spends the flag on the first non-replaceUrl navigation; app.spec DW-459 pair, both mutations red
+
+### DW-460: While the panel is full screen the rail stays live, so a rail click toggles, reopens or persists a side bar the panel covers, and a navigating item changes the route behind the cover
+- source: spec-4-3-the-docked-panel-present-on-every-route.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Rail.activate has no fullScreen guard while SideBar.onGlobalKeydown ignores Ctrl/Cmd+B in full screen; clicking the visible area's rail item writes ocupilot.side-bar.open=false unseen
+- 2026-09-17T05:12:20Z status=decision-pending owner=burndown by=cr note=Product call: a rail click in full screen is ignored for side-bar areas, or exits full screen and shows the area

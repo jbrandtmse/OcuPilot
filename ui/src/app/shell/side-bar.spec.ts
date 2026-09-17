@@ -334,6 +334,29 @@ describe('the primary side bar', () => {
     expect(shell.open()).toBe(false);
   });
 
+  it('Yield order: a width that yields the bar moves focus inside it to that area rail item first', () => {
+    // Mutation (Rule 19): drop the `yieldFocusToRail()` call from the `PanelState` subscription ->
+    // focus stays on the removed entry and this goes red.
+    const railItem = document.createElement('button');
+    railItem.id = railItemDomId('permissions');
+    document.body.appendChild(railItem);
+    planted.push(railItem);
+
+    panel.setViewport(1920);
+    shell.activateArea('permissions', false);
+    fixture.detectChanges();
+    document.body.appendChild(fixture.nativeElement);
+    planted.push(fixture.nativeElement);
+    entries()[0].focus();
+    expect(fixture.nativeElement.contains(document.activeElement)).toBe(true);
+
+    panel.setViewport(1280);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('nav')).toBeNull();
+    expect(document.activeElement).toBe(railItem);
+    expect(shell.open()).toBe(true);
+  });
+
   it('DW-134: Ctrl+Shift+B is a different chord and changes nothing', () => {
     shell.activateArea('permissions', false);
     fixture.detectChanges();

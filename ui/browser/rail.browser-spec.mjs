@@ -103,3 +103,47 @@ test('DW-381: with the attention dot lit, hover and keyboard focus both reveal t
     await context.close();
   }
 });
+
+test('Yield order: clicking the visible area\'s rail item reopens a yielded side bar and releases it again, without the release rewriting the preference (QA)', async () => {
+  // Mutation (Rule 19, QA): drop the `sideBarReopened()` branch from `Rail.activate` -> the second
+  // click falls through to `activateArea`, which stores "false" for the visible, already-open
+  // area, and this goes red.
+  const context = await browser.createBrowserContext();
+  const page = await context.newPage();
+  page.setDefaultNavigationTimeout(config.navigationTimeoutMs);
+  try {
+    await page.setViewport({ width: 1280, height: 900 });
+    await page.goto(`${config.origin}${USERS_URL}`, { waitUntil: 'networkidle2' });
+    await page.waitForSelector('#ocu-signin-user', { visible: true, timeout: config.navigationTimeoutMs });
+    await page.type('#ocu-signin-user', config.username);
+    await page.type('#ocu-signin-password', config.password);
+    await page.click('.ocu-signin-card button[type="submit"]');
+    await page.waitForSelector('app-rail .ocu-rail', { timeout: config.navigationTimeoutMs });
+    await leaveFirstLoginGate(page, config.navigationTimeoutMs, USERS_URL);
+    await page.waitForSelector('app-panel [role="separator"]', { timeout: config.navigationTimeoutMs });
+
+    assert.equal(
+      await page.evaluate(() => document.querySelector('app-side-bar nav.ocu-side-bar')),
+      null,
+      'at 1,280px the side bar starts yielded'
+    );
+
+    // The reopen writes the value the preference already holds (`Rail.activate`'s own doc
+    // comment) -- it is the *release* that must add no further write, so the value read right
+    // after the reopen is this test's baseline, not an assumed null.
+    const label = STRINGS.navAreaPermissions;
+    await page.click(`.ocu-rail-item[aria-label="${label}"]`);
+    await page.waitForSelector('app-side-bar nav.ocu-side-bar', { timeout: config.navigationTimeoutMs });
+    const afterReopen = await page.evaluate(() => localStorage.getItem('ocupilot.side-bar.open'));
+    assert.equal(afterReopen, 'true', 'the reopen records the bar as open');
+
+    await page.click(`.ocu-rail-item[aria-label="${label}"]`);
+    await page.waitForFunction(() => document.querySelector('app-side-bar nav.ocu-side-bar') === null, {
+      timeout: config.navigationTimeoutMs,
+    });
+    const afterRelease = await page.evaluate(() => localStorage.getItem('ocupilot.side-bar.open'));
+    assert.equal(afterRelease, afterReopen, 'releasing the reopened bar back to the yield does not rewrite the preference');
+  } finally {
+    await context.close();
+  }
+});

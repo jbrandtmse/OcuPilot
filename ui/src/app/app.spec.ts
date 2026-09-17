@@ -983,6 +983,68 @@ describe('the shell frame', () => {
     expect(session.fresh).toBe(false);
   });
 
+  it('DW-380: a status read that answers after sign-in gives the gate its pass', async () => {
+    // Mutation (Rule 19): delete the `agentStatus.subscribe(() => this.retryFirstLoginGate())`
+    // subscription from `App` -> this goes red at `/permissions/users`.
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/permissions/users');
+    const load = agentStatus.load.bind(agentStatus);
+    agentStatus.load = async () => {};
+    session.fresh = true;
+    session.move('probing');
+    session.move('signed-in');
+    await settleGate();
+    expect(agentStatus.answered()).toBe(false);
+    expect(session.fresh).toBe(true);
+
+    agentStatus.load = load;
+    await agentStatus.load();
+    await settleGate();
+    expect(router.url).toBe('/agent/definitions/edit');
+    expect(session.fresh).toBe(false);
+  });
+
+  it('DW-459: the user\'s first navigation after sign-in spends it, so a read answering later does not move them', async () => {
+    // Mutation (Rule 19): delete the `consumeFreshSignIn()` call from `App.spendSignInOnNavigation`
+    // -> this goes red: the navigation leaves the sign-in unspent for the late map read to act on.
+    const router = TestBed.inject(Router);
+    navigation.loadedFlag = false;
+    await router.navigateByUrl('/permissions/users');
+    session.fresh = true;
+    session.move('probing');
+    session.move('signed-in');
+    await settleGate();
+    expect(session.fresh).toBe(true);
+
+    await router.navigateByUrl('/');
+    expect(session.fresh).toBe(false);
+
+    navigation.loadedFlag = true;
+    navigation.notify();
+    await settleGate();
+    expect(router.url).toBe('/');
+  });
+
+  it('DW-459: a replaceUrl correction is not the user\'s navigation and leaves the sign-in to the gate', async () => {
+    // Mutation (Rule 19): drop the `replaceUrl` check from `App.spendSignInOnNavigation` -> this goes
+    // red, because the scope's namespace correction would spend the sign-in.
+    const router = TestBed.inject(Router);
+    navigation.loadedFlag = false;
+    await router.navigateByUrl('/permissions/users');
+    session.fresh = true;
+    session.move('probing');
+    session.move('signed-in');
+    await settleGate();
+
+    await router.navigateByUrl('/', { replaceUrl: true });
+    expect(session.fresh).toBe(true);
+
+    navigation.loadedFlag = true;
+    navigation.notify();
+    await settleGate();
+    expect(router.url).toBe('/agent/definitions/edit');
+  });
+
   it('AC1: the gate declines for a caller the map refuses, and the requested route stands', async () => {
     const router = TestBed.inject(Router);
     navigation.denied.add('agent/definitions');

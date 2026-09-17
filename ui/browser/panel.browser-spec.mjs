@@ -319,6 +319,144 @@ test('AC4: full screen covers the side bar and content, marks them inert, and re
   }
 });
 
+test('Full screen: Escape, the skip link and Ctrl/Cmd+B leave the covered side bar and focus untouched (QA)', async () => {
+  // Mutation (Rule 19, QA): drop the `fullScreen()` branch from `App.onEscape` -> the first Escape
+  // closes the covered side bar and this goes red; drop the `fullScreen()` guard from
+  // `SideBar.onGlobalKeydown` -> the chord closes the covered bar and the restored assertion goes red.
+  // The skip-link leg stays green without `App.onSkipToContent`'s guard, because the browser refuses
+  // focus into inert content anyway; that guard is pinned in `app.spec.ts`.
+  const { context, page } = await signedInAt(USERS_URL);
+  try {
+    await page.waitForSelector('app-side-bar nav.ocu-side-bar', { timeout: config.navigationTimeoutMs });
+    const toggle = await page.$('.ocu-panel-full-screen-toggle');
+    await toggle.click();
+    await page.waitForFunction(() => document.querySelector('.ocu-shell-content').hasAttribute('inert'), {
+      timeout: config.navigationTimeoutMs,
+    });
+    await toggle.focus();
+
+    await page.keyboard.press('Escape');
+    let onToggle = await page.evaluate(() => document.activeElement?.classList.contains('ocu-panel-full-screen-toggle'));
+    assert.equal(onToggle, true, 'the first Escape leaves focus on the toggle rather than moving it into inert content');
+    let barPresent = await page.evaluate(() => document.querySelector('app-side-bar nav.ocu-side-bar') !== null);
+    assert.equal(barPresent, true, 'the covered side bar is not collapsed by Escape');
+
+    await page.keyboard.press('Escape');
+    onToggle = await page.evaluate(() => document.activeElement?.classList.contains('ocu-panel-full-screen-toggle'));
+    assert.equal(onToggle, true, 'a second Escape does nothing new either');
+
+    // A synthetic `.click()` rather than a pointer click: the link is clip-path-hidden until
+    // focused, and `App.onSkipToContent`'s guard is what this leg is about, not hit-testing.
+    await page.evaluate(() => document.querySelector('.ocu-skip-link').click());
+    onToggle = await page.evaluate(() => document.activeElement?.classList.contains('ocu-panel-full-screen-toggle'));
+    assert.equal(onToggle, true, 'the skip link does not move focus into inert content while full screen');
+
+    await page.focus('.ocu-panel-full-screen-toggle');
+    await chord(page, 'KeyB');
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    const stillFull = await page.evaluate(() => document.querySelector('.ocu-shell-content').hasAttribute('inert'));
+    assert.equal(stillFull, true, 'still full screen: Ctrl/Cmd+B did not toggle the covered bar');
+
+    await toggle.click();
+    await page.waitForFunction(() => !document.querySelector('.ocu-shell-content').hasAttribute('inert'), {
+      timeout: config.navigationTimeoutMs,
+    });
+    barPresent = await page.evaluate(() => document.querySelector('app-side-bar nav.ocu-side-bar') !== null);
+    assert.equal(barPresent, true, 'restored: the side bar the chord left alone is still open');
+  } finally {
+    await context.close();
+  }
+});
+
+test('Signing out clears the panel draft and full screen; the next sign-in starts fresh (QA)', async () => {
+  // Mutation (Rule 19, QA): delete `this.panel.endSession()` from `App.verifyWhenSignedIn` -> the
+  // draft and full-screen assertions after the second sign-in go red.
+  await enabledProbeDefinition();
+  const { context, page } = await signedInAt(USERS_URL);
+  try {
+    await page.waitForFunction(() => !document.querySelector('#ocu-panel-composer').hasAttribute('aria-disabled'), {
+      timeout: config.navigationTimeoutMs,
+    });
+    await page.type('#ocu-panel-composer', 'Draft before sign-out');
+    await page.click('.ocu-panel-full-screen-toggle');
+    await page.waitForFunction(() => document.querySelector('.ocu-shell-content').hasAttribute('inert'), {
+      timeout: config.navigationTimeoutMs,
+    });
+
+    // Real pointer clicks: the menu opens upward out of the status bar, so a band that clips it
+    // leaves Sign out unreachable. Mutation (Rule 19): `overflow: hidden` on `.ocu-status-bar` ->
+    // the hit test below goes red.
+    await page.click('#ocu-account-trigger');
+    await page.waitForSelector('[role="menuitem"]', { visible: true, timeout: config.navigationTimeoutMs });
+    const hit = await page.evaluate(() => {
+      const item = document.querySelector('[role="menuitem"]');
+      const box = item.getBoundingClientRect();
+      return item.contains(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2));
+    });
+    assert.equal(hit, true, 'the account menu item is the element under the pointer, not clipped by the status bar');
+    await page.click('[role="menuitem"]');
+    await page.waitForSelector('#ocu-signin-user', { visible: true, timeout: config.navigationTimeoutMs });
+
+    await page.type('#ocu-signin-user', config.username);
+    await page.type('#ocu-signin-password', config.password);
+    await page.click('.ocu-signin-card button[type="submit"]');
+    await page.waitForSelector('app-panel aside.ocu-panel', { timeout: config.navigationTimeoutMs });
+    await leaveFirstLoginGate(page, config.navigationTimeoutMs, USERS_URL);
+
+    const after = await page.evaluate(() => ({
+      draft: document.querySelector('#ocu-panel-composer').value,
+      expanded: document.querySelector('.ocu-panel-full-screen-toggle').getAttribute('aria-expanded'),
+      inert: document.querySelector('.ocu-shell-content').hasAttribute('inert'),
+    }));
+    assert.equal(after.draft, '', 'the draft does not survive sign-out');
+    assert.equal(after.expanded, 'false', 'full screen does not survive sign-out');
+    assert.equal(after.inert, false, 'content is no longer inert once full screen is cleared');
+  } finally {
+    await context.close();
+    await removeProbeDefinitions();
+  }
+});
+
+test('The composer grows with its text to four lines and then scrolls, the footer staying in the panel', async () => {
+  // Mutation (Rule 19): drop `field-sizing: content` from `.ocu-panel-composer` -> the two-line height
+  // assertion goes red.
+  await enabledProbeDefinition();
+  const { context, page } = await signedInAt(USERS_URL);
+  try {
+    await page.waitForFunction(() => !document.querySelector('#ocu-panel-composer').hasAttribute('aria-disabled'), {
+      timeout: config.navigationTimeoutMs,
+    });
+    const height = () => page.evaluate(() => document.querySelector('#ocu-panel-composer').getBoundingClientRect().height);
+    const one = await height();
+    await page.type('#ocu-panel-composer', 'first');
+    await page.keyboard.down('Shift');
+    await page.keyboard.press('Enter');
+    await page.keyboard.up('Shift');
+    await page.type('#ocu-panel-composer', 'second');
+    const two = await height();
+    assert.ok(two > one, `two lines are taller than one (${one} -> ${two})`);
+    for (let line = 3; line <= 8; line += 1) {
+      await page.keyboard.down('Shift');
+      await page.keyboard.press('Enter');
+      await page.keyboard.up('Shift');
+      await page.type('#ocu-panel-composer', `line ${line}`);
+    }
+    const shown = await page.evaluate(() => {
+      const composer = document.querySelector('#ocu-panel-composer');
+      const lineHeight = parseFloat(getComputedStyle(composer).lineHeight);
+      const panel = document.querySelector('app-panel aside.ocu-panel').getBoundingClientRect();
+      const footer = document.querySelector('.ocu-panel-footer').getBoundingClientRect();
+      return { height: composer.getBoundingClientRect().height, lineHeight, scrolls: composer.scrollHeight > composer.clientHeight, footerBottom: footer.bottom, panelBottom: panel.bottom };
+    });
+    assert.ok(shown.height < 5 * shown.lineHeight + 24, `eight lines stop at four (${shown.height}px, line ${shown.lineHeight}px)`);
+    assert.equal(shown.scrolls, true, 'past four lines the composer scrolls');
+    assert.ok(shown.footerBottom <= shown.panelBottom + 0.5, 'the footer stays inside the panel');
+  } finally {
+    await context.close();
+    await removeProbeDefinitions();
+  }
+});
+
 test('AC6: Ctrl/Cmd+I focuses the composer from content, side bar and rail, and not while the command box is open', async () => {
   // Mutation (Rule 19): drop `composer.focus()` from `App.onComposerChord` -> this goes red.
   const { context, page } = await signedInAt(USERS_URL);
@@ -372,7 +510,7 @@ test('Yield order at 1,920, 1,280 (and reopened), 1,024 and 900px; the page body
     await panelSettlesAt(page, 352);
     shown = await geometry(page);
     assert.deepEqual([shown.sideBar, Math.round(shown.panelWidth), Math.round(shown.contentWidth)], [240, 352, 640]);
-    assert.equal(await page.evaluate(() => localStorage.getItem('ocupilot.panel.width')), null, 'the stored width stays 400');
+    assert.equal(await page.evaluate(() => localStorage.getItem('ocupilot.panel.width')), null, 'the reopen writes no stored width');
 
     // The chord again returns the reopened side bar to the yield, still writing no preference.
     await page.focus('main#ocu-content');

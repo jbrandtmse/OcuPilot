@@ -39,8 +39,9 @@ const READ_ONLY_ID = 'ocu-panel-read-only';
  * audience is guessed at: `loaded()`, not `answered()`, because a failed map read leaves every
  * verdict allowed.
  *
- * **The composer** is editable while a definition is enabled and nothing restrains the agent, and
- * its text is `PanelState`'s draft, so a route change keeps it. Otherwise it is `readonly` beside
+ * **The composer** is editable while a definition is enabled and the kill switch is off, and its
+ * text is `PanelState`'s draft, so a route change keeps it. Read-only changes only the footer line
+ * (DESIGN.md panel Read-only row). Otherwise it is `readonly` beside
  * `aria-disabled`, described by the sentence that says why, and never natively disabled. Send stays
  * `aria-disabled` until turns exist (Story 4.5).
  *
@@ -118,7 +119,7 @@ const READ_ONLY_ID = 'ocu-panel-read-only';
     </div>
 
     <div class="ocu-panel-footer">
-      <p class="ocu-panel-read-only">{{ readOnlyLine }}</p>
+      <p class="ocu-panel-read-only" [class.ocu-panel-read-only-on]="readOnlyOn">{{ readOnlyLine }}</p>
       <label class="ocu-field-label" [attr.for]="composerId">{{ STRINGS.agentComposerLabel }}</label>
       <div class="ocu-panel-composer-row">
         <textarea
@@ -249,10 +250,16 @@ export class Panel {
     return stringFor(this.agentStatus.restraint().footerKey);
   }
 
-  /** The composer takes text only while a definition is enabled and nothing restrains the agent. */
+  /** Whether a read-only state applies, which turns the footer line restrained. */
+  protected get readOnlyOn(): boolean {
+    this.generation();
+    return this.agentStatus.restraint().footerKey !== 'statusReadOnlyOff';
+  }
+
+  /** The composer takes text only while a definition is enabled and the kill switch is off. */
   protected get composerUnavailable(): boolean {
     if (!this.answered) return true;
-    return !this.agentStatus.configured() || this.agentStatus.restrained();
+    return !this.agentStatus.configured() || this.agentStatus.restraint().killSwitch;
   }
 
   protected get composerAriaDisabled(): string | null {
@@ -269,7 +276,6 @@ export class Panel {
    */
   protected get describedBy(): string | null {
     if (this.killSwitch) return KILL_SWITCH_ID;
-    if (this.enforcedReadOnly) return READ_ONLY_ID;
     if (this.unconfigured) return REASON_ID;
     return null;
   }

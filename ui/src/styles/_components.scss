@@ -1675,8 +1675,9 @@ app-error-log-page {
 // bar takes 24 of it), and the shell colour is the same `on-shell`-on-`shell` pair the rail
 // already draws at 10.35:1.
 
-// Clipped rather than widening the page: below the widths its segments fit, the band keeps the
-// viewport's width and the page body still never scrolls horizontally (DESIGN.md's Yield order).
+// Clipped across rather than widening the page: below the widths its segments fit, the band keeps
+// the viewport's width and the page body still never scrolls horizontally (DESIGN.md's Yield order).
+// `clip` on the one axis leaves the other visible, so the account menu opening upward is not cut off.
 .ocu-status-bar {
   @include typo.ocu-type('label');
 
@@ -1686,7 +1687,7 @@ app-error-log-page {
   justify-content: space-between;
   gap: var(--ocu-space-3);
   min-width: 0;
-  overflow: hidden;
+  overflow-x: clip;
   height: var(--ocu-status-bar-height);
   padding: 0 var(--ocu-space-3);
   background: var(--ocu-shell);
@@ -3229,6 +3230,10 @@ app-data-table {
 
   margin: 0;
   color: var(--ocu-on-surface-variant);
+}
+
+.ocu-panel-read-only-on {
+  color: var(--ocu-restrained);
 }
 
 // The footer behind a 1px `{colors.outline-variant}` top edge (DESIGN.md `:1110`).

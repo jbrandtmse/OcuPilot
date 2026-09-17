@@ -1138,7 +1138,7 @@ Every string here — the read-only line's two forms, the caption, the lock bann
 
 #### `panel-resize-handle`
 
-A 6px strip on the panel's left edge (8px hit area), carrying the panel's docked-edge stripe: 2px `linear-gradient(0deg, {colors.shell}, {colors.shell-edge}, #2090A0)`, teal at the top shading to navy at the bottom, the direction of the docked panel in the artwork. It is the second and last place the logo gradient appears as a hairline. On hover and while dragging, a 3px × 28px `{colors.outline}` grip with 2px corners shows at the vertical center and the cursor is `col-resize`; the handle is keyboard-focusable and shows `focus-ring` while focused. At `{spacing.panel-min}` the grip turns `{colors.restrained}` to show the stop. It is the only sash in the shell.
+A 6px strip on the panel's left edge (8px hit area), carrying the panel's docked-edge stripe: 2px `linear-gradient(0deg, {colors.shell}, {colors.shell-edge}, #2090A0)`, teal at the top shading to navy at the bottom, the direction of the docked panel in the artwork. It is the second and last place the logo gradient appears as a hairline. On hover and while dragging, a 3px × 28px `{colors.outline}` grip with 2px corners shows at the vertical center and the cursor is `col-resize`; the handle is keyboard-focusable and shows `focus-ring` while focused. At `{spacing.panel-min}`, and at the width that leaves content at `{spacing.content-min-width}`, the grip turns `{colors.restrained}` to show the stop. It is the only sash in the shell.
 
 #### `context-chip`
 
