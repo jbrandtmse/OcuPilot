@@ -32,6 +32,12 @@
 /// same declared <code>fields</code>, the same secret strip, the same filter, sort and view rule,
 /// the same row cap and the same <code>truncated</code> signal, so a screen over OcuPilot's own
 /// configuration is a declared read like any other rather than a page with a query of its own.</p>
+/// <p><b>Three source shapes serve endpoints that do not answer a plain LIST</b> (AD-36): a
+/// <code>GET</code> source reads one object as the one row, and a 404 as none; a
+/// <code>forEach</code> source lists a parent endpoint and then the read's own endpoint once per
+/// parent (<method>ForEachRows</method>), bounded by the cap on the rows held and by the cap plus one
+/// on the parents listed; and a declared field <code>&lt;object&gt;.&lt;member&gt;</code> projects one
+/// member of an object field (<method>CopyValue</method>).</p>
 /// <p>Each port is reached through its own class method alone (AD-2, AD-27, AD-29); a tool never
 /// touches <code>%session</code>, <code>%request</code> or <code>$NAMESPACE</code>, and neither
 /// does this.</p>
@@ -41,8 +47,13 @@ Class OcuPilot.Screen.Read Extends %RegisteredObject
 /// <p>The cap a read is bounded by when its caller names none.</p>
 Parameter DEFAULTMAXROWS As INTEGER = 1000;
 
-/// <p>The one request type a Release 1 read issues.</p>
+/// <p>The request type a read issues for its rows, and the one every source but an admin
+/// <code>GET</code> issues.</p>
 Parameter READTYPE = "LIST";
+
+/// <p>The request type a single-object read issues (AD-36): one named object of an admin endpoint,
+/// answered as the read's one row, and a 404 answered as none.</p>
+Parameter OBJECTTYPE = "GET";
 
 /// <p>The request type a declared <code>rowGet</code> issues once per surviving row when it declares
 /// no <code>type</code> of its own.</p>
@@ -170,10 +181,13 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
 
         Set tRead = $ClassMethod(pDescriptor, "Read")
         Set tSource = $Select($IsObject(tRead): tRead.%Get("source"), 1: "")
-        If '$IsObject(tSource) || (tSource.%Get("type") '= ..#READTYPE) {
+        Set tSourceType = $Select($IsObject(tSource): tSource.%Get("type"), 1: "")
+        If '$IsObject(tSource) || ((tSourceType '= ..#READTYPE) && ((tSourceType '= ..#OBJECTTYPE) || (tSource.%Get("port") '= ..#SOURCEADMIN))) {
             Set tSC = ..Internal(pDescriptor _ " declares no read this executor can issue", .pHttpStatus, .pFault)
             Quit
         }
+        Set tForEach = tSource.%Get("forEach")
+        Set tTruncated = ""
 
         If tSource.%Get("port") = ..#SOURCESTATE {
             ; AD-36's second source kind: the rows come from a kernel store's guarded list rather
@@ -199,6 +213,30 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
                 Set tSC = tPortSC
                 Quit
             }
+        } ElseIf tSourceType = ..#OBJECTTYPE {
+            ; AD-36: one named object read as the one row. An object that does not exist is a read
+            ; with no rows rather than a fault, because a singleton the instance has not configured
+            ; is an empty screen, not a failed one.
+            Kill tQuery
+            Set tPortSC = $ClassMethod(..PortClass(), "Invoke", tSource.%Get("endpoint"), ..#OBJECTTYPE, .tQuery, "", .tObject, .tHttp, .tFault)
+            If $$$ISERR(tPortSC) {
+                If tHttp '= 404 {
+                    Set pHttpStatus = tHttp
+                    Set pFault = tFault
+                    Set tSC = tPortSC
+                    Quit
+                }
+                Set tAnswer = []
+            } ElseIf '$IsObject(tObject) || 'tObject.%IsA("%Library.DynamicObject") {
+                Set tSC = ..Internal(pDescriptor _ "'s read answered something other than an object", .pHttpStatus, .pFault)
+                Quit
+            } Else {
+                Set tAnswer = [(tObject)]
+            }
+            Set tTruncated = 0
+        } ElseIf $IsObject(tForEach) {
+            Set tSC = ..ForEachRows(pDescriptor, tSource, tMax, .tAnswer, .tTruncated, .pHttpStatus, .pFault)
+            If $$$ISERR(tSC) Quit
         } Else {
             Set tQuery("maxRows") = tMax + 1
             Set tCriterionProblem = ..SeedCriteria(tRead, .pCriteria, .tQuery)
@@ -216,6 +254,7 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
             Set tSC = ..Internal(pDescriptor _ "'s read answered something other than a list", .pHttpStatus, .pFault)
             Quit
         }
+        If tTruncated = "" Set tTruncated = (tAnswer.%Size() > tMax)
 
         Set tSecrets = $ClassMethod(pDescriptor, "ContextSecretFields")
         Set tFields = []
@@ -243,7 +282,7 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
         Set pResult = {}
         Do pResult.%Set("fields", tFields)
         Do pResult.%Set("rows", tRows)
-        Do pResult.%Set("truncated", tAnswer.%Size() > tMax, "boolean")
+        Do pResult.%Set("truncated", tTruncated, "boolean")
         Do pResult.%Set("banner", ..BannerKey(pDescriptor))
         If $IsObject($Get(tDocument)) Do pResult.%Set("document", tDocument)
         Set pHttpStatus = 200
@@ -285,6 +324,88 @@ ClassMethod StateRows(pDescriptor As %String, pEndpoint As %String, Output pAnsw
     } Catch ex {
         Set pAnswer = ""
         Set tSC = ..Internal("the state read failed: " _ ex.DisplayString(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>The rows of a per-parent read (<code>source.forEach</code>, AD-36), as <var>pAnswer</var>,
+/// with <var>pTruncated</var> its truncation signal.</p>
+/// <p>The parent endpoint is listed with <code>maxRows</code> <var>pMax</var> + 1, so at most that
+/// many parents are listed and at most that many child lists are issued. In parent order, the read's
+/// own endpoint is listed with <code>forEach.param</code> set to the text of the parent's
+/// <code>forEach.key</code>, asking for no more rows than are still wanted, and each child row takes
+/// every <code>forEach.fields</code> entry's <code>from</code> value as its <code>field</code>. It
+/// stops once <var>pMax</var> + 1 rows are held. <var>pTruncated</var> is true when more than
+/// <var>pMax</var> rows were held or the parent list itself answered more than <var>pMax</var>.</p>
+/// <p>A child list answering 404 skips that parent; any other child fault fails the read with that
+/// fault. A parent list that fails passes its fault through. A parent whose key is not a non-empty
+/// string or a number, or an answer that is not a list, is a 500.</p>
+ClassMethod ForEachRows(pDescriptor As %String, pSource As %DynamicObject, pMax As %Integer, Output pAnswer As %DynamicArray, Output pTruncated As %Boolean, ByRef pHttpStatus As %Integer, ByRef pFault As %DynamicObject) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pAnswer = ""
+    Set pTruncated = 0
+    Try {
+        Set tForEach = pSource.%Get("forEach")
+        Kill tParentQuery
+        Set tParentQuery("maxRows") = pMax + 1
+        Set tPortSC = $ClassMethod(..PortClass(), "Invoke", tForEach.%Get("endpoint"), ..#READTYPE, .tParentQuery, "", .tParents, .pHttpStatus, .pFault)
+        If $$$ISERR(tPortSC) {
+            Set tSC = tPortSC
+            Quit
+        }
+        If '$IsObject(tParents) || 'tParents.%IsA("%Library.DynamicArray") {
+            Set tSC = ..Internal(pDescriptor _ "'s parent list answered something other than a list", .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tKeyField = tForEach.%Get("key")
+        Set tFields = tForEach.%Get("fields")
+        Set tHeld = []
+        Set tIterator = tParents.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tParent) {
+            ; The bound holds here too, not only in the parent list's maxRows: a parent list that
+            ; answers more than asked still issues no more than pMax + 1 child lists.
+            If (tIndex > pMax) || (tHeld.%Size() > pMax) Quit
+            Set tKeyType = $Select($IsObject(tParent) && tParent.%IsA("%Library.DynamicObject"): tParent.%GetTypeOf(tKeyField), 1: "unassigned")
+            If '((tKeyType = "number") || ((tKeyType = "string") && (tParent.%Get(tKeyField) '= ""))) {
+                Set tSC = ..Internal(pDescriptor _ "'s parent row carries no string or number " _ tKeyField _ " to list its children by", .pHttpStatus, .pFault)
+                Quit
+            }
+            Kill tChildQuery
+            Set tChildQuery(tForEach.%Get("param")) = ..ValueText(tParent.%Get(tKeyField), tKeyType)
+            Set tChildQuery("maxRows") = pMax + 1 - tHeld.%Size()
+            Set tChildren = ""
+            Set tPortSC = $ClassMethod(..PortClass(), "Invoke", pSource.%Get("endpoint"), ..#READTYPE, .tChildQuery, "", .tChildren, .tHttp, .tFault)
+            If $$$ISERR(tPortSC) {
+                If tHttp = 404 Continue
+                Set pHttpStatus = tHttp
+                Set pFault = tFault
+                Set tSC = tPortSC
+                Quit
+            }
+            If '$IsObject(tChildren) || 'tChildren.%IsA("%Library.DynamicArray") {
+                Set tSC = ..Internal(pDescriptor _ "'s child list answered something other than a list", .pHttpStatus, .pFault)
+                Quit
+            }
+            Set tChildIterator = tChildren.%GetIterator()
+            While tChildIterator.%GetNext(.tChildIndex, .tChild) {
+                If tHeld.%Size() > pMax Quit
+                If '$IsObject(tChild) || 'tChild.%IsA("%Library.DynamicObject") Set tChild = {}
+                If $IsObject(tFields) {
+                    Set tFieldIterator = tFields.%GetIterator()
+                    While tFieldIterator.%GetNext(.tFieldIndex, .tEntry) {
+                        Do ..CopyAs(tParent, tEntry.%Get("from"), tChild, tEntry.%Get("field"))
+                    }
+                }
+                Do tHeld.%Push(tChild)
+            }
+        }
+        If $$$ISERR(tSC) Quit
+        Set pAnswer = tHeld
+        Set pTruncated = (tHeld.%Size() > pMax) || (tParents.%Size() > pMax)
+    } Catch ex {
+        Set pAnswer = ""
+        Set tSC = ..Internal("the per-parent read failed: " _ ex.DisplayString(), .pHttpStatus, .pFault)
     }
     Quit tSC
 }
@@ -540,16 +661,37 @@ ClassMethod Project(pRow As %DynamicObject, pFields As %DynamicArray) As %Dynami
 
 /// <p>Copy <var>pKey</var> from <var>pFrom</var> to <var>pTo</var> keeping its JSON type;
 /// <code>null</code> when <var>pFrom</var> is not an object or does not carry the key.</p>
+/// <p><b>A member field</b> (AD-36): a key <code>&lt;object&gt;.&lt;member&gt;</code> that
+/// <var>pFrom</var> does not carry as a literal key is read from <code>&lt;member&gt;</code> of
+/// <var>pFrom</var>'s object field <code>&lt;object&gt;</code>, and written under the dotted key.</p>
 ClassMethod CopyValue(pFrom As %DynamicObject, pKey As %String, pTo As %DynamicObject) [ Private ]
 {
+    Do ..CopyAs(pFrom, pKey, pTo, pKey)
+}
+
+/// <p>Copy <var>pFromKey</var> of <var>pFrom</var>, resolved as <method>CopyValue</method> resolves a
+/// key, to <var>pToKey</var> of <var>pTo</var>, keeping its JSON type; <code>null</code> when it is
+/// absent.</p>
+ClassMethod CopyAs(pFrom As %DynamicObject, pFromKey As %String, pTo As %DynamicObject, pToKey As %String) [ Private ]
+{
+    Set tSource = ""
+    Set tKey = pFromKey
     Set tType = "unassigned"
-    If $IsObject(pFrom) && pFrom.%IsA("%Library.DynamicObject") Set tType = pFrom.%GetTypeOf(pKey)
+    If $IsObject(pFrom) && pFrom.%IsA("%Library.DynamicObject") {
+        Set tSource = pFrom
+        Set tType = pFrom.%GetTypeOf(pFromKey)
+        If (tType = "unassigned") && (pFromKey [ ".") && (pFrom.%GetTypeOf($Piece(pFromKey, ".", 1)) = "object") {
+            Set tSource = pFrom.%Get($Piece(pFromKey, ".", 1))
+            Set tKey = $Piece(pFromKey, ".", 2, *)
+            Set tType = tSource.%GetTypeOf(tKey)
+        }
+    }
     If (tType = "unassigned") || (tType = "null") {
-        Do pTo.%Set(pKey, "", "null")
+        Do pTo.%Set(pToKey, "", "null")
     } ElseIf (tType = "string") || (tType = "number") || (tType = "boolean") {
-        Do pTo.%Set(pKey, pFrom.%Get(pKey), tType)
+        Do pTo.%Set(pToKey, tSource.%Get(tKey), tType)
     } Else {
-        Do pTo.%Set(pKey, pFrom.%Get(pKey))
+        Do pTo.%Set(pToKey, tSource.%Get(tKey))
     }
 }
 

@@ -215,3 +215,52 @@ test('write-capable means a primary action or a row action, and picks the empty 
   });
   assert.equal(model.isWriteCapable(screenDeclaration({ primaryAction: { id: 'create', selfProtection: '' } })), true);
 });
+
+// Story 6.4, AD-44 / AD-47: a row link under a complete exemption is the declared href with each param
+// appended from the row, percent-encoded, and no link at all when any param's field reads empty.
+//
+// Mutation (Rule 19): drop the empty-text return from `classicRowHref` -> the blank-IssuerEndpointID
+// assertions go red.
+test('classicRowHref appends each row link param from the row, and opens nothing for a blank value', () => {
+  const clients = screenDeclaration({
+    classicLinkExemption: {
+      exempt: true,
+      reason: 'r',
+      label: 'OAuth 2.0 Client Configuration',
+      href: '/csp/sys/sec/%25CSP.UI.Portal.OAuth2.Client.Configuration.zen',
+      rowLink: {
+        params: [
+          { name: 'PID', field: 'ApplicationName' },
+          { name: 'IssuerEndpointID', field: 'ServerDefinitionID' },
+          { name: 'IssuerEndpoint', field: 'IssuerEndpoint' },
+        ],
+      },
+    },
+  });
+  const row = { ApplicationName: 'OcuPilot Test&B', ServerDefinitionID: 2, IssuerEndpoint: 'https://ocupilottest.invalid/b' };
+  assert.equal(
+    model.classicRowHref(row, clients),
+    '/csp/sys/sec/%25CSP.UI.Portal.OAuth2.Client.Configuration.zen?PID=OcuPilot%20Test%26B&IssuerEndpointID=2&IssuerEndpoint=https%3A%2F%2Focupilottest.invalid%2Fb'
+  );
+  for (const blank of [null, undefined, '']) {
+    const partial = { ...row, ServerDefinitionID: blank };
+    if (blank === undefined) delete partial.ServerDefinitionID;
+    assert.equal(model.classicRowHref(partial, clients), '', `a ${String(blank)} IssuerEndpointID opens no editor`);
+  }
+  const queried = screenDeclaration({
+    classicLinkExemption: { ...clients.classicLinkExemption, href: '/csp/sys/page.zen?x=1', rowLink: { params: [{ name: 'PID', field: 'ApplicationName' }] } },
+  });
+  assert.equal(model.classicRowHref(row, queried), '/csp/sys/page.zen?x=1&PID=OcuPilot%20Test%26B', 'an href with a query takes &');
+  const noParams = screenDeclaration({ classicLinkExemption: { ...clients.classicLinkExemption, rowLink: { params: [] } } });
+  assert.equal(model.classicRowHref({}, noParams), clients.classicLinkExemption.href, 'a row link with no params is the href alone');
+  assert.equal(model.classicRowHref(row, screenDeclaration()), '', 'a screen with no exemption links no row');
+  assert.equal(
+    model.classicRowHref(row, screenDeclaration({ classicLinkExemption: { ...clients.classicLinkExemption, exempt: false } })),
+    '',
+    'nor does a row link without an exemption'
+  );
+  assert.equal(
+    model.formatClassicRowLinkDescription(STRINGS.classicRowLinkDescription, 'OAuth 2.0 Client Configuration'),
+    'Opens OAuth 2.0 Client Configuration in the classic portal in a new tab.'
+  );
+});

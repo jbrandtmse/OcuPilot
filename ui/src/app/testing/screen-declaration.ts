@@ -37,6 +37,7 @@ export function screenDeclaration(overrides: Partial<ScreenDeclaration> = {}): S
     read: null,
     table: null,
     banner: null,
+    tab: null,
     toolIdentifier: 'stub',
     ...overrides,
   };

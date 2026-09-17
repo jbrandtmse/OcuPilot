@@ -38,8 +38,10 @@ import { STRINGS, stringFor } from '../core/strings';
 import {
   type CellView,
   cellView,
+  classicRowHref,
   emptyStateView,
   fieldOf,
+  formatClassicRowLinkDescription,
   formatCapNotice,
   formatRowCount,
   isMoveKey,
@@ -72,6 +74,8 @@ interface CellModel {
   readonly id: string;
   readonly view: CellView;
   readonly link: boolean;
+  /** Drawn as the row's classic editor link, opening in a new tab (AD-44). */
+  readonly classic: boolean;
   readonly disc: boolean;
   readonly plain: boolean;
   readonly tag: boolean;
@@ -88,6 +92,8 @@ interface RowModel {
   readonly changed: boolean;
   readonly href: string;
   readonly url: string;
+  /** The classic editor the name cell opens, or `''` (`classicRowHref`). */
+  readonly classicHref: string;
   readonly cells: readonly CellModel[];
   readonly triggerId: string;
   readonly triggerActive: boolean;
@@ -238,6 +244,18 @@ interface HeaderModel {
                       <a class="ocu-data-table-link" tabindex="-1" [href]="row.href" (click)="onLinkClick($event, row)">{{
                         cell.view.text
                       }}</a>
+                    }
+                    @if (cell.classic) {
+                      <a
+                        class="ocu-data-table-link"
+                        tabindex="-1"
+                        target="_blank"
+                        rel="noreferrer"
+                        [href]="row.classicHref"
+                        [attr.aria-description]="classicDescription"
+                        (click)="onClassicLinkClick($event)"
+                        >{{ cell.view.text }}</a
+                      >
                     }
                     @if (cell.disc) {
                       <span class="ocu-data-table-disc" aria-hidden="true" [attr.data-disc]="cell.view.disc"></span>
@@ -401,14 +419,18 @@ export class DataTable implements OnInit {
     const changed = store.changed();
     const activeColumn = this.activeColumn();
     const menuKey = this.menuIsOpen() ? this.menuKey() : null;
-    // The name cell opens the entity's own surface: the list's paired editor where it declares
+    // The name cell opens the entity's own surface: the classic editor where the screen declares a
+    // row link under its exemption (AD-44), which no in-app target replaces and whose blank-value
+    // guard leaves the cell as text; otherwise the list's paired editor where it declares
     // one (Story 3.5's `editorScreenFor`), its paired document viewer where it declares one
     // (`documentScreenFor`), the sub-resource list whose parent it is (`childListFor`), and
     // otherwise the list's own route with the row's id. A screen with none is not linkable at all,
     // and neither is a parent-scoped list that pairs no editor or viewer: its own route's id is its
     // parent's, so a row's id there would name the wrong thing.
-    const linkTarget =
-      editorScreenFor(screen) ?? documentScreenFor(screen) ?? childListFor(screen) ?? (screen.parentScope === '' ? screen : null);
+    const rowLinked = screen.classicLinkExemption.exempt && (screen.classicLinkExemption.rowLink ?? null) !== null;
+    const linkTarget = rowLinked
+      ? null
+      : editorScreenFor(screen) ?? documentScreenFor(screen) ?? childListFor(screen) ?? (screen.parentScope === '' ? screen : null);
     const linkRoute = linkTarget?.route ?? '';
     const linkable = linkTarget !== null && hasIdRoute(linkTarget);
     const currentUrl = this.router.url;
@@ -418,6 +440,7 @@ export class DataTable implements OnInit {
       const isActive = key !== '' && key === active;
       const isChanged = changed.has(key);
       const url = linkable && key !== '' ? withQuery(`${linkRoute}/${encodeEntityId(key)}`, currentUrl) : '';
+      const classicHref = rowLinked ? classicRowHref(row, screen) : '';
       return {
         key,
         index,
@@ -428,16 +451,19 @@ export class DataTable implements OnInit {
         changed: isChanged,
         url,
         href: url === '' ? '' : this.locationStrategy.prepareExternalUrl(url),
+        classicHref,
         cells: columns.map((column, columnIndex) => {
           const view = cellView(fieldOf(row, column.field), column.kind, column.emptyKey ?? '', this.lookup);
           const link = view.link && url !== '';
+          const classic = view.link && classicHref !== '';
           return {
             field: column.field,
             id: `${id}-cell-${columnIndex}`,
             view,
             link,
+            classic,
             disc: view.disc !== null,
-            plain: !link,
+            plain: !link && !classic,
             tag: isChanged && column.kind === 'name',
             active: isActive && activeColumn === columnIndex,
           };
@@ -528,6 +554,11 @@ export class DataTable implements OnInit {
 
   protected get primaryActionLabel(): string {
     return this.screen().primaryAction.id;
+  }
+
+  /** The classic row link's accessible description, naming the classic editor it opens. */
+  protected get classicDescription(): string {
+    return formatClassicRowLinkDescription(STRINGS.classicRowLinkDescription, this.screen().classicLinkExemption.label);
   }
 
   /** The grid's accessible name: the screen's own label. */
@@ -672,7 +703,12 @@ export class DataTable implements OnInit {
         this.openMenu(index);
         return;
       }
-      const url = this.rowModels()[index]?.url ?? '';
+      const row = this.rowModels()[index];
+      if ((row?.classicHref ?? '') !== '') {
+        this.openClassicLink(row);
+        return;
+      }
+      const url = row?.url ?? '';
       if (url !== '') void this.router.navigateByUrl(url);
     }
   }
@@ -713,6 +749,24 @@ export class DataTable implements OnInit {
     if (event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0) return;
     event.preventDefault();
     void this.router.navigateByUrl(row.url);
+  }
+
+  /**
+   * The classic editor link keeps its own default -- a new tab through `target="_blank"` -- and
+   * only stops the click selecting the row. It never navigates the router or calls `window.open`
+   * (AD-47).
+   */
+  protected onClassicLinkClick(event: MouseEvent): void {
+    event.stopPropagation();
+  }
+
+  /** Enter on a row whose name cell is a classic link activates that anchor, as a click would. */
+  private openClassicLink(row: RowModel): void {
+    const cell = row.cells.find((candidate) => candidate.classic);
+    if (cell === undefined) return;
+    this.scrollIntoRange(row.index);
+    const anchor = document.getElementById(cell.id)?.querySelector('a');
+    anchor?.click();
   }
 
   protected onTriggerClick(event: MouseEvent, row: RowModel): void {

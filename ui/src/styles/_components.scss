@@ -676,7 +676,8 @@ app-server-flag:empty {
 app-screen-outlet,
 app-home-page,
 app-audit-page,
-app-error-log-page {
+app-error-log-page,
+app-detail-page {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
@@ -2088,6 +2089,73 @@ app-data-table {
   flex-direction: column;
   min-height: 0;
   padding: 0 var(--ocu-gutter) var(--ocu-gutter);
+}
+
+// The detail page (Story 6.4): a tab strip over the current tab's list page. The strip is Material's
+// tab nav bar, drawn with DESIGN.md's tabs tokens (`:589-597`) through its own custom properties.
+.ocu-detail-page {
+  box-sizing: border-box;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.ocu-detail-panel {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.ocu-detail-tabs {
+  --mat-tab-container-height: 40px;
+  --mat-tab-label-text-font: var(--ocu-type-body-family);
+  --mat-tab-label-text-size: var(--ocu-type-body-size);
+  --mat-tab-label-text-line-height: var(--ocu-type-body-line-height);
+  --mat-tab-label-text-tracking: var(--ocu-type-body-tracking);
+  --mat-tab-label-text-weight: 600;
+  --mat-tab-inactive-label-text-color: var(--ocu-on-surface-variant);
+  --mat-tab-inactive-hover-label-text-color: var(--ocu-on-surface-variant);
+  --mat-tab-inactive-focus-label-text-color: var(--ocu-on-surface-variant);
+  --mat-tab-active-label-text-color: var(--ocu-secondary);
+  --mat-tab-active-hover-label-text-color: var(--ocu-secondary);
+  --mat-tab-active-focus-label-text-color: var(--ocu-secondary);
+  --mat-tab-active-indicator-color: var(--ocu-secondary);
+  --mat-tab-active-hover-indicator-color: var(--ocu-secondary);
+  --mat-tab-active-focus-indicator-color: var(--ocu-secondary);
+  --mat-tab-active-indicator-height: 2px;
+  --mat-tab-divider-color: var(--ocu-outline-variant);
+  --mat-tab-divider-height: 1px;
+
+  flex: 0 0 auto;
+  margin: 0 var(--ocu-gutter) var(--ocu-space-2);
+}
+
+.ocu-detail-tab:hover {
+  background: var(--ocu-surface-container-low);
+}
+
+.ocu-detail-tab-label {
+  white-space: nowrap;
+}
+
+// A gated tab keeps full opacity, as a gated side-bar entry does: its reason has to be read.
+.ocu-detail-tab.mat-mdc-tab-disabled {
+  opacity: 1;
+}
+
+.ocu-detail-tab.mat-mdc-tab-disabled .ocu-detail-tab-label {
+  color: var(--ocu-restrained);
+}
+
+// The gated tab's reason, inline after its label, as the side bar carries it.
+.ocu-detail-tab-reason {
+  @include typo.ocu-type('caption');
+
+  margin-left: var(--ocu-space-2);
+  color: var(--ocu-restrained);
+  white-space: nowrap;
 }
 
 // The banner strip above the table (Story 2.8). `.ocu-list-page` is a column flex whose table takes

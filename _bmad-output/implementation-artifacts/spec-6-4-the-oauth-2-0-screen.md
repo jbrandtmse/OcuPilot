@@ -2,9 +2,10 @@
 title: 'The OAuth 2.0 screen'
 type: 'feature'
 created: '2026-09-16'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'a56b144fb54afcf5ff380fd5cc5a76a1bc6c6626'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-6-context.md'
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
@@ -243,6 +244,51 @@ Reads are `GET /screens/<tool>/read`.
 
 ## Review Triage Log
 
+### 2026-09-16 — Review pass
+
+- verdicts: 40 findings — high 1, medium 6, low 31, false 2, maybe-false 0
+- findings:
+  - `[high]` `[patch]` blind: `classic-links` counts five exemptions where AD-44 counts one — the SM-C1 line now counts distinct reasons (1) and a second line counts the 5 declaring descriptors; the Tasks/Verification "5 honored" wording is superseded by the spine.
+  - `[low]` `[reject]` blind: `forEach.fields[].from` not checked against secrets; `forEach.param` may name a reserved query parameter — hand-written, reviewed declarations only; fix adds grammar guards in both engines.
+  - `[medium]` `[patch]` blind: `ForEachRows` relies on the vendor honoring `maxRows` for AD-36's cap+1 child-call bound — the parent loop now stops after cap+1 parents; pinned by an uncapped-parents fixture arm in `ScreenReadSource`.
+  - `[low]` `[reject]` blind: a non-object child row becomes `{}` plus parent fields — vendor LIST rows are objects, and the plain LIST path's `Project` already reads a non-object row as nulls.
+  - `[low]` `[reject]` blind: a tab group of non-`detail` screens validates though nothing draws its strip — the spec'd roster rule; no such group ships; fix is a new rule in both engines.
+  - `[low]` `[patch]` blind: `declaredStringKeys` omits `tab.labelKey`, so a mistyped tab label key builds green — added, with the key-listing test extended.
+  - `[low]` `[reject]` blind: the first tab's `security/oauth/:id` route overlaps its sibling tab routes — literal routes win by side-bar order today, the Wallet/Secrets precedent; `id` `single` is spec'd.
+  - `[low]` `[reject]` blind: the locator segment on a tab's entity URL reads the tab label but opens the group — the spec's stated behavior.
+  - `[low]` `[reject]` blind: a denied tab renders `ScreenDenied` with no strip, stranding allowed sibling tabs — Design Notes accept deep-link access for partial holders; stock roles hold all three OAuth resources.
+  - `[low]` `[reject]` blind: `rowLink` `params: []` on a keyed editor, and an href `#fragment` placing params inside it — `[]` is the Authorization server tab's correct shape; no shipped href carries a fragment.
+  - `[low]` `[reject]` blind: Client server descriptions and Client configurations links share one accessible description — the intent fixes the label to the editor's `PAGENAME`, and the two sit on different tabs.
+  - `[low]` `[reject]` blind: Enter on a classic-linked row scrolled out of the rendered range does nothing — OAuth tabs hold few rows, all rendered; a correct fix waits on the viewport's render.
+  - `[low]` `[reject]` blind: `OAuthProbe.RegistrationId` reads a SQL error as not found; `Remove` deletes probe-named objects `Create` skipped — throwaway-only helper with namespaced probe names.
+  - `[low]` `[patch]` blind: OAuth smoke checks keyed off `tI > 13`, a redundant `(tCount '= 1)`, and a Smoke test doc claiming both demo settings — keyed by check name, clause dropped, doc corrected.
+  - `[false]` `[reject]` blind: spec Auto Run Result, task checkboxes and the Matrix's `OcuPilotDemo` SSL name not updated — Auto Run Result is written at finalize; the rest edits the spec (the Matrix name is noted for the lead).
+  - `[low]` `[patch]` blind: stale messages and comments (`WireSecurityRead` security-area messages, `strings.test.mjs` "roughly 261", `ci-throwaway.sh` principals list) — corrected.
+  - `[low]` `[reject]` blind: no EXPERIENCE.md pattern describes the routed tab strip — a planning-artifact change outside this run's authority; noted for the lead.
+  - `[low]` `[reject]` edge: cap 1000 means up to 1001 sequential child LISTs — AD-36's designed bound, in-process calls.
+  - `[low]` `[reject]` edge: Enter on a row outside the rendered range — same root cause as the blind finding above.
+  - `[low]` `[reject]` edge: href `#fragment` puts row params inside the fragment — same root cause as the blind `rowLink` finding.
+  - `[low]` `[reject]` edge: duplicate server client `Name` (IdKey is `ClientId`) collides row keys — spec'd name column; duplicate names are unusual.
+  - `[low]` `[reject]` edge: a denied tab shows no strip — same root cause as the blind finding.
+  - `[low]` `[reject]` edge: Enter on a tab link fires `open()` twice — the second navigation targets the same URL; browser AC1 pins one read per Enter.
+  - `[low]` `[patch]` edge: an unarmed run's `OnAfterAllTests` still calls `OAuthProbe.Remove` (the manager runs teardown after a refused setup, `%UnitTest.Manager:1298`) — `OAuthTabs` and `WireOAuthRead` teardowns now quit unarmed.
+  - `[low]` `[reject]` edge: the server flag outliving a failed `Remove` could delete a later-recreated configuration — theoretical on a discarded throwaway.
+  - `[low]` `[reject]` edge: fields with two dots resolve one level — the spec defines one `<object>.<member>` level.
+  - `[low]` `[patch]` edge: `ScreenRead`'s live field-key check skips every tab declaration — now skips the five OAuth tab classes by name.
+  - `[low]` `[reject]` edge: `Remove` deletes pre-existing same-named objects — same root cause as the blind `OAuthProbe` finding.
+  - `[medium]` `[patch]` gap: `Validate`'s `TabProblem` and `TabGroupProblem` calls pinned by no ObjectScript test — added `TabRegistry`/`TabGroupRegistry` fixtures and `Descriptor.TestATabOutsideTheGrammarIsRefusedByTheRoster`.
+  - `[medium]` `[patch]` gap: a failing `forEach` parent list has no test — `parentFault` fixture arm and `ScreenReadSource.TestAParentListFaultFailsTheRead`.
+  - `[medium]` `[patch]` gap: child and `GET` faults asserted only as "500 with a code" — `badrequest` arm; both tests pin 400 `PORT.VALIDATION`.
+  - `[low]` `[patch]` gap: `OAuthTabs.KeySetProblem` misses a dotted key naming a secret — also matches the member after the last dot, pinned by a synthetic assertion.
+  - `[low]` `[patch]` gap (other): `ScreenRead` skips every tab — same root cause as the edge finding.
+  - `[medium]` `[patch]` gap (other): `ForEachRows` does not cap parents itself — same root cause as the blind bound finding.
+  - `[low]` `[reject]` intent: on tab routes without an entity the locator segment is plain text — the locator's existing semantics; the spec's reading (a).
+  - `[medium]` `[patch]` intent: the `forEach` bound measured on a fixture that obeys `maxRows` — same root cause as the blind bound finding.
+  - `[false]` `[reject]` intent: member fields have no second-engine change — the client reads the dotted row key through `fieldOf`, and browser AC2 renders those cells.
+  - `[low]` `[reject]` intent: shared files carry modified lines, not only added ones — the minimum the spec'd grammar requires; integrate-forward resolves overlap.
+  - `[low]` `[reject]` intent: side bar, cap and blank guard tested by sampling — each rule has a pinning test with an observed mutation.
+  - `[low]` `[reject]` intent: no test keeps `classic-link-card` off these tabs, and no missing-pair Design Note — the card renders on no page, and `WireOAuthRead` found no missing pair.
+
 ## Design Notes
 
 **Architecture decisions:**
@@ -323,17 +369,48 @@ Reads are `GET /screens/<tool>/read`.
 
 **Mutations (Rule 19).** Record each as `mutation:` once observed, then revert and confirm the tree byte-identical.
 
-- AC1: swap `tab.position` of ResourceServer and Server -> `navigation.test.mjs` tab order red; browser AC1 red after rebuild and redeploy.
-- AC2: `Metadata.grant_types_supported` becomes `Metadata.grant_types` -> `OAuthTabs` grant types red; browser AC2 red.
-- AC3: drop `oauth2-client-configuration` from `security/oauth`'s secondaries -> `refresh.test.mjs` red.
-- AC4: `data-table.ts` ignores `rowLink` -> `data-table.spec.ts` red; browser AC4 red. Remove one tab's exemption -> `classic-links.test.mjs` red.
-- Blank-value guard: `data-table.ts` builds the row link even when a param's field is empty -> the `data-table.spec.ts` blank-`IssuerEndpointID` case red.
-- AC5: `OAuthServerClientTab` drops `%Admin_OAuth2_Registration:USE` -> `WireOAuthRead` red.
-- Integration: `Tool.Read.View` keeps cap-1 rows -> `OAuthTabs` tool test red.
-- Matrix: `Execute` fails on a `GET` 404 -> `ScreenReadSource` unconfigured red. `forEach` stops skipping a child 404 -> forEach-faults red. Truncation ignores the held rows -> Clients cap red.
-- Grammar: disable each new rule arm in `Registry` and in `screen-mirror.mjs` / `classic-links.mjs` -> its corpus test red in that engine.
+- mutation: swap `tab.position` of `OAuthResourceServerTab` and `OAuthServerTab`, mirror regenerated -> `navigation.test.mjs` "tabMembersFor lists the OAuth 2.0 tabs in position order..." red; bundle rebuilt and redeployed -> `oauth.browser-spec.mjs` AC1 red on the strip's tab order (observed).
+- mutation: `OAuthServerTab` reads `Metadata.grant_types` for `Metadata.grant_types_supported`, loaded into `ocupilot-b-ci` -> `OAuthTabs.TestTheAuthorizationServerTabIsTheLiveGetProjected` red on the seven declared fields and grant types `authorization_code`, with the read fields pin and the row key sets; mirror regenerated, bundle rebuilt and redeployed -> browser AC2 red (observed).
+- mutation: drop `oauth2-client-configuration` from `security/oauth`'s secondaries -> `refresh.test.mjs` "AC3: the OAuth 2.0 tab re-reads on a change to either secondary type..." red (observed).
+- mutation: `data-table.ts` computes `rowLinked` as false -> `data-table.spec.ts` "Story 6.4 AC4: a declared row link draws the name cell as a new-tab anchor..." red; bundle rebuilt and redeployed -> browser AC4 red on "the name cell is the classic editor anchor" (observed). Remove `OAuthServerTab`'s `classicLinkExemption` -> `classic-links.test.mjs` "the shipped descriptor roster passes..." red (observed). Count the SM-C1 line by declarations rather than by reason -> the one-exemption assertion in the same test red (observed).
+- mutation: drop `if (text === '') return '';` from `classicRowHref` -> `data-table.spec.ts` "Story 6.4 blank-value guard: a row whose IssuerEndpointID reads empty draws its name as text, never a link" and `table-model.test.mjs` "classicRowHref ... opens nothing for a blank value" red (observed).
+- mutation: `OAuthServerClientTab` drops `%Admin_OAuth2_Registration:USE`, loaded into `ocupilot-b-ci` -> `WireOAuthRead` client, server, secure and no-system-read tests red (observed).
+- mutation: `Tool.Read.View` keeps `pContextCap - 1` rows, recompiled on `ocupilot-b-ci` -> `OAuthTabs.TestTheReadToolAnswersTheRoutesRowsNarrowedByItsCap` red (observed).
+- mutation: `Read.Execute` fails on a `GET` 404 -> `ScreenReadSource.TestAnUnconfiguredObjectReadsAsNoRows` red. `ForEachRows` stops skipping a child 404 -> `TestAPerParentReadSkipsAChildNotFoundAndFailsOnAnyOtherFault` red. Parents listed at the cap rather than cap+1, or truncation ignoring the held rows -> `TestAPerParentReadIsBoundedByTheCapOnRowsAndParents` red; the second leaves `OAuthTabs.TestTheClientsTabIsCapped` green, since the live parent list alone exceeds cap 1. No `forEach` truncation at all -> `OAuthTabs.TestTheClientsTabIsCapped` red. `CopyAs` without member resolution -> `TestAnObjectReadsAsOneRowProjectingMemberFields` red. No parent field copy -> `OAuthTabs.TestTheClientsTabReadsEachClientWithItsDescription` red. All recompiled with descendants on `ocupilot-b-ci` (observed). Drop the parent-count stop -> the uncapped-parent assertion in the bounds test red; read a failed parent list as none -> `TestAParentListFaultFailsTheRead` red; answer a non-404 child or `GET` fault as internal -> the 400 assertions in the child-fault and object-fault tests red (observed, one load).
+- mutation: disable, one at a time in `screen-mirror.mjs` / `classic-links.mjs`, the later-tab side-bar arm, the group position check, the group head check, the `GET` rowGet arm, the `forEach` rowGet arm, the source type arm, `buildMirror`'s `tabGroupProblem` call, the row link secret arm and the exempt-false row link arm -> each reddens its corpus test (`tabProblem and tabGroupProblem return every sentence...`, `readProblem returns every source-type and forEach sentence...`, `classicLinkProblem returns every sentence...`; the type arm also the AD-36 generator test) (observed). The same arms disabled in `Registry` on `ocupilot-b-ci` -> `Descriptor.TestEveryTabCorpusCaseGetsItsSentence`, `ClassicLinkCorpus` cases in `Descriptor`, and `ReadTool.TestEveryReadSourceCorpusCaseGetsItsSentence` red on their cases (observed). Delete `Validate`'s `TabProblem` call, or its `TabGroupProblem` call -> `Descriptor.TestATabOutsideTheGrammarIsRefusedByTheRoster` red (observed, each). Drop the tab key from `declaredStringKeys` -> its key-listing test red (observed).
+- mutation: side bar compares only the current route; locator bar drops `tabGroupFor`; `DetailPage` drops the gated refusal and `[disabled]` -> `side-bar.spec.ts` "every tab of a tabbed screen marks its group's one entry current", `locator-bar.spec.ts` "on a tab of a tabbed screen, the screen segment routes to the group" and `detail-page.spec.ts` "AC5: a gated tab stays listed and focusable..." red (observed).
+- mutation: `Install.Smoke`'s `OAUTHSERVERTOOL` names `security.nosuch`, or an OAuth check demands exactly one row -> `Smoke.TestTheOAuthTabsAreLiveChecks` / `TestAnOAuthTabCheckPassesOnZeroOrOneRow` red (observed).
+- mutation: `OAuthTabs` secret leg: add `Metadata` to `OAuthServerTab`'s fields -> `OAuthTabs.TestEveryRowCarriesTheDeclaredFieldsAndNoSecret` red (observed). Match `SECRETKEYS` against whole keys only -> the member-field secret assertion red (observed).
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Summary.** The OAuth 2.0 side-bar entry opens five `detail` tab descriptors grouped by a declared `tab`, each with its own `AdminPort` read, table, derived tool and `classicLinkExemption` row link. Four grammar additions landed in both engines (`tab` with its roster rule, a `GET` source, a `forEach` source, `classicLinkExemption.rowLink`), plus member fields in `Read.CopyAs`. `DetailPage` draws a Material tab-nav strip over `ListPage`; the side bar and locator treat every tab as its group; the Security area appends the three OAuth pairs; smoke has 18 area checks.
+
+**Files.**
+
+- `src/OcuPilot/Screen/Read.cls`, `Registry.cls`, `Area.cls`, `Descriptor/Base.cls` -- GET and `forEach` execution (parents capped at cap+1 in the executor), member fields, `TabProblem`/`TabGroupProblem`/`ForEachProblem`/`RowLinkProblem`, the three OAuth area pairs.
+- `src/OcuPilot/Screen/Descriptor/OAuth{ServerDescription,Client,ResourceServer,Server,ServerClient}Tab.cls` -- the five tabs.
+- `src/OcuPilot/Install/Smoke.cls` -- five OAuth checks passing on 0 or 1 rows, keyed by name.
+- `src/OcuPilot/Test/` -- new `TabCorpus`, `ReadSourceCorpus`, `ReadSource/*` fixtures, `ScreenReadSource`, `OAuthProbe`, `OAuthTabs`, `WireOAuthRead`, `TabRegistry`/`TabGroupRegistry` with `Tab/`, `TabGroup/` fixtures; updated `ClassicLinkCorpus`, `DeclarationCorpus`, `Descriptor`, `ReadTool`, `ScreenRead`, `Smoke`, `Wire`, `WireSecurityRead`.
+- `ui/tools/screen-mirror.mjs`, `classic-links.mjs` -- JS engines; SM-C1 line counts one exemption and a second line the 5 declaring descriptors (AD-44); `declaredStringKeys` reads `tab.labelKey`.
+- `ui/src/app/shell/detail-page.ts` (new), `data-table.ts`, `side-bar.ts`, `locator-bar.ts`, `screen-outlet.ts`; `core/navigation.ts`, `table-model.ts`, `strings.ts`, `screens.generated.ts`; `styles/_components.scss` -- client.
+- Tests: `detail-page.spec.ts`, `data-table.spec.ts`, `side-bar.spec.ts`, `locator-bar.spec.ts`, `rail-wire.spec.ts`, `testing/screen-declaration.ts`; `ui/tools/{classic-links,navigation,navigation-wire,refresh,screen-mirror,strings,table-model}.test.mjs`; `ui/browser/oauth.browser-spec.mjs` (new), `security`/`ssl` browser specs.
+- `EXPERIENCE.md` -- Fixed strings rows `:354-356`. `scripts/ci-throwaway.sh` -- arming comment names `WireOAuthRead` and `OAuthTabs`.
+
+**Review.** 40 findings (high 1, medium 6, low 31, false 2). Patched 12 entries: AD-44 count (high); `forEach` parent bound in the executor, `Validate` tab wiring test, parent-list fault test, 400 pass-through tests (medium); `declaredStringKeys` tab key, smoke keyed by name, stale messages, unarmed teardown guard, `ScreenRead` skip by class, dotted secret key check (low). Deferred: none. Rejected 26 (low 24, false 2), each with its reason in the Review Triage Log: `forEach` from/param guards, non-object child row, non-detail tab groups, first-tab `:id` overlap, locator entity segment and no-entity segment, denied tab without strip (twice), `rowLink` `[]`/fragment (twice), shared editor description, Enter on an unrendered row (twice), `OAuthProbe` lookup and remove scope (twice), spec bookkeeping, EXPERIENCE tab-strip pattern, 1001-call fan-out, duplicate server client names, double `open()` on Enter, stale server flag, two-dot fields, modified shared-file lines, test sampling, card/missing-pair tests, member fields in the second engine.
+
+**Follow-up review recommended: true** (patched: high 1, medium 4 entries). Unverified risk: the patch set itself (new `OcuPilot.Test.Tab*` fixture registries and the changed `ForEachRows` loop condition) has not been through a review layer; the 400 and parent-list pass-through paths are exercised only against `ReadSource.Endpoint`, not a live vendor fault.
+
+**Verification.** `check-objectscript` 0 problems (328 files); `lint-docs` clean; slot B load of `src/OcuPilot/` and compile of changed classes clean; `npm run build` green (classic-links: 1 exemption, 5 declaring descriptors); `npm test` 807 node + 408 vitest passed. On a fresh `ocupilot-b-ci` after the patches, one class per call: OAuthTabs 9, ScreenReadSource 7, WireOAuthRead 5, WireSecurityRead 9, Wire 20, ReadTool 26, ScreenRead 22, Descriptor 34, Navigation 11, SecurityLists 7, Smoke 30, AdminPortSync 6 -- all passed, totals confirmed from `%UnitTest_Result`; `smoke.sh` 31 passed; browser `oauth` + `security` specs 8/8 (full suite 94/94 before the patches, which changed no client runtime code). New mutations observed on the throwaway from copies, worktree untouched, then restored and re-run green.
+
+**Notes for the lead.**
+
+- Matrix and the `OAuthTabs` task name the demo SSL configuration `OcuPilotDemo`; the fixture creates `OcuPilotDemoTLS`, which `OAuthProbe` uses (Rule 5 apply-and-report amendment of the intent's Matrix).
+- Tasks and Verification say classic-links reports "5 honored"; AD-44 governs: one exemption, five declarations.
+- EXPERIENCE.md has no component pattern for a routed tab strip with gated tabs; `DetailPage` follows DESIGN.md `:589-597` tokens.
+- DW-1018 occurrence: the Security rail is now gated for a Secure + IRISSYS + Wallet holder lacking an OAuth resource (6 of 10 screens would serve them).
+- Footprint beyond the Tasks list, none contended: `ui/browser/ssl.browser-spec.mjs`, `ui/src/styles/_components.scss`, `ui/src/app/testing/screen-declaration.ts`, `scripts/ci-throwaway.sh`, `Test/DeclarationCorpus.cls`, `Test/Tab*` fixtures.
+- Protocol note: the handoff subagent once ran `ssl.browser-spec.mjs` without the two browser variables, which defaulted to slot A's `ocupilot-ci` (52776) -- a read-only `_SYSTEM` sign-in and list read; nothing on that instance was changed. No commit or push by any subagent (`git log --branches --not --remotes` shows only Epic 4's own commits).

@@ -400,6 +400,7 @@ export const DECLARATION_KEYS = [
   'read',
   'table',
   'banner',
+  'tab',
   'toolIdentifier',
 ];
 
@@ -502,7 +503,7 @@ export function readProblem(declaration) {
   if (source === null || typeof source !== 'object' || Array.isArray(source)) {
     return 'read.source is not an object naming its port, endpoint and type (AD-36)';
   }
-  const sourceKeysFault = unknownKeyProblem('read.source', source, ['port', 'endpoint', 'type', 'rowGet']);
+  const sourceKeysFault = unknownKeyProblem('read.source', source, ['port', 'endpoint', 'type', 'rowGet', 'forEach']);
   if (sourceKeysFault !== null) return sourceKeysFault;
   if (!READ_SOURCE_PORTS.includes(source.port)) {
     return (
@@ -519,7 +520,25 @@ export function readProblem(declaration) {
       `store inside ${STATE_PACKAGE} by its own name alone (AD-9)`
     );
   }
-  if (source.type !== 'LIST') return `read.source.type '${source.type}' is not 'LIST'`;
+  if (typeof source.type !== 'string' || !READ_SOURCE_TYPES.includes(source.type)) {
+    return `read.source.type '${shown(source.type)}' is not 'LIST' or 'GET'`;
+  }
+  // A GET source reads one named object of an admin endpoint as the read's one row (AD-36), so it
+  // has no row list to issue a detail call for, no parents to list and no server search.
+  if (source.type === 'GET') {
+    if (source.port !== SOURCE_ADMIN) {
+      return `read.source.type 'GET' is declared on a '${source.port}' source, and a single-object read issues an admin endpoint's GET (AD-36)`;
+    }
+    if (isObject(source.rowGet)) {
+      return 'read.source.rowGet is declared on a GET source, which reads one object and has no rows to issue a detail call for (AD-36)';
+    }
+    if (isObject(source.forEach)) {
+      return 'read.source.forEach is declared on a GET source, which reads one object and lists no parents (AD-36)';
+    }
+    if (isObject(read.criteria)) {
+      return 'read.criteria is declared on a GET source, whose one object takes no server search (AD-36)';
+    }
+  }
   // A mgmnt source answers whole rows from the management API, which offers no per-row detail call
   // to issue.
   if (source.port === SOURCE_MGMNT && isObject(source.rowGet)) {
@@ -551,6 +570,8 @@ export function readProblem(declaration) {
   if (read.fields.length === 0) return 'read.fields is empty, and a read projects at least one field';
   const rowGetFault = rowGetProblem(source, read.fields);
   if (rowGetFault !== null) return rowGetFault;
+  const forEachFault = forEachProblem(read, source, read.fields);
+  if (forEachFault !== null) return forEachFault;
 
   const { context } = declaration;
   if (context === null || typeof context !== 'object' || Array.isArray(context)) {
@@ -894,6 +915,154 @@ function criteriaMarkerProblem(criteria, params) {
   return null;
 }
 
+/**
+ * The request types a `read.source` may issue (AD-36), byte for byte `OcuPilot.Screen.Registry`'s own
+ * `READSOURCETYPES`: `LIST`, a list of rows, and `GET`, one object read as the read's one row.
+ */
+export const READ_SOURCE_TYPES = ['LIST', 'GET'];
+
+/**
+ * What is wrong with `source.forEach`, or `null` (AD-36). `read` is the declared read and `fields`
+ * its declared fields.
+ *
+ * An absent or `null` `forEach` lists no parents. Otherwise it is an object carrying only `endpoint`
+ * (the parent endpoint), `key` (the parent row field each child list is read for), `param` (the query
+ * parameter that key's text is sent as) and `fields`, an array of objects carrying only `field` (one of
+ * `fields`, not repeated) and `from` (the parent row field copied into it), declared on an `admin`
+ * `LIST` source with no `rowGet` and no `criteria`. `OcuPilot.Screen.Registry.ForEachProblem` returns
+ * the same sentence for every case in `OcuPilot.Test.ReadSourceCorpus`.
+ */
+export function forEachProblem(read, source, fields) {
+  const where = 'read.source.forEach';
+  const { forEach } = source;
+  if (forEach === undefined || forEach === null) return null;
+  if (!isObject(forEach)) return `${where} is not an object declaring its endpoint, key, param and fields (AD-36)`;
+  const keysFault = unknownKeyProblem(where, forEach, ['endpoint', 'key', 'param', 'fields']);
+  if (keysFault !== null) return keysFault;
+  if (source.port !== SOURCE_ADMIN) {
+    return `${where} is declared on a '${shown(source.port)}' source, and a per-parent list issues admin endpoints (AD-36)`;
+  }
+  if (isObject(source.rowGet)) {
+    return `${where} is declared with read.source.rowGet, and a per-parent list copies its parent's fields rather than a detail call's (AD-36)`;
+  }
+  if (isObject(read.criteria)) {
+    return `${where} is declared with read.criteria, and a per-parent list sets its one parameter from each parent (AD-36)`;
+  }
+  if (typeof forEach.endpoint !== 'string' || !ENDPOINT_RE.test(forEach.endpoint)) {
+    return `${where}.endpoint '${shown(forEach.endpoint)}' is not a package-relative endpoint name`;
+  }
+  if (typeof forEach.key !== 'string' || forEach.key === '') {
+    return `${where}.key is empty, and a per-parent list reads each parent's key by name`;
+  }
+  if (typeof forEach.param !== 'string' || !PARAM_RE.test(forEach.param)) {
+    return `${where}.param '${shown(forEach.param)}' is not a query parameter name`;
+  }
+  if (!Array.isArray(forEach.fields)) return `${where}.fields is not an array of parent fields`;
+  const seen = [];
+  for (let index = 0; index < forEach.fields.length; index += 1) {
+    const entry = forEach.fields[index];
+    const at = `${where}.fields entry #${index + 1}`;
+    if (!isObject(entry)) return `${at} is not an object declaring its field and from`;
+    const entryKeysFault = unknownKeyProblem(at, entry, ['field', 'from']);
+    if (entryKeysFault !== null) return entryKeysFault;
+    if (typeof entry.field !== 'string' || !fields.includes(entry.field)) {
+      return `${at} field '${shown(entry.field)}' is not one of read.fields`;
+    }
+    if (seen.includes(entry.field)) return `${at} names the field '${entry.field}' twice`;
+    seen.push(entry.field);
+    if (typeof entry.from !== 'string' || entry.from === '') {
+      return `${at} from is empty, and a parent field is copied from a named key of the parent`;
+    }
+  }
+  return null;
+}
+
+/** The shape a `tab.group` route takes, byte for byte `OcuPilot.Screen.Registry`'s `TABGROUPPATTERN`. */
+export const TAB_GROUP_RE = /^[a-z0-9-]+(\/[a-z0-9-]+)*$/;
+
+/**
+ * What is wrong with a declaration's `tab`, or `null` when nothing is (AD-5). A tabbed screen is one
+ * descriptor per tab, grouped by this declaration.
+ *
+ * An absent or `null` `tab` is a screen that is no tab. Otherwise it is an object carrying only `group`
+ * (a route), `position` (a whole number of at least 1) and `labelKey` (a non-empty string key);
+ * position 1 is declared exactly by the member whose `route` is the group; and a member at position 2
+ * or higher declares `sideBarPosition` 0. `OcuPilot.Screen.Registry.TabProblem` returns the same
+ * sentence for every case in `OcuPilot.Test.TabCorpus`.
+ */
+export function tabProblem(declaration) {
+  const { tab } = declaration;
+  if (tab === undefined || tab === null) return null;
+  if (!isObject(tab)) return 'tab is not an object declaring its group, position and labelKey (AD-5)';
+  const keysFault = unknownKeyProblem('tab', tab, ['group', 'position', 'labelKey']);
+  if (keysFault !== null) return keysFault;
+  if (typeof tab.group !== 'string' || !TAB_GROUP_RE.test(tab.group)) {
+    return `tab.group '${shown(tab.group)}' is not a route`;
+  }
+  if (typeof tab.position !== 'number' || !Number.isInteger(tab.position) || tab.position < 1) {
+    return `tab.position '${shown(tab.position)}' is not a whole number of at least 1`;
+  }
+  if (typeof tab.labelKey !== 'string' || tab.labelKey === '') {
+    return 'tab.labelKey is empty, and a tab names the string key its label reads';
+  }
+  const route = shown(declaration.route);
+  if (tab.position === 1 && route !== tab.group) {
+    return `tab.position 1 is the group's own route, and route '${route}' is not tab.group '${tab.group}' (AD-5)`;
+  }
+  if (tab.position !== 1 && route === tab.group) {
+    return `tab.group '${tab.group}' is this screen's own route, which only tab.position 1 may declare (AD-5)`;
+  }
+  if (tab.position > 1 && declaration.sideBarPosition !== 0) {
+    return `tab.position ${tab.position} is a tab under its group's first, and such a tab declares sideBarPosition 0 (AD-5)`;
+  }
+  return null;
+}
+
+/**
+ * What is wrong with how a roster's tab groups fit together, or `null` (AD-5). `screens` is
+ * `[{className, declaration}]` in roster order, and the answer names the offending class.
+ *
+ * Groups are checked in the order their first member appears. Each names a built member at its route
+ * that declares the group; every member shares that member's `area` and `archetype`; and the members'
+ * positions, sorted, run 1 to their count with no gap or repeat.
+ * `OcuPilot.Screen.Registry.TabGroupProblem` returns the same sentence for every roster case in
+ * `OcuPilot.Test.TabCorpus`.
+ */
+export function tabGroupProblem(screens) {
+  const groups = new Map();
+  for (const screen of screens) {
+    const tab = screen?.declaration?.tab;
+    if (!isObject(tab) || typeof tab.group !== 'string') continue;
+    if (!groups.has(tab.group)) groups.set(tab.group, []);
+    groups.get(tab.group).push(screen);
+  }
+  for (const [group, members] of groups) {
+    let head = null;
+    for (const member of members) {
+      if (member.declaration.route === group && member.declaration.built === true) head = member;
+    }
+    if (head === null) {
+      return `${members[0].className}: tab.group '${group}' names no built member at that route, and a tab group opens at its first tab (AD-5)`;
+    }
+    const { area, archetype } = head.declaration;
+    for (const member of members) {
+      if (member.declaration.area === area && member.declaration.archetype === archetype) continue;
+      return (
+        `${member.className}: tab.group '${group}' is declared in area '${shown(member.declaration.area)}' with archetype ` +
+        `'${shown(member.declaration.archetype)}', and a tab group's members share the area and archetype of '${group}' (AD-5)`
+      );
+    }
+    const positions = members.map((member) => member.declaration.tab.position).sort((a, b) => a - b);
+    if (positions.some((position, index) => position !== index + 1)) {
+      return (
+        `${head.className}: tab.group '${group}' declares positions ${positions.join(',')}, and a tab group's ` +
+        `positions run 1 to ${members.length} with no gap or repeat (AD-5)`
+      );
+    }
+  }
+  return null;
+}
+
 /** The rules a `read.source.rowGet` derived field may name (AD-36). */
 export const ROW_GET_RULES = ['beforeToday'];
 
@@ -1078,7 +1247,7 @@ export function tableProblem(declaration, fields, secrets) {
  */
 export function declaredStringKeys(declaration) {
   const keys = [declaration.labelKey, declaration.emptyStateKey];
-  const { table, banner } = declaration;
+  const { table, banner, tab } = declaration;
   if (table !== null && typeof table === 'object') {
     for (const column of Array.isArray(table.columns) ? table.columns : []) keys.push(column?.labelKey, column?.emptyKey);
     keys.push(table.emptyNextKey, table.emptyAgentKey);
@@ -1086,6 +1255,7 @@ export function declaredStringKeys(declaration) {
   if (banner !== null && typeof banner === 'object') {
     for (const entry of Array.isArray(banner.cases) ? banner.cases : []) keys.push(entry?.messageKey);
   }
+  if (tab !== null && typeof tab === 'object') keys.push(tab.labelKey);
   return keys.filter((key) => typeof key === 'string' && key !== '');
 }
 
@@ -1189,7 +1359,13 @@ export function buildMirror({ entityTypes, scopeWords, archetypes, areas, screen
     if (bannerFault !== null) {
       throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${bannerFault}`);
     }
+    const tabFault = tabProblem(screen.declaration);
+    if (tabFault !== null) {
+      throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${tabFault}`);
+    }
   }
+  const tabGroupFault = tabGroupProblem(screens);
+  if (tabGroupFault !== null) throw new Error(`src/OcuPilot/Screen/Descriptor: ${tabGroupFault}`);
 
   // `refreshes` / `refreshRates` are defaulted rather than spread verbatim, because `refreshProblem`
   // calls an omitted pair sound and `Base.Refreshes()` answers 0 for one: without these the mirror
@@ -1220,6 +1396,7 @@ export function buildMirror({ entityTypes, scopeWords, archetypes, areas, screen
     read: screen.declaration.read ?? null,
     table: screen.declaration.table ?? null,
     banner: screen.declaration.banner ?? null,
+    tab: screen.declaration.tab ?? null,
   }));
 
   const builtArchetypeKeys = archetypeKeys.filter((key) =>
@@ -1284,6 +1461,22 @@ export interface ClassicLinkExemption {
    * never derived from \`classicPage\`, which is a class name (AD-44). \`''\` unless \`exempt\`.
    */
   readonly href: string;
+  /**
+   * The row link a complete exemption may declare (AD-44, AD-47): each row's name cell opens \`href\`
+   * with these params appended from that row, in a new tab. Absent on a screen that links no row.
+   */
+  readonly rowLink?: ClassicRowLink | null;
+}
+
+/** One query parameter a row link appends: its name and the read field whose text it carries. */
+export interface ClassicRowLinkParam {
+  readonly name: string;
+  readonly field: string;
+}
+
+/** A row link: the params appended, in order, to the exemption's \`href\` for one row. */
+export interface ClassicRowLink {
+  readonly params: readonly ClassicRowLinkParam[];
 }
 
 /** A field a detail call derives on the instance from one of its detail fields (AD-36). */
@@ -1316,8 +1509,29 @@ export interface ReadRowGet {
 export interface ReadSource {
   readonly port: ${READ_SOURCE_PORTS.map((value) => `'${value}'`).join(' | ')};
   readonly endpoint: string;
-  readonly type: 'LIST';
+  /** \`LIST\` reads rows; \`GET\` reads one object as the one row, and a 404 reads as none. */
+  readonly type: ${READ_SOURCE_TYPES.map((value) => `'${value}'`).join(' | ')};
   readonly rowGet?: ReadRowGet | null;
+  /** The parent list a per-parent read issues its source once per parent for, bounded by the cap. */
+  readonly forEach?: ReadForEach | null;
+}
+
+/** One parent field a per-parent read copies into each of that parent's rows. */
+export interface ReadForEachField {
+  readonly field: string;
+  readonly from: string;
+}
+
+/**
+ * A per-parent read (AD-36): \`endpoint\` is listed first, bounded by the cap plus one, and the read's
+ * own source is listed once per parent with \`param\` set to that parent's \`key\`, each row taking
+ * \`fields\` from its parent.
+ */
+export interface ReadForEach {
+  readonly endpoint: string;
+  readonly key: string;
+  readonly param: string;
+  readonly fields: readonly ReadForEachField[];
 }
 
 /** The fields a read sorts on, its default sort field and direction. */
@@ -1477,7 +1691,19 @@ export interface ScreenDeclaration {
   readonly table: TableDeclaration | null;
   /** The strip the read's own answer raises above the table, or \`null\` for a screen with none. */
   readonly banner: BannerDeclaration | null;
+  /** The tab group this screen is one tab of, or \`null\` for a screen that is no tab (AD-5). */
+  readonly tab: TabDeclaration | null;
   readonly toolIdentifier: string;
+}
+
+/**
+ * One tab of a tabbed screen (AD-5): the route of the group's first tab, this tab's position in the
+ * strip, and the string key its label reads.
+ */
+export interface TabDeclaration {
+  readonly group: string;
+  readonly position: number;
+  readonly labelKey: string;
 }
 
 /** The closed entity-type vocabulary, mirrored from OcuPilot.Kernel.EntityType. */

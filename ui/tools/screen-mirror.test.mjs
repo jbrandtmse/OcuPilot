@@ -27,6 +27,8 @@ import {
   readProblem,
   readSources,
   sideBarPositionProblem,
+  tabGroupProblem,
+  tabProblem,
 } from './screen-mirror.mjs';
 import { loadStrings } from './strings.mjs';
 import { CREDENTIAL_RE } from './field-lists.mjs';
@@ -113,7 +115,8 @@ test('every declared area and label key the mirror carries resolves against the 
 // red; drop the banner's case keys from it -> the listing goes red on its last two members and the
 // unresolved-key assertion loses them. Reading only the first case reddens it too, which is what
 // keeps a second case's key (DW-270) from being a key nothing resolves. Drop a column's `emptyKey`
-// from it -> the listing goes red, missing `notAnEmptyCellKey`.
+// from it -> the listing goes red, missing `notAnEmptyCellKey`. Drop the tab's `labelKey` from it ->
+// the listing goes red, missing `notATabStringKey`.
 test('every string key a table or banner declaration names is one the key check reads', () => {
   const declaration = JSON.parse(
     '{"labelKey": "navAreaWebApplications", "emptyStateKey": "commandBoxNoMatch",' +
@@ -124,7 +127,8 @@ test('every string key a table or banner declaration names is one the key check 
       ' "field": "Status", "cases": [' +
       ' {"equals": "Suspended", "messageKey": "notABannerStringKey", "severity": "warning"},' +
       ' {"equals": "Not running", "messageKey": "notASecondBannerStringKey", "severity": "warning"}' +
-      ' ]}}'
+      ' ]},' +
+      ' "tab": {"group": "security/oauth", "position": 2, "labelKey": "notATabStringKey"}}'
   );
   const keys = declaredStringKeys(declaration);
   assert.deepEqual(keys, [
@@ -136,11 +140,12 @@ test('every string key a table or banner declaration names is one the key check 
     'classicLinkCardCaption',
     'notABannerStringKey',
     'notASecondBannerStringKey',
+    'notATabStringKey',
   ]);
   const strings = loadStrings();
   assert.deepEqual(
     keys.filter((key) => !(key in strings)),
-    ['notAStringKey', 'notAnEmptyCellKey', 'notABannerStringKey', 'notASecondBannerStringKey'],
+    ['notAStringKey', 'notAnEmptyCellKey', 'notABannerStringKey', 'notASecondBannerStringKey', 'notATabStringKey'],
     'and a key the string source lacks is found, both banner cases\' among them'
   );
 });
@@ -356,7 +361,7 @@ test('AD-36: the generator refuses a read outside the declared grammar, naming t
     [(d) => (d.read.sort.default = 'Enabled'), /read\.sort\.default 'Enabled'/],
     [(d) => (d.read.sort.direction = 'up'), /direction 'up'/],
     [(d) => (d.read.source.port = 'monitor'), /port 'monitor'/],
-    [(d) => (d.read.source.type = 'GET'), /type 'GET'/],
+    [(d) => (d.read.source.type = 'POST'), /type 'POST' is not 'LIST' or 'GET'/],
     [(d) => (d.context.secretFields = ['Other']), /context\.secretFields names 'Other'/],
     [(d) => (d.read.secretFields = ['Secret']), /read declares the unknown key 'secretFields'/],
     [(d) => (d.read.source.maxRows = 5), /read\.source declares the unknown key 'maxRows'/],
@@ -422,6 +427,82 @@ test('readProblem returns every rowGet sentence OcuPilot.Test.RowGetCorpus decla
   });
 });
 
+// Story 6.4, AD-36: every case in `OcuPilot.Test.ReadSourceCorpus`, read off disk from the XData block
+// `OcuPilot.Test.ReadTool` reads through the class dictionary, gets its exact sentence or `null` from
+// `readProblem`: a source's LIST or GET type and its per-parent list.
+//
+// Mutation (Rule 19): drop the `forEach` rowGet refusal from `forEachProblem` -> the "a parent list
+// beside a detail call" case goes red.
+test('readProblem returns every source-type and forEach sentence OcuPilot.Test.ReadSourceCorpus declares', () => {
+  const corpus = testCorpus(['Test', 'ReadSourceCorpus.cls'], 'Cases');
+  assert.ok(corpus.cases.length > 0, `the corpus carries cases (read ${corpus.cases.length})`);
+  let refusals = 0;
+  for (const testCase of corpus.cases) {
+    const declaration = structuredClone(corpus.declaration);
+    declaration.read.source = structuredClone(testCase.source);
+    if (testCase.criteria !== undefined) declaration.read.criteria = structuredClone(testCase.criteria);
+    assert.equal(readProblem(declaration), testCase.expected, testCase.name);
+    if (testCase.expected !== null) refusals += 1;
+  }
+  assert.ok(refusals > 0, 'the corpus carries at least one refusing case');
+});
+
+// Story 6.4, AD-5: every case in `OcuPilot.Test.TabCorpus` gets its exact sentence or `null` from
+// `tabProblem`, and every roster there from `tabGroupProblem`; and both refusals reach the generator.
+//
+// Mutation (Rule 19): drop the side-bar arm from `tabProblem` -> the two later-tab side-bar cases go
+// red. Drop the `tabGroupProblem` call from `buildMirror` -> the roster-refusal assertion goes red.
+test('tabProblem and tabGroupProblem return every sentence OcuPilot.Test.TabCorpus declares', () => {
+  const corpus = testCorpus(['Test', 'TabCorpus.cls'], 'Cases');
+  assert.ok(corpus.cases.length > 0 && corpus.rosters.length > 0, 'the corpus carries cases and rosters');
+  let refusals = 0;
+  for (const testCase of corpus.cases) {
+    assert.equal(tabProblem(testCase.declaration), testCase.expected, testCase.name);
+    if (testCase.expected !== null) refusals += 1;
+  }
+  for (const roster of corpus.rosters) {
+    const screens = roster.screens.map((entry) => ({ className: entry.descriptor, declaration: entry.declaration }));
+    assert.equal(tabGroupProblem(screens), roster.expected, roster.name);
+    if (roster.expected !== null) refusals += 1;
+  }
+  assert.ok(refusals > 0, 'the corpus carries at least one refusing case');
+
+  const sources = readSources();
+  for (const screen of sources.screens) {
+    assert.equal(tabProblem(screen.declaration), null, `${screen.className}'s tab passes`);
+  }
+  assert.equal(tabGroupProblem(sources.screens), null, 'and the shipped tab groups fit together');
+
+  const oauth = sources.screens.find((screen) => screen.declaration.route === 'security/oauth');
+  assert.ok(oauth !== undefined, 'the OAuth 2.0 screen is declared');
+  const hostile = structuredClone(oauth.declaration);
+  hostile.tab = { ...hostile.tab, position: 0 };
+  assert.throws(
+    () => buildMirror({ ...sources, screens: [{ file: 'Hostile.cls', className: 'OcuPilot.Screen.Descriptor.Hostile', declaration: hostile }] }),
+    /Hostile\.cls \(OcuPilot\.Screen\.Descriptor\.Hostile\): tab\.position '0' is not a whole number of at least 1/
+  );
+  const gap = sources.screens.map((screen) =>
+    screen.declaration.route === 'security/oauth/server'
+      ? { ...screen, declaration: { ...screen.declaration, tab: { ...screen.declaration.tab, position: 6 } } }
+      : screen
+  );
+  assert.throws(() => buildMirror({ ...sources, screens: gap }), /tab\.group 'security\/oauth' declares positions 1,2,3,5,6/);
+
+  const emitted = JSON.parse(generate().split('export const SCREENS: readonly ScreenDeclaration[] = ')[1].replace(/;\s*$/, ''));
+  const members = emitted
+    .filter((screen) => screen.tab !== null)
+    .sort((a, b) => a.tab.position - b.tab.position)
+    .map((screen) => [screen.route, screen.tab.group, screen.tab.position, screen.sideBarPosition]);
+  assert.deepEqual(members, [
+    ['security/oauth', 'security/oauth', 1, 5],
+    ['security/oauth/clients', 'security/oauth', 2, 0],
+    ['security/oauth/resource-servers', 'security/oauth', 3, 0],
+    ['security/oauth/server', 'security/oauth', 4, 0],
+    ['security/oauth/server-clients', 'security/oauth', 5, 0],
+  ]);
+  assert.ok(emitted.every((screen) => 'tab' in screen), 'every screen emits tab, null when it is no tab');
+});
+
 // DW-264, Story 2.7 AC5: every case in `OcuPilot.Test.AdminPairCorpus`, read off disk from the
 // XData block `OcuPilot.Test.ReadTool` reads through the class dictionary, gets its exact sentence
 // or `null` from `readProblem`; and the three shipped admin-port lists pass.
@@ -452,7 +533,7 @@ test('readProblem returns every admin-privilege sentence OcuPilot.Test.AdminPair
   assert.equal(declarationProblem(''), 'the declaration is not an object', 'and neither is a string');
 
   const { screens } = readSources();
-  for (const name of ['AuditList', 'ProcessList', 'SslConfigList', 'TaskScheduleList', 'UserList', 'WebAppList', 'RestApiList', 'OpenApiViewer', 'RoleList', 'ResourceList', 'ServiceList', 'X509CredentialList', 'LdapConfigList', 'WalletCollectionList', 'WalletSecretList']) {
+  for (const name of ['AuditList', 'ProcessList', 'SslConfigList', 'TaskScheduleList', 'UserList', 'WebAppList', 'RestApiList', 'OpenApiViewer', 'RoleList', 'ResourceList', 'ServiceList', 'X509CredentialList', 'LdapConfigList', 'WalletCollectionList', 'WalletSecretList', 'OAuthServerDescriptionTab', 'OAuthClientTab', 'OAuthResourceServerTab', 'OAuthServerTab', 'OAuthServerClientTab']) {
     const screen = screens.find((candidate) => candidate.className === `OcuPilot.Screen.Descriptor.${name}`);
     assert.ok(screen !== undefined, `${name} is declared`);
     assert.equal(readProblem(screen.declaration), null, `${name}'s read passes`);
@@ -1399,7 +1480,7 @@ test('declarationProblem returns every sentence OcuPilot.Test.DeclarationCorpus 
   }
   assert.ok(refusals > 0, 'the corpus carries at least one refusing case');
 
-  // The corpus's own sound declaration exercises all twenty-five keys, so the vocabulary cannot
+  // The corpus's own sound declaration exercises all twenty-six keys, so the vocabulary cannot
   // drift by one without a case going red.
   assert.deepEqual(
     Object.keys(corpus.declaration).sort(),

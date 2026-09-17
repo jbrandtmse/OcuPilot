@@ -20,8 +20,10 @@
 /// <method>AreaCoverageProblem</method>),
 /// whose banner is not the declared grammar (<method>BannerProblem</method>),
 /// whose archetype or classic link-out is not a permitted shape (AD-44,
-/// <method>ClassicLinkProblem</method>), or whose route or tool identifier collides with
-/// another's. For both the
+/// <method>ClassicLinkProblem</method>), whose <code>tab</code> is not the declared grammar (AD-5,
+/// <method>TabProblem</method>), or whose route or tool identifier collides with
+/// another's; and, over the whole roster, whose tab groups do not fit together
+/// (<method>TabGroupProblem</method>). For both the
 /// <b>entity type</b> and the
 /// <b>scope</b>, <file>scripts/check-objectscript.py</file> and
 /// <file>ui/tools/screen-mirror.mjs</file> refuse the same value before it ever compiles, each
@@ -138,6 +140,7 @@ ClassMethod Validate(Output pProblem As %String) As %Status
         Set tSC = ..Descriptors(.tList)
         If $$$ISERR(tSC) Quit
         Set tRoutes = ""
+        Set tRoster = []
         For tI = 1:1:$ListLength(tList) {
             Set tClass = $List(tList, tI)
             Set tDeclSC = $ClassMethod(tClass, "DeclarationJson", .tObject)
@@ -260,13 +263,21 @@ ClassMethod Validate(Output pProblem As %String) As %Status
                 Set pProblem = tClass _ ": " _ tClassicProblem
                 Quit
             }
+            ; AD-5: a tabbed screen is one descriptor per tab, grouped by a declared tab.
+            Set tTabProblem = ..TabProblem(tObject)
+            If tTabProblem '= "" {
+                Set pProblem = tClass _ ": " _ tTabProblem
+                Quit
+            }
             Set tRoute = $ClassMethod(tClass, "Route")
             If $ListFind(tRoutes, tRoute) > 0 {
                 Set pProblem = tClass _ ": route '" _ tRoute _ "' is already declared by another descriptor"
                 Quit
             }
             Set tRoutes = tRoutes _ $ListBuild(tRoute)
+            Do tRoster.%Push({"descriptor": (tClass), "declaration": (tObject)})
         }
+        If (pProblem = "") && $$$ISOK(tSC) Set pProblem = ..TabGroupProblem(tRoster)
     } Catch ex {
         Set pProblem = "the descriptor roster could not be validated: " _ ex.DisplayString()
         Set tSC = ex.AsStatus()
@@ -279,13 +290,13 @@ ClassMethod Validate(Output pProblem As %String) As %Status
 
 /// <p>The keys a screen declaration may carry at its top level -- the whole vocabulary, in the
 /// order <class>OcuPilot.Screen.Descriptor.Base</class> reads them (AD-5).</p>
-/// <p>Five are optional and the rest are not, but this parameter says nothing about which:
+/// <p>Six are optional and the rest are not, but this parameter says nothing about which:
 /// <method>DeclarationProblem</method> is an <b>unknown-key</b> check, never a presence check. A
 /// declaration missing an optional key -- <code>refreshes</code>, <code>refreshRates</code>,
-/// <code>read</code>, <code>table</code>, <code>banner</code> -- is sound, and a declaration
-/// missing a required one is already refused by the rule that reads it, with a sentence naming
-/// what it was for.</p>
-Parameter DECLARATIONKEYS = "route,area,labelKey,sideBarPosition,archetype,built,refreshes,refreshRates,privileges,entityType,secondaryEntityTypes,scope,parentScope,id,context,primaryAction,rowActions,emptyStateKey,commandAliases,classicPage,classicLinkExemption,read,table,banner,toolIdentifier";
+/// <code>read</code>, <code>table</code>, <code>banner</code>, <code>tab</code> -- is sound, and a
+/// declaration missing a required one is already refused by the rule that reads it, with a sentence
+/// naming what it was for.</p>
+Parameter DECLARATIONKEYS = "route,area,labelKey,sideBarPosition,archetype,built,refreshes,refreshRates,privileges,entityType,secondaryEntityTypes,scope,parentScope,id,context,primaryAction,rowActions,emptyStateKey,commandAliases,classicPage,classicLinkExemption,read,table,banner,tab,toolIdentifier";
 
 /// <p>What is wrong with <var>pDeclaration</var>'s own top-level keys, or <code>""</code> when
 /// nothing is (DW-271). Every key must be one of <parameter>DECLARATIONKEYS</parameter>.</p>
@@ -396,6 +407,150 @@ ClassMethod SideBarPositionProblem(pDeclaration As %DynamicObject) As %String
         }
     } Catch ex {
         Set tProblem = "the sideBarPosition declaration could not be read: " _ ex.DisplayString()
+    }
+    Quit tProblem
+}
+
+/// <p>The shape a <code>tab.group</code> route takes: lower-case segments of letters, digits and
+/// hyphens, joined by <code>/</code>.</p>
+Parameter TABGROUPPATTERN = "^[a-z0-9-]+(/[a-z0-9-]+)*$";
+
+/// <p>What is wrong with <var>pDeclaration</var>'s <code>tab</code>, or <code>""</code> when nothing
+/// is (AD-5). A tabbed screen is one descriptor per tab, grouped by this declaration.</p>
+/// <p>A <code>tab</code> that is absent or <code>null</code> is a screen that is no tab. Otherwise it
+/// is an object carrying only <code>group</code> (a route, <parameter>TABGROUPPATTERN</parameter>),
+/// <code>position</code> (a whole number of at least 1) and <code>labelKey</code> (a non-empty string
+/// key). Position 1 is declared exactly by the member whose <code>route</code> is the group, and a
+/// member at position 2 or higher declares <code>sideBarPosition</code> 0, so the group's side-bar
+/// entry is its first tab and no other.</p>
+/// <p>How the members of one group fit together is <method>TabGroupProblem</method>'s, over the
+/// roster. <file>ui/tools/screen-mirror.mjs</file>'s <code>tabProblem</code> returns the same sentence
+/// for every case in <class>OcuPilot.Test.TabCorpus</class>.</p>
+/// <p><b>Public and value-driven</b> for the reason <method>RefreshProblem</method> is.</p>
+ClassMethod TabProblem(pDeclaration As %DynamicObject) As %String
+{
+    Set tProblem = ""
+    Try {
+        If '$IsObject(pDeclaration) {
+            Set tProblem = "the declaration is not an object"
+            Quit
+        }
+        Set tType = pDeclaration.%GetTypeOf("tab")
+        If (tType = "unassigned") || (tType = "null") Quit
+        If tType '= "object" {
+            Set tProblem = "tab is not an object declaring its group, position and labelKey (AD-5)"
+            Quit
+        }
+        Set tTab = pDeclaration.%Get("tab")
+        Set tProblem = ..UnknownKeyProblem(tTab, "tab", $ListBuild("group", "position", "labelKey"))
+        If tProblem '= "" Quit
+        Set tGroup = tTab.%Get("group")
+        If (tTab.%GetTypeOf("group") '= "string") || '$Match(tGroup, ..#TABGROUPPATTERN) {
+            Set tProblem = "tab.group '" _ tGroup _ "' is not a route"
+            Quit
+        }
+        Set tPosition = tTab.%Get("position")
+        If (tTab.%GetTypeOf("position") '= "number") || '$Match(tPosition, "^[1-9][0-9]*$") {
+            Set tProblem = "tab.position '" _ tPosition _ "' is not a whole number of at least 1"
+            Quit
+        }
+        If (tTab.%GetTypeOf("labelKey") '= "string") || (tTab.%Get("labelKey") = "") {
+            Set tProblem = "tab.labelKey is empty, and a tab names the string key its label reads"
+            Quit
+        }
+        Set tRoute = pDeclaration.%Get("route")
+        If (tPosition = 1) && (tRoute '= tGroup) {
+            Set tProblem = "tab.position 1 is the group's own route, and route '" _ tRoute _ "' is not tab.group '" _ tGroup _ "' (AD-5)"
+            Quit
+        }
+        If (tPosition '= 1) && (tRoute = tGroup) {
+            Set tProblem = "tab.group '" _ tGroup _ "' is this screen's own route, which only tab.position 1 may declare (AD-5)"
+            Quit
+        }
+        If (tPosition > 1) && ((pDeclaration.%GetTypeOf("sideBarPosition") '= "number") || (pDeclaration.%Get("sideBarPosition") '= 0)) {
+            Set tProblem = "tab.position " _ tPosition _ " is a tab under its group's first, and such a tab declares sideBarPosition 0 (AD-5)"
+            Quit
+        }
+    } Catch ex {
+        Set tProblem = "the tab declaration could not be read: " _ ex.DisplayString()
+    }
+    Quit tProblem
+}
+
+/// <p>What is wrong with how a roster's tab groups fit together, or <code>""</code> (AD-5).
+/// <var>pScreens</var> is a <class>%DynamicArray</class> of <code>{descriptor, declaration}</code>
+/// in roster order, and the answer names the offending descriptor.</p>
+/// <p>A member is any declaration whose <code>tab</code> is an object with a string
+/// <code>group</code>. Groups are checked in the order their first member appears. For each: the
+/// group names a built member (the declaration at the group's route, built, declaring that group);
+/// every member shares that member's <code>area</code> and <code>archetype</code>; and the members'
+/// positions, sorted, run 1 to their count with no gap or repeat. A shape one member cannot hold on
+/// its own is <method>TabProblem</method>'s.</p>
+/// <p><file>ui/tools/screen-mirror.mjs</file>'s <code>tabGroupProblem</code> returns the same sentence
+/// for every roster case in <class>OcuPilot.Test.TabCorpus</class>.</p>
+ClassMethod TabGroupProblem(pScreens As %DynamicArray) As %String
+{
+    Set tProblem = ""
+    Try {
+        Kill tMembers, tOrder
+        Set tGroups = ""
+        Set tIterator = pScreens.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tScreen) {
+            If '$IsObject(tScreen) Continue
+            Set tDeclaration = tScreen.%Get("declaration")
+            If '$IsObject(tDeclaration) || (tDeclaration.%GetTypeOf("tab") '= "object") Continue
+            Set tTab = tDeclaration.%Get("tab")
+            If tTab.%GetTypeOf("group") '= "string" Continue
+            Set tGroup = tTab.%Get("group")
+            If '$ListFind(tGroups, tGroup) Set tGroups = tGroups _ $ListBuild(tGroup)
+            Set tMembers(tGroup) = $Get(tMembers(tGroup)) + 1
+            Set tMembers(tGroup, tMembers(tGroup)) = tScreen
+        }
+        For tG = 1:1:$ListLength(tGroups) {
+            Set tGroup = $List(tGroups, tG)
+            Set tHead = ""
+            For tM = 1:1:tMembers(tGroup) {
+                Set tDeclaration = tMembers(tGroup, tM).%Get("declaration")
+                If (tDeclaration.%Get("route") = tGroup) && (tDeclaration.%GetTypeOf("built") = "boolean") && tDeclaration.%Get("built") Set tHead = tMembers(tGroup, tM)
+            }
+            If tHead = "" {
+                Set tProblem = tMembers(tGroup, 1).%Get("descriptor") _ ": tab.group '" _ tGroup _ "' names no built member at that route, and a tab group opens at its first tab (AD-5)"
+                Quit
+            }
+            Set tArea = tHead.%Get("declaration").%Get("area")
+            Set tArchetype = tHead.%Get("declaration").%Get("archetype")
+            For tM = 1:1:tMembers(tGroup) {
+                Set tDeclaration = tMembers(tGroup, tM).%Get("declaration")
+                If (tDeclaration.%Get("area") = tArea) && (tDeclaration.%Get("archetype") = tArchetype) Continue
+                Set tProblem = tMembers(tGroup, tM).%Get("descriptor") _ ": tab.group '" _ tGroup _ "' is declared in area '" _ tDeclaration.%Get("area") _ "' with archetype '" _ tDeclaration.%Get("archetype") _ "', and a tab group's members share the area and archetype of '" _ tGroup _ "' (AD-5)"
+                Quit
+            }
+            If tProblem '= "" Quit
+            Kill tSorted
+            For tM = 1:1:tMembers(tGroup) {
+                Set tPosition = tMembers(tGroup, tM).%Get("declaration").%Get("tab").%Get("position")
+                Set tSorted(+tPosition) = $Get(tSorted(+tPosition)) + 1
+            }
+            Set tText = ""
+            Set tExpected = 1
+            Set tSound = 1
+            Set tPosition = ""
+            For {
+                Set tPosition = $Order(tSorted(tPosition))
+                If tPosition = "" Quit
+                For tC = 1:1:tSorted(tPosition) {
+                    Set tText = tText _ $Select(tText = "": "", 1: ",") _ tPosition
+                    If tPosition '= tExpected Set tSound = 0
+                    Set tExpected = tExpected + 1
+                }
+            }
+            If 'tSound {
+                Set tProblem = tHead.%Get("descriptor") _ ": tab.group '" _ tGroup _ "' declares positions " _ tText _ ", and a tab group's positions run 1 to " _ tMembers(tGroup) _ " with no gap or repeat (AD-5)"
+                Quit
+            }
+        }
+    } Catch ex {
+        Set tProblem = "the tab groups could not be read: " _ ex.DisplayString()
     }
     Quit tProblem
 }
@@ -589,7 +744,11 @@ Parameter READTOOLIDENTIFIERPATTERN = "^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$";
 /// nothing is (AD-36). <var>pDeclaration</var> is the whole parsed declaration, because the rules
 /// reach <code>context.secretFields</code> and <code>toolIdentifier</code> as well.</p>
 /// <p>A <code>read</code> that is absent or <code>null</code> is a screen with no read. Otherwise:
-/// <code>source</code> is <code>{port, endpoint, type: "LIST"}</code> naming one of three sources
+/// <code>source</code> is <code>{port, endpoint, type}</code>, whose <code>type</code> is one of
+/// <parameter>READSOURCETYPES</parameter> -- <code>GET</code> reads one object of an
+/// <code>admin</code> endpoint and declares no <code>rowGet</code>, <code>forEach</code> or
+/// <code>criteria</code> -- and whose optional <code>forEach</code> lists a parent endpoint first
+/// (<method>ForEachProblem</method>). It names one of three sources
 /// -- <code>admin</code>, an instance endpoint reached through the port, with a
 /// dotted endpoint name and an optional <code>rowGet</code> (<method>RowGetProblem</method>);
 /// <code>mgmnt</code>, the management API reached through its own port, which declares no
@@ -641,7 +800,7 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
             Quit
         }
         Set tSource = tRead.%Get("source")
-        Set tProblem = ..UnknownKeyProblem(tSource, "read.source", $ListBuild("port", "endpoint", "type", "rowGet"))
+        Set tProblem = ..UnknownKeyProblem(tSource, "read.source", $ListBuild("port", "endpoint", "type", "rowGet", "forEach"))
         If tProblem '= "" Quit
         Set tPort = tSource.%Get("port")
         If (tSource.%GetTypeOf("port") '= "string") || '$ListFind($ListBuild(##class(OcuPilot.Screen.Read).#SOURCEADMIN, ##class(OcuPilot.Screen.Read).#SOURCESTATE, ##class(OcuPilot.Screen.Read).#SOURCEMGMNT), tPort) {
@@ -656,9 +815,29 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
             Set tProblem = "read.source.endpoint '" _ tSource.%Get("endpoint") _ "' names a package, and a state source names a store inside " _ ##class(OcuPilot.Screen.Read).#STATEPACKAGE _ " by its own name alone (AD-9)"
             Quit
         }
-        If (tSource.%GetTypeOf("type") '= "string") || (tSource.%Get("type") '= "LIST") {
-            Set tProblem = "read.source.type '" _ tSource.%Get("type") _ "' is not 'LIST'"
+        If (tSource.%GetTypeOf("type") '= "string") || '$ListFind($ListFromString(..#READSOURCETYPES), tSource.%Get("type")) {
+            Set tProblem = "read.source.type '" _ tSource.%Get("type") _ "' is not 'LIST' or 'GET'"
             Quit
+        }
+        ; A GET source reads one named object of an admin endpoint as the read's one row (AD-36), so
+        ; it has no row list to issue a detail call for, no parents to list and no server search.
+        If tSource.%Get("type") = "GET" {
+            If tPort '= ##class(OcuPilot.Screen.Read).#SOURCEADMIN {
+                Set tProblem = "read.source.type 'GET' is declared on a '" _ tPort _ "' source, and a single-object read issues an admin endpoint's GET (AD-36)"
+                Quit
+            }
+            If tSource.%GetTypeOf("rowGet") = "object" {
+                Set tProblem = "read.source.rowGet is declared on a GET source, which reads one object and has no rows to issue a detail call for (AD-36)"
+                Quit
+            }
+            If tSource.%GetTypeOf("forEach") = "object" {
+                Set tProblem = "read.source.forEach is declared on a GET source, which reads one object and lists no parents (AD-36)"
+                Quit
+            }
+            If tRead.%GetTypeOf("criteria") = "object" {
+                Set tProblem = "read.criteria is declared on a GET source, whose one object takes no server search (AD-36)"
+                Quit
+            }
         }
         ; A state source's rows are OcuPilot's own, read whole: there is no detail endpoint to
         ; issue per row and no vendor query to search on the server, so declaring either is
@@ -690,6 +869,8 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
             Quit
         }
         Set tProblem = ..RowGetProblem(tSource, tFields)
+        If tProblem '= "" Quit
+        Set tProblem = ..ForEachProblem(tRead, tSource, tFields)
         If tProblem '= "" Quit
 
         If pDeclaration.%GetTypeOf("context") '= "object" {
@@ -1021,6 +1202,70 @@ ClassMethod CriteriaMarkerProblem(pCriteria As %DynamicObject, pParams As %List)
     Quit ""
 }
 
+/// <p>The request types a <code>read.source</code> may issue (AD-36): <code>LIST</code>, a list of
+/// rows, and <code>GET</code>, one object read as the read's one row.</p>
+Parameter READSOURCETYPES = "LIST,GET";
+
+/// <p>What is wrong with <var>pSource</var>'s <code>forEach</code>, or <code>""</code> (AD-36).
+/// <var>pRead</var> is the declared read and <var>pFields</var> its declared fields.</p>
+/// <p>An absent or <code>null</code> <code>forEach</code> lists no parents. Otherwise it is an object
+/// carrying only <code>endpoint</code> (the parent endpoint, a package-relative name),
+/// <code>key</code> (the parent row field whose text each child list is read for), <code>param</code>
+/// (the query parameter that text is sent as) and <code>fields</code>, an array of objects carrying
+/// only <code>field</code> (one of <var>pFields</var>, not repeated) and <code>from</code> (the
+/// parent row field copied into it). It is declared on an <code>admin</code> <code>LIST</code> source
+/// only, with no <code>rowGet</code> and no <code>criteria</code>.
+/// <file>ui/tools/screen-mirror.mjs</file>'s <code>forEachProblem</code> returns the same sentence
+/// for every case in <class>OcuPilot.Test.ReadSourceCorpus</class>.</p>
+ClassMethod ForEachProblem(pRead As %DynamicObject, pSource As %DynamicObject, pFields As %List) As %String
+{
+    Set tWhere = "read.source.forEach"
+    Set tType = pSource.%GetTypeOf("forEach")
+    If (tType = "unassigned") || (tType = "null") Quit ""
+    If tType '= "object" Quit tWhere _ " is not an object declaring its endpoint, key, param and fields (AD-36)"
+    Set tForEach = pSource.%Get("forEach")
+    Set tProblem = ..UnknownKeyProblem(tForEach, tWhere, $ListBuild("endpoint", "key", "param", "fields"))
+    If tProblem '= "" Quit tProblem
+    Set tPort = pSource.%Get("port")
+    If tPort '= ##class(OcuPilot.Screen.Read).#SOURCEADMIN Quit tWhere _ " is declared on a '" _ tPort _ "' source, and a per-parent list issues admin endpoints (AD-36)"
+    If pSource.%GetTypeOf("rowGet") = "object" Quit tWhere _ " is declared with read.source.rowGet, and a per-parent list copies its parent's fields rather than a detail call's (AD-36)"
+    If pRead.%GetTypeOf("criteria") = "object" Quit tWhere _ " is declared with read.criteria, and a per-parent list sets its one parameter from each parent (AD-36)"
+    If (tForEach.%GetTypeOf("endpoint") '= "string") || '$Match(tForEach.%Get("endpoint"), "^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") {
+        Quit tWhere _ ".endpoint '" _ tForEach.%Get("endpoint") _ "' is not a package-relative endpoint name"
+    }
+    If (tForEach.%GetTypeOf("key") '= "string") || (tForEach.%Get("key") = "") Quit tWhere _ ".key is empty, and a per-parent list reads each parent's key by name"
+    If (tForEach.%GetTypeOf("param") '= "string") || '$Match(tForEach.%Get("param"), "^[A-Za-z][A-Za-z0-9]*$") {
+        Quit tWhere _ ".param '" _ tForEach.%Get("param") _ "' is not a query parameter name"
+    }
+    If tForEach.%GetTypeOf("fields") '= "array" Quit tWhere _ ".fields is not an array of parent fields"
+    Set tSeen = ""
+    Set tIterator = tForEach.%Get("fields").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tEntry, .tEntryType) {
+        Set tAt = tWhere _ ".fields entry #" _ (tIndex + 1)
+        If tEntryType '= "object" {
+            Set tProblem = tAt _ " is not an object declaring its field and from"
+            Quit
+        }
+        Set tProblem = ..UnknownKeyProblem(tEntry, tAt, $ListBuild("field", "from"))
+        If tProblem '= "" Quit
+        Set tField = tEntry.%Get("field")
+        If (tEntry.%GetTypeOf("field") '= "string") || '$ListFind(pFields, tField) {
+            Set tProblem = tAt _ " field '" _ tField _ "' is not one of read.fields"
+            Quit
+        }
+        If $ListFind(tSeen, tField) {
+            Set tProblem = tAt _ " names the field '" _ tField _ "' twice"
+            Quit
+        }
+        Set tSeen = tSeen _ $ListBuild(tField)
+        If (tEntry.%GetTypeOf("from") '= "string") || (tEntry.%Get("from") = "") {
+            Set tProblem = tAt _ " from is empty, and a parent field is copied from a named key of the parent"
+            Quit
+        }
+    }
+    Quit tProblem
+}
+
 /// <p>The rules a <code>read.source.rowGet</code> derived field may name (AD-36).</p>
 Parameter ROWGETRULES = "beforeToday";
 
@@ -1307,6 +1552,9 @@ ClassMethod SecretOverlap(pWhere As %String, pNames As %List, pSecrets As %List)
 /// <p><b>The href is refused unless it is root-relative.</b> A descriptor is not an egress
 /// primitive (AD-47): an absolute, protocol-relative or traversing target would let the
 /// declaration choose a host, which is the one thing the origin boundary exists to stop.</p>
+/// <p>A complete exemption may also declare a <code>rowLink</code>, which
+/// <method>RowLinkProblem</method> checks; with <code>exempt</code> false it is a half-made
+/// declaration like a label or an href.</p>
 /// <p><file>ui/tools/classic-links.mjs</file>'s <code>classicLinkProblem</code> returns the same
 /// sentence for every case in <class>OcuPilot.Test.ClassicLinkCorpus</class>.</p>
 ClassMethod ClassicLinkProblem(pDeclaration As %DynamicObject) As %String
@@ -1330,6 +1578,8 @@ ClassMethod ClassicLinkProblem(pDeclaration As %DynamicObject) As %String
         Set tReason = tExemption.%Get("reason")
         Set tLabel = tExemption.%Get("label")
         Set tHref = tExemption.%Get("href")
+        Set tRowLinkType = tExemption.%GetTypeOf("rowLink")
+        Set tHasRowLink = (tRowLinkType '= "unassigned") && (tRowLinkType '= "null")
         If 'tExempt {
             If tHref '= "" {
                 Set tProblem = "classicLinkExemption declares an href while exempt is false; link parts without an exemption are a half-made declaration"
@@ -1337,6 +1587,10 @@ ClassMethod ClassicLinkProblem(pDeclaration As %DynamicObject) As %String
             }
             If tLabel '= "" {
                 Set tProblem = "classicLinkExemption declares a label while exempt is false; link parts without an exemption are a half-made declaration"
+                Quit
+            }
+            If tHasRowLink {
+                Set tProblem = "classicLinkExemption declares a rowLink while exempt is false; link parts without an exemption are a half-made declaration"
                 Quit
             }
             Quit
@@ -1358,8 +1612,71 @@ ClassMethod ClassicLinkProblem(pDeclaration As %DynamicObject) As %String
             Quit
         }
         Set tProblem = ..ClassicHrefProblem(tHref)
+        If (tProblem '= "") || 'tHasRowLink Quit
+        Set tProblem = ..RowLinkProblem(pDeclaration, tExemption)
     } Catch ex {
         Set tProblem = "the classic link declaration could not be read: " _ ex.DisplayString()
+    }
+    Quit tProblem
+}
+
+/// <p>What is wrong with a complete exemption's declared <code>rowLink</code>, or <code>""</code>
+/// (AD-44, AD-47). <var>pExemption</var> is <var>pDeclaration</var>'s
+/// <code>classicLinkExemption</code>.</p>
+/// <p>A row link turns each row's name cell into the exemption's <code>href</code> with the declared
+/// params appended from that row, so it is declared only on a screen with a read. It is an object
+/// carrying only <code>params</code>, an array of objects carrying only <code>name</code> (a query
+/// parameter name, declared once) and <code>field</code> (one of <code>read.fields</code>, never one
+/// of <code>context.secretFields</code>).</p>
+ClassMethod RowLinkProblem(pDeclaration As %DynamicObject, pExemption As %DynamicObject) As %String [ Private ]
+{
+    Set tWhere = "classicLinkExemption.rowLink"
+    If pDeclaration.%GetTypeOf("read") '= "object" Quit tWhere _ " is declared on a screen with no read, and a row link reads its values from the read's rows (AD-44)"
+    If pExemption.%GetTypeOf("rowLink") '= "object" Quit tWhere _ " is not an object declaring its params (AD-44)"
+    Set tRowLink = pExemption.%Get("rowLink")
+    Set tProblem = ..UnknownKeyProblem(tRowLink, tWhere, $ListBuild("params"))
+    If tProblem '= "" Quit tProblem
+    If tRowLink.%GetTypeOf("params") '= "array" Quit tWhere _ ".params is not an array of row link params"
+    Set tFields = ""
+    Set tRead = pDeclaration.%Get("read")
+    If tRead.%GetTypeOf("fields") = "array" {
+        Set tIterator = tRead.%Get("fields").%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tName) { Set tFields = tFields _ $ListBuild(tName) }
+    }
+    Set tSecrets = ""
+    If (pDeclaration.%GetTypeOf("context") = "object") && (pDeclaration.%Get("context").%GetTypeOf("secretFields") = "array") {
+        Set tIterator = pDeclaration.%Get("context").%Get("secretFields").%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tName) { Set tSecrets = tSecrets _ $ListBuild(tName) }
+    }
+    Set tSeen = ""
+    Set tIterator = tRowLink.%Get("params").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tParam, .tParamType) {
+        Set tAt = tWhere _ ".params entry #" _ (tIndex + 1)
+        If tParamType '= "object" {
+            Set tProblem = tAt _ " is not an object declaring its name and field"
+            Quit
+        }
+        Set tProblem = ..UnknownKeyProblem(tParam, tAt, $ListBuild("name", "field"))
+        If tProblem '= "" Quit
+        Set tName = tParam.%Get("name")
+        If (tParam.%GetTypeOf("name") '= "string") || '$Match(tName, "^[A-Za-z][A-Za-z0-9]*$") {
+            Set tProblem = tAt _ " name '" _ tName _ "' is not a query parameter name"
+            Quit
+        }
+        If $ListFind(tSeen, tName) {
+            Set tProblem = tAt _ " names the param '" _ tName _ "' twice"
+            Quit
+        }
+        Set tSeen = tSeen _ $ListBuild(tName)
+        Set tField = tParam.%Get("field")
+        If (tParam.%GetTypeOf("field") '= "string") || '$ListFind(tFields, tField) {
+            Set tProblem = tAt _ " field '" _ tField _ "' is not one of read.fields"
+            Quit
+        }
+        If $ListFind(tSecrets, tField) {
+            Set tProblem = tAt _ " field '" _ tField _ "' is a secret field, and a secret never leaves the instance in a link (AD-35)"
+            Quit
+        }
     }
     Quit tProblem
 }

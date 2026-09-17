@@ -174,6 +174,34 @@ const LIVE_PAYLOAD = {
       failedPair: '%Admin_Secure:USE',
       screens: [
         {
+          route: 'security/oauth/clients',
+          labelKey: 'oauthTabClients',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_OAuth2_Client:USE',
+        },
+        {
+          route: 'security/oauth/resource-servers',
+          labelKey: 'oauthTabResourceServers',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Secure:USE',
+        },
+        {
+          route: 'security/oauth/server-clients',
+          labelKey: 'oauthTabServerClients',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_OAuth2_Registration:USE',
+        },
+        {
+          route: 'security/oauth/server',
+          labelKey: 'oauthTabServer',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_OAuth2_Server:USE',
+        },
+        {
           route: 'security/wallet/secrets',
           labelKey: 'walletSecretListLabel',
           sideBarPosition: 0,
@@ -207,6 +235,13 @@ const LIVE_PAYLOAD = {
           sideBarPosition: 4,
           allowed: false,
           failedPair: '%Admin_Wallet:USE',
+        },
+        {
+          route: 'security/oauth',
+          labelKey: 'oauthLabel',
+          sideBarPosition: 5,
+          allowed: false,
+          failedPair: '%Admin_OAuth2_Client:USE',
         },
       ],
     },
@@ -277,6 +312,12 @@ test('DW-132: the real NavigationService reads a live-captured payload the way O
   assert.deepEqual(service.screenVerdict('security/ldap'), { allowed: false, failedPair: '%Admin_Secure:USE' });
   assert.deepEqual(service.screenVerdict('security/wallet'), { allowed: false, failedPair: '%Admin_Wallet:USE' });
   assert.deepEqual(service.screenVerdict('security/wallet/secrets'), { allowed: false, failedPair: '%Admin_Wallet:USE' });
+  // Story 6.4: the five OAuth 2.0 tabs, each denied on the resource it declares first.
+  assert.deepEqual(service.screenVerdict('security/oauth'), { allowed: false, failedPair: '%Admin_OAuth2_Client:USE' });
+  assert.deepEqual(service.screenVerdict('security/oauth/clients'), { allowed: false, failedPair: '%Admin_OAuth2_Client:USE' });
+  assert.deepEqual(service.screenVerdict('security/oauth/resource-servers'), { allowed: false, failedPair: '%Admin_Secure:USE' });
+  assert.deepEqual(service.screenVerdict('security/oauth/server'), { allowed: false, failedPair: '%Admin_OAuth2_Server:USE' });
+  assert.deepEqual(service.screenVerdict('security/oauth/server-clients'), { allowed: false, failedPair: '%Admin_OAuth2_Registration:USE' });
 
   // An area the payload never omits is not exercised here (the live map always lists all
   // eight); an area it never mentioned still reads UNGATED rather than denied.

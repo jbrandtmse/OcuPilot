@@ -44,6 +44,7 @@ export type BuiltArchetypeKey =
   | 'list'
   | 'list (server criteria)'
   | 'drill-down'
+  | 'detail'
   | 'form-page'
   | 'viewer (OpenAPI)'
   | 'home';
@@ -87,6 +88,22 @@ export interface ClassicLinkExemption {
    * never derived from `classicPage`, which is a class name (AD-44). `''` unless `exempt`.
    */
   readonly href: string;
+  /**
+   * The row link a complete exemption may declare (AD-44, AD-47): each row's name cell opens `href`
+   * with these params appended from that row, in a new tab. Absent on a screen that links no row.
+   */
+  readonly rowLink?: ClassicRowLink | null;
+}
+
+/** One query parameter a row link appends: its name and the read field whose text it carries. */
+export interface ClassicRowLinkParam {
+  readonly name: string;
+  readonly field: string;
+}
+
+/** A row link: the params appended, in order, to the exemption's `href` for one row. */
+export interface ClassicRowLink {
+  readonly params: readonly ClassicRowLinkParam[];
 }
 
 /** A field a detail call derives on the instance from one of its detail fields (AD-36). */
@@ -119,8 +136,29 @@ export interface ReadRowGet {
 export interface ReadSource {
   readonly port: 'admin' | 'state' | 'mgmnt';
   readonly endpoint: string;
-  readonly type: 'LIST';
+  /** `LIST` reads rows; `GET` reads one object as the one row, and a 404 reads as none. */
+  readonly type: 'LIST' | 'GET';
   readonly rowGet?: ReadRowGet | null;
+  /** The parent list a per-parent read issues its source once per parent for, bounded by the cap. */
+  readonly forEach?: ReadForEach | null;
+}
+
+/** One parent field a per-parent read copies into each of that parent's rows. */
+export interface ReadForEachField {
+  readonly field: string;
+  readonly from: string;
+}
+
+/**
+ * A per-parent read (AD-36): `endpoint` is listed first, bounded by the cap plus one, and the read's
+ * own source is listed once per parent with `param` set to that parent's `key`, each row taking
+ * `fields` from its parent.
+ */
+export interface ReadForEach {
+  readonly endpoint: string;
+  readonly key: string;
+  readonly param: string;
+  readonly fields: readonly ReadForEachField[];
 }
 
 /** The fields a read sorts on, its default sort field and direction. */
@@ -280,7 +318,19 @@ export interface ScreenDeclaration {
   readonly table: TableDeclaration | null;
   /** The strip the read's own answer raises above the table, or `null` for a screen with none. */
   readonly banner: BannerDeclaration | null;
+  /** The tab group this screen is one tab of, or `null` for a screen that is no tab (AD-5). */
+  readonly tab: TabDeclaration | null;
   readonly toolIdentifier: string;
+}
+
+/**
+ * One tab of a tabbed screen (AD-5): the route of the group's first tab, this tab's position in the
+ * strip, and the string key its label reads.
+ */
+export interface TabDeclaration {
+  readonly group: string;
+  readonly position: number;
+  readonly labelKey: string;
 }
 
 /** The closed entity-type vocabulary, mirrored from OcuPilot.Kernel.EntityType. */
@@ -436,6 +486,18 @@ export const AREAS: readonly AreaDeclaration[] = [
       {
         "resource": "%Admin_Wallet",
         "permission": "USE"
+      },
+      {
+        "resource": "%Admin_OAuth2_Client",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Admin_OAuth2_Server",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Admin_OAuth2_Registration",
+        "permission": "USE"
       }
     ]
   },
@@ -498,7 +560,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "toolIdentifier": "agent.definition",
     "read": null,
     "table": null,
-    "banner": null
+    "banner": null,
+    "tab": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.AgentDefinitionList",
@@ -630,7 +693,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": "agentDefinitionListEmptyAgent"
     },
     "toolIdentifier": "agent.definitions",
-    "banner": null
+    "banner": null,
+    "tab": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.AgentSwitches",
@@ -686,7 +750,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "toolIdentifier": "agent.switches",
     "read": null,
     "table": null,
-    "banner": null
+    "banner": null,
+    "tab": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.AuditList",
@@ -949,7 +1014,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "logs.audit",
-    "banner": null
+    "banner": null,
+    "tab": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.Home",
@@ -994,7 +1060,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "toolIdentifier": "shell.home",
     "read": null,
     "table": null,
-    "banner": null
+    "banner": null,
+    "tab": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.LdapConfigList",
@@ -1097,7 +1164,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "security.ldap",
-    "banner": null
+    "banner": null,
+    "tab": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.LogErrorList",
@@ -1160,6 +1228,662 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "toolIdentifier": "logs.applicationerrors",
     "read": null,
     "table": null,
+    "banner": null,
+    "tab": null
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.OAuthClientTab",
+    "route": "security/oauth/clients",
+    "area": "security",
+    "labelKey": "oauthTabClients",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_OAuth2_Client",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "oauth2-client-configuration",
+    "secondaryEntityTypes": [
+      "oauth2-server-definition"
+    ],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "ApplicationName",
+        "ClientType",
+        "DefaultScope",
+        "ServerDefinitionID",
+        "IssuerEndpoint"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "oauthClientsEmpty",
+    "commandAliases": [],
+    "classicPage": "%CSP.UI.Portal.OAuth2.Client.ConfigurationList",
+    "classicLinkExemption": {
+      "exempt": true,
+      "reason": "Edited in the classic portal until the OAuth 2.0 editors ship (Epic 12); counted against SM-C1",
+      "label": "OAuth 2.0 Client Configuration",
+      "href": "/csp/sys/sec/%25CSP.UI.Portal.OAuth2.Client.Configuration.zen",
+      "rowLink": {
+        "params": [
+          {
+            "name": "PID",
+            "field": "ApplicationName"
+          },
+          {
+            "name": "IssuerEndpointID",
+            "field": "ServerDefinitionID"
+          },
+          {
+            "name": "IssuerEndpoint",
+            "field": "IssuerEndpoint"
+          }
+        ]
+      }
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Security.OAuth2.Client.ClientConfiguration",
+        "type": "LIST",
+        "forEach": {
+          "endpoint": "Security.OAuth2.Client.ServerDefinition",
+          "key": "ID",
+          "param": "serverId",
+          "fields": [
+            {
+              "field": "ServerDefinitionID",
+              "from": "ID"
+            },
+            {
+              "field": "IssuerEndpoint",
+              "from": "IssuerEndpoint"
+            }
+          ]
+        }
+      },
+      "fields": [
+        "ApplicationName",
+        "ClientType",
+        "DefaultScope",
+        "ServerDefinitionID",
+        "IssuerEndpoint"
+      ],
+      "filter": [
+        "ApplicationName",
+        "IssuerEndpoint",
+        "ClientType",
+        "DefaultScope"
+      ],
+      "sort": {
+        "fields": [
+          "ApplicationName",
+          "IssuerEndpoint",
+          "ClientType",
+          "DefaultScope"
+        ],
+        "default": "ApplicationName",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "ApplicationName",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "IssuerEndpoint",
+          "labelKey": "x509ColumnIssuer",
+          "kind": "text"
+        },
+        {
+          "field": "ClientType",
+          "labelKey": "oauthColumnClientType",
+          "kind": "text"
+        },
+        {
+          "field": "DefaultScope",
+          "labelKey": "oauthColumnDefaultScope",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "tab": {
+      "group": "security/oauth",
+      "position": 2,
+      "labelKey": "oauthTabClients"
+    },
+    "toolIdentifier": "security.oauthclients",
+    "banner": null
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.OAuthResourceServerTab",
+    "route": "security/oauth/resource-servers",
+    "area": "security",
+    "labelKey": "oauthTabResourceServers",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "oauth2-resource-server",
+    "secondaryEntityTypes": [
+      "oauth2-server-definition"
+    ],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Name",
+        "ServerDefinition"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "oauthResourceServersEmpty",
+    "commandAliases": [],
+    "classicPage": "%CSP.UI.Portal.OAuth2.ResourceServer.ConfigurationList",
+    "classicLinkExemption": {
+      "exempt": true,
+      "reason": "Edited in the classic portal until the OAuth 2.0 editors ship (Epic 12); counted against SM-C1",
+      "label": "OAuth 2.0 Resource Server Configuration",
+      "href": "/csp/sys/sec/%25CSP.UI.Portal.OAuth2.ResourceServer.Configuration.zen",
+      "rowLink": {
+        "params": [
+          {
+            "name": "PID",
+            "field": "Name"
+          }
+        ]
+      }
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Security.OAuth2.ResourceServer",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "ServerDefinition"
+      ],
+      "filter": [
+        "Name",
+        "ServerDefinition"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "ServerDefinition"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "ServerDefinition",
+          "labelKey": "x509ColumnIssuer",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "tab": {
+      "group": "security/oauth",
+      "position": 3,
+      "labelKey": "oauthTabResourceServers"
+    },
+    "toolIdentifier": "security.oauthresourceservers",
+    "banner": null
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.OAuthServerClientTab",
+    "route": "security/oauth/server-clients",
+    "area": "security",
+    "labelKey": "oauthTabServerClients",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_OAuth2_Registration",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "oauth2-server-client",
+    "secondaryEntityTypes": [
+      "oauth2-server"
+    ],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Name",
+        "ClientId",
+        "ClientType",
+        "RedirectURL",
+        "Description"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "oauthServerClientsEmpty",
+    "commandAliases": [],
+    "classicPage": "%CSP.UI.Portal.OAuth2.Server.ClientList",
+    "classicLinkExemption": {
+      "exempt": true,
+      "reason": "Edited in the classic portal until the OAuth 2.0 editors ship (Epic 12); counted against SM-C1",
+      "label": "OAuth 2.0 Authorization Server Client Configuration",
+      "href": "/csp/sys/sec/%25CSP.UI.Portal.OAuth2.Server.Client.zen",
+      "rowLink": {
+        "params": [
+          {
+            "name": "ClientId",
+            "field": "ClientId"
+          }
+        ]
+      }
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Security.OAuth2.ServerClients",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "ClientId",
+        "ClientType",
+        "RedirectURL",
+        "Description"
+      ],
+      "filter": [
+        "Name",
+        "ClientId",
+        "ClientType",
+        "RedirectURL",
+        "Description"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "ClientId",
+          "ClientType",
+          "RedirectURL",
+          "Description"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "ClientId",
+          "labelKey": "oauthColumnClientId",
+          "kind": "identifier"
+        },
+        {
+          "field": "ClientType",
+          "labelKey": "oauthColumnClientType",
+          "kind": "text"
+        },
+        {
+          "field": "RedirectURL",
+          "labelKey": "oauthColumnRedirectUrls",
+          "kind": "text"
+        },
+        {
+          "field": "Description",
+          "labelKey": "tableColumnDescription",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "tab": {
+      "group": "security/oauth",
+      "position": 5,
+      "labelKey": "oauthTabServerClients"
+    },
+    "toolIdentifier": "security.oauthserverclients",
+    "banner": null
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab",
+    "route": "security/oauth",
+    "area": "security",
+    "labelKey": "oauthLabel",
+    "sideBarPosition": 5,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_OAuth2_Client",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "oauth2-server-definition",
+    "secondaryEntityTypes": [
+      "oauth2-client-configuration",
+      "oauth2-resource-server"
+    ],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "ID",
+        "IssuerEndpoint",
+        "ClientCount",
+        "ResourceCount"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "oauthServerDescriptionsEmpty",
+    "commandAliases": [
+      "oauth"
+    ],
+    "classicPage": "%CSP.UI.Portal.OAuth2.Client.ServerList",
+    "classicLinkExemption": {
+      "exempt": true,
+      "reason": "Edited in the classic portal until the OAuth 2.0 editors ship (Epic 12); counted against SM-C1",
+      "label": "OAuth 2.0 Client Configuration",
+      "href": "/csp/sys/sec/%25CSP.UI.Portal.OAuth2.Client.ServerConfiguration.zen",
+      "rowLink": {
+        "params": [
+          {
+            "name": "PID",
+            "field": "ID"
+          }
+        ]
+      }
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Security.OAuth2.Client.ServerDefinition",
+        "type": "LIST"
+      },
+      "fields": [
+        "ID",
+        "IssuerEndpoint",
+        "ClientCount",
+        "ResourceCount"
+      ],
+      "filter": [
+        "IssuerEndpoint"
+      ],
+      "sort": {
+        "fields": [
+          "IssuerEndpoint",
+          "ClientCount",
+          "ResourceCount"
+        ],
+        "default": "IssuerEndpoint",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "IssuerEndpoint",
+          "labelKey": "x509ColumnIssuer",
+          "kind": "name"
+        },
+        {
+          "field": "ClientCount",
+          "labelKey": "oauthTabClients",
+          "kind": "number"
+        },
+        {
+          "field": "ResourceCount",
+          "labelKey": "oauthTabResourceServers",
+          "kind": "number"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "tab": {
+      "group": "security/oauth",
+      "position": 1,
+      "labelKey": "oauthTabServerDescriptions"
+    },
+    "toolIdentifier": "security.oauthserverdescriptions",
+    "banner": null
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.OAuthServerTab",
+    "route": "security/oauth/server",
+    "area": "security",
+    "labelKey": "oauthTabServer",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_OAuth2_Server",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "oauth2-server",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "IssuerEndpoint",
+        "Metadata.scopes_supported",
+        "Metadata.grant_types_supported",
+        "SigningAlgorithm",
+        "EncryptionAlgorithm",
+        "KeyAlgorithm",
+        "ServerCredentials"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "oauthServerEmpty",
+    "commandAliases": [],
+    "classicPage": "%CSP.UI.Portal.OAuth2.Server.Configuration",
+    "classicLinkExemption": {
+      "exempt": true,
+      "reason": "Edited in the classic portal until the OAuth 2.0 editors ship (Epic 12); counted against SM-C1",
+      "label": "OAuth 2.0 Authorization Server Configuration",
+      "href": "/csp/sys/sec/%25CSP.UI.Portal.OAuth2.Server.Configuration.zen",
+      "rowLink": {
+        "params": []
+      }
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Security.OAuth2.Server",
+        "type": "GET"
+      },
+      "fields": [
+        "IssuerEndpoint",
+        "Metadata.scopes_supported",
+        "Metadata.grant_types_supported",
+        "SigningAlgorithm",
+        "EncryptionAlgorithm",
+        "KeyAlgorithm",
+        "ServerCredentials"
+      ],
+      "filter": [
+        "IssuerEndpoint",
+        "Metadata.scopes_supported",
+        "Metadata.grant_types_supported",
+        "SigningAlgorithm",
+        "EncryptionAlgorithm",
+        "KeyAlgorithm",
+        "ServerCredentials"
+      ],
+      "sort": {
+        "fields": [
+          "IssuerEndpoint",
+          "Metadata.scopes_supported",
+          "Metadata.grant_types_supported",
+          "SigningAlgorithm",
+          "EncryptionAlgorithm",
+          "KeyAlgorithm",
+          "ServerCredentials"
+        ],
+        "default": "IssuerEndpoint",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "IssuerEndpoint",
+          "labelKey": "x509ColumnIssuer",
+          "kind": "name"
+        },
+        {
+          "field": "Metadata.scopes_supported",
+          "labelKey": "oauthColumnScopes",
+          "kind": "text"
+        },
+        {
+          "field": "Metadata.grant_types_supported",
+          "labelKey": "oauthColumnGrantTypes",
+          "kind": "text"
+        },
+        {
+          "field": "SigningAlgorithm",
+          "labelKey": "oauthColumnSigningAlgorithm",
+          "kind": "text"
+        },
+        {
+          "field": "EncryptionAlgorithm",
+          "labelKey": "oauthColumnEncryptionAlgorithm",
+          "kind": "text"
+        },
+        {
+          "field": "KeyAlgorithm",
+          "labelKey": "oauthColumnKeyAlgorithm",
+          "kind": "text"
+        },
+        {
+          "field": "ServerCredentials",
+          "labelKey": "oauthColumnServerCredentials",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "tab": {
+      "group": "security/oauth",
+      "position": 4,
+      "labelKey": "oauthTabServer"
+    },
+    "toolIdentifier": "security.oauthserver",
     "banner": null
   },
   {
@@ -1276,7 +2000,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "webapp.openapi",
-    "banner": null
+    "banner": null,
+    "tab": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.ProcessList",
@@ -1422,7 +2147,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "osmgmt.processes",
-    "banner": null
+    "banner": null,
+    "tab": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.ResourceList",
@@ -1541,7 +2267,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "permissions.resources",
-    "banner": null
+    "banner": null,
+    "tab": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.RestApiList",
@@ -1659,7 +2386,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "webapp.restapis",
-    "banner": null
+    "banner": null,
+    "tab": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.RoleList",
@@ -1769,7 +2497,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "permissions.roles",
-    "banner": null
+    "banner": null,
+    "tab": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.ServiceList",
@@ -1893,7 +2622,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "permissions.services",
-    "banner": null
+    "banner": null,
+    "tab": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.SslConfigList",
@@ -2003,7 +2733,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "security.ssl",
-    "banner": null
+    "banner": null,
+    "tab": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.TaskScheduleList",
@@ -2152,7 +2883,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
         }
       ]
     },
-    "toolIdentifier": "tasks.schedule"
+    "toolIdentifier": "tasks.schedule",
+    "tab": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.UserList",
@@ -2295,7 +3027,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "permissions.users",
-    "banner": null
+    "banner": null,
+    "tab": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.WalletCollectionList",
@@ -2398,7 +3131,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "security.wallet",
-    "banner": null
+    "banner": null,
+    "tab": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.WalletSecretList",
@@ -2500,7 +3234,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "security.secrets",
-    "banner": null
+    "banner": null,
+    "tab": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.WebAppList",
@@ -2628,7 +3363,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "webapp.list",
-    "banner": null
+    "banner": null,
+    "tab": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.X509CredentialList",
@@ -2764,6 +3500,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "security.x509",
-    "banner": null
+    "banner": null,
+    "tab": null
   }
 ];

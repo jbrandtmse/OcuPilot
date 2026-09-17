@@ -273,6 +273,43 @@ Method TestTheSecurityListsAreLiveChecks()
     }
 }
 
+/// <p>Story 6.4 -- with credentials, the five OAuth 2.0 tab checks each read their tab through the
+/// screen-read route and pass, before the sign-out. The configured test account must hold the three
+/// <code>%Admin_OAuth2_*</code> resources, <code>%Admin_Secure:USE</code> and
+/// <code>%DB_IRISSYS:READ</code>; the instance needs no OAuth 2.0 object, because each check passes on
+/// zero rows or one.</p>
+/// <p>Mutation: set <parameter>OcuPilot.Install.Smoke.OAUTHSERVERTOOL</parameter> to
+/// <code>security.nosuch</code> -&gt; the route answers 404 and the oauthserver check fails.</p>
+Method TestTheOAuthTabsAreLiveChecks()
+{
+    Set tOk = ##class(OcuPilot.Install.Smoke).Run(##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), "0", .tReport, .tCounts)
+    Set tSignOutAt = $Find(tReport, "sign-out")
+    For tName = "oauthdescriptions", "oauthclients", "oauthresourceservers", "oauthserver", "oauthserverclients" {
+        Do $$$AssertTrue(tReport [ ("  pass     " _ tName _ $Char(10)), "the " _ tName _ " tab is read: " _ ..Line(tReport, "  " _ tName))
+        Set tListAt = $Find(tReport, "  pass     " _ tName)
+        Do $$$AssertTrue((tListAt > 0) && (tSignOutAt > tListAt), "and it ran before the pair was signed out")
+    }
+}
+
+/// <p>Story 6.4 -- an OAuth 2.0 tab check passes on a 200 answering zero rows, and fails on a body with
+/// no <code>rows</code> array or with more than one row.
+/// Drives <class>OcuPilot.Test.SmokeListFault</class>.</p>
+/// <p>Mutation: require exactly one row of the OAuth 2.0 checks in
+/// <method>OcuPilot.Install.Smoke.CheckAreaLists</method> -&gt; the empty-rows pass assertions go
+/// red.</p>
+Method TestAnOAuthTabCheckPassesOnZeroOrOneRow()
+{
+    For tCase = $ListBuild("{""rows"":[]}", "pass"), $ListBuild("{""rows"":[{""Name"":""one""}]}", "pass"), $ListBuild("{""rows"":[{""Name"":""one""},{""Name"":""two""}]}", "fail"), $ListBuild("<!doctype html><html></html>", "fail") {
+        Do ##class(OcuPilot.Test.SmokeListFault).Arm(200, $List(tCase, 1))
+        Set tOk = ##class(OcuPilot.Test.SmokeListFault).Run(##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), "1", .tReport, .tCounts)
+        Do ##class(OcuPilot.Test.SmokeListFault).Disarm()
+        For tName = "oauthdescriptions", "oauthclients", "oauthresourceservers", "oauthserver", "oauthserverclients" {
+            Set tWanted = "  " _ $List(tCase, 2) _ $Justify("", 9 - $Length($List(tCase, 2))) _ tName _ $Select($List(tCase, 2) = "pass": $Char(10), 1: " -- ")
+            Do $$$AssertTrue(tReport [ tWanted, "a 200 carrying " _ $List(tCase, 1) _ " makes " _ tName _ " " _ $List(tCase, 2) _ ": " _ ..Line(tReport, "  " _ tName))
+        }
+    }
+}
+
 /// <p>Story 6.1 -- with credentials, the <code>webapp.restapis</code> check reads the REST API
 /// explorer's first row through the screen-read route and passes, before the sign-out. The configured
 /// test account must hold <code>%Admin_Secure:USE</code> and <code>%DB_IRISSYS:READ</code>.</p>
@@ -469,8 +506,8 @@ Method TestAnEmptyDemoListIsSkippedWithoutTheDemo()
 /// screen its name stands for: the <code>webapplications</code>, <code>users</code>,
 /// <code>ssl</code>, <code>tasks</code>, <code>processes</code>, <code>audit</code>,
 /// <code>webapp.restapis</code>, <code>roles</code>, <code>resources</code>, <code>services</code>,
-/// <code>x509</code>, <code>ldap</code> and <code>wallet</code> checks issue exactly those thirteen
-/// screen reads, in that order, and nothing else in a run reads a screen.</p>
+/// <code>x509</code>, <code>ldap</code>, <code>wallet</code> and five OAuth 2.0 tab checks issue
+/// exactly those eighteen screen reads, in that order, and nothing else in a run reads a screen.</p>
 /// <p><b>Why the report cannot say this.</b> A report line carries the check's name and its
 /// outcome, never the tool behind it, so transposing two <code>$Select</code> arms leaves every
 /// name-and-outcome assertion in this class green while each check reads the other's list. Driven
@@ -487,13 +524,13 @@ Method TestEachAreaListCheckReadsItsOwnScreen()
     Set tPaths = ##class(OcuPilot.Test.SmokeListFault).Paths()
     Do ##class(OcuPilot.Test.SmokeListFault).ClearPaths()
 
-    For tName = "webapplications", "users", "ssl", "tasks", "processes", "audit", "webapp.restapis", "roles", "resources", "services", "x509", "ldap", "wallet" {
+    For tName = "webapplications", "users", "ssl", "tasks", "processes", "audit", "webapp.restapis", "roles", "resources", "services", "x509", "ldap", "wallet", "oauthdescriptions", "oauthclients", "oauthresourceservers", "oauthserver", "oauthserverclients" {
         Do $$$AssertTrue(tReport [ ("  pass     " _ tName), "a one-row body passes the " _ tName _ " check (run ok=" _ tOk _ "): " _ ..Line(tReport, tName))
     }
-    Do $$$AssertEquals($ListLength(tPaths), 13, "a credentialed run reads exactly thirteen screens: " _ $ListToString(tPaths, " | "))
-    If $ListLength(tPaths) '= 13 Quit
-    Set tExpected = $ListBuild(##class(OcuPilot.Install.Smoke).#WEBAPPLISTTOOL, ##class(OcuPilot.Install.Smoke).#USERLISTTOOL, ##class(OcuPilot.Install.Smoke).#SSLLISTTOOL, ##class(OcuPilot.Install.Smoke).#TASKLISTTOOL, ##class(OcuPilot.Install.Smoke).#PROCESSLISTTOOL, ##class(OcuPilot.Install.Smoke).#AUDITLISTTOOL, ##class(OcuPilot.Install.Smoke).#RESTAPILISTTOOL, ##class(OcuPilot.Install.Smoke).#ROLELISTTOOL, ##class(OcuPilot.Install.Smoke).#RESOURCELISTTOOL, ##class(OcuPilot.Install.Smoke).#SERVICELISTTOOL, ##class(OcuPilot.Install.Smoke).#X509LISTTOOL, ##class(OcuPilot.Install.Smoke).#LDAPLISTTOOL, ##class(OcuPilot.Install.Smoke).#WALLETLISTTOOL)
-    For tI = 1:1:13 {
+    Do $$$AssertEquals($ListLength(tPaths), 18, "a credentialed run reads exactly eighteen screens: " _ $ListToString(tPaths, " | "))
+    If $ListLength(tPaths) '= 18 Quit
+    Set tExpected = $ListBuild(##class(OcuPilot.Install.Smoke).#WEBAPPLISTTOOL, ##class(OcuPilot.Install.Smoke).#USERLISTTOOL, ##class(OcuPilot.Install.Smoke).#SSLLISTTOOL, ##class(OcuPilot.Install.Smoke).#TASKLISTTOOL, ##class(OcuPilot.Install.Smoke).#PROCESSLISTTOOL, ##class(OcuPilot.Install.Smoke).#AUDITLISTTOOL, ##class(OcuPilot.Install.Smoke).#RESTAPILISTTOOL, ##class(OcuPilot.Install.Smoke).#ROLELISTTOOL, ##class(OcuPilot.Install.Smoke).#RESOURCELISTTOOL, ##class(OcuPilot.Install.Smoke).#SERVICELISTTOOL, ##class(OcuPilot.Install.Smoke).#X509LISTTOOL, ##class(OcuPilot.Install.Smoke).#LDAPLISTTOOL, ##class(OcuPilot.Install.Smoke).#WALLETLISTTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHDESCRIPTIONSTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHCLIENTSTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHRESOURCESERVERSTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHSERVERTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHSERVERCLIENTSTOOL)
+    For tI = 1:1:18 {
         Set tWanted = "/screens/" _ $List(tExpected, tI) _ "/read?maxRows=1"
         Do $$$AssertTrue($List(tPaths, tI) [ tWanted, "check " _ tI _ " reads " _ tWanted _ ", not " _ $List(tPaths, tI))
     }
@@ -588,7 +625,7 @@ ClassMethod Line(pReport As %String, pName As %String) As %String
 Method TestNoCredentialsSkipsRatherThanPasses()
 {
     Set tOk = ##class(OcuPilot.Install.Smoke).Run("", "", "0", .tReport, .tCounts)
-    For tName = "signin", "instance", "namespaces", "navigation", "webapplications", "users", "ssl", "tasks", "processes", "audit", "webapp.restapis", "roles", "resources", "services", "x509", "ldap", "wallet", "messageslog", "applicationerrors", "sign-out" {
+    For tName = "signin", "instance", "namespaces", "navigation", "webapplications", "users", "ssl", "tasks", "processes", "audit", "webapp.restapis", "roles", "resources", "services", "x509", "ldap", "wallet", "oauthdescriptions", "oauthclients", "oauthresourceservers", "oauthserver", "oauthserverclients", "messageslog", "applicationerrors", "sign-out" {
         Do $$$AssertTrue(tReport [ ("  skipped  " _ tName), tName _ " is skipped: " _ ..Line(tReport, tName))
     }
     Do $$$AssertTrue(tReport [ "no credentials were supplied", "and the report says why")

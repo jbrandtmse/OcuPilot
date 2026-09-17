@@ -43,6 +43,7 @@ class StubNavigation {
     if (path === '') return HOME;
     if (path.startsWith('permissions/users')) return USERS;
     if (path.startsWith('web-applications/rest-apis/document/')) return screenForRoute('web-applications/rest-apis/document');
+    if (path.startsWith('security/oauth/clients')) return screenForRoute('security/oauth/clients');
     return null;
   }
 
@@ -110,6 +111,7 @@ describe('the locator bar', () => {
           // DW-161's second screen: the area segment's target when the first one is refused.
           { path: 'permissions/roles', children: [] },
           { path: 'web-applications/rest-apis/document/:id', children: [] },
+          { path: 'security/oauth/clients/:id', children: [] },
           { path: '**', children: [] },
         ]),
         {
@@ -247,6 +249,18 @@ describe('the locator bar', () => {
     screenLink?.click();
     await fixture.whenStable();
     expect(router.url).toBe('/web-applications/rest-apis?ns=HSCUSTOM');
+  });
+
+  it('Story 6.4: on a tab of a tabbed screen, the screen segment routes to the group', async () => {
+    // Mutation (Rule 19): drop `tabGroupFor(screen)` from the screen segment's route in
+    // `locator-bar.ts` -> the segment opens the tab's own route and this goes red.
+    await go('/security/oauth/clients/OcuPilotTestB?ns=HSCUSTOM');
+    const links: HTMLButtonElement[] = Array.from(fixture.nativeElement.querySelectorAll('.ocu-locator-link'));
+    const screenLink = links.find((el) => el.textContent?.trim() === STRINGS.oauthTabClients);
+    expect(screenLink).not.toBeUndefined();
+    screenLink?.click();
+    await fixture.whenStable();
+    expect(router.url).toBe('/security/oauth?ns=HSCUSTOM');
   });
 
   it('DW-143: a denied area segment stays listed and refuses, exactly as the rail does', async () => {

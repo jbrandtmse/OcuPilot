@@ -22,6 +22,9 @@ export const NAMESPACE_PLACEHOLDER = '<NAMESPACE>';
 /** The span the write-capable empty state's second line leaves for the agent's invitation. */
 export const AGENT_WRITE_PLACEHOLDER = '<a write it could propose here>';
 
+/** The span the classic row link's description leaves for the classic editor's own name. */
+export const PAGE_PLACEHOLDER = '<page>';
+
 /** The value `field` holds on `row`, or `null` when the row is not an object or does not carry it. */
 export function fieldOf(row: unknown, field: string): unknown {
   if (row === null || typeof row !== 'object' || Array.isArray(row)) return null;
@@ -99,6 +102,35 @@ export function cellView(
     link: kind === 'name',
     numeric,
   };
+}
+
+/**
+ * The classic editor a row's name cell opens (AD-44, AD-47), or `''` when it opens none.
+ *
+ * A screen opens one only where it declares a complete exemption with a `rowLink`: the exemption's
+ * root-relative `href`, then `?` -- `&` when the href already carries a query -- and each param as
+ * `name=encodeURIComponent(text of the row's field)`, joined by `&`. A row on which any param's
+ * field reads empty (`null`, absent, `''`) opens none, so a classic editor is never opened with a
+ * blank key: the client configuration editor reads an empty `IssuerEndpointID` as a new server
+ * description.
+ */
+export function classicRowHref(row: unknown, declaration: Pick<ScreenDeclaration, 'classicLinkExemption'>): string {
+  const exemption = declaration.classicLinkExemption;
+  const rowLink = exemption.rowLink ?? null;
+  if (!exemption.exempt || rowLink === null || exemption.href === '') return '';
+  const parts: string[] = [];
+  for (const param of rowLink.params) {
+    const text = textOf(fieldOf(row, param.field));
+    if (text === '') return '';
+    parts.push(`${param.name}=${encodeURIComponent(text)}`);
+  }
+  if (parts.length === 0) return exemption.href;
+  return exemption.href + (exemption.href.includes('?') ? '&' : '?') + parts.join('&');
+}
+
+/** `Opens <page> in the classic portal in a new tab.` with `<page>` resolved to the editor's name. */
+export function formatClassicRowLinkDescription(template: string, page: string): string {
+  return template.split(PAGE_PLACEHOLDER).join(page);
 }
 
 /** `n` with a comma between each group of three digits. */

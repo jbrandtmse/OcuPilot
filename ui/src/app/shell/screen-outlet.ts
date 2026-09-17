@@ -22,6 +22,7 @@ import { NavigationService, screenForUrl } from '../core/navigation';
 import type { ArchetypeKey, BuiltArchetypeKey } from '../core/screens.generated';
 import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
+import { DetailPage } from './detail-page';
 import { ListPage } from './list-page';
 import { ScreenDenied } from './screen-denied';
 
@@ -53,6 +54,7 @@ export const ARCHETYPE_PAGES: ArchetypePages = {
   'drill-down': ErrorLogPage,
   'form-page': DefinitionFormPage,
   'viewer (OpenAPI)': OpenApiViewerPage,
+  detail: DetailPage,
 };
 
 /**

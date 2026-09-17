@@ -42,6 +42,8 @@ const {
   parentListFor,
   screenForRoute,
   screenForUrl,
+  tabGroupFor,
+  tabMembersFor,
   areaForUrl,
   hasIdRoute,
   routeFromUrl,
@@ -133,16 +135,21 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'web-applications/rest-apis/document',
       'web-applications/list',
       'web-applications/rest-apis',
+      'security/oauth/clients',
+      'security/oauth/resource-servers',
+      'security/oauth/server-clients',
+      'security/oauth/server',
       'security/wallet/secrets',
       'security/ssl',
       'security/x509',
       'security/ldap',
       'security/wallet',
+      'security/oauth',
       'agent/definitions/edit',
       'agent/definitions',
       'agent/switches',
     ],
-    'the built screens are Home, at the application root, then the application error log and the audit database, processes, task schedule, users, roles, resources, services, OpenAPI document viewer, web applications, REST API explorer, Secrets, SSL/TLS, X.509, LDAP / Kerberos and Wallet screens, and the Agent co-pilot area\'s Definition form, Definitions list and Switches, in area rail order'
+    'the built screens are Home, at the application root, then the application error log and the audit database, processes, task schedule, users, roles, resources, services, OpenAPI document viewer, web applications, REST API explorer, the four unlisted OAuth 2.0 tabs, Secrets, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, and the Agent co-pilot area\'s Definition form, Definitions list and Switches, in area rail order'
   );
 });
 
@@ -248,13 +255,48 @@ test('childListFor pairs the Wallet list with its Secrets list, parentListFor in
   assert.equal(isListedScreen(secrets), false, 'the Secrets list is never listed');
   assert.deepEqual(
     listedScreensForArea('security').map((screen) => screen.route),
-    ['security/ssl', 'security/x509', 'security/ldap', 'security/wallet'],
-    'the Security side bar lists SSL/TLS, X.509, LDAP / Kerberos and Wallet'
+    ['security/ssl', 'security/x509', 'security/ldap', 'security/wallet', 'security/oauth'],
+    'the Security side bar lists SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0'
   );
 
   assert.equal(screenForUrl('/security/wallet/secrets/OcuPilotDemo?ns=HSCUSTOM')?.route, 'security/wallet/secrets', 'a secrets URL with a collection id resolves to the Secrets list');
   assert.equal(screenForUrl('/security/wallet/secrets?ns=HSCUSTOM')?.route, 'security/wallet/secrets', 'and so does the route with no id, never the Wallet list with an id of "secrets"');
   assert.equal(screenForUrl('/security/wallet/OcuPilotDemo')?.route, 'security/wallet', 'while a Wallet URL with an id is the Wallet list');
+});
+
+// Story 6.4, AD-5: a tabbed screen is one descriptor per tab. `tabMembersFor` reads the group's built
+// members in position order, and `tabGroupFor` names the group's first tab for every member.
+//
+// Mutation (Rule 19): swap `tab.position` of the resource servers and authorization server tabs ->
+// the member order below goes red.
+test('tabMembersFor lists the OAuth 2.0 tabs in position order, and tabGroupFor names the group for each', () => {
+  const group = screenForRoute('security/oauth');
+  const routes = ['security/oauth', 'security/oauth/clients', 'security/oauth/resource-servers', 'security/oauth/server', 'security/oauth/server-clients'];
+  for (const route of routes) {
+    const member = screenForRoute(route);
+    assert.deepEqual(
+      tabMembersFor(member).map((tab) => tab.route),
+      routes,
+      `${route}'s strip is the five tabs in position order`
+    );
+    assert.equal(tabGroupFor(member)?.route, 'security/oauth', `${route}'s group is the OAuth 2.0 screen`);
+    assert.equal(member.archetype, 'detail', `${route} is a detail view`);
+  }
+  assert.deepEqual(
+    tabMembersFor(group).map((tab) => stringFor(tab.tab.labelKey)),
+    ['Client server descriptions', 'Client configurations', 'Resource servers', 'Authorization server', 'Server client descriptions'],
+    'labelled by each tab.labelKey'
+  );
+  assert.equal(isListedScreen(group), true, 'the group\'s first tab is its side-bar entry');
+  for (const route of routes.slice(1)) assert.equal(isListedScreen(screenForRoute(route)), false, `${route} is unlisted`);
+  assert.deepEqual(tabMembersFor(screenForRoute('security/ssl')), [], 'a screen that is no tab has no strip');
+  assert.equal(tabGroupFor(screenForRoute('security/ssl')), null, 'and no group');
+  assert.equal(screenForUrl('/security/oauth/server-clients?ns=HSCUSTOM')?.route, 'security/oauth/server-clients', 'a tab URL resolves to its own tab');
+  assert.equal(
+    tabGroupFor({ ...screenForRoute('security/oauth/clients'), tab: { group: 'security/nosuch', position: 2, labelKey: 'oauthTabClients' } }),
+    null,
+    'a group no built first tab declares resolves none'
+  );
 });
 
 // Story 6.3: a parent-scoped list's one criterion comes from the URL's id, decoded once past the

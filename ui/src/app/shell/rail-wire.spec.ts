@@ -173,6 +173,34 @@ const LIVE_PAYLOAD = {
       failedPair: '%Admin_Secure:USE',
       screens: [
         {
+          route: 'security/oauth/clients',
+          labelKey: 'oauthTabClients',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_OAuth2_Client:USE',
+        },
+        {
+          route: 'security/oauth/resource-servers',
+          labelKey: 'oauthTabResourceServers',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Secure:USE',
+        },
+        {
+          route: 'security/oauth/server-clients',
+          labelKey: 'oauthTabServerClients',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_OAuth2_Registration:USE',
+        },
+        {
+          route: 'security/oauth/server',
+          labelKey: 'oauthTabServer',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_OAuth2_Server:USE',
+        },
+        {
           route: 'security/wallet/secrets',
           labelKey: 'walletSecretListLabel',
           sideBarPosition: 0,
@@ -206,6 +234,13 @@ const LIVE_PAYLOAD = {
           sideBarPosition: 4,
           allowed: false,
           failedPair: '%Admin_Wallet:USE',
+        },
+        {
+          route: 'security/oauth',
+          labelKey: 'oauthLabel',
+          sideBarPosition: 5,
+          allowed: false,
+          failedPair: '%Admin_OAuth2_Client:USE',
         },
       ],
     },
@@ -297,6 +332,11 @@ describe('the rail, wired to the real NavigationService reading a live-captured 
       ['security/x509', '%Admin_Secure:USE'],
       ['security/ldap', '%Admin_Secure:USE'],
       ['security/wallet', '%Admin_Wallet:USE'],
+      ['security/oauth/clients', '%Admin_OAuth2_Client:USE'],
+      ['security/oauth/resource-servers', '%Admin_Secure:USE'],
+      ['security/oauth/server-clients', '%Admin_OAuth2_Registration:USE'],
+      ['security/oauth/server', '%Admin_OAuth2_Server:USE'],
+      ['security/oauth', '%Admin_OAuth2_Client:USE'],
     ];
     for (const [route, pair] of expected) {
       expect(navigation.screenVerdict(route)).toEqual({ allowed: false, failedPair: pair });

@@ -16,6 +16,7 @@ import {
   formatRequires,
   listForDocumentScreen,
   parentListFor,
+  tabGroupFor,
   withQuery,
 } from '../core/navigation';
 import { ShellState } from '../core/shell-state';
@@ -215,9 +216,11 @@ export class LocatorBar {
       // A link back to the list once the entity segment follows it (DW-142); otherwise the
       // current segment, so it is not a link. A document viewer's list is the one it is paired
       // with, because its own route with no id reads no document, and a sub-resource list's is
-      // its parent, for the same reason.
+      // its parent, for the same reason. A tab's is its group's first tab, the screen the side bar
+      // lists (AD-5).
       navigates: hasEntity,
-      route: parentListFor(screen)?.route ?? listForDocumentScreen(screen)?.route ?? screen.route,
+      route:
+        parentListFor(screen)?.route ?? listForDocumentScreen(screen)?.route ?? tabGroupFor(screen)?.route ?? screen.route,
       ariaCurrent: hasEntity ? null : 'page',
       entity: false,
       ...UNGATED_SEGMENT,

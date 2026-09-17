@@ -33,7 +33,9 @@
 /// <code>read</code> (the one declared read, AD-36, or absent), <code>table</code> (the columns and
 /// empty-state keys a read's rows render with, declared exactly when <code>read</code> is),
 /// <code>banner</code> (a second declared port read whose value raises a strip above the table, or
-/// absent), and <code>toolIdentifier</code>.</p>
+/// absent), <code>tab</code> (<code>{group, position, labelKey}</code>: the route of the tab group
+/// this screen is one tab of, its position in the strip and its label's string key, AD-5, or absent),
+/// and <code>toolIdentifier</code>.</p>
 /// <p><b><code>refreshes</code> and <code>refreshRates</code> are the whole of a screen's
 /// live-data declaration</b> (AD-43). The shared framework owns the timer, the persisted
 /// per-screen setting and the silent re-fetch; no screen implements refresh of its own. Rates are

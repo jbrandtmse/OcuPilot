@@ -550,10 +550,11 @@ Method TestTheUsersListIsDeniedToAPrincipalWithoutAdminSecure()
 /// it with <code>AUTH.NOPRIVILEGE</code>. The entry is compared whole, as the captured payloads in
 /// <file>ui/tools/navigation-wire.test.mjs</file> and <file>ui/src/app/shell/rail-wire.spec.ts</file>
 /// carry it.</p>
-/// <p>Story 6.3 -- the Security and secrets area lists five built screens: the unlisted Secrets list
-/// first, at position 0, then SSL/TLS, X.509, LDAP / Kerberos and Wallet. The two wallet screens are
-/// denied on <code>%Admin_Wallet:USE</code>, the first pair they declare, and the other three on
-/// <code>%Admin_Secure:USE</code>, which is also the first pair the area declares.</p>
+/// <p>Story 6.3 and 6.4 -- the Security and secrets area lists ten built screens: the unlisted OAuth
+/// 2.0 tabs and Secrets list first, at position 0, then SSL/TLS, X.509, LDAP / Kerberos, Wallet and
+/// OAuth 2.0. Each is denied on the first pair it declares: the wallet pair for the two wallet
+/// screens, an OAuth resource for four OAuth tabs, and <code>%Admin_Secure:USE</code> for the rest,
+/// which is also the first pair the area declares.</p>
 Method TestTheSslConfigurationsListIsDeniedToAPrincipalWithoutAdminSecure()
 {
     Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the two principals differ on the administrative resource")
@@ -573,7 +574,7 @@ Method TestTheSslConfigurationsListIsDeniedToAPrincipalWithoutAdminSecure()
             }
         }
     }
-    Do $$$AssertEquals(tScreens, "[{""route"":""security/wallet/secrets"",""labelKey"":""walletSecretListLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Wallet:USE""},{""route"":""security/ssl"",""labelKey"":""sslListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/x509"",""labelKey"":""x509ListLabel"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/ldap"",""labelKey"":""ldapListLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/wallet"",""labelKey"":""walletListLabel"",""sideBarPosition"":4,""allowed"":false,""failedPair"":""%Admin_Wallet:USE""}]", "the security area lists its five built screens in side-bar order, each denied on its first pair")
+    Do $$$AssertEquals(tScreens, "[{""route"":""security/oauth/clients"",""labelKey"":""oauthTabClients"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_OAuth2_Client:USE""},{""route"":""security/oauth/resource-servers"",""labelKey"":""oauthTabResourceServers"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/oauth/server-clients"",""labelKey"":""oauthTabServerClients"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_OAuth2_Registration:USE""},{""route"":""security/oauth/server"",""labelKey"":""oauthTabServer"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_OAuth2_Server:USE""},{""route"":""security/wallet/secrets"",""labelKey"":""walletSecretListLabel"",""sideBarPosition"":0,""allowed"":false,""failedPair"":""%Admin_Wallet:USE""},{""route"":""security/ssl"",""labelKey"":""sslListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/x509"",""labelKey"":""x509ListLabel"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/ldap"",""labelKey"":""ldapListLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%Admin_Secure:USE""},{""route"":""security/wallet"",""labelKey"":""walletListLabel"",""sideBarPosition"":4,""allowed"":false,""failedPair"":""%Admin_Wallet:USE""},{""route"":""security/oauth"",""labelKey"":""oauthLabel"",""sideBarPosition"":5,""allowed"":false,""failedPair"":""%Admin_OAuth2_Client:USE""}]", "the security area lists its ten built screens in side-bar order, each denied on its first pair")
     Do $$$AssertEquals(tArea, "false:%Admin_Secure:USE", "and the area itself is denied on the same pair")
 
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/security.ssl/read?maxRows=5", ..#ADMINUSER, ..PreparedPassword, .tStatus2, .tBody2, .tHeaders2)

@@ -93,6 +93,26 @@ Parameter LDAPLISTTOOL = "security.ldap";
 /// issues.</p>
 Parameter WALLETLISTTOOL = "security.wallet";
 
+/// <p>The tool identifier of the OAuth 2.0 screen's Client server descriptions tab, whose screen read
+/// the <code>oauthdescriptions</code> check issues.</p>
+Parameter OAUTHDESCRIPTIONSTOOL = "security.oauthserverdescriptions";
+
+/// <p>The tool identifier of the OAuth 2.0 Client configurations tab, whose screen read the
+/// <code>oauthclients</code> check issues.</p>
+Parameter OAUTHCLIENTSTOOL = "security.oauthclients";
+
+/// <p>The tool identifier of the OAuth 2.0 Resource servers tab, whose screen read the
+/// <code>oauthresourceservers</code> check issues.</p>
+Parameter OAUTHRESOURCESERVERSTOOL = "security.oauthresourceservers";
+
+/// <p>The tool identifier of the OAuth 2.0 Authorization server tab, whose screen read the
+/// <code>oauthserver</code> check issues.</p>
+Parameter OAUTHSERVERTOOL = "security.oauthserver";
+
+/// <p>The tool identifier of the OAuth 2.0 Server client descriptions tab, whose screen read the
+/// <code>oauthserverclients</code> check issues.</p>
+Parameter OAUTHSERVERCLIENTSTOOL = "security.oauthserverclients";
+
 /// <p>The console-log page's path under the API application, and the window the
 /// <code>messageslog</code> check asks for. Small: the check is that the endpoint serves the
 /// instance's own log, not that it serves much of it.</p>
@@ -501,6 +521,13 @@ ClassMethod CheckApiReads(ByRef pChecks, pAccessToken As %String) [ Private ]
 /// <code>%Admin_Operate:USE</code> for the sixth, <code>%Admin_Secure:USE</code> for the seventh
 /// through the twelfth, and <code>%Admin_Wallet:USE</code> for the thirteenth -- or the read answers
 /// 403 and the check fails. Skipped, like the shell reads, when no token was minted.</p>
+/// <p><b>The five OAuth 2.0 tabs</b> (<code>oauthdescriptions</code>, <code>oauthclients</code>,
+/// <code>oauthresourceservers</code>, <code>oauthserver</code>, <code>oauthserverclients</code>) read
+/// the same way and pass on a 200 answering zero rows or one: no fixture creates OAuth 2.0 objects
+/// (AD-25), so an instance may hold none. They need <code>%Admin_OAuth2_Client:USE</code> for the
+/// first two, <code>%Admin_Secure:USE</code> for the third, <code>%Admin_OAuth2_Server:USE</code> for
+/// the fourth and <code>%Admin_OAuth2_Registration:USE</code> for the fifth, each with
+/// <code>%DB_IRISSYS:READ</code>.</p>
 /// <p><b>The X.509 and Wallet lists hold a row only where the demo fixture put one</b> (AD-25), so
 /// when the demo was not requested (<var>pDemo</var>, resolved as
 /// <method>CheckDemoFixture</method> resolves it) a 200 answering an empty <code>rows</code> array
@@ -512,12 +539,12 @@ ClassMethod CheckAreaLists(ByRef pChecks, pAccessToken As %String, pDemo As %Str
 {
     Set tDemoWanted = ($Select(pDemo '= "": pDemo, 1: $System.Util.GetEnviron("OCUPILOT_DEMO")) = "1")
     Set tBase = ..RosterPath("api")
-    For tI = 1:1:13 {
-        Set tName = $Piece("webapplications,users,ssl,tasks,processes,audit,webapp.restapis,roles,resources,services,x509,ldap,wallet", ",", tI)
+    For tI = 1:1:18 {
+        Set tName = $Piece("webapplications,users,ssl,tasks,processes,audit,webapp.restapis,roles,resources,services,x509,ldap,wallet,oauthdescriptions,oauthclients,oauthresourceservers,oauthserver,oauthserverclients", ",", tI)
         ; Every index names its own tool and the last arm names none: a list added to the bound and
         ; the name list without its own arm reads an empty path and fails, rather than re-reading
         ; the previous list under the new name and passing.
-        Set tTool = $Select(tI = 1: ..#WEBAPPLISTTOOL, tI = 2: ..#USERLISTTOOL, tI = 3: ..#SSLLISTTOOL, tI = 4: ..#TASKLISTTOOL, tI = 5: ..#PROCESSLISTTOOL, tI = 6: ..#AUDITLISTTOOL, tI = 7: ..#RESTAPILISTTOOL, tI = 8: ..#ROLELISTTOOL, tI = 9: ..#RESOURCELISTTOOL, tI = 10: ..#SERVICELISTTOOL, tI = 11: ..#X509LISTTOOL, tI = 12: ..#LDAPLISTTOOL, tI = 13: ..#WALLETLISTTOOL, 1: "")
+        Set tTool = $Select(tI = 1: ..#WEBAPPLISTTOOL, tI = 2: ..#USERLISTTOOL, tI = 3: ..#SSLLISTTOOL, tI = 4: ..#TASKLISTTOOL, tI = 5: ..#PROCESSLISTTOOL, tI = 6: ..#AUDITLISTTOOL, tI = 7: ..#RESTAPILISTTOOL, tI = 8: ..#ROLELISTTOOL, tI = 9: ..#RESOURCELISTTOOL, tI = 10: ..#SERVICELISTTOOL, tI = 11: ..#X509LISTTOOL, tI = 12: ..#LDAPLISTTOOL, tI = 13: ..#WALLETLISTTOOL, tI = 14: ..#OAUTHDESCRIPTIONSTOOL, tI = 15: ..#OAUTHCLIENTSTOOL, tI = 16: ..#OAUTHRESOURCESERVERSTOOL, tI = 17: ..#OAUTHSERVERTOOL, tI = 18: ..#OAUTHSERVERCLIENTSTOOL, 1: "")
         If tBase = "" {
             Do ..Note(.pChecks, tName, "fail", "the roster on this instance declares no API path, so there was nothing to read")
             Continue
@@ -545,6 +572,15 @@ ClassMethod CheckAreaLists(ByRef pChecks, pAccessToken As %String, pDemo As %Str
         }
         If (tCount = 0) && 'tDemoWanted && ((tName = "x509") || (tName = "wallet")) {
             Do ..Note(.pChecks, tName, "skipped", "the list is empty and the demo opt-in flag is not set for this instance, so no demo fixture row was expected (AD-25)")
+            Continue
+        }
+        Set tZeroOrOne = ''$ListFind($ListBuild("oauthdescriptions", "oauthclients", "oauthresourceservers", "oauthserver", "oauthserverclients"), tName)
+        If tZeroOrOne && ((tCount = 0) || (tCount = 1)) {
+            Do ..Note(.pChecks, tName, "pass")
+            Continue
+        }
+        If tZeroOrOne {
+            Do ..Note(.pChecks, tName, "fail", "GET " _ tPath _ " answered 200 without a rows array of zero rows or one")
             Continue
         }
         If tCount '= 1 {

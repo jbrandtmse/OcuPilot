@@ -820,6 +820,58 @@ Method TestEveryClassicLinkCorpusCaseGetsItsSentence()
     Do $$$AssertStatusOK(tGoodSC, "and passes")
 }
 
+/// <p>Story 6.4 (AD-5) -- every case in <class>OcuPilot.Test.TabCorpus</class> gets its exact sentence,
+/// or none, from <method>OcuPilot.Screen.Registry.TabProblem</method>, and every roster there from
+/// <method>OcuPilot.Screen.Registry.TabGroupProblem</method>, the same corpus
+/// <file>ui/tools/screen-mirror.test.mjs</file> runs through <code>tabProblem</code> and
+/// <code>tabGroupProblem</code>.</p>
+/// <p>Mutation: drop the side-bar arm from <method>OcuPilot.Screen.Registry.TabProblem</method> -&gt;
+/// the two later-tab side-bar cases go red. Disable the position check in
+/// <method>OcuPilot.Screen.Registry.TabGroupProblem</method> -&gt; the gap, repeated-position and
+/// two-group rosters go red.</p>
+Method TestEveryTabCorpusCaseGetsItsSentence()
+{
+    Set tSC = ##class(OcuPilot.Test.TabCorpus).Corpus(.tCorpus)
+    Do $$$AssertStatusOK(tSC, "the corpus reads")
+    If '$IsObject(tCorpus) Quit
+    Do $$$AssertTrue(tCorpus.cases.%Size() > 0, "the corpus carries cases: " _ tCorpus.cases.%Size())
+    Do $$$AssertTrue(tCorpus.rosters.%Size() > 0, "and rosters: " _ tCorpus.rosters.%Size())
+    Set tRefusals = 0
+    Set tIterator = tCorpus.cases.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tCase) {
+        Set tExpected = $Select(tCase.%GetTypeOf("expected") = "null": "", 1: tCase.expected)
+        If tExpected '= "" Set tRefusals = tRefusals + 1
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).TabProblem(tCase.declaration), tExpected, tCase.name)
+    }
+    Set tIterator = tCorpus.rosters.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRoster) {
+        Set tExpected = $Select(tRoster.%GetTypeOf("expected") = "null": "", 1: tRoster.expected)
+        If tExpected '= "" Set tRefusals = tRefusals + 1
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).TabGroupProblem(tRoster.screens), tExpected, tRoster.name)
+    }
+    Do $$$AssertTrue(tRefusals > 0, "the corpus carries at least one refusing case: " _ tRefusals)
+}
+
+/// <p>Story 6.4 (AD-5) -- <method>OcuPilot.Screen.Registry.Validate</method> refuses a roster whose
+/// descriptor declares a tab outside the grammar (<class>OcuPilot.Test.TabRegistry</class>) and a
+/// roster whose tab group leaves a gap in its positions
+/// (<class>OcuPilot.Test.TabGroupRegistry</class>), each naming the offending class: the wiring the
+/// corpus test, which calls the rules directly, does not reach.</p>
+/// <p>Mutation: delete the <method>OcuPilot.Screen.Registry.TabProblem</method> call from
+/// <method>OcuPilot.Screen.Registry.Validate</method> -&gt; the tab roster's assertions go red; delete
+/// the <method>OcuPilot.Screen.Registry.TabGroupProblem</method> call -&gt; the group roster's go
+/// red.</p>
+Method TestATabOutsideTheGrammarIsRefusedByTheRoster()
+{
+    Set tSC = ##class(OcuPilot.Test.TabRegistry).Validate(.tProblem)
+    Do $$$AssertStatusNotOK(tSC, "a roster carrying a tab outside the grammar is refused")
+    Do $$$AssertEquals(tProblem, "OcuPilot.Test.Tab.Bad: tab.position 2 is a tab under its group's first, and such a tab declares sideBarPosition 0 (AD-5)", "naming the class and the rule")
+
+    Set tSC = ##class(OcuPilot.Test.TabGroupRegistry).Validate(.tGroupProblem)
+    Do $$$AssertStatusNotOK(tSC, "a roster whose tab group leaves a gap is refused")
+    Do $$$AssertEquals(tGroupProblem, "OcuPilot.Test.TabGroup.First: tab.group 'security/tab-group' declares positions 1,3, and a tab group's positions run 1 to 2 with no gap or repeat (AD-5)", "naming the group's first tab and the positions")
+}
+
 /// <p>AD-44's honored path, on the archetype the rule names literally: a
 /// <code>detail</code> descriptor declaring a complete exemption validates, and every part the
 /// card renders is readable from the declaration.</p>
@@ -1064,7 +1116,7 @@ Method TestTheAreaVocabularyIsClosedOrderedAndUngatedAtBothEnds()
     Set tExpected = tExpected _ $ListBuild($ListBuild("tasks", "%Admin_Task:USE, %DB_IRISSYS:READ", 0, 0))
     Set tExpected = tExpected _ $ListBuild($ListBuild("permissions", "%Admin_Secure:USE, %DB_IRISSYS:READ", 0, 0))
     Set tExpected = tExpected _ $ListBuild($ListBuild("web-applications", "%Admin_Secure:USE, %DB_IRISSYS:READ", 0, 0))
-    Set tExpected = tExpected _ $ListBuild($ListBuild("security", "%Admin_Secure:USE, %DB_IRISSYS:READ, %Admin_Wallet:USE", 0, 0))
+    Set tExpected = tExpected _ $ListBuild($ListBuild("security", "%Admin_Secure:USE, %DB_IRISSYS:READ, %Admin_Wallet:USE, %Admin_OAuth2_Client:USE, %Admin_OAuth2_Server:USE, %Admin_OAuth2_Registration:USE", 0, 0))
     Set tExpected = tExpected _ $ListBuild($ListBuild("agent", "", 0, 1))
     Do $$$AssertEquals($ListLength(tExpected), 8, "the expectation names all eight areas")
 

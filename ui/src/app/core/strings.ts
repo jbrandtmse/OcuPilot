@@ -626,6 +626,50 @@ export const STRINGS = {
   walletSecretListLabel: 'Secrets',
   /** EXPERIENCE.md:353 */
   walletSecretListEmpty: 'No secrets in this collection.',
+  /** EXPERIENCE.md:354 */
+  oauthLabel: 'OAuth 2.0',
+  /** EXPERIENCE.md:354 */
+  oauthTabServerDescriptions: 'Client server descriptions',
+  /** EXPERIENCE.md:354 */
+  oauthTabClients: 'Client configurations',
+  /** EXPERIENCE.md:354 */
+  oauthTabResourceServers: 'Resource servers',
+  /** EXPERIENCE.md:354 */
+  oauthTabServer: 'Authorization server',
+  /** EXPERIENCE.md:354 */
+  oauthTabServerClients: 'Server client descriptions',
+  /** EXPERIENCE.md:355 */
+  oauthColumnClientType: 'Client type',
+  /** EXPERIENCE.md:355 */
+  oauthColumnDefaultScope: 'Default scope',
+  /** EXPERIENCE.md:355 */
+  oauthColumnScopes: 'Scopes',
+  /** EXPERIENCE.md:355 */
+  oauthColumnGrantTypes: 'Grant types',
+  /** EXPERIENCE.md:355 */
+  oauthColumnSigningAlgorithm: 'Signing algorithm',
+  /** EXPERIENCE.md:355 */
+  oauthColumnEncryptionAlgorithm: 'Encryption algorithm',
+  /** EXPERIENCE.md:355 */
+  oauthColumnKeyAlgorithm: 'Key algorithm',
+  /** EXPERIENCE.md:355 */
+  oauthColumnServerCredentials: 'Server credentials',
+  /** EXPERIENCE.md:355 */
+  oauthColumnClientId: 'Client ID',
+  /** EXPERIENCE.md:355 */
+  oauthColumnRedirectUrls: 'Redirect URLs',
+  /** EXPERIENCE.md:355 */
+  classicRowLinkDescription: 'Opens <page> in the classic portal in a new tab.',
+  /** EXPERIENCE.md:356 */
+  oauthServerDescriptionsEmpty: 'No client server descriptions on this instance.',
+  /** EXPERIENCE.md:356 */
+  oauthClientsEmpty: 'No client configurations on this instance.',
+  /** EXPERIENCE.md:356 */
+  oauthResourceServersEmpty: 'No resource servers on this instance.',
+  /** EXPERIENCE.md:356 */
+  oauthServerEmpty: 'No authorization server is configured on this instance.',
+  /** EXPERIENCE.md:356 */
+  oauthServerClientsEmpty: 'No server client descriptions on this instance.',
 
   // Not from the Fixed strings table, but required verbatim by this story's task
   // list: the audit-marker-failure fallback text (AD-15 / EXPERIENCE.md "9. **Audit.** Every confirmed"), the

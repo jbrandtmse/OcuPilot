@@ -177,7 +177,10 @@ Method TestTheRealWebApplicationListTruncatesAtTwo()
 /// read that answers no row fails, since there is nothing to hold the fields to, and a roster with no
 /// such descriptor fails rather than passing over nothing. Reads on another port or of another type
 /// are not covered here, and neither is a parent-scoped read, whose LIST needs its parent's id:
-/// <class>OcuPilot.Test.SecurityLists</class> holds the Secrets list's fields to its live rows.</p>
+/// <class>OcuPilot.Test.SecurityLists</class> holds the Secrets list's fields to its live rows. Nor are
+/// the five OAuth 2.0 tabs, named here, whose rows exist only once
+/// <class>OcuPilot.Test.OAuthProbe</class> has made them: <class>OcuPilot.Test.OAuthTabs</class> holds
+/// those.</p>
 /// <p>Mutation: declare <code>NameSpace</code> in <class>OcuPilot.Screen.Descriptor.WebAppList</class>'s
 /// read -> this goes red naming the field.</p>
 Method TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow()
@@ -192,6 +195,7 @@ Method TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow()
         Set tSource = tRead.%Get("source")
         If '$IsObject(tSource) || (tSource.%Get("port") '= "admin") || (tSource.%Get("type") '= "LIST") Continue
         If $ClassMethod(tClass, "ParentScope") '= "" Continue
+        If $ListFind($ListBuild("OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab", "OcuPilot.Screen.Descriptor.OAuthClientTab", "OcuPilot.Screen.Descriptor.OAuthResourceServerTab", "OcuPilot.Screen.Descriptor.OAuthServerTab", "OcuPilot.Screen.Descriptor.OAuthServerClientTab"), tClass) Continue
         Set tChecked = tChecked + 1
         Kill tQuery
         Set tPortSC = ##class(OcuPilot.Port.AdminPort).Invoke(tSource.%Get("endpoint"), "LIST", .tQuery, "", .tAnswer, .tHttp, .tFault)

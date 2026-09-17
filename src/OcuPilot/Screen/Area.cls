@@ -70,6 +70,12 @@
 /// gated, and a gated rail item opens no side bar, while SSL/TLS, X.509 and LDAP / Kerberos -- 3 of
 /// the area's 5 built screens -- would serve them and stay reachable by the command box and a deep
 /// link.</p>
+/// <p><b>It then names <code>%Admin_OAuth2_Client:USE</code>, <code>%Admin_OAuth2_Server:USE</code> and
+/// <code>%Admin_OAuth2_Registration:USE</code></b>, in that order, which the OAuth 2.0 tabs declare.
+/// The cost is the same kind of false denial: a caller holding the secure, system-database and wallet
+/// pairs without an OAuth resource sees the rail item gated while 6 of the area's 10 built screens
+/// would serve them. The stock <code>%Manager</code> and <code>%SecurityAdministrator</code> roles hold
+/// all three OAuth resources (observed on slot B), so no stock role is newly denied by them.</p>
 /// <p><b>A pair set is an AND and cannot express the admin API's OR.</b>
 /// <code>Task.CRUD</code> accepts <code>%Admin_Task</code> <i>or</i> <code>%Admin_Operate</code>
 /// (same probe). Tasks therefore names the narrower <code>%Admin_Task</code>, so a holder of
@@ -97,7 +103,7 @@ XData Areas
   {"key":"tasks","railPosition":4,"labelKey":"navAreaTasks","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Task","permission":"USE"},{"resource":"%DB_IRISSYS","permission":"READ"}]},
   {"key":"permissions","railPosition":5,"labelKey":"navAreaPermissions","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Secure","permission":"USE"},{"resource":"%DB_IRISSYS","permission":"READ"}]},
   {"key":"web-applications","railPosition":6,"labelKey":"navAreaWebApplications","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Secure","permission":"USE"},{"resource":"%DB_IRISSYS","permission":"READ"}]},
-  {"key":"security","railPosition":7,"labelKey":"navAreaSecurity","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Secure","permission":"USE"},{"resource":"%DB_IRISSYS","permission":"READ"},{"resource":"%Admin_Wallet","permission":"USE"}]},
+  {"key":"security","railPosition":7,"labelKey":"navAreaSecurity","navigates":false,"pinBottom":false,"privileges":[{"resource":"%Admin_Secure","permission":"USE"},{"resource":"%DB_IRISSYS","permission":"READ"},{"resource":"%Admin_Wallet","permission":"USE"},{"resource":"%Admin_OAuth2_Client","permission":"USE"},{"resource":"%Admin_OAuth2_Server","permission":"USE"},{"resource":"%Admin_OAuth2_Registration","permission":"USE"}]},
   {"key":"agent","railPosition":8,"labelKey":"navAreaAgent","navigates":false,"pinBottom":true,"privileges":[]}
 ]}
 }

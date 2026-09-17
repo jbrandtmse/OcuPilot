@@ -230,6 +230,33 @@ export function parentListFor(screen: ScreenDeclaration): ScreenDeclaration | nu
 }
 
 /**
+ * The built tabs of the tab group `screen` is one tab of, in position order, or `[]` for a screen
+ * that is no tab (AD-5).
+ *
+ * A tabbed screen is one descriptor per tab, grouped by a declared `tab`, so the strip is read off
+ * the mirror rather than typed out: every built screen whose `tab.group` is this screen's group.
+ */
+export function tabMembersFor(screen: ScreenDeclaration): readonly ScreenDeclaration[] {
+  const group = screen.tab?.group;
+  if (group === undefined) return [];
+  return SCREENS.filter((member) => member.built && member.tab?.group === group).sort(
+    (a, b) => (a.tab?.position ?? 0) - (b.tab?.position ?? 0)
+  );
+}
+
+/**
+ * The first tab of the group `screen` is one tab of -- the built screen at the group's route that
+ * declares that group -- or `null` for a screen that is no tab (AD-5). The side bar lists this one
+ * member, and the locator names it for every tab.
+ */
+export function tabGroupFor(screen: ScreenDeclaration): ScreenDeclaration | null {
+  const group = screen.tab?.group;
+  if (group === undefined) return null;
+  const head = screenForRoute(group);
+  return head !== null && head.built && head.tab?.group === group ? head : null;
+}
+
+/**
  * The criteria a parent-scoped list's read carries, from the router URL it renders at: its one
  * declared criterion set to the URL's id segment, decoded (AD-13), or `{}` for a screen that
  * declares no parent, does not declare exactly one criterion, or is rendered with no id.

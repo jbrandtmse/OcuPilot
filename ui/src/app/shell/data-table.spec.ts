@@ -225,6 +225,90 @@ describe('the data table', () => {
     expect(nameCell.textContent?.trim()).toBe('/csp/app00');
   });
 
+  const CLASSIC_HREF = '/csp/sys/sec/%25CSP.UI.Portal.OAuth2.Client.Configuration.zen';
+  const rowLinked = () =>
+    tableDeclaration({
+      archetype: 'detail',
+      classicLinkExemption: {
+        exempt: true,
+        reason: 'r',
+        label: 'OAuth 2.0 Client Configuration',
+        href: CLASSIC_HREF,
+        rowLink: {
+          params: [
+            { name: 'PID', field: 'Name' },
+            { name: 'IssuerEndpointID', field: 'Note' },
+            { name: 'IssuerEndpoint', field: 'NameSpace' },
+          ],
+        },
+      },
+    });
+
+  it('Story 6.4 AC4: a declared row link draws the name cell as a new-tab anchor at the classic editor, ahead of the in-app link', async () => {
+    // Mutation (Rule 19): ignore `rowLink` in `data-table.ts` (drop `rowLinked` from the chain) -> the
+    // anchor reads the table's own id route and these assertions go red.
+    const wired = await wire(rowLinked(), ok(rows(2)));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    const link = wired.host().querySelector('[aria-rowindex="3"] [role="gridcell"] a') as HTMLAnchorElement;
+    expect(link).not.toBeNull();
+    expect(link.getAttribute('href')).toBe(`${CLASSIC_HREF}?PID=%2Fcsp%2Fapp01&IssuerEndpointID=note%201&IssuerEndpoint=USER`);
+    expect(link.getAttribute('target')).toBe('_blank');
+    expect(link.getAttribute('rel')).toBe('noreferrer');
+    expect(link.getAttribute('aria-description')).toBe('Opens OAuth 2.0 Client Configuration in the classic portal in a new tab.');
+
+    const opened: unknown[] = [];
+    const originalOpen = window.open;
+    window.open = ((...args: unknown[]) => {
+      opened.push(args);
+      return null;
+    }) as typeof window.open;
+    const clicks: boolean[] = [];
+    link.addEventListener('click', (event) => {
+      clicks.push(event.defaultPrevented);
+      event.preventDefault();
+    });
+    try {
+      link.click();
+      await settle(wired.fixture);
+      expect(clicks).toEqual([false]);
+      expect(opened).toEqual([]);
+      expect(TestBed.inject(Router).url).toBe('/web-applications/probe?ns=HSCUSTOM');
+      expect(wired.store.selection()).toEqual([]);
+
+      const grid = wired.host().querySelector('[role="grid"]') as HTMLElement;
+      grid.focus();
+      grid.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+      grid.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+      await settle(wired.fixture);
+      grid.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      await settle(wired.fixture);
+      expect(clicks).toEqual([false, false]);
+      expect(opened).toEqual([]);
+      expect(TestBed.inject(Router).url).toBe('/web-applications/probe?ns=HSCUSTOM');
+    } finally {
+      window.open = originalOpen;
+    }
+  });
+
+  it('Story 6.4 blank-value guard: a row whose IssuerEndpointID reads empty draws its name as text, never a link', async () => {
+    // Mutation (Rule 19): build the row link in `classicRowHref` even when a param's field is empty ->
+    // the blank row's name cell becomes an anchor and this goes red.
+    const blank = rows(3).map((row, index) => (index === 2 ? { ...row, Note: '' } : row));
+    const wired = await wire(rowLinked(), ok(blank));
+    await wired.refresh.readNow();
+    await settle(wired.fixture);
+    for (const [rowIndex, name] of [
+      ['2', '/csp/app00'],
+      ['4', '/csp/app02'],
+    ]) {
+      const nameCell = wired.host().querySelector(`[aria-rowindex="${rowIndex}"] [role="gridcell"]`) as HTMLElement;
+      expect(nameCell.querySelector('a')).toBeNull();
+      expect(nameCell.textContent?.trim()).toBe(name);
+    }
+    expect(wired.host().querySelector('[aria-rowindex="3"] [role="gridcell"] a')).not.toBeNull();
+  });
+
   it('a screen with no id route draws the name as code text with no link, and Enter navigates nowhere; the grid is named by the screen label', async () => {
     // Mutation (Rule 19): build the row URL without `hasIdRoute` -> the link assertion goes red.
     const wired = await wire(tableDeclaration({ id: { kind: 'none', parts: [] } }), ok(rows(2)));
