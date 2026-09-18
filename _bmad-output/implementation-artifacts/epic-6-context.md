@@ -8,7 +8,7 @@ Build step 3. Every remaining list, detail and viewer in the six areas reads liv
 no area stops at one screen and the side bar has no dead entries, and each screen's agent read tool
 arrives with it from the same descriptor. The epic is read-only: the writes these screens host
 arrive in Epics 7, 8, 9, 12 and 16. It depends on Epic 2 alone and runs in parallel with Epic 4.
-Stories 6.1 to 6.10 are done; the four that remain are Databases, Devices and the two log viewers.
+Stories 6.1 to 6.11 are done; the three that remain are Devices and the two log viewers.
 
 ## Stories
 
@@ -22,7 +22,7 @@ Stories 6.1 to 6.10 are done; the four that remain are Databases, Devices and th
 - Story 6.8: Process details (done)
 - Story 6.9: System usage and the dashboard meters (done)
 - Story 6.10: The locks view (done)
-- Story 6.11: Databases, with free space arriving as it lands
+- Story 6.11: Databases, with free space arriving as it lands (done)
 - Story 6.12: The devices list
 - Story 6.13: The alerts.log viewer
 - Story 6.14: The messages.log viewer
@@ -63,35 +63,25 @@ These apply to every story, and the story specs do not repeat them:
 - **Untrusted text** (log lines, entity names, vendor status words) reaches the model only as
   delimited tool-result content.
 
-Story traps, for the four that remain:
+Story traps, for the three that remain:
 
 - **6.10 Locks** landed as built: instance-wide scope, a composite row id, the owner cell linking to
   `os-management/processes/details/<pid>` through the cross-screen row target (carrying `Pid`, not the
   row key; a remote owner lands on "This process no longer exists.", DW-1074), and no transaction
   column — that condition is a removal concern 16.12 warns about from the endpoint's own 409.
-- **6.11 Databases** is settled by its spec gate. **Two descriptors, not one:** `DatabaseList`
-  (listed) and `DatabaseFreeSpace` (unlisted), with the command bar's View control switching route
-  between them, because `SysCRUD.ResourcesOR()` answers Manage-or-Operate for `GET` and `TYPEINFO`
-  but **Manage only for `LIST`**, while the `AsyncResult` poll needs Operate — and a descriptor's
-  gate requires every one of its pairs, so no single descriptor can carry both views. The free-space
-  view is **one read with a `rowGet` per row** at `rowGet.type` `INFO`, never a per-figure stream:
-  `Screen/Read.cls` answers one envelope and `rowGet` is issued per row inside the read, so per-figure
-  arrival is not declarable (probed: `ShouldRunAsync()` is true for `TYPEINFO` alone, the poll answers
-  200 whether pending or finished and differs only in `State`, `Result` is written once so no partial
-  answer exists, and fourteen databases cost 0.852 s against NFR-1's 2 s). Rows therefore render with
-  **skeleton cells** where the figures go, the figures **arrive together** when the asynchronous call
-  resolves, and **the table never reflows** — the data table is a CSS grid whose tracks come from the
-  declared column kinds, never from content. `AdminPort` owns the polling as an ordinary call that
-  resolves later (bounded wait, fails `PORT.TIMEOUT`, never partial); the slice writes none.
-  **Database details** reads `GET` plus `TYPEINFO` as `parts` and ships **properties and volume files
-  only**, with an AC that an **`INFO` fault keeps the last values and shows the refresh strip** rather
-  than blanking a screen that refreshes every 5 s; the background-tasks section is chartered to the
-  owner's decision sheet as **DW-1080**, since `%SYS.BackgroundTask:RunningInDatabase` is a
-  `Final Internal` class query no `%Api.Admin.*` class references. It reuses 6.9's one meter component
-  and is already on the auto-refresh roster of seven. The classic key is
-  **`%CSP.UI.Portal.OpDatabases`** — the `%Admin_Operate` page carrying the General/Free-space toggle,
-  not `%CSP.UI.Portal.Databases` — which AD-44 unions into the gate. This story also backfills
-  `ui/browser/screen-height.browser-spec.mjs` for Locks and System usage.
+- **6.11 Databases** shipped (`52c14c8`, CI run 35308816275 green on all six jobs). It built **four
+  descriptors**: `DatabaseList` (listed, `sideBarPosition` 4), `DatabaseFreeSpace` (unlisted),
+  `DatabaseDetails`, and `DatabaseVolumeList` (parent-scoped) — plus a new **`VOLUMELIST`** list
+  source type in `READSOURCETYPES`, `AdminPort`'s `TYPESUFFIXES`, `Read.Execute` and
+  `screen-mirror.mjs`, each with a corpus case for its refusal, and a new **`ViewOptions`** registry
+  at `ui/src/app/core/view-options.ts`, registered as a value provider in `ui/src/main.ts` (the
+  `ScreenActions` precedent) and rendered by the command bar's own View slot. **AD-5** now records
+  that a page may issue another built screen's declared read through the ordinary read route, so
+  that screen's gate, cap and field set apply unchanged — the Free-space view uses it for its rows
+  and Database details for its volume-file section. **Escalations closed against 6.11, not to be
+  re-filed:** DW-1080 (the background-tasks section is chartered to the owner) and DW-1090 (a
+  `rowGet` read's async bound is per row, so a staged read's wall clock is rows × `ASYNCTIMEOUT`
+  with no read-wide deadline).
 - **6.12 Devices** is the list only.
 - **6.13 alerts.log** is the first user of **`MonitorPort`, which does not exist yet**. It declares
   and evaluates its own resource gate with `$System.Security.Check` before any call, because
@@ -113,16 +103,16 @@ Story traps, for the four that remain:
   with a Retry that cannot clear it (accepted for Secrets as DW-1021; Database details and Process
   details meet the same path, inference).
 - **Auto-refresh roster is seven:** Processes, Process details, Databases, Database details, Task
-  schedule, Task details, System usage. A screen joins only by declaring it in its descriptor **and**
-  appearing in that roster. Of the four remaining only 6.11 touches it (both Databases descriptors
-  and Database details); the other three do not auto-refresh.
+  schedule, Task details, System usage — settled by 6.11's two additions (Databases, Database
+  details). A screen joins only by declaring it in its descriptor **and** appearing in that roster;
+  none of the three remaining stories (6.12–6.14) join it.
 
 ## Technical Decisions
 
 - **Descriptor grammar.** `Screen/Registry.cls` and `ui/tools/screen-mirror.mjs` refuse each shape
   with the same sentence, pinned in a shared `Test/*Corpus.cls`; a new rule changes all three. The
   archetype vocabulary is closed, classifies each key as `list`, `detail` or `none`, fails closed on
-  an unknown key, and already holds every archetype these five stories need (`list`,
+  an unknown key, and already holds every archetype these three stories need (`list`,
   `list (two views)`, `detail`, `log-viewer`).
 - **Tables.** A `list` declaring a read declares `table`: columns (label key, kind, optional
   `emptyKey`) and two empty-state keys. `emptyKey` is the word an empty cell reads instead of
@@ -190,13 +180,17 @@ Story traps, for the four that remain:
   values, not null-filled keys), `Test/Wire` with `navigation.test.mjs`, `screen-mirror.test.mjs` and
   the two client `LIVE_PAYLOAD` copies (neither goes red alone), and `Install/Smoke` (one live read
   per built list, skipping without credentials). **Two literal pins break on any added screen and no
-  stage re-runs them by itself:** `src/OcuPilot/Test/Navigation.cls` pins the os-management roster by
-  literal index **and** count (it went red in CI on 6.9 and again on 6.10), so any story that builds an
-  os-management screen updates both; and `Install/Smoke.cls`'s name list, its indexed `$Select` arm and
-  its loop bound must change together, with `Test/Smoke.cls`'s arm-count assertion. Run the whole
-  ObjectScript sweep, not a chosen subset, before believing a story is green. A denial test needs a
-  real principal on the throwaway, never `%Operator`; a denied deep link wants a browser leg, not
-  only the payload and the HTTP 403 (DW-1049).
+  stage re-runs them by itself, and this epic has now been bitten by both twice:**
+  `src/OcuPilot/Test/Navigation.cls` pins the os-management roster by literal index **and** count —
+  **eight** screens after 6.11 — and went red in CI on 6.9 and again on 6.10, so any story that builds
+  an os-management screen updates both; and `Install/Smoke.cls`'s name list, its indexed `$Select` arm
+  and its loop bound must change together, with `Test/Smoke.cls`'s arm-count assertion deriving from
+  them. Run the whole ObjectScript sweep, not a chosen subset, before believing a story is green —
+  **and run it on a fresh throwaway:** `node tools/ci-runner.mjs` runs what the throwaway compiled at
+  container start, so a sweep after an edit needs a fresh throwaway or an in-container recompile; the
+  lead's standing gate is the whole sweep on a throwaway brought up after the last edit. A denial test
+  needs a real principal on the throwaway, never `%Operator`; a denied deep link wants a browser leg,
+  not only the payload and the HTTP 403 (DW-1049).
 - **Browser specs** against a non-default origin need `OCUPILOT_BROWSER_CONTAINER`, and their
   docker-exec legs refuse only the live `ocupilot` container, not a slot instance (DW-1015) — point
   them only at your own slot's throwaway. A browser spec reads the deployed bundle, so rebuild and
@@ -237,8 +231,9 @@ Story traps, for the four that remain:
   does not appear.
 - **Strings.** Add each EXPERIENCE.md Fixed strings row with its `strings.ts` key in one pass;
   `strings.test.mjs` demands exact set equality, and values are unique, so reuse an existing row's
-  string rather than repeating it. Rows exist through Story 6.9, so the five remaining screens author their
-  own row as part of the story (inference).
+  string rather than repeating it. The test's literal bound is **520**, raised by Story 6.11 with a
+  comment noting it covers 6.12 through 6.14; the Fixed strings table stands at about 451 literals
+  after Story 6.12's row landed at `EXPERIENCE.md:366`.
 - **Color never alone:** severity, meter state and changed rows each carry a word or tag.
 
 ## Cross-Story Dependencies
@@ -259,7 +254,8 @@ Story traps, for the four that remain:
   client's core, shell and tools; expect reconciliation at merge.
 - **Within this epic:** 6.11's Database details reuses 6.9's meter component and its free-space view
   reuses 6.3's `rowGet.type`; one log-viewer serves 6.13 and 6.14, built by whichever lands first, and
-  6.13 adds the `MonitorPort` 6.14 does not need.
+  6.13 adds the `MonitorPort` 6.14 does not need. `Kernel/EntityType.cls` already carries both
+  `device` and `lock`, so no remaining story needs that contended file.
 - **Downstream:** Epic 7 (process actions in 7.8, on-demand Run in 7.5, 7.6's UJ-6 replay on 6.7's
   route); Epic 8 (the device editor in 8.8, plus the resource, X.509 and wallet-secret editors);
   Epic 9 (role editor and Edit task); Epic 11 (11.2 explains a 6.13 or 6.14 row); Epic 12 (OAuth
