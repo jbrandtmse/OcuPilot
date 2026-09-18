@@ -3853,11 +3853,11 @@ So that I can tell whether something has been going wrong for a while.
 
 - **Given** the alerts.log screen
 - **When** it loads
-- **Then** it merges the entries the monitoring API reports since its last scrape with a **bounded tail** of the file served through the OcuPilot API.
+- **Then** it shows a **bounded tail** of `alerts.log` served through the OcuPilot API, read from the file itself. [AMENDED 2026-09-18, Story 6.13 spec gate (orchestrator-approved): the monitoring API reads the same file (`%SYSTEM/Monitor.cls:60`) and reads it lossily - it drops pid and category, quotes severity and appends a false `Z` to a local stamp - so the merge buys no data the tail lacks, while every call advances the instance-wide SAM cursor `^IRIS.Temp.SAM("LastAlertSent")` whatever tag is passed (measured: kill the global, a five-second control with no call leaves it undefined, one call defines it; empty, bogus and matching tags all advance it), so a second SAM consumer on the operator's instance would silently lose every alert this screen's read moved past. DW-1116 carries the measurement and FR-76's story re-takes it where a consumer exists; was "it merges the entries the monitoring API reports since its last scrape with a bounded tail"]
 
-- **Given** `MonitorPort`
-- **When** it fetches
-- **Then** it declares and evaluates its own resource gate before the call, because the monitoring API answers **anonymously** on this instance and that anonymity is a property of that API, never of OcuPilot.
+- **Given** `LogSourcePort`
+- **When** it serves the tail
+- **Then** it declares and evaluates its own resource gate before the read, because a log line reaches a user through OcuPilot only if that user could have read it directly. [AMENDED 2026-09-18, Story 6.13 spec gate (orchestrator-approved): `MonitorPort` is not shipped by this story - see AC1's amendment - so the gate this criterion asks for is the port that does serve the screen; the anonymity of `/api/monitor` stays recorded in AD-29 and in DW-1116; was "Given `MonitorPort` / When it fetches"]
 
 - **Given** entries render
 - **When** the viewer draws them
