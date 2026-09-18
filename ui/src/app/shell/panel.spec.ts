@@ -2393,4 +2393,153 @@ describe("Story 4.10: Home's suggested view and the starter prompts", () => {
     expect(host.querySelector('.ocu-panel-greeting')).toBeNull();
     expect(host.querySelector('[role="log"] .ocu-panel-example')).not.toBeNull();
   });
+
+  /** A `TurnStore` whose restore answered one finished turn, so the transcript is not empty. */
+  async function restoredWithOneTurn(): Promise<TurnStore> {
+    const map = new Map<string, string>([['ocupilot.conversation', 'convo-1']]);
+    const storage = {
+      getItem: (key: string) => (map.has(key) ? (map.get(key) as string) : null),
+      setItem: (key: string, value: string) => {
+        map.set(key, value);
+      },
+      removeItem: (key: string) => {
+        map.delete(key);
+      },
+    };
+    const api = fakeTurnApi({
+      [conversationReadPathFor('convo-1')]: [
+        {
+          kind: 'ok',
+          status: 200,
+          body: {
+            conversationId: 'convo-1',
+            turns: [{ seq: 1, message: 'go', state: 'completed', reply: 'ok', error: null, steps: [], stepsDropped: 0 }],
+          },
+        },
+      ],
+    });
+    const turn = stubTurnStore({ api: api as never, storage, navigationType: () => 'reload' });
+    await turn.restore();
+    return turn;
+  }
+
+  it('AC1: the block still reads when the navigation map is the last of the bootstrap reads to answer', async () => {
+    // Mutation (Rule 19): drop `this.syncSuggested()` from the `navigation.subscribe` handler in
+    // `panel.ts` -> this goes red, and the block renders nothing for that whole Home visit.
+    //
+    // `App` issues the map, the namespace list and the status read concurrently, and
+    // `syncSuggested` withholds the read until `answered` -- the map AND the status -- holds. The
+    // shell's own notification is spent long before either answers, because `ScreenOutlet` sets
+    // the area from the static mirror on the first route event, so when the map settles last its
+    // own notification is the only thing left that can start the read.
+    const api = fakeDatesApi(DATES_OK([{ date: '2026-09-17', count: 3 }]));
+    const { host, fixture, navigation, suggested } = await mount({
+      rows: [{ enabled: true }],
+      area: 'home',
+      loaded: false,
+      suggestedApi: api,
+      settleSuggested: false,
+    });
+    expect(api.calls).toEqual([]);
+    expect(host.querySelector('.ocu-suggested-eyebrow')).toBeNull();
+
+    navigation.loadedFlag = true;
+    navigation.notify();
+    await turnSettle();
+    fixture.detectChanges();
+    expect(api.calls).toEqual(['/api/ocupilot/logs/errors/dates?namespace=HSCUSTOM']);
+    expect(suggested.answered()).toBe(true);
+    expect(host.querySelector('.ocu-suggested-eyebrow')?.textContent?.trim()).toBe(STRINGS.homeSuggestedView);
+  });
+
+  it('AC6: with the conversation restored and a turn in it, the block itself carries the three prompts', async () => {
+    // Mutation (Rule 19): make `suggestedPrompts` return `[]` unconditionally -> this goes red.
+    //
+    // This is the state AC6 names, as production reaches it: the transcript has answered and
+    // holds a turn, so the greeting is not showing and the block is the only place the prompts
+    // can be. The case above mounts a transcript that was never restored, which is a window
+    // production leaves within one round trip -- `TurnStore.restore()` sets `restored()` on every
+    // settle, a fault included -- so it cannot stand for AC6 on its own.
+    const turn = await restoredWithOneTurn();
+    const { host } = await mountOnHome([], { turn });
+    const block = host.querySelector('.ocu-suggested') as HTMLElement;
+    const log = host.querySelector('[role="log"]') as HTMLElement;
+    expect(log.querySelectorAll('.ocu-panel-turn')).toHaveLength(1);
+    expect(log.querySelector('.ocu-panel-greeting')).toBeNull();
+    expect(host.querySelectorAll('.ocu-suggested-starter')).toHaveLength(3);
+    expect(
+      [...block.querySelectorAll('.ocu-suggested-starter > span:first-child')].map((node) =>
+        node.textContent?.trim()
+      )
+    ).toEqual([
+      STRINGS.homeStarterPromptExplainScreen,
+      STRINGS.homeStarterPromptExplainLog,
+      STRINGS.homeStarterPromptChangeOneThing,
+    ]);
+    // The zeros are gone and the uncounted agent-status line stays (AC2).
+    expect(block.querySelectorAll('code')).toHaveLength(0);
+    expect([...block.querySelectorAll('.ocu-suggested-prompt')].map((node) => node.textContent?.trim())).toEqual([
+      STRINGS.statusReadOnlyOff,
+    ]);
+  });
+
+  it("the Open control is named by the published word alone, and both glyphs are decorative", async () => {
+    // EXPERIENCE.md's Fixed strings row gives it "the accessible name of a suggested-view line's
+    // open control" -- the published word, with the chevron beside it decorative -- and its
+    // accessibility floor makes every such glyph `aria-hidden`.
+    // Mutation (Rule 19): drop `aria-hidden` from either glyph span in `panel.ts` -> this goes
+    // red. Nothing else observes it: `textContent` carries a hidden glyph either way.
+    const { host } = await mountOnHome([{ date: '2026-09-17', count: 3 }]);
+    const open = [...host.querySelectorAll('.ocu-suggested-open')][1] as HTMLAnchorElement;
+    const glyphs = [...open.querySelectorAll('span')];
+    expect(glyphs).toHaveLength(1);
+    expect(glyphs[0].getAttribute('aria-hidden')).toBe('true');
+    const spoken = [...open.childNodes]
+      .filter((node) => (node as HTMLElement).getAttribute?.('aria-hidden') !== 'true')
+      .map((node) => node.textContent ?? '')
+      .join('')
+      .trim();
+    expect(spoken).toBe(STRINGS.homeSuggestedOpen);
+
+    const zero = await mountOnHome([]);
+    const send = zero.host.querySelector('.ocu-suggested-send-glyph') as HTMLElement;
+    expect(send.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('an appended source naming a descriptor the mirror does not carry renders an Open that refuses', async () => {
+    // Mutation (Rule 19): drop the `row.url === ''` half of `onSuggestionOpen`'s guard -> this
+    // goes red, because the handler then calls `navigateByUrl('')` and the tab leaves the query
+    // it was on. Both shipped descriptors are pinned resolvable in
+    // `tools/suggested-view.test.mjs`, which is what makes this branch reachable only through an
+    // appended source -- and appending one is Story 6.13's whole shape.
+    const sources = SOURCES as Source[];
+    sources.push({
+      key: 'alerts-log',
+      read: (_view, state) => {
+        state.answer = {
+          key: 'alerts-log',
+          counted: true,
+          text: 'New alerts.log entries: 2',
+          count: 2,
+          label: 'New alerts.log entries: ',
+          tail: '',
+          descriptor: 'OcuPilot.Screen.Descriptor.NotBuilt',
+        };
+        return Promise.resolve();
+      },
+    });
+    try {
+      const { host, fixture } = await mountOnHome([{ date: '2026-09-17', count: 3 }], { url: '/?ns=USER' });
+      const open = [...host.querySelectorAll('.ocu-suggested-open')][2] as HTMLAnchorElement;
+      expect(open.getAttribute('href')).toBe('');
+      const before = TestBed.inject(Router).url;
+      const click = new MouseEvent('click', { bubbles: true, cancelable: true });
+      open.dispatchEvent(click);
+      await fixture.whenStable();
+      expect(click.defaultPrevented).toBe(true);
+      expect(TestBed.inject(Router).url).toBe(before);
+    } finally {
+      sources.pop();
+    }
+  });
 });

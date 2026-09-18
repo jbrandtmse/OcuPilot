@@ -551,6 +551,27 @@ test("the locator's gated reason reveals on hover AND focus, like the tile's and
   assert.match(reveal[1], /clip-path:\s*none/, 'and actually un-clipped, not merely re-padded');
 });
 
+test("a suggested-view line's gated Open reads as refused, and states its reason on hover AND focus", () => {
+  // EXPERIENCE.md's Privilege Gating mechanism: where a gated control takes DOM focus -- and an
+  // anchor does -- the reason is a tooltip shown on hover and on focus, not a screen-reader-only
+  // sentence. `panel.spec.ts` pins the `aria-disabled` and `aria-describedby` wiring, which is the
+  // half jsdom can see; the appearance and the reveal are only readable here.
+  //
+  // Mutation: delete the `[aria-disabled='true']` colour rule, or the `:focus-visible +` half of
+  // the reveal -> this goes red.
+  const refused = /\.ocu-suggested-open\[aria-disabled='true'\]\s*\{([\s\S]*?)\n\}/.exec(componentsRaw);
+  assert.ok(refused, "expected a rule for a refused suggested-view Open");
+  assert.match(refused[1], /color:\s*var\(--ocu-restrained\)/, "DESIGN.md's restrained text, not full secondary");
+  assert.match(refused[1], /cursor:\s*default/, 'and no pointer, because there is nothing to press');
+
+  const reveal = new RegExp(
+    '\\.ocu-suggested-open-slot:hover \\.ocu-suggested-reason,\\n' +
+      '\\.ocu-suggested-open:focus-visible \\+ \\.ocu-suggested-reason\\s*\\{([\\s\\S]*?)\\n\\}'
+  ).exec(componentsRaw);
+  assert.ok(reveal, 'expected the reason to be revealed on both hover and keyboard focus');
+  assert.match(reveal[1], /clip-path:\s*none/, 'and actually un-clipped, not merely re-padded');
+});
+
 test('a row action\'s reason is revealed on hover AND on focus, not on hover alone', () => {
   // `command-bar.spec.ts` pins the reason's existence and its `aria-describedby` wiring, which
   // is the half jsdom can see. The reveal itself is the clipped-to-visible shape the rail
@@ -676,7 +697,13 @@ test('the secondary and text buttons carry the secondary state layer: 8% on hove
   assert.match(pressed[1], /background:\s*color-mix\(in srgb, var\(--ocu-secondary\) 12%, transparent\)/);
 
   // A refused control takes neither layer (DESIGN.md `:855`).
-  for (const refused of ['.ocu-command-bar-action[aria-disabled=\'true\']', ".ocu-fault-banner [aria-disabled='true']"]) {
+  for (const refused of [
+    '.ocu-command-bar-action[aria-disabled=\'true\']',
+    ".ocu-fault-banner [aria-disabled='true']",
+    // Home's suggested view (Story 4.10): its `Open` is a `button-text`, so a refused one takes
+    // the same treatment as the three gated controls above it rather than `button-text`'s own.
+    ".ocu-suggested-open[aria-disabled='true']",
+  ]) {
     const escaped = refused.replace(/[.[\]]/g, '\\$&');
     const rule = new RegExp(`${escaped}:hover,\\n${escaped}:active\\s*\\{([\\s\\S]*?)\\n\\}`).exec(componentsRaw);
     assert.ok(rule, `expected one rule clearing both layers on ${refused}`);

@@ -2,12 +2,13 @@
  * Home's suggested view and the panel's Home width in a real browser, against the throwaway
  * instance (Story 4.10).
  *
- * jsdom computes no layout, no computed transition and no real focus traversal, so four things are
- * only observable here: the panel settling at DESIGN.md's published Home widths, the 32 px row
+ * jsdom computes no layout, no computed transition and no real focus traversal, so what is only
+ * observable here is: the panel settling at DESIGN.md's published Home widths, the 32 px row
  * minimum, `app-panel`'s own computed width transition (and its 0s under
- * `prefers-reduced-motion: reduce`), and a click on a line's text actually moving focus into the
- * composer. `tools/suggested-view.test.mjs` pins which lines exist; `src/app/shell/panel.spec.ts`
- * pins the DOM shape, roles and names.
+ * `prefers-reduced-motion: reduce`), a click on a line's text actually moving focus into the
+ * composer, the empty block's collapse off Home, and the computed styles of the panel-body rules
+ * the last case names (DW-1154). `tools/suggested-view.test.mjs` pins which lines exist;
+ * `src/app/shell/panel.spec.ts` pins the DOM shape, roles and names.
  *
  * **What it writes, and what it asserts about its own cleanup.** The geometry and transition cases
  * need no enabled definition and arm none. The one case that renders the block arms the shared
@@ -163,8 +164,10 @@ function geometry(page) {
 }
 
 test("AC8: Home settles at DESIGN.md's published panel width at each of the five viewports, and the page never scrolls sideways", async () => {
-  // Mutation (Rule 19): `HOME_PANEL_FRACTION` 0.5 -> 0.4 -> the 1,920 and 1,440 rows go red here
-  // as well as in `tools/panel-layout.test.mjs`.
+  // Mutation (Rule 19): `HOME_PANEL_FRACTION` 0.5 -> 0.4 -> the 1,920, 1,440 and 1,280 rows go
+  // red here as well as in `tools/panel-layout.test.mjs` (960/720/592 become 768/576/512); the two
+  // narrowest rows sit at the subtracted operand and the panel floor, so the fraction cannot move
+  // them.
   const { context, page } = await signedInAt(HOME_URL, { width: 1920, height: 900 });
   try {
     for (const row of PUBLISHED_HOME_WIDTHS) {
@@ -328,7 +331,11 @@ test('AC1, AC3: the block renders above the transcript with 32px rows, and a lin
 
     assert.equal(shown.eyebrow, STRINGS.homeSuggestedView);
     assert.equal(shown.blockPrecedesTranscript, true, 'the block precedes the transcript in DOM order');
-    assert.ok(shown.rows.length >= 1, `the block renders its lines: ${JSON.stringify(shown.rows)}`);
+    // Two at least: the always-present agent-status line, plus either the counted line this
+    // instance's seeded log produces or the three prompts that stand in for it. One row would mean
+    // the counted source answered neither -- which `>= 1` could not tell from a healthy block,
+    // because the projected agent-status line is there whenever the eyebrow is.
+    assert.ok(shown.rows.length >= 2, `the block renders its lines: ${JSON.stringify(shown.rows)}`);
     for (const row of shown.rows) {
       // A minimum, not a fixed height (DESIGN.md with Reflow): the published floor is in force and
       // the row really is at least that tall.
@@ -376,14 +383,14 @@ test('AC1, AC3: the block renders above the transcript with 32px rows, and a lin
       { timeout: config.navigationTimeoutMs },
       chosen
     );
-    const after = await page.evaluate(() => ({
+    const settled = await page.evaluate(() => ({
       active: document.activeElement?.id ?? '',
       turns: document.querySelectorAll('.ocu-panel-turn').length,
       send: document.querySelector('.ocu-panel-send').textContent.trim(),
     }));
-    assert.equal(after.active, 'ocu-panel-composer', 'the composer takes focus');
-    assert.equal(after.turns, 0, 'and no turn was started');
-    assert.equal(after.send, STRINGS.actionSend, 'Send is still Send, not Stop');
+    assert.equal(settled.active, 'ocu-panel-composer', 'the composer takes focus');
+    assert.equal(settled.turns, 0, 'and no turn was started');
+    assert.equal(settled.send, STRINGS.actionSend, 'Send is still Send, not Stop');
   } finally {
     await context.close();
   }

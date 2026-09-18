@@ -213,17 +213,21 @@ interface PanelTurnView {
                   class="ocu-suggested-prompt"
                   (click)="onSuggestion(row.text)"
                 >{{ row.label }}@if (row.counted) {<code class="ocu-suggested-count">{{ row.count }}</code>}{{ row.tail }}</button>
-                <a
-                  class="ocu-button-text ocu-suggested-open"
-                  [href]="row.href"
-                  [attr.aria-disabled]="row.openAriaDisabled"
-                  [attr.aria-describedby]="row.openDescribedBy"
-                  (click)="onSuggestionOpen($event, row)"
-                  >{{ STRINGS.homeSuggestedOpen }}<span aria-hidden="true">{{ openGlyph }}</span></a
-                >
-                @if (row.gated) {
-                  <span class="ocu-visually-hidden" [id]="row.reasonId">{{ row.reason }}</span>
-                }
+                <span class="ocu-suggested-open-slot">
+                  <a
+                    class="ocu-button-text ocu-suggested-open"
+                    [href]="row.href"
+                    [attr.aria-disabled]="row.openAriaDisabled"
+                    [attr.aria-describedby]="row.openDescribedBy"
+                    (click)="onSuggestionOpen($event, row)"
+                    >{{ STRINGS.homeSuggestedOpen }}<span aria-hidden="true">{{ openGlyph }}</span></a
+                  >
+                  @if (row.gated) {
+                    <span class="ocu-suggested-reason" role="tooltip" [id]="row.reasonId">{{
+                      row.reason
+                    }}</span>
+                  }
+                </span>
               </li>
             }
             @for (prompt of suggestedPrompts; track prompt) {
@@ -431,7 +435,13 @@ export class Panel {
   constructor() {
     this.lastConversationId = this.turn.conversationId();
     const stops = [
-      this.navigation.subscribe(() => this.bump()),
+      this.navigation.subscribe(() => {
+        this.bump();
+        // The map is the other half of `answered`, and it can settle last: `App` issues the map,
+        // the namespace list and the status read concurrently. Every store in the block's gate
+        // therefore re-asks here, or a visit whose map answered last would render no block at all.
+        this.syncSuggested();
+      }),
       this.agentStatus.subscribe(() => {
         this.bump();
         // The block's own precondition is an enabled definition, and this is where that answer

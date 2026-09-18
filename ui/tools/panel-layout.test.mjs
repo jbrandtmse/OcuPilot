@@ -367,6 +367,11 @@ test('DW-379: --ocu-panel-home and panelHomeTarget are built from the same three
     panelHomeTarget(1920),
     Math.min(1920 * HOME_PANEL_FRACTION, 1920 - RAIL_WIDTH - CONTENT_MIN_WIDTH)
   );
+  // Mutation (Rule 19): drop the `Math.floor` from `panelHomeTarget` -> this goes red, and nothing
+  // else does: all five published viewports are even, so the floor never bites on any of them,
+  // while a real window is any width the user drags it to and `[style.width.px]` would carry a
+  // half-pixel panel edge.
+  assert.equal(panelHomeTarget(1441), 720, 'a whole number of pixels at an odd viewport');
 });
 
 test('the panel takes the Home target on Home, and the remembered width everywhere else', () => {
@@ -423,4 +428,20 @@ test('an arrow step on Home moves from the Home width, not from the remembered o
   assert.equal(panel.layout().panelWidth, 704);
   assert.equal(panel.remembered(), 704);
   assert.equal(storage.map.get(PANEL_WIDTH_KEY), '704');
+});
+
+test('signing out ends the Home visit, so the next principal opens Home at the published width', () => {
+  // Mutation (Rule 19): drop `this.homeWidthReleased = false` from `endSession()` -> this goes red.
+  //
+  // A sign-out does not change the area -- `ShellState.setActiveArea` returns early on an
+  // unchanged key -- so nothing else in this store ever clears the release. Without it the panel
+  // opens the next sign-in on the departed principal's dragged width, on the one route whose
+  // width is the product's own rather than the user's.
+  const { panel } = panelOnHome(memoryStorage(), 1920);
+  panel.resizeBy(-16);
+  assert.equal(panel.layout().panelWidth, 944, 'the gesture released the target for this visit');
+
+  panel.endSession();
+  assert.equal(panel.layout().panelWidth, 960, 'and the next visit takes the target again');
+  assert.equal(panel.remembered(), 944, 'while the width the user chose is still remembered');
 });

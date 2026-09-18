@@ -63,10 +63,14 @@ function viewOver(options) {
   });
 }
 
-/** A `ConnectivityService`-shaped stub recording every parked re-read. */
+/**
+ * A `ConnectivityService`-shaped stub recording every parked re-read, key **and** callback -- the
+ * shape `agent-status.test.mjs` and `agent-context.test.mjs` use, so a test can run the parked
+ * re-read rather than only assert that something was parked under the right key.
+ */
 function parkRecorder() {
   const parked = [];
-  return { parked, retryWhenReachable: (key) => parked.push(key) };
+  return { parked, retryWhenReachable: (key, run) => parked.push({ key, run }) };
 }
 
 test('before a read the block is not answered, which is the gate the panel renders on', () => {
@@ -160,8 +164,46 @@ test('a faulted or unreachable read renders no line and parks exactly one re-rea
     const view = viewOver({ api: apiAnswering(result), connectivity });
     await view.load();
     assert.deepEqual(view.lines().map((line) => line.key), ['agent-status'], JSON.stringify(result));
-    assert.deepEqual(connectivity.parked, [`${ERROR_LOG_DATES_PATH}?namespace=HSCUSTOM`]);
+    assert.deepEqual(
+      connectivity.parked.map((park) => park.key),
+      [`${ERROR_LOG_DATES_PATH}?namespace=HSCUSTOM`]
+    );
   }
+});
+
+test('the parked re-read is what brings the line back once the instance answers again', async () => {
+  // Mutation (Rule 19): replace `() => void this.load()` in `readApplicationErrors` with a
+  // callback that reads nothing -> this goes red. The key alone is not the behaviour: Home carries
+  // no timer (AD-43) and this store schedules nothing of its own, so the parked re-read is the
+  // only path back from a fault for the length of a Home visit.
+  const connectivity = parkRecorder();
+  const api = { calls: [], requestJson: async (path) => {
+    api.calls.push(path);
+    return api.calls.length === 1 ? errorAt(0) : ok({ rows: [{ date: '2026-09-17', count: 5 }] });
+  } };
+  const view = viewOver({ api, connectivity });
+  await view.load();
+  assert.deepEqual(view.lines().map((line) => line.key), ['agent-status'], 'the faulted line is absent');
+  assert.equal(connectivity.parked.length, 1);
+
+  // The store's own notification is the settle point: `run` is `void`-ed, so awaiting it would
+  // await `undefined` and assert against the pre-read state. The timer is what makes the mutation
+  // above a failure rather than a hang -- a callback that reads nothing notifies nothing, and a
+  // bare wait on that notification would never return.
+  const settled = new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('the parked re-read settled nothing')), 2000);
+    const stop = view.subscribe(() => {
+      clearTimeout(timer);
+      stop();
+      resolve();
+    });
+  });
+  connectivity.parked[0].run();
+  await settled;
+
+  assert.deepEqual(view.lines().map((line) => line.key), ['agent-status', 'application-errors']);
+  assert.equal(view.lines()[1].count, 5, 'the count the recovered read answered');
+  assert.equal(api.calls.length, 2, 'one re-read, not a loop');
 });
 
 test('zero rows is a count of zero, which selects the three published starter prompts', async () => {

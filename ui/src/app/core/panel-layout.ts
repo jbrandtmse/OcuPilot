@@ -246,9 +246,13 @@ export class PanelState {
    */
   endSession(): void {
     this.endDrag();
-    if (this.draftText === '' && !this.full) return;
+    // The Home release is per visit to Home, and the next principal's first Home paint is a new
+    // visit: signing out does not change the area, so `ShellState` notifies nothing and without
+    // this the next sign-in would open Home on the departed principal's dragged width.
+    if (this.draftText === '' && !this.full && !this.homeWidthReleased) return;
     this.draftText = '';
     this.full = false;
+    this.homeWidthReleased = false;
     this.notify();
   }
 

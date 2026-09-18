@@ -3280,9 +3280,59 @@ app-data-table {
   @include typo.ocu-type('code');
 }
 
+.ocu-suggested-open-slot {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
 .ocu-suggested-open {
   flex: 0 0 auto;
   padding: 0 var(--ocu-space-2);
+}
+
+// A refused target (AD-8, EXPERIENCE.md's Privilege Gating mechanism): the control keeps its
+// place, its tab stop and its `aria-describedby`, and reads as refused -- DESIGN.md `:855` and
+// `:1227` give a privilege-gated control `restrained` text at full opacity and no state layer.
+.ocu-suggested-open[aria-disabled='true'] {
+  color: var(--ocu-restrained);
+  cursor: default;
+}
+
+.ocu-suggested-open[aria-disabled='true']:hover,
+.ocu-suggested-open[aria-disabled='true']:active {
+  background: transparent;
+}
+
+// The reason, on hover and on focus. Always in the DOM because it is the anchor's
+// `aria-describedby`; clipped rather than removed, the same shape the locator segment, the
+// command bar's row action and the rail tooltip use. The anchor takes DOM focus, so a keyboard
+// user reaching it by Tab gets the sentence a pointer user gets.
+.ocu-suggested-reason {
+  @include typo.ocu-type('caption');
+
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 2;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  border-radius: var(--ocu-radius-sm);
+  background: var(--ocu-inverse-surface);
+  color: var(--ocu-inverse-on-surface);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.ocu-suggested-open-slot:hover .ocu-suggested-reason,
+.ocu-suggested-open:focus-visible + .ocu-suggested-reason {
+  width: auto;
+  height: auto;
+  padding: 5px 8px;
+  overflow: visible;
+  clip-path: none;
 }
 
 // The all-zero fallback and the empty-transcript greeting share these rows (DESIGN.md `:1137`):
