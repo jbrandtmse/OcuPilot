@@ -2943,6 +2943,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Every Guarded helper in Kernel/State/Base.cls binds 0-3 scalar parameters while BoundedWhere returns text plus a dynamic array; rule 21 refuses joining the fragment to a literal outside Base.cls
 - 2026-09-17T00:36:43Z status=routed owner=4-9-the-agent-audit-ledger by=harvest note=The ledger view is the first read with a time window
+- 2026-09-18T13:52:26Z status=resolved-by:4-9-the-agent-audit-ledger by=harvest note=Base.GuardedIdsBounded runs a bounded fragment with a parameter array, with the zero-argument SQLCODE -400 branch, and BoundedWheres cutoff-last ordering contract is now documented and pinned
 
 ### DW-449: The dispatcher's write branch is exercised only with a forced restraint verdict, so an argument-order slip in Dispatch.Restraint stays green
 - source: spec-4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -3342,3 +3343,53 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Base.NowSeconds and Egress.IsFresh both answer $ZHorolog; both doc comments cover midnight rollover only. A DST forward jump adds 3600 to the difference and refuses a further attempt an hour of budget early; a backward jump discards fresh cache entries (fail-safe). Twice a year, self-correcting, bounded by the attempt count either way. $ZTimeStamp-derived seconds would be rollover-free and consistent with Retry.HttpDateDeltaSec's own clock read.
 - 2026-09-18T11:13:56Z status=wontfix-accepted owner=burndown by=cr note=reopen_if=a turn is observed ending PROVIDER.TIMEOUT early across a DST transition
 - 2026-09-18T11:25:56Z status=wontfix-accepted owner=burndown by=adjudication note=lead confirms: a DST forward jump shortens one attempt budget once a year and the backward jump is fail-safe; not worth a monotonic clock seam in Release 1
+
+### DW-1120: An `llm` row and a pre-dispatch refusal row carry an empty `RequiredPairs`, and `Gate.EvaluatePairs("")` is held by everyone, so a cross-user reader holding only `OcuPilotAdmin:USE` receives them ungated.
+- source: spec-4-9-the-agent-audit-ledger.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Screen/Gate.cls EvaluatePairs returns 1 for an empty list. A provider call requires no IRIS resource, so the empty set is truthful and the admin resource is the only gate - which is the intent as written. Whether that is the intended exposure (the screen route each turn ran from, and which tools were attempted) is a product call the intent's wording does not settle. Location: src/OcuPilot/Kernel/Audit/Ledger.cls ViewForUser
+- 2026-09-18T13:52:26Z status=decision-pending owner=burndown by=harvest note=product call on what an OcuPilot administrator may see of another users llm rows; carried to the owner sheet
+
+### DW-1121: `SecretArguments` declared on the abstract intermediates `Kernel/Shell/ReadTool` and `Screen/Tool/Read` makes every present and future subclass inherit "declares none", so the mandatory-declaration refusal cannot bite those two subtrees.
+- source: spec-4-9-the-agent-audit-ledger.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Both answer pDeclared 1 with "". Task 6 names `Read` explicitly, so this is the spec as written; the hazard is the next subclass that does take a secret argument. Per-descriptor declaration is the fix and it is product design. Location: src/OcuPilot/Kernel/Shell/ReadTool.cls, src/OcuPilot/Screen/Tool/Read.cls
+- 2026-09-18T13:52:26Z status=routed owner=burndown by=harvest note=lead harvest of the 4.9 spec deferred list
+
+### DW-1122: Nothing bounds the ledger table across turns until Story 14.4; one story's test and browser runs left 534 rows on the throwaway with no sweep, metric or operator-visible count.
+- source: spec-4-9-the-agent-audit-ledger.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: LEDGERMAXROWS caps rows per turn only. The class is deliberately outside Turn.GuardedDelete's cascade and GuardedSweep (AD-37). Measured by direct SQL on ocupilot-ci after the suite: SELECT COUNT(*) FROM OcuPilot_Kernel_State.Ledger = 534. Location: src/OcuPilot/Kernel/State/Ledger.cls
+- 2026-09-18T13:52:26Z status=routed owner=burndown by=harvest note=lead harvest of the 4.9 spec deferred list
+
+### DW-1123: Six write and read branches have no assertion: a provider row's `error` leg, the boundary-stop refusal writer, the three client-call writers (step-cap drop, boundary stop during the wait, settle), `truncated` reading true, the unparseable-requirement withhold, and `Api.Ledger.RenderFault`'s 503 and 
+- source: spec-4-9-the-agent-audit-ledger.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: No test outside Test/Ledger*, Test/AuditEvent reads a ledger row; the nav classes that reach the client-call writers contain no ledger reference. TestAnUnreadableStoreIsOneUnavailable- Envelope asserts the fault object, not the route's status. Each is a fixture addition (a faulting turnprobe script, a stopping Boundary probe, a route-side LedgerClass seam). Location: src/OcuPilot/Kernel/Agent/Loop.cls, src/OcuPilot/Api/Ledger.cls
+- 2026-09-18T13:52:26Z status=routed owner=burndown by=harvest note=lead harvest of the 4.9 spec deferred list
+
+### DW-1124: The 4096 and 512 column bounds are duplicated as literals in `State/Ledger.GuardedAppend` and `Turn.GuardedBegin`; raising `LEDGERROWMAXLENGTH` would cut silently at 4096 with no U+2026 and `argumentsTruncated` still reading 0.
+- source: spec-4-9-the-agent-audit-ledger.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: State/Ledger.cls uses ..Cut(pArguments, 4096) against MAXLEN 4096 and Limits 4096; Turn.cls uses ..Cap(pContextRoute, 512, .tRouteCut) and never reads tRouteCut. Location: src/OcuPilot/Kernel/State/Ledger.cls, src/OcuPilot/Kernel/State/Turn.cls
+- 2026-09-18T13:52:26Z status=routed owner=burndown by=harvest note=lead harvest of the 4.9 spec deferred list
+
+### DW-1125: An over-long `RequiredPairs` fails the whole row's write rather than losing a pair; nothing checks the joined string against the 512-character column before the write, and no test covers it.
+- source: spec-4-9-the-agent-audit-ledger.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Documented at the property as deliberate. PairsToString has no length bound and RecordToolCall does not measure its result, so the failure surfaces only in the log. Location: src/OcuPilot/Kernel/State/Ledger.cls RequiredPairs
+- 2026-09-18T13:52:26Z status=routed owner=burndown by=harvest note=lead harvest of the 4.9 spec deferred list
+
+### DW-1126: `PairsToString`/`StringToPairs` accept a resource or permission containing `,` or `:` and cannot round-trip it, and `RedactedKeys` treats a caller-sent literal `[redacted]` as evidence that a key was redacted.
+- source: spec-4-9-the-agent-audit-ledger.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Neither rejects the separators; the round trip decides whether a row is withheld. IRIS resource names do not contain either character today, which is why this is low. Location: src/OcuPilot/Kernel/Audit/Ledger.cls PairsToString, StringToPairs, RedactedKeys
+- 2026-09-18T13:52:26Z status=routed owner=burndown by=harvest note=lead harvest of the 4.9 spec deferred list
+
+### DW-1127: The ledger's only 403 reuses `Error.REASONAUTHNOPRIVILEGE`, whose sentence names a tool call; and `Event.LogFailure`'s hardcoded message reports a configuration change when a dropped `LedgerRead` emission is a read.
+- source: spec-4-9-the-agent-audit-ledger.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Api/Error.cls REASONAUTHNOPRIVILEGE reads "the privilege that tool call requires". Kernel/Audit/Event.cls LogFailure's text is a literal. Either fix adds a parameter or a branch, which is why neither was patched. Location: src/OcuPilot/Api/Error.cls, src/OcuPilot/Kernel/Audit/Event.cls
+- 2026-09-18T13:52:26Z status=routed owner=burndown by=harvest note=lead harvest of the 4.9 spec deferred list
+
+### DW-1128: A ledger read opens up to 201 rows one at a time through the escalated `GuardedOpenId`, and every append runs a `COUNT(*)` over the turn's rows first.
+- source: spec-4-9-the-agent-audit-ledger.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: ViewForUser loops GuardedRow per id (New $ROLES + AddRoles per call); GuardedAppend's cap check is a COUNT(*) before each write, so each recorded call costs two statements. Location: src/OcuPilot/Kernel/Audit/Ledger.cls ViewForUser, src/OcuPilot/Kernel/State/Ledger.cls
+- 2026-09-18T13:52:26Z status=routed owner=burndown by=harvest note=lead harvest of the 4.9 spec deferred list
+
+### DW-1129: `scripts/check-objectscript.py` reports 21 rules while `CLAUDE.md` states 18.
+- source: spec-4-9-the-agent-audit-ledger.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Observed this pass: "scanned 384 ObjectScript file(s) over 21 rule(s)". The fix edits an agent-context file, which this workflow routes to defer. Location: CLAUDE.md
+- 2026-09-18T13:52:26Z status=routed owner=burndown by=harvest note=lead harvest of the 4.9 spec deferred list
