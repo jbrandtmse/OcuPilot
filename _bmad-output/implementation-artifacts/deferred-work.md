@@ -3267,3 +3267,27 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: lead verification of story 4.7 | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Observed under the lead AD gate: the mutated run left a turn job inside its 60-second navigation wait, and the very next (clean) run of the spec failed AC4 after 36 seconds with no statement of why; run alone a moment later it was 5/5. The spec's before-hook asserts readiness but not that the signed-in user's turn slot is free. Probe: hold ^OcuPilotTurnSlot for the spec user, then run the spec
 - 2026-09-18T06:24:23Z status=routed owner=burndown by=lead note=make the before-hook wait for a free slot and say so when it times out, the way turn.browser-spec's lock legs already reason about the slot
+
+### DW-1094: A stop during the navigation wait leaves two tool cards for one call: the running tool step settles to error on read while a second tool step is appended stopped
+- source: spec-4-7-the-agent-takes-you-to-a-screen.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Loop.AnswerClientCall's Boundary branch appends a second kind=tool step with status stopped and never finishes the running one at pSeq; turn.ts settledSteps turns running into error, and panel.ts renders both. The pre-existing stop-before-dispatch path at Loop.cls:402 appends its stopped step with no running step, so it shows one card. Probe: stop a turn mid-navigation and count tool cards.
+- 2026-09-18T07:36:25Z status=wontfix-accepted owner=burndown by=cr note=cosmetic; the code comments the choice deliberately and TestStopDuringTheWait pins it. reopen_if=a transcript shows an error card and a stopped card for one shell.screen.open call
+- 2026-09-18T07:48:55Z status=wontfix-accepted owner=burndown by=adjudication note=lead confirms: cosmetic, the code comments the choice and TestStopDuringTheWait pins it; the reopen_if stands
+
+### DW-1095: Navigate.ResultSchema declares entityId and code as type string while Dispatch.SettleClient emits JSON null for both, and nothing validates a client-fulfilled result against its own ResultSchema
+- source: spec-4-7-the-agent-takes-you-to-a-screen.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: SettleClient uses %Set(key, '', 'null') for entityId with no row and for code on every opened outcome. ResultSchema is read only by Registry.SchemaProblem at build time; ToolRoundTrip reaches Navigate only through View (REFUSEEMPTY shell.screen.open:NAV.NOTINSTANCE), so the settled payload is schema-checked nowhere. Probe: compare SettleClient's output keys against ResultSchema's declared types.
+- 2026-09-18T07:36:42Z status=wontfix-accepted owner=burndown by=cr note=inert: no runtime validator reads it, and a nullable type needs a schema-grammar decision. reopen_if=anything validates a client-fulfilled result against ResultSchema
+- 2026-09-18T07:48:55Z status=routed owner=burndown by=adjudication note=lead confirms: inert today because ResultSchema is read only by the build-time schema check, and a nullable type is a schema-grammar decision for the burn-down
+
+### DW-1096: POST /turn/:id/navigation accepts a settle for a turn that has already ended: no IsTerminal gate, unlike HandleStop, and GuardedForOwner's tValues is read and never used
+- source: spec-4-7-the-agent-takes-you-to-a-screen.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Api/Turn.cls HandleNavigation reads .tValues from GuardedForOwner and never consults tValues("state"); HandleStop gates on ..IsTerminal(tValues("state")). Since the review's Boundary-branch fix settles the Nav row on every terminal path, such a settle now answers 409 rather than mutating an orphaned row. Probe: POST a settle for a completed turn and read the status.
+- 2026-09-18T07:36:42Z status=wontfix-accepted owner=burndown by=cr note=no reachable harm once the row is settled on every terminal path; adding the gate is a new branch for a LOW. reopen_if=a settle for a terminal turn answers 200
+- 2026-09-18T07:48:55Z status=routed owner=burndown by=adjudication note=lead confirms: after the review's stop-path fix such a settle answers 409, so this is tidiness rather than a hole
+
+### DW-1097: Dispatch.ResolveClientCall's registry-read, gate-read and Directive-threw branches have no pinning test, so their refusal-not-failure normalization could be reverted with nothing red
+- source: spec-4-7-the-agent-takes-you-to-a-screen.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: The review added Set tSC = $$$OK after the three LogFault branches that previously failed the whole turn, matching AnswerOne (a %Boolean, whose equivalents cannot fail a turn) and the method's own doc comment. Reaching them needs a seam that makes ResolveWire, Gate.Decide or Navigate.Directive throw; ToolDispatchProbe switches dispatch seams but not these. Probe: make Directive throw and read the turn state.
+- 2026-09-18T07:36:42Z status=wontfix-accepted owner=burndown by=cr note=a seam for three internal-fault paths is more machinery than the story asks for. reopen_if=a client-fulfilled tool other than shell.screen.open lands
+- 2026-09-18T07:48:55Z status=routed owner=burndown by=adjudication note=lead confirms: pinning the normalised fault branches needs a throwing seam, which is a test-seam change rather than a story fix
