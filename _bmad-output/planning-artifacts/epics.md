@@ -3824,12 +3824,12 @@ So that the contest's "disks" reads as real operational data.
 
 - **Given** the free-space figures come from an **asynchronous** directory call - one of the two Release 1 async endpoint paths
 - **When** the list renders
-- **Then** rows appear immediately with **per-row skeleton cells** that fill as each figure lands, and **the table never reflows** as they arrive
+- **Then** rows render with **skeleton cells** where the free-space figures go, the figures arrive together when the asynchronous call resolves, and **the table never reflows** as they land. [AMENDED 2026-09-17, Story 6.11 spec gate (orchestrator-approved): the read contract answers one envelope and `rowGet` is issued per row inside the read, so per-figure arrival is not declarable; the whole read costs 0.852 s for fourteen databases against NFR-1's 2 s, so it is issued as one read with `rowGet.type` `INFO`; was "rows appear immediately with per-row skeleton cells that fill as each figure lands"]
 - **And** the polling is done by `AdminPort`, which exposes it to the slice as an ordinary call that resolves later - the slice writes no polling logic.
 
 - **Given** Database details
 - **When** it opens
-- **Then** it shows properties, volume files and the background tasks running against that database, under auto-refresh.
+- **Then** it shows properties and volume files, under auto-refresh. [AMENDED 2026-09-17, Story 6.11 spec gate (orchestrator-approved): the background tasks running against a database have no admin-API surface - only `%SYS.BackgroundTask:RunningInDatabase`, a `Final Internal` class query the classic page reads, which no `%Api.Admin.*` class references - so that section is chartered to the owner's decision sheet rather than bought with a new AD-36 source kind under deadline; was "properties, volume files and the background tasks running against that database"]
 
 ### Story 6.12: The devices list
 
