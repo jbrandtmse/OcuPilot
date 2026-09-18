@@ -430,7 +430,7 @@ ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %Str
                 If $IsObject(tStopResolved) Set tStopName = tStopResolved.%Get("name")
                 Set tStopInput = $Select($IsObject(tBlock): tBlock.%Get("input"), 1: "")
                 Set tStopTarget = $ClassMethod(..DispatchClass(), "TargetOf", tStopInput)
-                Set tStopArgs = $ClassMethod(..DispatchClass(), "RedactedArguments", tStopInput, +$Parameter(pLimitsClass, "SUMMARYMAXLENGTH"), .tStopArgsTruncated)
+                Set tStopArgs = $ClassMethod(..DispatchClass(), "StepArguments", tStopInput, ..SecretNamesOf($Get(tStopResolved)), pLimitsClass, .tStopArgsTruncated)
                 Set tStopSC = ##class(OcuPilot.Kernel.State.Step).GuardedAppend(pKey, "tool", tStopName, "stopped", "", "", "", pLimitsClass, .tStopSeq, .tStopStored, tStopTarget, tStopArgs, , , , tStopArgsTruncated)
                 If $$$ISOK(tStopSC) Set pLastSeq = tStopSeq
                 Do ..RecordRefusedRow(pKey, pUser, pRoute, tStopName, tStopTarget, tStopInput, "stopped", tStopCode, pLimitsClass, $Get(tStopResolved))
@@ -447,7 +447,7 @@ ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %Str
             If $IsObject(tResolvedTool) Set tName = tResolvedTool.%Get("name")
             Set tBudgetInput = $Select($IsObject(tBlock): tBlock.%Get("input"), 1: "")
             Set tBudgetTarget = $ClassMethod(..DispatchClass(), "TargetOf", tBudgetInput)
-            Set tBudgetArgs = $ClassMethod(..DispatchClass(), "RedactedArguments", tBudgetInput, +$Parameter(pLimitsClass, "SUMMARYMAXLENGTH"), .tBudgetArgsTruncated)
+            Set tBudgetArgs = $ClassMethod(..DispatchClass(), "StepArguments", tBudgetInput, ..SecretNamesOf($Get(tResolvedTool)), pLimitsClass, .tBudgetArgsTruncated)
             Set tResult = {}
             Do tResult.%Set("type", "tool_result", "string")
             Do tResult.%Set("tool_use_id", $Select($IsObject(tBlock) && (tBlock.%Get("id") '= ""): tBlock.%Get("id"), 1: "unknown"), "string")
@@ -473,7 +473,7 @@ ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %Str
         Do $ClassMethod($ClassMethod(..DispatchClass(), "RegistryClass"), "ResolveWire", tRunningName, .tRunningResolved)
         If $IsObject(tRunningResolved) Set tRunningName = tRunningResolved.%Get("name")
         Set tRunningInput = $Select($IsObject(tBlock): tBlock.%Get("input"), 1: "")
-        Set tRunningArgs = $ClassMethod(..DispatchClass(), "RedactedArguments", tRunningInput, +$Parameter(pLimitsClass, "SUMMARYMAXLENGTH"), .tRunningArgsTruncated)
+        Set tRunningArgs = $ClassMethod(..DispatchClass(), "StepArguments", tRunningInput, ..SecretNamesOf(tRunningResolved), pLimitsClass, .tRunningArgsTruncated)
         Set tSC = ##class(OcuPilot.Kernel.State.Step).GuardedAppend(pKey, "tool", tRunningName, "running", "", "", "", pLimitsClass, .tSeq, .tStored, $ClassMethod(..DispatchClass(), "TargetOf", tRunningInput), tRunningArgs, , , , tRunningArgsTruncated)
         If $$$ISERR(tSC) Quit
         Set pLastSeq = tSeq
@@ -759,10 +759,12 @@ ClassMethod RecordProviderRow(pKey As %String, pUser As %String, pRoute As %Stri
 /// stop caught at the per-call boundary, and the reply-budget refusal. Its pairs are empty because
 /// nothing read them: the call never got as far as the dispatcher's pair checks, and a row that
 /// claimed a requirement nobody evaluated would be a claim about a check that did not happen.</p>
-/// <p><b>The tool's secret-argument declaration is not skipped with them.</b> Both refusal sites
-/// have already resolved the tool, so <var>pTool</var> is passed and layer 1 of the redaction runs
-/// (AD-3): a pair check that did not happen says nothing about which arguments are secret, and a
-/// name pattern cannot see a value in a field called <code>Value</code>.</p>
+/// <p><b>The tool's secret-argument declaration is not skipped with them.</b> <var>pTool</var> is
+/// whatever the refusal site's own <code>ResolveWire</code> answered, so layer 1 of the redaction
+/// runs for every call whose wire name resolved (AD-3): a pair check that did not happen says
+/// nothing about which arguments are secret, and a name pattern cannot see a value in a field
+/// called <code>Value</code>. A wire name that resolved no tool declared nothing, and such a row's
+/// arguments get the name pattern alone.</p>
 ClassMethod RecordRefusedRow(pKey As %String, pUser As %String, pRoute As %String, pName As %String, pTarget As %String, pInput As %DynamicAbstractObject, pStatus As %String, pCode As %String, pLimitsClass As %String, pTool As %DynamicObject = "") [ Private ]
 {
     Try {
@@ -784,6 +786,22 @@ ClassMethod RecordClientRow(pKey As %String, pUser As %String, pRoute As %String
     } Catch ex {
         Do ..LogFault("turn " _ pKey _ ": a client tool call could not be recorded in the agent ledger", ex.AsStatus(), ##class(OcuPilot.Api.Error).#LEDGERUNAVAILABLE)
     }
+}
+
+/// <p>The secret-argument declaration <var>pTool</var> answers
+/// (<method>OcuPilot.Screen.Tool.Base.SecretArguments</method>), or <code>""</code> when the wire
+/// name resolved no tool -- nothing was declared in that case, and there is nothing to read it
+/// off of.</p>
+ClassMethod SecretNamesOf(pTool As %DynamicObject = "") As %List [ Private ]
+{
+    Set tNames = ""
+    Try {
+        If '$IsObject(pTool) Quit
+        Set tNames = $ClassMethod($ClassMethod(..DispatchClass(), "RegistryClass"), "SecretArguments", pTool, .tDeclared)
+    } Catch ex {
+        Set tNames = ""
+    }
+    Quit tNames
 }
 
 /// <p>The <code>tool_result</code> block for a client-fulfilled call, the same shape

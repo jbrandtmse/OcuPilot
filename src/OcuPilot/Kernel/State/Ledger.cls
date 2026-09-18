@@ -259,10 +259,17 @@ ClassMethod GuardedDroppedFor(pUser As %String, pWindowHours As %String, pTurnKe
 /// <code>responseTokens</code>, <code>requiredPairs</code> and <code>dropped</code>.</p>
 /// <p>Data, not a projection: this package names nothing outside it (AD-9), so the caller is what
 /// turns these into a view and what evaluates <code>requiredPairs</code>.</p>
+/// <p><b>A row that is gone answers no values and no error.</b>
+/// <method>OcuPilot.Kernel.State.Base.GuardedOpenId</method> reports a missing id as a failure,
+/// which is right for a caller that holds an id it must find and wrong for one walking ids it read
+/// a moment ago: a row deleted in between would make the whole read unavailable rather than one row
+/// absent. So a failure to open is classified against existence first, and only a row that still
+/// exists yields an error.</p>
 ClassMethod GuardedRow(pId As %String, Output pValues) As %Status
 {
     Kill pValues
     Set tSC = ..GuardedOpenId(pId, .tRow)
+    If $$$ISERR(tSC) && $$$ISOK(..GuardedExistsId(pId, .tExists)) && 'tExists Quit $$$OK
     If $$$ISERR(tSC) || '$IsObject(tRow) Quit tSC
     Set pValues("ledgerId") = ..Text(tRow.LedgerKey)
     Set pValues("user") = ..Text(tRow.UserName)

@@ -209,7 +209,12 @@ ClassMethod RowOfKind(pView As %DynamicObject, pKind As %String) As %DynamicObje
 /// <code>loggedAt</code>.</p>
 /// <p>Mutation (Rule 19): delete the <method>RecordLedger</method> call at
 /// <method>OcuPilot.Kernel.Agent.Dispatch.AnswerOne</method>'s common exit -- the <code>tool</code>
-/// row is absent and this goes red while the <code>llm</code> assertions stay green.</p>
+/// row is absent and this goes red while the <code>llm</code> assertions stay green. For the turn
+/// row's own route: pass <code>""</code> in place of
+/// <method>OcuPilot.Kernel.Agent.Loop.ContextRoute</method>'s answer at
+/// <method>OcuPilot.Kernel.Agent.Job.Run</method>'s <code>GuardedBegin</code> call -- the last
+/// assertion goes red while every ledger assertion stays green, because the loop derives the
+/// route for its rows itself.</p>
 Method TestATurnWritesOneProviderRowAndOneToolRow()
 {
     Do ##class(OcuPilot.Test.TurnProvider).Script(..#TAG, 0, ##class(OcuPilot.Test.TurnProvider).ToolUseReply("shell_instance_read"))
@@ -244,6 +249,11 @@ Method TestATurnWritesOneProviderRowAndOneToolRow()
         Do $$$AssertEquals(tTool.arguments, "{}", "and the call's own redacted arguments")
         Do $$$AssertEquals(tTool.turnKey, tId, "against the turn that made it")
     }
+
+    ; The turn row's own copy of the route, written by the job at GuardedBegin so the turn says
+    ; which screen it ran from once its progress has been swept. Only a real job reaches that
+    ; writer, so only a wire test can observe it.
+    Do $$$AssertEquals(##class(OcuPilot.Test.TurnFixture).Field(tId, "ContextRoute"), ..#CONTEXTROUTE, "and the turn row records the screen the job began it from")
 }
 
 /// <p>AC2 -- a row records the resources the tool required, declared and argument-derived together.

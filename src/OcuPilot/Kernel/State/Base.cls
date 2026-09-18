@@ -757,7 +757,9 @@ ClassMethod GuardedIdsWhereNoParam(pSql As %String, Output pIds) As %Status [ Pr
 /// <p><b>Binding order is fixed:</b> <var>pMaxRows</var> first, then <var>pParams</var>'s members in
 /// array order. So <var>pSelectPrefix</var> spells <code>SELECT TOP ?</code> ahead of the fragment's
 /// own placeholders. A caller whose prefix names no placeholder passes <code>0</code> and binds
-/// nothing.</p>
+/// nothing; a prefix that <b>does</b> name one and a <var>pMaxRows</var> that is not positive are
+/// refused rather than run, because dropping the first argument slides every predicate value up one
+/// placeholder instead of dropping the cap.</p>
 /// <p><b><method>BoundedWhere</method> pushes its cutoff last, while the fragment names it first</b>
 /// -- so a caller passes an <b>empty</b> <var>pParams</var>, lets that method push the cutoff onto
 /// index 1, and pushes its own predicate values only after it returns. Passing a pre-filled array
@@ -779,6 +781,12 @@ ClassMethod GuardedIdsBounded(pSelectPrefix As %String, pFragment As %String, pS
         Set tSql = pSelectPrefix _ " WHERE " _ pFragment _ " " _ pSuffix
         Kill tArgs
         Set tArgs = 0
+        ; A prefix that binds its own row cap must be given one: omitting the first argument would
+        ; slide every predicate value up one placeholder instead of dropping the cap.
+        If (+pMaxRows <= 0) && (pSelectPrefix [ "?") {
+            Set tSC = $$$ERROR($$$GeneralError, "GuardedIdsBounded needs a row cap above zero for a prefix that binds one: " _ pSelectPrefix)
+            Quit
+        }
         If +pMaxRows > 0 Set tArgs($Increment(tArgs)) = +pMaxRows
         If $IsObject($Get(pParams)) {
             For tI = 0:1:pParams.%Size() - 1 {

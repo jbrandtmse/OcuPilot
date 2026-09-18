@@ -213,6 +213,11 @@ ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %Strin
         ; The tool's own secret-argument declaration, taken as soon as the tool resolves so every
         ; later refusal branch records its row with the same classification a success would (AD-3).
         Set tSecretNames = $ClassMethod(tRegistry, "SecretArguments", tTool, .tSecretDeclared)
+        ; The step's argument summary is re-derived now that the declaration is known, so layer 1
+        ; runs on it too. Set above from the name pattern alone, because a call refused before its
+        ; tool resolved has no declaration to read; a pattern-only summary of a resolved call's
+        ; arguments would store a secret held in a field called Value in clear (AD-3).
+        Set pArguments = ..StepArguments(tInput, tSecretNames, pLimitsClass, .pArgumentsTruncated)
 
         If $Username '= pUser {
             Do ..LogFault("turn " _ pKey _ ": a tool call ran as a user other than the turn's", $$$ERROR($$$GeneralError, "the process user differs from the turn's user"), tUnavailable)
@@ -435,6 +440,8 @@ ClassMethod ResolveClientCall(pUser As %String, pBlock As %DynamicObject, pLimit
         }
         Set pToolName = tTool.%Get("name")
         Set pSecretNames = $ClassMethod(tRegistry, "SecretArguments", tTool, .tSecretDeclared)
+        ; Layer 1 over the argument summary, for the same reason AnswerOne re-derives it here.
+        Set pArguments = ..StepArguments(tInput, pSecretNames, pLimitsClass, .pArgumentsTruncated)
 
         If $Username '= pUser {
             Do ..LogFault("turn " _ pKey _ ": a client tool call ran as a user other than the turn's", $$$ERROR($$$GeneralError, "the process user differs from the turn's user"), tUnavailable)
@@ -583,12 +590,35 @@ ClassMethod TargetOf(pInput As %DynamicObject) As %String
     Quit tTarget
 }
 
-/// <p>A tool step's arguments (Story 4.5, AD-11, AD-39): compact JSON of <var>pInput</var>, every
-/// key matching <method>OcuPilot.Kernel.Audit.Log.IsCredentialName</method> redacted the same way
-/// that class redacts a log entry, cut at <var>pMaxLength</var> characters with a trailing
-/// U+2026. Public for the same reason <method>TargetOf</method> is. <var>pTruncated</var> answers
-/// whether that cut cut anything, so a caller that stores the result
-/// (<method>OcuPilot.Kernel.State.Step.GuardedAppend</method>) does not have to re-cap it to learn.</p>
+/// <p>The argument string a <code>tool</code> step stores for <var>pInput</var>, cut at
+/// <var>pLimitsClass</var>'s <code>SUMMARYMAXLENGTH</code>.</p>
+/// <p><b>It runs the same two redaction layers, in the same order, that a ledger row's argument
+/// string does</b> (AD-3): the tool's own <var>pSecretNames</var> declaration first, then
+/// <method>OcuPilot.Kernel.Audit.Log.Redact</method>'s name pattern. It delegates to
+/// <method>OcuPilot.Kernel.Audit.Ledger.RedactArguments</method> rather than repeating the layers,
+/// so the step's string and the ledger row's are produced by one implementation and cannot come to
+/// disagree about what a secret is -- and so the step does not store a wallet secret held in a
+/// field called <code>Value</code> in clear, which the name pattern alone cannot see.</p>
+/// <p>A caller that has no declaration to pass -- a call refused before its wire name resolved --
+/// passes <code>""</code> and gets the name pattern alone, which is all an unclassifiable input
+/// can be given.</p>
+ClassMethod StepArguments(pInput As %DynamicAbstractObject, pSecretNames As %List, pLimitsClass As %String, Output pTruncated As %Boolean) As %String
+{
+    Quit ##class(OcuPilot.Kernel.Audit.Ledger).RedactArguments(pInput, pSecretNames, +$Parameter(pLimitsClass, "SUMMARYMAXLENGTH"), .pTruncated, .tRedactedNames)
+}
+
+/// <p><b>Layer 2 alone</b> (AD-3): compact JSON of <var>pInput</var>, every key matching
+/// <method>OcuPilot.Kernel.Audit.Log.IsCredentialName</method> redacted the same way that class
+/// redacts a log entry, cut at <var>pMaxLength</var> characters with a trailing U+2026.
+/// <var>pTruncated</var> answers whether that cut cut anything, so a caller that stores the result
+/// does not have to re-cap it to learn. Public for the same reason <method>TargetOf</method>
+/// is.</p>
+/// <p><b>Not, on its own, the string a tool step stores.</b> The name pattern is a backstop and
+/// cannot see a secret held in a field called <code>Value</code>, so a resolved call's step string
+/// comes from <method>StepArguments</method>, which runs the declaration first. This method is
+/// reached directly only where no declaration is knowable yet -- the default set before a call's
+/// wire name has resolved -- and from
+/// <method>OcuPilot.Kernel.Audit.Ledger.RedactArguments</method> as its second layer.</p>
 ClassMethod RedactedArguments(pInput As %DynamicObject, pMaxLength As %Integer, Output pTruncated As %Boolean) As %String
 {
     Set tOut = ""

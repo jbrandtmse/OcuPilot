@@ -86,6 +86,25 @@ ClassMethod RowText(pTurnKey As %String) As %String
     Quit tText
 }
 
+/// <p>Every column of every progress step of turn <var>pTurnKey</var>, concatenated -- the same
+/// serialization <method>RowText</method> makes of the ledger, over the store beside it. A tool
+/// step's own argument string runs the same two redaction layers a ledger row's does
+/// (<method>OcuPilot.Kernel.Agent.Dispatch.StepArguments</method>), so a declared secret must be
+/// absent from both or the redaction is only half wired.</p>
+ClassMethod StepText(pTurnKey As %String) As %String
+{
+    Set tText = ""
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT * FROM OcuPilot_Kernel_State.Step WHERE %EXACT(TurnKey) = ?", pTurnKey)
+    If tRS.%SQLCODE < 0 Quit "SQLCODE=" _ tRS.%SQLCODE
+    Set tMeta = tRS.%GetMetadata()
+    While tRS.%Next() {
+        For tI = 1:1:tMeta.columns.Count() {
+            Set tText = tText _ "|" _ tRS.%GetData(tI)
+        }
+    }
+    Quit tText
+}
+
 /// <p>A fresh probe turn key.</p>
 ClassMethod NewTurnKey() As %String
 {
@@ -182,7 +201,9 @@ Method TestThePatternAddsAndTheDeclarationSurvivesIt()
 /// asserts it reaches no column of the stored row and no serialization of the view.</p>
 /// <p>Mutation (Rule 19): replace the <code>$ClassMethod(tRegistry, "SecretArguments", tTool,
 /// .tSecretDeclared)</code> call in <method>OcuPilot.Kernel.Agent.Dispatch.AnswerOne</method> with
-/// <code>""</code> -- layer 1 has nothing to redact and this goes red.</p>
+/// <code>""</code> -- layer 1 has nothing to redact and this goes red. For the step's own argument
+/// string: delete the <method>StepArguments</method> line beside that call -- the step assertions
+/// go red while the row's stay green.</p>
 Method TestADeclaredSecretDispatchedThroughAnswerOneIsAbsentFromTheRow()
 {
     Set tKey = ..NewTurnKey()
@@ -203,6 +224,14 @@ Method TestADeclaredSecretDispatchedThroughAnswerOneIsAbsentFromTheRow()
     Do $$$AssertEquals(tText [ ..#SECRETVALUE, 0, "no column of the row dispatched through Answer carries the declared secret: " _ tText)
     Do $$$AssertTrue(tText [ "[redacted]", "and it reads as redacted instead")
 
+    ; The same call's tool-step argument string, which AnswerOne answers alongside the row and its
+    ; caller stores in OcuPilot_Kernel_State.Step: the declaration reaches it too, or the ledger is
+    ; redacted and the step beside it is not.
+    Set tStepArgs = $Select(tDetails.%Size() = 1: tDetails.%Get(0).arguments, 1: "")
+    Do $$$AssertTrue(tStepArgs '= "", "the call answers a step argument string: " _ tStepArgs)
+    Do $$$AssertEquals(tStepArgs [ ..#SECRETVALUE, 0, "which does not carry the declared secret either: " _ tStepArgs)
+    Do $$$AssertTrue(tStepArgs [ "[redacted]", "and reads as redacted instead")
+
     Do $$$AssertStatusOK($ClassMethod(..#LEDGER, "ViewForUser", $Username, "", 0, tKey, 10, .tView, .tFault), "the view reads")
     Do $$$AssertEquals($IsObject(tFault), 0, "with no fault")
     Do $$$AssertEquals(tView.%ToJSON() [ ..#SECRETVALUE, 0, "and no serialization of the view carries it either: " _ tView.%ToJSON())
@@ -220,7 +249,8 @@ Method TestADeclaredSecretDispatchedThroughAnswerOneIsAbsentFromTheRow()
 /// <p>Mutation (Rule 19): replace the <code>$ClassMethod(tRegistry, "SecretArguments", tTool,
 /// .tSecretDeclared)</code> call in <method>OcuPilot.Kernel.Agent.Dispatch.ResolveClientCall</method>
 /// with <code>""</code> -- the resolver's own declaration reads empty and the first assertion below
-/// goes red.</p>
+/// goes red. For the step's own argument string: delete the <method>StepArguments</method> line
+/// beside that call -- the argument-string assertions go red while the row's stay green.</p>
 Method TestADeclaredSecretResolvedForAClientFulfilledCallIsAbsentFromTheRow()
 {
     Set tBlock = {"id": "toolu_client"}
@@ -233,6 +263,8 @@ Method TestADeclaredSecretResolvedForAClientFulfilledCallIsAbsentFromTheRow()
     Do $$$AssertStatusOK(tSC, "the client call resolves")
     Do $$$AssertEquals(tPending, 1, "and validates through to a directive: " _ tContent)
     Do $$$AssertEquals($ListToString(tSecretNames), "Value", "carrying the tool's own secret declaration, read by the resolver itself")
+    Do $$$AssertEquals(tArguments [ ..#SECRETVALUE, 0, "and answering a step argument string the declaration has already been applied to: " _ tArguments)
+    Do $$$AssertTrue(tArguments [ "[redacted]", "which reads as redacted instead")
 
     ; Record the row from exactly what the resolver answered -- the same values
     ; OcuPilot.Kernel.Agent.Loop.RecordClientRow would carry -- so the row's own absence proves the
@@ -320,6 +352,11 @@ Method TestTheRowCapStoresNoMoreAndCountsTheRest()
     Do $$$AssertStatusOK($ClassMethod(..#LEDGER, "ViewForUser", ..#PROBEUSER, "", 0, tKey, 10, .tView, .tFault), "the view reads")
     Do $$$AssertEquals(tView.rowsSent, tCap, "the view lists the stored calls and not the overflow row")
     Do $$$AssertEquals(tView.rowsDropped, 2, "and reports the two that were counted instead")
+
+    ; Newest first (the matrix's "the caller's own rows, newest first, bounded"): which rows
+    ; survive the cap is decided by this order, so an inverted read would hand a busy user their
+    ; oldest activity and call it truncated.
+    Do $$$AssertTrue(tView.rows.%Get(0).seq > tView.rows.%Get(1).seq, "the view answers newest first: seq " _ tView.rows.%Get(0).seq _ " then " _ tView.rows.%Get(1).seq)
 
     Set tRow = tView.rows.%Get(0)
     Set tMax = +$Parameter(..#NARROW, "LEDGERROWMAXLENGTH")
@@ -502,6 +539,7 @@ Method TestARefusalBeforeDispatchRecordsARowWithNoPairs()
         Do $$$AssertTrue(tRow.arguments [ "[redacted]", "which read as redacted instead")
     }
     Do $$$AssertEquals(..RowText(tKey) [ ..#SECRETVALUE, 0, "nor in any column of the stored row")
+    Do $$$AssertEquals(..StepText(tKey) [ ..#SECRETVALUE, 0, "nor in any column of the tool step written beside it: " _ ..StepText(tKey))
     Do ##class(OcuPilot.Kernel.State.Turn).GuardedFinish(tKey, tUser, "completed", "", "", "done", 0, ..#LIMITS)
 }
 
@@ -549,6 +587,7 @@ Method TestABoundaryStopBeforeDispatchRecordsARowWithNoPairs()
         Do $$$AssertTrue(tRow.arguments [ "[redacted]", "which reads as redacted instead")
     }
     Do $$$AssertEquals(..RowText(tKey) [ ..#SECRETVALUE, 0, "nor in any column of the stored row")
+    Do $$$AssertEquals(..StepText(tKey) [ ..#SECRETVALUE, 0, "nor in any column of the stopped step written beside it: " _ ..StepText(tKey))
     Do ##class(OcuPilot.Kernel.State.Turn).GuardedFinish(tKey, tUser, "completed", "", "", "done", 0, ..#LIMITS)
 }
 
