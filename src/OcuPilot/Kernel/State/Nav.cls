@@ -2,7 +2,7 @@
 /// 3): the route and entity id the browser is being asked to open, and -- once the browser or the
 /// wait itself has answered -- the outcome. Held in OcuPilot's protected database and reached only
 /// through <class>OcuPilot.Kernel.State.Base</class>'s guarded methods.</p>
-/// <p><b>One row per turn.</b> <parameter>TurnKeyIdx</parameter> is unique: a turn's second
+/// <p><b>One row per turn.</b> <index>NavTurnKeyIdx</index> is unique: a turn's second
 /// navigation call reuses the row, overwriting the first's outcome, because the first has already
 /// been waited out and settled (or lapsed) before the loop ever asks for a second one -- there is
 /// never more than one directive outstanding for a turn at a time.</p>

@@ -550,7 +550,27 @@ ClassMethod AnswerClientCall(pKey As %String, pUser As %String, pReadOnly As %Bo
             Set tSC = tAnnounceSC
             Quit
         }
-        If tAnnounceStored Set pLastSeq = tAnnounceSeq
+        If 'tAnnounceStored {
+            ; The turn is at MAXSTEPS, so the announcement was counted rather than stored and no
+            ; reader can ever see it. A directive whose announcement does not exist is precisely
+            ; what GuardedRequest refuses, so the call lapses here instead of asking for one: an
+            ; ordinary tool result with nothing announced (AD-11 rule 3, AD-31), not a failed turn.
+            Set tDroppedCode = ##class(OcuPilot.Api.Error).#NAVUNAVAILABLE
+            Set tDroppedDetail = {}
+            Do tDroppedDetail.%Set("route", tRoute, "string")
+            Do tDroppedDetail.%Set("entityId", tEntityId, "string")
+            Set tDroppedJson = ""
+            Do $ClassMethod(..DispatchClass(), "SettleClient", tDroppedDetail, "unavailable", tDroppedCode, .tDroppedJson)
+            Set pCode = tDroppedCode
+            Set tDroppedSC = ##class(OcuPilot.Kernel.State.Step).GuardedFinishTool(pKey, pSeq, tToolName, "ok", "", pLimitsClass, pTarget, pArguments, "", "", "", pArgumentsTruncated)
+            If $$$ISERR(tDroppedSC) {
+                Set tSC = tDroppedSC
+                Quit
+            }
+            Set pAnswered = ..ClientResult(pBlock, 0, tDroppedJson)
+            Quit
+        }
+        Set pLastSeq = tAnnounceSeq
 
         Set tRequestSC = ##class(OcuPilot.Kernel.State.Nav).GuardedRequest(pKey, tAnnounceSeq, tRoute, tEntityId)
         If $$$ISERR(tRequestSC) {
@@ -568,7 +588,11 @@ ClassMethod AnswerClientCall(pKey As %String, pUser As %String, pReadOnly As %Bo
                 ; (this class's Design Notes, AD-30): the running announce and tool steps are left
                 ; as they are and settle to `error` on read through the client's own settledSteps
                 ; conversion once the turn is terminal; this new step is the explicit record of
-                ; where the turn actually stopped.
+                ; where the turn actually stopped. The directive itself is settled `unavailable`
+                ; for the same reason the lapse branch below settles its own: an unsettled row
+                ; keeps GuardedView emitting `navigation` for the whole retention window, so a
+                ; browser still polling would act on a directive this turn has abandoned.
+                Do ##class(OcuPilot.Kernel.State.Nav).GuardedSettle(pKey, tAnnounceSeq, "unavailable", ##class(OcuPilot.Api.Error).#NAVUNAVAILABLE, .tStopClaimed)
                 Set tStopSC = ##class(OcuPilot.Kernel.State.Step).GuardedAppend(pKey, "tool", tToolName, "stopped", "", "", "", pLimitsClass, .tStopSeq, .tStopStored, pTarget, pArguments, , , , pArgumentsTruncated)
                 If $$$ISOK(tStopSC) && tStopStored Set pLastSeq = tStopSeq
                 Set pTurnState = tBState

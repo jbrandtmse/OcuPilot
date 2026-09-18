@@ -19,8 +19,8 @@ export const NAVIGATIONDELAYMS = 1000;
  * Acts on the server's navigation directive (Story 4.7, AD-11 rule 3). The agent's tool call has
  * already been announced and committed to the transcript by the time anything here runs --
  * `TurnStore.navigation()` exposes a directive only once it is paired with its own `announce`
- * step -- so this owns exactly the browser's half: wait for the announcement to be legible on
- * screen, move, and answer.
+ * step -- so this owns exactly the browser's half: hold for `NAVIGATIONDELAYMS` after the poll
+ * that delivered the directive, move, and answer.
  *
  * **Constructed for its own sake**, in `app.ts`, the way `DefinitionActions` is: nothing else in
  * the tree would ever instantiate it, and it has to live for the tab, not for one component's
@@ -81,8 +81,14 @@ export class AgentNavigator {
    * Move, then answer. `directive.entityId` is appended as one more path segment, encoded the
    * same way the data table's own name-cell link encodes it (AD-13, `encodeEntityId`), so the
    * agent's URL and a click's URL are byte-identical for the same row.
+   *
+   * **The directive is re-read first.** `NAVIGATIONDELAYMS` elapses between `check()` scheduling
+   * this and this running, and a stop, a sign-out or a new turn inside that window ends the
+   * directive: the browser must not move for a turn that has already finished with it.
    */
   private async act(directive: TurnNavigation): Promise<void> {
+    const standing = this.turn.navigation();
+    if (standing === null || standing.seq !== directive.seq) return;
     const target =
       directive.route + (directive.entityId === '' ? '' : '/' + encodeEntityId(directive.entityId));
     const navigated = await this.router.navigateByUrl(withQuery(target, this.router.url)).catch(() => false);

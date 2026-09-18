@@ -1,7 +1,7 @@
 /**
  * The agent's navigation tool (`shell.screen.open`), driven through a real browser against the
  * throwaway instance (Story 4.7, AD-11 rule 3): the announcement renders before the browser
- * moves, and only after `NAVIGATIONDELAYMS`; the arrived screen's heading takes focus and carries
+ * moves; the arrived screen's heading takes focus and carries
  * the published `aria-label`; Back restores the departing screen with its selection intact and
  * the announcement carries no undo button of its own; a dirty `form-page`'s decline leaves the
  * URL where it was and withdraws the announcement, with the recorded `tool_result` answering
@@ -23,7 +23,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
-import { leaveFirstLoginGate } from './shell-entry.mjs';
+import { leaveFirstLoginGate, pathOf } from './shell-entry.mjs';
 import {
   armProbeDefinition,
   disarmProbeDefinition,
@@ -42,12 +42,6 @@ const probe = { container: config.container, marker: 'NAV' };
 
 const HOME_URL = '/ocupilot/?ns=HSCUSTOM';
 const FORM_URL = '/ocupilot/agent/definitions/edit?ns=HSCUSTOM';
-
-/** The delay `agent-navigator.ts` waits between announcing and moving (Story 4.7, AC4). Kept in
- * sync with `ui/src/app/shell/agent-navigator.ts`'s own `NAVIGATIONDELAYMS` by this comment
- * alone -- a real browser test cannot import a `.ts` constant, so a mismatch here would need
- * fixing at both ends by hand if the published delay ever changes. */
-const NAVIGATIONDELAYMS = 1000;
 
 let browser = null;
 let preparedId = '';
@@ -157,11 +151,6 @@ async function awaitReply(page, text) {
   );
 }
 
-/** The path the browser is actually on, with no origin and no fragment. */
-function pathOf(page) {
-  return new URL(page.url()).pathname;
-}
-
 /** The announcement paragraph's own text, once one is on screen -- `null` while none is. */
 function announcementText(page) {
   return page.evaluate(() => {
@@ -172,7 +161,7 @@ function announcementText(page) {
   });
 }
 
-test('AC4: the announcement renders first, and the browser moves only after NAVIGATIONDELAYMS', async () => {
+test('AC4: the announcement renders first, and the browser has not moved when it appears', async () => {
   const tag = nextTag();
   setTag(tag);
   scriptReply(tag, 0, navToolUse('permissions/users', '_SYSTEM'));
@@ -185,8 +174,11 @@ test('AC4: the announcement renders first, and the browser moves only after NAVI
       () => (document.querySelector('.ocu-panel-message-agent-text')?.textContent ?? '').includes('Users'),
       { timeout: config.navigationTimeoutMs }
     );
-    const announcedAt = Date.now();
-    // The announcement is committed to the log before the URL has moved at all.
+    // The announcement is committed to the log before the URL has moved at all. This ordering is
+    // the whole of what a browser can assert: the 1,000 ms timer starts inside `check()`, when the
+    // poll response is processed, so any elapsed time measured from here is short by however long
+    // change detection and paint took -- a machine-dependent figure. The delay's own length is
+    // pinned deterministically with fake timers in `agent-navigator.spec.ts`.
     assert.equal(pathOf(page), before, 'the URL has not moved the instant the announcement appears');
     const text = await announcementText(page);
     assert.equal(text, STRINGS.agentNavigationAnnouncement.split('<screen>').join('Users').split('<entity>').join('_SYSTEM'));
@@ -199,8 +191,6 @@ test('AC4: the announcement renders first, and the browser moves only after NAVI
     await page.waitForFunction(() => window.location.pathname.includes('/permissions/users/'), {
       timeout: config.navigationTimeoutMs,
     });
-    const elapsedMs = Date.now() - announcedAt;
-    assert.ok(elapsedMs >= NAVIGATIONDELAYMS - 100, `the move waited at least ~${NAVIGATIONDELAYMS} ms; took ${elapsedMs}`);
     assert.equal(pathOf(page), '/ocupilot/permissions/users/_SYSTEM');
     await awaitReply(page, 'Opened.');
   } finally {
@@ -393,6 +383,13 @@ test('AC11: the next turn carries the arrived route as its own screen context, n
     // the URL has already moved -- sending the second message before it completes would find
     // Send still showing Stop.
     await awaitReply(page, 'Opened.');
+
+    // AC11's second named consumer: the chip names the arrived screen, not the departed one.
+    await page.waitForFunction(() => (document.querySelector('.ocu-context-chip-text')?.textContent ?? '') !== '', {
+      timeout: config.navigationTimeoutMs,
+    });
+    const chipText = await page.$eval('.ocu-context-chip-text', (node) => node.textContent ?? '');
+    assert.match(chipText, /^Task schedule, HSCUSTOM/, `the chip names the arrived screen; got ${chipText}`);
 
     scriptReply(tag, 0, textReply('Noted.'));
     await typeAndSend(page, 'what am I looking at now');

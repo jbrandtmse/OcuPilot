@@ -7,8 +7,9 @@
 /// <p><b>Live-safe.</b> Every turn reserved here runs as <code>$Username</code> -- the suite's own
 /// already-authenticated identity -- so nothing new is created on the instance except one HTTP
 /// round trip as <code>_SYSTEM</code> (<method>TestAC10WireStatusCodes</method>), which reserves and
-/// removes its own turn and skips its assertions rather than failing if <code>_SYSTEM</code>
-/// already holds a turn slot on this shared instance.</p>
+/// removes its own turn. That method waits up to ten seconds for <code>_SYSTEM</code>'s turn slot
+/// and then fails: a slot held by something else means its assertions did not run, which must not
+/// read as a pass.</p>
 Class OcuPilot.Test.TurnNavigate Extends %UnitTest.TestCase
 {
 
@@ -349,6 +350,17 @@ Method TestStopDuringTheWaitEndsTheTurnAtTheNextPass()
         If (tRow.kind = "tool") && (tRow.name = "shell.screen.open") Set tToolStatus = tRow.status
     }
     Do $$$AssertEquals(tToolStatus, "stopped", "the tool step itself settles stopped, the only record of where the turn stopped")
+
+    ; The directive goes with the turn: left unsettled, GuardedView keeps emitting `navigation`
+    ; for the whole retention window and a browser still polling would act on a directive this
+    ; turn has abandoned.
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Nav).GuardedPending(tKey, .tPSeq, .tPRoute, .tPEntity, .tPSettled, .tPOutcome, .tPCode), "the directive reads")
+    Do $$$AssertEquals(tPSettled, 1, "the stop settled it, so no reader still sees it pending")
+    Do $$$AssertEquals(tPOutcome, "unavailable", "as unavailable")
+
+    Set tViewSC = ##class(OcuPilot.Kernel.State.Turn).GuardedView(tKey, $Username, .tFound, .tView)
+    Do $$$AssertStatusOK(tViewSC, "the progress view reads")
+    Do $$$AssertTrue('tView.%IsDefined("navigation"), "and the view no longer carries the directive")
 }
 
 /// <hr/>
@@ -385,6 +397,134 @@ Method TestAC9SuccessfulCallNeverInvokesView()
     }
     Do $$$AssertEquals(tToolStatus, "ok", "the tool step is an ordinary success, never NAV.NOTINSTANCE")
     Do $$$AssertEquals(tAnnounceText, "_SYSTEM", "the announce step's own entity id survives settling, not wiped to empty")
+
+    ; The payload the model is actually told, read off the second provider call's own request --
+    ; the step row carries no result for a client-fulfilled call, so this is the only place the
+    ; settled content is observable.
+    Set tSettled = ..NavToolResult(2)
+    Do $$$AssertTrue($IsObject(tSettled), "the settled tool_result reached the next provider call")
+    Do $$$AssertEquals(''tSettled."is_error", 0, "as an ordinary result, not an error (AD-11 rule 3)")
+    Set tContent = ##class(%DynamicAbstractObject).%FromJSON(tSettled.content)
+    Do $$$AssertEquals(''tContent.navigated, 1, "reporting the navigation as performed")
+    Do $$$AssertEquals(tContent.route, "permissions/users", "naming the route it opened")
+    Do $$$AssertEquals(tContent.entityId, "_SYSTEM", "and the row it selected")
+    Do $$$AssertEquals(tContent.%GetTypeOf("code"), "null", "with no code on an opened outcome")
+}
+
+/// <p>The <code>shell.screen.open</code> <code>tool_result</code> block carried by provider call
+/// <var>pCall</var>'s own recorded request, or <code>$$$NULLOREF</code>. The synthetic
+/// <code>screen_context</code> result shares the same message, so this matches on
+/// <code>tool_use_id</code> rather than position.</p>
+ClassMethod NavToolResult(pCall As %Integer) As %DynamicObject
+{
+    Set tFound = $$$NULLOREF
+    Try {
+        Set tBody = ##class(%DynamicAbstractObject).%FromJSON(##class(OcuPilot.Test.ProviderStub).Recorded("body", pCall))
+        Set tMessages = tBody.messages
+        Set tMessageIterator = tMessages.%GetIterator()
+        While tMessageIterator.%GetNext(.tMessageIndex, .tMessage) {
+            If tMessage.role '= "user" Continue
+            Set tBlocks = tMessage.content
+            If '$IsObject(tBlocks) Continue
+            Set tBlockIterator = tBlocks.%GetIterator()
+            While tBlockIterator.%GetNext(.tBlockIndex, .tBlock) {
+                If ($IsObject(tBlock)) && (tBlock.type = "tool_result") && (tBlock."tool_use_id" = "toolu_nav") Set tFound = tBlock
+            }
+        }
+    } Catch {
+        Set tFound = $$$NULLOREF
+    }
+    Quit tFound
+}
+
+/// <hr/>
+/// <p>A navigating call made once the turn is at <parameter>MAXSTEPS</parameter>: the announcement
+/// is counted rather than stored, so no reader can ever see it, and the call lapses to
+/// <code>NAV.UNAVAILABLE</code> as an ordinary tool result. The turn continues to its next
+/// provider call (AD-11 rule 3, AD-31) -- it is not failed, which is what asking
+/// <method>OcuPilot.Kernel.State.Nav.GuardedRequest</method> for a directive whose announce step
+/// does not exist would do.</p>
+Method TestADroppedAnnounceStepLapsesRatherThanFailingTheTurn()
+{
+    Do $ClassMethod(..#LOOP, "SetLimitsClass", "OcuPilot.Test.TurnLimitsNavCapped")
+    Set tId = ..Definition()
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..NavReply("tasks/schedule"))
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..EndReply("nothing was announced"))
+    Set tKey = ..Reserve(tId)
+    Set tStarted = ..Begin(tKey)
+
+    Set tSC = $ClassMethod(..#LOOP, "Run", tKey, $Username, tId, "open tasks", 0, ##class(OcuPilot.Api.Router).#ADMINRESOURCES, tStarted, .tOutcome)
+    Do $$$AssertStatusOK(tSC, "the loop returns rather than failing the turn")
+    Do $$$AssertEquals(tOutcome("state"), "completed", "the turn continues to its next provider call")
+    Do $$$AssertEquals(tOutcome("reply"), "nothing was announced", "with that call's own reply")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedFinish(tKey, $Username, tOutcome("state"), tOutcome("code"), tOutcome("limit"), tOutcome("reply"), tOutcome("errorSeq"), $ClassMethod(..#LOOP, "LimitsClass")), "and finished")
+
+    Set tSettled = ..NavToolResult(2)
+    Do $$$AssertTrue($IsObject(tSettled), "the lapse reached the next provider call as a tool result")
+    Do $$$AssertEquals(''tSettled."is_error", 0, "as an ordinary result, not an error")
+    Set tContent = ##class(%DynamicAbstractObject).%FromJSON(tSettled.content)
+    Do $$$AssertEquals(''tContent.navigated, 0, "reporting that nothing moved")
+    Do $$$AssertEquals(tContent.code, "NAV.UNAVAILABLE", "with the lapse code")
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Nav).GuardedPending(tKey, .tPSeq, .tPRoute, .tPEntity, .tPSettled, .tPOutcome, .tPCode), "the directive reads")
+    Do $$$AssertEquals(tPSeq, 0, "and no directive was ever requested for an announcement nobody can see")
+}
+
+/// <hr/>
+/// <p>AC12 (DW-1084): the built-in system prompt carries the citation sentence and the navigation
+/// sentence verbatim, so Story 4.6's backtick renderer has a producer and the navigation tool has
+/// one instruction to use it.</p>
+Method TestAC12BuiltinCarriesBothSentences()
+{
+    Set tPrompt = ##class(OcuPilot.Kernel.Agent.Prompt).Builtin()
+    Do $$$AssertTrue(tPrompt [ "Name each row you report in backticks and offer to select it.", "the citation sentence is carried verbatim: " _ tPrompt)
+    Do $$$AssertTrue(tPrompt [ "Open a screen or select a row with the navigation tool, which announces the move before the browser moves and which the user may refuse.", "and the navigation sentence: " _ tPrompt)
+}
+
+/// <hr/>
+/// <p>A turn's second navigation call reuses the one <code>TurnKey</code> row
+/// (<class>OcuPilot.Kernel.State.Nav</class>'s own header), so the row's stored answer must be
+/// cleared by the new request: otherwise the wait loop's first pass reads the first call's outcome
+/// and reports a second navigation the browser never performed.</p>
+Method TestASecondRequestPresentsUnsettled()
+{
+    Set tId = ..Definition()
+    Set tKey = ..Reserve(tId)
+    Set tLimits = $ClassMethod(..#LOOP, "LimitsClass")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Step).GuardedAppend(tKey, "announce", "shell.screen.open", "running", "", "", "", tLimits, .tSeq1, .tStored1, "tasks/schedule", "", "", "", "", 0), "the first call announces")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Nav).GuardedRequest(tKey, tSeq1, "tasks/schedule", ""), "and requests")
+    Do ##class(OcuPilot.Kernel.State.Nav).GuardedSettle(tKey, tSeq1, "opened", "", .tClaimed1)
+    Do $$$AssertEquals(tClaimed1, 1, "the browser answers it")
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Step).GuardedAppend(tKey, "announce", "shell.screen.open", "running", "", "_SYSTEM", "", tLimits, .tSeq2, .tStored2, "permissions/users", "", "", "", "", 0), "the second call announces")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Nav).GuardedRequest(tKey, tSeq2, "permissions/users", "_SYSTEM"), "and requests")
+
+    Set tPendingSC = ##class(OcuPilot.Kernel.State.Nav).GuardedPending(tKey, .tPSeq, .tPRoute, .tPEntity, .tPSettled, .tPOutcome, .tPCode)
+    Do $$$AssertStatusOK(tPendingSC, "the directive reads")
+    Do $$$AssertEquals(tPSeq, tSeq2, "the row now names the second announce step")
+    Do $$$AssertEquals(tPSettled, 0, "and presents unsettled, not carrying the first call's answer")
+    Do $$$AssertEquals(tPOutcome, "", "with no stored outcome")
+    Do $$$AssertEquals(tPRoute, "permissions/users", "and the second call's own route")
+}
+
+/// <hr/>
+/// <p>A retired turn's directive goes with it: <method>OcuPilot.Kernel.State.Turn.GuardedDelete</method>
+/// removes the <class>OcuPilot.Kernel.State.Nav</class> row alongside the steps, so the retention
+/// sweep leaves nothing behind in OcuPilot's protected database.</p>
+Method TestDeletingATurnRemovesItsDirective()
+{
+    Set tId = ..Definition()
+    Set tKey = ..Reserve(tId)
+    Set tLimits = $ClassMethod(..#LOOP, "LimitsClass")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Step).GuardedAppend(tKey, "announce", "shell.screen.open", "running", "", "", "", tLimits, .tSeq, .tStored, "tasks/schedule", "", "", "", "", 0), "announced")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Nav).GuardedRequest(tKey, tSeq, "tasks/schedule", ""), "requested")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Nav).GuardedPending(tKey, .tBeforeSeq, .tBeforeRoute, .tBeforeEntity, .tBeforeSettled, .tBeforeOutcome, .tBeforeCode), "the directive reads")
+    Do $$$AssertEquals(tBeforeSeq, tSeq, "and is there to begin with")
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedDelete(tKey), "the turn is deleted")
+    Kill ..PreparedKeys(tKey)
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Nav).GuardedPending(tKey, .tAfterSeq, .tAfterRoute, .tAfterEntity, .tAfterSettled, .tAfterOutcome, .tAfterCode), "the directive reads again")
+    Do $$$AssertEquals(tAfterSeq, 0, "and the row went with the turn")
 }
 
 /// <hr/>
@@ -403,10 +543,14 @@ Method TestAC10WireStatusCodes()
     Set tId = ..Definition()
     Set tSC = ##class(OcuPilot.Kernel.State.Turn).GuardedReserve("_SYSTEM", tId, "TURN.ABANDONED.JOBLOST", $ClassMethod(..#LOOP, "LimitsClass"), .tKey, .tBusy, .tSweep)
     Do $$$AssertStatusOK(tSC, "the reserve call itself succeeds")
-    If tBusy {
-        Do $$$AssertTrue(1, "_SYSTEM already holds a turn slot on this instance; the wire assertions were skipped")
-        Quit
+    For tAttempt = 1:1:20 {
+        If 'tBusy Quit
+        Hang 0.5
+        Set tSC = ##class(OcuPilot.Kernel.State.Turn).GuardedReserve("_SYSTEM", tId, "TURN.ABANDONED.JOBLOST", $ClassMethod(..#LOOP, "LimitsClass"), .tKey, .tBusy, .tSweep)
+        Do $$$AssertStatusOK(tSC, "the retried reserve call itself succeeds")
     }
+    Do $$$AssertEquals(tBusy, 0, "_SYSTEM's turn slot freed within 10 seconds: this route's only HTTP test cannot run while it is held, and a skip here would report as a pass")
+    If tBusy Quit
     Set ..PreparedKeys(tKey) = ""
     Set tLimits = $ClassMethod(..#LOOP, "LimitsClass")
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Step).GuardedAppend(tKey, "announce", "shell.screen.open", "running", "", "", "", tLimits, .tSeq, .tStored, "tasks/schedule", "", "", "", "", 0), "announced")

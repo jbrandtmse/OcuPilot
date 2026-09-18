@@ -367,6 +367,20 @@ describe('the locator bar', () => {
     }
   });
 
+  it('Story 4.7 AC5: clearing the arrival drops the label, so it does not survive the next navigation', async () => {
+    await go('/permissions/users');
+    const heading: HTMLElement = fixture.nativeElement.querySelector('#ocu-locator-screen');
+    shell.announceArrival('permissions/users', 'Security -- opened by the agent; Back returns');
+    fixture.detectChanges();
+    expect(heading.getAttribute('aria-label')).not.toBeNull();
+
+    // What `app.ts` does on every `NavigationStart`: a later, user-initiated arrival at this same
+    // screen must not be announced as the agent's.
+    shell.clearArrival();
+    fixture.detectChanges();
+    expect(heading.getAttribute('aria-label')).toBeNull();
+  });
+
   it('an ordinary arrival at a different screen carries no aria-label here', async () => {
     await go('/permissions/users');
     shell.announceArrival('permissions/roles', 'Permissions -- opened by the agent; Back returns');

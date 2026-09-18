@@ -656,7 +656,11 @@ export class TurnStore {
     const replyRaw = body['reply'];
     const reply = typeof replyRaw === 'string' ? replyRaw : null;
     const error = parseError(body['error']);
-    this.pendingNavigationValue = parseNavigation(body['navigation'], steps);
+    // Only a turn that is still running can carry a directive worth acting on. A stop, an
+    // abandon or a failure can land on the same poll as the directive itself, and `notify()`
+    // below runs before `finalizeLive` clears it -- so subscribers would otherwise see a live
+    // directive for a turn that has already ended.
+    this.pendingNavigationValue = isTerminalState(state) ? null : parseNavigation(body['navigation'], steps);
     if (this.liveEntryValue !== null) {
       this.liveEntryValue = { ...this.liveEntryValue, state, steps, stepsDropped, reply, error };
       this.notify();

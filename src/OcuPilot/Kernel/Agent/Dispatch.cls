@@ -376,6 +376,7 @@ ClassMethod ResolveClientCall(pUser As %String, pBlock As %DynamicObject, pLimit
         Set tSC = $ClassMethod(tRegistry, "ResolveWire", tWire, .tTool)
         If $$$ISERR(tSC) {
             Do ..LogFault("a client tool call could not resolve its registry", tSC, tUnavailable)
+            Set tSC = $$$OK
             Quit
         }
         If '$IsObject(tTool) {
@@ -394,6 +395,7 @@ ClassMethod ResolveClientCall(pUser As %String, pBlock As %DynamicObject, pLimit
         Set tSC = $ClassMethod(..GateClass(), "Decide", pToolName, tTool.%Get("kind"), pUser, tInput, .tDecision)
         If $$$ISERR(tSC) {
             Do ..LogFault("a client tool call's governance gate could not decide " _ pToolName, tSC, tUnavailable)
+            Set tSC = $$$OK
             Quit
         }
         If '$Get(tDecision("allowed")) {
@@ -457,6 +459,7 @@ ClassMethod ResolveClientCall(pUser As %String, pBlock As %DynamicObject, pLimit
                 Set tSC = $$$OK
             } Else {
                 Do ..LogFault("turn: " _ pToolName _ " failed inside Directive", tSC, tUnavailable)
+                Set tSC = $$$OK
             }
             Quit
         }

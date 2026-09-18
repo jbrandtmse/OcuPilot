@@ -190,3 +190,43 @@ test('every state change notifies, so the rail and the side bar redraw together'
   shell.toggleOpen();
   assert.equal(notified, 3, 'three changes while subscribed, none after unsubscribing');
 });
+
+// The agent-navigation arrival slot (Story 4.7, AC5). `locator-bar.spec.ts` pins the consumer;
+// this pins the store's own contract, including the clearing `app.ts` calls on NavigationStart.
+//
+// Mutation (Rule 19): make `clearArrival` a no-op -> the third row below goes red, and an
+// agent-navigation announcement would label that screen's heading on every later, user-initiated
+// arrival at it.
+
+test('an arrival is standing only for the route it names', () => {
+  const shell = shellOver(memoryStorage());
+  assert.equal(shell.arrivalAnnouncement('permissions/users'), null, 'nothing is standing to begin with');
+  shell.announceArrival('permissions/users', 'Users -- opened by the agent; Back returns');
+  assert.equal(shell.arrivalAnnouncement('permissions/users'), 'Users -- opened by the agent; Back returns');
+  assert.equal(shell.arrivalAnnouncement('tasks/schedule'), null, 'and never on another route');
+});
+
+test('a fresh arrival at the same route changes the token even when the text repeats', () => {
+  const shell = shellOver(memoryStorage());
+  shell.announceArrival('permissions/users', 'same words');
+  const first = shell.arrivalToken('permissions/users');
+  shell.announceArrival('permissions/users', 'same words');
+  assert.notEqual(shell.arrivalToken('permissions/users'), first, 'the reader can tell two arrivals apart');
+  assert.equal(shell.arrivalToken('tasks/schedule'), null);
+});
+
+test('clearing the arrival drops it, so it never survives into the next navigation', () => {
+  const shell = shellOver(memoryStorage());
+  shell.announceArrival('permissions/users', 'Users -- opened by the agent; Back returns');
+  let notified = 0;
+  const stop = shell.subscribe(() => {
+    notified += 1;
+  });
+  shell.clearArrival();
+  assert.equal(shell.arrivalAnnouncement('permissions/users'), null, 'no announcement is standing');
+  assert.equal(shell.arrivalToken('permissions/users'), null, 'and no token either');
+  assert.equal(notified, 1, 'the clear redraws the locator bar');
+  shell.clearArrival();
+  stop();
+  assert.equal(notified, 1, 'clearing nothing changes nothing');
+});
