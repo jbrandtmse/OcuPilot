@@ -341,6 +341,42 @@ test('AC7: a dirty form declines the move -- the URL stays, the announcement is 
   }
 });
 
+test('QA: a second turn whose announce step lands on the same seq as an earlier, already-settled turn is still navigated (activeSeq cross-turn reset)', async () => {
+  // Story 4.7's own follow-up-review risk: `AgentNavigator.activeSeq`'s per-turn reset (the
+  // `directive === null` branch in `check()`) was pinned only at the unit level, against a
+  // stubbed `TurnStore` whose `clearNavigation()` was called by hand -- never end to end against
+  // two consecutive real turns, where the reset trigger is `TurnStore.send()`'s own
+  // `pendingNavigationValue = null` (turn.ts:454), fired synchronously on every new turn. Every
+  // navigating turn here is a single-tool-call turn (model step Seq 1, tool step Seq 2, announce
+  // step Seq 3 -- `Step.TurnSeqIdx` is unique per turn, not globally), so both turns' announce
+  // steps land on the identical Seq 3 the review finding names. Without the reset,
+  // `directive.seq === this.activeSeq` would still hold from the first, already-settled turn and
+  // the second navigation would never be scheduled at all.
+  const tag = nextTag();
+  setTag(tag);
+  scriptReply(tag, 0, navToolUse('tasks/schedule'));
+  scriptReply(tag, 0, textReply('Opened one.'));
+  const { context, page } = await signedInAt(HOME_URL);
+  try {
+    await typeAndSend(page, 'open the task schedule screen');
+    await page.waitForFunction(() => window.location.pathname === '/ocupilot/tasks/schedule', {
+      timeout: config.navigationTimeoutMs,
+    });
+    await awaitReply(page, 'Opened one.');
+
+    scriptReply(tag, 0, navToolUse('permissions/users', '_SYSTEM'));
+    scriptReply(tag, 0, textReply('Opened two.'));
+    await typeAndSend(page, 'open the users screen for _SYSTEM');
+    await page.waitForFunction(() => window.location.pathname === '/ocupilot/permissions/users/_SYSTEM', {
+      timeout: config.navigationTimeoutMs,
+    });
+    await awaitReply(page, 'Opened two.');
+  } finally {
+    await context.close();
+    forgetTag(tag);
+  }
+});
+
 test('AC11: the next turn carries the arrived route as its own screen context, never the departed one', async () => {
   const tag = nextTag();
   setTag(tag);
