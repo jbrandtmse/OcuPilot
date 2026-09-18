@@ -237,3 +237,4 @@
 2026-09-18T07:49:46Z	Story 4.7	ledger_adjudicated	story=4.7 entries=DW-1091_routed,DW-1092_routed,DW-1094_wontfix-accepted,DW-1095_routed,DW-1096_routed,DW-1097_routed open=0
 2026-09-18T07:49:46Z	Story 4.7	smoke_complete	objectscript_classes=57_green_via_ci-runner browser=118/118 smoke_throwaway=PASSED_18/18 smoke_live_ocupilot=PASSED_18/18 lint_docs=0
 2026-09-18T07:49:46Z	Story 4.7	committed	sha=74b8801 build_sha=237d9de kind=code branch=OCU-1-epic4 pushed=pending ci=pending
+2026-09-18T07:50:01Z	Story 4.7	lead_bookkeeping_error	I_pushed_the_code_commit_74b8801_and_the_[skip_ci]_bookkeeping_commit_0e823ba_together,so_the_head_commit_skipped_the_workflow_and_no_run_was_created lesson=the_Epic_3_[skip_ci]_head-commit_trap:push_the_code_commit_alone_first resolution=this_commit_carries_no_skip_marker_and_triggers_the_run_over_the_same_tree
