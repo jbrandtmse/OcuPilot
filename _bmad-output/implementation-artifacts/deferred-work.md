@@ -2615,6 +2615,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T15:11:12Z status=routed owner=4-4-screen-context-on-every-turn-capped-with-its-toggle-and-chip by=x0 note=kept, the context cap and secret exclusion own this
 - 2026-09-17T05:48:12Z status=routed owner=4-4-screen-context-reaches-the-turn-capped-and-secret-free by=spec_gate note=retitled when the chip and its toggle split into Story 4.11; the work stays server-side in 4.4
 - 2026-09-17T05:59:34Z status=routed owner=burndown by=spec_gate note=declined by 4.4 because the amended Secrets row defines the backstop as suffix or exact; a boundary match must be measured against the shipped key set so maxTokens stays unmasked, for the burn-down gate
+- 2026-09-18T23:27:11Z status=wontfix-accepted owner=burndown by=adjudication note=declined in Story 4.12 on a measurement, not a recollection: a word-boundary match over the whole shipped key set newly masks 21 keys, every one a false positive, and the narrowest prefix form masks PasswordNeverExpires, a security-relevant boolean. The pattern is held equal across the server redactor, the client and the spine's Secrets row, so changing it is a Rule 20 amendment rather than burn-down work. reopen_if=a shipped key carries a secret word non-finally
 
 ### DW-399: Nothing compares Kernel/Audit/Log's credential-suffix list with ui/tools/field-lists.mjs's CREDENTIAL_RE, which its own doc comment says it mirrors
 - source: spec-3-8 | severity: med | fix-risk: low | footprint: cross-epic
@@ -2941,6 +2942,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-1-the-turn-runs-in-a-background-job-and-returns-immediately.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Definitions.RenderBadBody appends GetErrorText of the read status, which carries e.g. <THROW>%FromJSON+n^%Library.DynamicAbstractObject.1 for malformed JSON; Switches delegates to it. Api.Turn had the same copy and was fixed in 4.1's review by logging the raw status and rendering its written sentence.
 - 2026-09-16T22:11:28Z status=routed owner=burndown by=cr note=Same fix as Api.Turn in 4.1: parse stage keeps the written 400 sentence, read and decode stages render internal and log raw
+- 2026-09-18T23:27:12Z status=resolved-by:4-12-epic-4-burn-down by=adjudication note=the wire half is closed and pinned: a malformed body answers 400 with REASONAGENTBADBODY alone and the raw status reaches the log only. The log half has no pin because the production call names the fault class literally, so the test probe is not on that path; recorded as the story's residual risk and left to the seam DW-1171's neighbourhood would need
 
 ### DW-448: BoundedWhere has no guarded helper that runs its fragment with a parameter array, so no read can use the time-window guard yet
 - source: spec-4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea.md | severity: med | fix-risk: low | footprint: in-epic
@@ -3125,6 +3127,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-17T11:54:13Z status=routed owner=4-5-a-turn-watched-progress-cards-and-the-conversation-lock by=lead note=Wait for the composer selector before reading it; 4.5 rebuilds the composer and Send, so it owns this spec
 - 2026-09-17T16:52:55Z status=resolved-by:4-5-a-turn-watched-progress-cards-and-the-conversation-lock by=adjudication note=the sign-out leg waits for the composer before reading it; judged green in the smoke full browser-suite run
 - 2026-09-17T17:26:31Z status=routed owner=burndown by=adjudication note=not closed; the composer wait now times out after 30 s in one of two full-suite runs and the aborted leg leaves an enabled probe definition that fails the next specs; residual is the leg's state leak and cleanup
+- 2026-09-18T23:27:12Z status=resolved-by:4-12-epic-4-burn-down by=adjudication note=closed only after the review's own HIGH: the free-slot guard had been inserted ahead of the disarm inside a try whose finally closed the browser, so a held slot skipped the cleanup in exactly the state the guard exists for. The slot assertion now sits in an inner try whose finally restores, demonstrated two ways against the throwaway. The earlier note claiming an asserted postcondition held for the panel spec only
 
 ### DW-1051: Job.Run's catch path that appends the turn's conversation entry when the loop throws has no automated test, because no fault-injection seam reaches the job
 - source: spec-4-5-a-turn-watched-progress-cards-and-the-conversation-lock.md | severity: med | fix-risk: low | footprint: in-story
@@ -3272,11 +3275,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: lead verification of story 4.7 (pre-existing, from story 4.2) | severity: low | fix-risk: low | footprint: in-epic
 - evidence: OcuPilot.Test.ReadTool.TestTheErrorReadToolCarriesTheSummaryFieldsOnly asserts tCapped.truncated = 1 after reading the newest date with a cap of 1, which holds only where that date carries more than one entry. It is green in CI (a fresh container logs several entries at startup) and on the development instance, and red on the slot-A throwaway after days of use. Probe: run the class through ci-runner against an instance whose newest error date holds exactly one entry
 - 2026-09-18T06:20:48Z status=routed owner=burndown by=lead note=found while running the 4.7 classes through ci-runner rather than the MCP runner; a latent CI flake, not a 4.7 regression
+- 2026-09-18T23:27:12Z status=resolved-by:4-12-epic-4-burn-down by=adjudication note=the cap leg runs through ErrorReadStub, so it no longer depends on the instance having two entries on one date; deleting the truncation flag reddens it
 
 ### DW-1092: navigate.browser-spec.mjs fails opaquely when another turn still holds the user's slot, which an aborted run can do for the whole NAVWAITSECONDS wait
 - source: lead verification of story 4.7 | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Observed under the lead AD gate: the mutated run left a turn job inside its 60-second navigation wait, and the very next (clean) run of the spec failed AC4 after 36 seconds with no statement of why; run alone a moment later it was 5/5. The spec's before-hook asserts readiness but not that the signed-in user's turn slot is free. Probe: hold ^OcuPilotTurnSlot for the spec user, then run the spec
 - 2026-09-18T06:24:23Z status=routed owner=burndown by=lead note=make the before-hook wait for a free slot and say so when it times out, the way turn.browser-spec's lock legs already reason about the slot
+- 2026-09-18T23:27:12Z status=resolved-by:4-12-epic-4-burn-down by=adjudication note=requireFreeSlot abandons the caller's turns, polls the slot bounded at 15 seconds, and names the global, the pid and TURN.BUSY when it cannot get it
 
 ### DW-1094: A stop during the navigation wait leaves two tool cards for one call: the running tool step settles to error on read while a second tool step is appended stopped
 - source: spec-4-7-the-agent-takes-you-to-a-screen.md | severity: low | fix-risk: low | footprint: in-story
@@ -3289,12 +3294,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: SettleClient uses %Set(key, '', 'null') for entityId with no row and for code on every opened outcome. ResultSchema is read only by Registry.SchemaProblem at build time; ToolRoundTrip reaches Navigate only through View (REFUSEEMPTY shell.screen.open:NAV.NOTINSTANCE), so the settled payload is schema-checked nowhere. Probe: compare SettleClient's output keys against ResultSchema's declared types.
 - 2026-09-18T07:36:42Z status=wontfix-accepted owner=burndown by=cr note=inert: no runtime validator reads it, and a nullable type needs a schema-grammar decision. reopen_if=anything validates a client-fulfilled result against ResultSchema
 - 2026-09-18T07:48:55Z status=routed owner=burndown by=adjudication note=lead confirms: inert today because ResultSchema is read only by the build-time schema check, and a nullable type is a schema-grammar decision for the burn-down
+- 2026-09-18T23:27:12Z status=resolved-by:4-12-epic-4-burn-down by=adjudication note=SettleClient omits entityId and code rather than emitting JSON null, so no schema grammar changes; the review notes the schema test never reads required, which a later story inherits
 
 ### DW-1096: POST /turn/:id/navigation accepts a settle for a turn that has already ended: no IsTerminal gate, unlike HandleStop, and GuardedForOwner's tValues is read and never used
 - source: spec-4-7-the-agent-takes-you-to-a-screen.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Api/Turn.cls HandleNavigation reads .tValues from GuardedForOwner and never consults tValues("state"); HandleStop gates on ..IsTerminal(tValues("state")). Since the review's Boundary-branch fix settles the Nav row on every terminal path, such a settle now answers 409 rather than mutating an orphaned row. Probe: POST a settle for a completed turn and read the status.
 - 2026-09-18T07:36:42Z status=wontfix-accepted owner=burndown by=cr note=no reachable harm once the row is settled on every terminal path; adding the gate is a new branch for a LOW. reopen_if=a settle for a terminal turn answers 200
 - 2026-09-18T07:48:55Z status=routed owner=burndown by=adjudication note=lead confirms: after the review's stop-path fix such a settle answers 409, so this is tidiness rather than a hole
+- 2026-09-18T23:27:12Z status=resolved-by:4-12-epic-4-burn-down by=adjudication note=a settle for a turn that has already ended answers 409 STATE.CONFLICT and leaves the Nav row untouched; deleting the terminal gate yields 200 and settles the row
 
 ### DW-1097: Dispatch.ResolveClientCall's registry-read, gate-read and Directive-threw branches have no pinning test, so their refusal-not-failure normalization could be reverted with nothing red
 - source: spec-4-7-the-agent-takes-you-to-a-screen.md | severity: low | fix-risk: med | footprint: in-story
@@ -3371,11 +3378,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-9-the-agent-audit-ledger.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: State/Ledger.cls uses ..Cut(pArguments, 4096) against MAXLEN 4096 and Limits 4096; Turn.cls uses ..Cap(pContextRoute, 512, .tRouteCut) and never reads tRouteCut. Location: src/OcuPilot/Kernel/State/Ledger.cls, src/OcuPilot/Kernel/State/Turn.cls
 - 2026-09-18T13:52:26Z status=routed owner=burndown by=harvest note=lead harvest of the 4.9 spec deferred list
+- 2026-09-18T23:27:12Z status=resolved-by:4-12-epic-4-burn-down by=adjudication note=closed after the review corrected the sweep: it read direct superclasses and so covered four of the six classes that inherit the bound, with a floor equal to that count. It now reads PrimarySuper, names both indirect classes, and reddens on a class it never swept before
 
 ### DW-1125: An over-long `RequiredPairs` fails the whole row's write rather than losing a pair; nothing checks the joined string against the 512-character column before the write, and no test covers it.
 - source: spec-4-9-the-agent-audit-ledger.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Documented at the property as deliberate. PairsToString has no length bound and RecordToolCall does not measure its result, so the failure surfaces only in the log. Location: src/OcuPilot/Kernel/State/Ledger.cls RequiredPairs
 - 2026-09-18T13:52:26Z status=routed owner=burndown by=harvest note=lead harvest of the 4.9 spec deferred list
+- 2026-09-18T23:27:12Z status=resolved-by:4-12-epic-4-burn-down by=adjudication note=the pair set is cut at a whole-pair boundary and a cut set withholds the row cross-user through the existing rowsWithheld count; the test's own mutation recipe was a no-op as written and was replaced with the one demonstrated
 
 ### DW-1126: `PairsToString`/`StringToPairs` accept a resource or permission containing `,` or `:` and cannot round-trip it, and `RedactedKeys` treats a caller-sent literal `[redacted]` as evidence that a key was redacted.
 - source: spec-4-9-the-agent-audit-ledger.md | severity: low | fix-risk: low | footprint: in-epic
@@ -3386,6 +3395,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-9-the-agent-audit-ledger.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Api/Error.cls REASONAUTHNOPRIVILEGE reads "the privilege that tool call requires". Kernel/Audit/Event.cls LogFailure's text is a literal. Either fix adds a parameter or a branch, which is why neither was patched. Location: src/OcuPilot/Api/Error.cls, src/OcuPilot/Kernel/Audit/Event.cls
 - 2026-09-18T13:52:26Z status=routed owner=burndown by=harvest note=lead harvest of the 4.9 spec deferred list
+- 2026-09-18T23:27:12Z status=resolved-by:4-12-epic-4-burn-down by=adjudication note=the 403 names the request rather than a tool call, and a dropped LedgerRead emission logs a read-shaped sentence; the two-way roster for the other dropped events is DW-1171
 
 ### DW-1128: A ledger read opens up to 201 rows one at a time through the escalated `GuardedOpenId`, and every append runs a `COUNT(*)` over the turn's rows first.
 - source: spec-4-9-the-agent-audit-ledger.md | severity: low | fix-risk: low | footprint: in-epic
@@ -3396,6 +3406,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-9-the-agent-audit-ledger.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Observed this pass: "scanned 384 ObjectScript file(s) over 21 rule(s)". The fix edits an agent-context file, which this workflow routes to defer. Location: CLAUDE.md
 - 2026-09-18T13:52:26Z status=routed owner=burndown by=harvest note=lead harvest of the 4.9 spec deferred list
+- 2026-09-18T23:27:12Z status=resolved-by:4-12-epic-4-burn-down by=adjudication note=CLAUDE.md reads 21 rules and a new pin in the checker's own harness fails in both directions, including when the sentence is deleted or duplicated
 
 ### DW-1130: A tool call whose wire name never resolved records its raw model input in a ledger row with only the name-pattern backstop applied, in a row that is never swept and whose empty RequiredPairs releases it to any OcuPilotAdmin:USE holder.
 - source: spec-4-9-the-agent-audit-ledger.md / code-review | severity: med | fix-risk: med | footprint: in-story
@@ -3444,6 +3455,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-10-homes-suggested-view-and-the-starter-prompts.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: suggested-view.ts builds the dates path from its own literal; error-log.store.ts holds the same prefix. A change to one leaves the suggested view quietly showing no application-errors line rather than failing. Probe: change the store's prefix and run the client suite
 - 2026-09-18T18:01:00Z status=routed owner=burndown by=harvest note=lead harvest of the 4.10 spec deferred list
+- 2026-09-18T23:27:12Z status=resolved-by:4-12-epic-4-burn-down by=adjudication note=one prefix in core/log-paths.ts with both consumers importing it; changing it reddens the literal assertions in the panel and error-log specs together
 
 ### DW-1150: The agent-status line re-implements the panel's own sentence precedence and nothing pins the two copies equal
 - source: spec-4-10-homes-suggested-view-and-the-starter-prompts.md | severity: low | fix-risk: low | footprint: in-epic
@@ -3465,6 +3477,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: lead verification of story 4.10 | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Story 4.6 set angular.json's maximumWarning to 780 kB against a then-measured 761 kB, and DW-371's gate (build-output.test.mjs plus angular-json.test.mjs) fails on an overage. Story 4.10 measured 778.37 kB. The deliberate, tested path is to raise both the budget and the pinned literal together; the alternative is trimming. Probe: npm run build and read the Initial total
 - 2026-09-18T18:01:16Z status=routed owner=burndown by=lead note=recommendation for the burn-down: raise maximumWarning to 820 kB and the pinned literal with it, in one commit that states the measured number
+- 2026-09-18T23:27:12Z status=resolved-by:4-12-epic-4-burn-down by=adjudication note=maximumWarning and the pinned literal raised to 820 kB in one commit against a measured 779.46 kB; maximumError stays 1MB and no live code holds the old number. The policy question about re-basing is DW-1166
 
 ### DW-1154: Nothing pins the presence of a stylesheet rule, so deleting five _components.scss blocks left every gate green
 - source: lead verification of story 4.10 | severity: med | fix-risk: med | footprint: in-epic
@@ -3533,6 +3546,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-12-epic-4-burn-down.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: DW-1092's fix gives navigate.browser-spec.mjs a bounded wait for a free turn slot that names the global, the pid and TURN.BUSY. turn, reply, context-chip and suggested-view arm a probe and would fail opaquely in the same situation. Probe: hold the slot and run each spec
 - 2026-09-18T22:16:25Z status=routed owner=burndown by=harvest note=lead harvest of the 4.12 deferred list
+- 2026-09-18T23:27:12Z status=routed owner=burndown by=adjudication note=correction at origin: the population is three specs now, not four -- Story 4.12 gave context-chip the guard, so reply, suggested-view and turn remain. The settlement is still the hoist into turnprobe-spec.mjs, which also carries the automated postcondition the two guarded specs lack
 
 ### DW-1168: objectscript-testing.md's redeploy path says dist/ocupilot where the build writes dist/ocupilot-ui
 - source: spec-4-12-epic-4-burn-down.md | severity: low | fix-risk: low | footprint: in-epic
@@ -3543,3 +3557,22 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: CI run 35389327505 (story 4.10's head) | severity: med | fix-risk: low | footprint: in-epic
 - evidence: CI's instance job failed on context-chip.browser-spec.mjs:404 with 'Waiting failed: 30000ms exceeded' and nothing naming the condition; the full suite is 127/127 locally and has been for four stories. The leg drives sign-in, an in-app navigation to Switches, a cap edit, Save, and a navigation back, on six bare waitForFunction calls whose failure message is the library's. Probe: run the spec on a slower host, or lower config.navigationTimeoutMs
 - 2026-09-18T22:17:16Z status=routed owner=burndown by=lead note=chartered into Story 4.12 mid-story as its fifteenth item: every wait in that leg must say what it wanted, and the leg must be deterministic or bounded with a named failure
+- 2026-09-18T23:27:12Z status=resolved-by:4-12-epic-4-burn-down by=adjudication note=all six waits in the cap-follows-agent-switch leg now name what they wanted and what the page held, the file gained the free-slot guard, and each wrapper carries the underlying error. The leg is more diagnosable rather than proven deterministic: the click-right-after-Save sequence is unchanged and CI has not re-run it, so the next run on this branch is its confirmation
+
+### DW-1170: REASONAGENTBADBODY tells the caller "or no body at all" on routes that refuse an absent body
+- source: spec-4-12-epic-4-burn-down.md (code review) | severity: med | fix-risk: low | footprint: in-story
+- evidence: Api/Error.cls:375 is rendered by Definitions.RenderBadBody, which Switches.RenderBadBody and Context.HandleUpdate:50 both delegate to. PUT /agent/context with no body reaches '$IsObject(tRequestBody) and answers 422 AGENTCONTEXTSHARE, so the remedy the sentence prescribes is refused; Switches and Definitions POST/PUT require a body too. Probe: PUT /agent/context with an empty body and read the code
+- 2026-09-18T23:21:38Z status=escalated owner=burndown by=cr note=the fix is a new or reworded fixed string, so the wording is the owner's call at the decision sheet
+- 2026-09-18T23:27:12Z status=escalated owner=burndown by=adjudication note=lead confirms the escalation: the sentence prescribes a remedy every route that renders it refuses, and rewording user-facing copy is the owner's
+
+### DW-1171: A dropped SecurityChange audit emission is logged as a configuration change
+- source: spec-4-12-epic-4-burn-down.md (code review) | severity: med | fix-risk: low | footprint: in-story
+- evidence: Kernel/Audit/Event.cls:188 is $Select(pEventName = EVENTLEDGERREAD: DROPPEDLEDGERREAD, 1: DROPPEDCONFIG) and pEventName is "" for both change events, so a dropped SecurityChange -- DESCRIPTIONGRANT, an administrative role grant -- reports DROPPEDCONFIG. The log line is the only trace of a drop (AD-15), which is what DW-1127 fixed for the ledger-read case. Probe: unregister the SecurityChange event and grant the role
+- 2026-09-18T23:21:44Z status=escalated owner=burndown by=cr note=closing it needs a third fixed string for the security case, so the sentence is the owner's call at the decision sheet
+- 2026-09-18T23:27:12Z status=escalated owner=burndown by=adjudication note=lead confirms: a dropped SecurityChange emission is logged as a configuration change, and closing it needs a third fixed string
+
+### DW-1172: A provider ledger row's Arguments is cut by LEDGERROWMAXLENGTH but always reports ArgumentsTruncated 0
+- source: spec-4-12-epic-4-burn-down.md (code review) | severity: low | fix-risk: low | footprint: in-story
+- evidence: Kernel/State/Ledger.cls:165 now cuts Arguments at +$Parameter(pLimitsClass, "LEDGERROWMAXLENGTH") where it was the literal 4096, while Kernel/Audit/Ledger.cls:85 still passes pArgumentsTruncated 0 on the provider path -- so under a narrow limits class a cut row says it was not cut (AD-24). Unreachable at the shipped 4096: the arguments object is {"iteration":n,"httpStatus":n}, about 32 characters. Probe: RecordProviderCall under Test.LedgerLimits (24) and read ArgumentsTruncated
+- 2026-09-18T23:21:52Z status=wontfix-accepted owner=burndown by=cr note=reopen_if=a shipped limits class declares LEDGERROWMAXLENGTH below 64, or a provider row's arguments object grows past it
+- 2026-09-18T23:27:12Z status=wontfix-accepted owner=burndown by=adjudication note=lead confirms: unreachable at the shipped bound, and the reopen probe names the narrow limits class that would reach it

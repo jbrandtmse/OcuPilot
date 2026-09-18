@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '09-18-2026 22:18'
+last_updated: '09-18-2026 23:36'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -86,7 +86,7 @@ development_status:
   3-9-epic-3-burn-down: done
   epic-3-retrospective: optional
 
-  epic-4: in-progress
+  epic-4: done
   4-0-epic-3-deferred-cleanup: done
   4-1-the-turn-runs-in-a-background-job-and-returns-immediately: done
   4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea: done
@@ -99,7 +99,7 @@ development_status:
   4-8-a-slow-or-rate-limited-provider-degrades-the-turn-rather-tha: done
   4-9-the-agent-audit-ledger: done
   4-10-home-s-suggested-view-and-the-starter-prompts: done
-  4-12-epic-4-burn-down: review
+  4-12-epic-4-burn-down: done
   epic-4-retrospective: optional
 
   epic-5: backlog
