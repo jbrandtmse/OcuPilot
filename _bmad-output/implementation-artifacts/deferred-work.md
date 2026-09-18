@@ -2951,6 +2951,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-6-5-on-demand-and-upcoming-tasks.md (QA) | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Observed by Story 6.5's QA on ocupilot-b-ci; unrelated to 6.5's code and not investigated. The audit LIST is the self-queued async path AdminPort polls (AD-26); if the cleanup runs under a caller without the privilege, the errors reach messages.log, which Story 6.14 displays.
 - 2026-09-17T04:25:10Z status=routed owner=6-14-the-messages-log-viewer by=harvest note=investigate whether the PROTECT originates in AdminPort's async poll or the vendor's own task cleanup; fix at the port if ours, else close by-design with the vendor evidence
+- 2026-09-18T08:32:18Z by=plan note=ours, not the vendor's: AdminPort.ForgetTask:666 deletes into IRISLOCALDATA, whose resource has public read and no public write, so an unprivileged caller reads the Finished row then throws PROTECT on the delete; the vendor's PurgeAsyncQueue() is [Internal] and scheduled by nothing; AsyncResult exposes no delete type. Fix is a privilege check before %DeleteId, not a widened declared privilege
 
 ### DW-1026: Live-instance task-history tests compare two separate reads of a growing history exactly, so a Task Manager run landing between them fails the comparison
 - source: spec-6-6-task-history-per-task-and-across-tasks.md | severity: low | fix-risk: low | footprint: in-story
@@ -3066,3 +3067,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-6-12-the-devices-list.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: Test/Descriptor.cls's new Devices method is the only place in the ObjectScript suite that reads a real descriptor's read.filter or a column's kind; every other hit is a synthetic corpus. Registry.cls requires only that filter and sort names be a SUBSET of read.fields and each kind be in TABLECOLUMNKINDS, and screens.generated.ts mirrors whatever is declared, so screen-mirror --check agrees with any mutation.
 - 2026-09-18T07:39:57Z status=routed owner=burndown by=cr note=one sweep over Registry.Descriptors() against a committed table closes it; equality with read.fields is NOT the invariant -- SystemUsage declares filter [] deliberately
+
+### DW-1100: The messages.log viewer has no declared-read source, so its read tool cannot be descriptor-derived and needs a Screen/Tool class Epic 6's footprint excludes
+- source: spec-6-13-the-alerts-log-viewer.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: Registry.ReadProblem requires read.source.port to be admin, state, mgmnt (Registry.cls:832); 6.13 adds monitor for the alerts read, but messages.log is served only by LogSourcePort.Page through /logs/messages (LogPage.cls:29-50), which no source kind expresses. LogErrorList took the other route and declares its tool in Screen/Tool/ErrorRead.cls, a path Epic 6's footprint forbids.
+- 2026-09-18T08:25:28Z status=routed owner=6-14-the-messages-log-viewer by=plan note=6.13 avoids it by declaring its read on the monitor port; 6.14 has no such source and must either add a logfile source kind or get a footprint extension for Screen/Tool
+
+### DW-1101: Async task rows survive on ocupilot-slot-b for a _SYSTEM caller with no error logged, so AdminPort.ForgetTask does not always run or does not always delete
+- source: spec-6-13-the-alerts-log-viewer.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Read read-only from ^|"^^:ds:IRISLOCALDATA"|Api.Admin.Util.AsyncTaskD on ocupilot-slot-b: four rows, Username=_SYSTEM, State=Finished, TaskName GET /v2/ocupilot/database/syscrud, queued 2026-09-18 01:03/01:04/06:34/07:33, and messages.log carries no AdminPort fault at any of those times. AwaitTask calls ForgetTask on Finished and Failed (AdminPort.cls:872,878); a privileged caller holds %DB_IRISLOCALDATA:WRITE, so the delete should have taken. Distinct root cause from DW-1025, which is the PROTECT a non-privileged caller gets.
+- 2026-09-18T08:25:37Z status=open owner=6-13-the-alerts-log-viewer by=plan note=probe only in this story: run Database.SysCRUD INFO through AdminPort on a throwaway as _SYSTEM and read the row back; fix or re-own with the residual at adjudication
+- 2026-09-18T08:32:22Z status=routed owner=6-14-the-messages-log-viewer by=plan note=re-owned at the 6.13 spec gate: 6.13 does not touch AdminPort.cls, and 6.14 already owns DW-1025 in the same method
