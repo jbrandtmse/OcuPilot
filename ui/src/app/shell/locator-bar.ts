@@ -324,15 +324,12 @@ export class LocatorBar {
     });
     const stopNavigation = this.navigation.subscribe(() => this.bump());
     const stopShell = this.shell.subscribe(() => this.bump());
-    inject(DestroyRef).onDestroy(() => {
-      stopRouter.unsubscribe();
-      stopNavigation();
-      stopShell();
     syncStoreSubscription();
 
     inject(DestroyRef).onDestroy(() => {
       stopRouter.unsubscribe();
       stopNavigation();
+      stopShell();
       stopStore?.();
     });
   }
@@ -350,6 +347,9 @@ export class LocatorBar {
   protected get screenHeadingLabel(): string | null {
     const screen = this.screen();
     return screen === null ? null : this.shell.arrivalAnnouncement(screen.route);
+  }
+
+  /**
    * The entity segment's label: on a parent-scoped `detail` screen, once its one row has loaded,
    * the value of its `name` column (Story 6.7) -- Task details names the task rather than its id --
    * and otherwise the decoded id every other entity view already showed.

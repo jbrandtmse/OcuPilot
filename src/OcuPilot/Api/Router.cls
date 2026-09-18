@@ -336,6 +336,8 @@ ClassMethod ConversationRead(pId As %String) As %Status
 ClassMethod ConversationCreate() As %Status
 {
     Quit ##class(OcuPilot.Api.Conversation).HandleCreate()
+}
+
 /// <p>Thin <code>Call=</code> target for <code>GET /logs/alerts</code> -- see
 /// <method>LogMessages</method>. The second file source, and the alerts.log viewer's own page.</p>
 ClassMethod LogAlerts() As %Status

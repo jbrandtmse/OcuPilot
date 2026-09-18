@@ -339,6 +339,8 @@ export function hasIdRoute(screen: ScreenDeclaration): boolean {
  * it is from `ShellState.activeArea()` -- tests against one constant rather than a literal.
  */
 export const HOME_AREA_KEY = 'home';
+
+/**
  * The entity type `screen`'s route id identifies (DW-1020, AD-5, AD-13): the parent screen's own
  * `entityType` for a sub-resource screen, resolved through `parentScope` and never declared a
  * second time -- task history is not a task, and its route id names the task `parentListFor`

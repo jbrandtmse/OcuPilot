@@ -306,6 +306,8 @@ ClassMethod ContextMaxLengths(Output pLengths)
     } Catch {
         Kill pLengths
     }
+}
+
 /// <p>This screen's declared <code>rowTarget</code> as a copy, or <code>""</code> for a screen
 /// that declares none (AD-5, Story 6.10). A row target is a list's single cross-screen row link,
 /// resolved ahead of the paired-surface chain in <file>ui/src/app/shell/data-table.ts</file> and
