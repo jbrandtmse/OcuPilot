@@ -349,6 +349,7 @@ Microcopy. Brand voice and aesthetic posture live in `DESIGN.md`.
 | "This looks like a password or key. Send anyway?" · "Send anyway" · "Edit" | the inline secret-like message warning above the composer and its two actions |
 | "Secret fields on this screen are never sent" | the context chip's key glyph accessible name |
 | "<n> rows returned · <m> sent" | the result line on an expanded read tool-call card: rows the read returned, and rows actually sent to the model |
+| "The turn stopped: <reason>." | error banner ending a turn whose failure names no step it stopped at (FR-23) [ADDED 2026-09-18 — see the story change log] |
 
 ## Component Patterns
 

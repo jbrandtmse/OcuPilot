@@ -171,6 +171,8 @@ export const STRINGS = {
   toolCallStoppedByYou: 'Stopped by you at <step>',
   /** EXPERIENCE.md:279 */
   agentTurnStoppedBanner: 'The turn stopped at <step>: <reason>.',
+  /** EXPERIENCE.md:352 */
+  agentTurnStoppedNoStepBanner: 'The turn stopped: <reason>.',
   /** EXPERIENCE.md:280 */
   agentTurnLockBanner: 'A turn is in progress. Wait for it to finish before sending another message.',
   // Story 4.5's four: from the tool-call-card Component Patterns row (:378) and the panel's
