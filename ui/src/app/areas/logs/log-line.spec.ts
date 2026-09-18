@@ -6,28 +6,20 @@ import {
   highlightSpans,
   matchCountText,
   matchesSearch,
-  mergeLogLines,
-  normalizeApiStamp,
   parseFileLines,
-  parseMonitorRow,
   severityChipKey,
   severityWord,
-  tagForWindow,
 } from './log-line';
 
 /**
- * The log grammar and the merge rule, over the file's own lines and the monitoring API's own rows
- * (Story 6.13 AC4).
+ * The log grammar, over the file's own lines (Story 6.13 AC4).
  *
  * The sample lines are real alerts.log lines from the slot B instance, cut to their shape: the head
- * grammar `MM/DD/YY-HH:MM:SS:mmm (pid) severity [Category] text`, and the API's reading of the same
- * entries, which drops the pid and the category, quotes the severity and appends a `Z` to a local
- * stamp nothing converted.
+ * grammar `MM/DD/YY-HH:MM:SS:mmm (pid) severity [Category] text`, which both instance log files are
+ * written in.
  *
- * Mutations (Rule 19), each observed red here alone: make the de-duplication keep the monitor row
- * instead of the file's -> the pid-present assertion goes red; drop the pid from the merge key
- * (it is deliberately not in it) -> the two-pids leg goes red, because two identical lines from
- * different processes would collapse into one.
+ * Mutation (Rule 19), observed red here alone: make a non-matching line open its own entry instead
+ * of folding into the entry above it -> the continuation assertion goes red.
  */
 
 const FILE_LINES = [
@@ -44,7 +36,6 @@ describe('parseFileLines', () => {
     expect(first.category).toBe('OcuPilot.Log');
     expect(first.text).toBe('[OcuPilot] a severe entry');
     expect(first.head).toBe(true);
-    expect(first.tag).toBe('09/18/26-07:33:42:173 (423284)');
   });
 
   it('reads a line with no bracketed category, which the grammar makes optional', () => {
@@ -61,26 +52,22 @@ describe('parseFileLines', () => {
     expect(entries[0].raw).toContain('continued on a second line');
   });
 
-  it('opens a window that starts mid-continuation with a head-less entry carrying no cursor', () => {
+  it('opens a window that starts mid-continuation with a head-less entry, keeping its bytes', () => {
     const entries = parseFileLines(['    a fragment of the line above the window', FILE_LINES[0]]);
+    expect(entries).toHaveLength(2);
     expect(entries[0].head).toBe(false);
     expect(entries[0].stamp).toBe('');
-    expect(entries[0].tag).toBe('');
-    // AC's "no header line in the tail window": the cursor comes from the earliest HEAD line, and
-    // a window with none makes no monitoring call at all.
-    expect(tagForWindow([entries[0]])).toBe('');
-    expect(tagForWindow(entries)).toBe(FILE_LINES[0].slice(0, 30));
+    expect(entries[0].severity).toBe('');
+    expect(entries[0].text).toBe('    a fragment of the line above the window');
   });
 
-  it("takes the cursor from the window's earliest head line, so the two windows coincide", () => {
-    expect(tagForWindow(parseFileLines(FILE_LINES))).toBe('09/18/26-07:33:42:173 (423284)');
-  });
-});
-
-describe('normalizeApiStamp', () => {
-  it("drops the API's false Z rather than converting it, because the value behind it is local", () => {
-    expect(normalizeApiStamp('2026-09-18T07:33:42.173Z')).toBe('2026-09-18T07:33:42.173');
-    expect(normalizeApiStamp('2026-09-18T07:33:42.173')).toBe('2026-09-18T07:33:42.173');
+  it('keeps two identical lines from different processes apart, because the pid is part of neither', () => {
+    const entries = parseFileLines([
+      '09/18/26-07:33:42:173 (1) 1 the same sentence',
+      '09/18/26-07:33:42:173 (2) 1 the same sentence',
+    ]);
+    expect(entries).toHaveLength(2);
+    expect(entries.map((entry) => entry.pid)).toEqual(['1', '2']);
   });
 });
 
@@ -100,7 +87,7 @@ describe('severityWord', () => {
   });
 
   it('renders an entry carrying no severity as the empty-cell word, not as an empty chip', () => {
-    // A window that opens mid-continuation, and a monitoring row missing the key, both reach here.
+    // A window that opens mid-continuation reaches here.
     expect(severityWord('')).toBe(STRINGS.tableEmptyValue);
     expect(severityWord(parseFileLines(['    a fragment'])[0].severity)).toBe(STRINGS.tableEmptyValue);
   });
@@ -108,84 +95,6 @@ describe('severityWord', () => {
   it('declares the five chips in the scale order', () => {
     expect(SEVERITY_CHIPS.map((chip) => chip.key)).toEqual(['debug', 'info', 'warning', 'severe', 'fatal']);
     expect(SEVERITY_CHIPS[0].levels).toEqual(['-2', '-1']);
-  });
-});
-
-describe('mergeLogLines', () => {
-  it('AC4: the file wins a collision, so the merged row keeps its pid and unmangled stamp', () => {
-    const fileEntries = parseFileLines(FILE_LINES);
-    const monitorEntries = [
-      parseMonitorRow({ time: '2026-09-18T07:33:42.173Z', severity: '2', text: '[OcuPilot] a severe entry' }),
-      parseMonitorRow({ time: '2026-09-18T07:34:10.000Z', severity: '1', text: 'written between the two calls' }),
-    ];
-
-    const merged = mergeLogLines(fileEntries, monitorEntries);
-    expect(merged).toHaveLength(3);
-    const collided = merged.filter((entry) => entry.text === '[OcuPilot] a severe entry');
-    expect(collided).toHaveLength(1);
-    expect(collided[0].source).toBe('file');
-    expect(collided[0].pid).toBe('423284');
-    expect(collided[0].category).toBe('OcuPilot.Log');
-  });
-
-  it('AC4: a monitor-only entry survives the merge, carrying no pid of its own', () => {
-    const merged = mergeLogLines(parseFileLines(FILE_LINES), [
-      parseMonitorRow({ time: '2026-09-18T07:34:10.000Z', severity: '1', text: 'written between the two calls' }),
-    ]);
-    const only = merged.find((entry) => entry.text === 'written between the two calls')!;
-    expect(only.source).toBe('monitor');
-    expect(only.pid).toBe('');
-  });
-
-  it('AC4: orders by normalized stamp, with file order breaking ties', () => {
-    const merged = mergeLogLines(parseFileLines(FILE_LINES), [
-      parseMonitorRow({ time: '2026-09-18T07:33:50.000Z', severity: '0', text: 'between the two' }),
-    ]);
-    expect(merged.map((entry) => entry.text)).toEqual([
-      '[OcuPilot] a severe entry',
-      'between the two',
-      'an informational entry',
-    ]);
-  });
-
-  it('AC4: two identical file lines from different processes are never de-duplicated against each other', () => {
-    const merged = mergeLogLines(
-      parseFileLines([
-        '09/18/26-07:33:42:173 (1) 1 the same sentence',
-        '09/18/26-07:33:42:173 (2) 1 the same sentence',
-      ]),
-      []
-    );
-    expect(merged).toHaveLength(2);
-    expect(merged.map((entry) => entry.pid)).toEqual(['1', '2']);
-  });
-
-  it("AC4: a multi-line entry present in both halves renders once, as the file's", () => {
-    // The file folds continuation lines into `text`; the monitoring API drops them. Keying the
-    // de-duplication on the whole text would make every such entry render twice.
-    const fileEntries = parseFileLines([
-      '09/18/26-07:33:42:173 (423284) 2 [OcuPilot.Log] a severe entry',
-      '    and its continuation line',
-    ]);
-    const merged = mergeLogLines(fileEntries, [
-      parseMonitorRow({ time: '2026-09-18T07:33:42.173Z', severity: '2', text: 'a severe entry' }),
-    ]);
-    expect(merged).toHaveLength(1);
-    expect(merged[0].source).toBe('file');
-    expect(merged[0].pid).toBe('423284');
-    expect(merged[0].text).toContain('and its continuation line');
-  });
-
-  it('AC4: no line the union of the two windows carries goes missing', () => {
-    const fileEntries = parseFileLines(FILE_LINES);
-    const monitorEntries = [
-      parseMonitorRow({ time: '2026-09-18T07:33:42.173Z', severity: '2', text: '[OcuPilot] a severe entry' }),
-      parseMonitorRow({ time: '2026-09-18T07:34:10.000Z', severity: '1', text: 'one' }),
-      parseMonitorRow({ time: '2026-09-18T07:34:11.000Z', severity: '1', text: 'two' }),
-    ];
-    const merged = mergeLogLines(fileEntries, monitorEntries);
-    const texts = new Set(merged.map((entry) => entry.text));
-    for (const entry of [...fileEntries, ...monitorEntries]) expect(texts.has(entry.text)).toBe(true);
   });
 });
 

@@ -142,13 +142,13 @@ export interface ReadSourcePart {
 
 /**
  * Where a read's rows come from (AD-36): one admin API LIST (AD-2) with an optional per-row detail
- * call, one of OcuPilot's own kernel stores read whole (AD-9), the management API's port, or the
- * monitoring API's. A `state` source names the store by its own name, declares no `rowGet` and
- * no `criteria`, and is bounded by the same row cap; a `mgmnt` or `monitor` source declares
- * no `rowGet`.
+ * call, one of OcuPilot's own kernel stores read whole (AD-9), the management API's port, or one
+ * instance log file's bounded tail. A `state` source names the store by its own name, declares no
+ * `rowGet` and no `criteria`, and is bounded by the same row cap; a `mgmnt` or
+ * `logsource` source declares no `rowGet`.
  */
 export interface ReadSource {
-  readonly port: 'admin' | 'state' | 'mgmnt' | 'monitor';
+  readonly port: 'admin' | 'state' | 'mgmnt' | 'logsource';
   readonly endpoint: string;
   /**
    * `LIST` reads rows; `GET` reads one object as the one row, and a 404 reads as none;
@@ -2168,10 +2168,6 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       {
         "resource": "%Admin_Operate",
         "permission": "USE"
-      },
-      {
-        "resource": "%DB_IRISSYS",
-        "permission": "READ"
       }
     ],
     "entityType": "log-entry",
@@ -2209,8 +2205,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     },
     "read": {
       "source": {
-        "port": "monitor",
-        "endpoint": "Alerts",
+        "port": "logsource",
+        "endpoint": "alerts",
         "type": "LIST"
       },
       "fields": [

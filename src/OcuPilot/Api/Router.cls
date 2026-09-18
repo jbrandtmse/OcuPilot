@@ -6,8 +6,8 @@
 /// provider catalog the Definition form cascades from, the generic screen read,
 /// <code>GET /screens/:screen/read</code>, the four application-error-log levels
 /// <code>GET /logs/errors/{namespaces,dates,list,detail}</code>, the console-log page
-/// <code>GET /logs/messages</code>, the alert-log page <code>GET /logs/alerts</code> and its
-/// monitoring-API half <code>GET /logs/alerts/recent</code>, and the three shell routes, <code>GET /instance</code>,
+/// <code>GET /logs/messages</code>, the alert-log page <code>GET /logs/alerts</code>, and the three
+/// shell routes, <code>GET /instance</code>,
 /// <code>GET /namespaces</code> and <code>GET /navigation</code>; every other request that clears
 /// <method>OnPreDispatch</method> is answered by the framework 404 override. The three
 /// ordering invariants below are load-bearing from the first route on; the first two are each
@@ -80,7 +80,6 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/agent/definitions" Method="POST" Call="AgentDefinitionCreate"/>
   <Route Url="/agent/providers" Method="GET" Call="AgentProviders"/>
   <Route Url="/screens/:screen/read" Method="GET" Call="ScreenRead"/>
-  <Route Url="/logs/alerts/recent" Method="GET" Call="LogAlertsRecent"/>
   <Route Url="/logs/errors/namespaces" Method="GET" Call="LogErrorNamespaces"/>
   <Route Url="/logs/errors/dates" Method="GET" Call="LogErrorDates"/>
   <Route Url="/logs/errors/list" Method="GET" Call="LogErrorList"/>
@@ -250,21 +249,10 @@ ClassMethod LogMessages() As %Status
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /logs/alerts</code> -- see
-/// <method>LogMessages</method>. The second file source, and the bounded tail half of the
-/// alerts.log viewer.</p>
+/// <method>LogMessages</method>. The second file source, and the alerts.log viewer's own page.</p>
 ClassMethod LogAlerts() As %Status
 {
     Quit ##class(OcuPilot.Api.LogPage).Handle(##class(OcuPilot.Port.LogSourcePort).#ALERTSKEY)
-}
-
-/// <p>Thin <code>Call=</code> target for <code>GET /logs/alerts/recent</code>: delegates to
-/// <class>OcuPilot.Api.MonitorLog</class> and carries no logic of its own.</p>
-/// <p>The route is literal and <b>binds the endpoint and the request type here</b>, from the port's
-/// own parameters, so no caller names either (AD-21). This is the monitoring API half of the
-/// alerts.log viewer; <method>LogAlerts</method> is the file half.</p>
-ClassMethod LogAlertsRecent() As %Status
-{
-    Quit ##class(OcuPilot.Api.MonitorLog).Handle(##class(OcuPilot.Port.MonitorPort).#ENDPOINTALERTS, ##class(OcuPilot.Port.MonitorPort).#REQUESTTYPE)
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /instance</code>: delegates to

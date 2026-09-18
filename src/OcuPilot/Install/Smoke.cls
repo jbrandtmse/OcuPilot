@@ -177,9 +177,9 @@ Parameter DATABASEVOLUMESTOOL = "osmgmt.databasevolumes";
 Parameter DEVICELISTTOOL = "osmgmt.devices";
 
 /// <p>The tool identifier of the alerts.log viewer, read generically by
-/// <method>CheckAreaLists</method> (Story 6.13). Its declared read is the monitoring API's half of
-/// the screen, so it is a <b>zero-or-one</b> list: an instance whose alerts.log is absent or whose
-/// entries the monitoring API has already reported answers no row without anything being wrong.</p>
+/// <method>CheckAreaLists</method> (Story 6.13). Its declared read is a bounded tail of a file the
+/// instance writes only when it has something to say, so it is a <b>zero-or-one</b> list: an
+/// instance whose alerts.log is still empty answers no row without anything being wrong.</p>
 Parameter ALERTLISTTOOL = "logs.alerts";
 
 /// <p>The console-log page's path under the API application, and the window the

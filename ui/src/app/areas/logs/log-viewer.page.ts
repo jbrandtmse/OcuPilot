@@ -43,7 +43,7 @@ const SOURCES: Readonly<Record<string, LogViewerSource>> = {
 
 /**
  * The page every `log-viewer` archetype renders (AD-5): a bounded window of one instance log file,
- * merged with whatever the monitoring API reports since that window's earliest entry.
+ * read from the file itself.
  *
  * Story 6.13 builds it for `alerts.log`; Story 6.14 declares `messages.log` against it and adds a
  * route to `SOURCES` rather than a page of its own.
@@ -116,12 +116,6 @@ const SOURCES: Readonly<Record<string, LogViewerSource>> = {
         </button>
       }
     </div>
-
-    @if (showRecentNotice) {
-      <p class="ocu-log-viewer-notice" role="status" data-ocu-log="recent-unavailable">
-        {{ STRINGS.alertLogRecentUnavailable }}
-      </p>
-    }
 
     @if (showRefusal) {
       <div class="ocu-data-table-refusal" role="alert" data-ocu-log="refusal">
@@ -213,9 +207,9 @@ export class LogViewerPage {
     const stop = this.store.subscribe(() => this.generation.update((value) => value + 1));
     const screen = this.navigation.screenForUrl(this.router.url);
     this.store.setSource(SOURCES[screen?.route ?? ''] ?? ALERTS_SOURCE);
-    // Manual Refresh only (DW-260). This screen binds no `RefreshService`: its declared read is the
-    // monitoring half alone, while the screen is that half merged with a bounded tail, and one
-    // refresh binding cannot re-issue both halves in the order the merge needs.
+    // Manual Refresh only (DW-260). This screen binds no `RefreshService`: it declares
+    // `refreshes: false` and adds rows only on an explicit Load newer, so Refresh re-opens the
+    // window rather than ticking it.
     const stopRefreshAction =
       screen === null
         ? null
@@ -286,11 +280,6 @@ export class LogViewerPage {
     this.generation();
     if (this.searchValue === '') return false;
     return !this.filtered.some((line) => matchesSearch(line, this.searchValue));
-  }
-
-  protected get showRecentNotice(): boolean {
-    this.generation();
-    return this.store.recentUnavailable() && this.store.lines().length > 0;
   }
 
   protected get showRefusal(): boolean {

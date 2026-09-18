@@ -347,13 +347,14 @@ Method TestEveryDeclaredMgmntReadFieldIsAKeyOfTheLiveRow()
     Do $$$AssertEquals(tChecked, 2, "the two production mgmnt reads are checked: " _ tChecked)
 }
 
-/// <p>Story 6.13 -- the executor's <code>monitor</code> branch, against the live port: the declared
-/// read answers rows carrying exactly the declared fields, the cap bounds them and the truncation
-/// signal follows it. A roster with no monitor read fails rather than passing over nothing.</p>
-/// <p>Mutation: delete the <code>monitor</code> arm from
+/// <p>Story 6.13 -- the executor's <code>logsource</code> branch, against the live port: the
+/// declared read answers rows carrying exactly the declared fields, the cap bounds them and the
+/// truncation signal follows it. A roster with no logsource read fails rather than passing over
+/// nothing.</p>
+/// <p>Mutation: delete the <code>logsource</code> arm from
 /// <method>OcuPilot.Screen.Read.Execute</method> -&gt; the read falls through to the admin port and
 /// this goes red.</p>
-Method TestEveryDeclaredMonitorReadFieldIsAKeyOfTheLiveRow()
+Method TestEveryDeclaredLogSourceReadFieldIsAKeyOfTheLiveRow()
 {
     Set tSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tList)
     Do $$$AssertStatusOK(tSC, "the production descriptors list")
@@ -363,7 +364,7 @@ Method TestEveryDeclaredMonitorReadFieldIsAKeyOfTheLiveRow()
         Set tRead = $ClassMethod(tClass, "Read")
         If '$IsObject(tRead) Continue
         Set tSource = tRead.%Get("source")
-        If '$IsObject(tSource) || (tSource.%Get("port") '= "monitor") Continue
+        If '$IsObject(tSource) || (tSource.%Get("port") '= "logsource") Continue
         Set tChecked = tChecked + 1
 
         Kill tCriteria
@@ -380,7 +381,7 @@ Method TestEveryDeclaredMonitorReadFieldIsAKeyOfTheLiveRow()
             Do $$$AssertTrue(tRow.%GetTypeOf(tField) '= "unassigned", tClass _ ": declared read field '" _ tField _ "' is a key of the live row")
         }
     }
-    Do $$$AssertEquals(tChecked, 1, "the one production monitor read is checked: " _ tChecked)
+    Do $$$AssertEquals(tChecked, 1, "the one production logsource read is checked: " _ tChecked)
 }
 
 /// <p>Story 2.8 -- the declared banner is evaluated inside the read, against the real port, and it

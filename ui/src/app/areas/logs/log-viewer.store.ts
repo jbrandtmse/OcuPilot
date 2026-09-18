@@ -2,44 +2,33 @@ import { Injectable, Injector, inject } from '@angular/core';
 
 import { ApiService } from '../../core/api';
 import { classifyFault, type Fault } from '../../core/fault';
-import {
-  mergeLogLines,
-  parseFileLines,
-  parseMonitorRow,
-  tagForNewest,
-  tagForWindow,
-  type LogLine,
-} from './log-line';
+import { parseFileLines, type LogLine } from './log-line';
 
 /**
- * Which file a viewer is reading, and where each half lives (AD-21: the source key is bound by the
- * route, so neither path carries a file name the caller chose).
- *
- * `recentPath` is `''` for a file with no monitoring half, which is what Story 6.14's messages.log
- * screen declares: the viewer then renders the bounded tail alone and offers no recent-entries
- * notice, because there is no second half to fail.
+ * Which file a viewer is reading (AD-21: the source key is bound by the route, so the path carries
+ * no file name the caller chose). Story 6.14's messages.log screen adds its own route beside this
+ * one rather than a store of its own.
  */
 export interface LogViewerSource {
   readonly tailPath: string;
-  readonly recentPath: string;
 }
 
-/** The alerts.log screen's two routes. */
+/** The alerts.log screen's route. */
 export const ALERTS_SOURCE: LogViewerSource = {
   tailPath: '/api/ocupilot/logs/alerts',
-  recentPath: '/api/ocupilot/logs/alerts/recent',
 };
+
+/**
+ * `OcuPilot.Api.Error`'s code for a log file this instance does not have. It is a 404 rather than an
+ * empty page because a caller paging a file by byte offset asked for a file; the viewer asked for
+ * the instance's entries, so it renders its own empty state instead of a refusal.
+ */
+const ABSENT_CODE = 'LOG.ABSENT';
 
 function linesOf(body: unknown): readonly string[] {
   if (body === null || typeof body !== 'object') return [];
   const lines = (body as Record<string, unknown>)['lines'];
   return Array.isArray(lines) ? lines.filter((line): line is string => typeof line === 'string') : [];
-}
-
-function rowsOf(body: unknown): readonly unknown[] {
-  if (body === null || typeof body !== 'object') return [];
-  const rows = (body as Record<string, unknown>)['rows'];
-  return Array.isArray(rows) ? rows : [];
 }
 
 function textAt(body: unknown, key: string): string {
@@ -60,17 +49,11 @@ function flagAt(body: unknown, key: string): boolean {
 }
 
 /**
- * The log viewer's own state: the merged entries on screen, the tail cursor they were read under,
- * and the two halves' faults held apart (AD-19).
+ * The log viewer's own state: the entries on screen and the tail cursor they were read under.
  *
  * **Nothing here streams, and nothing here ticks** (AD-43). There is no interval, no `EventSource`
  * and no `WebSocket`; the only reads are the one this store issues when a screen opens and the one
  * an explicit Load newer issues. A screen left open issues nothing at all.
- *
- * **The two halves fail independently.** The bounded tail is the screen; the monitoring API is the
- * "and anything since" on top of it. A monitoring failure leaves the tail's rows standing and
- * raises one polite line, and a tail failure is the screen's own refusal. Holding one fault field
- * for both would make either failure blank the screen.
  *
  * **Root-provided**, like the application error log's drill, so the cursor and the rows survive a
  * navigation. What it holds is which lines this principal was reading, so it belongs in the
@@ -88,10 +71,6 @@ export class LogViewerStore {
   private sourceValue: LogViewerSource = ALERTS_SOURCE;
 
   private fileEntries: readonly LogLine[] = [];
-
-  private monitorEntries: readonly LogLine[] = [];
-
-  private mergedValue: readonly LogLine[] = [];
 
   private offsetValue = 0;
 
@@ -113,9 +92,6 @@ export class LogViewerStore {
 
   private failedPairValue = '';
 
-  /** Set when the monitoring half alone failed, which is a notice rather than a refusal. */
-  private recentUnavailableValue = false;
-
   /** Bumped per issued read, so a late answer to a screen the user has left is dropped. */
   private generation = 0;
 
@@ -131,8 +107,6 @@ export class LogViewerStore {
   /** Forget everything this principal had. See the class note on the sign-out teardown (DW-1110). */
   reset(): void {
     this.fileEntries = [];
-    this.monitorEntries = [];
-    this.mergedValue = [];
     this.offsetValue = 0;
     this.identityValue = '';
     this.sizeValue = 0;
@@ -143,7 +117,6 @@ export class LogViewerStore {
     this.loadedValue = false;
     this.faultValue = null;
     this.failedPairValue = '';
-    this.recentUnavailableValue = false;
     this.generation += 1;
     this.notify();
   }
@@ -153,7 +126,7 @@ export class LogViewerStore {
    * second log screen cannot render the first one's rows under its own title.
    */
   setSource(source: LogViewerSource): void {
-    if (source.tailPath === this.sourceValue.tailPath && source.recentPath === this.sourceValue.recentPath) return;
+    if (source.tailPath === this.sourceValue.tailPath) return;
     this.sourceValue = source;
     this.reset();
   }
@@ -163,7 +136,7 @@ export class LogViewerStore {
   }
 
   lines(): readonly LogLine[] {
-    return this.mergedValue;
+    return this.fileEntries;
   }
 
   loading(): boolean {
@@ -180,11 +153,6 @@ export class LogViewerStore {
 
   failedPair(): string {
     return this.failedPairValue;
-  }
-
-  /** Whether the monitoring half failed while the tail answered (AD-12's code, not its reason). */
-  recentUnavailable(): boolean {
-    return this.recentUnavailableValue;
   }
 
   /** Whether the last tail page re-seeded from byte 1 because the file had rotated under it. */
@@ -212,11 +180,9 @@ export class LogViewerStore {
     return this.cursorValue;
   }
 
-  /** The first read: the last bytes of the file, then whatever the monitoring API has since. */
+  /** The first read: the last bytes of the file. */
   async open(): Promise<void> {
     this.fileEntries = [];
-    this.monitorEntries = [];
-    this.mergedValue = [];
     this.restartedValue = false;
     await this.read('');
   }
@@ -237,7 +203,6 @@ export class LogViewerStore {
     this.loadingValue = true;
     this.faultValue = null;
     this.failedPairValue = '';
-    this.recentUnavailableValue = false;
     this.notify();
 
     const query =
@@ -250,6 +215,15 @@ export class LogViewerStore {
 
     if (result.kind !== 'ok') {
       this.loadingValue = false;
+      // A log the instance has not written yet is an empty screen, not a refusal: a fresh instance
+      // that has raised no alert has no alerts.log, and the port says so by name.
+      if (result.kind === 'error' && result.code === ABSENT_CODE) {
+        this.fileEntries = [];
+        this.cursorValue = false;
+        this.loadedValue = true;
+        this.notify();
+        return;
+      }
       this.faultValue = classifyFault(result, path);
       if (result.kind === 'error') {
         const pair = result.detail === null ? undefined : result.detail['failedPair'];
@@ -270,43 +244,8 @@ export class LogViewerStore {
     // A restart is the file's own start, so what stood before it belongs to a file that no longer
     // exists -- the rows are replaced rather than appended to, and the held cursor goes with them.
     this.fileEntries = offset === '' || restarted ? window : [...this.fileEntries, ...window];
-    if (offset === '' || restarted) this.monitorEntries = [];
     this.loadedValue = true;
-    this.mergedValue = mergeLogLines(this.fileEntries, this.monitorEntries);
     this.loadingValue = false;
-    this.notify();
-
-    await this.readRecent(generation, offset !== '' && !restarted);
-  }
-
-  /**
-   * The monitoring half.
-   *
-   * On the first window -- a screen opening, or a rotation re-seeding from byte 1 -- the cursor is
-   * that window's **earliest** head line, so the two windows coincide and no entry can fall between
-   * them. On a Load newer the file half has already advanced, so the cursor is the **newest** head
-   * line held: asking again from the first window's start would re-request every entry since the
-   * screen opened, growing each time until the port's size bound refuses a session that was working
-   * moments earlier.
-   *
-   * A window with no head line at all opens mid-continuation and can supply no cursor, so no call
-   * is made; a source with no monitoring half makes none either. A failure here is a notice, never
-   * a refusal: the tail's rows are already on screen.
-   */
-  private async readRecent(generation: number, fromNewest: boolean): Promise<void> {
-    if (this.sourceValue.recentPath === '') return;
-    const tag = fromNewest ? tagForNewest(this.fileEntries) : tagForWindow(this.fileEntries);
-    if (tag === '') return;
-    const path = this.sourceValue.recentPath + '?tag=' + encodeURIComponent(tag);
-    const result = await this.injector.get(ApiService).requestJson<unknown>(path, { scope: null });
-    if (generation !== this.generation) return;
-    if (result.kind !== 'ok') {
-      this.recentUnavailableValue = true;
-      this.notify();
-      return;
-    }
-    this.monitorEntries = rowsOf(result.body).map(parseMonitorRow);
-    this.mergedValue = mergeLogLines(this.fileEntries, this.monitorEntries);
     this.notify();
   }
 

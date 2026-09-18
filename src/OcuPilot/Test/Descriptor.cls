@@ -607,14 +607,16 @@ Method TestTheApplicationErrorLogDeclaresNoReadAndGatesOnItsNamespaceFreePairs()
     Do $$$AssertEquals(##class(%SYS.Portal.Resources).NormalizePage($ZConvert("/csp/sys/op/UtilSysAppErrorNamespaces.csp", "O", "URL")), tPage, "and which the classic URL normalises to")
 }
 
-/// <p>Story 6.13 -- the alerts.log viewer declares the monitoring API as its read source, the two
-/// pairs the logs area already covers, a <code>none</code> id, no action and no refresh, and it
+/// <p>Story 6.13 -- the alerts.log viewer declares the log file's own tail as its read source, the
+/// one pair the port behind it declares, a <code>none</code> id, no action and no refresh, and it
 /// takes the Logs area's first side-bar position.</p>
-/// <p><code>%Admin_Secure:USE</code> is deliberately absent: this screen reads no security endpoint,
+/// <p>The screen's pair set is exactly <parameter>OcuPilot.Port.LogSourcePort.ALERTSPAIRS</parameter>,
+/// so the gate a user meets is the same whichever way the screen reads.
+/// <code>%Admin_Secure:USE</code> is deliberately absent: this screen reads no security endpoint,
 /// and the area's set is a union rather than a per-screen requirement (DW-278).</p>
-/// <p>Mutation: drop <code>%DB_IRISSYS:READ</code> from its privileges -&gt; the registry's own read
-/// arm refuses the declaration and the validation assertion goes red.</p>
-Method TestTheAlertLogViewerDeclaresTheMonitoringSourceAndItsTwoPairs()
+/// <p>Mutation: point the read's source at <code>{"port": "monitor"}</code> -&gt; the registry's own
+/// read arm refuses the declaration and the validation assertion goes red.</p>
+Method TestTheAlertLogViewerDeclaresTheLogSourceTailAndItsOnePair()
 {
     Set tClass = "OcuPilot.Screen.Descriptor.LogAlertViewer"
     Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
@@ -625,10 +627,14 @@ Method TestTheAlertLogViewerDeclaresTheMonitoringSourceAndItsTwoPairs()
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "including its read")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem(tDeclaration), "", "and it links out to nothing, as a list-classified archetype must")
 
-    Do $$$AssertEquals(tDeclaration.read.source.%ToJSON(), "{""port"":""monitor"",""endpoint"":""Alerts"",""type"":""LIST""}", "the monitoring API is the read's source (AD-36)")
+    Do $$$AssertEquals(tDeclaration.read.source.%ToJSON(), "{""port"":""logsource"",""endpoint"":""alerts"",""type"":""LIST""}", "the log file's own bounded tail is the read's source (AD-36)")
+    Do $$$AssertTrue($ListFind(##class(OcuPilot.Port.LogSourcePort).Sources(), tDeclaration.read.source.endpoint) > 0, "and its endpoint is a key of that port's fixed enum (AD-21)")
     Do $$$AssertEquals(tDeclaration.read.fields.%ToJSON(), "[""time"",""severity"",""text""]", "three declared fields")
-    Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), "[{""resource"":""%Admin_Operate"",""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]", "two declared pairs, and no %Admin_Secure:USE among them (DW-278)")
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("logs", $ClassMethod(tClass, "PrivilegePairs")), "", "and the logs area covers both, so its own declaration is untouched")
+    Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), "[{""resource"":""%Admin_Operate"",""permission"":""USE""}]", "one declared pair, and no %Admin_Secure:USE (DW-278)")
+    Set tPortPairs = ##class(OcuPilot.Port.LogSourcePort).PairsFor("alerts")
+    Do $$$AssertEquals($ListLength(tPortPairs), 1, "which the port behind it declares too")
+    If $ListLength(tPortPairs) = 1 Do $$$AssertEquals($ListToString($List(tPortPairs, 1), ":"), "%Admin_Operate:USE", "as the same pair, so neither way in is the wider gate")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("logs", $ClassMethod(tClass, "PrivilegePairs")), "", "and the logs area covers it, so its own declaration is untouched")
 
     Do $$$AssertEquals(tDeclaration.id.%ToJSON(), "{""kind"":""none"",""parts"":[]}", "a log line is not an entity the instance can be asked for again (AD-13)")
     Do $$$AssertEquals($ClassMethod(tClass, "Archetype"), "log-viewer", "it is the first screen of the log-viewer archetype")

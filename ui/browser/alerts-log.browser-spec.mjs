@@ -80,8 +80,8 @@ before(async () => {
   assert.equal(ready.state, 'installed', `the throwaway must be installed, not ${JSON.stringify(ready)}`);
 
   // Appended with `cat >>` inside the container, so the bytes in the file are exactly the bytes
-  // the parser is given. The stamps are dated 1970 so the seeded entries sort to the oldest end of
-  // the merged list and never displace the instance's own newest lines.
+  // the parser is given. The stamps are dated 1970 so the seeded entries read as the oldest in the
+  // window rather than as the instance's newest lines.
   //
   // Written only once per throwaway. A second run against the same container would otherwise leave
   // two copies of every seeded entry, and the counts the chip test compares would drift with the
@@ -130,11 +130,8 @@ async function signedInAtViewer() {
 }
 
 /**
- * Wait until the rendered row count stops changing.
- *
- * The screen is two reads: the bounded tail renders first and the monitoring half merges into it a
- * moment later. A count taken between the two is smaller than the one the screen settles on, and a
- * test that compares a later count against it waits for a number that will never come back.
+ * Wait until the rendered row count stops changing, so a count taken while the first window is still
+ * being laid out is never the one a later assertion is compared against.
  */
 async function settled(page) {
   let held = -1;
@@ -262,7 +259,7 @@ test('AC7: clicking a severity chip filters to that severity, and clicking it ag
 test('AC6 and AC5: the screen issues no request while it sits, and Load newer issues exactly one tail page', async () => {
   const { context, page, reads } = await signedInAtViewer();
   try {
-    // Both halves are read once when the screen opens: the bounded tail, then the monitoring API.
+    // The bounded tail is read once when the screen opens, and nothing else is.
     const opened = reads.length;
     assert.ok(opened >= 1, `the tail is read when the screen opens: ${JSON.stringify(reads)}`);
     assert.equal(

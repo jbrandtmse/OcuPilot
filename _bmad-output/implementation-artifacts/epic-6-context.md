@@ -83,12 +83,19 @@ Story traps (6.10 to 6.12 as built, 6.13 and 6.14 as planned):
   `rowGet` read's async bound is per row, so a staged read's wall clock is rows × `ASYNCTIMEOUT`
   with no read-wide deadline).
 - **6.12 Devices** is the list only.
-- **6.13 alerts.log** is the first user of **`MonitorPort`, which does not exist yet**. It declares
-  and evaluates its own resource gate with `$System.Security.Check` before any call, because
-  `/api/monitor` answers **anonymously** on this instance and that anonymity is a property of that
-  API, never of OcuPilot; reaching the API's implementation in process, as `MgmntPort` does, is the
-  precedent (inference). The screen merges the monitoring API's recent entries with the file's
-  bounded tail; alerts.log joins `LogSourcePort`'s fixed source enum.
+- **6.13 alerts.log** shipped as built, and 6.14 declares against it. It reads the file through
+  **`LogSourcePort` alone**: the monitoring half was removed at the orchestrator's decision, because
+  `/api/monitor` reads the same file lossily and advances the instance-wide SAM cursor on every call
+  whatever tag is passed (DW-1116, routed to FR-76's story, which names the sha the `MonitorPort`
+  implementation is recoverable at). `LogSourcePort` gained a `Rows` entry point beside `Page`, the
+  screen declares a `logsource` read source -- a fourth port value in `Screen/Read.cls`,
+  `Screen/Registry.cls` and `screen-mirror.mjs` -- so its read stays declared and its tool derived
+  with no `Screen/Tool/` file, and its pair set is `%Admin_Operate:USE` alone. **The shared log
+  viewer is 6.13's**: page, store, parser, five severity chips, sticky search with highlight and a
+  polite count, jump controls, Load newer, Raw toggle, chip filter. 6.14 adds a descriptor at
+  `sideBarPosition` 2 and one `SOURCES` entry, needs no new string and no parser change, and
+  re-confirms the 28 px row against messages.log's own severity mix. A fresh instance has **no**
+  `alerts.log` at all, and `LOG.ABSENT` reads as zero entries.
 - **6.14 messages.log** reads through the bounded paging endpoint Epic 2 built and never loads the
   whole file. No endpoint accepts a path: the manager directory is resolved per call, and a paging
   offset is checked against the file's identity so a rotation restarts cleanly rather than serving a
@@ -258,7 +265,7 @@ Story traps (6.10 to 6.12 as built, 6.13 and 6.14 as planned):
   client's core, shell and tools; expect reconciliation at merge.
 - **Within this epic:** 6.11's Database details reuses 6.9's meter component and its free-space view
   reuses 6.3's `rowGet.type`; one log-viewer serves 6.13 and 6.14, built by whichever lands first, and
-  6.13 adds the `MonitorPort` 6.14 does not need. `Kernel/EntityType.cls` already carries both
+  6.13 builds the shared log viewer 6.14 declares against, and ships no `MonitorPort`. `Kernel/EntityType.cls` already carries both
   `device` and `lock`, so no remaining story needs that contended file.
 - **Downstream:** Epic 7 (process actions in 7.8, on-demand Run in 7.5, 7.6's UJ-6 replay on 6.7's
   route); Epic 8 (the device editor in 8.8, plus the resource, X.509 and wallet-secret editors);

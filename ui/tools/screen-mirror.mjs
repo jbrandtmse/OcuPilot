@@ -354,14 +354,16 @@ const ENDPOINT_RE = /^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$/;
  * The four read sources, mirrored from `OcuPilot.Screen.Read`'s own parameters: `admin` is an
  * instance endpoint reached through the admin port, `state` is OcuPilot's own protected state
  * resolved against a kernel store's guarded list (AD-9), `mgmnt` is the management API reached
- * through its own port, and `monitor` is the monitoring API reached through its own. Each changes
- * where the rows come from and nothing else -- the same fields, filter, sort, paging and row cap.
+ * through its own port, and `logsource` is one instance log file's bounded tail read through
+ * `OcuPilot.Port.LogSourcePort`, its `endpoint` a source key from that port's fixed enum (AD-21).
+ * Each changes where the rows come from and nothing else -- the same fields, filter, sort, paging
+ * and row cap.
  */
 export const SOURCE_ADMIN = 'admin';
 export const SOURCE_STATE = 'state';
 export const SOURCE_MGMNT = 'mgmnt';
-export const SOURCE_MONITOR = 'monitor';
-export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_MONITOR];
+export const SOURCE_LOGSOURCE = 'logsource';
+export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE];
 
 /** The package a `state` source's `endpoint` names a store inside, trailing dot included. */
 export const STATE_PACKAGE = 'OcuPilot.Kernel.State.';
@@ -515,7 +517,7 @@ export function readProblem(declaration) {
   if (!READ_SOURCE_PORTS.includes(source.port)) {
     return (
       `read.source.port '${shown(source.port)}' is not one of '${SOURCE_ADMIN}', '${SOURCE_STATE}', ` +
-      `'${SOURCE_MGMNT}' or '${SOURCE_MONITOR}', the four sources a declared read names (AD-36)`
+      `'${SOURCE_MGMNT}' or '${SOURCE_LOGSOURCE}', the four sources a declared read names (AD-36)`
     );
   }
   if (typeof source.endpoint !== 'string' || !ENDPOINT_RE.test(source.endpoint)) {
@@ -602,12 +604,12 @@ export function readProblem(declaration) {
       'API and has no per-row detail call (AD-36)'
     );
   }
-  // A monitor source answers whole rows from the monitoring API, which serves one endpoint and
-  // offers no per-row detail call to issue.
-  if (source.port === SOURCE_MONITOR && isObject(source.rowGet)) {
+  // A logsource source answers whole rows parsed from one log file's tail, which has no per-row
+  // detail call to issue: a log line is not an entity the instance can be asked for.
+  if (source.port === SOURCE_LOGSOURCE && isObject(source.rowGet)) {
     return (
-      'read.source.rowGet is declared on a monitor source, which reads whole rows from the ' +
-      'monitoring API and has no per-row detail call (AD-36)'
+      'read.source.rowGet is declared on a logsource source, which reads whole rows from a log ' +
+      "file's bounded tail and has no per-row detail call (AD-36)"
     );
   }
   // A state source's rows are OcuPilot's own, read whole: there is no detail endpoint to issue per
@@ -698,18 +700,15 @@ export function readProblem(declaration) {
 
   // The last arm, so no earlier refusal changes which sentence a declaration gets.
   // `OcuPilot.Port.AdminPort.RunSequence` sets `$NAMESPACE` to `%SYS` for every request type with
-  // no predicate on the endpoint, and `OcuPilot.Port.MonitorPort` enters `%SYS` because its sensor
-  // class exists nowhere else; IRIS requires READ on a namespace's default globals database --
-  // IRISSYS, resource `%DB_IRISSYS` -- to make it current. Without the pair the vendor endpoint
-  // fails inside `%SYS` and the port answers 500 where the gate would have named the missing
-  // privilege (AD-2, AD-8, AD-9).
-  if (
-    (source.port === SOURCE_ADMIN || source.port === SOURCE_MONITOR) &&
-    !declaresSystemRead(declaration.privileges)
-  ) {
+  // no predicate on the endpoint, and IRIS requires READ on a namespace's default globals
+  // database -- IRISSYS, resource `%DB_IRISSYS` -- to make it current. Without the pair the vendor
+  // endpoint fails inside `%SYS` and the port answers 500 where the gate would have named the
+  // missing privilege (AD-2, AD-8). A logsource read is outside the rule: it reads a file off disk
+  // and never enters `%SYS`.
+  if (source.port === SOURCE_ADMIN && !declaresSystemRead(declaration.privileges)) {
     return (
-      `read.source.port '${source.port}' requires the declared privileges to include ` +
-      '%DB_IRISSYS:READ, because the port runs every endpoint in %SYS (AD-2, AD-8)'
+      "read.source.port 'admin' requires the declared privileges to include %DB_IRISSYS:READ, " +
+      'because the port runs every endpoint in %SYS (AD-2, AD-8)'
     );
   }
   return null;
@@ -1951,10 +1950,10 @@ export interface ReadSourcePart {
 
 /**
  * Where a read's rows come from (AD-36): one admin API LIST (AD-2) with an optional per-row detail
- * call, one of OcuPilot's own kernel stores read whole (AD-9), the management API's port, or the
- * monitoring API's. A \`state\` source names the store by its own name, declares no \`rowGet\` and
- * no \`criteria\`, and is bounded by the same row cap; a \`mgmnt\` or \`monitor\` source declares
- * no \`rowGet\`.
+ * call, one of OcuPilot's own kernel stores read whole (AD-9), the management API's port, or one
+ * instance log file's bounded tail. A \`state\` source names the store by its own name, declares no
+ * \`rowGet\` and no \`criteria\`, and is bounded by the same row cap; a \`mgmnt\` or
+ * \`logsource\` source declares no \`rowGet\`.
  */
 export interface ReadSource {
   readonly port: ${READ_SOURCE_PORTS.map((value) => `'${value}'`).join(' | ')};

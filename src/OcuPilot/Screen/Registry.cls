@@ -829,8 +829,8 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
         Set tProblem = ..UnknownKeyProblem(tSource, "read.source", $ListBuild("port", "endpoint", "type", "rowGet", "forEach", "query", "parts"))
         If tProblem '= "" Quit
         Set tPort = tSource.%Get("port")
-        If (tSource.%GetTypeOf("port") '= "string") || '$ListFind($ListBuild(##class(OcuPilot.Screen.Read).#SOURCEADMIN, ##class(OcuPilot.Screen.Read).#SOURCESTATE, ##class(OcuPilot.Screen.Read).#SOURCEMGMNT, ##class(OcuPilot.Screen.Read).#SOURCEMONITOR), tPort) {
-            Set tProblem = "read.source.port '" _ tPort _ "' is not one of '" _ ##class(OcuPilot.Screen.Read).#SOURCEADMIN _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCESTATE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEMGMNT _ "' or '" _ ##class(OcuPilot.Screen.Read).#SOURCEMONITOR _ "', the four sources a declared read names (AD-36)"
+        If (tSource.%GetTypeOf("port") '= "string") || '$ListFind($ListBuild(##class(OcuPilot.Screen.Read).#SOURCEADMIN, ##class(OcuPilot.Screen.Read).#SOURCESTATE, ##class(OcuPilot.Screen.Read).#SOURCEMGMNT, ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE), tPort) {
+            Set tProblem = "read.source.port '" _ tPort _ "' is not one of '" _ ##class(OcuPilot.Screen.Read).#SOURCEADMIN _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCESTATE _ "', '" _ ##class(OcuPilot.Screen.Read).#SOURCEMGMNT _ "' or '" _ ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE _ "', the four sources a declared read names (AD-36)"
             Quit
         }
         If (tSource.%GetTypeOf("endpoint") '= "string") || '$Match(tSource.%Get("endpoint"), "^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$") {
@@ -935,10 +935,10 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
             Set tProblem = "read.source.rowGet is declared on a mgmnt source, which reads whole rows from the management API and has no per-row detail call (AD-36)"
             Quit
         }
-        ; A monitor source answers whole rows from the monitoring API, which serves one endpoint and
-        ; offers no per-row detail call to issue.
-        If (tPort = ##class(OcuPilot.Screen.Read).#SOURCEMONITOR) && (tSource.%GetTypeOf("rowGet") = "object") {
-            Set tProblem = "read.source.rowGet is declared on a monitor source, which reads whole rows from the monitoring API and has no per-row detail call (AD-36)"
+        ; A logsource source answers whole rows parsed from one log file's tail, which has no
+        ; per-row detail call to issue: a log line is not an entity the instance can be asked for.
+        If (tPort = ##class(OcuPilot.Screen.Read).#SOURCELOGSOURCE) && (tSource.%GetTypeOf("rowGet") = "object") {
+            Set tProblem = "read.source.rowGet is declared on a logsource source, which reads whole rows from a log file's bounded tail and has no per-row detail call (AD-36)"
             Quit
         }
         If tPort = ##class(OcuPilot.Screen.Read).#SOURCESTATE {
@@ -1048,12 +1048,12 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
 
         ; The last arm, so no earlier refusal changes which sentence a declaration gets.
         ; OcuPilot.Port.AdminPort.RunSequence sets $NAMESPACE to %SYS for every request type with
-        ; no predicate on the endpoint, and OcuPilot.Port.MonitorPort enters %SYS because its
-        ; sensor class exists nowhere else; IRIS requires READ on a namespace's default globals
+        ; no predicate on the endpoint, and IRIS requires READ on a namespace's default globals
         ; database -- IRISSYS, resource %DB_IRISSYS -- to make it current. Without the pair the
         ; vendor endpoint fails inside %SYS and the port answers 500 where the gate would have
-        ; named the missing privilege (AD-2, AD-8, AD-9).
-        If (tPort = ##class(OcuPilot.Screen.Read).#SOURCEADMIN) || (tPort = ##class(OcuPilot.Screen.Read).#SOURCEMONITOR) {
+        ; named the missing privilege (AD-2, AD-8). A logsource read is outside the rule: it reads
+        ; a file off disk and never enters %SYS.
+        If tPort = ##class(OcuPilot.Screen.Read).#SOURCEADMIN {
             Set tHasSystemRead = 0
             Set tDeclaredPairs = pDeclaration.%Get("privileges")
             If $IsObject(tDeclaredPairs) {
@@ -1063,7 +1063,7 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
                     If (tDeclaredPair.%Get("resource") = "%DB_IRISSYS") && (tDeclaredPair.%Get("permission") = "READ") Set tHasSystemRead = 1
                 }
             }
-            If 'tHasSystemRead Set tProblem = "read.source.port '" _ tPort _ "' requires the declared privileges to include %DB_IRISSYS:READ, because the port runs every endpoint in %SYS (AD-2, AD-8)"
+            If 'tHasSystemRead Set tProblem = "read.source.port 'admin' requires the declared privileges to include %DB_IRISSYS:READ, because the port runs every endpoint in %SYS (AD-2, AD-8)"
         }
     } Catch ex {
         Set tProblem = "the read declaration could not be read: " _ ex.DisplayString()

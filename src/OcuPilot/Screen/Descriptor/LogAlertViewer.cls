@@ -1,23 +1,18 @@
-/// <p>The alert log: the lines the instance wrote to <code>alerts.log</code>, read two ways and
-/// merged (FR-9, AD-36). It is the Logs area's first screen.</p>
-/// <p><b>One file, two reads.</b> The bounded file tail travels on
-/// <method>OcuPilot.Port.LogSourcePort.Page</method> under this screen's own route, and the recent
-/// entries on <class>OcuPilot.Port.MonitorPort</class>, which is what this descriptor's
-/// <code>read</code> declares. <code>%SYSTEM.Monitor.GetAlerts</code> reads
-/// <code>$zu(12)_"alerts.log"</code>, the same file, so the monitoring API's reading is strictly
-/// lossier than the tail's -- it drops the pid and the bracketed category, quotes the severity and
-/// appends a <code>Z</code> to a local stamp nothing converted. The file therefore wins every
-/// collision, and what the API uniquely supplies is the cursor: what is new since the tag the
-/// screen holds, without re-reading the file.</p>
-/// <p><b>The declared read is the monitoring half alone</b>, which is what the derived read tool
-/// <code>logs.alerts.read</code> answers: the bounded tail is not in its view (AD-36, Rule 1). One
-/// read serves screen and tool, and the screen's second source is a route of its own rather than a
-/// second declared read.</p>
-/// <p><b>The privilege set is two pairs.</b> <code>%Admin_Operate:USE</code> is the resource the
+/// <p>The alert log: a bounded tail of the lines the instance wrote to <code>alerts.log</code>,
+/// read from the file itself (FR-9, AD-36). It is the Logs area's first screen.</p>
+/// <p><b>One file, one reader.</b> The screen's rows travel on
+/// <method>OcuPilot.Port.LogSourcePort.Page</method> under this screen's own route, and the declared
+/// read the tool derives from travels on <method>OcuPilot.Port.LogSourcePort.Rows</method> -- the
+/// same window projected into <code>{time, severity, text}</code> rows instead of raw lines. Neither
+/// path reaches the monitoring API, whose reading of this same file drops the pid and the bracketed
+/// category, quotes the severity and appends a <code>Z</code> to a local stamp nothing converted,
+/// and whose every call advances the instance-wide SAM cursor another scraper shares (DW-1116).</p>
+/// <p><b>The privilege set is one pair.</b> <code>%Admin_Operate:USE</code> is the resource the
 /// classic page that shows alerts.log carries (<code>/csp/sys/op</code>), and
-/// <code>%SYS_Portal.Resources</code> holds no custom assignment for it.
-/// <code>%DB_IRISSYS:READ</code> is what entering <code>%SYS</code> costs, database READ being
-/// routine-execution permission (AD-9). Both are already in the <code>logs</code> area's own set,
+/// <code>%SYS_Portal.Resources</code> holds no custom assignment for it. It is exactly
+/// <parameter>OcuPilot.Port.LogSourcePort.ALERTSPAIRS</parameter>, so the gate a user meets is the
+/// same whichever way the screen reads; reading a file off disk consults no database resource and
+/// this path never enters <code>%SYS</code>. It is already in the <code>logs</code> area's own set,
 /// so the area's declaration is untouched. <code>%Admin_Secure:USE</code> is deliberately
 /// <b>not</b> declared: this screen reads no security endpoint, and the area's set is a union
 /// rather than a per-screen requirement (DW-278).</p>
@@ -46,7 +41,7 @@ XData Declaration
   "built": true,
   "refreshes": false,
   "refreshRates": [],
-  "privileges": [{"resource": "%Admin_Operate", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}],
+  "privileges": [{"resource": "%Admin_Operate", "permission": "USE"}],
   "entityType": "log-entry",
   "secondaryEntityTypes": [],
   "scope": "instance",
@@ -60,7 +55,7 @@ XData Declaration
   "classicPage": "%cspapp.op.utilsysconsolelog",
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
-    "source": {"port": "monitor", "endpoint": "Alerts", "type": "LIST"},
+    "source": {"port": "logsource", "endpoint": "alerts", "type": "LIST"},
     "fields": ["time", "severity", "text"],
     "filter": ["time", "severity", "text"],
     "sort": {"fields": ["time", "severity"], "default": "time", "direction": "desc"},

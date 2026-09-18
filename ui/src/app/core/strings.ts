@@ -1042,16 +1042,12 @@ export const STRINGS = {
   /** EXPERIENCE.md:367 */
   logSeverityFatal: 'Fatal',
 
-  // The alerts.log screen's own three, beyond the shared viewer's: its side-bar entry and title,
-  // the polite count the sticky search announces, and the one line that distinguishes this screen
-  // from messages.log -- the monitoring half failed while the bounded tail answered, so the rows
-  // stay and the notice explains what is missing.
+  // The alerts.log screen's own two, beyond the shared viewer's: its side-bar entry and title, and
+  // the polite count the sticky search announces.
   /** EXPERIENCE.md:368 */
   alertLogListLabel: 'alerts.log',
   /** EXPERIENCE.md:368 */
   logViewerMatchCount: '<n> of <N>',
-  /** EXPERIENCE.md:368 */
-  alertLogRecentUnavailable: 'Recent entries are unavailable \u2014 showing the file tail.',
 
   // Two connectivity sentences EXPERIENCE.md publishes outside the Fixed strings table, each
   // authorized by its own targeted extractor in `ui/tools/strings.test.mjs`, never by being

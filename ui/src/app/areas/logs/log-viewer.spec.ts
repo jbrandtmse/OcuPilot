@@ -14,7 +14,6 @@ import { LogViewerStore } from './log-viewer.store';
 const ALERTS_SCREEN = SCREENS.find((screen) => screen.route === 'logs/alerts')!;
 
 const TAIL_PATH = '/api/ocupilot/logs/alerts';
-const RECENT_PATH = '/api/ocupilot/logs/alerts/recent';
 
 const FILE_LINES = [
   '09/18/26-07:33:42:173 (423284) 2 [OcuPilot.Log] [OcuPilot] a severe entry',
@@ -26,23 +25,18 @@ const FILE_LINES = [
  *
  * The geometry is `alerts-log.browser-spec.mjs`'s -- jsdom computes no layout, so a 28px assertion
  * here would pass against a row of any height. What belongs here is everything that is not
- * geometry: the merge on screen, the two halves failing independently, the paging cursor, the
- * absence of any timer, and the controls' own behaviour.
+ * geometry: the rows on screen, the paging cursor, the absence of any timer, and the controls' own
+ * behaviour.
  *
- * Mutations (Rule 19), each applied and observed red here alone: make the de-duplication keep the
- * monitor row -> the pid-present assertion goes red; add a `setInterval` re-read to the store ->
- * the zero-requests-after-ten-minutes assertion goes red; drop the severity word from the chip ->
- * the chip-text assertion goes red; send the tail request without `identity` -> the Load newer
- * cursor assertion goes red.
+ * Mutations (Rule 19), each applied and observed red here alone: add a `setInterval` re-read to the
+ * store -> the zero-requests-after-ten-minutes assertion goes red; drop the severity word from the
+ * chip -> the chip-text assertion goes red; send the tail request without `identity` -> the Load
+ * newer cursor assertion goes red.
  */
 class StubApi {
   readonly paths: string[] = [];
 
   private tailBodies: unknown[] = [];
-
-  private recentBody: unknown = { rows: [], tag: '' };
-
-  private recentRefused = false;
 
   private tailRefusal: { status: number; code: string | null; detail: Record<string, unknown> | null } | null = null;
 
@@ -51,27 +45,12 @@ class StubApi {
     this.tailBodies = bodies;
   }
 
-  recent(body: unknown): void {
-    this.recentBody = body;
-    this.recentRefused = false;
-  }
-
-  refuseRecent(): void {
-    this.recentRefused = true;
-  }
-
   refuseTail(status: number, code: string | null, detail: Record<string, unknown> | null = null): void {
     this.tailRefusal = { status, code, detail };
   }
 
   async requestJson<T>(path: string): Promise<JsonResult<T>> {
     this.paths.push(path);
-    if (path.startsWith(RECENT_PATH)) {
-      if (this.recentRefused) {
-        return { kind: 'error', status: 503, code: 'MONITOR.FAILED', reason: null, detail: null };
-      }
-      return { kind: 'ok', status: 200, body: this.recentBody as T };
-    }
     if (this.tailRefusal !== null) {
       return {
         kind: 'error',
@@ -126,7 +105,7 @@ describe('LogViewerPage', () => {
     return { fixture, store: TestBed.inject(LogViewerStore) };
   }
 
-  /** Let both halves' promises resolve; the store issues no timer, so a few microtask turns is all. */
+  /** Let the read's promise resolve; the store issues no timer, so a few microtask turns is all. */
   async function settle(): Promise<void> {
     for (let turn = 0; turn < 8; turn += 1) await Promise.resolve();
   }
@@ -144,29 +123,29 @@ describe('LogViewerPage', () => {
     return node === null ? '' : (node.textContent ?? '').trim();
   }
 
-  it('AC4: a line both halves carry renders once, as the file\'s row, with its pid present', async () => {
-    api.recent({
-      rows: [
-        { time: '2026-09-18T07:33:42.173Z', severity: '2', text: '[OcuPilot] a severe entry' },
-        { time: '2026-09-18T07:34:10.000Z', severity: '1', text: 'written between the two calls' },
-      ],
-      tag: '09/18/26-07:34:10:000 (1)',
-    });
-    const { fixture, store } = await mount();
+  it('AC4: each rendered row is the line parsed into time, pid, severity word and text', async () => {
+    const { fixture } = await mount();
 
     const rendered = rows(fixture);
-    expect(rendered).toHaveLength(3);
-    const severe = rendered.filter((cells) => cells[3].includes('a severe entry'));
-    expect(severe).toHaveLength(1);
-    expect(severe[0][1]).toBe('423284');
+    expect(rendered).toHaveLength(2);
+    expect(rendered[0][0]).toBe('2026-09-18T07:33:42.173');
+    expect(rendered[0][1]).toBe('423284');
+    expect(rendered[0][2]).toBe(STRINGS.logSeveritySevere);
+    expect(rendered[0][3]).toBe('[OcuPilot] a severe entry');
+    expect(rendered[1][1]).toBe('892');
+    expect(rendered[1][2]).toBe(STRINGS.logSeverityInfo);
   });
 
-  it("AC4: a monitor-only line renders with the pid cell reading the empty-cell string", async () => {
-    api.recent({ rows: [{ time: '2026-09-18T07:34:10.000Z', severity: '1', text: 'monitor only' }], tag: '' });
-    const { fixture, store } = await mount();
+  it('AC4: a head-less window keeps its bytes on screen under the empty-cell word', async () => {
+    api.tail(tailPage(['    a fragment of the line above the window']));
+    const { fixture } = await mount();
 
-    const only = rows(fixture).find((cells) => cells[3].includes('monitor only'))!;
-    expect(only[1]).toBe(STRINGS.tableEmptyValue);
+    const rendered = rows(fixture);
+    expect(rendered).toHaveLength(1);
+    expect(rendered[0][0]).toBe('');
+    expect(rendered[0][1]).toBe(STRINGS.tableEmptyValue);
+    expect(rendered[0][2]).toBe(STRINGS.tableEmptyValue);
+    expect(rendered[0][3]).toContain('a fragment of the line above the window');
   });
 
   it('AC5: Load newer asks for one page from the held offset and identity', async () => {
@@ -178,45 +157,11 @@ describe('LogViewerPage', () => {
     await settle();
     fixture.detectChanges();
 
-    const paged = api.paths.slice(before).filter((path) => path.startsWith(TAIL_PATH) && !path.startsWith(RECENT_PATH));
+    const paged = api.paths.slice(before).filter((path) => path.startsWith(TAIL_PATH));
     expect(paged).toHaveLength(1);
     expect(paged[0]).toContain('offset=400');
     expect(paged[0]).toContain('identity=first-line');
     expect(rows(fixture).some((cells) => cells[3].includes('newer'))).toBe(true);
-  });
-
-  it('AC5: the first window asks the monitoring half from its earliest head line, Load newer from the newest (DW-1108)', async () => {
-    const { fixture, store } = await mount();
-
-    const opening = api.paths.filter((path) => path.startsWith(RECENT_PATH));
-    expect(opening).toHaveLength(1);
-    expect(opening[0]).toContain('tag=' + encodeURIComponent('09/18/26-07:33:42:173 (423284)'));
-
-    const before = api.paths.length;
-    api.tail(tailPage(['09/18/26-07:40:00:000 (1) 1 newer'], 500, 'first-line'));
-    await store.loadNewer();
-    await settle();
-    fixture.detectChanges();
-
-    // The file half has already advanced past the first window, so re-asking from its earliest line
-    // would re-request every entry since the screen opened and grow until MONITOR.TOOLARGE trips.
-    const paged = api.paths.slice(before).filter((path) => path.startsWith(RECENT_PATH));
-    expect(paged).toHaveLength(1);
-    expect(paged[0]).toContain('tag=' + encodeURIComponent('09/18/26-07:40:00:000 (1)'));
-  });
-
-  it('AC5: a rotation re-seeds the monitoring cursor from the new window\'s earliest head line', async () => {
-    const { fixture, store } = await mount();
-    const before = api.paths.length;
-
-    api.tail(tailPage(['09/18/26-08:00:00:000 (1) 1 the new file', '09/18/26-08:00:01:000 (2) 1 and its second line'], 40, 'second-line', { restarted: true }));
-    await store.loadNewer();
-    await settle();
-    fixture.detectChanges();
-
-    const paged = api.paths.slice(before).filter((path) => path.startsWith(RECENT_PATH));
-    expect(paged).toHaveLength(1);
-    expect(paged[0]).toContain('tag=' + encodeURIComponent('09/18/26-08:00:00:000 (1)'));
   });
 
   it('AC5: a rotation answers restarted and re-seeds from byte 1 without a fault', async () => {
@@ -240,7 +185,7 @@ describe('LogViewerPage', () => {
 
     expect(fixture.nativeElement.querySelector('[data-ocu-log="load-newer"]')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('[data-ocu-log="load-older"]')).toBeNull();
-    const asked = api.paths.filter((path) => path.startsWith(TAIL_PATH) && !path.startsWith(RECENT_PATH));
+    const asked = api.paths.filter((path) => path.startsWith(TAIL_PATH));
     expect(asked).toHaveLength(1);
   });
 
@@ -279,14 +224,15 @@ describe('LogViewerPage', () => {
     }
   });
 
-  it('AC4: the monitoring half failing leaves the tail rows standing under one polite line', async () => {
-    api.refuseRecent();
+  it('a log the instance has not written yet is the empty state, not a refusal', async () => {
+    api.refuseTail(404, 'LOG.ABSENT');
     const { fixture, store } = await mount();
 
-    expect(rows(fixture)).toHaveLength(2);
     expect(store.fault()).toBeNull();
-    expect(textOf(fixture, '[data-ocu-log="recent-unavailable"]')).toBe(STRINGS.alertLogRecentUnavailable);
-    expect(fixture.nativeElement.querySelector('[data-ocu-log="recent-unavailable"]').getAttribute('role')).toBe('status');
+    expect(rows(fixture)).toHaveLength(0);
+    expect(fixture.nativeElement.querySelector('[data-ocu-log="refusal"]')).toBeNull();
+    expect(textOf(fixture, '[data-ocu-log="empty"]')).toBe(STRINGS.logViewerEmpty);
+    expect(fixture.nativeElement.querySelector('[data-ocu-log="load-newer"]')).toBeNull();
   });
 
   it('the tail failing is the screen\'s own refusal, naming the pair the envelope named', async () => {
@@ -410,12 +356,5 @@ describe('LogViewerPage', () => {
     (fixture.nativeElement.querySelector('[data-ocu-chip="severe"]') as HTMLButtonElement).click();
     fixture.detectChanges();
     expect(textOf(fixture, '[data-ocu-log="count"]')).toBe('1 of 1');
-  });
-
-  it('makes no monitoring call for a window with no head line at all', async () => {
-    api.tail(tailPage(['    a fragment of the line above the window']));
-    await mount();
-
-    expect(api.paths.filter((path) => path.startsWith(RECENT_PATH))).toHaveLength(0);
   });
 });

@@ -26,9 +26,9 @@
 /// <p><b>A declared read names one of two source kinds</b> (AD-36). An instance endpoint is reached
 /// through a port: <code>port: "admin"</code> through <method>PortClass</method>,
 /// <code>port: "mgmnt"</code>, the management API, through <method>MgmntPortClass</method>, which is
-/// handed the route's scope as its namespace, and <code>port: "monitor"</code>, the monitoring API,
-/// through <method>MonitorPortClass</method>, which takes no namespace at all.
-/// <code>port: "state"</code> is
+/// handed the route's scope as its namespace, and <code>port: "logsource"</code>, an instance log
+/// file's bounded tail, through <method>LogSourcePortClass</method>, whose endpoint is a source key
+/// from that port's own fixed enum (AD-21). <code>port: "state"</code> is
 /// OcuPilot's own protected state (AD-9), resolved against a kernel store's guarded list through
 /// <method>StateRows</method>. The second changes where the rows come from and nothing else: the
 /// same declared <code>fields</code>, the same secret strip, the same filter, sort and view rule,
@@ -145,15 +145,16 @@ ClassMethod MgmntPortClass() As %String
     Quit "OcuPilot.Port.MgmntPort"
 }
 
-/// <p>The <code>read.source.port</code> value naming the instance's monitoring API, reached through
-/// <method>MonitorPortClass</method> (AD-1, AD-29).</p>
-Parameter SOURCEMONITOR = "monitor";
+/// <p>The <code>read.source.port</code> value naming one of the instance's log files, read as the
+/// bounded tail <class>OcuPilot.Port.LogSourcePort</class> already serves to that screen's own page
+/// route (AD-21, AD-36). The source's <code>endpoint</code> is a key from that port's fixed enum.</p>
+Parameter SOURCELOGSOURCE = "logsource";
 
-/// <p>The port class every <b>monitor</b> read is issued through. Overridable so a fixture can reach
-/// <class>OcuPilot.Test.MonitorPortFixture</class>; production never overrides it.</p>
-ClassMethod MonitorPortClass() As %String
+/// <p>The port class every <b>logsource</b> read is issued through. Overridable so a fixture can
+/// reach <class>OcuPilot.Test.LogSourceFixture</class>; production never overrides it.</p>
+ClassMethod LogSourcePortClass() As %String
 {
-    Quit "OcuPilot.Port.MonitorPort"
+    Quit "OcuPilot.Port.LogSourcePort"
 }
 
 /// <p>The package a <code>state</code> source's <code>endpoint</code> names a class in, trailing
@@ -259,12 +260,10 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
                 Set tSC = tStateSC
                 Quit
             }
-        } ElseIf tSource.%Get("port") = ..#SOURCEMONITOR {
-            ; The monitoring API's rows. It takes no namespace -- the alerts it reports are the
-            ; instance's, not a namespace's -- and no criteria, so the cap is the whole query.
-            Kill tQuery
-            Set tQuery("maxRows") = tMax + 1
-            Set tPortSC = $ClassMethod(..MonitorPortClass(), "Invoke", tSource.%Get("endpoint"), ..#READTYPE, .tQuery, "", .tAnswer, .pHttpStatus, .pFault, .tTag)
+        } ElseIf tSource.%Get("port") = ..#SOURCELOGSOURCE {
+            ; A log file's bounded tail as rows, newest first. It takes no namespace -- the file is
+            ; the instance's, not a namespace's -- and no criteria, so the cap is the whole ask.
+            Set tPortSC = $ClassMethod(..LogSourcePortClass(), "Rows", tSource.%Get("endpoint"), tMax + 1, .tAnswer, .pHttpStatus, .pFault)
             If $$$ISERR(tPortSC) {
                 Set tSC = tPortSC
                 Quit

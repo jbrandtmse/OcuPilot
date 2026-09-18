@@ -3707,14 +3707,6 @@ app-data-table {
   padding: var(--ocu-space-2) var(--ocu-space-4);
 }
 
-.ocu-log-viewer-notice {
-  @include typo.ocu-type('body');
-
-  margin: 0;
-  padding: var(--ocu-space-2) var(--ocu-space-4);
-  color: var(--ocu-on-surface-variant);
-}
-
 // The chip carries its word always; the colour pair is the second signal, never the only one.
 .ocu-log-chip {
   @include typo.ocu-type('label');

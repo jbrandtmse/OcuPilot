@@ -91,7 +91,7 @@ Method TestTheRegistryListsDescriptorReadsAndInheritedKinds()
         Set tName = $Order(tProductionByName(tName))
     }
     Do $$$AssertEquals(tProduction.%Size(), 36, "the production registry holds thirty-six tools, fixtures excluded")
-    Do $$$AssertEquals(tNames, "agent.definitions.read,logs.alerts.read,logs.applicationerrors.read,logs.audit.read,osmgmt.databasedetails.read,osmgmt.databasefreespace.read,osmgmt.databases.read,osmgmt.databasevolumes.read,osmgmt.devices.read,osmgmt.locks.read,osmgmt.processdetails.read,osmgmt.processes.read,osmgmt.systemusage.read,permissions.resources.read,permissions.roles.read,permissions.services.read,permissions.users.read,security.ldap.read,security.oauthclients.read,security.oauthresourceservers.read,security.oauthserver.read,security.oauthserverclients.read,security.oauthserverdescriptions.read,security.secrets.read,security.ssl.read,security.wallet.read,security.x509.read,tasks.history.read,tasks.ondemand.read,tasks.schedule.read,tasks.taskdetails.read,tasks.taskhistory.read,tasks.upcoming.read,webapp.list.read,webapp.openapi.read,webapp.restapis.read", "the Definitions list's read tool -- the first over OcuPilot's own state (AD-36) -- then the alert log, the application error log's own class tool, and the audit database, Database details, Database free-space, Databases, Database volumes, Devices, Locks, process details, processes, System usage, resources, roles, services, users, LDAP / Kerberos, the five OAuth 2.0 tabs, Secrets, SSL/TLS, Wallet, X.509, task history, on-demand tasks, task schedule, task details, per-task history, upcoming tasks, web applications, OpenAPI document and REST API explorer read tools")
+    Do $$$AssertEquals(tNames, "agent.definitions.read,logs.alerts.read,logs.applicationerrors.read,logs.audit.read,osmgmt.databasedetails.read,osmgmt.databasefreespace.read,osmgmt.databases.read,osmgmt.databasevolumes.read,osmgmt.devices.read,osmgmt.locks.read,osmgmt.processdetails.read,osmgmt.processes.read,osmgmt.systemusage.read,permissions.resources.read,permissions.roles.read,permissions.services.read,permissions.users.read,security.ldap.read,security.oauthclients.read,security.oauthresourceservers.read,security.oauthserver.read,security.oauthserverclients.read,security.oauthserverdescriptions.read,security.secrets.read,security.ssl.read,security.wallet.read,security.x509.read,tasks.history.read,tasks.ondemand.read,tasks.schedule.read,tasks.taskdetails.read,tasks.taskhistory.read,tasks.upcoming.read,webapp.list.read,webapp.openapi.read,webapp.restapis.read", "the Definitions list's read tool -- the first over OcuPilot's own state (AD-36) -- then the alert log's bounded tail, the application error log's own class tool, and the audit database, Database details, Database free-space, Databases, Database volumes, Devices, Locks, process details, processes, System usage, resources, roles, services, users, LDAP / Kerberos, the five OAuth 2.0 tabs, Secrets, SSL/TLS, Wallet, X.509, task history, on-demand tasks, task schedule, task details, per-task history, upcoming tasks, web applications, OpenAPI document and REST API explorer read tools")
     ; The one tool with a class of its own: it names no descriptor, because nothing about it is
     ; derived from one (OcuPilot.Screen.Tool.Registry's "two sources, one list").
     Do $$$AssertEquals(tProductionByName("logs.applicationerrors.read").class, "OcuPilot.Screen.Tool.ErrorRead", "the application error log's tool is answered by its own class")
@@ -1104,12 +1104,14 @@ Method TestTheErrorReadToolCarriesTheSummaryFieldsOnly()
     Do $$$AssertEquals(''tPortCut.truncated, ''tPortAnswer.truncated, "and the port's own truncation flag, which the port answered as " _ ''tPortAnswer.truncated _ " for this date at a port cap of 1 (AD-24, AD-36)")
 }
 
-/// <p>Story 6.13 AC10 -- the alerts.log screen's derived read tool answers the monitoring half's
-/// three fields and nothing else, against the live instance. <b>The bounded file tail is not in its
-/// view</b>: the tail travels on a route of its own, and a tool that carried it would answer a
-/// window the declared read never read.</p>
-/// <p>Mutation: add the tail's own keys to the tool's answer -&gt; the field-set assertion reddens.</p>
-Method TestTheAlertReadToolCarriesTheMonitoringFieldsAndNotTheTail()
+/// <p>Story 6.13 AC10 -- the alerts.log screen's derived read tool answers the same bounded tail
+/// the screen's declared read answers, against the live instance, projected into the three declared
+/// fields and nothing else. <b>The port's page envelope is not in its view</b>: a declared read
+/// answers rows, so the cursor the screen's own route pages by -- <code>lines</code>,
+/// <code>offset</code>, <code>identity</code> -- reaches no agent.</p>
+/// <p>Mutation: give each row a fourth key in
+/// <method>OcuPilot.Port.LogSourcePort.Entries</method> -&gt; the row-key assertion reddens.</p>
+Method TestTheAlertReadToolCarriesTheTailsRowsAndNotItsCursor()
 {
     Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve("logs.alerts.read", .tTool)
     Do $$$AssertStatusOK(tSC, "the tool roster reads back")
@@ -1122,9 +1124,9 @@ Method TestTheAlertReadToolCarriesTheMonitoringFieldsAndNotTheTail()
     If $$$ISERR(tSC) Quit
     Do $$$AssertEquals(tResult.fields.%ToJSON(), "[""time"",""severity"",""text""]", "the three declared fields, and no others: " _ tResult.fields.%ToJSON())
     Do $$$AssertTrue(tResult.%IsDefined("rows"), "with rows")
-    Do $$$AssertEquals(tResult.%IsDefined("lines"), 0, "and no lines key, which is the bounded tail's own")
-    Do $$$AssertEquals(tResult.%IsDefined("offset"), 0, "nor the tail's cursor")
-    Do $$$AssertEquals(tResult.%IsDefined("identity"), 0, "nor the tail's file identity")
+    Do $$$AssertEquals(tResult.%IsDefined("lines"), 0, "and no lines key, which is the port page's own")
+    Do $$$AssertEquals(tResult.%IsDefined("offset"), 0, "nor the page's cursor")
+    Do $$$AssertEquals(tResult.%IsDefined("identity"), 0, "nor the page's file identity")
 
     If tResult.rows.%Size() = 0 Quit
     Set tRowKeys = []
