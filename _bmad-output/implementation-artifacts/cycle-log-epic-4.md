@@ -311,3 +311,4 @@
 2026-09-18T20:03:06Z	Story 4.10	ledger_adjudicated	story=4.10 resolved=DW-160,DW-379,DW-1154,DW-1159 owner_sheet=DW-1147,DW-1158 escalated=DW-1160 routed=DW-1148..DW-1153,DW-1157,DW-1161,DW-1162 wontfix=DW-1163,DW-1164 declined=DW-269 open=0
 2026-09-18T20:03:06Z	Story 4.10	smoke_complete	browser=127/127 smoke_throwaway=PASSED smoke_live=PASSED npm_test=980+501 lint_docs=0 objectscript=untouched
 2026-09-18T20:03:06Z	Story 4.10	committed	sha=cf0ecfd build_sha=eed7632 kind=code branch=OCU-1-epic4 pushed=pending ci=pending_or_unavailable local_gates=npm_test,npm_run_build,full_browser_suite_127/127,smoke_on_the_throwaway_and_live,lint-docs
+2026-09-18T20:03:15Z	Story 4.12	stage_spawned	stage=implement model=opus attempt=1 job=4-12-implement-1
