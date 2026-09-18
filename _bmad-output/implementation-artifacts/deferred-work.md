@@ -3393,3 +3393,18 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-9-the-agent-audit-ledger.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Observed this pass: "scanned 384 ObjectScript file(s) over 21 rule(s)". The fix edits an agent-context file, which this workflow routes to defer. Location: CLAUDE.md
 - 2026-09-18T13:52:26Z status=routed owner=burndown by=harvest note=lead harvest of the 4.9 spec deferred list
+
+### DW-1130: A tool call whose wire name never resolved records its raw model input in a ledger row with only the name-pattern backstop applied, in a row that is never swept and whose empty RequiredPairs releases it to any OcuPilotAdmin:USE holder.
+- source: spec-4-9-the-agent-audit-ledger.md / code-review | severity: med | fix-risk: med | footprint: in-story
+- evidence: Dispatch.AnswerOne sets tSecretNames only after ResolveWire answers a tool, so the registry-read-failure and TOOL.UNKNOWN branches reach RecordLedger with ""; ResolveClientCall and Loop.AnswerTools' two refusal writers have the same shape. Nothing is declared on that path, so this is fail-open rather than a declared-secret leak; fail-closed is to store no arguments when no classification could be read, which changes what three writers store on refusal branches.
+- 2026-09-18T14:49:22Z status=open owner=4-9-the-agent-audit-ledger by=cr note=reviewer patched the resolved-tool half as a HIGH; this is the unresolved-tool half
+
+### DW-1131: AC2's requiredPairs is unasserted on the instance-fulfilled path: no test reads a non-empty requiredPairs on a row written at Dispatch.AnswerOne's common exit.
+- source: spec-4-9-the-agent-audit-ledger.md / code-review | severity: med | fix-risk: low | footprint: in-story
+- evidence: The only wire test that reaches that exit calls shell.instance.read, which declares and derives no pair at all (verified on ocupilot-ci: both halves empty), so its row's requiredPairs is legitimately empty. Pinning it needs a turn whose tool call is a descriptor-driven screen read, or declared pairs on Test.LedgerTool.Probe. Passing "" for tPairs/tArgumentPairs at that exit reddens nothing today.
+- 2026-09-18T14:49:22Z status=open owner=4-9-the-agent-audit-ledger by=cr note=three review layers found it independently; AC2's mutation row points at the client path only
+
+### DW-1132: The read window's bound and its default are derived in three places: Base.BoundedWhere, Audit.Ledger.AppliedWindow and Api.Ledger's own validation, the last reading BOUNDEDMAXHOURS off OcuPilot.Kernel.State.Base by string literal.
+- source: spec-4-9-the-agent-audit-ledger.md / code-review | severity: low | fix-risk: med | footprint: in-story
+- evidence: AppliedWindow repeats BoundedWhere's $Select(+pWindowHours = 0: BOUNDEDDEFAULTHOURS, 1: +pWindowHours) verbatim and Api/Ledger.cls repeats the 0 | 1..BOUNDEDMAXHOURS test, so raising either bound in one place leaves the other two wrong with the suite green. The fix is for GuardedIdsForWindow to output the window it applied, which widens a public signature.
+- 2026-09-18T14:49:22Z status=wontfix-accepted owner=burndown by=cr note=reopen_if=BOUNDEDDEFAULTHOURS or BOUNDEDMAXHOURS changes and a read reports the old window
