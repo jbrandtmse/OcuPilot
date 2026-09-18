@@ -78,9 +78,10 @@ const LIVE_PAYLOAD = {
       pinBottom: false,
       allowed: false,
       failedPair: '%Admin_Manage:USE',
-      // Story 6.11 took this roster from four screens to eight, in ScreensForArea's own
-      // (sideBarPosition, class name) collation: the four unlisted sideBarPosition-0 screens sort
-      // first, alphabetically by descriptor class name, ahead of the listed ones in position order.
+      // Story 6.11 took this roster from four screens to eight, and Story 6.12 took it from eight
+      // to nine, in ScreensForArea's own (sideBarPosition, class name) collation: the four unlisted
+      // sideBarPosition-0 screens sort first, alphabetically by descriptor class name, ahead of the
+      // listed ones in position order.
       screens: [
         {
           route: 'os-management/databases/details',
@@ -135,6 +136,13 @@ const LIVE_PAYLOAD = {
           route: 'os-management/databases',
           labelKey: 'databaseListLabel',
           sideBarPosition: 4,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/devices',
+          labelKey: 'deviceListLabel',
+          sideBarPosition: 5,
           allowed: false,
           failedPair: '%Admin_Manage:USE',
         },

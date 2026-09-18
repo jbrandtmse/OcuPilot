@@ -321,17 +321,17 @@ Method TestThePayloadCarriesEveryAreaWithAVerdict()
     Do $$$AssertEquals(tHome.screens.%Get(0).route, "", "whose route is the application root")
 
     ; OS management proves the screen half follows the roster rather than a fixed list: it
-    ; carries its eight built screens sorted by (sideBarPosition, class name) -- ScreensForArea's
+    ; carries its nine built screens sorted by (sideBarPosition, class name) -- ScreensForArea's
     ; own collation (Registry.cls) -- so the four unlisted, sideBarPosition-0 screens sort first,
     ; alphabetically by descriptor class name (Database details, Database free-space, Database
     ; volumes, then Process details), ahead of the listed ones in position order (Processes,
-    ; Locks, System usage, Databases last at position 4). Story 6.11 took this from four to
-    ; eight; an added os-management screen updates this count and the per-index assertions below
-    ; with it.
+    ; Locks, System usage, Databases, Devices last at position 5). Story 6.11 took this from four
+    ; to eight, and Story 6.12 took it from eight to nine; an added os-management screen updates
+    ; this count and the per-index assertions below with it.
     Set tOsMgmt = ##class(OcuPilot.Test.Descriptor).AreaEntry(tObject.areas, "os-management")
     Do $$$AssertTrue($IsObject(tOsMgmt), "the payload carries the os-management area")
     If $IsObject(tOsMgmt) {
-        Do $$$AssertEquals(tOsMgmt.screens.%Size(), 8, "which carries its eight built screens -- an added os-management screen updates this count and the per-index assertions below with it")
+        Do $$$AssertEquals(tOsMgmt.screens.%Size(), 9, "which carries its nine built screens -- an added os-management screen updates this count and the per-index assertions below with it")
         Do $$$AssertEquals(tOsMgmt.screens.%Get(0).route, "os-management/databases/details", "the unlisted database details, first alphabetically among sideBarPosition 0")
         Do $$$AssertEquals(tOsMgmt.screens.%Get(0).labelKey, "databaseDetailsLabel", "under its own label key")
         Do $$$AssertEquals(tOsMgmt.screens.%Get(1).route, "os-management/database-free-space", "then the unlisted free-space view")
@@ -346,8 +346,10 @@ Method TestThePayloadCarriesEveryAreaWithAVerdict()
         Do $$$AssertEquals(tOsMgmt.screens.%Get(5).labelKey, "lockListLabel", "under its own label key")
         Do $$$AssertEquals(tOsMgmt.screens.%Get(6).route, "os-management/system-usage", "then system usage, position 3")
         Do $$$AssertEquals(tOsMgmt.screens.%Get(6).labelKey, "systemUsageLabel", "under its own label key")
-        Do $$$AssertEquals(tOsMgmt.screens.%Get(7).route, "os-management/databases", "and Databases last, position 4")
+        Do $$$AssertEquals(tOsMgmt.screens.%Get(7).route, "os-management/databases", "then Databases, position 4")
         Do $$$AssertEquals(tOsMgmt.screens.%Get(7).labelKey, "databaseListLabel", "under its own label key")
+        Do $$$AssertEquals(tOsMgmt.screens.%Get(8).route, "os-management/devices", "and Devices last, position 5")
+        Do $$$AssertEquals(tOsMgmt.screens.%Get(8).labelKey, "deviceListLabel", "under its own label key")
     }
 }
 

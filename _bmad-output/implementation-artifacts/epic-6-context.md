@@ -63,7 +63,7 @@ These apply to every story, and the story specs do not repeat them:
 - **Untrusted text** (log lines, entity names, vendor status words) reaches the model only as
   delimited tool-result content.
 
-Story traps, for the three that remain:
+Story traps (6.10 to 6.12 as built, 6.13 and 6.14 as planned):
 
 - **6.10 Locks** landed as built: instance-wide scope, a composite row id, the owner cell linking to
   `os-management/processes/details/<pid>` through the cross-screen row target (carrying `Pid`, not the
@@ -182,12 +182,16 @@ Story traps, for the three that remain:
   per built list, skipping without credentials). **Two literal pins break on any added screen and no
   stage re-runs them by itself, and this epic has now been bitten by both twice:**
   `src/OcuPilot/Test/Navigation.cls` pins the os-management roster by literal index **and** count —
-  **eight** screens after 6.11 — and went red in CI on 6.9 and again on 6.10, so any story that builds
+  **nine** screens after 6.12 — and went red in CI on 6.9 and again on 6.10, so any story that builds
   an os-management screen updates both; and `Install/Smoke.cls`'s name list, its indexed `$Select` arm
-  and its loop bound must change together, with `Test/Smoke.cls`'s arm-count assertion deriving from
-  them. Run the whole ObjectScript sweep, not a chosen subset, before believing a story is green —
+  and its loop bound must change together. In `Test/Smoke.cls` only the arm-count assertion derives
+  from them: `TestEachAreaListCheckReadsItsOwnScreen` needed three literal edits of its own in 6.12
+  (its roster, its count twice, and `tExpected`), so both methods are read before either is trusted. Run the whole ObjectScript sweep, not a chosen subset, before believing a story is green —
   **and run it on a fresh throwaway:** `node tools/ci-runner.mjs` runs what the throwaway compiled at
-  container start, so a sweep after an edit needs a fresh throwaway or an in-container recompile; the
+  container start, so a sweep after an edit needs a fresh throwaway or an in-container recompile — and
+  the throwaway mounts a **copy** of the source at `/tmp/<project>/src`, so an in-container `LoadDir`
+  after an edit silently recompiles the old file unless that copy is refreshed first, which is a
+  false-green trap for the Rule 19 mutation every story does; the
   lead's standing gate is the whole sweep on a throwaway brought up after the last edit. A denial test
   needs a real principal on the throwaway, never `%Operator`; a denied deep link wants a browser leg,
   not only the payload and the HTTP 403 (DW-1049).

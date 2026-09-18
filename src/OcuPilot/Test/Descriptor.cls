@@ -1449,6 +1449,85 @@ Method TestDatabaseVolumesDeclaresTheVendorSixAndNoDetailCall()
     Do $$$AssertEquals($ListToString(tFields, ","), "VolumeNumber,VolumeDirectory,File,Size,VolumeDirectoryTotalSize,DiskFree", "the vendor's six members")
 }
 
+/// <p>AC1, AC4, AC5, AC6, Story 6.12 -- the Devices list declares exactly its six fields and six
+/// columns, in order and by kind; sorts by <code>Name</code> ascending; declares
+/// <code>%Admin_Manage:USE</code> then <code>%DB_IRISSYS:READ</code> and no third pair; names its
+/// own empty state and its own classic key; is OS management's fifth side-bar entry; and offers no
+/// primary action, no row action and no outbound classic link: it is the list only, the device
+/// editor is Story 8.8's.</p>
+/// <p>Mutation: add a <code>rowActions</code> entry with no handler in
+/// <class>OcuPilot.Screen.Descriptor.DeviceList</class> -> the row-action assertion goes red; set
+/// <code>classicLinkExemption.exempt</code> true -> the exemption assertion goes red, and
+/// <file>ui/tools/classic-links.mjs</file> separately refuses a <code>list</code> archetype
+/// declaring one (AD-44).</p>
+Method TestTheDevicesListDeclaresExactlyItsSixFieldsAndSixColumns()
+{
+    Set tClass = "OcuPilot.Screen.Descriptor.DeviceList"
+    Do $$$AssertEquals($ClassMethod(tClass, "SideBarPosition"), 5, "OS management's fifth side-bar entry")
+    Set tRead = $ClassMethod(tClass, "Read")
+    Do $$$AssertTrue($IsObject(tRead), "the Devices list declares a read")
+    If '$IsObject(tRead) Quit
+    Set tFields = ""
+    Set tIterator = tRead.%Get("fields").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tField) { Set tFields = tFields _ $ListBuild(tField) }
+    Do $$$AssertEquals($ListToString(tFields, ","), "Name,PhysicalDevice,Type,SubType,Description,Alias", "exactly the six declared fields, no Prompt, OpenParameters or AlternateDevice")
+
+    ; QA (independent falsification pass): filter and sort.fields are the read's own field set,
+    ; not just a same-length list -- a field dropped from filter while staying in fields/columns
+    ; reddens nothing else in this class or in ScreenRead's live-value method.
+    Set tFilter = ""
+    Set tIterator = tRead.%Get("filter").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tField) { Set tFilter = tFilter _ $ListBuild(tField) }
+    Do $$$AssertEquals($ListToString(tFilter, ","), "Name,PhysicalDevice,Type,SubType,Description,Alias", "filter is exactly the same six fields as read.fields")
+    Set tSortFields = ""
+    Set tIterator = tRead.%Get("sort").%Get("fields").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tField) { Set tSortFields = tSortFields _ $ListBuild(tField) }
+    Do $$$AssertEquals($ListToString(tSortFields, ","), "Name,PhysicalDevice,Type,SubType,Description,Alias", "sort.fields is exactly the same six fields as read.fields")
+    ; The two keys that decide what order rows arrive in. Registry.ReadProblem only requires
+    ; default to be one of sort.fields and direction to be asc or desc, so either can change to
+    ; another valid value without a refusal, and no other assertion in any suite reads them.
+    Do $$$AssertEquals(tRead.%Get("sort").%Get("default"), "Name", "sorted by Name by default, the row key's own column")
+    Do $$$AssertEquals(tRead.%Get("sort").%Get("direction"), "asc", "ascending")
+
+    Set tTable = $ClassMethod(tClass, "Field", "table")
+    Do $$$AssertTrue($IsObject(tTable), "the Devices list declares a table")
+    If '$IsObject(tTable) Quit
+    Set tColumns = ""
+    Set tKinds = ""
+    Set tIterator = tTable.%Get("columns").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tColumn) {
+        Set tColumns = tColumns _ $ListBuild(tColumn.%Get("field"))
+        Set tKinds = tKinds _ $ListBuild(tColumn.%Get("kind"))
+    }
+    Do $$$AssertEquals($ListToString(tColumns, ","), "Name,PhysicalDevice,Type,SubType,Description,Alias", "exactly the six declared columns, in declared order, one name column")
+    ; QA (independent falsification pass): the field-name pin above passes even when a column's
+    ; kind is wrong (e.g. Alias declared "text" instead of "number") -- nothing else in this
+    ; class, in ScreenRead's live-value method or in the browser spec's header assertion checks
+    ; kind, only the field/label/order.
+    Do $$$AssertEquals($ListToString(tKinds, ","), "name,identifier,text,text,text,number", "each column's declared kind: the row key, an opaque identifier, three plain text columns, then Alias as a number (an integer alternate id, as VolumeNumber is)")
+
+    Set tPairs = $ClassMethod(tClass, "PrivilegePairs")
+    Do $$$AssertEquals($ListLength(tPairs), 2, "two declared pairs, no third")
+    Do $$$AssertEquals($List($List(tPairs, 1), 1) _ ":" _ $List($List(tPairs, 1), 2), "%Admin_Manage:USE", "the endpoint's own ResourcesOR() pair first, which is the pair the gate names to a principal holding neither")
+    Do $$$AssertEquals($List($List(tPairs, 2), 1) _ ":" _ $List($List(tPairs, 2), 2), "%DB_IRISSYS:READ", "then the port's namespace-switch pair, which Registry.ReadProblem requires of every admin-port read")
+
+    ; The sentence an empty instance reads. screen-mirror.mjs checks only that the key exists in
+    ; strings.ts and Registry only that a read-only list names emptyNextKey and not emptyAgentKey,
+    ; so another screen's key would validate, mirror and ship.
+    Do $$$AssertEquals($ClassMethod(tClass, "EmptyStateKey"), "deviceListEmpty", "its own empty state, not another list's")
+
+    Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RowActionIds")), 0, "no row action: the device editor is Story 8.8's")
+    Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), "", "and no primary action")
+    Do $$$AssertEquals(''$ClassMethod(tClass, "ClassicLinkExempt"), 0, "and no outbound classic link: a list archetype never links out (AD-44)")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Descriptor.DeviceList).RowTarget(), "", "and no rowTarget: no other screen names this entity type")
+
+    ; The classic key carries the AD-44 union: Gate.ClassicResource resolves it through
+    ; %SYS.Portal.Resources, where a name that opens nothing adds no pair and reports no error.
+    Set tPage = $ClassMethod(tClass, "ClassicPage")
+    Do $$$AssertEquals(tPage, "%CSP.UI.Portal.Config.Devices", "the Config.Devices classic key -- %CSP.UI.Portal.Devices does not exist on this build")
+    Do $$$AssertTrue($IsObject(##class(%Dictionary.CompiledClass).%OpenId(tPage)), "which is a compiled class on this instance, found under the declaration's own case")
+}
+
 /// <p>Area <var>pKey</var>'s declared privilege pairs as <code>resource:permission</code> joined
 /// by <code>, </code> in declared order, empty when the area never gates. An assertion over this
 /// pins the set by content: a length alone passes a set that swapped one pair for another.</p>

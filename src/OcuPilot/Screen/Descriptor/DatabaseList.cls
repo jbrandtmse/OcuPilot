@@ -1,7 +1,7 @@
 /// <p>The General view of Databases: every database on this instance, read through the vendor's own
 /// <code>Database.SysCRUD</code> <code>LIST</code> (AD-2, AD-36) and rendered by the
 /// <code>list (two views)</code> archetype's page from the declared <code>table</code> (AD-5). It is
-/// OS management's fourth side-bar entry, between System usage and the unbuilt Devices.</p>
+/// OS management's fourth side-bar entry, between System usage and Devices.</p>
 /// <p><b>Two descriptors, not one</b> (AD-5, this story). <code>DatabaseFreeSpace</code> is the
 /// General view's paired second view, switched to by the command bar's View control; the two
 /// cannot share one descriptor because the General view's <code>LIST</code> takes

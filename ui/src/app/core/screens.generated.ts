@@ -1718,6 +1718,139 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "rowTarget": null
   },
   {
+    "descriptor": "OcuPilot.Screen.Descriptor.DeviceList",
+    "route": "os-management/devices",
+    "area": "os-management",
+    "labelKey": "deviceListLabel",
+    "sideBarPosition": 5,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "device",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Name",
+        "PhysicalDevice",
+        "Type",
+        "SubType",
+        "Description",
+        "Alias"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "deviceListEmpty",
+    "commandAliases": [
+      "devices",
+      "device settings"
+    ],
+    "classicPage": "%CSP.UI.Portal.Config.Devices",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Device.Standard",
+        "type": "LIST"
+      },
+      "fields": [
+        "Name",
+        "PhysicalDevice",
+        "Type",
+        "SubType",
+        "Description",
+        "Alias"
+      ],
+      "filter": [
+        "Name",
+        "PhysicalDevice",
+        "Type",
+        "SubType",
+        "Description",
+        "Alias"
+      ],
+      "sort": {
+        "fields": [
+          "Name",
+          "PhysicalDevice",
+          "Type",
+          "SubType",
+          "Description",
+          "Alias"
+        ],
+        "default": "Name",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Name",
+          "labelKey": "tableColumnName",
+          "kind": "name"
+        },
+        {
+          "field": "PhysicalDevice",
+          "labelKey": "deviceColumnPhysical",
+          "kind": "identifier"
+        },
+        {
+          "field": "Type",
+          "labelKey": "tableColumnType",
+          "kind": "text"
+        },
+        {
+          "field": "SubType",
+          "labelKey": "deviceColumnSubtype",
+          "kind": "text"
+        },
+        {
+          "field": "Description",
+          "labelKey": "tableColumnDescription",
+          "kind": "text"
+        },
+        {
+          "field": "Alias",
+          "labelKey": "x509ColumnAlias",
+          "kind": "number"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "osmgmt.devices",
+    "banner": null,
+    "tab": null,
+    "rowTarget": null
+  },
+  {
     "descriptor": "OcuPilot.Screen.Descriptor.Home",
     "route": "",
     "area": "home",

@@ -2,10 +2,10 @@
 title: 'The devices list'
 type: 'feature'
 created: '2026-09-17'
-status: 'ready-for-dev'
+status: 'done'
 baseline_revision: 'd2396f844eae4992e328d6878264026358af08e4'
 baseline_commit: 'd2396f844eae4992e328d6878264026358af08e4'
-review_loop_iteration: 0
+review_loop_iteration: 1
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-6-context.md'
@@ -123,9 +123,34 @@ Vendor, read-only reference:
 - **AC6** — Given `EXPERIENCE.md`'s Devices row, when `npm test` runs, then `strings.test.mjs` finds exact set equality with exactly four new keys, all values unique, `Alias` served by `x509ColumnAlias`, and the empty state reading "No devices on this instance." above the read-only second line with **no** agent invitation.
 - **AC7** — Given the rebuilt bundle deployed to the throwaway, when a browser opens `/ocupilot/os-management/devices?ns=HSCUSTOM`, then the six declared headers render in declared order, one row per device appears, the `|TRM|` name cell reads that text literally, and the rows fit the viewport without the footer overpainting them. Pinned by `browser/devices.browser-spec.mjs` and the new `screen-height.browser-spec.mjs` entry.
 
+### Review Findings
+
+Tier 1, `full`, four layers, baseline `d2396f8`. All ten patches applied in-pass; no HIGH, no unresolved MED.
+
+- [x] [Review][Patch] `Screen/Area.cls`'s class comment kept two claims this story falsified: the false-denial count still read "five of its eight screens" nine lines above the corrected "6 of 9", and the throwaway sentence still said "its Manage-only account reads both at 200" — which now names this story's own `MANAGEONLYUSER` (refused) rather than `MANAGEUSER` (served), and counts two screens where three are listed [src/OcuPilot/Screen/Area.cls:44-70]
+- [x] [Review][Patch] AC4 exercised no principal lacking the FIRST declared pair on the read route, so the declared pair order was pinned only in the navigation map; added `AssertReadRefused(OPERATEUSER, "osmgmt.devices", "%Admin_Manage:USE")`, the leg Story 6.11's identical pair set already has [src/OcuPilot/Test/WireSecurityRead.cls:759]
+- [x] [Review][Patch] `classicPage` was pinned nowhere, though every peer pins its own and `Gate.ClassicResource` resolves a name that opens nothing to no pair and no error (AD-44); added an equality pin and the compiled-class existence check `%CSP.UI.Portal.Devices` would fail [src/OcuPilot/Test/Descriptor.cls:1521]
+- [x] [Review][Patch] `emptyStateKey` was checked for existence only, so another screen's key would validate, mirror and ship the wrong sentence; AC6 credits `strings.test.mjs`, which never sees a descriptor [src/OcuPilot/Test/Descriptor.cls:1508]
+- [x] [Review][Patch] The declared privilege pairs were pinned nowhere in `Test/Descriptor`, though `DatabaseList`'s are; added a pair-count and a per-pair equality in declared order [src/OcuPilot/Test/Descriptor.cls:1500]
+- [x] [Review][Patch] `sort.default` and `sort.direction` decide row order and were pinned by nothing — `Registry.ReadProblem` accepts any member of `sort.fields` and either direction [src/OcuPilot/Test/Descriptor.cls:1484]
+- [x] [Review][Patch] `Test/Smoke.cls`'s 300-character source-read window is 28 characters from the roster it reads (272 after this story; 6.13 and 6.14 spend two more names), and an overrun makes `$Piece` hand back a truncated roster whose name count reddens the method on a correct declaration; raised to 1000 [src/OcuPilot/Test/Smoke.cls:637]
+- [x] [Review][Patch] The same method's `Mutation:` comment still said "add an eighth name ... raise the loop bound to `8`" against a 26-name list; restated without an ordinal so it cannot go stale again [src/OcuPilot/Test/Smoke.cls:616]
+- [x] [Review][Patch] `Test/ScreenRead`'s new method passed the literal `1000` while its message called it "the default cap"; passes `""` now, so the assertion reads `Read.DEFAULTMAXROWS` instead of a copy of it [src/OcuPilot/Test/ScreenRead.cls:769]
+- [x] [Review][Patch] AC4's recorded `mutation:` could not happen: `Registry.ReadProblem`'s last arm refuses any `admin`-port read that does not declare `%DB_IRISSYS:READ`, so dropping it leaves the roster invalid and no principal served — the line recorded "`MANAGEONLYUSER` served instead of refused (observed)". Replaced with a mutation applied and observed red (declare `%Admin_Operate:USE` third), and AC5's line tightened to require a non-empty `id` on the `rowActions` entry [_bmad-output/implementation-artifacts/spec-6-12-the-devices-list.md:150]
+- [x] [Review][Defer] `read.filter`, `read.sort.fields` and per-column `kind` are observed by no assertion for any shipped descriptor except this one, so ~30 other screens can silently lose a filter, a sort or a numeric column — deferred: DW-1099, `routed owner=burndown`, out of this story's per-screen footprint, and equality with `read.fields` is not the invariant (`SystemUsage` declares `filter: []` deliberately)
+- [x] [Review][Defer] The `|TRM|` browser test asserts the name cell's text but never its row link, and no `entity-id` case carries a pipe, so nothing Devices-side would notice if `%257CTRM%257C` changed — deferred: DW-1098, `wontfix-accepted`, the double-pass codec is pinned generically by `ui/tools/entity-id.test.mjs` against `OcuPilot.Test.EntityId`'s mirror table; `reopen_if` recorded
+
+**Rejected.** `"device settings"` alias reaching the devices list — by-design, declared in Boundaries, and no other device screen exists. `''ClassicLinkExempt` coercion — false: the value derives from a declared boolean and the AC5 mutation does redden it. `Alias` "integer" wording — false: `Config.Devices.Alias` is `%Integer(MINVAL = 1)`; the `ROWSPEC`'s `%String` is the transport type. `Alias`'s `number` kind and its "(none)" cell unexercised — low, and the empty-cell word is generic (`table-model.ts`, pinned in `data-table.spec.ts`). AC7's `total >= 1` weaker than "one row per device" — low, the same house limit as the Locks and Databases specs. The two-namespace matrix row — wontfix-theoretical: devices are CPF configuration and the storage location is the spec's cited evidence. Guards for a device named `0`, a CPF with no devices, and a one-device instance — theoretical hardening on states not shown reachable. `$IsObject` guards on `filter`/`sort`/`columns` in the new test — the grammar refuses those shapes before any test reads them, and a `<INVALID OREF>` names the method. `deferred-work.md` missing from the diff — excluded from the review scope by construction. Spec template drift and `epic-6-context.md` prose — low, and reported to the lead, whose files they are.
+
 ## Spec Change Log
 
+- 2026-09-17, lead: the Devices Fixed strings row applied at `EXPERIENCE.md:366` before dispatch (Execution item 1).
+- 2026-09-18, qa: two `mutation:` lines added for the assertions that could not fail.
+- 2026-09-18, code review: AC4's and AC5's `mutation:` lines corrected at their origin.
+
 ## Review Triage Log
+
+- 2026-09-18 code review (Tier 1, `full`, `full-opus`, four layers): 12 entries after triage — 10 `patch` (all applied and verified), 2 `defer` (DW-1098 terminal, DW-1099 routed to burndown), 13 rejected. No HIGH. Verified on `ocupilot-slot-b` (whole-package compile clean; `Test.Descriptor` 43/43 run 99, `Test.ScreenRead` 28/28 run 100, `Test.Smoke` 33/33 run 101, `Test.Navigation` 11/11 run 102) and on a `ocupilot-b-ci` throwaway I brought up and tore down (`Test.WireSecurityRead` 17/17 run 1, 1 failed run 2 under the AC4 mutation, 17/17 run 3 after revert). `check-objectscript.py` 0 problems over 371 files.
 
 ## Design Notes
 
@@ -147,17 +172,21 @@ Vendor, read-only reference:
 
 **Mutations (Rule 19), one per AC:**
 
-- AC1 — `mutation:` `sideBarPosition` 5 → **0** → the descriptor sorts into the unlisted group by class name and `Test/Navigation.cls`'s index-3 route assertion goes red, reading `os-management/devices` where it expects `os-management/processes/details`. (5 → 6 is **not** a valid mutation: position 5 and 6 both sort last, so nothing moves.)
-- AC2 — `mutation:` drop `SubType` from `read.fields` → the new `Test/ScreenRead.cls` method goes red on a declared field absent from the live row. (It asserts `Type` and `SubType` precisely because `Alias` is empty on every row and would pass vacuously.)
-- AC3 — `mutation:` remove `osmgmt.devices.read` from `Test/ReadTool.cls:94` → red on the alphabetical name set; `toolIdentifier` → `osmgmt.device` → both rosters red.
-- AC4 — `mutation:` drop `%DB_IRISSYS:READ` from `privileges` → the new `Test/WireSecurityRead.cls` method goes red, the IRISSYS-less principal served instead of refused.
-- AC5 — `mutation:` add one `rowActions` entry with no handler → the new `Test/Descriptor.cls` method goes red; set `classicLinkExemption.exempt` true → `classic-links.mjs` fails `prebuild` on a `list` archetype declaring an exemption (AD-44).
-- AC6 — `mutation:` add a fifth key `deviceColumnAlias: 'Alias'` → `strings.test.mjs` red on both the key-count equality at `:386` and value uniqueness; delete the `EXPERIENCE.md` row → red on the authorized set.
-- AC7 — `mutation:` after `npm run build` and redeploy, reorder two `table.columns` entries → `devices.browser-spec.mjs`'s header-order assertion goes red. A mutation that is not rebuilt and redeployed proves nothing: the spec reads the deployed bundle.
+- AC1 — `mutation:` `sideBarPosition` 5 → **0** → `Test/Navigation.TestThePayloadCarriesEveryAreaWithAVerdict` goes red across its per-index assertions, sorting `DeviceList` into the unlisted group by class name instead of last (observed).
+- AC2 — `mutation:` drop `SubType` from `read.fields` → the new `Test/ScreenRead.TestTheDevicesReadAnswersRealValuesNotEmptyKeys` goes red on the declared field absent from the live row (observed).
+- AC3 — `mutation:` `toolIdentifier` → `osmgmt.device` → `Test/ReadTool.TestTheRegistryListsDescriptorReadsAndInheritedKinds` goes red on both the production-roster name set and the tool/descriptor pair list (observed).
+- AC4 — `mutation:` declare `%Admin_Operate:USE` as a third pair, which the grammar accepts since AD-29 makes the declared set a lower bound → the new `Test/WireSecurityRead.TestTheDevicesListPairSetIsEnforcedForARealPrincipal` goes red on `AssertSameRowsAsTestAccount`, `MANAGEUSER` refused instead of served, and nothing else in the class moves (observed on `ocupilot-b-ci`, run 2 red between runs 1 and 3 green). Dropping `%DB_IRISSYS:READ` instead proves nothing: `Registry.ReadProblem`'s last arm refuses any `admin`-port read that does not declare it, so the roster never validates and no principal is served.
+- AC5 — `mutation:` add one `rowActions` entry carrying a non-empty `id` and no handler — an id-less entry reddens nothing, since `Base.RowActionIds`, `Registry.IsWriteCapable` and `screen-mirror.mjs` all skip it → the new `Test/Descriptor.TestTheDevicesListDeclaresExactlyItsSixFieldsAndSixColumns` goes red on its no-row-action assertion (observed; it also tightens `Registry.Validate`'s write-capable/`emptyNextKey` rule across six unrelated tests, reverted with it).
+- AC6 — `mutation:` add a fifth key `deviceColumnAlias: 'Alias'` → `strings.test.mjs` goes red on both the key-count equality and value uniqueness (duplicate `'Alias'`) (observed).
+- AC7 — `mutation:` after `npm run build` and redeploy, swap the `Name`/`PhysicalDevice` `table.columns` entries → `devices.browser-spec.mjs`'s header-order assertion goes red, and its `|TRM|` filter test reddens with it since the filter now targets the wrong column (observed).
+
+Every mutation above was applied, compiled (or rebuilt/redeployed for the client-side ones), observed red on the test named, reverted, and reconfirmed green (`git status --short` and `git diff --stat` unchanged throughout, and the full ObjectScript sweep and browser suite re-ran clean after the last revert).
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planning pass only; no product code, planning artifact or tracker file was touched. Evidence gathered on `ocupilot-slot-b`: the vendor endpoint class and its `ResourcesOR()`, `Config.Devices:List`'s `ROWSPEC` and storage location, one live `AdminPort.Invoke` LIST (12 rows, 9 keys), and `NormalizePage` for the classic key. Two facts in the dispatch brief were stale and are corrected here: `device` is already in `Kernel/EntityType.cls`'s closed vocabulary, and `strings.test.mjs`'s literal bound is already 520 (Story 6.11 raised it to cover 6.12 through 6.14), so neither needs a change. `warnings: ['oversized']` is honest: the spec is ~5.2K tokens against the template's 1,600, and about half the size of the three specs before it.
+Implemented on Sonnet, falsified by an independent QA pass and reviewed on Opus with four layers. QA found two assertions that could not fail -- dropping a field from `read.filter` alone, and changing a column's `kind` -- and closed both in `Test/Descriptor.cls`; the review then added seven more pins to the same method, the `OPERATEUSER` leg that pins pair order on the read route, and corrected AC4's recorded mutation, which was impossible as written because dropping `%DB_IRISSYS:READ` leaves the whole roster invalid. It also found `Screen/Area.cls`'s correction half-applied. Ledger: DW-1093 closed `wontfix-accepted`, DW-1098 `wontfix-accepted`, DW-1099 routed to the burn-down gate.
+
+Planning pass notes; no product code, planning artifact or tracker file was touched. Evidence gathered on `ocupilot-slot-b`: the vendor endpoint class and its `ResourcesOR()`, `Config.Devices:List`'s `ROWSPEC` and storage location, one live `AdminPort.Invoke` LIST (12 rows, 9 keys), and `NormalizePage` for the classic key. Two facts in the dispatch brief were stale and are corrected here: `device` is already in `Kernel/EntityType.cls`'s closed vocabulary, and `strings.test.mjs`'s literal bound is already 520 (Story 6.11 raised it to cover 6.12 through 6.14), so neither needs a change. `warnings: ['oversized']` is honest: the spec is ~5.2K tokens against the template's 1,600, and about half the size of the three specs before it.

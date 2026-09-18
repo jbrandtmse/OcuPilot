@@ -3050,3 +3050,19 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-6-11-databases-with-free-space-arriving-as-it-lands.md | severity: med | fix-risk: high | footprint: out-of-footprint
 - evidence: AdminPort.AwaitTask sets tStart per call (AdminPort.cls:862) and Read.Execute calls DetailRow once per row (Read.cls:365-374), so the Free-space read queues one TYPEINFO task per database, each bounded at 30 s on its own. Verified by reading both; the refusal itself is whole and correct. Screen/Read.cls is Epic 4-shared under additive-only discipline, so a read-wide deadline is not an in-story change.
 - 2026-09-18T04:38:34Z status=escalated owner=burndown by=cr note=claim corrected at origin in DatabaseFreeSpace.cls; the missing deadline itself is the escalated part
+
+### DW-1093: No structural route-uniqueness check in Registry.Validate; a duplicate route compiles and validates clean
+- source: spec-6-12-the-devices-list.md qa | severity: low | fix-risk: med | footprint: in-epic
+- evidence: Set DeviceList's route to the existing os-management/databases route, recompiled clean, Registry.Validate passed with no problem string; only Test.Navigation's literal per-index route pin caught it (observed on ocupilot-b-ci). Reverted.
+- 2026-09-18T07:03:37Z status=open owner=burndown by=qa note=6.12 falsification pass; a real check would live in Registry.Validate, additive, over all descriptors -- out of this story's per-screen footprint
+- 2026-09-18T07:42:04Z status=wontfix-accepted owner=6-12-the-devices-list by=adjudication note=reopen_if=two descriptors declare the same route and Registry.Validate returns no problem string; Rule 15 forbids burndown owning a LOW, a duplicate route is caught today by Test/Navigation.cls's per-index pin, and the fix is a new refusal rule across three engines that this story's Never forbids
+
+### DW-1098: The Devices browser spec asserts the pipe-bracketed name cell's text but never its row link, so the percent-encoding of |TRM| into one path segment is pinned by no Devices-side test
+- source: spec-6-12-the-devices-list.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: devices.browser-spec.mjs asserts cells[0] === '|TRM|' and imports no clickRowCentre; the matrix row also claims the cell links to the id route. encodeEntityId's double pass is pinned generically by ui/tools/entity-id.test.mjs against OcuPilot.Test.EntityId's mirror table, whose cases carry no pipe character.
+- 2026-09-18T07:38:36Z status=wontfix-accepted owner=6-12-the-devices-list by=cr note=reopen_if=clicking the |TRM| name cell lands anywhere but /os-management/devices/%257CTRM%257C with that row active
+
+### DW-1099: No assertion anywhere observes a shipped descriptor's read.filter, read.sort.fields or per-column kind except the Devices list, so any other screen can silently lose its filter, its sort or a column's numeric treatment
+- source: spec-6-12-the-devices-list.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Test/Descriptor.cls's new Devices method is the only place in the ObjectScript suite that reads a real descriptor's read.filter or a column's kind; every other hit is a synthetic corpus. Registry.cls requires only that filter and sort names be a SUBSET of read.fields and each kind be in TABLECOLUMNKINDS, and screens.generated.ts mirrors whatever is declared, so screen-mirror --check agrees with any mutation.
+- 2026-09-18T07:39:57Z status=routed owner=burndown by=cr note=one sweep over Registry.Descriptors() against a committed table closes it; equality with read.fields is NOT the invariant -- SystemUsage declares filter [] deliberately

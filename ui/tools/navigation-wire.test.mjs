@@ -82,9 +82,10 @@ const LIVE_PAYLOAD = {
       pinBottom: false,
       allowed: false,
       failedPair: '%Admin_Manage:USE',
-      // Story 6.11 took this roster from four screens to eight, in ScreensForArea's own
-      // (sideBarPosition, class name) collation: the four unlisted sideBarPosition-0 screens sort
-      // first, alphabetically by descriptor class name, ahead of the listed ones in position order.
+      // Story 6.11 took this roster from four screens to eight, and Story 6.12 took it from eight
+      // to nine, in ScreensForArea's own (sideBarPosition, class name) collation: the four unlisted
+      // sideBarPosition-0 screens sort first, alphabetically by descriptor class name, ahead of the
+      // listed ones in position order.
       screens: [
         {
           route: 'os-management/databases/details',
@@ -139,6 +140,13 @@ const LIVE_PAYLOAD = {
           route: 'os-management/databases',
           labelKey: 'databaseListLabel',
           sideBarPosition: 4,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/devices',
+          labelKey: 'deviceListLabel',
+          sideBarPosition: 5,
           allowed: false,
           failedPair: '%Admin_Manage:USE',
         },
@@ -398,8 +406,10 @@ test('DW-132: the real NavigationService reads a live-captured payload the way O
   assert.deepEqual(service.screenVerdict('os-management/system-usage'), { allowed: false, failedPair: '%DB_IRISSYS:READ' });
   // Story 6.11: the two Databases views and the volume list each declare `%Admin_Manage:USE`
   // first, so this Operate-only principal is denied on that pair; Database details declares no
-  // Manage pair at all and is denied on its second, as System usage above is.
-  for (const route of ['os-management/databases', 'os-management/database-free-space', 'os-management/databases/volumes']) {
+  // Manage pair at all and is denied on its second, as System usage above is. Story 6.12: Devices
+  // declares the same two pairs as the General view and Database volumes, so it is denied the
+  // same way.
+  for (const route of ['os-management/databases', 'os-management/database-free-space', 'os-management/databases/volumes', 'os-management/devices']) {
     assert.deepEqual(service.screenVerdict(route), { allowed: false, failedPair: '%Admin_Manage:USE' }, route);
   }
   assert.deepEqual(service.screenVerdict('os-management/databases/details'), { allowed: false, failedPair: '%DB_IRISSYS:READ' });

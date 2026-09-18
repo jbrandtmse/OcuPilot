@@ -945,6 +945,14 @@ export const STRINGS = {
   databaseVolumeColumnDirectoryTotal: 'Directory total',
   /** EXPERIENCE.md:365 */
   databaseVolumeListEmpty: 'No volume files for this database.',
+  /** EXPERIENCE.md:366 */
+  deviceListLabel: 'Devices',
+  /** EXPERIENCE.md:366 */
+  deviceColumnPhysical: 'Physical device',
+  /** EXPERIENCE.md:366 */
+  deviceColumnSubtype: 'Subtype',
+  /** EXPERIENCE.md:366 */
+  deviceListEmpty: 'No devices on this instance.',
 
   // Not from the Fixed strings table, but required verbatim by this story's task
   // list: the audit-marker-failure fallback text (AD-15 / EXPERIENCE.md "9. **Audit.** Every confirmed"), the

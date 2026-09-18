@@ -752,4 +752,35 @@ Method TestDatabaseVolumesAnswersOneRowForASingleFileDatabase()
     Do $$$AssertTrue(tRow.%Get("Size") > 0, "a real size, not a null-filled key")
 }
 
+/// <p>AC2, Story 6.12 -- against the live <code>Device.Standard</code> LIST, the Devices read
+/// answers real values on <code>Name</code>, <code>PhysicalDevice</code>, <code>Type</code>,
+/// <code>SubType</code> and <code>Description</code>, not null-filled keys, and reports no
+/// truncation at the default cap (a stock instance carries a handful of devices, verified on the
+/// throwaway at twelve).
+/// <code>Alias</code> is not asserted here: it is empty on every stock row, which is exactly why
+/// it declares no <code>emptyKey</code> and why <code>TestTheDevicesListDeclaresExactlyItsSixFieldsAndSixColumns</code>
+/// (<class>OcuPilot.Test.Descriptor</class>) is the one that pins it as a declared field rather
+/// than a live-valued one.</p>
+/// <p>Mutation: drop <code>SubType</code> from <code>DeviceList</code>'s <code>read.fields</code>
+/// -> this goes red on a declared field absent from the live row.</p>
+Method TestTheDevicesReadAnswersRealValuesNotEmptyKeys()
+{
+    Kill tNoCriteria
+    ; An empty cap, not the literal 1000, so the assertion below reads whatever
+    ; OcuPilot.Screen.Read.DEFAULTMAXROWS currently is rather than a copy of it.
+    Set tSC = ##class(OcuPilot.Screen.Read).Execute("OcuPilot.Screen.Descriptor.DeviceList", "", .tAnswer, .tHttp, .tFault, .tNoCriteria)
+    Do $$$AssertStatusOK(tSC, "the Devices read completes")
+    Do $$$AssertEquals(tHttp, 200, "at 200")
+    If tHttp '= 200 Quit
+    Do $$$AssertTrue($IsObject(tAnswer) && $IsObject(tAnswer.rows), "it answers a rows array")
+    If '($IsObject(tAnswer) && $IsObject(tAnswer.rows)) Quit
+    Do $$$AssertTrue(tAnswer.rows.%Size() > 0, "with at least one row -- every instance configures at least the standard devices: " _ tAnswer.rows.%Size())
+    Do $$$AssertEquals(tAnswer.truncated, 0, "and reports no truncation at the default cap")
+    If tAnswer.rows.%Size() = 0 Quit
+    Set tRow = tAnswer.rows.%Get(0)
+    For tField = "Name", "PhysicalDevice", "Type", "SubType", "Description" {
+        Do $$$AssertTrue(tRow.%Get(tField) '= "", "the live first row's '" _ tField _ "' carries a value, not an empty key: " _ tRow.%ToJSON())
+    }
+}
+
 }

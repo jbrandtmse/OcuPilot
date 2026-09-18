@@ -52,6 +52,8 @@ const SCREENS = [
   { route: '/ocupilot/os-management/locks?ns=HSCUSTOM', viewport: 'cdk-virtual-scroll-viewport', prepare: null },
   { route: '/ocupilot/os-management/databases?ns=HSCUSTOM', viewport: 'cdk-virtual-scroll-viewport', prepare: null },
   { route: '/ocupilot/os-management/database-free-space?ns=HSCUSTOM', viewport: 'cdk-virtual-scroll-viewport', prepare: null },
+  // Backfilled by Story 6.12: Devices shares the same list archetype and viewport.
+  { route: '/ocupilot/os-management/devices?ns=HSCUSTOM', viewport: 'cdk-virtual-scroll-viewport', prepare: null },
 ];
 
 /** The audit viewer's Search, which is what puts rows on that screen at all. */

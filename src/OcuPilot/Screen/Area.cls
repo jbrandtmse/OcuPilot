@@ -40,12 +40,13 @@
 /// the narrower half. An area covers every pair its screens declare, so the area carries it too.</p>
 /// <p><b>The union stands, and the false denial it produces for a narrower screen is accepted</b>
 /// (DW-275, decided in Story 2.13). <class>OcuPilot.Screen.Descriptor.ProcessList</class> was the
-/// first screen to need <code>%Admin_Manage:USE</code> and Story 6.11's three Databases reads need
-/// it too; Stories 6.8's and 6.10's screens do not, which was settled by running each new read as
+/// first screen to need <code>%Admin_Manage:USE</code> and Story 6.11's three Databases reads and
+/// Story 6.12's Devices list need it too; Stories 6.8's and 6.10's screens do not, which was
+/// settled by running each new read as
 /// a least-privileged principal on a throwaway as that screen landed rather than inferred from the
 /// <code>ResourcesOR()</code> probe recorded above. An
 /// operator holding only <code>%Admin_Operate:USE</code> and <code>%DB_IRISSYS:READ</code> will
-/// therefore see the whole OS management rail entry denied on a pair five of its eight screens
+/// therefore see the whole OS management rail entry denied on a pair six of its nine screens
 /// require. That is a false denial, and it is preferred to the alternative: relaxing
 /// <method>OcuPilot.Screen.Registry.AreaCoverageProblem</method> to per-screen coverage trades it
 /// for the false admission AD-8 exists to prevent -- an area that reads allowed while every screen
@@ -57,17 +58,20 @@
 /// <p><b>What this costs, counted:</b> 2 of 4 os-management screens falsely denied before Story
 /// 6.11 (<class>OcuPilot.Screen.Descriptor.LockList</class> and
 /// <class>OcuPilot.Screen.Descriptor.SystemUsage</class>), 5 of 8 with its four descriptors
-/// landed. A screen is falsely denied when its own pair set is a strict subset of this union,
+/// landed, 6 of 9 with <class>OcuPilot.Screen.Descriptor.DeviceList</class> landed (Story 6.12).
+/// A screen is falsely denied when its own pair set is a strict subset of this union,
 /// because <method>OcuPilot.Screen.Gate.EvaluatePairs</method> requires every pair the area names:
 /// <class>OcuPilot.Screen.Descriptor.DatabaseDetails</class> joins the two above, denied on
-/// <code>%Admin_Manage:USE</code>, and <class>OcuPilot.Screen.Descriptor.DatabaseList</class> and
-/// <code>DatabaseVolumeList</code> are this area's first screens denied on
+/// <code>%Admin_Manage:USE</code>, and <class>OcuPilot.Screen.Descriptor.DatabaseList</class>,
+/// <code>DatabaseVolumeList</code> and <code>DeviceList</code> are this area's screens denied on
 /// <code>%Admin_Operate:USE</code> instead -- each declares <code>%Admin_Manage:USE</code> and
 /// <code>%DB_IRISSYS:READ</code> and needs no Operate pair, which
 /// <class>OcuPilot.Test.WireSecurityRead</class> establishes against a real least-privileged
-/// principal on the throwaway: its Manage-only account reads both at 200. Only
-/// <code>DatabaseFreeSpace</code> declares the whole union, and it alone of the four is not
-/// falsely denied. <b>What it must not become:</b> dropping
+/// principal on the throwaway: its <code>MANAGEUSER</code>, holding those two pairs and no
+/// Operate pair, reads all three at 200, while its <code>MANAGEONLYUSER</code>, holding
+/// <code>%Admin_Manage:USE</code> alone, is refused naming <code>%DB_IRISSYS:READ</code>. Only
+/// <code>DatabaseFreeSpace</code> declares the whole union, and it alone of the four Story 6.11
+/// descriptors is not falsely denied. <b>What it must not become:</b> dropping
 /// <code>%Admin_Manage:USE</code> from this area to make the narrow screens reachable makes
 /// <code>AreaCoverageProblem</code> refuse <code>ProcessList</code> at install --
 /// <class>OcuPilot.Test.NarrowArea</class> pins both halves, so the decision cannot be reversed by

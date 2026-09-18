@@ -136,6 +136,7 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'os-management/locks',
       'os-management/system-usage',
       'os-management/databases',
+      'os-management/devices',
       'tasks/schedule/details',
       'tasks/schedule/history',
       'tasks/schedule',
