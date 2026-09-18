@@ -3398,13 +3398,26 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-9-the-agent-audit-ledger.md / code-review | severity: med | fix-risk: med | footprint: in-story
 - evidence: Dispatch.AnswerOne sets tSecretNames only after ResolveWire answers a tool, so the registry-read-failure and TOOL.UNKNOWN branches reach RecordLedger with ""; ResolveClientCall and Loop.AnswerTools' two refusal writers have the same shape. Nothing is declared on that path, so this is fail-open rather than a declared-secret leak; fail-closed is to store no arguments when no classification could be read, which changes what three writers store on refusal branches.
 - 2026-09-18T14:49:22Z status=open owner=4-9-the-agent-audit-ledger by=cr note=reviewer patched the resolved-tool half as a HIGH; this is the unresolved-tool half
+- 2026-09-18T15:19:35Z status=resolved-by:4-9-the-agent-audit-ledger by=adjudication note=rework 1 makes the ledger row fail closed: RecordToolCall takes pClassified, defaults to 0, and stores Log.#REDACTED for a blob it cannot classify, so a fifth future writer withholds rather than leaks. Residual, deliberately out of scope and re-filed below: the tool step's own argument string still gets the name pattern alone on such a call
 
 ### DW-1131: AC2's requiredPairs is unasserted on the instance-fulfilled path: no test reads a non-empty requiredPairs on a row written at Dispatch.AnswerOne's common exit.
 - source: spec-4-9-the-agent-audit-ledger.md / code-review | severity: med | fix-risk: low | footprint: in-story
 - evidence: The only wire test that reaches that exit calls shell.instance.read, which declares and derives no pair at all (verified on ocupilot-ci: both halves empty), so its row's requiredPairs is legitimately empty. Pinning it needs a turn whose tool call is a descriptor-driven screen read, or declared pairs on Test.LedgerTool.Probe. Passing "" for tPairs/tArgumentPairs at that exit reddens nothing today.
 - 2026-09-18T14:49:22Z status=open owner=4-9-the-agent-audit-ledger by=cr note=three review layers found it independently; AC2's mutation row points at the client path only
+- 2026-09-18T15:19:35Z status=resolved-by:4-9-the-agent-audit-ledger by=adjudication note=the probe tool now declares a privilege pair and derives an argument pair, and TestARowsRequiredPairsComeFromTheDispatchersOwnReads reddens under the exact mutation that used to redden nothing
 
 ### DW-1132: The read window's bound and its default are derived in three places: Base.BoundedWhere, Audit.Ledger.AppliedWindow and Api.Ledger's own validation, the last reading BOUNDEDMAXHOURS off OcuPilot.Kernel.State.Base by string literal.
 - source: spec-4-9-the-agent-audit-ledger.md / code-review | severity: low | fix-risk: med | footprint: in-story
 - evidence: AppliedWindow repeats BoundedWhere's $Select(+pWindowHours = 0: BOUNDEDDEFAULTHOURS, 1: +pWindowHours) verbatim and Api/Ledger.cls repeats the 0 | 1..BOUNDEDMAXHOURS test, so raising either bound in one place leaves the other two wrong with the suite green. The fix is for GuardedIdsForWindow to output the window it applied, which widens a public signature.
 - 2026-09-18T14:49:22Z status=wontfix-accepted owner=burndown by=cr note=reopen_if=BOUNDEDDEFAULTHOURS or BOUNDEDMAXHOURS changes and a read reports the old window
+- 2026-09-18T15:19:35Z status=wontfix-accepted owner=burndown by=adjudication note=lead confirms: three derivations of the same window bound is real duplication but each is a guard rather than a value, and the reopen_if stands
+
+### DW-1133: A tool step's argument string still gets the name pattern alone when the wire name resolved no tool, where the ledger row now withholds the blob
+- source: lead adjudication of story 4.9 rework 1 | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Dispatch.StepArguments delegates to Audit.Ledger.RedactArguments, but on a call whose wire name resolved no tool there is no declaration to pass, so the step's Arguments column keeps the model-authored blob with Log.Redact's name pattern as the only layer. Unlike a ledger row a step dies with its turn's retention window, and changing it alters what the progress cards render. Probe: send a tool_use block naming an unknown tool with a Value argument and read State.Step.Arguments
+- 2026-09-18T15:19:35Z status=routed owner=burndown by=lead note=the ledger half is closed by rework 1; this is the step half, and the exit is a product call about what a progress card shows
+
+### DW-1134: Test/Ledger.cls is 778 lines against the 500-line guidance, and every method shares one teardown
+- source: spec-4-9-the-agent-audit-ledger.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: .claude/rules/objectscript-testing.md keeps a test class to roughly 500 lines; the class was 641 before rework 1 added three methods. Splitting it means re-homing OnAfterOneTest's probe-row assertions. Probe: wc -l src/OcuPilot/Test/Ledger.cls
+- 2026-09-18T15:19:35Z status=routed owner=burndown by=harvest note=lead harvest of the rework 1 deferred entry
