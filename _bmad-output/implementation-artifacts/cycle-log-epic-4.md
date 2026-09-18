@@ -259,3 +259,4 @@
 2026-09-18T11:26:37Z	Story 4.8	ledger_adjudicated	story=4.8 entries=DW-1104_decision-pending_owner_sheet,DW-1105_routed,DW-1106_routed,DW-1107_routed,DW-1112_decision-pending_owner_sheet,DW-1113_wontfix-accepted,DW-1114_routed,DW-1115_wontfix-accepted open=0
 2026-09-18T11:26:37Z	Story 4.8	smoke_complete	ci-runner=49_tests_green browser=120/120 smoke_throwaway=PASSED_18/18 smoke_live_ocupilot=PASSED_18/18 lint_docs=0
 2026-09-18T11:26:37Z	Story 4.8	committed	sha=a1db444 build_sha=0bfc539 kind=code branch=OCU-1-epic4 pushed=origin/OCU-1-epic4 ci=pending
+2026-09-18T11:26:52Z	Story 4.9	stage_spawned	stage=plan model=opus attempt=1 job=4-9-plan-1 epic_context=reused
