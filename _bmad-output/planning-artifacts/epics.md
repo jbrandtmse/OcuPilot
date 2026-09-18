@@ -3046,6 +3046,11 @@ So that following its answer does not mean hunting through a menu.
 - **When** they are listed to the model
 - **Then** they appear in the tool set as read tools and run client-side.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-1084: the built-in system prompt never asks the model to name the rows it used in backticks or to offer to select them, so Story 4.6's citation rendering has no producer until the selection tool exists (ledger; routed by the lead 2026-09-18)
+- DW-1086: the turnprobe fixture helpers are copied into each browser spec that needs them - ten duplicated helpers and two marker conventions - and the pattern DW-267 already solved once by extracting a shared spec module (ledger; routed by cr 2026-09-18)
+
 ### Story 4.8: A slow or rate-limited provider degrades the turn rather than failing it
 
 As a developer-administrator on a busy account,

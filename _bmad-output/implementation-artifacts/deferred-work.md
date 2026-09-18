@@ -3227,3 +3227,33 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-6-replies-render-safely-and-offline.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: src/OcuPilot/Kernel/Agent/Prompt.cls BUILTIN says nothing about Markdown or citations; Story 4.6 renders inline code faithfully but nothing makes the agent cite rows or offer to select them. Story 4.7 owns the selection tool, so the offer only becomes truthful there. Probe: read BUILTIN and grep it for cite/select
 - 2026-09-18T00:46:24Z status=routed owner=4-7-the-agent-takes-you-to-a-screen by=harvest note=lead harvest of the 4.6 spec deferred list; routed to 4.7 which owns the selection tool
+
+### DW-1085: ReplyNode carries no attribute beyond href/src/alt, so an ordered list's start and a link or image title are dropped against core/reply.ts's own "nothing is silently dropped" contract
+- source: spec-4-6-replies-render-safely-and-offline.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Probed: `5. five\n6. six` renders <ol> with no start, so it numbers from 1; `[docs](url "Title")` drops the title. Both need a new ReplyNode field AND an ALLOWED_ATTR entry in shell/reply.ts, so the fix widens the closed attribute allow-list AD-33 turns on.
+- 2026-09-18T02:02:16Z status=wontfix-accepted owner=burndown by=cr note=reopen_if=a reply is observed numbering a continued list from 1, or a link title carries meaning the caption does not
+- 2026-09-18T02:13:15Z status=wontfix-accepted owner=burndown by=adjudication note=lead confirms: widening the closed attribute allow-list is the fix and AD-33 turns that allow-list on, so it stays closed for Release 1
+
+### DW-1086: The turnprobe IRIS-session fixture helpers are copied per browser spec rather than shared, so the copies drift: a second marker convention beside iris-session.mjs's, an unasserted scriptReply status, and one cleanup-ordering hazard now in two files
+- source: spec-4-6-replies-render-safely-and-offline.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: reply.browser-spec.mjs duplicates ten helpers from turn.browser-spec.mjs verbatim and adds OCUREPLY- beside OCUTURN-, while ui/browser/iris-session.mjs already publishes OCU-<name>-START. This story had to edit turn.browser-spec.mjs only to keep the copies identical (4ddb7f9). DW-267 solved the same class once by extracting ui/browser/list-spec.mjs.
+- 2026-09-18T02:02:24Z status=routed owner=4-7-the-agent-takes-you-to-a-screen by=cr note=4.7 adds the next turnprobe spec: extract the helper block into one module on that story, as DW-267 did for the list filter
+- 2026-09-18T02:13:15Z status=routed owner=4-7-the-agent-takes-you-to-a-screen by=adjudication note=lead confirms the routing and has added the acceptance bullet under Story 4.7 in epics.md
+
+### DW-1087: client-lint.mjs's no-off-origin-url rule is defeated by string concatenation, and nothing lints for the concatenated form -- so the reviewed-diff guarantee ALLOWED_ABSOLUTE_URLS exists to give does not hold
+- source: spec-4-6-replies-render-safely-and-offline.md | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: Verified by mutation: rewriting reply.spec.ts:15 as a literal reddens the gate ('[no-off-origin-url] https://docs.example.com/p'), while 'https:' + '//' + host passes. The rule's own doc comment states the point is that adding a CDN is an edit a reviewer sees. Pre-existing idiom (panel.spec.ts), extended here; the fix is in Epic 1's shared checker and its regex already documents false positives.
+- 2026-09-18T02:02:31Z status=escalated owner=burndown by=cr note=decision sheet: widen the rule to the concatenated form, or exempt spec files and say so in the rule's comment
+- 2026-09-18T02:13:15Z status=escalated owner=burndown by=adjudication note=lead confirms the escalation: the defeated rule lives in Epic 1s shared client-lint.mjs, outside Epic 4s footprint, so it is carried to the epic report rather than patched here
+
+### DW-1088: core/reply.ts type-imports 'hast', which reaches the build only through lowlight's own dependencies -- the new exact-pin test cannot see an undeclared package
+- source: spec-4-6-replies-render-safely-and-offline.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: lowlight 3.3.0 declares @types/hast ^3.0.0 as a runtime dependency, so npm ci always installs it and package-lock.json pins the resolved version. It becomes real only if a future lowlight drops that dependency, which is a major-version event that would fail ng build with nothing pinning it.
+- 2026-09-18T02:02:40Z status=wontfix-theoretical owner=burndown by=cr note=real when a lowlight upgrade stops depending on @types/hast; declaring it directly then is a one-line package.json edit
+- 2026-09-18T02:13:15Z status=wontfix-theoretical owner=burndown by=adjudication note=lead confirms: hast reaches the build only through lowlight, and a wrong import path fails the bundle that build-output.test.mjs builds
+
+### DW-1089: HTML entities in a reply render as their literal source: 'AT&amp;T' shows the six characters '&amp;', never '&'
+- source: spec-4-6-replies-render-safely-and-offline.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The I/O matrix's Entities and specials row specifies exactly this ('marked's Lexer yields unescaped text; nothing re-escapes'), and decoding entities would blur the raw-HTML-is-text guarantee AD-11 rule 4 rests on. A model writing prose emits '&' directly, which renders correctly.
+- 2026-09-18T02:02:40Z status=by-design owner=burndown by=cr note=specified by the spec's own Entities and specials matrix row; reopens only via a spec amendment
+- 2026-09-18T02:13:15Z status=by-design owner=burndown by=adjudication note=lead confirms: the I/O matrix row makes literal entities the specified behaviour
