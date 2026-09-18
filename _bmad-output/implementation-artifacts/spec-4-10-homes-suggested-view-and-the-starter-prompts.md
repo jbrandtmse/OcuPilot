@@ -589,6 +589,26 @@ The review pass added eight pinning tests; their mutations, demonstrated the sam
 - The greeting's published trigger (AC7):
   `mutation: gate the greeting on transcriptEmpty instead of greetingVisible -> panel.spec.ts's withheld-until-answered case goes red`.
 
+The code-review pass added seven pinning tests and one assertion; their mutations, demonstrated the
+same way:
+
+- The map answering last (AC1):
+  `mutation: drop this.syncSuggested() from panel.ts's navigation.subscribe handler -> panel.spec.ts's map-answers-last case goes red`.
+- The all-zero fallback in the state production rests in (AC6):
+  `mutation: make suggestedPrompts return [] unconditionally -> panel.spec.ts's restored-with-a-turn case and its fresh-container case both go red`.
+- A refused `Open` reads as refused and states its reason (AC4):
+  `mutation: delete the .ocu-suggested-open[aria-disabled='true'] colour rule, or the :focus-visible half of the reason reveal, from _components.scss -> tools/design-tokens.test.mjs's gated-Open test goes red`.
+- The two decorative glyphs (AC1, AC3):
+  `mutation: drop aria-hidden from either glyph span in panel.ts -> panel.spec.ts's accessible-name case goes red`.
+- An appended source whose descriptor the mirror does not carry (AC5):
+  `mutation: drop the row.url === '' half of onSuggestionOpen's guard -> panel.spec.ts's unbuilt-descriptor case goes red`.
+- The parked re-read's own callback (matrix: the faulted read):
+  `mutation: replace () => void this.load() with a callback that reads nothing -> tools/suggested-view.test.mjs's parked-re-read case goes red on its 2 s timer`.
+- The Home target in whole pixels (AC8):
+  `mutation: drop Math.floor from panelHomeTarget -> tools/panel-layout.test.mjs's DW-379 operand test goes red on its odd-viewport assertion`.
+- Signing out ends the Home visit (AC9):
+  `mutation: drop this.homeWidthReleased = false from endSession -> tools/panel-layout.test.mjs's sign-out case goes red`.
+
 **Manual checks:** none. Every criterion above has a command.
 
 ## Auto Run Result
