@@ -185,6 +185,8 @@ export const STRINGS = {
   /** EXPERIENCE.md:281 */
   agentNavigationAnnouncement: 'I\'m opening <screen> for <entity> \u2014 use Back to return.',
   /** EXPERIENCE.md:281 */
+  agentNavigationAnnouncementNoEntity: 'I\'m opening <screen> \u2014 use Back to return.',
+  /** EXPERIENCE.md:281 */
   agentNavigationHeadingAnnouncement: '<title> \u2014 opened by the agent; Back returns',
   /** EXPERIENCE.md:282 */
   agentAuditFollowUpQuestion: 'Shall I show you the audit entry?',

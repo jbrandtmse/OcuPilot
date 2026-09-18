@@ -414,13 +414,18 @@ test('a deeply nested blockquote parses without crashing, and every level nests 
 });
 
 // 200 levels is inside the stack; the depth a reply can actually reach is not. Both `marked`'s
-// lexer and this module's mapping recurse once per level, and 1,500 nested `>` is only 3,001
-// characters -- well under the server's reply text cap (AD-24) -- while `shell/reply.ts` builds
-// DOM inside an `effect()`, where a throw leaves the reply blank and the error escapes into
-// change detection. `parseReply` must answer the literal source instead of throwing.
+// lexer and this module's mapping recurse once per level, and 20,000 nested `>` is only 40,009
+// characters -- under the server's reply text cap (AD-24) -- while `shell/reply.ts` builds DOM
+// inside an `effect()`, where a throw leaves the reply blank and the error escapes into change
+// detection. `parseReply` must answer the literal source instead of throwing.
+// The depth is deliberately far past the limit rather than just past it: how many frames fit is
+// a property of the host, not of this code. At 1,500 levels the lexer overflows on a developer
+// machine and survives on a CI runner, which made this test pass locally and fail in CI; at
+// 20,000 the lexer itself raises RangeError anywhere, so the fallback under test is the one
+// that runs.
 // Mutation (Rule 19): drop the try/catch in `parseReply` -> both cases below throw RangeError.
 test('a pathologically nested reply renders as its own literal source rather than throwing', () => {
-  for (const src of ['> '.repeat(1500) + 'deep text', '*'.repeat(3000) + 'x' + '*'.repeat(3000)]) {
+  for (const src of ['> '.repeat(20000) + 'deep text', '*'.repeat(20000) + 'x' + '*'.repeat(20000)]) {
     assert.ok(src.length < 65536, 'the fixture stays inside the server\'s reply text cap');
     const nodes = parse(src);
     assert.equal(nodes.length, 1, `expected one literal-source paragraph for a ${src.length}-character reply`);

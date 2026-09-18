@@ -337,8 +337,9 @@ function codeBlockNode(token: Tokens.Code): ReplyNode {
  * earlier reply's tokens into a later parse.
  *
  * **Never throws.** Both `marked`'s lexer and this module's own mapping recurse once per nesting
- * level, so a deeply nested reply exhausts the stack: 1,500 nested `>` (3,001 characters) and
- * 3,000 nested `*` (6,001 characters) both raise `RangeError` -- far inside the reply text cap
+ * level, so a deeply nested reply exhausts the stack: nested `>` and nested `*` both raise
+ * `RangeError` at a few thousand levels, which is a few thousand characters -- far inside the
+ * reply text cap
  * the server enforces (AD-24), and the caller builds DOM inside an `effect()` where a throw
  * would leave the reply blank. A parse that fails renders the whole reply as its own literal
  * source text instead, which is the same rule an unmodelled token already follows.
