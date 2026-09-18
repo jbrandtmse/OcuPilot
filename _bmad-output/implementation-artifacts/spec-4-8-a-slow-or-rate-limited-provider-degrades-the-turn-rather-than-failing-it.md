@@ -30,7 +30,7 @@ deferred:
       pass and no behavior changed. Settling it means either clamping the stored value to the
       budget or widening AD-31's declared turn bound -- a product call the spec does not make.
     location: 'src/OcuPilot/Kernel/Provider/Base.cls:219'
-    severity: 'medium'
+    severity: 'med'
   - summary: >-
       PROVIDER.EGRESS is the one provider failure kind AC6 names that no turn job can reach, so it
       is pinned at the port rather than through the progress route
@@ -180,6 +180,82 @@ Client:
 - **AC11 (the installer's Web Gateway note)** — Given `Installer.Install` on a clean throwaway, when its reports are read, then the Web Gateway response timeout appears exactly once at severity `info`, no report names it as a prerequisite, install succeeds when the Gateway registry answers nothing, and no Gateway value is written — the behavior Story 1.4 shipped, re-asserted here so this story's AC has a test rather than a claim.
 - **AC12 (Integration, Rule 1)** — Given consumer `ui/src/app/shell/panel.ts` reading `core/turn.ts`, when a real turn against a scripted 500 ends in the browser, then `.ocu-panel-error-banner` is present in the DOM with text naming the `provider` step, and the composer is re-enabled with `Send` restored — observed through `npm run test:browser` against the deployed bundle, not through store state.
 - **AC13 (the two waits do not compound)** — Given `Loop.AnswerClientCall`'s wait and a provider retry in the same turn, when a test reads the bounds, then `PROVIDERCALLSECONDS` equals `Retry.#ATTEMPTBUDGETSECONDS`, `PROVIDERCALLSECONDS < WALLCLOCKSECONDS`, and `DEFAULTMAXATTEMPTS * DEFAULTTIMEOUT + RETRYBUDGETSECONDS <= ATTEMPTBUDGETSECONDS` — every term read with `$Parameter`, none restated.
+
+### Review Findings
+
+2026-09-18 code review (job `4-8-review-1`, four layers). 0 `decision-needed`, 5 `patch` (all
+applied in-pass, uncommitted per Rule 16), 5 `defer`, 8 rejected.
+
+- [x] [Review][Patch] `Egress.InstanceAddresses` cached an interface read that parsed to no address
+  [src/OcuPilot/Kernel/Egress.cls:316] -- the guard was on the raw description, so a description
+  naming an address-less interface wrote an empty set for the whole TTL and the instance's own
+  address would classify `public`. Guard moved to the parsed set; `EgressProbe.ArmInterfacesOnce`
+  added; `Egress.TestAnInterfaceReadCarryingNoAddressIsNotCachedEither` pins it.
+- [x] [Review][Patch] The declared turn bound's stated condition named only the stored timeout
+  [src/OcuPilot/Kernel/Agent/Limits.cls:77, src/OcuPilot/Kernel/Provider/Retry.cls:59] --
+  `State.Egress.MaxAttempts` is unclamped too, so with the *default* 90 s timeout and a stored
+  `maxAttempts` of 10 an attempt starts at ~270 s and ends at ~360 s, past the 300 s both files
+  declared held. Both doc comments now state the real condition and the real worst case. The
+  unclamped stored values themselves are DW-1104, the owner's.
+- [x] [Review][Patch] AC11's "no Gateway value is written" could not observe a registry write
+  [src/OcuPilot/Test/GatewayGapIpmPath.cls:140] -- both reads were taken with `SILENTMODE` armed, so
+  both fell through to the configuration file, and on an instance whose file answers nothing the
+  assertion was `"" = ""`. A second before/after pair now brackets the report step through
+  `OcuPilot.Install.Installer` itself, asserted non-empty first.
+- [x] [Review][Patch] `turnErrorBanner` still rendered "at :" for a step with no label
+  [ui/src/app/core/turn.ts:326] -- the template was chosen on the `seq` lookup, so a step found but
+  carrying neither `name` nor `target` substituted to nothing, which is the wording AC7 removes.
+  Chosen on the rendered label now.
+- [x] [Review][Patch] A refused **New conversation** showed the user nothing
+  [ui/src/app/core/turn.ts:590] -- `createConversation` recorded the refusal and `newConversation()`
+  dropped it, so one of the two presses that mint a conversation surfaced instance refusals and the
+  other failed silently. It now raises the same banner; the transcript and the lock are untouched.
+- [x] [Review][Patch] Two test doc comments narrated the review round
+  [src/OcuPilot/Test/Egress.cls:234,252] and the AC13 assertion's message claimed non-compounding
+  that `60 < 300` does not show [src/OcuPilot/Test/ProviderRetry.cls:386]. Both rewritten;
+  `TestArmingTheResolverEmptiesTheVerdictCache` gained the `Mutation:` line it lacked.
+- [x] [Review][Defer] A status-0 Send raises two identical `role="alert"` banners
+  [ui/src/app/shell/panel.ts:488] -- deferred: DW-1112, `decision-pending`. AC8 requires the
+  envelope-less fallback to carry the connectivity sentence; EXPERIENCE.md:486 requires one banner
+  for that condition, and `api.ts`'s `report()` already routes the same Send to the shell strip. The
+  same fallback answers the generic server-fault sentence for `refused`/`absent`/`rejected`, which
+  publish no connectivity sentence. Spec-bound either way -- the owner picks which contract wins.
+- [x] [Review][Defer] `TurnProvider`'s `pRetryAfter` seam has no caller and no test
+  [src/OcuPilot/Test/TurnProvider.cls:38] -- deferred: DW-1113, `wontfix-accepted`. Exercising it
+  through a turn means sleeping a real jittered backoff, which this story's own constraint forbids.
+- [x] [Review][Defer] A partially-failed family resolution is cached
+  [src/OcuPilot/Kernel/Egress.cls:129] -- deferred: DW-1114, `wontfix-accepted`. Needs an
+  `INetInfo` *raise* for one family while the other answers; `Egress.cls`'s class doc now states the
+  window instead of claiming the cache is behavior-neutral.
+- [x] [Review][Defer] `$ZHorolog` is local wall-clock, not monotonic
+  [src/OcuPilot/Kernel/Provider/Base.cls:379, src/OcuPilot/Kernel/Egress.cls:184] -- deferred:
+  DW-1115, `wontfix-accepted`. A DST forward jump cuts the attempt budget short once a year; the
+  backward jump is fail-safe.
+- [x] [Review][Defer] The initial bundle is 767.61 kB against the 780 kB `maximumWarning` --
+  deferred: occurrence appended to DW-371. Not this story's doing; ~12 kB of headroom left.
+
+**Rejected** -- `false` with its refutation, `low` with why it was not worth fixing:
+
+- A stale refusal banner standing beside the lock banner -- **false**. `send()` sets
+  `sendErrorValue` only on branches that also clear `busyValue`, so `sendErrorValue` is `null`
+  whenever `busyValue` is true and the `'locked'` early return cannot be reached with one set.
+- `Retry.HttpDateDeltaSec` mis-parses the IMF-fixdate day order -- **false**. Evaluated on
+  `ocupilot-slot-a`: `$ZDATEH` `dformat` 7 accepts both orders.
+- The attempt-deadline exit reports `PROVIDER.TIMEOUT` for a provider that answered -- **by
+  design**. `Base.Attempts`'s own doc comment and the spec's Execution bullet both name that exit
+  `PROVIDER.TIMEOUT`; the call, not the provider, ran out of the time the instance allows.
+- `TestTheStatusTableCarvesOutTheDeterminateServerErrors`'s `tCarved` leg compares two values both
+  derived from `NONRETRYABLESERVERSTATUSES` -- **low**. It still pins that the list holds only
+  server-band statuses, and the named 501/505 assertions beside it carry the AC.
+- The egress TTL test hangs six real seconds and assumes three classifications finish inside five --
+  **low**. The three are probe-driven and take microseconds; the TTL itself is the settled decision.
+- `TurnProviderFault`'s 500 legs pay real jittered backoff -- **low**. Bounded at
+  `BACKOFFCAPSECONDS` arithmetic (<= 3 s over two waits) inside a 60 s `AwaitEnd`.
+- AC1 says "no value appears in the test as a literal" while `ProviderRetry` asserts 501/505 by name
+  -- rejected, its fix is a spec edit (the rationale is in the Review Triage Log; the Spec Change
+  Log is the lead's).
+- The spec is `oversized` and this pass grew it -- rejected for the same reason; CLAUDE.md puts the
+  next re-open's budget on the lead.
 
 ## Spec Change Log
 
@@ -348,6 +424,21 @@ byte-identical after each):
   in that file.
 - Disable the retry-budget guard in `Base.Attempts` -> `ProviderRetry.TestTwoHintsAtTheCeilingBuyOneWaitAndNotTwo`
   and `TestTheRetryBudgetBoundsTheTotalSleep` both red.
+
+Mutations demonstrated in the code-review pass, for the tests it added or strengthened (same
+protocol; `git status --short` and `git diff --stat` confirmed unchanged after each):
+
+- Guard the interface cache write on the raw read (`If tRead Do ..CacheInterfaces`) in
+  `Egress.InstanceAddresses` -> `Egress.TestAnInterfaceReadCarryingNoAddressIsNotCachedEither` red,
+  1 of 20, reporting 1 interface read for two classifications.
+- Make `Installer.GatewayResponseTimeout` answer a changing value ->
+  `GatewayGapIpmPath.TestTheGatewayTimeoutIsReportedOnceAsInformationAndNeverAsAPrerequisite` red on
+  the new unarmed before/after pair, 1 of 3. Unarmed, that read answers `60` from the live Gateway
+  registry on `ocupilot-ci`, so a registry write is now observable and the pair has a subject.
+- Select `turnErrorBanner`'s template on `step === null` instead of on the rendered label ->
+  `turn.test.mjs`'s "a step that is found but renders no label" case red, 1 of 42 in that file.
+- Drop the `sendErrorValue` assignment from `newConversation()`'s refused-mint branch ->
+  `turn.test.mjs`'s "newConversation whose mint the instance refuses" case red, 1 of 42.
 
 **Manual checks:**
 

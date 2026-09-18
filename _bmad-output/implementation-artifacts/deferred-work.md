@@ -2416,6 +2416,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T10:21:58Z status=routed owner=4-3-the-docked-panel-present-on-every-route by=burndown_gate note=the panel is the next substantial addition to the bundle, so it is where an unpinned size figure first bites
 - 2026-09-16T15:11:12Z status=routed owner=4-6-replies-render-safely-and-offline by=x0 note=vendoring the renderer highlighter and sanitizer is the next large bundle addition
 - 2026-09-17T04:37:08Z occurrence=4-3-the-docked-panel-present-on-every-route
+- 2026-09-18T11:14:01Z occurrence=4-8-a-slow-or-rate-limited-provider-degrades-the-turn-rather-than-failing-it
 
 ### DW-372: A 403 on the Definition form renders the envelope's generic reason instead of naming the resource and the action, because no published action phrase exists for this form
 - source: spec-3-5-the-definition-form.md | severity: med | fix-risk: med | footprint: in-epic
@@ -3301,6 +3302,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-8-a-slow-or-rate-limited-provider-degrades-the-turn-rather-than-failing-it.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Base.Attempts reads the deadline only before attempts 2..n, so an attempt already in flight runs to its own timeoutSeconds, and State.Egress.TimeoutSeconds is any %Integer above 0 written through Save with no ceiling. Story 4.8 corrected every document that claimed otherwise and changed no behaviour. Probe: store a definition with timeoutSeconds 3600 and read the worst case against AD-31's declared bound
 - 2026-09-18T10:06:04Z status=decision-pending owner=burndown by=harvest note=the exit is either clamping the stored timeout to the budget or widening AD-31s declared turn bound; that is a product call, so it goes to the owner sheet rather than the burn-down
+- 2026-09-18T11:14:01Z status=decision-pending owner=burndown by=cr note=same root cause on the other stored value: MaxAttempts is unclamped too, so the default 90s timeout still overruns 300s
 
 ### DW-1105: PROVIDER.EGRESS is the one provider failure kind no turn job can reach, so it is pinned at the port rather than through the progress route
 - source: spec-4-8-a-slow-or-rate-limited-provider-degrades-the-turn-rather-than-failing-it.md | severity: low | fix-risk: med | footprint: in-epic
@@ -3316,3 +3318,27 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-8-a-slow-or-rate-limited-provider-degrades-the-turn-rather-than-failing-it.md | severity: low | fix-risk: high | footprint: in-epic
 - evidence: DW-334's other half: $System.INetInfo.HostNameToAddr and HostNameToAddrMulti take (host, family) only, with no timeout and no deadline, so bounding them means JOBbing a resolver per lookup and polling it -- more cost per call than the lookups it bounds. Story 4.8's five-second judgement cache removes the repeat cost only. Probe: point a definition at a host whose resolver hangs and time the first call
 - 2026-09-18T10:06:04Z status=routed owner=burndown by=harvest note=lead harvest of the 4.8 spec deferred list; DW-334 itself is answered in part by the cache
+
+### DW-1112: A status-0 Send raises two identical role=alert banners: the panel's envelope-less fallback restates the sentence the shell's connectivity strip already shows
+- source: code review of story-4.8 (2026-09-18) | severity: med | fix-risk: med | footprint: in-story
+- evidence: panel.ts sendErrorText answers STRINGS.connectivityBannerUnreachable / connectivityServerFault when the refusal carries no envelope; api.ts report() sends every outcome to connectivity.note(), and app.ts renders the same two sentences for isBannerFault. EXPERIENCE.md:486 says one banner. AC8 mandates the fallback, so the two contracts disagree. Second face: refused/absent/rejected have no published connectivity sentence, so a 403/404/422 with no envelope reads as a server fault.
+- 2026-09-18T11:13:39Z status=decision-pending owner=burndown by=cr note=spec-bound: AC8 requires the fallback, EXPERIENCE.md:486 requires one banner -- owner picks which
+- 2026-09-18T11:25:56Z status=decision-pending owner=burndown by=adjudication note=lead agrees this is spec-bound: AC8 requires the fallback banner and EXPERIENCE.md:486 requires one banner, so the exit is a product call; carried to the owner sheet with its second face (a refused, absent or rejected fault publishes no connectivity sentence)
+
+### DW-1113: OcuPilot.Test.TurnProvider's pRetryAfter seam has no caller, so the turn path's Retry-After forwarding is never exercised
+- source: code review of story-4.8 (2026-09-18) | severity: low | fix-risk: low | footprint: in-story
+- evidence: Script(pTag, pHang, pBody, pHttpStatus, pRetryAfter) and turnprobe-spec.mjs scriptReply both take the header, and every call site in src/ and ui/ passes three or four arguments. Deleting Set pRetryAfter = $ListGet(tEntry, 4) reddens nothing. Exercising it through a turn means a 429 whose real jittered backoff the turn job would sleep, which the story's own constraint forbids.
+- 2026-09-18T11:13:56Z status=wontfix-accepted owner=burndown by=cr note=reopen_if=a turn-level test scripts a Retry-After and asserts the delay DelaySec received
+- 2026-09-18T11:25:56Z status=wontfix-accepted owner=burndown by=adjudication note=lead confirms: exercising the seam through a turn means sleeping real jittered backoff, which this storys own constraint forbids; the reopen_if stands
+
+### DW-1114: A host one of whose two family lookups raises while the other answers is judged on half its records, and that verdict is then held for the whole egress TTL
+- source: code review of story-4.8 (2026-09-18) | severity: low | fix-risk: med | footprint: in-story
+- evidence: Egress.MultiLookup swallows both lookups' exceptions and contributes an empty list, which Addresses cannot tell from a family with no records; Classify caches on $Data(tResolved) alone. Harm needs an INetInfo raise for one family while the other answers AND the failed family holding the worse record. Egress.cls's class doc now states the window rather than claiming the cache is behaviour-neutral. Closing it needs a failure flag through MultiLookup, which is the seam EgressProbe overrides.
+- 2026-09-18T11:13:56Z status=wontfix-accepted owner=burndown by=cr note=reopen_if=a probe makes one family raise and the other answer, and the verdict is observed cached
+- 2026-09-18T11:25:56Z status=routed owner=burndown by=adjudication note=lead confirms: a half-answered family lookup is a real staleness window, bounded by the five-second TTL, and needs an INetInfo raise to pin
+
+### DW-1115: The provider attempt deadline and the egress cache TTL both read $ZHorolog, which is local wall-clock and not monotonic
+- source: code review of story-4.8 (2026-09-18) | severity: low | fix-risk: med | footprint: in-story
+- evidence: Base.NowSeconds and Egress.IsFresh both answer $ZHorolog; both doc comments cover midnight rollover only. A DST forward jump adds 3600 to the difference and refuses a further attempt an hour of budget early; a backward jump discards fresh cache entries (fail-safe). Twice a year, self-correcting, bounded by the attempt count either way. $ZTimeStamp-derived seconds would be rollover-free and consistent with Retry.HttpDateDeltaSec's own clock read.
+- 2026-09-18T11:13:56Z status=wontfix-accepted owner=burndown by=cr note=reopen_if=a turn is observed ending PROVIDER.TIMEOUT early across a DST transition
+- 2026-09-18T11:25:56Z status=wontfix-accepted owner=burndown by=adjudication note=lead confirms: a DST forward jump shortens one attempt budget once a year and the backward jump is fail-safe; not worth a monotonic clock seam in Release 1
