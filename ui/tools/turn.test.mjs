@@ -240,7 +240,7 @@ test('Send, one read: ensures a conversation, posts the turn, polls to a card th
   assert.equal(finished.live, false);
   assert.equal(finished.state, 'completed');
   assert.equal(finished.reply, 'the answer');
-  assert.equal(turnErrorBanner(finished, STRINGS.agentTurnStoppedBanner), null, 'a completed turn shows no error banner');
+  assert.equal(turnErrorBanner(finished, STRINGS.agentTurnStoppedBanner, STRINGS.agentTurnStoppedNoStepBanner), null, 'a completed turn shows no error banner');
 });
 
 // --- Story 4.11: `context` reaches the POST body ---------------------------------------------
@@ -362,7 +362,7 @@ test('Stop mid-call: the tool step the loop was about to run becomes a stopped s
   const finished = turn.entries().at(-1);
   assert.equal(finished.state, 'stopped');
   assert.equal(finished.reply, null);
-  assert.equal(turnErrorBanner(finished, STRINGS.agentTurnStoppedBanner), null, 'a stop is never an error');
+  assert.equal(turnErrorBanner(finished, STRINGS.agentTurnStoppedBanner, STRINGS.agentTurnStoppedNoStepBanner), null, 'a stop is never an error');
   assert.equal(finished.steps[0].status, 'stopped');
   assert.equal(stepLabel(finished.steps[0]), 'shell.namespaces.read');
 
@@ -629,26 +629,154 @@ test('turnErrorBanner names the step at error.seq and substitutes both placehold
     error: { seq: 2, code: 'PROVIDER.TIMEOUT', reason: 'The provider timed out.' },
     steps: [step({ seq: 1, name: 'provider', kind: 'model' }), step({ seq: 2, name: 'shell.namespaces.read', status: 'error' })],
   };
-  const banner = turnErrorBanner(entry, STRINGS.agentTurnStoppedBanner);
+  const banner = turnErrorBanner(entry, STRINGS.agentTurnStoppedBanner, STRINGS.agentTurnStoppedNoStepBanner);
   assert.equal(banner, 'The turn stopped at shell.namespaces.read: The provider timed out.');
 });
 
 test('turnErrorBanner is null with no error, and null for completed/stopped even with one', () => {
-  assert.equal(turnErrorBanner({ state: 'running', error: null, steps: [] }, STRINGS.agentTurnStoppedBanner), null);
+  assert.equal(turnErrorBanner({ state: 'running', error: null, steps: [] }, STRINGS.agentTurnStoppedBanner, STRINGS.agentTurnStoppedNoStepBanner), null);
   assert.equal(
     turnErrorBanner(
       { state: 'completed', error: { seq: 1, code: 'X', reason: 'r' }, steps: [] },
-      STRINGS.agentTurnStoppedBanner
+      STRINGS.agentTurnStoppedBanner,
+      STRINGS.agentTurnStoppedNoStepBanner
     ),
     null
   );
   assert.equal(
     turnErrorBanner(
       { state: 'stopped', error: { seq: 1, code: 'TURN.STOPPED', reason: 'r' }, steps: [] },
-      STRINGS.agentTurnStoppedBanner
+      STRINGS.agentTurnStoppedBanner,
+      STRINGS.agentTurnStoppedNoStepBanner
     ),
     null
   );
+});
+
+// --- Story 4.8: the no-step banner (DW-1053) and a refused Send (DW-1054) --------------------
+
+test('turnErrorBanner: a failure naming no step uses the no-step wording and never renders "at :"', () => {
+  // Mutation (Rule 19): restore the single-template `turnErrorBanner` -- both legs go red, the
+  // first rendering "The turn stopped at : ..." and the second the same.
+  //
+  // Two real paths reach here. A job-level refusal finishes with `errorSeq` 0, which no step can
+  // carry; and `Step.GuardedAppend` answers a seq for a row it did not store once `MAXSTEPS` is
+  // reached, so the projection holds a seq past every step it shipped.
+  const jobLevel = {
+    state: 'failed',
+    error: { seq: 0, code: 'TURN.UNAVAILABLE', reason: 'The turn could not be started.' },
+    steps: [step({ seq: 1, name: 'provider', kind: 'model' })],
+  };
+  assert.equal(turnErrorBanner(jobLevel, STRINGS.agentTurnStoppedBanner, STRINGS.agentTurnStoppedNoStepBanner),
+    'The turn stopped: The turn could not be started.');
+
+  const pastCap = {
+    state: 'failed',
+    error: { seq: 4096, code: 'PROVIDER.TIMEOUT', reason: 'The provider did not answer within the time this instance allows' },
+    steps: [step({ seq: 1, name: 'provider', kind: 'model' }), step({ seq: 2 })],
+  };
+  const banner = turnErrorBanner(pastCap, STRINGS.agentTurnStoppedBanner, STRINGS.agentTurnStoppedNoStepBanner);
+  assert.equal(banner, 'The turn stopped: The provider did not answer within the time this instance allows.');
+  assert.equal(banner.includes('at :'), false, 'and never the empty-step wording');
+});
+
+test('turnErrorBanner still names the step when one is there, so the no-step wording is the miss alone', () => {
+  const entry = {
+    state: 'failed',
+    error: { seq: 1, code: 'PROVIDER.TIMEOUT', reason: 'The provider did not answer within the time this instance allows' },
+    steps: [step({ seq: 1, name: 'provider', kind: 'model', status: 'error' })],
+  };
+  assert.equal(
+    turnErrorBanner(entry, STRINGS.agentTurnStoppedBanner, STRINGS.agentTurnStoppedNoStepBanner),
+    'The turn stopped at provider: The provider did not answer within the time this instance allows.'
+  );
+});
+
+test('sendError records every non-409 refusal of POST /turn and 409 raises the lock banner alone', async () => {
+  // Mutation (Rule 19): drop the `sendErrorValue` assignment from the non-409 branch -- every leg
+  // but 409 goes red with `sendError()` null.
+  for (const status of [401, 404, 422, 500]) {
+    const storage = memoryStorage();
+    const api = fakeApi({
+      [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+      [TURN_PATH]: [err(status, 'AUTH.EXPIRED', 'Your session ended. Sign in to continue.')],
+    });
+    const turn = new TurnStore({ api, storage, navigationType: freshTab() });
+    assert.equal(await turn.send('hello'), 'error', `${status}: the send is refused`);
+    assert.deepEqual(turn.sendError(), { status, code: 'AUTH.EXPIRED', reason: 'Your session ended. Sign in to continue.' },
+      `${status}: and the refusal is recorded with the envelope's own reason`);
+    assert.equal(turn.locked(), false, `${status}: which is not the lock banner`);
+    assert.equal(turn.busy(), false, `${status}: and the store is idle again`);
+    assert.equal(turn.entries().length, 0, `${status}: with nothing appended to the transcript`);
+  }
+
+  // Status 0 is the browser's own spelling for "no answer arrived", so there is no envelope to
+  // parse and the refusal carries neither code nor reason -- the shape the panel falls back for.
+  {
+    const storage = memoryStorage();
+    const api = fakeApi({
+      [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+      [TURN_PATH]: [err(0, null, null)],
+    });
+    const turn = new TurnStore({ api, storage, navigationType: freshTab() });
+    assert.equal(await turn.send('hello'), 'error', '0: the send is refused');
+    assert.deepEqual(turn.sendError(), { status: 0, code: null, reason: null },
+      '0: and is recorded with no envelope, because none arrived');
+    assert.equal(turn.locked(), false, '0: which is not the lock banner');
+    assert.equal(turn.entries().length, 0, '0: with nothing appended to the transcript');
+  }
+
+  const storage = memoryStorage();
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+    [TURN_PATH]: [err(409, 'TURN.BUSY', 'A turn is in progress.')],
+  });
+  const turn = new TurnStore({ api, storage, navigationType: freshTab() });
+  assert.equal(await turn.send('hello'), 'locked', '409 is the lock refusal');
+  assert.equal(turn.sendError(), null, 'and raises no send-error banner');
+  assert.equal(turn.locked(), true, 'only the lock one');
+});
+
+test('sendError records a conversation mint that failed, and clears on the next send and at sign-out', async () => {
+  const storage = memoryStorage();
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [err(500, 'STATE.UNAVAILABLE', 'Something failed on the instance.'), ok({ conversationId: 'convo-1' }, 201)],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+  });
+  const { schedule } = fakeSchedule();
+  const turn = new TurnStore({ api, storage, navigationType: freshTab(), schedule });
+  assert.equal(await turn.send('first'), 'error', 'a send whose conversation cannot be minted is refused');
+  assert.deepEqual(turn.sendError(), { status: 500, code: 'STATE.UNAVAILABLE', reason: 'Something failed on the instance.' },
+    'and the mint refusal is what the banner carries');
+
+  assert.equal(await turn.send('second'), 'sent', 'the next send gets through');
+  assert.equal(turn.sendError(), null, 'and the banner is cleared by it');
+});
+
+test('sendError clears when a new conversation is started', async () => {
+  const storage = memoryStorage();
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201), ok({ conversationId: 'convo-2' }, 201)],
+    [TURN_PATH]: [err(422, 'TURN.MESSAGE.LENGTH', 'That message is too long.')],
+  });
+  const turn = new TurnStore({ api, storage, navigationType: freshTab() });
+  await turn.send('hello');
+  assert.notEqual(turn.sendError(), null, 'the refusal is recorded');
+  assert.equal(await turn.newConversation(), true, 'a new conversation is minted');
+  assert.equal(turn.sendError(), null, 'and the banner does not float over the empty transcript it left behind');
+});
+
+test('sendError clears at sign-out', async () => {
+  const storage = memoryStorage();
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+    [TURN_PATH]: [err(422, 'TURN.MESSAGE.LENGTH', 'That message is too long.')],
+  });
+  const turn = new TurnStore({ api, storage, navigationType: freshTab() });
+  await turn.send('hello');
+  assert.notEqual(turn.sendError(), null, 'the refusal is recorded');
+  turn.endSession();
+  assert.equal(turn.sendError(), null, 'and sign-out drops it with everything else');
 });
 
 // --- Failed tool -----------------------------------------------------------------------------

@@ -667,6 +667,83 @@ describe('Story 4.5: Send/Stop, the lock banner, Enter vs Shift+Enter, cards, an
     expect(host.querySelectorAll('.ocu-panel-message-user')).toHaveLength(1);
   });
 
+  it('Story 4.8: a Send the instance refuses with a non-409 status raises the refusal banner carrying the server\'s own reason, and the next successful send clears it', async () => {
+    // Mutation (Rule 19): drop the `sendErrorValue` assignment from `TurnStore.send`'s non-409
+    // branch -> the banner never renders and this goes red at the first expectation.
+    const { schedule } = fakeTurnSchedule();
+    const api = fakeTurnApi({
+      [CONVERSATION_PATH]: [{ kind: 'ok', status: 201, body: { conversationId: 'convo-1' } }],
+      [TURN_PATH]: [
+        { kind: 'error', status: 422, code: 'TURN.MESSAGE.LENGTH', reason: 'That message is too long.', detail: null },
+        { kind: 'ok', status: 202, body: { turnId: 'turn-1' } },
+      ],
+    });
+    const turn = stubTurnStore({ api: api as never, schedule });
+    const { host, fixture } = await mount({ rows: [{ enabled: true }], turn });
+    await typeDraft(host, fixture, 'too long');
+    (host.querySelector('.ocu-panel-send') as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+
+    const banner = host.querySelector('[data-slot="send-error"]') as HTMLElement;
+    expect(banner).not.toBeNull();
+    expect(banner.getAttribute('role')).toBe('alert');
+    expect(banner.textContent).toContain('That message is too long.');
+    // The draft is kept and nothing was appended: a refused send changes no transcript.
+    expect((host.querySelector('.ocu-panel-composer') as HTMLTextAreaElement).value).toBe('too long');
+    expect(host.querySelectorAll('.ocu-panel-message-user')).toHaveLength(0);
+    // 409's own banner is a different slot and is not raised by this refusal.
+    expect(host.querySelector('[data-slot="lock"] .ocu-banner')).toBeNull();
+
+    (host.querySelector('.ocu-panel-send') as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+    expect(host.querySelector('[data-slot="send-error"]')).toBeNull();
+    expect(host.querySelector('.ocu-panel-message-user')?.textContent?.trim()).toBe('too long');
+  });
+
+  it('Story 4.8: a Send that never reached the instance falls back to the connectivity sentence, since there is no envelope to quote', async () => {
+    const { schedule } = fakeTurnSchedule();
+    const api = fakeTurnApi({
+      [CONVERSATION_PATH]: [{ kind: 'ok', status: 201, body: { conversationId: 'convo-1' } }],
+      [TURN_PATH]: [{ kind: 'error', status: 0, code: null, reason: null, detail: null }],
+    });
+    const turn = stubTurnStore({ api: api as never, schedule });
+    const { host, fixture } = await mount({ rows: [{ enabled: true }], turn });
+    await typeDraft(host, fixture, 'anything');
+    (host.querySelector('.ocu-panel-send') as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+
+    const banner = host.querySelector('[data-slot="send-error"]') as HTMLElement;
+    expect(banner).not.toBeNull();
+    expect(banner.textContent).toContain(STRINGS.connectivityBannerUnreachable);
+  });
+
+  // The other arm of the same fallback: an answer that reached the instance but carried no
+  // envelope to quote -- a Web Gateway error page, say -- reads as a server fault, not as an
+  // unreachable instance. Without this leg only the `unreachable` arm is ever executed.
+  //
+  // Mutation (Rule 19): answer `STRINGS.connectivityBannerUnreachable` from `sendErrorText`'s
+  // false arm -> this goes red while the status-0 case above stays green.
+  it('Story 4.8: a refusal that carried no envelope but did reach the instance reads as a server fault', async () => {
+    const { schedule } = fakeTurnSchedule();
+    const api = fakeTurnApi({
+      [CONVERSATION_PATH]: [{ kind: 'ok', status: 201, body: { conversationId: 'convo-1' } }],
+      [TURN_PATH]: [{ kind: 'error', status: 502, code: null, reason: null, detail: null }],
+    });
+    const turn = stubTurnStore({ api: api as never, schedule });
+    const { host, fixture } = await mount({ rows: [{ enabled: true }], turn });
+    await typeDraft(host, fixture, 'anything');
+    (host.querySelector('.ocu-panel-send') as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+
+    const banner = host.querySelector('[data-slot="send-error"]') as HTMLElement;
+    expect(banner).not.toBeNull();
+    expect(banner.textContent).toContain(STRINGS.connectivityServerFault);
+  });
+
   it('a running card is expanded by default, a done card is collapsed, and a user click overrides either', async () => {
     const { schedule, scheduled } = fakeTurnSchedule();
     const api = fakeTurnApi({
@@ -1067,6 +1144,39 @@ describe('Story 4.5 review: restored cards, the error banner, the rows line, and
     ]);
     expect(failedHost.querySelector('.ocu-panel-error-banner')).not.toBeNull();
     expect(failedHost.querySelector('.ocu-panel-message-agent-text')).toBeNull();
+  });
+
+  // Story 4.8 AC7 (DW-1053) at the surface the AC names. `turn.test.mjs` pins the pure function
+  // with both templates handed to it; only this decides that the panel hands it the no-step one.
+  //
+  // Mutation (Rule 19): pass `STRINGS.agentTurnStoppedBanner` as `turnErrorBanner`'s third
+  // argument in `panel.ts` -> both legs redden, rendering "The turn stopped at : ...".
+  it('Story 4.8: a failed turn whose error names no step renders the no-step wording, never "at :"', async () => {
+    // errorSeq 0 -- the job-level refusal, which no step can carry.
+    const { host: jobLevelHost } = await mountRestored([
+      restoredTurn({
+        state: 'failed',
+        reply: null,
+        error: { seq: 0, code: 'TURN.UNAVAILABLE', reason: 'The turn could not be started.' },
+        steps: [turnStep({ seq: 1, status: 'error', target: 'USER', reason: 'The turn could not be started.' })],
+      }),
+    ]);
+    const jobLevel = jobLevelHost.querySelector('.ocu-panel-error-banner') as HTMLElement;
+    expect(jobLevel).not.toBeNull();
+    expect(jobLevel.textContent?.trim()).toBe('The turn stopped: The turn could not be started.');
+
+    // A seq past MAXSTEPS -- the seq Step.GuardedAppend answers for a row it did not store.
+    const { host: pastCapHost } = await mountRestored([
+      restoredTurn({
+        state: 'failed',
+        reply: null,
+        error: { seq: 4096, code: 'PROVIDER.TIMEOUT', reason: 'The provider did not answer within the time this instance allows' },
+        steps: [turnStep({ seq: 1, status: 'error', target: 'USER', reason: 'no' })],
+      }),
+    ]);
+    const pastCap = pastCapHost.querySelector('.ocu-panel-error-banner') as HTMLElement;
+    expect(pastCap).not.toBeNull();
+    expect(pastCap.textContent).not.toContain('at :');
   });
 
   it('an expanded read card shows the rows-returned and rows-sent line', async () => {

@@ -140,13 +140,18 @@ export function setTag(options, definitionId, tag) {
 
 /**
  * Script one scripted reply for `tag`: `hangSeconds` before answering, then `bodyExpr`
- * (ObjectScript). Asserts `OcuPilot.Test.TurnProvider.Script`'s own `%Status`, threaded through
- * the marker -- an unarmed (empty) `tag` refuses, and this is where that would surface.
+ * (ObjectScript) with HTTP `httpStatus` and the `Retry-After` header `retryAfter`. Asserts
+ * `OcuPilot.Test.TurnProvider.Script`'s own `%Status`, threaded through the marker -- an unarmed
+ * (empty) `tag` refuses, and this is where that would surface.
+ *
+ * The last two default to the 200 this adapter used to answer unconditionally, so every caller
+ * written before Story 4.8 is unchanged. `httpStatus` 0 is the seam's own "no HTTP answer at all"
+ * and reaches the turn as a transport timeout.
  */
-export function scriptReply(options, tag, hangSeconds, bodyExpr) {
+export function scriptReply(options, tag, hangSeconds, bodyExpr, httpStatus = 200, retryAfter = '') {
   const name = `${options.marker}-SCRIPT`;
   const output = runIris(options.container, [
-    `Set sc=##class(OcuPilot.Test.TurnProvider).Script("${escapeOs(tag)}",${hangSeconds},${bodyExpr})`,
+    `Set sc=##class(OcuPilot.Test.TurnProvider).Script("${escapeOs(tag)}",${hangSeconds},${bodyExpr},${httpStatus},"${escapeOs(retryAfter)}")`,
     `Write "OCU-${name}-START:"_$System.Status.IsOK(sc)_":OCU-${name}-END",!`,
   ]);
   assert.equal(markerValue(output, name), '1', `Script succeeded: ${output}`);

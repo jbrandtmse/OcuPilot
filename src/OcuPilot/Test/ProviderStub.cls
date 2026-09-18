@@ -4,7 +4,12 @@
 /// connection. <b>No test in this story opens a socket to any provider.</b></p>
 /// <p>Everything above the seam -- the credential resolution, the key-shape gate, the body, the
 /// headers, the retry arithmetic, the response mapping and the fault -- is the shipped code
-/// running unchanged. What is replaced is exactly one method.</p>
+/// running unchanged. What is replaced is the transport and the two seams that would otherwise
+/// make the suite wait: <method>OcuPilot.Kernel.Provider.Base.Wait</method>, which records instead
+/// of sleeping, and <method>OcuPilot.Kernel.Provider.Base.NowSeconds</method>, which answers a
+/// counter this class advances by every recorded wait and by
+/// <method>ScriptElapsed</method>'s per-call duration -- so the retry budget and the five-minute
+/// attempt deadline are both driven with no real time passing.</p>
 /// <p><b>It records what the request carried.</b> The TLS configuration name, the
 /// server-identity flag, the timeout, the four proxy values and the header names it was given are
 /// captured per call, which is what makes AC3's configured-request assertions an observation of the
@@ -72,6 +77,39 @@ ClassMethod QueueThrow()
 {
     Set tIndex = $Increment(^||OcuPilotProviderStub("script"))
     Set ^||OcuPilotProviderStub("script", tIndex, "kind") = "throw"
+}
+
+/// <p>Make every transport call from now on advance the fake clock by <var>pSeconds</var>, standing
+/// in for the time the call itself spent. Unset -- the default -- a call takes no time, which is
+/// what every test that is not about the attempt deadline wants.</p>
+/// <p>It is the other half of <method>NowSeconds</method>: with it a test drives
+/// <parameter>OcuPilot.Kernel.Provider.Retry.ATTEMPTBUDGETSECONDS</parameter> -- five minutes -- to
+/// its end without any real time passing.</p>
+ClassMethod ScriptElapsed(pSeconds As %Numeric)
+{
+    Set ^||OcuPilotProviderStub("elapsed") = +pSeconds
+}
+
+/// <p>The fake clock's value, in the seconds <method>OcuPilot.Kernel.Provider.Base.NowSeconds</method>
+/// answers. It starts at zero on a <method>Reset</method> and advances only by what this class is
+/// told to advance it by: every <method>Wait</method> amount, and
+/// <method>ScriptElapsed</method>'s per-call duration.</p>
+ClassMethod Clock() As %Numeric
+{
+    Quit +$Get(^||OcuPilotProviderStub("clock"))
+}
+
+/// <p>Answer the fake clock instead of the process's, so an attempt deadline measured in minutes is
+/// exercised in no time at all.</p>
+Method NowSeconds() As %Numeric
+{
+    Quit ..Clock()
+}
+
+/// <p>Advance the fake clock by <var>pSeconds</var>.</p>
+ClassMethod Advance(pSeconds As %Numeric) [ Private ]
+{
+    Set ^||OcuPilotProviderStub("clock") = +$Get(^||OcuPilotProviderStub("clock")) + +pSeconds
 }
 
 /// <p>Arm the transport to <b>move agent definition <var>pId</var> while it is in flight</b>: on
@@ -174,10 +212,12 @@ ClassMethod ServedBy() As %String
     Quit $Get(^||OcuPilotProviderStub("servedBy"))
 }
 
-/// <p>Record the wait rather than taking it, so the retry path runs at full speed.</p>
+/// <p>Record the wait and advance the fake clock by it rather than taking it, so the retry path runs
+/// at full speed and still costs the attempt deadline what a real sleep would.</p>
 Method Wait(pSeconds As %Numeric)
 {
     Set ^||OcuPilotProviderStub("waits") = $Get(^||OcuPilotProviderStub("waits")) _ $Select($Get(^||OcuPilotProviderStub("waits")) = "": "", 1: "|") _ +pSeconds
+    Do ..Advance(pSeconds)
 }
 
 /// <p>Answer the next queued triple instead of issuing the request, having first recorded what
@@ -190,6 +230,7 @@ Method IssueHttpsPost(pRequest As %Net.HttpRequest, pUrl As %String, Output pSta
     Set pBody = ""
     Set pRetryAfter = ""
     Set tCall = $Increment(^||OcuPilotProviderStub("calls"))
+    Do ..Advance($Get(^||OcuPilotProviderStub("elapsed")))
     Set ^||OcuPilotProviderStub("servedBy") = ..#STUBIDENTITY
     Set ^||OcuPilotProviderStub("call", tCall, "servedBy") = ..#STUBIDENTITY
     Set ^||OcuPilotProviderStub("call", tCall, "url") = pUrl

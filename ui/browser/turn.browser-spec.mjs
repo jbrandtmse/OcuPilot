@@ -3,7 +3,9 @@
  * completed reply within NFR-1's 10 s budget, a read card's rows line, Stop mid-call, the lock banner
  * on a second send in this tab and from another, a failed tool whose name is markup, reload restoring the transcript with no running card, a navigation
  * that is not a reload starting fresh, New conversation, and markup rendered as literal text with no
- * off-origin request.
+ * off-origin request. Story 4.8 adds the two failure surfaces: a provider that fails every attempt
+ * ending the turn with the error banner naming its step, and a Send the instance refuses with
+ * anything but 409 raising the refusal banner with the draft kept.
  *
  * jsdom computes no layout and issues no real network request, so the wall-clock budget (NFR-1)
  * and "no request left this origin" are only observable here. Every test scripts its own
@@ -76,9 +78,11 @@ function setTag(tag) {
   sharedSetTag(probe, preparedId, tag);
 }
 
-/** Script one scripted reply for `tag`: `hangSeconds` before answering, then `bodyExpr` (ObjectScript). */
-function scriptReply(tag, hangSeconds, bodyExpr) {
-  sharedScriptReply(probe, tag, hangSeconds, bodyExpr);
+/** Script one scripted reply for `tag`: `hangSeconds` before answering, then `bodyExpr`
+ * (ObjectScript) with HTTP `httpStatus` and the `Retry-After` header `retryAfter`. Both default to
+ * what every earlier spec expects: HTTP 200 and no header. */
+function scriptReply(tag, hangSeconds, bodyExpr, httpStatus = 200, retryAfter = '') {
+  sharedScriptReply(probe, tag, hangSeconds, bodyExpr, httpStatus, retryAfter);
 }
 
 function toolUseReply(toolWireName) {
@@ -396,6 +400,95 @@ test('Markup in a reply renders as literal text, and the browser makes no reques
     const hasImg = await page.evaluate(() => document.querySelector('.ocu-panel-message-agent-text img') !== null);
     assert.equal(hasImg, false, 'no <img> element was created from it');
     assert.deepEqual(offOriginRequests, [], 'no request left the origin for the off-origin host');
+  } finally {
+    await context.close();
+    forgetTag(tag);
+  }
+});
+
+test('AC12: a provider that fails every attempt ends the turn with the error banner naming the provider step, and Send comes back', async () => {
+  // The integration criterion (Rule 1): the panel, through `core/turn.ts`, against a real turn job
+  // and the deployed bundle. jsdom has no turn job behind it, so "the turn actually failed on the
+  // instance and the banner the user reads says so" is only observable here.
+  //
+  // Mutation (Rule 19): rebuild and redeploy the bundle first, then suppress the error banner's
+  // render in `panel.ts` -> the first assertion goes red on a banner that never appears.
+  const tag = nextTag();
+  setTag(tag);
+  scriptReply(tag, 0, '""', 500);
+  const { context, page } = await signedInAt(HOME_URL);
+  try {
+    await typeAndSend(page, 'ask the provider something');
+    await page.waitForSelector('.ocu-panel-error-banner', { timeout: config.navigationTimeoutMs });
+    const banner = await page.evaluate(() => document.querySelector('.ocu-panel-error-banner').textContent.trim());
+    assert.ok(banner.startsWith('The turn stopped at provider:'), `the banner names the provider step: ${banner}`);
+    assert.ok(!banner.includes('at :'), `and never the empty-step wording: ${banner}`);
+    assert.equal(
+      await page.evaluate(() => document.querySelector('.ocu-panel-message-agent-text')),
+      null,
+      'a turn that ended in an error renders no reply block'
+    );
+
+    // The composer is usable again and the control is Send, not Stop: a failed turn releases the
+    // panel exactly as a completed one does.
+    const composer = await page.evaluate(() => ({
+      label: document.querySelector('.ocu-panel-send').textContent.trim(),
+      disabled: document.querySelector('#ocu-panel-composer').getAttribute('aria-disabled'),
+    }));
+    assert.deepEqual(composer, { label: 'Send', disabled: null });
+  } finally {
+    await context.close();
+    forgetTag(tag);
+  }
+});
+
+test('AC8: a Send the instance refuses with a non-409 status shows the refusal banner and keeps the draft', async () => {
+  const tag = nextTag();
+  setTag(tag);
+  const reasonOutput = runIris([
+    'Write "OCU-TURN-REASON-START:"_##class(OcuPilot.Api.Error).#REASONTURNMESSAGELENGTH_":OCU-TURN-REASON-END",!',
+  ]);
+  const publishedReason = markerValue(reasonOutput, 'TURN-REASON');
+  assert.ok(publishedReason, `the instance published its own refusal sentence: ${reasonOutput}`);
+
+  const { context, page } = await signedInAt(HOME_URL);
+  try {
+    // Longer than a turn accepts, so `POST /turn` answers 422 with its written reason -- a real
+    // non-409 refusal a browser can actually provoke, rather than an injected transport failure.
+    const draft = await page.evaluate(() => {
+      const el = document.querySelector('#ocu-panel-composer');
+      el.value = 'x'.repeat(20000);
+      el.dispatchEvent(new Event('input'));
+      return el.value.length;
+    });
+    assert.equal(draft, 20000, 'the draft is in the composer');
+    await page.click('.ocu-panel-send');
+
+    await page.waitForSelector('[data-slot="send-error"]', { timeout: config.navigationTimeoutMs });
+    const state = await page.evaluate(() => ({
+      role: document.querySelector('[data-slot="send-error"]').getAttribute('role'),
+      text: document.querySelector('[data-slot="send-error"]').textContent,
+      draftLength: document.querySelector('#ocu-panel-composer').value.length,
+      messages: document.querySelectorAll('.ocu-panel-message-user').length,
+      lock: document.querySelector('[data-slot="lock"] .ocu-banner') !== null,
+    }));
+    assert.equal(state.role, 'alert');
+    assert.ok(state.text.includes(publishedReason), `the banner carries the instance's own reason: ${state.text}`);
+    assert.equal(state.draftLength, 20000, 'the draft is kept');
+    assert.equal(state.messages, 0, 'no transcript entry was appended');
+    assert.equal(state.lock, false, 'and the lock banner is not the one that showed');
+
+    // It clears on the next send that the instance accepts.
+    scriptReply(tag, 0, textReply('accepted'));
+    await page.evaluate(() => {
+      const el = document.querySelector('#ocu-panel-composer');
+      el.value = 'a short one';
+      el.dispatchEvent(new Event('input'));
+    });
+    await page.click('.ocu-panel-send');
+    await page.waitForFunction(() => document.querySelector('[data-slot="send-error"]') === null, {
+      timeout: config.navigationTimeoutMs,
+    });
   } finally {
     await context.close();
     forgetTag(tag);

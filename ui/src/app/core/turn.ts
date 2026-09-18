@@ -138,6 +138,23 @@ export interface TurnEntry {
 
 export type SendOutcome = 'sent' | 'locked' | 'error';
 
+/**
+ * A refused Send, as the panel renders it (Story 4.8, DW-1054): the envelope's own `code` and
+ * written `reason` where the instance supplied them, and the transport status either way.
+ *
+ * It carries no sentence of its own. Every refusal the API can produce already has a written
+ * `reason` on the instance (`Api/Error.cls`) and `JsonResult`'s error arm already parses it, so
+ * the panel renders that; a wrapper sentence here would be a second, weaker copy of the server's
+ * own words in front of the user (AD-39). `reason` is `null` only when the answer carried no
+ * envelope at all -- a status 0, or a body that is not one -- and the panel falls back to the
+ * connectivity sentence `classifyFault` already selects for that status.
+ */
+export interface SendRefusal {
+  readonly status: number;
+  readonly code: string | null;
+  readonly reason: string | null;
+}
+
 function textAt(source: Record<string, unknown>, key: string): string {
   const value = source[key];
   return typeof value === 'string' ? value : '';
@@ -282,19 +299,29 @@ export function stepLabel(step: Pick<TurnStep, 'name' | 'target'>): string {
  * never show one -- a stop is not an error (Design Notes; the I/O matrix's Stop row: "no reply,
  * no error banner") even though a stopped turn's own `error.code` is `TURN.STOPPED`.
  *
- * `template` ends "... <reason>." (`STRINGS.agentTurnStoppedBanner`) and every published
- * `TURN.*` reason sentence (`Api/Error.cls`) already ends with its own period, so substituting
- * verbatim would double it ("...abandoned.."). One trailing period is trimmed off `reason`
- * before substitution -- a rendering nicety over a server-authored fixed sentence, not a
- * reformatting of model or tool output (AD-11 governs that text, not this one).
+ * **Two templates, because two real paths name no step** (Story 4.8, DW-1053). A job-level refusal
+ * finishes with `errorSeq` 0, and `Step.GuardedAppend` answers a seq for a row it did not store
+ * once `MAXSTEPS` is reached -- in both the `seq` lookup misses, and substituting an empty
+ * `<step>` rendered "The turn stopped at : ...". `noStepTemplate` names no step at all, so the
+ * empty substitution can no longer happen.
+ *
+ * Both templates end "... <reason>." and every published `TURN.*` and `PROVIDER.*` reason sentence
+ * (`Api/Error.cls`, `Kernel/Provider/Base.cls`) may end with its own period, so substituting
+ * verbatim would double it ("...abandoned.."). One trailing period is trimmed off `reason` before
+ * substitution -- a rendering nicety over a server-authored fixed sentence, not a reformatting of
+ * model or tool output (AD-11 governs that text, not this one).
  */
-export function turnErrorBanner(entry: Pick<TurnEntry, 'state' | 'error' | 'steps'>, template: string): string | null {
+export function turnErrorBanner(
+  entry: Pick<TurnEntry, 'state' | 'error' | 'steps'>,
+  template: string,
+  noStepTemplate: string
+): string | null {
   if (entry.state === 'completed' || entry.state === 'stopped') return null;
   if (entry.error === null) return null;
   const step = entry.steps.find((candidate) => candidate.seq === entry.error?.seq) ?? null;
-  const stepText = step === null ? '' : stepLabel(step);
   const reason = entry.error.reason.endsWith('.') ? entry.error.reason.slice(0, -1) : entry.error.reason;
-  return template.split('<step>').join(stepText).split('<reason>').join(reason);
+  if (step === null) return noStepTemplate.split('<reason>').join(reason);
+  return template.split('<step>').join(stepLabel(step)).split('<reason>').join(reason);
 }
 
 export interface TurnStoreOptions {
@@ -322,6 +349,13 @@ export class TurnStore {
   private busyValue = false;
   private lockedValue = false;
   private restoredValue = false;
+
+  /** The last Send the instance refused with anything but 409, or `null` (Story 4.8, DW-1054). */
+  private sendErrorValue: SendRefusal | null = null;
+
+  /** Where `createConversation` leaves a refusal for `send()` to read; `null` after a mint that
+   * succeeded. `newConversation()` ignores it: this banner belongs to Send. */
+  private mintRefusalValue: SendRefusal | null = null;
 
   /** The live turn's own pending navigation directive, or `null` (Story 4.7). */
   private pendingNavigationValue: TurnNavigation | null = null;
@@ -391,6 +425,15 @@ export class TurnStore {
   }
 
   /**
+   * The Send the instance refused, or `null` (Story 4.8, DW-1054). Set on every non-409 refusal of
+   * `POST /turn` and on a conversation mint that failed; cleared at the start of the next `send()`,
+   * by `newConversation()` and by `endSession()`. A 409 is the lock banner's and never lands here.
+   */
+  sendError(): SendRefusal | null {
+    return this.sendErrorValue;
+  }
+
+  /**
    * Read the adopted conversation back, once. A no-op (resolves at once) when this tab adopted
    * no id -- a new or duplicated tab starts fresh. A 404 drops the id (Boundaries & Constraints).
    */
@@ -451,6 +494,7 @@ export class TurnStore {
     }
     this.busyValue = true;
     this.lockedValue = false;
+    this.sendErrorValue = null;
     this.pendingNavigationValue = null;
     this.actedNavigationSeq = 0;
     const generation = (this.pollGeneration += 1);
@@ -461,6 +505,7 @@ export class TurnStore {
       if (created === null) {
         if (generation === this.pollGeneration) {
           this.busyValue = false;
+          this.sendErrorValue = this.mintRefusalValue;
           this.notify();
         }
         return 'error';
@@ -489,6 +534,11 @@ export class TurnStore {
         // The conversation is gone; the next send starts a fresh one.
         this.conversationIdValue = null;
         this.removeItem(CONVERSATION_STORAGE_KEY);
+      }
+      // `installing` is Session's surface, not this one (`api.ts`): it is not a refusal the user
+      // can act on, and the caller's state stays where it is.
+      if (started.kind === 'error') {
+        this.sendErrorValue = { status: started.status, code: started.code, reason: started.reason };
       }
       this.busyValue = false;
       this.notify();
@@ -540,6 +590,9 @@ export class TurnStore {
     if (created === null) return false;
     this.entriesValue = [];
     this.lockedValue = false;
+    // A refusal belongs to the Send that met it. Leaving it set here would float it over a fresh,
+    // empty transcript belonging to a conversation it was never about.
+    this.sendErrorValue = null;
     this.notify();
     return true;
   }
@@ -549,6 +602,8 @@ export class TurnStore {
     this.pollGeneration += 1;
     this.busyValue = false;
     this.lockedValue = false;
+    this.sendErrorValue = null;
+    this.mintRefusalValue = null;
     this.currentTurnId = null;
     this.liveEntryValue = null;
     this.entriesValue = [];
@@ -601,10 +656,16 @@ export class TurnStore {
 
   private async createConversation(): Promise<string | null> {
     const generation = this.pollGeneration;
+    this.mintRefusalValue = null;
     const result = await this.api.requestJson<{ conversationId: string }>(CONVERSATION_PATH, {
       method: 'POST',
     });
-    if (result.kind !== 'ok') return null;
+    if (result.kind !== 'ok') {
+      if (result.kind === 'error') {
+        this.mintRefusalValue = { status: result.status, code: result.code, reason: result.reason };
+      }
+      return null;
+    }
     if (generation !== this.pollGeneration) {
       // Superseded by `endSession()` while the request was in flight -- already reset.
       return null;

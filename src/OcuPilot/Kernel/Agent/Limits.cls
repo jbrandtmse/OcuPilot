@@ -66,4 +66,19 @@ Parameter HISTORYMAXLENGTH As %Integer = 65536;
 /// browser that never answers within it lapses the call to <code>NAV.UNAVAILABLE</code>.</p>
 Parameter NAVWAITSECONDS As %Integer = 60;
 
+/// <p>Seconds one provider call may add to a turn, its retries and the sleeps between them
+/// included (Story 4.8, AD-42). The turn's <b>declared</b> ceiling; the one actually enforced is
+/// <parameter>OcuPilot.Kernel.Provider.Retry.ATTEMPTBUDGETSECONDS</parameter>, because
+/// <package>OcuPilot.Kernel.Provider</package> is reached from Test connection as well as from a
+/// turn and must not depend on a turn's limits. A test pins the two equal.</p>
+/// <p>Its consequence, stated rather than left to be discovered: a turn may be observed for up to
+/// <parameter>WALLCLOCKSECONDS</parameter> plus this, because the wall clock is checked
+/// <i>before</i> a provider call and not during one -- and a lease that lapses during a call is
+/// noticed at most this late, which is AD-31's "next step boundary" unchanged. That holds while
+/// the stored per-call timeout is at or below
+/// <parameter>OcuPilot.Kernel.State.Egress.DEFAULTTIMEOUT</parameter>; a larger stored value is
+/// bounded by nothing else, and an attempt already in flight when the deadline passes still runs
+/// to it.</p>
+Parameter PROVIDERCALLSECONDS As %Integer = 300;
+
 }

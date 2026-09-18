@@ -120,4 +120,51 @@ Method TestTheGapIsReportedOnceAndThenTheRunSaysItRecordedNothingNew()
     Do $$$AssertTrue(tSaidNothingNew, "the second run says it recorded nothing new, rather than saying nothing at all")
 }
 
+/// <p>Story 4.8 AC11 -- the Web Gateway response timeout is <b>information</b>. The spine's
+/// Superseded entry settles it: AD-7's background job holds no request open, so the stock timeout
+/// suffices and the value is no prerequisite. Install reports it once, at <code>info</code>, names
+/// it as a prerequisite nowhere, succeeds when the Gateway registry answers nothing, and writes no
+/// Gateway value -- the behaviour Story 1.4 shipped, given a test here rather than a claim. That
+/// install itself succeeds is what the container's own start hook and
+/// <file>scripts/smoke.sh</file> assert on every run; what is asserted here is the report step
+/// this class drives, and that the value it read is the value still there afterwards.</p>
+/// <p>Mutation (Rule 19): report the timeout at <code>warn</code> instead of <code>info</code> --
+/// the severity assertion goes red.</p>
+Method TestTheGatewayTimeoutIsReportedOnceAsInformationAndNeverAsAPrerequisite()
+{
+    Do ##class(OcuPilot.Test.GatewayGap).SetRegistryMode(##class(OcuPilot.Test.GatewayGap).#SILENTMODE)
+    Try {
+        ; Read through the same armed path the after-read takes, or the two compare a registry
+        ; value with a configuration-file one and the assertion says nothing about writing.
+        Set tBefore = ""
+        Do $$$AssertStatusOK(##class(OcuPilot.Test.GatewayGap).GatewayResponseTimeout(.tBefore, .tBeforeSource), "the value is readable before the report step runs")
+        Kill tReports
+        Do $$$AssertStatusOK(##class(OcuPilot.Test.GatewayGap).ReportGatewayGap(.tReports, "probe"), "install's report step succeeds with a registry that answers nothing")
+        Set tTimeoutLines = 0
+        Set tLevels = ""
+        Set tPrerequisite = 0
+        Set tN = $Order(tReports(""))
+        While tN '= "" {
+            Set tMessage = $Get(tReports(tN, "message"))
+            If tMessage [ "response timeout" {
+                Set tTimeoutLines = tTimeoutLines + 1
+                Set tLevels = tLevels _ $Select(tLevels = "": "", 1: ",") _ $Get(tReports(tN, "level"))
+            }
+            If $ZConvert(tMessage, "L") [ "prerequisite" Set tPrerequisite = 1
+            Set tN = $Order(tReports(tN))
+        }
+        Do $$$AssertEquals(tTimeoutLines, 1, "the response timeout appears exactly once")
+        Do $$$AssertEquals(tLevels, "info", "at severity info, because it is information and not a requirement")
+        Do $$$AssertEquals(tPrerequisite, 0, "and no report names it, or anything else, as a prerequisite")
+        Set tTimeout = ""
+        Do $$$AssertStatusOK(##class(OcuPilot.Test.GatewayGap).GatewayResponseTimeout(.tTimeout, .tSource), "a silent registry is not an error, it falls back to the configuration file")
+        Do $$$AssertEquals($Find($ZConvert(tSource, "L"), "registry"), 0, "and the value that answered did not come from the registry: " _ tSource)
+        Do $$$AssertEquals(tTimeout, tBefore, "and the value the report step read before it ran is the value still there after it, so nothing wrote one: " _ tBefore _ " -> " _ tTimeout)
+    } Catch ex {
+        Do ##class(OcuPilot.Test.GatewayGap).Disarm()
+        Do $$$AssertStatusOK(ex.AsStatus(), "the Gateway report step raised")
+    }
+    Do ##class(OcuPilot.Test.GatewayGap).Disarm()
+}
+
 }

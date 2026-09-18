@@ -155,6 +155,91 @@ Method TestTheProbeReplacesTheLookupAndNotTheUnionAboveIt()
     If $IsObject(tLookup) Do $$$AssertEquals(tLookup.Origin, "OcuPilot.Test.EgressProbe", "and it is the probe's, which is the one seam this class substitutes")
 }
 
+/// <p>AC9 (DW-413) -- the single-record lookup is <b>inside</b> the seam, so an armed probe's set is
+/// the whole set even for a host the instance's own resolver answers for. Until the move,
+/// <method>OcuPilot.Kernel.Egress.Addresses</method> called
+/// <method>$System.INetInfo.HostNameToAddr</method> itself, so a real host's real addresses were
+/// unioned in behind the probe's back and this case could not be written at all.</p>
+/// <p><code>localhost</code> is the host chosen because every instance resolves it -- the test is
+/// only meaningful against a name the resolver does answer for -- and the assertion is that the
+/// probe's own public address is the verdict, which the real <code>127.0.0.1</code> would outrank
+/// if it were still being unioned in.</p>
+/// <p>Mutation: move the <code>HostNameToAddr</code> call back out of
+/// <method>OcuPilot.Kernel.Egress.MultiLookup</method> into
+/// <method>OcuPilot.Kernel.Egress.Addresses</method> -- this goes red, reporting
+/// <code>loopback</code>.</p>
+Method TestAnArmedProbeOwnsTheWholeAddressSetEvenForAResolvableHost()
+{
+    Do ##class(OcuPilot.Test.EgressProbe).Clear()
+    Do ##class(OcuPilot.Kernel.Egress).Classify("localhost", .tRealKind, .tRealAddress)
+    Do $$$AssertEquals(tRealKind, "loopback", "this instance's own resolver does answer for localhost, which is what makes the next leg a test: " _ tRealAddress)
+    Do ##class(OcuPilot.Test.EgressProbe).SetAddresses("93.184.216.34")
+    Do ##class(OcuPilot.Test.EgressProbe).Classify("localhost", .tKind, .tAddress)
+    Do $$$AssertEquals(tKind _ "|" _ tAddress, "public|93.184.216.34", "with the probe armed the set is exactly the probe's, with no real address unioned in")
+}
+
+/// <p>AC10 (DW-334) -- a verdict is reused for
+/// <parameter>OcuPilot.Kernel.Egress.JUDGEMENTCACHESECONDS</parameter>: three classifications of
+/// one host inside the window perform one set of family lookups and one interface read, and the
+/// first classification after the window performs them again.</p>
+/// <p>The claim is a count, and counts are what this asserts -- through
+/// <class>OcuPilot.Test.EgressProbe</class>'s own counters, because a cache is a claim about how
+/// often something is read. The TTL itself is the one thing that can only be waited out; five
+/// seconds is cheaper than a second clock seam.</p>
+/// <p>Mutation: set that parameter to 0 -- the cached legs go red, reporting six lookups and three
+/// interface reads.</p>
+Method TestAVerdictIsReusedForTheDeclaredTtlAndTakenAgainAfterIt()
+{
+    Do ##class(OcuPilot.Test.EgressProbe).Clear()
+    Do ##class(OcuPilot.Test.EgressProbe).SetAddresses("93.184.216.34")
+    For tCall = 1:1:3 {
+        Do ##class(OcuPilot.Test.EgressProbe).Classify("cache.example.invalid", .tKind, .tAddress)
+        Do $$$AssertEquals(tKind, "public", "call " _ tCall _ " answers the same verdict")
+    }
+    Do $$$AssertEquals(##class(OcuPilot.Test.EgressProbe).MultiLookups(), 2, "one set of family lookups served all three classifications")
+    Do $$$AssertEquals(##class(OcuPilot.Test.EgressProbe).InterfaceReads(), 1, "and this instance's interface set was read once")
+    ; The TTL is short by design, so waiting it out is cheaper than a second clock seam -- and it
+    ; is the bound itself that is under test, not a stand-in for it.
+    Hang $Parameter("OcuPilot.Kernel.Egress", "JUDGEMENTCACHESECONDS") + 1
+    Do ##class(OcuPilot.Test.EgressProbe).Classify("cache.example.invalid", .tKind, .tAddress)
+    Do $$$AssertEquals(##class(OcuPilot.Test.EgressProbe).MultiLookups(), 4, "once the window has passed the lookups are taken again")
+    Do $$$AssertEquals(##class(OcuPilot.Test.EgressProbe).InterfaceReads(), 2, "and so is the interface set, so nothing is held past the declared TTL")
+}
+
+/// <p>AC10 -- the interface set is cached in its own right: two <b>different</b> hosts judged
+/// inside one window pay two sets of family lookups and share a single
+/// <method>GetInterfacesInfo</method> read.</p>
+/// <p>Its own method because the repeat-host case cannot see this half at all: the second and
+/// third judgements of one host answer from the verdict cache and never enter
+/// <method>OcuPilot.Kernel.Egress.InstanceAddresses</method>, so their interface count is 1
+/// whether that cache exists or not.</p>
+/// <p>Mutation: remove the cache read and write from
+/// <method>OcuPilot.Kernel.Egress.InstanceAddresses</method> -- this goes red, reporting two
+/// interface reads.</p>
+Method TestTheInterfaceSetIsCachedAcrossDifferentHosts()
+{
+    Do ##class(OcuPilot.Test.EgressProbe).Clear()
+    Do ##class(OcuPilot.Test.EgressProbe).SetAddresses("93.184.216.34")
+    Do ##class(OcuPilot.Test.EgressProbe).Classify("first.example.invalid", .tFirstKind, .tFirstAddress)
+    Do ##class(OcuPilot.Test.EgressProbe).Classify("second.example.invalid", .tSecondKind, .tSecondAddress)
+    Do $$$AssertEquals(tFirstKind _ "|" _ tSecondKind, "public|public", "both hosts are judged, so both reached the classifier")
+    Do $$$AssertEquals(##class(OcuPilot.Test.EgressProbe).MultiLookups(), 4, "each host paid its own family lookups, so neither answered from the other's verdict")
+    Do $$$AssertEquals(##class(OcuPilot.Test.EgressProbe).InterfaceReads(), 1, "and this instance's interface set was read once for the two of them")
+}
+
+/// <p>AC10 -- arming the resolver empties the verdict cache, so a set a test supplies can never be
+/// masked by a judgement reached before it was armed.</p>
+Method TestArmingTheResolverEmptiesTheVerdictCache()
+{
+    Do ##class(OcuPilot.Test.EgressProbe).Clear()
+    Do ##class(OcuPilot.Test.EgressProbe).SetAddresses("93.184.216.34")
+    Do ##class(OcuPilot.Test.EgressProbe).Classify("swap.example.invalid", .tFirstKind, .tFirstAddress)
+    Do $$$AssertEquals(tFirstKind, "public", "the first set is judged public")
+    Do ##class(OcuPilot.Test.EgressProbe).SetAddresses("127.0.0.1")
+    Do ##class(OcuPilot.Test.EgressProbe).Classify("swap.example.invalid", .tSecondKind, .tSecondAddress)
+    Do $$$AssertEquals(tSecondKind, "loopback", "and the second set is judged on its own, not on the verdict the first left behind")
+}
+
 /// <p>Classify through the probe and assert the kind and the address that decided it.</p>
 Method AssertProbeKind(pKind As %String, pAddress As %String, pWhat As %String)
 {

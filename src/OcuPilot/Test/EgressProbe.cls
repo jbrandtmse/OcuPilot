@@ -10,20 +10,53 @@
 /// and the single-form fallback along with the lookup -- so the method a production call actually
 /// runs was the one method no test executed. Overriding the lookup alone leaves that body, the
 /// canonicalisation, the range tests, the instance-address read and the ranking above them all
-/// shipped, so an address this subclass supplies is judged exactly as a resolved one would be.</p>
+/// shipped, so an address this subclass supplies is judged exactly as a resolved one would be. The
+/// move of the single-record lookup inside that seam (DW-413) is what lets a probe's set be the
+/// <i>whole</i> set for a host the instance's own resolver also answers for.</p>
+/// <p>It also <b>counts</b> what it serves -- family lookups here, interface reads through
+/// <method>OcuPilot.Kernel.Egress.InterfacesInfo</method> -- which is how DW-334's verdict cache is
+/// observed: a cache is a claim about how often something is read, and only a count falsifies
+/// it.</p>
 Class OcuPilot.Test.EgressProbe Extends OcuPilot.Kernel.Egress
 {
 
-/// <p>Answer <var>pAddresses</var> -- a comma-separated list -- for every host from now on.</p>
+/// <p>Answer <var>pAddresses</var> -- a comma-separated list -- for every host from now on, and
+/// forget every cached verdict so a judgement reached before this call cannot mask the new
+/// set.</p>
 ClassMethod SetAddresses(pAddresses As %String)
 {
     Set ^||OcuPilotEgressProbe("addresses") = pAddresses
+    Do ..ClearJudgementCache()
 }
 
-/// <p>Answer the instance's own resolver again.</p>
+/// <p>Answer the instance's own resolver again, forget the counts, and empty the judgement
+/// cache.</p>
 ClassMethod Clear()
 {
     Kill ^||OcuPilotEgressProbe
+    Do ..ClearJudgementCache()
+}
+
+/// <p>How many family lookups this probe has served since the last <method>Clear</method>. Two per
+/// classification that reaches the resolver, one per address family.</p>
+ClassMethod MultiLookups() As %Integer
+{
+    Quit +$Get(^||OcuPilotEgressProbe("multiLookups"))
+}
+
+/// <p>How many times the instance's interface set has actually been read since the last
+/// <method>Clear</method> -- the count DW-334's cache is about.</p>
+ClassMethod InterfaceReads() As %Integer
+{
+    Quit +$Get(^||OcuPilotEgressProbe("interfaceReads"))
+}
+
+/// <p>Count the read and answer the instance's own, so the cache's effect is observed on the
+/// shipped parse loop rather than on a stand-in for it.</p>
+ClassMethod InterfacesInfo() As %String
+{
+    Do $Increment(^||OcuPilotEgressProbe("interfaceReads"))
+    Quit ##super()
 }
 
 /// <p>The set the test supplied, as the <class>%List</class> the shipped lookup answers, or the
@@ -34,6 +67,7 @@ ClassMethod Clear()
 /// carry it.</p>
 ClassMethod MultiLookup(pHost As %String, pFamily As %Integer) As %List
 {
+    Do $Increment(^||OcuPilotEgressProbe("multiLookups"))
     Set tList = $Get(^||OcuPilotEgressProbe("addresses"))
     If tList = "" Quit ##super(pHost, pFamily)
     If pFamily '= 1 Quit ""

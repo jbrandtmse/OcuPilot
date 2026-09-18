@@ -25,8 +25,9 @@
 /// <method>ApplyAuth</method>, <method>IsApiKeyShapeValid</method>, <method>MapResponse</method>
 /// and <method>ProviderMessage</method> are the family contract; <method>IssueHttpsPost</method>
 /// is the one transport seam, which <class>OcuPilot.Test.ProviderStub</class> replaces so the whole
-/// path runs with no socket; <method>SecretClass</method> and <method>Wait</method> are the
-/// credential and the sleep. Production overrides none of them.</p>
+/// path runs with no socket; <method>SecretClass</method>, <method>Wait</method> and
+/// <method>NowSeconds</method> are the credential, the sleep and the clock. Production overrides
+/// none of them.</p>
 Class OcuPilot.Kernel.Provider.Base Extends %RegisteredObject [ Abstract ]
 {
 
@@ -198,6 +199,15 @@ Method Invoke(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %St
 /// a call that raised, and a call that timed out all leave immediately. A non-retryable status
 /// leaves immediately with the provider's own message in <code>detail.providerText</code> and its
 /// raw body in the log alone. Only a retryable status loops, and only while attempts remain.</p>
+/// <p><b>Two budgets bound the loop beside the attempt count</b> (AD-42, AD-31).
+/// <parameter>OcuPilot.Kernel.Provider.Retry.RETRYBUDGETSECONDS</parameter> bounds the total time
+/// spent sleeping: each wait is cut to what is left of it, and a retryable status met with nothing
+/// left ends the call <code>PROVIDER.UNAVAILABLE</code> rather than sleeping again.
+/// <parameter>OcuPilot.Kernel.Provider.Retry.ATTEMPTBUDGETSECONDS</parameter> bounds when a
+/// further attempt may start, read through <method>NowSeconds</method>: once it has passed, no
+/// further attempt is begun and that exit is <code>PROVIDER.TIMEOUT</code>. It is read between
+/// attempts and never during one, so an attempt already in flight still runs to its own
+/// <code>timeoutSeconds</code>.</p>
 Method Attempts(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %String, ByRef pSettings, ByRef pResponse As OcuPilot.Kernel.Provider.Response, ByRef pFault As %DynamicObject, ByRef pHttpStatus As %Integer) [ Private ]
 {
     Set tUrl = $Get(pValues("endpointUrl"))
@@ -205,7 +215,14 @@ Method Attempts(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %
     If tMaxAttempts < 1 Set tMaxAttempts = 1
     Set tCode = ##class(OcuPilot.Api.Error).#PROVIDERTRANSPORT
     Set tProviderText = ""
+    Set tStartedAt = ..NowSeconds()
+    Set tSpentDelay = 0
     For tAttempt = 1:1:tMaxAttempts {
+        If (tAttempt > 1) && ((..NowSeconds() - tStartedAt) >= ##class(OcuPilot.Kernel.Provider.Retry).#ATTEMPTBUDGETSECONDS) {
+            Set tCode = ##class(OcuPilot.Api.Error).#PROVIDERTIMEOUT
+            Do ..LogRaw("the provider call passed the time this instance allows before another attempt", $$$ERROR($$$GeneralError, "attempts made: " _ (tAttempt - 1)), tCode)
+            Quit
+        }
         Set tStatus = 0
         Set tBody = ""
         Set tRetryAfter = ""
@@ -261,7 +278,15 @@ Method Attempts(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %
             Do ..LogRaw("the provider answered a retryable status on every attempt, the last HTTP " _ +tStatus, $$$ERROR($$$GeneralError, tBody), tCode)
             Quit
         }
-        Do ..Wait(##class(OcuPilot.Kernel.Provider.Retry).DelaySec(tAttempt, tRetryAfter))
+        Set tRemainingDelay = ##class(OcuPilot.Kernel.Provider.Retry).#RETRYBUDGETSECONDS - tSpentDelay
+        If tRemainingDelay <= 0 {
+            Set tCode = ##class(OcuPilot.Api.Error).#PROVIDERUNAVAILABLE
+            Do ..LogRaw("this call has already spent the delay one call may spend, the last HTTP " _ +tStatus, $$$ERROR($$$GeneralError, tBody), tCode)
+            Quit
+        }
+        Set tDelay = ##class(OcuPilot.Kernel.Provider.Retry).DelaySec(tAttempt, tRetryAfter, tRemainingDelay)
+        Set tSpentDelay = tSpentDelay + tDelay
+        Do ..Wait(tDelay)
     }
     If tCode = "" Quit
     Set pResponse.StopReason = "error"
@@ -340,6 +365,20 @@ Method Wait(pSeconds As %Numeric)
 {
     If +pSeconds <= 0 Quit
     Hang +pSeconds
+}
+
+/// <p><b>The clock seam.</b> Seconds on a monotonic-within-the-day scale, used only as a
+/// difference: <method>Attempts</method> reads it once at the start of a call and again before each
+/// further attempt, and compares the two against
+/// <parameter>OcuPilot.Kernel.Provider.Retry.ATTEMPTBUDGETSECONDS</parameter>.</p>
+/// <p>Its own method for the reason <method>Wait</method> is: a test replaces it with a counter it
+/// advances itself, so the deadline is exercised with no real time passing.
+/// <code>$ZHorolog</code> resets at midnight, which makes the difference negative rather than
+/// large, so a rollover mid-call costs an unbounded call nothing worse than the attempt bound.
+/// Production never overrides it.</p>
+Method NowSeconds() As %Numeric
+{
+    Quit $ZHorolog
 }
 
 /// <p>The provider key this adapter serves. A constant per adapter, and the only place an adapter

@@ -12,20 +12,34 @@
 /// UTF-8 bytes the adapter wrote), <code>tools</code> (the request's tool array as JSON, or
 /// <code>""</code> when it carried none), <code>at</code> and, once its hang is over,
 /// <code>returned</code> (both in <method>OcuPilot.Kernel.State.Turn.NowSeconds</method> units).</p>
-/// <p>A script entry is a hang in seconds and a reply body; entries are consumed in call order and
-/// the last one repeats. With no script a call answers a short text reply at once.</p>
+/// <p>A script entry is a hang in seconds, a reply body, an HTTP status and a
+/// <code>Retry-After</code> header value; entries are consumed in call order and the last one
+/// repeats. With no script a call answers a short text reply, HTTP 200, at once. A scripted status
+/// of <code>0</code> is a transport timeout and <code>-1</code> any other transport failure, both
+/// instead of an HTTP answer.</p>
 Class OcuPilot.Test.TurnProvider Extends OcuPilot.Kernel.Provider.Anthropic
 {
 
 /// <p>Append a script entry for <var>pTag</var>: hang <var>pHangSeconds</var>, then answer
-/// <var>pReplyBody</var>. Refuses an unarmed (empty) tag rather than scripting a call nothing
+/// <var>pReplyBody</var> with HTTP <var>pHttpStatus</var> and the <code>Retry-After</code> header
+/// value <var>pRetryAfter</var>. Refuses an unarmed (empty) tag rather than scripting a call nothing
 /// will ever ask for (DW-1086) -- the caller-facing seam <method>OcuPilot.Test.TurnProvider
 /// .Script</method>'s own %Status callers should check, not a value they discard.</p>
-ClassMethod Script(pTag As %String, pHangSeconds As %Numeric, pReplyBody As %String) As %Status
+/// <p><b>The last two arguments are what makes a provider failure reachable from a real turn job</b>
+/// (Story 4.8): until they existed this adapter answered 200 whatever it was asked, so no test
+/// could drive a turn to <code>PROVIDER.*</code>. They default to today's answer, so every caller
+/// written before them is unchanged.</p>
+/// <p><var>pHttpStatus</var> <code>0</code> and <code>-1</code> are this seam's own contract for
+/// "no HTTP answer at all", and they are the two <class>%Status</class> values
+/// <method>OcuPilot.Kernel.Provider.Base.Attempts</method> tells apart: <code>0</code> is the
+/// timeout it reports as <code>PROVIDER.TIMEOUT</code> and <code>-1</code> every other transport
+/// failure, which it reports as <code>PROVIDER.TRANSPORT</code>. Neither sends a body or a
+/// header.</p>
+ClassMethod Script(pTag As %String, pHangSeconds As %Numeric, pReplyBody As %String, pHttpStatus As %Integer = 200, pRetryAfter As %String = "") As %Status
 {
     If pTag = "" Quit $$$ERROR($$$GeneralError, "Script requires a tag")
     Set tIndex = $Increment(^IRIS.Temp.OcuPilotTurnProvider(pTag, "script"))
-    Set ^IRIS.Temp.OcuPilotTurnProvider(pTag, "script", tIndex) = $ListBuild(+pHangSeconds, pReplyBody)
+    Set ^IRIS.Temp.OcuPilotTurnProvider(pTag, "script", tIndex) = $ListBuild(+pHangSeconds, pReplyBody, +pHttpStatus, pRetryAfter)
     Quit $$$OK
 }
 
@@ -125,8 +139,14 @@ Method IssueHttpsPost(pRequest As %Net.HttpRequest, pUrl As %String, Output pSta
     If tEntry = "" Set tEntry = $ListBuild(0, ..TextReply("ok"))
     If $List(tEntry, 1) > 0 Hang $List(tEntry, 1)
     Set ^IRIS.Temp.OcuPilotTurnProvider(tTag, "call", tCall, "returned") = ##class(OcuPilot.Kernel.State.Turn).NowSeconds()
-    Set pStatus = 200
+    ; An entry written before the status was scriptable, and the unscripted default, both carry no
+    ; status: 200 is what this adapter has always answered and stays the answer.
+    Set tStatus = $Select($ListGet(tEntry, 3) = "": 200, 1: +$ListGet(tEntry, 3))
+    If tStatus = 0 Quit $$$ERROR($$$CSPTimeout)
+    If tStatus < 0 Quit $$$ERROR($$$GeneralError, "scripted transport failure")
+    Set pStatus = tStatus
     Set pBody = $List(tEntry, 2)
+    Set pRetryAfter = $ListGet(tEntry, 4)
     Quit $$$OK
 }
 

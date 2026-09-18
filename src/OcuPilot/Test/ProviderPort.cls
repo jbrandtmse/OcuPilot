@@ -527,10 +527,16 @@ Method StoredCredsDefinition(pSuffix As %String) As %String
 /// <p><b>The attempt ceiling a caller may lower and may not raise.</b>
 /// <method>OcuPilot.Port.ProviderPort.Dispatch</method> takes <code>pValues("maxAttempts")</code>
 /// only when it is a positive whole number <i>below</i> the instance's resolved bound. That is
-/// what Story 3.4's Test connection spends to make exactly one call: a retry ladder can add two
-/// honoured <code>Retry-After</code> waits of up to thirty seconds each, which makes the
-/// interaction unbounded from the operator's side, and a 429 has already answered the question
-/// they asked.</p>
+/// what Story 3.4's Test connection spends to make exactly one call: a retry ladder still adds an
+/// honoured <code>Retry-After</code> wait to an operator who is holding focus on a button, and a
+/// 429 has already answered the question they asked. How long the ladder itself may add is
+/// <parameter>OcuPilot.Kernel.Provider.Retry.RETRYBUDGETSECONDS</parameter>'s, not this
+/// ceiling's.</p>
+/// <p><b>The queued answers below carry no <code>Retry-After</code></b>, so the legs measure the
+/// ceiling and nothing else: a hint at its own cap spends the whole retry budget on the first wait
+/// and stops the ladder short of the attempt bound, which is
+/// <class>OcuPilot.Test.ProviderRetry</class>'s subject and would make these call counts about the
+/// budget instead.</p>
 /// <p><b>The fourth leg is what keeps a turn out of it.</b> <method>InvokeDraft</method> and
 /// <method>OcuPilot.Port.ProviderPort.Invoke</method> share <method>Dispatch</method>, so the new
 /// key is on the turn's path too; what stops a turn taking it is that
@@ -554,7 +560,7 @@ Method TestACallerMayLowerTheAttemptCeilingAndMayNotRaiseIt()
     Do $$$AssertTrue(tBound > 1, "the instance's resolved bound leaves room to lower it, or none of the legs below can tell the ceiling from its absence: " _ tBound)
     If tBound '> 1 Quit
 
-    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(429, ..#RATELIMITBODY, "30")
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(429, ..#RATELIMITBODY)
     Do ..Draft("probe-local", "https://api.anthropic.com/v1/messages", 0, .tOne)
     Set tOne("maxAttempts") = 1
     Set tSC = ..CallDraft(.tOne, .tResponse, .tHttpStatus, .tFault)
@@ -563,7 +569,7 @@ Method TestACallerMayLowerTheAttemptCeilingAndMayNotRaiseIt()
     Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Waits(), "", "and takes no backoff wait at all")
 
     Do ##class(OcuPilot.Test.ProviderStub).Reset()
-    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(429, ..#RATELIMITBODY, "30")
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(429, ..#RATELIMITBODY)
     Do ..Draft("probe-local", "https://api.anthropic.com/v1/messages", 0, .tDefault)
     Set tDefaultSC = ..CallDraft(.tDefault, .tResponse2, .tHttpStatus2, .tFault2)
     Do ..AssertTurnError(tDefaultSC, tResponse2, tFault2, ##class(OcuPilot.Api.Error).#PROVIDERUNAVAILABLE, "the same answer with no ceiling named")
@@ -571,7 +577,7 @@ Method TestACallerMayLowerTheAttemptCeilingAndMayNotRaiseIt()
     Do $$$AssertNotEquals(##class(OcuPilot.Test.ProviderStub).Waits(), "", "and waits between the attempts")
 
     Do ##class(OcuPilot.Test.ProviderStub).Reset()
-    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(429, ..#RATELIMITBODY, "30")
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(429, ..#RATELIMITBODY)
     Do ..Draft("probe-local", "https://api.anthropic.com/v1/messages", 0, .tHigher)
     Set tHigher("maxAttempts") = tBound + 5
     Set tHigherSC = ..CallDraft(.tHigher, .tResponse3, .tHttpStatus3, .tFault3)
@@ -580,7 +586,7 @@ Method TestACallerMayLowerTheAttemptCeilingAndMayNotRaiseIt()
 
     ; And the stored entry -- a turn -- names no ceiling, so it spends the instance's whole ladder.
     Do ##class(OcuPilot.Test.ProviderStub).Reset()
-    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(429, ..#RATELIMITBODY, "30")
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(429, ..#RATELIMITBODY)
     Set tId = ..StoredDefinition("Ladder")
     If tId = "" Quit
     Do $$$AssertStatusOK(##class(OcuPilot.Test.AgentFixture).SetFlags(tId, 1, 1), "the stored definition is enabled so the stored entry will call it")

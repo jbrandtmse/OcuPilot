@@ -1,5 +1,7 @@
-/// <p>AD-42's retry arithmetic, as pure functions: which statuses are worth trying again, how long
-/// to wait, and how to read the provider's own hint.</p>
+/// <p>AD-42's retry arithmetic: which statuses are worth trying again, how long to wait, how to
+/// read the provider's own hint, and the two budgets that bound what one call may spend. Pure but
+/// for one clock read -- <method>HttpDateDeltaSec</method>, because a <code>Retry-After</code> date
+/// names a moment and only the clock turns that into a delay.</p>
 /// <p>Split out from <class>OcuPilot.Kernel.Provider.Base</class> so the decision can be driven
 /// directly over its whole input range. A backoff exercised only through a real call is a backoff
 /// nothing pins: the delays are measured in seconds and a test that waited them out would be a
@@ -15,6 +17,13 @@ Class OcuPilot.Kernel.Provider.Retry Extends %RegisteredObject
 /// too-many-requests. The provider SDKs' own default retries these three alongside the server
 /// errors, and each means "the same request may succeed unchanged".</p>
 Parameter RETRYABLESTATUSES = "408,409,429";
+
+/// <p>The server-error statuses that are <b>not</b> worth another attempt, comma-separated. 501
+/// Not Implemented and 505 HTTP Version Not Supported are determinate refusals of the request as
+/// written -- the same request meets the same answer -- so retrying one spends the budget and the
+/// operator's time to reach it again. Every other status in the server-error band stays
+/// retryable.</p>
+Parameter NONRETRYABLESERVERSTATUSES = "501,505";
 
 /// <p>The lowest server-error status; every status from here up is retryable.</p>
 Parameter SERVERERRORFLOOR As %Integer = 500;
@@ -35,8 +44,27 @@ Parameter BACKOFFCAPSECONDS As %Integer = 8;
 /// blocks: the caller is a turn with a person in front of it.</p>
 Parameter MAXRETRYAFTERSECONDS As %Integer = 30;
 
+/// <p>The total seconds one provider call may spend <b>sleeping</b> between its attempts. It is one
+/// honoured <code>Retry-After</code> at its own ceiling (<parameter>MAXRETRYAFTERSECONDS</parameter>),
+/// so a provider that asks for the maximum gets it once and not twice: the next wait is cut to
+/// whatever is left, and a call with nothing left stops rather than sleeping.</p>
+Parameter RETRYBUDGETSECONDS As %Integer = 30;
+
+/// <p>The seconds a provider call may have spent -- its attempts and the sleeps between them --
+/// before a further attempt is refused. It is read between attempts, so it bounds when the last
+/// attempt may <i>start</i>, not when it must end: an attempt already in flight runs to its own
+/// <code>timeoutSeconds</code>, and one call's worst case is this plus that. It is
+/// <parameter>OcuPilot.Kernel.State.Egress.DEFAULTMAXATTEMPTS</parameter> x
+/// <parameter>OcuPilot.Kernel.State.Egress.DEFAULTTIMEOUT</parameter> plus
+/// <parameter>RETRYBUDGETSECONDS</parameter> exactly, so it binds only where the stored per-call
+/// timeout is larger than the shipped default -- which nothing else bounds.
+/// <parameter>OcuPilot.Kernel.Agent.Limits.PROVIDERCALLSECONDS</parameter> is the turn-side
+/// declaration of this same ceiling, and a test pins the two equal.</p>
+Parameter ATTEMPTBUDGETSECONDS As %Integer = 300;
+
 /// <p>Whether <var>pStatus</var> is a status the same request may be sent again on: one of
-/// <parameter>RETRYABLESTATUSES</parameter>, or any server error.</p>
+/// <parameter>RETRYABLESTATUSES</parameter>, or any server error other than the two
+/// <parameter>NONRETRYABLESERVERSTATUSES</parameter> carves out.</p>
 /// <p>A 401, a 403 and a 400 are deliberately absent: each means the request as written will be
 /// refused again, so retrying one spends the budget and the operator's time to reach the same
 /// answer.</p>
@@ -44,22 +72,53 @@ ClassMethod IsRetryable(pStatus As %String) As %Boolean
 {
     If '$Match(pStatus, "^[0-9]+$") Quit 0
     If $ListFind($ListFromString(..#RETRYABLESTATUSES), +pStatus) Quit 1
+    If $ListFind($ListFromString(..#NONRETRYABLESERVERSTATUSES), +pStatus) Quit 0
     Quit (+pStatus >= ..#SERVERERRORFLOOR) && (+pStatus <= ..#STATUSCEILING)
 }
 
 /// <p>The provider's <code>Retry-After</code> hint in seconds, or <code>0</code> when there is
 /// none to honour.</p>
-/// <p><b>Delta-seconds only.</b> RFC 9110 lets the header carry an HTTP date as well, and
-/// <code>Wed, 21 Oct 2026 07:28:00 GMT</code> read as a number is <code>0</code> in ObjectScript
-/// -- which is harmless -- while a partially-parsed one would be a delay of some arbitrary size.
-/// So the value is matched as digits or it is discarded, and the exponential backoff alone is
-/// used. Bounded above by <parameter>MAXRETRYAFTERSECONDS</parameter>, so a provider cannot
-/// choose how long OcuPilot blocks.</p>
+/// <p><b>Both forms RFC 9110 gives the header.</b> Delta-seconds is taken as written. An
+/// IMF-fixdate -- <code>Wed, 21 Oct 2026 07:28:00 GMT</code>, the preferred form -- is resolved
+/// against <code>$ZTimeStamp</code> and rounded <b>up</b> to whole seconds, so the wait is never
+/// shorter than the moment the provider named. A date already past, a date this instance cannot
+/// read, and the two obsolete date forms RFC 9110 still admits each answer <code>0</code>, which
+/// leaves the exponential backoff alone in charge: a partially-read date would be a delay of some
+/// arbitrary size, and no delay at all is the safe answer.</p>
+/// <p>Bounded above by <parameter>MAXRETRYAFTERSECONDS</parameter> whichever form it arrived in,
+/// so a provider cannot choose how long OcuPilot blocks.</p>
 ClassMethod ParseRetryAfter(pHeaderValue As %String = "") As %Integer
 {
-    If '$Match(pHeaderValue, "^[0-9]+$") Quit 0
-    If +pHeaderValue > ..#MAXRETRYAFTERSECONDS Quit ..#MAXRETRYAFTERSECONDS
-    Quit +pHeaderValue
+    Set tSeconds = $Select($Match(pHeaderValue, "^[0-9]+$"): +pHeaderValue, 1: ..HttpDateDeltaSec(pHeaderValue))
+    If tSeconds > ..#MAXRETRYAFTERSECONDS Quit ..#MAXRETRYAFTERSECONDS
+    Quit tSeconds
+}
+
+/// <p>Whole seconds from now until the IMF-fixdate <var>pHeaderValue</var>, rounded up;
+/// <code>0</code> for a moment already past, and for anything that is not that form.</p>
+/// <p><b>The one reading of the clock in this class</b>, and the reason the form is matched before
+/// it is parsed: <method>$ZDateH</method> and <method>$ZTimeH</method> raise on a value they cannot
+/// read, and a shape test settles that before either runs. The trailing locale argument is the one
+/// <class>%Net.HttpRequest</class>'s own cookie-expiry parser passes, so an English month name is
+/// read on an instance whose locale names months otherwise.</p>
+/// <p>Rounded up rather than truncated because the header names a moment, not a duration: the
+/// fraction of a second already elapsed when this runs must not shorten the wait below it.</p>
+ClassMethod HttpDateDeltaSec(pHeaderValue As %String) As %Integer [ Private ]
+{
+    Set tDelta = 0
+    Try {
+        If '$Match(pHeaderValue, "^[A-Za-z]{3}, [0-9]{2} [A-Za-z]{3} [0-9]{4} [0-9]{2}:[0-9]{2}:[0-9]{2} GMT$") Quit
+        Set tTarget = ($ZDateH($Piece(pHeaderValue, " ", 2, 4), 7, , , , , , , , 1) * 86400) + $ZTimeH($Piece(pHeaderValue, " ", 5), , , 1)
+        Set tDelta = tTarget - (($Piece($ZTimeStamp, ",", 1) * 86400) + $Piece($ZTimeStamp, ",", 2))
+        If tDelta <= 0 {
+            Set tDelta = 0
+            Quit
+        }
+        If tDelta > (tDelta \ 1) Set tDelta = (tDelta \ 1) + 1
+    } Catch ex {
+        Set tDelta = 0
+    }
+    Quit tDelta
 }
 
 /// <p>The exponential backoff for <var>pAttempt</var> -- the attempt that has just failed,
@@ -85,17 +144,24 @@ ClassMethod ExpBackoffSec(pAttempt As %Integer) As %Numeric
 
 /// <p>How long to wait after attempt <var>pAttempt</var> failed with the header value
 /// <var>pRetryAfter</var>: <b>the greater</b> of the provider's honoured hint and the exponential
-/// backoff (AD-42).</p>
+/// backoff (AD-42), cut to <var>pRemainingBudget</var>.</p>
 /// <p>The greater rather than the hint, because a provider that asks for one second while its own
 /// error rate is rising gets a client that retries every second; and the greater rather than the
 /// backoff, because a provider that asks for seven has told you something the backoff does not
 /// know.</p>
-ClassMethod DelaySec(pAttempt As %Integer, pRetryAfter As %String = "") As %Numeric
+/// <p><var>pRemainingBudget</var> is what is left of <parameter>RETRYBUDGETSECONDS</parameter>
+/// after the waits this call has already taken; the answer is truncated to it rather than honoured
+/// whole, so a provider cannot lengthen a turn past the bound by asking twice. <code>""</code>
+/// means no budget bound at all, which is how the arithmetic is driven directly; the transport loop
+/// always supplies one.</p>
+ClassMethod DelaySec(pAttempt As %Integer, pRetryAfter As %String = "", pRemainingBudget As %String = "") As %Numeric
 {
     Set tHint = ..ParseRetryAfter(pRetryAfter)
     Set tBackoff = ..ExpBackoffSec(pAttempt)
-    If tHint > tBackoff Quit tHint
-    Quit tBackoff
+    Set tDelay = $Select(tHint > tBackoff: tHint, 1: tBackoff)
+    If pRemainingBudget = "" Quit tDelay
+    If tDelay > +pRemainingBudget Quit +pRemainingBudget
+    Quit tDelay
 }
 
 }

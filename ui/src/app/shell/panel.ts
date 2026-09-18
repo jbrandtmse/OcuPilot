@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { AgentContext } from '../core/agent-context';
 import { AgentStatus, DEFINITIONS_ROUTE, formatKillSwitch } from '../core/agent-status';
 import { decodeEntityId } from '../core/entity-id';
+import { classifyFault } from '../core/fault';
 import {
   NavigationService,
   formatNavigationAnnouncement,
@@ -16,7 +17,7 @@ import { ScopeService, onScopeChange } from '../core/scope';
 import { assembleScreenContext, looksLikeSecret, type ScreenContextPayload } from '../core/screen-context';
 import { ScreenStores } from '../core/screen-store';
 import { STRINGS, stringFor } from '../core/strings';
-import { TurnStore, type TurnStep, turnErrorBanner } from '../core/turn';
+import { TURN_PATH, TurnStore, type TurnStep, turnErrorBanner } from '../core/turn';
 import { isApplePlatform } from './command-box';
 import { ContextChip } from './context-chip';
 import { EXAMPLE_PROPOSAL } from './example-proposal';
@@ -58,7 +59,10 @@ interface PanelTurnView {
  * header with the avatar, "Agent co-pilot", **New conversation** and the full-screen toggle
  * (Story 4.5 fills the first of those two icon buttons); the banner slots in EXPERIENCE.md's
  * fixed order -- kill switch, enforced read-only, "not being marked" (Epic 5); administrator
- * reminder, lock (Story 4.5); the context chip, filled in by Story 4.11; the transcript, a
+ * reminder, lock (Story 4.5) -- then the refused-Send banner (Story 4.8), which EXPERIENCE.md's
+ * list does not carry: it is placed last in the strip because it is about the press the user just
+ * made, not about the state the panel is in; the context chip, filled in by Story 4.11;
+ * the transcript, a
  * polite `role="log"` named "Conversation" that scrolls by itself; and the footer with the
  * read-only line, the inline paste warning (Story 4.11), the composer and Send. There is no
  * close control.
@@ -83,7 +87,8 @@ interface PanelTurnView {
  * `onComposerKeydown` gives Enter (without Shift) the same Send behavior and lets Shift+Enter
  * insert a newline as a textarea always does. Both funnel into `TurnStore.send`, which is the one
  * place that decides sent vs. locally-locked vs. refused by the instance (409) -- this component
- * never guesses which.
+ * never guesses which. A refusal that is not a 409 raises its own banner carrying the instance's
+ * own reason (Story 4.8), and the draft stays where the user left it either way.
  *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records: `ui/tools/client-lint.mjs`'s blanker matches `@if` plus one parenthesised group.
@@ -157,6 +162,12 @@ interface PanelTurnView {
             </p>
           }
         </div>
+        @if (sendErrorText !== null) {
+          <p class="ocu-banner ocu-banner-warning ocu-panel-banner" role="alert" data-slot="send-error">
+            <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
+            <span class="ocu-banner-message">{{ sendErrorText }}</span>
+          </p>
+        }
       </div>
 
       <div class="ocu-panel-chip-slot">
@@ -457,6 +468,28 @@ export class Panel {
     return this.turn.locked();
   }
 
+  /**
+   * The refused-Send banner's sentence, or `null` when the last Send was not refused (Story 4.8,
+   * DW-1054). A 409 is the lock banner's and never reaches here.
+   *
+   * It is the envelope's own written `reason` wherever the instance sent one -- the server writes
+   * every refusal sentence once (AD-39) and the client publishes none of that copy. Only an answer
+   * carrying no envelope at all (a status 0, a body that is not one) falls back, to the
+   * connectivity sentence the shell already shows for that class of failure, chosen by
+   * `classifyFault` so the two surfaces cannot disagree about which failure it was.
+   */
+  protected get sendErrorText(): string | null {
+    this.generation();
+    const refusal = this.turn.sendError();
+    if (refusal === null) return null;
+    if (refusal.reason !== null && refusal.reason !== '') return refusal.reason;
+    const fault = classifyFault(
+      { kind: 'error', status: refusal.status, code: refusal.code, reason: null, detail: null },
+      TURN_PATH
+    );
+    return fault?.kind === 'unreachable' ? STRINGS.connectivityBannerUnreachable : STRINGS.connectivityServerFault;
+  }
+
   protected get sendLabel(): string {
     return this.busy ? STRINGS.actionStop : STRINGS.actionSend;
   }
@@ -483,7 +516,11 @@ export class Panel {
   protected get turns(): readonly PanelTurnView[] {
     this.generation();
     return this.turn.entries().map((entry) => {
-      const errorBanner = turnErrorBanner(entry, STRINGS.agentTurnStoppedBanner);
+      const errorBanner = turnErrorBanner(
+        entry,
+        STRINGS.agentTurnStoppedBanner,
+        STRINGS.agentTurnStoppedNoStepBanner
+      );
       return {
         message: entry.message,
         // Tool steps, the agent's own navigation announcements (Story 4.7), and a stop caught
