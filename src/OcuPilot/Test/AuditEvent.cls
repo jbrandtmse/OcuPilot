@@ -388,6 +388,7 @@ Method TestADroppedEmissionNeitherFailsTheWriteNorPassesSilently()
     Do $$$AssertEquals(##class(OcuPilot.Test.EventProbe).Captured("verb"), "update", "naming the verb")
     Do $$$AssertEquals(##class(OcuPilot.Test.EventProbe).Captured("id"), tId, "and the target it could not record")
     Do $$$AssertTrue(##class(OcuPilot.Test.EventProbe).Captured("reason") '= "", "with the reason the audit call gave: " _ ##class(OcuPilot.Test.EventProbe).Captured("reason"))
+    Do $$$AssertEquals(##class(OcuPilot.Test.EventProbe).Captured("message"), ##class(OcuPilot.Kernel.Audit.Event).#DROPPEDCONFIG, "and the configuration-change sentence, this being a configuration change")
 
     ; The write itself, over the wire, while the triple its record needs is unregistered.
     Set tCallSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("PUT", ..#APIBASE _ "/agent/definitions/" _ tId, ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .tStatus, .tBody, .tHeaders, "{""maxTokens"":4000}", "application/json")
@@ -495,6 +496,35 @@ Method TestACrossUserLedgerReadLandsOneRowAndVanishesUnregistered()
     Do $$$AssertEquals($IsObject(tAfterFault), 0, "with no fault -- emission never fails the read (AD-15)")
     Do $$$AssertTrue($IsObject(tAfter), "and still answers a view")
     Do $$$AssertEquals(..RowsCarrying(..PreparedSince, tName, tSecond, .tNone), 0, "and lands no row at all")
+
+    Set tRestoreSC = ##class(OcuPilot.Install.Installer).Install("")
+    Do $$$AssertStatusOK(tRestoreSC, "re-install re-registers the deleted triple")
+    Do $$$AssertEquals(..MissingTriples(), "", "and every roster triple is registered again")
+}
+
+/// <p>A dropped <parameter>OcuPilot.Kernel.Audit.Event.EVENTLEDGERREAD</parameter> emission reports
+/// that a <b>read</b> was answered and no row was written -- not that a configuration change was
+/// made (DW-1127). The log line is the only trace of the drop (AD-15), so a line naming the wrong
+/// operation sends an operator looking for an edit that never happened.</p>
+/// <p>Captured through <class>OcuPilot.Test.EventProbe</class>, so the real payload, the real
+/// redaction and the real <code>$System.Security.Audit</code> call all run.</p>
+/// <p>Mutation (Rule 19): drop the message argument from
+/// <method>OcuPilot.Kernel.Audit.Event.Record</method>'s <method>LogFailure</method> call -- the
+/// report falls back to the configuration-change sentence and this goes red.</p>
+Method TestADroppedLedgerReadReportsAReadRatherThanAChange()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup installed and read a non-empty roster")
+    Set tName = $Parameter("OcuPilot.Kernel.Audit.Event", "EVENTLEDGERREAD")
+    Do $$$AssertStatusOK(..DeleteRegistration(tName), "the " _ tName _ " registration is deleted, so the emission below drops")
+
+    Set tSubject = ..Marker()
+    Do ##class(OcuPilot.Test.EventProbe).Clear()
+    Set tReportedSC = ##class(OcuPilot.Test.EventProbe).Record($Parameter("OcuPilot.Kernel.Audit.Ledger", "READVERB"), $Parameter("OcuPilot.Kernel.Audit.Ledger", "READENTITYTYPE"), tSubject, {}, 0, {}, tName)
+    Do $$$AssertStatusNotOK(tReportedSC, "the dropped emission returns an error status")
+    Do $$$AssertEquals(##class(OcuPilot.Test.EventProbe).Captured("calls"), 1, "and reports the drop exactly once")
+    Do $$$AssertEquals(##class(OcuPilot.Test.EventProbe).Captured("message"), ##class(OcuPilot.Kernel.Audit.Event).#DROPPEDLEDGERREAD, "with the read-shaped sentence: " _ ##class(OcuPilot.Test.EventProbe).Captured("message"))
+    Do $$$AssertTrue(##class(OcuPilot.Test.EventProbe).Captured("message") '[ "configuration change", "which does not call a read a configuration change")
+    Do ##class(OcuPilot.Test.EventProbe).Clear()
 
     Set tRestoreSC = ##class(OcuPilot.Install.Installer).Install("")
     Do $$$AssertStatusOK(tRestoreSC, "re-install re-registers the deleted triple")

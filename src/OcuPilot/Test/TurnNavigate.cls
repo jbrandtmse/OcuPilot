@@ -408,7 +408,11 @@ Method TestAC9SuccessfulCallNeverInvokesView()
     Do $$$AssertEquals(''tContent.navigated, 1, "reporting the navigation as performed")
     Do $$$AssertEquals(tContent.route, "permissions/users", "naming the route it opened")
     Do $$$AssertEquals(tContent.entityId, "_SYSTEM", "and the row it selected")
-    Do $$$AssertEquals(tContent.%GetTypeOf("code"), "null", "with no code on an opened outcome")
+    ; Absent, not null: `code` is declared "type": "string" in
+    ; OcuPilot.Screen.Tool.Navigate.ResultSchema and is outside its `required`, so a JSON null
+    ; would be a value the declared type does not admit (DW-1095).
+    Do $$$AssertEquals(tContent.%GetTypeOf("code"), "unassigned", "with no code member at all on an opened outcome: " _ tSettled.content)
+    Do $$$AssertEquals(tContent.%IsDefined("code"), 0, "and the key is absent rather than null")
 }
 
 /// <p>The <code>shell.screen.open</code> <code>tool_result</code> block carried by provider call
@@ -573,6 +577,30 @@ Method TestAC10WireStatusCodes()
     Do ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", "/api/ocupilot/turn/nosuchturn/navigation", "_SYSTEM", "SYS", .tStatus4, .tText4, .tHeaders4, "{""seq"":1,""outcome"":""opened""}", "application/json")
     Do $$$AssertEquals(tStatus4, 404, "an unknown turn id is not found: " _ tText4)
     If tStatus4 = 404 Do $$$AssertEquals(##class(%DynamicObject).%FromJSON(tText4).code, "TURN.NOTFOUND", "naming TURN.NOTFOUND")
+
+    ; A settle for a turn that has already ended, with its directive still unsettled -- the state
+    ; TURN.ABANDONED.JOBLOST and a killed job both leave behind. Without the terminal gate this
+    ; claim is answered 200 on a row nothing will ever read (DW-1096).
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedFinish(tKey, "_SYSTEM", "completed", "", "", "", 0, tLimits), "the first turn is finished, freeing the slot")
+    Set tDeadSC = ##class(OcuPilot.Kernel.State.Turn).GuardedReserve("_SYSTEM", tId, "TURN.ABANDONED.JOBLOST", tLimits, .tDeadKey, .tDeadBusy, .tDeadSweep)
+    Do $$$AssertStatusOK(tDeadSC, "a second turn is reserved")
+    Do $$$AssertEquals(tDeadBusy, 0, "the slot the finish released is free")
+    If tDeadBusy Quit
+    Set ..PreparedKeys(tDeadKey) = ""
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Step).GuardedAppend(tDeadKey, "announce", "shell.screen.open", "running", "", "", "", tLimits, .tDeadSeq, .tDeadStored, "tasks/schedule", "", "", "", "", 0), "it announces")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Nav).GuardedRequest(tDeadKey, tDeadSeq, "tasks/schedule", ""), "and requests")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedFinish(tDeadKey, "_SYSTEM", "abandoned", "TURN.ABANDONED.JOBLOST", "", "", 0, tLimits), "then goes terminal without the loop settling the row")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Nav).GuardedPending(tDeadKey, .tDeadPSeq, .tDeadPRoute, .tDeadPEntity, .tDeadPSettled, .tDeadPOutcome, .tDeadPCode), "the directive still reads")
+    Do $$$AssertEquals(tDeadPSettled, 0, "and is still unsettled, which is the state the 200 was reachable from")
+
+    Set tDeadPath = $Replace(..#NAVIGATIONROUTE, ":id", tDeadKey)
+    Do ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", "/api/ocupilot" _ tDeadPath, "_SYSTEM", "SYS", .tStatus5, .tText5, .tHeaders5, "{""seq"":" _ tDeadSeq _ ",""outcome"":""opened""}", "application/json")
+    Do $$$AssertEquals(tStatus5, 409, "a settle for a turn that has already ended is refused: " _ tText5)
+    If tStatus5 = 409 Do $$$AssertEquals(##class(%DynamicObject).%FromJSON(tText5).code, "STATE.CONFLICT", "naming STATE.CONFLICT")
+    ; And the refusal left the directive as it found it: the gate sits before the body read and
+    ; before the claim, so a refused settle records no outcome on a row nothing will read.
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Nav).GuardedPending(tDeadKey, .tAfterSeq, .tAfterRoute, .tAfterEntity, .tAfterSettled, .tAfterOutcome, .tAfterCode), "the directive still reads after the refusal")
+    Do $$$AssertEquals(tAfterSettled _ "|" _ tAfterOutcome _ "|" _ tAfterCode, "0||", "and is untouched -- unsettled, with no outcome and no code")
 }
 
 }

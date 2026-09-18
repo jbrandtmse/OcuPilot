@@ -967,7 +967,9 @@ Method TestATableOutsideTheGrammarIsRefused()
 /// <method>OcuPilot.Screen.Tool.ErrorRead.View</method>'s
 /// <code>Set tTruncated = ''tAnswer.%Get("truncated")</code> with a constant -&gt; the last
 /// assertion goes red, because it compares the tool's flag with the port's own answer to the same
-/// arguments rather than with a value the context cap produced.</p>
+/// arguments rather than with a value the context cap produced. Mutation: delete
+/// <code>Set tTruncated = 1</code> from that method's context-cap branch -&gt; the stub-driven cap
+/// leg goes red, and only that one.</p>
 Method TestTheErrorReadToolCarriesTheSummaryFieldsOnly()
 {
     Set tTool = "OcuPilot.Screen.Tool.ErrorRead"
@@ -1015,20 +1017,27 @@ Method TestTheErrorReadToolCarriesTheSummaryFieldsOnly()
     Do $$$AssertEquals(tResult.rows.%Get(0).%IsDefined("process"), 0, "nor the screen-only process")
     Do $$$AssertEquals(tResult.rows.%Get(0).%IsDefined("variables"), 0, "and no captured variable table reaches the model (AD-48)")
 
-    ; The cap is the caller's, and it is reported when it cuts.
-    Set tSC = $ClassMethod(tTool, "View", "", {"namespace": (tNamespace), "date": (tDate)}, 1, .tCapped, .tHttp, .tFault)
-    Do $$$AssertStatusOK(tSC, "a cap of one answers")
-    Do $$$AssertEquals(tCapped.rows.%Size(), 1, "one row")
-    Do $$$AssertEquals(tCapped.truncated, 1, "and reports that it truncated (AD-24, AD-36)")
+    ; The CONTEXT cap is the caller's, and View reports it when it cuts -- driven through
+    ; OcuPilot.Test.ErrorReadStub, which answers three rows whatever maxRows it is handed and, once
+    ; armed, an untruncated port flag. Against the live instance this leg could not exist:
+    ; BoundedMaxRows asks the port for min(model maxRows, context cap), so a context cap of 1 makes
+    ; the port cut to one row and View's own cap branch never runs -- the flag read there was the
+    ; port's, and whether it was 1 depended on how many errors that date happened to hold (DW-1091).
+    Do ##class(OcuPilot.Test.ErrorReadStub).Clear()
+    Do ##class(OcuPilot.Test.ErrorReadStub).ArmUntruncated()
+    Set tSC = ##class(OcuPilot.Test.ErrorReadStub).View("", {"namespace": (tNamespace), "date": (tDate)}, 1, .tCapped, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "a context cap of one answers")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ErrorReadStub).Recorded("maxRows"), 1, "the port was asked for the cap")
+    Do $$$AssertEquals(tCapped.rows.%Size(), 1, "one row of the stub's three")
+    Do $$$AssertEquals(''tCapped.truncated, 1, "and reports that the cap cut rows (AD-24, AD-36), the port having answered untruncated")
+    Do ##class(OcuPilot.Test.ErrorReadStub).Clear()
 
-    ; The PORT's truncation, carried rather than swallowed. The leg above cannot see this half: its
-    ; context cap is what cuts, so the tool answers truncated whether or not it ever reads the
-    ; port's own flag -- and a model told "complete" about a read the port cut at its 1,000-row
-    ; default is the case AD-24 exists for. Asserted as an equality against the port's own answer to
-    ; the same arguments, so it holds on a date of any size: where the date carries more than one
-    ; entry both read 1 and a swallowed flag goes red, where it carries one both read 0 and a
-    ; hard-coded flag goes red. The row count is in the message, so which direction this run
-    ; exercised is readable rather than assumed.
+    ; The PORT's truncation, carried rather than swallowed: a model told "complete" about a read the
+    ; port cut at its 1,000-row default is the case AD-24 exists for. Asserted as an equality
+    ; against the port's own answer to the same arguments, so it holds on a date of any size: where
+    ; the date carries more than one entry both read 1 and a swallowed flag goes red, where it
+    ; carries one both read 0 and a hard-coded flag goes red. The row count is in the message, so
+    ; which direction this run exercised is readable rather than assumed.
     Set tSC = ##class(OcuPilot.Port.LogSourcePort).Errors("list", tNamespace, tDate, "", 1, .tPortAnswer, .tPortStatus, .tFault)
     Do $$$AssertEquals(tPortStatus, 200, "the port answers the same read the tool makes")
     If tPortStatus '= 200 Quit

@@ -2,14 +2,63 @@
 title: 'Epic 4 burn-down'
 type: 'bugfix'
 created: '2026-09-18'
-status: 'ready-for-dev'
+status: 'done'
 review_loop_iteration: 0
-followup_review_recommended: false
+baseline_revision: '7ca8f83dcd6771f510cf2752f26b3a5353684974'
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-4-context.md'
 warnings: ['oversized', 'multiple-goals']
-deferred: []
+deferred:
+  - summary: >-
+      Definitions' and Switches' bad-body refusal no longer distinguishes a server-side read or
+      decode fault from malformed client JSON, so a stream fault answers 400 telling the caller to
+      fix a body that was fine.
+    evidence: |-
+      Kernel/Utils.ReadRequestBody separates read, decode and parse, and its read-stage status says
+      "This is a server-side read fault, not malformed JSON from the client". Definitions calls it
+      as ReadRequestBody(.tBody) at :307,372,558,713 and never reads pStage; Api/Context.cls:45
+      routes only non-parse faults to RenderBadBody. Until DW-447 the stage traveled inside the
+      reason text. Api/Turn.cls:284-291 has the shape to copy (parse -> 400, else -> internal).
+      The fix is the twelve-call-site .tStage threading the intent's Never clause forbids.
+    location: >-
+      src/OcuPilot/Api/Definitions.cls:1208
+    severity: medium
+  - summary: >-
+      The initial-bundle gate's slack went from about 0.5 kB to about 40.5 kB when maximumWarning
+      was raised to 820 kB against a measured 779.46 kB.
+    evidence: |-
+      ui/tools/build-output.test.mjs:197 compares the measured total against whatever angular.json
+      declares, with no independent ceiling, so ~40 kB of initial growth now ships with every gate
+      green. The 820 kB figure is the lead's own routed recommendation, and the pinned literal in
+      angular-json.test.mjs:365 keeps the edit a reviewed diff. What is missing is a stated
+      re-basing policy (e.g. measured + 10 kB, re-based deliberately).
+    location: >-
+      ui/angular.json:54
+    severity: medium
+  - summary: >-
+      requireFreeSlot guards navigate.browser-spec.mjs only, while four other specs arm a turn probe
+      with no slot precondition.
+    evidence: |-
+      context-chip, reply, suggested-view and turn all reach armProbeDefinition and can take the one
+      turn slot AD-41 allows. DW-1092 charters navigate alone, and those four never carried a guard,
+      so this is pre-existing rather than caused here. Settled by hoisting requireFreeSlot into
+      turnprobe-spec.mjs and calling it from every spec that arms a definition.
+    location: >-
+      ui/browser/navigate.browser-spec.mjs:123
+    severity: low
+  - summary: >-
+      .claude/rules/objectscript-testing.md's redeploy snippet names dist/ocupilot/browser, but the
+      builder emits dist/ocupilot-ui.
+    evidence: |-
+      ui/angular.json declares outputPath dist/ocupilot-ui, and this story's own Verification command
+      uses dist/ocupilot-ui/browser/. An agent following the rule file copies from a path that does
+      not exist. Same staleness class as DW-1129; the fix edits an agent-context file, which this
+      workflow routes to deferred rather than patching.
+    location: >-
+      .claude/rules/objectscript-testing.md
+    severity: low
 ---
 
 <intent-contract>
@@ -279,7 +328,79 @@ Group 4 — tests and specs:
 
 ## Spec Change Log
 
+- Footprint the task list did not name, each forced by a change it did name:
+  `Test/LedgerWire.cls:353`'s wire key roster gains `requiredPairsTruncated`;
+  `navigate.browser-spec.mjs` AC7's `deepEqual` drops `entityId: null` (DW-1095);
+  `Test/LedgerGate.cls` gains `DenyAdmin()` so the cross-user 403 can be driven at all;
+  `Api/Switches.cls`'s `RenderBadBody` doc comment no longer claims the reason names a stage.
+  `panel.browser-spec.mjs`'s other two copies of the same composer wait also became
+  `composerReady`, so the file holds one wait rather than a named helper beside two raw ones.
+- The Matrix Test Audit added the "Nav row untouched" half of the terminal-settle row to
+  `Test/TurnNavigate.cls`'s 409 leg: the leg asserted the directive was unsettled before the
+  refusal and nothing re-read it after. The mutation above was re-demonstrated over the changed
+  pinning test.
+
 ## Review Triage Log
+
+### 2026-09-18 — Review pass
+
+- verdicts: 54 findings — high 0, medium 17, low 32, false 5, maybe-false 0
+- findings:
+  - `[medium]` `[defer]` blind-hunter: the bad-body render no longer separates a read/decode fault from malformed client JSON — real; `Definitions` never reads `ReadRequestBody`'s `pStage` and the stage text was what carried the distinction. The fix is the twelve-call-site `.tStage` threading the intent's Never clause forbids, so deferred with the evidence.
+  - `[medium]` `[patch]` blind-hunter: the new log line's subsystem `"agent"` is declared nowhere, while `Definitions` declares `agent-definition` — patched: the raw status now goes through `Kernel.Fault.LogRaw(..#LOGSUBSYSTEM, …, #AGENTBADBODY)`, the seam the other eight sites in this file already use.
+  - `[low]` `[reject]` blind-hunter: a switches bad body logs under `agent-definition` — real, but the fix threads a subsystem parameter through `Switches` and `Context`, which is more than a direct correction; the reason parameter is deliberately shared and the log follows the rendering class.
+  - `[low]` `[patch]` blind-hunter: nothing pins the new log write, and `Api.Error.LogError` bypasses the probe seam — no production `LogRaw` site in the tree is individually pinned, so the gap is the seam, not a missing test; patched to `Fault.LogRaw`, whose own shape `Test.FaultProbe` pins, which also makes `Error.cls`'s "single audit-log seam" sentence true again.
+  - `[medium]` `[patch]` blind-hunter: `PairsToString`'s `Catch` discarded every pair and reported an uncut set — verified fail-open: `Screen.Gate.EvaluatePairs("")` returns 1 and `ViewForUser`'s own comment says an empty requirement is released cross-user. Patched to `pTruncated = 1` with a new pin; mutation demonstrated (run 577, the row was released).
+  - `[low]` `[patch]` blind-hunter: `ROUTEMAXLENGTH`'s doc claims every route column on the base — `State.Nav.Route` is `MAXLEN = ""`; patched to name the two it covers and why Nav's is uncapped.
+  - `[low]` `[reject]` blind-hunter: the `Arguments` cut has no clamp against the column — the spec's DW-1124 task settles this ("a declared bound and its column cannot be one literal … so the invariant is asserted rather than eliminated"); the roster gap the assertion rested on is patched below.
+  - `[medium]` `[patch]` blind-hunter: the limits roster is hand-listed and omits `Test.TurnLimits`, whose header claimed every probe subclass — patched to a derived sweep over the compiled hierarchy with a found-count floor and a named-class check (the repo's own `AgentViolation:82` precedent); mutation demonstrated (run 578).
+  - `[low]` `[reject]` blind-hunter: `MaxLenOf` conflates an absent `MAXLEN` with `MAXLEN = ""` — a real latent trap, but all four properties it reads declare a numeric `MAXLEN` and the fix adds a branch.
+  - `[false]` blind-hunter: the drop message covers one of four roster names — the roster is `ConfigChange`, `SecurityChange` and `LedgerRead`; both change events *are* configuration changes, so `DROPPEDCONFIG` is correct for them and the `$Select` covers the only read.
+  - `[low]` `[patch]` blind-hunter: `panel.spec.ts:880,899` still hold the superseded privilege sentence — patched both fixture literals.
+  - `[low]` `[patch]` blind-hunter: `gate.browser-spec.mjs`'s replacement claim is false in the same direction as the one it replaced — verified seven specs enable a definition through `armProbeDefinition` → `EnsureDefinition` → `SetFlags(pId,1,1)`; patched to name all seven.
+  - `[medium]` `[patch]` blind-hunter: `panel`'s reordered `after` leaks Chrome when the postcondition throws — patched: the removal and assertion run in a `try`, the close in the `finally`.
+  - `[medium]` `[patch]` blind-hunter: `navigate`'s `after` ignores `abandonTurns`' result and runs after `browser.close()` — patched: `requireFreeSlot()` before the close, so a turn handed to the next spec fails the file that left it.
+  - `[low]` `[patch]` blind-hunter: `slotOwner()` interpolates `config.username` unescaped — patched with the file's own `escapeOs`.
+  - `[low]` `[patch]` blind-hunter: the spec appended corrections instead of making them — patched under Rule 19's sanctioned tracking-section edit: both wrong `## Verification` lines replaced in place and the two change-log bullets deleted.
+  - `[low]` `[reject]` blind-hunter: a truncation-withheld row is indistinguishable from a privilege-withheld one — the matrix row specifies exactly `rowsWithheld`, and the pre-existing unparseable-pairs branch behaves identically; distinguishing them adds wire surface the spec does not ask for.
+  - `[false]` blind-hunter: the declared-types test never drives a non-`opened` outcome with an empty code — unreachable: `NavigationViolation` pins `NAV.REFUSEDUNSAVED` for `refused` and every lapse path passes `NAV.UNAVAILABLE`.
+  - `[low]` `[patch]` blind-hunter: the back-compatibility claim names the wrong mechanism — patched: the raw property reads `""` and the `''` normalization is what makes it 0.
+  - `[low]` `[patch]` blind-hunter: the rule-count pin's `.search` hides a second stale copy — patched to `findall` plus an exactly-one assertion.
+  - `[low]` `[defer]` blind-hunter: `.claude/rules/objectscript-testing.md`'s redeploy path is stale (`dist/ocupilot` vs `dist/ocupilot-ui`) — real and the same class DW-1129 fixed; the fix edits an agent-context file, which routes to deferred.
+  - `[low]` `[reject]` blind-hunter: the bad-body log has no dedupe or rate limit — one line per refused write is what every other refusal path in the file does; a limiter is new surface.
+  - `[low]` `[patch]` blind-hunter: the rewritten cap leg froze literals the surrounding legs compute — patched to `tNamespace`/`tDate`.
+  - `[medium]` `[patch]` edge-case: `PairsToString`'s `Catch` fails open — same root cause as the blind-hunter row above; shares its patch and mutation.
+  - `[low]` `[reject]` edge-case: the turn can go terminal between `GuardedForOwner`'s state read and `GuardedSettle` — real window, but the outcome is exactly the pre-existing 200 the gate narrows, and closing it means threading an expected state into `GuardedSettle`, which is new surface the spec's task does not describe.
+  - `[medium]` `[defer]` edge-case: the non-parse stage renders a 400 — same root cause as the first row; shares its deferral.
+  - `[false]` edge-case: the drop message covers one roster name — refuted as above.
+  - `[false]` edge-case: a limits class declaring no `LEDGERROWMAXLENGTH` cuts at 0 — all three subclasses inherit it, and `Audit/Ledger.cls:120` already used the identical `$Parameter` read before this diff, so nothing here introduced it.
+  - `[low]` `[reject]` edge-case: `GuardedAppend` stores `RequiredPairs` uncut — by design; `PairsToString` owns the only safe cut (a whole-pair boundary) and the doc now says so. Grouped with the `Arguments`-clamp rejection.
+  - `[low]` `[patch]` edge-case: the recorded mutation for the pairs leg ("restore `Set tRow.RequiredPairs = pRequiredPairs` uncut") is a no-op as worded, since `GuardedAppend` already stores it uncut — patched: the line now reads "remove the bound from `PairsToString`", which is what was demonstrated.
+  - `[medium]` `[patch]` edge-case: the limits roster is hand-listed — shares the derived-sweep patch.
+  - `[medium]` `[patch]` edge-case: the log subsystem is undeclared — shares the `Fault.LogRaw` patch.
+  - `[low]` `[reject]` edge-case: the bad-body log can be flooded — grouped with the dedupe rejection.
+  - `[medium]` `[patch]` edge-case: `navigate`'s `after` never polls the slot — shares that patch.
+  - `[low]` `[defer]` edge-case: `requireFreeSlot` covers one of five turn-arming specs — DW-1092 charters `navigate` alone and the other four never had a guard, so pre-existing; deferred.
+  - `[medium]` `[patch]` edge-case: `panel`'s `after` can leak the browser — shares that patch.
+  - `[false]` edge-case: `enabledCount()` counts non-prefix definitions and can blame this file for another's leak — refuted: `before` asserts zero enabled, and the runner is `--test-concurrency=1`, so anything enabled at `after` appeared during this file's own run.
+  - `[low]` `[patch]` edge-case: `gate.browser-spec.mjs`'s claim is wrong — shares that patch.
+  - `[medium]` `[patch]` verification-gap: the log half of the bad-body change is unverified and written in the one shape the log seam cannot intercept — shares the `Fault.LogRaw` patch, which is the seam that exists for exactly this.
+  - `[medium]` `[patch]` verification-gap: the `Arguments` overrun backstop became a hand-maintained list missing half its population — shares the derived-sweep patch; the concrete omission was `Test.TurnLimits`.
+  - `[low]` `[patch]` verification-gap: AC5's leak guard is the story's only new pin with no recorded mutation, and AC1 rests on a human check — patched: the mutation was applied (`removeProbeDefinitions` made a no-op → `panel`'s `after` postcondition red), reverted, and recorded; AC1 stays the document check it is and is named as such.
+  - `[medium]` `[defer]` verification-gap: the budget was raised 40 kB above the measured total, loosening the only growth gate by that margin — the 820 kB figure is the lead's decision and the literal is pinned, so the residual is a re-basing policy; deferred.
+  - `[low]` `[patch]` verification-gap: `gate.browser-spec.mjs`'s corrected claim names two files where seven enable one — shares that patch.
+  - `[medium]` `[patch]` verification-gap: `panel`'s `after` ordering skips the close on a failed assertion — shares that patch.
+  - `[low]` `[patch]` verification-gap: `Api/Context.cls:45`'s DW-24 guarantee is now void — patched: the comment says how the two are told apart now (`AGENT.BADBODY` against `AGENT.CONTEXT.SHARE`, raw status to the log), corrected at its origin.
+  - `[low]` `[patch]` verification-gap: `Cut`'s doc exception points at a sentence the diff deleted — patched.
+  - `[low]` `[reject]` verification-gap: `PairsToString` reads `PAIRSMAXLENGTH` off a `StoreClass()` that need not declare it — unreachable: `LedgerFaultProbe` is driven only through `ViewForUser`, and the fix guards a state not demonstrated.
+  - `[low]` `[patch]` verification-gap: `panel.spec.ts` carries the pre-change sentence — shares that patch.
+  - `[medium]` `[patch]` intent-alignment: the AD-39 log half bypasses `Kernel.Fault.LogRaw`, the project's own seam for it, with 22 production call sites and nine in this same file — shares the `Fault.LogRaw` patch, which also restores the code/response pairing.
+  - `[low]` `[patch]` intent-alignment: `Api/Context.cls`'s stated guarantee was not corrected at its origin — shares that patch.
+  - `[low]` `[patch]` intent-alignment: the reworded sentence also changes the tool-step `reason` surface, and a replica was left stale — the surface change is what DW-1127 asks for (the sentence now covers both consumers, as `Error.cls`'s doc records); the stale replica shares the `panel.spec.ts` patch.
+  - `[low]` `[reject]` intent-alignment: the ledger 403 is specified at the wire and pinned in-process against a faked gate — the envelope rendering is inherited and already pinned by `Envelope` and `LedgerWire`; a wire leg for this branch needs a throwaway principal holding no admin pair, which is new fixture surface the spec does not ask for.
+  - `[low]` `[patch]` intent-alignment: several changed assertions carry no mutation of their own — patched: the `SettleClient` mutation was re-applied and shown to redden `TurnNavigate.TestAC9` as well (run 579), the leak-guard mutation was demonstrated, and the `AuditEvent` `DROPPEDCONFIG` row is noted as the fallback side of an already-demonstrated mutation rather than a pin of its own.
+  - `[low]` `[reject]` intent-alignment: scope notes — the switches pin rides on delegation, the `NotAnObject` path shares the reason, and row 4's owner-check ordering is structural (the `IsTerminal` gate sits after the `'tFound` branch, so the unknown-id 404 assertion reddens if it moves). Each verified benign; no fix.
+
 
 ## Design Notes
 
@@ -400,7 +521,13 @@ workflow never writes the ledger). One row per chartered entry.
 | DW-1129 | fixed | `status=resolved-by:4-12-epic-4-burn-down by=adjudication note=CLAUDE.md reads 21; test_check_objectscript.py now pins the stated count to len(CHECKS)` |
 | DW-1149 | fixed | `status=resolved-by:4-12-epic-4-burn-down by=adjudication note=one prefix in core/log-paths.ts; both literal specs redden together` |
 | DW-1153 | fixed | `status=resolved-by:4-12-epic-4-burn-down by=adjudication note=maximumWarning and the pinned literal raised together; measured total in the commit message` |
-| DW-1154 | fixed; owner resolved at implement time | `status=resolved-by:` plus the key of whichever story's commit carries the leg (this story if it wrote it, Story 4.10 if its own pass did), `by=adjudication note=browser leg asserts the transcript's computed overflow and focus ring and the banner's wrap and link padding`. The implement stage names that key in `## Auto Run Result`. |
+| DW-1154 | fixed by Story 4.10's commit `14db790`; verified here | `status=resolved-by:4-10-homes-suggested-view-and-the-starter-prompts by=adjudication note=browser leg asserts the transcript's computed overflow and focus ring and the banner's wrap and link padding` |
+
+**Outcome.** All fourteen are disposed: twelve fixed with a demonstrated mutation, DW-398 declined
+and terminal on the measurement recorded in `## Design Notes`, DW-1154 closed against Story 4.10's
+commit `14db790`. None is left `routed`. No ledger file was edited
+(`git diff -- _bmad-output/implementation-artifacts/deferred-work.md` is empty); the lead writes the
+trailer lines above (Rule 15(a)).
 
 ## Verification
 
@@ -413,10 +540,12 @@ workflow never writes the ledger). One row per chartered entry.
   `$System.OBJ.LoadDir("/opt/ocupilot/src", "ck", …)` inside `ocupilot-ci` — expected: clean compile.
 - `node ui/tools/ci-runner.mjs --container ocupilot-ci --class <Class>`, **one class per message**,
   each confirmed in `%UnitTest_Result` before the next, for: `OcuPilot.Test.AgentWire`,
-  `OcuPilot.Test.Ledger`, `OcuPilot.Test.LedgerLimits`, `OcuPilot.Test.AuditEvent`,
+  `OcuPilot.Test.Ledger`, `OcuPilot.Test.AuditEvent`,
   `OcuPilot.Test.TurnNavigate`, `OcuPilot.Test.ToolNavigate`, `OcuPilot.Test.ReadTool`,
   `OcuPilot.Test.ToolDispatch`, `OcuPilot.Test.ToolEmit`, `OcuPilot.Test.TurnStore`,
   `OcuPilot.Test.AgentViolation`, `OcuPilot.Test.Log`, `OcuPilot.Test.LedgerWire`.
+  (`OcuPilot.Test.LedgerLimits` is a `Limits` parameter fixture, not a `%UnitTest.TestCase`, so it
+  is not in the list.)
 - `cd ui && npm test` — expected: green; `build-output.test.mjs` measures the real `dist/` against the
   raised budget, and `angular-json.test.mjs` pins the new literal.
 - `cd ui && npm run build` — expected: the six prebuild checkers pass; record the printed
@@ -439,9 +568,9 @@ workflow never writes the ledger). One row per chartered entry.
 - delete the `IsTerminal` guard in `HandleNavigation` → `TurnNavigate`'s terminal-settle 409 leg.
 - re-emit `%Set("code", "", "null")` in `SettleClient` → `ToolNavigate`'s declared-types leg.
 - set a probe `Limits` subclass's `LEDGERROWMAXLENGTH` to 8192 → `Ledger`'s bound-versus-column leg.
-- restore `Set tRow.RequiredPairs = pRequiredPairs` uncut → `Ledger`'s over-long-pairs leg (the row
-  vanishes); and separately drop the `requiredPairsTruncated` branch from `ViewForUser` → the same
-  leg's `rowsWithheld` assertion.
+- remove the bound from `PairsToString` → `Ledger`'s over-long-pairs leg (the set overruns
+  `MAXLEN` 512 and the row vanishes); and separately drop the `requiredPairsTruncated` branch from
+  `ViewForUser` → the same leg's `rowsWithheld` assertion.
 - delete `Set tTruncated = 1` from `ErrorRead.cls:171`'s cap branch → `ReadTool`'s rewritten cap leg.
 - change `ERROR_LOG_PATH_PREFIX` in `core/log-paths.ts` → `shell/panel.spec.ts` and
   `areas/logs/error-log.page.spec.ts` both.
@@ -457,25 +586,165 @@ workflow never writes the ledger). One row per chartered entry.
   `navigate.browser-spec.mjs` AC4's URL assertion, proving the slot precondition did not make it
   vacuous.
 
+**Mutations demonstrated.** Each applied, observed red, reverted, and `git status --short` plus
+`git diff --stat` confirmed byte-identical to the pre-mutation tree afterwards. ObjectScript
+mutations recompiled the whole `src/` tree onto `ocupilot-ci` before the run; browser mutations
+rebuilt and redeployed the bundle first.
+
+- mutation: `_ $System.Status.GetErrorText(pStatus)` re-appended at `Definitions.RenderBadBody` →
+  `AgentWire.TestAMalformedBodyAnswers400WithItsWrittenSentenceAlone` (run 552, 1 of 17).
+- mutation: `#REASONAUTHNOPRIVILEGE` restored to "that tool call" →
+  `Ledger.TestASelfReadIsUngatedAndACrossUserReadIsGatedPerRow` (run 553, 1 of 20).
+- mutation: the message argument dropped from `Event.Record`'s `LogFailure` call →
+  `AuditEvent.TestADroppedLedgerReadReportsAReadRatherThanAChange` (run 554, 1 of 8).
+- mutation: the `IsTerminal` guard deleted from `HandleNavigation` →
+  `TurnNavigate.TestAC10WireStatusCodes` (run 555, and again run 574 after the matrix audit added
+  the row's own post-refusal assertion), which answered 200 `{"settled":true}` — the 200 the
+  ledger's own evidence said was unreachable — and settled the row, reddening both the status and
+  the untouched-directive assertion.
+- mutation: `%Set("code", "", "null")` re-emitted in `SettleClient` →
+  `ToolNavigate.TestSettledResultEmitsOnlyDeclaredKeysWithDeclaredTypes` (run 556, 1 of 16).
+- mutation: `Test.LedgerLimits.LEDGERROWMAXLENGTH` set to 8192 →
+  `Ledger.TestEveryDeclaredBoundFitsTheColumnItIsCutInto` (run 557), and
+  `TestTheRowCapStoresNoMoreAndCountsTheRest` with it, since a bound that no longer cuts is what
+  that leg measures.
+- mutation: the bound removed from `PairsToString` →
+  `Ledger.TestAnOverLongPairSetIsCutAtAPairBoundaryAndWithheldCrossUser` (run 558, 1 of 20); the
+  1,279-character set overran `MAXLEN` 512 and the row vanished.
+- mutation: the `requiredPairsTruncated` branch dropped from `ViewForUser` → the same leg's
+  `rowsWithheld` and wire-absence assertions (run 559, 1 of 20).
+- mutation: `Set tTruncated = 1` deleted from `ErrorRead.View`'s context-cap branch →
+  `ReadTool.TestTheErrorReadToolCarriesTheSummaryFieldsOnly` (run 560, 1 of 23).
+- mutation: `ERROR_LOG_PATH_PREFIX` changed in `core/log-paths.ts` → 11 component specs, in both
+  `shell/panel.spec.ts` (`:2306`, `:2450`) and `areas/logs/error-log.page.spec.ts` (`:211`), which
+  is the integration AC.
+- mutation: a 22nd `CHECKS` entry with `CLAUDE.md` untouched →
+  `test_check_objectscript.TestStatedRuleCountMatchesTheCode`, naming both numbers.
+- mutation: `maximumWarning` lowered to `778kB` in `ui/angular.json` alone → both
+  `angular-json.test.mjs`'s pinned-literal assertion and `build-output.test.mjs`, the latter naming
+  779,464 emitted bytes against 778,000.
+- mutation: `overflow-y: auto` deleted from `.ocu-panel-transcript` → the DW-1154 leg at
+  `suggested-view.browser-spec.mjs:427`, on its `overflowY` assertion, against the rebuilt bundle.
+- mutation: `this.panel.endSession()` deleted from `App.verifyWhenSignedIn` →
+  `panel.browser-spec.mjs`'s sign-out leg on "the draft does not survive sign-out", so the rewritten
+  `composerReady` wait did not make it vacuous.
+- mutation: `router.navigateByUrl` dropped from `AgentNavigator.act` →
+  `navigate.browser-spec.mjs` AC4's URL wait (and every later leg in the file), so the new slot
+  precondition did not make it vacuous.
+
+- mutation (review pass): `pTruncated` set back to 0 in `PairsToString`'s `Catch` →
+  `Ledger.TestAPairListThatRaisesIsReportedShortRatherThanEmpty` (run 577, 1 of 21) on both the flag
+  and the withhold, the row being released to the cross-user reader.
+- mutation (review pass): `LEDGERROWMAXLENGTH` 8192 on `Test.TurnLimits`, the class the hand-written
+  roster omitted → `Ledger.TestEveryDeclaredBoundFitsTheColumnItIsCutInto` (run 578), naming that
+  class, its bound and the column.
+- mutation (review pass): `%Set("code", "", "null")` re-emitted in `SettleClient` →
+  `TurnNavigate.TestAC9SuccessfulCallNeverInvokesView` (run 579) as well as `ToolNavigate`'s leg, so
+  the changed `"unassigned"` assertion is pinned by the same mutation.
+- mutation (review pass): `removeProbeDefinitions()` made a no-op → `panel.browser-spec.mjs`'s
+  `after` postcondition ("this spec leaves the instance with no enabled definition"), run alone
+  against the deployed bundle. This is DW-1048's leak guard; the per-leg `finally` cleans on the
+  happy path, so deleting the `after` removal alone reddens nothing and is not the mutation.
+
+**AC1 is a document check, not a mutation-backed one:** that every chartered entry carries a
+disposition is read off `## Ledger Dispositions` and `git diff` on the ledger file, under
+**Manual checks** below.
+
 **Manual checks:** confirm no ledger file was hand-edited (`git diff -- _bmad-output/implementation-artifacts/deferred-work.md` is empty) and that `## Ledger Dispositions` carries fourteen rows.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Plan stage only; nothing was implemented and no command touched a container, a build, a test run or
-IRIS, because another stage's browser suite was in flight against the slot-A throwaway. Commands
-run: `git rev-parse`/`git branch`/`git add --refresh`/`git status`, `git log`/`git show` (read-only),
-`ledger.sh show` for the fourteen chartered entries, file reads and greps, and
-`bash scripts/lint-docs.sh` (0 issues, 0 prose problems).
+**Change.** All fourteen chartered entries are disposed: twelve fixed with a demonstrated mutation,
+DW-398 declined and terminal on the measurement in `## Design Notes`, DW-1154 closed against Story
+4.10's commit `14db790`, whose leg at `suggested-view.browser-spec.mjs:427` was verified to redden on
+a deleted `overflow-y: auto` against a rebuilt bundle. Nothing was written for DW-1154 beyond the
+`.ocu-panel-empty` rationale the task asks for. None is left `routed`; the lead writes the trailer
+lines in `## Ledger Dispositions` (Rule 15(a)) and no ledger file was touched.
 
-Version-control sanity: the worktree was **not** clean at spawn — `ui/browser/suggested-view.browser-spec.mjs`
-and `ui/tools/suggested-view.test.mjs` carry uncommitted changes from the concurrently running stage
-the spawn prompt named, not from a missed bookkeeping commit. The plan stage writes only this spec,
-so the condition the clean-tree check protects (a finalize commit containing only reviewed files) is
-unaffected; recorded here rather than halted on. The same two files are why DW-1154's task is
-verify-then-write.
+**Files changed** (36 modified, 1 new):
 
-Ledger: no entry was written and no entry was created. The dispositions and the exact trailer lines
-are in `## Ledger Dispositions` for the lead to write at adjudication (Rule 15(a)).
+- `src/OcuPilot/Api/Error.cls` — `REASONAGENTBADBODY` added; `REASONAUTHNOPRIVILEGE` names the
+  request, for both consumers. No code entered any roster.
+- `src/OcuPilot/Api/Definitions.cls` — the bad-body reason is the written sentence alone; the raw
+  `%Status` goes to `Kernel.Fault.LogRaw` under the class's own subsystem, carrying `AGENT.BADBODY`.
+- `src/OcuPilot/Api/Switches.cls`, `src/OcuPilot/Api/Context.cls` — doc and comment corrected where
+  they described the old stage-bearing reason.
+- `src/OcuPilot/Api/Turn.cls` — a terminal settle is refused 409 `STATE.CONFLICT` through a private
+  `RenderStateConflict` both producers share.
+- `src/OcuPilot/Kernel/State/Base.cls` — `ROUTEMAXLENGTH`, with Nav's uncapped route named as the
+  column it does not cover.
+- `src/OcuPilot/Kernel/State/Ledger.cls` — `PAIRSMAXLENGTH`, `RequiredPairsTruncated` (projected and
+  on the wire), the arguments cut read off the limits seam, the route cut off `ROUTEMAXLENGTH`.
+- `src/OcuPilot/Kernel/State/Turn.cls` — the dead `.tRouteCut` byref removed.
+- `src/OcuPilot/Kernel/Agent/Dispatch.cls` — `SettleClient` omits `entityId` and `code` rather than
+  emitting JSON null.
+- `src/OcuPilot/Kernel/Audit/Ledger.cls` — `PairsToString` cuts at a whole-pair boundary and reports
+  it, failing closed when it raises; `ViewForUser` withholds a cut set on a cross-user read.
+- `src/OcuPilot/Kernel/Audit/Event.cls` — `LogFailure` takes a trailing message; `Record` passes a
+  read-shaped one for `EVENTLEDGERREAD`.
+- Tests: `AgentWire`, `AuditEvent`, `ErrorReadStub`, `EventProbe`, `Ledger`, `LedgerGate`,
+  `LedgerWire`, `ReadTool`, `ToolNavigate`, `TurnNavigate`.
+- Client and scripts: `ui/angular.json` and `ui/tools/angular-json.test.mjs` at `820kB`; new
+  `ui/src/app/core/log-paths.ts` with `core/suggested-view.ts` and `areas/logs/error-log.store.ts`
+  reading it; `ui/src/app/shell/panel.spec.ts` fixture sentence; `scripts/test_check_objectscript.py`
+  pins `CLAUDE.md`'s stated rule count to `len(CHECKS)`; `CLAUDE.md:133` reads 21 rules — the one
+  line of that file changed, reported as a footprint extension.
+- Browser specs: `navigate` (slot precondition, named announcement wait, slot handed back before the
+  close), `panel` (setup inside the `try`, asserted zero-enabled pre- and postcondition, one
+  `composerReady` wait, close in a `finally`), `gate` (the enabling claim corrected),
+  `suggested-view` (the `.ocu-panel-empty` rationale).
+
+**Review findings.** 54 findings across four layers — high 0, medium 17, low 32, false 5. Sixteen
+entries patched (5 medium, 11 low): the `PairsToString` fail-open on its `Catch` path; the bad-body
+log routed to `Kernel.Fault.LogRaw` instead of a hand-rolled `Api.Error.LogError` under an undeclared
+`"agent"` subsystem; the hand-written limits roster replaced by a derived sweep that catches
+`Test.TurnLimits`; `panel`'s browser leak on a failed postcondition; `navigate`'s unproven slot
+hand-back; plus eleven direct corrections (four now-false doc claims, the stale client fixture
+sentence, `gate`'s replacement universal, the unescaped username, the `.search` count pin, the frozen
+stub literals, and the spec's two stale `## Verification` lines, corrected in place rather than
+appended to). Four entries deferred, in `deferred:`: the read/decode-versus-parse distinction (its
+fix is the `.tStage` threading the intent forbids), the bundle gate's new 40 kB slack, the slot guard
+covering one of five turn-arming specs, and the stale redeploy path in a rules file. Eleven low
+findings rejected, each with its reason in the triage log — the switches log subsystem (fix threads a
+parameter through three files), the `Arguments` clamp and uncut `RequiredPairs` (the spec settles
+both: assert the invariant, and let `PairsToString` own the only safe cut), `MaxLenOf`'s
+`MAXLEN = ""` blind spot, withheld-row indistinguishability (the matrix specifies `rowsWithheld`), the
+log's lack of a rate limit, the settle's terminal-check race (its outcome is the pre-existing 200),
+`PairsToString`'s bound read off `StoreClass()` (unreachable), the in-process ledger-403 pin, and
+three verified-benign scope notes. Five findings refuted: the drop-message roster (both change events
+*are* configuration changes), an empty `code` on a non-`opened` outcome (unreachable), a limits class
+with no bound (all three inherit it, and the pattern predates the diff), and `enabledCount()` blaming
+this file for another's leak (`before` asserts zero and the runner is serial).
+
+**Follow-up review recommended: true.** Five medium entries were patched, and two carry a residual
+this pass could not close by test. Named: (1) the AD-39 log half for this call site is still not
+pinned — routing through `Fault.LogRaw` puts it on the seam `Test.FaultProbe` exists for, but no
+production `LogRaw` call site in the tree is individually intercepted, so "the raw text reaches the
+log" rests on the seam's own shape rather than on this route's; (2) the two browser-hook orderings
+(`panel`'s `finally` close, `navigate`'s `requireFreeSlot` in `after`) only take effect when a
+teardown itself fails, a state the two successive green suite passes never entered.
+
+**Verification.** `uv run scripts/check-objectscript.py` 0 problems over 21 rules ·
+`uv run scripts/test_check_objectscript.py` 126 green · clean `$System.OBJ.LoadDir` onto
+`ocupilot-ci` before every run · thirteen `%UnitTest` classes green through
+`ci-runner.mjs --container ocupilot-ci`, one class at a time: `AgentWire` 17, `Ledger` 21,
+`AuditEvent` 8, `TurnNavigate` 14, `ToolNavigate` 16, `ReadTool` 23, `ToolDispatch` 17, `ToolEmit` 11,
+`TurnStore` 11, `AgentViolation` 8, `Log` 10, `LedgerWire` 4, `Envelope` 15 · `npm test` 980 node +
+501 vitest green · `npm run build` clean with `Initial total` **779.46 kB** against the raised 820 kB
+· the full browser suite **127/127 twice in succession** against the redeployed bundle ·
+`scripts/smoke.sh --container ocupilot-ci` executed 18, passed 18, 2 pending, 1 benign skip ·
+`scripts/lint-docs.sh` clean. Nineteen mutations demonstrated in all — fifteen at implement, four in
+the review pass — each applied, observed red on the named test, reverted, and the tree confirmed
+byte-identical by `git status --short` and `git diff --stat`. One leaked probe definition from the
+leak-guard mutation was removed through the shipped DELETE route and the throwaway re-verified at
+zero definitions.
+
+**Residual risks.** `OcuPilot.Test.LedgerLimits` is a `Limits` fixture rather than a `%UnitTest`
+class and is not in the `ci-runner` list; the `## Verification` list says so. Raising
+`LEDGERROWMAXLENGTH` on a probe reddens the pre-existing `TestTheRowCapStoresNoMoreAndCountsTheRest`
+alongside the new bound test, since that leg measures the same bound cutting — expected, not masking.
+`Api/Definitions.cls` and `Api/Switches.cls` still answer 400 for a server-side read fault; that is
+the deferred entry above, not a regression this pass introduced.

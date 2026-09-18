@@ -43,7 +43,10 @@ ClassMethod HandleUpdate() As %Status
     Try {
         Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.tRequestBody, .tStage)
         If $$$ISERR(tReadSC) && (tStage '= "parse") {
-            ; A server-side read or decode fault is never reported as the client's body (DW-24).
+            ; A read or decode fault is not a share violation, so it takes the bad-body refusal
+            ; rather than this route's 422. Since REASONAGENTBADBODY carries no stage, the two are
+            ; told apart by their codes -- AGENT.BADBODY against AGENT.CONTEXT.SHARE -- and the
+            ; raw status reaches the log through Fault.LogRaw (DW-24, DW-447).
             Set tSC = ##class(OcuPilot.Api.Switches).RenderBadBody(tReadSC)
             Quit
         }

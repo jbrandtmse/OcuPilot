@@ -877,7 +877,7 @@ describe('Story 4.5: Send/Stop, the lock banner, Enter vs Shift+Enter, cards, an
                   turnStep({
                     status: 'error',
                     code: 'AUTH.NOPRIVILEGE',
-                    reason: 'This account does not hold the privilege that tool call requires.',
+                    reason: 'This account does not hold the privilege this request requires.',
                     failedPair: '%Admin_Secure:USE',
                   }),
                 ],
@@ -896,7 +896,7 @@ describe('Story 4.5: Send/Stop, the lock banner, Enter vs Shift+Enter, cards, an
     expect(toggle).not.toBeNull();
     const statusWord = toggle.querySelector('.ocu-tool-call-status-word') as HTMLElement;
     expect(statusWord.textContent).toBe(
-      STRINGS.toolCallStatusFailed.split('<reason>').join('This account does not hold the privilege that tool call requires.')
+      STRINGS.toolCallStatusFailed.split('<reason>').join('This account does not hold the privilege this request requires.')
     );
     expect(statusWord.classList.contains('ocu-tool-call-status-warning')).toBe(true);
     // A failed card is still a disclosure, not a restrained bar: it stays expandable, unlike Stop.

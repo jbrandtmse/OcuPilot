@@ -261,9 +261,14 @@ ClassMethod HandleStop(pId As %String) As %Status
 /// the closed body vocabulary <code>{seq, outcome:"opened"|"refused", code:"NAV.REFUSEDUNSAVED"|null}</code>
 /// (422 <code>TURN.NAVIGATION.INVALID</code> otherwise, so the client can never author
 /// model-visible text); then the claim itself
-/// (<method>OcuPilot.Kernel.State.Nav.GuardedSettle</method>, 409 <code>STATE.CONFLICT</code> when
-/// nothing is pending, the <code>seq</code> does not match, or the directive was already settled);
-/// then a trivial <code>{settled}</code> ack.</p>
+/// (<method>OcuPilot.Kernel.State.Nav.GuardedSettle</method>) -- then a trivial
+/// <code>{settled}</code> ack.</p>
+/// <p><b>409 <code>STATE.CONFLICT</code> has two producers here, and they mean the same thing.</b>
+/// The settle is refused when the turn is already terminal, and when the claim itself does not
+/// win: nothing pending, a <code>seq</code> that does not match, or a directive already settled.
+/// A turn that went terminal without the loop settling its Nav row -- <code>TURN.ABANDONED.JOBLOST</code>,
+/// or a killed job -- leaves that row unsettled, so without the first gate a settle for a dead turn
+/// is answered 200 as a claim on a row nothing will ever read.</p>
 ClassMethod HandleNavigation(pId As %String) As %Status
 {
     Set tSC = $$$OK
@@ -276,6 +281,10 @@ ClassMethod HandleNavigation(pId As %String) As %Status
         }
         If 'tFound {
             Set tSC = ..RenderNotFound()
+            Quit
+        }
+        If ##class(OcuPilot.Kernel.State.Turn).IsTerminal(tValues("state")) {
+            Set tSC = ..RenderStateConflict()
             Quit
         }
         Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.tBody, .tStage)
@@ -297,7 +306,7 @@ ClassMethod HandleNavigation(pId As %String) As %Status
             Quit
         }
         If 'tClaimed {
-            Set tSC = ##class(OcuPilot.Api.Error).Render(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.Error).#REASONSTATECONFLICT, ##class(OcuPilot.Api.Error).#STATECONFLICT)
+            Set tSC = ..RenderStateConflict()
             Quit
         }
         Set tAnswer = {}
@@ -483,6 +492,14 @@ ClassMethod RenderViolation(pField As %String, pCode As %String, pReason As %Str
 ClassMethod RenderBadBody() As %Status [ Private ]
 {
     Quit ##class(OcuPilot.Api.Error).Render(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#REASONTURNBADBODY, ##class(OcuPilot.Api.Error).#TURNBADBODY)
+}
+
+/// <p>Refuse a navigation settle with 409 <code>STATE.CONFLICT</code>: the claim is on a directive
+/// nothing will read, whether because the turn is already terminal or because the claim itself did
+/// not win. Worded once, since both producers mean the same thing (AD-12).</p>
+ClassMethod RenderStateConflict() As %Status [ Private ]
+{
+    Quit ##class(OcuPilot.Api.Error).Render(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.Error).#REASONSTATECONFLICT, ##class(OcuPilot.Api.Error).#STATECONFLICT)
 }
 
 /// <p>Refuse with 404 <code>TURN.NOTFOUND</code>. The id is not echoed back.</p>

@@ -264,7 +264,9 @@ ClassMethod GuardedBegin(pKey As %String, pUser As %String, pLimitsClass As %Str
         Set tRow.State = ..#STATERUNNING
         Set tRow.StartedAt = ..Timestamp(tStamp)
         Set tRow.JobId = $Job
-        Set tRow.ContextRoute = ..Cap(pContextRoute, 512, .tRouteCut)
+        ; No truncation byref: the route is a closed enum from Loop.ContextRoute() and there is no
+        ; contextRouteTruncated column, so a flag nothing reads would only look like one.
+        Set tRow.ContextRoute = ..Cap(pContextRoute, ..#ROUTEMAXLENGTH)
         Set tSC = ..GuardedSaveIfCurrent(tRow, +tRow.RowVersion)
         Set tRow = ""
         If $$$ISERR(tSC) Quit

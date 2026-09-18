@@ -603,6 +603,147 @@ Method TestASelfReadIsUngatedAndACrossUserReadIsGatedPerRow()
     ; A requirement that will not parse is withheld rather than read as no requirement at all.
     Do ##class(OcuPilot.Test.LedgerGate).Clear()
     Do $$$AssertEquals($ClassMethod(..#LEDGER, "StringToPairs", "notapair"), "", "a malformed requirement yields no pair")
+
+    ; And a reader holding no administrative pair at all is refused before any row is considered,
+    ; with the written sentence the envelope carries. It names the request: this is a read the
+    ; caller made directly and no tool call is involved (DW-1127).
+    Do ##class(OcuPilot.Test.LedgerGate).DenyAdmin()
+    Do $$$AssertStatusOK($ClassMethod("OcuPilot.Test.LedgerGateProbe", "ViewForUser", "OcuPilotProbeLedgerReader", ..#PROBEUSER, 0, tKey, 10, .tDenied, .tDeniedFault), "the same read runs for a reader holding nothing")
+    Do $$$AssertTrue($IsObject(tDeniedFault), "and answers a fault")
+    If '$IsObject(tDeniedFault) Quit
+    Do $$$AssertEquals(tDeniedFault.error _ "|" _ tDeniedFault.code, ##class(OcuPilot.Api.Error).#FORBIDDEN _ "|" _ ##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE, "on the forbidden slug with the no-privilege code")
+    Do $$$AssertEquals(tDeniedFault.reason, ##class(OcuPilot.Api.Error).#REASONAUTHNOPRIVILEGE, "carrying the written sentence: " _ tDeniedFault.reason)
+    Do $$$AssertTrue(tDeniedFault.reason '[ "tool call", "which names the request, not a tool call: " _ tDeniedFault.reason)
+    Do $$$AssertEquals(tDeniedFault.detail.failedPair, $ClassMethod(..#LEDGER, "AdminPair"), "and the pair that failed is unchanged")
+    Do $$$AssertEquals($IsObject(tDenied), 0, "with no view at all")
+}
+
+/// <p>Every bound a writer cuts at is at most, and where it is the whole column exactly, the
+/// declared <code>MAXLEN</code> of the column it is cut into -- read from
+/// <class>%Dictionary.CompiledProperty</class> rather than recalled (DW-1124).</p>
+/// <p>A declared bound and its column cannot be one literal in ObjectScript: a property's
+/// <code>MAXLEN</code> keyword cannot read a class parameter. So the invariant is asserted here
+/// instead of eliminated, over the shipped bound <b>and every</b> class that inherits it, since a
+/// limits class that overran the column would fail the row's whole write.</p>
+/// <p>The population is <b>derived</b> from the class hierarchy rather than listed: a hand-written
+/// roster is a second place to keep correct, and the first version of this method already omitted
+/// <class>OcuPilot.Test.TurnLimits</class>. A found-count floor is what stops a sweep that read
+/// nothing from passing every row having tested nothing.</p>
+/// <p>Mutation (Rule 19): set <parameter>OcuPilot.Test.LedgerLimits.LEDGERROWMAXLENGTH</parameter>
+/// -- or any other subclass's -- to 8192; this goes red naming the class, the bound and the
+/// column.</p>
+Method TestEveryDeclaredBoundFitsTheColumnItIsCutInto()
+{
+    Set tArgumentsMax = ..MaxLenOf(..#STORE, "Arguments")
+    Do $$$AssertTrue(tArgumentsMax > 0, "the Arguments column declares a MAXLEN: " _ tArgumentsMax)
+    Set tFound = 0
+    Set tSeen = ""
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT ID FROM %Dictionary.CompiledClass WHERE ID = ? OR Super LIKE ?", ..#LIMITS, "%" _ ..#LIMITS _ "%")
+    While tRS.%Next() {
+        Set tClass = tRS.%Get("ID")
+        Set tBound = +$Parameter(tClass, "LEDGERROWMAXLENGTH")
+        Set tFound = tFound + 1
+        Set tSeen = tSeen _ $ListBuild(tClass)
+        Do $$$AssertTrue(tBound > 0, tClass _ ": declares LEDGERROWMAXLENGTH " _ tBound)
+        Do $$$AssertTrue(tBound <= tArgumentsMax, tClass _ ": LEDGERROWMAXLENGTH " _ tBound _ " fits the Arguments column's MAXLEN " _ tArgumentsMax)
+    }
+    ; A sweep that found nothing, or that missed the subclasses this suite drives, would pass every
+    ; row above having tested nothing -- which is how the hand-written roster this replaced hid
+    ; OcuPilot.Test.TurnLimits.
+    Do $$$AssertTrue(tFound >= 4, "the sweep read the compiled limits hierarchy rather than an empty roster (found " _ tFound _ ")")
+    For tKnown = ..#LIMITS, ..#NARROW, ..#BUDGET, "OcuPilot.Test.TurnLimits" {
+        Do $$$AssertTrue($ListFind(tSeen, tKnown) > 0, tKnown _ " is in the derived population: " _ $ListToString(tSeen, ", "))
+    }
+
+    Set tRouteBound = +$Parameter("OcuPilot.Kernel.State.Base", "ROUTEMAXLENGTH")
+    Do $$$AssertEquals(tRouteBound, ..MaxLenOf(..#STORE, "Route"), "ROUTEMAXLENGTH is the ledger Route column's own length")
+    Do $$$AssertEquals(tRouteBound, ..MaxLenOf("OcuPilot.Kernel.State.Turn", "ContextRoute"), "and the turn ContextRoute column's")
+
+    Do $$$AssertEquals(+$Parameter(..#STORE, "PAIRSMAXLENGTH"), ..MaxLenOf(..#STORE, "RequiredPairs"), "PAIRSMAXLENGTH is the RequiredPairs column's own length")
+}
+
+/// <p>A pair list that <b>raises</b> mid-walk discards every pair, so it answers
+/// <code>pTruncated</code> 1 like any other short set. The empty answer is the dangerous one: an
+/// empty <code>RequiredPairs</code> reads back through <method>StringToPairs</method> as a call
+/// that required nothing, and <method>OcuPilot.Screen.Gate.EvaluatePairs</method> allows an empty
+/// list -- so a row that reported an uncut empty set would be released to a cross-user reader
+/// (AD-46).</p>
+/// <p>Mutation (Rule 19): set <code>pTruncated</code> back to 0 in
+/// <method>OcuPilot.Kernel.Audit.Ledger.PairsToString</method>'s <code>Catch</code> -- this goes
+/// red on the flag, and the withhold assertion with it.</p>
+Method TestAPairListThatRaisesIsReportedShortRatherThanEmpty()
+{
+    ; A %List whose second member is not itself a valid list: $List raises inside the walk.
+    Set tBroken = $ListBuild($ListBuild("OcuPilotProbePairResource01", "USE")) _ "notalist"
+    Set tText = $ClassMethod(..#LEDGER, "PairsToString", tBroken, .tCut)
+    Do $$$AssertEquals(tText, "", "a pair list that raises yields no pairs at all")
+    Do $$$AssertEquals(tCut, 1, "and is reported short, so a cross-user read cannot gate on it")
+
+    ; End to end: the row is stored, and withheld from a cross-user read that holds the admin pair.
+    Set tKey = ..NewTurnKey()
+    Do $$$AssertStatusOK(..Record(tKey, "probe.ledger.read", {}, "", tBroken, ""), "the call is still recorded (AD-15)")
+    Do $$$AssertStatusOK($ClassMethod("OcuPilot.Test.LedgerGateProbe", "ViewForUser", "OcuPilotProbeLedgerReader", ..#PROBEUSER, 0, tKey, 10, .tCross, .tCrossFault), "the cross-user read runs")
+    Do $$$AssertEquals($IsObject(tCrossFault), 0, "with no fault, the administrative pair being held")
+    Do $$$AssertEquals(tCross.rowsSent _ "|" _ tCross.rowsWithheld, "0|1", "and the row is absent and counted")
+}
+
+/// <p>The declared <code>MAXLEN</code> of <var>pClass</var>'s <var>pProperty</var>, falling back to
+/// <class>%Library.String</class>'s default when the property declares none, or <code>-1</code>
+/// when the property does not exist -- which reddens the caller rather than reading as 0.</p>
+ClassMethod MaxLenOf(pClass As %String, pProperty As %String) As %Integer
+{
+    Set tProperty = ##class(%Dictionary.CompiledProperty).%OpenId(pClass _ "||" _ pProperty)
+    If '$IsObject(tProperty) Quit -1
+    Set tMaxLen = ""
+    If $IsObject(tProperty.Parameters) Set tMaxLen = tProperty.Parameters.GetAt("MAXLEN")
+    If tMaxLen = "" Set tMaxLen = $Parameter("%Library.String", "MAXLEN")
+    Quit +tMaxLen
+}
+
+/// <p>A pair set longer than <parameter>OcuPilot.Kernel.State.Ledger.PAIRSMAXLENGTH</parameter> is
+/// stored cut at a <b>whole-pair</b> boundary with
+/// <code>requiredPairsTruncated</code> 1, and a cross-user read withholds that row and counts it --
+/// even from a reader holding every pair the cut set still names (AD-24, AD-41, AD-46).</p>
+/// <p>Mutation (Rule 19): store <var>pRequiredPairs</var> uncut in
+/// <method>OcuPilot.Kernel.State.Ledger.GuardedAppend</method> -- the row overruns its column, the
+/// save fails and the row vanishes. Separately: drop the
+/// <code>requiredPairsTruncated</code> branch from
+/// <method>OcuPilot.Kernel.Audit.Ledger.ViewForUser</method> -- the row is sent and the withheld
+/// assertions go red.</p>
+Method TestAnOverLongPairSetIsCutAtAPairBoundaryAndWithheldCrossUser()
+{
+    Set tMax = +$Parameter(..#STORE, "PAIRSMAXLENGTH")
+    Set tPairs = ""
+    For tI = 1:1:40 {
+        Set tResource = "OcuPilotProbePairResource" _ $Extract("0" _ tI, *-1, *)
+        Set tPairs = tPairs _ $ListBuild($ListBuild(tResource, "USE"))
+        Do ##class(OcuPilot.Test.LedgerGate).Grant(tResource, "USE")
+    }
+    Set tWhole = $ClassMethod(..#LEDGER, "PairsToString", tPairs, .tCut)
+    Do $$$AssertEquals(tCut, 1, "forty pairs overrun the bound and PairsToString says so")
+    Do $$$AssertTrue($Length(tWhole) <= tMax, "the answer fits the column: " _ $Length(tWhole) _ " of " _ tMax)
+
+    Set tKey = ..NewTurnKey()
+    Do $$$AssertStatusOK(..Record(tKey, "probe.ledger.read", {}, "", tPairs, ""), "the call is recorded")
+    Do $$$AssertEquals(..RowCount(), 1, "and the row is stored rather than failing the write")
+
+    Do $$$AssertStatusOK($ClassMethod("OcuPilot.Test.LedgerGateProbe", "ViewForUser", ..#PROBEUSER, "", 0, tKey, 10, .tSelf, .tSelfFault), "the owner's own read runs")
+    Do $$$AssertEquals(tSelf.rowsSent, 1, "and keeps the row (AD-46)")
+    If tSelf.rowsSent '= 1 Quit
+    Set tRow = tSelf.rows.%Get(0)
+    Do $$$AssertEquals(tRow.requiredPairsTruncated, 1, "the row says its pair set was cut")
+    Do $$$AssertTrue($Length(tRow.requiredPairs) <= tMax, "the stored set fits the column: " _ $Length(tRow.requiredPairs))
+    Do $$$AssertTrue($Length(tRow.requiredPairs) > 0, "and is not empty")
+    ; Cut on a pair boundary: every comma-separated piece still parses as a whole pair, so no half
+    ; pair reads back as a requirement nobody named.
+    Do $$$AssertEquals($ListLength($ClassMethod(..#LEDGER, "StringToPairs", tRow.requiredPairs)), $Length(tRow.requiredPairs, ","), "every piece of the cut set is a whole pair: " _ tRow.requiredPairs)
+
+    ; The reader holds every pair the cut set names, so the row is withheld for being short and not
+    ; for a privilege it lacks.
+    Do $$$AssertStatusOK($ClassMethod("OcuPilot.Test.LedgerGateProbe", "ViewForUser", "OcuPilotProbeLedgerReader", ..#PROBEUSER, 0, tKey, 10, .tCross, .tCrossFault), "the cross-user read runs")
+    Do $$$AssertEquals($IsObject(tCrossFault), 0, "with no fault, the administrative pair being held")
+    Do $$$AssertEquals(tCross.rowsSent _ "|" _ tCross.rowsWithheld, "0|1", "and the row is absent and counted")
+    Do $$$AssertEquals(tCross.rows.%ToJSON(), "[]", "with nothing of it on the wire")
 }
 
 /// <p>Whether <var>pUser</var> is an account this instance holds, read in <code>%SYS</code> and the

@@ -122,8 +122,8 @@ ClassMethod RecordToolCall(pTurnKey As %String, pUser As %String, pRoute As %Str
             Set tArguments = ""
             If $IsObject(pInput) && pInput.%IsA("%Library.DynamicObject") Set tArguments = ##class(OcuPilot.Kernel.Audit.Log).#REDACTED
         }
-        Set tPairs = ..PairsToString(pDeclaredPairs _ pArgumentPairs)
-        Set tSC = $ClassMethod(..StoreClass(), "GuardedAppend", pTurnKey, pUser, pRoute, $Parameter(..StoreClass(), "KINDTOOL"), pName, "", pTarget, tArguments, tTruncated, pStatus, pCode, 0, 0, tPairs, pLimitsClass, .tSeq, .tStored)
+        Set tPairs = ..PairsToString(pDeclaredPairs _ pArgumentPairs, .tPairsCut)
+        Set tSC = $ClassMethod(..StoreClass(), "GuardedAppend", pTurnKey, pUser, pRoute, $Parameter(..StoreClass(), "KINDTOOL"), pName, "", pTarget, tArguments, tTruncated, pStatus, pCode, 0, 0, tPairs, pLimitsClass, .tSeq, .tStored, tPairsCut)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
@@ -216,8 +216,18 @@ ClassMethod RedactedKeys(pObject As %DynamicAbstractObject) As %List [ Private ]
 /// <p><var>pPairs</var> -- a <class>%List</class> of <code>$ListBuild(resource, permission)</code>
 /// -- as the canonical column value: each pair spelled <code>resource:permission</code>, sorted,
 /// de-duplicated and comma-joined. A malformed member is dropped.</p>
-ClassMethod PairsToString(pPairs As %List) As %String
+/// <p><b>Bounded at <parameter>OcuPilot.Kernel.State.Ledger.PAIRSMAXLENGTH</parameter>, cutting
+/// only on a whole-pair boundary</b> (AD-24, AD-41), with <var>pTruncated</var> 1 when a pair was
+/// left out. A half pair would read back as a pair requiring a permission nobody named, and no
+/// U+2026 mark is appended for the same reason: a pair set is not display text, so a mark would
+/// itself parse as a bogus pair. An over-long set records the pairs it can and says it is short;
+/// <method>ViewForUser</method> is what refuses to gate on it. A malformed member that raises
+/// discards every pair, which is the same thing maximally, so it answers <var>pTruncated</var> 1
+/// too: an empty set reads back as a call that required nothing, which a cross-user read would
+/// release.</p>
+ClassMethod PairsToString(pPairs As %List, Output pTruncated As %Boolean) As %String
 {
+    Set pTruncated = 0
     Set tOut = ""
     Kill tSeen
     Try {
@@ -229,14 +239,21 @@ ClassMethod PairsToString(pPairs As %List) As %String
             If (tResource = "") || (tPermission = "") Continue
             Set tSeen(tResource _ ":" _ tPermission) = ""
         }
+        Set tMax = +$Parameter(..StoreClass(), "PAIRSMAXLENGTH")
         Set tKey = ""
         For {
             Set tKey = $Order(tSeen(tKey))
             If tKey = "" Quit
-            Set tOut = tOut _ $Select(tOut = "": "", 1: ",") _ tKey
+            Set tCandidate = tOut _ $Select(tOut = "": "", 1: ",") _ tKey
+            If $Length(tCandidate) > tMax {
+                Set pTruncated = 1
+                Quit
+            }
+            Set tOut = tCandidate
         }
     } Catch ex {
         Set tOut = ""
+        Set pTruncated = 1
     }
     Quit tOut
 }
@@ -352,6 +369,13 @@ ClassMethod ViewForUser(pCaller As %String, pSubject As %String, pWindowHours As
                 Do tRows.%Push(tOwnRow)
                 Continue
             }
+            If ''$Get(tValues(tI, "requiredPairsTruncated")) {
+                ; A cut pair set records fewer pairs than the call required, so evaluating it
+                ; would release the row on a requirement nobody named. Fails closed, with the
+                ; ledger (AD-46), and is counted like any other withheld row.
+                Set tWithheld = tWithheld + 1
+                Continue
+            }
             Set tPairsText = $Get(tValues(tI, "requiredPairs"))
             Set tPairs = ..StringToPairs(tPairsText)
             If (tPairsText '= "") && (tPairs = "") {
@@ -417,6 +441,7 @@ ClassMethod RowObject(ByRef pValues, pIndex As %Integer) As %DynamicObject [ Pri
     Do tRow.%Set("requestTokens", +$Get(pValues(pIndex, "requestTokens")), "number")
     Do tRow.%Set("responseTokens", +$Get(pValues(pIndex, "responseTokens")), "number")
     Do tRow.%Set("requiredPairs", $Get(pValues(pIndex, "requiredPairs")), "string")
+    Do tRow.%Set("requiredPairsTruncated", ''$Get(pValues(pIndex, "requiredPairsTruncated")), "boolean")
     Quit tRow
 }
 

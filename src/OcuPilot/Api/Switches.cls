@@ -435,8 +435,9 @@ ClassMethod RenderConflict() As %Status
     Quit ##class(OcuPilot.Api.Definitions).RenderConflict()
 }
 
-/// <p>Refuse with 400 and <parameter>OcuPilot.Api.Error.AGENTBADBODY</parameter>, naming the stage
-/// <method>OcuPilot.Kernel.Utils.ReadRequestBody</method> reported.</p>
+/// <p>Refuse with 400 and <parameter>OcuPilot.Api.Error.AGENTBADBODY</parameter>, carrying
+/// <parameter>OcuPilot.Api.Error.REASONAGENTBADBODY</parameter> alone; <var>pStatus</var>'s raw
+/// text reaches the log only (AD-39).</p>
 ClassMethod RenderBadBody(pStatus As %Status) As %Status
 {
     Quit ##class(OcuPilot.Api.Definitions).RenderBadBody(pStatus)

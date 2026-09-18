@@ -432,6 +432,10 @@ test('DW-1154: the panel body rules this story touched but did not add -- the tr
   // computes no layout, so these computed-style claims about the restored rules can only be pinned
   // here.
   //
+  // `.ocu-panel-empty` needs no leg of its own: its declarations are typographic only, so there is
+  // no geometry to assert, and the class's presence is already awaited at
+  // `panel-principal.browser-spec.mjs:101`.
+  //
   // No probe armed: `configured()` must be false so this administrator sees the reminder banner
   // (with its own `.ocu-panel-banner-link`) -- the same state `gate.browser-spec.mjs` exercises on
   // another route. That precondition is not ambient: this file's own "AC1, AC3" and "AC3: Open

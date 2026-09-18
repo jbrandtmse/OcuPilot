@@ -546,27 +546,28 @@ ClassMethod ResolveClientCall(pUser As %String, pBlock As %DynamicObject, pLimit
 }
 
 /// <p>The <code>tool_result</code> content for a client-fulfilled call that has been announced and
-/// waited on (Story 4.7, AD-11 invariant 3, AD-39): <code>{navigated, route, entityId, code}</code>.
-/// <var>pOutcome</var> is <code>"opened"</code> (<code>navigated</code> true, <code>code</code>
-/// <code>null</code>) or anything else -- <code>"refused"</code> or <code>"unavailable"</code>
-/// (<code>navigated</code> false, <code>pCode</code> carried through). This shape is owned here so
-/// <class>OcuPilot.Kernel.Agent.Loop</class> never composes a tool result of its own: whatever
-/// <var>pOutcome</var> is, the call is an ordinary result, never an error (AD-11 invariant 3) -- the
-/// caller sets <code>is_error</code> false unconditionally.</p>
+/// waited on (Story 4.7, AD-11 invariant 3, AD-39): <code>navigated</code> and <code>route</code>
+/// always, plus <code>entityId</code> when the call named a row and <code>code</code> when it did
+/// not navigate. <var>pOutcome</var> is <code>"opened"</code> (<code>navigated</code> true, no
+/// <code>code</code>) or anything else -- <code>"refused"</code> or <code>"unavailable"</code>
+/// (<code>navigated</code> false, <code>pCode</code> carried through).</p>
+/// <p><b>An absent member is omitted, never emitted as JSON <code>null</code></b>: both are
+/// outside <method>OcuPilot.Screen.Tool.Navigate.ResultSchema</method>'s <code>required</code> and
+/// both are declared <code>"type": "string"</code>, so a null would be a value the declared type
+/// does not admit. This shape is owned here so <class>OcuPilot.Kernel.Agent.Loop</class> never
+/// composes a tool result of its own: whatever <var>pOutcome</var> is, the call is an ordinary
+/// result, never an error (AD-11 invariant 3) -- the caller sets <code>is_error</code> false
+/// unconditionally.</p>
 ClassMethod SettleClient(pDetail As %DynamicObject, pOutcome As %String, pCode As %String, Output pContent As %String)
 {
     Set tResult = {}
     Do tResult.%Set("navigated", (pOutcome = "opened"), "boolean")
     Do tResult.%Set("route", pDetail.%Get("route"), "string")
     Set tEntityId = pDetail.%Get("entityId")
-    If tEntityId = "" {
-        Do tResult.%Set("entityId", "", "null")
-    } Else {
+    If tEntityId '= "" {
         Do tResult.%Set("entityId", tEntityId, "string")
     }
-    If pOutcome = "opened" {
-        Do tResult.%Set("code", "", "null")
-    } Else {
+    If pOutcome '= "opened" {
         Do tResult.%Set("code", pCode, "string")
     }
     Set pContent = tResult.%ToJSON()

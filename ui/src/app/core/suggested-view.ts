@@ -30,11 +30,16 @@ import { type AgentStatus, formatKillSwitch } from './agent-status.ts';
 import type { ApiService } from './api';
 import type { ConnectivityService } from './connectivity';
 import { classifyFault } from './fault.ts';
+import { ERROR_LOG_DATES_PATH } from './log-paths.ts';
 import type { ScopeService } from './scope';
 import { STRINGS, stringFor } from './strings.ts';
 
-/** The application-errors line's own read, absolute from the origin root (AD-20). */
-export const ERROR_LOG_DATES_PATH = '/api/ocupilot/logs/errors/dates';
+/**
+ * The application-errors line's own read (AD-20). Re-exported so this module's existing importers
+ * are unaffected; the one declaration is in `log-paths.ts`, beside the prefix the error-log
+ * screen's own levels are built from (DW-1149).
+ */
+export { ERROR_LOG_DATES_PATH };
 
 /** `OcuPilot.Screen.Descriptor.AgentSwitches` -- the agent-status line's `Open` target. */
 export const SWITCHES_DESCRIPTOR = 'OcuPilot.Screen.Descriptor.AgentSwitches';

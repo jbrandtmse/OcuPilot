@@ -1201,14 +1201,16 @@ ClassMethod RenderNotFound(pId As %String) As %Status
     Quit ##class(OcuPilot.Api.Error).Render(404, ##class(OcuPilot.Api.Error).#NOTFOUND, "No agent definition with that identifier exists on this instance", ##class(OcuPilot.Api.Error).#AGENTNOTFOUND)
 }
 
-/// <p>Refuse with 400 and <parameter>OcuPilot.Api.Error.AGENTBADBODY</parameter>, naming the
-/// stage <method>OcuPilot.Kernel.Utils.ReadRequestBody</method> reported. That method separates
-/// its three failures -- read, decode, parse -- precisely so a server-side read fault is never
-/// presented as malformed client JSON (DW-24), and the stage text is what carries that
-/// distinction to the caller.</p>
+/// <p>Refuse with 400 and <parameter>OcuPilot.Api.Error.AGENTBADBODY</parameter>, carrying
+/// <parameter>OcuPilot.Api.Error.REASONAGENTBADBODY</parameter> alone. <var>pStatus</var>'s own
+/// text is vendor-shaped -- it names internal classes and occasionally a path -- so it reaches
+/// <method>OcuPilot.Kernel.Fault.LogRaw</method> and never the wire (AD-39). That seam, rather
+/// than a log call of its own, is what carries the code the caller was given alongside the raw
+/// text, so the log line and the response pair up.</p>
 ClassMethod RenderBadBody(pStatus As %Status) As %Status
 {
-    Quit ##class(OcuPilot.Api.Error).Render(400, ##class(OcuPilot.Api.Error).#BADREQUEST, "The request body could not be read: " _ $System.Status.GetErrorText(pStatus), ##class(OcuPilot.Api.Error).#AGENTBADBODY)
+    Do ##class(OcuPilot.Kernel.Fault).LogRaw(..#LOGSUBSYSTEM, "the request body could not be read, so the write was refused", pStatus, ##class(OcuPilot.Api.Error).#AGENTBADBODY)
+    Quit ##class(OcuPilot.Api.Error).Render(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#REASONAGENTBADBODY, ##class(OcuPilot.Api.Error).#AGENTBADBODY)
 }
 
 /// <p>Whether <var>pBody</var> is a shape <method>MergeBody</method> can read: a JSON object, or

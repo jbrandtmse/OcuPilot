@@ -47,10 +47,16 @@ let browser = null;
 let preparedId = '';
 let priorDefault = '';
 
+/** The slot every test here competes for: one concurrent turn per user (AD-31, AD-41). */
+const SLOT_GLOBAL = `^OcuPilotTurnSlot("${config.username}")`;
+/** How long a turn left running by an earlier spec is given to end. */
+const SLOT_FREE_TIMEOUT_MS = 15000;
+
 before(async () => {
   assert.notEqual(config.container, LIVE_CONTAINER, 'this spec arms the turnprobe provider, so it never runs inside the live container');
   const ready = await (await fetch(`${config.origin}${READINESS_PATH}`)).json();
   assert.equal(ready.state, 'installed', `the throwaway must be installed, not ${JSON.stringify(ready)}`);
+  await requireFreeSlot();
   browser = await puppeteer.launch(launchOptions(config));
   const armed = armProbeDefinition(probe);
   priorDefault = armed.prior;
@@ -58,13 +64,80 @@ before(async () => {
 });
 
 after(async () => {
-  if (browser !== null) await browser.close();
-  if (config.container === LIVE_CONTAINER) return;
-  disarmProbeDefinition(probe, priorDefault);
+  try {
+    if (config.container === LIVE_CONTAINER) return;
+    // Hand the slot back rather than leaving this file's tail running into whatever runs next:
+    // closing a browser context does not end the server-side job. Asserted, not merely attempted --
+    // an abandon whose result nothing reads passes the taken slot to the next spec silently, which
+    // is the condition `requireFreeSlot` exists to name.
+    await requireFreeSlot();
+    disarmProbeDefinition(probe, priorDefault);
+  } finally {
+    if (browser !== null) await browser.close();
+  }
 });
 
 function runIris(lines) {
   return sharedRunIris(config.container, lines);
+}
+
+/** The Basic header the configured user authenticates the API with. */
+function basicHeader() {
+  return `Basic ${Buffer.from(`${config.username}:${config.password}`).toString('base64')}`;
+}
+
+/**
+ * Abandon every turn the configured user still has running, and answer how many were abandoned
+ * (`-1` when the route itself did not answer). This is the instance's own path, not a global
+ * write: the same `POST /turn/abandon` the client calls at sign-out.
+ */
+async function abandonTurns() {
+  try {
+    const response = await fetch(`${config.origin}/api/ocupilot/turn/abandon`, {
+      method: 'POST',
+      headers: { Authorization: basicHeader() },
+    });
+    if (!response.ok) return -1;
+    return Number((await response.json()).abandoned ?? -1);
+  } catch {
+    return -1;
+  }
+}
+
+/** Which process holds the configured user's turn slot this instant -- `''` while none does. */
+function slotOwner() {
+  const output = runIris([
+    `Write "OCU-NAV-SLOT-START:"_##class(OcuPilot.Test.TurnFixture).SlotOwner("${escapeOs(config.username)}")_":OCU-NAV-SLOT-END",!`,
+  ]);
+  return markerValue(output, 'NAV-SLOT') ?? '';
+}
+
+/**
+ * Refuse to start until the configured user's one turn slot is free, and say so in a sentence
+ * that names the cause.
+ *
+ * Every test here signs in as the same user, so it competes with whatever this suite ran before
+ * it for the one slot AD-41 allows -- and a taken slot makes the first Send answer 409
+ * `TURN.BUSY`, after which the composer never renders a reply and the test dies on a bare
+ * 30-second puppeteer timeout that names none of this. So the slot is abandoned through the
+ * instance's own route first, then polled, and a slot still held after
+ * `SLOT_FREE_TIMEOUT_MS` fails here with the global, the holding pid and the code the Send
+ * would otherwise have been refused with.
+ */
+async function requireFreeSlot() {
+  const abandoned = await abandonTurns();
+  const deadline = Date.now() + SLOT_FREE_TIMEOUT_MS;
+  let owner = slotOwner();
+  while (owner !== '' && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    owner = slotOwner();
+  }
+  assert.equal(
+    owner,
+    '',
+    `${SLOT_GLOBAL} is still held by pid ${owner} after abandoning ${abandoned} turn(s) and waiting ` +
+      `${SLOT_FREE_TIMEOUT_MS} ms, so this file's first Send would be refused TURN.BUSY`
+  );
 }
 
 function nextTag() {
@@ -151,6 +224,33 @@ async function awaitReply(page, text) {
   );
 }
 
+/**
+ * Wait for the announcement paragraph to name `screen`, naming what was wanted and what the panel
+ * was actually showing when it does not -- `waitForFunction`'s own timeout says neither, and the
+ * two things it is usually showing instead are a `TURN.BUSY` lock banner and a Send that was
+ * refused before any message was appended.
+ */
+async function waitForAnnouncement(page, screen) {
+  try {
+    await page.waitForFunction(
+      (wanted) => (document.querySelector('.ocu-panel-message-agent-text')?.textContent ?? '').includes(wanted),
+      { timeout: config.navigationTimeoutMs },
+      screen
+    );
+  } catch {
+    const state = await page.evaluate(() => ({
+      lockBanner: document.querySelector('[data-slot="lock"] .ocu-banner[role="status"]') !== null,
+      userMessages: document.querySelectorAll('.ocu-panel-message-user').length,
+      agentText: document.querySelector('.ocu-panel-message-agent-text')?.textContent ?? null,
+    }));
+    throw new Error(
+      `expected an announcement naming "${screen}"; the panel showed ` +
+        `${state.userMessages} user message(s), agent text ${JSON.stringify(state.agentText)}, and ` +
+        `${state.lockBanner ? 'a TURN.BUSY lock banner (the turn slot was taken)' : 'no lock banner'}`
+    );
+  }
+}
+
 /** The announcement paragraph's own text, once one is on screen -- `null` while none is. */
 function announcementText(page) {
   return page.evaluate(() => {
@@ -170,10 +270,7 @@ test('AC4: the announcement renders first, and the browser has not moved when it
   try {
     const before = pathOf(page);
     await typeAndSend(page, 'open the users screen');
-    await page.waitForFunction(
-      () => (document.querySelector('.ocu-panel-message-agent-text')?.textContent ?? '').includes('Users'),
-      { timeout: config.navigationTimeoutMs }
-    );
+    await waitForAnnouncement(page, 'Users');
     // The announcement is committed to the log before the URL has moved at all. This ordering is
     // the whole of what a browser can assert: the 1,000 ms timer starts inside `check()`, when the
     // poll response is processed, so any elapsed time measured from here is short by however long
@@ -324,7 +421,11 @@ test('AC7: a dirty form declines the move -- the URL stays, the announcement is 
     const resultBlock = resultEntry?.content.find((block) => block.tool_use_id === 'toolu_nav');
     assert.ok(resultBlock, 'the tool result reached the next provider call');
     assert.equal(resultBlock.is_error, false, 'AD-11 rule 3: a refusal is an ordinary result, never an error');
-    assert.deepEqual(JSON.parse(resultBlock.content), { navigated: false, route: 'permissions/users', entityId: null, code: 'NAV.REFUSEDUNSAVED' });
+    // DW-1095: `entityId` is absent, not null. This call named no row, and the member is declared
+    // "type": "string" outside `ResultSchema`'s `required`, so a null would be a value the
+    // declared type does not admit. `deepEqual` on the parsed object is what makes the absence an
+    // assertion rather than something nothing looks at.
+    assert.deepEqual(JSON.parse(resultBlock.content), { navigated: false, route: 'permissions/users', code: 'NAV.REFUSEDUNSAVED' });
   } finally {
     await context.close();
     forgetTag(tag);

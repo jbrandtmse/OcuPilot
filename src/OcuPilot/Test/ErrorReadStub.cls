@@ -23,6 +23,15 @@ ClassMethod ArmFault(pHttpStatus As %Integer, pCode As %String, pDetailJson As %
     Set ^||OcuPilotErrorReadStub("fault") = $ListBuild(pHttpStatus, pCode, pDetailJson)
 }
 
+/// <p>Answer the port's own <code>truncated</code> as <b>false</b> from now on, so a
+/// <code>truncated</code> a caller then reads can only have come from
+/// <method>OcuPilot.Screen.Tool.ErrorRead.View</method>'s own context-cap branch. The default is
+/// true, which is what every other caller of this stub already relies on.</p>
+ClassMethod ArmUntruncated()
+{
+    Set ^||OcuPilotErrorReadStub("untruncated") = 1
+}
+
 /// <p>What the last port call was given under <var>pField</var>: <code>level</code>,
 /// <code>namespace</code>, <code>date</code> or <code>maxRows</code>.</p>
 ClassMethod Recorded(pField As %String) As %String
@@ -30,7 +39,9 @@ ClassMethod Recorded(pField As %String) As %String
     Quit $Get(^||OcuPilotErrorReadStub("last", pField))
 }
 
-/// <p>The stub port: three summary rows, truncated, or the armed fault.</p>
+/// <p>The stub port: three summary rows, truncated unless <method>ArmUntruncated</method> was
+/// called, or the armed fault. <var>pMaxRows</var> is recorded and never applied -- the three rows
+/// are what makes a caller's own cap observable.</p>
 ClassMethod Errors(pLevel As %String = "", pNamespace As %String = "", pDate As %String = "", pErrorNumber As %String = "", pMaxRows As %String = "", Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
     Set pResult = ""
@@ -47,7 +58,8 @@ ClassMethod Errors(pLevel As %String = "", pNamespace As %String = "", pDate As 
         If $List(tFault, 3) '= "" Do pFault.%Set("detail", ##class(%DynamicAbstractObject).%FromJSON($List(tFault, 3)))
         Quit $$$ERROR($$$GeneralError, "the stub port's fault")
     }
-    Set pResult = {"rows": [], "truncated": true}
+    Set pResult = {"rows": []}
+    Do pResult.%Set("truncated", '$Get(^||OcuPilotErrorReadStub("untruncated"), 0), "boolean")
     For tI = 1:1:3 {
         Do pResult.rows.%Push({"errorNumber": (tI), "time": "10:00:00", "errorText": "<UNDEFINED>", "routine": "X", "line": "X+1", "username": "u", "process": 1})
     }

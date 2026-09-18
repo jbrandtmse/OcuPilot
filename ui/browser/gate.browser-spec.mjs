@@ -115,10 +115,13 @@ async function enabledCount() {
 /**
  * Remove every definition this spec created, through the shipped route.
  *
- * **Every delete is checked.** This spec is the only one that enables a definition, and the seven
- * spec files that sort after it all render the panel on the premise that nothing is enabled. A
- * delete that quietly failed would leave an enabled row behind, turn `leaveFirstLoginGate` into a
- * no-op in all of them, and surface as an unrelated assertion in a file that did nothing wrong.
+ * **Every delete is checked.** Seven spec files enable a definition — this one and
+ * `panel.browser-spec.mjs` directly, and `context-chip`, `navigate`, `reply`, `suggested-view` and
+ * `turn` through `armProbeDefinition`, which reaches `TurnWireFixture.EnsureDefinition` and its
+ * `SetFlags(pId, 1, 1)`. Each is responsible for removing its own, and every spec file that does
+ * not enable one renders the panel on the premise that nothing is enabled. A delete that quietly
+ * failed would leave an enabled row behind, turn `leaveFirstLoginGate` into a no-op in all of them,
+ * and surface as an unrelated assertion in a file that did nothing wrong.
  */
 async function removeProbeDefinitions() {
   for (const row of await definitions()) {

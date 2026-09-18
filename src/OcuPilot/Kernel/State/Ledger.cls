@@ -94,11 +94,23 @@ Property ResponseTokens As %Integer [ InitialExpression = 0 ];
 /// <code>resource:permission</code>, sorted, de-duplicated and comma-joined -- a scalar, the way
 /// <property>OcuPilot.Kernel.State.Step.FailedPair</property> is, and not a
 /// <code>list Of</code>.</p>
-/// <p><b>An over-long set fails the row's write rather than being cut.</b> Cutting would drop a
-/// pair, and a row that records fewer pairs than the call required is a row a later cross-user read
-/// would release too easily (AD-46). The writer logs the failure and the turn is unaffected
-/// (AD-15).</p>
+/// <p><b>An over-long set is cut at a whole-pair boundary and says so</b> (AD-24, AD-41):
+/// <property>RequiredPairsTruncated</property> reads 1, and a cross-user read withholds such a row
+/// rather than gating on a set that is missing pairs (AD-46).</p>
 Property RequiredPairs As %String(MAXLEN = 512);
+
+/// <p>Whether <property>RequiredPairs</property> holds fewer pairs than the call required.</p>
+/// <p><b>Added with no <code>SCHEMAVERSION</code> move</b> (Consistency Conventions): a row stored
+/// before this property existed holds nothing in its slot and so reads back <code>""</code>, which
+/// <method>GuardedRow</method> and <method>OcuPilot.Kernel.Audit.Ledger.RowObject</method>
+/// normalize with <code>''</code> to the 0 an uncut set holds. No older row is reinterpreted.</p>
+Property RequiredPairsTruncated As %Boolean [ InitialExpression = 0 ];
+
+/// <p>The declared length of <property>RequiredPairs</property>, read by
+/// <method>OcuPilot.Kernel.Audit.Ledger.PairsToString</method> so the bound it cuts at is not a
+/// second literal. <class>OcuPilot.Test.Ledger</class> asserts it equals the column's
+/// <code>MAXLEN</code>, which a property keyword cannot itself read.</p>
+Parameter PAIRSMAXLENGTH As %Integer = 512;
 
 /// <p>On the overflow row, how many calls of this turn were counted and not stored; 0 elsewhere.</p>
 Property Dropped As %Integer [ InitialExpression = 0 ];
@@ -121,8 +133,10 @@ Index LedgerTurnSeqIdx On (TurnKey, Seq) [ Unique ];
 /// <p><b>Caller contract:</b> <var>pArguments</var> is already redacted and already cut
 /// (<method>OcuPilot.Kernel.Audit.Ledger.RedactArguments</method>); nothing here redacts anything.
 /// <var>pRequiredPairs</var> is the canonical joined string
-/// <method>OcuPilot.Kernel.Audit.Ledger.PairsToString</method> answers.</p>
-ClassMethod GuardedAppend(pTurnKey As %String, pUser As %String, pRoute As %String, pKind As %String, pName As %String, pModel As %String, pTarget As %String, pArguments As %String, pArgumentsTruncated As %Boolean, pStatus As %String, pCode As %String, pRequestTokens As %Integer, pResponseTokens As %Integer, pRequiredPairs As %String, pLimitsClass As %String, Output pSeq As %Integer, Output pStored As %Boolean) As %Status
+/// <method>OcuPilot.Kernel.Audit.Ledger.PairsToString</method> answers, already cut at a whole-pair
+/// boundary, and <var>pRequiredPairsTruncated</var> is that method's own truncation answer -- it is
+/// trailing and defaults to 0 so the provider-call caller, which declares no pairs, is unchanged.</p>
+ClassMethod GuardedAppend(pTurnKey As %String, pUser As %String, pRoute As %String, pKind As %String, pName As %String, pModel As %String, pTarget As %String, pArguments As %String, pArgumentsTruncated As %Boolean, pStatus As %String, pCode As %String, pRequestTokens As %Integer, pResponseTokens As %Integer, pRequiredPairs As %String, pLimitsClass As %String, Output pSeq As %Integer, Output pStored As %Boolean, pRequiredPairsTruncated As %Boolean = 0) As %Status
 {
     Set pSeq = 0
     Set pStored = 0
@@ -146,15 +160,16 @@ ClassMethod GuardedAppend(pTurnKey As %String, pUser As %String, pRoute As %Stri
         Set tRow.Kind = ..Cut(pKind, 16)
         Set tRow.Name = ..Cut(pName, 128)
         Set tRow.Model = ..Cut(pModel, 128)
-        Set tRow.Route = ..Cut(pRoute, 512)
+        Set tRow.Route = ..Cut(pRoute, ..#ROUTEMAXLENGTH)
         Set tRow.Target = ..Cut(pTarget, 256)
-        Set tRow.Arguments = ..Cut(pArguments, 4096)
+        Set tRow.Arguments = ..Cut(pArguments, +$Parameter(pLimitsClass, "LEDGERROWMAXLENGTH"))
         Set tRow.ArgumentsTruncated = ''pArgumentsTruncated
         Set tRow.Status = ..Cut(pStatus, 16)
         Set tRow.Code = ..Cut(pCode, 64)
         Set tRow.RequestTokens = +pRequestTokens
         Set tRow.ResponseTokens = +pResponseTokens
         Set tRow.RequiredPairs = pRequiredPairs
+        Set tRow.RequiredPairsTruncated = ''pRequiredPairsTruncated
         Set tSC = ..GuardedSaveIfCurrent(tRow, 0)
         If $$$ISERR(tSC) Quit
         Set pSeq = tRow.Seq
@@ -192,7 +207,7 @@ ClassMethod GuardedCountOverflow(pTurnKey As %String, pUser As %String, pRoute A
         Set tRow.TurnKey = ..Cut(pTurnKey, 64)
         Set tRow.Seq = ..#OVERFLOWSEQ
         Set tRow.Kind = ..#KINDOVERFLOW
-        Set tRow.Route = ..Cut(pRoute, 512)
+        Set tRow.Route = ..Cut(pRoute, ..#ROUTEMAXLENGTH)
         Set tRow.Status = "ok"
         Set tRow.Dropped = 1
         Set pDropped = 1
@@ -256,7 +271,8 @@ ClassMethod GuardedDroppedFor(pUser As %String, pWindowHours As %String, pTurnKe
 /// <code>kind</code>, <code>name</code>, <code>model</code>, <code>route</code>,
 /// <code>target</code>, <code>arguments</code>, <code>argumentsTruncated</code>,
 /// <code>status</code>, <code>code</code>, <code>requestTokens</code>,
-/// <code>responseTokens</code>, <code>requiredPairs</code> and <code>dropped</code>.</p>
+/// <code>responseTokens</code>, <code>requiredPairs</code>, <code>requiredPairsTruncated</code>
+/// and <code>dropped</code>.</p>
 /// <p>Data, not a projection: this package names nothing outside it (AD-9), so the caller is what
 /// turns these into a view and what evaluates <code>requiredPairs</code>.</p>
 /// <p><b>A row that is gone answers no values and no error.</b>
@@ -288,6 +304,7 @@ ClassMethod GuardedRow(pId As %String, Output pValues) As %Status
     Set pValues("requestTokens") = +tRow.RequestTokens
     Set pValues("responseTokens") = +tRow.ResponseTokens
     Set pValues("requiredPairs") = ..Text(tRow.RequiredPairs)
+    Set pValues("requiredPairsTruncated") = ''tRow.RequiredPairsTruncated
     Set pValues("dropped") = +tRow.Dropped
     Set tRow = ""
     Quit $$$OK
@@ -326,8 +343,10 @@ ClassMethod NewKey() As %String [ Private ]
 
 /// <p><var>pValue</var> cut to <var>pMax</var> characters, never between the halves of a surrogate
 /// pair. A column's declared length is a storage bound, not a caller contract: a value that
-/// overruns it is cut here rather than failing the write, except
-/// <property>RequiredPairs</property>, whose header says why.</p>
+/// overruns it is cut here rather than failing the write. <property>RequiredPairs</property> is
+/// the one column not cut here, because a cut between two pairs is the only safe one and
+/// <method>OcuPilot.Kernel.Audit.Ledger.PairsToString</method> is what knows where those
+/// boundaries are.</p>
 ClassMethod Cut(pValue As %String, pMax As %Integer) As %String [ Private ]
 {
     Quit ##class(OcuPilot.Kernel.State.Turn).Cap(pValue, pMax, .tCut)

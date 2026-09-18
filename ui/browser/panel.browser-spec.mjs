@@ -39,14 +39,28 @@ before(async () => {
   const ready = await (await fetch(`${config.origin}${READINESS_PATH}`)).json();
   assert.equal(ready.state, 'installed', `the throwaway must be installed, not ${JSON.stringify(ready)}`);
   await removeProbeDefinitions();
+  assert.equal(await enabledCount(), 0, 'the throwaway starts with no enabled definition, which is the state every assertion here is about');
   browser = await puppeteer.launch(launchOptions(config));
 });
 
 after(async () => {
-  if (browser !== null) await browser.close();
-  // `before` refused the live container; nothing was created there, and nothing is removed.
-  if (config.container === LIVE_CONTAINER) return;
-  await removeProbeDefinitions();
+  try {
+    // `before` refused the live container; nothing was created there, and nothing is removed.
+    if (config.container !== LIVE_CONTAINER) {
+      // DW-1048: removed BEFORE the browser closes, and the result asserted. Closing the browser
+      // first means a failure here is reported after the run's last hook has already torn down,
+      // where node:test attributes it to nothing; and an enabled row this file leaves behind turns
+      // `leaveFirstLoginGate` into a no-op for every spec file that sorts after it, surfacing as an
+      // unrelated assertion in a file that did nothing wrong. `before` asserts zero enabled, so
+      // anything enabled here appeared during this file's own run.
+      await removeProbeDefinitions();
+      assert.equal(await enabledCount(), 0, 'this spec leaves the instance with no enabled definition');
+    }
+  } finally {
+    // In the `finally` so a failed postcondition reports itself AND still closes Chrome; ordering
+    // the two the other way traded a leaked definition for a leaked browser.
+    if (browser !== null) await browser.close();
+  }
 });
 
 function authHeader() {
@@ -59,6 +73,11 @@ async function definitions() {
   const body = await answer.json();
   assert.ok(Array.isArray(body.definitions), `and projects a definitions array: ${JSON.stringify(body)}`);
   return body.definitions;
+}
+
+/** How many definitions this instance currently has enabled -- the state the panel renders on. */
+async function enabledCount() {
+  return (await definitions()).filter((row) => row.enabled === true).length;
 }
 
 async function removeProbeDefinitions() {
@@ -112,6 +131,49 @@ async function signedInAt(url, viewport = config.viewport) {
   await leaveFirstLoginGate(page, config.navigationTimeoutMs, url);
   await page.waitForSelector('app-panel [role="separator"]', { timeout: config.navigationTimeoutMs });
   return { context, page };
+}
+
+/**
+ * Wait until the panel is on screen with a composer that is not `aria-disabled` -- the surface the
+ * caller goes on to type into -- and name what was actually rendered when it does not arrive.
+ *
+ * The two waits this replaced each covered half the condition: one waited on the composer's
+ * `aria-disabled` without first waiting for the panel (so a remount that had not yet rendered a
+ * composer read as "no such element" rather than as "not yet"), and the other waited for the
+ * element alone and then read a composer the panel still had disabled. Both failed as a bare
+ * 30-second timeout naming neither the sign-in form, the instance notice, nor the path.
+ */
+async function composerReady(page) {
+  try {
+    await page.waitForFunction(
+      () => {
+        if (document.querySelector('app-panel aside.ocu-panel') === null) return false;
+        const composer = document.querySelector('#ocu-panel-composer');
+        return composer !== null && !composer.hasAttribute('aria-disabled');
+      },
+      { timeout: config.navigationTimeoutMs }
+    );
+  } catch {
+    const state = await page.evaluate(() => ({
+      surface: document.querySelector('app-sign-in') !== null
+        ? 'app-sign-in'
+        : document.querySelector('app-instance-notice') !== null
+          ? 'app-instance-notice'
+          : document.querySelector('app-panel') !== null
+            ? 'app-panel'
+            : 'none of app-sign-in, app-instance-notice or app-panel',
+      composer: document.querySelector('#ocu-panel-composer') === null
+        ? 'absent'
+        : document.querySelector('#ocu-panel-composer').hasAttribute('aria-disabled')
+          ? 'present and aria-disabled'
+          : 'present and enabled',
+      path: window.location.pathname + window.location.search,
+    }));
+    throw new Error(
+      `expected the panel with an enabled composer; the surface on screen was ${state.surface}, ` +
+        `the composer was ${state.composer}, and the path was ${state.path}`
+    );
+  }
 }
 
 /** The row's measured geometry: side bar, content region, its floor, the routed screen's `main`, the panel, and the page's own scroll. */
@@ -235,12 +297,16 @@ test('AC3: the handle resizes by keyboard and pointer between 320 and the 640px 
 test('AC2: the same panel element, draft and width survive navigation, and the width survives a reload', async () => {
   // Mutation (Rule 19): make `PreferenceStore.setPanelWidth` write nothing -> this goes red on the
   // width after the reload.
-  await enabledProbeDefinition();
-  const { context, page } = await signedInAt(USERS_URL);
+  // DW-1048: both inside the try, with the context hoisted, so a throw between creating the probe
+  // definition and signing in still reaches the `finally` that removes it. Left outside, a failed
+  // sign-in leaked an enabled definition that made `leaveFirstLoginGate` a no-op for every spec
+  // file after this one.
+  let context = null;
+  let page = null;
   try {
-    await page.waitForFunction(() => !document.querySelector('#ocu-panel-composer').hasAttribute('aria-disabled'), {
-      timeout: config.navigationTimeoutMs,
-    });
+    await enabledProbeDefinition();
+    ({ context, page } = await signedInAt(USERS_URL));
+    await composerReady(page);
     await page.type('#ocu-panel-composer', 'Why is /csp/myapp disabled?');
     await pressOnHandle(page, 'ArrowLeft', 3);
     await panelSettlesAt(page, 448);
@@ -278,7 +344,7 @@ test('AC2: the same panel element, draft and width survive navigation, and the w
     await page.waitForSelector('app-panel aside.ocu-panel', { timeout: config.navigationTimeoutMs });
     await panelSettlesAt(page, 448);
   } finally {
-    await context.close();
+    if (context !== null) await context.close();
     await removeProbeDefinitions();
   }
 });
@@ -375,12 +441,16 @@ test('Full screen: Escape, the skip link and Ctrl/Cmd+B leave the covered side b
 test('Signing out clears the panel draft and full screen; the next sign-in starts fresh (QA)', async () => {
   // Mutation (Rule 19, QA): delete `this.panel.endSession()` from `App.verifyWhenSignedIn` -> the
   // draft and full-screen assertions after the second sign-in go red.
-  await enabledProbeDefinition();
-  const { context, page } = await signedInAt(USERS_URL);
+  // DW-1048: both inside the try, with the context hoisted, so a throw between creating the probe
+  // definition and signing in still reaches the `finally` that removes it. Left outside, a failed
+  // sign-in leaked an enabled definition that made `leaveFirstLoginGate` a no-op for every spec
+  // file after this one.
+  let context = null;
+  let page = null;
   try {
-    await page.waitForFunction(() => !document.querySelector('#ocu-panel-composer').hasAttribute('aria-disabled'), {
-      timeout: config.navigationTimeoutMs,
-    });
+    await enabledProbeDefinition();
+    ({ context, page } = await signedInAt(USERS_URL));
+    await composerReady(page);
     await page.type('#ocu-panel-composer', 'Draft before sign-out');
     await page.click('.ocu-panel-full-screen-toggle');
     await page.waitForFunction(() => document.querySelector('.ocu-shell-content').hasAttribute('inert'), {
@@ -408,8 +478,9 @@ test('Signing out clears the panel draft and full screen; the next sign-in start
     await leaveFirstLoginGate(page, config.navigationTimeoutMs, USERS_URL);
     // DW-1048: the gate's own navigation remounts the frame, and the panel with it -- an evaluate
     // that ran the instant `leaveFirstLoginGate` resolved could still find the composer the OLD
-    // frame rendered, gone by the time the query ran. Wait for the new frame's own composer.
-    await page.waitForSelector('#ocu-panel-composer', { timeout: config.navigationTimeoutMs });
+    // frame rendered, gone by the time the query ran. Wait for the new frame's own panel and its
+    // enabled composer, which is the surface the assertions below read.
+    await composerReady(page);
 
     const after = await page.evaluate(() => ({
       draft: document.querySelector('#ocu-panel-composer').value,
@@ -420,7 +491,7 @@ test('Signing out clears the panel draft and full screen; the next sign-in start
     assert.equal(after.expanded, 'false', 'full screen does not survive sign-out');
     assert.equal(after.inert, false, 'content is no longer inert once full screen is cleared');
   } finally {
-    await context.close();
+    if (context !== null) await context.close();
     await removeProbeDefinitions();
   }
 });
@@ -428,12 +499,16 @@ test('Signing out clears the panel draft and full screen; the next sign-in start
 test('The composer grows with its text to four lines and then scrolls, the footer staying in the panel', async () => {
   // Mutation (Rule 19): drop `field-sizing: content` from `.ocu-panel-composer` -> the two-line height
   // assertion goes red.
-  await enabledProbeDefinition();
-  const { context, page } = await signedInAt(USERS_URL);
+  // DW-1048: both inside the try, with the context hoisted, so a throw between creating the probe
+  // definition and signing in still reaches the `finally` that removes it. Left outside, a failed
+  // sign-in leaked an enabled definition that made `leaveFirstLoginGate` a no-op for every spec
+  // file after this one.
+  let context = null;
+  let page = null;
   try {
-    await page.waitForFunction(() => !document.querySelector('#ocu-panel-composer').hasAttribute('aria-disabled'), {
-      timeout: config.navigationTimeoutMs,
-    });
+    await enabledProbeDefinition();
+    ({ context, page } = await signedInAt(USERS_URL));
+    await composerReady(page);
     const height = () => page.evaluate(() => document.querySelector('#ocu-panel-composer').getBoundingClientRect().height);
     const one = await height();
     await page.type('#ocu-panel-composer', 'first');
@@ -460,7 +535,7 @@ test('The composer grows with its text to four lines and then scrolls, the foote
     assert.equal(shown.scrolls, true, 'past four lines the composer scrolls');
     assert.ok(shown.footerBottom <= shown.panelBottom + 0.5, 'the footer stays inside the panel');
   } finally {
-    await context.close();
+    if (context !== null) await context.close();
     await removeProbeDefinitions();
   }
 });

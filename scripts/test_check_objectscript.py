@@ -271,6 +271,36 @@ class TestShippedRoster(unittest.TestCase):
         self.assertEqual(packages, on_disk)
 
 
+class TestStatedRuleCountMatchesTheCode(unittest.TestCase):
+    """DW-1129: `CLAUDE.md` tells a contributor how many rules the checker runs, and nothing held
+    that number to `CHECKS`. The checker's own footer derives its count, so a stale sentence in the
+    agent-instruction file was the only copy and it disagreed silently. Over the real tree, not a
+    fixture."""
+
+    STATED_RE = re.compile(
+        r"`uv run scripts/check-objectscript\.py`\s*\((\d+)\s+rules", re.MULTILINE
+    )
+
+    def test_claude_md_states_the_number_of_checks_the_script_declares(self):
+        text = co.read_text(co.ROOT / "CLAUDE.md")
+        self.assertIsNotNone(text, "expected CLAUDE.md to exist and be readable")
+        matches = self.STATED_RE.findall(text)
+        self.assertEqual(
+            len(matches),
+            1,
+            "CLAUDE.md must state the check-objectscript.py rule count exactly once in the form "
+            f"this pin reads; found {len(matches)}. Zero makes this gate vacuous; two or more is a "
+            "second copy to keep correct, which is the defect this pin exists for",
+        )
+        stated = int(matches[0])
+        self.assertEqual(
+            stated,
+            len(co.CHECKS),
+            f"CLAUDE.md states {stated} rule(s) for check-objectscript.py but CHECKS declares "
+            f"{len(co.CHECKS)} -- update the sentence in CLAUDE.md when you add or remove a check",
+        )
+
+
 class TestEntityTypeRule(FixtureTreeCase):
     """AD-14: every entity type a descriptor's `XData Declaration` names must exist in
     `Kernel/EntityType.cls`'s closed `TYPES` parameter -- the "build fails on a value not in

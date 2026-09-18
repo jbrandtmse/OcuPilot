@@ -53,6 +53,15 @@ Parameter DESCRIPTIONGRANT = "OcuPilot administrative role granted";
 /// <parameter>EVENTLEDGERREAD</parameter>.</p>
 Parameter DESCRIPTIONLEDGERREAD = "OcuPilot agent ledger read of another user's rows";
 
+/// <p>The log message a dropped configuration-change emission reports
+/// (<method>LogFailure</method>).</p>
+Parameter DROPPEDCONFIG = "the configuration change was made and no audit row was written";
+
+/// <p>The log message a dropped <parameter>EVENTLEDGERREAD</parameter> emission reports. A read is
+/// not a change, and saying it was one sends an operator looking for a configuration edit that
+/// never happened.</p>
+Parameter DROPPEDLEDGERREAD = "the agent ledger read was answered and no audit row was written";
+
 /// <p>The audit Source every OcuPilot row carries. Read from
 /// <class>OcuPilot.Kernel.State.Base</class>, which declares the triple's Source and Type once
 /// for the installer, the smoke check and this emitter alike.</p>
@@ -174,23 +183,28 @@ ClassMethod Record(pVerb As %String, pType As %String, pId As %String, pChanges 
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
-    If $$$ISERR(tSC) Do ..LogFailure(pVerb, pType, pId, tSC)
+    If $$$ISERR(tSC) Do ..LogFailure(pVerb, pType, pId, tSC, $Select(pEventName = ..#EVENTLEDGERREAD: ..#DROPPEDLEDGERREAD, 1: ..#DROPPEDCONFIG))
     Quit tSC
 }
 
-/// <p>Report an emission that produced no row. The write it records has already succeeded, so
+/// <p>Report an emission that produced no row. The operation it records has already succeeded, so
 /// this is the only trace of the drop -- and OcuPilot renders its own structured log on its own
 /// log screens (AD-46), which is where an operator finds it.</p>
+/// <p><var>pMessage</var> names what was done, because not every emission records a change:
+/// <method>Record</method> passes <parameter>DROPPEDLEDGERREAD</parameter> for
+/// <parameter>EVENTLEDGERREAD</parameter> and <parameter>DROPPEDCONFIG</parameter> otherwise. It is
+/// trailing and defaults, so a caller that does not answer reports the configuration-change
+/// sentence.</p>
 /// <p>Its own method so a test can capture what a failed emission reports; production never
 /// overrides it.</p>
-ClassMethod LogFailure(pVerb As %String, pType As %String, pId As %String, pStatus As %Status)
+ClassMethod LogFailure(pVerb As %String, pType As %String, pId As %String, pStatus As %Status, pMessage As %String = {..#DROPPEDCONFIG})
 {
     Set tData = {}
     Do tData.%Set("verb", pVerb, "string")
     Do tData.%Set("entityType", pType, "string")
     Do tData.%Set("id", pId, "string")
     Do tData.%Set("reason", $System.Status.GetErrorText(pStatus), "string")
-    Do ##class(OcuPilot.Kernel.Audit.Log).Error(..#LOGSUBSYSTEM, "the configuration change was made and no audit row was written", tData)
+    Do ##class(OcuPilot.Kernel.Audit.Log).Error(..#LOGSUBSYSTEM, pMessage, tData)
 }
 
 }

@@ -214,4 +214,54 @@ Method TestEveryNavCodeHasAWrittenSentence()
     Do $$$AssertEquals(##class(OcuPilot.Api.Error).ReasonForNav("NAV.NO.SUCH.CODE"), "", "and a code the vocabulary does not hold carries none")
 }
 
+/// <p><b>Every key the settled result emits is declared in <method>ResultSchema</method> with a
+/// matching JSON type</b> (DW-1095). <method>ResultSchema</method> is documentation and shape
+/// validation only -- nothing validates a client-fulfilled result at runtime -- so a declaration
+/// the payload contradicts is a claim nothing checks.</p>
+/// <p>The hard case is the <code>opened</code>, no-row outcome, which carries neither
+/// <code>entityId</code> nor <code>code</code>: both are declared <code>"type": "string"</code>
+/// and both are outside <code>required</code>, so the payload has to <b>omit</b> them rather than
+/// emit JSON null.</p>
+/// <p>Mutation (Rule 19): re-emit <code>%Set("code", "", "null")</code> in
+/// <method>OcuPilot.Kernel.Agent.Dispatch.SettleClient</method> -- this goes red naming
+/// <code>code</code>, its declared type and the null it emitted.</p>
+Method TestSettledResultEmitsOnlyDeclaredKeysWithDeclaredTypes()
+{
+    Set tSchema = $ClassMethod(..#TOOL, "ResultSchema")
+    Do $$$AssertTrue($IsObject(tSchema), "the result schema reads")
+    Do $$$AssertEquals(''tSchema.additionalProperties, 0, "and admits no key it does not declare")
+
+    ; Every outcome the settle answers, not only the interesting one, so a member that is right in
+    ; one shape and wrong in another cannot hide.
+    Set tCases = $ListBuild($ListBuild("opened", "", ""), $ListBuild("opened", "_SYSTEM", ""), $ListBuild("refused", "", ##class(OcuPilot.Api.Error).#NAVREFUSEDUNSAVED), $ListBuild("unavailable", "_SYSTEM", ##class(OcuPilot.Api.Error).#NAVUNAVAILABLE))
+    For tI = 1:1:$ListLength(tCases) {
+        Set tCase = $List(tCases, tI)
+        Set tOutcome = $List(tCase, 1)
+        Set tEntity = $List(tCase, 2)
+        Set tCode = $List(tCase, 3)
+        Set tDetail = {}
+        Do tDetail.%Set("route", "tasks/schedule", "string")
+        Do tDetail.%Set("entityId", tEntity, "string")
+        Do ##class(OcuPilot.Kernel.Agent.Dispatch).SettleClient(tDetail, tOutcome, tCode, .tContent)
+        Set tLabel = tOutcome _ "/" _ $Select(tEntity = "": "no row", 1: "row") _ ": "
+        Set tResult = ##class(%DynamicAbstractObject).%FromJSON(tContent)
+        Do $$$AssertTrue($IsObject(tResult), tLabel _ "the settled content parses: " _ tContent)
+        Set tIterator = tResult.%GetIterator()
+        Set tSeen = 0
+        While tIterator.%GetNext(.tKey, .tValue) {
+            Set tSeen = tSeen + 1
+            Set tDeclared = tSchema.properties.%Get(tKey)
+            Do $$$AssertTrue($IsObject(tDeclared), tLabel _ "key '" _ tKey _ "' is declared in ResultSchema")
+            If '$IsObject(tDeclared) Continue
+            Do $$$AssertEquals(tResult.%GetTypeOf(tKey), tDeclared.type, tLabel _ "key '" _ tKey _ "' is emitted as its declared type: " _ tContent)
+        }
+        ; A payload that emitted nothing would pass every row above having checked nothing.
+        Do $$$AssertTrue(tSeen >= 2, tLabel _ "the payload carries at least the two required members (" _ tSeen _ ")")
+        Do $$$AssertEquals(tResult.%GetTypeOf("navigated"), "boolean", tLabel _ "navigated is a boolean")
+        Do $$$AssertEquals(tResult.%GetTypeOf("route"), "string", tLabel _ "route is a string")
+        If tEntity = "" Do $$$AssertEquals(tResult.%IsDefined("entityId"), 0, tLabel _ "entityId is omitted, not null")
+        If tOutcome = "opened" Do $$$AssertEquals(tResult.%IsDefined("code"), 0, tLabel _ "code is omitted, not null")
+    }
+}
+
 }

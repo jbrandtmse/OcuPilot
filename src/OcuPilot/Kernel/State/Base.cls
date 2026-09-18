@@ -102,6 +102,17 @@ Property RowVersion As %Integer [ InitialExpression = 0 ];
 /// established.</p>
 Parameter STALESAVEREASON = "the row changed on this instance after it was read, so the save was refused";
 
+/// <p>The declared length of the two route columns cut against it: the ledger's
+/// <property>OcuPilot.Kernel.State.Ledger.Route</property> and the turn's
+/// <property>OcuPilot.Kernel.State.Turn.ContextRoute</property>. Declared once here so the cap a
+/// writer cuts at is not a literal repeated beside each column; the invariant that this equals
+/// both <code>MAXLEN</code>s is asserted by <class>OcuPilot.Test.Ledger</class>, because a
+/// property's <code>MAXLEN</code> cannot itself read a parameter.</p>
+/// <p>Not every route column on this base: <property>OcuPilot.Kernel.State.Nav.Route</property> is
+/// declared <code>MAXLEN = ""</code> and is cut nowhere, its value being a registry route the
+/// directive echoes back rather than caller text.</p>
+Parameter ROUTEMAXLENGTH As %Integer = 512;
+
 /// <p>The window <method>BoundedWhere</method> applies when its caller asks for 0 hours.</p>
 Parameter BOUNDEDDEFAULTHOURS As %Integer = 24;
 

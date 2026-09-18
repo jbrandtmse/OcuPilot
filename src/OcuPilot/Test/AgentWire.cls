@@ -193,9 +193,14 @@ Method TestAnUnknownIdAnswers404OnEveryRouteThatTakesOne()
     }
 }
 
-/// <p>A body that cannot be parsed is a 400 that names the stage, so a server-side read fault is
-/// never presented as malformed client JSON (DW-24).</p>
-Method TestAMalformedBodyAnswers400NamingTheStage()
+/// <p>A body that cannot be parsed is a 400 carrying
+/// <parameter>OcuPilot.Api.Error.REASONAGENTBADBODY</parameter> and nothing else: the raw
+/// <class>%Status</class> is vendor-shaped text and reaches the log only (AD-39).</p>
+/// <p>Mutation (Rule 19): re-append
+/// <code>_ $System.Status.GetErrorText(pStatus)</code> to
+/// <method>OcuPilot.Api.Definitions.RenderBadBody</method>'s reason -- the equality assertion and
+/// both vendor-text assertions go red.</p>
+Method TestAMalformedBodyAnswers400WithItsWrittenSentenceAlone()
 {
     Set tSC = ..Call("POST", "", "{not json", .tStatus, .tBody, .tHeaders)
     Do $$$AssertStatusOK(tSC, "the request completes")
@@ -204,7 +209,9 @@ Method TestAMalformedBodyAnswers400NamingTheStage()
     Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
     Do $$$AssertEquals(tAnswer.error, "bad_request", "on the bad_request slug")
     Do $$$AssertEquals(tAnswer.code, "AGENT.BADBODY", "with the bad-body code")
-    Do $$$AssertTrue(tAnswer.reason [ "JSON", "and a reason naming what could not be read: " _ tAnswer.reason)
+    Do $$$AssertEquals(tAnswer.reason, ##class(OcuPilot.Api.Error).#REASONAGENTBADBODY, "and the written sentence alone: " _ tAnswer.reason)
+    Do $$$AssertTrue(tAnswer.reason '[ "<THROW>", "with no vendor exception text: " _ tAnswer.reason)
+    Do $$$AssertTrue(tAnswer.reason '[ "%Library", "and no vendor class name: " _ tAnswer.reason)
     Do $$$AssertEquals(##class(OcuPilot.Test.AgentFixture).ProbeCount(), 0, "and nothing was written")
 }
 

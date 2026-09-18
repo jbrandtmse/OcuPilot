@@ -110,9 +110,12 @@ Parameter AUTHNOADMIN = "AUTH.NOADMIN";
 /// request. The code is fixed now so the first of those reads does not mint a second one.</p>
 Parameter AUTHNOPRIVILEGE = "AUTH.NOPRIVILEGE";
 
-/// <p>Written sentence for <parameter>AUTHNOPRIVILEGE</parameter> when it reaches a tool step's
-/// <code>reason</code> (Story 4.5) rather than an envelope's <code>detail.failedPair</code> alone.</p>
-Parameter REASONAUTHNOPRIVILEGE = "This account does not hold the privilege that tool call requires.";
+/// <p>Written sentence for <parameter>AUTHNOPRIVILEGE</parameter> wherever the code carries one
+/// rather than an envelope's <code>detail.failedPair</code> alone: a tool step's
+/// <code>reason</code> (Story 4.5) and the ledger's cross-user 403 (Story 4.9). It names the
+/// request, because the second of those is a read request the caller made directly and no tool
+/// call is involved; <code>detail.failedPair</code> is what says which pair failed.</p>
+Parameter REASONAUTHNOPRIVILEGE = "This account does not hold the privilege this request requires.";
 
 /// <p>Machine code (AD-12, AD-39): the request carried no authenticated caller, so
 /// <class>OcuPilot.Api.Router</class>'s identity gate refuses before any route runs (AD-21).
@@ -362,10 +365,14 @@ Parameter AGENTVALIDATION = "AGENT.VALIDATION";
 Parameter AGENTNOTFOUND = "AGENT.NOTFOUND";
 
 /// <p>Machine code (AD-12, AD-39): the request body could not be read or parsed at all, so there
-/// is nothing to validate. Rendered on the <parameter>BADREQUEST</parameter> slug, with the
-/// <b>stage</b> <method>OcuPilot.Kernel.Utils.ReadRequestBody</method> reported in the reason, so
-/// a server-side read fault is never presented as malformed client JSON (DW-24).</p>
+/// is nothing to validate. Rendered on the <parameter>BADREQUEST</parameter> slug with
+/// <parameter>REASONAGENTBADBODY</parameter> alone.</p>
 Parameter AGENTBADBODY = "AGENT.BADBODY";
+
+/// <p>Written sentence for <parameter>AGENTBADBODY</parameter> (AD-39). The raw
+/// <class>%Status</class> the read reported is written to the log and never to the wire, because
+/// it is vendor-shaped text naming internal classes.</p>
+Parameter REASONAGENTBADBODY = "The request body could not be read as JSON. Send a JSON object, or no body at all.";
 
 /// <p>Machine code (Story 4.4, AD-39): <code>PUT /agent/context</code>'s body carries anything
 /// other than exactly the boolean member <code>share</code> -- an absent, badly typed or extra
