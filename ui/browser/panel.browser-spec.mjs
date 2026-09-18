@@ -153,7 +153,7 @@ async function composerReady(page) {
       },
       { timeout: config.navigationTimeoutMs }
     );
-  } catch {
+  } catch (err) {
     const state = await page.evaluate(() => ({
       surface: document.querySelector('app-sign-in') !== null
         ? 'app-sign-in'
@@ -171,7 +171,8 @@ async function composerReady(page) {
     }));
     throw new Error(
       `expected the panel with an enabled composer; the surface on screen was ${state.surface}, ` +
-        `the composer was ${state.composer}, and the path was ${state.path}`
+        `the composer was ${state.composer}, and the path was ${state.path}` +
+        ` (underlying: ${err.message})`
     );
   }
 }

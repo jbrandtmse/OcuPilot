@@ -638,7 +638,12 @@ Method TestEveryDeclaredBoundFitsTheColumnItIsCutInto()
     Do $$$AssertTrue(tArgumentsMax > 0, "the Arguments column declares a MAXLEN: " _ tArgumentsMax)
     Set tFound = 0
     Set tSeen = ""
-    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT ID FROM %Dictionary.CompiledClass WHERE ID = ? OR Super LIKE ?", ..#LIMITS, "%" _ ..#LIMITS _ "%")
+    ; PrimarySuper, not Super: Super holds a class's *direct* superclasses only, so a sweep over it
+    ; reads the three classes that extend the shipped bound and none of the ones that extend those
+    ; -- OcuPilot.Test.TurnLimitsNav and OcuPilot.Test.TurnLimitsNavCapped, which OcuPilot.Test.
+    ; TurnNavigate installs. PrimarySuper is the whole primary chain, self included, and is
+    ; ~-delimited, so the pattern must carry the delimiters or it matches a class merely named alike.
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT ID FROM %Dictionary.CompiledClass WHERE ID = ? OR PrimarySuper LIKE ?", ..#LIMITS, "%~" _ ..#LIMITS _ "~%")
     While tRS.%Next() {
         Set tClass = tRS.%Get("ID")
         Set tBound = +$Parameter(tClass, "LEDGERROWMAXLENGTH")
@@ -650,8 +655,8 @@ Method TestEveryDeclaredBoundFitsTheColumnItIsCutInto()
     ; A sweep that found nothing, or that missed the subclasses this suite drives, would pass every
     ; row above having tested nothing -- which is how the hand-written roster this replaced hid
     ; OcuPilot.Test.TurnLimits.
-    Do $$$AssertTrue(tFound >= 4, "the sweep read the compiled limits hierarchy rather than an empty roster (found " _ tFound _ ")")
-    For tKnown = ..#LIMITS, ..#NARROW, ..#BUDGET, "OcuPilot.Test.TurnLimits" {
+    Do $$$AssertTrue(tFound >= 6, "the sweep read the compiled limits hierarchy rather than an empty roster (found " _ tFound _ ")")
+    For tKnown = ..#LIMITS, ..#NARROW, ..#BUDGET, "OcuPilot.Test.TurnLimits", "OcuPilot.Test.TurnLimitsNav", "OcuPilot.Test.TurnLimitsNavCapped" {
         Do $$$AssertTrue($ListFind(tSeen, tKnown) > 0, tKnown _ " is in the derived population: " _ $ListToString(tSeen, ", "))
     }
 
@@ -704,9 +709,13 @@ ClassMethod MaxLenOf(pClass As %String, pProperty As %String) As %Integer
 /// stored cut at a <b>whole-pair</b> boundary with
 /// <code>requiredPairsTruncated</code> 1, and a cross-user read withholds that row and counts it --
 /// even from a reader holding every pair the cut set still names (AD-24, AD-41, AD-46).</p>
-/// <p>Mutation (Rule 19): store <var>pRequiredPairs</var> uncut in
-/// <method>OcuPilot.Kernel.State.Ledger.GuardedAppend</method> -- the row overruns its column, the
-/// save fails and the row vanishes. Separately: drop the
+/// <p>Mutation (Rule 19): drop the <code>$Length(tCandidate) > tMax</code> guard from
+/// <method>OcuPilot.Kernel.Audit.Ledger.PairsToString</method> -- the whole set is returned uncut,
+/// <code>GuardedAppend</code> stores <property>RequiredPairs</property> as it is given it, the row
+/// overruns its column, the save fails and the row vanishes. (Mutating
+/// <code>GuardedAppend</code> to store the value uncut is a no-op: that is what it already does,
+/// by design -- only <method>PairsToString</method> knows where a pair boundary is.) Separately:
+/// drop the
 /// <code>requiredPairsTruncated</code> branch from
 /// <method>OcuPilot.Kernel.Audit.Ledger.ViewForUser</method> -- the row is sent and the withheld
 /// assertions go red.</p>

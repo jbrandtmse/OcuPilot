@@ -65,13 +65,20 @@ before(async () => {
 
 after(async () => {
   try {
-    if (config.container === LIVE_CONTAINER) return;
-    // Hand the slot back rather than leaving this file's tail running into whatever runs next:
-    // closing a browser context does not end the server-side job. Asserted, not merely attempted --
-    // an abandon whose result nothing reads passes the taken slot to the next spec silently, which
-    // is the condition `requireFreeSlot` exists to name.
-    await requireFreeSlot();
-    disarmProbeDefinition(probe, priorDefault);
+    try {
+      if (config.container === LIVE_CONTAINER) return;
+      // Hand the slot back rather than leaving this file's tail running into whatever runs next:
+      // closing a browser context does not end the server-side job. Asserted, not merely attempted --
+      // an abandon whose result nothing reads passes the taken slot to the next spec silently, which
+      // is the condition `requireFreeSlot` exists to name.
+      await requireFreeSlot();
+    } finally {
+      // DW-1048: the disarm runs even when the slot assertion above throws. A held slot must not
+      // also cost every later spec an enabled definition and a probe `agentDefault`, which is what
+      // turns `leaveFirstLoginGate` into a no-op and reports this file's failure against innocent
+      // ones.
+      if (config.container !== LIVE_CONTAINER) disarmProbeDefinition(probe, priorDefault);
+    }
   } finally {
     if (browser !== null) await browser.close();
   }
@@ -237,7 +244,7 @@ async function waitForAnnouncement(page, screen) {
       { timeout: config.navigationTimeoutMs },
       screen
     );
-  } catch {
+  } catch (err) {
     const state = await page.evaluate(() => ({
       lockBanner: document.querySelector('[data-slot="lock"] .ocu-banner[role="status"]') !== null,
       userMessages: document.querySelectorAll('.ocu-panel-message-user').length,
@@ -246,7 +253,8 @@ async function waitForAnnouncement(page, screen) {
     throw new Error(
       `expected an announcement naming "${screen}"; the panel showed ` +
         `${state.userMessages} user message(s), agent text ${JSON.stringify(state.agentText)}, and ` +
-        `${state.lockBanner ? 'a TURN.BUSY lock banner (the turn slot was taken)' : 'no lock banner'}`
+        `${state.lockBanner ? 'a TURN.BUSY lock banner (the turn slot was taken)' : 'no lock banner'}` +
+        ` (underlying: ${err.message})`
     );
   }
 }

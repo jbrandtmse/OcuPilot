@@ -76,14 +76,22 @@ before(async () => {
 
 after(async () => {
   try {
-    if (config.container === LIVE_CONTAINER) return;
-    // Hand the slot back before disarming, the same discipline navigate.browser-spec.mjs's
-    // requireFreeSlot follows (DW-1092, extended here per DW-1167): closing the browser context
-    // does not end a server-side turn, so a leftover holder would fail whichever spec runs next
-    // with a bare puppeteer timeout instead of a named cause.
-    await requireFreeSlot();
-    await putShare(true);
-    disarmProbeDefinition(probe, priorDefault);
+    try {
+      if (config.container === LIVE_CONTAINER) return;
+      // Hand the slot back before disarming, the same discipline navigate.browser-spec.mjs's
+      // requireFreeSlot follows (DW-1092, extended here per DW-1167): closing the browser context
+      // does not end a server-side turn, so a leftover holder would fail whichever spec runs next
+      // with a bare puppeteer timeout instead of a named cause.
+      await requireFreeSlot();
+    } finally {
+      // DW-1048: both restorations run even when the slot assertion above throws -- the disarm
+      // first, since an enabled definition and a probe `agentDefault` break every later spec's
+      // `leaveFirstLoginGate`, while a share left false breaks only this file's own premise.
+      if (config.container !== LIVE_CONTAINER) {
+        disarmProbeDefinition(probe, priorDefault);
+        await putShare(true);
+      }
+    }
   } finally {
     if (browser !== null) await browser.close();
   }
@@ -233,12 +241,12 @@ async function navigateViaSideBar(page, railItemId, sideBarLabel) {
       { timeout: config.navigationTimeoutMs },
       sideBarLabel
     );
-  } catch {
+  } catch (err) {
     const items = await page
       .evaluate(() => [...document.querySelectorAll('.ocu-side-bar-item')].map((el) => el.textContent.trim()))
       .catch(() => ['(side bar unreadable)']);
     throw new Error(
-      `expected a side-bar entry named "${sideBarLabel}" after clicking ${railItemId}; the side bar held ${JSON.stringify(items)}`
+      `expected a side-bar entry named "${sideBarLabel}" after clicking ${railItemId}; the side bar held ${JSON.stringify(items)} (underlying: ${err.message})`
     );
   }
   const index = await page.evaluate((label) => {
@@ -258,9 +266,9 @@ async function navigateViaSideBar(page, railItemId, sideBarLabel) {
 async function namedWaitForFunction(page, fn, args, wanted, diagnose) {
   try {
     await page.waitForFunction(fn, { timeout: config.navigationTimeoutMs }, ...args);
-  } catch {
-    const detail = await diagnose(page).catch((err) => `(diagnosis failed: ${err.message})`);
-    throw new Error(`expected ${wanted}; found ${detail}`);
+  } catch (err) {
+    const detail = await diagnose(page).catch((e) => `(diagnosis failed: ${e.message})`);
+    throw new Error(`expected ${wanted}; found ${detail} (underlying: ${err.message})`);
   }
 }
 
@@ -527,9 +535,10 @@ test('Cap follows agent-switch: raising the row cap through the Switches screen 
     await navigateViaSideBar(page, '#ocu-rail-item-agent', STRINGS.agentSwitchesLabel);
     try {
       await page.waitForSelector('#ocu-switches-contextRowCap', { visible: true, timeout: config.navigationTimeoutMs });
-    } catch {
+    } catch (err) {
       throw new Error(
-        'expected #ocu-switches-contextRowCap to render (visible) after navigating to Switches from the side bar; it never appeared'
+        'expected #ocu-switches-contextRowCap to render (visible) after navigating to Switches from ' +
+          `the side bar; it never appeared (underlying: ${err.message})`
       );
     }
     await namedWaitForFunction(
