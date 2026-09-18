@@ -680,6 +680,22 @@ test('turnErrorBanner: a failure naming no step uses the no-step wording and nev
   assert.equal(banner.includes('at :'), false, 'and never the empty-step wording');
 });
 
+test('turnErrorBanner: a step that is found but renders no label takes the no-step wording too', () => {
+  // Mutation (Rule 19): select the template on `step === null` instead of on the rendered label --
+  // this goes red with "The turn stopped at : ...", the wording AC7 removes.
+  //
+  // `stepLabel` is name plus target, and both are `''` for a projected row that carried neither, so
+  // the `<step>` substitution would put nothing between "at" and the colon.
+  const entry = {
+    state: 'failed',
+    error: { seq: 3, code: 'PROVIDER.TIMEOUT', reason: 'The provider did not answer within the time this instance allows' },
+    steps: [step({ seq: 3, name: '', target: '', status: 'error' })],
+  };
+  const banner = turnErrorBanner(entry, STRINGS.agentTurnStoppedBanner, STRINGS.agentTurnStoppedNoStepBanner);
+  assert.equal(banner, 'The turn stopped: The provider did not answer within the time this instance allows.');
+  assert.equal(banner.includes('at :'), false, 'and never the empty-step wording');
+});
+
 test('turnErrorBanner still names the step when one is there, so the no-step wording is the miss alone', () => {
   const entry = {
     state: 'failed',
@@ -751,6 +767,21 @@ test('sendError records a conversation mint that failed, and clears on the next 
 
   assert.equal(await turn.send('second'), 'sent', 'the next send gets through');
   assert.equal(turn.sendError(), null, 'and the banner is cleared by it');
+});
+
+test('newConversation whose mint the instance refuses raises the same banner, and starts nothing', async () => {
+  // Mutation (Rule 19): drop the `sendErrorValue` assignment from `newConversation()`'s refused-mint
+  // branch -- this goes red with `sendError()` null, the press having shown the user nothing.
+  const storage = memoryStorage();
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [err(500, 'STATE.UNAVAILABLE', 'Something failed on the instance.')],
+  });
+  const turn = new TurnStore({ api, storage, navigationType: freshTab() });
+  assert.equal(await turn.newConversation(), false, 'the mint is refused, so no fresh conversation starts');
+  assert.deepEqual(turn.sendError(), { status: 500, code: 'STATE.UNAVAILABLE', reason: 'Something failed on the instance.' },
+    'and the refusal the press met is what the banner carries, rather than the press failing silently');
+  assert.equal(turn.conversationId(), null, 'with no id adopted');
+  assert.equal(turn.busy(), false, 'and nothing left running');
 });
 
 test('sendError clears when a new conversation is started', async () => {

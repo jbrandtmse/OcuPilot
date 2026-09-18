@@ -303,7 +303,9 @@ export function stepLabel(step: Pick<TurnStep, 'name' | 'target'>): string {
  * finishes with `errorSeq` 0, and `Step.GuardedAppend` answers a seq for a row it did not store
  * once `MAXSTEPS` is reached -- in both the `seq` lookup misses, and substituting an empty
  * `<step>` rendered "The turn stopped at : ...". `noStepTemplate` names no step at all, so the
- * empty substitution can no longer happen.
+ * empty substitution can no longer happen. The choice is made on the rendered **label**, not on the
+ * `seq` lookup alone: a step that is found but whose `name` and `target` are both empty substitutes
+ * to nothing, so it takes the no-step wording too rather than rendering "at :" again.
  *
  * Both templates end "... <reason>." and every published `TURN.*` and `PROVIDER.*` reason sentence
  * (`Api/Error.cls`, `Kernel/Provider/Base.cls`) may end with its own period, so substituting
@@ -320,8 +322,9 @@ export function turnErrorBanner(
   if (entry.error === null) return null;
   const step = entry.steps.find((candidate) => candidate.seq === entry.error?.seq) ?? null;
   const reason = entry.error.reason.endsWith('.') ? entry.error.reason.slice(0, -1) : entry.error.reason;
-  if (step === null) return noStepTemplate.split('<reason>').join(reason);
-  return template.split('<step>').join(stepLabel(step)).split('<reason>').join(reason);
+  const label = step === null ? '' : stepLabel(step);
+  if (label === '') return noStepTemplate.split('<reason>').join(reason);
+  return template.split('<step>').join(label).split('<reason>').join(reason);
 }
 
 export interface TurnStoreOptions {
@@ -354,7 +357,8 @@ export class TurnStore {
   private sendErrorValue: SendRefusal | null = null;
 
   /** Where `createConversation` leaves a refusal for `send()` to read; `null` after a mint that
-   * succeeded. `newConversation()` ignores it: this banner belongs to Send. */
+   * succeeded. Both `send()` and `newConversation()` promote it, because the banner is about the
+   * press the user just made and either press can be the one refused. */
   private mintRefusalValue: SendRefusal | null = null;
 
   /** The live turn's own pending navigation directive, or `null` (Story 4.7). */
@@ -426,8 +430,9 @@ export class TurnStore {
 
   /**
    * The Send the instance refused, or `null` (Story 4.8, DW-1054). Set on every non-409 refusal of
-   * `POST /turn` and on a conversation mint that failed; cleared at the start of the next `send()`,
-   * by `newConversation()` and by `endSession()`. A 409 is the lock banner's and never lands here.
+   * `POST /turn` and on a conversation mint that failed, whichever press asked for that mint;
+   * cleared at the start of the next `send()`, by a `newConversation()` that succeeded and by
+   * `endSession()`. A 409 is the lock banner's and never lands here.
    */
   sendError(): SendRefusal | null {
     return this.sendErrorValue;
@@ -587,7 +592,13 @@ export class TurnStore {
   async newConversation(): Promise<boolean> {
     if (this.busyValue) return false;
     const created = await this.createConversation();
-    if (created === null) return false;
+    if (created === null) {
+      // The press was refused, and the refusal it left is this surface's (DW-1054). Nothing was
+      // started, so the transcript and the lock stay exactly where they were.
+      this.sendErrorValue = this.mintRefusalValue;
+      this.notify();
+      return false;
+    }
     this.entriesValue = [];
     this.lockedValue = false;
     // A refusal belongs to the Send that met it. Leaving it set here would float it over a fresh,

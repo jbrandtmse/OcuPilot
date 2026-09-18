@@ -24,9 +24,16 @@
 /// <p><b>A judgement is reused for <parameter>JUDGEMENTCACHESECONDS</parameter>, process-privately</b>
 /// (DW-334). One turn judges the same endpoint on every provider call, and the lookups are the
 /// expensive part; the cache collapses them to one set per call site's process. Every miss --
-/// absent, expired, or a cache read that failed -- falls through to a live lookup, and <b>nothing
-/// a lookup failed to answer is cached at all</b>, so the cache can only make the answer faster,
-/// never different.</p>
+/// absent, expired, or a cache read that failed -- falls through to a live lookup, and <b>a verdict
+/// reached with nothing resolved, and an interface read that produced no address, are not cached at
+/// all</b>, so a momentary resolver or interface failure costs the next judgement a fresh read
+/// rather than five seconds of a wrong answer.</p>
+/// <p><b>What it does hold, it holds for the whole TTL.</b> A host whose records change inside the
+/// window, and a host one of whose two family lookups raised while the other answered, are both
+/// answered from the earlier verdict until it expires: <method>MultiLookup</method> contributes an
+/// empty list for a family it could not read, which is indistinguishable here from a family with no
+/// records. So the cache is not free of behaviour -- <parameter>JUDGEMENTCACHESECONDS</parameter> is
+/// the width of that window, and is why it is five seconds and not five minutes.</p>
 /// <p><b>Process-private, not turn-private.</b> A turn job's cache dies with the job. On the
 /// write-time path the same code runs in a pooled CSP worker, where it lives for the worker's
 /// life -- which is sound because a verdict is a host's address kind and nothing about a caller:
@@ -278,9 +285,12 @@ ClassMethod MultiLookup(pHost As %String, pFamily As %Integer) As %List
 /// <p>Held for <parameter>JUDGEMENTCACHESECONDS</parameter> and no longer (DW-334): an interface
 /// can be added or removed under a running instance, so a set cached for any operationally
 /// meaningful span would judge an address against a machine that has moved. Only a read that
-/// answered something is cached -- a raise and an empty answer both leave the cache untouched --
-/// so a transient failure costs the next judgement a fresh read rather than five seconds of an
-/// empty set, which would read as "none of these addresses is this instance's".</p>
+/// produced <b>at least one address</b> is cached -- a raise, an empty answer, and a description
+/// naming interfaces that carry no address all leave the cache untouched -- so a transient failure
+/// costs the next judgement a fresh read rather than five seconds of an empty set, which would read
+/// as "none of these addresses is this instance's". The guard is on the parsed set and not on the
+/// raw description, because a description this class can read but take nothing from is a read that
+/// answered nothing.</p>
 ClassMethod InstanceAddresses(Output pAddresses) [ Private ]
 {
     Kill pAddresses
@@ -303,7 +313,7 @@ ClassMethod InstanceAddresses(Output pAddresses) [ Private ]
         Kill pAddresses
         Set tRead = 0
     }
-    If tRead Do ..CacheInterfaces(.pAddresses)
+    If tRead && $Data(pAddresses) Do ..CacheInterfaces(.pAddresses)
 }
 
 /// <p>The raw interface description <method>$System.INetInfo.GetInterfacesInfo</method> answers.</p>
@@ -336,8 +346,9 @@ ClassMethod CachedInterfaces(Output pAddresses) As %Boolean [ Private ]
 }
 
 /// <p>Record the interface set for <parameter>JUDGEMENTCACHESECONDS</parameter>. Called only for
-/// a read that answered something: an empty answer is indistinguishable from a failed one, and
-/// holding it would classify this instance's own address <code>public</code> for five seconds.</p>
+/// a read that produced at least one address: an answer this class can take no address from is
+/// indistinguishable from a failed one, and holding it would classify this instance's own address
+/// <code>public</code> for five seconds.</p>
 ClassMethod CacheInterfaces(ByRef pAddresses) [ Private ]
 {
     Try {

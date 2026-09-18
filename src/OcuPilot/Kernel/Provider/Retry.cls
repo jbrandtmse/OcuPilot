@@ -56,8 +56,11 @@ Parameter RETRYBUDGETSECONDS As %Integer = 30;
 /// <code>timeoutSeconds</code>, and one call's worst case is this plus that. It is
 /// <parameter>OcuPilot.Kernel.State.Egress.DEFAULTMAXATTEMPTS</parameter> x
 /// <parameter>OcuPilot.Kernel.State.Egress.DEFAULTTIMEOUT</parameter> plus
-/// <parameter>RETRYBUDGETSECONDS</parameter> exactly, so it binds only where the stored per-call
-/// timeout is larger than the shipped default -- which nothing else bounds.
+/// <parameter>RETRYBUDGETSECONDS</parameter> exactly, so with the shipped defaults the attempt
+/// bound is reached first and this never fires. It binds where a stored
+/// <property>OcuPilot.Kernel.State.Egress.MaxAttempts</property> or
+/// <property>OcuPilot.Kernel.State.Egress.TimeoutSeconds</property> makes that product larger --
+/// neither of which anything else bounds.
 /// <parameter>OcuPilot.Kernel.Agent.Limits.PROVIDERCALLSECONDS</parameter> is the turn-side
 /// declaration of this same ceiling, and a test pins the two equal.</p>
 Parameter ATTEMPTBUDGETSECONDS As %Integer = 300;

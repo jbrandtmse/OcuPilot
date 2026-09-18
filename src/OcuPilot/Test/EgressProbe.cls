@@ -17,6 +17,9 @@
 /// <method>OcuPilot.Kernel.Egress.InterfacesInfo</method> -- which is how DW-334's verdict cache is
 /// observed: a cache is a claim about how often something is read, and only a count falsifies
 /// it.</p>
+/// <p><method>ArmInterfacesOnce</method> makes one interface read answer a description the test
+/// chose, which is the only way to drive the answers this instance will not produce on demand: no
+/// description at all, and a description naming an interface that carries no address.</p>
 Class OcuPilot.Test.EgressProbe Extends OcuPilot.Kernel.Egress
 {
 
@@ -51,13 +54,20 @@ ClassMethod InterfaceReads() As %Integer
     Quit +$Get(^||OcuPilotEgressProbe("interfaceReads"))
 }
 
-/// <p>Make the next <method>InterfacesInfo</method> call answer <code>""</code> instead of the
-/// instance's own read, standing in for a transient failure of
-/// <code>$System.INetInfo.GetInterfacesInfo</code> -- something this probe cannot provoke for
-/// real. Consumed once; the call after it answers the instance's own read again.</p>
+/// <p>Make the next <method>InterfacesInfo</method> call answer <var>pInfo</var> instead of the
+/// instance's own read, standing in for a <code>$System.INetInfo.GetInterfacesInfo</code> answer
+/// this probe cannot provoke for real -- nothing at all, or a description naming an interface that
+/// carries no address. Consumed once; the call after it answers the instance's own read again.</p>
+ClassMethod ArmInterfacesOnce(pInfo As %String = "")
+{
+    Set ^||OcuPilotEgressProbe("interfacesOnce") = pInfo
+}
+
+/// <p>Make the next <method>InterfacesInfo</method> call answer <code>""</code>, standing in for a
+/// transient failure of the read. Consumed once.</p>
 ClassMethod ArmEmptyInterfacesOnce()
 {
-    Set ^||OcuPilotEgressProbe("emptyInterfacesOnce") = 1
+    Do ..ArmInterfacesOnce("")
 }
 
 /// <p>Count the read and answer the instance's own, so the cache's effect is observed on the
@@ -66,9 +76,12 @@ ClassMethod ArmEmptyInterfacesOnce()
 ClassMethod InterfacesInfo() As %String
 {
     Do $Increment(^||OcuPilotEgressProbe("interfaceReads"))
-    If +$Get(^||OcuPilotEgressProbe("emptyInterfacesOnce")) {
-        Kill ^||OcuPilotEgressProbe("emptyInterfacesOnce")
-        Quit ""
+    ; $Data, not a truth test: "" is one of the answers this arms, and so is a description whose
+    ; numeric value is 0.
+    If $Data(^||OcuPilotEgressProbe("interfacesOnce")) {
+        Set tArmed = ^||OcuPilotEgressProbe("interfacesOnce")
+        Kill ^||OcuPilotEgressProbe("interfacesOnce")
+        Quit tArmed
     }
     Quit ##super()
 }

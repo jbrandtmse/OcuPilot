@@ -369,6 +369,10 @@ Method TestAStoredTimeoutFarPastTheDeadlineReachesTheRequestWithNoClamp()
 /// enforces are the same number, that number is inside the turn's own wall clock, and the shipped
 /// per-call defaults plus the sleep budget fit inside it. Every term is read from the class that
 /// declares it.</p>
+/// <p><b>The last assertion pins a relation, not the absence of compounding.</b> The two waits are
+/// taken by different steps, so across one turn they add and it is
+/// <parameter>OcuPilot.Kernel.Agent.Limits.WALLCLOCKSECONDS</parameter> that bounds the sum; what
+/// is asserted is that neither bound on its own is the wider one by accident.</p>
 /// <p>Mutation: set <parameter>OcuPilot.Kernel.Agent.Limits.PROVIDERCALLSECONDS</parameter> to 700
 /// -- the first two assertions go red.</p>
 Method TestTheTurnSideAndProviderSideCeilingsAgree()
@@ -383,7 +387,7 @@ Method TestTheTurnSideAndProviderSideCeilingsAgree()
     Do $$$AssertTrue(tDeclared < tWallClock, "and it is inside the turn's own wall clock, so one call can never be the whole turn: " _ tDeclared _ " < " _ tWallClock)
     Do $$$AssertTrue(((tAttempts * tTimeout) + tBudget) <= tEnforced, "the shipped per-call defaults and the sleep budget fit inside the deadline, so it binds only a stored timeout larger than the default: " _ ((tAttempts * tTimeout) + tBudget) _ " <= " _ tEnforced)
     Do $$$AssertTrue(tBudget <= $Parameter(..#RETRY, "MAXRETRYAFTERSECONDS"), "and the sleep budget is one honoured Retry-After at its own ceiling, never two")
-    Do $$$AssertTrue($Parameter(..#LIMITS, "NAVWAITSECONDS") < tDeclared, "a client-fulfilled wait and a provider call do not compound: each is bounded on its own and the wider of the two is this one")
+    Do $$$AssertTrue($Parameter(..#LIMITS, "NAVWAITSECONDS") < tDeclared, "a client-fulfilled wait and a provider call are separate steps, each bounded on its own, and the wait is the narrower of the two bounds: " _ $Parameter(..#LIMITS, "NAVWAITSECONDS") _ " < " _ tDeclared)
 }
 
 }

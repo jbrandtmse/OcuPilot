@@ -128,10 +128,24 @@ Method TestTheGapIsReportedOnceAndThenTheRunSaysItRecordedNothingNew()
 /// install itself succeeds is what the container's own start hook and
 /// <file>scripts/smoke.sh</file> assert on every run; what is asserted here is the report step
 /// this class drives, and that the value it read is the value still there afterwards.</p>
+/// <p><b>Two before/after pairs, because one cannot see both surfaces.</b> The armed pair reads
+/// through <method>OcuPilot.Test.GatewayGap.GatewayResponseTimeout</method>, whose registry read is
+/// stubbed silent, so it observes only the configuration file. A write into the <i>registry</i> --
+/// the surface an install would most plausibly touch -- is invisible to it, so the unarmed pair
+/// brackets the same report step through <class>OcuPilot.Install.Installer</class> itself, where
+/// the real registry read runs. That value is asserted non-empty first, so the comparison has a
+/// subject rather than being <code>"" = ""</code>.</p>
 /// <p>Mutation (Rule 19): report the timeout at <code>warn</code> instead of <code>info</code> --
-/// the severity assertion goes red.</p>
+/// the severity assertion goes red. Mutation: have
+/// <method>OcuPilot.Install.Installer.ReportGatewayGap</method> write the timeout it read back
+/// through the Gateway registry -- the unarmed pair's equality assertion goes red.</p>
 Method TestTheGatewayTimeoutIsReportedOnceAsInformationAndNeverAsAPrerequisite()
 {
+    ; Taken through the shipped class, with no probe armed, so the real registry read runs and a
+    ; write into it would move this value.
+    Set tRealBefore = ""
+    Do $$$AssertStatusOK(##class(OcuPilot.Install.Installer).GatewayResponseTimeout(.tRealBefore, .tRealBeforeSource), "the instance answers a Web Gateway response timeout with no probe armed")
+    Do $$$AssertTrue(tRealBefore '= "", "and answers a value, so the before/after comparison below has a subject: " _ tRealBeforeSource)
     Do ##class(OcuPilot.Test.GatewayGap).SetRegistryMode(##class(OcuPilot.Test.GatewayGap).#SILENTMODE)
     Try {
         ; Read through the same armed path the after-read takes, or the two compare a registry
@@ -165,6 +179,9 @@ Method TestTheGatewayTimeoutIsReportedOnceAsInformationAndNeverAsAPrerequisite()
         Do $$$AssertStatusOK(ex.AsStatus(), "the Gateway report step raised")
     }
     Do ##class(OcuPilot.Test.GatewayGap).Disarm()
+    Set tRealAfter = ""
+    Do $$$AssertStatusOK(##class(OcuPilot.Install.Installer).GatewayResponseTimeout(.tRealAfter, .tRealAfterSource), "the unarmed read still answers after the report step ran")
+    Do $$$AssertEquals(tRealAfter _ "|" _ tRealAfterSource, tRealBefore _ "|" _ tRealBeforeSource, "and answers the same value from the same source, so the report step wrote no Gateway value -- registry included")
 }
 
 }

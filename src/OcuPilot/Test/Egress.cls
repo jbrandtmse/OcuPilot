@@ -231,10 +231,9 @@ Method TestTheInterfaceSetIsCachedAcrossDifferentHosts()
 /// classified twice inside <parameter>OcuPilot.Kernel.Egress.JUDGEMENTCACHESECONDS</parameter>
 /// pays its family lookups both times, because <code>Classify</code> only caches a host that
 /// resolved to at least one address.</p>
-/// <p>Without this the review's own defect would still be latent: an unresolvable host classified
-/// once would answer "unresolvable" from the cache for the whole TTL even if the resolver started
-/// answering for it a moment later, and the write-time and call-time paths would disagree with a
-/// resolver that had already recovered.</p>
+/// <p>A cached refusal would answer "unresolvable" for the whole TTL even if the resolver started
+/// answering for that host a moment later, and the write-time and call-time paths would then
+/// disagree with a resolver that had already recovered.</p>
 /// <p>Mutation: drop the <code>If $Data(tResolved)</code> guard in
 /// <method>OcuPilot.Kernel.Egress.Classify</method> so every verdict is cached regardless -- this
 /// goes red, reporting 2 lookups instead of 4.</p>
@@ -249,12 +248,12 @@ Method TestAnUnresolvedHostsVerdictIsNeverCached()
     Do $$$AssertEquals(##class(OcuPilot.Test.EgressProbe).MultiLookups(), 4, "a verdict reached with nothing resolved is never cached, so the second classification pays the lookups again rather than answering from a cached refusal")
 }
 
-/// <p>AC10 -- an empty <code>GetInterfacesInfo</code> answer is never cached either: the review's
-/// own second defect was that caching it would classify this instance's own address
-/// <code>public</code> for <parameter>OcuPilot.Kernel.Egress.JUDGEMENTCACHESECONDS</parameter>,
-/// because an empty interface set means nothing is ever this instance's. Only a read that
-/// answered something is cached (<method>OcuPilot.Kernel.Egress.CacheInterfaces</method>'s own
-/// doc comment); this is the test that reads it back.</p>
+/// <p>AC10 -- an empty <code>GetInterfacesInfo</code> answer is never cached either: caching it
+/// would classify this instance's own address <code>public</code> for
+/// <parameter>OcuPilot.Kernel.Egress.JUDGEMENTCACHESECONDS</parameter>, because an empty interface
+/// set means nothing is ever this instance's. Only a read that produced at least one address is
+/// cached (<method>OcuPilot.Kernel.Egress.CacheInterfaces</method>'s own doc comment); this is the
+/// test that reads it back.</p>
 /// <p>Driven through <method>OcuPilot.Test.EgressProbe.ArmEmptyInterfacesOnce</method>, because
 /// this probe cannot make the real <code>GetInterfacesInfo</code> answer nothing on demand.</p>
 /// <p>Mutation: set <code>tRead = 1</code> unconditionally in
@@ -272,8 +271,34 @@ Method TestAnEmptyInterfaceReadIsNotCachedAsAnEmptySet()
     Do $$$AssertEquals(##class(OcuPilot.Test.EgressProbe).InterfaceReads(), 2, "an empty answer is not cached, so the next classification reads the interface set live again rather than reusing an empty one")
 }
 
+/// <p>AC10 -- an interface description that names an interface but carries no address is not cached
+/// either. The guard is on the set the parse produced, not on the raw description: a read this
+/// class can take no address from has answered nothing, and holding it would classify this
+/// instance's own address <code>public</code> for the whole TTL exactly as an empty read would.</p>
+/// <p>Driven through <method>OcuPilot.Test.EgressProbe.ArmInterfacesOnce</method>: an interface
+/// with no address section is a shape this container's own
+/// <code>$System.INetInfo.GetInterfacesInfo</code> does not produce on demand.</p>
+/// <p>Mutation: guard the cache write on the raw read
+/// (<code>If tRead Do ..CacheInterfaces(.pAddresses)</code>) in
+/// <method>OcuPilot.Kernel.Egress.InstanceAddresses</method> -- this goes red, reporting 1
+/// interface read for the two classifications instead of 2.</p>
+Method TestAnInterfaceReadCarryingNoAddressIsNotCachedEither()
+{
+    Do ##class(OcuPilot.Test.EgressProbe).Clear()
+    Do ##class(OcuPilot.Test.EgressProbe).SetAddresses("93.184.216.34")
+    Do ##class(OcuPilot.Test.EgressProbe).ArmInterfacesOnce("eth0")
+    Do ##class(OcuPilot.Test.EgressProbe).Classify("addressless-first.example.invalid", .tFirstKind, .tFirstAddress)
+    Do $$$AssertEquals(tFirstKind, "public", "the address itself still classifies, whatever the interface read answered")
+    Do $$$AssertEquals(##class(OcuPilot.Test.EgressProbe).InterfaceReads(), 1, "one interface read was attempted, and it named an interface carrying no address")
+    Do ##class(OcuPilot.Test.EgressProbe).Classify("addressless-second.example.invalid", .tSecondKind, .tSecondAddress)
+    Do $$$AssertEquals(##class(OcuPilot.Test.EgressProbe).InterfaceReads(), 2, "a read the parse took no address from is not cached, so the next classification reads the interface set live again rather than reusing an empty one")
+}
+
 /// <p>AC10 -- arming the resolver empties the verdict cache, so a set a test supplies can never be
 /// masked by a judgement reached before it was armed.</p>
+/// <p>Mutation: drop the <method>OcuPilot.Kernel.Egress.ClearJudgementCache</method> call from
+/// <method>OcuPilot.Test.EgressProbe.SetAddresses</method> -- this goes red, the second
+/// classification answering <code>public</code> from the verdict the first set left behind.</p>
 Method TestArmingTheResolverEmptiesTheVerdictCache()
 {
     Do ##class(OcuPilot.Test.EgressProbe).Clear()
