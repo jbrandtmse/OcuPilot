@@ -137,6 +137,48 @@ test('the npm licence notices ship inside the served root, byte-equal to the ext
   assert.ok(shipped.equals(extracted), 'and the served copy is byte-equal to the extracted file');
 });
 
+// AC2 (Story 4.6): the served licence notices are the artifact proof that the three vendored
+// roles -- Markdown lexer, sanitizer, and highlighter (two packages) -- ship inside the bundle
+// rather than being fetched from a CDN. Mutation (Rule 19): remove one package from
+// `ui/package.json`'s `dependencies` (or otherwise keep the build from bundling it) -> the
+// build's own `extractLicenses` step stops naming it and this goes red.
+test('the served licence notices name all four vendored reply-rendering packages (AC2)', () => {
+  assertBuildSucceeded();
+  const notices = readFileSync(join(distBrowserDir, '3rdpartylicenses.txt'), 'utf8');
+  for (const name of ['marked', 'dompurify', 'lowlight', 'highlight.js']) {
+    assert.ok(notices.includes(name), `expected ${join(distBrowserDir, '3rdpartylicenses.txt')} to name "${name}"`);
+  }
+});
+
+// DW-371 (Story 4.6, AC9): the bundle-size gate. `angular-json.test.mjs` pins the budget
+// literal; this file measures the ACTUAL emitted initial total -- the same set `@angular/build`'s
+// own `type: "initial"` budget sums, JS and CSS, raw bytes -- against it, so a real regression
+// fails here even if the configuration were left untouched.
+//
+// Mutation (Rule 19): lower `maximumWarning` in `ui/angular.json` by 1 kB below the measured
+// total -> this goes red naming both the measured bytes and the (now exceeded) budget.
+test('DW-371: the emitted initial total (JS + CSS) stays at or below angular.json\'s maximumWarning', () => {
+  assertBuildSucceeded();
+  const angularJson = JSON.parse(readFileSync(join(uiRoot, 'angular.json'), 'utf8'));
+  const budgets = angularJson.projects['ocupilot-ui'].architect.build.configurations.production.budgets;
+  const initialBudget = budgets.find((b) => b.type === 'initial');
+  assert.ok(initialBudget, 'expected an initial budget in angular.json');
+  // @angular/build's own BYTES_IN_KILOBYTE is 1000, not 1024 (verified against
+  // node_modules/@angular/build/src/utils/bundle-calculator.js).
+  const maximumWarningBytes = Number(String(initialBudget.maximumWarning).replace(/kB$/, '')) * 1000;
+
+  const files = readdirSync(distBrowserDir).filter((f) => /^(main|styles)-[0-9A-Za-z]{6,}\.(js|css)$/.test(f));
+  assert.ok(files.length >= 2, `expected at least one hashed main-*.js and one styles-*.css, got: ${JSON.stringify(files)}`);
+  let totalBytes = 0;
+  for (const file of files) totalBytes += readFileSync(join(distBrowserDir, file)).length;
+
+  assert.ok(
+    totalBytes <= maximumWarningBytes,
+    `emitted initial total is ${totalBytes} bytes, which exceeds angular.json's maximumWarning of ${maximumWarningBytes} bytes (${initialBudget.maximumWarning}) -- ` +
+      'edit ui/angular.json\'s budget and ui/tools/angular-json.test.mjs\'s pinned literal together'
+  );
+});
+
 // Story 2.4: the data table's browser harness ships nowhere. Its hooks and its probe declaration are
 // absent from every file the production build emits.
 test('no harness code reaches the shipped bundle', () => {

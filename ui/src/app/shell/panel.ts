@@ -16,6 +16,7 @@ import { ContextChip } from './context-chip';
 import { EXAMPLE_PROPOSAL } from './example-proposal';
 import { PanelResizeHandle } from './panel-resize-handle';
 import { ProposalCard } from './proposal-card';
+import { Reply } from './reply';
 import { ToolCallCard } from './tool-call-card';
 
 /** The composer's control id: its label, both `aria-describedby` wires and the Ctrl/Cmd+I target. */
@@ -84,7 +85,7 @@ interface PanelTurnView {
 @Component({
   selector: 'app-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ProposalCard, PanelResizeHandle, ToolCallCard, ContextChip],
+  imports: [ProposalCard, PanelResizeHandle, ToolCallCard, ContextChip, Reply],
   template: `<aside class="ocu-panel" [class.ocu-panel-full-screen]="fullScreen" [attr.aria-label]="panelName">
     @if (docked) {
       <app-panel-resize-handle />
@@ -183,7 +184,7 @@ interface PanelTurnView {
               @if (turn.reply !== null) {
                 <div class="ocu-panel-message-agent">
                   <span class="ocu-panel-message-avatar" aria-hidden="true"></span>
-                  <p class="ocu-panel-message-agent-text">{{ turn.reply }}</p>
+                  <app-reply class="ocu-panel-message-agent-text" [text]="turn.reply" />
                 </div>
               }
               @if (turn.errorBanner !== null) {

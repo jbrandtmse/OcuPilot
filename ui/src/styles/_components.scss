@@ -3497,13 +3497,151 @@ app-data-table {
   background-size: cover;
 }
 
+// The reply (Story 4.6, `app-reply`): a block host over a plain-data node tree, never an HTML
+// string (AD-11 rule 4). `white-space: pre-wrap` is dropped -- `breaks: true` carries a soft
+// newline as a real `<br>` now, so the container needs no CSS help preserving it.
 .ocu-panel-message-agent-text {
   @include typo.ocu-type('body');
 
+  display: block;
   min-width: 0;
   color: var(--ocu-on-surface);
-  white-space: pre-wrap;
   overflow-wrap: break-word;
+
+  p {
+    margin: 0 0 var(--ocu-space-2);
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  strong {
+    font-weight: 600;
+  }
+
+  em {
+    font-style: italic;
+  }
+
+  del {
+    text-decoration: line-through;
+  }
+
+  ul,
+  ol {
+    margin: 0 0 var(--ocu-space-2);
+    padding-left: var(--ocu-space-4);
+  }
+
+  li {
+    margin: 0 0 var(--ocu-space-1);
+  }
+
+  blockquote {
+    margin: 0 0 var(--ocu-space-2);
+    padding: 0 0 0 var(--ocu-space-3);
+    border-left: 2px solid var(--ocu-outline-variant);
+    color: var(--ocu-on-surface-variant);
+  }
+
+  // Markdown headings render as styled paragraphs, never `h1`-`h6`: model-authored text does not
+  // enter the document's own heading outline (D10). Three visual weights, six classes -- the
+  // grouping below is deliberate, not an oversight.
+  .ocu-reply-heading-1,
+  .ocu-reply-heading-2 {
+    @include typo.ocu-type('title');
+
+    margin: var(--ocu-space-3) 0 var(--ocu-space-1);
+  }
+
+  .ocu-reply-heading-3,
+  .ocu-reply-heading-4 {
+    @include typo.ocu-type('body');
+
+    margin: var(--ocu-space-2) 0 var(--ocu-space-1);
+    font-weight: 600;
+  }
+
+  .ocu-reply-heading-5,
+  .ocu-reply-heading-6 {
+    @include typo.ocu-type('caption');
+
+    margin: var(--ocu-space-2) 0 var(--ocu-space-1);
+    font-weight: 600;
+  }
+
+  // Inline code / row citation (AC6): plain text on the inline code surface, never a link.
+  .ocu-reply-code-inline {
+    @include typo.ocu-type('code');
+
+    padding: 1px 4px;
+    border-radius: var(--ocu-radius-sm);
+    background: var(--ocu-surface-container);
+    color: var(--ocu-on-surface);
+  }
+
+  // Fenced code: the same code-surface pair the tool-call card's result block uses
+  // (`.ocu-tool-call-result`), with its own horizontal scroll rather than wrapping -- the
+  // EXPERIENCE.md 1.4.10 two-dimensional-scroll exception -- and no line cap: a reply's code
+  // block is not a fixed-height panel.
+  .ocu-reply-pre {
+    @include typo.ocu-type('code');
+
+    box-sizing: border-box;
+    margin: 0 0 var(--ocu-space-2);
+    padding: var(--ocu-space-3);
+    overflow-x: auto;
+    border-radius: var(--ocu-radius-md);
+    background: var(--ocu-code-surface);
+    color: var(--ocu-on-code-surface);
+  }
+
+  .ocu-reply-code-block {
+    white-space: pre;
+  }
+
+  // Release 1 highlighting is structural -- weight and slant only, never a syntax palette
+  // (Design Notes D3, `deferred:`). Adding color later is a CSS-only change against these same
+  // classes.
+  .hljs-keyword,
+  .hljs-built_in,
+  .hljs-type,
+  .hljs-literal,
+  .hljs-title,
+  .hljs-tag,
+  .hljs-name,
+  .hljs-selector-tag,
+  .hljs-attr {
+    font-weight: 600;
+  }
+
+  .hljs-comment,
+  .hljs-doctag,
+  .hljs-quote {
+    font-style: italic;
+  }
+
+  a {
+    color: var(--ocu-secondary);
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  .ocu-reply-link-caption {
+    @include typo.ocu-type('caption');
+
+    margin-left: 4px;
+    color: var(--ocu-on-surface-variant);
+  }
+
+  img {
+    max-width: 100%;
+    border-radius: var(--ocu-radius-md);
+  }
 }
 
 // The turn error banner (`agentTurnStoppedBanner` in `core/strings.ts`), in the agent's slot

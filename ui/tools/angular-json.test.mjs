@@ -343,3 +343,57 @@ test('the harness build configuration has its own entry, document, tsconfig and 
   assert.equal(packageJson.scripts['pretest:browser'], 'ng build --configuration production,harness');
   assert.ok(!packageJson.scripts.build.includes('harness'), 'npm run build does not build the harness');
 });
+
+// --- DW-371: the bundle-size budget is a deliberate, pinned figure -----------------------------
+//
+// Story 4.6 raised `maximumWarning` off the stock 500kB default to make room for three vendored
+// libraries (`marked`, `dompurify`, `lowlight`+`highlight.js`). `build-output.test.mjs` measures
+// the actual emitted bytes against this figure; this file pins the figure itself, so a later
+// change to it is a reviewed diff here rather than a silent edit nothing else notices.
+//
+// Mutations (Rule 19):
+// - loosen `maximumWarning` to a much larger, unmeasured figure (e.g. "2MB") -> the
+//   "no other initial budget exists" and "warning under error" assertions still pass, but this
+//   test's own exact-string assertion goes red, which is the point: any edit to the literal is
+//   visible here.
+// - add a second `budgets` entry -> the "exactly one budget" assertion goes red.
+test('DW-371: exactly one initial budget, maximumWarning under maximumError, and the literal is pinned', () => {
+  const budgets = parsed.projects['ocupilot-ui'].architect.build.configurations.production.budgets;
+  assert.equal(budgets.length, 1, 'expected exactly one budget entry');
+  const [budget] = budgets;
+  assert.equal(budget.type, 'initial');
+  assert.equal(budget.maximumWarning, '780kB', 'a change to this figure must be a reviewed diff, not a silent edit');
+  assert.equal(budget.maximumError, '1MB');
+
+  const parseKb = (value) => Number(String(value).replace(/kB$/, '')) * 1000;
+  const parseMb = (value) => Number(String(value).replace(/MB$/, '')) * 1000 * 1000;
+  assert.ok(parseKb(budget.maximumWarning) < parseMb(budget.maximumError), 'maximumWarning must stay under maximumError');
+});
+
+// DW-215 precedent: every declared dependency is an exact `x.y.z`, `save-exact=true` in `.npmrc`
+// notwithstanding -- a caret or tilde range is a version nobody reviewed landing on the next
+// `npm install`. `highlight.js` carries the extra constraint `lowlight` (a runtime dependency,
+// not a devDependency the build could freely diverge from) declares in its own `package.json`:
+// `~11.11.0`, i.e. 11.11.x and nothing else.
+//
+// Mutations (Rule 19):
+// - loosen any dependency to a caret range -> the exact-pin assertion goes red naming it.
+// - bump `highlight.js` to 11.12.0 -> the lowlight-range assertion goes red.
+test('DW-215: every dependency and devDependency is pinned to an exact x.y.z, and highlight.js stays inside lowlight\'s declared range', () => {
+  const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const packageJson = JSON.parse(readFileSync(join(uiRoot, 'package.json'), 'utf8'));
+  const EXACT_VERSION_RE = /^\d+\.\d+\.\d+$/;
+  for (const section of ['dependencies', 'devDependencies']) {
+    for (const [name, version] of Object.entries(packageJson[section] ?? {})) {
+      assert.match(version, EXACT_VERSION_RE, `${section}.${name} must be an exact version, got ${JSON.stringify(version)}`);
+    }
+  }
+
+  const lowlightPackageJson = JSON.parse(readFileSync(join(uiRoot, 'node_modules', 'lowlight', 'package.json'), 'utf8'));
+  const declaredRange = lowlightPackageJson.dependencies['highlight.js'];
+  assert.equal(declaredRange, '~11.11.0', 'lowlight\'s own declared range for highlight.js, read from the installed package');
+  const pinned = packageJson.dependencies['highlight.js'];
+  const [major, minor] = pinned.split('.').map(Number);
+  assert.equal(major, 11);
+  assert.equal(minor, 11, `highlight.js ${pinned} must stay inside lowlight's declared ~11.11.0 range`);
+});

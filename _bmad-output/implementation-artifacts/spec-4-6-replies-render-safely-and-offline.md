@@ -2,9 +2,10 @@
 title: 'Story 4.6: Replies render safely and offline'
 type: 'feature'
 created: '2026-09-17'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '6c6801bcbc1f5950817f3e4a0b321a13de68486c'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-4-context.md'
   - '{project-root}/_bmad/custom/skill-rules.md'
@@ -132,6 +133,35 @@ deferred:
 
 ## Review Triage Log
 
+### 2026-09-18 — Review pass
+
+- verdicts: 24 findings — high 0, medium 4, low 8, false 12, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` Blind Hunter: a same-origin Markdown link gets the external-link host caption too — patched: `linkNodes` now suppresses the caption when `isSameOriginUrl` holds; covered by `reply.test.mjs` "a same-origin link carries no host caption".
+  - `[low]` `[reject]` Blind Hunter: `ALLOWED_URI_REGEXP`'s claim to remove `mailto:`/`tel:`/etc. from DOMPurify's default is untested — unlikely to matter: `core/reply.ts` never hands DOMPurify a non-http(s)/relative href in the first place, so this is unreached defense-in-depth.
+  - `[low]` `[reject]` Blind Hunter: no `reply.spec.ts` case moves `text` from one non-null value to a different non-null value — the exercised code path (`effect()` clears then rebuilds) is identical to the already-tested null→value and value→same-value transitions.
+  - `[false]` `[reject]` Blind Hunter: `<p>`→`<span>` "loses paragraph semantics" — refuted: a reply can now contain multiple block elements (lists, code, headings), which cannot legally nest inside one `<p>`; each block still renders its own semantic `p`/`ul`/`li`/`blockquote` element.
+  - `[low]` `[reject]` Blind Hunter: loose/nested list margin doubling is untested — cosmetic, geometry belongs in a browser test per project convention, and unlikely in everyday agent replies.
+  - `[false]` `[reject]` Blind Hunter: `imageNode` untested for a `data:` URI — verified `new URL('data:...', origin).origin === 'null'`, so it already falls to the alt-text path per Design Notes D4; no defect.
+  - `[false]` `[reject]` Blind Hunter: `HIGHLIGHT_CEILING` boundary untested at exactly 20,000 — verified the comparison is `<=`, so 20,000 is still highlighted; no defect, just an untested-but-correct edge.
+  - `[low]` `[defer]` Blind Hunter: `priorDefault` extraction in `reply.browser-spec.mjs` has no START/END marker — verified this exact pattern is copied verbatim from the pre-existing `turn.browser-spec.mjs:46`; not introduced by this story.
+  - `[false]` `[reject]` Blind Hunter: `angular.json`'s 780kB budget is "unexplained" — refuted: it is exactly Task 13/Design Notes D9's prescribed formula (measured 761,116 B rounded up to the next 20 kB), correctly applied.
+  - `[medium]` `[patch]` Edge Case Hunter: same root cause as the same-origin-caption finding above — same fix, same test.
+  - `[low]` `[reject]` Edge Case Hunter: an ordered list's `start` value is not preserved — uncommon in agent replies and not in the I/O matrix; fix would add a new `ReplyNode` field for low realistic benefit.
+  - `[false]` `[reject]` Edge Case Hunter: `lowlight.highlight` could throw for a reason other than an unregistered language — refuted: `node_modules/lowlight/lib/index.js:97` always calls highlight.js with `ignoreIllegals: true`, which is the documented cause of that throw; no other throw path was demonstrated.
+  - `[low]` `[reject]` Edge Case Hunter: `Lexer.lex` could throw on pathological input — no failing input was demonstrated against this mature, widely-used library; speculative.
+  - `[low]` `[defer]` Edge Case Hunter: `signedInAt()` throwing after context creation would leak the browser context in `reply.browser-spec.mjs` — verified this exact helper shape is copied from the pre-existing `turn.browser-spec.mjs` precedent; a repo-wide test-infrastructure pattern, not introduced here.
+  - `[false]` `[reject]` Edge Case Hunter (deletion): claimed `after()` deletes the true prior default via `RemoveDefinition(priorDefault)` — refuted: `TurnWireFixture.RemoveDefinition`'s own doc comment and body (`src/OcuPilot/Test/TurnWireFixture.cls:255-262`) only remove *probe* definitions and then re-mark `pPrior` as default; `pPrior` itself is never deleted.
+  - `[false]` `[reject]` Edge Case Hunter (deletion): dropping `white-space: pre-wrap` collapses whitespace in the raw-HTML/GFM-table literal-text fallback — refuted by the I/O matrix's own definition: "'renders as text' means a text node, so `container.textContent` still holds the original characters" — the contract is textContent equality, not visual whitespace, and every such test asserts exactly that.
+  - `[false]` `[reject]` Edge Case Hunter (claim): spec Task 4 states `ALLOWED_ATTR` as literally `['class','href','src','alt']`, code adds `'rel'` — already documented and justified in `shell/reply.ts`'s own doc comment (D5: DOMPurify would otherwise strip the `rel` every `<a>` carries); not a hidden defect.
+  - `[false]` `[reject]` Edge Case Hunter (claim): spec Task 4 says the effect "appends it to its host" and sanitizes `hostElement`; code sanitizes an inner `<span #root>` instead — already documented and justified in `shell/reply.ts`'s own doc comment (DOMPurify's `IN_PLACE` throws on a root tag outside `ALLOWED_TAGS`, and `app-reply` is outside the closed reply-tag set).
+  - `[medium]` `[patch]` Verification Gap Reviewer: no test proves a soft-line-break `<br>` survives `sanitizeReplyRoot`'s DOMPurify pass, and the CSS fallback (`white-space: pre-wrap`) that used to mask its loss was removed in this same diff — patched: added `reply.spec.ts` "a soft line break survives the sanitizer pass as a real br element".
+  - `[medium]` `[patch]` Verification Gap Reviewer (Other findings): `HLJS_CLASS_RE` excludes `_`, silently stripping highlight.js's own `hljs-built_in` scope class (verified emitted for SQL's `UPPER` and common Bash builtins) even though `_components.scss` explicitly styles `.hljs-built_in` — patched: regex now admits `_`; covered by `reply.test.mjs` "a highlighted built-in function keeps its hljs-built_in class".
+  - `[false]` `[reject]` Intent Alignment Auditor: the parse-once/build-once claim is tested at the isolated-component surface, not the panel-integration surface it was named at — no demonstrated regression: Angular's signal equality holds identically at either surface, since `turn.reply` is a stable string once set.
+  - `[low]` `[reject]` Intent Alignment Auditor: two internal fallback paths (`hastNodeToReplyNode`'s default case, `rawTextOf`'s `''` fallback) are unreachable given `marked`'s and `lowlight`'s current documented output shapes — theoretical hardening; would become real only if a future `marked`/`lowlight` upgrade changed what node/token shapes they emit.
+  - `[false]` `[reject]` Intent Alignment Auditor: same root cause as the 780kB-headroom finding above.
+  - `[false]` `[reject]` Intent Alignment Auditor: AC5's verification method cites an out-of-repo isolated experiment — normal research-first practice; the experiment's conclusion is stated precisely in the spec's own AC5 mutation line and independently reproducible (`page.setBypassCSP(true)` before navigation reddens the `connect-src` assertion, verified in this pass).
+
 ## Design Notes
 
 **Consumes:** Story 4.5's `core/turn.ts` (`reply`, `turnErrorBanner`, `TurnStep`) and `shell/panel.ts`'s transcript; Story 4.3's panel shell; Story 1.2's tokens and `strings.ts`; Story 1.5's `Api.StaticHandler` policy (read-only).
@@ -170,7 +200,7 @@ deferred:
 - AC2 → `build-output.test.mjs` "the served notices name the four vendored packages". Mutation: drop `marked` from `dependencies` (or mock the bundle without it) → red. Plus `reply.browser-spec.mjs` (c): mutation — remove the interception abort and let a request through; the spec's own request-log assertion must still be the thing that fails, not the render.
 - AC3 → `reply.browser-spec.mjs` (b). Mutation: allow a non-same-origin `src` in `core/reply.ts`'s image rule → an `img` appears and the off-origin request log is non-empty; the jsdom twin in `reply.spec.ts` reddens on the element alone.
 - AC4 → `reply.spec.ts` "an external link carries its host as caption and no target". Mutation: drop the host caption span, or add `target="_blank"` → red (the `target` case reddens because DOMPurify removes it, which is the assertion).
-- AC5 → `reply.browser-spec.mjs` (d). Mutation: serve the index without the `Content-Security-Policy` header (a throwaway-local edit to `ServeIndex`, reverted) → the two `securitypolicyviolation` assertions redden and the remote `fetch` resolves. Record that the working tree was byte-identical afterwards.
+- AC5 → `reply.browser-spec.mjs` (d), which watches `response` events and `requestfailed` for the image, not `request` events: verified in isolation that Chrome's image loader still emits a CDP `requestWillBeSent` for an img-src-blocked `<img>` before its CSP check finalizes (no bytes ever return), while a connect-src-blocked `fetch()` never reaches the loader at all — so `request` cannot tell "refused" from "attempted and blocked" for the image case, and `response`/`requestfailed` can. Mutation: `page.setBypassCSP(true)` before navigation (client-side, no server edit, so the working tree stayed untouched throughout) → the `connect-src` violation assertion reddens (`expected a connect-src violation among []`) and the remote `fetch` no longer rejects on a CSP refusal.
 - AC6 → `reply.test.mjs` "an inline code span is a `code` element with no href and no click target". Mutation: render a codespan as an `a` → red.
 - AC7 → `panel.spec.ts` "a stopped turn renders no error banner". Mutation: make `turnErrorBanner` answer the banner for `state === 'stopped'` → red (this is already `turn.test.mjs`'s recorded mutation; the panel-level pin is the surface half).
 - AC8 → `reply.browser-spec.mjs` (a), which observes the panel, not the parser. Mutation: leave `panel.ts` rendering the old `<p>{{ turn.reply }}</p>` → the `pre > code` assertion reddens while every `core/` test stays green, which is the point.
@@ -178,15 +208,56 @@ deferred:
 
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none. Plan stage only; the story is not implemented.
+Status: done
+Blocking condition: none.
 
-This pass planned the story from the epics text, the spine (48 ADs), EXPERIENCE.md, DESIGN.md `message-agent`
-and the shipped client. Verified rather than recalled, in a scratch directory outside the worktree: the four
-packages' versions, licences and minified sizes (esbuild 0.28.2); that `marked`'s `Lexer` yields unescaped
-text and lexes raw HTML as an `html` token; that `lowlight` answers hast, throws on an unregistered language,
-and emits only `span` elements; that `DOMPurify` 3.4.15's `IN_PLACE` needs an Element and strips `target`;
-that `highlight.js` ships no per-language `.d.ts` (TS7016) and one ambient wildcard declaration fixes it;
-that `@angular/build` counts a kB as 1000 bytes and sums initial JS and CSS; and the current emitted initial
-total of 643,136 B. `bash scripts/lint-docs.sh` on this file: 0 problems. No ledger entry was created — under
-Rule 15(a) this workflow records deferred findings in frontmatter `deferred:` and the lead harvests them.
+**Summary.** Implemented the reply render path: a plain-data node tree in framework-free `core/reply.ts`
+(`marked`'s `Lexer` only, no HTML string ever produced), built into DOM by a small `shell/reply.ts`
+component and sanitized in place by DOMPurify as a second gate, wired into `panel.ts` in place of the
+old single `<p>{{ turn.reply }}</p>`.
+
+**Files changed:**
+
+- `ui/package.json`, `ui/package-lock.json` — four exact-pinned runtime dependencies (`marked`, `dompurify`, `lowlight`, `highlight.js`).
+- `ui/src/types/highlight-js-languages.d.ts` — new ambient `.d.ts` for `highlight.js/lib/languages/*`.
+- `ui/src/app/core/reply.ts` — new; `parseReply` and the closed `ReplyNode`/`ReplyTag` types.
+- `ui/src/app/shell/reply.ts` — new; the `app-reply` component, DOM builder and `sanitizeReplyRoot`.
+- `ui/src/app/shell/panel.ts` — swapped the old `<p>` for `<app-reply>`.
+- `ui/src/styles/_components.scss` — reply typography, code surface, link, image and heading rules.
+- `ui/tools/reply.test.mjs`, `ui/src/app/shell/reply.spec.ts` — new unit/component suites, one case per I/O matrix row plus allow-list/bound checks.
+- `ui/browser/reply.browser-spec.mjs` — new; four real-browser cases (highlighted render, zero off-origin requests, survival under request interception, CSP actually refusing a remote fetch/image).
+- `ui/src/app/shell/panel.spec.ts` — AC7 pins (stop vs. error banner, mutual exclusivity).
+- `ui/tools/build-output.test.mjs`, `ui/tools/angular-json.test.mjs`, `ui/angular.json` — the DW-371 bundle-size gate and its pinned `780kB` budget (measured post-story initial total 761,116 B, rounded up to the next 20 kB).
+
+**Review findings.** Four independent layers (blind hunter, edge-case hunter, verification-gap, intent-alignment)
+reported 24 findings total; see `## Review Triage Log` for the full, verified breakdown. 3 patched (all medium,
+same review pass, before this story reached `done`): a same-origin link no longer carries the external-link
+host caption; `HLJS_CLASS_RE` no longer strips highlight.js's own `hljs-built_in` scope class (verified emitted
+for SQL's `UPPER` and Bash builtins, previously silently dropped despite `_components.scss` styling it); a new
+test pins that a soft line break's `<br>` survives DOMPurify's sanitizer pass, the only mechanism now preserving
+multi-line replies since `white-space: pre-wrap` was removed. 2 deferred (both pre-existing test-infrastructure
+patterns copied verbatim from `turn.browser-spec.mjs`, not introduced by this story). 18 rejected — 6 `low`
+(untested-but-low-value edges: URI-scheme defense-in-depth, a component-level rebuild transition, loose-list
+margin doubling, ordered-list `start`, a speculative `Lexer.lex` throw, and an unreachable-fallback
+theoretical hardening) and 12 `false` (each individually
+verified against the code or a cited doc/precedent and refuted; see the log for each refutation).
+
+**Follow-up review recommendation:** `true`. Two or more `medium` entries were patched on this first pass
+(Rule 15/step-04's threshold). Named unverified risk: the three medium patches are pinned by `core/reply.ts`
+unit tests and, for the `<br>` case, a component-level test against the real `dompurify` library in jsdom —
+but none has a dedicated `ui/browser/reply.browser-spec.mjs` case naming it individually in a real browser.
+A regression reaching only that layer (a browser-specific DOMPurify or CSS quirk) would ship unnoticed.
+
+**Verification performed** (all commands from `ui/` unless stated; every claim below reflects the tree
+*after* the three patches, rebuilt and redeployed):
+
+- `npm test` (`node --test tools/*.test.mjs` then the vitest component runner): 917 node tests / 456 vitest tests, all passing.
+- `npm run build`: exit 0, initial total 761.17 kB raw against the `780kB` warning; `3rdpartylicenses.txt` names all four vendored packages.
+- Full browser suite (`OCUPILOT_BROWSER_ORIGIN=http://localhost:52776 OCUPILOT_BROWSER_CONTAINER=ocupilot-ci npm run test:browser` against the redeployed bundle): 110/111 passing. The one failure, `switches.browser-spec.mjs`'s AC2, reproduces identically when that file is run alone with no other spec in the run — confirmed pre-existing state left on the shared, long-lived `ocupilot-ci` throwaway by an earlier, unrelated spec (an agent definition marked read-only became the instance's default), not caused by this story; out of this story's footprint to fix.
+- `uv run scripts/check-objectscript.py`: 0 problems (no ObjectScript touched).
+- `bash scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS`: executed=18 passed=18 failed=0 (2 pending, Epic 3; 1 skipped, prior state on the shared throwaway).
+- Rule 19 falsifiability, beyond the per-AC mutations already recorded in `## Verification`: verified in isolation (a minimal CSP page, no throwaway) that Chrome's image loader emits a CDP `requestWillBeSent` for an img-src-blocked `<img>` before its CSP check finalizes, which made the original AC5 test's `page.on('request')` assertion a false negative — rewrote it against `response`/`requestfailed` events instead (real bug caught and fixed during this pass, not a review-layer finding) and confirmed the new test genuinely reddens via `page.setBypassCSP(true)` before navigation (`connect-src` assertion fails with the CSP bypassed, working tree untouched by the experiment).
+
+**Residual risks:** the browser-level gap named in the follow-up recommendation above; and the two `low`/`defer`
+entries in the triage log (loose-list spacing, ordered-list `start`) remain exactly as untested as the rest of
+the review found them, judged not worth a fix at this story's size.

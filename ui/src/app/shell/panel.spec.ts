@@ -1020,6 +1020,8 @@ describe('Story 4.5 review: restored cards, the error banner, the rows line, and
     const bars = host.querySelectorAll('.ocu-tool-call-card-stopped');
     expect(bars).toHaveLength(1);
     expect(bars[0].textContent?.trim()).toBe('Stopped by you at provider');
+    // AC7 (Story 4.6): a stop is never an error -- no banner renders alongside the halted card.
+    expect(host.querySelector('.ocu-panel-error-banner')).toBeNull();
   });
 
   it('a failed turn renders the error banner naming the step at error.seq and its reason', async () => {
@@ -1034,6 +1036,28 @@ describe('Story 4.5 review: restored cards, the error banner, the rows line, and
     expect(banner).not.toBeNull();
     expect(banner.getAttribute('role')).toBe('alert');
     expect(banner.textContent?.trim()).toBe('The turn stopped at shell.namespaces.read USER: The tool is unavailable.');
+    // AC7 (Story 4.6): the failed turn carries no reply, so no reply block renders beside the banner.
+    expect(host.querySelector('.ocu-panel-message-agent-text')).toBeNull();
+  });
+
+  // AC7 (Story 4.6), pinning the surface half of `turn.test.mjs`'s `turnErrorBanner` invariant:
+  // a completed turn's reply and a failed turn's error banner never both render for one turn.
+  // Mutation (Rule 19): make `turnErrorBanner` answer the banner for `state === 'completed'` too
+  // -> the first assertion below reddens, finding a banner beside the reply it should not have.
+  it('a reply and an error banner never both render for one turn', async () => {
+    const { host: completedHost } = await mountRestored([restoredTurn({ state: 'completed', reply: 'Here is what I found.' })]);
+    expect(completedHost.querySelector('.ocu-panel-message-agent-text')).not.toBeNull();
+    expect(completedHost.querySelector('.ocu-panel-error-banner')).toBeNull();
+
+    const { host: failedHost } = await mountRestored([
+      restoredTurn({
+        state: 'failed',
+        error: { seq: 1, code: 'TOOL.UNAVAILABLE', reason: 'The tool is unavailable.' },
+        steps: [turnStep({ seq: 1, status: 'error', target: 'USER', reason: 'The tool is unavailable.' })],
+      }),
+    ]);
+    expect(failedHost.querySelector('.ocu-panel-error-banner')).not.toBeNull();
+    expect(failedHost.querySelector('.ocu-panel-message-agent-text')).toBeNull();
   });
 
   it('an expanded read card shows the rows-returned and rows-sent line', async () => {
