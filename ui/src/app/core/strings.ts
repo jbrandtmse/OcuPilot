@@ -464,6 +464,12 @@ export const STRINGS = {
   errorLogRefusedEntry: 'That application error is no longer present in this log. Use Back to see which errors are.',
   /** EXPERIENCE.md:329 */
   errorLogRefusedAction: 'read this log',
+  /** EXPERIENCE.md:353 */
+  homeSuggestedView: 'Suggested view',
+  /** EXPERIENCE.md:354 */
+  homeSuggestedOpen: 'Open',
+  /** EXPERIENCE.md:355 */
+  homeSuggestedApplicationErrors: 'Application errors in <NAMESPACE>: <n> on <DATE>',
   /** EXPERIENCE.md:330 */
   homeStarterPromptExplainScreen: 'What\'s on this screen, and what should I look at first?',
   /** EXPERIENCE.md:330 */

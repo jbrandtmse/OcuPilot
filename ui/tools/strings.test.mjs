@@ -409,13 +409,21 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   // the action slot a refused Switches call resolves. (Story 3.6 added rows but no entry: at 236
   // literals it still fit the band.)
   //
-  // Why the upper bound moves to 260 rather than to the 246 the table now holds: the band is a
+  // Why the upper bound moves to 260 rather than to the 246 the table then held: the band is a
   // tripwire against unbounded string growth, not a cap on one screen. It has held because every
-  // widening was deliberate and documented here, and 260 leaves headroom for Story 3.8 and the
+  // widening was deliberate and documented here, and 260 left headroom for Story 3.8 and the
   // burn-down without making the next widening automatic.
+  //
+  // Epic 4's panel carried it past that: Story 4.4's five rows (Definitions, Full screen, the
+  // resize handle's name, the context row count and the secret-fields warning), Story 4.11's
+  // four (the paste warning with its two actions, and the chip's key glyph), Story 4.8's one
+  // (the banner for a turn whose failure names no step) and Story 4.10's three (the suggested
+  // view's eyebrow, its open control and the application-errors line) take the table to 261. The
+  // bound moves to 280, which leaves room for Epic 4's burn-down and Story 6.13's alerts line
+  // without making the next widening automatic.
   assert.ok(
-    expectedLiterals.length >= 150 && expectedLiterals.length <= 260,
-    `expected roughly 246 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
+    expectedLiterals.length >= 150 && expectedLiterals.length <= 280,
+    `expected roughly 261 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
   );
 });
 

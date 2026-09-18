@@ -3139,7 +3139,7 @@ So that the agent is useful before I have thought of a question.
 - **Given** Home with an enabled definition
 - **When** the panel renders
 - **Then** a "Suggested view" block sits above the transcript with attention lines - each a 32px row with its count in `code`
-- **And** a line appears only when the read behind it exists: tasks suspended after an error (from the task schedule list, Story 2.8), application errors today per namespace (Story 2.12) and agent status (Story 3.7) are available now, while the **new alerts.log entries** line joins when the alerts read lands in Story 6.13 - the block being built to take lines rather than being rewritten to add one
+- **And** a line appears only when the read behind it exists: application errors per namespace (Story 2.12, counted on the newest date the instance's own log names, since no response carries the instance's local calendar date) and agent status (Story 3.7) are available now, while the **new alerts.log entries** line joins when the alerts read lands in Story 6.13 and the **tasks suspended after an error** line joins when a task read that answers `Suspended` truthfully exists - the vendor LIST coerces it to false (DW-269), so the source is not there today - the block being built to take lines rather than being rewritten to add one [AMENDED 2026-09-18 - see the story change log]
 - **And** each line's text is a button **distinct from** its "Open >" link, and activating the line places its text in the composer as a prompt for the user to send.
 
 - **Given** every attention line would read zero, as on a fresh container
@@ -3158,7 +3158,7 @@ So that the agent is useful before I have thought of a question.
 
 - DW-160: Home's panel-widening criterion is this story's last AC; it could not be surface-anchored before a panel existed (ledger; routed by x0 2026-09-16)
 - DW-379: the panel is the default width on Home where `DESIGN.md` gives it a wider width over a 120ms transition, and `--ocu-panel-home` has no consumer (ledger; routed by x0 2026-09-16)
-- DW-269: the vendor tasks LIST coerces `Suspended` to false, so the 'tasks suspended after an error' line needs the task INFO read AD-36 allows (ledger; routed by cr 2026-09-14)
+- DW-269: the vendor tasks LIST coerces `Suspended` to false, so the 'tasks suspended after an error' line needs the task INFO read AD-36 allows - declined in this story with a reason, because the read grammar and the descriptor that would carry it are another epic's footprint, and the line joins later like the alerts one (ledger; routed by cr 2026-09-14)
 
 ---
 

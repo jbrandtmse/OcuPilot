@@ -1768,6 +1768,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-14T22:35:47Z occurrence=2-8-the-task-schedule-list
 - 2026-09-14T22:35:47Z status=routed owner=4-10-home-s-suggested-view-and-the-starter-prompts by=cr note=epics.md:2019 Story 2.8 AC3 still promises a suspended task appears; AC2 was amended at origin, AC3 was not
 - 2026-09-16T15:11:12Z status=routed owner=4-10-home-s-suggested-view-and-the-starter-prompts by=x0 note=kept, the suspended-tasks Home line needs it
+- 2026-09-18T15:45:49Z status=routed owner=burndown by=adjudication note=declined in Story 4.10 with a reason: the rowGet grammar closes its key set, Screen/Read hard-codes the detail verb, and adding Suspended to read.fields reddens three assertions written to keep it out -- all in Epic 6's descriptor footprint. The suggested-view block takes lines, so the line joins when a task read that answers Suspended truthfully exists. epics.md AC1 amended to say so
 
 ### DW-270: A stopped Task Manager raises no banner: the strip matches only Status Suspended, so an instance whose scheduler is not running renders the full schedule silently - the very consequence the banner exists to announce
 - source: spec-2-8-the-task-schedule-list.md | severity: med | fix-risk: low | footprint: in-epic
@@ -3421,3 +3422,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-9-the-agent-audit-ledger.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: .claude/rules/objectscript-testing.md keeps a test class to roughly 500 lines; the class was 641 before rework 1 added three methods. Splitting it means re-homing OnAfterOneTest's probe-row assertions. Probe: wc -l src/OcuPilot/Test/Ledger.cls
 - 2026-09-18T15:19:35Z status=routed owner=burndown by=harvest note=lead harvest of the rework 1 deferred entry
+
+### DW-1135: No client-visible response carries the instance's local calendar date, so a client feature needing 'today' cannot compute one - Story 4.10's Home application-errors line reads the newest logged date instead
+- source: spec-4-10-homes-suggested-view-and-the-starter-prompts.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: GET /api/ocupilot/instance answers seven fields, none a timestamp (ui/src/app/core/instance.ts:63-72). SYS.ApplicationError DateList emits MM/DD/YYYY in the instance's clock, and spec-2-12 records the container reporting 09/15/2026 while the host read 2026-09-14, so a browser-computed today misses. The Conventions row makes +$Horolog the instance's own calendar date.
+- 2026-09-18T15:43:14Z status=routed owner=burndown by=plan note=Epic 6 owns Api/** and LogSourcePort; an instance-local date on a log read or on GET /instance unblocks a truthful today for 4.10's line and 6.13's alerts line

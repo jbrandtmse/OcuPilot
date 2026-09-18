@@ -350,6 +350,9 @@ Microcopy. Brand voice and aesthetic posture live in `DESIGN.md`.
 | "Secret fields on this screen are never sent" | the context chip's key glyph accessible name |
 | "<n> rows returned · <m> sent" | the result line on an expanded read tool-call card: rows the read returned, and rows actually sent to the model |
 | "The turn stopped: <reason>." | error banner ending a turn whose failure names no step it stopped at (FR-23) [ADDED 2026-09-18 — see the story change log] |
+| "Suggested view" | the eyebrow over Home's suggested-view block [ADDED 2026-09-18 — see the story change log] |
+| "Open" | the accessible name of a suggested-view line's open control, whose › is decorative [ADDED 2026-09-18 — see the story change log] |
+| "Application errors in <NAMESPACE>: <n> on <DATE>" | the application-errors attention line, and the prompt that line places in the composer [ADDED 2026-09-18 — see the story change log] |
 
 ## Component Patterns
 
