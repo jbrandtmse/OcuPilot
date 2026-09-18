@@ -51,11 +51,25 @@ ClassMethod InterfaceReads() As %Integer
     Quit +$Get(^||OcuPilotEgressProbe("interfaceReads"))
 }
 
+/// <p>Make the next <method>InterfacesInfo</method> call answer <code>""</code> instead of the
+/// instance's own read, standing in for a transient failure of
+/// <code>$System.INetInfo.GetInterfacesInfo</code> -- something this probe cannot provoke for
+/// real. Consumed once; the call after it answers the instance's own read again.</p>
+ClassMethod ArmEmptyInterfacesOnce()
+{
+    Set ^||OcuPilotEgressProbe("emptyInterfacesOnce") = 1
+}
+
 /// <p>Count the read and answer the instance's own, so the cache's effect is observed on the
-/// shipped parse loop rather than on a stand-in for it.</p>
+/// shipped parse loop rather than on a stand-in for it -- unless
+/// <method>ArmEmptyInterfacesOnce</method> armed this one call to answer nothing.</p>
 ClassMethod InterfacesInfo() As %String
 {
     Do $Increment(^||OcuPilotEgressProbe("interfaceReads"))
+    If +$Get(^||OcuPilotEgressProbe("emptyInterfacesOnce")) {
+        Kill ^||OcuPilotEgressProbe("emptyInterfacesOnce")
+        Quit ""
+    }
     Quit ##super()
 }
 

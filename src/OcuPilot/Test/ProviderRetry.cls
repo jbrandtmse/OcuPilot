@@ -342,6 +342,29 @@ ClassMethod ProviderText(pFault As %RawString = "") As %String
     Quit pFault.detail.providerText
 }
 
+/// <p>Residual risk (frontmatter <code>deferred:</code>, not decided by this spec) --
+/// <parameter>OcuPilot.Kernel.Provider.Retry.ATTEMPTBUDGETSECONDS</parameter> is read only
+/// <i>between</i> attempts, so it bounds when a further attempt may <b>start</b> and not when one
+/// already running must end. Nothing clamps a stored <code>timeoutSeconds</code> to it, so a
+/// value many times the deadline reaches the request exactly as configured. Pinned here so this
+/// worst case is a stated fact the next reader can see failing rather than one they have to
+/// re-derive from <method>TestTheAttemptDeadlineRefusesAFurtherAttempt</method>, which only shows
+/// the deadline stopping the <i>next</i> attempt.</p>
+/// <p>Mutation: clamp <method>OcuPilot.Kernel.Provider.Base.NewRequest</method>'s
+/// <code>Timeout</code> to <parameter>OcuPilot.Kernel.Provider.Retry.ATTEMPTBUDGETSECONDS</parameter>
+/// -- this goes red, the recorded timeout reporting the budget instead of the configured value.</p>
+Method TestAStoredTimeoutFarPastTheDeadlineReachesTheRequestWithNoClamp()
+{
+    Set tDeadline = $Parameter(..#RETRY, "ATTEMPTBUDGETSECONDS")
+    Set tHuge = tDeadline * 10
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, $Parameter(..#DRIVER, "OKBODY"))
+    Do $ClassMethod(..#DRIVER, "Settings", .tSettings, 1)
+    Set tSettings("timeoutSeconds") = tHuge
+    Set tSC = ..Call(.tSettings, .tResponse, .tFault, .tHttpStatus)
+    Do $$$AssertStatusOK(tSC, "the call returns $$$OK")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("timeout", 1), tHuge, "the request's own socket timeout carries the configured value unclamped, ten times the attempt deadline: nothing in this loop bounds an attempt already committed to")
+}
+
 /// <p>AC13 -- the turn's declared ceiling on one provider call and the one the provider actually
 /// enforces are the same number, that number is inside the turn's own wall clock, and the shipped
 /// per-call defaults plus the sleep budget fit inside it. Every term is read from the class that

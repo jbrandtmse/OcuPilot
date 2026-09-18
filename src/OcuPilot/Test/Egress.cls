@@ -227,6 +227,51 @@ Method TestTheInterfaceSetIsCachedAcrossDifferentHosts()
     Do $$$AssertEquals(##class(OcuPilot.Test.EgressProbe).InterfaceReads(), 1, "and this instance's interface set was read once for the two of them")
 }
 
+/// <p>AC10 -- a verdict reached with nothing resolved is never cached: an unresolvable host
+/// classified twice inside <parameter>OcuPilot.Kernel.Egress.JUDGEMENTCACHESECONDS</parameter>
+/// pays its family lookups both times, because <code>Classify</code> only caches a host that
+/// resolved to at least one address.</p>
+/// <p>Without this the review's own defect would still be latent: an unresolvable host classified
+/// once would answer "unresolvable" from the cache for the whole TTL even if the resolver started
+/// answering for it a moment later, and the write-time and call-time paths would disagree with a
+/// resolver that had already recovered.</p>
+/// <p>Mutation: drop the <code>If $Data(tResolved)</code> guard in
+/// <method>OcuPilot.Kernel.Egress.Classify</method> so every verdict is cached regardless -- this
+/// goes red, reporting 2 lookups instead of 4.</p>
+Method TestAnUnresolvedHostsVerdictIsNeverCached()
+{
+    Do ##class(OcuPilot.Test.EgressProbe).Clear()
+    Do ##class(OcuPilot.Test.EgressProbe).Classify(..#UNRESOLVABLE, .tFirstKind, .tFirstAddress)
+    Do $$$AssertEquals(tFirstKind, "unresolvable", "the host resolves to nothing")
+    Do $$$AssertEquals(##class(OcuPilot.Test.EgressProbe).MultiLookups(), 2, "the first classification pays its own two family lookups")
+    Do ##class(OcuPilot.Test.EgressProbe).Classify(..#UNRESOLVABLE, .tSecondKind, .tSecondAddress)
+    Do $$$AssertEquals(tSecondKind, "unresolvable", "and resolves to nothing again")
+    Do $$$AssertEquals(##class(OcuPilot.Test.EgressProbe).MultiLookups(), 4, "a verdict reached with nothing resolved is never cached, so the second classification pays the lookups again rather than answering from a cached refusal")
+}
+
+/// <p>AC10 -- an empty <code>GetInterfacesInfo</code> answer is never cached either: the review's
+/// own second defect was that caching it would classify this instance's own address
+/// <code>public</code> for <parameter>OcuPilot.Kernel.Egress.JUDGEMENTCACHESECONDS</parameter>,
+/// because an empty interface set means nothing is ever this instance's. Only a read that
+/// answered something is cached (<method>OcuPilot.Kernel.Egress.CacheInterfaces</method>'s own
+/// doc comment); this is the test that reads it back.</p>
+/// <p>Driven through <method>OcuPilot.Test.EgressProbe.ArmEmptyInterfacesOnce</method>, because
+/// this probe cannot make the real <code>GetInterfacesInfo</code> answer nothing on demand.</p>
+/// <p>Mutation: set <code>tRead = 1</code> unconditionally in
+/// <method>OcuPilot.Kernel.Egress.InstanceAddresses</method> before the emptiness check -- this
+/// goes red, reporting 1 interface read for the two classifications instead of 2.</p>
+Method TestAnEmptyInterfaceReadIsNotCachedAsAnEmptySet()
+{
+    Do ##class(OcuPilot.Test.EgressProbe).Clear()
+    Do ##class(OcuPilot.Test.EgressProbe).SetAddresses("93.184.216.34")
+    Do ##class(OcuPilot.Test.EgressProbe).ArmEmptyInterfacesOnce()
+    Do ##class(OcuPilot.Test.EgressProbe).Classify("empty-interfaces-first.example.invalid", .tFirstKind, .tFirstAddress)
+    Do $$$AssertEquals(tFirstKind, "public", "the address itself still classifies, whatever the interface read answered")
+    Do $$$AssertEquals(##class(OcuPilot.Test.EgressProbe).InterfaceReads(), 1, "one interface read was attempted, and it answered nothing")
+    Do ##class(OcuPilot.Test.EgressProbe).Classify("empty-interfaces-second.example.invalid", .tSecondKind, .tSecondAddress)
+    Do $$$AssertEquals(##class(OcuPilot.Test.EgressProbe).InterfaceReads(), 2, "an empty answer is not cached, so the next classification reads the interface set live again rather than reusing an empty one")
+}
+
 /// <p>AC10 -- arming the resolver empties the verdict cache, so a set a test supplies can never be
 /// masked by a judgement reached before it was armed.</p>
 Method TestArmingTheResolverEmptiesTheVerdictCache()

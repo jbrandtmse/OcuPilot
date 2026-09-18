@@ -161,6 +161,7 @@ Method TestATransportFailureFailsTheTurnAtItsProviderStep()
     Do $$$AssertTrue(tSeq > 0, "the turn recorded a model step named provider: seq " _ tSeq)
     Do $$$AssertEquals($ClassMethod("OcuPilot.Test.TurnFixture", "Field", tId, "ErrorSeq"), tSeq, "and the row's ErrorSeq names it")
     Do $$$AssertEquals(tView.error.seq _ "|" _ tView.error.code, tSeq _ "|" _ tTransport, "which the poll carries too")
+    Do $$$AssertEquals(tView.error.reason, ##class(OcuPilot.Kernel.Provider.Base).ReasonFor(tTransport), "and the sentence the user actually reads names a transport failure, not just the code")
     Do $$$AssertEquals(##class(OcuPilot.Test.TurnProvider).Calls(..#TAG), 1, "and a call that failed in transport is never retried")
     Do $$$AssertEquals(tText [ "ERROR #", 0, "with no raw %Status text in the body: " _ $Extract(tText, 1, 200))
 }
@@ -177,6 +178,7 @@ Method TestAServerErrorAndARefusalEachEndTheTurnByName()
     If '$IsObject($Get(tView)) || '$IsObject(tView.error) Quit
     Do $$$AssertEquals($ClassMethod("OcuPilot.Test.TurnFixture", "Field", tId, "Code"), tUnavailable, "a retryable server error on every attempt is PROVIDER.UNAVAILABLE")
     Do $$$AssertEquals(tView.error.code, tUnavailable, "and the poll says so")
+    Do $$$AssertEquals(tView.error.reason, ##class(OcuPilot.Kernel.Provider.Base).ReasonFor(tUnavailable), "with the sentence the user reads naming that the provider never served the call")
     Do $$$AssertEquals(..StepCodeAt(tView, tView.error.seq), tUnavailable, "the step the error names carries the same code, so the card and the banner cannot disagree")
     Do $$$AssertTrue(##class(OcuPilot.Test.TurnProvider).Calls(..#TAG) > 1, "and the attempt was actually retried: " _ ##class(OcuPilot.Test.TurnProvider).Calls(..#TAG))
 
@@ -185,6 +187,7 @@ Method TestAServerErrorAndARefusalEachEndTheTurnByName()
     Set tSecond = ..RunFailingTurn(401, "{""type"":""error"",""error"":{""message"":""invalid x-api-key""}}", .tRefusedView, .tRefusedStatus, .tRefusedText)
     If tSecond = "" Quit
     Do $$$AssertEquals($ClassMethod("OcuPilot.Test.TurnFixture", "Field", tSecond, "Code"), tRefused, "a status the provider will refuse again is PROVIDER.REFUSED")
+    Do $$$AssertEquals(tRefusedView.error.reason, ##class(OcuPilot.Kernel.Provider.Base).ReasonFor(tRefused), "and the poll's own sentence says the provider refused the request, not the vendor's wording -- detail.providerText is a direct-route field this turn projection does not carry")
     Do $$$AssertEquals(##class(OcuPilot.Test.TurnProvider).Calls(..#TAG), 1, "reached the provider once and was not retried")
 }
 
