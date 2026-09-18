@@ -6,8 +6,11 @@ import { AgentStatus, DEFINITIONS_ROUTE, formatKillSwitch } from '../core/agent-
 import { decodeEntityId } from '../core/entity-id';
 import { classifyFault } from '../core/fault';
 import {
+  HOME_AREA_KEY,
   NavigationService,
   formatNavigationAnnouncement,
+  formatRequires,
+  screenForDescriptor,
   screenForRoute,
   screenForUrl,
   withQuery,
@@ -16,7 +19,9 @@ import { PanelState } from '../core/panel-layout';
 import { ScopeService, onScopeChange } from '../core/scope';
 import { assembleScreenContext, looksLikeSecret, type ScreenContextPayload } from '../core/screen-context';
 import { ScreenStores } from '../core/screen-store';
+import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
+import { SuggestedView, type SuggestedLine } from '../core/suggested-view';
 import { TURN_PATH, TurnStore, type TurnStep, turnErrorBanner } from '../core/turn';
 import { isApplePlatform } from './command-box';
 import { ContextChip } from './context-chip';
@@ -43,6 +48,27 @@ const BUSY_REASON_ID = 'ocu-panel-busy-reason';
 
 /** New conversation's reason while a turn runs (Story 4.5). */
 const NEW_CONVERSATION_REASON_ID = 'ocu-panel-new-conversation-reason';
+
+/**
+ * One suggested-view row's rendered view, precomputed once per read so the template does no
+ * substitution: the text either side of the count, the `Open` anchor's `href`, and the
+ * Privilege-Gating attributes its own screen verdict decides (AD-8).
+ */
+interface SuggestedRowView {
+  readonly key: string;
+  readonly text: string;
+  readonly label: string;
+  readonly tail: string;
+  readonly counted: boolean;
+  readonly count: number;
+  readonly href: string;
+  readonly url: string;
+  readonly gated: boolean;
+  readonly openAriaDisabled: string | null;
+  readonly openDescribedBy: string | null;
+  readonly reasonId: string;
+  readonly reason: string;
+}
 
 /** One turn's rendered view, precomputed once per read so the template does no substitution. */
 interface PanelTurnView {
@@ -176,6 +202,42 @@ interface PanelTurnView {
         }
       </div>
 
+      <section class="ocu-suggested" [attr.aria-labelledby]="suggestedVisible ? suggestedLabelId : null">
+        @if (suggestedVisible) {
+          <p class="ocu-suggested-eyebrow" [id]="suggestedLabelId">{{ STRINGS.homeSuggestedView }}</p>
+          <ul class="ocu-suggested-lines" role="list">
+            @for (row of suggestedRows; track row.key) {
+              <li class="ocu-suggested-line">
+                <button
+                  type="button"
+                  class="ocu-suggested-prompt"
+                  (click)="onSuggestion(row.text)"
+                >{{ row.label }}@if (row.counted) {<code class="ocu-suggested-count">{{ row.count }}</code>}{{ row.tail }}</button>
+                <a
+                  class="ocu-button-text ocu-suggested-open"
+                  [href]="row.href"
+                  [attr.aria-disabled]="row.openAriaDisabled"
+                  [attr.aria-describedby]="row.openDescribedBy"
+                  (click)="onSuggestionOpen($event, row)"
+                  >{{ STRINGS.homeSuggestedOpen }}<span aria-hidden="true">{{ openGlyph }}</span></a
+                >
+                @if (row.gated) {
+                  <span class="ocu-visually-hidden" [id]="row.reasonId">{{ row.reason }}</span>
+                }
+              </li>
+            }
+            @for (prompt of suggestedPrompts; track prompt) {
+              <li class="ocu-suggested-line">
+                <button type="button" class="ocu-suggested-starter" (click)="onSuggestion(prompt)">
+                  <span>{{ prompt }}</span>
+                  <span class="ocu-suggested-send-glyph" aria-hidden="true">{{ sendGlyph }}</span>
+                </button>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+
       <div class="ocu-panel-transcript" role="log" aria-live="polite" tabindex="0" [attr.aria-label]="STRINGS.agentConversationLabel">
         @if (unconfigured) {
           @if (emptySentence) {
@@ -192,6 +254,20 @@ interface PanelTurnView {
             <li>{{ STRINGS.agentTrustAudited }}</li>
           </ul>
         } @else {
+          @if (greetingVisible) {
+            <p class="ocu-panel-greeting">{{ STRINGS.agentIdleGreeting }}</p>
+            <ul class="ocu-suggested-lines" role="list">
+              @for (prompt of starterPrompts; track prompt) {
+                <li class="ocu-suggested-line">
+                  <button type="button" class="ocu-suggested-starter" (click)="onSuggestion(prompt)">
+                    <span>{{ prompt }}</span>
+                    <span class="ocu-suggested-send-glyph" aria-hidden="true">{{ sendGlyph }}</span>
+                  </button>
+                </li>
+              }
+            </ul>
+            <p class="ocu-panel-selection-hint">{{ STRINGS.agentIdleSelectionHint }}</p>
+          }
           @for (turn of turns; track $index) {
             <div class="ocu-panel-turn">
               <p class="ocu-panel-message-user">{{ turn.message }}</p>
@@ -282,6 +358,8 @@ export class Panel {
   private readonly router = inject(Router);
   private readonly scope = inject(ScopeService);
   private readonly screenStores = inject(ScreenStores);
+  private readonly shell = inject(ShellState);
+  private readonly suggested = inject(SuggestedView);
 
   private readonly composerEl = viewChild<ElementRef<HTMLTextAreaElement>>('composer');
 
@@ -308,6 +386,15 @@ export class Panel {
 
   /** The banner's glyph, `aria-hidden` so the strip reads as its sentence alone. */
   protected readonly bannerGlyph = '\u2139';
+
+  /** The suggested view's own labelling id: the eyebrow names the section. */
+  protected readonly suggestedLabelId = 'ocu-suggested-label';
+
+  /** The `Open` control's decorative chevron (DESIGN.md `:1137` "Open \u203A"), `aria-hidden`. */
+  protected readonly openGlyph = '\u203A';
+
+  /** A starter prompt row's send glyph (DESIGN.md `:1137`), `aria-hidden`. */
+  protected readonly sendGlyph = '\u27A4';
 
   /** New conversation's glyph, `aria-hidden`; its name is the button's own `aria-label`. */
   protected readonly newConversationGlyph = '\u2795';
@@ -338,19 +425,38 @@ export class Panel {
    */
   private lastConversationId: string | null = null;
 
+  /** The namespace the block was last read for on this visit to Home, or `null` (`syncSuggested`). */
+  private suggestedLoadedFor: string | null = null;
+
   constructor() {
     this.lastConversationId = this.turn.conversationId();
     const stops = [
       this.navigation.subscribe(() => this.bump()),
-      this.agentStatus.subscribe(() => this.bump()),
+      this.agentStatus.subscribe(() => {
+        this.bump();
+        // The block's own precondition is an enabled definition, and this is where that answer
+        // arrives -- so this is where the block becomes eligible to read.
+        this.syncSuggested();
+      }),
       this.agentContext.subscribe(() => this.bump()),
       this.panel.subscribe(() => this.bump()),
       this.turn.subscribe(() => {
         this.syncSecretRecord();
         this.bump();
       }),
-      onScopeChange(this.scope, () => this.bump()),
+      onScopeChange(this.scope, () => {
+        this.bump();
+        // AD-44: a namespace switch re-fetches rather than re-routes, so the application-errors
+        // line's read re-issues for the new namespace and its text re-resolves.
+        this.syncSuggested();
+      }),
+      this.suggested.subscribe(() => this.bump()),
+      this.shell.subscribe(() => {
+        this.bump();
+        this.syncSuggested();
+      }),
     ];
+    this.syncSuggested();
     const routed = this.router.events.subscribe(() => this.bump());
     inject(DestroyRef).onDestroy(() => {
       for (const stop of stops) stop();
@@ -554,6 +660,177 @@ export class Panel {
       title,
       step.text
     );
+  }
+
+  /** Whether the router is on Home, which is the only area the suggested view renders on. */
+  private get onHome(): boolean {
+    this.generation();
+    return this.shell.activeArea() === HOME_AREA_KEY;
+  }
+
+  /**
+   * The suggested view's own gate (AC1's precondition): Home, an answered status with an enabled
+   * definition, and every declared source answered or settled to absent. The block renders nothing
+   * until all of it holds -- never a partial block, never a flash of prompts.
+   */
+  protected get suggestedVisible(): boolean {
+    this.generation();
+    return this.onHome && this.answered && this.agentStatus.configured() && this.suggested.answered();
+  }
+
+  /**
+   * The counted rows, or -- when every counted line resolved to zero -- only the uncounted ones,
+   * which is what keeps the agent-status line present under the starter prompts (AC6).
+   */
+  protected get suggestedRows(): readonly SuggestedRowView[] {
+    this.generation();
+    const prompts = this.suggested.showPrompts();
+    return this.suggested
+      .lines()
+      .filter((line) => !prompts || !line.counted)
+      .map((line) => this.suggestedRow(line));
+  }
+
+  /**
+   * The three published prompts while every counted line reads zero, else nothing -- and nothing
+   * while the greeting is already offering them, so exactly one prompt set is ever on screen.
+   * EXPERIENCE.md reads Home's panel as showing "its suggested view or, when nothing needs
+   * attention, three starter prompts"; it publishes the greeting "over the screen's three starter
+   * prompts, and beneath them the hint"; and its UJ-2 walkthrough describes the fresh-container
+   * state -- the one where both would otherwise fire -- as "the suggested view offering the three
+   * starter prompts", singular. The greeting keeps them because only its order is published; the
+   * block keeps its agent-status line either way (AC2).
+   */
+  protected get suggestedPrompts(): readonly string[] {
+    this.generation();
+    if (this.transcriptEmpty) return [];
+    return this.suggested.showPrompts() ? this.suggested.starterPrompts() : [];
+  }
+
+  /** The three published prompts, for the empty-transcript greeting, which never counts anything. */
+  protected get starterPrompts(): readonly string[] {
+    return this.suggested.starterPrompts();
+  }
+
+  /**
+   * Whether the conversation has been restored and holds no turn. `restored()` is what keeps the
+   * greeting from flashing before the transcript loads.
+   */
+  protected get transcriptEmpty(): boolean {
+    this.generation();
+    return this.turn.restored() && this.turn.entries().length === 0;
+  }
+
+  /**
+   * Whether the greeting block renders. EXPERIENCE.md's panel state table triggers "Idle, no
+   * messages yet" on "definition enabled, transcript empty", so the status has to have answered
+   * AND report a definition: the transcript's `@else` branch is reached whenever the panel is not
+   * known-unconfigured, which includes the window before the status answers at all.
+   */
+  protected get greetingVisible(): boolean {
+    this.generation();
+    return this.answered && this.agentStatus.configured() && this.transcriptEmpty;
+  }
+
+  /**
+   * One line's rendered row. The `Open` control's target is resolved from the line's declared
+   * descriptor (AD-5), and its own screen verdict decides the Privilege-Gating attributes: listed,
+   * focusable, `aria-disabled` and described by the pair that failed -- never removed, never
+   * natively `disabled` (AD-8).
+   */
+  private suggestedRow(line: SuggestedLine): SuggestedRowView {
+    const screen = screenForDescriptor(line.descriptor);
+    const url = screen === null ? '' : withQuery(screen.route, this.router.url);
+    const verdict = screen === null ? null : this.navigation.screenVerdict(screen.route);
+    const gated = verdict !== null && !verdict.allowed;
+    const reasonId = `ocu-suggested-reason-${line.key}`;
+    return {
+      key: line.key,
+      text: line.text,
+      label: line.label,
+      tail: line.tail,
+      counted: line.counted,
+      count: line.count,
+      // Relative, so it resolves under the document's base href; the router takes the rooted form.
+      href: url.replace(/^\//, ''),
+      url,
+      gated,
+      openAriaDisabled: gated ? 'true' : null,
+      openDescribedBy: gated ? reasonId : null,
+      reasonId,
+      reason: formatRequires(
+        STRINGS.privilegeRequiresResource,
+        verdict === null ? '' : verdict.failedPair
+      ),
+    };
+  }
+
+  /**
+   * A line's text or a starter prompt was activated: it becomes the draft and the composer takes
+   * focus. It never starts a turn -- the user reads what they are about to ask and presses Send.
+   *
+   * Nothing while the composer is unavailable, as every other write into the draft does
+   * (`onDraft`, `onComposerKeydown`): with the kill switch on the block still renders -- its
+   * agent-status line is that state's own sentence -- and the composer is `readonly`, so a draft
+   * placed there is text the user cannot send.
+   */
+  protected onSuggestion(text: string): void {
+    if (this.composerUnavailable) return;
+    this.panel.setDraft(text);
+    this.composerEl()?.nativeElement.focus();
+  }
+
+  /**
+   * A line's `Open` was activated: the router navigates to that line's screen. A modified click on
+   * a reachable target is left to the browser; a gated anchor is refused first, whatever the
+   * modifiers, because `aria-disabled` carries no behavior of its own and a Ctrl- or Cmd-click
+   * that fell through to the modifier bail would open the refused screen in a new tab.
+   */
+  protected onSuggestionOpen(event: MouseEvent, row: SuggestedRowView): void {
+    if (row.gated || row.url === '') {
+      event.preventDefault();
+      return;
+    }
+    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    void this.router.navigateByUrl(row.url);
+  }
+
+  /**
+   * Read the block's sources once the block could render, and forget them on leaving Home, so the
+   * next visit reads fresh rather than rendering an answer about a screen the user has left.
+   *
+   * **The namespace is the key**, which is what bounds this to one call per line per Home visit per
+   * namespace (AD-24): every store this reads answers a round trip after the panel is built, so
+   * this runs on each of their notifications, and without a key it would read on all of them. A
+   * namespace switch is a different question and reads once (AD-44). Home is not in AD-43's
+   * refresh roster, so there is no timer.
+   *
+   * It withholds the read until the block's own preconditions hold -- Home, an answered status
+   * with an enabled definition, and a resolved namespace -- rather than reading and discarding:
+   * an unscoped read is one the endpoint answers 404, and a read nothing will render is a request
+   * for nothing.
+   */
+  private syncSuggested(): void {
+    const onHome = this.shell.activeArea() === HOME_AREA_KEY;
+    if (!onHome) {
+      if (this.suggestedLoadedFor !== null) {
+        this.suggestedLoadedFor = null;
+        this.suggested.reset();
+      }
+      return;
+    }
+    const namespace = this.scope.namespace();
+    if (namespace === '' || !this.answered || !this.agentStatus.configured()) return;
+    if (this.suggestedLoadedFor === namespace) return;
+    const previous = this.suggestedLoadedFor;
+    this.suggestedLoadedFor = namespace;
+    // A switch away from a namespace already read is a different question, so the previous
+    // namespace's answers are dropped before the new read: without this the block keeps rendering
+    // "Application errors in <previous>: ..." for the length of the re-read, which is the partial
+    // state the block's own gate exists to prevent. The first read of a visit has nothing to drop.
+    if (previous !== null) this.suggested.reset();
+    void this.suggested.load();
   }
 
   protected get fullScreen(): boolean {

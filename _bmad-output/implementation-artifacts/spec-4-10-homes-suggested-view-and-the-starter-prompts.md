@@ -2,14 +2,83 @@
 title: 'Story 4.10 - Home''s suggested view and the starter prompts'
 type: 'feature'
 created: '2026-09-18'
-status: 'ready-for-dev'
+status: 'done'
 review_loop_iteration: 0
-followup_review_recommended: false
+baseline_revision: '78ae4a84e475b4f9269e7a9ae4e283f724210a77'
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['oversized']
 owned_ledger: ['DW-160', 'DW-269', 'DW-379']
-deferred: []
+deferred:
+  - summary: >-
+      The block's all-zero fallback also fires when the counted read was refused or faulted, so a
+      caller who simply may not read the error log is shown "nothing needs attention".
+    evidence: |-
+      `showPrompts()` tests `every(line => !line.counted || line.count === 0)` over the lines that
+      are PRESENT, and a refused or faulted source is absent, so the test is vacuously true. Task 4
+      specifies exactly that wording; the I/O matrix keeps the 403 row and the zero-rows row
+      separate and settles neither against the other. Whether "unknown" may present as "zero" is a
+      product call, not a code call.
+    location: >-
+      ui/src/app/core/suggested-view.ts, showPrompts()
+    severity: medium
+  - summary: >-
+      DESIGN.md's Home row at 1,920 px (side bar 240, content 672) is unreachable on the ordinary
+      arrival at Home, because Home declares no screen list.
+    evidence: |-
+      `areaHasSideBar('home')` is false, so `sideBarPreferred()` is false and the real content
+      column at 1,920 is 912, not 672. The published triple is reachable only when the bar is
+      already open on another area's list, since `sideBarPreferred()` reads `visibleArea()` while
+      the Home target reads `activeArea()`. Pre-existing: this story is the first consumer of that
+      row. Either DESIGN.md's Home row or Home's side-bar declaration is wrong.
+    location: >-
+      DESIGN.md Home viewport table, against ui/src/app/core/panel-layout.ts areaHasSideBar
+    severity: low
+  - summary: >-
+      `ERROR_LOG_DATES_PATH` duplicates `areas/logs/error-log.store.ts`'s `ERROR_LOG_PATH_PREFIX`
+      with no test pinning the two equal.
+    evidence: |-
+      A path change updates one and leaves the other answering 404, which this block renders as
+      "no line" -- the same shape as a refusal, so it fails silently. A shared constant would have
+      `core/` import from `areas/`, a dependency direction `core/` does not take, so the clean fix
+      is to move the prefix into `core/` and re-point the drill store.
+    location: >-
+      ui/src/app/core/suggested-view.ts:35 and ui/src/app/areas/logs/error-log.store.ts:59
+    severity: low
+  - summary: >-
+      The agent-status line re-implements the panel's own kill-switch / read-only sentence
+      precedence, and no test pins the two equal.
+    evidence: |-
+      `SuggestedView.agentStatusLine()` selects the kill-switch banner sentence or
+      `stringFor(footerKey)`; `panel.ts`'s `killSwitchMessage` and `readOnlyLine` select the same
+      two independently. The spec's rationale ("the line can never disagree with the banner")
+      depends on the two staying in step, and a precedence change in either diverges them. The
+      browser leg compares them only while the kill switch is off, the one state where they agree.
+    location: >-
+      ui/src/app/core/suggested-view.ts agentStatusLine, against ui/src/app/shell/panel.ts
+    severity: low
+  - summary: >-
+      `browser/suggested-view.browser-spec.mjs` re-implements `signedInAt`, `geometry` and
+      `panelSettlesAt` from `browser/panel.browser-spec.mjs` instead of sharing them.
+    evidence: |-
+      About sixty copied lines, beside the tree's existing shared helper modules
+      (`browser/shell-entry.mjs`, `browser/list-spec.mjs`). Lifting them is a refactor across two
+      specs rather than a change to this story's diff.
+    location: >-
+      ui/browser/suggested-view.browser-spec.mjs
+    severity: low
+  - summary: >-
+      A re-read parked on `retryWhenReachable` can fire after the tab has left Home, issuing one
+      HTTP read nothing renders.
+    evidence: |-
+      `reset()` bumps the generation but cancels nothing parked, so a connection that recovers
+      after the user navigated off Home settles the state the panel just reset, and the next Home
+      entry reads again. One wasted request; nothing wrong is rendered, because the panel's own
+      `onHome` conjunct hides the block. Canceling it needs an armed flag the store does not have.
+    location: >-
+      ui/src/app/core/suggested-view.ts readApplicationErrors
+    severity: low
 ---
 
 <intent-contract>
@@ -267,6 +336,71 @@ Client only. All paths absolute from the worktree root `/Users/jbrandt/git/OcuPi
 
 ## Review Triage Log
 
+### 2026-09-18 - Review pass
+
+- verdicts: 60 findings - high 4, medium 11, low 42, false 3, maybe-false 0 (blind-hunter 30, edge-case 14, verification-gap 9, intent-alignment 7; routed patch 37, defer 9, reject 11 - grouped root causes share a route and keep their own rows)
+- findings:
+  - `[high]` `[patch]` blind-hunter: the three starter prompts render twice on Home - fixed: `suggestedPrompts` yields while `transcriptEmpty`; EXPERIENCE.md settles the precedence (Home shows "its suggested view or, when nothing needs attention, three starter prompts"; the panel's Idle row publishes the greeting's own order); new pinning case + mutation M1.
+  - `[high]` `[patch]` edge-case: greeting and fallback both render, six identical rows - same root cause; same fix.
+  - `[high]` `[patch]` verification-gap: the six-row state is constructed by no test - same root cause; the new case constructs it.
+  - `[high]` `[patch]` intent-alignment: both prompt sets render and each test arranges the co-occurrence away - same root cause; same fix.
+  - `[medium]` `[defer]` blind-hunter: the all-zero fallback fires on a refused or faulted read - real and reachable; task 4 specifies the wording and the matrix settles neither row against the other, so it is a product call. Deferred (item 1).
+  - `[medium]` `[patch]` blind-hunter: the in-flight case mounts off Home, where the block is hidden anyway - re-arranged onto Home with the gated transport and a store-notification settle point; mutation M2.
+  - `[medium]` `[patch]` edge-case: same in-flight case - same root cause; same fix.
+  - `[medium]` `[patch]` verification-gap: `suggested.answered()` in the visibility gate is unpinned - same root cause; same fix.
+  - `[medium]` `[patch]` intent-alignment: expectation at the rendered surface, coverage at the store surface - same root cause; same fix.
+  - `[medium]` `[patch]` blind-hunter: `HOME_AREA_KEY` is a hand-copied literal with no drift test - pinned against the Home descriptor's own declared area; mutation M4b.
+  - `[medium]` `[patch]` blind-hunter: a browser case reports green having asserted nothing - `t.skip` replaces the bare `return`; the suite reports 0 skipped, so the asserting branch ran.
+  - `[medium]` `[patch]` blind-hunter: AC5 is never asserted over the render path - component-level appended-source case added; mutation M3.
+  - `[medium]` `[patch]` verification-gap: same AC5 gap - same root cause; same fix.
+  - `[medium]` `[patch]` verification-gap: `SWITCHES_DESCRIPTOR` is asserted only against itself - both exported descriptors pinned as resolvable, plus the agent-status row's own `href`; mutation M4a.
+  - `[medium]` `[patch]` edge-case: a suggestion writes a draft into a composer the kill switch has made read-only - guard added, matching the four existing `composerUnavailable` call sites; mutation M5.
+  - `[low]` `[patch]` blind-hunter: `applyWidth` can move the panel without notifying - the pre-release width is captured first; mutation M8.
+  - `[low]` `[patch]` edge-case: same arrow-step case - same root cause; same fix.
+  - `[low]` `[defer]` blind-hunter: the five-Home-widths case asserts a configuration Home does not reach - the pure-function leg is the right surface for the published table; the DESIGN.md/shell tension is pre-existing. Deferred (item 2); the browser leg's over-general message reworded.
+  - `[low]` `[defer]` edge-case: DESIGN.md's Home content figure is unreachable - same root cause.
+  - `[low]` `[defer]` intent-alignment: two legs assert contradictory side-bar values for one viewport - same root cause; they describe two reachable states, and both messages now say which.
+  - `[low]` `[patch]` blind-hunter: a namespace switch leaves the previous namespace's sentence rendered - the previous answers are dropped before the new read; mutation M7.
+  - `[low]` `[patch]` edge-case: same switch interval - same root cause; same fix.
+  - `[low]` `[patch]` intent-alignment: the stale-render interval is asserted nowhere - same root cause; the new case asserts the interval itself.
+  - `[low]` `[patch]` edge-case: a modifier click on an `aria-disabled` Open follows the href - the gate now precedes the modifier bail; mutation M6. The first assertion written for it was unfalsifiable in jsdom (following an href moves no router), so it asserts `defaultPrevented` instead.
+  - `[low]` `[patch]` intent-alignment: the greeting's precondition is "not known-unconfigured", not "definition enabled" - gated on `greetingVisible` (answered and configured); mutation M14.
+  - `[low]` `[patch]` blind-hunter: the always-rendered section carries a dangling IDREF when hidden - the binding is conditional; mutation M10.
+  - `[low]` `[patch]` blind-hunter: `panelHomeTarget` returns a negative below a 688 px viewport - floored at 0, which is the value its own doc comment promises; mutation M9.
+  - `[low]` `[patch]` blind-hunter: `:empty` is asserted nowhere - a browser assertion off Home measures the collapse; mutation demonstrated against the deployed bundle.
+  - `[low]` `[patch]` verification-gap: same `:empty` gap - same root cause; same fix.
+  - `[low]` `[patch]` blind-hunter: `expect(block.querySelector('section, [aria-labelledby]'))` searches descendants for the block itself, so it cannot fail - deleted; the `aria-labelledby === eyebrow.id` assertion beside it is the real one.
+  - `[low]` `[patch]` blind-hunter: `.ocu-suggested-starter` has no `:hover` while its sibling has one - added, on the outline rather than a second fill.
+  - `[low]` `[patch]` blind-hunter: `stubSuggestedView`'s doc comment claims a caller it does not have - corrected.
+  - `[low]` `[patch]` blind-hunter: the store header describes a `ScopeService` subscription it does not have - corrected to say the panel owns the trigger.
+  - `[low]` `[patch]` verification-gap: `reset()`'s doc comment misstates its callers - corrected.
+  - `[low]` `[patch]` verification-gap: a test name pins neither half of what it says - renamed to what it asserts.
+  - `[low]` `[patch]` verification-gap: the browser side-bar assertion message generalizes one entry path - reworded to name the path it measures.
+  - `[low]` `[patch]` blind-hunter: `main.ts` import out of the file's own path order - moved.
+  - `[low]` `[patch]` intent-alignment: AC4 is asserted on the application-errors row, not the agent-status row the matrix names - AC4 now asserts both rows.
+  - `[low]` `[patch]` intent-alignment: nothing records that the mutations were run, and the `HOME_PANEL_FRACTION` line undercounts which rows redden - the `## Verification` line is corrected (Rule 19's sanctioned spec edit), the new pinning tests' mutation lines are added, and `## Auto Run Result` records the run.
+  - `[low]` `[patch]` blind-hunter: an unresolvable descriptor renders an inert, enabled-looking Open, and `verdict !== null` is unreachable when a screen exists - both exported descriptors are now pinned resolvable, which is what makes the branch unreachable rather than merely untaken; the omit-the-control guard itself is rejected below.
+  - `[low]` `[patch]` edge-case: an appended source naming an unbuilt descriptor - same root cause; same fix.
+  - `[low]` `[defer]` blind-hunter: the endpoint path duplicates `error-log.store.ts`'s prefix - the clean fix crosses the `core/`-to-`areas/` boundary. Deferred (item 3).
+  - `[low]` `[defer]` blind-hunter: the agent-status sentence selection is a third copy of the panel's precedence - spec-specified today, but nothing pins the copies equal. Deferred (item 4).
+  - `[low]` `[defer]` blind-hunter: the browser spec re-implements three helpers verbatim - about sixty copied lines; lifting them is a refactor across two specs. Deferred (item 5).
+  - `[low]` `[defer]` blind-hunter: a parked re-read outlives leaving Home - one wasted request, nothing wrongly rendered; canceling it needs state the store does not have. Deferred (item 6).
+  - `[low]` `[defer]` edge-case: same parked re-read - same root cause.
+  - `[low]` `[reject]` blind-hunter: `SuggestedView.answered()` is true before `AgentStatus` has answered - by-design: the Design Notes state that the switches read is ungated by construction and always answers, and the panel's own `answered` conjunct gates the render. Making the projection pending changes a specified behavior and the type of `agentStatusLine()`.
+  - `[low]` `[reject]` blind-hunter: every `Open` has the identical accessible name - by-design: EXPERIENCE.md publishes "Open" as *the accessible name of a suggested-view line's open control, whose > is decorative*, which supersedes task 9's `tableChangeToastLink` instruction; reported to the lead as a task-9 deviation rather than changed here.
+  - `[low]` `[reject]` edge-case: same `aria-label` deviation - same reason.
+  - `[low]` `[reject]` blind-hunter: a row with a count and no date renders a dangling preposition - the endpoint's own row type always carries both, so the fix guards state not shown reachable.
+  - `[low]` `[reject]` blind-hunter: `label`/`tail` and `text` diverge if the template carries two `<n>` slots - the published template carries exactly one, pinned verbatim by `strings.test.mjs`.
+  - `[low]` `[reject]` edge-case: same two-slot hypothetical - same reason.
+  - `[low]` `[reject]` blind-hunter: `SOURCES` is exported mutable module state a test mutates - the integration AC is about appending a source, the `finally` restores it, and threading the list through the options adds public surface for a test's sake.
+  - `[low]` `[reject]` blind-hunter: `mount()` can put the component and `PanelState` on different `ShellState`s - no call site supplies both; the fix is a harness guard against a combination nothing uses.
+  - `[low]` `[reject]` edge-case: the block could squeeze the transcript at 200% zoom - the proposed `max-height` plus `overflow-y` adds a second scrolling region, against the block's own "the transcript is the one scrolling region in the body"; the state stacks a short viewport on wrapped lines at the panel minimum.
+  - `[low]` `[reject]` edge-case: `--ocu-panel-home` is still unconsumed at runtime - by-design: the intent's Never list forbids a runtime CSS consumer, and DW-379 was answered with the operand-drift test.
+  - `[low]` `[reject]` verification-gap: AC3's navigate clause carries no `mutation:` line - bookkeeping only, and its test is falsifiable; the clause is now covered by the switches-descriptor mutation line added to `## Verification`.
+  - `[false]` blind-hunter: `.ocu-suggested`'s padding aligns with neither neighbour - refuted: its left and right are `var(--ocu-space-4)` and `var(--ocu-panel-gutter)`, byte-identical to `.ocu-panel-transcript`'s own, so its rows align with the transcript exactly.
+  - `[false]` blind-hunter: the browser spec loosens the settle tolerance from 0.01 to 0.51 px, letting a transition satisfy the wait early - refuted: the wait is followed by `Math.round(panelWidth) === row.panel`, and a value more than 0.5 px away does not round to the target, so the tolerance cannot produce a false pass.
+  - `[false]` edge-case: the navigation map answering late leaves the block unloaded for that Home visit - refuted: `syncSuggested`'s preconditions are `ShellState.activeArea()`, `ScopeService.namespace()` and `AgentStatus`, none of them the navigation map; the map only decides the Open control's verdict, and `navigation.subscribe(() => this.bump())` re-renders on it.
+
 ## Design Notes
 
 **Governing ADs.** AD-36 (the read contract and its `rowGet`/`INFO` clause), AD-24 (bounded reads),
@@ -413,7 +547,7 @@ traversal (jsdom computes no layout and `.click()` moves no focus -
   `mutation: swap the greeting and the selection hint in panel.ts -> panel.spec.ts's DOM-order assertion goes red`;
   `mutation: respell homeStarterPromptExplainLog in strings.ts -> tools/strings.test.mjs:422 goes red`.
 - The five Home widths:
-  `mutation: HOME_PANEL_FRACTION 0.5 -> 0.4 -> panel-layout.test.mjs's 1,920 and 1,440 Home cases go red`.
+  `mutation: HOME_PANEL_FRACTION 0.5 -> 0.4 -> panel-layout.test.mjs's published-Home-widths test goes red on the 1,920, 1,440 and 1,280 rows`.
 - Leaving Home restores the remembered width:
   `mutation: write the Home target into rememberedWidth inside homeTargetWidth() -> panel-layout.test.mjs's leave-Home case goes red`.
 - The transition and reduced motion:
@@ -426,13 +560,104 @@ traversal (jsdom computes no layout and `.click()` moves no focus -
 - The bundle budget:
   `mutation: lower angular.json's maximumWarning to 700kB -> build-output.test.mjs:168 goes red`.
 
+The review pass added eight pinning tests; their mutations, demonstrated the same way:
+
+- One prompt set on screen (AC6 with AC7):
+  `mutation: drop the transcriptEmpty guard from suggestedPrompts in panel.ts -> panel.spec.ts's fresh-container case goes red with six prompt rows`.
+- The in-flight gate, on Home rather than off it (AC2):
+  `mutation: delete && this.suggested.answered() from suggestedVisible -> panel.spec.ts's in-flight case and its namespace-switch case both go red`.
+- The block takes lines at the render path (AC5):
+  `mutation: slice suggestedRows to the two known keys in panel.ts -> panel.spec.ts's appended-fourth-source case goes red`.
+- The agent-status line's own Open target (AC3):
+  `mutation: respell SWITCHES_DESCRIPTOR -> tools/suggested-view.test.mjs's descriptor-resolves test and panel.spec.ts's switches-href case go red`.
+- Home's area key (AC8, AC9):
+  `mutation: change HOME_AREA_KEY -> tools/suggested-view.test.mjs's area-key test and four panel-layout.test.mjs Home cases go red`.
+- A suggestion into an unavailable composer (AC3):
+  `mutation: drop the composerUnavailable guard from onSuggestion -> panel.spec.ts's kill-switch case goes red`.
+- A gated Open under a modifier click (AC4):
+  `mutation: bail on the modifiers before the gate in onSuggestionOpen -> panel.spec.ts's AC4 defaultPrevented assertion goes red`.
+- The namespace switch drops the previous answer (matrix: scope changes on Home):
+  `mutation: drop the reset from syncSuggested's different-namespace branch -> panel.spec.ts's namespace-switch case goes red`.
+- A width gesture that lands on the remembered width (AC11):
+  `mutation: read the rendered width after the release in applyWidth -> panel-layout.test.mjs's arrow-step-at-the-remembered-width case goes red`.
+- The Home target's 0 floor (AC8):
+  `mutation: drop Math.max(0, ...) from panelHomeTarget -> panel-layout.test.mjs's floor test goes red`.
+- The hidden block's label reference (AC1):
+  `mutation: bind aria-labelledby unconditionally -> panel.spec.ts's dangling-IDREF case goes red`.
+- The hidden block reserves no height (AC1):
+  `mutation: delete .ocu-suggested:empty { display: none } from _components.scss -> the browser spec's off-Home height assertion goes red`.
+- The greeting's published trigger (AC7):
+  `mutation: gate the greeting on transcriptEmpty instead of greetingVisible -> panel.spec.ts's withheld-until-answered case goes red`.
+
 **Manual checks:** none. Every criterion above has a command.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planning only; no implementation was performed. Decisions taken are recorded in `## Spec Change Log`
-and `## Design Notes`; the three routed ledger entries are answered there (DW-160 addressed, DW-379
-addressed, DW-269 declined with a reason and a recommended re-own).
+Home's suggested view ships as a framework-free `core/suggested-view.ts` store whose exported
+`SOURCES` array is the extension point: one entry projects the agent-status sentence live from
+`AgentStatus`, the other reads `GET /api/ocupilot/logs/errors/dates?namespace=<scope>` once per Home
+visit per namespace. The panel renders the block between the chip slot and the transcript, the
+greeting block inside the transcript's empty branch, and one gesture for both; Home's width resolves
+through `resolveLayout` from a required `homeTarget`, so the existing yield order and the existing
+120 ms CSS transition carry it.
+
+**Files changed.**
+
+- `ui/src/app/core/suggested-view.ts` (new) - the store, its two declared sources, and the
+  `label`/`count`/`tail` split the row renders.
+- `ui/src/app/core/panel-layout.ts` - `HOME_PANEL_FRACTION`, `panelHomeTarget`, a required
+  `LayoutInput.homeTarget`, and `PanelState`'s per-visit Home release.
+- `ui/src/app/core/navigation.ts` - `HOME_AREA_KEY` and `screenForDescriptor`.
+- `ui/src/app/shell/panel.ts` - the block, the greeting, `onSuggestion`, `onSuggestionOpen`,
+  `syncSuggested`.
+- `ui/src/main.ts`, `ui/src/app/app.ts` - the store is provided and reset at sign-out.
+- `ui/src/styles/_components.scss` - the `.ocu-suggested*` rules. **Also restores five rule blocks
+  the first implementation pass deleted** (`.ocu-panel-transcript`, its `:focus-visible`,
+  `.ocu-panel-empty`, `.ocu-panel-banner`, `.ocu-panel-banner-link`) - see residual risks.
+- `ui/tools/suggested-view.test.mjs` (new), `ui/tools/panel-layout.test.mjs`,
+  `ui/src/app/shell/panel.spec.ts`, `ui/src/app/testing/suggested-view.ts` (new),
+  `ui/src/app/app*.spec.ts`, `ui/browser/suggested-view.browser-spec.mjs` (new) - the three legs.
+
+Tasks 7 and 8 were already done in the baseline commit; they were verified, not redone, and no
+literal and no Fixed-strings row was added.
+
+**Review findings** - 60 findings across four layers. 37 patched, 9 deferred to frontmatter
+`deferred:` (6 root causes), 11 rejected, 3 refuted. Patched by verdict: high 1 root cause (4
+members), medium 6 root causes, low 12 root causes. Rejections, each with its recorded reason, are
+in the triage log above; the load-bearing ones are the `Open` control's accessible name (by-design:
+EXPERIENCE.md publishes "Open" as that control's name, superseding task 9's `tableChangeToastLink`
+instruction) and `--ocu-panel-home` having no runtime CSS consumer (by-design: the intent forbids
+one).
+
+**Verification** - all from `ui/` unless stated. `npm test`: 976 `node --test` and 497 vitest across
+36 files, 0 failures. `npm run build`: six prebuild checkers clean; initial total **778.37 kB**
+against `angular.json`'s 780 kB `maximumWarning`, so no budget change was made or needed.
+`docker cp dist/ocupilot-ui/browser/.` into `ocupilot-ci` then `npm run test:browser` at
+`http://localhost:52776`: **126/126, 0 skipped** (120 before this story).
+`GET /api/ocupilot/agent/definitions` answers `{"definitions":[]}` after the suite.
+`bash scripts/smoke.sh --container ocupilot-ci`: `executed=18 passed=18 failed=0 pending=2
+skipped=1`, PASSED. `bash scripts/lint-docs.sh`: 0 issues, 0 prose problems. No ObjectScript
+changed, so no `check-objectscript.py` run and no `%UnitTest` class. Every mutation above was
+applied, observed red on the named test, reverted, and the tree confirmed byte-identical.
+
+**Follow-up review recommended: true.** The named unverified risk is the composition decision this
+pass took: which of the two published prompt sets yields on Home. It is settled from EXPERIENCE.md
+rather than from the spec, and it is observable only in jsdom - the throwaway's error log is seeded,
+so the browser leg never reaches the all-zero fallback and no browser assertion has seen the
+fresh-container Home a first user meets.
+
+**Residual risks.**
+
+- **A silent deletion that every gate passed.** The first implementation pass's SCSS insertion
+  removed five existing `.ocu-panel-*` rule blocks, and `npm test`, six prebuild checkers, the
+  126-case browser suite and the smoke run were all green without them - the transcript would not
+  have scrolled and its focus ring was gone. They are restored and the stylesheet's diff is now a
+  pure addition, but nothing in the suite would have caught it, and nothing does now.
+- **Bundle headroom is 1.63 kB**, not the ~12.4 kB the spec's estimate assumed. Story 6.13's
+  appended line and Epic 4's burn-down have very little room before `maximumWarning` needs a
+  decision.
+- The all-zero fallback's treatment of an unreadable count as a zero (deferred item 1) is a product
+  call the block ships one answer to today.

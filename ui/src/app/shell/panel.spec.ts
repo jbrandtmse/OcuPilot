@@ -11,6 +11,7 @@ import { ScopeService } from '../core/scope';
 import { ScreenStores } from '../core/screen-store';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
+import { SOURCES, SWITCHES_DESCRIPTOR, SuggestedView, type Source } from '../core/suggested-view';
 import { CONVERSATION_PATH, TURN_PATH, TurnStore, turnProgressPath, turnStopPath } from '../core/turn';
 import { stubAgentContext } from '../testing/agent-context';
 import { stubAgentStatus } from '../testing/agent-status';
@@ -100,6 +101,8 @@ interface Mounted {
   readonly agentContext: AgentContext;
   readonly scope: StubScope;
   readonly screenStores: ScreenStores;
+  readonly shell: ShellState;
+  readonly suggested: SuggestedView;
   readonly panelState: PanelState;
   readonly turn: TurnStore;
   readonly rows: { enabled: boolean }[];
@@ -123,6 +126,15 @@ async function mount(
     /** `ScopeService.namespace()` (Story 4.11), `'HSCUSTOM'` unless a test says otherwise. */
     namespace?: string;
     screenStores?: ScreenStores;
+    /** The area `ShellState` reports, which is what puts the panel on Home (Story 4.10). */
+    area?: string;
+    /** `SuggestedView`'s transport, for the suggested-view block (Story 4.10). */
+    suggestedApi?: { requestJson: (path: string, init?: unknown) => Promise<unknown> };
+    /**
+     * Whether to settle the block before the first render. Defaults to true on Home; a case about
+     * the in-flight gate passes false, because awaiting a read it is holding open would hang here.
+     */
+    settleSuggested?: boolean;
   } = {}
 ): Promise<Mounted> {
   TestBed.resetTestingModule();
@@ -138,9 +150,20 @@ async function mount(
   const screenStores =
     options.screenStores ?? new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
   const preferences = new PreferenceStore({ storage: memoryStorage() });
-  const panelState =
-    options.panelState ?? new PanelState({ preferences, shell: new ShellState({ preferences }) });
+  const shell = new ShellState({ preferences });
+  if (options.area !== undefined) shell.setActiveArea(options.area);
+  const panelState = options.panelState ?? new PanelState({ preferences, shell });
   const turn = options.turn ?? stubTurnStore();
+  const suggested = new SuggestedView({
+    api: (options.suggestedApi ?? {
+      requestJson: async () => ({ kind: 'ok', status: 200, body: { rows: [] } }),
+    }) as never,
+    agentStatus,
+    scope: scope as unknown as ScopeService,
+  });
+  // On Home the panel loads the block itself, asynchronously; settling the store first is what
+  // makes the first render the answered one, so a DOM assertion is not racing a microtask.
+  if (options.settleSuggested ?? options.area === 'home') await suggested.load();
   TestBed.configureTestingModule({
     providers: [
       provideRouter([
@@ -159,6 +182,8 @@ async function mount(
       { provide: ScreenStores, useValue: screenStores },
       { provide: PanelState, useValue: panelState },
       { provide: TurnStore, useValue: turn },
+      { provide: ShellState, useValue: shell },
+      { provide: SuggestedView, useValue: suggested },
     ],
   });
   if (options.url !== undefined) await TestBed.inject(Router).navigateByUrl(options.url);
@@ -171,6 +196,8 @@ async function mount(
     agentContext,
     scope,
     screenStores,
+    shell,
+    suggested,
     panelState,
     turn,
     rows,
@@ -1860,5 +1887,510 @@ describe('Story 4.11: the context chip, its toggle and the paste warning', () =>
       expect(host.querySelector('.ocu-panel-warning'), text).toBeNull();
       expect(api.calls.some((c) => c.path === TURN_PATH), text).toBe(true);
     }
+  });
+});
+
+// --- Story 4.10: Home's suggested view and the starter prompts ----------------------------------
+
+/** An `ApiService`-shaped transport for `SuggestedView`, recording every path it was asked for. */
+function fakeDatesApi(answer: unknown) {
+  const calls: string[] = [];
+  return {
+    calls,
+    requestJson: async (path: string) => {
+      calls.push(path);
+      return answer;
+    },
+  };
+}
+
+const DATES_OK = (rows: { date: string; count: number }[]) => ({ kind: 'ok', status: 200, body: { rows } });
+
+const DATES_REFUSED = { kind: 'error', status: 403, code: 'AUTH.FORBIDDEN', reason: null, detail: null };
+
+/** Home, an enabled definition, and the application-errors read answering `rows`. */
+function mountOnHome(
+  rows: { date: string; count: number }[],
+  extra: { verdict?: Verdict; turn?: TurnStore; url?: string; restraint?: Partial<Restraint> } = {}
+): Promise<Mounted> {
+  return mount({
+    rows: [{ enabled: true }],
+    area: 'home',
+    suggestedApi: fakeDatesApi(DATES_OK(rows)),
+    ...extra,
+  });
+}
+
+describe("Story 4.10: Home's suggested view and the starter prompts", () => {
+  it('AC1: the block precedes the transcript, carries the published eyebrow, and puts each count in a <code>', async () => {
+    // Mutation (Rule 19): move the `<section class="ocu-suggested">` below `.ocu-panel-transcript`
+    // in `panel.ts` -> the DOM-order assertion goes red.
+    const { host } = await mountOnHome([{ date: '2026-09-17', count: 3 }]);
+    const order = [
+      ...host.querySelectorAll('.ocu-panel-banners, .ocu-panel-chip-slot, .ocu-suggested, [role="log"], .ocu-panel-footer'),
+    ].map((node) => node.className);
+    expect(order).toEqual([
+      'ocu-panel-banners',
+      'ocu-panel-chip-slot',
+      'ocu-suggested',
+      'ocu-panel-transcript',
+      'ocu-panel-footer',
+    ]);
+
+    const block = host.querySelector('.ocu-suggested') as HTMLElement;
+    const eyebrow = block.querySelector('.ocu-suggested-eyebrow') as HTMLElement;
+    expect(eyebrow.textContent?.trim()).toBe(STRINGS.homeSuggestedView);
+    expect(block.getAttribute('aria-labelledby')).toBe(eyebrow.id);
+
+    const rows = [...block.querySelectorAll('.ocu-suggested-line')];
+    expect(rows).toHaveLength(2);
+    const errors = rows[1];
+    const code = errors.querySelector('code') as HTMLElement;
+    expect(code.textContent?.trim()).toBe('3');
+    expect(errors.querySelector('.ocu-suggested-prompt')?.textContent?.trim()).toBe(
+      'Application errors in HSCUSTOM: 3 on 2026-09-17'
+    );
+    // The agent-status line is the sentence the footer renders, so the two cannot disagree.
+    expect(rows[0].querySelector('.ocu-suggested-prompt')?.textContent?.trim()).toBe(STRINGS.statusReadOnlyOff);
+    expect(rows[0].querySelector('code')).toBeNull();
+  });
+
+  it('AC1: the block renders on Home only, and only with an enabled definition', async () => {
+    const away = await mount({ rows: [{ enabled: true }], area: 'permissions' });
+    expect(away.host.querySelector('.ocu-suggested-eyebrow')).toBeNull();
+
+    const unconfigured = await mount({ rows: [], area: 'home' });
+    expect(unconfigured.host.querySelector('.ocu-suggested-eyebrow')).toBeNull();
+
+    const unanswered = await mount({ rows: [{ enabled: true }], area: 'home', answered: false });
+    expect(unanswered.host.querySelector('.ocu-suggested-eyebrow')).toBeNull();
+  });
+
+  it('AC2: a refused read renders no line at all -- no zero, no skeleton row', async () => {
+    const { host } = await mount({
+      rows: [{ enabled: true }],
+      area: 'home',
+      suggestedApi: fakeDatesApi(DATES_REFUSED),
+    });
+    const rows = [...host.querySelectorAll('.ocu-suggested-line')];
+    // The agent-status line, then the three prompts the vacuous all-zero test selects.
+    expect(rows[0].querySelector('.ocu-suggested-prompt')?.textContent?.trim()).toBe(STRINGS.statusReadOnlyOff);
+    expect(host.querySelector('.ocu-suggested')?.textContent).not.toContain('Application errors in');
+    expect(host.querySelectorAll('.ocu-suggested code')).toHaveLength(0);
+  });
+
+  it('AC2: nothing renders while a read is in flight -- on Home, where the block would otherwise show', async () => {
+    // Mutation (Rule 19): delete `&& this.suggested.answered()` from `suggestedVisible` -> the
+    // before-release assertion goes red, because the block paints the eyebrow and the
+    // agent-status line and then gains a second line when the read lands.
+    //
+    // This case must mount ON Home: off Home the `onHome` conjunct hides the block whatever the
+    // read is doing, so the assertion would hold with the in-flight gate gone.
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let asked = 0;
+    const suggestedApi = {
+      requestJson: async () => {
+        asked += 1;
+        await gate;
+        return DATES_OK([{ date: '2026-09-17', count: 1 }]);
+      },
+    };
+    const { host, fixture, suggested } = await mount({
+      rows: [{ enabled: true }],
+      area: 'home',
+      suggestedApi,
+      settleSuggested: false,
+    });
+    expect(asked).toBe(1);
+    expect(host.querySelector('.ocu-suggested-eyebrow')).toBeNull();
+    expect(host.querySelectorAll('.ocu-suggested-line')).toHaveLength(0);
+
+    // The store's own notification is the settle point; a fixed number of microtask hops would be
+    // a guess about how many awaits `load()` takes.
+    const settled = new Promise<void>((resolve) => {
+      const stop = suggested.subscribe(() => {
+        stop();
+        resolve();
+      });
+    });
+    release();
+    await settled;
+    fixture.detectChanges();
+    expect(host.querySelector('.ocu-suggested-eyebrow')?.textContent?.trim()).toBe(STRINGS.homeSuggestedView);
+    expect(host.querySelectorAll('.ocu-suggested-line')).toHaveLength(2);
+  });
+
+  it('AC3: a line has two distinct controls, and its text goes to the composer without starting a turn', async () => {
+    // Mutation (Rule 19): wire the line's text button to `TurnStore.send` instead of
+    // `PanelState.setDraft` -> the "no turn was started" assertion goes red.
+    // Mutation (Rule 19): render the row as one button wrapping the `Open` label -> the
+    // two-distinct-controls assertion goes red.
+    const api = fakeTurnApi({
+      [CONVERSATION_PATH]: [{ kind: 'ok', status: 201, body: { conversationId: 'convo-1' } }],
+      [TURN_PATH]: [{ kind: 'ok', status: 202, body: { turnId: 'turn-1' } }],
+    });
+    const turn = stubTurnStore({ api: api as never });
+    const { host, fixture, panelState } = await mountOnHome([{ date: '2026-09-17', count: 3 }], { turn });
+
+    const row = [...host.querySelectorAll('.ocu-suggested-line')][1] as HTMLElement;
+    const text = row.querySelector('.ocu-suggested-prompt') as HTMLButtonElement;
+    const open = row.querySelector('.ocu-suggested-open') as HTMLAnchorElement;
+    expect(text.tagName).toBe('BUTTON');
+    expect(open.tagName).toBe('A');
+    expect(open).not.toBe(text);
+    expect(text.contains(open)).toBe(false);
+    expect(open.textContent?.trim().startsWith(STRINGS.homeSuggestedOpen)).toBe(true);
+
+    const line = 'Application errors in HSCUSTOM: 3 on 2026-09-17';
+    text.click();
+    await turnSettle();
+    fixture.detectChanges();
+    expect(panelState.draft()).toBe(line);
+    expect((host.querySelector('.ocu-panel-composer') as HTMLTextAreaElement).value).toBe(line);
+    expect(document.activeElement).toBe(host.querySelector('.ocu-panel-composer'));
+    expect(api.calls.some((c) => c.path === TURN_PATH || c.path === CONVERSATION_PATH)).toBe(false);
+  });
+
+  it("AC3: a line's Open navigates to that line's own screen, carrying the current query", async () => {
+    const { host, fixture } = await mountOnHome([{ date: '2026-09-17', count: 3 }], { url: '/?ns=USER' });
+    const open = [...host.querySelectorAll('.ocu-suggested-open')][1] as HTMLAnchorElement;
+    expect(open.getAttribute('href')).toBe('logs/errors?ns=USER');
+    open.click();
+    await fixture.whenStable();
+    expect(TestBed.inject(Router).url).toBe('/logs/errors?ns=USER');
+  });
+
+  it('AC4: a refused Open stays listed, focusable and aria-disabled, and names the pair that failed', async () => {
+    // Mutation (Rule 19): replace `[attr.aria-disabled]` with the native `disabled` attribute ->
+    // the focusable-and-described assertions go red.
+    const { host, fixture } = await mountOnHome([{ date: '2026-09-17', count: 3 }], { verdict: DENIED });
+    const open = [...host.querySelectorAll('.ocu-suggested-open')][1] as HTMLAnchorElement;
+    expect(open).not.toBeNull();
+    expect(open.getAttribute('aria-disabled')).toBe('true');
+    expect(open.hasAttribute('disabled')).toBe(false);
+    expect(open.hasAttribute('tabindex')).toBe(false);
+    expect(open.hasAttribute('href')).toBe(true);
+    const reason = host.querySelector(`#${open.getAttribute('aria-describedby')}`) as HTMLElement;
+    expect(reason.textContent?.trim()).toBe('Requires OcuPilotAdmin:USE');
+
+    // The matrix names the agent-status line's own Open (target Switches, OcuPilotAdmin:USE), so
+    // the row the matrix is about is asserted as well as the one below it.
+    const statusOpen = [...host.querySelectorAll('.ocu-suggested-open')][0] as HTMLAnchorElement;
+    expect(statusOpen.getAttribute('aria-disabled')).toBe('true');
+    expect(statusOpen.hasAttribute('disabled')).toBe(false);
+    expect(statusOpen.hasAttribute('href')).toBe(true);
+    expect(
+      host.querySelector(`#${statusOpen.getAttribute('aria-describedby')}`)?.textContent?.trim()
+    ).toBe('Requires OcuPilotAdmin:USE');
+
+    const before = TestBed.inject(Router).url;
+    open.click();
+    await fixture.whenStable();
+    expect(TestBed.inject(Router).url).toBe(before);
+
+    // A modifier click on a refused control is refused too. The observable is the cancellation,
+    // not the router: the anchor keeps a real href, and a handler that bailed on the modifiers
+    // before the gate would leave the default action standing -- which opens the refused screen in
+    // a new tab, something jsdom cannot show by moving the router.
+    const modified = new MouseEvent('click', { bubbles: true, cancelable: true, metaKey: true });
+    open.dispatchEvent(modified);
+    await fixture.whenStable();
+    expect(modified.defaultPrevented).toBe(true);
+    expect(TestBed.inject(Router).url).toBe(before);
+    // The converse -- a modifier click on a REACHABLE line is left to the browser -- is not
+    // asserted here: dispatching it makes jsdom log an unimplemented cross-document navigation,
+    // which is noise in every later run. The modifier bail is the second branch of the same
+    // handler, and the AC3 navigation case above pins the unmodified path.
+  });
+
+  it("AC3: the agent-status line's Open resolves to Switches, so its declared descriptor is real", async () => {
+    // Mutation (Rule 19): respell `SWITCHES_DESCRIPTOR` -> `screenForDescriptor` answers null, the
+    // href empties and this goes red. Without it a descriptor rename leaves that line's Open inert
+    // with every other test still green, because they all assert the application-errors row.
+    const { host } = await mountOnHome([{ date: '2026-09-17', count: 3 }], { url: '/?ns=USER' });
+    const statusOpen = [...host.querySelectorAll('.ocu-suggested-open')][0] as HTMLAnchorElement;
+    expect(statusOpen.getAttribute('href')).toBe('agent/switches?ns=USER');
+    expect(SWITCHES_DESCRIPTOR).toBe('OcuPilot.Screen.Descriptor.AgentSwitches');
+  });
+
+  it('AC5: a fourth source appended to the declared array renders a fourth row, through the block itself', async () => {
+    // Mutation (Rule 19): replace the template's `@for (row of suggestedRows)` with two explicit
+    // rows for the two known keys, or cap `suggestedRows` with `.slice(0, 2)` -> this goes red.
+    // `tools/suggested-view.test.mjs` pins the same AC at the store; this is the render path the
+    // AC actually names, including `suggestedRow`'s descriptor lookup, which a new source can fail.
+    // `readonly Source[]` is a compile-time guarantee about production code, not about a test that
+    // stands in for Story 6.13's append; the `finally` below is what keeps the array as it was.
+    const sources = SOURCES as Source[];
+    sources.push({
+      key: 'alerts-log',
+      read: (_view, state) => {
+        state.answer = {
+          key: 'alerts-log',
+          counted: true,
+          text: 'New alerts.log entries: 2',
+          count: 2,
+          label: 'New alerts.log entries: ',
+          tail: '',
+          descriptor: SWITCHES_DESCRIPTOR,
+        };
+        return Promise.resolve();
+      },
+    });
+    try {
+      const { host } = await mountOnHome([{ date: '2026-09-17', count: 3 }]);
+      const rows = [...host.querySelectorAll('.ocu-suggested-line')];
+      expect(rows).toHaveLength(3);
+      expect(rows[2].querySelector('.ocu-suggested-prompt')?.textContent?.trim()).toBe(
+        'New alerts.log entries: 2'
+      );
+      expect(rows[2].querySelector('code')?.textContent?.trim()).toBe('2');
+      expect(rows[2].querySelector('.ocu-suggested-open')?.getAttribute('href')).toContain('agent/switches');
+    } finally {
+      sources.pop();
+    }
+  });
+
+  it('AC6: every counted line at zero renders the three published prompts, and the agent-status line stays', async () => {
+    const { host, panelState } = await mountOnHome([]);
+    const block = host.querySelector('.ocu-suggested') as HTMLElement;
+    expect(block.querySelector('.ocu-suggested-eyebrow')?.textContent?.trim()).toBe(STRINGS.homeSuggestedView);
+    // The send glyph is `aria-hidden` and contributes no word, so the row's own name is the text
+    // span alone -- which is what a starter prompt places in the composer.
+    const labels = [...block.querySelectorAll('.ocu-suggested-prompt, .ocu-suggested-starter > span:first-child')].map(
+      (node) => node.textContent?.trim()
+    );
+    expect(labels).toEqual([
+      STRINGS.statusReadOnlyOff,
+      STRINGS.homeStarterPromptExplainScreen,
+      STRINGS.homeStarterPromptExplainLog,
+      STRINGS.homeStarterPromptChangeOneThing,
+    ]);
+    expect(block.querySelectorAll('code')).toHaveLength(0);
+    expect(block.querySelectorAll('.ocu-suggested-starter')).toHaveLength(3);
+
+    // The same gesture as a line's own text.
+    (block.querySelectorAll('.ocu-suggested-starter')[1] as HTMLButtonElement).click();
+    expect(panelState.draft()).toBe(STRINGS.homeStarterPromptExplainLog);
+  });
+
+  it('AC7: a restored, empty transcript reads greeting, three prompts, then the selection hint', async () => {
+    // Mutation (Rule 19): swap the greeting and the selection hint in `panel.ts` -> the DOM-order
+    // assertion goes red.
+    const turn = stubTurnStore();
+    await turn.restore();
+    const { host } = await mountOnHome([{ date: '2026-09-17', count: 3 }], { turn });
+    const log = host.querySelector('[role="log"]') as HTMLElement;
+    const parts = [
+      ...log.querySelectorAll('.ocu-panel-greeting, .ocu-suggested-starter > span:first-child, .ocu-panel-selection-hint'),
+    ].map((node) => node.textContent?.trim());
+    expect(parts).toEqual([
+      STRINGS.agentIdleGreeting,
+      STRINGS.homeStarterPromptExplainScreen,
+      STRINGS.homeStarterPromptExplainLog,
+      STRINGS.homeStarterPromptChangeOneThing,
+      STRINGS.agentIdleSelectionHint,
+    ]);
+  });
+
+  it('AC6 with AC7: the fresh-container state offers exactly one set of three starter prompts', async () => {
+    // Mutation (Rule 19): drop the `transcriptEmpty` guard from `suggestedPrompts` -> this goes
+    // red with six prompt rows.
+    //
+    // Home, an enabled definition, a restored empty transcript and a clean log all hold at once on
+    // a fresh container -- EXPERIENCE.md's UJ-2 calls that state "the suggested view offering the
+    // three starter prompts", singular -- and both blocks would otherwise render the same three.
+    // Its Home row reads "its suggested view or, when nothing needs attention, three starter
+    // prompts", and its panel Idle row publishes the greeting's own order, "over the screen's
+    // three starter prompts, and beneath them the hint", so the greeting keeps them.
+    const turn = stubTurnStore();
+    await turn.restore();
+    const { host } = await mountOnHome([], { turn });
+
+    const block = host.querySelector('.ocu-suggested') as HTMLElement;
+    const log = host.querySelector('[role="log"]') as HTMLElement;
+    expect(host.querySelectorAll('.ocu-suggested-starter')).toHaveLength(3);
+    expect(block.querySelectorAll('.ocu-suggested-starter')).toHaveLength(0);
+    expect(log.querySelectorAll('.ocu-suggested-starter')).toHaveLength(3);
+
+    // The block still renders, and still carries the uncounted agent-status line (AC2).
+    expect(block.querySelector('.ocu-suggested-eyebrow')?.textContent?.trim()).toBe(STRINGS.homeSuggestedView);
+    expect(
+      [...block.querySelectorAll('.ocu-suggested-prompt')].map((node) => node.textContent?.trim())
+    ).toEqual([STRINGS.statusReadOnlyOff]);
+
+    // And the greeting's published order survives it.
+    expect(
+      [...log.querySelectorAll('.ocu-panel-greeting, .ocu-suggested-starter > span:first-child, .ocu-panel-selection-hint')].map(
+        (node) => node.textContent?.trim()
+      )
+    ).toEqual([
+      STRINGS.agentIdleGreeting,
+      STRINGS.homeStarterPromptExplainScreen,
+      STRINGS.homeStarterPromptExplainLog,
+      STRINGS.homeStarterPromptChangeOneThing,
+      STRINGS.agentIdleSelectionHint,
+    ]);
+  });
+
+  it('a suggestion is refused while the composer is unavailable, as every other draft write is', async () => {
+    // Mutation (Rule 19): drop the `composerUnavailable` guard from `onSuggestion` -> this goes
+    // red. With the kill switch on the block still renders -- its agent-status line is that
+    // state's sentence -- and the composer is readonly, so the draft could not be sent.
+    const { host, panelState } = await mountOnHome([{ date: '2026-09-17', count: 3 }], {
+      restraint: { killSwitch: true, killSwitchAudience: 'everyone', killSwitchReason: 'Change freeze' },
+    });
+    const composer = host.querySelector('.ocu-panel-composer') as HTMLTextAreaElement;
+    expect(composer.hasAttribute('readonly')).toBe(true);
+    const rows = [...host.querySelectorAll('.ocu-suggested-line')];
+    expect(rows.length).toBeGreaterThan(0);
+    (rows[0].querySelector('.ocu-suggested-prompt') as HTMLButtonElement).click();
+    expect(panelState.draft()).toBe('');
+    expect(composer.value).toBe('');
+  });
+
+  it('AC7: the greeting is withheld until the transcript is restored, and once a turn exists', async () => {
+    const unrestored = stubTurnStore();
+    const before = await mount({ rows: [{ enabled: true }], area: 'home', turn: unrestored });
+    expect(before.host.querySelector('.ocu-panel-greeting')).toBeNull();
+
+    const restored = stubTurnStore();
+    await restored.restore();
+    const empty = await mount({ rows: [{ enabled: true }], area: 'home', turn: restored });
+    expect(empty.host.querySelector('.ocu-panel-greeting')?.textContent?.trim()).toBe(STRINGS.agentIdleGreeting);
+  });
+
+  it('the greeting is withheld until the agent status has answered, as its published trigger requires', async () => {
+    // Mutation (Rule 19): gate the greeting on `transcriptEmpty` instead of `greetingVisible` ->
+    // this goes red. The transcript's `@else` branch is reached whenever the panel is not
+    // known-unconfigured, which includes the window before the status answers, so the greeting
+    // would render before anything knows whether a definition is enabled.
+    const turn = stubTurnStore();
+    await turn.restore();
+    const unanswered = await mount({ rows: [{ enabled: true }], area: 'home', turn, answered: false });
+    expect(unanswered.host.querySelector('.ocu-panel-greeting')).toBeNull();
+    expect(unanswered.host.querySelector('.ocu-panel-selection-hint')).toBeNull();
+
+    const answered = await mount({ rows: [{ enabled: true }], area: 'home', turn });
+    expect(answered.host.querySelector('.ocu-panel-greeting')?.textContent?.trim()).toBe(
+      STRINGS.agentIdleGreeting
+    );
+  });
+
+  it('the greeting renders on every route, not only on Home -- the published prompts are screen-agnostic', async () => {
+    const turn = stubTurnStore();
+    await turn.restore();
+    const { host } = await mount({ rows: [{ enabled: true }], area: 'permissions', turn });
+    expect(host.querySelector('.ocu-suggested-eyebrow')).toBeNull();
+    expect(host.querySelector('.ocu-panel-greeting')?.textContent?.trim()).toBe(STRINGS.agentIdleGreeting);
+  });
+
+  it('the block reads once per Home visit per namespace, and not at all before a namespace resolves', async () => {
+    // Mutation (Rule 19): drop the `suggestedLoadedFor === namespace` guard from `syncSuggested`
+    // -> the "one call" assertions go red, because every store's own notification reads again.
+    const api = fakeDatesApi(DATES_OK([{ date: '2026-09-17', count: 1 }]));
+    const { fixture, scope, shell } = await mount({
+      rows: [{ enabled: true }],
+      area: 'home',
+      namespace: '',
+      suggestedApi: api,
+    });
+    expect(api.calls).toEqual([]);
+
+    scope.value = 'HSCUSTOM';
+    scope.notify();
+    await Promise.resolve();
+    fixture.detectChanges();
+    expect(api.calls).toEqual(['/api/ocupilot/logs/errors/dates?namespace=HSCUSTOM']);
+
+    // Another store answering on the same visit reads nothing more.
+    shell.setActiveArea('home');
+    scope.notify();
+    await Promise.resolve();
+    expect(api.calls).toHaveLength(1);
+
+    // Leaving and returning is a new visit.
+    shell.setActiveArea('permissions');
+    shell.setActiveArea('home');
+    await Promise.resolve();
+    expect(api.calls).toHaveLength(2);
+
+    // A switch is a different question (AD-44).
+    scope.value = 'USER';
+    scope.notify();
+    await Promise.resolve();
+    expect(api.calls[2]).toBe('/api/ocupilot/logs/errors/dates?namespace=USER');
+    expect(api.calls).toHaveLength(3);
+  });
+
+  it('a namespace switch drops the previous namespace\'s answer rather than rendering it against the new scope', async () => {
+    // Mutation (Rule 19): drop the `if (previous !== null) this.suggested.reset()` from
+    // `syncSuggested` -> this goes red, because the block keeps rendering the HSCUSTOM sentence
+    // while the tab is scoped to USER.
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let call = 0;
+    const suggestedApi = {
+      requestJson: async (path: string) => {
+        call += 1;
+        if (call > 1) await gate;
+        return DATES_OK([{ date: '2026-09-17', count: path.endsWith('USER') ? 7 : 3 }]);
+      },
+    };
+    const { host, fixture, scope, suggested } = await mount({
+      rows: [{ enabled: true }],
+      area: 'home',
+      suggestedApi,
+    });
+    expect(host.querySelector('.ocu-suggested')?.textContent).toContain(
+      'Application errors in HSCUSTOM: 3 on 2026-09-17'
+    );
+
+    scope.value = 'USER';
+    scope.notify();
+    fixture.detectChanges();
+    // The block is withheld whole rather than showing the departed namespace's count.
+    expect(host.querySelector('.ocu-suggested-eyebrow')).toBeNull();
+    expect(host.querySelector('.ocu-suggested')?.textContent).not.toContain('HSCUSTOM');
+
+    const settled = new Promise<void>((resolve) => {
+      const stop = suggested.subscribe(() => {
+        stop();
+        resolve();
+      });
+    });
+    release();
+    await settled;
+    fixture.detectChanges();
+    expect(host.querySelector('.ocu-suggested')?.textContent).toContain(
+      'Application errors in USER: 7 on 2026-09-17'
+    );
+  });
+
+  it('the hidden block references no label of its own, so it leaves no dangling IDREF off Home', async () => {
+    // Mutation (Rule 19): bind `[attr.aria-labelledby]="suggestedLabelId"` unconditionally -> this
+    // goes red. The section is in the DOM on every route, so an unconditional binding points at an
+    // element that only exists inside the `@if`.
+    const away = await mount({ rows: [{ enabled: true }], area: 'permissions' });
+    const hidden = away.host.querySelector('.ocu-suggested') as HTMLElement;
+    expect(hidden).not.toBeNull();
+    expect(hidden.hasAttribute('aria-labelledby')).toBe(false);
+
+    const home = await mountOnHome([{ date: '2026-09-17', count: 3 }]);
+    const shown = home.host.querySelector('.ocu-suggested') as HTMLElement;
+    expect(home.host.querySelector(`#${shown.getAttribute('aria-labelledby')}`)).not.toBeNull();
+  });
+
+  it('an unconfigured panel renders neither the block nor the greeting: the existing empty state owns the transcript', async () => {
+    const turn = stubTurnStore();
+    await turn.restore();
+    const { host } = await mount({ rows: [], area: 'home', turn });
+    expect(host.querySelector('.ocu-suggested-eyebrow')).toBeNull();
+    expect(host.querySelector('.ocu-panel-greeting')).toBeNull();
+    expect(host.querySelector('[role="log"] .ocu-panel-example')).not.toBeNull();
   });
 });

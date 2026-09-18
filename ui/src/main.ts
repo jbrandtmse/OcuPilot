@@ -22,6 +22,7 @@ import { ScreenActions } from './app/core/screen-actions';
 import { ScreenStores } from './app/core/screen-store';
 import { Session } from './app/core/session';
 import { ShellState } from './app/core/shell-state';
+import { SuggestedView } from './app/core/suggested-view';
 import { TokenStore, readNavigationKind, readSessionStorage } from './app/core/token-store';
 import { TurnStore } from './app/core/turn';
 
@@ -169,6 +170,12 @@ const refresh = new RefreshService({
 // the Definitions list re-reads it once rather than once per consumer (AD-14).
 const agentStatus = new AgentStatus({ api, bus, connectivity });
 
+// Home's suggested view (Story 4.10): the attention lines above the transcript and the starter
+// prompts that stand in for them. Built here beside `agentStatus` and over the same `api`, `scope`
+// and `connectivity`, so its agent-status line is the same verdict the panel's banners render and
+// its application-errors read is scoped to the namespace every other call carries.
+const suggested = new SuggestedView({ api, agentStatus, scope, connectivity });
+
 // The context chip's one source (Story 4.11): the caller's sharing choice, the resolved row cap,
 // and where a turn's provider call goes. Built here beside `agentStatus` for the same reason --
 // the chip and the Send path both read one answer, and the bus is what keeps a changed row cap
@@ -214,5 +221,6 @@ bootstrapApplication(App, {
     { provide: FormDirty, useValue: formDirty },
     { provide: AgentStatus, useValue: agentStatus },
     { provide: AgentContext, useValue: agentContext },
+    { provide: SuggestedView, useValue: suggested },
   ],
 }).catch((err) => console.error(err));

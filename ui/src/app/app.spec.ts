@@ -35,8 +35,10 @@ import { PanelState } from './core/panel-layout';
 import { TurnStore } from './core/turn';
 import { ShellState } from './core/shell-state';
 import { STRINGS } from './core/strings';
+import { SuggestedView } from './core/suggested-view';
 import { stubAgentContext } from './testing/agent-context';
 import { stubAgentStatus } from './testing/agent-status';
+import { stubSuggestedView } from './testing/suggested-view';
 import { stubTurnStore } from './testing/turn';
 import { screenDeclaration } from './testing/screen-declaration';
 
@@ -339,6 +341,7 @@ describe('the shell frame', () => {
   let navigation: StubNavigation;
   let agentStatus: AgentStatus;
   let agentContext: AgentContext;
+  let suggested: SuggestedView;
   /** The definitions the stubbed read answers with. Mutated to arrange an Enable. */
   let definitionRows: { enabled: boolean }[];
   let scope: StubScope;
@@ -366,6 +369,9 @@ describe('the shell frame', () => {
     // Unanswered by default too, for the same reason: the chip renders nothing until a test that
     // is about it loads it.
     agentContext = stubAgentContext();
+    // Unanswered by default, for the same reason: Home's suggested view renders nothing until a
+    // test that is about it loads it.
+    suggested = stubSuggestedView();
     scope = new StubScope();
     connectivity = new StubConnectivity();
     // The real framework, timer seam neutralized: the frame mounts the chip and the stamp, and
@@ -408,6 +414,7 @@ describe('the shell frame', () => {
         { provide: NavigationService, useValue: navigation as unknown as NavigationService },
         { provide: AgentStatus, useValue: agentStatus },
         { provide: AgentContext, useValue: agentContext },
+        { provide: SuggestedView, useValue: suggested },
         { provide: ShellState, useValue: shellState },
         { provide: PanelState, useValue: panelState },
         { provide: TurnStore, useValue: turn },
@@ -679,6 +686,8 @@ describe('the shell frame', () => {
     // sign-out assertion below observes a real drop rather than a value that started false.
     await agentContext.load();
     expect(agentContext.answered()).toBe(true);
+    await suggested.load();
+    expect(suggested.answered()).toBe(true);
 
     session.move('form');
     fixture.detectChanges();
@@ -694,6 +703,9 @@ describe('the shell frame', () => {
     // red, and the next principal's first paint would carry the previous principal's sharing
     // choice and provider answer.
     expect(agentContext.answered()).toBe(false);
+    // Mutation (Rule 19): delete `this.suggested.reset()` from the same branch -> this goes red,
+    // and Home's first paint for the next principal would carry the previous principal's counts.
+    expect(suggested.answered()).toBe(false);
   });
 
   it('an unverified instance renders the blocking notice and none of the frame', () => {

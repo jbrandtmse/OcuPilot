@@ -3205,6 +3205,122 @@ app-data-table {
   padding: 0 var(--ocu-space-2);
 }
 
+// Home's suggested view (DESIGN.md `:1137`), between the chip slot and the transcript. It holds
+// its place and never scrolls: the transcript is the one scrolling region in the body. An empty
+// section leaves no gap, following the chip slot's own `:empty` precedent above -- which is what
+// makes "the block renders nothing" true of the layout as well as of the DOM.
+.ocu-suggested {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: var(--ocu-space-1);
+  padding: var(--ocu-space-3) var(--ocu-panel-gutter) 0 var(--ocu-space-4);
+}
+
+.ocu-suggested:empty {
+  display: none;
+}
+
+.ocu-suggested-eyebrow {
+  @include typo.ocu-type('label');
+
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-suggested-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// A minimum, not a fixed height (DESIGN.md `:1137` with Reflow): the line's own text wraps at a
+// narrow panel and the row grows with it.
+.ocu-suggested-line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--ocu-space-2);
+  min-height: 32px;
+}
+
+// Both gestures are `button-text`-shaped targets taking the row's width, so a line's `Open`
+// control sits at the right and a starter prompt fills the row. The line's own text carries the
+// hover, not the row: DESIGN.md puts it on the target.
+.ocu-suggested-prompt,
+.ocu-suggested-starter {
+  @include typo.ocu-type('body');
+
+  display: block;
+  flex: 1 1 auto;
+  border: 1px solid transparent;
+  border-radius: var(--ocu-radius-sm);
+  background: transparent;
+  color: var(--ocu-on-surface);
+  text-align: left;
+  cursor: pointer;
+}
+
+.ocu-suggested-prompt {
+  padding: var(--ocu-space-1) var(--ocu-space-2);
+}
+
+.ocu-suggested-prompt:hover {
+  background: var(--ocu-surface-container-low);
+}
+
+.ocu-suggested-prompt:focus-visible,
+.ocu-suggested-starter:focus-visible {
+  @include ocu-focus-ring;
+}
+
+.ocu-suggested-count {
+  @include typo.ocu-type('code');
+}
+
+.ocu-suggested-open {
+  flex: 0 0 auto;
+  padding: 0 var(--ocu-space-2);
+}
+
+// The all-zero fallback and the empty-transcript greeting share these rows (DESIGN.md `:1137`):
+// full-width, outlined, with a send glyph at the right.
+.ocu-suggested-starter {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ocu-space-2);
+  padding: var(--ocu-space-2);
+  border-color: var(--ocu-outline-variant);
+  border-radius: var(--ocu-radius-md);
+  background: var(--ocu-surface-container-low);
+  color: var(--ocu-secondary);
+}
+
+// The starter row is the only affordance in both the fallback and the greeting, so it answers the
+// pointer the way its sibling `.ocu-suggested-prompt` does. It already carries the container
+// background, so the hover is the outline rather than a second fill.
+.ocu-suggested-starter:hover {
+  border-color: var(--ocu-outline);
+}
+
+.ocu-suggested-send-glyph {
+  flex: 0 0 auto;
+  font-size: 16px;
+}
+
+// The empty-transcript greeting and its selection hint -- EXPERIENCE.md's
+// "the greeting and the selection hint on a first turn".
+.ocu-panel-greeting,
+.ocu-panel-selection-hint {
+  @include typo.ocu-type('body');
+
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
+}
+
 // The band and the card read as one object: the band carries the card's top corners and the card
 // squares its own, so the label belongs to the card rather than floating above it.
 .ocu-panel-example {

@@ -22,6 +22,8 @@ import { Session, type SessionState } from './core/session';
 import { PanelState } from './core/panel-layout';
 import { TurnStore } from './core/turn';
 import { ShellState } from './core/shell-state';
+import { SuggestedView } from './core/suggested-view';
+import { stubSuggestedView } from './testing/suggested-view';
 import { stubTurnStore } from './testing/turn';
 
 /**
@@ -286,6 +288,7 @@ describe('the first-login gate and the requested screen it may move off', () => 
         },
         { provide: AgentStatus, useValue: new AgentStatus({ api: stub.api }) },
         { provide: AgentContext, useValue: new AgentContext({ api: stub.api }) },
+        { provide: SuggestedView, useValue: stubSuggestedView() },
         { provide: ScopeService, useValue: new StubScope() as unknown as ScopeService },
         { provide: ConnectivityService, useValue: connectivity },
         {

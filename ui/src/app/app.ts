@@ -28,6 +28,7 @@ import { ScopeService } from './core/scope';
 import { Session, isInstallStateUnreadable, isSignedIn } from './core/session';
 import { ShellState } from './core/shell-state';
 import { STRINGS } from './core/strings';
+import { SuggestedView } from './core/suggested-view';
 import { AgentNavigator } from './shell/agent-navigator';
 import { CommandBar } from './shell/command-bar';
 import { FaultBanner } from './shell/fault-banner';
@@ -183,6 +184,7 @@ export class App {
   private readonly navigation = inject(NavigationService);
   private readonly agentStatus = inject(AgentStatus);
   private readonly agentContext = inject(AgentContext);
+  private readonly suggested = inject(SuggestedView);
   private readonly scope = inject(ScopeService);
   private readonly router = inject(Router);
   private readonly connectivity = inject(ConnectivityService);
@@ -459,6 +461,10 @@ export class App {
       // instance's own answer about where a turn's provider call goes belongs to no one until
       // the next principal reads it fresh.
       this.agentContext.reset();
+      // The twelfth: Home's suggested view holds this principal's own answers -- how many
+      // application errors they may read in the namespace they were scoped to. The next sign-in
+      // in this tab reads them again rather than rendering a departed principal's counts (AD-8).
+      this.suggested.reset();
       return;
     }
     void this.instance.verify();

@@ -3,8 +3,10 @@
  *
  * `resolveLayout` is the one computation of DESIGN.md's Yield order: when rail, side bar, content
  * minimum and panel do not fit the viewport, (1) the side bar collapses, (2) the panel shrinks from
- * its remembered width toward its minimum, (3) the content column holds its minimum and scrolls
- * inside itself. No media query stands in for it; every consumer reads the same answer.
+ * its target -- the remembered width, or `panelHomeTarget` on Home -- toward its minimum, (3) the
+ * content column holds its minimum and scrolls inside itself. No media query stands in for it;
+ * every consumer reads the same answer, and Home's wider panel is an input to it rather than a
+ * second CSS path (AD-19).
  *
  * `PanelState` holds what the panel remembers and what the user is doing to it: the remembered
  * width (through `PreferenceStore`, the only module that touches persistent storage), the draft,
@@ -13,7 +15,7 @@
  */
 
 // The `.ts` extensions are what let `node --test` resolve these at runtime.
-import { areaByKey } from './navigation.ts';
+import { HOME_AREA_KEY, areaByKey } from './navigation.ts';
 import { PreferenceStore } from './preferences.ts';
 import { ShellState } from './shell-state.ts';
 
@@ -35,6 +37,30 @@ export const PANEL_DEFAULT_WIDTH = 400;
 /** EXPERIENCE.md panel-resize-handle: "Left/Right arrows change the width by 16 px". */
 export const PANEL_KEYBOARD_STEP = 16;
 
+/** The `50vw` half of DESIGN.md `spacing.panel-home`, as a fraction of the viewport. */
+export const HOME_PANEL_FRACTION = 0.5;
+
+/**
+ * DESIGN.md `spacing.panel-home`: `min(50vw, viewport - rail - content minimum)` -- the width the
+ * panel targets on Home, so the content column always keeps its minimum (DESIGN.md `:898`).
+ *
+ * `0` for an unmeasured viewport, which is this module's "not on Home" value as well: a target of
+ * `0` leaves `resolveLayout` on the remembered width. The three operands are the same three
+ * `--ocu-panel-home` is built from, and `tools/panel-layout.test.mjs` asserts that equality, which
+ * is the token's one consumer (DW-379). There is no runtime CSS consumer: the inline
+ * `[style.width.px]` binding already wins, and CSS cannot see the side bar, so a CSS width cannot
+ * express the yield order.
+ */
+export function panelHomeTarget(viewport: number): number {
+  if (!(viewport > 0)) return 0;
+  // Floored at 0, not just at an unmeasured viewport: below 688px the rail and the content minimum
+  // already fill the row, and a negative result would be a third meaning for a field that has two.
+  return Math.max(
+    0,
+    Math.min(Math.floor(viewport * HOME_PANEL_FRACTION), viewport - RAIL_WIDTH - CONTENT_MIN_WIDTH)
+  );
+}
+
 export interface LayoutInput {
   /** The viewport's CSS width in px; `0` or less means not yet measured, and nothing yields. */
   readonly viewport: number;
@@ -44,6 +70,12 @@ export interface LayoutInput {
   readonly sideBarReopened: boolean;
   /** The remembered panel width. */
   readonly remembered: number;
+  /**
+   * The width the panel targets instead of the remembered one, or `0` for "not on Home"
+   * (`panelHomeTarget`). Required rather than optional: a silently-defaulting layout input is the
+   * class of bug this module exists to prevent, and the compiler names every call site.
+   */
+  readonly homeTarget: number;
   readonly fullScreen: boolean;
 }
 
@@ -64,7 +96,10 @@ export interface Layout {
  * function of the width rather than a history of concessions.
  */
 export function resolveLayout(input: LayoutInput): Layout {
-  const target = Math.max(PANEL_MIN_WIDTH, input.remembered);
+  const target = Math.max(
+    PANEL_MIN_WIDTH,
+    input.homeTarget > 0 ? input.homeTarget : input.remembered
+  );
   if (!(input.viewport > 0)) {
     return {
       sideBarShown: input.sideBarPreferred,
@@ -117,15 +152,32 @@ export class PanelState {
   /** The pointer x and panel width a drag started from, or `null` when no drag is in progress. */
   private drag: { readonly x: number; readonly width: number } | null = null;
 
+  /**
+   * Whether a width gesture on this visit to Home has released the Home target. With the target
+   * unconditional the resize handle would be dead on Home and its `aria-valuenow` would lie, so a
+   * drag or an arrow step takes effect and is stored as the remembered width.
+   */
+  private homeWidthReleased = false;
+
+  /** The active area as of the last `ShellState` notification, so a change can reset the release. */
+  private lastActiveArea = '';
+
   private readonly listeners = new Set<() => void>();
 
   constructor(options: PanelStateOptions) {
     this.preferences = options.preferences;
     this.shell = options.shell;
     this.rememberedWidth = this.preferences.panelWidth(PANEL_DEFAULT_WIDTH, PANEL_MIN_WIDTH);
+    this.lastActiveArea = this.shell.activeArea();
     // A side bar the user closed is no longer reopened; the next open meets the yield afresh.
+    // A route that left the area ends the Home release: the target is per visit.
     this.shell.subscribe(() => {
       if (!this.shell.open()) this.reopened = false;
+      const area = this.shell.activeArea();
+      if (area !== this.lastActiveArea) {
+        this.lastActiveArea = area;
+        this.homeWidthReleased = false;
+      }
       this.notify();
     });
   }
@@ -143,6 +195,7 @@ export class PanelState {
       sideBarPreferred: this.sideBarPreferred(),
       sideBarReopened: this.reopened,
       remembered: this.rememberedWidth,
+      homeTarget: this.homeTargetWidth(),
       fullScreen: this.full,
     });
   }
@@ -254,9 +307,20 @@ export class PanelState {
 
   /** A result equal to the rendered width changes nothing, so a step at a stop keeps the remembered width. */
   private applyWidth(width: number, persist: boolean): void {
+    // The width on screen before the gesture. Captured first because the release below changes
+    // what `layout()` answers, so "equal to the rendered width" has to mean the width the user
+    // can see, not the one the release has already moved to.
+    const rendered = this.layout().panelWidth;
+    // Released BEFORE the layout is read, so the bounds and the early return are computed against
+    // the width this gesture is about to land on rather than against the Home target it replaces.
+    this.homeWidthReleased = true;
     const layout = this.layout();
     const bounded = Math.round(Math.min(Math.max(width, PANEL_MIN_WIDTH), layout.panelMax));
-    if (bounded === layout.panelWidth) return;
+    if (bounded === layout.panelWidth) {
+      // Nothing to store, but releasing the Home target moved the panel, so consumers are told.
+      if (bounded !== rendered) this.notify();
+      return;
+    }
     const changed = bounded !== this.rememberedWidth;
     this.rememberedWidth = bounded;
     if (persist) this.preferences.setPanelWidth(bounded);
@@ -273,8 +337,19 @@ export class PanelState {
       sideBarPreferred: true,
       sideBarReopened: false,
       remembered: this.rememberedWidth,
+      homeTarget: this.homeTargetWidth(),
       fullScreen: false,
     }).sideBarShown;
+  }
+
+  /**
+   * The Home target for this render, or `0` on any other area and once a width gesture on this
+   * visit has released it (`applyWidth`). The remembered width is never written from here, so
+   * leaving Home restores it.
+   */
+  private homeTargetWidth(): number {
+    if (this.shell.activeArea() !== HOME_AREA_KEY || this.homeWidthReleased) return 0;
+    return panelHomeTarget(this.viewportWidth);
   }
 
   private notify(): void {

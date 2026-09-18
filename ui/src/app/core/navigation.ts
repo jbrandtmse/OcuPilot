@@ -183,10 +183,26 @@ export function screenForRoute(route: string): ScreenDeclaration | null {
   return SCREENS.find((screen) => screen.route === route) ?? null;
 }
 
+/**
+ * The screen declared by `descriptor`, or `null`. The companion to `screenForRoute` for a caller
+ * that holds a descriptor's class name rather than its route -- which is the identity AD-5 makes
+ * stable, so a screen whose route moves keeps its reference.
+ */
+export function screenForDescriptor(descriptor: string): ScreenDeclaration | null {
+  return SCREENS.find((screen) => screen.descriptor === descriptor) ?? null;
+}
+
 /** Whether a screen is keyed by an id, and therefore carries an `/:id` route. */
 export function hasIdRoute(screen: ScreenDeclaration): boolean {
   return screen.id.kind !== 'none';
 }
+
+/**
+ * Home's own area key, as `OcuPilot.Screen.Descriptor.Home` declares it and the generated mirror
+ * carries it. Named here so a reader of the shell's own state -- `PanelState`, which learns where
+ * it is from `ShellState.activeArea()` -- tests against one constant rather than a literal.
+ */
+export const HOME_AREA_KEY = 'home';
 
 /** The placeholder the Fixed strings table leaves for an area's own name. */
 export const AREA_PLACEHOLDER = '<Area>';

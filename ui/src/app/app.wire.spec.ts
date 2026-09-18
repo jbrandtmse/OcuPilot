@@ -24,8 +24,10 @@ import { PanelState } from './core/panel-layout';
 import { TurnStore } from './core/turn';
 import { ShellState } from './core/shell-state';
 import { STRINGS } from './core/strings';
+import { SuggestedView } from './core/suggested-view';
 import { stubAgentContext } from './testing/agent-context';
 import { stubAgentStatus } from './testing/agent-status';
+import { stubSuggestedView } from './testing/suggested-view';
 import { stubTurnStore } from './testing/turn';
 import { screenDeclaration } from './testing/screen-declaration';
 
@@ -268,6 +270,7 @@ describe('the real shell, routed to the real Home screen, sharing one real Refre
         // screen, and a panel that has picked an audience would be a second subject in it.
         { provide: AgentStatus, useValue: stubAgentStatus() },
         { provide: AgentContext, useValue: stubAgentContext() },
+        { provide: SuggestedView, useValue: stubSuggestedView() },
       ],
     });
 
