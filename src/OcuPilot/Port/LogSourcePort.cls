@@ -17,7 +17,7 @@
 /// from <class>OcuPilot.Api.Error</class> (AD-12, AD-39); raw status text goes to
 /// <method>LogFault</method> alone. Nothing here writes to the response device, switches
 /// namespace, escalates or spawns.</p>
-/// <p><b>The second source is not a file.</b> <method>Errors</method> serves the application error
+/// <p><b>One source is not a file.</b> <method>Errors</method> serves the application error
 /// log -- the <code>^ERRORS</code> global, read through <code>SYS.ApplicationError</code>'s own
 /// four queries and nothing else (AD-48) -- in four drill levels a route binds one of. That class
 /// exists only in <code>%SYS</code>, so the port enters that namespace <b>once per call</b> by
@@ -36,7 +36,7 @@ Class OcuPilot.Port.LogSourcePort Extends %RegisteredObject
 
 /// <p>The fixed enum of source keys this port serves (AD-21), comma-separated. A caller names a
 /// key from this list and nothing else; a route binds the key, so no caller names a file.</p>
-/// <p><b>Two sources, two entry points.</b> <method>Page</method> serves the file sources;
+/// <p><b>Two kinds of source, two entry points.</b> <method>Page</method> serves the file sources;
 /// <method>Errors</method> serves <parameter>ERRORSKEY</parameter>, which is a global read through
 /// a vendor query rather than a file (AD-48). Both entry points read this one enum, so
 /// <method>Page</method> admits <parameter>ERRORSKEY</parameter> at its enum check and then refuses
@@ -44,7 +44,7 @@ Class OcuPilot.Port.LogSourcePort Extends %RegisteredObject
 /// <method>Page</method> never names, so <method>PairsFor</method> answers an empty set and the
 /// prologue's empty-pair-set refusal answers 403 rather than serving a page. No route can reach
 /// that -- each binds its own key -- and <class>OcuPilot.Test.ErrorLog</class> pins it.</p>
-Parameter SOURCES = "messages,applicationerrors";
+Parameter SOURCES = "messages,alerts,applicationerrors";
 
 /// <p>The <parameter>SOURCES</parameter> key for the instance's console log.</p>
 Parameter MESSAGESKEY = "messages";
@@ -64,6 +64,26 @@ Parameter MESSAGESFILE = "messages.log";
 /// (<file>irislib/%CSP/UI/Portal/ViewLog.cls</file>'s <code>RESOURCE</code>), so a user reaches a
 /// line through OcuPilot only if they could have read it directly (AD-29).</p>
 Parameter MESSAGESPAIRS = "%Admin_Operate:USE";
+
+/// <p>The <parameter>SOURCES</parameter> key for the instance's alert log.</p>
+Parameter ALERTSKEY = "alerts";
+
+/// <p>The alert log's file name, resolved against <method>ManagerDirectory</method> on every
+/// call.</p>
+/// <p>It is the same file <code>%SYSTEM.Monitor.GetAlerts</code> reads
+/// (<file>irissys/%SYSTEM/Monitor.cls</file>: <code>$zu(12)_"alerts.log"</code>), so the bounded
+/// tail this port serves and the monitoring API's own answer are one file read two ways.</p>
+Parameter ALERTSFILE = "alerts.log";
+
+/// <p>The alert log's <code>(resource, permission)</code> pair set, comma-separated as
+/// <code>resource:permission</code> (AD-8).</p>
+/// <p><parameter>MESSAGESPAIRS</parameter>' one pair, for its reason: reading a file off disk
+/// consults no database resource and this path never enters <code>%SYS</code>. The classic page
+/// that shows alerts.log first (<file>irislib/%CSP/UI/System/ViewTextFilePane.cls</file>) is served
+/// by <code>/csp/sys/op</code>, which carries <code>%Admin_Operate</code>. The screen over this
+/// source declares the wider set <class>OcuPilot.Port.MonitorPort</class> needs; this one is what
+/// the tail alone costs.</p>
+Parameter ALERTSPAIRS = "%Admin_Operate:USE";
 
 /// <p>The <parameter>SOURCES</parameter> key for the instance's application error log, the
 /// <code>^ERRORS</code> global read through <code>SYS.ApplicationError</code> (AD-48). It has no
@@ -230,6 +250,7 @@ ClassMethod PairsFor(pSource As %String, pNamespace As %String = "") As %List
 {
     Set tDeclared = ""
     If pSource = ..#MESSAGESKEY Set tDeclared = ..#MESSAGESPAIRS
+    If pSource = ..#ALERTSKEY Set tDeclared = ..#ALERTSPAIRS
     If pSource = ..#ERRORSKEY Set tDeclared = ..ErrorPairSpec(pNamespace)
     Quit ..ParsePairs(tDeclared)
 }
@@ -339,6 +360,7 @@ ClassMethod OpenQuery(pQueryName As %String, Output pResultSet As %ResultSet) As
 ClassMethod FileFor(pSource As %String) As %String
 {
     If pSource = ..#MESSAGESKEY Quit ..#MESSAGESFILE
+    If pSource = ..#ALERTSKEY Quit ..#ALERTSFILE
     Quit ""
 }
 

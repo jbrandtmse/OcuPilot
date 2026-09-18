@@ -160,6 +160,31 @@ ClassMethod FailedPair(pFault As %DynamicObject) As %String
     Quit pFault.detail.failedPair
 }
 
+/// <p>Story 6.13 -- the <code>alerts</code> key is in the enum, resolves to <code>alerts.log</code>
+/// and declares <code>%Admin_Operate:USE</code> alone, which is deliberately narrower than the
+/// screen over it: reading a file off disk consults no database resource. The production port is
+/// asked, not the fixture, so this is the shipped enum rather than an armed one.</p>
+/// <p>Mutation: drop <code>alerts</code> from
+/// <parameter>OcuPilot.Port.LogSourcePort.SOURCES</parameter> -&gt; the membership assertion and the
+/// live page both go red.</p>
+Method TestTheAlertsKeyIsServedFromTheManagerDirectory()
+{
+    Set tSources = ##class(OcuPilot.Port.LogSourcePort).Sources()
+    Do $$$AssertTrue($ListFind(tSources, "alerts") > 0, "the alerts key is in the shipped enum: " _ $ListToString(tSources, ","))
+    Do $$$AssertEquals(##class(OcuPilot.Port.LogSourcePort).FileFor("alerts"), "alerts.log", "and resolves to the instance's alert log")
+
+    Set tPairs = ##class(OcuPilot.Port.LogSourcePort).PairsFor("alerts")
+    Do $$$AssertEquals($ListLength(tPairs), 1, "one declared pair, not the screen's two")
+    If $ListLength(tPairs) '= 1 Quit
+    Do $$$AssertEquals($ListToString($List(tPairs, 1), ":"), "%Admin_Operate:USE", "the operate pair alone")
+
+    Set tSC = ##class(OcuPilot.Port.LogSourcePort).Page("alerts", "", 4096, "", .tResult, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the production port serves the alert log's tail")
+    Do $$$AssertEquals(tHttp, 200, "with 200")
+    Do $$$AssertEquals($Select($IsObject(tResult): tResult.source, 1: ""), "alerts", "naming the key it was asked for")
+    Do $$$AssertTrue($Select($IsObject(tResult): tResult.identity '= "", 1: 0), "and carrying a file identity, which is what the next page's cursor travels with")
+}
+
 /// <p>AC2 -- a key outside <method>OcuPilot.Port.LogSourcePort.Sources</method> is refused 404
 /// <code>LOG.SOURCE</code> <b>before the gate and before any file access</b>, even when that key
 /// does have a file and a pair set behind it. The counter is what makes "before any file access"

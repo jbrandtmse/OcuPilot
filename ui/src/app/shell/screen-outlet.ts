@@ -23,6 +23,7 @@ import { UpcomingPage } from '../areas/tasks/upcoming.page';
 import { HomePage } from '../areas/home/home.page';
 import { AuditPage } from '../areas/logs/audit.page';
 import { ErrorLogPage } from '../areas/logs/error-log.page';
+import { LogViewerPage } from '../areas/logs/log-viewer.page';
 import { OpenApiViewerPage } from '../areas/web-applications/openapi-viewer.page';
 import { decodeEntityId } from '../core/entity-id';
 import { NavigationService, screenForUrl } from '../core/navigation';
@@ -60,6 +61,7 @@ export const ARCHETYPE_PAGES: ArchetypePages = {
   'list (two views)': DatabasesPage,
   'list (server criteria)': AuditPage,
   'drill-down': ErrorLogPage,
+  'log-viewer': LogViewerPage,
   'form-page': DefinitionFormPage,
   'viewer (OpenAPI)': OpenApiViewerPage,
   detail: DetailPage,

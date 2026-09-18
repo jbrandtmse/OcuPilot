@@ -108,9 +108,110 @@ deferred: []
 - **AC9 (least-privileged principal).** Given a purpose-built role holding exactly the declared pairs — never `%Operator` — when the read, the tail route and the recent route are exercised on a throwaway, then each answers rows; and when a pair is removed, then each names that pair. Whatever the instance still refuses is appended to the declared set. Pinned by `Test/MonitorPortDenial.cls` and `Test/LogSourceDenial.cls`.
 - **AC10 (integration, Rule 1).** Given the screen's derived read tool `logs.alerts.read`, when it is invoked against the live instance, then it answers the same bounded rows the screen's declared read answers, narrowed by the context cap and with no secret field — and the bounded tail is **not** in its view. Pinned by `Test/ReadTool.cls` and `Test/ScreenRead.cls`.
 
+### Review Findings
+
+Code review (Tier 1, `full`, 2026-09-18). Layers: `blind-hunter`, `edge-case-hunter`, `verification-gap`,
+`acceptance-auditor`, all `full-opus`, all barred from executing tests; every execution-dependent probe was
+run by the reviewer on `ocupilot-slot-b` (52775) and the throwaway `ocupilot-b-ci` (52777).
+
+#### Patched in this pass
+
+| # | Severity | Finding | Where | Evidence it is closed |
+|---|---|---|---|---|
+| 1 | high | `log-line.ts` carried two literal NUL bytes in `mergeKey`, so git classified the file binary and the review diff read "Binary files ... differ" — the parser AC4 rests on was unreviewable, and grep skipped the file (Rule 14) | `log-line.ts` | escape form; `file(1)` now reports ASCII text and the file diffs |
+| 2 | med | DW-1108: `readRecent` took the earliest accumulated tag on every Load newer, against AC5's I/O matrix | `log-viewer.store.ts`, `log-line.ts` | `tagForNewest` on the paging path; two tests; mutation (`tagForWindow` on both paths) reddened only the new test |
+| 3 | med | AC7's jump controls moved nothing in a real browser: `app-log-viewer-page` was missing from the height chain, so `.ocu-log-viewport` never overflowed and `scrollTo` was a no-op. The old spec branched on `scrollable` and passed | `_components.scss`, `alerts-log.browser-spec.mjs` | the host joins the chain; the spec asserts `scrollable` unconditionally and both jumps; observed red before, green after, on the throwaway |
+| 4 | med | `MonitorPort.Rows` cut silently at `MAXENTRIES` while handing back the vendor's cursor for the whole answer — rows lost with no signal, against the reason `MAXANSWERCHARS` refuses | `MonitorPort.cls` | a cut the **ceiling** would make refuses `MONITOR.TOOLARGE`; a caller's own smaller cap still truncates, because that caller asked for a bounded page and reads the signal (AD-24). Both halves pinned; the refusal mutation-checked |
+| 5 | med | AC2's cursor assertion could not fail: the fixture sensor never writes the instance cursor, and the one real-vendor leg took no snapshot. The spec's AC2 mutation line named that assertion | `Test/MonitorPort.cls`, `## Verification` | the real-vendor leg snapshots the cursor; the falsifiable half is named; mutation observed (the tag-key assertion reddens) |
+| 6 | med | The `MAXANSWERCHARS` length bound and `StringOf`'s number arm were executed by no test | `Test/MonitorPort.cls` | two legs; both reddened under their own mutations |
+| 7 | med | A multi-line entry present in both halves rendered twice: `mergeKey` included continuation lines the monitoring API drops | `log-line.ts` | the key is the entry's first line; pinned |
+| 8 | med | The I/O matrix's "search matches nothing → No matches." was unreachable — the search highlighted without standing the rows down | `log-viewer.page.ts` | `searchFoundNothing`; the existing empty-state test now reaches it from the search alone |
+| 9 | med | The `logs/alerts` entry added to both `LIVE_PAYLOAD` copies was read by no assertion, so either copy could drift | `navigation-wire.test.mjs`, `rail-wire.spec.ts` | a `screenVerdict('logs/alerts')` assertion in each |
+| 10 | low | An entry carrying no severity rendered an empty chip | `log-line.ts` | `severityWord('')` is the empty-cell word; pinned |
+| 11 | low | The polite count could announce "5 of 2": `onChip` did not reset the caret as `onSearch` does | `log-viewer.page.ts` | caret reset; pinned |
+| 12 | low | A `waitForFunction` whose predicate was `true` waited for nothing; the paging assertion rested on a fixed sleep | `alerts-log.browser-spec.mjs` | polls for the request, then a settling beat |
+| 13 | low | The store's doc comment claimed a sign-out teardown that does not exist (corrected at its origin, DW-1110) | `log-viewer.store.ts` | the comment states what is true and names the entry |
+| 14 | low | The page's doc comment presented the search input's native clear as "the command bar's" (DW-1109) | `log-viewer.page.ts` | the comment states what ships and names the entry |
+| 15 | low | A re-flow dropped a conjunction in the roster comment | `Test/Smoke.cls` | restored |
+| 16 | med | The browser spec re-seeded `alerts.log` on every run, so a second run against one throwaway doubled every seeded entry and the chip test's counts drifted with how often the suite had been run. It also raced the two halves: `before` was read after the first row appeared, which is before the monitoring half merges, so a later "back to `before`" wait could never succeed — observed as a 30 s timeout on the second run | `alerts-log.browser-spec.mjs` | seeds only when the marker is absent; `settled()` waits for the row count to stop moving. Two consecutive runs on one throwaway: 87 seeded lines before and after, both green |
+| 17 | med | AC8's and AC7's geometry rested on whatever the instance's own `alerts.log` happened to hold: on a fresh throwaway (nine rows) the viewport does not overflow and the jump controls have nowhere to go | `alerts-log.browser-spec.mjs` | the seed carries 80 further informational entries, so the window overflows whatever the browser's size; verified from a cleaned file |
+
+#### Open HIGH — paused for the lead
+
+**DW-1116** `decision-pending owner=burndown`. **Tag mode does not stop the vendor advancing the
+instance-wide SAM cursor.** Measured on the throwaway, 2026-09-18: kill `^IRIS.Temp.SAM` in `%SYS`,
+confirm it stays undefined through a five-second control with no call, then issue one
+`MonitorPort.Invoke` — the node comes back defined, carrying `alerts.log`'s newest line. Repeated
+with an empty tag, a bogus tag, and a tag the vendor matched (97 of 98 rows returned): all three
+advance it. Tag mode decides **which rows come back**, not whether the cursor is written; nothing the
+port can pass prevents it. It only read byte-identical on slot B because that cursor already named
+the newest line, which is what the spec's own probe measured.
+
+What it contradicts: the `<intent-contract>` "Always" line "Tag mode leaves that global
+byte-identical (probed)"; AC2's second half; and AD-7, whose read-triggered-vendor-write exception
+"covers exactly two shapes … and extends to nothing else". Observable cost: another SAM scraper
+polling `/api/monitor/alerts` without a tag shares that cursor and loses the alerts OcuPilot's read
+moved it past — the harm the story set out to avoid.
+
+Why it is not patched here: every route out is the lead's. Amend AD-7 with a third named shape and
+its observable cost, as the two existing shapes are named, and amend the Always block and AC2 to
+match (Rule 5 + Rule 20 — the spine is the lead's to write); or drop the monitoring half, which is a
+product call; or save and restore the cursor around the call, which makes OcuPilot itself the writer
+of a vendor global in `%SYS` and is racy. The port's doc comment and `Test/MonitorPort.cls` now state
+the measured behavior and name the entry, so no claim in the tree asserts the thing that is false.
+
+#### Filed, not patched
+
+- **DW-1109** `escalated owner=burndown` — AC7's "Clear filter" control exists nowhere in the client (not in the
+  viewer, not in `shell/command-bar.ts`, no authorized string). Fix risk high: a shared shell control plus a
+  strings row the `EXPERIENCE.md:367` row lists as *reused*, so it needs a Rule 5 amendment. The strings table
+  stands at 481 of its 520 bound.
+- **DW-1110** `escalated owner=burndown` — `LogViewerStore` is absent from `app.ts`'s sign-out teardown, so one
+  principal's log rows survive a sign-out in the same tab (AD-8). One line, in a contended file.
+- **DW-1111** `escalated owner=burndown` — `Screen/Tool/ErrorRead.cls:4-6` still carries the "admin-port-only by
+  two independent hard-codings" claim this story falsifies twice over. `Screen/Tool/**` is contended; Execution
+  item 9 says report rather than edit.
+
+#### Closed at emission
+
+`wontfix-accepted` unless noted; `reopen_if` is the probe that would revive it.
+
+- The `load-older` absence assertions cannot fail — nothing renders that selector. AC5's oldest-end witness is
+  the one-request count beside them, which is asserted. *reopen_if:* a control for the older end is added.
+- `Test/ReadSourceCorpus.cls` gained no `monitor` case (Execution item 6 names it). The three new refusal arms
+  are covered in **both** engines through `Test/AdminPairCorpus.cls`, which `screen-mirror.test.mjs:673` reads
+  off disk. *reopen_if:* a `monitor`-specific `type`/`forEach`/`query` sentence is added.
+- `MonitorPort.Call`'s `Catch` does not restore `$NAMESPACE` on its first line. The restore is unconditional and
+  outside the `Try`, so the namespace is never left switched; only `EndCapture` and the `%response` read run
+  inside `%SYS`, both of which are `%SYS` work. `by-design`.
+- A nested `%SYS.Capture` makes the port answer `MONITOR.FAILED` although no vendor code ran. `MgmntPort`
+  behaves identically and pins it deliberately (`Test/MgmntPort.cls:369-378`); the wire reason is generic by
+  AD-39. *reopen_if:* a production path is found that holds a capture across a screen read.
+- `Outcome` sets `pHttpStatus` from the vendor's own 2xx and `Alerts` overwrites it with 200. No vendor 2xx
+  other than 200 is observed. `wontfix-theoretical`.
+- `matchesSearch` matches on pid, stamp and category while `highlightSpans` marks only the text. The row still
+  paints `.ocu-log-row-match`, so a match is visible. *reopen_if:* the row-match background is removed.
+- `screen-height.browser-spec.mjs`'s `log-viewer` case depends on `alerts-log.browser-spec.mjs` having seeded the
+  file, through the glob's own order. Both are throwaway-scoped and `alerts-log` sorts first.
+  *reopen_if:* `screen-height.browser-spec.mjs` is run alone against a fresh throwaway.
+- The real-port leg reads the whole file with an empty tag, so an instance whose `alerts.log` exceeds
+  `MAXANSWERCHARS` reddens it for an environmental reason. *reopen_if:* the leg fails with `MONITOR.TOOLARGE`
+  on a throwaway.
+- The viewer renders no header row, so `logViewerColumnSeverity`, `logViewerColumnMessage` and `auditColumnTime`
+  reach the mirror and the agent tool but not the screen; and the pid cell's empty word is the component's
+  `tableEmptyValue` rather than a declared `emptyKey`. Both follow `EXPERIENCE.md:408`'s log-viewer pattern,
+  which is rows rather than a table. `by-design`.
+- The info and warning chips set `color` only over the surface; severe and fatal use the declared inverted pair.
+  Every chip carries its word, so "never color alone" holds. *reopen_if:* a contrast check fails on a chip.
+
 ## Spec Change Log
 
 ## Review Triage Log
+
+Code review 2026-09-18: 1 high, 10 med and 6 low patched in-pass; **one HIGH open** — DW-1116,
+`decision-pending`, paused for the lead because every route out is a spine or product amendment;
+3 med filed `escalated owner=burndown` (DW-1109, DW-1110, DW-1111); 9 items closed at emission.
+DW-1108 closed `resolved-by:6-13-the-alerts-log-viewer`. The detail is under `### Review Findings`.
 
 ## Design Notes
 
@@ -139,7 +240,7 @@ deferred: []
 **Commands:**
 
 - `cd ui && npm run build` — expected: the six `prebuild` checkers pass, including `screen-mirror.mjs --check` against the regenerated mirror and `classic-links.mjs` reporting one honored exemption (unchanged).
-- `cd ui && npm test` — expected: `node --test tools/*.test.mjs` and the Angular component runner green, including the two `LIVE_PAYLOAD` copies and `strings.test.mjs` at 481 keys.
+- `cd ui && npm test` — expected: `node --test tools/*.test.mjs` and the Angular component runner green, including both `LIVE_PAYLOAD` copies and `strings.test.mjs`, whose authorized set is re-derived from `EXPERIENCE.md:367` and `:368` (the table stands at 481 keys of its 520 bound; the file asserts the derivation, never that count).
 - `OCUPILOT_BROWSER_ORIGIN=http://localhost:52777 OCUPILOT_BROWSER_CONTAINER=ocupilot-b-ci npm run test:browser` — expected: `alerts-log.browser-spec.mjs` and `screen-height.browser-spec.mjs` green. Rebuild and `docker cp` the bundle first; a browser spec reads the deployed bundle.
 - `uv run scripts/check-objectscript.py` and `bash scripts/lint-docs.sh` — expected: clean.
 - `node tools/ci-runner.mjs` on a throwaway brought up **after the last edit** (`sh scripts/ci-throwaway.sh up --dir /tmp/ocupilot-b-ci --project ocupilot-b-ci --web 52777 --super 1976`) — expected: the whole ObjectScript sweep green, not a chosen subset. One `iris_execute_tests` call at a time; never re-submit after a timeout.
@@ -148,12 +249,12 @@ deferred: []
 **Mutations (Rule 19) — one per AC:**
 
 - AC1 — `mutation:` move the `PAIRS` evaluation in `MonitorPort.Invoke` to after the vendor call → `Test/MonitorPortDenial.cls` vendor-entry count goes to 1 and the test reddens.
-- AC2 — `mutation:` drop the `%request.Data("tag",1)` seed → `Test/MonitorPort.cls`'s cursor-unchanged assertion reddens.
-- AC3 — `mutation:` remove the `Try`/`Catch` around the vendor call → `Test/MonitorPort.cls`'s envelope assertion reddens on the thrown case.
+- AC2 — `mutation:` drop the `%request.Data("tag",1)` seed → `Test/MonitorPort.cls`'s tag-mode assertion (`TaggedAt(1)`, in `TestEveryCallUsesTagModeAndLeavesTheInstanceCursorAlone`) reddens. Applied 2026-09-18 and observed. The cursor half is an observation on the real vendor, not the falsifiable one: the fixture sensor never writes `^IRIS.Temp.SAM`, and the real vendor advances it only to the newest entry it reports, so on an instance whose cursor already names the newest line nothing moves.
+- AC3 — `mutation:` remove the `Try`/`Catch` around the vendor call → `Test/MonitorPort.cls`'s envelope assertion reddens on the thrown case. Two further size bounds, each applied and observed: delete the `MAXANSWERCHARS` comparison in `Outcome` → `TestAnAnswerPastTheCharacterCeilingIsRefused` reddens; restore the `MAXENTRIES` clamp in `Rows` → `TestAnAnswerPastTheRowCeilingIsRefusedRatherThanCut` reddens. Its second half pins the other side: a caller cap below the ceiling truncates rather than refusing.
 - AC4 — `mutation:` make the de-duplication keep the monitor row instead of the file's → `log-viewer.spec.ts`'s pid-present assertion reddens.
-- AC5 — `mutation:` send the tail request without `identity` → `Test/LogSource.cls`'s restart assertion reddens.
+- AC5 — `mutation:` send the tail request without `identity` → `Test/LogSource.cls`'s restart assertion reddens. The monitoring cursor's own half: take `tagForWindow` on the Load-newer path too → `log-viewer.spec.ts`'s DW-1108 test reddens and nothing else does. Applied 2026-09-18 and observed.
 - AC6 — `mutation:` add a `setInterval` re-read to `log-viewer.store.ts` → `log-viewer.spec.ts`'s zero-requests-after-ten-minutes assertion reddens.
-- AC7 — `mutation:` drop the severity word from the chip, leaving color alone → `log-viewer.spec.ts`'s chip-text assertion reddens.
+- AC7 — `mutation:` drop the severity word from the chip, leaving color alone → `log-viewer.spec.ts`'s chip-text assertion reddens. The jump controls are the browser's: remove `app-log-viewer-page` from `_components.scss`'s height chain → `.ocu-log-viewport` stops overflowing and `alerts-log.browser-spec.mjs`'s `scrollable` assertion reddens. Observed 2026-09-18 — it was red before the chain was joined and green after.
 - AC8 — `mutation:` change `log-row-height` to 32px in the stylesheet, rebuild and redeploy → `alerts-log.browser-spec.mjs`'s height assertion reddens.
 - AC9 — `mutation:` remove `%DB_IRISSYS:READ` from `MonitorPort.PAIRS` → `Test/MonitorPortDenial.cls`'s named-pair assertion reddens.
 - AC10 — `mutation:` add the tail rows to the tool's answer → `Test/ReadTool.cls`'s field-set assertion reddens.

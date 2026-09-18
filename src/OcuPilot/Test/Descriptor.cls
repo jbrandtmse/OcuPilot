@@ -607,6 +607,43 @@ Method TestTheApplicationErrorLogDeclaresNoReadAndGatesOnItsNamespaceFreePairs()
     Do $$$AssertEquals(##class(%SYS.Portal.Resources).NormalizePage($ZConvert("/csp/sys/op/UtilSysAppErrorNamespaces.csp", "O", "URL")), tPage, "and which the classic URL normalises to")
 }
 
+/// <p>Story 6.13 -- the alerts.log viewer declares the monitoring API as its read source, the two
+/// pairs the logs area already covers, a <code>none</code> id, no action and no refresh, and it
+/// takes the Logs area's first side-bar position.</p>
+/// <p><code>%Admin_Secure:USE</code> is deliberately absent: this screen reads no security endpoint,
+/// and the area's set is a union rather than a per-screen requirement (DW-278).</p>
+/// <p>Mutation: drop <code>%DB_IRISSYS:READ</code> from its privileges -&gt; the registry's own read
+/// arm refuses the declaration and the validation assertion goes red.</p>
+Method TestTheAlertLogViewerDeclaresTheMonitoringSourceAndItsTwoPairs()
+{
+    Set tClass = "OcuPilot.Screen.Descriptor.LogAlertViewer"
+    Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
+    Do $$$AssertStatusOK(tSC, "the declaration parses")
+    If $$$ISERR(tSC) Quit
+
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DeclarationProblem(tDeclaration), "", "the declaration validates")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "including its read")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem(tDeclaration), "", "and it links out to nothing, as a list-classified archetype must")
+
+    Do $$$AssertEquals(tDeclaration.read.source.%ToJSON(), "{""port"":""monitor"",""endpoint"":""Alerts"",""type"":""LIST""}", "the monitoring API is the read's source (AD-36)")
+    Do $$$AssertEquals(tDeclaration.read.fields.%ToJSON(), "[""time"",""severity"",""text""]", "three declared fields")
+    Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), "[{""resource"":""%Admin_Operate"",""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]", "two declared pairs, and no %Admin_Secure:USE among them (DW-278)")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("logs", $ClassMethod(tClass, "PrivilegePairs")), "", "and the logs area covers both, so its own declaration is untouched")
+
+    Do $$$AssertEquals(tDeclaration.id.%ToJSON(), "{""kind"":""none"",""parts"":[]}", "a log line is not an entity the instance can be asked for again (AD-13)")
+    Do $$$AssertEquals($ClassMethod(tClass, "Archetype"), "log-viewer", "it is the first screen of the log-viewer archetype")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Archetype).LinkOutClass("log-viewer"), "list", "which the vocabulary classifies as a list")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForRoute("logs/alerts"), tClass, "the route resolves to it")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForTool("logs.alerts"), tClass, "and so does its tool identifier")
+    Do $$$AssertEquals($ClassMethod(tClass, "SideBarPosition"), 1, "it is the Logs area's first side-bar entry")
+
+    Do $$$AssertEquals(''$ClassMethod(tClass, "Refreshes"), 0, "nothing streams: it never auto-refreshes (AD-43)")
+    Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RefreshRates")), 0, "and declares no rate")
+    Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RowActionIds")), 0, "no row action (AD-44)")
+    Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), "", "and no primary action")
+}
+
+
 /// <p>Story 2.7 AC7 (DW-266) -- a screen declaring a pair its area does not is refused by
 /// <method>OcuPilot.Screen.Registry.Validate</method> naming the class, the area and the pair;
 /// <method>OcuPilot.Screen.Registry.AreaCoverageProblem</method> answers the same sentence for an

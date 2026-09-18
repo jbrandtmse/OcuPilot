@@ -364,7 +364,7 @@ test('AD-36: the generator refuses a read outside the declared grammar, naming t
     [(d) => d.read.fields.push('Name'), /names 'Name' twice/],
     [(d) => (d.read.sort.default = 'Enabled'), /read\.sort\.default 'Enabled'/],
     [(d) => (d.read.sort.direction = 'up'), /direction 'up'/],
-    [(d) => (d.read.source.port = 'monitor'), /port 'monitor'/],
+    [(d) => (d.read.source.port = 'metrics'), /port 'metrics'/],
     [(d) => (d.read.source.type = 'POST'), /type 'POST' is not 'LIST', 'GET', 'UPCOMING', 'HISTORY' or 'VOLUMELIST'/],
     [(d) => (d.context.secretFields = ['Other']), /context\.secretFields names 'Other'/],
     [(d) => (d.read.secretFields = ['Secret']), /read declares the unknown key 'secretFields'/],

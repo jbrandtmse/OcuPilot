@@ -1011,6 +1011,48 @@ export const STRINGS = {
   serverFlagFailover: 'Failover',
   serverFlagDevelopment: 'Development',
 
+  // The log viewer both log screens share -- built by Story 6.13's alerts.log screen and declared
+  // by Story 6.14's messages.log screen, which adds no string of its own.
+  //
+  // The severity words are the vendor's own five-level scale (`irissys/%sySystem.inc`: -2 and -1
+  // debug, 0 informational, 1 warning, 2 severe, 3 fatal), one more than the four the archetype
+  // row lists, and every rendered severity carries its word so colour is never alone.
+  /** EXPERIENCE.md:367 */
+  logViewerColumnSeverity: 'Severity',
+  /** EXPERIENCE.md:367 */
+  logViewerColumnMessage: 'Message',
+  /** EXPERIENCE.md:367 */
+  logViewerEmpty: 'No entries.',
+  /** EXPERIENCE.md:367 */
+  logViewerNoMatches: 'No matches.',
+  /** EXPERIENCE.md:367 */
+  logViewerLoadNewer: 'Load newer',
+  /** EXPERIENCE.md:367 */
+  logViewerJumpTop: 'Jump to top',
+  /** EXPERIENCE.md:367 */
+  logViewerJumpBottom: 'Jump to bottom',
+  /** EXPERIENCE.md:367 */
+  logSeverityDebug: 'Debug',
+  /** EXPERIENCE.md:367 */
+  logSeverityInfo: 'Info',
+  /** EXPERIENCE.md:367 */
+  logSeverityWarning: 'Warning',
+  /** EXPERIENCE.md:367 */
+  logSeveritySevere: 'Severe',
+  /** EXPERIENCE.md:367 */
+  logSeverityFatal: 'Fatal',
+
+  // The alerts.log screen's own three, beyond the shared viewer's: its side-bar entry and title,
+  // the polite count the sticky search announces, and the one line that distinguishes this screen
+  // from messages.log -- the monitoring half failed while the bounded tail answered, so the rows
+  // stay and the notice explains what is missing.
+  /** EXPERIENCE.md:368 */
+  alertLogListLabel: 'alerts.log',
+  /** EXPERIENCE.md:368 */
+  logViewerMatchCount: '<n> of <N>',
+  /** EXPERIENCE.md:368 */
+  alertLogRecentUnavailable: 'Recent entries are unavailable \u2014 showing the file tail.',
+
   // Two connectivity sentences EXPERIENCE.md publishes outside the Fixed strings table, each
   // authorized by its own targeted extractor in `ui/tools/strings.test.mjs`, never by being
   // added to REQUIRED_ALONGSIDE_TABLE, whose own comment calls that the bypass it must not

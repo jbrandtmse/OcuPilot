@@ -44,6 +44,7 @@ export type BuiltArchetypeKey =
   | 'list'
   | 'list (two views)'
   | 'list (server criteria)'
+  | 'log-viewer'
   | 'drill-down'
   | 'detail'
   | 'form-page'
@@ -141,12 +142,13 @@ export interface ReadSourcePart {
 
 /**
  * Where a read's rows come from (AD-36): one admin API LIST (AD-2) with an optional per-row detail
- * call, one of OcuPilot's own kernel stores read whole (AD-9), or the management API's port. A
- * `state` source names the store by its own name, declares no `rowGet` and no `criteria`, and
- * is bounded by the same row cap; a `mgmnt` source declares no `rowGet`.
+ * call, one of OcuPilot's own kernel stores read whole (AD-9), the management API's port, or the
+ * monitoring API's. A `state` source names the store by its own name, declares no `rowGet` and
+ * no `criteria`, and is bounded by the same row cap; a `mgmnt` or `monitor` source declares
+ * no `rowGet`.
  */
 export interface ReadSource {
-  readonly port: 'admin' | 'state' | 'mgmnt';
+  readonly port: 'admin' | 'state' | 'mgmnt' | 'monitor';
   readonly endpoint: string;
   /**
    * `LIST` reads rows; `GET` reads one object as the one row, and a 404 reads as none;
@@ -2151,6 +2153,111 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "toolIdentifier": "osmgmt.locks",
     "banner": null,
     "tab": null
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.LogAlertViewer",
+    "route": "logs/alerts",
+    "area": "logs",
+    "labelKey": "alertLogListLabel",
+    "sideBarPosition": 1,
+    "archetype": "log-viewer",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "log-entry",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "none",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "logViewerEmpty",
+    "commandAliases": [
+      "alerts",
+      "alerts.log"
+    ],
+    "classicPage": "%cspapp.op.utilsysconsolelog",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "monitor",
+        "endpoint": "Alerts",
+        "type": "LIST"
+      },
+      "fields": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "filter": [
+        "time",
+        "severity",
+        "text"
+      ],
+      "sort": {
+        "fields": [
+          "time",
+          "severity"
+        ],
+        "default": "time",
+        "direction": "desc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "time",
+          "labelKey": "auditColumnTime",
+          "kind": "name"
+        },
+        {
+          "field": "severity",
+          "labelKey": "logViewerColumnSeverity",
+          "kind": "status"
+        },
+        {
+          "field": "text",
+          "labelKey": "logViewerColumnMessage",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "logs.alerts",
+    "banner": null,
+    "tab": null,
+    "rowTarget": null
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.LogErrorList",

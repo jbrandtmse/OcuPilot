@@ -327,6 +327,24 @@ Parameter LOGENTRY = "LOG.ENTRY";
 /// ceiling, so a large value is honoured rather than refused.</p>
 Parameter LOGMAXROWS = "LOG.MAXROWS";
 
+/// <p>Machine code (AD-12, AD-39): the monitoring API's alert list is larger than
+/// <class>OcuPilot.Port.MonitorPort</class> will read in one answer -- the vendor method reads the
+/// whole of alerts.log into a scalar string, so a large file is either an answer past the port's
+/// ceiling or a <code>&lt;MAXSTRING&gt;</code> raised inside it. Rendered on the
+/// <parameter>UNAVAILABLE</parameter> slug.</p>
+/// <p><b>Refused rather than truncated</b>, for the reason <parameter>LOGMAXBYTES</parameter>
+/// refuses an oversized window: a silently cut alert list reads as a complete one.</p>
+Parameter MONITORTOOLARGE = "MONITOR.TOOLARGE";
+
+/// <p>Machine code (AD-12, AD-39): the monitoring API could not answer this instance's alerts --
+/// the vendor method raised, answered a non-2xx status, or answered text that is not a JSON array.
+/// Rendered on the <parameter>UNAVAILABLE</parameter> slug; the vendor's own status and anything it
+/// wrote to the device go to <method>OcuPilot.Kernel.Fault.LogRaw</method> alone.</p>
+/// <p>The alerts.log viewer reads both this and <parameter>MONITORTOOLARGE</parameter> as "the
+/// recent-entries half is unavailable" and keeps the bounded file tail on screen, so neither is a
+/// dead end for the user.</p>
+Parameter MONITORFAILED = "MONITOR.FAILED";
+
 /// <p>Machine code (AD-12, AD-39): the agent configuration the request submitted broke one or more
 /// of the rules <class>OcuPilot.Kernel.AgentRules</class> (a definition) or
 /// <class>OcuPilot.Kernel.SwitchRules</class> (the switches and the per-user holds) applies.

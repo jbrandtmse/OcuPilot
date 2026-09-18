@@ -24,9 +24,11 @@
 /// and filters on the client and a tool runs in-process on the server; both are pinned by the one
 /// corpus in <class>OcuPilot.Test.ReadViewCorpus</class>.</p>
 /// <p><b>A declared read names one of two source kinds</b> (AD-36). An instance endpoint is reached
-/// through a port: <code>port: "admin"</code> through <method>PortClass</method>, and
+/// through a port: <code>port: "admin"</code> through <method>PortClass</method>,
 /// <code>port: "mgmnt"</code>, the management API, through <method>MgmntPortClass</method>, which is
-/// handed the route's scope as its namespace. <code>port: "state"</code> is
+/// handed the route's scope as its namespace, and <code>port: "monitor"</code>, the monitoring API,
+/// through <method>MonitorPortClass</method>, which takes no namespace at all.
+/// <code>port: "state"</code> is
 /// OcuPilot's own protected state (AD-9), resolved against a kernel store's guarded list through
 /// <method>StateRows</method>. The second changes where the rows come from and nothing else: the
 /// same declared <code>fields</code>, the same secret strip, the same filter, sort and view rule,
@@ -143,6 +145,17 @@ ClassMethod MgmntPortClass() As %String
     Quit "OcuPilot.Port.MgmntPort"
 }
 
+/// <p>The <code>read.source.port</code> value naming the instance's monitoring API, reached through
+/// <method>MonitorPortClass</method> (AD-1, AD-29).</p>
+Parameter SOURCEMONITOR = "monitor";
+
+/// <p>The port class every <b>monitor</b> read is issued through. Overridable so a fixture can reach
+/// <class>OcuPilot.Test.MonitorPortFixture</class>; production never overrides it.</p>
+ClassMethod MonitorPortClass() As %String
+{
+    Quit "OcuPilot.Port.MonitorPort"
+}
+
 /// <p>The package a <code>state</code> source's <code>endpoint</code> names a class in, trailing
 /// dot included. A source declares the class's short name -- <code>Agent</code> -- and never a
 /// package-qualified one, so no descriptor can point the read at a class outside the kernel's own
@@ -244,6 +257,16 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
             Set tStateSC = ..StateRows(pDescriptor, tSource.%Get("endpoint"), .tAnswer, .pHttpStatus, .pFault)
             If $$$ISERR(tStateSC) {
                 Set tSC = tStateSC
+                Quit
+            }
+        } ElseIf tSource.%Get("port") = ..#SOURCEMONITOR {
+            ; The monitoring API's rows. It takes no namespace -- the alerts it reports are the
+            ; instance's, not a namespace's -- and no criteria, so the cap is the whole query.
+            Kill tQuery
+            Set tQuery("maxRows") = tMax + 1
+            Set tPortSC = $ClassMethod(..MonitorPortClass(), "Invoke", tSource.%Get("endpoint"), ..#READTYPE, .tQuery, "", .tAnswer, .pHttpStatus, .pFault, .tTag)
+            If $$$ISERR(tPortSC) {
+                Set tSC = tPortSC
                 Quit
             }
         } ElseIf tSource.%Get("port") = ..#SOURCEMGMNT {

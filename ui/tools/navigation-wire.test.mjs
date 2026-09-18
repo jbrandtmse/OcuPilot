@@ -59,6 +59,13 @@ const LIVE_PAYLOAD = {
       failedPair: '%Admin_Secure:USE',
       screens: [
         {
+          route: 'logs/alerts',
+          labelKey: 'alertLogListLabel',
+          sideBarPosition: 1,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
+        },
+        {
           route: 'logs/errors',
           labelKey: 'errorLogListLabel',
           sideBarPosition: 3,
@@ -420,6 +427,10 @@ test('DW-132: the real NavigationService reads a live-captured payload the way O
   // is IRISSYS, and database READ is routine-execution permission, so a principal without it is
   // refused by IRIS before OcuPilot's gate has anything to say.
   assert.deepEqual(service.screenVerdict('logs/errors'), { allowed: false, failedPair: '%DB_IRISSYS:READ' });
+  // Story 6.13: the alerts.log viewer declares the same two pairs in the same order, so this
+  // principal is denied on the same second pair. Without this line the entry added to the payload
+  // above is read by nothing and can drift from what the server answers.
+  assert.deepEqual(service.screenVerdict('logs/alerts'), { allowed: false, failedPair: '%DB_IRISSYS:READ' });
   // Story 6.3: the Security and secrets area's five screens, copied from the string
   // OcuPilot.Test.Wire.TestTheSslConfigurationsListIsDeniedToAPrincipalWithoutAdminSecure compares the
   // live entry to. The two wallet screens declare `%Admin_Wallet:USE` first and the other three

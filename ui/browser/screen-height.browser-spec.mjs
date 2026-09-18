@@ -37,6 +37,9 @@ const config = browserConfig();
  * audit viewer share `DataTable`'s `cdk-virtual-scroll-viewport`; the error-log drill renders its
  * own `.ocu-data-table-viewport`, for the reason Story 2.12 records at its page. Home is absent
  * because it renders no rows -- it is covered by the outlet rule this spec pins, not by a row.
+ * The `log-viewer` archetype is absent from this table for the same reason System usage is: its
+ * rows are `.ocu-log-row`, not `DataTable`'s, so `waitForRows` and `clickRowCentre` name nothing on
+ * it. It has its own test below.
  */
 const SCREENS = [
   { route: '/ocupilot/web-applications/list?ns=HSCUSTOM', viewport: 'cdk-virtual-scroll-viewport', prepare: null },
@@ -160,6 +163,24 @@ test('AC-A: System usage (the meters archetype, no rows) still gives its content
     const viewport = measured[measured.length - 1];
     assert.ok(content.found && content.clientHeight > 0, `main.ocu-content has a real height; the chain measured ${JSON.stringify(measured)}`);
     assert.ok(viewport.found && viewport.clientHeight > 0, `.ocu-details-page has a real height; the chain measured ${JSON.stringify(measured)}`);
+  } finally {
+    await context.close();
+  }
+});
+
+test('AC-A: the alerts.log viewer (the log-viewer archetype) gives its own viewport a real height', async () => {
+  // The log viewer scrolls `.ocu-log-viewport`, its own container, and renders `.ocu-log-row`
+  // rather than a DataTable row -- so the chain's middle link is this archetype's page, and the
+  // row's own 28px geometry is `alerts-log.browser-spec.mjs`'s, not this spec's.
+  const { context, page } = await signedInAt('/ocupilot/logs/alerts?ns=HSCUSTOM');
+  try {
+    await page.waitForSelector('.ocu-log-viewport', { timeout: config.navigationTimeoutMs });
+    await page.waitForSelector('.ocu-log-row', { timeout: config.navigationTimeoutMs });
+    const measured = await measureChain(page, '.ocu-log-viewport');
+    const content = measured[0];
+    const viewport = measured[measured.length - 1];
+    assert.ok(content.found && content.clientHeight > 0, `main.ocu-content has a real height; the chain measured ${JSON.stringify(measured)}`);
+    assert.ok(viewport.found && viewport.clientHeight > 0, `.ocu-log-viewport has a real height; the chain measured ${JSON.stringify(measured)}`);
   } finally {
     await context.close();
   }

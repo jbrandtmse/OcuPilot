@@ -555,17 +555,18 @@ Method TestAnEmptyDemoListIsSkippedWithoutTheDemo()
 /// <code>webapp.restapis</code>, <code>roles</code>, <code>resources</code>, <code>services</code>,
 /// <code>x509</code>, <code>ldap</code>, <code>wallet</code>, five OAuth 2.0 tab, <code>ondemand</code>,
 /// <code>upcoming</code>, <code>taskhistory</code>, <code>systemusage</code> and <code>locks</code>
-/// (Story 6.10) checks, plus <code>databases</code> and <code>databasefreespace</code> (Story 6.11)
-/// and <code>devices</code> (Story 6.12), issue exactly those twenty-six screen reads, in that
-/// order, and nothing else in <method>CheckAreaLists</method> reads a screen.
+/// (Story 6.10) checks, plus <code>databases</code> and <code>databasefreespace</code> (Story 6.11),
+/// <code>devices</code> (Story 6.12) and <code>alerts</code> (Story 6.13), issue exactly those
+/// twenty-seven screen reads, in that order, and nothing else in
+/// <method>CheckAreaLists</method> reads a screen.
 /// <method>OcuPilot.Install.Smoke.CheckTaskDetails</method> (Story 6.7) runs after it and re-reads
-/// the task schedule for an id first, a twenty-seventh screen path; under this fixture's one-row,
+/// the task schedule for an id first, a twenty-eighth screen path; under this fixture's one-row,
 /// no-<code>Id</code> body that lookup finds none, so <code>taskdetails</code> itself fails
 /// without reading its own path. <code>CheckProcessDetails</code> (Story 6.8) runs after that and
-/// re-reads the processes list for a pid, a twenty-eighth screen path; under the same one-row,
+/// re-reads the processes list for a pid, a twenty-ninth screen path; under the same one-row,
 /// no-<code>Pid</code> body that lookup also finds none, so <code>processdetails</code> fails too.
 /// <code>CheckDatabaseDetails</code> (Story 6.11) runs last and re-reads the Databases list for a
-/// directory, a twenty-ninth and last screen path, shared by <code>databasedetails</code> and
+/// directory, a thirtieth and last screen path, shared by <code>databasedetails</code> and
 /// <code>databasevolumes</code>, which both fail under the same one-row, no-<code>Directory</code>
 /// body.</p>
 /// <p><b>Why the report cannot say this.</b> A report line carries the check's name and its
@@ -584,7 +585,7 @@ Method TestEachAreaListCheckReadsItsOwnScreen()
     Set tPaths = ##class(OcuPilot.Test.SmokeListFault).Paths()
     Do ##class(OcuPilot.Test.SmokeListFault).ClearPaths()
 
-    For tName = "webapplications", "users", "ssl", "tasks", "processes", "audit", "webapp.restapis", "roles", "resources", "services", "x509", "ldap", "wallet", "oauthdescriptions", "oauthclients", "oauthresourceservers", "oauthserver", "oauthserverclients", "ondemand", "upcoming", "taskhistory", "systemusage", "locks", "databases", "databasefreespace", "devices" {
+    For tName = "webapplications", "users", "ssl", "tasks", "processes", "audit", "webapp.restapis", "roles", "resources", "services", "x509", "ldap", "wallet", "oauthdescriptions", "oauthclients", "oauthresourceservers", "oauthserver", "oauthserverclients", "ondemand", "upcoming", "taskhistory", "systemusage", "locks", "databases", "databasefreespace", "devices", "alerts" {
         Do $$$AssertTrue(tReport [ ("  pass     " _ tName), "a one-row body passes the " _ tName _ " check (run ok=" _ tOk _ "): " _ ..Line(tReport, tName))
     }
     ; taskdetails, processdetails and Story 6.11's databasedetails/databasevolumes all fail under
@@ -596,10 +597,10 @@ Method TestEachAreaListCheckReadsItsOwnScreen()
     Do $$$AssertTrue(tReport [ ("  fail     processdetails"), "and processdetails fails for lack of a pid to key its read by: " _ ..Line(tReport, "processdetails"))
     Do $$$AssertTrue(tReport [ ("  fail     databasedetails"), "and databasedetails fails for lack of a directory to key its read by: " _ ..Line(tReport, "databasedetails"))
     Do $$$AssertTrue(tReport [ ("  fail     databasevolumes"), "and databasevolumes fails for lack of a directory to key its read by: " _ ..Line(tReport, "databasevolumes"))
-    Do $$$AssertEquals($ListLength(tPaths), 29, "a credentialed run reads exactly twenty-nine screens: the twenty-six generic lists, then taskdetails' own re-read of the task schedule, processdetails' own re-read of the processes list, and databasedetails/databasevolumes' shared re-read of the Databases list: " _ $ListToString(tPaths, " | "))
-    If $ListLength(tPaths) '= 29 Quit
-    Set tExpected = $ListBuild(##class(OcuPilot.Install.Smoke).#WEBAPPLISTTOOL, ##class(OcuPilot.Install.Smoke).#USERLISTTOOL, ##class(OcuPilot.Install.Smoke).#SSLLISTTOOL, ##class(OcuPilot.Install.Smoke).#TASKLISTTOOL, ##class(OcuPilot.Install.Smoke).#PROCESSLISTTOOL, ##class(OcuPilot.Install.Smoke).#AUDITLISTTOOL, ##class(OcuPilot.Install.Smoke).#RESTAPILISTTOOL, ##class(OcuPilot.Install.Smoke).#ROLELISTTOOL, ##class(OcuPilot.Install.Smoke).#RESOURCELISTTOOL, ##class(OcuPilot.Install.Smoke).#SERVICELISTTOOL, ##class(OcuPilot.Install.Smoke).#X509LISTTOOL, ##class(OcuPilot.Install.Smoke).#LDAPLISTTOOL, ##class(OcuPilot.Install.Smoke).#WALLETLISTTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHDESCRIPTIONSTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHCLIENTSTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHRESOURCESERVERSTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHSERVERTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHSERVERCLIENTSTOOL, ##class(OcuPilot.Install.Smoke).#TASKONDEMANDTOOL, ##class(OcuPilot.Install.Smoke).#TASKUPCOMINGTOOL, ##class(OcuPilot.Install.Smoke).#TASKHISTORYTOOL, ##class(OcuPilot.Install.Smoke).#SYSTEMUSAGETOOL, ##class(OcuPilot.Install.Smoke).#LOCKLISTTOOL, ##class(OcuPilot.Install.Smoke).#DATABASELISTTOOL, ##class(OcuPilot.Install.Smoke).#DATABASEFREESPACELISTTOOL, ##class(OcuPilot.Install.Smoke).#DEVICELISTTOOL, ##class(OcuPilot.Install.Smoke).#TASKLISTTOOL, ##class(OcuPilot.Install.Smoke).#PROCESSLISTTOOL, ##class(OcuPilot.Install.Smoke).#DATABASELISTTOOL)
-    For tI = 1:1:29 {
+    Do $$$AssertEquals($ListLength(tPaths), 30, "a credentialed run reads exactly thirty screens: the twenty-seven generic lists, then taskdetails' own re-read of the task schedule, processdetails' own re-read of the processes list, and databasedetails/databasevolumes' shared re-read of the Databases list: " _ $ListToString(tPaths, " | "))
+    If $ListLength(tPaths) '= 30 Quit
+    Set tExpected = $ListBuild(##class(OcuPilot.Install.Smoke).#WEBAPPLISTTOOL, ##class(OcuPilot.Install.Smoke).#USERLISTTOOL, ##class(OcuPilot.Install.Smoke).#SSLLISTTOOL, ##class(OcuPilot.Install.Smoke).#TASKLISTTOOL, ##class(OcuPilot.Install.Smoke).#PROCESSLISTTOOL, ##class(OcuPilot.Install.Smoke).#AUDITLISTTOOL, ##class(OcuPilot.Install.Smoke).#RESTAPILISTTOOL, ##class(OcuPilot.Install.Smoke).#ROLELISTTOOL, ##class(OcuPilot.Install.Smoke).#RESOURCELISTTOOL, ##class(OcuPilot.Install.Smoke).#SERVICELISTTOOL, ##class(OcuPilot.Install.Smoke).#X509LISTTOOL, ##class(OcuPilot.Install.Smoke).#LDAPLISTTOOL, ##class(OcuPilot.Install.Smoke).#WALLETLISTTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHDESCRIPTIONSTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHCLIENTSTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHRESOURCESERVERSTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHSERVERTOOL, ##class(OcuPilot.Install.Smoke).#OAUTHSERVERCLIENTSTOOL, ##class(OcuPilot.Install.Smoke).#TASKONDEMANDTOOL, ##class(OcuPilot.Install.Smoke).#TASKUPCOMINGTOOL, ##class(OcuPilot.Install.Smoke).#TASKHISTORYTOOL, ##class(OcuPilot.Install.Smoke).#SYSTEMUSAGETOOL, ##class(OcuPilot.Install.Smoke).#LOCKLISTTOOL, ##class(OcuPilot.Install.Smoke).#DATABASELISTTOOL, ##class(OcuPilot.Install.Smoke).#DATABASEFREESPACELISTTOOL, ##class(OcuPilot.Install.Smoke).#DEVICELISTTOOL, ##class(OcuPilot.Install.Smoke).#ALERTLISTTOOL, ##class(OcuPilot.Install.Smoke).#TASKLISTTOOL, ##class(OcuPilot.Install.Smoke).#PROCESSLISTTOOL, ##class(OcuPilot.Install.Smoke).#DATABASELISTTOOL)
+    For tI = 1:1:30 {
         Set tWanted = "/screens/" _ $List(tExpected, tI) _ "/read?maxRows=1"
         Do $$$AssertTrue($List(tPaths, tI) [ tWanted, "check " _ tI _ " reads " _ tWanted _ ", not " _ $List(tPaths, tI))
     }
@@ -634,7 +635,7 @@ Method TestCheckAreaListsHasOneSelectArmPerNameAndAnEmptyCatchAll()
     Set tNameMarkerAt = ..LastMarkerAt(tPrefix, tNameMarker)
     Do $$$AssertTrue(tNameMarkerAt > 0, "CheckAreaLists' comma-separated name list is found immediately before the tool lookup")
     ; The window has to outlast the list, which grows by one name per area list that ships: it
-    ; stood at 272 characters after Story 6.12, and a window shorter than the list makes $Piece
+    ; stood at 279 characters after Story 6.13, and a window shorter than the list makes $Piece
     ; return a truncated roster whose name count reddens this method on a correct declaration.
     Set tNames = $Piece($Extract(tText, tNameMarkerAt, tNameMarkerAt + 1000), tQuote, 1)
     Set tNameCount = $Length(tNames, ",")
@@ -698,7 +699,7 @@ ClassMethod Line(pReport As %String, pName As %String) As %String
 Method TestNoCredentialsSkipsRatherThanPasses()
 {
     Set tOk = ##class(OcuPilot.Install.Smoke).Run("", "", "0", .tReport, .tCounts)
-    For tName = "signin", "instance", "namespaces", "navigation", "webapplications", "users", "ssl", "tasks", "processes", "audit", "webapp.restapis", "roles", "resources", "services", "x509", "ldap", "wallet", "oauthdescriptions", "oauthclients", "oauthresourceservers", "oauthserver", "oauthserverclients", "ondemand", "upcoming", "taskhistory", "systemusage", "locks", "databases", "databasefreespace", "taskdetails", "processdetails", "databasedetails", "databasevolumes", "messageslog", "applicationerrors", "sign-out" {
+    For tName = "signin", "instance", "namespaces", "navigation", "webapplications", "users", "ssl", "tasks", "processes", "audit", "webapp.restapis", "roles", "resources", "services", "x509", "ldap", "wallet", "oauthdescriptions", "oauthclients", "oauthresourceservers", "oauthserver", "oauthserverclients", "ondemand", "upcoming", "taskhistory", "systemusage", "locks", "databases", "databasefreespace", "devices", "alerts", "taskdetails", "processdetails", "databasedetails", "databasevolumes", "messageslog", "applicationerrors", "sign-out" {
         Do $$$AssertTrue(tReport [ ("  skipped  " _ tName), tName _ " is skipped: " _ ..Line(tReport, tName))
     }
     Do $$$AssertTrue(tReport [ "no credentials were supplied", "and the report says why")

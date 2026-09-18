@@ -176,6 +176,12 @@ Parameter DATABASEVOLUMESTOOL = "osmgmt.databasevolumes";
 /// device table, never empty on any mounted instance.</p>
 Parameter DEVICELISTTOOL = "osmgmt.devices";
 
+/// <p>The tool identifier of the alerts.log viewer, read generically by
+/// <method>CheckAreaLists</method> (Story 6.13). Its declared read is the monitoring API's half of
+/// the screen, so it is a <b>zero-or-one</b> list: an instance whose alerts.log is absent or whose
+/// entries the monitoring API has already reported answers no row without anything being wrong.</p>
+Parameter ALERTLISTTOOL = "logs.alerts";
+
 /// <p>The console-log page's path under the API application, and the window the
 /// <code>messageslog</code> check asks for. Small: the check is that the endpoint serves the
 /// instance's own log, not that it serves much of it.</p>
@@ -622,12 +628,12 @@ ClassMethod CheckAreaLists(ByRef pChecks, pAccessToken As %String, pDemo As %Str
 {
     Set tDemoWanted = ($Select(pDemo '= "": pDemo, 1: $System.Util.GetEnviron("OCUPILOT_DEMO")) = "1")
     Set tBase = ..RosterPath("api")
-    For tI = 1:1:26 {
-        Set tName = $Piece("webapplications,users,ssl,tasks,processes,audit,webapp.restapis,roles,resources,services,x509,ldap,wallet,oauthdescriptions,oauthclients,oauthresourceservers,oauthserver,oauthserverclients,ondemand,upcoming,taskhistory,systemusage,locks,databases,databasefreespace,devices", ",", tI)
+    For tI = 1:1:27 {
+        Set tName = $Piece("webapplications,users,ssl,tasks,processes,audit,webapp.restapis,roles,resources,services,x509,ldap,wallet,oauthdescriptions,oauthclients,oauthresourceservers,oauthserver,oauthserverclients,ondemand,upcoming,taskhistory,systemusage,locks,databases,databasefreespace,devices,alerts", ",", tI)
         ; Every index names its own tool and the last arm names none: a list added to the bound and
         ; the name list without its own arm reads an empty path and fails, rather than re-reading
         ; the previous list under the new name and passing.
-        Set tTool = $Select(tI = 1: ..#WEBAPPLISTTOOL, tI = 2: ..#USERLISTTOOL, tI = 3: ..#SSLLISTTOOL, tI = 4: ..#TASKLISTTOOL, tI = 5: ..#PROCESSLISTTOOL, tI = 6: ..#AUDITLISTTOOL, tI = 7: ..#RESTAPILISTTOOL, tI = 8: ..#ROLELISTTOOL, tI = 9: ..#RESOURCELISTTOOL, tI = 10: ..#SERVICELISTTOOL, tI = 11: ..#X509LISTTOOL, tI = 12: ..#LDAPLISTTOOL, tI = 13: ..#WALLETLISTTOOL, tI = 14: ..#OAUTHDESCRIPTIONSTOOL, tI = 15: ..#OAUTHCLIENTSTOOL, tI = 16: ..#OAUTHRESOURCESERVERSTOOL, tI = 17: ..#OAUTHSERVERTOOL, tI = 18: ..#OAUTHSERVERCLIENTSTOOL, tI = 19: ..#TASKONDEMANDTOOL, tI = 20: ..#TASKUPCOMINGTOOL, tI = 21: ..#TASKHISTORYTOOL, tI = 22: ..#SYSTEMUSAGETOOL, tI = 23: ..#LOCKLISTTOOL, tI = 24: ..#DATABASELISTTOOL, tI = 25: ..#DATABASEFREESPACELISTTOOL, tI = 26: ..#DEVICELISTTOOL, 1: "")
+        Set tTool = $Select(tI = 1: ..#WEBAPPLISTTOOL, tI = 2: ..#USERLISTTOOL, tI = 3: ..#SSLLISTTOOL, tI = 4: ..#TASKLISTTOOL, tI = 5: ..#PROCESSLISTTOOL, tI = 6: ..#AUDITLISTTOOL, tI = 7: ..#RESTAPILISTTOOL, tI = 8: ..#ROLELISTTOOL, tI = 9: ..#RESOURCELISTTOOL, tI = 10: ..#SERVICELISTTOOL, tI = 11: ..#X509LISTTOOL, tI = 12: ..#LDAPLISTTOOL, tI = 13: ..#WALLETLISTTOOL, tI = 14: ..#OAUTHDESCRIPTIONSTOOL, tI = 15: ..#OAUTHCLIENTSTOOL, tI = 16: ..#OAUTHRESOURCESERVERSTOOL, tI = 17: ..#OAUTHSERVERTOOL, tI = 18: ..#OAUTHSERVERCLIENTSTOOL, tI = 19: ..#TASKONDEMANDTOOL, tI = 20: ..#TASKUPCOMINGTOOL, tI = 21: ..#TASKHISTORYTOOL, tI = 22: ..#SYSTEMUSAGETOOL, tI = 23: ..#LOCKLISTTOOL, tI = 24: ..#DATABASELISTTOOL, tI = 25: ..#DATABASEFREESPACELISTTOOL, tI = 26: ..#DEVICELISTTOOL, tI = 27: ..#ALERTLISTTOOL, 1: "")
         If tBase = "" {
             Do ..Note(.pChecks, tName, "fail", "the roster on this instance declares no API path, so there was nothing to read")
             Continue
@@ -657,7 +663,7 @@ ClassMethod CheckAreaLists(ByRef pChecks, pAccessToken As %String, pDemo As %Str
             Do ..Note(.pChecks, tName, "skipped", "the list is empty and the demo opt-in flag is not set for this instance, so no demo fixture row was expected (AD-25)")
             Continue
         }
-        Set tZeroOrOne = ''$ListFind($ListBuild("oauthdescriptions", "oauthclients", "oauthresourceservers", "oauthserver", "oauthserverclients", "taskhistory"), tName)
+        Set tZeroOrOne = ''$ListFind($ListBuild("oauthdescriptions", "oauthclients", "oauthresourceservers", "oauthserver", "oauthserverclients", "taskhistory", "alerts"), tName)
         If tZeroOrOne && ((tCount = 0) || (tCount = 1)) {
             Do ..Note(.pChecks, tName, "pass")
             Continue

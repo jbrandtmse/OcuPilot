@@ -677,6 +677,7 @@ app-screen-outlet,
 app-home-page,
 app-audit-page,
 app-error-log-page,
+app-log-viewer-page,
 app-detail-page,
 app-task-history-page,
 app-databases-page,
@@ -3655,4 +3656,170 @@ app-data-table {
   gap: var(--ocu-space-4);
   padding: var(--ocu-space-4);
   box-sizing: border-box;
+}
+
+// --- Log viewer (Story 6.13) -- the shared alerts.log / messages.log surface ---------------------
+//
+// The row is a FIXED 28px (`--ocu-log-row-height`, DESIGN.md's own geometry), not a minimum: a log
+// window is scanned by eye down the severity column, and a row that grows with its text breaks that
+// scan. Long text is clipped rather than wrapped, and the Raw toggle is where the whole line is
+// read.
+
+// A flex item that fills `.ocu-content`, like every other archetype page: without it the host
+// element measures content height, `.ocu-log-viewport` never overflows, and Jump to top / bottom
+// scroll an element that does not scroll.
+.ocu-log-viewer {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.ocu-log-viewer-bar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--ocu-space-2);
+  padding: var(--ocu-space-2) var(--ocu-space-4);
+  background: var(--ocu-surface);
+  border-bottom: 1px solid var(--ocu-outline-variant);
+}
+
+.ocu-log-viewer-search {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ocu-log-viewer-count {
+  @include typo.ocu-type('label');
+
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
+  white-space: nowrap;
+}
+
+.ocu-log-viewer-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ocu-space-2);
+  padding: var(--ocu-space-2) var(--ocu-space-4);
+}
+
+.ocu-log-viewer-notice {
+  @include typo.ocu-type('body');
+
+  margin: 0;
+  padding: var(--ocu-space-2) var(--ocu-space-4);
+  color: var(--ocu-on-surface-variant);
+}
+
+// The chip carries its word always; the colour pair is the second signal, never the only one.
+.ocu-log-chip {
+  @include typo.ocu-type('label');
+
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ocu-space-2);
+  box-sizing: border-box;
+  padding: 0 var(--ocu-space-2);
+  border: 1px solid var(--ocu-outline-variant);
+  border-radius: var(--ocu-radius-full);
+  background: var(--ocu-surface);
+  color: var(--ocu-on-surface-variant);
+  cursor: pointer;
+}
+
+.ocu-log-chip-active {
+  border-color: var(--ocu-secondary);
+  color: var(--ocu-on-surface);
+}
+
+.ocu-log-chip-static {
+  cursor: default;
+}
+
+.ocu-log-chip[data-ocu-chip='info'] {
+  color: var(--ocu-info);
+}
+
+.ocu-log-chip[data-ocu-chip='warning'] {
+  color: var(--ocu-warning);
+}
+
+.ocu-log-chip[data-ocu-chip='severe'],
+.ocu-log-chip[data-ocu-chip='fatal'] {
+  background: var(--ocu-error);
+  color: var(--ocu-on-error);
+  border-color: var(--ocu-error);
+}
+
+.ocu-log-viewport {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.ocu-log-rows {
+  width: 100%;
+}
+
+.ocu-log-row {
+  @include typo.ocu-type('body');
+
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 190px 90px 110px minmax(0, 1fr);
+  align-items: center;
+  height: var(--ocu-log-row-height);
+  border-bottom: 1px solid var(--ocu-outline-variant);
+}
+
+.ocu-log-row-match {
+  background: var(--ocu-surface-container);
+}
+
+.ocu-log-cell {
+  box-sizing: border-box;
+  padding: 0 var(--ocu-space-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ocu-log-mark {
+  background: var(--ocu-warning-container);
+  color: var(--ocu-on-surface);
+}
+
+.ocu-log-raw {
+  @include typo.ocu-type('code');
+
+  margin: 0;
+  padding: var(--ocu-space-2);
+  background: var(--ocu-code-surface);
+  color: var(--ocu-on-code-surface);
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.ocu-log-raw-line {
+  display: block;
+  height: var(--ocu-log-row-height);
+  line-height: var(--ocu-log-row-height);
+}
+
+.ocu-log-raw-gutter {
+  display: inline-block;
+  width: 48px;
+  text-align: right;
+  padding-right: var(--ocu-space-2);
+  color: var(--ocu-on-surface-variant);
+  user-select: none;
+}
+
+.ocu-log-load-newer {
+  align-self: flex-start;
+  margin: var(--ocu-space-2) var(--ocu-space-4);
 }

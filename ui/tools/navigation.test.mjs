@@ -126,6 +126,7 @@ test('a side bar lists only built screens, in side-bar order', () => {
     builtScreens().map((screen) => screen.route),
     [
       '',
+      'logs/alerts',
       'logs/errors',
       'logs/audit',
       'os-management/databases/details',
@@ -164,7 +165,7 @@ test('a side bar lists only built screens, in side-bar order', () => {
       'agent/definitions',
       'agent/switches',
     ],
-    'the built screens are Home, at the application root, then the application error log and the audit database, the unlisted Database details, Free-space view and Volume files, process details, processes, Locks, System usage, Databases, the unlisted task details and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, users, roles, resources, services, OpenAPI document viewer, web applications, REST API explorer, the four unlisted OAuth 2.0 tabs, Secrets, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, and the Agent co-pilot area\'s Definition form, Definitions list and Switches, in area rail order'
+    'the built screens are Home, at the application root, then the alerts.log viewer, the application error log and the audit database, the unlisted Database details, Free-space view and Volume files, process details, processes, Locks, System usage, Databases, the unlisted task details and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, users, roles, resources, services, OpenAPI document viewer, web applications, REST API explorer, the four unlisted OAuth 2.0 tabs, Secrets, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, and the Agent co-pilot area\'s Definition form, Definitions list and Switches, in area rail order'
   );
 });
 

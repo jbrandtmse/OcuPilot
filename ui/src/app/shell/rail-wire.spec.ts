@@ -55,6 +55,13 @@ const LIVE_PAYLOAD = {
       failedPair: '%Admin_Secure:USE',
       screens: [
         {
+          route: 'logs/alerts',
+          labelKey: 'alertLogListLabel',
+          sideBarPosition: 1,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
+        },
+        {
           route: 'logs/errors',
           labelKey: 'errorLogListLabel',
           sideBarPosition: 3,
@@ -424,6 +431,16 @@ describe('the rail, wired to the real NavigationService reading a live-captured 
     const navigation = TestBed.inject(NavigationService);
     for (const route of ['tasks/schedule', 'tasks/on-demand', 'tasks/upcoming', 'tasks/history', 'tasks/schedule/history', 'tasks/schedule/details']) {
       expect(navigation.screenVerdict(route)).toEqual({ allowed: false, failedPair: '%Admin_Task:USE' });
+    }
+  });
+
+  it('Story 2.12/6.13: reads both Logs file-screen verdicts the live payload carries', () => {
+    // Both declare `%Admin_Operate:USE` -- which this principal holds -- then `%DB_IRISSYS:READ`,
+    // which it does not, so both are denied on the second. Without this the alerts.log entry added
+    // to LIVE_PAYLOAD is read by nothing here and can drift from what the server answers.
+    const navigation = TestBed.inject(NavigationService);
+    for (const route of ['logs/alerts', 'logs/errors']) {
+      expect(navigation.screenVerdict(route)).toEqual({ allowed: false, failedPair: '%DB_IRISSYS:READ' });
     }
   });
 

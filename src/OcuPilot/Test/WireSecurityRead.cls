@@ -987,7 +987,7 @@ Method TestTheAuditListsPairSetIsEnforcedForARealPrincipal()
     Set tBefore = ..AsyncTaskCount()
     Do $$$AssertTrue(tBefore >= 0, "the async-task list reads before the refused read (" _ tBefore _ ")")
 
-    Do $$$AssertEquals(..ScreensFor(..#AUDITDENYUSER, "logs"), "[{""route"":""logs/errors"",""labelKey"":""errorLogListLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""logs/audit"",""labelKey"":""auditListLabel"",""sideBarPosition"":4,""allowed"":false,""failedPair"":""%Admin_Operate:USE""}]", "%Admin_Secure and the database read: both Logs screens are denied on %Admin_Operate:USE, which each of them requires")
+    Do $$$AssertEquals(..ScreensFor(..#AUDITDENYUSER, "logs"), "[{""route"":""logs/alerts"",""labelKey"":""alertLogListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""logs/errors"",""labelKey"":""errorLogListLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""logs/audit"",""labelKey"":""auditListLabel"",""sideBarPosition"":4,""allowed"":false,""failedPair"":""%Admin_Operate:USE""}]", "%Admin_Secure and the database read: all three Logs screens are denied on %Admin_Operate:USE, which each of them requires")
     Do $$$AssertEquals(..AreaVerdictFor(..#AUDITDENYUSER, "logs"), "false:%Admin_Operate:USE", "and so is the Logs area")
     Do ..AssertReadRefused(..#AUDITDENYUSER, "logs.audit", "%Admin_Operate:USE")
     Do $$$AssertEquals(..AsyncTaskCount(), tBefore, "and the refused read queued nothing, so no async-task row is left behind (DW-249)")
@@ -995,9 +995,9 @@ Method TestTheAuditListsPairSetIsEnforcedForARealPrincipal()
     ; The pair ORDER, read by a principal holding neither of the screen's administrative resources:
     ; %Admin_Secure:USE is declared first, so it is the pair the gate names. A descriptor that
     ; declared the first two the other way round would name %Admin_Operate:USE here.
-    Do $$$AssertEquals(..ScreensFor(..#TASKUSER, "logs"), "[{""route"":""logs/errors"",""labelKey"":""errorLogListLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""logs/audit"",""labelKey"":""auditListLabel"",""sideBarPosition"":4,""allowed"":false,""failedPair"":""%Admin_Secure:USE""}]", "a principal holding neither administrative resource is denied on the first pair each screen declares -- %Admin_Operate for the application error log, %Admin_Secure for the audit viewer")
+    Do $$$AssertEquals(..ScreensFor(..#TASKUSER, "logs"), "[{""route"":""logs/alerts"",""labelKey"":""alertLogListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""logs/errors"",""labelKey"":""errorLogListLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""logs/audit"",""labelKey"":""auditListLabel"",""sideBarPosition"":4,""allowed"":false,""failedPair"":""%Admin_Secure:USE""}]", "a principal holding neither administrative resource is denied on the first pair each screen declares -- %Admin_Operate for the alert log and the application error log, %Admin_Secure for the audit viewer")
 
-    Do $$$AssertEquals(..ScreensFor(..#AUDITUSER, "logs"), "[{""route"":""logs/errors"",""labelKey"":""errorLogListLabel"",""sideBarPosition"":3,""allowed"":true},{""route"":""logs/audit"",""labelKey"":""auditListLabel"",""sideBarPosition"":4,""allowed"":true}]", "all three pairs: both Logs screens are listed allowed")
+    Do $$$AssertEquals(..ScreensFor(..#AUDITUSER, "logs"), "[{""route"":""logs/alerts"",""labelKey"":""alertLogListLabel"",""sideBarPosition"":1,""allowed"":true},{""route"":""logs/errors"",""labelKey"":""errorLogListLabel"",""sideBarPosition"":3,""allowed"":true},{""route"":""logs/audit"",""labelKey"":""auditListLabel"",""sideBarPosition"":4,""allowed"":true}]", "all three pairs: all three Logs screens are listed allowed")
     Do $$$AssertEquals(..AreaVerdictFor(..#AUDITUSER, "logs"), "true", "and so is the Logs area")
 
     ; The served read, through the port's self-queued async path (AD-26) and with a declared
