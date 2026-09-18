@@ -8,7 +8,7 @@ Build step 3. Every remaining list, detail and viewer in the six areas reads liv
 no area stops at one screen and the side bar has no dead entries, and each screen's agent read tool
 arrives with it from the same descriptor. The epic is read-only: the writes these screens host
 arrive in Epics 7, 8, 9, 12 and 16. It depends on Epic 2 alone and runs in parallel with Epic 4.
-Stories 6.1 to 6.9 are done; the five that remain are the OS management and Logs screens.
+Stories 6.1 to 6.10 are done; the four that remain are Databases, Devices and the two log viewers.
 
 ## Stories
 
@@ -21,7 +21,7 @@ Stories 6.1 to 6.9 are done; the five that remain are the OS management and Logs
 - Story 6.7: Task details (done)
 - Story 6.8: Process details (done)
 - Story 6.9: System usage and the dashboard meters (done)
-- Story 6.10: The locks view
+- Story 6.10: The locks view (done)
 - Story 6.11: Databases, with free space arriving as it lands
 - Story 6.12: The devices list
 - Story 6.13: The alerts.log viewer
@@ -63,26 +63,35 @@ These apply to every story, and the story specs do not repeat them:
 - **Untrusted text** (log lines, entity names, vendor status words) reaches the model only as
   delimited tool-result content.
 
-Story traps, for the five that remain:
+Story traps, for the four that remain:
 
-- **6.10 Locks** is settled: `%Api.Admin.Endpoints.Lock` `LIST` through `AdminPort`, and that
-  endpoint has no `GET` or `INFO` type, so no `rowGet`. Scope `instance` — the lock table is
-  instance-wide and a row's scope marker is its database directory and system, not a namespace — row
-  id composite `["DeleteID"]`, since one process commonly holds several locks. The owner cell links
-  to `os-management/processes/details/<pid>` through the cross-screen row target, carrying `Pid`, not
-  the row key; a remote owner's link lands on Process details' "This process no longer exists.",
-  accepted as DW-1074. Pair set `%Admin_Operate:USE` plus `%DB_IRISSYS:READ`, to be confirmed with a
-  least-privileged principal at implement time. `classicPage` is the read-only View Locks page, no
-  exemption; `sideBarPosition` 2; `refreshes` false; no row or primary action. Its filter is the
-  shared client-side one, so the vendor's `filter` parameter is not declared. **No transaction
-  column ships:** that condition is a removal concern, and 16.12 warns from the admin endpoint's own
-  409 "is currently in a transaction" refusal. Empty state: "No locks on this instance."
-- **6.11 Databases** is `list (two views)`: a command-bar View control over General and Free-space,
-  showing size, maximum, free space, status, directory and mounted state. The free-space figures come
-  from `Database.SysCRUD` `TYPEINFO`, async per request type: `AdminPort` polls with a bounded wait
-  that fails `PORT.TIMEOUT`, never partial, and the slice writes no polling. Rows appear immediately
-  with per-row skeleton cells that fill as each figure lands, and **the table never reflows**.
-  Database details is unlisted, auto-refreshes, and reuses 6.9's one meter component.
+- **6.10 Locks** landed as built: instance-wide scope, a composite row id, the owner cell linking to
+  `os-management/processes/details/<pid>` through the cross-screen row target (carrying `Pid`, not the
+  row key; a remote owner lands on "This process no longer exists.", DW-1074), and no transaction
+  column — that condition is a removal concern 16.12 warns about from the endpoint's own 409.
+- **6.11 Databases** is settled by its spec gate. **Two descriptors, not one:** `DatabaseList`
+  (listed) and `DatabaseFreeSpace` (unlisted), with the command bar's View control switching route
+  between them, because `SysCRUD.ResourcesOR()` answers Manage-or-Operate for `GET` and `TYPEINFO`
+  but **Manage only for `LIST`**, while the `AsyncResult` poll needs Operate — and a descriptor's
+  gate requires every one of its pairs, so no single descriptor can carry both views. The free-space
+  view is **one read with a `rowGet` per row** at `rowGet.type` `INFO`, never a per-figure stream:
+  `Screen/Read.cls` answers one envelope and `rowGet` is issued per row inside the read, so per-figure
+  arrival is not declarable (probed: `ShouldRunAsync()` is true for `TYPEINFO` alone, the poll answers
+  200 whether pending or finished and differs only in `State`, `Result` is written once so no partial
+  answer exists, and fourteen databases cost 0.852 s against NFR-1's 2 s). Rows therefore render with
+  **skeleton cells** where the figures go, the figures **arrive together** when the asynchronous call
+  resolves, and **the table never reflows** — the data table is a CSS grid whose tracks come from the
+  declared column kinds, never from content. `AdminPort` owns the polling as an ordinary call that
+  resolves later (bounded wait, fails `PORT.TIMEOUT`, never partial); the slice writes none.
+  **Database details** reads `GET` plus `TYPEINFO` as `parts` and ships **properties and volume files
+  only**, with an AC that an **`INFO` fault keeps the last values and shows the refresh strip** rather
+  than blanking a screen that refreshes every 5 s; the background-tasks section is chartered to the
+  owner's decision sheet as **DW-1080**, since `%SYS.BackgroundTask:RunningInDatabase` is a
+  `Final Internal` class query no `%Api.Admin.*` class references. It reuses 6.9's one meter component
+  and is already on the auto-refresh roster of seven. The classic key is
+  **`%CSP.UI.Portal.OpDatabases`** — the `%Admin_Operate` page carrying the General/Free-space toggle,
+  not `%CSP.UI.Portal.Databases` — which AD-44 unions into the gate. This story also backfills
+  `ui/browser/screen-height.browser-spec.mjs` for Locks and System usage.
 - **6.12 Devices** is the list only.
 - **6.13 alerts.log** is the first user of **`MonitorPort`, which does not exist yet**. It declares
   and evaluates its own resource gate with `$System.Security.Check` before any call, because
@@ -105,8 +114,8 @@ Story traps, for the five that remain:
   details meet the same path, inference).
 - **Auto-refresh roster is seven:** Processes, Process details, Databases, Database details, Task
   schedule, Task details, System usage. A screen joins only by declaring it in its descriptor **and**
-  appearing in that roster. Of the five remaining only 6.11 touches it (Databases and Database
-  details); the other four do not auto-refresh.
+  appearing in that roster. Of the four remaining only 6.11 touches it (both Databases descriptors
+  and Database details); the other three do not auto-refresh.
 
 ## Technical Decisions
 
@@ -180,9 +189,14 @@ Story traps, for the five that remain:
   field is a key of the live row, issuing the declared detail type; a live-entity test asserts real
   values, not null-filled keys), `Test/Wire` with `navigation.test.mjs`, `screen-mirror.test.mjs` and
   the two client `LIVE_PAYLOAD` copies (neither goes red alone), and `Install/Smoke` (one live read
-  per built list, skipping without credentials). A denial test needs a real principal on the
-  throwaway, never `%Operator`; a denied deep link wants a browser leg, not only the payload and the
-  HTTP 403 (DW-1049).
+  per built list, skipping without credentials). **Two literal pins break on any added screen and no
+  stage re-runs them by itself:** `src/OcuPilot/Test/Navigation.cls` pins the os-management roster by
+  literal index **and** count (it went red in CI on 6.9 and again on 6.10), so any story that builds an
+  os-management screen updates both; and `Install/Smoke.cls`'s name list, its indexed `$Select` arm and
+  its loop bound must change together, with `Test/Smoke.cls`'s arm-count assertion. Run the whole
+  ObjectScript sweep, not a chosen subset, before believing a story is green. A denial test needs a
+  real principal on the throwaway, never `%Operator`; a denied deep link wants a browser leg, not
+  only the payload and the HTTP 403 (DW-1049).
 - **Browser specs** against a non-default origin need `OCUPILOT_BROWSER_CONTAINER`, and their
   docker-exec legs refuse only the live `ocupilot` container, not a slot instance (DW-1015) — point
   them only at your own slot's throwaway. A browser spec reads the deployed bundle, so rebuild and
@@ -191,7 +205,9 @@ Story traps, for the five that remain:
 ## UX & Interaction Patterns
 
 - **States.** `list`: skeleton, then empty-state; an error keeps the data on screen.
-  `list (two views)`: per view, plus Databases' async-values-arriving state (above). `detail`: skeleton fields, errors keep last values,
+  `list (two views)`: per view, plus the Databases free-space view's skeleton cells, which fill
+  together when the asynchronous call resolves and cannot reflow the table (its grid tracks come from
+  the declared column kinds). `detail`: skeleton fields, errors keep last values,
   auto-refresh in place with a field highlight. `log-viewer`: skeleton rows, then "No entries." /
   "No matches."; new rows only via "Load newer"; nothing streams.
 - **Auto-refresh.** Only the seven roster screens carry it: a command-bar chip switches off or a
@@ -241,8 +257,9 @@ Story traps, for the five that remain:
   routes to a later story (descriptor-declared field descriptions are Story 7.1's, DW-1001 and
   DW-1013). Both epics edit `Registry`, `Read`, `AdminPort`, `Install/Smoke`, `Test/` and the
   client's core, shell and tools; expect reconciliation at merge.
-- **Within this epic:** 6.11's Database details reuses 6.9's meter component; one log-viewer serves 6.13 and 6.14, built by whichever lands first, and 6.13 adds
-  the `MonitorPort` 6.14 does not need.
+- **Within this epic:** 6.11's Database details reuses 6.9's meter component and its free-space view
+  reuses 6.3's `rowGet.type`; one log-viewer serves 6.13 and 6.14, built by whichever lands first, and
+  6.13 adds the `MonitorPort` 6.14 does not need.
 - **Downstream:** Epic 7 (process actions in 7.8, on-demand Run in 7.5, 7.6's UJ-6 replay on 6.7's
   route); Epic 8 (the device editor in 8.8, plus the resource, X.509 and wallet-secret editors);
   Epic 9 (role editor and Edit task); Epic 11 (11.2 explains a 6.13 or 6.14 row); Epic 12 (OAuth
