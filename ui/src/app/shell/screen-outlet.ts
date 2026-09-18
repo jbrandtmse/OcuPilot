@@ -13,14 +13,24 @@ import { ActivatedRoute } from '@angular/router';
 
 import { DefinitionFormPage } from '../areas/agent/definition-form.page';
 import { SwitchesPage } from '../areas/agent/switches.page';
+import { DatabaseDetailsPage } from '../areas/os-management/database-details.page';
+import { DatabasesPage } from '../areas/os-management/databases.page';
+import { ProcessDetailsPage } from '../areas/os-management/process-details.page';
+import { SystemUsagePage } from '../areas/os-management/system-usage.page';
+import { TaskDetailsPage } from '../areas/tasks/details.page';
+import { HistoryPage } from '../areas/tasks/history.page';
+import { UpcomingPage } from '../areas/tasks/upcoming.page';
 import { HomePage } from '../areas/home/home.page';
 import { AuditPage } from '../areas/logs/audit.page';
 import { ErrorLogPage } from '../areas/logs/error-log.page';
+import { LogViewerPage } from '../areas/logs/log-viewer.page';
+import { OpenApiViewerPage } from '../areas/web-applications/openapi-viewer.page';
 import { decodeEntityId } from '../core/entity-id';
 import { NavigationService, screenForUrl } from '../core/navigation';
 import type { ArchetypeKey, BuiltArchetypeKey } from '../core/screens.generated';
 import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
+import { DetailPage } from './detail-page';
 import { ListPage } from './list-page';
 import { ScreenDenied } from './screen-denied';
 
@@ -48,9 +58,14 @@ type ArchetypePages = { readonly [K in BuiltArchetypeKey]: Type<unknown> } & {
 export const ARCHETYPE_PAGES: ArchetypePages = {
   home: HomePage,
   list: ListPage,
+  'list (two views)': DatabasesPage,
   'list (server criteria)': AuditPage,
   'drill-down': ErrorLogPage,
+  'log-viewer': LogViewerPage,
   'form-page': DefinitionFormPage,
+  'viewer (OpenAPI)': OpenApiViewerPage,
+  detail: DetailPage,
+  meters: SystemUsagePage,
 };
 
 /**
@@ -70,6 +85,12 @@ export const ARCHETYPE_PAGES: ArchetypePages = {
  */
 export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.AgentSwitches': SwitchesPage,
+  'OcuPilot.Screen.Descriptor.TaskUpcomingList': UpcomingPage,
+  'OcuPilot.Screen.Descriptor.TaskHistoryList': HistoryPage,
+  'OcuPilot.Screen.Descriptor.TaskDetails': TaskDetailsPage,
+  'OcuPilot.Screen.Descriptor.ProcessDetails': ProcessDetailsPage,
+  'OcuPilot.Screen.Descriptor.DatabaseFreeSpace': DatabasesPage,
+  'OcuPilot.Screen.Descriptor.DatabaseDetails': DatabaseDetailsPage,
 };
 
 /**

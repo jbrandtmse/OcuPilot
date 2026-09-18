@@ -3,7 +3,8 @@
 /// only through the parameters below, so a vendor change has a blast radius of one file.</p>
 /// <p><method>Invoke</method> is the one way to call an admin endpoint. A caller names the
 /// endpoint package-relative (<code>WebApp.App</code>) and the request type by its vendor
-/// parameter suffix (<code>GET</code>, <code>LIST</code>, <code>INFO</code>), and receives
+/// parameter suffix (<code>GET</code>, <code>LIST</code>, <code>INFO</code>, <code>CERTINFO</code>,
+/// <code>UPCOMING</code>, <code>HISTORY</code>), and receives
 /// either the endpoint's result or an error <class>%Status</class> with a wire-safe fault. The
 /// call reproduces <code>Dispatch.v1:Main()</code> on the pinned build, in its order: construct
 /// at <parameter>APIVERSION</parameter>, gate on <code>ResourcesOR()</code>, seed
@@ -72,6 +73,19 @@ Parameter PROBETYPE As INTEGER = 0;
 /// <method>ForgetTask</method>'s delete and for the terminal state names.</p>
 Parameter ASYNCTASKCLASS = "%Api.Admin.Util.AsyncTask";
 
+/// <p>The <code>resource:permission</code> pair <method>ForgetTask</method>'s delete needs, in
+/// <method>HoldsPair</method>'s grammar (DW-1025).</p>
+/// <p><b>Derived from the vendor's storage, not chosen.</b>
+/// <parameter>ASYNCTASKCLASS</parameter>'s <code>DataLocation</code> is
+/// <code>^|"^^:ds:IRISLOCALDATA"|Api.Admin.Util.AsyncTaskD</code> -- an extended reference naming
+/// the dataset itself, so the rows live in IRISLOCALDATA whatever the namespace maps, and that
+/// database's resource is <code>%DB_IRISLOCALDATA</code>. The vendor writes those rows through its
+/// own <code>SaveTask()</code>, which adds <code>%All</code> for the write; the delete here runs as
+/// the caller, so a caller without the pair meets <code>&lt;PROTECT&gt;</code>. Asserted against
+/// the instance by <class>OcuPilot.Test.AdminPortForget</class>, which resolves the resource from
+/// the database rather than repeating the literal.</p>
+Parameter ASYNCTASKPAIR = "%DB_IRISLOCALDATA:WRITE";
+
 /// <p>The task class <code>Main()</code> hands an endpoint to when
 /// <code>ShouldRunAsync()</code> is true.</p>
 Parameter ASYNCTASKENDPOINTCLASS = "%Api.Admin.Util.AsyncTaskEndpoint";
@@ -89,7 +103,19 @@ Parameter ASYNCLOCATION = "async-result?id=";
 
 /// <p>The request-type suffixes <method>Invoke</method> accepts, each resolved through the
 /// endpoint's own <code>TYPE&lt;suffix&gt;</code> parameter. Reads only.</p>
-Parameter TYPESUFFIXES = "GET,LIST,INFO";
+/// <p><code>CERTINFO</code> is <code>Security.X509Credential</code>'s certificate read: that
+/// endpoint's LIST carries no subject, issuer or validity, and its <code>CERTINFO</code> answers all
+/// three, so they are reachable only through it (AD-36).</p>
+/// <p><code>UPCOMING</code> is <code>Task.CRUD</code>'s scheduled-occurrence list, a list-shaped read
+/// the endpoint answers synchronously: it defines no <code>ShouldRunAsync</code> and its
+/// <code>RunUpcoming</code> queues nothing (AD-26, AD-36).</p>
+/// <p><code>HISTORY</code> is the same endpoint's task-run history (Story 6.6), dispatched to
+/// <code>RunHistory</code>: synchronous for the same reason <code>UPCOMING</code> is.</p>
+/// <p><code>VOLUMELIST</code> is <code>Database.SysCRUD</code>'s volume-file list (Story 6.11):
+/// the vendor publishes it <code>TYPE</code>-prefixed (<code>TYPEVOLUMELIST</code>), so it
+/// resolves here rather than through <parameter>BARETYPES</parameter>, and it is synchronous --
+/// only that endpoint's <code>TYPEINFO</code> answers <code>ShouldRunAsync()</code> true.</p>
+Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST";
 
 /// <p>The pair set the <b>backing query or class</b> of an endpoint requires, beyond the
 /// endpoint's own <code>ResourcesOR()</code> gate (AD-29). Comma-separated entries of the form
@@ -119,6 +145,17 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO";
 /// resource names and endpoint are checked against the instance by
 /// <class>OcuPilot.Test.AdminPortFault</class>.</p>
 Parameter QUERYPAIRS = "Process/LIST=%Admin_Manage:USE|%DB_IRISSYS:WRITE";
+
+/// <p>The request types this port admits, per endpoint, without the vendor's <code>TYPE</code>
+/// prefix (System usage, Story 6.9). Comma-separated entries of the form
+/// <code>&lt;endpoint&gt;/&lt;type&gt;</code>, the grammar <parameter>QUERYPAIRS</parameter> uses.</p>
+/// <p><code>%Api.Admin.Endpoints.Monitor</code> publishes its request types as unprefixed class
+/// parameters (<code>SYSTEMUSAGE</code>, <code>SYSTEMUSAGESHM</code>, <code>DASHBOARDMAIN</code>)
+/// rather than as <code>TYPE&lt;suffix&gt;</code>. A type listed here for an endpoint resolves
+/// through that bare parameter on the endpoint's class, without widening
+/// <parameter>TYPESUFFIXES</parameter>; every other suffix still resolves through the
+/// <code>TYPE</code>-prefixed parameter.</p>
+Parameter BARETYPES = "Monitor/SYSTEMUSAGE,Monitor/SYSTEMUSAGESHM,Monitor/DASHBOARDMAIN";
 
 /// <p>The body-template method names, in the order <method>TemplateMethod</method> resolves them
 /// (AD-3): the first one an endpoint class defines itself is its template.</p>
@@ -327,7 +364,7 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
 
         Set tClass = ..EndpointClass(pEndpoint)
         Set tType = ""
-        If tClass '= "" Set tType = ..EndpointType(tClass, pType)
+        If tClass '= "" Set tType = ..EndpointType(pEndpoint, tClass, pType)
         If tType = "" {
             Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, "This instance does not implement that operation", .pHttpStatus, .pFault)
             Quit
@@ -633,8 +670,16 @@ ClassMethod PollTask(pGuid As %String, Output pAnswer As %DynamicObject, Output 
 
 /// <p>Delete the task row <var>pGuid</var> names, once it is terminal and no worker still owns
 /// it. Only the row this call queued is deleted. A failure is logged and never raised.</p>
+/// <p><b>A caller who cannot write the row's database leaves it alone, silently</b>
+/// (<parameter>ASYNCTASKPAIR</parameter>, DW-1025). The delete runs as the caller, so without that
+/// pair it fails <code>&lt;PROTECT&gt;</code> -- and logging that put the vendor's protect text
+/// into the log this instance's own console-log screen displays, once per async read, for a caller
+/// who had already been served. The row is the vendor's own housekeeping: leaving it is the same
+/// outcome as the timeout arm, which also leaves a row behind, and no caller-visible answer
+/// changes either way.</p>
 ClassMethod ForgetTask(pGuid As %String)
 {
+    If '..HoldsPair(..#ASYNCTASKPAIR) Quit
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
     Try {
@@ -660,13 +705,20 @@ ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String =
     Do ##class(OcuPilot.Kernel.Fault).LogRaw("adminport", pMessage, pStatus, pCode)
 }
 
-/// <p>The vendor type number for suffix <var>pSuffix</var> on <var>pClass</var>, or
-/// <code>""</code> when the suffix is not in <parameter>TYPESUFFIXES</parameter>, the class
-/// declares no <code>TYPE&lt;suffix&gt;</code> parameter, or <method>ImplementsRead</method>
-/// says the class does not implement that read.</p>
-ClassMethod EndpointType(pClass As %String, pSuffix As %String) As %String [ Private ]
+/// <p>The vendor type number for suffix <var>pSuffix</var> on <var>pEndpoint</var>'s class
+/// <var>pClass</var>, or <code>""</code> when the class declares no such parameter or
+/// <method>ImplementsRead</method> says the class does not implement that read. A suffix
+/// <parameter>BARETYPES</parameter> lists for <var>pEndpoint</var> resolves through the bare
+/// parameter of that name; any other suffix must be in <parameter>TYPESUFFIXES</parameter> and
+/// resolves through <code>TYPE&lt;suffix&gt;</code>.</p>
+ClassMethod EndpointType(pEndpoint As %String, pClass As %String, pSuffix As %String) As %String [ Private ]
 {
     If '$Match(pSuffix, "^[A-Z]+$") Quit ""
+    If $ListFind($ListFromString(..#BARETYPES), pEndpoint _ "/" _ pSuffix) {
+        Set tBare = $Parameter(pClass, pSuffix)
+        If (tBare = "") || '..ImplementsRead(pClass, pSuffix) Quit ""
+        Quit tBare
+    }
     If '$ListFind($ListFromString(..#TYPESUFFIXES), pSuffix) Quit ""
     Set tType = $Parameter(pClass, "TYPE" _ pSuffix)
     If tType = "" Quit ""
@@ -818,9 +870,11 @@ ClassMethod Sequence(pEndpoint As %RegisteredObject, pBody As %DynamicAbstractOb
 
 /// <p>Poll task <var>pGuid</var> until it is terminal or <method>AsyncTimeout</method> passes.
 /// <code>Finished</code> is a 200 success carrying the task's <code>Result</code>;
-/// <code>Failed</code> is a 500 whose fault is built from <code>FailureReason</code>; both
-/// delete the row. No terminal state within the bound is <code>PORT.TIMEOUT</code>, and the row
-/// is left to the worker that still owns it.</p>
+/// <code>Failed</code> is a 500 whose fault is built from <code>FailureReason</code>; both hand the
+/// row to <method>ForgetTask</method>, which deletes it only for a caller holding
+/// <parameter>ASYNCTASKPAIR</parameter> and leaves it alone silently otherwise. No terminal state
+/// within the bound is <code>PORT.TIMEOUT</code>, and the row is left to the worker that still
+/// owns it.</p>
 ClassMethod AwaitTask(pEndpoint As %String, pGuid As %String, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set tSC = $$$OK

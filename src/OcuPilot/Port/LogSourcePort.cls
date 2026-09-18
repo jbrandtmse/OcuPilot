@@ -1,6 +1,8 @@
 /// <p>The port to the log sources the administration API does not back (AD-21, AD-29). It serves
 /// bounded byte pages of whole lines from a file in the instance's manager directory.</p>
-/// <p><method>Page</method> is the one entry point. A caller names a <b>source key</b> from
+/// <p><method>Page</method> is the entry point a route uses, and <method>Rows</method> the one a
+/// declared read uses (AD-36): the same window, projected into <code>{time, severity, text}</code>
+/// rows newest first instead of raw lines. A caller names a <b>source key</b> from
 /// <method>Sources</method>'s fixed enum and never a path, a file name or any part of one: the
 /// directory comes from <code>$System.Util.ManagerDirectory()</code> on every call and the file
 /// name from the key (AD-21). The step order is load-bearing -- enum, gate, <var>maxBytes</var>,
@@ -17,7 +19,7 @@
 /// from <class>OcuPilot.Api.Error</class> (AD-12, AD-39); raw status text goes to
 /// <method>LogFault</method> alone. Nothing here writes to the response device, switches
 /// namespace, escalates or spawns.</p>
-/// <p><b>The second source is not a file.</b> <method>Errors</method> serves the application error
+/// <p><b>One source is not a file.</b> <method>Errors</method> serves the application error
 /// log -- the <code>^ERRORS</code> global, read through <code>SYS.ApplicationError</code>'s own
 /// four queries and nothing else (AD-48) -- in four drill levels a route binds one of. That class
 /// exists only in <code>%SYS</code>, so the port enters that namespace <b>once per call</b> by
@@ -36,7 +38,7 @@ Class OcuPilot.Port.LogSourcePort Extends %RegisteredObject
 
 /// <p>The fixed enum of source keys this port serves (AD-21), comma-separated. A caller names a
 /// key from this list and nothing else; a route binds the key, so no caller names a file.</p>
-/// <p><b>Two sources, two entry points.</b> <method>Page</method> serves the file sources;
+/// <p><b>Two kinds of source, two entry points.</b> <method>Page</method> serves the file sources;
 /// <method>Errors</method> serves <parameter>ERRORSKEY</parameter>, which is a global read through
 /// a vendor query rather than a file (AD-48). Both entry points read this one enum, so
 /// <method>Page</method> admits <parameter>ERRORSKEY</parameter> at its enum check and then refuses
@@ -44,7 +46,7 @@ Class OcuPilot.Port.LogSourcePort Extends %RegisteredObject
 /// <method>Page</method> never names, so <method>PairsFor</method> answers an empty set and the
 /// prologue's empty-pair-set refusal answers 403 rather than serving a page. No route can reach
 /// that -- each binds its own key -- and <class>OcuPilot.Test.ErrorLog</class> pins it.</p>
-Parameter SOURCES = "messages,applicationerrors";
+Parameter SOURCES = "messages,alerts,applicationerrors";
 
 /// <p>The <parameter>SOURCES</parameter> key for the instance's console log.</p>
 Parameter MESSAGESKEY = "messages";
@@ -64,6 +66,23 @@ Parameter MESSAGESFILE = "messages.log";
 /// (<file>irislib/%CSP/UI/Portal/ViewLog.cls</file>'s <code>RESOURCE</code>), so a user reaches a
 /// line through OcuPilot only if they could have read it directly (AD-29).</p>
 Parameter MESSAGESPAIRS = "%Admin_Operate:USE";
+
+/// <p>The <parameter>SOURCES</parameter> key for the instance's alert log.</p>
+Parameter ALERTSKEY = "alerts";
+
+/// <p>The alert log's file name, resolved against <method>ManagerDirectory</method> on every
+/// call.</p>
+Parameter ALERTSFILE = "alerts.log";
+
+/// <p>The alert log's <code>(resource, permission)</code> pair set, comma-separated as
+/// <code>resource:permission</code> (AD-8).</p>
+/// <p><parameter>MESSAGESPAIRS</parameter>' one pair, for its reason: reading a file off disk
+/// consults no database resource and this path never enters <code>%SYS</code>. The classic page
+/// that shows alerts.log first (<file>irislib/%CSP/UI/System/ViewTextFilePane.cls</file>) is served
+/// by <code>/csp/sys/op</code>, which carries <code>%Admin_Operate</code>. The screen over this
+/// source declares this same one pair, so the gate a user meets is the same whichever way the
+/// screen reads (AD-8).</p>
+Parameter ALERTSPAIRS = "%Admin_Operate:USE";
 
 /// <p>The <parameter>SOURCES</parameter> key for the instance's application error log, the
 /// <code>^ERRORS</code> global read through <code>SYS.ApplicationError</code> (AD-48). It has no
@@ -192,6 +211,16 @@ Parameter PREFIXBYTES As INTEGER = 512;
 /// every window is assembled from chunks of this size.</p>
 Parameter CHUNKSIZE As INTEGER = 32000;
 
+/// <p>The grammar a log file's <b>head line</b> takes, which is what
+/// <method>Rows</method> projects and what a continuation line is defined as not matching:
+/// <code>MM/DD/YY-HH:MM:SS:mmm (pid) severity [Category] text</code>, the bracketed category
+/// optional and the text possibly empty.</p>
+/// <p>Both instance log files are written by the same <code>$zu(9)</code> path, so one grammar
+/// serves both. <file>ui/src/app/areas/logs/log-line.ts</file> carries the same grammar for the
+/// client's own rendering of the raw lines; this one exists because a declared read answers rows
+/// rather than lines, and both are pinned against the same seeded file.</p>
+Parameter HEADFORM = "^[0-9]{2}/[0-9]{2}/[0-9]{2}-[0-9]{2}:[0-9]{2}:[0-9]{2}:[0-9]{3} \([0-9]+\) -?[0-9]+ .*$";
+
 /// <p>The gate this port evaluates its pair set through.</p>
 Parameter GATECLASS = "OcuPilot.Screen.Gate";
 
@@ -230,6 +259,7 @@ ClassMethod PairsFor(pSource As %String, pNamespace As %String = "") As %List
 {
     Set tDeclared = ""
     If pSource = ..#MESSAGESKEY Set tDeclared = ..#MESSAGESPAIRS
+    If pSource = ..#ALERTSKEY Set tDeclared = ..#ALERTSPAIRS
     If pSource = ..#ERRORSKEY Set tDeclared = ..ErrorPairSpec(pNamespace)
     Quit ..ParsePairs(tDeclared)
 }
@@ -339,6 +369,7 @@ ClassMethod OpenQuery(pQueryName As %String, Output pResultSet As %ResultSet) As
 ClassMethod FileFor(pSource As %String) As %String
 {
     If pSource = ..#MESSAGESKEY Quit ..#MESSAGESFILE
+    If pSource = ..#ALERTSKEY Quit ..#ALERTSFILE
     Quit ""
 }
 
@@ -514,6 +545,118 @@ ClassMethod Page(pSource As %String = "", pOffset As %String = "", pMaxBytes As 
         Set tSC = ..Fail(pSource _ " failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
     }
     Quit tSC
+}
+
+/// <p>The same bounded tail <method>Page</method> serves, projected into the rows a declared read
+/// names (AD-36): at most <var>pMaxRows</var> objects carrying <code>time</code>,
+/// <code>severity</code> and <code>text</code>, <b>newest first</b>.</p>
+/// <p><b>Newest first, because the caller keeps the first rows it is given.</b>
+/// <method>OcuPilot.Screen.Read.Execute</method> asks for one more row than its cap and keeps that
+/// many from the front, so a list in file order would answer the oldest entries in the window and
+/// drop the ones a reader opened the screen for.</p>
+/// <p>A line matching <parameter>HEADFORM</parameter> opens an entry; any other line is a
+/// continuation and is appended to the entry above it, newline-separated. A window that opens
+/// mid-continuation yields a leading entry with no time and no severity rather than dropping those
+/// bytes. <code>time</code> is the file's own local <code>YYYY-MM-DDTHH:MM:SS.mmm</code> with no
+/// zone suffix, because the file writes local time and nothing converts it.</p>
+/// <p>The gate, the source enum and the window bound are <method>Page</method>'s, evaluated in its
+/// own order; this adds no privilege and no file access of its own. <var>pMaxRows</var> at or below
+/// zero means the whole window.</p>
+/// <p><b>A log the instance has not written yet is an empty read, not a failed one.</b>
+/// <method>Page</method> answers 404 <code>LOG.ABSENT</code> for a file that is not there, because a
+/// caller paging a file by byte offset asked for a file; a declared read asked for the instance's
+/// entries, and a fresh instance that has raised no alert has none. Every other refusal --
+/// the gate's included -- passes through unchanged.</p>
+ClassMethod Rows(pSource As %String = "", pMaxRows As %Integer = 0, Output pAnswer As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+{
+    Set tSC = $$$OK
+    Set pAnswer = ""
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Try {
+        Set tSC = ..Page(pSource, "", "", "", .tPage, .pHttpStatus, .pFault)
+        If $$$ISERR(tSC) {
+            If $Select($IsObject(pFault): pFault.%Get("code"), 1: "") '= ##class(OcuPilot.Api.Error).#LOGABSENT Quit
+            Set tSC = $$$OK
+            Set pFault = ""
+            Set pAnswer = []
+            Set pHttpStatus = 200
+            Quit
+        }
+        Set pAnswer = ..Entries(tPage.lines, pMaxRows)
+        Set pHttpStatus = 200
+    } Catch ex {
+        Set pAnswer = ""
+        Set tSC = ..Fail(pSource _ " rows failed inside the port", ex.AsStatus(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>One window's <var>pLines</var> as at most <var>pMaxRows</var> row objects, newest first.
+/// See <method>Rows</method> for the grammar and for why the order is reversed.</p>
+ClassMethod Entries(pLines As %DynamicArray, pMaxRows As %Integer = 0) As %DynamicArray [ Private ]
+{
+    Kill tHeld
+    Set tCount = 0
+    Set tIterator = pLines.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tLine) {
+        If ..HeadParts(tLine, .tTime, .tSeverity, .tText) {
+            Set tCount = tCount + 1
+            Set tHeld(tCount, "time") = tTime
+            Set tHeld(tCount, "severity") = tSeverity
+            Set tHeld(tCount, "text") = tText
+            Continue
+        }
+        If tCount = 0 {
+            Set tCount = 1
+            Set tHeld(1, "time") = ""
+            Set tHeld(1, "severity") = ""
+            Set tHeld(1, "text") = tLine
+            Continue
+        }
+        Set tHeld(tCount, "text") = tHeld(tCount, "text") _ $Char(10) _ tLine
+    }
+
+    Set tWanted = pMaxRows
+    If tWanted < 1 Set tWanted = tCount
+    Set tRows = []
+    For tAt = tCount:-1:1 {
+        If tRows.%Size() >= tWanted Quit
+        Set tRow = {}
+        Do tRow.%Set("time", tHeld(tAt, "time"))
+        Do tRow.%Set("severity", tHeld(tAt, "severity"))
+        Do tRow.%Set("text", tHeld(tAt, "text"))
+        Do tRows.%Push(tRow)
+    }
+    Quit tRows
+}
+
+/// <p>Whether <var>pLine</var> is a head line, and its three projected parts when it is.</p>
+/// <p>The parts are read by position rather than by capture group: the stamp is fixed-width, the
+/// pid ends at the first <code>)</code> and the severity at the space after it. The bracketed
+/// category is stripped only when the line opens with <code>[</code> and the <b>first</b>
+/// <code>]</code> is followed by a space -- the same span
+/// <file>ui/src/app/areas/logs/log-line.ts</file>'s <code>HEAD_RE</code> strips with its optional
+/// group, so a message that merely contains <code>] </code> keeps it.</p>
+ClassMethod HeadParts(pLine As %String, Output pTime As %String, Output pSeverity As %String, Output pText As %String) As %Boolean [ Private ]
+{
+    Set pTime = ""
+    Set pSeverity = ""
+    Set pText = ""
+    If '$Match(pLine, ..#HEADFORM) Quit 0
+
+    Set tYear = +$Extract(pLine, 7, 8)
+    Set tYear = $Select(tYear < 70: 2000 + tYear, 1: 1900 + tYear)
+    Set pTime = tYear _ "-" _ $Extract(pLine, 1, 2) _ "-" _ $Extract(pLine, 4, 5) _ "T" _ $Extract(pLine, 10, 17) _ "." _ $Extract(pLine, 19, 21)
+
+    Set tAfterPid = $Extract($Piece($Extract(pLine, 24, *), ")", 2, *), 2, *)
+    Set pSeverity = $Piece(tAfterPid, " ", 1)
+    Set pText = $Piece(tAfterPid, " ", 2, *)
+    Set tCloseAt = $Find(pText, "]")
+    If ($Extract(pText, 1) = "[") && (tCloseAt > 0) && ($Extract(pText, tCloseAt) = " ") {
+        Set pText = $Extract(pText, tCloseAt + 1, *)
+    }
+    Quit 1
 }
 
 /// <p>Serve one level of the application error log (AD-48). <var>pLevel</var> is one of

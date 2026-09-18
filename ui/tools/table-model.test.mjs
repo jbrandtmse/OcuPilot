@@ -11,6 +11,7 @@ import { dirname, join } from 'node:path';
 // - `reconcile` keeps the active index instead of the key -> "an active key still in the view stays
 //   active wherever it moved" goes red.
 // - `parseMaxRows` accepts 0 -> "DW-17 bad cap" goes red.
+// - `cellView` ignores its `emptyKey` -> "a column's emptyKey" goes red.
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const core = (name) => join(uiRoot, 'src', 'app', 'core', name);
@@ -66,6 +67,29 @@ test('a boolean outside a status column reads Yes or No with no disc, and an arr
   assert.equal(roles.text, '%All, OcuPilotAdmin');
   assert.equal(roles.code, true);
   assert.equal(model.cellView([], 'identifier').text, STRINGS.tableEmptyValue, 'an empty array reads (none)');
+});
+
+test("a column's emptyKey: an empty value reads that key's string as a word, and any other value is untouched", () => {
+  for (const value of [null, undefined, '', []]) {
+    const cell = model.cellView(value, 'identifier', 'serviceAllowedUnrestricted');
+    assert.deepEqual(
+      cell,
+      { text: STRINGS.serviceAllowedUnrestricted, empty: false, disc: null, code: false, link: false, numeric: false },
+      `${JSON.stringify(value)} reads Unrestricted, in the body face and not as the muted (none)`
+    );
+  }
+  assert.equal(STRINGS.serviceAllowedUnrestricted, 'Unrestricted');
+  const listed = model.cellView(['10.0.0.1', '127.0.0.1'], 'identifier', 'serviceAllowedUnrestricted');
+  assert.equal(listed.text, '10.0.0.1, 127.0.0.1', 'a non-empty array still reads its members');
+  assert.equal(listed.code, true, 'in the code face');
+  assert.equal(model.cellView(false, 'status', 'serviceAllowedUnrestricted').text, STRINGS.tableStatusNo, 'a boolean is never empty');
+  assert.equal(model.cellView([], 'identifier').text, STRINGS.tableEmptyValue, 'with no emptyKey an empty array still reads (none)');
+  assert.equal(model.cellView([], 'identifier', '', () => 'unused').text, STRINGS.tableEmptyValue, 'and an empty emptyKey is none declared');
+  assert.equal(
+    model.cellView(null, 'text', 'anyKey', (key) => `looked up ${key}`).text,
+    'looked up anyKey',
+    'the word comes through the lookup the caller supplies'
+  );
 });
 
 test('At the cap: the footer reads "500 rows" and the notice names the cap; DW-141: "2 rows"', () => {
@@ -190,4 +214,53 @@ test('write-capable means a primary action or a row action, and picks the empty 
     next: 'Or ask the agent: create a web application.',
   });
   assert.equal(model.isWriteCapable(screenDeclaration({ primaryAction: { id: 'create', selfProtection: '' } })), true);
+});
+
+// Story 6.4, AD-44 / AD-47: a row link under a complete exemption is the declared href with each param
+// appended from the row, percent-encoded, and no link at all when any param's field reads empty.
+//
+// Mutation (Rule 19): drop the empty-text return from `classicRowHref` -> the blank-IssuerEndpointID
+// assertions go red.
+test('classicRowHref appends each row link param from the row, and opens nothing for a blank value', () => {
+  const clients = screenDeclaration({
+    classicLinkExemption: {
+      exempt: true,
+      reason: 'r',
+      label: 'OAuth 2.0 Client Configuration',
+      href: '/csp/sys/sec/%25CSP.UI.Portal.OAuth2.Client.Configuration.zen',
+      rowLink: {
+        params: [
+          { name: 'PID', field: 'ApplicationName' },
+          { name: 'IssuerEndpointID', field: 'ServerDefinitionID' },
+          { name: 'IssuerEndpoint', field: 'IssuerEndpoint' },
+        ],
+      },
+    },
+  });
+  const row = { ApplicationName: 'OcuPilot Test&B', ServerDefinitionID: 2, IssuerEndpoint: 'https://ocupilottest.invalid/b' };
+  assert.equal(
+    model.classicRowHref(row, clients),
+    '/csp/sys/sec/%25CSP.UI.Portal.OAuth2.Client.Configuration.zen?PID=OcuPilot%20Test%26B&IssuerEndpointID=2&IssuerEndpoint=https%3A%2F%2Focupilottest.invalid%2Fb'
+  );
+  for (const blank of [null, undefined, '']) {
+    const partial = { ...row, ServerDefinitionID: blank };
+    if (blank === undefined) delete partial.ServerDefinitionID;
+    assert.equal(model.classicRowHref(partial, clients), '', `a ${String(blank)} IssuerEndpointID opens no editor`);
+  }
+  const queried = screenDeclaration({
+    classicLinkExemption: { ...clients.classicLinkExemption, href: '/csp/sys/page.zen?x=1', rowLink: { params: [{ name: 'PID', field: 'ApplicationName' }] } },
+  });
+  assert.equal(model.classicRowHref(row, queried), '/csp/sys/page.zen?x=1&PID=OcuPilot%20Test%26B', 'an href with a query takes &');
+  const noParams = screenDeclaration({ classicLinkExemption: { ...clients.classicLinkExemption, rowLink: { params: [] } } });
+  assert.equal(model.classicRowHref({}, noParams), clients.classicLinkExemption.href, 'a row link with no params is the href alone');
+  assert.equal(model.classicRowHref(row, screenDeclaration()), '', 'a screen with no exemption links no row');
+  assert.equal(
+    model.classicRowHref(row, screenDeclaration({ classicLinkExemption: { ...clients.classicLinkExemption, exempt: false } })),
+    '',
+    'nor does a row link without an exemption'
+  );
+  assert.equal(
+    model.formatClassicRowLinkDescription(STRINGS.classicRowLinkDescription, 'OAuth 2.0 Client Configuration'),
+    'Opens OAuth 2.0 Client Configuration in the classic portal in a new tab.'
+  );
 });

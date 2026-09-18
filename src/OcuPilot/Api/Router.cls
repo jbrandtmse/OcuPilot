@@ -6,7 +6,8 @@
 /// provider catalog the Definition form cascades from, the generic screen read,
 /// <code>GET /screens/:screen/read</code>, the four application-error-log levels
 /// <code>GET /logs/errors/{namespaces,dates,list,detail}</code>, the console-log page
-/// <code>GET /logs/messages</code>, and the three shell routes, <code>GET /instance</code>,
+/// <code>GET /logs/messages</code>, the alert-log page <code>GET /logs/alerts</code>, and the three
+/// shell routes, <code>GET /instance</code>,
 /// <code>GET /namespaces</code> and <code>GET /navigation</code>; every other request that clears
 /// <method>OnPreDispatch</method> is answered by the framework 404 override. The three
 /// ordering invariants below are load-bearing from the first route on; the first two are each
@@ -83,6 +84,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/logs/errors/dates" Method="GET" Call="LogErrorDates"/>
   <Route Url="/logs/errors/list" Method="GET" Call="LogErrorList"/>
   <Route Url="/logs/errors/detail" Method="GET" Call="LogErrorDetail"/>
+  <Route Url="/logs/alerts" Method="GET" Call="LogAlerts"/>
   <Route Url="/logs/messages" Method="GET" Call="LogMessages"/>
   <Route Url="/instance" Method="GET" Call="Instance"/>
   <Route Url="/namespaces" Method="GET" Call="Namespaces"/>
@@ -244,6 +246,13 @@ ClassMethod LogErrorDetail() As %Status
 ClassMethod LogMessages() As %Status
 {
     Quit ##class(OcuPilot.Api.LogPage).Handle(##class(OcuPilot.Port.LogSourcePort).#MESSAGESKEY)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /logs/alerts</code> -- see
+/// <method>LogMessages</method>. The second file source, and the alerts.log viewer's own page.</p>
+ClassMethod LogAlerts() As %Status
+{
+    Quit ##class(OcuPilot.Api.LogPage).Handle(##class(OcuPilot.Port.LogSourcePort).#ALERTSKEY)
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /instance</code>: delegates to

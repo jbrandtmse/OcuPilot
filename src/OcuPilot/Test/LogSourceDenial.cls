@@ -22,6 +22,18 @@ Class OcuPilot.Test.LogSourceDenial Extends %UnitTest.TestCase
 /// <p>The console-log route.</p>
 Parameter LOGPATH = "/api/ocupilot/logs/messages";
 
+/// <p>The alert-log route (Story 6.13), which declares the same one pair as the console log.</p>
+Parameter ALERTPATH = "/api/ocupilot/logs/alerts";
+
+/// <p>The alerts.log screen's own declared read, reached generically. It runs the same source key
+/// through <method>OcuPilot.Port.LogSourcePort.Rows</method>, so it is the second way in to the
+/// same file and has to meet the same gate.</p>
+Parameter ALERTREADPATH = "/api/ocupilot/screens/logs.alerts/read";
+
+/// <p>The messages.log screen's own declared read (Story 6.14), the second way in to the file
+/// <parameter>LOGPATH</parameter> pages.</p>
+Parameter MESSAGESREADPATH = "/api/ocupilot/screens/logs.messages/read";
+
 /// <p>The environment variable that arms this class, and the one value that arms it:
 /// <code>1</code>. Only <file>scripts/ci-throwaway.sh</file> sets it, so the principals are
 /// created on the container that script builds and nowhere else. Anything else -- absent, empty,
@@ -224,6 +236,93 @@ Method TestAdminOperateAloneIsServed()
     Do $$$AssertEquals(tPage.source, "messages", "the source the route bound")
     Do $$$AssertTrue(tPage.lines.%Size() > 0, "and the log's lines come back: " _ tPage.lines.%Size())
     Do $$$AssertEquals(tPage.%GetTypeOf("restarted"), "boolean", "with the page contract intact")
+}
+
+/// <p>Story 6.14 AC7 -- the console log's declared read meets the <b>same</b> gate its page route
+/// does, measured on the same two purpose-built principals. <parameter>LOGPATH</parameter>'s own
+/// two legs are <method>TestAPrincipalWithoutAdminOperateIsRefused</method> and
+/// <method>TestAdminOperateAloneIsServed</method>; this is the read the agent tool derives from,
+/// which reaches the file through <method>OcuPilot.Port.LogSourcePort.Rows</method> instead.</p>
+/// <p>Mutation: add <code>%DB_IRISSYS:READ</code> to
+/// <parameter>OcuPilot.Port.LogSourcePort.MESSAGESPAIRS</parameter> -&gt; the served leg is refused
+/// 403 and its assertions go red, while <method>TestAPrincipalWithoutAdminOperateIsRefused</method>
+/// stays green.</p>
+Method TestTheConsoleLogsOnePairGovernsItsDeclaredReadToo()
+{
+    Set tSC = ..FetchPath(..#SECUREUSER, ..#MESSAGESREADPATH _ "?maxRows=5", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the refused declared-read request completes")
+    Do $$$AssertEquals(tStatus, 403, "the declared read is refused to a principal without %Admin_Operate:USE")
+    Set tFault = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tFault.code, "AUTH.NOPRIVILEGE", "on the screen-privilege code, not the router's AUTH.NOADMIN")
+    Do $$$AssertEquals($Select($IsObject(tFault.detail): tFault.detail.failedPair, 1: ""), "%Admin_Operate:USE", "naming the pair that failed")
+    Do $$$AssertEquals(tFault.%IsDefined("rows"), 0, "and no rows come back with it")
+
+    Set tSC = ..FetchPath(..#OPERATEUSER, ..#MESSAGESREADPATH _ "?maxRows=5", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the served declared-read request completes")
+    Do $$$AssertEquals(tStatus, 200, "%Admin_Operate:USE alone carries the declared read past the gate")
+    If tStatus '= 200 Quit
+    Set tRead = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tRead.fields.%ToJSON(), "[""time"",""severity"",""text""]", "which answers the declared fields")
+    Do $$$AssertTrue(tRead.rows.%Size() > 0, "and the console log's own rows: " _ tRead.rows.%Size())
+    Do $$$AssertTrue(tRead.rows.%Size() <= 5, "bounded by the cap the caller asked for")
+    Set tRow = tRead.rows.%Get(0)
+    Do $$$AssertEquals(tRow.%GetTypeOf("lines"), "unassigned", "the page envelope reaches no caller of the declared read")
+    Do $$$AssertEquals(tRow.%GetTypeOf("offset"), "unassigned", "nor its cursor")
+    Do $$$AssertEquals(tRow.%GetTypeOf("identity"), "unassigned", "nor the file identity that cursor travels with")
+}
+
+/// <p>Request <var>pPath</var> as <var>pUser</var>.</p>
+Method FetchPath(pUser As %String, pPath As %String, Output pStatus As %Integer, Output pBody As %String, Output pHeaders) As %Status
+{
+    Quit ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", pPath, pUser, ..PreparedPassword, .pStatus, .pBody, .pHeaders)
+}
+
+/// <p>Story 6.13 AC9 -- the alert log's declared pair set, measured on a purpose-built principal
+/// rather than copied from the console log's. <b>Both ways in meet the same gate</b>: the bounded
+/// tail the screen pages by and the declared read the agent tool derives from. A principal holding
+/// <code>%Admin_Operate:USE</code> alone is served both; one holding <code>%Admin_Secure:USE</code>
+/// and not <code>%Admin_Operate:USE</code> is refused both, on the port's own code and with the
+/// pair named.</p>
+/// <p>Needs nothing of the instance's own <file>alerts.log</file>: an instance that has raised no
+/// alert has no such file, and the port names that absence <b>after</b> the gate, so reaching
+/// <code>LOG.ABSENT</code> is itself evidence the gate admitted the caller.</p>
+/// <p>Mutation: add <code>%DB_IRISSYS:READ</code> to
+/// <parameter>OcuPilot.Port.LogSourcePort.ALERTSPAIRS</parameter> -&gt; the operate-only principal
+/// is refused 403 and the two served assertions go red.</p>
+Method TestTheAlertLogsOnePairGovernsBothWaysIn()
+{
+    Set tSC = ..FetchPath(..#SECUREUSER, ..#ALERTPATH _ "?maxBytes=4096", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the refused tail request completes")
+    Do $$$AssertEquals(tStatus, 403, "the tail is refused to a principal without %Admin_Operate:USE")
+    Set tFault = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tFault.code, "AUTH.NOPRIVILEGE", "on the screen-privilege code")
+    Do $$$AssertEquals($Select($IsObject(tFault.detail): tFault.detail.failedPair, 1: ""), "%Admin_Operate:USE", "naming the pair that failed")
+
+    Set tSC = ..FetchPath(..#SECUREUSER, ..#ALERTREADPATH _ "?maxRows=5", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the refused declared-read request completes")
+    Do $$$AssertEquals(tStatus, 403, "and so is the declared read")
+    Set tReadFault = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tReadFault.code, "AUTH.NOPRIVILEGE", "on the same code")
+    Do $$$AssertEquals($Select($IsObject(tReadFault.detail): tReadFault.detail.failedPair, 1: ""), "%Admin_Operate:USE", "naming the same pair")
+
+    Set tSC = ..FetchPath(..#OPERATEUSER, ..#ALERTPATH _ "?maxBytes=4096", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the served tail request completes")
+    Do $$$AssertTrue((tStatus = 200) || (tStatus = 404), "%Admin_Operate:USE alone carries the tail past the gate: " _ tStatus)
+    If tStatus = 200 {
+        Set tPage = ##class(%DynamicObject).%FromJSON(tBody)
+        Do $$$AssertEquals(tPage.source, "alerts", "the source the route bound")
+    } Else {
+        Set tAbsent = ##class(%DynamicObject).%FromJSON(tBody)
+        Do $$$AssertEquals(tAbsent.code, "LOG.ABSENT", "and on an instance that has raised no alert the refusal is the file's absence, which is past the gate")
+    }
+
+    Set tSC = ..FetchPath(..#OPERATEUSER, ..#ALERTREADPATH _ "?maxRows=5", .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the served declared-read request completes")
+    Do $$$AssertEquals(tStatus, 200, "and for the declared read the tool derives from")
+    If tStatus = 200 {
+        Set tRead = ##class(%DynamicObject).%FromJSON(tBody)
+        Do $$$AssertEquals(tRead.fields.%ToJSON(), "[""time"",""severity"",""text""]", "which answers the declared fields")
+    }
 }
 
 }

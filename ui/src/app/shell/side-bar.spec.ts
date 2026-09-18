@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { NavigationService, type Verdict } from '../core/navigation';
+import { NavigationService, screenForRoute, type Verdict } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
 import { PreferenceStore, SIDE_BAR_OPEN_KEY } from '../core/preferences';
 import { ShellState } from '../core/shell-state';
@@ -114,6 +114,8 @@ describe('the primary side bar', () => {
           { path: '', children: [] },
           { path: 'permissions/users', children: [] },
           { path: 'permissions/roles', children: [] },
+          { path: 'security/oauth', children: [] },
+          { path: 'security/oauth/server', children: [] },
         ]),
         { provide: NavigationService, useValue: navigation as unknown as NavigationService },
         { provide: ShellState, useValue: shell },
@@ -243,6 +245,24 @@ describe('the primary side bar', () => {
     const current = entries().filter((entry) => entry.getAttribute('aria-current') === 'page');
     expect(current).toHaveLength(1);
     expect(current[0].textContent?.trim()).toBe(STRINGS.navAreaPermissions);
+  });
+
+  it('Story 6.4: every tab of a tabbed screen marks its group\'s one entry current', async () => {
+    // Mutation (Rule 19): compare only the current route in `side-bar.ts` -> the authorization server
+    // tab's URL marks no entry and this goes red.
+    const router = TestBed.inject(Router);
+    const ssl = screenForRoute('security/ssl') as ScreenDeclaration;
+    const oauth = screenForRoute('security/oauth') as ScreenDeclaration;
+    navigation.screens = [ssl, oauth];
+    navigation.notify();
+    shell.activateArea('permissions', false);
+    shell.setActiveArea('permissions');
+    for (const url of ['/security/oauth?ns=HSCUSTOM', '/security/oauth/server?ns=HSCUSTOM']) {
+      await router.navigateByUrl(url);
+      fixture.detectChanges();
+      const current = entries().filter((entry) => entry.getAttribute('aria-current') === 'page');
+      expect(current.map((entry) => entry.textContent?.trim())).toEqual([STRINGS.oauthLabel]);
+    }
   });
 
   it('a gated entry does not navigate', async () => {

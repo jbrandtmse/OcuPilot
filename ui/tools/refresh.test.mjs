@@ -972,6 +972,37 @@ test('AC8: a changed event for the bound type and scope marks its id and issues 
   assert.equal(harness.reads.length, before + 1, 'another type or scope reads nothing');
 });
 
+// Story 6.4 AC3, AD-5 / AD-14: the OAuth 2.0 screen's first tab declares a primary type and two
+// secondaries, and the generated declaration -- not a hand-built one -- is what the framework binds, so
+// a change to either secondary re-reads the tab while a type it does not show reads nothing.
+//
+// Mutation (Rule 19): drop `oauth2-client-configuration` from `security/oauth`'s secondaries and
+// regenerate the mirror -> the client-configuration read below goes red.
+test('AC3: the OAuth 2.0 tab re-reads on a change to either secondary type and not on a type it does not show', async () => {
+  const { SCREENS } = await import(corePath('screens.generated.ts'));
+  const oauth = SCREENS.find((candidate) => candidate.route === 'security/oauth');
+  assert.ok(oauth !== undefined, 'the OAuth 2.0 screen is declared');
+  assert.equal(oauth.entityType, 'oauth2-server-definition', 'its primary type is the server description');
+  assert.deepEqual([...oauth.secondaryEntityTypes], ['oauth2-client-configuration', 'oauth2-resource-server']);
+
+  const harness = wired();
+  harness.refresh.bind(oauth, harness.read);
+  await harness.refresh.readNow();
+  const before = harness.reads.length;
+
+  harness.bus.publish({ kind: 'changed', type: 'oauth2-client-configuration', scope: 'instance', id: 'OcuPilotTestB' });
+  await settle();
+  assert.equal(harness.reads.length, before + 1, 'a client configuration change re-reads the tab');
+
+  harness.bus.publish({ kind: 'changed', type: 'oauth2-resource-server', scope: 'instance', id: 'OcuPilotTestResource' });
+  await settle();
+  assert.equal(harness.reads.length, before + 2, 'and so does a resource server change');
+
+  harness.bus.publish({ kind: 'changed', type: 'oauth2-server-client', scope: 'instance', id: 'OcuPilotTestRegistration' });
+  await settle();
+  assert.equal(harness.reads.length, before + 2, 'a server client change reads nothing');
+});
+
 // --- Persistence ----------------------------------------------------------------------------
 
 test('the rate persists per screen, and returning to the screen restores it', () => {

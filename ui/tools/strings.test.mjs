@@ -314,10 +314,37 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   // Why the upper bound moves to 260 rather than to the 246 the table now holds: the band is a
   // tripwire against unbounded string growth, not a cap on one screen. It has held because every
   // widening was deliberate and documented here, and 260 leaves headroom for Story 3.8 and the
-  // burn-down without making the next widening automatic.
+  // burn-down without making the next widening automatic. Story 6.1's two rows carry 14 -- the REST
+  // API explorer's three and the OpenAPI document viewer's eleven -- and take the table to 261, so
+  // the bound moves to 300, the headroom Epic 6's remaining screens need. Story 6.4's three OAuth 2.0 rows carry 22 and take the table past 300, so the bound moves to 330. Story 6.6's two rows
+  // carry 13 distinct literals -- "Error number" is reused from the Application errors row rather
+  // than counted again -- and take the table past 330, so the bound moves to 350. Story 6.7's one
+  // row carries 38: eleven Task details field and chrome labels, ten TimePeriod/DailyFrequency
+  // phrase templates, five DailyFrequencyTime phrase templates, seven weekday names and five
+  // ordinals -- the schedule-in-words vocabulary AD-3 has the client compose rather than take from
+  // the vendor -- and takes the table past 350, so the bound moves to 400. Story 6.8's one row
+  // carries 24: the screen title, the "no longer exists" empty state, three group headings and
+  // nineteen field labels beyond the shared Process ID, User, Namespace, Priority, Routine, State,
+  // Commands and "Started" -- and takes the table to 399, still inside the 400 bound Story 6.7 set.
+  // Story 6.9's one row carries 17: the screen title, eight counters-group labels beyond the
+  // Process details row's "Global references", seven meter labels and the empty state -- the
+  // meter state word itself (Normal / Warning / Troubled) is vendor data rendered as reported
+  // rather than a translated string, so it carries no literal here -- and takes the table to 416,
+  // past the 400 bound, so the bound moves to 450. Story 6.10's one row carries 7 (Locks' title,
+  // three column headers beyond the Processes row's own, the local-system word and the empty
+  // state) and takes the table to 423, still inside the 450 bound Story 6.9 set. Story 6.11's one
+  // row carries 24: the Databases screen title, the Free-space view's own title (also the View
+  // control's second option), the View control's accessible name, five column headers beyond the
+  // Locks row's "Directory", the Task history row's "Status" and the Web applications row's
+  // "Resource", the list's empty state, Database details' title, its "no longer exists" empty
+  // state, eight of its remaining field labels, and the volume-files section's heading, three
+  // column headers beyond its own reused ones and its own empty state -- and takes the table to
+  // 447, three short of the 450 bound left after Story 6.9. Three of headroom for one story and
+  // none for 6.12 through 6.14 is not headroom, so the bound moves to 520 now rather than at the
+  // next story that would have exceeded it.
   assert.ok(
-    expectedLiterals.length >= 150 && expectedLiterals.length <= 260,
-    `expected roughly 246 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
+    expectedLiterals.length >= 150 && expectedLiterals.length <= 520,
+    `expected between 150 and 520 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
   );
 });
 

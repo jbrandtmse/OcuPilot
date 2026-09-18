@@ -347,6 +347,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-13T18:47:58Z status=wontfix-accepted by=merge_gate note=owner decision 2026-09-13 revised: keep the checked-in demo pair for Release 1 and charter generate-at-install as its own later story rather than burn-down work. It is a self-signed CN=OcuPilotDemo prop securing nothing. Burn-down carries only the marking work - state in the class header and beside the literal that the pair is a disposable demo fixture. reopen_if=the pair is ever used for anything but the demo fixture, or a scanner finding is judged unacceptable at launch
 - 2026-09-13T18:48:17Z status=routed owner=burndown by=merge_gate note=correcting the trailer above - it closed the entry terminal while naming residual marking work, which leaves that work owned by nothing (the exact defect DW-223 names). The owner's accept-the-checked-in-pair decision stands; this entry stays open until the class header and the literal say the pair is a disposable demo fixture, and closes then
 - 2026-09-13T21:00:47Z status=routed owner=6-3-the-x-509-ldap-kerberos-and-wallet-lists by=burndown note=owner decision recorded: keep the checked-in demo pair; residual is marking it a disposable fixture in the class header and beside the literal. 6-3 is the story that displays the credential, so the marking lands where its consumer is built
+- 2026-09-16T23:34:21Z status=resolved-by:6-3-the-x-509-ldap-kerberos-and-wallet-lists by=cr note=Fixture.cls header and DemoCertificatePem/DemoPrivateKeyPem docs mark the pair a disposable demo fixture
 
 ### DW-50: AC1-AC3/AC9-AC12's container, health-check, HTTP, and shell-level (demo-flag propagation) surfaces are verified only by a one-off manual throwaway-co…
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: med | fix-risk: med | footprint: in-epic
@@ -423,6 +424,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-11T01:11:19Z status=escalated owner=burndown by=cr note=Rule 15: MED with fix-risk high -> decision sheet. Same fixture as DW-49; decide together.
 - 2026-09-13T18:42:36Z status=routed owner=burndown by=merge_gate note=owner decision 2026-09-13: same work as DW-49 and closed by the same change. Generating the pair at install and loading it through %SYS.X509Credentials.LoadCertificate populates SubjectDN, IssuerDN, Thumbprint, SerialNumber, validity and HasPrivateKey, which setting Certificate and the transient PrivateKey directly cannot. The open question is AD-21: LoadCertificate reads a filesystem path, so the generate-then-load path needs a route AD-21 permits, and that is what makes this research rather than a correction
 - 2026-09-13T18:47:58Z status=wontfix-accepted by=merge_gate note=owner decision 2026-09-13: rides with DW-49. The empty SubjectDN/IssuerDN/Thumbprint/SerialNumber/validity and HasPrivateKey=0 are accepted for Release 1 because the fixture is a demo prop and AC9's observable - the alias exists - holds. Both close together in the generate-at-install story. reopen_if=Story 6.3's Security list is judged to read as broken with the mostly-empty row
+- 2026-09-16T21:25:58Z by=spec_gate note=correction: this entry's premise is false. Setting Certificate and PrivateKey directly does populate the metadata - ocupilot-slot-b's OcuPilotDemoCert reads SubjectDN and IssuerDN CN=OcuPilotDemo, validity 2026-09-10 to 2036-09-07, HasPrivateKey 1, a 20-byte Thumbprint (verified by the Story 6.3 lead). The accepted empty metadata never occurred.
 
 ### DW-60: GateStatus() does a full escalated SQL round trip (New $ROLES / AddRoles / %ExecDirect / %OpenId) on every API request, with no cache once the phase is terminal and no index on Version.Profile
 - source: spec-1-4-one-command-brings-up-an-instance-with-ocupilot-installed.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -1004,6 +1006,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-14T02:47:21Z owner=2-5-the-web-applications-list by=x0 note=excluded: med fix-risk; needs new ShellState surface, first exercised by 2.5's cross-area navigation
 - 2026-09-14T15:53:59Z occurrence=2-5-the-web-applications-list
 - 2026-09-14T15:56:17Z status=routed owner=6-14-the-messages-log-viewer by=adjudication note=resolved for the command box (opens the bar only when already open) and the locator's area segment (web-applications.browser-spec AC6); residual: the fault banner's Open messages.log link navigates without ShellState.showArea and is unreachable until 6.14 builds the messages.log screen
+- 2026-09-16T20:03:33Z occurrence=6-2-the-roles-resources-and-services-lists note=after the first-login gate, Back from the Definition form can leave the side bar on Agent co-pilot (Story 6.2 implement, unverified flake on reading the Permissions side bar; probe: browser repro of Back from the Definition form)
+- 2026-09-18T14:38:18Z status=resolved-by:6-14-the-messages-log-viewer by=dev note=banner resolves the screen from the messages.log alias and calls ShellState.showArea; both halves reddened
 
 ### DW-149: No Skip to content link, and no ledger entry recorded the gap: the frame now puts banner, rail and side bar ahead of main in Tab order
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: med | fix-risk: low | footprint: in-epic
@@ -1541,6 +1545,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Owner decision 2026-09-13: Release 1 keeps the checked-in CN=OcuPilotDemo prop (DW-49, DW-59 accepted), and generating at install becomes its own later story. PKI.CAServer.Configure generates a CA cert and key to files and %ZHSLIB.TLS.Utils uses it, so a supported path likely exists; the open question is AD-21, since %SYS.X509Credentials.LoadCertificate reads a filesystem path. Loading through it is also what populates SubjectDN, IssuerDN, Thumbprint, SerialNumber, validity and HasPrivateKey, so this closes DW-59's half too
 - 2026-09-13T18:48:17Z status=decision-pending owner=burndown by=merge_gate note=needs a story key in a later epic; the lead creates it in epics.md at the burn-down gate and re-owns this entry to it
 - 2026-09-13T21:00:47Z status=routed owner=6-3-the-x-509-ldap-kerberos-and-wallet-lists by=merge_gate note=owner decision 2026-09-13: add a story for generate-at-install later. 6-3 is that story - it displays the credential, and generating through LoadCertificate also fills the metadata DW-59 accepted as empty. AD-21 path constraint is the open question
+- 2026-09-16T21:25:58Z status=wontfix-accepted by=spec_gate note=Story 6.3 spec gate: no supported certificate-generation API on the pinned 2026.2 image (PKI.CAServer is not compiled in %SYS or HSCUSTOM on ocupilot-slot-b, verified by the lead), so the owner's stated fallback - keep the checked-in pair - stands. reopen_if=PKI.CAServer (or another supported generator) is compiled in %SYS on the pinned image
 
 ### DW-234: docker-compose.yml's own iris-data mount carries the Linux ownership defect the throwaway just fixed, and nothing pins it
 - source: spec-1-17-the-smoke-script-the-readiness-endpoint-and-ci.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -1827,6 +1832,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: AreaCoverageProblem requires the area to cover every screen's pairs; the audit viewer needs %Admin_Secure:USE while the messages.log and application error log reads do not
 - 2026-09-15T02:56:12Z status=routed owner=2-11-the-messages-log-paging-endpoint by=harvest note=same family as DW-275: decide per-screen gating or accept the union's false denial when 2.11 lands in the same area
 - 2026-09-15T03:57:18Z status=routed owner=6-14-the-messages-log-viewer by=spec_gate note=owner-delegated decision 2026-09-14: accept the union's false denial (relaxing AreaCoverageProblem would trade it for the false admission AD-8 names, and a ninth area contradicts the fixed vocabulary); Story 2.11 ships no Logs screen so nothing it delivers reaches the denial - the viewer story decides whether the screen declares the pair or the area splits
+- 2026-09-18T14:38:18Z status=resolved-by:6-14-the-messages-log-viewer by=dev note=the screen declares %Admin_Operate:USE alone; Area.cls untouched and the union's accepted false denial stands
 
 ### DW-279: A criterion value longer than the vendor's own column for that parameter fails inside the queued task's save and answers 500, where the declared grammar has no length to refuse it by
 - source: spec-2-10-the-audit-database-viewer-with-its-agent-marker-filter.md | severity: med | fix-risk: low | footprint: in-epic
@@ -2133,6 +2139,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: check_destructive_test_guard's pattern omits SSLConfigs; Test/UninstallGuard.cls, Test/Installer.cls and Test/Demo.cls create one; CLAUDE.md states the rule in prose and nothing enforces it
 - 2026-09-15T15:13:40Z status=routed owner=burndown by=spec_gate note=same family as DW-289: widen the rule's pattern and arm the three classes; it reddens three classes outside Story 3.2's footprint, so it is burn-down work
 - 2026-09-16T10:21:58Z status=routed owner=9-5-the-ssl-tls-editor by=burndown_gate note=the SSL/TLS editor is the story that next creates and deletes SSL configurations, so it is where an unarmed destructive test costs most
+- 2026-09-17T02:48:30Z occurrence=6-4-the-oauth-2-0-screen note=OAuthTabs arms on OCUPILOT_ALLOW_PRINCIPALS but its OAuthProbe.Create call matches no rule pattern, so its guard is unenforced
 
 ### DW-333: ProviderPort reads a stored definition's systemPromptOverride into the call values and nothing reads it back, so a definition's own system prompt is silently dropped on the Invoke path
 - source: spec-3-2-the-provider-contract-and-the-anthropic-adapter.md | severity: med | fix-risk: low | footprint: in-epic
@@ -2802,3 +2809,410 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: CI run 35101992693 on main | severity: med | fix-risk: low | footprint: the five sites ci.test.mjs already holds equal
 - evidence: Run 35101992693 instance job died at step 8 with 'failed to bind host port for 0.0.0.0:52776: address already in use' on a fresh ubuntu-24.04 runner where steps 1-7 start no container at all. Re-running the same job on the same tree passed, and the same tree had already gone green twice (35097369064, 35098577779). The failure names 52776 and never 1975, which is the port below any ephemeral range.
 - 2026-09-16T13:42:49Z status=routed owner=burndown by=lead note=An inference, not a measurement: the standard Linux ephemeral range 32768-60999 contains 52776, so an outbound socket from npm install, the Angular build or the Chrome download in steps 5-7 could still hold it at step 8. NOT verified on the runner - this machine's Docker VM reads 55000-65535, which excludes 52776 and every OcuPilot port, so locally the live container, slot-b and the throwaway are all clear. Verify by printing /proc/sys/net/ipv4/ip_local_port_range as a step in the instance job. Whatever the range turns out to be, the fix is the same shape: take the throwaway's host ports below it, or probe for a free pair, or retry the bind. Relevant to the owner NOW because the slot-guards patch rewrites port handling in this exact file and ui/tools/ci.test.mjs, and that test already holds 52776 equal across five sites, so the change is one coordinated edit the suite enforces rather than five.
+- 2026-09-18T16:42:53Z status=escalated owner=burndown by=burndown note=out of any story's footprint: the fix is a port-retry or an ephemeral-range move in scripts/ci-throwaway.sh and .github/workflows/ci.yml, both shared tooling no Epic 6 or Epic 7 story owns; one occurrence in ~45 runs, and it kills the whole instance job when it lands
+- 2026-09-18T19:09:19Z occurrence=2026-09-18 run 35384075582 on 9a0e771: the instance job died at 'bring up a throwaway container' with 'failed to set up container networking: driver failed programming external connectivity on endpoint ocupilot-ci', before a single test ran; the three node legs and both image jobs were green
+
+### DW-1001: The derived webapp.openapi.read tool describes its application criterion as a comma-separated list where * matches any name, while MgmntPort accepts exactly one exact name
+- source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Screen/Tool/Read.cls AddCriteria gives every text criterion the audit comma-list description; MgmntPort answers a list, a wildcard or an absent value with 400 PORT.VALIDATION whose reason names the one-name rule, so a model self-corrects after one refused call. Screen/Tool/** is contended for Epic 6.
+- 2026-09-16T17:43:04Z status=routed owner=7-1-enable-disable-and-delete-a-web-application by=harvest note=route: first later-epic story in the web-applications area that works in Screen/Tool/**; the fix is a per-criterion description declared by the descriptor or a single-name text kind
+- 2026-09-16T22:46:47Z occurrence=6-3-the-x-509-ldap-kerberos-and-wallet-lists note=the security.secrets tool's required single collection criterion is described as an optional comma list with a * wildcard
+- 2026-09-17T11:34:58Z occurrence=6-7-task-details
+
+### DW-1002: AD-8 says no elevation anywhere on the request path, while the vendor path MgmntPort reaches adds all roles temporarily inside %SYS.REST and %REST.API
+- source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: irislib/%SYS/REST.cls ListRESTApplications and %REST.API run $$$AddAllRoleTemporary (inference that it is scoped to the vendor frame); MgmntPort evaluates its own stricter pairs in the caller's process first, so OcuPilot itself elevates nothing.
+- 2026-09-16T17:43:04Z status=wontfix-accepted owner=6-1-the-rest-api-explorer-and-its-openapi-document-viewer by=harvest note=reopen_if=a least-privileged principal on a throwaway reads through MgmntPort any row or document its own pairs and the vendor's %DB_IRISSYS:READ would not authorize directly
+
+### DW-1003: Nothing enforces that MgmntPort is the only product class naming %Api.Mgmnt.*, %REST.* or %SYS.REST
+- source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: scripts/check-objectscript.py enforces the equivalent rule for %Api.Admin only; the checker is contended for Epic 6.
+- 2026-09-16T17:43:04Z status=wontfix-accepted owner=6-1-the-rest-api-explorer-and-its-openapi-document-viewer by=harvest note=reopen_if=grep -rlE '%Api\.Mgmnt|%REST\.|%SYS\.REST' src/OcuPilot --include=*.cls outside Port/MgmntPort.cls and Test/ returns a file
+
+### DW-1004: The locator bar's screen segment on an open OpenAPI document links to the viewer route with no id, which renders the port's 400 refusal sentence
+- source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ui/src/app/shell/locator-bar.ts:215 links the screen segment to screen.route whenever an entity segment follows; for an unlisted id-keyed screen at its own route that route has no id to read.
+- 2026-09-16T17:43:04Z status=open owner=6-1-the-rest-api-explorer-and-its-openapi-document-viewer by=harvest note=two-way door for this story's review or fix pack
+- 2026-09-16T18:19:57Z status=resolved-by:6-1-the-rest-api-explorer-and-its-openapi-document-viewer by=cr note=the locator's screen segment on a document viewer opens its paired list (listForDocumentScreen); locator-bar.spec DW-1004 red under mutation
+
+### DW-1005: DESIGN.md :1056 and EXPERIENCE.md still describe the OpenAPI browser as a composition on the explorer's table whose refused document is the empty state
+- source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The spec's Design Notes record DESIGN.md :1056 as superseded by the AC and EXPERIENCE.md :133; neither planning source was amended.
+- 2026-09-16T17:43:04Z status=open owner=6-1-the-rest-api-explorer-and-its-openapi-document-viewer by=harvest note=lead amends the planning sources (Rule 5 tier 1) at adjudication
+- 2026-09-16T18:23:48Z status=resolved-by:6-1-the-rest-api-explorer-and-its-openapi-document-viewer by=adjudication note=lead amended DESIGN.md OpenAPI browser paragraph (disclosures, Raw on code-surface, refusal never the empty-state, no copy button) and EXPERIENCE.md archetype-state row for viewer (OpenAPI), both Rule 5 tier 1
+
+### DW-1006: documentScreenFor's built, unlisted and id-keyed guards have no test that reaches a failing branch
+- source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The shipped mirror has no <list>/document screen that fails a guard, so deleting the three guards leaves every test green; pinning them needs an injectable roster, as editorScreenFor's comment already notes for its own guards.
+- 2026-09-16T17:43:04Z status=wontfix-accepted owner=6-1-the-rest-api-explorer-and-its-openapi-document-viewer by=harvest note=reopen_if=a second screen routed at <list>/document is built, or editorScreenFor's roster becomes injectable
+
+### DW-1007: ReadTool.TestTheErrorReadToolCarriesTheSummaryFieldsOnly failed once on a freshly started throwaway and passed on the immediate re-run
+- source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Run 4 on a new ocupilot-b-ci failed only its truncation assertion (AD-24, AD-36); run 5 was 24/24. The assertion depends on how many application errors the instance holds for the first date; Story 6.1 does not touch ErrorRead.
+- 2026-09-16T17:43:04Z status=open owner=6-1-the-rest-api-explorer-and-its-openapi-document-viewer by=harvest note=code review decides: patch the environment dependence if it is a two-way door, else wontfix-accepted with a probe
+- 2026-09-16T18:19:57Z status=resolved-by:6-1-the-rest-api-explorer-and-its-openapi-document-viewer by=cr note=ReadTool asserts truncated exactly when the date holds more than one entry; 24/24 on ocupilot-slot-b and fresh ocupilot-b-ci
+
+### DW-1008: The OpenAPI viewer's read answers the whole vendor document beside the capped rows, while AD-36's Rule says nothing returns an unbounded collection
+- source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Screen/Read.cls sets pResult.document outside the row cap; MgmntPortWire.TestTheRowCapNeverCutsTheDocument pins it. The spec requires it (Raw shows the whole document; the row cap never cuts it) and View strips it from the tool.
+- 2026-09-16T18:19:53Z status=by-design owner=6-1-the-rest-api-explorer-and-its-openapi-document-viewer by=cr note=AD-36's cap read as bounding rows; the lead may add a one-line AD-36 clarification naming the document (Rule 20)
+- 2026-09-16T18:23:48Z by=adjudication note=AD-36 amended in the spine: the cap bounds rows; one screen-only payload derived from a single named vendor object may sit beside them, never in the tool view or screen context
+
+### DW-1009: MgmntPort answers a <PROTECT> raised inside a vendor document method as 500 INTERNAL rather than a 403 refusal, where AdminPort maps it to 403
+- source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: MgmntPort.Call converts any vendor exception to a status and Outcome sends it to Fail; %REST.Utils.GetSwagger2Specification has no Try/Catch (unverified that a reader holding both pairs reaches <PROTECT>).
+- 2026-09-16T18:19:53Z status=wontfix-theoretical owner=6-1-the-rest-api-explorer-and-its-openapi-document-viewer by=cr note=real when a dispatch class sits in a routine database whose resource the reader lacks while its namespace's globals are readable
+
+### DW-1010: MgmntPort's own gate, like AdminPort's and LogSourcePort's, does not itself refuse the UnknownUser and _PUBLIC placeholders AD-21 names
+- source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Invoke evaluates EvaluatePairs only; Router.OnPreDispatch and ProviderPort call Screen.Gate.IsAuthenticatedPrincipal. Every request and turn job reaches a port after the router's placeholder refusal (inference).
+- 2026-09-16T18:19:53Z status=wontfix-theoretical owner=6-1-the-rest-api-explorer-and-its-openapi-document-viewer by=cr note=real when a port is reached from a task or JOB no request started, as a placeholder account
+
+### DW-1011: Rule 21 and the epic-cycle slot parameter list name OCUPILOT_BROWSER_ORIGIN but not OCUPILOT_BROWSER_CONTAINER
+- source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: _bmad/custom/skill-rules.md Rule 21 lists the origin and --container for ci-runner.mjs and smoke.sh only; parallel.yaml carries browser_container. ui/browser.config.mjs now refuses either variable without the other.
+- 2026-09-16T18:19:53Z status=wontfix-accepted owner=6-1-the-rest-api-explorer-and-its-openapi-document-viewer by=cr note=reopen_if=a stage prompt's browser command sets one of OCUPILOT_BROWSER_ORIGIN/OCUPILOT_BROWSER_CONTAINER without the other
+
+### DW-1012: Filtering the Services list on Unrestricted, the word an empty Allowed IP addresses cell shows, matches no row
+- source: spec-6-2-the-roles-resources-and-services-lists.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Both view-rule engines read [] as empty text (screen-read.ts applyView, Screen.Read.ApplyView) and AllowedConnections is a declared filter field; matching the displayed word needs the server view rule to know a client string.
+- 2026-09-16T20:03:33Z status=open owner=6-2-the-roles-resources-and-services-lists by=harvest note=code review decides: fix pack if a two-way door, else wontfix-accepted with a probe
+- 2026-09-16T20:44:36Z status=wontfix-accepted by=cr note=reopen_if=a user or browser spec filters Services on Unrestricted expecting rows; fix needs both view engines (AD-36)
+
+### DW-1013: The permissions.services.read tool answers a bare [] for an unrestricted service, and nothing tells the model that [] means any address may connect
+- source: spec-6-2-the-roles-resources-and-services-lists.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: The spec keeps the vendor's [] on the read and the tool; only the screen cell reads Unrestricted. The generic read-tool description and screen context carry no field meaning. Same mechanism gap as DW-1001: descriptor-declared field or criterion descriptions for derived tools (Screen/Tool/**, contended for Epic 6).
+- 2026-09-16T20:03:33Z status=routed owner=7-1-enable-disable-and-delete-a-web-application by=harvest note=cluster with DW-1001: one descriptor-declared description mechanism for derived read tools
+- 2026-09-16T20:44:36Z occurrence=6-2-the-roles-resources-and-services-lists
+
+### DW-1014: An empty AuthenticationMethods cell reads (none) on 7 of 15 stock services, which can read as no authentication where authentication does not apply
+- source: spec-6-2-the-roles-resources-and-services-lists.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Observed on the slot B throwaway (DataCheck, DocDB, ECP, Mirror, Monitor, Shadow, Sharding, mostly Public N/A). A second empty-cell word is a UX decision (an EXPERIENCE.md row and a string).
+- 2026-09-16T20:03:33Z status=wontfix-accepted owner=6-2-the-roles-resources-and-services-lists by=harvest note=reopen_if=a reviewer or user reads a (none) Authentication methods cell as meaning the service accepts unauthenticated connections
+
+### DW-1015: Browser specs that docker exec into a container refuse only the live ocupilot container, never an owner-managed ocupilot-slot-* instance
+- source: spec-6-2-the-roles-resources-and-services-lists.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: ui/browser.config.mjs LIVE_CONTAINER is 'ocupilot' and every docker-exec spec asserts only notEqual to it; ORIGIN=http://localhost:52775 with CONTAINER=ocupilot-slot-b passes browserConfig, so permissions.browser-spec would create principals and restrict %Service_Shadow on slot B. ci-throwaway.sh already refuses slot names.
+- 2026-09-16T20:44:45Z status=escalated owner=burndown by=cr note=harness-wide: one predicate in browser.config.mjs refusing ocupilot and ocupilot-slot-*, used by every docker-exec spec
+- 2026-09-16T22:46:47Z occurrence=6-3-the-x-509-ldap-kerberos-and-wallet-lists note=security.browser-spec.mjs creates and deletes a probe role and user and refuses only ocupilot
+- 2026-09-17T02:48:30Z occurrence=6-4-the-oauth-2-0-screen note=oauth.browser-spec.mjs:116 creates a principal and OAuth objects and refuses only ocupilot
+- 2026-09-17T17:05:54Z occurrence=6-9-system-usage-and-the-dashboard-meters note=system-usage.browser-spec.mjs:80 creates a principal and refuses only LIVE_CONTAINER
+
+### DW-1016: A proposal diff-row has no empty-cell word, so a service-editor proposal restricting AllowedConnections would read (none) -> 10.0.0.1
+- source: spec-6-2-the-roles-resources-and-services-lists.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Story 6.2's emptyKey is a table-column attribute only; EXPERIENCE.md:378's diff-row (and its '(none) -> %Development' demo at :719) renders an empty before-value as (none), which for [] says no address rather than Unrestricted (inference: 9.4's card is unbuilt).
+- 2026-09-16T20:44:45Z status=routed owner=9-4-the-service-editor by=cr note=medium unverified; 9.4's proposal card must read an empty AllowedConnections as Unrestricted, as the Services column does
+- 2026-09-17T11:38:32Z owner=16-13-the-service-editor by=load note=retitle_repair: Story 9.4 moved to Epic 16 as 16.13 (owner amendment 0dc7c48)
+
+### DW-1017: The two client LIVE_PAYLOAD copies are compared with nothing but themselves, so a server navigation pin change can leave both stale and green
+- source: spec-6-2-the-roles-resources-and-services-lists.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: navigation-wire.test.mjs and rail-wire.spec.ts assert literals from their own fixture; Test/Wire.cls pins are copied by hand (epic-6 context: neither goes red alone), and rail-wire.spec.ts reads only area verdicts, so its per-screen entries are unread.
+- 2026-09-16T20:44:45Z status=wontfix-accepted owner=6-2-the-roles-resources-and-services-lists by=cr note=reopen_if=a commit changes a Test/Wire.cls navigation pin and CI stays green while a LIVE_PAYLOAD copy keeps the old entry
+
+### DW-1018: The area privilege union now gates the whole Security rail item on %Admin_Wallet:USE, falsely denying SSL/TLS, X.509 and LDAP at the rail to a holder of %Admin_Secure without the wallet resource
+- source: spec-6-3-the-x-509-ldap-kerberos-and-wallet-lists.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Story 6.3 appends %Admin_Wallet:USE to the security area (AreaCoverageProblem requires the union); a gated rail item opens no side bar (rail.ts:225). Counted cost after 6.3: Security 3 of 5 screens, OS management 2 of 3 after 6.8/6.10 (DW-275), Logs 2 of 3 (DW-278). The union was accepted per area in DW-275 and DW-278; this entry puts the aggregate in front of the user.
+- 2026-09-16T21:25:58Z status=decision-pending owner=burndown by=spec_gate note=product call for the decision sheet: keep the union, or gate a rail item as allowed when any of its screens is allowed while each screen keeps its own gate (AD-8's false admission then applies only to the area label, never to a read)
+- 2026-09-16T21:26:18Z by=spec_gate note=the OS management figure (2 of 3 after 6.8 and 6.10) is Screen/Area.cls's inference, settled when those screens land; the Security and Logs figures are counted from declared pairs
+- 2026-09-16T22:46:47Z occurrence=6-3-the-x-509-ldap-kerberos-and-wallet-lists note=EXPERIENCE.md :221 and :482 still describe the Wallet screen as gated screen by screen; the union gates the whole Security rail item
+- 2026-09-16T23:34:21Z by=cr note=observed slot B: %SecurityAdministrator holds %Admin_Secure:U and %DB_IRISSYS:RW but no %Admin_Wallet; rail gates it
+- 2026-09-17T00:18:27Z occurrence=6-4-the-oauth-2-0-screen note=Story 6.4 appends %Admin_OAuth2_Client, %Admin_OAuth2_Server and %Admin_OAuth2_Registration (USE) to the security area: a holder of the Secure, IRISSYS and Wallet pairs without any OAuth resource sees the Security rail gated though 6 of its 10 built screens would serve them; %Manager and %SecurityAdministrator hold all three OAuth resources (observed on slot B by the 6.4 plan)
+
+### DW-1019: Demo-fixture counts and the inventory kind vocabulary are stale outside Fixture.cls after the wallet fixture landed
+- source: spec-6-3-the-x-509-ldap-kerberos-and-wallet-lists.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: README.md, Install/Installer.cls and Kernel/State/Demo.cls still say five fixtures and list the old inventory kinds; README.md and Kernel/** are contended for Epic 6, Installer.cls is not.
+- 2026-09-16T22:46:47Z status=open owner=6-3-the-x-509-ldap-kerberos-and-wallet-lists by=harvest note=code review: patch the in-footprint Installer.cls wording; close the contended remainder with a probe
+- 2026-09-16T23:34:21Z status=wontfix-accepted owner=6-3-the-x-509-ldap-kerberos-and-wallet-lists by=cr note=Installer.cls :11/:958 fixed; README.md:244 contended. reopen_if=README demo-fixture count differs from Fixture.cls
+
+### DW-1020: The Secrets screen's route id is a wallet collection name while the screen declares entity type wallet-secret, so a screen-context reader could label the collection as a secret
+- source: spec-6-3-the-x-509-ldap-kerberos-and-wallet-lists.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: AD-13's triple pairs the route id with the descriptor's entityType; WalletSecretList declares parentScope security/wallet and entityType wallet-secret, so (wallet-secret, instance, OcuPilotDemo) names a collection as a secret. Unverified until Story 4.4's screen context reads it. Story 6.6's per-task history is the second parent-scoped screen and meets the same question.
+- 2026-09-16T22:46:47Z status=routed owner=6-6-task-history-per-task-and-across-tasks by=harvest note=decide once for both parent-scoped screens how the route id's entity type is declared (AD-5 sub-resource, AD-13 triple)
+- 2026-09-17T08:31:31Z status=resolved-by:6-6-task-history-per-task-and-across-tasks by=cr note=Registry.RouteEntityType + navigation.ts routeEntityType (task/wallet-collection), ParentScopeResolutionProblem both engines; TaskHistory + navigation.test pins
+
+### DW-1021: A parent-scoped list whose read answers 404, a deleted or unknown wallet collection, shows the generic request refused with a Retry that cannot clear it
+- source: spec-6-3-the-x-509-ldap-kerberos-and-wallet-lists.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: core/fault.ts classifies a 404 as absent and data-table.ts draws every non-banner fault as request refused plus Retry (DW-172); Wallet.Secret LIST answers 404 for an unknown collection, so a stale security/wallet/secrets/<id> reads as a refusal. Distinct copy needs an EXPERIENCE.md row.
+- 2026-09-16T23:34:21Z status=wontfix-accepted owner=6-3-the-x-509-ldap-kerberos-and-wallet-lists by=cr note=reopen_if=OcuPilot can delete a wallet collection (Story 8.6 or later) and a Secrets deep link to it reads request refused
+
+### DW-1022: The wallet fixture's create-side branches are driven by no test: a secret that fails after its collection is recorded, and a collection that already exists
+- source: spec-6-3-the-x-509-ldap-kerberos-and-wallet-lists.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Fixture.CreateWalletCollection calls %Wallet.KeyValue.Create directly, so no seam can fail it, and no test pre-creates a <prefix> collection; moving NoteRow below the secret create, or recording an existing collection, leaves every test green. The SSL/TLS and X.509 existing-object branches share the gap.
+- 2026-09-16T23:34:21Z status=wontfix-accepted owner=6-3-the-x-509-ldap-kerberos-and-wallet-lists by=cr note=reopen_if=a change to CreateWalletCollection moves NoteRow or edits its exists branch with no test driving that branch
+
+### DW-1023: A fixed read.source.query on a single-object GET or a per-parent forEach read is seeded but pinned by no test, and a query key equal to forEach.param is silently overwritten on each child call
+- source: spec-6-5-on-demand-and-upcoming-tasks.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: SeedSourceQuery runs on the GET branch and in ForEachRows; the only query fixture is a plain LIST, so deleting either call leaves every test green. No shipped descriptor combines query with GET or forEach.
+- 2026-09-17T04:11:49Z status=open owner=6-5-on-demand-and-upcoming-tasks by=harvest note=code review: pin or refuse the collision if a two-way door, else wontfix-accepted with a probe
+- 2026-09-17T04:40:43Z status=resolved-by:6-5-on-demand-and-upcoming-tasks by=cr note=ForEachProblem and forEachProblem refuse a param equal to a query key (corpus case); Object and Children fixtures pin GET and child seeding
+
+### DW-1024: The Upcoming tasks page takes today from the browser clock rather than the instance's, so a user in a different time zone who picks today can see an empty horizon
+- source: spec-6-5-on-demand-and-upcoming-tasks.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: upcoming.page date mode refuses a date before the browser's today and sends <date> 23:59:59 in instance local time; no endpoint gives the page the instance's calendar date (implement review rejected with a reopen condition).
+- 2026-09-17T04:11:49Z status=wontfix-accepted owner=6-5-on-demand-and-upcoming-tasks by=harvest note=reopen_if=a user whose browser time zone differs from the instance's picks today in Until a date and reads an empty or refused horizon, or an instance-date field reaches the client (e.g. the instance identity endpoint)
+
+### DW-1025: A fresh slot B throwaway logs repeated <PROTECT>%DeleteData errors from %Api.Admin.Endpoints.Security.Audit.RecordListTask's async-task cleanup while idle
+- source: spec-6-5-on-demand-and-upcoming-tasks.md (QA) | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Observed by Story 6.5's QA on ocupilot-b-ci; unrelated to 6.5's code and not investigated. The audit LIST is the self-queued async path AdminPort polls (AD-26); if the cleanup runs under a caller without the privilege, the errors reach messages.log, which Story 6.14 displays.
+- 2026-09-17T04:25:10Z status=routed owner=6-14-the-messages-log-viewer by=harvest note=investigate whether the PROTECT originates in AdminPort's async poll or the vendor's own task cleanup; fix at the port if ours, else close by-design with the vendor evidence
+- 2026-09-18T08:32:18Z by=plan note=ours, not the vendor's: AdminPort.ForgetTask:666 deletes into IRISLOCALDATA, whose resource has public read and no public write, so an unprivileged caller reads the Finished row then throws PROTECT on the delete; the vendor's PurgeAsyncQueue() is [Internal] and scheduled by nothing; AsyncResult exposes no delete type. Fix is a privilege check before %DeleteId, not a widened declared privilege
+- 2026-09-18T14:38:18Z status=resolved-by:6-14-the-messages-log-viewer by=dev note=ForgetTask skips %DeleteId without ASYNCTASKPAIR and logs nothing; PROTECT reproduced and reddened on a real principal
+
+### DW-1026: Live-instance task-history tests compare two separate reads of a growing history exactly, so a Task Manager run landing between them fails the comparison
+- source: spec-6-6-task-history-per-task-and-across-tasks.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: TaskHistory TestAllTasks/UserOnly/NoTaskId and WireSecurityRead AssertSameRowsAsTestAccount on tasks.history/taskhistory read twice in ms and compare order or counts
+- 2026-09-17T08:31:31Z status=wontfix-accepted owner=6-6-task-history-per-task-and-across-tasks by=cr note=window is milliseconds on a fresh throwaway; reopen_if=CI or a local run reds one of those assertions on a row mismatch
+- 2026-09-17T11:34:58Z occurrence=6-7-task-details
+
+### DW-1027: Task history's Refresh and revisit re-read with whatever the form holds now, not the last submitted search
+- source: spec-6-6-task-history-per-task-and-across-tasks.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: history.page.ts boundRead passes searchStore.criteria(), the live field values; AuditPage reads live criteria the same way
+- 2026-09-17T08:31:31Z status=wontfix-accepted owner=6-6-task-history-per-task-and-across-tasks by=cr note=matches AuditPage; a fix adds an applied-criteria snapshot to both; reopen_if=a user or UX review reports Refresh running unsubmitted text
+
+### DW-1028: A criterion param or vendorParam named namespace on a mgmnt source would be overwritten by Read.Execute's own namespace query key
+- source: spec-6-6-task-history-per-task-and-across-tasks.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: CriteriaFieldsProblem reserves maxRows and ns only; Read.cls mgmnt branch sets tQuery(namespace) after SeedCriteria; no mgmnt read declares criteria
+- 2026-09-17T08:31:31Z status=wontfix-theoretical owner=6-6-task-history-per-task-and-across-tasks by=cr note=real once a mgmnt-port descriptor declares a criterion named namespace
+
+### DW-1049: Process details AC5 has no browser leg: the denied deep link is proven only by the navigation payload and the 403 over HTTP
+- source: spec-6-8-process-details.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: processes.browser-spec.mjs creates no principal; WireSecurityRead pins ScreensFor(OPERATEUSER) failedPair %Admin_Manage:USE and the read 403; tasks.browser-spec.mjs:649 renders app-screen-denied for 6.7
+- 2026-09-17T14:25:12Z status=wontfix-accepted owner=6-8-process-details by=cr note=reopen_if=a %Admin_Operate+%DB_IRISSYS principal on /os-management/processes/details/<pid> renders anything but app-screen-denied
+
+### DW-1050: Spine AD-43 Binds/Prevents still say six screens at EXPERIENCE.md :561 after the roster-of-seven amendment; AD-29 names %SYS.ProcessQuery where 6.8 found VariableByPid needs %Admin_Manage:USE
+- source: spec-6-8-process-details.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: ARCHITECTURE-SPINE.md:463-464 vs its own Rule at :467; AD-29 at :367 vs ProcessDetails.cls doc and spec Code Map (ProcessQuery.cls:423 AllowToOpen, :1494 VariableByPid)
+- 2026-09-17T14:25:12Z status=wontfix-accepted owner=6-8-process-details by=cr note=reopen_if=a later story's plan cites AD-43 Binds for a count or AD-29 for the Manage check; lead may correct at Rule 20 bookkeeping
+- 2026-09-17T14:26:39Z status=resolved-by:6-8-process-details by=adjudication note=lead corrected AD-43 Binds and Prevents to seven screens in the spine; AD-29 stands, since VariableByPid (ProcessQuery.cls:1494) is a method of %SYS.ProcessQuery, which AD-29 already names
+- 2026-09-17T19:46:01Z status=decision-pending owner=burndown by=runner note=AD-29 corrected at its origin 2026-09-17: AllowToOpen admits %Admin_Manage:USE or IRISSYS write or IRISSYS read or the caller's own pid (ProcessQuery.cls:425); Story 6.8's pair set stands
+- 2026-09-17T19:46:09Z status=resolved-by:6-8-process-details by=runner note=the trailer above was meant as a note only and must not reopen this entry: the AD-29 correction is applied, so the entry stays resolved
+
+### DW-1065: A parts read never checks at runtime that each projected value is a scalar of at most 1,000 characters
+- source: spec-6-9-system-usage-and-the-dashboard-meters.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Read.cls CopyAs copies any string length and copies objects as they are; the Boundaries clause is pinned only by Test.SystemUsage Live and Integration against the real Monitor answers.
+- 2026-09-17T17:05:54Z status=wontfix-theoretical owner=6-9-system-usage-and-the-dashboard-meters by=cr note=real if a vendor release answers an object or >1,000 chars at a declared Monitor member; Live test goes red
+
+### DW-1066: Every System usage meter tooltip carries the connectivity text whatever the fault (403, 500 or offline)
+- source: spec-6-9-system-usage-and-the-dashboard-meters.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: system-usage.page.ts faultText maps any refresh fault to STRINGS.connectivityRequestRefused, the same string process-details.page.ts shows in its refusal strip.
+- 2026-09-17T17:05:54Z status=wontfix-accepted owner=6-9-system-usage-and-the-dashboard-meters by=cr note=reopen_if=a meter tooltip must name a missing privilege pair or distinguish a 500 from a refusal
+
+### DW-1067: app-meter exposes no meter role or aria-value attributes, and its fault reason is a hover-only title
+- source: spec-6-9-system-usage-and-the-dashboard-meters.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: meter.ts template has no role=meter/aria-valuenow; the error is [attr.title] on a non-focusable host. The state word satisfies EXPERIENCE.md Color never alone.
+- 2026-09-17T17:05:54Z status=wontfix-accepted owner=6-9-system-usage-and-the-dashboard-meters by=cr note=reopen_if=an accessibility audit (axe or screen reader pass) flags app-meter on System usage or Database details
+
+### DW-1068: The parts grammar accepts any upper-case part type, so a typo or an endpoint-foreign type installs and fails only at read time with 501
+- source: spec-6-9-system-usage-and-the-dashboard-meters.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Registry.PartsProblem and screen-mirror partsProblem check only ^[A-Z]+$; AdminPort resolves the type at Invoke and refuses with 501 PORT.NOTIMPLEMENTED.
+- 2026-09-17T17:05:54Z status=wontfix-accepted owner=6-9-system-usage-and-the-dashboard-meters by=cr note=reopen_if=a second parts descriptor ships whose read answers 501 on an installed instance
+
+### DW-1069: Smoke check systemusage asserts only that the read answers one row, not its fields or status words
+- source: spec-6-9-system-usage-and-the-dashboard-meters.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Install/Smoke.cls CheckAreaLists systemusage follows the processdetails model (row count); field shape is pinned by Test.SystemUsage and WireSecurityRead.
+- 2026-09-17T17:05:54Z status=wontfix-accepted owner=6-9-system-usage-and-the-dashboard-meters by=cr note=reopen_if=smoke.sh passes systemusage while Test.SystemUsage Live is red on the same instance
+
+### DW-1070: The System usage Tick test passes when AllGlobalReferences is null on both reads
+- source: spec-6-9-system-usage-and-the-dashboard-meters.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Test.SystemUsage TestTwoReadsFiveSecondsApartAreNonDecreasing compares tAfter >= tBefore; two empty strings compare true. Live in the same class asserts non-null scalars.
+- 2026-09-17T17:05:54Z status=wontfix-accepted owner=6-9-system-usage-and-the-dashboard-meters by=cr note=reopen_if=the Live test is removed or no longer asserts Usage.AllGlobalReferences non-null
+
+### DW-1071: No read-source corpus case declares parts together with rowGet or forEach
+- source: spec-6-9-system-usage-and-the-dashboard-meters.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: ReadSourceCorpus has 13 parts cases; the Matrix row 'parts with rowGet' is met only because RowGetProblem runs before PartsProblem in both engines.
+- 2026-09-17T17:05:54Z status=wontfix-accepted owner=6-9-system-usage-and-the-dashboard-meters by=cr note=reopen_if=RowGetProblem and PartsProblem change order in either engine, or rowGet admits a criterion-free form
+
+### DW-1072: screen-outlet maps every meters-archetype descriptor to SystemUsagePage, whose meter list is System usage's own
+- source: spec-6-9-system-usage-and-the-dashboard-meters.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: shell/screen-outlet.ts ARCHETYPE_PAGES meters: SystemUsagePage; METER_CONFIGS is hardcoded, so a second meters descriptor would render dashes.
+- 2026-09-17T17:05:54Z status=wontfix-theoretical owner=6-9-system-usage-and-the-dashboard-meters by=cr note=real when a second descriptor declares archetype meters (FR-76 dashboard, P1)
+
+### DW-1073: Warn before a lock removal when the owning process is in a transaction, from the admin endpoint's own 409 refusal
+- source: spec-6-10-the-locks-view.md | severity: med | fix-risk: low | footprint: in-footprint
+- evidence: The endpoint's delete path answers 409 'is currently in a transaction' and the classic Manage Locks page asks the same before its Remove confirm; probed on slot B, $zu(67,19,$Job) reads non-zero inside a transaction and 0 outside, 100 calls cost 0.01 ms against 116 ms for 100 %SYS.ProcessQuery opens, so the check belongs at the confirm and not in the list read
+- 2026-09-17T19:45:52Z status=routed owner=16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client by=plan note=orchestrator-decided at the 6.10 spec gate (Q2 option c): 6.10 ships no transaction column; the warning is this story's, taken from the endpoint's refusal rather than a $zu probe
+
+### DW-1074: A remote-owner lock row links to Process details, which then says the process no longer exists
+- source: spec-6-10-the-locks-view.md | severity: low | fix-risk: med | footprint: in-footprint
+- evidence: A lock whose RemoteOwner is true has no local pid, so the owner link lands on Process details' AD-37 'This process no longer exists.' Needs an ECP client to observe; the branch is read from the vendor source, not seen. Conditional row-link grammar is the alternative and was declined
+- 2026-09-17T19:46:01Z status=escalated owner=burndown by=plan note=orchestrator-decided at the 6.10 spec gate (Q3 option a): accepted rather than inventing conditional-link grammar
+
+### DW-1078: rowTarget admits a target screen whose composite id has more than one part, and one field value is encoded as that whole id
+- source: spec-6-10-the-locks-view.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Both engines check only that the target's id.kind is not 'none' (Registry.RowTargetResolutionProblem, screen-mirror.mjs rowTargetResolutionProblem). Four shipped screens are keyed by a multi-part composite id (AuditList, TaskRunList, TaskHistoryList, the error list); a rowTarget naming one would have data-table.ts encode a single field value as that screen's whole id. Today's only rowTarget targets ProcessDetails (composite, one part), so nothing is wrong now.
+- 2026-09-17T22:21:40Z status=escalated owner=burndown by=cr note=13th refusal; fix edits AD-5's rowTarget bullet, Boundaries' 'Refusals, twelve' and AC6 -- spine work (Rule 20), not a reviewer patch
+
+### DW-1079: A Wallet test appears to delete the demo collection on the shared dev instance, leaving two suites red there
+- source: spec-6-10-the-locks-view.md | severity: med | fix-risk: low | footprint: in-footprint
+- evidence: On ocupilot-slot-b (OCUPILOT_DEMO=1) WalletCollectionList answers zero rows, so Test/ScreenRead.TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow and Test/Smoke.TestTheSecurityListsAreLiveChecks fail there; both are green on a fresh throwaway, where the installer creates the collection. A Wallet test's own cleanup deleting the demo collection is the likely cause (inference). Reproduce: run Test/Wallet* on a demo instance, then the two tests above
+- 2026-09-17T22:27:39Z status=routed owner=burndown by=runner note=observed twice during Story 6.10 (implement and code review both read it as a story signal first); a test that deletes demo fixture data leaves every later story on that instance reading a false red
+- 2026-09-18T16:42:53Z status=escalated owner=burndown by=burndown note=the Wallet list story that owns the test is done and no story in Epic 7 or 16 touches Wallet tests; the symptom was repaired on ocupilot-slot-b by re-running the fixture, but a test that deletes demo fixture data on a shared instance makes every later story read a false red there
+
+### DW-1080: Database details' background-tasks section: charter it, or add a query-backed source kind to AD-36
+- source: spec-6-11-databases-with-free-space-arriving-as-it-lands.md | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: The tasks running against a database are answerable only through %SYS.BackgroundTask:RunningInDatabase (irissys/%SYS/BackgroundTask.cls:899), a Final Internal class query the classic page reads; no %Api.Admin.* class references it, Database.Actions is write-only, and AD-36's sources are admin, mgmnt and state. Two routes: a polish-week story, or a query-backed source added to AD-36
+- 2026-09-18T00:05:40Z status=decision-pending owner=burndown by=plan note=orchestrator-decided at the 6.11 spec gate (Q3 option a): epics.md 6.11 AC3 amended to properties and volume files; only the owner can charter a story outside this epic
+
+### DW-1090: A rowGet read's async bound is per row, so a staged read's wall clock is rows x ASYNCTIMEOUT with no read-wide deadline
+- source: spec-6-11-databases-with-free-space-arriving-as-it-lands.md | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: AdminPort.AwaitTask sets tStart per call (AdminPort.cls:862) and Read.Execute calls DetailRow once per row (Read.cls:365-374), so the Free-space read queues one TYPEINFO task per database, each bounded at 30 s on its own. Verified by reading both; the refusal itself is whole and correct. Screen/Read.cls is Epic 4-shared under additive-only discipline, so a read-wide deadline is not an in-story change.
+- 2026-09-18T04:38:34Z status=escalated owner=burndown by=cr note=claim corrected at origin in DatabaseFreeSpace.cls; the missing deadline itself is the escalated part
+
+### DW-1093: No structural route-uniqueness check in Registry.Validate; a duplicate route compiles and validates clean
+- source: spec-6-12-the-devices-list.md qa | severity: low | fix-risk: med | footprint: in-epic
+- evidence: Set DeviceList's route to the existing os-management/databases route, recompiled clean, Registry.Validate passed with no problem string; only Test.Navigation's literal per-index route pin caught it (observed on ocupilot-b-ci). Reverted.
+- 2026-09-18T07:03:37Z status=open owner=burndown by=qa note=6.12 falsification pass; a real check would live in Registry.Validate, additive, over all descriptors -- out of this story's per-screen footprint
+- 2026-09-18T07:42:04Z status=wontfix-accepted owner=6-12-the-devices-list by=adjudication note=reopen_if=two descriptors declare the same route and Registry.Validate returns no problem string; Rule 15 forbids burndown owning a LOW, a duplicate route is caught today by Test/Navigation.cls's per-index pin, and the fix is a new refusal rule across three engines that this story's Never forbids
+
+### DW-1098: The Devices browser spec asserts the pipe-bracketed name cell's text but never its row link, so the percent-encoding of |TRM| into one path segment is pinned by no Devices-side test
+- source: spec-6-12-the-devices-list.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: devices.browser-spec.mjs asserts cells[0] === '|TRM|' and imports no clickRowCentre; the matrix row also claims the cell links to the id route. encodeEntityId's double pass is pinned generically by ui/tools/entity-id.test.mjs against OcuPilot.Test.EntityId's mirror table, whose cases carry no pipe character.
+- 2026-09-18T07:38:36Z status=wontfix-accepted owner=6-12-the-devices-list by=cr note=reopen_if=clicking the |TRM| name cell lands anywhere but /os-management/devices/%257CTRM%257C with that row active
+
+### DW-1099: No assertion anywhere observes a shipped descriptor's read.filter, read.sort.fields or per-column kind except the Devices list, so any other screen can silently lose its filter, its sort or a column's numeric treatment
+- source: spec-6-12-the-devices-list.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Test/Descriptor.cls's new Devices method is the only place in the ObjectScript suite that reads a real descriptor's read.filter or a column's kind; every other hit is a synthetic corpus. Registry.cls requires only that filter and sort names be a SUBSET of read.fields and each kind be in TABLECOLUMNKINDS, and screens.generated.ts mirrors whatever is declared, so screen-mirror --check agrees with any mutation.
+- 2026-09-18T07:39:57Z status=routed owner=burndown by=cr note=one sweep over Registry.Descriptors() against a committed table closes it; equality with read.fields is NOT the invariant -- SystemUsage declares filter [] deliberately
+- 2026-09-18T16:43:00Z status=routed owner=7-1-enable-disable-and-delete-a-web-application by=burndown note=overflow re-owned to the first story of the next epic, which touches a shipped descriptor's declared actions and its pinning tests: one sweep over Registry.Descriptors() against a committed table closes it, and equality with read.fields is NOT the invariant
+
+### DW-1100: The messages.log viewer has no declared-read source, so its read tool cannot be descriptor-derived and needs a Screen/Tool class Epic 6's footprint excludes
+- source: spec-6-13-the-alerts-log-viewer.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: Registry.ReadProblem requires read.source.port to be admin, state, mgmnt (Registry.cls:832); 6.13 adds monitor for the alerts read, but messages.log is served only by LogSourcePort.Page through /logs/messages (LogPage.cls:29-50), which no source kind expresses. LogErrorList took the other route and declares its tool in Screen/Tool/ErrorRead.cls, a path Epic 6's footprint forbids.
+- 2026-09-18T08:25:28Z status=routed owner=6-14-the-messages-log-viewer by=plan note=6.13 avoids it by declaring its read on the monitor port; 6.14 has no such source and must either add a logfile source kind or get a footprint extension for Screen/Tool
+- 2026-09-18T14:38:17Z status=resolved-by:6-14-the-messages-log-viewer by=dev note=logsource declaration alone; Read.cls:263-266 is endpoint-generic, so no source kind and no Screen/Tool file
+
+### DW-1101: Async task rows survive on ocupilot-slot-b for a _SYSTEM caller with no error logged, so AdminPort.ForgetTask does not always run or does not always delete
+- source: spec-6-13-the-alerts-log-viewer.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Read read-only from ^|"^^:ds:IRISLOCALDATA"|Api.Admin.Util.AsyncTaskD on ocupilot-slot-b: four rows, Username=_SYSTEM, State=Finished, TaskName GET /v2/ocupilot/database/syscrud, queued 2026-09-18 01:03/01:04/06:34/07:33, and messages.log carries no AdminPort fault at any of those times. AwaitTask calls ForgetTask on Finished and Failed (AdminPort.cls:872,878); a privileged caller holds %DB_IRISLOCALDATA:WRITE, so the delete should have taken. Distinct root cause from DW-1025, which is the PROTECT a non-privileged caller gets.
+- 2026-09-18T08:25:37Z status=open owner=6-13-the-alerts-log-viewer by=plan note=probe only in this story: run Database.SysCRUD INFO through AdminPort on a throwaway as _SYSTEM and read the row back; fix or re-own with the residual at adjudication
+- 2026-09-18T08:32:22Z status=routed owner=6-14-the-messages-log-viewer by=plan note=re-owned at the 6.13 spec gate: 6.13 does not touch AdminPort.cls, and 6.14 already owns DW-1025 in the same method
+- 2026-09-18T13:33:22Z by=plan note=slot B: 7 _SYSTEM/Finished rows, no fault logged; ForgetTask unreached - AdminPort.cls:361 awaits only on 202+Location
+- 2026-09-18T16:02:00Z status=routed owner=burndown by=cr note=re-owned off this story at code review: the DW-1025 guard shipped and reddens under mutation; the residual is the unawaited 202 at AdminPort.cls:361, which this story's shape does not reach
+- 2026-09-18T16:43:00Z status=routed owner=16-5-background-tasks by=burndown note=overflow re-owned to the story that is about background tasks: AdminPort.cls:361 enters the await only on a 202 AND a Location carrying ASYNCLOCATION, so ForgetTask is never reached for the surviving rows, and 7 such rows stand on ocupilot-slot-b
+
+### DW-1102: The log viewer's next/previous match controls have no published accessible name
+- source: spec-6-13-the-alerts-log-viewer.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: EXPERIENCE.md:410 names next/previous for the sticky search but publishes no string for either; the Fixed strings table's log-viewer row (:367) carries neither. Story 6.13 implemented them as Enter and Shift+Enter on the search field rather than ship two icon buttons with an invented or borrowed name.
+- 2026-09-18T09:42:46Z status=open owner=burndown by=dev note=needs one owner decision: publish two names in EXPERIENCE.md's Fixed strings table, or keep the keyboard-only affordance
+- 2026-09-18T16:42:53Z status=decision-pending owner=burndown by=burndown note=needs published copy: EXPERIENCE.md names the next and previous match controls but publishes no accessible name for either, and a runner may not invent product copy; today they are Enter and Shift+Enter on the sticky search, pinned in the component and browser specs
+
+### DW-1103: IRIS escalates only severity 3 to alerts.log, so the file cannot be seeded at the other four levels through its own writer
+- source: spec-6-13-the-alerts-log-viewer.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Measured on the throwaway (2026.2): $zu(9,"",text,1,severity) and %SYS.System.WriteToConsoleLog put -2, -1, 0, 1 and 2 into messages.log alone; only 3 also reached alerts.log. alerts-log.browser-spec.mjs therefore appends whole lines in the file's own grammar to reach AC8's densest severity mix.
+- 2026-09-18T09:42:53Z status=open owner=burndown by=dev note=Story 6.14's messages.log spec can seed through the writer instead, since every level reaches that file
+- 2026-09-18T14:38:18Z status=resolved-by:6-14-the-messages-log-viewer by=dev note=messages-log.browser-spec seeds all five levels through %SYS.System.WriteToConsoleLog; no raw append
+
+### DW-1108: LogViewerStore.readRecent uses the earliest accumulated tag on every Load newer, not the newest rendered row's tag AC5 names
+- source: spec-6-13-the-alerts-log-viewer.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: log-viewer.store.ts readRecent() always calls tagForWindow(this.fileEntries) over the WHOLE accumulated file-entries list, whose .find() returns the earliest tagged entry -- correct for open() per AC5's First-load row, but the same call is reused for loadNewer(), where AC5's own I/O matrix says the tag must be 'the newest rendered row's tag'. Reproduced with a temporary test (reverted): after loadNewer() loads a new page with a later head line, the second /recent call still carries the FIRST page's earliest tag verbatim, not the new page's tag. Consequence: every Load newer re-asks the monitoring API for everything since the very first page opened, growing without bound over a long-lived screen session until MAXANSWERCHARS/MAXENTRIES trips MONITOR.TOOLARGE and recentUnavailable fires on a session that was working fine seconds before.
+- 2026-09-18T10:07:32Z status=routed owner=6-13-the-alerts-log-viewer by=qa note=independent falsification pass, Story 6.13 QA stage. No test in log-viewer.spec.ts asserts the /recent tag on a second (post-loadNewer) call -- AC5's own mutation note only checks the tail's offset/identity, not this. Fix: readRecent's tag on the loadNewer path should be the newest (last) tagged entry across fileEntries (or the just-loaded window), not tagForWindow's earliest-first .find(). guard: AC: a second Load newer's /recent call carries the tag of the most recently rendered row, not the window's earliest header
+- 2026-09-18T10:33:53Z status=resolved-by:6-13-the-alerts-log-viewer owner=6-13-the-alerts-log-viewer by=cr note=readRecent(gen,fromNewest) takes tagForNewest on a Load newer, tagForWindow on open/restart; two tests in log-viewer.spec.ts pin both; mutation applied (tagForWindow on both paths) reddened only the new test
+
+### DW-1109: AC7's Clear filter control does not exist: neither the log viewer nor the shell command bar renders one, and no authorized string publishes it
+- source: spec-6-13-the-alerts-log-viewer.md | severity: med | fix-risk: high | footprint: in-epic
+- evidence: AC7 and Execution item 8 promise 'the severity-chip-click filter with Clear in the command bar'; EXPERIENCE.md:367 says the viewer reuses 'Clear filter', published at :403 as a button-text of the command bar. log-viewer.page.ts renders chips in its own .ocu-log-viewer-chips div and clears only by re-clicking the pressed chip; shell/command-bar.ts renders primary, filter input, count, row actions and the View menu and no clear control; strings.ts carries no clear-filter key at all. Implementing it needs a shared command-bar control plus an authorized string, and the EXPERIENCE.md :367 row lists the string as reused rather than new, so the strings table (481 of a 520 bound) cannot take it without a Rule 5 amendment.
+- 2026-09-18T10:34:03Z status=escalated owner=burndown by=cr note=Not patched here: fix risk is high (shared shell control + planning-artifact amendment + a strings row the table's budget does not obviously have). The chip toggle is the affordance that ships and both specs pin it. Decision sheet: build the command-bar control, or amend AC7/EXPERIENCE.md:367 to the toggle.
+- 2026-09-18T13:34:58Z status=routed owner=6-14-the-messages-log-viewer by=adjudication note=re-owned off burndown on new evidence: Story 6.13 put search, both jumps and Raw in the viewer's own .ocu-log-viewer-bar, so Clear is one button beside the chips plus one strings row, with shell/command-bar.ts untouched; 6.14 AC4 asks for it, and the strings row landed at EXPERIENCE.md:369
+- 2026-09-18T14:38:18Z status=resolved-by:6-14-the-messages-log-viewer by=dev note=Clear filter is one button-text in .ocu-log-viewer-bar plus logViewerClearFilter; command-bar.ts untouched
+
+### DW-1110: LogViewerStore is not in app.ts's sign-out teardown, so one principal's log lines survive a sign-out in the same tab
+- source: spec-6-13-the-alerts-log-viewer.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: app.ts's sign-out teardown calls instance, navigation, scope, connectivity, refresh, auditSearch, errorLogDrill, definitionForm, formDirty and agentStatus reset(); LogViewerStore is absent, and grep finds it named only by log-viewer.page.ts and its spec. The store is providedIn root and holds loaded()=true, so after a sign-out and a new sign-in in the same tab the page constructor's 'if (!loaded && !loading) open()' does not re-read and the previous principal's alerts.log rows render under the new one (AD-8: rows are data THIS principal was allowed to read). The fix is one line in app.ts, which this story does not own.
+- 2026-09-18T10:34:11Z status=escalated owner=burndown by=cr note=app.ts is contended (Epic 4) and this story may not edit it. The store's own doc comment claimed the wiring existed; that claim was corrected at its origin in this pass. reopen_if: sign in, open logs/alerts, sign out, sign in as another principal, open logs/alerts - the first principal's rows are on screen.
+
+### DW-1111: Screen/Tool/ErrorRead.cls still carries the admin-port-only claim this story falsifies
+- source: spec-6-13-the-alerts-log-viewer.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: ErrorRead.cls:4-6 reads 'the declared-read pipeline is admin-port-only by two independent hard-codings and could not serve this source'. It has been wrong since Story 6.1 added mgmnt and is now wrong twice over: Screen/Read.cls declares SOURCEMONITOR and MonitorPortClass, and Registry/screen-mirror name four ports. The twin sentence in Screen/Descriptor/LogErrorList.cls was corrected in this story; this copy is the surviving origin a later reader would mine as evidence.
+- 2026-09-18T10:34:19Z status=escalated owner=burndown by=cr note=Screen/Tool/** is contended and outside this story's footprint (spec Execution item 9 says so), so it is reported rather than edited. Fix is a doc-comment replacement of the same two sentences the LogErrorList copy took.
+- 2026-09-18T12:10:46Z status=resolved-by:6-13-the-alerts-log-viewer by=dev note=corrected at its origin in Screen/Tool/ErrorRead.cls:4-6, comment only, under the orchestrator's explicit one-comment footprint exception
+
+### DW-1116: Tag mode does not stop the vendor advancing the instance-wide SAM cursor: every Alerts() call writes it, so AD-7's two named shapes gain a third and AC2 cannot hold as written
+- source: spec-6-13-the-alerts-log-viewer.md | severity: high | fix-risk: high | footprint: in-story
+- evidence: Measured on throwaway ocupilot-b-ci 2026-09-18: kill ^IRIS.Temp.SAM in %SYS, confirm undefined after a 5s control with no call, then one MonitorPort.Invoke -- the node comes back defined, carrying alerts.log's newest line. Repeated with an empty tag, a bogus tag and a tag the vendor matched (97 of 98 rows returned): all three advance it to the newest entry. It only looked byte-identical on slot B because that cursor already named the newest line, which is what the spec's own probe measured. The spine's AD-7 says the read-triggered-vendor-write exception covers exactly two shapes and extends to nothing else; another SAM scraper polling /api/monitor/alerts without a tag shares that cursor and loses the alerts OcuPilot's read moved it past.
+- 2026-09-18T11:19:09Z status=decision-pending owner=burndown by=cr note=HIGH, paused for the lead (Rule 6 + Rule 20: the spine is the lead's to write). Options: amend AD-7 with a third named shape and its observable cost, as the two existing ones are named, and amend the Always block and AC2 to match; or drop the monitoring half; or save and restore the cursor around the call, which makes OcuPilot itself the writer. The port doc comment and Test/MonitorPort.cls now state the measured behaviour and name this entry.
+- 2026-09-18T11:25:34Z status=routed owner=16-7-license-usage-and-the-full-dashboard by=adjudication note=orchestrator decided option b at the 6.13 spec gate: alerts.log is read through LogSourcePort alone, the monitoring half is not shipped, and the MonitorPort implementation is recoverable at worktree sha 33361dc on OCU-1-epic6; FR-76 re-takes it where a consumer exists
+
+### DW-1117: EXPERIENCE.md:368 still authorizes alertLogRecentUnavailable, a string no shipped component renders now that the monitoring half is not shipped
+- source: spec-6-13-the-alerts-log-viewer.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: The Fixed strings table row at EXPERIENCE.md:368 names 'Recent entries are unavailable - showing the file tail.' as the line distinguishing this screen from messages.log. DW-1116 removed the half that raised it, so nothing renders it; ui/tools/strings.test.mjs re-derives its authorized set from that table and fails if the key leaves strings.ts, so the key is kept and marked dead in place. Reachable only by amending the planning artifact, which is the lead's (Rule 5).
+- 2026-09-18T12:11:03Z status=escalated owner=burndown by=dev note=the string stays in strings.ts because the table is the authority; remove the table row and the key together, or give the row a use, at a Rule 5 amendment
+- 2026-09-18T12:27:16Z status=resolved-by:6-13-the-alerts-log-viewer by=adjudication note=the lead struck the literal from EXPERIENCE.md:368 with the monitoring half and removed the key from strings.ts; npm test green at 857 tool tests and 515 component tests
+
+### DW-1118: epic-6-context.md still tells the next story that 6.13 ships MonitorPort and merges the monitoring API's recent entries with the file tail
+- source: spec-6-13-the-alerts-log-viewer.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: epic-6-context.md:86 reads '6.13 alerts.log is the first user of MonitorPort, which does not exist yet ... The screen merges the monitoring API's recent entries with the file's bounded tail', and :261 reads '6.13 adds the MonitorPort 6.14 does not need'. The rework amended epics.md 6.13 AC1/AC2 and the spec but not this file, which is the context 6.14's runner reads at spawn -- and 6.14 builds the second viewer against the very page and store whose shape these two sentences describe wrongly.
+- 2026-09-18T12:44:00Z status=routed owner=6-14-the-messages-log-viewer by=cr note=scoped rework re-review; correct at the origin before 6.14 is spawned, per the project pitfall that superseded claims get mined later as evidence
+- 2026-09-18T12:46:30Z status=resolved-by:6-13-the-alerts-log-viewer by=adjudication note=the lead corrected epic-6-context.md's 6.13 paragraph and its cross-story line before the 6.14 plan spawn: the screen reads through LogSourcePort alone, the shared viewer is 6.13's, and 6.14's own contract is stated there
+
+### DW-1119: one smoke run during the 6.13 rework failed a check nobody named (executed=43 passed=42 failed=1) and has not reproduced since
+- source: spec-6-13-the-alerts-log-viewer.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: The rework reported one failing check on an otherwise green sweep and three clean runs after it; the failing check's name was not recorded, so nothing in the tree says which of the 43 it was. This re-review ran scripts/smoke.sh five more times against a fresh ocupilot-b-ci and got executed=44 passed=44 failed=0 every time (44 rather than 43 because agentswitches was executable on this container). smoke.sh is a CI gate, so an unnamed intermittent failure in it is a red run nobody can triage.
+- 2026-09-18T12:44:07Z status=escalated owner=burndown by=cr note=not reproduced in 5 runs here; the fix is to make smoke.sh's failure line quotable rather than to chase the check -- a report that records executed/passed/failed without the failing check's name cannot be triaged after the fact
+- 2026-09-18T17:54:56Z occurrence=6-14-the-messages-log-viewer note=browser-spec twin found by the AC8 wait re-review: settled() at messages-log.browser-spec.mjs:145 and alerts-log:136 returns silently at its 30 s deadline, and the Clear-restore waits (messages:275, alerts:246) are unnamed; fix shape is list-spec.mjs's throw-at-deadline plus a shared ui/browser/wait.mjs
+
+### DW-1136: ForgetTask's new privilege guard leaves a vendor async-task row behind on every unprivileged async read, permanently and silently, and nothing purges them
+- source: spec-6-14-the-messages-log-viewer.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: AdminPort.cls:682 skips %DeleteId without ASYNCTASKPAIR and logs nothing (AC9, by design). Observed on ocupilot-b-ci: removing the guard makes the PROTECT appear, so the path is taken per unprivileged async read. This ledger's own 2026-09-18T08:32 note records that the vendor's PurgeAsyncQueue() is [Internal] and scheduled by nothing, so Api.Admin.Util.AsyncTaskD grows without bound for such callers.
+- 2026-09-18T16:02:00Z status=escalated owner=burndown by=cr note=the guard is the right refusal; what is undecided is the row it now leaves: accept the growth, purge it from a privileged path, or bound it
+
+### DW-1137: AdminPort.ASYNCTASKPAIR is a literal, so on an instance whose IRISLOCALDATA carries a non-default resource the guard denies every caller and ForgetTask silently stops deleting
+- source: spec-6-14-the-messages-log-viewer.md | severity: med | fix-risk: high | footprint: in-epic
+- evidence: Parameter ASYNCTASKPAIR = "%DB_IRISLOCALDATA:WRITE" under a doc comment headed 'Derived from the vendor's storage, not chosen'; the code derives nothing. A database's resource is SYS.Database.ResourceName and need not be %DB_<name>. Test.AdminPortForget.TestTheDeclaredPairNamesTheDatabaseTheRowsLiveIn derives and compares, so any instance the suite runs on reddens - an instance it does not run on skips every delete with nothing logged.
+- 2026-09-18T16:02:00Z status=escalated owner=burndown by=cr note=fix-risk high: resolving the resource at call time adds a %SYS switch to the async path in a file Epic 4 shares; the alternative is to attempt the delete and suppress only PROTECT
+
+### DW-1138: The planning artifacts still put the log viewer's Clear control in the shell command bar, and the new Fixed strings row cites two wrong lines
+- source: spec-6-14-the-messages-log-viewer.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: DW-1109 shipped Clear in .ocu-log-viewer-bar and is stamped resolved-by:6-14. EXPERIENCE.md:412 (severity-chip) still reads 'the command-bar shows the active filter with Clear', :367 still attributes 'Clear filter' to the command bar, and epics.md 6.14 AC4 reads 'the command bar shows the active filter with Clear'. The new :369 row cites :411 (the log-viewer row, which names no Clear) for the control and :403 (masked-secret-field) for the button-text example, which is at :406.
+- 2026-09-18T16:02:00Z status=escalated owner=burndown by=cr note=Rule 5 planning amendment, the lead's or the owner's: restate the three sentences where Clear now lives and repair the two citations; code review may not edit a planning artifact
+- 2026-09-18T16:07:34Z status=resolved-by:6-14-the-messages-log-viewer by=adjudication note=the lead restated the three sentences where Clear now lives (EXPERIENCE.md :367 and :412, epics.md 6.14 AC4) with AMENDED markers and repaired the new :369 row's two citations to :406 and :412
+
+### DW-1139: The rail and navigation LIVE_PAYLOAD fixtures now describe a verdict set no live instance can answer: alerts denied on %DB_IRISSYS:READ beside messages allowed, for one principal
+- source: spec-6-14-the-messages-log-viewer.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: LogAlertViewer.cls:44 declares %Admin_Operate:USE alone, as LogMessageViewer.cls does; LogErrorList.cls:76 is the one that also declares %DB_IRISSYS:READ. A principal allowed logs/messages therefore cannot be refused logs/alerts on the second pair. Story 6.13 added that entry; 6.14 rewrote the comment that stated the reason rather than the entry. Client parsing, which is what the fixture tests, is unaffected.
+- 2026-09-18T16:02:00Z status=wontfix-accepted owner=6-14-the-messages-log-viewer by=cr note=reopen_if=a re-captured /navigation payload for a principal holding %Admin_Operate:USE alone shows logs/alerts allowed while the fixture still says denied on %DB_IRISSYS:READ
+
+### DW-1140: AC9's privileged half is pinned by the delete being attempted, never by a real async-task row being removed
+- source: spec-6-14-the-messages-log-viewer.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Test.AdminPortForget leg 2 drives ForgetTask with MISSINGGUID, so it reads the %DeleteId failure log as proof the delete ran; WireSecurityRead's leg asserts two absences. Nothing anywhere opens a real row and watches it go. AC9 says 'given a caller that does hold it, the row is still deleted'. The guard itself is falsifiable: removing it reddens leg 1 on ocupilot-slot-b and reddens WireSecurityRead's sweep with a real PROTECT on ocupilot-b-ci (both observed at code review).
+- 2026-09-18T16:02:25Z status=wontfix-accepted owner=6-14-the-messages-log-viewer by=cr note=reopen_if=an async-task row is observed surviving a served read by a caller that does hold %DB_IRISLOCALDATA:WRITE
+
+### DW-1141: onClear's match-caret reset is unreachable by any fixture the log-viewer specs build, so the line is unpinned
+- source: spec-6-14-the-messages-log-viewer.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: log-viewer.page.ts's onClear resets caretValue as onChip does. Reaching a caret above 1 inside a chip filter needs two rows of one severity that both match the needle; FILE_LINES carries one row per severity, so every sequence the spec can drive leaves the caret at 1 either way and deleting the line reddens nothing. Removing it would announce the kth match of the widened set instead of the first - a cosmetic inconsistency, never an out-of-range count.
+- 2026-09-18T16:02:25Z status=wontfix-accepted owner=6-14-the-messages-log-viewer by=cr note=reopen_if=a log-viewer spec gains a fixture with two rows of one severity, at which point the assertion costs two lines
+
+### DW-1142: messages-log.browser-spec re-seeds on a marker counted in the whole file rather than in the window the viewer renders
+- source: spec-6-14-the-messages-log-viewer.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The before() hook greps messages.log for OcuPilotMessagesSpec and skips seeding when it finds SEEDED.length occurrences. On a throwaway written to heavily after a first run the seeded entries fall outside the default 65,536-byte tail, so AC6's five-chip and long-line assertions fail with re-seeding suppressed. The failure is loud, and one run per throwaway is the documented workflow.
+- 2026-09-18T16:02:25Z status=wontfix-accepted owner=6-14-the-messages-log-viewer by=cr note=reopen_if=AC6 fails on a throwaway whose messages.log already carries the marker, which is the second run against one container
+
+### DW-1143: A messages.log rotated to empty under MaxConsoleLogSize fails the smoke's exactly-one messages check and three suites, none of which has a zero-row arm for that key
+- source: spec-6-14-the-messages-log-viewer.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Install.Smoke's tZeroOrOne list names alerts and the OAuth tabs, not messages, so the messages check demands exactly one row (deliberate, and its doc comment says why). Test.LogSource, Test.ReadTool and Test.LogSourceDenial each assert the console log answers rows. Every started instance writes its startup lines immediately, so the empty window is the moment between a rotation and the next write.
+- 2026-09-18T16:02:26Z status=wontfix-theoretical owner=6-14-the-messages-log-viewer by=cr note=what would make it real: an instance whose MaxConsoleLogSize rotates messages.log during a suite run, observed as one of these four failing with an empty tail
+
+### DW-1144: Test.ReadTool compares the messages tool's window to the port's by index, which a console write landing between the two reads shifts
+- source: spec-6-14-the-messages-log-viewer.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: TestTheMessagesReadToolCarriesTheConsoleLogsRowsAndNotItsCursor compares the last row of two cap-5 newest-first windows read one call apart. A line arriving between them shifts every position, the last as much as the first; the comment claiming the last row is immune was corrected at code review. The calls are adjacent and nothing in the class writes to the file, and the assertion held across three full runs here.
+- 2026-09-18T16:02:26Z status=wontfix-accepted owner=6-14-the-messages-log-viewer by=cr note=reopen_if=that assertion reddens in CI with no code change, at which point compare the two windows as sets instead of by index
+
+### DW-1145: messages-log.browser-spec restates alerts-log.browser-spec's harness rather than sharing it
+- source: spec-6-14-the-messages-log-viewer.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: 348 lines against 337: signedInAt, signedInAtViewer, settled, ROW_SELECTOR, ROW_HEIGHT, the seeding guard and the geometry measurement are copied. The two screens share one page, one archetype, one store and one CSS rule, so the next log viewer copies a third time.
+- 2026-09-18T16:02:26Z status=wontfix-accepted owner=6-14-the-messages-log-viewer by=cr note=reopen_if=a third log-viewer browser spec is written, at which point the harness moves beside browser/list-spec.mjs
+
+### DW-1146: The audit browser spec's thousand-row seed fails after a full ObjectScript sweep on the same instance: it read 919 rows where it requires 1000
+- source: spec-6-14-the-messages-log-viewer.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Observed once on ocupilot-b-ci 2026-09-18 at the Epic 6 integrate-forward: the whole ObjectScript sweep (97 classes) ran first, then smoke, then the browser suite, and all seven audit.browser-spec.mjs tests failed on 'the audit database must hold at least 1000 OcuPilotSeed rows after seeding, read 919'. The same spec alone on the same container immediately afterwards passed 7 of 7. CI runs the same order (suite, smoke, browser) and has passed it on 7736a9b and earlier, so it is intermittent, not deterministic. Likeliest cause is the audit database purging or rolling while the suite writes to it (inference)
+- 2026-09-18T16:58:07Z status=escalated owner=burndown by=runner note=Epic 2's spec and no Epic 6 story's; the failure mode is a whole browser leg red in CI for a reason unrelated to the change under test
+
+### DW-1155: The fault banner and its control are re-created on every refresh tick, so a click in that instant is lost and UX-DR52's non-dismissible banner is a new element each time
+- source: spec-6-14-the-messages-log-viewer.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Story 6.14's AC8 timed out twice in CI on a screen that declares refreshes true (ProcessList, rates 5/10/30/60): the page never navigated, and the named wait's dump showed it still on the processes list with the banner up. An in-page node.click() on a node the re-render has already detached does nothing. The control, its destination and the side-bar move are all correct; only the element's identity across refresh ticks is at fault. Probe: on a refreshing screen whose read is failing, press the banner's control repeatedly and watch for a press that produces no navigation
+- 2026-09-18T18:33:28Z status=routed owner=7-8-terminate-suspend-and-resume-a-process by=runner note=orchestrator-decided at the 6.14 rework gate: the fix is framework-level -- keep the banner and its control stable across refresh ticks rather than re-creating them -- and it belongs with the story that puts row actions on these same refreshing screens, where the identical lost click would hit a user pressing Terminate
+- 2026-09-18T18:47:08Z by=cr note=code review re-ran the probe this entry asks for: on Processes (refreshes true) and on Locks with the screen read refused, the .ocu-fault-banner element was replaced zero times in 25 s after exactly one refused read -- auto-refresh is off until the chip sets a rate (preferences.refreshRate answers 0 unstored) and a faulted read suspends the timer, so 'every refresh tick' is not the window; the window is a fault cleared by a successful call and re-raised by the parked re-read, which the 7-8 fix should target
+
+### DW-1156: AC8's two CI timeouts still have no identified cause: the refresh-tick mechanism the rework targeted does not occur
+- source: spec-6-14-the-messages-log-viewer.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Probed on ocupilot-b-ci 2026-09-18: with the screen read refused, the .ocu-fault-banner element was replaced zero times in 25 s on Processes (refreshes true) and on Locks, after exactly one refused read -- auto-refresh is off unstored (preferences.refreshRate answers 0) and a faulted read suspends the timer, so no tick re-rendered anything. The Locks swap therefore removes no race; only the handle press changed behavior, from a silent absorb to a named failure. Left: the control gated (logScreen null, handler returns), or the fault cleared by a late successful call and re-raised by the parked re-read. Probe: read the third CI failure's named wait -- the un-gated-control wait added by this pass fails if it was gated
+- 2026-09-18T18:50:45Z status=escalated owner=burndown by=cr note=arrived after epic 6's burn-down gate; nothing to fix until CI reddens a third time, and the named waits now say which hypothesis it was

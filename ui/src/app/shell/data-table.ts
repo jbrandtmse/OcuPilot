@@ -26,20 +26,22 @@ import { Router } from '@angular/router';
 
 import { encodeEntityId } from '../core/entity-id';
 import { isBannerFault } from '../core/fault';
-import { editorScreenFor, hasIdRoute, withQuery } from '../core/navigation';
+import { childListFor, detailScreenFor, documentScreenFor, editorScreenFor, hasIdRoute, screenForRoute, withQuery } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
 import { RefreshService } from '../core/refresh';
 import { ScopeService } from '../core/scope';
 import { ScreenActions } from '../core/screen-actions';
-import { applyView } from '../core/screen-read';
+import { applyView, textOf } from '../core/screen-read';
 import type { ScreenStore } from '../core/screen-store';
 import type { ScreenDeclaration, TableColumn } from '../core/screens.generated';
 import { STRINGS, stringFor } from '../core/strings';
 import {
   type CellView,
   cellView,
+  classicRowHref,
   emptyStateView,
   fieldOf,
+  formatClassicRowLinkDescription,
   formatCapNotice,
   formatRowCount,
   isMoveKey,
@@ -72,10 +74,14 @@ interface CellModel {
   readonly id: string;
   readonly view: CellView;
   readonly link: boolean;
+  /** Drawn as the row's classic editor link, opening in a new tab (AD-44). */
+  readonly classic: boolean;
   readonly disc: boolean;
   readonly plain: boolean;
   readonly tag: boolean;
   readonly active: boolean;
+  /** This one cell draws a skeleton bar instead of `view` (Story 6.11, `pendingFields`). */
+  readonly pending: boolean;
 }
 
 interface RowModel {
@@ -88,6 +94,8 @@ interface RowModel {
   readonly changed: boolean;
   readonly href: string;
   readonly url: string;
+  /** The classic editor the name cell opens, or `''` (`classicRowHref`). */
+  readonly classicHref: string;
   readonly cells: readonly CellModel[];
   readonly triggerId: string;
   readonly triggerActive: boolean;
@@ -234,10 +242,25 @@ interface HeaderModel {
                     [class.ocu-data-table-cell-numeric]="cell.view.numeric"
                     [class.ocu-data-table-cell-active]="cell.active"
                   >
+                    @if (cell.pending) {
+                      <span class="ocu-skeleton-bar ocu-data-table-cell-skeleton" aria-hidden="true"></span>
+                    }
                     @if (cell.link) {
                       <a class="ocu-data-table-link" tabindex="-1" [href]="row.href" (click)="onLinkClick($event, row)">{{
                         cell.view.text
                       }}</a>
+                    }
+                    @if (cell.classic) {
+                      <a
+                        class="ocu-data-table-link"
+                        tabindex="-1"
+                        target="_blank"
+                        rel="noreferrer"
+                        [href]="row.classicHref"
+                        [attr.aria-description]="classicDescription"
+                        (click)="onClassicLinkClick($event)"
+                        >{{ cell.view.text }}</a
+                      >
                     }
                     @if (cell.disc) {
                       <span class="ocu-data-table-disc" aria-hidden="true" [attr.data-disc]="cell.view.disc"></span>
@@ -327,6 +350,18 @@ export class DataTable implements OnInit {
   readonly screen = input.required<ScreenDeclaration>();
   readonly store = input.required<ScreenStore>();
 
+  /**
+   * Declared column fields still awaiting a second, slower read (Story 6.11's Free-space view):
+   * every cell in one of these columns draws a skeleton bar instead of its value, on every row,
+   * regardless of what the row itself carries -- a column-wide state, not a per-cell one, since
+   * the figures this exists for arrive together in one tick rather than row by row (AD-36's
+   * `Screen.Read` answers one envelope). Empty by default, so no other screen's rendering changes.
+   * The grid's own column tracks come from each column's declared `kind` alone (`columnTemplate`
+   * below), never from cell content, so a column entering or leaving this list never reflows the
+   * table (AC4).
+   */
+  readonly pendingFields = input<readonly string[]>([]);
+
   /** Asked when a focused grid is left with no row and no empty state: the filter takes focus. */
   readonly focusFilter = output<void>();
 
@@ -396,24 +431,47 @@ export class DataTable implements OnInit {
     const screen = this.screen();
     const store = this.store();
     const columns = this.columns();
+    const pendingFields = this.pendingFields();
     const active = store.active();
     const selected = store.selection()[0] ?? '';
     const changed = store.changed();
     const activeColumn = this.activeColumn();
     const menuKey = this.menuIsOpen() ? this.menuKey() : null;
-    // The name cell opens the entity's own surface: the list's paired editor where it declares
-    // one (Story 3.5's `editorScreenFor`), and otherwise the list's own route with the row's id.
-    // A screen with neither is not linkable at all.
-    const linkTarget = editorScreenFor(screen) ?? screen;
-    const linkRoute = linkTarget.route;
-    const linkable = hasIdRoute(linkTarget);
+    // The name cell opens the entity's own surface: a declared rowTarget first (Story 6.10's
+    // cross-screen row link, whose field -- not the row's own id -- data-table.ts encodes, because
+    // a list keyed by something other than the linked entity, such as Locks by its removal id,
+    // would otherwise link to the wrong place), then the classic editor where the screen declares a
+    // row link under its exemption (AD-44), which no in-app target replaces and whose blank-value
+    // guard leaves the cell as text; otherwise the list's paired editor where it declares
+    // one (Story 3.5's `editorScreenFor`), its paired document viewer where it declares one
+    // (`documentScreenFor`), its paired per-row detail screen where it declares one
+    // (Story 6.7's `detailScreenFor`), the sub-resource list whose parent it is (`childListFor`),
+    // and otherwise the list's own route with the row's id. A screen with none is not linkable at
+    // all, and neither is a parent-scoped list that pairs no editor, viewer or detail screen: its
+    // own route's id is its parent's, so a row's id there would name the wrong thing.
+    const rowLinked = screen.classicLinkExemption.exempt && (screen.classicLinkExemption.rowLink ?? null) !== null;
+    const rowTarget = screen.rowTarget;
+    const rowTargetField = rowTarget?.field ?? '';
+    const rowTargetScreen = rowLinked || rowTarget === null ? null : screenForRoute(rowTarget.route);
+    const linkTarget = rowLinked
+      ? null
+      : rowTargetScreen ??
+        editorScreenFor(screen) ??
+        documentScreenFor(screen) ??
+        detailScreenFor(screen) ??
+        childListFor(screen) ??
+        (screen.parentScope === '' ? screen : null);
+    const linkRoute = linkTarget?.route ?? '';
+    const linkable = linkTarget !== null && hasIdRoute(linkTarget);
     const currentUrl = this.router.url;
     return this.view().map((row, index) => {
       const key = rowKey(row, screen);
       const id = `${this.tableId}-row-${index}`;
       const isActive = key !== '' && key === active;
       const isChanged = changed.has(key);
-      const url = linkable && key !== '' ? withQuery(`${linkRoute}/${encodeEntityId(key)}`, currentUrl) : '';
+      const linkValue = rowTargetScreen !== null ? textOf(fieldOf(row, rowTargetField)) : key;
+      const url = linkable && linkValue !== '' ? withQuery(`${linkRoute}/${encodeEntityId(linkValue)}`, currentUrl) : '';
+      const classicHref = rowLinked ? classicRowHref(row, screen) : '';
       return {
         key,
         index,
@@ -424,18 +482,23 @@ export class DataTable implements OnInit {
         changed: isChanged,
         url,
         href: url === '' ? '' : this.locationStrategy.prepareExternalUrl(url),
+        classicHref,
         cells: columns.map((column, columnIndex) => {
-          const view = cellView(fieldOf(row, column.field), column.kind);
-          const link = view.link && url !== '';
+          const pending = pendingFields.includes(column.field);
+          const view = cellView(fieldOf(row, column.field), column.kind, column.emptyKey ?? '', this.lookup);
+          const link = !pending && view.link && url !== '';
+          const classic = !pending && view.link && classicHref !== '';
           return {
             field: column.field,
             id: `${id}-cell-${columnIndex}`,
             view,
             link,
-            disc: view.disc !== null,
-            plain: !link,
-            tag: isChanged && column.kind === 'name',
+            classic,
+            disc: !pending && view.disc !== null,
+            plain: !pending && !link && !classic,
+            tag: !pending && isChanged && column.kind === 'name',
             active: isActive && activeColumn === columnIndex,
+            pending,
           };
         }),
         triggerId: `${id}-cell-${columns.length}`,
@@ -524,6 +587,11 @@ export class DataTable implements OnInit {
 
   protected get primaryActionLabel(): string {
     return this.screen().primaryAction.id;
+  }
+
+  /** The classic row link's accessible description, naming the classic editor it opens. */
+  protected get classicDescription(): string {
+    return formatClassicRowLinkDescription(STRINGS.classicRowLinkDescription, this.screen().classicLinkExemption.label);
   }
 
   /** The grid's accessible name: the screen's own label. */
@@ -668,7 +736,12 @@ export class DataTable implements OnInit {
         this.openMenu(index);
         return;
       }
-      const url = this.rowModels()[index]?.url ?? '';
+      const row = this.rowModels()[index];
+      if ((row?.classicHref ?? '') !== '') {
+        this.openClassicLink(row);
+        return;
+      }
+      const url = row?.url ?? '';
       if (url !== '') void this.router.navigateByUrl(url);
     }
   }
@@ -709,6 +782,24 @@ export class DataTable implements OnInit {
     if (event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0) return;
     event.preventDefault();
     void this.router.navigateByUrl(row.url);
+  }
+
+  /**
+   * The classic editor link keeps its own default -- a new tab through `target="_blank"` -- and
+   * only stops the click selecting the row. It never navigates the router or calls `window.open`
+   * (AD-47).
+   */
+  protected onClassicLinkClick(event: MouseEvent): void {
+    event.stopPropagation();
+  }
+
+  /** Enter on a row whose name cell is a classic link activates that anchor, as a click would. */
+  private openClassicLink(row: RowModel): void {
+    const cell = row.cells.find((candidate) => candidate.classic);
+    if (cell === undefined) return;
+    this.scrollIntoRange(row.index);
+    const anchor = document.getElementById(cell.id)?.querySelector('a');
+    anchor?.click();
   }
 
   protected onTriggerClick(event: MouseEvent, row: RowModel): void {

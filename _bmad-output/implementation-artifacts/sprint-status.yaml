@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '2026-09-17'
+last_updated: '09-18-2026 18:10'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -115,21 +115,21 @@ development_status:
   5-13-logs-delete-application-errors-by-namespace: backlog
   epic-5-retrospective: optional
 
-  epic-6: backlog
-  6-1-the-rest-api-explorer-and-its-openapi-document-viewer: backlog
-  6-2-the-roles-resources-and-services-lists: backlog
-  6-3-the-x-509-ldap-kerberos-and-wallet-lists: backlog
-  6-4-the-oauth-2-0-screen: backlog
-  6-5-on-demand-and-upcoming-tasks: backlog
-  6-6-task-history-per-task-and-across-tasks: backlog
-  6-7-task-details: backlog
-  6-8-process-details: backlog
-  6-9-system-usage-and-the-dashboard-meters: backlog
-  6-10-the-locks-view: backlog
-  6-11-databases-with-free-space-arriving-as-it-lands: backlog
-  6-12-the-devices-list: backlog
-  6-13-the-alerts-log-viewer: backlog
-  6-14-the-messages-log-viewer: backlog
+  epic-6: done
+  6-1-the-rest-api-explorer-and-its-openapi-document-viewer: done
+  6-2-the-roles-resources-and-services-lists: done
+  6-3-the-x-509-ldap-kerberos-and-wallet-lists: done
+  6-4-the-oauth-2-0-screen: done
+  6-5-on-demand-and-upcoming-tasks: done
+  6-6-task-history-per-task-and-across-tasks: done
+  6-7-task-details: done
+  6-8-process-details: done
+  6-9-system-usage-and-the-dashboard-meters: done
+  6-10-the-locks-view: done
+  6-11-databases-with-free-space-arriving-as-it-lands: done
+  6-12-the-devices-list: done
+  6-13-the-alerts-log-viewer: done
+  6-14-the-messages-log-viewer: done
   epic-6-retrospective: optional
 
   epic-7: backlog

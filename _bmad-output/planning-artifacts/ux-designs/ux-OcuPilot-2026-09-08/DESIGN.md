@@ -631,7 +631,7 @@ components:
     height: 6px
     radius: '{rounded.full}'
     track: '{colors.surface-container-high}'
-    fill: '{colors.secondary}'
+    fill: '{colors.success}'
     fill-warning: '{colors.warning}'
     fill-error: '{colors.error}'
     value-typography: '{typography.code}'
@@ -961,7 +961,7 @@ Every component below is either a Material 3 component with OcuPilot's tokens ap
 | `[ASSUMPTION]` | `{spacing.log-row-height}` · §Layout & Spacing › Scale · `log-viewer` | Confirm 28px log rows against a real tail. |
 | `[ASSUMPTION]` | `{spacing.content-min-width}` | Confirm 640px as the width below which the content scrolls horizontally. |
 | `[ASSUMPTION]` | §Layout & Spacing › Content column · `form-page` | Confirm the 720px form and 480px field widths; the sticky action bar itself is decided. |
-| `[ASSUMPTION]` | `meter` | Confirm the 80% warning and 95% error thresholds; the behavior is decided. |
+| `[ASSUMPTION]` | `meter` | A percentage meter's 85% warning and 95% error are borrowed from the vendor's lock-table cut-off (`SYS.Stats.Dashboard.cls:92`), not a vendor threshold for memory; the behavior is decided. |
 | `[NOTE FOR ARCHITECTURE]` | `form-page` › Form login | **Release-blocking.** The installer must unexpire `_SYSTEM`'s password, or the first screen a judge meets is the expired-password variant. |
 | `[NOTE FOR ARCHITECTURE]` | `empty-state` | **Release-blocking.** The installer must seed a demo SSL/TLS configuration, a self-signed X.509 credential and `/csp/myapp`, or the README walkthrough has no data to show. |
 | `[NOTE FOR ARCHITECTURE]` | `panel` › Auditing off | **Release-blocking.** The installer must enable auditing and register OcuPilot's events, or the warning banner is the panel's first words on every screenshot. |
@@ -1040,7 +1040,7 @@ What fills the content column on a route: the locator and command bars, the tabl
 
 #### `data-table`
 
-A Material table on `{colors.surface-container-lowest}` inside a 1px `{colors.outline-variant}` border with `{rounded.md}` corners, driven by CDK virtual scroll. Header row 36px, sticky, `{typography.label}` `{colors.on-surface-variant}`, sorted column shows a 12px arrow in `{colors.secondary}`. Body rows `{spacing.row-height}` with `{spacing.3}` horizontal cell padding, `{typography.body}` `{colors.on-surface}`, 1px `{colors.outline-variant}` between rows, no vertical rules, no zebra. Identifier columns (name, path, class, resource, pid) are `{typography.code}`; the **name cell is a link and looks like one**: `{colors.secondary}` (5.76:1 on the sheet, 5.15:1 on a changed row, 4.56:1 on a selected row — the marginal pair in the Colors table), underlined on hover and focus, pointer cursor, so that clicking the name (open) and clicking the row (select) read as different gestures. Numbers tabular and right-aligned; a 7px status disc precedes the enabled/disabled word (`{colors.success}` when enabled, `{colors.outline}` when disabled); empty values read "(none)" in `{colors.on-surface-variant}`. The last column is the `row-overflow-menu` trigger. Footer under the table: the row count and the editable max-rows cap in `{typography.caption}` `{colors.on-surface-variant}` — no page-size control (pattern: EXPERIENCE.md › Component Patterns › data-table).
+A Material table on `{colors.surface-container-lowest}` inside a 1px `{colors.outline-variant}` border with `{rounded.md}` corners, driven by CDK virtual scroll. Header row 36px, sticky, `{typography.label}` `{colors.on-surface-variant}`, sorted column shows a 12px arrow in `{colors.secondary}`. Body rows `{spacing.row-height}` with `{spacing.3}` horizontal cell padding, `{typography.body}` `{colors.on-surface}`, 1px `{colors.outline-variant}` between rows, no vertical rules, no zebra. Identifier columns (name, path, class, resource, pid) are `{typography.code}`; the **name cell is a link and looks like one**: `{colors.secondary}` (5.76:1 on the sheet, 5.15:1 on a changed row, 4.56:1 on a selected row — the marginal pair in the Colors table), underlined on hover and focus, pointer cursor, so that clicking the name (open) and clicking the row (select) read as different gestures. Numbers tabular and right-aligned; a 7px status disc precedes the enabled/disabled word (`{colors.success}` when enabled, `{colors.outline}` when disabled); empty values read "(none)" in `{colors.on-surface-variant}`, except in a column that declares an empty-cell word, where an empty value means something else (an empty allowed-address list reads "Unrestricted"): that word reads in the body style, not as "(none)". The last column is the `row-overflow-menu` trigger. Footer under the table: the row count and the editable max-rows cap in `{typography.caption}` `{colors.on-surface-variant}` — no page-size control (pattern: EXPERIENCE.md › Component Patterns › data-table).
 
 | Row state | Appearance |
 |---|---|
@@ -1053,7 +1053,7 @@ A Material table on `{colors.surface-container-lowest}` inside a 1px `{colors.ou
 | Empty | `empty-state` inside the table frame. |
 | Refresh paused (proposal awaiting confirmation) | The command bar's auto-refresh chip and stamp take `{colors.warning}` (6.81:1 on the surface); the table itself does not change. Copy: EXPERIENCE.md › State Patterns › Auto-refresh paused. |
 
-**OpenAPI path-and-verb browser** (a composition on `data-table`, in the REST API explorer). Rows are one path each: the path in `{typography.code}`, then one verb chip per operation — `{typography.label}` `{colors.on-secondary-container}` on `{colors.secondary-container}`, `{rounded.sm}`, 0 6px, sentence case — and the operation summary in `{typography.body}`. Verbs carry no color of their own: teal is reserved for actions and the status roles for status, so GET and DELETE look alike here. The selected path's operation document renders beneath the table as a `message-agent`-style code block on `{colors.code-surface}` with its copy button. A refused document is the `empty-state` refusal.
+**OpenAPI path-and-verb browser** (the OpenAPI document viewer, reached from the REST API explorer's name cell). Paths follow document order, each a disclosure headed by the path in `{typography.code}` that opens to one entry per operation: a verb chip — `{typography.label}` `{colors.on-secondary-container}` on `{colors.secondary-container}`, `{rounded.sm}`, 0 6px, sentence case — the operation summary in `{typography.body}`, then its parameters and response codes. Verbs carry no color of their own: teal is reserved for actions and the status roles for status, so GET and DELETE look alike here. A Raw toggle shows the pretty-printed document on `{colors.code-surface}`, scrolling in both directions inside its own block. A refused document shows the refusal text in place of the browser, never the `empty-state`. [AMENDED 2026-09-16, Story 6.1: the composition on `data-table` with a code block beneath it was superseded by the story's per-path disclosures and EXPERIENCE.md `:133`.]
 
 #### `row-overflow-menu`
 
@@ -1085,7 +1085,7 @@ For messages.log, alerts.log, the tail views and the parsed audit list. A sticky
 
 #### `meter`
 
-For CPU, memory, disk, database free space and license usage: a 6px `{rounded.full}` track in `{colors.surface-container-high}` with a `{colors.secondary}` fill, the value in `{typography.code}` right of the track and the label in `{typography.caption}` above. The fill turns `{colors.warning}` at 80% and `{colors.error}` at 95% **[ASSUMPTION]** (the thresholds, not the behavior), and the value text takes the same color so the meaning survives without the bar. Values still arriving (asynchronous free-space calls) show a `skeleton` bar in place of the fill and "…" as the value.
+For memory, disk, database free space and license usage: a 6px `{rounded.full}` track in `{colors.surface-container-high}` with a `{colors.success}` fill, the value in `{typography.code}` right of the track and the label in `{typography.caption}` above. A percentage meter's fill turns `{colors.warning}` at 85% and `{colors.error}` at 95% **[ASSUMPTION]** (borrowed from the vendor's lock-table cut-off, `SYS.Stats.Dashboard.cls:92`; the thresholds, not the behavior); a status meter takes the dashboard's own word (Normal, Warning, Troubled) as its state. The value text takes the same color so the meaning survives without the bar. Values still arriving (asynchronous free-space calls) show a `skeleton` bar in place of the fill and "—" as the value. [AMENDED 2026-09-17, Story 6.9: fill `success`, thresholds 85/95 with their source, dashboard state words, "—" while pending]
 
 #### `empty-state`
 

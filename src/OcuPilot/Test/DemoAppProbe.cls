@@ -30,10 +30,10 @@
 /// <class>OcuPilot.Install.Fixture</class>.</p>
 /// <p><b>Correction (build-auto review, 2026-09-10):</b> <code>Create()</code> is not
 /// modified, but it is also not narrowed to <code>CreateWebApp</code> alone --
-/// <method>OcuPilot.Install.Fixture.Create</method> unconditionally calls all four
+/// <method>OcuPilot.Install.Fixture.Create</method> unconditionally calls all five
 /// <code>%SYS</code>-scoped creators (<code>CreateWebApp</code>, <code>CreateSslConfig</code>,
-/// <code>CreateX509Credential</code>, <code>CreateTask</code>), so a test driving this
-/// class's <code>Create()</code> also re-runs the other three against the SAME shared
+/// <code>CreateX509Credential</code>, <code>CreateWalletCollection</code>, <code>CreateTask</code>), so a test driving this
+/// class's <code>Create()</code> also re-runs the other four against the SAME shared
 /// <code>"probe"</code>-profile objects <class>OcuPilot.Test.Demo</class>'s own
 /// class-level fixture already created (<b>corrected, build-auto step-04 review pass,
 /// 2026-09-11: "production-named" above was wrong even before this correction --

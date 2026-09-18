@@ -1,5 +1,5 @@
 /// <p>Fault-injection tests for <class>OcuPilot.Install.Fixture</class> (rework iteration
-/// 5), driven through <class>OcuPilot.Test.FixtureFault</class>: <b>DW-57</b> (the three
+/// 5), driven through <class>OcuPilot.Test.FixtureFault</class>: <b>DW-57</b> (the four
 /// status-checked <code>Delete</code> branches in
 /// <method>OcuPilot.Install.Fixture.RemoveOne</method>) and <b>DW-52</b> (a task deleted
 /// between <method>OcuPilot.Install.Fixture.CreateTask</method>'s query and its open).</p>
@@ -7,7 +7,7 @@
 /// shared <method>OcuPilot.Test.Demo.OnBeforeAllTests</method> runs the whole fixture
 /// cascade, including a real <code>RunNow</code> of the demo task, and its task test then
 /// waits for the Task Manager. No test here needs any of it, so none pays for it. None of
-/// them reads or writes the shared <code>"probe"</code> inventory. The two
+/// them reads or writes the shared <code>"probe"</code> inventory. The
 /// <code>Remove</code> tests use their own disposable profiles and names.
 /// <method>TestCreateTaskReportsAVanishedTaskId</method> passes <code>"probe"</code>, but
 /// its armed <code>TaskIds</code>/<code>OpenTask</code> seams never reach a real task, and
@@ -199,10 +199,69 @@ Method TestCreateTaskReportsAVanishedTaskId()
     Do $$$AssertTrue('$Data(tRows), "nothing is noted into the inventory for a task that no longer exists")
 }
 
+/// <p><b>DW-57, the wallet collection branch</b> (Story 6.3), pinned the way
+/// <method>TestRemoveReportsEveryFailedDelete</method> pins the other three: with
+/// <class>OcuPilot.Test.FixtureFault</class>'s delete fault armed, a failed collection delete is a
+/// warn naming the object, its inventory row is kept and the collection is still there; with the
+/// fault gone, a retry removes the collection and purges the row. Uses its own disposable profile
+/// and collection, never <code>"probe"</code>.</p>
+/// <p>Mutation: delete the <code>walletcollection</code> arm of
+/// <method>OcuPilot.Install.Fixture.RemoveOne</method> -&gt; the row falls to an unrecognized kind and
+/// is purged with the collection left behind, so the warn, kept-row and retry assertions go red.</p>
+Method TestRemoveReportsAFailedWalletCollectionDelete()
+{
+    Set tProfile = "removewallet"
+    Set tName = "OcuPilotRemoveFaultWallet"
+    Set tCountSql = "SELECT COUNT(*) AS N FROM OcuPilot_Kernel_State.Demo WHERE Profile = ?"
+
+    Do ##class(OcuPilot.Test.FixtureFault).Disarm()
+    Do ##class(%SQL.Statement).%ExecDirect(, "DELETE FROM OcuPilot_Kernel_State.Demo WHERE Profile = ?", tProfile)
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.FixtureFault).WalletCollection(tName, "create", .tExisted), "the disposable wallet collection exists before the removal attempt")
+
+    Try {
+        Do ..SeedInventoryRow(tProfile, "walletcollection", tName)
+
+        Do ##class(OcuPilot.Test.FixtureFault).SetDeletesShouldFail(1)
+        Kill tReports
+        Set tSC = ##class(OcuPilot.Test.FixtureFault).Remove(tProfile, .tReports)
+        Do ##class(OcuPilot.Test.FixtureFault).Disarm()
+        Do $$$AssertStatusOK(tSC, "Remove still returns OK -- a removal failure is a warn, never a propagated error (AD-25)")
+
+        Set tWarned = 0
+        Set tN = $Order(tReports(""))
+        While tN '= "" {
+            If (tReports(tN, "level") = "warn") && (tReports(tN, "message") [ "Could not delete the demo wallet collection fixture") Set tWarned = 1
+            Set tN = $Order(tReports(tN))
+        }
+        Do $$$AssertTrue(tWarned, "the failed wallet collection delete is reported as a warn naming the object")
+        Set tRowsRS = ##class(%SQL.Statement).%ExecDirect(, tCountSql, tProfile)
+        Do $$$AssertTrue(tRowsRS.%Next(), "the inventory count query returns a row")
+        Do $$$AssertEquals(tRowsRS.N, 1, "the inventory row is kept for a retry")
+        Do $$$AssertStatusOK(##class(OcuPilot.Test.FixtureFault).WalletCollection(tName, "exists", .tLeft), "the collection can be re-checked")
+        Do $$$AssertTrue(tLeft, "the collection is still there -- the delete genuinely failed")
+
+        Kill tRetryReports
+        Do $$$AssertStatusOK(##class(OcuPilot.Test.FixtureFault).Remove(tProfile, .tRetryReports), "the retry Remove returns OK")
+        Do $$$AssertStatusOK(##class(OcuPilot.Test.FixtureFault).WalletCollection(tName, "exists", .tAfter), "the collection can be re-checked after the retry")
+        Do $$$AssertTrue('tAfter, "the retry removed the collection the failed attempt left behind")
+        Set tAfterRS = ##class(%SQL.Statement).%ExecDirect(, tCountSql, tProfile)
+        Do $$$AssertTrue(tAfterRS.%Next(), "the post-retry count query returns a row")
+        Do $$$AssertEquals(tAfterRS.N, 0, "and purged the kept row")
+    } Catch ex {
+        Do ##class(OcuPilot.Test.FixtureFault).Disarm()
+        Do ##class(OcuPilot.Test.FixtureFault).WalletCollection(tName, "delete", .tIgnored)
+        Do ##class(%SQL.Statement).%ExecDirect(, "DELETE FROM OcuPilot_Kernel_State.Demo WHERE Profile = ?", tProfile)
+        Throw ex
+    }
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.FixtureFault).WalletCollection(tName, "delete", .tIgnored), "cleanup found nothing left to remove, or removed it for real")
+    Do ##class(%SQL.Statement).%ExecDirect(, "DELETE FROM OcuPilot_Kernel_State.Demo WHERE Profile = ?", tProfile)
+}
+
 /// <p>Insert one <class>OcuPilot.Kernel.State.Demo</class> inventory row through the
 /// escalated frame, for the <code>Remove</code> tests' own disposable profiles.
 /// <var>pScope</var> defaults to the literal <code>instance</code>, which is right for
-/// the web application, SSL/TLS and X.509 kinds. A task row passes the install namespace,
+/// the web application, SSL/TLS, X.509 and wallet collection kinds. A task row passes the install namespace,
 /// exactly as <method>OcuPilot.Install.Fixture.CreateTask</method> records one.</p>
 Method SeedInventoryRow(pProfile As %String, pKind As %String, pName As %String, pScope As %String = "instance")
 {

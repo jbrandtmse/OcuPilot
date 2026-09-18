@@ -148,7 +148,10 @@ test('an unreadable vocabulary is reported, not an empty set', () => {
 
 // AD-44, DW-186: every case in `OcuPilot.Test.ClassicLinkCorpus`, read off disk from the same XData
 // block `OcuPilot.Test.Descriptor` reads through the class dictionary, gets its exact sentence or
-// `null` from `classicLinkProblem`.
+// `null` from `classicLinkProblem`, the `rowLink` cases among them.
+//
+// Mutation (Rule 19): drop the secret-field arm from `rowLinkProblem` -> the "a param over a secret
+// field" case goes red.
 test('classicLinkProblem returns every sentence OcuPilot.Test.ClassicLinkCorpus declares', () => {
   const body = extractXData(readFileSync(CORPUS_SOURCE, 'utf8'), 'Cases');
   assert.ok(body !== null, 'the corpus block is found');
@@ -434,8 +437,27 @@ test('the shipped descriptor roster passes, and its population matches the tree 
     'every .cls under the descriptor directory but the base was classified'
   );
   assert.ok(result.scanned >= 1, 'at least Home is declared');
-  assert.equal(result.honored.length, 0, 'Release 1 has no honored exemption yet -- 6.4 lands the first');
-  assert.match(result.report.join('\n'), /exemption\(s\) honored \(SM-C1\)/);
+  // AD-44: Release 1's one exemption, the OAuth 2.0 tabs, is declared by its five tab descriptors,
+  // and the check reports each declaration under the one exemption SM-C1 counts.
+  //
+  // Mutation (Rule 19): set one tab's `classicLinkExemption.exempt` false and drop its link parts ->
+  // the honored set and the declaration count go red. Count the exemption line by declarations
+  // rather than by reason -> the one-exemption line goes red.
+  assert.deepEqual(
+    result.honored.map((entry) => entry.file).sort(),
+    ['OAuthClientTab.cls', 'OAuthResourceServerTab.cls', 'OAuthServerClientTab.cls', 'OAuthServerDescriptionTab.cls', 'OAuthServerTab.cls'],
+    'the honored set is exactly the five OAuth 2.0 tabs'
+  );
+  for (const entry of result.honored) {
+    assert.equal(entry.archetype, 'detail', `${entry.file} is a detail view`);
+    assert.equal(
+      entry.reason,
+      'Edited in the classic portal until the OAuth 2.0 editors ship (Epic 12); counted against SM-C1',
+      `${entry.file} carries the one exemption's reason`
+    );
+  }
+  assert.match(result.report.join('\n'), /^classic-links: 1 exemption\(s\) honored \(SM-C1\)$/m);
+  assert.match(result.report.join('\n'), /^classic-links: 5 descriptor\(s\) declare them \(AD-44\)$/m);
 });
 
 // --- The gates ---------------------------------------------------------------------------------

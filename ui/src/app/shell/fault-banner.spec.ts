@@ -5,7 +5,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { ConnectivityService } from '../core/connectivity';
 import type { Fault, FaultKind } from '../core/fault';
 import { NavigationService, type Verdict } from '../core/navigation';
-import type { ScreenDeclaration } from '../core/screens.generated';
+import { SCREENS, type ScreenDeclaration } from '../core/screens.generated';
+import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
 import { screenDeclaration } from '../testing/screen-declaration';
 import { FaultBanner } from './fault-banner';
@@ -32,8 +33,23 @@ function screen(route: string, entityType: string): ScreenDeclaration {
   });
 }
 
-const MESSAGES_LOG = screen('logs/messages', 'log-entry');
+/**
+ * The two real `log-entry` screens, from the mirror rather than synthesised: since Story 6.14 both
+ * exist in production, `builtScreens()` hands them over in side-bar order, and alerts.log comes
+ * first -- which is exactly the ordering "Open messages.log" used to follow into the wrong file
+ * (DW-148). A synthetic pair could be given any order, so it would pin nothing.
+ */
+const ALERTS_LOG = SCREENS.find((candidate) => candidate.route === 'logs/alerts')!;
+const MESSAGES_LOG = SCREENS.find((candidate) => candidate.route === 'logs/messages')!;
 const PROCESSES = screen('os-management/processes', 'process');
+
+class StubShell {
+  readonly shown: string[] = [];
+
+  showArea(areaKey: string): void {
+    this.shown.push(areaKey);
+  }
+}
 
 class StubConnectivity {
   retries = 0;
@@ -93,6 +109,7 @@ describe('the connectivity banner', () => {
   let fixture: ComponentFixture<FaultBanner>;
   let connectivity: StubConnectivity;
   let navigation: StubNavigation;
+  let shell: StubShell;
   let router: Router;
 
   const strip = (): HTMLElement | null => fixture.nativeElement.querySelector('.ocu-fault-banner');
@@ -104,12 +121,17 @@ describe('the connectivity banner', () => {
   beforeEach(() => {
     connectivity = new StubConnectivity();
     navigation = new StubNavigation();
+    shell = new StubShell();
     TestBed.configureTestingModule({
       providers: [
         provideRouter([
           { path: '', children: [] },
           { path: 'logs/messages', children: [] },
+          // Registered so a control that opened the wrong log reads as the wrong destination here
+          // rather than as a navigation that could not resolve.
+          { path: 'logs/alerts', children: [] },
         ]),
+        { provide: ShellState, useValue: shell as unknown as ShellState },
         {
           provide: ConnectivityService,
           useValue: connectivity as unknown as ConnectivityService,
@@ -194,9 +216,9 @@ describe('the connectivity banner', () => {
   });
 
   it('Open messages.log is gated in place while no built screen serves it', () => {
-    // Epic 1 builds one screen and none over `log-entry`, so the control is listed, focusable
-    // and refused -- the side bar's own shape for a destination the user cannot reach -- rather
-    // than hidden or pointed at a route that does not exist.
+    // The roster handed to the banner here is empty, so nothing shows messages.log and the control
+    // is listed, focusable and refused -- the side bar's own shape for a destination the user
+    // cannot reach -- rather than hidden or pointed at a route that does not exist.
     connectivity.publish('server-fault');
     fixture.detectChanges();
 
@@ -207,10 +229,15 @@ describe('the connectivity banner', () => {
     expect(open?.tabIndex).toBe(0);
   });
 
-  it('...and opens it once one is built and this user may reach it', async () => {
-    // The destination is resolved from the descriptor mirror's entity vocabulary (AD-5), never
-    // from a route typed in the component -- so a screen declared over `log-entry` is enough.
-    navigation.screens = [PROCESSES, MESSAGES_LOG];
+  it('...and opens messages.log, not the first log-entry screen, and shows the Logs side bar', async () => {
+    // DW-148, both halves. `builtScreens()` lists alerts.log first, so a filter by entity type
+    // alone opened the wrong file under a control that names this one; the destination is resolved
+    // from the descriptor's own `messages.log` alias instead (AD-5). And the side bar is shown on
+    // the area before the navigation, because `ScreenOutlet` leaves a closed bar closed.
+    //
+    // Mutation (Rule 19): filter `logScreen` by `entityType` alone -> the route assertion goes red
+    // reading `/logs/alerts`. Drop the `showArea` call -> the side-bar assertion goes red.
+    navigation.screens = [PROCESSES, ALERTS_LOG, MESSAGES_LOG];
     navigation.notify();
     connectivity.publish('server-fault');
     fixture.detectChanges();
@@ -221,6 +248,18 @@ describe('the connectivity banner', () => {
     open?.click();
     await fixture.whenStable();
     expect(router.url).toBe('/logs/messages');
+    expect(shell.shown).toEqual([MESSAGES_LOG.area]);
+  });
+
+  it('a built alerts.log screen alone leaves the control refused: it shows another file', () => {
+    // The gate is the alias, not the entity type. Without this the destination assertion above
+    // could be met by a component that merely preferred the last `log-entry` screen.
+    navigation.screens = [ALERTS_LOG];
+    navigation.notify();
+    connectivity.publish('server-fault');
+    fixture.detectChanges();
+
+    expect(button(STRINGS.actionOpenMessagesLog)?.getAttribute('aria-disabled')).toBe('true');
   });
 
   it('a built messages.log screen this user may NOT open leaves the control refused', async () => {
@@ -237,5 +276,6 @@ describe('the connectivity banner', () => {
     open?.click();
     await fixture.whenStable();
     expect(router.url).toBe('/');
+    expect(shell.shown).toEqual([]);
   });
 });

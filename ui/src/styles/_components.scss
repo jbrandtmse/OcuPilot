@@ -676,7 +676,12 @@ app-server-flag:empty {
 app-screen-outlet,
 app-home-page,
 app-audit-page,
-app-error-log-page {
+app-error-log-page,
+app-log-viewer-page,
+app-detail-page,
+app-task-history-page,
+app-databases-page,
+app-database-details-page {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
@@ -2090,6 +2095,73 @@ app-data-table {
   padding: 0 var(--ocu-gutter) var(--ocu-gutter);
 }
 
+// The detail page (Story 6.4): a tab strip over the current tab's list page. The strip is Material's
+// tab nav bar, drawn with DESIGN.md's tabs tokens (`:589-597`) through its own custom properties.
+.ocu-detail-page {
+  box-sizing: border-box;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.ocu-detail-panel {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.ocu-detail-tabs {
+  --mat-tab-container-height: 40px;
+  --mat-tab-label-text-font: var(--ocu-type-body-family);
+  --mat-tab-label-text-size: var(--ocu-type-body-size);
+  --mat-tab-label-text-line-height: var(--ocu-type-body-line-height);
+  --mat-tab-label-text-tracking: var(--ocu-type-body-tracking);
+  --mat-tab-label-text-weight: 600;
+  --mat-tab-inactive-label-text-color: var(--ocu-on-surface-variant);
+  --mat-tab-inactive-hover-label-text-color: var(--ocu-on-surface-variant);
+  --mat-tab-inactive-focus-label-text-color: var(--ocu-on-surface-variant);
+  --mat-tab-active-label-text-color: var(--ocu-secondary);
+  --mat-tab-active-hover-label-text-color: var(--ocu-secondary);
+  --mat-tab-active-focus-label-text-color: var(--ocu-secondary);
+  --mat-tab-active-indicator-color: var(--ocu-secondary);
+  --mat-tab-active-hover-indicator-color: var(--ocu-secondary);
+  --mat-tab-active-focus-indicator-color: var(--ocu-secondary);
+  --mat-tab-active-indicator-height: 2px;
+  --mat-tab-divider-color: var(--ocu-outline-variant);
+  --mat-tab-divider-height: 1px;
+
+  flex: 0 0 auto;
+  margin: 0 var(--ocu-gutter) var(--ocu-space-2);
+}
+
+.ocu-detail-tab:hover {
+  background: var(--ocu-surface-container-low);
+}
+
+.ocu-detail-tab-label {
+  white-space: nowrap;
+}
+
+// A gated tab keeps full opacity, as a gated side-bar entry does: its reason has to be read.
+.ocu-detail-tab.mat-mdc-tab-disabled {
+  opacity: 1;
+}
+
+.ocu-detail-tab.mat-mdc-tab-disabled .ocu-detail-tab-label {
+  color: var(--ocu-restrained);
+}
+
+// The gated tab's reason, inline after its label, as the side bar carries it.
+.ocu-detail-tab-reason {
+  @include typo.ocu-type('caption');
+
+  margin-left: var(--ocu-space-2);
+  color: var(--ocu-restrained);
+  white-space: nowrap;
+}
+
 // The banner strip above the table (Story 2.8). `.ocu-list-page` is a column flex whose table takes
 // `flex: 1 1 auto`, so a sibling above it needs no layout change beyond its own gap; it spans the
 // table's width, which is what DESIGN.md `:1203` asks of a banner in the content column.
@@ -2346,6 +2418,14 @@ app-data-table {
 }
 
 .ocu-data-table-skeleton-row .ocu-skeleton-bar {
+  height: 12px;
+}
+
+// One cell's own skeleton bar (Story 6.11's Free-space view, `pendingFields`): sized to sit inside
+// an ordinary 36px row without changing its height, unlike the whole-table skeleton above, which
+// stands in for rows that have not arrived at all.
+.ocu-data-table-cell-skeleton {
+  width: 60%;
   height: 12px;
 }
 
@@ -3254,4 +3334,484 @@ app-data-table {
   border: 1.5px solid var(--ocu-shell);
   border-radius: var(--ocu-radius-full);
   background: var(--ocu-agent-accent-dark);
+}
+
+// --- OpenAPI document viewer (Story 6.1) ---------------------------------------------------------
+//
+// Paths are the form disclosure, one per row, closed on first render. A verb chip is
+// `secondary-container` in sentence case, one token pair for every verb (DESIGN.md "verb chip"), so
+// no verb is told apart by colour. Raw is the document on the code surface, scrolling in both
+// directions inside its own block so the page itself never scrolls sideways.
+
+.ocu-openapi-viewer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-3);
+  min-width: 0;
+  padding: var(--ocu-space-4);
+  box-sizing: border-box;
+}
+
+.ocu-openapi-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.ocu-openapi-raw-toggle[aria-pressed='true'] {
+  background: var(--ocu-secondary-container);
+  color: var(--ocu-on-secondary-container);
+}
+
+.ocu-openapi-paths,
+.ocu-openapi-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ocu-openapi-paths {
+  gap: var(--ocu-space-1);
+}
+
+.ocu-openapi-list {
+  gap: var(--ocu-space-1);
+}
+
+.ocu-openapi-path {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ocu-openapi-path-name,
+.ocu-openapi-code {
+  @include typo.ocu-type('code');
+
+  overflow-wrap: anywhere;
+}
+
+.ocu-openapi-operations {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-4);
+  padding: var(--ocu-space-2) var(--ocu-space-4) var(--ocu-space-3);
+}
+
+.ocu-openapi-operation {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-2);
+  min-width: 0;
+}
+
+.ocu-openapi-operation-head,
+.ocu-openapi-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--ocu-space-2);
+  min-width: 0;
+}
+
+.ocu-openapi-verb {
+  @include typo.ocu-type('label');
+
+  padding: 0 6px;
+  border-radius: var(--ocu-radius-sm);
+  background: var(--ocu-secondary-container);
+  color: var(--ocu-on-secondary-container);
+}
+
+.ocu-openapi-summary,
+.ocu-openapi-meta {
+  @include typo.ocu-type('body');
+
+  color: var(--ocu-on-surface);
+  overflow-wrap: anywhere;
+}
+
+.ocu-openapi-heading {
+  @include typo.ocu-type('label');
+
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-openapi-required {
+  @include typo.ocu-type('caption');
+
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-openapi-raw {
+  @include typo.ocu-type('code');
+
+  box-sizing: border-box;
+  max-width: 100%;
+  max-height: 70vh;
+  margin: 0;
+  padding: var(--ocu-space-3);
+  overflow: auto;
+  border-radius: var(--ocu-radius-md);
+  background: var(--ocu-code-surface);
+  color: var(--ocu-on-code-surface);
+  white-space: pre;
+}
+
+.ocu-openapi-raw:focus-visible {
+  @include ocu-focus-ring;
+}
+
+// --- Task details (Story 6.7) -- a field list standing in for `DataTable`'s table -------------------
+
+.ocu-details-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-4);
+  min-width: 0;
+  padding: var(--ocu-space-4);
+  box-sizing: border-box;
+}
+
+.ocu-details-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-3);
+}
+
+.ocu-details-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-1);
+}
+
+// A field a silent tick changed takes the data table's changed-row tint (EXPERIENCE.md "Highlight.").
+.ocu-details-field.ocu-data-table-row-changed {
+  background: var(--ocu-change-highlight);
+  transition: background-color var(--ocu-motion-change-highlight-duration) ease-out;
+}
+
+.ocu-details-field-label {
+  @include typo.ocu-type('caption');
+
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-details-field-value {
+  @include typo.ocu-type('body');
+
+  color: var(--ocu-on-surface);
+  overflow-wrap: anywhere;
+}
+
+.ocu-details-schedule {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-2);
+}
+
+.ocu-details-heading {
+  @include typo.ocu-type('label');
+
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-details-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ocu-space-3);
+}
+
+.ocu-details-link {
+  @include typo.ocu-type('label');
+
+  color: var(--ocu-secondary);
+}
+
+.ocu-details-link:focus-visible {
+  @include ocu-focus-ring;
+}
+
+// --- Meter (Story 6.9) -- shared by System usage and, from 6.11, Database details -------------
+//
+// EXPERIENCE.md's meter row: "never animates the needle". A 6px fully-rounded track over
+// `surface-container-high`, the label in caption type above it and the value in code type beside
+// it. The fill and the value text both take the state's token (`success` maps from the meter's
+// own `normal`); `.ocu-meter-fill` never transitions or animates a width change (AC2) --
+// `meter.spec.ts` reads this rule's own text rather than a jsdom computed style, which resolves
+// no external stylesheet.
+
+.ocu-meter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-1);
+  min-width: 0;
+}
+
+.ocu-meter-label {
+  @include typo.ocu-type('caption');
+
+  color: var(--ocu-on-surface-variant);
+}
+
+// The value sits right of the track (DESIGN.md `meter`).
+.ocu-meter-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--ocu-space-2);
+}
+
+.ocu-meter-track {
+  flex: 1 1 auto;
+  position: relative;
+  height: 6px;
+  border-radius: 9999px;
+  overflow: hidden;
+  background: var(--ocu-surface-container-high);
+}
+
+.ocu-meter-fill-skeleton {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  border-radius: 9999px;
+  background: var(--ocu-surface-container-high);
+  animation: ocu-skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ocu-meter-fill-skeleton {
+    animation: none;
+  }
+}
+
+.ocu-meter-fill {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  transition: none;
+  animation: none;
+}
+
+.ocu-meter-fill-normal {
+  background: var(--ocu-success);
+}
+
+.ocu-meter-fill-warning {
+  background: var(--ocu-warning);
+}
+
+.ocu-meter-fill-error {
+  background: var(--ocu-error);
+}
+
+.ocu-meter-readout {
+  display: flex;
+  align-items: baseline;
+  gap: var(--ocu-space-2);
+}
+
+.ocu-meter-value {
+  @include typo.ocu-type('code');
+
+  color: var(--ocu-on-surface);
+}
+
+.ocu-meter-value-normal {
+  color: var(--ocu-success);
+}
+
+.ocu-meter-value-warning {
+  color: var(--ocu-warning);
+}
+
+.ocu-meter-value-error {
+  color: var(--ocu-error);
+}
+
+.ocu-meter-word {
+  @include typo.ocu-type('label');
+}
+
+.ocu-meter-word-normal {
+  color: var(--ocu-success);
+}
+
+.ocu-meter-word-warning {
+  color: var(--ocu-warning);
+}
+
+.ocu-meter-word-error {
+  color: var(--ocu-error);
+}
+
+// --- System usage (Story 6.9) -- the counters group plus a grid of meters ----------------------
+
+.ocu-system-usage-meters {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--ocu-space-4);
+  padding: var(--ocu-space-4);
+  box-sizing: border-box;
+}
+
+// --- Log viewer (Story 6.13) -- the shared alerts.log / messages.log surface ---------------------
+//
+// The row is a FIXED 28px (`--ocu-log-row-height`, DESIGN.md's own geometry), not a minimum: a log
+// window is scanned by eye down the severity column, and a row that grows with its text breaks that
+// scan. Long text is clipped rather than wrapped, and the Raw toggle is where the whole line is
+// read.
+
+// A flex item that fills `.ocu-content`, like every other archetype page: without it the host
+// element measures content height, `.ocu-log-viewport` never overflows, and Jump to top / bottom
+// scroll an element that does not scroll.
+.ocu-log-viewer {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.ocu-log-viewer-bar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--ocu-space-2);
+  padding: var(--ocu-space-2) var(--ocu-space-4);
+  background: var(--ocu-surface);
+  border-bottom: 1px solid var(--ocu-outline-variant);
+}
+
+.ocu-log-viewer-search {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ocu-log-viewer-count {
+  @include typo.ocu-type('label');
+
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
+  white-space: nowrap;
+}
+
+.ocu-log-viewer-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ocu-space-2);
+  padding: var(--ocu-space-2) var(--ocu-space-4);
+}
+
+// The chip carries its word always; the colour pair is the second signal, never the only one.
+.ocu-log-chip {
+  @include typo.ocu-type('label');
+
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ocu-space-2);
+  box-sizing: border-box;
+  padding: 0 var(--ocu-space-2);
+  border: 1px solid var(--ocu-outline-variant);
+  border-radius: var(--ocu-radius-full);
+  background: var(--ocu-surface);
+  color: var(--ocu-on-surface-variant);
+  cursor: pointer;
+}
+
+.ocu-log-chip-active {
+  border-color: var(--ocu-secondary);
+  color: var(--ocu-on-surface);
+}
+
+.ocu-log-chip-static {
+  cursor: default;
+}
+
+.ocu-log-chip[data-ocu-chip='info'] {
+  color: var(--ocu-info);
+}
+
+.ocu-log-chip[data-ocu-chip='warning'] {
+  color: var(--ocu-warning);
+}
+
+.ocu-log-chip[data-ocu-chip='severe'],
+.ocu-log-chip[data-ocu-chip='fatal'] {
+  background: var(--ocu-error);
+  color: var(--ocu-on-error);
+  border-color: var(--ocu-error);
+}
+
+.ocu-log-viewport {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.ocu-log-rows {
+  width: 100%;
+}
+
+.ocu-log-row {
+  @include typo.ocu-type('body');
+
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 190px 90px 110px minmax(0, 1fr);
+  align-items: center;
+  height: var(--ocu-log-row-height);
+  border-bottom: 1px solid var(--ocu-outline-variant);
+}
+
+.ocu-log-row-match {
+  background: var(--ocu-surface-container);
+}
+
+.ocu-log-cell {
+  box-sizing: border-box;
+  padding: 0 var(--ocu-space-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ocu-log-mark {
+  background: var(--ocu-warning-container);
+  color: var(--ocu-on-surface);
+}
+
+.ocu-log-raw {
+  @include typo.ocu-type('code');
+
+  margin: 0;
+  padding: var(--ocu-space-2);
+  background: var(--ocu-code-surface);
+  color: var(--ocu-on-code-surface);
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.ocu-log-raw-line {
+  display: block;
+  height: var(--ocu-log-row-height);
+  line-height: var(--ocu-log-row-height);
+}
+
+.ocu-log-raw-gutter {
+  display: inline-block;
+  width: 48px;
+  text-align: right;
+  padding-right: var(--ocu-space-2);
+  color: var(--ocu-on-surface-variant);
+  user-select: none;
+}
+
+.ocu-log-load-newer {
+  align-self: flex-start;
+  margin: var(--ocu-space-2) var(--ocu-space-4);
 }

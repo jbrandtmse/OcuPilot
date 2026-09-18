@@ -14,11 +14,11 @@
 /// why the empty state names the instance rather than a namespace.</p>
 /// <p><b>Its id is <code>single</code>, keyed by <code>Pid</code>:</b> one percent-encoded path
 /// segment, with no second part. <code>Pid</code> is the <code>name</code> column, so it renders in
-/// the code face and as the link Story 6.8's process details will answer; the link is inert until
-/// that screen lands, exactly as the task schedule's Name cell is inert until 6.7.</p>
+/// the code face and as the link to <class>OcuPilot.Screen.Descriptor.ProcessDetails</class>, opened
+/// through 6.7's <code>detailScreenFor</code> chain (Story 6.8).</p>
 /// <p><b>It declares no write type and none of the <code>CanBe*</code> fields.</b> The vendor class
 /// declares broadcast, resume, suspend and terminate request types;
-/// <parameter>OcuPilot.Port.AdminPort.TYPESUFFIXES</parameter> admits <code>GET,LIST,INFO</code> and
+/// <parameter>OcuPilot.Port.AdminPort.TYPESUFFIXES</parameter> admits <code>GET,LIST,INFO,CERTINFO</code> and
 /// none of them, which is the containment. The four <code>CanBe*</code> booleans and
 /// <code>CanReceiveBroadcast</code> exist only to gate those controls, so a read that carried them
 /// would ship the inputs to a decision nothing here makes. Terminate, suspend, resume and broadcast
@@ -32,7 +32,7 @@
 /// <p><b>It declares no <code>rowGet</code>:</b> every field this screen needs is in the LIST, so no
 /// detail call is ever issued and <code>context.secretFields</code> is empty because the read carries
 /// no secret to strip (AD-24, AD-35). It declares no <code>banner</code> either.</p>
-/// <p><b>It is one of the six screens the shared auto-refresh framework binds</b> (AD-43), named
+/// <p><b>It is one of the seven screens the shared auto-refresh framework binds</b> (AD-43), named
 /// first in <file>EXPERIENCE.md</file>'s roster, at the rates its auto-refresh bullet declares. The
 /// framework owns the timer, the persisted setting and the silent re-fetch; the screen declares only
 /// that it refreshes and at what rates. Its rows change with no write behind them -- processes start
@@ -67,8 +67,8 @@
 /// names the first pair a caller does not hold -- and both wire fixtures pin the name.</p>
 /// <p><b>The classic page is <code>%CSP.UI.Portal.Processes</code></b>, spelled in the class's own
 /// case because the custom-resource lookup does not case-fold (AD-44).
-/// <code>%CSP.UI.Portal.ProcessDetails</code> is Story 6.8's, not this screen's. As a list archetype
-/// it links out to nothing.</p>
+/// <code>%CSP.UI.Portal.ProcessDetails</code> is <class>OcuPilot.Screen.Descriptor.ProcessDetails</class>'s,
+/// not this screen's. As a list archetype it links out to nothing.</p>
 /// <p>It declares no primary or row action, so its empty state names what to do next rather than
 /// inviting the agent.</p>
 Class OcuPilot.Screen.Descriptor.ProcessList Extends OcuPilot.Screen.Descriptor.Base

@@ -4,9 +4,10 @@
 /// this block off disk. Each case replaces <code>declaration.read.criteria</code> with its own
 /// <code>criteria</code> and names the exact sentence both engines return, or <code>null</code> for
 /// a sound shape. A case may also set <code>refreshes</code>, which is how the last rule -- a
-/// criteria-bearing screen never auto-refreshes -- is exercised, and may replace
-/// <code>read.source.port</code>, which is how the admin-port rule is. A later story that extends
-/// the grammar adds its cases here.</p>
+/// criteria-bearing screen never auto-refreshes -- is exercised, may replace
+/// <code>read.source.port</code>, which is how the admin-port rule is, and may set
+/// <code>parentScope</code>, which is how the parent-scoped rule is. A later story that extends the
+/// grammar adds its cases here.</p>
 /// <p><b>Every criterion carries a <code>maxLength</code></b> (DW-279), including the ones whose
 /// case refuses for another reason: the bound is checked after <code>kind</code> and before
 /// <code>options</code>, so a case that omitted it would get the maxLength sentence rather than
@@ -79,7 +80,9 @@ XData Cases
     {"name": "a marker over a criterion the form does not carry", "criteria": {"fields": [{"param": "eventSources", "labelKey": "auditColumnEventSource", "kind": "text", "maxLength": 50}], "marker": {"param": "events", "value": "OcuPilot", "labelKey": "auditMarkerFilterLabel"}}, "expected": "read.criteria.marker.param 'events' is not one of read.criteria.fields, and the marker overrides a declared criterion rather than adding one"},
     {"name": "a marker with no value", "criteria": {"fields": [{"param": "eventSources", "labelKey": "auditColumnEventSource", "kind": "text", "maxLength": 50}], "marker": {"param": "eventSources", "value": "", "labelKey": "auditMarkerFilterLabel"}}, "expected": "read.criteria.marker.value is empty, and the marker filter sends one declared value"},
     {"name": "a marker with no label key", "criteria": {"fields": [{"param": "eventSources", "labelKey": "auditColumnEventSource", "kind": "text", "maxLength": 50}], "marker": {"param": "eventSources", "value": "OcuPilot", "labelKey": ""}}, "expected": "read.criteria.marker.labelKey is empty, and the marker filter names a string key"},
-    {"name": "criteria on a port that is not admin", "criteria": {"fields": [{"param": "eventSources", "labelKey": "auditColumnEventSource", "kind": "text", "maxLength": 50}]}, "port": "monitor", "expected": "read.criteria is declared on a 'monitor' source, and server criteria travel on the admin port alone (AD-21)"},
+    {"name": "criteria on a port that is neither admin nor mgmnt", "criteria": {"fields": [{"param": "eventSources", "labelKey": "auditColumnEventSource", "kind": "text", "maxLength": 50}]}, "port": "monitor", "expected": "read.criteria is declared on a 'monitor' source, and server criteria travel on the admin and mgmnt ports alone (AD-21)"},
+    {"name": "criteria on the mgmnt port are sound", "criteria": {"fields": [{"param": "application", "labelKey": "tableColumnName", "kind": "text", "maxLength": 256}]}, "port": "mgmnt", "expected": null},
+    {"name": "criteria on a state source are refused by this rule too", "criteria": {"fields": [{"param": "application", "labelKey": "tableColumnName", "kind": "text", "maxLength": 256}]}, "port": "state", "expected": "read.criteria is declared on a 'state' source, and server criteria travel on the admin and mgmnt ports alone (AD-21)"},
     {"name": "a criteria-bearing screen that also declares auto-refresh", "criteria": {"fields": [{"param": "eventSources", "labelKey": "auditColumnEventSource", "kind": "text", "maxLength": 50}]}, "refreshes": true, "expected": "refreshes is declared with read.criteria, and a screen that searches on the server renders nothing until Search and does not auto-refresh (AD-43)"},
     {"name": "and auto-refresh alone, with no criteria, is outside this rule", "criteria": null, "refreshes": true, "expected": null},
     {"name": "a large bound is sound, because the vendor's own properties run to 1000", "criteria": {"fields": [{"param": "eventSources", "labelKey": "auditColumnEventSource", "kind": "text", "maxLength": 1000}]}, "expected": null},
@@ -90,7 +93,19 @@ XData Cases
     {"name": "a negative maxLength", "criteria": {"fields": [{"param": "eventSources", "labelKey": "auditColumnEventSource", "kind": "text", "maxLength": -1}]}, "expected": "read.criteria.fields entry #1 maxLength '-1' is not a whole number above zero"},
     {"name": "a fractional maxLength", "criteria": {"fields": [{"param": "eventSources", "labelKey": "auditColumnEventSource", "kind": "text", "maxLength": 1.5}]}, "expected": "read.criteria.fields entry #1 maxLength '1.5' is not a whole number above zero"},
     {"name": "a maxLength written as a string", "criteria": {"fields": [{"param": "eventSources", "labelKey": "auditColumnEventSource", "kind": "text", "maxLength": "50"}]}, "expected": "read.criteria.fields entry #1 maxLength '50' is not a whole number above zero"},
-    {"name": "a null maxLength is not an absent one", "criteria": {"fields": [{"param": "eventSources", "labelKey": "auditColumnEventSource", "kind": "text", "maxLength": null}]}, "expected": "read.criteria.fields entry #1 maxLength '' is not a whole number above zero"}
+    {"name": "a null maxLength is not an absent one", "criteria": {"fields": [{"param": "eventSources", "labelKey": "auditColumnEventSource", "kind": "text", "maxLength": null}]}, "expected": "read.criteria.fields entry #1 maxLength '' is not a whole number above zero"},
+    {"name": "a criterion sent under a declared vendorParam is sound (Story 6.6)", "criteria": {"fields": [{"param": "search", "labelKey": "auditColumnEventSource", "kind": "text", "maxLength": 100, "vendorParam": "filter"}]}, "expected": null},
+    {"name": "a vendorParam that is not a query parameter name", "criteria": {"fields": [{"param": "search", "labelKey": "auditColumnEventSource", "kind": "text", "maxLength": 100, "vendorParam": "filter-text"}]}, "expected": "read.criteria.fields entry #1 vendorParam 'filter-text' is not a query parameter name"},
+    {"name": "a vendorParam of maxRows is reserved", "criteria": {"fields": [{"param": "search", "labelKey": "auditColumnEventSource", "kind": "text", "maxLength": 100, "vendorParam": "maxRows"}]}, "expected": "read.criteria.fields entry #1 vendorParam 'maxRows' collides with a name the read's own callers already send"},
+    {"name": "and so is ns, whatever its case", "criteria": {"fields": [{"param": "search", "labelKey": "auditColumnEventSource", "kind": "text", "maxLength": 100, "vendorParam": "NS"}]}, "expected": "read.criteria.fields entry #1 vendorParam 'NS' collides with a name the read's own callers already send"},
+    {"name": "filter and sort are not reserved for vendorParam, unlike param", "criteria": {"fields": [{"param": "search", "labelKey": "auditColumnEventSource", "kind": "text", "maxLength": 100, "vendorParam": "filter"}, {"param": "sortBy", "labelKey": "auditColumnEventType", "kind": "text", "maxLength": 100, "vendorParam": "sort"}]}, "expected": null},
+    {"name": "a vendorParam equal to another field's param", "criteria": {"fields": [{"param": "userOnly", "labelKey": "auditColumnEventSource", "kind": "text", "maxLength": 100}, {"param": "search", "labelKey": "auditColumnEventType", "kind": "text", "maxLength": 100, "vendorParam": "userOnly"}]}, "expected": "read.criteria.fields entry #2 vendorParam 'userOnly' collides with another field's param or vendorParam"},
+    {"name": "a vendorParam equal to another field's vendorParam, case-folded", "criteria": {"fields": [{"param": "search", "labelKey": "auditColumnEventSource", "kind": "text", "maxLength": 100, "vendorParam": "filter"}, {"param": "text", "labelKey": "auditColumnEventType", "kind": "text", "maxLength": 100, "vendorParam": "Filter"}]}, "expected": "read.criteria.fields entry #1 vendorParam 'filter' collides with another field's param or vendorParam"},
+    {"name": "a parent-scoped read declaring no criterion", "criteria": null, "parentScope": "logs/audit", "expected": "parentScope 'logs/audit' is declared with a read, and a parent-scoped read declares exactly one read.criteria field, which its route id fills (AD-5)"},
+    {"name": "a parent-scoped read declaring exactly one criterion is sound", "criteria": {"fields": [{"param": "eventSources", "labelKey": "auditColumnEventSource", "kind": "text", "maxLength": 50}]}, "parentScope": "logs/audit", "expected": null},
+    {"name": "a parent-scoped read declaring two criteria", "criteria": {"fields": [{"param": "eventSources", "labelKey": "auditColumnEventSource", "kind": "text", "maxLength": 50}, {"param": "events", "labelKey": "auditColumnEventName", "kind": "text", "maxLength": 50}]}, "parentScope": "logs/audit", "expected": "parentScope 'logs/audit' is declared with a read, and a parent-scoped read declares exactly one read.criteria field, which its route id fills (AD-5)"},
+    {"name": "an empty parentScope declares no parent, so no criterion is required", "criteria": null, "parentScope": "", "expected": null},
+    {"name": "a parent-scoped screen's one route-id criterion may auto-refresh (Story 6.7)", "criteria": {"fields": [{"param": "eventSources", "labelKey": "auditColumnEventSource", "kind": "text", "maxLength": 50}]}, "parentScope": "logs/audit", "refreshes": true, "expected": null}
   ]
 }
 }
@@ -116,8 +131,8 @@ ClassMethod Corpus(Output pCorpus As %DynamicObject) As %Status
 }
 
 /// <p>The corpus declaration with <var>pCase</var>'s <code>criteria</code> in place, its
-/// <code>refreshes</code> when the case declares one, and its <code>read.source.port</code> when
-/// the case names one, as a new object.</p>
+/// <code>refreshes</code> when the case declares one, its <code>read.source.port</code> when the
+/// case names one, and its <code>parentScope</code> when the case names one, as a new object.</p>
 ClassMethod DeclarationFor(pCorpus As %DynamicObject, pCase As %DynamicObject) As %DynamicObject
 {
     Set tDeclaration = ##class(%DynamicObject).%FromJSON(pCorpus.declaration.%ToJSON())
@@ -132,6 +147,7 @@ ClassMethod DeclarationFor(pCorpus As %DynamicObject, pCase As %DynamicObject) A
     }
     If pCase.%GetTypeOf("refreshes") = "boolean" Do tDeclaration.%Set("refreshes", ''pCase.refreshes, "boolean")
     If pCase.%GetTypeOf("port") = "string" Do tRead.source.%Set("port", pCase.port)
+    If pCase.%GetTypeOf("parentScope") = "string" Do tDeclaration.%Set("parentScope", pCase.parentScope)
     Quit tDeclaration
 }
 

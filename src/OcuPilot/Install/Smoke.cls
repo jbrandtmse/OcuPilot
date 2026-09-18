@@ -65,6 +65,131 @@ Parameter PROCESSLISTTOOL = "osmgmt.processes";
 /// check issues.</p>
 Parameter AUDITLISTTOOL = "logs.audit";
 
+/// <p>The tool identifier of the REST API explorer, whose screen read the
+/// <code>webapp.restapis</code> check issues.</p>
+Parameter RESTAPILISTTOOL = "webapp.restapis";
+
+/// <p>The tool identifier of the roles list, whose screen read the <code>roles</code> check
+/// issues.</p>
+Parameter ROLELISTTOOL = "permissions.roles";
+
+/// <p>The tool identifier of the resources list, whose screen read the <code>resources</code> check
+/// issues.</p>
+Parameter RESOURCELISTTOOL = "permissions.resources";
+
+/// <p>The tool identifier of the services list, whose screen read the <code>services</code> check
+/// issues.</p>
+Parameter SERVICELISTTOOL = "permissions.services";
+
+/// <p>The tool identifier of the X.509 credentials list, whose screen read the <code>x509</code>
+/// check issues.</p>
+Parameter X509LISTTOOL = "security.x509";
+
+/// <p>The tool identifier of the LDAP / Kerberos configurations list, whose screen read the
+/// <code>ldap</code> check issues.</p>
+Parameter LDAPLISTTOOL = "security.ldap";
+
+/// <p>The tool identifier of the Wallet list, whose screen read the <code>wallet</code> check
+/// issues.</p>
+Parameter WALLETLISTTOOL = "security.wallet";
+
+/// <p>The tool identifier of the OAuth 2.0 screen's Client server descriptions tab, whose screen read
+/// the <code>oauthdescriptions</code> check issues.</p>
+Parameter OAUTHDESCRIPTIONSTOOL = "security.oauthserverdescriptions";
+
+/// <p>The tool identifier of the OAuth 2.0 Client configurations tab, whose screen read the
+/// <code>oauthclients</code> check issues.</p>
+Parameter OAUTHCLIENTSTOOL = "security.oauthclients";
+
+/// <p>The tool identifier of the OAuth 2.0 Resource servers tab, whose screen read the
+/// <code>oauthresourceservers</code> check issues.</p>
+Parameter OAUTHRESOURCESERVERSTOOL = "security.oauthresourceservers";
+
+/// <p>The tool identifier of the OAuth 2.0 Authorization server tab, whose screen read the
+/// <code>oauthserver</code> check issues.</p>
+Parameter OAUTHSERVERTOOL = "security.oauthserver";
+
+/// <p>The tool identifier of the OAuth 2.0 Server client descriptions tab, whose screen read the
+/// <code>oauthserverclients</code> check issues.</p>
+Parameter OAUTHSERVERCLIENTSTOOL = "security.oauthserverclients";
+
+/// <p>The tool identifier of the On-demand tasks list, whose screen read the <code>ondemand</code>
+/// check issues.</p>
+Parameter TASKONDEMANDTOOL = "tasks.ondemand";
+
+/// <p>The tool identifier of the Upcoming tasks list, whose screen read the <code>upcoming</code>
+/// check issues.</p>
+Parameter TASKUPCOMINGTOOL = "tasks.upcoming";
+
+/// <p>The tool identifier of Task history (all tasks), whose screen read the
+/// <code>taskhistory</code> check issues (Story 6.6).</p>
+Parameter TASKHISTORYTOOL = "tasks.history";
+
+/// <p>The tool identifier of Task details, whose screen read the <code>taskdetails</code> check
+/// issues, keyed by the task schedule's own first row (Story 6.7).</p>
+Parameter TASKDETAILSTOOL = "tasks.taskdetails";
+
+/// <p>The tool identifier of Process details, whose screen read the <code>processdetails</code>
+/// check issues, keyed by the processes list's own first row (Story 6.8).</p>
+Parameter PROCESSDETAILSTOOL = "osmgmt.processdetails";
+
+/// <p>The tool identifier of System usage, read generically by <method>CheckAreaLists</method>
+/// like any other single-object list, since it needs no parent id (Story 6.9).</p>
+Parameter SYSTEMUSAGETOOL = "osmgmt.systemusage";
+
+/// <p>The tool identifier of the Locks list, read generically by <method>CheckAreaLists</method>
+/// like any other list (Story 6.10). The check expects the same exactly-one-row shape at
+/// <code>maxRows=1</code> as <code>processes</code> and <code>systemusage</code>, not the
+/// zero-or-one shape a possibly-empty list takes, because the locks an idle instance holds are its
+/// own daemons' -- the license monitor's, the system monitor's, the task manager's and the work
+/// queue's (observed: seven rows, all daemon-held, on the slot B instance, 2026-09-17). That is an
+/// observation about this build, not a guarantee: a run that finds the table empty fails here, and
+/// such a failure is environmental rather than a defect in the screen.</p>
+Parameter LOCKLISTTOOL = "osmgmt.locks";
+
+/// <p>The tool identifier of the Databases General view, read generically by
+/// <method>CheckAreaLists</method> like any other unparented list (Story 6.11): the vendor's own
+/// database directory table, never empty on any mounted instance.</p>
+Parameter DATABASELISTTOOL = "osmgmt.databases";
+
+/// <p>The tool identifier of the Databases Free-space view, read generically by
+/// <method>CheckAreaLists</method> (Story 6.11): the same rows as <parameter>DATABASELISTTOOL</parameter>,
+/// merged with the asynchronous <code>INFO</code> figures. Its declared read takes no criterion, so
+/// it fits the generic sweep exactly as the General view does.</p>
+Parameter DATABASEFREESPACELISTTOOL = "osmgmt.databasefreespace";
+
+/// <p>The tool identifier of Database details, whose <code>CheckDatabaseDetails</code> check issues
+/// it keyed by the Databases list's own first row's <code>Directory</code> (Story 6.11).</p>
+Parameter DATABASEDETAILSTOOL = "osmgmt.databasedetails";
+
+/// <p>The tool identifier of Database volumes ("Volume files"), whose <code>CheckDatabaseDetails</code>
+/// check issues it keyed by the same <code>Directory</code> (Story 6.11). It is not in
+/// <method>CheckAreaLists</method>'s generic name list: <code>Database.SysCRUD</code>'s own
+/// <code>ValidateQueryParams</code> requires <code>dir</code> for every request type but
+/// <code>POST</code> and <code>LIST</code> (verified against the instance: a <code>VOLUMELIST</code>
+/// with no <code>dir</code> answers 400 <code>PORT.VALIDATION</code>), so this parent-scoped read
+/// needs a real directory the same way <parameter>PROCESSDETAILSTOOL</parameter> needs a real pid.</p>
+Parameter DATABASEVOLUMESTOOL = "osmgmt.databasevolumes";
+
+/// <p>The tool identifier of the Devices list, read generically by
+/// <method>CheckAreaLists</method> like any other unparented list (Story 6.12): the vendor's own
+/// device table, never empty on any mounted instance.</p>
+Parameter DEVICELISTTOOL = "osmgmt.devices";
+
+/// <p>The tool identifier of the alerts.log viewer, read generically by
+/// <method>CheckAreaLists</method> (Story 6.13). Its declared read is a bounded tail of a file the
+/// instance writes only when it has something to say, so it is a <b>zero-or-one</b> list: an
+/// instance whose alerts.log is still empty answers no row without anything being wrong.</p>
+Parameter ALERTLISTTOOL = "logs.alerts";
+
+/// <p>The tool identifier of the messages.log viewer, read generically by
+/// <method>CheckAreaLists</method> (Story 6.14). Unlike <parameter>ALERTLISTTOOL</parameter> this is
+/// an <b>exactly-one</b> list: every instance writes its own startup lines to
+/// <file>messages.log</file>, so an empty answer here is a real failure. Distinct from the
+/// <code>messageslog</code> check, which reads the same file through the page route
+/// (<parameter>MESSAGESLOGPATH</parameter>) rather than through the screen's declared read.</p>
+Parameter MESSAGESLISTTOOL = "logs.messages";
+
 /// <p>The console-log page's path under the API application, and the window the
 /// <code>messageslog</code> check asks for. Small: the check is that the endpoint serves the
 /// instance's own log, not that it serves much of it.</p>
@@ -98,7 +223,10 @@ ClassMethod Run(pUsername As %String = "", pPassword As %String = "", pDemo As %
         Do ..CheckDeepLink(.tChecks)
         Do ..CheckSignIn(.tChecks, pUsername, pPassword, .tAccessToken, .tRefreshToken)
         Do ..CheckApiReads(.tChecks, tAccessToken)
-        Do ..CheckAreaLists(.tChecks, tAccessToken)
+        Do ..CheckAreaLists(.tChecks, tAccessToken, pDemo)
+        Do ..CheckTaskDetails(.tChecks, tAccessToken)
+        Do ..CheckProcessDetails(.tChecks, tAccessToken)
+        Do ..CheckDatabaseDetails(.tChecks, tAccessToken)
         Do ..CheckMessagesLog(.tChecks, tAccessToken)
         Do ..CheckApplicationErrors(.tChecks, tAccessToken)
     } Catch ex {
@@ -458,29 +586,66 @@ ClassMethod CheckApiReads(ByRef pChecks, pAccessToken As %String) [ Private ]
     }
 }
 
-/// <p>The first live list of each portal area built so far (AD-45), read with the minted access
-/// token: the web applications list (<code>webapplications</code>), the users list
+/// <p>One live read for each built list screen (AD-45 asks for at least one per area), read with the
+/// minted access token: the web applications list (<code>webapplications</code>), the users list
 /// (<code>users</code>), the SSL/TLS configurations list (<code>ssl</code>), the task schedule
-/// (<code>tasks</code>), the processes list (<code>processes</code>) and the audit database viewer
-/// (<code>audit</code>), each one screen read
-/// at <code>maxRows=1</code> that answers 200 with a
+/// (<code>tasks</code>), the processes list (<code>processes</code>), the audit database viewer
+/// (<code>audit</code>), the REST API explorer (<code>webapp.restapis</code>), the roles, resources
+/// and services lists (<code>roles</code>, <code>resources</code>, <code>services</code>), and the
+/// X.509, LDAP / Kerberos and Wallet lists (<code>x509</code>, <code>ldap</code>,
+/// <code>wallet</code>), each one screen read at <code>maxRows=1</code> that answers 200 with a
 /// <code>rows</code> array of exactly one row. The signed-in principal needs each list's pairs --
 /// <code>%DB_IRISSYS:READ</code> throughout, with <code>%Admin_Secure:USE</code> for the first three,
 /// <code>%Admin_Task:USE</code> for the fourth, <code>%Admin_Operate:USE</code> plus
 /// <code>%Admin_Manage:USE</code> for the fifth, and <code>%Admin_Secure:USE</code> plus
-/// <code>%Admin_Operate:USE</code> for the sixth -- or the read answers 403 and the
-/// check fails. Skipped, like the shell reads, when no token was minted.</p>
+/// <code>%Admin_Operate:USE</code> for the sixth, <code>%Admin_Secure:USE</code> for the seventh
+/// through the twelfth, and <code>%Admin_Wallet:USE</code> for the thirteenth -- or the read answers
+/// 403 and the check fails. Skipped, like the shell reads, when no token was minted.</p>
+/// <p><b>The five OAuth 2.0 tabs</b> (<code>oauthdescriptions</code>, <code>oauthclients</code>,
+/// <code>oauthresourceservers</code>, <code>oauthserver</code>, <code>oauthserverclients</code>) read
+/// the same way and pass on a 200 answering zero rows or one: no fixture creates OAuth 2.0 objects
+/// (AD-25), so an instance may hold none. They need <code>%Admin_OAuth2_Client:USE</code> for the
+/// first two, <code>%Admin_Secure:USE</code> for the third, <code>%Admin_OAuth2_Server:USE</code> for
+/// the fourth and <code>%Admin_OAuth2_Registration:USE</code> for the fifth, each with
+/// <code>%DB_IRISSYS:READ</code>.</p>
+/// <p><b>The On-demand and Upcoming tasks lists</b> (<code>ondemand</code>, <code>upcoming</code>) read
+/// the same way at <code>maxRows=1</code>, needing the task schedule's pairs, and expect exactly one
+/// row: the vendor answers every task as on demand, and several stock system tasks run within any
+/// 24 hours, so both hold one on a clean container. Upcoming is read with no horizon, which the vendor
+/// answers as 24 hours.</p>
+/// <p><b>Task history</b> (<code>taskhistory</code>) reads the same way at <code>maxRows=1</code>
+/// with no criteria, needing the task schedule's pairs, and passes on zero or one row like the OAuth
+/// 2.0 checks: a fresh container may hold no run history yet, so an empty answer is not a
+/// failure.</p>
+/// <p><b>The X.509 and Wallet lists hold a row only where the demo fixture put one</b> (AD-25), so
+/// when the demo was not requested (<var>pDemo</var>, resolved as
+/// <method>CheckDemoFixture</method> resolves it) a 200 answering an empty <code>rows</code> array
+/// skips those two checks rather than failing them. With the demo requested, an empty array fails
+/// them as it fails every other list.</p>
 /// <p>The audit read is the one that crosses the port's async path (AD-26), so it is also the
 /// check that says the self-queued LIST is polled to an answer on a live instance.</p>
-ClassMethod CheckAreaLists(ByRef pChecks, pAccessToken As %String) [ Private ]
+/// <p><b>System usage</b> (<code>systemusage</code>, Story 6.9) reads the same way at
+/// <code>maxRows=1</code> with no criteria and expects exactly one row, like
+/// <code>processes</code>: the vendor's <code>Monitor</code> endpoint always answers, so an
+/// instance with no row is a real failure, not an empty-fixture case.</p>
+/// <p><b>Locks</b> (<code>locks</code>, Story 6.10) reads the same way at <code>maxRows=1</code>
+/// with no criteria and expects exactly one row, like <code>processes</code> and
+/// <code>systemusage</code>, because an idle instance's locks are its own daemons';
+/// <parameter>LOCKLISTTOOL</parameter> records what was observed and how to read a failure.</p>
+/// <p><b>messages.log</b> (<code>messages</code>, Story 6.14) reads the same way at
+/// <code>maxRows=1</code> and expects exactly one row, for
+/// <parameter>MESSAGESLISTTOOL</parameter>'s reason: every instance writes its own startup lines to
+/// that file, so unlike <code>alerts</code> it is not a zero-or-one list.</p>
+ClassMethod CheckAreaLists(ByRef pChecks, pAccessToken As %String, pDemo As %String = "") [ Private ]
 {
+    Set tDemoWanted = ($Select(pDemo '= "": pDemo, 1: $System.Util.GetEnviron("OCUPILOT_DEMO")) = "1")
     Set tBase = ..RosterPath("api")
-    For tI = 1:1:6 {
-        Set tName = $Piece("webapplications,users,ssl,tasks,processes,audit", ",", tI)
-        ; Every index names its own tool and the last arm names none: a seventh list added to the
-        ; bound and the name list without its own arm reads an empty path and fails, rather than
-        ; re-reading the sixth list under the seventh's name and passing.
-        Set tTool = $Select(tI = 1: ..#WEBAPPLISTTOOL, tI = 2: ..#USERLISTTOOL, tI = 3: ..#SSLLISTTOOL, tI = 4: ..#TASKLISTTOOL, tI = 5: ..#PROCESSLISTTOOL, tI = 6: ..#AUDITLISTTOOL, 1: "")
+    For tI = 1:1:28 {
+        Set tName = $Piece("webapplications,users,ssl,tasks,processes,audit,webapp.restapis,roles,resources,services,x509,ldap,wallet,oauthdescriptions,oauthclients,oauthresourceservers,oauthserver,oauthserverclients,ondemand,upcoming,taskhistory,systemusage,locks,databases,databasefreespace,devices,alerts,messages", ",", tI)
+        ; Every index names its own tool and the last arm names none: a list added to the bound and
+        ; the name list without its own arm reads an empty path and fails, rather than re-reading
+        ; the previous list under the new name and passing.
+        Set tTool = $Select(tI = 1: ..#WEBAPPLISTTOOL, tI = 2: ..#USERLISTTOOL, tI = 3: ..#SSLLISTTOOL, tI = 4: ..#TASKLISTTOOL, tI = 5: ..#PROCESSLISTTOOL, tI = 6: ..#AUDITLISTTOOL, tI = 7: ..#RESTAPILISTTOOL, tI = 8: ..#ROLELISTTOOL, tI = 9: ..#RESOURCELISTTOOL, tI = 10: ..#SERVICELISTTOOL, tI = 11: ..#X509LISTTOOL, tI = 12: ..#LDAPLISTTOOL, tI = 13: ..#WALLETLISTTOOL, tI = 14: ..#OAUTHDESCRIPTIONSTOOL, tI = 15: ..#OAUTHCLIENTSTOOL, tI = 16: ..#OAUTHRESOURCESERVERSTOOL, tI = 17: ..#OAUTHSERVERTOOL, tI = 18: ..#OAUTHSERVERCLIENTSTOOL, tI = 19: ..#TASKONDEMANDTOOL, tI = 20: ..#TASKUPCOMINGTOOL, tI = 21: ..#TASKHISTORYTOOL, tI = 22: ..#SYSTEMUSAGETOOL, tI = 23: ..#LOCKLISTTOOL, tI = 24: ..#DATABASELISTTOOL, tI = 25: ..#DATABASEFREESPACELISTTOOL, tI = 26: ..#DEVICELISTTOOL, tI = 27: ..#ALERTLISTTOOL, tI = 28: ..#MESSAGESLISTTOOL, 1: "")
         If tBase = "" {
             Do ..Note(.pChecks, tName, "fail", "the roster on this instance declares no API path, so there was nothing to read")
             Continue
@@ -506,12 +671,270 @@ ClassMethod CheckAreaLists(ByRef pChecks, pAccessToken As %String) [ Private ]
         } Catch {
             Set tCount = -1
         }
+        If (tCount = 0) && 'tDemoWanted && ((tName = "x509") || (tName = "wallet")) {
+            Do ..Note(.pChecks, tName, "skipped", "the list is empty and the demo opt-in flag is not set for this instance, so no demo fixture row was expected (AD-25)")
+            Continue
+        }
+        Set tZeroOrOne = ''$ListFind($ListBuild("oauthdescriptions", "oauthclients", "oauthresourceservers", "oauthserver", "oauthserverclients", "taskhistory", "alerts"), tName)
+        If tZeroOrOne && ((tCount = 0) || (tCount = 1)) {
+            Do ..Note(.pChecks, tName, "pass")
+            Continue
+        }
+        If tZeroOrOne {
+            Do ..Note(.pChecks, tName, "fail", "GET " _ tPath _ " answered 200 without a rows array of zero rows or one")
+            Continue
+        }
         If tCount '= 1 {
             Do ..Note(.pChecks, tName, "fail", "GET " _ tPath _ " answered 200 without a rows array of exactly one row")
             Continue
         }
         Do ..Note(.pChecks, tName, "pass")
     }
+}
+
+/// <p>Task details (<code>taskdetails</code>, Story 6.7): the task schedule's own first row supplies
+/// the <code>taskId</code> its parent-scoped read requires, so this check reads
+/// <parameter>TASKLISTTOOL</parameter> again at <code>maxRows=1</code> to find one, needing the
+/// same pairs <code>tasks</code> already checked, and then reads
+/// <parameter>TASKDETAILSTOOL</parameter> for that id, expecting exactly one row that names that
+/// <code>Id</code> and carries the task's own <code>TimePeriod</code>. Skipped, like
+/// <method>CheckMessagesLog</method>, when no token was minted; failed, naming why, when the
+/// schedule read answers no row to key the second read by -- a fresh container without even the
+/// stock system tasks is not one this check can pass on, unlike the zero-or-one lists above.</p>
+ClassMethod CheckTaskDetails(ByRef pChecks, pAccessToken As %String) [ Private ]
+{
+    Set tBase = ..RosterPath("api")
+    If tBase = "" {
+        Do ..Note(.pChecks, "taskdetails", "fail", "the roster on this instance declares no API path, so there was nothing to read")
+        Quit
+    }
+    If pAccessToken = "" {
+        Do ..Note(.pChecks, "taskdetails", "skipped", "no token pair was minted by this run, so the authenticated read was not attempted")
+        Quit
+    }
+    Set tSchedulePath = tBase _ "/screens/" _ ..#TASKLISTTOOL _ "/read?maxRows=1"
+    Set tSC = ..Request("GET", tSchedulePath, "Bearer " _ pAccessToken, "", .tScheduleStatus, .tScheduleText)
+    If $$$ISERR(tSC) {
+        Do ..Note(.pChecks, "taskdetails", "fail", "the task schedule could not be reached to find an id: " _ $System.Status.GetErrorText(tSC))
+        Quit
+    }
+    If tScheduleStatus '= 200 {
+        Do ..Note(.pChecks, "taskdetails", "fail", "GET " _ tSchedulePath _ " answered HTTP " _ tScheduleStatus)
+        Quit
+    }
+    Set tTaskId = ""
+    Try {
+        Set tRows = ##class(%DynamicAbstractObject).%FromJSON(tScheduleText).%Get("rows")
+        If $IsObject(tRows) && tRows.%IsA("%Library.DynamicArray") && (tRows.%Size() > 0) Set tTaskId = tRows.%Get(0).%Get("Id")
+    } Catch {
+        Set tTaskId = ""
+    }
+    If tTaskId = "" {
+        Do ..Note(.pChecks, "taskdetails", "fail", "the task schedule answered no row to read a task id from")
+        Quit
+    }
+    Set tPath = tBase _ "/screens/" _ ..#TASKDETAILSTOOL _ "/read?maxRows=1&taskId=" _ tTaskId
+    Set tSC = ..Request("GET", tPath, "Bearer " _ pAccessToken, "", .tStatus, .tText)
+    If $$$ISERR(tSC) {
+        Do ..Note(.pChecks, "taskdetails", "fail", "the read could not be reached: " _ $System.Status.GetErrorText(tSC))
+        Quit
+    }
+    If tStatus '= 200 {
+        Do ..Note(.pChecks, "taskdetails", "fail", "GET " _ tPath _ " answered HTTP " _ tStatus)
+        Quit
+    }
+    Set tCount = -1
+    Set tSameTask = 0
+    Try {
+        Set tRows = ##class(%DynamicAbstractObject).%FromJSON(tText).%Get("rows")
+        If $IsObject(tRows) && tRows.%IsA("%Library.DynamicArray") Set tCount = tRows.%Size()
+        If tCount = 1 Set tSameTask = (tRows.%Get(0).%Get("Id") = tTaskId) && (tRows.%Get(0).%GetTypeOf("TimePeriod") '= "unassigned")
+    } Catch {
+        Set tCount = -1
+    }
+    If tCount '= 1 {
+        Do ..Note(.pChecks, "taskdetails", "fail", "GET " _ tPath _ " answered 200 without a rows array of exactly one row")
+        Quit
+    }
+    If 'tSameTask {
+        Do ..Note(.pChecks, "taskdetails", "fail", "GET " _ tPath _ " answered a row that is not task " _ tTaskId _ "'s details")
+        Quit
+    }
+    Do ..Note(.pChecks, "taskdetails", "pass")
+}
+
+/// <p>Process details (<code>processdetails</code>, Story 6.8): the processes list's own first row
+/// supplies the <code>pid</code> its parent-scoped read requires, so this check reads
+/// <parameter>PROCESSLISTTOOL</parameter> again at <code>maxRows=1</code> to find one, needing the
+/// same pairs <code>processes</code> already checked, and then reads
+/// <parameter>PROCESSDETAILSTOOL</parameter> for that pid, expecting exactly one row that names
+/// that <code>Pid</code>. Skipped, like <method>CheckMessagesLog</method>, when no token was
+/// minted; failed, naming why, when the extracted <code>pid</code> is empty -- no row, or a row
+/// with no <code>Pid</code> key -- to key the second read by. A live instance always has at
+/// least one process (this one), so that is a real failure.</p>
+ClassMethod CheckProcessDetails(ByRef pChecks, pAccessToken As %String) [ Private ]
+{
+    Set tBase = ..RosterPath("api")
+    If tBase = "" {
+        Do ..Note(.pChecks, "processdetails", "fail", "the roster on this instance declares no API path, so there was nothing to read")
+        Quit
+    }
+    If pAccessToken = "" {
+        Do ..Note(.pChecks, "processdetails", "skipped", "no token pair was minted by this run, so the authenticated read was not attempted")
+        Quit
+    }
+    Set tListPath = tBase _ "/screens/" _ ..#PROCESSLISTTOOL _ "/read?maxRows=1"
+    Set tSC = ..Request("GET", tListPath, "Bearer " _ pAccessToken, "", .tListStatus, .tListText)
+    If $$$ISERR(tSC) {
+        Do ..Note(.pChecks, "processdetails", "fail", "the processes list could not be reached to find a pid: " _ $System.Status.GetErrorText(tSC))
+        Quit
+    }
+    If tListStatus '= 200 {
+        Do ..Note(.pChecks, "processdetails", "fail", "GET " _ tListPath _ " answered HTTP " _ tListStatus)
+        Quit
+    }
+    Set tPid = ""
+    Try {
+        Set tRows = ##class(%DynamicAbstractObject).%FromJSON(tListText).%Get("rows")
+        If $IsObject(tRows) && tRows.%IsA("%Library.DynamicArray") && (tRows.%Size() > 0) Set tPid = tRows.%Get(0).%Get("Pid")
+    } Catch {
+        Set tPid = ""
+    }
+    If tPid = "" {
+        Do ..Note(.pChecks, "processdetails", "fail", "the processes list answered no row with a Pid to read")
+        Quit
+    }
+    Set tPath = tBase _ "/screens/" _ ..#PROCESSDETAILSTOOL _ "/read?maxRows=1&pid=" _ tPid
+    Set tSC = ..Request("GET", tPath, "Bearer " _ pAccessToken, "", .tStatus, .tText)
+    If $$$ISERR(tSC) {
+        Do ..Note(.pChecks, "processdetails", "fail", "the read could not be reached: " _ $System.Status.GetErrorText(tSC))
+        Quit
+    }
+    If tStatus '= 200 {
+        Do ..Note(.pChecks, "processdetails", "fail", "GET " _ tPath _ " answered HTTP " _ tStatus)
+        Quit
+    }
+    Set tCount = -1
+    Set tSamePid = 0
+    Try {
+        Set tRows = ##class(%DynamicAbstractObject).%FromJSON(tText).%Get("rows")
+        If $IsObject(tRows) && tRows.%IsA("%Library.DynamicArray") Set tCount = tRows.%Size()
+        If tCount = 1 Set tSamePid = (tRows.%Get(0).%Get("Pid") = tPid)
+    } Catch {
+        Set tCount = -1
+    }
+    If tCount '= 1 {
+        Do ..Note(.pChecks, "processdetails", "fail", "GET " _ tPath _ " answered 200 without a rows array of exactly one row")
+        Quit
+    }
+    If 'tSamePid {
+        Do ..Note(.pChecks, "processdetails", "fail", "GET " _ tPath _ " answered a row that is not process " _ tPid _ "'s details")
+        Quit
+    }
+    Do ..Note(.pChecks, "processdetails", "pass")
+}
+
+/// <p>Database details and Database volumes (<code>databasedetails</code>,
+/// <code>databasevolumes</code>, Story 6.11): the Databases General view's own first row supplies
+/// the <code>dir</code> both parent-scoped reads require, so this check reads
+/// <parameter>DATABASELISTTOOL</parameter> again at <code>maxRows=1</code> to find one, needing the
+/// same pairs <code>databases</code> already checked, and then reads
+/// <parameter>DATABASEDETAILSTOOL</parameter> and <parameter>DATABASEVOLUMESTOOL</parameter> for
+/// that directory, each expecting at least one row. <code>dir</code> travels unescaped in the query
+/// string: RFC 3986 lets <code>/</code> represent data inside a <code>query</code> component, so a
+/// directory path's separators need no percent-encoding there -- unlike a route's own single path
+/// segment (AD-13), which is a different position with a different rule. It is not that
+/// <code>/</code> is unreserved; it is reserved, and permitted in this one position. Skipped, like
+/// <method>CheckMessagesLog</method>, when no token was minted; failed, naming why, when the
+/// Databases list answers no row to key the two reads by -- a mounted instance always has at least
+/// one database (its own IRISSYS), so that is a real failure. Database details expects exactly one
+/// row naming that <code>Directory</code>; Database volumes expects at least one row, since a
+/// multi-file database answers more than one.</p>
+ClassMethod CheckDatabaseDetails(ByRef pChecks, pAccessToken As %String) [ Private ]
+{
+    Set tBase = ..RosterPath("api")
+    If tBase = "" {
+        Do ..Note(.pChecks, "databasedetails", "fail", "the roster on this instance declares no API path, so there was nothing to read")
+        Do ..Note(.pChecks, "databasevolumes", "fail", "the roster on this instance declares no API path, so there was nothing to read")
+        Quit
+    }
+    If pAccessToken = "" {
+        Do ..Note(.pChecks, "databasedetails", "skipped", "no token pair was minted by this run, so the authenticated read was not attempted")
+        Do ..Note(.pChecks, "databasevolumes", "skipped", "no token pair was minted by this run, so the authenticated read was not attempted")
+        Quit
+    }
+    Set tListPath = tBase _ "/screens/" _ ..#DATABASELISTTOOL _ "/read?maxRows=1"
+    Set tSC = ..Request("GET", tListPath, "Bearer " _ pAccessToken, "", .tListStatus, .tListText)
+    If $$$ISERR(tSC) {
+        Do ..Note(.pChecks, "databasedetails", "fail", "the Databases list could not be reached to find a directory: " _ $System.Status.GetErrorText(tSC))
+        Do ..Note(.pChecks, "databasevolumes", "fail", "the Databases list could not be reached to find a directory: " _ $System.Status.GetErrorText(tSC))
+        Quit
+    }
+    If tListStatus '= 200 {
+        Do ..Note(.pChecks, "databasedetails", "fail", "GET " _ tListPath _ " answered HTTP " _ tListStatus)
+        Do ..Note(.pChecks, "databasevolumes", "fail", "GET " _ tListPath _ " answered HTTP " _ tListStatus)
+        Quit
+    }
+    Set tDir = ""
+    Try {
+        Set tRows = ##class(%DynamicAbstractObject).%FromJSON(tListText).%Get("rows")
+        If $IsObject(tRows) && tRows.%IsA("%Library.DynamicArray") && (tRows.%Size() > 0) Set tDir = tRows.%Get(0).%Get("Directory")
+    } Catch {
+        Set tDir = ""
+    }
+    If tDir = "" {
+        Do ..Note(.pChecks, "databasedetails", "fail", "the Databases list answered no row with a Directory to read")
+        Do ..Note(.pChecks, "databasevolumes", "fail", "the Databases list answered no row with a Directory to read")
+        Quit
+    }
+
+    Set tPath = tBase _ "/screens/" _ ..#DATABASEDETAILSTOOL _ "/read?maxRows=1&dir=" _ tDir
+    Set tSC = ..Request("GET", tPath, "Bearer " _ pAccessToken, "", .tStatus, .tText)
+    If $$$ISERR(tSC) {
+        Do ..Note(.pChecks, "databasedetails", "fail", "the read could not be reached: " _ $System.Status.GetErrorText(tSC))
+    } ElseIf tStatus '= 200 {
+        Do ..Note(.pChecks, "databasedetails", "fail", "GET " _ tPath _ " answered HTTP " _ tStatus)
+    } Else {
+        Set tCount = -1
+        Set tSameDir = 0
+        Try {
+            Set tRows = ##class(%DynamicAbstractObject).%FromJSON(tText).%Get("rows")
+            If $IsObject(tRows) && tRows.%IsA("%Library.DynamicArray") Set tCount = tRows.%Size()
+            If tCount = 1 Set tSameDir = (tRows.%Get(0).%Get("Directory") = tDir)
+        } Catch {
+            Set tCount = -1
+        }
+        If tCount '= 1 {
+            Do ..Note(.pChecks, "databasedetails", "fail", "GET " _ tPath _ " answered 200 without a rows array of exactly one row")
+        } ElseIf 'tSameDir {
+            Do ..Note(.pChecks, "databasedetails", "fail", "GET " _ tPath _ " answered a row that is not " _ tDir _ "'s details")
+        } Else {
+            Do ..Note(.pChecks, "databasedetails", "pass")
+        }
+    }
+
+    Set tVolPath = tBase _ "/screens/" _ ..#DATABASEVOLUMESTOOL _ "/read?maxRows=10&dir=" _ tDir
+    Set tSC = ..Request("GET", tVolPath, "Bearer " _ pAccessToken, "", .tVolStatus, .tVolText)
+    If $$$ISERR(tSC) {
+        Do ..Note(.pChecks, "databasevolumes", "fail", "the read could not be reached: " _ $System.Status.GetErrorText(tSC))
+        Quit
+    }
+    If tVolStatus '= 200 {
+        Do ..Note(.pChecks, "databasevolumes", "fail", "GET " _ tVolPath _ " answered HTTP " _ tVolStatus)
+        Quit
+    }
+    Set tVolCount = -1
+    Try {
+        Set tVolRows = ##class(%DynamicAbstractObject).%FromJSON(tVolText).%Get("rows")
+        If $IsObject(tVolRows) && tVolRows.%IsA("%Library.DynamicArray") Set tVolCount = tVolRows.%Size()
+    } Catch {
+        Set tVolCount = -1
+    }
+    If tVolCount < 1 {
+        Do ..Note(.pChecks, "databasevolumes", "fail", "GET " _ tVolPath _ " answered 200 without a rows array of at least one row -- every mounted database has at least its primary volume file")
+        Quit
+    }
+    Do ..Note(.pChecks, "databasevolumes", "pass")
 }
 
 /// <p>The console-log page, read with the minted access token: one bounded page of the instance's

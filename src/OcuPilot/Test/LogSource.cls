@@ -2,11 +2,15 @@
 /// <class>OcuPilot.Test.LogSourceFixture</class> against a scratch file this class creates,
 /// appends to, rotates and removes under
 /// <code>&lt;ManagerDirectory&gt;ocupilotlogprobe/</code>.</p>
-/// <p><b>The instance's own <file>messages.log</file> is never touched by this class</b> -- not
-/// written, not rotated, not removed, not read. The real file is read over HTTP by
+/// <p><b>The instance's own <file>messages.log</file> is never written, rotated or removed by this
+/// class.</b> It is read, and only read, by
+/// <method>TestTheMessagesKeyIsServedFromTheManagerDirectory</method>. The real file is also read
+/// over HTTP by
 /// <class>OcuPilot.Test.LogSourceWire</class>, and the one real rotation this story performs is
 /// <class>OcuPilot.Test.LogSourceRotation</class>'s, on a throwaway container.</p>
-/// <p>Needs a writable manager directory and nothing else.</p>
+/// <p>Needs a writable manager directory, and -- for
+/// <method>TestTheMessagesKeyIsServedFromTheManagerDirectory</method> alone -- the instance's own
+/// <file>messages.log</file> present and readable, which every started instance has written to.</p>
 Class OcuPilot.Test.LogSource Extends %UnitTest.TestCase
 {
 
@@ -158,6 +162,160 @@ ClassMethod FailedPair(pFault As %DynamicObject) As %String
     If '$IsObject(pFault) Quit ""
     If '$IsObject(pFault.%Get("detail")) Quit ""
     Quit pFault.detail.failedPair
+}
+
+/// <p>Story 6.13 AC1 -- the <code>alerts</code> key is in the enum, resolves to
+/// <code>alerts.log</code> and declares <code>%Admin_Operate:USE</code> alone, the same one pair the
+/// screen over it declares: reading a file off disk consults no database resource. The production
+/// port is asked, not the fixture, so this is the shipped enum rather than an armed one.</p>
+/// <p>Mutation: drop <code>alerts</code> from
+/// <parameter>OcuPilot.Port.LogSourcePort.SOURCES</parameter> -&gt; the membership assertion and the
+/// live page both go red.</p>
+Method TestTheAlertsKeyIsServedFromTheManagerDirectory()
+{
+    Set tSources = ##class(OcuPilot.Port.LogSourcePort).Sources()
+    Do $$$AssertTrue($ListFind(tSources, "alerts") > 0, "the alerts key is in the shipped enum: " _ $ListToString(tSources, ","))
+    Do $$$AssertEquals(##class(OcuPilot.Port.LogSourcePort).FileFor("alerts"), "alerts.log", "and resolves to the instance's alert log")
+
+    Set tPairs = ##class(OcuPilot.Port.LogSourcePort).PairsFor("alerts")
+    Do $$$AssertEquals($ListLength(tPairs), 1, "one declared pair")
+    If $ListLength(tPairs) '= 1 Quit
+    Do $$$AssertEquals($ListToString($List(tPairs, 1), ":"), "%Admin_Operate:USE", "the operate pair alone")
+
+    ; An instance that has raised no alert has no alerts.log at all, which is the state a fresh
+    ; container is in, so the page is either the file's tail or the named absence -- never anything
+    ; else, and never a refusal that fails to name which.
+    Set tSC = ##class(OcuPilot.Port.LogSourcePort).Page("alerts", "", 4096, "", .tResult, .tHttp, .tFault)
+    Do $$$AssertTrue((tHttp = 200) || (tHttp = 404), "the production port answers the alert log's tail or names its absence: " _ tHttp)
+    If tHttp = 200 {
+        Do $$$AssertStatusOK(tSC, "the page is served")
+        Do $$$AssertEquals($Select($IsObject(tResult): tResult.source, 1: ""), "alerts", "naming the key it was asked for")
+        Do $$$AssertTrue($Select($IsObject(tResult): tResult.identity '= "", 1: 0), "and carrying a file identity, which is what the next page's cursor travels with")
+    } Else {
+        Do $$$AssertEquals($Select($IsObject(tFault): tFault.code, 1: ""), "LOG.ABSENT", "and an instance that has raised no alert is told so by name")
+    }
+
+    ; The declared read answers either way: a log the instance has not written yet is an empty
+    ; screen, not a failed one.
+    Set tSC = ##class(OcuPilot.Port.LogSourcePort).Rows("alerts", 5, .tRows, .tRowHttp, .tRowFault)
+    Do $$$AssertStatusOK(tSC, "the declared read over the same key answers")
+    Do $$$AssertEquals(tRowHttp, 200, "with 200 whether or not the instance has written the file")
+    Do $$$AssertTrue($IsObject(tRows) && tRows.%IsA("%Library.DynamicArray"), "as a list of rows")
+}
+
+/// <p>Story 6.14 AC1, AC2 -- the <code>messages</code> key is in the enum, resolves to
+/// <code>messages.log</code> and declares <code>%Admin_Operate:USE</code> alone, the same one pair
+/// the screen over it declares. The production port is asked, not the fixture, so this is the
+/// shipped enum against the instance's own file.</p>
+/// <p><b>Unlike <file>alerts.log</file> this file always exists</b>: every instance writes its own
+/// startup lines to it, so the page is a 200 and <code>LOG.ABSENT</code> is not an outcome here.
+/// The window is bounded and the whole file is never asked for -- the call passes
+/// <code>maxBytes</code> 4,096 and the answer's <code>size</code> is the file's own, which is what
+/// makes "bounded" observable rather than assumed.</p>
+/// <p>Reads the instance's <file>messages.log</file>; writes, rotates and removes nothing.</p>
+/// <p>Mutation: drop <code>messages</code> from
+/// <parameter>OcuPilot.Port.LogSourcePort.SOURCES</parameter> -&gt; the membership assertion and the
+/// live page both go red.</p>
+Method TestTheMessagesKeyIsServedFromTheManagerDirectory()
+{
+    Set tSources = ##class(OcuPilot.Port.LogSourcePort).Sources()
+    Do $$$AssertTrue($ListFind(tSources, "messages") > 0, "the messages key is in the shipped enum: " _ $ListToString(tSources, ","))
+    Do $$$AssertEquals(##class(OcuPilot.Port.LogSourcePort).FileFor("messages"), "messages.log", "and resolves to the instance's console log")
+
+    Set tPairs = ##class(OcuPilot.Port.LogSourcePort).PairsFor("messages")
+    Do $$$AssertEquals($ListLength(tPairs), 1, "one declared pair")
+    If $ListLength(tPairs) '= 1 Quit
+    Do $$$AssertEquals($ListToString($List(tPairs, 1), ":"), "%Admin_Operate:USE", "the operate pair alone")
+
+    Set tSC = ##class(OcuPilot.Port.LogSourcePort).Page("messages", "", 4096, "", .tResult, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the production port serves the console log's tail")
+    Do $$$AssertEquals(tHttp, 200, "at 200")
+    If '$IsObject(tResult) Quit
+    Do $$$AssertEquals(tResult.source, "messages", "naming the key it was asked for")
+    Do $$$AssertTrue(tResult.identity '= "", "carrying a file identity, which is what the next page's cursor travels with")
+    Do $$$AssertTrue(tResult.lines.%Size() > 0, "and the lines the instance wrote: " _ tResult.lines.%Size())
+    ; Bounded, read off the bytes the page actually carries rather than off the cursor: the cursor
+    ; is an absolute position in the file, so it says nothing about how much of it came back.
+    Set tBytes = 0
+    Set tIterator = tResult.lines.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tLine) {
+        Set tBytes = tBytes + $Length(tLine) + 1
+    }
+    Do $$$AssertTrue(tBytes <= 4096, "the page carries at most the bytes it asked for: " _ tBytes)
+    Do $$$AssertTrue(tResult.size > 0, "the file's own size is reported rather than read: " _ tResult.size)
+    Do $$$AssertTrue(tResult.offset <= (tResult.size + 1), "and the cursor is a position inside that file, never past its end: offset " _ tResult.offset)
+    ; The file this instance keeps is far larger than one window, so "bounded" is a narrowing here
+    ; rather than a whole-file read that happened to fit.
+    If tResult.size > 4096 Do $$$AssertTrue(tBytes < tResult.size, "the window is a fraction of the file: " _ tBytes _ " of " _ tResult.size)
+
+    Set tSC = ##class(OcuPilot.Port.LogSourcePort).Rows("messages", 5, .tRows, .tRowHttp, .tRowFault)
+    Do $$$AssertStatusOK(tSC, "the declared read over the same key answers")
+    Do $$$AssertEquals(tRowHttp, 200, "with 200")
+    Do $$$AssertTrue($IsObject(tRows) && tRows.%IsA("%Library.DynamicArray"), "as a list of rows")
+    Do $$$AssertTrue(tRows.%Size() <= 5, "bounded by the cap it was given: " _ tRows.%Size())
+}
+
+/// <p>The five scratch lines <method>TestRowsProjectTheTailNewestFirst</method> writes: a leading
+/// continuation, a head line with a bracketed category and a continuation of its own, one with no
+/// category, one whose text merely contains a bracket, and one whose category is stripped.</p>
+ClassMethod GrammarFile() As %String
+{
+    Set tNl = $Char(10)
+    Set tText = "partial tail of an earlier entry" _ tNl
+    Set tText = tText _ "09/18/26-04:25:09:123 (1234) 0 [Generic] first entry" _ tNl
+    Set tText = tText _ "  continuation of the first" _ tNl
+    Set tText = tText _ "09/18/26-04:25:10:456 (5678) 2 severe and unbracketed" _ tNl
+    Set tText = tText _ "09/18/26-04:25:11:789 (9012) 7 keeps [a bracket] inside" _ tNl
+    Set tText = tText _ "09/18/26-04:25:12:000 (3) 1 [Warn] bracketed category" _ tNl
+    Quit tText
+}
+
+/// <p>Story 6.13 AC3, AC4 -- <method>OcuPilot.Port.LogSourcePort.Rows</method> projects one window
+/// into <code>{time, severity, text}</code> rows newest first: a continuation line folds into the
+/// entry above it, a window opening mid-continuation keeps those bytes as an entry with no time and
+/// no severity, a severity the vendor's scale does not name survives as its own number, and the
+/// bracketed category is stripped only where the client's own optional group would strip it.</p>
+/// <p>Newest first is what makes the cap keep the newest entries:
+/// <method>OcuPilot.Screen.Read.Execute</method> keeps the first rows it is handed.</p>
+/// <p>Mutations: emit the entries in file order in
+/// <method>OcuPilot.Port.LogSourcePort.Entries</method> -&gt; the capped call answers the three
+/// oldest and the order assertions go red; give each row a fourth key there (AC10) -&gt; the
+/// row-key assertion goes red.</p>
+Method TestRowsProjectTheTailNewestFirst()
+{
+    Set tNl = $Char(10)
+    Set tSC = ..WriteFile(##class(%File).NormalizeFilename(..#PROBEFILE, ..DirectoryOne()), ..GrammarFile())
+    Do $$$AssertStatusOK(tSC, "the grammar scratch file is written")
+    If $$$ISERR(tSC) Quit
+
+    Set tSC = ##class(OcuPilot.Test.LogSourceFixture).Rows(..#PROBESOURCE, 3, .tCapped, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the capped call answers")
+    Do $$$AssertEquals(tHttp, 200, "with 200")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(tCapped.%Size(), 3, "the cap is honoured: " _ tCapped.%Size())
+    If tCapped.%Size() '= 3 Quit
+    Do $$$AssertEquals(tCapped.%Get(0).time, "2026-09-18T04:25:12.000", "the newest entry is first, its two-digit year pivoted the way IRIS pivots it")
+    Do $$$AssertEquals(tCapped.%Get(0).severity, "1", "carrying the vendor's own severity number")
+    Do $$$AssertEquals(tCapped.%Get(0).text, "bracketed category", "and its text with the bracketed category stripped")
+    Set tKeys = []
+    Set tKeyIterator = tCapped.%Get(0).%GetIterator()
+    While tKeyIterator.%GetNext(.tKey, .tValue) {
+        Do tKeys.%Push(tKey)
+    }
+    Do $$$AssertEquals(tKeys.%ToJSON(), "[""time"",""severity"",""text""]", "every row carries exactly the three declared keys: " _ tKeys.%ToJSON())
+    Do $$$AssertEquals(tCapped.%Get(1).severity, "7", "a severity outside the vendor's scale survives as the number itself")
+    Do $$$AssertEquals(tCapped.%Get(1).text, "keeps [a bracket] inside", "and a bracket inside the message is not read as a category")
+    Do $$$AssertEquals(tCapped.%Get(2).text, "severe and unbracketed", "the third-newest entry, which declares no category")
+
+    Set tSC = ##class(OcuPilot.Test.LogSourceFixture).Rows(..#PROBESOURCE, 0, .tAll, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "and an uncapped call answers the whole window")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(tAll.%Size(), 5, "five entries from six lines, because one line is a continuation: " _ tAll.%Size())
+    If tAll.%Size() '= 5 Quit
+    Do $$$AssertEquals(tAll.%Get(3).text, "first entry" _ tNl _ "  continuation of the first", "the continuation folds into the entry above it")
+    Do $$$AssertEquals(tAll.%Get(4).time, "", "the window opens mid-continuation, so its oldest entry carries no time")
+    Do $$$AssertEquals(tAll.%Get(4).severity, "", "and no severity")
+    Do $$$AssertEquals(tAll.%Get(4).text, "partial tail of an earlier entry", "while its bytes are kept rather than dropped")
 }
 
 /// <p>AC2 -- a key outside <method>OcuPilot.Port.LogSourcePort.Sources</method> is refused 404
