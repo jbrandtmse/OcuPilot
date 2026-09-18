@@ -73,6 +73,19 @@ Parameter PROBETYPE As INTEGER = 0;
 /// <method>ForgetTask</method>'s delete and for the terminal state names.</p>
 Parameter ASYNCTASKCLASS = "%Api.Admin.Util.AsyncTask";
 
+/// <p>The <code>resource:permission</code> pair <method>ForgetTask</method>'s delete needs, in
+/// <method>HoldsPair</method>'s grammar (DW-1025).</p>
+/// <p><b>Derived from the vendor's storage, not chosen.</b>
+/// <parameter>ASYNCTASKCLASS</parameter>'s <code>DataLocation</code> is
+/// <code>^|"^^:ds:IRISLOCALDATA"|Api.Admin.Util.AsyncTaskD</code> -- an extended reference naming
+/// the dataset itself, so the rows live in IRISLOCALDATA whatever the namespace maps, and that
+/// database's resource is <code>%DB_IRISLOCALDATA</code>. The vendor writes those rows through its
+/// own <code>SaveTask()</code>, which adds <code>%All</code> for the write; the delete here runs as
+/// the caller, so a caller without the pair meets <code>&lt;PROTECT&gt;</code>. Asserted against
+/// the instance by <class>OcuPilot.Test.AdminPortForget</class>, which resolves the resource from
+/// the database rather than repeating the literal.</p>
+Parameter ASYNCTASKPAIR = "%DB_IRISLOCALDATA:WRITE";
+
 /// <p>The task class <code>Main()</code> hands an endpoint to when
 /// <code>ShouldRunAsync()</code> is true.</p>
 Parameter ASYNCTASKENDPOINTCLASS = "%Api.Admin.Util.AsyncTaskEndpoint";
@@ -657,8 +670,16 @@ ClassMethod PollTask(pGuid As %String, Output pAnswer As %DynamicObject, Output 
 
 /// <p>Delete the task row <var>pGuid</var> names, once it is terminal and no worker still owns
 /// it. Only the row this call queued is deleted. A failure is logged and never raised.</p>
+/// <p><b>A caller who cannot write the row's database leaves it alone, silently</b>
+/// (<parameter>ASYNCTASKPAIR</parameter>, DW-1025). The delete runs as the caller, so without that
+/// pair it fails <code>&lt;PROTECT&gt;</code> -- and logging that put the vendor's protect text
+/// into the log this instance's own console-log screen displays, once per async read, for a caller
+/// who had already been served. The row is the vendor's own housekeeping: leaving it is the same
+/// outcome as the timeout arm, which also leaves a row behind, and no caller-visible answer
+/// changes either way.</p>
 ClassMethod ForgetTask(pGuid As %String)
 {
+    If '..HoldsPair(..#ASYNCTASKPAIR) Quit
     Set tSC = $$$OK
     Set tOrigNS = $NAMESPACE
     Try {
@@ -849,9 +870,11 @@ ClassMethod Sequence(pEndpoint As %RegisteredObject, pBody As %DynamicAbstractOb
 
 /// <p>Poll task <var>pGuid</var> until it is terminal or <method>AsyncTimeout</method> passes.
 /// <code>Finished</code> is a 200 success carrying the task's <code>Result</code>;
-/// <code>Failed</code> is a 500 whose fault is built from <code>FailureReason</code>; both
-/// delete the row. No terminal state within the bound is <code>PORT.TIMEOUT</code>, and the row
-/// is left to the worker that still owns it.</p>
+/// <code>Failed</code> is a 500 whose fault is built from <code>FailureReason</code>; both hand the
+/// row to <method>ForgetTask</method>, which deletes it only for a caller holding
+/// <parameter>ASYNCTASKPAIR</parameter> and leaves it alone silently otherwise. No terminal state
+/// within the bound is <code>PORT.TIMEOUT</code>, and the row is left to the worker that still
+/// owns it.</p>
 ClassMethod AwaitTask(pEndpoint As %String, pGuid As %String, Output pResult, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set tSC = $$$OK

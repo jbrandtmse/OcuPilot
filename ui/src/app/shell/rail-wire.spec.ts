@@ -62,6 +62,12 @@ const LIVE_PAYLOAD = {
           failedPair: '%DB_IRISSYS:READ',
         },
         {
+          route: 'logs/messages',
+          labelKey: 'messagesLogListLabel',
+          sideBarPosition: 2,
+          allowed: true,
+        },
+        {
           route: 'logs/errors',
           labelKey: 'errorLogListLabel',
           sideBarPosition: 3,
@@ -435,13 +441,21 @@ describe('the rail, wired to the real NavigationService reading a live-captured 
   });
 
   it('Story 2.12/6.13: reads both Logs file-screen verdicts the live payload carries', () => {
-    // Both declare `%Admin_Operate:USE` -- which this principal holds -- then `%DB_IRISSYS:READ`,
-    // which it does not, so both are denied on the second. Without this the alerts.log entry added
-    // to LIVE_PAYLOAD is read by nothing here and can drift from what the server answers.
+    // Both are denied on `%DB_IRISSYS:READ` in this payload, which this principal does not hold.
+    // Without this the alerts.log entry added to LIVE_PAYLOAD is read by nothing here and can
+    // drift from what the server answers.
     const navigation = TestBed.inject(NavigationService);
     for (const route of ['logs/alerts', 'logs/errors']) {
       expect(navigation.screenVerdict(route)).toEqual({ allowed: false, failedPair: '%DB_IRISSYS:READ' });
     }
+  });
+
+  it('Story 6.14: reads the messages.log verdict the live payload carries', () => {
+    // It declares `%Admin_Operate:USE` and nothing else, so this principal -- who holds it -- is
+    // allowed where its three Logs siblings are not. Its own assertion, because the payload entry
+    // added above reddens nothing on its own (6.13 finding #9).
+    const navigation = TestBed.inject(NavigationService);
+    expect(navigation.screenVerdict('logs/messages')).toEqual({ allowed: true, failedPair: '' });
   });
 
   it('Story 6.3: reads each Security and secrets screen verdict the live payload carries', () => {

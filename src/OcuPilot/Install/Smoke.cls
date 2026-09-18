@@ -182,6 +182,14 @@ Parameter DEVICELISTTOOL = "osmgmt.devices";
 /// instance whose alerts.log is still empty answers no row without anything being wrong.</p>
 Parameter ALERTLISTTOOL = "logs.alerts";
 
+/// <p>The tool identifier of the messages.log viewer, read generically by
+/// <method>CheckAreaLists</method> (Story 6.14). Unlike <parameter>ALERTLISTTOOL</parameter> this is
+/// an <b>exactly-one</b> list: every instance writes its own startup lines to
+/// <file>messages.log</file>, so an empty answer here is a real failure. Distinct from the
+/// <code>messageslog</code> check, which reads the same file through the page route
+/// (<parameter>MESSAGESLOGPATH</parameter>) rather than through the screen's declared read.</p>
+Parameter MESSAGESLISTTOOL = "logs.messages";
+
 /// <p>The console-log page's path under the API application, and the window the
 /// <code>messageslog</code> check asks for. Small: the check is that the endpoint serves the
 /// instance's own log, not that it serves much of it.</p>
@@ -624,16 +632,20 @@ ClassMethod CheckApiReads(ByRef pChecks, pAccessToken As %String) [ Private ]
 /// with no criteria and expects exactly one row, like <code>processes</code> and
 /// <code>systemusage</code>, because an idle instance's locks are its own daemons';
 /// <parameter>LOCKLISTTOOL</parameter> records what was observed and how to read a failure.</p>
+/// <p><b>messages.log</b> (<code>messages</code>, Story 6.14) reads the same way at
+/// <code>maxRows=1</code> and expects exactly one row, for
+/// <parameter>MESSAGESLISTTOOL</parameter>'s reason: every instance writes its own startup lines to
+/// that file, so unlike <code>alerts</code> it is not a zero-or-one list.</p>
 ClassMethod CheckAreaLists(ByRef pChecks, pAccessToken As %String, pDemo As %String = "") [ Private ]
 {
     Set tDemoWanted = ($Select(pDemo '= "": pDemo, 1: $System.Util.GetEnviron("OCUPILOT_DEMO")) = "1")
     Set tBase = ..RosterPath("api")
-    For tI = 1:1:27 {
-        Set tName = $Piece("webapplications,users,ssl,tasks,processes,audit,webapp.restapis,roles,resources,services,x509,ldap,wallet,oauthdescriptions,oauthclients,oauthresourceservers,oauthserver,oauthserverclients,ondemand,upcoming,taskhistory,systemusage,locks,databases,databasefreespace,devices,alerts", ",", tI)
+    For tI = 1:1:28 {
+        Set tName = $Piece("webapplications,users,ssl,tasks,processes,audit,webapp.restapis,roles,resources,services,x509,ldap,wallet,oauthdescriptions,oauthclients,oauthresourceservers,oauthserver,oauthserverclients,ondemand,upcoming,taskhistory,systemusage,locks,databases,databasefreespace,devices,alerts,messages", ",", tI)
         ; Every index names its own tool and the last arm names none: a list added to the bound and
         ; the name list without its own arm reads an empty path and fails, rather than re-reading
         ; the previous list under the new name and passing.
-        Set tTool = $Select(tI = 1: ..#WEBAPPLISTTOOL, tI = 2: ..#USERLISTTOOL, tI = 3: ..#SSLLISTTOOL, tI = 4: ..#TASKLISTTOOL, tI = 5: ..#PROCESSLISTTOOL, tI = 6: ..#AUDITLISTTOOL, tI = 7: ..#RESTAPILISTTOOL, tI = 8: ..#ROLELISTTOOL, tI = 9: ..#RESOURCELISTTOOL, tI = 10: ..#SERVICELISTTOOL, tI = 11: ..#X509LISTTOOL, tI = 12: ..#LDAPLISTTOOL, tI = 13: ..#WALLETLISTTOOL, tI = 14: ..#OAUTHDESCRIPTIONSTOOL, tI = 15: ..#OAUTHCLIENTSTOOL, tI = 16: ..#OAUTHRESOURCESERVERSTOOL, tI = 17: ..#OAUTHSERVERTOOL, tI = 18: ..#OAUTHSERVERCLIENTSTOOL, tI = 19: ..#TASKONDEMANDTOOL, tI = 20: ..#TASKUPCOMINGTOOL, tI = 21: ..#TASKHISTORYTOOL, tI = 22: ..#SYSTEMUSAGETOOL, tI = 23: ..#LOCKLISTTOOL, tI = 24: ..#DATABASELISTTOOL, tI = 25: ..#DATABASEFREESPACELISTTOOL, tI = 26: ..#DEVICELISTTOOL, tI = 27: ..#ALERTLISTTOOL, 1: "")
+        Set tTool = $Select(tI = 1: ..#WEBAPPLISTTOOL, tI = 2: ..#USERLISTTOOL, tI = 3: ..#SSLLISTTOOL, tI = 4: ..#TASKLISTTOOL, tI = 5: ..#PROCESSLISTTOOL, tI = 6: ..#AUDITLISTTOOL, tI = 7: ..#RESTAPILISTTOOL, tI = 8: ..#ROLELISTTOOL, tI = 9: ..#RESOURCELISTTOOL, tI = 10: ..#SERVICELISTTOOL, tI = 11: ..#X509LISTTOOL, tI = 12: ..#LDAPLISTTOOL, tI = 13: ..#WALLETLISTTOOL, tI = 14: ..#OAUTHDESCRIPTIONSTOOL, tI = 15: ..#OAUTHCLIENTSTOOL, tI = 16: ..#OAUTHRESOURCESERVERSTOOL, tI = 17: ..#OAUTHSERVERTOOL, tI = 18: ..#OAUTHSERVERCLIENTSTOOL, tI = 19: ..#TASKONDEMANDTOOL, tI = 20: ..#TASKUPCOMINGTOOL, tI = 21: ..#TASKHISTORYTOOL, tI = 22: ..#SYSTEMUSAGETOOL, tI = 23: ..#LOCKLISTTOOL, tI = 24: ..#DATABASELISTTOOL, tI = 25: ..#DATABASEFREESPACELISTTOOL, tI = 26: ..#DEVICELISTTOOL, tI = 27: ..#ALERTLISTTOOL, tI = 28: ..#MESSAGESLISTTOOL, 1: "")
         If tBase = "" {
             Do ..Note(.pChecks, tName, "fail", "the roster on this instance declares no API path, so there was nothing to read")
             Continue

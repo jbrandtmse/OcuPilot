@@ -347,7 +347,8 @@ Method TestEveryDeclaredMgmntReadFieldIsAKeyOfTheLiveRow()
     Do $$$AssertEquals(tChecked, 2, "the two production mgmnt reads are checked: " _ tChecked)
 }
 
-/// <p>Story 6.13 -- the executor's <code>logsource</code> branch, against the live port: the
+/// <p>Story 6.13, 6.14 -- the executor's <code>logsource</code> branch, against the live port, over
+/// <b>every</b> shipped <code>logsource</code> descriptor: the
 /// declared read answers rows carrying exactly the declared fields, the cap bounds them and the
 /// truncation signal follows it. A roster with no logsource read fails rather than passing over
 /// nothing.</p>
@@ -381,7 +382,7 @@ Method TestEveryDeclaredLogSourceReadFieldIsAKeyOfTheLiveRow()
             Do $$$AssertTrue(tRow.%GetTypeOf(tField) '= "unassigned", tClass _ ": declared read field '" _ tField _ "' is a key of the live row")
         }
     }
-    Do $$$AssertEquals(tChecked, 1, "the one production logsource read is checked: " _ tChecked)
+    Do $$$AssertEquals(tChecked, 2, "both production logsource reads are checked: " _ tChecked)
 }
 
 /// <p>Story 2.8 -- the declared banner is evaluated inside the read, against the real port, and it

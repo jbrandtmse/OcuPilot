@@ -3886,7 +3886,7 @@ So that I can find a repeating warning and ask the agent what it means.
 
 - **Given** a severity chip
 - **When** the user clicks it
-- **Then** that severity becomes the filter, and the command bar shows the active filter with Clear.
+- **Then** that severity becomes the filter, and the log viewer's own bar shows the active filter with Clear. [AMENDED 2026-09-18, Story 6.14 spec gate: the viewer's bar is where Story 6.13 put its search, jumps and Raw toggle, so Clear ships beside the chips rather than in the shell command bar (DW-1109, DW-1138); was "the command bar shows the active filter with Clear"]
 
 - **Given** the assumed **28px log row height** (UX-DR80)
 - **When** this story is built

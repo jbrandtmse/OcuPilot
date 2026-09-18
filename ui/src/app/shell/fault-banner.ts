@@ -11,7 +11,15 @@ import { Router } from '@angular/router';
 import { ConnectivityService } from '../core/connectivity';
 import { isBannerFault } from '../core/fault';
 import { NavigationService, firstAllowedScreen, withQuery } from '../core/navigation';
+import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
+
+/**
+ * The `commandAliases` value that names the file this control opens. The descriptor declaring it is
+ * the screen, so the shell matches on what the screen says about itself rather than on a route
+ * string typed here (AD-5).
+ */
+const MESSAGES_LOG_ALIAS = 'messages.log';
 
 /**
  * The shell's one connectivity banner: a full-width `role="alert"` strip at the top of the
@@ -33,8 +41,8 @@ import { STRINGS } from '../core/strings';
  * published server-fault copy, so it renders; the screen it opens is Epic 6's, so until a built
  * screen over `log-entry` exists -- and until this user's own `screenVerdict` allows it -- the
  * control is listed, focusable and `aria-disabled="true"`, the same refusal the side bar makes
- * in place. The destination is resolved from the descriptor mirror's own entity vocabulary
- * (AD-5, AD-14), never from a route string typed here.
+ * in place. The destination is resolved from the descriptor mirror's own declaration of which
+ * file a screen shows (AD-5, AD-14), never from a route string typed here.
  *
  * **`role="alert"` is on the strip, not on the page.** The element is created when the fault
  * appears and removed when it clears, so the alert fires on the transition rather than
@@ -71,6 +79,7 @@ export class FaultBanner {
   private readonly connectivity = inject(ConnectivityService);
   private readonly navigation = inject(NavigationService);
   private readonly router = inject(Router);
+  private readonly shell = inject(ShellState);
 
   protected readonly STRINGS = STRINGS;
 
@@ -85,16 +94,22 @@ export class FaultBanner {
   /**
    * The screen that shows `messages.log`, when one is built and this user may open it.
    *
-   * Found by entity type rather than by route: the descriptor is the single source of what a
-   * screen is (AD-5), and a route string typed here would be a second one to drift. While no
-   * built screen shows `messages.log` this is `null` and the control is gated -- which is the
-   * published contract rendering correctly, not a missing destination.
+   * Matched on the descriptor's own `messages.log` alias, not merely on `log-entry`: several
+   * screens share that entity type, and the first of them is the alerts.log viewer -- so a filter
+   * by entity type alone sent the control labelled "Open messages.log" to the wrong file
+   * (**DW-148**). The alias is what the descriptor says about which file it shows, which keeps the
+   * destination declared rather than typed here (AD-5). While no built screen shows `messages.log`
+   * this is `null` and the control is gated -- the published contract rendering correctly, not a
+   * missing destination.
    */
   private readonly logScreen = computed(() => {
     this.generation();
     const candidates = this.navigation
       .builtScreens()
-      .filter((screen) => screen.entityType === 'log-entry');
+      .filter(
+        (screen) =>
+          screen.entityType === 'log-entry' && screen.commandAliases.includes(MESSAGES_LOG_ALIAS)
+      );
     return firstAllowedScreen(candidates, (route) => this.navigation.screenVerdict(route));
   });
 
@@ -151,10 +166,16 @@ export class FaultBanner {
    * Open the messages.log screen, carrying the namespace (AD-44). Refused here while no built
    * screen serves it: `aria-disabled` carries no behaviour of its own, so the refusal has to be
    * in the handler -- the shape `side-bar.ts` and `locator-bar.ts` use for the same idea.
+   *
+   * The Logs side bar is shown on the screen before the navigation, through `ShellState.showArea`
+   * and for `locator-bar.ts`'s reason: `ScreenOutlet`'s `setActiveArea` leaves a closed bar
+   * closed, so a user who arrived from the banner would land on the log with no idea where in the
+   * shell it sits (**DW-148**).
    */
   protected openMessagesLog(): void {
     const screen = this.logScreen();
     if (screen === null) return;
+    this.shell.showArea(screen.area);
     void this.router.navigateByUrl(withQuery(screen.route, this.router.url));
   }
 

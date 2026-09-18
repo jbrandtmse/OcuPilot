@@ -1007,6 +1007,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-14T15:53:59Z occurrence=2-5-the-web-applications-list
 - 2026-09-14T15:56:17Z status=routed owner=6-14-the-messages-log-viewer by=adjudication note=resolved for the command box (opens the bar only when already open) and the locator's area segment (web-applications.browser-spec AC6); residual: the fault banner's Open messages.log link navigates without ShellState.showArea and is unreachable until 6.14 builds the messages.log screen
 - 2026-09-16T20:03:33Z occurrence=6-2-the-roles-resources-and-services-lists note=after the first-login gate, Back from the Definition form can leave the side bar on Agent co-pilot (Story 6.2 implement, unverified flake on reading the Permissions side bar; probe: browser repro of Back from the Definition form)
+- 2026-09-18T14:38:18Z status=resolved-by:6-14-the-messages-log-viewer by=dev note=banner resolves the screen from the messages.log alias and calls ShellState.showArea; both halves reddened
 
 ### DW-149: No Skip to content link, and no ledger entry recorded the gap: the frame now puts banner, rail and side bar ahead of main in Tab order
 - source: spec-1-10-header-status-bar-and-page-chrome.md | severity: med | fix-risk: low | footprint: in-epic
@@ -1831,6 +1832,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: AreaCoverageProblem requires the area to cover every screen's pairs; the audit viewer needs %Admin_Secure:USE while the messages.log and application error log reads do not
 - 2026-09-15T02:56:12Z status=routed owner=2-11-the-messages-log-paging-endpoint by=harvest note=same family as DW-275: decide per-screen gating or accept the union's false denial when 2.11 lands in the same area
 - 2026-09-15T03:57:18Z status=routed owner=6-14-the-messages-log-viewer by=spec_gate note=owner-delegated decision 2026-09-14: accept the union's false denial (relaxing AreaCoverageProblem would trade it for the false admission AD-8 names, and a ninth area contradicts the fixed vocabulary); Story 2.11 ships no Logs screen so nothing it delivers reaches the denial - the viewer story decides whether the screen declares the pair or the area splits
+- 2026-09-18T14:38:18Z status=resolved-by:6-14-the-messages-log-viewer by=dev note=the screen declares %Admin_Operate:USE alone; Area.cls untouched and the union's accepted false denial stands
 
 ### DW-279: A criterion value longer than the vendor's own column for that parameter fails inside the queued task's save and answers 500, where the declared grammar has no length to refuse it by
 - source: spec-2-10-the-audit-database-viewer-with-its-agent-marker-filter.md | severity: med | fix-risk: low | footprint: in-epic
@@ -2952,6 +2954,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Observed by Story 6.5's QA on ocupilot-b-ci; unrelated to 6.5's code and not investigated. The audit LIST is the self-queued async path AdminPort polls (AD-26); if the cleanup runs under a caller without the privilege, the errors reach messages.log, which Story 6.14 displays.
 - 2026-09-17T04:25:10Z status=routed owner=6-14-the-messages-log-viewer by=harvest note=investigate whether the PROTECT originates in AdminPort's async poll or the vendor's own task cleanup; fix at the port if ours, else close by-design with the vendor evidence
 - 2026-09-18T08:32:18Z by=plan note=ours, not the vendor's: AdminPort.ForgetTask:666 deletes into IRISLOCALDATA, whose resource has public read and no public write, so an unprivileged caller reads the Finished row then throws PROTECT on the delete; the vendor's PurgeAsyncQueue() is [Internal] and scheduled by nothing; AsyncResult exposes no delete type. Fix is a privilege check before %DeleteId, not a widened declared privilege
+- 2026-09-18T14:38:18Z status=resolved-by:6-14-the-messages-log-viewer by=dev note=ForgetTask skips %DeleteId without ASYNCTASKPAIR and logs nothing; PROTECT reproduced and reddened on a real principal
 
 ### DW-1026: Live-instance task-history tests compare two separate reads of a growing history exactly, so a Task Manager run landing between them fails the comparison
 - source: spec-6-6-task-history-per-task-and-across-tasks.md | severity: low | fix-risk: low | footprint: in-story
@@ -3072,6 +3075,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-6-13-the-alerts-log-viewer.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: Registry.ReadProblem requires read.source.port to be admin, state, mgmnt (Registry.cls:832); 6.13 adds monitor for the alerts read, but messages.log is served only by LogSourcePort.Page through /logs/messages (LogPage.cls:29-50), which no source kind expresses. LogErrorList took the other route and declares its tool in Screen/Tool/ErrorRead.cls, a path Epic 6's footprint forbids.
 - 2026-09-18T08:25:28Z status=routed owner=6-14-the-messages-log-viewer by=plan note=6.13 avoids it by declaring its read on the monitor port; 6.14 has no such source and must either add a logfile source kind or get a footprint extension for Screen/Tool
+- 2026-09-18T14:38:17Z status=resolved-by:6-14-the-messages-log-viewer by=dev note=logsource declaration alone; Read.cls:263-266 is endpoint-generic, so no source kind and no Screen/Tool file
 
 ### DW-1101: Async task rows survive on ocupilot-slot-b for a _SYSTEM caller with no error logged, so AdminPort.ForgetTask does not always run or does not always delete
 - source: spec-6-13-the-alerts-log-viewer.md | severity: med | fix-risk: low | footprint: in-epic
@@ -3079,6 +3083,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-18T08:25:37Z status=open owner=6-13-the-alerts-log-viewer by=plan note=probe only in this story: run Database.SysCRUD INFO through AdminPort on a throwaway as _SYSTEM and read the row back; fix or re-own with the residual at adjudication
 - 2026-09-18T08:32:22Z status=routed owner=6-14-the-messages-log-viewer by=plan note=re-owned at the 6.13 spec gate: 6.13 does not touch AdminPort.cls, and 6.14 already owns DW-1025 in the same method
 - 2026-09-18T13:33:22Z by=plan note=slot B: 7 _SYSTEM/Finished rows, no fault logged; ForgetTask unreached - AdminPort.cls:361 awaits only on 202+Location
+- 2026-09-18T16:02:00Z status=routed owner=burndown by=cr note=re-owned off this story at code review: the DW-1025 guard shipped and reddens under mutation; the residual is the unawaited 202 at AdminPort.cls:361, which this story's shape does not reach
 
 ### DW-1102: The log viewer's next/previous match controls have no published accessible name
 - source: spec-6-13-the-alerts-log-viewer.md | severity: low | fix-risk: low | footprint: in-epic
@@ -3089,6 +3094,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-6-13-the-alerts-log-viewer.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Measured on the throwaway (2026.2): $zu(9,"",text,1,severity) and %SYS.System.WriteToConsoleLog put -2, -1, 0, 1 and 2 into messages.log alone; only 3 also reached alerts.log. alerts-log.browser-spec.mjs therefore appends whole lines in the file's own grammar to reach AC8's densest severity mix.
 - 2026-09-18T09:42:53Z status=open owner=burndown by=dev note=Story 6.14's messages.log spec can seed through the writer instead, since every level reaches that file
+- 2026-09-18T14:38:18Z status=resolved-by:6-14-the-messages-log-viewer by=dev note=messages-log.browser-spec seeds all five levels through %SYS.System.WriteToConsoleLog; no raw append
 
 ### DW-1108: LogViewerStore.readRecent uses the earliest accumulated tag on every Load newer, not the newest rendered row's tag AC5 names
 - source: spec-6-13-the-alerts-log-viewer.md | severity: med | fix-risk: low | footprint: in-story
@@ -3101,6 +3107,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: AC7 and Execution item 8 promise 'the severity-chip-click filter with Clear in the command bar'; EXPERIENCE.md:367 says the viewer reuses 'Clear filter', published at :403 as a button-text of the command bar. log-viewer.page.ts renders chips in its own .ocu-log-viewer-chips div and clears only by re-clicking the pressed chip; shell/command-bar.ts renders primary, filter input, count, row actions and the View menu and no clear control; strings.ts carries no clear-filter key at all. Implementing it needs a shared command-bar control plus an authorized string, and the EXPERIENCE.md :367 row lists the string as reused rather than new, so the strings table (481 of a 520 bound) cannot take it without a Rule 5 amendment.
 - 2026-09-18T10:34:03Z status=escalated owner=burndown by=cr note=Not patched here: fix risk is high (shared shell control + planning-artifact amendment + a strings row the table's budget does not obviously have). The chip toggle is the affordance that ships and both specs pin it. Decision sheet: build the command-bar control, or amend AC7/EXPERIENCE.md:367 to the toggle.
 - 2026-09-18T13:34:58Z status=routed owner=6-14-the-messages-log-viewer by=adjudication note=re-owned off burndown on new evidence: Story 6.13 put search, both jumps and Raw in the viewer's own .ocu-log-viewer-bar, so Clear is one button beside the chips plus one strings row, with shell/command-bar.ts untouched; 6.14 AC4 asks for it, and the strings row landed at EXPERIENCE.md:369
+- 2026-09-18T14:38:18Z status=resolved-by:6-14-the-messages-log-viewer by=dev note=Clear filter is one button-text in .ocu-log-viewer-bar plus logViewerClearFilter; command-bar.ts untouched
 
 ### DW-1110: LogViewerStore is not in app.ts's sign-out teardown, so one principal's log lines survive a sign-out in the same tab
 - source: spec-6-13-the-alerts-log-viewer.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -3135,3 +3142,54 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-6-13-the-alerts-log-viewer.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: The rework reported one failing check on an otherwise green sweep and three clean runs after it; the failing check's name was not recorded, so nothing in the tree says which of the 43 it was. This re-review ran scripts/smoke.sh five more times against a fresh ocupilot-b-ci and got executed=44 passed=44 failed=0 every time (44 rather than 43 because agentswitches was executable on this container). smoke.sh is a CI gate, so an unnamed intermittent failure in it is a red run nobody can triage.
 - 2026-09-18T12:44:07Z status=escalated owner=burndown by=cr note=not reproduced in 5 runs here; the fix is to make smoke.sh's failure line quotable rather than to chase the check -- a report that records executed/passed/failed without the failing check's name cannot be triaged after the fact
+
+### DW-1136: ForgetTask's new privilege guard leaves a vendor async-task row behind on every unprivileged async read, permanently and silently, and nothing purges them
+- source: spec-6-14-the-messages-log-viewer.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: AdminPort.cls:682 skips %DeleteId without ASYNCTASKPAIR and logs nothing (AC9, by design). Observed on ocupilot-b-ci: removing the guard makes the PROTECT appear, so the path is taken per unprivileged async read. This ledger's own 2026-09-18T08:32 note records that the vendor's PurgeAsyncQueue() is [Internal] and scheduled by nothing, so Api.Admin.Util.AsyncTaskD grows without bound for such callers.
+- 2026-09-18T16:02:00Z status=escalated owner=burndown by=cr note=the guard is the right refusal; what is undecided is the row it now leaves: accept the growth, purge it from a privileged path, or bound it
+
+### DW-1137: AdminPort.ASYNCTASKPAIR is a literal, so on an instance whose IRISLOCALDATA carries a non-default resource the guard denies every caller and ForgetTask silently stops deleting
+- source: spec-6-14-the-messages-log-viewer.md | severity: med | fix-risk: high | footprint: in-epic
+- evidence: Parameter ASYNCTASKPAIR = "%DB_IRISLOCALDATA:WRITE" under a doc comment headed 'Derived from the vendor's storage, not chosen'; the code derives nothing. A database's resource is SYS.Database.ResourceName and need not be %DB_<name>. Test.AdminPortForget.TestTheDeclaredPairNamesTheDatabaseTheRowsLiveIn derives and compares, so any instance the suite runs on reddens - an instance it does not run on skips every delete with nothing logged.
+- 2026-09-18T16:02:00Z status=escalated owner=burndown by=cr note=fix-risk high: resolving the resource at call time adds a %SYS switch to the async path in a file Epic 4 shares; the alternative is to attempt the delete and suppress only PROTECT
+
+### DW-1138: The planning artifacts still put the log viewer's Clear control in the shell command bar, and the new Fixed strings row cites two wrong lines
+- source: spec-6-14-the-messages-log-viewer.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: DW-1109 shipped Clear in .ocu-log-viewer-bar and is stamped resolved-by:6-14. EXPERIENCE.md:412 (severity-chip) still reads 'the command-bar shows the active filter with Clear', :367 still attributes 'Clear filter' to the command bar, and epics.md 6.14 AC4 reads 'the command bar shows the active filter with Clear'. The new :369 row cites :411 (the log-viewer row, which names no Clear) for the control and :403 (masked-secret-field) for the button-text example, which is at :406.
+- 2026-09-18T16:02:00Z status=escalated owner=burndown by=cr note=Rule 5 planning amendment, the lead's or the owner's: restate the three sentences where Clear now lives and repair the two citations; code review may not edit a planning artifact
+- 2026-09-18T16:07:34Z status=resolved-by:6-14-the-messages-log-viewer by=adjudication note=the lead restated the three sentences where Clear now lives (EXPERIENCE.md :367 and :412, epics.md 6.14 AC4) with AMENDED markers and repaired the new :369 row's two citations to :406 and :412
+
+### DW-1139: The rail and navigation LIVE_PAYLOAD fixtures now describe a verdict set no live instance can answer: alerts denied on %DB_IRISSYS:READ beside messages allowed, for one principal
+- source: spec-6-14-the-messages-log-viewer.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: LogAlertViewer.cls:44 declares %Admin_Operate:USE alone, as LogMessageViewer.cls does; LogErrorList.cls:76 is the one that also declares %DB_IRISSYS:READ. A principal allowed logs/messages therefore cannot be refused logs/alerts on the second pair. Story 6.13 added that entry; 6.14 rewrote the comment that stated the reason rather than the entry. Client parsing, which is what the fixture tests, is unaffected.
+- 2026-09-18T16:02:00Z status=wontfix-accepted owner=6-14-the-messages-log-viewer by=cr note=reopen_if=a re-captured /navigation payload for a principal holding %Admin_Operate:USE alone shows logs/alerts allowed while the fixture still says denied on %DB_IRISSYS:READ
+
+### DW-1140: AC9's privileged half is pinned by the delete being attempted, never by a real async-task row being removed
+- source: spec-6-14-the-messages-log-viewer.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Test.AdminPortForget leg 2 drives ForgetTask with MISSINGGUID, so it reads the %DeleteId failure log as proof the delete ran; WireSecurityRead's leg asserts two absences. Nothing anywhere opens a real row and watches it go. AC9 says 'given a caller that does hold it, the row is still deleted'. The guard itself is falsifiable: removing it reddens leg 1 on ocupilot-slot-b and reddens WireSecurityRead's sweep with a real PROTECT on ocupilot-b-ci (both observed at code review).
+- 2026-09-18T16:02:25Z status=wontfix-accepted owner=6-14-the-messages-log-viewer by=cr note=reopen_if=an async-task row is observed surviving a served read by a caller that does hold %DB_IRISLOCALDATA:WRITE
+
+### DW-1141: onClear's match-caret reset is unreachable by any fixture the log-viewer specs build, so the line is unpinned
+- source: spec-6-14-the-messages-log-viewer.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: log-viewer.page.ts's onClear resets caretValue as onChip does. Reaching a caret above 1 inside a chip filter needs two rows of one severity that both match the needle; FILE_LINES carries one row per severity, so every sequence the spec can drive leaves the caret at 1 either way and deleting the line reddens nothing. Removing it would announce the kth match of the widened set instead of the first - a cosmetic inconsistency, never an out-of-range count.
+- 2026-09-18T16:02:25Z status=wontfix-accepted owner=6-14-the-messages-log-viewer by=cr note=reopen_if=a log-viewer spec gains a fixture with two rows of one severity, at which point the assertion costs two lines
+
+### DW-1142: messages-log.browser-spec re-seeds on a marker counted in the whole file rather than in the window the viewer renders
+- source: spec-6-14-the-messages-log-viewer.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The before() hook greps messages.log for OcuPilotMessagesSpec and skips seeding when it finds SEEDED.length occurrences. On a throwaway written to heavily after a first run the seeded entries fall outside the default 65,536-byte tail, so AC6's five-chip and long-line assertions fail with re-seeding suppressed. The failure is loud, and one run per throwaway is the documented workflow.
+- 2026-09-18T16:02:25Z status=wontfix-accepted owner=6-14-the-messages-log-viewer by=cr note=reopen_if=AC6 fails on a throwaway whose messages.log already carries the marker, which is the second run against one container
+
+### DW-1143: A messages.log rotated to empty under MaxConsoleLogSize fails the smoke's exactly-one messages check and three suites, none of which has a zero-row arm for that key
+- source: spec-6-14-the-messages-log-viewer.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Install.Smoke's tZeroOrOne list names alerts and the OAuth tabs, not messages, so the messages check demands exactly one row (deliberate, and its doc comment says why). Test.LogSource, Test.ReadTool and Test.LogSourceDenial each assert the console log answers rows. Every started instance writes its startup lines immediately, so the empty window is the moment between a rotation and the next write.
+- 2026-09-18T16:02:26Z status=wontfix-theoretical owner=6-14-the-messages-log-viewer by=cr note=what would make it real: an instance whose MaxConsoleLogSize rotates messages.log during a suite run, observed as one of these four failing with an empty tail
+
+### DW-1144: Test.ReadTool compares the messages tool's window to the port's by index, which a console write landing between the two reads shifts
+- source: spec-6-14-the-messages-log-viewer.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: TestTheMessagesReadToolCarriesTheConsoleLogsRowsAndNotItsCursor compares the last row of two cap-5 newest-first windows read one call apart. A line arriving between them shifts every position, the last as much as the first; the comment claiming the last row is immune was corrected at code review. The calls are adjacent and nothing in the class writes to the file, and the assertion held across three full runs here.
+- 2026-09-18T16:02:26Z status=wontfix-accepted owner=6-14-the-messages-log-viewer by=cr note=reopen_if=that assertion reddens in CI with no code change, at which point compare the two windows as sets instead of by index
+
+### DW-1145: messages-log.browser-spec restates alerts-log.browser-spec's harness rather than sharing it
+- source: spec-6-14-the-messages-log-viewer.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: 348 lines against 337: signedInAt, signedInAtViewer, settled, ROW_SELECTOR, ROW_HEIGHT, the seeding guard and the geometry measurement are copied. The two screens share one page, one archetype, one store and one CSS rule, so the next log viewer copies a third time.
+- 2026-09-18T16:02:26Z status=wontfix-accepted owner=6-14-the-messages-log-viewer by=cr note=reopen_if=a third log-viewer browser spec is written, at which point the harness moves beside browser/list-spec.mjs

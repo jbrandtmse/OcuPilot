@@ -14,7 +14,7 @@ import {
   severityWord,
   type LogLine,
 } from './log-line';
-import { ALERTS_SOURCE, LogViewerStore, type LogViewerSource } from './log-viewer.store';
+import { ALERTS_SOURCE, MESSAGES_SOURCE, LogViewerStore, type LogViewerSource } from './log-viewer.store';
 
 /** One row, resolved for drawing: the cells' text and the search spans of its message. */
 interface RowView {
@@ -39,14 +39,14 @@ interface ChipView {
 /** The source each `log-viewer` descriptor reads, keyed by its route. */
 const SOURCES: Readonly<Record<string, LogViewerSource>> = {
   'logs/alerts': ALERTS_SOURCE,
+  'logs/messages': MESSAGES_SOURCE,
 };
 
 /**
  * The page every `log-viewer` archetype renders (AD-5): a bounded window of one instance log file,
  * read from the file itself.
  *
- * Story 6.13 builds it for `alerts.log`; Story 6.14 declares `messages.log` against it and adds a
- * route to `SOURCES` rather than a page of its own.
+ * Each log screen adds one `SOURCES` route rather than a page of its own.
  *
  * **Nothing streams and nothing ticks** (AD-43). The store issues one read when the screen opens
  * and one per explicit Load newer; there is no interval, no `EventSource` and no `WebSocket`.
@@ -57,9 +57,12 @@ const SOURCES: Readonly<Record<string, LogViewerSource>> = {
  *
  * **The chips are the filter.** Clicking one sets that severity as the filter and marks the chip
  * `aria-pressed`; clicking the pressed chip clears it. The sticky search is an
- * `input type="search"` and carries the browser's own clear affordance. EXPERIENCE.md's
- * "Clear filter" is the command bar's `button-text`, and the shell's command bar renders no such
- * control today, so this screen offers none either -- DW-1109.
+ * `input type="search"` and carries the browser's own clear affordance.
+ *
+ * **Clear filter lives in this screen's own sticky bar**, which is what a `log-viewer`'s command
+ * bar is -- the search, both jump controls and the Raw toggle are already there. It renders only
+ * while a chip is pressed, so a screen with nothing to clear offers no dead control, and
+ * `shell/command-bar.ts` grows no slot for it (DW-1109).
  *
  * **Next and previous over the matches are the search field's own Enter and Shift+Enter**, not two
  * buttons. EXPERIENCE.md publishes no name for either control, and an icon button with no published
@@ -99,6 +102,11 @@ const SOURCES: Readonly<Record<string, LogViewerSource>> = {
       >
         {{ STRINGS.openApiRaw }}
       </button>
+      @if (showClear) {
+        <button type="button" class="ocu-button-text" data-ocu-log="clear" (click)="onClear()">
+          {{ STRINGS.logViewerClearFilter }}
+        </button>
+      }
     </div>
 
     <div class="ocu-log-viewer-chips" data-ocu-log="chips">
@@ -231,6 +239,12 @@ export class LogViewerPage {
     return this.rawValue;
   }
 
+  /** Whether a severity chip is the active filter, which is the only thing Clear clears. */
+  protected get showClear(): boolean {
+    this.generation();
+    return this.chipValue !== '';
+  }
+
   /** The entries the chip filter admits, oldest first, before the search narrows anything. */
   private get filtered(): readonly LogLine[] {
     this.generation();
@@ -336,6 +350,23 @@ export class LogViewerPage {
     // carrying it across would let the polite region announce "5 of 2".
     this.caretValue = this.searchValue === '' ? 0 : 1;
     this.generation.update((value) => value + 1);
+  }
+
+  /**
+   * Drop the severity filter, so every row returns and the control itself goes. The caret is reset
+   * with it for `onChip`'s reason: it is a position within the matches, and the count changes.
+   *
+   * **Focus goes to the chip whose filter was cleared.** This control removes itself on its own
+   * click, and EXPERIENCE.md's Accessibility Floor -- *Focus destinations* -- allows no control to
+   * be removed while it holds focus without a named destination. The chips stay in the DOM, and
+   * the one that was pressed is where the user was.
+   */
+  protected onClear(): void {
+    const cleared = this.chipValue;
+    this.chipValue = '';
+    this.caretValue = this.searchValue === '' ? 0 : 1;
+    this.generation.update((value) => value + 1);
+    document.querySelector<HTMLElement>(`[data-ocu-chip="${cleared}"]`)?.focus();
   }
 
   protected onRaw(): void {

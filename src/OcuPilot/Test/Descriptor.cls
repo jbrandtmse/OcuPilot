@@ -649,6 +649,50 @@ Method TestTheAlertLogViewerDeclaresTheLogSourceTailAndItsOnePair()
     Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), "", "and no primary action")
 }
 
+/// <p>Story 6.14 -- the messages.log viewer declares the console log's own tail as its read source,
+/// the one pair the port behind it declares, a <code>none</code> id, no action and no refresh, and
+/// it takes the Logs area's <b>second</b> side-bar position.</p>
+/// <p>The position is asserted here and as an order in
+/// <method>OcuPilot.Test.Navigation.TestThePayloadCarriesEveryAreaWithAVerdict</method>: this leg
+/// says what the descriptor declares, that one says where the payload puts it.</p>
+/// <p>The <code>messages.log</code> command alias is asserted because the shell's fault banner
+/// resolves "Open messages.log" from it (AD-5, DW-148), so it is a published name and not a
+/// convenience.</p>
+/// <p>Mutation: change the read's <code>endpoint</code> to <code>alerts</code> -&gt; the source
+/// assertion goes red naming the other file, while the alerts.log leg above stays green.</p>
+Method TestTheConsoleLogViewerDeclaresTheLogSourceTailAndItsOnePair()
+{
+    Set tClass = "OcuPilot.Screen.Descriptor.LogMessageViewer"
+    Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
+    Do $$$AssertStatusOK(tSC, "the declaration parses")
+    If $$$ISERR(tSC) Quit
+
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DeclarationProblem(tDeclaration), "", "the declaration validates")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "including its read")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem(tDeclaration), "", "and it links out to nothing, as a list-classified archetype must")
+
+    Do $$$AssertEquals(tDeclaration.read.source.%ToJSON(), "{""port"":""logsource"",""endpoint"":""messages"",""type"":""LIST""}", "the console log's own bounded tail is the read's source (AD-36)")
+    Do $$$AssertTrue($ListFind(##class(OcuPilot.Port.LogSourcePort).Sources(), tDeclaration.read.source.endpoint) > 0, "and its endpoint is a key of that port's fixed enum (AD-21)")
+    Do $$$AssertEquals(tDeclaration.read.fields.%ToJSON(), "[""time"",""severity"",""text""]", "three declared fields")
+    Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), "[{""resource"":""%Admin_Operate"",""permission"":""USE""}]", "one declared pair, and no %Admin_Secure:USE (DW-278)")
+    Set tPortPairs = ##class(OcuPilot.Port.LogSourcePort).PairsFor("messages")
+    Do $$$AssertEquals($ListLength(tPortPairs), 1, "which the port behind it declares too")
+    If $ListLength(tPortPairs) = 1 Do $$$AssertEquals($ListToString($List(tPortPairs, 1), ":"), "%Admin_Operate:USE", "as the same pair, so neither way in is the wider gate")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("logs", $ClassMethod(tClass, "PrivilegePairs")), "", "and the logs area covers it, so its own declaration is untouched")
+
+    Do $$$AssertEquals(tDeclaration.id.%ToJSON(), "{""kind"":""none"",""parts"":[]}", "a log line is not an entity the instance can be asked for again (AD-13)")
+    Do $$$AssertEquals($ClassMethod(tClass, "Archetype"), "log-viewer", "it renders the shared log-viewer archetype")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForRoute("logs/messages"), tClass, "the route resolves to it")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForTool("logs.messages"), tClass, "and so does its tool identifier")
+    Do $$$AssertEquals($ClassMethod(tClass, "SideBarPosition"), 2, "it is the Logs area's second side-bar entry")
+    Do $$$AssertTrue($ListFind($ClassMethod(tClass, "CommandAliases"), "messages.log") > 0, "and it publishes the messages.log alias the fault banner resolves its destination from: " _ $ListToString($ClassMethod(tClass, "CommandAliases"), ","))
+
+    Do $$$AssertEquals(''$ClassMethod(tClass, "Refreshes"), 0, "nothing streams: it never auto-refreshes (AD-43)")
+    Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RefreshRates")), 0, "and declares no rate")
+    Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RowActionIds")), 0, "no row action (AD-44)")
+    Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), "", "and no primary action")
+}
+
 
 /// <p>Story 2.7 AC7 (DW-266) -- a screen declaring a pair its area does not is refused by
 /// <method>OcuPilot.Screen.Registry.Validate</method> naming the class, the area and the pair;

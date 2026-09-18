@@ -283,11 +283,11 @@ Method TestAnAreaGatesOnItsOwnDeclaredSet()
 /// with nothing said. The denied shape is asserted over the wire by
 /// <class>OcuPilot.Test.Wire</class>, which is the only place a principal without
 /// <code>%All</code> evaluates the real check.</p>
-/// <p><b>The os-management roster below is pinned by literal index and count, deliberately</b>
-/// -- it is what catches a screen landing at the wrong <code>sideBarPosition</code>, which a
-/// pin derived from the roster could not. Adding, removing or reordering a <b>built</b>
-/// <code>Screen/Descriptor/*.cls</code> whose <code>area</code> is <code>"os-management"</code>
-/// therefore requires updating this method's count and per-index assertions with it.</p>
+/// <p><b>The os-management and logs rosters below are pinned by literal index and count,
+/// deliberately</b> -- it is what catches a screen landing at the wrong
+/// <code>sideBarPosition</code>, which a pin derived from the roster could not. Adding, removing or
+/// reordering a <b>built</b> <code>Screen/Descriptor/*.cls</code> in either area therefore requires
+/// updating that area's count and per-index assertions with it.</p>
 Method TestThePayloadCarriesEveryAreaWithAVerdict()
 {
     Set tSC = ##class(OcuPilot.Api.Navigation).Payload(.tObject)
@@ -350,6 +350,25 @@ Method TestThePayloadCarriesEveryAreaWithAVerdict()
         Do $$$AssertEquals(tOsMgmt.screens.%Get(7).labelKey, "databaseListLabel", "under its own label key")
         Do $$$AssertEquals(tOsMgmt.screens.%Get(8).route, "os-management/devices", "and Devices last, position 5")
         Do $$$AssertEquals(tOsMgmt.screens.%Get(8).labelKey, "deviceListLabel", "under its own label key")
+    }
+
+    ; Logs, pinned the same way and for the same reason: its four screens declare four
+    ; consecutive side-bar positions, so a screen landing on the wrong one is only visible as an
+    ; order. Story 6.14 took this from three screens to four by declaring messages.log at
+    ; position 2, between the alert log and the application error log; an added Logs screen
+    ; updates this count and the per-index assertions with it.
+    Set tLogs = ##class(OcuPilot.Test.Descriptor).AreaEntry(tObject.areas, "logs")
+    Do $$$AssertTrue($IsObject(tLogs), "the payload carries the logs area")
+    If $IsObject(tLogs) {
+        Do $$$AssertEquals(tLogs.screens.%Size(), 4, "which carries its four built screens -- an added Logs screen updates this count and the per-index assertions below with it")
+        Do $$$AssertEquals(tLogs.screens.%Get(0).route, "logs/alerts", "the alert log, position 1")
+        Do $$$AssertEquals(tLogs.screens.%Get(0).labelKey, "alertLogListLabel", "under its own label key")
+        Do $$$AssertEquals(tLogs.screens.%Get(1).route, "logs/messages", "then the console log, position 2")
+        Do $$$AssertEquals(tLogs.screens.%Get(1).labelKey, "messagesLogListLabel", "under its own label key")
+        Do $$$AssertEquals(tLogs.screens.%Get(2).route, "logs/errors", "then the application error log, position 3")
+        Do $$$AssertEquals(tLogs.screens.%Get(2).labelKey, "errorLogListLabel", "under its own label key")
+        Do $$$AssertEquals(tLogs.screens.%Get(3).route, "logs/audit", "and the audit database viewer last, position 4")
+        Do $$$AssertEquals(tLogs.screens.%Get(3).labelKey, "auditListLabel", "under its own label key")
     }
 }
 

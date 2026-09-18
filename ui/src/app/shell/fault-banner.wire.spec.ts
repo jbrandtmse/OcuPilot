@@ -6,6 +6,7 @@ import { ApiService } from '../core/api';
 import { ConnectivityService } from '../core/connectivity';
 import { NavigationService } from '../core/navigation';
 import { Session } from '../core/session';
+import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
 import { TokenStore } from '../core/token-store';
 import { FaultBanner } from './fault-banner';
@@ -115,6 +116,9 @@ describe('the connectivity banner, wired to the real ApiService and Connectivity
         provideRouter([{ path: '', children: [] }]),
         { provide: ConnectivityService, useValue: harness.connectivity },
         { provide: NavigationService, useValue: navigation },
+        // The banner shows the Logs area before it navigates (Story 6.14, DW-148). Nothing here
+        // presses that control, so a recorder is enough; where it goes is `fault-banner.spec.ts`'s.
+        { provide: ShellState, useValue: { showArea: () => {} } as unknown as ShellState },
       ],
     });
     fixture = TestBed.createComponent(FaultBanner);

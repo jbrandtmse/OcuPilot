@@ -66,6 +66,12 @@ const LIVE_PAYLOAD = {
           failedPair: '%DB_IRISSYS:READ',
         },
         {
+          route: 'logs/messages',
+          labelKey: 'messagesLogListLabel',
+          sideBarPosition: 2,
+          allowed: true,
+        },
+        {
           route: 'logs/errors',
           labelKey: 'errorLogListLabel',
           sideBarPosition: 3,
@@ -427,10 +433,14 @@ test('DW-132: the real NavigationService reads a live-captured payload the way O
   // is IRISSYS, and database READ is routine-execution permission, so a principal without it is
   // refused by IRIS before OcuPilot's gate has anything to say.
   assert.deepEqual(service.screenVerdict('logs/errors'), { allowed: false, failedPair: '%DB_IRISSYS:READ' });
-  // Story 6.13: the alerts.log viewer declares the same two pairs in the same order, so this
-  // principal is denied on the same second pair. Without this line the entry added to the payload
-  // above is read by nothing and can drift from what the server answers.
+  // Story 6.13: the alerts.log viewer is denied on the second pair in this payload. Without this
+  // line the entry added to the payload above is read by nothing and can drift from what the
+  // server answers.
   assert.deepEqual(service.screenVerdict('logs/alerts'), { allowed: false, failedPair: '%DB_IRISSYS:READ' });
+  // Story 6.14: the messages.log viewer declares `%Admin_Operate:USE` and nothing else, so this
+  // principal -- who holds it -- is allowed where its three Logs siblings are not. Its own line,
+  // because the payload entry above reddens nothing on its own (6.13 finding #9).
+  assert.deepEqual(service.screenVerdict('logs/messages'), { allowed: true, failedPair: '' });
   // Story 6.3: the Security and secrets area's five screens, copied from the string
   // OcuPilot.Test.Wire.TestTheSslConfigurationsListIsDeniedToAPrincipalWithoutAdminSecure compares the
   // live entry to. The two wallet screens declare `%Admin_Wallet:USE` first and the other three

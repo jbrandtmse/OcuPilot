@@ -987,7 +987,7 @@ Method TestTheAuditListsPairSetIsEnforcedForARealPrincipal()
     Set tBefore = ..AsyncTaskCount()
     Do $$$AssertTrue(tBefore >= 0, "the async-task list reads before the refused read (" _ tBefore _ ")")
 
-    Do $$$AssertEquals(..ScreensFor(..#AUDITDENYUSER, "logs"), "[{""route"":""logs/alerts"",""labelKey"":""alertLogListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""logs/errors"",""labelKey"":""errorLogListLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""logs/audit"",""labelKey"":""auditListLabel"",""sideBarPosition"":4,""allowed"":false,""failedPair"":""%Admin_Operate:USE""}]", "%Admin_Secure and the database read: all three Logs screens are denied on %Admin_Operate:USE, which each of them requires")
+    Do $$$AssertEquals(..ScreensFor(..#AUDITDENYUSER, "logs"), "[{""route"":""logs/alerts"",""labelKey"":""alertLogListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""logs/messages"",""labelKey"":""messagesLogListLabel"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""logs/errors"",""labelKey"":""errorLogListLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""logs/audit"",""labelKey"":""auditListLabel"",""sideBarPosition"":4,""allowed"":false,""failedPair"":""%Admin_Operate:USE""}]", "%Admin_Secure and the database read: all four Logs screens are denied on %Admin_Operate:USE, which each of them requires")
     Do $$$AssertEquals(..AreaVerdictFor(..#AUDITDENYUSER, "logs"), "false:%Admin_Operate:USE", "and so is the Logs area")
     Do ..AssertReadRefused(..#AUDITDENYUSER, "logs.audit", "%Admin_Operate:USE")
     Do $$$AssertEquals(..AsyncTaskCount(), tBefore, "and the refused read queued nothing, so no async-task row is left behind (DW-249)")
@@ -995,9 +995,9 @@ Method TestTheAuditListsPairSetIsEnforcedForARealPrincipal()
     ; The pair ORDER, read by a principal holding neither of the screen's administrative resources:
     ; %Admin_Secure:USE is declared first, so it is the pair the gate names. A descriptor that
     ; declared the first two the other way round would name %Admin_Operate:USE here.
-    Do $$$AssertEquals(..ScreensFor(..#TASKUSER, "logs"), "[{""route"":""logs/alerts"",""labelKey"":""alertLogListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""logs/errors"",""labelKey"":""errorLogListLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""logs/audit"",""labelKey"":""auditListLabel"",""sideBarPosition"":4,""allowed"":false,""failedPair"":""%Admin_Secure:USE""}]", "a principal holding neither administrative resource is denied on the first pair each screen declares -- %Admin_Operate for the alert log and the application error log, %Admin_Secure for the audit viewer")
+    Do $$$AssertEquals(..ScreensFor(..#TASKUSER, "logs"), "[{""route"":""logs/alerts"",""labelKey"":""alertLogListLabel"",""sideBarPosition"":1,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""logs/messages"",""labelKey"":""messagesLogListLabel"",""sideBarPosition"":2,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""logs/errors"",""labelKey"":""errorLogListLabel"",""sideBarPosition"":3,""allowed"":false,""failedPair"":""%Admin_Operate:USE""},{""route"":""logs/audit"",""labelKey"":""auditListLabel"",""sideBarPosition"":4,""allowed"":false,""failedPair"":""%Admin_Secure:USE""}]", "a principal holding neither administrative resource is denied on the first pair each screen declares -- %Admin_Operate for the two log files and the application error log, %Admin_Secure for the audit viewer")
 
-    Do $$$AssertEquals(..ScreensFor(..#AUDITUSER, "logs"), "[{""route"":""logs/alerts"",""labelKey"":""alertLogListLabel"",""sideBarPosition"":1,""allowed"":true},{""route"":""logs/errors"",""labelKey"":""errorLogListLabel"",""sideBarPosition"":3,""allowed"":true},{""route"":""logs/audit"",""labelKey"":""auditListLabel"",""sideBarPosition"":4,""allowed"":true}]", "all three pairs: all three Logs screens are listed allowed")
+    Do $$$AssertEquals(..ScreensFor(..#AUDITUSER, "logs"), "[{""route"":""logs/alerts"",""labelKey"":""alertLogListLabel"",""sideBarPosition"":1,""allowed"":true},{""route"":""logs/messages"",""labelKey"":""messagesLogListLabel"",""sideBarPosition"":2,""allowed"":true},{""route"":""logs/errors"",""labelKey"":""errorLogListLabel"",""sideBarPosition"":3,""allowed"":true},{""route"":""logs/audit"",""labelKey"":""auditListLabel"",""sideBarPosition"":4,""allowed"":true}]", "all three pairs: all four Logs screens are listed allowed")
     Do $$$AssertEquals(..AreaVerdictFor(..#AUDITUSER, "logs"), "true", "and so is the Logs area")
 
     ; The served read, through the port's self-queued async path (AD-26) and with a declared
@@ -1060,6 +1060,71 @@ Method TestTheAuditListsPairSetIsEnforcedForARealPrincipal()
     Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/logs.audit/read?maxRows=25&authentication=Password", ..#AUDITUSER, ..PreparedPassword, .tStatus4, .tBody4, .tHeaders4)
     Do $$$AssertStatusOK(tSC, "the declared-value read completes")
     Do $$$AssertEquals(tStatus4, 200, "and answers")
+}
+
+/// <p>Story 6.14 AC9 (DW-1025) -- an unprivileged caller's async read leaves no
+/// <code>&lt;PROTECT&gt;</code> in the file the console-log screen displays.</p>
+/// <p><b>The principal is the measurement.</b> <parameter>AUDITUSER</parameter> is served the audit
+/// read, which the admin port runs through its own queued path (AD-26), and it does <b>not</b> hold
+/// the pair <method>OcuPilot.Port.AdminPort.ForgetTask</method>'s delete needs -- read back here
+/// rather than assumed, because the whole finding is that the delete runs as the caller. The
+/// suite's own account holds <code>%All</code>, so this refusal is observable on a real principal
+/// and nowhere else.</p>
+/// <p>The sweep reads only the bytes <file>messages.log</file> grew by across the call, so an
+/// earlier run's line cannot make it pass or fail.</p>
+/// <p>Mutation: remove <method>OcuPilot.Port.AdminPort.ForgetTask</method>'s privilege guard and
+/// recompile the package -&gt; the read still answers 200 and the appended bytes carry the vendor's
+/// protect text, so both sweep assertions go red.</p>
+Method TestAnUnprivilegedAsyncReadLeavesNoProtectInTheConsoleLog()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the fourteen principals' pairs")
+    Set tPair = $Parameter("OcuPilot.Port.AdminPort", "ASYNCTASKPAIR")
+    Set tResource = $Piece(tPair, ":", 1)
+    Set tPermission = $Piece(tPair, ":", 2)
+    Do $$$AssertTrue((tResource '= "") && (tPermission '= ""), "the port declares the pair its delete needs: " _ tPair)
+    Do $$$AssertNotEquals($SYSTEM.Security.CheckUserPermission(..#AUDITUSER, tResource, tPermission), 1, ..#AUDITUSER _ " does not hold " _ tPair _ ", so its async read is the unprivileged case")
+
+    Set tPath = ##class(%File).NormalizeFilename(##class(OcuPilot.Port.LogSourcePort).FileFor("messages"), ##class(OcuPilot.Port.LogSourcePort).ManagerDirectory())
+    Set tBeforeSize = ##class(%File).GetFileSize(tPath)
+    Do $$$AssertTrue(tBeforeSize > 0, "the console log is readable before the call: " _ tPath _ " (" _ tBeforeSize _ " bytes)")
+
+    Set tSC = ##class(OcuPilot.Test.Http).AbsoluteRequest("GET", "/api/ocupilot/screens/logs.audit/read?maxRows=1", ..#AUDITUSER, ..PreparedPassword, .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the audit read completes")
+    Do $$$AssertEquals(tStatus, 200, "and is served, so the port reached its queued path rather than being refused before it")
+
+    Set tAppended = ..ConsoleLogSince(tPath, tBeforeSize)
+    ; Read the sweep itself first: both assertions below are absences, so a sweep that could not
+    ; read the appended region would satisfy them without having looked at anything.
+    Do $$$AssertEquals(tAppended [ "the console log could not be", 0, "the sweep read the appended region rather than failing to: " _ tAppended)
+    Do $$$AssertEquals(tAppended [ "an async task row could not be removed", 0, "no fault is logged for the row the delete left alone: " _ tAppended)
+    Do $$$AssertEquals(tAppended [ "<PROTECT>", 0, "and the vendor's protect text reaches no log OcuPilot writes: " _ tAppended)
+}
+
+/// <p>The bytes <var>pPath</var> holds beyond <var>pFrom</var>, or <code>""</code> when it has not
+/// grown. Bounded to one long string: the appended region of one call, never the whole file.</p>
+/// <p><b>A sweep that could not read answers a sentence, not <code>""</code></b>: the caller's two
+/// assertions are absences, so a failed link or seek would otherwise read as "nothing was logged"
+/// and pass. <method>MoveTo</method> is <class>%Stream.FileBinary</class>'s, which
+/// <class>%Stream.FileCharacter</class> inherits unchanged, so the position is the byte
+/// <method>%File.GetFileSize</method> reported and not a character count.</p>
+Method ConsoleLogSince(pPath As %String, pFrom As %Integer) As %String
+{
+    Set tText = ""
+    Try {
+        Set tStream = ##class(%Stream.FileCharacter).%New()
+        If 'tStream.LinkToFile(pPath) {
+            Set tText = "the console log could not be opened for the sweep: " _ pPath
+            Quit
+        }
+        If 'tStream.MoveTo(pFrom + 1) {
+            Set tText = "the console log could not be positioned at byte " _ (pFrom + 1) _ ": " _ pPath
+            Quit
+        }
+        Set tText = tStream.Read(1000000)
+    } Catch ex {
+        Set tText = "the console log could not be re-read: " _ ex.DisplayString()
+    }
+    Quit tText
 }
 
 /// <p>How many queued async-task rows the instance holds, or <code>-1</code> when the list cannot

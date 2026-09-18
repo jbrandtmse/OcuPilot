@@ -186,6 +186,25 @@ test('AC-A: the alerts.log viewer (the log-viewer archetype) gives its own viewp
   }
 });
 
+test('AC-A: the messages.log viewer gives its own viewport a real height too', async () => {
+  // The two log screens share one page, so this is the same chain as the case above -- asserted
+  // for this route because the side-bar position it lands on is Story 6.14's own change, and a
+  // route that resolved to no page at all would read as a missing selector here rather than as a
+  // screen the shell could not mount.
+  const { context, page } = await signedInAt('/ocupilot/logs/messages?ns=HSCUSTOM');
+  try {
+    await page.waitForSelector('.ocu-log-viewport', { timeout: config.navigationTimeoutMs });
+    await page.waitForSelector('.ocu-log-row', { timeout: config.navigationTimeoutMs });
+    const measured = await measureChain(page, '.ocu-log-viewport');
+    const content = measured[0];
+    const viewport = measured[measured.length - 1];
+    assert.ok(content.found && content.clientHeight > 0, `main.ocu-content has a real height; the chain measured ${JSON.stringify(measured)}`);
+    assert.ok(viewport.found && viewport.clientHeight > 0, `.ocu-log-viewport has a real height; the chain measured ${JSON.stringify(measured)}`);
+  } finally {
+    await context.close();
+  }
+});
+
 test('AC-A: a rendered row is not painted over by the table footer', async () => {
   const { context, page } = await signedInAt(SCREENS[0].route);
   try {

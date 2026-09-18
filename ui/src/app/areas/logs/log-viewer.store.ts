@@ -6,8 +6,8 @@ import { parseFileLines, type LogLine } from './log-line';
 
 /**
  * Which file a viewer is reading (AD-21: the source key is bound by the route, so the path carries
- * no file name the caller chose). Story 6.14's messages.log screen adds its own route beside this
- * one rather than a store of its own.
+ * no file name the caller chose). Each log screen contributes one of these rather than a store of
+ * its own.
  */
 export interface LogViewerSource {
   readonly tailPath: string;
@@ -16,6 +16,11 @@ export interface LogViewerSource {
 /** The alerts.log screen's route. */
 export const ALERTS_SOURCE: LogViewerSource = {
   tailPath: '/api/ocupilot/logs/alerts',
+};
+
+/** The messages.log screen's route, bound to the `messages` source key by `Api/Router.cls`. */
+export const MESSAGES_SOURCE: LogViewerSource = {
+  tailPath: '/api/ocupilot/logs/messages',
 };
 
 /**

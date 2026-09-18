@@ -1049,6 +1049,14 @@ export const STRINGS = {
   /** EXPERIENCE.md:368 */
   logViewerMatchCount: '<n> of <N>',
 
+  // The messages.log screen's own two: its side-bar entry and title, and the control that clears
+  // the severity-chip filter. Clear filter is published on this row rather than reused from
+  // Component Patterns, which names it only as a `button-text` example (DW-1109).
+  /** EXPERIENCE.md:369 */
+  messagesLogListLabel: 'messages.log',
+  /** EXPERIENCE.md:369 */
+  logViewerClearFilter: 'Clear filter',
+
   // Two connectivity sentences EXPERIENCE.md publishes outside the Fixed strings table, each
   // authorized by its own targeted extractor in `ui/tools/strings.test.mjs`, never by being
   // added to REQUIRED_ALONGSIDE_TABLE, whose own comment calls that the bypass it must not

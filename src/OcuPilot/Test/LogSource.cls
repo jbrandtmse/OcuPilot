@@ -2,11 +2,15 @@
 /// <class>OcuPilot.Test.LogSourceFixture</class> against a scratch file this class creates,
 /// appends to, rotates and removes under
 /// <code>&lt;ManagerDirectory&gt;ocupilotlogprobe/</code>.</p>
-/// <p><b>The instance's own <file>messages.log</file> is never touched by this class</b> -- not
-/// written, not rotated, not removed, not read. The real file is read over HTTP by
+/// <p><b>The instance's own <file>messages.log</file> is never written, rotated or removed by this
+/// class.</b> It is read, and only read, by
+/// <method>TestTheMessagesKeyIsServedFromTheManagerDirectory</method>. The real file is also read
+/// over HTTP by
 /// <class>OcuPilot.Test.LogSourceWire</class>, and the one real rotation this story performs is
 /// <class>OcuPilot.Test.LogSourceRotation</class>'s, on a throwaway container.</p>
-/// <p>Needs a writable manager directory and nothing else.</p>
+/// <p>Needs a writable manager directory, and -- for
+/// <method>TestTheMessagesKeyIsServedFromTheManagerDirectory</method> alone -- the instance's own
+/// <file>messages.log</file> present and readable, which every started instance has written to.</p>
 Class OcuPilot.Test.LogSource Extends %UnitTest.TestCase
 {
 
@@ -197,6 +201,58 @@ Method TestTheAlertsKeyIsServedFromTheManagerDirectory()
     Do $$$AssertStatusOK(tSC, "the declared read over the same key answers")
     Do $$$AssertEquals(tRowHttp, 200, "with 200 whether or not the instance has written the file")
     Do $$$AssertTrue($IsObject(tRows) && tRows.%IsA("%Library.DynamicArray"), "as a list of rows")
+}
+
+/// <p>Story 6.14 AC1, AC2 -- the <code>messages</code> key is in the enum, resolves to
+/// <code>messages.log</code> and declares <code>%Admin_Operate:USE</code> alone, the same one pair
+/// the screen over it declares. The production port is asked, not the fixture, so this is the
+/// shipped enum against the instance's own file.</p>
+/// <p><b>Unlike <file>alerts.log</file> this file always exists</b>: every instance writes its own
+/// startup lines to it, so the page is a 200 and <code>LOG.ABSENT</code> is not an outcome here.
+/// The window is bounded and the whole file is never asked for -- the call passes
+/// <code>maxBytes</code> 4,096 and the answer's <code>size</code> is the file's own, which is what
+/// makes "bounded" observable rather than assumed.</p>
+/// <p>Reads the instance's <file>messages.log</file>; writes, rotates and removes nothing.</p>
+/// <p>Mutation: drop <code>messages</code> from
+/// <parameter>OcuPilot.Port.LogSourcePort.SOURCES</parameter> -&gt; the membership assertion and the
+/// live page both go red.</p>
+Method TestTheMessagesKeyIsServedFromTheManagerDirectory()
+{
+    Set tSources = ##class(OcuPilot.Port.LogSourcePort).Sources()
+    Do $$$AssertTrue($ListFind(tSources, "messages") > 0, "the messages key is in the shipped enum: " _ $ListToString(tSources, ","))
+    Do $$$AssertEquals(##class(OcuPilot.Port.LogSourcePort).FileFor("messages"), "messages.log", "and resolves to the instance's console log")
+
+    Set tPairs = ##class(OcuPilot.Port.LogSourcePort).PairsFor("messages")
+    Do $$$AssertEquals($ListLength(tPairs), 1, "one declared pair")
+    If $ListLength(tPairs) '= 1 Quit
+    Do $$$AssertEquals($ListToString($List(tPairs, 1), ":"), "%Admin_Operate:USE", "the operate pair alone")
+
+    Set tSC = ##class(OcuPilot.Port.LogSourcePort).Page("messages", "", 4096, "", .tResult, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the production port serves the console log's tail")
+    Do $$$AssertEquals(tHttp, 200, "at 200")
+    If '$IsObject(tResult) Quit
+    Do $$$AssertEquals(tResult.source, "messages", "naming the key it was asked for")
+    Do $$$AssertTrue(tResult.identity '= "", "carrying a file identity, which is what the next page's cursor travels with")
+    Do $$$AssertTrue(tResult.lines.%Size() > 0, "and the lines the instance wrote: " _ tResult.lines.%Size())
+    ; Bounded, read off the bytes the page actually carries rather than off the cursor: the cursor
+    ; is an absolute position in the file, so it says nothing about how much of it came back.
+    Set tBytes = 0
+    Set tIterator = tResult.lines.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tLine) {
+        Set tBytes = tBytes + $Length(tLine) + 1
+    }
+    Do $$$AssertTrue(tBytes <= 4096, "the page carries at most the bytes it asked for: " _ tBytes)
+    Do $$$AssertTrue(tResult.size > 0, "the file's own size is reported rather than read: " _ tResult.size)
+    Do $$$AssertTrue(tResult.offset <= (tResult.size + 1), "and the cursor is a position inside that file, never past its end: offset " _ tResult.offset)
+    ; The file this instance keeps is far larger than one window, so "bounded" is a narrowing here
+    ; rather than a whole-file read that happened to fit.
+    If tResult.size > 4096 Do $$$AssertTrue(tBytes < tResult.size, "the window is a fraction of the file: " _ tBytes _ " of " _ tResult.size)
+
+    Set tSC = ##class(OcuPilot.Port.LogSourcePort).Rows("messages", 5, .tRows, .tRowHttp, .tRowFault)
+    Do $$$AssertStatusOK(tSC, "the declared read over the same key answers")
+    Do $$$AssertEquals(tRowHttp, 200, "with 200")
+    Do $$$AssertTrue($IsObject(tRows) && tRows.%IsA("%Library.DynamicArray"), "as a list of rows")
+    Do $$$AssertTrue(tRows.%Size() <= 5, "bounded by the cap it was given: " _ tRows.%Size())
 }
 
 /// <p>The five scratch lines <method>TestRowsProjectTheTailNewestFirst</method> writes: a leading

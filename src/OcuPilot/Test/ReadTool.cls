@@ -90,14 +90,14 @@ Method TestTheRegistryListsDescriptorReadsAndInheritedKinds()
         Set tNames = tNames _ $Select(tNames = "": "", 1: ",") _ tName
         Set tName = $Order(tProductionByName(tName))
     }
-    Do $$$AssertEquals(tProduction.%Size(), 36, "the production registry holds thirty-six tools, fixtures excluded")
-    Do $$$AssertEquals(tNames, "agent.definitions.read,logs.alerts.read,logs.applicationerrors.read,logs.audit.read,osmgmt.databasedetails.read,osmgmt.databasefreespace.read,osmgmt.databases.read,osmgmt.databasevolumes.read,osmgmt.devices.read,osmgmt.locks.read,osmgmt.processdetails.read,osmgmt.processes.read,osmgmt.systemusage.read,permissions.resources.read,permissions.roles.read,permissions.services.read,permissions.users.read,security.ldap.read,security.oauthclients.read,security.oauthresourceservers.read,security.oauthserver.read,security.oauthserverclients.read,security.oauthserverdescriptions.read,security.secrets.read,security.ssl.read,security.wallet.read,security.x509.read,tasks.history.read,tasks.ondemand.read,tasks.schedule.read,tasks.taskdetails.read,tasks.taskhistory.read,tasks.upcoming.read,webapp.list.read,webapp.openapi.read,webapp.restapis.read", "the Definitions list's read tool -- the first over OcuPilot's own state (AD-36) -- then the alert log's bounded tail, the application error log's own class tool, and the audit database, Database details, Database free-space, Databases, Database volumes, Devices, Locks, process details, processes, System usage, resources, roles, services, users, LDAP / Kerberos, the five OAuth 2.0 tabs, Secrets, SSL/TLS, Wallet, X.509, task history, on-demand tasks, task schedule, task details, per-task history, upcoming tasks, web applications, OpenAPI document and REST API explorer read tools")
+    Do $$$AssertEquals(tProduction.%Size(), 37, "the production registry holds thirty-seven tools, fixtures excluded")
+    Do $$$AssertEquals(tNames, "agent.definitions.read,logs.alerts.read,logs.applicationerrors.read,logs.audit.read,logs.messages.read,osmgmt.databasedetails.read,osmgmt.databasefreespace.read,osmgmt.databases.read,osmgmt.databasevolumes.read,osmgmt.devices.read,osmgmt.locks.read,osmgmt.processdetails.read,osmgmt.processes.read,osmgmt.systemusage.read,permissions.resources.read,permissions.roles.read,permissions.services.read,permissions.users.read,security.ldap.read,security.oauthclients.read,security.oauthresourceservers.read,security.oauthserver.read,security.oauthserverclients.read,security.oauthserverdescriptions.read,security.secrets.read,security.ssl.read,security.wallet.read,security.x509.read,tasks.history.read,tasks.ondemand.read,tasks.schedule.read,tasks.taskdetails.read,tasks.taskhistory.read,tasks.upcoming.read,webapp.list.read,webapp.openapi.read,webapp.restapis.read", "the Definitions list's read tool -- the first over OcuPilot's own state (AD-36) -- then the alert log's bounded tail, the application error log's own class tool, the audit database, the console log's bounded tail, Database details, Database free-space, Databases, Database volumes, Devices, Locks, process details, processes, System usage, resources, roles, services, users, LDAP / Kerberos, the five OAuth 2.0 tabs, Secrets, SSL/TLS, Wallet, X.509, task history, on-demand tasks, task schedule, task details, per-task history, upcoming tasks, web applications, OpenAPI document and REST API explorer read tools")
     ; The one tool with a class of its own: it names no descriptor, because nothing about it is
     ; derived from one (OcuPilot.Screen.Tool.Registry's "two sources, one list").
     Do $$$AssertEquals(tProductionByName("logs.applicationerrors.read").class, "OcuPilot.Screen.Tool.ErrorRead", "the application error log's tool is answered by its own class")
     Do $$$AssertEquals(tProductionByName("logs.applicationerrors.read").descriptor, "", "and is derived from no descriptor")
     Do $$$AssertEquals(tProductionByName("logs.applicationerrors.read").kind, "read", "declaring its kind at definition time (AD-22)")
-    For tPair = $ListBuild("agent.definitions.read", "OcuPilot.Screen.Descriptor.AgentDefinitionList"), $ListBuild("logs.alerts.read", "OcuPilot.Screen.Descriptor.LogAlertViewer"), $ListBuild("logs.audit.read", "OcuPilot.Screen.Descriptor.AuditList"), $ListBuild("osmgmt.databases.read", "OcuPilot.Screen.Descriptor.DatabaseList"), $ListBuild("osmgmt.databasefreespace.read", "OcuPilot.Screen.Descriptor.DatabaseFreeSpace"), $ListBuild("osmgmt.databasedetails.read", "OcuPilot.Screen.Descriptor.DatabaseDetails"), $ListBuild("osmgmt.databasevolumes.read", "OcuPilot.Screen.Descriptor.DatabaseVolumeList"), $ListBuild("osmgmt.devices.read", "OcuPilot.Screen.Descriptor.DeviceList"), $ListBuild("osmgmt.locks.read", "OcuPilot.Screen.Descriptor.LockList"),$ListBuild("osmgmt.processdetails.read", "OcuPilot.Screen.Descriptor.ProcessDetails"), $ListBuild("osmgmt.processes.read", "OcuPilot.Screen.Descriptor.ProcessList"), $ListBuild("osmgmt.systemusage.read", "OcuPilot.Screen.Descriptor.SystemUsage"), $ListBuild("permissions.resources.read", "OcuPilot.Screen.Descriptor.ResourceList"), $ListBuild("permissions.roles.read", "OcuPilot.Screen.Descriptor.RoleList"), $ListBuild("permissions.services.read", "OcuPilot.Screen.Descriptor.ServiceList"), $ListBuild("permissions.users.read", "OcuPilot.Screen.Descriptor.UserList"), $ListBuild("security.ssl.read", "OcuPilot.Screen.Descriptor.SslConfigList"), $ListBuild("security.x509.read", "OcuPilot.Screen.Descriptor.X509CredentialList"), $ListBuild("security.ldap.read", "OcuPilot.Screen.Descriptor.LdapConfigList"), $ListBuild("security.oauthserverdescriptions.read", "OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab"), $ListBuild("security.oauthclients.read", "OcuPilot.Screen.Descriptor.OAuthClientTab"), $ListBuild("security.oauthresourceservers.read", "OcuPilot.Screen.Descriptor.OAuthResourceServerTab"), $ListBuild("security.oauthserver.read", "OcuPilot.Screen.Descriptor.OAuthServerTab"), $ListBuild("security.oauthserverclients.read", "OcuPilot.Screen.Descriptor.OAuthServerClientTab"), $ListBuild("security.wallet.read", "OcuPilot.Screen.Descriptor.WalletCollectionList"), $ListBuild("security.secrets.read", "OcuPilot.Screen.Descriptor.WalletSecretList"), $ListBuild("tasks.schedule.read", "OcuPilot.Screen.Descriptor.TaskScheduleList"), $ListBuild("tasks.taskdetails.read", "OcuPilot.Screen.Descriptor.TaskDetails"), $ListBuild("tasks.ondemand.read", "OcuPilot.Screen.Descriptor.TaskOnDemandList"), $ListBuild("tasks.upcoming.read", "OcuPilot.Screen.Descriptor.TaskUpcomingList"), $ListBuild("tasks.history.read", "OcuPilot.Screen.Descriptor.TaskHistoryList"), $ListBuild("tasks.taskhistory.read", "OcuPilot.Screen.Descriptor.TaskRunList"), $ListBuild("webapp.list.read", "OcuPilot.Screen.Descriptor.WebAppList"), $ListBuild("webapp.openapi.read", "OcuPilot.Screen.Descriptor.OpenApiViewer"), $ListBuild("webapp.restapis.read", "OcuPilot.Screen.Descriptor.RestApiList") {
+    For tPair = $ListBuild("agent.definitions.read", "OcuPilot.Screen.Descriptor.AgentDefinitionList"), $ListBuild("logs.alerts.read", "OcuPilot.Screen.Descriptor.LogAlertViewer"), $ListBuild("logs.messages.read", "OcuPilot.Screen.Descriptor.LogMessageViewer"), $ListBuild("logs.audit.read", "OcuPilot.Screen.Descriptor.AuditList"), $ListBuild("osmgmt.databases.read", "OcuPilot.Screen.Descriptor.DatabaseList"), $ListBuild("osmgmt.databasefreespace.read", "OcuPilot.Screen.Descriptor.DatabaseFreeSpace"), $ListBuild("osmgmt.databasedetails.read", "OcuPilot.Screen.Descriptor.DatabaseDetails"), $ListBuild("osmgmt.databasevolumes.read", "OcuPilot.Screen.Descriptor.DatabaseVolumeList"), $ListBuild("osmgmt.devices.read", "OcuPilot.Screen.Descriptor.DeviceList"), $ListBuild("osmgmt.locks.read", "OcuPilot.Screen.Descriptor.LockList"),$ListBuild("osmgmt.processdetails.read", "OcuPilot.Screen.Descriptor.ProcessDetails"), $ListBuild("osmgmt.processes.read", "OcuPilot.Screen.Descriptor.ProcessList"), $ListBuild("osmgmt.systemusage.read", "OcuPilot.Screen.Descriptor.SystemUsage"), $ListBuild("permissions.resources.read", "OcuPilot.Screen.Descriptor.ResourceList"), $ListBuild("permissions.roles.read", "OcuPilot.Screen.Descriptor.RoleList"), $ListBuild("permissions.services.read", "OcuPilot.Screen.Descriptor.ServiceList"), $ListBuild("permissions.users.read", "OcuPilot.Screen.Descriptor.UserList"), $ListBuild("security.ssl.read", "OcuPilot.Screen.Descriptor.SslConfigList"), $ListBuild("security.x509.read", "OcuPilot.Screen.Descriptor.X509CredentialList"), $ListBuild("security.ldap.read", "OcuPilot.Screen.Descriptor.LdapConfigList"), $ListBuild("security.oauthserverdescriptions.read", "OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab"), $ListBuild("security.oauthclients.read", "OcuPilot.Screen.Descriptor.OAuthClientTab"), $ListBuild("security.oauthresourceservers.read", "OcuPilot.Screen.Descriptor.OAuthResourceServerTab"), $ListBuild("security.oauthserver.read", "OcuPilot.Screen.Descriptor.OAuthServerTab"), $ListBuild("security.oauthserverclients.read", "OcuPilot.Screen.Descriptor.OAuthServerClientTab"), $ListBuild("security.wallet.read", "OcuPilot.Screen.Descriptor.WalletCollectionList"), $ListBuild("security.secrets.read", "OcuPilot.Screen.Descriptor.WalletSecretList"), $ListBuild("tasks.schedule.read", "OcuPilot.Screen.Descriptor.TaskScheduleList"), $ListBuild("tasks.taskdetails.read", "OcuPilot.Screen.Descriptor.TaskDetails"), $ListBuild("tasks.ondemand.read", "OcuPilot.Screen.Descriptor.TaskOnDemandList"), $ListBuild("tasks.upcoming.read", "OcuPilot.Screen.Descriptor.TaskUpcomingList"), $ListBuild("tasks.history.read", "OcuPilot.Screen.Descriptor.TaskHistoryList"), $ListBuild("tasks.taskhistory.read", "OcuPilot.Screen.Descriptor.TaskRunList"), $ListBuild("webapp.list.read", "OcuPilot.Screen.Descriptor.WebAppList"), $ListBuild("webapp.openapi.read", "OcuPilot.Screen.Descriptor.OpenApiViewer"), $ListBuild("webapp.restapis.read", "OcuPilot.Screen.Descriptor.RestApiList") {
         Set tName = $List(tPair, 1)
         If '$Data(tProductionByName(tName)) Continue
         Do $$$AssertEquals(tProductionByName(tName).kind, "read", tName _ " is of kind read")
@@ -1135,6 +1135,59 @@ Method TestTheAlertReadToolCarriesTheTailsRowsAndNotItsCursor()
         Do tRowKeys.%Push(tKey)
     }
     Do $$$AssertEquals(tRowKeys.%ToJSON(), "[""time"",""severity"",""text""]", "and every row carries exactly those keys: " _ tRowKeys.%ToJSON())
+}
+
+/// <p>Story 6.14 AC2 -- the messages.log screen's derived read tool answers the <b>console log's</b>
+/// bounded tail, projected into the three declared fields, with no page envelope and <b>no
+/// <class>OcuPilot.Screen.Tool</class> class of its own</b> -- which is what closes DW-1100:
+/// <method>OcuPilot.Screen.Read.Execute</method>'s <code>logsource</code> arm is endpoint-generic,
+/// so the declaration alone is the whole screen.</p>
+/// <p><b>Which file it reads is asserted, not assumed.</b> The tool's rows are compared to the
+/// port's own answer for the <code>messages</code> key, so a declaration pointing at the other
+/// endpoint answers the other file's rows -- or, on an instance that has raised no alert, none at
+/// all -- and this reddens where
+/// <method>TestTheAlertReadToolCarriesTheTailsRowsAndNotItsCursor</method> stays green.</p>
+/// <p>Mutation: change <class>OcuPilot.Screen.Descriptor.LogMessageViewer</class>'s
+/// <code>read.source.endpoint</code> to <code>alerts</code> and recompile -&gt; the row-source
+/// assertion goes red.</p>
+Method TestTheMessagesReadToolCarriesTheConsoleLogsRowsAndNotItsCursor()
+{
+    Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve("logs.messages.read", .tTool)
+    Do $$$AssertStatusOK(tSC, "the tool roster reads back")
+    Do $$$AssertTrue($IsObject(tTool), "the messages.log screen's read tool is registered")
+    If '$IsObject(tTool) Quit
+    Do $$$AssertEquals(tTool.descriptor, "OcuPilot.Screen.Descriptor.LogMessageViewer", "derived from its descriptor")
+    Do $$$AssertEquals(tTool.class, "OcuPilot.Screen.Tool.Read", "and answered by the one shared read tool class, never a class of its own (DW-1100)")
+
+    Set tSC = ##class(OcuPilot.Screen.Tool.Read).View("OcuPilot.Screen.Descriptor.LogMessageViewer", {}, 5, .tResult)
+    Do $$$AssertStatusOK(tSC, "the tool answers against the live instance")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(tResult.fields.%ToJSON(), "[""time"",""severity"",""text""]", "the three declared fields, and no others: " _ tResult.fields.%ToJSON())
+    Do $$$AssertEquals(tResult.%IsDefined("lines"), 0, "no lines key, which is the port page's own")
+    Do $$$AssertEquals(tResult.%IsDefined("offset"), 0, "nor the page's cursor")
+    Do $$$AssertEquals(tResult.%IsDefined("identity"), 0, "nor the page's file identity")
+    Do $$$AssertTrue(tResult.rows.%Size() > 0, "the console log always has lines, so the tool answers rows: " _ tResult.rows.%Size())
+    Do $$$AssertTrue(tResult.rows.%Size() <= 5, "bounded by the cap: " _ tResult.rows.%Size())
+    If tResult.rows.%Size() = 0 Quit
+
+    Set tRowKeys = []
+    Set tRowIterator = tResult.rows.%Get(0).%GetIterator()
+    While tRowIterator.%GetNext(.tKey, .tValue) {
+        Do tRowKeys.%Push(tKey)
+    }
+    Do $$$AssertEquals(tRowKeys.%ToJSON(), "[""time"",""severity"",""text""]", "and every row carries exactly those keys: " _ tRowKeys.%ToJSON())
+
+    ; The file the rows came from, read at the same cap one call apart. A console write landing
+    ; between the two reads shifts EVERY position in a cap-bounded newest-first window, the last as
+    ; much as the first, so no index is immune; the comparison holds because the two calls are
+    ; adjacent and nothing in this class writes to the file. What it discriminates is the file: the
+    ; other endpoint answers another file's rows, or none at all.
+    Set tSC = ##class(OcuPilot.Port.LogSourcePort).Rows("messages", 5, .tPortRows, .tPortStatus, .tPortFault)
+    Do $$$AssertEquals(tPortStatus, 200, "the port answers the same key directly")
+    If tPortStatus '= 200 Quit
+    Do $$$AssertTrue(tPortRows.%Size() > 0, "with rows of its own: " _ tPortRows.%Size())
+    If tPortRows.%Size() = 0 Quit
+    Do $$$AssertEquals(tResult.rows.%Get(tResult.rows.%Size() - 1).%Get("text"), tPortRows.%Get(tPortRows.%Size() - 1).%Get("text"), "and the tool's oldest row in the window is the console log's, not another file's")
 }
 
 /// <p>Story 2.12 AC5 -- the tool never reaches <code>ErrorDetail</code>, observed on the fixture's

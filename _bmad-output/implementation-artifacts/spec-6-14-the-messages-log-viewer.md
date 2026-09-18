@@ -2,10 +2,10 @@
 title: 'Story 6.14: The messages.log viewer'
 type: 'feature'
 created: '2026-09-18'
-status: 'ready-for-dev'
+status: 'done'
 baseline_revision: '68027e6e04479fb10f5df484789cf6a496c2df70'
 baseline_commit: '68027e6e04479fb10f5df484789cf6a496c2df70'
-review_loop_iteration: 0
+review_loop_iteration: 1
 followup_review_recommended: false
 context: []
 warnings: ['oversized']
@@ -214,6 +214,127 @@ its surviving rows (DW-1101), and AC4's Clear control (DW-1109).
   hold it, the row is still deleted. Pinned by an `AdminPort` test with a real least-privileged
   principal on a throwaway plus a log sweep.
 
+### Review Findings
+
+- [x] [Review][Patch] Two smoke roster assertions could not fail: `messages` is a prefix of `messageslog` [src/OcuPilot/Test/Smoke.cls:593, :711]
+- [x] [Review][Patch] An unmapped `log-viewer` route silently rendered alerts.log; no test pinned the map [ui/src/app/areas/logs/log-viewer.page.ts:217]
+- [x] [Review][Patch] Clear removed itself while holding focus, against EXPERIENCE.md's Focus destinations [ui/src/app/areas/logs/log-viewer.page.ts:362]
+- [x] [Review][Patch] The AC9 log sweep passed as "nothing logged" if it could not read [src/OcuPilot/Test/WireSecurityRead.cls:1105]
+- [x] [Review][Patch] `AwaitTask`'s doc comment still promised an unconditional delete; `Test/LogSource`'s header understated what it needs [src/OcuPilot/Port/AdminPort.cls:871, src/OcuPilot/Test/LogSource.cls:8]
+- [x] [Review][Patch] `Test/ReadTool`'s comment claimed an index immunity the window does not have [src/OcuPilot/Test/ReadTool.cls:1180]
+- [x] [Review][Defer] `ASYNCTASKPAIR` is a literal under a doc comment claiming it is derived; a non-default IRISLOCALDATA resource silently stops every delete [src/OcuPilot/Port/AdminPort.cls:86] -- deferred: DW-1137, `escalated owner=burndown`, fix-risk high (a %SYS resolution on the async path in a file Epic 4 shares)
+- [x] [Review][Defer] The guard leaves a vendor async-task row behind on every unprivileged async read, with nothing to purge them [src/OcuPilot/Port/AdminPort.cls:682] -- deferred: DW-1136, `escalated owner=burndown`, a product/ops call the guard itself does not settle
+- [x] [Review][Defer] The planning artifacts still put Clear in the shell command bar, and the new strings row cites two wrong lines [EXPERIENCE.md:412, :367, :369; epics.md 6.14 AC4] -- deferred: DW-1138, `escalated owner=burndown`, a Rule 5 amendment code review may not make
+- [x] [Review][Defer] The two `LIVE_PAYLOAD` fixtures describe a verdict set no live instance can answer [ui/src/app/shell/rail-wire.spec.ts:61, ui/tools/navigation-wire.test.mjs:65] -- deferred: DW-1139, terminal with a reopen probe; client parsing, which is what they test, is unaffected
+- [x] [Review][Defer] AC9's privileged half is pinned by the delete being attempted, never by a real row going [src/OcuPilot/Test/AdminPortForget.cls:52] -- deferred: DW-1140, terminal with a reopen probe
+- [x] [Review][Defer] `onClear`'s caret reset is unreachable by any fixture these specs build [ui/src/app/areas/logs/log-viewer.page.ts:366] -- deferred: DW-1141, terminal with a reopen probe
+- [x] [Review][Defer] The browser spec's re-seed guard counts its marker in the whole file, not the rendered window [ui/browser/messages-log.browser-spec.mjs:80] -- deferred: DW-1142, terminal; the failure is loud
+- [x] [Review][Defer] A `messages.log` rotated to empty has no zero-row arm in the smoke or three suites [src/OcuPilot/Install/Smoke.cls:678] -- deferred: DW-1143, `wontfix-theoretical`
+- [x] [Review][Defer] `Test/ReadTool`'s index comparison keeps a narrow flake window [src/OcuPilot/Test/ReadTool.cls:1184] -- deferred: DW-1144, terminal with a reopen probe
+- [x] [Review][Defer] `messages-log.browser-spec` restates `alerts-log.browser-spec`'s harness [ui/browser/messages-log.browser-spec.mjs:1] -- deferred: DW-1145, terminal; reopens on a third log viewer
+- [x] [Review][Defer] DW-1101 still read as this story's, so its ledger slice could not read empty [_bmad-output/implementation-artifacts/deferred-work.md] -- deferred: re-owned `routed owner=burndown by=cr` with the residual named
+
+Code review, Tier 1 `full`, baseline `68027e6`, four layers (`blind-hunter`, `edge-case-hunter`,
+`verification-gap`, `acceptance-auditor`) on `review_tier: full-opus`, barred from executing tests;
+every execution-dependent claim was re-run by the reviewer on `ocupilot-slot-b` (52775) or the
+throwaway `ocupilot-b-ci` (52777) and is marked with the instance it came from.
+
+**Patched in this pass** (six edits, all in-footprint):
+
+1. **MED, Rule 19 — two roster tripwires could not fail.** `Test/Smoke.cls`'s
+   `TestNoCredentialsSkipsRatherThanPasses` matched `"  skipped  " _ tName` unterminated, and
+   `messages` is a prefix of the existing `messageslog` check, so the assertion was satisfied by
+   the console-log page line with no `messages` check at all (both lines confirmed present in a
+   real no-credentials report, slot B). Terminated both roster matches — `$Char(10)` for the pass
+   roster, `" -- "` for the skipped one, which `sign-out` as the last line needs. Falsified by
+   renaming `messages` to `messagesx` in `Install/Smoke.cls`'s name list: both assertions red on
+   `ocupilot-b-ci`, where the unterminated form stayed green.
+2. **MED — an unmapped `log-viewer` route silently rendered alerts.log.**
+   `log-viewer.page.ts:217` resolves `SOURCES[route] ?? ALERTS_SOURCE`, and this story is what
+   makes that fall-through live (two entries, with `EXPERIENCE.md`'s `log-viewer` row anticipating
+   "P1 secondary logs"). Added a `log-viewer.spec.ts` leg derived from the mirror: every built
+   `log-viewer` screen is mounted and asserted to request `/api/ocupilot/logs/<its declared
+   endpoint>`. Falsified by dropping the `'logs/messages'` entry from `SOURCES` — red naming the
+   fall-through to `/api/ocupilot/logs/alerts` (observed). It also covers the cross-screen
+   `setSource` path no test reached before.
+3. **MED — Clear removed itself while holding focus.** `EXPERIENCE.md`'s Accessibility Floor,
+   *Focus destinations*: "No control is disabled or removed while it holds focus without a named
+   destination." `@if (showClear)` dropped the focused button on its own click and focus fell to
+   `<body>`. `onClear` now hands focus to the chip whose filter it cleared, the project's own
+   `document.querySelector(...)?.focus()` idiom. Pinned in the AC5 leg; falsified by removing the
+   call — red reading `<body>` (observed).
+4. **LOW — the AC9 log sweep could pass without reading anything.** `ConsoleLogSince`'s two
+   assertions are absences, so a failed `LinkToFile` or `MoveTo` read as "nothing was logged".
+   It now answers a sentence on either failure and the caller reads that first. (The
+   bytes-versus-characters concern three layers raised is **not** a defect: `MoveTo` is
+   `%Stream.FileBinary`'s, which `%Stream.FileCharacter` inherits unchanged, so the position is
+   the byte `%File.GetFileSize` reported — noted at the method.)
+5. **LOW — two stale contract statements.** `AwaitTask`'s doc comment still said both terminal
+   arms "delete the row"; it now says they hand the row to `ForgetTask`, which deletes only for a
+   caller holding `ASYNCTASKPAIR`. `Test/LogSource.cls`'s header still said "needs a writable
+   manager directory and nothing else" while its new leg needs the instance's own `messages.log`.
+6. **LOW — a false immunity claim.** `Test/ReadTool.cls` explained its last-row comparison as
+   immune to a write landing between the two reads. A write shifts every position in a
+   cap-bounded newest-first window, the last as much as the first; the comment now says what the
+   comparison actually rests on (adjacent calls, nothing in the class writes the file) and what it
+   discriminates (the file, not the index).
+
+**Escalated to the burn-down gate** (`escalated owner=burndown`, decided at the decision sheet that
+follows this story):
+
+- **DW-1137 (MED, fix-risk high)** — `ASYNCTASKPAIR` is a literal under a doc comment headed
+  "Derived from the vendor's storage, not chosen". On an instance whose IRISLOCALDATA carries a
+  non-default resource the guard denies every caller and `ForgetTask` stops deleting, silently.
+  `Test/AdminPortForget` derives and compares, so any instance the suite runs on reddens.
+- **DW-1136 (MED)** — the guard's own consequence: every unprivileged async read now leaves a
+  vendor async-task row behind for good, and the vendor's `PurgeAsyncQueue()` is `[Internal]` and
+  scheduled by nothing. The refusal is right; the row it leaves is undecided.
+- **DW-1138 (MED)** — the planning artifacts still put Clear in the shell command bar
+  (`EXPERIENCE.md:412`, `:367`; `epics.md` 6.14 AC4), and the new Fixed strings row cites `:411`
+  and `:403` where it means `:412` and `:406`. A Rule 5 amendment, which code review may not make.
+
+**Closed terminal** (DW-1139 through DW-1145, each with its `reopen_if` probe): the two
+`LIVE_PAYLOAD` fixtures now describe a verdict set no live instance can answer (alerts denied on
+`%DB_IRISSYS:READ` beside messages allowed, although both declare `%Admin_Operate:USE` alone);
+AC9's privileged half is pinned by the delete being *attempted*, never by a real row going;
+`onClear`'s caret reset is unreachable by any fixture these specs build; the browser spec's
+re-seed guard counts its marker in the whole file rather than the rendered window;
+`Test/ReadTool`'s index comparison keeps a narrow flake window; the browser spec restates
+`alerts-log.browser-spec`'s harness; and a `messages.log` rotated to empty has no zero-row arm
+(theoretical). DW-1101 was re-owned to `burndown` with the residual named — the ledger still read
+it as this story's, so the story's slice could not read empty.
+
+**Checked and refuted** — each of these was filed by a layer and disproved by running it, not by
+reading it:
+
+- "`AdminPortForget`'s first leg may not be falsifiable: `##super` may bind `..HoldsPair` to
+  `AdminPort`'s own copy." Removing the guard reddens leg 1 and leaves leg 2 green
+  (**slot B**, and again on **ocupilot-b-ci**), so the fixture override does drive it.
+- "AC9's wire leg is green with or without the guard: `ForgetTask` is never reached."
+  With the guard removed, `TestAnUnprivilegedAsyncReadLeavesNoProtectInTheConsoleLog` fails with
+  the vendor's real `<PROTECT>%DeleteData+38^%Api.Admin.Endpoints.Security.Audit.RecordListTask.1`
+  in the bytes `messages.log` grew by (**ocupilot-b-ci**). The async path *is* taken for the audit
+  read, the sweep *does* read the appended region, and AC9's pinning test is falsifiable.
+- "The pre-existing DW-249 async-row assertion reddens once `ForgetTask` stops deleting."
+  `WireSecurityRead` is 18 of 18 green across three runs (**ocupilot-b-ci**).
+- "AC6's CSS-declaration read cannot survive the bundler." It finds `.ocu-log-row` in the
+  production-built, minified stylesheet and passes (**ocupilot-b-ci**, 26 of 26 browser tests
+  green after a rebuild and `docker cp`). A future merge of that rule would make it fail loudly,
+  not silently.
+- "The browser seeding's positional `iris session` argument and its 1,213-character line may not
+  survive." All five vendor levels and the long line reach the file; AC6's `width > 1126`
+  assertion passes (**ocupilot-b-ci**).
+- "`alerts-log.browser-spec`'s row-height test is left unfalsifiable at its origin."
+  `.ocu-log-row` is one global rule serving both screens, so pinning its declaration once covers
+  both; a second copy adds no discriminating power.
+- "The patch omits most of `Test/WireSecurityRead.cls`." The reviewed diff carries all three of
+  its hunks, the new test and `ConsoleLogSince` included.
+- "Clear leaves the search narrowing the rows, so AC5's 'every row returns' is false." Clear is
+  the severity filter's; the search is a separate `input type="search"` with its own affordance.
+- "`ShellState.showArea` overwrites a persisted side-bar preference." `showArea` is the shell's
+  own API, already the locator bar's, and AC8 *requires* the bar shown — by design.
+
+
 ## Design Notes
 
 **Governing ADs (Rule 6):** AD-1, AD-5, AD-8, AD-9, AD-12, AD-13, AD-21, AD-26, AD-29, AD-35,
@@ -281,14 +402,20 @@ throwaway `ocupilot-b-ci` on 52777):
 An ObjectScript mutation counts only after the whole tree is recompiled; a client mutation only
 after `npm run build` and a `docker cp` of the bundle.
 
-- AC1 — `mutation:` drop `maxBytes`'s default clamp so the store requests the file's `size` →
-  `log-viewer.spec.ts`'s bounded-request assertion red.
+- AC1 — `mutation:` drop the `'logs/messages'` entry from `log-viewer.page.ts`'s `SOURCES` map →
+  `log-viewer.spec.ts`'s AC1 path-equality assertion red, reading `/api/ocupilot/logs/alerts`
+  (observed at code review). **Corrected**: the line read "drop `maxBytes`'s default clamp so the
+  store requests the file's `size`", and no such clamp exists on the client — the store sends only
+  `''` or `?offset=…&identity=…`, and the window is bounded by `LogSourcePort.DEFAULTMAXBYTES` on
+  the server, which `Test/LogSourceWire.TestAPageNeverExceedsTheCap` pins.
 - AC2 — `mutation:` change the descriptor's `read.source.endpoint` to `alerts` →
   `Test/ReadTool.cls`'s `logs.messages.read` row-source assertion red.
 - AC3 — `mutation:` drop the `pIdentity '= tIdentity` arm from `LogSourcePort.cls:522` →
   `Test/LogSource.cls`'s rotation-restart assertion red.
-- AC4 — `mutation:` remove `white-space: pre` (or equivalent) from `.ocu-log-raw` →
-  `messages-log.browser-spec.mjs`'s no-wrap / horizontal-scroll assertion red.
+- AC4 — `mutation:` `.ocu-log-raw`'s `white-space: pre` → `pre-wrap`, rebuilt and redeployed →
+  `messages-log.browser-spec.mjs`'s no-wrap assertion red (observed). Removing the declaration
+  outright is **not** a mutation: `pre` is the UA default for a `<pre>`, so the block still does
+  not wrap and the spec stays green.
 - AC5 — `mutation:` make Clear a no-op (leave `chipValue` set) → `log-viewer.spec.ts`'s
   clear-restores-every-row assertion red.
 - AC6 — `mutation:` `--ocu-log-row-height: 32px`, rebuilt and redeployed →
@@ -299,10 +426,31 @@ after `npm run build` and a `docker cp` of the bundle.
   `fault-banner.spec.ts`'s side-bar assertion red; and revert the screen resolution to
   "first `log-entry` screen" → the destination assertion red.
 - AC9 — `mutation:` remove `ForgetTask`'s privilege guard, recompiled in the throwaway → the
-  `AdminPort` test's "no `<PROTECT>` logged for an unprivileged caller" assertion red.
+  `AdminPort` test's "no `<PROTECT>` logged for an unprivileged caller" assertion red
+  (**observed at code review, twice**: `Test/AdminPortForget`'s first leg reddens on
+  `ocupilot-slot-b` with leg 2 green, and `Test/WireSecurityRead`'s sweep reddens on
+  `ocupilot-b-ci` carrying the vendor's own
+  `<PROTECT>%DeleteData+38^%Api.Admin.Endpoints.Security.Audit.RecordListTask.1`).
+
+**Mutations added by the review pass** (each applied, observed red, reverted, tree confirmed
+byte-identical):
+
+- `Test/Smoke.cls`'s two roster assertions — `mutation:` rename `messages` to `messagesx` in
+  `Install/Smoke.cls`'s name list → both roster assertions red on `ocupilot-b-ci`.
+- `log-viewer.spec.ts`'s every-log-viewer-reads-its-own-file leg — `mutation:` drop the
+  `'logs/messages'` entry from `SOURCES` → red naming the fall-through to alerts.log.
+- `log-viewer.spec.ts`'s AC5 focus assertion — `mutation:` drop the `focus()` call from `onClear`
+  → red reading `<body>`.
 
 **Manual checks:**
 
 - `iris_server_profiles` reports `ocupilot-slot-b` on 52775 before any MCP call in the pass.
 - `docker exec <throwaway> grep -c PROTECT /durable/iris/mgr/messages.log` reads 0 after the
   ObjectScript sweep, including its denial classes.
+
+## Auto Run Result
+
+Status: done
+Blocking condition: none
+
+Implemented on Opus, falsified by an independent QA pass and reviewed on Opus with four layers. QA found AC6's rendered-height assertion could not distinguish `height` from `min-height`, because every log cell is `nowrap` with `overflow: hidden`, and pinned the rule's declaration instead. The review then found three more assertions that could not fail: two smoke roster lines (`messages` is a prefix of `messageslog`), an unmapped `log-viewer` route silently rendering alerts.log through the `SOURCES[route] ?? ALERTS_SOURCE` fallback -- DW-148 one layer down, and live only because this story adds a second log screen -- and Clear removing itself while holding focus, against the Accessibility Floor's focus-destination rule. Six ledger entries closed by this story's work (DW-1100, DW-1025, DW-148, DW-1109, DW-278, DW-1103) and DW-1138 closed by the lead's planning amendment; DW-1136, DW-1137 and DW-1101 go to the burn-down gate.

@@ -127,6 +127,7 @@ test('a side bar lists only built screens, in side-bar order', () => {
     [
       '',
       'logs/alerts',
+      'logs/messages',
       'logs/errors',
       'logs/audit',
       'os-management/databases/details',
