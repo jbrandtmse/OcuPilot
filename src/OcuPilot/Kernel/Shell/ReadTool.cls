@@ -15,6 +15,13 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
     Quit {"type": "object", "properties": {}, "required": [], "additionalProperties": false}
 }
 
+/// <p>Declared: none (AD-3). A shell read takes no arguments at all.</p>
+ClassMethod SecretArguments(pDescriptor As %String = "", Output pDeclared As %Boolean) As %List
+{
+    Set pDeclared = 1
+    Quit ""
+}
+
 /// <p>The shell read payload this tool answers. Each shell tool names its own.</p>
 ClassMethod Payload(Output pObject As %DynamicObject) As %Status [ Abstract ]
 {

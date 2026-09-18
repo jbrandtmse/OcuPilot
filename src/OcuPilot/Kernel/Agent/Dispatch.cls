@@ -51,6 +51,13 @@ ClassMethod GateClass() As %String
     Quit "OcuPilot.Kernel.Governance.Gate"
 }
 
+/// <p>The agent ledger every answered call is recorded in (Story 4.9, AD-41). Overridable so a test
+/// can observe what a dispatch recorded without reading the store; production never overrides it.</p>
+ClassMethod LedgerClass() As %String
+{
+    Quit "OcuPilot.Kernel.Audit.Ledger"
+}
+
 /// <p>The restraint verdict for a write tool called by <var>pUser</var> under
 /// <var>pDefinitionId</var>, read afresh (AD-30).</p>
 ClassMethod Restraint(pUser As %String, pDefinitionId As %String, Output pVerdict) As %Status
@@ -121,7 +128,7 @@ ClassMethod Advertise(Output pTools) As %Status
 /// is <code>{rowsReturned, rowsSent, truncated}</code> when the call succeeded with a rows-shaped
 /// result, else <code>""</code>; <code>reason</code> and <code>failedPair</code> are set only on
 /// failure, the latter only when the failure carries <code>detail.failedPair</code>.</p>
-ClassMethod Answer(pKey As %String, pUser As %String, pDefinitionId As %String, pToolUses As %DynamicArray, pLimitsClass As %String, Output pResults As %DynamicArray, Output pNames As %DynamicArray, pRowCap As %Integer = 0, pMaxLength As %Integer = 0, Output pDetails As %DynamicArray) As %Status
+ClassMethod Answer(pKey As %String, pUser As %String, pDefinitionId As %String, pToolUses As %DynamicArray, pLimitsClass As %String, Output pResults As %DynamicArray, Output pNames As %DynamicArray, pRowCap As %Integer = 0, pMaxLength As %Integer = 0, Output pDetails As %DynamicArray, pRoute As %String = "") As %Status
 {
     Set tSC = $$$OK
     Set pResults = []
@@ -132,7 +139,7 @@ ClassMethod Answer(pKey As %String, pUser As %String, pDefinitionId As %String, 
         Set tMaxLength = $Select(+pMaxLength > 0: +pMaxLength, 1: +$Parameter(pLimitsClass, "TOOLRESULTMAXLENGTH"))
         Set tIterator = pToolUses.%GetIterator()
         While tIterator.%GetNext(.tIndex, .tBlock) {
-            Set tIsError = ..AnswerOne(pKey, pUser, pDefinitionId, tBlock, tRows, tMaxLength, pLimitsClass, .tName, .tContent, .tTarget, .tArguments, .tResultInfo, .tReason, .tFailedPair, .tArgumentsTruncated)
+            Set tIsError = ..AnswerOne(pKey, pUser, pDefinitionId, tBlock, tRows, tMaxLength, pLimitsClass, .tName, .tContent, .tTarget, .tArguments, .tResultInfo, .tReason, .tFailedPair, .tArgumentsTruncated, pRoute)
             Set tResult = {}
             Do tResult.%Set("type", "tool_result", "string")
             Do tResult.%Set("tool_use_id", $Select($IsObject(tBlock) && (tBlock.%Get("id") '= ""): tBlock.%Get("id"), 1: "unknown"), "string")
@@ -168,7 +175,7 @@ ClassMethod Answer(pKey As %String, pUser As %String, pDefinitionId As %String, 
 /// success, else <code>""</code>. <var>pReason</var> is the failing code's published sentence
 /// (<method>OcuPilot.Api.Error.ReasonForToolCode</method>), set on every failure branch;
 /// <var>pFailedPair</var> is set only by the two privilege-pair refusals.</p>
-ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %String, pBlock As %DynamicObject, pRows As %Integer, pMaxLength As %Integer, pLimitsClass As %String, Output pName As %String, Output pContent As %String, Output pTarget As %String, Output pArguments As %String, Output pResultInfo As %String, Output pReason As %String, Output pFailedPair As %String, Output pArgumentsTruncated As %Boolean) As %Boolean [ Private ]
+ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %String, pBlock As %DynamicObject, pRows As %Integer, pMaxLength As %Integer, pLimitsClass As %String, Output pName As %String, Output pContent As %String, Output pTarget As %String, Output pArguments As %String, Output pResultInfo As %String, Output pReason As %String, Output pFailedPair As %String, Output pArgumentsTruncated As %Boolean, pRoute As %String = "") As %Boolean [ Private ]
 {
     Set tUnavailable = ##class(OcuPilot.Api.Error).#TOOLUNAVAILABLE
     Set pName = ""
@@ -203,6 +210,9 @@ ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %Strin
             Quit
         }
         Set pName = tTool.%Get("name")
+        ; The tool's own secret-argument declaration, taken as soon as the tool resolves so every
+        ; later refusal branch records its row with the same classification a success would (AD-3).
+        Set tSecretNames = $ClassMethod(tRegistry, "SecretArguments", tTool, .tSecretDeclared)
 
         If $Username '= pUser {
             Do ..LogFault("turn " _ pKey _ ": a tool call ran as a user other than the turn's", $$$ERROR($$$GeneralError, "the process user differs from the turn's user"), tUnavailable)
@@ -328,7 +338,35 @@ ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %Strin
         Set pReason = ##class(OcuPilot.Api.Error).ReasonForToolCode(tUnavailable)
         Do ..LogFault("turn " _ pKey _ ": a tool call failed inside the dispatcher", ex.AsStatus(), tUnavailable)
     }
+    ; The common exit, reached by every branch above: one ledger row per answered call, carrying
+    ; whatever the call got as far as (Story 4.9). tPairs and tArgumentPairs are undefined on a
+    ; refusal that never reached them, which is what $Get guards; a row whose call was refused
+    ; before its pairs were read records none, which is the truth about that call.
+    Do ..RecordLedger(pKey, pUser, pRoute, pName, pTarget, $Get(tInput), $Get(tPairs), $Get(tArgumentPairs), $Get(tSecretNames), tIsError, pContent, pLimitsClass)
     Quit tIsError
+}
+
+/// <p>Record one answered call in the agent ledger (Story 4.9). <var>pIsError</var> and
+/// <var>pContent</var> are the answer <method>AnswerOne</method> is about to return, from which the
+/// row's <code>status</code> and machine <code>code</code> are read the same way
+/// <class>OcuPilot.Kernel.Agent.Loop</class> reads them off a result block.</p>
+/// <p><b><code>Do</code>-and-log, never propagated</b> (AD-15): the ledger never fails a turn, and
+/// the writer logs its own failure.</p>
+ClassMethod RecordLedger(pKey As %String, pUser As %String, pRoute As %String, pName As %String, pTarget As %String, pInput As %DynamicAbstractObject, pPairs As %List, pArgumentPairs As %List, pSecretNames As %List, pIsError As %Boolean, pContent As %String, pLimitsClass As %String) [ Private ]
+{
+    Try {
+        Set tCode = ""
+        If pIsError {
+            Try {
+                Set tCode = ##class(%DynamicAbstractObject).%FromJSON(pContent).%Get("code")
+            } Catch {
+                Set tCode = ""
+            }
+        }
+        Do $ClassMethod(..LedgerClass(), "RecordToolCall", pKey, pUser, pRoute, pName, pTarget, pInput, pPairs, pArgumentPairs, pSecretNames, $Select(pIsError: "error", 1: "ok"), tCode, pLimitsClass)
+    } Catch ex {
+        Do ..LogFault("turn " _ pKey _ ": a tool call could not be recorded in the agent ledger", ex.AsStatus(), ##class(OcuPilot.Api.Error).#LEDGERUNAVAILABLE)
+    }
 }
 
 /// <p>Resolve and validate a client-fulfilled tool call (Story 4.7, AD-11 rule 3) through the same
@@ -346,8 +384,18 @@ ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %Strin
 /// <code>Directive</code> carries that check's own code, and a refusal from <code>Directive</code>
 /// itself carries <code>NAV.ROUTEUNKNOWN</code> or <code>NAV.ENTITYNOTALLOWED</code>.
 /// <var>pFailedPair</var> is set only by the two privilege-pair refusals.</p>
-ClassMethod ResolveClientCall(pUser As %String, pBlock As %DynamicObject, pLimitsClass As %String, Output pPending As %Boolean, Output pToolName As %String, Output pRoute As %String, Output pEntityId As %String, Output pTarget As %String, Output pArguments As %String, Output pArgumentsTruncated As %Boolean, Output pIsError As %Boolean, Output pContent As %String, Output pReason As %String, Output pFailedPair As %String) As %Status
+/// <p><var>pKey</var> is the turn the call belongs to, which every log line here names.
+/// <var>pInput</var>, <var>pDeclaredPairs</var>, <var>pCallPairs</var> and <var>pSecretNames</var>
+/// come back so the caller can record the call's ledger row at the point its outcome is known
+/// (Story 4.9): a client-fulfilled call settles in <class>OcuPilot.Kernel.Agent.Loop</class>, not
+/// here, so this method records nothing itself. Each is whatever the ordered chain above got as far
+/// as reading.</p>
+ClassMethod ResolveClientCall(pUser As %String, pBlock As %DynamicObject, pLimitsClass As %String, Output pPending As %Boolean, Output pToolName As %String, Output pRoute As %String, Output pEntityId As %String, Output pTarget As %String, Output pArguments As %String, Output pArgumentsTruncated As %Boolean, Output pIsError As %Boolean, Output pContent As %String, Output pReason As %String, Output pFailedPair As %String, pKey As %String = "", Output pInput As %DynamicAbstractObject, Output pDeclaredPairs As %List, Output pCallPairs As %List, Output pSecretNames As %List) As %Status
 {
+    Set pInput = ""
+    Set pDeclaredPairs = ""
+    Set pCallPairs = ""
+    Set pSecretNames = ""
     Set tUnavailable = ##class(OcuPilot.Api.Error).#TOOLUNAVAILABLE
     Set pPending = 0
     Set pToolName = ""
@@ -369,13 +417,14 @@ ClassMethod ResolveClientCall(pUser As %String, pBlock As %DynamicObject, pLimit
             Set tInput = pBlock.%Get("input")
         }
         Set pToolName = tWire
+        Set pInput = tInput
         Set pTarget = ..TargetOf(tInput)
         Set pArguments = ..RedactedArguments(tInput, +$Parameter(pLimitsClass, "SUMMARYMAXLENGTH"), .pArgumentsTruncated)
         Set tRegistry = ..RegistryClass()
 
         Set tSC = $ClassMethod(tRegistry, "ResolveWire", tWire, .tTool)
         If $$$ISERR(tSC) {
-            Do ..LogFault("a client tool call could not resolve its registry", tSC, tUnavailable)
+            Do ..LogFault("turn " _ pKey _ ": a client tool call could not resolve its registry", tSC, tUnavailable)
             Set tSC = $$$OK
             Quit
         }
@@ -385,16 +434,17 @@ ClassMethod ResolveClientCall(pUser As %String, pBlock As %DynamicObject, pLimit
             Quit
         }
         Set pToolName = tTool.%Get("name")
+        Set pSecretNames = $ClassMethod(tRegistry, "SecretArguments", tTool, .tSecretDeclared)
 
         If $Username '= pUser {
-            Do ..LogFault("a client tool call ran as a user other than the turn's", $$$ERROR($$$GeneralError, "the process user differs from the turn's user"), tUnavailable)
+            Do ..LogFault("turn " _ pKey _ ": a client tool call ran as a user other than the turn's", $$$ERROR($$$GeneralError, "the process user differs from the turn's user"), tUnavailable)
             Quit
         }
 
         Kill tDecision
         Set tSC = $ClassMethod(..GateClass(), "Decide", pToolName, tTool.%Get("kind"), pUser, tInput, .tDecision)
         If $$$ISERR(tSC) {
-            Do ..LogFault("a client tool call's governance gate could not decide " _ pToolName, tSC, tUnavailable)
+            Do ..LogFault("turn " _ pKey _ ": a client tool call's governance gate could not decide " _ pToolName, tSC, tUnavailable)
             Set tSC = $$$OK
             Quit
         }
@@ -411,8 +461,9 @@ ClassMethod ResolveClientCall(pUser As %String, pBlock As %DynamicObject, pLimit
         ; (AC9's own KIND="read" note).
 
         Set tPairs = $ClassMethod(tRegistry, "RequiredPairs", tTool, .tResolved)
+        Set pDeclaredPairs = tPairs
         If 'tResolved {
-            Do ..LogFault("a client tool call's privilege pairs of " _ pToolName _ " could not be read", $$$ERROR($$$GeneralError, "unresolved pairs"), tUnavailable)
+            Do ..LogFault("turn " _ pKey _ ": a client tool call's privilege pairs of " _ pToolName _ " could not be read", $$$ERROR($$$GeneralError, "unresolved pairs"), tUnavailable)
             Quit
         }
         Set tFailedPair = ..MissingPair(pUser, tPairs)
@@ -437,8 +488,9 @@ ClassMethod ResolveClientCall(pUser As %String, pBlock As %DynamicObject, pLimit
         }
 
         Set tArgumentPairs = $ClassMethod(tRegistry, "ArgumentPairs", tTool, tInput, .tResolved)
+        Set pCallPairs = tArgumentPairs
         If 'tResolved {
-            Do ..LogFault("a client tool call's argument pairs of " _ pToolName _ " could not be read", $$$ERROR($$$GeneralError, "unresolved argument pairs"), tUnavailable)
+            Do ..LogFault("turn " _ pKey _ ": a client tool call's argument pairs of " _ pToolName _ " could not be read", $$$ERROR($$$GeneralError, "unresolved argument pairs"), tUnavailable)
             Quit
         }
         Set tFailedPair = ..MissingPair(pUser, tArgumentPairs)
@@ -475,7 +527,7 @@ ClassMethod ResolveClientCall(pUser As %String, pBlock As %DynamicObject, pLimit
         Set pIsError = 1
         Set pContent = ..ErrorContent(tUnavailable)
         Set pReason = ##class(OcuPilot.Api.Error).ReasonForToolCode(tUnavailable)
-        Do ..LogFault("a client tool call failed inside the dispatcher", ex.AsStatus(), tUnavailable)
+        Do ..LogFault("turn " _ pKey _ ": a client tool call failed inside the dispatcher", ex.AsStatus(), tUnavailable)
     }
     Quit tSC
 }

@@ -95,6 +95,13 @@ ClassMethod ArgumentPairs(pDescriptor As %String = "", pArgs As %DynamicObject, 
     Quit ##class(OcuPilot.Port.LogSourcePort).PairsFor(##class(OcuPilot.Port.LogSourcePort).#ERRORSKEY, pArgs.%Get("namespace"))
 }
 
+/// <p>Declared: none (AD-3). This tool takes a namespace, a date and a row cap, none of which can hold a credential; the captured variable table it never returns is a result concern (AD-48), not an argument.</p>
+ClassMethod SecretArguments(pDescriptor As %String = "", Output pDeclared As %Boolean) As %List
+{
+    Set pDeclared = 1
+    Quit ""
+}
+
 /// <p>The result <method>View</method> answers: <code>{fields, rows, truncated}</code>, the fields
 /// being <parameter>SUMMARYFIELDS</parameter>. Dispatched through the kernel cutter like any other
 /// rows-shaped read result (AD-24, DW-281), so the answer a caller actually sees also carries

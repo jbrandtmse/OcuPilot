@@ -74,6 +74,26 @@ ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boo
     Quit ""
 }
 
+/// <p>The top-level argument property names whose values are secret, as a <class>%List</class>
+/// (AD-3). <var>pDeclared</var> is 1 only when the tool has answered the question; the base answers
+/// 0, so a concrete tool that declares nothing is refused when the tools are advertised
+/// (<method>OcuPilot.Screen.Tool.Registry.ProviderTools</method>).</p>
+/// <p><b>Refusing an undeclared tool is what keeps redaction schema-driven.</b> If silence meant
+/// "no secrets", the schema layer would be advisory and the name pattern would be the real defense
+/// -- the inversion AD-3 forbids, and the one
+/// <method>OcuPilot.Kernel.Audit.Log.Redact</method>'s own header names ("a name pattern cannot see
+/// a wallet secret stored in a field called <code>Value</code>"). Declaring none is an act:
+/// answer <code>""</code> with <var>pDeclared</var> 1.</p>
+/// <p>A method rather than a schema key because
+/// <parameter>OcuPilot.Screen.Tool.Registry.SCHEMAKEYWORDS</parameter> admits no classification
+/// keyword, and because a descriptor-driven tool must be able to vary its answer per
+/// descriptor.</p>
+ClassMethod SecretArguments(pDescriptor As %String = "", Output pDeclared As %Boolean) As %List
+{
+    Set pDeclared = 0
+    Quit ""
+}
+
 /// <p>The pairs a call with arguments <var>pArgs</var> requires beyond
 /// <method>PrivilegePairs</method>, where the requirement depends on an argument -- a namespace a
 /// read names, for instance (AD-8, AD-48) -- in the same shape. <var>pArgs</var> is an object the

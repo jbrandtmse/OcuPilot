@@ -81,7 +81,7 @@ ClassMethod AtDispatch(pCall As %Integer) As %String
 /// <p>The shipped dispatch, counting the calls it answers and arming the kill switch when
 /// <method>ForceKillSwitchAfterCalls</method>' count is reached, and recording the turn's latest
 /// step as each call begins (<method>AtDispatch</method>).</p>
-ClassMethod DispatchTools(pKey As %String, pUser As %String, pDefinitionId As %String, pToolUses As %DynamicArray, pLimitsClass As %String, Output pResults As %DynamicArray, Output pNames As %DynamicArray, pRowCap As %Integer = 0, pMaxLength As %Integer = 0, Output pDetails As %DynamicArray) As %Status
+ClassMethod DispatchTools(pKey As %String, pUser As %String, pDefinitionId As %String, pToolUses As %DynamicArray, pLimitsClass As %String, Output pResults As %DynamicArray, Output pNames As %DynamicArray, pRowCap As %Integer = 0, pMaxLength As %Integer = 0, Output pDetails As %DynamicArray, pRoute As %String = "") As %Status
 {
     Set tSeen = ""
     If $$$ISOK(##class(OcuPilot.Kernel.State.Step).GuardedRows(pKey, .tRows)) && (tRows.%Size() > 0) {
@@ -89,7 +89,7 @@ ClassMethod DispatchTools(pKey As %String, pUser As %String, pDefinitionId As %S
         Set tSeen = tLast.kind _ ":" _ tLast.name _ ":" _ tLast.status
     }
     Set ^||OcuPilotTurnLoopProbe("atDispatch", $Increment(^||OcuPilotTurnLoopProbe("atDispatch"))) = tSeen
-    Set tSC = ##super(pKey, pUser, pDefinitionId, pToolUses, pLimitsClass, .pResults, .pNames, pRowCap, pMaxLength, .pDetails)
+    Set tSC = ##super(pKey, pUser, pDefinitionId, pToolUses, pLimitsClass, .pResults, .pNames, pRowCap, pMaxLength, .pDetails, pRoute)
     Set tAnswered = $Increment(^||OcuPilotTurnLoopProbe("answered"), pToolUses.%Size())
     Set tAfter = $Get(^||OcuPilotTurnLoopProbe("killAfter"))
     If (tAfter '= "") && (tAnswered >= $List(tAfter, 1)) Do ..ForceKillSwitch($List(tAfter, 2))

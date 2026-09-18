@@ -60,6 +60,13 @@ ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boo
     Quit ##class(OcuPilot.Screen.Gate).RequiredPairs(pDescriptor, .pResolved)
 }
 
+/// <p>Declared: none (AD-3). A declared read's criteria are search values the screen itself sends on its own route, and a descriptor's <code>context.secretFields</code> are removed from the result rather than accepted as an argument.</p>
+ClassMethod SecretArguments(pDescriptor As %String = "", Output pDeclared As %Boolean) As %List
+{
+    Set pDeclared = 1
+    Quit ""
+}
+
 /// <p>The result <method>View</method> answers: <code>{fields, rows, truncated}</code>.</p>
 ClassMethod ResultSchema(pDescriptor As %String = "") As %DynamicObject
 {

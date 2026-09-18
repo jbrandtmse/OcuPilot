@@ -221,7 +221,8 @@ ClassMethod ResolveWire(pWireName As %String, Output pTool As %DynamicObject) As
 /// <code>pTools</code> -- the shape <class>OcuPilot.Kernel.Provider.Base</class> reads.</p>
 /// <p>Refuses, with <var>pTools</var> 0: a list that cannot be built; a tool whose wire name breaks
 /// <parameter>WIRENAMEPATTERN</parameter>, whose canonical name holds an underscore, or whose wire
-/// name another tool shares; a tool with no description; an input or result schema the validator
+/// name another tool shares; a tool with no description; a tool that declares no secret-argument
+/// classification (<method>SecretArguments</method>); an input or result schema the validator
 /// does not admit; and an input schema <method>EmitSchema</method> refuses.</p>
 ClassMethod ProviderTools(Output pTools) As %Status
 {
@@ -248,6 +249,11 @@ ClassMethod ProviderTools(Output pTools) As %Status
             Set tDescription = ..DescriptionOf(tTool)
             If $ZStrip(tDescription, "<>W") = "" {
                 Set tSC = $$$ERROR($$$GeneralError, "tool '" _ tName _ "' declares no description")
+                Quit
+            }
+            Do ..SecretArguments(tTool, .tSecretDeclared)
+            If 'tSecretDeclared {
+                Set tSC = $$$ERROR($$$GeneralError, "tool '" _ tName _ "' does not declare which of its arguments are secret; a tool classifies them at definition time and declares none by answering SecretArguments with pDeclared 1 (AD-3)")
                 Quit
             }
             Set tInput = ..InputSchemaOf(tTool)
@@ -421,6 +427,27 @@ ClassMethod ArgumentPairs(pTool As %DynamicObject, pArgs As %DynamicObject, Outp
         Set pResolved = 0
     }
     Quit tPairs
+}
+
+/// <p>The top-level argument names <var>pTool</var> declares secret, as its class answers them for
+/// its descriptor (AD-3). <var>pDeclared</var> is 0 when the tool declares nothing or the answer
+/// could not be read, and <method>ProviderTools</method> refuses such a tool rather than reading
+/// silence as "no secrets". Mirrors <method>RequiredPairs</method>.</p>
+ClassMethod SecretArguments(pTool As %DynamicObject, Output pDeclared As %Boolean) As %List
+{
+    Set pDeclared = 0
+    Set tNames = ""
+    Try {
+        Set tNames = $ClassMethod(pTool.%Get("class"), "SecretArguments", pTool.%Get("descriptor"), .pDeclared)
+        If '$ListValid(tNames) {
+            Set tNames = ""
+            Set pDeclared = 0
+        }
+    } Catch {
+        Set tNames = ""
+        Set pDeclared = 0
+    }
+    Quit tNames
 }
 
 /// <p><var>pTool</var>'s declared fulfilment, <code>instance</code> or <code>client</code> (Story

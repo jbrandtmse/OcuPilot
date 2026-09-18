@@ -86,6 +86,13 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
     Quit tSchema
 }
 
+/// <p>Declared: none (AD-3). A route drawn from a closed enum and an encoded entity id are both identifiers.</p>
+ClassMethod SecretArguments(pDescriptor As %String = "", Output pDeclared As %Boolean) As %List
+{
+    Set pDeclared = 1
+    Quit ""
+}
+
 /// <p><code>{navigated, route, entityId, code}</code> -- what the browser answers once the wait
 /// settles (<method>OcuPilot.Kernel.Agent.Dispatch.SettleClient</method> builds it; this schema is
 /// documentation and shape validation only, since a client-fulfilled tool's result never passes

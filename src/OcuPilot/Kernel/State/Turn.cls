@@ -81,6 +81,16 @@ Property ErrorSeq As %Integer [ InitialExpression = 0 ];
 /// (AD-11, AD-33).</p>
 Property Reply As %String(MAXLEN = "");
 
+/// <p>The screen-context route the turn was started from, or <code>""</code> for a turn that
+/// carried no context -- the same <code>context.route</code> the job already holds, recorded once at
+/// <method>GuardedBegin</method> so the turn's own row says which screen it ran from after its
+/// progress has been swept.</p>
+/// <p><b>Added with no <code>SCHEMAVERSION</code> move</b> (Consistency Conventions): a row stored
+/// before this property existed reads it back as <code>""</code>, which is the same value a turn
+/// with no context holds, so no older row is reinterpreted (the precedent is
+/// <property>OcuPilot.Kernel.State.Step.Target</property>).</p>
+Property ContextRoute As %String(MAXLEN = 512);
+
 Index TurnKeyIdx On TurnKey [ Unique ];
 
 Index TurnUserIdx On UserName;
@@ -234,7 +244,10 @@ ClassMethod ReconcileHeld(pUser As %String, pLostCode As %String, pLimitsClass A
 /// <code>queued</code> and belonged to <var>pUser</var>; the slot is then held until
 /// <method>GuardedFinish</method>, and released here otherwise. <var>pStartedSeconds</var> is the
 /// start in <method>NowSeconds</method> units.</p>
-ClassMethod GuardedBegin(pKey As %String, pUser As %String, pLimitsClass As %String, Output pBegun As %Boolean, Output pStartedSeconds As %Integer) As %Status
+/// <p><var>pContextRoute</var> is written onto <property>ContextRoute</property> in the same write,
+/// which is the one place it is ever set; trailing and optional so a caller with no context calls
+/// this unchanged.</p>
+ClassMethod GuardedBegin(pKey As %String, pUser As %String, pLimitsClass As %String, Output pBegun As %Boolean, Output pStartedSeconds As %Integer, pContextRoute As %String = "") As %Status
 {
     Set pBegun = 0
     Set pStartedSeconds = ""
@@ -251,6 +264,7 @@ ClassMethod GuardedBegin(pKey As %String, pUser As %String, pLimitsClass As %Str
         Set tRow.State = ..#STATERUNNING
         Set tRow.StartedAt = ..Timestamp(tStamp)
         Set tRow.JobId = $Job
+        Set tRow.ContextRoute = ..Cap(pContextRoute, 512, .tRouteCut)
         Set tSC = ..GuardedSaveIfCurrent(tRow, +tRow.RowVersion)
         Set tRow = ""
         If $$$ISERR(tSC) Quit

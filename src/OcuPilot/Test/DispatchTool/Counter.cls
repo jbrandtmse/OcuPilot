@@ -73,6 +73,13 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
     }
 }
 
+/// <p>Declared: none (AD-3). Fixture.</p>
+ClassMethod SecretArguments(pDescriptor As %String = "", Output pDeclared As %Boolean) As %List
+{
+    Set pDeclared = 1
+    Quit ""
+}
+
 /// <p>Includes <code>rowsSent</code>, <code>rowsAvailable</code> and <code>truncatedFields</code>:
 /// a rows-shaped result is dispatched through <class>OcuPilot.Kernel.Agent.Bound</class>, which adds
 /// them (AD-24), so the schema admits what a caller actually receives.</p>

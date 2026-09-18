@@ -31,6 +31,13 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
     Quit tSchema
 }
 
+/// <p>Declared: none (AD-3). Fixture.</p>
+ClassMethod SecretArguments(pDescriptor As %String = "", Output pDeclared As %Boolean) As %List
+{
+    Set pDeclared = 1
+    Quit ""
+}
+
 ClassMethod ResultSchema(pDescriptor As %String = "") As %DynamicObject
 {
     If ..Mode() = "noresult" Quit ""

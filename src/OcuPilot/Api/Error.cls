@@ -835,6 +835,61 @@ Parameter REASONNAVUNAVAILABLE = "No open browser answered the navigation in tim
 /// <p>Written sentence for <parameter>NAVNOTINSTANCE</parameter>.</p>
 Parameter REASONNAVNOTINSTANCE = "This tool is fulfilled by the browser and has no view of its own on the instance.";
 
+/// <p>Machine code (Story 4.9, AD-24): <code>GET /agent/ledger</code>'s <code>windowHours</code> is
+/// not a whole number of hours the bounded read admits
+/// (<method>OcuPilot.Kernel.State.Base.BoundedWhere</method>). Rendered on the
+/// <parameter>BADREQUEST</parameter> slug, HTTP 400.</p>
+Parameter LEDGERWINDOWINVALID = "LEDGER.WINDOW.INVALID";
+
+/// <p>Machine code (Story 4.9, AD-24): <code>maxRows</code> is not a whole number above zero and at
+/// or below <parameter>OcuPilot.Kernel.Agent.Limits.LEDGERVIEWMAXROWS</parameter>. Rendered the way
+/// <parameter>LEDGERWINDOWINVALID</parameter> is.</p>
+Parameter LEDGERMAXROWSINVALID = "LEDGER.MAXROWS.INVALID";
+
+/// <p>Machine code (Story 4.9, AD-21, AD-37): the <code>user</code> parameter is not shaped like an
+/// account name. The value is never concatenated into anything -- the read binds it (AD-21) -- so
+/// this refuses a malformed request rather than defending the query. Rendered the way
+/// <parameter>LEDGERWINDOWINVALID</parameter> is.</p>
+Parameter LEDGERUSERINVALID = "LEDGER.USER.INVALID";
+
+/// <p>Machine code (Story 4.9, AD-9): the ledger store could not be read. Rendered on the
+/// <parameter>UNAVAILABLE</parameter> slug, HTTP 503, with the detail logged and nothing of it on
+/// the wire.</p>
+Parameter LEDGERUNAVAILABLE = "LEDGER.UNAVAILABLE";
+
+/// <p>Written sentence for <parameter>LEDGERWINDOWINVALID</parameter>; the producer appends the
+/// bound.</p>
+Parameter REASONLEDGERWINDOWINVALID = "That window is not one the ledger reads over";
+
+/// <p>Written sentence for <parameter>LEDGERMAXROWSINVALID</parameter>; the producer appends the
+/// bound.</p>
+Parameter REASONLEDGERMAXROWSINVALID = "That row count is not one the ledger answers";
+
+/// <p>Written sentence for <parameter>LEDGERUSERINVALID</parameter>.</p>
+Parameter REASONLEDGERUSERINVALID = "That is not the shape of an account name on this instance.";
+
+/// <p>Written sentence for <parameter>LEDGERUNAVAILABLE</parameter>.</p>
+Parameter REASONLEDGERUNAVAILABLE = "The agent ledger could not be read on this instance.";
+
+/// <p>Every <code>LEDGER.*</code> code, as a <class>%List</class>, so a test can hold
+/// <method>ReasonForLedger</method> to the vocabulary -- the model
+/// <method>TurnCodes</method>/<method>ReasonForTurn</method> set.</p>
+ClassMethod LedgerCodes() As %List
+{
+    Quit $ListBuild(..#LEDGERWINDOWINVALID, ..#LEDGERMAXROWSINVALID, ..#LEDGERUSERINVALID, ..#LEDGERUNAVAILABLE)
+}
+
+/// <p>The written sentence a <code>LEDGER.*</code> code carries, or <code>""</code> for any other
+/// code.</p>
+ClassMethod ReasonForLedger(pCode As %String) As %String
+{
+    If pCode = ..#LEDGERWINDOWINVALID Quit ..#REASONLEDGERWINDOWINVALID
+    If pCode = ..#LEDGERMAXROWSINVALID Quit ..#REASONLEDGERMAXROWSINVALID
+    If pCode = ..#LEDGERUSERINVALID Quit ..#REASONLEDGERUSERINVALID
+    If pCode = ..#LEDGERUNAVAILABLE Quit ..#REASONLEDGERUNAVAILABLE
+    Quit ""
+}
+
 /// <p>Every <code>NAV.*</code> code, as a <class>%List</class>, so a test can hold
 /// <method>ReasonForNav</method> to the vocabulary.</p>
 ClassMethod NavCodes() As %List

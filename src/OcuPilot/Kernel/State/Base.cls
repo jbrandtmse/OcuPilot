@@ -748,6 +748,61 @@ ClassMethod GuardedIdsWhereNoParam(pSql As %String, Output pIds) As %Status [ Pr
     Quit tSC
 }
 
+/// <p>Escalated: run a bounded read assembled from three call-site literals and collect every
+/// matching id into <var>pIds</var>, the way <method>GuardedIdsWhere</method> does. The statement is
+/// joined <b>here</b> -- <code>pSelectPrefix _ " WHERE " _ pFragment _ " " _ pSuffix</code> -- so no
+/// subclass concatenates SQL text of its own (AD-21), and <var>pFragment</var> is
+/// <method>BoundedWhere</method>'s answer, which carries a <code>?</code> for every value and no
+/// value at all.</p>
+/// <p><b>Binding order is fixed:</b> <var>pMaxRows</var> first, then <var>pParams</var>'s members in
+/// array order. So <var>pSelectPrefix</var> spells <code>SELECT TOP ?</code> ahead of the fragment's
+/// own placeholders. A caller whose prefix names no placeholder passes <code>0</code> and binds
+/// nothing.</p>
+/// <p><b><method>BoundedWhere</method> pushes its cutoff last, while the fragment names it first</b>
+/// -- so a caller passes an <b>empty</b> <var>pParams</var>, lets that method push the cutoff onto
+/// index 1, and pushes its own predicate values only after it returns. Passing a pre-filled array
+/// puts the cutoff behind values the fragment names after it.</p>
+/// <p>A statement with no bound value at all takes the no-argument <code>%ExecDirect</code> branch:
+/// passing an unused parameter raises <code>SQLCODE -400</code> (see
+/// <method>GuardedOpenOneWhereNoParam</method>).</p>
+/// <p>Same call-site-literal and <code>Private</code> rules as
+/// <method>GuardedExecuteOneParam</method>: reach it through inherited (<code>..</code>) dispatch
+/// from a subclass in this package.</p>
+ClassMethod GuardedIdsBounded(pSelectPrefix As %String, pFragment As %String, pSuffix As %String, pMaxRows As %Integer, ByRef pParams As %DynamicArray, Output pIds) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Kill pIds
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Set tSql = pSelectPrefix _ " WHERE " _ pFragment _ " " _ pSuffix
+        Kill tArgs
+        Set tArgs = 0
+        If +pMaxRows > 0 Set tArgs($Increment(tArgs)) = +pMaxRows
+        If $IsObject($Get(pParams)) {
+            For tI = 0:1:pParams.%Size() - 1 {
+                Set tArgs($Increment(tArgs)) = pParams.%Get(tI)
+            }
+        }
+        If tArgs = 0 {
+            Set tRS = ##class(%SQL.Statement).%ExecDirect(, tSql)
+        } Else {
+            Set tRS = ##class(%SQL.Statement).%ExecDirect(, tSql, tArgs...)
+        }
+        If tRS.%SQLCODE < 0 {
+            Set tSC = $$$ERROR($$$GeneralError, "GuardedIdsBounded failed: SQLCODE=" _ tRS.%SQLCODE _ " " _ tRS.%Message)
+            Quit
+        }
+        While tRS.%Next() {
+            Set pIds($Increment(pIds)) = tRS.%GetData(1)
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>Whether <var>pStatus</var> carries IRIS's own lock-timeout error (5803,
 /// <code>$$$LockFailedToAcquireExclusive</code>) rather than any other failure. Public so
 /// <class>OcuPilot.Test.Convo</class> can pin the classification directly against a status this

@@ -70,6 +70,11 @@ ClassMethod Start(ByRef pValues, Output pStarted As %Boolean) As %Status
 /// the catch. A lock conflict opening it finishes the turn <code>failed</code> /
 /// <code>TURN.BUSY</code> rather than running with no conversation; a persistence failure finishes
 /// it <code>failed</code> / <code>TURN.UNAVAILABLE</code>, the same as any other open failure here.</p>
+/// <p><b>The turn's screen-context route is recorded at begin</b> (Story 4.9), read off the payload
+/// this job already holds through <method>OcuPilot.Kernel.Agent.Loop.ContextRoute</method> -- so the
+/// turn row says which screen it ran from after its progress has been swept. That method is the one
+/// reading of the payload's <code>route</code>, so the turn row and the loop's ledger rows agree by
+/// construction; each frame calls it for itself rather than passing the value along.</p>
 ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pNamespace As %String, pMessage As %String, pReadOnly As %Boolean, pResources As %String, pScope As %String = "", pContext As %String = "", pContextRowCap As %Integer = 0, pConversationId As %String = "")
 {
     Set tBegun = 0
@@ -86,7 +91,7 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pNa
             Quit
         }
         Do ##class(OcuPilot.Kernel.Scope).Set(pScope)
-        Set tSC = ##class(OcuPilot.Kernel.State.Turn).GuardedBegin(pKey, pUser, tLimits, .tBegun, .tStarted)
+        Set tSC = ##class(OcuPilot.Kernel.State.Turn).GuardedBegin(pKey, pUser, tLimits, .tBegun, .tStarted, $ClassMethod(tLoop, "ContextRoute", pContext))
         If $$$ISERR(tSC) || 'tBegun {
             Do ..Log("the turn could not be begun", $Select($$$ISERR(tSC): tSC, 1: $$$ERROR($$$GeneralError, "the slot stayed held past the queued limit, or the turn was no longer queued for this user")))
             Do ..Finish(pKey, pUser, tFailed, tUnavailable, "", "", 0, tLimits)

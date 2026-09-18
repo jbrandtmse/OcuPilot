@@ -2,14 +2,119 @@
 title: 'Story 4.9 - The agent audit ledger'
 type: 'feature'
 created: '2026-09-18'
-status: 'ready-for-dev'
+status: 'done'
 review_loop_iteration: 0
-followup_review_recommended: false
+baseline_revision: 'c63e673247ea834ef6a3ccf5752fd9a7544171b2'
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['oversized']
 owned_ledger: ['DW-448']
-deferred: []
+deferred:
+  - summary: >-
+      An `llm` row and a pre-dispatch refusal row carry an empty `RequiredPairs`, and
+      `Gate.EvaluatePairs("")` is held by everyone, so a cross-user reader holding only
+      `OcuPilotAdmin:USE` receives them ungated.
+    evidence: |-
+      Screen/Gate.cls EvaluatePairs returns 1 for an empty list. A provider call requires no IRIS
+      resource, so the empty set is truthful and the admin resource is the only gate - which is the
+      intent as written. Whether that is the intended exposure (the screen route each turn ran from,
+      and which tools were attempted) is a product call the intent's wording does not settle.
+    location: >-
+      src/OcuPilot/Kernel/Audit/Ledger.cls ViewForUser
+    severity: medium (unverified)
+  - summary: >-
+      `SecretArguments` declared on the abstract intermediates `Kernel/Shell/ReadTool` and
+      `Screen/Tool/Read` makes every present and future subclass inherit "declares none", so the
+      mandatory-declaration refusal cannot bite those two subtrees.
+    evidence: |-
+      Both answer pDeclared 1 with "". Task 6 names `Read` explicitly, so this is the spec as
+      written; the hazard is the next subclass that does take a secret argument. Per-descriptor
+      declaration is the fix and it is product design.
+    location: >-
+      src/OcuPilot/Kernel/Shell/ReadTool.cls, src/OcuPilot/Screen/Tool/Read.cls
+    severity: medium
+  - summary: >-
+      Nothing bounds the ledger table across turns until Story 14.4; one story's test and browser
+      runs left 534 rows on the throwaway with no sweep, metric or operator-visible count.
+    evidence: |-
+      LEDGERMAXROWS caps rows per turn only. The class is deliberately outside
+      Turn.GuardedDelete's cascade and GuardedSweep (AD-37). Measured by direct SQL on
+      ocupilot-ci after the suite: SELECT COUNT(*) FROM OcuPilot_Kernel_State.Ledger = 534.
+    location: >-
+      src/OcuPilot/Kernel/State/Ledger.cls
+    severity: medium
+  - summary: >-
+      Six write and read branches have no assertion: a provider row's `error` leg, the
+      boundary-stop refusal writer, the three client-call writers (step-cap drop, boundary stop
+      during the wait, settle), `truncated` reading true, the unparseable-requirement withhold, and
+      `Api.Ledger.RenderFault`'s 503 and 500 arms.
+    evidence: |-
+      No test outside Test/Ledger*, Test/AuditEvent reads a ledger row; the nav classes that reach
+      the client-call writers contain no ledger reference. TestAnUnreadableStoreIsOneUnavailable-
+      Envelope asserts the fault object, not the route's status. Each is a fixture addition (a
+      faulting turnprobe script, a stopping Boundary probe, a route-side LedgerClass seam).
+    location: >-
+      src/OcuPilot/Kernel/Agent/Loop.cls, src/OcuPilot/Api/Ledger.cls
+    severity: medium
+  - summary: >-
+      The 4096 and 512 column bounds are duplicated as literals in `State/Ledger.GuardedAppend` and
+      `Turn.GuardedBegin`; raising `LEDGERROWMAXLENGTH` would cut silently at 4096 with no U+2026
+      and `argumentsTruncated` still reading 0.
+    evidence: |-
+      State/Ledger.cls uses ..Cut(pArguments, 4096) against MAXLEN 4096 and Limits 4096;
+      Turn.cls uses ..Cap(pContextRoute, 512, .tRouteCut) and never reads tRouteCut.
+    location: >-
+      src/OcuPilot/Kernel/State/Ledger.cls, src/OcuPilot/Kernel/State/Turn.cls
+    severity: low
+  - summary: >-
+      An over-long `RequiredPairs` fails the whole row's write rather than losing a pair; nothing
+      checks the joined string against the 512-character column before the write, and no test
+      covers it.
+    evidence: |-
+      Documented at the property as deliberate. PairsToString has no length bound and
+      RecordToolCall does not measure its result, so the failure surfaces only in the log.
+    location: >-
+      src/OcuPilot/Kernel/State/Ledger.cls RequiredPairs
+    severity: low
+  - summary: >-
+      `PairsToString`/`StringToPairs` accept a resource or permission containing `,` or `:` and
+      cannot round-trip it, and `RedactedKeys` treats a caller-sent literal `[redacted]` as
+      evidence that a key was redacted.
+    evidence: |-
+      Neither rejects the separators; the round trip decides whether a row is withheld. IRIS
+      resource names do not contain either character today, which is why this is low.
+    location: >-
+      src/OcuPilot/Kernel/Audit/Ledger.cls PairsToString, StringToPairs, RedactedKeys
+    severity: low
+  - summary: >-
+      The ledger's only 403 reuses `Error.REASONAUTHNOPRIVILEGE`, whose sentence names a tool call;
+      and `Event.LogFailure`'s hardcoded message reports a configuration change when a dropped
+      `LedgerRead` emission is a read.
+    evidence: |-
+      Api/Error.cls REASONAUTHNOPRIVILEGE reads "the privilege that tool call requires".
+      Kernel/Audit/Event.cls LogFailure's text is a literal. Either fix adds a parameter or a
+      branch, which is why neither was patched.
+    location: >-
+      src/OcuPilot/Api/Error.cls, src/OcuPilot/Kernel/Audit/Event.cls
+    severity: low
+  - summary: >-
+      A ledger read opens up to 201 rows one at a time through the escalated `GuardedOpenId`, and
+      every append runs a `COUNT(*)` over the turn's rows first.
+    evidence: |-
+      ViewForUser loops GuardedRow per id (New $ROLES + AddRoles per call); GuardedAppend's cap
+      check is a COUNT(*) before each write, so each recorded call costs two statements.
+    location: >-
+      src/OcuPilot/Kernel/Audit/Ledger.cls ViewForUser, src/OcuPilot/Kernel/State/Ledger.cls
+    severity: low
+  - summary: >-
+      `scripts/check-objectscript.py` reports 21 rules while `CLAUDE.md` states 18.
+    evidence: |-
+      Observed this pass: "scanned 384 ObjectScript file(s) over 21 rule(s)". The fix edits an
+      agent-context file, which this workflow routes to defer.
+    location: >-
+      CLAUDE.md
+    severity: low
 ---
 
 <intent-contract>
@@ -374,10 +479,12 @@ contract (pass an empty array) and pinned by a test.
   `%UnitTest_Result` before the next; never two in one message, never a re-submit on a timeout. Final run,
   in order: `OcuPilot.Test.Ledger`, `OcuPilot.Test.LedgerWire`, `OcuPilot.Test.AuditEvent`,
   `OcuPilot.Test.TurnStore` (mandatory - error codes were added), `OcuPilot.Test.Envelope`,
-  `OcuPilot.Test.Routing`, `OcuPilot.Test.Dispatch`, `OcuPilot.Test.ToolRoundTrip`,
+  `OcuPilot.Test.Routing`, `OcuPilot.Test.ToolDispatch` (`OcuPilot.Test.Dispatch` is the in-process
+  dispatch harness, not a `%UnitTest.TestCase`), `OcuPilot.Test.ToolRoundTrip`,
   `OcuPilot.Test.ToolNavigate`, `OcuPilot.Test.TurnWire`, `OcuPilot.Test.StateBound`,
-  `OcuPilot.Test.Convo`, `OcuPilot.Test.State`, `OcuPilot.Test.AuditRecord`, `OcuPilot.Test.Smoke`.
-- From `ui/`: `npm test` (expected unchanged - 940 node assertions plus the vitest files) and
+  `OcuPilot.Test.Convo`, `OcuPilot.Test.State`, `OcuPilot.Test.AuditRecord`, `OcuPilot.Test.Smoke`,
+  `OcuPilot.Test.ConfigGate` (its `/agent/` route sweep gained the new route's exception).
+- From `ui/`: `npm test` (expected unchanged - 948 node assertions and 477 vitest tests) and
   `npm run build` (expected: the six `prebuild` checkers pass and the initial total stays under the
   780 kB warning; this story adds no client code, so the measured figure must not move).
 - `bash scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS` -- expected: every check
@@ -387,17 +494,25 @@ contract (pass an empty array) and pinned by a test.
 
 | AC | Pinning test | mutation |
 |----|--------------|----------|
-| AC1 | `LedgerWire.TestATurnWritesOneProviderRowAndOneToolRow` | delete the `RecordToolCall` call at `Dispatch.AnswerOne`'s common exit -> the `tool` row is absent |
-| AC2 | `LedgerWire.TestARowCarriesTheResourceTheToolRequired` | record only `tPairs` and drop `tArgumentPairs` -> `shell.screen.open`'s row reads empty `requiredPairs` |
-| AC3a | `Ledger.TestADeclaredSecretIsAbsentFromTheWholeRow` (asserts the literal appears nowhere in the serialized row, not that a field equals `[redacted]`) | remove layer 1 from `RedactArguments`, leaving only `Log.Redact` -> `s3cr3t` appears |
-| AC3b | `Ledger.TestThePatternAddsAndTheDeclarationSurvivesIt` | swap the two layers so `Log.Redact` runs first and layer 1 rebuilds from the raw input -> the declared-subset assertion fails |
-| AC3c | `Ledger.TestAToolDeclaringNothingIsRefusedAtRegistration` | make `Registry` read `pDeclared = 0` as "no secrets" -> the fixture advertises |
-| AC4 | `Ledger.TestTheRowCapStoresNoMoreAndCountsTheRest` under `Test.LedgerLimits` | drop the `pStored` check so `GuardedAppend` always saves -> four rows and no `overflow` row |
-| AC5 | `AuditEvent.TestACrossUserLedgerReadLandsOneRowAndVanishesUnregistered` | remove `LedgerRead` from `Event.Roster()` -> both the registration test and the round trip redden |
-| AC6 | `LedgerWire.TestARowIsWithheldFromAnAdministratorWhoLacksItsResource` (asserts the row's **absence** and the withheld count) | return the subject's rows without evaluating `RequiredPairs` -> the withheld row appears |
+| AC1 | `LedgerWire.TestATurnWritesOneProviderRowAndOneToolRow` | delete the `Do ..RecordLedger(...)` call at `Dispatch.AnswerOne`'s common exit -> the `tool` row is absent (that one method red; the `llm` assertions stay green) |
+| AC2 | `LedgerWire.TestARowCarriesTheResourceTheToolRequired` | pass `""` in place of `tCCallPairs` at `Loop.AnswerClientCall`'s refusal `RecordClientRow` -> the row's `requiredPairs` is empty (AC6's method reddens with it: an unrecorded requirement is nothing to withhold on) |
+| AC3a | `Ledger.TestADeclaredSecretIsAbsentFromTheWholeRow` (asserts the literal appears in no column and in no serialization of the view, not that a field equals `[redacted]`) | remove layer 1 from `Ledger.RedactArguments`, leaving only `Log.Redact` -> the value appears |
+| AC3b | `Ledger.TestThePatternAddsAndTheDeclarationSurvivesIt` | run layer 2 over the raw input rather than over layer 1's result (`RedactedArguments(pInput, ...)`) -> the declaration is lost while the pattern still adds |
+| AC3c | `Ledger.TestAToolDeclaringNothingIsRefusedAtRegistration` | remove the `SecretArguments` check from `Registry.ProviderTools` -> the undeclaring fixture advertises |
+| AC4 | `Ledger.TestTheRowCapStoresNoMoreAndCountsTheRest`, under `Test.LedgerLimits` | drop the cap branch from `State.Ledger.GuardedAppend` so it always saves -> four rows and no `overflow` row |
+| AC5 | `AuditEvent.TestACrossUserLedgerReadLandsOneRowAndVanishesUnregistered` | remove `LedgerRead` from `Event.Roster()` -> the roster-membership assertion reddens. The round trip stays green, because `EnsureAuditEvents` only creates and repairs: a triple already registered survives a roster edit until uninstall. The method's own negative leg is what pins the emission. |
+| AC6 | `LedgerWire.TestARowIsWithheldFromAnAdministratorWhoLacksItsResource` (asserts the row's **absence**, the withheld count, and that nothing of it is on the wire) | remove the per-row `Gate.EvaluatePairs` branch from `Ledger.ViewForUser` -> the withheld row appears |
 | AC7 | `Ledger.TestASweepRemovesTheTurnAndLeavesItsLedgerRows` | add a `Ledger` arm to `Turn.GuardedDelete`'s cascade -> the rows vanish |
-| AC8 | `LedgerWire.TestTheRouteReturnsTheTurnsRowsOverTheWire` | remove the `GET /agent/ledger` row from the `UrlMap` -> 404 `ROUTE.NOTFOUND` |
-| AC9 | `Ledger.TestTheBoundedHelperBindsTheWindowAndThePredicates` | concatenate the predicate values into the SQL instead of binding -> the `' OR 1=1 --` user returns extra rows |
+| AC8 | `LedgerWire.TestTheRouteReturnsTheTurnsRowsOverTheWire` | remove the `GET /agent/ledger` row from the `UrlMap` -> the route 404s and all four `LedgerWire` methods redden |
+| AC9 | `Ledger.TestTheBoundedHelperBindsTheWindowAndThePredicates` | concatenate the user into the fragment instead of binding it -> the `' OR 1=1 --` name is no longer matched literally; on this build it fails the read outright (`SQLCODE -1`), where the bound form returns no row |
+
+Three matrix rows the ACs do not name carry their own pinning test, added at the Matrix Test Audit:
+
+| Matrix row | Pinning test | mutation |
+|------------|--------------|----------|
+| Tool refused before dispatch | `Ledger.TestARefusalBeforeDispatchRecordsARowWithNoPairs`, under `Test.LedgerBudgetLimits`, `Test.LedgerLoopProbe` and `Test.LedgerDispatchProbe` | delete the `RecordRefusedRow` call at `Loop.AnswerTools`' reply-budget branch -> no row is written |
+| Subject user deleted | `Ledger.TestARowOutlivesTheAccountItNames` (the probe user is no account this instance holds) | make `State.Ledger.GuardedRow` answer `""` for `user` -> the name is not rendered as recorded |
+| Store unreadable | `Ledger.TestAnUnreadableStoreIsOneUnavailableEnvelope`, through `Test.LedgerFaultProbe` | return the store's raw status text as the fault's `reason` in `Audit.Ledger.Unavailable` -> the probe's marker reaches the envelope |
 
 Each mutation is applied, observed red, reverted, and the tree confirmed byte-identical
 (`git status --short` and `git diff --stat` unchanged) before the next.
@@ -409,16 +524,134 @@ Each mutation is applied, observed red, reverted, and the tree confirmed byte-id
 - `iris_global_list` confirms the ledger's data global sits under `OcuPilot*` (so inside `%DB_OCUPILOT`) and
   that its name was not hashed - the 29-character cap held.
 
+## Review Triage Log
+
+### 2026-09-18 - Review pass
+
+- verdicts: 50 findings - high 3, medium 17, low 28, false 1, maybe-false 1
+- findings:
+  - `[high]` `[patch]` `RecordRefusedRow` hardcodes `""` for `pSecretNames`, so layer 1 never runs on a pre-dispatch refusal row and a declared secret is stored in clear - both call sites now pass the resolved tool and read its declaration; mutation demonstrated (run 393 showed the raw value in the row)
+  - `[maybe-false]` `[defer]` `llm` and refused rows carry an empty `RequiredPairs`, which `EvaluatePairs` holds for everyone - deferred; the empty set is truthful and the intent makes the admin resource the gate, so whether the exposure is intended is the owner's call
+  - `[low]` `[reject]` A failed client-fulfilled navigation records `status` `ok` - the matrix specifies the settle row's **code**, not its status, the row carries `NAV.*` in `code`, and the tool step beside it is also `ok`; changing one desyncs the two
+  - `[medium]` `[patch]` A row deleted between the id read and `GuardedRow` becomes an all-blank row, counted as sent and released ungated - the loop now skips a row that answered no values
+  - `[medium]` `[patch]` `httpStatus` reads 0 for every failed provider call, not only for a call never made - `RecordProviderRow` now takes the port's own status output, which `Loop.Run` already held
+  - `[medium]` `[patch]` `windowHours` on the wire echoed the request, so a default read reported 0 for a 24-hour window - `AppliedWindow` now reports the window `BoundedWhere` applied
+  - `[low]` `[patch]` `Api.Ledger`'s header claims four validated query parameters; it validates three and binds `turnKey` - sentence corrected
+  - `[low]` `[reject]` `LEDGERVIEWMAXROWS` is enforced at the route, not inside `ViewForUser` - the fix adds a limits parameter to a public signature; AD-24's cap is honored at the surface AD-24 is about
+  - `[medium]` `[defer]` `SecretArguments` on two abstract intermediates makes their whole subtrees inherit "declares none" - deferred; task 6 names `Read` explicitly and per-descriptor declaration is product design
+  - `[low]` `[reject]` `pDeclared` is read and discarded at dispatch - a tool whose declaration will not read cannot be advertised, and `Loop.Run` fails the turn when `Advertise` fails, so the model never sees it
+  - `[low]` `[reject]` The value-substring soundness check can trip on a declared value that also appears under another key and then discards the whole argument string - needs a declared secret duplicated within one call's arguments and no shipped tool declares one; the header now says the scan is a substring test and what it costs
+  - `[low]` `[reject]` A non-object tool input records no arguments while the step records some - no tool input schema admits a non-object, so the divergence is unreachable
+  - `[low]` `[defer]` The 4096 and 512 bounds are duplicated literals, and `Cut` neither appends U+2026 nor updates `argumentsTruncated` - deferred
+  - `[medium]` `[patch]` `Turn.ContextRoute` is written and read by nothing - pinned by an added assertion in the refusal test, and `Job.cls`'s false "one value rather than two derivations" claim corrected; mutation demonstrated (run 394)
+  - `[low]` `[patch]` `AnswerClientCall`'s "Every exit records one ledger row" is an overclaim - header now names the four exits that record and says why the error exits do not
+  - `[low]` `[reject]` A refused-before-resolution row stores the wire name in a column documented as canonical - the wire name is the only name such a call has; every resolved tool stores the canonical one
+  - `[low]` `[reject]` `ViewForUser` never returns an error status, so `Api.Ledger`'s `$$$ISERR` branch is dead - failures reach the caller through `pFault`, which is rendered; removing the branch removes a defense and narrowing the signature is public surface
+  - `[low]` `[defer]` The ledger's 403 reuses a sentence about tool calls - deferred; a new `REASON*` parameter is public surface
+  - `[low]` `[defer]` `Event.LogFailure` reports a configuration change for a dropped read emission - deferred; the fix adds a branch
+  - `[low]` `[patch]` `Test.Ledger`'s "Live-safe" header omits the instance-wide sweep one method runs - header corrected to name the exception
+  - `[medium]` `[defer]` `truncated` reading true, the unparseable-requirement withhold, `RenderFault`'s 503/500 arms and the windowed read are unasserted - deferred with the fixtures each needs
+  - `[low]` `[defer]` Per-row `%OpenId` in a loop and a `COUNT(*)` per append - deferred
+  - `[medium]` `[defer]` Nothing bounds the ledger table across turns until Story 14.4 - deferred with the measured 534 rows
+  - `[medium]` `[patch]` The self/cross-user split is case-sensitive while IRIS account names are not, so a caller naming their own account in another case is refused - a case-insensitive self match now resolves to the caller's own name while the column stays `%EXACT`; mutation demonstrated (run 395)
+  - `[low]` `[defer]` `PairsToString`/`StringToPairs` cannot round-trip `,` or `:` in a resource name, and `RedactedKeys` trusts a caller-sent `[redacted]` - deferred
+  - `[low]` `[patch]` The spec's `## Auto Run Result` under-reported the added fixtures and the tool declarations - rewritten below from this pass's own runs
+  - `[high]` `[patch]` (edge-case) Declared secret stored verbatim on a refusal row - grouped with the first row; same fix
+  - `[low]` `[reject]` (edge-case) The soundness check's false positives - grouped with the reject above
+  - `[low]` `[reject]` (edge-case) The settle's `ok` status - grouped with the reject above
+  - `[low]` `[patch]` (edge-case) Three client-call error exits record no row - the header now states it as the contract; recording a row for a call whose step never landed would outlive the only thing it reconciles with
+  - `[medium]` `[patch]` (edge-case) The casing split - grouped with the casing patch above
+  - `[false]` `[reject]` (edge-case) A vanished row makes the whole view answer 503 - refuted: `GuardedRow` answers `$$$OK` with no values when `%OpenId` finds nothing, so the error path is not taken; the real outcome is the blank row, patched above
+  - `[low]` `[reject]` (edge-case) A limits class with `LEDGERMAXROWS` absent or zero stores nothing - the parameter is declared on `Limits` and inherited by every subclass, so the state is unreachable
+  - `[low]` `[defer]` (edge-case) The duplicated `4096` literal - grouped with the defer above
+  - `[low]` `[reject]` (edge-case) `pDeclared` discarded at dispatch - grouped with the reject above
+  - `[medium]` `[patch]` (edge-case) `windowHours` echoes the request - grouped with the patch above
+  - `[high]` `[patch]` (edge-case, claim) The redaction-order claim is false for refusal rows - grouped with the first row
+  - `[low]` `[patch]` (edge-case, claim) The "every exit" claim - grouped with the header correction above
+  - `[medium]` `[patch]` (verification-gap) The recorded `Test.Ledger` figure of 9 predates the three Matrix-Test-Audit tests - re-run and recorded: 12 of 12, run 397
+  - `[medium]` `[patch]` (verification-gap) The self-read assertion cannot redden under its stated mutation, because `%UnitTest` runs as `%All` - both legs now run through `Test.LedgerGateProbe`; mutation demonstrated (run 396)
+  - `[medium]` `[patch]` (verification-gap) `Turn.ContextRoute` is observed by nothing - grouped with the pin above
+  - `[medium]` `[defer]` (verification-gap) The boundary-stop refusal writer and the three client-call writers are unasserted - grouped with the unasserted-branches defer
+  - `[medium]` `[defer]` (verification-gap) A provider row's `error` leg is unasserted - grouped with the same defer, as the layer itself filed it
+  - `[medium]` `[defer]` (verification-gap) The route's 503 and 500 mappings are unasserted - grouped with the same defer, as the layer itself filed it
+  - `[low]` `[reject]` (verification-gap) The settle's `ok` status - grouped with the reject above
+  - `[low]` `[reject]` (verification-gap) `Api.Ledger`'s `$$$ISERR(tViewSC)` branch is unreachable - grouped with the reject above
+  - `[low]` `[reject]` (verification-gap) Eight `$$$AssertStatusOK(ViewForUser ...)` calls cannot fail - each sits beside the method's own falsifiable assertions and names the call that ran; removing them removes information and the load-bearing check is the `$IsObject(tFault)` line beside each
+  - `[low]` `[reject]` (verification-gap) `tFragment [ "'"` cannot fail independently of the exact-equality assertion above it - cosmetic; it documents what the equality is being read for
+  - `[medium]` `[patch]` (intent-alignment) The reported `Test.Ledger` 9 predates the three matrix tests - grouped with the re-run above
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-This pass planned only; no source was changed. Investigation covered `Kernel/State/*` (the `Guarded*`
-surface, `BoundedWhere` and the arity wall behind DW-448), `Kernel/Agent/{Dispatch,Loop,Limits}` (the exact
-frames holding every ledger column), `Screen/Tool/*` and `Screen/Gate` (declaration point and pair shape),
-`Screen/Context` (the exclusion is descriptor-keyed and all-or-nothing, so it is applied upstream rather
-than re-invoked), `Kernel/Audit/{Log,Event}` and `Installer.EnsureAuditEvents` (roster-driven registration),
-`Api/{Router,Error,Conversation}` and the test harness. Verified: `bash scripts/lint-docs.sh` -> 0 issues in
-72 files, `check-prose` 0 problems. The working tree is otherwise clean; this spec is the only new file and
-the runner's bookkeeping commit lands it.
+**What was built.** One durable row per provider call and per tool answer, in
+`OcuPilot.Kernel.State.Ledger` on `Kernel/State/Base` (protected database, no hand-written Storage,
+no `SCHEMAVERSION` move); `OcuPilot.Kernel.Audit.Ledger` as its one public face, holding the two
+writers, the two-layer redaction, the pair-string round trip and `ViewForUser`'s cross-user and
+per-row gates outside every escalated frame; `OcuPilot.Api.Ledger` behind `GET /agent/ledger`.
+`Base.GuardedIdsBounded` closes DW-448 by joining the statement inside `Base` and binding
+`pMaxRows` first, then `pParams` in array order, with a zero-argument branch for SQLCODE -400.
+`Screen/Tool/Base.SecretArguments` makes the secret-argument classification mandatory, refused at
+advertise time in `Registry.ProviderTools`. Three bounds on `Limits`, one `LedgerRead` roster name
+(no installer edit), four `LEDGER.*` codes with `LedgerCodes()`/`ReasonForLedger()`. No `Ledger` arm
+on `Turn.GuardedDelete` and no retention sweep. No client file changed.
+
+**Files changed.** New: `Kernel/State/Ledger.cls` (the store), `Kernel/Audit/Ledger.cls` (writers,
+redaction, gates, view), `Api/Ledger.cls` (the route's handler), `Test/{Ledger,LedgerWire}.cls` (the
+two suites), `Test/{LedgerLimits,LedgerBudgetLimits}.cls` (narrowed bounds),
+`Test/{LedgerGate,LedgerGateProbe,LedgerLoopProbe,LedgerDispatchProbe,LedgerFaultProbe}.cls`
+(fixture seams), `Test/LedgerTool/{Probe,Silent,Registry,All}.cls` (a tool that declares a secret,
+one that declares nothing, and two registries over them). Changed: `Base.cls` (the bounded helper),
+`Turn.cls` (`ContextRoute`, written at `GuardedBegin`), `Loop.cls` (route capture, the provider row,
+the two refusal rows, the four client-call rows), `Dispatch.cls` (`pRoute` through
+`Answer`/`AnswerOne`, the common-exit row, `ResolveClientCall`'s new outputs), `Job.cls` (the route
+at begin), `Limits.cls`, `Event.cls` (`LedgerRead` plus `Record`'s optional `pEventName`),
+`Registry.cls` + `Screen/Tool/{Base,Read,ErrorRead,Navigate}.cls` + `Kernel/Shell/ReadTool.cls` and
+eight test tool fixtures (the declaration), `Api/{Error,Router}.cls`, `Test/ConfigGate.cls` (the new
+route's exception), `Test/AuditEvent.cls` (the `LedgerRead` round trip and its negative leg),
+`Test/TurnLoopProbe.cls` (the `pRoute` pass-through).
+
+**Review.** 50 findings across four layers - high 3, medium 17, low 28, false 1, maybe-false 1.
+Patched: 1 high entry (layer 1 of the redaction skipped on every pre-dispatch refusal row), 7 medium
+entries (the phantom row, the provider row's HTTP status, the echoed window, the write-only
+`ContextRoute`, the case-sensitive self read, the self-read assertion that could not redden, the
+stale recorded test figure) and 5 low entries (four doc corrections and this section). Deferred: 10
+entries in the frontmatter `deferred:` list. Rejected with their reasons in the triage log above: the
+settle's `ok` status (the matrix specifies the code), `LEDGERVIEWMAXROWS` at the route
+(public surface), `pDeclared` discarded at dispatch (unadvertisable), the soundness check's false
+positives (needs a duplicated declared value), a non-object tool input (no schema admits one), the
+wire name on an unresolved row (the only name it has), the always-OK `%Status` (failures travel in
+`pFault`), the eight decorative `AssertStatusOK` calls and one redundant assertion.
+
+**Follow-up review recommended: true.** A `high` entry was patched. The named unverified risk: the
+fix is pinned for the reply-budget refusal only. The boundary-stop refusal writer and the three
+client-call writers (step-cap drop, boundary stop during the wait, settle) still write rows no test
+reads, so a regression in those four would not redden - the fourth `deferred:` entry.
+
+**Verified.** `check-objectscript` 0 problems over 384 files; `test_check_objectscript` 125 OK;
+`lint-docs` 0 issues in 72 files and `check-prose` 0 problems. Compiled clean into the throwaway
+(`LoadDir "ck"`, 0 errors) and into slot A through `iris_doc_load` (382 uploaded, 0 failed).
+18 `%UnitTest` classes through `ci-runner.mjs --container ocupilot-ci`, one invocation, runs 397-414:
+192 tests, 0 failed, 0 probe leftovers, 0 overlaps - `Ledger` 12, `LedgerWire` 4, `AuditEvent` 7,
+`TurnStore` 11, `ConfigGate` 3, `Envelope` 15, `Routing` 18, `ToolDispatch` 17, `ToolRoundTrip` 2,
+`ToolNavigate` 15, `TurnWire` 11, `TurnLoop` 11, `TurnNavigate` 14, `StateBound` 3, `Convo` 7,
+`State` 12, `AuditRecord` 6, `Smoke` 24. Client: `npm test` 948 node + 477 vitest across 36 files,
+0 failed; `npm run build` initial total 767.61 kB against the 780 kB gate, unmoved; `npm test:browser`
+120 of 120 against the redeployed bundle, with `/agent/definitions` empty afterwards. Smoke:
+executed=19 passed=19 failed=0 pending=2 skipped=0. Manual probes on the throwaway: rows present,
+`RequiredPairs` sorted and de-duplicated (`%Admin_Operate:USE,%Admin_Secure:USE,%DB_IRISSYS:READ`),
+no credential-shaped value in any `Arguments` column, and the data global is the inherited
+`^OcuPilot.Kernel.State.BaseD` - unhashed, under `OcuPilot*`, so inside `%DB_OCUPILOT`.
+
+**One defect this pass caught in its own test.** The first version of the refusal row's
+secret-absence assertion ran under `LedgerLimits`, whose `LEDGERROWMAXLENGTH` of 24 cut the argument
+string before the declared value - so the absence would have held by truncation rather than by
+redaction. The reply-budget narrowing moved to its own `Test.LedgerBudgetLimits`, which keeps the
+shipped argument bound, and the assertion is now load-bearing (demonstrated by run 393).
+
+**Residual risks.** The four unasserted ledger writers named above; the ledger table has no
+cross-turn bound until Story 14.4 (534 rows accumulated on the throwaway during this story's runs);
+an empty `RequiredPairs` is held by every reader, so `llm` and refused rows are gated only by
+`OcuPilotAdmin:USE`; `SecretArguments` on two abstract bases means a future subclass inherits
+"declares none".

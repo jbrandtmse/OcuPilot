@@ -66,6 +66,23 @@ Parameter HISTORYMAXLENGTH As %Integer = 65536;
 /// browser that never answers within it lapses the call to <code>NAV.UNAVAILABLE</code>.</p>
 Parameter NAVWAITSECONDS As %Integer = 60;
 
+/// <p>Ledger rows stored per turn (AD-41); later calls are counted on that turn's one
+/// <code>overflow</code> row, not stored. A turn is capped at <parameter>MAXITERATIONS</parameter>
+/// provider calls and the common shape is one tool answer per iteration, so this is one row per
+/// call at the turn's own ceiling: an ordinary turn never overflows, and a turn returning several
+/// <code>tool_use</code> blocks per iteration can.</p>
+Parameter LEDGERMAXROWS As %Integer = 200;
+
+/// <p>Characters a ledger row's redacted argument string is cut at, the cut value ending in
+/// U+2026. Four times <parameter>SUMMARYMAXLENGTH</parameter>, the bound the tool step's own
+/// argument string already obeys, so a ledger row can never be narrower than the step it
+/// reconciles with; the worst-case per-turn footprint is about 800 KB.</p>
+Parameter LEDGERROWMAXLENGTH As %Integer = 4096;
+
+/// <p>Rows one ledger read answers at most (AD-24's row cap, applied to a bounded read like any
+/// other). The read asks its source for this many plus one and reports the truncation.</p>
+Parameter LEDGERVIEWMAXROWS As %Integer = 200;
+
 /// <p>Seconds one provider call may add to a turn, its retries and the sleeps between them
 /// included (Story 4.8, AD-42). The turn's <b>declared</b> ceiling; the one actually enforced is
 /// <parameter>OcuPilot.Kernel.Provider.Retry.ATTEMPTBUDGETSECONDS</parameter>, because

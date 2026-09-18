@@ -458,6 +458,49 @@ Method TestTheSmokeCheckFailsOnTheBaselineAndSkipsOnALaterEntry()
     Do $$$AssertTrue(##class(OcuPilot.Test.Smoke).Line(tReport4, "auditevent") [ "pass", "and the check passes again")
 }
 
+/// <p>AC5 (Story 4.9) -- the <code>LedgerRead</code> roster entry: a cross-user ledger read lands
+/// exactly one row under it, naming the subject as the read's target; a self read lands none; and
+/// with that registration deleted the same read still succeeds and lands none -- which is what
+/// proves the registration, not the emission, is what makes a row land (AD-15).</p>
+/// <p>This account holds <code>%All</code>, so the cross-user gate passes and what is under test
+/// here is the emission rather than the gate; the gate is
+/// <class>OcuPilot.Test.LedgerWire</class>'s, as a real least-privileged principal.</p>
+/// <p>Mutation (Rule 19): remove <parameter>OcuPilot.Kernel.Audit.Event.EVENTLEDGERREAD</parameter>
+/// from <method>OcuPilot.Kernel.Audit.Event.Roster</method> -- the roster assertion goes red.</p>
+Method TestACrossUserLedgerReadLandsOneRowAndVanishesUnregistered()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup installed and read a non-empty roster")
+    Set tName = $Parameter("OcuPilot.Kernel.Audit.Event", "EVENTLEDGERREAD")
+    Do $$$AssertTrue($ListFind(##class(OcuPilot.Kernel.Audit.Event).Names(), tName) > 0, tName _ " is on the roster registration carries")
+    Do $$$AssertEquals(..MissingTriples(), "", "and every roster triple is registered on this instance")
+    Set ..PreparedSince = ..Now()
+
+    Set tSubject = ..Marker()
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Audit.Ledger).ViewForUser($Username, tSubject, 0, "", 10, .tView, .tFault), "a cross-user ledger read runs")
+    Do $$$AssertEquals($IsObject(tFault), 0, "with no fault, this account holding the administrative resource")
+    Do $$$AssertEquals(..RowsCarrying(..PreparedSince, tName, tSubject, .tData), 1, "exactly one " _ tName _ " row was written")
+    Do $$$AssertTrue(tData [ """verb"":""read""", "naming the verb: " _ tData)
+    Do $$$AssertTrue(tData [ """type"":""user""", "and the subject's entity type (AD-13)")
+    Do $$$AssertTrue(tData [ ("""scope"":""" _ ##class(OcuPilot.Kernel.Scope).#SCOPEINSTANCE _ """"), "and the instance scope")
+    Do $$$AssertTrue(tData [ ("""actor"":""" _ $Username _ """"), "and the reader as the actor")
+
+    ; A self read is not a cross-user read and emits nothing.
+    Do ##class(OcuPilot.Kernel.Audit.Ledger).ViewForUser($Username, "", 0, "", 10, .tSelf, .tSelfFault)
+    Do $$$AssertEquals(..RowsCarrying(..PreparedSince, tName, """id"":""" _ $Username _ """", .tSelfData), 0, "a read of the caller's own rows emits none")
+
+    ; The negative leg: with the registration gone the same read still succeeds and lands no row.
+    Do $$$AssertStatusOK(..DeleteRegistration(tName), "the " _ tName _ " registration is deleted")
+    Set tSecond = ..Marker()
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Audit.Ledger).ViewForUser($Username, tSecond, 0, "", 10, .tAfter, .tAfterFault), "the same read still succeeds")
+    Do $$$AssertEquals($IsObject(tAfterFault), 0, "with no fault -- emission never fails the read (AD-15)")
+    Do $$$AssertTrue($IsObject(tAfter), "and still answers a view")
+    Do $$$AssertEquals(..RowsCarrying(..PreparedSince, tName, tSecond, .tNone), 0, "and lands no row at all")
+
+    Set tRestoreSC = ##class(OcuPilot.Install.Installer).Install("")
+    Do $$$AssertStatusOK(tRestoreSC, "re-install re-registers the deleted triple")
+    Do $$$AssertEquals(..MissingTriples(), "", "and every roster triple is registered again")
+}
+
 /// <p>Delete one of OcuPilot's own audit event registrations by its full event name, switching to
 /// <code>%SYS</code> and restoring (AD-16). A name that is not registered is left alone.</p>
 ClassMethod DeleteRegistration(pEventName As %String) As %Status

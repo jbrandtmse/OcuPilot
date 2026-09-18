@@ -1,7 +1,8 @@
 /// <p>The single HTTP entry point for the OcuPilot REST API. Stateless (no CSP session),
 /// JSON-first.</p>
 /// <p>The <code>UrlMap</code> below holds the five agent-switch routes under
-/// <code>/agent/switches</code> and <code>/agent/restraint</code>, the eight agent-definition
+/// <code>/agent/switches</code> and <code>/agent/restraint</code>, the agent ledger read
+/// <code>GET /agent/ledger</code>, the eight agent-definition
 /// routes under <code>/agent/definitions</code>, the provider catalog the Definition form cascades
 /// from, the generic screen read, <code>GET /screens/:screen/read</code>, the four
 /// application-error-log levels <code>GET /logs/errors/{namespaces,dates,list,detail}</code>, the
@@ -69,6 +70,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/agent/switches" Method="GET" Call="AgentSwitchesRead"/>
   <Route Url="/agent/switches" Method="PUT" Call="AgentSwitchesUpdate"/>
   <Route Url="/agent/restraint" Method="GET" Call="AgentRestraint"/>
+  <Route Url="/agent/ledger" Method="GET" Call="AgentLedger"/>
   <Route Url="/agent/context" Method="GET" Call="AgentContextRead"/>
   <Route Url="/agent/context" Method="PUT" Call="AgentContextUpdate"/>
   <Route Url="/agent/definitions/:id/default" Method="POST" Call="AgentDefinitionSetDefault"/>
@@ -138,6 +140,14 @@ ClassMethod AgentSwitchesUpdate() As %Status
 ClassMethod AgentRestraint() As %Status
 {
     Quit ##class(OcuPilot.Api.Switches).HandleRestraint()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /agent/ledger</code> (Story 4.9): delegates to
+/// <class>OcuPilot.Api.Ledger</class> and carries no logic of its own. A two-segment literal beside
+/// <code>GET /agent/restraint</code>, so it conflicts with no <code>:param</code> route.</p>
+ClassMethod AgentLedger() As %Status
+{
+    Quit ##class(OcuPilot.Api.Ledger).Handle()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /agent/context</code>: delegates to
