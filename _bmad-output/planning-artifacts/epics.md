@@ -3160,6 +3160,59 @@ So that the agent is useful before I have thought of a question.
 - DW-379: the panel is the default width on Home where `DESIGN.md` gives it a wider width over a 120ms transition, and `--ocu-panel-home` has no consumer (ledger; routed by x0 2026-09-16)
 - DW-269: the vendor tasks LIST coerces `Suspended` to false, so the 'tasks suspended after an error' line needs the task INFO read AD-36 allows - declined in this story with a reason, because the read grammar and the descriptor that would carry it are another epic's footprint, and the line joins later like the alerts one (ledger; routed by cr 2026-09-14)
 
+### Story 4.12: Epic 4 burn-down
+
+As the team that has to live with Epic 4,
+I want the residue the epic's own gates found closed before it merges,
+So that the panel is not shipped with known holes in the places that decide what a test proves and what a reader is told.
+
+**Acceptance Criteria:**
+
+- **Given** the fourteen entries this story charters
+- **When** each is closed
+- **Then** it is either fixed with a demonstrated mutation, or made terminal with the reason recorded on the entry - never left `routed`.
+
+- **Given** the gates this epic found could not fail (DW-1154, DW-1091, DW-1092, DW-1048)
+- **When** they are settled
+- **Then** a deleted stylesheet rule reddens a test, the error-log truncation assertion holds on an instance of any age, and neither the navigation nor the sign-out browser leg fails opaquely because another run left state behind.
+
+- **Given** the bundle gate (DW-1153)
+- **When** it is settled
+- **Then** the budget names a number measured in this story, raised in one commit that states the measurement, with `angular.json` and the pinned literal moving together - or the bundle is trimmed back under the standing number.
+
+- **Given** the envelope and vocabulary entries (DW-447, DW-1127, DW-1129)
+- **When** they are settled
+- **Then** no 400 carries a vendor exception's text, the ledger's refusal names what it refused rather than a tool call, and the rule count a contributor reads matches the checker's own.
+
+- **Given** the turn and ledger holes (DW-1095, DW-1096, DW-1124, DW-1125)
+- **When** they are settled
+- **Then** a settle for a turn that has already ended is refused like any other stale write, a schema states the types it emits, and a bound lives in one place so raising it cannot cut silently.
+
+- **Given** the secret backstop (DW-398)
+- **When** it is settled
+- **Then** the credential-name matcher masks a secret word wherever it sits in a key name, or the anchoring is recorded as deliberate with the reason on the entry.
+
+- **Given** every entry this story does not charter
+- **When** the epic closes
+- **Then** each is still owned by `burndown` with its status and reason recorded, so a later epic's burn-down inherits a queue rather than a surprise.
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-398: the anchored credential-name backstop cannot mask a secret word that is not final in a key name (ledger; chartered by the burn-down gate 2026-09-18)
+- DW-447: `Api.Definitions` and `Api.Switches` render `ReadRequestBody`'s vendor exception text in their 400s (ledger; chartered by the burn-down gate 2026-09-18)
+- DW-1048: the sign-out browser leg reads the composer right after the first-login gate settles, and flakes in a full suite (ledger; chartered by the burn-down gate 2026-09-18)
+- DW-1091: `ReadTool`'s error-log truncation assertion depends on the instance having two entries on one date (ledger; chartered by the burn-down gate 2026-09-18)
+- DW-1092: `navigate.browser-spec.mjs` fails opaquely when another turn still holds the user's slot (ledger; chartered by the burn-down gate 2026-09-18)
+- DW-1095: `Navigate.ResultSchema` declares `entityId` and `code` as strings while the settle emits JSON null (ledger; chartered by the burn-down gate 2026-09-18)
+- DW-1096: `POST /turn/:id/navigation` accepts a settle for a turn that has already ended (ledger; chartered by the burn-down gate 2026-09-18)
+- DW-1124: the 4096 and 512 column bounds are duplicated as literals beside their `Limits` parameters (ledger; chartered by the burn-down gate 2026-09-18)
+- DW-1125: an over-long `RequiredPairs` fails the whole row's write rather than losing a pair (ledger; chartered by the burn-down gate 2026-09-18)
+- DW-1127: the ledger's only 403 reuses a sentence that names a tool call (ledger; chartered by the burn-down gate 2026-09-18)
+- DW-1129: `check-objectscript.py` reports 21 rules while `CLAUDE.md` states 18 (ledger; chartered by the burn-down gate 2026-09-18)
+- DW-1149: `ERROR_LOG_DATES_PATH` duplicates the error-log store's prefix with nothing pinning them equal (ledger; chartered by the burn-down gate 2026-09-18)
+- DW-1153: the client bundle is 778.37 kB against the 780 kB gate (ledger; chartered by the burn-down gate 2026-09-18)
+- DW-1154: nothing pins the presence of a stylesheet rule (ledger; chartered by the burn-down gate 2026-09-18)
+
 ---
 
 ## Epic 5: Propose, confirm, and find it in the audit database
