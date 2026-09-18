@@ -1089,6 +1089,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: AC4's own precondition - 'when the panel is present' - is false for all of Epic 1. Its tokens (--ocu-panel-home, --ocu-motion-panel-width-duration) already ship and are drift-tested, so nothing is lost by deferring the behaviour.
 - 2026-09-12T20:38:09Z status=routed owner=4-3-the-docked-panel-present-on-every-route by=harvest note=the story that builds the docked panel also owns the remembered width it restores on leaving Home
 - 2026-09-16T15:11:12Z status=routed owner=4-10-home-s-suggested-view-and-the-starter-prompts by=x0 note=the Home widening is Story 4.10 last AC, not the panel story
+- 2026-09-18T18:01:16Z status=resolved-by:4-10-homes-suggested-view-and-the-starter-prompts by=harvest note=five published Home widths pinned in panel-layout.test.mjs, with the settled widths and the 120 ms transition in a browser spec
 
 ### DW-161: A tile and the locator's area segment navigate into the area's first built screen without consulting that screen's own verdict, landing an allowed-area user on the refusal page where the side bar refuses in place
 - source: spec-1-12-home.md | severity: med | fix-risk: med | footprint: in-epic
@@ -2472,6 +2473,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: DESIGN.md states the Home width in three places and _metrics.scss already computes the token; the panel's width, resize handle and transitions are assigned to Story 4.3
 - 2026-09-16T02:20:06Z status=routed owner=4-3-the-docked-panel-present-on-every-route by=harvest note=4.3 owns the panel's width and resize, so the unused token lands with them
 - 2026-09-16T15:11:12Z status=routed owner=4-10-home-s-suggested-view-and-the-starter-prompts by=x0 note=the Home width token is consumed by the Home widening in Story 4.10
+- 2026-09-18T18:01:16Z status=resolved-by:4-10-homes-suggested-view-and-the-starter-prompts by=harvest note=the panel takes the Home width over the existing 120 ms transition, and --ocu-panel-home gains its one consumer: a drift test asserting the token's operands equal panelHomeTarget's
 
 ### DW-380: refusedValues is snapshotted when a refusal arrives rather than when the request is sent, and a read that fails during sign-in spends the one-shot fresh-sign-in flag
 - source: spec-3-6 | severity: low | fix-risk: med | footprint: in-epic
@@ -3427,3 +3429,43 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-10-homes-suggested-view-and-the-starter-prompts.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: GET /api/ocupilot/instance answers seven fields, none a timestamp (ui/src/app/core/instance.ts:63-72). SYS.ApplicationError DateList emits MM/DD/YYYY in the instance's clock, and spec-2-12 records the container reporting 09/15/2026 while the host read 2026-09-14, so a browser-computed today misses. The Conventions row makes +$Horolog the instance's own calendar date.
 - 2026-09-18T15:43:14Z status=routed owner=burndown by=plan note=Epic 6 owns Api/** and LogSourcePort; an instance-local date on a log read or on GET /instance unblocks a truthful today for 4.10's line and 6.13's alerts line
+
+### DW-1147: The all-zero starter-prompt fallback also fires when the read behind a line was refused or faulted, so a caller who may not read the error log is told nothing needs attention
+- source: spec-4-10-homes-suggested-view-and-the-starter-prompts.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Task 4 of the 4.10 spec specifies the fallback on every zero, and the I/O matrix settles neither the refused row nor the faulted row against it. A caller without the error log's privilege sees the three starter prompts and no indication that a line could not be read. Probe: sign in as a least-privileged principal on Home and read the block
+- 2026-09-18T18:01:00Z status=decision-pending owner=burndown by=harvest note=product call for the owner sheet: whether a line that could not be read reads as zero, as absent, or as a stated refusal
+
+### DW-1148: DESIGN.md's Home 1,920 row gives the side bar 240 and content 672, which the ordinary Home arrival cannot reach
+- source: spec-4-10-homes-suggested-view-and-the-starter-prompts.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: The shipped shell resolves 912 of real content at that viewport, so the published row describes a layout no user sees. Pre-existing DESIGN.md-versus-shell tension, first consumed by Story 4.10's Home width. Probe: open Home at 1920 and measure the content column against DESIGN.md's row
+- 2026-09-18T18:01:00Z status=routed owner=burndown by=harvest note=lead harvest of the 4.10 spec deferred list
+
+### DW-1149: ERROR_LOG_DATES_PATH duplicates error-log.store.ts's prefix with nothing pinning the two equal, so a path change fails silently as no line
+- source: spec-4-10-homes-suggested-view-and-the-starter-prompts.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: suggested-view.ts builds the dates path from its own literal; error-log.store.ts holds the same prefix. A change to one leaves the suggested view quietly showing no application-errors line rather than failing. Probe: change the store's prefix and run the client suite
+- 2026-09-18T18:01:00Z status=routed owner=burndown by=harvest note=lead harvest of the 4.10 spec deferred list
+
+### DW-1150: The agent-status line re-implements the panel's own sentence precedence and nothing pins the two copies equal
+- source: spec-4-10-homes-suggested-view-and-the-starter-prompts.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: The line selects its text by footerKey the way the panel's footer and banner do, in a second place. Probe: change the panel's precedence and read the line
+- 2026-09-18T18:01:00Z status=routed owner=burndown by=harvest note=lead harvest of the 4.10 spec deferred list
+
+### DW-1151: suggested-view.browser-spec.mjs copies three helpers from panel.browser-spec.mjs
+- source: spec-4-10-homes-suggested-view-and-the-starter-prompts.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: The same duplication class DW-1086 closed for the turnprobe fixture, now in the panel-shaped specs. Probe: grep the two files for the identical helper bodies
+- 2026-09-18T18:01:00Z status=routed owner=burndown by=harvest note=lead harvest of the 4.10 spec deferred list
+
+### DW-1152: A parked re-read can fire after the user has left Home, costing one wasted request
+- source: spec-4-10-homes-suggested-view-and-the-starter-prompts.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: The suggested view's reads are parked with the connectivity service, which replays them when the instance answers, with no Home check at replay time. Probe: fault a read on Home, navigate away, then let the instance answer
+- 2026-09-18T18:01:01Z status=routed owner=burndown by=harvest note=lead harvest of the 4.10 spec deferred list
+
+### DW-1153: The client bundle is 778.37 kB against the 780 kB gate, so the next client story has 1.63 kB of headroom
+- source: lead verification of story 4.10 | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Story 4.6 set angular.json's maximumWarning to 780 kB against a then-measured 761 kB, and DW-371's gate (build-output.test.mjs plus angular-json.test.mjs) fails on an overage. Story 4.10 measured 778.37 kB. The deliberate, tested path is to raise both the budget and the pinned literal together; the alternative is trimming. Probe: npm run build and read the Initial total
+- 2026-09-18T18:01:16Z status=routed owner=burndown by=lead note=recommendation for the burn-down: raise maximumWarning to 820 kB and the pinned literal with it, in one commit that states the measured number
+
+### DW-1154: Nothing pins the presence of a stylesheet rule, so deleting five _components.scss blocks left every gate green
+- source: lead verification of story 4.10 | severity: med | fix-risk: med | footprint: in-epic
+- evidence: Story 4.10's own implementation deleted .ocu-panel-transcript, its focus-visible rule, .ocu-panel-empty, .ocu-panel-banner and .ocu-panel-banner-link while npm test, the six prebuild checkers, 126 browser cases and smoke.sh all stayed green; the transcript would not have scrolled and its focus ring was gone. Caught by eye in the diff. Probe: delete a rule block and run every gate
+- 2026-09-18T18:01:16Z status=routed owner=burndown by=lead note=the cheapest honest pin is a browser leg asserting the computed overflow and focus ring on the transcript, since jsdom computes no layout
