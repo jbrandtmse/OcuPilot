@@ -2811,6 +2811,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T13:42:49Z status=routed owner=burndown by=lead note=An inference, not a measurement: the standard Linux ephemeral range 32768-60999 contains 52776, so an outbound socket from npm install, the Angular build or the Chrome download in steps 5-7 could still hold it at step 8. NOT verified on the runner - this machine's Docker VM reads 55000-65535, which excludes 52776 and every OcuPilot port, so locally the live container, slot-b and the throwaway are all clear. Verify by printing /proc/sys/net/ipv4/ip_local_port_range as a step in the instance job. Whatever the range turns out to be, the fix is the same shape: take the throwaway's host ports below it, or probe for a free pair, or retry the bind. Relevant to the owner NOW because the slot-guards patch rewrites port handling in this exact file and ui/tools/ci.test.mjs, and that test already holds 52776 equal across five sites, so the change is one coordinated edit the suite enforces rather than five.
 - 2026-09-18T16:42:53Z status=escalated owner=burndown by=burndown note=out of any story's footprint: the fix is a port-retry or an ephemeral-range move in scripts/ci-throwaway.sh and .github/workflows/ci.yml, both shared tooling no Epic 6 or Epic 7 story owns; one occurrence in ~45 runs, and it kills the whole instance job when it lands
 - 2026-09-18T19:09:19Z occurrence=2026-09-18 run 35384075582 on 9a0e771: the instance job died at 'bring up a throwaway container' with 'failed to set up container networking: driver failed programming external connectivity on endpoint ocupilot-ci', before a single test ran; the three node legs and both image jobs were green
+- 2026-09-18T19:44:55Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=merge_gate note=probe for a free pair or retry the bind; ci.test.mjs holds 52776 equal across five sites
 
 ### DW-1001: The derived webapp.openapi.read tool describes its application criterion as a comma-separated list where * matches any name, while MgmntPort accepts exactly one exact name
 - source: spec-6-1-the-rest-api-explorer-and-its-openapi-document-viewer.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -2897,6 +2898,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T22:46:47Z occurrence=6-3-the-x-509-ldap-kerberos-and-wallet-lists note=security.browser-spec.mjs creates and deletes a probe role and user and refuses only ocupilot
 - 2026-09-17T02:48:30Z occurrence=6-4-the-oauth-2-0-screen note=oauth.browser-spec.mjs:116 creates a principal and OAuth objects and refuses only ocupilot
 - 2026-09-17T17:05:54Z occurrence=6-9-system-usage-and-the-dashboard-meters note=system-usage.browser-spec.mjs:80 creates a principal and refuses only LIVE_CONTAINER
+- 2026-09-18T19:44:55Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=merge_gate note=extend the browser-spec container refusal to ocupilot-slot-* as well as the live name
 
 ### DW-1016: A proposal diff-row has no empty-cell word, so a service-editor proposal restricting AllowedConnections would read (none) -> 10.0.0.1
 - source: spec-6-2-the-roles-resources-and-services-lists.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -2917,6 +2919,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T22:46:47Z occurrence=6-3-the-x-509-ldap-kerberos-and-wallet-lists note=EXPERIENCE.md :221 and :482 still describe the Wallet screen as gated screen by screen; the union gates the whole Security rail item
 - 2026-09-16T23:34:21Z by=cr note=observed slot B: %SecurityAdministrator holds %Admin_Secure:U and %DB_IRISSYS:RW but no %Admin_Wallet; rail gates it
 - 2026-09-17T00:18:27Z occurrence=6-4-the-oauth-2-0-screen note=Story 6.4 appends %Admin_OAuth2_Client, %Admin_OAuth2_Server and %Admin_OAuth2_Registration (USE) to the security area: a holder of the Secure, IRISSYS and Wallet pairs without any OAuth resource sees the Security rail gated though 6 of its 10 built screens would serve them; %Manager and %SecurityAdministrator hold all three OAuth resources (observed on slot B by the 6.4 plan)
+- 2026-09-18T19:44:55Z status=routed owner=16-3-effective-privileges-and-the-permission-check-tool by=merge_gate note=decided: a rail item is allowed when ANY of its screens is; each screen keeps its own gate
 
 ### DW-1019: Demo-fixture counts and the inventory kind vocabulary are stale outside Fixture.cls after the wallet fixture landed
 - source: spec-6-3-the-x-509-ldap-kerberos-and-wallet-lists.md | severity: low | fix-risk: low | footprint: in-epic
@@ -3036,27 +3039,32 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-6-10-the-locks-view.md | severity: low | fix-risk: med | footprint: in-footprint
 - evidence: A lock whose RemoteOwner is true has no local pid, so the owner link lands on Process details' AD-37 'This process no longer exists.' Needs an ECP client to observe; the branch is read from the vendor source, not seen. Conditional row-link grammar is the alternative and was declined
 - 2026-09-17T19:46:01Z status=escalated owner=burndown by=plan note=orchestrator-decided at the 6.10 spec gate (Q3 option a): accepted rather than inventing conditional-link grammar
+- 2026-09-18T19:44:55Z status=routed owner=16-12-remove-locks-one-all-of-a-process-all-of-a-remote-client by=merge_gate note=suppress the owner link on a remote-owner row rather than linking to a process that cannot exist
 
 ### DW-1078: rowTarget admits a target screen whose composite id has more than one part, and one field value is encoded as that whole id
 - source: spec-6-10-the-locks-view.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: Both engines check only that the target's id.kind is not 'none' (Registry.RowTargetResolutionProblem, screen-mirror.mjs rowTargetResolutionProblem). Four shipped screens are keyed by a multi-part composite id (AuditList, TaskRunList, TaskHistoryList, the error list); a rowTarget naming one would have data-table.ts encode a single field value as that screen's whole id. Today's only rowTarget targets ProcessDetails (composite, one part), so nothing is wrong now.
 - 2026-09-17T22:21:40Z status=escalated owner=burndown by=cr note=13th refusal; fix edits AD-5's rowTarget bullet, Boundaries' 'Refusals, twelve' and AC6 -- spine work (Rule 20), not a reviewer patch
+- 2026-09-18T19:44:55Z status=wontfix-accepted by=merge_gate note=reopen_if=a second cross-screen rowTarget names a target whose id has more than one part
 
 ### DW-1079: A Wallet test appears to delete the demo collection on the shared dev instance, leaving two suites red there
 - source: spec-6-10-the-locks-view.md | severity: med | fix-risk: low | footprint: in-footprint
 - evidence: On ocupilot-slot-b (OCUPILOT_DEMO=1) WalletCollectionList answers zero rows, so Test/ScreenRead.TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow and Test/Smoke.TestTheSecurityListsAreLiveChecks fail there; both are green on a fresh throwaway, where the installer creates the collection. A Wallet test's own cleanup deleting the demo collection is the likely cause (inference). Reproduce: run Test/Wallet* on a demo instance, then the two tests above
 - 2026-09-17T22:27:39Z status=routed owner=burndown by=runner note=observed twice during Story 6.10 (implement and code review both read it as a story signal first); a test that deletes demo fixture data leaves every later story on that instance reading a false red
 - 2026-09-18T16:42:53Z status=escalated owner=burndown by=burndown note=the Wallet list story that owns the test is done and no story in Epic 7 or 16 touches Wallet tests; the symptom was repaired on ocupilot-slot-b by re-running the fixture, but a test that deletes demo fixture data on a shared instance makes every later story read a false red there
+- 2026-09-18T19:44:55Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=merge_gate note=a test must not delete shared demo data; use a throwaway or restore what it removes
 
 ### DW-1080: Database details' background-tasks section: charter it, or add a query-backed source kind to AD-36
 - source: spec-6-11-databases-with-free-space-arriving-as-it-lands.md | severity: med | fix-risk: high | footprint: out-of-footprint
 - evidence: The tasks running against a database are answerable only through %SYS.BackgroundTask:RunningInDatabase (irissys/%SYS/BackgroundTask.cls:899), a Final Internal class query the classic page reads; no %Api.Admin.* class references it, Database.Actions is write-only, and AD-36's sources are admin, mgmnt and state. Two routes: a polish-week story, or a query-backed source added to AD-36
 - 2026-09-18T00:05:40Z status=decision-pending owner=burndown by=plan note=orchestrator-decided at the 6.11 spec gate (Q3 option a): epics.md 6.11 AC3 amended to properties and volume files; only the owner can charter a story outside this epic
+- 2026-09-18T19:44:55Z status=routed owner=16-5-background-tasks by=merge_gate note=FR-76 owns background tasks; take the port decision there, not by widening AD-36 now
 
 ### DW-1090: A rowGet read's async bound is per row, so a staged read's wall clock is rows x ASYNCTIMEOUT with no read-wide deadline
 - source: spec-6-11-databases-with-free-space-arriving-as-it-lands.md | severity: med | fix-risk: high | footprint: out-of-footprint
 - evidence: AdminPort.AwaitTask sets tStart per call (AdminPort.cls:862) and Read.Execute calls DetailRow once per row (Read.cls:365-374), so the Free-space read queues one TYPEINFO task per database, each bounded at 30 s on its own. Verified by reading both; the refusal itself is whole and correct. Screen/Read.cls is Epic 4-shared under additive-only discipline, so a read-wide deadline is not an in-story change.
 - 2026-09-18T04:38:34Z status=escalated owner=burndown by=cr note=claim corrected at origin in DatabaseFreeSpace.cls; the missing deadline itself is the escalated part
+- 2026-09-18T19:44:55Z status=wontfix-accepted by=merge_gate note=reopen_if=a rowGet read whose rows x ASYNCTIMEOUT exceeds NFR-1's 2s (6.11 measures 0.9s over 14 rows)
 
 ### DW-1093: No structural route-uniqueness check in Registry.Validate; a duplicate route compiles and validates clean
 - source: spec-6-12-the-devices-list.md qa | severity: low | fix-risk: med | footprint: in-epic
@@ -3095,6 +3103,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: EXPERIENCE.md:410 names next/previous for the sticky search but publishes no string for either; the Fixed strings table's log-viewer row (:367) carries neither. Story 6.13 implemented them as Enter and Shift+Enter on the search field rather than ship two icon buttons with an invented or borrowed name.
 - 2026-09-18T09:42:46Z status=open owner=burndown by=dev note=needs one owner decision: publish two names in EXPERIENCE.md's Fixed strings table, or keep the keyboard-only affordance
 - 2026-09-18T16:42:53Z status=decision-pending owner=burndown by=burndown note=needs published copy: EXPERIENCE.md names the next and previous match controls but publishes no accessible name for either, and a runner may not invent product copy; today they are Enter and Shift+Enter on the sticky search, pinned in the component and browser specs
+- 2026-09-18T19:44:55Z status=routed owner=16-8-the-six-secondary-log-viewers by=merge_gate note=copy approved: Next match / Previous match, with the strings rows
 
 ### DW-1103: IRIS escalates only severity 3 to alerts.log, so the file cannot be seeded at the other four levels through its own writer
 - source: spec-6-13-the-alerts-log-viewer.md | severity: low | fix-risk: low | footprint: in-epic
@@ -3119,6 +3128,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-6-13-the-alerts-log-viewer.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: app.ts's sign-out teardown calls instance, navigation, scope, connectivity, refresh, auditSearch, errorLogDrill, definitionForm, formDirty and agentStatus reset(); LogViewerStore is absent, and grep finds it named only by log-viewer.page.ts and its spec. The store is providedIn root and holds loaded()=true, so after a sign-out and a new sign-in in the same tab the page constructor's 'if (!loaded && !loading) open()' does not re-read and the previous principal's alerts.log rows render under the new one (AD-8: rows are data THIS principal was allowed to read). The fix is one line in app.ts, which this story does not own.
 - 2026-09-18T10:34:11Z status=escalated owner=burndown by=cr note=app.ts is contended (Epic 4) and this story may not edit it. The store's own doc comment claimed the wiring existed; that claim was corrected at its origin in this pass. reopen_if: sign in, open logs/alerts, sign out, sign in as another principal, open logs/alerts - the first principal's rows are on screen.
+- 2026-09-18T19:44:55Z status=routed owner=16-8-the-six-secondary-log-viewers by=merge_gate note=add LogViewerStore to sign-out teardown; one principal's rows must not survive a sign-out
 
 ### DW-1111: Screen/Tool/ErrorRead.cls still carries the admin-port-only claim this story falsifies
 - source: spec-6-13-the-alerts-log-viewer.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -3149,16 +3159,19 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: The rework reported one failing check on an otherwise green sweep and three clean runs after it; the failing check's name was not recorded, so nothing in the tree says which of the 43 it was. This re-review ran scripts/smoke.sh five more times against a fresh ocupilot-b-ci and got executed=44 passed=44 failed=0 every time (44 rather than 43 because agentswitches was executable on this container). smoke.sh is a CI gate, so an unnamed intermittent failure in it is a red run nobody can triage.
 - 2026-09-18T12:44:07Z status=escalated owner=burndown by=cr note=not reproduced in 5 runs here; the fix is to make smoke.sh's failure line quotable rather than to chase the check -- a report that records executed/passed/failed without the failing check's name cannot be triaged after the fact
 - 2026-09-18T17:54:56Z occurrence=6-14-the-messages-log-viewer note=browser-spec twin found by the AC8 wait re-review: settled() at messages-log.browser-spec.mjs:145 and alerts-log:136 returns silently at its 30 s deadline, and the Clear-restore waits (messages:275, alerts:246) are unnamed; fix shape is list-spec.mjs's throw-at-deadline plus a shared ui/browser/wait.mjs
+- 2026-09-18T19:44:55Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=merge_gate note=smoke.sh must print a quotable failure line naming the check that failed
 
 ### DW-1136: ForgetTask's new privilege guard leaves a vendor async-task row behind on every unprivileged async read, permanently and silently, and nothing purges them
 - source: spec-6-14-the-messages-log-viewer.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: AdminPort.cls:682 skips %DeleteId without ASYNCTASKPAIR and logs nothing (AC9, by design). Observed on ocupilot-b-ci: removing the guard makes the PROTECT appear, so the path is taken per unprivileged async read. This ledger's own 2026-09-18T08:32 note records that the vendor's PurgeAsyncQueue() is [Internal] and scheduled by nothing, so Api.Admin.Util.AsyncTaskD grows without bound for such callers.
 - 2026-09-18T16:02:00Z status=escalated owner=burndown by=cr note=the guard is the right refusal; what is undecided is the row it now leaves: accept the growth, purge it from a privileged path, or bound it
+- 2026-09-18T19:44:55Z status=routed owner=7-1-enable-disable-and-delete-a-web-application by=merge_gate note=ForgetTask leaks a vendor async-task row on every unprivileged async read; fix in AdminPort
 
 ### DW-1137: AdminPort.ASYNCTASKPAIR is a literal, so on an instance whose IRISLOCALDATA carries a non-default resource the guard denies every caller and ForgetTask silently stops deleting
 - source: spec-6-14-the-messages-log-viewer.md | severity: med | fix-risk: high | footprint: in-epic
 - evidence: Parameter ASYNCTASKPAIR = "%DB_IRISLOCALDATA:WRITE" under a doc comment headed 'Derived from the vendor's storage, not chosen'; the code derives nothing. A database's resource is SYS.Database.ResourceName and need not be %DB_<name>. Test.AdminPortForget.TestTheDeclaredPairNamesTheDatabaseTheRowsLiveIn derives and compares, so any instance the suite runs on reddens - an instance it does not run on skips every delete with nothing logged.
 - 2026-09-18T16:02:00Z status=escalated owner=burndown by=cr note=fix-risk high: resolving the resource at call time adds a %SYS switch to the async path in a file Epic 4 shares; the alternative is to attempt the delete and suppress only PROTECT
+- 2026-09-18T19:44:55Z status=routed owner=7-1-enable-disable-and-delete-a-web-application by=merge_gate note=ASYNCTASKPAIR literal denies every caller where IRISLOCALDATA carries a non-default resource
 
 ### DW-1138: The planning artifacts still put the log viewer's Clear control in the shell command bar, and the new Fixed strings row cites two wrong lines
 - source: spec-6-14-the-messages-log-viewer.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -3205,6 +3218,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-6-14-the-messages-log-viewer.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: Observed once on ocupilot-b-ci 2026-09-18 at the Epic 6 integrate-forward: the whole ObjectScript sweep (97 classes) ran first, then smoke, then the browser suite, and all seven audit.browser-spec.mjs tests failed on 'the audit database must hold at least 1000 OcuPilotSeed rows after seeding, read 919'. The same spec alone on the same container immediately afterwards passed 7 of 7. CI runs the same order (suite, smoke, browser) and has passed it on 7736a9b and earlier, so it is intermittent, not deterministic. Likeliest cause is the audit database purging or rolling while the suite writes to it (inference)
 - 2026-09-18T16:58:07Z status=escalated owner=burndown by=runner note=Epic 2's spec and no Epic 6 story's; the failure mode is a whole browser leg red in CI for a reason unrelated to the change under test
+- 2026-09-18T19:44:55Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=merge_gate note=seed 919 of 1000 after a full sweep on one instance; CI runs that order, so make the seed deterministic
 
 ### DW-1155: The fault banner and its control are re-created on every refresh tick, so a click in that instant is lost and UX-DR52's non-dismissible banner is a new element each time
 - source: spec-6-14-the-messages-log-viewer.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -3216,3 +3230,4 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-6-14-the-messages-log-viewer.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Probed on ocupilot-b-ci 2026-09-18: with the screen read refused, the .ocu-fault-banner element was replaced zero times in 25 s on Processes (refreshes true) and on Locks, after exactly one refused read -- auto-refresh is off unstored (preferences.refreshRate answers 0) and a faulted read suspends the timer, so no tick re-rendered anything. The Locks swap therefore removes no race; only the handle press changed behavior, from a silent absorb to a named failure. Left: the control gated (logScreen null, handler returns), or the fault cleared by a late successful call and re-raised by the parked re-read. Probe: read the third CI failure's named wait -- the un-gated-control wait added by this pass fails if it was gated
 - 2026-09-18T18:50:45Z status=escalated owner=burndown by=cr note=arrived after epic 6's burn-down gate; nothing to fix until CI reddens a third time, and the named waits now say which hypothesis it was
+- 2026-09-18T19:44:55Z status=wontfix-accepted by=merge_gate note=reopen_if=AC8 reddens again; the discriminating wait will then name gated-vs-lost, and only then is it fixable

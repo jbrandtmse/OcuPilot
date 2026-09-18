@@ -3926,6 +3926,10 @@ So that the area's screen offers the same actions the agent does.
 - **When** a delete or disable is attempted from any surface
 - **Then** it is **refused with an explanation** - and refused on the instance's write path regardless of what the UI shows.
 
+- DW-1136: `ForgetTask`'s guard leaves a vendor async-task row behind on every unprivileged async read, permanently and silently (ledger; routed by merge_gate 2026-09-18)
+- DW-1137: `AdminPort.ASYNCTASKPAIR` is a literal, so on an instance whose IRISLOCALDATA carries a non-default resource the guard denies every caller (ledger; routed by merge_gate 2026-09-18)
+- DW-1099: no assertion observes a shipped descriptor's `read.filter`, `read.sort.fields` or per-column kind except the Devices list (ledger; routed by merge_gate 2026-09-18)
+
 ### Story 7.2: User enable, disable, delete, password and roles
 
 As a developer-administrator,
@@ -4042,6 +4046,8 @@ So that I can recover an instance without a terminal.
 - **Given** the target is an IRIS system process
 - **When** a terminate is attempted
 - **Then** it is refused on the instance and was never advertised as a tool.
+
+- DW-1155: the fault banner and its control are re-created while a screen refreshes, so a click in that instant is lost and UX-DR52's non-dismissible banner is not honoured; the fix is framework-level (ledger; routed by merge_gate 2026-09-18)
 
 ### Story 7.10: The remaining application error delete scopes
 
@@ -4902,6 +4908,12 @@ So that a polish-week change cannot silently break a Release 1 write.
 - **When** CI runs
 - **Then** the file is vendored with its commit SHA and a test diffs its v2 path and method set against the instance's generated spec (`GET /api/mgmnt/v1/%25SYS/spec/api/admin`), so 2027.1 drift fails with a named source rather than a user.
 
+- DW-439: the CI throwaway's fixed host port can already be bound when the instance job starts, killing it before a test runs - probe for a free pair or retry the bind (ledger; routed by merge_gate 2026-09-18)
+- DW-1015: browser specs that exec into a container refuse only the live `ocupilot`, never an owner-managed `ocupilot-slot-*` (ledger; routed by merge_gate 2026-09-18)
+- DW-1079: a Wallet test deletes shared demo data, which makes later suites on that instance read a false red (ledger; routed by merge_gate 2026-09-18)
+- DW-1119: `smoke.sh`'s failure line does not name the check that failed, so a failure is not quotable in a report (ledger; routed by merge_gate 2026-09-18)
+- DW-1146: the audit spec's thousand-row seed read 919 after a full sweep on the same instance, and CI runs that order (ledger; routed by merge_gate 2026-09-18)
+
 ### Story 13.3: Publish the package to the community registry
 
 As an operator who installs through IPM,
@@ -5335,6 +5347,8 @@ So that "can they do this?" has a direct answer rather than a manual trace throu
 - **When** the agent or the user asks whether a user or role holds a resource permission
 - **Then** it answers **yes or no and names the granting role**, short-circuiting on `%All`.
 
+- DW-1018: the area privilege union gates a whole rail item, falsely denying screens the user can read; decided at the Epic 6 merge gate: a rail item is allowed when ANY of its screens is, and each screen keeps its own gate (ledger; routed by merge_gate 2026-09-18)
+
 ### Story 16.4: Task export and import
 
 As a developer-administrator with two instances,
@@ -5374,6 +5388,9 @@ So that a stuck background job is visible and stoppable.
 - **Given** the admin API's `/async-results` tracks only **its own** asynchronous tasks and not the classic portal's background jobs
 - **When** this screen is built
 - **Then** it needs **both** halves - the admin API route for the tasks it owns, and a custom endpoint for the rest - and shipping only the first is partial parity, stated rather than discovered.
+
+- DW-1080: Database details' background-tasks section has no admin-API surface; take the port decision here, where FR-76 owns background tasks (ledger; routed by merge_gate 2026-09-18)
+- DW-1101: async task rows survive for a `_SYSTEM` caller with no error logged, so `AdminPort.ForgetTask` does not always run (ledger; routed by merge_gate 2026-09-18)
 
 ### Story 16.6: Broadcast a message to processes
 
@@ -5426,6 +5443,9 @@ So that "all the logs" is literally true.
 - **Given** each viewer
 - **When** it renders a row
 - **Then** the row carries an explain entry point sending that entry alone.
+
+- DW-1102: the log viewer's next and previous match controls have no accessible name; approved copy is "Next match" and "Previous match" (ledger; routed by merge_gate 2026-09-18)
+- DW-1110: `LogViewerStore` is absent from sign-out teardown, so one principal's log lines survive a sign-out in the same tab (ledger; routed by merge_gate 2026-09-18)
 
 ### Story 16.9: The unified log hub
 
@@ -5515,6 +5535,8 @@ So that a blocked operation can proceed.
 - **When** the tool is built
 - **Then** it is recorded as action-style needing no template.
 
+- DW-1074: a remote-owner lock row links to Process details, which then reports that the process does not exist; suppress the link instead (ledger; routed by merge_gate 2026-09-18)
+
 ### Story 16.13: The service editor
 
 As a developer-administrator,
@@ -5535,6 +5557,8 @@ So that service administration is complete here.
 - **Given** the same disable is proposed **by the agent**
 - **When** it reaches the write path
 - **Then** it is **refused on the instance and was never advertised as a tool** - the warning is the screen's affordance for a human decision; the prohibition is absolute for the agent, and covers the web application, the web service behind it and the superserver.
+
+- DW-1016: a proposal diff row has no empty-cell word, so restricting a list reads as `(none) -> 10.0.0.1` (ledger; routed by merge_gate 2026-09-18)
 
 ### Story 16.14: The LDAP and Kerberos editor
 
