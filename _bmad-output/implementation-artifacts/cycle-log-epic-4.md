@@ -300,3 +300,4 @@
 2026-09-18T18:36:54Z	Story 4.11	committed	sha=31fd25a build_sha=46396c9 kind=code branch=OCU-1-epic4 pushed=origin/OCU-1-epic4 ci=success_run_35282065495 recorded_late=yes
 2026-09-18T18:36:54Z	Story 4.7	ci_resolved	run=35323987739 head=9d328b5 result=success note=the_turn-code_vocabulary_fix;this_is_4.7s_green_resolution_after_run_35321414214s_instance_job_failed
 2026-09-18T18:36:54Z	Story 4.7	committed	sha=9d328b5 build_sha=237d9de kind=code(fix) branch=OCU-1-epic4 pushed=origin/OCU-1-epic4 ci=success_run_35323987739
+2026-09-18T18:38:16Z	Story 4.12	stage_spawned	stage=plan model=opus attempt=1 job=4-12-plan-1 epic_context=reused note=spawned_while_4.10s_QA_browser_run_is_still_in_flight;the_planner_is_forbidden_every_command_that_touches_the_container
