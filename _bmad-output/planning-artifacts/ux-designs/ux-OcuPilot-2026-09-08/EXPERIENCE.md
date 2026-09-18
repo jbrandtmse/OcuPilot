@@ -278,7 +278,7 @@ Microcopy. Brand voice and aesthetic posture live in `DESIGN.md`.
 | "Stopped by you at <step>" | tool-call card the turn halted on after Stop |
 | "The turn stopped at <step>: <reason>." | error banner ending a turn (FR-23) |
 | "A turn is in progress. Wait for it to finish before sending another message." | lock banner |
-| "I'm opening <screen> for <entity> — use Back to return." · "<title> — opened by the agent; Back returns" | the agent's navigation announcement (FR-16), the one phrasing; the new screen's heading announcement |
+| "I'm opening <screen> for <entity> — use Back to return." · "I'm opening <screen> — use Back to return." · "<title> — opened by the agent; Back returns" | the agent's navigation announcement (FR-16), the second form when no row is named so the clause has nothing to fill; the new screen's heading announcement [AMENDED 2026-09-18 — see the story change log] |
 | "Shall I show you the audit entry?" | last sentence of the agent's reply after a confirmed write |
 | "No agent definition is enabled. Configure one in Agent co-pilot › Definitions." | administrator reminder banner, and the Agent co-pilot attention dot's accessible name for that audience |
 | "OcuPilot needs one agent definition before the panel can help. Anthropic is selected — paste a key and press Test connection. You can skip this and browse." | gate landing banner above the Definition form |
