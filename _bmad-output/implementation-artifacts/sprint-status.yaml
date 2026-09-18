@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '09-17-2026 22:27'
+last_updated: '09-18-2026 00:47'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -94,7 +94,7 @@ development_status:
   4-4-screen-context-reaches-the-turn-capped-and-secret-free: done
   4-5-a-turn-watched-progress-cards-and-the-conversation-lock: done
   4-11-the-context-chip-its-toggle-and-the-paste-warning: done
-  4-6-replies-render-safely-and-offline: backlog
+  4-6-replies-render-safely-and-offline: review
   4-7-the-agent-takes-you-to-a-screen: backlog
   4-8-a-slow-or-rate-limited-provider-degrades-the-turn-rather-tha: backlog
   4-9-the-agent-audit-ledger: backlog

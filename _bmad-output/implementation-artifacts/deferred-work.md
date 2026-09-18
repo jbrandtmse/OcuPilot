@@ -3194,6 +3194,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: turn.browser-spec.mjs:46 assigns priorDefault from runIris([...]).trim(), which is the whole session transcript ('Node: ..., Instance: IRIS\n\n%SYS>\n\nHSCUSTOM>\n925\nHSCUSTOM>'); embedding it in :53's ObjectScript string literal breaks that script, so RemoveDefinition never runs and an enabled default-marked turnprobe definition survives. The identical bug in context-chip.browser-spec.mjs was verified and fixed under this review; turn sorts after switches in the CI glob order, so this copy is latent today. Probe: run browser/turn.browser-spec.mjs then GET /api/ocupilot/agent/definitions.
 - 2026-09-17T21:58:17Z status=routed owner=burndown by=cr note=same fix as context-chip: read through markerValue and assert RemoveDefinition's status
 - 2026-09-17T22:26:06Z status=routed owner=burndown by=adjudication note=lead confirms: the identical transcript-read bug in turn.browser-spec.mjs is real but latent in the CI glob order; epic burn-down, not a 4.11 rework
+- 2026-09-18T00:46:24Z status=resolved-by:4-6-replies-render-safely-and-offline by=lead note=turn.browser-spec.mjs now reads the marker through markedDefault and asserts RemoveDefinition's status; the same broken idiom had been copied into the new reply.browser-spec.mjs and leaked a default-marked definition that reddened switches AC2 in the full suite -- both fixed, turn 8/8, reply 4/4, switches 4/4, full suite 111/111
 
 ### DW-1076: No live leg proves the context chip's provider, endpoint host and egress pill follow a real default-marker move (AD-42)
 - source: code review of story 4.11 | severity: med | fix-risk: low | footprint: in-epic
@@ -3206,3 +3207,23 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: screens.generated.ts gives Home route '', and Api.Turn.ContextViolation refuses an empty route with 422, so assembleScreenContext omits context entirely there (screen-context.ts:123). The chip still renders 'Home, HSCUSTOM . provider . host' plus the egress pill, which EXPERIENCE.md:712 mandates verbatim. No data leaves that the chip does not claim, so it under-claims rather than over-claims. The three exits each cost something: a non-empty route is a server change the intent contract's Never list forbids; reading contextChipSharingOff on Home contradicts EXPERIENCE.md:712; accepting it leaves the sentence inaccurate on the one screen every user starts on.
 - 2026-09-17T21:58:32Z status=decision-pending owner=burndown by=cr note=product call for the decision sheet; reviewer will not pick between a server change and a UX contract
 - 2026-09-17T22:26:06Z status=decision-pending owner=burndown by=adjudication note=lead agrees this is a product call between a server change and EXPERIENCE.md:712; carried to the owner decision sheet, not decided here
+
+### DW-1081: DESIGN.md gives reply code blocks a copy icon button; Story 4.6 does not build one
+- source: spec-4-6-replies-render-safely-and-offline.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: DESIGN.md message-agent says code blocks carry a copy icon button; no Story 4.6 AC asks for it, and it needs a new Fixed-strings row (Copy) plus a non-secure-context clipboard fallback. Probe: read DESIGN.md message-agent against ui/src/app/shell/reply.ts
+- 2026-09-18T00:46:24Z status=routed owner=burndown by=harvest note=lead harvest of the 4.6 spec deferred list; UX-complete-the-surface work, not an AC
+
+### DW-1082: GFM tables in an agent reply render as their literal Markdown source, not as a table
+- source: spec-4-6-replies-render-safely-and-offline.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: marked lexes a pipe table as one table token and ui/src/app/core/reply.ts emits token.raw as text, so nothing is dropped but nothing is tabulated. A real table needs EXPERIENCE.md's 2D-scroll exception and column styling neither contract specifies. Probe: send a reply containing a pipe table through reply.browser-spec.mjs
+- 2026-09-18T00:46:24Z status=routed owner=burndown by=harvest note=lead harvest of the 4.6 spec deferred list
+
+### DW-1083: Reply code highlighting is structural only because DESIGN.md publishes no syntax palette
+- source: spec-4-6-replies-render-safely-and-offline.md | severity: low | fix-risk: med | footprint: in-epic
+- evidence: Story 4.6 AC1 says code highlighting; DESIGN.md owns colour, publishes one pair for the code surface, rules teal out of the code block by name and forbids borrowing a status colour, so Release 1 ships weight and slant. hljs-* classes are emitted, so a palette is later a CSS-only change, but it needs four new DESIGN.md tokens plus contrast rows in both modes. Probe: render a sql fence and read the computed colour of .hljs-keyword
+- 2026-09-18T00:46:24Z status=decision-pending owner=burndown by=harvest note=lead gate approved structural highlighting for Release 1 and routed the palette to the owner decision sheet; do not decide without the owner
+
+### DW-1084: The built-in system prompt never asks the model to name rows in backticks or offer to select them, so AC6's offer half has no producer
+- source: spec-4-6-replies-render-safely-and-offline.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: src/OcuPilot/Kernel/Agent/Prompt.cls BUILTIN says nothing about Markdown or citations; Story 4.6 renders inline code faithfully but nothing makes the agent cite rows or offer to select them. Story 4.7 owns the selection tool, so the offer only becomes truthful there. Probe: read BUILTIN and grep it for cite/select
+- 2026-09-18T00:46:24Z status=routed owner=4-7-the-agent-takes-you-to-a-screen by=harvest note=lead harvest of the 4.6 spec deferred list; routed to 4.7 which owns the selection tool
