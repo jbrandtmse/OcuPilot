@@ -280,3 +280,4 @@
 2026-09-18T15:19:53Z	Story 4.9	ledger_adjudicated	story=4.9 resolved=DW-448,DW-1130,DW-1131 wontfix=DW-1132 owner_sheet=DW-1120 routed_burndown=DW-1121..DW-1129,DW-1133,DW-1134 open=0
 2026-09-18T15:19:53Z	Story 4.9	smoke_complete	ci-runner=52_tests_green_over_the_storys_own_classes+TurnStore smoke_throwaway=PASSED_19/19 smoke_live=PASSED lint_docs=0 objectscript=0/390
 2026-09-18T15:19:53Z	Story 4.9	committed	sha=5100d7c build_sha=114698e kind=code branch=OCU-1-epic4 pushed=pending ci=pending
+2026-09-18T15:20:08Z	Story 4.10	stage_spawned	stage=plan model=opus attempt=1 job=4-10-plan-1 epic_context=reused
