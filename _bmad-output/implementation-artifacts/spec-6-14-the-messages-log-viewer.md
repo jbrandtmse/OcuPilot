@@ -165,6 +165,8 @@ its surviving rows (DW-1101), and AC4's Clear control (DW-1109).
    `Test/AdminPort*.cls` (AC9); client `log-viewer.spec.ts`, `fault-banner.spec.ts`,
    `fault-banner.wire.spec.ts`; `ui/browser/messages-log.browser-spec.mjs`.
 
+- [x] [CI] instance/browser spec: AC8's wait exceeded 30000ms -- run 35371913709 -- make the wait deterministic. The test waits for a rendered row, which its own assertions do not need: they read the side bar's eyebrow and the entry it marks current. Wait for that state, name every timeout so the failure line is quotable (DW-1119), and demonstrate the corrected wait's mutation.
+
 **Acceptance Criteria:**
 
 - **AC1 (bounded, never the whole file).** Given the messages.log screen, when it loads and the
@@ -233,6 +235,8 @@ its surviving rows (DW-1101), and AC4's Clear control (DW-1109).
 - [x] [Review][Defer] `Test/ReadTool`'s index comparison keeps a narrow flake window [src/OcuPilot/Test/ReadTool.cls:1184] -- deferred: DW-1144, terminal with a reopen probe
 - [x] [Review][Defer] `messages-log.browser-spec` restates `alerts-log.browser-spec`'s harness [ui/browser/messages-log.browser-spec.mjs:1] -- deferred: DW-1145, terminal; reopens on a third log viewer
 - [x] [Review][Defer] DW-1101 still read as this story's, so its ledger slice could not read empty [_bmad-output/implementation-artifacts/deferred-work.md] -- deferred: re-owned `routed owner=burndown by=cr` with the residual named
+- [x] [Review][Patch] Scoped re-review, baseline `7736a9b`: `waitNamed`'s diagnostic page read was unguarded, so a page torn down under the wait replaced the named failure with a bare protocol error and dropped its `cause` -- the one outcome the helper exists to prevent [ui/browser/messages-log.browser-spec.mjs:301]
+- [x] [Review][Defer] The same unquotable failure the rework fixed in AC8 survives beside it: two `settled()` copies return silently at their 30 s deadline, and the Clear-restore waits that carry AC5 are unnamed [ui/browser/messages-log.browser-spec.mjs:145, :275; ui/browser/alerts-log.browser-spec.mjs:136, :246] -- deferred: DW-1119 occurrence, `escalated owner=burndown`
 
 Code review, Tier 1 `full`, baseline `68027e6`, four layers (`blind-hunter`, `edge-case-hunter`,
 `verification-gap`, `acceptance-auditor`) on `review_tier: full-opus`, barred from executing tests;
@@ -447,6 +451,8 @@ byte-identical):
 - `iris_server_profiles` reports `ocupilot-slot-b` on 52775 before any MCP call in the pass.
 - `docker exec <throwaway> grep -c PROTECT /durable/iris/mgr/messages.log` reads 0 after the
   ObjectScript sweep, including its denial classes.
+
+- mutation (AC8, the corrected wait): `fault-banner.ts`'s `ShellState.showArea` call removed, bundle rebuilt and redeployed -> the new wait reddens with its own message, `timed out waiting until the side bar followed to the Logs area with messages.log current; the page showed {"path":"/ocupilot/logs/messages","eyebrow":"OS management","current":null,"banner":false,"rows":571}` (observed). Reverted, rebuilt, redeployed, spec file 4/4 green. The `rows` figure in that message is the point: 571 rows were rendered, so the row wait this replaced was never what the assertions needed, and waiting on it made AC8 depend on a tail read that once took longer than 30 s on a CI runner (run 35371913709).
 
 ## Auto Run Result
 

@@ -289,6 +289,38 @@ test('AC5: a severity chip filters the rows, and Clear filter restores them and 
   }
 });
 
+/**
+ * Wait for `predicate` in the page and, on timeout, throw an error that says what was being
+ * waited for and what the page showed instead -- Puppeteer's own message names neither, and a
+ * failure line nobody can quote is a second run's work (DW-1119).
+ */
+async function waitNamed(page, predicate, what, args = []) {
+  try {
+    await page.waitForFunction(predicate, { timeout: config.navigationTimeoutMs }, ...args);
+  } catch (cause) {
+    // The dump is itself a page read, and a page closed or torn down under the wait cannot answer
+    // it -- unguarded, that read throws and replaces the named failure with a bare protocol error,
+    // which is the one outcome this helper exists to prevent. `list-spec.mjs` reads defensively
+    // here for the same reason. A rejection that is not a timeout says so rather than claiming one.
+    let seen = '(the page could not be read)';
+    try {
+      seen = JSON.stringify(
+        await page.evaluate(() => ({
+          path: new URL(window.location.href).pathname,
+          eyebrow: document.querySelector('.ocu-side-bar-eyebrow')?.textContent.trim() ?? null,
+          current: document.querySelector('.ocu-side-bar-item[aria-current] .ocu-side-bar-label')?.textContent.trim() ?? null,
+          banner: document.querySelector('.ocu-fault-banner') !== null,
+          rows: document.querySelectorAll('.ocu-log-rows .ocu-log-row').length,
+        }))
+      );
+    } catch {
+      // Keep the fallback: the named failure below is worth more than this dump.
+    }
+    const gave = cause?.name === 'TimeoutError' ? 'timed out' : `failed (${cause?.name})`;
+    throw new Error(`${gave} waiting until ${what}; the page showed ${seen}`, { cause });
+  }
+}
+
 test('AC8: the fault banner opens messages.log and brings the Logs side bar with it', async () => {
   // DW-148, end to end. The fault is raised by failing the processes list's own read, so the
   // browser is on another area when the control is pressed: the route it opens and the side bar it
@@ -311,7 +343,10 @@ test('AC8: the fault banner opens messages.log and brings the Logs side bar with
     },
   });
   try {
-    await page.waitForSelector('.ocu-fault-banner', { timeout: config.navigationTimeoutMs });
+    // Every wait in this test names itself on timeout. A bare `Waiting failed: 30000ms exceeded`
+    // does not say which one gave up, and a failure line that cannot be quoted in a report costs
+    // a second run to locate (DW-1119).
+    await waitNamed(page, () => document.querySelector('.ocu-fault-banner') !== null, 'the fault banner appeared once the processes read was refused');
     assert.equal(
       await page.$eval('.ocu-side-bar-eyebrow', (node) => node.textContent.trim()),
       STRINGS.navAreaOsManagement,
@@ -326,11 +361,26 @@ test('AC8: the fault banner opens messages.log and brings the Logs side bar with
     }, STRINGS.actionOpenMessagesLog);
     assert.ok(opened, 'the banner carries the published Open messages.log control');
 
-    await page.waitForFunction(
+    await waitNamed(
+      page,
       () => new URL(window.location.href).pathname === '/ocupilot/logs/messages',
-      { timeout: config.navigationTimeoutMs }
+      'the control navigated to /ocupilot/logs/messages'
     );
-    await page.waitForSelector(ROW_SELECTOR, { timeout: config.navigationTimeoutMs });
+    // Wait for the state these assertions actually read -- the side bar's own area and the entry
+    // it marks current -- not for a rendered row, which AC1 and AC6 pin and which this test does
+    // not touch. Waiting on a row made the wait depend on the tail read finishing, which is why it
+    // exceeded 30 s once on a slower runner while the assertions below would already have held.
+    await waitNamed(
+      page,
+      (area, label) => {
+        const eyebrow = document.querySelector('.ocu-side-bar-eyebrow');
+        const current = document.querySelector('.ocu-side-bar-item[aria-current] .ocu-side-bar-label');
+        return eyebrow !== null && eyebrow.textContent.trim() === area
+          && current !== null && current.textContent.trim() === label;
+      },
+      'the side bar followed to the Logs area with messages.log current',
+      [STRINGS.navAreaLogs, STRINGS.messagesLogListLabel]
+    );
 
     assert.equal(
       await page.$eval('.ocu-side-bar-eyebrow', (node) => node.textContent.trim()),
