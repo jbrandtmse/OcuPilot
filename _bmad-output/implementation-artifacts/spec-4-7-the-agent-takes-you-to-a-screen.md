@@ -2,9 +2,10 @@
 title: 'Story 4.7: The agent takes you to a screen'
 type: 'feature'
 created: '2026-09-17'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '9d1657116eb2a1dcf7cf71e578e9b8c2c704bb16'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md'
@@ -18,6 +19,10 @@ deferred:
     evidence: 'ui/src/app/app.ts:376 focusOnFrameArrival states there is no route-arrival focus mechanism anywhere in the client. Widening it to every navigation changes the focus order every existing browser spec asserts (shell.browser-spec.mjs), which is a larger change than this story''s ACs ask for.'
     location: 'ui/src/app/shell/locator-bar.ts'
     severity: 'med'
+  - summary: 'A settle POST that fails in flight is not retried, and TurnStore already marks the directive acted before the request resolves, so a browser that actually navigated can still be reported NAV.UNAVAILABLE after the server-side wait lapses'
+    evidence: 'ui/src/app/core/turn.ts settleNavigation() sets actedNavigationSeq before awaiting api.requestJson, and agent-navigator.ts act() does not check settleNavigation''s returned boolean or retry. Fixing this needs a retry-semantics decision (how many attempts, what happens if all fail) the intent does not specify; the existing NAVWAITSECONDS lapse already bounds the damage to a wrong-but-recoverable turn outcome, never a hang or data loss.'
+    location: 'ui/src/app/core/turn.ts:485'
+    severity: 'med (unverified how often it fires in production; real but narrow -- a transient network failure in the single-digit-second window between navigate and settle)'
 ---
 
 <intent-contract>
@@ -189,33 +194,109 @@ Client:
 **Mutations (Rule 19 — one per AC, applied, observed red, reverted, tree byte-identical after):**
 
 - **AC1** (`ToolNavigate`) -- mutation: replace `route`'s `enum` with a bare `{"type":"string"}` in `Navigate.InputSchema` -> the enum-equality test and the off-list refusal test go red.
-- **AC2** (`ToolNavigate`, `TurnNavigate`) -- mutation: move the `Directive` call above Dispatch's argument-pair check -> the "no `announce` step and no directive after a refusal" assertions go red.
+- **AC2** (`ToolNavigate`, `TurnNavigate`) -- mutation: move the `Directive` call above Dispatch's argument-pair check -> the "no `announce` step and no directive after a refusal" assertions go red. AC2's `AUTH.NOPRIVILEGE` leg is pinned separately by `ToolWire.TestANavigationTargetTheCallerCannotOpenIsRefusedBeforeAnyAnnouncement` (a real armed principal, throwaway-only) -- mutation: blank `ResolveClientCall`'s `tFailedPair := ..MissingPair(...)` result -> both the refusal and the no-announce-step assertions go red.
 - **AC3** (`TurnNavigate`) -- mutation: drop `Nav.GuardedRequest`'s read-back of the announce step -> the orphan-directive refusal test goes red. Second mutation: drop `GuardedView`'s pairing condition -> a fixture-written orphan row surfaces as `navigation` and the reader test goes red.
 - **AC4** (`navigate.browser-spec.mjs`, component spec) -- mutation: in `agent-navigator.ts`, navigate without waiting for the announcement to be rendered -> the `history.pushState` hook records `announced: false` and goes red. Second mutation: delete `NAVIGATIONDELAYMS` -> the component spec's "no `navigateByUrl` before the scheduled callback fires" assertion goes red.
 - **AC5** (`navigate.browser-spec.mjs`) -- mutation: remove the `focus()` call in `locator-bar.ts` -> the `document.activeElement.id` assertion goes red. Respelling either announcement in `strings.ts` reddens `strings.test.mjs`.
 - **AC6** (`navigate.browser-spec.mjs`) -- mutation: pass `{replaceUrl: true}` in `agent-navigator.ts` -> Back no longer returns to the departing screen and the spec goes red. Second mutation: render the announcement with an added button -> the "no button in the announcement" assertion goes red.
 - **AC7** (`navigate.browser-spec.mjs`, `TurnNavigate`) -- mutation: ignore `navigateByUrl`'s `false` and post `opened` -> the URL-unchanged, announcement-removed and `is_error false` / `NAV.REFUSEDUNSAVED` assertions go red.
-- **AC8** (`TurnNavigate`) -- mutation: raise `NAVWAITSECONDS` beyond the test's own wait -> the lapse test goes red. Drive the lapse from a scripted turn with no browser answering, never from a real clock longer than the class's budget.
+- **AC8** (`TurnNavigate`) -- mutation: raise `NAVWAITSECONDS` beyond the test's own wait -> the lapse test goes red. Drive the lapse from a scripted turn with no browser answering, never from a real clock longer than the class's budget. AC8's own "stop... cut the wait short" clause is pinned separately by `TestStopDuringTheWaitEndsTheTurnAtTheNextPass` -- mutation: drop the `Boundary` call from `AnswerClientCall`'s wait loop -> the test never observes a `stopped` tool step and goes red.
 - **AC9** (`ToolNavigate`) -- mutation: set `FULFILMENT = "instance"` on `Navigate` -> `Dispatch` invokes `View`, the `NAV.NOTINSTANCE` fault becomes the tool result, and the pending-path test goes red. Second mutation: set `KIND = "write"` -> the registry's build-time refusal test goes red.
 - **AC10** (`TurnNavigate`) -- mutation: drop the `seq` comparison in `Nav.GuardedSettle` -> the double-settle test reads 200 instead of 409 and goes red.
 - **AC11** (`navigate.browser-spec.mjs`) -- mutation: pass `{skipLocationChange: true}` -> the URL never changes, the chip keeps naming the departed screen and the next turn's recorded `context.route` is the old one; the integration assertion goes red.
 - **AC12** (`TurnNavigate`) -- mutation: delete either added sentence from `BUILTIN` -> the prompt-text assertion goes red.
 - **AC13** (`navigate.browser-spec.mjs`) -- mutation: make `TurnProvider.Script` answer an error status (call it with an unarmed tag) -> the extracted `scriptReply` goes red where all three local copies passed, which is the falsification of the unasserted status.
+- **The announce step's own entity id (`TurnNavigate.TestAC9SuccessfulCallNeverInvokesView`)** -- review finding, not a lettered AC: `Loop.AnswerClientCall`'s settle call carries `tEntityId` forward instead of `""`, so a restored or later-polled transcript still renders the selected row. Mutation: pass `""` for the settle's `pText` again -> the "entity id survives settling" assertion goes red.
+- **The `AgentNavigator.activeSeq` per-turn reset (`agent-navigator.spec.ts`)** -- review finding: `check()` resets `activeSeq` to 0 whenever no directive is pending, so a later turn's own navigation is not silently dropped when it reuses a `seq` an earlier, already-settled turn used (`Step.Seq` restarts at 1 per turn). Mutation: drop the `directive === null` reset branch -> "a later turn reusing the same seq... is still acted on" goes red.
 
 **Manual checks:**
 
 - `docker compose ps` only; never `up`, `down` or `restart` against `ocupilot`, any `ocupilot-slot-*`, `ocupilot-b-ci` or `iris-community-edition`, and never run `ci-throwaway.sh` — `ocupilot-ci` is already up and is the runner's.
 - After the browser suite, confirm `GET /api/ocupilot/agent/definitions` is empty and no probe principal survives (`TurnWireFixture.PrincipalsLeft`).
 
+## Review Triage Log
+
+### 2026-09-18 — Review pass
+
+- verdicts: 14 findings — high 1, medium 5, low 6, false 2, maybe-false 0
+- findings:
+  - `[high]` `[patch]` `AgentNavigator.activeSeq` is a tab-lifetime singleton never reset per turn, so a later turn's navigation reusing an earlier turn's `seq` (`Step.Seq` restarts at 1 per turn) is silently never scheduled — fixed: `check()` resets `activeSeq` to 0 whenever `navigation()` is null; pinned by a new `agent-navigator.spec.ts` test, mutation (drop the reset) confirmed red then reverted.
+  - `[medium]` `[patch]` Settling the announce step passes `pText=""` to `GuardedUpdate`, and `ApplyContent` unconditionally overwrites `Text`, wiping the entity id a successful navigation recorded — fixed: pass `tEntityId` instead; pinned by an added assertion in `TestAC9SuccessfulCallNeverInvokesView`, mutation (revert to `""`) confirmed red then reverted.
+  - `[low]` `[reject]` `AgentNavigator.act()`'s `.catch(() => false)` reports a genuine `navigateByUrl` rejection the same as a `CanDeactivateFn` decline (`NAV.REFUSEDUNSAVED`) — unlikely in this app specifically (a single bundle with no lazy-loaded routes, and `leaveFormGuard` the only guard on these routes), and a real fix needs a new server-side closed-vocabulary code the intent does not specify, more than a direct correction.
+  - `[medium]` `[defer]` `TurnStore.settleNavigation()` marks the directive acted before its POST resolves and is never retried, so a browser that actually navigated can still be reported `NAV.UNAVAILABLE` after the server-side wait lapses — real but the smallest correct fix needs a retry-semantics decision (attempt count, exhaustion behavior) outside this story's intent; the existing `NAVWAITSECONDS` lapse already bounds the damage to a wrong-but-recoverable outcome. Recorded in frontmatter `deferred:`.
+  - `[low]` `[patch]` The wait loop's `Nav.GuardedPending` read-error branch never calls `Nav.GuardedSettle`, unlike the sibling timeout branch, leaving the Nav row open after the turn has already reported the lapse — fixed: mirrored the timeout branch's `GuardedSettle` call.
+  - `[medium]` `[patch]` `OcuPilot.Api.Error.NavCodes()`/`ReasonForNav()` has no test walking the vocabulary the way `RestraintCodes()`/`ReasonForRestraint()` is pinned in `Restraint.cls` (grouped with the Verification Gap layer's same finding below) — fixed: added `ToolNavigate.TestEveryNavCodeHasAWrittenSentence`, mutation (blank one branch) confirmed red then reverted.
+  - `[low]` `[patch]` The new `ToolWire` test discarded `TurnProvider.Script`'s own `%Status` via bare `Do`, the pattern this story's own change to `Script` says callers should stop using — fixed: the two new call sites now assert `$$$AssertStatusOK`.
+  - `[low]` `[reject]` `NAVIGATIONDELAYMS` is duplicated as a literal in `agent-navigator.ts` and `navigate.browser-spec.mjs` with no cross-check — already documented in the browser spec's own comment as a known, accepted tradeoff (a browser test cannot import a `.ts` constant), matching the project's existing accepted pattern for this exact class of duplication (CLAUDE.md's compose/proxy port literals). No action.
+  - `[false]` `Loop.cls`'s wait loop checks `Boundary` before `Nav.GuardedPending` each pass, so a stop landing the same pass as the browser's own settle discards the recorded outcome for `TURN.STOPPED` — matches the existing, accepted "stop always wins" contract this class's own Design Notes document for every in-flight tool call interrupted by a stop; not specific to navigation and not a regression.
+  - `[medium]` `[patch]` The lapse branch calls `Nav.GuardedSettle` and discards `pClaimed`, so when the browser's own settle wins the claim race in the same instant, the loop reports its own locally-computed `unavailable` instead of what was actually persisted — fixed: on `'tClaimed`, re-read the directive via `GuardedPending` and use its real outcome/code.
+  - `[low]` `[reject]` Duplicate of the `navigateByUrl` rejection finding above, same disposition.
+  - `[false]` `AgentNavigator.act()`'s `screenForRoute(directive.route)` could return `null` for a route the server validated, rendering an empty title in the arrival `aria-label` — structurally prevented: `ui/tools/screen-mirror.mjs --check` (part of `npm run build`'s prebuild, which this pass ran clean) keeps the client's own screen list identical to the server's descriptor registry, so a route the server names is always one `screenForRoute` resolves.
+  - `[low]` `[patch]` `Registry.ListTools`'s descriptor-derived read-tool loop never calls `FulfilmentProblem` before `Claim`, unlike the manual tool-class loop, so AC9's general "a write-kind client tool refuses at build time" claim is unenforced on that path — fixed: added the check once (the read-tool class is fixed, not per-descriptor, so it is checked outside the loop rather than per iteration).
+  - `[medium]` `[patch]` Verification Gap layer's own filed finding for the same `NavCodes()`/`ReasonForNav()` gap as above (grouped) — same fix.
+- Two additional regressions surfaced by this pass's own re-verification sweep, not filed by a review layer, both pre-existing tests broken by the story adding a 12th live tool: `ReadTool.TestTheRegistryListsDescriptorReadsAndInheritedKinds` pinned the production registry at exactly eleven tools by name — fixed to twelve, `shell.screen.open` inserted in its alphabetical position. `ToolRoundTrip.TestEveryToolConformsToItsResultSchemaOrAnswersACode` calls every live tool with `{}` and expects a result or a named `REFUSEEMPTY` code; `shell.screen.open`'s `View` always answers `NAV.NOTINSTANCE` by design — fixed by adding `shell.screen.open:NAV.NOTINSTANCE` to `REFUSEEMPTY`. Both now pass; the whole affected-class sweep (`ReadTool`, `ToolRoundTrip`, `ToolDispatch`, `ToolShell`, `ToolEmit`, `ToolNavigate`, `TurnNavigate`, `TurnLoop`) reran green after every patch.
+
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planned only; no implementation. Two decisions the lead may want to override are recorded in
-Design Notes with their evidence: the navigation heading is the locator bar's current segment
-(DESIGN.md `:865`, `:1035`), and the withdrawn announcement is a removal, so no new product copy
-is authored. One EXPERIENCE.md Fixed-strings row is amended as part of the spec (the no-entity
-form of the published announcement). Both routed ledger entries are addressed: DW-1084 by the
-`BUILTIN` amendment, DW-1086 by extracting `ui/browser/turnprobe-spec.mjs`. Two items are
-declined into frontmatter `deferred:` with reasons.
+**Summary.** Implemented `shell.screen.open`, the one client-fulfilled navigation tool: the
+`FULFILMENT` mechanism on `Screen.Tool.Base`/`Registry`, the tool class itself, the `Nav` store
+and its announce-paired read-back guarantee, `Dispatch.ResolveClientCall`/`SettleClient`,
+`Loop.AnswerClientCall`'s announce-wait-settle sequence, `POST /turn/:id/navigation`'s closed
+vocabulary, and the client half (`AgentNavigator`, the locator bar's focusable heading, the
+panel's announce-step rendering). DW-1084 (the `BUILTIN` prompt sentences) and DW-1086
+(`turnprobe-spec.mjs` extraction) are both closed. Reviewed and patched in this pass; see the
+Review Triage Log above for the full findings list.
+
+**Files changed:** the 42 files in the diff since `baseline_revision` — server:
+`Api/{Error,Router,Turn}.cls`, `Kernel/Agent/{Dispatch,Limits,Loop,Prompt}.cls`,
+`Kernel/State/{Nav (new),Turn}.cls`, `Screen/Context.cls`, `Screen/Tool/{Base,Navigate (new),Registry}.cls`,
+`Test/{BadFulfilment/* (new),NavSettleJob (new),ReadTool,ToolEmit,ToolNavigate (new),ToolRoundTrip,
+ToolWire,TurnLimitsNav (new),TurnNavigate (new),TurnProvider}.cls`; client:
+`browser/{context-chip,reply,turn}.browser-spec.mjs` (refactored onto the shared fixture),
+`browser/{navigate.browser-spec.mjs,turnprobe-spec.mjs}` (new), `src/app/app.ts`,
+`src/app/core/{navigation,shell-state,turn}.ts`, `src/app/shell/{agent-navigator (new),
+locator-bar,panel}.ts` and their specs, `src/styles/_components.scss`, `tools/turn.test.mjs`.
+
+**Review findings breakdown** (four parallel layers -- blind-hunter, edge-case-hunter,
+verification-gap, intent-alignment -- 14 findings total): 7 patched (1 high, 3 medium, 3 low,
+after grouping two same-root-cause findings into one), 1 deferred (medium, real but needs a
+retry-semantics decision outside this story's intent -- see frontmatter `deferred:`), 4 rejected
+(3 low as unlikely-in-practice with a fix bigger than a direct correction, 1 low as an
+already-documented, accepted duplicated-literal tradeoff), 2 false (both structurally prevented
+by existing invariants -- the "stop always wins" contract and the screen-mirror build-time
+parity check). Full list with evidence: `## Review Triage Log` above. This pass's own
+re-verification sweep additionally found and fixed two pre-existing tests broken by the new
+12th live tool (`ReadTool`'s pinned eleven-tool list, `ToolRoundTrip`'s `REFUSEEMPTY` set) --
+neither was filed by a review layer.
+
+**Follow-up review recommendation:** `true`. A patched entry was `high` (the
+`AgentNavigator.activeSeq` cross-turn reuse fix). Named risk: that fix is pinned only at the
+unit level (`agent-navigator.spec.ts`, a stubbed `TurnStore` with a manually simulated
+`clearNavigation()` in between two directives sharing a `seq`); it has not been exercised
+end-to-end against two consecutive real turns in a live browser, where the reset trigger is
+`TurnStore`'s own ordinary poll-driven `notify()` rather than a hand-simulated one.
+
+**Verification performed** (commands and outcomes; full detail in `## Verification` above):
+`check-objectscript.py` clean (365 files, 21 rules, 0 problems) after every edit in this pass.
+Full-package IRIS compile (365 classes) clean. `%UnitTest` on `ocupilot-slot-a`, one class per
+call, SQL-probe-confirmed: `ToolNavigate` 15/15, `TurnNavigate` 10/10, `TurnLoop` 11/11,
+`ToolEmit` 11/11, `ReadTool` 23/23, `ToolRoundTrip` 2/2, `ToolDispatch` 17/17, `ToolShell` 2/2
+(94 total, 0 failed). `ToolWire` (armed, throwaway-only) 3/3 on `ocupilot-ci`, including a new
+wire-level `AUTH.NOPRIVILEGE` test for the navigation tool. `cd ui && npm test`: 937 node + 472
+vitest, all green. `cd ui && npm run build`: clean, six prebuild checkers pass, bundle 766.33 kB
+against the 780 kB budget (`build-output.test.mjs` 13/13). Rebuilt and redeployed to `ocupilot-ci`
+after every code change; `npm run test:browser` 117/117 green on the final deployed bundle.
+`bash scripts/smoke.sh --container ocupilot-ci`: 18/18 passed, 2 pending (Epic 3), 1 skipped
+(benign). Post-suite cleanup confirmed: `/api/ocupilot/agent/definitions` empty,
+`TurnWireFixture.PrincipalsLeft()` empty. Every patch's own mutation applied, observed red, and
+reverted (tree confirmed byte-identical via `grep MUTATION` after each revert and a clean
+recompile) before the next step.
+
+**Residual risks:** the follow-up-review risk named above (activeSeq fix not yet proven against
+two real consecutive turns in a live browser). The one `defer`red finding (settle-POST retry
+semantics) is real but narrow and bounded by the existing 60 s lapse fallback. The two `reject`ed
+low findings (navigateByUrl rejection conflated with a guard decline; the `NAVIGATIONDELAYMS`
+duplicated literal) are documented above with why they were not worth fixing now.

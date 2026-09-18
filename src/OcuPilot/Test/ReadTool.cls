@@ -93,8 +93,8 @@ Method TestTheRegistryListsDescriptorReadsAndInheritedKinds()
         Set tNames = tNames _ $Select(tNames = "": "", 1: ",") _ tName
         Set tName = $Order(tProductionByName(tName))
     }
-    Do $$$AssertEquals(tProduction.%Size(), 11, "the production registry holds eleven tools, fixtures excluded")
-    Do $$$AssertEquals(tNames, "agent.definitions.read,logs.applicationerrors.read,logs.audit.read,osmgmt.processes.read,permissions.users.read,security.ssl.read,shell.instance.read,shell.namespaces.read,shell.privileges.read,tasks.schedule.read,webapp.list.read", "the Definitions list's read tool -- the first over OcuPilot's own state (AD-36) -- the application error log's own class tool, the audit database, processes, users and SSL/TLS lists' read tools, the three shell reads, and the task schedule and web applications lists' read tools")
+    Do $$$AssertEquals(tProduction.%Size(), 12, "the production registry holds twelve tools, fixtures excluded (Story 4.7 adds the navigation tool)")
+    Do $$$AssertEquals(tNames, "agent.definitions.read,logs.applicationerrors.read,logs.audit.read,osmgmt.processes.read,permissions.users.read,security.ssl.read,shell.instance.read,shell.namespaces.read,shell.privileges.read,shell.screen.open,tasks.schedule.read,webapp.list.read", "the Definitions list's read tool -- the first over OcuPilot's own state (AD-36) -- the application error log's own class tool, the audit database, processes, users and SSL/TLS lists' read tools, the three shell reads, the navigation tool (Story 4.7, a class tool of its own), and the task schedule and web applications lists' read tools")
     For tPair = $ListBuild("shell.instance.read", "OcuPilot.Kernel.Shell.InstanceRead"), $ListBuild("shell.namespaces.read", "OcuPilot.Kernel.Shell.NamespacesRead"), $ListBuild("shell.privileges.read", "OcuPilot.Kernel.Shell.PrivilegesRead") {
         Set tName = $List(tPair, 1)
         If '$Data(tProductionByName(tName)) Continue

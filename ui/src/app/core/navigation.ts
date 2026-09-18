@@ -238,6 +238,38 @@ export function formatDeniedAction(template: string, failedPair: string, action:
   return template.split(RESOURCE_PLACEHOLDER).join(failedPair).split(ACTION_PLACEHOLDER).join(action);
 }
 
+/** The placeholder the Fixed strings table leaves for the entity a navigation opened. */
+export const ENTITY_PLACEHOLDER = '<entity>';
+
+/**
+ * The agent's navigation announcement -- EXPERIENCE.md's Fixed strings row for
+ * "I'm opening <screen> for <entity> -- use Back to return." -- resolved to the target screen's
+ * title and, when a row was selected, its entity id -- both model-supplied and therefore
+ * untrusted (AD-33): the caller renders the result as `textContent`, never as markup. An empty
+ * `entityId` selects the no-entity form, the same words minus the clause with nothing to fill.
+ */
+export function formatNavigationAnnouncement(
+  entityTemplate: string,
+  noEntityTemplate: string,
+  screenTitle: string,
+  entityId: string
+): string {
+  if (entityId === '') return noEntityTemplate.split(SCREEN_PLACEHOLDER).join(screenTitle);
+  return entityTemplate.split(SCREEN_PLACEHOLDER).join(screenTitle).split(ENTITY_PLACEHOLDER).join(entityId);
+}
+
+/** The placeholder the Fixed strings table leaves for the arrived screen's own title. */
+export const TITLE_PLACEHOLDER = '<title>';
+
+/**
+ * The arrival heading announcement -- EXPERIENCE.md's Fixed strings row for
+ * "<title> -- opened by the agent; Back returns" -- resolved to the arrived screen's own title.
+ * `locator-bar.ts`'s `#ocu-locator-screen` takes it as its `aria-label` once per arrival.
+ */
+export function formatNavigationHeading(template: string, screenTitle: string): string {
+  return template.split(TITLE_PLACEHOLDER).join(screenTitle);
+}
+
 /** The one query parameter that is data scope rather than screen state (AD-44). */
 export const NAMESPACE_PARAM = 'ns';
 

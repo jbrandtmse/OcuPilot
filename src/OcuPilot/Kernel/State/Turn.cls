@@ -408,9 +408,16 @@ ClassMethod GuardedForOwner(pKey As %String, pUser As %String, Output pFound As 
 
 /// <p>The progress projection of turn <var>pKey</var> when <var>pUser</var> owns it:
 /// <code>{turnId, state, startedAt, endedAt, iterations, tokens{input,output}, limit, steps,
-/// stepsDropped, reply, error}</code>. <code>error</code> is <code>{seq, code}</code> when the turn
-/// ended with a code, else <code>null</code>; the caller adds its <code>reason</code>. Ownership is
-/// <method>GuardedForOwner</method>'s answer, so there is one predicate that decides it.</p>
+/// stepsDropped, reply, error, navigation?}</code>. <code>error</code> is <code>{seq, code}</code>
+/// when the turn ended with a code, else <code>null</code>; the caller adds its <code>reason</code>.
+/// Ownership is <method>GuardedForOwner</method>'s answer, so there is one predicate that decides
+/// it.</p>
+/// <p><code>navigation</code> (Story 4.7, AD-11 rule 3) is <code>{seq, route, entityId}</code>
+/// carried only while <class>OcuPilot.Kernel.State.Nav</class> holds an unsettled directive for
+/// this turn <b>and</b> the announce step it names is present in this same <var>pView</var>'s own
+/// <code>steps</code> -- the pairing that makes it impossible for a reader to observe a directive
+/// whose announcement it cannot also see. The key is omitted otherwise, never emitted
+/// <code>null</code>.</p>
 ClassMethod GuardedView(pKey As %String, pUser As %String, Output pFound As %Boolean, Output pView As %DynamicObject) As %Status
 {
     Set pFound = 0
@@ -447,6 +454,30 @@ ClassMethod GuardedView(pKey As %String, pUser As %String, Output pFound As %Boo
         Do tView.%Set("error", tError)
     }
     Set tRow = ""
+
+    Set tNavSC = ##class(OcuPilot.Kernel.State.Nav).GuardedPending(pKey, .tNavSeq, .tNavRoute, .tNavEntity, .tNavSettled, .tNavOutcome, .tNavCode)
+    If $$$ISOK(tNavSC) && (+tNavSeq > 0) && 'tNavSettled {
+        Set tHasAnnounce = 0
+        Set tStepIterator = tSteps.%GetIterator()
+        While tStepIterator.%GetNext(.tStepIndex, .tStepEntry) {
+            If (tStepEntry.%Get("seq") = +tNavSeq) && (tStepEntry.%Get("kind") = "announce") {
+                Set tHasAnnounce = 1
+                Quit
+            }
+        }
+        If tHasAnnounce {
+            Set tNav = {}
+            Do tNav.%Set("seq", +tNavSeq, "number")
+            Do tNav.%Set("route", tNavRoute, "string")
+            If tNavEntity = "" {
+                Do tNav.%Set("entityId", "", "null")
+            } Else {
+                Do tNav.%Set("entityId", tNavEntity, "string")
+            }
+            Do tView.%Set("navigation", tNav)
+        }
+    }
+
     Set pView = tView
     Set pFound = 1
     Quit $$$OK
@@ -472,10 +503,12 @@ ClassMethod GuardedSweep(pLimitsClass As %String) As %Status
     Quit tSC
 }
 
-/// <p>Delete turn <var>pKey</var>, its steps and its signals.</p>
+/// <p>Delete turn <var>pKey</var>, its steps, its navigation directive and its signals.</p>
 ClassMethod GuardedDelete(pKey As %String) As %Status
 {
     Set tSC = ##class(OcuPilot.Kernel.State.Step).GuardedDeleteForTurn(pKey)
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ##class(OcuPilot.Kernel.State.Nav).GuardedDeleteForTurn(pKey)
     If $$$ISERR(tSC) Quit tSC
     Set tSC = ..GuardedTurnSignalKill(pKey)
     If $$$ISERR(tSC) Quit tSC

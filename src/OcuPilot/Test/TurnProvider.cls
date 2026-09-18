@@ -18,11 +18,15 @@ Class OcuPilot.Test.TurnProvider Extends OcuPilot.Kernel.Provider.Anthropic
 {
 
 /// <p>Append a script entry for <var>pTag</var>: hang <var>pHangSeconds</var>, then answer
-/// <var>pReplyBody</var>.</p>
-ClassMethod Script(pTag As %String, pHangSeconds As %Numeric, pReplyBody As %String)
+/// <var>pReplyBody</var>. Refuses an unarmed (empty) tag rather than scripting a call nothing
+/// will ever ask for (DW-1086) -- the caller-facing seam <method>OcuPilot.Test.TurnProvider
+/// .Script</method>'s own %Status callers should check, not a value they discard.</p>
+ClassMethod Script(pTag As %String, pHangSeconds As %Numeric, pReplyBody As %String) As %Status
 {
+    If pTag = "" Quit $$$ERROR($$$GeneralError, "Script requires a tag")
     Set tIndex = $Increment(^IRIS.Temp.OcuPilotTurnProvider(pTag, "script"))
     Set ^IRIS.Temp.OcuPilotTurnProvider(pTag, "script", tIndex) = $ListBuild(+pHangSeconds, pReplyBody)
+    Quit $$$OK
 }
 
 /// <p>Remove <var>pTag</var>'s script and records.</p>

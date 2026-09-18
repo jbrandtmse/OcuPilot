@@ -27,24 +27,33 @@
 
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
 import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
+import {
+  armProbeDefinition,
+  disarmProbeDefinition,
+  escapeOs,
+  forgetTag as sharedForgetTag,
+  markerValue,
+  nextTag as sharedNextTag,
+  runIris as sharedRunIris,
+  scriptReply as sharedScriptReply,
+  setTag as sharedSetTag,
+} from './turnprobe-spec.mjs';
 
 const config = browserConfig();
 const STRINGS = loadStrings();
+const probe = { container: config.container, marker: 'CHIP' };
 
 const USERS_URL = '/ocupilot/permissions/users?ns=HSCUSTOM';
 const FORM_URL = '/ocupilot/agent/definitions/edit?ns=HSCUSTOM';
 const CONTEXT_PATH = '/api/ocupilot/agent/context';
 const SWITCHES_PATH = '/api/ocupilot/agent/switches';
-const TAG_PREFIX = 'chipbrowser';
 
 let browser = null;
-let tagCounter = 0;
 let preparedId = '';
 let priorDefault = '';
 
@@ -53,9 +62,9 @@ before(async () => {
   const ready = await (await fetch(`${config.origin}${READINESS_PATH}`)).json();
   assert.equal(ready.state, 'installed', `the throwaway must be installed, not ${JSON.stringify(ready)}`);
   browser = await puppeteer.launch(launchOptions(config));
-  removeDefinition('');
-  priorDefault = markedDefault();
-  preparedId = ensureDefinition(nextTag());
+  const armed = armProbeDefinition(probe);
+  priorDefault = armed.prior;
+  preparedId = armed.preparedId;
   await putShare(true);
 });
 
@@ -63,93 +72,26 @@ after(async () => {
   if (browser !== null) await browser.close();
   if (config.container === LIVE_CONTAINER) return;
   await putShare(true);
-  removeDefinition(priorDefault);
+  disarmProbeDefinition(probe, priorDefault);
 });
 
-function nextTag() {
-  tagCounter += 1;
-  return `${TAG_PREFIX}${tagCounter}`;
-}
-
-function escapeOs(value) {
-  return String(value).replace(/"/g, '""');
-}
-
 function runIris(lines) {
-  const script = [
-    'Set $NAMESPACE=$Select(##class(%SYS.Namespace).Exists("HSCUSTOM"):"HSCUSTOM",1:"USER")',
-    ...lines,
-    'Halt',
-  ].join('\n');
-  const result = spawnSync('docker', ['exec', '-i', config.container, 'iris', 'session', 'iris', '-U', '%SYS'], {
-    input: `${script}\n`,
-    encoding: 'utf8',
-    timeout: 600000,
-  });
-  return `${result.stdout ?? ''}${result.stderr ?? ''}`;
+  return sharedRunIris(config.container, lines);
 }
 
-function markerValue(output, marker) {
-  const re = new RegExp(`${marker}-START:(.*?):${marker}-END`);
-  return re.exec(output)?.[1] ?? null;
+/** One `turnprobe` tag per test, so a stale script from an earlier test cannot answer a later one. */
+function nextTag() {
+  return sharedNextTag(probe);
 }
 
-/**
- * The id currently carrying the default marker, or `''`. Read through the marker convention like
- * every other value here: `runIris` answers the whole IRIS session transcript, so a bare `Write`
- * yields the banner and the prompts as well -- and a multi-line value embedded in the next
- * script's string literal breaks that script instead of failing loudly.
- */
-function markedDefault() {
-  const output = runIris([
-    'Write "OCUCHIP-PRIOR-START:"_##class(OcuPilot.Test.TurnWireFixture).MarkedDefault()_":OCUCHIP-PRIOR-END",!',
-  ]);
-  const value = markerValue(output, 'OCUCHIP-PRIOR');
-  assert.notEqual(value, null, `MarkedDefault answered: ${output}`);
-  return value;
-}
-
-/**
- * Remove every probe definition and restore `prior` as the default marker, asserting that none
- * survived. The assertion is the point: a leftover enabled, default-marked definition is
- * instance-wide state that changes what later specs see -- `switches.browser-spec.mjs`'s AC2
- * reads the panel's read-only line on the stated assumption that nothing is configured -- and a
- * cleanup whose status nobody reads is how that reaches them.
- */
-function removeDefinition(prior) {
-  const output = runIris([
-    `Set sc=##class(OcuPilot.Test.TurnWireFixture).RemoveDefinition("${escapeOs(prior)}")`,
-    'Write "OCUCHIP-RM-START:"_$System.Status.IsOK(sc)_":OCUCHIP-RM-END",!',
-  ]);
-  assert.equal(markerValue(output, 'OCUCHIP-RM'), '1', `RemoveDefinition succeeded: ${output}`);
-}
-
-function ensureDefinition(tag) {
-  const output = runIris([
-    `Set sc=##class(OcuPilot.Test.TurnWireFixture).EnsureDefinition("${escapeOs(tag)}",.id)`,
-    'Write "OCUCHIP-DEF-START:"_$System.Status.IsOK(sc)_"|"_id_":OCUCHIP-DEF-END",!',
-  ]);
-  const value = markerValue(output, 'OCUCHIP-DEF');
-  assert.ok(value, `EnsureDefinition answered: ${output}`);
-  const [ok, id] = value.split('|');
-  assert.equal(ok, '1', `EnsureDefinition succeeded: ${output}`);
-  return id;
-}
-
+/** Point the current definition at a fresh tag, so this test's scripts cannot answer another's turn. */
 function setTag(tag) {
-  const output = runIris([
-    `Set sc=##class(OcuPilot.Test.TurnWireFixture).SetTag("${escapeOs(preparedId)}","${escapeOs(tag)}")`,
-    'Write "OCUCHIP-TAG-START:"_$System.Status.IsOK(sc)_":OCUCHIP-TAG-END",!',
-  ]);
-  assert.equal(markerValue(output, 'OCUCHIP-TAG'), '1', `SetTag succeeded: ${output}`);
+  sharedSetTag(probe, preparedId, tag);
 }
 
+/** Script one scripted reply for `tag`: `hangSeconds` before answering, then `bodyExpr` (ObjectScript). */
 function scriptReply(tag, hangSeconds, bodyExpr) {
-  const output = runIris([
-    `Do ##class(OcuPilot.Test.TurnProvider).Script("${escapeOs(tag)}",${hangSeconds},${bodyExpr})`,
-    'Write "OCUCHIP-SCRIPT-START:ok:OCUCHIP-SCRIPT-END",!',
-  ]);
-  assert.ok(markerValue(output, 'OCUCHIP-SCRIPT'), `Script recorded: ${output}`);
+  sharedScriptReply(probe, tag, hangSeconds, bodyExpr);
 }
 
 function textReply(text) {
@@ -157,15 +99,15 @@ function textReply(text) {
 }
 
 function forgetTag(tag) {
-  runIris([`Do ##class(OcuPilot.Test.TurnProvider).Forget("${escapeOs(tag)}")`]);
+  sharedForgetTag(probe, tag);
 }
 
 /** Call `call`'s recorded `messages` array (JSON), the same shape a real Anthropic-style request carries. */
 function recordedMessages(tag, call = 1) {
   const output = runIris([
-    `Write "OCUCHIP-MSGS-START:"_##class(OcuPilot.Test.TurnProvider).Recorded("${escapeOs(tag)}",${call},"messages")_":OCUCHIP-MSGS-END",!`,
+    `Write "OCU-CHIP-MSGS-START:"_##class(OcuPilot.Test.TurnProvider).Recorded("${escapeOs(tag)}",${call},"messages")_":OCU-CHIP-MSGS-END",!`,
   ]);
-  const value = markerValue(output, 'OCUCHIP-MSGS');
+  const value = markerValue(output, 'CHIP-MSGS');
   assert.ok(value, `Recorded answered: ${output}`);
   return JSON.parse(value);
 }

@@ -29,6 +29,17 @@ Parameter TOOLNAME = "";
 /// neither is refused.</p>
 Parameter KIND = "";
 
+/// <p><code>instance</code> or <code>client</code> (Story 4.7, AD-11 rule 3). An
+/// <code>instance</code>-fulfilled tool -- every tool before this one -- is validated, gated and
+/// answered by <method>View</method> in the calling process, as the rest of this class's header
+/// describes. A <code>client</code>-fulfilled tool is validated, announced and gated the same way,
+/// but its body runs in the browser: <class>OcuPilot.Kernel.Agent.Dispatch</class> never calls
+/// <method>View</method> for it, records a directive instead, and the browser answers once on a
+/// dedicated route. <code>OcuPilot.Screen.Tool.Registry</code> refuses <code>client</code> on a
+/// <code>write</code>-kind tool at validation, so a write can never be decided in the browser.
+/// Defaults to <code>instance</code>, so every existing tool needs no change.</p>
+Parameter FULFILMENT = "instance";
+
 /// <p>A one-line description of what the tool answers.</p>
 Parameter DESCRIPTION = "";
 

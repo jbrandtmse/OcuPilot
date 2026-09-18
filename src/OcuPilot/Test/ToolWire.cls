@@ -194,4 +194,34 @@ Method TestARoleRemovedMidTurnIsRefusedFromCurrentGrants()
     Do $$$AssertNotEquals(tFailedStep.reason, "", "and a published reason for the card's failed status")
 }
 
+/// <p>Story 4.7's own matrix row "Route the caller cannot open": <var>USERA</var>'s second role,
+/// the only one carrying <code>%Admin_Secure:USE</code> (<method>OnBeforeOneTest</method>'s own
+/// setup), is removed before the call this time -- rather than mid-turn, as
+/// <method>TestARoleRemovedMidTurnIsRefusedFromCurrentGrants</method> does -- so the principal
+/// never holds the pair <code>shell_screen_open</code> for <code>permissions/users</code> needs
+/// (AD-8, the same pair that screen's own read tool requires). <code>Dispatch.ResolveClientCall</code>
+/// refuses it at the same step-7 check <code>AnswerOne</code> uses, before any announcement
+/// exists: no <code>announce</code> step is ever written, only the tool step's own refusal.</p>
+/// <p>Mutation: skip the argument-pairs check in
+/// <method>OcuPilot.Kernel.Agent.Dispatch.ResolveClientCall</method> -> this goes red.</p>
+Method TestANavigationTargetTheCallerCannotOpenIsRefusedBeforeAnyAnnouncement()
+{
+    Set tUser = $Parameter(..#FIXTURE, "USERA")
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.TurnWireFixture).RemoveSecondRole(tUser), "the second role, which alone carries %Admin_Secure:USE, is removed before the call")
+    Do $$$AssertEquals($SYSTEM.Security.CheckUserPermission(tUser, "%Admin_Secure", "USE"), 0, "the principal now holds no %Admin_Secure:USE")
+    Set tCalls = [{"id": "toolu_nav", "name": "shell_screen_open", "input": {"route": "permissions/users"}}]
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.TurnProvider).Script(..#TAG, 0, ##class(OcuPilot.Test.TurnProvider).ToolUseReply(tCalls)), "the call is scripted")
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.TurnProvider).Script(..#TAG, 0, ##class(OcuPilot.Test.TurnProvider).TextReply("done")), "and the reply")
+    Set tId = ..Start(tUser, ..PreparedPassword, "open the users screen", .tStatus, .tText)
+    Do $$$AssertEquals(tStatus, 202, "the start is accepted: " _ tText)
+    If tId = "" Quit
+    Set ..PreparedKeys(tId) = ""
+    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "AwaitEnd", tId, tUser, ..PreparedPassword, 60, .tView), "completed", "the turn completes")
+    Do $$$AssertEquals(##class(OcuPilot.Test.TurnProvider).Calls(..#TAG), 2, "after reaching call 2")
+    Set tMessages = ##class(%DynamicArray).%FromJSON(##class(OcuPilot.Test.TurnProvider).Recorded(..#TAG, 2, "messages"))
+    Set tResult = tMessages.%Get(2).content.%Get(0)
+    Do $$$AssertEquals(tResult."is_error" _ "|" _ tResult.content, "1|{""code"":""AUTH.NOPRIVILEGE"",""detail"":{""failedPair"":""%Admin_Secure:USE""}}", "the navigation call is refused naming the pair")
+    Do $$$AssertEquals(..Steps(tView), "model:provider:ok:;tool:shell.screen.open:error:AUTH.NOPRIVILEGE;model:provider:ok:;", "the tool step itself is the refusal -- no announce step is ever recorded")
+}
+
 }

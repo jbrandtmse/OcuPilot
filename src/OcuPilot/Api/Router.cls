@@ -88,6 +88,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/logs/messages" Method="GET" Call="LogMessages"/>
   <Route Url="/turn/:id/progress" Method="GET" Call="TurnProgress"/>
   <Route Url="/turn/:id/stop" Method="POST" Call="TurnStop"/>
+  <Route Url="/turn/:id/navigation" Method="POST" Call="TurnNavigation"/>
   <Route Url="/turn/abandon" Method="POST" Call="TurnAbandon"/>
   <Route Url="/turn" Method="POST" Call="TurnStart"/>
   <Route Url="/conversation/:id" Method="GET" Call="ConversationRead"/>
@@ -281,6 +282,13 @@ ClassMethod TurnProgress(pId As %String) As %Status
 ClassMethod TurnStop(pId As %String) As %Status
 {
     Quit ##class(OcuPilot.Api.Turn).HandleStop(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /turn/:id/navigation</code> (Story 4.7) -- see
+/// <method>TurnProgress</method>.</p>
+ClassMethod TurnNavigation(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Api.Turn).HandleNavigation(pId)
 }
 
 /// <p>Thin <code>Call=</code> target for <code>POST /turn/abandon</code> -- see

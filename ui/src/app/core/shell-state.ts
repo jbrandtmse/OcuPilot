@@ -44,6 +44,21 @@ export class ShellState {
   /** How many holds are outstanding on the routed screen; see `holdScreen`. */
   private holds = 0;
 
+  /**
+   * The most recent agent-navigation arrival (Story 4.7, AD-11 rule 3): the route it landed on
+   * and the heading announcement `locator-bar.ts` reads as that screen's `aria-label`, so the
+   * label is present only on the arrival it describes and never on an ordinary, user-initiated
+   * one. `null` route means no arrival is standing.
+   */
+  private arrivalRoute: string | null = null;
+  private arrivalAnnouncementValue = '';
+
+  /** Bumped on every `announceArrival`, so `arrivalToken` can tell two arrivals at the same
+   * screen apart even when they carry the identical announcement text -- the title is the only
+   * thing the heading announcement names, so opening the same screen twice in a row produces the
+   * same string both times. */
+  private arrivalSeq = 0;
+
   private readonly listeners = new Set<() => void>();
 
   constructor(options: ShellStateOptions) {
@@ -73,6 +88,43 @@ export class ShellState {
   /** Whether a hold is outstanding, so `ScreenOutlet` must mount no page yet. */
   screenHeld(): boolean {
     return this.holds > 0;
+  }
+
+  /**
+   * Record that the agent's own navigation just landed on `route`, carrying the heading
+   * announcement `locator-bar.ts` reads for that route's segment (Story 4.7).
+   */
+  announceArrival(route: string, announcement: string): void {
+    this.arrivalRoute = route;
+    this.arrivalAnnouncementValue = announcement;
+    this.arrivalSeq += 1;
+    this.notify();
+  }
+
+  /** The standing arrival announcement for `route`, or `null` when none is standing there. */
+  arrivalAnnouncement(route: string): string | null {
+    return this.arrivalRoute === route ? this.arrivalAnnouncementValue : null;
+  }
+
+  /**
+   * A token that changes on every fresh arrival at `route`, or `null` when none is standing
+   * there -- a reader that needs to tell two arrivals apart (to focus the heading again on a
+   * second, identical announcement) compares this rather than the announcement text.
+   */
+  arrivalToken(route: string): number | null {
+    return this.arrivalRoute === route ? this.arrivalSeq : null;
+  }
+
+  /**
+   * Drop the standing arrival, so it does not survive the navigation that follows it -- the
+   * announcement is for the one screen the agent opened, not for whatever the user goes to next.
+   * `app.ts` calls this on every `NavigationStart`, agent-initiated or not.
+   */
+  clearArrival(): void {
+    if (this.arrivalRoute === null) return;
+    this.arrivalRoute = null;
+    this.arrivalAnnouncementValue = '';
+    this.notify();
   }
 
   /**

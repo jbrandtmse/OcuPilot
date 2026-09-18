@@ -35,6 +35,14 @@ Parameter TOOLNAMEPATTERN = "^[a-z][a-z0-9]*\.[a-z][a-z0-9]*\.[a-z][a-z0-9]*$";
 /// <p>The two kinds a tool may declare (AD-22).</p>
 Parameter KINDS = "read,write";
 
+/// <p>The two fulfilments a tool may declare (Story 4.7, AD-11 rule 3): <code>instance</code>,
+/// answered by <method>OcuPilot.Screen.Tool.Base.View</method> in the calling process, or
+/// <code>client</code>, whose body runs in the browser. A <code>client</code>-fulfilled
+/// <code>write</code>-kind tool is refused here at build time (<method>FulfilmentProblem</method>)
+/// -- a client tool can never pass the write restraint path, so the combination is refused rather
+/// than left for the dispatcher to discover.</p>
+Parameter FULFILMENTS = "instance,client";
+
 /// <p>The schema keywords the argument validator admits. A schema using any other keyword is
 /// refused, because a keyword the validator does not enforce would read as a constraint it never
 /// checked -- so every name here is enforced by <method>ValueProblem</method>, including
@@ -109,12 +117,18 @@ ClassMethod ListTools(Output pTools As %DynamicArray) As %Status
                 Set tSC = $$$ERROR($$$GeneralError, tProblem)
                 Quit
             }
+            Set tFulfilment = $Parameter(tClass, "FULFILMENT")
+            Set tProblem = ..FulfilmentProblem(tClass, tKind, tFulfilment)
+            If tProblem '= "" {
+                Set tSC = $$$ERROR($$$GeneralError, tProblem)
+                Quit
+            }
             Set tName = $Parameter(tClass, "TOOLNAME")
             If '$Match(tName, ..#TOOLNAMEPATTERN) {
                 Set tSC = $$$ERROR($$$GeneralError, tClass _ ": TOOLNAME '" _ tName _ "' is not <area>.<screen>.<verb> in lower case")
                 Quit
             }
-            Set tSC = ..Claim(.tByName, tName, tKind, tClass, "")
+            Set tSC = ..Claim(.tByName, tName, tKind, tClass, "", tFulfilment)
             If $$$ISERR(tSC) Quit
         }
         If $$$ISERR(tSC) Quit
@@ -123,6 +137,13 @@ ClassMethod ListTools(Output pTools As %DynamicArray) As %Status
         Set tSC = $ClassMethod(tRegistry, "Descriptors", .tDescriptors)
         If $$$ISERR(tSC) Quit
         Set tReadClass = ..ReadToolClass()
+        Set tReadKind = $Parameter(tReadClass, "KIND")
+        Set tReadFulfilment = $Parameter(tReadClass, "FULFILMENT")
+        Set tReadFulfilmentProblem = ..FulfilmentProblem(tReadClass, tReadKind, tReadFulfilment)
+        If tReadFulfilmentProblem '= "" {
+            Set tSC = $$$ERROR($$$GeneralError, tReadFulfilmentProblem)
+            Quit
+        }
         For tI = 1:1:$ListLength(tDescriptors) {
             Set tDescriptor = $List(tDescriptors, tI)
             If '$IsObject($ClassMethod(tDescriptor, "Read")) Continue
@@ -133,7 +154,7 @@ ClassMethod ListTools(Output pTools As %DynamicArray) As %Status
                 Set tSC = $$$ERROR($$$GeneralError, tDescriptor _ ": " _ tProblem)
                 Quit
             }
-            Set tSC = ..Claim(.tByName, $ClassMethod(tReadClass, "NameFor", tDescriptor), $Parameter(tReadClass, "KIND"), tReadClass, tDescriptor)
+            Set tSC = ..Claim(.tByName, $ClassMethod(tReadClass, "NameFor", tDescriptor), tReadKind, tReadClass, tDescriptor, tReadFulfilment)
             If $$$ISERR(tSC) Quit
         }
         If $$$ISERR(tSC) Quit
@@ -402,6 +423,15 @@ ClassMethod ArgumentPairs(pTool As %DynamicObject, pArgs As %DynamicObject, Outp
     Quit tPairs
 }
 
+/// <p><var>pTool</var>'s declared fulfilment, <code>instance</code> or <code>client</code> (Story
+/// 4.7, AD-11 rule 3): <code>instance</code> for every tool <method>ListTools</method> lists that
+/// carries no <code>fulfilment</code> key at all, which is every tool a pre-4.7 caller built.</p>
+ClassMethod FulfilmentOf(pTool As %DynamicObject) As %String
+{
+    Set tFulfilment = pTool.%Get("fulfilment")
+    Quit $Select(tFulfilment '= "": tFulfilment, 1: "instance")
+}
+
 /// <p>Call <var>pTool</var>'s view with <var>pArgs</var> under the row cap <var>pContextCap</var>,
 /// in the calling process (AD-1). Outputs are the view's (<method>OcuPilot.Screen.Tool.Base.View</method>);
 /// a view that throws answers an error status with <var>pFault</var> <code>""</code>.</p>
@@ -446,6 +476,19 @@ ClassMethod KindProblem(pClass As %String, pKind As %String) As %String
 {
     If (pKind '= "") && $ListFind($ListFromString(..#KINDS), pKind) Quit ""
     Quit pClass _ ": KIND '" _ pKind _ "' is neither 'read' nor 'write', and every tool declares its kind at definition time (AD-22)"
+}
+
+/// <p>What is wrong with <var>pClass</var> declaring fulfilment <var>pFulfilment</var> on a tool
+/// of kind <var>pKind</var>, or <code>""</code> (Story 4.7, AD-11 rule 3). A value outside
+/// <parameter>FULFILMENTS</parameter> is refused, and so is <code>client</code> on a
+/// <code>write</code>-kind tool: a client-fulfilled tool cannot pass the write restraint path
+/// (kill switch, enforced read-only, the confirmation proposal), so the combination is refused at
+/// build time rather than reaching a caller.</p>
+ClassMethod FulfilmentProblem(pClass As %String, pKind As %String, pFulfilment As %String) As %String
+{
+    If (pFulfilment = "") || '$ListFind($ListFromString(..#FULFILMENTS), pFulfilment) Quit pClass _ ": FULFILMENT '" _ pFulfilment _ "' is neither 'instance' nor 'client'"
+    If (pFulfilment = "client") && (pKind = "write") Quit pClass _ ": a 'write'-kind tool cannot declare FULFILMENT 'client' -- a client-fulfilled tool never passes the write restraint path"
+    Quit ""
 }
 
 /// <p>Whether <var>pArgs</var> satisfies <var>pSchema</var>. <var>pProblem</var> names the
@@ -521,8 +564,10 @@ ClassMethod ToolClasses(Output pList As %List) As %Status [ Private ]
     Quit tSC
 }
 
-/// <p>Record one tool under <var>pName</var>, refusing a name already claimed.</p>
-ClassMethod Claim(ByRef pByName, pName As %String, pKind As %String, pClass As %String, pDescriptor As %String) As %Status [ Private ]
+/// <p>Record one tool under <var>pName</var>, refusing a name already claimed. <var>pFulfilment</var>
+/// defaults to <code>instance</code> so every caller written before Story 4.7 keeps calling this
+/// unchanged.</p>
+ClassMethod Claim(ByRef pByName, pName As %String, pKind As %String, pClass As %String, pDescriptor As %String, pFulfilment As %String = "instance") As %Status [ Private ]
 {
     If $Data(pByName(pName)) {
         Set tHeld = pByName(pName)
@@ -533,6 +578,7 @@ ClassMethod Claim(ByRef pByName, pName As %String, pKind As %String, pClass As %
     Do tEntry.%Set("kind", pKind)
     Do tEntry.%Set("class", pClass)
     Do tEntry.%Set("descriptor", pDescriptor)
+    Do tEntry.%Set("fulfilment", pFulfilment)
     Set pByName(pName) = tEntry
     Quit $$$OK
 }

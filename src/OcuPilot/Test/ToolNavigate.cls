@@ -1,0 +1,217 @@
+/// <p>In-process suite for <class>OcuPilot.Screen.Tool.Navigate</class> (Story 4.7, AD-5, AD-11
+/// rule 3): the allow-list, the schema, the two argument refusals, the privilege pairs, the
+/// fulfilment declaration and its build-time enforcement. No turn, no job, no HTTP -- the wire and
+/// ordering behaviors are <class>OcuPilot.Test.TurnNavigate</class>'s.</p>
+/// <p>Live-safe: reads the real descriptor registry and writes nothing.</p>
+Class OcuPilot.Test.ToolNavigate Extends %UnitTest.TestCase
+{
+
+Parameter TOOL = "OcuPilot.Screen.Tool.Navigate";
+
+/// <p>AC1: the <code>route</code> property's <code>enum</code> is exactly the set of built
+/// screens' routes from <class>OcuPilot.Screen.Registry</class> -- neither more nor fewer, and no
+/// URL is representable because every member is a declared route.</p>
+Method TestAC1RouteEnumEqualsBuiltRoutes()
+{
+    Set tSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tDescriptors)
+    Do $$$AssertStatusOK(tSC, "the descriptor roster reads")
+    ; A %List, not a subscripted array: Home's own route is "", which a local array cannot take
+    ; as a subscript.
+    Set tExpected = ""
+    For tI = 1:1:$ListLength(tDescriptors) {
+        Set tDescriptor = $List(tDescriptors, tI)
+        If ''$ClassMethod(tDescriptor, "IsBuilt") Set tExpected = tExpected _ $ListBuild($ClassMethod(tDescriptor, "Route"))
+    }
+    Set tSchema = $ClassMethod(..#TOOL, "InputSchema")
+    Set tEnum = tSchema.properties.route.enum
+    Do $$$AssertTrue($IsObject(tEnum), "route declares an enum")
+    Set tActual = ""
+    Set tCount = 0
+    Set tIterator = tEnum.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRoute) {
+        Set tActual = tActual _ $ListBuild(tRoute)
+        Set tCount = tCount + 1
+    }
+    For tI = 1:1:$ListLength(tExpected) {
+        Set tRoute = $List(tExpected, tI)
+        Do $$$AssertTrue($ListFind(tActual, tRoute) > 0, "the enum carries built route '" _ tRoute _ "'")
+    }
+    Do $$$AssertEquals(tCount, $ListLength(tExpected), "the enum names exactly the built routes, no more and no fewer")
+    Do $$$AssertEquals(tSchema.properties.route.type, "string", "route is a string")
+    Do $$$AssertEquals(tSchema.required.%Get(0), "route", "route is required")
+    Do $$$AssertEquals(tSchema.additionalProperties, 0, "the schema is closed")
+}
+
+/// <p>AC1 continued: the tool's declared kind and name are what the story fixes.</p>
+Method TestAC1NameAndKind()
+{
+    Do $$$AssertEquals($Parameter(..#TOOL, "TOOLNAME"), "shell.screen.open", "the tool's canonical name")
+    Do $$$AssertEquals($Parameter(..#TOOL, "KIND"), "read", "declared read (AC9)")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Tool.Registry).WireName($Parameter(..#TOOL, "TOOLNAME")), "shell_screen_open", "the wire name a provider request advertises")
+}
+
+/// <p>AC2: an off-list route is refused by <method>OcuPilot.Screen.Tool.Registry.ValidateArguments</method>
+/// before the tool body ever runs -- a caller-supplied URL is never a value the schema admits.</p>
+Method TestAC2OffListRouteRefusedBySchema()
+{
+    Set tSchema = $ClassMethod(..#TOOL, "InputSchema")
+    Set tArgs = {"route": "/csp/sys/UtilHome.csp"}
+    Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ValidateArguments(tSchema, tArgs, .tProblem)
+    Do $$$AssertStatusNotOK(tSC, "an off-list route is refused")
+    Do $$$AssertTrue(tProblem [ "enum", "naming the enum rule: " _ tProblem)
+}
+
+/// <p>AC2: <code>entityId</code> against a screen whose <code>id.kind</code> is <code>none</code>
+/// is refused <code>NAV.ENTITYNOTALLOWED</code> by <method>Directive</method>, before any
+/// announcement exists -- the tool never invents a second composite grammar (AD-5).</p>
+Method TestAC2EntityNotAllowedOnNoneId()
+{
+    Set tArgs = {"route": "agent/switches", "entityId": "x"}
+    Set tSC = $ClassMethod(..#TOOL, "Directive", "", tArgs, .tRoute, .tEntityId, .tFault)
+    Do $$$AssertStatusNotOK(tSC, "refused")
+    Do $$$AssertTrue($IsObject(tFault), "with a fault")
+    Do $$$AssertEquals(tFault.code, "NAV.ENTITYNOTALLOWED", "naming the code")
+    Do $$$AssertEquals(tRoute, "", "no route is validated")
+}
+
+/// <p>AC2: the same refusal on a <code>composite</code> id (<code>logs/audit</code>).</p>
+Method TestAC2EntityNotAllowedOnCompositeId()
+{
+    Set tArgs = {"route": "logs/audit", "entityId": "x"}
+    Set tSC = $ClassMethod(..#TOOL, "Directive", "", tArgs, .tRoute, .tEntityId, .tFault)
+    Do $$$AssertStatusNotOK(tSC, "refused")
+    Do $$$AssertEquals(tFault.code, "NAV.ENTITYNOTALLOWED", "naming the code")
+}
+
+/// <p>A <code>single</code>-id screen (<code>permissions/users</code>) accepts an
+/// <code>entityId</code>, and a <code>none</code>-id screen with no <code>entityId</code> at all
+/// validates too -- the two "no error expected" rows of the I/O matrix.</p>
+Method TestSingleIdAcceptsEntityAndNoneAcceptsAbsent()
+{
+    Set tArgs = {"route": "permissions/users", "entityId": "_SYSTEM"}
+    Set tSC = $ClassMethod(..#TOOL, "Directive", "", tArgs, .tRoute, .tEntityId, .tFault)
+    Do $$$AssertStatusOK(tSC, "a single-id screen accepts entityId")
+    Do $$$AssertEquals(tRoute, "permissions/users", "the route is answered")
+    Do $$$AssertEquals(tEntityId, "_SYSTEM", "and the entity id")
+    Do $$$AssertEquals(tFault, "", "no fault")
+
+    Set tArgs2 = {"route": "tasks/schedule"}
+    Set tSC2 = $ClassMethod(..#TOOL, "Directive", "", tArgs2, .tRoute2, .tEntityId2, .tFault2)
+    Do $$$AssertStatusOK(tSC2, "a screen opened with no row selected validates")
+    Do $$$AssertEquals(tEntityId2, "", "no entity id")
+}
+
+/// <p>Defensive re-check: a route <code>Directive</code> cannot resolve to a built descriptor is
+/// refused <code>NAV.ROUTEUNKNOWN</code> -- the disagreement case the enum construction at
+/// advertise time (AC1) makes rare rather than impossible.</p>
+Method TestDirectiveRefusesUnknownRoute()
+{
+    Set tArgs = {"route": "no/such/screen"}
+    Set tSC = $ClassMethod(..#TOOL, "Directive", "", tArgs, .tRoute, .tEntityId, .tFault)
+    Do $$$AssertStatusNotOK(tSC, "refused")
+    Do $$$AssertEquals(tFault.code, "NAV.ROUTEUNKNOWN", "naming the code")
+}
+
+/// <p>No static privilege requirement of the tool's own: the target screen's own pairs are what
+/// gate it, resolved per call in <method>ArgumentPairs</method> (AD-8).</p>
+Method TestPrivilegePairsAreEmpty()
+{
+    Set tPairs = $ClassMethod(..#TOOL, "PrivilegePairs", "", .tResolved)
+    Do $$$AssertEquals(tResolved, 1, "resolved")
+    Do $$$AssertEquals($ListLength(tPairs), 0, "no static pairs")
+}
+
+/// <p>AD-8: <code>ArgumentPairs</code> answers the target descriptor's own
+/// <method>OcuPilot.Screen.Gate.RequiredPairs</method> -- the same set that screen's own read tool
+/// requires -- so Dispatch's step-7 check can refuse a caller the screen itself would refuse.</p>
+Method TestArgumentPairsMatchTargetScreen()
+{
+    Set tArgs = {"route": "web-applications/list"}
+    Set tPairs = $ClassMethod(..#TOOL, "ArgumentPairs", "", tArgs, .tResolved)
+    Do $$$AssertEquals(tResolved, 1, "resolved")
+    Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs("OcuPilot.Screen.Descriptor.WebAppList", .tExpectedResolved)
+    Do $$$AssertEquals(tExpectedResolved, 1, "the screen's own pairs resolve")
+    Do $$$AssertEquals(tPairs, tExpected, "the navigation tool requires exactly the target screen's pairs")
+    Do $$$AssertTrue($ListLength(tPairs) > 0, "and that set is non-empty for this screen")
+}
+
+/// <p>AC9: the tool is client-fulfilled, so its declared <code>FULFILMENT</code> reads
+/// <code>client</code> and <method>OcuPilot.Screen.Tool.Registry.FulfilmentOf</method> answers it
+/// for the resolved tool entry.</p>
+Method TestAC9FulfilmentIsClient()
+{
+    Do $$$AssertEquals($Parameter(..#TOOL, "FULFILMENT"), "client", "declared client")
+    Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve("shell.screen.open", .tTool)
+    Do $$$AssertStatusOK(tSC, "the tool resolves in the production registry")
+    Do $$$AssertTrue($IsObject(tTool), "and is found")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Tool.Registry).FulfilmentOf(tTool), "client", "carried on the tool entry")
+}
+
+/// <p>AC9: <code>View</code> is never called in production for a client-fulfilled tool, and
+/// answers <code>NAV.NOTINSTANCE</code> loudly if it ever is -- a mis-wiring fails where it
+/// happened rather than serving a screen read nobody asked for.</p>
+Method TestAC9ViewAnswersNotInstance()
+{
+    Set tSC = $ClassMethod(..#TOOL, "View", "", {"route": "tasks/schedule"}, 200, .tResult, .tHttpStatus, .tFault)
+    Do $$$AssertStatusNotOK(tSC, "View refuses")
+    Do $$$AssertEquals(tResult, "", "no result")
+    Do $$$AssertTrue($IsObject(tFault), "with a fault")
+    Do $$$AssertEquals(tFault.code, "NAV.NOTINSTANCE", "naming the mis-wiring")
+}
+
+/// <p>AC9's second half: a <code>write</code>-kind tool declaring <code>FULFILMENT = "client"</code>
+/// is refused at build time (<class>OcuPilot.Test.BadFulfilment.Tool</class>), because a
+/// client-fulfilled tool can never pass the write restraint path.</p>
+Method TestAC9RegistryRefusesWriteClientAtBuildTime()
+{
+    Set tSC = ##class(OcuPilot.Test.BadFulfilment.Registry).ListTools(.tTools)
+    Do $$$AssertStatusNotOK(tSC, "the registry refuses to list a write-kind client tool")
+    Do $$$AssertEquals(tTools, "", "and lists nothing")
+    Do $$$AssertTrue($System.Status.GetErrorText(tSC) [ "FULFILMENT", "naming the fulfilment rule: " _ $System.Status.GetErrorText(tSC))
+}
+
+/// <p><method>OcuPilot.Screen.Tool.Registry.FulfilmentProblem</method> pinned directly: every
+/// declared value, and the one combination it refuses.</p>
+Method TestFulfilmentProblemVocabulary()
+{
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Tool.Registry).FulfilmentProblem("X", "read", "instance"), "", "instance is sound")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Tool.Registry).FulfilmentProblem("X", "read", "client"), "", "client on a read tool is sound")
+    Do $$$AssertNotEquals(##class(OcuPilot.Screen.Tool.Registry).FulfilmentProblem("X", "write", "client"), "", "client on a write tool is refused")
+    Do $$$AssertNotEquals(##class(OcuPilot.Screen.Tool.Registry).FulfilmentProblem("X", "read", "browser"), "", "an unlisted value is refused")
+    Do $$$AssertNotEquals(##class(OcuPilot.Screen.Tool.Registry).FulfilmentProblem("X", "read", ""), "", "an empty value is refused")
+}
+
+/// <p>The tool resolves in the production registry's provider-advertised listing under its wire
+/// name, with a non-empty description and a sound schema (AC1) -- <code>Dispatch.Advertise</code>'s
+/// own path.</p>
+Method TestAdvertisedInProduction()
+{
+    Set tSC = ##class(OcuPilot.Kernel.Agent.Dispatch).Advertise(.tTools)
+    Do $$$AssertStatusOK(tSC, "the tool set advertises")
+    Set tFound = 0
+    For tI = 1:1:tTools {
+        If tTools(tI, "name") = "shell_screen_open" Set tFound = 1
+    }
+    Do $$$AssertTrue(tFound, "shell_screen_open is advertised")
+}
+
+/// <p><b>Every <code>NAV.*</code> code carries a written sentence</b>, and an undeclared one
+/// carries none -- the same assertion <class>OcuPilot.Test.Restraint</class> makes for
+/// <code>RestraintCodes()</code>/<code>ReasonForRestraint()</code>, because a code with no
+/// sentence behind it reaches a tool result's <code>reason</code> as a blank line.</p>
+Method TestEveryNavCodeHasAWrittenSentence()
+{
+    Set tCodes = ##class(OcuPilot.Api.Error).NavCodes()
+    Do $$$AssertEquals($ListLength(tCodes), 5, "the vocabulary holds five NAV codes; adding one is a deliberate edit in OcuPilot.Api.Error")
+    For tI = 1:1:$ListLength(tCodes) {
+        Set tCode = $List(tCodes, tI)
+        Set tReason = ##class(OcuPilot.Api.Error).ReasonForNav(tCode)
+        Do $$$AssertNotEquals(tReason, "", tCode _ " carries a sentence")
+        Do $$$AssertTrue($Length(tReason) > 10, tCode _ "'s sentence says something: '" _ tReason _ "'")
+        Do $$$AssertTrue(##class(OcuPilot.Api.Error).IsValidCode(tCode), tCode _ " is a well-formed machine code (AD-39)")
+        Do $$$AssertEquals(##class(OcuPilot.Api.Error).ReasonForToolCode(tCode), tReason, tCode _ "'s sentence is reachable through the shared ReasonForToolCode resolver")
+    }
+    Do $$$AssertEquals(##class(OcuPilot.Api.Error).ReasonForNav("NAV.NO.SUCH.CODE"), "", "and a code the vocabulary does not hold carries none")
+}
+
+}

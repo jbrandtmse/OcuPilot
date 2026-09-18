@@ -54,6 +54,14 @@ export function turnStopPath(id: string): string {
   return TURN_PATH + '/' + encodeURIComponent(id) + '/stop';
 }
 
+export function turnNavigationPath(id: string): string {
+  return TURN_PATH + '/' + encodeURIComponent(id) + '/navigation';
+}
+
+/** The one refusal code this client is ever the author of (Story 4.7, `POST /turn/:id/navigation`'s
+ * closed vocabulary) -- a dirty `form-page`'s decline, and nothing else. */
+export const NAV_REFUSED_UNSAVED_CODE = 'NAV.REFUSEDUNSAVED';
+
 /** Storage key for the per-tab conversation id (Boundaries & Constraints). */
 export const CONVERSATION_STORAGE_KEY = 'ocupilot.conversation';
 
@@ -81,7 +89,7 @@ export interface TurnStepResult {
 
 export interface TurnStep {
   readonly seq: number;
-  readonly kind: 'model' | 'tool';
+  readonly kind: 'model' | 'tool' | 'announce';
   readonly name: string;
   readonly status: TurnStepStatus;
   readonly summary: string;
@@ -99,6 +107,18 @@ export interface TurnErrorInfo {
   readonly seq: number;
   readonly code: string;
   readonly reason: string;
+}
+
+/**
+ * A pending navigation directive (Story 4.7, AD-11 rule 3): the server's own answer to
+ * `OcuPilot.Kernel.State.Turn.GuardedView`'s `navigation?` key, carried only while it is paired
+ * with the `announce` step it names -- `parseNavigation` enforces that pairing again on this
+ * side, so a directive can never be observed here without its announcement already in `steps`.
+ */
+export interface TurnNavigation {
+  readonly seq: number;
+  readonly route: string;
+  readonly entityId: string;
 }
 
 /** One turn, restored from the conversation or held live while it runs. */
@@ -149,7 +169,8 @@ function parseStepResult(value: unknown): TurnStepResult | null {
 function parseStep(value: unknown): TurnStep | null {
   const row = asRecord(value);
   if (row === null) return null;
-  const kind = textAt(row, 'kind') === 'model' ? 'model' : 'tool';
+  const kindRaw = textAt(row, 'kind');
+  const kind: TurnStep['kind'] = kindRaw === 'model' ? 'model' : kindRaw === 'announce' ? 'announce' : 'tool';
   const status = textAt(row, 'status');
   const validStatus: TurnStepStatus =
     status === 'ok' || status === 'error' || status === 'stopped' ? status : 'running';
@@ -178,6 +199,27 @@ function parseSteps(value: unknown): TurnStep[] {
     if (step !== null) steps.push(step);
   }
   return steps;
+}
+
+/**
+ * The `navigation` key, or `null` -- including when the server's own pairing condition failed
+ * to hold on this side for some other reason (a truncated `steps` array, `stepsDropped` having
+ * carried the announce step away): the announce step named by `seq` must be present in `steps`,
+ * a second check on top of the one `GuardedView` already applies, so a reader here can never
+ * observe a directive whose announcement it cannot also see (AD-11 rule 3, AC3).
+ */
+function parseNavigation(value: unknown, steps: readonly TurnStep[]): TurnNavigation | null {
+  const row = asRecord(value);
+  if (row === null) return null;
+  const seq = numberAt(row, 'seq');
+  const announced = steps.some((step) => step.kind === 'announce' && step.seq === seq);
+  if (!announced) return null;
+  const entityIdRaw = row['entityId'];
+  return {
+    seq,
+    route: textAt(row, 'route'),
+    entityId: typeof entityIdRaw === 'string' ? entityIdRaw : '',
+  };
 }
 
 function parseError(value: unknown): TurnErrorInfo | null {
@@ -280,6 +322,19 @@ export class TurnStore {
   private busyValue = false;
   private lockedValue = false;
   private restoredValue = false;
+
+  /** The live turn's own pending navigation directive, or `null` (Story 4.7). */
+  private pendingNavigationValue: TurnNavigation | null = null;
+
+  /**
+   * The highest directive `seq` this store has already acted on -- posted to
+   * `settleNavigation`, or answered locally with no directive standing at all. `navigation()`
+   * excludes it, which is what keeps a directive from being acted on twice: the ~1 s
+   * announce-then-move delay and the settle round trip both outlast a single 1,000 ms poll tick,
+   * so several polls land while one directive is still open, and every one of them must see it
+   * as already spoken for.
+   */
+  private actedNavigationSeq = 0;
 
   /** Bumped on every `send()` and on `endSession()`, so a stale poll loop's tick is inert. */
   private pollGeneration = 0;
@@ -396,6 +451,8 @@ export class TurnStore {
     }
     this.busyValue = true;
     this.lockedValue = false;
+    this.pendingNavigationValue = null;
+    this.actedNavigationSeq = 0;
     const generation = (this.pollGeneration += 1);
     this.notify();
 
@@ -497,8 +554,49 @@ export class TurnStore {
     this.entriesValue = [];
     this.conversationIdValue = null;
     this.restoredValue = false;
+    this.pendingNavigationValue = null;
+    this.actedNavigationSeq = 0;
     this.removeItem(CONVERSATION_STORAGE_KEY);
     this.notify();
+  }
+
+  /**
+   * The live turn's own pending navigation directive (Story 4.7, AD-11 rule 3), or `null` when
+   * there is none, or when the one the last poll carried has already been acted on
+   * (`settleNavigation`, or a directive that arrived with nothing pending to answer).
+   */
+  navigation(): TurnNavigation | null {
+    if (this.pendingNavigationValue === null) return null;
+    if (this.pendingNavigationValue.seq <= this.actedNavigationSeq) return null;
+    return this.pendingNavigationValue;
+  }
+
+  /**
+   * Answer the live turn's own pending directive: `opened` once the browser has navigated,
+   * `refused` with `NAV_REFUSED_UNSAVED_CODE` when the departing screen declined. Posts
+   * `POST /turn/{id}/navigation`; `code` travels only for a refusal, since the instance's own
+   * closed vocabulary (`Api/Turn.cls`'s `NavigationViolation`) accepts it only there.
+   *
+   * The directive is marked acted **before** the request is sent, not after it resolves: the
+   * caller (`agent-navigator.ts`) computes `opened`/`refused` from `Router.navigateByUrl`'s own
+   * settled promise, by which point the multi-second announce-then-move sequence is already
+   * over, so there is nothing left to race against on this side -- what this ordering actually
+   * guards is a second call for the same `seq` (a stale re-render, a caller that already
+   * settled) finding `navigation()` already empty rather than posting twice.
+   */
+  async settleNavigation(outcome: 'opened' | 'refused', code: string | null = null): Promise<boolean> {
+    const directive = this.pendingNavigationValue;
+    if (directive === null || directive.seq <= this.actedNavigationSeq || this.currentTurnId === null) {
+      return false;
+    }
+    this.actedNavigationSeq = directive.seq;
+    const body: Record<string, unknown> = { seq: directive.seq, outcome };
+    if (code !== null) body['code'] = code;
+    const result = await this.api.requestJson<{ settled: boolean }>(turnNavigationPath(this.currentTurnId), {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    return result.kind === 'ok';
   }
 
   private async createConversation(): Promise<string | null> {
@@ -558,6 +656,7 @@ export class TurnStore {
     const replyRaw = body['reply'];
     const reply = typeof replyRaw === 'string' ? replyRaw : null;
     const error = parseError(body['error']);
+    this.pendingNavigationValue = parseNavigation(body['navigation'], steps);
     if (this.liveEntryValue !== null) {
       this.liveEntryValue = { ...this.liveEntryValue, state, steps, stepsDropped, reply, error };
       this.notify();
@@ -569,6 +668,7 @@ export class TurnStore {
 
   /** Move the live entry into history with its final outcome, and drop the live slot. */
   private finalizeLive(state: TurnState, reply: string | null, error: TurnErrorInfo | null): void {
+    this.pendingNavigationValue = null;
     if (this.liveEntryValue === null) return;
     const finished: TurnEntry = {
       ...this.liveEntryValue,

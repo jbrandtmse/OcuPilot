@@ -711,6 +711,45 @@ Parameter TOOLARGUMENTS = "TOOL.ARGUMENTS";
 /// <p>Tool-result code (AD-24): the result exceeds the size cap and has no rows to drop.</p>
 Parameter TOOLRESULTTOOLARGE = "TOOL.RESULTTOOLARGE";
 
+/// <p>Tool-result code (Story 4.7, AD-5, AD-11 rule 3): <code>shell.screen.open</code>'s
+/// <code>route</code> passed the tool's own enum but <class>OcuPilot.Screen.Registry</class> no
+/// longer names a built screen at it -- the enum and the registry have disagreed. Refused by the
+/// tool body's own <code>Directive</code> before any announcement exists, so no announce step and
+/// no directive are ever written.</p>
+Parameter NAVROUTEUNKNOWN = "NAV.ROUTEUNKNOWN";
+
+/// <p>Tool-result code (Story 4.7, AD-5): the call named an <code>entityId</code> against a
+/// screen whose <code>id.kind</code> is <code>none</code> or <code>composite</code>. Refused by
+/// the tool body before any announcement exists, because the tool never invents a second composite
+/// id grammar (AD-5).</p>
+Parameter NAVENTITYNOTALLOWED = "NAV.ENTITYNOTALLOWED";
+
+/// <p>Terminal tool-result code for the navigation announce step (Story 4.7, AD-11 invariant 3):
+/// the departing <code>form-page</code> was dirty and the operator declined "Leave without
+/// saving?". The announcement is withdrawn, and the call's own <code>tool_result</code> is an
+/// ordinary refusal, <code>is_error</code> false.</p>
+Parameter NAVREFUSEDUNSAVED = "NAV.REFUSEDUNSAVED";
+
+/// <p>Terminal tool-result code for the navigation announce step (Story 4.7, AD-11 invariant 3):
+/// no browser answered the directive within <code>NAVWAITSECONDS</code>. The announcement is
+/// withdrawn, and the call's own <code>tool_result</code> is an ordinary refusal, <code>is_error</code>
+/// false -- never a hang and never an error.</p>
+Parameter NAVUNAVAILABLE = "NAV.UNAVAILABLE";
+
+/// <p>Tool-result code (Story 4.7, AD-11 rule 3): a client-fulfilled tool's <code>View</code> was
+/// invoked on the instance, which is a mis-wiring the tool refuses loudly rather than serving
+/// silently in the wrong place. Never reachable while <code>FULFILMENT</code> reads
+/// <code>client</code>, since <class>OcuPilot.Kernel.Agent.Dispatch</class> never calls
+/// <code>InvokeTool</code> for such a tool.</p>
+Parameter NAVNOTINSTANCE = "NAV.NOTINSTANCE";
+
+/// <p>Machine code (Story 4.7): <code>POST /turn/:id/navigation</code>'s body carries an
+/// <code>outcome</code> or <code>code</code> outside the closed vocabulary
+/// <code>{"opened","refused"}</code> / <code>{"NAV.REFUSEDUNSAVED", null}</code>, or no
+/// <code>seq</code>. Rendered on the <parameter>VALIDATIONFAILED</parameter> slug, HTTP 422 -- the
+/// closed vocabulary is what keeps the client from ever authoring model-visible text.</p>
+Parameter TURNNAVIGATIONINVALID = "TURN.NAVIGATION.INVALID";
+
 /// <p>Written sentence for <parameter>TURNBADBODY</parameter>.</p>
 Parameter REASONTURNBADBODY = "The request body is not a JSON object carrying a message.";
 
@@ -778,6 +817,40 @@ Parameter REASONTOOLARGUMENTS = "The tool call's arguments do not match what the
 /// <p>Written sentence for <parameter>TOOLRESULTTOOLARGE</parameter>.</p>
 Parameter REASONTOOLRESULTTOOLARGE = "The tool's result is larger than a tool result may be.";
 
+/// <p>Written sentence for <parameter>NAVROUTEUNKNOWN</parameter>.</p>
+Parameter REASONNAVROUTEUNKNOWN = "That route is not one this instance's screens declare.";
+
+/// <p>Written sentence for <parameter>NAVENTITYNOTALLOWED</parameter>.</p>
+Parameter REASONNAVENTITYNOTALLOWED = "This screen does not take a selected row.";
+
+/// <p>Written sentence for <parameter>NAVREFUSEDUNSAVED</parameter>.</p>
+Parameter REASONNAVREFUSEDUNSAVED = "The screen was left with unsaved changes, so the move was not made.";
+
+/// <p>Written sentence for <parameter>NAVUNAVAILABLE</parameter>.</p>
+Parameter REASONNAVUNAVAILABLE = "No open browser answered the navigation in time.";
+
+/// <p>Written sentence for <parameter>NAVNOTINSTANCE</parameter>.</p>
+Parameter REASONNAVNOTINSTANCE = "This tool is fulfilled by the browser and has no view of its own on the instance.";
+
+/// <p>Every <code>NAV.*</code> code, as a <class>%List</class>, so a test can hold
+/// <method>ReasonForNav</method> to the vocabulary.</p>
+ClassMethod NavCodes() As %List
+{
+    Quit $ListBuild(..#NAVROUTEUNKNOWN, ..#NAVENTITYNOTALLOWED, ..#NAVREFUSEDUNSAVED, ..#NAVUNAVAILABLE, ..#NAVNOTINSTANCE)
+}
+
+/// <p>The written sentence a <code>NAV.*</code> code carries, or <code>""</code> for any other
+/// code. Mirrors <method>ReasonForRestraint</method> for the navigation tool's own vocabulary.</p>
+ClassMethod ReasonForNav(pCode As %String) As %String
+{
+    If pCode = ..#NAVROUTEUNKNOWN Quit ..#REASONNAVROUTEUNKNOWN
+    If pCode = ..#NAVENTITYNOTALLOWED Quit ..#REASONNAVENTITYNOTALLOWED
+    If pCode = ..#NAVREFUSEDUNSAVED Quit ..#REASONNAVREFUSEDUNSAVED
+    If pCode = ..#NAVUNAVAILABLE Quit ..#REASONNAVUNAVAILABLE
+    If pCode = ..#NAVNOTINSTANCE Quit ..#REASONNAVNOTINSTANCE
+    Quit ""
+}
+
 /// <p>Every <code>TURN.*</code> code, as a <class>%List</class>, so a test can hold
 /// <method>ReasonForTurn</method> to the vocabulary.</p>
 ClassMethod TurnCodes() As %List
@@ -842,6 +915,8 @@ ClassMethod ReasonForToolCode(pCode As %String) As %String
     Set tReason = ..ReasonForTool(pCode)
     If tReason '= "" Quit tReason
     Set tReason = ..ReasonForRestraint(pCode)
+    If tReason '= "" Quit tReason
+    Set tReason = ..ReasonForNav(pCode)
     If tReason '= "" Quit tReason
     Quit ..#REASONTOOLUNAVAILABLE
 }

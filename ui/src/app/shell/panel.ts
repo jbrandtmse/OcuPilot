@@ -4,7 +4,13 @@ import { Router } from '@angular/router';
 import { AgentContext } from '../core/agent-context';
 import { AgentStatus, DEFINITIONS_ROUTE, formatKillSwitch } from '../core/agent-status';
 import { decodeEntityId } from '../core/entity-id';
-import { NavigationService, screenForRoute, screenForUrl, withQuery } from '../core/navigation';
+import {
+  NavigationService,
+  formatNavigationAnnouncement,
+  screenForRoute,
+  screenForUrl,
+  withQuery,
+} from '../core/navigation';
 import { PanelState } from '../core/panel-layout';
 import { ScopeService, onScopeChange } from '../core/scope';
 import { assembleScreenContext, looksLikeSecret, type ScreenContextPayload } from '../core/screen-context';
@@ -179,7 +185,16 @@ interface PanelTurnView {
             <div class="ocu-panel-turn">
               <p class="ocu-panel-message-user">{{ turn.message }}</p>
               @for (step of turn.steps; track step.seq) {
-                <app-tool-call-card [step]="step" />
+                @if (step.kind === 'announce') {
+                  @if (step.status !== 'error') {
+                    <div class="ocu-panel-message-agent">
+                      <span class="ocu-panel-message-avatar" aria-hidden="true"></span>
+                      <p class="ocu-panel-message-agent-text">{{ announceText(step) }}</p>
+                    </div>
+                  }
+                } @else {
+                  <app-tool-call-card [step]="step" />
+                }
               }
               @if (turn.reply !== null) {
                 <div class="ocu-panel-message-agent">
@@ -471,8 +486,11 @@ export class Panel {
       const errorBanner = turnErrorBanner(entry, STRINGS.agentTurnStoppedBanner);
       return {
         message: entry.message,
-        // Tool steps, plus a stop caught before a model call, which is the only record of that stop.
-        steps: entry.steps.filter((step) => step.kind === 'tool' || step.status === 'stopped'),
+        // Tool steps, the agent's own navigation announcements (Story 4.7), and a stop caught
+        // before a model call, which is the only record of that stop.
+        steps: entry.steps.filter(
+          (step) => step.kind === 'tool' || step.kind === 'announce' || step.status === 'stopped'
+        ),
         // A turn ending in an error renders the banner and no reply block (Story 4.6 I/O matrix).
         // The live turn view nulls a non-completed turn's reply server-side, but the restored view
         // emits whatever the row stored, and the job records the loop's reply alongside a `failed`
@@ -482,6 +500,23 @@ export class Panel {
         errorBanner,
       };
     });
+  }
+
+  /**
+   * An `announce` step's own rendered text (Story 4.7, AD-11 rule 3, AD-33): the target screen's
+   * title from `step.target`'s route and, when one was selected, `step.text`'s entity id -- both
+   * model-supplied and therefore rendered as `textContent` only, never through `app-reply`'s
+   * markdown-shaped renderer.
+   */
+  protected announceText(step: Pick<TurnStep, 'target' | 'text'>): string {
+    const screen = screenForRoute(step.target);
+    const title = screen === null ? '' : stringFor(screen.labelKey);
+    return formatNavigationAnnouncement(
+      STRINGS.agentNavigationAnnouncement,
+      STRINGS.agentNavigationAnnouncementNoEntity,
+      title,
+      step.text
+    );
   }
 
   protected get fullScreen(): boolean {

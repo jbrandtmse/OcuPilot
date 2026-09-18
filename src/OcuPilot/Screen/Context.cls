@@ -43,7 +43,7 @@ ClassMethod Build(pContext As %DynamicObject, Output pBuilt As %Boolean, Output 
     Kill pFieldMaxLengths
     Try {
         Set tRoute = pContext.%Get("route")
-        Set tDescriptor = ..DescriptorForRoute(tRoute)
+        Set tDescriptor = $ClassMethod(..RegistryClass(), "DescriptorForRoute", tRoute)
         If tDescriptor = "" Quit
 
         Set tScreen = $ClassMethod(tDescriptor, "ToolIdentifier")
@@ -119,27 +119,6 @@ ClassMethod Build(pContext As %DynamicObject, Output pBuilt As %Boolean, Output 
         Set tSC = ex.AsStatus()
     }
     Quit tSC
-}
-
-/// <p>The descriptor whose declared <code>route</code> equals <var>pRoute</var>, or <code>""</code>
-/// when none does.</p>
-ClassMethod DescriptorForRoute(pRoute As %String) As %String [ Private ]
-{
-    Set tDescriptor = ""
-    Try {
-        Set tSC = $ClassMethod(..RegistryClass(), "Descriptors", .tDescriptors)
-        If $$$ISERR(tSC) Quit
-        For tI = 1:1:$ListLength(tDescriptors) {
-            Set tCandidate = $List(tDescriptors, tI)
-            If $ClassMethod(tCandidate, "Route") = pRoute {
-                Set tDescriptor = tCandidate
-                Quit
-            }
-        }
-    } Catch {
-        Set tDescriptor = ""
-    }
-    Quit tDescriptor
 }
 
 }

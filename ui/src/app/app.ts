@@ -28,6 +28,7 @@ import { ScopeService } from './core/scope';
 import { Session, isInstallStateUnreadable, isSignedIn } from './core/session';
 import { ShellState } from './core/shell-state';
 import { STRINGS } from './core/strings';
+import { AgentNavigator } from './shell/agent-navigator';
 import { CommandBar } from './shell/command-bar';
 import { FaultBanner } from './shell/fault-banner';
 import { Header } from './shell/header';
@@ -196,6 +197,10 @@ export class App {
   // its three row actions are registered by this service rather than by a page of its own
   // (`areas/agent/definition-actions.ts`). Injecting it here is what brings it into existence.
   private readonly definitionActions = inject(DefinitionActions);
+  // Constructed for its own sake, the same way: there is no component whose job it is to act on
+  // the agent's navigation directive, so injecting it here is what brings it into existence for
+  // the life of the tab (`shell/agent-navigator.ts`).
+  private readonly agentNavigator = inject(AgentNavigator);
   private readonly overlays = inject(OverlayStack);
   private readonly panel = inject(PanelState);
   private readonly turn = inject(TurnStore);
@@ -243,7 +248,14 @@ export class App {
     const stopStatus = this.agentStatus.subscribe(() => this.retryFirstLoginGate());
     const stopNavigation = this.navigation.subscribe(() => this.retryFirstLoginGate());
     const stopRouter = this.router.events.subscribe((event) => {
-      if (event instanceof NavigationStart) this.spendSignInOnNavigation();
+      if (event instanceof NavigationStart) {
+        this.spendSignInOnNavigation();
+        // The arrival announcement is for the one screen the agent's own navigation opened
+        // (Story 4.7); it must not survive into whatever navigation comes next, agent-initiated
+        // or not. `AgentNavigator` sets a fresh one only after its own `navigateByUrl` promise
+        // resolves, which is after the `NavigationStart` this clears.
+        this.shell.clearArrival();
+      }
     });
     inject(DestroyRef).onDestroy(() => {
       stopSession();

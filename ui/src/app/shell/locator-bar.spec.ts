@@ -319,6 +319,62 @@ describe('the locator bar', () => {
     expect(router.url).toBe('/permissions/users?ns=USER');
   });
 
+  it('Story 4.7 AC5: the screen segment is a focusable heading, unlabelled with no arrival standing', async () => {
+    await go('/permissions/users');
+    const heading: HTMLElement = fixture.nativeElement.querySelector('#ocu-locator-screen');
+    expect(heading).not.toBeNull();
+    expect(heading.tagName).toBe('H2');
+    expect(heading.getAttribute('tabindex')).toBe('-1');
+    expect(heading.getAttribute('aria-label')).toBeNull();
+    expect(heading.textContent?.trim()).toBe(STRINGS.navAreaSecurity);
+  });
+
+  it('Story 4.7 AC5: an arrival announcement labels the heading and focuses it once', async () => {
+    await go('/permissions/users');
+    const heading: HTMLElement = fixture.nativeElement.querySelector('#ocu-locator-screen');
+    document.body.appendChild(fixture.nativeElement);
+    try {
+      shell.announceArrival('permissions/users', 'Security -- opened by the agent; Back returns');
+      fixture.detectChanges();
+      await fixture.whenStable();
+      expect(heading.getAttribute('aria-label')).toBe('Security -- opened by the agent; Back returns');
+      expect(document.activeElement).toBe(heading);
+    } finally {
+      fixture.nativeElement.remove();
+    }
+  });
+
+  it('Story 4.7 AC5: a second arrival at the same screen, even with identical text, focuses the heading again', async () => {
+    await go('/permissions/users');
+    const heading: HTMLElement = fixture.nativeElement.querySelector('#ocu-locator-screen');
+    document.body.appendChild(fixture.nativeElement);
+    try {
+      shell.announceArrival('permissions/users', 'same words');
+      fixture.detectChanges();
+      await fixture.whenStable();
+      heading.blur();
+      expect(document.activeElement).not.toBe(heading);
+
+      // Mutation (Rule 19): comparing the announcement text instead of `ShellState`'s own
+      // arrival token would treat this as "already focused" and skip it, since the text is
+      // unchanged from the first arrival.
+      shell.announceArrival('permissions/users', 'same words');
+      fixture.detectChanges();
+      await fixture.whenStable();
+      expect(document.activeElement).toBe(heading);
+    } finally {
+      fixture.nativeElement.remove();
+    }
+  });
+
+  it('an ordinary arrival at a different screen carries no aria-label here', async () => {
+    await go('/permissions/users');
+    shell.announceArrival('permissions/roles', 'Permissions -- opened by the agent; Back returns');
+    fixture.detectChanges();
+    const heading: HTMLElement = fixture.nativeElement.querySelector('#ocu-locator-screen');
+    expect(heading.getAttribute('aria-label')).toBeNull();
+  });
+
   it('a URL naming no declared screen renders no segments at all', async () => {
     await go('/');
     expect(segments()).toHaveLength(1);

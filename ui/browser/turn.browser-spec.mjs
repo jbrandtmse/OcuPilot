@@ -18,19 +18,28 @@
 
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
 import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { leaveFirstLoginGate, pathOf } from './shell-entry.mjs';
+import {
+  armProbeDefinition,
+  disarmProbeDefinition,
+  escapeOs,
+  forgetTag as sharedForgetTag,
+  markerValue,
+  nextTag as sharedNextTag,
+  runIris as sharedRunIris,
+  scriptReply as sharedScriptReply,
+  setTag as sharedSetTag,
+} from './turnprobe-spec.mjs';
 
 const config = browserConfig();
+const probe = { container: config.container, marker: 'TURN' };
 
 const HOME_URL = '/ocupilot/?ns=HSCUSTOM';
-const TAG_PREFIX = 'turnbrowser';
 
 let browser = null;
-let tagCounter = 0;
 let preparedId = '';
 let priorDefault = '';
 
@@ -42,102 +51,34 @@ before(async () => {
   // Defensive: a prior run whose own `after` did not get to run (a crash, a killed process)
   // leaves the uniquely-named probe definition behind, and `EnsureDefinition` always inserts --
   // it does not upsert -- so a stale row here would fail every test in this file at `before`.
-  removeDefinition('');
-  priorDefault = markedDefault();
-  preparedId = ensureDefinition(nextTag());
+  const armed = armProbeDefinition(probe);
+  priorDefault = armed.prior;
+  preparedId = armed.preparedId;
 });
 
 after(async () => {
   if (browser !== null) await browser.close();
   if (config.container === LIVE_CONTAINER) return;
-  removeDefinition(priorDefault);
+  disarmProbeDefinition(probe, priorDefault);
 });
+
+function runIris(lines) {
+  return sharedRunIris(config.container, lines);
+}
 
 /** One `turnprobe` tag per test, so a stale script from an earlier test cannot answer a later one. */
 function nextTag() {
-  tagCounter += 1;
-  return `${TAG_PREFIX}${tagCounter}`;
-}
-
-/**
- * The id currently carrying the default marker, or `''`. Read through the marker convention
- * because `runIris` answers the whole IRIS session transcript: a bare `Write` yields the banner
- * and the prompts too, and that multi-line value embedded in the next script's string literal
- * breaks the script instead of failing loudly (DW-1075).
- */
-function markedDefault() {
-  const output = runIris([
-    'Write "OCUTURN-PRIOR-START:"_##class(OcuPilot.Test.TurnWireFixture).MarkedDefault()_":OCUTURN-PRIOR-END",!',
-  ]);
-  const value = markerValue(output, 'OCUTURN-PRIOR');
-  assert.notEqual(value, null, `MarkedDefault answered: ${output}`);
-  return value;
-}
-
-/**
- * Remove every probe definition and restore `prior` as the default marker, asserting that none
- * survived. A leftover enabled, default-marked definition is instance-wide state that changes
- * what later specs see -- `switches.browser-spec.mjs` reads the panel's read-only line on the
- * stated assumption that nothing is configured -- and a cleanup whose status nobody reads is how
- * that reaches them.
- */
-function removeDefinition(prior) {
-  const output = runIris([
-    `Set sc=##class(OcuPilot.Test.TurnWireFixture).RemoveDefinition("${escapeOs(prior)}")`,
-    'Write "OCUTURN-RM-START:"_$System.Status.IsOK(sc)_":OCUTURN-RM-END",!',
-  ]);
-  assert.equal(markerValue(output, 'OCUTURN-RM'), '1', `RemoveDefinition succeeded: ${output}`);
-}
-
-/** Doubles `"` for an ObjectScript string literal. */
-function escapeOs(value) {
-  return String(value).replace(/"/g, '""');
-}
-
-/** Run ObjectScript lines inside the throwaway, in the install namespace, and answer stdout+stderr. */
-function runIris(lines) {
-  const script = [
-    'Set $NAMESPACE=$Select(##class(%SYS.Namespace).Exists("HSCUSTOM"):"HSCUSTOM",1:"USER")',
-    ...lines,
-    'Halt',
-  ].join('\n');
-  const result = spawnSync('docker', ['exec', '-i', config.container, 'iris', 'session', 'iris', '-U', '%SYS'], {
-    input: `${script}\n`,
-    encoding: 'utf8',
-    timeout: 600000,
-  });
-  return `${result.stdout ?? ''}${result.stderr ?? ''}`;
-}
-
-/** Point a marker-wrapped one-liner's answer out of `runIris`'s combined output. */
-function markerValue(output, marker) {
-  const re = new RegExp(`${marker}-START:(.*?):${marker}-END`);
-  return re.exec(output)?.[1] ?? null;
-}
-
-/** Create (or repoint) the default `turnprobe` definition for `tag`, and answer its id. */
-function ensureDefinition(tag) {
-  const output = runIris([
-    `Set sc=##class(OcuPilot.Test.TurnWireFixture).EnsureDefinition("${escapeOs(tag)}",.id)`,
-    'Write "OCUTURN-DEF-START:"_$System.Status.IsOK(sc)_"|"_id_":OCUTURN-DEF-END",!',
-  ]);
-  const value = markerValue(output, 'OCUTURN-DEF');
-  assert.ok(value, `EnsureDefinition answered: ${output}`);
-  const [ok, id] = value.split('|');
-  assert.equal(ok, '1', `EnsureDefinition succeeded: ${output}`);
-  return id;
+  return sharedNextTag(probe);
 }
 
 /** Point the current definition at a fresh tag, so this test's scripts cannot answer another's turn. */
 function setTag(tag) {
-  const output = runIris([`Set sc=##class(OcuPilot.Test.TurnWireFixture).SetTag("${escapeOs(preparedId)}","${escapeOs(tag)}")`, 'Write "OCUTURN-TAG-START:"_$System.Status.IsOK(sc)_":OCUTURN-TAG-END",!']);
-  assert.equal(markerValue(output, 'OCUTURN-TAG'), '1', `SetTag succeeded: ${output}`);
+  sharedSetTag(probe, preparedId, tag);
 }
 
 /** Script one scripted reply for `tag`: `hangSeconds` before answering, then `bodyExpr` (ObjectScript). */
 function scriptReply(tag, hangSeconds, bodyExpr) {
-  const output = runIris([`Do ##class(OcuPilot.Test.TurnProvider).Script("${escapeOs(tag)}",${hangSeconds},${bodyExpr})`, 'Write "OCUTURN-SCRIPT-START:ok:OCUTURN-SCRIPT-END",!']);
-  assert.ok(markerValue(output, 'OCUTURN-SCRIPT'), `Script recorded: ${output}`);
+  sharedScriptReply(probe, tag, hangSeconds, bodyExpr);
 }
 
 function toolUseReply(toolWireName) {
@@ -149,15 +90,15 @@ function textReply(text) {
 }
 
 function forgetTag(tag) {
-  runIris([`Do ##class(OcuPilot.Test.TurnProvider).Forget("${escapeOs(tag)}")`]);
+  sharedForgetTag(probe, tag);
 }
 
 /** Poll (server-side, blocking) until `tag` has begun answering call number `pCall`. */
 function awaitCall(tag, call, seconds) {
   const output = runIris([
-    `Write "OCUTURN-CALL-START:"_##class(OcuPilot.Test.TurnWireFixture).AwaitCall("${escapeOs(tag)}",${call},${seconds})_":OCUTURN-CALL-END",!`,
+    `Write "OCU-TURN-CALL-START:"_##class(OcuPilot.Test.TurnWireFixture).AwaitCall("${escapeOs(tag)}",${call},${seconds})_":OCU-TURN-CALL-END",!`,
   ]);
-  return markerValue(output, 'OCUTURN-CALL') === '1';
+  return markerValue(output, 'TURN-CALL') === '1';
 }
 
 /** A fresh context signed in as the configured user, standing on `url` with the frame laid out. */
@@ -422,9 +363,9 @@ test('New conversation clears the transcript, and the next turn carries no earli
     );
 
     const recordedOutput = runIris([
-      `Write "OCUTURN-MSGS-START:"_##class(OcuPilot.Test.TurnProvider).Recorded("${escapeOs(tag)}",2,"messages")_":OCUTURN-MSGS-END",!`,
+      `Write "OCU-TURN-MSGS-START:"_##class(OcuPilot.Test.TurnProvider).Recorded("${escapeOs(tag)}",2,"messages")_":OCU-TURN-MSGS-END",!`,
     ]);
-    const sent = JSON.parse(markerValue(recordedOutput, 'OCUTURN-MSGS') ?? '[]');
+    const sent = JSON.parse(markerValue(recordedOutput, 'TURN-MSGS') ?? '[]');
     assert.equal(sent.length, 1, 'the new conversation carries no earlier turn');
     assert.equal(sent[0].content, 'second turn, new conversation');
   } finally {

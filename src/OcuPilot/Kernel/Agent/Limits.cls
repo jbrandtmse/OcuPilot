@@ -59,4 +59,11 @@ Parameter FIELDMAXLENGTH As %Integer = 1000;
 /// reply is skipped; tool results and screen context are never replayed.</p>
 Parameter HISTORYMAXLENGTH As %Integer = 65536;
 
+/// <p>Seconds a client-fulfilled tool call (Story 4.7, AD-11 rule 3) waits for the browser to
+/// answer its directive, in 250 ms passes each re-running <method>OcuPilot.Kernel.Agent.Loop.Boundary</method>.
+/// Long enough for a person to answer "Leave without saving?"; cut short by the turn's own stop,
+/// kill-switch, lease, wall-clock and token bounds on every pass, whichever elapses first. A
+/// browser that never answers within it lapses the call to <code>NAV.UNAVAILABLE</code>.</p>
+Parameter NAVWAITSECONDS As %Integer = 60;
+
 }

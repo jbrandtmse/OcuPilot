@@ -179,6 +179,14 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             }
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Kernel.Shell.ReadTool") {
             Set tExpected = ""
+        } ElseIf tTool.class = "OcuPilot.Screen.Tool.Navigate" {
+            ; Story 4.7: no static requirement of its own -- the target screen's own pairs are
+            ; what gate it, resolved per call in ArgumentPairs from the (untested-here) route
+            ; argument. With no route in tArgs, DescriptorForRoute("") resolves to Home, whose
+            ; own declared privileges are empty, so both sides of the comparison below are "".
+            Set tExpected = ""
+            Set tExpectedAdded = ##class(OcuPilot.Screen.Gate).RequiredPairs("OcuPilot.Screen.Descriptor.Home", .tExpectedAddedResolved)
+            Do $$$AssertEquals(tExpectedAddedResolved, 1, tTool.name _ ": Home's own pairs resolve")
         } Else {
             Do $$$AssertTrue(0, tTool.name _ ": a live tool of a source this test does not know, " _ tTool.class)
             Continue

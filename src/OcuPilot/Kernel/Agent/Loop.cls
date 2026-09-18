@@ -443,35 +443,54 @@ ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %Str
         Set tSC = ##class(OcuPilot.Kernel.State.Step).GuardedAppend(pKey, "tool", tRunningName, "running", "", "", "", pLimitsClass, .tSeq, .tStored, $ClassMethod(..DispatchClass(), "TargetOf", tRunningInput), tRunningArgs, , , , tRunningArgsTruncated)
         If $$$ISERR(tSC) Quit
         Set pLastSeq = tSeq
-        Set tCall = []
-        Do tCall.%Push(tBlock)
-        Set tSC = ..DispatchTools(pKey, pUser, pDefinitionId, tCall, pLimitsClass, .tResults, .tNames, pContextRowCap, tBudget, .tDetails)
-        If $$$ISERR(tSC) {
-            Set tUnavailableCode = ##class(OcuPilot.Api.Error).#TOOLUNAVAILABLE
-            Do ##class(OcuPilot.Kernel.State.Step).GuardedFinishTool(pKey, tSeq, tRunningName, "error", tUnavailableCode, pLimitsClass, $ClassMethod(..DispatchClass(), "TargetOf", tRunningInput), tRunningArgs, "", ##class(OcuPilot.Api.Error).ReasonForToolCode(tUnavailableCode), "", tRunningArgsTruncated)
-            Quit
-        }
-        Set tResult = tResults.%Get(0)
-        Set tName = tNames.%Get(0)
-        Set tDetail = tDetails.%Get(0)
-        Set tIsError = $IsObject(tResult) && tResult."is_error"
-        Set tCode = ""
-        If tIsError {
-            Try {
-                Set tCode = ##class(%DynamicAbstractObject).%FromJSON(tResult.content).code
-            } Catch ex {
-                Set tCode = ""
+
+        Set tFulfilment = "instance"
+        If $IsObject(tRunningResolved) Set tFulfilment = $ClassMethod($ClassMethod(..DispatchClass(), "RegistryClass"), "FulfilmentOf", tRunningResolved)
+        If tFulfilment = "client" {
+            ; A client-fulfilled call (Story 4.7, AD-11 rule 3): Dispatch validates it and answers
+            ; a directive rather than a result; this method announces it, waits for the browser,
+            ; and settles the tool step from the outcome.
+            Set tSC = ..AnswerClientCall(pKey, pUser, pReadOnly, pResources, pStartedSeconds, pTokens, pLimitsClass, tBlock, tSeq, $ClassMethod(..DispatchClass(), "TargetOf", tRunningInput), tRunningArgs, tRunningArgsTruncated, .pLastSeq, .tResult, .tName, .tCode, .pState, .pCode)
+            If $$$ISERR(tSC) Quit
+            If pState '= "" Quit
+            Set tEntry = {}
+            Do tEntry.%Set("name", tName, "string")
+            Do tEntry.%Set("code", tCode, "string")
+            Do pToolLog.%Push(tEntry)
+            Do tAnswered.%Push(tResult)
+            Set tBudget = tBudget - $Length($Select($IsObject(tResult): tResult.%Get("content"), 1: ""))
+            If tBudget < 0 Set tBudget = 0
+        } Else {
+            Set tCall = []
+            Do tCall.%Push(tBlock)
+            Set tSC = ..DispatchTools(pKey, pUser, pDefinitionId, tCall, pLimitsClass, .tResults, .tNames, pContextRowCap, tBudget, .tDetails)
+            If $$$ISERR(tSC) {
+                Set tUnavailableCode = ##class(OcuPilot.Api.Error).#TOOLUNAVAILABLE
+                Do ##class(OcuPilot.Kernel.State.Step).GuardedFinishTool(pKey, tSeq, tRunningName, "error", tUnavailableCode, pLimitsClass, $ClassMethod(..DispatchClass(), "TargetOf", tRunningInput), tRunningArgs, "", ##class(OcuPilot.Api.Error).ReasonForToolCode(tUnavailableCode), "", tRunningArgsTruncated)
+                Quit
             }
+            Set tResult = tResults.%Get(0)
+            Set tName = tNames.%Get(0)
+            Set tDetail = tDetails.%Get(0)
+            Set tIsError = $IsObject(tResult) && tResult."is_error"
+            Set tCode = ""
+            If tIsError {
+                Try {
+                    Set tCode = ##class(%DynamicAbstractObject).%FromJSON(tResult.content).code
+                } Catch ex {
+                    Set tCode = ""
+                }
+            }
+            Set tSC = ##class(OcuPilot.Kernel.State.Step).GuardedFinishTool(pKey, tSeq, tName, $Select(tIsError: "error", 1: "ok"), tCode, pLimitsClass, tDetail.target, tDetail.arguments, tDetail.result, tDetail.reason, tDetail.failedPair, tDetail.argumentsTruncated)
+            If $$$ISERR(tSC) Quit
+            Set tEntry = {}
+            Do tEntry.%Set("name", tName, "string")
+            Do tEntry.%Set("code", tCode, "string")
+            Do pToolLog.%Push(tEntry)
+            Do tAnswered.%Push(tResult)
+            Set tBudget = tBudget - $Length($Select($IsObject(tResult): tResult.%Get("content"), 1: ""))
+            If tBudget < 0 Set tBudget = 0
         }
-        Set tSC = ##class(OcuPilot.Kernel.State.Step).GuardedFinishTool(pKey, tSeq, tName, $Select(tIsError: "error", 1: "ok"), tCode, pLimitsClass, tDetail.target, tDetail.arguments, tDetail.result, tDetail.reason, tDetail.failedPair, tDetail.argumentsTruncated)
-        If $$$ISERR(tSC) Quit
-        Set tEntry = {}
-        Do tEntry.%Set("name", tName, "string")
-        Do tEntry.%Set("code", tCode, "string")
-        Do pToolLog.%Push(tEntry)
-        Do tAnswered.%Push(tResult)
-        Set tBudget = tBudget - $Length($Select($IsObject(tResult): tResult.%Get("content"), 1: ""))
-        If tBudget < 0 Set tBudget = 0
     }
     If $$$ISERR(tSC) Quit tSC
     If pState '= "" Quit $$$OK
@@ -479,6 +498,161 @@ ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %Str
     Set pMessages(pMessages, "role") = "user"
     Set pMessages(pMessages, "blocks") = tAnswered.%ToJSON()
     Quit $$$OK
+}
+
+/// <p>Answer one client-fulfilled tool call (Story 4.7, AD-11 rule 3): resolve and validate it
+/// through <method>OcuPilot.Kernel.Agent.Dispatch.ResolveClientCall</method>, and when it validates,
+/// announce the move, wait for the browser, and settle the tool step from the outcome.</p>
+/// <p><var>pSeq</var> is the tool step's own sequence, already appended <code>running</code> by the
+/// caller; <var>pTarget</var>, <var>pArguments</var> and <var>pArgumentsTruncated</var> are that
+/// step's own values (Story 4.5), already computed by the caller. <var>pLastSeq</var> is updated to
+/// whichever step this method appends last.</p>
+/// <p><var>pTurnState</var>/<var>pTurnCode</var> come back non-empty only when
+/// <method>Boundary</method> stopped the turn during the wait, in which case <var>pAnswered</var> is
+/// left unset and the caller must not add it to the reply -- the same contract the per-call
+/// boundary check above already keeps. Otherwise <var>pAnswered</var> is the finished
+/// <code>tool_result</code> block, <var>pToolName</var> its canonical name and <var>pCode</var> the
+/// machine code it carries (<code>""</code> for a navigated call).</p>
+ClassMethod AnswerClientCall(pKey As %String, pUser As %String, pReadOnly As %Boolean, pResources As %String, pStartedSeconds As %Integer, pTokens As %Integer, pLimitsClass As %String, pBlock As %DynamicObject, pSeq As %Integer, pTarget As %String, pArguments As %String, pArgumentsTruncated As %Boolean, ByRef pLastSeq As %Integer, Output pAnswered As %DynamicObject, Output pToolName As %String, Output pCode As %String, Output pTurnState As %String, Output pTurnCode As %String) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pAnswered = ""
+    Set pToolName = ""
+    Set pCode = ""
+    Set pTurnState = ""
+    Set pTurnCode = ""
+    Try {
+        Set tSC = $ClassMethod(..DispatchClass(), "ResolveClientCall", pUser, pBlock, pLimitsClass, .tPending, .tToolName, .tRoute, .tEntityId, .tCTarget, .tCArguments, .tCArgsTruncated, .tIsError, .tContent, .tReason, .tFailedPair)
+        If $$$ISERR(tSC) Quit
+        Set pToolName = tToolName
+
+        If 'tPending {
+            ; Refused before any announcement exists (AC2): no announce step, no directive are
+            ; ever written.
+            Set tRefusedCode = ""
+            Try {
+                Set tRefusedCode = ##class(%DynamicAbstractObject).%FromJSON(tContent).code
+            } Catch {
+                Set tRefusedCode = ""
+            }
+            Set pCode = tRefusedCode
+            Set tFinishSC = ##class(OcuPilot.Kernel.State.Step).GuardedFinishTool(pKey, pSeq, tToolName, "error", tRefusedCode, pLimitsClass, pTarget, pArguments, "", tReason, tFailedPair, pArgumentsTruncated)
+            If $$$ISERR(tFinishSC) {
+                Set tSC = tFinishSC
+                Quit
+            }
+            Set pAnswered = ..ClientResult(pBlock, tIsError, tContent)
+            Quit
+        }
+
+        Set tAnnounceSC = ##class(OcuPilot.Kernel.State.Step).GuardedAppend(pKey, "announce", tToolName, "running", "", tEntityId, "", pLimitsClass, .tAnnounceSeq, .tAnnounceStored, tRoute, "", "", "", "", 0)
+        If $$$ISERR(tAnnounceSC) {
+            Set tSC = tAnnounceSC
+            Quit
+        }
+        If tAnnounceStored Set pLastSeq = tAnnounceSeq
+
+        Set tRequestSC = ##class(OcuPilot.Kernel.State.Nav).GuardedRequest(pKey, tAnnounceSeq, tRoute, tEntityId)
+        If $$$ISERR(tRequestSC) {
+            Set tSC = tRequestSC
+            Quit
+        }
+
+        Set tWaitLimit = +$Parameter(pLimitsClass, "NAVWAITSECONDS")
+        Set tWaitStarted = ##class(OcuPilot.Kernel.State.Turn).NowSeconds()
+        Set tOutcome = ""
+        Set tOutcomeCode = ""
+        For {
+            If ..Boundary(pKey, pUser, pReadOnly, pResources, pStartedSeconds, pTokens, .tBState, .tBCode) {
+                ; Named for what it was waiting on, the same way a stop caught before dispatch is
+                ; (this class's Design Notes, AD-30): the running announce and tool steps are left
+                ; as they are and settle to `error` on read through the client's own settledSteps
+                ; conversion once the turn is terminal; this new step is the explicit record of
+                ; where the turn actually stopped.
+                Set tStopSC = ##class(OcuPilot.Kernel.State.Step).GuardedAppend(pKey, "tool", tToolName, "stopped", "", "", "", pLimitsClass, .tStopSeq, .tStopStored, pTarget, pArguments, , , , pArgumentsTruncated)
+                If $$$ISOK(tStopSC) && tStopStored Set pLastSeq = tStopSeq
+                Set pTurnState = tBState
+                Set pTurnCode = tBCode
+                Quit
+            }
+            Set tPendingSC = ##class(OcuPilot.Kernel.State.Nav).GuardedPending(pKey, .tPendingSeq, .tPendingRoute, .tPendingEntity, .tPendingSettled, .tPendingOutcome, .tPendingCode)
+            If $$$ISERR(tPendingSC) {
+                Do ..LogFault("turn " _ pKey _ ": the navigation directive could not be read while waiting", tPendingSC, ##class(OcuPilot.Api.Error).#NAVUNAVAILABLE)
+                Set tOutcome = "unavailable"
+                Set tOutcomeCode = ##class(OcuPilot.Api.Error).#NAVUNAVAILABLE
+                ; Settle it here too, the same as the wait-limit branch below -- otherwise the Nav
+                ; row is left open after the turn has already reported it lapsed, and a later
+                ; genuine browser settle for this same directive would still be claimed.
+                Do ##class(OcuPilot.Kernel.State.Nav).GuardedSettle(pKey, tAnnounceSeq, tOutcome, tOutcomeCode, .tClaimed)
+                Quit
+            }
+            If tPendingSettled && (+tPendingSeq = tAnnounceSeq) {
+                Set tOutcome = tPendingOutcome
+                Set tOutcomeCode = tPendingCode
+                Quit
+            }
+            If (##class(OcuPilot.Kernel.State.Turn).NowSeconds() - tWaitStarted) >= tWaitLimit {
+                Set tOutcome = "unavailable"
+                Set tOutcomeCode = ##class(OcuPilot.Api.Error).#NAVUNAVAILABLE
+                Do ##class(OcuPilot.Kernel.State.Nav).GuardedSettle(pKey, tAnnounceSeq, tOutcome, tOutcomeCode, .tClaimed)
+                If 'tClaimed {
+                    ; The browser's own settle won the race in the instant between this pass's own
+                    ; GuardedPending read above and this lapse check -- read back what it actually
+                    ; recorded rather than reporting "unavailable" for a call that just succeeded.
+                    Do ##class(OcuPilot.Kernel.State.Nav).GuardedPending(pKey, .tRacedSeq, .tRacedRoute, .tRacedEntity, .tRacedSettled, .tRacedOutcome, .tRacedCode)
+                    If tRacedSettled && (+tRacedSeq = tAnnounceSeq) {
+                        Set tOutcome = tRacedOutcome
+                        Set tOutcomeCode = tRacedCode
+                    }
+                }
+                Quit
+            }
+            Hang 0.25
+        }
+        If pTurnState '= "" Quit
+
+        Set tAnnounceStatus = $Select(tOutcome = "opened": "ok", 1: "error")
+        Set tAnnounceCode = $Select(tOutcome = "opened": "", 1: tOutcomeCode)
+        ; The entity id is carried through unchanged on settle (pText) -- GuardedUpdate's own
+        ; ApplyContent unconditionally overwrites Text, so passing "" here would erase the row
+        ; selection an "opened" announcement already recorded, and any later read (a poll before
+        ; the next render, a reload) would then render the no-entity phrasing for a navigation
+        ; that did select a row.
+        Set tUpdateSC = ##class(OcuPilot.Kernel.State.Step).GuardedUpdate(pKey, tAnnounceSeq, tAnnounceStatus, "", tEntityId, tAnnounceCode, pLimitsClass)
+        If $$$ISERR(tUpdateSC) {
+            Set tSC = tUpdateSC
+            Quit
+        }
+
+        Set tDetail = {}
+        Do tDetail.%Set("route", tRoute, "string")
+        Do tDetail.%Set("entityId", tEntityId, "string")
+        Set tContentJson = ""
+        Do $ClassMethod(..DispatchClass(), "SettleClient", tDetail, tOutcome, tOutcomeCode, .tContentJson)
+
+        Set pCode = tAnnounceCode
+        Set tFinishSC = ##class(OcuPilot.Kernel.State.Step).GuardedFinishTool(pKey, pSeq, tToolName, "ok", "", pLimitsClass, pTarget, pArguments, "", "", "", pArgumentsTruncated)
+        If $$$ISERR(tFinishSC) {
+            Set tSC = tFinishSC
+            Quit
+        }
+        Set pAnswered = ..ClientResult(pBlock, 0, tContentJson)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The <code>tool_result</code> block for a client-fulfilled call, the same shape
+/// <method>OcuPilot.Kernel.Agent.Dispatch.Answer</method> builds for an instance-fulfilled one.</p>
+ClassMethod ClientResult(pBlock As %DynamicObject, pIsError As %Boolean, pContent As %String) As %DynamicObject [ Private ]
+{
+    Set tResult = {}
+    Do tResult.%Set("type", "tool_result", "string")
+    Do tResult.%Set("tool_use_id", $Select($IsObject(pBlock) && (pBlock.%Get("id") '= ""): pBlock.%Get("id"), 1: "unknown"), "string")
+    Do tResult.%Set("is_error", ''pIsError, "boolean")
+    Do tResult.%Set("content", pContent, "string")
+    Quit tResult
 }
 
 /// <p>The reply a turn that reached its iteration cap ends with: how many tool calls were made, one

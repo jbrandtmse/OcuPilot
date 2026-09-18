@@ -12,8 +12,12 @@ Parameter REGISTRY = "OcuPilot.Screen.Tool.Registry";
 Parameter PROBEPREFIX = "OcuPilotProbeAgent";
 
 /// <p>The live tools that refuse <code>{}</code>, as comma-separated <code>tool:code</code>: the
-/// application error tool requires a namespace and a date.</p>
-Parameter REFUSEEMPTY = "logs.applicationerrors.read:TOOL.ARGUMENTS";
+/// application error tool requires a namespace and a date, and the navigation tool
+/// (Story 4.7, <parameter>FULFILMENT</parameter> = <code>client</code>) refuses any call to its
+/// own <code>View</code> with <code>NAV.NOTINSTANCE</code> -- <code>InvokeTool</code> reaching it
+/// at all is exactly the mis-wiring that code guards against, since
+/// <class>OcuPilot.Kernel.Agent.Dispatch</class> never calls it in production.</p>
+Parameter REFUSEEMPTY = "logs.applicationerrors.read:TOOL.ARGUMENTS,shell.screen.open:NAV.NOTINSTANCE";
 
 Method OnBeforeOneTest() As %Status
 {

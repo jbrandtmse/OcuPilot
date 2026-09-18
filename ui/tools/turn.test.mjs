@@ -33,6 +33,8 @@ const {
   conversationReadPath,
   turnProgressPath,
   turnStopPath,
+  turnNavigationPath,
+  NAV_REFUSED_UNSAVED_CODE,
   stepLabel,
   turnErrorBanner,
   isTerminalState,
@@ -701,6 +703,237 @@ test('Markup in a reply or a step is carried as a literal string -- rendering is
   const turn = new TurnStore({ api, storage, navigationType: reloadedTab() });
   await turn.restore();
   assert.equal(turn.entries()[0].reply, markup);
+});
+
+// --- Story 4.7: the navigation directive ------------------------------------------------------
+//
+// Mutations (Rule 19):
+// - drop `parseNavigation`'s pairing check against `steps` -> the orphan-directive test goes
+//   red, and a reader could observe a directive whose announcement it cannot also see (AC3).
+// - drop the `seq <= actedNavigationSeq` guard in `navigation()` -> the one-shot test goes red,
+//   and a directive still unsettled on the wire would be acted on twice.
+// - stop resetting `actedNavigationSeq` in `send()` -> the fresh-turn test goes red.
+
+test('navigation() is null with no announce step to pair it with, and exposed once the step lands (AC3)', async () => {
+  const { schedule, scheduled } = fakeSchedule();
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+    [turnProgressPath('turn-1')]: [
+      // The directive names seq 2, but no announce step at that seq is in `steps` yet.
+      ok({
+        turnId: 'turn-1',
+        state: 'running',
+        steps: [step({ seq: 1, kind: 'tool', name: 'shell.screen.open', status: 'running' })],
+        stepsDropped: 0,
+        reply: null,
+        error: null,
+        navigation: { seq: 2, route: 'permissions/users', entityId: null },
+      }),
+      // Now the announce step is present at seq 2 -- the pairing holds.
+      ok({
+        turnId: 'turn-1',
+        state: 'running',
+        steps: [
+          step({ seq: 1, kind: 'tool', name: 'shell.screen.open', status: 'running' }),
+          step({ seq: 2, kind: 'announce', name: 'shell.screen.open', status: 'running', target: 'permissions/users' }),
+        ],
+        stepsDropped: 0,
+        reply: null,
+        error: null,
+        navigation: { seq: 2, route: 'permissions/users', entityId: null },
+      }),
+      ok({ turnId: 'turn-1', state: 'completed', steps: [], stepsDropped: 0, reply: 'done', error: null }),
+    ],
+  });
+  const turn = new TurnStore({ api, storage: memoryStorage(), navigationType: freshTab(), schedule });
+  void turn.send('open users');
+  await settle();
+  await settle();
+  await settle();
+  assert.equal(turn.navigation(), null, 'nothing polled yet');
+
+  scheduled.shift().run();
+  await settle();
+  assert.equal(turn.navigation(), null, 'the directive names an announce step that is not in `steps`');
+
+  scheduled.shift().run();
+  await settle();
+  assert.deepEqual(turn.navigation(), { seq: 2, route: 'permissions/users', entityId: '' });
+
+  scheduled.shift().run();
+  await settle();
+});
+
+test('settleNavigation posts opened with no code key, and the directive is acted on exactly once', async () => {
+  const { schedule, scheduled } = fakeSchedule();
+  const navBody = () =>
+    ok({
+      turnId: 'turn-1',
+      state: 'running',
+      steps: [step({ seq: 2, kind: 'announce', name: 'shell.screen.open', status: 'running', target: 'permissions/users', text: '_SYSTEM' })],
+      stepsDropped: 0,
+      reply: null,
+      error: null,
+      navigation: { seq: 2, route: 'permissions/users', entityId: '_SYSTEM' },
+    });
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+    // The server keeps answering the same unsettled-looking directive on the poll that lands
+    // right after the settle POST goes out -- a real race, not a hypothetical one.
+    [turnProgressPath('turn-1')]: [navBody(), navBody(), ok({ turnId: 'turn-1', state: 'completed', steps: [], stepsDropped: 0, reply: 'done', error: null })],
+    [turnNavigationPath('turn-1')]: [ok({ settled: true })],
+  });
+  const turn = new TurnStore({ api, storage: memoryStorage(), navigationType: freshTab(), schedule });
+  void turn.send('open users');
+  await settle();
+  await settle();
+  await settle();
+
+  scheduled.shift().run();
+  await settle();
+  assert.deepEqual(turn.navigation(), { seq: 2, route: 'permissions/users', entityId: '_SYSTEM' });
+
+  const settled = await turn.settleNavigation('opened');
+  assert.equal(settled, true);
+  const navCalls = api.calls.filter((call) => call.path === turnNavigationPath('turn-1'));
+  assert.equal(navCalls.length, 1);
+  assert.equal(navCalls[0].method, 'POST');
+  assert.deepEqual(JSON.parse(navCalls[0].body), { seq: 2, outcome: 'opened' });
+  assert.equal(turn.navigation(), null, 'acted on -- not exposed a second time from this same directive');
+
+  // A second call for the same directive posts nothing further and answers false.
+  const secondAttempt = await turn.settleNavigation('opened');
+  assert.equal(secondAttempt, false);
+  assert.equal(api.calls.filter((call) => call.path === turnNavigationPath('turn-1')).length, 1);
+
+  scheduled.shift().run();
+  await settle();
+  assert.equal(turn.navigation(), null, 'the next poll still carries the same wire shape; the guard hides it anyway');
+
+  scheduled.shift().run();
+  await settle();
+});
+
+test('settleNavigation posts refused with the one closed-vocabulary code this client ever authors', async () => {
+  const { schedule, scheduled } = fakeSchedule();
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+    [turnProgressPath('turn-1')]: [
+      ok({
+        turnId: 'turn-1',
+        state: 'running',
+        steps: [step({ seq: 1, kind: 'announce', name: 'shell.screen.open', status: 'running', target: 'agent/switches' })],
+        stepsDropped: 0,
+        reply: null,
+        error: null,
+        navigation: { seq: 1, route: 'agent/switches', entityId: null },
+      }),
+      ok({ turnId: 'turn-1', state: 'completed', steps: [], stepsDropped: 0, reply: 'done', error: null }),
+    ],
+    [turnNavigationPath('turn-1')]: [ok({ settled: true })],
+  });
+  const turn = new TurnStore({ api, storage: memoryStorage(), navigationType: freshTab(), schedule });
+  void turn.send('open switches');
+  await settle();
+  await settle();
+  await settle();
+  scheduled.shift().run();
+  await settle();
+  assert.notEqual(turn.navigation(), null);
+
+  await turn.settleNavigation('refused', NAV_REFUSED_UNSAVED_CODE);
+  const call = api.calls.find((c) => c.path === turnNavigationPath('turn-1'));
+  assert.deepEqual(JSON.parse(call.body), { seq: 1, outcome: 'refused', code: 'NAV.REFUSEDUNSAVED' });
+
+  scheduled.shift().run();
+  await settle();
+});
+
+test('settleNavigation() with no directive pending posts nothing and answers false', async () => {
+  const api = fakeApi();
+  const turn = new TurnStore({ api, storage: memoryStorage(), navigationType: freshTab() });
+  assert.equal(await turn.settleNavigation('opened'), false);
+  assert.equal(api.calls.length, 0);
+});
+
+test('a fresh send() drops the previous turn\'s acted-on guard, so the next turn\'s own directive is not suppressed', async () => {
+  const { schedule, scheduled } = fakeSchedule();
+  const navBody = (seq) =>
+    ok({
+      turnId: 'turn-1',
+      state: 'running',
+      steps: [step({ seq, kind: 'announce', name: 'shell.screen.open', status: 'running', target: 'permissions/users' })],
+      stepsDropped: 0,
+      reply: null,
+      error: null,
+      navigation: { seq, route: 'permissions/users', entityId: null },
+    });
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202), ok({ turnId: 'turn-1' }, 202)],
+    [turnProgressPath('turn-1')]: [
+      navBody(1),
+      ok({ turnId: 'turn-1', state: 'completed', steps: [], stepsDropped: 0, reply: 'done', error: null }),
+      // The second turn's own directive reuses seq 1 -- a fresh turn's own numbering, not a
+      // continuation of the first turn's.
+      navBody(1),
+      ok({ turnId: 'turn-1', state: 'completed', steps: [], stepsDropped: 0, reply: 'done', error: null }),
+    ],
+    [turnNavigationPath('turn-1')]: [ok({ settled: true })],
+  });
+  const turn = new TurnStore({ api, storage: memoryStorage(), navigationType: freshTab(), schedule });
+
+  void turn.send('open users');
+  await settle();
+  await settle();
+  await settle();
+  scheduled.shift().run();
+  await settle();
+  assert.notEqual(turn.navigation(), null);
+  await turn.settleNavigation('opened');
+  assert.equal(turn.navigation(), null);
+  scheduled.shift().run();
+  await settle();
+
+  void turn.send('open users again');
+  await settle();
+  await settle();
+  await settle();
+  scheduled.shift().run();
+  await settle();
+  // Mutation (Rule 19): stop resetting `actedNavigationSeq` in `send()` -> this reads `null`,
+  // since seq 1 from the first turn is still recorded as acted on.
+  assert.deepEqual(turn.navigation(), { seq: 1, route: 'permissions/users', entityId: '' });
+  scheduled.shift().run();
+  await settle();
+});
+
+test("parseStep recognizes kind 'announce', through restore()", async () => {
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'convo-1' });
+  const api = fakeApi({
+    [conversationReadPath('convo-1')]: [
+      ok({
+        conversationId: 'convo-1',
+        turns: [
+          {
+            seq: 1,
+            message: 'open users',
+            state: 'completed',
+            reply: 'Opened.',
+            error: null,
+            steps: [step({ seq: 1, kind: 'announce', name: 'shell.screen.open', target: 'permissions/users', status: 'ok' })],
+            stepsDropped: 0,
+          },
+        ],
+      }),
+    ],
+  });
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab() });
+  await turn.restore();
+  assert.equal(turn.entries()[0].steps[0].kind, 'announce');
 });
 
 // --- isTerminalState ---------------------------------------------------------------------------

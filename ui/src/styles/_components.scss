@@ -1403,6 +1403,21 @@ app-error-log-page {
   color: var(--ocu-on-surface);
 }
 
+// The screen segment's `<h2>` wrapper (Story 4.7, AC5): the heading EXPERIENCE.md describes the
+// agent's arrival as focusing, "the new screen's heading takes focus". No visual change from the
+// plain segment it replaces -- the child link or span still carries its own type and color -- so
+// only the browser's own heading margin and font are reset back to what the locator bar already had.
+
+.ocu-locator-heading {
+  margin: 0;
+  font: inherit;
+  font-weight: inherit;
+}
+
+.ocu-locator-heading:focus-visible {
+  @include ocu-focus-ring;
+}
+
 .ocu-locator-entity {
   @include typo.ocu-type('code');
 }

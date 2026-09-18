@@ -1127,6 +1127,87 @@ describe('Story 4.5 review: restored cards, the error banner, the rows line, and
     expect(api.calls.some((c) => c.path === TURN_PATH || c.path === CONVERSATION_PATH)).toBe(false);
     expect(composer.value).toBe('nihon');
   });
+
+  // --- Story 4.7: the agent's navigation announcement -------------------------------------------
+  //
+  // Mutations (Rule 19):
+  // - drop `kind === 'announce'` from the `turns` getter's step filter -> the announcement
+  //   assertions below find nothing.
+  // - render an announce step regardless of its status -> the withdrawn-announcement assertion
+  //   goes red, since a settled-`error` step would still show a paragraph.
+  // - route `announceText` through `app-reply` instead of a plain `{{ }}` interpolation -> a
+  //   step carrying HTML-looking text (AD-33: the entity id is model-supplied) would render as
+  //   markup instead of literal text.
+
+  it("renders an entity-bearing announce step as the agent's own published sentence, in plain text", async () => {
+    const { host } = await mountRestored([
+      restoredTurn({
+        reply: 'Opened.',
+        steps: [
+          turnStep({ seq: 1, kind: 'tool', name: 'shell.screen.open', status: 'ok', target: 'permissions/users', text: '_SYSTEM' }),
+          turnStep({ seq: 2, kind: 'announce', name: 'shell.screen.open', status: 'ok', target: 'permissions/users', text: '_SYSTEM' }),
+        ],
+      }),
+    ]);
+    // The original tool call (seq 1) still renders its own card; the announce step (seq 2)
+    // never gets one -- it is a message, not a card.
+    expect(host.querySelectorAll('.ocu-tool-call-card')).toHaveLength(1);
+    const paragraphs = Array.from(host.querySelectorAll('p.ocu-panel-message-agent-text'));
+    const announcement = paragraphs.find((el) => el.textContent?.includes('Users'));
+    expect(announcement).not.toBeUndefined();
+    // Built from the published template rather than retyped, so the assertion is pinned to
+    // EXPERIENCE.md's own sentence (`strings.test.mjs`'s job) and not to a second copy of it.
+    const expected = STRINGS.agentNavigationAnnouncement.split('<screen>').join('Users').split('<entity>').join('_SYSTEM');
+    expect(announcement?.textContent?.trim()).toBe(expected);
+  });
+
+  it('renders the no-entity form when the announce step carries none', async () => {
+    const { host } = await mountRestored([
+      restoredTurn({
+        reply: 'Opened.',
+        steps: [turnStep({ seq: 1, kind: 'announce', name: 'shell.screen.open', status: 'ok', target: 'agent/switches', text: '' })],
+      }),
+    ]);
+    const paragraphs = Array.from(host.querySelectorAll('p.ocu-panel-message-agent-text'));
+    const announcement = paragraphs.find((el) => el.textContent?.includes('Switches'));
+    const expected = STRINGS.agentNavigationAnnouncementNoEntity.split('<screen>').join('Switches');
+    expect(announcement?.textContent?.trim()).toBe(expected);
+  });
+
+  it('renders nothing for an announce step settled error -- the withdrawal is a removal, not a replacement', async () => {
+    const { host } = await mountRestored([
+      restoredTurn({
+        reply: 'Never mind.',
+        steps: [
+          turnStep({
+            seq: 1,
+            kind: 'announce',
+            name: 'shell.screen.open',
+            status: 'error',
+            code: 'NAV.REFUSEDUNSAVED',
+            target: 'permissions/users',
+          }),
+        ],
+      }),
+    ]);
+    expect(host.querySelectorAll('p.ocu-panel-message-agent-text')).toHaveLength(0);
+    expect(host.textContent).not.toContain('permissions/users');
+  });
+
+  it('an entity id that looks like markup renders as literal text (AD-33)', async () => {
+    const { host } = await mountRestored([
+      restoredTurn({
+        reply: 'Opened.',
+        steps: [
+          turnStep({ seq: 1, kind: 'announce', name: 'shell.screen.open', status: 'ok', target: 'permissions/users', text: '<b>x</b>' }),
+        ],
+      }),
+    ]);
+    const paragraphs = Array.from(host.querySelectorAll('p.ocu-panel-message-agent-text'));
+    const announcement = paragraphs.find((el) => el.textContent?.includes('<b>x</b>'));
+    expect(announcement).not.toBeUndefined();
+    expect(announcement?.querySelector('b')).toBeNull();
+  });
 });
 
 function conversationReadPathFor(id: string): string {

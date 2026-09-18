@@ -331,6 +331,179 @@ ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %Strin
     Quit tIsError
 }
 
+/// <p>Resolve and validate a client-fulfilled tool call (Story 4.7, AD-11 rule 3) through the same
+/// ordered chain <method>AnswerOne</method>'s header describes -- wire name, identity, gate, pairs
+/// and arguments -- then call the resolved tool's own <code>Directive</code> in place of
+/// <code>InvokeTool</code>. Never called for an <code>instance</code>-fulfilled tool.</p>
+/// <p><var>pPending</var> is 1 only once every check has passed and <code>Directive</code> answered
+/// a route to open, with <var>pRoute</var>/<var>pEntityId</var> the values it validated and
+/// <var>pToolName</var> the canonical name the caller records the announce and tool steps under.
+/// <var>pTarget</var>, <var>pArguments</var> and <var>pArgumentsTruncated</var> are set the same way
+/// <method>AnswerOne</method> sets them (Story 4.5), whichever branch answers.</p>
+/// <p>Otherwise <var>pPending</var> is 0 and <var>pIsError</var>/<var>pContent</var>/<var>pReason</var>
+/// are the finished <code>tool_result</code> -- always <code>is_error</code> true, and always
+/// answered before any announce step or directive exists (AC2): a refusal from a check before
+/// <code>Directive</code> carries that check's own code, and a refusal from <code>Directive</code>
+/// itself carries <code>NAV.ROUTEUNKNOWN</code> or <code>NAV.ENTITYNOTALLOWED</code>.
+/// <var>pFailedPair</var> is set only by the two privilege-pair refusals.</p>
+ClassMethod ResolveClientCall(pUser As %String, pBlock As %DynamicObject, pLimitsClass As %String, Output pPending As %Boolean, Output pToolName As %String, Output pRoute As %String, Output pEntityId As %String, Output pTarget As %String, Output pArguments As %String, Output pArgumentsTruncated As %Boolean, Output pIsError As %Boolean, Output pContent As %String, Output pReason As %String, Output pFailedPair As %String) As %Status
+{
+    Set tUnavailable = ##class(OcuPilot.Api.Error).#TOOLUNAVAILABLE
+    Set pPending = 0
+    Set pToolName = ""
+    Set pRoute = ""
+    Set pEntityId = ""
+    Set pTarget = ""
+    Set pArguments = ""
+    Set pArgumentsTruncated = 0
+    Set pIsError = 1
+    Set pContent = ..ErrorContent(tUnavailable)
+    Set pReason = ##class(OcuPilot.Api.Error).ReasonForToolCode(tUnavailable)
+    Set pFailedPair = ""
+    Set tSC = $$$OK
+    Try {
+        Set tWire = ""
+        Set tInput = ""
+        If $IsObject(pBlock) && pBlock.%IsA("%Library.DynamicObject") {
+            Set tWire = pBlock.%Get("name")
+            Set tInput = pBlock.%Get("input")
+        }
+        Set pToolName = tWire
+        Set pTarget = ..TargetOf(tInput)
+        Set pArguments = ..RedactedArguments(tInput, +$Parameter(pLimitsClass, "SUMMARYMAXLENGTH"), .pArgumentsTruncated)
+        Set tRegistry = ..RegistryClass()
+
+        Set tSC = $ClassMethod(tRegistry, "ResolveWire", tWire, .tTool)
+        If $$$ISERR(tSC) {
+            Do ..LogFault("a client tool call could not resolve its registry", tSC, tUnavailable)
+            Quit
+        }
+        If '$IsObject(tTool) {
+            Set pContent = ..ErrorContent(##class(OcuPilot.Api.Error).#TOOLUNKNOWN)
+            Set pReason = ##class(OcuPilot.Api.Error).ReasonForToolCode(##class(OcuPilot.Api.Error).#TOOLUNKNOWN)
+            Quit
+        }
+        Set pToolName = tTool.%Get("name")
+
+        If $Username '= pUser {
+            Do ..LogFault("a client tool call ran as a user other than the turn's", $$$ERROR($$$GeneralError, "the process user differs from the turn's user"), tUnavailable)
+            Quit
+        }
+
+        Kill tDecision
+        Set tSC = $ClassMethod(..GateClass(), "Decide", pToolName, tTool.%Get("kind"), pUser, tInput, .tDecision)
+        If $$$ISERR(tSC) {
+            Do ..LogFault("a client tool call's governance gate could not decide " _ pToolName, tSC, tUnavailable)
+            Quit
+        }
+        If '$Get(tDecision("allowed")) {
+            Set tCode = $Get(tDecision("code"))
+            Set tCode = $Select(tCode '= "": tCode, 1: ##class(OcuPilot.Api.Error).#TOOLDENIED)
+            Set pContent = ..ErrorContent(tCode)
+            Set pReason = ##class(OcuPilot.Api.Error).ReasonForToolCode(tCode)
+            Quit
+        }
+
+        ; A client-fulfilled tool is never write-kind -- OcuPilot.Screen.Tool.Registry.FulfilmentProblem
+        ; refuses that combination at build time -- so the restraint verdict never applies here
+        ; (AC9's own KIND="read" note).
+
+        Set tPairs = $ClassMethod(tRegistry, "RequiredPairs", tTool, .tResolved)
+        If 'tResolved {
+            Do ..LogFault("a client tool call's privilege pairs of " _ pToolName _ " could not be read", $$$ERROR($$$GeneralError, "unresolved pairs"), tUnavailable)
+            Quit
+        }
+        Set tFailedPair = ..MissingPair(pUser, tPairs)
+        If tFailedPair '= "" {
+            Set pContent = ..DeniedContent(tFailedPair)
+            Set pReason = ##class(OcuPilot.Api.Error).ReasonForToolCode(##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE)
+            Set pFailedPair = tFailedPair
+            Quit
+        }
+
+        Set tSC = $ClassMethod(tRegistry, "ValidateArguments", $ClassMethod(tRegistry, "InputSchemaOf", tTool), tInput, .tProblem)
+        If $$$ISERR(tSC) {
+            Set tDetail = {}
+            Do tDetail.%Set("problem", tProblem, "string")
+            Set pContent = ..ErrorContent(##class(OcuPilot.Api.Error).#TOOLARGUMENTS, tDetail)
+            Set pReason = ##class(OcuPilot.Api.Error).ReasonForToolCode(##class(OcuPilot.Api.Error).#TOOLARGUMENTS)
+            ; An ordinary refusal, ready in pContent -- the dispatcher itself did not fail, so this
+            ; method's own status must read OK or the caller (Loop.AnswerClientCall) would read an
+            ; ordinary refusal as an internal failure and fail the whole turn.
+            Set tSC = $$$OK
+            Quit
+        }
+
+        Set tArgumentPairs = $ClassMethod(tRegistry, "ArgumentPairs", tTool, tInput, .tResolved)
+        If 'tResolved {
+            Do ..LogFault("a client tool call's argument pairs of " _ pToolName _ " could not be read", $$$ERROR($$$GeneralError, "unresolved argument pairs"), tUnavailable)
+            Quit
+        }
+        Set tFailedPair = ..MissingPair(pUser, tArgumentPairs)
+        If tFailedPair '= "" {
+            Set pContent = ..DeniedContent(tFailedPair)
+            Set pReason = ##class(OcuPilot.Api.Error).ReasonForToolCode(##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE)
+            Set pFailedPair = tFailedPair
+            Quit
+        }
+
+        Set tSC = $ClassMethod(tTool.%Get("class"), "Directive", tTool.%Get("descriptor"), tInput, .tDirectiveRoute, .tDirectiveEntityId, .tFault)
+        If $$$ISERR(tSC) {
+            If $IsObject(tFault) && (tFault.%Get("code") '= "") {
+                Set pContent = ..ErrorContent(tFault.%Get("code"))
+                Set pReason = ##class(OcuPilot.Api.Error).ReasonForToolCode(tFault.%Get("code"))
+                ; Same reasoning as the ValidateArguments branch above: Directive's own refusal is
+                ; an ordinary result, not a dispatcher failure.
+                Set tSC = $$$OK
+            } Else {
+                Do ..LogFault("turn: " _ pToolName _ " failed inside Directive", tSC, tUnavailable)
+            }
+            Quit
+        }
+
+        Set pRoute = tDirectiveRoute
+        Set pEntityId = tDirectiveEntityId
+        Set pPending = 1
+        Set pIsError = 0
+        Set pContent = ""
+        Set pReason = ""
+    } Catch ex {
+        Set pPending = 0
+        Set pIsError = 1
+        Set pContent = ..ErrorContent(tUnavailable)
+        Set pReason = ##class(OcuPilot.Api.Error).ReasonForToolCode(tUnavailable)
+        Do ..LogFault("a client tool call failed inside the dispatcher", ex.AsStatus(), tUnavailable)
+    }
+    Quit tSC
+}
+
+/// <p>The <code>tool_result</code> content for a client-fulfilled call that has been announced and
+/// waited on (Story 4.7, AD-11 invariant 3, AD-39): <code>{navigated, route, entityId, code}</code>.
+/// <var>pOutcome</var> is <code>"opened"</code> (<code>navigated</code> true, <code>code</code>
+/// <code>null</code>) or anything else -- <code>"refused"</code> or <code>"unavailable"</code>
+/// (<code>navigated</code> false, <code>pCode</code> carried through). This shape is owned here so
+/// <class>OcuPilot.Kernel.Agent.Loop</class> never composes a tool result of its own: whatever
+/// <var>pOutcome</var> is, the call is an ordinary result, never an error (AD-11 invariant 3) -- the
+/// caller sets <code>is_error</code> false unconditionally.</p>
+ClassMethod SettleClient(pDetail As %DynamicObject, pOutcome As %String, pCode As %String, Output pContent As %String)
+{
+    Set tResult = {}
+    Do tResult.%Set("navigated", (pOutcome = "opened"), "boolean")
+    Do tResult.%Set("route", pDetail.%Get("route"), "string")
+    Set tEntityId = pDetail.%Get("entityId")
+    If tEntityId = "" {
+        Do tResult.%Set("entityId", "", "null")
+    } Else {
+        Do tResult.%Set("entityId", tEntityId, "string")
+    }
+    If pOutcome = "opened" {
+        Do tResult.%Set("code", "", "null")
+    } Else {
+        Do tResult.%Set("code", pCode, "string")
+    }
+    Set pContent = tResult.%ToJSON()
+}
+
 /// <p>A tool step's target (Story 4.5): <var>pInput</var>'s <code>id</code>, else
 /// <code>entity</code>, else <code>route</code>, else <code>""</code> -- whichever is present
 /// first and is a non-empty string. Public so <class>OcuPilot.Kernel.Agent.Loop</class> can

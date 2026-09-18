@@ -255,6 +255,108 @@ ClassMethod HandleStop(pId As %String) As %Status
     Quit tSC
 }
 
+/// <p>Answer <code>POST /turn/:id/navigation</code> (Story 4.7, AD-11 rule 3): settle the caller's
+/// own pending client-fulfilled navigation directive with the browser's answer. Owner gate first
+/// (404 <code>TURN.NOTFOUND</code>, the same as an unknown id and another user's turn alike); then
+/// the closed body vocabulary <code>{seq, outcome:"opened"|"refused", code:"NAV.REFUSEDUNSAVED"|null}</code>
+/// (422 <code>TURN.NAVIGATION.INVALID</code> otherwise, so the client can never author
+/// model-visible text); then the claim itself
+/// (<method>OcuPilot.Kernel.State.Nav.GuardedSettle</method>, 409 <code>STATE.CONFLICT</code> when
+/// nothing is pending, the <code>seq</code> does not match, or the directive was already settled);
+/// then a trivial <code>{settled}</code> ack.</p>
+ClassMethod HandleNavigation(pId As %String) As %Status
+{
+    Set tSC = $$$OK
+    Try {
+        Set tUser = ..CallerUsername()
+        Set tOwnerSC = ##class(OcuPilot.Kernel.State.Turn).GuardedForOwner(pId, tUser, .tFound, .tValues)
+        If $$$ISERR(tOwnerSC) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tOwnerSC))
+            Quit
+        }
+        If 'tFound {
+            Set tSC = ..RenderNotFound()
+            Quit
+        }
+        Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.tBody, .tStage)
+        If $$$ISERR(tReadSC) {
+            If tStage = "parse" {
+                Set tSC = ..RenderNavigationInvalid()
+            } Else {
+                Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tReadSC))
+            }
+            Quit
+        }
+        If ..NavigationViolation(tBody, .tSeq, .tOutcome, .tCode) {
+            Set tSC = ..RenderNavigationInvalid()
+            Quit
+        }
+        Set tSettleSC = ##class(OcuPilot.Kernel.State.Nav).GuardedSettle(pId, tSeq, tOutcome, tCode, .tClaimed)
+        If $$$ISERR(tSettleSC) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tSettleSC))
+            Quit
+        }
+        If 'tClaimed {
+            Set tSC = ##class(OcuPilot.Api.Error).Render(409, ##class(OcuPilot.Api.Error).#CONFLICT, ##class(OcuPilot.Api.Error).#REASONSTATECONFLICT, ##class(OcuPilot.Api.Error).#STATECONFLICT)
+            Quit
+        }
+        Set tAnswer = {}
+        Do tAnswer.%Set("settled", 1, "boolean")
+        Set tSC = ##class(OcuPilot.Api.Response).JSON(tAnswer)
+    } Catch ex {
+        Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
+    }
+    Quit tSC
+}
+
+/// <p>Whether <var>pBody</var> breaks the navigation settle's closed body vocabulary
+/// (Story 4.7): any key beyond <code>seq</code>, <code>outcome</code> and <code>code</code>; a
+/// <code>seq</code> that is not a whole number of at least 1; an <code>outcome</code> outside
+/// <code>{"opened","refused"}</code>; a <code>code</code> that is not <code>null</code> when
+/// <code>outcome</code> is <code>"opened"</code>, or that is not exactly
+/// <parameter>OcuPilot.Api.Error.NAVREFUSEDUNSAVED</parameter> when it is <code>"refused"</code> --
+/// the one code a browser is ever the author of, so the client can never post model-visible text
+/// through this route. <var>pSeq</var>/<var>pOutcome</var>/<var>pCode</var> are set only when this
+/// answers 0.</p>
+ClassMethod NavigationViolation(pBody As %DynamicObject, Output pSeq As %Integer, Output pOutcome As %String, Output pCode As %String) As %Boolean
+{
+    Set pSeq = 0
+    Set pOutcome = ""
+    Set pCode = ""
+    If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Quit 1
+    Set tBad = 0
+    Set tIterator = pBody.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tIgnored) {
+        If (tKey '= "seq") && (tKey '= "outcome") && (tKey '= "code") {
+            Set tBad = 1
+            Quit
+        }
+    }
+    If tBad Quit 1
+    If pBody.%GetTypeOf("seq") '= "number" Quit 1
+    Set tSeq = pBody.%Get("seq")
+    If (tSeq '= (tSeq \ 1)) || (tSeq < 1) Quit 1
+    If pBody.%GetTypeOf("outcome") '= "string" Quit 1
+    Set tOutcome = pBody.%Get("outcome")
+    If '$ListFind($ListBuild("opened", "refused"), tOutcome) Quit 1
+    Set tCodeType = pBody.%GetTypeOf("code")
+    If tOutcome = "opened" {
+        If (tCodeType '= "null") && (tCodeType '= "unassigned") Quit 1
+    } Else {
+        If (tCodeType '= "string") || (pBody.%Get("code") '= ##class(OcuPilot.Api.Error).#NAVREFUSEDUNSAVED) Quit 1
+    }
+    Set pSeq = tSeq
+    Set pOutcome = tOutcome
+    Set pCode = $Select(tOutcome = "opened": "", 1: pBody.%Get("code"))
+    Quit 0
+}
+
+/// <p>Refuse with 422 <code>TURN.NAVIGATION.INVALID</code> (Story 4.7).</p>
+ClassMethod RenderNavigationInvalid() As %Status [ Private ]
+{
+    Quit ##class(OcuPilot.Api.Error).Render(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, "The navigation outcome is not one this instance accepts.", ##class(OcuPilot.Api.Error).#TURNNAVIGATIONINVALID)
+}
+
 /// <p>Answer <code>POST /turn/abandon</code>: ask every queued or running turn of the caller to
 /// abandon at its next step boundary, and answer <code>{"abandoned": n}</code>. Sign-out sends it,
 /// because the instance observes no token sign-out (AD-31).</p>
