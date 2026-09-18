@@ -31,7 +31,7 @@ const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'
 
 const config = browserConfig();
 const VIEWER_URL = '/ocupilot/logs/messages?ns=HSCUSTOM';
-const PROCESSES_URL = '/ocupilot/os-management/processes?ns=HSCUSTOM';
+const LOCKS_URL = '/ocupilot/os-management/locks?ns=HSCUSTOM';
 const ROW_SELECTOR = '.ocu-log-rows .ocu-log-row';
 
 /** DESIGN.md's own geometry for a log row: a fixed height, not a minimum. */
@@ -322,15 +322,17 @@ async function waitNamed(page, predicate, what, args = []) {
 }
 
 test('AC8: the fault banner opens messages.log and brings the Logs side bar with it', async () => {
-  // DW-148, end to end. The fault is raised by failing the processes list's own read, so the
-  // browser is on another area when the control is pressed: the route it opens and the side bar it
-  // leaves showing are then both observable, and a control that opened the first `log-entry`
-  // screen would land on alerts.log instead.
-  const { context, page } = await signedInAt(PROCESSES_URL, {
+  // DW-148, end to end. The fault is raised by failing the Locks list's own read: the browser is
+  // then on another area when the control is pressed, so the route it opens and the side bar it
+  // leaves showing are both observable, and a control that opened the first `log-entry` screen
+  // would land on alerts.log instead. Locks rather than Processes because `LockList` declares
+  // `refreshes: false`, so nothing on this screen re-reads under the press. Every wait below names
+  // itself because what made CI run 35378660401 absorb the press is still open.
+  const { context, page } = await signedInAt(LOCKS_URL, {
     arm: async (target) => {
       await target.setRequestInterception(true);
       target.on('request', (request) => {
-        if (new URL(request.url()).pathname.includes('/screens/osmgmt.processes/')) {
+        if (new URL(request.url()).pathname.includes('/screens/osmgmt.locks/')) {
           void request.respond({
             status: 500,
             contentType: 'application/json',
@@ -343,23 +345,42 @@ test('AC8: the fault banner opens messages.log and brings the Logs side bar with
     },
   });
   try {
-    // Every wait in this test names itself on timeout. A bare `Waiting failed: 30000ms exceeded`
-    // does not say which one gave up, and a failure line that cannot be quoted in a report costs
-    // a second run to locate (DW-1119).
-    await waitNamed(page, () => document.querySelector('.ocu-fault-banner') !== null, 'the fault banner appeared once the processes read was refused');
+    // A bare `Waiting failed: 30000ms exceeded` does not say which wait gave up, and a failure
+    // line that cannot be quoted in a report costs a second run to locate (DW-1119).
+    await waitNamed(page, () => document.querySelector('.ocu-fault-banner') !== null, 'the fault banner appeared once the Locks read was refused');
     assert.equal(
       await page.$eval('.ocu-side-bar-eyebrow', (node) => node.textContent.trim()),
       STRINGS.navAreaOsManagement,
       'the side bar is showing the area the browser is on before the control is pressed'
     );
 
-    const opened = await page.$$eval('.ocu-fault-banner button', (nodes, label) => {
-      const match = nodes.find((node) => node.textContent.trim() === label);
-      if (match === undefined) return false;
-      match.click();
-      return true;
-    }, STRINGS.actionOpenMessagesLog);
-    assert.ok(opened, 'the banner carries the published Open messages.log control');
+    // The control is gated in place -- `aria-disabled`, and a handler that returns -- until a built
+    // screen over messages.log is allowed for this principal, and a gated control absorbs the press
+    // exactly as a lost one does. Waiting for it un-gated is what tells those two apart when the
+    // navigation below never happens (DW-1119).
+    await waitNamed(
+      page,
+      (label) =>
+        [...document.querySelectorAll('.ocu-fault-banner button')].some(
+          (node) => node.textContent.trim() === label && node.getAttribute('aria-disabled') === null
+        ),
+      'the banner offered the published Open messages.log control un-gated',
+      [STRINGS.actionOpenMessagesLog]
+    );
+
+    // Click through an element handle, not an in-page `node.click()`: Puppeteer dispatches a real
+    // mouse event and throws `Node is detached from document` if the node has gone, where an
+    // in-page click on a detached node silently does nothing and surfaces as a timeout later.
+    let control = null;
+    for (const handle of await page.$$('.ocu-fault-banner button')) {
+      const text = await handle.evaluate((node) => node.textContent.trim());
+      if (text === STRINGS.actionOpenMessagesLog) {
+        control = handle;
+        break;
+      }
+    }
+    assert.ok(control !== null, 'the banner carries the published Open messages.log control');
+    await control.click();
 
     await waitNamed(
       page,
