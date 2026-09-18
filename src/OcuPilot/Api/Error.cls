@@ -802,6 +802,9 @@ Parameter REASONTURNLIMITDURATION = "The turn ran as long as a turn may, so it w
 /// <p>Written sentence for <parameter>TURNLIMITTOKENS</parameter>.</p>
 Parameter REASONTURNLIMITTOKENS = "The turn spent as many provider tokens as a turn may, so it was abandoned.";
 
+/// <p>Written sentence for <parameter>TURNNAVIGATIONINVALID</parameter>.</p>
+Parameter REASONTURNNAVIGATIONINVALID = "The navigation outcome is not one this instance accepts.";
+
 /// <p>Written sentence for <parameter>TOOLUNAVAILABLE</parameter>.</p>
 Parameter REASONTOOLUNAVAILABLE = "That tool could not be answered on this instance.";
 
@@ -855,7 +858,7 @@ ClassMethod ReasonForNav(pCode As %String) As %String
 /// <method>ReasonForTurn</method> to the vocabulary.</p>
 ClassMethod TurnCodes() As %List
 {
-    Quit $ListBuild(..#TURNBADBODY, ..#TURNMESSAGEREQUIRED, ..#TURNMESSAGELENGTH, ..#TURNCONTEXTINVALID, ..#TURNCONVERSATIONREQUIRED, ..#TURNCONVERSATIONNOTFOUND, ..#TURNBUSY, ..#TURNNOTFOUND, ..#TURNUNAVAILABLE, ..#TURNSTOPPED, ..#TURNABANDONEDREADONLY, ..#TURNABANDONEDPRIVILEGE, ..#TURNABANDONEDLEASE, ..#TURNABANDONEDSIGNOUT, ..#TURNABANDONEDJOBLOST, ..#TURNLIMITDURATION, ..#TURNLIMITTOKENS)
+    Quit $ListBuild(..#TURNBADBODY, ..#TURNMESSAGEREQUIRED, ..#TURNMESSAGELENGTH, ..#TURNCONTEXTINVALID, ..#TURNCONVERSATIONREQUIRED, ..#TURNCONVERSATIONNOTFOUND, ..#TURNBUSY, ..#TURNNOTFOUND, ..#TURNUNAVAILABLE, ..#TURNSTOPPED, ..#TURNABANDONEDREADONLY, ..#TURNABANDONEDPRIVILEGE, ..#TURNABANDONEDLEASE, ..#TURNABANDONEDSIGNOUT, ..#TURNABANDONEDJOBLOST, ..#TURNLIMITDURATION, ..#TURNLIMITTOKENS, ..#TURNNAVIGATIONINVALID)
 }
 
 /// <p>The written sentence a <code>TURN.*</code> code carries, or <code>""</code> for any other
@@ -879,6 +882,7 @@ ClassMethod ReasonForTurn(pCode As %String) As %String
     If pCode = ..#TURNABANDONEDJOBLOST Quit ..#REASONTURNABANDONEDJOBLOST
     If pCode = ..#TURNLIMITDURATION Quit ..#REASONTURNLIMITDURATION
     If pCode = ..#TURNLIMITTOKENS Quit ..#REASONTURNLIMITTOKENS
+    If pCode = ..#TURNNAVIGATIONINVALID Quit ..#REASONTURNNAVIGATIONINVALID
     Quit ""
 }
 

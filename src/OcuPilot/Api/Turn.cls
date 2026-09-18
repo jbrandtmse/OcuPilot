@@ -354,7 +354,7 @@ ClassMethod NavigationViolation(pBody As %DynamicObject, Output pSeq As %Integer
 /// <p>Refuse with 422 <code>TURN.NAVIGATION.INVALID</code> (Story 4.7).</p>
 ClassMethod RenderNavigationInvalid() As %Status [ Private ]
 {
-    Quit ##class(OcuPilot.Api.Error).Render(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, "The navigation outcome is not one this instance accepts.", ##class(OcuPilot.Api.Error).#TURNNAVIGATIONINVALID)
+    Quit ##class(OcuPilot.Api.Error).Render(422, ##class(OcuPilot.Api.Error).#VALIDATIONFAILED, ##class(OcuPilot.Api.Error).#REASONTURNNAVIGATIONINVALID, ##class(OcuPilot.Api.Error).#TURNNAVIGATIONINVALID)
 }
 
 /// <p>Answer <code>POST /turn/abandon</code>: ask every queued or running turn of the caller to
