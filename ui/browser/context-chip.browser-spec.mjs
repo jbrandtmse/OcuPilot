@@ -57,10 +57,16 @@ let browser = null;
 let preparedId = '';
 let priorDefault = '';
 
+/** The slot every turn-arming test here competes for: one concurrent turn per user (AD-31, AD-41). */
+const SLOT_GLOBAL = `^OcuPilotTurnSlot("${config.username}")`;
+/** How long a turn left running by an earlier spec is given to end. */
+const SLOT_FREE_TIMEOUT_MS = 15000;
+
 before(async () => {
   assert.notEqual(config.container, LIVE_CONTAINER, 'this spec arms the turnprobe provider, so it never runs inside the live container');
   const ready = await (await fetch(`${config.origin}${READINESS_PATH}`)).json();
   assert.equal(ready.state, 'installed', `the throwaway must be installed, not ${JSON.stringify(ready)}`);
+  await requireFreeSlot();
   browser = await puppeteer.launch(launchOptions(config));
   const armed = armProbeDefinition(probe);
   priorDefault = armed.prior;
@@ -69,14 +75,71 @@ before(async () => {
 });
 
 after(async () => {
-  if (browser !== null) await browser.close();
-  if (config.container === LIVE_CONTAINER) return;
-  await putShare(true);
-  disarmProbeDefinition(probe, priorDefault);
+  try {
+    if (config.container === LIVE_CONTAINER) return;
+    // Hand the slot back before disarming, the same discipline navigate.browser-spec.mjs's
+    // requireFreeSlot follows (DW-1092, extended here per DW-1167): closing the browser context
+    // does not end a server-side turn, so a leftover holder would fail whichever spec runs next
+    // with a bare puppeteer timeout instead of a named cause.
+    await requireFreeSlot();
+    await putShare(true);
+    disarmProbeDefinition(probe, priorDefault);
+  } finally {
+    if (browser !== null) await browser.close();
+  }
 });
 
 function runIris(lines) {
   return sharedRunIris(config.container, lines);
+}
+
+/**
+ * Abandon every turn the configured user still has running, and answer how many were abandoned
+ * (`-1` when the route itself did not answer) -- the same `POST /turn/abandon` route
+ * `navigate.browser-spec.mjs`'s `requireFreeSlot` uses.
+ */
+async function abandonTurns() {
+  try {
+    const response = await fetch(`${config.origin}/api/ocupilot/turn/abandon`, {
+      method: 'POST',
+      headers: { Authorization: authHeader() },
+    });
+    if (!response.ok) return -1;
+    return Number((await response.json()).abandoned ?? -1);
+  } catch {
+    return -1;
+  }
+}
+
+/** Which process holds the configured user's turn slot this instant -- `''` while none does. */
+function slotOwner() {
+  const output = runIris([
+    `Write "OCU-CHIP-SLOT-START:"_##class(OcuPilot.Test.TurnFixture).SlotOwner("${escapeOs(config.username)}")_":OCU-CHIP-SLOT-END",!`,
+  ]);
+  return markerValue(output, 'CHIP-SLOT') ?? '';
+}
+
+/**
+ * Refuse to start (or finish) until the configured user's one turn slot is free, naming the
+ * global, the holding pid and TURN.BUSY on failure rather than the bare 30 s puppeteer timeout a
+ * taken slot would otherwise produce on this file's first Send. Copied from
+ * navigate.browser-spec.mjs's requireFreeSlot (DW-1092) and applied here per DW-1167, since this
+ * file also arms a turn probe and can be left holding the slot by whichever spec ran before it.
+ */
+async function requireFreeSlot() {
+  const abandoned = await abandonTurns();
+  const deadline = Date.now() + SLOT_FREE_TIMEOUT_MS;
+  let owner = slotOwner();
+  while (owner !== '' && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    owner = slotOwner();
+  }
+  assert.equal(
+    owner,
+    '',
+    `${SLOT_GLOBAL} is still held by pid ${owner} after abandoning ${abandoned} turn(s) and waiting ` +
+      `${SLOT_FREE_TIMEOUT_MS} ms, so this file's first Send would be refused TURN.BUSY`
+  );
 }
 
 /** One `turnprobe` tag per test, so a stale script from an earlier test cannot answer a later one. */
@@ -164,16 +227,41 @@ async function putContextRowCap(cap) {
  * landed right after a Switches save, where the real click reliably navigates. */
 async function navigateViaSideBar(page, railItemId, sideBarLabel) {
   await page.click(railItemId);
-  await page.waitForFunction(
-    (label) => [...document.querySelectorAll('.ocu-side-bar-item')].some((el) => el.textContent.includes(label)),
-    { timeout: config.navigationTimeoutMs },
-    sideBarLabel
-  );
+  try {
+    await page.waitForFunction(
+      (label) => [...document.querySelectorAll('.ocu-side-bar-item')].some((el) => el.textContent.includes(label)),
+      { timeout: config.navigationTimeoutMs },
+      sideBarLabel
+    );
+  } catch {
+    const items = await page
+      .evaluate(() => [...document.querySelectorAll('.ocu-side-bar-item')].map((el) => el.textContent.trim()))
+      .catch(() => ['(side bar unreadable)']);
+    throw new Error(
+      `expected a side-bar entry named "${sideBarLabel}" after clicking ${railItemId}; the side bar held ${JSON.stringify(items)}`
+    );
+  }
   const index = await page.evaluate((label) => {
     return [...document.querySelectorAll('.ocu-side-bar-item')].findIndex((el) => el.textContent.includes(label));
   }, sideBarLabel);
   assert.ok(index >= 0, `a side-bar entry named "${sideBarLabel}" exists`);
   await page.click(`.ocu-side-bar-item:nth-of-type(${index + 1})`);
+}
+
+/**
+ * Run `page.waitForFunction(fn, ...args)` and, on timeout, replace puppeteer's bare
+ * "Waiting failed: Nms exceeded" with a message naming what this wait wanted and what `diagnose`
+ * found on the page instead -- the pattern `audit.browser-spec.mjs`'s `waitForCount` and
+ * `waitForDisabled` already use, generalized here so this file's multi-step legs do not each
+ * hand-roll the same try/catch.
+ */
+async function namedWaitForFunction(page, fn, args, wanted, diagnose) {
+  try {
+    await page.waitForFunction(fn, { timeout: config.navigationTimeoutMs }, ...args);
+  } catch {
+    const detail = await diagnose(page).catch((err) => `(diagnosis failed: ${err.message})`);
+    throw new Error(`expected ${wanted}; found ${detail}`);
+  }
 }
 
 /** A fresh context signed in as the configured user, standing on `url` with the panel laid out. */
@@ -411,15 +499,25 @@ test('Cap follows agent-switch: raising the row cap through the Switches screen 
   let page = null;
   try {
     await putContextRowCap(1);
-    ({ context, page } = await signedInAt(USERS_URL));
+    try {
+      ({ context, page } = await signedInAt(USERS_URL));
+    } catch (err) {
+      // signedInAt's own waits (sign-in form, panel, first-login gate, an enabled composer) give
+      // no indication which one failed on a slow container; name the leg instead of letting a
+      // bare puppeteer timeout stand for all four.
+      throw new Error(`sign-in at Users (row-cap leg) did not complete: ${err.message}`);
+    }
     // The row segment is a middle segment, not the last one (provider and host follow it), so
     // this reads the count out rather than matching against the end of the string.
-    await page.waitForFunction(
-      () => {
+    await namedWaitForFunction(
+      page,
+      (low, high) => {
         const match = /(\d+) rows/.exec(document.querySelector('.ocu-context-chip-text')?.textContent ?? '');
-        return match !== null && Number(match[1]) === 1;
+        return match !== null && Number(match[1]) >= low && Number(match[1]) <= high;
       },
-      { timeout: config.navigationTimeoutMs }
+      [1, 1],
+      'the chip to read "1 rows" (the lowered cap, pre-raise)',
+      (p) => p.evaluate(() => document.querySelector('.ocu-context-chip-text')?.textContent ?? '(chip absent)')
     );
 
     // The whole leg stays on this one document: an in-app navigation to Switches, raising the
@@ -427,31 +525,57 @@ test('Cap follows agent-switch: raising the row cap through the Switches screen 
     // in this same running app, which is what `AgentContext` re-reads on (Story 4.11), not a
     // page reload navigating back to Users would also explain away.
     await navigateViaSideBar(page, '#ocu-rail-item-agent', STRINGS.agentSwitchesLabel);
-    await page.waitForSelector('#ocu-switches-contextRowCap', { visible: true, timeout: config.navigationTimeoutMs });
-    await page.waitForFunction(() => document.querySelector('#ocu-switches-contextRowCap')?.value === '1', {
-      timeout: config.navigationTimeoutMs,
-    });
+    try {
+      await page.waitForSelector('#ocu-switches-contextRowCap', { visible: true, timeout: config.navigationTimeoutMs });
+    } catch {
+      throw new Error(
+        'expected #ocu-switches-contextRowCap to render (visible) after navigating to Switches from the side bar; it never appeared'
+      );
+    }
+    await namedWaitForFunction(
+      page,
+      () => document.querySelector('#ocu-switches-contextRowCap')?.value === '1',
+      [],
+      '#ocu-switches-contextRowCap to read "1" once the Switches form has loaded its saved value',
+      (p) => p.$eval('#ocu-switches-contextRowCap', (node) => node.value).catch(() => '(field absent)')
+    );
     await page.$eval('#ocu-switches-contextRowCap', (node) => {
       node.value = '200';
       node.dispatchEvent(new Event('input', { bubbles: true }));
     });
     await page.click('.ocu-form-bar-actions .ocu-button-primary');
-    await page.waitForFunction(() => document.querySelector('#ocu-switches-contextRowCap')?.value === '200', {
-      timeout: config.navigationTimeoutMs,
-    });
+    await namedWaitForFunction(
+      page,
+      () => document.querySelector('#ocu-switches-contextRowCap')?.value === '200',
+      [],
+      '#ocu-switches-contextRowCap to read "200" after clicking Save',
+      (p) => p.$eval('#ocu-switches-contextRowCap', (node) => node.value).catch(() => '(field absent)')
+    );
 
+    // This is the leg's most timing-sensitive step: navigateViaSideBar's own doc comment records
+    // that a synthetic click landing right after a Switches save was once observed to leave
+    // Router.navigateByUrl never invoked, where a real simulated pointer event (what this uses)
+    // reliably navigates -- so a cold/slow CI host re-running that same click-right-after-Save
+    // sequence is the most plausible loser of the six waits in this leg.
     await navigateViaSideBar(page, '#ocu-rail-item-permissions', STRINGS.userListLabel);
-    await page.waitForFunction(() => new URL(window.location.href).pathname === '/ocupilot/permissions/users', {
-      timeout: config.navigationTimeoutMs,
-    });
+    await namedWaitForFunction(
+      page,
+      () => new URL(window.location.href).pathname === '/ocupilot/permissions/users',
+      [],
+      'the URL to land on /ocupilot/permissions/users after navigating back from Switches',
+      (p) => p.evaluate(() => window.location.href)
+    );
     // `1` was the pre-raise reading; anything higher proves the re-read actually landed on the
     // mounted chip rather than a value it happened to start with.
-    await page.waitForFunction(
-      () => {
+    await namedWaitForFunction(
+      page,
+      (low, high) => {
         const match = /(\d+) rows/.exec(document.querySelector('.ocu-context-chip-text')?.textContent ?? '');
-        return match !== null && Number(match[1]) > 1;
+        return match !== null && Number(match[1]) >= low && Number(match[1]) <= high;
       },
-      { timeout: config.navigationTimeoutMs }
+      [2, Number.MAX_SAFE_INTEGER],
+      'the chip to re-read more than 1 row after navigating back (the agent-switch bus re-read landing)',
+      (p) => p.evaluate(() => document.querySelector('.ocu-context-chip-text')?.textContent ?? '(chip absent)')
     );
     const shownAfterRaise = await page.evaluate(() => {
       const match = /(\d+) rows/.exec(document.querySelector('.ocu-context-chip-text').textContent);
