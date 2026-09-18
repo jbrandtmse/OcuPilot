@@ -18,6 +18,25 @@ ClassMethod SecretArguments(pDescriptor As %String = "", Output pDeclared As %Bo
     Quit $ListBuild("Value")
 }
 
+/// <p>Declared: <code>%Admin_Operate:USE</code>. Every account <code>%UnitTest</code> runs as holds
+/// it, so it gates nothing here; it exists so a row written through the shipped dispatcher has a
+/// declared half to carry, which no shipped tool this path reaches does.</p>
+ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boolean) As %List
+{
+    Set pResolved = 1
+    Quit $ListBuild($ListBuild("%Admin_Operate", "USE"))
+}
+
+/// <p>Argument-derived: <code>%DB_IRISSYS:READ</code>, and only when the call names
+/// <code>Name</code> -- so one call's row carries the union of both halves and another's carries
+/// the declared half alone.</p>
+ClassMethod ArgumentPairs(pDescriptor As %String = "", pArgs As %DynamicObject, Output pResolved As %Boolean) As %List
+{
+    Set pResolved = 1
+    If '$IsObject(pArgs) || (pArgs.%GetTypeOf("Name") = "unassigned") Quit ""
+    Quit $ListBuild($ListBuild("%DB_IRISSYS", "READ"))
+}
+
 ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
 {
     Quit {"type": "object", "properties": {"Value": {"type": "string"}, "Name": {"type": "string"}}, "required": [], "additionalProperties": false}

@@ -93,7 +93,7 @@ Method TestAToolStepsPreDispatchArgumentsAreDeclarationRedacted()
 Method TestARowThatIsGoneAnswersNoValuesAndNoError()
 {
     Set tKey = ##class(OcuPilot.Test.Ledger).NewTurnKey()
-    Do $$$AssertStatusOK($ClassMethod("OcuPilot.Kernel.Audit.Ledger", "RecordToolCall", tKey, ..#PROBEUSER, "permissions/users", "probe.ledger.read", "target", {}, "", "", "", "ok", "", ..#LIMITS), "one row is recorded")
+    Do $$$AssertStatusOK($ClassMethod("OcuPilot.Kernel.Audit.Ledger", "RecordToolCall", tKey, ..#PROBEUSER, "permissions/users", "probe.ledger.read", "target", {}, "", "", "", "ok", "", ..#LIMITS, 1), "one row is recorded")
     Do $$$AssertStatusOK($ClassMethod(..#STORE, "GuardedIdsForWindow", ..#PROBEUSER, 0, tKey, 10, .tIds, .tProblem), "and its id reads back")
     Do $$$AssertEquals(+$Get(tIds), 1, "as one id")
     If +$Get(tIds) '= 1 Quit

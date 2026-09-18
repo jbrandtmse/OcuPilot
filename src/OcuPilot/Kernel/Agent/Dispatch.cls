@@ -347,7 +347,7 @@ ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %Strin
     ; whatever the call got as far as (Story 4.9). tPairs and tArgumentPairs are undefined on a
     ; refusal that never reached them, which is what $Get guards; a row whose call was refused
     ; before its pairs were read records none, which is the truth about that call.
-    Do ..RecordLedger(pKey, pUser, pRoute, pName, pTarget, $Get(tInput), $Get(tPairs), $Get(tArgumentPairs), $Get(tSecretNames), tIsError, pContent, pLimitsClass)
+    Do ..RecordLedger(pKey, pUser, pRoute, pName, pTarget, $Get(tInput), $Get(tPairs), $Get(tArgumentPairs), $Get(tSecretNames), tIsError, pContent, pLimitsClass, $Get(tSecretDeclared))
     Quit tIsError
 }
 
@@ -357,7 +357,10 @@ ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %Strin
 /// <class>OcuPilot.Kernel.Agent.Loop</class> reads them off a result block.</p>
 /// <p><b><code>Do</code>-and-log, never propagated</b> (AD-15): the ledger never fails a turn, and
 /// the writer logs its own failure.</p>
-ClassMethod RecordLedger(pKey As %String, pUser As %String, pRoute As %String, pName As %String, pTarget As %String, pInput As %DynamicAbstractObject, pPairs As %List, pArgumentPairs As %List, pSecretNames As %List, pIsError As %Boolean, pContent As %String, pLimitsClass As %String) [ Private ]
+/// <p><var>pClassified</var> is <method>AnswerOne</method>'s <code>$Get</code> of the registry's own
+/// <code>pDeclared</code> output, undefined -- and so 0 -- on the branches where the wire name
+/// resolved no tool. The ledger withholds such a row's arguments whole.</p>
+ClassMethod RecordLedger(pKey As %String, pUser As %String, pRoute As %String, pName As %String, pTarget As %String, pInput As %DynamicAbstractObject, pPairs As %List, pArgumentPairs As %List, pSecretNames As %List, pIsError As %Boolean, pContent As %String, pLimitsClass As %String, pClassified As %Boolean = 0) [ Private ]
 {
     Try {
         Set tCode = ""
@@ -368,7 +371,7 @@ ClassMethod RecordLedger(pKey As %String, pUser As %String, pRoute As %String, p
                 Set tCode = ""
             }
         }
-        Do $ClassMethod(..LedgerClass(), "RecordToolCall", pKey, pUser, pRoute, pName, pTarget, pInput, pPairs, pArgumentPairs, pSecretNames, $Select(pIsError: "error", 1: "ok"), tCode, pLimitsClass)
+        Do $ClassMethod(..LedgerClass(), "RecordToolCall", pKey, pUser, pRoute, pName, pTarget, pInput, pPairs, pArgumentPairs, pSecretNames, $Select(pIsError: "error", 1: "ok"), tCode, pLimitsClass, pClassified)
     } Catch ex {
         Do ..LogFault("turn " _ pKey _ ": a tool call could not be recorded in the agent ledger", ex.AsStatus(), ##class(OcuPilot.Api.Error).#LEDGERUNAVAILABLE)
     }
@@ -394,13 +397,16 @@ ClassMethod RecordLedger(pKey As %String, pUser As %String, pRoute As %String, p
 /// come back so the caller can record the call's ledger row at the point its outcome is known
 /// (Story 4.9): a client-fulfilled call settles in <class>OcuPilot.Kernel.Agent.Loop</class>, not
 /// here, so this method records nothing itself. Each is whatever the ordered chain above got as far
-/// as reading.</p>
-ClassMethod ResolveClientCall(pUser As %String, pBlock As %DynamicObject, pLimitsClass As %String, Output pPending As %Boolean, Output pToolName As %String, Output pRoute As %String, Output pEntityId As %String, Output pTarget As %String, Output pArguments As %String, Output pArgumentsTruncated As %Boolean, Output pIsError As %Boolean, Output pContent As %String, Output pReason As %String, Output pFailedPair As %String, pKey As %String = "", Output pInput As %DynamicAbstractObject, Output pDeclaredPairs As %List, Output pCallPairs As %List, Output pSecretNames As %List) As %Status
+/// as reading. <var>pSecretDeclared</var> is 1 only when the resolved tool answered the
+/// secret-argument question; it is 0 for a wire name that resolved no tool, and the ledger withholds
+/// such a row's arguments whole rather than storing a blob the name pattern alone has seen.</p>
+ClassMethod ResolveClientCall(pUser As %String, pBlock As %DynamicObject, pLimitsClass As %String, Output pPending As %Boolean, Output pToolName As %String, Output pRoute As %String, Output pEntityId As %String, Output pTarget As %String, Output pArguments As %String, Output pArgumentsTruncated As %Boolean, Output pIsError As %Boolean, Output pContent As %String, Output pReason As %String, Output pFailedPair As %String, pKey As %String = "", Output pInput As %DynamicAbstractObject, Output pDeclaredPairs As %List, Output pCallPairs As %List, Output pSecretNames As %List, Output pSecretDeclared As %Boolean) As %Status
 {
     Set pInput = ""
     Set pDeclaredPairs = ""
     Set pCallPairs = ""
     Set pSecretNames = ""
+    Set pSecretDeclared = 0
     Set tUnavailable = ##class(OcuPilot.Api.Error).#TOOLUNAVAILABLE
     Set pPending = 0
     Set pToolName = ""
@@ -439,7 +445,7 @@ ClassMethod ResolveClientCall(pUser As %String, pBlock As %DynamicObject, pLimit
             Quit
         }
         Set pToolName = tTool.%Get("name")
-        Set pSecretNames = $ClassMethod(tRegistry, "SecretArguments", tTool, .tSecretDeclared)
+        Set pSecretNames = $ClassMethod(tRegistry, "SecretArguments", tTool, .pSecretDeclared)
         ; Layer 1 over the argument summary, for the same reason AnswerOne re-derives it here.
         Set pArguments = ..StepArguments(tInput, pSecretNames, pLimitsClass, .pArgumentsTruncated)
 

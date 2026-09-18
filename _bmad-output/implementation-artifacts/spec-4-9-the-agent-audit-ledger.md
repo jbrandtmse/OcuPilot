@@ -4,7 +4,7 @@ type: 'feature'
 created: '2026-09-18'
 status: 'done'
 review_loop_iteration: 0
-baseline_revision: 'c63e673247ea834ef6a3ccf5752fd9a7544171b2'
+baseline_revision: 'f013a44fa2a8cdf00dff4404fe374a9ab43f9401'
 followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
@@ -67,6 +67,17 @@ deferred:
       Turn.cls uses ..Cap(pContextRoute, 512, .tRouteCut) and never reads tRouteCut.
     location: >-
       src/OcuPilot/Kernel/State/Ledger.cls, src/OcuPilot/Kernel/State/Turn.cls
+    severity: low
+  - summary: >-
+      `Test/Ledger.cls` is 778 lines against the ~500-line guidance in
+      `.claude/rules/objectscript-testing.md`; it was already 641 before this rework added three
+      methods.
+    evidence: |-
+      wc -l src/OcuPilot/Test/Ledger.cls = 778. Splitting it is a mechanical move of whole methods
+      into a sibling class, larger than either rework item, and every method shares OnAfterOneTest's
+      probe-row assertions.
+    location: >-
+      src/OcuPilot/Test/Ledger.cls
     severity: low
   - summary: >-
       An over-long `RequiredPairs` fails the whole row's write rather than losing a pair; nothing
@@ -521,6 +532,9 @@ Three matrix rows the ACs do not name carry their own pinning test, added at the
 | A row gone before the view reads it | `LedgerStep.TestARowThatIsGoneAnswersNoValuesAndNoError` | remove the existence branch from `State.Ledger.GuardedRow` -> the read answers an error and the whole view is 503 (run 449) |
 | Self read, newest first | `Ledger.TestTheRowCapStoresNoMoreAndCountsTheRest` | `ORDER BY LoggedAt DESC, Seq DESC` -> `ASC` in `GuardedIdsForWindow` -> the oldest rows survive the cap (run 450) |
 | The turn row's own screen-context route | `LedgerWire.TestATurnWritesOneProviderRowAndOneToolRow` | pass `""` in place of `Loop.ContextRoute`'s answer at `Job.Run`'s `GuardedBegin` -> the column reads `""` for every real turn while the ledger rows stay right (run 451) |
+| A call nothing classified withholds its arguments | `Ledger.TestAnUnclassifiedCallWithholdsItsArgumentsWhole` | drop the `pClassified` branch from `Audit.Ledger.RecordToolCall` so it always redacts by declaration -> the withheld row stores the model's own argument object and its undeclared `Value` reads in clear (run 500; the next row's method reddens with it) |
+| The withheld row's wiring at the unresolved-name branch | `Ledger.TestACallWhoseWireNameResolvedNoToolWithholdsItsArguments`, through `Test.LedgerDispatchProbe` | pass `1` in place of `$Get(tSecretDeclared)` at `Dispatch.AnswerOne`'s common exit -> that one method reddens and the value is stored in clear (run 501) |
+| AC2's `requiredPairs` on the instance-fulfilled path | `Ledger.TestARowsRequiredPairsComeFromTheDispatchersOwnReads`, through `Test.LedgerTool.Probe`'s declared `%Admin_Operate:USE` and argument-derived `%DB_IRISSYS:READ` | replace `$Get(tPairs), $Get(tArgumentPairs)` with `"", ""` at `Dispatch.AnswerOne`'s common exit -> both legs record no requirement (run 502) |
 
 Each mutation is applied, observed red, reverted, and the tree confirmed byte-identical
 (`git status --short` and `git diff --stat` unchanged) before the next.
@@ -618,6 +632,57 @@ Each mutation is applied, observed red, reverted, and the tree confirmed byte-id
     `mutation:` rows - corrected above
   - `[low]` `[defer]` The window bound and its default are derived in three places - DW-1132
 
+## Rework iteration 1 - open items
+
+Re-opened for DW-1130 and DW-1131 only. Nothing else in this spec is re-opened, and no earlier
+finding is re-argued here.
+
+**Item 1 - DW-1130. A row whose call carried no readable secret-argument classification withholds
+its arguments.** Four writers reach `Kernel.Audit.Ledger.RecordToolCall`: `Dispatch.AnswerOne`'s
+common exit, `Loop.RecordClientRow` (from `Dispatch.ResolveClientCall`), and `Loop.RecordRefusedRow`
+at its two sites. On the paths where the wire name never resolved to a tool, the declared-secret list
+is `""` because there is no tool to ask - indistinguishable from a tool that declared none - so the
+model-authored argument blob was stored with the name-pattern backstop as its only layer, in a table
+with no retention sweep, on a row whose empty `RequiredPairs` releases it to any `OcuPilotAdmin:USE`
+holder.
+
+Fail closed. `RecordToolCall` takes `pClassified`, the writer's answer to "was a classification
+read"; when it is 0 the row's `Arguments` stores `Kernel.Audit.Log.#REDACTED` whole and
+`ArgumentsTruncated` 0, and `RedactArguments` is never called, so no caller-supplied value reaches
+the column. The chosen shape is the **whole-blob redaction mark**, which a reader tells apart from
+both of the other two states and which adds no literal - `[redacted]` already exists on `Log` and
+already appears in this column for a redacted field:
+
+| `arguments` reads | means |
+|-------------------|-------|
+| `""` | no arguments were sent, or the input was not an object |
+| `[redacted]` | arguments were sent and were withheld: nothing classified them |
+| `{...}` | arguments recorded, per-field redaction applied |
+
+One implementation in `RecordToolCall` is what makes the four writers consistent. `pClassified`
+defaults to 0, so a writer that does not answer the question fails closed. Each writer's source for
+it is the `pDeclared` output the registry already answers: `AnswerOne` passes `$Get(tSecretDeclared)`
+(undefined on both unresolved branches); `ResolveClientCall` answers it as a new
+`pSecretDeclared` output that `RecordClientRow` carries; `RecordRefusedRow` reads it from its own
+`pTool` argument, which is `""` on an unresolved wire name.
+
+Out of scope, stated so it is not read as an oversight: the tool **step**'s argument string
+(`State.Step.Arguments`, `Dispatch.StepArguments`) keeps the name pattern alone on an unresolved
+call. DW-1130 is about the permanently-retained ledger row; a step dies with its turn's retention
+window.
+
+**Item 2 - DW-1131. AC2's `requiredPairs` is pinned on the instance-fulfilled path.** Replacing
+`$Get(tPairs), $Get(tArgumentPairs)` with `"", ""` at `Dispatch.AnswerOne`'s common exit reddened
+nothing, because `shell.instance.read` - the only tool the wire test reaches through that exit -
+requires no pair, so its empty `requiredPairs` was truthful. The fix is on the test side, the way
+DW-1131's own evidence names it: `Test.LedgerTool.Probe` gains a declared pair
+(`%Admin_Operate:USE`, from `PrivilegePairs`) and an argument-derived one (`%DB_IRISSYS:READ`, from
+`ArgumentPairs`, present only when the call names `Name`), and a new `Test.Ledger` method drives it
+through `Test.LedgerDispatchProbe.Answer` - the shipped `AnswerOne`, whose common exit is the
+mutation site - in two legs, asserting both halves on the row for the call that names `Name` and the
+declared half alone for the call that does not. The refusal rows still record no pair: nothing read
+them, which `RecordRefusedRow` says and its two tests assert.
+
 ## Auto Run Result
 
 Status: done
@@ -695,3 +760,41 @@ cross-turn bound until Story 14.4 (534 rows accumulated on the throwaway during 
 an empty `RequiredPairs` is held by every reader, so `llm` and refused rows are gated only by
 `OcuPilotAdmin:USE`; `SecretArguments` on two abstract bases means a future subclass inherits
 "declares none".
+
+### Rework iteration 1 - DW-1130 and DW-1131
+
+Status: done
+Blocking condition: none
+
+**What this pass changed.** `Audit.Ledger.RecordToolCall` takes `pClassified`, defaulting to 0, and
+withholds the model's arguments whole when it is 0 - `Arguments` stores `Audit.Log.#REDACTED` when an
+argument object was sent and `""` when none was, `ArgumentsTruncated` reads 0, and `RedactArguments`
+never runs, so no caller-supplied value reaches the column. All four writers thread it from the
+`pDeclared` the registry already answers: `Dispatch.AnswerOne`'s common exit passes
+`$Get(tSecretDeclared)`, undefined and so 0 on both branches where the wire name resolved no tool;
+`Dispatch.ResolveClientCall` answers a new `pSecretDeclared` output that `Loop.RecordClientRow`
+carries at all four of its sites; `Loop.RecordRefusedRow` derives it from its own `pTool` at both
+sites. The default is what makes a fifth writer fail closed. For DW-1131, `Test.LedgerTool.Probe`
+gained a declared pair and an argument-derived one, and `Test.Ledger` gained three methods.
+
+**Verified.** `check-objectscript` 0 problems over 390 files; `test_check_objectscript` 125 OK;
+`lint-docs` 0 issues in 72 files and `check-prose` 0 problems. Compiled into `ocupilot-ci`
+(`LoadDir "ck"`, 0 errors) before every run. Seven classes through
+`ci-runner.mjs --container ocupilot-ci`, one invocation, runs 525-531: 77 tests, 0 failed, 0 probe
+leftovers, 0 overlaps - `Ledger` 18 (15 before this pass), `LedgerStep` 2, `LedgerWire` 4,
+`TurnStore` 11, `ToolDispatch` 17, `TurnLoop` 11, `TurnNavigate` 14. Smoke: executed=19 passed=19
+failed=0 pending=2 skipped=0. No `ui/` file changed, so the client gates were not re-run; the
+18-class figure recorded above is the previous pass's run 397-414 and is left as the record of that
+run.
+
+**Mutations (Rule 19), each applied, observed red, reverted, and the tree confirmed byte-identical.**
+Run 523: `1` in place of `$Get(tSecretDeclared)` at `AnswerOne`'s common exit reddened only
+`TestACallWhoseWireNameResolvedNoToolWithholdsItsArguments`, storing
+`{"Name":"probe","Value":"s3cr3tledgervalue"}` in the `Arguments` column - the hazard itself. Run
+524: `$Get(tPairs), $Get(tArgumentPairs)` to `"", ""` at that same exit reddened only
+`TestARowsRequiredPairsComeFromTheDispatchersOwnReads`, both legs, where before this pass it reddened
+nothing. The store-level leg of item 1 is run 500 in the table above.
+
+**Residual risk.** The tool step's argument string keeps the name pattern alone on a call whose wire
+name resolved no tool; that store is bounded by the turn's retention window, where the ledger row is
+not, and the scope note above says so.

@@ -101,11 +101,27 @@ ClassMethod RecordProviderCall(pTurnKey As %String, pUser As %String, pRoute As 
 /// <p><var>pSecretNames</var> is the tool's own declaration
 /// (<method>OcuPilot.Screen.Tool.Base.SecretArguments</method>); <var>pInput</var> is the model's
 /// raw input, which this method redacts and which no caller redacts for it.</p>
-ClassMethod RecordToolCall(pTurnKey As %String, pUser As %String, pRoute As %String, pName As %String, pTarget As %String, pInput As %DynamicAbstractObject, pDeclaredPairs As %List, pArgumentPairs As %List, pSecretNames As %List, pStatus As %String, pCode As %String, pLimitsClass As %String) As %Status
+/// <p><b><var>pClassified</var> is the caller's answer to "was a declaration read at all", and it
+/// defaults to 0 so a caller who does not answer fails closed.</b> A call whose wire name resolved
+/// no tool has no declaration to read, which is indistinguishable from a tool that declared none, so
+/// the name pattern would be the row's only layer -- the inversion AD-3 forbids, on a row no
+/// retention sweep removes. With <var>pClassified</var> 0 the model's arguments are withheld whole:
+/// <code>arguments</code> stores <method>OcuPilot.Kernel.Audit.Log</method>'s redaction mark,
+/// <code>argumentsTruncated</code> reads 0, and <method>RedactArguments</method> never runs, so no
+/// caller-supplied value reaches the column. A reader tells the three states apart:
+/// <code>""</code> means no arguments were sent, the mark alone means they were sent and withheld,
+/// and an object means they were recorded field by field.</p>
+ClassMethod RecordToolCall(pTurnKey As %String, pUser As %String, pRoute As %String, pName As %String, pTarget As %String, pInput As %DynamicAbstractObject, pDeclaredPairs As %List, pArgumentPairs As %List, pSecretNames As %List, pStatus As %String, pCode As %String, pLimitsClass As %String, pClassified As %Boolean = 0) As %Status
 {
     Set tSC = $$$OK
     Try {
-        Set tArguments = ..RedactArguments(pInput, pSecretNames, +$Parameter(pLimitsClass, "LEDGERROWMAXLENGTH"), .tTruncated, .tRedactedNames)
+        Set tTruncated = 0
+        If pClassified {
+            Set tArguments = ..RedactArguments(pInput, pSecretNames, +$Parameter(pLimitsClass, "LEDGERROWMAXLENGTH"), .tTruncated, .tRedactedNames)
+        } Else {
+            Set tArguments = ""
+            If $IsObject(pInput) && pInput.%IsA("%Library.DynamicObject") Set tArguments = ##class(OcuPilot.Kernel.Audit.Log).#REDACTED
+        }
         Set tPairs = ..PairsToString(pDeclaredPairs _ pArgumentPairs)
         Set tSC = $ClassMethod(..StoreClass(), "GuardedAppend", pTurnKey, pUser, pRoute, $Parameter(..StoreClass(), "KINDTOOL"), pName, "", pTarget, tArguments, tTruncated, pStatus, pCode, 0, 0, tPairs, pLimitsClass, .tSeq, .tStored)
     } Catch ex {

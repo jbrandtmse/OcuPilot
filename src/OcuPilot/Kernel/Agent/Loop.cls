@@ -563,7 +563,7 @@ ClassMethod AnswerClientCall(pKey As %String, pUser As %String, pReadOnly As %Bo
     Set pTurnState = ""
     Set pTurnCode = ""
     Try {
-        Set tSC = $ClassMethod(..DispatchClass(), "ResolveClientCall", pUser, pBlock, pLimitsClass, .tPending, .tToolName, .tRoute, .tEntityId, .tCTarget, .tCArguments, .tCArgsTruncated, .tIsError, .tContent, .tReason, .tFailedPair, pKey, .tCInput, .tCDeclaredPairs, .tCCallPairs, .tCSecretNames)
+        Set tSC = $ClassMethod(..DispatchClass(), "ResolveClientCall", pUser, pBlock, pLimitsClass, .tPending, .tToolName, .tRoute, .tEntityId, .tCTarget, .tCArguments, .tCArgsTruncated, .tIsError, .tContent, .tReason, .tFailedPair, pKey, .tCInput, .tCDeclaredPairs, .tCCallPairs, .tCSecretNames, .tCSecretDeclared)
         If $$$ISERR(tSC) Quit
         Set pToolName = tToolName
 
@@ -582,7 +582,7 @@ ClassMethod AnswerClientCall(pKey As %String, pUser As %String, pReadOnly As %Bo
                 Set tSC = tFinishSC
                 Quit
             }
-            Do ..RecordClientRow(pKey, pUser, pRoute, tToolName, pTarget, tCInput, tCDeclaredPairs, tCCallPairs, tCSecretNames, "error", tRefusedCode, pLimitsClass)
+            Do ..RecordClientRow(pKey, pUser, pRoute, tToolName, pTarget, tCInput, tCDeclaredPairs, tCCallPairs, tCSecretNames, "error", tRefusedCode, pLimitsClass, tCSecretDeclared)
             Set pAnswered = ..ClientResult(pBlock, tIsError, tContent)
             Quit
         }
@@ -609,7 +609,7 @@ ClassMethod AnswerClientCall(pKey As %String, pUser As %String, pReadOnly As %Bo
                 Set tSC = tDroppedSC
                 Quit
             }
-            Do ..RecordClientRow(pKey, pUser, pRoute, tToolName, pTarget, tCInput, tCDeclaredPairs, tCCallPairs, tCSecretNames, "ok", tDroppedCode, pLimitsClass)
+            Do ..RecordClientRow(pKey, pUser, pRoute, tToolName, pTarget, tCInput, tCDeclaredPairs, tCCallPairs, tCSecretNames, "ok", tDroppedCode, pLimitsClass, tCSecretDeclared)
             Set pAnswered = ..ClientResult(pBlock, 0, tDroppedJson)
             Quit
         }
@@ -638,7 +638,7 @@ ClassMethod AnswerClientCall(pKey As %String, pUser As %String, pReadOnly As %Bo
                 Do ##class(OcuPilot.Kernel.State.Nav).GuardedSettle(pKey, tAnnounceSeq, "unavailable", ##class(OcuPilot.Api.Error).#NAVUNAVAILABLE, .tStopClaimed)
                 Set tStopSC = ##class(OcuPilot.Kernel.State.Step).GuardedAppend(pKey, "tool", tToolName, "stopped", "", "", "", pLimitsClass, .tStopSeq, .tStopStored, pTarget, pArguments, , , , pArgumentsTruncated)
                 If $$$ISOK(tStopSC) && tStopStored Set pLastSeq = tStopSeq
-                Do ..RecordClientRow(pKey, pUser, pRoute, tToolName, pTarget, tCInput, tCDeclaredPairs, tCCallPairs, tCSecretNames, "stopped", tBCode, pLimitsClass)
+                Do ..RecordClientRow(pKey, pUser, pRoute, tToolName, pTarget, tCInput, tCDeclaredPairs, tCCallPairs, tCSecretNames, "stopped", tBCode, pLimitsClass, tCSecretDeclared)
                 Set pTurnState = tBState
                 Set pTurnCode = tBCode
                 Quit
@@ -699,7 +699,7 @@ ClassMethod AnswerClientCall(pKey As %String, pUser As %String, pReadOnly As %Bo
         Do $ClassMethod(..DispatchClass(), "SettleClient", tDetail, tOutcome, tOutcomeCode, .tContentJson)
 
         Set pCode = tAnnounceCode
-        Do ..RecordClientRow(pKey, pUser, pRoute, tToolName, pTarget, tCInput, tCDeclaredPairs, tCCallPairs, tCSecretNames, "ok", tAnnounceCode, pLimitsClass)
+        Do ..RecordClientRow(pKey, pUser, pRoute, tToolName, pTarget, tCInput, tCDeclaredPairs, tCCallPairs, tCSecretNames, "ok", tAnnounceCode, pLimitsClass, tCSecretDeclared)
         Set tFinishSC = ##class(OcuPilot.Kernel.State.Step).GuardedFinishTool(pKey, pSeq, tToolName, "ok", "", pLimitsClass, pTarget, pArguments, "", "", "", pArgumentsTruncated)
         If $$$ISERR(tFinishSC) {
             Set tSC = tFinishSC
@@ -763,14 +763,19 @@ ClassMethod RecordProviderRow(pKey As %String, pUser As %String, pRoute As %Stri
 /// whatever the refusal site's own <code>ResolveWire</code> answered, so layer 1 of the redaction
 /// runs for every call whose wire name resolved (AD-3): a pair check that did not happen says
 /// nothing about which arguments are secret, and a name pattern cannot see a value in a field
-/// called <code>Value</code>. A wire name that resolved no tool declared nothing, and such a row's
-/// arguments get the name pattern alone.</p>
+/// called <code>Value</code>. A wire name that resolved no tool classified nothing, and the ledger
+/// withholds such a row's arguments whole rather than storing a blob the name pattern alone has
+/// seen.</p>
 ClassMethod RecordRefusedRow(pKey As %String, pUser As %String, pRoute As %String, pName As %String, pTarget As %String, pInput As %DynamicAbstractObject, pStatus As %String, pCode As %String, pLimitsClass As %String, pTool As %DynamicObject = "") [ Private ]
 {
     Try {
         Set tSecretNames = ""
-        If $IsObject(pTool) Set tSecretNames = $ClassMethod($ClassMethod(..DispatchClass(), "RegistryClass"), "SecretArguments", pTool, .tSecretDeclared)
-        Do $ClassMethod(..LedgerClass(), "RecordToolCall", pKey, pUser, pRoute, pName, pTarget, pInput, "", "", tSecretNames, pStatus, pCode, pLimitsClass)
+        Set tClassified = 0
+        If $IsObject(pTool) {
+            Set tSecretNames = $ClassMethod($ClassMethod(..DispatchClass(), "RegistryClass"), "SecretArguments", pTool, .tSecretDeclared)
+            Set tClassified = ''tSecretDeclared
+        }
+        Do $ClassMethod(..LedgerClass(), "RecordToolCall", pKey, pUser, pRoute, pName, pTarget, pInput, "", "", tSecretNames, pStatus, pCode, pLimitsClass, tClassified)
     } Catch ex {
         Do ..LogFault("turn " _ pKey _ ": a refused tool call could not be recorded in the agent ledger", ex.AsStatus(), ##class(OcuPilot.Api.Error).#LEDGERUNAVAILABLE)
     }
@@ -778,11 +783,13 @@ ClassMethod RecordRefusedRow(pKey As %String, pUser As %String, pRoute As %Strin
 
 /// <p>Record one client-fulfilled tool call at the point its outcome is known (Story 4.9), with the
 /// pairs and the secret-argument declaration
-/// <method>OcuPilot.Kernel.Agent.Dispatch.ResolveClientCall</method> read for it.</p>
-ClassMethod RecordClientRow(pKey As %String, pUser As %String, pRoute As %String, pName As %String, pTarget As %String, pInput As %DynamicAbstractObject, pDeclaredPairs As %List, pCallPairs As %List, pSecretNames As %List, pStatus As %String, pCode As %String, pLimitsClass As %String) [ Private ]
+/// <method>OcuPilot.Kernel.Agent.Dispatch.ResolveClientCall</method> read for it.
+/// <var>pClassified</var> is that resolver's own <code>pSecretDeclared</code> answer, 0 for a wire
+/// name it resolved no tool for; the ledger then withholds the row's arguments whole.</p>
+ClassMethod RecordClientRow(pKey As %String, pUser As %String, pRoute As %String, pName As %String, pTarget As %String, pInput As %DynamicAbstractObject, pDeclaredPairs As %List, pCallPairs As %List, pSecretNames As %List, pStatus As %String, pCode As %String, pLimitsClass As %String, pClassified As %Boolean = 0) [ Private ]
 {
     Try {
-        Do $ClassMethod(..LedgerClass(), "RecordToolCall", pKey, pUser, pRoute, pName, pTarget, pInput, pDeclaredPairs, pCallPairs, pSecretNames, pStatus, pCode, pLimitsClass)
+        Do $ClassMethod(..LedgerClass(), "RecordToolCall", pKey, pUser, pRoute, pName, pTarget, pInput, pDeclaredPairs, pCallPairs, pSecretNames, pStatus, pCode, pLimitsClass, pClassified)
     } Catch ex {
         Do ..LogFault("turn " _ pKey _ ": a client tool call could not be recorded in the agent ledger", ex.AsStatus(), ##class(OcuPilot.Api.Error).#LEDGERUNAVAILABLE)
     }
