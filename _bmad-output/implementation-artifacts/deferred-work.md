@@ -3518,3 +3518,28 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: mount() runs 'if (options.settleSuggested ?? options.area === home) await suggested.load()' and the panel's constructor calls syncSuggested, which loads again: every mountOnHome case issues two reads of logs/errors/dates. The bounding AC is pinned only by the case that starts at namespace '' (where the pre-load is a no-op), so a later story reading a call count off a mountOnHome case would be measuring the harness.
 - 2026-09-18T19:50:51Z status=wontfix-accepted owner=burndown by=cr note=reopen_if=a later story asserts an HTTP call count from a mountOnHome case; the fix is to drop the pre-settle and await the store's own notification in each case
 - 2026-09-18T19:55:13Z status=wontfix-accepted owner=burndown by=adjudication note=lead confirms: the double load is a test-harness artefact, and the reopen probe names what would make it matter
+
+### DW-1165: Definitions and Switches still answer 400 for a server-side read or decode fault, because neither asks ReadRequestBody for its stage
+- source: spec-4-12-epic-4-burn-down.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: DW-447's fix stops the vendor text reaching the wire but leaves the status wrong: Api/Turn.cls:41-47 renders an internal error for the same fault, while these two render 400. Threading .tStage through twelve call sites is what the story's intent forbade. Probe: make ReadRequestBody fault on a read rather than on a parse and compare the two routes' statuses
+- 2026-09-18T22:16:24Z status=routed owner=burndown by=harvest note=lead harvest of the 4.12 deferred list
+
+### DW-1166: The bundle gate's slack went from half a kilobyte to about forty, with no stated policy for when it is re-based
+- source: spec-4-12-epic-4-burn-down.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: DW-1153 raised maximumWarning from 780 kB to 820 kB against a measured 779.46 kB. Story 4.6's stated formula (round the measured total up to the next 20 kB) is degenerate when the measurement is already at the gate, which is how 780 was reached. A policy would say who may raise it and on what evidence. Probe: read angular.json's budget against the last three stories' measured totals
+- 2026-09-18T22:16:25Z status=decision-pending owner=burndown by=harvest note=the number itself was the lead's call; the policy is the owner's
+
+### DW-1167: requireFreeSlot guards only the navigation browser spec, while four other specs arm a turn probe and can be blocked the same way
+- source: spec-4-12-epic-4-burn-down.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: DW-1092's fix gives navigate.browser-spec.mjs a bounded wait for a free turn slot that names the global, the pid and TURN.BUSY. turn, reply, context-chip and suggested-view arm a probe and would fail opaquely in the same situation. Probe: hold the slot and run each spec
+- 2026-09-18T22:16:25Z status=routed owner=burndown by=harvest note=lead harvest of the 4.12 deferred list
+
+### DW-1168: objectscript-testing.md's redeploy path says dist/ocupilot where the build writes dist/ocupilot-ui
+- source: spec-4-12-epic-4-burn-down.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: The rule file an agent reads before running a browser spec names a directory that does not exist, so a copy taken from it deploys nothing and the spec reads the old bundle -- the exact failure the rule exists to prevent. Probe: follow the rule's docker cp line verbatim
+- 2026-09-18T22:16:25Z status=routed owner=burndown by=harvest note=an agent-instruction file, so the lead applies the correction rather than a story
+
+### DW-1169: The cap-follows-agent-switch browser leg timed out in CI with no statement of which wait it was, and it is green locally
+- source: CI run 35389327505 (story 4.10's head) | severity: med | fix-risk: low | footprint: in-epic
+- evidence: CI's instance job failed on context-chip.browser-spec.mjs:404 with 'Waiting failed: 30000ms exceeded' and nothing naming the condition; the full suite is 127/127 locally and has been for four stories. The leg drives sign-in, an in-app navigation to Switches, a cap edit, Save, and a navigation back, on six bare waitForFunction calls whose failure message is the library's. Probe: run the spec on a slower host, or lower config.navigationTimeoutMs
+- 2026-09-18T22:17:16Z status=routed owner=burndown by=lead note=chartered into Story 4.12 mid-story as its fifteenth item: every wait in that leg must say what it wanted, and the leg must be deterministic or bounded with a named failure
