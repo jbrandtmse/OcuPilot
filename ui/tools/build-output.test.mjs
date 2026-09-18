@@ -142,11 +142,19 @@ test('the npm licence notices ship inside the served root, byte-equal to the ext
 // rather than being fetched from a CDN. Mutation (Rule 19): remove one package from
 // `ui/package.json`'s `dependencies` (or otherwise keep the build from bundling it) -> the
 // build's own `extractLicenses` step stops naming it and this goes red.
+// The match is the extractor's own `Package: <name>` heading line, anchored. A bare substring
+// search cannot fail for `marked`: the Apache-2.0 text `dompurify` ships (it is dual-licensed
+// MPL-2.0 OR Apache-2.0) contains the phrase "conspicuously marked" twice, so `includes('marked')`
+// stays green with `marked` unbundled -- the mutation this test records would not have reddened it.
 test('the served licence notices name all four vendored reply-rendering packages (AC2)', () => {
   assertBuildSucceeded();
-  const notices = readFileSync(join(distBrowserDir, '3rdpartylicenses.txt'), 'utf8');
+  const noticesPath = join(distBrowserDir, '3rdpartylicenses.txt');
+  const notices = readFileSync(noticesPath, 'utf8');
   for (const name of ['marked', 'dompurify', 'lowlight', 'highlight.js']) {
-    assert.ok(notices.includes(name), `expected ${join(distBrowserDir, '3rdpartylicenses.txt')} to name "${name}"`);
+    assert.ok(
+      notices.split(/\r?\n/).includes(`Package: ${name}`),
+      `expected ${noticesPath} to carry the line "Package: ${name}"`
+    );
   }
 });
 
@@ -167,8 +175,21 @@ test('DW-371: the emitted initial total (JS + CSS) stays at or below angular.jso
   // node_modules/@angular/build/src/utils/bundle-calculator.js).
   const maximumWarningBytes = Number(String(initialBudget.maximumWarning).replace(/kB$/, '')) * 1000;
 
-  const files = readdirSync(distBrowserDir).filter((f) => /^(main|styles)-[0-9A-Za-z]{6,}\.(js|css)$/.test(f));
+  const emitted = readdirSync(distBrowserDir).filter((f) => /\.(js|css)$/.test(f));
+  const files = emitted.filter((f) => /^(main|styles)-[0-9A-Za-z]{6,}\.(js|css)$/.test(f));
   assert.ok(files.length >= 2, `expected at least one hashed main-*.js and one styles-*.css, got: ${JSON.stringify(files)}`);
+  // The measured set must BE the emitted set. The app has no lazy route today, so `main-*.js` +
+  // `styles-*.css` is the whole `type: "initial"` total -- but the moment the builder emits a
+  // further initial chunk under any other name (`polyfills-*.js`, a shared `chunk-*.js`), an
+  // unguarded name filter would silently undercount and stay green while the real budget was
+  // exceeded. This reddens instead, naming the file to classify.
+  const unmeasured = emitted.filter((f) => !files.includes(f));
+  assert.deepEqual(
+    unmeasured,
+    [],
+    `the build emitted JS/CSS this gate does not measure: ${JSON.stringify(unmeasured)} -- ` +
+      'classify each as initial (add it to the measured set) or lazy (exclude it deliberately)'
+  );
   let totalBytes = 0;
   for (const file of files) totalBytes += readFileSync(join(distBrowserDir, file)).length;
 

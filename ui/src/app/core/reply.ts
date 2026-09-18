@@ -110,8 +110,10 @@ const HLJS_CLASS_RE = /^hljs-[a-z][a-z0-9_-]*$/;
 const LANGUAGE_CLASSES: ReadonlySet<string> = new Set(REGISTERED_LANGUAGES.map((lang) => `language-${lang}`));
 
 /** The closed class allow-list: `ocu-reply-*`, the `hljs-*` names the registered grammars emit,
- * and `language-<name>` for exactly the four registered names. Anything else is dropped. */
-function isAllowedClass(name: string): boolean {
+ * and `language-<name>` for exactly the four registered names. Anything else is dropped.
+ * Exported so the filter itself can be pinned: no reachable input produces a class it rejects,
+ * so a test that only reads the classes a parse emitted cannot tell the filter from a no-op. */
+export function isAllowedClass(name: string): boolean {
   return OCU_CLASS_RE.test(name) || HLJS_CLASS_RE.test(name) || LANGUAGE_CLASSES.has(name);
 }
 
@@ -133,6 +135,16 @@ function textNode(value: string): ReplyNode {
 }
 
 const BREAK_NODE: ReplyNode = { kind: 'break' };
+
+/**
+ * A paragraph carrying a construct's own literal source text. It keeps its newlines and runs of
+ * spaces: the source of a GFM table, a raw-HTML block or a thematic break is multi-line and
+ * carries no `br`, so without `ocu-reply-source`'s `white-space: pre-wrap` the fall-through
+ * "renders as its literal source" rule would collapse it into one run-on line.
+ */
+function sourceNode(source: string): ReplyNode {
+  return elementNode('p', ['ocu-reply-source'], [textNode(source)]);
+}
 
 /** Resolves `href` against `origin`; `null` for anything the URL parser refuses. */
 function resolveUrl(href: string, origin: string): URL | null {
@@ -204,15 +216,18 @@ function linkNodes(token: Tokens.Link, origin: string): readonly ReplyNode[] {
     // the label renders, as if the link markup were never there (I/O matrix, Hostile scheme row).
     return label;
   }
-  // The host caption is an external-link warning (AC4: "given a reply holding an external
-  // link... the full host follows the link text as caption") -- a same-origin link needs no such
-  // warning, and would otherwise repeat the instance's own hostname next to every in-app link.
+  // The host caption is an external-link warning (AC4: "the full host follows the link text as
+  // caption") -- a same-origin link needs no such warning, and would otherwise repeat the
+  // instance's own hostname next to every in-app link.
   if (isSameOriginUrl(token.href, origin)) {
     return [elementNode('a', [], label, { href: token.href })];
   }
   const host = resolveUrl(token.href, origin)?.hostname ?? '';
+  // The caption is a SIBLING of the anchor, never a child: DESIGN.md `message-agent` puts the
+  // host "after the link text", and a caption inside the `a` would join the link's accessible
+  // name ("docsdocs.example.com") and sit inside its activation area.
   const caption = elementNode('span', ['ocu-reply-link-caption'], [textNode(host)]);
-  return [elementNode('a', [], [...label, caption], { href: token.href })];
+  return [elementNode('a', [], label, { href: token.href }), caption];
 }
 
 function imageNode(token: Tokens.Image, origin: string): ReplyNode {
@@ -232,6 +247,11 @@ function listItemChildren(token: Token, origin: string): readonly ReplyNode[] {
     if (withTokens.tokens !== undefined) return inlineTokensToNodes(withTokens.tokens, origin);
     return [textNode(withTokens.text)];
   }
+  // A GFM task list's `checkbox` token renders as its own literal marker, inline beside the item
+  // text. Falling through to `blockTokenToNodes` would wrap it in a `p`, putting `[ ]` on a
+  // margin-bearing line of its own above every task (no checkbox input: an agent's reply is not
+  // an interactive control, and `input` is outside `REPLY_TAGS`).
+  if (token.type === 'checkbox') return [textNode(rawTextOf(token))];
   return blockTokenToNodes(token, origin);
 }
 
@@ -260,12 +280,12 @@ function blockTokenToNodes(token: Token, origin: string): readonly ReplyNode[] {
     case 'html':
       // A raw-HTML block is text, never markup: one paragraph carrying its literal source
       // (I/O matrix, Raw HTML row).
-      return [elementNode('p', [], [textNode((token as Tokens.HTML).raw)])];
+      return [sourceNode((token as Tokens.HTML).raw)];
     default:
       // Nothing is silently dropped: a block construct this module does not model (a GFM table,
       // a thematic break, a link-reference definition) renders as its own literal source text,
       // wrapped the same way a raw-HTML block is (D7).
-      return [elementNode('p', [], [textNode(rawTextOf(token))])];
+      return [sourceNode(rawTextOf(token))];
   }
 }
 
@@ -315,10 +335,21 @@ function codeBlockNode(token: Tokens.Code): ReplyNode {
  * Parses `text` into a plain-data node tree. A fresh `Lexer` is created for every call: the
  * class accumulates tokens across calls on the same instance, and reusing one would leak an
  * earlier reply's tokens into a later parse.
+ *
+ * **Never throws.** Both `marked`'s lexer and this module's own mapping recurse once per nesting
+ * level, so a deeply nested reply exhausts the stack: 1,500 nested `>` (3,001 characters) and
+ * 3,000 nested `*` (6,001 characters) both raise `RangeError` -- far inside the reply text cap
+ * the server enforces (AD-24), and the caller builds DOM inside an `effect()` where a throw
+ * would leave the reply blank. A parse that fails renders the whole reply as its own literal
+ * source text instead, which is the same rule an unmodelled token already follows.
  */
 export function parseReply(text: string, options: ParseReplyOptions): readonly ReplyNode[] {
   if (text === '') return [];
-  const lexer = new Lexer({ gfm: true, breaks: true });
-  const tokens = lexer.lex(text);
-  return blockTokensToNodes(tokens, options.origin);
+  try {
+    const lexer = new Lexer({ gfm: true, breaks: true });
+    const tokens = lexer.lex(text);
+    return blockTokensToNodes(tokens, options.origin);
+  } catch {
+    return [sourceNode(text)];
+  }
 }

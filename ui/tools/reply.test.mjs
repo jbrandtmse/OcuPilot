@@ -18,13 +18,16 @@ import { dirname, join } from 'node:path';
 //   "a remote image renders as text" both go red, the second because an `img` node appears.
 // - drop the `isAllowedLinkUrl` check in `linkNodes` -> "a hostile scheme renders as text" goes
 //   red, producing an `a` node for a `javascript:` href.
-// - stop filtering classes through `isAllowedClass` -> "a class name outside the allow-list is
-//   dropped" goes red.
+// - make `isAllowedClass` return `true` unconditionally -> "isAllowedClass admits exactly the
+//   three allow-listed shapes" goes red. (Deleting `filterClasses` is NOT a falsifying mutation:
+//   no reachable input produces a class the filter rejects, so the filter is pinned directly.)
+// - drop the try/catch in `parseReply` -> "a pathologically nested reply renders as its own
+//   literal source rather than throwing" goes red with a RangeError.
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const corePath = (name) => join(uiRoot, 'src', 'app', 'core', name);
 
-const { parseReply, REPLY_TAGS } = await import(corePath('reply.ts'));
+const { parseReply, REPLY_TAGS, isAllowedClass } = await import(corePath('reply.ts'));
 
 const ORIGIN = 'https://ocupilot.example';
 
@@ -147,15 +150,25 @@ test('a same-origin image renders as an img node with its src and alt', () => {
   assert.equal(img.alt, 'logo');
 });
 
-test('an external link carries its href and a caption of its bare host', () => {
+// DESIGN.md `message-agent` puts the host "after the link text", and the I/O matrix's External
+// link row reads "`a` with that `href`, text `docs` ... FOLLOWED BY a caption `span`" -- so the
+// caption is the anchor's next sibling, not its child. Nested, it would join the link's
+// accessible name and sit inside its activation area.
+// Mutation (Rule 19): return `[a(label, caption)]` from `linkNodes` instead of `[a(label),
+// caption]` -> the anchor's own text is no longer `docs` and this goes red.
+test('an external link carries its href, and its bare host follows it as a sibling caption', () => {
   const nodes = parse('[docs](https://docs.example.com/p)');
+  const paragraph = nodes[0];
+  assert.equal(paragraph.tag, 'p');
   const link = findFirst(nodes, (n) => n.tag === 'a');
   assert.ok(link, 'expected an a node');
   assert.equal(link.href, 'https://docs.example.com/p');
-  const caption = findFirst(link.children, (n) => n.classes.includes('ocu-reply-link-caption'));
-  assert.ok(caption, 'expected a caption span');
-  assert.equal(textOf(caption.children), 'docs.example.com');
-  assert.equal(textOf(link.children), 'docsdocs.example.com');
+  assert.equal(textOf(link.children), 'docs', 'the anchor carries only its own label');
+  assert.equal(findFirst(link.children, (n) => n.classes.includes('ocu-reply-link-caption')), null, 'the caption is not inside the anchor');
+  const linkIndex = paragraph.children.indexOf(link);
+  const caption = paragraph.children[linkIndex + 1];
+  assert.ok(caption?.classes?.includes('ocu-reply-link-caption'), 'expected the caption span immediately after the anchor');
+  assert.equal(textOf([caption]), 'docs.example.com');
 });
 
 // The host caption is an external-link warning (AC4); a same-origin link needs none.
@@ -166,8 +179,8 @@ test('a same-origin link carries no host caption', () => {
   const link = findFirst(nodes, (n) => n.tag === 'a');
   assert.ok(link, 'expected an a node');
   assert.equal(link.href, '/ocupilot/namespaces');
-  assert.equal(findFirst(link.children, (n) => n.classes.includes('ocu-reply-link-caption')), null, 'expected no caption span');
-  assert.equal(textOf(link.children), 'namespaces');
+  assert.equal(findFirst(nodes, (n) => n.classes.includes('ocu-reply-link-caption')), null, 'expected no caption span anywhere');
+  assert.equal(textOf(nodes), 'namespaces');
 });
 
 test('a hostile scheme renders as text -- no a node, only the link label', () => {
@@ -299,14 +312,44 @@ test('a whitespace-only reply produces no nodes', () => {
   assert.deepEqual(parse('   \n\n  '), []);
 });
 
-test('a class name outside the allow-list is dropped', () => {
-  const nodes = parse('```sql\nSELECT 1\n```');
+// Every class a parse emits comes from one of three sources this module controls -- its own
+// `ocu-reply-*` literals, `language-<one of the four>`, and the `hljs-*` names the four
+// registered grammars emit -- so NO reachable input produces a class the filter rejects. Reading
+// back the classes a parse emitted therefore cannot tell `isAllowedClass` from a no-op: deleting
+// `filterClasses` left the whole suite green. The filter is pinned directly instead.
+// Mutation (Rule 19): make `isAllowedClass` return `true` unconditionally -> the rejection half
+// below goes red on every name.
+test('isAllowedClass admits exactly the three allow-listed shapes and rejects everything else', () => {
+  for (const name of ['ocu-reply-pre', 'ocu-reply-code-inline', 'ocu-reply-heading-2', 'ocu-reply-source']) {
+    assert.ok(isAllowedClass(name), `expected the allow-list to admit ${name}`);
+  }
+  // highlight.js's own scope vocabulary uses `_` (`hljs-built_in`), which `_components.scss` styles.
+  for (const name of ['hljs-keyword', 'hljs-comment', 'hljs-built_in', 'hljs-meta-string']) {
+    assert.ok(isAllowedClass(name), `expected the allow-list to admit ${name}`);
+  }
+  for (const name of ['language-sql', 'language-json', 'language-xml', 'language-bash']) {
+    assert.ok(isAllowedClass(name), `expected the allow-list to admit ${name}`);
+  }
+  for (const name of [
+    'language-javascript', // a grammar this release does not vendor
+    'hljs', // highlight.js's own root class, which this module never wants
+    'built_in', // an un-prefixed scope name
+    'ocu-panel-message-agent', // a real OcuPilot class from outside the reply
+    'ocu-reply-', // the prefix with no name after it
+    'Ocu-Reply-Pre', // the allow-list is case-sensitive
+    'evil',
+    '',
+  ]) {
+    assert.ok(!isAllowedClass(name), `expected the allow-list to reject ${JSON.stringify(name)}`);
+  }
+});
+
+test('every class a real parse emits is one the allow-list admits', () => {
+  const nodes = parse('```sql\nSELECT UPPER(name) FROM t -- c\n```');
   const classes = collectClasses(nodes);
+  assert.ok(classes.length > 0, 'expected the fixture to emit at least one class');
   for (const name of classes) {
-    assert.ok(
-      /^ocu-reply-[a-z0-9-]+$/.test(name) || /^hljs-[a-z0-9-]+$/.test(name) || /^language-(sql|json|xml|bash)$/.test(name),
-      `unexpected class in the allow-list-filtered output: ${name}`
-    );
+    assert.ok(isAllowedClass(name), `unexpected class in the allow-list-filtered output: ${name}`);
   }
 });
 
@@ -367,6 +410,53 @@ test('a deeply nested blockquote parses without crashing, and every level nests 
   assert.equal(textOf(nodes), 'deep text');
   for (const tag of collectTags(nodes)) {
     assert.ok(REPLY_TAGS.includes(tag), `tag "${tag}" is outside REPLY_TAGS at nesting depth ${depth}`);
+  }
+});
+
+// 200 levels is inside the stack; the depth a reply can actually reach is not. Both `marked`'s
+// lexer and this module's mapping recurse once per level, and 1,500 nested `>` is only 3,001
+// characters -- well under the server's reply text cap (AD-24) -- while `shell/reply.ts` builds
+// DOM inside an `effect()`, where a throw leaves the reply blank and the error escapes into
+// change detection. `parseReply` must answer the literal source instead of throwing.
+// Mutation (Rule 19): drop the try/catch in `parseReply` -> both cases below throw RangeError.
+test('a pathologically nested reply renders as its own literal source rather than throwing', () => {
+  for (const src of ['> '.repeat(1500) + 'deep text', '*'.repeat(3000) + 'x' + '*'.repeat(3000)]) {
+    assert.ok(src.length < 65536, 'the fixture stays inside the server\'s reply text cap');
+    const nodes = parse(src);
+    assert.equal(nodes.length, 1, `expected one literal-source paragraph for a ${src.length}-character reply`);
+    assert.equal(nodes[0].tag, 'p');
+    assert.ok(nodes[0].classes.includes('ocu-reply-source'), 'the fallback keeps its own newlines and spacing');
+    assert.equal(textOf(nodes), src, 'nothing is dropped: the whole reply renders as its source');
+  }
+});
+
+// A GFM task list is an everyday agent construct ("- [ ] step one"), and `gfm: true` is on, so
+// marked emits a `checkbox` token as the item's first child. Falling through to the block rule
+// wrapped it in a `p`, putting `[ ]` on a margin-bearing line of its own above the item text.
+// Mutation (Rule 19): remove the `checkbox` case from `listItemChildren` -> the marker becomes a
+// `p` child of the `li` and this goes red.
+test('a GFM task list keeps its marker inline with the item text, not in a paragraph of its own', () => {
+  const nodes = parse('- [ ] todo\n- [x] done');
+  const list = nodes[0];
+  assert.equal(list.tag, 'ul');
+  assert.equal(list.children.length, 2);
+  for (const item of list.children) {
+    assert.equal(item.tag, 'li');
+    assert.equal(findFirst(item.children, (n) => n.tag === 'p'), null, 'the checkbox marker is not its own paragraph');
+  }
+  assert.equal(textOf(nodes), '[ ] todo[x] done');
+});
+
+// The literal-source fall-through is multi-line and carries no `br`, so the rendered text needs
+// preserved whitespace -- `white-space: pre-wrap` on `ocu-reply-source` -- now that the
+// container's own `pre-wrap` is gone. Without the class the table collapses to one run-on line.
+// Mutation (Rule 19): drop the class from `sourceNode` -> both cases below go red.
+test('a construct rendered as literal source is marked so its newlines survive', () => {
+  for (const src of ['| a | b |\n|---|---|\n| 1 | 2 |', '<div>\n  <span>x</span>\n</div>']) {
+    const nodes = parse(src);
+    const para = findFirst(nodes, (n) => n.classes.includes('ocu-reply-source'));
+    assert.ok(para, `expected an ocu-reply-source paragraph for ${JSON.stringify(src)}`);
+    assert.ok(textOf([para]).includes('\n'), 'the literal source keeps its newlines in the text node');
   }
 });
 

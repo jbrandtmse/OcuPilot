@@ -3622,11 +3622,26 @@ app-data-table {
     font-style: italic;
   }
 
+  // A construct rendered as its own literal source (a GFM table, a raw-HTML block, a thematic
+  // break) carries newlines and column padding but no `br`, so it needs the preserved whitespace
+  // the container no longer has.
+  .ocu-reply-source {
+    white-space: pre-wrap;
+  }
+
   a {
     color: var(--ocu-secondary);
     text-decoration: none;
 
     &:hover {
+      text-decoration: underline;
+    }
+
+    // EXPERIENCE.md Component Patterns: the two-tone ring on every interactive element. A reply's
+    // link is the transcript's first focusable element, and colour alone is never the focus cue.
+    &:focus-visible {
+      @include ocu-focus-ring;
+
       text-decoration: underline;
     }
   }

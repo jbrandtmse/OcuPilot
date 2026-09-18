@@ -70,7 +70,7 @@ describe('the reply component', () => {
     expect(host.textContent).toBe('bad');
   });
 
-  it('an external link carries its href, rel, no target, and a host caption -- DOMPurify removes a stray target', () => {
+  it('an external link carries its href, rel, no target, and a host caption after it -- DOMPurify removes a stray target', () => {
     const { host } = mount('[docs](' + DOCS_URL + ')');
     const link = host.querySelector('a');
     expect(link).not.toBeNull();
@@ -79,7 +79,12 @@ describe('the reply component', () => {
     // The builder never writes `target`; asserting its absence here is the same claim
     // `reply.test.mjs` cannot make, since `core/reply.ts` never touches an attribute at all.
     expect(link?.getAttribute('target')).toBeNull();
-    const caption = link?.querySelector('.ocu-reply-link-caption');
+    // The caption follows the anchor (DESIGN.md `message-agent`: the host is visible "after the
+    // link text"), so the link's own text -- and its accessible name -- stays `docs`.
+    expect(link?.textContent).toBe('docs');
+    expect(link?.querySelector('.ocu-reply-link-caption')).toBeNull();
+    const caption = link?.nextElementSibling;
+    expect(caption?.className).toBe('ocu-reply-link-caption');
     expect(caption?.textContent).toBe('docs.example.com');
   });
 
@@ -99,6 +104,21 @@ describe('the reply component', () => {
     fixture.detectChanges();
     const builtAfter = host.querySelector('span')?.firstChild ?? null;
     expect(builtAfter).toBe(builtBefore);
+  });
+
+  // The panel tracks its turns by `$index`, so ONE `app-reply` instance survives a change to the
+  // entry at that index -- and `core/turn.ts` re-reads `reply` on every progress poll before the
+  // final value lands, so a mounted reply does receive a second, different `text`. This is the
+  // only code path that mutates already-rendered DOM.
+  // Mutation (Rule 19): delete `root.textContent = ''` from the effect -> the two replies render
+  // concatenated and this goes red.
+  it('rebuilds rather than appends when the text changes to a different value', () => {
+    const { fixture, host } = mount('first reply');
+    expect(host.textContent).toBe('first reply');
+    fixture.componentRef.setInput('text', 'second reply');
+    fixture.detectChanges();
+    expect(host.textContent).toBe('second reply');
+    expect(host.querySelectorAll('p')).toHaveLength(1);
   });
 
   it('renders nothing for a null reply', () => {

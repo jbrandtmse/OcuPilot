@@ -467,13 +467,21 @@ export class Panel {
   /** The transcript's turns, oldest first, with the live one last while a turn runs (Story 4.5). */
   protected get turns(): readonly PanelTurnView[] {
     this.generation();
-    return this.turn.entries().map((entry) => ({
-      message: entry.message,
-      // Tool steps, plus a stop caught before a model call, which is the only record of that stop.
-      steps: entry.steps.filter((step) => step.kind === 'tool' || step.status === 'stopped'),
-      reply: entry.reply,
-      errorBanner: turnErrorBanner(entry, STRINGS.agentTurnStoppedBanner),
-    }));
+    return this.turn.entries().map((entry) => {
+      const errorBanner = turnErrorBanner(entry, STRINGS.agentTurnStoppedBanner);
+      return {
+        message: entry.message,
+        // Tool steps, plus a stop caught before a model call, which is the only record of that stop.
+        steps: entry.steps.filter((step) => step.kind === 'tool' || step.status === 'stopped'),
+        // A turn ending in an error renders the banner and no reply block (Story 4.6 I/O matrix).
+        // The live turn view nulls a non-completed turn's reply server-side, but the restored view
+        // emits whatever the row stored, and the job records the loop's reply alongside a `failed`
+        // state -- so the pair does reach the client on a reload. The two template blocks are
+        // independent, so the exclusion is decided here rather than in a template condition.
+        reply: errorBanner === null ? entry.reply : null,
+        errorBanner,
+      };
+    });
   }
 
   protected get fullScreen(): boolean {

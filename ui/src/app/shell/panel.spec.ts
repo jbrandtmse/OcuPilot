@@ -1042,8 +1042,16 @@ describe('Story 4.5 review: restored cards, the error banner, the rows line, and
 
   // AC7 (Story 4.6), pinning the surface half of `turn.test.mjs`'s `turnErrorBanner` invariant:
   // a completed turn's reply and a failed turn's error banner never both render for one turn.
-  // Mutation (Rule 19): make `turnErrorBanner` answer the banner for `state === 'completed'` too
-  // -> the first assertion below reddens, finding a banner beside the reply it should not have.
+  //
+  // The failed turn below CARRIES a reply, which is the state the invariant is about and a state
+  // the wire really produces: the live turn view nulls a non-completed turn's reply server-side
+  // (`Kernel/State/Turn.cls`), but the RESTORED view emits whatever the row stored
+  // (`Kernel/State/Entry.cls`) and `Kernel/Agent/Job.cls` records the loop's reply alongside a
+  // `failed` state -- so a reload can hand the panel both. A fixture with `reply: null` would
+  // make the second assertion unfalsifiable, since the template's own `@if` would decide it.
+  // Mutations (Rule 19): make `turnErrorBanner` answer the banner for `state === 'completed'` too
+  // -> the first pair reddens; drop the `errorBanner === null` guard on `reply` in the `turns`
+  // getter -> the last assertion reddens, finding the reply block beside the banner.
   it('a reply and an error banner never both render for one turn', async () => {
     const { host: completedHost } = await mountRestored([restoredTurn({ state: 'completed', reply: 'Here is what I found.' })]);
     expect(completedHost.querySelector('.ocu-panel-message-agent-text')).not.toBeNull();
@@ -1052,6 +1060,7 @@ describe('Story 4.5 review: restored cards, the error banner, the rows line, and
     const { host: failedHost } = await mountRestored([
       restoredTurn({
         state: 'failed',
+        reply: 'A partial answer the loop had already produced.',
         error: { seq: 1, code: 'TOOL.UNAVAILABLE', reason: 'The tool is unavailable.' },
         steps: [turnStep({ seq: 1, status: 'error', target: 'USER', reason: 'The tool is unavailable.' })],
       }),

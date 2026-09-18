@@ -231,15 +231,23 @@ test('(a) a Markdown reply with a sql fence, a list and inline code renders thro
 // component level (`reply.spec.ts`), never against the real, deployed DOMPurify/browser stack.
 // This closes that gap: one real-browser render exercising all three at once.
 //
-// Mutations (Rule 19), each independently confirmed against the deployed bundle before this
-// test was added to the suite:
+// It also carries every claim about the reply's own CSS, because jsdom computes no style: the
+// block host, the structural highlighting that is the whole visible content of Release 1
+// highlighting (Design Notes D3), the code-surface pair, the focus ring, and the preserved
+// whitespace the literal-source fall-through needs.
+//
+// Mutations (Rule 19), each independently confirmed against the deployed bundle:
 // - narrow `HLJS_CLASS_RE` back to `[a-z0-9-]*` (excluding `_`) in `core/reply.ts` -> the
 //   hljs-built_in assertion goes red in the real browser exactly as it does in `reply.test.mjs`.
-// - drop the `isSameOriginUrl` guard in `linkNodes` -> the caption-absence assertion goes red,
+// - drop the `isSameOriginUrl` guard in `linkNodes` -> the caption-count assertion goes red,
 //   finding a `.ocu-reply-link-caption` span the real DOM should not have.
 // - drop `'br'` from `REPLY_TAGS` in `core/reply.ts` -> DOMPurify strips the element in the real
 //   browser too, and the `<br>` count assertion goes red.
-test('(a2) hljs-built_in, a same-origin link with no caption, and a soft line break all survive in the real browser', async () => {
+// - delete any one of `_components.scss`'s `display: block`, `.hljs-keyword { font-weight }`,
+//   `.hljs-comment { font-style }`, `.ocu-reply-pre { background }`, `a:focus-visible` or
+//   `.ocu-reply-source { white-space }` rules -> exactly that computed-style assertion goes red
+//   while every class-presence assertion in the suite stays green, which is the point.
+test('(a2) the reply\'s structure, its CSS and a same-origin link all survive in the real browser', async () => {
   const tag = nextTag();
   setTag(tag);
   scriptReply(
@@ -250,8 +258,12 @@ test('(a2) hljs-built_in, a same-origin link with no caption, and a soft line br
       'line two',
       '',
       '```sql',
-      'SELECT UPPER(name) FROM t',
+      'SELECT UPPER(name) FROM t -- c',
       '```',
+      '',
+      '| a | b |',
+      '|---|---|',
+      '| 1 | 2 |',
       '',
       '[namespaces](/ocupilot/namespaces)',
     ])
@@ -266,21 +278,85 @@ test('(a2) hljs-built_in, a same-origin link with no caption, and a soft line br
     const shape = await page.evaluate(() => {
       const root = document.querySelector('.ocu-panel-message-agent-text');
       const link = root.querySelector('a[href="/ocupilot/namespaces"]');
+      const pre = root.querySelector('pre.ocu-reply-pre');
+      const keyword = root.querySelector('pre code span.hljs-keyword');
+      const plainCode = root.querySelector('pre code');
+      // `:focus-visible` cannot be read off a computed style -- whether it matches a programmatic
+      // `focus()` is a per-browser heuristic about the last input modality, so asserting on it
+      // would make this test flap. The rule itself is read out of the served stylesheet instead:
+      // deleting it still reddens, and nothing about the reply's classes can satisfy it.
+      const focusRule = (() => {
+        for (const sheet of document.styleSheets) {
+          let rules;
+          try {
+            rules = sheet.cssRules;
+          } catch {
+            continue;
+          }
+          for (const rule of rules) {
+            if (rule.selectorText !== '.ocu-panel-message-agent-text a:focus-visible') continue;
+            return { outline: rule.style.outline, boxShadow: rule.style.boxShadow };
+          }
+        }
+        return null;
+      })();
       return {
         hasBuiltIn: root.querySelector('pre code span.hljs-built_in') !== null,
         breakCount: root.querySelectorAll('br').length,
         linkFound: link !== null,
-        linkHasCaption: link?.querySelector('.ocu-reply-link-caption') !== null,
+        // Anywhere in the reply, not only inside the anchor: the caption is the anchor's SIBLING
+        // (DESIGN.md puts the host "after the link text"), so `link.querySelector` would miss it
+        // and the recorded mutation below would stop reddening.
+        captionCount: root.querySelectorAll('.ocu-reply-link-caption').length,
         linkRel: link?.getAttribute('rel') ?? null,
         linkTarget: link?.getAttribute('target'),
+        // The VISIBLE half of AC1 and of the focus contract. jsdom computes no style, so a CSS-only
+        // regression to any of this ships green everywhere else in the suite: the reply's classes
+        // would all still be present and every other reply assertion would still pass.
+        hostDisplay: getComputedStyle(root).display,
+        keywordWeight: keyword === null ? null : getComputedStyle(keyword).fontWeight,
+        codeWeight: plainCode === null ? null : getComputedStyle(plainCode).fontWeight,
+        commentStyle: getComputedStyle(root.querySelector('pre code span.hljs-comment') ?? root).fontStyle,
+        preBackground: pre === null ? null : getComputedStyle(pre).backgroundColor,
+        codeSurface: (() => {
+          const probe = document.createElement('span');
+          probe.style.backgroundColor = 'var(--ocu-code-surface)';
+          document.body.appendChild(probe);
+          const value = getComputedStyle(probe).backgroundColor;
+          probe.remove();
+          return value;
+        })(),
+        focusRule,
+        // The GFM table renders as its own literal source (D7), which is multi-line and carries
+        // no `br`: without `ocu-reply-source`'s preserved whitespace it collapses to one line.
+        sourceWhitespace: getComputedStyle(root.querySelector('.ocu-reply-source')).whiteSpace,
+        sourceText: root.querySelector('.ocu-reply-source').textContent,
       };
     });
     assert.equal(shape.hasBuiltIn, true, 'expected span.hljs-built_in on UPPER, surviving both the parser and the real DOMPurify pass');
     assert.equal(shape.breakCount, 1, 'expected exactly one <br> to survive sanitizeReplyRoot for the two-line reply');
     assert.equal(shape.linkFound, true, 'expected the same-origin link to render as an <a>');
-    assert.equal(shape.linkHasCaption, false, 'a same-origin link must carry no external-host caption');
+    assert.equal(shape.captionCount, 0, 'a same-origin link must carry no external-host caption anywhere in the reply');
     assert.equal(shape.linkRel, 'noopener noreferrer nofollow');
     assert.equal(shape.linkTarget, null, 'DOMPurify must strip any target attribute');
+    // `app-reply` is an unknown element, so `display: inline` by default -- the block host the
+    // transcript's paragraph rhythm depends on is one CSS line.
+    assert.equal(shape.hostDisplay, 'block', 'the app-reply host renders as a block');
+    // Release 1 highlighting is structural (Design Notes D3): weight and slant, no palette. The
+    // keyword must be HEAVIER than the surrounding code, or the classes carry no visible meaning.
+    assert.ok(
+      Number(shape.keywordWeight) > Number(shape.codeWeight),
+      `expected an hljs-keyword heavier than plain code, got ${shape.keywordWeight} against ${shape.codeWeight}`
+    );
+    assert.equal(shape.commentStyle, 'italic', 'expected hljs-comment to render slanted');
+    assert.equal(shape.preBackground, shape.codeSurface, 'the fenced block sits on the --ocu-code-surface pair');
+    // EXPERIENCE.md Component Patterns: the two-tone ring on every interactive element. A reply's
+    // link is the transcript's first focusable element.
+    assert.notEqual(shape.focusRule, null, 'the served stylesheet carries a :focus-visible rule for a reply link');
+    assert.match(shape.focusRule.outline, /2px solid/, 'the focus ring is the 2px two-tone outline');
+    assert.notEqual(shape.focusRule.boxShadow, '', 'the focus ring carries its inner tone as a box-shadow');
+    assert.equal(shape.sourceWhitespace, 'pre-wrap', 'a construct rendered as literal source keeps its newlines and column padding');
+    assert.ok(shape.sourceText.includes('\n'), `expected the table's own newlines in its text, got ${JSON.stringify(shape.sourceText)}`);
     assert.deepEqual(consoleErrors, [], `no console error or uncaught page error should occur, got: ${JSON.stringify(consoleErrors)}`);
   } finally {
     await context.close();
