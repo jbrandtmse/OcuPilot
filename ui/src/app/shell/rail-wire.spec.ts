@@ -78,7 +78,31 @@ const LIVE_PAYLOAD = {
       pinBottom: false,
       allowed: false,
       failedPair: '%Admin_Manage:USE',
+      // Story 6.11 took this roster from four screens to eight, in ScreensForArea's own
+      // (sideBarPosition, class name) collation: the four unlisted sideBarPosition-0 screens sort
+      // first, alphabetically by descriptor class name, ahead of the listed ones in position order.
       screens: [
+        {
+          route: 'os-management/databases/details',
+          labelKey: 'databaseDetailsLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
+        },
+        {
+          route: 'os-management/database-free-space',
+          labelKey: 'databaseFreeSpaceLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/databases/volumes',
+          labelKey: 'databaseVolumeListLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
         {
           route: 'os-management/processes/details',
           labelKey: 'processDetailsLabel',
@@ -106,6 +130,13 @@ const LIVE_PAYLOAD = {
           sideBarPosition: 3,
           allowed: false,
           failedPair: '%DB_IRISSYS:READ',
+        },
+        {
+          route: 'os-management/databases',
+          labelKey: 'databaseListLabel',
+          sideBarPosition: 4,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
         },
       ],
     },

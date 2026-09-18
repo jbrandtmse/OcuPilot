@@ -897,6 +897,54 @@ export const STRINGS = {
   lockSystemLocal: 'This instance',
   /** EXPERIENCE.md:364 */
   lockListEmpty: 'No locks on this instance.',
+  /** EXPERIENCE.md:365 */
+  databaseListLabel: 'Databases',
+  /** EXPERIENCE.md:365 */
+  databaseFreeSpaceLabel: 'Free space',
+  /** EXPERIENCE.md:365 */
+  viewMenuLabel: 'View',
+  /** EXPERIENCE.md:365 */
+  databaseColumnSize: 'Size',
+  /** EXPERIENCE.md:365 */
+  databaseColumnMaxSize: 'Maximum size',
+  /** EXPERIENCE.md:365 */
+  databaseColumnAvailable: 'Available',
+  /** EXPERIENCE.md:365 */
+  databaseColumnDiskFree: 'Disk free',
+  /** EXPERIENCE.md:365 */
+  databaseColumnMounted: 'Mounted',
+  /** EXPERIENCE.md:365 */
+  databaseListEmpty: 'No databases on this instance.',
+  /** EXPERIENCE.md:365 */
+  databaseDetailsLabel: 'Database details',
+  /** EXPERIENCE.md:365 */
+  databaseDetailsGone: 'This database no longer exists.',
+  /** EXPERIENCE.md:365 */
+  databaseDetailsExpansionSize: 'Expansion size',
+  /** EXPERIENCE.md:365 */
+  databaseDetailsNewVolumeThreshold: 'New volume threshold',
+  /** EXPERIENCE.md:365 */
+  databaseDetailsNewVolumeDirectory: 'New volume directory',
+  /** EXPERIENCE.md:365 */
+  databaseDetailsKeepNewGlobals: 'Keep new globals',
+  /** EXPERIENCE.md:365 */
+  databaseDetailsNewGlobalCollation: 'New global collation',
+  /** EXPERIENCE.md:365 */
+  databaseDetailsClusterMountMode: 'Cluster mount mode',
+  /** EXPERIENCE.md:365 */
+  databaseDetailsReadOnly: 'Read only',
+  /** EXPERIENCE.md:365 */
+  databaseDetailsJournalNewGlobals: 'Journal new globals',
+  /** EXPERIENCE.md:365 */
+  databaseVolumeListLabel: 'Volume files',
+  /** EXPERIENCE.md:365 */
+  databaseVolumeColumnVolume: 'Volume',
+  /** EXPERIENCE.md:365 */
+  databaseVolumeColumnFile: 'File',
+  /** EXPERIENCE.md:365 */
+  databaseVolumeColumnDirectoryTotal: 'Directory total',
+  /** EXPERIENCE.md:365 */
+  databaseVolumeListEmpty: 'No volume files for this database.',
 
   // Not from the Fixed strings table, but required verbatim by this story's task
   // list: the audit-marker-failure fallback text (AD-15 / EXPERIENCE.md "9. **Audit.** Every confirmed"), the

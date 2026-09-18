@@ -38,8 +38,8 @@
 /// parent (<method>ForEachRows</method>), bounded by the cap on the rows held and by the cap plus one
 /// on the parents listed; and a declared field <code>&lt;object&gt;.&lt;member&gt;</code> projects one
 /// member of an object field (<method>CopyValue</method>). Every other admin read issues its
-/// declared type, <code>LIST</code>, <code>UPCOMING</code> or <code>HISTORY</code>, under the same
-/// cap.</p>
+/// declared type, <code>LIST</code>, <code>UPCOMING</code>, <code>HISTORY</code> or
+/// <code>VOLUMELIST</code>, under the same cap.</p>
 /// <p><b>A single-object <code>GET</code> may also declare up to three <code>parts</code></b>
 /// (AD-36, Story 6.9): <method>PartsObject</method> issues one call per part, in declared order,
 /// each carrying its own request type -- possibly one the endpoint names without the vendor's
@@ -60,7 +60,8 @@
 /// it from.</p>
 /// <p><b>A source may fix query parameters</b> (<code>source.query</code>, AD-36):
 /// <method>SeedSourceQuery</method> puts every entry into the read's <code>LIST</code>,
-/// <code>UPCOMING</code> or <code>HISTORY</code> call, a single-object <code>GET</code> and each per-parent child list, never
+/// <code>UPCOMING</code>, <code>HISTORY</code> or <code>VOLUMELIST</code> call, a single-object
+/// <code>GET</code> and each per-parent child list, never
 /// into a per-parent read's parent list or a <code>rowGet</code> detail call, and always before the
 /// criteria. The registry refuses a key that a criterion, a reserved parameter or
 /// <code>forEach.param</code> also names, so no caller changes or removes one.</p>
@@ -86,6 +87,13 @@ Parameter UPCOMINGTYPE = "UPCOMING";
 /// is -- synchronously, since <code>Task.CRUD</code> defines no <code>ShouldRunAsync</code> and its
 /// <code>RunHistory</code> queues nothing (AD-26).</p>
 Parameter HISTORYTYPE = "HISTORY";
+
+/// <p>A fourth list-shaped admin request type a source may declare (AD-36, Story 6.11):
+/// <code>Database.SysCRUD</code>'s volume-file list, issued the same way
+/// <parameter>UPCOMINGTYPE</parameter> and <parameter>HISTORYTYPE</parameter> are -- synchronously,
+/// since only that endpoint's <code>TYPEINFO</code> answers <code>ShouldRunAsync()</code> true
+/// (probed against the instance).</p>
+Parameter VOLUMELISTTYPE = "VOLUMELIST";
 
 /// <p>The request type a single-object read issues (AD-36): one named object of an admin endpoint,
 /// answered as the read's one row, and a 404 answered as none.</p>
@@ -222,7 +230,7 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
         Set tRead = $ClassMethod(pDescriptor, "Read")
         Set tSource = $Select($IsObject(tRead): tRead.%Get("source"), 1: "")
         Set tSourceType = $Select($IsObject(tSource): tSource.%Get("type"), 1: "")
-        If '$IsObject(tSource) || ((tSourceType '= ..#READTYPE) && (((tSourceType '= ..#OBJECTTYPE) && (tSourceType '= ..#UPCOMINGTYPE) && (tSourceType '= ..#HISTORYTYPE)) || (tSource.%Get("port") '= ..#SOURCEADMIN))) {
+        If '$IsObject(tSource) || ((tSourceType '= ..#READTYPE) && (((tSourceType '= ..#OBJECTTYPE) && (tSourceType '= ..#UPCOMINGTYPE) && (tSourceType '= ..#HISTORYTYPE) && (tSourceType '= ..#VOLUMELISTTYPE)) || (tSource.%Get("port") '= ..#SOURCEADMIN))) {
             Set tSC = ..Internal(pDescriptor _ " declares no read this executor can issue", .pHttpStatus, .pFault)
             Quit
         }
@@ -322,7 +330,7 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
             Set tSC = ..ForEachRows(pDescriptor, tSource, tMax, .tAnswer, .tTruncated, .pHttpStatus, .pFault)
             If $$$ISERR(tSC) Quit
         } Else {
-            ; An admin LIST, UPCOMING or HISTORY: the declared type, the fixed query and then the criteria.
+            ; An admin LIST, UPCOMING, HISTORY or VOLUMELIST: the declared type, the fixed query and then the criteria.
             Do ..SeedSourceQuery(tSource, .tQuery)
             Set tQuery("maxRows") = tMax + 1
             Set tCriterionProblem = ..SeedCriteria(tRead, .pCriteria, .tQuery)

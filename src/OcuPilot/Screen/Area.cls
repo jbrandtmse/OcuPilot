@@ -39,14 +39,14 @@
 /// <class>OcuPilot.Screen.Descriptor.ProcessList</class> records the vendor line and the choice of
 /// the narrower half. An area covers every pair its screens declare, so the area carries it too.</p>
 /// <p><b>The union stands, and the false denial it produces for a narrower screen is accepted</b>
-/// (DW-275, decided in Story 2.13). Only <class>OcuPilot.Screen.Descriptor.ProcessList</class>
-/// needs <code>%Admin_Manage:USE</code>; Stories 6.8 and 6.10 add os-management screens that
-/// plausibly do not <b>(inference</b> -- from the <code>ResourcesOR()</code> probe recorded above,
-/// not from those stories' acceptance criteria, which name no privilege; it is settled by running
-/// each new read as a least-privileged principal on a throwaway when the screen lands<b>)</b>. An
+/// (DW-275, decided in Story 2.13). <class>OcuPilot.Screen.Descriptor.ProcessList</class> was the
+/// first screen to need <code>%Admin_Manage:USE</code> and Story 6.11's three Databases reads need
+/// it too; Stories 6.8's and 6.10's screens do not, which was settled by running each new read as
+/// a least-privileged principal on a throwaway as that screen landed rather than inferred from the
+/// <code>ResourcesOR()</code> probe recorded above. An
 /// operator holding only <code>%Admin_Operate:USE</code> and <code>%DB_IRISSYS:READ</code> will
-/// therefore see the whole OS management rail entry denied on a pair only one screen in it
-/// requires. That is a false denial, and it is preferred to the alternative: relaxing
+/// therefore see the whole OS management rail entry denied on a pair five of its eight screens
+/// require. That is a false denial, and it is preferred to the alternative: relaxing
 /// <method>OcuPilot.Screen.Registry.AreaCoverageProblem</method> to per-screen coverage trades it
 /// for the false admission AD-8 exists to prevent -- an area that reads allowed while every screen
 /// inside it refuses. DW-278's owner-delegated decision of 2026-09-14 declined that relaxation in
@@ -54,8 +54,20 @@
 /// <method>OcuPilot.Screen.Gate.Evaluate</method> say the same. Splitting the area is not
 /// available either: the vocabulary here is closed at eight and
 /// <class>OcuPilot.Test.Descriptor</class> pins it.</p>
-/// <p><b>What this costs, counted:</b> 0 of 1 os-management screens falsely denied today, 2 of 3
-/// once 6.8 and 6.10 land. <b>What it must not become:</b> dropping
+/// <p><b>What this costs, counted:</b> 2 of 4 os-management screens falsely denied before Story
+/// 6.11 (<class>OcuPilot.Screen.Descriptor.LockList</class> and
+/// <class>OcuPilot.Screen.Descriptor.SystemUsage</class>), 5 of 8 with its four descriptors
+/// landed. A screen is falsely denied when its own pair set is a strict subset of this union,
+/// because <method>OcuPilot.Screen.Gate.EvaluatePairs</method> requires every pair the area names:
+/// <class>OcuPilot.Screen.Descriptor.DatabaseDetails</class> joins the two above, denied on
+/// <code>%Admin_Manage:USE</code>, and <class>OcuPilot.Screen.Descriptor.DatabaseList</class> and
+/// <code>DatabaseVolumeList</code> are this area's first screens denied on
+/// <code>%Admin_Operate:USE</code> instead -- each declares <code>%Admin_Manage:USE</code> and
+/// <code>%DB_IRISSYS:READ</code> and needs no Operate pair, which
+/// <class>OcuPilot.Test.WireSecurityRead</class> establishes against a real least-privileged
+/// principal on the throwaway: its Manage-only account reads both at 200. Only
+/// <code>DatabaseFreeSpace</code> declares the whole union, and it alone of the four is not
+/// falsely denied. <b>What it must not become:</b> dropping
 /// <code>%Admin_Manage:USE</code> from this area to make the narrow screens reachable makes
 /// <code>AreaCoverageProblem</code> refuse <code>ProcessList</code> at install --
 /// <class>OcuPilot.Test.NarrowArea</class> pins both halves, so the decision cannot be reversed by

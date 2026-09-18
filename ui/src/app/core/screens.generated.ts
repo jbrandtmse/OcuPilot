@@ -42,6 +42,7 @@ export type ArchetypeKey =
  */
 export type BuiltArchetypeKey =
   | 'list'
+  | 'list (two views)'
   | 'list (server criteria)'
   | 'drill-down'
   | 'detail'
@@ -149,9 +150,10 @@ export interface ReadSource {
   readonly endpoint: string;
   /**
    * `LIST` reads rows; `GET` reads one object as the one row, and a 404 reads as none;
-   * `UPCOMING` reads an admin endpoint's scheduled occurrences as rows; `HISTORY` reads its task-run history.
+   * `UPCOMING` reads an admin endpoint's scheduled occurrences as rows; `HISTORY` reads its task-run history;
+   * `VOLUMELIST` reads a database's own volume files as rows.
    */
-  readonly type: 'LIST' | 'GET' | 'UPCOMING' | 'HISTORY';
+  readonly type: 'LIST' | 'GET' | 'UPCOMING' | 'HISTORY' | 'VOLUMELIST';
   readonly rowGet?: ReadRowGet | null;
   /** The parent list a per-parent read issues its source once per parent for, bounded by the cap. */
   readonly forEach?: ReadForEach | null;
@@ -1057,6 +1059,660 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       "emptyAgentKey": ""
     },
     "toolIdentifier": "logs.audit",
+    "banner": null,
+    "tab": null,
+    "rowTarget": null
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.DatabaseDetails",
+    "route": "os-management/databases/details",
+    "area": "os-management",
+    "labelKey": "databaseDetailsLabel",
+    "sideBarPosition": 0,
+    "archetype": "detail",
+    "built": true,
+    "refreshes": true,
+    "refreshRates": [
+      5,
+      10,
+      30,
+      60
+    ],
+    "privileges": [
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "database",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "os-management/databases",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "Directory"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Directory",
+        "MaxSize",
+        "ExpansionSize",
+        "NewVolumeThreshold",
+        "NewVolumeDirectory",
+        "ResourceName",
+        "NewGlobalIsKeep",
+        "NewGlobalCollation",
+        "ClusterMountMode",
+        "ReadOnly",
+        "GlobalJournalState",
+        "Size",
+        "AvailableSpace",
+        "DiskFree",
+        "Mounted"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "databaseDetailsGone",
+    "commandAliases": [
+      "database details"
+    ],
+    "classicPage": "%CSP.UI.Portal.DatabaseDetails",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Database.SysCRUD",
+        "type": "GET",
+        "rowGet": {
+          "key": "dir",
+          "param": "dir",
+          "type": "INFO",
+          "fields": [
+            "Size",
+            "AvailableSpace",
+            "DiskFree",
+            "Mounted"
+          ],
+          "derived": []
+        }
+      },
+      "fields": [
+        "Directory",
+        "MaxSize",
+        "ExpansionSize",
+        "NewVolumeThreshold",
+        "NewVolumeDirectory",
+        "ResourceName",
+        "NewGlobalIsKeep",
+        "NewGlobalCollation",
+        "ClusterMountMode",
+        "ReadOnly",
+        "GlobalJournalState",
+        "Size",
+        "AvailableSpace",
+        "DiskFree",
+        "Mounted"
+      ],
+      "filter": [
+        "Directory",
+        "MaxSize",
+        "ExpansionSize",
+        "NewVolumeThreshold",
+        "NewVolumeDirectory",
+        "ResourceName",
+        "NewGlobalIsKeep",
+        "NewGlobalCollation",
+        "ClusterMountMode",
+        "ReadOnly",
+        "GlobalJournalState",
+        "Size",
+        "AvailableSpace",
+        "DiskFree",
+        "Mounted"
+      ],
+      "sort": {
+        "fields": [
+          "Directory",
+          "MaxSize",
+          "ExpansionSize",
+          "NewVolumeThreshold",
+          "NewVolumeDirectory",
+          "ResourceName",
+          "NewGlobalIsKeep",
+          "NewGlobalCollation",
+          "ClusterMountMode",
+          "ReadOnly",
+          "GlobalJournalState",
+          "Size",
+          "AvailableSpace",
+          "DiskFree",
+          "Mounted"
+        ],
+        "default": "Directory",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "dir",
+            "labelKey": "lockColumnDirectory",
+            "kind": "text",
+            "maxLength": 256
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Directory",
+          "labelKey": "lockColumnDirectory",
+          "kind": "name"
+        },
+        {
+          "field": "Size",
+          "labelKey": "databaseColumnSize",
+          "kind": "number"
+        },
+        {
+          "field": "MaxSize",
+          "labelKey": "databaseColumnMaxSize",
+          "kind": "number"
+        },
+        {
+          "field": "AvailableSpace",
+          "labelKey": "databaseColumnAvailable",
+          "kind": "number"
+        },
+        {
+          "field": "DiskFree",
+          "labelKey": "databaseColumnDiskFree",
+          "kind": "text"
+        },
+        {
+          "field": "Mounted",
+          "labelKey": "databaseColumnMounted",
+          "kind": "status"
+        },
+        {
+          "field": "ExpansionSize",
+          "labelKey": "databaseDetailsExpansionSize",
+          "kind": "number"
+        },
+        {
+          "field": "NewVolumeThreshold",
+          "labelKey": "databaseDetailsNewVolumeThreshold",
+          "kind": "number"
+        },
+        {
+          "field": "NewVolumeDirectory",
+          "labelKey": "databaseDetailsNewVolumeDirectory",
+          "kind": "identifier"
+        },
+        {
+          "field": "ResourceName",
+          "labelKey": "webAppColumnResource",
+          "kind": "identifier"
+        },
+        {
+          "field": "NewGlobalIsKeep",
+          "labelKey": "databaseDetailsKeepNewGlobals",
+          "kind": "status"
+        },
+        {
+          "field": "NewGlobalCollation",
+          "labelKey": "databaseDetailsNewGlobalCollation",
+          "kind": "number"
+        },
+        {
+          "field": "ClusterMountMode",
+          "labelKey": "databaseDetailsClusterMountMode",
+          "kind": "status"
+        },
+        {
+          "field": "ReadOnly",
+          "labelKey": "databaseDetailsReadOnly",
+          "kind": "status"
+        },
+        {
+          "field": "GlobalJournalState",
+          "labelKey": "databaseDetailsJournalNewGlobals",
+          "kind": "status"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "osmgmt.databasedetails",
+    "banner": null,
+    "tab": null,
+    "rowTarget": null
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.DatabaseFreeSpace",
+    "route": "os-management/database-free-space",
+    "area": "os-management",
+    "labelKey": "databaseFreeSpaceLabel",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": true,
+    "refreshRates": [
+      5,
+      10,
+      30,
+      60
+    ],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%Admin_Operate",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "database",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Directory",
+        "Size",
+        "AvailableSpace",
+        "DiskFree",
+        "Mounted"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "databaseListEmpty",
+    "commandAliases": [
+      "free space",
+      "database free space"
+    ],
+    "classicPage": "%CSP.UI.Portal.OpDatabases",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Database.SysCRUD",
+        "type": "LIST",
+        "rowGet": {
+          "key": "Directory",
+          "param": "dir",
+          "type": "INFO",
+          "fields": [
+            "AvailableSpace",
+            "DiskFree",
+            "Mounted"
+          ],
+          "derived": []
+        }
+      },
+      "fields": [
+        "Directory",
+        "Size",
+        "AvailableSpace",
+        "DiskFree",
+        "Mounted"
+      ],
+      "filter": [
+        "Directory",
+        "Size",
+        "AvailableSpace",
+        "DiskFree",
+        "Mounted"
+      ],
+      "sort": {
+        "fields": [
+          "Directory",
+          "Size",
+          "AvailableSpace",
+          "DiskFree"
+        ],
+        "default": "Directory",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Directory",
+          "labelKey": "lockColumnDirectory",
+          "kind": "name"
+        },
+        {
+          "field": "Size",
+          "labelKey": "databaseColumnSize",
+          "kind": "number"
+        },
+        {
+          "field": "AvailableSpace",
+          "labelKey": "databaseColumnAvailable",
+          "kind": "number"
+        },
+        {
+          "field": "DiskFree",
+          "labelKey": "databaseColumnDiskFree",
+          "kind": "text"
+        },
+        {
+          "field": "Mounted",
+          "labelKey": "databaseColumnMounted",
+          "kind": "text"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "osmgmt.databasefreespace",
+    "banner": null,
+    "tab": null,
+    "rowTarget": null
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.DatabaseList",
+    "route": "os-management/databases",
+    "area": "os-management",
+    "labelKey": "databaseListLabel",
+    "sideBarPosition": 4,
+    "archetype": "list (two views)",
+    "built": true,
+    "refreshes": true,
+    "refreshRates": [
+      5,
+      10,
+      30,
+      60
+    ],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "database",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "Directory",
+        "Size",
+        "MaxSize",
+        "Status",
+        "Resource"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "databaseListEmpty",
+    "commandAliases": [
+      "databases",
+      "disks"
+    ],
+    "classicPage": "%CSP.UI.Portal.OpDatabases",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Database.SysCRUD",
+        "type": "LIST"
+      },
+      "fields": [
+        "Directory",
+        "Size",
+        "MaxSize",
+        "Status",
+        "Resource"
+      ],
+      "filter": [
+        "Directory",
+        "Size",
+        "MaxSize",
+        "Status",
+        "Resource"
+      ],
+      "sort": {
+        "fields": [
+          "Directory",
+          "Size",
+          "MaxSize",
+          "Status",
+          "Resource"
+        ],
+        "default": "Directory",
+        "direction": "asc"
+      },
+      "paging": "cap"
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "Directory",
+          "labelKey": "lockColumnDirectory",
+          "kind": "name"
+        },
+        {
+          "field": "Size",
+          "labelKey": "databaseColumnSize",
+          "kind": "number"
+        },
+        {
+          "field": "MaxSize",
+          "labelKey": "databaseColumnMaxSize",
+          "kind": "text"
+        },
+        {
+          "field": "Status",
+          "labelKey": "taskHistoryColumnStatus",
+          "kind": "text"
+        },
+        {
+          "field": "Resource",
+          "labelKey": "webAppColumnResource",
+          "kind": "identifier"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "osmgmt.databases",
+    "banner": null,
+    "tab": null,
+    "rowTarget": null
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.DatabaseVolumeList",
+    "route": "os-management/databases/volumes",
+    "area": "os-management",
+    "labelKey": "databaseVolumeListLabel",
+    "sideBarPosition": 0,
+    "archetype": "list",
+    "built": true,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Manage",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "os-management/databases",
+    "id": {
+      "kind": "composite",
+      "parts": [
+        "VolumeNumber"
+      ]
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [
+        "VolumeNumber",
+        "VolumeDirectory",
+        "File",
+        "Size",
+        "VolumeDirectoryTotalSize",
+        "DiskFree"
+      ],
+      "secretFields": []
+    },
+    "emptyStateKey": "databaseVolumeListEmpty",
+    "commandAliases": [
+      "volume files"
+    ],
+    "classicPage": "%CSP.UI.Portal.DatabaseDetails",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "read": {
+      "source": {
+        "port": "admin",
+        "endpoint": "Database.SysCRUD",
+        "type": "VOLUMELIST"
+      },
+      "fields": [
+        "VolumeNumber",
+        "VolumeDirectory",
+        "File",
+        "Size",
+        "VolumeDirectoryTotalSize",
+        "DiskFree"
+      ],
+      "filter": [
+        "VolumeDirectory",
+        "File"
+      ],
+      "sort": {
+        "fields": [
+          "VolumeNumber",
+          "File",
+          "VolumeDirectory",
+          "Size",
+          "VolumeDirectoryTotalSize",
+          "DiskFree"
+        ],
+        "default": "VolumeNumber",
+        "direction": "asc"
+      },
+      "paging": "cap",
+      "criteria": {
+        "fields": [
+          {
+            "param": "dir",
+            "labelKey": "lockColumnDirectory",
+            "kind": "text",
+            "maxLength": 256
+          }
+        ]
+      }
+    },
+    "table": {
+      "columns": [
+        {
+          "field": "File",
+          "labelKey": "databaseVolumeColumnFile",
+          "kind": "name"
+        },
+        {
+          "field": "VolumeNumber",
+          "labelKey": "databaseVolumeColumnVolume",
+          "kind": "number"
+        },
+        {
+          "field": "VolumeDirectory",
+          "labelKey": "lockColumnDirectory",
+          "kind": "identifier"
+        },
+        {
+          "field": "Size",
+          "labelKey": "databaseColumnSize",
+          "kind": "number"
+        },
+        {
+          "field": "VolumeDirectoryTotalSize",
+          "labelKey": "databaseVolumeColumnDirectoryTotal",
+          "kind": "number"
+        },
+        {
+          "field": "DiskFree",
+          "labelKey": "databaseColumnDiskFree",
+          "kind": "number"
+        }
+      ],
+      "emptyNextKey": "tableReadOnlyEmptyNext",
+      "emptyAgentKey": ""
+    },
+    "toolIdentifier": "osmgmt.databasevolumes",
     "banner": null,
     "tab": null,
     "rowTarget": null

@@ -98,7 +98,11 @@ Parameter ASYNCLOCATION = "async-result?id=";
 /// <code>RunUpcoming</code> queues nothing (AD-26, AD-36).</p>
 /// <p><code>HISTORY</code> is the same endpoint's task-run history (Story 6.6), dispatched to
 /// <code>RunHistory</code>: synchronous for the same reason <code>UPCOMING</code> is.</p>
-Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY";
+/// <p><code>VOLUMELIST</code> is <code>Database.SysCRUD</code>'s volume-file list (Story 6.11):
+/// the vendor publishes it <code>TYPE</code>-prefixed (<code>TYPEVOLUMELIST</code>), so it
+/// resolves here rather than through <parameter>BARETYPES</parameter>, and it is synchronous --
+/// only that endpoint's <code>TYPEINFO</code> answers <code>ShouldRunAsync()</code> true.</p>
+Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST";
 
 /// <p>The pair set the <b>backing query or class</b> of an endpoint requires, beyond the
 /// endpoint's own <code>ResourcesOR()</code> gate (AD-29). Comma-separated entries of the form

@@ -678,7 +678,9 @@ app-home-page,
 app-audit-page,
 app-error-log-page,
 app-detail-page,
-app-task-history-page {
+app-task-history-page,
+app-databases-page,
+app-database-details-page {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
@@ -2415,6 +2417,14 @@ app-data-table {
 }
 
 .ocu-data-table-skeleton-row .ocu-skeleton-bar {
+  height: 12px;
+}
+
+// One cell's own skeleton bar (Story 6.11's Free-space view, `pendingFields`): sized to sit inside
+// an ordinary 36px row without changing its height, unlike the whole-table skeleton above, which
+// stands in for rows that have not arrived at all.
+.ocu-data-table-cell-skeleton {
+  width: 60%;
   height: 12px;
 }
 

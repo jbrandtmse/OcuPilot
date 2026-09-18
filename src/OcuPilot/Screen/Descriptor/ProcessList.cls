@@ -32,7 +32,7 @@
 /// <p><b>It declares no <code>rowGet</code>:</b> every field this screen needs is in the LIST, so no
 /// detail call is ever issued and <code>context.secretFields</code> is empty because the read carries
 /// no secret to strip (AD-24, AD-35). It declares no <code>banner</code> either.</p>
-/// <p><b>It is one of the six screens the shared auto-refresh framework binds</b> (AD-43), named
+/// <p><b>It is one of the seven screens the shared auto-refresh framework binds</b> (AD-43), named
 /// first in <file>EXPERIENCE.md</file>'s roster, at the rates its auto-refresh bullet declares. The
 /// framework owns the timer, the persisted setting and the silent re-fetch; the screen declares only
 /// that it refreshes and at what rates. Its rows change with no write behind them -- processes start

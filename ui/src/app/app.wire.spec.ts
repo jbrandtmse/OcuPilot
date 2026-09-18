@@ -21,6 +21,7 @@ import type { ScreenDeclaration } from './core/screens.generated';
 import { Session, type SessionState } from './core/session';
 import { ShellState } from './core/shell-state';
 import { STRINGS } from './core/strings';
+import { ViewOptions } from './core/view-options';
 import { stubAgentStatus } from './testing/agent-status';
 import { screenDeclaration } from './testing/screen-declaration';
 
@@ -253,6 +254,7 @@ describe('the real shell, routed to the real Home screen, sharing one real Refre
         },
         { provide: OverlayStack, useValue: new OverlayStack() },
         { provide: ScreenActions, useValue: new ScreenActions() },
+        { provide: ViewOptions, useValue: new ViewOptions() },
         { provide: FormDirty, useValue: new FormDirty() },
         // Unanswered on purpose: this file is about the chip and the stamp around the real Home
         // screen, and a panel that has picked an audience would be a second subject in it.

@@ -27,7 +27,10 @@ import { dirname, join } from 'node:path';
 // counts moved with Story 2.9: os-management gained %Admin_Manage:USE and %DB_IRISSYS:READ, and the
 // first of those is what takes it out of the allowed set for this principal. They moved again with
 // Story 2.10: logs gained %Admin_Secure:USE and %DB_IRISSYS:READ, so no gated area now opens on
-// %Admin_Operate alone.
+// %Admin_Operate alone. Story 6.11 added the four Databases screens to the os-management roster,
+// each with its own failedPair for this principal; the identical roster is carried a second time by
+// ui/src/app/shell/rail-wire.spec.ts, and neither copy reddens when only the other is updated, so
+// both move together.
 //
 // Mutation (Rule 19): rename `allowed` to `permitted` in LIVE_PAYLOAD, standing in for a server
 // rename `Api.Navigation.SetVerdict` would make -> verdictFrom's `entry.allowed === true` no
@@ -79,7 +82,31 @@ const LIVE_PAYLOAD = {
       pinBottom: false,
       allowed: false,
       failedPair: '%Admin_Manage:USE',
+      // Story 6.11 took this roster from four screens to eight, in ScreensForArea's own
+      // (sideBarPosition, class name) collation: the four unlisted sideBarPosition-0 screens sort
+      // first, alphabetically by descriptor class name, ahead of the listed ones in position order.
       screens: [
+        {
+          route: 'os-management/databases/details',
+          labelKey: 'databaseDetailsLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
+        },
+        {
+          route: 'os-management/database-free-space',
+          labelKey: 'databaseFreeSpaceLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/databases/volumes',
+          labelKey: 'databaseVolumeListLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
         {
           route: 'os-management/processes/details',
           labelKey: 'processDetailsLabel',
@@ -107,6 +134,13 @@ const LIVE_PAYLOAD = {
           sideBarPosition: 3,
           allowed: false,
           failedPair: '%DB_IRISSYS:READ',
+        },
+        {
+          route: 'os-management/databases',
+          labelKey: 'databaseListLabel',
+          sideBarPosition: 4,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
         },
       ],
     },
@@ -362,6 +396,13 @@ test('DW-132: the real NavigationService reads a live-captured payload the way O
   // holds `%Admin_Operate:USE`, is denied on its second pair instead -- the same shape as the
   // application error log below.
   assert.deepEqual(service.screenVerdict('os-management/system-usage'), { allowed: false, failedPair: '%DB_IRISSYS:READ' });
+  // Story 6.11: the two Databases views and the volume list each declare `%Admin_Manage:USE`
+  // first, so this Operate-only principal is denied on that pair; Database details declares no
+  // Manage pair at all and is denied on its second, as System usage above is.
+  for (const route of ['os-management/databases', 'os-management/database-free-space', 'os-management/databases/volumes']) {
+    assert.deepEqual(service.screenVerdict(route), { allowed: false, failedPair: '%Admin_Manage:USE' }, route);
+  }
+  assert.deepEqual(service.screenVerdict('os-management/databases/details'), { allowed: false, failedPair: '%DB_IRISSYS:READ' });
   assert.deepEqual(service.screenVerdict('logs/audit'), { allowed: false, failedPair: '%Admin_Secure:USE' });
   // Story 2.12: the application error log declares `%Admin_Operate:USE` -- which this principal
   // holds -- and `%DB_IRISSYS:READ`, which it does not, so it is denied on the second. That pair is

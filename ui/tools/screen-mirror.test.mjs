@@ -365,7 +365,7 @@ test('AD-36: the generator refuses a read outside the declared grammar, naming t
     [(d) => (d.read.sort.default = 'Enabled'), /read\.sort\.default 'Enabled'/],
     [(d) => (d.read.sort.direction = 'up'), /direction 'up'/],
     [(d) => (d.read.source.port = 'monitor'), /port 'monitor'/],
-    [(d) => (d.read.source.type = 'POST'), /type 'POST' is not 'LIST', 'GET', 'UPCOMING' or 'HISTORY'/],
+    [(d) => (d.read.source.type = 'POST'), /type 'POST' is not 'LIST', 'GET', 'UPCOMING', 'HISTORY' or 'VOLUMELIST'/],
     [(d) => (d.context.secretFields = ['Other']), /context\.secretFields names 'Other'/],
     [(d) => (d.read.secretFields = ['Secret']), /read declares the unknown key 'secretFields'/],
     [(d) => (d.read.source.maxRows = 5), /read\.source declares the unknown key 'maxRows'/],
@@ -827,14 +827,17 @@ test('criteriaProblem returns every sentence OcuPilot.Test.CriteriaCorpus declar
   // Every other shipped screen declares none but the OpenAPI document viewer, whose one criterion
   // names the application its document is read for; Process details, whose one criterion is
   // Story 6.8's route-id pid; Task details, Task history (all) and Task history (one task), whose
-  // criteria are Story 6.7's and 6.6's; Upcoming tasks, whose two criteria are the horizon; and the
+  // criteria are Story 6.7's and 6.6's; Upcoming tasks, whose two criteria are the horizon; the
   // Secrets list, whose one criterion is its parent collection, filled from the route id
-  // (Story 6.3).
+  // (Story 6.3); and Story 6.11's two -- Database details and Database volumes, whose one
+  // criterion each is the parent Databases route's directory.
   const withCriteria = emittedScreens.filter((screen) => (screen.read?.criteria ?? null) !== null);
   assert.deepEqual(
     withCriteria.map((screen) => screen.descriptor),
     [
       'OcuPilot.Screen.Descriptor.AuditList',
+      'OcuPilot.Screen.Descriptor.DatabaseDetails',
+      'OcuPilot.Screen.Descriptor.DatabaseVolumeList',
       'OcuPilot.Screen.Descriptor.OpenApiViewer',
       'OcuPilot.Screen.Descriptor.ProcessDetails',
       'OcuPilot.Screen.Descriptor.TaskDetails',

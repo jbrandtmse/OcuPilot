@@ -3045,3 +3045,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-6-11-databases-with-free-space-arriving-as-it-lands.md | severity: med | fix-risk: high | footprint: out-of-footprint
 - evidence: The tasks running against a database are answerable only through %SYS.BackgroundTask:RunningInDatabase (irissys/%SYS/BackgroundTask.cls:899), a Final Internal class query the classic page reads; no %Api.Admin.* class references it, Database.Actions is write-only, and AD-36's sources are admin, mgmnt and state. Two routes: a polish-week story, or a query-backed source added to AD-36
 - 2026-09-18T00:05:40Z status=decision-pending owner=burndown by=plan note=orchestrator-decided at the 6.11 spec gate (Q3 option a): epics.md 6.11 AC3 amended to properties and volume files; only the owner can charter a story outside this epic
+
+### DW-1090: A rowGet read's async bound is per row, so a staged read's wall clock is rows x ASYNCTIMEOUT with no read-wide deadline
+- source: spec-6-11-databases-with-free-space-arriving-as-it-lands.md | severity: med | fix-risk: high | footprint: out-of-footprint
+- evidence: AdminPort.AwaitTask sets tStart per call (AdminPort.cls:862) and Read.Execute calls DetailRow once per row (Read.cls:365-374), so the Free-space read queues one TYPEINFO task per database, each bounded at 30 s on its own. Verified by reading both; the refusal itself is whole and correct. Screen/Read.cls is Epic 4-shared under additive-only discipline, so a read-wide deadline is not an in-story change.
+- 2026-09-18T04:38:34Z status=escalated owner=burndown by=cr note=claim corrected at origin in DatabaseFreeSpace.cls; the missing deadline itself is the escalated part

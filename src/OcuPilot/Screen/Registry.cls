@@ -842,7 +842,7 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
             Quit
         }
         If (tSource.%GetTypeOf("type") '= "string") || '$ListFind($ListFromString(..#READSOURCETYPES), tSource.%Get("type")) {
-            Set tProblem = "read.source.type '" _ tSource.%Get("type") _ "' is not 'LIST', 'GET', 'UPCOMING' or 'HISTORY'"
+            Set tProblem = "read.source.type '" _ tSource.%Get("type") _ "' is not 'LIST', 'GET', 'UPCOMING', 'HISTORY' or 'VOLUMELIST'"
             Quit
         }
         ; A GET source reads one named object of an admin endpoint as the read's one row (AD-36), so
@@ -903,6 +903,24 @@ ClassMethod ReadProblem(pDeclaration As %DynamicObject) As %String
             }
             If tSource.%GetTypeOf("forEach") = "object" {
                 Set tProblem = "read.source.forEach is declared on a HISTORY source, which lists no parents (AD-36)"
+                Quit
+            }
+        }
+        ; A VOLUMELIST source lists an admin endpoint's volume files (AD-36, Story 6.11):
+        ; Database.SysCRUD's own request type, worded like the HISTORY arm above for the same
+        ; reason -- a row is a volume file rather than an object, so there is no detail call to
+        ; issue and no parent to list.
+        If tSource.%Get("type") = "VOLUMELIST" {
+            If tPort '= ##class(OcuPilot.Screen.Read).#SOURCEADMIN {
+                Set tProblem = "read.source.type 'VOLUMELIST' is declared on a '" _ tPort _ "' source, and a list-shaped request type other than LIST issues an admin endpoint (AD-36)"
+                Quit
+            }
+            If tSource.%GetTypeOf("rowGet") = "object" {
+                Set tProblem = "read.source.rowGet is declared on a VOLUMELIST source, whose rows are volume files with no detail call to issue (AD-36)"
+                Quit
+            }
+            If tSource.%GetTypeOf("forEach") = "object" {
+                Set tProblem = "read.source.forEach is declared on a VOLUMELIST source, which lists no parents (AD-36)"
                 Quit
             }
         }
@@ -1363,9 +1381,11 @@ ClassMethod CriteriaMarkerProblem(pCriteria As %DynamicObject, pParams As %List)
 
 /// <p>The request types a <code>read.source</code> may issue (AD-36): <code>LIST</code>, a list of
 /// rows; <code>GET</code>, one object read as the read's one row; <code>UPCOMING</code>, an admin
-/// endpoint's list of scheduled occurrences, issued as a list is; and <code>HISTORY</code>,
-/// <code>Task.CRUD</code>'s task-run history, issued the same way (Story 6.6).</p>
-Parameter READSOURCETYPES = "LIST,GET,UPCOMING,HISTORY";
+/// endpoint's list of scheduled occurrences, issued as a list is; <code>HISTORY</code>,
+/// <code>Task.CRUD</code>'s task-run history, issued the same way (Story 6.6); and
+/// <code>VOLUMELIST</code>, <code>Database.SysCRUD</code>'s volume-file list, issued the same way
+/// again (Story 6.11).</p>
+Parameter READSOURCETYPES = "LIST,GET,UPCOMING,HISTORY,VOLUMELIST";
 
 /// <p>The longest value a <code>read.source.query</code> entry may fix.</p>
 Parameter SOURCEQUERYMAXLENGTH As INTEGER = 50;

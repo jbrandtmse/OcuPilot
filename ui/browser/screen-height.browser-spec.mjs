@@ -46,6 +46,12 @@ const SCREENS = [
   { route: '/ocupilot/security/ssl?ns=HSCUSTOM', viewport: 'cdk-virtual-scroll-viewport', prepare: null },
   { route: '/ocupilot/logs/audit?ns=HSCUSTOM', viewport: 'cdk-virtual-scroll-viewport', prepare: 'search' },
   { route: '/ocupilot/logs/errors', viewport: '.ocu-data-table-viewport', prepare: null },
+  // Backfilled by Story 6.11: Locks and System usage (below, its own test) were never added, and
+  // Databases' two views join them -- all four share DataTable's own viewport, System usage
+  // excepted, since it renders no rows at all (it is the `meters` archetype, not `list`).
+  { route: '/ocupilot/os-management/locks?ns=HSCUSTOM', viewport: 'cdk-virtual-scroll-viewport', prepare: null },
+  { route: '/ocupilot/os-management/databases?ns=HSCUSTOM', viewport: 'cdk-virtual-scroll-viewport', prepare: null },
+  { route: '/ocupilot/os-management/database-free-space?ns=HSCUSTOM', viewport: 'cdk-virtual-scroll-viewport', prepare: null },
 ];
 
 /** The audit viewer's Search, which is what puts rows on that screen at all. */
@@ -133,6 +139,29 @@ for (const screen of SCREENS) {
     }
   });
 }
+
+test('AC-A: System usage (the meters archetype, no rows) still gives its content region a real height', async () => {
+  // System usage renders no rows -- confirmed against the live page rather than assumed, since
+  // this spec's own header warns against assuming `cdk-virtual-scroll-viewport` for an archetype
+  // that never had one: `.ocu-details-page` is a plain flex column with no scroll container of its
+  // own, so what a collapsed outlet chain would have broken here is `main.ocu-content` itself.
+  const { context, page } = await signedInAt('/ocupilot/os-management/system-usage?ns=HSCUSTOM');
+  try {
+    await page.waitForSelector('.ocu-details-page', { timeout: config.navigationTimeoutMs });
+    await page.waitForSelector('app-meter', { timeout: config.navigationTimeoutMs });
+    // `measureChain`'s own middle name -- `app-list-page, app-audit-page, app-error-log-page` --
+    // names none of System usage's page, so only the chain's first link (the shell's own content
+    // region) and its last (this screen's own container) are asserted; a mid-chain entry this
+    // archetype never had is not evidence of anything.
+    const measured = await measureChain(page, '.ocu-details-page');
+    const content = measured[0];
+    const viewport = measured[measured.length - 1];
+    assert.ok(content.found && content.clientHeight > 0, `main.ocu-content has a real height; the chain measured ${JSON.stringify(measured)}`);
+    assert.ok(viewport.found && viewport.clientHeight > 0, `.ocu-details-page has a real height; the chain measured ${JSON.stringify(measured)}`);
+  } finally {
+    await context.close();
+  }
+});
 
 test('AC-A: a rendered row is not painted over by the table footer', async () => {
   const { context, page } = await signedInAt(SCREENS[0].route);

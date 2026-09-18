@@ -147,6 +147,30 @@ Parameter SYSTEMUSAGETOOL = "osmgmt.systemusage";
 /// such a failure is environmental rather than a defect in the screen.</p>
 Parameter LOCKLISTTOOL = "osmgmt.locks";
 
+/// <p>The tool identifier of the Databases General view, read generically by
+/// <method>CheckAreaLists</method> like any other unparented list (Story 6.11): the vendor's own
+/// database directory table, never empty on any mounted instance.</p>
+Parameter DATABASELISTTOOL = "osmgmt.databases";
+
+/// <p>The tool identifier of the Databases Free-space view, read generically by
+/// <method>CheckAreaLists</method> (Story 6.11): the same rows as <parameter>DATABASELISTTOOL</parameter>,
+/// merged with the asynchronous <code>INFO</code> figures. Its declared read takes no criterion, so
+/// it fits the generic sweep exactly as the General view does.</p>
+Parameter DATABASEFREESPACELISTTOOL = "osmgmt.databasefreespace";
+
+/// <p>The tool identifier of Database details, whose <code>CheckDatabaseDetails</code> check issues
+/// it keyed by the Databases list's own first row's <code>Directory</code> (Story 6.11).</p>
+Parameter DATABASEDETAILSTOOL = "osmgmt.databasedetails";
+
+/// <p>The tool identifier of Database volumes ("Volume files"), whose <code>CheckDatabaseDetails</code>
+/// check issues it keyed by the same <code>Directory</code> (Story 6.11). It is not in
+/// <method>CheckAreaLists</method>'s generic name list: <code>Database.SysCRUD</code>'s own
+/// <code>ValidateQueryParams</code> requires <code>dir</code> for every request type but
+/// <code>POST</code> and <code>LIST</code> (verified against the instance: a <code>VOLUMELIST</code>
+/// with no <code>dir</code> answers 400 <code>PORT.VALIDATION</code>), so this parent-scoped read
+/// needs a real directory the same way <parameter>PROCESSDETAILSTOOL</parameter> needs a real pid.</p>
+Parameter DATABASEVOLUMESTOOL = "osmgmt.databasevolumes";
+
 /// <p>The console-log page's path under the API application, and the window the
 /// <code>messageslog</code> check asks for. Small: the check is that the endpoint serves the
 /// instance's own log, not that it serves much of it.</p>
@@ -183,6 +207,7 @@ ClassMethod Run(pUsername As %String = "", pPassword As %String = "", pDemo As %
         Do ..CheckAreaLists(.tChecks, tAccessToken, pDemo)
         Do ..CheckTaskDetails(.tChecks, tAccessToken)
         Do ..CheckProcessDetails(.tChecks, tAccessToken)
+        Do ..CheckDatabaseDetails(.tChecks, tAccessToken)
         Do ..CheckMessagesLog(.tChecks, tAccessToken)
         Do ..CheckApplicationErrors(.tChecks, tAccessToken)
     } Catch ex {
@@ -592,12 +617,12 @@ ClassMethod CheckAreaLists(ByRef pChecks, pAccessToken As %String, pDemo As %Str
 {
     Set tDemoWanted = ($Select(pDemo '= "": pDemo, 1: $System.Util.GetEnviron("OCUPILOT_DEMO")) = "1")
     Set tBase = ..RosterPath("api")
-    For tI = 1:1:23 {
-        Set tName = $Piece("webapplications,users,ssl,tasks,processes,audit,webapp.restapis,roles,resources,services,x509,ldap,wallet,oauthdescriptions,oauthclients,oauthresourceservers,oauthserver,oauthserverclients,ondemand,upcoming,taskhistory,systemusage,locks", ",", tI)
+    For tI = 1:1:25 {
+        Set tName = $Piece("webapplications,users,ssl,tasks,processes,audit,webapp.restapis,roles,resources,services,x509,ldap,wallet,oauthdescriptions,oauthclients,oauthresourceservers,oauthserver,oauthserverclients,ondemand,upcoming,taskhistory,systemusage,locks,databases,databasefreespace", ",", tI)
         ; Every index names its own tool and the last arm names none: a list added to the bound and
         ; the name list without its own arm reads an empty path and fails, rather than re-reading
         ; the previous list under the new name and passing.
-        Set tTool = $Select(tI = 1: ..#WEBAPPLISTTOOL, tI = 2: ..#USERLISTTOOL, tI = 3: ..#SSLLISTTOOL, tI = 4: ..#TASKLISTTOOL, tI = 5: ..#PROCESSLISTTOOL, tI = 6: ..#AUDITLISTTOOL, tI = 7: ..#RESTAPILISTTOOL, tI = 8: ..#ROLELISTTOOL, tI = 9: ..#RESOURCELISTTOOL, tI = 10: ..#SERVICELISTTOOL, tI = 11: ..#X509LISTTOOL, tI = 12: ..#LDAPLISTTOOL, tI = 13: ..#WALLETLISTTOOL, tI = 14: ..#OAUTHDESCRIPTIONSTOOL, tI = 15: ..#OAUTHCLIENTSTOOL, tI = 16: ..#OAUTHRESOURCESERVERSTOOL, tI = 17: ..#OAUTHSERVERTOOL, tI = 18: ..#OAUTHSERVERCLIENTSTOOL, tI = 19: ..#TASKONDEMANDTOOL, tI = 20: ..#TASKUPCOMINGTOOL, tI = 21: ..#TASKHISTORYTOOL, tI = 22: ..#SYSTEMUSAGETOOL, tI = 23: ..#LOCKLISTTOOL, 1: "")
+        Set tTool = $Select(tI = 1: ..#WEBAPPLISTTOOL, tI = 2: ..#USERLISTTOOL, tI = 3: ..#SSLLISTTOOL, tI = 4: ..#TASKLISTTOOL, tI = 5: ..#PROCESSLISTTOOL, tI = 6: ..#AUDITLISTTOOL, tI = 7: ..#RESTAPILISTTOOL, tI = 8: ..#ROLELISTTOOL, tI = 9: ..#RESOURCELISTTOOL, tI = 10: ..#SERVICELISTTOOL, tI = 11: ..#X509LISTTOOL, tI = 12: ..#LDAPLISTTOOL, tI = 13: ..#WALLETLISTTOOL, tI = 14: ..#OAUTHDESCRIPTIONSTOOL, tI = 15: ..#OAUTHCLIENTSTOOL, tI = 16: ..#OAUTHRESOURCESERVERSTOOL, tI = 17: ..#OAUTHSERVERTOOL, tI = 18: ..#OAUTHSERVERCLIENTSTOOL, tI = 19: ..#TASKONDEMANDTOOL, tI = 20: ..#TASKUPCOMINGTOOL, tI = 21: ..#TASKHISTORYTOOL, tI = 22: ..#SYSTEMUSAGETOOL, tI = 23: ..#LOCKLISTTOOL, tI = 24: ..#DATABASELISTTOOL, tI = 25: ..#DATABASEFREESPACELISTTOOL, 1: "")
         If tBase = "" {
             Do ..Note(.pChecks, tName, "fail", "the roster on this instance declares no API path, so there was nothing to read")
             Continue
@@ -784,6 +809,109 @@ ClassMethod CheckProcessDetails(ByRef pChecks, pAccessToken As %String) [ Privat
         Quit
     }
     Do ..Note(.pChecks, "processdetails", "pass")
+}
+
+/// <p>Database details and Database volumes (<code>databasedetails</code>,
+/// <code>databasevolumes</code>, Story 6.11): the Databases General view's own first row supplies
+/// the <code>dir</code> both parent-scoped reads require, so this check reads
+/// <parameter>DATABASELISTTOOL</parameter> again at <code>maxRows=1</code> to find one, needing the
+/// same pairs <code>databases</code> already checked, and then reads
+/// <parameter>DATABASEDETAILSTOOL</parameter> and <parameter>DATABASEVOLUMESTOOL</parameter> for
+/// that directory, each expecting at least one row. <code>dir</code> travels unescaped in the query
+/// string: RFC 3986 lets <code>/</code> represent data inside a <code>query</code> component, so a
+/// directory path's separators need no percent-encoding there -- unlike a route's own single path
+/// segment (AD-13), which is a different position with a different rule. It is not that
+/// <code>/</code> is unreserved; it is reserved, and permitted in this one position. Skipped, like
+/// <method>CheckMessagesLog</method>, when no token was minted; failed, naming why, when the
+/// Databases list answers no row to key the two reads by -- a mounted instance always has at least
+/// one database (its own IRISSYS), so that is a real failure. Database details expects exactly one
+/// row naming that <code>Directory</code>; Database volumes expects at least one row, since a
+/// multi-file database answers more than one.</p>
+ClassMethod CheckDatabaseDetails(ByRef pChecks, pAccessToken As %String) [ Private ]
+{
+    Set tBase = ..RosterPath("api")
+    If tBase = "" {
+        Do ..Note(.pChecks, "databasedetails", "fail", "the roster on this instance declares no API path, so there was nothing to read")
+        Do ..Note(.pChecks, "databasevolumes", "fail", "the roster on this instance declares no API path, so there was nothing to read")
+        Quit
+    }
+    If pAccessToken = "" {
+        Do ..Note(.pChecks, "databasedetails", "skipped", "no token pair was minted by this run, so the authenticated read was not attempted")
+        Do ..Note(.pChecks, "databasevolumes", "skipped", "no token pair was minted by this run, so the authenticated read was not attempted")
+        Quit
+    }
+    Set tListPath = tBase _ "/screens/" _ ..#DATABASELISTTOOL _ "/read?maxRows=1"
+    Set tSC = ..Request("GET", tListPath, "Bearer " _ pAccessToken, "", .tListStatus, .tListText)
+    If $$$ISERR(tSC) {
+        Do ..Note(.pChecks, "databasedetails", "fail", "the Databases list could not be reached to find a directory: " _ $System.Status.GetErrorText(tSC))
+        Do ..Note(.pChecks, "databasevolumes", "fail", "the Databases list could not be reached to find a directory: " _ $System.Status.GetErrorText(tSC))
+        Quit
+    }
+    If tListStatus '= 200 {
+        Do ..Note(.pChecks, "databasedetails", "fail", "GET " _ tListPath _ " answered HTTP " _ tListStatus)
+        Do ..Note(.pChecks, "databasevolumes", "fail", "GET " _ tListPath _ " answered HTTP " _ tListStatus)
+        Quit
+    }
+    Set tDir = ""
+    Try {
+        Set tRows = ##class(%DynamicAbstractObject).%FromJSON(tListText).%Get("rows")
+        If $IsObject(tRows) && tRows.%IsA("%Library.DynamicArray") && (tRows.%Size() > 0) Set tDir = tRows.%Get(0).%Get("Directory")
+    } Catch {
+        Set tDir = ""
+    }
+    If tDir = "" {
+        Do ..Note(.pChecks, "databasedetails", "fail", "the Databases list answered no row with a Directory to read")
+        Do ..Note(.pChecks, "databasevolumes", "fail", "the Databases list answered no row with a Directory to read")
+        Quit
+    }
+
+    Set tPath = tBase _ "/screens/" _ ..#DATABASEDETAILSTOOL _ "/read?maxRows=1&dir=" _ tDir
+    Set tSC = ..Request("GET", tPath, "Bearer " _ pAccessToken, "", .tStatus, .tText)
+    If $$$ISERR(tSC) {
+        Do ..Note(.pChecks, "databasedetails", "fail", "the read could not be reached: " _ $System.Status.GetErrorText(tSC))
+    } ElseIf tStatus '= 200 {
+        Do ..Note(.pChecks, "databasedetails", "fail", "GET " _ tPath _ " answered HTTP " _ tStatus)
+    } Else {
+        Set tCount = -1
+        Set tSameDir = 0
+        Try {
+            Set tRows = ##class(%DynamicAbstractObject).%FromJSON(tText).%Get("rows")
+            If $IsObject(tRows) && tRows.%IsA("%Library.DynamicArray") Set tCount = tRows.%Size()
+            If tCount = 1 Set tSameDir = (tRows.%Get(0).%Get("Directory") = tDir)
+        } Catch {
+            Set tCount = -1
+        }
+        If tCount '= 1 {
+            Do ..Note(.pChecks, "databasedetails", "fail", "GET " _ tPath _ " answered 200 without a rows array of exactly one row")
+        } ElseIf 'tSameDir {
+            Do ..Note(.pChecks, "databasedetails", "fail", "GET " _ tPath _ " answered a row that is not " _ tDir _ "'s details")
+        } Else {
+            Do ..Note(.pChecks, "databasedetails", "pass")
+        }
+    }
+
+    Set tVolPath = tBase _ "/screens/" _ ..#DATABASEVOLUMESTOOL _ "/read?maxRows=10&dir=" _ tDir
+    Set tSC = ..Request("GET", tVolPath, "Bearer " _ pAccessToken, "", .tVolStatus, .tVolText)
+    If $$$ISERR(tSC) {
+        Do ..Note(.pChecks, "databasevolumes", "fail", "the read could not be reached: " _ $System.Status.GetErrorText(tSC))
+        Quit
+    }
+    If tVolStatus '= 200 {
+        Do ..Note(.pChecks, "databasevolumes", "fail", "GET " _ tVolPath _ " answered HTTP " _ tVolStatus)
+        Quit
+    }
+    Set tVolCount = -1
+    Try {
+        Set tVolRows = ##class(%DynamicAbstractObject).%FromJSON(tVolText).%Get("rows")
+        If $IsObject(tVolRows) && tVolRows.%IsA("%Library.DynamicArray") Set tVolCount = tVolRows.%Size()
+    } Catch {
+        Set tVolCount = -1
+    }
+    If tVolCount < 1 {
+        Do ..Note(.pChecks, "databasevolumes", "fail", "GET " _ tVolPath _ " answered 200 without a rows array of at least one row -- every mounted database has at least its primary volume file")
+        Quit
+    }
+    Do ..Note(.pChecks, "databasevolumes", "pass")
 }
 
 /// <p>The console-log page, read with the minted access token: one bounded page of the instance's

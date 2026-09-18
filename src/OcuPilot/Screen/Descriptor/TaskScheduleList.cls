@@ -37,7 +37,7 @@
 /// word for status 0; the classic portal offers Start there and Resume at 2, which is why the two
 /// sentences differ in what they ask for. <code>Running</code> matches no case and raises no
 /// strip.</p>
-/// <p><b>It is one of the six screens the shared auto-refresh framework binds</b> (AD-43), at the
+/// <p><b>It is one of the seven screens the shared auto-refresh framework binds</b> (AD-43), at the
 /// rates <file>EXPERIENCE.md</file>'s auto-refresh bullet declares. The framework owns the timer, the
 /// persisted setting and the silent re-fetch; the screen declares only that it refreshes and at what
 /// rates.</p>

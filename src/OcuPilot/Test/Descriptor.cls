@@ -1332,6 +1332,123 @@ Method TestARowTargetOutsideTheGrammarIsRefusedByTheRoster()
     Do $$$AssertStatusOK(tProdSC, "while the shipped roster still validates: " _ tProdProblem)
 }
 
+/// <p>AC1, AC8, AC9, Story 6.11 -- the Databases General view declares exactly its five fields and
+/// five columns, is the fourth OS-management side-bar entry, and declares
+/// <code>%Admin_Manage:USE</code> alone (not Operate) as its first pair.</p>
+/// <p>Mutation: add a sixth column to <code>table.columns</code> in
+/// <class>OcuPilot.Screen.Descriptor.DatabaseList</class> -> the column-set assertion goes red.</p>
+Method TestTheDatabasesGeneralViewDeclaresExactlyItsFiveFieldsAndFiveColumns()
+{
+    Set tClass = "OcuPilot.Screen.Descriptor.DatabaseList"
+    Do $$$AssertEquals($ClassMethod(tClass, "SideBarPosition"), 4, "the fourth OS-management side-bar entry")
+    Do $$$AssertEquals($ClassMethod(tClass, "Archetype"), "list (two views)", "the two-view archetype")
+    Set tRead = $ClassMethod(tClass, "Read")
+    Do $$$AssertTrue($IsObject(tRead), "the Databases list declares a read")
+    If '$IsObject(tRead) Quit
+    Do $$$AssertEquals(tRead.source.endpoint, "Database.SysCRUD", "reading the vendor's Database.SysCRUD endpoint")
+    Do $$$AssertEquals(tRead.source.type, "LIST", "the General view's LIST")
+    Set tFields = ""
+    Set tIterator = tRead.%Get("fields").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tField) { Set tFields = tFields _ $ListBuild(tField) }
+    Do $$$AssertEquals($ListToString(tFields, ","), "Directory,Size,MaxSize,Status,Resource", "exactly the five declared fields")
+    Set tTable = $ClassMethod(tClass, "Field", "table")
+    Set tColumns = ""
+    Set tIterator = tTable.%Get("columns").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tColumn) { Set tColumns = tColumns _ $ListBuild(tColumn.%Get("field")) }
+    Do $$$AssertEquals($ListToString(tColumns, ","), "Directory,Size,MaxSize,Status,Resource", "exactly the five declared columns")
+    Set tPairs = $ClassMethod(tClass, "PrivilegePairs")
+    Do $$$AssertEquals($ListLength(tPairs), 2, "two declared pairs")
+    Do $$$AssertEquals($List($List(tPairs, 1), 1), "%Admin_Manage", "Manage alone is the first, not Operate")
+    Do $$$AssertEquals($ClassMethod(tClass, "ClassicPage"), "%CSP.UI.Portal.OpDatabases", "the OpDatabases classic key, not Databases")
+}
+
+/// <p>AC2, AC3, Story 6.11 -- the Free-space view merges its <code>rowGet</code>'s
+/// <code>INFO</code> figures into the General view's <code>LIST</code> row, declares
+/// <code>MaxSize</code> nowhere, and declares three pairs with <code>%Admin_Operate:USE</code>
+/// second, the <code>AsyncResult</code> poll's own pair.</p>
+/// <p>Mutation: remove <code>%Admin_Operate:USE</code> from <code>DatabaseFreeSpace</code>'s
+/// <code>privileges</code> -> the pair-count assertion goes red.</p>
+Method TestTheFreeSpaceViewMergesInfoFiguresAndDeclaresNoMaxSize()
+{
+    Set tClass = "OcuPilot.Screen.Descriptor.DatabaseFreeSpace"
+    Do $$$AssertEquals($ClassMethod(tClass, "SideBarPosition"), 0, "unlisted, reached only through the View control")
+    Set tRead = $ClassMethod(tClass, "Read")
+    Do $$$AssertTrue($IsObject(tRead), "the Free-space view declares a read")
+    If '$IsObject(tRead) Quit
+    Do $$$AssertEquals(tRead.source.type, "LIST", "still a LIST, merged by rowGet")
+    Do $$$AssertEquals(tRead.source.rowGet.type, "INFO", "the async INFO detail call")
+    Do $$$AssertEquals(tRead.source.rowGet.key, "Directory", "keyed by Directory")
+    Set tFields = ""
+    Set tIterator = tRead.%Get("fields").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tField) { Set tFields = tFields _ $ListBuild(tField) }
+    Do $$$AssertEquals($ListToString(tFields, ","), "Directory,Size,AvailableSpace,DiskFree,Mounted", "exactly the five declared fields")
+    Do $$$AssertTrue('$ListFind(tFields, "MaxSize"), "MaxSize is declared nowhere on this view")
+    Set tPairs = $ClassMethod(tClass, "PrivilegePairs")
+    Do $$$AssertEquals($ListLength(tPairs), 3, "three declared pairs")
+    Do $$$AssertEquals($List($List(tPairs, 1), 1), "%Admin_Manage", "Manage first, the LIST's own gate")
+    Do $$$AssertEquals($List($List(tPairs, 2), 1), "%Admin_Operate", "Operate second, the AsyncResult poll's own gate")
+    Do $$$AssertEquals($ClassMethod(tClass, "EmptyStateKey"), "databaseListEmpty", "reusing the General view's empty state")
+}
+
+/// <p>AC7, AC8, Story 6.11 -- Database details declares Operate alone (not Manage), a composite id
+/// keyed by <code>Directory</code>, a <code>dir</code> criterion filled from the route id, and
+/// exactly fifteen fields: <code>Directory</code>, <code>GET</code>'s ten, and the
+/// <code>rowGet</code>'s four.</p>
+/// <p>Mutation: add <code>"ReadOnlyReason"</code> to <code>DatabaseDetails</code>'s
+/// <code>read.fields</code> without adding it to <code>rowGet.fields</code> -> the fifteen-field
+/// count assertion goes red (and <class>OcuPilot.Test.ScreenRead</class>'s live-row assertion
+/// separately catches the missing key).</p>
+Method TestDatabaseDetailsDeclaresExactlyFifteenFieldsAndOperateAlone()
+{
+    Set tClass = "OcuPilot.Screen.Descriptor.DatabaseDetails"
+    Do $$$AssertEquals($ClassMethod(tClass, "Archetype"), "detail", "a detail screen")
+    Do $$$AssertEquals($ClassMethod(tClass, "ParentScope"), "os-management/databases", "a sub-resource of Databases")
+    Do $$$AssertEquals($ClassMethod(tClass, "IdKind"), "composite", "a composite id")
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "IdParts"), ","), "Directory", "keyed by Directory")
+    Set tPairs = $ClassMethod(tClass, "PrivilegePairs")
+    Do $$$AssertEquals($ListLength(tPairs), 2, "two declared pairs")
+    Do $$$AssertEquals($List($List(tPairs, 1), 1), "%Admin_Operate", "Operate alone, not Manage")
+    Set tRead = $ClassMethod(tClass, "Read")
+    Do $$$AssertTrue($IsObject(tRead), "Database details declares a read")
+    If '$IsObject(tRead) Quit
+    Do $$$AssertEquals(tRead.source.type, "GET", "a single-object GET")
+    Do $$$AssertEquals(tRead.source.rowGet.type, "INFO", "an INFO detail call, never parts")
+    Do $$$AssertTrue('$IsObject(tRead.source.%Get("parts")), "and never source.parts")
+    Do $$$AssertEquals(tRead.criteria.fields.%Get(0).param, "dir", "the one route-id criterion")
+    Do $$$AssertEquals(tRead.source.rowGet.key, "dir", "keyed by that same criterion's param")
+    Set tFields = ""
+    Set tIterator = tRead.%Get("fields").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tField) { Set tFields = tFields _ $ListBuild(tField) }
+    Do $$$AssertEquals($ListLength(tFields), 15, "fifteen fields: Directory, GET's ten, and the rowGet's four")
+    Do $$$AssertEquals($ListToString(tFields, ","), "Directory,MaxSize,ExpansionSize,NewVolumeThreshold,NewVolumeDirectory,ResourceName,NewGlobalIsKeep,NewGlobalCollation,ClusterMountMode,ReadOnly,GlobalJournalState,Size,AvailableSpace,DiskFree,Mounted", "in that exact order")
+}
+
+/// <p>AC9, Story 6.11 -- Database volumes declares the six vendor fields, a
+/// <code>VOLUMELIST</code> source with neither <code>rowGet</code> nor <code>forEach</code>, a
+/// <code>dir</code> criterion filled from the parent route id, and no entity type of its own.</p>
+/// <p>Mutation: change the source type to <code>LIST</code> -> the source-type assertion goes red,
+/// and <class>OcuPilot.Test.ScreenRead</class>'s volume-row assertion separately catches the
+/// endpoint answering the database list instead.</p>
+Method TestDatabaseVolumesDeclaresTheVendorSixAndNoDetailCall()
+{
+    Set tClass = "OcuPilot.Screen.Descriptor.DatabaseVolumeList"
+    Do $$$AssertEquals($ClassMethod(tClass, "ParentScope"), "os-management/databases", "a sub-resource of Databases")
+    Do $$$AssertEquals($ClassMethod(tClass, "PrimaryEntityType"), "", "no entity type of its own")
+    Set tPairs = $ClassMethod(tClass, "PrivilegePairs")
+    Do $$$AssertEquals($List($List(tPairs, 1), 1), "%Admin_Manage", "Manage alone, TYPEVOLUMELIST's own arm")
+    Set tRead = $ClassMethod(tClass, "Read")
+    Do $$$AssertTrue($IsObject(tRead), "Database volumes declares a read")
+    If '$IsObject(tRead) Quit
+    Do $$$AssertEquals(tRead.source.type, "VOLUMELIST", "the new source type")
+    Do $$$AssertTrue('$IsObject(tRead.source.%Get("rowGet")), "no rowGet")
+    Do $$$AssertTrue('$IsObject(tRead.source.%Get("forEach")), "no forEach")
+    Do $$$AssertEquals(tRead.criteria.fields.%Get(0).param, "dir", "the one route-id criterion, the vendor's own param name")
+    Set tFields = ""
+    Set tIterator = tRead.%Get("fields").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tField) { Set tFields = tFields _ $ListBuild(tField) }
+    Do $$$AssertEquals($ListToString(tFields, ","), "VolumeNumber,VolumeDirectory,File,Size,VolumeDirectoryTotalSize,DiskFree", "the vendor's six members")
+}
+
 /// <p>Area <var>pKey</var>'s declared privilege pairs as <code>resource:permission</code> joined
 /// by <code>, </code> in declared order, empty when the area never gates. An assertion over this
 /// pins the set by content: a length alone passes a set that swapped one pair for another.</p>

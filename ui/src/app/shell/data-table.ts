@@ -80,6 +80,8 @@ interface CellModel {
   readonly plain: boolean;
   readonly tag: boolean;
   readonly active: boolean;
+  /** This one cell draws a skeleton bar instead of `view` (Story 6.11, `pendingFields`). */
+  readonly pending: boolean;
 }
 
 interface RowModel {
@@ -240,6 +242,9 @@ interface HeaderModel {
                     [class.ocu-data-table-cell-numeric]="cell.view.numeric"
                     [class.ocu-data-table-cell-active]="cell.active"
                   >
+                    @if (cell.pending) {
+                      <span class="ocu-skeleton-bar ocu-data-table-cell-skeleton" aria-hidden="true"></span>
+                    }
                     @if (cell.link) {
                       <a class="ocu-data-table-link" tabindex="-1" [href]="row.href" (click)="onLinkClick($event, row)">{{
                         cell.view.text
@@ -345,6 +350,18 @@ export class DataTable implements OnInit {
   readonly screen = input.required<ScreenDeclaration>();
   readonly store = input.required<ScreenStore>();
 
+  /**
+   * Declared column fields still awaiting a second, slower read (Story 6.11's Free-space view):
+   * every cell in one of these columns draws a skeleton bar instead of its value, on every row,
+   * regardless of what the row itself carries -- a column-wide state, not a per-cell one, since
+   * the figures this exists for arrive together in one tick rather than row by row (AD-36's
+   * `Screen.Read` answers one envelope). Empty by default, so no other screen's rendering changes.
+   * The grid's own column tracks come from each column's declared `kind` alone (`columnTemplate`
+   * below), never from cell content, so a column entering or leaving this list never reflows the
+   * table (AC4).
+   */
+  readonly pendingFields = input<readonly string[]>([]);
+
   /** Asked when a focused grid is left with no row and no empty state: the filter takes focus. */
   readonly focusFilter = output<void>();
 
@@ -414,6 +431,7 @@ export class DataTable implements OnInit {
     const screen = this.screen();
     const store = this.store();
     const columns = this.columns();
+    const pendingFields = this.pendingFields();
     const active = store.active();
     const selected = store.selection()[0] ?? '';
     const changed = store.changed();
@@ -466,19 +484,21 @@ export class DataTable implements OnInit {
         href: url === '' ? '' : this.locationStrategy.prepareExternalUrl(url),
         classicHref,
         cells: columns.map((column, columnIndex) => {
+          const pending = pendingFields.includes(column.field);
           const view = cellView(fieldOf(row, column.field), column.kind, column.emptyKey ?? '', this.lookup);
-          const link = view.link && url !== '';
-          const classic = view.link && classicHref !== '';
+          const link = !pending && view.link && url !== '';
+          const classic = !pending && view.link && classicHref !== '';
           return {
             field: column.field,
             id: `${id}-cell-${columnIndex}`,
             view,
             link,
             classic,
-            disc: view.disc !== null,
-            plain: !link && !classic,
-            tag: isChanged && column.kind === 'name',
+            disc: !pending && view.disc !== null,
+            plain: !pending && !link && !classic,
+            tag: !pending && isChanged && column.kind === 'name',
             active: isActive && activeColumn === columnIndex,
+            pending,
           };
         }),
         triggerId: `${id}-cell-${columns.length}`,

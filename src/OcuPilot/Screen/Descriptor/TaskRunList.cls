@@ -27,7 +27,7 @@
 /// the vendor's history row, so <code>context.secretFields</code> is empty (AD-24, AD-35). The
 /// request is synchronous for the reason <code>TaskHistoryList</code>'s is (AD-26), and it declares
 /// no <code>refreshes</code>: its one criterion runs when the page opens, with no Search to press,
-/// and AD-43's roster of six auto-refreshing screens does not name it.</p>
+/// and AD-43's roster of seven auto-refreshing screens does not name it.</p>
 /// <p><b>The privilege set is <code>%Admin_Task:USE</code> plus <code>%DB_IRISSYS:READ</code></b>,
 /// Task schedule's own pairs (AD-8, AD-29).</p>
 /// <p><b>The classic page is <code>%CSP.UI.Portal.TaskHistoryId</code></b> (AD-44). As a list

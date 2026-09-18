@@ -13,6 +13,8 @@ import { ActivatedRoute } from '@angular/router';
 
 import { DefinitionFormPage } from '../areas/agent/definition-form.page';
 import { SwitchesPage } from '../areas/agent/switches.page';
+import { DatabaseDetailsPage } from '../areas/os-management/database-details.page';
+import { DatabasesPage } from '../areas/os-management/databases.page';
 import { ProcessDetailsPage } from '../areas/os-management/process-details.page';
 import { SystemUsagePage } from '../areas/os-management/system-usage.page';
 import { TaskDetailsPage } from '../areas/tasks/details.page';
@@ -55,6 +57,7 @@ type ArchetypePages = { readonly [K in BuiltArchetypeKey]: Type<unknown> } & {
 export const ARCHETYPE_PAGES: ArchetypePages = {
   home: HomePage,
   list: ListPage,
+  'list (two views)': DatabasesPage,
   'list (server criteria)': AuditPage,
   'drill-down': ErrorLogPage,
   'form-page': DefinitionFormPage,
@@ -84,6 +87,8 @@ export const DESCRIPTOR_PAGES: Readonly<Record<string, Type<unknown>>> = {
   'OcuPilot.Screen.Descriptor.TaskHistoryList': HistoryPage,
   'OcuPilot.Screen.Descriptor.TaskDetails': TaskDetailsPage,
   'OcuPilot.Screen.Descriptor.ProcessDetails': ProcessDetailsPage,
+  'OcuPilot.Screen.Descriptor.DatabaseFreeSpace': DatabasesPage,
+  'OcuPilot.Screen.Descriptor.DatabaseDetails': DatabaseDetailsPage,
 };
 
 /**

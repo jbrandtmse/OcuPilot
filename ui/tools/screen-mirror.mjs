@@ -473,8 +473,8 @@ export function sideBarPositionProblem(declaration) {
  *
  * The rules `OcuPilot.Screen.Registry.ReadProblem` applies on the instance: an absent or `null`
  * read is a screen with no read; otherwise `source` is `{port, endpoint, type}`, `type` one of
- * `READ_SOURCE_TYPES`. `GET`, `UPCOMING` and `HISTORY` are admin only and declare no `forEach`;
- * `UPCOMING` and `HISTORY` also declare no `rowGet`, and so does `GET` unless `parentScope` names
+ * `READ_SOURCE_TYPES`. `GET`, `UPCOMING`, `HISTORY` and `VOLUMELIST` are admin only and declare no
+ * `forEach`; `UPCOMING`, `HISTORY` and `VOLUMELIST` also declare no `rowGet`, and so does `GET` unless `parentScope` names
  * the route its one route-id criterion is fetched under, in which case it may pair one `rowGet`
  * keyed by that criterion's own param (Story 6.7). An optional `query` fixes parameters
  * (`sourceQueryProblem`). The source is one of three kinds:
@@ -527,7 +527,7 @@ export function readProblem(declaration) {
     );
   }
   if (typeof source.type !== 'string' || !READ_SOURCE_TYPES.includes(source.type)) {
-    return `read.source.type '${shown(source.type)}' is not 'LIST', 'GET', 'UPCOMING' or 'HISTORY'`;
+    return `read.source.type '${shown(source.type)}' is not 'LIST', 'GET', 'UPCOMING', 'HISTORY' or 'VOLUMELIST'`;
   }
   // A GET source reads one named object of an admin endpoint as the read's one row (AD-36), so it
   // lists no parents. It may take its one criterion from the route id, and pair a rowGet keyed by
@@ -574,6 +574,21 @@ export function readProblem(declaration) {
     }
     if (isObject(source.forEach)) {
       return 'read.source.forEach is declared on a HISTORY source, which lists no parents (AD-36)';
+    }
+  }
+  // A VOLUMELIST source lists an admin endpoint's volume files (AD-36, Story 6.11):
+  // Database.SysCRUD's own request type, worded like the HISTORY arm above for the same reason --
+  // a row is a volume file rather than an object, so there is no detail call to issue and no parent
+  // to list.
+  if (source.type === 'VOLUMELIST') {
+    if (source.port !== SOURCE_ADMIN) {
+      return `read.source.type 'VOLUMELIST' is declared on a '${source.port}' source, and a list-shaped request type other than LIST issues an admin endpoint (AD-36)`;
+    }
+    if (isObject(source.rowGet)) {
+      return 'read.source.rowGet is declared on a VOLUMELIST source, whose rows are volume files with no detail call to issue (AD-36)';
+    }
+    if (isObject(source.forEach)) {
+      return 'read.source.forEach is declared on a VOLUMELIST source, which lists no parents (AD-36)';
     }
   }
   const queryFault = sourceQueryProblem(read, source);
@@ -1029,10 +1044,11 @@ function criteriaMarkerProblem(criteria, params) {
 /**
  * The request types a `read.source` may issue (AD-36), byte for byte `OcuPilot.Screen.Registry`'s own
  * `READSOURCETYPES`: `LIST`, a list of rows; `GET`, one object read as the read's one row;
- * `UPCOMING`, an admin endpoint's list of scheduled occurrences, issued as a list is; and
- * `HISTORY`, `Task.CRUD`'s task-run history, issued the same way (Story 6.6).
+ * `UPCOMING`, an admin endpoint's list of scheduled occurrences, issued as a list is;
+ * `HISTORY`, `Task.CRUD`'s task-run history, issued the same way (Story 6.6); and `VOLUMELIST`,
+ * `Database.SysCRUD`'s volume-file list, issued the same way again (Story 6.11).
  */
-export const READ_SOURCE_TYPES = ['LIST', 'GET', 'UPCOMING', 'HISTORY'];
+export const READ_SOURCE_TYPES = ['LIST', 'GET', 'UPCOMING', 'HISTORY', 'VOLUMELIST'];
 
 /** The longest value a `read.source.query` entry may fix, `OcuPilot.Screen.Registry`'s `SOURCEQUERYMAXLENGTH`. */
 export const SOURCE_QUERY_MAX_LENGTH = 50;
@@ -1931,7 +1947,8 @@ export interface ReadSource {
   readonly endpoint: string;
   /**
    * \`LIST\` reads rows; \`GET\` reads one object as the one row, and a 404 reads as none;
-   * \`UPCOMING\` reads an admin endpoint's scheduled occurrences as rows; \`HISTORY\` reads its task-run history.
+   * \`UPCOMING\` reads an admin endpoint's scheduled occurrences as rows; \`HISTORY\` reads its task-run history;
+   * \`VOLUMELIST\` reads a database's own volume files as rows.
    */
   readonly type: ${READ_SOURCE_TYPES.map((value) => `'${value}'`).join(' | ')};
   readonly rowGet?: ReadRowGet | null;

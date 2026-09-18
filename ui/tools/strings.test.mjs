@@ -330,10 +330,21 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   // Process details row's "Global references", seven meter labels and the empty state -- the
   // meter state word itself (Normal / Warning / Troubled) is vendor data rendered as reported
   // rather than a translated string, so it carries no literal here -- and takes the table to 416,
-  // past the 400 bound, so the bound moves to 450.
+  // past the 400 bound, so the bound moves to 450. Story 6.10's one row carries 7 (Locks' title,
+  // three column headers beyond the Processes row's own, the local-system word and the empty
+  // state) and takes the table to 423, still inside the 450 bound Story 6.9 set. Story 6.11's one
+  // row carries 24: the Databases screen title, the Free-space view's own title (also the View
+  // control's second option), the View control's accessible name, five column headers beyond the
+  // Locks row's "Directory", the Task history row's "Status" and the Web applications row's
+  // "Resource", the list's empty state, Database details' title, its "no longer exists" empty
+  // state, eight of its remaining field labels, and the volume-files section's heading, three
+  // column headers beyond its own reused ones and its own empty state -- and takes the table to
+  // 447, three short of the 450 bound left after Story 6.9. Three of headroom for one story and
+  // none for 6.12 through 6.14 is not headroom, so the bound moves to 520 now rather than at the
+  // next story that would have exceeded it.
   assert.ok(
-    expectedLiterals.length >= 150 && expectedLiterals.length <= 450,
-    `expected between 150 and 450 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
+    expectedLiterals.length >= 150 && expectedLiterals.length <= 520,
+    `expected between 150 and 520 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
   );
 });
 

@@ -36,7 +36,7 @@
 /// <code>DisplayIntervalCalc</code>, which a screen read cannot call without bypassing the port. A
 /// suspended task's <code>NextScheduled</code> is a stale past time, so the page reads it as "Not
 /// scheduled while suspended" instead (inference).</p>
-/// <p><b>It is one of the six screens the shared auto-refresh framework binds</b> (AD-43), at the
+/// <p><b>It is one of the seven screens the shared auto-refresh framework binds</b> (AD-43), at the
 /// rates <file>EXPERIENCE.md</file>'s auto-refresh bullet declares. Refreshing a parent-scoped read
 /// is sound here because its one criterion is the route id rather than a server search the user ran
 /// (Story 6.7's grammar widening).</p>

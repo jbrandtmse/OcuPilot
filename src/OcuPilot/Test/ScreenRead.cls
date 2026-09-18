@@ -653,4 +653,103 @@ Method TestTheRouteCarriesAPortFaultsDetailOntoTheWire()
     Do ##class(OcuPilot.Test.EndpointFixture).Clear()
 }
 
+/// <p>AC5, Story 6.11 -- against the real <code>Database.SysCRUD</code> endpoint, the Free-space
+/// view's per-row <code>INFO</code> detail call is a genuine async hand-off (verified against the
+/// instance: <code>ShouldRunAsync()</code> is true only for <code>TYPEINFO</code>), so the fixture
+/// leaves the endpoint resolution and the 202 hand-off real and only arms the poll: every poll
+/// answers <code>Running</code>, forever, and the bound is lowered to one second. The whole read is
+/// refused, never partial, with the vendor task row left in place (no <code>forgot</code> record).</p>
+/// <p>Mutation: make <method>OcuPilot.Port.AdminPort.AwaitTask</method> return the last poll's
+/// <code>Result</code> on timeout instead of refusing -> this goes red on the status and the empty
+/// result.</p>
+Method TestTheFreeSpaceReadRefusesWholeWhenTheAsyncWaitIsExceeded()
+{
+    Do ##class(OcuPilot.Test.PortFixture).Clear()
+    Set tAnswer = {"State": "Running", "TaskName": "", "FailureReason": "", "Result": {}}
+    Do ##class(OcuPilot.Test.PortFixture).SetCannedAnswer(tAnswer.%ToJSON())
+    Do ##class(OcuPilot.Test.PortFixture).SetAsyncTimeout(1)
+    Set tStart = $ZHorolog
+    Kill tNoCriteria
+    Set tSC = ##class(OcuPilot.Test.Read.ReadFixture).Execute("OcuPilot.Screen.Descriptor.DatabaseFreeSpace", "", .tResult, .tHttp, .tFault, .tNoCriteria)
+    Set tElapsed = $ZHorolog - tStart
+    Do $$$AssertStatusNotOK(tSC, "the whole read is refused")
+    Do $$$AssertEquals(tHttp, 503, "HTTP 503")
+    Do $$$AssertTrue($IsObject(tFault) && (tFault.code = "PORT.TIMEOUT"), "code PORT.TIMEOUT: " _ $Select($IsObject(tFault): tFault.%ToJSON(), 1: "(no fault)"))
+    Do $$$AssertEquals(tResult, "", "no row carries a partial figure -- there is no partial result at all")
+    Do $$$AssertTrue(tElapsed >= 1, "the port waited out the bound (" _ tElapsed _ "s)")
+    Do $$$AssertTrue(tElapsed < 10, "and the bound is the fixture's one second, not the 30-second default")
+    Do $$$AssertEquals(##class(OcuPilot.Test.PortFixture).Recorded("forgot"), "", "the vendor task row is left in place for whichever worker still owns it")
+    Do ##class(OcuPilot.Test.PortFixture).Clear()
+}
+
+/// <p>AC8, Story 6.11 -- against a live database directory, Database details' read seeds
+/// <code>Directory</code> from the route-id criterion (neither <code>GET</code> nor <code>INFO</code>
+/// answers it), and the eight declared fields a live database always populates -- the four
+/// <code>GET</code> properties <code>MaxSize</code>, <code>ExpansionSize</code>,
+/// <code>ResourceName</code> and <code>GlobalJournalState</code>, and all four of the
+/// <code>rowGet</code>'s -- carry real values on the live row rather than null-filled keys -- <method>TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow</method>
+/// asserts key presence only, which a projection bug emitting <code>null</code> for a live key would
+/// still satisfy.</p>
+/// <p>Mutation: make <method>OcuPilot.Screen.Read.Project</method> emit every declared field as
+/// JSON <code>null</code> -> this goes red naming the null-filled row, while the key-presence test
+/// stays green.</p>
+Method TestDatabaseDetailsSeedsDirectoryAndAnswersRealValues()
+{
+    Set tSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tList)
+    Do $$$AssertStatusOK(tSC, "the production descriptors list")
+    Kill tQuery
+    Set tQuery("maxRows") = 1000
+    Set tListSC = ##class(OcuPilot.Port.AdminPort).Invoke("Database.SysCRUD", "LIST", .tQuery, "", .tDatabases, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tListSC, "the live database list answers")
+    If $$$ISERR(tListSC) || (tDatabases.%Size() = 0) Quit
+    Set tDir = tDatabases.%Get(0).Directory
+
+    Kill tCriteria
+    Set tCriteria("dir") = tDir
+    Set tSC = ##class(OcuPilot.Screen.Read).Execute("OcuPilot.Screen.Descriptor.DatabaseDetails", "", .tResult, .tHttp, .tFault, .tCriteria)
+    Do $$$AssertStatusOK(tSC, "Database details reads a live directory")
+    Do $$$AssertEquals(tHttp, 200, "at 200")
+    If tHttp '= 200 Quit
+    Do $$$AssertEquals(tResult.rows.%Size(), 1, "one row")
+    If tResult.rows.%Size() = 0 Quit
+    Set tRow = tResult.rows.%Get(0)
+    Do $$$AssertEquals(tRow.%Get("Directory"), tDir, "Directory is seeded from the route-id criterion, since neither GET nor INFO answers it")
+    For tField = "MaxSize", "ExpansionSize", "ResourceName", "GlobalJournalState", "Size", "AvailableSpace", "DiskFree", "Mounted" {
+        Do $$$AssertTrue((tRow.%GetTypeOf(tField) '= "null") && (tRow.%GetTypeOf(tField) '= "unassigned"), "the live row's '" _ tField _ "' carries a real value, not a null-filled key: " _ tRow.%ToJSON())
+    }
+}
+
+/// <p>AC9, Story 6.11 -- against a live single-file database, the new <code>VOLUMELIST</code>
+/// source type answers one row through Database details' Volume files read, whose <code>File</code>
+/// is <code>IRIS.DAT</code> and whose <code>VolumeNumber</code> is 0 -- the consumer exercising the
+/// new source type against a real vendor answer, not the declaration alone
+/// (<method>OcuPilot.Test.Descriptor.TestDatabaseVolumesDeclaresTheVendorSixAndNoDetailCall</method>
+/// covers the shape).</p>
+/// <p>Mutation: change <code>DatabaseVolumeList</code>'s source type to <code>LIST</code> -> this
+/// goes red, since the endpoint then answers the database list's own fields rather than a volume
+/// row; drop <code>VOLUMELIST</code> from <code>AdminPort.TYPESUFFIXES</code> -> the read fails at
+/// <code>EndpointType</code> with <code>PORT.NOTIMPLEMENTED</code>.</p>
+Method TestDatabaseVolumesAnswersOneRowForASingleFileDatabase()
+{
+    Kill tQuery
+    Set tQuery("maxRows") = 1000
+    Set tListSC = ##class(OcuPilot.Port.AdminPort).Invoke("Database.SysCRUD", "LIST", .tQuery, "", .tDatabases, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tListSC, "the live database list answers")
+    If $$$ISERR(tListSC) || (tDatabases.%Size() = 0) Quit
+    Set tDir = tDatabases.%Get(0).Directory
+
+    Kill tCriteria
+    Set tCriteria("dir") = tDir
+    Set tSC = ##class(OcuPilot.Screen.Read).Execute("OcuPilot.Screen.Descriptor.DatabaseVolumeList", "", .tResult, .tHttp, .tFault, .tCriteria)
+    Do $$$AssertStatusOK(tSC, "Database volumes reads a live directory")
+    Do $$$AssertEquals(tHttp, 200, "at 200")
+    If tHttp '= 200 Quit
+    Do $$$AssertTrue(tResult.rows.%Size() > 0, "at least one volume file")
+    If tResult.rows.%Size() = 0 Quit
+    Set tRow = tResult.rows.%Get(0)
+    Do $$$AssertEquals(tRow.%Get("VolumeNumber"), 0, "the vendor's own ordinal for the primary file")
+    Do $$$AssertEquals(tRow.%Get("File"), "IRIS.DAT", "the primary volume file's own name")
+    Do $$$AssertTrue(tRow.%Get("Size") > 0, "a real size, not a null-filled key")
+}
+
 }
