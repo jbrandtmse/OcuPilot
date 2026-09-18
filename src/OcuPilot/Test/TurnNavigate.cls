@@ -58,6 +58,14 @@ Method OnAfterOneTest() As %Status
         If tKey = "" Quit
         Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedDelete(tKey), "turn " _ tKey _ " is removed")
     }
+    ; Several methods here exercise a path that never reaches GuardedFinish -- a refused request,
+    ; a settle-claim race, a wire status sweep -- and a reserve holds the user's slot lock until a
+    ; finish releases it. %UnitTest's own teardown fails the whole class over a lock left held
+    ; after a method (ERROR #5001, which ci-runner reports as a class-level error and CI's
+    ; instance job fails on), so the fixture hands the slot back itself.
+    Lock -^OcuPilotTurnSlot($Username)
+    Lock -^OcuPilotTurnSlot("_SYSTEM")
+    Do $$$AssertEquals(##class(OcuPilot.Test.TurnFixture).SlotOwner($Username), "", "no turn slot is left held")
     Do $$$AssertStatusOK(##class(OcuPilot.Test.AgentFixture).RemoveProbeDefinitions(.tRemaining), "the probe definitions are removed")
     Do $$$AssertEquals(tRemaining, 0, "and none survives")
     Quit $$$OK
