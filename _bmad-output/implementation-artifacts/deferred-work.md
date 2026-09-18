@@ -3257,3 +3257,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: The I/O matrix's Entities and specials row specifies exactly this ('marked's Lexer yields unescaped text; nothing re-escapes'), and decoding entities would blur the raw-HTML-is-text guarantee AD-11 rule 4 rests on. A model writing prose emits '&' directly, which renders correctly.
 - 2026-09-18T02:02:40Z status=by-design owner=burndown by=cr note=specified by the spec's own Entities and specials matrix row; reopens only via a spec amendment
 - 2026-09-18T02:13:15Z status=by-design owner=burndown by=adjudication note=lead confirms: the I/O matrix row makes literal entities the specified behaviour
+
+### DW-1091: ReadTool's error-log truncation assertion depends on the instance having two entries on one date, so it reddens on a long-lived instance
+- source: lead verification of story 4.7 (pre-existing, from story 4.2) | severity: low | fix-risk: low | footprint: in-epic
+- evidence: OcuPilot.Test.ReadTool.TestTheErrorReadToolCarriesTheSummaryFieldsOnly asserts tCapped.truncated = 1 after reading the newest date with a cap of 1, which holds only where that date carries more than one entry. It is green in CI (a fresh container logs several entries at startup) and on the development instance, and red on the slot-A throwaway after days of use. Probe: run the class through ci-runner against an instance whose newest error date holds exactly one entry
+- 2026-09-18T06:20:48Z status=routed owner=burndown by=lead note=found while running the 4.7 classes through ci-runner rather than the MCP runner; a latent CI flake, not a 4.7 regression
+
+### DW-1092: navigate.browser-spec.mjs fails opaquely when another turn still holds the user's slot, which an aborted run can do for the whole NAVWAITSECONDS wait
+- source: lead verification of story 4.7 | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Observed under the lead AD gate: the mutated run left a turn job inside its 60-second navigation wait, and the very next (clean) run of the spec failed AC4 after 36 seconds with no statement of why; run alone a moment later it was 5/5. The spec's before-hook asserts readiness but not that the signed-in user's turn slot is free. Probe: hold ^OcuPilotTurnSlot for the spec user, then run the spec
+- 2026-09-18T06:24:23Z status=routed owner=burndown by=lead note=make the before-hook wait for a free slot and say so when it times out, the way turn.browser-spec's lock legs already reason about the slot
