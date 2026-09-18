@@ -34,7 +34,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { leaveFirstLoginGate, pathOf } from './shell-entry.mjs';
-import { armProbeDefinition, disarmProbeDefinition } from './turnprobe-spec.mjs';
+import { armProbeDefinition, disarmProbeDefinition, removeDefinition } from './turnprobe-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -412,6 +412,76 @@ test("AC3: a line's Open navigates to that line's own screen", async (t) => {
     await page.waitForFunction((was) => window.location.pathname !== was, { timeout: config.navigationTimeoutMs }, before);
     assert.match(target, /^logs\/errors/, "the Open control's href is the line's own screen");
     assert.equal(pathOf(page), '/ocupilot/logs/errors', 'and the router went there');
+  } finally {
+    await context.close();
+  }
+});
+
+test('DW-1154: the panel body rules this story touched but did not add -- the transcript scrolls on its own with its own focus ring, and the reminder banner narrows its own link', async () => {
+  // The first implementation pass's SCSS insertion deleted `.ocu-panel-transcript`, its
+  // `:focus-visible` ring, `.ocu-panel-empty`, `.ocu-panel-banner` and `.ocu-panel-banner-link`
+  // while adding `.ocu-suggested*`, and every gate -- `npm test`, the six prebuild checkers, the
+  // 126-case browser suite and `smoke.sh` -- stayed green without them; it was caught by eye. jsdom
+  // computes no layout, so these computed-style claims about the restored rules can only be pinned
+  // here.
+  //
+  // No probe armed: `configured()` must be false so this administrator sees the reminder banner
+  // (with its own `.ocu-panel-banner-link`) -- the same state `gate.browser-spec.mjs` exercises on
+  // another route. That precondition is not ambient: this file's own "AC1, AC3" and "AC3: Open
+  // navigates" cases run first and leave a default definition armed until this file's `after()`,
+  // so a test placed after them cannot assume `configured()` is still false the way the geometry
+  // cases above (which never call `ensureArmed()`) can. Removing every definition here, the way
+  // `gate.browser-spec.mjs` does before its own gate-dependent cases, makes the precondition true
+  // regardless of what ran before it in this file or in the full suite.
+  removeDefinition(probe, '');
+  const { context, page } = await signedInAt(HOME_URL, { width: 1440, height: 900 });
+  try {
+    await page.waitForSelector('.ocu-panel-banner-link', { timeout: config.navigationTimeoutMs });
+
+    // Mutation (Rule 19): delete `overflow-y: auto` from `.ocu-panel-transcript` in
+    // `_components.scss` -> this assertion goes red.
+    const overflowY = await page.$eval('.ocu-panel-transcript', (node) => getComputedStyle(node).overflowY);
+    assert.equal(overflowY, 'auto', 'the transcript scrolls on its own, independent of the panel body');
+
+    // Mutation (Rule 19): delete the `.ocu-panel-transcript:focus-visible` rule from
+    // `_components.scss` -> this assertion goes red.
+    //
+    // Establishing keyboard modality first is what makes the programmatic `focus({focusVisible})`
+    // below actually match `:focus-visible` (`rail.browser-spec.mjs`'s own idiom for the same
+    // reason: a synthetic focus with no prior keyboard signal is not evidence of keyboard use).
+    await page.mouse.move(700, 450);
+    await page.focus('main#ocu-content');
+    await page.keyboard.down('Shift');
+    await page.keyboard.up('Shift');
+    await page.evaluate(() => document.querySelector('.ocu-panel-transcript').focus({ focusVisible: true }));
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const focused = await page.evaluate(() => {
+      const node = document.querySelector('.ocu-panel-transcript');
+      const style = getComputedStyle(node);
+      return {
+        matches: node.matches(':focus-visible'),
+        outlineWidth: style.outlineWidth,
+        outlineOffset: style.outlineOffset,
+      };
+    });
+    assert.equal(focused.matches, true, 'the transcript really does take keyboard focus (tabindex="0")');
+    assert.equal(focused.outlineWidth, '2px', "the published ring's own width, not the browser's default focus outline");
+    assert.equal(focused.outlineOffset, '-2px', "this element's own inset ring, not the generic two-tone one");
+
+    // Mutation (Rule 19): delete `height: auto` from `.ocu-panel-banner-link` in
+    // `_components.scss` -> this assertion goes red -- the link would keep `.ocu-button-text`'s own
+    // fixed 32px control height instead of sitting inline with the banner's wrapped sentence.
+    const link = await page.$eval('.ocu-panel-banner-link', (node) => {
+      const style = getComputedStyle(node);
+      return { height: node.getBoundingClientRect().height, paddingLeft: style.paddingLeft };
+    });
+    assert.ok(link.height < 32, `not forced to the button's 32px control height: ${link.height}px`);
+    assert.equal(link.paddingLeft, '8px', "the banner's own narrower padding, not the button's 16px");
+
+    // Mutation (Rule 19): delete `flex-wrap: wrap` from `.ocu-panel-banner` in `_components.scss`
+    // -> this assertion goes red.
+    const bannerWrap = await page.$eval('.ocu-panel-banner', (node) => getComputedStyle(node).flexWrap);
+    assert.equal(bannerWrap, 'wrap', 'the banner wraps its sentence and link rather than overflowing the panel');
   } finally {
     await context.close();
   }

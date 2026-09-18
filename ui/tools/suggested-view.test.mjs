@@ -192,6 +192,24 @@ test('an absent counted line leaves the zero test vacuously true, so the prompts
   assert.equal(view.showPrompts(), true);
 });
 
+test('DW-1147 (owner to decide): today, a refused, faulted or unreachable counted read all fall through to the same fallback as a real zero', async () => {
+  // Pins current behaviour without changing it. The spec's own deferred item 1 names the gap:
+  // `showPrompts()` tests only the lines that answered (`view.lines()`), so a source the caller
+  // could not read at all -- refused, 5xx, or unreachable -- is simply absent from that test
+  // rather than counted as a known zero, and "nothing needs attention" renders either way. Whether
+  // "unknown" may present as "zero" is a product call this test does not make; it only pins what
+  // ships today so a later decision on DW-1147 has something to move.
+  //
+  // Mutation (Rule 19): add `if (this.lines().length < SOURCES.length) return false;` at the top
+  // of `showPrompts()` in `suggested-view.ts` -- every case here goes red (each leaves one source
+  // absent), while the all-real-zero-rows case above (both sources present) stays green.
+  for (const result of [errorAt(403), errorAt(500), errorAt(0), { kind: 'installing', status: 503, code: 'INSTALL.RUNNING' }]) {
+    const view = viewOver({ api: apiAnswering(result) });
+    await view.load();
+    assert.equal(view.showPrompts(), true, JSON.stringify(result));
+  }
+});
+
 test('AC5: a fourth source appended to the declared array appends a fourth line, in declared order', async () => {
   // Mutation (Rule 19): hard-code the two line keys in the render path (here, `lines()`) instead of
   // iterating the source array -> this goes red.
