@@ -33,7 +33,9 @@
 /// <code>read</code> (the one declared read, AD-36, or absent), <code>table</code> (the columns and
 /// empty-state keys a read's rows render with, declared exactly when <code>read</code> is),
 /// <code>banner</code> (a second declared port read whose value raises a strip above the table, or
-/// absent), and <code>toolIdentifier</code>.</p>
+/// absent), <code>tab</code> (<code>{group, position, labelKey}</code>: the route of the tab group
+/// this screen is one tab of, its position in the strip and its label's string key, AD-5, or absent),
+/// and <code>toolIdentifier</code>.</p>
 /// <p><b><code>refreshes</code> and <code>refreshRates</code> are the whole of a screen's
 /// live-data declaration</b> (AD-43). The shared framework owns the timer, the persisted
 /// per-screen setting and the silent re-fetch; no screen implements refresh of its own. Rates are
@@ -304,6 +306,17 @@ ClassMethod ContextMaxLengths(Output pLengths)
     } Catch {
         Kill pLengths
     }
+/// <p>This screen's declared <code>rowTarget</code> as a copy, or <code>""</code> for a screen
+/// that declares none (AD-5, Story 6.10). A row target is a list's single cross-screen row link,
+/// resolved ahead of the paired-surface chain in <file>ui/src/app/shell/data-table.ts</file> and
+/// validated by <method>OcuPilot.Screen.Registry.RowTargetProblem</method> and
+/// <method>OcuPilot.Screen.Registry.RowTargetResolutionProblem</method>.</p>
+ClassMethod RowTarget() As %DynamicObject
+{
+    Set tTarget = ..Field("rowTarget")
+    If '$IsObject(tTarget) Quit ""
+    If 'tTarget.%IsA("%Library.DynamicObject") Quit ""
+    Quit tTarget
 }
 
 /// <p>The primary action's identifier (Create, Import, or <code>""</code> for none).</p>

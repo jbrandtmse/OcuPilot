@@ -18,9 +18,16 @@ import {
   areaByKey,
   firstAllowedScreen,
   formatRequires,
+  listForDocumentScreen,
+  parentListFor,
+  tabGroupFor,
   withQuery,
 } from '../core/navigation';
+import { textOf } from '../core/screen-read';
+import { ScreenStores } from '../core/screen-store';
+import { fieldOf, rowKey } from '../core/table-model';
 import { ShellState } from '../core/shell-state';
+import type { ScreenDeclaration } from '../core/screens.generated';
 import { STRINGS, stringFor } from '../core/strings';
 
 /** One locator segment, resolved for rendering. */
@@ -169,6 +176,7 @@ export class LocatorBar {
    * again. `ShellState.arrivalToken` changes on every fresh arrival even when the announcement
    * text repeats, which a text comparison here could not tell apart from "already focused". */
   private lastFocusedToken: number | null = null;
+  private readonly stores = inject(ScreenStores);
 
   protected readonly landmark = STRINGS.navLocatorLandmark;
 
@@ -202,6 +210,12 @@ export class LocatorBar {
   });
 
   private readonly resolved = computed<readonly LocatorSegment[]>(() => {
+    // Read directly, not only through `screen`/`entityId`: a store tick that leaves the route (and
+    // so their own computed values) unchanged still has to invalidate this computed, because
+    // `entityLabel` below reads the store fresh every time this runs (Story 6.7). `screen` and
+    // `entityId` computeds absorbing a same-value bump is exactly what would otherwise leave this
+    // memoized forever after the first render on a detail route.
+    this.generation();
     const screen = this.screen();
     if (screen === null) return [];
     const screenLabel = stringFor(screen.labelKey);
@@ -252,9 +266,13 @@ export class LocatorBar {
       label: screenLabel,
       separated: segments.length > 0,
       // A link back to the list once the entity segment follows it (DW-142); otherwise the
-      // current segment, so it is not a link.
+      // current segment, so it is not a link. A document viewer's list is the one it is paired
+      // with, because its own route with no id reads no document, and a sub-resource list's is
+      // its parent, for the same reason. A tab's is its group's first tab, the screen the side bar
+      // lists (AD-5).
       navigates: hasEntity,
-      route: screen.route,
+      route:
+        parentListFor(screen)?.route ?? listForDocumentScreen(screen)?.route ?? tabGroupFor(screen)?.route ?? screen.route,
       ariaCurrent: hasEntity ? null : 'page',
       entity: false,
       ...UNGATED_SEGMENT,
@@ -262,7 +280,7 @@ export class LocatorBar {
     if (hasEntity) {
       segments.push({
         key: 'entity',
-        label: entity,
+        label: this.entityLabel(screen, entity),
         separated: true,
         navigates: false,
         route: '',
@@ -275,13 +293,47 @@ export class LocatorBar {
   });
 
   constructor() {
-    const stopRouter = this.router.events.subscribe(() => this.bump());
+    // A parent-scoped detail screen's entity label reads the store once its row has loaded
+    // (`entityLabel`), so this bar re-renders on that store's own tick too -- not only on a
+    // router event -- and follows the screen from one detail route to the next (Story 6.7).
+    //
+    // Kept a plain RxJS subscription rather than an `effect()`: `effect()`'s first run is
+    // scheduled, not synchronous, so a read fast enough to land before that first flush notified
+    // a listener that was not registered yet -- the store held the row, nothing had told this bar
+    // to look again, and the segment was stuck on the id (observed in the browser spec, never in
+    // a component test whose stub read is a resolved promise already). `router.events` fires this
+    // callback synchronously the moment the URL changes, before any read starts, so the
+    // subscription below is always in place first.
+    let stopStore: (() => void) | null = null;
+    let subscribedDescriptor = '';
+    const syncStoreSubscription = (): void => {
+      const screen = this.screen();
+      const descriptor = screen === null ? '' : screen.descriptor;
+      if (descriptor === subscribedDescriptor) return;
+      subscribedDescriptor = descriptor;
+      stopStore?.();
+      stopStore = null;
+      if (screen === null || screen.archetype !== 'detail' || screen.parentScope === '') return;
+      const store = this.stores.for(screen.descriptor, screen.refreshRates);
+      stopStore = store.subscribe(() => this.bump());
+    };
+
+    const stopRouter = this.router.events.subscribe(() => {
+      this.bump();
+      syncStoreSubscription();
+    });
     const stopNavigation = this.navigation.subscribe(() => this.bump());
     const stopShell = this.shell.subscribe(() => this.bump());
     inject(DestroyRef).onDestroy(() => {
       stopRouter.unsubscribe();
       stopNavigation();
       stopShell();
+    syncStoreSubscription();
+
+    inject(DestroyRef).onDestroy(() => {
+      stopRouter.unsubscribe();
+      stopNavigation();
+      stopStore?.();
     });
   }
 
@@ -298,6 +350,23 @@ export class LocatorBar {
   protected get screenHeadingLabel(): string | null {
     const screen = this.screen();
     return screen === null ? null : this.shell.arrivalAnnouncement(screen.route);
+   * The entity segment's label: on a parent-scoped `detail` screen, once its one row has loaded,
+   * the value of its `name` column (Story 6.7) -- Task details names the task rather than its id --
+   * and otherwise the decoded id every other entity view already showed.
+   *
+   * Matched by `rowKey` rather than taken as `store.data()[0]` unconditionally, so a store still
+   * holding the previous id's row mid-navigation falls back to the id instead of naming the wrong
+   * task for one tick.
+   */
+  private entityLabel(screen: ScreenDeclaration, entity: string): string {
+    if (screen.archetype !== 'detail' || screen.parentScope === '') return entity;
+    const nameColumn = screen.table?.columns.find((column) => column.kind === 'name');
+    if (nameColumn === undefined) return entity;
+    const store = this.stores.for(screen.descriptor, screen.refreshRates);
+    const row = store.data().find((candidate) => rowKey(candidate, screen) === entity);
+    if (row === undefined) return entity;
+    const text = textOf(fieldOf(row, nameColumn.field));
+    return text === '' ? entity : text;
   }
 
   /**

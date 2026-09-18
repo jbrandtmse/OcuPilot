@@ -19,6 +19,7 @@ import { applyView } from '../core/screen-read';
 import { ScreenStores, type SortDirection } from '../core/screen-store';
 import { STRINGS, stringFor } from '../core/strings';
 import { formatRowCount } from '../core/table-model';
+import { ViewOptions } from '../core/view-options';
 
 /**
  * The count region's id, bound rather than typed twice: renaming it on the region alone would
@@ -38,6 +39,15 @@ export const SORT_MENU_ID = 'ocu-command-bar-sort-menu';
 /** The sort menu's name on the overlay stack, so the shell's one Escape handler closes it. */
 export const SORT_MENU_OVERLAY_ID = 'command-bar-sort';
 
+/** The View menu's trigger id, which the menu names as its own label (`aria-labelledby`). */
+export const VIEW_TRIGGER_ID = 'ocu-command-bar-view-trigger';
+
+/** The View menu's id, which the trigger's `aria-controls` names while it is open. */
+export const VIEW_MENU_ID = 'ocu-command-bar-view-menu';
+
+/** The View menu's name on the overlay stack, so the shell's one Escape handler closes it. */
+export const VIEW_MENU_OVERLAY_ID = 'command-bar-view';
+
 /** One command-bar action, resolved for rendering. */
 interface CommandAction {
   readonly id: string;
@@ -45,6 +55,13 @@ interface CommandAction {
   readonly reasonId: string;
   readonly ariaDisabled: string | null;
   readonly describedBy: string | null;
+}
+
+/** One entry of the View menu, resolved from the registered `ViewOptionsBinding`. */
+interface ViewMenuOption {
+  readonly route: string;
+  readonly label: string;
+  readonly checked: string;
 }
 
 /** One entry of the sort menu: a declared sort field, or one of the two directions. */
@@ -95,15 +112,19 @@ interface SortOption {
  * `setDirection`, which persist per screen through `rememberView()` (AD-19). Its shape is
  * `DESIGN.md:1039`'s: a `button-secondary` with a down triangle, as the View menu is.
  *
- * **Two slots are declared and deliberately unrendered**, because nothing can fill them yet and
- * drawing an empty control would be a lie about what the screen can do:
+ * **The View menu renders only for a screen whose page registered one** (`ViewOptions`, Story
+ * 6.11): a page with more than one route for its screen family -- Databases' General and
+ * Free-space views are the first (AD-5's `list (two views)`) -- registers its options, current
+ * route and chooser, and this component draws the menu without knowing what "Databases" or
+ * "General" mean, the same separation `ScreenActions` keeps for a declared action's handler. A
+ * screen whose page registers nothing draws no control, for the reason the primary action above
+ * does not: an unregistered slot is a control nothing can act on.
  *
- * - **view options** -- EXPERIENCE.md "below the locator-bar" names it and `DESIGN.md:1039` specifies a View menu,
- *   but neither document publishes a label for it or for its options. Filed rather than invented.
- * - **the last-update stamp** -- `DESIGN.md:1039` puts one here and `:890`/`:1021` and
- *   EXPERIENCE.md "`{spacing.status-bar-height}` band" put it in the status bar, with no precedence rule (**DW-139**). The
- *   status bar carries it, because `:338` states the division of labour outright and the band
- *   already holds the slot; this row carries the control.
+ * **The last-update stamp stays a declared, deliberately unrendered slot**: `DESIGN.md:1039` puts
+ * one here and `:890`/`:1021` and EXPERIENCE.md "`{spacing.status-bar-height}` band" put it in the
+ * status bar, with no precedence rule (**DW-139**). The status bar carries it, because `:338`
+ * states the division of labour outright and the band already holds the slot; this row carries
+ * the control.
  *
  * **Row actions are `aria-disabled`, never `disabled`, with "Select a row first" as their
  * reason on hover and focus** (EXPERIENCE.md "**Mechanism** (the accessibility contract; component rows point here).", "below the locator-bar"). There is no row selection
@@ -157,6 +178,49 @@ interface SortOption {
         <span class="ocu-command-bar-reason" role="tooltip" [id]="action.reasonId">{{
           STRINGS.privilegeSelectRowFirst
         }}</span>
+      </span>
+    }
+    @if (hasViewControl) {
+      <span #viewControl class="ocu-command-bar-sort ocu-command-bar-view" (focusout)="onViewFocusOut($event)">
+        <button
+          #viewTrigger
+          type="button"
+          [id]="viewTriggerId"
+          class="ocu-button-secondary ocu-command-bar-sort-trigger ocu-command-bar-view-trigger"
+          aria-haspopup="menu"
+          [attr.aria-expanded]="viewOpen"
+          [attr.aria-controls]="viewControls"
+          (click)="onToggleView()"
+        >
+          <span class="ocu-command-bar-sort-label">{{ STRINGS.viewMenuLabel }}</span>
+          <span class="ocu-command-bar-sort-caret" aria-hidden="true">{{ caretGlyph }}</span>
+        </button>
+        @if (viewOpen) {
+          <div
+            #viewMenu
+            class="ocu-command-bar-sort-menu ocu-command-bar-view-menu"
+            role="menu"
+            [id]="viewMenuId"
+            [attr.aria-labelledby]="viewTriggerId"
+            (keydown)="onViewKeydown($event)"
+            (mousedown)="onViewMouseDown($event)"
+          >
+            <div role="group">
+              @for (option of viewMenuItems; track option.route) {
+                <button
+                  type="button"
+                  class="ocu-command-bar-sort-item ocu-command-bar-view-item"
+                  role="menuitemradio"
+                  tabindex="-1"
+                  [attr.aria-checked]="option.checked"
+                  (click)="onChooseView(option.route)"
+                >
+                  {{ option.label }}
+                </button>
+              }
+            </div>
+          </div>
+        }
       </span>
     }
     @if (hasSortControl) {
@@ -246,6 +310,10 @@ export class CommandBar {
   private readonly router = inject(Router);
   private readonly stores = inject(ScreenStores);
   private readonly overlays = inject(OverlayStack);
+  // Optional: a harness that never mounts a page with a View control (most of them) need not
+  // provide one. The fallback is a private instance nothing else can reach, so it is permanently
+  // empty -- exactly the "no control registered" state such a harness wants.
+  private readonly viewOptionsSvc = inject(ViewOptions, { optional: true }) ?? new ViewOptions();
 
   protected readonly STRINGS = STRINGS;
 
@@ -256,6 +324,10 @@ export class CommandBar {
   protected readonly sortTriggerId = SORT_TRIGGER_ID;
 
   protected readonly sortMenuId = SORT_MENU_ID;
+
+  protected readonly viewTriggerId = VIEW_TRIGGER_ID;
+
+  protected readonly viewMenuId = VIEW_MENU_ID;
 
   /**
    * The down triangle DESIGN.md `:1039` gives the View menu, which this control borrows rather
@@ -275,6 +347,15 @@ export class CommandBar {
 
   /** Trigger and menu together, which is the region focus has to leave for the menu to close. */
   private readonly sortControlEl = viewChild<ElementRef<HTMLElement>>('sortControl');
+
+  private readonly viewMenuOpen = signal(false);
+
+  private readonly viewTriggerEl = viewChild<ElementRef<HTMLButtonElement>>('viewTrigger');
+
+  private readonly viewMenuEl = viewChild<ElementRef<HTMLElement>>('viewMenu');
+
+  /** Trigger and menu together, which is the region focus has to leave for the menu to close. */
+  private readonly viewControlEl = viewChild<ElementRef<HTMLElement>>('viewControl');
 
   private readonly screen = computed(() => {
     this.generation();
@@ -340,6 +421,22 @@ export class CommandBar {
     return { fields, directions };
   });
 
+  /**
+   * The View menu's entries, resolved through the registered `ViewOptionsBinding` (`ViewOptions`,
+   * Story 6.11): this component draws whatever the current page registered, checking the option
+   * whose route matches the binding's own `current()` -- never the URL directly, since a page may
+   * have its own notion of "current" (Databases resolves it from the mirror's own route field).
+   */
+  private readonly viewMenuOptions = computed<readonly ViewMenuOption[]>(() => {
+    this.generation();
+    const current = this.viewOptionsSvc.current();
+    return this.viewOptionsSvc.options().map((option) => ({
+      route: option.route,
+      label: option.label,
+      checked: option.route === current ? 'true' : 'false',
+    }));
+  });
+
   constructor() {
     // The bar is the shell's, not the route's, so its `DestroyRef` never fires on a navigation.
     // An open sort menu therefore has to be closed here: left open it would either survive onto a
@@ -348,6 +445,7 @@ export class CommandBar {
     // would swallow the next Escape.
     const stopRouter = this.router.events.subscribe(() => {
       this.closeSort(false);
+      this.closeView(false);
       this.bump();
     });
     const stopNavigation = this.navigation.subscribe(() => this.bump());
@@ -355,12 +453,17 @@ export class CommandBar {
     // proposal expiring all move what it reads without the URL changing.
     const stopRefresh = this.refresh.subscribe(() => this.bump());
     const stopActions = this.actions.subscribe(() => this.bump());
+    // The View menu's own binding changes independently of the router (a page registers it once
+    // mounted, after the navigation that mounted it has already fired).
+    const stopViewOptions = this.viewOptionsSvc.subscribe(() => this.bump());
     inject(DestroyRef).onDestroy(() => {
       stopRouter.unsubscribe();
       stopNavigation();
       stopRefresh();
       stopActions();
+      stopViewOptions();
       this.overlays.remove(SORT_MENU_OVERLAY_ID);
+      this.overlays.remove(VIEW_MENU_OVERLAY_ID);
     });
 
     // A `role="menu"` that never takes focus is a menu only in name, and the entries do not exist
@@ -370,6 +473,10 @@ export class CommandBar {
     effect(() => {
       if (!this.sortMenuOpen()) return;
       this.sortMenuEl()?.nativeElement.querySelector<HTMLElement>('[role="menuitemradio"]')?.focus();
+    });
+    effect(() => {
+      if (!this.viewMenuOpen()) return;
+      this.viewMenuEl()?.nativeElement.querySelector<HTMLElement>('[role="menuitemradio"]')?.focus();
     });
   }
 
@@ -591,6 +698,85 @@ export class CommandBar {
 
   private sortItems(): HTMLElement[] {
     const menu = this.sortMenuEl()?.nativeElement;
+    return menu === undefined ? [] : Array.from(menu.querySelectorAll<HTMLElement>('[role="menuitemradio"]'));
+  }
+
+  // --- The View control ------------------------------------------------------------------------
+
+  protected get hasViewControl(): boolean {
+    this.generation();
+    return this.viewOptionsSvc.has();
+  }
+
+  protected get viewMenuItems(): readonly ViewMenuOption[] {
+    return this.viewMenuOptions();
+  }
+
+  protected get viewOpen(): boolean {
+    return this.viewMenuOpen();
+  }
+
+  /** The menu's id while it is open, so the trigger never names an element that is not there. */
+  protected get viewControls(): string | null {
+    return this.viewMenuOpen() ? VIEW_MENU_ID : null;
+  }
+
+  /**
+   * Open the menu and move focus to its first entry, or close it and give focus back, exactly as
+   * `onToggleSort` does for its own menu.
+   */
+  protected onToggleView(): void {
+    if (this.viewMenuOpen()) {
+      this.closeView(true);
+      return;
+    }
+    this.overlays.push(VIEW_MENU_OVERLAY_ID, () => this.closeView(true));
+    this.viewMenuOpen.set(true);
+  }
+
+  /** Arrow, Home and End move between entries, the menu pattern the sort menu already follows. */
+  protected onViewKeydown(event: KeyboardEvent): void {
+    const items = this.viewItems();
+    if (items.length === 0) return;
+    const at = items.indexOf(document.activeElement as HTMLElement);
+    let next = -1;
+    if (event.key === 'ArrowDown') next = (at + 1) % items.length;
+    else if (event.key === 'ArrowUp') next = (at - 1 + items.length) % items.length;
+    else if (event.key === 'Home') next = 0;
+    else if (event.key === 'End') next = items.length - 1;
+    if (next < 0) return;
+    event.preventDefault();
+    items[next].focus();
+  }
+
+  /** Keep focus where it is while an entry is pressed, exactly as `onSortMouseDown` does. */
+  protected onViewMouseDown(event: MouseEvent): void {
+    event.preventDefault();
+  }
+
+  /** Focus leaving the trigger-and-menu region closes it, exactly as `onSortFocusOut` does. */
+  protected onViewFocusOut(event: FocusEvent): void {
+    const control = this.viewControlEl()?.nativeElement;
+    const next = event.relatedTarget;
+    if (control === undefined || (next instanceof Node && control.contains(next))) return;
+    this.closeView(false);
+  }
+
+  /** Choose `route` through the registered binding -- ordinarily a navigation, never a toggle. */
+  protected onChooseView(route: string): void {
+    this.closeView(true);
+    this.viewOptionsSvc.choose(route);
+  }
+
+  private closeView(returnFocus: boolean): void {
+    if (!this.viewMenuOpen()) return;
+    if (returnFocus) this.viewTriggerEl()?.nativeElement.focus();
+    this.viewMenuOpen.set(false);
+    this.overlays.remove(VIEW_MENU_OVERLAY_ID);
+  }
+
+  private viewItems(): HTMLElement[] {
+    const menu = this.viewMenuEl()?.nativeElement;
     return menu === undefined ? [] : Array.from(menu.querySelectorAll<HTMLElement>('[role="menuitemradio"]'));
   }
 

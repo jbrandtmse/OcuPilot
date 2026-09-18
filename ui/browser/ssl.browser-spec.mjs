@@ -194,7 +194,7 @@ test('AC3: the read response carries exactly the four declared fields and no key
   }
 });
 
-test('AC4: the Security and secrets side bar lists exactly the SSL/TLS entry, and it is the current one', async () => {
+test('AC4: the Security and secrets side bar lists SSL/TLS first among its entries, and it is the current one', async () => {
   const { context, page } = await signedInAtList(config.username, config.password);
   try {
     await waitForRows(page, config.navigationTimeoutMs);
@@ -214,7 +214,11 @@ test('AC4: the Security and secrets side bar lists exactly the SSL/TLS entry, an
       };
     });
     assert.equal(sideBar.area, STRINGS.navAreaSecurity);
-    assert.deepEqual(sideBar.entries, [STRINGS.sslListLabel], 'exactly one entry, and no dead one beside it');
+    assert.deepEqual(
+      sideBar.entries,
+      [STRINGS.sslListLabel, STRINGS.x509ListLabel, STRINGS.ldapListLabel, STRINGS.walletListLabel, STRINGS.oauthLabel],
+      'SSL/TLS, then X.509, LDAP / Kerberos, Wallet (Story 6.3) and OAuth 2.0 (Story 6.4), and no dead entry beside them'
+    );
     assert.equal(sideBar.current, STRINGS.sslListLabel, 'which is the current item');
   } finally {
     await context.close();

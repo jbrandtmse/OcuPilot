@@ -2,16 +2,10 @@
 /// through <code>SYS.ApplicationError</code>'s own queries and drilled namespaces &#8594; dates
 /// &#8594; errors &#8594; one error's captured detail (AD-48, FR-63). It is the Logs area's second
 /// screen.</p>
-/// <p><b>It declares no <code>read</code>, and that is not an omission</b> (AD-36). The
-/// declared-read pipeline is admin-port-only by two independent hard-codings --
-/// <method>OcuPilot.Screen.Registry.ReadProblem</method> and
-/// <file>ui/tools/screen-mirror.mjs</file> both refuse a <code>read.source.port</code> that is not
-/// <code>admin</code>, and <method>OcuPilot.Screen.Read.PortClass</method> hard-returns
-/// <class>OcuPilot.Port.AdminPort</class> while <method>OcuPilot.Screen.Read.Execute</method> never
-/// reads <code>source.port</code> at all -- so no port name would make this source reachable
-/// through it. Nor is that the only obstacle: <code>read</code> is singular with a closed key set,
-/// and the client's refresh framework holds exactly one binding, so three drill levels could not be
-/// one declared read however the port were named.</p>
+/// <p><b>It declares no <code>read</code>, and that is not an omission</b> (AD-36).
+/// <code>read</code> is singular with a closed key set, and the client's refresh framework holds
+/// exactly one binding, so three drill levels with three different column sets could not be one
+/// declared read whatever port served them.</p>
 /// <p>A descriptor that declares no read is a supported shape --
 /// <method>OcuPilot.Screen.Registry.ReadProblem</method> quits early,
 /// <method>OcuPilot.Screen.Registry.TableProblem</method> is never reached, and the

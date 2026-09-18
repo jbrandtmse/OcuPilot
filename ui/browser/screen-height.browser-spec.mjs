@@ -37,6 +37,9 @@ const config = browserConfig();
  * audit viewer share `DataTable`'s `cdk-virtual-scroll-viewport`; the error-log drill renders its
  * own `.ocu-data-table-viewport`, for the reason Story 2.12 records at its page. Home is absent
  * because it renders no rows -- it is covered by the outlet rule this spec pins, not by a row.
+ * The `log-viewer` archetype is absent from this table for the same reason System usage is: its
+ * rows are `.ocu-log-row`, not `DataTable`'s, so `waitForRows` and `clickRowCentre` name nothing on
+ * it. It has its own test below.
  */
 const SCREENS = [
   { route: '/ocupilot/web-applications/list?ns=HSCUSTOM', viewport: 'cdk-virtual-scroll-viewport', prepare: null },
@@ -46,6 +49,14 @@ const SCREENS = [
   { route: '/ocupilot/security/ssl?ns=HSCUSTOM', viewport: 'cdk-virtual-scroll-viewport', prepare: null },
   { route: '/ocupilot/logs/audit?ns=HSCUSTOM', viewport: 'cdk-virtual-scroll-viewport', prepare: 'search' },
   { route: '/ocupilot/logs/errors', viewport: '.ocu-data-table-viewport', prepare: null },
+  // Backfilled by Story 6.11: Locks and System usage (below, its own test) were never added, and
+  // Databases' two views join them -- all four share DataTable's own viewport, System usage
+  // excepted, since it renders no rows at all (it is the `meters` archetype, not `list`).
+  { route: '/ocupilot/os-management/locks?ns=HSCUSTOM', viewport: 'cdk-virtual-scroll-viewport', prepare: null },
+  { route: '/ocupilot/os-management/databases?ns=HSCUSTOM', viewport: 'cdk-virtual-scroll-viewport', prepare: null },
+  { route: '/ocupilot/os-management/database-free-space?ns=HSCUSTOM', viewport: 'cdk-virtual-scroll-viewport', prepare: null },
+  // Backfilled by Story 6.12: Devices shares the same list archetype and viewport.
+  { route: '/ocupilot/os-management/devices?ns=HSCUSTOM', viewport: 'cdk-virtual-scroll-viewport', prepare: null },
 ];
 
 /** The audit viewer's Search, which is what puts rows on that screen at all. */
@@ -133,6 +144,66 @@ for (const screen of SCREENS) {
     }
   });
 }
+
+test('AC-A: System usage (the meters archetype, no rows) still gives its content region a real height', async () => {
+  // System usage renders no rows -- confirmed against the live page rather than assumed, since
+  // this spec's own header warns against assuming `cdk-virtual-scroll-viewport` for an archetype
+  // that never had one: `.ocu-details-page` is a plain flex column with no scroll container of its
+  // own, so what a collapsed outlet chain would have broken here is `main.ocu-content` itself.
+  const { context, page } = await signedInAt('/ocupilot/os-management/system-usage?ns=HSCUSTOM');
+  try {
+    await page.waitForSelector('.ocu-details-page', { timeout: config.navigationTimeoutMs });
+    await page.waitForSelector('app-meter', { timeout: config.navigationTimeoutMs });
+    // `measureChain`'s own middle name -- `app-list-page, app-audit-page, app-error-log-page` --
+    // names none of System usage's page, so only the chain's first link (the shell's own content
+    // region) and its last (this screen's own container) are asserted; a mid-chain entry this
+    // archetype never had is not evidence of anything.
+    const measured = await measureChain(page, '.ocu-details-page');
+    const content = measured[0];
+    const viewport = measured[measured.length - 1];
+    assert.ok(content.found && content.clientHeight > 0, `main.ocu-content has a real height; the chain measured ${JSON.stringify(measured)}`);
+    assert.ok(viewport.found && viewport.clientHeight > 0, `.ocu-details-page has a real height; the chain measured ${JSON.stringify(measured)}`);
+  } finally {
+    await context.close();
+  }
+});
+
+test('AC-A: the alerts.log viewer (the log-viewer archetype) gives its own viewport a real height', async () => {
+  // The log viewer scrolls `.ocu-log-viewport`, its own container, and renders `.ocu-log-row`
+  // rather than a DataTable row -- so the chain's middle link is this archetype's page, and the
+  // row's own 28px geometry is `alerts-log.browser-spec.mjs`'s, not this spec's.
+  const { context, page } = await signedInAt('/ocupilot/logs/alerts?ns=HSCUSTOM');
+  try {
+    await page.waitForSelector('.ocu-log-viewport', { timeout: config.navigationTimeoutMs });
+    await page.waitForSelector('.ocu-log-row', { timeout: config.navigationTimeoutMs });
+    const measured = await measureChain(page, '.ocu-log-viewport');
+    const content = measured[0];
+    const viewport = measured[measured.length - 1];
+    assert.ok(content.found && content.clientHeight > 0, `main.ocu-content has a real height; the chain measured ${JSON.stringify(measured)}`);
+    assert.ok(viewport.found && viewport.clientHeight > 0, `.ocu-log-viewport has a real height; the chain measured ${JSON.stringify(measured)}`);
+  } finally {
+    await context.close();
+  }
+});
+
+test('AC-A: the messages.log viewer gives its own viewport a real height too', async () => {
+  // The two log screens share one page, so this is the same chain as the case above -- asserted
+  // for this route because the side-bar position it lands on is Story 6.14's own change, and a
+  // route that resolved to no page at all would read as a missing selector here rather than as a
+  // screen the shell could not mount.
+  const { context, page } = await signedInAt('/ocupilot/logs/messages?ns=HSCUSTOM');
+  try {
+    await page.waitForSelector('.ocu-log-viewport', { timeout: config.navigationTimeoutMs });
+    await page.waitForSelector('.ocu-log-row', { timeout: config.navigationTimeoutMs });
+    const measured = await measureChain(page, '.ocu-log-viewport');
+    const content = measured[0];
+    const viewport = measured[measured.length - 1];
+    assert.ok(content.found && content.clientHeight > 0, `main.ocu-content has a real height; the chain measured ${JSON.stringify(measured)}`);
+    assert.ok(viewport.found && viewport.clientHeight > 0, `.ocu-log-viewport has a real height; the chain measured ${JSON.stringify(measured)}`);
+  } finally {
+    await context.close();
+  }
+});
 
 test('AC-A: a rendered row is not painted over by the table footer', async () => {
   const { context, page } = await signedInAt(SCREENS[0].route);

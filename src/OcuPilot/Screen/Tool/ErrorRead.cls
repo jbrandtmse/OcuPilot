@@ -1,10 +1,10 @@
 /// <p>The application error log's read tool, and the registry's <b>second</b> source: a tool with a
 /// class of its own rather than a descriptor-derived one (AD-36,
 /// <class>OcuPilot.Screen.Tool.Registry</class>'s "two sources, one list").
-/// <class>OcuPilot.Screen.Descriptor.LogErrorList</class> declares no <code>read</code> -- the
-/// declared-read pipeline is admin-port-only by two independent hard-codings and could not serve
-/// this source -- so its tool is declared here instead, with its own <code>TOOLNAME</code>,
-/// <code>KIND</code> and input schema.</p>
+/// <class>OcuPilot.Screen.Descriptor.LogErrorList</class> declares no <code>read</code> -- a
+/// descriptor declares exactly one, and three drill levels with three different column sets could
+/// not be one declared read whatever port served them -- so its tool is declared here instead, with
+/// its own <code>TOOLNAME</code>, <code>KIND</code> and input schema.</p>
 /// <p><b>It reads through the same entry point the list route reads through</b>:
 /// <method>OcuPilot.Port.LogSourcePort.Errors</method> at its <code>list</code> level. "One read,
 /// two callers" (AD-36) is met at the port, which is where this source's read actually lives,

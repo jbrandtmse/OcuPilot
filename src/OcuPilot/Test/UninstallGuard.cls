@@ -63,14 +63,15 @@ Method OnAfterOneTest() As %Status
 }
 
 /// <p>Hand-creates one fixture object -- a disposable SSL/TLS configuration -- and its
-/// <code>"probe"</code> inventory row, plus four more rows whose objects are not on the
-/// instance (a web application, an X.509 credential and a task that do not exist, and an
+/// <code>"probe"</code> inventory row, plus five more rows whose objects are not on the
+/// instance (a web application, an X.509 credential, a wallet collection and a task that do not
+/// exist, and an
 /// <code>errorentry</code>), which is the shape a real refusal has: one failed delete keeps
 /// the <i>whole</i> inventory. It arms <class>OcuPilot.Test.FixtureFault</class>'s delete
 /// fault and uninstalls through <class>OcuPilot.Test.UninstallFault</class>, so the real
 /// <method>OcuPilot.Install.Fixture.Remove</method> fails that one delete for real and
 /// keeps every row. <method>OcuPilot.Install.Installer.Uninstall</method> must then refuse,
-/// name all five rows with the state of each object, and leave the probe's database,
+/// name all six rows with the state of each object, and leave the probe's database,
 /// mapping and inventory rows in place. With the fault cleared, the production
 /// <method>OcuPilot.Install.Installer.Uninstall</method> must complete the same removal.</p>
 /// <p>Mutation (Rule 19): delete the refusal block after the fixture removal in
@@ -89,8 +90,9 @@ Method TestUninstallStopsWhileAFixtureCannotBeRemoved()
     Set tGoneApp = "/csp/ocupilotprobeuninstallgone"
     Set tGoneCert = tPrefix _ "UninstallGoneCert"
     Set tGoneTask = tPrefix _ "UninstallGone task"
+    Set tGoneWallet = tPrefix _ "UninstallGoneWallet"
     Set tErrName = tPrefix _ "UninstallErr"
-    Set tRows = $ListBuild($ListBuild("sslconfig", tName, "instance"), $ListBuild("webapp", tGoneApp, "instance"), $ListBuild("x509credential", tGoneCert, "instance"), $ListBuild("task", tGoneTask, tInstallNs), $ListBuild("errorentry", tErrName, tInstallNs))
+    Set tRows = $ListBuild($ListBuild("sslconfig", tName, "instance"), $ListBuild("webapp", tGoneApp, "instance"), $ListBuild("x509credential", tGoneCert, "instance"), $ListBuild("walletcollection", tGoneWallet, "instance"), $ListBuild("task", tGoneTask, tInstallNs), $ListBuild("errorentry", tErrName, tInstallNs))
     Do ##class(OcuPilot.Test.FixtureFault).Disarm()
     Do ..DeleteRows(tRows)
 
@@ -109,10 +111,11 @@ Method TestUninstallStopsWhileAFixtureCannotBeRemoved()
         Do $$$AssertStatusNotOK(tSC, "Uninstall refuses while a fixture it could not remove is still recorded in the inventory")
         Set tText = $System.Status.GetErrorText(tSC)
         Do $$$AssertTrue(tText [ "stopped before removing the protected database", "the refusal says Uninstall stopped before the database: " _ tText)
-        Do $$$AssertTrue(tText [ "5 demo fixture inventory row(s) remain", "the refusal counts all five kept rows: " _ tText)
+        Do $$$AssertTrue(tText [ "6 demo fixture inventory row(s) remain", "the refusal counts all six kept rows: " _ tText)
         Do $$$AssertTrue(tText [ ("sslconfig '" _ tName _ "' (still on the instance)"), "the refusal names the object that is left and says it is still on the instance: " _ tText)
         Do $$$AssertTrue(tText [ ("webapp '" _ tGoneApp _ "' (already removed)"), "the web application row reads 'already removed': " _ tText)
         Do $$$AssertTrue(tText [ ("x509credential '" _ tGoneCert _ "' (already removed)"), "the X.509 credential row reads 'already removed': " _ tText)
+        Do $$$AssertTrue(tText [ ("walletcollection '" _ tGoneWallet _ "' (already removed)"), "the wallet collection row reads 'already removed': " _ tText)
         Do $$$AssertTrue(tText [ ("task '" _ tGoneTask _ "' (already removed)"), "the task row reads 'already removed': " _ tText)
         Do $$$AssertTrue(tText [ ("errorentry '" _ tErrName _ "' (nothing to remove)"), "the error-entry row reads 'nothing to remove': " _ tText)
         Set tWarns = ##class(OcuPilot.Test.InstallerProbe).CapturedAll("warn")
@@ -124,14 +127,14 @@ Method TestUninstallStopsWhileAFixtureCannotBeRemoved()
         } Catch exJson {
             Set tLeftCount = -1
         }
-        Do $$$AssertEquals(tLeftCount, 5, "the refusal's logged data lists every remaining row")
+        Do $$$AssertEquals(tLeftCount, 6, "the refusal's logged data lists every remaining row")
 
         Do $$$AssertStatusOK(..ProbeState(tName, .tDbExists, .tDatExists, .tMapExists, .tSslExists), "re-read the probe's objects after the refusal")
         Do $$$AssertTrue(tDbExists, "the probe's database configuration survives the refusal")
         Do $$$AssertTrue(tDatExists, "the probe's IRIS.DAT survives the refusal")
         Do $$$AssertTrue(tMapExists, "the probe's global mapping survives the refusal -- nothing else was removed")
         Do $$$AssertTrue(tSslExists, "the SSL/TLS configuration is still there -- the delete genuinely failed")
-        Do $$$AssertEquals(..CountRows(tRows), 5, "every inventory row survives, so a retry can still find the object")
+        Do $$$AssertEquals(..CountRows(tRows), 6, "every inventory row survives, so a retry can still find the object")
 
         ; The fault cleared, the production class completes the same removal.
         Set tRetrySC = ##class(OcuPilot.Install.Installer).Uninstall("probe", 1)

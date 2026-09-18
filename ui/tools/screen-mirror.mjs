@@ -351,14 +351,19 @@ export const READ_TOOL_IDENTIFIER_RE = /^[a-z][a-z0-9]*\.[a-z][a-z0-9]*$/;
 const ENDPOINT_RE = /^[A-Za-z][A-Za-z0-9]*(\.[A-Za-z][A-Za-z0-9]*)*$/;
 
 /**
- * AD-36's two read source kinds, mirrored from `OcuPilot.Screen.Read`'s own parameters:
- * `admin` is an instance endpoint reached through the port, `state` is OcuPilot's own protected
- * state resolved against a kernel store's guarded list (AD-9). The second changes where the rows
- * come from and nothing else -- the same fields, filter, sort, paging and row cap.
+ * The four read sources, mirrored from `OcuPilot.Screen.Read`'s own parameters: `admin` is an
+ * instance endpoint reached through the admin port, `state` is OcuPilot's own protected state
+ * resolved against a kernel store's guarded list (AD-9), `mgmnt` is the management API reached
+ * through its own port, and `logsource` is one instance log file's bounded tail read through
+ * `OcuPilot.Port.LogSourcePort`, its `endpoint` a source key from that port's fixed enum (AD-21).
+ * Each changes where the rows come from and nothing else -- the same fields, filter, sort, paging
+ * and row cap.
  */
 export const SOURCE_ADMIN = 'admin';
 export const SOURCE_STATE = 'state';
-export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE];
+export const SOURCE_MGMNT = 'mgmnt';
+export const SOURCE_LOGSOURCE = 'logsource';
+export const READ_SOURCE_PORTS = [SOURCE_ADMIN, SOURCE_STATE, SOURCE_MGMNT, SOURCE_LOGSOURCE];
 
 /** The package a `state` source's `endpoint` names a store inside, trailing dot included. */
 export const STATE_PACKAGE = 'OcuPilot.Kernel.State.';
@@ -398,7 +403,9 @@ export const DECLARATION_KEYS = [
   'read',
   'table',
   'banner',
+  'tab',
   'toolIdentifier',
+  'rowTarget',
 ];
 
 /**
@@ -490,10 +497,16 @@ export function sideBarPositionProblem(declaration) {
  * What is wrong with a declaration's `read`, or `null` when nothing is (AD-36).
  *
  * The rules `OcuPilot.Screen.Registry.ReadProblem` applies on the instance: an absent or `null`
- * read is a screen with no read; otherwise `source` is `{port, endpoint, type: "LIST"}` naming one
- * of AD-36's two source kinds -- `admin`, an instance endpoint reached through the port, with a
- * dotted endpoint name and an optional `rowGet` (`rowGetProblem`); or `state`, one of OcuPilot's
- * own kernel stores named without a package, which declares neither a `rowGet` nor `criteria`.
+ * read is a screen with no read; otherwise `source` is `{port, endpoint, type}`, `type` one of
+ * `READ_SOURCE_TYPES`. `GET`, `UPCOMING`, `HISTORY` and `VOLUMELIST` are admin only and declare no
+ * `forEach`; `UPCOMING`, `HISTORY` and `VOLUMELIST` also declare no `rowGet`, and so does `GET` unless `parentScope` names
+ * the route its one route-id criterion is fetched under, in which case it may pair one `rowGet`
+ * keyed by that criterion's own param (Story 6.7). An optional `query` fixes parameters
+ * (`sourceQueryProblem`). The source is one of three kinds:
+ * `admin`, an instance endpoint reached through the port, with a dotted
+ * endpoint name and an optional `rowGet` (`rowGetProblem`); `mgmnt`, the management API reached
+ * through its own port, which declares no `rowGet`; or `state`, one of OcuPilot's own kernel stores
+ * named without a package, which declares neither a `rowGet` nor `criteria`.
  * `fields` is non-empty and unique, `filter`, `sort.fields` and `context.secretFields` name only
  * declared fields, no secret field is filterable or sortable, `sort.default` is a sort field,
  * `sort.direction` is `asc` or `desc`, `paging` is `cap` (no LIST accepts a cursor), and the
@@ -521,12 +534,12 @@ export function readProblem(declaration) {
   if (source === null || typeof source !== 'object' || Array.isArray(source)) {
     return 'read.source is not an object naming its port, endpoint and type (AD-36)';
   }
-  const sourceKeysFault = unknownKeyProblem('read.source', source, ['port', 'endpoint', 'type', 'rowGet']);
+  const sourceKeysFault = unknownKeyProblem('read.source', source, ['port', 'endpoint', 'type', 'rowGet', 'forEach', 'query', 'parts']);
   if (sourceKeysFault !== null) return sourceKeysFault;
   if (!READ_SOURCE_PORTS.includes(source.port)) {
     return (
-      `read.source.port '${source.port}' is neither '${SOURCE_ADMIN}' nor '${SOURCE_STATE}', ` +
-      'the two source kinds a declared read names (AD-36)'
+      `read.source.port '${shown(source.port)}' is not one of '${SOURCE_ADMIN}', '${SOURCE_STATE}', ` +
+      `'${SOURCE_MGMNT}' or '${SOURCE_LOGSOURCE}', the four sources a declared read names (AD-36)`
     );
   }
   if (typeof source.endpoint !== 'string' || !ENDPOINT_RE.test(source.endpoint)) {
@@ -538,7 +551,89 @@ export function readProblem(declaration) {
       `store inside ${STATE_PACKAGE} by its own name alone (AD-9)`
     );
   }
-  if (source.type !== 'LIST') return `read.source.type '${source.type}' is not 'LIST'`;
+  if (typeof source.type !== 'string' || !READ_SOURCE_TYPES.includes(source.type)) {
+    return `read.source.type '${shown(source.type)}' is not 'LIST', 'GET', 'UPCOMING', 'HISTORY' or 'VOLUMELIST'`;
+  }
+  // A GET source reads one named object of an admin endpoint as the read's one row (AD-36), so it
+  // lists no parents. It may take its one criterion from the route id, and pair a rowGet keyed by
+  // that criterion's own param, only when parentScope names the route it is fetched under (Story
+  // 6.7); every other GET refuses both, having no row list to issue a detail call for and no
+  // server search of its own.
+  if (source.type === 'GET') {
+    if (source.port !== SOURCE_ADMIN) {
+      return `read.source.type 'GET' is declared on a '${source.port}' source, and a single-object read issues an admin endpoint's GET (AD-36)`;
+    }
+    if (isObject(source.forEach)) {
+      return 'read.source.forEach is declared on a GET source, which reads one object and lists no parents (AD-36)';
+    }
+    const getParented = typeof declaration.parentScope === 'string' && declaration.parentScope !== '';
+    if (isObject(read.criteria) && !getParented) {
+      return "read.criteria is declared on a GET source with no parentScope, and a single-object read takes its one criterion from the route id only when parent-scoped (AD-36, Story 6.7)";
+    }
+    if (!isObject(read.criteria) && isObject(source.rowGet)) {
+      return "read.source.rowGet is declared on a GET source with no read.criteria, and a single-object read issues a detail call only alongside its one parent-scoped route-id criterion (AD-36, Story 6.7)";
+    }
+  }
+  // An UPCOMING source lists an admin endpoint's scheduled occurrences (AD-36): a row is an
+  // occurrence rather than an object, so there is no detail call to issue and no parent to list.
+  if (source.type === 'UPCOMING') {
+    if (source.port !== SOURCE_ADMIN) {
+      return `read.source.type 'UPCOMING' is declared on a '${source.port}' source, and a list-shaped request type other than LIST issues an admin endpoint (AD-36)`;
+    }
+    if (isObject(source.rowGet)) {
+      return 'read.source.rowGet is declared on an UPCOMING source, whose rows are occurrences with no detail call to issue (AD-36)';
+    }
+    if (isObject(source.forEach)) {
+      return 'read.source.forEach is declared on an UPCOMING source, which lists no parents (AD-36)';
+    }
+  }
+  // A HISTORY source lists an admin endpoint's task-run history (AD-36), Task.CRUD's own request
+  // type: a row is a run rather than an object, so there is no detail call to issue and no parent
+  // to list -- the same rules UPCOMING takes, for the same reason.
+  if (source.type === 'HISTORY') {
+    if (source.port !== SOURCE_ADMIN) {
+      return `read.source.type 'HISTORY' is declared on a '${source.port}' source, and a list-shaped request type other than LIST issues an admin endpoint (AD-36)`;
+    }
+    if (isObject(source.rowGet)) {
+      return 'read.source.rowGet is declared on a HISTORY source, whose rows are task runs with no detail call to issue (AD-36)';
+    }
+    if (isObject(source.forEach)) {
+      return 'read.source.forEach is declared on a HISTORY source, which lists no parents (AD-36)';
+    }
+  }
+  // A VOLUMELIST source lists an admin endpoint's volume files (AD-36, Story 6.11):
+  // Database.SysCRUD's own request type, worded like the HISTORY arm above for the same reason --
+  // a row is a volume file rather than an object, so there is no detail call to issue and no parent
+  // to list.
+  if (source.type === 'VOLUMELIST') {
+    if (source.port !== SOURCE_ADMIN) {
+      return `read.source.type 'VOLUMELIST' is declared on a '${source.port}' source, and a list-shaped request type other than LIST issues an admin endpoint (AD-36)`;
+    }
+    if (isObject(source.rowGet)) {
+      return 'read.source.rowGet is declared on a VOLUMELIST source, whose rows are volume files with no detail call to issue (AD-36)';
+    }
+    if (isObject(source.forEach)) {
+      return 'read.source.forEach is declared on a VOLUMELIST source, which lists no parents (AD-36)';
+    }
+  }
+  const queryFault = sourceQueryProblem(read, source);
+  if (queryFault !== null) return queryFault;
+  // A mgmnt source answers whole rows from the management API, which offers no per-row detail call
+  // to issue.
+  if (source.port === SOURCE_MGMNT && isObject(source.rowGet)) {
+    return (
+      'read.source.rowGet is declared on a mgmnt source, which reads whole rows from the management ' +
+      'API and has no per-row detail call (AD-36)'
+    );
+  }
+  // A logsource source answers whole rows parsed from one log file's tail, which has no per-row
+  // detail call to issue: a log line is not an entity the instance can be asked for.
+  if (source.port === SOURCE_LOGSOURCE && isObject(source.rowGet)) {
+    return (
+      'read.source.rowGet is declared on a logsource source, which reads whole rows from a log ' +
+      "file's bounded tail and has no per-row detail call (AD-36)"
+    );
+  }
   // A state source's rows are OcuPilot's own, read whole: there is no detail endpoint to issue per
   // row and no vendor query to search on the server, so declaring either is refused where it is
   // declared rather than ignored at read time (AD-36).
@@ -560,8 +655,24 @@ export function readProblem(declaration) {
   const fieldsFault = nameListProblem('read.fields', read.fields);
   if (fieldsFault !== null) return fieldsFault;
   if (read.fields.length === 0) return 'read.fields is empty, and a read projects at least one field';
-  const rowGetFault = rowGetProblem(source, read.fields);
+  // Story 6.7: a parent-scoped GET's rowGet.key names the read's one route-id criterion rather
+  // than a read.fields entry. The allowed set is that one param exactly when the criteria block is
+  // sound enough to name it; a malformed block leaves this empty, and rowGetProblem falls back to
+  // checking key against read.fields, which still refuses -- criteriaProblem is what names the
+  // malformed block itself.
+  let rowGetKeyAllowed = [];
+  if (source.type === 'GET' && isObject(read.criteria) && Array.isArray(read.criteria.fields) && read.criteria.fields.length === 1) {
+    const first = read.criteria.fields[0];
+    if (isObject(first) && typeof first.param === 'string') rowGetKeyAllowed = [first.param];
+  }
+  const rowGetFault = rowGetProblem(source, read.fields, rowGetKeyAllowed);
   if (rowGetFault !== null) return rowGetFault;
+  const forEachFault = forEachProblem(read, source, read.fields);
+  if (forEachFault !== null) return forEachFault;
+  // AD-36 (Story 6.9): a single-object GET may also declare up to three parts, each answering one
+  // object merged into the read's one row as <as>.<member> fields.
+  const partsFault = partsProblem(read, source, read.fields);
+  if (partsFault !== null) return partsFault;
 
   const { context } = declaration;
   if (context === null || typeof context !== 'object' || Array.isArray(context)) {
@@ -615,7 +726,8 @@ export function readProblem(declaration) {
   // no predicate on the endpoint, and IRIS requires READ on a namespace's default globals
   // database -- IRISSYS, resource `%DB_IRISSYS` -- to make it current. Without the pair the vendor
   // endpoint fails inside `%SYS` and the port answers 500 where the gate would have named the
-  // missing privilege (AD-2, AD-8).
+  // missing privilege (AD-2, AD-8). A logsource read is outside the rule: it reads a file off disk
+  // and never enters `%SYS`.
   if (source.port === SOURCE_ADMIN && !declaresSystemRead(declaration.privileges)) {
     return (
       "read.source.port 'admin' requires the declared privileges to include %DB_IRISSYS:READ, " +
@@ -743,12 +855,14 @@ export const CRITERIA_RESERVED_PARAMS = ['maxRows', 'filter', 'sort', 'direction
  *
  * The rules `OcuPilot.Screen.Registry.CriteriaProblem` applies on the instance: a read with no
  * `criteria` declares none; otherwise `criteria` is an object carrying only `fields` and `marker`,
- * on an `admin` source; `fields` is a non-empty array of objects carrying only `param` (a query
+ * on an `admin` or `mgmnt` source; `fields` is a non-empty array of objects carrying only `param` (a query
  * parameter name, unique and never one of `CRITERIA_RESERVED_PARAMS`), a non-empty `labelKey` and a `kind` from
  * `CRITERION_KINDS`, plus `options` -- a non-empty array of unique non-empty strings -- exactly
  * when `kind` is `choice`; `marker`, when declared, carries only `param` (one of the declared
- * criteria), a non-empty `value` and a non-empty `labelKey`; and a criteria-bearing declaration
- * does not declare `refreshes` (AD-43). `OcuPilot.Test.CriteriaCorpus` is the corpus both engines
+ * criteria), a non-empty `value` and a non-empty `labelKey`; a declaration with a non-empty
+ * `parentScope` and a read declares exactly one criterion (AD-5), which may auto-refresh in place
+ * since it takes its one value from the route rather than from a search the user ran (Story 6.7);
+ * any other criteria-bearing declaration does not declare `refreshes` (AD-43). `OcuPilot.Test.CriteriaCorpus` is the corpus both engines
  * run.
  *
  * The roster is the allow-list a route and a read tool are both filtered through, which is why a
@@ -758,31 +872,50 @@ export const CRITERIA_RESERVED_PARAMS = ['maxRows', 'filter', 'sort', 'direction
 export function criteriaProblem(declaration) {
   const { read } = declaration;
   if (!isObject(read)) return null;
+  const parented = typeof declaration.parentScope === 'string' && declaration.parentScope !== '';
   const { criteria } = read;
-  if (criteria === undefined || criteria === null) return null;
+  if (criteria === undefined || criteria === null) return parented ? parentCriteriaProblem(declaration) : null;
   if (!isObject(criteria)) return 'read.criteria is not an object declaring its fields and marker (AD-21)';
   const keysFault = unknownKeyProblem('read.criteria', criteria, ['fields', 'marker']);
   if (keysFault !== null) return keysFault;
 
   const port = isObject(read.source) ? read.source.port : undefined;
-  if (port !== 'admin') {
-    return `read.criteria is declared on a '${shown(port)}' source, and server criteria travel on the admin port alone (AD-21)`;
+  if (port !== SOURCE_ADMIN && port !== SOURCE_MGMNT) {
+    return `read.criteria is declared on a '${shown(port)}' source, and server criteria travel on the admin and mgmnt ports alone (AD-21)`;
   }
 
   const params = [];
   const fieldsFault = criteriaFieldsProblem(criteria, params);
   if (fieldsFault !== null) return fieldsFault;
+  const vendorParamFault = criteriaVendorParamProblem(criteria);
+  if (vendorParamFault !== null) return vendorParamFault;
   const markerFault = criteriaMarkerProblem(criteria, params);
   if (markerFault !== null) return markerFault;
+  if (parented && params.length !== 1) return parentCriteriaProblem(declaration);
 
-  // The last arm, so no earlier refusal changes which sentence a declaration gets.
-  if (declaration.refreshes === true) {
+  // The last arm, so no earlier refusal changes which sentence a declaration gets. A
+  // parent-scoped screen's only criterion is the route id rather than a server search -- already
+  // confirmed above, since `parented` reaching here means exactly one criterion -- so it may
+  // refresh in place (Story 6.7).
+  if (declaration.refreshes === true && !parented) {
     return (
       'refreshes is declared with read.criteria, and a screen that searches on the server renders ' +
       'nothing until Search and does not auto-refresh (AD-43)'
     );
   }
   return null;
+}
+
+/**
+ * The one sentence a parent-scoped read that does not declare exactly one criterion is refused with
+ * (AD-5): the client fills that criterion from the route id, so none leaves the read unscoped and a
+ * second has no value to take. `OcuPilot.Screen.Registry.ParentCriteriaProblem` returns the same.
+ */
+function parentCriteriaProblem(declaration) {
+  return (
+    `parentScope '${declaration.parentScope}' is declared with a read, and a parent-scoped read ` +
+    'declares exactly one read.criteria field, which its route id fills (AD-5)'
+  );
 }
 
 /** What is wrong with `criteria.fields`, or `null`. Declared parameter names are pushed onto `params`. */
@@ -798,8 +931,8 @@ function criteriaFieldsProblem(criteria, params) {
     if (!isObject(field)) return `${where} is not an object declaring its param, labelKey and kind`;
     const allowed =
       field.kind === 'choice'
-        ? ['param', 'labelKey', 'kind', 'maxLength', 'options']
-        : ['param', 'labelKey', 'kind', 'maxLength'];
+        ? ['param', 'labelKey', 'kind', 'maxLength', 'vendorParam', 'options']
+        : ['param', 'labelKey', 'kind', 'maxLength', 'vendorParam'];
     const fieldKeysFault = unknownKeyProblem(where, field, allowed);
     if (fieldKeysFault !== null) return fieldKeysFault;
 
@@ -813,6 +946,20 @@ function criteriaFieldsProblem(criteria, params) {
     if (seen.has(folded)) return `${where} names the param '${field.param}' twice`;
     seen.add(folded);
     params.push(field.param);
+
+    // Story 6.6: a criterion may send its value to the vendor under a declared name of its own,
+    // because the vendor's own name is reserved for the read's two callers. Only shape and the two
+    // names every read's own machinery sends are checked here; a collision with another field's
+    // param or vendorParam is checked once every field is known (criteriaVendorParamProblem).
+    if (field.vendorParam !== undefined) {
+      if (typeof field.vendorParam !== 'string' || !PARAM_RE.test(field.vendorParam)) {
+        return `${where} vendorParam '${shown(field.vendorParam)}' is not a query parameter name`;
+      }
+      const vendorFolded = field.vendorParam.toLowerCase();
+      if (vendorFolded === 'maxrows' || vendorFolded === 'ns') {
+        return `${where} vendorParam '${field.vendorParam}' collides with a name the read's own callers already send`;
+      }
+    }
 
     if (typeof field.labelKey !== 'string' || field.labelKey === '') {
       return `${where} labelKey is empty, and a criterion's control names a string key`;
@@ -869,6 +1016,44 @@ function criteriaOptionsProblem(field, where) {
   return null;
 }
 
+/**
+ * What is wrong with `criteria`'s declared `vendorParam`s taken together, or `null` (Story 6.6).
+ * Each field's own shape is already sound (`criteriaFieldsProblem`); this is the one check that
+ * needs every field's name known first -- a `vendorParam` may not equal, case-folded, another
+ * field's `param` or `vendorParam`, because both values reach the same vendor query and a
+ * collision would let one field's value silently overwrite another's.
+ * `OcuPilot.Screen.Registry.CriteriaVendorParamProblem` returns the same sentence.
+ */
+function criteriaVendorParamProblem(criteria) {
+  const fields = criteria.fields;
+  if (!Array.isArray(fields)) return null;
+  for (let outer = 0; outer < fields.length; outer += 1) {
+    const outerField = fields[outer];
+    if (!isObject(outerField) || typeof outerField.vendorParam !== 'string' || outerField.vendorParam === '') {
+      continue;
+    }
+    const vendorFolded = outerField.vendorParam.toLowerCase();
+    for (let inner = 0; inner < fields.length; inner += 1) {
+      if (inner === outer) continue;
+      const innerField = fields[inner];
+      if (!isObject(innerField)) continue;
+      const sameParam =
+        typeof innerField.param === 'string' && innerField.param !== '' && innerField.param.toLowerCase() === vendorFolded;
+      const sameVendorParam =
+        typeof innerField.vendorParam === 'string' &&
+        innerField.vendorParam !== '' &&
+        innerField.vendorParam.toLowerCase() === vendorFolded;
+      if (sameParam || sameVendorParam) {
+        return (
+          `read.criteria.fields entry #${outer + 1} vendorParam '${outerField.vendorParam}' collides with ` +
+          "another field's param or vendorParam"
+        );
+      }
+    }
+  }
+  return null;
+}
+
 /** What is wrong with `criteria.marker`, or `null`. `params` is the declared parameter names. */
 function criteriaMarkerProblem(criteria, params) {
   const { marker } = criteria;
@@ -891,8 +1076,439 @@ function criteriaMarkerProblem(criteria, params) {
   return null;
 }
 
+/**
+ * The request types a `read.source` may issue (AD-36), byte for byte `OcuPilot.Screen.Registry`'s own
+ * `READSOURCETYPES`: `LIST`, a list of rows; `GET`, one object read as the read's one row;
+ * `UPCOMING`, an admin endpoint's list of scheduled occurrences, issued as a list is;
+ * `HISTORY`, `Task.CRUD`'s task-run history, issued the same way (Story 6.6); and `VOLUMELIST`,
+ * `Database.SysCRUD`'s volume-file list, issued the same way again (Story 6.11).
+ */
+export const READ_SOURCE_TYPES = ['LIST', 'GET', 'UPCOMING', 'HISTORY', 'VOLUMELIST'];
+
+/** The longest value a `read.source.query` entry may fix, `OcuPilot.Screen.Registry`'s `SOURCEQUERYMAXLENGTH`. */
+export const SOURCE_QUERY_MAX_LENGTH = 50;
+
+/**
+ * What is wrong with `source.query`, or `null` (AD-36). `read` is the declared read, whose `criteria`
+ * the keys are compared to.
+ *
+ * An absent or `null` `query` fixes no parameter. Otherwise it is a non-empty object on an `admin`
+ * source; each key is a query parameter name that equals, case-folded, neither a
+ * `CRITERIA_RESERVED_PARAMS` name nor a declared `read.criteria` field's `param` or `vendorParam`;
+ * and each value is a non-empty string of at most `SOURCE_QUERY_MAX_LENGTH` characters.
+ * `OcuPilot.Screen.Read.Execute` sends every
+ * entry on the read's `LIST`, `UPCOMING` or `HISTORY` call, on a single-object `GET` and on each per-parent child
+ * list, never on a per-parent read's parent list or a `rowGet` detail call, so no caller can change or
+ * remove one.
+ * `OcuPilot.Screen.Registry.SourceQueryProblem` returns the same sentence for every case in
+ * `OcuPilot.Test.ReadSourceCorpus`.
+ */
+export function sourceQueryProblem(read, source) {
+  const where = 'read.source.query';
+  const { query } = source;
+  if (query === undefined || query === null) return null;
+  if (!isObject(query)) return `${where} is not an object of fixed query parameters (AD-36)`;
+  if (source.port !== SOURCE_ADMIN) {
+    return `${where} is declared on a '${shown(source.port)}' source, and fixed query parameters travel on admin endpoints (AD-36)`;
+  }
+  const keys = Object.keys(query);
+  if (keys.length === 0) return `${where} is empty, and a declared query fixes at least one parameter (AD-36)`;
+  const criteriaParams = [];
+  if (isObject(read.criteria) && Array.isArray(read.criteria.fields)) {
+    for (const field of read.criteria.fields) {
+      if (!isObject(field)) continue;
+      if (typeof field.param === 'string') criteriaParams.push(field.param.toLowerCase());
+      if (typeof field.vendorParam === 'string') criteriaParams.push(field.vendorParam.toLowerCase());
+    }
+  }
+  for (const key of keys) {
+    if (!PARAM_RE.test(key)) return `${where} key '${key}' is not a query parameter name`;
+    const folded = key.toLowerCase();
+    if (CRITERIA_RESERVED_PARAMS.some((name) => name.toLowerCase() === folded)) {
+      return `${where} key '${key}' collides with a name the read's own callers already send`;
+    }
+    if (criteriaParams.includes(folded)) {
+      return `${where} key '${key}' is also a read.criteria param, and no caller can change a fixed parameter (AD-36)`;
+    }
+    const value = query[key];
+    if (typeof value !== 'string' || value === '' || value.length > SOURCE_QUERY_MAX_LENGTH) {
+      return `${where} '${key}' is not a non-empty string of at most ${SOURCE_QUERY_MAX_LENGTH} characters`;
+    }
+  }
+  return null;
+}
+
+/**
+ * What is wrong with `source.forEach`, or `null` (AD-36). `read` is the declared read and `fields`
+ * its declared fields.
+ *
+ * An absent or `null` `forEach` lists no parents. Otherwise it is an object carrying only `endpoint`
+ * (the parent endpoint), `key` (the parent row field each child list is read for), `param` (the query
+ * parameter that key's text is sent as, equal, case-folded, to no `source.query` key) and `fields`, an array of objects carrying only `field` (one of
+ * `fields`, not repeated) and `from` (the parent row field copied into it), declared on an `admin`
+ * `LIST` source with no `rowGet` and no `criteria`. `OcuPilot.Screen.Registry.ForEachProblem` returns
+ * the same sentence for every case in `OcuPilot.Test.ReadSourceCorpus`.
+ */
+export function forEachProblem(read, source, fields) {
+  const where = 'read.source.forEach';
+  const { forEach } = source;
+  if (forEach === undefined || forEach === null) return null;
+  if (!isObject(forEach)) return `${where} is not an object declaring its endpoint, key, param and fields (AD-36)`;
+  const keysFault = unknownKeyProblem(where, forEach, ['endpoint', 'key', 'param', 'fields']);
+  if (keysFault !== null) return keysFault;
+  if (source.port !== SOURCE_ADMIN) {
+    return `${where} is declared on a '${shown(source.port)}' source, and a per-parent list issues admin endpoints (AD-36)`;
+  }
+  if (isObject(source.rowGet)) {
+    return `${where} is declared with read.source.rowGet, and a per-parent list copies its parent's fields rather than a detail call's (AD-36)`;
+  }
+  if (isObject(read.criteria)) {
+    return `${where} is declared with read.criteria, and a per-parent list sets its one parameter from each parent (AD-36)`;
+  }
+  if (typeof forEach.endpoint !== 'string' || !ENDPOINT_RE.test(forEach.endpoint)) {
+    return `${where}.endpoint '${shown(forEach.endpoint)}' is not a package-relative endpoint name`;
+  }
+  if (typeof forEach.key !== 'string' || forEach.key === '') {
+    return `${where}.key is empty, and a per-parent list reads each parent's key by name`;
+  }
+  if (typeof forEach.param !== 'string' || !PARAM_RE.test(forEach.param)) {
+    return `${where}.param '${shown(forEach.param)}' is not a query parameter name`;
+  }
+  if (isObject(source.query) && Object.keys(source.query).some((key) => key.toLowerCase() === forEach.param.toLowerCase())) {
+    return `${where}.param '${forEach.param}' is also a read.source.query key, which each child list would overwrite (AD-36)`;
+  }
+  if (!Array.isArray(forEach.fields)) return `${where}.fields is not an array of parent fields`;
+  const seen = [];
+  for (let index = 0; index < forEach.fields.length; index += 1) {
+    const entry = forEach.fields[index];
+    const at = `${where}.fields entry #${index + 1}`;
+    if (!isObject(entry)) return `${at} is not an object declaring its field and from`;
+    const entryKeysFault = unknownKeyProblem(at, entry, ['field', 'from']);
+    if (entryKeysFault !== null) return entryKeysFault;
+    if (typeof entry.field !== 'string' || !fields.includes(entry.field)) {
+      return `${at} field '${shown(entry.field)}' is not one of read.fields`;
+    }
+    if (seen.includes(entry.field)) return `${at} names the field '${entry.field}' twice`;
+    seen.push(entry.field);
+    if (typeof entry.from !== 'string' || entry.from === '') {
+      return `${at} from is empty, and a parent field is copied from a named key of the parent`;
+    }
+  }
+  return null;
+}
+
+/** The shape a declared part's `type` takes, byte for byte `OcuPilot.Screen.Registry`'s `PARTTYPEPATTERN`. */
+export const PART_TYPE_RE = /^[A-Z]+$/;
+
+/** The shape a declared part's `as` takes, byte for byte `OcuPilot.Screen.Registry`'s `PARTASPATTERN`. */
+export const PART_AS_RE = /^[A-Z][A-Za-z0-9]*$/;
+
+/** The most parts a single-object `GET` may declare, `OcuPilot.Screen.Registry`'s `MAXPARTS`. */
+export const MAX_PARTS = 3;
+
+/**
+ * What is wrong with `source.parts`, or `null` (AD-36, Story 6.9). `read` is the declared read and
+ * `fields` its declared fields.
+ *
+ * An absent or `null` `parts` declares none. Otherwise it is a non-empty array of 1 to `MAX_PARTS`
+ * objects carrying only `type` (`PART_TYPE_RE`) and `as` (`PART_AS_RE`, unique across the block),
+ * declared on a single-object `GET` source with no `criteria` or `query` -- either would name the
+ * read's one criterion or a fixed parameter, and a parts read's row is assembled from the parts
+ * alone. A `GET` source already guarantees an `admin` port and already refuses `rowGet` and
+ * `forEach` outright unless a parent-scoped route-id `criteria` is also declared, in which case
+ * this function's own criteria check fires first, so neither needs its own arm here. Every
+ * declared field then starts with one of the
+ * block's `as` values, followed by one or two further dot-separated segments, since
+ * `OcuPilot.Screen.Read.CopyAs` composes a part field's `<as>.<member>` with the existing
+ * `<object>.<member>` projection to at most two members deep. `OcuPilot.Screen.Registry.PartsProblem`
+ * returns the same sentence for every case in `OcuPilot.Test.ReadSourceCorpus`.
+ */
+export function partsProblem(read, source, fields) {
+  const where = 'read.source.parts';
+  const { parts } = source;
+  if (parts === undefined || parts === null) return null;
+  if (!Array.isArray(parts)) return `${where} is not an array of {type, as} parts (AD-36)`;
+  if (source.type !== 'GET') {
+    return `${where} is declared on a '${shown(source.type)}' source, and parts merge into a single-object GET's one row (AD-36)`;
+  }
+  // A GET source's own rules already guarantee the port is admin by this point, and already
+  // refuse rowGet and forEach outright on a GET source unless a parent-scoped route-id criterion
+  // is also declared -- in which case the criteria check just below fires first. So parts and
+  // rowGet or forEach cannot reach here together; only criteria and query can.
+  if (isObject(read.criteria)) {
+    return `${where} is declared with read.criteria, and a parts read takes no criterion (AD-36)`;
+  }
+  if (isObject(source.query)) {
+    return `${where} is declared with read.source.query, and a parts read fixes no query parameter (AD-36)`;
+  }
+  if (parts.length < 1 || parts.length > MAX_PARTS) {
+    return `${where} declares ${parts.length} part(s), and a parts read names 1 to ${MAX_PARTS}`;
+  }
+  const seenAs = [];
+  for (let index = 0; index < parts.length; index += 1) {
+    const part = parts[index];
+    const at = `${where} entry #${index + 1}`;
+    if (!isObject(part)) return `${at} is not an object declaring its type and as`;
+    const keysFault = unknownKeyProblem(at, part, ['type', 'as']);
+    if (keysFault !== null) return keysFault;
+    if (typeof part.type !== 'string' || !PART_TYPE_RE.test(part.type)) {
+      return `${at} type '${shown(part.type)}' is not upper-case letters`;
+    }
+    if (typeof part.as !== 'string' || !PART_AS_RE.test(part.as)) {
+      return `${at} as '${shown(part.as)}' is not an upper camel-case identifier`;
+    }
+    if (seenAs.includes(part.as)) {
+      return `${at} names the as '${part.as}' twice, and every part's as is unique`;
+    }
+    seenAs.push(part.as);
+  }
+  for (const field of fields) {
+    const matched = seenAs.some((as) => new RegExp(`^${as}\\.[A-Za-z][A-Za-z0-9]*(\\.[A-Za-z][A-Za-z0-9]*)?$`).test(field));
+    if (!matched) {
+      return `read.fields '${field}' does not start with a declared parts.as followed by one or two segments (AD-36)`;
+    }
+  }
+  return null;
+}
+
+/** The shape a `tab.group` route takes, byte for byte `OcuPilot.Screen.Registry`'s `TABGROUPPATTERN`. */
+export const TAB_GROUP_RE = /^[a-z0-9-]+(\/[a-z0-9-]+)*$/;
+
+/**
+ * What is wrong with a declaration's `tab`, or `null` when nothing is (AD-5). A tabbed screen is one
+ * descriptor per tab, grouped by this declaration.
+ *
+ * An absent or `null` `tab` is a screen that is no tab. Otherwise it is an object carrying only `group`
+ * (a route), `position` (a whole number of at least 1) and `labelKey` (a non-empty string key);
+ * position 1 is declared exactly by the member whose `route` is the group; and a member at position 2
+ * or higher declares `sideBarPosition` 0. `OcuPilot.Screen.Registry.TabProblem` returns the same
+ * sentence for every case in `OcuPilot.Test.TabCorpus`.
+ */
+export function tabProblem(declaration) {
+  const { tab } = declaration;
+  if (tab === undefined || tab === null) return null;
+  if (!isObject(tab)) return 'tab is not an object declaring its group, position and labelKey (AD-5)';
+  const keysFault = unknownKeyProblem('tab', tab, ['group', 'position', 'labelKey']);
+  if (keysFault !== null) return keysFault;
+  if (typeof tab.group !== 'string' || !TAB_GROUP_RE.test(tab.group)) {
+    return `tab.group '${shown(tab.group)}' is not a route`;
+  }
+  if (typeof tab.position !== 'number' || !Number.isInteger(tab.position) || tab.position < 1) {
+    return `tab.position '${shown(tab.position)}' is not a whole number of at least 1`;
+  }
+  if (typeof tab.labelKey !== 'string' || tab.labelKey === '') {
+    return 'tab.labelKey is empty, and a tab names the string key its label reads';
+  }
+  const route = shown(declaration.route);
+  if (tab.position === 1 && route !== tab.group) {
+    return `tab.position 1 is the group's own route, and route '${route}' is not tab.group '${tab.group}' (AD-5)`;
+  }
+  if (tab.position !== 1 && route === tab.group) {
+    return `tab.group '${tab.group}' is this screen's own route, which only tab.position 1 may declare (AD-5)`;
+  }
+  if (tab.position > 1 && declaration.sideBarPosition !== 0) {
+    return `tab.position ${tab.position} is a tab under its group's first, and such a tab declares sideBarPosition 0 (AD-5)`;
+  }
+  return null;
+}
+
+/**
+ * What is wrong with how a roster's tab groups fit together, or `null` (AD-5). `screens` is
+ * `[{className, declaration}]` in roster order, and the answer names the offending class.
+ *
+ * Groups are checked in the order their first member appears. Each names a built member at its route
+ * that declares the group; every member shares that member's `area` and `archetype`; and the members'
+ * positions, sorted, run 1 to their count with no gap or repeat.
+ * `OcuPilot.Screen.Registry.TabGroupProblem` returns the same sentence for every roster case in
+ * `OcuPilot.Test.TabCorpus`.
+ */
+export function tabGroupProblem(screens) {
+  const groups = new Map();
+  for (const screen of screens) {
+    const tab = screen?.declaration?.tab;
+    if (!isObject(tab) || typeof tab.group !== 'string') continue;
+    if (!groups.has(tab.group)) groups.set(tab.group, []);
+    groups.get(tab.group).push(screen);
+  }
+  for (const [group, members] of groups) {
+    let head = null;
+    for (const member of members) {
+      if (member.declaration.route === group && member.declaration.built === true) head = member;
+    }
+    if (head === null) {
+      return `${members[0].className}: tab.group '${group}' names no built member at that route, and a tab group opens at its first tab (AD-5)`;
+    }
+    const { area, archetype } = head.declaration;
+    for (const member of members) {
+      if (member.declaration.area === area && member.declaration.archetype === archetype) continue;
+      return (
+        `${member.className}: tab.group '${group}' is declared in area '${shown(member.declaration.area)}' with archetype ` +
+        `'${shown(member.declaration.archetype)}', and a tab group's members share the area and archetype of '${group}' (AD-5)`
+      );
+    }
+    const positions = members.map((member) => member.declaration.tab.position).sort((a, b) => a - b);
+    if (positions.some((position, index) => position !== index + 1)) {
+      return (
+        `${head.className}: tab.group '${group}' declares positions ${positions.join(',')}, and a tab group's ` +
+        `positions run 1 to ${members.length} with no gap or repeat (AD-5)`
+      );
+    }
+  }
+  return null;
+}
+
+/**
+ * What is wrong with how a roster's `parentScope` declarations resolve, or `null` (DW-1020, AD-5).
+ * `screens` is `[{className, declaration}]` in roster order.
+ *
+ * A built descriptor's non-empty `parentScope` must name the route of some other **built**
+ * descriptor whose own `id.kind` is not `none` -- a route with nothing to identify resolves no
+ * entity for the child's id to name. The entry being checked is excluded from its own candidate
+ * search, so a descriptor cannot resolve its `parentScope` against itself by declaring one equal
+ * to its own `route`. An unbuilt descriptor's `parentScope` is not checked: it routes nothing yet,
+ * so a stale reference in a declaration still being drafted is not this rule's problem.
+ * `OcuPilot.Screen.Registry.ParentScopeResolutionProblem` returns the same sentence.
+ */
+export function parentScopeResolutionProblem(screens) {
+  for (let outer = 0; outer < screens.length; outer += 1) {
+    const screen = screens[outer];
+    const declaration = screen.declaration;
+    if (declaration.built !== true) continue;
+    const parentScope = declaration.parentScope;
+    if (typeof parentScope !== 'string' || parentScope === '') continue;
+    let found = false;
+    for (let inner = 0; inner < screens.length; inner += 1) {
+      if (inner === outer) continue;
+      const candidateDeclaration = screens[inner].declaration;
+      if (candidateDeclaration.route !== parentScope || candidateDeclaration.built !== true) continue;
+      const idKind = isObject(candidateDeclaration.id) ? candidateDeclaration.id.kind : undefined;
+      if (idKind !== undefined && idKind !== null && idKind !== '' && idKind !== 'none') {
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      return `${screen.className}: parentScope '${parentScope}' names no built descriptor with that route and an id (DW-1020)`;
+    }
+  }
+  return null;
+}
+
+/** The keys a declared `rowTarget` may carry (AD-5, Story 6.10). */
+export const ROW_TARGET_KEYS = ['route', 'field'];
+
+/**
+ * What is wrong with `declaration`'s declared `rowTarget`, or `null` when nothing is, including
+ * when none is declared (AD-5, Story 6.10). A row target is a list's single cross-screen row
+ * link: the field its name cell encodes and the route that link opens, resolved ahead of the
+ * paired-surface chain in `data-table.ts` -- because a list keyed by something other than the
+ * linked entity (the Locks list's removal id, say) would otherwise link its own id route, which
+ * names the wrong thing.
+ *
+ * Declarable only on a `list` archetype that also declares a `table`, since exactly one column's
+ * `kind` is `name` and a row target replaces what that column would otherwise link to. Its
+ * `route` is a non-empty string other than the declaring screen's own route, and its `field` is a
+ * non-empty string that is one of `read.fields`. Whether the named route resolves is
+ * `rowTargetResolutionProblem`'s question. `OcuPilot.Screen.Registry.RowTargetProblem` returns
+ * the same sentence for every case in `OcuPilot.Test.RowTargetCorpus`.
+ */
+export function rowTargetProblem(declaration) {
+  const { rowTarget } = declaration;
+  if (rowTarget === undefined || rowTarget === null) return null;
+  if (!isObject(rowTarget)) return 'rowTarget is not an object naming its route and field (AD-5)';
+  const keysFault = unknownKeyProblem('rowTarget', rowTarget, ROW_TARGET_KEYS);
+  if (keysFault !== null) return keysFault;
+  if (declaration.archetype !== 'list') {
+    return `rowTarget is declared on a '${shown(declaration.archetype)}' archetype, and a row target is a list's own row link (AD-5)`;
+  }
+  if (!isObject(declaration.table)) {
+    return "rowTarget is declared without a table, and a row target replaces the table's name column's own link (AD-5)";
+  }
+  if (typeof rowTarget.route !== 'string' || rowTarget.route === '') {
+    return 'rowTarget.route is empty, and a row target names the route it opens';
+  }
+  if (rowTarget.route === declaration.route) {
+    return `rowTarget.route '${rowTarget.route}' is this screen's own route, and a row already reaches it through its own id (AD-5)`;
+  }
+  if (typeof rowTarget.field !== 'string' || rowTarget.field === '') {
+    return 'rowTarget.field is empty, and a row target names the field its link encodes';
+  }
+  const fields = Array.isArray(declaration.read?.fields) ? declaration.read.fields : [];
+  if (!fields.includes(rowTarget.field)) {
+    return `rowTarget.field '${rowTarget.field}' is not one of read.fields`;
+  }
+  return null;
+}
+
+/**
+ * Whether some other built entry in `screens` already pairs `route`'s own surface -- an editor or
+ * document viewer at `<route>/edit` or `<route>/document`, or a detail screen or child list whose
+ * `parentScope` is `route` -- the four surfaces `editorScreenFor`, `documentScreenFor`,
+ * `detailScreenFor` and `childListFor` pair a list with, named by route and `parentScope` alone.
+ * Deliberately broader than those four, which each also require the candidate to be unlisted and
+ * id-keyed: this rule counts a built candidate at either route, so it refuses a declaration the
+ * client would have left unpaired rather than admitting one it would pair. A row's name cell links
+ * to one place, so a screen that already has one of these declares no `rowTarget` as well.
+ */
+function rowTargetPairsOwnSurface(route, screens) {
+  for (const screen of screens) {
+    const candidate = screen.declaration;
+    if (candidate.built !== true) continue;
+    if (candidate.route === `${route}/edit` || candidate.route === `${route}/document`) return true;
+    if (route !== '' && candidate.parentScope === route) return true;
+  }
+  return false;
+}
+
+/**
+ * What is wrong with how `screens`' declared `rowTarget`s resolve, or `null` (AD-5, Story 6.10).
+ * `screens` is `[{className, declaration}]` in roster order.
+ *
+ * A declared `rowTarget.route` must name some other entry's `route`, that entry must be `built`,
+ * its `id.kind` must not be `none`, and the declaring screen must not already pair its own
+ * surface (`rowTargetPairsOwnSurface`) -- a row's name cell links to one place.
+ * `OcuPilot.Screen.Registry.RowTargetResolutionProblem` returns the same sentence for every
+ * roster case in `OcuPilot.Test.RowTargetCorpus`.
+ */
+export function rowTargetResolutionProblem(screens) {
+  for (let outer = 0; outer < screens.length; outer += 1) {
+    const screen = screens[outer];
+    const declaration = screen.declaration;
+    if (!isObject(declaration.rowTarget)) continue;
+    const { route } = declaration.rowTarget;
+    const ownRoute = declaration.route;
+    let candidate = null;
+    for (let inner = 0; inner < screens.length; inner += 1) {
+      if (inner === outer) continue;
+      const candidateDeclaration = screens[inner].declaration;
+      if (candidateDeclaration.route === route) candidate = candidateDeclaration;
+    }
+    if (candidate === null) {
+      return `${screen.className}: rowTarget.route '${route}' names no declared screen (AD-5)`;
+    }
+    if (candidate.built !== true) {
+      return `${screen.className}: rowTarget.route '${route}' names a screen that is not built (AD-5)`;
+    }
+    const idKind = isObject(candidate.id) ? candidate.id.kind : undefined;
+    if (idKind === undefined || idKind === null || idKind === '' || idKind === 'none') {
+      return `${screen.className}: rowTarget.route '${route}' names a screen with no id, and a row target's field decodes into that screen's own id (AD-5)`;
+    }
+    if (rowTargetPairsOwnSurface(ownRoute, screens)) {
+      return `${screen.className}: rowTarget is declared on a screen that already pairs its own surface, and a row's name cell links to one place (AD-5)`;
+    }
+  }
+  return null;
+}
+
 /** The rules a `read.source.rowGet` derived field may name (AD-36). */
 export const ROW_GET_RULES = ['beforeToday'];
+
+/**
+ * The request types a `read.source.rowGet` may issue (AD-36), byte for byte
+ * `OcuPilot.Screen.Registry`'s own `ROWGETTYPES`: `GET`, the default; `INFO`, where the list's own
+ * row is wrong; and `CERTINFO`, where only that type carries the fields.
+ */
+export const ROW_GET_TYPES = ['GET', 'INFO', 'CERTINFO'];
 
 const PARAM_RE = /^[A-Za-z][A-Za-z0-9]*$/;
 
@@ -903,26 +1519,40 @@ function isObject(value) {
 
 /**
  * What is wrong with `source.rowGet`, or `null` (AD-36). `fields` is the read's declared fields.
+ * `keyAllowed` is non-empty only for a parent-scoped GET's route-id criterion (Story 6.7): when it
+ * is, `key` must equal that one param instead of naming one of `fields`, because the GET's own
+ * answer carries no such property for a per-row detail call to key off.
  *
  * An absent or `null` `rowGet` declares no detail call. Otherwise it is an object carrying only
- * `key` (one of `fields`), `param` (a query parameter name), `fields` (a non-empty array of unique
+ * `key` (one of `fields`, or `keyAllowed` where that is non-empty), `param` (a query parameter
+ * name), an optional `type` (one of
+ * `ROW_GET_TYPES`, spelled exactly; absent means `GET`), `fields` (a non-empty array of unique
  * names from `fields`, without `key`) and `derived`, an array of objects carrying only `field` (one
  * of `fields`, neither `key` nor a detail field, and not repeated), `rule` (one of `ROW_GET_RULES`)
  * and `from` (one of the detail fields). `OcuPilot.Screen.Registry.RowGetProblem` returns the same
  * sentence for every case in `OcuPilot.Test.RowGetCorpus`.
  */
-export function rowGetProblem(source, fields) {
+export function rowGetProblem(source, fields, keyAllowed = []) {
   const where = 'read.source.rowGet';
   const { rowGet } = source;
   if (rowGet === undefined || rowGet === null) return null;
   if (!isObject(rowGet)) return `${where} is not an object declaring its key, param, fields and derived (AD-36)`;
-  const keysFault = unknownKeyProblem(where, rowGet, ['key', 'param', 'fields', 'derived']);
+  const keysFault = unknownKeyProblem(where, rowGet, ['key', 'param', 'type', 'fields', 'derived']);
   if (keysFault !== null) return keysFault;
 
   if (typeof rowGet.key !== 'string') return `${where}.key is not a string`;
-  if (!fields.includes(rowGet.key)) return `${where}.key '${rowGet.key}' is not one of read.fields`;
+  if (keyAllowed.length > 0) {
+    if (!keyAllowed.includes(rowGet.key)) {
+      return `${where}.key '${rowGet.key}' must equal the read's one route-id criterion param (AD-36, Story 6.7)`;
+    }
+  } else if (!fields.includes(rowGet.key)) {
+    return `${where}.key '${rowGet.key}' is not one of read.fields`;
+  }
   if (typeof rowGet.param !== 'string') return `${where}.param is not a string`;
   if (!PARAM_RE.test(rowGet.param)) return `${where}.param '${rowGet.param}' is not a query parameter name`;
+  if (Object.hasOwn(rowGet, 'type') && (typeof rowGet.type !== 'string' || !ROW_GET_TYPES.includes(rowGet.type))) {
+    return `${where}.type '${shown(rowGet.type)}' is not one of ${ROW_GET_TYPES.join(',')}, the detail types a per-row call issues (AD-36)`;
+  }
 
   const detailFault = nameListProblem(`${where}.fields`, rowGet.fields, fields);
   if (detailFault !== null) return detailFault;
@@ -971,8 +1601,9 @@ export function isWriteCapable(declaration) {
  * What is wrong with a read-declaring declaration's `table`, or `null`. The rules
  * `OcuPilot.Screen.Registry.TableProblem` applies: `table` carries only `columns`, `emptyNextKey`
  * and `emptyAgentKey`; `columns` is non-empty, each column carries only `field` (one of `fields`,
- * none of `secrets`, unique), a non-empty `labelKey` and a kind from `TABLE_COLUMN_KINDS`, and
- * exactly one is `name`;
+ * none of `secrets`, unique), a non-empty `labelKey`, a kind from `TABLE_COLUMN_KINDS` and an
+ * optional non-empty `emptyKey` (the string key an empty cell in that column reads instead of
+ * "(none)"), and exactly one is `name`;
  * `emptyStateKey` is non-empty; a composite id names only parts in `fields`; and a write-capable
  * declaration names `emptyAgentKey` with `emptyNextKey` empty, any other the reverse.
  */
@@ -994,7 +1625,7 @@ export function tableProblem(declaration, fields, secrets) {
     if (column === null || typeof column !== 'object' || Array.isArray(column)) {
       return `${where} is not an object declaring its field, labelKey and kind`;
     }
-    const columnKeysFault = unknownKeyProblem(where, column, ['field', 'labelKey', 'kind']);
+    const columnKeysFault = unknownKeyProblem(where, column, ['field', 'labelKey', 'kind', 'emptyKey']);
     if (columnKeysFault !== null) return columnKeysFault;
     if (typeof column.field !== 'string' || !fields.includes(column.field)) {
       return `${where} field '${column.field}' is not one of read.fields`;
@@ -1009,6 +1640,9 @@ export function tableProblem(declaration, fields, secrets) {
     }
     if (typeof column.kind !== 'string' || !TABLE_COLUMN_KINDS.includes(column.kind)) {
       return `${where} kind '${column.kind}' is not one of ${TABLE_COLUMN_KINDS.join(',')}`;
+    }
+    if (Object.hasOwn(column, 'emptyKey') && (typeof column.emptyKey !== 'string' || column.emptyKey === '')) {
+      return `${where} emptyKey is not a non-empty string key, and an empty cell in that column reads the string it names`;
     }
     if (column.kind === 'name') names += 1;
   }
@@ -1051,7 +1685,8 @@ export function tableProblem(declaration, fields, secrets) {
 
 /**
  * Every client string key a declaration names: its `labelKey`, its `emptyStateKey`, its table's
- * column labels and two empty-state keys, and its banner's `messageKey`. Empty keys are not listed.
+ * column labels, column empty-cell keys and two empty-state keys, and its banner's `messageKey`.
+ * Empty keys are not listed.
  *
  * The banner's key belongs here for the reason the others do: `stringFor` answers `''` for a key
  * the source lacks, so a mistyped one is caught here -- where the file and the key can both be
@@ -1059,14 +1694,15 @@ export function tableProblem(declaration, fields, secrets) {
  */
 export function declaredStringKeys(declaration) {
   const keys = [declaration.labelKey, declaration.emptyStateKey];
-  const { table, banner } = declaration;
+  const { table, banner, tab } = declaration;
   if (table !== null && typeof table === 'object') {
-    for (const column of Array.isArray(table.columns) ? table.columns : []) keys.push(column?.labelKey);
+    for (const column of Array.isArray(table.columns) ? table.columns : []) keys.push(column?.labelKey, column?.emptyKey);
     keys.push(table.emptyNextKey, table.emptyAgentKey);
   }
   if (banner !== null && typeof banner === 'object') {
     for (const entry of Array.isArray(banner.cases) ? banner.cases : []) keys.push(entry?.messageKey);
   }
+  if (tab !== null && typeof tab === 'object') keys.push(tab.labelKey);
   return keys.filter((key) => typeof key === 'string' && key !== '');
 }
 
@@ -1170,7 +1806,26 @@ export function buildMirror({ entityTypes, scopeWords, archetypes, areas, screen
     if (bannerFault !== null) {
       throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${bannerFault}`);
     }
+    const tabFault = tabProblem(screen.declaration);
+    if (tabFault !== null) {
+      throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${tabFault}`);
+    }
+    const rowTargetFault = rowTargetProblem(screen.declaration);
+    if (rowTargetFault !== null) {
+      throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${rowTargetFault}`);
+    }
   }
+  const tabGroupFault = tabGroupProblem(screens);
+  if (tabGroupFault !== null) throw new Error(`src/OcuPilot/Screen/Descriptor: ${tabGroupFault}`);
+  // DW-1020: a sub-resource screen's route id names an entity of its parent's primary entity type
+  // (AD-5), resolved through parentScope, so the parent it names has to exist, be built and carry
+  // an id for that resolution to answer anything.
+  const parentScopeFault = parentScopeResolutionProblem(screens);
+  if (parentScopeFault !== null) throw new Error(`src/OcuPilot/Screen/Descriptor: ${parentScopeFault}`);
+  // AD-5, Story 6.10: a declared rowTarget's route has to resolve to a built, id-keyed screen that
+  // does not already pair its own surface, which only the whole roster can say.
+  const rowTargetResolutionFault = rowTargetResolutionProblem(screens);
+  if (rowTargetResolutionFault !== null) throw new Error(`src/OcuPilot/Screen/Descriptor: ${rowTargetResolutionFault}`);
 
   // `refreshes` / `refreshRates` are defaulted rather than spread verbatim, because `refreshProblem`
   // calls an omitted pair sound and `Base.Refreshes()` answers 0 for one: without these the mirror
@@ -1201,6 +1856,8 @@ export function buildMirror({ entityTypes, scopeWords, archetypes, areas, screen
     read: screen.declaration.read ?? null,
     table: screen.declaration.table ?? null,
     banner: screen.declaration.banner ?? null,
+    tab: screen.declaration.tab ?? null,
+    rowTarget: screen.declaration.rowTarget ?? null,
   }));
 
   const builtArchetypeKeys = archetypeKeys.filter((key) =>
@@ -1268,6 +1925,22 @@ export interface ClassicLinkExemption {
    * never derived from \`classicPage\`, which is a class name (AD-44). \`''\` unless \`exempt\`.
    */
   readonly href: string;
+  /**
+   * The row link a complete exemption may declare (AD-44, AD-47): each row's name cell opens \`href\`
+   * with these params appended from that row, in a new tab. Absent on a screen that links no row.
+   */
+  readonly rowLink?: ClassicRowLink | null;
+}
+
+/** One query parameter a row link appends: its name and the read field whose text it carries. */
+export interface ClassicRowLinkParam {
+  readonly name: string;
+  readonly field: string;
+}
+
+/** A row link: the params appended, in order, to the exemption's \`href\` for one row. */
+export interface ClassicRowLink {
+  readonly params: readonly ClassicRowLinkParam[];
 }
 
 /** A field a detail call derives on the instance from one of its detail fields (AD-36). */
@@ -1278,27 +1951,73 @@ export interface ReadDerived {
 }
 
 /**
- * The one per-row detail call a read may name (AD-36): the endpoint's GET, issued on the instance
- * for each row that survives the cap with \`param\` set to the row's \`key\`, merging \`fields\`
- * and setting \`derived\`.
+ * The one per-row detail call a read may name (AD-36): the endpoint's declared detail type, issued
+ * on the instance for each row that survives the cap with \`param\` set to the row's \`key\`,
+ * merging \`fields\` and setting \`derived\`.
  */
 export interface ReadRowGet {
   readonly key: string;
   readonly param: string;
+  /** The detail type issued per row; absent means \`GET\`. */
+  readonly type?: ${ROW_GET_TYPES.map((value) => `'${value}'`).join(' | ')};
   readonly fields: readonly string[];
   readonly derived: readonly ReadDerived[];
 }
 
 /**
+ * One \`{type, as}\` part a single-object \`GET\` may declare (AD-36, Story 6.9): \`type\` is the
+ * vendor's own upper-case request type, possibly one the endpoint names without its usual \`TYPE\`
+ * prefix, and \`as\` is the object key its answer is merged under.
+ */
+export interface ReadSourcePart {
+  readonly type: string;
+  readonly as: string;
+}
+
+/**
  * Where a read's rows come from (AD-36): one admin API LIST (AD-2) with an optional per-row detail
- * call, or one of OcuPilot's own kernel stores read whole (AD-9). A \`state\` source names the store
- * by its own name, declares no \`rowGet\` and no \`criteria\`, and is bounded by the same row cap.
+ * call, one of OcuPilot's own kernel stores read whole (AD-9), the management API's port, or one
+ * instance log file's bounded tail. A \`state\` source names the store by its own name, declares no
+ * \`rowGet\` and no \`criteria\`, and is bounded by the same row cap; a \`mgmnt\` or
+ * \`logsource\` source declares no \`rowGet\`.
  */
 export interface ReadSource {
   readonly port: ${READ_SOURCE_PORTS.map((value) => `'${value}'`).join(' | ')};
   readonly endpoint: string;
-  readonly type: 'LIST';
+  /**
+   * \`LIST\` reads rows; \`GET\` reads one object as the one row, and a 404 reads as none;
+   * \`UPCOMING\` reads an admin endpoint's scheduled occurrences as rows; \`HISTORY\` reads its task-run history;
+   * \`VOLUMELIST\` reads a database's own volume files as rows.
+   */
+  readonly type: ${READ_SOURCE_TYPES.map((value) => `'${value}'`).join(' | ')};
   readonly rowGet?: ReadRowGet | null;
+  /** The parent list a per-parent read issues its source once per parent for, bounded by the cap. */
+  readonly forEach?: ReadForEach | null;
+  /**
+   * Up to three \`{type, as}\` parts a single-object \`GET\` merges into the read's one row as
+   * \`<as>.<member>\` fields (AD-36, Story 6.9).
+   */
+  readonly parts?: readonly ReadSourcePart[] | null;
+  /** Query parameters sent on the read's own list, UPCOMING, HISTORY or GET call and each per-parent child list (never a parent list or a rowGet call), which no caller can change or remove. */
+  readonly query?: Readonly<Record<string, string>> | null;
+}
+
+/** One parent field a per-parent read copies into each of that parent's rows. */
+export interface ReadForEachField {
+  readonly field: string;
+  readonly from: string;
+}
+
+/**
+ * A per-parent read (AD-36): \`endpoint\` is listed first, bounded by the cap plus one, and the read's
+ * own source is listed once per parent with \`param\` set to that parent's \`key\`, each row taking
+ * \`fields\` from its parent.
+ */
+export interface ReadForEach {
+  readonly endpoint: string;
+  readonly key: string;
+  readonly param: string;
+  readonly fields: readonly ReadForEachField[];
 }
 
 /** The fields a read sorts on, its default sort field and direction. */
@@ -1328,6 +2047,13 @@ export interface ReadCriterion {
    * the port and named nothing.
    */
   readonly maxLength: number;
+  /**
+   * The query parameter name the value is sent to the vendor under, instead of \`param\`, where the
+   * vendor's own name is reserved for the read's own arguments (Story 6.6). Absent means the value
+   * is sent as \`param\` itself; the caller, the refusal text and the read tool's schema all keep
+   * using \`param\` regardless.
+   */
+  readonly vendorParam?: string;
   readonly options?: readonly string[];
 }
 
@@ -1406,11 +2132,15 @@ export interface BannerDeclaration {
 /** How a table column renders its field (AD-5). */
 export type TableColumnKind = 'name' | 'identifier' | 'text' | 'number' | 'status';
 
-/** One table column: the read field it shows, its header's string key and its kind. */
+/**
+ * One table column: the read field it shows, its header's string key and its kind, and optionally
+ * the string key an empty cell in it reads instead of "(none)".
+ */
 export interface TableColumn {
   readonly field: string;
   readonly labelKey: string;
   readonly kind: TableColumnKind;
+  readonly emptyKey?: string;
 }
 
 /**
@@ -1454,7 +2184,31 @@ export interface ScreenDeclaration {
   readonly table: TableDeclaration | null;
   /** The strip the read's own answer raises above the table, or \`null\` for a screen with none. */
   readonly banner: BannerDeclaration | null;
+  /** The tab group this screen is one tab of, or \`null\` for a screen that is no tab (AD-5). */
+  readonly tab: TabDeclaration | null;
   readonly toolIdentifier: string;
+  /** This list's one declared cross-screen row target, or \`null\` for a screen with none (AD-5, Story 6.10). */
+  readonly rowTarget: ScreenRowTarget | null;
+}
+
+/**
+ * One tab of a tabbed screen (AD-5): the route of the group's first tab, this tab's position in the
+ * strip, and the string key its label reads.
+ */
+export interface TabDeclaration {
+  readonly group: string;
+  readonly position: number;
+  readonly labelKey: string;
+}
+
+/**
+ * A list's single declared cross-screen row target (AD-5, Story 6.10): the route its name cell
+ * opens and the row field, read with \`fieldOf\` and encoded with \`encodeEntityId\`, that route's
+ * id is drawn from -- resolved ahead of the paired-surface chain in \`shell/data-table.ts\`.
+ */
+export interface ScreenRowTarget {
+  readonly route: string;
+  readonly field: string;
 }
 
 /** The closed entity-type vocabulary, mirrored from OcuPilot.Kernel.EntityType. */

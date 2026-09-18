@@ -155,6 +155,9 @@ services:
       # Arms every test class that creates or deletes IRIS principals: AgentWireSecurity,
       # ConfigGate, CredentialPrivilege, LogSourceDenial, ErrorLogDenial, State, Token,
       # UnexpireScope, Version, Wire and WireSecurityRead.
+      # ConfigGate, LogSourceDenial, ErrorLogDenial, State, Token, UnexpireScope, Version, Wire,
+      # WireSecurityRead and WireOAuthRead -- and OAuthTabs, which creates and removes OAuth 2.0
+      # configuration objects the same way.
       # Same reasoning, same single home: test classes are selected by package, so a runner
       # pointed at an instance someone cares about would otherwise create principals on it.
       # scripts/check-objectscript.py's destructive-test-guard rule holds the population.

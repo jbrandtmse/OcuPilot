@@ -27,7 +27,10 @@ import { dirname, join } from 'node:path';
 // counts moved with Story 2.9: os-management gained %Admin_Manage:USE and %DB_IRISSYS:READ, and the
 // first of those is what takes it out of the allowed set for this principal. They moved again with
 // Story 2.10: logs gained %Admin_Secure:USE and %DB_IRISSYS:READ, so no gated area now opens on
-// %Admin_Operate alone.
+// %Admin_Operate alone. Story 6.11 added the four Databases screens to the os-management roster,
+// each with its own failedPair for this principal; the identical roster is carried a second time by
+// ui/src/app/shell/rail-wire.spec.ts, and neither copy reddens when only the other is updated, so
+// both move together.
 //
 // Mutation (Rule 19): rename `allowed` to `permitted` in LIVE_PAYLOAD, standing in for a server
 // rename `Api.Navigation.SetVerdict` would make -> verdictFrom's `entry.allowed === true` no
@@ -56,6 +59,19 @@ const LIVE_PAYLOAD = {
       failedPair: '%Admin_Secure:USE',
       screens: [
         {
+          route: 'logs/alerts',
+          labelKey: 'alertLogListLabel',
+          sideBarPosition: 1,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
+        },
+        {
+          route: 'logs/messages',
+          labelKey: 'messagesLogListLabel',
+          sideBarPosition: 2,
+          allowed: true,
+        },
+        {
           route: 'logs/errors',
           labelKey: 'errorLogListLabel',
           sideBarPosition: 3,
@@ -79,11 +95,71 @@ const LIVE_PAYLOAD = {
       pinBottom: false,
       allowed: false,
       failedPair: '%Admin_Manage:USE',
+      // Story 6.11 took this roster from four screens to eight, and Story 6.12 took it from eight
+      // to nine, in ScreensForArea's own (sideBarPosition, class name) collation: the four unlisted
+      // sideBarPosition-0 screens sort first, alphabetically by descriptor class name, ahead of the
+      // listed ones in position order.
       screens: [
+        {
+          route: 'os-management/databases/details',
+          labelKey: 'databaseDetailsLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
+        },
+        {
+          route: 'os-management/database-free-space',
+          labelKey: 'databaseFreeSpaceLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/databases/volumes',
+          labelKey: 'databaseVolumeListLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/processes/details',
+          labelKey: 'processDetailsLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
         {
           route: 'os-management/processes',
           labelKey: 'processListLabel',
           sideBarPosition: 1,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/locks',
+          labelKey: 'lockListLabel',
+          sideBarPosition: 2,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
+        },
+        {
+          route: 'os-management/system-usage',
+          labelKey: 'systemUsageLabel',
+          sideBarPosition: 3,
+          allowed: false,
+          failedPair: '%DB_IRISSYS:READ',
+        },
+        {
+          route: 'os-management/databases',
+          labelKey: 'databaseListLabel',
+          sideBarPosition: 4,
+          allowed: false,
+          failedPair: '%Admin_Manage:USE',
+        },
+        {
+          route: 'os-management/devices',
+          labelKey: 'deviceListLabel',
+          sideBarPosition: 5,
           allowed: false,
           failedPair: '%Admin_Manage:USE',
         },
@@ -99,9 +175,44 @@ const LIVE_PAYLOAD = {
       failedPair: '%Admin_Task:USE',
       screens: [
         {
+          route: 'tasks/schedule/details',
+          labelKey: 'taskDetailsLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Task:USE',
+        },
+        {
+          route: 'tasks/schedule/history',
+          labelKey: 'taskRunsLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Task:USE',
+        },
+        {
           route: 'tasks/schedule',
           labelKey: 'taskListLabel',
           sideBarPosition: 1,
+          allowed: false,
+          failedPair: '%Admin_Task:USE',
+        },
+        {
+          route: 'tasks/on-demand',
+          labelKey: 'taskOnDemandLabel',
+          sideBarPosition: 2,
+          allowed: false,
+          failedPair: '%Admin_Task:USE',
+        },
+        {
+          route: 'tasks/upcoming',
+          labelKey: 'taskUpcomingLabel',
+          sideBarPosition: 3,
+          allowed: false,
+          failedPair: '%Admin_Task:USE',
+        },
+        {
+          route: 'tasks/history',
+          labelKey: 'taskHistoryLabel',
+          sideBarPosition: 4,
           allowed: false,
           failedPair: '%Admin_Task:USE',
         },
@@ -120,6 +231,27 @@ const LIVE_PAYLOAD = {
           route: 'permissions/users',
           labelKey: 'userListLabel',
           sideBarPosition: 1,
+          allowed: false,
+          failedPair: '%Admin_Secure:USE',
+        },
+        {
+          route: 'permissions/roles',
+          labelKey: 'userColumnRoles',
+          sideBarPosition: 2,
+          allowed: false,
+          failedPair: '%Admin_Secure:USE',
+        },
+        {
+          route: 'permissions/resources',
+          labelKey: 'resourceListLabel',
+          sideBarPosition: 3,
+          allowed: false,
+          failedPair: '%Admin_Secure:USE',
+        },
+        {
+          route: 'permissions/services',
+          labelKey: 'serviceListLabel',
+          sideBarPosition: 4,
           allowed: false,
           failedPair: '%Admin_Secure:USE',
         },
@@ -153,11 +285,74 @@ const LIVE_PAYLOAD = {
       failedPair: '%Admin_Secure:USE',
       screens: [
         {
+          route: 'security/oauth/clients',
+          labelKey: 'oauthTabClients',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_OAuth2_Client:USE',
+        },
+        {
+          route: 'security/oauth/resource-servers',
+          labelKey: 'oauthTabResourceServers',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Secure:USE',
+        },
+        {
+          route: 'security/oauth/server-clients',
+          labelKey: 'oauthTabServerClients',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_OAuth2_Registration:USE',
+        },
+        {
+          route: 'security/oauth/server',
+          labelKey: 'oauthTabServer',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_OAuth2_Server:USE',
+        },
+        {
+          route: 'security/wallet/secrets',
+          labelKey: 'walletSecretListLabel',
+          sideBarPosition: 0,
+          allowed: false,
+          failedPair: '%Admin_Wallet:USE',
+        },
+        {
           route: 'security/ssl',
           labelKey: 'sslListLabel',
           sideBarPosition: 1,
           allowed: false,
           failedPair: '%Admin_Secure:USE',
+        },
+        {
+          route: 'security/x509',
+          labelKey: 'x509ListLabel',
+          sideBarPosition: 2,
+          allowed: false,
+          failedPair: '%Admin_Secure:USE',
+        },
+        {
+          route: 'security/ldap',
+          labelKey: 'ldapListLabel',
+          sideBarPosition: 3,
+          allowed: false,
+          failedPair: '%Admin_Secure:USE',
+        },
+        {
+          route: 'security/wallet',
+          labelKey: 'walletListLabel',
+          sideBarPosition: 4,
+          allowed: false,
+          failedPair: '%Admin_Wallet:USE',
+        },
+        {
+          route: 'security/oauth',
+          labelKey: 'oauthLabel',
+          sideBarPosition: 5,
+          allowed: false,
+          failedPair: '%Admin_OAuth2_Client:USE',
         },
       ],
     },
@@ -206,8 +401,31 @@ test('DW-132: the real NavigationService reads a live-captured payload the way O
   assert.deepEqual(service.screenVerdict(''), { allowed: true, failedPair: '' });
   assert.deepEqual(service.screenVerdict('web-applications/list'), { allowed: false, failedPair: '%Admin_Secure:USE' });
   assert.deepEqual(service.screenVerdict('permissions/users'), { allowed: false, failedPair: '%Admin_Secure:USE' });
+  // Story 6.2: the roles, resources and services lists declare the users list's pairs in its order.
+  for (const route of ['permissions/roles', 'permissions/resources', 'permissions/services']) {
+    assert.deepEqual(service.screenVerdict(route), { allowed: false, failedPair: '%Admin_Secure:USE' }, route);
+  }
   assert.deepEqual(service.screenVerdict('tasks/schedule'), { allowed: false, failedPair: '%Admin_Task:USE' });
+  // Story 6.5: On-demand and Upcoming tasks declare the task schedule's pairs in its order.
+  // Story 6.6: so do Task history (all) and the per-task history, unlisted at position 0.
+  // Story 6.7: and so does Task details, also unlisted at position 0.
+  for (const route of ['tasks/on-demand', 'tasks/upcoming', 'tasks/history', 'tasks/schedule/history', 'tasks/schedule/details']) {
+    assert.deepEqual(service.screenVerdict(route), { allowed: false, failedPair: '%Admin_Task:USE' }, route);
+  }
   assert.deepEqual(service.screenVerdict('os-management/processes'), { allowed: false, failedPair: '%Admin_Manage:USE' });
+  // Story 6.9: System usage declares no `%Admin_Manage:USE` at all, so this principal, which
+  // holds `%Admin_Operate:USE`, is denied on its second pair instead -- the same shape as the
+  // application error log below.
+  assert.deepEqual(service.screenVerdict('os-management/system-usage'), { allowed: false, failedPair: '%DB_IRISSYS:READ' });
+  // Story 6.11: the two Databases views and the volume list each declare `%Admin_Manage:USE`
+  // first, so this Operate-only principal is denied on that pair; Database details declares no
+  // Manage pair at all and is denied on its second, as System usage above is. Story 6.12: Devices
+  // declares the same two pairs as the General view and Database volumes, so it is denied the
+  // same way.
+  for (const route of ['os-management/databases', 'os-management/database-free-space', 'os-management/databases/volumes', 'os-management/devices']) {
+    assert.deepEqual(service.screenVerdict(route), { allowed: false, failedPair: '%Admin_Manage:USE' }, route);
+  }
+  assert.deepEqual(service.screenVerdict('os-management/databases/details'), { allowed: false, failedPair: '%DB_IRISSYS:READ' });
   assert.deepEqual(service.screenVerdict('logs/audit'), { allowed: false, failedPair: '%Admin_Secure:USE' });
   // Story 2.12: the application error log declares `%Admin_Operate:USE` -- which this principal
   // holds -- and `%DB_IRISSYS:READ`, which it does not, so it is denied on the second. That pair is
@@ -215,6 +433,29 @@ test('DW-132: the real NavigationService reads a live-captured payload the way O
   // is IRISSYS, and database READ is routine-execution permission, so a principal without it is
   // refused by IRIS before OcuPilot's gate has anything to say.
   assert.deepEqual(service.screenVerdict('logs/errors'), { allowed: false, failedPair: '%DB_IRISSYS:READ' });
+  // Story 6.13: the alerts.log viewer is denied on the second pair in this payload. Without this
+  // line the entry added to the payload above is read by nothing and can drift from what the
+  // server answers.
+  assert.deepEqual(service.screenVerdict('logs/alerts'), { allowed: false, failedPair: '%DB_IRISSYS:READ' });
+  // Story 6.14: the messages.log viewer declares `%Admin_Operate:USE` and nothing else, so this
+  // principal -- who holds it -- is allowed where its three Logs siblings are not. Its own line,
+  // because the payload entry above reddens nothing on its own (6.13 finding #9).
+  assert.deepEqual(service.screenVerdict('logs/messages'), { allowed: true, failedPair: '' });
+  // Story 6.3: the Security and secrets area's five screens, copied from the string
+  // OcuPilot.Test.Wire.TestTheSslConfigurationsListIsDeniedToAPrincipalWithoutAdminSecure compares the
+  // live entry to. The two wallet screens declare `%Admin_Wallet:USE` first and the other three
+  // `%Admin_Secure:USE`.
+  assert.deepEqual(service.screenVerdict('security/ssl'), { allowed: false, failedPair: '%Admin_Secure:USE' });
+  assert.deepEqual(service.screenVerdict('security/x509'), { allowed: false, failedPair: '%Admin_Secure:USE' });
+  assert.deepEqual(service.screenVerdict('security/ldap'), { allowed: false, failedPair: '%Admin_Secure:USE' });
+  assert.deepEqual(service.screenVerdict('security/wallet'), { allowed: false, failedPair: '%Admin_Wallet:USE' });
+  assert.deepEqual(service.screenVerdict('security/wallet/secrets'), { allowed: false, failedPair: '%Admin_Wallet:USE' });
+  // Story 6.4: the five OAuth 2.0 tabs, each denied on the resource it declares first.
+  assert.deepEqual(service.screenVerdict('security/oauth'), { allowed: false, failedPair: '%Admin_OAuth2_Client:USE' });
+  assert.deepEqual(service.screenVerdict('security/oauth/clients'), { allowed: false, failedPair: '%Admin_OAuth2_Client:USE' });
+  assert.deepEqual(service.screenVerdict('security/oauth/resource-servers'), { allowed: false, failedPair: '%Admin_Secure:USE' });
+  assert.deepEqual(service.screenVerdict('security/oauth/server'), { allowed: false, failedPair: '%Admin_OAuth2_Server:USE' });
+  assert.deepEqual(service.screenVerdict('security/oauth/server-clients'), { allowed: false, failedPair: '%Admin_OAuth2_Registration:USE' });
 
   // An area the payload never omits is not exercised here (the live map always lists all
   // eight); an area it never mentioned still reads UNGATED rather than denied.

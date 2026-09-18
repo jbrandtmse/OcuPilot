@@ -25,6 +25,7 @@ import { ShellState } from './app/core/shell-state';
 import { SuggestedView } from './app/core/suggested-view';
 import { TokenStore, readNavigationKind, readSessionStorage } from './app/core/token-store';
 import { TurnStore } from './app/core/turn';
+import { ViewOptions } from './app/core/view-options';
 
 // Zoneless, standalone bootstrap (AD-19), with the transport layer constructed over the
 // real browser and provided as values.
@@ -191,6 +192,10 @@ const overlays = new OverlayStack();
 // registers is the one the command bar and the command box both see.
 const screenActions = new ScreenActions();
 
+// The command bar's View control (Story 6.11). One instance, so the binding a page registers is
+// the one the command bar reads.
+const viewOptions = new ViewOptions();
+
 // The open form's unsaved-changes state (Story 3.5). One instance, because the route guard on
 // every `form-page` route and the form that answers it have to be asking and answering the same
 // question -- two would let a guard refuse a navigation nothing on screen could resolve.
@@ -218,6 +223,7 @@ bootstrapApplication(App, {
     { provide: ScreenStores, useValue: screenStores },
     { provide: RefreshService, useValue: refresh },
     { provide: ScreenActions, useValue: screenActions },
+    { provide: ViewOptions, useValue: viewOptions },
     { provide: FormDirty, useValue: formDirty },
     { provide: AgentStatus, useValue: agentStatus },
     { provide: AgentContext, useValue: agentContext },

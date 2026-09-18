@@ -905,7 +905,11 @@ TOOL_HTTP_FILES = frozenset({"src/OcuPilot/Kernel/Agent/Dispatch.cls"})
 API_REACH_PREFIXES = ("src/OcuPilot/Kernel/Shell/", "src/OcuPilot/Screen/Tool/")
 SHELL_API_REACH_RE = re.compile(r"OcuPilot\.Api\.(?!Error\b)\w+(?:\.\w+)*")
 CAPTURE_RE = re.compile(r"BeginCapture|%SYS\.Capture", re.IGNORECASE)
-CAPTURE_ALLOWED = frozenset({"src/OcuPilot/Port/AdminPort.cls"})
+# The port classes that may open an output capture. Story 4.2 wrote this rule when AdminPort was
+# the only port that captured; Epic 6's MgmntPort captures the same way, and the merge of the two
+# epics is where the second name arrives. The rule still refuses a capture anywhere else, which is
+# what keeps one from opening inside another (DW-1173 asks whether these two can nest).
+CAPTURE_ALLOWED = frozenset({"src/OcuPilot/Port/AdminPort.cls", "src/OcuPilot/Port/MgmntPort.cls"})
 
 
 def check_tool_dispatch(problems: list[str]) -> None:

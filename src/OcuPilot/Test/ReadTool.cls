@@ -35,13 +35,10 @@ Method ClearFixtures()
 /// <p>AC3 -- each read-declaring descriptor yields exactly one tool
 /// <code>&lt;toolIdentifier&gt;.read</code> of kind <code>read</code> with no class of its own, a
 /// readless descriptor yields none, a concrete tool two levels down is found with its
-/// inherited kind, and the production registry holds exactly
-/// <code>agent.definitions.read</code>, <code>logs.applicationerrors.read</code>,
-/// <code>logs.audit.read</code>, <code>osmgmt.processes.read</code>,
-/// <code>permissions.users.read</code>, <code>security.ssl.read</code>, the three shell reads,
-/// <code>tasks.schedule.read</code> and <code>webapp.list.read</code>. The application error log and
-/// the shell reads declare no descriptor read, so their tools come from the registry's other source,
-/// classes of their own, and carry no descriptor.</p>
+/// inherited kind, and the production registry holds exactly the tools the roster assertion names.
+/// The application error log, the three shell reads and the navigation tool declare no descriptor
+/// read, so their tools come from the registry's other source -- classes of their own -- and carry
+/// no descriptor.</p>
 /// <p>Mutations: name the read tool from <method>OcuPilot.Screen.Descriptor.Base.Route</method>
 /// in <method>OcuPilot.Screen.Tool.Read.NameFor</method> -> the name assertions go red. Replace
 /// <code>%Extends</code> with superclass equality in
@@ -93,8 +90,8 @@ Method TestTheRegistryListsDescriptorReadsAndInheritedKinds()
         Set tNames = tNames _ $Select(tNames = "": "", 1: ",") _ tName
         Set tName = $Order(tProductionByName(tName))
     }
-    Do $$$AssertEquals(tProduction.%Size(), 12, "the production registry holds twelve tools, fixtures excluded (Story 4.7 adds the navigation tool)")
-    Do $$$AssertEquals(tNames, "agent.definitions.read,logs.applicationerrors.read,logs.audit.read,osmgmt.processes.read,permissions.users.read,security.ssl.read,shell.instance.read,shell.namespaces.read,shell.privileges.read,shell.screen.open,tasks.schedule.read,webapp.list.read", "the Definitions list's read tool -- the first over OcuPilot's own state (AD-36) -- the application error log's own class tool, the audit database, processes, users and SSL/TLS lists' read tools, the three shell reads, the navigation tool (Story 4.7, a class tool of its own), and the task schedule and web applications lists' read tools")
+    Do $$$AssertEquals(tProduction.%Size(), 41, "the production registry holds forty-one tools, fixtures excluded: Epic 6's thirty-seven plus Epic 4's three shell reads and its navigation tool")
+    Do $$$AssertEquals(tNames, "agent.definitions.read,logs.alerts.read,logs.applicationerrors.read,logs.audit.read,logs.messages.read,osmgmt.databasedetails.read,osmgmt.databasefreespace.read,osmgmt.databases.read,osmgmt.databasevolumes.read,osmgmt.devices.read,osmgmt.locks.read,osmgmt.processdetails.read,osmgmt.processes.read,osmgmt.systemusage.read,permissions.resources.read,permissions.roles.read,permissions.services.read,permissions.users.read,security.ldap.read,security.oauthclients.read,security.oauthresourceservers.read,security.oauthserver.read,security.oauthserverclients.read,security.oauthserverdescriptions.read,security.secrets.read,security.ssl.read,security.wallet.read,security.x509.read,shell.instance.read,shell.namespaces.read,shell.privileges.read,shell.screen.open,tasks.history.read,tasks.ondemand.read,tasks.schedule.read,tasks.taskdetails.read,tasks.taskhistory.read,tasks.upcoming.read,webapp.list.read,webapp.openapi.read,webapp.restapis.read", "every descriptor-declared read of the six areas, the application error log's own class tool, the three shell reads and the navigation tool -- the last four class tools of their own, with no descriptor")
     For tPair = $ListBuild("shell.instance.read", "OcuPilot.Kernel.Shell.InstanceRead"), $ListBuild("shell.namespaces.read", "OcuPilot.Kernel.Shell.NamespacesRead"), $ListBuild("shell.privileges.read", "OcuPilot.Kernel.Shell.PrivilegesRead") {
         Set tName = $List(tPair, 1)
         If '$Data(tProductionByName(tName)) Continue
@@ -105,7 +102,7 @@ Method TestTheRegistryListsDescriptorReadsAndInheritedKinds()
     Do $$$AssertEquals(tProductionByName("logs.applicationerrors.read").class, "OcuPilot.Screen.Tool.ErrorRead", "the application error log's tool is answered by its own class")
     Do $$$AssertEquals(tProductionByName("logs.applicationerrors.read").descriptor, "", "and is derived from no descriptor")
     Do $$$AssertEquals(tProductionByName("logs.applicationerrors.read").kind, "read", "declaring its kind at definition time (AD-22)")
-    For tPair = $ListBuild("agent.definitions.read", "OcuPilot.Screen.Descriptor.AgentDefinitionList"), $ListBuild("logs.audit.read", "OcuPilot.Screen.Descriptor.AuditList"), $ListBuild("osmgmt.processes.read", "OcuPilot.Screen.Descriptor.ProcessList"), $ListBuild("permissions.users.read", "OcuPilot.Screen.Descriptor.UserList"), $ListBuild("security.ssl.read", "OcuPilot.Screen.Descriptor.SslConfigList"), $ListBuild("tasks.schedule.read", "OcuPilot.Screen.Descriptor.TaskScheduleList"), $ListBuild("webapp.list.read", "OcuPilot.Screen.Descriptor.WebAppList") {
+    For tPair = $ListBuild("agent.definitions.read", "OcuPilot.Screen.Descriptor.AgentDefinitionList"), $ListBuild("logs.alerts.read", "OcuPilot.Screen.Descriptor.LogAlertViewer"), $ListBuild("logs.messages.read", "OcuPilot.Screen.Descriptor.LogMessageViewer"), $ListBuild("logs.audit.read", "OcuPilot.Screen.Descriptor.AuditList"), $ListBuild("osmgmt.databases.read", "OcuPilot.Screen.Descriptor.DatabaseList"), $ListBuild("osmgmt.databasefreespace.read", "OcuPilot.Screen.Descriptor.DatabaseFreeSpace"), $ListBuild("osmgmt.databasedetails.read", "OcuPilot.Screen.Descriptor.DatabaseDetails"), $ListBuild("osmgmt.databasevolumes.read", "OcuPilot.Screen.Descriptor.DatabaseVolumeList"), $ListBuild("osmgmt.devices.read", "OcuPilot.Screen.Descriptor.DeviceList"), $ListBuild("osmgmt.locks.read", "OcuPilot.Screen.Descriptor.LockList"),$ListBuild("osmgmt.processdetails.read", "OcuPilot.Screen.Descriptor.ProcessDetails"), $ListBuild("osmgmt.processes.read", "OcuPilot.Screen.Descriptor.ProcessList"), $ListBuild("osmgmt.systemusage.read", "OcuPilot.Screen.Descriptor.SystemUsage"), $ListBuild("permissions.resources.read", "OcuPilot.Screen.Descriptor.ResourceList"), $ListBuild("permissions.roles.read", "OcuPilot.Screen.Descriptor.RoleList"), $ListBuild("permissions.services.read", "OcuPilot.Screen.Descriptor.ServiceList"), $ListBuild("permissions.users.read", "OcuPilot.Screen.Descriptor.UserList"), $ListBuild("security.ssl.read", "OcuPilot.Screen.Descriptor.SslConfigList"), $ListBuild("security.x509.read", "OcuPilot.Screen.Descriptor.X509CredentialList"), $ListBuild("security.ldap.read", "OcuPilot.Screen.Descriptor.LdapConfigList"), $ListBuild("security.oauthserverdescriptions.read", "OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab"), $ListBuild("security.oauthclients.read", "OcuPilot.Screen.Descriptor.OAuthClientTab"), $ListBuild("security.oauthresourceservers.read", "OcuPilot.Screen.Descriptor.OAuthResourceServerTab"), $ListBuild("security.oauthserver.read", "OcuPilot.Screen.Descriptor.OAuthServerTab"), $ListBuild("security.oauthserverclients.read", "OcuPilot.Screen.Descriptor.OAuthServerClientTab"), $ListBuild("security.wallet.read", "OcuPilot.Screen.Descriptor.WalletCollectionList"), $ListBuild("security.secrets.read", "OcuPilot.Screen.Descriptor.WalletSecretList"), $ListBuild("tasks.schedule.read", "OcuPilot.Screen.Descriptor.TaskScheduleList"), $ListBuild("tasks.taskdetails.read", "OcuPilot.Screen.Descriptor.TaskDetails"), $ListBuild("tasks.ondemand.read", "OcuPilot.Screen.Descriptor.TaskOnDemandList"), $ListBuild("tasks.upcoming.read", "OcuPilot.Screen.Descriptor.TaskUpcomingList"), $ListBuild("tasks.history.read", "OcuPilot.Screen.Descriptor.TaskHistoryList"), $ListBuild("tasks.taskhistory.read", "OcuPilot.Screen.Descriptor.TaskRunList"), $ListBuild("webapp.list.read", "OcuPilot.Screen.Descriptor.WebAppList"), $ListBuild("webapp.openapi.read", "OcuPilot.Screen.Descriptor.OpenApiViewer"), $ListBuild("webapp.restapis.read", "OcuPilot.Screen.Descriptor.RestApiList") {
         Set tName = $List(tPair, 1)
         If '$Data(tProductionByName(tName)) Continue
         Do $$$AssertEquals(tProductionByName(tName).kind, "read", tName _ " is of kind read")
@@ -195,7 +192,7 @@ Method TestAnUnknownTopLevelKeyIsRefusedThroughValidate()
 /// <p>Story 2.6 AC5 -- every case in <class>OcuPilot.Test.RowGetCorpus</class> gets its exact
 /// sentence, or none, from <method>OcuPilot.Screen.Registry.ReadProblem</method>, the same corpus
 /// <file>ui/tools/screen-mirror.test.mjs</file> runs through <code>readProblem</code>; and the users
-/// list's own detail call passes.</p>
+/// list's own detail call passes, and so does the X.509 list's <code>CERTINFO</code> one.</p>
 /// <p>Mutation: accept any <code>rule</code> in
 /// <method>OcuPilot.Screen.Registry.RowGetProblem</method> -> the <code>afterToday</code> case goes
 /// red.</p>
@@ -214,6 +211,36 @@ Method TestEveryRowGetCorpusCaseGetsItsSentence()
     Set tSC = ##class(OcuPilot.Screen.Descriptor.UserList).DeclarationJson(.tUsers)
     Do $$$AssertStatusOK(tSC, "the users list's declaration reads")
     If $$$ISOK(tSC) Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tUsers), "", "and its detail call passes")
+    Set tSC = ##class(OcuPilot.Screen.Descriptor.X509CredentialList).DeclarationJson(.tX509)
+    Do $$$AssertStatusOK(tSC, "the X.509 list's declaration reads")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(tX509.read.source.rowGet.type, "CERTINFO", "the X.509 list declares its certificate read")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tX509), "", "and that detail call passes")
+}
+
+/// <p>Story 6.4 -- every case in <class>OcuPilot.Test.ReadSourceCorpus</class> gets its exact sentence,
+/// or none, from <method>OcuPilot.Screen.Registry.ReadProblem</method>, the same corpus
+/// <file>ui/tools/screen-mirror.test.mjs</file> runs through <code>readProblem</code>: a source's
+/// <code>LIST</code>, <code>GET</code> or <code>UPCOMING</code> type, its <code>forEach</code> parent
+/// list and its fixed <code>query</code>.</p>
+/// <p>Mutation: drop the <code>GET</code> arm's <code>rowGet</code> refusal from
+/// <method>OcuPilot.Screen.Registry.ReadProblem</method> -&gt; the "a GET with a detail call and no
+/// criteria" case goes red.</p>
+Method TestEveryReadSourceCorpusCaseGetsItsSentence()
+{
+    Set tSC = ##class(OcuPilot.Test.ReadSourceCorpus).Corpus(.tCorpus)
+    Do $$$AssertStatusOK(tSC, "the corpus reads")
+    If '$IsObject(tCorpus) Quit
+    Do $$$AssertTrue(tCorpus.cases.%Size() > 0, "the corpus carries cases: " _ tCorpus.cases.%Size())
+    Set tRefusals = 0
+    Set tIterator = tCorpus.cases.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tCase) {
+        Set tExpected = $Select(tCase.%GetTypeOf("expected") = "null": "", 1: tCase.expected)
+        If tExpected '= "" Set tRefusals = tRefusals + 1
+        Set tDeclaration = ##class(OcuPilot.Test.ReadSourceCorpus).DeclarationFor(tCorpus, tCase)
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), tExpected, tCase.name)
+    }
+    Do $$$AssertTrue(tRefusals > 0, "the corpus carries at least one refusing case: " _ tRefusals)
 }
 
 /// <p>Story 2.7 AC5 (DW-264) -- every case in <class>OcuPilot.Test.AdminPairCorpus</class> gets its
@@ -238,7 +265,7 @@ Method TestEveryAdminPairCorpusCaseGetsItsSentence()
     }
     Do $$$AssertTrue(tRefusals > 0, "the corpus carries at least one refusing case: " _ tRefusals)
 
-    For tClass = "OcuPilot.Screen.Descriptor.AuditList", "OcuPilot.Screen.Descriptor.ProcessList", "OcuPilot.Screen.Descriptor.SslConfigList", "OcuPilot.Screen.Descriptor.TaskScheduleList", "OcuPilot.Screen.Descriptor.UserList", "OcuPilot.Screen.Descriptor.WebAppList" {
+    For tClass = "OcuPilot.Screen.Descriptor.AuditList", "OcuPilot.Screen.Descriptor.ProcessList", "OcuPilot.Screen.Descriptor.SystemUsage", "OcuPilot.Screen.Descriptor.SslConfigList", "OcuPilot.Screen.Descriptor.TaskScheduleList", "OcuPilot.Screen.Descriptor.UserList", "OcuPilot.Screen.Descriptor.WebAppList", "OcuPilot.Screen.Descriptor.RestApiList", "OcuPilot.Screen.Descriptor.OpenApiViewer", "OcuPilot.Screen.Descriptor.RoleList", "OcuPilot.Screen.Descriptor.ResourceList", "OcuPilot.Screen.Descriptor.ServiceList", "OcuPilot.Screen.Descriptor.X509CredentialList", "OcuPilot.Screen.Descriptor.LdapConfigList", "OcuPilot.Screen.Descriptor.WalletCollectionList", "OcuPilot.Screen.Descriptor.WalletSecretList", "OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab", "OcuPilot.Screen.Descriptor.OAuthClientTab", "OcuPilot.Screen.Descriptor.OAuthResourceServerTab", "OcuPilot.Screen.Descriptor.OAuthServerTab", "OcuPilot.Screen.Descriptor.OAuthServerClientTab", "OcuPilot.Screen.Descriptor.TaskOnDemandList", "OcuPilot.Screen.Descriptor.TaskUpcomingList", "OcuPilot.Screen.Descriptor.DatabaseList", "OcuPilot.Screen.Descriptor.DatabaseFreeSpace", "OcuPilot.Screen.Descriptor.DatabaseDetails", "OcuPilot.Screen.Descriptor.DatabaseVolumeList" {
         Set tDeclSC = $ClassMethod(tClass, "DeclarationJson", .tShipped)
         Do $$$AssertStatusOK(tDeclSC, tClass _ ": the declaration reads")
         If $$$ISERR(tDeclSC) Continue
@@ -246,10 +273,41 @@ Method TestEveryAdminPairCorpusCaseGetsItsSentence()
     }
 }
 
+/// <p>Story 6.2 -- every case in <class>OcuPilot.Test.ColumnCorpus</class> gets its exact sentence,
+/// or none, from <method>OcuPilot.Screen.Registry.ReadProblem</method>, the same corpus
+/// <file>ui/tools/screen-mirror.test.mjs</file> runs through <code>readProblem</code>: a column's
+/// optional <code>emptyKey</code> is a non-empty string key or refused; and the Services list's
+/// declared <code>emptyKey</code> passes.</p>
+/// <p>Mutation: drop the <code>emptyKey</code> arm from
+/// <method>OcuPilot.Screen.Registry.TableProblem</method> -&gt; the five refusing value cases go
+/// red while the unknown-key case stays green.</p>
+Method TestEveryColumnCorpusCaseGetsItsSentence()
+{
+    Set tSC = ##class(OcuPilot.Test.ColumnCorpus).Corpus(.tCorpus)
+    Do $$$AssertStatusOK(tSC, "the corpus reads")
+    If '$IsObject(tCorpus) Quit
+    Do $$$AssertTrue(tCorpus.cases.%Size() > 0, "the corpus carries cases: " _ tCorpus.cases.%Size())
+    Set tRefusals = 0
+    Set tIterator = tCorpus.cases.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tCase) {
+        Set tExpected = $Select(tCase.%GetTypeOf("expected") = "null": "", 1: tCase.expected)
+        If tExpected '= "" Set tRefusals = tRefusals + 1
+        Set tDeclaration = ##class(OcuPilot.Test.ColumnCorpus).DeclarationFor(tCorpus, tCase)
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), tExpected, tCase.name)
+    }
+    Do $$$AssertTrue(tRefusals > 0, "the corpus carries at least one refusing case: " _ tRefusals)
+
+    Set tSC = ##class(OcuPilot.Screen.Descriptor.ServiceList).DeclarationJson(.tServices)
+    Do $$$AssertStatusOK(tSC, "the services list's declaration reads")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(tServices.table.columns.%Get(3).emptyKey, "serviceAllowedUnrestricted", "its Allowed IP addresses column declares the Unrestricted key")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tServices), "", "and that declaration passes")
+}
+
 /// <p>Story 2.10 AC7 -- every case in <class>OcuPilot.Test.CriteriaCorpus</class> gets its exact
 /// sentence, or none, from <method>OcuPilot.Screen.Registry.CriteriaProblem</method>, the same
 /// corpus <file>ui/tools/screen-mirror.test.mjs</file> runs through <code>criteriaProblem</code>;
-/// and every shipped descriptor passes, the one that declares a criteria block included.</p>
+/// and every shipped descriptor passes, the ones that declare a criteria block included.</p>
 /// <p>Mutation: drop the <code>options</code> arm from
 /// <method>OcuPilot.Screen.Registry.CriteriaFieldsProblem</method> -> the four choice cases go red.
 /// Admit any <code>kind</code> -> the <code>combobox</code> case goes red. Remove the
@@ -281,7 +339,7 @@ Method TestEveryCriteriaCorpusCaseGetsItsSentence()
         Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).CriteriaProblem(tShipped), "", tClass _ ": its criteria are the declared grammar")
         If $ListLength(##class(OcuPilot.Screen.Read).CriteriaParams(tClass)) > 0 Set tWithCriteria = tWithCriteria + 1
     }
-    Do $$$AssertEquals(tWithCriteria, 1, "exactly one shipped descriptor searches on the server, and it is the audit database viewer's")
+    Do $$$AssertEquals(tWithCriteria, 10, "exactly ten shipped descriptors declare criteria: the audit database viewer's server search, the OpenAPI document viewer's application name, the Secrets list's parent collection, Process details' parent pid, the Upcoming tasks horizon, Task history's search and user-defined-only filter, History (one task)'s parent taskId, Task details' parent taskId, and Story 6.11's two -- Database details' parent dir and Database volumes' parent dir")
 }
 
 /// <p>Story 2.10 AC7 -- the read tool's schema carries one property per declared criterion, the
@@ -781,8 +839,8 @@ Method TestAReadDeclarationOutsideTheGrammarIsRefused()
     Do $$$AssertNotEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tCase), "", "a repeated field is refused")
 
     Set tCase = ..Mutated(tSound)
-    Do tCase.read.source.%Set("port", "monitor")
-    Do $$$AssertNotEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tCase), "", "a port other than admin is refused")
+    Do tCase.read.source.%Set("port", "metrics")
+    Do $$$AssertNotEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tCase), "", "a port outside the four the vocabulary names is refused")
 
     Set tCase = ..Mutated(tSound)
     Do tCase.read.filter.%Push("Secret")
@@ -793,8 +851,8 @@ Method TestAReadDeclarationOutsideTheGrammarIsRefused()
     Do $$$AssertTrue(##class(OcuPilot.Screen.Registry).ReadProblem(tCase) [ "direction 'up'", "a sort direction other than asc or desc is refused")
 
     Set tCase = ..Mutated(tSound)
-    Do tCase.read.source.%Set("type", "GET")
-    Do $$$AssertTrue(##class(OcuPilot.Screen.Registry).ReadProblem(tCase) [ "type 'GET'", "a source type other than LIST is refused")
+    Do tCase.read.source.%Set("type", "POST")
+    Do $$$AssertTrue(##class(OcuPilot.Screen.Registry).ReadProblem(tCase) [ "type 'POST' is not 'LIST', 'GET', 'UPCOMING', 'HISTORY' or 'VOLUMELIST'", "a source type other than LIST, GET, UPCOMING, HISTORY or VOLUMELIST is refused")
 
     Set tCase = ..Mutated(tSound)
     Do tCase.read.%Set("fields", [])
@@ -1046,6 +1104,92 @@ Method TestTheErrorReadToolCarriesTheSummaryFieldsOnly()
     If $$$ISERR(tSC) Quit
     Do $$$AssertEquals(tPortCut.rows.%Size(), tPortAnswer.rows.%Size(), "the same rows the port answered, uncut by the context cap")
     Do $$$AssertEquals(''tPortCut.truncated, ''tPortAnswer.truncated, "and the port's own truncation flag, which the port answered as " _ ''tPortAnswer.truncated _ " for this date at a port cap of 1 (AD-24, AD-36)")
+}
+
+/// <p>Story 6.13 AC10 -- the alerts.log screen's derived read tool answers the same bounded tail
+/// the screen's declared read answers, against the live instance, projected into the three declared
+/// fields and nothing else. <b>The port's page envelope is not in its view</b>: a declared read
+/// answers rows, so the cursor the screen's own route pages by -- <code>lines</code>,
+/// <code>offset</code>, <code>identity</code> -- reaches no agent.</p>
+/// <p>Mutation: give each row a fourth key in
+/// <method>OcuPilot.Port.LogSourcePort.Entries</method> -&gt; the row-key assertion reddens.</p>
+Method TestTheAlertReadToolCarriesTheTailsRowsAndNotItsCursor()
+{
+    Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve("logs.alerts.read", .tTool)
+    Do $$$AssertStatusOK(tSC, "the tool roster reads back")
+    Do $$$AssertTrue($IsObject(tTool), "the alerts.log screen's read tool is registered")
+    If '$IsObject(tTool) Quit
+    Do $$$AssertEquals(tTool.descriptor, "OcuPilot.Screen.Descriptor.LogAlertViewer", "derived from its descriptor")
+
+    Set tSC = ##class(OcuPilot.Screen.Tool.Read).View("OcuPilot.Screen.Descriptor.LogAlertViewer", {}, 5, .tResult)
+    Do $$$AssertStatusOK(tSC, "the tool answers against the live instance")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(tResult.fields.%ToJSON(), "[""time"",""severity"",""text""]", "the three declared fields, and no others: " _ tResult.fields.%ToJSON())
+    Do $$$AssertTrue(tResult.%IsDefined("rows"), "with rows")
+    Do $$$AssertEquals(tResult.%IsDefined("lines"), 0, "and no lines key, which is the port page's own")
+    Do $$$AssertEquals(tResult.%IsDefined("offset"), 0, "nor the page's cursor")
+    Do $$$AssertEquals(tResult.%IsDefined("identity"), 0, "nor the page's file identity")
+
+    If tResult.rows.%Size() = 0 Quit
+    Set tRowKeys = []
+    Set tRowIterator = tResult.rows.%Get(0).%GetIterator()
+    While tRowIterator.%GetNext(.tKey, .tValue) {
+        Do tRowKeys.%Push(tKey)
+    }
+    Do $$$AssertEquals(tRowKeys.%ToJSON(), "[""time"",""severity"",""text""]", "and every row carries exactly those keys: " _ tRowKeys.%ToJSON())
+}
+
+/// <p>Story 6.14 AC2 -- the messages.log screen's derived read tool answers the <b>console log's</b>
+/// bounded tail, projected into the three declared fields, with no page envelope and <b>no
+/// <class>OcuPilot.Screen.Tool</class> class of its own</b> -- which is what closes DW-1100:
+/// <method>OcuPilot.Screen.Read.Execute</method>'s <code>logsource</code> arm is endpoint-generic,
+/// so the declaration alone is the whole screen.</p>
+/// <p><b>Which file it reads is asserted, not assumed.</b> The tool's rows are compared to the
+/// port's own answer for the <code>messages</code> key, so a declaration pointing at the other
+/// endpoint answers the other file's rows -- or, on an instance that has raised no alert, none at
+/// all -- and this reddens where
+/// <method>TestTheAlertReadToolCarriesTheTailsRowsAndNotItsCursor</method> stays green.</p>
+/// <p>Mutation: change <class>OcuPilot.Screen.Descriptor.LogMessageViewer</class>'s
+/// <code>read.source.endpoint</code> to <code>alerts</code> and recompile -&gt; the row-source
+/// assertion goes red.</p>
+Method TestTheMessagesReadToolCarriesTheConsoleLogsRowsAndNotItsCursor()
+{
+    Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve("logs.messages.read", .tTool)
+    Do $$$AssertStatusOK(tSC, "the tool roster reads back")
+    Do $$$AssertTrue($IsObject(tTool), "the messages.log screen's read tool is registered")
+    If '$IsObject(tTool) Quit
+    Do $$$AssertEquals(tTool.descriptor, "OcuPilot.Screen.Descriptor.LogMessageViewer", "derived from its descriptor")
+    Do $$$AssertEquals(tTool.class, "OcuPilot.Screen.Tool.Read", "and answered by the one shared read tool class, never a class of its own (DW-1100)")
+
+    Set tSC = ##class(OcuPilot.Screen.Tool.Read).View("OcuPilot.Screen.Descriptor.LogMessageViewer", {}, 5, .tResult)
+    Do $$$AssertStatusOK(tSC, "the tool answers against the live instance")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(tResult.fields.%ToJSON(), "[""time"",""severity"",""text""]", "the three declared fields, and no others: " _ tResult.fields.%ToJSON())
+    Do $$$AssertEquals(tResult.%IsDefined("lines"), 0, "no lines key, which is the port page's own")
+    Do $$$AssertEquals(tResult.%IsDefined("offset"), 0, "nor the page's cursor")
+    Do $$$AssertEquals(tResult.%IsDefined("identity"), 0, "nor the page's file identity")
+    Do $$$AssertTrue(tResult.rows.%Size() > 0, "the console log always has lines, so the tool answers rows: " _ tResult.rows.%Size())
+    Do $$$AssertTrue(tResult.rows.%Size() <= 5, "bounded by the cap: " _ tResult.rows.%Size())
+    If tResult.rows.%Size() = 0 Quit
+
+    Set tRowKeys = []
+    Set tRowIterator = tResult.rows.%Get(0).%GetIterator()
+    While tRowIterator.%GetNext(.tKey, .tValue) {
+        Do tRowKeys.%Push(tKey)
+    }
+    Do $$$AssertEquals(tRowKeys.%ToJSON(), "[""time"",""severity"",""text""]", "and every row carries exactly those keys: " _ tRowKeys.%ToJSON())
+
+    ; The file the rows came from, read at the same cap one call apart. A console write landing
+    ; between the two reads shifts EVERY position in a cap-bounded newest-first window, the last as
+    ; much as the first, so no index is immune; the comparison holds because the two calls are
+    ; adjacent and nothing in this class writes to the file. What it discriminates is the file: the
+    ; other endpoint answers another file's rows, or none at all.
+    Set tSC = ##class(OcuPilot.Port.LogSourcePort).Rows("messages", 5, .tPortRows, .tPortStatus, .tPortFault)
+    Do $$$AssertEquals(tPortStatus, 200, "the port answers the same key directly")
+    If tPortStatus '= 200 Quit
+    Do $$$AssertTrue(tPortRows.%Size() > 0, "with rows of its own: " _ tPortRows.%Size())
+    If tPortRows.%Size() = 0 Quit
+    Do $$$AssertEquals(tResult.rows.%Get(tResult.rows.%Size() - 1).%Get("text"), tPortRows.%Get(tPortRows.%Size() - 1).%Get("text"), "and the tool's oldest row in the window is the console log's, not another file's")
 }
 
 /// <p>Story 2.12 AC5 -- the tool never reaches <code>ErrorDetail</code>, observed on the fixture's

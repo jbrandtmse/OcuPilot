@@ -3808,7 +3808,7 @@ So that the area the contest names most specifically reads completely.
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-49: Mark the checked-in demo X.509 pair a disposable fixture in Install/Fixture.cls's header and beside the literal (owner decision: keep it checked in) (ledger; routed by burndown 2026-09-13)
-- DW-233: Generate the demo X.509 pair at install through %SYS.X509Credentials.LoadCertificate, which also fills the metadata DW-59 accepted as empty; AD-21's path constraint is the open question (owner decision) (ledger; routed by merge_gate 2026-09-13)
+- DW-233: Generate the demo X.509 pair at install instead of shipping a checked-in one (owner decision, with the checked-in pair as the fallback) (ledger; routed by merge_gate 2026-09-13) [AMENDED 2026-09-16, Story 6.3 spec gate: no supported certificate-generation API exists on the pinned 2026.2 image (no `PKI.*` class compiled in `%SYS` or `HSCUSTOM`), and the demo credential's subject, issuer, validity and private-key flag are already populated, so the owner's fallback stands and the entry is closed]
 
 ### Story 6.4: The OAuth 2.0 screen
 
@@ -3846,7 +3846,7 @@ So that I can plan around the instance's schedule rather than discover it.
 
 - **Given** the On-demand tasks screen
 - **When** it loads
-- **Then** it lists on-demand tasks, each row offering Run - the action itself arriving in Epic 7.
+- **Then** it lists on-demand tasks, each row offering Run - the action itself arriving in Epic 7. [AMENDED 2026-09-17, Story 6.5 spec gate: no inert Run control ships; Story 7.5 declares the Run row action together with its handler, as Story 2.8 did for Resume]
 
 - **Given** the Upcoming tasks screen
 - **When** it loads
@@ -3872,6 +3872,12 @@ So that "why did this stop?" has an answer on screen.
 - **Given** a history row
 - **When** it renders
 - **Then** it shows start, end, status and error text where present, and the running user where the admin API returns it.
+
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-1020: A parent-scoped screen's route id names its parent, while its descriptor's entity type names its rows (the Secrets list pairs a collection name with `wallet-secret`); decide once, for both parent-scoped screens, how the route id's entity type is declared (ledger; routed by harvest 2026-09-16)
 
 ### Story 6.7: Task details
 
@@ -3907,7 +3913,7 @@ So that I can decide whether to act on it before I act on it.
 
 - **Given** Process details
 - **When** it opens
-- **Then** it shows the dashboard meters, the client executable and address, open devices, and the current SQL statement where the instance makes it available.
+- **Then** it shows the dashboard meters, the client executable and address, open devices, and whether the process is executing a cached SQL query, named by its routine; the statement text is Story 19.10's. [AMENDED 2026-09-17, Story 6.8 spec gate (orchestrator-approved): no admin API endpoint or port carries statement text, which lives only in `INFORMATION_SCHEMA.CURRENT_STATEMENTS` behind Story 19.10's SQL activity screen; was "and the current SQL statement where the instance makes it available"]
 
 - **Given** the Locks view's owner link
 - **When** it is followed
@@ -3931,7 +3937,7 @@ So that I can see load without leaving for the classic portal.
 
 - **Given** the CPU, memory and performance meters
 - **When** they render
-- **Then** their names and thresholds come from `%CSP.UI.Portal.EnsembleMonitor`'s 25 meter definitions, already readable in `irislib/` - **not** from the classic `UtilSysMonitor` page, whose source is unrecoverable and is not needed.
+- **Then** their names and values come from the admin API's `Monitor` answers (`SYSTEMUSAGE`, `SYSTEMUSAGESHM`, `DASHBOARDMAIN`) through `AdminPort`: global references per second and cache efficiency, shared memory used as a percentage of allocated, and the database space, journal space, lock table and write daemon status meters in the vendor's own words; CPU belongs to FR-76's full System Dashboard - **not** the classic `UtilSysMonitor` page, whose source is unrecoverable and is not needed. [AMENDED 2026-09-17, Story 6.9 spec gate (orchestrator-approved): `%CSP.UI.Portal.EnsembleMonitor` is the Interoperability production monitor, with 28 meters, none of them CPU, memory or performance, and no thresholds; was "their names and thresholds come from `%CSP.UI.Portal.EnsembleMonitor`'s 25 meter definitions, already readable in `irislib/`"]
 
 - **Given** a meter
 - **When** it renders
@@ -3939,7 +3945,7 @@ So that I can see load without leaving for the classic portal.
 
 - **Given** the assumed 80% and 95% thresholds
 - **When** this story is built
-- **Then** they are confirmed against the meter definitions rather than carried as an assumption - the behavior is decided, the numbers are not.
+- **Then** they are confirmed against the meter definitions rather than carried as an assumption - the behavior is decided, the numbers are not. [AMENDED 2026-09-17, Story 6.9 spec gate (orchestrator-approved): no meter definition carries a threshold; status meters take the dashboard's own word, and percentage meters use 85% and 95%, recorded in DESIGN.md as an assumption borrowed from the vendor's lock-table cut-off (`SYS.Stats.Dashboard.cls:92`)]
 
 ### Story 6.10: The locks view
 
@@ -3951,15 +3957,15 @@ So that I can find the owner of a blocked operation.
 
 - **Given** the Locks screen
 - **When** it loads
-- **Then** it lists locks for the selected namespace with a filter and owner details.
+- **Then** it lists every lock the instance holds, with a filter, owner details, and each lock's database directory and system, so a row says where its lock lives. [AMENDED 2026-09-17, Story 6.10 spec gate (orchestrator-approved): the lock table is instance-wide and a lock's scope marker is a database directory, not a namespace - the same read answers the identical rows from HSCUSTOM and USER, and the vendor's own View Locks page is pinned to `%SYS` (`AUTONS = 0`); a namespace filter over `Directory` would have hidden all seven locks held on the probed instance, since globals mapped in from IRISSYS keep their own database's directory; was "it lists locks for the selected namespace with a filter and owner details"]
 
 - **Given** a lock's owner
 - **When** the user follows it
 - **Then** it links to that process's details.
 
 - **Given** a lock whose owning process is in a transaction
-- **When** the row renders
-- **Then** that condition is visible, so the removal warning in Epic 7 is not the first the user hears of it.
+- **When** its removal is proposed in Story 16.12
+- **Then** that story warns before the confirm, from the admin endpoint's own 409 `is currently in a transaction` refusal. [AMENDED 2026-09-17, Story 6.10 spec gate (orchestrator-approved): the condition is a removal concern, as FR-57 states it, and no field the locks list returns carries it - buying a column would cost new read-source grammar and an undocumented per-row probe for a warning about an action Release 1 does not ship, so 6.10 ships no transaction column; removal is Story 16.12, not Epic 7; was "when the row renders / then that condition is visible, so the removal warning in Epic 7 is not the first the user hears of it"]
 
 ### Story 6.11: Databases, with free space arriving as it lands
 
@@ -3975,12 +3981,12 @@ So that the contest's "disks" reads as real operational data.
 
 - **Given** the free-space figures come from an **asynchronous** directory call - one of the two Release 1 async endpoint paths
 - **When** the list renders
-- **Then** rows appear immediately with **per-row skeleton cells** that fill as each figure lands, and **the table never reflows** as they arrive
+- **Then** rows render with **skeleton cells** where the free-space figures go, the figures arrive together when the asynchronous call resolves, and **the table never reflows** as they land. [AMENDED 2026-09-17, Story 6.11 spec gate (orchestrator-approved): the read contract answers one envelope and `rowGet` is issued per row inside the read, so per-figure arrival is not declarable; the whole read costs 0.852 s for fourteen databases against NFR-1's 2 s, so it is issued as one read with `rowGet.type` `INFO`; was "rows appear immediately with per-row skeleton cells that fill as each figure lands"]
 - **And** the polling is done by `AdminPort`, which exposes it to the slice as an ordinary call that resolves later - the slice writes no polling logic.
 
 - **Given** Database details
 - **When** it opens
-- **Then** it shows properties, volume files and the background tasks running against that database, under auto-refresh.
+- **Then** it shows properties and volume files, under auto-refresh. [AMENDED 2026-09-17, Story 6.11 spec gate (orchestrator-approved): the background tasks running against a database have no admin-API surface - only `%SYS.BackgroundTask:RunningInDatabase`, a `Final Internal` class query the classic page reads, which no `%Api.Admin.*` class references - so that section is chartered to the owner's decision sheet rather than bought with a new AD-36 source kind under deadline; was "properties, volume files and the background tasks running against that database"]
 
 ### Story 6.12: The devices list
 
@@ -4004,11 +4010,11 @@ So that I can tell whether something has been going wrong for a while.
 
 - **Given** the alerts.log screen
 - **When** it loads
-- **Then** it merges the entries the monitoring API reports since its last scrape with a **bounded tail** of the file served through the OcuPilot API.
+- **Then** it shows a **bounded tail** of `alerts.log` served through the OcuPilot API, read from the file itself. [AMENDED 2026-09-18, Story 6.13 spec gate (orchestrator-approved): the monitoring API reads the same file (`%SYSTEM/Monitor.cls:60`) and reads it lossily - it drops pid and category, quotes severity and appends a false `Z` to a local stamp - so the merge buys no data the tail lacks, while every call advances the instance-wide SAM cursor `^IRIS.Temp.SAM("LastAlertSent")` whatever tag is passed (measured: kill the global, a five-second control with no call leaves it undefined, one call defines it; empty, bogus and matching tags all advance it), so a second SAM consumer on the operator's instance would silently lose every alert this screen's read moved past. DW-1116 carries the measurement and FR-76's story re-takes it where a consumer exists; was "it merges the entries the monitoring API reports since its last scrape with a bounded tail"]
 
-- **Given** `MonitorPort`
-- **When** it fetches
-- **Then** it declares and evaluates its own resource gate before the call, because the monitoring API answers **anonymously** on this instance and that anonymity is a property of that API, never of OcuPilot.
+- **Given** `LogSourcePort`
+- **When** it serves the tail
+- **Then** it declares and evaluates its own resource gate before the read, because a log line reaches a user through OcuPilot only if that user could have read it directly. [AMENDED 2026-09-18, Story 6.13 spec gate (orchestrator-approved): `MonitorPort` is not shipped by this story - see AC1's amendment - so the gate this criterion asks for is the port that does serve the screen; the anonymity of `/api/monitor` stays recorded in AD-29 and in DW-1116; was "Given `MonitorPort` / When it fetches"]
 
 - **Given** entries render
 - **When** the viewer draws them
@@ -4037,7 +4043,7 @@ So that I can find a repeating warning and ask the agent what it means.
 
 - **Given** a severity chip
 - **When** the user clicks it
-- **Then** that severity becomes the filter, and the command bar shows the active filter with Clear.
+- **Then** that severity becomes the filter, and the log viewer's own bar shows the active filter with Clear. [AMENDED 2026-09-18, Story 6.14 spec gate: the viewer's bar is where Story 6.13 put its search, jumps and Raw toggle, so Clear ships beside the chips rather than in the shell command bar (DW-1109, DW-1138); was "the command bar shows the active filter with Clear"]
 
 - **Given** the assumed **28px log row height** (UX-DR80)
 - **When** this story is built
@@ -4049,6 +4055,7 @@ So that I can find a repeating warning and ask the agent what it means.
 
 - DW-148: The fault banner's "Open messages.log" link navigates without `ShellState.showArea`, leaving the side bar on the previous area; this story builds the screen it reaches (ledger; routed by adjudication 2026-09-14)
 - DW-278: The Logs area gates on `%Admin_Secure:USE` for the audit viewer, which this screen does not need; decide whether this screen declares the pair or the area splits (ledger; routed by spec_gate 2026-09-14)
+- DW-1025: A fresh instance logs repeated `<PROTECT>%DeleteData` errors from the audit LIST's async-task cleanup; find whether they originate in `AdminPort`'s poll before this viewer shows them (ledger; routed by harvest 2026-09-17)
 
 ## Epic 7: Act on any row
 
@@ -4075,6 +4082,10 @@ So that the area's screen offers the same actions the agent does.
 - **Given** the target is one of OcuPilot's own web applications
 - **When** a delete or disable is attempted from any surface
 - **Then** it is **refused with an explanation** - and refused on the instance's write path regardless of what the UI shows.
+
+- DW-1136: `ForgetTask`'s guard leaves a vendor async-task row behind on every unprivileged async read, permanently and silently (ledger; routed by merge_gate 2026-09-18)
+- DW-1137: `AdminPort.ASYNCTASKPAIR` is a literal, so on an instance whose IRISLOCALDATA carries a non-default resource the guard denies every caller (ledger; routed by merge_gate 2026-09-18)
+- DW-1099: no assertion observes a shipped descriptor's `read.filter`, `read.sort.fields` or per-column kind except the Devices list (ledger; routed by merge_gate 2026-09-18)
 
 ### Story 7.2: User enable, disable, delete, password and roles
 
@@ -4192,6 +4203,8 @@ So that I can recover an instance without a terminal.
 - **Given** the target is an IRIS system process
 - **When** a terminate is attempted
 - **Then** it is refused on the instance and was never advertised as a tool.
+
+- DW-1155: the fault banner and its control are re-created while a screen refreshes, so a click in that instant is lost and UX-DR52's non-dismissible banner is not honoured; the fix is framework-level (ledger; routed by merge_gate 2026-09-18)
 
 ### Story 7.10: The remaining application error delete scopes
 
@@ -5052,6 +5065,12 @@ So that a polish-week change cannot silently break a Release 1 write.
 - **When** CI runs
 - **Then** the file is vendored with its commit SHA and a test diffs its v2 path and method set against the instance's generated spec (`GET /api/mgmnt/v1/%25SYS/spec/api/admin`), so 2027.1 drift fails with a named source rather than a user.
 
+- DW-439: the CI throwaway's fixed host port can already be bound when the instance job starts, killing it before a test runs - probe for a free pair or retry the bind (ledger; routed by merge_gate 2026-09-18)
+- DW-1015: browser specs that exec into a container refuse only the live `ocupilot`, never an owner-managed `ocupilot-slot-*` (ledger; routed by merge_gate 2026-09-18)
+- DW-1079: a Wallet test deletes shared demo data, which makes later suites on that instance read a false red (ledger; routed by merge_gate 2026-09-18)
+- DW-1119: `smoke.sh`'s failure line does not name the check that failed, so a failure is not quotable in a report (ledger; routed by merge_gate 2026-09-18)
+- DW-1146: the audit spec's thousand-row seed read 919 after a full sweep on the same instance, and CI runs that order (ledger; routed by merge_gate 2026-09-18)
+
 ### Story 13.3: Publish the package to the community registry
 
 As an operator who installs through IPM,
@@ -5485,6 +5504,8 @@ So that "can they do this?" has a direct answer rather than a manual trace throu
 - **When** the agent or the user asks whether a user or role holds a resource permission
 - **Then** it answers **yes or no and names the granting role**, short-circuiting on `%All`.
 
+- DW-1018: the area privilege union gates a whole rail item, falsely denying screens the user can read; decided at the Epic 6 merge gate: a rail item is allowed when ANY of its screens is, and each screen keeps its own gate (ledger; routed by merge_gate 2026-09-18)
+
 ### Story 16.4: Task export and import
 
 As a developer-administrator with two instances,
@@ -5524,6 +5545,9 @@ So that a stuck background job is visible and stoppable.
 - **Given** the admin API's `/async-results` tracks only **its own** asynchronous tasks and not the classic portal's background jobs
 - **When** this screen is built
 - **Then** it needs **both** halves - the admin API route for the tasks it owns, and a custom endpoint for the rest - and shipping only the first is partial parity, stated rather than discovered.
+
+- DW-1080: Database details' background-tasks section has no admin-API surface; take the port decision here, where FR-76 owns background tasks (ledger; routed by merge_gate 2026-09-18)
+- DW-1101: async task rows survive for a `_SYSTEM` caller with no error logged, so `AdminPort.ForgetTask` does not always run (ledger; routed by merge_gate 2026-09-18)
 
 ### Story 16.6: Broadcast a message to processes
 
@@ -5576,6 +5600,9 @@ So that "all the logs" is literally true.
 - **Given** each viewer
 - **When** it renders a row
 - **Then** the row carries an explain entry point sending that entry alone.
+
+- DW-1102: the log viewer's next and previous match controls have no accessible name; approved copy is "Next match" and "Previous match" (ledger; routed by merge_gate 2026-09-18)
+- DW-1110: `LogViewerStore` is absent from sign-out teardown, so one principal's log lines survive a sign-out in the same tab (ledger; routed by merge_gate 2026-09-18)
 
 ### Story 16.9: The unified log hub
 
@@ -5665,6 +5692,8 @@ So that a blocked operation can proceed.
 - **When** the tool is built
 - **Then** it is recorded as action-style needing no template.
 
+- DW-1074: a remote-owner lock row links to Process details, which then reports that the process does not exist; suppress the link instead (ledger; routed by merge_gate 2026-09-18)
+
 ### Story 16.13: The service editor
 
 As a developer-administrator,
@@ -5685,6 +5714,8 @@ So that service administration is complete here.
 - **Given** the same disable is proposed **by the agent**
 - **When** it reaches the write path
 - **Then** it is **refused on the instance and was never advertised as a tool** - the warning is the screen's affordance for a human decision; the prohibition is absolute for the agent, and covers the web application, the web service behind it and the superserver.
+
+- DW-1016: a proposal diff row has no empty-cell word, so restricting a list reads as `(none) -> 10.0.0.1` (ledger; routed by merge_gate 2026-09-18)
 
 ### Story 16.14: The LDAP and Kerberos editor
 

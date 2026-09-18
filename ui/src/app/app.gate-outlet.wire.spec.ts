@@ -25,6 +25,7 @@ import { ShellState } from './core/shell-state';
 import { SuggestedView } from './core/suggested-view';
 import { stubSuggestedView } from './testing/suggested-view';
 import { stubTurnStore } from './testing/turn';
+import { ViewOptions } from './core/view-options';
 
 /**
  * The first-login gate against the requested screen's declared read (FR-28, AD-36).
@@ -308,6 +309,7 @@ describe('the first-login gate and the requested screen it may move off', () => 
         { provide: TurnStore, useValue: stubTurnStore() },
         { provide: OverlayStack, useValue: new OverlayStack() },
         { provide: ScreenActions, useValue: new ScreenActions() },
+        { provide: ViewOptions, useValue: new ViewOptions() },
         { provide: FormDirty, useValue: new FormDirty() },
         { provide: ApiService, useValue: stub.api },
       ],

@@ -15,6 +15,8 @@ import {
   areaByKey,
   formatArea,
   formatRequires,
+  screenForUrl,
+  tabGroupFor,
   withQuery,
 } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
@@ -148,9 +150,12 @@ export class SideBar {
     // fewer entries than the last one would otherwise leave every entry at -1 -- a side bar
     // with no tab stop at all, unreachable by keyboard.
     const focused = Math.min(this.focusedIndex(), Math.max(0, screens.length - 1));
+    // Every tab of a tabbed screen marks its group's one entry current (AD-5).
+    const current = screenForUrl(this.router.url);
+    const groupRoute = current === null ? '' : tabGroupFor(current)?.route ?? '';
     return screens.map((screen, index) => {
       const verdict = this.navigation.screenVerdict(screen.route);
-      const isCurrent = areaKey === active && screen.route === this.currentRoute();
+      const isCurrent = areaKey === active && (screen.route === this.currentRoute() || (groupRoute !== '' && screen.route === groupRoute));
       const reasonId = `ocu-side-bar-reason-${screen.route.replace(/\//g, '-')}`;
       return {
         route: screen.route,

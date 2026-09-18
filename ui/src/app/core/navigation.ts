@@ -29,6 +29,7 @@
 
 import type { ApiService } from './api';
 import type { ConnectivityService } from './connectivity';
+import { decodeEntityId } from './entity-id.ts';
 import { AREAS, SCREENS, type AreaDeclaration, type ScreenDeclaration } from './screens.generated.ts';
 import { createSingleFlight } from './single-flight.ts';
 
@@ -178,6 +179,141 @@ export function editorScreenFor(screen: ScreenDeclaration): ScreenDeclaration | 
   return editor;
 }
 
+/**
+ * The route segment a list's own document viewer is declared under, appended to the list's route.
+ *
+ * The same convention as `EDITOR_ROUTE_SUFFIX`: a viewer paired with a list lives at
+ * `<list route>/document`, declares `sideBarPosition` 0, and is reached from that list's name cell.
+ */
+export const DOCUMENT_ROUTE_SUFFIX = 'document';
+
+/**
+ * The document viewer a list's rows open, or `null` when the list has none. The same three halves
+ * as `editorScreenFor`: built, unlisted, and keyed by an id.
+ */
+export function documentScreenFor(screen: ScreenDeclaration): ScreenDeclaration | null {
+  const viewer = screenForRoute(`${screen.route}/${DOCUMENT_ROUTE_SUFFIX}`);
+  if (viewer === null || !viewer.built || isListedScreen(viewer) || !hasIdRoute(viewer)) return null;
+  return viewer;
+}
+
+/** The list `screen` is the document viewer of (`documentScreenFor`'s inverse), or `null`. */
+export function listForDocumentScreen(screen: ScreenDeclaration): ScreenDeclaration | null {
+  const suffix = `/${DOCUMENT_ROUTE_SUFFIX}`;
+  if (!screen.route.endsWith(suffix)) return null;
+  const list = screenForRoute(screen.route.slice(0, -suffix.length));
+  return list !== null && documentScreenFor(list)?.route === screen.route ? list : null;
+}
+
+/**
+ * The sub-resource list a list's rows open, or `null` when the list has none (AD-5).
+ *
+ * The pairing is the child's own declaration rather than a route convention: the child declares
+ * the list's route as its `parentScope`. The same three halves as `editorScreenFor` hold -- built,
+ * unlisted and keyed by an id -- because the child is reached from the name cell with the row's id
+ * and never from a navigation surface. The Wallet list's Secrets list is the first.
+ *
+ * **Skips a `detail`-class screen** (Story 6.7): `detailScreenFor` is the pairing for one, so a
+ * parent naming both a per-row detail screen and a sub-resource list -- Task schedule's Task
+ * details and its per-task History both declare `parentScope` `tasks/schedule` -- resolves each
+ * through its own function rather than this one picking whichever sorts first.
+ */
+export function childListFor(screen: ScreenDeclaration): ScreenDeclaration | null {
+  if (screen.route === '') return null;
+  return (
+    SCREENS.find(
+      (child) =>
+        child.parentScope === screen.route &&
+        child.built &&
+        !isListedScreen(child) &&
+        hasIdRoute(child) &&
+        child.archetype !== 'detail'
+    ) ?? null
+  );
+}
+
+/**
+ * The built, unlisted, id-keyed `detail`-archetype screen a list's rows open, or `null` when the
+ * list has none (Story 6.7). The same pairing `childListFor` is, narrowed to the one archetype a
+ * per-row detail screen takes: no `tab`, since a tabbed screen's own group is a different pairing
+ * (`tabGroupFor`), and one entity is a field list rather than a table of rows.
+ */
+export function detailScreenFor(screen: ScreenDeclaration): ScreenDeclaration | null {
+  if (screen.route === '') return null;
+  return (
+    SCREENS.find(
+      (child) =>
+        child.parentScope === screen.route &&
+        child.built &&
+        !isListedScreen(child) &&
+        hasIdRoute(child) &&
+        child.archetype === 'detail' &&
+        child.tab === null
+    ) ?? null
+  );
+}
+
+/**
+ * The list `screen` is the sub-resource list or per-row detail screen of (`childListFor`'s and
+ * `detailScreenFor`'s shared inverse), or `null`.
+ */
+export function parentListFor(screen: ScreenDeclaration): ScreenDeclaration | null {
+  if (screen.parentScope === '') return null;
+  const parent = screenForRoute(screen.parentScope);
+  if (parent === null) return null;
+  if (childListFor(parent)?.route === screen.route) return parent;
+  if (detailScreenFor(parent)?.route === screen.route) return parent;
+  return null;
+}
+
+/**
+ * The built tabs of the tab group `screen` is one tab of, in position order, or `[]` for a screen
+ * that is no tab (AD-5).
+ *
+ * A tabbed screen is one descriptor per tab, grouped by a declared `tab`, so the strip is read off
+ * the mirror rather than typed out: every built screen whose `tab.group` is this screen's group.
+ */
+export function tabMembersFor(screen: ScreenDeclaration): readonly ScreenDeclaration[] {
+  const group = screen.tab?.group;
+  if (group === undefined) return [];
+  return SCREENS.filter((member) => member.built && member.tab?.group === group).sort(
+    (a, b) => (a.tab?.position ?? 0) - (b.tab?.position ?? 0)
+  );
+}
+
+/**
+ * The first tab of the group `screen` is one tab of -- the built screen at the group's route that
+ * declares that group -- or `null` for a screen that is no tab (AD-5). The side bar lists this one
+ * member, and the locator names it for every tab.
+ */
+export function tabGroupFor(screen: ScreenDeclaration): ScreenDeclaration | null {
+  const group = screen.tab?.group;
+  if (group === undefined) return null;
+  const head = screenForRoute(group);
+  return head !== null && head.built && head.tab?.group === group ? head : null;
+}
+
+/**
+ * The criteria a parent-scoped list's read carries, from the router URL it renders at: its one
+ * declared criterion set to the URL's id segment, decoded (AD-13), or `{}` for a screen that
+ * declares no parent, does not declare exactly one criterion, or is rendered with no id.
+ *
+ * The id arrives as the router serialises it -- percent-encoded as the address bar carries it -- so
+ * the segment is decoded once for the router's own pass and once by `decodeEntityId`, which is the
+ * encode-twice, decode-once contract read off a URL rather than off a route parameter.
+ */
+export function parentCriteria(screen: ScreenDeclaration, url: string): Readonly<Record<string, string>> {
+  const fields = screen.read?.criteria?.fields ?? [];
+  if (screen.parentScope === '' || fields.length !== 1) return {};
+  const path = routeFromUrl(url);
+  const prefix = `${screen.route}/`;
+  if (!path.startsWith(prefix)) return {};
+  const segment = path.slice(prefix.length);
+  if (segment === '' || segment.includes('/')) return {};
+  const id = decodeEntityId(decodeEntityId(segment));
+  return id === '' ? {} : { [fields[0].param]: id };
+}
+
 /** The screen declared at `route`, or `null`. Home's route is the empty string. */
 export function screenForRoute(route: string): ScreenDeclaration | null {
   return SCREENS.find((screen) => screen.route === route) ?? null;
@@ -203,6 +339,22 @@ export function hasIdRoute(screen: ScreenDeclaration): boolean {
  * it is from `ShellState.activeArea()` -- tests against one constant rather than a literal.
  */
 export const HOME_AREA_KEY = 'home';
+ * The entity type `screen`'s route id identifies (DW-1020, AD-5, AD-13): the parent screen's own
+ * `entityType` for a sub-resource screen, resolved through `parentScope` and never declared a
+ * second time -- task history is not a task, and its route id names the task `parentListFor`
+ * resolves to, while its rows keep their own `entityType`. A screen with no parent answers its own
+ * `entityType`, which is also what a stale or unresolved `parentScope` falls back to, since this
+ * function has no refusal of its own to raise (`OcuPilot.Screen.Registry.RouteEntityType`'s
+ * server-side twin, and `OcuPilot.Screen.Registry.ParentScopeResolutionProblem` is what keeps the
+ * production roster from ever needing that fallback).
+ */
+export function routeEntityType(screen: ScreenDeclaration): string {
+  if (screen.parentScope !== '') {
+    const parent = screenForRoute(screen.parentScope);
+    if (parent !== null) return parent.entityType;
+  }
+  return screen.entityType;
+}
 
 /** The placeholder the Fixed strings table leaves for an area's own name. */
 export const AREA_PLACEHOLDER = '<Area>';

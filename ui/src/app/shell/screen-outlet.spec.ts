@@ -15,6 +15,7 @@ import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
 import type { AreaDeclaration, BuiltArchetypeKey, ScreenDeclaration } from '../core/screens.generated';
 import { HomePage } from '../areas/home/home.page';
+import { OpenApiViewerPage } from '../areas/web-applications/openapi-viewer.page';
 import { ListPage } from './list-page';
 import {
   ARCHETYPE_PAGES,
@@ -342,6 +343,12 @@ describe('the archetype map guard (Object.hasOwn, not a bare index)', () => {
 
   it('registers the list page for the list archetype, so a built list screen needs no router edit', () => {
     expect(resolveArchetypePage(ARCHETYPE_PAGES as Readonly<Record<string, Type<unknown>>>, 'list')).toBe(ListPage);
+  });
+
+  it('registers the OpenAPI document viewer page for the viewer (OpenAPI) archetype', () => {
+    expect(resolveArchetypePage(ARCHETYPE_PAGES as Readonly<Record<string, Type<unknown>>>, 'viewer (OpenAPI)')).toBe(
+      OpenApiViewerPage
+    );
   });
 });
 

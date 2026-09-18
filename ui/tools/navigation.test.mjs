@@ -33,11 +33,19 @@ const {
   areaByKey,
   builtScreens,
   builtScreensForArea,
+  childListFor,
+  detailScreenFor,
+  documentScreenFor,
   editorScreenFor,
   isListedScreen,
   listedScreensForArea,
+  parentCriteria,
+  parentListFor,
+  routeEntityType,
   screenForRoute,
   screenForUrl,
+  tabGroupFor,
+  tabMembersFor,
   areaForUrl,
   hasIdRoute,
   routeFromUrl,
@@ -51,6 +59,7 @@ const {
 const { AREAS, SCREENS } = await import(corePath('screens.generated.ts'));
 const { ApiService } = await import(corePath('api.ts'));
 const { STRINGS, stringFor } = await import(corePath('strings.ts'));
+const { encodeEntityId } = await import(corePath('entity-id.ts'));
 
 /** A map answer shaped the way `GET /api/ocupilot/navigation` shapes one. */
 function mapBody(areas) {
@@ -117,18 +126,47 @@ test('a side bar lists only built screens, in side-bar order', () => {
     builtScreens().map((screen) => screen.route),
     [
       '',
+      'logs/alerts',
+      'logs/messages',
       'logs/errors',
       'logs/audit',
+      'os-management/databases/details',
+      'os-management/database-free-space',
+      'os-management/databases/volumes',
+      'os-management/processes/details',
       'os-management/processes',
+      'os-management/locks',
+      'os-management/system-usage',
+      'os-management/databases',
+      'os-management/devices',
+      'tasks/schedule/details',
+      'tasks/schedule/history',
       'tasks/schedule',
+      'tasks/on-demand',
+      'tasks/upcoming',
+      'tasks/history',
       'permissions/users',
+      'permissions/roles',
+      'permissions/resources',
+      'permissions/services',
+      'web-applications/rest-apis/document',
       'web-applications/list',
+      'web-applications/rest-apis',
+      'security/oauth/clients',
+      'security/oauth/resource-servers',
+      'security/oauth/server-clients',
+      'security/oauth/server',
+      'security/wallet/secrets',
       'security/ssl',
+      'security/x509',
+      'security/ldap',
+      'security/wallet',
+      'security/oauth',
       'agent/definitions/edit',
       'agent/definitions',
       'agent/switches',
     ],
-    'the built screens are Home, at the application root, then the application error log and the audit database, processes, task schedule, users, web applications and SSL/TLS lists, and the Agent co-pilot area\'s Definition form, Definitions list and Switches, in area rail order'
+    'the built screens are Home, at the application root, then the alerts.log viewer, the application error log and the audit database, the unlisted Database details, Free-space view and Volume files, process details, processes, Locks, System usage, Databases, the unlisted task details and per-task history, task schedule, on-demand tasks, upcoming tasks, task history, users, roles, resources, services, OpenAPI document viewer, web applications, REST API explorer, the four unlisted OAuth 2.0 tabs, Secrets, SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0 screens, and the Agent co-pilot area\'s Definition form, Definitions list and Switches, in area rail order'
   );
 });
 
@@ -184,6 +222,202 @@ test('editorScreenFor resolves a list to its unlisted, id-keyed editor and to no
     editorScreenFor(screenForRoute('security/ssl')),
     null,
     'and neither does a list whose editor is not built yet'
+  );
+});
+
+// Story 6.1: a list paired with a document viewer is what the name cell opens, by the
+// `<list route>/document` convention, with the same three halves as `editorScreenFor`.
+//
+// Mutation (Rule 19): give the viewer descriptor a side-bar position -> the listed-roster assertion
+// below goes red. The built, unlisted and id-keyed guards themselves are unpinned today: no shipped
+// `<list>/document` screen fails one of them.
+test('documentScreenFor resolves the REST API explorer to its unlisted, id-keyed document viewer and to nothing else', () => {
+  const explorer = screenForRoute('web-applications/rest-apis');
+  assert.ok(explorer, 'the REST API explorer is declared');
+  assert.equal(documentScreenFor(explorer).route, 'web-applications/rest-apis/document');
+  assert.equal(editorScreenFor(explorer), null, 'and it pairs with no editor');
+  assert.equal(documentScreenFor(screenForRoute('')), null, 'Home resolves no viewer');
+  assert.equal(documentScreenFor(screenForRoute('web-applications/list')), null, 'and neither does a list with none');
+  assert.deepEqual(
+    listedScreensForArea('web-applications').map((screen) => screen.route),
+    ['web-applications/list', 'web-applications/rest-apis'],
+    'the side bar lists Web applications then the REST API explorer -- the viewer takes no position'
+  );
+  assert.equal(isListedScreen(screenForRoute('web-applications/rest-apis/document')), false, 'the viewer is the unlisted one');
+});
+
+// Story 6.3: a sub-resource list is paired with its parent by its own `parentScope` declaration, not
+// by a route suffix, and the name cell and the locator bar both read the pairing.
+//
+// Mutation (Rule 19): match any non-empty `parentScope` in `childListFor` instead of the list's own
+// route -> "a list with no child resolves none" goes red. Drop the inverse check from `parentListFor`
+// -> "a screen naming a parent it is not the child of resolves none" goes red.
+test('childListFor pairs the Wallet list with its Secrets list, parentListFor inverts it, and a secrets URL resolves to Secrets', () => {
+  const wallet = screenForRoute('security/wallet');
+  const secrets = screenForRoute('security/wallet/secrets');
+  assert.ok(wallet && secrets, 'both lists are declared');
+  assert.equal(childListFor(wallet)?.route, 'security/wallet/secrets', 'the Wallet list opens its Secrets list');
+  assert.equal(parentListFor(secrets)?.route, 'security/wallet', 'and the Secrets list names the Wallet list as its parent');
+  assert.equal(editorScreenFor(wallet), null, 'the Wallet list pairs no editor');
+  assert.equal(documentScreenFor(wallet), null, 'and no viewer');
+  assert.equal(childListFor(screenForRoute('security/ssl')), null, 'a list with no child resolves none');
+  assert.equal(childListFor(screenForRoute('')), null, 'and neither does Home');
+  assert.equal(childListFor(secrets), null, 'the Secrets list has no child of its own');
+  assert.equal(parentListFor(wallet), null, 'and the Wallet list has no parent');
+  assert.equal(
+    parentListFor({ ...secrets, route: 'security/wallet/other' }),
+    null,
+    'a screen naming a parent it is not the child of resolves none'
+  );
+  assert.equal(isListedScreen(secrets), false, 'the Secrets list is never listed');
+  assert.deepEqual(
+    listedScreensForArea('security').map((screen) => screen.route),
+    ['security/ssl', 'security/x509', 'security/ldap', 'security/wallet', 'security/oauth'],
+    'the Security side bar lists SSL/TLS, X.509, LDAP / Kerberos, Wallet and OAuth 2.0'
+  );
+
+  assert.equal(screenForUrl('/security/wallet/secrets/OcuPilotDemo?ns=HSCUSTOM')?.route, 'security/wallet/secrets', 'a secrets URL with a collection id resolves to the Secrets list');
+  assert.equal(screenForUrl('/security/wallet/secrets?ns=HSCUSTOM')?.route, 'security/wallet/secrets', 'and so does the route with no id, never the Wallet list with an id of "secrets"');
+  assert.equal(screenForUrl('/security/wallet/OcuPilotDemo')?.route, 'security/wallet', 'while a Wallet URL with an id is the Wallet list');
+});
+
+// Story 6.6, DW-1020: a sub-resource screen's route id names an entity of its parent's own
+// primary entity type, resolved through parentScope, while its rows keep their own type.
+//
+// Mutation (Rule 19): make routeEntityType return `screen.entityType` unconditionally -> the two
+// parented assertions go red, reading `task-history-entry` and `wallet-secret`, while the
+// unparented assertion stays green by coincidence.
+test('routeEntityType resolves through parentScope for a sub-resource screen, and answers its own type otherwise', () => {
+  const taskRun = screenForRoute('tasks/schedule/history');
+  const secrets = screenForRoute('security/wallet/secrets');
+  const history = screenForRoute('tasks/history');
+  assert.ok(taskRun && secrets && history, 'all three screens are declared');
+  assert.equal(routeEntityType(taskRun), 'task', "History (one task)'s route id names the task it is scoped to");
+  assert.equal(routeEntityType(secrets), 'wallet-collection', 'and the Secrets list\'s names the wallet collection');
+  assert.equal(routeEntityType(history), 'task-history-entry', 'a screen with no parent answers its own primary type');
+  assert.equal(taskRun.entityType, 'task-history-entry', "its rows keep their own type regardless");
+  assert.equal(secrets.entityType, 'wallet-secret', "and so do the Secrets list's");
+});
+
+// Story 6.6: Task schedule keys its rows on the vendor's numeric `Id`, so History (one task) --
+// reached from Task details' own History link since Story 6.7 re-pointed the name cell there --
+// renders the same columns Task history does (AC2, AC3). `childListFor` still resolves Task
+// schedule's child list to History; only the name cell's own target moved (`detailScreenFor`,
+// pinned separately below).
+//
+// Mutation (Rule 19): Task schedule's id kind `single` in the mirror -> the key assertion goes red;
+// History's `Result` column renamed in the mirror -> the column assertion goes red.
+test("Task schedule keys on Id and its child list is History, whose columns are Task history's", () => {
+  const schedule = screenForRoute('tasks/schedule');
+  const taskRun = screenForRoute('tasks/schedule/history');
+  const history = screenForRoute('tasks/history');
+  assert.ok(schedule && taskRun && history, 'all three screens are declared');
+  assert.deepEqual(schedule.id, { kind: 'composite', parts: ['Id'] }, "Task schedule's row key is the vendor's numeric Id");
+  assert.equal(childListFor(schedule)?.route, 'tasks/schedule/history', "its child list is History");
+  assert.equal(parentListFor(taskRun)?.route, 'tasks/schedule', 'which names Task schedule as its parent');
+  assert.deepEqual(
+    taskRun.table?.columns.map((column) => [column.field, column.labelKey]),
+    [
+      ['LastStart', 'taskHistoryColumnStarted'],
+      ['Completed', 'taskHistoryColumnCompleted'],
+      ['Name', 'tableColumnName'],
+      ['Status', 'taskHistoryColumnStatus'],
+      ['Result', 'taskHistoryColumnResult'],
+      ['Username', 'processColumnUser'],
+      ['Namespace', 'headerNamespaceLabel'],
+    ],
+    'History shows Started, Completed, Name, Status, Result, User and Namespace'
+  );
+  assert.deepEqual(taskRun.table?.columns, history.table?.columns, "the same columns as Task history's");
+});
+
+// Story 6.7: Task schedule's name cell opens Task details rather than the one-task History, which
+// stays reachable only from Task details' own History link. `detailScreenFor` is the pairing a
+// `detail`-class parentScope screen takes; `childListFor` skips it, so the two screens that both
+// declare `parentScope` `tasks/schedule` resolve through their own functions rather than one
+// picking whichever sorts first.
+//
+// Mutation (Rule 19): drop `child.archetype !== 'detail'` from `childListFor` -> this test's first
+// assertion goes red, reading `tasks/schedule/details` instead of `tasks/schedule/history`.
+test('detailScreenFor pairs Task schedule with Task details, childListFor still finds History, and both invert through parentListFor', () => {
+  const schedule = screenForRoute('tasks/schedule');
+  const details = screenForRoute('tasks/schedule/details');
+  const taskRun = screenForRoute('tasks/schedule/history');
+  assert.ok(schedule && details && taskRun, 'all three screens are declared');
+  assert.equal(detailScreenFor(schedule)?.route, 'tasks/schedule/details', "Task schedule's detail screen is Task details");
+  assert.equal(childListFor(schedule)?.route, 'tasks/schedule/history', 'and its child list is still History, not Task details');
+  assert.equal(parentListFor(details)?.route, 'tasks/schedule', 'Task details names Task schedule as its parent');
+  assert.equal(parentListFor(taskRun)?.route, 'tasks/schedule', 'and so does History, through the same inverse');
+  assert.equal(detailScreenFor(taskRun), null, 'History is not itself a detail screen');
+  assert.equal(details.archetype, 'detail', 'Task details is the detail archetype');
+  assert.equal(details.tab, null, 'and declares no tab');
+});
+
+// Story 6.8: the same pairing for the processes list and Process details.
+test('detailScreenFor pairs Processes with Process details', () => {
+  const processes = screenForRoute('os-management/processes');
+  const details = screenForRoute('os-management/processes/details');
+  assert.ok(processes && details, 'both screens are declared');
+  assert.equal(detailScreenFor(processes)?.route, 'os-management/processes/details', "Processes' detail screen is Process details");
+  assert.equal(parentListFor(details)?.route, 'os-management/processes', 'Process details names Processes as its parent');
+  assert.equal(details.archetype, 'detail', 'Process details is the detail archetype');
+});
+
+// Story 6.4, AD-5: a tabbed screen is one descriptor per tab. `tabMembersFor` reads the group's built
+// members in position order, and `tabGroupFor` names the group's first tab for every member.
+//
+// Mutation (Rule 19): swap `tab.position` of the resource servers and authorization server tabs ->
+// the member order below goes red.
+test('tabMembersFor lists the OAuth 2.0 tabs in position order, and tabGroupFor names the group for each', () => {
+  const group = screenForRoute('security/oauth');
+  const routes = ['security/oauth', 'security/oauth/clients', 'security/oauth/resource-servers', 'security/oauth/server', 'security/oauth/server-clients'];
+  for (const route of routes) {
+    const member = screenForRoute(route);
+    assert.deepEqual(
+      tabMembersFor(member).map((tab) => tab.route),
+      routes,
+      `${route}'s strip is the five tabs in position order`
+    );
+    assert.equal(tabGroupFor(member)?.route, 'security/oauth', `${route}'s group is the OAuth 2.0 screen`);
+    assert.equal(member.archetype, 'detail', `${route} is a detail view`);
+  }
+  assert.deepEqual(
+    tabMembersFor(group).map((tab) => stringFor(tab.tab.labelKey)),
+    ['Client server descriptions', 'Client configurations', 'Resource servers', 'Authorization server', 'Server client descriptions'],
+    'labelled by each tab.labelKey'
+  );
+  assert.equal(isListedScreen(group), true, 'the group\'s first tab is its side-bar entry');
+  for (const route of routes.slice(1)) assert.equal(isListedScreen(screenForRoute(route)), false, `${route} is unlisted`);
+  assert.deepEqual(tabMembersFor(screenForRoute('security/ssl')), [], 'a screen that is no tab has no strip');
+  assert.equal(tabGroupFor(screenForRoute('security/ssl')), null, 'and no group');
+  assert.equal(screenForUrl('/security/oauth/server-clients?ns=HSCUSTOM')?.route, 'security/oauth/server-clients', 'a tab URL resolves to its own tab');
+  assert.equal(
+    tabGroupFor({ ...screenForRoute('security/oauth/clients'), tab: { group: 'security/nosuch', position: 2, labelKey: 'oauthTabClients' } }),
+    null,
+    'a group no built first tab declares resolves none'
+  );
+});
+
+// Story 6.3: a parent-scoped list's one criterion comes from the URL's id, decoded once past the
+// router's own decode (AD-13).
+//
+// Mutation (Rule 19): decode the segment once instead of twice -> the `%Demo_1` round trip goes red.
+// Drop the `parentScope === ''` guard -> "a list with no parent fills no criterion, whatever it
+// declares" goes red.
+test('parentCriteria fills the Secrets list\'s one criterion with the decoded route id, and nothing else', () => {
+  const secrets = screenForRoute('security/wallet/secrets');
+  assert.deepEqual(parentCriteria(secrets, '/security/wallet/secrets/OcuPilotDemo?ns=HSCUSTOM'), { collection: 'OcuPilotDemo' });
+  for (const id of ['%Demo_1', 'a.b', 'a-b_c']) {
+    const url = `/security/wallet/secrets/${encodeEntityId(id)}?ns=HSCUSTOM`;
+    assert.deepEqual(parentCriteria(secrets, url), { collection: id }, `the id ${id} round-trips`);
+  }
+  assert.deepEqual(parentCriteria(secrets, '/security/wallet/secrets?ns=HSCUSTOM'), {}, 'no id fills nothing');
+  assert.deepEqual(parentCriteria(secrets, '/security/wallet?ns=HSCUSTOM'), {}, 'nor does another route');
+  assert.deepEqual(parentCriteria(screenForRoute('security/wallet'), '/security/wallet/OcuPilotDemo'), {}, 'and a list with no parent fills no criterion');
+  assert.deepEqual(
+    parentCriteria({ ...secrets, parentScope: '' }, '/security/wallet/secrets/OcuPilotDemo?ns=HSCUSTOM'),
+    {},
+    'a list with no parent fills no criterion, whatever it declares'
   );
 });
 

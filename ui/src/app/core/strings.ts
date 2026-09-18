@@ -579,6 +579,415 @@ export const STRINGS = {
   agentPanelSecretWarningEdit: 'Edit',
   /** EXPERIENCE.md:350 */
   agentContextChipSecretGlyph: 'Secret fields on this screen are never sent',
+  /** EXPERIENCE.md:356 */
+  restApiListLabel: 'REST API explorer',
+  /** EXPERIENCE.md:356 */
+  restApiColumnSpecBased: 'Spec-based',
+  /** EXPERIENCE.md:356 */
+  restApiListEmpty: 'No REST applications in <NAMESPACE>.',
+  /** EXPERIENCE.md:357 */
+  openApiViewerLabel: 'OpenAPI document',
+  /** EXPERIENCE.md:357 */
+  openApiColumnPath: 'Path',
+  /** EXPERIENCE.md:357 */
+  openApiColumnVerb: 'Verb',
+  /** EXPERIENCE.md:357 */
+  openApiColumnSummary: 'Summary',
+  /** EXPERIENCE.md:357 */
+  openApiParameters: 'Parameters',
+  /** EXPERIENCE.md:357 */
+  openApiResponses: 'Responses',
+  /** EXPERIENCE.md:357 */
+  openApiRequired: 'Required',
+  /** EXPERIENCE.md:357 */
+  openApiRaw: 'Raw',
+  /** EXPERIENCE.md:357 */
+  openApiViewerEmpty: 'This document declares no paths.',
+  /** EXPERIENCE.md:357 */
+  openApiRefusedAction: 'read this document',
+  /** EXPERIENCE.md:357 */
+  openApiCapNotice: 'This document was cut at the row cap \u2014 some operations are not shown.',
+  /** EXPERIENCE.md:358 */
+  roleColumnCreatedBy: 'Created by',
+  /** EXPERIENCE.md:358 */
+  roleColumnEscalationOnly: 'Escalation only',
+  /** EXPERIENCE.md:358 */
+  roleListEmpty: 'No roles on this instance.',
+  /** EXPERIENCE.md:359 */
+  resourceListLabel: 'Resources',
+  /** EXPERIENCE.md:359 */
+  resourceColumnPublicPermission: 'Public permission',
+  /** EXPERIENCE.md:359 */
+  resourceColumnDeletable: 'Deletable',
+  /** EXPERIENCE.md:359 */
+  resourceListEmpty: 'No resources on this instance.',
+  /** EXPERIENCE.md:360 */
+  serviceListLabel: 'Services',
+  /** EXPERIENCE.md:360 */
+  serviceColumnAuthentication: 'Authentication methods',
+  /** EXPERIENCE.md:360 */
+  serviceColumnAllowedAddresses: 'Allowed IP addresses',
+  /** EXPERIENCE.md:360 */
+  serviceAllowedUnrestricted: 'Unrestricted',
+  /** EXPERIENCE.md:360 */
+  serviceListEmpty: 'No services on this instance.',
+  /** EXPERIENCE.md:361 */
+  x509ListLabel: 'X.509',
+  /** EXPERIENCE.md:361 */
+  x509ColumnAlias: 'Alias',
+  /** EXPERIENCE.md:361 */
+  x509ColumnSubject: 'Subject',
+  /** EXPERIENCE.md:361 */
+  x509ColumnIssuer: 'Issuer',
+  /** EXPERIENCE.md:361 */
+  x509ColumnValidFrom: 'Valid from',
+  /** EXPERIENCE.md:361 */
+  x509ColumnValidUntil: 'Valid until',
+  /** EXPERIENCE.md:361 */
+  x509ListEmpty: 'No X.509 credentials on this instance.',
+  /** EXPERIENCE.md:362 */
+  ldapListLabel: 'LDAP / Kerberos',
+  /** EXPERIENCE.md:362 */
+  ldapListEmpty: 'No LDAP / Kerberos configurations on this instance.',
+  /** EXPERIENCE.md:363 */
+  walletListLabel: 'Wallet',
+  /** EXPERIENCE.md:363 */
+  walletColumnUseResource: 'Use resource',
+  /** EXPERIENCE.md:363 */
+  walletColumnEditResource: 'Edit resource',
+  /** EXPERIENCE.md:363 */
+  walletListEmpty: 'No wallet collections on this instance.',
+  /** EXPERIENCE.md:364 */
+  walletSecretListLabel: 'Secrets',
+  /** EXPERIENCE.md:364 */
+  walletSecretListEmpty: 'No secrets in this collection.',
+  /** EXPERIENCE.md:365 */
+  oauthLabel: 'OAuth 2.0',
+  /** EXPERIENCE.md:365 */
+  oauthTabServerDescriptions: 'Client server descriptions',
+  /** EXPERIENCE.md:365 */
+  oauthTabClients: 'Client configurations',
+  /** EXPERIENCE.md:365 */
+  oauthTabResourceServers: 'Resource servers',
+  /** EXPERIENCE.md:365 */
+  oauthTabServer: 'Authorization server',
+  /** EXPERIENCE.md:365 */
+  oauthTabServerClients: 'Server client descriptions',
+  /** EXPERIENCE.md:366 */
+  oauthColumnClientType: 'Client type',
+  /** EXPERIENCE.md:366 */
+  oauthColumnDefaultScope: 'Default scope',
+  /** EXPERIENCE.md:366 */
+  oauthColumnScopes: 'Scopes',
+  /** EXPERIENCE.md:366 */
+  oauthColumnGrantTypes: 'Grant types',
+  /** EXPERIENCE.md:366 */
+  oauthColumnSigningAlgorithm: 'Signing algorithm',
+  /** EXPERIENCE.md:366 */
+  oauthColumnEncryptionAlgorithm: 'Encryption algorithm',
+  /** EXPERIENCE.md:366 */
+  oauthColumnKeyAlgorithm: 'Key algorithm',
+  /** EXPERIENCE.md:366 */
+  oauthColumnServerCredentials: 'Server credentials',
+  /** EXPERIENCE.md:366 */
+  oauthColumnClientId: 'Client ID',
+  /** EXPERIENCE.md:366 */
+  oauthColumnRedirectUrls: 'Redirect URLs',
+  /** EXPERIENCE.md:366 */
+  classicRowLinkDescription: 'Opens <page> in the classic portal in a new tab.',
+  /** EXPERIENCE.md:367 */
+  oauthServerDescriptionsEmpty: 'No client server descriptions on this instance.',
+  /** EXPERIENCE.md:367 */
+  oauthClientsEmpty: 'No client configurations on this instance.',
+  /** EXPERIENCE.md:367 */
+  oauthResourceServersEmpty: 'No resource servers on this instance.',
+  /** EXPERIENCE.md:367 */
+  oauthServerEmpty: 'No authorization server is configured on this instance.',
+  /** EXPERIENCE.md:367 */
+  oauthServerClientsEmpty: 'No server client descriptions on this instance.',
+  /** EXPERIENCE.md:368 */
+  taskOnDemandLabel: 'On-demand tasks',
+  /** EXPERIENCE.md:368 */
+  taskOnDemandEmpty: 'No tasks on this instance can be run on demand.',
+  /** EXPERIENCE.md:369 */
+  taskUpcomingLabel: 'Upcoming tasks',
+  /** EXPERIENCE.md:369 */
+  taskUpcomingColumnAt: 'Scheduled for',
+  /** EXPERIENCE.md:369 */
+  taskColumnSuspended: 'Suspended',
+  /** EXPERIENCE.md:369 */
+  taskUpcomingHorizon: 'Scheduled to run within',
+  /** EXPERIENCE.md:369 */
+  taskUpcomingHours1: 'The next hour',
+  /** EXPERIENCE.md:369 */
+  taskUpcomingHours4: 'The next 4 hours',
+  /** EXPERIENCE.md:369 */
+  taskUpcomingHours12: 'The next 12 hours',
+  /** EXPERIENCE.md:369 */
+  taskUpcomingHours24: 'The next 24 hours',
+  /** EXPERIENCE.md:369 */
+  taskUpcomingHours72: 'The next 3 days',
+  /** EXPERIENCE.md:369 */
+  taskUpcomingHours168: 'The next 7 days',
+  /** EXPERIENCE.md:369 */
+  taskUpcomingUntil: 'Until a date',
+  /** EXPERIENCE.md:369 */
+  taskUpcomingEmpty: 'No tasks are scheduled to run within this horizon.',
+  /** EXPERIENCE.md:370 */
+  taskHistoryLabel: 'Task history',
+  /** EXPERIENCE.md:370 */
+  taskHistoryColumnStarted: 'Started',
+  /** EXPERIENCE.md:370 */
+  taskHistoryColumnCompleted: 'Completed',
+  /** EXPERIENCE.md:370 */
+  taskHistoryColumnStatus: 'Status',
+  /** EXPERIENCE.md:370 */
+  taskHistoryColumnResult: 'Result',
+  /** EXPERIENCE.md:370 */
+  taskHistoryColumnTaskId: 'Task ID',
+  /** EXPERIENCE.md:370 */
+  taskHistoryColumnErrDate: 'Error date',
+  /** EXPERIENCE.md:370 */
+  taskHistoryColumnLogged: 'Logged',
+  /** EXPERIENCE.md:370 */
+  taskHistorySearch: 'Contains',
+  /** EXPERIENCE.md:370 */
+  taskHistoryUserOnly: 'User-defined tasks only',
+  /** EXPERIENCE.md:370 */
+  taskHistoryEmpty: 'No task runs match.',
+  /** EXPERIENCE.md:371 */
+  taskRunsLabel: 'History',
+  /** EXPERIENCE.md:371 */
+  taskRunsEmpty: 'This task has no recorded runs.',
+  /** EXPERIENCE.md:372 */
+  taskDetailsLabel: 'Task details',
+  /** EXPERIENCE.md:372 */
+  taskDetailsGone: 'This task no longer exists.',
+  /** EXPERIENCE.md:372 */
+  taskDetailsTaskClass: 'Task class',
+  /** EXPERIENCE.md:372 */
+  taskDetailsPriority: 'Priority',
+  /** EXPERIENCE.md:372 */
+  taskDetailsRunAs: 'Run as',
+  /** EXPERIENCE.md:372 */
+  taskDetailsLastError: 'Last error',
+  /** EXPERIENCE.md:372 */
+  taskDetailsSchedule: 'Schedule',
+  /** EXPERIENCE.md:372 */
+  taskDetailsHowOften: 'How often',
+  /** EXPERIENCE.md:372 */
+  taskDetailsTimeOfDay: 'Time of day',
+  /** EXPERIENCE.md:372 */
+  taskDetailsNextSuspended: 'Not scheduled while suspended',
+  /** EXPERIENCE.md:372 */
+  taskDetailsEdit: 'Edit task',
+  /** EXPERIENCE.md:372 */
+  taskScheduleEveryDay: 'Every day',
+  /** EXPERIENCE.md:372 */
+  taskScheduleEveryNDays: 'Every {n} days',
+  /** EXPERIENCE.md:372 */
+  taskScheduleWeekly: 'Every week on {days}',
+  /** EXPERIENCE.md:372 */
+  taskScheduleWeeklyEveryN: 'Every {n} weeks on {days}',
+  /** EXPERIENCE.md:372 */
+  taskScheduleMonthlyDay: 'Every month on day {d}',
+  /** EXPERIENCE.md:372 */
+  taskScheduleMonthlyDayEveryN: 'Every {n} months on day {d}',
+  /** EXPERIENCE.md:372 */
+  taskScheduleMonthlySpecial: 'Every month on the {ordinal} {weekday}',
+  /** EXPERIENCE.md:372 */
+  taskScheduleMonthlySpecialEveryN: 'Every {n} months on the {ordinal} {weekday}',
+  /** EXPERIENCE.md:372 */
+  taskScheduleRunAfter: 'After another task completes',
+  /** EXPERIENCE.md:372 */
+  taskScheduleOnDemand: 'On demand only',
+  /** EXPERIENCE.md:372 */
+  taskScheduleOnceAt: 'Once at {time}',
+  /** EXPERIENCE.md:372 */
+  taskScheduleEveryMinute: 'Every minute between {start} and {end}',
+  /** EXPERIENCE.md:372 */
+  taskScheduleEveryNMinutes: 'Every {n} minutes between {start} and {end}',
+  /** EXPERIENCE.md:372 */
+  taskScheduleEveryHour: 'Every hour between {start} and {end}',
+  /** EXPERIENCE.md:372 */
+  taskScheduleEveryNHours: 'Every {n} hours between {start} and {end}',
+  /** EXPERIENCE.md:372 */
+  weekdaySunday: 'Sunday',
+  /** EXPERIENCE.md:372 */
+  weekdayMonday: 'Monday',
+  /** EXPERIENCE.md:372 */
+  weekdayTuesday: 'Tuesday',
+  /** EXPERIENCE.md:372 */
+  weekdayWednesday: 'Wednesday',
+  /** EXPERIENCE.md:372 */
+  weekdayThursday: 'Thursday',
+  /** EXPERIENCE.md:372 */
+  weekdayFriday: 'Friday',
+  /** EXPERIENCE.md:372 */
+  weekdaySaturday: 'Saturday',
+  /** EXPERIENCE.md:372 */
+  ordinalFirst: 'first',
+  /** EXPERIENCE.md:372 */
+  ordinalSecond: 'second',
+  /** EXPERIENCE.md:372 */
+  ordinalThird: 'third',
+  /** EXPERIENCE.md:372 */
+  ordinalFourth: 'fourth',
+  /** EXPERIENCE.md:372 */
+  ordinalFifth: 'fifth',
+  /** EXPERIENCE.md:373 */
+  processDetailsLabel: 'Process details',
+  /** EXPERIENCE.md:373 */
+  processDetailsGone: 'This process no longer exists.',
+  /** EXPERIENCE.md:373 */
+  processDetailsGroupGeneral: 'General',
+  /** EXPERIENCE.md:373 */
+  processDetailsGroupExecution: 'Execution',
+  /** EXPERIENCE.md:373 */
+  processDetailsGroupClientApplication: 'Client application',
+  /** EXPERIENCE.md:373 */
+  processDetailsParentPid: 'Parent process ID',
+  /** EXPERIENCE.md:373 */
+  processDetailsLoginRoles: 'Login roles',
+  /** EXPERIENCE.md:373 */
+  processDetailsEscalatedRoles: 'Escalated roles',
+  /** EXPERIENCE.md:373 */
+  processDetailsOsUser: 'OS user',
+  /** EXPERIENCE.md:373 */
+  processDetailsCpuTime: 'CPU time (ms)',
+  /** EXPERIENCE.md:373 */
+  processDetailsGlobalReferences: 'Global references',
+  /** EXPERIENCE.md:373 */
+  processDetailsPrivateGlobalReferences: 'Private global references',
+  /** EXPERIENCE.md:373 */
+  processDetailsPrivateGlobalBlocks: 'Private global blocks',
+  /** EXPERIENCE.md:373 */
+  processDetailsMemoryLimit: 'Memory limit (KB)',
+  /** EXPERIENCE.md:373 */
+  processDetailsMemoryPeak: 'Memory peak (KB)',
+  /** EXPERIENCE.md:373 */
+  processDetailsMemoryUsed: 'Memory used (KB)',
+  /** EXPERIENCE.md:373 */
+  processDetailsCurrentDevice: 'Current device',
+  /** EXPERIENCE.md:373 */
+  processDetailsOpenDevices: 'Open devices',
+  /** EXPERIENCE.md:373 */
+  processDetailsInTransaction: 'In transaction',
+  /** EXPERIENCE.md:373 */
+  processDetailsSourceLocation: 'Source location',
+  /** EXPERIENCE.md:373 */
+  processDetailsLocation: 'Location',
+  /** EXPERIENCE.md:373 */
+  processDetailsClientName: 'Client name',
+  /** EXPERIENCE.md:373 */
+  processDetailsClientExecutable: 'Client executable',
+  /** EXPERIENCE.md:373 */
+  processDetailsClientIpAddress: 'Client IP address',
+
+  /** EXPERIENCE.md:374 */
+  systemUsageLabel: 'System usage',
+  /** EXPERIENCE.md:374 */
+  systemUsageGlobalUpdates: 'Global updates',
+  /** EXPERIENCE.md:374 */
+  systemUsageRoutineCalls: 'Routine calls',
+  /** EXPERIENCE.md:374 */
+  systemUsageLogicalBlockRequests: 'Logical block requests',
+  /** EXPERIENCE.md:374 */
+  systemUsageBlockReads: 'Block reads',
+  /** EXPERIENCE.md:374 */
+  systemUsageBlockWrites: 'Block writes',
+  /** EXPERIENCE.md:374 */
+  systemUsageJournalEntries: 'Journal entries',
+  /** EXPERIENCE.md:374 */
+  systemUsageJournalBlockWrites: 'Journal block writes',
+  /** EXPERIENCE.md:374 */
+  systemUsageLastUpdate: 'Last update',
+  /** EXPERIENCE.md:374 */
+  systemUsageSharedMemory: 'Shared memory',
+  /** EXPERIENCE.md:374 */
+  systemUsageGlobalRefsPerSecond: 'Global references per second',
+  /** EXPERIENCE.md:374 */
+  systemUsageCacheEfficiency: 'Cache efficiency',
+  /** EXPERIENCE.md:374 */
+  systemUsageDatabaseSpace: 'Database space',
+  /** EXPERIENCE.md:374 */
+  systemUsageJournalSpace: 'Journal space',
+  /** EXPERIENCE.md:374 */
+  systemUsageLockTable: 'Lock table',
+  /** EXPERIENCE.md:374 */
+  systemUsageWriteDaemon: 'Write daemon',
+  /** EXPERIENCE.md:374 */
+  systemUsageEmpty: 'System usage is unavailable.',
+  /** EXPERIENCE.md:375 */
+  lockListLabel: 'Locks',
+  /** EXPERIENCE.md:375 */
+  lockColumnMode: 'Mode',
+  /** EXPERIENCE.md:375 */
+  lockColumnReference: 'Reference',
+  /** EXPERIENCE.md:375 */
+  lockColumnDirectory: 'Directory',
+  /** EXPERIENCE.md:375 */
+  lockColumnSystem: 'System',
+  /** EXPERIENCE.md:375 */
+  lockSystemLocal: 'This instance',
+  /** EXPERIENCE.md:375 */
+  lockListEmpty: 'No locks on this instance.',
+  /** EXPERIENCE.md:376 */
+  databaseListLabel: 'Databases',
+  /** EXPERIENCE.md:376 */
+  databaseFreeSpaceLabel: 'Free space',
+  /** EXPERIENCE.md:376 */
+  viewMenuLabel: 'View',
+  /** EXPERIENCE.md:376 */
+  databaseColumnSize: 'Size',
+  /** EXPERIENCE.md:376 */
+  databaseColumnMaxSize: 'Maximum size',
+  /** EXPERIENCE.md:376 */
+  databaseColumnAvailable: 'Available',
+  /** EXPERIENCE.md:376 */
+  databaseColumnDiskFree: 'Disk free',
+  /** EXPERIENCE.md:376 */
+  databaseColumnMounted: 'Mounted',
+  /** EXPERIENCE.md:376 */
+  databaseListEmpty: 'No databases on this instance.',
+  /** EXPERIENCE.md:376 */
+  databaseDetailsLabel: 'Database details',
+  /** EXPERIENCE.md:376 */
+  databaseDetailsGone: 'This database no longer exists.',
+  /** EXPERIENCE.md:376 */
+  databaseDetailsExpansionSize: 'Expansion size',
+  /** EXPERIENCE.md:376 */
+  databaseDetailsNewVolumeThreshold: 'New volume threshold',
+  /** EXPERIENCE.md:376 */
+  databaseDetailsNewVolumeDirectory: 'New volume directory',
+  /** EXPERIENCE.md:376 */
+  databaseDetailsKeepNewGlobals: 'Keep new globals',
+  /** EXPERIENCE.md:376 */
+  databaseDetailsNewGlobalCollation: 'New global collation',
+  /** EXPERIENCE.md:376 */
+  databaseDetailsClusterMountMode: 'Cluster mount mode',
+  /** EXPERIENCE.md:376 */
+  databaseDetailsReadOnly: 'Read only',
+  /** EXPERIENCE.md:376 */
+  databaseDetailsJournalNewGlobals: 'Journal new globals',
+  /** EXPERIENCE.md:376 */
+  databaseVolumeListLabel: 'Volume files',
+  /** EXPERIENCE.md:376 */
+  databaseVolumeColumnVolume: 'Volume',
+  /** EXPERIENCE.md:376 */
+  databaseVolumeColumnFile: 'File',
+  /** EXPERIENCE.md:376 */
+  databaseVolumeColumnDirectoryTotal: 'Directory total',
+  /** EXPERIENCE.md:376 */
+  databaseVolumeListEmpty: 'No volume files for this database.',
+  /** EXPERIENCE.md:377 */
+  deviceListLabel: 'Devices',
+  /** EXPERIENCE.md:377 */
+  deviceColumnPhysical: 'Physical device',
+  /** EXPERIENCE.md:377 */
+  deviceColumnSubtype: 'Subtype',
+  /** EXPERIENCE.md:377 */
+  deviceListEmpty: 'No devices on this instance.',
 
   // Not from the Fixed strings table, but required verbatim by this story's task
   // list: the audit-marker-failure fallback text (AD-15 / EXPERIENCE.md "9. **Audit.** Every confirmed"), the
@@ -636,6 +1045,52 @@ export const STRINGS = {
   serverFlagTest: 'Test',
   serverFlagFailover: 'Failover',
   serverFlagDevelopment: 'Development',
+
+  // The log viewer both log screens share -- built by Story 6.13's alerts.log screen and declared
+  // by Story 6.14's messages.log screen, which adds no string of its own.
+  //
+  // The severity words are the vendor's own five-level scale (`irissys/%sySystem.inc`: -2 and -1
+  // debug, 0 informational, 1 warning, 2 severe, 3 fatal), one more than the four the archetype
+  // row lists, and every rendered severity carries its word so colour is never alone.
+  /** EXPERIENCE.md:378 */
+  logViewerColumnSeverity: 'Severity',
+  /** EXPERIENCE.md:378 */
+  logViewerColumnMessage: 'Message',
+  /** EXPERIENCE.md:378 */
+  logViewerEmpty: 'No entries.',
+  /** EXPERIENCE.md:378 */
+  logViewerNoMatches: 'No matches.',
+  /** EXPERIENCE.md:378 */
+  logViewerLoadNewer: 'Load newer',
+  /** EXPERIENCE.md:378 */
+  logViewerJumpTop: 'Jump to top',
+  /** EXPERIENCE.md:378 */
+  logViewerJumpBottom: 'Jump to bottom',
+  /** EXPERIENCE.md:378 */
+  logSeverityDebug: 'Debug',
+  /** EXPERIENCE.md:378 */
+  logSeverityInfo: 'Info',
+  /** EXPERIENCE.md:378 */
+  logSeverityWarning: 'Warning',
+  /** EXPERIENCE.md:378 */
+  logSeveritySevere: 'Severe',
+  /** EXPERIENCE.md:378 */
+  logSeverityFatal: 'Fatal',
+
+  // The alerts.log screen's own two, beyond the shared viewer's: its side-bar entry and title, and
+  // the polite count the sticky search announces.
+  /** EXPERIENCE.md:379 */
+  alertLogListLabel: 'alerts.log',
+  /** EXPERIENCE.md:379 */
+  logViewerMatchCount: '<n> of <N>',
+
+  // The messages.log screen's own two: its side-bar entry and title, and the control that clears
+  // the severity-chip filter. Clear filter is published on this row rather than reused from
+  // Component Patterns, which names it only as a `button-text` example (DW-1109).
+  /** EXPERIENCE.md:380 */
+  messagesLogListLabel: 'messages.log',
+  /** EXPERIENCE.md:378 */
+  logViewerClearFilter: 'Clear filter',
 
   // Two connectivity sentences EXPERIENCE.md publishes outside the Fixed strings table, each
   // authorized by its own targeted extractor in `ui/tools/strings.test.mjs`, never by being

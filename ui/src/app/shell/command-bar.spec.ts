@@ -14,10 +14,11 @@ import { ScreenStores } from '../core/screen-store';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
+import { ViewOptions } from '../core/view-options';
 import { ApiService } from '../core/api';
 import { screenDeclaration } from '../testing/screen-declaration';
 import { tableDeclaration } from '../testing/table-declaration';
-import { CommandBar, SORT_MENU_OVERLAY_ID } from './command-bar';
+import { CommandBar, SORT_MENU_OVERLAY_ID, VIEW_MENU_OVERLAY_ID } from './command-bar';
 import { CommandBox } from './command-box';
 import { ListPage } from './list-page';
 
@@ -103,6 +104,7 @@ describe('the command bar', () => {
   let stores: ScreenStores;
   let actions: ScreenActions;
   let overlays: OverlayStack;
+  let viewOptionsSvc: ViewOptions;
   let apiRows: unknown[] = [];
   const planted: HTMLElement[] = [];
 
@@ -113,6 +115,7 @@ describe('the command bar', () => {
     ({ refresh, bus, stores } = realRefresh());
     actions = new ScreenActions();
     overlays = new OverlayStack();
+    viewOptionsSvc = new ViewOptions();
     TestBed.configureTestingModule({
       providers: [
         provideRouter([{ path: '', children: [] }, { path: '**', children: [] }]),
@@ -127,6 +130,7 @@ describe('the command bar', () => {
         },
         { provide: ScreenActions, useValue: actions },
         { provide: OverlayStack, useValue: overlays },
+        { provide: ViewOptions, useValue: viewOptionsSvc },
         { provide: ShellState, useValue: new ShellState({ preferences: new PreferenceStore({ storage: memoryStorage() }) }) },
         { provide: ScopeService, useValue: { loaded: () => true, namespace: () => 'HSCUSTOM', subscribe: () => () => {} } as unknown as ScopeService },
       ],
@@ -360,18 +364,114 @@ describe('the command bar', () => {
     expect(count.contains(node)).toBe(false);
   });
 
-  it('DW-147 (pinned, not built): no view-options control renders -- named by the AC and by DESIGN.md:1039, but EXPERIENCE.md publishes no label for it or its options', () => {
-    // The sort slot beside it is no longer in this family: Story 2.9 published "Sort", "Ascending"
-    // and "Descending" as a Fixed strings row and built the control. View still has no label of any
-    // kind, so it stays unrendered rather than being invented.
-    expect(fixture.nativeElement.querySelector('.ocu-command-bar-view-options')).toBeNull();
+  it('DW-147: no View control renders for a screen whose page registered no binding', () => {
+    // Story 6.11 built the mechanism and Databases is its first registrant (`databases.page.ts`),
+    // so the generic case left here is a screen with nothing registered, not a screen with no
+    // published label -- EXPERIENCE.md now publishes one. This fixture's screen registers nothing.
+    expect(viewOptionsSvc.has()).toBe(false);
+    expect(fixture.nativeElement.querySelector('.ocu-command-bar-view-trigger')).toBeNull();
     const buttons: HTMLButtonElement[] = Array.from(
       fixture.nativeElement.querySelectorAll('button')
     );
-    expect(buttons.map((button) => button.textContent?.trim())).not.toContain('View');
+    expect(buttons.map((button) => button.textContent?.trim())).not.toContain(STRINGS.viewMenuLabel);
     // The one menu trigger this row can draw is the sort control's, and this screen declares no
     // read, so there is none here either.
     expect(fixture.nativeElement.querySelector('[aria-haspopup="menu"]')).toBeNull();
+  });
+
+  // --- The View control (Story 6.11) -----------------------------------------------------------
+  //
+  // EXPERIENCE.md "the command-bar View control" and DESIGN.md `:1039` name it; `ViewOptions` is
+  // the seam a page registers through (`databases.page.spec.ts` pins the registration itself).
+  // These pin the generic drawing: nothing renders for an unregistered screen (above), and once a
+  // page registers, the shape, the checked entry and the click-through to `choose` are exactly the
+  // sort menu's, because this component draws both from the same markup pattern.
+
+  const viewTrigger = (): HTMLButtonElement | null =>
+    fixture.nativeElement.querySelector('.ocu-command-bar-view-trigger');
+
+  const viewItems = (): HTMLButtonElement[] =>
+    Array.from(fixture.nativeElement.querySelectorAll('.ocu-command-bar-view-item'));
+
+  const openView = () => {
+    viewTrigger()?.click();
+    fixture.detectChanges();
+  };
+
+  /**
+   * A stand-in for a page's own two-route registration, with a spy on `choose`. Plants the bar in
+   * the document, because `focus()` and `document.activeElement` mean nothing for a detached tree
+   * (`buildSortable`'s own reason).
+   */
+  const registerView = (current = 'route-a') => {
+    document.body.appendChild(fixture.nativeElement);
+    planted.push(fixture.nativeElement);
+    let currentRoute = current;
+    const choose = (route: string) => {
+      currentRoute = route;
+    };
+    const unregister = viewOptionsSvc.register({
+      options: () => [
+        { route: 'route-a', label: 'Alpha' },
+        { route: 'route-b', label: 'Bravo' },
+      ],
+      current: () => currentRoute,
+      choose,
+    });
+    return { unregister, currentRoute: () => currentRoute };
+  };
+
+  it('draws the trigger named "View" with a caret once a page registers, and no menu until opened', () => {
+    registerView();
+    fixture.detectChanges();
+    const button = viewTrigger();
+    expect(button).not.toBeNull();
+    expect(button?.textContent).toContain(STRINGS.viewMenuLabel);
+    expect(button?.getAttribute('aria-expanded')).toBe('false');
+    expect(fixture.nativeElement.querySelector('.ocu-command-bar-view-menu')).toBeNull();
+  });
+
+  it('opening it offers the registered options in order, the current one checked', () => {
+    registerView('route-b');
+    fixture.detectChanges();
+    openView();
+    const items = viewItems();
+    expect(items.map((item) => item.textContent?.trim())).toEqual(['Alpha', 'Bravo']);
+    expect(items[0].getAttribute('aria-checked')).toBe('false');
+    expect(items[1].getAttribute('aria-checked')).toBe('true');
+  });
+
+  it('choosing an entry runs the registered choose and closes the menu, returning focus to the trigger', () => {
+    const { currentRoute } = registerView('route-a');
+    fixture.detectChanges();
+    openView();
+    viewItems()[1].click();
+    fixture.detectChanges();
+    expect(currentRoute()).toBe('route-b');
+    expect(fixture.nativeElement.querySelector('.ocu-command-bar-view-menu')).toBeNull();
+    expect(document.activeElement).toBe(viewTrigger());
+  });
+
+  it('a navigation closes an open View menu and releases its overlay entry', async () => {
+    registerView();
+    fixture.detectChanges();
+    openView();
+    expect(overlays.ids()).toContain(VIEW_MENU_OVERLAY_ID);
+
+    await TestBed.inject(Router).navigateByUrl('/somewhere-else');
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.ocu-command-bar-view-menu')).toBeNull();
+    expect(overlays.ids()).not.toContain(VIEW_MENU_OVERLAY_ID);
+  });
+
+  it('unregistering removes the control', () => {
+    const { unregister } = registerView();
+    fixture.detectChanges();
+    expect(viewTrigger()).not.toBeNull();
+    unregister();
+    fixture.detectChanges();
+    expect(viewTrigger()).toBeNull();
   });
 
   it('DW-141 (description half, fixed): the filter is described by nothing at all while the count is empty', () => {

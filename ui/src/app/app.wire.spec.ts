@@ -26,6 +26,7 @@ import { ShellState } from './core/shell-state';
 import { STRINGS } from './core/strings';
 import { SuggestedView } from './core/suggested-view';
 import { stubAgentContext } from './testing/agent-context';
+import { ViewOptions } from './core/view-options';
 import { stubAgentStatus } from './testing/agent-status';
 import { stubSuggestedView } from './testing/suggested-view';
 import { stubTurnStore } from './testing/turn';
@@ -265,6 +266,7 @@ describe('the real shell, routed to the real Home screen, sharing one real Refre
         { provide: TurnStore, useValue: stubTurnStore() },
         { provide: OverlayStack, useValue: new OverlayStack() },
         { provide: ScreenActions, useValue: new ScreenActions() },
+        { provide: ViewOptions, useValue: new ViewOptions() },
         { provide: FormDirty, useValue: new FormDirty() },
         // Unanswered on purpose: this file is about the chip and the stamp around the real Home
         // screen, and a panel that has picked an audience would be a second subject in it.

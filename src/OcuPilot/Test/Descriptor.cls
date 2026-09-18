@@ -77,6 +77,46 @@ Method TestTheWebApplicationsListValidatesAndNamesItsClassicPageInItsOwnCase()
     Do $$$AssertTrue($IsObject(tCompiled), "which is a compiled class on this instance, found under the declaration's own case")
 }
 
+/// <p>Story 6.1 -- the REST API explorer and the OpenAPI document viewer pass the read, criteria and
+/// classic-link rules; their routes and tool identifiers resolve to them; both read through the
+/// <code>mgmnt</code> source in the route's namespace scope, over <code>rest-service</code> entities
+/// keyed by one name; neither names a classic page; the explorer is the area's second side-bar entry
+/// and the viewer is routable and unlisted; and the viewer declares its one criterion,
+/// <code>application</code>, bounded at 256 characters.</p>
+/// <p>Mutations: set the viewer's <code>sideBarPosition</code> to 3 -&gt; the unlisted assertion goes
+/// red; declare the explorer's read on the <code>admin</code> port -&gt; the source assertion goes
+/// red.</p>
+Method TestTheRestApiExplorerAndDocumentViewerValidate()
+{
+    Set tExplorer = "OcuPilot.Screen.Descriptor.RestApiList"
+    Set tViewer = "OcuPilot.Screen.Descriptor.OpenApiViewer"
+    For tClass = tExplorer, tViewer {
+        Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
+        Do $$$AssertStatusOK(tSC, tClass _ ": the declaration parses")
+        If $$$ISERR(tSC) Continue
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", tClass _ ": its read and table are the declared grammar")
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).CriteriaProblem(tDeclaration), "", tClass _ ": and its criteria")
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem(tDeclaration), "", tClass _ ": and it links out to nothing")
+        Do $$$AssertEquals(tDeclaration.read.source.port, "mgmnt", tClass _ ": it reads through the management API's port")
+        Do $$$AssertEquals($ClassMethod(tClass, "Scope"), "namespace", tClass _ ": in the route's namespace")
+        Do $$$AssertEquals($ClassMethod(tClass, "PrimaryEntityType"), "rest-service", tClass _ ": over REST services")
+        Do $$$AssertEquals($ClassMethod(tClass, "IdKind"), "single", tClass _ ": keyed by one name")
+        Do $$$AssertEquals($ClassMethod(tClass, "ClassicPage"), "", tClass _ ": with no classic page")
+        Do $$$AssertEquals($ClassMethod(tClass, "AreaKey"), "web-applications", tClass _ ": in the Web applications area")
+    }
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForRoute("web-applications/rest-apis"), tExplorer, "the explorer's route resolves to it")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForTool("webapp.restapis"), tExplorer, "and so does its tool identifier")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForRoute("web-applications/rest-apis/document"), tViewer, "the viewer's route resolves to it")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForTool("webapp.openapi"), tViewer, "and so does its tool identifier")
+    Do $$$AssertEquals($ClassMethod(tExplorer, "SideBarPosition"), 2, "the explorer is the area's second side-bar entry")
+    Do $$$AssertEquals($ListToString($ClassMethod(tExplorer, "CommandAliases"), "|"), "REST|REST APIs", "answering the command box's REST aliases")
+    Do $$$AssertEquals($ClassMethod(tViewer, "SideBarPosition"), 0, "the viewer is routable and unlisted")
+    Do $$$AssertEquals($ClassMethod(tViewer, "Archetype"), "viewer (OpenAPI)", "on its own archetype")
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Screen.Read).CriteriaParams(tViewer)), "application", "and it declares one criterion, the application")
+    Do $$$AssertEquals($ClassMethod(tViewer, "Read").criteria.fields.%Get(0).maxLength, 256, "bounded at 256 characters")
+    Do $$$AssertEquals($ListLength(##class(OcuPilot.Screen.Read).CriteriaParams(tExplorer)), 0, "the explorer declares none")
+}
+
 /// <p>Story 2.6 -- the users list's declaration passes the read grammar, its detail call included,
 /// and the classic link rule; its route and tool identifier resolve to it; and its classic page is
 /// a class compiled on this instance under the declaration's own case (AD-44).</p>
@@ -567,6 +607,93 @@ Method TestTheApplicationErrorLogDeclaresNoReadAndGatesOnItsNamespaceFreePairs()
     Do $$$AssertEquals(##class(%SYS.Portal.Resources).NormalizePage($ZConvert("/csp/sys/op/UtilSysAppErrorNamespaces.csp", "O", "URL")), tPage, "and which the classic URL normalises to")
 }
 
+/// <p>Story 6.13 -- the alerts.log viewer declares the log file's own tail as its read source, the
+/// one pair the port behind it declares, a <code>none</code> id, no action and no refresh, and it
+/// takes the Logs area's first side-bar position.</p>
+/// <p>The screen's pair set is exactly <parameter>OcuPilot.Port.LogSourcePort.ALERTSPAIRS</parameter>,
+/// so the gate a user meets is the same whichever way the screen reads.
+/// <code>%Admin_Secure:USE</code> is deliberately absent: this screen reads no security endpoint,
+/// and the area's set is a union rather than a per-screen requirement (DW-278).</p>
+/// <p>Mutation: point the read's source at <code>{"port": "monitor"}</code> -&gt; the registry's own
+/// read arm refuses the declaration and the validation assertion goes red.</p>
+Method TestTheAlertLogViewerDeclaresTheLogSourceTailAndItsOnePair()
+{
+    Set tClass = "OcuPilot.Screen.Descriptor.LogAlertViewer"
+    Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
+    Do $$$AssertStatusOK(tSC, "the declaration parses")
+    If $$$ISERR(tSC) Quit
+
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DeclarationProblem(tDeclaration), "", "the declaration validates")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "including its read")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem(tDeclaration), "", "and it links out to nothing, as a list-classified archetype must")
+
+    Do $$$AssertEquals(tDeclaration.read.source.%ToJSON(), "{""port"":""logsource"",""endpoint"":""alerts"",""type"":""LIST""}", "the log file's own bounded tail is the read's source (AD-36)")
+    Do $$$AssertTrue($ListFind(##class(OcuPilot.Port.LogSourcePort).Sources(), tDeclaration.read.source.endpoint) > 0, "and its endpoint is a key of that port's fixed enum (AD-21)")
+    Do $$$AssertEquals(tDeclaration.read.fields.%ToJSON(), "[""time"",""severity"",""text""]", "three declared fields")
+    Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), "[{""resource"":""%Admin_Operate"",""permission"":""USE""}]", "one declared pair, and no %Admin_Secure:USE (DW-278)")
+    Set tPortPairs = ##class(OcuPilot.Port.LogSourcePort).PairsFor("alerts")
+    Do $$$AssertEquals($ListLength(tPortPairs), 1, "which the port behind it declares too")
+    If $ListLength(tPortPairs) = 1 Do $$$AssertEquals($ListToString($List(tPortPairs, 1), ":"), "%Admin_Operate:USE", "as the same pair, so neither way in is the wider gate")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("logs", $ClassMethod(tClass, "PrivilegePairs")), "", "and the logs area covers it, so its own declaration is untouched")
+
+    Do $$$AssertEquals(tDeclaration.id.%ToJSON(), "{""kind"":""none"",""parts"":[]}", "a log line is not an entity the instance can be asked for again (AD-13)")
+    Do $$$AssertEquals($ClassMethod(tClass, "Archetype"), "log-viewer", "it is the first screen of the log-viewer archetype")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Archetype).LinkOutClass("log-viewer"), "list", "which the vocabulary classifies as a list")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForRoute("logs/alerts"), tClass, "the route resolves to it")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForTool("logs.alerts"), tClass, "and so does its tool identifier")
+    Do $$$AssertEquals($ClassMethod(tClass, "SideBarPosition"), 1, "it is the Logs area's first side-bar entry")
+
+    Do $$$AssertEquals(''$ClassMethod(tClass, "Refreshes"), 0, "nothing streams: it never auto-refreshes (AD-43)")
+    Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RefreshRates")), 0, "and declares no rate")
+    Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RowActionIds")), 0, "no row action (AD-44)")
+    Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), "", "and no primary action")
+}
+
+/// <p>Story 6.14 -- the messages.log viewer declares the console log's own tail as its read source,
+/// the one pair the port behind it declares, a <code>none</code> id, no action and no refresh, and
+/// it takes the Logs area's <b>second</b> side-bar position.</p>
+/// <p>The position is asserted here and as an order in
+/// <method>OcuPilot.Test.Navigation.TestThePayloadCarriesEveryAreaWithAVerdict</method>: this leg
+/// says what the descriptor declares, that one says where the payload puts it.</p>
+/// <p>The <code>messages.log</code> command alias is asserted because the shell's fault banner
+/// resolves "Open messages.log" from it (AD-5, DW-148), so it is a published name and not a
+/// convenience.</p>
+/// <p>Mutation: change the read's <code>endpoint</code> to <code>alerts</code> -&gt; the source
+/// assertion goes red naming the other file, while the alerts.log leg above stays green.</p>
+Method TestTheConsoleLogViewerDeclaresTheLogSourceTailAndItsOnePair()
+{
+    Set tClass = "OcuPilot.Screen.Descriptor.LogMessageViewer"
+    Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
+    Do $$$AssertStatusOK(tSC, "the declaration parses")
+    If $$$ISERR(tSC) Quit
+
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DeclarationProblem(tDeclaration), "", "the declaration validates")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "including its read")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem(tDeclaration), "", "and it links out to nothing, as a list-classified archetype must")
+
+    Do $$$AssertEquals(tDeclaration.read.source.%ToJSON(), "{""port"":""logsource"",""endpoint"":""messages"",""type"":""LIST""}", "the console log's own bounded tail is the read's source (AD-36)")
+    Do $$$AssertTrue($ListFind(##class(OcuPilot.Port.LogSourcePort).Sources(), tDeclaration.read.source.endpoint) > 0, "and its endpoint is a key of that port's fixed enum (AD-21)")
+    Do $$$AssertEquals(tDeclaration.read.fields.%ToJSON(), "[""time"",""severity"",""text""]", "three declared fields")
+    Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), "[{""resource"":""%Admin_Operate"",""permission"":""USE""}]", "one declared pair, and no %Admin_Secure:USE (DW-278)")
+    Set tPortPairs = ##class(OcuPilot.Port.LogSourcePort).PairsFor("messages")
+    Do $$$AssertEquals($ListLength(tPortPairs), 1, "which the port behind it declares too")
+    If $ListLength(tPortPairs) = 1 Do $$$AssertEquals($ListToString($List(tPortPairs, 1), ":"), "%Admin_Operate:USE", "as the same pair, so neither way in is the wider gate")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("logs", $ClassMethod(tClass, "PrivilegePairs")), "", "and the logs area covers it, so its own declaration is untouched")
+
+    Do $$$AssertEquals(tDeclaration.id.%ToJSON(), "{""kind"":""none"",""parts"":[]}", "a log line is not an entity the instance can be asked for again (AD-13)")
+    Do $$$AssertEquals($ClassMethod(tClass, "Archetype"), "log-viewer", "it renders the shared log-viewer archetype")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForRoute("logs/messages"), tClass, "the route resolves to it")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForTool("logs.messages"), tClass, "and so does its tool identifier")
+    Do $$$AssertEquals($ClassMethod(tClass, "SideBarPosition"), 2, "it is the Logs area's second side-bar entry")
+    Do $$$AssertTrue($ListFind($ClassMethod(tClass, "CommandAliases"), "messages.log") > 0, "and it publishes the messages.log alias the fault banner resolves its destination from: " _ $ListToString($ClassMethod(tClass, "CommandAliases"), ","))
+
+    Do $$$AssertEquals(''$ClassMethod(tClass, "Refreshes"), 0, "nothing streams: it never auto-refreshes (AD-43)")
+    Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RefreshRates")), 0, "and declares no rate")
+    Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RowActionIds")), 0, "no row action (AD-44)")
+    Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), "", "and no primary action")
+}
+
+
 /// <p>Story 2.7 AC7 (DW-266) -- a screen declaring a pair its area does not is refused by
 /// <method>OcuPilot.Screen.Registry.Validate</method> naming the class, the area and the pair;
 /// <method>OcuPilot.Screen.Registry.AreaCoverageProblem</method> answers the same sentence for an
@@ -780,6 +907,58 @@ Method TestEveryClassicLinkCorpusCaseGetsItsSentence()
     Do $$$AssertStatusOK(tGoodSC, "and passes")
 }
 
+/// <p>Story 6.4 (AD-5) -- every case in <class>OcuPilot.Test.TabCorpus</class> gets its exact sentence,
+/// or none, from <method>OcuPilot.Screen.Registry.TabProblem</method>, and every roster there from
+/// <method>OcuPilot.Screen.Registry.TabGroupProblem</method>, the same corpus
+/// <file>ui/tools/screen-mirror.test.mjs</file> runs through <code>tabProblem</code> and
+/// <code>tabGroupProblem</code>.</p>
+/// <p>Mutation: drop the side-bar arm from <method>OcuPilot.Screen.Registry.TabProblem</method> -&gt;
+/// the two later-tab side-bar cases go red. Disable the position check in
+/// <method>OcuPilot.Screen.Registry.TabGroupProblem</method> -&gt; the gap, repeated-position and
+/// two-group rosters go red.</p>
+Method TestEveryTabCorpusCaseGetsItsSentence()
+{
+    Set tSC = ##class(OcuPilot.Test.TabCorpus).Corpus(.tCorpus)
+    Do $$$AssertStatusOK(tSC, "the corpus reads")
+    If '$IsObject(tCorpus) Quit
+    Do $$$AssertTrue(tCorpus.cases.%Size() > 0, "the corpus carries cases: " _ tCorpus.cases.%Size())
+    Do $$$AssertTrue(tCorpus.rosters.%Size() > 0, "and rosters: " _ tCorpus.rosters.%Size())
+    Set tRefusals = 0
+    Set tIterator = tCorpus.cases.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tCase) {
+        Set tExpected = $Select(tCase.%GetTypeOf("expected") = "null": "", 1: tCase.expected)
+        If tExpected '= "" Set tRefusals = tRefusals + 1
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).TabProblem(tCase.declaration), tExpected, tCase.name)
+    }
+    Set tIterator = tCorpus.rosters.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRoster) {
+        Set tExpected = $Select(tRoster.%GetTypeOf("expected") = "null": "", 1: tRoster.expected)
+        If tExpected '= "" Set tRefusals = tRefusals + 1
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).TabGroupProblem(tRoster.screens), tExpected, tRoster.name)
+    }
+    Do $$$AssertTrue(tRefusals > 0, "the corpus carries at least one refusing case: " _ tRefusals)
+}
+
+/// <p>Story 6.4 (AD-5) -- <method>OcuPilot.Screen.Registry.Validate</method> refuses a roster whose
+/// descriptor declares a tab outside the grammar (<class>OcuPilot.Test.TabRegistry</class>) and a
+/// roster whose tab group leaves a gap in its positions
+/// (<class>OcuPilot.Test.TabGroupRegistry</class>), each naming the offending class: the wiring the
+/// corpus test, which calls the rules directly, does not reach.</p>
+/// <p>Mutation: delete the <method>OcuPilot.Screen.Registry.TabProblem</method> call from
+/// <method>OcuPilot.Screen.Registry.Validate</method> -&gt; the tab roster's assertions go red; delete
+/// the <method>OcuPilot.Screen.Registry.TabGroupProblem</method> call -&gt; the group roster's go
+/// red.</p>
+Method TestATabOutsideTheGrammarIsRefusedByTheRoster()
+{
+    Set tSC = ##class(OcuPilot.Test.TabRegistry).Validate(.tProblem)
+    Do $$$AssertStatusNotOK(tSC, "a roster carrying a tab outside the grammar is refused")
+    Do $$$AssertEquals(tProblem, "OcuPilot.Test.Tab.Bad: tab.position 2 is a tab under its group's first, and such a tab declares sideBarPosition 0 (AD-5)", "naming the class and the rule")
+
+    Set tSC = ##class(OcuPilot.Test.TabGroupRegistry).Validate(.tGroupProblem)
+    Do $$$AssertStatusNotOK(tSC, "a roster whose tab group leaves a gap is refused")
+    Do $$$AssertEquals(tGroupProblem, "OcuPilot.Test.TabGroup.First: tab.group 'security/tab-group' declares positions 1,3, and a tab group's positions run 1 to 2 with no gap or repeat (AD-5)", "naming the group's first tab and the positions")
+}
+
 /// <p>AD-44's honored path, on the archetype the rule names literally: a
 /// <code>detail</code> descriptor declaring a complete exemption validates, and every part the
 /// card renders is readable from the declaration.</p>
@@ -817,6 +996,44 @@ Method TestASubResourceDescriptorNamesItsParentScope()
     Do $$$AssertEquals($ClassMethod(tClass, "ParentScope"), "tasks/schedule", "and it names the route it hangs from")
     Do $$$AssertEquals($ClassMethod(tClass, "Scope"), "namespace", "its data scope is the namespace, not the instance")
     Do $$$AssertEquals($ClassMethod("OcuPilot.Test.Screen.Multi", "ParentScope"), "", "a screen that is nobody's sub-resource declares no parent")
+}
+
+/// <p>Story 6.6 (DW-1020) -- <method>OcuPilot.Screen.Registry.Validate</method> refuses a roster
+/// whose built descriptor's <code>parentScope</code> names no built descriptor with that route
+/// and an id, over the four ways that can happen: the route is not declared at all
+/// (<class>OcuPilot.Test.ParentScopeNotFoundRegistry</class>), it is declared but not built
+/// (<class>OcuPilot.Test.ParentScopeNotBuiltRegistry</class>), it is declared and built but
+/// carries <code>id.kind</code> <code>none</code>
+/// (<class>OcuPilot.Test.ParentScopeNoIdRegistry</class>), and it names the checked descriptor's
+/// own route (<class>OcuPilot.Test.ParentScopeSelfRegistry</class>) -- the entry being checked is
+/// excluded from its own candidate search, so it cannot resolve against itself. A fifth roster of
+/// only sound declarations (<class>OcuPilot.Test.ParentScopeSoundRegistry</class>) validates
+/// clean; the production roster's own sound path is
+/// <method>TestTheProductionRosterValidates</method>'s.</p>
+/// <p>Mutation: delete the <method>OcuPilot.Screen.Registry.ParentScopeResolutionProblem</method>
+/// call from <method>OcuPilot.Screen.Registry.Validate</method> -&gt; the four refusing rosters'
+/// assertions go red.</p>
+Method TestAParentScopeThatDoesNotResolveIsRefusedByTheRoster()
+{
+    Set tSC = ##class(OcuPilot.Test.ParentScopeNotFoundRegistry).Validate(.tNotFoundProblem)
+    Do $$$AssertStatusNotOK(tSC, "a parentScope naming a route nothing declares is refused")
+    Do $$$AssertEquals(tNotFoundProblem, "OcuPilot.Test.ParentScope.NotFound.Child: parentScope 'parent-scope/not-found/nonexistent' names no built descriptor with that route and an id (DW-1020)", "naming the child and the unresolved route")
+
+    Set tSC = ##class(OcuPilot.Test.ParentScopeNotBuiltRegistry).Validate(.tNotBuiltProblem)
+    Do $$$AssertStatusNotOK(tSC, "a parentScope naming a route that is declared but not built is refused")
+    Do $$$AssertEquals(tNotBuiltProblem, "OcuPilot.Test.ParentScope.NotBuilt.Child: parentScope 'parent-scope/not-built/parent' names no built descriptor with that route and an id (DW-1020)", "naming the child and the unbuilt parent's route")
+
+    Set tSC = ##class(OcuPilot.Test.ParentScopeNoIdRegistry).Validate(.tNoIdProblem)
+    Do $$$AssertStatusNotOK(tSC, "a parentScope naming a built route with id.kind none is refused")
+    Do $$$AssertEquals(tNoIdProblem, "OcuPilot.Test.ParentScope.NoId.Child: parentScope 'parent-scope/no-id/parent' names no built descriptor with that route and an id (DW-1020)", "naming the child and the id-less parent's route")
+
+    Set tSC = ##class(OcuPilot.Test.ParentScopeSelfRegistry).Validate(.tSelfProblem)
+    Do $$$AssertStatusNotOK(tSC, "a parentScope naming its own route cannot resolve against itself")
+    Do $$$AssertEquals(tSelfProblem, "OcuPilot.Test.ParentScope.Self.Child: parentScope 'parent-scope/self/child' names no built descriptor with that route and an id (DW-1020)", "the entry being checked is excluded from its own candidate search")
+
+    Set tSC = ##class(OcuPilot.Test.ParentScopeSoundRegistry).Validate(.tSoundProblem)
+    Do $$$AssertStatusOK(tSC, "a roster of resolving and empty parentScope declarations validates")
+    Do $$$AssertEquals(tSoundProblem, "", "with no problem reported")
 }
 
 /// <p>AC3, the composite-id form -- the descriptor names the parts and the <b>one</b> shared
@@ -1024,7 +1241,7 @@ Method TestTheAreaVocabularyIsClosedOrderedAndUngatedAtBothEnds()
     Set tExpected = tExpected _ $ListBuild($ListBuild("tasks", "%Admin_Task:USE, %DB_IRISSYS:READ", 0, 0))
     Set tExpected = tExpected _ $ListBuild($ListBuild("permissions", "%Admin_Secure:USE, %DB_IRISSYS:READ", 0, 0))
     Set tExpected = tExpected _ $ListBuild($ListBuild("web-applications", "%Admin_Secure:USE, %DB_IRISSYS:READ", 0, 0))
-    Set tExpected = tExpected _ $ListBuild($ListBuild("security", "%Admin_Secure:USE, %DB_IRISSYS:READ", 0, 0))
+    Set tExpected = tExpected _ $ListBuild($ListBuild("security", "%Admin_Secure:USE, %DB_IRISSYS:READ, %Admin_Wallet:USE, %Admin_OAuth2_Client:USE, %Admin_OAuth2_Server:USE, %Admin_OAuth2_Registration:USE", 0, 0))
     Set tExpected = tExpected _ $ListBuild($ListBuild("agent", "", 0, 1))
     Do $$$AssertEquals($ListLength(tExpected), 8, "the expectation names all eight areas")
 
@@ -1081,6 +1298,321 @@ Method TestANarrowOsManagementScreenIsSoundInsideTheUnion()
     Set tListSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tRoster)
     Do $$$AssertStatusOK(tListSC, "the production descriptor roster reads")
     If $$$ISOK(tListSC) Do $$$AssertEquals($ListFind(tRoster, tClass), 0, "and it is outside it, because it sits under OcuPilot.Test.")
+}
+
+/// <p>AC5, AC6 -- every case in <class>OcuPilot.Test.RowTargetCorpus</class>'s <code>Cases</code>
+/// half gets its exact sentence, or none, from
+/// <method>OcuPilot.Screen.Registry.RowTargetProblem</method>, and every roster in its
+/// <code>Rosters</code> half from <method>OcuPilot.Screen.Registry.RowTargetResolutionProblem</method>
+/// -- the same corpus <file>ui/tools/screen-mirror.test.mjs</file> runs through
+/// <code>rowTargetProblem</code> and <code>rowTargetResolutionProblem</code>.</p>
+/// <p>Mutation: drop one word from <method>RowTargetProblem</method>'s "this screen's own route"
+/// sentence -> the self-route case goes red. Make
+/// <method>RowTargetResolutionProblem</method> return <code>""</code> for an unbuilt target ->
+/// the roster case goes red in both engines.</p>
+Method TestEveryRowTargetCorpusCaseGetsItsSentence()
+{
+    Set tSC = ##class(OcuPilot.Test.RowTargetCorpus).Corpus(.tCorpus)
+    Do $$$AssertStatusOK(tSC, "the Cases corpus reads")
+    If '$IsObject(tCorpus) Quit
+    Do $$$AssertTrue(tCorpus.cases.%Size() > 0, "the corpus carries cases: " _ tCorpus.cases.%Size())
+    Set tRefusals = 0
+    Set tIterator = tCorpus.cases.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tCase) {
+        Set tDeclaration = ##class(OcuPilot.Test.RowTargetCorpus).DeclarationFor(tCorpus, tCase)
+        Set tExpected = $Select(tCase.%GetTypeOf("expected") = "null": "", 1: tCase.expected)
+        If tExpected '= "" Set tRefusals = tRefusals + 1
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).RowTargetProblem(tDeclaration), tExpected, tCase.name)
+    }
+    Do $$$AssertTrue(tRefusals > 0, "the Cases corpus carries at least one refusing case: " _ tRefusals)
+
+    ; The corpus's own sound rowTarget carries exactly the declared nested vocabulary, so
+    ; ROWTARGETKEYS cannot gain, lose or rename a key on one side of the two engines without a
+    ; case going red -- the same tie ui/tools/screen-mirror.test.mjs holds for DECLARATION_KEYS.
+    Set tTargetKeys = ""
+    Set tSoundTarget = tCorpus.declaration.%Get("rowTarget")
+    If $IsObject(tSoundTarget) {
+        Set tKeyIterator = tSoundTarget.%GetIterator()
+        While tKeyIterator.%GetNext(.tTargetKey, .tTargetValue) { Set tTargetKeys = tTargetKeys _ $ListBuild(tTargetKey) }
+    }
+    Do $$$AssertEquals($ListToString(tTargetKeys, ","), ##class(OcuPilot.Screen.Registry).#ROWTARGETKEYS, "the corpus's sound rowTarget carries exactly the declared rowTarget vocabulary")
+
+    Set tSC = ##class(OcuPilot.Test.RowTargetCorpus).RostersBlock(.tRosters)
+    Do $$$AssertStatusOK(tSC, "the Rosters block reads")
+    If '$IsObject(tRosters) Quit
+    Do $$$AssertTrue(tRosters.rosters.%Size() > 0, "and rosters: " _ tRosters.rosters.%Size())
+    Set tRosterRefusals = 0
+    Set tIterator = tRosters.rosters.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRoster) {
+        Set tExpected = $Select(tRoster.%GetTypeOf("expected") = "null": "", 1: tRoster.expected)
+        If tExpected '= "" Set tRosterRefusals = tRosterRefusals + 1
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).RowTargetResolutionProblem(tRoster.screens), tExpected, tRoster.name)
+    }
+    Do $$$AssertTrue(tRosterRefusals > 0, "the Rosters block carries at least one refusing roster: " _ tRosterRefusals)
+}
+
+/// <p>AC9 -- the Locks descriptor's read and table are exactly the eight fields and seven columns
+/// Boundaries names: no transaction column, no <code>Removable</code>, <code>CanBeExamined</code>
+/// or <code>RemoteOwner</code> field, no derived field, and no <code>$zu(67,19</code> anywhere in
+/// this descriptor's own source -- the class this test reads, not the whole read path.</p>
+/// <p>Mutation: add an eighth column to <code>table.columns</code> in
+/// <class>OcuPilot.Screen.Descriptor.LockList</class> -> the column-set assertion goes red.</p>
+Method TestTheLocksListDeclaresExactlyItsEightFieldsAndSevenColumns()
+{
+    Set tClass = "OcuPilot.Screen.Descriptor.LockList"
+    Set tRead = $ClassMethod(tClass, "Read")
+    Do $$$AssertTrue($IsObject(tRead), "the Locks list declares a read")
+    If '$IsObject(tRead) Quit
+    Set tFields = ""
+    Set tIterator = tRead.%Get("fields").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tField) { Set tFields = tFields _ $ListBuild(tField) }
+    Do $$$AssertEquals($ListToString(tFields, ","), "Pid,OSUserName,RoutineInfo,ModeCount,Reference,Directory,System,DeleteID", "exactly the eight declared fields, no transaction column and no Removable, CanBeExamined or RemoteOwner")
+
+    Set tTable = $ClassMethod(tClass, "Field", "table")
+    Do $$$AssertTrue($IsObject(tTable), "the Locks list declares a table")
+    If '$IsObject(tTable) Quit
+    Set tColumns = ""
+    Set tIterator = tTable.%Get("columns").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tColumn) { Set tColumns = tColumns _ $ListBuild(tColumn.%Get("field")) }
+    Do $$$AssertEquals($ListToString(tColumns, ","), "Pid,OSUserName,RoutineInfo,ModeCount,Reference,Directory,System", "exactly the seven declared columns")
+
+    Set tSourceSC = ##class(%Compiler.UDL.TextServices).GetTextAsString($Namespace, tClass, .tSource)
+    Do $$$AssertStatusOK(tSourceSC, "the class source reads")
+    If $$$ISOK(tSourceSC) Do $$$AssertTrue('(tSource [ "$zu(67,19"), "no $zu(67,19 transaction check anywhere in this descriptor's own source (DW-1073)")
+
+    ; The server-side accessor both arms of OcuPilot.Screen.Descriptor.Base.RowTarget answer
+    ; through: the declared object here, and the empty string for a screen that declares none.
+    Set tRowTarget = ##class(OcuPilot.Screen.Descriptor.LockList).RowTarget()
+    Do $$$AssertTrue($IsObject(tRowTarget), "the RowTarget accessor answers the declared object")
+    If $IsObject(tRowTarget) {
+        Do $$$AssertEquals(tRowTarget.%Get("route"), "os-management/processes/details", "at Process details' route")
+        Do $$$AssertEquals(tRowTarget.%Get("field"), "Pid", "keyed by Pid, not by this row's own DeleteID")
+    }
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Descriptor.ProcessList).RowTarget(), "", "and a screen that declares no row target answers the empty string")
+}
+
+/// <p>AC5, AC6 -- both new rules reach the roster through
+/// <method>OcuPilot.Screen.Registry.Validate</method>, each naming the offending class. The corpus
+/// test above calls the two rules directly, so deleting either call from <code>Validate</code>
+/// reddens nothing there; these are the fixture registries those two call sites' own wiring
+/// needed, the same way <class>OcuPilot.Test.DeclarationRegistry</class> closes it for
+/// <method>DeclarationProblem</method> (DW-306).</p>
+/// <p>Mutation: delete the <method>OcuPilot.Screen.Registry.RowTargetProblem</method> call from
+/// <method>OcuPilot.Screen.Registry.Validate</method> -> the shape assertions go red; delete the
+/// <method>OcuPilot.Screen.Registry.RowTargetResolutionProblem</method> call -> the roster
+/// assertions go red; either way
+/// <method>TestEveryRowTargetCorpusCaseGetsItsSentence</method> and the shipped roster stay
+/// green.</p>
+Method TestARowTargetOutsideTheGrammarIsRefusedByTheRoster()
+{
+    Set tSC = ##class(OcuPilot.Test.RowTargetShapeRegistry).Validate(.tShapeProblem)
+    Do $$$AssertStatusNotOK(tSC, "a roster carrying a rowTarget outside the grammar is refused")
+    Do $$$AssertTrue(tShapeProblem [ "OcuPilot.Test.RowTargetShape.Bad", "the refusal names the offending class: " _ tShapeProblem)
+    Do $$$AssertTrue(tShapeProblem [ "rowTarget.field 'Bogus' is not one of read.fields", "and the sentence RowTargetProblem returns: " _ tShapeProblem)
+
+    Set tSC = ##class(OcuPilot.Test.RowTargetRosterRegistry).Validate(.tRosterProblem)
+    Do $$$AssertStatusNotOK(tSC, "and a roster whose rowTarget.route resolves to nothing is refused")
+    Do $$$AssertTrue(tRosterProblem [ "OcuPilot.Test.RowTargetRoster.A", "naming that class: " _ tRosterProblem)
+    Do $$$AssertTrue(tRosterProblem [ "rowTarget.route 'security/row-target-nowhere' names no declared screen (AD-5)", "and the sentence RowTargetResolutionProblem returns: " _ tRosterProblem)
+
+    Set tProdSC = ##class(OcuPilot.Screen.Registry).Validate(.tProdProblem)
+    Do $$$AssertStatusOK(tProdSC, "while the shipped roster still validates: " _ tProdProblem)
+}
+
+/// <p>AC1, AC8, AC9, Story 6.11 -- the Databases General view declares exactly its five fields and
+/// five columns, is the fourth OS-management side-bar entry, and declares
+/// <code>%Admin_Manage:USE</code> alone (not Operate) as its first pair.</p>
+/// <p>Mutation: add a sixth column to <code>table.columns</code> in
+/// <class>OcuPilot.Screen.Descriptor.DatabaseList</class> -> the column-set assertion goes red.</p>
+Method TestTheDatabasesGeneralViewDeclaresExactlyItsFiveFieldsAndFiveColumns()
+{
+    Set tClass = "OcuPilot.Screen.Descriptor.DatabaseList"
+    Do $$$AssertEquals($ClassMethod(tClass, "SideBarPosition"), 4, "the fourth OS-management side-bar entry")
+    Do $$$AssertEquals($ClassMethod(tClass, "Archetype"), "list (two views)", "the two-view archetype")
+    Set tRead = $ClassMethod(tClass, "Read")
+    Do $$$AssertTrue($IsObject(tRead), "the Databases list declares a read")
+    If '$IsObject(tRead) Quit
+    Do $$$AssertEquals(tRead.source.endpoint, "Database.SysCRUD", "reading the vendor's Database.SysCRUD endpoint")
+    Do $$$AssertEquals(tRead.source.type, "LIST", "the General view's LIST")
+    Set tFields = ""
+    Set tIterator = tRead.%Get("fields").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tField) { Set tFields = tFields _ $ListBuild(tField) }
+    Do $$$AssertEquals($ListToString(tFields, ","), "Directory,Size,MaxSize,Status,Resource", "exactly the five declared fields")
+    Set tTable = $ClassMethod(tClass, "Field", "table")
+    Set tColumns = ""
+    Set tIterator = tTable.%Get("columns").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tColumn) { Set tColumns = tColumns _ $ListBuild(tColumn.%Get("field")) }
+    Do $$$AssertEquals($ListToString(tColumns, ","), "Directory,Size,MaxSize,Status,Resource", "exactly the five declared columns")
+    Set tPairs = $ClassMethod(tClass, "PrivilegePairs")
+    Do $$$AssertEquals($ListLength(tPairs), 2, "two declared pairs")
+    Do $$$AssertEquals($List($List(tPairs, 1), 1), "%Admin_Manage", "Manage alone is the first, not Operate")
+    Do $$$AssertEquals($ClassMethod(tClass, "ClassicPage"), "%CSP.UI.Portal.OpDatabases", "the OpDatabases classic key, not Databases")
+}
+
+/// <p>AC2, AC3, Story 6.11 -- the Free-space view merges its <code>rowGet</code>'s
+/// <code>INFO</code> figures into the General view's <code>LIST</code> row, declares
+/// <code>MaxSize</code> nowhere, and declares three pairs with <code>%Admin_Operate:USE</code>
+/// second, the <code>AsyncResult</code> poll's own pair.</p>
+/// <p>Mutation: remove <code>%Admin_Operate:USE</code> from <code>DatabaseFreeSpace</code>'s
+/// <code>privileges</code> -> the pair-count assertion goes red.</p>
+Method TestTheFreeSpaceViewMergesInfoFiguresAndDeclaresNoMaxSize()
+{
+    Set tClass = "OcuPilot.Screen.Descriptor.DatabaseFreeSpace"
+    Do $$$AssertEquals($ClassMethod(tClass, "SideBarPosition"), 0, "unlisted, reached only through the View control")
+    Set tRead = $ClassMethod(tClass, "Read")
+    Do $$$AssertTrue($IsObject(tRead), "the Free-space view declares a read")
+    If '$IsObject(tRead) Quit
+    Do $$$AssertEquals(tRead.source.type, "LIST", "still a LIST, merged by rowGet")
+    Do $$$AssertEquals(tRead.source.rowGet.type, "INFO", "the async INFO detail call")
+    Do $$$AssertEquals(tRead.source.rowGet.key, "Directory", "keyed by Directory")
+    Set tFields = ""
+    Set tIterator = tRead.%Get("fields").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tField) { Set tFields = tFields _ $ListBuild(tField) }
+    Do $$$AssertEquals($ListToString(tFields, ","), "Directory,Size,AvailableSpace,DiskFree,Mounted", "exactly the five declared fields")
+    Do $$$AssertTrue('$ListFind(tFields, "MaxSize"), "MaxSize is declared nowhere on this view")
+    Set tPairs = $ClassMethod(tClass, "PrivilegePairs")
+    Do $$$AssertEquals($ListLength(tPairs), 3, "three declared pairs")
+    Do $$$AssertEquals($List($List(tPairs, 1), 1), "%Admin_Manage", "Manage first, the LIST's own gate")
+    Do $$$AssertEquals($List($List(tPairs, 2), 1), "%Admin_Operate", "Operate second, the AsyncResult poll's own gate")
+    Do $$$AssertEquals($ClassMethod(tClass, "EmptyStateKey"), "databaseListEmpty", "reusing the General view's empty state")
+}
+
+/// <p>AC7, AC8, Story 6.11 -- Database details declares Operate alone (not Manage), a composite id
+/// keyed by <code>Directory</code>, a <code>dir</code> criterion filled from the route id, and
+/// exactly fifteen fields: <code>Directory</code>, <code>GET</code>'s ten, and the
+/// <code>rowGet</code>'s four.</p>
+/// <p>Mutation: add <code>"ReadOnlyReason"</code> to <code>DatabaseDetails</code>'s
+/// <code>read.fields</code> without adding it to <code>rowGet.fields</code> -> the fifteen-field
+/// count assertion goes red (and <class>OcuPilot.Test.ScreenRead</class>'s live-row assertion
+/// separately catches the missing key).</p>
+Method TestDatabaseDetailsDeclaresExactlyFifteenFieldsAndOperateAlone()
+{
+    Set tClass = "OcuPilot.Screen.Descriptor.DatabaseDetails"
+    Do $$$AssertEquals($ClassMethod(tClass, "Archetype"), "detail", "a detail screen")
+    Do $$$AssertEquals($ClassMethod(tClass, "ParentScope"), "os-management/databases", "a sub-resource of Databases")
+    Do $$$AssertEquals($ClassMethod(tClass, "IdKind"), "composite", "a composite id")
+    Do $$$AssertEquals($ListToString($ClassMethod(tClass, "IdParts"), ","), "Directory", "keyed by Directory")
+    Set tPairs = $ClassMethod(tClass, "PrivilegePairs")
+    Do $$$AssertEquals($ListLength(tPairs), 2, "two declared pairs")
+    Do $$$AssertEquals($List($List(tPairs, 1), 1), "%Admin_Operate", "Operate alone, not Manage")
+    Set tRead = $ClassMethod(tClass, "Read")
+    Do $$$AssertTrue($IsObject(tRead), "Database details declares a read")
+    If '$IsObject(tRead) Quit
+    Do $$$AssertEquals(tRead.source.type, "GET", "a single-object GET")
+    Do $$$AssertEquals(tRead.source.rowGet.type, "INFO", "an INFO detail call, never parts")
+    Do $$$AssertTrue('$IsObject(tRead.source.%Get("parts")), "and never source.parts")
+    Do $$$AssertEquals(tRead.criteria.fields.%Get(0).param, "dir", "the one route-id criterion")
+    Do $$$AssertEquals(tRead.source.rowGet.key, "dir", "keyed by that same criterion's param")
+    Set tFields = ""
+    Set tIterator = tRead.%Get("fields").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tField) { Set tFields = tFields _ $ListBuild(tField) }
+    Do $$$AssertEquals($ListLength(tFields), 15, "fifteen fields: Directory, GET's ten, and the rowGet's four")
+    Do $$$AssertEquals($ListToString(tFields, ","), "Directory,MaxSize,ExpansionSize,NewVolumeThreshold,NewVolumeDirectory,ResourceName,NewGlobalIsKeep,NewGlobalCollation,ClusterMountMode,ReadOnly,GlobalJournalState,Size,AvailableSpace,DiskFree,Mounted", "in that exact order")
+}
+
+/// <p>AC9, Story 6.11 -- Database volumes declares the six vendor fields, a
+/// <code>VOLUMELIST</code> source with neither <code>rowGet</code> nor <code>forEach</code>, a
+/// <code>dir</code> criterion filled from the parent route id, and no entity type of its own.</p>
+/// <p>Mutation: change the source type to <code>LIST</code> -> the source-type assertion goes red,
+/// and <class>OcuPilot.Test.ScreenRead</class>'s volume-row assertion separately catches the
+/// endpoint answering the database list instead.</p>
+Method TestDatabaseVolumesDeclaresTheVendorSixAndNoDetailCall()
+{
+    Set tClass = "OcuPilot.Screen.Descriptor.DatabaseVolumeList"
+    Do $$$AssertEquals($ClassMethod(tClass, "ParentScope"), "os-management/databases", "a sub-resource of Databases")
+    Do $$$AssertEquals($ClassMethod(tClass, "PrimaryEntityType"), "", "no entity type of its own")
+    Set tPairs = $ClassMethod(tClass, "PrivilegePairs")
+    Do $$$AssertEquals($List($List(tPairs, 1), 1), "%Admin_Manage", "Manage alone, TYPEVOLUMELIST's own arm")
+    Set tRead = $ClassMethod(tClass, "Read")
+    Do $$$AssertTrue($IsObject(tRead), "Database volumes declares a read")
+    If '$IsObject(tRead) Quit
+    Do $$$AssertEquals(tRead.source.type, "VOLUMELIST", "the new source type")
+    Do $$$AssertTrue('$IsObject(tRead.source.%Get("rowGet")), "no rowGet")
+    Do $$$AssertTrue('$IsObject(tRead.source.%Get("forEach")), "no forEach")
+    Do $$$AssertEquals(tRead.criteria.fields.%Get(0).param, "dir", "the one route-id criterion, the vendor's own param name")
+    Set tFields = ""
+    Set tIterator = tRead.%Get("fields").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tField) { Set tFields = tFields _ $ListBuild(tField) }
+    Do $$$AssertEquals($ListToString(tFields, ","), "VolumeNumber,VolumeDirectory,File,Size,VolumeDirectoryTotalSize,DiskFree", "the vendor's six members")
+}
+
+/// <p>AC1, AC4, AC5, AC6, Story 6.12 -- the Devices list declares exactly its six fields and six
+/// columns, in order and by kind; sorts by <code>Name</code> ascending; declares
+/// <code>%Admin_Manage:USE</code> then <code>%DB_IRISSYS:READ</code> and no third pair; names its
+/// own empty state and its own classic key; is OS management's fifth side-bar entry; and offers no
+/// primary action, no row action and no outbound classic link: it is the list only, the device
+/// editor is Story 8.8's.</p>
+/// <p>Mutation: add a <code>rowActions</code> entry with no handler in
+/// <class>OcuPilot.Screen.Descriptor.DeviceList</class> -> the row-action assertion goes red; set
+/// <code>classicLinkExemption.exempt</code> true -> the exemption assertion goes red, and
+/// <file>ui/tools/classic-links.mjs</file> separately refuses a <code>list</code> archetype
+/// declaring one (AD-44).</p>
+Method TestTheDevicesListDeclaresExactlyItsSixFieldsAndSixColumns()
+{
+    Set tClass = "OcuPilot.Screen.Descriptor.DeviceList"
+    Do $$$AssertEquals($ClassMethod(tClass, "SideBarPosition"), 5, "OS management's fifth side-bar entry")
+    Set tRead = $ClassMethod(tClass, "Read")
+    Do $$$AssertTrue($IsObject(tRead), "the Devices list declares a read")
+    If '$IsObject(tRead) Quit
+    Set tFields = ""
+    Set tIterator = tRead.%Get("fields").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tField) { Set tFields = tFields _ $ListBuild(tField) }
+    Do $$$AssertEquals($ListToString(tFields, ","), "Name,PhysicalDevice,Type,SubType,Description,Alias", "exactly the six declared fields, no Prompt, OpenParameters or AlternateDevice")
+
+    ; QA (independent falsification pass): filter and sort.fields are the read's own field set,
+    ; not just a same-length list -- a field dropped from filter while staying in fields/columns
+    ; reddens nothing else in this class or in ScreenRead's live-value method.
+    Set tFilter = ""
+    Set tIterator = tRead.%Get("filter").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tField) { Set tFilter = tFilter _ $ListBuild(tField) }
+    Do $$$AssertEquals($ListToString(tFilter, ","), "Name,PhysicalDevice,Type,SubType,Description,Alias", "filter is exactly the same six fields as read.fields")
+    Set tSortFields = ""
+    Set tIterator = tRead.%Get("sort").%Get("fields").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tField) { Set tSortFields = tSortFields _ $ListBuild(tField) }
+    Do $$$AssertEquals($ListToString(tSortFields, ","), "Name,PhysicalDevice,Type,SubType,Description,Alias", "sort.fields is exactly the same six fields as read.fields")
+    ; The two keys that decide what order rows arrive in. Registry.ReadProblem only requires
+    ; default to be one of sort.fields and direction to be asc or desc, so either can change to
+    ; another valid value without a refusal, and no other assertion in any suite reads them.
+    Do $$$AssertEquals(tRead.%Get("sort").%Get("default"), "Name", "sorted by Name by default, the row key's own column")
+    Do $$$AssertEquals(tRead.%Get("sort").%Get("direction"), "asc", "ascending")
+
+    Set tTable = $ClassMethod(tClass, "Field", "table")
+    Do $$$AssertTrue($IsObject(tTable), "the Devices list declares a table")
+    If '$IsObject(tTable) Quit
+    Set tColumns = ""
+    Set tKinds = ""
+    Set tIterator = tTable.%Get("columns").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tColumn) {
+        Set tColumns = tColumns _ $ListBuild(tColumn.%Get("field"))
+        Set tKinds = tKinds _ $ListBuild(tColumn.%Get("kind"))
+    }
+    Do $$$AssertEquals($ListToString(tColumns, ","), "Name,PhysicalDevice,Type,SubType,Description,Alias", "exactly the six declared columns, in declared order, one name column")
+    ; QA (independent falsification pass): the field-name pin above passes even when a column's
+    ; kind is wrong (e.g. Alias declared "text" instead of "number") -- nothing else in this
+    ; class, in ScreenRead's live-value method or in the browser spec's header assertion checks
+    ; kind, only the field/label/order.
+    Do $$$AssertEquals($ListToString(tKinds, ","), "name,identifier,text,text,text,number", "each column's declared kind: the row key, an opaque identifier, three plain text columns, then Alias as a number (an integer alternate id, as VolumeNumber is)")
+
+    Set tPairs = $ClassMethod(tClass, "PrivilegePairs")
+    Do $$$AssertEquals($ListLength(tPairs), 2, "two declared pairs, no third")
+    Do $$$AssertEquals($List($List(tPairs, 1), 1) _ ":" _ $List($List(tPairs, 1), 2), "%Admin_Manage:USE", "the endpoint's own ResourcesOR() pair first, which is the pair the gate names to a principal holding neither")
+    Do $$$AssertEquals($List($List(tPairs, 2), 1) _ ":" _ $List($List(tPairs, 2), 2), "%DB_IRISSYS:READ", "then the port's namespace-switch pair, which Registry.ReadProblem requires of every admin-port read")
+
+    ; The sentence an empty instance reads. screen-mirror.mjs checks only that the key exists in
+    ; strings.ts and Registry only that a read-only list names emptyNextKey and not emptyAgentKey,
+    ; so another screen's key would validate, mirror and ship.
+    Do $$$AssertEquals($ClassMethod(tClass, "EmptyStateKey"), "deviceListEmpty", "its own empty state, not another list's")
+
+    Do $$$AssertEquals($ListLength($ClassMethod(tClass, "RowActionIds")), 0, "no row action: the device editor is Story 8.8's")
+    Do $$$AssertEquals($ClassMethod(tClass, "PrimaryActionId"), "", "and no primary action")
+    Do $$$AssertEquals(''$ClassMethod(tClass, "ClassicLinkExempt"), 0, "and no outbound classic link: a list archetype never links out (AD-44)")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Descriptor.DeviceList).RowTarget(), "", "and no rowTarget: no other screen names this entity type")
+
+    ; The classic key carries the AD-44 union: Gate.ClassicResource resolves it through
+    ; %SYS.Portal.Resources, where a name that opens nothing adds no pair and reports no error.
+    Set tPage = $ClassMethod(tClass, "ClassicPage")
+    Do $$$AssertEquals(tPage, "%CSP.UI.Portal.Config.Devices", "the Config.Devices classic key -- %CSP.UI.Portal.Devices does not exist on this build")
+    Do $$$AssertTrue($IsObject(##class(%Dictionary.CompiledClass).%OpenId(tPage)), "which is a compiled class on this instance, found under the declaration's own case")
 }
 
 /// <p>Area <var>pKey</var>'s declared privilege pairs as <code>resource:permission</code> joined

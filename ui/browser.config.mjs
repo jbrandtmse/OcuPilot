@@ -52,10 +52,29 @@ export const LIVE_CONTAINER = 'ocupilot';
  * `puppeteer` downloaded: a CI runner may cache it elsewhere, and a developer may have a
  * compatible Chrome already installed. It is an override, never a default -- unset, the pinned
  * download is what runs, which is what "pinned to an exact version" has to mean.
+ *
+ * An origin other than `DEFAULT_ORIGIN` must come with `OCUPILOT_BROWSER_CONTAINER`, and a
+ * container other than `DEFAULT_CONTAINER` with `OCUPILOT_BROWSER_ORIGIN`, or this throws: the
+ * pages would otherwise load from one throwaway while the specs that `docker exec` reach another.
  */
 export function browserConfig(env = process.env) {
+  const origin = env.OCUPILOT_BROWSER_ORIGIN ?? DEFAULT_ORIGIN;
+  const container = env.OCUPILOT_BROWSER_CONTAINER ?? '';
+  if (origin !== DEFAULT_ORIGIN && container === '') {
+    throw new Error(
+      `browser.config: OCUPILOT_BROWSER_ORIGIN is ${origin}, not ${DEFAULT_ORIGIN}, and ` +
+        `OCUPILOT_BROWSER_CONTAINER is unset; name the container that serves that origin, ` +
+        `because the default ${DEFAULT_CONTAINER} is a different throwaway`
+    );
+  }
+  if (origin === DEFAULT_ORIGIN && container !== '' && container !== DEFAULT_CONTAINER) {
+    throw new Error(
+      `browser.config: OCUPILOT_BROWSER_CONTAINER is ${container}, not ${DEFAULT_CONTAINER}, and ` +
+        `OCUPILOT_BROWSER_ORIGIN is the default ${DEFAULT_ORIGIN}; name the origin that container serves`
+    );
+  }
   return {
-    origin: env.OCUPILOT_BROWSER_ORIGIN ?? DEFAULT_ORIGIN,
+    origin,
     username: env.OCUPILOT_BROWSER_USER ?? '_SYSTEM',
     password: env.OCUPILOT_BROWSER_PASSWORD ?? 'SYS',
     executablePath: env.OCUPILOT_BROWSER_EXECUTABLE ?? '',
