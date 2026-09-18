@@ -42,21 +42,51 @@ before(async () => {
   // Defensive: a prior run whose own `after` did not get to run (a crash, a killed process)
   // leaves the uniquely-named probe definition behind, and `EnsureDefinition` always inserts --
   // it does not upsert -- so a stale row here would fail every test in this file at `before`.
-  runIris(['Do ##class(OcuPilot.Test.TurnWireFixture).RemoveDefinition("")']);
-  priorDefault = runIris(['Write ##class(OcuPilot.Test.TurnWireFixture).MarkedDefault()']).trim();
+  removeDefinition('');
+  priorDefault = markedDefault();
   preparedId = ensureDefinition(nextTag());
 });
 
 after(async () => {
   if (browser !== null) await browser.close();
   if (config.container === LIVE_CONTAINER) return;
-  runIris([`Do ##class(OcuPilot.Test.TurnWireFixture).RemoveDefinition("${escapeOs(priorDefault)}")`]);
+  removeDefinition(priorDefault);
 });
 
 /** One `turnprobe` tag per test, so a stale script from an earlier test cannot answer a later one. */
 function nextTag() {
   tagCounter += 1;
   return `${TAG_PREFIX}${tagCounter}`;
+}
+
+/**
+ * The id currently carrying the default marker, or `''`. Read through the marker convention
+ * because `runIris` answers the whole IRIS session transcript: a bare `Write` yields the banner
+ * and the prompts too, and that multi-line value embedded in the next script's string literal
+ * breaks the script instead of failing loudly (DW-1075).
+ */
+function markedDefault() {
+  const output = runIris([
+    'Write "OCUTURN-PRIOR-START:"_##class(OcuPilot.Test.TurnWireFixture).MarkedDefault()_":OCUTURN-PRIOR-END",!',
+  ]);
+  const value = markerValue(output, 'OCUTURN-PRIOR');
+  assert.notEqual(value, null, `MarkedDefault answered: ${output}`);
+  return value;
+}
+
+/**
+ * Remove every probe definition and restore `prior` as the default marker, asserting that none
+ * survived. A leftover enabled, default-marked definition is instance-wide state that changes
+ * what later specs see -- `switches.browser-spec.mjs` reads the panel's read-only line on the
+ * stated assumption that nothing is configured -- and a cleanup whose status nobody reads is how
+ * that reaches them.
+ */
+function removeDefinition(prior) {
+  const output = runIris([
+    `Set sc=##class(OcuPilot.Test.TurnWireFixture).RemoveDefinition("${escapeOs(prior)}")`,
+    'Write "OCUTURN-RM-START:"_$System.Status.IsOK(sc)_":OCUTURN-RM-END",!',
+  ]);
+  assert.equal(markerValue(output, 'OCUTURN-RM'), '1', `RemoveDefinition succeeded: ${output}`);
 }
 
 /** Doubles `"` for an ObjectScript string literal. */
