@@ -174,6 +174,78 @@ Method TestThePatternAddsAndTheDeclarationSurvivesIt()
     Do $$$AssertEquals(tInput.%Get("Value"), ..#SECRETVALUE, "the caller still holds its own input unchanged")
 }
 
+/// <p>AC3 -- the wiring gap the review named: <method>TestADeclaredSecretIsAbsentFromTheWholeRow</method>
+/// records its row through <method>OcuPilot.Kernel.Audit.Ledger.RecordToolCall</method> directly with
+/// its own declared-secret list, which pins the redaction but not the read that gets that list off
+/// the resolved tool at the real dispatch site. This drives the same declared secret through
+/// <method>OcuPilot.Kernel.Agent.Dispatch.Answer</method> itself -- the instance-fulfilled path -- and
+/// asserts it reaches no column of the stored row and no serialization of the view.</p>
+/// <p>Mutation (Rule 19): replace the <code>$ClassMethod(tRegistry, "SecretArguments", tTool,
+/// .tSecretDeclared)</code> call in <method>OcuPilot.Kernel.Agent.Dispatch.AnswerOne</method> with
+/// <code>""</code> -- layer 1 has nothing to redact and this goes red.</p>
+Method TestADeclaredSecretDispatchedThroughAnswerOneIsAbsentFromTheRow()
+{
+    Set tKey = ..NewTurnKey()
+    Set tUse = {"id": "toolu_secret"}
+    Do tUse.%Set("name", "probe_ledger_read", "string")
+    Set tInput = {"Name": "probe"}
+    Do tInput.%Set("Value", ..#SECRETVALUE, "string")
+    Do tUse.%Set("input", tInput)
+    Set tUses = []
+    Do tUses.%Push(tUse)
+
+    Do $$$AssertStatusOK($ClassMethod("OcuPilot.Test.LedgerDispatchProbe", "Answer", tKey, $Username, "1", tUses, ..#LIMITS, .tResults, .tNames, , , .tDetails, "probe/route"), "the dispatcher answers the call")
+    Do $$$AssertEquals(tResults.%Size(), 1, "with one result")
+    If tResults.%Size() = 1 Do $$$AssertEquals(tResults.%Get(0).%Get("is_error"), 0, "and the call itself succeeds: " _ tResults.%Get(0).%Get("content"))
+
+    Set tText = ..RowText(tKey)
+    Do $$$AssertTrue(tText '= "", "the row was stored: " _ tText)
+    Do $$$AssertEquals(tText [ ..#SECRETVALUE, 0, "no column of the row dispatched through Answer carries the declared secret: " _ tText)
+    Do $$$AssertTrue(tText [ "[redacted]", "and it reads as redacted instead")
+
+    Do $$$AssertStatusOK($ClassMethod(..#LEDGER, "ViewForUser", $Username, "", 0, tKey, 10, .tView, .tFault), "the view reads")
+    Do $$$AssertEquals($IsObject(tFault), 0, "with no fault")
+    Do $$$AssertEquals(tView.%ToJSON() [ ..#SECRETVALUE, 0, "and no serialization of the view carries it either: " _ tView.%ToJSON())
+
+    Do $ClassMethod(..#STORE, "GuardedDeleteForTurn", tKey)
+}
+
+/// <p>AC3 -- the client-fulfilled half of the same wiring gap:
+/// <method>OcuPilot.Kernel.Agent.Dispatch.ResolveClientCall</method> is the call site
+/// <class>OcuPilot.Kernel.Agent.Loop</class> reads a declared secret's classification off of before a
+/// client-fulfilled call settles (<method>OcuPilot.Kernel.Agent.Loop.RecordClientRow</method>). This
+/// calls it directly with a tool declaring <code>Value</code> secret and records the row from exactly
+/// the pairs and declaration it answered -- not a hand-supplied list -- so the secret's absence is
+/// proof of the resolver's own wiring, not of the ledger's redaction alone.</p>
+/// <p>Mutation (Rule 19): replace the <code>$ClassMethod(tRegistry, "SecretArguments", tTool,
+/// .tSecretDeclared)</code> call in <method>OcuPilot.Kernel.Agent.Dispatch.ResolveClientCall</method>
+/// with <code>""</code> -- the resolver's own declaration reads empty and the first assertion below
+/// goes red.</p>
+Method TestADeclaredSecretResolvedForAClientFulfilledCallIsAbsentFromTheRow()
+{
+    Set tBlock = {"id": "toolu_client"}
+    Do tBlock.%Set("name", "probe_ledger_clientread", "string")
+    Set tInput = {"Name": "probe"}
+    Do tInput.%Set("Value", ..#SECRETVALUE, "string")
+    Do tBlock.%Set("input", tInput)
+
+    Set tSC = $ClassMethod("OcuPilot.Test.LedgerClientDispatchProbe", "ResolveClientCall", $Username, tBlock, ..#LIMITS, .tPending, .tToolName, .tRoute, .tEntityId, .tTarget, .tArguments, .tArgTrunc, .tIsError, .tContent, .tReason, .tFailedPair, ..NewTurnKey(), .tCInput, .tDeclaredPairs, .tCallPairs, .tSecretNames)
+    Do $$$AssertStatusOK(tSC, "the client call resolves")
+    Do $$$AssertEquals(tPending, 1, "and validates through to a directive: " _ tContent)
+    Do $$$AssertEquals($ListToString(tSecretNames), "Value", "carrying the tool's own secret declaration, read by the resolver itself")
+
+    ; Record the row from exactly what the resolver answered -- the same values
+    ; OcuPilot.Kernel.Agent.Loop.RecordClientRow would carry -- so the row's own absence proves the
+    ; wiring, not a hand-supplied declared-secret list.
+    Set tKey = ..NewTurnKey()
+    Do $$$AssertStatusOK($ClassMethod(..#LEDGER, "RecordToolCall", tKey, ..#PROBEUSER, "probe/route", tToolName, tTarget, tCInput, tDeclaredPairs, tCallPairs, tSecretNames, "ok", "", ..#LIMITS), "the row is recorded from the resolver's own outputs")
+
+    Set tText = ..RowText(tKey)
+    Do $$$AssertTrue(tText '= "", "the row was stored: " _ tText)
+    Do $$$AssertEquals(tText [ ..#SECRETVALUE, 0, "no column of the row carries the declared secret: " _ tText)
+    Do $$$AssertTrue(tText [ "[redacted]", "and it reads as redacted instead")
+}
+
 /// <p>AC3 -- a tool that declares nothing about its arguments is refused when the tools are
 /// advertised, naming it; the same registry with only the declaring tool advertises. Silence is not
 /// read as "no secrets" (AD-3).</p>
@@ -428,6 +500,53 @@ Method TestARefusalBeforeDispatchRecordsARowWithNoPairs()
         ; refusal resolved the tool, so its declaration is read and layer 1 runs (AD-3).
         Do $$$AssertEquals(tRow.arguments [ ..#SECRETVALUE, 0, "and the tool's declared secret nowhere in the row's arguments: " _ tRow.arguments)
         Do $$$AssertTrue(tRow.arguments [ "[redacted]", "which read as redacted instead")
+    }
+    Do $$$AssertEquals(..RowText(tKey) [ ..#SECRETVALUE, 0, "nor in any column of the stored row")
+    Do ##class(OcuPilot.Kernel.State.Turn).GuardedFinish(tKey, tUser, "completed", "", "", "done", 0, ..#LIMITS)
+}
+
+/// <p>The unpinned sibling of <method>TestARefusalBeforeDispatchRecordsARowWithNoPairs</method>: a
+/// stop caught at the per-call boundary itself -- distinct from the reply-budget refusal, and reached
+/// through <class>OcuPilot.Test.LedgerLoopStopProbe</class>, whose <method>Boundary</method> always
+/// answers stop -- still writes one <code>tool</code> row, carrying <code>TURN.STOPPED</code> and no
+/// pairs, with the tool's declared secret redacted the same way.</p>
+/// <p>Mutation (Rule 19): delete the <method>RecordRefusedRow</method> call at
+/// <method>OcuPilot.Kernel.Agent.Loop.AnswerTools</method>'s boundary-stop branch -- no row is
+/// written and this goes red.</p>
+Method TestABoundaryStopBeforeDispatchRecordsARowWithNoPairs()
+{
+    Set tUser = ..#PROBEUSER
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedReserve(tUser, "1", "TURN.ABANDONED.JOBLOST", ..#LIMITS, .tKey, .tBusy, .tSweep), "a turn is reserved")
+    Do $$$AssertEquals(tBusy, 0, "and is not busy")
+    If $Get(tKey) = "" Quit
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedBegin(tKey, tUser, ..#LIMITS, .tBegun, .tStarted, "permissions/users"), "and begun")
+
+    Set tUses = []
+    Set tBlock = {"id": "toolu_stop"}
+    Do tBlock.%Set("name", "probe_ledger_read", "string")
+    Set tStopInput = {"Name": "probe"}
+    Do tStopInput.%Set("Value", ..#SECRETVALUE, "string")
+    Do tBlock.%Set("input", tStopInput)
+    Do tUses.%Push(tBlock)
+    Set tLog = []
+    Set tMessages = 0
+    Do $$$AssertStatusOK($ClassMethod("OcuPilot.Test.LedgerLoopStopProbe", "AnswerTools", tKey, tUser, "1", "", tUses, ..#LIMITS, .tMessages, tLog, .tLastSeq, 0, "", 0, 0, .tState, .tCode, 0, "permissions/users"), "the call is answered")
+    Do $$$AssertEquals(tState, ##class(OcuPilot.Kernel.State.Turn).#STATESTOPPED, "the boundary stops the turn")
+    Do $$$AssertEquals(tCode, ##class(OcuPilot.Api.Error).#TURNSTOPPED, "with its own code")
+
+    Do $$$AssertStatusOK($ClassMethod(..#LEDGER, "ViewForUser", tUser, "", 0, tKey, 10, .tView, .tFault), "the view reads")
+    Do $$$AssertEquals($IsObject(tFault), 0, "with no fault")
+    Do $$$AssertEquals(tView.rowsSent, 1, "one row was written: " _ tView.%ToJSON())
+    If tView.rowsSent = 1 {
+        Set tRow = tView.rows.%Get(0)
+        Do $$$AssertEquals(tRow.kind, "tool", "a tool row")
+        Do $$$AssertEquals(tRow.name, "probe.ledger.read", "naming the tool it would have run")
+        Do $$$AssertEquals(tRow.status, "stopped", "the boundary's own status")
+        Do $$$AssertEquals(tRow.code, ##class(OcuPilot.Api.Error).#TURNSTOPPED, "with the stop's own code")
+        Do $$$AssertEquals(tRow.requiredPairs, "", "and no pairs, because nothing read them")
+        Do $$$AssertEquals(tRow.route, "permissions/users", "recorded against the screen the turn ran from")
+        Do $$$AssertEquals(tRow.arguments [ ..#SECRETVALUE, 0, "and the tool's declared secret nowhere in the row's arguments: " _ tRow.arguments)
+        Do $$$AssertTrue(tRow.arguments [ "[redacted]", "which reads as redacted instead")
     }
     Do $$$AssertEquals(..RowText(tKey) [ ..#SECRETVALUE, 0, "nor in any column of the stored row")
     Do ##class(OcuPilot.Kernel.State.Turn).GuardedFinish(tKey, tUser, "completed", "", "", "done", 0, ..#LIMITS)
