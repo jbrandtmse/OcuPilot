@@ -3198,3 +3198,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-6-14-the-messages-log-viewer.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: 348 lines against 337: signedInAt, signedInAtViewer, settled, ROW_SELECTOR, ROW_HEIGHT, the seeding guard and the geometry measurement are copied. The two screens share one page, one archetype, one store and one CSS rule, so the next log viewer copies a third time.
 - 2026-09-18T16:02:26Z status=wontfix-accepted owner=6-14-the-messages-log-viewer by=cr note=reopen_if=a third log-viewer browser spec is written, at which point the harness moves beside browser/list-spec.mjs
+
+### DW-1146: The audit browser spec's thousand-row seed fails after a full ObjectScript sweep on the same instance: it read 919 rows where it requires 1000
+- source: spec-6-14-the-messages-log-viewer.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Observed once on ocupilot-b-ci 2026-09-18 at the Epic 6 integrate-forward: the whole ObjectScript sweep (97 classes) ran first, then smoke, then the browser suite, and all seven audit.browser-spec.mjs tests failed on 'the audit database must hold at least 1000 OcuPilotSeed rows after seeding, read 919'. The same spec alone on the same container immediately afterwards passed 7 of 7. CI runs the same order (suite, smoke, browser) and has passed it on 7736a9b and earlier, so it is intermittent, not deterministic. Likeliest cause is the audit database purging or rolling while the suite writes to it (inference)
+- 2026-09-18T16:58:07Z status=escalated owner=burndown by=runner note=Epic 2's spec and no Epic 6 story's; the failure mode is a whole browser leg red in CI for a reason unrelated to the change under test
