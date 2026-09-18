@@ -9,12 +9,12 @@ stack_risk: uncommon      # ObjectScript / IRIS for Health. Arms the end-of-epic
 review_tier: full-opus    # every bmad-code-review layer stays on the parent (Opus) tier
 
 overrides:
-  implement: sonnet       # bmad-build-auto's implement stage, back on the stage map's tier (owner decision,
-                          # 2026-09-16, cost). `plan` and code review stay on opus via the stage map;
-                          # `qa` stays on sonnet.
+  implement: opus         # bmad-build-auto's implement stage, re-escalated 2026-09-18 on cycle-time evidence
+                          # (see history). `plan` and code review stay on opus via the stage map; `qa` stays
+                          # on sonnet.
 
 checkpoint:               # pre-answered end-of-epic checkpoint offers (owner instruction 2026-09-16; Rule 23).
-  recommend_escalate: decline   # implement stays on sonnet through the 4-12 range; the lead logs the
+  recommend_escalate: decline   # moot while implement is on opus; kept so a later de-escalation never pauses. The lead logs the
                                 # checkpoint as usual with answer=pre_answered_decline and leaves overrides alone.
   offer_mixed: decline          # review_tier stays full-opus (the owner refused the mixed offer at Epic 2 too).
 
@@ -50,4 +50,15 @@ history:
       the 4-12 range runs without a tier pause; evaluation and telemetry continue. Supporting
       telemetry: Epic 3's checkpoint, with implement on opus, measured mean high+med 9.8 per story,
       the same as Epic 1 on sonnet, so the 2026-09-11 escalation did not move that number.
+    approved_by: user
+  - date: 2026-09-18
+    action: re-escalate-implement-to-opus
+    evidence: >-
+      Owner decision on cycle time after 1.5 days on sonnet. Per story, plan spawn to commit, medians:
+      Epic 6 2.6 h on opus (5 stories) vs 3.8 h on sonnet (6); Epic 4 4.3 h on opus (4) vs 5.2 h on
+      sonnet (3). Implement re-spawned for rework 1 of 9 opus stories vs 4 of 9 sonnet; CI red after
+      commit 0 of 9 vs 3 of 9. Confounded by harder stories (4.4-4.6, 6.9-6.11) but the rework and
+      red-CI pattern matches the Epic 1 telemetry, and each rework re-runs the opus review. At the
+      sonnet-era pace the 4-12 range projected to 2026-09-26 with Epic 14 outside the deadline; at
+      the opus-era pace to 2026-09-24. The quota cost is accepted for the schedule.
     approved_by: user
