@@ -90,6 +90,44 @@ test('raw HTML renders as text -- one paragraph whose text is the literal source
   assert.equal(findFirst(nodes, (n) => n.tag === 'img'), null, 'no <img> node was created from raw HTML');
 });
 
+// Raw HTML is text, never markup, regardless of how alarming the payload looks (Boundaries &
+// Constraints, "raw HTML inside a reply is text, never markup"). Three concrete payloads a
+// probe would try against a Markdown renderer: a <script> tag, an onerror attribute, and an
+// SVG payload with an embedded <script>/onload. `textOf` reassembling the exact input string is
+// the same "renders as text" contract the existing raw-HTML-image row asserts; `collectTags`
+// asserts nothing but `p` was created (a heading/list would also be legal wrapping, but a raw
+// standalone HTML block always wraps as one paragraph per `blockTokenToNodes`'s `html` case).
+// Mutation (Rule 19): render an `html` token's own children instead of its raw text (the same
+// mutation the module doc comment and Rule 19 table already name for AC1) -> each row below
+// goes red, since a real (if inert) node would then appear in the tree.
+for (const markup of [
+  '<script>alert(1)</script>',
+  '<img src=x onerror="alert(1)">',
+  '<svg onload="alert(1)"><circle r="1"/></svg>',
+  '<svg><script>alert(1)</script></svg>',
+]) {
+  test(`raw HTML payload renders as literal text with no element created: ${JSON.stringify(markup)}`, () => {
+    const nodes = parse(markup);
+    assert.equal(textOf(nodes), markup);
+    assert.deepEqual(
+      [...new Set(collectTags(nodes))],
+      ['p'],
+      `expected only the wrapping <p>, got tags: ${JSON.stringify(collectTags(nodes))}`
+    );
+  });
+}
+
+// A <script> embedded inline inside ordinary prose splits into several inline `html`/`text`
+// tokens (verified against marked 18.0.13's Lexer output); each still renders as its own literal
+// text node, so the paragraph's reassembled text equals the original sentence exactly and no
+// tag other than `p` appears.
+test('a script tag embedded inline in a sentence renders as literal text, still inside one paragraph', () => {
+  const markup = 'Findings: <script>alert(1)</script> is not a valid row name.';
+  const nodes = parse(markup);
+  assert.equal(textOf(nodes), markup);
+  assert.deepEqual([...new Set(collectTags(nodes))], ['p']);
+});
+
 test('a remote Markdown image renders as its alt text and creates no img node', () => {
   const nodes = parse('![a map](http://203.0.113.9/m.png)');
   assert.equal(textOf(nodes), 'a map');
@@ -137,6 +175,24 @@ test('a hostile scheme renders as text -- no a node, only the link label', () =>
   assert.equal(findFirst(nodes, (n) => n.tag === 'a'), null);
   assert.equal(textOf(nodes), 'bad');
 });
+
+// AC4/Boundaries: "any other scheme ... renders the link as text". `javascript:` is covered
+// above; every other scheme the story names by example gets its own row here, each parsed by
+// `new URL()` (verified) into a protocol other than http:/https:, so `isAllowedLinkUrl` rejects
+// all four the same way. Mutation (Rule 19): loosen `isAllowedLinkUrl` to accept any URL that
+// parses (drop the protocol check) -> every row below goes red, producing an `a` node.
+for (const [name, href] of [
+  ['data:', 'data:text/html,foo'],
+  ['vbscript:', 'vbscript:alert(1)'],
+  ['blob:', 'blob:https://ocupilot.example/00000000-0000-0000-0000-000000000000'],
+  ['file:', 'file:///etc/passwd'],
+]) {
+  test(`a ${name} link scheme renders as text -- no a node, only the link label`, () => {
+    const nodes = parse(`[bad](${href})`);
+    assert.equal(findFirst(nodes, (n) => n.tag === 'a'), null, `expected no <a> for a ${name} href`);
+    assert.equal(textOf(nodes), 'bad');
+  });
+}
 
 test('a fenced sql block highlights', () => {
   const nodes = parse('```sql\nSELECT 1 -- c\n```');
@@ -283,6 +339,35 @@ test('a 70,000-character reply is bounded rather than pathological', () => {
   assert.ok(nodes.length > 0);
   const elapsedMs = Date.now() - started;
   assert.ok(elapsedMs < 5000, `parseReply took ${elapsedMs}ms on a 70,000-character reply`);
+});
+
+// "Nested/deep ... reply not degrading into markup": a deeply nested blockquote is the shape a
+// hostile or malformed reply could take, and every recursive walk in this module (blockquote
+// children, list items, lowlight's hast tree) must bound rather than crash or balloon into an
+// unbounded/unmodelled node. 200 levels is comfortably past anything an agent reply would
+// plausibly nest (a code review; the fixture generator; a quoted quoted quote), and stays well
+// under Node's default stack depth. Mutation (Rule 19): make `blockTokenToNodes`'s `blockquote`
+// case return `[textNode(rawTextOf(token))]` instead of recursing into `blockTokensToNodes` ->
+// the "every level nests" assertion goes red (only one blockquote tag would appear, not 200).
+test('a deeply nested blockquote parses without crashing, and every level nests as its own blockquote', () => {
+  const depth = 200;
+  const src = '> '.repeat(depth) + 'deep text';
+  const started = Date.now();
+  const nodes = parse(src);
+  const elapsedMs = Date.now() - started;
+  assert.ok(elapsedMs < 5000, `parseReply took ${elapsedMs}ms on a ${depth}-level nested blockquote`);
+
+  let levels = 0;
+  let cursor = nodes;
+  while (cursor.length === 1 && cursor[0].kind === 'element' && cursor[0].tag === 'blockquote') {
+    levels += 1;
+    cursor = cursor[0].children;
+  }
+  assert.equal(levels, depth, `expected ${depth} nested blockquote levels, got ${levels}`);
+  assert.equal(textOf(nodes), 'deep text');
+  for (const tag of collectTags(nodes)) {
+    assert.ok(REPLY_TAGS.includes(tag), `tag "${tag}" is outside REPLY_TAGS at nesting depth ${depth}`);
+  }
 });
 
 test('a soft line break renders as its own break node, and breaks the reply\'s textContent shape', () => {

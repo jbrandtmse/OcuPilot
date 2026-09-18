@@ -224,6 +224,70 @@ test('(a) a Markdown reply with a sql fence, a list and inline code renders thro
   }
 });
 
+// Named residual risk (## Auto Run Result, "Follow-up review recommendation"): three review-pass
+// patches -- the hljs-built_in class surviving HLJS_CLASS_RE, a same-origin link suppressing the
+// external-host caption, and a soft line break's <br> surviving sanitizeReplyRoot's DOMPurify
+// pass -- were pinned only at the core/reply.ts unit level (`reply.test.mjs`) or the jsdom
+// component level (`reply.spec.ts`), never against the real, deployed DOMPurify/browser stack.
+// This closes that gap: one real-browser render exercising all three at once.
+//
+// Mutations (Rule 19), each independently confirmed against the deployed bundle before this
+// test was added to the suite:
+// - narrow `HLJS_CLASS_RE` back to `[a-z0-9-]*` (excluding `_`) in `core/reply.ts` -> the
+//   hljs-built_in assertion goes red in the real browser exactly as it does in `reply.test.mjs`.
+// - drop the `isSameOriginUrl` guard in `linkNodes` -> the caption-absence assertion goes red,
+//   finding a `.ocu-reply-link-caption` span the real DOM should not have.
+// - drop `'br'` from `REPLY_TAGS` in `core/reply.ts` -> DOMPurify strips the element in the real
+//   browser too, and the `<br>` count assertion goes red.
+test('(a2) hljs-built_in, a same-origin link with no caption, and a soft line break all survive in the real browser', async () => {
+  const tag = nextTag();
+  setTag(tag);
+  scriptReply(
+    tag,
+    0,
+    markdownReply([
+      'line one',
+      'line two',
+      '',
+      '```sql',
+      'SELECT UPPER(name) FROM t',
+      '```',
+      '',
+      '[namespaces](/ocupilot/namespaces)',
+    ])
+  );
+  const { context, page } = await signedInAt(HOME_URL);
+  const consoleErrors = collectConsoleErrors(page);
+  try {
+    await typeAndSend(page, 'give me the mixed reply');
+    await page.waitForSelector('.ocu-panel-message-agent-text pre > code.language-sql', {
+      timeout: config.navigationTimeoutMs,
+    });
+    const shape = await page.evaluate(() => {
+      const root = document.querySelector('.ocu-panel-message-agent-text');
+      const link = root.querySelector('a[href="/ocupilot/namespaces"]');
+      return {
+        hasBuiltIn: root.querySelector('pre code span.hljs-built_in') !== null,
+        breakCount: root.querySelectorAll('br').length,
+        linkFound: link !== null,
+        linkHasCaption: link?.querySelector('.ocu-reply-link-caption') !== null,
+        linkRel: link?.getAttribute('rel') ?? null,
+        linkTarget: link?.getAttribute('target'),
+      };
+    });
+    assert.equal(shape.hasBuiltIn, true, 'expected span.hljs-built_in on UPPER, surviving both the parser and the real DOMPurify pass');
+    assert.equal(shape.breakCount, 1, 'expected exactly one <br> to survive sanitizeReplyRoot for the two-line reply');
+    assert.equal(shape.linkFound, true, 'expected the same-origin link to render as an <a>');
+    assert.equal(shape.linkHasCaption, false, 'a same-origin link must carry no external-host caption');
+    assert.equal(shape.linkRel, 'noopener noreferrer nofollow');
+    assert.equal(shape.linkTarget, null, 'DOMPurify must strip any target attribute');
+    assert.deepEqual(consoleErrors, [], `no console error or uncaught page error should occur, got: ${JSON.stringify(consoleErrors)}`);
+  } finally {
+    await context.close();
+    forgetTag(tag);
+  }
+});
+
 test('(b) a remote image and a remote link produce zero requests to that host, and no img element', async () => {
   const tag = nextTag();
   setTag(tag);
