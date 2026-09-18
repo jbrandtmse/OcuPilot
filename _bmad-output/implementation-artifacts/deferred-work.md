@@ -2163,6 +2163,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-15T16:18:03Z status=routed owner=burndown by=harvest note=bound the resolver work (a timeout and a short-lived cache keyed by host), keeping the call-time check that closes the rebind race
 - 2026-09-16T10:21:58Z status=routed owner=4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=burndown_gate note=four resolver lookups per provider call is a cost only the turn pays repeatedly
 - 2026-09-16T15:11:12Z status=routed owner=4-8-a-slow-or-rate-limited-provider-degrades-the-turn-rather-tha by=x0 note=a slow resolver is a slow provider step, and the fixed-timeout story bounds it
+- 2026-09-18T10:06:04Z status=resolved-by:4-8-a-slow-or-rate-limited-provider-degrades-the-turn-rather-tha by=harvest note=addressed in part by the five-second judgement cache over Classify and InstanceAddresses; the resolver-timeout half is declined and re-filed above
 
 ### DW-335: EnsureSslConfiguration's drift repair re-enables a disabled TLS configuration and no test pins that branch, so an operator-disabled OcuPilotProvider configuration could silently stay disabled across a reinstall
 - source: qa-3-2 | severity: med | fix-risk: low | footprint: in-epic
@@ -2723,6 +2724,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: DW-338's seam covers the multi form only, so a probe cannot fully control the set the classifier sees
 - 2026-09-16T11:42:04Z status=routed owner=4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=harvest note=bring the single form inside the seam so a probe's set is the whole set
 - 2026-09-16T15:11:12Z status=routed owner=4-8-a-slow-or-rate-limited-provider-degrades-the-turn-rather-tha by=x0 note=same function as DW-334, bounded and made fully probe-controlled together
+- 2026-09-18T10:06:04Z status=resolved-by:4-8-a-slow-or-rate-limited-provider-degrades-the-turn-rather-tha by=harvest note=the single-form HostNameToAddr fallback now sits inside MultiLookup, pinned by a test that arms the probe for a host the real resolver answers for
 
 ### DW-414: The repoint half of AD-37's bounded deletion has no test in either direction
 - source: spec-3-9 | severity: med | fix-risk: low | footprint: in-epic
@@ -2902,6 +2904,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Kernel/Provider/Base.NewRequest sets the proxy settings from State.Egress for every call and ProviderPort.Dispatch never bypasses it for a local endpoint; unreachable in Release 1 because no shipped route writes the State.Egress row
 - 2026-09-16T17:08:26Z status=routed owner=4-8-a-slow-or-rate-limited-provider-degrades-the-turn-rather-tha by=harvest note=Story 4.8 reworks the provider request path in Base.cls
 - 2026-09-16T17:55:57Z occurrence=4-0-epic-3-deferred-cleanup
+- 2026-09-18T10:06:04Z status=decision-pending owner=burndown by=harvest note=Story 4.8 left today's behaviour and its pinned test untouched as instructed; the spec's Design Notes state three options and recommend bypassing the proxy for a marked-local plain-http endpoint. Latent in Release 1: no shipped route writes the proxy row
 
 ### DW-442: PROVIDER.CREDENTIALSTORE's sentence says the definition was left enabled, which reads false on a Test connection of a disabled definition
 - source: spec-4-0-epic-3-deferred-cleanup.md | severity: low | fix-risk: low | footprint: in-story
@@ -3133,11 +3136,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-5-a-turn-watched-progress-cards-and-the-conversation-lock.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Job-level failures (conversation open failure, tool advertise failure) finish with errorSeq 0; turnErrorBanner substitutes an empty step label and the spec gives no wording for that case
 - 2026-09-17T16:50:36Z status=routed owner=4-8-a-slow-or-rate-limited-provider-degrades-the-turn-rather-tha by=cr note=Story 4.8 owns the error banner and step naming; needs a fixed string for a failure that names no step
+- 2026-09-18T10:06:04Z status=resolved-by:4-8-a-slow-or-rate-limited-provider-degrades-the-turn-rather-tha by=harvest note=a second banner template, selected when error.seq names no recorded step, from the new EXPERIENCE.md:352 row
 
 ### DW-1054: A Send the instance refuses with anything but 409 (401, 404, 422, 500) shows the user nothing
 - source: spec-4-5-a-turn-watched-progress-cards-and-the-conversation-lock.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: panel.ts sendCurrentDraft ignores the 'error' outcome of TurnStore.send; the draft is kept and busy clears, with no banner or message
 - 2026-09-17T16:50:36Z status=routed owner=4-8-a-slow-or-rate-limited-provider-degrades-the-turn-rather-tha by=cr note=Story 4.8 owns how a refused or degraded turn is surfaced in the panel
+- 2026-09-18T10:06:04Z status=resolved-by:4-8-a-slow-or-rate-limited-provider-degrades-the-turn-rather-tha by=harvest note=TurnStore.sendError is set on every non-409 refused POST /turn and on a failed conversation mint, and the panel renders it
 
 ### DW-1055: A conversation entry whose step projection exceeds the maximum string length is lost on append, or restores with no steps
 - source: spec-4-5-a-turn-watched-progress-cards-and-the-conversation-lock.md | severity: low | fix-risk: med | footprint: in-story
@@ -3291,3 +3296,23 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: The review added Set tSC = $$$OK after the three LogFault branches that previously failed the whole turn, matching AnswerOne (a %Boolean, whose equivalents cannot fail a turn) and the method's own doc comment. Reaching them needs a seam that makes ResolveWire, Gate.Decide or Navigate.Directive throw; ToolDispatchProbe switches dispatch seams but not these. Probe: make Directive throw and read the turn state.
 - 2026-09-18T07:36:42Z status=wontfix-accepted owner=burndown by=cr note=a seam for three internal-fault paths is more machinery than the story asks for. reopen_if=a client-fulfilled tool other than shell.screen.open lands
 - 2026-09-18T07:48:55Z status=routed owner=burndown by=adjudication note=lead confirms: pinning the normalised fault branches needs a throwing seam, which is a test-seam change rather than a story fix
+
+### DW-1104: One provider call's worst case is ATTEMPTBUDGETSECONDS plus the stored per-call timeout, because the deadline gates when an attempt may start and nothing bounds State.Egress.TimeoutSeconds
+- source: spec-4-8-a-slow-or-rate-limited-provider-degrades-the-turn-rather-than-failing-it.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Base.Attempts reads the deadline only before attempts 2..n, so an attempt already in flight runs to its own timeoutSeconds, and State.Egress.TimeoutSeconds is any %Integer above 0 written through Save with no ceiling. Story 4.8 corrected every document that claimed otherwise and changed no behaviour. Probe: store a definition with timeoutSeconds 3600 and read the worst case against AD-31's declared bound
+- 2026-09-18T10:06:04Z status=decision-pending owner=burndown by=harvest note=the exit is either clamping the stored timeout to the budget or widening AD-31s declared turn bound; that is a product call, so it goes to the owner sheet rather than the burn-down
+
+### DW-1105: PROVIDER.EGRESS is the one provider failure kind no turn job can reach, so it is pinned at the port rather than through the progress route
+- source: spec-4-8-a-slow-or-rate-limited-provider-degrades-the-turn-rather-than-failing-it.md | severity: low | fix-risk: med | footprint: in-epic
+- evidence: ProviderPort.Dispatch judges the endpoint before the adapter runs and AgentRules refuses a definition whose endpoint the same judgement refuses, so no stored definition a turn can use carries one; the other four kinds are driven end to end in OcuPilot.Test.TurnProviderFault. Probe: try to store a definition the write path refuses and run a turn on it
+- 2026-09-18T10:06:04Z status=routed owner=burndown by=harvest note=reaching it through a turn needs a seam that stores a refused definition
+
+### DW-1106: ProviderStub.ScriptElapsed is one value for every call, not the per-queued-answer duration the spec describes
+- source: spec-4-8-a-slow-or-rate-limited-provider-degrades-the-turn-rather-than-failing-it.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: The value lives at ^||OcuPilotProviderStub(elapsed) and is read on every IssueHttpsPost, so no test can script a fast first attempt and a slow second one. Needed to show the attempt deadline binding mid-ladder rather than after a uniform number of equal-length calls. Probe: queue two answers with different intended durations
+- 2026-09-18T10:06:04Z status=routed owner=burndown by=harvest note=test-seam work, no product decision
+
+### DW-1107: The egress resolver lookups are cached but not bounded, so a slow resolver is still a slow first call
+- source: spec-4-8-a-slow-or-rate-limited-provider-degrades-the-turn-rather-than-failing-it.md | severity: low | fix-risk: high | footprint: in-epic
+- evidence: DW-334's other half: $System.INetInfo.HostNameToAddr and HostNameToAddrMulti take (host, family) only, with no timeout and no deadline, so bounding them means JOBbing a resolver per lookup and polling it -- more cost per call than the lookups it bounds. Story 4.8's five-second judgement cache removes the repeat cost only. Probe: point a definition at a host whose resolver hangs and time the first call
+- 2026-09-18T10:06:04Z status=routed owner=burndown by=harvest note=lead harvest of the 4.8 spec deferred list; DW-334 itself is answered in part by the cache
