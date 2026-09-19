@@ -35,3 +35,4 @@ Runner mode (parallel /epic-cycle), slot A, worktree `.worktrees/epic-5`, branch
 2026-09-19T08:40:54Z	Epic 5	ci_resolved	story=harness_repair run=35431423941 result=success resolved_at=next_plan note=all_six_jobs_green_including_instance;the_immediately_preceding_run_35429635336_on_the_same_tree_minus_the_repair_lost_AC8_to_DW-1156,_so_CI_on_a_fresh_runner_is_the_decisive_proof_of_the_repair;branch_head_is_green
 2026-09-19T08:40:54Z	Epic 5	ci_green_verified	run=35431423941 head=5f1a7a3
 2026-09-19T08:41:11Z	Story 5.1	stage_spawned	stage=plan spawn_at=2026-09-19T08:41:11Z model=claude-opus-5[1m] agent_name=5-1-the-proposal-is-minted-plan-1 cycle_iteration=1
+2026-09-19T08:44:48Z	Epic 5	epic_context_compiled	sha=next reason=planning_artifact_newer model=claude-opus-5[1m] note=integrate-forward_plus_the_5.11_amendment_and_5.1_bullets_made_the_artifacts_newer;DW-444_now_carried_as_a_decided_constraint_on_5.4
