@@ -91,8 +91,6 @@ above and the container detail below this block are the operational essentials.
 
 ## Policy
 
-- Never publish, list, or post publicly about OcuPilot before the owner's release, targeting
-  2026-09-24 — no Open Exchange listing, Developer Community article, video, or Ideas Portal entry.
 - Never commit implementation to `main`, `master`, or `develop`. Work lands on the epic branch
   `{TICKET}-epic{N}` and reaches a trunk only through the `/epic-cycle` merge gate (Rule SC-6 in
   [.claude/commands/epic-cycle.md](.claude/commands/epic-cycle.md)).

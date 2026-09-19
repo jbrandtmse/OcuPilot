@@ -142,11 +142,17 @@ check_status() {
 trailer_field() { printf '%s' "$2" | awk -v k="$1" '{ for (i = 1; i <= NF; i++) { if ($i ~ /^note=/) exit; if (index($i, k "=") == 1) { print substr($i, length(k) + 2); exit } } }'; }
 check_owner() {
   owner_check_active || return 0
-  case "$1" in burndown|"") return 0 ;; esac
+  # `burndown` and `range-end-cleanup` are symbolic owners, not story keys: the first is the kit's
+  # own per-epic drain, the second is Rule 27's single range-end cleanup story, which is not
+  # chartered until Epic 12 merges and so has no tracker key while the gates are re-owning to it.
+  # Its charter is built by slicing the ledger on owner=range-end-cleanup, so the string has to be
+  # writable without LEDGER_OWNER_CHECK=off -- a bypass on every such append would switch owner
+  # validation off for the one owner the whole mechanism depends on.
+  case "$1" in burndown|range-end-cleanup|"") return 0 ;; esac
   if ! tracker_keys | grep -qx -- "$1"; then
     pre="$(printf '%s' "$1" | sed -E 's/^([0-9]+-[0-9]+)-.*/\1-/')"
     cand="$(tracker_keys | grep -- "^$pre" | head -3 | tr '\n' ' ')"
-    echo "ERROR: owner=$1 is not a story key in $TRACKER (same-number keys: ${cand:-none}). Use the exact key or burndown; LEDGER_OWNER_CHECK=off to bypass (migration only)." >&2
+    echo "ERROR: owner=$1 is not a story key in $TRACKER (same-number keys: ${cand:-none}). Use the exact key, burndown, or range-end-cleanup; LEDGER_OWNER_CHECK=off to bypass (migration only)." >&2
     return 1
   fi
 }
