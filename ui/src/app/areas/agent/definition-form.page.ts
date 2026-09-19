@@ -490,7 +490,6 @@ export class DefinitionFormPage {
 
   private readonly revealedFlag = signal(false);
 
-  /** Bumped by both stores, so the template re-reads them under `OnPush`. */
   /**
    * The credential rung 'No API key' displaced, restored when it is unticked. Held here
    * rather than read back from the row, because the buffer is the only record of it once
@@ -498,6 +497,7 @@ export class DefinitionFormPage {
    */
   private heldCredType: string = CRED_TYPE_CREDS;
 
+  /** Bumped by both stores, so the template re-reads them under `OnPush`. */
   private readonly generation = signal(0);
 
   private readonly summary = viewChild<ElementRef<HTMLElement>>('summary');
@@ -834,15 +834,20 @@ export class DefinitionFormPage {
 
   /**
    * Whether the acknowledgment control is on screen: the row licenses a local address, the
-   * endpoint is a plain `http://` address and a credential is configured, which is exactly when
-   * the server refuses without it (`AGENT.HTTP.ACK.REQUIRED`). A keyless definition is never
-   * asked, because there is no key to expose, and an encrypted endpoint is never asked either.
-   * The `allowsLocal` term matters: on a vendor row plain `http://` is refused on `endpointUrl`
-   * itself, so offering this control there would offer a control that cannot clear the refusal.
+   * definition declares itself local, the endpoint is a plain `http://` address and a credential
+   * is configured, which is exactly when the server refuses without it
+   * (`AGENT.HTTP.ACK.REQUIRED`). A keyless definition is never asked, because there is no key to
+   * expose, and an encrypted endpoint is never asked either.
+   *
+   * Both local terms matter, and for the same reason: `AgentRules.SchemeAccepted` licenses plain
+   * `http://` only where the row allows local AND the definition is marked local, and refuses it
+   * on `endpointUrl` itself otherwise. Offering this control in either of those states would
+   * offer a control that cannot clear the refusal it will get.
    */
   protected get showHttpAcknowledge(): boolean {
     this.generation();
     if (!this.localAllowed) return false;
+    if (!this.markedLocalFlag) return false;
     if (this.noKeyFlag) return false;
     return /^http:\/\//i.test(this.store.value('endpointUrl'));
   }

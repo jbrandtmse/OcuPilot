@@ -8,9 +8,14 @@
 /// <method>OcuPilot.Kernel.Egress.LeavesInstance</method>, both reached through the shipped
 /// projection (<class>OcuPilot.Test.ContextProbe</class>).</p>
 /// <p><b>Read-only and opens no socket.</b> Nothing here calls a provider. It writes one agent
-/// definition and the instance's one outbound-settings row, removing both in
-/// <method>OnAfterOneTest</method>; every address named is a loopback or a
+/// definition and the instance's one outbound-settings row; every address named is a loopback or a
 /// documentation-reserved literal (RFC 5737), and none is connected to.</p>
+/// <p><b>Neither write survives the method, and neither destroys a developer instance's own
+/// state.</b> <method>OnBeforeOneTest</method> records the default-agent marker and the resolved
+/// outbound settings the instance held, and <method>OnAfterOneTest</method> removes this class's
+/// definition and its settings row and then puts both back. An unconditional delete here removed
+/// a configured proxy permanently, which is the same defect <class>OcuPilot.Test.Egress</class>
+/// scoped away next door.</p>
 Class OcuPilot.Test.EgressLocal Extends %UnitTest.TestCase
 {
 
@@ -40,11 +45,24 @@ Property PreparedDefinitionId As %String;
 /// .claude/rules/objectscript-testing.md
 Property DisplacedDefaultId As %String;
 
+/// Whether the instance held an outbound-settings row before this method ran, so the teardown
+/// restores one only where there was one. Prefix must not begin with "Test" -- see
+/// .claude/rules/objectscript-testing.md
+Property DisplacedEgress As %Boolean [ InitialExpression = 0 ];
+
+/// The settings that row resolved to, in <method>OcuPilot.Kernel.State.Egress.Resolve</method>'s
+/// own subscripts. What is restored is the resolved view rather than the stored bytes: a field the
+/// row left unset comes back as the default it already behaved as.
+Property DisplacedEgressValues [ MultiDimensional ];
+
 Method %OnNew(initvalue As %String = "") As %Status
 {
     Set tSC = ##super(initvalue)
     If $$$ISERR(tSC) Quit tSC
     Set ..PreparedDefinitionId = ""
+    Set ..DisplacedDefaultId = ""
+    Set ..DisplacedEgress = 0
+    Kill ..DisplacedEgressValues
     Quit $$$OK
 }
 
@@ -72,22 +90,40 @@ Method OnBeforeOneTest() As %Status
     ; development instance with a configured default agent must not be left with none.
     Set ..DisplacedDefaultId = ""
     Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT TOP 1 ID FROM OcuPilot_Kernel_State.Agent WHERE DefaultMark = '1'")
-    If tRS.%Next(), tRS.%GetData(1) '= ..PreparedDefinitionId Set ..DisplacedDefaultId = tRS.%GetData(1)
+    If $IsObject(tRS), tRS.%Next(), tRS.%GetData(1) '= ..PreparedDefinitionId Set ..DisplacedDefaultId = tRS.%GetData(1)
     Set tSC = ##class(OcuPilot.Kernel.State.Agent).SetDefaultGuarded(..PreparedDefinitionId)
     If $$$ISERR(tSC) Quit tSC
+    ; The instance's own outbound settings are recorded before they are cleared, so a developer
+    ; instance with a configured proxy gets it back in the teardown.
+    Set ..DisplacedEgress = 0
+    Kill ..DisplacedEgressValues
+    Set tEgressRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT TOP 1 ID FROM OcuPilot_Kernel_State.Egress")
+    If $IsObject(tEgressRS), tEgressRS.%Next() {
+        Set tResolveSC = ##class(OcuPilot.Kernel.State.Egress).Resolve(.tResolved)
+        If $$$ISERR(tResolveSC) Quit tResolveSC
+        Merge ..DisplacedEgressValues = tResolved
+        Set ..DisplacedEgress = 1
+    }
     Quit ##class(OcuPilot.Kernel.State.Egress).DeleteGuarded()
 }
 
-/// <p>Leave no definition and no outbound-settings row for the next method, or the next class, to
-/// read.</p>
+/// <p>Leave none of this method's own state for the next method, or the next class, to read, and
+/// put the instance's own back: the outbound-settings row and the default-agent marker this method
+/// displaced.</p>
 Method OnAfterOneTest() As %Status
 {
-    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Egress).DeleteGuarded(), "no outbound settings row survives this method")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Egress).DeleteGuarded(), "no outbound settings row this method wrote survives it")
     Set tRemoved = ##class(OcuPilot.Test.AgentFixture).RemoveProbeDefinitions(.tRemaining)
     Do $$$AssertStatusOK(tRemoved, "the probe definition this method created is removed")
     Do $$$AssertEquals(tRemaining, 0, "and none survives")
+    If ..DisplacedEgress {
+        Merge tRestore = ..DisplacedEgressValues
+        Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Egress).SetGuarded(.tRestore), "the instance's own outbound settings are restored")
+        Set ..DisplacedEgress = 0
+        Kill ..DisplacedEgressValues
+    }
     If ..DisplacedDefaultId '= "" {
-        Do ##class(OcuPilot.Kernel.State.Agent).SetDefaultGuarded(..DisplacedDefaultId)
+        Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Agent).SetDefaultGuarded(..DisplacedDefaultId), "the default-agent marker this method displaced is restored")
         Set ..DisplacedDefaultId = ""
     }
     Quit $$$OK

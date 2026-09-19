@@ -34,9 +34,9 @@ Community.
 
 **The OpenAI-compatible option is the privacy option.** A small model served on your own network —
 Ollama, vLLM or LM Studio on the instance's host or beside it — is configured by declaring the
-endpoint local, needs no API key, and sends no screen data and no log text off the instance: the
-context chip says as much, and a call to such an endpoint does not go through a configured outbound
-proxy either. The caveat is capability, not privacy: OcuPilot's read path works with a modest local
+endpoint local, needs no API key, and sends no screen data and no log text off your own network:
+the context chip says as much, and a call to such an endpoint does not go through a configured
+outbound proxy either. The caveat is capability, not privacy: OcuPilot's read path works with a modest local
 model, while the write path asks the model for tool calls carrying several fields at once, so a
 model that cannot form those reliably will propose changes you have to reject. Size the local model
 for what you intend to do with it. (The capability sentence is an **inference** from the write

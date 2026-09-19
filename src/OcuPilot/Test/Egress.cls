@@ -3,7 +3,8 @@
 /// <p><b>It resolves real names against this instance's own resolver</b>, which is the point: the
 /// obfuscated loopback literals are only refused because the resolver canonicalises them, and a
 /// fixture that answered canned addresses would pin the test's own arithmetic instead of the
-/// instance's. Nothing here writes anything, and no address is connected to.</p>
+/// instance's. No address named here is connected to, and all but one of these methods write
+/// nothing at all -- the exception is named two paragraphs below.</p>
 /// <p>The marked-local escape has a <b>shipped</b> case: the <code>compatible</code> row is the one
 /// shipped row that sets <code>allowsLocal</code>, and the AC3 matrix is driven against it.
 /// <class>OcuPilot.Test.CatalogProbe</class>'s <code>probe-local</code> row is kept beside it for

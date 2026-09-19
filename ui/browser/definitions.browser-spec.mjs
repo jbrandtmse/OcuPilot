@@ -12,7 +12,7 @@
  * 3. **The Definition form is routable and never advertised** (AC5): the Agent co-pilot side bar
  *    lists Definitions alone, and the command box offers no Definition screen, while the form's
  *    own URL renders the form.
- * 4. **A keyless local model is configurable through the form** (Story 10.3's AC2): choosing the
+ * 4. **A keyless local model is configurable through the form** (Story 10.3's AC1 and AC3): choosing the
  *    OpenAI-compatible provider offers the local-model declaration and the no-API-key choice, and
  *    a plain-`http://` loopback endpoint saved with neither a key nor a credential name is
  *    accepted with no violation on the endpoint field.
@@ -428,7 +428,7 @@ test('AC5: the form is routable and listed nowhere -- the area\'s listed entries
   }
 });
 
-test('Story 10.3 AC2: the OpenAI-compatible provider offers the local-model controls, and a keyless loopback endpoint saves', async () => {
+test('Story 10.3 AC1/AC3: the OpenAI-compatible provider offers the local-model controls, and a keyless loopback endpoint saves', async () => {
   const { context, page } = await signedInAt(FORM_URL);
   try {
     await page.waitForSelector('#ocu-definition-name', { visible: true, timeout: config.navigationTimeoutMs });

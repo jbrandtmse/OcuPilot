@@ -41,6 +41,10 @@ Parameter COMPLETEENDPOINT = "http://127.0.0.1:11434/v1/chat/completions";
 /// The same complete endpoint in the case an operator's own paste may carry.
 Parameter UPPERCASEENDPOINT = "http://127.0.0.1:11434/V1/CHAT/COMPLETIONS";
 
+/// The differently-cased complete endpoint with the trailing slash a paste can carry too, so
+/// the case fold and the slash collapse are pinned together and not only each alone.
+Parameter UPPERSLASHENDPOINT = "http://127.0.0.1:11434/V1/CHAT/COMPLETIONS/";
+
 /// <p>A credential the shape gate accepts: non-empty and free of whitespace, which is all a row
 /// declaring no prefix can require.</p>
 Parameter PROBEKEY = "probecompatiblekeyabcdefghij";
@@ -248,6 +252,62 @@ Method TestAKeylessCallSendsNoAuthorizationHeader()
     Do $$$AssertEquals(tResponse.StopReason, "end_turn", "with its own stop reason")
 }
 
+/// <p>AC1's negative arm -- a keyless definition still sends no header even when its row carries a
+/// leftover credential reference and a secret is resolvable under it. <method>AgentRules.Normalize</method>
+/// clears both references for <code>credType</code> <code>none</code> on every write the API path
+/// makes, so a row shaped like this should not exist through ordinary use; this method writes the
+/// state row directly, as <method>StoredDefinition</method> already does, to show that
+/// <method>OcuPilot.Port.ProviderPort.ValuesFor</method>'s <code>keySource</code> rides
+/// <code>credType</code> alone and is never overridden by what a reference names or by whether a
+/// secret happens to answer it.</p>
+/// <p>mutation: have <method>OcuPilot.Port.ProviderPort.ValuesFor</method> set
+/// <code>keySource</code> to <parameter>OcuPilot.Kernel.Provider.Base.KEYSOURCENONE</parameter>
+/// only when <code>envVarName</code> and <code>credentialName</code> are both empty -- red on the
+/// recorded header, because the populated reference then leaves <code>keySource</code> unset,
+/// <method>OcuPilot.Kernel.Provider.Base.Invoke</method> resolves the stored credential through
+/// the ladder as it would for an ordinary rung, and the armed secret answers it.</p>
+Method TestAKeylessRowWithALeftoverReferenceAndAResolvableSecretStillSendsNoHeader()
+{
+    Set tRow = ..ShippedRow()
+    If '$IsObject(tRow) Quit
+    Do ##class(OcuPilot.Test.SecretProbe).SetValue(..#PROBEKEY)
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..#REPLY)
+    Set tId = ""
+    Try {
+        Set tDef = ##class(OcuPilot.Kernel.State.Agent).%New()
+        Set tDef.Name = $Parameter("OcuPilot.Test.AgentFixture", "PROBEPREFIX") _ "ShippedCompatibleLeftover"
+        Set tDef.Provider = ..#PROVIDERKEY
+        Set tDef.Model = ..#PROBEMODEL
+        Set tDef.EndpointUrl = ..#BASEENDPOINT
+        Set tDef.MarkedLocal = 1
+        Set tDef.HttpAcknowledged = 1
+        Set tDef.CredType = ##class(OcuPilot.Kernel.AgentRules).#CREDTYPENONE
+        ; A reference AgentRules.Normalize would have cleared on the way in, left in place on
+        ; purpose: this row is written straight through the state class, as every fixture on
+        ; this class is.
+        Set tDef.EnvVarName = tRow.defaultEnvVarName
+        Set tDef.CredentialName = tRow.defaultCredentialName
+        Set tDef.MaxTokens = +tRow.canonicalMaxTokens
+        Set tDef.Temperature = +tRow.canonicalTemperature
+        Set tDef.Enabled = 1
+        Set tDef.ConnectionVerified = 1
+        Set tSC = ##class(OcuPilot.Kernel.State.Agent).GuardedCreate(tDef)
+        Do $$$AssertStatusOK(tSC, "the leftover-reference definition is stored")
+        If $$$ISERR(tSC) Quit
+        Set tId = tDef.%Id()
+        Set tDef = ""
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "storing the leftover-reference definition did not raise")
+    }
+    If tId = "" Quit
+    Do $ClassMethod("OcuPilot.Test.Provider", "Messages", .tMessages)
+    Set tSC = $ClassMethod(..#PORT, "Invoke", tId, .tMessages, .tTools, "", .tResponse, .tHttpStatus, .tFault)
+    Do $$$AssertStatusOK(tSC, "the call returns $$$OK")
+    Do $$$AssertEquals(..FaultCode(tFault), "", "with no fault, so the leftover reference was never consulted: " _ ..Rendered(tFault))
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 1, "the transport was entered once")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("headerNames", 1), "", "carrying no authentication header, although the row names a reference and the armed secret would have resolved it")
+}
+
 /// <p>AC1's header half -- the adapter writes no header when the key is absent, rather than an
 /// empty <code>Bearer</code> the vendor would read as a malformed credential. Driven directly, with
 /// the key source stated, so the assertion is about <code>ApplyAuth</code> and not about how the
@@ -297,7 +357,7 @@ Method TestTheAdapterWritesNoHeaderWhenTheKeyIsAbsent()
 /// <method>OcuPilot.Kernel.Provider.Base.Attempts</method> refuses as
 /// <code>PROVIDER.EGRESS</code> with no call made. An override answering another
 /// <b>authority</b> is pinned on the shared seam by
-/// <method>OcuPilot.Test.OpenAIAdapter.TestABuiltUrlOnAnotherAuthorityIsRefused</method>, which
+/// <method>OcuPilot.Test.GeminiAdapter.TestABuiltUrlOnAnotherAuthorityIsRefused</method>, which
 /// this family reaches through the same <method>Attempts</method> check.</p>
 /// <p>mutation: have <method>OcuPilot.Kernel.Provider.Compatible.RequestUrl</method> answer the
 /// stored endpoint unchanged -- red on the recorded URL for the two base rows, the
@@ -353,6 +413,19 @@ Method TestABaseEndpointIsNormalizedAndAnAuthorityChangeIsRefused()
     Do $$$AssertStatusOK(tUpper.Invoke(.tUpperValues, .tMessages, .tTools, "", .tSettings, .tUpperResponse, .tUpperFault, .tUpperStatus), "the call on a differently-cased complete endpoint returns $$$OK")
     Set tUpper = ""
     Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("url", 1), ..#UPPERCASEENDPOINT, "and is issued unchanged rather than gaining a second operation segment")
+
+    ; The same cased spelling with the trailing slash a paste can carry too: the slash is
+    ; collapsed before the case-blind suffix comparison runs, so the two never interact badly
+    ; and the stored form still reaches the wire with no second operation segment.
+    Do ##class(OcuPilot.Test.ProviderStub).Reset()
+    Do ##class(OcuPilot.Test.SecretProbe).SetValue(..#PROBEKEY)
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..#REPLY)
+    Do ..DirectValues(tRow, ..#UPPERSLASHENDPOINT, .tUpperSlashValues)
+    Set tUpperSlash = ..Adapter()
+    Do $$$AssertStatusOK(tUpperSlash.Invoke(.tUpperSlashValues, .tMessages, .tTools, "", .tSettings, .tUpperSlashResponse, .tUpperSlashFault, .tUpperSlashStatus), "the call on a differently-cased complete endpoint with a trailing slash returns $$$OK")
+    Set tUpperSlash = ""
+    Do $$$AssertEquals(..FaultCode(tUpperSlashFault), "", "with no fault: " _ ..Rendered(tUpperSlashFault))
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("url", 1), ..#UPPERCASEENDPOINT, "and the trailing slash is dropped rather than left inside the path")
 
     ; The refusal arm: a stored endpoint whose path reduces to nothing is refused before a socket.
     Do ##class(OcuPilot.Test.ProviderStub).Reset()

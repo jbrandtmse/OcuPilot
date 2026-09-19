@@ -26,8 +26,9 @@
 /// are the family contract, and
 /// <method>RequestUrl</method> is the request-URL seam a family whose endpoint carries the model
 /// in its path needs; <method>ProviderMessage</method> and <method>KeyShapeAccepted</method> are
-/// concrete here, the first because every family's error body is
-/// <code>{error: {message}}</code> and the second the key-shape test a family
+/// concrete here, the first because the three vendor families answer an error body shaped
+/// <code>{error: {message}}</code> -- see that method for what the <code>compatible</code> family
+/// does -- and the second the key-shape test a family
 /// with no published key grammar answers with; <method>IssueHttpsPost</method>
 /// is the one transport seam, which <class>OcuPilot.Test.ProviderStub</class> replaces so the whole
 /// path runs with no socket; <method>SecretClass</method>, <method>Wait</method> and
