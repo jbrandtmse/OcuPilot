@@ -600,7 +600,7 @@ Where an FR is split, the epic that first delivers user-visible value from it is
 - FR-76: Epic 16 - task export and import, background tasks, broadcast, license usage and every dashboard meter group.
 - FR-77: Epic 16 - the six secondary log viewers and the unified log hub.
 - FR-78: Epic 16 - external language servers.
-- FR-79: Epic 13 - the optional bonuses, the uninstall hook, CI growth and the registry publish.
+- FR-79: Epic 13 - the uninstall hook, CI growth and the registry publish; the optional bonuses were scratched on 2026-09-19.
 
 #### Staged delivery
 
@@ -667,7 +667,7 @@ The epic-level map above says *which epic* owns each requirement and why it is s
 | FR-36 | 8.2 | FR-76 | 16.4-16.7 |
 | FR-37 | 5.9, 7.2 | FR-77 | 16.8, 16.9 |
 | FR-38 | 6.2, 9.3 | FR-78 | 16.10 |
-| FR-39 | 8.3 | FR-79 | 13.1-13.4 |
+| FR-39 | 8.3 | FR-79 | 13.1-13.3 |
 | FR-40 | 6.2, 8.4 | FR-80 | every story in 18-22 |
 | | | NFR-2 | 4.5, 11.7 |
 
@@ -729,6 +729,8 @@ Every UX Design Requirement is owned by at least one story. Where a UX-DR is a *
 **Parallel-run amendments, 2026-09-16.** Three forward references that serialized the epics under the parallel orchestrator moved to the story that has both halves: Story 6.7's UJ-6 replay to Story 7.6, Story 10.2's per-provider demo-prompt check to Story 17.7, and Story 8.7 to Epic 7 as Story 7.11. Nothing changed in what is built, only in which story verifies it, so Epic 6 depends on Epic 2 alone, Epic 10 on Epics 3 and 4, and Epic 8 on Epics 5 and 6.
 
 **Parallel-run amendments, 2026-09-17.** Two more forward references moved so Epic 12 runs beside Epic 9 rather than after Epic 11: the SSL/TLS test connection from Story 12.1 to Story 9.5, and suggested prompts, which every editor now declares in its own descriptor per Story 11.3's contract. Six stories above the floor moved to the polish week as Stories 16.11 to 16.16: Task Manager control (7.7) and lock removal (7.9), which build step 4's list never named; the service editor (9.4) and the LDAP and Kerberos editor (9.6), last in step 6's order, with their reduced forms in Story 9.9 and the LDAP test authentication following its editor; the data-egress line (11.5) and the agent audit viewer (11.6). Epic 11 depends on Epics 4, 5, 6 and 10; Epic 12 on Epics 6, 7 and 8.
+
+**Owner amendment, 2026-09-19.** Story 13.4 (optional bonus items) is scratched: no article, video or short is planned, and FR-79's bonus half is dropped. Epics 13 and 15 join the parallel run, each depending on Epic 1 alone, to fill the slot that would otherwise idle while Epic 5 runs; Story 13.3 (the registry publish) is held until the owner's release decision because what it publishes is public and is whatever the build is when it runs.
 
 That choice was weighed against organizing by portal area instead - one epic each for Web applications, Permissions, Security, Tasks, OS management and Logs. Area epics would touch fewer files per epic, but they cannot express the floor, which demands one live list in **every** area before any area's editors, and one confirmed agent write in **every** area by the end of step 2. An area-shaped plan would let the project arrive at 2026-09-27 with two finished areas and four empty ones, which is the thin interface the contest rules reject.
 
@@ -836,7 +838,7 @@ A user completes the area the contest names most specifically: five OAuth 2.0 ed
 
 ### Epic 13: Bonus deliverables and engineering hygiene
 
-The entry reads as finished: an uninstall hook that removes everything the installer created, a test suite growing in CI against a stock image, the package on the community registry, and whichever bonus items the technology-bonuses post makes worth writing. Polish week, ranked after the OAuth editors, and re-planned against the 2026-09-14 kick-off.
+The entry reads as finished: an uninstall hook that removes everything the installer created, a test suite growing in CI against a stock image, and the package on the community registry. Polish week, ranked after the OAuth editors. Story 13.4, the optional bonus items, was scratched by the owner on 2026-09-19: nothing beyond the entry itself is produced before the deadline.
 
 **FRs covered:** FR-79
 
@@ -5037,7 +5039,7 @@ So that the area the task statement names reads as rebuilt.
 
 ## Epic 13: Bonus deliverables and engineering hygiene
 
-The entry reads as finished: an uninstall hook that removes everything the installer created, a test suite growing in CI against a stock image, the package on the community registry, and whichever bonus items the technology-bonuses post makes worth writing. Polish week, ranked after the OAuth editors, and re-planned against the 2026-09-14 kick-off.
+The entry reads as finished: an uninstall hook that removes everything the installer created, a test suite growing in CI against a stock image, and the package on the community registry. Polish week, ranked after the OAuth editors. Story 13.4, the optional bonus items, was scratched by the owner on 2026-09-19: nothing beyond the entry itself is produced before the deadline.
 
 ### Story 13.1: The uninstall hook
 
@@ -5112,27 +5114,6 @@ So that installing it is one command against a source I already trust.
 - **Given** the manifest
 - **When** it is published
 - **Then** it was generated from the same roster the installer compiles, so it cannot have drifted.
-
-### Story 13.4: Optional bonus items, re-planned after the kick-off
-
-As the builder,
-I want to spend bonus effort only where the contest actually awards it,
-So that writing is not guesswork against a precedent that may not hold.
-
-**Acceptance Criteria:**
-
-- **Given** the technology-bonuses post, expected around the 2026-09-14 kick-off
-- **When** it is published
-- **Then** the bonus plan is re-made against it, because the Full Stack 2026 precedent carried **no Angular, AI or REST bonus** and the current plan rests on that precedent alone.
-
-- **Given** a Developer Community article, a YouTube video or a short is worth writing
-- **When** it is produced
-- **Then** it happens in the **voting week, after the final submission** - the owner's decision that no video exists before submission bounds this too, and the 2026-09-09 stealth decision (Epic 17) independently forbids publishing any of them before the release - and each published item is linked from the README
-- **And** this placement rests on voting-week publication still earning the bonus, which is **unconfirmed** and is one of the two questions Story 17.4 takes to the kick-off. If bonuses turn out to be scoped to the 2026-09-27 deadline, every item here moves into the 2026-09-24 to 2026-09-27 window, which already carries the collateral pass, the single clean-build rehearsal and the approval buffer - and the honest response is then to cut bonus items rather than to crowd that window.
-
-- **Given** no bonus item is worth the time it would take
-- **When** the decision is made
-- **Then** none is produced, and the effort goes to screens and writes instead - the counter-metric that polish must not precede the floor applying here as everywhere.
 
 ---
 

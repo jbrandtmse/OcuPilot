@@ -1,9 +1,9 @@
-# Epic dependency graph for the parallel /epic-cycle orchestrator (range 4-12).
+# Epic dependency graph for the parallel /epic-cycle orchestrator (range 4-12, plus Epics 13 and 15 added by the owner on 2026-09-19).
 # depends_on is the EFFECTIVE graph the dispatch loop reads: the owner-approved graph plus the
 # edges the orchestrator's analysis added, per the owner's standing instruction (2026-09-16):
 # "If your analysis adds an edge, take the more conservative graph and note the difference in the
 # parallel log; if it would remove one of these, keep mine."
-epics_md_hash: "7a554f6f851c3c26970a4d596d6dd19589bcb7a3ef574a26934c604e87f4cdca"
+epics_md_hash: "9997d9900db34e24d4131cb7a680b7c440bca7bee1fe05ded190929014f3a5d0"
 analyzed_by: claude-opus-5
 analyzed_at: "2026-09-16T15:02:34Z"
 approved: true
@@ -20,6 +20,8 @@ owner_graph:  # as approved, never reduced
   epic-10: [epic-3]
   epic-11: [epic-4, epic-5]
   epic-12: [epic-6, epic-8]
+  epic-13: [epic-1]   # added 2026-09-19; Story 13.3 held until the owner releases
+  epic-15: [epic-1]   # added 2026-09-19
 
 added_edges:
   hard:
@@ -76,3 +78,12 @@ epics:
     depends_on: [epic-6, epic-7, epic-8]
     submodules: []
     paths_hint: ["src/OcuPilot/Screen/Descriptor/**", "src/OcuPilot/Screen/Tool/**", "ui/tools/field-lists.mjs", "ui/tools/field-lists.test.mjs", "ui/tools/classic-links.mjs", "ui/tools/classic-links.test.mjs", "src/OcuPilot/Port/AdminPort.cls", "src/OcuPilot/Api/**", "src/OcuPilot/Install/Smoke.cls", "src/OcuPilot/Test/**", "ui/src/app/areas/security/**", "ui/src/app/areas/permissions/**", "ui/src/app/areas/logs/**", "ui/src/app/shell/**", "ui/src/app/core/**", "ui/tools/**", "ui/src/styles/**", "ui/browser/**"]
+  epic-13:
+    depends_on: [epic-1]
+    submodules: []
+    hold_stories: ["13-3-publish-the-package-to-the-community-registry"]   # owner releases by hand; the publish is public and ships whatever the build is
+    paths_hint: ["src/OcuPilot/Install/**", ".github/workflows/ci.yml", "scripts/ci-*.sh", "scripts/smoke.sh", "ui/tools/ci*.mjs", "ui/tools/client-lint.mjs", "ui/browser.config.mjs", "ui/src/**/*.browser.spec.ts", "src/OcuPilot/Test/**", "module.xml", "spec/**"]
+  epic-15:
+    depends_on: [epic-1]
+    submodules: []
+    paths_hint: ["ui/src/app/shell/header*", "ui/src/app/shell/account-menu*", "ui/src/app/shell/side-bar*", "ui/src/app/shell/command-box*", "ui/src/app/core/**", "ui/src/styles/**", "src/OcuPilot/Screen/Descriptor/Home.cls", "src/OcuPilot/Api/Account*.cls", "src/OcuPilot/Api/Ui*.cls"]
