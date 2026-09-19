@@ -543,6 +543,19 @@ Three more, added with the assertions the full sweep's own two reds called for:
   throwaway's own source copy and reloaded there, so the repository tree stayed byte-identical
   throughout.
 
+**Mutations performed by the lead's AD gate** (the rest of the planned list is the review
+stage's, since the interrupted implement pass performed none). Both applied on the throwaway
+`ocupilot-ci`, the package recompiled before reading, reverted with `git status --short` and
+`git diff --stat` empty afterwards:
+
+- `mutation: Proposal/Mint.cls's merge source changed from the fresh read's whole object to an
+  empty `{}` (AD-4) -> OcuPilot.Test.Proposal.TestThePayloadCarriesEveryPropertyTheFreshReadReturned
+  red, run 135 (4 of 10), green again at run 136`
+- `mutation: ABNORMALSTATES gained `completed` in Proposal/Write.cls, so a normally-ended turn is
+  treated as abnormal (AD-40's turn-outcome binding) ->
+  OcuPilot.Test.ProposalWrite.TestAProposalOnACompletedTurnIsClaimable red, run 137 (3 of 11),
+  green again at run 138`
+
 ## Auto Run Result
 
 Status: ready-for-dev
