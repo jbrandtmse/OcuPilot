@@ -3640,6 +3640,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: CI's instance job failed on context-chip.browser-spec.mjs:404 with 'Waiting failed: 30000ms exceeded' and nothing naming the condition; the full suite is 127/127 locally and has been for four stories. The leg drives sign-in, an in-app navigation to Switches, a cap edit, Save, and a navigation back, on six bare waitForFunction calls whose failure message is the library's. Probe: run the spec on a slower host, or lower config.navigationTimeoutMs
 - 2026-09-18T22:17:16Z status=routed owner=burndown by=lead note=chartered into Story 4.12 mid-story as its fifteenth item: every wait in that leg must say what it wanted, and the leg must be deterministic or bounded with a named failure
 - 2026-09-18T23:27:12Z status=resolved-by:4-12-epic-4-burn-down by=adjudication note=all six waits in the cap-follows-agent-switch leg now name what they wanted and what the page held, the file gained the free-slot guard, and each wrapper carries the underlying error. The leg is more diagnosable rather than proven deterministic: the click-right-after-Save sequence is unchanged and CI has not re-run it, so the next run on this branch is its confirmation
+- 2026-09-19T22:42:32Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=lead note=PARENT entry; DW-1175 is its duplicate. Epic 10 found a second symptom on a byte-identical tree: switches.browser-spec.mjs:263 (the context row cap saves as a number) timed out at 30.9s waiting for #ocu-switches-contextRowCap-reason on CI 35463034484 attempt 1, while attempt 2 lost context-chip:489 instead. Both losing tests are Switches-screen interactions, so this is one unrepaired cause with two symptoms clustering on one screen, not a suite that cannot tell a regression from noise. The context-chip repair is verified on this branch; switches:263 is the check of whether the cause is actually closed
 
 ### DW-1170: REASONAGENTBADBODY tells the caller "or no body at all" on routes that refuse an absent body
 - source: spec-4-12-epic-4-burn-down.md (code review) | severity: med | fix-risk: low | footprint: in-story
@@ -4140,6 +4141,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-19T03:12:31Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=merge_gate note=two different single-test losses on one identical tree is a flaky suite, not a regression; the merge gate will keep tripping on it until the suite is made timing-robust
 - 2026-09-19T07:34:44Z status=routed owner=5-0-epic-4-deferred-cleanup by=merge_gate note=re-owned to Epic 5 per the orchestrator's harness-repair directive 2026-09-19: ui/browser/context-chip.browser-spec.mjs is in this runner's footprint (the component ui/src/app/shell/context-chip.ts is Epic 10's and is not touched). Observed again on this branch: 184/185, this leg 36087 ms, URL stuck on /ocupilot/agent/switches
 - 2026-09-19T08:12:42Z status=resolved-by:5-0-epic-4-deferred-cleanup by=merge_gate note=navigateViaSideBar takes an optional expectedPath and re-presses the side-bar entry within a bound while the URL has not reached it; omitted it presses once, as before. Mutation: point the wait at /ocupilot/permissions/roles -> red with 'the URL stayed at /ocupilot/permissions/users', which also shows the press now lands. The leg passed in all three full runs against 36087 ms failing before
+- 2026-09-19T22:42:25Z occurrence=DW-1169-is-the-parent
+- 2026-09-19T22:42:25Z status=resolved-by:5-0-epic-4-deferred-cleanup by=lead note=DUPLICATE of DW-1169, which is the parent observation (that leg timing out with nothing naming which of six waits lost). The orchestrator filed this one at Epic 4's merge gate without checking for an existing entry on the same test and has said so. The repair stands and is verified; do not open a third entry. Second symptom on the same cause: switches.browser-spec.mjs:263 timed out on CI 35463034484 attempt 1, and both losing tests are Switches-screen interactions, so the failures cluster on one screen
 
 ### DW-1189: The fault banner may clear and be re-raised during initial settle when every screen read is refused, which is a visible flicker and not only a test hazard
 - source: orchestrator harness-repair directive 2026-09-19 | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -4271,6 +4274,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: ProposalConvIdx and ProposalTurnIdx are added the way IRIS adds any index: not populated on compile, and the installer runs no %BuildIndices. Location: src/OcuPilot/Kernel/State/Propose.cls
 - 2026-09-19T18:03:41Z status=routed owner=range-end-cleanup by=harvest note=non-blocking (Rule 27): bounded by AD-6's ten-minute window - such a row is unconfirmable within minutes, so the effect is a card missing from one reload, never a stale write
+- 2026-09-19T22:43:49Z occurrence=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at
 
 ### DW-1236: The entity-label rule's four sentences are written twice, once per engine, with no shared corpus behind them
 - source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: low | fix-risk: low | footprint: in-epic
@@ -4341,3 +4345,93 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: panel.ts binds only (cancel) on the card; confirmAriaDisabled answers null on a live card with no declared secret, so the press leaves the card unchanged with no status line, no banner and no announcement. Spec-bound: the Never clause says Confirm and Cancel ship with their full focus and transition contract while Confirm's request is the seam Story 5.3 fills, and calls it a staged affordance rather than a defect. Recorded so the next review reads the ruling instead of re-filing it.
 - 2026-09-19T18:48:49Z status=by-design owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=cr note=spec Boundaries Never clause; 5.3 wires the request - reopens only by spec amendment
+
+### DW-1250: Two confirms of two different live proposals on one scoped target may both win their own claims, against AD-34's same-transition sibling cancel
+- source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: Each conditional UPDATE matches its own row, so two callers claiming two live rows of one TargetRef can both succeed before either's sibling cancel runs. AD-34's Rule makes the sibling state a consequence of the mechanism rather than a racing step. Unverified by the implement pass. Location: src/OcuPilot/Kernel/State/Propose.cls GuardedClaimAndClose
+- 2026-09-19T22:43:49Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=harvest note=kept on this story: it is AD-34's own invariant, which is this story's subject, and Rule 6 makes an AD mismatch high rather than a low deferrable. The code review decides
+
+### DW-1251: The panel hands the confirm request an empty secrets map, so AD-35's client half has no data path
+- source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Panel.secretsFor answers an empty map; no shipped descriptor declares a secret argument until the first real one. Location: ui/src/app/shell/panel.ts
+- 2026-09-19T22:43:49Z status=routed owner=5-10-security-and-secrets-disable-and-re-enable-auditing by=harvest note=downstream-blocking (Rule 27): 5.10 ships the first real secret field, which is what gives this a data path
+
+### DW-1252: A confirm refusal that leaves the row live gives the card no reason anywhere
+- source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Panel.onCardConfirm drops its confirm refusal's reason, so a refusal the user can act on renders as a bare state. Location: ui/src/app/shell/panel.ts
+- 2026-09-19T22:43:49Z status=routed owner=5-8-web-applications-enable-a-disabled-application-and-grant-it by=harvest note=downstream-blocking (Rule 27): 5.8 drives a confirm end to end for UJ-3 and its AC names the refusal the user sees
+
+### DW-1253: No test asserts a successful confirmed write over the wire; only the browser leg does
+- source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Test.ConfirmRoute drives the refusals and the browser spec drives the success, so the happy path has no class-level assertion. Location: src/OcuPilot/Test/ConfirmRoute.cls
+- 2026-09-19T22:44:09Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=13.2 owns the CI suite's coverage; the browser leg alone makes the happy path depend on a bundle
+
+### DW-1254: AC6's no-window-in-which-both-are-live-and-one-is-burned is pinned by a source-text ordering scan, not an executed observation
+- source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: The assertion reads the method's source for statement order rather than observing two callers. Location: src/OcuPilot/Test/ConfirmRoute.cls
+- 2026-09-19T22:44:09Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=a source-text scan standing in for an executing assertion is 13.2's charter
+
+### DW-1255: The turn-start proactive close has no test that drives its handler
+- source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: ProposalClose drives Api.Conversation.HandleCreate's close only through the store, never through the handler. Location: src/OcuPilot/Test/ProposalClose.cls
+- 2026-09-19T22:44:09Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=handler-level coverage is 13.2's charter
+
+### DW-1256: DW-412's rollback restore ships unpinned
+- source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: No test in the tree makes pObject.%Save() itself fail, so the new restore on the TROLLBACK path is never executed. Location: src/OcuPilot/Kernel/State/Base.cls
+- 2026-09-19T22:44:09Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=reaching it needs a save-failure fixture, which is 13.2's charter
+
+### DW-1257: Nine of the thirteen matrix rows never reach a rendered HTTP envelope in the class suite
+- source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Test/ConfirmRoute.cls drives the store directly for nine rows and the envelope for four. Location: src/OcuPilot/Test/ConfirmRoute.cls
+- 2026-09-19T22:44:09Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=13.2 owns the CI suite's envelope coverage
+
+### DW-1258: The port's mutating path has no class-level test
+- source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: MUTATINGTYPES, HttpMethodFor and EndpointType's widening are exercised only through the confirm route. Location: src/OcuPilot/Port/AdminPort.cls
+- 2026-09-19T22:44:09Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=13.2 owns class-level port coverage; the mutating path is new in this story
+
+### DW-1259: A mutating endpoint that queues its own work would be reported by AwaitTask, which consults no pair table
+- source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: AdminPort.AwaitTask has no mutating-type pair table; no Release 1 mutating endpoint queues. Location: src/OcuPilot/Port/AdminPort.cls
+- 2026-09-19T22:44:09Z status=routed owner=range-end-cleanup by=harvest note=non-blocking (Rule 27): no Release 1 mutating endpoint takes the async path, so the branch is unreachable
+
+### DW-1260: The confirm and cancel paths expire stale rows across the whole table rather than the one they are about
+- source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Propose's expiry projection sweeps every row on each confirm or cancel. Location: src/OcuPilot/Kernel/State/Propose.cls
+- 2026-09-19T22:44:10Z status=routed owner=range-end-cleanup by=harvest note=non-blocking (Rule 27): bounded by AD-6's ten-minute window, so the table stays small; no measurement establishes a cost
+
+### DW-1261: The sibling cancel leaves each sibling's RowVersion where it was, so a stale-save check would not see the change
+- source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: The cancel updates State without raising RowVersion. Location: src/OcuPilot/Kernel/State/Propose.cls
+- 2026-09-19T22:44:10Z status=routed owner=range-end-cleanup by=harvest note=non-blocking (Rule 27): nothing does a read-modify-write over a sibling proposal row today
+
+### DW-1262: A send the instance accepts and then cannot spawn closes the conversation's proposals anyway, while the panel leaves the card live
+- source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: The close runs before the spawn result is known. Location: src/OcuPilot/Api/Turn.cls
+- 2026-09-19T22:44:10Z status=routed owner=range-end-cleanup by=harvest note=non-blocking (Rule 27): the spawn failure path is itself rare and the card's staleness resolves at its own expiry
+
+### DW-1263: Write.Claim carries no State clause, so a closed-but-unburned row runs every gate and one vendor GET before the claim refuses
+- source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: The refusal is correct; the cost is one wasted fresh read. Location: src/OcuPilot/Kernel/Proposal/Write.cls
+- 2026-09-19T22:44:23Z status=routed owner=range-end-cleanup by=harvest note=non-blocking (Rule 27): the outcome is right and the cost is one read on a path a user reaches only by confirming a closed proposal
+
+### DW-1264: AD-29's pair probe cannot be declared for a mutating call, and Invoke's doc comments still name TYPESUFFIXES alone
+- source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: The probe table covers read types; the mutating path declares its pairs at the tool. Location: src/OcuPilot/Port/AdminPort.cls
+- 2026-09-19T22:44:23Z status=routed owner=range-end-cleanup by=harvest note=non-blocking (Rule 27): the gate is evaluated, only the probe declaration and the comment lag
+
+### DW-1265: Api.Conversation.HandleCreate closes the caller's proposals before the conversation row exists
+- source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: The close runs ahead of the insert, so a failed insert leaves the proposals closed. Location: src/OcuPilot/Api/Conversation.cls
+- 2026-09-19T22:44:23Z status=routed owner=range-end-cleanup by=harvest note=non-blocking (Rule 27): closing a proposal early is the restrained direction, and the insert failure path is rare
+
+### DW-1266: The Egress twin of the singleton unique index has no test, because its natural home is a contended path
+- source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: SwitchState's index is pinned and Egress's identical one is not, since Kernel/State/Egress.cls is Epic 10's for the whole of Epic 5. Location: src/OcuPilot/Kernel/State/Egress.cls
+- 2026-09-19T22:44:23Z status=routed owner=range-end-cleanup by=harvest note=non-blocking (Rule 27) and it needs the contention to end, which it does before the range end
+
+### DW-1267: RemoveSeeded's contract does not match its code, and its error path discards the keys it had not reached
+- source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: The doc comment promises a sweep the method does not perform on its error path. Location: the 5.3 test fixtures
+- 2026-09-19T22:44:23Z status=routed owner=range-end-cleanup by=harvest note=non-blocking (Rule 27): a fixture-hygiene defect with no shipped consequence
