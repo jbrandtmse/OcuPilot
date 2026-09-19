@@ -66,10 +66,13 @@ epics:
     depends_on: [epic-7, epic-8]
     submodules: []
     paths_hint: ["src/OcuPilot/Screen/Descriptor/**", "src/OcuPilot/Screen/Tool/**", "ui/tools/field-lists.mjs", "scripts/check-objectscript.py", "src/OcuPilot/Port/AdminPort.cls", "src/OcuPilot/Api/**", "src/OcuPilot/Install/Smoke.cls", "src/OcuPilot/Test/**", "ui/src/app/shell/**", "ui/src/app/areas/permissions/**", "ui/src/app/areas/web-applications/**", "ui/src/app/areas/tasks/**", "ui/src/app/areas/security/**", "ui/src/app/core/**", "ui/tools/**", "ui/src/styles/**", "ui/browser/**"]
+  # 2026-09-19: context-chip corrected from "ui/src/app/shell/panel/context-chip*" -- shell/panel/ is not a
+  # directory; the component is the flat file shell/context-chip.ts. Keep notes OUT of the flow sequence
+  # below: a `#` inside a single-line [...] comments out the rest of the line, closing bracket included.
   epic-10:
     depends_on: [epic-3, epic-4]
     submodules: []
-    paths_hint: ["src/OcuPilot/Kernel/Provider/**", "src/OcuPilot/Port/ProviderPort.cls", "src/OcuPilot/Kernel/AgentRules.cls", "src/OcuPilot/Kernel/Egress.cls", "src/OcuPilot/Kernel/State/Agent.cls", "src/OcuPilot/Api/Definitions.cls", "src/OcuPilot/Api/Error.cls", "src/OcuPilot/Screen/Tool/Registry.cls", "src/OcuPilot/Test/OpenAI*.cls", "src/OcuPilot/Test/Gemini*.cls", "src/OcuPilot/Test/Compatible*.cls", "src/OcuPilot/Test/Adapter*.cls", "src/OcuPilot/Test/CatalogProbe*.cls", "src/OcuPilot/Test/AgentRules*.cls", "src/OcuPilot/Test/Provider*.cls", "src/OcuPilot/Test/Egress*.cls", "ui/src/app/areas/agent/definition-form.*", "ui/src/app/shell/context-chip.ts"   # CORRECTED 2026-09-19: ui/src/app/shell/panel/ does not exist; the component is a flat file in shell/, "ui/src/app/core/strings.ts", "ui/tools/strings.test.mjs", "ui/browser/definitions.browser-spec.mjs", "README.md"]
+    paths_hint: ["src/OcuPilot/Kernel/Provider/**", "src/OcuPilot/Port/ProviderPort.cls", "src/OcuPilot/Kernel/AgentRules.cls", "src/OcuPilot/Kernel/Egress.cls", "src/OcuPilot/Kernel/State/Agent.cls", "src/OcuPilot/Api/Definitions.cls", "src/OcuPilot/Api/Error.cls", "src/OcuPilot/Screen/Tool/Registry.cls", "src/OcuPilot/Test/OpenAI*.cls", "src/OcuPilot/Test/Gemini*.cls", "src/OcuPilot/Test/Compatible*.cls", "src/OcuPilot/Test/Adapter*.cls", "src/OcuPilot/Test/CatalogProbe*.cls", "src/OcuPilot/Test/AgentRules*.cls", "src/OcuPilot/Test/Provider*.cls", "src/OcuPilot/Test/Egress*.cls", "ui/src/app/areas/agent/definition-form.*", "ui/src/app/shell/context-chip.ts", "ui/src/app/core/strings.ts", "ui/tools/strings.test.mjs", "ui/browser/definitions.browser-spec.mjs", "README.md"]
   epic-11:
     depends_on: [epic-4, epic-5, epic-6, epic-10]
     submodules: []
