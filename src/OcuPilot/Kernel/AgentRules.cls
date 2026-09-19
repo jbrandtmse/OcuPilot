@@ -1,5 +1,5 @@
 /// <p>The rules that keep an agent definition honest: the eleven harvested input rules plus the
-/// two OcuPilot's own acceptance criteria force, applied in one pass that <b>accumulates every
+/// ones OcuPilot's own acceptance criteria force, applied in one pass that <b>accumulates every
 /// violation</b> rather than stopping at the first.</p>
 /// <p>One round trip is the requirement, not a nicety: an operator filling in a form is told
 /// everything that is wrong with it at once. So no method here quits early on a violation, and
@@ -17,8 +17,9 @@
 /// <p><b>Values travel as a ByRef array</b> subscripted by the client-facing field name --
 /// <code>name</code>, <code>provider</code>, <code>model</code>, <code>endpointUrl</code>,
 /// <code>markedLocal</code>, <code>credType</code>, <code>envVarName</code>,
-/// <code>credentialName</code>, <code>maxTokens</code>, <code>temperature</code>,
-/// <code>maxIterationsPerTurn</code>, <code>systemPromptOverride</code>, <code>readOnly</code>,
+/// <code>credentialName</code>, <code>httpAcknowledged</code>, <code>maxTokens</code>,
+/// <code>temperature</code>, <code>maxIterationsPerTurn</code>,
+/// <code>systemPromptOverride</code>, <code>readOnly</code>,
 /// <code>retentionDays</code>, <code>enabled</code>, <code>connectionVerified</code> -- so a
 /// violation names the key the caller sent and the same array can be handed to the state
 /// class.</p>
@@ -32,6 +33,15 @@ Parameter CREDTYPEENV = "env";
 /// interoperability-enabled namespace, which is Story 3.3's concern -- this story stores the
 /// choice and tests no namespace.</p>
 Parameter CREDTYPECREDS = "creds";
+
+/// <p>Credential type: there is no secret. The call carries no key header at all
+/// (<parameter>OcuPilot.Kernel.Provider.Base.KEYSOURCENONE</parameter>) and neither
+/// <code>envVarName</code> nor <code>credentialName</code> is required.</p>
+/// <p><b>Accepted only on a provider whose catalog row sets <code>allowsLocal</code></b>, which is
+/// the family that serves a model on the operator's own network. It rides that column rather than a
+/// fifteenth one because the column already means "this family serves a model on your own network",
+/// which is the same operator decision (AD-42) -- one switch rather than two.</p>
+Parameter CREDTYPENONE = "none";
 
 /// <p>The longest name a definition may carry, matching the property's own
 /// <code>MAXLEN</code>.</p>
@@ -88,7 +98,8 @@ ClassMethod Normalize(ByRef pValues)
 /// <class>OcuPilot.Kernel.Provider.Catalog</class> declares.</li>
 /// <li><b>Rule 3</b> -- <code>maxTokens</code> a whole number 1-32000.</li>
 /// <li><b>Rule 4</b> -- <code>temperature</code> a number 0-2.</li>
-/// <li><b>Rule 5</b> -- <code>credType</code> one of the two declared.</li>
+/// <li><b>Rule 5</b> -- <code>credType</code> one of the two declared rungs, or
+/// <code>none</code> on a provider whose catalog row allows local.</li>
 /// <li><b>Rule 6</b> -- <code>env</code> implies a non-empty <code>envVarName</code>, after
 /// normalization.</li>
 /// <li><b>Rule 7</b> -- <code>creds</code> implies a non-empty <code>credentialName</code>, after
@@ -102,6 +113,9 @@ ClassMethod Normalize(ByRef pValues)
 /// <li><b>AD-42</b> -- <code>endpointUrl</code>, when present, is absolute HTTPS, or absolute
 /// HTTP when the definition is marked local on a provider whose catalog row allows it.
 /// <b>OcuPilot's own</b> rather than harvested.</li>
+/// <li><b>AD-42</b> -- a plain-HTTP endpoint carrying a credential additionally needs
+/// <code>httpAcknowledged</code>, reported on that field. <b>OcuPilot's own</b>: the key would
+/// cross the network in clear, and the acknowledgment is what accepts that.</li>
 /// <li><b>AD-42</b> -- <code>endpointUrl</code>'s <b>resolved</b> address is not loopback,
 /// link-local or one of this instance's own, subject to the same local escape; link-local has no
 /// escape. Judged by <class>OcuPilot.Kernel.Egress</class>, which the port asks again at the
@@ -139,8 +153,12 @@ ClassMethod Validate(ByRef pValues, pExistingId As %String = "", Output pViolati
         Do ..Add(.pViolations, "temperature", ##class(OcuPilot.Api.Error).#AGENTTEMPERATURERANGE)
     }
 
+    ; Resolved before the credential block, because rule 5's third accepted type is licensed by the
+    ; provider's own row.
+    Set tProvider = $Get(pValues("provider"))
+    Set tAllowsLocal = ..AllowsLocal(tProvider)
     Set tCredType = $Get(pValues("credType"))
-    If (tCredType '= ..#CREDTYPEENV) && (tCredType '= ..#CREDTYPECREDS) {
+    If '..CredTypeAccepted(tCredType, tAllowsLocal) {
         Do ..Add(.pViolations, "credType", ##class(OcuPilot.Api.Error).#AGENTCREDTYPEUNKNOWN)
     }
     If (tCredType = ..#CREDTYPEENV) && ($Get(pValues("envVarName")) = "") {
@@ -158,9 +176,7 @@ ClassMethod Validate(ByRef pValues, pExistingId As %String = "", Output pViolati
     }
 
     Set tEndpoint = $Get(pValues("endpointUrl"))
-    Set tProvider = $Get(pValues("provider"))
     Set tMarkedLocal = ''+$Get(pValues("markedLocal"))
-    Set tAllowsLocal = ..AllowsLocal(tProvider)
     If (tEndpoint = "") && ..EndpointRequired(tProvider) {
         Do ..Add(.pViolations, "endpointUrl", ##class(OcuPilot.Api.Error).#AGENTENDPOINTREQUIRED)
     }
@@ -168,6 +184,12 @@ ClassMethod Validate(ByRef pValues, pExistingId As %String = "", Output pViolati
         If '..SchemeAccepted(tEndpoint, tMarkedLocal, tAllowsLocal) {
             Do ..Add(.pViolations, "endpointUrl", ##class(OcuPilot.Api.Error).#AGENTENDPOINTSCHEME)
         } Else {
+            ; The scheme is licensed; what a credential crossing it additionally needs is the
+            ; acknowledgment, and that refusal lands on the control that gives it rather than on the
+            ; endpoint field, which is not what the operator would change.
+            If '..SchemeAccepted(tEndpoint, tMarkedLocal, tAllowsLocal, tCredType, ''+$Get(pValues("httpAcknowledged"))) {
+                Do ..Add(.pViolations, "httpAcknowledged", ##class(OcuPilot.Api.Error).#AGENTHTTPACKREQUIRED)
+            }
             Set tAddressCode = ..AddressViolation(tEndpoint, tMarkedLocal, tAllowsLocal)
             If tAddressCode '= "" Do ..Add(.pViolations, "endpointUrl", tAddressCode)
         }
@@ -275,16 +297,36 @@ ClassMethod AllowsLocal(pProvider As %String) As %Boolean
 }
 
 /// <p>Whether <var>pValue</var>'s scheme is one this definition may carry: absolute HTTPS always,
-/// absolute HTTP only when the definition is marked local <b>and</b> its provider's row allows
-/// it.</p>
+/// absolute HTTP only when the definition is marked local <b>and</b> its provider's row allows it
+/// <b>and</b> nothing secret crosses it unacknowledged.</p>
 /// <p>Plain HTTP is licensed at all because a local model served over the loopback interface has
 /// no certificate to present and nothing in the path to intercept. It is the one place the
 /// resolved-address check carries the whole weight, which is why it is gated on the row rather
 /// than on the flag alone.</p>
-ClassMethod SchemeAccepted(pValue As %String, pMarkedLocal As %Boolean, pAllowsLocal As %Boolean) As %Boolean
+/// <p><b>The credential term.</b> A <var>pCredType</var> of
+/// <parameter>CREDTYPENONE</parameter> sends no credential, so there is nothing an unencrypted hop
+/// could expose; any other type needs <var>pHttpAcknowledged</var>, which is the operator
+/// accepting that the key travels in clear (AD-42). <b><var>pHttpAcknowledged</var> defaults to
+/// 1</b>, because the acknowledgment is a stored write-time answer:
+/// <method>Validate</method> passes the definition's own two values and reports
+/// <code>AGENT.HTTP.ACK.REQUIRED</code> on the field that holds it, while a caller asking only
+/// whether the scheme itself is licensed -- <method>OcuPilot.Port.ProviderPort.Dispatch</method>
+/// re-applying the rule at the moment of the call -- passes neither.</p>
+ClassMethod SchemeAccepted(pValue As %String, pMarkedLocal As %Boolean, pAllowsLocal As %Boolean, pCredType As %String = "", pHttpAcknowledged As %Boolean = 1) As %Boolean
 {
     If ..IsAbsoluteHttps(pValue) Quit 1
-    Quit ''pMarkedLocal && ''pAllowsLocal && ..IsAbsoluteHttp(pValue)
+    If '(''pMarkedLocal && ''pAllowsLocal && ..IsAbsoluteHttp(pValue)) Quit 0
+    Quit ((pCredType = ..#CREDTYPENONE) || ''pHttpAcknowledged)
+}
+
+/// <p>Whether <var>pCredType</var> is a credential type rule 5 accepts: either of the two declared
+/// rungs always, and <parameter>CREDTYPENONE</parameter> only where <var>pAllowsLocal</var> -- the
+/// provider's own catalog column -- licenses it.</p>
+ClassMethod CredTypeAccepted(pCredType As %String, pAllowsLocal As %Boolean) As %Boolean
+{
+    If pCredType = ..#CREDTYPEENV Quit 1
+    If pCredType = ..#CREDTYPECREDS Quit 1
+    Quit ((pCredType = ..#CREDTYPENONE) && ''pAllowsLocal)
 }
 
 /// <p>Whether <var>pValue</var> is an absolute <code>http://</code> URL with a host, matched the

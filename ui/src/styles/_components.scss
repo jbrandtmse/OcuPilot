@@ -3020,6 +3020,19 @@ app-data-table {
   color: var(--ocu-on-surface);
 }
 
+// EXPERIENCE.md's egress treatment applied to a form field: the plain-HTTP acknowledgment says
+// the key crosses the network in clear, which is the same statement the context chip's pill
+// makes, so it carries the same colors rather than a second treatment for the same fact.
+.ocu-field-egress {
+  padding: var(--ocu-space-2);
+  border-radius: var(--ocu-radius-md);
+  background: var(--ocu-egress-warning-container);
+
+  .ocu-field-checkbox {
+    color: var(--ocu-egress-warning);
+  }
+}
+
 // --- The Switches screen's per-user section (Story 3.7) --------------------------------------
 //
 // A form-page section rather than a data table: the rows are a short, unsorted, unfiltered set of

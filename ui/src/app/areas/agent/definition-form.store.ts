@@ -55,6 +55,7 @@ export const WRITABLE_FIELDS = [
   'model',
   'endpointUrl',
   'markedLocal',
+  'httpAcknowledged',
   'credType',
   'envVarName',
   'credentialName',
@@ -70,7 +71,21 @@ export const WRITABLE_FIELDS = [
 export type WritableField = (typeof WRITABLE_FIELDS)[number];
 
 /** The fields whose value is a JSON boolean on the wire; anything else is refused by the server. */
-const BOOLEAN_FIELDS: readonly string[] = ['markedLocal', 'readOnly', 'enabled'];
+const BOOLEAN_FIELDS: readonly string[] = [
+  'markedLocal',
+  'httpAcknowledged',
+  'readOnly',
+  'enabled',
+];
+
+/** The `credType` a definition on a family that serves no local model carries. */
+export const CRED_TYPE_CREDS = 'creds';
+
+/**
+ * The `credType` that names no credential at all, accepted by the server only on a provider whose
+ * catalog row sets `allowsLocal` (`OcuPilot.Kernel.AgentRules.CREDTYPENONE`).
+ */
+export const CRED_TYPE_NONE = 'none';
 
 /**
  * The fields the provider cascade rewrites that the form renders **no control for**.
@@ -759,6 +774,15 @@ export class DefinitionForm {
       next['temperature'] = String(row.canonicalTemperature);
       next['credentialName'] = row.defaultCredentialName;
       next['envVarName'] = row.defaultEnvVarName;
+      // The three local-model fields are licensed by the row's own `allowsLocal`, and the form
+      // renders their controls only for a row that sets it -- so a cascade onto a row that does
+      // not has to clear them here. Left standing, a `credType` of `none` carried over from the
+      // compatible row would be refused by rule 5 with no control on screen to change it.
+      if (!row.allowsLocal) {
+        next['markedLocal'] = false;
+        next['httpAcknowledged'] = false;
+        if (next['credType'] === CRED_TYPE_NONE) next['credType'] = CRED_TYPE_CREDS;
+      }
     }
     this.buffer = next;
   }
@@ -920,7 +944,7 @@ function emptyBuffer(): EditBuffer {
   for (const field of WRITABLE_FIELDS) out[field] = BOOLEAN_FIELDS.includes(field) ? false : '';
   // The class's own defaults, so a create starts on values the rules accept rather than on
   // empties the first Save would refuse.
-  out['credType'] = 'creds';
+  out['credType'] = CRED_TYPE_CREDS;
   out['readOnly'] = true;
   out['retentionDays'] = '30';
   out['maxIterationsPerTurn'] = '10';

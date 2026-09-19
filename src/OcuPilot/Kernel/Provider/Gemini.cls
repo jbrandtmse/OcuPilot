@@ -142,23 +142,4 @@ Method MapResponse(pBody As %String, pResponse As OcuPilot.Kernel.Provider.Respo
     Quit ##class(OcuPilot.Kernel.Provider.MessageAdapter).GeminiToCanonical(pBody, pResponse)
 }
 
-/// <p>The provider's own <code>error.message</code> out of an error body, or <code>""</code>.</p>
-/// <p>The message alone, and never the body: the message is what
-/// <code>detail.providerText</code> carries to a screen and a tool result, while the body goes to
-/// <method>OcuPilot.Kernel.Fault.LogRaw</method> and nowhere else (AD-39).</p>
-Method ProviderMessage(pBody As %String) As %String
-{
-    Set tMessage = ""
-    Try {
-        If pBody = "" Quit
-        Set tParsed = ##class(%DynamicAbstractObject).%FromJSON(pBody)
-        If '$IsObject(tParsed) || 'tParsed.%IsA("%Library.DynamicObject") Quit
-        If '$IsObject(tParsed.error) Quit
-        Set tMessage = tParsed.error.message
-    } Catch ex {
-        Set tMessage = ""
-    }
-    Quit tMessage
-}
-
 }

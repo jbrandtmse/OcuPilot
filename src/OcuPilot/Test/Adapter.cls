@@ -958,4 +958,110 @@ Method TestTheClampStaysSilentForAStoredAttemptCountOfZero()
     Do $$$AssertEquals(##class(OcuPilot.Test.AdapterProvider).Logged(..#CLAMPMARK), 0, "and the clamp says nothing, because the loop's own floor and the log's floor answer zero the same way")
 }
 
+/// <p>DW-1202 -- an OpenAI refusal reaches the canonical reply. The vendor answers 200 with a null
+/// <code>content</code>, the model's reason under <code>refusal</code>, and
+/// <code>finish_reason</code> still <code>stop</code>, so without reading that member the turn gets
+/// an empty reply and is told the model ended normally.</p>
+/// <p>mutation: stop reading <code>message.refusal</code> in
+/// <method>OcuPilot.Kernel.Provider.MessageAdapter.OpenAiToCanonical</method> -- red on both the
+/// text and the stop-reason assertions.</p>
+Method TestAnOpenAiRefusalReachesTheCanonicalReply()
+{
+    Set tResponse = ##class(OcuPilot.Kernel.Provider.Response).%New()
+    Do $$$AssertStatusOK($ClassMethod(..#MESSAGES, "OpenAiToCanonical", "{""choices"":[{""index"":0,""message"":{""role"":""assistant"",""content"":null,""refusal"":""I cannot help with that""},""finish_reason"":""stop""}]}", tResponse), "the refusal reply reads, rather than failing as a body this adapter could not read")
+    Do $$$AssertEquals(tResponse.Text, "I cannot help with that", "the refusal is the canonical reply's text")
+    Do $$$AssertEquals(tResponse.StopReason, "refusal", "and the stop reason says the model would not answer, whatever finish_reason said")
+
+    ; A reply carrying both keeps the refusal, which is the one a caller can act on.
+    Set tBoth = ##class(OcuPilot.Kernel.Provider.Response).%New()
+    Do $$$AssertStatusOK($ClassMethod(..#MESSAGES, "OpenAiToCanonical", "{""choices"":[{""message"":{""content"":""partial"",""refusal"":""no""},""finish_reason"":""stop""}]}", tBoth), "a reply carrying both reads")
+    Do $$$AssertEquals(tBoth.Text _ "|" _ tBoth.StopReason, "no|refusal", "and reports the refusal")
+
+    ; The control: an ordinary reply is unchanged, so the branch is not simply rewriting every
+    ; reply's stop reason.
+    Set tPlain = ##class(OcuPilot.Kernel.Provider.Response).%New()
+    Do $$$AssertStatusOK($ClassMethod(..#MESSAGES, "OpenAiToCanonical", "{""choices"":[{""message"":{""content"":""here it is""},""finish_reason"":""stop""}]}", tPlain), "an ordinary reply reads")
+    Do $$$AssertEquals(tPlain.Text _ "|" _ tPlain.StopReason, "here it is|end_turn", "and is unchanged")
+}
+
+/// <p>DW-1202 -- a Gemini prompt-level block is a refusal and <b>not</b> a transport fault. The
+/// vendor answers 200 carrying <code>promptFeedback.blockReason</code> and no candidates at all;
+/// before this that body was "a reply carrying no candidates array", which
+/// <method>OcuPilot.Kernel.Provider.Base.Attempts</method> reports as
+/// <code>PROVIDER.TRANSPORT</code>.</p>
+/// <p>mutation: remove the <code>promptFeedback</code> branch from
+/// <method>OcuPilot.Kernel.Provider.MessageAdapter.GeminiToCanonical</method> -- red on the stop
+/// reason and on the assertion that the mapping did not fail.</p>
+Method TestAGeminiPromptBlockIsARefusalNotATransportFault()
+{
+    Set tResponse = ##class(OcuPilot.Kernel.Provider.Response).%New()
+    Set tMapSC = $ClassMethod(..#MESSAGES, "GeminiToCanonical", "{""promptFeedback"":{""blockReason"":""SAFETY""},""usageMetadata"":{""promptTokenCount"":7}}", tResponse)
+    Do $$$AssertStatusOK(tMapSC, "the blocked reply reads, so the call is not reported as a fault the adapter could not read")
+    Do $$$AssertEquals(tResponse.StopReason, "refusal", "the stop reason says the model would not answer")
+    Do $$$AssertEquals(tResponse.Text, "SAFETY", "the block reason is the provider's own text")
+    Do $$$AssertEquals(tResponse.RequestTokens, 7, "and the usage it reported is kept")
+    Do $$$AssertEquals($System.Status.GetErrorText(tMapSC) [ "PROVIDER.TRANSPORT", 0, "and nothing about this path is a transport fault")
+
+    ; A body with neither candidates nor a block reason is still an error, so the branch has not
+    ; turned every unreadable Gemini reply into a refusal.
+    Set tNeither = ##class(OcuPilot.Kernel.Provider.Response).%New()
+    Do $$$AssertStatusNotOK($ClassMethod(..#MESSAGES, "GeminiToCanonical", "{""promptFeedback"":{}}", tNeither), "a body naming neither candidates nor a block reason is refused as before")
+}
+
+/// <p>DW-1202 -- every Gemini <code>finishReason</code> the vendor declares maps, and
+/// <code>IMAGE_SAFETY</code> is one of them. The map's other eleven entries are asserted by
+/// <method>TestTheGeminiReplyBecomesCanonicalBlocksAndTheRoundTripCloses</method>; this method is
+/// about the twelfth and about the map's shape.</p>
+/// <p>mutation: remove <code>IMAGE_SAFETY</code> from
+/// <parameter>OcuPilot.Kernel.Provider.MessageAdapter.GEMINISTOPREASONS</parameter> -- red on that
+/// key alone, because an unmapped reason answers the default rather than a refusal.</p>
+Method TestEveryGeminiStopReasonMapsAndImageSafetyIsARefusal()
+{
+    Set tMap = $Parameter(..#MESSAGES, "GEMINISTOPREASONS")
+    Do $$$AssertEquals($Length(tMap, ","), 12, "the map declares twelve vendor reasons: " _ tMap)
+    Set tRefusals = 0
+    For tI = 1:1:$Length(tMap, ",") {
+        If $Piece($Piece(tMap, ",", tI), ":", 2) = "refusal" Set tRefusals = tRefusals + 1
+    }
+    Do $$$AssertEquals(tRefusals, 10, "ten of which mean the model would not answer")
+
+    Set tResponse = ##class(OcuPilot.Kernel.Provider.Response).%New()
+    Do $$$AssertStatusOK($ClassMethod(..#MESSAGES, "GeminiToCanonical", "{""candidates"":[{""content"":{""parts"":[{""text"":""x""}]},""finishReason"":""IMAGE_SAFETY""}]}", tResponse), "a reply finished IMAGE_SAFETY reads")
+    Do $$$AssertEquals(tResponse.StopReason, "refusal", "and is a refusal rather than an ordinary ending")
+}
+
+/// <p>DW-1193 -- a vendor error body whose <code>error.message</code> is not a JSON string yields
+/// <b>no</b> provider text, rather than the OREF's own stringification presented to a reader as the
+/// provider's words.</p>
+/// <p>Driven through every shipped adapter, because the method is now
+/// <method>OcuPilot.Kernel.Provider.Base.ProviderMessage</method>'s one implementation and the four
+/// families inherit it; a per-family copy is what produced four copies of the defect.</p>
+/// <p>mutation: drop the <code>%GetTypeOf</code> test from
+/// <method>OcuPilot.Kernel.Provider.Base.ProviderMessage</method> -- red on the empty-text
+/// assertion, and specifically on its not containing <code>@%Library.DynamicObject</code>.</p>
+Method TestANonStringProviderErrorMessageYieldsNoProviderText()
+{
+    For tFamily = "OcuPilot.Kernel.Provider.Anthropic", "OcuPilot.Kernel.Provider.OpenAI", "OcuPilot.Kernel.Provider.Gemini", "OcuPilot.Kernel.Provider.Compatible" {
+        Set tAdapter = $ClassMethod(tFamily, "%New")
+        Set tObjectText = tAdapter.ProviderMessage("{""error"":{""message"":{""code"":42,""detail"":""nested""}}}")
+        Do $$$AssertEquals(tObjectText, "", tFamily _ ": an object error.message yields no provider text, got '" _ tObjectText _ "'")
+        Do $$$AssertEquals(tObjectText [ "@%Library.DynamicObject", 0, tFamily _ ": and never the OREF's own stringification")
+        Set tArrayText = tAdapter.ProviderMessage("{""error"":{""message"":[""one"",""two""]}}")
+        Do $$$AssertEquals(tArrayText, "", tFamily _ ": an array error.message yields none either, got '" _ tArrayText _ "'")
+        ; The control: a string message still reaches the fault's provider text.
+        Do $$$AssertEquals(tAdapter.ProviderMessage("{""error"":{""message"":""the vendor's own words""}}"), "the vendor's own words", tFamily _ ": and a string message is carried")
+        Do $$$AssertEquals(tAdapter.ProviderMessage("{""error"":{}}"), "", tFamily _ ": an error object naming no message yields none")
+        Do $$$AssertEquals(tAdapter.ProviderMessage("not json"), "", tFamily _ ": and neither does a body that is not JSON")
+        Set tAdapter = ""
+    }
+    ; One implementation, asserted structurally: behaviour cannot tell a shipped method from an
+    ; identical copy of it, and four copies are what DW-1193 was.
+    For tFamily = "OcuPilot.Kernel.Provider.Anthropic", "OcuPilot.Kernel.Provider.OpenAI", "OcuPilot.Kernel.Provider.Gemini", "OcuPilot.Kernel.Provider.Compatible" {
+        Set tCompiled = ##class(%Dictionary.CompiledMethod).%OpenId(tFamily _ "||ProviderMessage", 0, .tOpenSC)
+        Do $$$AssertTrue($IsObject(tCompiled), tFamily _ ": its compiled ProviderMessage is readable")
+        If $IsObject(tCompiled) Do $$$AssertEquals(tCompiled.Origin, "OcuPilot.Kernel.Provider.Base", tFamily _ ": and originates in the base, so there is one type check rather than four")
+        Set tCompiled = ""
+    }
+}
+
 }

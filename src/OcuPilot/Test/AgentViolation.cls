@@ -44,7 +44,7 @@ ClassMethod Call(pMethod As %String, pSuffix As %String, pBody As %String, Outpu
 Method TestEveryViolationCodeHasAPublishedSentence()
 {
     Set tCodes = ##class(OcuPilot.Api.Error).ViolationCodes()
-    Do $$$AssertEquals($ListLength(tCodes), 30, "the vocabulary holds thirty field-level codes; adding one is a deliberate edit in OcuPilot.Api.Error")
+    Do $$$AssertEquals($ListLength(tCodes), 31, "the vocabulary holds thirty-one field-level codes; adding one is a deliberate edit in OcuPilot.Api.Error")
     For tI = 1:1:$ListLength(tCodes) {
         Set tCode = $List(tCodes, tI)
         Set tReason = ##class(OcuPilot.Api.Error).ReasonForViolation(tCode)
@@ -87,7 +87,7 @@ Method TestViolationCodesHoldsEveryDeclaredFieldLevelCode()
         Do $$$AssertTrue($ListFind(tDeclared, tCode) > 0, "field-level code '" _ tName _ "' = '" _ tCode _ "' is in ViolationCodes(), so the sentence check reaches it")
     }
     ; A sweep that found nothing would pass every row above having tested nothing.
-    Do $$$AssertTrue(tFound >= 30, "the sweep read the declared parameters rather than an empty roster (found " _ tFound _ ")")
+    Do $$$AssertTrue(tFound >= 31, "the sweep read the declared parameters rather than an empty roster (found " _ tFound _ ")")
     Do $$$AssertEquals($ListLength(tDeclared), tFound, "and ViolationCodes() holds no code the class does not declare")
 }
 

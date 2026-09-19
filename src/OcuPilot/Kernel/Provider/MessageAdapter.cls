@@ -48,8 +48,14 @@
 /// <code>{functionResponse: {id?, name, response}}</code>,
 /// <code>candidates[0].content.parts[]</code> on the way back, <code>finishReason</code> one of
 /// <code>STOP, MAX_TOKENS, SAFETY, RECITATION, BLOCKLIST, PROHIBITED_CONTENT, SPII, LANGUAGE,
-/// MALFORMED_FUNCTION_CALL, UNEXPECTED_TOOL_CALL, TOO_MANY_TOOL_CALLS, OTHER</code>, usage
-/// <code>usageMetadata.promptTokenCount</code> / <code>candidatesTokenCount</code>.</p>
+/// MALFORMED_FUNCTION_CALL, UNEXPECTED_TOOL_CALL, TOO_MANY_TOOL_CALLS, IMAGE_SAFETY,
+/// OTHER</code>, usage <code>usageMetadata.promptTokenCount</code> /
+/// <code>candidatesTokenCount</code>.</p>
+/// <p><b>Either dialect can answer 200 with a refusal rather than a reply</b>: OpenAI under
+/// <code>choices[0].message.refusal</code> beside a null <code>content</code>, Gemini under a
+/// top-level <code>promptFeedback.blockReason</code> with no candidates at all. Both become the
+/// canonical <code>refusal</code> stop reason carrying the vendor's own reason as the reply
+/// text.</p>
 Class OcuPilot.Kernel.Provider.MessageAdapter Extends %RegisteredObject
 {
 
@@ -58,15 +64,15 @@ Class OcuPilot.Kernel.Provider.MessageAdapter Extends %RegisteredObject
 /// spelling of <code>tool_calls</code> and maps to the same canonical value.</p>
 Parameter OPENAISTOPREASONS = "stop:end_turn,length:max_tokens,tool_calls:tool_use,function_call:tool_use,content_filter:refusal";
 
-/// <p>Each Gemini <code>finishReason</code> and its canonical stop reason. The nine that mean the
-/// model would not answer -- safety, recitation, the block list, prohibited content, personal
-/// information, an unsupported language, and the three that refuse a tool call (a call the model
-/// could not form, one it was not meant to make, and more than the request allowed) -- are one
-/// canonical reason, because the canonical vocabulary has no finer one to map them to: it is
-/// Anthropic's, and it distinguishes only ending, truncation, a tool call and a refusal.
-/// <code>OTHER</code> is deliberately absent: an unknown reason is what
+/// <p>Each Gemini <code>finishReason</code> and its canonical stop reason: twelve entries, of which
+/// the ten that mean the model would not answer -- safety, image safety, recitation, the block
+/// list, prohibited content, personal information, an unsupported language, and the three that
+/// refuse a tool call (a call the model could not form, one it was not meant to make, and more than
+/// the request allowed) -- are one canonical reason, because the canonical vocabulary has no finer
+/// one to map them to: it is Anthropic's, and it distinguishes only ending, truncation, a tool call
+/// and a refusal. <code>OTHER</code> is deliberately absent: an unknown reason is what
 /// <parameter>DEFAULTSTOPREASON</parameter> is for.</p>
-Parameter GEMINISTOPREASONS = "STOP:end_turn,MAX_TOKENS:max_tokens,SAFETY:refusal,RECITATION:refusal,BLOCKLIST:refusal,PROHIBITED_CONTENT:refusal,SPII:refusal,LANGUAGE:refusal,MALFORMED_FUNCTION_CALL:refusal,UNEXPECTED_TOOL_CALL:refusal,TOO_MANY_TOOL_CALLS:refusal";
+Parameter GEMINISTOPREASONS = "STOP:end_turn,MAX_TOKENS:max_tokens,SAFETY:refusal,IMAGE_SAFETY:refusal,RECITATION:refusal,BLOCKLIST:refusal,PROHIBITED_CONTENT:refusal,SPII:refusal,LANGUAGE:refusal,MALFORMED_FUNCTION_CALL:refusal,UNEXPECTED_TOOL_CALL:refusal,TOO_MANY_TOOL_CALLS:refusal";
 
 /// <p>The canonical stop reason a reason outside the family's own vocabulary, and an absent one,
 /// are read as. The canonical vocabulary is closed, so an unmapped value is normalized rather than
@@ -77,6 +83,11 @@ Parameter DEFAULTSTOPREASON = "end_turn";
 /// the vendor's own reason said no more than that, because Gemini finishes a function call
 /// <code>STOP</code>.</p>
 Parameter TOOLUSESTOPREASON = "tool_use";
+
+/// <p>The canonical stop reason for a reply the model would not give: the value both vendor maps
+/// already carry, named here because two reply directions reach it with no vendor stop reason to
+/// look up -- an OpenAI <code>refusal</code> member, and a Gemini prompt-level block.</p>
+Parameter REFUSALSTOPREASON = "refusal";
 
 /// <p>The prefix a synthesized Gemini call id carries. The ordinal and the function name follow
 /// it, so the id says which call it belongs to in a log and in a transcript.</p>
@@ -220,6 +231,12 @@ ClassMethod OpenAiToCanonical(pBody As %String, pResponse As OcuPilot.Kernel.Pro
         }
         Set tText = ""
         If tMessage.%GetTypeOf("content") = "string" Set tText = tMessage.%Get("content")
+        ; A refused reply carries a null content and its reason under `refusal`, with
+        ; finish_reason still `stop` -- so without this the turn gets an empty reply and is told
+        ; the model ended normally (DW-1202).
+        Set tRefusal = ""
+        If tMessage.%GetTypeOf("refusal") = "string" Set tRefusal = tMessage.%Get("refusal")
+        If tRefusal '= "" Set tText = tRefusal
         Set tToolCalls = []
         If $IsObject(tMessage."tool_calls") && tMessage."tool_calls".%IsA("%Library.DynamicArray") {
             Set tIterator = tMessage."tool_calls".%GetIterator()
@@ -249,7 +266,7 @@ ClassMethod OpenAiToCanonical(pBody As %String, pResponse As OcuPilot.Kernel.Pro
         }
         Set pResponse.Text = tText
         If tToolCalls.%Size() > 0 Set pResponse.ToolCallsJson = tToolCalls.%ToJSON()
-        Set pResponse.StopReason = ..StopReason(..#OPENAISTOPREASONS, tChoice."finish_reason", tToolCalls.%Size())
+        Set pResponse.StopReason = $Select(tRefusal '= "": ..#REFUSALSTOPREASON, 1: ..StopReason(..#OPENAISTOPREASONS, tChoice."finish_reason", tToolCalls.%Size()))
         If $IsObject(tParsed.usage) {
             Set pResponse.RequestTokens = +tParsed.usage."prompt_tokens"
             Set pResponse.ResponseTokens = +tParsed.usage."completion_tokens"
@@ -373,7 +390,17 @@ ClassMethod GeminiToCanonical(pBody As %String, pResponse As OcuPilot.Kernel.Pro
         Set tParsed = ..BodyOf(pBody, .tSC)
         If $$$ISERR(tSC) Quit
         If '$IsObject(tParsed.candidates) || 'tParsed.candidates.%IsA("%Library.DynamicArray") || (tParsed.candidates.%Size() = 0) {
-            Set tSC = $$$ERROR($$$GeneralError, "the provider's reply carries no candidates array")
+            ; A prompt the model refused before generating anything answers 200 carrying
+            ; promptFeedback alone. That is a refusal, not a body this adapter could not read, so
+            ; it must not become a PROVIDER.TRANSPORT fault (DW-1202).
+            Set tBlocked = ..PromptBlockReason(tParsed)
+            If tBlocked = "" {
+                Set tSC = $$$ERROR($$$GeneralError, "the provider's reply carries no candidates array")
+                Quit
+            }
+            Set pResponse.Text = tBlocked
+            Set pResponse.StopReason = ..#REFUSALSTOPREASON
+            Do ..GeminiUsage(tParsed, pResponse)
             Quit
         }
         Set tCandidate = tParsed.candidates.%Get(0)
@@ -412,14 +439,31 @@ ClassMethod GeminiToCanonical(pBody As %String, pResponse As OcuPilot.Kernel.Pro
         Set pResponse.Text = tText
         If tToolCalls.%Size() > 0 Set pResponse.ToolCallsJson = tToolCalls.%ToJSON()
         Set pResponse.StopReason = ..StopReason(..#GEMINISTOPREASONS, tCandidate.finishReason, tToolCalls.%Size())
-        If $IsObject(tParsed.usageMetadata) {
-            Set pResponse.RequestTokens = +tParsed.usageMetadata.promptTokenCount
-            Set pResponse.ResponseTokens = +tParsed.usageMetadata.candidatesTokenCount
-        }
+        Do ..GeminiUsage(tParsed, pResponse)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>The reason <var>pParsed</var>'s top-level <code>promptFeedback</code> gives for refusing the
+/// prompt itself, or <code>""</code> when it names none. Read only where it is a JSON string, for
+/// the reason <method>OcuPilot.Kernel.Provider.Base.ProviderMessage</method> reads its own member
+/// that way.</p>
+ClassMethod PromptBlockReason(pParsed As %DynamicObject) As %String [ Private ]
+{
+    If '$IsObject(pParsed.promptFeedback) Quit ""
+    If pParsed.promptFeedback.%GetTypeOf("blockReason") '= "string" Quit ""
+    Quit pParsed.promptFeedback.%Get("blockReason")
+}
+
+/// <p>Copy <var>pParsed</var>'s <code>usageMetadata</code> token counts onto <var>pResponse</var>,
+/// so both exits of <method>GeminiToCanonical</method> report what the call cost.</p>
+ClassMethod GeminiUsage(pParsed As %DynamicObject, pResponse As OcuPilot.Kernel.Provider.Response) [ Private ]
+{
+    If '$IsObject(pParsed.usageMetadata) Quit
+    Set pResponse.RequestTokens = +pParsed.usageMetadata.promptTokenCount
+    Set pResponse.ResponseTokens = +pParsed.usageMetadata.candidatesTokenCount
 }
 
 /// <p>Whether <var>pId</var> is an id this class synthesized for a Gemini call that carried none

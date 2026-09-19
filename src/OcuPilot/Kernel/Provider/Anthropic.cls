@@ -158,25 +158,6 @@ Method MapResponse(pBody As %String, pResponse As OcuPilot.Kernel.Provider.Respo
     Quit tSC
 }
 
-/// <p>The provider's own <code>error.message</code> out of an error body, or <code>""</code>.</p>
-/// <p>The message alone, and never the body: the message is what
-/// <code>detail.providerText</code> carries to a screen and a tool result, while the body goes to
-/// <method>OcuPilot.Kernel.Fault.LogRaw</method> and nowhere else (AD-39).</p>
-Method ProviderMessage(pBody As %String) As %String
-{
-    Set tMessage = ""
-    Try {
-        If pBody = "" Quit
-        Set tParsed = ##class(%DynamicAbstractObject).%FromJSON(pBody)
-        If '$IsObject(tParsed) || 'tParsed.%IsA("%Library.DynamicObject") Quit
-        If '$IsObject(tParsed.error) Quit
-        Set tMessage = tParsed.error.message
-    } Catch ex {
-        Set tMessage = ""
-    }
-    Quit tMessage
-}
-
 /// <p><var>pSchema</var> -- a tool's JSON-schema text -- as the object the body carries, or an
 /// empty object when it is absent or will not parse. A tool whose schema could not be read is
 /// still advertised, with no properties, rather than failing the whole call.</p>

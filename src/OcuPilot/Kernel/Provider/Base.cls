@@ -22,10 +22,12 @@
 /// call that <b>raised</b>, and a call that <b>timed out</b>, are never retried at all: the
 /// request may already have been processed, so sending it again risks doing the work twice.</p>
 /// <p>Seams a subclass overrides: <method>ProviderName</method>, <method>CallMessages</method>,
-/// <method>ApplyAuth</method>, <method>IsApiKeyShapeValid</method>, <method>MapResponse</method>
-/// and <method>ProviderMessage</method> are the family contract, and
+/// <method>ApplyAuth</method>, <method>IsApiKeyShapeValid</method> and <method>MapResponse</method>
+/// are the family contract, and
 /// <method>RequestUrl</method> is the request-URL seam a family whose endpoint carries the model
-/// in its path needs; <method>KeyShapeAccepted</method> is the concrete key-shape test a family
+/// in its path needs; <method>ProviderMessage</method> and <method>KeyShapeAccepted</method> are
+/// concrete here, the first because every family's error body is
+/// <code>{error: {message}}</code> and the second the key-shape test a family
 /// with no published key grammar answers with; <method>IssueHttpsPost</method>
 /// is the one transport seam, which <class>OcuPilot.Test.ProviderStub</class> replaces so the whole
 /// path runs with no socket; <method>SecretClass</method>, <method>Wait</method> and
@@ -529,12 +531,30 @@ Method MapResponse(pBody As %String, pResponse As OcuPilot.Kernel.Provider.Respo
     Quit $$$OK
 }
 
-/// <p>The provider's own message out of an error body, for the fault's
+/// <p>The provider's own <code>error.message</code> out of an error body, for the fault's
 /// <code>detail.providerText</code>, or <code>""</code>. The <b>message</b> alone: the raw body
 /// goes to the log and nowhere else (AD-39).</p>
-Method ProviderMessage(pBody As %String) As %String [ Abstract ]
+/// <p><b>Concrete, and one implementation for every family</b>: all four vendors answer an error
+/// body shaped <code>{error: {message}}</code>, and four copies of this method were four copies of
+/// the same defect.</p>
+/// <p><b><code>message</code> is read only where it is a JSON string.</b> A vendor that answered an
+/// object or an array there would otherwise reach the envelope as
+/// <code>N@%Library.DynamicObject</code> -- the OREF's own stringification -- presented to a reader
+/// as the provider's words (DW-1193).</p>
+Method ProviderMessage(pBody As %String) As %String
 {
-    Quit ""
+    Set tMessage = ""
+    Try {
+        If pBody = "" Quit
+        Set tParsed = ##class(%DynamicAbstractObject).%FromJSON(pBody)
+        If '$IsObject(tParsed) || 'tParsed.%IsA("%Library.DynamicObject") Quit
+        If '$IsObject(tParsed.error) Quit
+        If tParsed.error.%GetTypeOf("message") '= "string" Quit
+        Set tMessage = tParsed.error.%Get("message")
+    } Catch ex {
+        Set tMessage = ""
+    }
+    Quit tMessage
 }
 
 /// <p>Build the wire fault for <var>pCode</var> and the HTTP status to answer with.</p>

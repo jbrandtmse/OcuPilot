@@ -1,7 +1,8 @@
-/// <p>Test-only <class>OcuPilot.Test.CatalogProbe</class> subclass whose two <b>shipped</b>
-/// non-canonical rows -- <code>openai</code> and <code>gemini</code> -- answer the stubs that
-/// extend those families' own adapters instead of the adapters themselves. Every other column of
-/// both rows, and every row <class>OcuPilot.Test.CatalogProbe</class> adds, is unchanged.</p>
+/// <p>Test-only <class>OcuPilot.Test.CatalogProbe</class> subclass whose three <b>shipped</b>
+/// non-canonical rows -- <code>openai</code>, <code>gemini</code> and <code>compatible</code> --
+/// answer the stubs that extend those families' own adapters instead of the adapters themselves.
+/// Every other column of all three rows, and every row <class>OcuPilot.Test.CatalogProbe</class>
+/// adds, is unchanged.</p>
 /// <p>It exists because a call on a shipped row must reach the shipped endpoint's own model, body
 /// and headers without opening a socket: swapping the adapter class for a subclass that replaces
 /// only the transport leaves the row -- its endpoint, its model, its key prefix, its tuning -- the
@@ -22,11 +23,17 @@ Parameter OPENAISTUB = "OcuPilot.Test.OpenAIStub";
 /// <p>The stub the <parameter>GEMINIKEYSHIPPED</parameter> row answers.</p>
 Parameter GEMINISTUB = "OcuPilot.Test.GeminiStub";
 
-/// <p>The inherited table with the two shipped non-canonical rows' <code>adapterClass</code>
+/// <p>The shipped provider key this class re-adapts to <parameter>COMPATIBLESTUB</parameter>.</p>
+Parameter COMPATIBLEKEYSHIPPED = "compatible";
+
+/// <p>The stub the <parameter>COMPATIBLEKEYSHIPPED</parameter> row answers.</p>
+Parameter COMPATIBLESTUB = "OcuPilot.Test.CompatibleStub";
+
+/// <p>The inherited table with the three shipped non-canonical rows' <code>adapterClass</code>
 /// column, and only that column, answering the stubs. Every other column of every row -- shipped
 /// or added by <class>OcuPilot.Test.CatalogProbe</class> -- is untouched, which is what makes an
 /// assertion over this table an assertion about the shipped row.</p>
-/// <p><b>It fails closed on the two rows it re-adapts.</b> Each of those keys must match exactly
+/// <p><b>It fails closed on the rows it re-adapts.</b> Each of those keys must match exactly
 /// one row: a key renamed in the shipped XData, or declared twice, leaves this class answering an
 /// error <class>%Status</class> and no table at all, so
 /// <method>OcuPilot.Kernel.Provider.Catalog.Row</method> resolves nothing and the port refuses the
@@ -44,6 +51,7 @@ ClassMethod Table(Output pObject As %DynamicObject) As %Status
     If $$$ISERR(tSC) Quit tSC
     Set tOpenAiRows = 0
     Set tGeminiRows = 0
+    Set tCompatibleRows = 0
     Set tIterator = pObject.providers.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tRow) {
         If tRow.key = ..#OPENAIKEYSHIPPED {
@@ -54,10 +62,14 @@ ClassMethod Table(Output pObject As %DynamicObject) As %Status
             Do tRow.%Set("adapterClass", ..#GEMINISTUB)
             Set tGeminiRows = tGeminiRows + 1
         }
+        If tRow.key = ..#COMPATIBLEKEYSHIPPED {
+            Do tRow.%Set("adapterClass", ..#COMPATIBLESTUB)
+            Set tCompatibleRows = tCompatibleRows + 1
+        }
     }
-    If (tOpenAiRows = 1) && (tGeminiRows = 1) Quit tSC
+    If (tOpenAiRows = 1) && (tGeminiRows = 1) && (tCompatibleRows = 1) Quit tSC
     Set pObject = ""
-    Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.CatalogProbeShipped re-adapts exactly one " _ ..#OPENAIKEYSHIPPED _ " row and one " _ ..#GEMINIKEYSHIPPED _ " row; this table carried " _ tOpenAiRows _ " and " _ tGeminiRows _ ", so a row it did not re-adapt still names a shipped adapter. No table is answered.")
+    Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.CatalogProbeShipped re-adapts exactly one " _ ..#OPENAIKEYSHIPPED _ ", one " _ ..#GEMINIKEYSHIPPED _ " and one " _ ..#COMPATIBLEKEYSHIPPED _ " row; this table carried " _ tOpenAiRows _ ", " _ tGeminiRows _ " and " _ tCompatibleRows _ ", so a row it did not re-adapt still names a shipped adapter. No table is answered.")
 }
 
 }

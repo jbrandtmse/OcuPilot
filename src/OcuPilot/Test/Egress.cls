@@ -4,9 +4,14 @@
 /// obfuscated loopback literals are only refused because the resolver canonicalises them, and a
 /// fixture that answered canned addresses would pin the test's own arithmetic instead of the
 /// instance's. Nothing here writes anything, and no address is connected to.</p>
-/// <p>The marked-local escape is driven through <class>OcuPilot.Test.CatalogProbe</class>'s
-/// <code>probe-local</code> row, because every shipped row sets <code>allowsLocal</code> false --
-/// so the escape has no shipped case, and a rule with no case either way is not enforced.</p>
+/// <p>The marked-local escape has a <b>shipped</b> case: the <code>compatible</code> row is the one
+/// shipped row that sets <code>allowsLocal</code>, and the AC3 matrix is driven against it.
+/// <class>OcuPilot.Test.CatalogProbe</class>'s <code>probe-local</code> row is kept beside it for
+/// the field-level legs, whose other rows pair that column with values no shipped row holds.</p>
+/// <p>One method drives <method>OcuPilot.Port.ProviderPort.Dispatch</method> through
+/// <class>OcuPilot.Test.ProviderPortProbe</class> to read the request a marked-local call actually
+/// carries (DW-441); it writes the instance's one outbound-settings row and
+/// <method>OnAfterOneTest</method> removes it.</p>
 Class OcuPilot.Test.Egress Extends %UnitTest.TestCase
 {
 
@@ -16,6 +21,23 @@ Parameter EGRESS = "OcuPilot.Kernel.Egress";
 /// <p>The validator reading <class>OcuPilot.Test.CatalogProbe</class>, so the two extra provider
 /// rows are in the vocabulary.</p>
 Parameter RULES = "OcuPilot.Test.AgentRulesProbe";
+
+/// <p>The port entry, for the one method that reads the request a marked-local call carries.</p>
+Parameter PORT = "OcuPilot.Test.ProviderPortProbe";
+
+/// <p>The catalog that re-adapts the shipped <code>compatible</code> row to its stub, so that
+/// method opens no socket.</p>
+Parameter SHIPPEDCATALOG = "OcuPilot.Test.CatalogProbeShipped";
+
+/// <p>The one shipped provider key whose row allows local.</p>
+Parameter LOCALPROVIDER = "compatible";
+
+/// <p>A proxy host (RFC 5737 TEST-NET-1) that classifies public, so it is permitted and would be
+/// set on the request if a marked-local call carried one.</p>
+Parameter PUBLICPROXY = "192.0.2.10";
+
+/// <p>A Chat Completions reply the shipped <code>compatible</code> adapter can read.</p>
+Parameter COMPATIBLEREPLY = "{""choices"":[{""index"":0,""message"":{""role"":""assistant"",""content"":""ok""},""finish_reason"":""stop""}]}";
 
 /// <p>A host name that resolves to nothing, in a reserved-for-failure top-level domain so it
 /// cannot start resolving because somebody registered it.</p>
@@ -317,10 +339,13 @@ Method AssertProbeKind(pKind As %String, pAddress As %String, pWhat As %String)
     Do $$$AssertEquals(tAddress, pAddress, pWhat _ ": and names the address that decided it")
 }
 
-/// <p>Leave the resolver seam clear for the next method, or the next class.</p>
+/// <p>Leave the resolver seam, the port switches and the instance's outbound settings clear for
+/// the next method, or the next class.</p>
 Method OnAfterOneTest() As %Status
 {
     Do ##class(OcuPilot.Test.EgressProbe).Clear()
+    Do $ClassMethod(..#PORT, "Reset")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Egress).DeleteGuarded(), "no outbound settings row survives this method")
     Quit $$$OK
 }
 
@@ -408,7 +433,11 @@ Method TestTheRuleReportsTheRightCodeOnTheRightField()
     Do ..ProbeValues("anthropic", "https://api.anthropic.com/v1/messages", 1, .tUnsupported)
     Do ..AssertViolation(.tUnsupported, "markedLocal", ##class(OcuPilot.Api.Error).#AGENTLOCALUNSUPPORTED, "marked local on a provider whose row forbids it")
 
+    ; The acknowledgment is what a credential crossing an unencrypted hop needs (Story 10.3); this
+    ; leg's definition names one, so it carries it. The refusal without it is
+    ; OcuPilot.Test.AgentRules.TestPlainHttpWithAStoredCredentialNeedsTheAcknowledgment's.
     Do ..ProbeValues("probe-local", "http://127.0.0.1:11434/v1/messages", 1, .tPlain)
+    Set tPlain("httpAcknowledged") = 1
     Set tCount = $ClassMethod(..#RULES, "Validate", .tPlain, "", .tViolations)
     Do $$$AssertEquals(tCount, 0, "a plain-HTTP loopback endpoint, marked local on a row that allows local, is accepted (" _ $ClassMethod(..#RULES, "ViolationsJson", .tViolations).%ToJSON() _ ")")
 
@@ -476,6 +505,111 @@ ClassMethod FirstInterfaceAddress() As %String
     Set tInfo = $System.INetInfo.GetInterfacesInfo()
     If tInfo = "" Quit ""
     Quit $Piece($Piece($Piece(tInfo, $Char(0), 1), $Char(1), 2), "/", 1)
+}
+
+/// <p>AC3 -- the shipped <code>compatible</code> row's own <code>allowsLocal</code> column, read
+/// from the catalog rather than passed in: a loopback endpoint and a private-network endpoint are
+/// both permitted to a definition marked local on that row, and the link-local range is refused
+/// anyway. The two are enforced <b>separately</b>, which is what the third leg shows.</p>
+/// <p>mutation: set the <code>compatible</code> row's <code>allowsLocal</code> false in
+/// <class>OcuPilot.Kernel.Provider.Catalog</class>'s <code>Providers</code> XData -- red on the
+/// loopback leg, the link-local leg staying green because that range has no escape.</p>
+Method TestTheShippedCompatibleRowAllowsLoopbackAndPrivateAndStillRefusesLinkLocal()
+{
+    Set tAllows = ##class(OcuPilot.Kernel.AgentRules).AllowsLocal(..#LOCALPROVIDER)
+    Do $$$AssertEquals(''tAllows, 1, "the shipped " _ ..#LOCALPROVIDER _ " row allows local, read through the rule that reads the column")
+    Do ..AssertPermitted("http://127.0.0.1:11434/v1", 1, tAllows, 1, "a loopback endpoint marked local on the shipped row")
+    Do ..AssertPermitted("http://127.0.0.1:11434/v1", 0, tAllows, 0, "the same endpoint with no marked-local declaration")
+    ; A private-network endpoint needs no escape at all: AD-42 names the instance, loopback and
+    ; link-local, and a private address is none of them.
+    Do ..AssertKind("https://10.0.0.5/v1", "public", "a private-network endpoint")
+    Do ..AssertPermitted("https://10.0.0.5/v1", 1, tAllows, 1, "a private-network endpoint marked local on the shipped row")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Egress).LeavesInstance("10.0.0.5", 0), 0, "and it answers leavesInstance false, which is the chip's own question")
+    Do ..AssertPermitted("https://169.254.169.254/v1", 1, tAllows, 0, "and the link-local metadata address is refused on the shipped row too")
+}
+
+/// <p>AC3's metadata arm (DW-1214) -- a published cloud instance-metadata address is refused in
+/// <b>every</b> address family, marked local or not, which is the no-escape treatment IPv4
+/// link-local already had. AWS's and GCP's IPv6 metadata addresses are unique-local, so before this
+/// they classified public and the marked-local branch admitted them.</p>
+/// <p><b>The second half is the point.</b> A legitimate unique-local address -- a private IPv6 LAN,
+/// which is where a local model actually sits -- is still permitted, so a fix that refused all of
+/// <code>fc00::/7</code> would not pass this method.</p>
+/// <p>mutation: remove the metadata arm from <method>OcuPilot.Kernel.Egress.KindOf</method> -- red
+/// on the two IPv6 metadata legs, which then classify public and are permitted with no escape
+/// needed at all.</p>
+Method TestACloudMetadataAddressIsRefusedInEveryFamily()
+{
+    Set tAllows = ##class(OcuPilot.Kernel.AgentRules).AllowsLocal(..#LOCALPROVIDER)
+    For tUrl = "https://169.254.169.254/latest/meta-data", "https://169.254.170.2/v2/credentials", "https://[fd00:ec2::254]/latest/meta-data", "https://[fd20:ce::254]/computeMetadata/v1", "https://[FD00:0EC2:0:0:0:0:0:0254]/latest/meta-data" {
+        Do ..AssertKind(tUrl, "linklocal", "a published metadata address")
+        Do ..AssertPermitted(tUrl, 0, 0, 0, "a metadata address with no escape asked for")
+        Do ..AssertPermitted(tUrl, 1, tAllows, 0, "and marked local on the one shipped row that allows local")
+    }
+    ; The half that keeps the guard an address list rather than a range refusal.
+    Do ..AssertKind("https://[fd12:3456:789a::1]/v1", "public", "a private IPv6 LAN address that is not a metadata address")
+    Do ..AssertPermitted("https://[fd12:3456:789a::1]/v1", 1, tAllows, 1, "which is still permitted to a marked-local definition, because fc00::/7 is how a private IPv6 network is addressed")
+    Do ..AssertPermitted("https://[fd12:3456:789a::1]/v1", 0, 0, 1, "and needs no escape, being neither loopback, link-local nor this instance's own")
+}
+
+/// <p>DW-441 -- a marked-local call carries <b>no proxy</b>: the request the transport was handed
+/// names no proxy server and no tunnel, although the instance has a permitted public proxy stored.
+/// Read off the recorded request rather than off the settings, through
+/// <class>OcuPilot.Test.ProviderPortProbe</class> and the shipped row's stub, so no socket is
+/// opened.</p>
+/// <p>The control is the same proxy on the same row <b>unmarked</b>, which does reach the request --
+/// without it, a port that had simply stopped setting a proxy at all would pass.</p>
+/// <p>mutation: delete <method>OcuPilot.Port.ProviderPort.Dispatch</method>'s marked-local proxy
+/// blanking -- red on the recorded proxy server and tunnel.</p>
+Method TestAMarkedLocalCallCarriesNoProxy()
+{
+    Do $ClassMethod(..#PORT, "Reset")
+    Do $ClassMethod(..#PORT, "SetCatalogClass", ..#SHIPPEDCATALOG)
+    Do $ClassMethod(..#PORT, "SetSslState", "present")
+    Set tStored("proxyServer") = ..#PUBLICPROXY
+    Set tStored("proxyPort") = 3128
+    Set tStored("proxyTunnel") = 1
+    Set tStored("proxyHttps") = 1
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Egress).SetGuarded(.tStored), "a permitted public proxy is stored")
+
+    Do $ClassMethod("OcuPilot.Test.Provider", "Messages", .tMessages)
+    Do ##class(OcuPilot.Test.ProviderStub).Reset()
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..#COMPATIBLEREPLY)
+    Do ..DraftValues("http://127.0.0.1:11434/v1", 1, .tLocal)
+    Set tSC = $ClassMethod(..#PORT, "InvokeDraft", .tLocal, .tMessages, .tTools, "", .tResponse, .tHttpStatus, .tFault)
+    Do $$$AssertStatusOK(tSC, "the marked-local call returns $$$OK")
+    Do $$$AssertTrue('$IsObject(tFault), "and is not refused: " _ $Select($IsObject(tFault): tFault.%ToJSON(), 1: ""))
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 1, "it reached the transport")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("proxyServer", 1), "", "carrying no proxy server")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("proxyTunnel", 1), 0, "no tunnel")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("proxyHttps", 1), 0, "and no proxy TLS flag, although all three are stored")
+
+    ; The control: unmarked, on a public endpoint the same row serves, the stored proxy does reach
+    ; the request.
+    Do ##class(OcuPilot.Test.ProviderStub).Reset()
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..#COMPATIBLEREPLY)
+    Do ..DraftValues("https://192.0.2.1/v1", 0, .tPublic)
+    Set tPublicSC = $ClassMethod(..#PORT, "InvokeDraft", .tPublic, .tMessages, .tTools, "", .tPublicResponse, .tPublicStatus, .tPublicFault)
+    Do $$$AssertStatusOK(tPublicSC, "the unmarked call returns $$$OK")
+    Do $$$AssertTrue('$IsObject(tPublicFault), "and is not refused: " _ $Select($IsObject(tPublicFault): tPublicFault.%ToJSON(), 1: ""))
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("proxyServer", 1), ..#PUBLICPROXY, "through the stored proxy")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("proxyTunnel", 1), 1, "and the tunnel an https endpoint always takes")
+}
+
+/// <p>The draft values one port call reads: the shipped <code>compatible</code> row,
+/// <var>pEndpoint</var>, <var>pMarkedLocal</var>, and a key source of <code>none</code> so no
+/// credential has to be resolvable for a method that is about the proxy.</p>
+ClassMethod DraftValues(pEndpoint As %String, pMarkedLocal As %Boolean, Output pValues)
+{
+    Kill pValues
+    Set pValues("provider") = ..#LOCALPROVIDER
+    Set pValues("model") = "llama-3.3-70b-instruct"
+    Set pValues("endpointUrl") = pEndpoint
+    Set pValues("markedLocal") = pMarkedLocal
+    Set pValues("credType") = ##class(OcuPilot.Kernel.AgentRules).#CREDTYPENONE
+    Set pValues("keySource") = ##class(OcuPilot.Kernel.Provider.Base).#KEYSOURCENONE
+    Set pValues("maxTokens") = 32000
+    Set pValues("temperature") = 0
 }
 
 }

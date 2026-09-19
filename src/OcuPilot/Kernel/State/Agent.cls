@@ -50,12 +50,25 @@ Property EndpointUrl As %String(MAXLEN = 512);
 /// resolved address is loopback or one of this instance's own interface addresses. It licenses
 /// nothing in the link-local range, which is refused whatever this flag says.</p>
 /// <p>It is a request, not a grant: it takes effect only on a provider whose catalog row sets
-/// <code>allowsLocal</code>, and no shipped row does, so setting it on a shipped definition is a
-/// validation failure rather than an escape.</p>
+/// <code>allowsLocal</code>, which is the <code>compatible</code> row alone, so setting it on a
+/// definition naming any vendor family is a validation failure rather than an escape.</p>
 Property MarkedLocal As %Boolean [ InitialExpression = 0 ];
 
-/// <p><code>env</code> or <code>creds</code> -- which rung of the credential ladder this
-/// definition's secret is read from. The choice is stored here; reading it is Story 3.3's.</p>
+/// <p>Whether the operator has accepted that this definition's credential crosses the network
+/// unencrypted, which a plain <code>http://</code> endpoint carrying a credential needs
+/// (<method>OcuPilot.Kernel.AgentRules.SchemeAccepted</method>). It licenses nothing on its own: an
+/// https endpoint never asks, and a <code>credType</code> of <code>none</code> carries no
+/// credential to expose.</p>
+/// <p><b>Added with no <code>SCHEMAVERSION</code> move</b> (Consistency Conventions): a row stored
+/// before this property existed reads it back as 0, which is the conservative answer -- an
+/// untouched row licenses nothing it did not license before (the precedent is
+/// <property>RowVersion</property> and <property>CredentialCreated</property>).</p>
+Property HttpAcknowledged As %Boolean [ InitialExpression = 0 ];
+
+/// <p><code>env</code>, <code>creds</code> or <code>none</code> -- which rung of the credential
+/// ladder this definition's secret is read from, or that it has none. <code>none</code> is accepted
+/// only on a provider whose catalog row sets <code>allowsLocal</code>, which is the family that
+/// serves a keyless model on the operator's own network.</p>
 Property CredType As %String(MAXLEN = 8);
 
 /// <p>The environment variable holding the secret, when <property>CredType</property> is
@@ -128,16 +141,18 @@ Index DefaultIdx On DefaultMark [ Unique ];
 /// text rather than two copies of it.</p>
 Parameter DEFAULTDISABLEDREASON = "The default marker names the agent definition in force, and this one is not enabled";
 
-/// <p>The fields whose change disables a definition (AC5): the provider, the endpoint, the flag
-/// that licenses where that endpoint may point, and the three that name where the secret comes
-/// from. Declared once, and read by both <method>SnapshotSecurityFields</method> and
-/// <method>GuardedUpdate</method>, so the snapshot and the comparison cannot drift apart.</p>
+/// <p>The fields whose change disables a definition (AC5): the provider, the endpoint, the two
+/// flags that license where that endpoint may point and what may travel to it, and the three that
+/// name where the secret comes from. Declared once, and read by both
+/// <method>SnapshotSecurityFields</method> and <method>GuardedUpdate</method>, so the snapshot and
+/// the comparison cannot drift apart.</p>
 /// <p><property>MarkedLocal</property> belongs here because it changes which addresses the
-/// endpoint may resolve to: turning it on widens the definition's egress, and a definition whose
-/// egress widened has not been verified as configured.</p>
+/// endpoint may resolve to, and <property>HttpAcknowledged</property> because it decides whether a
+/// credential may cross an unencrypted one: turning either on widens the definition's egress, and a
+/// definition whose egress widened has not been verified as configured.</p>
 ClassMethod SecurityFields() As %List
 {
-    Quit $ListBuild("Provider", "EndpointUrl", "MarkedLocal", "CredType", "EnvVarName", "CredentialName")
+    Quit $ListBuild("Provider", "EndpointUrl", "MarkedLocal", "HttpAcknowledged", "CredType", "EnvVarName", "CredentialName")
 }
 
 /// <p>Record <var>pObject</var>'s security-relevant values, before a caller edits it, into

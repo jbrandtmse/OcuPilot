@@ -505,6 +505,13 @@ export const STRINGS = {
   /** EXPERIENCE.md:334 */
   agentDefinitionFieldApiKey: 'API key',
   /** EXPERIENCE.md:334 */
+  agentDefinitionFieldLocalModel: 'Local model',
+  /** EXPERIENCE.md:334 */
+  agentDefinitionCredTypeNone: 'No API key',
+  /** EXPERIENCE.md:334 */
+  agentDefinitionHttpAcknowledge:
+    'This endpoint is not encrypted, so the key travels across the network in clear.',
+  /** EXPERIENCE.md:334 */
   agentDefinitionAdvanced: 'Advanced',
   /** EXPERIENCE.md:334 */
   agentDefinitionFieldMaxTokens: 'Maximum tokens',

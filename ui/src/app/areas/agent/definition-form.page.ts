@@ -17,7 +17,12 @@ import { NavigationService, formatDeniedAction, withQuery } from '../../core/nav
 import { STRINGS } from '../../core/strings';
 import { Dialog } from '../../shell/dialog';
 import { type Violation } from '../../core/violations';
-import { DefinitionForm, type ProviderRow } from './definition-form.store';
+import {
+  CRED_TYPE_CREDS,
+  CRED_TYPE_NONE,
+  DefinitionForm,
+  type ProviderRow,
+} from './definition-form.store';
 
 /** The published retention caption's placeholder, resolved from the field's own value. */
 const RETENTION_PLACEHOLDER = '<n>';
@@ -206,6 +211,60 @@ interface FieldView {
           <p class="ocu-form-error" [id]="endpointField.id + '-reason'">{{ endpointField.reason }}</p>
         }
       </div>
+
+      @if (localAllowed) {
+        <div class="ocu-field">
+          <label class="ocu-field-checkbox">
+            <input
+              type="checkbox"
+              [id]="markedLocalField.id"
+              [checked]="markedLocalFlag"
+              [attr.aria-invalid]="markedLocalField.invalid"
+              [attr.aria-describedby]="markedLocalField.describedBy"
+              (change)="onMarkedLocal($event)"
+            />
+            <span>{{ STRINGS.agentDefinitionFieldLocalModel }}</span>
+          </label>
+          @if (markedLocalField.invalid) {
+            <p class="ocu-form-error" [id]="markedLocalField.id + '-reason'">{{ markedLocalField.reason }}</p>
+          }
+        </div>
+
+        <div class="ocu-field">
+          <label class="ocu-field-checkbox">
+            <input
+              type="checkbox"
+              [id]="credTypeField.id"
+              [checked]="noKeyFlag"
+              [attr.aria-invalid]="credTypeField.invalid"
+              [attr.aria-describedby]="credTypeField.describedBy"
+              (change)="onNoKey($event)"
+            />
+            <span>{{ STRINGS.agentDefinitionCredTypeNone }}</span>
+          </label>
+          @if (credTypeField.invalid) {
+            <p class="ocu-form-error" [id]="credTypeField.id + '-reason'">{{ credTypeField.reason }}</p>
+          }
+        </div>
+      }
+      @if (showHttpAcknowledge) {
+        <div class="ocu-field ocu-field-egress">
+          <label class="ocu-field-checkbox">
+            <input
+              type="checkbox"
+              [id]="acknowledgeField.id"
+              [checked]="httpAcknowledgedFlag"
+              [attr.aria-invalid]="acknowledgeField.invalid"
+              [attr.aria-describedby]="acknowledgeField.describedBy"
+              (change)="onHttpAcknowledge($event)"
+            />
+            <span>{{ STRINGS.agentDefinitionHttpAcknowledge }}</span>
+          </label>
+          @if (acknowledgeField.invalid) {
+            <p class="ocu-form-error" [id]="acknowledgeField.id + '-reason'">{{ acknowledgeField.reason }}</p>
+          }
+        </div>
+      }
 
       <div class="ocu-field">
         <label class="ocu-field-label" [attr.for]="keyField.id">{{ STRINGS.agentDefinitionFieldApiKey }}</label>
@@ -728,6 +787,56 @@ export class DefinitionFormPage {
     return this.fieldView('apiKey');
   }
 
+  protected get markedLocalField(): FieldView {
+    return this.fieldView('markedLocal');
+  }
+
+  protected get credTypeField(): FieldView {
+    return this.fieldView('credType');
+  }
+
+  protected get acknowledgeField(): FieldView {
+    return this.fieldView('httpAcknowledged');
+  }
+
+  /**
+   * Whether this provider serves a model on the operator's own network, which is the one catalog
+   * column that licenses the local-model declaration and the keyless credential choice
+   * (`allowsLocal`, AD-42). No shipped vendor row sets it, so the two controls appear for the
+   * OpenAI-compatible family alone.
+   */
+  protected get localAllowed(): boolean {
+    this.generation();
+    return this.store.provider()?.allowsLocal === true;
+  }
+
+  protected get markedLocalFlag(): boolean {
+    this.generation();
+    return this.store.flag('markedLocal');
+  }
+
+  protected get noKeyFlag(): boolean {
+    this.generation();
+    return this.store.value('credType') === CRED_TYPE_NONE;
+  }
+
+  protected get httpAcknowledgedFlag(): boolean {
+    this.generation();
+    return this.store.flag('httpAcknowledged');
+  }
+
+  /**
+   * Whether the acknowledgment control is on screen: the endpoint is a plain `http://` address and
+   * a credential is configured, which is exactly when the server refuses without it
+   * (`AGENT.HTTP.ACK.REQUIRED`). A keyless definition is never asked, because there is no key to
+   * expose, and an encrypted endpoint is never asked either.
+   */
+  protected get showHttpAcknowledge(): boolean {
+    this.generation();
+    if (this.noKeyFlag) return false;
+    return /^http:\/\//i.test(this.store.value('endpointUrl'));
+  }
+
   /**
    * Whether the key field carries the published "Stored." caption.
    *
@@ -774,6 +883,29 @@ export class DefinitionFormPage {
     const target = event.target;
     if (!(target instanceof HTMLSelectElement)) return;
     this.store.setProvider(target.value);
+  }
+
+  protected onMarkedLocal(event: Event): void {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement)) return;
+    this.store.setFlag('markedLocal', target.checked);
+  }
+
+  /**
+   * The keyless credential choice. It moves `credType` between the two values this form offers --
+   * `none` and the class's own default -- rather than clearing the credential references, which
+   * the server's own XOR invariant normalizes.
+   */
+  protected onNoKey(event: Event): void {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement)) return;
+    this.store.setValue('credType', target.checked ? CRED_TYPE_NONE : CRED_TYPE_CREDS);
+  }
+
+  protected onHttpAcknowledge(event: Event): void {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement)) return;
+    this.store.setFlag('httpAcknowledged', target.checked);
   }
 
   protected onKey(event: Event): void {

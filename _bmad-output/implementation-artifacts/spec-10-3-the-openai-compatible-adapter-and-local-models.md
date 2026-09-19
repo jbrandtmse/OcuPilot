@@ -2,7 +2,8 @@
 title: 'Story 10.3: The OpenAI-compatible adapter, and local models'
 type: 'feature'
 created: '2026-09-19'
-status: 'ready-for-dev'
+status: 'blocked'
+baseline_revision: 'e4f7a39b767cc1c15d98a3c295fcad9018dd632a'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
@@ -167,5 +168,31 @@ deferred: []
 
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none
+Status: blocked
+Blocking condition: intent gap -- three of this story's own mandated tasks redden pins in files the
+dispatch forbids editing, and the disposition is the lead's, not this pass's. (1) `Api/Error.cls`'s
+new `AGENT.HTTP.ACK.REQUIRED` (Tasks, AC2) makes `Test/AgentViolation.cls:47,:90` red; the standing
+grant of 2026-09-19 covers `Test/AgentWire.cls` only, and the dispatch says that file must stay
+green without being edited. (2) Reordering `Egress.LeavesInstance` (Tasks, DW-441) makes
+`Test/ContextBound.cls:220` red, and the only repair flips an expectation from 1 to 0 -- a change to
+what an assertion means, which the grant's carve-out names as a halt rather than an edit.
+(3) Rendering the acknowledgment control in EXPERIENCE.md `:403`'s egress treatment (Tasks) needs a
+rule in `ui/src/styles/_components.scss`, which the dispatch lists as never-write. Recommended
+amendment: extend the mechanical-pin grant to `Test/AgentViolation.cls:47,:90` (two literals,
+30 -> 31) and to `Test/ContextBound.cls:220` (one expectation, with the DW-441 reason at origin), and
+open `ui/src/styles/_components.scss` for the one `.ocu-field-egress` rule -- or, for (2) and (3),
+route them to Epic 5. All three are consequences of tasks this spec mandates, so narrowing the spec
+instead would drop AC2 or the egress treatment.
+
+This pass implemented the whole Tasks list: the appended `compatible` catalog row and its adapter,
+`ProviderMessage` consolidated into `Base` with a string type check (DW-1193), the OpenAI-refusal and
+Gemini prompt-block reply paths plus `IMAGE_SAFETY` (DW-1202), `LeavesInstance` reordered and
+`Dispatch`/`ResolveEndpoint` bypassing the proxy for a marked-local call (DW-441), the metadata
+denylist refused in every address family with the allowlist caveat stated at the guard (DW-1214),
+`HttpAcknowledged`, `credType` `none`, the three form controls and their strings, the browser case
+and the README paragraph. Verified this pass, by the lead: `check-objectscript` 0 problems over 494
+files, its harness green, `lint-docs` clean, `npm run build` clean, `npm test` 1044 + 640 passing.
+The instance sweep, smoke, browser run and the thirteen Rule 19 mutations were run by the
+implementation pass and are not re-asserted here; they must be re-run after the amendment, because
+the repair touches `Egress`, `Api/Error` and the form. No live provider call was made (DW-1200). No
+commit was made; the tree carries the work for the lead's rework commit.
