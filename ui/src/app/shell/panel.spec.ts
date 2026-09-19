@@ -2724,6 +2724,40 @@ describe('Story 5.2: the proposal cards in the transcript', () => {
       STRINGS.proposalStatusCanceledByMessage,
     ]);
     expect((host.querySelector('.ocu-panel-send') as HTMLElement).classList.contains('ocu-button-primary')).toBe(true);
+
+    // Mutation (Rule 19): widen `replyWithConfirmSentence`'s guard to `proposals.length === 0`, so
+    // the sentence is appended to any turn that minted a card -> this goes red. The sentence is
+    // the panel's own live instruction, not part of the model's reply, so it goes when the last
+    // card of the turn does; nothing else in this file reads the reply on the terminal branch.
+    expect(host.querySelector('.ocu-panel-message-agent-text')?.textContent ?? '').not.toContain(
+      STRINGS.proposalConfirmSentence
+    );
+  });
+
+  it('the ticker advances the panel clock, so a card that runs out while it is on screen expires', async () => {
+    // Mutation (Rule 19): make `syncTicker` a no-op (never call `setInterval`) -> this goes red.
+    // Nothing else in this suite waits on the clock: every other fixture is either 599s ahead or
+    // already past at mount, so a countdown frozen at the moment the poll landed ships green --
+    // it would never reach 0:00, `phaseFor` would never answer `expired`, and Confirm would stay
+    // pressable past AD-6's window. This is the one test that watches a second go by.
+    const { host, fixture } = await mountWithProposals([
+      wireProposal({ expiresAt: new Date(Date.now() + 1_500).toISOString() }),
+    ]);
+    expect(host.querySelector('.ocu-proposal-card-confirm')).not.toBeNull();
+    expect(
+      (host.querySelector('.ocu-panel-send') as HTMLElement).classList.contains('ocu-button-secondary')
+    ).toBe(true);
+
+    await new Promise((resolve) => setTimeout(resolve, 2_300));
+    fixture.detectChanges();
+
+    expect(host.querySelector('.ocu-proposal-card-status')?.textContent?.trim()).toBe(
+      STRINGS.proposalStatusExpired
+    );
+    expect(host.querySelector('.ocu-proposal-card-confirm')).toBeNull();
+    expect(
+      (host.querySelector('.ocu-panel-send') as HTMLElement).classList.contains('ocu-button-primary')
+    ).toBe(true);
   });
 
   it('Stop cancels nothing: a proposal already posted in that turn stays live', async () => {

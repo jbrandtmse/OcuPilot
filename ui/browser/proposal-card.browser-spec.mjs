@@ -17,10 +17,12 @@
  * out. The expiry is moved on the instance (`OcuPilot.Test.ProposalFixture.SetExpiryForUser`) and
  * the next poll carries it.
  *
- * Run: `npm run build`, then `docker cp` the bundle into the throwaway, then
- * `OCUPILOT_BROWSER_ORIGIN=... OCUPILOT_BROWSER_CONTAINER=... node --test
- * browser/proposal-card.browser-spec.mjs` (`.claude/rules/objectscript-testing.md`'s "a browser
- * spec runs against the deployed bundle").
+ * Run, from `ui/`: `npm run build && docker cp dist/ocupilot-ui/browser/. <throwaway>:/durable/iris/csp/ocupilot/`,
+ * then `OCUPILOT_BROWSER_ORIGIN=... OCUPILOT_BROWSER_CONTAINER=... node --test
+ * browser/proposal-card.browser-spec.mjs`. The build output is `dist/ocupilot-ui`, never
+ * `dist/ocupilot` -- the path spelled in `.claude/rules/objectscript-testing.md`'s otherwise
+ * applicable "a browser spec runs against the deployed bundle" section copies nothing, and these
+ * three tests would then read a stale bundle and pass.
  */
 
 import { test, before, after } from 'node:test';

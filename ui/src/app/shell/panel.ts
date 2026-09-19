@@ -834,6 +834,11 @@ export class Panel {
   private syncTicker(): void {
     const wanted = this.liveCards.length > 0;
     if (wanted && this.ticker === null) {
+      // Seeded at the arming, not only on the first tick: `nowSignal` holds whatever the last tick
+      // before the previous disarm left, so a panel that has been idle would draw a brand-new
+      // card's countdown from that stale moment -- `Expires in 70:00` on a ten-minute proposal --
+      // until a second later.
+      this.nowSignal.set(Date.now());
       this.ticker = setInterval(() => {
         this.nowSignal.set(Date.now());
         // Re-asked on the tick, because the tick is the only thing that can retire the last live

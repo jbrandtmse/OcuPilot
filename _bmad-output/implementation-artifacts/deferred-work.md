@@ -4195,6 +4195,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read.md | severity: med | fix-risk: low | footprint: ui/src/app/core/turn.ts
 - evidence: TurnEntry.proposals' own comment reads 'Empty for a restored entry: the conversation read carries none, and a proposal restored from a reload is always expired anyway.' PROPOSALEXPIRYSECONDS is 600, so a reload one minute after a mint drops a proposal that stays confirmable for nine more; proposals ride only the progress poll, so there is no other route to it.
 - 2026-09-19T13:19:45Z status=routed owner=5-2-the-proposal-card-the-diff-the-user-reviews by=cr note=The card and its restore path are 5.2's; 5.1 ships only the publisher. Non-blocking: the proposal is still claimable by id, and nothing renders a card yet.
+- 2026-09-19T18:52:22Z status=resolved-by:5-2-the-proposal-card-the-diff-the-user-reviews by=adjudication note=the entry's real harm - a restored proposal dropped entirely - is fixed: the conversation entry now stores its turn key and Api/Conversation attaches each turn's proposals to the restored view, so the card survives a reload. Its second half was the false claim and is corrected at its origin in turn.ts: the card is shown expired by product decision (EXPERIENCE.md and DESIGN.md state the rule; DESIGN.md carries showing it live as an explicit Don't) while the proposal may still be live on the instance
 
 ### DW-1223: The proposal card's N unchanged fields disclosure has no rows behind it, so AC1's every field still available is unmet - WireRow emits only unchangedCount
 - source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: med | fix-risk: low | footprint: in-epic
@@ -4296,3 +4297,38 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: The QA stage pinned .ocu-proposal-card-agent-text for both agent-tinted fields with children.length === 0 and demonstrated the innerHTML mutation, and left reverse alone because the AD gate scoped the gap to the two agent-tinted fields. Reverse comes from the same model turn and renders on the same card. Location: ui/src/app/shell/proposal-card.ts, proposal-card.spec.ts
 - 2026-09-19T18:11:34Z status=routed owner=5-13-logs-delete-application-errors-by-namespace by=harvest note=downstream-blocking (Rule 27) for 5.13, the first delete proposal, which is the story whose card carries no Reverse line at all and must therefore reason about the field explicitly
+
+### DW-1243: A card the user cancels, and New conversation, never publish proposal-closed, so a bound screen stays paused for the rest of AD-6's ten-minute window
+- source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: panel.ts onCardCancel/cancelLiveCards write only the component-local cardPhases map and publish nothing; turn.ts newConversation() clears entriesValue without the publishProposals([]) that endSession() does make. refresh.ts lifts a pause only on proposal-closed or the per-proposal expiresAt deadline, so the pause outlives the card by up to ten minutes. Bounded and self-healing, and the instance's row is still live until 5.3 makes Cancel a real request - which is why the close belongs with that transition, beside DW-1209.
+- 2026-09-19T18:48:17Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=cr note=AD-43 resumes-on-close; 5.3 owns the terminal transitions and DW-1209 on the same channel
+
+### DW-1244: Mint's audit-warning constants name a tool and a field that do not exist until Story 5.10, and the only test that reads them asserts the constants against themselves
+- source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Mint.AUDITINGTOOL is security.auditing.update and AUDITINGFIELD is Enabled; neither is shipped by any tool yet. ProposalWire's TestTheAuditWarningIsTheKernelsPredicateOnTheWire reads both back through $Parameter, so a rename in 5.10 leaves WarnsAuditingOff answering 0 forever, the card draws no warning on the one write it exists for, and every test stays green. Distinct from DW-1226, which is the non-boolean argument value, not the name.
+- 2026-09-19T18:48:28Z status=routed owner=5-10-security-and-secrets-disable-and-re-enable-auditing by=cr note=5.10 ships the tool; pin the predicate against the shipped tool name there, not against the constant
+
+### DW-1245: EXPERIENCE.md:662 states the terminal status line takes focus unconditionally, while the card moves focus only when a button of that card held it
+- source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: The guard is deliberate and pinned: the spec's mutation list records that focusing unconditionally reddens 'a transition nobody pressed leaves focus where it was', without which a typed message cancelling three cards pulls focus out of the composer. The implementation is right and the document is imprecise; the sentence was not amended, and Story 5.3 implements the confirmed and target-changed transitions from it.
+- 2026-09-19T18:48:28Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=cr note=one-line EXPERIENCE.md amendment, made where 5.3 rewrites those transitions
+
+### DW-1246: The in-card audit warning is a third polite live region mounting in the same frame as two others, and it is the only ocu-banner-warning in the shell that is not role=alert
+- source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: proposal-card.ts renders the warning role=status beside the countdown announcement and the terminal status line, all three inserting with the reply block; switches.page, definition-form.page, list-page and panel.ts's send-error banner all use role=alert, panel.ts's secret warning uses role=status, so the convention is not one-sided. Whether the safety sentence is spoken is not observable in jsdom or in a browser spec - only a screen reader answers it.
+- 2026-09-19T18:48:42Z status=routed owner=5-10-security-and-secrets-disable-and-re-enable-auditing by=cr note=5.10 ships the first proposal that trips the warning, which is when a screen-reader pass has something to hear
+
+### DW-1247: GuardedRowsForConvo drops every proposal in the conversation when one row's values or wire projection fails, where an unopenable row only skips that row
+- source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The loop's Continue branch is GuardedOpenId's alone; a RowValues or WireRow error sets tSC, quits the loop and kills pByTurn, so one unreadable stream costs the whole restored transcript its cards. GuardedRowsForTurn has answered the same way since Story 5.1, so this is the established shape rather than a new divergence, and no fixture can make either call fail.
+- 2026-09-19T18:48:42Z status=wontfix-accepted owner=5-2-the-proposal-card-the-diff-the-user-reviews by=cr note=reopen_if=a conversation read logs one RowValues or WireRow failure and the transcript shows no cards on any turn
+
+### DW-1248: The countdown's explanatory sentence reaches only a pointer: it is a title attribute on a non-focusable span
+- source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: STRINGS.proposalCountdownTooltip is bound as [attr.title] on the countdown span, which has no tabindex and no role, so keyboard-only and touch users never see it and AT exposure of title on a non-interactive element is inconsistent. Giving it a reachable home is a DESIGN.md and EXPERIENCE.md question about where the sentence lives, not a code correction.
+- 2026-09-19T18:48:42Z status=wontfix-accepted owner=5-2-the-proposal-card-the-diff-the-user-reviews by=cr note=reopen_if=an accessibility pass files the countdown's rationale as unreachable without a pointer
+
+### DW-1249: Confirm renders as the view's only filled primary button, is fully pressable, and emits into nothing, with no published string or aria state saying so
+- source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: panel.ts binds only (cancel) on the card; confirmAriaDisabled answers null on a live card with no declared secret, so the press leaves the card unchanged with no status line, no banner and no announcement. Spec-bound: the Never clause says Confirm and Cancel ship with their full focus and transition contract while Confirm's request is the seam Story 5.3 fills, and calls it a staged affordance rather than a defect. Recorded so the next review reads the ruling instead of re-filing it.
+- 2026-09-19T18:48:49Z status=by-design owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=cr note=spec Boundaries Never clause; 5.3 wires the request - reopens only by spec amendment

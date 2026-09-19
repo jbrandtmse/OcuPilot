@@ -709,6 +709,38 @@ ClassMethod GuardedIdsWhere(pSql As %String, pParam As %String, Output pIds) As 
     Quit tSC
 }
 
+/// <p>Two-<b>column</b> sibling of <method>GuardedIdsWhere</method>, for a query returning
+/// exactly two columns and binding one parameter: each row lands as a pair,
+/// <var>pPairs(n)</var> the first column and <var>pPairs(n, 2)</var> the second.</p>
+/// <p>It exists so a caller needing two columns runs <b>one</b> statement. Two separately executed
+/// single-column reads paired by ordinal are aligned only while nothing deletes a row between
+/// them, which no caller can guarantee and no caller can detect; they also escalate twice for one
+/// answer. Same call-site-literal and <code>Private</code> rules as
+/// <method>GuardedIdsWhere</method>.</p>
+ClassMethod GuardedPairsWhere(pSql As %String, pParam As %String, Output pPairs) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Kill pPairs
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, pSql, pParam)
+        If tRS.%SQLCODE < 0 {
+            Set tSC = $$$ERROR($$$GeneralError, "GuardedPairsWhere failed: SQLCODE=" _ tRS.%SQLCODE _ " " _ tRS.%Message)
+            Quit
+        }
+        While tRS.%Next() {
+            Set tIndex = $Increment(pPairs)
+            Set pPairs(tIndex) = tRS.%GetData(1)
+            Set pPairs(tIndex, 2) = tRS.%GetData(2)
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>Two-parameter sibling of <method>GuardedIdsWhere</method>, for a query whose
 /// <code>WHERE</code> clause binds two values (<class>OcuPilot.Kernel.State.Turn</class>'s owner
 /// lookup by turn key and user name). Same call-site-literal and <code>Private</code> rules.</p>

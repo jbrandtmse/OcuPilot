@@ -253,6 +253,69 @@ Instance, the restore path only:
 - **Integration AC (Rule 1).** Given a transcript restored after a reload while a proposal is unburned and unexpired on the instance, when `restore()` settles, then the consumer `RefreshService` reports `paused()` false and arms normally -- because the restore path published no `proposal-open` -- while the card is on screen showing `Expired` and `Re-propose`.
 - **Integration AC (Rule 1).** Given a live proposal in the current turn, when the panel renders, then the consumer `panel.ts` shows one card per wire proposal and its Send button carries the secondary class, so Confirm is the only filled button in the view.
 
+### Review Findings
+
+**Code review, 2026-09-19** -- four layers (blind-hunter, edge-case-hunter, verification-gap,
+acceptance-auditor), every one on the parent Opus tier (`review_tier: full-opus`). 29 raw findings
+-> 24 root-cause entries: **0 high**, 12 medium, 11 low, 1 refuted. **8 patched in this pass**, 1
+closed in-pass under Rule 19, 7 ledgered, 8 already ledgered or rejected.
+
+**Patched (medium).**
+
+- *AC6 fails on every terminal transition after the first.* `buttonsRetired` and `focusedFor` were
+  set once and never reset, so a card that returned to `live` -- the kill switch going off again --
+  lost its buttons in the same change-detection pass that inserted the status line, with one of
+  them holding focus, and the status line was never focused. Both halves of AC6. Reset in the
+  effect's non-terminal branch, pinned by a new round-trip test.
+- *The panel's ticker armed without seeding its clock.* `nowSignal` was written only inside the
+  interval callback, so a panel whose ticker had been disarmed drew a new card's countdown from the
+  stale moment -- `Expires in 70:00` on a ten-minute proposal -- for one second. Seeded at the arm.
+- *Nothing observed the ticker advancing.* Every fixture in the Story 5.2 block was either 599 s
+  ahead or already past at mount, and no test used timers, so a countdown frozen at the moment the
+  poll landed shipped green: it would never reach `0:00`, `phaseFor` would never answer `expired`,
+  and Confirm would stay pressable past AD-6's window. One new `panel.spec.ts` test watches a
+  second go by.
+- *The confirm sentence's terminal branch was unasserted.* Both existing assertions mount a live
+  card, so `replyWithConfirmSentence`'s guard could be inverted without a test noticing. Pinned on
+  the typed-message path.
+- *`Entry.GuardedTurnKeys` paired two independently executed queries by ordinal* -- the positional
+  join its own doc comment forbids one level up, and two escalated round trips for one answer. A
+  row deleted between them attaches one turn's proposals to another turn's card; Story 14.4 brings
+  the deleting caller. Folded onto one `SELECT Seq, TurnKey` through a new two-column
+  `Base.GuardedPairsWhere`. Behavior-preserving in every state the append-only path can reach, so
+  it has no new pinning mutation and none is claimed -- DW-1233 stays open.
+- *Two source-scan ordering assertions could not fail* (Rule 19). `$Find` answers `0` for an absent
+  needle, so `$Find(tHandler, "GuardedView") < $Find(tHandler, "AttachProposals")` read true on the
+  very deletion it existed to refuse. The owner gate's presence is now asserted first, in both the
+  conversation and the progress test.
+
+**Patched (low).** The last-minute announcement outlived the live card, holding *One minute left to
+confirm* in the polite region under a status line reading `Expired`; cleared on the terminal
+transition. The new browser spec's header pointed at `.claude/rules/objectscript-testing.md`'s
+`dist/ocupilot` path, which copies nothing -- all three tests would then read a stale bundle and
+pass; it now spells `dist/ocupilot-ui`.
+
+**Closed in-pass (Rule 19 low).** AC1's content roster and AC4's diff-row masking had pinning tests
+with no recorded mutation. Both mutations were applied, observed red and reverted; the lines are in
+`## Verification`.
+
+**Ledgered.** DW-1243 (medium, 5.3): a card the user cancels, and New conversation, never publish
+`proposal-closed`, so a bound screen stays paused for the rest of AD-6's window -- bounded by
+`RefreshService`'s own expiry deadline, and the instance's row is still live until 5.3 makes Cancel
+a real request. DW-1244 (medium, 5.10): the audit-warning constants name a tool and a field no
+shipped tool carries, and the only test that reads them asserts them against themselves. DW-1249
+(medium, by-design): Confirm is the view's only filled button, fully pressable, and emits into
+nothing -- the staged affordance the Never clause names, recorded so it is not re-filed. DW-1245,
+DW-1246, DW-1247, DW-1248 (low).
+
+**Refuted or already ledgered.** The disclosure button's font and color are set by the
+`.ocu-proposal-card-unchanged` class it also carries, so no UA default shows. Cards canceled
+before the send outcome is known is DW-1231; `Seed`'s `pAuditing` literal is DW-1239; the browser
+countdown's redundant `0:\d\d` sample is already in `deferred:`; the conversation handler's
+source-text scan is DW-1234; the delete row's removed marker is DW-1228. Rejected as low with a fix
+larger than a direct correction: `countdownCaption`'s unreachable null arm (gated off by
+`countdownVisible`), and the two walks of the restored `turns` array in `Api/Conversation.cls`.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -413,6 +476,44 @@ binding always does. mutation: `{{ rationale }}` -> `[innerHTML]="rationale"` in
 -> the new test red on `children.length` (a real `<b>` child appears); reverted, tree confirmed
 byte-identical. `expectedImpact` is pinned by the same test, same mechanism, not independently
 mutated (identical code shape, identical binding kind).
+
+**Added in the code-review pass** (Rule 19: whoever changes a pinning test writes its line in the
+same pass). Each was applied alone, observed red, reverted, and the tree confirmed byte-identical.
+
+- `syncTicker` made a no-op, so `nowSignal` never advances -> `panel.spec.ts`'s "the ticker
+  advances the panel clock" red alone. Nothing else in the suite waits on the clock.
+- the `buttonsRetired` / `focusedFor` reset dropped from the effect's non-terminal branch ->
+  `proposal-card.spec.ts`'s "a card that goes live again hands focus over on its next terminal
+  transition too" red alone, on focus falling to the document.
+- `announcementText.set('')` dropped from the effect's terminal branch -> "the last-minute
+  announcement does not outlive the live card" red alone.
+- `replyWithConfirmSentence`'s guard widened to `proposals.length === 0`, so the sentence is
+  appended to any turn that minted a card -> the typed-message test's new reply assertion red
+  alone; both earlier confirm-sentence assertions mount a live card and stay green.
+- **AC1's content half, which had no line:** the guard caption `<p class="ocu-proposal-card-guard">`
+  removed from the template -> `proposal-card.spec.ts`'s AC1 test red alone.
+- **AC4's masking half, which had no line:** the mask dropped from `toCardView`'s declared-secret
+  row (`before`/`after` passed through) -> `ui/tools/proposal-view.test.mjs`'s masked-row test red.
+- the `GuardedView` literal hidden from `Api/Conversation.HandleRead` behind `$classmethod` with a
+  concatenated method name -- behavior unchanged, the source-text needle gone (throwaway, package
+  recompiled, grepped inside the container) -> `Test.ProposalWire` 1 of 11 red:
+  `TestTheConversationHandlerAttachesThemInsideItsOwnerGate`. Before this pass's fix that same
+  mutation was **green**, because `$Find` answers `0` for an absent needle.
+- **`Entry.GuardedTurnKeys`' consolidation carries no mutation, and none is claimed.** The one-query
+  form is behavior-identical to the two-query form in every state the append-only entry path can
+  reach; DW-1233 -- that no executing test distinguishes the `seq` join from an ordinal one --
+  remains open and is unchanged by it.
+
+**Re-verified after the review patches.** `check-objectscript` 0 problems over 21 rules (505
+files); `npm run build` green through its six prebuild checkers; `npm test` **1,078** `node --test`
+plus **667** component tests, 0 failed. On `ocupilot-ci`, the whole `src/OcuPilot/` tree loaded and
+compiled clean, and `Test.ProposalWire` (11), `Test.TurnWire` (13) and `Test.Convo` (7) each ran
+alone and green. The client bundle was rebuilt and redeployed, and
+`proposal-card.browser-spec.mjs` ran **3/3** green against it -- that spec alone, not the full
+browser suite, because the class sweep has run on this container (DW-1204). Then the whole
+ObjectScript sweep on that same container: **134 classes, 1,279 tests, 0 failed, 0 probe
+leftovers, 0 overlaps, 0 foreign runs**, and `smoke.sh` **executed 45, passed 45, failed 0**, with
+`agentwrite` and `auditmarker` still pending. `lint-docs` clean over 91 files.
 
 ## Auto Run Result
 

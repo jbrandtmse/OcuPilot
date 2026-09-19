@@ -282,6 +282,13 @@ export class ProposalCard {
       if (phase === null) return;
       if (!isTerminalPhase(phase)) {
         this.everLive = true;
+        // A card can come back from a terminal phase -- the kill switch going off again is the
+        // reachable route -- and its next terminal transition owes the user the same hand-off as
+        // its first. Without this reset the buttons would be dropped in the very pass that
+        // inserts the status line, with one of them still holding focus, and both halves of AC6
+        // would fail on every transition after the first.
+        this.buttonsRetired.set(false);
+        this.focusedFor = null;
         // A live card announces the last minute exactly once: the caption is not a live region,
         // so this is the only thing that speaks, and it speaks on the tick that crosses 1:00.
         if (this.countdownReading === 'warning' && this.announcementText() === '') {
@@ -293,6 +300,9 @@ export class ProposalCard {
       if (element === undefined) return;
       if (this.focusedFor === phase) return;
       this.focusedFor = phase;
+      // The last-minute announcement belongs to a live card. Left in place it would hold
+      // "One minute left to confirm" in the polite region under a status line reading Expired.
+      this.announcementText.set('');
       // Focus moves **only when a button of this card held it**: the status line is the destination
       // for a control that is going away, and a transition the user did not press -- a typed
       // message canceling three cards, the kill switch going on -- must not pull focus out of the

@@ -156,19 +156,19 @@ ClassMethod GuardedRows(pConvoKey As %String, Output pRows As %DynamicArray) As 
 /// necessarily the <var>n</var>th entry -- a caller pairing the two by ordinal would attach one
 /// turn's proposals to another turn's card after a single unopenable row. Every row the view
 /// carries names its own <code>seq</code>, so that is the join.</p>
-/// <p>No row opens -- both columns are columns. It is answered beside the rows rather than on them
+/// <p>No row opens -- both columns are columns, read by <b>one</b> statement: two separate reads
+/// paired by ordinal would carry the same positional join one level down, where a row deleted
+/// between them shifts every pair after it. It is answered beside the rows rather than on them
 /// because <class>OcuPilot.Api.Conversation</class> is what needs it, to attach each turn's
 /// proposals outside the escalated frame (AD-9), and the view's own shape is a published contract
 /// this does not widen.</p>
 ClassMethod GuardedTurnKeys(pConvoKey As %String, Output pKeys) As %Status
 {
     Kill pKeys
-    Set tSC = ..GuardedIdsWhere("SELECT Seq FROM OcuPilot_Kernel_State.Entry WHERE %EXACT(ConvoKey) = ? ORDER BY Seq", pConvoKey, .tSeqs)
+    Set tSC = ..GuardedPairsWhere("SELECT Seq, TurnKey FROM OcuPilot_Kernel_State.Entry WHERE %EXACT(ConvoKey) = ? ORDER BY Seq", pConvoKey, .tRows)
     If $$$ISERR(tSC) Quit tSC
-    Set tSC = ..GuardedIdsWhere("SELECT TurnKey FROM OcuPilot_Kernel_State.Entry WHERE %EXACT(ConvoKey) = ? ORDER BY Seq", pConvoKey, .tTurnKeys)
-    If $$$ISERR(tSC) Quit tSC
-    For tI = 1:1:+$Get(tSeqs) {
-        Set pKeys(+tSeqs(tI)) = $Get(tTurnKeys(tI))
+    For tI = 1:1:+$Get(tRows) {
+        Set pKeys(+tRows(tI)) = $Get(tRows(tI, 2))
     }
     Quit $$$OK
 }

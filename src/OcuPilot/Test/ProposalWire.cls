@@ -228,6 +228,10 @@ Method TestTheConversationHandlerAttachesThemInsideItsOwnerGate()
     Set tAttach = $Piece(tHandler, "ClassMethod AttachProposals", 2)
     Set tHandler = $Piece(tHandler, "ClassMethod AttachProposals", 1)
     Do $$$AssertTrue(tHandler [ "AttachProposals", "the conversation handler attaches the turns' proposals")
+    ; The owner gate's own presence is asserted before the ordering that mentions it: $Find answers
+    ; 0 for a needle that is absent, so a bare "0 < n" would read true and stay green on the very
+    ; deletion the ordering exists to refuse.
+    Do $$$AssertTrue(tHandler [ "GuardedView", "the conversation handler still answers through the owner gate")
     Do $$$AssertTrue($Find(tHandler, "GuardedView") < $Find(tHandler, "AttachProposals"), "after the owner gate, never before it")
     Do $$$AssertTrue($Find(tHandler, "AttachProposals") < $Find(tHandler, "Response).JSON"), "and before the payload is written")
 
@@ -248,6 +252,7 @@ Method TestTheProgressHandlerReadsThemInsideItsOwnerGate()
     Set tHandler = $Piece(tSource, "ClassMethod HandleProgress", 2)
     Set tHandler = $Piece(tHandler, "ClassMethod HandleStop", 1)
     Do $$$AssertTrue(tHandler [ "GuardedRowsForTurn", "the progress handler reads the turn's proposals")
+    Do $$$AssertTrue(tHandler [ "GuardedForOwner", "the progress handler still answers through the owner gate")
     Do $$$AssertTrue($Find(tHandler, "GuardedForOwner") < $Find(tHandler, "GuardedRowsForTurn"), "after the owner gate, never before it")
     Do $$$AssertTrue($Find(tHandler, "GuardedRowsForTurn") < $Find(tHandler, "Response).JSON"), "and before the payload is written")
 }

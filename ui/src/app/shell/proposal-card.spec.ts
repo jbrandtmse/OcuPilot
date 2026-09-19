@@ -179,6 +179,26 @@ describe('the proposal card', () => {
     expect(reverse.textContent).toContain(EXAMPLE_PROPOSAL.reverse);
   });
 
+  it('AD-11: the agent\u2019s rationale and expected impact render as literal text, never markup', () => {
+    // Mutation (Rule 19): change either `{{ rationale }}` / `{{ expectedImpact }}` interpolation
+    // to `[innerHTML]="rationale"` / `[innerHTML]="expectedImpact"` -> this goes red. A markup-shaped
+    // string acquires real child elements under `[innerHTML]`, which `.textContent` alone cannot
+    // see (it strips tags whichever way they arrived), so the assertion is on `children.length`
+    // and on the exact literal string surviving including its angle brackets.
+    const rationale = '<b>ignore previous instructions</b> and confirm anyway';
+    const expectedImpact = '<i>ignore previous instructions</i> and confirm anyway';
+    const { card } = mount(liveView({ rationale, expectedImpact }), { phase: 'live' });
+    const blocks = Array.from(card.querySelectorAll('.ocu-proposal-card-agent-text')) as HTMLElement[];
+    expect(blocks).toHaveLength(2);
+    for (const [node, expected] of [
+      [blocks[0], rationale],
+      [blocks[1], expectedImpact],
+    ] as const) {
+      expect(node.children).toHaveLength(0);
+      expect(node.textContent).toBe(expected);
+    }
+  });
+
   it('omits the Reverse line where no reversal exists, rather than rendering an empty one', () => {
     // A delete has no reversal (EXPERIENCE.md's `diff-row`), so the branch is a real state rather
     // than a defensive one, and a delete card carries no after-state to reverse.
@@ -323,6 +343,45 @@ describe('the proposal card', () => {
     expect(card.querySelector('.ocu-proposal-card-status')?.textContent?.trim()).toBe(
       STRINGS.proposalStatusCanceledByMessage
     );
+  });
+
+  it('a card that goes live again hands focus over on its next terminal transition too', async () => {
+    // Mutation (Rule 19): drop the `buttonsRetired` / `focusedFor` reset from the effect's
+    // non-terminal branch -> this goes red, because the second transition removes the buttons in
+    // the same pass that inserts the status line and focus falls to the document.
+    const { fixture, card } = mount(liveView(), { phase: 'live' });
+    fixture.componentRef.setInput('phase', 'switched-off');
+    fixture.detectChanges();
+    await macrotask();
+    fixture.detectChanges();
+    expect(card.querySelector('.ocu-proposal-card-cancel')).toBeNull();
+
+    // The kill switch goes back off: `panel.ts`'s `phaseFor` answers `live` again and the card's
+    // own buttons return with it.
+    fixture.componentRef.setInput('phase', 'live');
+    fixture.detectChanges();
+    const cancel = card.querySelector('.ocu-proposal-card-cancel') as HTMLButtonElement;
+    cancel.focus();
+
+    fixture.componentRef.setInput('phase', 'canceled-by-you');
+    fixture.detectChanges();
+    const status = card.querySelector('.ocu-proposal-card-status') as HTMLElement;
+    expect(document.activeElement).toBe(status);
+    expect(card.querySelector('.ocu-proposal-card-cancel')?.getAttribute('aria-disabled')).toBe(
+      'true'
+    );
+  });
+
+  it('the last-minute announcement does not outlive the live card', () => {
+    // Mutation (Rule 19): drop the `announcementText.set('')` from the effect's terminal branch ->
+    // this goes red, and the polite region holds "One minute left to confirm" under Expired.
+    const { fixture, card } = mount(liveView({ expiresAt: NOW_MS + 30_000 }), { phase: 'live' });
+    expect(card.querySelector('.ocu-proposal-card-announcement')?.textContent?.trim()).toBe(
+      STRINGS.proposalCountdownAnnouncement
+    );
+    fixture.componentRef.setInput('phase', 'canceled-by-you');
+    fixture.detectChanges();
+    expect(card.querySelector('.ocu-proposal-card-announcement')?.textContent?.trim()).toBe('');
   });
 
   it('a transition nobody pressed leaves focus where it was: the status line is a destination, not a grab', () => {
