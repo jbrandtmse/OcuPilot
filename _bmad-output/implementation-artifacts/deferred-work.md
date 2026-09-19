@@ -3881,6 +3881,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-17T22:27:39Z status=routed owner=burndown by=runner note=observed twice during Story 6.10 (implement and code review both read it as a story signal first); a test that deletes demo fixture data leaves every later story on that instance reading a false red
 - 2026-09-18T16:42:53Z status=escalated owner=burndown by=burndown note=the Wallet list story that owns the test is done and no story in Epic 7 or 16 touches Wallet tests; the symptom was repaired on ocupilot-slot-b by re-running the fixture, but a test that deletes demo fixture data on a shared instance makes every later story read a false red there
 - 2026-09-18T19:44:55Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=merge_gate note=a test must not delete shared demo data; use a throwaway or restore what it removes
+- 2026-09-19T21:23:38Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=runner note=no Test/Wallet* exists anywhere in src; probe slot-b for the collection BEFORE any test run, then correct at origin
 
 ### DW-1080: Database details' background-tasks section: charter it, or add a query-backed source kind to AD-36
 - source: spec-6-11-databases-with-free-space-arriving-as-it-lands.md | severity: med | fix-risk: high | footprint: out-of-footprint
