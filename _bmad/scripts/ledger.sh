@@ -22,7 +22,7 @@ usage() {
   cat >&2 <<'EOF'
 usage: bash ledger.sh <deferred-work.md> <command> [args]
   load                        counts: total open routed escalated decision_pending terminal status_unknown owner_unknown, then owner:<key>=<n> for non-terminal
-                              (an owner that is not `burndown` and not a key in the sibling sprint-status.yaml is suffixed " UNKNOWN")
+                              (an owner that is not `burndown`, not `range-end-cleanup` and not a key in the sibling sprint-status.yaml is suffixed " UNKNOWN")
   slice <owner>|all|unknown   non-terminal entries: DW-n TAB status TAB owner TAB summary (`unknown` = owners the tracker does not know)
   show DW-<n>                 print one entry verbatim
   next-id                     next unused DW number
@@ -163,7 +163,7 @@ case "$CMD" in
       scan load | awk -v keys="$(tracker_keys | tr '\n' ' ')" '
         BEGIN { n = split(keys, a, " "); for (i = 1; i <= n; i++) known[a[i]] = 1 }
         /^total=/ { hdr = $0; next }
-        /^owner:/ { k = $0; sub(/^owner:/, "", k); sub(/=.*/, "", k); if (k != "burndown" && !(k in known)) { unknown++; $0 = $0 " UNKNOWN" } }
+        /^owner:/ { k = $0; sub(/^owner:/, "", k); sub(/=.*/, "", k); if (k != "burndown" && k != "range-end-cleanup" && !(k in known)) { unknown++; $0 = $0 " UNKNOWN" } }
         { lines[++m] = $0 }
         END { print hdr " owner_unknown=" unknown + 0; for (i = 1; i <= m; i++) print lines[i] }'
     else

@@ -12,7 +12,7 @@ deferred:
   - summary: >-
       The progress payload carries the unchanged field COUNT and no unchanged rows, so a live card's open disclosure lists nothing.
     evidence: |-
-      OcuPilot.Kernel.State.Propose.WireRow emits unchangedCount and the stored diff; the payload is deliberately absent (AD-4, and Test.ProposalWire pins that no payload property reaches the wire). ProposalCardView.unchanged is optional and the mapper has nothing to fill it from, so the disclosure is a real aria-expanded button only where a caller supplies rows -- which today is its own spec. AC1's "every field reachable on open" is therefore satisfied as a mechanism and not yet as data.
+      OcuPilot.Kernel.State.Propose.WireRow emits unchangedCount and the stored diff; the payload is deliberately absent (AD-4, and Test.ProposalWire pins that no payload property reaches the wire). ProposalCardView.unchanged is optional and the mapper has nothing to fill it from, so the disclosure is a real aria-expanded button only where a caller supplies rows -- which today is its own spec. AC1's "every field reachable on open" is therefore satisfied as a mechanism and not yet as data -- a real gap, routed rather than an AD constraint.
     location: >-
       src/OcuPilot/Kernel/State/Propose.cls WireRow; ui/src/app/core/proposal-view.ts toCardView
     severity: medium
@@ -38,9 +38,9 @@ deferred:
       src/OcuPilot/Screen/Registry.cls EntityLabelProblem; ui/tools/screen-mirror.mjs entityLabelProblem
     severity: low
   - summary: >-
-      AC1's "every field reachable on open" cannot be met while AD-4 keeps the payload off the wire, so the disclosure ships as a mechanism with nothing behind it.
+      AC1's "every field reachable on open" is not met: the disclosure ships as a real control with no rows behind it, because `WireRow` does not emit the unchanged rows yet. AD-4 does not forbid them (it governs the vendor body, not the wire to the browser).
     evidence: |-
-      AC1 asks for the closed "N unchanged fields" disclosure "with every field reachable on open"; AD-4's Rule, as this spec's Design Notes record it, is that the unchanged COUNT is shown and the payload never is. Propose.WireRow emits unchangedCount and no rows, toCardView never sets `unchanged`, and the aria-expanded button therefore appears only where a caller supplies rows -- today only its own spec. Two readings survive: publish the unchanged field NAMES on the wire (arguably not "the payload"), or read the AC as "the disclosure is a real control over whatever the view carries", which is what shipped. The lead adjudicates at this story's gate; it is an AC-versus-AD tension, not an implementation slip.
+      AC1 asks for the closed "N unchanged fields" disclosure "with every field reachable on open", and it is not met. [CORRECTED by the lead at the 5.2 gate: this entry previously read that AD-4's Rule forbids the payload reaching the wire. It does not. AD-4 governs the body OcuPilot sends to the VENDOR ENDPOINT -- read fresh, apply the diff, send the complete property set -- and it explicitly cites FR-17's "the unchanged fields that the payload still sends" collapsed under "N unchanged fields" as the UX it is consistent with. There is no AC-versus-AD tension; the rows simply are not emitted yet.] Propose.WireRow emits unchangedCount and no rows, toCardView never sets `unchanged`, and the aria-expanded button therefore appears only where a caller supplies rows -- today only its own spec. Two readings survive: publish the unchanged field NAMES on the wire (arguably not "the payload"), or read the AC as "the disclosure is a real control over whatever the view carries", which is what shipped. The lead adjudicates at this story's gate; it is an AC-versus-AD tension, not an implementation slip.
     location: >-
       ui/src/app/core/proposal-view.ts toCardView; src/OcuPilot/Kernel/State/Propose.cls WireRow
     severity: medium

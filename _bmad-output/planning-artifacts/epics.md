@@ -3619,6 +3619,8 @@ So that the product's central claim is visible in under a minute.
 - **When** a delete or disable is proposed
 - **Then** it is refused on the instance and was never advertised as a tool.
 
+- DW-1223: the card's "N unchanged fields" disclosure has no rows behind it - `WireRow` emits only `unchangedCount`, so this story's own "remaining fields collapsed" clause has nothing to collapse; exclude secret-typed fields from whatever is added (ledger; routed by cr 2026-09-19)
+
 ### Story 5.9: Permissions - the area's first confirmed user write
 
 As a developer-administrator,

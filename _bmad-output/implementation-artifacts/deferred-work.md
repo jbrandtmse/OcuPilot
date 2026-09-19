@@ -4195,3 +4195,99 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read.md | severity: med | fix-risk: low | footprint: ui/src/app/core/turn.ts
 - evidence: TurnEntry.proposals' own comment reads 'Empty for a restored entry: the conversation read carries none, and a proposal restored from a reload is always expired anyway.' PROPOSALEXPIRYSECONDS is 600, so a reload one minute after a mint drops a proposal that stays confirmable for nine more; proposals ride only the progress poll, so there is no other route to it.
 - 2026-09-19T13:19:45Z status=routed owner=5-2-the-proposal-card-the-diff-the-user-reviews by=cr note=The card and its restore path are 5.2's; 5.1 ships only the publisher. Non-blocking: the proposal is still claimable by id, and nothing renders a card yet.
+
+### DW-1223: The proposal card's N unchanged fields disclosure has no rows behind it, so AC1's every field still available is unmet - WireRow emits only unchangedCount
+- source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Propose.WireRow emits unchangedCount and the stored diff and no unchanged rows; toCardView never sets unchanged, so the aria-expanded control appears only where a caller supplies rows. AD-4 does NOT forbid this - it governs the body sent to the vendor endpoint and itself cites FR-17's collapsed unchanged fields as the UX it matches. Story 5.8's own AC needs the data (the remaining fields collapsed under N unchanged fields). Secret-typed fields must be excluded from any rows added, per AD-3 and Conventions > Secrets
+- 2026-09-19T18:01:46Z status=routed owner=5-8-web-applications-enable-a-disabled-application-and-grant-it by=cr note=routed to the story whose gate fails while it stands: 5.8 renders this card end to end for UJ-3 and its AC names the collapsed fields
+- 2026-09-19T18:03:06Z occurrence=5-2-the-proposal-card-the-diff-the-user-reviews
+
+### DW-1224: Re-propose is rendered on an expired card and wired to nothing, so pressing it does not ask the agent for a fresh proposal
+- source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: The card emits a repropose output carrying the proposal id; panel.ts binds only cancel. This is an unmet clause of Story 5.2's own AC (Re-propose offers a fresh turn with a fresh read and a fresh diff). Location: ui/src/app/shell/proposal-card.ts, panel.ts
+- 2026-09-19T18:03:06Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=harvest note=downstream-blocking (Rule 27): 5.3 wires the card's actions, so it is the story whose gate fails while this stands. Residual restated: the AC is 5.2's and is not met
+
+### DW-1225: The single canceled wire word and the unconditional restore-to-expired override are both insufficient once terminal states are written
+- source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: restoredProposals maps EVERY restored proposal to expired and phaseForState maps the store's one canceled state to canceled-by-you. Correct and mandated today because the wire state is live on every row; the moment confirmed or canceled is written, a reload shows a confirmed write as Expired with Re-propose. Location: ui/src/app/core/turn.ts, proposal-view.ts
+- 2026-09-19T18:03:06Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=harvest note=downstream-blocking (Rule 27): 5.3 writes the terminal transitions and must revisit both with them
+
+### DW-1226: Mint.WarnsAuditingOff answers false for a non-boolean auditing argument, so 0, false or a null would mint an auditing-off write with no in-card warning
+- source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: The predicate quits unless %GetTypeOf(Enabled) is exactly boolean, and tool arguments originate from a model that can emit a number or a string. Unreachable until the trigger tool ships. Location: src/OcuPilot/Kernel/Proposal/Mint.cls
+- 2026-09-19T18:03:06Z status=routed owner=5-10-security-and-secrets-disable-and-re-enable-auditing by=harvest note=downstream-blocking (Rule 27): 5.10 ships security.auditing.update, which is what makes this reachable
+
+### DW-1227: The masked-field lookup keys on entity type rather than the proposal's own tool, is not filtered to the fields the diff touches, and screenForEntityType has no test
+- source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: A detail screen declaring a secret argument behind a sibling list screen that does not would render the value in clear, and Confirm is gated on every declared name including one this proposal does not change. AD-6 scopes the confirm channel to the TOOL's declared secret fields. Unreachable today: no shipped descriptor declares one. Location: ui/src/app/core/navigation.ts, shell/panel.ts
+- 2026-09-19T18:03:06Z status=routed owner=5-10-security-and-secrets-disable-and-re-enable-auditing by=harvest note=downstream-blocking (Rule 27): 5.10 ships the first real secret field, which is what makes this reachable
+
+### DW-1228: The delete row's drawn and spoken removed-marker forms have no producer, so two of its three clauses are exercised nowhere
+- source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: The I/O row specifies field - value -> (removed) drawn and read aloud as <field>: <value>, removed, and no delete proposal exists to produce either. Location: ui/src/app/core/proposal-view.ts
+- 2026-09-19T18:03:06Z status=routed owner=5-13-logs-delete-application-errors-by-namespace by=harvest note=downstream-blocking (Rule 27): 5.13 is the first delete proposal, so it is the story whose card must show the removed form
+
+### DW-1229: The terminal status line is both a role=status live region and a focus target, so it may announce twice or not at all
+- source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: Two review layers reached opposite conclusions about the interaction and neither is pinned by a browser assertion; jsdom computes no announcement. Location: ui/src/app/shell/proposal-card.ts
+- 2026-09-19T18:03:23Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=harvest note=downstream-blocking (Rule 27): 5.3 writes the terminal transitions this status line reports, so the announcement contract settles with them
+
+### DW-1230: The confirming and canceled-sibling phases and the confirmedAt input ship with no writer, and a confirmed wire state would render its status line from nothing
+- source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: The phases exist in the view model and nothing produces them until the confirm path is built. Location: ui/src/app/core/proposal-view.ts
+- 2026-09-19T18:03:23Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=harvest note=downstream-blocking (Rule 27): 5.3 is the writer these phases wait for
+
+### DW-1231: A typed message cancels every live card before the send is known to have succeeded
+- source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: sendCurrentDraft calls cancelLiveCards before the request resolves, so a failed send leaves the proposals canceled with nothing sent. Location: ui/src/app/shell/panel.ts
+- 2026-09-19T18:03:23Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=harvest note=downstream-blocking (Rule 27): cancel semantics and the atomic terminal transition are 5.3's subject
+
+### DW-1232: A Confirm disabled by an unfilled masked field says nothing about why, and no published string exists to say it
+- source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: confirmAriaDisabled returns true with no accompanying reason, and EXPERIENCE.md's Fixed strings table has no entry for it. Unreachable until a real secret field ships. Location: ui/src/app/core/proposal-view.ts
+- 2026-09-19T18:03:23Z status=routed owner=5-10-security-and-secrets-disable-and-re-enable-auditing by=harvest note=downstream-blocking (Rule 27): 5.10 ships the first real secret field, which is what makes the disabled state reachable
+
+### DW-1233: No executing test distinguishes AttachProposals' seq join from a join by ordinal, and the doc comment's mutation claim was false
+- source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Entry.Seq is COUNT(*)+1, so it coincides with the ordinal join in every state the append path produces; the ordinal mutation was applied and stayed green. The implement pass corrected its own comment at the origin rather than leaving the claim. Location: src/OcuPilot/Api/Conversation.cls AttachProposals
+- 2026-09-19T18:03:23Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=a pin that cannot fail is 13.2's charter; reaching a divergent state needs a fixture that writes entries out of order
+
+### DW-1234: The conversation read's unreadable-proposal-store contract is pinned only by a scan of the handler's source text
+- source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: No executing assertion drives a store that refuses; the test reads the handler's own source for the degradation branch. Location: src/OcuPilot/Api/Conversation.cls, src/OcuPilot/Test/Convo.cls
+- 2026-09-19T18:03:23Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=a source-text scan standing in for an executing assertion is 13.2's charter
+
+### DW-1235: A new index on the Proposal table is not built for rows stored before it, and nothing in the install path builds it
+- source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: ProposalConvIdx and ProposalTurnIdx are added the way IRIS adds any index: not populated on compile, and the installer runs no %BuildIndices. Location: src/OcuPilot/Kernel/State/Propose.cls
+- 2026-09-19T18:03:41Z status=routed owner=range-end-cleanup by=harvest note=non-blocking (Rule 27): bounded by AD-6's ten-minute window - such a row is unconfirmable within minutes, so the effect is a card missing from one reload, never a stale write
+
+### DW-1236: The entity-label rule's four sentences are written twice, once per engine, with no shared corpus behind them
+- source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Every other two-engine declaration rule reads one XData corpus from disk; these four sentences are literals in both Test.Descriptor and ui/tools/screen-mirror.test.mjs, so a reword lands in one place or two. Location: src/OcuPilot/Screen/Registry.cls, ui/tools/screen-mirror.mjs
+- 2026-09-19T18:03:41Z status=routed owner=range-end-cleanup by=harvest note=non-blocking (Rule 27): a divergence shows up as a failing two-engine test, not as shipped behaviour
+
+### DW-1237: Nothing refuses a built screen that ships a write tool and declares no singular entity noun, and a missing noun renders a title with a doubled space
+- source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: The registry validates the noun's shape when present but does not require it of a write-capable screen. Location: src/OcuPilot/Screen/Registry.cls
+- 2026-09-19T18:03:41Z status=routed owner=range-end-cleanup by=harvest note=non-blocking (Rule 27): every shipped write-capable descriptor declares one, and the defect is cosmetic where it bites
+
+### DW-1238: The conversation read loads and discards every proposal's Arguments and Payload streams, and caps the number of proposals attached at nothing
+- source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: The guarded read opens the full row including two global character streams it never uses, and no cap bounds how many proposals one conversation attaches. Location: src/OcuPilot/Api/Conversation.cls
+- 2026-09-19T18:03:41Z status=routed owner=range-end-cleanup by=harvest note=non-blocking (Rule 27): bounded in practice by AD-6's ten-minute expiry and AD-41's per-turn limits; no measurement establishes a cost
+
+### DW-1239: Small hygiene items in the new proposal fixtures and specs, each real and each below the bar for a patch
+- source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Collected at the 5.2 review: a browser spec's redundant run, duplicated fixture setup, and similar. Location: ui/browser/proposal-card.browser-spec.mjs and the new 5.2 fixtures
+- 2026-09-19T18:03:41Z status=routed owner=range-end-cleanup by=harvest note=non-blocking (Rule 27): hygiene with no behavioural consequence
+
+### DW-1240: The reload-after-retention row has no mechanism: no retention sweep exists, so a restored turn still carries its cards after RETENTIONSECONDS
+- source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: The I/O row describes a reload after retention dropping the cards; nothing sweeps, so the row describes behaviour no code produces. Location: src/OcuPilot/Kernel/Agent/Limits.cls RETENTIONSECONDS
+- 2026-09-19T18:03:41Z status=routed owner=14-4-transcripts-retention-and-administrator-access by=harvest note=downstream-blocking (Rule 27) for 14.4, which is the story that builds the retention sweep this row assumes
+
+### DW-1241: ledger.sh load marked every range-end-cleanup entry UNKNOWN although check_owner accepts it, so Rule 17's epic-start gate would halt or repair the symbolic owner away
+- source: Story 5.2 harvest 2026-09-19 | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Commit 23ebe47 taught check_owner about range-end-cleanup but left load's awk exempting burndown alone. Rule 17 (1) says an UNKNOWN owner is repaired by unique prefix or HALTs, so the next epic-start ledger_load would either stop the run or scatter the entries the range-end charter is built by slicing on. Fixed in this worktree: load now exempts both symbolic owners, and owner_unknown went 1 to 0 with owner:range-end-cleanup=7 intact. Location: _bmad/scripts/ledger.sh load awk and its usage line
+- 2026-09-19T18:04:43Z status=resolved-by:5-2-the-proposal-card-the-diff-the-user-reviews owner=5-2-the-proposal-card-the-diff-the-user-reviews by=harvest note=fixed at its origin rather than reported only, because the trap fires at the NEXT epic-start gate and its failure mode is silent scattering; each worktree holds its own copy so Epic 10 is unaffected until the merge
