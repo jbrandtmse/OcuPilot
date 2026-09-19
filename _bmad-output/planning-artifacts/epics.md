@@ -5092,6 +5092,7 @@ So that a polish-week change cannot silently break a Release 1 write.
 - DW-1079: a Wallet test deletes shared demo data, which makes later suites on that instance read a false red (ledger; routed by merge_gate 2026-09-18)
 - DW-1119: `smoke.sh`'s failure line does not name the check that failed, so a failure is not quotable in a report (ledger; routed by merge_gate 2026-09-18)
 - DW-1146: the audit spec's thousand-row seed read 919 after a full sweep on the same instance, and CI runs that order (ledger; routed by merge_gate 2026-09-18)
+- DW-1156: a browser spec that holds an element handle across a re-render fails `Node is detached from document`; the press must re-resolve its control (ledger; routed by merge_gate 2026-09-19)
 
 - DW-1087: `client-lint.mjs`'s `no-off-origin-url` rule is defeated by string concatenation, so the reviewed-diff guarantee on absolute URLs is void (ledger; routed by merge_gate 2026-09-18)
 
