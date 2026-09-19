@@ -106,7 +106,7 @@ above and the container detail below this block are the operational essentials.
   in full before writing code — all 48 ADs, not the ones that look relevant. It is a contract:
   change an AD there rather than working around it in a slice. Read it once and keep it: re-read
   only a region that changed since (Rule 26 in `_bmad/custom/skill-rules.md`).
-- Epics and stories: `_bmad-output/planning-artifacts/epics.md` (23 epics). PRD, UX and research sit
+- Epics and stories: `_bmad-output/planning-artifacts/epics.md` (22 epics). PRD, UX and research sit
   beside it under `_bmad-output/planning-artifacts/`.
 - ObjectScript and IRIS rules load automatically from [.claude/rules/](.claude/rules/) — ObjectScript
   basics, testing, debugging, persistent storage, interoperability, reference folders,
