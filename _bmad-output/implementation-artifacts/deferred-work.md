@@ -3014,6 +3014,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: The rule's redeploy recipe in .claude/rules/objectscript-testing.md copies dist/ocupilot/browser; ui/angular.json and scripts/ci-throwaway.sh use dist/ocupilot-ui/browser
 - 2026-09-17T03:37:30Z status=routed owner=17-2-a-readme-whose-install-steps-work-the-first-time by=lead note=Developer documentation drift for the story that owns the developer docs, beside DW-446
 - 2026-09-17T04:37:08Z occurrence=4-3-the-docked-panel-present-on-every-route
+- 2026-09-19T03:52:06Z status=routed owner=5-0-epic-4-deferred-cleanup by=spec_gate note=same defect as DW-1168 in the same line of .claude/rules/objectscript-testing.md; Story 5.0 fixes the origin, so this closes with it rather than waiting for 17.2
+- 2026-09-19T03:52:06Z occurrence=5-0-epic-4-deferred-cleanup
 
 ### DW-458: At a viewport where the remembered width makes the side bar yield, narrowing the panel to 352 or less brings the side bar back and the panel can no longer be widened without closing the side bar
 - source: spec-4-3-the-docked-panel-present-on-every-route.md | severity: med | fix-risk: med | footprint: in-story
@@ -3435,6 +3437,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ViewForUser loops GuardedRow per id (New $ROLES + AddRoles per call); GuardedAppend's cap check is a COUNT(*) before each write, so each recorded call costs two statements. Location: src/OcuPilot/Kernel/Audit/Ledger.cls ViewForUser, src/OcuPilot/Kernel/State/Ledger.cls
 - 2026-09-18T13:52:26Z status=routed owner=burndown by=harvest note=lead harvest of the 4.9 spec deferred list
 - 2026-09-19T03:20:51Z status=routed owner=5-0-epic-4-deferred-cleanup by=x0 note=chartered into Story 5.0; Epic 5 extends the dispatch, ledger and panel paths these entries sit on
+- 2026-09-19T03:52:06Z status=wontfix-accepted by=spec_gate note=reopen_if=a ledger read at the 200-row LEDGERVIEWMAXROWS cap is measured above NFR-1's two seconds, or a later story needs a multi-column guarded read on Kernel/State/Base for its own reason - the only structural fix replaces the house read idiom all eight stores inherit and re-decides LedgerTurnSeqIdx, which Story 5.0 is chartered not to do
 
 ### DW-1129: `scripts/check-objectscript.py` reports 21 rules while `CLAUDE.md` states 18.
 - source: spec-4-9-the-agent-audit-ledger.md | severity: low | fix-risk: low | footprint: in-epic
@@ -3465,6 +3468,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Dispatch.StepArguments delegates to Audit.Ledger.RedactArguments, but on a call whose wire name resolved no tool there is no declaration to pass, so the step's Arguments column keeps the model-authored blob with Log.Redact's name pattern as the only layer. Unlike a ledger row a step dies with its turn's retention window, and changing it alters what the progress cards render. Probe: send a tool_use block naming an unknown tool with a Value argument and read State.Step.Arguments
 - 2026-09-18T15:19:35Z status=routed owner=burndown by=lead note=the ledger half is closed by rework 1; this is the step half, and the exit is a product call about what a progress card shows
 - 2026-09-19T03:20:51Z status=routed owner=5-0-epic-4-deferred-cleanup by=x0 note=chartered into Story 5.0; Epic 5 extends the dispatch, ledger and panel paths these entries sit on
+- 2026-09-19T03:52:06Z status=wontfix-accepted by=spec_gate note=reopen_if=a story gives the progress card a rule for model-authored arguments - the asymmetry with the withheld ledger row is deliberate and documented at Dispatch.cls:609-611 and Loop.cls:766-768, and withholding the blob would leave a card with a target and a name and no arguments
 
 ### DW-1134: Test/Ledger.cls is 778 lines against the 500-line guidance, and every method shares one teardown
 - source: spec-4-9-the-agent-audit-ledger.md | severity: low | fix-risk: low | footprint: in-epic
@@ -4063,3 +4067,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: AC2 computes expectedTotal as the instance's own OcuPilot-source audit count plus the thousand seeded rows, sets the table's max-rows control to that number and waits for exactly that many rows. On the slot-A throwaway the OcuPilot source now holds 3,198 rows against the seed's 1,000, so the leg asks the screen to render 4,198 rows and times out at thirty seconds; on a fresh container the marker count is the installer's own handful and it passes, which is why Epic 6's CI runs were green. Probe: SELECT COUNT(*) FROM %SYS.Audit_List(,,'OcuPilot') before running the leg
 - 2026-09-19T01:28:03Z status=routed owner=burndown by=lead note=the fix is in the test: bound what it renders rather than asking for every marker row. Recorded at the merge; CI on a fresh container is the arbiter for the merged head
 - 2026-09-19T03:19:43Z status=routed owner=5-6-the-agent-marker-and-what-happens-when-it-fails by=x0 note=5.6 owns the agent-marker audit leg; scope the spec to this proposal's marker rather than every OcuPilot-source row
+
+### DW-1177: CLAUDE.md says the pre-commit hook runs check-objectscript.py on staged paths, but the script has no per-file mode and the hook runs it bare over the tree
+- source: spec-5-0-epic-4-deferred-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: scripts/check-objectscript.py takes no path argument; .githooks/pre-commit:72,101 says so and runs it bare. A reader who trusts the CLAUDE.md sentence expects a staged-path scope the hook does not have. Location: CLAUDE.md, the Running and verifying section
+- 2026-09-19T03:52:06Z status=routed owner=17-2-a-readme-whose-install-steps-work-the-first-time by=spec_gate note=developer-documentation drift beside DW-446 and DW-457; the owner edits CLAUDE.md concurrently so a runner does not rewrite it mid-run
