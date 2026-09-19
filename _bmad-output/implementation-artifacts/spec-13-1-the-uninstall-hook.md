@@ -4,6 +4,7 @@ type: 'feature'
 created: '2026-09-19'
 status: 'done'
 baseline_revision: '3213b2b557f614aae707700999e8fc310d7a4676'
+baseline_commit: '3213b2b557f614aae707700999e8fc310d7a4676'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
@@ -175,10 +176,11 @@ deferred:
 - Given an OcuPilot audit row emitted under the probe triple, when `Uninstall("probe",1)` completes, then the triple's registration is absent, the row is still readable from `%SYS.Audit`, and instance auditing is still enabled.
 - Given an application at a roster path with no provenance row, when uninstall completes, then that application and its matching role both survive and the adoption is reported.
 - Given `Uninstall("probe",1)` followed by `Install("probe")`, when both have returned OK, then `StateFingerprint` equals its pre-uninstall value and the probe API answers over loopback.
-- Given a production `Uninstall("",1)` then `Install("")` on a throwaway, when both have returned OK, then `scripts/smoke.sh` reports a non-zero executed-check count with no failure.
+- Given a production `Uninstall("",1)` then `StartPath(pDemo, pBundleSource)` on a throwaway, when both have returned OK, then `scripts/smoke.sh` reports a non-zero executed-check count with no failure. [AMENDED 2026-09-19 — see the story change log: `Install` takes no demo opt-in and no bundle source (AD-25), so a bare `Install("")` cannot reach a smoke-green instance and the criterion was unsatisfiable as worded.]
 
 ## Spec Change Log
 
+- 2026-09-19, lead Rule 5 tier-1 amendment (apply-and-report): acceptance criterion 6 named `Install("")` as the production reinstall. `Install` takes neither the demo opt-in nor the bundle source (AD-25), so that call leaves the `demofixture`, `x509` and `wallet` smoke checks failing on a healthy instance and the criterion could not be met as worded. Corrected to `StartPath(pDemo, pBundleSource)`, the container hook's own entry point, which is what the recorded run used. Intent unchanged: uninstall then install still has to reach a working OcuPilot. The deferred item that raised this also named the intent-contract's Symmetry row; that row reads `Install("probe")`, which is correct -- the probe profile's test does call `Install`. Only criterion 6 was wrong.
 - 2026-09-19, orchestrator clarification (granted): the bounded edit to `Installer.cls` `Uninstall` (3657-3665) is authorised, with the requirement that the DW-94 distinction stay explicit -- added above as an acceptance criterion. Clearance re-verified against `origin/OCU-1-epic5` = `2767f5a`.
 - 2026-09-19, lead spec gate: two planner claims corrected at origin. The orphaned-role residue was described as firing DW-244's `reopen_if`; DW-244's probe is a *clean* `Uninstall('probe')` leaving a `Probe*` role, which this code does not do, so the residue is a distinct in-story defect and DW-244 stays terminal and owned by `1-18-epic-1-burn-down`. The consequent task to reopen and close DW-244 in the ledger is removed: this story writes no ledger entry.
 

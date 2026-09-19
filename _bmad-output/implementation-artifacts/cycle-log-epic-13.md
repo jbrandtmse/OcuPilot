@@ -17,3 +17,5 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-19T21:19:59Z	Story 13.1	plan_clarification_requested	topic=contended_path_installer_cls reason=epic5_also_holds_src/OcuPilot/Install/**
 2026-09-19T21:23:47Z	Story 13.1	plan_clarification_answered	granted=q1_installer_cls_3657-3665,q2_standing_footprint_rule conditions=reverify_vs_origin_epic5_each_edit,test_and_browser_stay_clarifications,check-objectscript_stays_clarification clearance_sha=2767f5a
 2026-09-19T21:23:47Z	Story 13.1	stage_spawned	stage=implement spawn_at=2026-09-19T21:23:47Z model=claude-opus-5[1m] agent_name=13-1-the-uninstall-hook-implement-1 cycle_iteration=1
+2026-09-19T22:47:20Z	Story 13.1	dev_complete	spawn_at=2026-09-19T21:25:11Z model=claude-opus-5[1m] build_sha=199a79e baseline_revision=3213b2b review_loop_iteration=0 followup_review_recommended=false deferred=9 files=4 cycle_iteration=1
+2026-09-19T22:47:20Z	Story 13.1	ledger_routed_planned	story=13-2-the-test-suite-grows-in-ci-against-a-stock-image entries=0 excess=1 by=harvest note=DW-1276_ledger_only_13.2_already_at_routed_story_max

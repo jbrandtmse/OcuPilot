@@ -4249,3 +4249,49 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-parallel.md (Epic 10 merge gate) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: CI run 35466022679 on 240618d, attempt 1: tests 45-49 of ui/browser/error-log.browser-spec.mjs all failed 'Navigation timeout of 30000 ms exceeded' on page.goto inside the shared signedInAtScreen() helper at :342, five sequential 30 s losses, then the rest of the suite ran normally and only DW-1169 failed. Attempt 2 on the same head, same code, was 185/186 with those five passing. Both parents of the merge were individually healthy (epic 10 cf2012f 186/186, feature ed11819 184/185), so this is not an integration regression. Something makes the instance briefly unable to serve that screen's route -- the error-log spec's own seeding is the obvious suspect since it is the heaviest fixture in the suite. Probe: run error-log.browser-spec.mjs alone against a fresh throwaway with the instance's process table and journal watched, and check whether the seed step precedes the stall
 - 2026-09-19T20:59:38Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=merge_gate note=a five-test loss that vanishes on re-run is the shape that teaches a reader to re-run reds reflexively, which is exactly the habit that hides a real regression
+
+### DW-1268: Uninstall's unconfirmed dry-run preview filters the role list by provenance, so it under-reports the orphan roles the confirmed run now deletes, and one warning states the opposite
+- source: spec-13-1-the-uninstall-hook.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Installer.cls:3532 lists a role only when $Data(tRecorded(tUName)); the :3665 loop now also deletes a role whose application is absent. Reachable when GuardedPathsForProfile fails (:3507) or an install died between EnsureApplicationRoles and EnsureApplications. Only orphan roles affected, so no AD-21 floor is stripped
+- 2026-09-19T22:46:22Z status=routed owner=burndown by=harvest note=introduced by 13.1's granted role-loop edit; the fix is at :3509,:3528-3536, outside the lines granted
+
+### DW-1269: The AC5 StateFingerprint equality is green but no mutation has been shown to redden it
+- source: spec-13-1-the-uninstall-hook.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Both readings come from the same guard-then-act path against the same freshly-uninstalled state, so a uniform change to Install moves them together; the asymmetric attempt left it green because Install repairs an application already at its roster path. Settled by a genuinely asymmetric mutation, or by re-scoping the assertion to idempotency
+- 2026-09-19T22:46:22Z status=open owner=13-1-the-uninstall-hook by=harvest note=Rule 19 gap on a test this story created
+
+### DW-1270: Story 13.1's intent-contract Symmetry row and AC6 name Install(''), but the reinstall that reaches a smoke-green instance is StartPath(pDemo, pBundleSource)
+- source: spec-13-1-the-uninstall-hook.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Install takes no demo opt-in and no bundle source (AD-25), so a bare Install('') leaves the demofixture, x509 and wallet smoke checks failing on a healthy instance. Corrected in the Verification bullet; the intent-contract was read-only to the implement stage
+- 2026-09-19T22:46:22Z status=open owner=13-1-the-uninstall-hook by=harvest note=lead Rule 5 tier-1 amendment: a wrong API name the AC cites
+- 2026-09-19T22:47:19Z status=resolved-by:13-1-the-uninstall-hook by=adjudication note=lead tier-1 amendment applied to AC6; see spec change log 2026-09-19
+
+### DW-1271: Security.Applications.Exists in Uninstall's role loop reads a failed lookup as absent and deletes the role
+- source: spec-13-1-the-uninstall-hook.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: Installer.cls:3665 discards the by-ref status; Exists answers 0 both for absence and for a failed read. The application loop at :3639 shares the pattern but fails safe. A correct fix needs an error-code-specific branch, and getting it wrong silently reverts this story's core behavior
+- 2026-09-19T22:46:22Z status=open owner=13-1-the-uninstall-hook by=harvest note=LOW, not a two-way door; disposition at adjudication
+
+### DW-1272: Test/Provenance.cls's Rule 19 recipe names the pre-edit guard text of Uninstall's role loop
+- source: spec-13-1-the-uninstall-hook.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: Provenance.cls:238-240 says to drop "'\$Data(tRemovedKeys(tRKey)) Continue"; the guard is now a compound condition. The recipe still reddens as written (verified: removing the whole guard produced the run-8 red), so this is wording drift, not a broken recipe
+- 2026-09-19T22:46:35Z status=routed owner=burndown by=harvest note=Provenance.cls is an existing Test/* file Epic 5 holds; editing it needs a Clarification
+
+### DW-1273: Story 13.1's AC6 production cycle and the loopback / auditing-enabled assertions carry no mutation line
+- source: spec-13-1-the-uninstall-hook.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: AC6's evidence is one recorded run (executed=45 passed=45); nothing re-executes a production Uninstall('',1) -- the CI instance job installs and smokes but never uninstalls. The probe-profile classes exercise the same profile-agnostic path. Loopback and auditing-enabled are structurally falsifiable (both helpers answer -1 on a failed read) but neither observed red
+- 2026-09-19T22:46:35Z status=open owner=13-1-the-uninstall-hook by=harvest note=Rule 19 gap on this story's own Verification
+
+### DW-1274: UninstallResidue's Residue() and AC2 target table are narrower than the sentences asserted with them
+- source: spec-13-1-the-uninstall-hook.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Residue() omits the shell bundle directory, the Kernel.State.Version row, the Kernel.State.WebApp provenance rows and the five non-task demo-inventory kinds, yet backs 'every other object install created is gone too'. DeleteTarget covers 5 of roughly 11 separately guarded targets in Uninstall
+- 2026-09-19T22:46:35Z status=open owner=13-1-the-uninstall-hook by=harvest note=overstated assertion message on a test this story created
+
+### DW-1275: Probe-role cleanup is asymmetric between UninstallResidue and UninstallSurvival, and two helpers swallow every failure
+- source: spec-13-1-the-uninstall-hook.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: UninstallResidue.CleanProbe sweeps orphaned probe roles; UninstallSurvival's teardown calls a bare ProbeApps.Remove(), which deletes a role only when its application is still present, and ci-unit-test.sh's PROBEAPPS check reads applications only. RemoveProbeRoles and RemoveTaskAndRows return nothing and Catch into a discard, so CleanProbe can answer OK with residue on the instance
+- 2026-09-19T22:46:35Z status=open owner=13-1-the-uninstall-hook by=harvest note=both files are this story's own
+
+### DW-1276: scripts/ci-throwaway.sh's arming-roster comment is stale at its origin
+- source: spec-13-1-the-uninstall-hook.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: It names 'the twelve test classes that run OcuPilot's PRODUCTION install' and enumerates them; both of 13.1's new classes run Install('') under that variable, making it fourteen, and the OCUPILOT_ALLOW_AUDIT_EVENTS line omits UninstallSurvival. check-objectscript.py's destructive-test-guard rule is pattern-based and cannot catch a stale comment roster
+- 2026-09-19T22:46:35Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=scripts/ci-*.sh is Epic 13's footprint and 13.2 already owns DW-439 in that file
