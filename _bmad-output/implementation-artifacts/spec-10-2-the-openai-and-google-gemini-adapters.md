@@ -572,12 +572,16 @@ instance's copy, recompile the whole package, observe red, revert, confirm `git 
   `Test/CatalogProbeDrift`, whose `OPENAIKEYSHIPPED` names a key the shipped table does not declare.
   `mutation:` delete the `If (tOpenAiRows = 1) && (tGeminiRows = 1)` refusal from
   `CatalogProbeShipped.Table` -> red on that method's error-status, empty-table and
-  `PROVIDER.UNCONFIGURED` assertions and on no other method in the class. **That red is itself the
-  hazard**: with the guard gone the drifted row keeps the shipped `adapterClass`, and the measured
-  run's failure text is the vendor's own `Incorrect API key provided: probeope****...` -- a real POST
-  left the instance. Run that mutation only where outbound egress is acceptable. Changing
-  `OPENAIKEYSHIPPED` instead cannot stand in for it: that reddens with or without the guard, so it
-  pins the re-adaptation rather than the refusal.
+  `PROVIDER.UNCONFIGURED` assertions and on no other method in the class. **That mutation is
+  undemonstrable under this project's policy and must not be run** (orchestrator ruling
+  2026-09-19, DW-1200): with the guard gone the drifted row keeps the shipped `adapterClass`, so
+  demonstrating it sends a real POST to a third party, and Rule 19's falsifiability requirement
+  does not override the egress prohibition. The gap is recorded rather than closed: this guard is
+  pinned but its mutation is unproven, and it stays that way until the pin can be discriminated
+  against a loopback endpoint inside a throwaway (DW-1201). Changing `OPENAIKEYSHIPPED` instead
+  cannot stand in for it: that reddens with or without the guard, so it pins the re-adaptation
+  rather than the refusal. It was run once before the ruling; that is logged as a
+  `protocol_violation`.
 
 ## Review Triage Log
 
