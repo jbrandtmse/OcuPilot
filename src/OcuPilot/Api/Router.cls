@@ -1,6 +1,13 @@
 /// <p>The single HTTP entry point for the OcuPilot REST API. Stateless (no CSP session),
 /// JSON-first.</p>
 /// <p>The <code>UrlMap</code> below holds the five agent-switch routes under
+/// <code>/agent/switches</code> and <code>/agent/restraint</code>, the agent ledger read
+/// <code>GET /agent/ledger</code>, the eight agent-definition
+/// routes under <code>/agent/definitions</code>, the provider catalog the Definition form cascades
+/// from, the generic screen read, <code>GET /screens/:screen/read</code>, the four
+/// application-error-log levels <code>GET /logs/errors/{namespaces,dates,list,detail}</code>, the
+/// console-log page <code>GET /logs/messages</code>, the three turn routes under
+/// <code>/turn</code>, and the three shell routes, <code>GET /instance</code>,
 /// <code>/agent/switches</code> and <code>/agent/restraint</code>, the eight agent-definition
 /// routes under <code>/agent/definitions</code> -- together the map's only write verbs -- the
 /// provider catalog the Definition form cascades from, the generic screen read,
@@ -70,6 +77,9 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/agent/switches" Method="GET" Call="AgentSwitchesRead"/>
   <Route Url="/agent/switches" Method="PUT" Call="AgentSwitchesUpdate"/>
   <Route Url="/agent/restraint" Method="GET" Call="AgentRestraint"/>
+  <Route Url="/agent/ledger" Method="GET" Call="AgentLedger"/>
+  <Route Url="/agent/context" Method="GET" Call="AgentContextRead"/>
+  <Route Url="/agent/context" Method="PUT" Call="AgentContextUpdate"/>
   <Route Url="/agent/definitions/:id/default" Method="POST" Call="AgentDefinitionSetDefault"/>
   <Route Url="/agent/definitions/:id/credential" Method="POST" Call="AgentDefinitionStoreCredential"/>
   <Route Url="/agent/definitions/:id/test" Method="POST" Call="AgentDefinitionTest"/>
@@ -86,6 +96,13 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/logs/errors/detail" Method="GET" Call="LogErrorDetail"/>
   <Route Url="/logs/alerts" Method="GET" Call="LogAlerts"/>
   <Route Url="/logs/messages" Method="GET" Call="LogMessages"/>
+  <Route Url="/turn/:id/progress" Method="GET" Call="TurnProgress"/>
+  <Route Url="/turn/:id/stop" Method="POST" Call="TurnStop"/>
+  <Route Url="/turn/:id/navigation" Method="POST" Call="TurnNavigation"/>
+  <Route Url="/turn/abandon" Method="POST" Call="TurnAbandon"/>
+  <Route Url="/turn" Method="POST" Call="TurnStart"/>
+  <Route Url="/conversation/:id" Method="GET" Call="ConversationRead"/>
+  <Route Url="/conversation" Method="POST" Call="ConversationCreate"/>
   <Route Url="/instance" Method="GET" Call="Instance"/>
   <Route Url="/namespaces" Method="GET" Call="Namespaces"/>
   <Route Url="/navigation" Method="GET" Call="Navigation"/>
@@ -131,6 +148,28 @@ ClassMethod AgentSwitchesUpdate() As %Status
 ClassMethod AgentRestraint() As %Status
 {
     Quit ##class(OcuPilot.Api.Switches).HandleRestraint()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /agent/ledger</code> (Story 4.9): delegates to
+/// <class>OcuPilot.Api.Ledger</class> and carries no logic of its own. A two-segment literal beside
+/// <code>GET /agent/restraint</code>, so it conflicts with no <code>:param</code> route.</p>
+ClassMethod AgentLedger() As %Status
+{
+    Quit ##class(OcuPilot.Api.Ledger).Handle()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /agent/context</code>: delegates to
+/// <class>OcuPilot.Api.Context</class> and carries no logic of its own.</p>
+ClassMethod AgentContextRead() As %Status
+{
+    Quit ##class(OcuPilot.Api.Context).HandleRead()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>PUT /agent/context</code> -- see
+/// <method>AgentContextRead</method>.</p>
+ClassMethod AgentContextUpdate() As %Status
+{
+    Quit ##class(OcuPilot.Api.Context).HandleUpdate()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>POST /agent/definitions/:id/default</code>:
@@ -246,6 +285,57 @@ ClassMethod LogErrorDetail() As %Status
 ClassMethod LogMessages() As %Status
 {
     Quit ##class(OcuPilot.Api.LogPage).Handle(##class(OcuPilot.Port.LogSourcePort).#MESSAGESKEY)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /turn/:id/progress</code>: delegates to
+/// <class>OcuPilot.Api.Turn</class> and carries no logic of its own. The three turn routes are
+/// declared longest first, for the third ordering invariant.</p>
+ClassMethod TurnProgress(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Api.Turn).HandleProgress(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /turn/:id/stop</code> -- see
+/// <method>TurnProgress</method>.</p>
+ClassMethod TurnStop(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Api.Turn).HandleStop(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /turn/:id/navigation</code> (Story 4.7) -- see
+/// <method>TurnProgress</method>.</p>
+ClassMethod TurnNavigation(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Api.Turn).HandleNavigation(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /turn/abandon</code> -- see
+/// <method>TurnProgress</method>.</p>
+ClassMethod TurnAbandon() As %Status
+{
+    Quit ##class(OcuPilot.Api.Turn).HandleAbandon()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /turn</code> -- see
+/// <method>TurnProgress</method>.</p>
+ClassMethod TurnStart() As %Status
+{
+    Quit ##class(OcuPilot.Api.Turn).HandleStart()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /conversation/:id</code>: delegates to
+/// <class>OcuPilot.Api.Conversation</class> and carries no logic of its own. Declared before
+/// <code>POST /conversation</code>, for the third ordering invariant.</p>
+ClassMethod ConversationRead(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Api.Conversation).HandleRead(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /conversation</code> -- see
+/// <method>ConversationRead</method>.</p>
+ClassMethod ConversationCreate() As %Status
+{
+    Quit ##class(OcuPilot.Api.Conversation).HandleCreate()
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /logs/alerts</code> -- see

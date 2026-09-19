@@ -6,10 +6,12 @@
 /// read of the definition carries any part of the value posted; and a definition that was enabled
 /// and verified reads back disabled and unverified, because the key it was verified against is no
 /// longer the key behind the reference.</p>
-/// <p><b>One refusal cannot be reached over the wire</b> -- the credentials rung is present on this
-/// instance, so <code>AGENT.CREDENTIAL.RUNGUNAVAILABLE</code> is driven in process through
-/// <class>OcuPilot.Test.DefinitionsProbe</class>'s credential seam against the real
-/// <method>OcuPilot.Api.Definitions.CredentialRefusal</method>.</p>
+/// <p><b>Two refusals cannot be reached over the wire as this suite's account</b> -- the credentials
+/// rung is present on this instance, so <code>AGENT.CREDENTIAL.RUNGUNAVAILABLE</code> is driven in
+/// process through <class>OcuPilot.Test.DefinitionsProbe</class>'s credential seam against the real
+/// <method>OcuPilot.Api.Definitions.CredentialRefusal</method>; and the account holds every pair the
+/// store needs, so <code>AGENT.CREDENTIAL.NOPRIVILEGE</code> is
+/// <class>OcuPilot.Test.CredentialPrivilege</class>'s, as a principal without them.</p>
 /// <p>Every definition this class creates is named with <parameter>PROBEPREFIX</parameter> and
 /// removed in <method>OnAfterOneTest</method>, which then asserts none survives; the credential
 /// entry is removed there too.</p>
@@ -28,6 +30,10 @@ Parameter PROBECREDENTIAL = "OcuPilotProbeCredential";
 /// <p>A fabricated key of the shape the shipped <code>anthropic</code> row's prefix requires, so it
 /// passes the shape gate and is stored. It is not a credential and reaches no provider.</p>
 Parameter PROBEKEY = "sk-ant-ocupilotstoredprobe00000000";
+
+/// <p>A second fabricated key of the right shape, posted over an entry OcuPilot may not overwrite
+/// so "the entry kept its value" is told apart from "the same value was written again".</p>
+Parameter ROTATEDKEY = "sk-ant-ocupilotrotatedprobe0000000";
 
 /// <p>A fabricated key of the wrong shape for that row, which is what the shape refusal is driven
 /// with.</p>
@@ -213,7 +219,7 @@ Method TestAnUnknownIdAnswers404()
 /// <p>The one refusal no request can reach on this instance: the credentials rung being
 /// unreachable. Driven through <class>OcuPilot.Test.DefinitionsProbe</class>'s credential seam
 /// against the <b>real</b> <method>OcuPilot.Api.Definitions.CredentialRefusal</method>, so what is
-/// exercised is the shipped order of the four refusals and not a copy of it.</p>
+/// exercised is the shipped order of its refusals and not a copy of it.</p>
 /// <p>The order is the assertion as much as the code is: with the rung reported unavailable a
 /// well-formed key still answers <code>AGENT.CREDENTIAL.RUNGUNAVAILABLE</code> rather than the shape
 /// refusal, because the shape check is last -- it needs a value <i>and</i> a reachable store.</p>
@@ -357,6 +363,30 @@ Method TestASiblingNamingTheReferenceKeepsTheKey()
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Secret.Ladder).Resolve("creds", "", ..#PROBECREDENTIAL), ..#PROBEKEY, "and still holds the key the sibling would resolve")
 }
 
+/// <p><b>AD-37's write bound</b> -- an operator keeps their own entry and points a definition at it,
+/// then posts a key from that definition's form. The store is refused by name and the operator's
+/// entry keeps its value: OcuPilot uses an entry it did not create and never overwrites it.
+/// <class>OcuPilot.Test.CredentialOwnership</class> carries the rest of that matrix.</p>
+/// <p>Mutation: pass may-overwrite unconditionally from
+/// <method>OcuPilot.Api.Definitions.HandleStoreCredential</method> -- this goes red at 200, the
+/// operator's key replaced.</p>
+Method TestAStoreOverAnOperatorsOwnEntryIsRefused()
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Secret.Ladder).Store(..#PROBECREDENTIAL, ##class(OcuPilot.Test.CredentialFixture).Payload(..#PROBEKEY), "apiKey"), "the operator's own entry is written outside OcuPilot's route")
+    Set tId = ..CreateCredsDefinition("Rotator")
+    If tId = "" Quit
+
+    Set tSC = ..Call("POST", "/" _ tId _ "/credential", ##class(OcuPilot.Test.CredentialFixture).PayloadText(..#ROTATEDKEY), .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the store request completes")
+    Do $$$AssertEquals(tStatus, 422, "and is refused: " _ tBody)
+    Do $$$AssertEquals($ZConvert($Get(tHeaders("CONTENT-TYPE")), "L") [ "application/json", 1, "as JSON")
+    If tStatus = 422 {
+        Do $$$AssertEquals(..ViolationsOf(tBody), ##class(OcuPilot.Test.AgentWire).ViolationsText($ListBuild($ListBuild("apiKey", "AGENT.CREDENTIAL.NOTOWNED"))), "with one violation on the apiKey field naming the entry as not OcuPilot's")
+        Do $$$AssertEquals(tBody [ ..#ROTATEDKEY, 0, "and carrying no part of the value posted")
+    }
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Secret.Ladder).Resolve("creds", "", ..#PROBECREDENTIAL), ..#PROBEKEY, "and the operator's entry still holds the operator's key")
+}
+
 /// <p><b>AD-37's other bound</b> -- an entry OcuPilot did not create is never removed, however the
 /// definition naming it is disposed of.</p>
 /// <p>The entry is written straight through the ladder here rather than over the route, which is
@@ -366,31 +396,6 @@ Method TestASiblingNamingTheReferenceKeepsTheKey()
 /// <p>Mutation: drop the ownership test from
 /// <method>OcuPilot.Api.Definitions.ClearOwnedCredential</method> -- this goes red, the operator's
 /// own entry gone.</p>
-/// <p>AD-37's ownership half, driven through the route that sets the mark rather than around it.
-/// An operator keeps their own entry, points a definition at it, and then rotates the key from
-/// that definition's form -- the ordinary flow. The store writes over an entry that already
-/// existed, so it created nothing, so the definition never owns it and deleting the definition
-/// must leave it standing.</p>
-/// <p><b>Why the sibling test above does not cover this.</b> That one keeps the entry because a
-/// survivor still names the reference. This one has no survivor: the only thing standing between
-/// the operator's entry and <method>OcuPilot.Kernel.Secret.Ladder.Clear</method> is
-/// <var>pCreated</var> having answered 0 on the overwrite.</p>
-Method TestAStoreOverAnOperatorsOwnEntryDoesNotClaimIt()
-{
-    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Secret.Ladder).Store(..#PROBECREDENTIAL, ##class(OcuPilot.Test.CredentialFixture).Payload(..#PROBEKEY), "apiKey"), "the operator's own entry is written outside OcuPilot's route")
-    Set tId = ..CreateCredsDefinition("Rotator")
-    If tId = "" Quit
-
-    ; The rotation: a store through the route, onto a reference that already holds an entry.
-    Do ..StoreKey(tId, "Rotator")
-    Do $$$AssertEquals(##class(OcuPilot.Test.CredentialFixture).Exists(..#PROBECREDENTIAL), 1, "the entry still exists after the rotation")
-
-    Set tSC = ..Call("DELETE", "/" _ tId, "", .tStatus, .tBody, .tHeaders)
-    Do $$$AssertStatusOK(tSC, "the delete request completes")
-    Do $$$AssertEquals(tStatus, 200, "and is accepted: " _ tBody)
-    Do $$$AssertEquals(##class(OcuPilot.Test.CredentialFixture).Exists(..#PROBECREDENTIAL), 1, "and the operator's own entry survives the definition that rotated its key")
-}
-
 Method TestAnEntryOcuPilotDidNotCreateSurvivesTheDelete()
 {
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Secret.Ladder).Store(..#PROBECREDENTIAL, ##class(OcuPilot.Test.CredentialFixture).Payload(..#PROBEKEY), "apiKey"), "the operator's own entry is written outside OcuPilot's route")

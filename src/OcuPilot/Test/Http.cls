@@ -203,7 +203,8 @@ ClassMethod RawRequest(pMethod As %String, pPath As %String, pBody As %String, p
 /// @param pRequestBody Optional: request body to send, or "" for none. Written to the entity body verbatim, so it must already be the bytes to send — ASCII, or UTF-8 the caller encoded itself
 /// @param pContentType Optional: request Content-Type, applied only when a body is sent
 /// @param pExtraHeaders Optional ByRef: extra request headers, subscripted by header name
-ClassMethod AbsoluteRequest(pMethod As %String, pPath As %String, pUsername As %String = "", pPassword As %String = "", Output pStatusCode As %Integer, Output pBody As %String, Output pHeaders, pRequestBody As %String = "", pContentType As %String = "", ByRef pExtraHeaders) As %Status
+/// @param pTimeout Optional: seconds the client waits for an answer; 0 keeps the class default of 30
+ClassMethod AbsoluteRequest(pMethod As %String, pPath As %String, pUsername As %String = "", pPassword As %String = "", Output pStatusCode As %Integer, Output pBody As %String, Output pHeaders, pRequestBody As %String = "", pContentType As %String = "", ByRef pExtraHeaders, pTimeout As %Integer = 0) As %Status
 {
     Set tSC = $$$OK
     Set pStatusCode = 0
@@ -213,6 +214,7 @@ ClassMethod AbsoluteRequest(pMethod As %String, pPath As %String, pUsername As %
         Set tReq = ##class(%Net.HttpRequest).%New()
         Set tReq.Server = ..GetTestServer()
         Set tReq.Port = ..GetTestPort()
+        If +pTimeout > 0 Set tReq.Timeout = +pTimeout
         If pUsername '= "" {
             Set tReq.Username = pUsername
             Set tReq.Password = pPassword

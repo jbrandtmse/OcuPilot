@@ -4,6 +4,7 @@ import { provideRouter } from '@angular/router';
 
 import { App } from './app/app';
 import { routes } from './app/app.routes';
+import { AgentContext } from './app/core/agent-context';
 import { AgentStatus } from './app/core/agent-status';
 import { ApiService } from './app/core/api';
 import { ChangeBus } from './app/core/change-bus';
@@ -13,6 +14,7 @@ import { transportFault } from './app/core/fault';
 import { InstanceService } from './app/core/instance';
 import { NavigationService } from './app/core/navigation';
 import { OverlayStack } from './app/core/overlay-stack';
+import { PanelState } from './app/core/panel-layout';
 import { PreferenceStore, readPreferenceStorage } from './app/core/preferences';
 import { RefreshService } from './app/core/refresh';
 import { ScopeService, onScopeChange } from './app/core/scope';
@@ -20,7 +22,9 @@ import { ScreenActions } from './app/core/screen-actions';
 import { ScreenStores } from './app/core/screen-store';
 import { Session } from './app/core/session';
 import { ShellState } from './app/core/shell-state';
+import { SuggestedView } from './app/core/suggested-view';
 import { TokenStore, readNavigationKind, readSessionStorage } from './app/core/token-store';
+import { TurnStore } from './app/core/turn';
 import { ViewOptions } from './app/core/view-options';
 
 // Zoneless, standalone bootstrap (AD-19), with the transport layer constructed over the
@@ -132,6 +136,23 @@ onScopeChange(scope, () => {
 const preferences = new PreferenceStore({ storage: readPreferenceStorage() });
 const shell = new ShellState({ preferences });
 
+// The row's width budget and the panel's own state (Story 4.3): the remembered width, the draft,
+// full screen and the yield order, over the same preferences and the same shell. `App` feeds it the
+// viewport width; the side bar, the rail and the panel read the layout it resolves.
+const panel = new PanelState({ preferences, shell });
+
+// The turn store (Story 4.5): send, poll, stop, restore and New conversation, over the same API
+// service and the same per-tab `sessionStorage` the token pair uses (a second, independent read
+// of it for the conversation id's own key). `restore()` is fired here, not awaited -- the same
+// "already in flight while Angular is still painting" shape the silent probe above uses -- so a
+// reload's transcript is often there by the time the panel first renders.
+const turn = new TurnStore({
+  api,
+  storage: readSessionStorage(),
+  navigationType: readNavigationKind,
+});
+void turn.restore();
+
 // Story 1.14's three (AD-43, AD-19, AD-14): the one client bus, the one store per descriptor, and
 // the one refresh framework over both. Built here like every other core service so the command
 // bar's chip, the status bar's stamp and whatever screen binds all reach the same instance --
@@ -149,6 +170,18 @@ const refresh = new RefreshService({
 // the rail's dot and the Definition form all read one answer, and given the bus so an Enable on
 // the Definitions list re-reads it once rather than once per consumer (AD-14).
 const agentStatus = new AgentStatus({ api, bus, connectivity });
+
+// Home's suggested view (Story 4.10): the attention lines above the transcript and the starter
+// prompts that stand in for them. Built here beside `agentStatus` and over the same `api`, `scope`
+// and `connectivity`, so its agent-status line is the same verdict the panel's banners render and
+// its application-errors read is scoped to the namespace every other call carries.
+const suggested = new SuggestedView({ api, agentStatus, scope, connectivity });
+
+// The context chip's one source (Story 4.11): the caller's sharing choice, the resolved row cap,
+// and where a turn's provider call goes. Built here beside `agentStatus` for the same reason --
+// the chip and the Send path both read one answer, and the bus is what keeps a changed row cap
+// or default definition from going stale.
+const agentContext = new AgentContext({ api, bus, connectivity });
 
 // The one authority over Escape (DW-137). Built here like every other core service so the
 // command box, the account menu and the side bar all register with the same instance --
@@ -183,6 +216,8 @@ bootstrapApplication(App, {
     { provide: ScopeService, useValue: scope },
     { provide: PreferenceStore, useValue: preferences },
     { provide: ShellState, useValue: shell },
+    { provide: PanelState, useValue: panel },
+    { provide: TurnStore, useValue: turn },
     { provide: OverlayStack, useValue: overlays },
     { provide: ChangeBus, useValue: bus },
     { provide: ScreenStores, useValue: screenStores },
@@ -191,5 +226,7 @@ bootstrapApplication(App, {
     { provide: ViewOptions, useValue: viewOptions },
     { provide: FormDirty, useValue: formDirty },
     { provide: AgentStatus, useValue: agentStatus },
+    { provide: AgentContext, useValue: agentContext },
+    { provide: SuggestedView, useValue: suggested },
   ],
 }).catch((err) => console.error(err));

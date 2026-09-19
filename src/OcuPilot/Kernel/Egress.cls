@@ -21,6 +21,23 @@
 /// <p><b>Private ranges are not refused.</b> AD-42 names the instance, loopback and link-local and
 /// nothing else, and this container's own address is <code>172.19.0.2</code> -- a blanket RFC-1918
 /// refusal would be wider than the decision and would refuse the instance's own network.</p>
+/// <p><b>A judgement is reused for <parameter>JUDGEMENTCACHESECONDS</parameter>, process-privately</b>
+/// (DW-334). One turn judges the same endpoint on every provider call, and the lookups are the
+/// expensive part; the cache collapses them to one set per call site's process. Every miss --
+/// absent, expired, or a cache read that failed -- falls through to a live lookup, and <b>a verdict
+/// reached with nothing resolved, and an interface read that produced no address, are not cached at
+/// all</b>, so a momentary resolver or interface failure costs the next judgement a fresh read
+/// rather than five seconds of a wrong answer.</p>
+/// <p><b>What it does hold, it holds for the whole TTL.</b> A host whose records change inside the
+/// window, and a host one of whose two family lookups raised while the other answered, are both
+/// answered from the earlier verdict until it expires: <method>MultiLookup</method> contributes an
+/// empty list for a family it could not read, which is indistinguishable here from a family with no
+/// records. So the cache is not free of behaviour -- <parameter>JUDGEMENTCACHESECONDS</parameter> is
+/// the width of that window, and is why it is five seconds and not five minutes.</p>
+/// <p><b>Process-private, not turn-private.</b> A turn job's cache dies with the job. On the
+/// write-time path the same code runs in a pooled CSP worker, where it lives for the worker's
+/// life -- which is sound because a verdict is a host's address kind and nothing about a caller:
+/// <method>IsPermitted</method>'s marked-local and allows-local arguments are never cached.</p>
 Class OcuPilot.Kernel.Egress Extends %RegisteredObject
 {
 
@@ -44,6 +61,16 @@ Parameter KINDINSTANCE = "instance";
 
 /// <p>Kind: the host resolved to no address in either family.</p>
 Parameter KINDUNRESOLVABLE = "unresolvable";
+
+/// <p>Seconds a classified verdict, and this instance's own interface set, are reused from the
+/// process-private cache before they are read again (DW-334).</p>
+/// <p><b>Deliberately short, and deliberately process-private.</b> One turn makes many provider
+/// calls and every one of them judges the same endpoint; without a cache each pays four resolver
+/// lookups and a <method>GetInterfacesInfo</method> read. Five seconds collapses that to one set
+/// while staying short enough that "an interface can appear under a running instance" remains true
+/// in any operational sense. The cache lives in the process's own private space, so no other
+/// process ever reads it.</p>
+Parameter JUDGEMENTCACHESECONDS As %Integer = 5;
 
 /// <p>The host <var>pUrl</var>'s authority names, without its port and without the brackets an
 /// IPv6 literal carries. <code>""</code> when there is no authority to read.</p>
@@ -89,25 +116,81 @@ ClassMethod Classify(pHost As %String, Output pKind As %String, Output pAddress 
     Set pAddress = ""
     Try {
         If pHost = "" Quit
+        If ..CachedVerdict(pHost, .pKind, .pAddress) Quit
         Do ..Addresses(pHost, .tResolved)
-        If '$Data(tResolved) Quit
-        Do ..InstanceAddresses(.tInstance)
-        Set tWorst = 0
-        Set tAddress = $Order(tResolved(""))
-        While tAddress '= "" {
-            Set tKind = ..KindOf(tAddress, .tInstance)
-            Set tRank = ..Rank(tKind)
-            If tRank > tWorst {
-                Set tWorst = tRank
-                Set pKind = tKind
-                Set pAddress = tAddress
+        If $Data(tResolved) {
+            Do ..InstanceAddresses(.tInstance)
+            Set tWorst = 0
+            Set tAddress = $Order(tResolved(""))
+            While tAddress '= "" {
+                Set tKind = ..KindOf(tAddress, .tInstance)
+                Set tRank = ..Rank(tKind)
+                If tRank > tWorst {
+                    Set tWorst = tRank
+                    Set pKind = tKind
+                    Set pAddress = tAddress
+                }
+                Set tAddress = $Order(tResolved(tAddress))
             }
-            Set tAddress = $Order(tResolved(tAddress))
         }
+        If $Data(tResolved) Do ..CacheVerdict(pHost, pKind, pAddress)
     } Catch ex {
         Set pKind = ..#KINDUNRESOLVABLE
         Set pAddress = ""
     }
+}
+
+/// <p>Forget every cached verdict and the cached interface set, so the next judgement is taken
+/// live. The only supported way to empty the cache; a test that arms a resolver seam calls it so
+/// its set cannot be masked by a verdict reached before the arming.</p>
+ClassMethod ClearJudgementCache()
+{
+    Kill ^||OcuPilotEgressJudgement
+}
+
+/// <p>The verdict cached for <var>pHost</var>, when one is still inside
+/// <parameter>JUDGEMENTCACHESECONDS</parameter>. Answers 0 -- leaving both outputs untouched --
+/// when there is none, when it has expired, or when the read itself failed, so every miss falls
+/// through to a live lookup.</p>
+/// <p>An entry records the moment it was written and is honoured only while <i>now</i> is at or
+/// after it and less than the TTL past it. <code>$ZHorolog</code> restarts at midnight, so a clock
+/// that has gone backwards fails the first half of that test and the entry is discarded rather
+/// than being honoured for the rest of the day.</p>
+ClassMethod CachedVerdict(pHost As %String, Output pKind As %String, Output pAddress As %String) As %Boolean [ Private ]
+{
+    Set tHit = 0
+    Try {
+        Set tEntry = $Get(^||OcuPilotEgressJudgement("host", pHost))
+        If '..IsFresh($ListGet(tEntry, 1)) Quit
+        Set pKind = $ListGet(tEntry, 2)
+        Set pAddress = $ListGet(tEntry, 3)
+        Set tHit = 1
+    } Catch ex {
+        Set tHit = 0
+    }
+    Quit tHit
+}
+
+/// <p>Record <var>pHost</var>'s verdict for <parameter>JUDGEMENTCACHESECONDS</parameter>. A write
+/// that fails is not an error: the next judgement takes the live lookup.</p>
+/// <p>Called only for a host that resolved to at least one address. A resolver that answered
+/// nothing is indistinguishable from one that failed, and holding either verdict would turn a
+/// momentary resolver outage into five seconds of refusals.</p>
+ClassMethod CacheVerdict(pHost As %String, pKind As %String, pAddress As %String) [ Private ]
+{
+    Try {
+        Set ^||OcuPilotEgressJudgement("host", pHost) = $ListBuild($ZHorolog, pKind, pAddress)
+    } Catch ex {
+    }
+}
+
+/// <p>Whether an entry written at <var>pWrittenAt</var> is still inside the TTL.</p>
+ClassMethod IsFresh(pWrittenAt As %String) As %Boolean [ Private ]
+{
+    If pWrittenAt = "" Quit 0
+    Set tNow = $ZHorolog
+    If tNow < pWrittenAt Quit 0
+    Quit ((tNow - pWrittenAt) < ..#JUDGEMENTCACHESECONDS)
 }
 
 /// <p>Whether OcuPilot will call <var>pUrl</var>, with the kind it classified as
@@ -137,19 +220,17 @@ ClassMethod IsPermitted(pUrl As %String, pMarkedLocal As %Boolean, pAllowsLocal 
 }
 
 /// <p>Every address <var>pHost</var> resolves to, as subscripts of <var>pAddresses</var>.</p>
-/// <p>Four lookups, deliberately: <method>HostNameToAddrMulti</method> and
-/// <method>HostNameToAddr</method>, each in family 1 and family 2. The multi form answers every
-/// record a name carries; the single form is what was probed to canonicalise the obfuscated
-/// address literals. The union is what is classified, so an address either form alone would have
-/// missed is still judged.</p>
-/// <p><b>The union loop is this method's; the multi-record lookup is
-/// <method>MultiLookup</method>'s</b>, and that is where a test substitutes (DW-338). Overriding
-/// this method wholesale replaced the union, the family loop and the single-form fallback along
-/// with the lookup, so the body a production call takes was not the body under test.
-/// <method>Classify</method>'s worst-kind-wins ranking only does anything for a host answering
-/// addresses of more than one kind, and no name this instance can resolve does that, so without
-/// a seam the ranking is code nothing exercises -- but the seam belongs at the lookup, not around
-/// everything above it. Production never overrides either.</p>
+/// <p>This method unions across the two address families; <method>MultiLookup</method> unions the
+/// two lookup forms within one family, and is the <b>only</b> method on this path that names
+/// <class>%SYSTEM.INetInfo</class> for a host lookup (DW-413). Before the move the single-record
+/// form was called here, outside the seam, so a probe could not control the address set a
+/// resolvable host answers with and the seam covered half the lookups it claimed to.</p>
+/// <p><b>Overriding this method is not the way to substitute a resolver</b> (DW-338): it would
+/// replace the family loop and the per-entry guard along with the lookup, so the body a production
+/// call takes would not be the body under test. <method>Classify</method>'s worst-kind-wins ranking
+/// only does anything for a host answering addresses of more than one kind, and no name this
+/// instance can resolve does that, so without a seam the ranking is code nothing exercises -- but
+/// the seam belongs at the lookup. Production never overrides either.</p>
 ClassMethod Addresses(pHost As %String, Output pAddresses)
 {
     Kill pAddresses
@@ -164,23 +245,33 @@ ClassMethod Addresses(pHost As %String, Output pAddresses)
             }
         } Catch ex {
         }
-        Try {
-            Set tOne = $System.INetInfo.HostNameToAddr(pHost, tFamily)
-            If tOne '= "" Set pAddresses(tOne) = ""
-        } Catch ex {
-        }
     }
 }
 
-/// <p>Every address <var>pHost</var> carries in address family <var>pFamily</var>, as the
-/// <class>%List</class> <method>$System.INetInfo.HostNameToAddrMulti</method> answers.</p>
-/// <p><b>The one overridable seam on this path.</b> A test that needs a host answering two kinds
-/// of address replaces this and leaves <method>Addresses</method>' own union loop, the family
-/// loop, the single-form fallback and everything <method>Classify</method> does above them
-/// running as shipped. Production never overrides it.</p>
+/// <p>Every address <var>pHost</var> carries in address family <var>pFamily</var>, as a
+/// <class>%List</class>: the union of <method>$System.INetInfo.HostNameToAddrMulti</method>, which
+/// answers every record a name carries, and <method>$System.INetInfo.HostNameToAddr</method>, the
+/// single form probed to canonicalise the obfuscated address literals. Either lookup failing is an
+/// empty contribution, never an exception.</p>
+/// <p><b>The one resolver seam on this path.</b> A test that needs a host answering two kinds of
+/// address replaces this, and leaves the family loop, the canonicalisation, the range tests, the
+/// instance-address read and the ranking above it running as shipped. Because both forms are
+/// inside it, a probe's set is the whole set even for a host this instance's own resolver answers
+/// for. Production never overrides it.</p>
 ClassMethod MultiLookup(pHost As %String, pFamily As %Integer) As %List
 {
-    Quit $System.INetInfo.HostNameToAddrMulti(pHost, pFamily)
+    Set tAnswer = ""
+    Try {
+        Set tList = $System.INetInfo.HostNameToAddrMulti(pHost, pFamily)
+        If $ListValid(tList) Set tAnswer = tList
+    } Catch ex {
+    }
+    Try {
+        Set tOne = $System.INetInfo.HostNameToAddr(pHost, pFamily)
+        If (tOne '= "") && '$ListFind(tAnswer, tOne) Set tAnswer = tAnswer _ $ListBuild(tOne)
+    } Catch ex {
+    }
+    Quit tAnswer
 }
 
 /// <p>Every address this instance's own interfaces carry, as subscripts of
@@ -191,14 +282,24 @@ ClassMethod MultiLookup(pHost As %String, pFamily As %Integer) As %List
 /// <code>eth0</code> + <code>$Char(1)</code> + <code>172.19.0.2/16</code>, and
 /// <code>GetInterfacesInfo("lo")</code> answers <code>""</code> -- which is why loopback is a
 /// range test here rather than an interface test.</p>
-/// <p>Read on every classification and never cached: an interface can be added or removed under a
-/// running instance, and a cached set would judge an address against a machine that has moved.</p>
+/// <p>Held for <parameter>JUDGEMENTCACHESECONDS</parameter> and no longer (DW-334): an interface
+/// can be added or removed under a running instance, so a set cached for any operationally
+/// meaningful span would judge an address against a machine that has moved. Only a read that
+/// produced <b>at least one address</b> is cached -- a raise, an empty answer, and a description
+/// naming interfaces that carry no address all leave the cache untouched -- so a transient failure
+/// costs the next judgement a fresh read rather than five seconds of an empty set, which would read
+/// as "none of these addresses is this instance's". The guard is on the parsed set and not on the
+/// raw description, because a description this class can read but take nothing from is a read that
+/// answered nothing.</p>
 ClassMethod InstanceAddresses(Output pAddresses) [ Private ]
 {
     Kill pAddresses
+    If ..CachedInterfaces(.pAddresses) Quit
+    Set tRead = 0
     Try {
-        Set tInfo = $System.INetInfo.GetInterfacesInfo()
+        Set tInfo = ..InterfacesInfo()
         If tInfo = "" Quit
+        Set tRead = 1
         For tI = 1:1:$Length(tInfo, $Char(0)) {
             Set tInterface = $Piece(tInfo, $Char(0), tI)
             If tInterface = "" Continue
@@ -210,6 +311,55 @@ ClassMethod InstanceAddresses(Output pAddresses) [ Private ]
         }
     } Catch ex {
         Kill pAddresses
+        Set tRead = 0
+    }
+    If tRead && $Data(pAddresses) Do ..CacheInterfaces(.pAddresses)
+}
+
+/// <p>The raw interface description <method>$System.INetInfo.GetInterfacesInfo</method> answers.</p>
+/// <p><b>A seam for the same reason <method>MultiLookup</method> is one</b>: a test counts the
+/// reads this class actually performs, and leaves the parse loop above it shipped. Production never
+/// overrides it.</p>
+ClassMethod InterfacesInfo() As %String
+{
+    Quit $System.INetInfo.GetInterfacesInfo()
+}
+
+/// <p>The cached interface set, when one is still inside <parameter>JUDGEMENTCACHESECONDS</parameter>;
+/// 0 for a miss, an expiry or a failed read, leaving <var>pAddresses</var> empty.</p>
+ClassMethod CachedInterfaces(Output pAddresses) As %Boolean [ Private ]
+{
+    Set tHit = 0
+    Try {
+        If '..IsFresh($Get(^||OcuPilotEgressJudgement("interfacesAt"))) Quit
+        Set tAddress = $Order(^||OcuPilotEgressJudgement("interfaces", ""))
+        While tAddress '= "" {
+            Set pAddresses(tAddress) = ""
+            Set tAddress = $Order(^||OcuPilotEgressJudgement("interfaces", tAddress))
+        }
+        Set tHit = 1
+    } Catch ex {
+        Kill pAddresses
+        Set tHit = 0
+    }
+    Quit tHit
+}
+
+/// <p>Record the interface set for <parameter>JUDGEMENTCACHESECONDS</parameter>. Called only for
+/// a read that produced at least one address: an answer this class can take no address from is
+/// indistinguishable from a failed one, and holding it would classify this instance's own address
+/// <code>public</code> for five seconds.</p>
+ClassMethod CacheInterfaces(ByRef pAddresses) [ Private ]
+{
+    Try {
+        Kill ^||OcuPilotEgressJudgement("interfaces")
+        Set tAddress = $Order(pAddresses(""))
+        While tAddress '= "" {
+            Set ^||OcuPilotEgressJudgement("interfaces", tAddress) = ""
+            Set tAddress = $Order(pAddresses(tAddress))
+        }
+        Set ^||OcuPilotEgressJudgement("interfacesAt") = $ZHorolog
+    } Catch ex {
     }
 }
 
@@ -380,6 +530,53 @@ ClassMethod V6Groups(pAddress As %String, Output pGroups) As %Boolean [ Private 
     }
     If 'tOk Kill pGroups
     Quit tOk
+}
+
+/// <p>Whether <var>pAddress</var> is a private-range address: <code>10.0.0.0/8</code>,
+/// <code>172.16.0.0/12</code>, <code>192.168.0.0/16</code> (RFC 1918), or <code>fc00::/7</code>
+/// (unique local IPv6). Distinct from <method>IsLoopback</method> and
+/// <method>IsLinkLocal</method>, and from <method>IsPermitted</method>'s own judgement, which does
+/// not refuse a private address at all (AD-42 names the instance, loopback and link-local, and
+/// nothing else).</p>
+ClassMethod IsPrivate(pAddress As %String) As %Boolean
+{
+    Set tAddress = ..Canonical(pAddress)
+    If ..IsDottedQuad(tAddress) {
+        Set tOctet1 = +$Piece(tAddress, ".", 1)
+        Set tOctet2 = +$Piece(tAddress, ".", 2)
+        Quit (tOctet1 = 10) || ((tOctet1 = 172) && (tOctet2 >= 16) && (tOctet2 <= 31)) || ((tOctet1 = 192) && (tOctet2 = 168))
+    }
+    If '..V6Groups(tAddress, .tGroups) Quit 0
+    ; fc00::/7 is the top seven bits 1111 110x, i.e. the first group's value in 0xFC00-0xFDFF.
+    Quit (tGroups(1) >= 64512) && (tGroups(1) <= 65023)
+}
+
+/// <p>Whether a provider call to <var>pHost</var>, through the proxy <var>pProxyHost</var> when
+/// one is configured, leaves this instance (Story 4.4's context status read, AD-42). A proxy is a
+/// destination too, judged by its addresses alone: when it leaves, the call leaves. Otherwise false
+/// when <var>pMarkedLocal</var>, and else <var>pHost</var> is judged the same way.</p>
+ClassMethod LeavesInstance(pHost As %String, pMarkedLocal As %Boolean, pProxyHost As %String = "") As %Boolean
+{
+    If (pProxyHost '= "") && ..HostLeaves(pProxyHost) Quit 1
+    If pMarkedLocal Quit 0
+    Quit ..HostLeaves(pHost)
+}
+
+/// <p>Whether <var>pHost</var> is unresolvable or resolves to any address that is not loopback,
+/// link-local or private (<method>IsPrivate</method>).</p>
+ClassMethod HostLeaves(pHost As %String) As %Boolean [ Private ]
+{
+    Do ..Addresses(pHost, .tAddresses)
+    If '$Data(tAddresses) Quit 1
+    Set tLeaves = 0
+    Set tAddress = $Order(tAddresses(""))
+    While tAddress '= "" {
+        If '(..IsLoopback(tAddress) || ..IsLinkLocal(tAddress) || ..IsPrivate(tAddress)) {
+            Set tLeaves = 1
+        }
+        Set tAddress = $Order(tAddresses(tAddress))
+    }
+    Quit tLeaves
 }
 
 /// <p>The value of one IPv6 group written as one to four hexadecimal digits, or <code>-1</code>

@@ -317,7 +317,7 @@ A user sees the panel on every screen and can resize it or expand it to full scr
 
 #### FR-11: Screen context on every turn, with a toggle
 
-The agent receives the current screen context with every turn, and the user can turn context sharing off for the session. Realizes UJ-1. Catalog: CP-09, CP-10.
+The agent receives the current screen context with every turn, and the user can turn context sharing off, a choice remembered per user. Realizes UJ-1. Catalog: CP-09, CP-10.
 
 **Consequences (testable):**
 
@@ -1092,7 +1092,7 @@ OcuPilot grows toward classic-portal parity in versioned increments, and every s
 
 ### 7.2 Privacy and data egress
 
-- Screen context sharing is on by default and toggleable per session; when off, no screen data is sent with a turn (FR-11).
+- Screen context sharing is on by default and toggleable per user; when off, no screen data is sent with a turn (FR-11).
 - A local model keeps every prompt on the instance's network; the context chip says whether data leaves the instance, and the polish week adds the egress line (FR-11, FR-71).
 - Transcripts are stored on the instance per user and purged by a retention task; an OcuPilot administrator's view of another user's transcript is gated by the resources recorded per ledger row, and the agent audit viewer follows the same rule (FR-72).
 - OcuPilot sends nothing to any endpoint other than the instance and the configured provider.

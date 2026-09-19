@@ -25,13 +25,32 @@
 /// <method>ApplyAuth</method>, <method>IsApiKeyShapeValid</method>, <method>MapResponse</method>
 /// and <method>ProviderMessage</method> are the family contract; <method>IssueHttpsPost</method>
 /// is the one transport seam, which <class>OcuPilot.Test.ProviderStub</class> replaces so the whole
-/// path runs with no socket; <method>SecretClass</method> and <method>Wait</method> are the
-/// credential and the sleep. Production overrides none of them.</p>
+/// path runs with no socket; <method>SecretClass</method>, <method>Wait</method> and
+/// <method>NowSeconds</method> are the credential, the sleep and the clock. Production overrides
+/// none of them.</p>
 Class OcuPilot.Kernel.Provider.Base Extends %RegisteredObject [ Abstract ]
 {
 
 /// <p>The subsystem every provider log line is written under.</p>
 Parameter LOGSUBSYSTEM = "providerport";
+
+/// <p>Key source: the credential the definition's reference names, resolved through the ladder.
+/// What <method>Invoke</method> does when the values name no key source, so a turn is
+/// unchanged.</p>
+Parameter KEYSOURCESTORED = "stored";
+
+/// <p>Key source: a key the caller's request body carries, read from
+/// <code>pValues("keyBody")</code> under the member <code>pValues("keyField")</code> names.</p>
+Parameter KEYSOURCEBODY = "body";
+
+/// <p>Key source: no key at all. Nothing is resolved, nothing is shape-gated, and no key header is
+/// sent.</p>
+Parameter KEYSOURCENONE = "none";
+
+/// <p>The reason a <code>PROVIDER.EGRESS</code> refusal carries when what was refused is the
+/// configured proxy rather than the endpoint. Kept beside <method>ReasonFor</method> so the
+/// provider sentences stay in one class.</p>
+Parameter REASONPROXYEGRESS = "The proxy this instance's provider calls go through resolves to an address OcuPilot will not call";
 
 /// <p>The resolved credential, for the life of one <method>Invoke</method> and no longer.</p>
 /// <p><code>Internal</code> keeps it out of the published class reference; what actually keeps it
@@ -76,6 +95,14 @@ Method ResolvedSecretClass() As %String [ Private ]
 /// <code>envVarName</code>, <code>credentialName</code>, <code>maxTokens</code>,
 /// <code>temperature</code> -- plus the two the caller took from the provider's catalog row,
 /// <code>keyPrefix</code> and <code>authVersion</code>.</p>
+/// <p><b><code>keySource</code> says where the key comes from</b>:
+/// <parameter>KEYSOURCESTORED</parameter> (also the answer when it is absent) resolves the
+/// definition's reference, and a reference whose store could not be read faults
+/// <code>PROVIDER.CREDENTIALSTORE</code> rather than <code>PROVIDER.CREDENTIAL</code>;
+/// <parameter>KEYSOURCEBODY</parameter> moves the member <code>keyField</code> names out of the
+/// <class>%DynamicObject</class> in <code>keyBody</code> straight onto <property>ApiKey</property>,
+/// shape-gated like a stored one; <parameter>KEYSOURCENONE</parameter> resolves nothing and sends
+/// no key.</p>
 /// <p><var>pMessages</var> is <code>pMessages(n, "role")</code> / <code>(n, "content")</code> with
 /// <code>pMessages</code> the count; <var>pTools</var> is <code>pTools(n, "name")</code> /
 /// <code>("description")</code> / <code>("inputSchema")</code>, the schema a JSON string, with
@@ -109,20 +136,37 @@ Method Invoke(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %St
     Try {
         Set ..KeyPrefix = $Get(pValues("keyPrefix"))
         Set ..AuthVersion = $Get(pValues("authVersion"))
-        ; Assigned straight onto the property: the resolution's value is never bound to a local,
-        ; because a local is what an ^%ETN entry captures (AD-48). The ladder's transient flag is
-        ; a boolean and carries no text, so binding it is safe; it travels out on pValues, which
-        ; is the caller's own array, so the port can tell a reference that resolves to nothing from
-        ; one it could not read (DW-343).
-        Set ..ApiKey = $ClassMethod(..ResolvedSecretClass(), "Resolve", $Get(pValues("credType")), $Get(pValues("envVarName")), $Get(pValues("credentialName")), .tTransient)
-        Set pValues("credentialTransient") = ''+$Get(tTransient)
-        If ..ApiKey = "" {
-            Do ..Fault(##class(OcuPilot.Api.Error).#PROVIDERCREDENTIAL, ..CredentialReason(.pValues), "", .pFault, .pHttpStatus)
-            Quit
+        Set tKeySource = $Get(pValues("keySource"))
+        If tKeySource = "" Set tKeySource = ..#KEYSOURCESTORED
+        If tKeySource = ..#KEYSOURCESTORED {
+            ; Assigned straight onto the property: the resolution's value is never bound to a
+            ; local, because a local is what an ^%ETN entry captures (AD-48). The ladder's transient
+            ; flag is a boolean and carries no text, so binding it is safe; it selects the code, so a
+            ; store that could not be read is told apart from a reference that holds nothing.
+            Set ..ApiKey = $ClassMethod(..ResolvedSecretClass(), "Resolve", $Get(pValues("credType")), $Get(pValues("envVarName")), $Get(pValues("credentialName")), .tTransient)
+            If ..ApiKey = "" {
+                Set tCode = $Select(+$Get(tTransient): ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIALSTORE, 1: ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIAL)
+                Do ..Fault(tCode, ..CredentialReason(.pValues, tCode), "", .pFault, .pHttpStatus)
+                Quit
+            }
+        } ElseIf tKeySource = ..#KEYSOURCEBODY {
+            ; The body object is held, never the member: the member moves straight onto the
+            ; property, for the same reason.
+            Set tKeyBody = $Get(pValues("keyBody"))
+            If $IsObject(tKeyBody) Set ..ApiKey = tKeyBody.%Get($Get(pValues("keyField")))
+            Set tKeyBody = ""
+            If ..ApiKey = "" {
+                Do ..Fault(##class(OcuPilot.Api.Error).#PROVIDERCREDENTIAL, "", "", .pFault, .pHttpStatus)
+                Quit
+            }
         }
-        If '..IsApiKeyShapeValid() {
-            Do ..Fault(##class(OcuPilot.Api.Error).#PROVIDERKEYSHAPE, ..KeyShapeReason(), "", .pFault, .pHttpStatus)
-            Quit
+        ; Any other source -- none, or one this class does not declare -- carries no key, so there
+        ; is nothing to gate and ApplyAuth sends no key header.
+        If (tKeySource = ..#KEYSOURCESTORED) || (tKeySource = ..#KEYSOURCEBODY) {
+            If '..IsApiKeyShapeValid() {
+                Do ..Fault(##class(OcuPilot.Api.Error).#PROVIDERKEYSHAPE, ..KeyShapeReason(), "", .pFault, .pHttpStatus)
+                Quit
+            }
         }
         Do ..Attempts(.pValues, .pMessages, .pTools, pSystemPrompt, .pSettings, .pResponse, .pFault, .pHttpStatus)
     } Catch ex {
@@ -155,6 +199,15 @@ Method Invoke(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %St
 /// a call that raised, and a call that timed out all leave immediately. A non-retryable status
 /// leaves immediately with the provider's own message in <code>detail.providerText</code> and its
 /// raw body in the log alone. Only a retryable status loops, and only while attempts remain.</p>
+/// <p><b>Two budgets bound the loop beside the attempt count</b> (AD-42, AD-31).
+/// <parameter>OcuPilot.Kernel.Provider.Retry.RETRYBUDGETSECONDS</parameter> bounds the total time
+/// spent sleeping: each wait is cut to what is left of it, and a retryable status met with nothing
+/// left ends the call <code>PROVIDER.UNAVAILABLE</code> rather than sleeping again.
+/// <parameter>OcuPilot.Kernel.Provider.Retry.ATTEMPTBUDGETSECONDS</parameter> bounds when a
+/// further attempt may start, read through <method>NowSeconds</method>: once it has passed, no
+/// further attempt is begun and that exit is <code>PROVIDER.TIMEOUT</code>. It is read between
+/// attempts and never during one, so an attempt already in flight still runs to its own
+/// <code>timeoutSeconds</code>.</p>
 Method Attempts(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %String, ByRef pSettings, ByRef pResponse As OcuPilot.Kernel.Provider.Response, ByRef pFault As %DynamicObject, ByRef pHttpStatus As %Integer) [ Private ]
 {
     Set tUrl = $Get(pValues("endpointUrl"))
@@ -162,7 +215,14 @@ Method Attempts(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %
     If tMaxAttempts < 1 Set tMaxAttempts = 1
     Set tCode = ##class(OcuPilot.Api.Error).#PROVIDERTRANSPORT
     Set tProviderText = ""
+    Set tStartedAt = ..NowSeconds()
+    Set tSpentDelay = 0
     For tAttempt = 1:1:tMaxAttempts {
+        If (tAttempt > 1) && ((..NowSeconds() - tStartedAt) >= ##class(OcuPilot.Kernel.Provider.Retry).#ATTEMPTBUDGETSECONDS) {
+            Set tCode = ##class(OcuPilot.Api.Error).#PROVIDERTIMEOUT
+            Do ..LogRaw("the provider call passed the time this instance allows before another attempt", $$$ERROR($$$GeneralError, "attempts made: " _ (tAttempt - 1)), tCode)
+            Quit
+        }
         Set tStatus = 0
         Set tBody = ""
         Set tRetryAfter = ""
@@ -218,7 +278,15 @@ Method Attempts(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %
             Do ..LogRaw("the provider answered a retryable status on every attempt, the last HTTP " _ +tStatus, $$$ERROR($$$GeneralError, tBody), tCode)
             Quit
         }
-        Do ..Wait(##class(OcuPilot.Kernel.Provider.Retry).DelaySec(tAttempt, tRetryAfter))
+        Set tRemainingDelay = ##class(OcuPilot.Kernel.Provider.Retry).#RETRYBUDGETSECONDS - tSpentDelay
+        If tRemainingDelay <= 0 {
+            Set tCode = ##class(OcuPilot.Api.Error).#PROVIDERUNAVAILABLE
+            Do ..LogRaw("this call has already spent the delay one call may spend, the last HTTP " _ +tStatus, $$$ERROR($$$GeneralError, tBody), tCode)
+            Quit
+        }
+        Set tDelay = ##class(OcuPilot.Kernel.Provider.Retry).DelaySec(tAttempt, tRetryAfter, tRemainingDelay)
+        Set tSpentDelay = tSpentDelay + tDelay
+        Do ..Wait(tDelay)
     }
     If tCode = "" Quit
     Set pResponse.StopReason = "error"
@@ -299,6 +367,20 @@ Method Wait(pSeconds As %Numeric)
     Hang +pSeconds
 }
 
+/// <p><b>The clock seam.</b> Seconds on a monotonic-within-the-day scale, used only as a
+/// difference: <method>Attempts</method> reads it once at the start of a call and again before each
+/// further attempt, and compares the two against
+/// <parameter>OcuPilot.Kernel.Provider.Retry.ATTEMPTBUDGETSECONDS</parameter>.</p>
+/// <p>Its own method for the reason <method>Wait</method> is: a test replaces it with a counter it
+/// advances itself, so the deadline is exercised with no real time passing.
+/// <code>$ZHorolog</code> resets at midnight, which makes the difference negative rather than
+/// large, so a rollover mid-call costs an unbounded call nothing worse than the attempt bound.
+/// Production never overrides it.</p>
+Method NowSeconds() As %Numeric
+{
+    Quit $ZHorolog
+}
+
 /// <p>The provider key this adapter serves. A constant per adapter, and the only place an adapter
 /// names its own family -- nothing reads it to choose behaviour, which is the catalog row's
 /// <code>adapterClass</code> column's job.</p>
@@ -320,7 +402,8 @@ Method CallMessages(pRequest As %Net.HttpRequest, ByRef pValues, ByRef pMessages
 /// <p>Write this family's authentication headers onto <var>pRequest</var>.</p>
 /// <p><b>Caller contract: read <property>ApiKey</property> and write it onto the request in one
 /// statement.</b> Copying it into a local first -- even to build a header list -- puts it in the
-/// symbol table an <code>^%ETN</code> entry captures (AD-48, AD-35).</p>
+/// symbol table an <code>^%ETN</code> entry captures (AD-48, AD-35). A call with no key writes no
+/// key header at all rather than an empty one.</p>
 Method ApplyAuth(pRequest As %Net.HttpRequest) [ Abstract ]
 {
     Quit
@@ -377,6 +460,7 @@ ClassMethod HttpFor(pCode As %String) As %Integer
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTIMEOUT Quit 504
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERUNCONFIGURED Quit 503
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIAL Quit 503
+    If pCode = ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIALSTORE Quit 503
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERKEYSHAPE Quit 503
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTLS Quit 503
     Quit 502
@@ -391,6 +475,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERUNCONFIGURED Quit "OcuPilot has no usable agent definition for this call"
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDEREGRESS Quit "The endpoint this definition names resolves to an address OcuPilot will not call"
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIAL Quit "The credential this definition names could not be resolved"
+    If pCode = ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIALSTORE Quit "The credential store this definition's reference lives in could not be read; the definition was left enabled"
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERKEYSHAPE Quit "The credential this definition names is not shaped like a key for this provider"
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERREFUSED Quit "The provider refused the request"
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERUNAVAILABLE Quit "The provider did not serve this request on any attempt"
@@ -408,15 +493,16 @@ Method KeyShapeReason() As %String [ Private ]
     Quit ..ReasonFor(##class(OcuPilot.Api.Error).#PROVIDERKEYSHAPE) _ ": keys for this provider begin with " _ ..KeyPrefix
 }
 
-/// <p>The reason a <code>PROVIDER.CREDENTIAL</code> refusal carries: it names the
-/// <b>reference</b> -- the credential type and the variable or entry the definition points at --
-/// and never a value, because there is no value to name (AD-35).</p>
-ClassMethod CredentialReason(ByRef pValues) As %String [ Private ]
+/// <p>The reason a <code>PROVIDER.CREDENTIAL</code> or <code>PROVIDER.CREDENTIALSTORE</code>
+/// refusal carries (<var>pCode</var>): it names the <b>reference</b> -- the credential type and the
+/// variable or entry the definition points at -- and never a value, because there is no value to
+/// name (AD-35).</p>
+ClassMethod CredentialReason(ByRef pValues, pCode As %String = {##class(OcuPilot.Api.Error).#PROVIDERCREDENTIAL}) As %String [ Private ]
 {
     Set tType = $Get(pValues("credType"))
     Set tName = $Select(tType = "env": $Get(pValues("envVarName")), 1: $Get(pValues("credentialName")))
-    If tName = "" Quit ..ReasonFor(##class(OcuPilot.Api.Error).#PROVIDERCREDENTIAL)
-    Quit ..ReasonFor(##class(OcuPilot.Api.Error).#PROVIDERCREDENTIAL) _ ": " _ tType _ " " _ tName
+    If tName = "" Quit ..ReasonFor(pCode)
+    Quit ..ReasonFor(pCode) _ ": " _ tType _ " " _ tName
 }
 
 /// <p>Send a raw status to the log, and nowhere else (AD-39), the way

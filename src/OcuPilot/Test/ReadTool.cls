@@ -1,7 +1,6 @@
 /// <p>The tool registry's discovery and validation half and the read tool's view (AD-5, AD-22,
 /// AD-36): which tools a registry lists and of which kind, the kind refusal, the argument
-/// validator's rows, the view's cap and secret stripping, the read declaration's refusals, and
-/// the absence of any dispatch method.</p>
+/// validator's rows, the view's cap and secret stripping, and the read declaration's refusals.</p>
 /// <p>Tools come from <class>OcuPilot.Test.Read.ToolRegistry</class>; canned rows from
 /// <class>OcuPilot.Test.EndpointFixture</class> through <class>OcuPilot.Test.PortFixture</class>;
 /// the route rows the view is compared with through <class>OcuPilot.Test.Dispatch</class> with
@@ -36,9 +35,10 @@ Method ClearFixtures()
 /// <p>AC3 -- each read-declaring descriptor yields exactly one tool
 /// <code>&lt;toolIdentifier&gt;.read</code> of kind <code>read</code> with no class of its own, a
 /// readless descriptor yields none, a concrete tool two levels down is found with its
-/// inherited kind, and the production registry holds exactly the tools the roster assertion names,
-/// one of which has a class of its own. The application error log declares no read, so its tool comes from the registry's
-/// other source (<class>OcuPilot.Screen.Tool.ErrorRead</class>) and carries no descriptor.</p>
+/// inherited kind, and the production registry holds exactly the tools the roster assertion names.
+/// The application error log, the three shell reads and the navigation tool declare no descriptor
+/// read, so their tools come from the registry's other source -- classes of their own -- and carry
+/// no descriptor.</p>
 /// <p>Mutations: name the read tool from <method>OcuPilot.Screen.Descriptor.Base.Route</method>
 /// in <method>OcuPilot.Screen.Tool.Read.NameFor</method> -> the name assertions go red. Replace
 /// <code>%Extends</code> with superclass equality in
@@ -90,8 +90,13 @@ Method TestTheRegistryListsDescriptorReadsAndInheritedKinds()
         Set tNames = tNames _ $Select(tNames = "": "", 1: ",") _ tName
         Set tName = $Order(tProductionByName(tName))
     }
-    Do $$$AssertEquals(tProduction.%Size(), 37, "the production registry holds thirty-seven tools, fixtures excluded")
-    Do $$$AssertEquals(tNames, "agent.definitions.read,logs.alerts.read,logs.applicationerrors.read,logs.audit.read,logs.messages.read,osmgmt.databasedetails.read,osmgmt.databasefreespace.read,osmgmt.databases.read,osmgmt.databasevolumes.read,osmgmt.devices.read,osmgmt.locks.read,osmgmt.processdetails.read,osmgmt.processes.read,osmgmt.systemusage.read,permissions.resources.read,permissions.roles.read,permissions.services.read,permissions.users.read,security.ldap.read,security.oauthclients.read,security.oauthresourceservers.read,security.oauthserver.read,security.oauthserverclients.read,security.oauthserverdescriptions.read,security.secrets.read,security.ssl.read,security.wallet.read,security.x509.read,tasks.history.read,tasks.ondemand.read,tasks.schedule.read,tasks.taskdetails.read,tasks.taskhistory.read,tasks.upcoming.read,webapp.list.read,webapp.openapi.read,webapp.restapis.read", "the Definitions list's read tool -- the first over OcuPilot's own state (AD-36) -- then the alert log's bounded tail, the application error log's own class tool, the audit database, the console log's bounded tail, Database details, Database free-space, Databases, Database volumes, Devices, Locks, process details, processes, System usage, resources, roles, services, users, LDAP / Kerberos, the five OAuth 2.0 tabs, Secrets, SSL/TLS, Wallet, X.509, task history, on-demand tasks, task schedule, task details, per-task history, upcoming tasks, web applications, OpenAPI document and REST API explorer read tools")
+    Do $$$AssertEquals(tProduction.%Size(), 41, "the production registry holds forty-one tools, fixtures excluded: Epic 6's thirty-seven plus Epic 4's three shell reads and its navigation tool")
+    Do $$$AssertEquals(tNames, "agent.definitions.read,logs.alerts.read,logs.applicationerrors.read,logs.audit.read,logs.messages.read,osmgmt.databasedetails.read,osmgmt.databasefreespace.read,osmgmt.databases.read,osmgmt.databasevolumes.read,osmgmt.devices.read,osmgmt.locks.read,osmgmt.processdetails.read,osmgmt.processes.read,osmgmt.systemusage.read,permissions.resources.read,permissions.roles.read,permissions.services.read,permissions.users.read,security.ldap.read,security.oauthclients.read,security.oauthresourceservers.read,security.oauthserver.read,security.oauthserverclients.read,security.oauthserverdescriptions.read,security.secrets.read,security.ssl.read,security.wallet.read,security.x509.read,shell.instance.read,shell.namespaces.read,shell.privileges.read,shell.screen.open,tasks.history.read,tasks.ondemand.read,tasks.schedule.read,tasks.taskdetails.read,tasks.taskhistory.read,tasks.upcoming.read,webapp.list.read,webapp.openapi.read,webapp.restapis.read", "every descriptor-declared read of the six areas, the application error log's own class tool, the three shell reads and the navigation tool -- the last four class tools of their own, with no descriptor")
+    For tPair = $ListBuild("shell.instance.read", "OcuPilot.Kernel.Shell.InstanceRead"), $ListBuild("shell.namespaces.read", "OcuPilot.Kernel.Shell.NamespacesRead"), $ListBuild("shell.privileges.read", "OcuPilot.Kernel.Shell.PrivilegesRead") {
+        Set tName = $List(tPair, 1)
+        If '$Data(tProductionByName(tName)) Continue
+        Do $$$AssertEquals(tProductionByName(tName).class _ "|" _ tProductionByName(tName).descriptor _ "|" _ tProductionByName(tName).kind, $List(tPair, 2) _ "||read", tName _ " is a read tool with a class of its own and no descriptor")
+    }
     ; The one tool with a class of its own: it names no descriptor, because nothing about it is
     ; derived from one (OcuPilot.Screen.Tool.Registry's "two sources, one list").
     Do $$$AssertEquals(tProductionByName("logs.applicationerrors.read").class, "OcuPilot.Screen.Tool.ErrorRead", "the application error log's tool is answered by its own class")
@@ -547,7 +552,7 @@ Method TestTheReadToolSendsItsDeclaredCriteriaToThePort()
     Do ##class(OcuPilot.Test.EndpointFixture).SetRows("[]")
 
     Set tArgs = {"maxRows": 5, "eventSources": "OcuPilot", "authentication": "Password"}
-    Set tSC = ##class(OcuPilot.Test.Read.ToolFixture).View("OcuPilot.Screen.Descriptor.AuditList", tArgs, 5, .tView)
+    Set tSC = ##class(OcuPilot.Test.Read.ToolFixture).View("OcuPilot.Screen.Descriptor.AuditList", tArgs, 5, .tView, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "the audit list's read tool answers")
     Set tParams = ##class(OcuPilot.Test.EndpointFixture).Recorded("params")
     Do $$$AssertTrue(tParams [ "eventSources=OcuPilot", "the text criterion reaches the port's query: " _ tParams)
@@ -559,7 +564,7 @@ Method TestTheReadToolSendsItsDeclaredCriteriaToThePort()
     Do ##class(OcuPilot.Test.EndpointFixture).Clear()
     Do ##class(OcuPilot.Test.EndpointFixture).SetMode("list")
     Do ##class(OcuPilot.Test.EndpointFixture).SetRows("[]")
-    Set tSC = ##class(OcuPilot.Test.Read.ToolFixture).View("OcuPilot.Screen.Descriptor.AuditList", {"maxRows": 5}, 5, .tView)
+    Set tSC = ##class(OcuPilot.Test.Read.ToolFixture).View("OcuPilot.Screen.Descriptor.AuditList", {"maxRows": 5}, 5, .tView, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "a tool call with no criterion answers")
     Set tBare = ##class(OcuPilot.Test.EndpointFixture).Recorded("params")
     Do $$$AssertEquals((tBare [ "eventSources"), 0, "and sends no criterion at all: " _ tBare)
@@ -680,21 +685,11 @@ Method TestTheValidatorRefusesEveryArgumentRow()
     }
 }
 
-/// <p>AC6 -- neither the tool base nor the registry compiles a method that dispatches.</p>
-Method TestNothingHereDispatches()
-{
-    For tClass = "OcuPilot.Screen.Tool.Base", "OcuPilot.Screen.Tool.Read", "OcuPilot.Screen.Tool.Registry" {
-        For tMethod = "Dispatch", "Invoke" {
-            Do $$$AssertEquals(##class(%Dictionary.CompiledMethod).%ExistsId(tClass _ "||" _ tMethod), 0, tClass _ " compiles no " _ tMethod)
-        }
-    }
-}
-
-/// <p>AC1 -- at <code>maxRows</code> 5, the tool's view is the route's read narrowed: its fields are
-/// the route's, and its rows are the first three of the view rule over the route's rows. Neither
-/// carries the secret field, which the one executor strips. The filter keeps four of the route's
-/// five rows, so the cap is what cuts.</p>
-/// <p>Mutation: keep the first <var>pContextCap</var> of the fetched rows rather than of the view in
+/// <p>AC1 -- at <code>maxRows</code> 5 and a context cap of 5, the tool's view is the route's read
+/// narrowed: its fields are the route's, and its rows are the view rule over the route's five rows.
+/// Neither carries the secret field, which the one executor strips. The filter keeps four of the
+/// five rows, and the read was cut at five of eight, so the view is truncated.</p>
+/// <p>Mutation: pass no filter to <method>OcuPilot.Screen.Read.ApplyView</method> in
 /// <method>OcuPilot.Screen.Tool.Read.View</method> -> the row assertion goes red.</p>
 Method TestTheToolViewIsTheRouteReadNarrowed()
 {
@@ -710,19 +705,15 @@ Method TestTheToolViewIsTheRouteReadNarrowed()
     Set tSC = ##class(OcuPilot.Test.Read.ToolRegistry).Resolve("webapp.canned.read", .tTool)
     Do $$$AssertStatusOK(tSC, "the tool resolves")
     Set tArgs = {"maxRows": 5, "filter": "CSP/B", "sort": "Name", "direction": "desc"}
-    Set tSC = $ClassMethod(tTool.class, "View", tTool.descriptor, tArgs, 3, .tView)
+    Set tSC = $ClassMethod(tTool.class, "View", tTool.descriptor, tArgs, 5, .tView, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "the tool view runs")
 
     Do $$$AssertEquals(tView.fields.%ToJSON(), tRoute.fields.%ToJSON(), "the tool's fields are the route's")
     Do $$$AssertEquals(tView.fields.%ToJSON(), "[""Name"",""NameSpace"",""Enabled""]", "and neither carries Secret")
 
     Set tNarrowed = ##class(OcuPilot.Screen.Read).ApplyView(tRoute.rows, $ClassMethod(..#CANNED, "Read"), "CSP/B", "Name", "desc")
-    Do $$$AssertEquals(tNarrowed.%Size(), 4, "the view rule leaves four of the five rows, more than the cap")
-    Set tExpectedRows = []
-    For tI = 0:1:2 {
-        Do tExpectedRows.%Push(tNarrowed.%Get(tI))
-    }
-    Do $$$AssertEquals(tView.rows.%ToJSON(), tExpectedRows.%ToJSON(), "its rows are the first three of the view rule over the route's rows")
+    Do $$$AssertEquals(tNarrowed.%Size(), 4, "the view rule leaves four of the five rows")
+    Do $$$AssertEquals(tView.rows.%ToJSON(), tNarrowed.%ToJSON(), "its rows are the view rule over the route's rows")
     Do $$$AssertEquals(tView.truncated, 1, "and truncation is reported")
     Do $$$AssertEquals((tView.%ToJSON() [ "secret"), 0, "no secret value reaches the tool")
 }
@@ -741,7 +732,7 @@ Method TestARefusedArgumentReachesNoPort()
         Set tRow = $List(tRows, tI)
         Do ##class(OcuPilot.Test.EndpointFixture).Clear()
         Do ..ArmRows()
-        Set tSC = ##class(OcuPilot.Test.Read.ToolFixture).View(..#CANNED, ##class(%DynamicObject).%FromJSON($List(tRow, 1)), 3, .tView)
+        Set tSC = ##class(OcuPilot.Test.Read.ToolFixture).View(..#CANNED, ##class(%DynamicObject).%FromJSON($List(tRow, 1)), 3, .tView, .tHttp, .tFault)
         Do $$$AssertStatusNotOK(tSC, $List(tRow, 1) _ ": the view is refused")
         Do $$$AssertTrue($System.Status.GetErrorText(tSC) [ ("'" _ $List(tRow, 2) _ "'"), $List(tRow, 1) _ ": naming the argument")
         Do $$$AssertEquals(tView, "", $List(tRow, 1) _ ": with no result")
@@ -754,29 +745,32 @@ Method TestARefusedArgumentReachesNoPort()
 Method TestAFetchTruncationSurvivesTheView()
 {
     Do ..ArmRows()
-    Set tSC = ##class(OcuPilot.Test.Read.ToolFixture).View(..#CANNED, {"maxRows": 2}, 50, .tView)
+    Set tSC = ##class(OcuPilot.Test.Read.ToolFixture).View(..#CANNED, {"maxRows": 2}, 50, .tView, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "the view runs")
     Do $$$AssertEquals(tView.rows.%Size(), 2, "two rows")
     Do $$$AssertEquals(tView.truncated, 1, "reported truncated because the read was")
 }
 
-/// <p>A read its own cap does not cut is truncated in the tool's view when the context cap cuts it.</p>
-/// <p>Mutation: drop the context-cap half of <code>truncated</code> in
-/// <method>OcuPilot.Screen.Tool.Read.View</method> -> the truncation assertion goes red.</p>
+/// <p>A <code>maxRows</code> above the context cap reads <code>maxRows</code>, so the read answers all
+/// eight rows uncut; the context cap alone keeps three of them, and that cut alone reports the view
+/// truncated.</p>
+/// <p>Mutation: <method>OcuPilot.Screen.Tool.Read.View</method> sets <code>truncated</code> from the
+/// read alone -> this goes red.</p>
 Method TestAContextCapCutAloneIsTruncated()
 {
     Do ..ArmRows()
-    Set tSC = ##class(OcuPilot.Test.Read.ToolFixture).View(..#CANNED, {"maxRows": 50}, 3, .tView)
+    Set tSC = ##class(OcuPilot.Test.Read.ToolFixture).View(..#CANNED, {"maxRows": 50}, 3, .tView, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "the view runs")
+    Do $$$AssertEquals(##class(OcuPilot.Test.EndpointFixture).Recorded("maxRows"), 51, "the read is asked for maxRows, so its eight rows come back uncut")
     Do $$$AssertEquals(tView.rows.%Size(), 3, "the context cap keeps three of the eight rows")
-    Do $$$AssertEquals(tView.truncated, 1, "reported truncated although the read was not")
+    Do $$$AssertEquals(tView.truncated, 1, "reported truncated, because the context cap cut rows")
 }
 
 /// <p>A view that neither the read's cap nor the context cap cuts is not truncated.</p>
 Method TestAViewNothingCutsIsNotTruncated()
 {
     Do ..ArmRows()
-    Set tSC = ##class(OcuPilot.Test.Read.ToolFixture).View(..#CANNED, {"maxRows": 50}, 50, .tView)
+    Set tSC = ##class(OcuPilot.Test.Read.ToolFixture).View(..#CANNED, {"maxRows": 50}, 50, .tView, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "the view runs")
     Do $$$AssertEquals(tView.rows.%Size(), 8, "every row")
     Do $$$AssertEquals(tView.%GetTypeOf("truncated"), "boolean", "truncated is a boolean")
@@ -797,7 +791,7 @@ Method TestAViewNothingCutsIsNotTruncated()
 Method TestTheToolPayloadCarriesNoBanner()
 {
     Set tClass = "OcuPilot.Screen.Descriptor.TaskScheduleList"
-    Set tSC = ##class(OcuPilot.Screen.Tool.Read).View(tClass, {"maxRows": 5}, 5, .tView)
+    Set tSC = ##class(OcuPilot.Screen.Tool.Read).View(tClass, {"maxRows": 5}, 5, .tView, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "the task schedule's tool view runs")
     If '$IsObject(tView) Quit
     Do $$$AssertEquals(tView.%GetTypeOf("banner"), "unassigned", "the tool payload carries no banner key")
@@ -1031,7 +1025,9 @@ Method TestATableOutsideTheGrammarIsRefused()
 /// <method>OcuPilot.Screen.Tool.ErrorRead.View</method>'s
 /// <code>Set tTruncated = ''tAnswer.%Get("truncated")</code> with a constant -&gt; the last
 /// assertion goes red, because it compares the tool's flag with the port's own answer to the same
-/// arguments rather than with a value the context cap produced.</p>
+/// arguments rather than with a value the context cap produced. Mutation: delete
+/// <code>Set tTruncated = 1</code> from that method's context-cap branch -&gt; the stub-driven cap
+/// leg goes red, and only that one.</p>
 Method TestTheErrorReadToolCarriesTheSummaryFieldsOnly()
 {
     Set tTool = "OcuPilot.Screen.Tool.ErrorRead"
@@ -1063,7 +1059,7 @@ Method TestTheErrorReadToolCarriesTheSummaryFieldsOnly()
     Do $$$AssertNotEquals(tNamespace, "", "this instance records at least one application error to read")
     If tNamespace = "" Quit
 
-    Set tSC = $ClassMethod(tTool, "View", {"namespace": (tNamespace), "date": (tDate)}, 5, .tResult)
+    Set tSC = $ClassMethod(tTool, "View", "", {"namespace": (tNamespace), "date": (tDate)}, 5, .tResult, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "the tool answers")
     If $$$ISERR(tSC) Quit
     Do $$$AssertEquals(tResult.fields.%ToJSON(), "[""errorNumber"",""time"",""errorText"",""routine"",""line""]", "the five AD-48 summary fields, and no others: " _ tResult.fields.%ToJSON())
@@ -1079,25 +1075,31 @@ Method TestTheErrorReadToolCarriesTheSummaryFieldsOnly()
     Do $$$AssertEquals(tResult.rows.%Get(0).%IsDefined("process"), 0, "nor the screen-only process")
     Do $$$AssertEquals(tResult.rows.%Get(0).%IsDefined("variables"), 0, "and no captured variable table reaches the model (AD-48)")
 
-    ; The cap is the caller's, and it is reported exactly when it cuts: a date holding one entry is
-    ; not cut by a cap of one.
-    Set tSC = $ClassMethod(tTool, "View", {"namespace": (tNamespace), "date": (tDate)}, 1, .tCapped)
-    Do $$$AssertStatusOK(tSC, "a cap of one answers")
-    Do $$$AssertEquals(tCapped.rows.%Size(), 1, "one row")
-    Do $$$AssertEquals(''tCapped.truncated, (tResult.rows.%Size() > 1), "and reports that it truncated exactly when the date holds more than one entry (AD-24, AD-36): " _ tResult.rows.%Size())
+    ; The CONTEXT cap is the caller's, and View reports it when it cuts -- driven through
+    ; OcuPilot.Test.ErrorReadStub, which answers three rows whatever maxRows it is handed and, once
+    ; armed, an untruncated port flag. Against the live instance this leg could not exist:
+    ; BoundedMaxRows asks the port for min(model maxRows, context cap), so a context cap of 1 makes
+    ; the port cut to one row and View's own cap branch never runs -- the flag read there was the
+    ; port's, and whether it was 1 depended on how many errors that date happened to hold (DW-1091).
+    Do ##class(OcuPilot.Test.ErrorReadStub).Clear()
+    Do ##class(OcuPilot.Test.ErrorReadStub).ArmUntruncated()
+    Set tSC = ##class(OcuPilot.Test.ErrorReadStub).View("", {"namespace": (tNamespace), "date": (tDate)}, 1, .tCapped, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "a context cap of one answers")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ErrorReadStub).Recorded("maxRows"), 1, "the port was asked for the cap")
+    Do $$$AssertEquals(tCapped.rows.%Size(), 1, "one row of the stub's three")
+    Do $$$AssertEquals(''tCapped.truncated, 1, "and reports that the cap cut rows (AD-24, AD-36), the port having answered untruncated")
+    Do ##class(OcuPilot.Test.ErrorReadStub).Clear()
 
-    ; The PORT's truncation, carried rather than swallowed. The leg above cannot see this half: its
-    ; context cap is what cuts, so the tool answers truncated whether or not it ever reads the
-    ; port's own flag -- and a model told "complete" about a read the port cut at its 1,000-row
-    ; default is the case AD-24 exists for. Asserted as an equality against the port's own answer to
-    ; the same arguments, so it holds on a date of any size: where the date carries more than one
-    ; entry both read 1 and a swallowed flag goes red, where it carries one both read 0 and a
-    ; hard-coded flag goes red. The row count is in the message, so which direction this run
-    ; exercised is readable rather than assumed.
+    ; The PORT's truncation, carried rather than swallowed: a model told "complete" about a read the
+    ; port cut at its 1,000-row default is the case AD-24 exists for. Asserted as an equality
+    ; against the port's own answer to the same arguments, so it holds on a date of any size: where
+    ; the date carries more than one entry both read 1 and a swallowed flag goes red, where it
+    ; carries one both read 0 and a hard-coded flag goes red. The row count is in the message, so
+    ; which direction this run exercised is readable rather than assumed.
     Set tSC = ##class(OcuPilot.Port.LogSourcePort).Errors("list", tNamespace, tDate, "", 1, .tPortAnswer, .tPortStatus, .tFault)
     Do $$$AssertEquals(tPortStatus, 200, "the port answers the same read the tool makes")
     If tPortStatus '= 200 Quit
-    Set tSC = $ClassMethod(tTool, "View", {"namespace": (tNamespace), "date": (tDate), "maxRows": 1}, 5, .tPortCut)
+    Set tSC = $ClassMethod(tTool, "View", "", {"namespace": (tNamespace), "date": (tDate), "maxRows": 1}, 5, .tPortCut, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "a port cap of one under a context cap of five answers")
     If $$$ISERR(tSC) Quit
     Do $$$AssertEquals(tPortCut.rows.%Size(), tPortAnswer.rows.%Size(), "the same rows the port answered, uncut by the context cap")
@@ -1220,7 +1222,7 @@ Method TestTheErrorReadToolNeverReachesTheDetailQuery()
     If tNamespace = "" Quit
 
     Do ##class(OcuPilot.Test.ErrorLogFixture).ClearCounts()
-    Set tSC = ##class(OcuPilot.Test.ErrorReadProbe).View({"namespace": (tNamespace), "date": (tDate)}, 5, .tResult)
+    Set tSC = ##class(OcuPilot.Test.ErrorReadProbe).View("", {"namespace": (tNamespace), "date": (tDate)}, 5, .tResult, .tHttp, .tFault)
     Do $$$AssertStatusOK(tSC, "the tool answers through the counting port")
     Do $$$AssertTrue(##class(OcuPilot.Test.ErrorLogFixture).Queries() > 0, "through the supported queries: " _ ##class(OcuPilot.Test.ErrorLogFixture).Queries())
     Do $$$AssertEquals(##class(OcuPilot.Test.ErrorLogFixture).Details(), 0, "and never through ErrorDetail (AD-48)")

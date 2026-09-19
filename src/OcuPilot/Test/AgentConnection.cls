@@ -128,7 +128,8 @@ Method ProbeDefinitionOn(pSuffix As %String, pEndpoint As %String) As %String
 /// <method>OcuPilot.Api.Definitions.HandleTest</method> hands
 /// <method>OcuPilot.Api.Definitions.ConnectionOutcome</method>: the stored row's values,
 /// <var>pBody</var>'s edits merged over them, the two server-owned flags taken from the row,
-/// normalized. Exactly one of <var>pAnswer</var> and <var>pFault</var> comes back set.</p>
+/// normalized, and <var>pBody</var> itself, which decides the key the call carries. Exactly one of
+/// <var>pAnswer</var> and <var>pFault</var> comes back set.</p>
 /// <p><b>It does not validate</b>: the route's <method>OcuPilot.Kernel.AgentRules.Validate</method>
 /// call refuses on a field before <method>ConnectionOutcome</method> is reached at all, so a leg
 /// that is about a refusal on a field is a wire leg rather than one of these.</p>
@@ -145,7 +146,7 @@ ClassMethod Outcome(pId As %String, pBody As %DynamicObject, Output pAnswer As %
     Set tValues("connectionVerified") = $Get(tStored("connectionVerified"))
     Set tValues("enabled") = $Get(tStored("enabled"))
     Do ##class(OcuPilot.Kernel.AgentRules).Normalize(.tValues)
-    Do ##class(OcuPilot.Test.DefinitionsProbe).ConnectionOutcome(pId, .tValues, .tStored, .pAnswer, .pHttpStatus, .pFault)
+    Do ##class(OcuPilot.Test.DefinitionsProbe).ConnectionOutcome(pId, .tValues, .tStored, .pAnswer, .pHttpStatus, .pFault, pBody)
     Quit $$$OK
 }
 
@@ -159,7 +160,7 @@ ClassMethod FlagsOf(pId As %String) As %String
 }
 
 /// <p><b>AC1 and AC2's server half</b> -- a test of the stored values makes exactly one transport
-/// call carrying the test budget, answers the six keys the route publishes, and records
+/// call carrying the test budget, answers the seven keys the route publishes, and records
 /// verification on the row.</p>
 /// <p>Mutation: drop the <code>maxTokens</code> override in
 /// <method>OcuPilot.Api.Definitions.ConnectionOutcome</method> -- the recorded body's
@@ -180,7 +181,8 @@ Method TestATestOfTheStoredValuesAnswersAndRecordsVerification()
     Do $$$AssertTrue('$IsObject(tFault), "and answers no fault")
     Do $$$AssertTrue($IsObject(tAnswer), "with an answer body")
     If '$IsObject(tAnswer) Quit
-    Do $$$AssertEquals(..KeysOf(tAnswer), "connected,reply,replyTruncated,latencyMs,connectionVerified,testedAsStored", "carrying exactly these keys: " _ tAnswer.%ToJSON())
+    Do $$$AssertEquals(..KeysOf(tAnswer), "connected,reply,replyTruncated,latencyMs,connectionVerified,testedAsStored,keySource", "carrying exactly these keys: " _ tAnswer.%ToJSON())
+    Do $$$AssertEquals(tAnswer.keySource, "stored", "and the stored key was the one sent, to the stored endpoint")
     Do $$$AssertEquals(tAnswer.connected, 1, "the provider answered")
     Do $$$AssertEquals(tAnswer.reply, ..#REPLYTEXT, "the reply is returned")
     Do $$$AssertEquals(tAnswer.replyTruncated, 0, "uncut, being inside the bound")
@@ -221,8 +223,10 @@ Method TestATestOfTheStoredValuesAnswersAndRecordsVerification()
 /// verified.</p>
 /// <p>Mutation: compare every field rather than
 /// <method>OcuPilot.Api.Definitions.SecurityFieldNames</method>'s -- the model leg goes red at
-/// <code>testedAsStored</code> 0. Drop the comparison entirely and the endpoint leg goes red, the
-/// row having been written against values it does not hold. Move the comparison below
+/// <code>testedAsStored</code> 0. Drop the comparison entirely and
+/// <class>OcuPilot.Test.ConnectionKey</class>'s marked-local leg goes red at
+/// <code>testedAsStored</code> 1; the endpoint leg here stays green, because a test at another
+/// endpoint carries no stored key and is not as stored on that account alone. Move the comparison below
 /// <method>InvokeDraft</method> in <method>OcuPilot.Api.Definitions.ConnectionOutcome</method> --
 /// the third leg goes red at <code>testedAsStored</code> 0 and flags <code>0|0</code>.</p>
 Method TestOnlyASecurityEditStopsTheRowBeingWritten()
@@ -587,7 +591,7 @@ Method TestTheShippedHandlerAnswersTheSuccessBodyOverTheWire()
     Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
     Do $$$AssertTrue($IsObject(tAnswer), "which parses as JSON")
     If '$IsObject(tAnswer) Quit
-    Do $$$AssertEquals(..KeysOf(tAnswer), "connected,reply,replyTruncated,latencyMs,connectionVerified,testedAsStored", "carrying exactly the route's six keys: " _ tBody)
+    Do $$$AssertEquals(..KeysOf(tAnswer), "connected,reply,replyTruncated,latencyMs,connectionVerified,testedAsStored,keySource", "carrying exactly the route's seven keys: " _ tBody)
     Do $$$AssertEquals(tAnswer.connected, 1, "the provider answered")
     Do $$$AssertEquals(tAnswer.testedAsStored, 1, "the values tested were the stored ones")
     Do $$$AssertEquals(tAnswer.connectionVerified, 1, "so the definition reads back verified")
@@ -622,6 +626,36 @@ Method TestTheShippedHandlerRendersTheProviderTextOverTheWire()
     Do $$$AssertEquals($Select($IsObject(tEnvelope.detail): tEnvelope.detail.providerText, 1: ""), "invalid x-api-key", "carrying the provider's own error.message through the render, not only through the fault: " _ tBody)
     Do $$$AssertEquals(tBody [ ..#RAWMARKER, 0, "and no other member of the raw body, which goes to the log alone")
     Do $$$AssertEquals(..FlagsOf(tId), "0|0", "and no flag changed")
+}
+
+/// <p><b>A body key through the shipped handler</b> -- <method>OcuPilot.Api.Definitions.HandleTest</method>
+/// hands its body to <method>OcuPilot.Api.Definitions.ConnectionOutcome</method>, so a key posted
+/// with the test is the one sent even though the stored reference resolves to nothing, and the
+/// answer says so without recording a verification. Driven through the fixture route
+/// <method>TestTheShippedHandlerAnswersTheSuccessBodyOverTheWire</method> uses.</p>
+/// <p>Mutation: pass <code>""</code> for the body from
+/// <method>OcuPilot.Api.Definitions.HandleTest</method> -- this goes red, the stored reference
+/// resolved instead and the route answering 503 <code>PROVIDER.CREDENTIAL</code>.</p>
+Method TestTheShippedHandlerSendsABodyKeyAndRecordsNoVerification()
+{
+    Set tId = ..HandlerDefinition("HandlerBodyKey")
+    If tId = "" Quit
+    Do ##class(OcuPilot.Test.SecretProbe).SetValue("")
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..#OKBODY)
+    Set tRequest = {}
+    Do tRequest.%Set("apiKey", "sk-ant-" _ ..#PROBEKEY)
+
+    Set tSC = ##class(OcuPilot.Test.Dispatch).Invoke("OcuPilot.Test.RouterFixture", "/agent-definitions/" _ tId _ "/test", "POST", , .tBody, .tStatus, , , tRequest.%ToJSON())
+    Do $$$AssertStatusOK(tSC, "dispatch through the shipped, inherited HandleTest completes")
+    Do $$$AssertEquals(tStatus, 200, "and answers 200, though the stored reference resolves to nothing: " _ tBody)
+    Do $$$AssertEquals(tBody [ ..#PROBEKEY, 0, "and the answer carries no part of the key")
+    If tStatus '= 200 Quit
+    Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tAnswer.keySource, "body", "the body's key was the one sent")
+    Do $$$AssertEquals(tAnswer.%GetTypeOf("testedAsStored"), "boolean", "and whether the stored values were tested is a flag")
+    Do $$$AssertEquals(tAnswer.testedAsStored, 0, "which they were not")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("headerNames"), "x-api-key,anthropic-version", "on a key header")
+    Do $$$AssertEquals(..FlagsOf(tId), "0|0", "and the row is unverified")
 }
 
 /// <p>A body that parsed but is not a JSON object is refused 400 on its own stage, before any

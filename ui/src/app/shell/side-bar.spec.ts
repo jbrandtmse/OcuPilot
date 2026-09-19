@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { NavigationService, screenForRoute, type Verdict } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
 import { PreferenceStore, SIDE_BAR_OPEN_KEY } from '../core/preferences';
+import { PanelState } from '../core/panel-layout';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
 import type { AreaDeclaration, ScreenDeclaration } from '../core/screens.generated';
@@ -95,6 +96,7 @@ describe('the primary side bar', () => {
   let shell: ShellState;
   let overlays: OverlayStack;
   let storage: ReturnType<typeof memoryStorage>;
+  let panel: PanelState;
   const planted: HTMLElement[] = [];
 
   const entries = (): HTMLButtonElement[] =>
@@ -106,6 +108,7 @@ describe('the primary side bar', () => {
     storage = memoryStorage(seed);
     shell = new ShellState({ preferences: new PreferenceStore({ storage }) });
     overlays = new OverlayStack();
+    panel = new PanelState({ preferences: new PreferenceStore({ storage }), shell });
     TestBed.configureTestingModule({
       providers: [
         // The two stub routes the entries navigate to; the real table is built from the
@@ -119,6 +122,7 @@ describe('the primary side bar', () => {
         ]),
         { provide: NavigationService, useValue: navigation as unknown as NavigationService },
         { provide: ShellState, useValue: shell },
+        { provide: PanelState, useValue: panel },
         { provide: OverlayStack, useValue: overlays },
       ],
     });
@@ -294,6 +298,34 @@ describe('the primary side bar', () => {
     expect(storage.map.get(SIDE_BAR_OPEN_KEY)).toBe('true');
   });
 
+  it('Yield order: Ctrl/Cmd+B on a bar stored closed opens it, and at 1,280px it shows over the yield', () => {
+    // Mutation (Rule 19): drop the reopen after `shell.toggleOpen()` in `toggleFromKeyboard` -> the
+    // bar opens by preference but stays yielded, and the `nav` assertion goes red.
+    build({ [SIDE_BAR_OPEN_KEY]: 'false' });
+    shell.setActiveArea('permissions');
+    panel.setViewport(1280);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('nav')).toBeNull();
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', ctrlKey: true, bubbles: true }));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('nav')).not.toBeNull();
+    expect(panel.sideBarReopened()).toBe(true);
+  });
+
+  it('full screen: the chord is ignored, so the covered bar neither toggles nor writes the preference', () => {
+    // Mutation (Rule 19): drop the `fullScreen()` return from `onGlobalKeydown` -> the bar closes
+    // and "false" is stored, and both assertions go red.
+    shell.activateArea('permissions', false);
+    fixture.detectChanges();
+    panel.toggleFullScreen();
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', ctrlKey: true, bubbles: true }));
+    fixture.detectChanges();
+    expect(shell.open()).toBe(true);
+    expect(storage.map.get(SIDE_BAR_OPEN_KEY)).toBe('true');
+  });
+
   it('the remembered state survives a reload', () => {
     build({ [SIDE_BAR_OPEN_KEY]: 'false' });
     shell.setActiveArea('permissions');
@@ -320,6 +352,29 @@ describe('the primary side bar', () => {
     fixture.detectChanges();
     expect(document.activeElement).toBe(railItem);
     expect(shell.open()).toBe(false);
+  });
+
+  it('Yield order: a width that yields the bar moves focus inside it to that area rail item first', () => {
+    // Mutation (Rule 19): drop the `yieldFocusToRail()` call from the `PanelState` subscription ->
+    // focus stays on the removed entry and this goes red.
+    const railItem = document.createElement('button');
+    railItem.id = railItemDomId('permissions');
+    document.body.appendChild(railItem);
+    planted.push(railItem);
+
+    panel.setViewport(1920);
+    shell.activateArea('permissions', false);
+    fixture.detectChanges();
+    document.body.appendChild(fixture.nativeElement);
+    planted.push(fixture.nativeElement);
+    entries()[0].focus();
+    expect(fixture.nativeElement.contains(document.activeElement)).toBe(true);
+
+    panel.setViewport(1280);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('nav')).toBeNull();
+    expect(document.activeElement).toBe(railItem);
+    expect(shell.open()).toBe(true);
   });
 
   it('DW-134: Ctrl+Shift+B is a different chord and changes nothing', () => {

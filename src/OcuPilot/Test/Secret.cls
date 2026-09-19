@@ -136,8 +136,9 @@ Method TestTheRungPredicateReadsTheClassItNames()
     Do $$$AssertEquals(##class(OcuPilot.Test.SecretNotInterop).CredentialsRungAvailable(), 0, "a namespace that is not interoperability-enabled reports its rung unavailable, whatever the credential class says")
     Do $$$AssertEquals(##class(%Dictionary.CompiledClass).%ExistsId(##class(OcuPilot.Test.SecretNotInterop).#CREDSCLASS), 1, "and it says the class is there, so the 0 above came from the namespace condition and not from the first one")
     Do $$$AssertEquals(##class(OcuPilot.Test.SecretNotInterop).Resolve("creds", "", ..#PROBECREDENTIAL, .tNotInterop), "", "a creds resolution through it answers nothing")
-    Do $$$AssertEquals(+$Get(tNotInterop), 0, "reported as an absence: an unreachable rung is not a store that failed")
-    Do $$$AssertStatusOK(##class(OcuPilot.Test.SecretNotInterop).Clear(..#PROBECREDENTIAL), "and the delete path answers OK without touching the store, because there is nothing it may remove from here")
+    Do $$$AssertEquals(+$Get(tNotInterop), 1, "reported as transient: an unreachable rung says nothing about whether the entry exists")
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.SecretNotInterop).Clear(..#PROBECREDENTIAL, .tClearOutcome), "and the delete path answers OK without touching the store, because there is nothing it may remove from here")
+    Do $$$AssertEquals($Get(tClearOutcome), "unreachable", "reporting the rung unreachable rather than the entry absent")
 
     Do $$$AssertEquals(##class(OcuPilot.Test.SecretAbsentRung).CredentialsRungAvailable(), 0, "a ladder naming a class this instance does not compile reports its rung unavailable")
     Do $$$AssertEquals(##class(OcuPilot.Test.SecretAbsentRung).Resolve("creds", "", ..#PROBECREDENTIAL), "", "and a creds resolution through it answers nothing rather than raising")
@@ -151,15 +152,17 @@ Method TestTheRungPredicateReadsTheClassItNames()
 }
 
 /// <p><b>DW-343 -- a <code>""</code> from the store says whether it was an absence or a
-/// failure.</b> The value answer is unchanged, and carries no text either way; what the
-/// <code>Output</code> flag buys is that <class>OcuPilot.Port.ProviderPort</class> can stop
-/// disabling a correctly-configured definition because the store was unreadable for a moment.</p>
-/// <p><b>The absent legs are measured on this instance; the transient leg is driven through
-/// <class>OcuPilot.Test.SecretProbe</class>'s rung predicate armed to raise</b>, which is the one
-/// failure of the store a test can produce without breaking the store.</p>
-/// <p>Mutation: make <method>OcuPilot.Kernel.Secret.Ladder.Credential</method> leave
-/// <var>pTransient</var> 0 on its <code>Catch</code> -- the transient leg goes red, and with it the
-/// definition-stays-enabled assertion in <class>OcuPilot.Test.ProviderPort</class>.</p>
+/// store that could not be read.</b> The value answer is unchanged, and carries no text either
+/// way; what the <code>Output</code> flag buys is that <class>OcuPilot.Port.ProviderPort</class>
+/// does not disable a correctly-configured definition because the store was unreadable.</p>
+/// <p><b>The absent legs are measured on this instance.</b> The unread legs are three ladders that
+/// differ from the shipped one only in where the read fails: a credential class this instance does
+/// not compile (<class>OcuPilot.Test.SecretAbsentRung</class>), a predicate that raises inside its
+/// own <code>Try</code> (<class>OcuPilot.Test.SecretRaisingRung</class>), and
+/// <class>OcuPilot.Test.SecretProbe</class>'s predicate armed to raise outside it.</p>
+/// <p>Mutation: make <method>OcuPilot.Kernel.Secret.Ladder.Credential</method>'s unreachable-rung
+/// arm leave <var>pTransient</var> 0 -- the two rung legs go red. Leave it 0 on the
+/// <code>Catch</code> instead -- the probe leg goes red.</p>
 Method TestAnAbsentReferenceAndAnUnreadableStoreAreToldApart()
 {
     Do ##class(OcuPilot.Test.SecretProbe).Forget()
@@ -169,8 +172,12 @@ Method TestAnAbsentReferenceAndAnUnreadableStoreAreToldApart()
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Secret.Ladder).Resolve("creds", "", "", .tUnnamed), "", "a definition naming no entry resolves to nothing")
     Do $$$AssertEquals(+$Get(tUnnamed), 0, "and that is an absence too")
 
+    Do $$$AssertEquals(##class(OcuPilot.Test.SecretRaisingRung).CredentialsRungAvailable(), 0, "a rung predicate that raised inside its own Try answers 0 rather than raising")
+    Do $$$AssertEquals(##class(OcuPilot.Test.SecretRaisingRung).Resolve("creds", "", ..#ABSENTCREDENTIAL, .tRaised), "", "and a creds resolution through it resolves to nothing")
+    Do $$$AssertEquals(+$Get(tRaised), 1, "reported as transient: a check that failed is not an entry that is absent")
+
     Do $$$AssertEquals(##class(OcuPilot.Test.SecretAbsentRung).Resolve("creds", "", ..#ABSENTCREDENTIAL, .tNoRung), "", "a rung this namespace cannot reach resolves to nothing")
-    Do $$$AssertEquals(+$Get(tNoRung), 0, "and an unreachable rung is an absence: there is no store to have failed")
+    Do $$$AssertEquals(+$Get(tNoRung), 1, "and an unreachable rung is transient: the store was not read, so nothing was learned about the entry")
 
     Do ##class(OcuPilot.Test.SecretProbe).SetRungAvailable("raise")
     Do $$$AssertEquals(##class(OcuPilot.Test.SecretProbe).Resolve("creds", "", ..#ABSENTCREDENTIAL, .tTransient), "", "a store that raises resolves to nothing as well")
@@ -214,16 +221,52 @@ Method TestTheCredentialsRungRoundTrips()
     Do $$$AssertTrue(tHeld, "and the ladder answers what was stored")
     Set tLegs = tLegs + tHeld
 
-    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Secret.Ladder).Store(..#PROBECREDENTIAL, ##class(OcuPilot.Test.CredentialFixture).Payload(..#SECONDKEY), "apiKey"), "a second store over the same reference is accepted")
-    Set tHeld = (##class(OcuPilot.Kernel.Secret.Ladder).Resolve("creds", "", ..#PROBECREDENTIAL) = ..#SECONDKEY)
-    Do $$$AssertTrue(tHeld, "and replaces the value rather than adding an entry")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Secret.Ladder).Store(..#PROBECREDENTIAL, ##class(OcuPilot.Test.CredentialFixture).Payload(..#SECONDKEY), "apiKey", .tCreated, 1), "a second store over the same reference, declaring it may overwrite, is accepted")
+    Set tHeld = (##class(OcuPilot.Kernel.Secret.Ladder).Resolve("creds", "", ..#PROBECREDENTIAL) = ..#SECONDKEY) && (+$Get(tCreated) = 0)
+    Do $$$AssertTrue(tHeld, "and replaces the value rather than adding an entry, reporting that it created nothing")
     Set tLegs = tLegs + tHeld
 
     Set tHeld = (##class(OcuPilot.Kernel.Secret.Ladder).Resolve("env", ..#PROBEVARIABLE, ..#PROBECREDENTIAL) = "")
     Do $$$AssertTrue(tHeld, "an env definition does not fall back to the credentials entry its sibling field names")
     Set tLegs = tLegs + tHeld
 
-    Do $$$AssertEquals(tLegs, 4, "every round-trip leg ran and held, so the assertions above were made about a reachable store")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Secret.Ladder).Clear(..#PROBECREDENTIAL, .tOutcome), "the entry is removed")
+    Set tHeld = ($Get(tOutcome) = "removed") && '##class(OcuPilot.Test.CredentialFixture).Exists(..#PROBECREDENTIAL)
+    Do $$$AssertTrue(tHeld, "and the delete reports it removed an entry that is now gone: " _ $Get(tOutcome))
+    Set tLegs = tLegs + tHeld
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Secret.Ladder).Clear(..#PROBECREDENTIAL, .tAgain), "a second delete of the same reference answers OK")
+    Set tHeld = ($Get(tAgain) = "absent")
+    Do $$$AssertTrue(tHeld, "reporting the entry absent, since there was nothing left to remove: " _ $Get(tAgain))
+    Set tLegs = tLegs + tHeld
+
+    Do $$$AssertEquals(tLegs, 6, "every round-trip leg ran and held, so the assertions above were made about a reachable store")
+}
+
+/// <p><b>AD-37 -- a store over an entry that already exists writes nothing unless the caller says it
+/// may overwrite.</b> The refusal is the store's own, so no caller can reach an operator's entry
+/// by forgetting to ask; it names the reference, never the value, and reports the decline so the
+/// handler can refuse by name.</p>
+/// <p>Mutation: open the existing entry whatever <var>pMayOverwrite</var> says in
+/// <method>OcuPilot.Kernel.Secret.Ladder.Store</method> -- the value assertion goes red, reading
+/// the second key.</p>
+Method TestAStoreDeclinesAnExistingEntryItMayNotOverwrite()
+{
+    Set tAvailable = ##class(OcuPilot.Kernel.Secret.Ladder).CredentialsRungAvailable()
+    Do $$$AssertTrue(tAvailable, "the credentials rung is reachable from " _ $Namespace _ ", so the store below is the real one")
+    If 'tAvailable Quit
+    Do ##class(OcuPilot.Test.CredentialFixture).Remove(..#PROBECREDENTIAL)
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Secret.Ladder).Store(..#PROBECREDENTIAL, ##class(OcuPilot.Test.CredentialFixture).Payload(..#PROBEKEY), "apiKey", .tCreated, 0, .tFirstDeclined), "a store under an unused reference creates the entry without being allowed to overwrite")
+    Do $$$AssertEquals(+$Get(tCreated), 1, "and reports that it created it")
+    Do $$$AssertEquals(+$Get(tFirstDeclined), 0, "and declined nothing")
+
+    Set tSC = ##class(OcuPilot.Kernel.Secret.Ladder).Store(..#PROBECREDENTIAL, ##class(OcuPilot.Test.CredentialFixture).Payload(..#SECONDKEY), "apiKey", .tCreatedAgain, 0, .tDeclined)
+    Do $$$AssertStatusNotOK(tSC, "a second store that may not overwrite is refused")
+    Do $$$AssertEquals(+$Get(tDeclined), 1, "reporting the decline")
+    Do $$$AssertEquals(+$Get(tCreatedAgain), 0, "and no creation")
+    Set tText = $System.Status.GetErrorText(tSC)
+    Do $$$AssertTrue(tText [ ..#PROBECREDENTIAL, "naming the reference: " _ tText)
+    Do $$$AssertEquals(tText [ ..#SECONDKEY, 0, "and never the value")
+    Do $$$AssertTrue(##class(OcuPilot.Kernel.Secret.Ladder).Resolve("creds", "", ..#PROBECREDENTIAL) = ..#PROBEKEY, "and the entry still holds the first key: nothing was written")
 }
 
 /// <p>The fixture's copy of the request body's one member name is the production parameter's, held

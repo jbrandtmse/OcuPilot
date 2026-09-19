@@ -1,7 +1,11 @@
 import {
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   Component,
   DestroyRef,
+  ElementRef,
+  Injector,
+  afterNextRender,
   computed,
   inject,
   signal,
@@ -102,31 +106,59 @@ const UNGATED_SEGMENT = {
       @if (segment.separated) {
         <span class="ocu-locator-separator" aria-hidden="true">{{ separatorGlyph }}</span>
       }
-      @if (segment.navigates) {
-        <span class="ocu-locator-link-slot">
-          <button
-            type="button"
-            class="ocu-locator-link"
-            [attr.aria-disabled]="segment.ariaDisabled"
-            [attr.aria-describedby]="segment.describedBy"
-            (click)="open(segment)"
-          >
-            {{ segment.label }}
-          </button>
-          @if (segment.gated) {
-            <span class="ocu-locator-reason" role="tooltip" [id]="segment.reasonId">{{
-              segment.reason
-            }}</span>
-          }
-        </span>
-      } @else {
-        <span
-          class="ocu-locator-segment"
-          [class.ocu-locator-current]="segment.ariaCurrent"
-          [class.ocu-locator-entity]="segment.entity"
-          [attr.aria-current]="segment.ariaCurrent"
-          >{{ segment.label }}</span
+      @if (segment.key === 'screen') {
+        <h2
+          id="ocu-locator-screen"
+          class="ocu-locator-heading"
+          tabindex="-1"
+          [attr.aria-label]="screenHeadingLabel"
         >
+          @if (segment.navigates) {
+            <button
+              type="button"
+              class="ocu-locator-link"
+              [attr.aria-disabled]="segment.ariaDisabled"
+              [attr.aria-describedby]="segment.describedBy"
+              (click)="open(segment)"
+            >
+              {{ segment.label }}
+            </button>
+          } @else {
+            <span
+              class="ocu-locator-segment ocu-locator-current"
+              [class.ocu-locator-entity]="segment.entity"
+              [attr.aria-current]="segment.ariaCurrent"
+              >{{ segment.label }}</span
+            >
+          }
+        </h2>
+      } @else {
+        @if (segment.navigates) {
+          <span class="ocu-locator-link-slot">
+            <button
+              type="button"
+              class="ocu-locator-link"
+              [attr.aria-disabled]="segment.ariaDisabled"
+              [attr.aria-describedby]="segment.describedBy"
+              (click)="open(segment)"
+            >
+              {{ segment.label }}
+            </button>
+            @if (segment.gated) {
+              <span class="ocu-locator-reason" role="tooltip" [id]="segment.reasonId">{{
+                segment.reason
+              }}</span>
+            }
+          </span>
+        } @else {
+          <span
+            class="ocu-locator-segment"
+            [class.ocu-locator-current]="segment.ariaCurrent"
+            [class.ocu-locator-entity]="segment.entity"
+            [attr.aria-current]="segment.ariaCurrent"
+            >{{ segment.label }}</span
+          >
+        }
       }
     }
   </nav>`,
@@ -135,6 +167,15 @@ export class LocatorBar {
   private readonly navigation = inject(NavigationService);
   private readonly router = inject(Router);
   private readonly shell = inject(ShellState);
+  private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
+  private readonly injector = inject(Injector);
+  private readonly changeDetector = inject(ChangeDetectorRef);
+
+  /** The arrival token last focused (Story 4.7, AC5), so a re-render for an unrelated reason --
+   * a navigation-map verdict changing, a router event on the same route -- does not steal focus
+   * again. `ShellState.arrivalToken` changes on every fresh arrival even when the announcement
+   * text repeats, which a text comparison here could not tell apart from "already focused". */
+  private lastFocusedToken: number | null = null;
   private readonly stores = inject(ScreenStores);
 
   protected readonly landmark = STRINGS.navLocatorLandmark;
@@ -282,17 +323,30 @@ export class LocatorBar {
       syncStoreSubscription();
     });
     const stopNavigation = this.navigation.subscribe(() => this.bump());
+    const stopShell = this.shell.subscribe(() => this.bump());
     syncStoreSubscription();
 
     inject(DestroyRef).onDestroy(() => {
       stopRouter.unsubscribe();
       stopNavigation();
+      stopShell();
       stopStore?.();
     });
   }
 
   protected get segments(): readonly LocatorSegment[] {
     return this.resolved();
+  }
+
+  /**
+   * The screen heading's `aria-label` (Story 4.7, AC5): the standing arrival announcement for
+   * the screen currently on display, or `null` when none is standing -- an ordinary,
+   * user-initiated arrival names no `aria-label` at all, so the heading's accessible name falls
+   * back to its own text content.
+   */
+  protected get screenHeadingLabel(): string | null {
+    const screen = this.screen();
+    return screen === null ? null : this.shell.arrivalAnnouncement(screen.route);
   }
 
   /**
@@ -337,5 +391,25 @@ export class LocatorBar {
 
   private bump(): void {
     this.generation.set(this.generation() + 1);
+    this.changeDetector.markForCheck();
+    this.syncHeadingFocus();
+  }
+
+  /**
+   * Focus `#ocu-locator-screen` once per fresh arrival (Story 4.7, AC5), and never for any other
+   * reason a re-render fires this component -- a navigation-map verdict changing, a router event
+   * that leaves the screen and its arrival token unchanged. Deferred with `afterNextRender`
+   * (`app.ts`'s own convention for the same problem): the token just changed in the same tick
+   * that the heading's new `aria-label` did, before Angular has painted it.
+   */
+  private syncHeadingFocus(): void {
+    const screen = this.screen();
+    const token = screen === null ? null : this.shell.arrivalToken(screen.route);
+    if (token === null || token === this.lastFocusedToken) return;
+    this.lastFocusedToken = token;
+    afterNextRender(
+      () => this.host.nativeElement.querySelector<HTMLElement>('#ocu-locator-screen')?.focus(),
+      { injector: this.injector }
+    );
   }
 }

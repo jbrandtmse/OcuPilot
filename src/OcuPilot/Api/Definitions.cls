@@ -10,9 +10,10 @@
 /// default -- which is what the switcher needs and what every portal user may see (AD-46).</p>
 /// <p><b>No response here ever carries a credential value</b> (AD-35). The full projection
 /// carries the credential's <i>type</i> and its <i>name</i>, which is what the schema stores;
-/// there is no property, no argument and no key that could carry the secret. The one route that
-/// takes a key -- <method>HandleStoreCredential</method> -- is write-only and answers
-/// <code>{"stored":true}</code>, so there is no read to pre-fill a field from.</p>
+/// there is no property, no argument and no key that could carry the secret. The route that
+/// stores a key -- <method>HandleStoreCredential</method> -- is write-only and answers
+/// <code>{"stored":true}</code>, so there is no read to pre-fill a field from; Test connection may
+/// be handed a key of its own to send, and neither stores nor returns it.</p>
 /// <p><b>A create takes the class's own defaults, and then the provider row's canonical values
 /// for the four columns the catalog declares them for</b> -- model, endpoint, maximum tokens and
 /// temperature -- but only for keys the body did not carry. A key sent as <code>""</code> is an
@@ -49,6 +50,27 @@ Parameter CREDENTIALVERB = "credential";
 /// <p>The verb a Test connection's change record carries. It records the verification flag being
 /// set and nothing else; no part of the provider's reply enters it (AD-11).</p>
 Parameter TESTVERB = "test";
+
+/// <p>The verb moving the default marker records under, and one <method>ClassifyChange</method>
+/// classifies as a security change on its own account.</p>
+Parameter DEFAULTVERB = "default";
+
+/// <p>The resource the vendor's credential store checks before it writes a secret
+/// (<code>%SYS.Ensemble.SecondarySet</code>), and the permission it checks it at. Install never
+/// grants it (AD-42), so <method>CredentialRefusal</method> refuses by name without it.</p>
+Parameter CREDENTIALSRESOURCE = "%Ens_Credentials";
+
+/// <p>See <parameter>CREDENTIALSRESOURCE</parameter>.</p>
+Parameter CREDENTIALSPERMISSION = "WRITE";
+
+/// <p><method>ClearOwnedCredential</method>'s outcome: a surviving definition still names the
+/// entry, so it stays. The other outcomes are
+/// <class>OcuPilot.Kernel.Secret.Ladder</class>'s <code>CLEAR*</code> words.</p>
+Parameter ENTRYKEPT = "kept";
+
+/// <p><method>ClearOwnedCredential</method>'s outcome: OcuPilot did not create the entry, so it is
+/// not OcuPilot's to remove.</p>
+Parameter ENTRYNOTOWNED = "notOwned";
 
 /// <p>The port <method>HandleTest</method> makes its one provider call through.</p>
 Parameter PORTCLASS = "OcuPilot.Port.ProviderPort";
@@ -389,10 +411,11 @@ ClassMethod HandleUpdate(pId As %String) As %Status
         ; exactly the terms a delete removes one (AD-37): only where OcuPilot created it, and only
         ; where no surviving definition -- this one included, which is why it is compared against
         ; the value now stored -- still names it.
+        Set tEntry = ""
         If $Get(tAfter("credentialName")) '= tPriorCredential {
-            Do ..ClearOwnedCredential(tPriorCredential, pId, tPriorOwned)
+            Set tEntry = ..ClearOwnedCredential(tPriorCredential, pId, tPriorOwned)
         }
-        Do ..LogChange("update", pId, .tBefore, .tAfter)
+        Do ..LogChange("update", pId, .tBefore, .tAfter, "", ..EntryEffects(tEntry))
         Set tSC = ##class(OcuPilot.Api.Response).JSON(..FullProjection(tRow))
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
@@ -433,9 +456,9 @@ ClassMethod HandleDelete(pId As %String) As %Status
         ; After the row is gone, so the sibling query sees the set that survives. A stored key does
         ; not outlive the definition that named it, and a key OcuPilot did not store is not
         ; OcuPilot's to remove (AD-37).
-        Do ..ClearOwnedCredential($Get(tBefore("credentialName")), pId, tOwned)
+        Set tEntry = ..ClearOwnedCredential($Get(tBefore("credentialName")), pId, tOwned)
         Kill tAfter
-        Do ..LogChange("delete", pId, .tBefore, .tAfter)
+        Do ..LogChange("delete", pId, .tBefore, .tAfter, "", ..EntryEffects(tEntry))
         Set tBody = {}
         Do tBody.%Set("id", pId, "string")
         Do tBody.%Set("deleted", 1, "boolean")
@@ -485,7 +508,7 @@ ClassMethod HandleSetDefault(pId As %String) As %Status
             Quit
         }
         Do ..ValuesFromRow(tRow, .tAfter)
-        Do ..LogChange("default", pId, .tBefore, .tAfter)
+        Do ..LogChange(..#DEFAULTVERB, pId, .tBefore, .tAfter)
         Set tSC = ##class(OcuPilot.Api.Response).JSON(..FullProjection(tRow))
     } Catch ex {
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
@@ -502,12 +525,18 @@ ClassMethod HandleSetDefault(pId As %String) As %Status
 /// the one the route named (DW-353): the rule is that a definition verified against the key that
 /// was there before must pass Test connection again, and a sibling sharing the reference was
 /// verified against that same key.</p>
-/// <p><b>It records who owns the entry.</b> Where the store reports that it created the entry
-/// rather than overwriting one, <property>CredentialCreated</property> is set, which is what later
-/// licenses the delete path to remove it (AD-37).</p>
-/// <p>The four refusals are evaluated in the order
-/// <method>CredentialRefusal</method> declares, each a <code>{field, code, reason}</code> violation
-/// on <parameter>KEYFIELD</parameter> in the envelope Story 3.1 established. Nothing is written by
+/// <p><b>It records who owns the entry, and overwrites only an entry OcuPilot owns</b> (AD-37).
+/// Where the store reports that it created the entry, <property>CredentialCreated</property> is
+/// set, which later licenses the delete path to remove it. An entry that already exists is
+/// overwritten only when some definition naming it exactly carries that mark; otherwise the store
+/// declines and the request is refused <code>AGENT.CREDENTIAL.NOTOWNED</code>, with the entry, the
+/// flags and the siblings untouched.</p>
+/// <p><b>Its change record names the siblings it disabled</b>, as
+/// <code>effects.disabledSiblings</code> -- the ids whose clear succeeded -- so the sweep is not a
+/// change the record leaves out.</p>
+/// <p>The five refusals <method>CredentialRefusal</method> declares are evaluated in its order,
+/// then the store's own, each a <code>{field, code, reason}</code> violation on
+/// <parameter>KEYFIELD</parameter> in the envelope Story 3.1 established. Nothing is written by
 /// the time any of them answers.</p>
 ClassMethod HandleStoreCredential(pId As %String) As %Status
 {
@@ -535,9 +564,9 @@ ClassMethod HandleStoreCredential(pId As %String) As %Status
             Set tSC = ..RenderBadBody(..NotAnObject())
             Quit
         }
-        Set tCode = ..CredentialRefusal(tRow, tBody)
+        Set tCode = ..CredentialRefusal(tRow, tBody, .tFailedPair)
         If tCode '= "" {
-            Set tSC = ..RenderCredentialRefusal(tCode, $Select(tCode = ##class(OcuPilot.Api.Error).#AGENTKEYSHAPE: ..KeyPrefixOf(tRow.Provider), 1: ""))
+            Set tSC = ..RenderCredentialRefusal(tCode, $Select(tCode = ##class(OcuPilot.Api.Error).#AGENTKEYSHAPE: ..KeyPrefixOf(tRow.Provider), 1: ""), tFailedPair)
             Quit
         }
         Set tCredentialName = tRow.CredentialName
@@ -546,7 +575,16 @@ ClassMethod HandleStoreCredential(pId As %String) As %Status
         ; record diffs is the stored truth rather than whichever in-memory instance %OpenId handed
         ; back (.claude/rules/objectscript-basics.md).
         Set tRow = ""
-        Set tStoreSC = $ClassMethod(..SecretClass(), "Store", tCredentialName, tBody, ..#KEYFIELD, .tCreated)
+        Set tOwnedSC = ##class(OcuPilot.Kernel.State.Agent).GuardedCredentialOwned(tCredentialName, .tOwned)
+        If $$$ISERR(tOwnedSC) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tOwnedSC))
+            Quit
+        }
+        Set tStoreSC = $ClassMethod(..SecretClass(), "Store", tCredentialName, tBody, ..#KEYFIELD, .tCreated, tOwned, .tDeclined)
+        If +$Get(tDeclined) {
+            Set tSC = ..RenderCredentialRefusal(##class(OcuPilot.Api.Error).#AGENTCREDENTIALNOTOWNED)
+            Quit
+        }
         If $$$ISERR(tStoreSC) {
             Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("The credential could not be stored", ##class(%Exception.StatusException).CreateFromStatus(tStoreSC))
             Quit
@@ -575,17 +613,29 @@ ClassMethod HandleStoreCredential(pId As %String) As %Status
         Set tClearSC = ##class(OcuPilot.Kernel.State.Agent).GuardedClearVerification(pId)
         Set tSiblingSC = ##class(OcuPilot.Kernel.State.Agent).GuardedIdsByCredentialName(tCredentialName, pId, .tSiblings)
         Set tSiblingFailure = ""
+        Set tDisabled = []
         If $$$ISOK(tSiblingSC) {
             For tI = 1:1:+$Get(tSiblings) {
                 Set tOneSC = ##class(OcuPilot.Kernel.State.Agent).GuardedClearVerification(tSiblings(tI))
-                If $$$ISERR(tOneSC) Set tSiblingFailure = tOneSC
+                If $$$ISERR(tOneSC) {
+                    Set tSiblingFailure = tOneSC
+                    Continue
+                }
+                Do tDisabled.%Push(tSiblings(tI), "string")
             }
+        }
+        ; Only the clears that happened are named: a sibling whose clear failed was not disabled,
+        ; and the refusal below says so instead.
+        Set tEffects = ""
+        If tDisabled.%Size() > 0 {
+            Set tEffects = {}
+            Do tEffects.%Set("disabledSiblings", tDisabled)
         }
         If $$$ISERR(tClearSC) {
             ; The key is already behind the reference, so this is not "nothing was saved": the
             ; definition is still enabled against the key it replaced, and the reason says so
             ; rather than reading as a write that did not happen.
-            Do ..LogChange(..#CREDENTIALVERB, pId, .tBefore, .tBefore)
+            Do ..LogChange(..#CREDENTIALVERB, pId, .tBefore, .tBefore, "", tEffects)
             Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("The key was stored, and the agent definition could not be disabled; run Test connection against it", ##class(%Exception.StatusException).CreateFromStatus(tClearSC))
             Quit
         }
@@ -606,14 +656,12 @@ ClassMethod HandleStoreCredential(pId As %String) As %Status
         Set tAfterRow = ""
         ; No value and no key-bearing field: the change set is built from the definition's own
         ; projection, which has nowhere to put a secret (AD-35).
-        Do ..LogChange(..#CREDENTIALVERB, pId, .tBefore, .tAfter)
+        Do ..LogChange(..#CREDENTIALVERB, pId, .tBefore, .tAfter, "", tEffects)
         If $$$ISERR(tSiblingSC) {
             Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("The key was stored, and the agent definitions sharing its reference could not be read; run Test connection against them", ##class(%Exception.StatusException).CreateFromStatus(tSiblingSC))
             Quit
         }
         If tSiblingFailure '= "" {
-            ; The siblings this sweep did clear are still unrecorded -- DW-411's open half, which
-            ; this ordering does not settle.
             Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("The key was stored, and an agent definition sharing its reference could not be disabled; run Test connection against them", ##class(%Exception.StatusException).CreateFromStatus(tSiblingFailure))
             Quit
         }
@@ -637,9 +685,11 @@ ClassMethod HandleStoreCredential(pId As %String) As %Status
 /// the path a turn takes, with the same TLS configuration, the same address judgement and the
 /// adapter the catalog row names -- differing only in its budget: one short prompt, thirty-two
 /// tokens, and a single attempt, because an operator is holding focus on a button while it runs.</p>
-/// <p><b>No key is in the body and none is an argument anywhere here.</b> The credential is
-/// resolved straight onto the adapter's own property, and a definition's key is stored through
-/// <method>HandleStoreCredential</method> before it is tested (AD-35, AD-48).</p>
+/// <p><b>The stored key goes only to the stored endpoint</b> (AD-42). A body may name another
+/// endpoint, and may carry an <code>apiKey</code> of its own; which key the call carries is
+/// <method>ConnectionOutcome</method>'s decision, and the answer says which. No key is ever bound
+/// to a local here: a stored one is resolved straight onto the adapter's own property, and a body's
+/// moves from its member to that property (AD-35, AD-48).</p>
 /// <p><b>Two fields are taken from the row whatever the body says</b>:
 /// <code>connectionVerified</code>, which this route alone writes, and <code>enabled</code>, which
 /// it never writes at all.</p>
@@ -689,7 +739,7 @@ ClassMethod HandleTest(pId As %String) As %Status
             Set tSC = ..RenderViolations(.tViolations)
             Quit
         }
-        Do ..ConnectionOutcome(pId, .tValues, .tStored, .tAnswer, .tHttpStatus, .tFault)
+        Do ..ConnectionOutcome(pId, .tValues, .tStored, .tAnswer, .tHttpStatus, .tFault, tBody)
         If $IsObject(tFault) {
             Set tSC = ##class(OcuPilot.Api.Error).Render(tHttpStatus, tFault.error, tFault.reason, tFault.code, tFault.detail)
             Quit
@@ -707,32 +757,37 @@ ClassMethod HandleTest(pId As %String) As %Status
 
 /// <p>Make the one provider call <method>HandleTest</method> answers from, against
 /// <var>pValues</var> -- already merged, normalized and validated -- and record verification on
-/// definition <var>pId</var> when every security field of those values still matches
-/// <var>pStored</var>.</p>
+/// definition <var>pId</var> when the values tested were the stored ones.</p>
 /// <p><b>Exactly one of <var>pAnswer</var> and <var>pFault</var> comes back set.</b> Its own
 /// method rather than inline in the handler so the provider legs can be driven in process, where
 /// there is no response device to render to.</p>
+/// <p><b>Which key the call carries</b> is <method>KeySourceFor</method>'s answer from
+/// <var>pBody</var>: the body's own <code>apiKey</code>, otherwise the stored credential only when
+/// the call goes to the stored effective endpoint under the stored credential reference, otherwise
+/// none (AD-42). It is on the answer as
+/// <code>keySource</code>, and on the call fault's <code>detail</code> beside
+/// <code>testedAsStored</code>. A test is <b>as stored</b> only when every security field matches
+/// the row and the key is the stored one, so a body key is never recorded as a verification.</p>
 /// <p><b>The provider's reply is bounded here</b>, at <parameter>TESTREPLYMAX</parameter>, and
 /// never enters the change record: it is model output (AD-11) and a change record is read on
 /// OcuPilot's own log screens.</p>
-/// <p><b>A test that answered is always recorded</b>, whether or not it wrote the row. A test of
-/// the stored values records the verification flag; a test of values the row does not hold records
-/// what was tested against what is stored, as a security change (AD-42). The one exception is a
-/// row that moved during the call: that refuses <code>STATE.CONFLICT</code> and records nothing,
-/// because there is no transition to record.</p>
-/// <p><b>A call that faulted records nothing</b>, and that is a residual gap rather than a rule:
-/// the fault return predates this method's change and sits above both record sites, so a test
-/// against values the row does not hold that failed leaves no row even though the call had already
-/// left the instance for the address it named. Tracked as DW-397; do not read the exception as
-/// "nothing happened".</p>
-ClassMethod ConnectionOutcome(pId As %String, ByRef pValues, ByRef pStored, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject)
+/// <p><b>What is recorded.</b> A test of the stored values that answered records the verification
+/// flag. A test of anything else that reached the port is recorded as a security change whether it
+/// answered or faulted (AD-42), carrying <code>effects.keySource</code> and, when it faulted,
+/// <code>effects.faultCode</code>: a port fault is recorded whether it came before the call or from
+/// it, and <code>faultCode</code> says which. An as-stored test that faulted records nothing, and
+/// neither does a row whose version could not be read, which answers 500 before the port is
+/// asked, or a row that moved during the call, which refuses <code>STATE.CONFLICT</code> because
+/// there is no transition to record.</p>
+ClassMethod ConnectionOutcome(pId As %String, ByRef pValues, ByRef pStored, Output pAnswer As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pBody As %DynamicObject = "")
 {
     Set pAnswer = ""
     Set pHttpStatus = 0
     Set pFault = ""
     ; Judged before the call, because InvokeDraft adds to the array in place: an endpoint the
     ; definition left empty comes back filled in from the catalog row, which would read as an edit.
-    Set tTestedAsStored = ..MatchesStoredSecurityFields(.pValues, .pStored)
+    Set tKeySource = ..KeySourceFor(.pValues, .pStored, pBody)
+    Set tTestedAsStored = ..MatchesStoredSecurityFields(.pValues, .pStored) && (tKeySource = ##class(OcuPilot.Kernel.Provider.Base).#KEYSOURCESTORED)
     ; Taken here for the same reason: the change record a test against unstored values produces
     ; diffs the stored row against the values the caller asked for, not against the budget imposed
     ; below or the endpoint the port fills in.
@@ -754,13 +809,29 @@ ClassMethod ConnectionOutcome(pId As %String, ByRef pValues, ByRef pStored, Outp
     }
     Set pValues("maxTokens") = ..#TESTMAXTOKENS
     Set pValues("maxAttempts") = 1
+    Set pValues("keySource") = tKeySource
+    If tKeySource = ##class(OcuPilot.Kernel.Provider.Base).#KEYSOURCEBODY {
+        ; The body object, not its member: the adapter moves the member onto its own property.
+        Set pValues("keyBody") = pBody
+        Set pValues("keyField") = ..#KEYFIELD
+    }
     Kill tMessages, tTools
     Set tMessages = 1
     Set tMessages(1, "role") = "user"
     Set tMessages(1, "content") = ..#TESTPROMPT
     ; No tools and no system prompt: this asks whether the endpoint answers, not what it can do.
     Do $ClassMethod(..PortClass(), "InvokeDraft", .pValues, .tMessages, .tTools, "", .tResponse, .pHttpStatus, .pFault)
-    If $IsObject(pFault) Quit
+    Kill pValues("keyBody")
+    If $IsObject(pFault) {
+        Do ..AnnotateCallFault(pFault, tKeySource, tTestedAsStored)
+        If 'tTestedAsStored {
+            Set tEffects = {}
+            Do tEffects.%Set("keySource", tKeySource, "string")
+            Do tEffects.%Set("faultCode", pFault.code, "string")
+            Do ..LogChange(..#TESTVERB, pId, .pStored, .tTested, 1, tEffects)
+        }
+        Quit
+    }
     Set tVerified = +$Get(pStored("connectionVerified"))
     If tTestedAsStored {
         Set tWriteSC = ##class(OcuPilot.Kernel.State.Agent).GuardedSetVerification(pId, tVersionAtCall)
@@ -797,14 +868,12 @@ ClassMethod ConnectionOutcome(pId As %String, ByRef pValues, ByRef pStored, Outp
         Set tVerified = +$Get(tAfter("connectionVerified"))
         Do ..LogChange(..#TESTVERB, pId, .pStored, .tAfter)
     } Else {
-        ; DW-358: a test that wrote nothing is still a configuration change worth recording, and
-        ; it is a SECURITY one -- the values tested differ from the stored ones on a security
-        ; field, which is the set that decides where the instance's data goes and which credential
-        ; goes with it (AD-42). Where the differing field is the endpoint or the provider, the
-        ; call left the instance for an address nobody audited; where it is one of the credential
-        ; fields, a different secret went to the stored one. Recorded whether or not the row was
-        ; written, which is the half the earlier guard dropped entirely.
-        Do ..LogChange(..#TESTVERB, pId, .pStored, .tTested, 1)
+        ; DW-358: a test that wrote nothing is still a change worth recording, and it is a SECURITY
+        ; one -- a security field differs from the stored one, or the key is not the stored key,
+        ; and either decides where the instance's data goes and which secret goes with it (AD-42).
+        Set tEffects = {}
+        Do tEffects.%Set("keySource", tKeySource, "string")
+        Do ..LogChange(..#TESTVERB, pId, .pStored, .tTested, 1, tEffects)
     }
     Set tText = ""
     If $IsObject($Get(tResponse)) Set tText = tResponse.Text
@@ -815,6 +884,57 @@ ClassMethod ConnectionOutcome(pId As %String, ByRef pValues, ByRef pStored, Outp
     Do pAnswer.%Set("latencyMs", $Select($IsObject($Get(tResponse)): +tResponse.LatencyMs, 1: 0), "number")
     Do pAnswer.%Set("connectionVerified", tVerified, "boolean")
     Do pAnswer.%Set("testedAsStored", tTestedAsStored, "boolean")
+    Do pAnswer.%Set("keySource", tKeySource, "string")
+}
+
+/// <p>Which key a Test connection call against <var>pValues</var> carries, as one of
+/// <class>OcuPilot.Kernel.Provider.Base</class>'s <code>KEYSOURCE*</code> words (AD-42).</p>
+/// <ol>
+/// <li><code>body</code> -- <var>pBody</var> carries a <parameter>KEYFIELD</parameter> member that
+/// is a JSON string with something in it besides whitespace.</li>
+/// <li><code>stored</code> -- otherwise, when the call goes to the stored effective endpoint
+/// (<method>EffectiveEndpoint</method>) and <code>credType</code>, <code>envVarName</code> and
+/// <code>credentialName</code> all hold their stored values: the stored credential goes only where
+/// the row says, and only the one the row names.</li>
+/// <li><code>none</code> -- otherwise. The call is made unauthenticated, and says so.</li>
+/// </ol>
+/// <p>The body member is tested inside the comparison and never bound to a local (AD-48).</p>
+ClassMethod KeySourceFor(ByRef pValues, ByRef pStored, pBody As %DynamicObject = "") As %String
+{
+    If $IsObject(pBody) && pBody.%IsA("%Library.DynamicObject") {
+        If pBody.%GetTypeOf(..#KEYFIELD) = "string" {
+            If $ZStrip(pBody.%Get(..#KEYFIELD), "<>WC") '= "" Quit ##class(OcuPilot.Kernel.Provider.Base).#KEYSOURCEBODY
+        }
+    }
+    Set tTested = ..EffectiveEndpoint(.pValues)
+    If (tTested = "") || (tTested '= ..EffectiveEndpoint(.pStored)) Quit ##class(OcuPilot.Kernel.Provider.Base).#KEYSOURCENONE
+    For tField = "credType", "envVarName", "credentialName" {
+        If $Get(pValues(tField)) '= $Get(pStored(tField)) Return ##class(OcuPilot.Kernel.Provider.Base).#KEYSOURCENONE
+    }
+    Quit ##class(OcuPilot.Kernel.Provider.Base).#KEYSOURCESTORED
+}
+
+/// <p>The endpoint a call against <var>pValues</var> goes to: <code>endpointUrl</code>, or, when
+/// that is empty, the canonical endpoint of the provider row <code>provider</code> names -- the
+/// same fill <method>OcuPilot.Port.ProviderPort.Dispatch</method> makes at the moment of the call.
+/// <code>""</code> when neither names one.</p>
+ClassMethod EffectiveEndpoint(ByRef pValues) As %String
+{
+    If $Get(pValues("endpointUrl")) '= "" Quit pValues("endpointUrl")
+    If '$ClassMethod(..CatalogClass(), "Row", $Get(pValues("provider")), .tRow) Quit ""
+    Quit tRow.defaultEndpoint
+}
+
+/// <p>Add <code>keySource</code> and <code>testedAsStored</code> to the <code>detail</code> of the
+/// fault a Test connection call answered, keeping whatever detail it already carries -- so a
+/// failed test says which key it tried, the way an answered one does.</p>
+ClassMethod AnnotateCallFault(pFault As %DynamicObject, pKeySource As %String, pTestedAsStored As %Boolean) [ Private ]
+{
+    Set tDetail = pFault.detail
+    If '$IsObject(tDetail) Set tDetail = {}
+    Do tDetail.%Set("keySource", pKeySource, "string")
+    Do tDetail.%Set("testedAsStored", $Select(+pTestedAsStored: 1, 1: 0), "boolean")
+    Do pFault.%Set("detail", tDetail)
 }
 
 /// <p>Whether every security field of <var>pValues</var> still holds the value <var>pStored</var>
@@ -859,14 +979,24 @@ ClassMethod PortClass() As %String
 /// environment variable, and IRIS publishes no setter for one.</li>
 /// <li><code>AGENT.CREDENTIAL.RUNGUNAVAILABLE</code> -- the credentials rung is not reachable from
 /// this namespace, so there is nowhere to write.</li>
+/// <li><code>AGENT.CREDENTIAL.NOPRIVILEGE</code> -- the caller does not hold
+/// <parameter>CREDENTIALSRESOURCE</parameter> at <parameter>CREDENTIALSPERMISSION</parameter>, which
+/// the vendor's store checks before it writes and install never grants (AD-42), or may not write
+/// the database the entry's row is saved in
+/// (<method>OcuPilot.Kernel.Secret.Ladder.StoreDatabaseWritable</method>). Both are checked in the
+/// calling process, at the moment of the call, and <var>pFailedPair</var> names the pair that
+/// failed (AD-8).</li>
 /// <li><code>AGENT.KEY.SHAPE</code> -- <b>last, because it needs a value and a reachable store</b>.
 /// </li>
 /// </ol>
+/// <p>The store's own refusal, <code>AGENT.CREDENTIAL.NOTOWNED</code>, comes after all of these:
+/// it is decided where the entry is opened.</p>
 /// <p>Its own public method rather than inline in the handler so
 /// <class>OcuPilot.Test.AgentCredential</class> can drive the rung-unavailable row on an instance
 /// whose rung is present -- which no request can reach.</p>
-ClassMethod CredentialRefusal(pRow As OcuPilot.Kernel.State.Agent, pBody As %DynamicObject) As %String
+ClassMethod CredentialRefusal(pRow As OcuPilot.Kernel.State.Agent, pBody As %DynamicObject, Output pFailedPair As %String) As %String
 {
+    Set pFailedPair = ""
     If '$IsObject(pBody) Quit ##class(OcuPilot.Api.Error).#AGENTCREDENTIALREQUIRED
     If 'pBody.%IsDefined(..#KEYFIELD) Quit ##class(OcuPilot.Api.Error).#AGENTCREDENTIALREQUIRED
     If pBody.%GetTypeOf(..#KEYFIELD) '= "string" Quit ##class(OcuPilot.Api.Error).#AGENTCREDENTIALREQUIRED
@@ -879,6 +1009,11 @@ ClassMethod CredentialRefusal(pRow As OcuPilot.Kernel.State.Agent, pBody As %Dyn
     If $ZStrip(pBody.%Get(..#KEYFIELD), "<>WC") = "" Quit ##class(OcuPilot.Api.Error).#AGENTCREDENTIALREQUIRED
     If pRow.CredType = ##class(OcuPilot.Kernel.AgentRules).#CREDTYPEENV Quit ##class(OcuPilot.Api.Error).#AGENTCREDENTIALENVUNWRITABLE
     If '$ClassMethod(..SecretClass(), "CredentialsRungAvailable") Quit ##class(OcuPilot.Api.Error).#AGENTCREDENTIALRUNGUNAVAILABLE
+    If '$System.Security.Check(..#CREDENTIALSRESOURCE, ..#CREDENTIALSPERMISSION) {
+        Set pFailedPair = ..#CREDENTIALSRESOURCE _ ":" _ ..#CREDENTIALSPERMISSION
+        Quit ##class(OcuPilot.Api.Error).#AGENTCREDENTIALNOPRIVILEGE
+    }
+    If '$ClassMethod(..SecretClass(), "StoreDatabaseWritable", .pFailedPair) Quit ##class(OcuPilot.Api.Error).#AGENTCREDENTIALNOPRIVILEGE
     If '..KeyShapeAccepted(pRow.Provider, pBody) Quit ##class(OcuPilot.Api.Error).#AGENTKEYSHAPE
     Quit ""
 }
@@ -936,48 +1071,86 @@ ClassMethod KeyPrefixOf(pProvider As %String) As %String [ Private ]
 /// catalog value and never any part of the value posted (AD-35). The violation carries it because
 /// the form renders the violation's sentence on the field, and a refusal that stated the prefix
 /// only in the envelope would state it where that field cannot show it (AD-39).</p>
-ClassMethod RenderCredentialRefusal(pCode As %String, pPrefix As %String = "") As %Status [ Private ]
+/// <p><var>pPair</var>, on a <code>AGENT.CREDENTIAL.NOPRIVILEGE</code> refusal, is the pair that
+/// failed, and the violation's sentence names it (AD-8).</p>
+ClassMethod RenderCredentialRefusal(pCode As %String, pPrefix As %String = "", pPair As %String = "") As %Status [ Private ]
 {
     Kill tViolations
     Set tFieldReason = ""
     If pPrefix '= "" Set tFieldReason = ##class(OcuPilot.Api.Error).#REASONAGENTKEYSHAPE _ ": keys for this provider begin with " _ pPrefix _ "."
+    If pCode = ##class(OcuPilot.Api.Error).#AGENTCREDENTIALNOPRIVILEGE Set tFieldReason = ##class(OcuPilot.Api.Error).ReasonForCredentialPrivilege(pPair)
     Set tViolations($Increment(tViolations)) = $ListBuild(..#KEYFIELD, pCode, tFieldReason)
     If pPrefix = "" Quit ..RenderViolations(.tViolations, "The key was refused")
     Quit ..RenderViolations(.tViolations, "The key was refused: keys for this provider begin with " _ pPrefix)
 }
 
-/// <p>Remove the credential entry <var>pName</var>, but only on AD-37's two terms: OcuPilot
-/// created it (<var>pOwned</var>, from the definition's own
-/// <property>OcuPilot.Kernel.State.Agent.CredentialCreated</property>), and no definition other
-/// than <var>pExceptId</var> still names it.</p>
+/// <p>Remove the credential entry <var>pName</var>, but only on AD-37's two terms -- no definition
+/// other than <var>pExceptId</var> still names it exactly, and OcuPilot created it
+/// (<var>pOwned</var>, from the departing definition's own
+/// <property>OcuPilot.Kernel.State.Agent.CredentialCreated</property>) -- and answer what became of
+/// it, for the change record's <code>effects.credentialEntry</code>.</p>
 /// <p><b>Bounded on both sides, and this is the one place that judgement is made.</b> An entry
 /// OcuPilot did not create is an operator's own and is never touched; an entry a surviving
 /// definition names is still in use. <method>OcuPilot.Kernel.Secret.Ladder.Clear</method> removes
 /// what it is told to and makes neither test.</p>
+/// <p><b>Siblings are asked first.</b> When one survives the answer is
+/// <parameter>ENTRYKEPT</parameter>, and when the definition leaving was the owner the mark moves to
+/// the lowest-id survivor, so the entry is still removed with the last definition that names it.
+/// Otherwise an entry not owned answers <parameter>ENTRYNOTOWNED</parameter>, and an owned one
+/// answers the ladder's own outcome -- removed, absent, unreachable or failed. A reference that
+/// names nothing answers <code>""</code>, and the record then carries no effect.</p>
 /// <p><b>Called after the definition row has already changed</b> -- deleted, or repointed -- so
 /// the sibling query reads the set that survives. Called before, the definition being deleted
 /// would answer as its own sibling and nothing would ever be removed.</p>
 /// <p><b>It never fails the write it follows.</b> The definition is already deleted or saved; a
-/// credential entry that would not go is a tidy-up that did not happen, and it goes to the log,
-/// naming the reference and never a value (AD-35).</p>
-ClassMethod ClearOwnedCredential(pName As %String, pExceptId As %String, pOwned As %Boolean)
+/// credential entry that would not go is a tidy-up that did not happen. The outcome says so in
+/// the record, and the reason goes to the log, naming the reference and never a value
+/// (AD-35).</p>
+ClassMethod ClearOwnedCredential(pName As %String, pExceptId As %String, pOwned As %Boolean) As %String
 {
+    Set tOutcome = ""
     Try {
         If pName = "" Quit
-        If 'pOwned Quit
         Set tSC = ##class(OcuPilot.Kernel.State.Agent).GuardedIdsByCredentialName(pName, pExceptId, .tSiblings)
         If $$$ISERR(tSC) {
+            Set tOutcome = ##class(OcuPilot.Kernel.Secret.Ladder).#CLEARFAILED
             Do ##class(OcuPilot.Kernel.Fault).LogRaw(..#LOGSUBSYSTEM, "the definitions sharing a credential reference could not be read, so the entry was left in place", tSC, ##class(OcuPilot.Api.Error).#INTERNAL)
             Quit
         }
-        If +$Get(tSiblings) > 0 Quit
-        Set tClearSC = $ClassMethod(..SecretClass(), "Clear", pName)
-        If $$$ISERR(tClearSC) {
-            Do ##class(OcuPilot.Kernel.Fault).LogRaw(..#LOGSUBSYSTEM, "the credential entry a deleted agent definition had created could not be removed", tClearSC, ##class(OcuPilot.Api.Error).#INTERNAL)
+        If +$Get(tSiblings) > 0 {
+            Set tOutcome = ..#ENTRYKEPT
+            If 'pOwned Quit
+            Set tMarkSC = ##class(OcuPilot.Kernel.State.Agent).GuardedMarkCredentialCreated(tSiblings(1))
+            If $$$ISERR(tMarkSC) {
+                Do ##class(OcuPilot.Kernel.Fault).LogRaw(..#LOGSUBSYSTEM, "the credential entry's ownership mark could not be moved to the surviving definition " _ tSiblings(1) _ ", so the entry will not be removed with it", tMarkSC, ##class(OcuPilot.Api.Error).#INTERNAL)
+            }
+            Quit
         }
+        If 'pOwned {
+            Set tOutcome = ..#ENTRYNOTOWNED
+            Quit
+        }
+        Set tClearSC = $ClassMethod(..SecretClass(), "Clear", pName, .tOutcome)
+        If $$$ISERR(tClearSC) {
+            Do ##class(OcuPilot.Kernel.Fault).LogRaw(..#LOGSUBSYSTEM, "the credential entry a departing agent definition had created could not be removed", tClearSC, ##class(OcuPilot.Api.Error).#INTERNAL)
+        }
+        If tOutcome = "" Set tOutcome = ##class(OcuPilot.Kernel.Secret.Ladder).#CLEARFAILED
     } Catch ex {
-        Do ##class(OcuPilot.Kernel.Fault).LogRaw(..#LOGSUBSYSTEM, "the credential entry a deleted agent definition had created could not be removed", ex.AsStatus(), ##class(OcuPilot.Api.Error).#INTERNAL)
+        Set tOutcome = ##class(OcuPilot.Kernel.Secret.Ladder).#CLEARFAILED
+        Do ##class(OcuPilot.Kernel.Fault).LogRaw(..#LOGSUBSYSTEM, "the credential entry a departing agent definition had created could not be removed", ex.AsStatus(), ##class(OcuPilot.Api.Error).#INTERNAL)
     }
+    Quit tOutcome
+}
+
+/// <p>The change record's <code>effects</code> for a write that disposed of a credential
+/// reference: <code>{"credentialEntry": <var>pEntry</var>}</code>, or <code>""</code> when
+/// <var>pEntry</var> is empty and there is nothing to name.</p>
+ClassMethod EntryEffects(pEntry As %String) As %DynamicObject
+{
+    If pEntry = "" Quit ""
+    Set tEffects = {}
+    Do tEffects.%Set("credentialEntry", pEntry, "string")
+    Quit tEffects
 }
 
 /// <p>Refuse a save whose row moved on the instance after this request read it: 409 with
@@ -1028,14 +1201,16 @@ ClassMethod RenderNotFound(pId As %String) As %Status
     Quit ##class(OcuPilot.Api.Error).Render(404, ##class(OcuPilot.Api.Error).#NOTFOUND, "No agent definition with that identifier exists on this instance", ##class(OcuPilot.Api.Error).#AGENTNOTFOUND)
 }
 
-/// <p>Refuse with 400 and <parameter>OcuPilot.Api.Error.AGENTBADBODY</parameter>, naming the
-/// stage <method>OcuPilot.Kernel.Utils.ReadRequestBody</method> reported. That method separates
-/// its three failures -- read, decode, parse -- precisely so a server-side read fault is never
-/// presented as malformed client JSON (DW-24), and the stage text is what carries that
-/// distinction to the caller.</p>
+/// <p>Refuse with 400 and <parameter>OcuPilot.Api.Error.AGENTBADBODY</parameter>, carrying
+/// <parameter>OcuPilot.Api.Error.REASONAGENTBADBODY</parameter> alone. <var>pStatus</var>'s own
+/// text is vendor-shaped -- it names internal classes and occasionally a path -- so it reaches
+/// <method>OcuPilot.Kernel.Fault.LogRaw</method> and never the wire (AD-39). That seam, rather
+/// than a log call of its own, is what carries the code the caller was given alongside the raw
+/// text, so the log line and the response pair up.</p>
 ClassMethod RenderBadBody(pStatus As %Status) As %Status
 {
-    Quit ##class(OcuPilot.Api.Error).Render(400, ##class(OcuPilot.Api.Error).#BADREQUEST, "The request body could not be read: " _ $System.Status.GetErrorText(pStatus), ##class(OcuPilot.Api.Error).#AGENTBADBODY)
+    Do ##class(OcuPilot.Kernel.Fault).LogRaw(..#LOGSUBSYSTEM, "the request body could not be read, so the write was refused", pStatus, ##class(OcuPilot.Api.Error).#AGENTBADBODY)
+    Quit ##class(OcuPilot.Api.Error).Render(400, ##class(OcuPilot.Api.Error).#BADREQUEST, ##class(OcuPilot.Api.Error).#REASONAGENTBADBODY, ##class(OcuPilot.Api.Error).#AGENTBADBODY)
 }
 
 /// <p>Whether <var>pBody</var> is a shape <method>MergeBody</method> can read: a JSON object, or
@@ -1249,7 +1424,10 @@ ClassMethod ChangeSet(ByRef pBefore, ByRef pAfter) As %DynamicObject
 /// resolved by <method>ClassifyChange</method>. <var>pSecurityChange</var> is the caller's own
 /// answer where it knows something the change set does not; left <code>""</code> the
 /// classification is made from the verb and the changed-field set.</p>
-ClassMethod LogChange(pVerb As %String, pId As %String, ByRef pBefore, ByRef pAfter, pSecurityChange As %String = "")
+/// <p><var>pEffects</var>, when it is an object, is what the write did beyond the fields it
+/// changed, and goes on both the log line and the audit row as <code>effects</code>. Its values
+/// are ids and outcome words, never a credential reference or a value.</p>
+ClassMethod LogChange(pVerb As %String, pId As %String, ByRef pBefore, ByRef pAfter, pSecurityChange As %String = "", pEffects As %DynamicObject = "")
 {
     Try {
         Set tData = {}
@@ -1258,22 +1436,28 @@ ClassMethod LogChange(pVerb As %String, pId As %String, ByRef pBefore, ByRef pAf
         Do tData.%Set("changes", tChanges)
         Set tSecurity = ..ClassifyChange(pVerb, tChanges, pSecurityChange)
         Do tData.%Set("securityChange", tSecurity, "boolean")
+        If $IsObject(pEffects) Do tData.%Set("effects", pEffects)
         Do ..LogInfo(..#LOGSUBSYSTEM, pVerb, tData)
-        Do ..RecordAudit(pVerb, pId, tChanges, tSecurity)
+        Do ..RecordAudit(pVerb, pId, tChanges, tSecurity, pEffects)
     } Catch ex {
     }
 }
 
 /// <p>Whether this write is a security change: <var>pDeclared</var> when the caller supplied one,
 /// then the verb, then the changed-field set.</p>
-/// <p>The credential verb is a security change by what it does rather than by what it changed: a
-/// store alters no field <method>SecurityFieldNames</method> lists, and it is the one write that
-/// puts a secret on the instance (AD-42). Everything else is classified from the change set --
-/// the provider, the endpoint, the marked-local flag or the credential reference.</p>
+/// <p>Two verbs are security changes by what they do rather than by what they changed (AD-42).
+/// The credential verb alters no field <method>SecurityFieldNames</method> lists, and it is the
+/// one write that puts a secret on the instance. The default verb moves a marker, and the marker
+/// selects the endpoint and credential a turn uses. Everything else is classified from the change
+/// set -- the provider, the endpoint, the marked-local flag, the credential reference, or the
+/// default marker, which another write moves when it disables or removes the marked
+/// definition.</p>
 ClassMethod ClassifyChange(pVerb As %String, pChanges As %DynamicObject, pDeclared As %String = "") As %Boolean
 {
     If pDeclared '= "" Quit $Select(+pDeclared: 1, 1: 0)
     If pVerb = ..#CREDENTIALVERB Quit 1
+    If pVerb = ..#DEFAULTVERB Quit 1
+    If $IsObject(pChanges) && pChanges.%IsDefined("default") Quit 1
     Quit ..IsSecurityChange(pChanges)
 }
 
@@ -1284,9 +1468,9 @@ ClassMethod ClassifyChange(pVerb As %String, pChanges As %DynamicObject, pDeclar
 /// <p><b>Not a capture seam.</b> <class>OcuPilot.Test.DefinitionsProbe</class> leaves it alone on
 /// purpose: an in-process driver reads the row back out of the audit database, which is where AC2
 /// is observable, so overriding this would remove the observation rather than enable it.</p>
-ClassMethod RecordAudit(pVerb As %String, pId As %String, pChanges As %DynamicObject, pSecurityChange As %Boolean)
+ClassMethod RecordAudit(pVerb As %String, pId As %String, pChanges As %DynamicObject, pSecurityChange As %Boolean, pEffects As %DynamicObject = "")
 {
-    Do ##class(OcuPilot.Kernel.Audit.Event).Record(pVerb, ..#ENTITYTYPE, pId, pChanges, pSecurityChange)
+    Do ##class(OcuPilot.Kernel.Audit.Event).Record(pVerb, ..#ENTITYTYPE, pId, pChanges, pSecurityChange, pEffects)
 }
 
 /// <p>Whether <var>pChanges</var> -- a <method>ChangeSet</method> object -- carries any field

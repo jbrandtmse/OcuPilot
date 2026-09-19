@@ -20,6 +20,7 @@ import {
   withQuery,
 } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
+import { PanelState } from '../core/panel-layout';
 import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
 import { railItemDomId } from './rail';
@@ -127,6 +128,7 @@ export class SideBar {
   private readonly navigation = inject(NavigationService);
   private readonly shell = inject(ShellState);
   private readonly overlays = inject(OverlayStack);
+  private readonly panel = inject(PanelState);
   private readonly router = inject(Router);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
 
@@ -169,23 +171,29 @@ export class SideBar {
     });
   });
 
-  /** Absent on Home, and absent while collapsed. */
+  /** Absent on Home, absent while collapsed, and absent while the width yields it (DESIGN.md Yield order). */
   private readonly showing = computed(() => {
     this.generation();
     const areaKey = this.area();
     if (areaKey === '') return false;
     const area = areaByKey(areaKey);
     if (area !== null && area.navigates) return false;
-    return this.shell.open();
+    return this.shell.open() && this.panel.layout().sideBarShown;
   });
 
   constructor() {
     const stopNavigation = this.navigation.subscribe(() => this.bump());
     const stopShell = this.shell.subscribe(() => this.bump());
+    // A width that yields the bar removes it at the next render; focus inside leaves first.
+    const stopPanel = this.panel.subscribe(() => {
+      if (!this.panel.layout().sideBarShown) this.yieldFocusToRail();
+      this.bump();
+    });
     const stopRouter = this.router.events.subscribe(() => this.bump());
     inject(DestroyRef).onDestroy(() => {
       stopNavigation();
       stopShell();
+      stopPanel();
       stopRouter.unsubscribe();
       this.overlays.remove(SIDE_BAR_OVERLAY_ID);
     });
@@ -252,6 +260,8 @@ export class SideBar {
   protected onGlobalKeydown(event: KeyboardEvent): void {
     if (!isSideBarChord(event)) return;
     if (document.querySelector('[role="dialog"]') !== null) return;
+    // Full screen covers the bar; the chord would toggle, and persist, a bar nobody can see.
+    if (this.panel.fullScreen()) return;
     // Inert while anything is stacked over the bar -- the command box overlay and, later, the
     // panel (EXPERIENCE.md "anywhere (inert while a dialog or the command-box overlay is open)"). The bar's own registration is the one entry that does not
     // count, because it is the thing the chord acts on.
@@ -280,7 +290,18 @@ export class SideBar {
    */
   private toggleFromKeyboard(): void {
     this.yieldFocusToRail();
+    // While the width yields the bar, the chord reopens it over the yield, and closing a reopened
+    // bar returns it to the yield; neither is an answer about the stored preference.
+    if (this.panel.sideBarYielded()) {
+      this.panel.reopenSideBar();
+      return;
+    }
+    if (this.panel.sideBarReopened()) {
+      this.panel.releaseSideBar();
+      return;
+    }
     this.shell.toggleOpen();
+    if (this.shell.open() && this.panel.sideBarYielded()) this.panel.reopenSideBar();
   }
 
   /** Nothing may be removed while it holds focus (EXPERIENCE.md "**Focus destinations.** No control"). */

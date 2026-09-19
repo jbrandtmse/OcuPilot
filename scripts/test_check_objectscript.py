@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 import subprocess
 import tempfile
 import unittest
@@ -268,6 +269,36 @@ class TestShippedRoster(unittest.TestCase):
         self.assertIsNotNone(packages)
         on_disk = {p.name for p in (co.ROOT / "src" / "OcuPilot").iterdir() if p.is_dir()}
         self.assertEqual(packages, on_disk)
+
+
+class TestStatedRuleCountMatchesTheCode(unittest.TestCase):
+    """DW-1129: `CLAUDE.md` tells a contributor how many rules the checker runs, and nothing held
+    that number to `CHECKS`. The checker's own footer derives its count, so a stale sentence in the
+    agent-instruction file was the only copy and it disagreed silently. Over the real tree, not a
+    fixture."""
+
+    STATED_RE = re.compile(
+        r"`uv run scripts/check-objectscript\.py`\s*\((\d+)\s+rules", re.MULTILINE
+    )
+
+    def test_claude_md_states_the_number_of_checks_the_script_declares(self):
+        text = co.read_text(co.ROOT / "CLAUDE.md")
+        self.assertIsNotNone(text, "expected CLAUDE.md to exist and be readable")
+        matches = self.STATED_RE.findall(text)
+        self.assertEqual(
+            len(matches),
+            1,
+            "CLAUDE.md must state the check-objectscript.py rule count exactly once in the form "
+            f"this pin reads; found {len(matches)}. Zero makes this gate vacuous; two or more is a "
+            "second copy to keep correct, which is the defect this pin exists for",
+        )
+        stated = int(matches[0])
+        self.assertEqual(
+            stated,
+            len(co.CHECKS),
+            f"CLAUDE.md states {stated} rule(s) for check-objectscript.py but CHECKS declares "
+            f"{len(co.CHECKS)} -- update the sentence in CLAUDE.md when you add or remove a check",
+        )
 
 
 class TestEntityTypeRule(FixtureTreeCase):
@@ -770,6 +801,95 @@ class TestHandlerWireTestRule(FixtureTreeCase):
             f"expected the named :param route accepted, got {problems}",
         )
 
+    def write_turn_router(self) -> None:
+        self.write(
+            "src/OcuPilot/Api/Router.cls",
+            "Class OcuPilot.Api.Router Extends %CSP.REST\n"
+            "{\n\nXData UrlMap\n{\n<Routes>\n"
+            '  <Route Url="/turn/:id/progress" Method="GET" Call="TurnProgress"/>\n'
+            '  <Route Url="/turn/abandon" Method="POST" Call="TurnAbandon"/>\n'
+            '  <Route Url="/turn" Method="POST" Call="TurnStart"/>\n'
+            "</Routes>\n}\n\n}\n",
+        )
+
+    def test_a_shorter_route_is_not_covered_by_a_test_naming_only_longer_ones(self):
+        # DW-400: substring keying let `/turn/abandon` or `/turn/:id/progress` stand in for
+        # `/turn`, so the route that starts a turn could ship with no wire test of its own.
+        self.write_turn_router()
+        self.write(
+            "src/OcuPilot/Test/Wire.cls",
+            self.WIRE_BODY.replace(
+                "Method TestRoute()",
+                'Method TestRoute()\n{\n'
+                '    Set tA = "POST /turn/abandon"\n'
+                '    Set tB = "GET /turn/:id/progress"\n'
+                '    Set tVerbs = "POST"\n'
+                "}\n\nMethod TestRouteTwo()",
+            ),
+        )
+        problems: list[str] = []
+        co.check_handler_wire_tests(problems)
+        self.assertTrue(
+            any("Url='/turn' " in p for p in problems),
+            f"expected /turn refused when only longer routes are named, got {problems}",
+        )
+        self.assertFalse(
+            any("'/turn/abandon'" in p or "'/turn/:id/progress'" in p for p in problems),
+            f"expected the two named routes accepted, got {problems}",
+        )
+
+    def test_a_second_method_on_one_url_is_its_own_obligation(self):
+        # DW-400's other half: GET and POST on one path were one key, so a GET test covered a POST
+        # route no test had ever sent.
+        self.write(
+            "src/OcuPilot/Api/Router.cls",
+            "Class OcuPilot.Api.Router Extends %CSP.REST\n"
+            "{\n\nXData UrlMap\n{\n<Routes>\n"
+            '  <Route Url="/widgets" Method="GET" Call="WidgetList"/>\n'
+            '  <Route Url="/widgets" Method="POST" Call="WidgetCreate"/>\n'
+            "</Routes>\n}\n\n}\n",
+        )
+        self.write(
+            "src/OcuPilot/Test/Wire.cls",
+            self.WIRE_BODY.replace('"/instance"', '"/widgets"'),
+        )
+        problems: list[str] = []
+        co.check_handler_wire_tests(problems)
+        self.assertTrue(
+            any("Call='WidgetCreate'" in p for p in problems),
+            f"expected the POST route refused with only a GET test, got {problems}",
+        )
+        self.assertFalse(
+            any("Call='WidgetList'" in p for p in problems),
+            f"expected the GET route accepted, got {problems}",
+        )
+
+    def test_a_route_at_the_tail_of_a_longer_route_is_not_covered_by_it(self):
+        # DW-400, the other direction: a URL bounded only at its end let `/logs/errors/namespaces`
+        # stand in for `/namespaces`. The API base in front of a route still names it.
+        self.write(
+            "src/OcuPilot/Api/Router.cls",
+            "Class OcuPilot.Api.Router Extends %CSP.REST\n"
+            "{\n\nXData UrlMap\n{\n<Routes>\n"
+            '  <Route Url="/logs/errors/namespaces" Method="GET" Call="LogErrorNamespaces"/>\n'
+            '  <Route Url="/namespaces" Method="GET" Call="Namespaces"/>\n'
+            "</Routes>\n}\n\n}\n",
+        )
+        self.write(
+            "src/OcuPilot/Test/Wire.cls",
+            self.WIRE_BODY.replace('"/instance"', '"/api/ocupilot/logs/errors/namespaces"'),
+        )
+        problems: list[str] = []
+        co.check_handler_wire_tests(problems)
+        self.assertTrue(
+            any("Call='Namespaces'" in p for p in problems),
+            f"expected /namespaces refused when only the longer route is named, got {problems}",
+        )
+        self.assertFalse(
+            any("Call='LogErrorNamespaces'" in p for p in problems),
+            f"expected the route named behind the API base accepted, got {problems}",
+        )
+
     def test_a_doc_comment_naming_the_class_does_not_satisfy_the_rule(self):
         # The rule asks whether a test NAMES the route in code. Over the whole file text a `///`
         # line mentioning the dispatch class satisfied it, so a route's own doc comment could
@@ -837,6 +957,105 @@ class TestHandlerWireTestRule(FixtureTreeCase):
         problems: list[str] = []
         co.check_handler_wire_tests(problems)
         self.assertEqual(problems, [])
+
+
+class TestAgentJobReachRule(FixtureTreeCase):
+    """Story 4.1: the turn job reaches the provider port and OcuPilot's own state and nothing that
+    acts on the instance, and the one spawn in shipped code is the job's own."""
+
+    LOOP = "src/OcuPilot/Kernel/Agent/Loop.cls"
+
+    def write_loop(self, line: str) -> None:
+        self.write(
+            self.LOOP,
+            "Class OcuPilot.Kernel.Agent.Loop Extends %RegisteredObject\n"
+            "{\n\nClassMethod Run()\n{\n    " + line + "\n}\n\n}\n",
+        )
+
+    def test_another_port_named_under_kernel_agent_is_refused(self):
+        self.write_loop('Set tPort = "OcuPilot.Port.AdminPort"')
+        problems: list[str] = []
+        co.check_agent_job_reach(problems)
+        self.assertTrue(
+            any("OcuPilot.Port.AdminPort" in p and "Kernel/Agent/" in p for p in problems),
+            f"expected the admin port refused, got {problems}",
+        )
+
+    def test_a_handler_a_screen_and_a_slice_are_refused(self):
+        for name in ("OcuPilot.Api.Definitions", "OcuPilot.Screen.Registry", "OcuPilot.Area.Task.List"):
+            with self.subTest(name=name):
+                self.write_loop(f"Do ##class({name}).Go()")
+                problems: list[str] = []
+                co.check_agent_job_reach(problems)
+                self.assertTrue(any(name in p for p in problems), f"expected {name} refused, got {problems}")
+
+    def test_the_provider_port_and_the_vocabulary_class_pass(self):
+        self.write_loop(
+            'Do $ClassMethod("OcuPilot.Port.ProviderPort", "Invoke") '
+            "Set tCode = ##class(OcuPilot.Api.Error).#TURNSTOPPED"
+        )
+        problems: list[str] = []
+        co.check_agent_job_reach(problems)
+        self.assertEqual(problems, [], f"expected the port and the vocabulary accepted, got {problems}")
+
+    def test_the_tool_registry_passes_and_every_other_screen_class_is_refused(self):
+        # Story 4.2: the dispatcher reaches the tools through the registry and nothing else of the
+        # screen layer.
+        self.write_loop('Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ResolveWire(tName, .tTool)')
+        problems: list[str] = []
+        co.check_agent_job_reach(problems)
+        self.assertEqual(problems, [], f"expected the registry admitted, got {problems}")
+        for name in ("OcuPilot.Screen.Tool.Read", "OcuPilot.Screen.Tool.RegistryProbe", "OcuPilot.Screen.Tool.Registry.Inner", "OcuPilot.Screen.Gate"):
+            with self.subTest(name=name):
+                self.write_loop(f'Set tClass = "{name}"')
+                problems = []
+                co.check_agent_job_reach(problems)
+                self.assertTrue(any(name in p for p in problems), f"expected {name} refused, got {problems}")
+
+    def test_a_job_outside_the_job_class_is_refused_and_inside_it_passes(self):
+        spawn = "Job ##class(OcuPilot.Kernel.Agent.Job).Run(1)::5"
+        self.write(
+            "src/OcuPilot/Api/Turn.cls",
+            "Class OcuPilot.Api.Turn Extends %RegisteredObject\n{\n\nClassMethod Go()\n{\n    "
+            + spawn
+            + "\n}\n\n}\n",
+        )
+        self.write(
+            "src/OcuPilot/Kernel/Agent/Job.cls",
+            "Class OcuPilot.Kernel.Agent.Job Extends %RegisteredObject\n{\n\nClassMethod Start()\n{\n    "
+            + spawn
+            + "\n}\n\n}\n",
+        )
+        problems: list[str] = []
+        co.check_agent_job_reach(problems)
+        self.assertTrue(any("Api/Turn.cls" in p and "'JOB'" in p for p in problems), f"got {problems}")
+        self.assertFalse(any(p.startswith("src/OcuPilot/Kernel/Agent/Job.cls") for p in problems), f"got {problems}")
+
+    def test_a_state_class_naming_the_agent_package_is_refused(self):
+        # Rule 7: the loop reaches the provider port, so a storage method naming it could re-enter
+        # a provider call from inside an escalated frame (AD-9).
+        self.write(
+            "src/OcuPilot/Kernel/State/Probe.cls",
+            "Class OcuPilot.Kernel.State.Probe Extends %RegisteredObject\n{\n\nClassMethod Go()\n{\n"
+            '    Do ##class(OcuPilot.Kernel.Agent.Loop).Run()\n}\n\n}\n',
+        )
+        problems: list[str] = []
+        co.check_state_package_isolation(problems)
+        self.assertTrue(
+            any("State/Probe.cls" in p and "OcuPilot.Kernel.Agent" in p for p in problems),
+            f"expected the agent package refused under Kernel/State/, got {problems}",
+        )
+
+    def test_a_test_helper_the_job_variable_and_a_string_pass(self):
+        self.write(
+            "src/OcuPilot/Test/Helper.cls",
+            "Class OcuPilot.Test.Helper Extends %RegisteredObject\n{\n\nClassMethod Go()\n{\n"
+            "    Job ##class(OcuPilot.Test.Helper).Other()::5\n}\n\n}\n",
+        )
+        self.write_loop('Set tPid = $Job  Set tText = "the job could not be started"')
+        problems: list[str] = []
+        co.check_agent_job_reach(problems)
+        self.assertEqual(problems, [], f"expected all three accepted, got {problems}")
 
 
 class TestNonAsciiStringLiteralRule(FixtureTreeCase):
@@ -1050,6 +1269,210 @@ class TestRestraintContainment(FixtureTreeCase):
             "Class OcuPilot.Screen.Tool.Base Extends %RegisteredObject\n{\n\n}\n",
         )
         self.assertEqual(self.containment_problems(), [])
+
+
+class TestRestraintContainmentReach(FixtureTreeCase):
+    """DW-393 and DW-394: a code's tail and a parameter named without `#` are both a code, and the
+    client's TypeScript and templates are read as well as ObjectScript."""
+
+    def containment_problems(self) -> list[str]:
+        problems: list[str] = []
+        co.check_restraint_containment(problems)
+        return [p for p in problems if "a restraint code is produced outside" in p]
+
+    def test_a_code_assembled_across_a_concatenation_is_refused(self):
+        self.write(
+            "src/OcuPilot/Kernel/Agent/Probe.cls",
+            "Class OcuPilot.Kernel.Agent.Probe Extends %RegisteredObject\n"
+            "{\n\nClassMethod Run() As %String\n{\n"
+            '    Set tPrefix = "AGENT"\n'
+            '    Quit tPrefix _ ".KILLSWITCH.GLOBAL"\n'
+            "}\n\n}\n",
+        )
+        problems = self.containment_problems()
+        self.assertTrue(
+            any(p.startswith("src/OcuPilot/Kernel/Agent/Probe.cls:7:") for p in problems),
+            f"expected the assembled code refused at its tail, got {problems}",
+        )
+
+    def test_a_parameter_named_without_its_hash_is_refused(self):
+        self.write(
+            "src/OcuPilot/Kernel/Agent/Probe.cls",
+            "Class OcuPilot.Kernel.Agent.Probe Extends %RegisteredObject\n"
+            "{\n\nClassMethod Run() As %String\n{\n"
+            '    Quit $Parameter("OcuPilot.Api.Error", "AGENTREADONLYENFORCED")\n'
+            "}\n\n}\n",
+        )
+        problems = self.containment_problems()
+        self.assertTrue(
+            any(p.startswith("src/OcuPilot/Kernel/Agent/Probe.cls:6:") for p in problems),
+            f"expected the bare parameter name refused, got {problems}",
+        )
+
+    def test_a_client_naming_a_code_is_refused_and_a_spec_is_not(self):
+        self.write("ui/src/app/shell/panel/refusal.ts", "export const BLOCKED = 'AGENT.READONLY.ENFORCED';\n")
+        self.write("ui/src/app/shell/panel/refusal.html", "<p *ngIf=\"code === 'KILLSWITCH.USER'\">off</p>\n")
+        self.write("ui/src/app/shell/panel/refusal.spec.ts", "expect(code).toBe('AGENT.KILLSWITCH.GLOBAL');\n")
+        self.write("ui/tools/refusal.mjs", "const code = 'AGENT.KILLSWITCH.GLOBAL';\n")
+        problems = self.containment_problems()
+        self.assertTrue(any(p.startswith("ui/src/app/shell/panel/refusal.ts:1:") for p in problems), f"got {problems}")
+        self.assertTrue(any(p.startswith("ui/src/app/shell/panel/refusal.html:1:") for p in problems), f"got {problems}")
+        self.assertFalse(any("refusal.spec.ts" in p for p in problems), f"a spec asserts codes, got {problems}")
+        self.assertFalse(any("ui/tools/" in p for p in problems), f"outside ui/src, got {problems}")
+
+    def test_a_testing_helper_names_a_code_and_passes(self):
+        self.write("ui/src/app/testing/agent-status.ts", "export const KILLED = { code: 'AGENT.KILLSWITCH.GLOBAL' };\n")
+        self.assertEqual(self.containment_problems(), [], "a spec builder under ui/src/app/testing/ is test code")
+
+    def test_a_family_named_without_its_trailing_dot_is_refused(self):
+        self.write("ui/src/app/shell/panel/refusal.ts", "export const off = (code: string) => code.startsWith('AGENT.KILLSWITCH');\n")
+        self.write(
+            "src/OcuPilot/Kernel/Agent/Probe.cls",
+            "Class OcuPilot.Kernel.Agent.Probe Extends %RegisteredObject\n"
+            "{\n\nClassMethod Run(pCode As %String) As %Boolean\n{\n"
+            '    Quit $Piece(pCode, ".", 1, 2) = "AGENT.READONLY"\n'
+            "}\n\n}\n",
+        )
+        problems = self.containment_problems()
+        self.assertTrue(any(p.startswith("ui/src/app/shell/panel/refusal.ts:1:") for p in problems), f"got {problems}")
+        self.assertTrue(any(p.startswith("src/OcuPilot/Kernel/Agent/Probe.cls:6:") for p in problems), f"got {problems}")
+
+    def test_every_declared_restraint_code_is_seen_by_its_tail(self):
+        # The tail alternatives are written out by hand; this holds them to the codes Api/Error.cls
+        # declares, so a new restraint code cannot slip past the tail match.
+        text = (SCRIPT_PATH.parent.parent / "src/OcuPilot/Api/Error.cls").read_text(encoding="utf-8")
+        codes = re.findall(r'^Parameter AGENT(?:READONLY|KILLSWITCH)\w* = "AGENT\.((?:READONLY|KILLSWITCH)\.\w+)";', text, re.M)
+        self.assertGreaterEqual(len(codes), 4, f"expected the declared restraint codes, got {codes}")
+        for tail in codes:
+            with self.subTest(tail=tail):
+                self.assertIsNotNone(co.RESTRAINT_CODE_RE.search(f'Quit tPrefix _ ".{tail}"'), f"the tail {tail} is not matched on its own")
+
+    def test_an_unrelated_readonly_word_passes(self):
+        self.write(
+            "src/OcuPilot/Kernel/Agent/Probe.cls",
+            "Class OcuPilot.Kernel.Agent.Probe Extends %RegisteredObject\n"
+            "{\n\nClassMethod Run() As %String\n{\n"
+            "    Quit ##class(OcuPilot.Api.Error).#TURNABANDONEDREADONLY _ ..#DEFAULTKILLSWITCH\n"
+            "}\n\n}\n",
+        )
+        self.write("ui/src/app/core/strings.ts", "export const statusReadOnlyEnforced = 'Read-only';\n")
+        self.assertEqual(self.containment_problems(), [])
+
+
+class TestToolDispatchRule(FixtureTreeCase):
+    """Story 4.2: one caller of `InvokeTool`, no HTTP on the dispatch path, no handler named by a
+    shell read or a tool, and no output capture outside the admin port."""
+
+    def cls(self, rel: str, name: str, line: str) -> None:
+        self.write(rel, f"Class {name} Extends %RegisteredObject\n{{\n\nClassMethod Go()\n{{\n    {line}\n}}\n\n}}\n")
+
+    def problems(self) -> list[str]:
+        problems: list[str] = []
+        co.check_tool_dispatch(problems)
+        return problems
+
+    def test_invoke_tool_outside_the_registry_and_the_dispatcher_is_refused(self):
+        call = "Set tSC = ##class(OcuPilot.Screen.Tool.Registry).InvokeTool(tTool, {}, 200, .r, .h, .f)"
+        self.cls("src/OcuPilot/Kernel/Agent/Loop.cls", "OcuPilot.Kernel.Agent.Loop", call)
+        self.cls("src/OcuPilot/Kernel/Agent/Dispatch.cls", "OcuPilot.Kernel.Agent.Dispatch", call)
+        self.cls("src/OcuPilot/Screen/Tool/Registry.cls", "OcuPilot.Screen.Tool.Registry", "Quit ..InvokeTool(tTool)")
+        self.cls("src/OcuPilot/Test/ToolDispatch.cls", "OcuPilot.Test.ToolDispatch", call)
+        problems = self.problems()
+        self.assertTrue(any(p.startswith("src/OcuPilot/Kernel/Agent/Loop.cls:6:") and "InvokeTool" in p for p in problems), f"got {problems}")
+        self.assertEqual([p for p in problems if not p.startswith("src/OcuPilot/Kernel/Agent/Loop.cls:")], [], f"got {problems}")
+
+    def test_an_http_request_or_api_path_on_the_dispatch_path_is_refused(self):
+        self.cls("src/OcuPilot/Screen/Tool/Read.cls", "OcuPilot.Screen.Tool.Read", "Set tRequest = ##class(%Net.HttpRequest).%New()")
+        self.cls("src/OcuPilot/Kernel/Shell/InstanceRead.cls", "OcuPilot.Kernel.Shell.InstanceRead", 'Set tPath = "/api/ocupilot/instance"')
+        self.cls("src/OcuPilot/Kernel/Governance/Gate.cls", "OcuPilot.Kernel.Governance.Gate", 'Set tPath = "/api/ocupilot/turn"')
+        self.cls("src/OcuPilot/Kernel/Agent/Dispatch.cls", "OcuPilot.Kernel.Agent.Dispatch", 'Set tPath = "/API/admin"')
+        self.cls("src/OcuPilot/Api/Turn.cls", "OcuPilot.Api.Turn", 'Set tPath = "/api/ocupilot/turn"')
+        problems = self.problems()
+        for rel in ("Screen/Tool/Read.cls", "Kernel/Shell/InstanceRead.cls", "Kernel/Governance/Gate.cls", "Kernel/Agent/Dispatch.cls"):
+            with self.subTest(rel=rel):
+                self.assertTrue(any(p.startswith("src/OcuPilot/" + rel + ":6:") and "HTTP" in p for p in problems), f"got {problems}")
+        self.assertFalse(any(p.startswith("src/OcuPilot/Api/Turn.cls") for p in problems), f"a handler is outside the rule, got {problems}")
+
+    def test_a_shell_read_naming_a_handler_is_refused(self):
+        self.cls("src/OcuPilot/Kernel/Shell/InstanceRead.cls", "OcuPilot.Kernel.Shell.InstanceRead", "Quit ##class(OcuPilot.Api.Instance).Payload(.pObject)")
+        self.cls("src/OcuPilot/Kernel/Shell/Instance.cls", "OcuPilot.Kernel.Shell.Instance", 'Do ##class(OcuPilot.Api.Error).LogError("adminport", "detail", {})')
+        self.write(
+            "src/OcuPilot/Kernel/Shell/Navigation.cls",
+            "/// <p><class>OcuPilot.Api.Navigation</class> answers this map.</p>\n"
+            "Class OcuPilot.Kernel.Shell.Navigation Extends %RegisteredObject\n{\n\n}\n",
+        )
+        self.cls("src/OcuPilot/Kernel/Shell/NamespacesRead.cls", "OcuPilot.Kernel.Shell.NamespacesRead", 'Do ##class(OcuPilot.Api.ErrorLog).Write("detail")')
+        self.cls("src/OcuPilot/Screen/Tool/ErrorRead.cls", "OcuPilot.Screen.Tool.ErrorRead", "Quit ##class(OcuPilot.Api.Namespaces).Payload(.pObject)")
+        self.cls("src/OcuPilot/Api/Instance.cls", "OcuPilot.Api.Instance", "Quit ##class(OcuPilot.Api.Response).Success({})")
+        problems = self.problems()
+        refused = ("Kernel/Shell/InstanceRead.cls", "Kernel/Shell/NamespacesRead.cls", "Screen/Tool/ErrorRead.cls")
+        for rel, name in zip(refused, ("OcuPilot.Api.Instance", "OcuPilot.Api.ErrorLog", "OcuPilot.Api.Namespaces")):
+            with self.subTest(rel=rel):
+                self.assertTrue(any(p.startswith("src/OcuPilot/" + rel + ":6:") and name in p for p in problems), f"got {problems}")
+        self.assertEqual([p for p in problems if not p.startswith(tuple("src/OcuPilot/" + r + ":" for r in refused))], [], f"the vocabulary class, a doc comment and a handler pass, got {problems}")
+
+    def test_a_capture_outside_the_admin_port_is_refused(self):
+        self.cls("src/OcuPilot/Kernel/Agent/Dispatch.cls", "OcuPilot.Kernel.Agent.Dispatch", "Set tSC = $$BeginCapture^%SYS.Capture(.tCookie)")
+        self.cls("src/OcuPilot/Port/AdminPort.cls", "OcuPilot.Port.AdminPort", 'Set tSC = $ClassMethod(..#CAPTURECLASS, "BeginCaptureOutput", .tCookie)')
+        self.cls("src/OcuPilot/Test/AdminPortFault.cls", "OcuPilot.Test.AdminPortFault", "Set tSC = $$BeginCapture^%SYS.Capture(.tCookie)")
+        problems = self.problems()
+        self.assertTrue(any(p.startswith("src/OcuPilot/Kernel/Agent/Dispatch.cls:6:") and "capture" in p for p in problems), f"got {problems}")
+        self.assertEqual([p for p in problems if not p.startswith("src/OcuPilot/Kernel/Agent/Dispatch.cls:")], [], f"got {problems}")
+
+    def test_a_doc_comment_naming_them_passes(self):
+        self.write(
+            "src/OcuPilot/Kernel/Agent/Loop.cls",
+            "/// <p>Tools are reached through InvokeTool, never /api/, never %Net.HttpRequest or %SYS.Capture.</p>\n"
+            "Class OcuPilot.Kernel.Agent.Loop Extends %RegisteredObject\n{\n\n}\n",
+        )
+        self.assertEqual(self.problems(), [])
+
+
+class TestStateSqlLiteralRule(FixtureTreeCase):
+    """Story 4.2 (AD-21): a kernel store's SQL is a literal at every guarded-helper call site."""
+
+    def store(self, rel: str, name: str, line: str) -> None:
+        self.write(rel, f"Class {name} Extends OcuPilot.Kernel.State.Base\n{{\n\nClassMethod Go()\n{{\n    {line}\n}}\n\n}}\n")
+
+    def problems(self) -> list[str]:
+        problems: list[str] = []
+        co.check_state_sql_literal(problems)
+        return problems
+
+    def test_a_variable_sql_argument_is_refused(self):
+        for helper in ("GuardedIdsWhere", "GuardedOpenOneWhereTwoParam", "GuardedExecuteOneParam", "GuardedIdsWhereNoParam"):
+            with self.subTest(helper=helper):
+                self.store("src/OcuPilot/Kernel/State/Probe.cls", "OcuPilot.Kernel.State.Probe", f"Set tSC = ..{helper}(tSql, pName, .tIds)")
+                problems = self.problems()
+                self.assertTrue(any(p.startswith("src/OcuPilot/Kernel/State/Probe.cls:6:") and helper in p for p in problems), f"got {problems}")
+
+    def test_a_call_through_a_store_variable_is_refused(self):
+        self.store("src/OcuPilot/Kernel/State/Probe.cls", "OcuPilot.Kernel.State.Probe", "Set tSC = tStore.GuardedIdsWhere(tSql, pName, .tIds)")
+        self.assertTrue(any("Probe.cls:6:" in p for p in self.problems()), "a call through a store variable is read as well")
+
+    def test_a_concatenated_sql_argument_is_refused(self):
+        self.store("src/OcuPilot/Kernel/State/Probe.cls", "OcuPilot.Kernel.State.Probe", 'Set tSC = ##class(OcuPilot.Kernel.State.Agent).GuardedIdsWhere(tFragment _ " ORDER BY ID", pName, .tIds)')
+        self.assertTrue(any("Probe.cls:6:" in p for p in self.problems()), "a call through ##class is read as well")
+
+    def test_a_literal_joined_to_a_caller_value_is_refused(self):
+        for line in (
+            'Set tSC = ..GuardedIdsWhere("SELECT ID FROM T WHERE " _ tWhere, pName, .tIds)',
+            'Quit ..GuardedExecuteOneParam("DELETE FROM T WHERE Name = \'" _ pName _ "\'")',
+        ):
+            with self.subTest(line=line):
+                self.store("src/OcuPilot/Kernel/State/Probe.cls", "OcuPilot.Kernel.State.Probe", line)
+                self.assertTrue(any("Probe.cls:6:" in p for p in self.problems()), f"expected {line!r} refused")
+
+    def test_a_literal_the_base_class_and_a_declaration_pass(self):
+        self.store("src/OcuPilot/Kernel/State/Probe.cls", "OcuPilot.Kernel.State.Probe", 'Set tSC = ..GuardedIdsWhere("SELECT TOP ? ID FROM OcuPilot_Kernel_State.T WHERE Flag = \'1\' AND Note = ""a_b"" ORDER BY ID", +pMaxRows, .tIds) Quit ..GuardedExecuteNoParam("DELETE FROM T")')
+        self.write(
+            "src/OcuPilot/Kernel/State/Base.cls",
+            "Class OcuPilot.Kernel.State.Base Extends %Persistent\n{\n\n"
+            "ClassMethod GuardedIdsWhere(pSql As %String, pParam As %String, Output pIds) As %Status\n{\n"
+            "    Set tRS = ..Run(pSql)\n    Quit ..GuardedExecuteNoParam(pSql)\n}\n\n}\n",
+        )
+        self.write("src/OcuPilot/Api/Probe.cls", "Class OcuPilot.Api.Probe Extends %RegisteredObject\n{\n\nClassMethod Go()\n{\n    Do ..GuardedIdsWhere(tSql)\n}\n\n}\n")
+        self.assertEqual(self.problems(), [])
 
 
 class TestToolKindRule(FixtureTreeCase):
@@ -1316,6 +1739,10 @@ class TestShippedTreeIsCleanUnderTheNewRules(unittest.TestCase):
             co.check_non_ascii_literals,
             co.check_tool_kind,
             co.check_route_ordering,
+            co.check_agent_job_reach,
+            co.check_restraint_containment,
+            co.check_tool_dispatch,
+            co.check_state_sql_literal,
         ):
             with self.subTest(check=check.__name__):
                 problems: list[str] = []
@@ -1484,6 +1911,21 @@ class TestDestructiveTestGuardRule(FixtureTreeCase):
         problems: list[str] = []
         co.check_destructive_test_guard(problems)
         self.assertEqual(problems, [])
+
+    def test_the_turn_principal_helpers_are_in_the_population(self):
+        """`Test/TurnWire.cls` and `Test/TurnLong.cls` create, revoke and delete their principals
+        through `OcuPilot.Test.TurnWireFixture`, naming no security class of their own."""
+        for helper in ("EnsurePrincipal", "DeletePrincipal", "RemovePrincipals", "SetRoleResources", "RemoveSecondRole"):
+            with self.subTest(helper=helper):
+                self.write_test_class(
+                    "ViaTurnFixture", f'    Do ##class(OcuPilot.Test.TurnWireFixture).{helper}("Probe")'
+                )
+                problems: list[str] = []
+                co.check_destructive_test_guard(problems)
+                self.assertTrue(
+                    any("ViaTurnFixture.cls" in p and helper in p for p in problems),
+                    f"expected {helper} to count, got {problems}",
+                )
 
     def test_deleting_a_role_is_in_the_population(self):
         """Outside the rule until DW-396, on the ground that it is the tail of an install probe.

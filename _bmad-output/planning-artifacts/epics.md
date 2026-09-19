@@ -639,7 +639,7 @@ The epic-level map above says *which epic* owns each requirement and why it is s
 | FR-8 | 1.13 | FR-48 | 2.8, 6.5, 7.5 |
 | FR-9 | 1.15, 9.9 | FR-49 | 6.6 |
 | FR-10 | 4.3 | FR-50 | 6.7 |
-| FR-11 | 4.4 | FR-51 | 5.11, 7.6, 16.11 |
+| FR-11 | 4.4, 4.11 | FR-51 | 5.11, 7.6, 16.11 |
 | FR-12 | 4.5 | FR-52 | 9.7 |
 | FR-13 | 4.6 | FR-53 | 9.8 |
 | FR-14 | 5.7 | FR-54 | 2.9, 6.8 |
@@ -696,7 +696,7 @@ Every UX Design Requirement is owned by at least one story. Where a UX-DR is a *
 | 40 (classic-link card) | Stories 1.15 and 9.9 |
 | 41 (area tile) | Story 1.12 |
 | 42-44 (panel, Send control, resize handle) | Story 4.3 |
-| 45 (context chip) | Story 4.4 |
+| 45 (context chip) | Story 4.11, over Story 4.4's server-side context |
 | 46-48 (user message, agent message, avatar) | Stories 4.5, 4.6 |
 | 49 (tool-call card) | Story 4.5 |
 | 50-51 (proposal card, diff row) | Story 5.2 |
@@ -715,7 +715,7 @@ Every UX Design Requirement is owned by at least one story. Where a UX-DR is a *
 | 78 (theme toggle) | Story 15.6 |
 | 79 (polish-week UX) | All of Epic 11, plus Story 14.1 |
 | 80 (the five assumption confirmations) | Story 1.10 (status bar height), Story 4.3 (content minimum), Story 6.9 (meter thresholds), Story 6.14 (log row height), Story 8.1 (form and field widths) |
-| 81 (the two PRD notes) | Story 4.4 (bounded visible rows, and the chip's row count) and Story 14.6 (the turn-limit banner, a blocking precondition) |
+| 81 (the two PRD notes) | Story 4.4 (bounded visible rows), Story 4.11 (the chip's row count) and Story 14.6 (the turn-limit banner, a blocking precondition) |
 | 82 (the three release-blocking installer asks) | Stories 1.3, 1.4 and 17.6 |
 
 ---
@@ -2638,6 +2638,44 @@ So that the agent configuration surface is not shipped with known holes in the p
 
 A user on any screen types a question into a panel that already knows where they are, watches the agent read through the same endpoints the screen reads from, and gets an answer that names the rows it used - with every call recorded in a ledger and nothing on the instance changed. Second half of build step 2; delivers UJ-1 and the read-only half of UJ-4 complete.
 
+### Story 4.0: Epic 3 Deferred Cleanup
+
+As the builder,
+I want the credential and egress decisions taken at Epic 3's close implemented before the turn starts calling providers,
+So that the first code path that sends a stored key anywhere sends it only where the owner decided it may go, and every configuration write leaves a record something reads back.
+
+**Acceptance Criteria:**
+
+- **Given** a decision recorded at Epic 3's merge gate (DW-337, DW-342, DW-349, DW-357)
+- **When** this story closes
+- **Then** the behavior the decision names is implemented and a test observes it, under a stripped role wherever `_SYSTEM`'s `%All` would hide it.
+
+- **Given** the credential rung cannot be reached, or raises while it is read
+- **When** a definition's credential is resolved
+- **Then** the call fails with a named reason and the definition is not disabled, because an unreadable store is not a removed entry.
+
+- **Given** a configuration write that disables or deletes something besides the definition posted to
+- **When** it lands
+- **Then** the change record names what it disabled or deleted, and a delete that removed nothing says so
+- **And** every configuration write verb's audit row is read back by a test.
+
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-342: storing a key into a credential entry OcuPilot did not create is refused by name; naming an existing entry as a reference stays allowed and writes nothing (ledger; decided at the Epic 3 merge gate, routed by x0 2026-09-16)
+- DW-349: a store without `%Ens_Credentials:WRITE` answers a named refusal naming the resource to grant, not an opaque 500 and not an install-time grant (ledger; decided at the Epic 3 merge gate, routed by x0 2026-09-16)
+- DW-357: the stored credential goes only to the stored endpoint; a body-supplied endpoint stays testable and carries no stored key (ledger; decided at the Epic 3 merge gate, routed by x0 2026-09-16)
+- DW-337: the proxy host is judged by the same egress policy as the endpoint, and an https endpoint CONNECT-tunnels through it (ledger; decided at the Epic 3 merge gate, routed by x0 2026-09-16)
+- DW-397: a Test connection against values the row does not hold that faults is recorded, like the answered path (ledger; routed by x0 2026-09-16)
+- DW-410: an unreachable credential rung is reported as an absence and disables every creds definition on a namespace that is not interoperability-enabled (ledger; routed by x0 2026-09-16)
+- DW-424: `CredentialsRungAvailable`'s own Catch answers 0 on a raise, so a failing store disables the definition where DW-343's transient flag should hold (ledger; routed by x0 2026-09-16)
+- DW-408: the sibling credential query folds case where `Ens.Config.Credentials` keys exactly, and its doc comment states the opposite of the vendor source (ledger; routed by x0 2026-09-16)
+- DW-411: a credential entry OcuPilot deletes, and a delete that removed nothing, are both recorded nowhere (ledger; routed by x0 2026-09-16)
+- DW-428: the `CredentialCreated` mark stays on the deleted owner, so an entry OcuPilot created can outlive every definition that named it (ledger; routed by x0 2026-09-16)
+- DW-409: a credential store under a shared reference disables sibling definitions the change record never names (ledger; routed by x0 2026-09-16)
+- DW-404: five of the ten configuration write verbs emit an audit row nothing reads back, and the default-marker write is classified `ConfigChange` although it selects the endpoint and credential the agent uses (ledger; routed by x0 2026-09-16)
+
 ### Story 4.1: The turn runs in a background job and returns immediately
 
 As a developer-administrator,
@@ -2661,17 +2699,18 @@ So that a ninety-second turn never looks like a hung page and never needs an ope
 
 - **Given** the job holds the `$USERNAME` and `$ROLES` copy it inherited at spawn, for its whole life
 - **When** it moves between steps
-- **Then** it re-checks that the user is still enabled and still holds the privilege each remaining step needs, and abandons the turn otherwise
-- **And** it re-reads enforced read-only, the kill switch and its stop flag **between every step**, abandoning at the next boundary when any has changed.
+- **Then** it re-checks that the user still exists and still holds the privilege each remaining step needs, read from current grants, and abandons the turn otherwise; a disabled account's turn is bounded by the wall-clock limit, because the instance keeps honouring its token (AD-31) [AMENDED 2026-09-16 — see the story change log]
+- **And** it re-reads enforced read-only, the kill switch and its stop flag **between every step**, abandoning at the next boundary when any has changed
+- **And** it abandons the turn at the next boundary once the owner's authenticated polls have not renewed it within the poll lease.
 
 - **Given** a turn
 - **When** it runs
 - **Then** it is bounded by a maximum iteration count, a maximum wall-clock duration and a maximum total provider token spend, so no job can outlive its session indefinitely
 - **And** a user has a bounded number of concurrent turns - one in Release 1, **enforced on the instance** rather than only by the panel's lock.
 
-- **Given** the user signs out
+- **Given** the user signs out through OcuPilot
 - **When** the session ends
-- **Then** their running turns are abandoned.
+- **Then** their running turns are abandoned, because the sign-out first asks the instance to abandon them; a session that ends any other way lapses its turns' poll lease (AD-31) [AMENDED 2026-09-16 — see the story change log].
 
 - **Given** the job is started from a process that may hold OcuPilot's escalated role
 - **When** it is spawned
@@ -2687,10 +2726,10 @@ So that a ninety-second turn never looks like a hung page and never needs an ope
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-23: `Kernel.Utils.ReadRequestBody` has no production call site - every route before this one is a GET or is intercepted by the CSP server, so this story's `POST /api/ocupilot/turn` is where the request-body read path first executes in production (ledger; routed by spec_gate 2026-09-12)
-- DW-250: `AdminPort.Invoke` fails 500 when its caller already holds a `%SYS.Capture` with buffered output; if the turn job or tool executor captures around a tool call, release or nest it (ledger; routed by harvest 2026-09-14)
 - DW-333: `ProviderPort` carries a definition's `systemPromptOverride` and nothing reads it back; settle precedence between it and the turn's own system prompt, and consume it (ledger; routed by harvest 2026-09-15)
-- DW-334: every endpoint judgement costs four resolver lookups plus a `GetInterfacesInfo` read, unbounded and uncached, on every provider call (ledger; routed by the burn-down gate 2026-09-16)
-- DW-397: a Test connection that faults against values the row does not hold records nothing, so a call carrying the credential elsewhere leaves no trace (ledger; routed by the burn-down gate 2026-09-16)
+- DW-347: no single test carries a key from `POST /agent/definitions/:id/credential` through to a served turn; the turn's test provider seam is the first place one can (ledger; routed by x0 2026-09-16)
+- DW-400: `check_handler_wire_tests` keys a route by substring and ignores the method, and `/turn` is a leading prefix of `/turn/:id` (ledger; routed by x0 2026-09-16)
+- DW-422: `Test/Dispatch` seeds a request body through `%CSP.Request.InsertMimeData`, which the vendor marks Final and Internal; the turn's POST is the next body-carrying route to test (ledger; routed by x0 2026-09-16)
 
 ### Story 4.2: The tool registry, its one gate point, and the three shell reads
 
@@ -2737,11 +2776,11 @@ So that its answers cannot describe an instance that differs from the one in fro
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
 - DW-295: The registry's two tool sources expose different `View` arities and `Screen.Tool.Base` declares none, so this dispatcher must reconcile them - declare `View` on the base or key on `KIND` (ledger; routed by harvest 2026-09-15)
+- DW-298: the class tool's `View` drops the port's http status and fault, and passes a model-supplied `maxRows` to the port unbounded (ledger; routed by cr 2026-09-15)
 - DW-387: `Kernel/Restraint.Verdict` has no write-path caller yet, so AC1's caller half is open - this is the first story with a write path to gate, and the caller-enumeration test is already there to keep it the only one (ledger; routed by harvest 2026-09-16)
+- DW-390: `Kernel/Restraint.Verdict`'s fail-closed path has no seam, and 4.2 adds the first real caller that could drive one (ledger; routed by the burn-down gate 2026-09-16)
 - DW-393: `check_restraint_containment`'s code regex is single-line, so a restraint code assembled across a concatenation is not seen (ledger; routed by qa 2026-09-16)
 - DW-394: the containment rule reads ObjectScript only and skips comments and XData, so a client naming a restraint code and refusing for itself passes every gate (ledger; routed by cr 2026-09-16)
-- DW-400: `check_handler_wire_tests` still keys a route by substring, so a route whose path is a leading prefix of another's is covered by its sibling's assertions (ledger; routed by harvest 2026-09-16)
-- DW-390: `Kernel/Restraint.Verdict`'s fail-closed path has no seam, and 4.2 adds the first real caller that could drive one (ledger; routed by the burn-down gate 2026-09-16)
 
 ### Story 4.3: The docked panel, present on every route
 
@@ -2762,7 +2801,7 @@ So that asking about a screen never means leaving it.
 
 - **Given** the panel's left edge
 - **When** the user drags it
-- **Then** it resizes between the minimum and the point where content reaches its 640px minimum, with a `col-resize` cursor and a grip that turns `restrained` at the stop, and the width persists per browser
+- **Then** it resizes between the minimum and the point where content reaches its 640px minimum, with a `col-resize` cursor and a grip that turns `restrained` at either stop - the minimum and the 640px content point [AMENDED 2026-09-17 — see the story change log] - and the width persists per browser
 - **And** it is the **only** resizable edge in the shell - the side bar has no sash, grip or resize cursor
 - **And** the handle is `role="separator"`, `aria-orientation="vertical"`, focusable, with `aria-valuenow/min/max` in px, Left and Right arrows changing width by 16px, Escape releasing, and the new width announced through the value.
 
@@ -2786,34 +2825,37 @@ So that asking about a screen never means leaving it.
 
 - **Given** the assumed **640px content minimum**, below which content scrolls horizontally (UX-DR80)
 - **When** this story is built
-- **Then** the figure is confirmed against the panel's docked and resized widths on the narrowest supported viewport rather than carried as an assumption.
+- **Then** the figure is confirmed against the panel's docked and resized widths on the narrowest supported viewport, 1,280px (EXPERIENCE.md's Full shell row), rather than carried as an assumption [AMENDED 2026-09-17 — see the story change log].
 
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
-- DW-160: Home's panel-widening criterion could not be surface-anchored in Epic 1 - no panel existed; this story builds the docked panel and owns the remembered width it restores on leaving Home (ledger; routed by harvest 2026-09-12)
-- DW-379: the panel is the default width on every route where `DESIGN.md` gives it a wider Home width over a 120ms transition, and `--ocu-panel-home` is declared with no consumer (ledger; routed by harvest 2026-09-16)
-- DW-382: `DESIGN.md`'s Yield order is two thirds unbuilt - no media query, `matchMedia` or `ResizeObserver` exists in `ui/src`, and the panel is what first puts the row into the width budget (ledger; routed by cr 2026-09-16)
 - DW-377: the administrator reminder banner carries no link, which `EXPERIENCE.md` publishes for it (ledger; routed by the burn-down gate 2026-09-16)
+- DW-378: every browser assertion runs as `_SYSTEM`, so no browser run sees the non-administrator panel; sign in as the throwaway's least-privileged principal (ledger; routed by x0 2026-09-16)
+- DW-380: `refusedValues` is snapshotted when a refusal arrives rather than when the request is sent, and a read failing during sign-in spends the one-shot fresh-sign-in flag (ledger; routed by the burn-down gate 2026-09-16)
+- DW-381: nothing exercises the rail tooltip's rendered reveal, so the attention dot's effect on it is asserted only through CSS (ledger; routed by the burn-down gate 2026-09-16)
+- DW-382: `DESIGN.md`'s Yield order is two thirds unbuilt - no media query, `matchMedia` or `ResizeObserver` exists in `ui/src`, and the panel is what first puts the row into the width budget (ledger; routed by cr 2026-09-16)
 - DW-386: a form sign-in issues two definitions reads, because `runSubmit` notifies again after `adopt` already did (ledger; routed by the burn-down gate 2026-09-16)
-- DW-371: the initial bundle is 551 kB against a 500 kB warning and no gate pins the figure (ledger; routed by the burn-down gate 2026-09-16)
 
-### Story 4.4: Screen context on every turn, capped, with its toggle and chip
+### Story 4.4: Screen context reaches the turn, capped and secret-free
 
 As a developer-administrator,
 I want the agent to know which screen I am on without me describing it, and to be able to switch that off,
 So that "what am I looking at?" is a question I can just ask - and so I can stop sending anything when I need to.
 
+The chip that shows this context, its toggle and the paste warning are Story 4.11; this story is the server side they read from. [AMENDED 2026-09-17 — see the story change log]
+
 **Acceptance Criteria:**
 
-- **Given** a turn is sent
-- **When** context is assembled
-- **Then** it is built **fresh from the screen the user is on at that moment** - so navigating between turns changes what the agent sees - and carries route, namespace, selected entity, and the visible rows with the active sort and filter.
+- **Given** a turn is posted with its screen context
+- **When** the context is accepted
+- **Then** it carries route, namespace, selected entity, and the screen's filtered and sorted view with the active sort and filter, cut to the row cap - the client builds it fresh from the screen the user is on when Send is pressed (Story 4.11) [AMENDED 2026-09-17 — see the story change log].
 
-- **Given** a screen descriptor declares its context serializer
-- **When** the kernel serializes
-- **Then** it enforces an instance-wide cap of **200 rows**, operator-settable, **truncating rather than refusing** and recording the number actually sent
-- **And** the cap is on **content, not only rows**: the payload is bounded by total size as well, and each field is truncated to a declared maximum with the truncation marked
-- **And** a serializer that emits an uncapped collection or an unbounded field fails review.
+- **Given** a context payload or a read tool's result
+- **When** the kernel bounds it
+- **Then** rows are cut at the instance-wide row cap, operator-settable on Switches as an integer from 1 to 1,000 (default 200), gated by the OcuPilot administrative resource and audited, **truncating rather than refusing**; the same cap bounds a read tool's result
+- **And** the cap is on **content, not only rows**: the payload is at most 65,536 characters, cut by whole rows from the end, and each field is cut at 1,000 characters unless its descriptor declares a lower maximum, a cut value ending in U+2026
+- **And** the payload reports `rowsSent`, `rowsAvailable`, `truncated` and `truncatedFields`
+- **And** the kernel applies these bounds itself, so no serializer's output leaves unbounded, and the descriptor registry refuses a context field whose declared maximum exceeds the default (AD-24). [AMENDED 2026-09-17 — see the story change log]
 
 - **Given** any field the descriptor types as secret - a password, private key, secret value, API key or token
 - **When** context is assembled
@@ -2821,31 +2863,28 @@ So that "what am I looking at?" is a question I can just ask - and so I can stop
 - **And** a screen carrying such fields sends route and entity identity only, never form values
 - **And** the exclusion is schema-driven from the descriptor, never a name-pattern match, because a wallet secret field named `Value` defeats any matcher - a name matcher runs only as a backstop that can add redaction and never remove it.
 
-- **Given** the context chip
-- **When** it renders with sharing on
-- **Then** it reads `<Screen>, <NAMESPACE> - <N rows> - <provider> - <endpoint host>`
-- **And** when the endpoint host is not on a private network it carries the pill "leaves the instance" with the tooltip "Screen context is sent to <host>", computed from the same configuration the request actually uses so the two cannot disagree
-- **And** a screen with secret-typed fields adds a key glyph.
+- **Given** the context reaches the model
+- **When** the turn's messages are built
+- **Then** it enters as a synthetic `screen.context` tool call and its result, placed before the user's message in the canonical message shape and never advertised as a tool
+- **And** a model-issued call with that name is refused as an unknown tool (AD-11). [AMENDED 2026-09-17 — see the story change log]
 
-- **Given** the user turns sharing off
-- **When** subsequent turns are sent
-- **Then** no screen data is sent, and the chip reads "Screen context off - nothing from this screen is sent."
-- **And** the toggle defaults to on, is remembered per user, and an OcuPilot administrator can set the instance default to off.
+- **Given** the user has turned sharing off
+- **When** subsequent turns are posted
+- **Then** no screen data is sent
+- **And** the choice is remembered per user on the instance, and a user who has not chosen follows the instance default, which an OcuPilot administrator can set to off. [AMENDED 2026-09-17 — see the story change log]
 
-- **Given** the chip is live
-- **When** the route, namespace, selection or visible rows change
-- **Then** it updates.
-
-- **Given** the user is on a screen carrying secret-typed fields
-- **When** their draft looks like a password or key
-- **Then** an inline warning appears above the input - "This looks like a password or key. Send anyway?" - with Send anyway and Edit.
+- **Given** the default definition's status read
+- **When** it resolves
+- **Then** it exposes `provider`, `endpointHost` and `leavesInstance`, computed on the instance from the provider port's own resolution: the context stays on the instance only when the definition is marked local, or every resolved address of the host is loopback, link-local, RFC 1918 or `fc00::/7`; an unresolvable host leaves. [AMENDED 2026-09-17 — see the story change log]
 
 ---
 
 **Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
 
+- DW-281: AD-24's field-level bound is unimplemented, so a read tool's payload carries an unbounded `EventData` blob per row (ledger; routed by harvest 2026-09-15)
 - DW-398: the anchored credential backstop cannot mask a secret word that is not final in a key name (ledger; routed by the burn-down gate 2026-09-16)
 - DW-399: nothing compares the audit redactor's suffix list with `field-lists.mjs`'s `CREDENTIAL_RE`, which its own doc says it mirrors (ledger; routed by the burn-down gate 2026-09-16)
+- DW-452: one model reply's tool results have no aggregate bound, so a few capped reads can overflow the provider context or the string limit (ledger; routed by cr 2026-09-17)
 
 ### Story 4.5: A turn, watched: progress cards and the conversation lock
 
@@ -2894,6 +2933,44 @@ So that a slow answer is legible as work rather than as a hang.
 - **When** the panel renders it
 - **Then** it is rendered as **data, never as markup and never as OcuPilot's own voice**, and no rendered progress causes a request to any host.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-451: a tool step records no count of rows actually sent, which the read card shows (ledger; routed by harvest 2026-09-16)
+- DW-1048: the sign-out browser leg reads the composer before it renders once in a full browser-suite run; wait for the composer before reading it (ledger; routed by lead 2026-09-17)
+
+### Story 4.11: The context chip, its toggle and the paste warning
+
+As a developer-administrator,
+I want to see what screen context the next turn will carry and where it goes, and to be warned before I paste a secret,
+So that sharing is a visible choice rather than an assumption.
+
+Split from Story 4.4 on 2026-09-17 (see its change log); it follows Story 4.5, whose Send it attaches to. [AMENDED 2026-09-17 — see the story change log]
+
+**Acceptance Criteria:**
+
+- **Given** a turn is sent from the panel
+- **When** context is assembled
+- **Then** it is built **fresh from the screen the user is on at that moment** - so navigating between turns changes what the agent sees - and posted with the turn as Story 4.4 accepts it.
+
+- **Given** the context chip
+- **When** it renders with sharing on
+- **Then** it reads `<Screen>, <NAMESPACE> - <N rows> - <provider> - <endpoint host>`, where `<N rows>` is the count the next turn would send
+- **And** when Story 4.4's status read says the context leaves the instance it carries the pill "leaves the instance" with the tooltip "Screen context is sent to <host>", from the same configuration the request uses so the two cannot disagree
+- **And** a screen with secret-typed fields adds a key glyph named "Secret fields on this screen are never sent".
+
+- **Given** the user turns sharing off
+- **When** the toggle changes
+- **Then** the chip reads "Screen context off - nothing from this screen is sent." and the choice is stored per user on the instance.
+
+- **Given** the chip is live
+- **When** the route, namespace, selection, or the screen's filtered and sorted view changes
+- **Then** it updates.
+
+- **Given** the user's draft
+- **When** it starts with `sk-`, `-----BEGIN`, `AKIA`, `ghp_`, `xox` or `AIza`, or holds a whitespace-free run of at least 24 characters using at least three of lower case, upper case, digit and symbol and containing none of `/ . : ^ (`
+- **Then** an inline warning appears above the input - "This looks like a password or key. Send anyway?" - with Send anyway, which sends that text, and Edit, which returns focus to the composer, once per draft text
+- **And** a URL, a dotted class name and a global reference do not raise it, each pinned by a test.
+
 ### Story 4.6: Replies render safely and offline
 
 As a security-minded operator,
@@ -2932,6 +3009,10 @@ So that a compromised or manipulated model cannot use the panel as a channel.
 - **Then** it renders as an error banner in the agent's slot reading "The turn stopped at <step>: <reason>."
 - **And** a turn the user **stopped** is not an error and takes the tool-call card's stopped status instead.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-371: the initial bundle is 551 kB against a 500 kB warning and no gate pins the figure; the vendored renderer, highlighter and sanitizer are the next large addition (ledger; routed by x0 2026-09-16)
+
 ### Story 4.7: The agent takes you to a screen
 
 As a developer-administrator,
@@ -2965,6 +3046,11 @@ So that following its answer does not mean hunting through a menu.
 - **When** they are listed to the model
 - **Then** they appear in the tool set as read tools and run client-side.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-1084: the built-in system prompt never asks the model to name the rows it used in backticks or to offer to select them, so Story 4.6's citation rendering has no producer until the selection tool exists (ledger; routed by the lead 2026-09-18)
+- DW-1086: the turnprobe fixture helpers are copied into each browser spec that needs them - ten duplicated helpers and two marker conventions - and the pattern DW-267 already solved once by extracting a shared spec module (ledger; routed by cr 2026-09-18)
+
 ### Story 4.8: A slow or rate-limited provider degrades the turn rather than failing it
 
 As a developer-administrator on a busy account,
@@ -2992,6 +3078,14 @@ So that transient provider trouble is not indistinguishable from a broken produc
 - **Given** the installer reports the Web Gateway response timeout
 - **When** an operator reads that report
 - **Then** it is information, not a prerequisite - because the background-job turn holds no request open, the stock 60 seconds suffices, and a clean clone works unmodified.
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-334: every endpoint judgement costs four resolver lookups plus a `GetInterfacesInfo` read, unbounded and uncached, on every provider call; a slow resolver is a slow step (ledger; routed by x0 2026-09-16)
+- DW-413: `Egress.Addresses`' single-form `HostNameToAddr` fallback sits outside the `MultiLookup` seam, so a probe cannot control the whole address set (ledger; routed by x0 2026-09-16)
+- DW-441: a configured proxy is applied to a marked-local plain-http endpoint too, which then goes through the proxy in cleartext (ledger; routed by harvest 2026-09-16)
+- DW-1053: the turn error banner reads "The turn stopped at : <reason>." when the failure names no step (ledger; routed by cr 2026-09-17)
+- DW-1054: a Send refused with anything other than 409 shows the user nothing (ledger; routed by cr 2026-09-17)
 
 ### Story 4.9: The agent audit ledger
 
@@ -3030,6 +3124,10 @@ So that what the agent did is recoverable afterwards without correlating across 
 - **When** a user referenced by ledger rows is deleted
 - **Then** the rows survive - the ledger is an audit record and outlives its subject - while that user's sessions are invalidated and their running turns abandoned.
 
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-448: `BoundedWhere` has no guarded helper that runs its fragment with a parameter array, so the ledger view's time window has no path yet (ledger; routed by harvest 2026-09-16)
+
 ### Story 4.10: Home's suggested view and the starter prompts
 
 As a developer-administrator arriving in the morning,
@@ -3041,7 +3139,7 @@ So that the agent is useful before I have thought of a question.
 - **Given** Home with an enabled definition
 - **When** the panel renders
 - **Then** a "Suggested view" block sits above the transcript with attention lines - each a 32px row with its count in `code`
-- **And** a line appears only when the read behind it exists: tasks suspended after an error (from the task schedule list, Story 2.8), application errors today per namespace (Story 2.12) and agent status (Story 3.7) are available now, while the **new alerts.log entries** line joins when the alerts read lands in Story 6.13 - the block being built to take lines rather than being rewritten to add one
+- **And** a line appears only when the read behind it exists: application errors per namespace (Story 2.12, counted on the newest date the instance's own log names, since no response carries the instance's local calendar date) and agent status (Story 3.7) are available now, while the **new alerts.log entries** line joins when the alerts read lands in Story 6.13 and the **tasks suspended after an error** line joins when a task read that answers `Suspended` truthfully exists - the vendor LIST coerces it to false (DW-269), so the source is not there today - the block being built to take lines rather than being rewritten to add one [AMENDED 2026-09-18 - see the story change log]
 - **And** each line's text is a button **distinct from** its "Open >" link, and activating the line places its text in the composer as a prompt for the user to send.
 
 - **Given** every attention line would read zero, as on a fresh container
@@ -3055,6 +3153,65 @@ So that the agent is useful before I have thought of a question.
 - **Given** the panel widens on Home
 - **When** the width changes
 - **Then** it animates over 120ms, or not at all under reduced motion, and restores the remembered width on leaving Home.
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-160: Home's panel-widening criterion is this story's last AC; it could not be surface-anchored before a panel existed (ledger; routed by x0 2026-09-16)
+- DW-379: the panel is the default width on Home where `DESIGN.md` gives it a wider width over a 120ms transition, and `--ocu-panel-home` has no consumer (ledger; routed by x0 2026-09-16)
+- DW-269: the vendor tasks LIST coerces `Suspended` to false, so the 'tasks suspended after an error' line needs the task INFO read AD-36 allows - declined in this story with a reason, because the read grammar and the descriptor that would carry it are another epic's footprint, and the line joins later like the alerts one (ledger; routed by cr 2026-09-14)
+
+### Story 4.12: Epic 4 burn-down
+
+As the team that has to live with Epic 4,
+I want the residue the epic's own gates found closed before it merges,
+So that the panel is not shipped with known holes in the places that decide what a test proves and what a reader is told.
+
+**Acceptance Criteria:**
+
+- **Given** the fourteen entries this story charters
+- **When** each is closed
+- **Then** it is either fixed with a demonstrated mutation, or made terminal with the reason recorded on the entry - never left `routed`.
+
+- **Given** the gates this epic found could not fail (DW-1154, DW-1091, DW-1092, DW-1048)
+- **When** they are settled
+- **Then** a deleted stylesheet rule reddens a test, the error-log truncation assertion holds on an instance of any age, and neither the navigation nor the sign-out browser leg fails opaquely because another run left state behind.
+
+- **Given** the bundle gate (DW-1153)
+- **When** it is settled
+- **Then** the budget names a number measured in this story, raised in one commit that states the measurement, with `angular.json` and the pinned literal moving together - or the bundle is trimmed back under the standing number.
+
+- **Given** the envelope and vocabulary entries (DW-447, DW-1127, DW-1129)
+- **When** they are settled
+- **Then** no 400 carries a vendor exception's text, the ledger's refusal names what it refused rather than a tool call, and the rule count a contributor reads matches the checker's own.
+
+- **Given** the turn and ledger holes (DW-1095, DW-1096, DW-1124, DW-1125)
+- **When** they are settled
+- **Then** a settle for a turn that has already ended is refused like any other stale write, a schema states the types it emits, and a bound lives in one place so raising it cannot cut silently.
+
+- **Given** the secret backstop (DW-398)
+- **When** it is settled
+- **Then** the credential-name matcher masks a secret word wherever it sits in a key name, or the anchoring is recorded as deliberate with the reason on the entry.
+
+- **Given** every entry this story does not charter
+- **When** the epic closes
+- **Then** each is still owned by `burndown` with its status and reason recorded, so a later epic's burn-down inherits a queue rather than a surprise.
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-398: the anchored credential-name backstop cannot mask a secret word that is not final in a key name (ledger; chartered by the burn-down gate 2026-09-18)
+- DW-447: `Api.Definitions` and `Api.Switches` render `ReadRequestBody`'s vendor exception text in their 400s (ledger; chartered by the burn-down gate 2026-09-18)
+- DW-1048: the sign-out browser leg reads the composer right after the first-login gate settles, and flakes in a full suite (ledger; chartered by the burn-down gate 2026-09-18)
+- DW-1091: `ReadTool`'s error-log truncation assertion depends on the instance having two entries on one date (ledger; chartered by the burn-down gate 2026-09-18)
+- DW-1092: `navigate.browser-spec.mjs` fails opaquely when another turn still holds the user's slot (ledger; chartered by the burn-down gate 2026-09-18)
+- DW-1095: `Navigate.ResultSchema` declares `entityId` and `code` as strings while the settle emits JSON null (ledger; chartered by the burn-down gate 2026-09-18)
+- DW-1096: `POST /turn/:id/navigation` accepts a settle for a turn that has already ended (ledger; chartered by the burn-down gate 2026-09-18)
+- DW-1124: the 4096 and 512 column bounds are duplicated as literals beside their `Limits` parameters (ledger; chartered by the burn-down gate 2026-09-18)
+- DW-1125: an over-long `RequiredPairs` fails the whole row's write rather than losing a pair (ledger; chartered by the burn-down gate 2026-09-18)
+- DW-1127: the ledger's only 403 reuses a sentence that names a tool call (ledger; chartered by the burn-down gate 2026-09-18)
+- DW-1129: `check-objectscript.py` reports 21 rules while `CLAUDE.md` states 18 (ledger; chartered by the burn-down gate 2026-09-18)
+- DW-1149: `ERROR_LOG_DATES_PATH` duplicates the error-log store's prefix with nothing pinning them equal (ledger; chartered by the burn-down gate 2026-09-18)
+- DW-1153: the client bundle is 778.37 kB against the 780 kB gate (ledger; chartered by the burn-down gate 2026-09-18)
+- DW-1154: nothing pins the presence of a stylesheet rule (ledger; chartered by the burn-down gate 2026-09-18)
 
 ---
 

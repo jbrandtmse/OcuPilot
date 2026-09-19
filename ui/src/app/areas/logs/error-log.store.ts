@@ -2,6 +2,7 @@ import { Injectable, Injector, inject } from '@angular/core';
 
 import { ApiService } from '../../core/api';
 import { classifyFault, type Fault } from '../../core/fault';
+import { ERROR_LOG_PATH_PREFIX } from '../../core/log-paths';
 
 /** The four drill levels, spelled as the routes that serve them bind them. */
 export type ErrorLogLevel = 'namespaces' | 'dates' | 'list' | 'detail';
@@ -54,9 +55,6 @@ export interface ErrorLogDetail {
   readonly variables: readonly ErrorLogVariableRow[];
   readonly truncated: boolean;
 }
-
-/** The absolute prefix every level of this screen's read is issued under (AD-20). */
-export const ERROR_LOG_PATH_PREFIX = '/api/ocupilot/logs/errors/';
 
 function rowsOf(body: unknown): readonly unknown[] {
   if (body === null || typeof body !== 'object') return [];

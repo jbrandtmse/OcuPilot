@@ -44,7 +44,7 @@ ClassMethod Call(pMethod As %String, pSuffix As %String, pBody As %String, Outpu
 Method TestEveryViolationCodeHasAPublishedSentence()
 {
     Set tCodes = ##class(OcuPilot.Api.Error).ViolationCodes()
-    Do $$$AssertEquals($ListLength(tCodes), 27, "the vocabulary holds twenty-seven field-level codes; adding one is a deliberate edit in OcuPilot.Api.Error")
+    Do $$$AssertEquals($ListLength(tCodes), 30, "the vocabulary holds thirty field-level codes; adding one is a deliberate edit in OcuPilot.Api.Error")
     For tI = 1:1:$ListLength(tCodes) {
         Set tCode = $List(tCodes, tI)
         Set tReason = ##class(OcuPilot.Api.Error).ReasonForViolation(tCode)
@@ -74,7 +74,7 @@ Method TestViolationCodesHoldsEveryDeclaredFieldLevelCode()
     ; restraint codes, whose sentences live in ReasonForRestraint and are asserted by
     ; OcuPilot.Test.Restraint. Named here, because "which codes are field-level" is the one fact
     ; this check cannot derive.
-    Set tEnvelope = $ListBuild("AGENTVALIDATION", "AGENTNOTFOUND", "AGENTBADBODY", "AGENTHOLDNOTFOUND", "AGENTREADONLYENFORCED", "AGENTREADONLYDEFINITION", "AGENTKILLSWITCHGLOBAL", "AGENTKILLSWITCHUSER")
+    Set tEnvelope = $ListBuild("AGENTVALIDATION", "AGENTNOTFOUND", "AGENTBADBODY", "AGENTHOLDNOTFOUND", "AGENTREADONLYENFORCED", "AGENTREADONLYDEFINITION", "AGENTKILLSWITCHGLOBAL", "AGENTKILLSWITCHUSER", "AGENTCONTEXTSHARE")
     Set tDeclared = ##class(OcuPilot.Api.Error).ViolationCodes()
     Set tFound = 0
     Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT Name FROM %Dictionary.CompiledParameter WHERE parent = ?", "OcuPilot.Api.Error")
@@ -87,7 +87,7 @@ Method TestViolationCodesHoldsEveryDeclaredFieldLevelCode()
         Do $$$AssertTrue($ListFind(tDeclared, tCode) > 0, "field-level code '" _ tName _ "' = '" _ tCode _ "' is in ViolationCodes(), so the sentence check reaches it")
     }
     ; A sweep that found nothing would pass every row above having tested nothing.
-    Do $$$AssertTrue(tFound >= 27, "the sweep read the declared parameters rather than an empty roster (found " _ tFound _ ")")
+    Do $$$AssertTrue(tFound >= 30, "the sweep read the declared parameters rather than an empty roster (found " _ tFound _ ")")
     Do $$$AssertEquals($ListLength(tDeclared), tFound, "and ViolationCodes() holds no code the class does not declare")
 }
 

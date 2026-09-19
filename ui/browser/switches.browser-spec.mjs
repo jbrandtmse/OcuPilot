@@ -30,6 +30,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
+import { requireFreeSlot } from './turnprobe-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -49,6 +50,11 @@ before(async () => {
   assert.notEqual(config.container, LIVE_CONTAINER, 'this spec drives the throwaway, never the live container');
   const ready = await (await fetch(`${config.origin}${READINESS_PATH}`)).json();
   assert.equal(ready.state, 'installed', `the throwaway must be installed, not ${JSON.stringify(ready)}`);
+  // This spec arms no probe, but it saves the Switches form -- and a save made while an earlier
+  // spec's turn still holds this user's one slot (AD-41) is refused, after which the form's own
+  // wait dies on a bare thirty-second timeout naming none of that. DW-1167: the guard is the
+  // shared one, not a third copy.
+  await requireFreeSlot(config);
   browser = await puppeteer.launch(launchOptions(config));
 });
 
@@ -83,6 +89,7 @@ async function restoreSwitches() {
       killSwitchReason: '',
       enforcedReadOnly: false,
       shareContextByDefault: true,
+      contextRowCap: 200,
     }),
   });
   assert.equal(answer.status, 200, `the switches were restored: ${await answer.text()}`);
@@ -247,6 +254,50 @@ test('AC3, AC4: the kill switch reaches the panel banner and the rail dot, with 
     assert.ok(
       stillBannered.some((text) => text.includes(expected)),
       `the second screen rendered with the kill switch still on: ${JSON.stringify(stillBannered)}`
+    );
+  } finally {
+    await context.close();
+  }
+});
+
+test('Story 4.4: the context row cap saves as a number and renders the server violation', async () => {
+  await restoreSwitches();
+  const { context, page } = await signedInAt(SWITCHES_URL);
+  try {
+    await page.waitForSelector('#ocu-switches-contextRowCap', { visible: true, timeout: config.navigationTimeoutMs });
+    assert.equal(
+      await page.$eval('#ocu-switches-contextRowCap', (node) => node.value),
+      '200',
+      'the stored default renders on load'
+    );
+
+    await page.$eval('#ocu-switches-contextRowCap', (node) => {
+      node.value = '500';
+      node.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await page.click('.ocu-form-bar-actions .ocu-button-primary');
+    await page.waitForFunction(
+      () => document.querySelector('#ocu-switches-contextRowCap')?.value === '500',
+      { timeout: config.navigationTimeoutMs }
+    );
+    const stored = await (
+      await fetch(`${config.origin}${SWITCHES_PATH}`, { headers: { Authorization: authHeader() } })
+    ).json();
+    assert.equal(stored.contextRowCap, 500, 'the instance holds the number the browser saved');
+
+    // A refused value renders on its own field, not the reason field.
+    await page.$eval('#ocu-switches-contextRowCap', (node) => {
+      node.value = '5000';
+      node.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await page.click('.ocu-form-bar-actions .ocu-button-primary');
+    await page.waitForSelector('#ocu-switches-contextRowCap-reason', { timeout: config.navigationTimeoutMs });
+    const reason = await page.$eval('#ocu-switches-contextRowCap-reason', (node) => node.textContent.trim());
+    assert.ok(reason.length > 0, 'the row-cap violation renders beside its own control');
+    assert.equal(
+      await page.$eval('#ocu-switches-contextRowCap', (node) => node.getAttribute('aria-invalid')),
+      'true',
+      'and the control itself is marked invalid'
     );
   } finally {
     await context.close();

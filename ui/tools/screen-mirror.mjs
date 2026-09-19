@@ -442,6 +442,28 @@ function nameListProblem(where, list, allowed) {
 }
 
 /**
+ * What is wrong with `context`'s `maxLength` map, or `null` (AD-24, Story 4.4). Optional; when
+ * declared it is an object whose every key is one of `fields` and whose every value is a whole
+ * number from 1 to 1,000 -- the same bound the kernel cutter enforces by default, so a declared
+ * value can only lower it, never raise it. `OcuPilot.Screen.Registry.ContextMaxLengthProblem`
+ * refuses the same shapes on the instance.
+ */
+function contextMaxLengthProblem(context, fields) {
+  if (context.maxLength === undefined || context.maxLength === null) return null;
+  const { maxLength } = context;
+  if (maxLength === null || typeof maxLength !== 'object' || Array.isArray(maxLength)) {
+    return 'context.maxLength is not an object';
+  }
+  for (const [key, value] of Object.entries(maxLength)) {
+    if (!fields.includes(key)) return `context.maxLength names '${key}', which is not in context.fields`;
+    if (typeof value !== 'number' || !Number.isInteger(value) || value < 1 || value > 1000) {
+      return `context.maxLength.${key} is not a whole number from 1 to 1,000`;
+    }
+  }
+  return null;
+}
+
+/**
  * What is wrong with a **built** declaration's `sideBarPosition`, or `null` when nothing is: it
  * must be declared, a number, a whole number, and at least 0.
  *
@@ -657,8 +679,9 @@ export function readProblem(declaration) {
     return 'context is not an object, and a screen that declares a read declares its secret fields (AD-24)';
   }
   const contextFault =
-    unknownKeyProblem('context', context, ['fields', 'secretFields']) ??
-    nameListProblem('context.secretFields', context.secretFields, read.fields);
+    unknownKeyProblem('context', context, ['fields', 'secretFields', 'maxLength']) ??
+    nameListProblem('context.secretFields', context.secretFields, read.fields) ??
+    contextMaxLengthProblem(context, Array.isArray(context.fields) ? context.fields : []);
   if (contextFault !== null) return contextFault;
   const secrets = context.secretFields;
   const overlap = (where, names) => {
@@ -1882,6 +1905,9 @@ export interface IdAccessor {
 export interface ContextDeclaration {
   readonly fields: readonly string[];
   readonly secretFields: readonly string[];
+  /** Per-field length overrides (Story 4.4, AD-24), each a whole number from 1 to 1,000. Absent
+   * for a screen that declares none. */
+  readonly maxLength?: Readonly<Record<string, number>>;
 }
 
 export interface ActionDeclaration {

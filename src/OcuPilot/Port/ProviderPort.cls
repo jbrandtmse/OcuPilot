@@ -97,7 +97,7 @@ ClassMethod Invoke(pDefinitionId As %String = "", ByRef pMessages, ByRef pTools,
             Do ..Refuse(##class(OcuPilot.Api.Error).#PROVIDERUNCONFIGURED, .pHttpStatus, .pFault)
             Quit
         }
-        Do ..Dispatch(.tValues, .pMessages, .pTools, pSystemPrompt, .pResponse, .pHttpStatus, .pFault)
+        Do ..Dispatch(.tValues, .pMessages, .pTools, ..SystemPromptFor(.tValues, pSystemPrompt), .pResponse, .pHttpStatus, .pFault)
         Do ..FlagUnresolvedCredential(pDefinitionId, .tValues, .pFault)
     } Catch ex {
         Do ..Refuse(##class(OcuPilot.Api.Error).#PROVIDERTRANSPORT, .pHttpStatus, .pFault)
@@ -106,19 +106,29 @@ ClassMethod Invoke(pDefinitionId As %String = "", ByRef pMessages, ByRef pTools,
     Quit $$$OK
 }
 
+/// <p>The system prompt a call against the stored definition <var>pValues</var> sends (AD-11 rule
+/// 1, DW-333): the definition's override, whole, when it has one, and <var>pSystemPrompt</var>
+/// otherwise. Never both. The override is read with the definition at every call, so an edit
+/// takes effect at the next one.</p>
+ClassMethod SystemPromptFor(ByRef pValues, pSystemPrompt As %String) As %String [ Private ]
+{
+    Set tOverride = $Get(pValues("systemPromptOverride"))
+    If tOverride = $Char(0) Set tOverride = ""
+    If tOverride '= "" Quit tOverride
+    Quit pSystemPrompt
+}
+
 /// <p><b>DW-22.</b> A stored definition whose credential reference no longer resolves is disabled
 /// and its verification cleared, so an operator sees the broken definition instead of a turn that
 /// fails silently for as long as nobody looks.</p>
 /// <p><b>Only <code>PROVIDER.CREDENTIAL</code>, and deliberately not
 /// <code>PROVIDER.KEYSHAPE</code></b>: that one is a key of the wrong shape, which is a different
 /// fault from a reference that resolves to nothing, and the entry names the missing one.</p>
-/// <p><b>And only when the resolution was an absence</b> (DW-343). The ladder reports through
-/// <code>pValues("credentialTransient")</code> whether its <code>""</code> came from a store that
-/// would not answer -- a locked row, a raise -- rather than from a reference nothing holds.
-/// Disabling on the first kind takes a definition that is correctly configured out of service
-/// because the store was busy for a moment, and nothing puts it back but an operator noticing. The
-/// call still fails, with the same refusal; what changes is that the row is left alone and the
-/// reason goes to the log.</p>
+/// <p><b>And never <code>PROVIDER.CREDENTIALSTORE</code></b> (DW-343, DW-410). That code is a
+/// store that could not be read -- a rung this namespace cannot reach, a locked row, a raise --
+/// which says nothing about the reference. Disabling on it takes a definition that is correctly
+/// configured out of service, and nothing puts it back but an operator noticing. The call still
+/// fails; the row is left alone and the reason goes to the log.</p>
 /// <p><b>Only <method>Invoke</method> calls this.</b> <method>InvokeDraft</method> runs against
 /// values a caller supplied, so there is no row to flag -- and testing a disabled definition is how
 /// an operator re-enables one.</p>
@@ -128,12 +138,12 @@ ClassMethod FlagUnresolvedCredential(pId As %String, ByRef pValues, ByRef pFault
 {
     Try {
         If '$IsObject(pFault) Quit
-        If pFault.code '= ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIAL Quit
-        If +$Get(pValues("credentialTransient")) {
+        If pFault.code = ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIALSTORE {
             ; The reference, never a value -- there is none to name either way.
-            Do ..LogRaw("a definition was left enabled because its credential store could not be read; the reference was not judged absent", $$$ERROR($$$GeneralError, "definition " _ pId), ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIAL)
+            Do ..LogRaw("a definition was left enabled because its credential store could not be read; the reference was not judged absent", $$$ERROR($$$GeneralError, "definition " _ pId _ ", " _ $Get(pValues("credType")) _ " " _ $Get(pValues("credentialName"))), ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIALSTORE)
             Quit
         }
+        If pFault.code '= ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIAL Quit
         Set tSC = ##class(OcuPilot.Kernel.State.Agent).GuardedClearVerification(pId)
         If $$$ISERR(tSC) {
             Do ..LogRaw("a definition whose credential reference no longer resolves could not be disabled", tSC, ##class(OcuPilot.Api.Error).#PROVIDERCREDENTIAL)
@@ -161,9 +171,12 @@ ClassMethod FlagUnresolvedCredential(pId As %String, ByRef pValues, ByRef pFault
 /// <code>endpointUrl</code> filled in from the row when it was empty. A caller that keeps the
 /// array -- an operator's edited form, say -- sees those keys afterwards.</p>
 /// <p><b><code>maxAttempts</code> is the one key a caller may set to change how the call is
-/// made</b>, and it can only <i>lower</i> the instance's stored bound: a positive whole number
+/// retried</b>, and it can only <i>lower</i> the instance's stored bound: a positive whole number
 /// below the resolved value is taken, anything else is ignored. Test connection sets it to 1.
-/// <method>ValuesFor</method> never sets it, so a turn keeps the stored ladder.</p>
+/// <method>ValuesFor</method> never sets it, so a turn keeps the stored ladder. The key the call
+/// carries is the caller's to choose too, through <code>keySource</code>
+/// (<method>OcuPilot.Kernel.Provider.Base.Invoke</method>); absent, the stored reference is
+/// resolved.</p>
 ClassMethod InvokeDraft(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %String = "", Output pResponse As OcuPilot.Kernel.Provider.Response, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
 {
     Do ..Blank(.pResponse, .pHttpStatus, .pFault)
@@ -191,8 +204,16 @@ ClassMethod InvokeDraft(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPro
 }
 
 /// <p>Everything both entries do once the gate has answered: resolve the provider's catalog row,
-/// judge the endpoint's resolved address, resolve the instance's outbound settings, confirm the
-/// TLS configuration, and hand the call to the adapter the row names.</p>
+/// judge the endpoint's resolved address, resolve the instance's outbound settings, judge the
+/// configured proxy's resolved address, confirm the TLS configuration, and hand the call to the
+/// adapter the row names.</p>
+/// <p><b>A configured proxy is a destination too</b> (AD-32, AD-42). Its host is judged by the same
+/// policy as the endpoint, with the definition's own marked-local flag and its row's local escape,
+/// and a refusal is <code>PROVIDER.EGRESS</code> naming the proxy with no socket opened. An on-host
+/// forward proxy is not special-cased. Where the endpoint is https the request always
+/// CONNECT-tunnels through the proxy and negotiates TLS inside the tunnel, whatever the stored
+/// <code>proxyTunnel</code> and <code>proxyHttps</code> say, so the proxy never terminates the
+/// session that carries the key; a plain-http endpoint keeps both stored values.</p>
 /// <p><b>The adapter comes from the row's <code>adapterClass</code> column and from nowhere
 /// else.</b> No branch here reads a provider key, so a second family is one row plus one class
 /// (AC1).</p>
@@ -213,7 +234,7 @@ ClassMethod Dispatch(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt
     Set tMarkedLocal = ''+$Get(pValues("markedLocal"))
 
     ; The endpoint a create left empty is the row's canonical one, exactly as a create resolves it.
-    If $Get(pValues("endpointUrl")) = "" Set pValues("endpointUrl") = tRow.defaultEndpoint
+    Set pValues("endpointUrl") = ..EndpointOf($Get(pValues("endpointUrl")), tRow)
     Set tEndpoint = $Get(pValues("endpointUrl"))
     If tEndpoint = "" {
         Do ..Refuse(##class(OcuPilot.Api.Error).#PROVIDERUNCONFIGURED, .pHttpStatus, .pFault)
@@ -240,6 +261,20 @@ ClassMethod Dispatch(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt
         ; Resolve answers the shipped defaults whatever happened, so the call proceeds; the reason
         ; it could not read the stored row goes to the log.
         Do ..LogRaw("the instance's outbound settings could not be read; the shipped defaults are in force for this call", tSettingsSC, "")
+    }
+    Set tProxyHost = ..ProxyHostOf(.tSettings)
+    If tProxyHost '= "" {
+        If '##class(OcuPilot.Kernel.Egress).IsPermitted(tProxyHost, tMarkedLocal, tAllowsLocal, .tProxyKind) {
+            Do ##class(OcuPilot.Kernel.Provider.Base).Fault(##class(OcuPilot.Api.Error).#PROVIDEREGRESS, ##class(OcuPilot.Kernel.Provider.Base).#REASONPROXYEGRESS, "", .pFault, .pHttpStatus)
+            Do ..LogRaw("the proxy this call would go through was refused by the address policy", $$$ERROR($$$GeneralError, "resolved address kind: " _ tProxyKind), ##class(OcuPilot.Api.Error).#PROVIDEREGRESS)
+            Quit
+        }
+        ; The vendor negotiates TLS inside a CONNECT tunnel only when ProxyHTTPS is set, so both
+        ; flags are forced: a tunnel alone would carry the key in cleartext.
+        If ..IsHttps(tEndpoint) {
+            Set tSettings("proxyTunnel") = 1
+            Set tSettings("proxyHttps") = 1
+        }
     }
     ; A caller may lower this call's attempt bound below the instance's, never raise it: Test
     ; connection makes one attempt, so an operator holding focus on a button is not held through a
@@ -271,6 +306,65 @@ ClassMethod Dispatch(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt
     ; Dropped as soon as the call returns: the adapter clears its own key, and releasing the last
     ; reference to it is what ends the object's life rather than leaving it in this frame.
     Set tAdapter = ""
+}
+
+/// <p>The provider, endpoint host and proxy host of the enabled stored definition
+/// <var>pDefinitionId</var>, resolved by the same <method>EndpointOf</method> and
+/// <method>ProxyHostOf</method> <method>Dispatch</method> uses (Story 4.4's context status read,
+/// AD-42): <var>pProvider</var> the catalog key, <var>pHost</var> the endpoint's authority
+/// (<method>OcuPilot.Kernel.Egress.HostOf</method>), <var>pMarkedLocal</var> the definition's own
+/// flag and <var>pProxyHost</var> the configured proxy or <code>""</code>. Answers 0, with every
+/// output <code>""</code>/0, for an id no row holds, a disabled definition, or a provider whose
+/// catalog row cannot be read.</p>
+ClassMethod ResolveEndpoint(pDefinitionId As %String, Output pProvider As %String, Output pHost As %String, Output pMarkedLocal As %Boolean, Output pProxyHost As %String) As %Boolean
+{
+    Set pProvider = ""
+    Set pHost = ""
+    Set pMarkedLocal = 0
+    Set pProxyHost = ""
+    Set tOk = 0
+    Try {
+        If pDefinitionId = "" Quit
+        Set tSC = ..ValuesFor(pDefinitionId, .tValues, .tFound)
+        If $$$ISERR(tSC) || 'tFound || '+$Get(tValues("enabled")) Quit
+        If '$ClassMethod(..CatalogClass(), "Row", $Get(tValues("provider")), .tRow) Quit
+        Set tEndpoint = ..EndpointOf($Get(tValues("endpointUrl")), tRow)
+        If tEndpoint = "" Quit
+        Do ##class(OcuPilot.Kernel.State.Egress).Resolve(.tSettings)
+        Set pProvider = $Get(tValues("provider"))
+        Set pMarkedLocal = ''$Get(tValues("markedLocal"))
+        Set pHost = ##class(OcuPilot.Kernel.Egress).HostOf(tEndpoint)
+        Set pProxyHost = ..ProxyHostOf(.tSettings)
+        Set tOk = 1
+    } Catch ex {
+        Set pProvider = ""
+        Set pHost = ""
+        Set pMarkedLocal = 0
+        Set pProxyHost = ""
+        Set tOk = 0
+    }
+    Quit tOk
+}
+
+/// <p>The endpoint a call goes to: the stored <var>pEndpointUrl</var>, else the catalog row
+/// <var>pRow</var>'s <code>defaultEndpoint</code>.</p>
+ClassMethod EndpointOf(pEndpointUrl As %String, pRow) As %String [ Private ]
+{
+    If pEndpointUrl '= "" Quit pEndpointUrl
+    Quit pRow.defaultEndpoint
+}
+
+/// <p>The configured proxy from <class>OcuPilot.Kernel.State.Egress</class>'s resolved
+/// <var>pSettings</var>, ready for <method>OcuPilot.Kernel.Egress.IsPermitted</method>, or
+/// <code>""</code> when none is set. The stored proxy is a bare host, and
+/// <method>OcuPilot.Kernel.Egress.HostOf</method> cuts a bare host at its first colon, so a bare
+/// IPv6 literal is bracketed.</p>
+ClassMethod ProxyHostOf(ByRef pSettings) As %String [ Private ]
+{
+    Set tProxyHost = $Get(pSettings("proxyServer"))
+    If tProxyHost = "" Quit ""
+    If ($Length(tProxyHost, ":") > 2) && ($Extract(tProxyHost) '= "[") Set tProxyHost = "[" _ tProxyHost _ "]"
+    Quit tProxyHost
 }
 
 /// <p>The stored definition <var>pId</var> as the ByRef value array the adapter reads.

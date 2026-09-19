@@ -152,7 +152,8 @@ Method TestAHoldIsRemovedByIdAndAnAbsentIdIsNotAnError()
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Hold).GuardedDeleteId("999999999"), "removing an id no row holds is not an error")
 }
 
-/// <p><b>Holds list in creation order</b>, which is what the screen renders them in.</p>
+/// <p><b>Holds list in creation order</b>, which is what the screen renders them in, and a bounded
+/// read stops at its bound.</p>
 Method TestHoldsListInCreationOrder()
 {
     For tSuffix = "Alpha", "Beta", "Gamma" {
@@ -161,6 +162,9 @@ Method TestHoldsListInCreationOrder()
     Set tSC = ##class(OcuPilot.Kernel.State.Hold).GuardedScreenRows(.tRows)
     Do $$$AssertStatusOK(tSC, "the screen rows read")
     Do $$$AssertEquals(tRows.%Size(), 3, "carrying three rows")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Hold).GuardedScreenRows(.tBounded, 2), "a bounded read answers")
+    Do $$$AssertEquals($Select($IsObject(tBounded): tBounded.%Size(), 1: -1), 2, "with the two ids its SELECT TOP ? bound admits")
+    Do $$$AssertStatusNotOK(##class(OcuPilot.Kernel.State.Hold).GuardedScreenRows(.tRefused, 0), "and a bound of zero is refused")
     If tRows.%Size() '= 3 Quit
     Do $$$AssertEquals(tRows.%Get(0).userName, ..#PROBEPREFIX _ "Alpha", "the first written is first")
     Do $$$AssertEquals(tRows.%Get(1).userName, ..#PROBEPREFIX _ "Beta", "then the second")
@@ -278,6 +282,7 @@ Method TestTheValidatorsRefuseWhatThePublishedCopyCannotRender()
     Kill tValues
     Set tValues("killSwitch") = 1
     Set tValues("killSwitchReason") = ""
+    Set tValues("contextRowCap") = 200
     Do $$$AssertEquals(##class(OcuPilot.Kernel.SwitchRules).ValidateSwitches(.tValues, .tViolations), 1, "a kill switch with no reason is refused once")
     Do $$$AssertEquals($List(tViolations(1), 1), "killSwitchReason", "on the reason field")
     Do $$$AssertEquals($List(tViolations(1), 2), ##class(OcuPilot.Api.Error).#AGENTSWITCHREASONREQUIRED, "with its own code")
@@ -291,6 +296,7 @@ Method TestTheValidatorsRefuseWhatThePublishedCopyCannotRender()
     Kill tOff
     Set tOff("killSwitch") = 0
     Set tOff("killSwitchReason") = ""
+    Set tOff("contextRowCap") = 200
     Do $$$AssertEquals(##class(OcuPilot.Kernel.SwitchRules).ValidateSwitches(.tOff, .tViolations), 0, "and turning the switch off needs no reason")
 
     Kill tHold

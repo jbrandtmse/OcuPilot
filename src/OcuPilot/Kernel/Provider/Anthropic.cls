@@ -35,6 +35,12 @@ Method ProviderName() As %String
 /// <p><code>system</code> and <code>tools</code> are omitted rather than sent empty: an empty
 /// system prompt is not the same request as no system prompt, and an empty tool array advertises a
 /// tool set the turn does not have.</p>
+/// <p>A message whose <code>pMessages(n, "blocks")</code> holds a JSON array is sent with that
+/// array as its <code>content</code> -- the shape a tool call's echo and its results take; any
+/// other message sends its <code>content</code> string.</p>
+/// <p><b>The body is written as UTF-8 bytes.</b> The media type carries no charset, so
+/// <class>%Net.HttpRequest</class> sends the entity body untranslated, and a character above 255
+/// written as itself would not reach the provider intact.</p>
 Method CallMessages(pRequest As %Net.HttpRequest, ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %String) As %Status
 {
     Set tSC = $$$OK
@@ -48,7 +54,16 @@ Method CallMessages(pRequest As %Net.HttpRequest, ByRef pValues, ByRef pMessages
         For tI = 1:1:+$Get(pMessages) {
             Set tMessage = {}
             Do tMessage.%Set("role", $Get(pMessages(tI, "role")))
-            Do tMessage.%Set("content", $Get(pMessages(tI, "content")))
+            Set tBlocks = ""
+            If $Get(pMessages(tI, "blocks")) '= "" {
+                Set tParsed = ##class(%DynamicAbstractObject).%FromJSON(pMessages(tI, "blocks"))
+                If $IsObject(tParsed) && tParsed.%IsA("%Library.DynamicArray") Set tBlocks = tParsed
+            }
+            If $IsObject(tBlocks) {
+                Do tMessage.%Set("content", tBlocks)
+            } Else {
+                Do tMessage.%Set("content", $Get(pMessages(tI, "content")))
+            }
             Do tMessageArray.%Push(tMessage)
         }
         Do tBody.%Set("messages", tMessageArray)
@@ -64,7 +79,7 @@ Method CallMessages(pRequest As %Net.HttpRequest, ByRef pValues, ByRef pMessages
             Do tBody.%Set("tools", tToolArray)
         }
         Do pRequest.EntityBody.Clear()
-        Do pRequest.EntityBody.Write(tBody.%ToJSON())
+        Do pRequest.EntityBody.Write($ZConvert(tBody.%ToJSON(), "O", "UTF8"))
         ; Set last, and this order is the implementation rather than a preference:
         ; %Net.HttpRequest.ContentType is a calculated property over an ATTRIBUTE of the entity
         ; body stream, and Clear() drops the stream's attributes with its contents. Set before the
@@ -76,13 +91,14 @@ Method CallMessages(pRequest As %Net.HttpRequest, ByRef pValues, ByRef pMessages
     Quit tSC
 }
 
-/// <p>Write the two authentication headers onto <var>pRequest</var>.</p>
+/// <p>Write the authentication headers onto <var>pRequest</var>: the version always, and the key
+/// only when the call carries one.</p>
 /// <p><b><property>ApiKey</property> is read straight onto the header.</b> No local holds it, not
 /// even to build the value, because <code>^%ETN</code> captures every local at every stack level
 /// and OcuPilot renders that log (AD-35, AD-46, AD-48).</p>
 Method ApplyAuth(pRequest As %Net.HttpRequest)
 {
-    Do pRequest.SetHeader(..#KEYHEADER, ..ApiKey)
+    If ..ApiKey '= "" Do pRequest.SetHeader(..#KEYHEADER, ..ApiKey)
     Do pRequest.SetHeader(..#VERSIONHEADER, ..AuthVersion)
 }
 

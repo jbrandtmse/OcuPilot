@@ -65,6 +65,7 @@ const switches = (overrides: Record<string, unknown> = {}) => ({
   killSwitchReason: '',
   enforcedReadOnly: false,
   shareContextByDefault: true,
+  contextRowCap: 200,
   updatedAt: '',
   holds: [],
   ...overrides,
@@ -166,6 +167,7 @@ describe('the Switches screen', () => {
     // Every writable field, always -- a partial body would leave the server merging over values
     // the operator can see on screen (AD-4).
     expect(Object.keys(body).sort()).toEqual([
+      'contextRowCap',
       'enforcedReadOnly',
       'killSwitch',
       'killSwitchReason',
@@ -175,6 +177,56 @@ describe('the Switches screen', () => {
     expect(body.shareContextByDefault).toBe(false);
 
     expect(events.map((event) => `${event.kind}:${event.type}`)).toContain('changed:agent-switch');
+  });
+
+  it('Story 4.4: the context row cap renders the stored value and round-trips as a number', async () => {
+    const { fixture, host, calls } = await mount((path, init) => {
+      if (init.method === 'PUT') {
+        return ok(switches({ contextRowCap: 500 }));
+      }
+      return ok(switches({ contextRowCap: 200 }));
+    });
+
+    // The stored value renders on load.
+    expect(input(host, 'ocu-switches-contextRowCap').value).toBe('200');
+
+    type(input(host, 'ocu-switches-contextRowCap'), '500');
+    (host.querySelector('.ocu-button-primary') as HTMLButtonElement).click();
+    await settle(fixture);
+
+    const put = calls.find((call) => call.method === 'PUT');
+    const body = JSON.parse(put?.body ?? '{}');
+    // Sent as a JSON number, not the string the input control holds (AD-4).
+    expect(body.contextRowCap).toBe(500);
+    expect(typeof body.contextRowCap).toBe('number');
+    expect(input(host, 'ocu-switches-contextRowCap').value).toBe('500');
+  });
+
+  it('Story 4.4: a row-cap refusal renders on its own field, not the reason field', async () => {
+    // Mutation (Rule 19): render every violation on the same field id -> this goes red, since the
+    // row-cap sentence would then appear beside killSwitchReason instead of contextRowCap.
+    const { fixture, host } = await mount((path, init) => {
+      if (init.method === 'PUT') {
+        return refused([
+          {
+            field: 'contextRowCap',
+            code: 'AGENT.SWITCH.CONTEXTROWCAP',
+            reason: 'Context rows sent with a turn is a whole number from 1 to 1,000.',
+          },
+        ]);
+      }
+      return ok(switches());
+    });
+
+    type(input(host, 'ocu-switches-contextRowCap'), '5000');
+    (host.querySelector('.ocu-button-primary') as HTMLButtonElement).click();
+    await settle(fixture);
+
+    const field = input(host, 'ocu-switches-contextRowCap');
+    expect(field.getAttribute('aria-invalid')).toBe('true');
+    expect(
+      (host.querySelector('#ocu-switches-contextRowCap-reason') as HTMLElement).textContent
+    ).toContain('Context rows sent with a turn is a whole number from 1 to 1,000.');
   });
 
   it('AC7: a refused save renders the violation on the field the server named, in the summary and beside the control', async () => {

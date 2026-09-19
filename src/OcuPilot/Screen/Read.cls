@@ -255,7 +255,7 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
             ; AD-36's second source kind: the rows come from a kernel store's guarded list rather
             ; than from a port, and everything below this line is unchanged -- the same field
             ; projection, the same secret strip, the same cap and the same truncation signal.
-            Set tStateSC = ..StateRows(pDescriptor, tSource.%Get("endpoint"), .tAnswer, .pHttpStatus, .pFault)
+            Set tStateSC = ..StateRows(pDescriptor, tSource.%Get("endpoint"), tMax + 1, .tAnswer, .pHttpStatus, .pFault)
             If $$$ISERR(tStateSC) {
                 Set tSC = tStateSC
                 Quit
@@ -410,18 +410,18 @@ ClassMethod Execute(pDescriptor As %String, pMaxRows As %String = "", Output pRe
 }
 
 /// <p>The rows a <code>state</code> source answers with (AD-9, AD-36): the kernel store
-/// <var>pEndpoint</var> names, asked for its guarded list as a <class>%DynamicArray</class>.</p>
-/// <p><b>Unbounded here and bounded by the caller.</b> A store's guarded list is a SQL read of
-/// OcuPilot's own table, which has no <code>maxRows</code> to send ahead of it, so
-/// <method>Execute</method>'s own cap is what bounds the answer -- it keeps at most the cap's rows
-/// and reports <code>truncated</code> when more came back, exactly as it does for a port answer.
-/// That is the same guarantee reached one step later, not a weaker one.</p>
+/// <var>pEndpoint</var> names, asked for at most <var>pMaxRows</var> rows of its guarded list as a
+/// <class>%DynamicArray</class>.</p>
+/// <p><b>Bounded at the query.</b> <method>Execute</method> passes its cap plus one, the store binds
+/// it into <code>SELECT TOP ?</code>, and <method>Execute</method> keeps at most the cap's rows and
+/// reports <code>truncated</code> when the extra row came back, exactly as it does for a port
+/// answer.</p>
 /// <p><b>The escalated frame is the store's and stops there</b> (AD-9): this method calls one
 /// class method and touches no <code>$ROLES</code> of its own, and nothing inside that frame
 /// reaches a port, a tool or the provider.</p>
 /// <p>A store that cannot be resolved, or that answers something other than an array, is a 500
 /// with the generic fault and the detail in the status alone.</p>
-ClassMethod StateRows(pDescriptor As %String, pEndpoint As %String, Output pAnswer As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
+ClassMethod StateRows(pDescriptor As %String, pEndpoint As %String, pMaxRows As %Integer, Output pAnswer As %DynamicArray, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
     Set tSC = $$$OK
     Set pAnswer = ""
@@ -431,7 +431,7 @@ ClassMethod StateRows(pDescriptor As %String, pEndpoint As %String, Output pAnsw
             Set tSC = ..Internal(pDescriptor _ " declares a state read against " _ tClass _ ", which this instance does not hold", .pHttpStatus, .pFault)
             Quit
         }
-        Set tRowsSC = $ClassMethod(tClass, ..#STATEROWSMETHOD, .pAnswer)
+        Set tRowsSC = $ClassMethod(tClass, ..#STATEROWSMETHOD, .pAnswer, pMaxRows)
         If $$$ISERR(tRowsSC) {
             Set pAnswer = ""
             Set tSC = ..Internal(pDescriptor _ "'s state read failed: " _ $System.Status.GetErrorText(tRowsSC), .pHttpStatus, .pFault)

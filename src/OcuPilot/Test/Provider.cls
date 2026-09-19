@@ -240,8 +240,8 @@ Method TestTheRetryArithmeticOverItsWholeRange()
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Provider.Retry).ParseRetryAfter("0"), 0, "including zero")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Provider.Retry).ParseRetryAfter("3600"), 30, "a hint above the ceiling is clamped to thirty seconds, so a provider cannot choose how long a turn blocks")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Provider.Retry).#MAXRETRYAFTERSECONDS, 30, "and the ceiling is the declared thirty")
-    For tHeader = "Wed, 21 Oct 2026 07:28:00 GMT", "7 seconds", "-5", "", "1.5" {
-        Do $$$AssertEquals(##class(OcuPilot.Kernel.Provider.Retry).ParseRetryAfter(tHeader), 0, "anything that is not delta-seconds is discarded rather than partly read: '" _ tHeader _ "'")
+    For tHeader = "not-a-date", "7 seconds", "-5", "", "1.5" {
+        Do $$$AssertEquals(##class(OcuPilot.Kernel.Provider.Retry).ParseRetryAfter(tHeader), 0, "anything that is neither delta-seconds nor an HTTP date is discarded rather than partly read: '" _ tHeader _ "'")
     }
 
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Provider.Retry).ExpBackoffSec(0), 0, "there is no backoff before the first attempt")
@@ -291,11 +291,11 @@ Method TestARetryableStatusIsTriedAgain()
     Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Waits(), 7, "and one wait, of the provider's own hint, which exceeds the backoff window: " _ ##class(OcuPilot.Test.ProviderStub).Waits())
 }
 
-/// <p>AC5 -- a <code>Retry-After</code> that is not delta-seconds is discarded and the exponential
-/// backoff alone is used: never parsed as a number, never a negative or huge delay.</p>
+/// <p>AC5 -- a <code>Retry-After</code> the arithmetic can read as neither form is discarded and the
+/// exponential backoff alone is used: never parsed as a number, never a negative or huge delay.</p>
 Method TestANonNumericRetryAfterIsDiscarded()
 {
-    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(503, "", "Wed, 21 Oct 2026 07:28:00 GMT")
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(503, "", "not-a-date")
     Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..#OKBODY)
     Do ..Values(.tValues)
     Do ..Settings(.tSettings, 2)
@@ -460,7 +460,7 @@ Method TestTheRequestCarriesTheSettingsItWasGiven()
     Do $$$AssertEquals($ClassMethod(tStub, "Recorded", "timeout"), 45, "the stored timeout, not a class parameter")
     Do $$$AssertEquals($ClassMethod(tStub, "Recorded", "proxyServer"), "proxy.probe.invalid", "the stored proxy host")
     Do $$$AssertEquals($ClassMethod(tStub, "Recorded", "proxyPort"), 3128, "its port")
-    Do $$$AssertEquals($ClassMethod(tStub, "Recorded", "proxyHttps"), 1, "whether the proxy leg is encrypted")
+    Do $$$AssertEquals($ClassMethod(tStub, "Recorded", "proxyHttps"), 1, "whether the target is requested as https through the proxy")
     Do $$$AssertEquals($ClassMethod(tStub, "Recorded", "proxyTunnel"), 1, "and whether it is tunnelled")
     Do $$$AssertEquals($ClassMethod(tStub, "Recorded", "followRedirect"), 0, "redirects are not followed, so the judged endpoint is the only host the key reaches")
     Do $$$AssertEquals($ClassMethod(tStub, "Recorded", "url"), ..#ENDPOINT, "and the endpoint the definition names")

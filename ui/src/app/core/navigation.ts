@@ -319,10 +319,26 @@ export function screenForRoute(route: string): ScreenDeclaration | null {
   return SCREENS.find((screen) => screen.route === route) ?? null;
 }
 
+/**
+ * The screen declared by `descriptor`, or `null`. The companion to `screenForRoute` for a caller
+ * that holds a descriptor's class name rather than its route -- which is the identity AD-5 makes
+ * stable, so a screen whose route moves keeps its reference.
+ */
+export function screenForDescriptor(descriptor: string): ScreenDeclaration | null {
+  return SCREENS.find((screen) => screen.descriptor === descriptor) ?? null;
+}
+
 /** Whether a screen is keyed by an id, and therefore carries an `/:id` route. */
 export function hasIdRoute(screen: ScreenDeclaration): boolean {
   return screen.id.kind !== 'none';
 }
+
+/**
+ * Home's own area key, as `OcuPilot.Screen.Descriptor.Home` declares it and the generated mirror
+ * carries it. Named here so a reader of the shell's own state -- `PanelState`, which learns where
+ * it is from `ShellState.activeArea()` -- tests against one constant rather than a literal.
+ */
+export const HOME_AREA_KEY = 'home';
 
 /**
  * The entity type `screen`'s route id identifies (DW-1020, AD-5, AD-13): the parent screen's own
@@ -390,6 +406,38 @@ export const ACTION_PLACEHOLDER = '<action>';
  */
 export function formatDeniedAction(template: string, failedPair: string, action: string): string {
   return template.split(RESOURCE_PLACEHOLDER).join(failedPair).split(ACTION_PLACEHOLDER).join(action);
+}
+
+/** The placeholder the Fixed strings table leaves for the entity a navigation opened. */
+export const ENTITY_PLACEHOLDER = '<entity>';
+
+/**
+ * The agent's navigation announcement -- EXPERIENCE.md's Fixed strings row for
+ * "I'm opening <screen> for <entity> -- use Back to return." -- resolved to the target screen's
+ * title and, when a row was selected, its entity id -- both model-supplied and therefore
+ * untrusted (AD-33): the caller renders the result as `textContent`, never as markup. An empty
+ * `entityId` selects the no-entity form, the same words minus the clause with nothing to fill.
+ */
+export function formatNavigationAnnouncement(
+  entityTemplate: string,
+  noEntityTemplate: string,
+  screenTitle: string,
+  entityId: string
+): string {
+  if (entityId === '') return noEntityTemplate.split(SCREEN_PLACEHOLDER).join(screenTitle);
+  return entityTemplate.split(SCREEN_PLACEHOLDER).join(screenTitle).split(ENTITY_PLACEHOLDER).join(entityId);
+}
+
+/** The placeholder the Fixed strings table leaves for the arrived screen's own title. */
+export const TITLE_PLACEHOLDER = '<title>';
+
+/**
+ * The arrival heading announcement -- EXPERIENCE.md's Fixed strings row for
+ * "<title> -- opened by the agent; Back returns" -- resolved to the arrived screen's own title.
+ * `locator-bar.ts`'s `#ocu-locator-screen` takes it as its `aria-label` once per arrival.
+ */
+export function formatNavigationHeading(template: string, screenTitle: string): string {
+  return template.split(TITLE_PLACEHOLDER).join(screenTitle);
 }
 
 /** The one query parameter that is data scope rather than screen state (AD-44). */

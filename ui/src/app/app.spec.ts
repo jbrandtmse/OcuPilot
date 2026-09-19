@@ -14,6 +14,7 @@ import {
 import { DefinitionForm } from './areas/agent/definition-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
 import { ErrorLogDrill } from './areas/logs/error-log.store';
+import { AgentContext } from './core/agent-context';
 import { AgentStatus } from './core/agent-status';
 import { ApiService } from './core/api';
 import { ChangeBus } from './core/change-bus';
@@ -30,9 +31,15 @@ import { ScreenActions } from './core/screen-actions';
 import { ScreenStores } from './core/screen-store';
 import type { AreaDeclaration, ScreenDeclaration } from './core/screens.generated';
 import { Session, type SessionState } from './core/session';
+import { PanelState } from './core/panel-layout';
+import { TurnStore } from './core/turn';
 import { ShellState } from './core/shell-state';
 import { STRINGS } from './core/strings';
+import { SuggestedView } from './core/suggested-view';
+import { stubAgentContext } from './testing/agent-context';
 import { stubAgentStatus } from './testing/agent-status';
+import { stubSuggestedView } from './testing/suggested-view';
+import { stubTurnStore } from './testing/turn';
 import { screenDeclaration } from './testing/screen-declaration';
 
 /**
@@ -60,7 +67,8 @@ class StubSession {
   /** What `consumeFreshSignIn()` will answer once. Default false: a reload is not a sign-in. */
   fresh = false;
 
-  consumed = 0;
+  /** How many times the gate asked whether a sign-in is waiting. */
+  asked = 0;
 
   private readonly listeners = new Set<() => void>();
 
@@ -68,8 +76,12 @@ class StubSession {
     return this.current;
   }
 
+  hasFreshSignIn(): boolean {
+    this.asked += 1;
+    return this.fresh;
+  }
+
   consumeFreshSignIn(): boolean {
-    this.consumed += 1;
     if (!this.fresh) return false;
     this.fresh = false;
     return true;
@@ -193,8 +205,16 @@ class StubNavigation {
     return this.denied.has(route) ? { allowed: false, failedPair: 'OcuPilotAdmin:USE' } : ALLOWED;
   }
 
-  subscribe(): () => void {
-    return () => {};
+  private readonly listeners = new Set<() => void>();
+
+  subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  /** A map read settling, the way the live service tells its readers. */
+  notify(): void {
+    for (const listener of this.listeners) listener();
   }
 
   async load(): Promise<void> {}
@@ -320,12 +340,17 @@ describe('the shell frame', () => {
   let instance: StubInstance;
   let navigation: StubNavigation;
   let agentStatus: AgentStatus;
+  let agentContext: AgentContext;
+  let suggested: SuggestedView;
   /** The definitions the stubbed read answers with. Mutated to arrange an Enable. */
   let definitionRows: { enabled: boolean }[];
   let scope: StubScope;
   let connectivity: StubConnectivity;
   let refresh: RefreshService;
   let overlays: OverlayStack;
+  let panelState: PanelState;
+  let turn: TurnStore;
+  let turnStorage: Map<string, string>;
   const planted: HTMLElement[] = [];
 
   /** The connectivity banner's own alert, never another component's. */
@@ -341,6 +366,12 @@ describe('the shell frame', () => {
     // panel and the gate `load()` it themselves.
     definitionRows = [];
     agentStatus = stubAgentStatus(definitionRows);
+    // Unanswered by default too, for the same reason: the chip renders nothing until a test that
+    // is about it loads it.
+    agentContext = stubAgentContext();
+    // Unanswered by default, for the same reason: Home's suggested view renders nothing until a
+    // test that is about it loads it.
+    suggested = stubSuggestedView();
     scope = new StubScope();
     connectivity = new StubConnectivity();
     // The real framework, timer seam neutralized: the frame mounts the chip and the stamp, and
@@ -353,6 +384,20 @@ describe('the shell frame', () => {
       schedule: () => {},
     });
     overlays = new OverlayStack();
+    const shellPreferences = new PreferenceStore({ storage: memoryStorage() });
+    const shellState = new ShellState({ preferences: shellPreferences });
+    panelState = new PanelState({ preferences: shellPreferences, shell: shellState });
+    // A reload-adopted id, so the sign-out test below can observe `App` dropping it -- the same
+    // shape the real `readNavigationKind`/`readSessionStorage` pair produces in `main.ts`.
+    turnStorage = new Map([['ocupilot.conversation', 'convo-1']]);
+    turn = stubTurnStore({
+      storage: {
+        getItem: (key) => (turnStorage.has(key) ? (turnStorage.get(key) as string) : null),
+        setItem: (key, value) => turnStorage.set(key, value),
+        removeItem: (key) => turnStorage.delete(key),
+      },
+      navigationType: () => 'reload',
+    });
     TestBed.configureTestingModule({
       providers: [
         // Three real routes, so "the gate navigated" and "the gate did not" are different
@@ -368,10 +413,11 @@ describe('the shell frame', () => {
         { provide: InstanceService, useValue: instance as unknown as InstanceService },
         { provide: NavigationService, useValue: navigation as unknown as NavigationService },
         { provide: AgentStatus, useValue: agentStatus },
-        {
-          provide: ShellState,
-          useValue: new ShellState({ preferences: new PreferenceStore({ storage: memoryStorage() }) }),
-        },
+        { provide: AgentContext, useValue: agentContext },
+        { provide: SuggestedView, useValue: suggested },
+        { provide: ShellState, useValue: shellState },
+        { provide: PanelState, useValue: panelState },
+        { provide: TurnStore, useValue: turn },
         { provide: ScopeService, useValue: scope as unknown as ScopeService },
         {
           provide: ConnectivityService,
@@ -419,7 +465,8 @@ describe('the shell frame', () => {
       'app-panel',
     ]);
 
-    const content = shell.querySelector('.ocu-shell-content') as HTMLElement;
+    // The content region scrolls its 640px floor, which holds the column's three bands.
+    const content = shell.querySelector('.ocu-shell-content > .ocu-shell-content-floor') as HTMLElement;
     expect(Array.from(content.children).map((child) => child.tagName.toLowerCase())).toEqual([
       'app-locator-bar',
       'app-command-bar',
@@ -506,6 +553,159 @@ describe('the shell frame', () => {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     fixture.detectChanges();
     expect(document.activeElement).toBe(fixture.nativeElement.querySelector('main'));
+  });
+
+  it('Ctrl/Cmd+I focuses the composer from content, side bar or rail, and is ignored under a dialog or the command box', () => {
+    // Mutation (Rule 19): drop the overlay-stack check from `App.onComposerChord` -> the command-box
+    // leg goes red, focus leaving the open command box for the composer.
+    document.body.appendChild(fixture.nativeElement);
+    planted.push(fixture.nativeElement);
+    const composer = (): HTMLElement => fixture.nativeElement.querySelector('#ocu-panel-composer');
+    const chord = (init: KeyboardEventInit) => {
+      const event = new KeyboardEvent('keydown', { key: 'i', bubbles: true, cancelable: true, ...init });
+      document.dispatchEvent(event);
+      fixture.detectChanges();
+      return event;
+    };
+
+    for (const init of [{ ctrlKey: true }, { metaKey: true }]) {
+      (fixture.nativeElement.querySelector('main') as HTMLElement).focus();
+      const event = chord(init);
+      expect(document.activeElement).toBe(composer());
+      expect(event.defaultPrevented).toBe(true);
+    }
+
+    // Send is `aria-disabled` throughout, which changes nothing about where the chord goes.
+    const send = fixture.nativeElement.querySelector('.ocu-panel-send') as HTMLElement;
+    expect(send.getAttribute('aria-disabled')).toBe('true');
+    send.focus();
+    chord({ ctrlKey: true });
+    expect(document.activeElement).toBe(composer());
+
+    const rail = fixture.nativeElement.querySelector('.ocu-rail-item') as HTMLElement;
+    rail.focus();
+    chord({ metaKey: true });
+    expect(document.activeElement).toBe(composer());
+
+    rail.focus();
+    overlays.push('command-box', () => {});
+    const ignored = chord({ ctrlKey: true });
+    expect(document.activeElement).toBe(rail);
+    expect(ignored.defaultPrevented).toBe(false);
+    overlays.remove('command-box');
+
+    // Mutation (Rule 19): let the chord through when the top is `account-menu` -> this leg goes red.
+    overlays.push('account-menu', () => {});
+    chord({ metaKey: true });
+    expect(document.activeElement).toBe(rail);
+    overlays.remove('account-menu');
+
+    const dialog = document.createElement('div');
+    dialog.setAttribute('role', 'dialog');
+    document.body.appendChild(dialog);
+    planted.push(dialog);
+    chord({ ctrlKey: true });
+    expect(document.activeElement).toBe(rail);
+
+    // Ctrl+Shift+I is the browser's own developer tools chord, not this one.
+    dialog.remove();
+    chord({ ctrlKey: true, shiftKey: true });
+    expect(document.activeElement).toBe(rail);
+  });
+
+  it('full screen marks the side bar and content inert only while on, and the docked width binds from the layout', () => {
+    // Mutation (Rule 19): bind `inert` unconditionally -> the restored leg goes red.
+    const sideBar = (): HTMLElement => fixture.nativeElement.querySelector('app-side-bar');
+    const content = (): HTMLElement => fixture.nativeElement.querySelector('.ocu-shell-content');
+    const host = (): HTMLElement => fixture.nativeElement.querySelector('app-panel');
+    const toggle = (): HTMLButtonElement => fixture.nativeElement.querySelector('.ocu-panel-full-screen-toggle');
+
+    expect(host().style.width).toBe('400px');
+    expect(sideBar().hasAttribute('inert')).toBe(false);
+    expect(content().hasAttribute('inert')).toBe(false);
+    expect(toggle().getAttribute('aria-expanded')).toBe('false');
+
+    toggle().click();
+    fixture.detectChanges();
+    expect(sideBar().hasAttribute('inert')).toBe(true);
+    expect(content().hasAttribute('inert')).toBe(true);
+    expect(host().hasAttribute('inert')).toBe(false);
+    expect(toggle().getAttribute('aria-expanded')).toBe('true');
+
+    toggle().click();
+    fixture.detectChanges();
+    expect(sideBar().hasAttribute('inert')).toBe(false);
+    expect(content().hasAttribute('inert')).toBe(false);
+    expect(host().style.width).toBe('400px');
+
+    panelState.setViewport(1024);
+    fixture.detectChanges();
+    expect(host().style.width).toBe('336px');
+  });
+
+  it('full screen: Escape and the skip link leave focus where it is, and the covered side bar stays open', () => {
+    // Mutation (Rule 19): drop the `fullScreen()` branch from `App.onEscape` -> the first Escape closes
+    // the covered side bar and the second focuses the inert `main`, and this goes red; drop the
+    // `fullScreen()` return from `App.onSkipToContent` -> the skip-link assertion goes red.
+    document.body.appendChild(fixture.nativeElement);
+    planted.push(fixture.nativeElement);
+    const shell = TestBed.inject(ShellState);
+    shell.activateArea('permissions', false);
+    fixture.detectChanges();
+    expect(overlays.top()).toBe('side-bar');
+
+    const toggle = fixture.nativeElement.querySelector('.ocu-panel-full-screen-toggle') as HTMLButtonElement;
+    toggle.click();
+    fixture.detectChanges();
+    toggle.focus();
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+    expect(document.activeElement).toBe(toggle);
+    expect(shell.open()).toBe(true);
+    expect(overlays.top()).toBe('side-bar');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+    expect(document.activeElement).toBe(toggle);
+
+    (fixture.nativeElement.querySelector('.ocu-skip-link') as HTMLElement).click();
+    fixture.detectChanges();
+    expect(document.activeElement).toBe(toggle);
+  });
+
+  it('leaving the signed-in state clears the draft and full screen, and keeps the remembered width', async () => {
+    // Mutation (Rule 19): delete `this.panel.endSession()` from `App.verifyWhenSignedIn` -> the draft
+    // and full-screen assertions go red.
+    panelState.setViewport(1920);
+    panelState.resizeBy(16);
+    panelState.setDraft('Why is /csp/myapp disabled?');
+    panelState.toggleFullScreen();
+    expect(turn.conversationId()).toBe('convo-1');
+
+    // The context chip's sharing choice is this principal's own (Story 4.11); loaded here so the
+    // sign-out assertion below observes a real drop rather than a value that started false.
+    await agentContext.load();
+    expect(agentContext.answered()).toBe(true);
+    await suggested.load();
+    expect(suggested.answered()).toBe(true);
+
+    session.move('form');
+    fixture.detectChanges();
+
+    expect(panelState.draft()).toBe('');
+    expect(panelState.fullScreen()).toBe(false);
+    expect(panelState.remembered()).toBe(416);
+    // Mutation (Rule 19): delete `this.turn.endSession()` from the same branch -> this goes red,
+    // and the next principal to sign in on this tab would adopt a departed principal's
+    // conversation (AD-8).
+    expect(turn.conversationId()).toBe(null);
+    // Mutation (Rule 19): delete `this.agentContext.reset()` from the same branch -> this goes
+    // red, and the next principal's first paint would carry the previous principal's sharing
+    // choice and provider answer.
+    expect(agentContext.answered()).toBe(false);
+    // Mutation (Rule 19): delete `this.suggested.reset()` from the same branch -> this goes red,
+    // and Home's first paint for the next principal would carry the previous principal's counts.
+    expect(suggested.answered()).toBe(false);
   });
 
   it('an unverified instance renders the blocking notice and none of the frame', () => {
@@ -595,7 +795,7 @@ describe('the shell frame', () => {
     expect(bannerAlert()).toBeNull();
     // and `app.spec`'s own pin on the content column still holds -- the banner is a sibling of
     // the gates, never a child of the column.
-    const content = fixture.nativeElement.querySelector('.ocu-shell-content') as HTMLElement;
+    const content = fixture.nativeElement.querySelector('.ocu-shell-content-floor') as HTMLElement;
     expect(Array.from(content.children).map((child) => child.tagName.toLowerCase())).toEqual([
       'app-locator-bar',
       'app-command-bar',
@@ -786,7 +986,7 @@ describe('the shell frame', () => {
   };
 
   it('AC1: a fresh sign-in with nothing enabled and the verdict allowed lands on the Definition form', async () => {
-    // Mutation (Rule 19): move the gate check out of `consumeFreshSignIn()` so it runs on every
+    // Mutation (Rule 19): move the gate check out of `hasFreshSignIn()` so it runs on every
     // `signed-in` -> AC1b below goes red, because a reload would redirect too.
     const router = TestBed.inject(Router);
     await router.navigateByUrl('/permissions/users');
@@ -801,7 +1001,7 @@ describe('the shell frame', () => {
     // A completed-but-failed map read leaves every verdict `UNGATED` (allowed). Redirecting on
     // that takes a caller who may hold nothing to a form the instance will refuse them at.
     //
-    // Mutation (Rule 19): drop the `if (!this.navigation.loaded()) return;` line -> this goes red.
+    // Mutation (Rule 19): drop `!this.navigation.loaded()` from the answered check -> this goes red.
     const router = TestBed.inject(Router);
     navigation.loadedFlag = false;
     await router.navigateByUrl('/permissions/users');
@@ -810,6 +1010,88 @@ describe('the shell frame', () => {
     session.move('signed-in');
     await settleGate();
     expect(router.url).toBe('/permissions/users');
+  });
+
+  it('DW-380: a read that failed during sign-in leaves the sign-in unspent, and the gate acts when the read answers', async () => {
+    // Mutation (Rule 19): spend the flag with `consumeFreshSignIn()` before the awaits, as the gate
+    // did -> this goes red, because the failed map read has already used up the one sign-in.
+    const router = TestBed.inject(Router);
+    navigation.loadedFlag = false;
+    await router.navigateByUrl('/permissions/users');
+    session.fresh = true;
+    session.move('probing');
+    session.move('signed-in');
+    await settleGate();
+    expect(router.url).toBe('/permissions/users');
+    expect(session.fresh).toBe(true);
+
+    navigation.loadedFlag = true;
+    navigation.notify();
+    await settleGate();
+    expect(router.url).toBe('/agent/definitions/edit');
+    expect(session.fresh).toBe(false);
+  });
+
+  it('DW-380: a status read that answers after sign-in gives the gate its pass', async () => {
+    // Mutation (Rule 19): delete the `agentStatus.subscribe(() => this.retryFirstLoginGate())`
+    // subscription from `App` -> this goes red at `/permissions/users`.
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/permissions/users');
+    const load = agentStatus.load.bind(agentStatus);
+    agentStatus.load = async () => {};
+    session.fresh = true;
+    session.move('probing');
+    session.move('signed-in');
+    await settleGate();
+    expect(agentStatus.answered()).toBe(false);
+    expect(session.fresh).toBe(true);
+
+    agentStatus.load = load;
+    await agentStatus.load();
+    await settleGate();
+    expect(router.url).toBe('/agent/definitions/edit');
+    expect(session.fresh).toBe(false);
+  });
+
+  it('DW-459: the user\'s first navigation after sign-in spends it, so a read answering later does not move them', async () => {
+    // Mutation (Rule 19): delete the `consumeFreshSignIn()` call from `App.spendSignInOnNavigation`
+    // -> this goes red: the navigation leaves the sign-in unspent for the late map read to act on.
+    const router = TestBed.inject(Router);
+    navigation.loadedFlag = false;
+    await router.navigateByUrl('/permissions/users');
+    session.fresh = true;
+    session.move('probing');
+    session.move('signed-in');
+    await settleGate();
+    expect(session.fresh).toBe(true);
+
+    await router.navigateByUrl('/');
+    expect(session.fresh).toBe(false);
+
+    navigation.loadedFlag = true;
+    navigation.notify();
+    await settleGate();
+    expect(router.url).toBe('/');
+  });
+
+  it('DW-459: a replaceUrl correction is not the user\'s navigation and leaves the sign-in to the gate', async () => {
+    // Mutation (Rule 19): drop the `replaceUrl` check from `App.spendSignInOnNavigation` -> this goes
+    // red, because the scope's namespace correction would spend the sign-in.
+    const router = TestBed.inject(Router);
+    navigation.loadedFlag = false;
+    await router.navigateByUrl('/permissions/users');
+    session.fresh = true;
+    session.move('probing');
+    session.move('signed-in');
+    await settleGate();
+
+    await router.navigateByUrl('/', { replaceUrl: true });
+    expect(session.fresh).toBe(true);
+
+    navigation.loadedFlag = true;
+    navigation.notify();
+    await settleGate();
+    expect(router.url).toBe('/agent/definitions/edit');
   });
 
   it('AC1: the gate declines for a caller the map refuses, and the requested route stands', async () => {
@@ -864,7 +1146,7 @@ describe('the shell frame', () => {
     session.move('signed-in');
     await settleGate();
     expect(router.url).toBe('/permissions/users');
-    expect(session.consumed).toBeGreaterThan(0);
+    expect(session.asked).toBeGreaterThan(0);
 
     // And the status is still read: the panel and the dot render from it on every route, and a
     // read left to the gate alone would leave a reloaded tab with no panel at all.

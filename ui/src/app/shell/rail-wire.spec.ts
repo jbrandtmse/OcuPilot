@@ -6,6 +6,7 @@ import { AgentStatus } from '../core/agent-status';
 import type { ApiService } from '../core/api';
 import { NavigationService } from '../core/navigation';
 import { PreferenceStore } from '../core/preferences';
+import { PanelState } from '../core/panel-layout';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
 import { stubAgentStatus } from '../testing/agent-status';
@@ -390,6 +391,7 @@ describe('the rail, wired to the real NavigationService reading a live-captured 
         { provide: NavigationService, useValue: navigation },
         { provide: AgentStatus, useValue: stubAgentStatus() },
         { provide: ShellState, useValue: shell },
+        { provide: PanelState, useValue: new PanelState({ preferences: new PreferenceStore({ storage: memoryStorage() }), shell }) },
       ],
     });
     fixture = TestBed.createComponent(Rail);

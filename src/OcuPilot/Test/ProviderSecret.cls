@@ -1,6 +1,7 @@
-/// <p><b>AC6, the credential-never-leaks proof.</b> A canary credential is driven through five
-/// forced provider failures -- four on the environment rung and one on the credentials rung, out of
-/// a real credential entry resolved by the shipped ladder -- and the two logs OcuPilot itself
+/// <p><b>AC6, the credential-never-leaks proof.</b> A canary credential is driven through six
+/// forced provider failures -- four on the environment rung, one on the credentials rung, out of
+/// a real credential entry resolved by the shipped ladder, and one as a key a Test connection body
+/// carries -- and the two logs OcuPilot itself
 /// renders, the console log and the application error log, are read afterwards and asserted to carry
 /// no part of it, alongside every returned <code>reason</code>, <code>code</code> and
 /// <code>detail</code>.</p>
@@ -93,10 +94,17 @@ ClassMethod Definition(Output pValues, pProvider As %String = "", pCredentialNam
     Set pValues("temperature") = 0
 }
 
-/// <p>Drive one turn through the port and assert that everything it handed back is canary-free.</p>
-Method DriveAndAssert(pWhat As %String, pProvider As %String = "", pCredentialName As %String = "")
+/// <p>Drive one turn through the port and assert that everything it handed back is canary-free.
+/// <var>pKeyBody</var>, when it is an object, is a request body whose <code>apiKey</code> the call
+/// carries instead of any resolved key.</p>
+Method DriveAndAssert(pWhat As %String, pProvider As %String = "", pCredentialName As %String = "", pKeyBody As %DynamicObject = "")
 {
     Do ..Definition(.tValues, pProvider, pCredentialName)
+    If $IsObject(pKeyBody) {
+        Set tValues("keySource") = ##class(OcuPilot.Kernel.Provider.Base).#KEYSOURCEBODY
+        Set tValues("keyBody") = pKeyBody
+        Set tValues("keyField") = "apiKey"
+    }
     Set tMessages = 1
     Set tMessages(1, "role") = "user"
     Set tMessages(1, "content") = "probe"
@@ -113,7 +121,9 @@ Method DriveAndAssert(pWhat As %String, pProvider As %String = "", pCredentialNa
 /// <p>Mutation: bind the resolved key to a local in
 /// <method>OcuPilot.Kernel.Provider.Base.Invoke</method> -- every forced entry captures it and the
 /// variable-table assertion goes red at each one (verified on a throwaway). Mutation: interpolate
-/// the key into the <code>PROVIDER.KEYSHAPE</code> reason -- the envelope assertion goes red.</p>
+/// the key into the <code>PROVIDER.KEYSHAPE</code> reason -- the envelope assertion goes red.
+/// Mutation: bind the body's member to a local in <method>OcuPilot.Kernel.Provider.Base.Invoke</method>'s
+/// body branch -- leg six's forced entry captures it and the variable-table assertion goes red.</p>
 /// <p><b>The frames this covers are named in
 /// <class>OcuPilot.Test.ProviderStub</class>'s own header</b>, along with the one frame no forced
 /// entry can reach; read that before adding a mutation here, because a mutation outside those
@@ -165,6 +175,13 @@ Method TestNoCredentialMaterialReachesTheLogsOrTheEnvelope()
     ; only the rung Story 3.2 shipped, while the rung this story added -- whose read crosses a
     ; vendor frame -- would be claimed rather than measured.
     Do ..DriveTheCredentialsRung()
+
+    ; Leg six: the canary as a key a Test connection body carries, with nothing resolvable behind the
+    ; definition's own reference, so the only copy in play is the body's.
+    Do ##class(OcuPilot.Test.ProviderStub).Reset()
+    Do ##class(OcuPilot.Test.SecretProbe).SetValue("")
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(401, "{""type"":""error"",""error"":{""type"":""authentication_error"",""message"":""invalid x-api-key""}}")
+    Do ..DriveAndAssert("a provider refusal of a body key", "", "", ##class(OcuPilot.Test.CredentialFixture).Payload(..#CANARY))
 
     Set tEntries = ##class(OcuPilot.Test.ProviderStub).ErrorLogCount()
     Do $$$AssertTrue(tEntries > 0, "the run forced at least one real application-error entry, so the assertion below reads a row rather than nothing: " _ tEntries)

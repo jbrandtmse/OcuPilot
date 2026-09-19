@@ -110,6 +110,13 @@ Parameter AUTHNOADMIN = "AUTH.NOADMIN";
 /// request. The code is fixed now so the first of those reads does not mint a second one.</p>
 Parameter AUTHNOPRIVILEGE = "AUTH.NOPRIVILEGE";
 
+/// <p>Written sentence for <parameter>AUTHNOPRIVILEGE</parameter> wherever the code carries one
+/// rather than an envelope's <code>detail.failedPair</code> alone: a tool step's
+/// <code>reason</code> (Story 4.5) and the ledger's cross-user 403 (Story 4.9). It names the
+/// request, because the second of those is a read request the caller made directly and no tool
+/// call is involved; <code>detail.failedPair</code> is what says which pair failed.</p>
+Parameter REASONAUTHNOPRIVILEGE = "This account does not hold the privilege this request requires.";
+
 /// <p>Machine code (AD-12, AD-39): the request carried no authenticated caller, so
 /// <class>OcuPilot.Api.Router</class>'s identity gate refuses before any route runs (AD-21).
 /// Rendered on the <parameter>UNAUTHORIZED</parameter> slug.</p>
@@ -188,17 +195,18 @@ Parameter PORTTIMEOUT = "PORT.TIMEOUT";
 /// definition carries the id the caller named, the definition is not usable, or its provider's
 /// catalog row names no adapter class this instance holds. Produced by
 /// <class>OcuPilot.Port.ProviderPort</class> on the <parameter>UNAVAILABLE</parameter> slug.</p>
-/// <p>The nine <code>PROVIDER.*</code> codes and the three endpoint violation codes below are
+/// <p>The ten <code>PROVIDER.*</code> codes and the three endpoint violation codes below are
 /// declared <b>here</b>, with their producers in other classes, for the reason the seven
 /// <code>PORT.*</code> codes are: this class is the one home of the vocabulary.</p>
 Parameter PROVIDERUNCONFIGURED = "PROVIDER.UNCONFIGURED";
 
-/// <p>Machine code (AD-12, AD-39, AD-42, DW-21): the endpoint's <b>resolved</b> address is one
-/// OcuPilot will not call -- loopback, link-local or one of this instance's own interface
-/// addresses without the catalog row's local escape, or a name that resolves to nothing at all.
-/// Produced by <class>OcuPilot.Port.ProviderPort</class>'s call-time re-check on the
-/// <parameter>UNAVAILABLE</parameter> slug, which is what a name repointed after the write was
-/// accepted arrives as.</p>
+/// <p>Machine code (AD-12, AD-39, AD-42, DW-21): the endpoint's <b>resolved</b> address, or the
+/// configured proxy's, is one OcuPilot will not call -- loopback, link-local or one of this
+/// instance's own interface addresses without the catalog row's local escape, or a name that
+/// resolves to nothing at all. Produced by <class>OcuPilot.Port.ProviderPort</class>'s call-time
+/// re-check on the <parameter>UNAVAILABLE</parameter> slug, which is what a name repointed after
+/// the write was accepted arrives as; a refused proxy carries
+/// <parameter>OcuPilot.Kernel.Provider.Base.REASONPROXYEGRESS</parameter> as its reason.</p>
 /// <p>Distinct from <parameter>AGENTENDPOINTADDRESS</parameter>, which is the same judgement made
 /// at <i>write</i> time on the field the operator typed.</p>
 Parameter PROVIDEREGRESS = "PROVIDER.EGRESS";
@@ -207,6 +215,17 @@ Parameter PROVIDEREGRESS = "PROVIDER.EGRESS";
 /// nothing, so <b>no call is made</b>. The reason names the reference -- the credential type and
 /// the variable or entry name -- and never a value.</p>
 Parameter PROVIDERCREDENTIAL = "PROVIDER.CREDENTIAL";
+
+/// <p>Machine code (AD-12, AD-35, AD-39, AD-42): the credential store the definition's reference
+/// lives in could not be read -- the rung is not reachable from this namespace, or the read
+/// failed -- so <b>no call is made and a stored definition is left enabled</b>. The reason names
+/// the reference and never a value.</p>
+/// <p>Distinct from <parameter>PROVIDERCREDENTIAL</parameter>, which is a reference the store
+/// answered for and holds nothing behind, and which disables a stored definition: this one says
+/// nothing about the reference, so a caller can tell a store it could not read from a reference
+/// that resolves to nothing. It does not say the failure will pass: a namespace that is not
+/// interoperability-enabled answers it on every call.</p>
+Parameter PROVIDERCREDENTIALSTORE = "PROVIDER.CREDENTIALSTORE";
 
 /// <p>Machine code (AD-12, AD-35, AD-39): the resolved credential does not start with the prefix
 /// the provider's catalog row declares, so <b>no call is made</b>. The reason states the expected
@@ -346,10 +365,23 @@ Parameter AGENTVALIDATION = "AGENT.VALIDATION";
 Parameter AGENTNOTFOUND = "AGENT.NOTFOUND";
 
 /// <p>Machine code (AD-12, AD-39): the request body could not be read or parsed at all, so there
-/// is nothing to validate. Rendered on the <parameter>BADREQUEST</parameter> slug, with the
-/// <b>stage</b> <method>OcuPilot.Kernel.Utils.ReadRequestBody</method> reported in the reason, so
-/// a server-side read fault is never presented as malformed client JSON (DW-24).</p>
+/// is nothing to validate. Rendered on the <parameter>BADREQUEST</parameter> slug with
+/// <parameter>REASONAGENTBADBODY</parameter> alone.</p>
 Parameter AGENTBADBODY = "AGENT.BADBODY";
+
+/// <p>Written sentence for <parameter>AGENTBADBODY</parameter> (AD-39). The raw
+/// <class>%Status</class> the read reported is written to the log and never to the wire, because
+/// it is vendor-shaped text naming internal classes.</p>
+Parameter REASONAGENTBADBODY = "The request body could not be read as JSON. Send a JSON object, or no body at all.";
+
+/// <p>Machine code (Story 4.4, AD-39): <code>PUT /agent/context</code>'s body carries anything
+/// other than exactly the boolean member <code>share</code> -- an absent, badly typed or extra
+/// member. Rendered on the <parameter>VALIDATIONFAILED</parameter> slug by
+/// <class>OcuPilot.Api.Context</class>; nothing is written.</p>
+Parameter AGENTCONTEXTSHARE = "AGENT.CONTEXT.SHARE";
+
+/// <p>The envelope's <code>reason</code> for <parameter>AGENTCONTEXTSHARE</parameter>.</p>
+Parameter REASONAGENTCONTEXTSHARE = "The body must carry exactly one member, the boolean share.";
 
 /// <p>Violation code (rule 1): a definition needs a name of one to sixty-four characters.
 /// Rendered inside <code>detail.violations</code> on the <parameter>VALIDATIONFAILED</parameter>
@@ -481,12 +513,31 @@ Parameter AGENTCREDENTIALRUNGUNAVAILABLE = "AGENT.CREDENTIAL.RUNGUNAVAILABLE";
 /// <i>call</i> time on a key that was already stored.</p>
 Parameter AGENTKEYSHAPE = "AGENT.KEY.SHAPE";
 
+/// <p>Violation code (AD-37): the credential entry the definition names already exists and no
+/// definition naming it exactly carries OcuPilot's ownership mark, so OcuPilot will not overwrite
+/// it and <b>nothing is written</b>. Produced by
+/// <method>OcuPilot.Api.Definitions.HandleStoreCredential</method> on the field <code>apiKey</code>
+/// when <method>OcuPilot.Kernel.Secret.Ladder.Store</method> declines the overwrite.</p>
+Parameter AGENTCREDENTIALNOTOWNED = "AGENT.CREDENTIAL.NOTOWNED";
+
+/// <p>Violation code (AD-7, AD-8, AD-42): the caller does not hold a pair the vendor's credential
+/// store needs to write an entry -- <code>%Ens_Credentials:WRITE</code>, which install never grants,
+/// or write on the database the entry's row is saved in -- so <b>nothing is written</b>. Produced
+/// by <method>OcuPilot.Api.Definitions.CredentialRefusal</method> on the field <code>apiKey</code>,
+/// and its sentence names the pair that failed (<method>ReasonForCredentialPrivilege</method>).</p>
+Parameter AGENTCREDENTIALNOPRIVILEGE = "AGENT.CREDENTIAL.NOPRIVILEGE";
+
 /// <p>Violation code (FR-20): the kill switch was turned on with no reason. The published
 /// kill-switch banner carries the operator's reason in front of everyone it affects, so a switch
 /// with none would leave a sentence with a hole in it. Produced by
 /// <method>OcuPilot.Kernel.SwitchRules.ValidateSwitches</method> on the field
 /// <code>killSwitchReason</code>.</p>
 Parameter AGENTSWITCHREASONREQUIRED = "AGENT.SWITCH.REASONREQUIRED";
+
+/// <p>Violation code (Story 4.4, AD-24): <code>contextRowCap</code> is not a whole number from 1
+/// to 1,000. Produced by <method>OcuPilot.Kernel.SwitchRules.ValidateSwitches</method> on the
+/// field <code>contextRowCap</code>.</p>
+Parameter AGENTSWITCHCONTEXTROWCAP = "AGENT.SWITCH.CONTEXTROWCAP";
 
 /// <p>Violation code (FR-20): a per-user hold named no user. Produced by
 /// <method>OcuPilot.Kernel.SwitchRules.ValidateHold</method> on the field <code>userName</code>.</p>
@@ -574,10 +625,387 @@ Parameter REASONAGENTKILLSWITCHGLOBAL = "The agent is switched off on this insta
 /// <p>Written sentence for <parameter>AGENTKILLSWITCHUSER</parameter>.</p>
 Parameter REASONAGENTKILLSWITCHUSER = "The agent is switched off for this user.";
 
+/// <p>Machine code (AD-7, AD-12): the turn request's body is absent, not JSON, or not a JSON
+/// object. Rendered on the <parameter>BADREQUEST</parameter> slug by
+/// <class>OcuPilot.Api.Turn</class>; nothing is reserved.</p>
+Parameter TURNBADBODY = "TURN.BADBODY";
+
+/// <p>Violation code (AD-39): the turn request carries no <code>message</code>, one that is not a
+/// JSON string, or one with nothing in it but whitespace. Rendered as the envelope code on the
+/// <parameter>VALIDATIONFAILED</parameter> slug, with the same code on the field
+/// <code>message</code> in <code>detail.violations</code>.</p>
+Parameter TURNMESSAGEREQUIRED = "TURN.MESSAGE.REQUIRED";
+
+/// <p>Violation code (AD-31): the message is longer than
+/// <parameter>OcuPilot.Kernel.Agent.Limits.MESSAGEMAXLENGTH</parameter>. Rendered the way
+/// <parameter>TURNMESSAGEREQUIRED</parameter> is; the producer appends the bound.</p>
+Parameter TURNMESSAGELENGTH = "TURN.MESSAGE.LENGTH";
+
+/// <p>Violation code (Story 4.4, AD-24): the turn request's <code>context</code> is not shaped as
+/// <code>{route, namespace, entity?, view?}</code> declares, a member carries the wrong JSON type,
+/// <code>view.rowsAvailable</code> is negative or below the number of rows sent, or
+/// <code>namespace</code> differs from the request's resolved scope
+/// (<method>OcuPilot.Kernel.Scope.Current</method>). Rendered the way
+/// <parameter>TURNMESSAGEREQUIRED</parameter> is, on the field <code>context</code>; nothing is
+/// reserved.</p>
+Parameter TURNCONTEXTINVALID = "TURN.CONTEXT.INVALID";
+
+/// <p>Violation code (Story 4.5): the turn request carries no <code>conversationId</code>, or one
+/// that is not a JSON string. Rendered the way <parameter>TURNMESSAGEREQUIRED</parameter> is, on
+/// the field <code>conversationId</code>; nothing is reserved. Checked before
+/// <parameter>TURNCONVERSATIONNOTFOUND</parameter> and before the turn slot is reserved.</p>
+Parameter TURNCONVERSATIONREQUIRED = "TURN.CONVERSATION.REQUIRED";
+
+/// <p>Machine code (Story 4.5): the request's <code>conversationId</code> does not name a
+/// conversation the caller owns. Rendered on the <parameter>NOTFOUND</parameter> slug, HTTP 404 --
+/// the same envelope shape an unknown turn id answers -- and nothing is reserved.</p>
+Parameter TURNCONVERSATIONNOTFOUND = "TURN.CONVERSATION.NOTFOUND";
+
+/// <p>Machine code (AD-41): the caller already has a queued or running turn. Rendered on the
+/// <parameter>CONFLICT</parameter> slug, HTTP 409.</p>
+Parameter TURNBUSY = "TURN.BUSY";
+
+/// <p>Machine code (AD-33): no turn with that id belongs to the caller. Rendered on the
+/// <parameter>NOTFOUND</parameter> slug for an unknown id and for another user's alike.</p>
+Parameter TURNNOTFOUND = "TURN.NOTFOUND";
+
+/// <p>Machine code (AD-7): the turn could not be run on this instance -- the job did not spawn,
+/// did not start as its caller, or failed outside the provider call.</p>
+Parameter TURNUNAVAILABLE = "TURN.UNAVAILABLE";
+
+/// <p>Terminal code (AD-7): the owner stopped the turn.</p>
+Parameter TURNSTOPPED = "TURN.STOPPED";
+
+/// <p>Terminal code (AD-30): enforced read-only changed while the turn ran.</p>
+Parameter TURNABANDONEDREADONLY = "TURN.ABANDONED.READONLY";
+
+/// <p>Terminal code (AD-31): the owner no longer holds any of the resources the turn is checked
+/// against, or no longer exists.</p>
+Parameter TURNABANDONEDPRIVILEGE = "TURN.ABANDONED.PRIVILEGE";
+
+/// <p>Terminal code (AD-31): no authenticated poll by the owner renewed the turn within the
+/// lease.</p>
+Parameter TURNABANDONEDLEASE = "TURN.ABANDONED.LEASE";
+
+/// <p>Terminal code (AD-31): the owner signed out through OcuPilot.</p>
+Parameter TURNABANDONEDSIGNOUT = "TURN.ABANDONED.SIGNOUT";
+
+/// <p>Terminal code (AD-7): no live process held the turn's slot.</p>
+Parameter TURNABANDONEDJOBLOST = "TURN.ABANDONED.JOBLOST";
+
+/// <p>Terminal code (AD-31, AD-41): the turn reached its wall-clock limit.</p>
+Parameter TURNLIMITDURATION = "TURN.LIMIT.DURATION";
+
+/// <p>Terminal code (AD-41): the turn reached its provider token limit.</p>
+Parameter TURNLIMITTOKENS = "TURN.LIMIT.TOKENS";
+
+/// <p>Tool-result code (AD-11): the tool could not be answered on this instance -- the registry,
+/// the caller's identity, the gate, the restraint verdict or the tool itself could not be read.
+/// Carried as the content of an error tool result, never as an envelope.</p>
+Parameter TOOLUNAVAILABLE = "TOOL.UNAVAILABLE";
+
+/// <p>Tool-result code (AD-11): the model named a tool no registered tool is advertised as.</p>
+Parameter TOOLUNKNOWN = "TOOL.UNKNOWN";
+
+/// <p>Tool-result code (AD-22): the governance gate point refused the call. The tool stays
+/// advertised.</p>
+Parameter TOOLDENIED = "TOOL.DENIED";
+
+/// <p>Tool-result code (AD-11): the call's input is not an object, or does not satisfy the tool's
+/// input schema. <code>detail.problem</code> names the argument and the rule.</p>
+Parameter TOOLARGUMENTS = "TOOL.ARGUMENTS";
+
+/// <p>Tool-result code (AD-24): the result exceeds the size cap and has no rows to drop.</p>
+Parameter TOOLRESULTTOOLARGE = "TOOL.RESULTTOOLARGE";
+
+/// <p>Tool-result code (Story 4.7, AD-5, AD-11 rule 3): <code>shell.screen.open</code>'s
+/// <code>route</code> passed the tool's own enum but <class>OcuPilot.Screen.Registry</class> no
+/// longer names a built screen at it -- the enum and the registry have disagreed. Refused by the
+/// tool body's own <code>Directive</code> before any announcement exists, so no announce step and
+/// no directive are ever written.</p>
+Parameter NAVROUTEUNKNOWN = "NAV.ROUTEUNKNOWN";
+
+/// <p>Tool-result code (Story 4.7, AD-5): the call named an <code>entityId</code> against a
+/// screen whose <code>id.kind</code> is <code>none</code> or <code>composite</code>. Refused by
+/// the tool body before any announcement exists, because the tool never invents a second composite
+/// id grammar (AD-5).</p>
+Parameter NAVENTITYNOTALLOWED = "NAV.ENTITYNOTALLOWED";
+
+/// <p>Terminal tool-result code for the navigation announce step (Story 4.7, AD-11 invariant 3):
+/// the departing <code>form-page</code> was dirty and the operator declined "Leave without
+/// saving?". The announcement is withdrawn, and the call's own <code>tool_result</code> is an
+/// ordinary refusal, <code>is_error</code> false.</p>
+Parameter NAVREFUSEDUNSAVED = "NAV.REFUSEDUNSAVED";
+
+/// <p>Terminal tool-result code for the navigation announce step (Story 4.7, AD-11 invariant 3):
+/// no browser answered the directive within <code>NAVWAITSECONDS</code>. The announcement is
+/// withdrawn, and the call's own <code>tool_result</code> is an ordinary refusal, <code>is_error</code>
+/// false -- never a hang and never an error.</p>
+Parameter NAVUNAVAILABLE = "NAV.UNAVAILABLE";
+
+/// <p>Tool-result code (Story 4.7, AD-11 rule 3): a client-fulfilled tool's <code>View</code> was
+/// invoked on the instance, which is a mis-wiring the tool refuses loudly rather than serving
+/// silently in the wrong place. Never reachable while <code>FULFILMENT</code> reads
+/// <code>client</code>, since <class>OcuPilot.Kernel.Agent.Dispatch</class> never calls
+/// <code>InvokeTool</code> for such a tool.</p>
+Parameter NAVNOTINSTANCE = "NAV.NOTINSTANCE";
+
+/// <p>Machine code (Story 4.7): <code>POST /turn/:id/navigation</code>'s body carries an
+/// <code>outcome</code> or <code>code</code> outside the closed vocabulary
+/// <code>{"opened","refused"}</code> / <code>{"NAV.REFUSEDUNSAVED", null}</code>, or no
+/// <code>seq</code>. Rendered on the <parameter>VALIDATIONFAILED</parameter> slug, HTTP 422 -- the
+/// closed vocabulary is what keeps the client from ever authoring model-visible text.</p>
+Parameter TURNNAVIGATIONINVALID = "TURN.NAVIGATION.INVALID";
+
+/// <p>Written sentence for <parameter>TURNBADBODY</parameter>.</p>
+Parameter REASONTURNBADBODY = "The request body is not a JSON object carrying a message.";
+
+/// <p>Written sentence for <parameter>TURNMESSAGEREQUIRED</parameter>.</p>
+Parameter REASONTURNMESSAGEREQUIRED = "Type a message before sending it.";
+
+/// <p>Written sentence for <parameter>TURNMESSAGELENGTH</parameter>; the producer appends the
+/// bound.</p>
+Parameter REASONTURNMESSAGELENGTH = "That message is longer than a turn accepts";
+
+/// <p>Written sentence for <parameter>TURNCONTEXTINVALID</parameter>.</p>
+Parameter REASONTURNCONTEXTINVALID = "The screen context is not shaped as the turn expects.";
+
+/// <p>Written sentence for <parameter>TURNCONVERSATIONREQUIRED</parameter>.</p>
+Parameter REASONTURNCONVERSATIONREQUIRED = "Start or choose a conversation before sending a message.";
+
+/// <p>Written sentence for <parameter>TURNCONVERSATIONNOTFOUND</parameter>.</p>
+Parameter REASONTURNCONVERSATIONNOTFOUND = "No conversation with that identifier exists for this account.";
+
+/// <p>Written sentence for <parameter>TURNBUSY</parameter>: EXPERIENCE.md's lock banner.</p>
+Parameter REASONTURNBUSY = "A turn is in progress. Wait for it to finish before sending another message.";
+
+/// <p>Written sentence for <parameter>TURNNOTFOUND</parameter>.</p>
+Parameter REASONTURNNOTFOUND = "No turn with that identifier exists for this account.";
+
+/// <p>Written sentence for <parameter>TURNUNAVAILABLE</parameter>.</p>
+Parameter REASONTURNUNAVAILABLE = "The turn could not be run on this instance.";
+
+/// <p>Written sentence for <parameter>TURNSTOPPED</parameter>.</p>
+Parameter REASONTURNSTOPPED = "The turn was stopped.";
+
+/// <p>Written sentence for <parameter>TURNABANDONEDREADONLY</parameter>.</p>
+Parameter REASONTURNABANDONEDREADONLY = "Read-only mode changed while the turn was running, so the turn was abandoned.";
+
+/// <p>Written sentence for <parameter>TURNABANDONEDPRIVILEGE</parameter>.</p>
+Parameter REASONTURNABANDONEDPRIVILEGE = "This account no longer holds the privilege the turn runs with, so the turn was abandoned.";
+
+/// <p>Written sentence for <parameter>TURNABANDONEDLEASE</parameter>.</p>
+Parameter REASONTURNABANDONEDLEASE = "Nothing checked on this turn for too long, so it was abandoned.";
+
+/// <p>Written sentence for <parameter>TURNABANDONEDSIGNOUT</parameter>.</p>
+Parameter REASONTURNABANDONEDSIGNOUT = "The turn was abandoned because its owner signed out.";
+
+/// <p>Written sentence for <parameter>TURNABANDONEDJOBLOST</parameter>.</p>
+Parameter REASONTURNABANDONEDJOBLOST = "The process running this turn ended unexpectedly, so the turn was abandoned.";
+
+/// <p>Written sentence for <parameter>TURNLIMITDURATION</parameter>.</p>
+Parameter REASONTURNLIMITDURATION = "The turn ran as long as a turn may, so it was abandoned.";
+
+/// <p>Written sentence for <parameter>TURNLIMITTOKENS</parameter>.</p>
+Parameter REASONTURNLIMITTOKENS = "The turn spent as many provider tokens as a turn may, so it was abandoned.";
+
+/// <p>Written sentence for <parameter>TURNNAVIGATIONINVALID</parameter>.</p>
+Parameter REASONTURNNAVIGATIONINVALID = "The navigation outcome is not one this instance accepts.";
+
+/// <p>Written sentence for <parameter>TOOLUNAVAILABLE</parameter>.</p>
+Parameter REASONTOOLUNAVAILABLE = "That tool could not be answered on this instance.";
+
+/// <p>Written sentence for <parameter>TOOLUNKNOWN</parameter>.</p>
+Parameter REASONTOOLUNKNOWN = "No tool by that name is available to this turn.";
+
+/// <p>Written sentence for <parameter>TOOLDENIED</parameter>.</p>
+Parameter REASONTOOLDENIED = "That tool is not permitted on this instance.";
+
+/// <p>Written sentence for <parameter>TOOLARGUMENTS</parameter>.</p>
+Parameter REASONTOOLARGUMENTS = "The tool call's arguments do not match what the tool accepts.";
+
+/// <p>Written sentence for <parameter>TOOLRESULTTOOLARGE</parameter>.</p>
+Parameter REASONTOOLRESULTTOOLARGE = "The tool's result is larger than a tool result may be.";
+
+/// <p>Written sentence for <parameter>NAVROUTEUNKNOWN</parameter>.</p>
+Parameter REASONNAVROUTEUNKNOWN = "That route is not one this instance's screens declare.";
+
+/// <p>Written sentence for <parameter>NAVENTITYNOTALLOWED</parameter>.</p>
+Parameter REASONNAVENTITYNOTALLOWED = "This screen does not take a selected row.";
+
+/// <p>Written sentence for <parameter>NAVREFUSEDUNSAVED</parameter>.</p>
+Parameter REASONNAVREFUSEDUNSAVED = "The screen was left with unsaved changes, so the move was not made.";
+
+/// <p>Written sentence for <parameter>NAVUNAVAILABLE</parameter>.</p>
+Parameter REASONNAVUNAVAILABLE = "No open browser answered the navigation in time.";
+
+/// <p>Written sentence for <parameter>NAVNOTINSTANCE</parameter>.</p>
+Parameter REASONNAVNOTINSTANCE = "This tool is fulfilled by the browser and has no view of its own on the instance.";
+
+/// <p>Machine code (Story 4.9, AD-24): <code>GET /agent/ledger</code>'s <code>windowHours</code> is
+/// not a whole number of hours the bounded read admits
+/// (<method>OcuPilot.Kernel.State.Base.BoundedWhere</method>). Rendered on the
+/// <parameter>BADREQUEST</parameter> slug, HTTP 400.</p>
+Parameter LEDGERWINDOWINVALID = "LEDGER.WINDOW.INVALID";
+
+/// <p>Machine code (Story 4.9, AD-24): <code>maxRows</code> is not a whole number above zero and at
+/// or below <parameter>OcuPilot.Kernel.Agent.Limits.LEDGERVIEWMAXROWS</parameter>. Rendered the way
+/// <parameter>LEDGERWINDOWINVALID</parameter> is.</p>
+Parameter LEDGERMAXROWSINVALID = "LEDGER.MAXROWS.INVALID";
+
+/// <p>Machine code (Story 4.9, AD-21, AD-37): the <code>user</code> parameter is not shaped like an
+/// account name. The value is never concatenated into anything -- the read binds it (AD-21) -- so
+/// this refuses a malformed request rather than defending the query. Rendered the way
+/// <parameter>LEDGERWINDOWINVALID</parameter> is.</p>
+Parameter LEDGERUSERINVALID = "LEDGER.USER.INVALID";
+
+/// <p>Machine code (Story 4.9, AD-9): the ledger store could not be read. Rendered on the
+/// <parameter>UNAVAILABLE</parameter> slug, HTTP 503, with the detail logged and nothing of it on
+/// the wire.</p>
+Parameter LEDGERUNAVAILABLE = "LEDGER.UNAVAILABLE";
+
+/// <p>Written sentence for <parameter>LEDGERWINDOWINVALID</parameter>; the producer appends the
+/// bound.</p>
+Parameter REASONLEDGERWINDOWINVALID = "That window is not one the ledger reads over";
+
+/// <p>Written sentence for <parameter>LEDGERMAXROWSINVALID</parameter>; the producer appends the
+/// bound.</p>
+Parameter REASONLEDGERMAXROWSINVALID = "That row count is not one the ledger answers";
+
+/// <p>Written sentence for <parameter>LEDGERUSERINVALID</parameter>.</p>
+Parameter REASONLEDGERUSERINVALID = "That is not the shape of an account name on this instance.";
+
+/// <p>Written sentence for <parameter>LEDGERUNAVAILABLE</parameter>.</p>
+Parameter REASONLEDGERUNAVAILABLE = "The agent ledger could not be read on this instance.";
+
+/// <p>Every <code>LEDGER.*</code> code, as a <class>%List</class>, so a test can hold
+/// <method>ReasonForLedger</method> to the vocabulary -- the model
+/// <method>TurnCodes</method>/<method>ReasonForTurn</method> set.</p>
+ClassMethod LedgerCodes() As %List
+{
+    Quit $ListBuild(..#LEDGERWINDOWINVALID, ..#LEDGERMAXROWSINVALID, ..#LEDGERUSERINVALID, ..#LEDGERUNAVAILABLE)
+}
+
+/// <p>The written sentence a <code>LEDGER.*</code> code carries, or <code>""</code> for any other
+/// code.</p>
+ClassMethod ReasonForLedger(pCode As %String) As %String
+{
+    If pCode = ..#LEDGERWINDOWINVALID Quit ..#REASONLEDGERWINDOWINVALID
+    If pCode = ..#LEDGERMAXROWSINVALID Quit ..#REASONLEDGERMAXROWSINVALID
+    If pCode = ..#LEDGERUSERINVALID Quit ..#REASONLEDGERUSERINVALID
+    If pCode = ..#LEDGERUNAVAILABLE Quit ..#REASONLEDGERUNAVAILABLE
+    Quit ""
+}
+
+/// <p>Every <code>NAV.*</code> code, as a <class>%List</class>, so a test can hold
+/// <method>ReasonForNav</method> to the vocabulary.</p>
+ClassMethod NavCodes() As %List
+{
+    Quit $ListBuild(..#NAVROUTEUNKNOWN, ..#NAVENTITYNOTALLOWED, ..#NAVREFUSEDUNSAVED, ..#NAVUNAVAILABLE, ..#NAVNOTINSTANCE)
+}
+
+/// <p>The written sentence a <code>NAV.*</code> code carries, or <code>""</code> for any other
+/// code. Mirrors <method>ReasonForRestraint</method> for the navigation tool's own vocabulary.</p>
+ClassMethod ReasonForNav(pCode As %String) As %String
+{
+    If pCode = ..#NAVROUTEUNKNOWN Quit ..#REASONNAVROUTEUNKNOWN
+    If pCode = ..#NAVENTITYNOTALLOWED Quit ..#REASONNAVENTITYNOTALLOWED
+    If pCode = ..#NAVREFUSEDUNSAVED Quit ..#REASONNAVREFUSEDUNSAVED
+    If pCode = ..#NAVUNAVAILABLE Quit ..#REASONNAVUNAVAILABLE
+    If pCode = ..#NAVNOTINSTANCE Quit ..#REASONNAVNOTINSTANCE
+    Quit ""
+}
+
+/// <p>Every <code>TURN.*</code> code, as a <class>%List</class>, so a test can hold
+/// <method>ReasonForTurn</method> to the vocabulary.</p>
+ClassMethod TurnCodes() As %List
+{
+    Quit $ListBuild(..#TURNBADBODY, ..#TURNMESSAGEREQUIRED, ..#TURNMESSAGELENGTH, ..#TURNCONTEXTINVALID, ..#TURNCONVERSATIONREQUIRED, ..#TURNCONVERSATIONNOTFOUND, ..#TURNBUSY, ..#TURNNOTFOUND, ..#TURNUNAVAILABLE, ..#TURNSTOPPED, ..#TURNABANDONEDREADONLY, ..#TURNABANDONEDPRIVILEGE, ..#TURNABANDONEDLEASE, ..#TURNABANDONEDSIGNOUT, ..#TURNABANDONEDJOBLOST, ..#TURNLIMITDURATION, ..#TURNLIMITTOKENS, ..#TURNNAVIGATIONINVALID)
+}
+
+/// <p>The written sentence a <code>TURN.*</code> code carries, or <code>""</code> for any other
+/// code.</p>
+ClassMethod ReasonForTurn(pCode As %String) As %String
+{
+    If pCode = ..#TURNBADBODY Quit ..#REASONTURNBADBODY
+    If pCode = ..#TURNMESSAGEREQUIRED Quit ..#REASONTURNMESSAGEREQUIRED
+    If pCode = ..#TURNMESSAGELENGTH Quit ..#REASONTURNMESSAGELENGTH
+    If pCode = ..#TURNCONTEXTINVALID Quit ..#REASONTURNCONTEXTINVALID
+    If pCode = ..#TURNCONVERSATIONREQUIRED Quit ..#REASONTURNCONVERSATIONREQUIRED
+    If pCode = ..#TURNCONVERSATIONNOTFOUND Quit ..#REASONTURNCONVERSATIONNOTFOUND
+    If pCode = ..#TURNBUSY Quit ..#REASONTURNBUSY
+    If pCode = ..#TURNNOTFOUND Quit ..#REASONTURNNOTFOUND
+    If pCode = ..#TURNUNAVAILABLE Quit ..#REASONTURNUNAVAILABLE
+    If pCode = ..#TURNSTOPPED Quit ..#REASONTURNSTOPPED
+    If pCode = ..#TURNABANDONEDREADONLY Quit ..#REASONTURNABANDONEDREADONLY
+    If pCode = ..#TURNABANDONEDPRIVILEGE Quit ..#REASONTURNABANDONEDPRIVILEGE
+    If pCode = ..#TURNABANDONEDLEASE Quit ..#REASONTURNABANDONEDLEASE
+    If pCode = ..#TURNABANDONEDSIGNOUT Quit ..#REASONTURNABANDONEDSIGNOUT
+    If pCode = ..#TURNABANDONEDJOBLOST Quit ..#REASONTURNABANDONEDJOBLOST
+    If pCode = ..#TURNLIMITDURATION Quit ..#REASONTURNLIMITDURATION
+    If pCode = ..#TURNLIMITTOKENS Quit ..#REASONTURNLIMITTOKENS
+    If pCode = ..#TURNNAVIGATIONINVALID Quit ..#REASONTURNNAVIGATIONINVALID
+    Quit ""
+}
+
+/// <p>Every <code>TOOL.*</code> code, as a <class>%List</class>, so a test can hold
+/// <method>ReasonForTool</method> to the vocabulary.</p>
+ClassMethod ToolCodes() As %List
+{
+    Quit $ListBuild(..#TOOLUNAVAILABLE, ..#TOOLUNKNOWN, ..#TOOLDENIED, ..#TOOLARGUMENTS, ..#TOOLRESULTTOOLARGE)
+}
+
+/// <p>The written sentence a <code>TOOL.*</code> code carries, or <code>""</code> for any other
+/// code. A tool result renders the code alone (AD-39); this is the sentence a screen shows beside
+/// it.</p>
+ClassMethod ReasonForTool(pCode As %String) As %String
+{
+    If pCode = ..#TOOLUNAVAILABLE Quit ..#REASONTOOLUNAVAILABLE
+    If pCode = ..#TOOLUNKNOWN Quit ..#REASONTOOLUNKNOWN
+    If pCode = ..#TOOLDENIED Quit ..#REASONTOOLDENIED
+    If pCode = ..#TOOLARGUMENTS Quit ..#REASONTOOLARGUMENTS
+    If pCode = ..#TOOLRESULTTOOLARGE Quit ..#REASONTOOLRESULTTOOLARGE
+    Quit ""
+}
+
+/// <p>The sentence a tool step's <code>reason</code> carries for <var>pCode</var> (Story 4.5),
+/// whichever family produced it: a <code>TOOL.*</code> code, <code>AUTH.NOPRIVILEGE</code>, or a
+/// restraint code (a blocked write tool's verdict is passed through as the tool result code
+/// unchanged). Mirrors <method>ReasonForTurnError</method> for the tool-result vocabulary, so
+/// <class>OcuPilot.Kernel.Agent.Dispatch</class> and <class>OcuPilot.Kernel.Agent.Loop</class>
+/// name no family's resolver of their own.</p>
+ClassMethod ReasonForToolCode(pCode As %String) As %String
+{
+    If pCode = "" Quit ""
+    If pCode = ..#AUTHNOPRIVILEGE Quit ..#REASONAUTHNOPRIVILEGE
+    Set tReason = ..ReasonForTool(pCode)
+    If tReason '= "" Quit tReason
+    Set tReason = ..ReasonForRestraint(pCode)
+    If tReason '= "" Quit tReason
+    Set tReason = ..ReasonForNav(pCode)
+    If tReason '= "" Quit tReason
+    Quit ..#REASONTOOLUNAVAILABLE
+}
+
+/// <p>The sentence a turn's terminal <code>error.reason</code> carries for <var>pCode</var>,
+/// whichever family the code is from: a <code>TURN.*</code> code, a restraint code, or a
+/// <code>PROVIDER.*</code> fault. One lookup, so the progress handler names no family's resolver
+/// of its own.</p>
+ClassMethod ReasonForTurnError(pCode As %String) As %String
+{
+    If pCode = "" Quit ""
+    Set tReason = ..ReasonForTurn(pCode)
+    If tReason '= "" Quit tReason
+    Set tReason = ..ReasonForRestraint(pCode)
+    If tReason '= "" Quit tReason
+    If $Extract(pCode, 1, 9) = "PROVIDER." Quit ##class(OcuPilot.Kernel.Provider.Base).ReasonFor(pCode)
+    Quit ..#REASONTURNUNAVAILABLE
+}
+
 /// <p>The refusal sentence one field-level violation code carries (AD-39).</p>
 /// <p><b>Every field-level code has one, and this class is where they live</b> -- beside the codes
 /// themselves and beside the envelope reasons the rest of the tree renders, for the reason the
-/// nine <code>PROVIDER.*</code> sentences live together in
+/// ten <code>PROVIDER.*</code> sentences live together in
 /// <method>OcuPilot.Kernel.Provider.Base.ReasonFor</method>: one home, so the same refusal cannot
 /// be worded two ways. The envelope's own <code>reason</code> for a validation failure is generic
 /// -- it names no rule, because it stands for a list of them -- so the sentence a form renders on
@@ -616,7 +1044,10 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If pCode = ..#AGENTCREDENTIALENVUNWRITABLE Quit ..#REASONAGENTCREDENTIALENVUNWRITABLE
     If pCode = ..#AGENTCREDENTIALRUNGUNAVAILABLE Quit ..#REASONAGENTCREDENTIALRUNGUNAVAILABLE
     If pCode = ..#AGENTKEYSHAPE Quit ..#REASONAGENTKEYSHAPE
+    If pCode = ..#AGENTCREDENTIALNOTOWNED Quit ..#REASONAGENTCREDENTIALNOTOWNED
+    If pCode = ..#AGENTCREDENTIALNOPRIVILEGE Quit ..#REASONAGENTCREDENTIALNOPRIVILEGE
     If pCode = ..#AGENTSWITCHREASONREQUIRED Quit ..#REASONAGENTSWITCHREASONREQUIRED
+    If pCode = ..#AGENTSWITCHCONTEXTROWCAP Quit ..#REASONAGENTSWITCHCONTEXTROWCAP
     If pCode = ..#AGENTHOLDUSERREQUIRED Quit ..#REASONAGENTHOLDUSERREQUIRED
     If pCode = ..#AGENTHOLDREASONREQUIRED Quit ..#REASONAGENTHOLDREASONREQUIRED
     If pCode = ..#AGENTHOLDDUPLICATE Quit ..#REASONAGENTHOLDDUPLICATE
@@ -628,7 +1059,7 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
 /// re-spelling either, which is what catches a code added with no sentence behind it.</p>
 ClassMethod ViolationCodes() As %List
 {
-    Quit $ListBuild(..#AGENTNAMEREQUIRED, ..#AGENTNAMEDUPLICATE, ..#AGENTPROVIDERUNKNOWN, ..#AGENTMAXTOKENSRANGE, ..#AGENTTEMPERATURERANGE, ..#AGENTCREDTYPEUNKNOWN, ..#AGENTENVVARREQUIRED, ..#AGENTCREDNAMEREQUIRED, ..#AGENTCREDNAMELENGTH, ..#AGENTENDPOINTREQUIRED, ..#AGENTENDPOINTSCHEME, ..#AGENTENDPOINTADDRESS, ..#AGENTENDPOINTLINKLOCAL, ..#AGENTLOCALUNSUPPORTED, ..#AGENTSYSTEMPROMPTLENGTH, ..#AGENTRETENTIONRANGE, ..#AGENTITERATIONSRANGE, ..#AGENTENABLEUNVERIFIED, ..#AGENTDEFAULTDISABLED, ..#AGENTCREDENTIALREQUIRED, ..#AGENTCREDENTIALENVUNWRITABLE, ..#AGENTCREDENTIALRUNGUNAVAILABLE, ..#AGENTKEYSHAPE, ..#AGENTSWITCHREASONREQUIRED, ..#AGENTHOLDUSERREQUIRED, ..#AGENTHOLDREASONREQUIRED, ..#AGENTHOLDDUPLICATE)
+    Quit $ListBuild(..#AGENTNAMEREQUIRED, ..#AGENTNAMEDUPLICATE, ..#AGENTPROVIDERUNKNOWN, ..#AGENTMAXTOKENSRANGE, ..#AGENTTEMPERATURERANGE, ..#AGENTCREDTYPEUNKNOWN, ..#AGENTENVVARREQUIRED, ..#AGENTCREDNAMEREQUIRED, ..#AGENTCREDNAMELENGTH, ..#AGENTENDPOINTREQUIRED, ..#AGENTENDPOINTSCHEME, ..#AGENTENDPOINTADDRESS, ..#AGENTENDPOINTLINKLOCAL, ..#AGENTLOCALUNSUPPORTED, ..#AGENTSYSTEMPROMPTLENGTH, ..#AGENTRETENTIONRANGE, ..#AGENTITERATIONSRANGE, ..#AGENTENABLEUNVERIFIED, ..#AGENTDEFAULTDISABLED, ..#AGENTCREDENTIALREQUIRED, ..#AGENTCREDENTIALENVUNWRITABLE, ..#AGENTCREDENTIALRUNGUNAVAILABLE, ..#AGENTKEYSHAPE, ..#AGENTCREDENTIALNOTOWNED, ..#AGENTCREDENTIALNOPRIVILEGE, ..#AGENTSWITCHREASONREQUIRED, ..#AGENTSWITCHCONTEXTROWCAP, ..#AGENTHOLDUSERREQUIRED, ..#AGENTHOLDREASONREQUIRED, ..#AGENTHOLDDUPLICATE)
 }
 
 /// <p>Refusal sentence for <parameter>AGENTNAMEREQUIRED</parameter>.</p>
@@ -702,8 +1133,28 @@ Parameter REASONAGENTCREDENTIALRUNGUNAVAILABLE = "The credential store is not av
 /// by the refusal that produces it, from the provider's own catalog row.</p>
 Parameter REASONAGENTKEYSHAPE = "That key is not shaped like a key for this provider";
 
+/// <p>Refusal sentence for <parameter>AGENTCREDENTIALNOTOWNED</parameter>.</p>
+Parameter REASONAGENTCREDENTIALNOTOWNED = "OcuPilot did not create this credential entry, so it will not overwrite it. Choose an unused reference, or change the entry where it was created.";
+
+/// <p>Refusal sentence for <parameter>AGENTCREDENTIALNOPRIVILEGE</parameter>, naming the first pair
+/// the store needs. <method>ReasonForCredentialPrivilege</method> names whichever pair failed.</p>
+Parameter REASONAGENTCREDENTIALNOPRIVILEGE = "Storing a key needs %Ens_Credentials:WRITE, which this account does not hold. Ask an administrator to grant it.";
+
+/// <p>The <parameter>AGENTCREDENTIALNOPRIVILEGE</parameter> sentence naming <var>pPair</var>, the
+/// <code>resource:permission</code> pair that failed (AD-8): the one sentence, with
+/// <var>pPair</var> in place of the pair it is written with. An empty <var>pPair</var> answers the
+/// sentence as written.</p>
+ClassMethod ReasonForCredentialPrivilege(pPair As %String = "") As %String
+{
+    If pPair = "" Quit ..#REASONAGENTCREDENTIALNOPRIVILEGE
+    Quit $Replace(..#REASONAGENTCREDENTIALNOPRIVILEGE, "%Ens_Credentials:WRITE", pPair)
+}
+
 /// <p>Refusal sentence for <parameter>AGENTSWITCHREASONREQUIRED</parameter>.</p>
 Parameter REASONAGENTSWITCHREASONREQUIRED = "Give a reason for switching the agent off. Everyone it affects is shown it.";
+
+/// <p>Refusal sentence for <parameter>AGENTSWITCHCONTEXTROWCAP</parameter>.</p>
+Parameter REASONAGENTSWITCHCONTEXTROWCAP = "Context rows sent with a turn is a whole number from 1 to 1,000.";
 
 /// <p>Refusal sentence for <parameter>AGENTHOLDUSERREQUIRED</parameter>.</p>
 Parameter REASONAGENTHOLDUSERREQUIRED = "Name the user the agent is switched off for.";

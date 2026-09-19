@@ -54,7 +54,7 @@ Parameter RELEASEVERB = "release";
 /// changes no restraint.</p>
 ClassMethod Fields() As %List
 {
-    Quit $ListBuild($ListBuild("killSwitch", "KillSwitch", "boolean", 1), $ListBuild("killSwitchReason", "KillSwitchReason", "string", 0), $ListBuild("enforcedReadOnly", "EnforcedReadOnly", "boolean", 1), $ListBuild("shareContextByDefault", "ShareContextByDefault", "boolean", 1))
+    Quit $ListBuild($ListBuild("killSwitch", "KillSwitch", "boolean", 1), $ListBuild("killSwitchReason", "KillSwitchReason", "string", 0), $ListBuild("enforcedReadOnly", "EnforcedReadOnly", "boolean", 1), $ListBuild("shareContextByDefault", "ShareContextByDefault", "boolean", 1), $ListBuild("contextRowCap", "ContextRowCap", "integer", 1))
 }
 
 /// <p>The wire names of the switch fields whose change is a security change, derived from
@@ -314,6 +314,8 @@ ClassMethod Projection(ByRef pValues, pHolds As %DynamicArray) As %DynamicObject
         Set tValue = $Get(pValues(tField))
         If $List(tEntry, 3) = "boolean" {
             Do tOut.%Set(tField, $Select(+tValue: 1, 1: 0), "boolean")
+        } ElseIf $List(tEntry, 3) = "integer" {
+            Do tOut.%Set(tField, +tValue, "number")
         } Else {
             Do tOut.%Set(tField, tValue, "string")
         }
@@ -391,6 +393,10 @@ ClassMethod MergeBody(pBody As %DynamicObject, ByRef pValues)
         If ($List(tEntry, 3) = "string") && (tType '= "string") Continue
         Set tValue = pBody.%Get(tField)
         If $List(tEntry, 3) = "boolean" Set tValue = $Select(+tValue: 1, 1: 0)
+        ; An integer field takes a JSON number only (AD-4). A boolean or a numeric string would
+        ; otherwise read back as a plausible value by the time ValidateSwitches's regex sees it, so
+        ; any other type becomes "" and meets that rule's empty-value refusal.
+        If ($List(tEntry, 3) = "integer") && (tType '= "number") Set tValue = ""
         Set pValues(tField) = tValue
     }
 }
@@ -429,8 +435,9 @@ ClassMethod RenderConflict() As %Status
     Quit ##class(OcuPilot.Api.Definitions).RenderConflict()
 }
 
-/// <p>Refuse with 400 and <parameter>OcuPilot.Api.Error.AGENTBADBODY</parameter>, naming the stage
-/// <method>OcuPilot.Kernel.Utils.ReadRequestBody</method> reported.</p>
+/// <p>Refuse with 400 and <parameter>OcuPilot.Api.Error.AGENTBADBODY</parameter>, carrying
+/// <parameter>OcuPilot.Api.Error.REASONAGENTBADBODY</parameter> alone; <var>pStatus</var>'s raw
+/// text reaches the log only (AD-39).</p>
 ClassMethod RenderBadBody(pStatus As %Status) As %Status
 {
     Quit ##class(OcuPilot.Api.Definitions).RenderBadBody(pStatus)

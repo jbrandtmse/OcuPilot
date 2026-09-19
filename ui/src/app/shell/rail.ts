@@ -11,6 +11,7 @@ import { Router } from '@angular/router';
 
 import { AgentStatus, DEFINITIONS_ROUTE, formatKillSwitch } from '../core/agent-status';
 import { NavigationService, formatArea, formatRequires, withQuery } from '../core/navigation';
+import { PanelState } from '../core/panel-layout';
 import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
 
@@ -127,6 +128,7 @@ export class Rail {
   private readonly navigation = inject(NavigationService);
   private readonly agentStatus = inject(AgentStatus);
   private readonly shell = inject(ShellState);
+  private readonly panel = inject(PanelState);
   private readonly router = inject(Router);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
 
@@ -225,7 +227,23 @@ export class Rail {
     if (item.gated) return;
     const index = this.resolved().findIndex((candidate) => candidate.key === item.key);
     if (index >= 0) this.focusedIndex.set(index);
-    if (!this.shell.activateArea(item.key, item.navigates)) return;
+    // A side bar the width collapsed is reopened by the click that would have shown it, taking the
+    // next concession (DESIGN.md Yield order); the open it writes is the value the preference
+    // already holds while yielded. Clicking the visible area's item on a reopened bar returns it to
+    // the yield and writes nothing, as Ctrl/Cmd+B does.
+    if (this.panel.sideBarReopened() && this.shell.visibleArea() === item.key) {
+      this.panel.releaseSideBar();
+      return;
+    }
+    if (!item.navigates && this.panel.sideBarYielded()) {
+      this.shell.showArea(item.key);
+      this.panel.reopenSideBar();
+      return;
+    }
+    if (!this.shell.activateArea(item.key, item.navigates)) {
+      if (this.shell.open() && this.panel.sideBarYielded()) this.panel.reopenSideBar();
+      return;
+    }
     // A navigating area opens its first built screen; Home's is the application root, whose
     // declared route is the empty string. The current query travels with it: `?ns=` is data
     // scope, and a rail click that dropped it would silently move the user's work to another

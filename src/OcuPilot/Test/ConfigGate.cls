@@ -269,13 +269,13 @@ Method ConcretePath(pUrl As %String) As %String
     Quit tOut
 }
 
-/// <p>The closed exception list AC1 allows: the two <parameter>CONFIGPREFIX</parameter> routes
+/// <p>The closed exception list AC1 allows: the <parameter>CONFIGPREFIX</parameter> routes
 /// that answer a caller holding no OcuPilot administrative resource, each with the reason it
 /// does. Entries are <code>$ListBuild(method, url, reason)</code>, and the url is the route as the
 /// map declares it -- a list naming a route the map does not carry fails the sweep.</p>
 ClassMethod Exceptions() As %List
 {
-    Quit $ListBuild($ListBuild("GET", "/agent/definitions", "the selection projection is what the switcher needs and what every portal user may see (AD-46)"), $ListBuild("GET", "/agent/restraint", "it answers the calling user their own verdict, and the audience for the kill-switch banner is precisely the people who cannot change it"))
+    Quit $ListBuild($ListBuild("GET", "/agent/definitions", "the selection projection is what the switcher needs and what every portal user may see (AD-46)"), $ListBuild("GET", "/agent/restraint", "it answers the calling user their own verdict, and the audience for the kill-switch banner is precisely the people who cannot change it"), $ListBuild("GET", "/agent/context", "it answers the calling user their own screen-context sharing choice and instance facts (Story 4.4), caller-own like /agent/restraint"), $ListBuild("PUT", "/agent/context", "it stores only the calling user's own sharing choice (Story 4.4), never another user's row or an instance setting"), $ListBuild("GET", "/agent/ledger", "it answers the calling user their own agent-ledger rows (Story 4.9, AD-46: a user sees their own); a ?user= naming anyone else is what requires the administrative resource, and that refusal is inside the read rather than on the route"))
 }
 
 /// <p>The exception entry for <var>pMethod</var> <var>pUrl</var>, or <code>""</code>.</p>
@@ -350,7 +350,13 @@ Method TestEveryConfigurationRouteRefusesAPrincipalWithoutTheAdministrativeResou
         Do $$$AssertStatusOK(tSC, tMethod _ " " _ tUrl _ ": the request completes")
         Set tException = ..ExceptionFor(tMethod, tUrl)
         If tException '= "" {
-            Do $$$AssertEquals(tStatus, 200, tMethod _ " " _ tUrl _ ": is answered, because " _ $List(tException, 3) _ " (" _ $Extract(tBody, 1, 200) _ ")")
+            ; A GET exception is answered 200. A PUT exception's trivial {} body can be refused on
+            ; its own shape (422), which still proves the admin gate, a 403, never ran.
+            If tMethod = "GET" {
+                Do $$$AssertEquals(tStatus, 200, tMethod _ " " _ tUrl _ ": is answered, because " _ $List(tException, 3) _ " (" _ $Extract(tBody, 1, 200) _ ")")
+            } Else {
+                Do $$$AssertTrue((tStatus '= 403) && (tStatus < 500), tMethod _ " " _ tUrl _ ": is answered, not gated, because " _ $List(tException, 3) _ " (" _ tStatus _ ": " _ $Extract(tBody, 1, 200) _ ")")
+            }
             Continue
         }
         Do $$$AssertEquals(tStatus, 403, tMethod _ " " _ tUrl _ ": is refused (" _ $Extract(tBody, 1, 300) _ ")")

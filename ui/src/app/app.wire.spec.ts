@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { App } from './app';
 import { routes } from './app.routes';
+import { AgentContext } from './core/agent-context';
 import { AgentStatus } from './core/agent-status';
 import type { ApiService } from './core/api';
 import { ChangeBus } from './core/change-bus';
@@ -19,10 +20,16 @@ import { ScreenActions } from './core/screen-actions';
 import { ScreenStores } from './core/screen-store';
 import type { ScreenDeclaration } from './core/screens.generated';
 import { Session, type SessionState } from './core/session';
+import { PanelState } from './core/panel-layout';
+import { TurnStore } from './core/turn';
 import { ShellState } from './core/shell-state';
 import { STRINGS } from './core/strings';
+import { SuggestedView } from './core/suggested-view';
+import { stubAgentContext } from './testing/agent-context';
 import { ViewOptions } from './core/view-options';
 import { stubAgentStatus } from './testing/agent-status';
+import { stubSuggestedView } from './testing/suggested-view';
+import { stubTurnStore } from './testing/turn';
 import { screenDeclaration } from './testing/screen-declaration';
 
 /**
@@ -64,6 +71,10 @@ class StubSession {
   }
 
   /** Never fresh: this file is about the chip and the stamp, not about the first-login gate. */
+  hasFreshSignIn(): boolean {
+    return false;
+  }
+
   consumeFreshSignIn(): boolean {
     return false;
   }
@@ -238,6 +249,8 @@ describe('the real shell, routed to the real Home screen, sharing one real Refre
     } as unknown as ApiService;
     const navigation = new NavigationService({ api, connectivity, namespace: () => 'HSCUSTOM' });
 
+    const shellPreferences = new PreferenceStore({ storage: memoryStorage() });
+    const shellState = new ShellState({ preferences: shellPreferences });
     TestBed.configureTestingModule({
       providers: [
         provideRouter(routes),
@@ -248,10 +261,9 @@ describe('the real shell, routed to the real Home screen, sharing one real Refre
         { provide: ConnectivityService, useValue: connectivity },
         { provide: RefreshService, useValue: refresh },
         { provide: ScreenStores, useValue: screenStores },
-        {
-          provide: ShellState,
-          useValue: new ShellState({ preferences: new PreferenceStore({ storage: memoryStorage() }) }),
-        },
+        { provide: ShellState, useValue: shellState },
+        { provide: PanelState, useValue: new PanelState({ preferences: shellPreferences, shell: shellState }) },
+        { provide: TurnStore, useValue: stubTurnStore() },
         { provide: OverlayStack, useValue: new OverlayStack() },
         { provide: ScreenActions, useValue: new ScreenActions() },
         { provide: ViewOptions, useValue: new ViewOptions() },
@@ -259,6 +271,8 @@ describe('the real shell, routed to the real Home screen, sharing one real Refre
         // Unanswered on purpose: this file is about the chip and the stamp around the real Home
         // screen, and a panel that has picked an audience would be a second subject in it.
         { provide: AgentStatus, useValue: stubAgentStatus() },
+        { provide: AgentContext, useValue: stubAgentContext() },
+        { provide: SuggestedView, useValue: stubSuggestedView() },
       ],
     });
 

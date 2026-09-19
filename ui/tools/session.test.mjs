@@ -29,6 +29,8 @@ const {
   LOGIN_PATH,
   REFRESH_PATH,
   LOGOUT_PATH,
+  TURN_ABANDON_PATH,
+  SIGN_OUT_ABANDON_WAIT_MS,
   classifyLoginStatus,
   isInstallInFlight,
   isInstallUnreadable,
@@ -765,6 +767,46 @@ test('an accepted form login is a sign-in', async () => {
   assert.equal(session.consumeFreshSignIn(), true);
 });
 
+test('hasFreshSignIn reads the one-shot without spending it', async () => {
+  const { session } = makeSession((path) =>
+    path === LOGIN_PATH ? response(200, pairBody('a2', 'r2')) : response(404)
+  );
+  session.setUserName('ann');
+  session.setPassword('correct horse');
+  assert.equal(await session.submitForm(), true);
+  assert.equal(session.hasFreshSignIn(), true);
+  assert.equal(session.hasFreshSignIn(), true, 'reading is not spending');
+  assert.equal(session.consumeFreshSignIn(), true);
+  assert.equal(session.hasFreshSignIn(), false, 'spent once, gone');
+});
+
+// DW-386. An accepted form login notifies its readers through `adopt()`'s `setState('signed-in')`;
+// a second notification after it re-ran every signed-in reader, and the shell issued each of its
+// reads twice. A rejected one still notifies after clearing the password, because that is the one
+// way the form still on screen learns the field is empty.
+//
+// Mutation (Rule 19): restore the unconditional `this.notify()` in `runSubmit` -> the accepted leg
+// goes red at two notifications.
+test('DW-386: an accepted form login notifies once per state change, and a rejected one still publishes the cleared password', async () => {
+  const accepted = makeSession((path) =>
+    path === LOGIN_PATH ? response(200, pairBody('a2', 'r2')) : response(404)
+  );
+  const seen = [];
+  accepted.session.subscribe(() => seen.push(accepted.session.state()));
+  accepted.session.setUserName('ann');
+  accepted.session.setPassword('correct horse');
+  assert.equal(await accepted.session.submitForm(), true);
+  assert.deepEqual(seen, ['signed-in'], 'one notification, from adopt()');
+
+  const rejected = makeSession(() => response(401, ''));
+  const heard = [];
+  rejected.session.subscribe(() => heard.push([rejected.session.state(), rejected.session.password()]));
+  rejected.session.setUserName('ann');
+  rejected.session.setPassword('wrong');
+  assert.equal(await rejected.session.submitForm(), false);
+  assert.deepEqual(heard.at(-1), ['form-rejected', ''], 'the last notification carries the cleared password');
+});
+
 test('a rejected form login is not a sign-in', async () => {
   const { session } = makeSession(() => response(401, ''));
 
@@ -1046,6 +1088,82 @@ test('DW-5: a logout that never settles does not hold the tab signed in', async 
   });
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(settled, false, 'the promise tracks the request, which is still in flight');
+});
+
+// --- Sign-out abandons the caller's turns (AD-31) -----------------------------------------
+//
+// The instance observes no token sign-out, so a running turn would otherwise go on until its lease
+// lapses. The wire half -- what the route does to whose turns -- is OcuPilot.Test.TurnWire's.
+
+test('sign-out abandons the turns before /logout, carrying the same Bearer', async () => {
+  const { session, calls } = makeSession((path) =>
+    path === LOGIN_PATH ? response(200, pairBody('a1', 'r1')) : response(200, '')
+  );
+
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+  await session.signOut();
+
+  const paths = calls.map((c) => c.path);
+  assert.equal(TURN_ABANDON_PATH, '/api/ocupilot/turn/abandon', 'the POST route Router.cls maps');
+  const abandonAt = paths.indexOf(TURN_ABANDON_PATH);
+  assert.ok(abandonAt >= 0, 'the abandon is sent');
+  assert.ok(abandonAt < paths.indexOf(LOGOUT_PATH), 'before the logout');
+  assert.equal(calls[abandonAt].init.method, 'POST');
+  assert.equal(calls[abandonAt].init.headers['Authorization'], 'Bearer a1', 'with the pair the tab held');
+  assert.equal(calls[abandonAt].init.credentials, 'omit', 'and no cookie, as for every data route');
+});
+
+for (const [label, answer] of [
+  ['throws', () => Promise.reject(new TypeError('Failed to fetch'))],
+  ['answers 401', () => response(401, '')],
+]) {
+  test(`an abandon that ${label} still lets /logout go`, async () => {
+    const { session, calls, tokens } = makeSession((path) => {
+      if (path === TURN_ABANDON_PATH) return answer();
+      return path === LOGIN_PATH ? response(200, pairBody('a1', 'r1')) : response(200, '');
+    });
+
+    session.start();
+    await new Promise((resolve) => setImmediate(resolve));
+    await session.signOut();
+
+    assert.ok(calls.some((c) => c.path === LOGOUT_PATH), 'the logout is still sent');
+    assert.equal(tokens.read(), null);
+    assert.equal(session.state(), 'signed-out');
+  });
+}
+
+test('an abandon that never settles lets /logout go once the bound fires', async () => {
+  const { session, calls, scheduled } = makeSession((path) => {
+    if (path === TURN_ABANDON_PATH) return new Promise(() => {});
+    return path === LOGIN_PATH ? response(200, pairBody('a1', 'r1')) : response(200, '');
+  });
+
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+  const pending = session.signOut();
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(session.state(), 'signed-out', 'the tab is signed out while the abandon hangs');
+  assert.ok(!calls.some((c) => c.path === LOGOUT_PATH), 'and the logout waits for the bound');
+  const bound = scheduled.find((entry) => entry.delayMs === SIGN_OUT_ABANDON_WAIT_MS);
+  assert.ok(bound, 'the wait is bounded through the injected scheduler');
+
+  bound.run();
+  await pending;
+  assert.ok(calls.some((c) => c.path === LOGOUT_PATH), 'the logout goes once the bound fires');
+});
+
+test('a tab holding no pair sends neither the abandon nor the logout', async () => {
+  const { session, calls } = makeSession(() => response(401, ''));
+
+  session.start();
+  await new Promise((resolve) => setImmediate(resolve));
+  await session.signOut();
+
+  assert.ok(!calls.some((c) => c.path === TURN_ABANDON_PATH), 'no abandon');
+  assert.ok(!calls.some((c) => c.path === LOGOUT_PATH), 'and no logout');
 });
 
 test('a backoff probe armed before sign-out lands after it and adopts nothing', async () => {
@@ -2318,7 +2436,7 @@ test('Integration AC: app.ts renders the instance notice and withholds the outle
   // header, then the row holding the rail, the side bar and the content column, then the
   // status bar. Asserted on the source order because that IS the DOM order -- no `tabindex`
   // above 0 exists anywhere in the client to reorder it.
-  const bands = [...instance.then.matchAll(/<app-(header|rail|side-bar|locator-bar|command-bar|status-bar)\s*\/>/g)].map(
+  const bands = [...instance.then.matchAll(/<app-(header|rail|side-bar|locator-bar|command-bar|status-bar)\b[^>]*\/>/g)].map(
     (m) => m[1]
   );
   assert.deepEqual(bands, [

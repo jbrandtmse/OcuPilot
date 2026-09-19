@@ -25,8 +25,15 @@ Parameter DEFAULTKILLSWITCH As %Integer = 0;
 Parameter DEFAULTENFORCEDREADONLY As %Integer = 0;
 
 /// <p>Whether a new conversation shares screen context on an instance that has stored nothing
-/// (FR-11). On, which is what the panel's own per-session switch starts at.</p>
+/// (FR-11). On, which is what the caller's own per-user choice starts at when no row names
+/// them.</p>
 Parameter DEFAULTSHARECONTEXT As %Integer = 1;
+
+/// <p>The row cap a turn's screen context, and every read tool result, is bounded to on an
+/// instance that has stored nothing, or that stored an empty or out-of-range value (Story 4.4,
+/// AD-24). Every read tool, whether descriptor-derived or a class of its own -- this switch is the
+/// one row-count cap <method>OcuPilot.Kernel.Agent.Dispatch.Answer</method> resolves per turn.</p>
+Parameter DEFAULTCONTEXTROWCAP As %Integer = 200;
 
 /// <p>Whether the agent is switched off for everyone.</p>
 Property KillSwitch As %Boolean [ InitialExpression = 0 ];
@@ -39,9 +46,18 @@ Property KillSwitchReason As %String(MAXLEN = 512);
 /// <p>Whether every user's agent is restrained to reads (FR-19).</p>
 Property EnforcedReadOnly As %Boolean [ InitialExpression = 0 ];
 
-/// <p>The instance default for screen-context sharing, which seeds the panel's own per-session
-/// switch (FR-11).</p>
+/// <p>The instance default for screen-context sharing (FR-11), which is what a caller with no row
+/// of their own in <class>OcuPilot.Kernel.State.Sharing</class> reads as their effective
+/// choice.</p>
 Property ShareContextByDefault As %Boolean [ InitialExpression = 1 ];
+
+/// <p>The row cap a turn's screen context and every read tool result -- descriptor-derived or a
+/// class of its own -- are bounded to (Story 4.4, AD-24). Kept in range by
+/// <method>Resolve</method> and by <class>OcuPilot.Kernel.SwitchRules</class>'s write-time check;
+/// a row somehow holding an out-of-range value reads back at the default rather than widening the
+/// bound. Only the per-field cut inside <class>OcuPilot.Kernel.Agent.Bound</class> is scoped to
+/// descriptor-derived tools; the row count this property names is not.</p>
+Property ContextRowCap As %Integer [ InitialExpression = 200 ];
 
 /// <p>ISO-8601 UTC timestamp of the last write to this row.</p>
 Property UpdatedAt As %String(MAXLEN = 32);
@@ -61,6 +77,7 @@ ClassMethod Resolve(Output pValues) As %Status
     Set pValues("killSwitchReason") = ""
     Set pValues("enforcedReadOnly") = ..#DEFAULTENFORCEDREADONLY
     Set pValues("shareContextByDefault") = ..#DEFAULTSHARECONTEXT
+    Set pValues("contextRowCap") = ..#DEFAULTCONTEXTROWCAP
     Set pValues("updatedAt") = ""
     Set tSC = $$$OK
     Try {
@@ -71,6 +88,8 @@ ClassMethod Resolve(Output pValues) As %Status
         Set pValues("killSwitchReason") = ..Text(tRow.KillSwitchReason)
         Set pValues("enforcedReadOnly") = ''tRow.EnforcedReadOnly
         Set pValues("shareContextByDefault") = ''tRow.ShareContextByDefault
+        Set tRowCap = +tRow.ContextRowCap
+        If (tRowCap >= 1) && (tRowCap <= 1000) Set pValues("contextRowCap") = tRowCap
         Set pValues("updatedAt") = ..Text(tRow.UpdatedAt)
         Set tRow = ""
     } Catch ex {
@@ -103,6 +122,7 @@ ClassMethod SetGuarded(ByRef pValues, pExpectedVersion As %String = "") As %Stat
         If $Data(pValues("killSwitchReason")) Set tRow.KillSwitchReason = pValues("killSwitchReason")
         If $Data(pValues("enforcedReadOnly")) Set tRow.EnforcedReadOnly = ''+pValues("enforcedReadOnly")
         If $Data(pValues("shareContextByDefault")) Set tRow.ShareContextByDefault = ''+pValues("shareContextByDefault")
+        If $Data(pValues("contextRowCap")) Set tRow.ContextRowCap = +pValues("contextRowCap")
         Set tRow.UpdatedAt = ..Timestamp()
         Set tSC = ..GuardedSaveIfCurrent(tRow, tVersion)
         Set tRow = ""

@@ -115,10 +115,13 @@ async function enabledCount() {
 /**
  * Remove every definition this spec created, through the shipped route.
  *
- * **Every delete is checked.** This spec is the only one that enables a definition, and the seven
- * spec files that sort after it all render the panel on the premise that nothing is enabled. A
- * delete that quietly failed would leave an enabled row behind, turn `leaveFirstLoginGate` into a
- * no-op in all of them, and surface as an unrelated assertion in a file that did nothing wrong.
+ * **Every delete is checked.** Seven spec files enable a definition — this one and
+ * `panel.browser-spec.mjs` directly, and `context-chip`, `navigate`, `reply`, `suggested-view` and
+ * `turn` through `armProbeDefinition`, which reaches `TurnWireFixture.EnsureDefinition` and its
+ * `SetFlags(pId, 1, 1)`. Each is responsible for removing its own, and every spec file that does
+ * not enable one renders the panel on the premise that nothing is enabled. A delete that quietly
+ * failed would leave an enabled row behind, turn `leaveFirstLoginGate` into a no-op in all of them,
+ * and surface as an unrelated assertion in a file that did nothing wrong.
  */
 async function removeProbeDefinitions() {
   for (const row of await definitions()) {
@@ -385,9 +388,8 @@ test('AC4: the composer and Send are reachable by Tab, aria-disabled, and never 
     // The Tab order itself: focus the composer, then Tab once, and Send is next. A browser skips a
     // natively disabled control, which is the whole reason `aria-disabled` is what is used here.
     await page.focus('.ocu-panel-composer');
-    assert.equal(
-      await page.evaluate(() => document.activeElement?.className ?? ''),
-      'ocu-panel-composer',
+    assert.ok(
+      await page.evaluate(() => document.activeElement?.classList.contains('ocu-panel-composer') ?? false),
       'the composer takes focus'
     );
     await page.keyboard.press('Tab');
@@ -445,7 +447,7 @@ test('AC6, Integration AC: the dot and the panel clear on the first render after
     await page.waitForFunction(() => document.querySelector('.ocu-rail-dot') === null, {
       timeout: config.navigationTimeoutMs,
     });
-    assert.equal(await page.$$eval('app-panel .ocu-panel', (nodes) => nodes.length), 0, 'the panel is gone with it');
+    assert.equal(await page.$$eval('app-panel .ocu-panel-banner', (nodes) => nodes.length), 0, 'the reminder banner is gone with it');
     assert.equal(await page.$$eval('.ocu-proposal-card', (nodes) => nodes.length), 0, 'and so is the example card');
     assert.equal(await enabledCount(), 1, 'and the instance really did change: the row is enabled');
   } finally {

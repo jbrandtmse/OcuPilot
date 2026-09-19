@@ -2,9 +2,10 @@
  * The session state machine behind silent-first sign-in (AD-28), framework-free so
  * `ui/tools/session.test.mjs` can execute it under `node --test`.
  *
- * The states are EXPERIENCE.md's Session table ("Cold start, silent probe in flight"). The three requests are the
- * CSP server's own token endpoints -- `/login`, `/refresh` and `/logout` are intercepted
- * before OcuPilot dispatches, so nothing here talks to OcuPilot code.
+ * The states are EXPERIENCE.md's Session table ("Cold start, silent probe in flight"). Three of
+ * its requests are the CSP server's own token endpoints -- `/login`, `/refresh` and `/logout` are
+ * intercepted before OcuPilot dispatches. The fourth, `/turn/abandon`, is OcuPilot's own, sent at
+ * sign-out because the instance observes no token sign-out (AD-31).
  *
  * Two rules carry the whole design, and both are verified against the live instance in
  * `OcuPilot.Test.Token`:
@@ -34,6 +35,13 @@ export const API_ROOT = '/api/ocupilot';
 export const LOGIN_PATH = `${API_ROOT}/login`;
 export const REFRESH_PATH = `${API_ROOT}/refresh`;
 export const LOGOUT_PATH = `${API_ROOT}/logout`;
+export const TURN_ABANDON_PATH = `${API_ROOT}/turn/abandon`;
+
+/**
+ * How long sign-out waits for `/turn/abandon` before it posts `/logout` anyway. Unbounded, a hung
+ * abandon would keep `/logout` from ever being sent and leave the browser-level login alive.
+ */
+export const SIGN_OUT_ABANDON_WAIT_MS = 3_000;
 
 /**
  * The states EXPERIENCE.md "Cold start, silent probe in flight" names.
@@ -382,7 +390,7 @@ export class Session {
    * Whether an authentication has happened in this tab that nothing has acted on yet (FR-28).
    *
    * Set by `adopt()` alone -- the one path a genuine authentication takes, from the silent probe
-   * and from an accepted form login -- and read once, by `consumeFreshSignIn()`. A tab resuming a
+   * and from an accepted form login -- and spent once, by `consumeFreshSignIn()`. A tab resuming a
    * stored pair reaches `signed-in` through `start()` without `adopt()`, so a reload is not a
    * sign-in and the requested route survives it.
    *
@@ -474,7 +482,10 @@ export class Session {
     // DW-104: the password is cleared on every answered outcome and kept on the one unanswered
     // one, so a user whose instance was unreachable presses Retry rather than typing it again.
     if (!this.submitUnanswered) this.currentPassword = '';
-    this.notify();
+    // Only a submit that did not sign in has something left to publish: the cleared password on the
+    // form still on screen. An accepted one reached `signed-in` through `adopt()`, which notified,
+    // and a second notification re-runs every signed-in reader (DW-386).
+    if (!accepted) this.notify();
     return accepted;
   }
 
@@ -500,11 +511,20 @@ export class Session {
   }
 
   /**
+   * Whether an authentication is waiting to be acted on, without spending it. The gate reads this
+   * before its two reads settle and spends the flag only once both have answered, so a read that
+   * failed during sign-in leaves the sign-in for the gate's next pass.
+   */
+  hasFreshSignIn(): boolean {
+    return this.freshSignIn;
+  }
+
+  /**
    * Whether an authentication has happened that nothing has acted on yet, answered **once**
    * (FR-28). Every later call answers false until the next `adopt()`.
    *
    * The caller is the shell's first-login gate. It is a one-shot rather than a readable flag so
-   * two passes of the same change detection cannot both read it as a sign-in.
+   * two passes of the same change detection cannot both claim one sign-in.
    */
   consumeFreshSignIn(): boolean {
     if (!this.freshSignIn) return false;
@@ -656,6 +676,11 @@ export class Session {
    *
    * The method awaits the request, so a caller that awaits it sees the round trip complete --
    * but nothing the tab shows is waiting on it.
+   *
+   * **Before `/logout`, the caller's running turns are abandoned** (AD-31): the instance
+   * observes no token sign-out, so a turn would otherwise run on until its lease lapses. The
+   * abandon carries the same Bearer, its outcome is not read, and it is waited for at most
+   * `SIGN_OUT_ABANDON_WAIT_MS` -- whichever comes first, `/logout` is posted next.
    */
   async signOut(): Promise<void> {
     const pair = this.tokens.read();
@@ -674,6 +699,7 @@ export class Session {
     this.setState('signed-out');
 
     if (access === '') return;
+    await this.abandonTurns(access);
     try {
       await this.http(LOGOUT_PATH, {
         method: 'POST',
@@ -684,6 +710,33 @@ export class Session {
       // Deliberately unread. The tab was already cleared and settled above; there is no
       // outcome here that should change what the user sees.
     }
+  }
+
+  /**
+   * Post `/turn/abandon` with `access` and no cookie (it is a data route, AD-28), and settle when
+   * it answers, fails, or
+   * `SIGN_OUT_ABANDON_WAIT_MS` passes on the injected scheduler -- whichever is first. Never
+   * rejects, and reads no outcome.
+   */
+  private abandonTurns(access: string): Promise<void> {
+    return new Promise<void>((resolve) => {
+      let settled = false;
+      const settle = () => {
+        if (settled) return;
+        settled = true;
+        resolve();
+      };
+      this.schedule(settle, SIGN_OUT_ABANDON_WAIT_MS);
+      try {
+        this.http(TURN_ABANDON_PATH, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${access}` },
+          credentials: 'omit',
+        }).then(settle, settle);
+      } catch {
+        settle();
+      }
+    });
   }
 
   private async runRefresh(): Promise<boolean> {
