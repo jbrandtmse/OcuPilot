@@ -98,6 +98,15 @@ Property ExpiresAt As %String(MAXLEN = 32);
 /// <p>One of the four <code>STATE*</code> parameter values.</p>
 Property State As %String(MAXLEN = 16);
 
+/// <p>Whether this write would stop the instance marking agent writes in the audit database
+/// (AD-10, AD-15), as <method>OcuPilot.Kernel.Proposal.Mint.WarnsAuditingOff</method> answered it
+/// at mint time. The card renders the warning above its footer; the kernel owns the predicate.</p>
+/// <p><b>Added with no <code>SCHEMAVERSION</code> move</b> (Consistency Conventions: when
+/// SCHEMAVERSION moves): every pre-existing row reads 0, which is the same answer the predicate
+/// gives every tool that shipped before this property existed, so no older row means anything
+/// different once a newer OcuPilot reads it.</p>
+Property AuditWarning As %Boolean [ InitialExpression = 0 ];
+
 Index ProposalKeyIdx On ProposalKey [ Unique ];
 
 Index ProposalTokenIdx On Token [ Unique ];
@@ -113,11 +122,18 @@ Index ProposalUserStateIdx On (UserName As Exact, State);
 /// because nothing else indexes it and the retention sweep is Story 5.3's.</p>
 Index ProposalTurnIdx On (TurnKey As Exact, UserName As Exact);
 
+/// <p>A conversation's own proposals, the predicate <method>GuardedRowsForConvo</method> runs once
+/// per restored conversation. Without it that read filters <property>ConvKey</property> against
+/// the master map for every row the user has ever minted, exactly as
+/// <code>ProposalTurnIdx</code> exists to stop the per-turn read doing.</p>
+Index ProposalConvIdx On (ConvKey As Exact, UserName As Exact);
+
 /// <p>Mint one row and answer its id, token and expiry.</p>
 /// <p><b>Caller contract:</b> <var>pValues</var> carries <code>user</code>, <code>convKey</code>,
 /// <code>turnKey</code>, <code>toolName</code>, <code>targetRef</code>, <code>fingerprint</code>,
 /// <code>arguments</code>, <code>payload</code>, <code>diff</code>, <code>unchangedCount</code>,
-/// <code>rationale</code>, <code>expectedImpact</code> and <code>reverse</code>, every one already
+/// <code>rationale</code>, <code>expectedImpact</code>, <code>reverse</code> and
+/// <code>auditWarning</code>, every one already
 /// built and already stripped of secret-declared keys by
 /// <method>OcuPilot.Kernel.Proposal.Mint.Mint</method>; nothing here strips anything.
 /// <var>pLimitsClass</var> is the class <code>PROPOSALEXPIRYSECONDS</code> is read from, so a test
@@ -148,6 +164,7 @@ ClassMethod GuardedMint(ByRef pValues, pLimitsClass As %String, Output pKey As %
         Set tRow.Rationale = ..Cut($Get(pValues("rationale")), tSummaryMax)
         Set tRow.ExpectedImpact = ..Cut($Get(pValues("expectedImpact")), tSummaryMax)
         Set tRow.Reverse = ..Cut($Get(pValues("reverse")), tSummaryMax)
+        Set tRow.AuditWarning = ''$Get(pValues("auditWarning"))
         Set tRow.CreatedAt = ..Stamp(tStamp)
         Set tRow.ExpiresAt = ..StampOfSeconds(tSeconds)
         Set tRow.State = ..#STATELIVE
@@ -168,6 +185,7 @@ ClassMethod GuardedMint(ByRef pValues, pLimitsClass As %String, Output pKey As %
 /// <code>toolName</code>, <code>targetRef</code>, <code>fingerprint</code>,
 /// <code>unchangedCount</code>, <code>rationale</code>, <code>expectedImpact</code>,
 /// <code>reverse</code>, <code>createdAt</code>, <code>expiresAt</code>, <code>state</code>,
+/// <code>auditWarning</code>,
 /// <code>burned</code>, <code>arguments</code>, <code>payload</code> and <code>diff</code>.
 /// <var>pFound</var> is 0 when no row carries that token.</p>
 /// <p>Data, not a decision: this package names nothing outside it (AD-9), so the caller is what
@@ -204,7 +222,7 @@ ClassMethod GuardedByKey(pKey As %String, Output pFound As %Boolean, Output pVal
 /// <p>Turn <var>pTurnKey</var>'s proposals owned by <var>pUser</var>, oldest first, as the wire
 /// array the turn's progress payload carries:
 /// <code>{proposalId, target: {type, scope, id}, expiresAt, tool, changed, unchangedCount,
-/// rationale, expectedImpact, reverse, state}</code>.</p>
+/// rationale, expectedImpact, reverse, state, auditWarning}</code>.</p>
 /// <p><b>Every value is the row's own.</b> The target triple is
 /// <method>OcuPilot.Kernel.EntityRef.Parse</method>'s reading of the stored key, so a reader
 /// cannot be handed a triple this store never wrote; <code>changed</code> is the stored diff,
@@ -222,24 +240,45 @@ ClassMethod GuardedRowsForTurn(pTurnKey As %String, pUser As %String, Output pRo
         Set tValuesSC = ..RowValues(tRow, .tValues)
         Set tRow = ""
         If $$$ISERR(tValuesSC) Set tSC = tValuesSC Quit
-        Set tSC = ##class(OcuPilot.Kernel.EntityRef).Parse(tValues("targetRef"), .tType, .tScope, .tId)
+        Set tSC = ..WireRow(.tValues, .tOut)
         If $$$ISERR(tSC) Quit
-        Set tSC = ##class(OcuPilot.Kernel.EntityRef).Wire(tType, tScope, tId, .tTarget)
-        If $$$ISERR(tSC) Quit
-        Set tOut = {}
-        Do tOut.%Set("proposalId", tValues("proposalId"), "string")
-        Do tOut.%Set("target", tTarget)
-        Do tOut.%Set("expiresAt", tValues("expiresAt"), "string")
-        Do tOut.%Set("tool", tValues("toolName"), "string")
-        Do tOut.%Set("changed", ..ParsedArray(tValues("diff")))
-        Do tOut.%Set("unchangedCount", +tValues("unchangedCount"), "number")
-        Do tOut.%Set("rationale", tValues("rationale"), "string")
-        Do tOut.%Set("expectedImpact", tValues("expectedImpact"), "string")
-        Do tOut.%Set("reverse", tValues("reverse"), "string")
-        Do tOut.%Set("state", tValues("state"), "string")
         Do pRows.%Push(tOut)
     }
     If $$$ISERR(tSC) Set pRows = []
+    Quit tSC
+}
+
+/// <p>Conversation <var>pConvKey</var>'s proposals owned by <var>pUser</var>, grouped by the turn
+/// that minted them: <var>pByTurn(turnKey)</var> is a <class>%DynamicArray</class> of the same wire
+/// rows <method>GuardedRowsForTurn</method> answers, oldest first within each turn.</p>
+/// <p><b>One query for the whole transcript</b>, never one per turn: a restored conversation may
+/// hold many turns and the caller has one conversation id, so the predicate is over
+/// <property>ConvKey</property> and <property>UserName</property> together
+/// (<code>ProposalConvIdx</code>). A turn that minted nothing has no subscript, which is a
+/// caller's "no proposals" rather than an empty array it has to distinguish.</p>
+/// <p>Owner-gated exactly as the per-turn read is (AD-33): the predicate matches the user as well
+/// as the conversation, so a conversation this caller does not own answers nothing whatever the
+/// caller read the id from.</p>
+ClassMethod GuardedRowsForConvo(pConvKey As %String, pUser As %String, Output pByTurn) As %Status
+{
+    Kill pByTurn
+    If (pConvKey = "") || (pUser = "") Quit $$$OK
+    Set tSC = ..GuardedIdsWhereTwoParam("SELECT ID FROM OcuPilot_Kernel_State.Proposal WHERE %EXACT(ConvKey) = ? AND %EXACT(UserName) = ? ORDER BY ID", pConvKey, pUser, .tIds)
+    If $$$ISERR(tSC) Quit tSC
+    For tI = 1:1:+$Get(tIds) {
+        Set tOpenSC = ..GuardedOpenId(tIds(tI), .tRow)
+        If $$$ISERR(tOpenSC) Continue
+        Set tValuesSC = ..RowValues(tRow, .tValues)
+        Set tRow = ""
+        If $$$ISERR(tValuesSC) Set tSC = tValuesSC Quit
+        Set tWireSC = ..WireRow(.tValues, .tOut)
+        If $$$ISERR(tWireSC) Set tSC = tWireSC Quit
+        Set tTurn = tValues("turnKey")
+        If tTurn = "" Continue
+        If '$Data(pByTurn(tTurn)) Set pByTurn(tTurn) = []
+        Do pByTurn(tTurn).%Push(tOut)
+    }
+    If $$$ISERR(tSC) Kill pByTurn
     Quit tSC
 }
 
@@ -288,6 +327,7 @@ ClassMethod RowValues(pRow As OcuPilot.Kernel.State.Propose, Output pValues) As 
     Set pValues("createdAt") = ..Text(pRow.CreatedAt)
     Set pValues("expiresAt") = ..Text(pRow.ExpiresAt)
     Set pValues("state") = ..Text(pRow.State)
+    Set pValues("auditWarning") = ''pRow.AuditWarning
     Set tSC = ..GuardedStreamText(pRow, "Arguments", .tArguments)
     If $$$ISERR(tSC) Quit tSC
     Set pValues("arguments") = tArguments
@@ -297,6 +337,34 @@ ClassMethod RowValues(pRow As OcuPilot.Kernel.State.Propose, Output pValues) As 
     Set tSC = ..GuardedStreamText(pRow, "Diff", .tDiff)
     If $$$ISERR(tSC) Quit tSC
     Set pValues("diff") = tDiff
+    Quit $$$OK
+}
+
+/// <p>One row's wire object from the values <method>RowValues</method> read: the whole
+/// <code>proposals[]</code> entry, and the only place that shape is written.</p>
+/// <p>The target triple is <method>OcuPilot.Kernel.EntityRef.Parse</method>'s reading of the
+/// stored key, so a reader cannot be handed a triple this store never wrote, and the stored
+/// payload, fingerprint and token are absent by construction rather than by omission.</p>
+ClassMethod WireRow(ByRef pValues, Output pOut As %DynamicObject) As %Status [ Private ]
+{
+    Set pOut = ""
+    Set tSC = ##class(OcuPilot.Kernel.EntityRef).Parse($Get(pValues("targetRef")), .tType, .tScope, .tId)
+    If $$$ISERR(tSC) Quit tSC
+    Set tSC = ##class(OcuPilot.Kernel.EntityRef).Wire(tType, tScope, tId, .tTarget)
+    If $$$ISERR(tSC) Quit tSC
+    Set tOut = {}
+    Do tOut.%Set("proposalId", $Get(pValues("proposalId")), "string")
+    Do tOut.%Set("target", tTarget)
+    Do tOut.%Set("expiresAt", $Get(pValues("expiresAt")), "string")
+    Do tOut.%Set("tool", $Get(pValues("toolName")), "string")
+    Do tOut.%Set("changed", ..ParsedArray($Get(pValues("diff"))))
+    Do tOut.%Set("unchangedCount", +$Get(pValues("unchangedCount")), "number")
+    Do tOut.%Set("rationale", $Get(pValues("rationale")), "string")
+    Do tOut.%Set("expectedImpact", $Get(pValues("expectedImpact")), "string")
+    Do tOut.%Set("reverse", $Get(pValues("reverse")), "string")
+    Do tOut.%Set("state", $Get(pValues("state")), "string")
+    Do tOut.%Set("auditWarning", ''$Get(pValues("auditWarning")), "boolean")
+    Set pOut = tOut
     Quit $$$OK
 }
 

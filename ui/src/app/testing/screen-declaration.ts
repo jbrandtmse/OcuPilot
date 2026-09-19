@@ -23,6 +23,7 @@ export function screenDeclaration(overrides: Partial<ScreenDeclaration> = {}): S
     refreshRates: [],
     privileges: [],
     entityType: 'user',
+    entityLabelKey: '',
     secondaryEntityTypes: [],
     scope: 'instance',
     parentScope: '',

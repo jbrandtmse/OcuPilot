@@ -266,6 +266,26 @@ export function readSources({ descriptorDir = DESCRIPTOR_DIR, areaSource = AREA_
 }
 
 /**
+ * What is wrong with `declaration`'s `entityLabelKey`, or `null` (AD-5, AD-14) -- the same
+ * sentences `OcuPilot.Screen.Registry.EntityLabelProblem` returns.
+ *
+ * The key is optional and names the client string key holding the singular noun for this screen's
+ * primary entity type: what a proposal card's title reads where the wire carries only the type's
+ * slug and `labelKey` is the plural screen label. Declared empty, or absent, publishes no noun. A
+ * noun declared where no `entityType` is names a label for nothing, and is refused.
+ */
+export function entityLabelProblem(declaration) {
+  if (!isObject(declaration)) return null;
+  if (!('entityLabelKey' in declaration)) return null;
+  if (typeof declaration.entityLabelKey !== 'string') return 'entityLabelKey is not a string key';
+  if (declaration.entityLabelKey === '') return null;
+  if (typeof declaration.entityType !== 'string' || declaration.entityType === '') {
+    return "entityLabelKey names the singular noun for this screen's entity type, and none is declared";
+  }
+  return null;
+}
+
+/**
  * What is wrong with `declaration`'s `secretArguments` and `fingerprintExcludes`, or `null`
  * (AD-3, AD-6) -- the same sentences `OcuPilot.Screen.Registry.ConfirmChannelProblem` returns.
  *
@@ -485,6 +505,7 @@ export const DECLARATION_KEYS = [
   'refreshRates',
   'privileges',
   'entityType',
+  'entityLabelKey',
   'secondaryEntityTypes',
   'scope',
   'parentScope',
@@ -1782,7 +1803,8 @@ export function tableProblem(declaration, fields, secrets) {
 }
 
 /**
- * Every client string key a declaration names: its `labelKey`, its `emptyStateKey`, its table's
+ * Every client string key a declaration names: its `labelKey`, its `emptyStateKey`, its
+ * `entityLabelKey`, its table's
  * column labels, column empty-cell keys and two empty-state keys, and its banner's `messageKey`.
  * Empty keys are not listed.
  *
@@ -1791,7 +1813,7 @@ export function tableProblem(declaration, fields, secrets) {
  * named -- rather than at render time, where a banner would simply never appear.
  */
 export function declaredStringKeys(declaration) {
-  const keys = [declaration.labelKey, declaration.emptyStateKey];
+  const keys = [declaration.labelKey, declaration.emptyStateKey, declaration.entityLabelKey];
   const { table, banner, tab } = declaration;
   if (table !== null && typeof table === 'object') {
     for (const column of Array.isArray(table.columns) ? table.columns : []) keys.push(column?.labelKey, column?.emptyKey);
@@ -1904,6 +1926,10 @@ export function buildMirror({ entityTypes, scopeWords, archetypes, areas, screen
     if (confirmFault !== null) {
       throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${confirmFault}`);
     }
+    const entityLabelFault = entityLabelProblem(screen.declaration);
+    if (entityLabelFault !== null) {
+      throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${entityLabelFault}`);
+    }
     const bannerFault = bannerProblem(screen.declaration);
     if (bannerFault !== null) {
       throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${bannerFault}`);
@@ -1964,6 +1990,10 @@ export function buildMirror({ entityTypes, scopeWords, archetypes, areas, screen
     // written before them declares neither, and the mirror's two fields are not optional.
     secretArguments: screen.declaration.secretArguments ?? [],
     fingerprintExcludes: screen.declaration.fingerprintExcludes ?? [],
+    // Defaulted for the same reason, and for the same kind of key: optional on the ObjectScript
+    // side (AD-5, AD-14), absent from every descriptor written before this story, and not optional
+    // on the mirror's own interface.
+    entityLabelKey: screen.declaration.entityLabelKey ?? '',
   }));
 
   const builtArchetypeKeys = archetypeKeys.filter((key) =>
@@ -2273,6 +2303,8 @@ export interface ScreenDeclaration {
   readonly refreshRates: readonly number[];
   readonly privileges: readonly PrivilegePair[];
   readonly entityType: string;
+  /** The string key of the singular noun for \`entityType\`, or \`''\` (AD-5, AD-14). */
+  readonly entityLabelKey: string;
   readonly secondaryEntityTypes: readonly string[];
   readonly scope: string;
   readonly parentScope: string;

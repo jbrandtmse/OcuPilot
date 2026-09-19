@@ -9,6 +9,7 @@ import { dirname, join } from 'node:path';
 import {
   BANNER_SEVERITIES,
   DECLARATION_KEYS,
+  entityLabelProblem,
   MIRROR_PATH,
   bannerProblem,
   declarationProblem,
@@ -1770,5 +1771,52 @@ test('confirmChannelProblem returns the instance-side sentences, and every shipp
         screens: [{ file: 'Hostile.cls', className: 'OcuPilot.Screen.Descriptor.Hostile', declaration: withCriterion }],
       }),
     /read\.criteria names 'apiKey'/
+  );
+});
+
+// The entity-label rule's two engines (AD-5, AD-14). `OcuPilot.Test.Descriptor` holds the same
+// four shapes to the same four sentences on the instance side; a sentence reworded on one side
+// only goes red there.
+//
+// Mutation (Rule 19): delete the `entityLabelProblem` call from `buildMirror` -> the last
+// assertion goes red, and a noun declared for no entity type would mirror verbatim.
+test('entityLabelProblem returns the instance-side sentences, and every shipped descriptor passes', () => {
+  const { screens, entityTypes, scopeWords, archetypes, areas, toolFields } = readSources();
+  for (const screen of screens) {
+    assert.equal(
+      entityLabelProblem(screen.declaration),
+      null,
+      `${screen.className}'s entity label passes`
+    );
+  }
+
+  const webApp = screens.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.WebAppList');
+  assert.ok(webApp !== undefined, 'the web applications list is among them');
+  assert.equal(webApp.declaration.entityLabelKey, 'proposalEntityWebApplication', 'and declares one');
+  const of = (overrides) => ({ ...webApp.declaration, ...overrides });
+
+  const absent = { ...webApp.declaration };
+  delete absent.entityLabelKey;
+  assert.equal(entityLabelProblem(absent), null, 'an absent key is sound: the screen publishes no noun');
+  assert.equal(entityLabelProblem(of({ entityLabelKey: '' })), null, 'and so is an empty one');
+  assert.equal(entityLabelProblem(of({ entityLabelKey: 7 })), 'entityLabelKey is not a string key');
+  assert.equal(
+    entityLabelProblem(of({ entityType: '' })),
+    "entityLabelKey names the singular noun for this screen's entity type, and none is declared"
+  );
+
+  // The refusal reaches the generator, naming the file and the class.
+  const hostile = of({ entityType: '' });
+  assert.throws(
+    () =>
+      buildMirror({
+        entityTypes,
+        scopeWords,
+        archetypes,
+        areas,
+        toolFields,
+        screens: [{ ...webApp, declaration: hostile }],
+      }),
+    /entityLabelKey names the singular noun/
   );
 });

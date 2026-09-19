@@ -21,7 +21,7 @@ XData Cases
     "route": "tasks/declaration-corpus", "area": "tasks", "labelKey": "taskListLabel", "sideBarPosition": 1,
     "archetype": "list", "built": false, "refreshes": false, "refreshRates": [],
     "privileges": [{"resource": "%Admin_Task", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}],
-    "entityType": "task", "secondaryEntityTypes": [],
+    "entityType": "task", "entityLabelKey": "proposalEntityTask", "secondaryEntityTypes": [],
     "scope": "instance", "parentScope": "", "id": {"kind": "single", "parts": []},
     "primaryAction": {"id": "", "selfProtection": ""}, "rowActions": [],
     "context": {"fields": ["Name", "Namespace"], "secretFields": []},
@@ -45,7 +45,7 @@ XData Cases
     "rowTarget": null
   },
   "cases": [
-    {"name": "the sound shape, all twenty-nine keys", "addKey": "", "dropKey": "", "expected": null},
+    {"name": "the sound shape, all thirty keys", "addKey": "", "dropKey": "", "expected": null},
     {"name": "a pluralised banner, the misspelling that installed a screen whose strip never raises", "addKey": "banners", "dropKey": "", "expected": "the declaration declares the unknown key 'banners'"},
     {"name": "a capitalised banner", "addKey": "Banner", "dropKey": "", "expected": "the declaration declares the unknown key 'Banner'"},
     {"name": "a pluralised read", "addKey": "reads", "dropKey": "", "expected": "the declaration declares the unknown key 'reads'"},
@@ -61,6 +61,8 @@ XData Cases
     {"name": "an absent optional rowTarget is sound", "addKey": "", "dropKey": "rowTarget", "expected": null},
     {"name": "an absent optional secretArguments is sound", "addKey": "", "dropKey": "secretArguments", "expected": null},
     {"name": "an absent optional fingerprintExcludes is sound", "addKey": "", "dropKey": "fingerprintExcludes", "expected": null},
+    {"name": "an absent optional entityLabelKey is sound", "addKey": "", "dropKey": "entityLabelKey", "expected": null},
+    {"name": "a pluralised entityLabelKey", "addKey": "entityLabelKeys", "dropKey": "", "expected": "the declaration declares the unknown key 'entityLabelKeys'"},
     {"name": "a singular secretArgument", "addKey": "secretArgument", "dropKey": "", "expected": "the declaration declares the unknown key 'secretArgument'"},
     {"name": "a singular fingerprintExclude", "addKey": "fingerprintExclude", "dropKey": "", "expected": "the declaration declares the unknown key 'fingerprintExclude'"},
     {"name": "a pluralised tab", "addKey": "tabs", "dropKey": "", "expected": "the declaration declares the unknown key 'tabs'"},

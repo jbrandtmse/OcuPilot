@@ -16,29 +16,14 @@
  * comes from `core/strings.ts`.
  */
 
-/** One changed field, as the card draws it: the label, the before value and the after value. */
-export interface ProposalDiffRow {
-  readonly field: string;
-  readonly before: string;
-  readonly after: string;
-}
+import type { ProposalCardView } from '../core/proposal-view';
 
-/** Everything a proposal card renders. Story 5.2 mints one of these per live proposal. */
-export interface ProposalCardView {
-  /** The kind of thing the write is about, as the instance names it ("Web application"). */
-  readonly entityType: string;
-  /** The target's own name, as the instance stores it ("/csp/myapp"). */
-  readonly name: string;
-  /** The changed fields, first in the card and one `diff-row` each. */
-  readonly changed: readonly ProposalDiffRow[];
-  /** How many fields the payload also sends unchanged (AD-4), for the collapsed caption. */
-  readonly unchangedCount: number;
-  /** The agent's own words, rendered under their published headings and on the agent tint. */
-  readonly rationale: string;
-  readonly expectedImpact: string;
-  /** How to undo the write, or `''` where no reversal exists (a delete has none). */
-  readonly reverse: string;
-}
+/**
+ * The card's two view-model types live in `core/proposal-view.ts`, beside the mapper that builds
+ * one from a wire proposal, and are re-exported here so every call site written before that module
+ * existed still names them from the file that first declared them.
+ */
+export type { ProposalCardView, ProposalDiffRow } from '../core/proposal-view';
 
 /** The placeholders the published card title leaves for the target's two halves. */
 export const ENTITY_TYPE_PLACEHOLDER = '<entity type>';

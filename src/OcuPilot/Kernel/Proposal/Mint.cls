@@ -23,6 +23,14 @@ Class OcuPilot.Kernel.Proposal.Mint Extends %RegisteredObject
 /// single-object <code>GET</code>, whose 404 reads as zero rows).</p>
 Parameter READTYPE = "GET";
 
+/// <p>The canonical dotted name of the write tool that turns the instance's auditing on and off
+/// (FR-47, Story 5.10). Named here rather than in a screen, a descriptor or a policy file because
+/// the predicate below is the kernel's and has exactly one home (AD-10).</p>
+Parameter AUDITINGTOOL = "security.auditing.update";
+
+/// <p>The body property that write carries the auditing flag in.</p>
+Parameter AUDITINGFIELD = "Enabled";
+
 /// <p>The port the fresh read goes through. Overridable so a fixture can answer a known object;
 /// production never overrides it.</p>
 ClassMethod PortClass() As %String
@@ -132,17 +140,18 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
         Set tValues("rationale") = ..TextArgument(pArgs, "rationale")
         Set tValues("expectedImpact") = ..TextArgument(pArgs, "expectedImpact")
         Set tValues("reverse") = ..TextArgument(pArgs, "reverse")
+        Set tSC = ##class(OcuPilot.Kernel.EntityRef).Parse(tTargetRef, .tType, .tScope, .tId)
+        If $$$ISERR(tSC) {
+            Set tSC = ..Internal("the proposal's target reference could not be read back", .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tValues("auditWarning") = ..WarnsAuditingOff(pToolName, tType, tScope, pArgs)
         Set tSC = $ClassMethod(..StoreClass(), "GuardedMint", .tValues, pLimitsClass, .tKey, .tToken, .tExpiresAt)
         If $$$ISERR(tSC) {
             Set tSC = ..Internal("the proposal could not be stored: " _ $System.Status.GetErrorText(tSC), .pHttpStatus, .pFault)
             Quit
         }
 
-        Set tSC = ##class(OcuPilot.Kernel.EntityRef).Parse(tTargetRef, .tType, .tScope, .tId)
-        If $$$ISERR(tSC) {
-            Set tSC = ..Internal("the proposal's target reference could not be read back", .pHttpStatus, .pFault)
-            Quit
-        }
         Set tSC = ##class(OcuPilot.Kernel.EntityRef).Wire(tType, tScope, tId, .tTarget)
         If $$$ISERR(tSC) {
             Set tSC = ..Internal("the proposal's target could not be put on the wire", .pHttpStatus, .pFault)
@@ -162,6 +171,35 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
         Set tSC = ..Internal("the proposal could not be minted: " _ ex.DisplayString(), .pHttpStatus, .pFault)
     }
     Quit tSC
+}
+
+/// <p>Whether the write this proposal carries would stop the instance marking agent writes in the
+/// audit database (AD-10, AD-15), which is the one warning a card draws inside itself, above its
+/// footer.</p>
+/// <p><b>Caller contract:</b> <var>pToolName</var> is the canonical dotted tool name,
+/// <var>pTargetType</var> and <var>pTargetScope</var> the resolved target's own two halves
+/// (AD-13), and <var>pArgs</var> the arguments the mint is about to store. It reads live state
+/// through none of them and decides nothing about whether the write may happen -- a refusal is
+/// <method>OcuPilot.Kernel.Proposal.Write.Claim</method>'s, inside the atomic transition (AD-34,
+/// AD-40).</p>
+/// <p>It answers true for exactly one shape: the auditing write, against an
+/// <code>instance</code>-scoped target, whose <parameter>AUDITINGFIELD</parameter> argument is
+/// boolean false. Every tool that ships today answers false, and Story 5.10 is the first write
+/// that trips it.</p>
+ClassMethod WarnsAuditingOff(pToolName As %String, pTargetType As %String, pTargetScope As %String, pArgs As %DynamicObject) As %Boolean
+{
+    Set tWarns = 0
+    Try {
+        If pToolName '= ..#AUDITINGTOOL Quit
+        If pTargetScope '= ##class(OcuPilot.Kernel.Scope).#SCOPEINSTANCE Quit
+        If pTargetType = "" Quit
+        If '$IsObject(pArgs) Quit
+        If pArgs.%GetTypeOf(..#AUDITINGFIELD) '= "boolean" Quit
+        Set tWarns = 'pArgs.%Get(..#AUDITINGFIELD)
+    } Catch {
+        Set tWarns = 0
+    }
+    Quit tWarns
 }
 
 /// <p>The merged payload and the diff for a fresh read <var>pFresh</var> and arguments

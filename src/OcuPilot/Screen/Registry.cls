@@ -229,6 +229,14 @@ ClassMethod Validate(Output pProblem As %String) As %Status
                 Set pProblem = tClass _ ": " _ tConfirmProblem
                 Quit
             }
+            ; AD-5, AD-14: the entity-type vocabulary is the kernel's closed enum and the singular
+            ; noun over it is a descriptor declaration, so a noun declared for no entity type is
+            ; refused where it is declared rather than resolving to nothing in a card title.
+            Set tEntityLabelProblem = ..EntityLabelProblem(tObject)
+            If tEntityLabelProblem '= "" {
+                Set pProblem = tClass _ ": " _ tEntityLabelProblem
+                Quit
+            }
             ; A pair missing either half is dropped by Area.PairsFrom rather than carried, so a
             ; descriptor that misspells "permission" would otherwise declare a gate and ship
             ; ungated. The refusal is here because the drop is silent by design everywhere else.
@@ -316,17 +324,48 @@ ClassMethod Validate(Output pProblem As %String) As %Status
     Quit tSC
 }
 
+/// <p>What is wrong with <var>pDeclaration</var>'s <code>entityLabelKey</code>, or <code>""</code>
+/// when nothing is (AD-5, AD-14).</p>
+/// <p>The key is optional and names the client string key holding the <b>singular</b> noun for this
+/// screen's primary entity type -- what a proposal card's title reads where the wire carries only
+/// the type's slug and <code>labelKey</code> is the plural screen label. Declared empty, or absent,
+/// means this screen publishes no noun yet.</p>
+/// <p>A noun declared where no <code>entityType</code> is declared is refused: it names a label for
+/// nothing, and the card would resolve a title with an empty noun in it rather than fail.</p>
+/// <p><file>ui/tools/screen-mirror.mjs</file>'s <code>entityLabelProblem</code> returns the same
+/// sentences.</p>
+/// <p><b>Public and value-driven</b> for the reason <method>RefreshProblem</method> is.</p>
+ClassMethod EntityLabelProblem(pDeclaration As %DynamicObject) As %String
+{
+    Set tProblem = ""
+    Try {
+        If '$IsObject(pDeclaration) Quit
+        If pDeclaration.%GetTypeOf("entityLabelKey") = "unassigned" Quit
+        If pDeclaration.%GetTypeOf("entityLabelKey") '= "string" {
+            Set tProblem = "entityLabelKey is not a string key"
+            Quit
+        }
+        If pDeclaration.%Get("entityLabelKey") = "" Quit
+        If $Select(pDeclaration.%GetTypeOf("entityType") = "string": pDeclaration.%Get("entityType"), 1: "") = "" {
+            Set tProblem = "entityLabelKey names the singular noun for this screen's entity type, and none is declared"
+            Quit
+        }
+    } Catch ex {
+        Set tProblem = "the entity-label declaration could not be read: " _ ex.DisplayString()
+    }
+    Quit tProblem
+}
+
 /// <p>The keys a screen declaration may carry at its top level -- the whole vocabulary, in the
 /// order <class>OcuPilot.Screen.Descriptor.Base</class> reads them (AD-5).</p>
-/// <p>Nine are optional and the rest are not, but this parameter says nothing about which:
+/// <p>Ten are optional and the rest are not, but this parameter says nothing about which:
 /// <method>DeclarationProblem</method> is an <b>unknown-key</b> check, never a presence check. A
 /// declaration missing an optional key -- <code>refreshes</code>, <code>refreshRates</code>,
 /// <code>read</code>, <code>table</code>, <code>banner</code>, <code>tab</code>,
-/// <code>rowTarget</code>, <code>secretArguments</code>, <code>fingerprintExcludes</code> -- is
-/// sound, and a declaration
-/// missing a required one is already refused by the rule that reads it, with a sentence naming what
-/// it was for.</p>
-Parameter DECLARATIONKEYS = "route,area,labelKey,sideBarPosition,archetype,built,refreshes,refreshRates,privileges,entityType,secondaryEntityTypes,scope,parentScope,id,context,secretArguments,fingerprintExcludes,primaryAction,rowActions,emptyStateKey,commandAliases,classicPage,classicLinkExemption,read,table,banner,tab,toolIdentifier,rowTarget";
+/// <code>rowTarget</code>, <code>secretArguments</code>, <code>fingerprintExcludes</code>,
+/// <code>entityLabelKey</code> -- is sound, and a declaration missing a required one is already
+/// refused by the rule that reads it, with a sentence naming what it was for.</p>
+Parameter DECLARATIONKEYS = "route,area,labelKey,sideBarPosition,archetype,built,refreshes,refreshRates,privileges,entityType,entityLabelKey,secondaryEntityTypes,scope,parentScope,id,context,secretArguments,fingerprintExcludes,primaryAction,rowActions,emptyStateKey,commandAliases,classicPage,classicLinkExemption,read,table,banner,tab,toolIdentifier,rowTarget";
 
 /// <p>What is wrong with <var>pDeclaration</var>'s own top-level keys, or <code>""</code> when
 /// nothing is (DW-271). Every key must be one of <parameter>DECLARATIONKEYS</parameter>.</p>

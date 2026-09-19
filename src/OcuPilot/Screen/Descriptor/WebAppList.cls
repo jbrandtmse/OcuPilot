@@ -19,6 +19,9 @@
 /// <p><b>The classic page is <code>%CSP.UI.Portal.Applications.WebList</code></b>, spelled in the
 /// class's own case because the custom-resource lookup does not case-fold (AD-44). As a list
 /// archetype it links out to nothing.</p>
+/// <p><b>The singular entity noun is <code>proposalEntityWebApplication</code></b> (AD-5, AD-14):
+/// a proposal card's title reads the noun and the target's name, and neither the
+/// <code>web-application</code> slug on the wire nor this screen's plural label is that noun.</p>
 /// <p><b>The Namespace column is labelled by <code>headerNamespaceLabel</code></b>, the namespace
 /// switch's own accessible name, so the product has one word for a namespace.</p>
 /// <p><b>No argument of its write tool is secret and no payload field is left out of the
@@ -46,6 +49,7 @@ XData Declaration
   "refreshRates": [],
   "privileges": [{"resource": "%Admin_Secure", "permission": "USE"}, {"resource": "%DB_IRISSYS", "permission": "READ"}],
   "entityType": "web-application",
+  "entityLabelKey": "proposalEntityWebApplication",
   "secondaryEntityTypes": [],
   "scope": "instance",
   "parentScope": "",

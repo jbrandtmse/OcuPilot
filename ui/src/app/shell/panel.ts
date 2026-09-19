@@ -17,18 +17,29 @@ import {
   formatNavigationAnnouncement,
   formatRequires,
   screenForDescriptor,
+  screenForEntityType,
   screenForRoute,
   screenForUrl,
   withQuery,
 } from '../core/navigation';
 import { PanelState } from '../core/panel-layout';
+import {
+  type ProposalCardView,
+  type ProposalPhase,
+  countdownPhase,
+  countdownRemaining,
+  isTerminalPhase,
+  phaseForState,
+  toCardView,
+} from '../core/proposal-view';
 import { ScopeService, onScopeChange } from '../core/scope';
 import { assembleScreenContext, looksLikeSecret, type ScreenContextPayload } from '../core/screen-context';
 import { ScreenStores } from '../core/screen-store';
+import { Session } from '../core/session';
 import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
 import { SuggestedView, type SuggestedLine } from '../core/suggested-view';
-import { TURN_PATH, TurnStore, type TurnStep, turnErrorBanner } from '../core/turn';
+import { TURN_PATH, TurnStore, type TurnProposal, type TurnStep, turnErrorBanner } from '../core/turn';
 import { isApplePlatform } from './command-box';
 import { ContextChip } from './context-chip';
 import { EXAMPLE_PROPOSAL } from './example-proposal';
@@ -76,10 +87,22 @@ interface SuggestedRowView {
   readonly reason: string;
 }
 
+/**
+ * One proposal card's rendered view: the mapped content, where it is in the lifecycle, and the id
+ * `@for` tracks it by -- so a card keeps its own masked-field input and disclosure state across a
+ * poll that re-reads the turn.
+ */
+interface PanelProposalView {
+  readonly proposalId: string;
+  readonly view: ProposalCardView;
+  readonly phase: ProposalPhase;
+}
+
 /** One turn's rendered view, precomputed once per read so the template does no substitution. */
 interface PanelTurnView {
   readonly message: string;
   readonly steps: readonly TurnStep[];
+  readonly proposals: readonly PanelProposalView[];
   readonly reply: string | null;
   readonly errorBanner: string | null;
 }
@@ -293,6 +316,15 @@ interface PanelTurnView {
                   <app-tool-call-card [step]="step" />
                 }
               }
+              @for (proposal of turn.proposals; track proposal.proposalId) {
+                <app-proposal-card
+                  [view]="proposal.view"
+                  [phase]="proposal.phase"
+                  [nowMs]="nowMs"
+                  [userName]="userName"
+                  (cancel)="onCardCancel($event)"
+                />
+              }
               @if (turn.reply !== null) {
                 <div class="ocu-panel-message-agent">
                   <span class="ocu-panel-message-avatar" aria-hidden="true"></span>
@@ -344,7 +376,9 @@ interface PanelTurnView {
         ></textarea>
         <button
           type="button"
-          class="ocu-button-primary ocu-panel-send"
+          class="ocu-panel-send"
+          [class.ocu-button-primary]="!sendSecondary"
+          [class.ocu-button-secondary]="sendSecondary"
           [attr.aria-disabled]="sendAriaDisabled"
           [attr.aria-describedby]="describedBy"
           (click)="onSendOrStop()"
@@ -367,6 +401,7 @@ export class Panel {
   private readonly turn = inject(TurnStore);
   private readonly router = inject(Router);
   private readonly scope = inject(ScopeService);
+  private readonly session = inject(Session);
   private readonly screenStores = inject(ScreenStores);
   private readonly shell = inject(ShellState);
   private readonly suggested = inject(SuggestedView);
@@ -438,6 +473,25 @@ export class Panel {
   /** The namespace the block was last read for on this visit to Home, or `null` (`syncSuggested`). */
   private suggestedLoadedFor: string | null = null;
 
+  /**
+   * The moment every live card's countdown reads, from the panel's one ticker.
+   *
+   * One timer for the whole transcript rather than one per card, and armed only while a card is
+   * live (`syncTicker`): the cards are pure functions of this number (AD-19), which is also what
+   * lets `proposal-card.spec.ts` drive 1:00 and 0:00 by hand.
+   */
+  private readonly nowSignal = signal(Date.now());
+
+  private ticker: ReturnType<typeof setInterval> | null = null;
+
+  /**
+   * The terminal phase this panel has decided for a proposal, by id -- the client-side half of the
+   * lifecycle (EXPERIENCE.md's cancel step): Cancel, a typed message and New conversation. Story
+   * 5.3 makes the confirmed, canceled and target-changed lines the instance's own; until then the
+   * wire's `state` is `live` on every row and this map is what moves a card off it.
+   */
+  private readonly cardPhases = signal<ReadonlyMap<string, ProposalPhase>>(new Map());
+
   constructor() {
     this.lastConversationId = this.turn.conversationId();
     const stops = [
@@ -477,6 +531,7 @@ export class Panel {
     inject(DestroyRef).onDestroy(() => {
       for (const stop of stops) stop();
       routed.unsubscribe();
+      if (this.ticker !== null) clearInterval(this.ticker);
     });
   }
 
@@ -639,6 +694,7 @@ export class Panel {
         STRINGS.agentTurnStoppedBanner,
         STRINGS.agentTurnStoppedNoStepBanner
       );
+      const proposals = entry.proposals.map((proposal) => this.proposalView(proposal));
       return {
         message: entry.message,
         // Tool steps, the agent's own navigation announcements (Story 4.7), and a stop caught
@@ -646,15 +702,149 @@ export class Panel {
         steps: entry.steps.filter(
           (step) => step.kind === 'tool' || step.kind === 'announce' || step.status === 'stopped'
         ),
+        // One card per wire proposal, in wire order, each with its own Confirm and Cancel. There
+        // is no batch control anywhere in this panel: one decision at a time (SM-C2).
+        proposals,
         // A turn ending in an error renders the banner and no reply block (Story 4.6 I/O matrix).
         // The live turn view nulls a non-completed turn's reply server-side, but the restored view
         // emits whatever the row stored, and the job records the loop's reply alongside a `failed`
         // state -- so the pair does reach the client on a reload. The two template blocks are
         // independent, so the exclusion is decided here rather than in a template condition.
-        reply: errorBanner === null ? entry.reply : null,
+        reply: errorBanner === null ? this.replyWithConfirmSentence(entry.reply, proposals) : null,
         errorBanner,
       };
     });
+  }
+
+  /**
+   * One proposal's card view: the mapped content, and the phase this panel resolves for it.
+   *
+   * The singular entity noun and the declared secret argument names are the target screen's own
+   * (AD-5, AD-14), resolved through the generated mirror by the reference triple's entity type and
+   * passed to the mapper as data -- which is what keeps the mapper testable before any descriptor
+   * declares a secret argument.
+   */
+  private proposalView(proposal: TurnProposal): PanelProposalView {
+    const screen = screenForEntityType(proposal.target.type);
+    return {
+      proposalId: proposal.proposalId,
+      view: toCardView(
+        proposal,
+        screen === null ? '' : stringFor(screen.entityLabelKey),
+        screen === null ? [] : screen.secretArguments
+      ),
+      phase: this.phaseFor(proposal),
+    };
+  }
+
+  /**
+   * Where one card is: this panel's own decision where it has made one, else the wire's state --
+   * and `switched-off` over a live card while the agent is off, because a card that cannot be
+   * confirmed must not offer Confirm (EXPERIENCE.md's kill-switch step).
+   */
+  private phaseFor(proposal: TurnProposal): ProposalPhase {
+    const decided = this.cardPhases().get(proposal.proposalId);
+    if (decided !== undefined) return decided;
+    const phase = phaseForState(proposal.state);
+    if (phase !== 'live') return phase;
+    // The clock is read through the same two `core/proposal-view.ts` functions the card itself
+    // reads (`ProposalCard.livePhase`), because the two must not be able to disagree: a card that
+    // draws itself `Expired` while this panel still counts it live would leave Send secondary with
+    // no Confirm anywhere in the view, keep the ticker armed, and let a later typed message
+    // relabel an expired card and take its Re-propose away.
+    const remaining = countdownRemaining(proposal.expiresAt, this.nowSignal());
+    if (remaining !== null && countdownPhase(remaining) === 'expired') return 'expired';
+    return this.killSwitch ? 'switched-off' : phase;
+  }
+
+  /**
+   * `reply` with the published confirm sentence at its end when this turn minted a card that is
+   * still live, else `reply` unchanged.
+   *
+   * It is appended rather than expected of the model: the sentence is the panel's own published
+   * copy, so a turn whose reply arrived without it still points the user at Confirm instead of
+   * inviting the "yes" that cancels the card.
+   */
+  private replyWithConfirmSentence(
+    reply: string | null,
+    proposals: readonly PanelProposalView[]
+  ): string | null {
+    if (reply === null) return null;
+    if (!proposals.some((proposal) => !isTerminalPhase(proposal.phase))) return reply;
+    if (reply.trimEnd().endsWith(STRINGS.proposalConfirmSentence)) return reply;
+    return reply + '\n\n' + STRINGS.proposalConfirmSentence;
+  }
+
+  /** The moment the cards read, from the panel's one ticker. */
+  protected get nowMs(): number {
+    return this.nowSignal();
+  }
+
+  /** The account a confirmed write would run as, for the footer's caption and the confirmed line. */
+  protected get userName(): string {
+    this.generation();
+    return this.session.userName();
+  }
+
+  /**
+   * Whether any card in the transcript is still live, which is what drops Send to secondary so
+   * Confirm is the only filled button in the view (DESIGN.md `:1184` Live row), and what arms the
+   * countdown's ticker.
+   */
+  protected get sendSecondary(): boolean {
+    this.generation();
+    return this.liveCards.length > 0;
+  }
+
+  /** Every proposal in the transcript that is not terminal, by id. */
+  private get liveCards(): readonly string[] {
+    const live: string[] = [];
+    for (const entry of this.turn.entries()) {
+      for (const proposal of entry.proposals) {
+        if (!isTerminalPhase(this.phaseFor(proposal))) live.push(proposal.proposalId);
+      }
+    }
+    return live;
+  }
+
+  /**
+   * Record `phase` for every card that is still live. The one place a client-side transition is
+   * made, so "a typed message cancels every live card", "New conversation cancels every live card"
+   * and "Stop cancels nothing" are one mechanism with three callers rather than three.
+   */
+  private cancelLiveCards(phase: ProposalPhase): void {
+    const live = this.liveCards;
+    if (live.length === 0) return;
+    const next = new Map(this.cardPhases());
+    for (const id of live) next.set(id, phase);
+    this.cardPhases.set(next);
+    this.bump();
+  }
+
+  /** Cancel was pressed on one card: its own transition, and no other card's. */
+  protected onCardCancel(proposalId: string): void {
+    if (proposalId === '') return;
+    const next = new Map(this.cardPhases());
+    next.set(proposalId, 'canceled-by-you');
+    this.cardPhases.set(next);
+    this.bump();
+  }
+
+  /** Arm the one-second ticker while a card is live, and disarm it when none is. */
+  private syncTicker(): void {
+    const wanted = this.liveCards.length > 0;
+    if (wanted && this.ticker === null) {
+      this.ticker = setInterval(() => {
+        this.nowSignal.set(Date.now());
+        // Re-asked on the tick, because the tick is the only thing that can retire the last live
+        // card: a countdown running out raises no event, so without this the interval would run
+        // for the panel's whole life.
+        this.syncTicker();
+      }, 1000);
+    } else if (!wanted && this.ticker !== null) {
+      clearInterval(this.ticker);
+      this.ticker = null;
+    }
   }
 
   /**
@@ -940,7 +1130,13 @@ export class Panel {
     void this.sendCurrentDraft();
   }
 
-  /** Stop while a turn runs; otherwise Send -- the one control, the one branch (Story 4.5). */
+  /**
+   * Stop while a turn runs; otherwise Send -- the one control, the one branch (Story 4.5).
+   *
+   * **Stop cancels no card.** A stop is not a new turn, so a proposal already posted in that turn
+   * stays live and confirmable (EXPERIENCE.md's Stopped-by-you row): the cancel is `Send`'s and
+   * `New conversation`'s, and this branch deliberately does neither.
+   */
   protected onSendOrStop(): void {
     if (this.busy) {
       void this.turn.stop();
@@ -968,6 +1164,10 @@ export class Panel {
       return;
     }
     this.secretWarningVisibleSignal.set(false);
+    // EXPERIENCE.md's cancel step: sending a message cancels every live proposal, which is what
+    // the card's own guard caption warns about. Recorded before the request goes out, so a user
+    // who types "yes" from habit never sees a card that still offers Confirm.
+    this.cancelLiveCards('canceled-by-message');
     const outcome = await this.turn.send(text, this.assembleContext());
     if (outcome === 'sent') {
       this.panel.setDraft('');
@@ -1029,6 +1229,9 @@ export class Panel {
     if (this.busy || this.composerUnavailable) return;
     this.acknowledgedSecretText.set(null);
     this.secretWarningVisibleSignal.set(false);
+    // "New conversation cancels every live proposal exactly as a new turn would" -- and, unlike a
+    // new turn, it also clears the transcript, so the cards go with it.
+    this.cancelLiveCards('canceled-by-you');
     void this.turn.newConversation();
   }
 
@@ -1038,5 +1241,6 @@ export class Panel {
 
   private bump(): void {
     this.generation.update((value) => value + 1);
+    this.syncTicker();
   }
 }

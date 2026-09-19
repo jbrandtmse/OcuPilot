@@ -336,6 +336,8 @@ export interface ScreenDeclaration {
   readonly refreshRates: readonly number[];
   readonly privileges: readonly PrivilegePair[];
   readonly entityType: string;
+  /** The string key of the singular noun for `entityType`, or `''` (AD-5, AD-14). */
+  readonly entityLabelKey: string;
   readonly secondaryEntityTypes: readonly string[];
   readonly scope: string;
   readonly parentScope: string;
@@ -615,7 +617,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": []
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.AgentDefinitionList",
@@ -751,7 +754,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": []
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.AgentSwitches",
@@ -811,7 +815,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": []
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.AuditList",
@@ -1078,7 +1083,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": []
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.DatabaseDetails",
@@ -1322,7 +1328,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": []
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.DatabaseFreeSpace",
@@ -1467,7 +1474,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": []
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.DatabaseList",
@@ -1598,7 +1606,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": []
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.DatabaseVolumeList",
@@ -1740,7 +1749,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": []
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.DeviceList",
@@ -1875,7 +1885,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": []
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.Home",
@@ -1924,7 +1935,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": []
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.LdapConfigList",
@@ -2031,7 +2043,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": []
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.LockList",
@@ -2183,7 +2196,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "tab": null,
     "secretArguments": [],
-    "fingerprintExcludes": []
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.LogAlertViewer",
@@ -2286,7 +2300,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": []
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.LogErrorList",
@@ -2353,7 +2368,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": []
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.LogMessageViewer",
@@ -2456,7 +2472,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": []
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.OAuthClientTab",
@@ -2609,7 +2626,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": []
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.OAuthResourceServerTab",
@@ -2719,7 +2737,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": []
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.OAuthServerClientTab",
@@ -2856,7 +2875,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": []
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.OAuthServerDescriptionTab",
@@ -2978,7 +2998,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": []
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.OAuthServerTab",
@@ -3126,7 +3147,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "banner": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": []
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.OpenApiViewer",
@@ -3246,7 +3268,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": []
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.ProcessDetails",
@@ -3591,7 +3614,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": []
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.ProcessList",
@@ -3741,7 +3765,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": []
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.ResourceList",
@@ -3864,7 +3889,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": []
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.RestApiList",
@@ -3986,7 +4012,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": []
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.RoleList",
@@ -4100,7 +4127,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": []
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.ServiceList",
@@ -4228,7 +4256,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": []
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.SslConfigList",
@@ -4342,7 +4371,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": []
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.SystemUsage",
@@ -4606,7 +4636,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": []
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.TaskDetails",
@@ -4868,7 +4899,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": []
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.TaskHistoryList",
@@ -5048,7 +5080,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": []
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.TaskOnDemandList",
@@ -5177,7 +5210,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": []
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.TaskRunList",
@@ -5344,7 +5378,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": []
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.TaskScheduleList",
@@ -5499,7 +5534,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": []
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.TaskUpcomingList",
@@ -5642,7 +5678,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": []
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.UserList",
@@ -5789,7 +5826,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": []
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.WalletCollectionList",
@@ -5896,7 +5934,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": []
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.WalletSecretList",
@@ -6002,7 +6041,8 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": []
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.WebAppList",
@@ -6025,6 +6065,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       }
     ],
     "entityType": "web-application",
+    "entityLabelKey": "proposalEntityWebApplication",
     "secondaryEntityTypes": [],
     "scope": "instance",
     "parentScope": "",
@@ -6274,6 +6315,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "tab": null,
     "rowTarget": null,
     "secretArguments": [],
-    "fingerprintExcludes": []
+    "fingerprintExcludes": [],
+    "entityLabelKey": ""
   }
 ];

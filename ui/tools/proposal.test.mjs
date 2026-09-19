@@ -29,9 +29,16 @@ const corePath = (name) => join(uiRoot, 'src', 'app', 'core', name);
 const { screenDeclaration } = await import(
   join(uiRoot, 'src', 'app', 'testing', 'screen-declaration.ts')
 );
-const { TurnStore, TURN_PATH, turnProgressPath, parseProposals, PROPOSAL_LIVE_STATE } = await import(
-  corePath('turn.ts')
-);
+const {
+  TurnStore,
+  TURN_PATH,
+  CONVERSATION_STORAGE_KEY,
+  conversationReadPath,
+  turnProgressPath,
+  parseProposals,
+  PROPOSAL_EXPIRED_STATE,
+  PROPOSAL_LIVE_STATE,
+} = await import(corePath('turn.ts'));
 const { ChangeBus, PROPOSAL_EXPIRY_MS } = await import(corePath('change-bus.ts'));
 const { RefreshService } = await import(corePath('refresh.ts'));
 const { ScreenStores } = await import(corePath('screen-store.ts'));
@@ -312,6 +319,79 @@ test('a proposal against another scope leaves the bound screen running', async (
   assert.equal(refresh.paused(), false);
 });
 
+// --- The restore path (Story 5.2, DW-1213) -----------------------------------------------------
+
+/** A turn store that has restored `convo-1`, whose one turn carries `proposals` on the wire. */
+async function restored(proposals) {
+  const storage = memoryStorage();
+  storage.setItem(CONVERSATION_STORAGE_KEY, 'convo-1');
+  const api = {
+    requestJson: async (path) => {
+      if (path !== conversationReadPath('convo-1')) return { kind: 'ok', status: 200, body: {} };
+      return {
+        kind: 'ok',
+        status: 200,
+        body: {
+          conversationId: 'convo-1',
+          turns: [
+            {
+              seq: 1,
+              message: 'enable the demo application',
+              state: 'completed',
+              reply: 'I have prepared the change.',
+              error: null,
+              steps: [],
+              stepsDropped: 0,
+              proposals,
+            },
+          ],
+        },
+      };
+    },
+  };
+  const bus = new ChangeBus({ now: () => new Date(NOW_MS) });
+  const events = [];
+  bus.subscribe((event) => events.push(event));
+  const turn = new TurnStore({ api, storage, navigationType: () => 'reload', bus });
+  return { turn, bus, events };
+}
+
+test('a restored turn carries its proposals, recorded terminal whatever the wire said (DW-1213)', async () => {
+  // Mutation (Rule 19): hard-code `proposals: []` in `parseRestoredEntry` again -> this goes red
+  // on the entry carrying none, and a reload would lose the card with no other route to it.
+  const { turn } = await restored([proposal()]);
+  await turn.restore();
+  const entry = turn.entries().at(-1);
+  assert.equal(entry.proposals.length, 1, "the restored turn carries the turn's own proposal");
+  assert.equal(entry.proposals[0].proposalId, 'p1');
+  assert.equal(
+    entry.proposals[0].state,
+    PROPOSAL_EXPIRED_STATE,
+    'and it is terminal on arrival: a restored card is shown expired, with Re-propose'
+  );
+  assert.equal(entry.live, false);
+});
+
+test('Integration AC: a reload arms no pause, so the shipped RefreshService reports paused() false and arms a tick', async () => {
+  // The proposal is unburned and unexpired on the instance -- `state` is `live` on the wire, and
+  // its expiry is five minutes ahead -- which is exactly the case DW-1213 is about.
+  //
+  // Mutation (Rule 19): publish the restored set with the wire state, rather than the terminal
+  // state `restoredProposals` records -> this goes red, `paused()` reads true after a reload, and
+  // nothing lifts it: this tab makes no poll for a turn that has already ended.
+  const { turn, bus, events } = await restored([proposal()]);
+  const { refresh } = boundRefresh(bus);
+  assert.equal(refresh.paused(), false);
+
+  await turn.restore();
+
+  assert.deepEqual(events, [], 'the restore path publishes nothing at all');
+  assert.equal(refresh.paused(), false, 'so the bound screen is not paused by a reload');
+  assert.equal(refresh.armedFor(), 'tick', 'and it arms a tick rather than a pause deadline');
+  // And the card is nonetheless on screen: the entry carries it, terminal.
+  assert.equal(turn.entries().at(-1).proposals.length, 1);
+});
+
 // --- The client authors no proposal --------------------------------------------------------------
 
 /** Every `.ts` under `ui/src/app`, recursively. */
@@ -333,7 +413,12 @@ test('nothing shipped in the client authors a proposal value, and nothing posts 
   // string, a number or a template -- assigned to any field a proposal carries, which is what
   // `shell/example-proposal.ts` alone does and is why it is exempt. Specs and the harness under
   // `testing/` build fixtures by construction and are outside the rule.
-  const authoring = /\b(before|after|unchangedCount|rationale|expectedImpact|reverse|fingerprint)\s*:\s*('|"|\d|`)/;
+  // `auditWarning` joined the wire in Story 5.2 and drives a warning the user reads before
+  // confirming a write, so a shipped literal there would suppress a safety sentence rather than
+  // merely stale a value -- and because it is a boolean, the literal alternation has to admit
+  // `true` and `false` as well as a quoted, numeric or template value.
+  const authoring =
+    /\b(before|after|unchangedCount|rationale|expectedImpact|reverse|fingerprint|auditWarning)\s*:\s*('|"|\d|`|true\b|false\b)/;
   const posting = /method:\s*'(POST|PUT)'[\s\S]{0,200}proposal/i;
   const offenders = [];
   for (const path of clientSources()) {

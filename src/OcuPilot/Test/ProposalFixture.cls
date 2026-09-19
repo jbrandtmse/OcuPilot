@@ -129,6 +129,23 @@ ClassMethod AgeExpiry(pKey As %String, pSeconds As %Integer) As %Status
     Quit ..Update("UPDATE OcuPilot_Kernel_State.Proposal SET ExpiresAt = ? WHERE %EXACT(ProposalKey) = ?", tAged, pKey)
 }
 
+/// <p>Move every <b>live</b> proposal of <var>pUser</var> so that it expires <var>pSeconds</var>
+/// from now, and answer in <var>pMoved</var> how many rows moved.</p>
+/// <p>It exists for the browser leg, which has no other route to the countdown's 1:00 boundary:
+/// the window is the instance's own ten minutes (AD-6) and a spec cannot wait nine of them out.
+/// Unlike <method>AgeExpiry</method> it takes the user rather than the key, because the browser
+/// never learns the id of a proposal a real turn minted.</p>
+ClassMethod SetExpiryForUser(pUser As %String, pSeconds As %Integer, Output pMoved As %Integer) As %Status
+{
+    Set pMoved = 0
+    Set tSeconds = ##class(OcuPilot.Kernel.State.Propose).NowSeconds() + pSeconds
+    Set tStamp = ##class(OcuPilot.Kernel.State.Turn).Timestamp((tSeconds \ 86400) _ "," _ (tSeconds # 86400))
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "UPDATE OcuPilot_Kernel_State.Proposal SET ExpiresAt = ? WHERE %EXACT(UserName) = ? AND %EXACT(State) = ?", tStamp, pUser, ##class(OcuPilot.Kernel.State.Propose).#STATELIVE)
+    If tRS.%SQLCODE < 0 Quit $$$ERROR($$$GeneralError, "the probe expiry could not be moved: SQLCODE=" _ tRS.%SQLCODE _ " " _ tRS.%Message)
+    Set pMoved = +tRS.%ROWCOUNT
+    Quit $$$OK
+}
+
 /// <p>A stored column of proposal <var>pKey</var>, read by SQL; <code>""</code> for a key no row
 /// holds.</p>
 ClassMethod Field(pKey As %String, pField As %String) As %String

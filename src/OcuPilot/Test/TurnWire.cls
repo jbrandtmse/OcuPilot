@@ -182,6 +182,70 @@ Method TestTheProgressPollCarriesTheTurnsMintedProposal()
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Propose).GuardedDeleteForUser(tUser), "the probe proposal is removed")
 }
 
+/// <p>Story 5.2, DW-1213: a restored conversation carries each turn's own proposals, so a reload
+/// renders the card rather than losing it -- and a conversation the caller does not own answers
+/// like an unknown id, proposals and all (AD-33).</p>
+/// <p><b>Two turns, with the proposal on the second</b>, so per-turn attribution is exercised: a
+/// one-turn conversation cannot tell a card landing on the right turn from a card landing on the
+/// only turn. The second turn is also what pins the empty array -- a turn that minted nothing
+/// answers <code>[]</code> rather than the other turn's rows.</p>
+/// <p><b>What this does NOT distinguish:</b> the <code>seq</code> join
+/// <method>OcuPilot.Api.Conversation.AttachProposals</method> uses from a join by ordinal.
+/// <property>Seq</property> is <code>COUNT(*) + 1</code> per conversation, so the two coincide in
+/// every state the append path can produce; they diverge only once
+/// <method>GuardedRows</method> skips a row it cannot open, which no fixture here can force.</p>
+/// <p>Mutation: drop the <code>AttachProposals</code> call from
+/// <method>OcuPilot.Api.Conversation.HandleRead</method> -- the key roster and the array's size
+/// both go red. Remove the turn key from
+/// <method>OcuPilot.Kernel.State.Entry.GuardedAppend</method> -- the size goes red alone, naming
+/// the turn.</p>
+Method TestARestoredConversationCarriesTheTurnsProposals()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "the principal holds %Admin_Operate")
+    Set tUser = $Parameter(..#FIXTURE, "USERA")
+    Set tOther = $Parameter(..#FIXTURE, "USERB")
+    Do ##class(OcuPilot.Test.TurnProvider).Script(..#TAG, 1, ##class(OcuPilot.Test.TurnProvider).TextReply("done"))
+    Set tConvId = $ClassMethod(..#FIXTURE, "StartConversation", tUser, ..PreparedPassword, .tConvStatus, .tConvText)
+    Do $$$AssertNotEquals(tConvId, "", "a conversation is created: " _ tConvText)
+    Do ..Call("POST", "/turn", tUser, $ClassMethod(..#FIXTURE, "StartBody", "ask something", tConvId), .tStatus, .tText, .tHeaders)
+    Do $$$AssertEquals(tStatus, 202, "the first start is accepted: " _ tText)
+    Set tFirstId = ##class(%DynamicObject).%FromJSON(tText).turnId
+    Do $$$AssertEquals(..AwaitEnd(tFirstId, tUser, 30, .tFirstView), "completed", "the first turn completes")
+
+    ; A second turn in the same conversation, and the proposal is minted on THIS one -- so a join
+    ; by ordinal would attach it to the first turn instead.
+    Do ##class(OcuPilot.Test.TurnProvider).Script(..#TAG, 1, ##class(OcuPilot.Test.TurnProvider).TextReply("done"))
+    Do ..Call("POST", "/turn", tUser, $ClassMethod(..#FIXTURE, "StartBody", "propose something", tConvId), .tStatus, .tText, .tHeaders)
+    Do $$$AssertEquals(tStatus, 202, "the second start is accepted: " _ tText)
+    Set tId = ##class(%DynamicObject).%FromJSON(tText).turnId
+    Do $$$AssertEquals(..AwaitEnd(tId, tUser, 30, .tView), "completed", "the second turn completes")
+
+    ; Minted directly on that turn, in that conversation: this pins the restore projection, not
+    ; the dispatch that would reach it.
+    Do ##class(OcuPilot.Test.ProposalFixture).Arm("{""Enabled"":false,""Description"":""before"",""Resource"":""""}")
+    Set tArgs = {"Name": "/csp/probe", "Description": "after", "rationale": "why", "expectedImpact": "what", "reverse": "how"}
+    Set tMintSC = $ClassMethod("OcuPilot.Test.ProposalMint", "Mint", "OcuPilot.Test.ProposalScreen", "probe.proposal.update", tUser, tConvId, tId, tArgs, "OcuPilot.Kernel.Agent.Limits", .tProposal, .tMintHttp, .tMintFault, "WebApp.App", "name", "/csp/probe", "Name", $ListBuild("Description"))
+    Do ##class(OcuPilot.Test.ProposalFixture).Clear()
+    Do $$$AssertStatusOK(tMintSC, "a proposal is minted on that turn")
+
+    Do ..Call("GET", "/conversation/" _ tConvId, tUser, "", .tStatus, .tText, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "the conversation reads: " _ tText)
+    Set tRead = ##class(%DynamicObject).%FromJSON(tText)
+    Do $$$AssertEquals(tRead.turns.%Size(), 2, "two restored turns")
+    Set tFirst = tRead.turns.%Get(0)
+    Set tTurn = tRead.turns.%Get(1)
+    Do $$$AssertEquals(..KeysOf(tTurn), "seq,message,state,reply,error,steps,stepsDropped,proposals", "carrying proposals beside its steps")
+    Do $$$AssertEquals(tFirst.proposals.%Size(), 0, "the turn that minted nothing carries an empty array")
+    Do $$$AssertEquals(tTurn.proposals.%Size(), 1, "and the second carries the one it minted")
+    Do $$$AssertEquals(tTurn.proposals.%Get(0).%Get("proposalId"), tProposal.%Get("proposalId"), "under the id the mint answered")
+    Do $$$AssertEquals(tTurn.proposals.%Get(0).%Get("state"), ##class(OcuPilot.Kernel.State.Propose).#STATELIVE, "live on the wire until Story 5.3 closes it; the client shows a restored card expired")
+
+    Do ..Call("GET", "/conversation/" _ tConvId, tOther, "", .tStatus, .tText, .tHeaders)
+    Do $$$AssertEquals(tStatus, 404, "another principal's conversation is not found")
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Propose).GuardedDeleteForUser(tUser), "the probe proposal is removed")
+}
+
 /// <p>A body that is not a JSON object is 400 <code>TURN.BADBODY</code> with its written sentence
 /// and no vendor text; a missing, non-string, blank or over-long message is 422 with its violation
 /// on <code>message</code>. Nothing is reserved.</p>

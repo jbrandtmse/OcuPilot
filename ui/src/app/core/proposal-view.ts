@@ -1,0 +1,252 @@
+/**
+ * The proposal card's framework-free half (Story 5.2, AD-19): the map from what the wire sends
+ * onto what the card draws, the countdown's formatter and its phase boundaries, and the phase
+ * vocabulary the footer's status line is chosen from.
+ *
+ * It imports no `@angular/core`, so `ui/tools/proposal-view.test.mjs` executes every function
+ * below under `node --test`; `shell/proposal-card.ts` mirrors them into getters over its inputs
+ * the way `tool-call-card.ts` already mirrors `stepLabel`.
+ *
+ * **The clock is injected, never read here.** Every countdown function takes the moment as a
+ * number, so a test drives 1:00 and 0:00 by hand and no assertion waits on a wall clock.
+ *
+ * **The instance owns the diff.** `toCardView` maps field by field and writes no value of its
+ * own: `ui/tools/proposal.test.mjs`'s literal scan fails the gate on any proposal field assigned
+ * a literal in a shipped module, which is the mechanical form of "the client authors no proposal"
+ * (AD-6).
+ *
+ * **The screen's two facts arrive as parameters, not as a module-level lookup.** The singular
+ * entity noun and the declared secret argument names both come from the screen mirror, and
+ * reading `screens.generated.ts` here would make the masked field untestable until the first real
+ * secret ships: no descriptor declares one yet (`Kernel/Proposal/Mint.cls` refuses a secret
+ * argument outright), so a test has to be able to supply a screen record as data.
+ */
+
+import { STRINGS } from './strings.ts';
+import type { TurnProposal } from './turn.ts';
+
+/** One changed field, as the card draws it: the label, the before value and the after value. */
+export interface ProposalDiffRow {
+  readonly field: string;
+  readonly before: string;
+  readonly after: string;
+}
+
+/**
+ * Everything a proposal card renders. The six fields the static example fills are required; the
+ * five a live card adds are optional, so `shell/example-proposal.ts`'s own fixture -- whose key
+ * set `ui/tools/example-proposal.test.mjs` pins -- carries none of them and the example has no
+ * countdown, no footer and no masked field by construction rather than by a flag.
+ */
+export interface ProposalCardView {
+  /** The kind of thing the write is about, as the instance names it ("Web application"). */
+  readonly entityType: string;
+  /** The target's own name, as the instance stores it ("/csp/myapp"). */
+  readonly name: string;
+  /** The changed fields, first in the card and one `diff-row` each. */
+  readonly changed: readonly ProposalDiffRow[];
+  /** How many fields the payload also sends unchanged (AD-4), for the collapsed caption. */
+  readonly unchangedCount: number;
+  /** The agent's own words, rendered under their published headings and on the agent tint. */
+  readonly rationale: string;
+  readonly expectedImpact: string;
+  /** How to undo the write, or `''` where no reversal exists (a delete has none). */
+  readonly reverse: string;
+  /** The proposal's own id, absent for the static example, which is not a proposal. */
+  readonly proposalId?: string;
+  /** When it stops being confirmable, in epoch milliseconds, or `0` for an unreadable timestamp. */
+  readonly expiresAt?: number;
+  /**
+   * The fields the payload also sends unchanged, one value each and no arrow, listed when the
+   * disclosure is open. The progress payload carries the count alone (AD-4), so a live card's list
+   * is empty until an instance change publishes the rows; the disclosure is a button exactly when
+   * there is something behind it.
+   */
+  readonly unchanged?: readonly ProposalDiffRow[];
+  /** The secret argument names the user fills before Confirm (AD-3, AD-6). */
+  readonly maskedFields?: readonly string[];
+  /** Whether this write would stop the instance marking agent writes (AD-15). */
+  readonly auditWarning?: boolean;
+}
+
+/**
+ * Where one card is in the proposal lifecycle: live, the in-flight Confirm, and the six terminal
+ * states EXPERIENCE.md's status-line row publishes a sentence for.
+ *
+ * `target-changed` is deliberately absent: it is the fingerprint mismatch Story 5.3 answers, and
+ * its published sentence has no writer until the confirm request exists.
+ */
+export type ProposalPhase =
+  | 'live'
+  | 'confirming'
+  | 'confirmed'
+  | 'canceled-by-you'
+  | 'canceled-by-message'
+  | 'canceled-sibling'
+  | 'expired'
+  | 'switched-off';
+
+/** Which phases are terminal: the buttons are gone and a status line stands in their place. */
+const TERMINAL_PHASES: ReadonlySet<ProposalPhase> = new Set<ProposalPhase>([
+  'confirmed',
+  'canceled-by-you',
+  'canceled-by-message',
+  'canceled-sibling',
+  'expired',
+  'switched-off',
+]);
+
+export function isTerminalPhase(phase: ProposalPhase): boolean {
+  return TERMINAL_PHASES.has(phase);
+}
+
+/** Which terminal phases offer Re-propose, the WCAG 2.2.1 accommodation for the expiry limit. */
+const REPROPOSABLE_PHASES: ReadonlySet<ProposalPhase> = new Set<ProposalPhase>(['expired']);
+
+export function offersRepropose(phase: ProposalPhase): boolean {
+  return REPROPOSABLE_PHASES.has(phase);
+}
+
+/**
+ * The phase a wire `state` reads as.
+ *
+ * `live` is the only state the instance writes today (Story 5.3 closes the rest), and anything
+ * this client does not recognise reads as `expired`: a card drawn restrained with no Confirm is
+ * the restrained direction, and the alternative -- treating an unknown state as live -- would
+ * offer a decision on a proposal whose fate the instance has already settled.
+ */
+export function phaseForState(state: string): ProposalPhase {
+  if (state === 'live') return 'live';
+  if (state === 'confirmed') return 'confirmed';
+  if (state === 'canceled') return 'canceled-by-you';
+  return 'expired';
+}
+
+/** The placeholder every proposal string leaves for the account a sentence is about. */
+export const USER_NAME_PLACEHOLDER = '<user name>';
+
+/** The placeholder the confirmed status line leaves for the moment of the write. */
+export const CONFIRMED_TIME_PLACEHOLDER = 'hh:mm:ss';
+
+/** The substitution point inside the published countdown caption. */
+export const COUNTDOWN_PLACEHOLDER = 'm:ss';
+
+/**
+ * `<user name>` resolved, for the footer's runs-as caption and the confirmed status line.
+ *
+ * A function rather than a `replace` inside a template, for the reason `formatProposalTitle` is
+ * one: renaming the placeholder on one side only would ship the placeholder to the reader, and a
+ * source-text pin cannot see that.
+ */
+export function formatUserName(template: string, userName: string): string {
+  return template.split(USER_NAME_PLACEHOLDER).join(userName);
+}
+
+/**
+ * The published countdown caption with the clock in place of its own `m:ss`, which is the
+ * substitution point the caption ships with -- the same `split`/`join` idiom
+ * `formatUnchangedCaption` uses for its `N`, so the published literal stays intact.
+ */
+export function formatCountdownCaption(template: string, clock: string): string {
+  return template.split(COUNTDOWN_PLACEHOLDER).join(clock);
+}
+
+/**
+ * How long proposal `expiresAt` (epoch milliseconds) has left at `nowMs`, or `null` when the
+ * instance's own timestamp could not be read.
+ *
+ * `null` is "unknown", never "expired": `core/turn.ts` records `0` for a wire timestamp it could
+ * not parse, and reading that as a deadline already past would show a live proposal as expired and
+ * take its Confirm away. An unknown expiry leaves the card live until the poll closes it.
+ */
+export function countdownRemaining(expiresAt: number, nowMs: number): number | null {
+  if (!Number.isFinite(expiresAt) || expiresAt <= 0) return null;
+  return expiresAt - nowMs;
+}
+
+/** The boundary, in milliseconds, at which the caption turns to the warning token and announces. */
+export const COUNTDOWN_WARNING_MS = 60 * 1000;
+
+/** How the countdown reads: ordinary, inside the last minute, or done. */
+export type CountdownPhase = 'normal' | 'warning' | 'expired';
+
+/**
+ * Which of the three `msRemaining` is in. The 1:00 boundary is inclusive, so the caption takes
+ * the warning token *at* one minute and holds it to 0:00 rather than a second later.
+ */
+export function countdownPhase(msRemaining: number): CountdownPhase {
+  if (!Number.isFinite(msRemaining) || msRemaining <= 0) return 'expired';
+  return msRemaining <= COUNTDOWN_WARNING_MS ? 'warning' : 'normal';
+}
+
+/**
+ * `msRemaining` as `m:ss`, floored to the second and never negative -- so a deadline already past
+ * reads `0:00` rather than a negative clock.
+ */
+export function formatCountdown(msRemaining: number): string {
+  const total = Number.isFinite(msRemaining) && msRemaining > 0 ? Math.floor(msRemaining / 1000) : 0;
+  const seconds = total % 60;
+  return `${Math.floor(total / 60)}:${seconds < 10 ? '0' : ''}${seconds}`;
+}
+
+/**
+ * The status line one terminal phase reads, resolved from `core/strings.ts`, or `''` for a phase
+ * that has no line (`live` and `confirming` still have their buttons).
+ */
+export function statusLineFor(phase: ProposalPhase, userName: string, at: string): string {
+  if (phase === 'confirmed') {
+    return formatUserName(STRINGS.proposalStatusConfirmedBy, userName)
+      .split(CONFIRMED_TIME_PLACEHOLDER)
+      .join(at);
+  }
+  if (phase === 'canceled-by-you') return STRINGS.proposalStatusCanceledByYou;
+  if (phase === 'canceled-by-message') return STRINGS.proposalStatusCanceledByMessage;
+  if (phase === 'canceled-sibling') return STRINGS.proposalStatusCanceledSibling;
+  if (phase === 'expired') return STRINGS.proposalStatusExpired;
+  if (phase === 'switched-off') return STRINGS.proposalStatusAgentSwitchedOff;
+  return '';
+}
+
+/**
+ * The eight-bullet mask a secret value reads as, on both sides of its diff row. Authored as
+ * escapes, never literal bytes (Rule 14).
+ */
+export const MASKED_VALUE = '\u2022'.repeat(8);
+
+/** One diff row with both of its values masked, for a field the descriptor declared secret. */
+function maskedRow(row: ProposalDiffRow): ProposalDiffRow {
+  return { field: row.field, before: MASKED_VALUE, after: MASKED_VALUE };
+}
+
+/**
+ * One live proposal as its card renders it: `entityLabel` is the singular noun the target's screen
+ * declares, `secretArguments` the names that screen declares secret, and everything else is
+ * `proposal`'s own -- the instance-computed diff with every declared secret masked on both sides,
+ * the unchanged count, the agent's two blocks, the reversal, the expiry and the audit warning.
+ *
+ * Both of the screen's facts are parameters rather than a lookup of `screens.generated.ts` here,
+ * for the reason the header gives: no shipped descriptor declares a secret argument yet, so a test
+ * has to be able to supply one as data.
+ *
+ * Nothing here writes a proposal value down (AD-6).
+ */
+export function toCardView(
+  proposal: TurnProposal,
+  entityLabel: string,
+  secretArguments: readonly string[] = []
+): ProposalCardView {
+  const secrets = new Set(secretArguments);
+  return {
+    proposalId: proposal.proposalId,
+    entityType: entityLabel,
+    name: proposal.target.id,
+    changed: proposal.changed.map((row) => (secrets.has(row.field) ? maskedRow(row) : row)),
+    unchangedCount: proposal.unchangedCount,
+    rationale: proposal.rationale,
+    expectedImpact: proposal.expectedImpact,
+    reverse: proposal.reverse,
+    expiresAt: proposal.expiresAt,
+    maskedFields: secretArguments,
+    auditWarning: proposal.auditWarning,
+  };
+}

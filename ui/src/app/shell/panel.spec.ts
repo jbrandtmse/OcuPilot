@@ -8,10 +8,12 @@ import { NavigationService, UNGATED, type Verdict } from '../core/navigation';
 import { PanelState } from '../core/panel-layout';
 import { PreferenceStore } from '../core/preferences';
 import { ScopeService } from '../core/scope';
+import { Session } from '../core/session';
 import { ScreenStores } from '../core/screen-store';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
 import { SOURCES, SWITCHES_DESCRIPTOR, SuggestedView, type Source } from '../core/suggested-view';
+import { TokenStore } from '../core/token-store';
 import { CONVERSATION_PATH, TURN_PATH, TurnStore, turnProgressPath, turnStopPath } from '../core/turn';
 import { stubAgentContext } from '../testing/agent-context';
 import { stubAgentStatus } from '../testing/agent-status';
@@ -94,6 +96,21 @@ function memoryStorage() {
   };
 }
 
+/**
+ * A real `Session` holding `userName`, which is the one fact the panel reads off it: the footer's
+ * runs-as caption and the confirmed status line are both about the account a write would run as.
+ * Its transport answers nothing and its timer never fires.
+ */
+function sessionNamed(userName: string): Session {
+  const session = new Session({
+    fetch: async () => ({ status: 503, text: async () => '{}' }),
+    tokens: new TokenStore({ storage: memoryStorage(), navigationType: () => 'navigate' }),
+    schedule: () => {},
+  } as never);
+  session.setUserName(userName);
+  return session;
+}
+
 interface Mounted {
   readonly fixture: ComponentFixture<Panel>;
   readonly navigation: StubNavigation;
@@ -135,6 +152,8 @@ async function mount(
      * the in-flight gate passes false, because awaiting a read it is holding open would hang here.
      */
     settleSuggested?: boolean;
+    /** The account the panel reads off `Session` for a card's footer captions (Story 5.2). */
+    userName?: string;
   } = {}
 ): Promise<Mounted> {
   TestBed.resetTestingModule();
@@ -184,6 +203,7 @@ async function mount(
       { provide: TurnStore, useValue: turn },
       { provide: ShellState, useValue: shell },
       { provide: SuggestedView, useValue: suggested },
+      { provide: Session, useValue: sessionNamed(options.userName ?? '_SYSTEM') },
     ],
   });
   if (options.url !== undefined) await TestBed.inject(Router).navigateByUrl(options.url);
@@ -2541,5 +2561,352 @@ describe("Story 4.10: Home's suggested view and the starter prompts", () => {
     } finally {
       sources.pop();
     }
+  });
+});
+
+/**
+ * Story 5.2: the live proposal cards in the transcript.
+ *
+ * Every card here arrives the way a real one does -- off a progress poll the test drives by hand
+ * through the injected `schedule` seam -- so the panel is asserted over the store's own shape
+ * rather than over a hand-built `PanelTurnView`.
+ */
+
+/** One wire proposal, in the shape `OcuPilot.Kernel.State.Propose`'s wire row writes. */
+function wireProposal(overrides: Record<string, unknown> = {}) {
+  return {
+    proposalId: 'p1',
+    target: { type: 'web-application', scope: 'instance', id: '/csp/myapp' },
+    expiresAt: new Date(Date.now() + 599_000).toISOString(),
+    tool: 'webapp.list.update',
+    changed: [{ field: 'Enabled', before: 'No', after: 'Yes' }],
+    unchangedCount: 38,
+    rationale: 'The application is disabled.',
+    expectedImpact: 'it can be reached',
+    reverse: 'disable it again',
+    state: 'live',
+    auditWarning: false,
+    ...overrides,
+  };
+}
+
+/** A completed progress answer carrying `proposals`, as `OcuPilot.Api.Turn.HandleProgress` writes it. */
+function progressWith(proposals: unknown[], state = 'completed') {
+  return {
+    kind: 'ok',
+    status: 200,
+    body: {
+      turnId: 'turn-1',
+      state,
+      startedAt: null,
+      endedAt: null,
+      iterations: 1,
+      tokens: { input: 1, output: 1 },
+      limit: null,
+      steps: [],
+      stepsDropped: 0,
+      reply: state === 'completed' ? 'I have prepared the change.' : null,
+      error: null,
+      proposals,
+    },
+  };
+}
+
+/** A panel with one finished turn carrying `proposals`, reached through a real send and one poll. */
+async function mountWithProposals(proposals: unknown[]): Promise<Mounted & { api: ReturnType<typeof fakeTurnApi> }> {
+  const { schedule, scheduled } = fakeTurnSchedule();
+  const api = fakeTurnApi({
+    [CONVERSATION_PATH]: [{ kind: 'ok', status: 201, body: { conversationId: 'convo-1' } }],
+    [TURN_PATH]: [{ kind: 'ok', status: 202, body: { turnId: 'turn-1' } }],
+    [turnProgressPath('turn-1')]: [progressWith(proposals)],
+  });
+  const turn = stubTurnStore({ api: api as never, schedule });
+  const mounted = await mount({ rows: [{ enabled: true }], turn });
+  await typeDraft(mounted.host, mounted.fixture, 'enable the demo application');
+  (mounted.host.querySelector('.ocu-panel-send') as HTMLButtonElement).click();
+  await turnSettle();
+  scheduled.shift()?.run();
+  await turnSettle();
+  mounted.fixture.detectChanges();
+  return { ...mounted, api };
+}
+
+const cardTitles = (host: HTMLElement): string[] =>
+  [...host.querySelectorAll('app-proposal-card .ocu-proposal-card-title')].map((node) =>
+    (node.textContent ?? '').trim()
+  );
+
+describe('Story 5.2: the proposal cards in the transcript', () => {
+  it('Integration AC: one card per wire proposal, and Send carries the secondary class while one is live', async () => {
+    // Mutation (Rule 19): leave Send on `ocu-button-primary` while a card is live -> this goes red,
+    // and Confirm would not be the only filled button in the view.
+    const { host } = await mountWithProposals([wireProposal()]);
+    expect(host.querySelectorAll('app-proposal-card')).toHaveLength(1);
+    // The noun is the target screen's own declaration (AD-5), not a client-side table.
+    expect(cardTitles(host)).toEqual(['Proposal \u00b7 Web application /csp/myapp']);
+
+    const send = host.querySelector('.ocu-panel-send') as HTMLButtonElement;
+    expect(send.classList.contains('ocu-button-secondary')).toBe(true);
+    expect(send.classList.contains('ocu-button-primary')).toBe(false);
+    const confirm = host.querySelector('.ocu-proposal-card-confirm') as HTMLButtonElement;
+    expect(confirm.classList.contains('ocu-button-primary')).toBe(true);
+
+    // The footer captions read the account off the session, and the reply points at Confirm.
+    expect(host.querySelector('.ocu-proposal-card-runs-as')?.textContent?.trim()).toBe(
+      'Runs as _SYSTEM, with your privileges.'
+    );
+    expect(host.querySelector('.ocu-panel-message-agent-text')?.textContent).toContain(
+      STRINGS.proposalConfirmSentence
+    );
+  });
+
+  it('AC5: several proposals stack in wire order, each with its own Confirm and Cancel, and no control confirms more than one', async () => {
+    // Mutation (Rule 19): add a control that confirms every card at once -> the button roster
+    // below goes red naming it.
+    const { host } = await mountWithProposals([
+      wireProposal(),
+      wireProposal({ proposalId: 'p2', target: { type: 'web-application', scope: 'instance', id: '/csp/other' } }),
+    ]);
+    expect(cardTitles(host)).toEqual([
+      'Proposal \u00b7 Web application /csp/myapp',
+      'Proposal \u00b7 Web application /csp/other',
+    ]);
+    expect(host.querySelectorAll('.ocu-proposal-card-confirm')).toHaveLength(2);
+    expect(host.querySelectorAll('.ocu-proposal-card-cancel')).toHaveLength(2);
+
+    const labels = [...host.querySelectorAll('button')].map(
+      (button) => button.getAttribute('aria-label') ?? button.textContent?.trim()
+    );
+    expect(labels).toEqual([
+      STRINGS.actionNewConversation,
+      STRINGS.agentPanelFullScreen,
+      STRINGS.actionConfirm,
+      STRINGS.actionCancel,
+      STRINGS.actionConfirm,
+      STRINGS.actionCancel,
+      STRINGS.actionSend,
+    ]);
+  });
+
+  it("Cancel on one card takes that card's own status line, and leaves its sibling live", async () => {
+    const { host, fixture } = await mountWithProposals([
+      wireProposal(),
+      wireProposal({ proposalId: 'p2' }),
+    ]);
+    (host.querySelectorAll('.ocu-proposal-card-cancel')[0] as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const cards = [...host.querySelectorAll('app-proposal-card')] as HTMLElement[];
+    expect(cards[0].querySelector('.ocu-proposal-card-status')?.textContent?.trim()).toBe(
+      STRINGS.proposalStatusCanceledByYou
+    );
+    expect(cards[1].querySelector('.ocu-proposal-card-status')).toBeNull();
+    // One card still live, so Send is still the secondary.
+    expect((host.querySelector('.ocu-panel-send') as HTMLElement).classList.contains('ocu-button-secondary')).toBe(true);
+  });
+
+  it('a typed message cancels every live card, and Send returns to primary once none is live', async () => {
+    // Mutation (Rule 19): drop the `cancelLiveCards` call from `sendCurrentDraft` -> this goes red,
+    // and a card the message has already cancelled would still offer Confirm.
+    const { host, fixture } = await mountWithProposals([
+      wireProposal(),
+      wireProposal({ proposalId: 'p2' }),
+    ]);
+    await typeDraft(host, fixture, 'yes');
+    (host.querySelector('.ocu-panel-send') as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+
+    const statuses = [...host.querySelectorAll('.ocu-proposal-card-status')].map((node) =>
+      (node.textContent ?? '').trim()
+    );
+    expect(statuses).toEqual([
+      STRINGS.proposalStatusCanceledByMessage,
+      STRINGS.proposalStatusCanceledByMessage,
+    ]);
+    expect((host.querySelector('.ocu-panel-send') as HTMLElement).classList.contains('ocu-button-primary')).toBe(true);
+  });
+
+  it('Stop cancels nothing: a proposal already posted in that turn stays live', async () => {
+    // Mutation (Rule 19): cancel live cards on Stop -> this goes red, and the New-conversation
+    // test above stays green, which is what separates the two paths.
+    const { schedule, scheduled } = fakeTurnSchedule();
+    const api = fakeTurnApi({
+      [CONVERSATION_PATH]: [{ kind: 'ok', status: 201, body: { conversationId: 'convo-1' } }],
+      [TURN_PATH]: [{ kind: 'ok', status: 202, body: { turnId: 'turn-1' } }],
+      [turnProgressPath('turn-1')]: [progressWith([wireProposal()], 'running')],
+      [turnStopPath('turn-1')]: [{ kind: 'ok', status: 200, body: { stopRequested: true } }],
+    });
+    const turn = stubTurnStore({ api: api as never, schedule });
+    const { host, fixture } = await mount({ rows: [{ enabled: true }], turn });
+    await typeDraft(host, fixture, 'enable it');
+    (host.querySelector('.ocu-panel-send') as HTMLButtonElement).click();
+    await turnSettle();
+    scheduled.shift()?.run();
+    await turnSettle();
+    fixture.detectChanges();
+    expect(host.querySelectorAll('app-proposal-card')).toHaveLength(1);
+
+    // Send reads Stop while the turn runs; pressing it asks the instance to stop and cancels
+    // nothing here.
+    (host.querySelector('.ocu-panel-send') as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+    expect(api.calls.some((call) => call.path === turnStopPath('turn-1'))).toBe(true);
+    expect(host.querySelector('.ocu-proposal-card-status')).toBeNull();
+    expect(host.querySelector('.ocu-proposal-card-confirm')).not.toBeNull();
+  });
+
+  it('New conversation clears the transcript, so every live card goes with it', async () => {
+    const { host, fixture } = await mountWithProposals([wireProposal()]);
+    expect(host.querySelectorAll('app-proposal-card')).toHaveLength(1);
+    (host.querySelector('.ocu-panel-new-conversation') as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+    expect(host.querySelectorAll('app-proposal-card')).toHaveLength(0);
+    expect((host.querySelector('.ocu-panel-send') as HTMLElement).classList.contains('ocu-button-primary')).toBe(true);
+  });
+
+  it('a live card under the kill switch offers no Confirm, only the published status line', async () => {
+    // The restraint object is read on every call (`testing/agent-status.ts`), so the switch is
+    // flipped the way the instance flips it: the state changes and the next read answers
+    // differently.
+    const restraint: { -readonly [K in keyof Restraint]?: Restraint[K] } = {};
+    const { schedule, scheduled } = fakeTurnSchedule();
+    const api = fakeTurnApi({
+      [CONVERSATION_PATH]: [{ kind: 'ok', status: 201, body: { conversationId: 'convo-1' } }],
+      [TURN_PATH]: [{ kind: 'ok', status: 202, body: { turnId: 'turn-1' } }],
+      [turnProgressPath('turn-1')]: [progressWith([wireProposal()])],
+    });
+    const turn = stubTurnStore({ api: api as never, schedule });
+    const { host, fixture, agentStatus } = await mount({ rows: [{ enabled: true }], turn, restraint });
+    await typeDraft(host, fixture, 'enable it');
+    (host.querySelector('.ocu-panel-send') as HTMLButtonElement).click();
+    await turnSettle();
+    scheduled.shift()?.run();
+    await turnSettle();
+    fixture.detectChanges();
+    expect(host.querySelector('.ocu-proposal-card-confirm')).not.toBeNull();
+
+    restraint.killSwitch = true;
+    restraint.killSwitchAudience = 'everyone';
+    restraint.killSwitchReason = 'Paused during the change freeze';
+    restraint.blocked = true;
+    await agentStatus.load();
+    fixture.detectChanges();
+    expect(host.querySelector('.ocu-proposal-card-status')?.textContent?.trim()).toBe(
+      STRINGS.proposalStatusAgentSwitchedOff
+    );
+    // Across the transition Confirm is `aria-disabled` rather than removed while it could hold
+    // focus; it goes once the status line has taken focus.
+    expect(host.querySelector('.ocu-proposal-card-confirm')?.getAttribute('aria-disabled')).toBe('true');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    fixture.detectChanges();
+    expect(host.querySelector('.ocu-proposal-card-confirm')).toBeNull();
+  });
+
+  it('a card whose countdown has run out is expired to this panel too: Send returns to primary and a typed message does not relabel it', async () => {
+    // Mutation (Rule 19): drop the clock from `phaseFor` -> both halves go red. The panel and the
+    // card each resolve a phase, so without the clock in `phaseFor` the card draws itself
+    // `Expired` while `liveCards` still counts it live: Send stays secondary with no Confirm
+    // anywhere in the view, the ticker never disarms, and the next typed message overwrites
+    // `Expired` with `Canceled - by your message`, taking Re-propose away (WCAG 2.2.1).
+    //
+    // The expiry is already past at mount, so the assertion needs no timer: the clock the panel
+    // reads is `Date.now()` either way.
+    const { host, fixture } = await mountWithProposals([
+      wireProposal({ expiresAt: new Date(Date.now() - 1_000).toISOString() }),
+    ]);
+    expect(host.querySelectorAll('app-proposal-card')).toHaveLength(1);
+    expect(host.querySelector('.ocu-proposal-card-status')?.textContent?.trim()).toBe(
+      STRINGS.proposalStatusExpired
+    );
+    expect(host.querySelector('.ocu-proposal-card-confirm')).toBeNull();
+    const send = host.querySelector('.ocu-panel-send') as HTMLElement;
+    expect(send.classList.contains('ocu-button-primary')).toBe(true);
+    expect(send.classList.contains('ocu-button-secondary')).toBe(false);
+
+    // And the message cancels nothing that had already run out of time.
+    await typeDraft(host, fixture, 'what happened?');
+    (host.querySelector('.ocu-panel-send') as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+    expect(host.querySelector('.ocu-proposal-card-status')?.textContent?.trim()).toBe(
+      STRINGS.proposalStatusExpired
+    );
+    expect(host.querySelector('.ocu-proposal-card-repropose')).not.toBeNull();
+  });
+
+  it('the confirm sentence is appended once, never again to a reply that already ends with it', async () => {
+    // Mutation (Rule 19): drop `replyWithConfirmSentence`'s "already ends with it" guard -> this
+    // goes red on a doubled sentence. The integration AC above uses `toContain`, which a second
+    // copy satisfies just as well.
+    const { schedule, scheduled } = fakeTurnSchedule();
+    const answered = progressWith([wireProposal()]);
+    const api = fakeTurnApi({
+      [CONVERSATION_PATH]: [{ kind: 'ok', status: 201, body: { conversationId: 'convo-1' } }],
+      [TURN_PATH]: [{ kind: 'ok', status: 202, body: { turnId: 'turn-1' } }],
+      [turnProgressPath('turn-1')]: [
+        {
+          ...answered,
+          body: { ...answered.body, reply: 'I have prepared the change.\n\n' + STRINGS.proposalConfirmSentence },
+        },
+      ],
+    });
+    const turn = stubTurnStore({ api: api as never, schedule });
+    const mounted = await mount({ rows: [{ enabled: true }], turn });
+    await typeDraft(mounted.host, mounted.fixture, 'enable the demo application');
+    (mounted.host.querySelector('.ocu-panel-send') as HTMLButtonElement).click();
+    await turnSettle();
+    scheduled.shift()?.run();
+    await turnSettle();
+    mounted.fixture.detectChanges();
+
+    const text = mounted.host.querySelector('.ocu-panel-message-agent-text')?.textContent ?? '';
+    expect(text.split(STRINGS.proposalConfirmSentence)).toHaveLength(2);
+  });
+
+  it('DW-1213: a restored transcript renders its cards expired, with Re-propose and no countdown', async () => {
+    // Mutation (Rule 19): make `parseRestoredEntry` hard-code `proposals: []` again -> this goes
+    // red on the card count, and a reload would lose the card with no other route to it.
+    const api = fakeTurnApi({
+      [conversationReadPathFor('convo-1')]: [
+        {
+          kind: 'ok',
+          status: 200,
+          body: {
+            conversationId: 'convo-1',
+            turns: [
+              {
+                seq: 1,
+                message: 'enable the demo application',
+                state: 'completed',
+                reply: 'I have prepared the change.',
+                error: null,
+                steps: [],
+                stepsDropped: 0,
+                proposals: [wireProposal()],
+              },
+            ],
+          },
+        },
+      ],
+    });
+    const storage = memoryStorage();
+    storage.setItem('ocupilot.conversation', 'convo-1');
+    const turn = stubTurnStore({ api: api as never, storage, navigationType: () => 'reload' });
+    await turn.restore();
+    const { host } = await mount({ rows: [{ enabled: true }], turn });
+
+    expect(host.querySelectorAll('app-proposal-card')).toHaveLength(1);
+    expect(host.querySelector('.ocu-proposal-card-status')?.textContent?.trim()).toBe(
+      STRINGS.proposalStatusExpired
+    );
+    expect(host.querySelector('.ocu-proposal-card-repropose')?.textContent?.trim()).toBe(
+      STRINGS.actionRepropose
+    );
+    expect(host.querySelector('.ocu-proposal-card-confirm')).toBeNull();
+    expect(host.querySelector('.ocu-proposal-card-countdown')).toBeNull();
+    // A restored card is terminal, so Send is a primary again.
+    expect((host.querySelector('.ocu-panel-send') as HTMLElement).classList.contains('ocu-button-primary')).toBe(true);
   });
 });

@@ -4189,6 +4189,135 @@ app-data-table {
   font-weight: 600;
 }
 
+// The countdown caption, in the header beside the title: `{typography.caption}`
+// `{colors.on-surface-variant}`, taking `{colors.warning}` from 1:00 and holding it to 0:00
+// (DESIGN.md `:1184` Live row). It is never a live region -- the card's own polite region
+// announces the last minute once -- so nothing here is read per second.
+.ocu-proposal-card-countdown {
+  @include typo.ocu-type('caption');
+
+  flex: 0 0 auto;
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-proposal-card-countdown-warning {
+  color: var(--ocu-warning);
+  font-weight: 600;
+}
+
+// The unchanged-fields disclosure once there are rows behind it: the same line the caption draws,
+// as a button with no chrome of its own.
+.ocu-proposal-card-disclosure {
+  appearance: none;
+  border: 0;
+  background: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ocu-proposal-card-disclosure:focus-visible {
+  outline: 2px solid var(--ocu-focus-ring);
+  outline-offset: 2px;
+}
+
+.ocu-proposal-card-unchanged-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-1);
+  padding-left: var(--ocu-space-3);
+}
+
+// An unchanged field shows its value once, with no arrow and no direction (DESIGN.md `diff-row`).
+.ocu-diff-row-unchanged .ocu-diff-value {
+  color: var(--ocu-on-surface-variant);
+}
+
+// The masked-secret fields the user fills before Confirm (DESIGN.md `:1184` item 5).
+.ocu-proposal-card-secrets {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ocu-space-1);
+}
+
+.ocu-proposal-card-secret {
+  width: 100%;
+}
+
+// The in-card warning, above the footer: the banner pairing, never yellow (DESIGN.md's Don't
+// column on yellow as a warning colour).
+.ocu-proposal-card-warning {
+  margin: 0;
+}
+
+// The footer strip: a 1px top edge, the runs-as caption, Confirm, Cancel and the guard caption,
+// and the status line that replaces the buttons (DESIGN.md `:1184` item 6).
+.ocu-proposal-card-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ocu-space-2);
+  margin-top: var(--ocu-space-1);
+  padding-top: var(--ocu-space-2);
+  border-top: 1px solid var(--ocu-outline-variant);
+}
+
+.ocu-proposal-card-runs-as,
+.ocu-proposal-card-guard {
+  @include typo.ocu-type('caption');
+
+  flex: 1 1 100%;
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
+}
+
+// The status line: the focus destination after Confirm, Cancel and expiry, restrained by role at
+// full opacity (DESIGN.md rule 7). `tabindex="-1"` in the template is what lets it take focus
+// without becoming a Tab stop.
+.ocu-proposal-card-status {
+  @include typo.ocu-type('caption');
+
+  flex: 1 1 100%;
+  margin: 0;
+  padding: var(--ocu-space-1) var(--ocu-space-2);
+  border-radius: var(--ocu-radius-sm);
+  background: var(--ocu-restrained-container);
+  color: var(--ocu-restrained);
+  font-weight: 600;
+}
+
+.ocu-proposal-card-status:focus-visible {
+  outline: 2px solid var(--ocu-focus-ring);
+  outline-offset: 2px;
+}
+
+.ocu-proposal-card-status-confirmed {
+  background: var(--ocu-success-container);
+  color: var(--ocu-success);
+}
+
+// The restrained card: expired, canceled, confirmed-and-spent or kill-switched. **By role, at
+// opacity 1** (DESIGN.md rule 7: a 60% fade measured 2.77-4.38:1 over the sheet, and a receded
+// card is still read -- a reloaded transcript is made of them). The agent's two blocks keep their
+// tint, their heading and their colours at full strength.
+.ocu-proposal-card-restrained {
+  border-left-color: var(--ocu-restrained);
+  opacity: 1;
+}
+
+.ocu-proposal-card-restrained .ocu-proposal-card-title,
+.ocu-proposal-card-restrained .ocu-diff-field,
+.ocu-proposal-card-restrained .ocu-diff-before .ocu-diff-value,
+.ocu-proposal-card-restrained .ocu-diff-after .ocu-diff-value {
+  color: var(--ocu-restrained);
+}
+
+.ocu-proposal-card-restrained .ocu-proposal-card-reverse,
+.ocu-proposal-card-restrained .ocu-proposal-card-reverse-label,
+.ocu-proposal-card-restrained .ocu-proposal-card-unchanged {
+  color: var(--ocu-on-surface-variant);
+}
+
 // --- The rail's attention dot (Story 3.6) ----------------------------------------------------
 //
 // A disc of `{colors.agent-accent-dark}` in BOTH modes with a `{colors.shell}` ring, at the

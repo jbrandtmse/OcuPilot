@@ -453,6 +453,17 @@ ClassMethod ToolIdentifier() As %String
     Quit ..Field("toolIdentifier")
 }
 
+/// <p>The client string key holding the <b>singular</b> noun for this screen's primary entity type
+/// (AD-5, AD-14), or <code>""</code> for a screen that publishes none yet.</p>
+/// <p>A proposal card's title is the entity noun and the target's own name, and neither the wire's
+/// entity-type slug nor <method>LabelKey</method>'s plural screen label is that noun -- so it is
+/// declared here, once, beside the entity type it belongs to.
+/// <method>OcuPilot.Screen.Registry.EntityLabelProblem</method> is the grammar.</p>
+ClassMethod EntityLabelKey() As %String
+{
+    Quit ..Field("entityLabelKey")
+}
+
 /// <p>The top-level argument names this screen's write tools take as secret (AD-3, AD-6). Declared
 /// here rather than on a tool class because the confirm channel is the descriptor's: the only keys
 /// a client may supply at confirm are the fields declared secret for that tool, and a tool's input

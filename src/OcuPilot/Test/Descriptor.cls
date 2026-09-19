@@ -1396,6 +1396,53 @@ Method TestEveryRowTargetCorpusCaseGetsItsSentence()
     Do $$$AssertTrue(tRosterRefusals > 0, "the Rosters block carries at least one refusing roster: " _ tRosterRefusals)
 }
 
+/// <p>AD-5, AD-14: the entity-label rule's instance-side engine, over the same four shapes
+/// <file>ui/tools/screen-mirror.test.mjs</file> holds <code>entityLabelProblem</code> to, and the
+/// same four sentences -- a reword on one side only goes red on the other.</p>
+/// <p>Mutation: return <code>""</code> for a noun declared with no entity type -> the fourth
+/// assertion goes red in both engines. Delete the
+/// <method>OcuPilot.Screen.Registry.EntityLabelProblem</method> call from
+/// <method>OcuPilot.Screen.Registry.Validate</method> -> the fixture-roster assertions go red while
+/// the shipped roster stays green either way, which is what tells the rule from its wiring.</p>
+Method TestTheEntityLabelRuleAnswersTheSameSentencesAsTheMirror()
+{
+    Set tRosterSC = ##class(OcuPilot.Test.EntityLabelRegistry).Validate(.tRosterProblem)
+    Do $$$AssertStatusNotOK(tRosterSC, "a roster declaring a noun for no entity type is refused")
+    Do $$$AssertTrue(tRosterProblem [ "OcuPilot.Test.EntityLabel.Bad", "the refusal names the offending class: " _ tRosterProblem)
+    Do $$$AssertTrue(tRosterProblem [ "entityLabelKey names the singular noun", "and the rule it is about")
+
+    Set tSC = ##class(OcuPilot.Screen.Descriptor.WebAppList).DeclarationJson(.tDeclaration)
+    Do $$$AssertStatusOK(tSC, "the web applications list's declaration reads")
+    If '$IsObject(tDeclaration) Quit
+    Do $$$AssertEquals(tDeclaration.%Get("entityLabelKey"), "proposalEntityWebApplication", "it declares the singular noun's key")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).EntityLabelProblem(tDeclaration), "", "and passes the rule")
+
+    Do tDeclaration.%Remove("entityLabelKey")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).EntityLabelProblem(tDeclaration), "", "an absent key is sound: the screen publishes no noun")
+
+    Do tDeclaration.%Set("entityLabelKey", "", "string")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).EntityLabelProblem(tDeclaration), "", "and so is an empty one")
+
+    Do tDeclaration.%Set("entityLabelKey", 7, "number")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).EntityLabelProblem(tDeclaration), "entityLabelKey is not a string key", "a non-string key is refused")
+
+    Do tDeclaration.%Set("entityLabelKey", "proposalEntityWebApplication", "string")
+    Do tDeclaration.%Set("entityType", "", "string")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).EntityLabelProblem(tDeclaration), "entityLabelKey names the singular noun for this screen's entity type, and none is declared", "a noun declared for no entity type is refused")
+
+    ; Every shipped descriptor passes, so the closed rule refuses nothing that ships.
+    Set tListSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tRoster)
+    Do $$$AssertStatusOK(tListSC, "the shipped roster reads")
+    If $$$ISERR(tListSC) Quit
+    For tI = 1:1:$ListLength(tRoster) {
+        Set tClass = $List(tRoster, tI)
+        Set tDeclSC = $ClassMethod(tClass, "DeclarationJson", .tShipped)
+        Do $$$AssertStatusOK(tDeclSC, tClass _ ": the declaration reads")
+        If $$$ISERR(tDeclSC) Continue
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).EntityLabelProblem(tShipped), "", tClass _ ": its entity label passes")
+    }
+}
+
 /// <p>AC9 -- the Locks descriptor's read and table are exactly the eight fields and seven columns
 /// Boundaries names: no transaction column, no <code>Removable</code>, <code>CanBeExamined</code>
 /// or <code>RemoteOwner</code> field, no derived field, and no <code>$zu(67,19</code> anywhere in

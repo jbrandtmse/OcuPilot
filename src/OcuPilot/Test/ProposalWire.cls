@@ -25,7 +25,7 @@ Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
 Parameter FRESH = "{""Enabled"":false,""Description"":""before"",""Resource"":""""}";
 
 /// <p>The keys the progress payload's <code>proposals[]</code> entry carries, comma-separated.</p>
-Parameter WIREKEYS = "proposalId,target,expiresAt,tool,changed,unchangedCount,rationale,expectedImpact,reverse,state";
+Parameter WIREKEYS = "proposalId,target,expiresAt,tool,changed,unchangedCount,rationale,expectedImpact,reverse,state,auditWarning";
 
 Method OnBeforeOneTest() As %Status
 {
@@ -45,8 +45,19 @@ Method OnAfterOneTest() As %Status
 /// <var>pDescription</var>.</p>
 Method Seed(pUser As %String, pTurnKey As %String, pDescription As %String, Output pKey As %String) As %Status
 {
+    Quit ..SeedIn(pUser, "probe-conv", pTurnKey, pDescription, "probe.proposal.update", 0, .pKey)
+}
+
+/// <p>Mint one proposal for <var>pUser</var> in conversation <var>pConvKey</var> on turn
+/// <var>pTurnKey</var>, under tool <var>pTool</var>, changing <var>pDescription</var>.
+/// <var>pAuditing</var> adds the auditing flag the kernel's own warning predicate reads, so the
+/// warning can be driven from a value rather than from a tool that has not shipped yet.</p>
+Method SeedIn(pUser As %String, pConvKey As %String, pTurnKey As %String, pDescription As %String, pTool As %String, pAuditing As %Boolean, Output pKey As %String) As %Status
+{
     Do ##class(OcuPilot.Test.ProposalFixture).Arm(..#FRESH)
-    Set tSC = $ClassMethod(..#MINT, "Mint", ..#SCREEN, "probe.proposal.update", pUser, "probe-conv", pTurnKey, {"Name": "/csp/probe", "Description": (pDescription), "rationale": "why", "expectedImpact": "what", "reverse": "how"}, ..#LIMITS, .tProposal, .tHttp, .tFault, "WebApp.App", "name", "/csp/probe", "Name", $ListBuild("Description"))
+    Set tArgs = {"Name": "/csp/probe", "Description": (pDescription), "rationale": "why", "expectedImpact": "what", "reverse": "how"}
+    If pAuditing '= "" Do tArgs.%Set($Parameter("OcuPilot.Kernel.Proposal.Mint", "AUDITINGFIELD"), ''pAuditing, "boolean")
+    Set tSC = $ClassMethod(..#MINT, "Mint", ..#SCREEN, pTool, pUser, pConvKey, pTurnKey, tArgs, ..#LIMITS, .tProposal, .tHttp, .tFault, "WebApp.App", "name", "/csp/probe", "Name", $ListBuild("Description"))
     If $$$ISERR(tSC) Quit tSC
     Set pKey = tProposal.%Get("proposalId")
     Quit $$$OK
@@ -136,6 +147,96 @@ Method TestTheTurnsProposalsComeBackOldestFirst()
     Do $$$AssertEquals(tRows.%Size(), 2, "both come back")
     Do $$$AssertEquals(tRows.%Get(0).%Get("proposalId"), tFirst, "the first one minted comes first")
     Do $$$AssertEquals(tRows.%Get(1).%Get("proposalId"), tSecond, "and the second second")
+}
+
+/// <p>AD-10, AD-15: the in-card audit warning is the kernel's own predicate, projected on the wire
+/// row -- true for the auditing write turning auditing off, false for every tool that ships
+/// today.</p>
+/// <p>Mutation: make <method>OcuPilot.Kernel.Proposal.Mint.WarnsAuditingOff</method> answer 0
+/// unconditionally -- the first half goes red; make it answer 1 unconditionally -- the second
+/// half does.</p>
+Method TestTheAuditWarningIsTheKernelsPredicateOnTheWire()
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).SeedTurn(..#PROBEUSER, "completed", .tTurn), "a turn is seeded")
+    Set tAuditTool = $Parameter("OcuPilot.Kernel.Proposal.Mint", "AUDITINGTOOL")
+    Do $$$AssertStatusOK(..SeedIn(..#PROBEUSER, "probe-conv", tTurn, "after", tAuditTool, 0, .tWarned), "the auditing write is minted with auditing off")
+    Do $$$AssertStatusOK(..SeedIn(..#PROBEUSER, "probe-conv", tTurn, "other", "probe.proposal.update", "", .tQuiet), "and an ordinary write beside it")
+
+    Set tSC = ##class(OcuPilot.Kernel.State.Propose).GuardedRowsForTurn(tTurn, ..#PROBEUSER, .tRows)
+    Do $$$AssertStatusOK(tSC, "the turn's proposals are read")
+    Do $$$AssertEquals(tRows.%Size(), 2, "both come back")
+    Do $$$AssertEquals(tRows.%Get(0).%GetTypeOf("auditWarning"), "boolean", "the warning is a boolean on the wire")
+    Do $$$AssertEquals(tRows.%Get(0).%Get("auditWarning"), 1, "true for the write that turns auditing off")
+    Do $$$AssertEquals(tRows.%Get(1).%Get("auditWarning"), 0, "and false for an ordinary write")
+}
+
+/// <p>AD-6, AD-9, DW-1213: a restored conversation's proposals are read once for the whole
+/// transcript and grouped by the turn that minted them, so a reload can render each turn's own
+/// cards.</p>
+/// <p>Mutation: key <method>OcuPilot.Kernel.State.Propose.GuardedRowsForConvo</method> on
+/// <code>TurnKey</code> instead of <code>ConvKey</code> -- the two-turn grouping goes red.</p>
+Method TestTheConversationReadGroupsProposalsByTurn()
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).SeedTurn(..#PROBEUSER, "completed", .tFirstTurn), "a first turn is seeded")
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).SeedTurn(..#PROBEUSER, "completed", .tSecondTurn), "and a second")
+    Do $$$AssertStatusOK(..SeedIn(..#PROBEUSER, "probe-conv-a", tFirstTurn, "one", "probe.proposal.update", "", .tOne), "one proposal on the first turn")
+    Do $$$AssertStatusOK(..SeedIn(..#PROBEUSER, "probe-conv-a", tSecondTurn, "two", "probe.proposal.update", "", .tTwo), "one on the second")
+    Do $$$AssertStatusOK(..SeedIn(..#PROBEUSER, "probe-conv-b", tSecondTurn, "three", "probe.proposal.update", "", .tThree), "and one in another conversation")
+
+    Set tSC = ##class(OcuPilot.Kernel.State.Propose).GuardedRowsForConvo("probe-conv-a", ..#PROBEUSER, .tByTurn)
+    Do $$$AssertStatusOK(tSC, "the conversation's proposals are read")
+    Do $$$AssertEquals($Data(tByTurn(tFirstTurn)), 1, "the first turn has its own subscript")
+    Do $$$AssertEquals($Data(tByTurn(tSecondTurn)), 1, "and so does the second")
+    Do $$$AssertEquals(tByTurn(tFirstTurn).%Size(), 1, "one row under the first turn")
+    Do $$$AssertEquals(tByTurn(tFirstTurn).%Get(0).%Get("proposalId"), tOne, "and it is the one minted there")
+    Do $$$AssertEquals(tByTurn(tSecondTurn).%Size(), 1, "one row under the second turn")
+    Do $$$AssertEquals(tByTurn(tSecondTurn).%Get(0).%Get("proposalId"), tTwo, "and it is that turn's own")
+    Do $$$AssertEquals(tByTurn(tFirstTurn).%Get(0).%Get("state"), ##class(OcuPilot.Kernel.State.Propose).#STATELIVE, "the wire state stays live: a restored card is shown terminal by the client")
+}
+
+/// <p>AD-33: a conversation read for a user who does not own it answers nothing, and the store's
+/// own predicate is what decides it.</p>
+Method TestAnotherUsersConversationAnswersNoProposals()
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).SeedTurn(..#PROBEUSER, "completed", .tTurn), "a turn is seeded")
+    Do $$$AssertStatusOK(..SeedIn(..#PROBEUSER, "probe-conv-a", tTurn, "one", "probe.proposal.update", "", .tOne), "and one proposal is minted in it")
+    Set tSC = ##class(OcuPilot.Kernel.State.Propose).GuardedRowsForConvo("probe-conv-a", ..#OTHERUSER, .tByTurn)
+    Do $$$AssertStatusOK(tSC, "the read succeeds for another user")
+    Do $$$AssertEquals($Data(tByTurn), 0, "and answers no subscript at all")
+}
+
+/// <p>A proposal minted before the turn key reached the conversation entry -- or by anything that
+/// stored none -- is unreachable from a restored conversation rather than attached to an arbitrary
+/// turn.</p>
+Method TestAProposalWithNoTurnKeyReachesNoRestoredTurn()
+{
+    Do $$$AssertStatusOK(..SeedIn(..#PROBEUSER, "probe-conv-a", "", "one", "probe.proposal.update", "", .tOne), "a proposal is minted with no turn key")
+    Set tSC = ##class(OcuPilot.Kernel.State.Propose).GuardedRowsForConvo("probe-conv-a", ..#PROBEUSER, .tByTurn)
+    Do $$$AssertStatusOK(tSC, "the conversation's proposals are read")
+    Do $$$AssertEquals($Data(tByTurn), 0, "and it is grouped under no turn")
+}
+
+/// <p>The conversation handler attaches the proposals after the owner gate that answers 404 for a
+/// conversation the caller does not own, before the payload is written, and outside every
+/// escalated frame (AD-9) -- and a store it cannot read degrades to no proposals rather than
+/// failing the read.</p>
+Method TestTheConversationHandlerAttachesThemInsideItsOwnerGate()
+{
+    Set tSC = ##class(%Compiler.UDL.TextServices).GetTextAsString($Namespace, "OcuPilot.Api.Conversation", .tSource)
+    Do $$$AssertStatusOK(tSC, "the handler's source is readable")
+    Set tHandler = $Piece(tSource, "ClassMethod HandleRead", 2)
+    Set tAttach = $Piece(tHandler, "ClassMethod AttachProposals", 2)
+    Set tHandler = $Piece(tHandler, "ClassMethod AttachProposals", 1)
+    Do $$$AssertTrue(tHandler [ "AttachProposals", "the conversation handler attaches the turns' proposals")
+    Do $$$AssertTrue($Find(tHandler, "GuardedView") < $Find(tHandler, "AttachProposals"), "after the owner gate, never before it")
+    Do $$$AssertTrue($Find(tHandler, "AttachProposals") < $Find(tHandler, "Response).JSON"), "and before the payload is written")
+
+    Do $$$AssertTrue(tAttach [ "GuardedRowsForConvo", "the attachment reads the conversation-scoped projection")
+    Do $$$AssertTrue(tAttach [ "GuardedTurnKeys", "and the turn keys it matches them by")
+    ; Both reads' failures are logged and the array left empty, which is what makes a store that
+    ; cannot be read a card that does not appear rather than a conversation read that fails.
+    Do $$$AssertEquals($Length(tAttach, "LogRaw") - 1, 3, "every failure path logs: the two reads and the catch")
+    Do $$$AssertTrue($Length(tAttach, "Set tRows = []") > 1, "and a turn with no rows carries an empty array")
 }
 
 /// <p>The progress handler reads the turn's proposals, and does so after the owner gate that

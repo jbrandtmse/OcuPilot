@@ -4,7 +4,7 @@ title: OcuPilot Experience
 description: Information architecture, behavior, states, interactions, accessibility and key flows for OcuPilot
 status: final
 created: '2026-09-08'
-updated: '2026-09-08'
+updated: '2026-09-19'
 project: OcuPilot
 design: DESIGN.md
 sources:
@@ -378,6 +378,8 @@ Microcopy. Brand voice and aesthetic posture live in `DESIGN.md`.
 | "Severity" · "Message" · "No entries." · "No matches." · "Load newer" · "Jump to top" · "Jump to bottom" · "Debug" · "Info" · "Warning" · "Severe" · "Fatal" | The log viewer both log screens share, built by Story 6.13 and declared by Story 6.14 (`:408`, `:579`): its two column headers beyond the Audit database viewer's "Time" (`:321`) and the Processes list's "Process ID" (`:319`), which the time and pid columns reuse; its two empty states, published as the archetype row words them rather than as a scope-naming empty state; its tail control (`:402`) and its two jump controls (`:403`); and the five words the vendor's own severity scale names, one more than `:409` lists because the scale carries a debug level. "Raw" is the OpenAPI viewer's (`:346`), "Search" the audit criteria form's (`:322`), "Clear filter" the log viewer's own bar (`:406`, `:412`) and "read this log" the application error log's (`:329`) |
 | "alerts.log" · "<n> of <N>" | alerts.log viewer (Story 6.13): its side-bar entry and screen title, the first Logs entry (`:84`, `:163`); and the polite match count the sticky search announces (`:408`, `:647`). [AMENDED 2026-09-18, Story 6.13 spec gate (orchestrator-approved): "Recent entries are unavailable — showing the file tail." is struck with the monitoring half the story does not ship (DW-1116, DW-1117); the screen reads alerts.log through `LogSourcePort` alone, so no half can fail while the other answers]
 | "messages.log" · "Clear filter" | messages.log viewer (Story 6.14): its side-bar entry and screen title, the second Logs entry (`:85`, `:163`); and the control that clears the severity-chip filter (`:412`), published here rather than reused because `:403` names "Clear filter" only as a `button-text` example in Component Patterns and no Fixed strings row has carried it (DW-1109) |
+| "Web application" | proposal card title's singular entity noun for the `web-application` entity type, declared on the screen descriptor (AD-5, AD-14) |
+| "Agent writes will no longer be marked in the audit database." | proposal card warning above the footer, on a write that would turn auditing off (FR-22, FR-47) |
 
 ## Component Patterns
 

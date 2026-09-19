@@ -1117,6 +1117,16 @@ export const STRINGS = {
   // macOS)" beside the Ctrl+I form, and the extractor derives this value from that row.
   agentComposerCaptionMac: 'Enter to send \u00b7 Shift+Enter for a new line \u00b7 \u2318I to focus',
 
+  // Two Fixed strings rows this story adds (Story 5.2), gated like every other table literal.
+  //
+  // The entity noun is the singular the card title needs: the wire carries the slug
+  // `web-application` and the mirror's `labelKey` is the plural screen label, so a screen
+  // descriptor declares this key and the card resolves it through `stringFor`.
+  /** EXPERIENCE.md:381 */
+  proposalEntityWebApplication: 'Web application',
+  /** EXPERIENCE.md:382 */
+  proposalAuditWarning: 'Agent writes will no longer be marked in the audit database.',
+
 } as const;
 
 /**

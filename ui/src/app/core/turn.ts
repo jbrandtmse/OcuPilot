@@ -113,6 +113,14 @@ export interface TurnErrorInfo {
 /** The one proposal state a card is live in (`OcuPilot.Kernel.State.Propose`'s `STATELIVE`). */
 export const PROPOSAL_LIVE_STATE = 'live';
 
+/**
+ * The state a restored proposal is recorded in (`OcuPilot.Kernel.State.Propose`'s `STATEEXPIRED`).
+ *
+ * The wire never sends it yet -- Story 5.3 owns the expiry that closes a row -- and the restore
+ * path below writes it locally, which is what makes a restored card terminal on arrival.
+ */
+export const PROPOSAL_EXPIRED_STATE = 'expired';
+
 /** A proposal's scoped target (AD-13), as the instance minted it. */
 export interface TurnProposalTarget {
   readonly type: string;
@@ -147,6 +155,8 @@ export interface TurnProposal {
   readonly expectedImpact: string;
   readonly reverse: string;
   readonly state: string;
+  /** Whether this write would stop the instance marking agent writes (AD-10, AD-15). */
+  readonly auditWarning: boolean;
 }
 
 /**
@@ -172,8 +182,13 @@ export interface TurnEntry {
   readonly error: TurnErrorInfo | null;
   readonly steps: readonly TurnStep[];
   readonly stepsDropped: number;
-  /** The proposals this turn minted (AD-6). Empty for a restored entry: the conversation read
-   * carries none, and a proposal restored from a reload is always expired anyway. */
+  /**
+   * The proposals this turn minted (AD-6). A restored entry carries them too, read off the
+   * conversation view: a proposal may still be live, unburned and unexpired on the instance after
+   * a reload, and the card is shown expired by product decision rather than because it is
+   * (EXPERIENCE.md's expiry step, whose own rule is that a card restored from a reloaded
+   * transcript is always shown that way, with Re-propose as the accommodation).
+   */
   readonly proposals: readonly TurnProposal[];
   /** True only for the turn this tab is currently running. Never true for a restored entry. */
   readonly live: boolean;
@@ -324,6 +339,7 @@ function parseProposal(value: unknown): TurnProposal | null {
     expectedImpact: textAt(row, 'expectedImpact'),
     reverse: textAt(row, 'reverse'),
     state: textAt(row, 'state'),
+    auditWarning: boolAt(row, 'auditWarning'),
   };
 }
 
@@ -335,6 +351,24 @@ export function parseProposals(value: unknown): TurnProposal[] {
     if (proposal !== null) proposals.push(proposal);
   }
   return proposals;
+}
+
+/**
+ * `proposals[]` as a **restored** turn carries them: parsed, then recorded terminal.
+ *
+ * The wire's own `state` is `live` on every row the instance answers with, because the expiry that
+ * closes one is Story 5.3's. A restored card is nonetheless shown expired, with Re-propose -- so
+ * the terminal state is decided here, on the restore path, and never read off the wire. That is
+ * also what keeps a reload from arming the AD-43 pause: `publishProposals` opens a proposal only
+ * while its state is live, so a set that is terminal on arrival publishes nothing.
+ */
+export function restoredProposals(value: unknown): TurnProposal[] {
+  return parseProposals(value).map((proposal) => ({ ...proposal, state: PROPOSAL_EXPIRED_STATE }));
+}
+
+/** Every proposal `entries` carries, flattened -- what `restore()` hands the publisher. */
+function proposalsOf(entries: readonly TurnEntry[]): readonly TurnProposal[] {
+  return entries.flatMap((entry) => [...entry.proposals]);
 }
 
 function parseError(value: unknown): TurnErrorInfo | null {
@@ -383,7 +417,7 @@ function parseRestoredEntry(value: unknown): TurnEntry | null {
     error,
     steps: settledSteps(parseSteps(row['steps']), error),
     stepsDropped: numberAt(row, 'stepsDropped'),
-    proposals: [],
+    proposals: restoredProposals(row['proposals']),
     live: false,
   };
 }
@@ -579,6 +613,13 @@ export class TurnStore {
         if (entry !== null) entries.push(entry);
       }
       this.entriesValue = entries;
+      // The restore path publishes the restored set through the store's one publisher, and that
+      // set is terminal on arrival (`restoredProposals`), so it opens nothing: a reload leaves
+      // `RefreshService.paused()` false and every bound screen arming normally (AD-43). Routing it
+      // through the publisher rather than skipping the publisher is deliberate -- a restore that
+      // replaces the transcript also closes whatever this store had open, and a second publishing
+      // path is how a suppression rule gets forgotten.
+      this.publishProposals(proposalsOf(entries));
     }
     // Any other outcome (a transport fault, a refusal) leaves the id and the transcript as they
     // were: only a confirmed 404 says the conversation is gone, and dropping an id over a blip

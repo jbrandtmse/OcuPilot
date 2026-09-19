@@ -328,6 +328,23 @@ export function screenForDescriptor(descriptor: string): ScreenDeclaration | nul
   return SCREENS.find((screen) => screen.descriptor === descriptor) ?? null;
 }
 
+/**
+ * The built screen whose own primary `entityType` is `type`, or `null` (AD-5, AD-14).
+ *
+ * The entity-type vocabulary is the kernel's closed enum and a screen selects from it, so this is
+ * the one way a caller holding a reference triple -- a proposal's target, a change event -- reaches
+ * the declaration that publishes that type's singular noun and its secret argument names. Unbuilt
+ * screens are skipped: they declare no surface, so nothing they publish is renderable yet.
+ *
+ * The first match wins where two screens declare the same primary type (a list and its detail),
+ * which is sound because what this is read for -- `entityLabelKey`, `secretArguments` -- is a
+ * property of the entity rather than of the surface.
+ */
+export function screenForEntityType(type: string): ScreenDeclaration | null {
+  if (type === '') return null;
+  return SCREENS.find((screen) => screen.built && screen.entityType === type) ?? null;
+}
+
 /** Whether a screen is keyed by an id, and therefore carries an `/:id` route. */
 export function hasIdRoute(screen: ScreenDeclaration): boolean {
   return screen.id.kind !== 'none';
