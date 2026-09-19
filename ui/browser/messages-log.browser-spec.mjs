@@ -37,6 +37,16 @@ const ROW_SELECTOR = '.ocu-log-rows .ocu-log-row';
 /** DESIGN.md's own geometry for a log row: a fixed height, not a minimum. */
 const ROW_HEIGHT = 28;
 
+/**
+ * How far back in `messages.log` the seeded entries must still sit for the viewer to render them.
+ * The viewer reads a tail, not the whole file, so "present in the file" is not the condition these
+ * tests need -- AC6 needs the five severities inside the measured window and AC5 needs the fatal
+ * one there to filter on. Measured 2026-09-19: with the seed 769 lines from the end, the viewer
+ * rendered 312 rows, AC6 read `saw info,severe,warning` and AC5 read `312 -> 0`. 200 is inside
+ * that observed window with room to spare (DW-1190).
+ */
+const SEED_WINDOW_LINES = 200;
+
 /** A marker no other console-log entry carries, so the seeded entries are findable by search. */
 const MARKER = 'OcuPilotMessagesSpec';
 
@@ -71,12 +81,21 @@ before(async () => {
   const ready = await (await fetch(`${config.origin}${READINESS_PATH}`)).json();
   assert.equal(ready.state, 'installed', `the throwaway must be installed, not ${JSON.stringify(ready)}`);
 
-  // Written only once per throwaway: a second run against the same container would otherwise leave
-  // two copies of every seeded entry, and the counts the chip test compares would drift with the
-  // number of times the suite had been run rather than with what the code does.
+  // Seeded when the entries are not in the tail the viewer reads -- not merely when they are
+  // absent from the file. The suite's own logging writes hundreds of lines per run, so on a second
+  // run against the same container the seed is still in the file and no longer in the window: the
+  // old `grep -c` over the whole file therefore skipped the re-seed and left AC6 and AC5 failing
+  // deterministically from run 2 onwards (DW-1190). Re-seeding does not drift what the chip test
+  // compares, which is `filtered < before` -- both counts grow together.
   const already = spawnSync(
     'docker',
-    ['exec', config.container, 'sh', '-c', `grep -c ${MARKER} /durable/iris/mgr/messages.log || true`],
+    [
+      'exec',
+      config.container,
+      'sh',
+      '-c',
+      `tail -n ${SEED_WINDOW_LINES} /durable/iris/mgr/messages.log | grep -c ${MARKER} || true`,
+    ],
     { encoding: 'utf8', timeout: 60000 }
   );
   if (Number((already.stdout ?? '0').trim()) < SEEDED.length) {
@@ -98,12 +117,18 @@ before(async () => {
     }
     const seeded = spawnSync(
       'docker',
-      ['exec', config.container, 'sh', '-c', `grep -c ${MARKER} /durable/iris/mgr/messages.log || true`],
+      [
+        'exec',
+        config.container,
+        'sh',
+        '-c',
+        `tail -n ${SEED_WINDOW_LINES} /durable/iris/mgr/messages.log | grep -c ${MARKER} || true`,
+      ],
       { encoding: 'utf8', timeout: 60000 }
     );
     assert.ok(
       Number((seeded.stdout ?? '0').trim()) >= SEEDED.length,
-      `the writer put all ${SEEDED.length} entries in the file, not ${seeded.stdout}`
+      `the writer put all ${SEEDED.length} entries inside the last ${SEED_WINDOW_LINES} lines, not ${seeded.stdout}`
     );
   }
 
