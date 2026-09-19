@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '09-19-2026 13:44'
+last_updated: '09-19-2026 17:07'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -171,7 +171,7 @@ development_status:
   epic-10: in-progress
   10-1-the-message-and-tool-definition-adapters: done
   10-2-the-openai-and-google-gemini-adapters: done
-  10-3-the-openai-compatible-adapter-and-local-models: in-progress
+  10-3-the-openai-compatible-adapter-and-local-models: review
   epic-10-retrospective: optional
 
   epic-11: backlog
