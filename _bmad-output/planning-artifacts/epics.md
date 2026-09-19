@@ -3383,6 +3383,8 @@ So that confirming is a judgment rather than a leap of faith.
 - **When** it runs
 - **Then** it is announced to assistive technology **once, at 1:00** - "One minute left to confirm" - and never per second.
 
+- DW-1213: a proposal restored after a reload is dropped on the premise that it is always expired, though a reload one minute after a mint leaves nine confirmable minutes and proposals ride only the progress poll - reconcile this against this story's own "a restored card is **always** shown expired" clause, or declare which of the two governs (ledger; routed by cr 2026-09-19)
+
 ### Story 5.3: Confirm is a user-originated request, and the write is one atomic transition
 
 As a security-minded operator,
