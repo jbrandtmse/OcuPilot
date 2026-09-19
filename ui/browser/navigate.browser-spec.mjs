@@ -34,6 +34,7 @@ import {
   runIris as sharedRunIris,
   scriptReply as sharedScriptReply,
   setTag as sharedSetTag,
+  requireFreeSlot as sharedRequireFreeSlot,
 } from './turnprobe-spec.mjs';
 
 const config = browserConfig();
@@ -132,19 +133,7 @@ function slotOwner() {
  * would otherwise have been refused with.
  */
 async function requireFreeSlot() {
-  const abandoned = await abandonTurns();
-  const deadline = Date.now() + SLOT_FREE_TIMEOUT_MS;
-  let owner = slotOwner();
-  while (owner !== '' && Date.now() < deadline) {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    owner = slotOwner();
-  }
-  assert.equal(
-    owner,
-    '',
-    `${SLOT_GLOBAL} is still held by pid ${owner} after abandoning ${abandoned} turn(s) and waiting ` +
-      `${SLOT_FREE_TIMEOUT_MS} ms, so this file's first Send would be refused TURN.BUSY`
-  );
+  await sharedRequireFreeSlot(config);
 }
 
 function nextTag() {

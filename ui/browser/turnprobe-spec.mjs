@@ -179,3 +179,67 @@ export function armProbeDefinition(options) {
 export function disarmProbeDefinition(options, prior) {
   removeDefinition(options, prior);
 }
+
+/** How long a turn left running by an earlier spec is given to end. */
+export const SLOT_FREE_TIMEOUT_MS = 15000;
+
+/** The global that carries one user's single turn slot (AD-41), named for a failure message. */
+export function slotGlobal(config) {
+  return `^OcuPilotTurnSlot("${config.username}")`;
+}
+
+/** Which process holds `config.username`'s turn slot this instant -- `''` while none does. */
+export function slotOwner(config) {
+  const output = runIris(config.container, [
+    `Write "OCU-SLOT-START:"_##class(OcuPilot.Test.TurnFixture).SlotOwner("${escapeOs(config.username)}")_":OCU-SLOT-END",!`,
+  ]);
+  return markerValue(output, 'SLOT') ?? '';
+}
+
+/**
+ * Abandon every turn `config.username` still has running, through the instance's own route, and
+ * answer how many were abandoned (`-1` when the route itself did not answer).
+ */
+export async function abandonTurns(config) {
+  try {
+    const header = `Basic ${Buffer.from(`${config.username}:${config.password}`).toString('base64')}`;
+    const response = await fetch(`${config.origin}/api/ocupilot/turn/abandon`, {
+      method: 'POST',
+      headers: { Authorization: header },
+    });
+    if (!response.ok) return -1;
+    return Number((await response.json()).abandoned ?? -1);
+  } catch {
+    return -1;
+  }
+}
+
+/**
+ * Refuse to start until `config.username`'s one turn slot is free, and say so in a sentence that
+ * names the cause (DW-1092, DW-1167).
+ *
+ * Every spec in this suite signs in as the same user, so each competes with whatever ran before it
+ * for the one slot AD-41 allows. A taken slot makes the first Send answer 409 `TURN.BUSY` and, in a
+ * spec that never sends at all, makes a Switches save answer nothing the form can show -- after
+ * which the test dies on a bare thirty-second timeout that names none of this. So the slot is
+ * abandoned through the instance's own route first, then polled, and a slot still held after
+ * `SLOT_FREE_TIMEOUT_MS` fails with the global, the holding pid and the code the call would
+ * otherwise have been refused with.
+ *
+ * Hoisted here from the two specs that grew it, so a third consumer does not make a third copy.
+ */
+export async function requireFreeSlot(config) {
+  const abandoned = await abandonTurns(config);
+  const deadline = Date.now() + SLOT_FREE_TIMEOUT_MS;
+  let owner = slotOwner(config);
+  while (owner !== '' && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    owner = slotOwner(config);
+  }
+  if (owner !== '') {
+    throw new Error(
+      `${slotGlobal(config)} is still held by pid ${owner} after abandoning ${abandoned} turn(s) and ` +
+        `waiting ${SLOT_FREE_TIMEOUT_MS} ms, so this file's first call would be refused TURN.BUSY`
+    );
+  }
+}

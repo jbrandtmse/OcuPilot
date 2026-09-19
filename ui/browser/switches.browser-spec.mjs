@@ -30,6 +30,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
+import { requireFreeSlot } from './turnprobe-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -49,6 +50,11 @@ before(async () => {
   assert.notEqual(config.container, LIVE_CONTAINER, 'this spec drives the throwaway, never the live container');
   const ready = await (await fetch(`${config.origin}${READINESS_PATH}`)).json();
   assert.equal(ready.state, 'installed', `the throwaway must be installed, not ${JSON.stringify(ready)}`);
+  // This spec arms no probe, but it saves the Switches form -- and a save made while an earlier
+  // spec's turn still holds this user's one slot (AD-41) is refused, after which the form's own
+  // wait dies on a bare thirty-second timeout naming none of that. DW-1167: the guard is the
+  // shared one, not a third copy.
+  await requireFreeSlot(config);
   browser = await puppeteer.launch(launchOptions(config));
 });
 
