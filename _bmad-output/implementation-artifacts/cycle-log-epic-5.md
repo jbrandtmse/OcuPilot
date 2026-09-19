@@ -55,3 +55,4 @@ Runner mode (parallel /epic-cycle), slot A, worktree `.worktrees/epic-5`, branch
 2026-09-19T14:21:59Z	Epic 5	committed	sha=9bf7c9d submodules= ci=pending run=35448497486 note=harness_repair_DW-1190
 2026-09-19T14:22:29Z	Epic 5	ledger_routed_planned	story=5-2-the-proposal-card-the-diff-the-user-reviews entries=1 excess=0 by=lead note=DW-1213_bulleted_with_the_tension_against_the_storys_own_always-shown-expired_clause_named,_so_the_plan_stage_must_reconcile_or_HALT
 2026-09-19T14:22:29Z	Story 5.2	stage_spawned	stage=plan spawn_at=2026-09-19T14:22:29Z model=claude-opus-5[1m] agent_name=5-2-the-proposal-card-plan-1 cycle_iteration=1
+2026-09-19T14:26:39Z	Epic 5	epic_context_compiled	sha=next reason=planning_artifact_newer model=claude-opus-5[1m] note=stories_5.0_and_5.1_done;DW-1213_recorded_as_an_open_reconciliation;the_three_decision-pending_entries_marked_undecided

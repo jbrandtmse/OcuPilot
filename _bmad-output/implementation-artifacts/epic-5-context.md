@@ -15,9 +15,10 @@ exercise it once per area.
 
 ## Stories
 
-- Story 5.0: Epic 4 deferred cleanup — **done** (shipped at `7dbacaa` and `54314b3`)
-- Story 5.1: The proposal is minted on the instance, from a fresh read
-- Story 5.2: The proposal card — the diff the user reviews
+- Story 5.0: Epic 4 deferred cleanup — **done** (`7dbacaa`, `54314b3`)
+- Story 5.1: The proposal is minted on the instance, from a fresh read — **done** (`63f19ef`,
+  `543a288`, review patches `7e7b682`)
+- Story 5.2: The proposal card — the diff the user reviews ← **next**
 - Story 5.3: Confirm is user-originated, and the write is one atomic transition
 - Story 5.4: Execution strictly as the user
 - Story 5.5: Prohibited actions are absent from the tool set
@@ -37,7 +38,8 @@ exercise it once per area.
   target identity, a fingerprint of the target **as freshly read at proposal time**, the diff and a
   single-use token. Expiry is a server-side 10 minutes. A write tool call with no valid, unexpired,
   unburned token is refused by **the write path itself**, not by its caller. Secret-typed values are
-  never stored and were never accepted from the model.
+  never stored and were never accepted from the model. **Shipped in 5.1** — later stories consume it
+  rather than re-deciding it.
 - **Target identity is the triple `(entity type, scope, id)`** — the namespace for a
   namespace-scoped object, the literal `instance` for a configuration object — so a confirm cannot
   re-read a different `Nightly purge`. The fingerprint covers the **complete property set the write
@@ -88,7 +90,10 @@ exercise it once per area.
 
 - **Governing ADs.** 5.1: AD-6, 4, 13, 3, 35, 43. 5.2: AD-6, 39, 11. 5.3: AD-40, 34, 6, 8, 30. 5.4:
   AD-1, 8, 9, 29, 31. 5.5: AD-10, 34, 40. 5.6: AD-15, 41, 46. 5.7: AD-14, 43, 13. The area stories
-  add AD-2, and 5.13 adds AD-48. AD-7, AD-9, AD-33 and AD-12/AD-39 hold throughout.
+  add AD-2, and 5.13 adds AD-48. AD-7, AD-9, AD-33 and AD-12/AD-39 hold throughout. **AD-7's Rule
+  was amended** at 5.1's spec gate (DW-445): per-step progress lives in OcuPilot's own protected
+  storage (AD-33) keyed by turn id, **not** a temp global — the shipped `Kernel.State.Turn` and
+  `Kernel.State.Step` tables are what it now describes.
 - **A disabled account's live tokens is decided, not open (Story 5.4).** The spine's deferred entry
   for DW-444 was decided at Epic 4's merge gate: **refuse it** — check `Enabled` at authentication
   and refuse `/refresh` for a disabled user. It is a security hole and ships in Release 1, so the
@@ -99,6 +104,9 @@ exercise it once per area.
 - **The confirm barrier is explicit because in-process tools removed the HTTP one.** The kernel
   carries an "acting on behalf of the model" marker through the turn job and every tool call; confirm
   is not a tool, is not in the registry, and refuses any call whose originating context is a turn.
+  The marker shipped in 5.1 as `Kernel/Proposal/Caller.cls` — set once at the top of `Loop.Run`,
+  cleared when it unwinds, so a request process that has never run a turn carries nothing, which is
+  the condition 5.3's confirm requires.
 - **Every write gate is evaluated at the write, inside one atomic transition**, never at the tool
   call that minted the proposal. Burning the token and committing are one transition under a lock or
   conditional update exactly one caller wins; the loser is refused with the terminal state, never
@@ -113,6 +121,15 @@ exercise it once per area.
   creates a stub — which the fresh read plus fingerprint covers. `Process`, `Lock` and `Task.Manager`
   publish **no body template** and are action-style with a trivial body, never a hand-typed field
   list; `Security.Audit.Event`'s field list is derived from the underlying class and pinned by a test.
+- **Two facts from 5.1's review that constrain any later work on the merge and the digest.** They
+  were patched in 5.1 and are carried here so a later story does not reintroduce them. `Mint.Merge`
+  must **not** pass an argument's own JSON type as `%Set`'s type hint — only `null|boolean|number|string`
+  are legal third arguments, so array- and object-valued arguments raised `<ILLEGAL VALUE>` and
+  `webapp.list.update`'s three array fields were unproposable; object and array values are set
+  without the hint. `Fingerprint.Canonical` must honour an exclusion path in the **bracket spelling
+  the generator emits** (`path[]`), which is the only spelling the descriptor validator accepts for
+  an array field, not only the object spelling — testing the excludes in the object branch alone
+  silently excluded nothing.
 - **Field lists and secret classification come from the build-time derivation**, not from a story: an
   unclassified derived field is emitted `secret`, and a credential-pattern string placeholder that is
   not classified secret fails the build. Redaction is schema-driven with the name pattern as an
@@ -136,7 +153,8 @@ exercise it once per area.
   data, never a foreign key.
 - **One envelope `{error, reason, code, detail}`**: screens render `reason`, tool results `code`,
   vendor `%Status` text is normalized at the port boundary with the raw kept for log and ledger only,
-  and `detail.violations[]` carries `{field, code, reason}`.
+  and `detail.violations[]` carries `{field, code, reason}` — projected to `{field, code}` before it
+  reaches the model.
 - **Client and tests.** Zoneless `OnPush`; `core/` imports no `@angular/core`; every user-visible
   string from `core/strings.ts` and present in EXPERIENCE.md; design tokens only. Geometry belongs in
   the browser runner, which loads the **deployed** bundle (`npm run build`, then
@@ -164,8 +182,14 @@ exercise it once per area.
   — "Confirmed by <user name> · hh:mm:ss", "Canceled — by your message", "Canceled — a sibling
   proposal was confirmed", "Expired", "target changed, re-propose". Buttons are `aria-disabled` for
   the transition, never removed while focused. The restrained treatment is **by role, never by
-  opacity**, so the diff stays readable at AA. A card restored from a reload is **always** expired,
-  with Re-propose.
+  opacity**, so the diff stays readable at AA.
+- **The restored-card question is open and Story 5.2 must resolve it.** The story's own clause says a
+  card restored from a reload is **always** shown expired, never live, with Re-propose. The
+  acceptance bullet `epics.md` gained under 5.2 (DW-1213) says a proposal restored after a reload is
+  dropped on the premise that it is always expired, and observes that a reload one minute after a
+  mint leaves nine confirmable minutes while proposals ride only the progress poll, so the card has
+  no other route back. The two are in direct tension; neither is settled here. The story reconciles
+  them or declares which governs, and records the decision where the next reader will find it.
 - **A typed message cancels every live proposal** and the agent's next reply says so and offers to
   re-propose; New conversation cancels the same way; **Stop cancels nothing**.
 - **The changed row** takes `change-highlight` with a 3px agent bar and a "Changed" tag, settles over
@@ -183,21 +207,31 @@ exercise it once per area.
 - **Inside the epic.** 5.1 mints, 5.2 renders, 5.3 confirms, and 5.4–5.7 are the properties every
   area write inherits, so 5.8–5.13 are exercises of one mechanism rather than six implementations.
   5.10's write must be the **same operation** Story 7.4's Auditing configuration screen later calls.
-- **From Story 5.0 (done).** It left the dispatch, ledger and panel paths every later story extends
-  pinned by mutation-tested assertions. What the next stories build on directly: the single restraint
-  selector in `core/agent-status.ts` (5.2's card and 5.7's highlight both render restraint state
-  beside a live proposal); the shared browser-spec helpers in `ui/browser/panel-spec.mjs` (every
-  later panel-shaped spec); the split ledger test classes and the new client-row fixtures (5.3 and
-  5.6 write ledger rows through the same writers). Two behavior changes to build against: a recorded
-  `(resource, permission)` set that cannot be spelled is now reported truncated and the row withheld
-  from a cross-user read, and `RedactedKeys` answers provenance rather than treating a caller-sent
-  literal `[redacted]` as evidence. Three entries were declined with reasons recorded in that spec —
-  DW-1128 (ledger read cost), DW-1133 (progress card arguments for an unresolved tool), and the
-  general half of DW-1162 — and each names its reopen condition.
+- **From Story 5.1 (done) — what 5.2 consumes.** The write path's first half exists: `Kernel/Proposal/`
+  holds `Mint` (fresh read, merge over the read's own object, diff, `UnchangedCount`, fingerprint),
+  `Fingerprint`, `Write` (the `Claim` gate and its six refusals — `NOTOKEN`, `UNKNOWN`, `EXPIRED`,
+  `BURNED`, `NOTYOURS`, `TURNENDED`) and `Caller` (the model-origin marker). State is
+  `Kernel/State/Propose.cls` — the class is named **`Propose`** with `[ SqlTableName = Proposal ]`,
+  because `OcuPilot.Kernel.State.Proposal` is 30 characters against the 29-character storage cap, so
+  SQL reads say `Proposal` and ObjectScript says `Propose`. The tool side is `Screen/Tool/Write.cls`
+  (abstract base, `Final View()` delegating to `Mint`, derived input schema) and
+  `Screen/Tool/WebAppUpdate.cls` (`webapp.list.update`, the first write tool and 5.8's vehicle).
+  The turn's progress payload carries a `proposals[]` array, and `ui/src/app/core/turn.ts` publishes
+  `proposal-open` on first sight of an id and `proposal-closed` when it leaves a poll or turns
+  terminal. **The client half of the AD-43 auto-refresh pause was already built in Epic 4** —
+  `core/change-bus.ts` and `core/refresh.ts` need no change for it.
+- **From Story 5.0 (done).** It left the dispatch, ledger and panel paths pinned by mutation-tested
+  assertions: the single restraint selector in `core/agent-status.ts` (5.2's card and 5.7's highlight
+  both render restraint state beside a live proposal), the shared browser-spec helpers in
+  `ui/browser/panel-spec.mjs`, and the split ledger test classes with their client-row fixtures.
+  Two behavior changes to build against: a recorded `(resource, permission)` set that cannot be
+  spelled is reported truncated and the row withheld from a cross-user read, and `RedactedKeys`
+  answers provenance rather than treating a caller-sent literal `[redacted]` as evidence.
 - **From Epic 4.** The turn job with its progress and lease contract, `Dispatch`'s gate chain and its
-  restraint branch for write-kind tools, the "acting on behalf of the model" marker, the ledger (one
-  row per call, `RequiredPairs`, schema-driven redaction, finalized **after** the write and recording
-  what was actually executed), the panel with its banner order, and the tool-call card.
+  restraint branch for write-kind tools, the ledger (one row per call, `RequiredPairs`, schema-driven
+  redaction, finalized **after** the write and recording what was actually executed), the panel with
+  its banner order, and the tool-call card — whose expanded result block now has content, since a
+  tool step stores the bounded result the model received.
 - **From Epic 2.** `AdminPort`'s eight-step vendor dispatch — the only code naming an `%Api.Admin.*`
   class — the descriptor-declared reads each write reads fresh through, the **audit viewer with its
   agent-marker filter** (where 5.8's "Shall I show you the audit entry?" lands), and the
@@ -209,20 +243,36 @@ exercise it once per area.
   defines "step complete".
 - **Deliberate forward references.** 5.11 navigates to the **Task schedule list** with the task
   selected, because the navigation tool takes allow-listed route identifiers; retargeting it at the
-  details route is the one-line change assigned to Story 7.6 (Epic 6 has merged, so Task details now
-  exists — the retarget still belongs to 7.6, where the owner put it). 5.6's and 5.10's banner carries
-  its sentence alone until Story 7.4 makes its link and "Turn auditing on" live. The typed-name
-  confirmation arrives in full at 14.7. Epic 8 depends on Epics 5 and 6; Epic 11 on 4, 5, 6 and 10.
-- **Routed ledger entries bind their story** — address each or decline with a reason. 5.1 carries
-  DW-445, DW-1052, DW-1170, DW-1121, plus two added since the first compile: **DW-454** (the built-in
-  prompt tells the model its tools "change nothing", which this story's first write tool makes untrue
-  — restate the tool sentence to say what a proposal is, in this same change) and **DW-449** (the
-  dispatcher's write branch is exercised only with a forced restraint verdict, so the first real write
-  tool must pin it through a real restraint verdict on the throwaway). 5.4 carries DW-444 (decided
-  above — implement the refusal, do not re-open it) and DW-1120; 5.6 DW-1174; 5.10 DW-1171; 5.11
-  DW-269, also routed at the epic level (the vendor tasks LIST coerces every task's `Suspended` to
-  false, so the suspended-task read needs the `INFO` `rowGet` the read contract allows, or a stated
-  reason it does not).
+  details route is the one-line change assigned to Story 7.6, where the owner put it (Epic 6 has
+  merged, so Task details now exists). 5.6's and 5.10's banner carries its sentence alone until Story
+  7.4 makes its link and "Turn auditing on" live. The typed-name confirmation arrives in full at
+  14.7. Epic 8 depends on Epics 5 and 6; Epic 11 on 4, 5, 6 and 10.
+- **Ledger entries routed forward out of 5.1 — each binds its story, to address or decline with a
+  reason.** **5.2** carries DW-1213, the restored-card reconciliation described above. **5.3** carries
+  DW-1205 (an exclusion is validated against the write body template while the digest is taken over
+  the fresh GET, so the side-effect fields AD-6 names cannot be declared at all — it bites where
+  confirm recomputes the digest), DW-1209 (a row past `ExpiresAt` still reports `state: live` and
+  nothing emits `proposal-closed` on expiry; the pause currently lifts client-side by a different
+  mechanism than the Events clause names) and DW-1212 (the merge writes the model's JSON type over
+  the instance's on the five `WebApp.App` fields the instance answers as numbers). DW-1210 (no
+  per-poll bound on the steps projection) and DW-1211 (the "no path from `View()` reaches the claim
+  gate" criterion is a five-filename source scan, not a tree rule in `scripts/`) are re-owned to the
+  range-end cleanup story. The epic's other standing routes are unchanged: 5.4 carries DW-444
+  (decided above — implement the refusal, do not re-open it) and DW-1120; 5.6 DW-1174; 5.10 DW-1171;
+  5.11 DW-269, also routed at the epic level.
+- **Three product calls are `decision-pending` and undecided — they wait for the owner at the merge
+  gate's decision sheet.** Do not settle them inside a story. **DW-1207 (5.8)**: `AutheEnabled`,
+  `Resource` and `DispatchClass` are settable **ordinary** arguments of the first write tool, so a
+  proposal may today make a web application unauthenticated, drop its authorization resource, or
+  point its dispatch at other compiled code — the question is whether AD-10's grant prohibition
+  extends to authentication and dispatch settings, or whether the confirm gate is the intended
+  control. **DW-1208 (5.8)**: `webapp.list.update` requires `%Admin_Secure:WRITE`, a pair this
+  resource model cannot grant, so the tool is callable only by a `%All` holder — the question is
+  which pair a write beyond the screen's own read should require. **DW-1206 (5.10)**: `secretArguments`
+  entries are validated against nothing while `fingerprintExcludes` entries are, so a typo leaves a
+  credential-named field settable — the question is which set an entry must name, since a read-only
+  screen's secret is a criterion parameter and the membership rule that fits excludes would be wrong
+  for it.
 - **Rule 27 governs the epic's burn-down gate, not the individual stories.** For the rest of the
   4–12 range, a cleanup story and its burn-down gate charter only ledger entries that block the
   2026-09-27 floor or a downstream epic's story; every other closable entry is re-owned, with the
