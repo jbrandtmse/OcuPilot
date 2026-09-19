@@ -899,7 +899,9 @@ ClassMethod ConnectionOutcome(pId As %String, ByRef pValues, ByRef pStored, Outp
 /// <code>credentialName</code> all hold their stored values: the stored credential goes only where
 /// the row says, and only the one the row names.</li>
 /// <li><code>none</code> -- when the values' own <code>credType</code> is <code>none</code>, and
-/// otherwise as the fallback. The call is made unauthenticated, and says so.</li>
+/// otherwise as the fallback. The call is made unauthenticated, and says so. <b>It is decided
+/// after the body key, not before it</b>: a pasted key is tested even against a keyless
+/// definition, so this rung is a fallback and never a gate.</li>
 /// </ol>
 /// <p>The body member is tested inside the comparison and never bound to a local (AD-48).</p>
 ClassMethod KeySourceFor(ByRef pValues, ByRef pStored, pBody As %DynamicObject = "") As %String

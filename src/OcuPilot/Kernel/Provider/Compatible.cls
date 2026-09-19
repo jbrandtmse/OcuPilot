@@ -60,10 +60,19 @@ Method RequestUrl(ByRef pValues) As %String
         }
         Set tHead = $Select(tMark > 0: $Extract(tEndpoint, 1, tMark - 1), 1: tEndpoint)
         Set tTail = $Select(tMark > 0: $Extract(tEndpoint, tMark, $Length(tEndpoint)), 1: "")
-        ; One trailing slash is tolerated, because a pasted base often carries one.
-        If $Extract(tHead, $Length(tHead)) = "/" Set tHead = $Extract(tHead, 1, $Length(tHead) - 1)
+        ; Every trailing slash is collapsed, because a pasted base often carries one and two
+        ; would otherwise reach the wire inside the path. The authority is never touched: the
+        ; strip is applied to what follows "://" alone.
+        If tHead [ "://" {
+            Set tHead = $Piece(tHead, "://", 1) _ "://" _ $ZStrip($Piece(tHead, "://", 2, *), ">", "/")
+        } Else {
+            Set tHead = $ZStrip(tHead, ">", "/")
+        }
         If tHead = "" Quit
-        If $Extract(tHead, $Length(tHead) - $Length(..#COMPLETIONSPATH) + 1, $Length(tHead)) '= ..#COMPLETIONSPATH {
+        ; Compared case-blind: a path is case-sensitive to a server, but a stored
+        ; .../V1/CHAT/COMPLETIONS already names the operation, and appending a second copy would
+        ; reach the wire as a path no server serves.
+        If $ZConvert($Extract(tHead, $Length(tHead) - $Length(..#COMPLETIONSPATH) + 1, $Length(tHead)), "L") '= ..#COMPLETIONSPATH {
             Set tHead = tHead _ ..#COMPLETIONSPATH
         }
         Set tUrl = tHead _ tTail

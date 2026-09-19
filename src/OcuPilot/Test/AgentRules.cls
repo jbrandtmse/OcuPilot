@@ -1,4 +1,4 @@
-/// <p>AC2 and AC3 -- the eleven harvested rules and the ones OcuPilot's own that
+/// <p>AC2 and AC3 -- the eleven harvested rules and the three of OcuPilot's own that
 /// <class>OcuPilot.Kernel.AgentRules</class> applies, one failing case for each violation code they
 /// report between them, plus the accumulation the acceptance criterion is actually about and the XOR
 /// credential invariant in both directions.</p>
@@ -127,6 +127,7 @@ Method TestAnUnknownProviderIsRefused()
     Set tValues("provider") = ..#UNKNOWNPROVIDER
     Do ..AssertOneViolation(.tValues, "provider", ##class(OcuPilot.Api.Error).#AGENTPROVIDERUNKNOWN, "a provider the catalog does not declare")
 
+    ; The fourth key is Story 10.3's appended catalog row (Tasks); its own AC pins anthropic first and compatible last.
     Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Provider.Catalog).Keys()), "anthropic,openai,gemini,compatible", "the catalog declares the four shipped providers, anthropic first and compatible last")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Provider.Catalog).IsKnown(..#UNKNOWNPROVIDER), 0, "and does not declare the unknown-provider sentinel: the shipped block always, the armed block wherever this instance arms it")
 }
@@ -143,6 +144,7 @@ Method TestAnUnknownProviderIsRefused()
 /// on that row's model alone, every other assertion here staying green.</p>
 Method TestTheShippedProviderRowsArePinned()
 {
+    ; Four keys since Story 10.3's Tasks appended the compatible row; the same AC pins its position.
     Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Provider.Catalog).Keys()), "anthropic,openai,gemini,compatible", "the shipped rows, in the order they are declared")
 
     Do ..AssertRowPinned("anthropic", "Anthropic", "claude-opus-5", "[""claude-opus-5"",""claude-sonnet-5"",""claude-haiku-4-5"",""claude-fable-5-1""]", "https://api.anthropic.com/v1/messages", 0, 32000, 0, "ANTHROPIC_API_KEY", "OcuPilotAnthropic", "sk-ant-", "OcuPilot.Kernel.Provider.Anthropic", 0, "2023-06-01")
@@ -154,8 +156,9 @@ Method TestTheShippedProviderRowsArePinned()
 }
 
 /// <p>Assert that the shipped row <var>pKey</var> holds exactly the values named, column by
-/// column -- <code>endpointRequired</code> and <code>allowsLocal</code> included, because the
-/// <code>compatible</code> row sets both and the three vendor rows set neither.</p>
+/// column -- <code>endpointRequired</code> and <code>allowsLocal</code> included, because Story
+/// 10.3's Tasks append the <code>compatible</code> row, which sets both where the three vendor rows
+/// set neither.</p>
 Method AssertRowPinned(pKey As %String, pLabel As %String, pModel As %String, pSuggestions As %String, pEndpoint As %String, pEndpointRequired As %Boolean, pMaxTokens As %Integer, pTemperature As %Numeric, pEnvVar As %String, pCredential As %String, pKeyPrefix As %String, pAdapter As %String, pAllowsLocal As %Boolean, pAuthVersion As %String)
 {
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Provider.Catalog).Row(pKey, .tRow), 1, pKey _ ": the shipped row is readable")
@@ -322,6 +325,17 @@ Method TestTheCredentialInvariantNormalizesInBothDirections()
     Do $$$AssertEquals(tCreds("credentialName"), "OcuPilotAnthropic", "credType creds keeps the credential name")
     Do $$$AssertEquals(tCreds("envVarName"), "", "and clears the environment variable")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.AgentRules).Validate(.tCreds, "", .tV2), 0, "and is likewise not an error")
+
+    ; Story 10.3's third rung selects neither reference, so it clears both: a reference left on a
+    ; keyless definition would become live again the moment the type moved back.
+    Do ..CompatibleValues(..#PROBEPREFIX _ "Xor3", .tNone)
+    Set tNone("credType") = ##class(OcuPilot.Kernel.AgentRules).#CREDTYPENONE
+    Set tNone("envVarName") = "OPENAI_COMPATIBLE_API_KEY"
+    Set tNone("credentialName") = "OcuPilotCompatible"
+    Do ##class(OcuPilot.Kernel.AgentRules).Normalize(.tNone)
+    Do $$$AssertEquals(tNone("envVarName"), "", "credType none keeps no environment variable")
+    Do $$$AssertEquals(tNone("credentialName"), "", "and no credential name either")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.AgentRules).Validate(.tNone, "", .tV3), 0, "and the keyless definition is accepted: " _ ##class(OcuPilot.Kernel.AgentRules).ViolationsJson(.tV3).%ToJSON())
 }
 
 /// <p>AC3's second half -- normalization runs <b>before</b> validation, so a body that selects the

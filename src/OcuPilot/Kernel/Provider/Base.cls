@@ -534,9 +534,13 @@ Method MapResponse(pBody As %String, pResponse As OcuPilot.Kernel.Provider.Respo
 /// <p>The provider's own <code>error.message</code> out of an error body, for the fault's
 /// <code>detail.providerText</code>, or <code>""</code>. The <b>message</b> alone: the raw body
 /// goes to the log and nowhere else (AD-39).</p>
-/// <p><b>Concrete, and one implementation for every family</b>: all four vendors answer an error
-/// body shaped <code>{error: {message}}</code>, and four copies of this method were four copies of
-/// the same defect.</p>
+/// <p><b>Concrete, and one implementation for every family</b>: the three vendors answer an error
+/// body shaped <code>{error: {message}}</code>, and three copies of this method were three copies
+/// of the same defect. The <code>compatible</code> family is any endpoint an operator names rather
+/// than a vendor, so the shape is what it happens to answer; a body that does not carry
+/// <code>error.message</code> as a string yields <code>""</code>, and the raw body still reaches
+/// the log. Widening the shapes read is a change with no vendor contract behind it and is not made
+/// from a guess.</p>
 /// <p><b><code>message</code> is read only where it is a JSON string.</b> A vendor that answered an
 /// object or an array there would otherwise reach the envelope as
 /// <code>N@%Library.DynamicObject</code> -- the OREF's own stringification -- presented to a reader

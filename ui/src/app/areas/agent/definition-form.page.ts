@@ -491,6 +491,13 @@ export class DefinitionFormPage {
   private readonly revealedFlag = signal(false);
 
   /** Bumped by both stores, so the template re-reads them under `OnPush`. */
+  /**
+   * The credential rung 'No API key' displaced, restored when it is unticked. Held here
+   * rather than read back from the row, because the buffer is the only record of it once
+   * `credType` has moved to `none`.
+   */
+  private heldCredType: string = CRED_TYPE_CREDS;
+
   private readonly generation = signal(0);
 
   private readonly summary = viewChild<ElementRef<HTMLElement>>('summary');
@@ -826,13 +833,16 @@ export class DefinitionFormPage {
   }
 
   /**
-   * Whether the acknowledgment control is on screen: the endpoint is a plain `http://` address and
-   * a credential is configured, which is exactly when the server refuses without it
-   * (`AGENT.HTTP.ACK.REQUIRED`). A keyless definition is never asked, because there is no key to
-   * expose, and an encrypted endpoint is never asked either.
+   * Whether the acknowledgment control is on screen: the row licenses a local address, the
+   * endpoint is a plain `http://` address and a credential is configured, which is exactly when
+   * the server refuses without it (`AGENT.HTTP.ACK.REQUIRED`). A keyless definition is never
+   * asked, because there is no key to expose, and an encrypted endpoint is never asked either.
+   * The `allowsLocal` term matters: on a vendor row plain `http://` is refused on `endpointUrl`
+   * itself, so offering this control there would offer a control that cannot clear the refusal.
    */
   protected get showHttpAcknowledge(): boolean {
     this.generation();
+    if (!this.localAllowed) return false;
     if (this.noKeyFlag) return false;
     return /^http:\/\//i.test(this.store.value('endpointUrl'));
   }
@@ -892,14 +902,22 @@ export class DefinitionFormPage {
   }
 
   /**
-   * The keyless credential choice. It moves `credType` between the two values this form offers --
-   * `none` and the class's own default -- rather than clearing the credential references, which
-   * the server's own XOR invariant normalizes.
+   * The keyless credential choice. Ticking it moves `credType` to `none` and remembers the rung
+   * the buffer held; unticking restores that rung rather than forcing `creds`, so an `env`
+   * definition opened for editing does not silently change rung on a control it never rendered.
+   * The credential references themselves are cleared server-side: `AgentRules.Normalize` clears
+   * both for `none`.
    */
   protected onNoKey(event: Event): void {
     const target = event.target;
     if (!(target instanceof HTMLInputElement)) return;
-    this.store.setValue('credType', target.checked ? CRED_TYPE_NONE : CRED_TYPE_CREDS);
+    if (target.checked) {
+      const held = this.store.value('credType');
+      if (held !== CRED_TYPE_NONE) this.heldCredType = held;
+      this.store.setValue('credType', CRED_TYPE_NONE);
+      return;
+    }
+    this.store.setValue('credType', this.heldCredType);
   }
 
   protected onHttpAcknowledge(event: Event): void {

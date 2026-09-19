@@ -277,6 +277,11 @@ ClassMethod Dispatch(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt
         }
         ; The vendor negotiates TLS inside a CONNECT tunnel only when ProxyHTTPS is set, so both
         ; flags are forced: a tunnel alone would carry the key in cleartext.
+        ; Since DW-441 the condition no longer discriminates on any permitted configuration: plain
+        ; HTTP is licensed only for a marked-local definition, and the block below blanks every
+        ; proxy setting for one, so a call that carries a proxy is always https here. Kept rather
+        ; than deleted because it is what states the rule, and a later change to either licence
+        ; would make it discriminate again.
         If ..IsHttps(tEndpoint) {
             Set tSettings("proxyTunnel") = 1
             Set tSettings("proxyHttps") = 1

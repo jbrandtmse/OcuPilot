@@ -32,6 +32,11 @@ Parameter SHIPPEDCATALOG = "OcuPilot.Test.CatalogProbeShipped";
 /// <p>The one shipped provider key whose row allows local.</p>
 Parameter LOCALPROVIDER = "compatible";
 
+/// Set by the one method that stores an outbound-settings row, read by
+/// <method>OnAfterOneTest</method> so no other method's teardown deletes the instance's own.
+/// Prefix must not begin with "Test" -- see .claude/rules/objectscript-testing.md
+Property StoredEgressRow As %Boolean [ InitialExpression = 0 ];
+
 /// <p>A proxy host (RFC 5737 TEST-NET-1) that classifies public, so it is permitted and would be
 /// set on the request if a marked-local call carried one.</p>
 Parameter PUBLICPROXY = "192.0.2.10";
@@ -345,7 +350,13 @@ Method OnAfterOneTest() As %Status
 {
     Do ##class(OcuPilot.Test.EgressProbe).Clear()
     Do $ClassMethod(..#PORT, "Reset")
-    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Egress).DeleteGuarded(), "no outbound settings row survives this method")
+    ; Only the method that stored a row deletes one. An unconditional delete here made running
+    ; any single method of this class remove the instance's own outbound-settings row, although
+    ; all but one of them never write it.
+    If ..StoredEgressRow {
+        Set ..StoredEgressRow = 0
+        Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Egress).DeleteGuarded(), "no outbound settings row survives this method")
+    }
     Quit $$$OK
 }
 
@@ -536,8 +547,9 @@ Method TestTheShippedCompatibleRowAllowsLoopbackAndPrivateAndStillRefusesLinkLoc
 /// which is where a local model actually sits -- is still permitted, so a fix that refused all of
 /// <code>fc00::/7</code> would not pass this method.</p>
 /// <p>mutation: remove the metadata arm from <method>OcuPilot.Kernel.Egress.KindOf</method> -- red
-/// on the two IPv6 metadata legs, which then classify public and are permitted with no escape
-/// needed at all.</p>
+/// on the three IPv6 metadata spellings alone. Counter-mutation, which is what makes the
+/// demonstration two-sided: refuse the whole of <code>fc00::/7</code> there instead -- red on
+/// the <code>fd12:3456:789a::1</code> legs alone.</p>
 Method TestACloudMetadataAddressIsRefusedInEveryFamily()
 {
     Set tAllows = ##class(OcuPilot.Kernel.AgentRules).AllowsLocal(..#LOCALPROVIDER)
@@ -567,9 +579,11 @@ Method TestAMarkedLocalCallCarriesNoProxy()
     Do $ClassMethod(..#PORT, "SetCatalogClass", ..#SHIPPEDCATALOG)
     Do $ClassMethod(..#PORT, "SetSslState", "present")
     Set tStored("proxyServer") = ..#PUBLICPROXY
-    Set tStored("proxyPort") = 3128
+    Set tProxyPort = 3128
+    Set tStored("proxyPort") = tProxyPort
     Set tStored("proxyTunnel") = 1
     Set tStored("proxyHttps") = 1
+    Set ..StoredEgressRow = 1
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Egress).SetGuarded(.tStored), "a permitted public proxy is stored")
 
     Do $ClassMethod("OcuPilot.Test.Provider", "Messages", .tMessages)
@@ -581,8 +595,9 @@ Method TestAMarkedLocalCallCarriesNoProxy()
     Do $$$AssertTrue('$IsObject(tFault), "and is not refused: " _ $Select($IsObject(tFault): tFault.%ToJSON(), 1: ""))
     Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 1, "it reached the transport")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("proxyServer", 1), "", "carrying no proxy server")
+    Do $$$AssertNotEquals(##class(OcuPilot.Test.ProviderStub).Recorded("proxyPort", 1), tProxyPort, "not the stored proxy's port, which OcuPilot.Kernel.Provider.Base.NewRequest only sets when one is given")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("proxyTunnel", 1), 0, "no tunnel")
-    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("proxyHttps", 1), 0, "and no proxy TLS flag, although all three are stored")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("proxyHttps", 1), 0, "and no proxy TLS flag, although all four are stored")
 
     ; The control: unmarked, on a public endpoint the same row serves, the stored proxy does reach
     ; the request.
@@ -593,6 +608,7 @@ Method TestAMarkedLocalCallCarriesNoProxy()
     Do $$$AssertStatusOK(tPublicSC, "the unmarked call returns $$$OK")
     Do $$$AssertTrue('$IsObject(tPublicFault), "and is not refused: " _ $Select($IsObject(tPublicFault): tPublicFault.%ToJSON(), 1: ""))
     Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("proxyServer", 1), ..#PUBLICPROXY, "through the stored proxy")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("proxyPort", 1), tProxyPort, "on the stored port")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("proxyTunnel", 1), 1, "and the tunnel an https endpoint always takes")
 }
 

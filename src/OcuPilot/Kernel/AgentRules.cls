@@ -1,5 +1,5 @@
 /// <p>The rules that keep an agent definition honest: the eleven harvested input rules plus the
-/// ones OcuPilot's own acceptance criteria force, applied in one pass that <b>accumulates every
+/// three OcuPilot's own acceptance criteria force, applied in one pass that <b>accumulates every
 /// violation</b> rather than stopping at the first.</p>
 /// <p>One round trip is the requirement, not a nicety: an operator filling in a form is told
 /// everything that is wrong with it at once. So no method here quits early on a violation, and
@@ -66,8 +66,10 @@ Parameter MAXCREDENTIALNAMELENGTH As %Integer = 50;
 /// <code>credentialName</code> the credential type did not select is cleared to <code>""</code>,
 /// so the ladder Story 3.3 builds is deterministic.</p>
 /// <p><b>This normalizes; it does not reject.</b> Sending both is never an error -- one is
-/// cleared. An unrecognized credential type clears neither, because there is nothing to select
-/// with and rule 5 is what refuses it.</p>
+/// cleared. <code>none</code> selects neither rung, so it clears both: a keyless definition names
+/// no credential, and a reference left behind would become live again the moment the type moved
+/// back. An unrecognized credential type clears neither, because there is nothing to select with
+/// and rule 5 is what refuses it.</p>
 /// <p><b>The order is load-bearing.</b> Normalization runs before validation, so
 /// <code>credType</code> <code>env</code> with an empty <code>envVarName</code> and a populated
 /// <code>credentialName</code> clears the credential name first and then reports
@@ -80,6 +82,9 @@ ClassMethod Normalize(ByRef pValues)
         Set pValues("credentialName") = ""
     } ElseIf tCredType = ..#CREDTYPECREDS {
         Set pValues("envVarName") = ""
+    } ElseIf tCredType = ..#CREDTYPENONE {
+        Set pValues("envVarName") = ""
+        Set pValues("credentialName") = ""
     }
 }
 

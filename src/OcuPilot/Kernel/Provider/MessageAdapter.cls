@@ -236,7 +236,10 @@ ClassMethod OpenAiToCanonical(pBody As %String, pResponse As OcuPilot.Kernel.Pro
         ; the model ended normally (DW-1202).
         Set tRefusal = ""
         If tMessage.%GetTypeOf("refusal") = "string" Set tRefusal = tMessage.%Get("refusal")
-        If tRefusal '= "" Set tText = tRefusal
+        ; A reply carrying both is the refusal: the partial content is what the model produced before
+    ; it declined, and presenting it as the answer would read as an answer. It is dropped rather
+    ; than concatenated, so the canonical text is one statement.
+    If tRefusal '= "" Set tText = tRefusal
         Set tToolCalls = []
         If $IsObject(tMessage."tool_calls") && tMessage."tool_calls".%IsA("%Library.DynamicArray") {
             Set tIterator = tMessage."tool_calls".%GetIterator()

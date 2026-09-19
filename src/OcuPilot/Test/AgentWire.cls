@@ -110,6 +110,8 @@ Method TestASoundCreateIsReturnedByTheListImmediately()
     Do $$$AssertEquals(tCreated.readOnly, 1, "a definition is created read-only, which is the safe default Story 3.7 enforces")
     Do $$$AssertEquals(tCreated.retentionDays, 30, "with the settled retention default")
     Do $$$AssertEquals(tCreated.maxIterationsPerTurn, 10, "and the settled per-turn iteration ceiling")
+    ; Story 10.3 appended httpAcknowledged to OcuPilot.Api.Definitions.Fields(); the key list is
+    ; pinned exactly, so the projection gaining a key is a deliberate edit here (granted 2026-09-19).
     Do $$$AssertEquals(..KeysOf(tCreated), "id,name,provider,model,endpointUrl,markedLocal,httpAcknowledged,credType,envVarName,credentialName,maxTokens,temperature,maxIterationsPerTurn,systemPromptOverride,readOnly,retentionDays,enabled,connectionVerified,createdAt,updatedAt,default", "the full projection carries exactly these keys, and no key that could hold a credential value")
 
     Set tSC2 = ..Call("GET", "", "", .tListStatus, .tListBody, .tListHeaders)

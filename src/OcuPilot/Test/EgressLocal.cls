@@ -35,6 +35,11 @@ Parameter PROBEUSER = "_SYSTEM";
 
 Property PreparedDefinitionId As %String;
 
+/// The definition that held <property>DefaultMark</property> before this method's probe took it,
+/// restored in the teardown. Prefix must not begin with "Test" -- see
+/// .claude/rules/objectscript-testing.md
+Property DisplacedDefaultId As %String;
+
 Method %OnNew(initvalue As %String = "") As %Status
 {
     Set tSC = ##super(initvalue)
@@ -63,6 +68,11 @@ Method OnBeforeOneTest() As %Status
     If $$$ISERR(tSC) Quit tSC
     Set ..PreparedDefinitionId = tRow.%Id()
     Set tRow = ""
+    ; The default marker this probe takes is recorded first and restored in the teardown: a
+    ; development instance with a configured default agent must not be left with none.
+    Set ..DisplacedDefaultId = ""
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT TOP 1 ID FROM OcuPilot_Kernel_State.Agent WHERE DefaultMark = '1'")
+    If tRS.%Next(), tRS.%GetData(1) '= ..PreparedDefinitionId Set ..DisplacedDefaultId = tRS.%GetData(1)
     Set tSC = ##class(OcuPilot.Kernel.State.Agent).SetDefaultGuarded(..PreparedDefinitionId)
     If $$$ISERR(tSC) Quit tSC
     Quit ##class(OcuPilot.Kernel.State.Egress).DeleteGuarded()
@@ -76,6 +86,10 @@ Method OnAfterOneTest() As %Status
     Set tRemoved = ##class(OcuPilot.Test.AgentFixture).RemoveProbeDefinitions(.tRemaining)
     Do $$$AssertStatusOK(tRemoved, "the probe definition this method created is removed")
     Do $$$AssertEquals(tRemaining, 0, "and none survives")
+    If ..DisplacedDefaultId '= "" {
+        Do ##class(OcuPilot.Kernel.State.Agent).SetDefaultGuarded(..DisplacedDefaultId)
+        Set ..DisplacedDefaultId = ""
+    }
     Quit $$$OK
 }
 

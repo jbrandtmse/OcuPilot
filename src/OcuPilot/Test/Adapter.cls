@@ -1000,18 +1000,26 @@ Method TestAGeminiPromptBlockIsARefusalNotATransportFault()
     Do $$$AssertEquals(tResponse.StopReason, "refusal", "the stop reason says the model would not answer")
     Do $$$AssertEquals(tResponse.Text, "SAFETY", "the block reason is the provider's own text")
     Do $$$AssertEquals(tResponse.RequestTokens, 7, "and the usage it reported is kept")
-    Do $$$AssertEquals($System.Status.GetErrorText(tMapSC) [ "PROVIDER.TRANSPORT", 0, "and nothing about this path is a transport fault")
 
     ; A body with neither candidates nor a block reason is still an error, so the branch has not
-    ; turned every unreadable Gemini reply into a refusal.
+    ; turned every unreadable Gemini reply into a refusal. This is also what carries "not a
+    ; transport fault": a substring test over an OK status cannot fail, so the discriminating
+    ; assertion is that THIS body maps and THAT one does not.
     Set tNeither = ##class(OcuPilot.Kernel.Provider.Response).%New()
-    Do $$$AssertStatusNotOK($ClassMethod(..#MESSAGES, "GeminiToCanonical", "{""promptFeedback"":{}}", tNeither), "a body naming neither candidates nor a block reason is refused as before")
+    Set tNeitherSC = $ClassMethod(..#MESSAGES, "GeminiToCanonical", "{""promptFeedback"":{}}", tNeither)
+    Do $$$AssertStatusNotOK(tNeitherSC, "a body naming neither candidates nor a block reason is refused as before")
+    Do $$$AssertTrue($System.Status.GetErrorText(tMapSC) '= $System.Status.GetErrorText(tNeitherSC), "and the blocked body's outcome is not the unreadable body's")
 }
 
 /// <p>DW-1202 -- every Gemini <code>finishReason</code> the vendor declares maps, and
 /// <code>IMAGE_SAFETY</code> is one of them. The map's other eleven entries are asserted by
 /// <method>TestTheGeminiReplyBecomesCanonicalBlocksAndTheRoundTripCloses</method>; this method is
 /// about the twelfth and about the map's shape.</p>
+/// <p><b>What the count pins is the map, not the vendor's vocabulary</b> -- the map is this
+/// project's copy of a list the vendor may extend, so a thirteenth reason the vendor ships is
+/// unmapped until the parameter learns it and answers the default ending rather than a refusal
+/// (inference: no live provider call is made here, per DW-1200). Read the count as "this map is
+/// edited deliberately", never as "this is every reason there is".</p>
 /// <p>mutation: remove <code>IMAGE_SAFETY</code> from
 /// <parameter>OcuPilot.Kernel.Provider.MessageAdapter.GEMINISTOPREASONS</parameter> -- red on that
 /// key alone, because an unmapped reason answers the default rather than a refusal.</p>

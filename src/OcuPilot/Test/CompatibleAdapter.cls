@@ -38,6 +38,9 @@ Parameter SLASHEDENDPOINT = "http://127.0.0.1:11434/v1/";
 /// <p>The complete endpoint, which is what the shipped <code>openai</code> row stores.</p>
 Parameter COMPLETEENDPOINT = "http://127.0.0.1:11434/v1/chat/completions";
 
+/// The same complete endpoint in the case an operator's own paste may carry.
+Parameter UPPERCASEENDPOINT = "http://127.0.0.1:11434/V1/CHAT/COMPLETIONS";
+
 /// <p>A credential the shape gate accepts: non-empty and free of whitespace, which is all a row
 /// declaring no prefix can require.</p>
 Parameter PROBEKEY = "probecompatiblekeyabcdefghij";
@@ -93,6 +96,11 @@ Method StoredDefinition(pRow As %DynamicObject, pEndpoint As %String, pCredType 
         Set tRow.Model = ..#PROBEMODEL
         Set tRow.EndpointUrl = pEndpoint
         Set tRow.MarkedLocal = 1
+        ; Set for the same reason an operator would have to set it: the endpoint is plain http and
+        ; a keyed rung crosses it, which AC2's own rule refuses without the acknowledgment. This
+        ; helper writes through GuardedCreate, which does not apply AgentRules, so without it the
+        ; family's integration path would be demonstrated on a row no operator can store.
+        Set tRow.HttpAcknowledged = 1
         Set tRow.CredType = pCredType
         Set tRow.EnvVarName = $Select(pCredType = "env": pRow.defaultEnvVarName, 1: "")
         Set tRow.CredentialName = ""
@@ -284,6 +292,13 @@ Method TestTheAdapterWritesNoHeaderWhenTheKeyIsAbsent()
 /// byte-identical either way, which is what
 /// <method>OcuPilot.Kernel.Provider.Base.Attempts</method>'s origin check requires and what a call
 /// reaching the transport at all demonstrates.</p>
+/// <p>The refusal arm is the other half: a stored endpoint whose path reduces to nothing makes
+/// <method>RequestUrl</method> answer <code>""</code>, which
+/// <method>OcuPilot.Kernel.Provider.Base.Attempts</method> refuses as
+/// <code>PROVIDER.EGRESS</code> with no call made. An override answering another
+/// <b>authority</b> is pinned on the shared seam by
+/// <method>OcuPilot.Test.OpenAIAdapter.TestABuiltUrlOnAnotherAuthorityIsRefused</method>, which
+/// this family reaches through the same <method>Attempts</method> check.</p>
 /// <p>mutation: have <method>OcuPilot.Kernel.Provider.Compatible.RequestUrl</method> answer the
 /// stored endpoint unchanged -- red on the recorded URL for the two base rows, the
 /// already-complete row staying green.</p>
@@ -316,6 +331,91 @@ Method TestABaseEndpointIsNormalizedAndAnAuthorityChangeIsRefused()
     Set tQuery = ""
     Do $$$AssertEquals(..FaultCode(tQueryFault), "", "with no fault: " _ ..Rendered(tQueryFault))
     Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("url", 1), ..#COMPLETEENDPOINT _ "?api-version=1", "and the operation is appended to the path, leaving the query where it was")
+
+    ; A fragment is split off on the same terms as a query.
+    Do ##class(OcuPilot.Test.ProviderStub).Reset()
+    Do ##class(OcuPilot.Test.SecretProbe).SetValue(..#PROBEKEY)
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..#REPLY)
+    Do ..DirectValues(tRow, ..#BASEENDPOINT _ "#frag", .tFragValues)
+    Set tFrag = ..Adapter()
+    Do $$$AssertStatusOK(tFrag.Invoke(.tFragValues, .tMessages, .tTools, "", .tSettings, .tFragResponse, .tFragFault, .tFragStatus), "the call on an endpoint carrying a fragment returns $$$OK")
+    Set tFrag = ""
+    Do $$$AssertEquals(..FaultCode(tFragFault), "", "with no fault: " _ ..Rendered(tFragFault))
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("url", 1), ..#COMPLETEENDPOINT _ "#frag", "and the fragment is left where it was too")
+
+    ; An endpoint the operator's own case differs on is the operation already named: appending a
+    ; second copy would reach the wire as a path no server serves.
+    Do ##class(OcuPilot.Test.ProviderStub).Reset()
+    Do ##class(OcuPilot.Test.SecretProbe).SetValue(..#PROBEKEY)
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..#REPLY)
+    Do ..DirectValues(tRow, ..#UPPERCASEENDPOINT, .tUpperValues)
+    Set tUpper = ..Adapter()
+    Do $$$AssertStatusOK(tUpper.Invoke(.tUpperValues, .tMessages, .tTools, "", .tSettings, .tUpperResponse, .tUpperFault, .tUpperStatus), "the call on a differently-cased complete endpoint returns $$$OK")
+    Set tUpper = ""
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("url", 1), ..#UPPERCASEENDPOINT, "and is issued unchanged rather than gaining a second operation segment")
+
+    ; The refusal arm: a stored endpoint whose path reduces to nothing is refused before a socket.
+    Do ##class(OcuPilot.Test.ProviderStub).Reset()
+    Do ##class(OcuPilot.Test.SecretProbe).SetValue(..#PROBEKEY)
+    Do ..DirectValues(tRow, "/", .tEmptyValues)
+    Set tEmpty = ..Adapter()
+    Do $$$AssertStatusOK(tEmpty.Invoke(.tEmptyValues, .tMessages, .tTools, "", .tSettings, .tEmptyResponse, .tEmptyFault, .tEmptyStatus), "the refused call still returns $$$OK, because this family never throws")
+    Set tEmpty = ""
+    Do $$$AssertEquals(..FaultCode(tEmptyFault), "PROVIDER.EGRESS", "an endpoint that builds no URL is refused as egress: " _ ..Rendered(tEmptyFault))
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 0, "and no call was made at all")
+}
+
+
+/// <p>AC1's other half, and AC2's disabling half -- both at the surface that decides them, neither
+/// of which a port call reaches.</p>
+/// <p><b>Why this exists:</b> a keyless definition is storable and callable, but until Test
+/// connection can record a verification it can never be <i>enabled</i>
+/// (<code>AGENT.ENABLE.UNVERIFIED</code>), so the configuration the story ships would be unusable.
+/// Two class methods decide it -- <method>OcuPilot.Api.Definitions.KeySourceFor</method>, which
+/// answers <code>none</code> for this rung, and
+/// <method>OcuPilot.Api.Definitions.KeySourceIsTheStoredOne</method>, which is what makes that
+/// answer count as the stored configuration's own rather than a test made without its key.</p>
+/// <p><b>Precedence is asserted, not assumed</b>: a body key still wins over the rung, so a
+/// pasted key can be tested against a keyless definition without the row being changed.</p>
+/// <p>mutation: drop the second arm of
+/// <method>OcuPilot.Api.Definitions.KeySourceIsTheStoredOne</method> (<code>Quit (pKeySource =
+/// ..#KEYSOURCESTORED)</code>) -- red on the stored-answer assertion; drop
+/// <method>KeySourceFor</method>'s <code>none</code> return -- red on the key-source assertion.
+/// Removing <code>HttpAcknowledged</code> from
+/// <method>OcuPilot.Kernel.State.Agent.SecurityFields</method> -- red on the last assertion.</p>
+Method TestAKeylessDefinitionIsTestableAsStoredAndTheAcknowledgmentDisables()
+{
+    Set tNone = ##class(OcuPilot.Kernel.AgentRules).#CREDTYPENONE
+    Set tStoredSource = ##class(OcuPilot.Kernel.Provider.Base).#KEYSOURCESTORED
+    Set tNoneSource = ##class(OcuPilot.Kernel.Provider.Base).#KEYSOURCENONE
+
+    Set tValues("provider") = ..#PROVIDERKEY
+    Set tValues("endpointUrl") = ..#BASEENDPOINT
+    Set tValues("credType") = tNone
+    Set tValues("envVarName") = ""
+    Set tValues("credentialName") = ""
+    Merge tStored = tValues
+    Do $$$AssertEquals(##class(OcuPilot.Api.Definitions).KeySourceFor(.tValues, .tStored), tNoneSource, "a keyless definition resolves a key source of none, because it names nothing to resolve")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Definitions).KeySourceIsTheStoredOne(tNoneSource, .tStored), 1, "and that IS the stored configuration's own answer, which is what lets the verification be recorded and the definition enabled")
+
+    ; The control: the same key source against a keyed stored row is NOT the stored answer, so a
+    ; test made without a key cannot verify a definition that names one.
+    Set tKeyed("credType") = ##class(OcuPilot.Kernel.AgentRules).#CREDTYPECREDS
+    Set tKeyed("credentialName") = "OcuPilotCompatible"
+    Do $$$AssertEquals(##class(OcuPilot.Api.Definitions).KeySourceIsTheStoredOne(tNoneSource, .tKeyed), 0, "no key at all is not the stored answer for a definition that names a credential")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Definitions).KeySourceIsTheStoredOne(tStoredSource, .tKeyed), 1, "and the stored credential is")
+
+    ; Precedence: a pasted key wins over the rung, so the none arm is a fallback and not a gate.
+    Set tBody = {"apiKey": "probecompatiblekeyabcdefghij"}
+    Do $$$AssertEquals(##class(OcuPilot.Api.Definitions).KeySourceFor(.tValues, .tStored, tBody), ##class(OcuPilot.Kernel.Provider.Base).#KEYSOURCEBODY, "a body key is tested even on a keyless definition, and is not the stored answer")
+    Do $$$AssertEquals(##class(OcuPilot.Api.Definitions).KeySourceIsTheStoredOne(##class(OcuPilot.Kernel.Provider.Base).#KEYSOURCEBODY, .tStored), 0, "so it cannot record a verification")
+
+    ; AC2's disabling half: the acknowledgment is a security field, so turning it on -- which
+    ; widens what may cross an unencrypted endpoint -- disables the definition until Test
+    ; connection passes again. Asserted over the list, because the list is what GuardedUpdate reads.
+    Set tFields = ##class(OcuPilot.Kernel.State.Agent).SecurityFields()
+    Do $$$AssertTrue($ListFind(tFields, "HttpAcknowledged") > 0, "HttpAcknowledged is a security field, so a change to it clears ConnectionVerified and Enabled (" _ $ListToString(tFields) _ ")")
+    Do $$$AssertTrue($ListFind(tFields, "MarkedLocal") > 0, "beside the local declaration it travels with")
 }
 
 }
