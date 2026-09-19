@@ -3328,6 +3328,8 @@ So that what I confirm cannot differ from what will run.
 - DW-1052: the expanded tool-call card's result block is never populated, because no tool step stores the tool's output (ledger; routed by merge_gate 2026-09-18)
 - DW-1170: `REASONAGENTBADBODY` offers "or no body at all" on routes that refuse an absent body (ledger; routed by merge_gate 2026-09-18)
 - DW-1121: `SecretArguments` declared on the abstract intermediates `Kernel/Shell/ReadTool` and `Screen/Tool/Read` makes every subclass inherit "declares none", so the mandatory-declaration refusal cannot bite those two subtrees (ledger; routed by x0 2026-09-19)
+- DW-454: `Prompt.BUILTIN` tells the model "your tools read this instance and change nothing", which this story's first write tool makes untrue - restate the tool sentence to say what a proposal is, in this same change (ledger; routed by cr 2026-09-17, bulleted 2026-09-19)
+- DW-449: the dispatcher's write branch is exercised only with a forced restraint verdict, so an argument-order slip in `Dispatch.Restraint` stays green - the first real write tool pins it through `Kernel.Restraint.Verdict` on the throwaway (ledger; routed by harvest 2026-09-17, bulleted 2026-09-19)
 
 ### Story 5.2: The proposal card - the diff the user reviews
 
@@ -3700,7 +3702,7 @@ So that a question becomes a fix without me navigating anywhere myself.
 - **Given** the user says yes
 - **When** the agent navigates
 - **Then** it posts its announcement first, the route changes about a second later, and the heading announces it was opened by the agent
-- **And** the destination at this point is the **Task schedule list** with that task selected, because Task details does not exist until Story 6.7 - the navigation tool takes allow-listed route identifiers, so pointing it at the details route is a one-line change Story 7.6 makes once both screens exist, rather than a rewrite here
+- **And** the destination at this point is the **Task schedule list** with that task selected - the navigation tool takes allow-listed route identifiers, so pointing it at the details route is a one-line change Story 7.6 makes, rather than a rewrite here [AMENDED 2026-09-19, Epic 5 runner, Rule 5 tier-1 (orchestrator-authorised): the deleted clause read "because Task details does not exist until Story 6.7", which Epic 6's merge made false; the retarget stays with 7.6, which is where the owner put it]
 - **And** a proposal follows with the diff row Status: Suspended to Scheduled, the rationale citing the last error, and the expected impact.
 
 - **Given** the user confirms
