@@ -31,6 +31,13 @@ Parameter PROBEKEY = "probeopenaikeyabcdefghijklmn";
 /// it.</p>
 Parameter PASTEDKEY = "probeopenaikey abcdefghijklmn";
 
+/// <p>A key prefix no catalog row declares, for the arm of the shared gate no row reaches.</p>
+Parameter PROBEKEYPREFIX = "sk-probe-";
+
+/// <p>A credential carrying <parameter>PROBEKEYPREFIX</parameter>, so the prefix arm accepts
+/// it.</p>
+Parameter PREFIXEDKEY = "sk-probe-abcdefghijklmn";
+
 /// <p>The wire name of the one tool every request leg advertises.</p>
 Parameter TOOLNAME = "logs_errors_read";
 
@@ -336,6 +343,75 @@ Method TestAPastedKeyIsRefusedWithoutASocket()
     Set tSound = ""
     Do $$$AssertEquals(..FaultCode(tSoundFault), "", "and is accepted: " _ ..Rendered(tSoundFault))
     Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 1, "reaching the transport")
+}
+
+/// <p>The prefix arm of the shared key-shape gate, which no catalog row reaches: both rows that
+/// delegate to it declare no prefix, and the family whose row declares one keeps its own test. It
+/// is driven here because a row pairing a prefix with this gate is what Story 10.3 adds, and an
+/// arm with no case either way is not enforced, it is merely written.</p>
+/// <p>Both terms are asserted: a key of another shape is refused, and so is one carrying the right
+/// prefix and a carriage return, which <method>%Net.HttpRequest.SetHeader</method> would otherwise
+/// write onto the header verbatim.</p>
+/// <p>mutation: have <method>OcuPilot.Kernel.Provider.Base.KeyShapeAccepted</method>'s prefix arm
+/// answer 1 -- red on the wrong-prefix leg's expected code and on its zero-calls assertion.</p>
+Method TestTheKeyShapeGatesPrefixArmRefusesAKeyOfAnotherShape()
+{
+    Set tRow = ..ShippedRow()
+    If '$IsObject(tRow) Quit
+    Do ..DirectValues(tRow, .tValues)
+    Set tValues("keyPrefix") = ..#PROBEKEYPREFIX
+    Do $ClassMethod("OcuPilot.Test.Provider", "Messages", .tMessages)
+    Do $ClassMethod("OcuPilot.Test.Provider", "Settings", .tSettings, 1)
+
+    Do ##class(OcuPilot.Test.SecretProbe).SetValue(..#PROBEKEY)
+    Set tWrong = ..Adapter()
+    Do $$$AssertStatusOK(tWrong.Invoke(.tValues, .tMessages, .tTools, "", .tSettings, .tResponse, .tFault, .tHttpStatus), "the refused call returns $$$OK")
+    Set tWrong = ""
+    Do $$$AssertEquals(..FaultCode(tFault), ##class(OcuPilot.Api.Error).#PROVIDERKEYSHAPE, "a key that does not carry the row's prefix is refused PROVIDER.KEYSHAPE")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 0, "before any socket is opened")
+    Do $$$AssertEquals(..Rendered(tFault) [ ..#PROBEKEY, 0, "and the reason names no key material: " _ ..Rendered(tFault))
+    Do $$$AssertEquals(..Rendered(tFault) [ ..#PROBEKEYPREFIX, 1, "only the prefix the row declares, which is a table entry")
+
+    Do ##class(OcuPilot.Test.ProviderStub).Reset()
+    Do ##class(OcuPilot.Test.SecretProbe).SetValue(..#PREFIXEDKEY _ $Char(13))
+    Set tRaw = ..Adapter()
+    Do $$$AssertStatusOK(tRaw.Invoke(.tValues, .tMessages, .tTools, "", .tSettings, .tRawResponse, .tRawFault, .tRawStatus), "the second refused call returns $$$OK")
+    Set tRaw = ""
+    Do $$$AssertEquals(..FaultCode(tRawFault), ##class(OcuPilot.Api.Error).#PROVIDERKEYSHAPE, "the right prefix does not license a control character in the value")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 0, "and that call opens no socket either")
+
+    Do ##class(OcuPilot.Test.ProviderStub).Reset()
+    Do ##class(OcuPilot.Test.SecretProbe).SetValue(..#PREFIXEDKEY)
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..#REPLY)
+    Set tSound = ..Adapter()
+    Do $$$AssertStatusOK(tSound.Invoke(.tValues, .tMessages, .tTools, "", .tSettings, .tSoundResponse, .tSoundFault, .tSoundStatus), "a key of the declared shape returns $$$OK")
+    Set tSound = ""
+    Do $$$AssertEquals(..FaultCode(tSoundFault), "", "and is accepted: " _ ..Rendered(tSoundFault))
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 1, "reaching the transport, so the arm is not simply refusing everything")
+}
+
+/// <p>The intent's "no empty auth header" on this family: a call whose key source carries no key
+/// reaches the provider with <b>no</b> authentication header, rather than with an empty one the
+/// vendor reads as a malformed credential.</p>
+/// <p>mutation: drop the <code>If ..ApiKey = "" Quit</code> guard from
+/// <method>OcuPilot.Kernel.Provider.OpenAI.ApplyAuth</method> -- red on the recorded header names,
+/// which then carry this family's header with the scheme and nothing after it.</p>
+Method TestACallWithNoKeySendsNoAuthenticationHeader()
+{
+    Set tRow = ..ShippedRow()
+    If '$IsObject(tRow) Quit
+    Do ..DirectValues(tRow, .tValues)
+    Set tValues("keySource") = $Parameter("OcuPilot.Kernel.Provider.Base", "KEYSOURCENONE")
+    Do $ClassMethod("OcuPilot.Test.Provider", "Messages", .tMessages)
+    Do $ClassMethod("OcuPilot.Test.Provider", "Settings", .tSettings, 1)
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, ..#REPLY)
+
+    Set tNoKey = ..Adapter()
+    Do $$$AssertStatusOK(tNoKey.Invoke(.tValues, .tMessages, .tTools, "", .tSettings, .tResponse, .tFault, .tHttpStatus), "the keyless call returns $$$OK")
+    Set tNoKey = ""
+    Do $$$AssertEquals(..FaultCode(tFault), "", "with no fault: " _ ..Rendered(tFault))
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 1, "the transport was entered once")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("headerNames", 1), "", "carrying no authentication header at all")
 }
 
 }

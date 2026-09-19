@@ -5,7 +5,10 @@
 /// <class>OcuPilot.Test.GeminiStub</class> extend the two <b>shipped</b> adapters instead --
 /// which is the whole point of them, since it is the shipped adapter's own body, headers and
 /// response mapping that are under test -- so they reach it here.</p>
-/// <p><b>Same script, same recording, same fake clock.</b> This class reads and writes
+/// <p><b>Same script, same recording, same fake clock -- and no arming legs.</b> The forced
+/// error-log entry and the mid-flight row move <class>OcuPilot.Test.ProviderStub</class> takes
+/// inside its own transport are absent here, so a test that arms either of them is asserting about
+/// the canonical family alone. This class reads and writes
 /// <class>OcuPilot.Test.ProviderStub</class>'s own process-private globals, so a test arms the run
 /// with <method>OcuPilot.Test.ProviderStub.Reset</method>,
 /// <method>OcuPilot.Test.ProviderStub.QueueAnswer</method>,

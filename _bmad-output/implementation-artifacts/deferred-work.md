@@ -4080,3 +4080,49 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-10-1-the-message-and-tool-definition-adapters.md | severity: low | fix-risk: med | footprint: in-epic
 - evidence: Loop.cls:454 sets is_error on the block and ResultText/ResponseObject carry only its content; the content already holds the error code as JSON, so the model sees the failure text but not the flag, and neither dialect declares a field for it.
 - 2026-09-19T05:39:09Z status=wontfix-accepted owner=10-2-the-openai-and-google-gemini-adapters by=cr note=reopen_if=a 10.2 turn shows the model retrying a failed tool as though it had succeeded
+
+### DW-1191: ProviderStubTransport lacks ProviderStub's error-log arming, so AD-48's forced-error-log sweep never runs against the new adapters' ApplyAuth bodies and AD-35's no-credential-in-the-log guarantee is asserted only for the Anthropic family
+- source: spec-10-2-the-openai-and-google-gemini-adapters.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: ProviderStub.IssueHttpsPost:269-273 calls ForceErrorLog() when the armed process-private node is set; ProviderStubTransport.Transport has neither that nor MoveArmedRow, and both are [ Private ] so they cannot be called across classes. ProviderStub.cls is Epic 5's footprint, but the arming leg can be reimplemented inside ProviderStubTransport, which is this epic's
+- 2026-09-19T08:49:39Z status=routed owner=10-3-the-openai-compatible-adapter-and-local-models by=harvest note=routed to 10.3 rather than the burn-down because 10.3 adds a third ApplyAuth body (optional or absent auth) and widens this same gap, so the coverage lands with the family that most needs it; the fix is in-footprint and does not wait on Epic 5
+- 2026-09-19T09:39:24Z status=routed owner=10-2-the-openai-and-google-gemini-adapters by=adjudication note=the earlier rationale was wrong at its root: ProviderStub.cls is inside this epics Test/Provider* footprint and was never orchestrator-held read-only (orchestrator correction 2026-09-19). AD-35s verification half is therefore closable here and is being closed in this storys rework; only the duplicated transport body defers, and it re-owns at the burn-down gate under Rule 27
+
+### DW-1192: A stored Gemini endpoint carrying no {model} placeholder calls a model the definition does not name, and nothing at save time refuses a model that cannot enter Gemini's URL path
+- source: spec-10-2-the-openai-and-google-gemini-adapters.md | severity: med | fix-risk: med | footprint: in-footprint
+- evidence: Gemini.RequestUrl:61 answers the endpoint unchanged when the placeholder is absent and CallMessages puts no model in the body, so a definition whose Model reads gemini-3.8-flash pointed at a stored .../models/gemini-2.5-pro:generateContent calls 2.5-pro while every screen and ledger row says 3.8-flash; Kernel/AgentRules.cls:82's rule list validates name, provider, tokens, temperature, credentials, endpoint, prompt, retention and iterations but never model
+- 2026-09-19T08:49:39Z status=decision-pending owner=burndown by=harvest note=one product call with two halves: whether a placeholder-less Gemini endpoint is warned, refused or documented, and whether a model gains a create-time validation rule (which means a new violation code and changes what the form accepts). This story is what first makes the model load-bearing on the wire
+
+### DW-1193: The three adapters' ProviderMessage bodies are byte-identical duplicates, and the duplicated body stringifies an OREF into detail.providerText when a vendor's error.message is not a string
+- source: spec-10-2-the-openai-and-google-gemini-adapters.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Anthropic.cls:165, OpenAI.cls:104 and Gemini.cls:146 parse, type-check and read error.message identically; Set tMessage = tParsed.error.message against an object or array yields the literal text N@%Library.DynamicObject, which reaches a screen and a tool result as the vendor's own words (AD-39). One root cause, one fix: consolidate into a Base helper that type-checks once
+- 2026-09-19T08:49:39Z status=routed owner=10-3-the-openai-compatible-adapter-and-local-models by=harvest note=routed to 10.3 because it adds the fourth family and would otherwise quadruplicate the body; consolidating in Base is the natural moment and it closes the OREF defect in all four at once
+
+### DW-1194: OpenAI may send temperature to a model that refuses a non-default value, the same vendor constraint that forced max_completion_tokens
+- source: spec-10-2-the-openai-and-google-gemini-adapters.md | severity: med | fix-risk: low | footprint: in-footprint
+- evidence: The lead checked OpenAI's own API reference and model pages on 2026-09-19: temperature is documented as an optional 0-2 parameter defaulting to 1 with no GPT-5.6 exception, the max_tokens deprecation is tied to the o-series (and the adapter already sends max_completion_tokens), and gpt-5.6-terra, -sol and -luna are all documented as available through the API. The hypothesis is contradicted by the vendor's documentation
+- 2026-09-19T08:49:39Z status=wontfix-theoretical owner=10-2-the-openai-and-google-gemini-adapters by=harvest note=would become real if a live call on a real key answers PROVIDER.REFUSED naming temperature, or if a per-model parameter table later documents an exception; documentation is not a live call, so that probe is the reopen condition
+
+### DW-1195: Anthropic.IsApiKeyShapeValid keeps its own prefix test instead of delegating to Base.KeyShapeAccepted, and answers differently where a row declares no prefix
+- source: spec-10-2-the-openai-and-google-gemini-adapters.md | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: Anthropic.cls:109 returns 1 for any value when KeyPrefix is empty, while Base.KeyShapeAccepted refuses an empty or whitespace-bearing one; the base's claim was narrowed to the families that delegate. Unreachable today because no shipped or probe row puts the Anthropic family on a prefix-less row
+- 2026-09-19T08:49:50Z status=wontfix-accepted owner=10-2-the-openai-and-google-gemini-adapters by=harvest note=reopen_if=a catalog row declares adapterClass Anthropic with an empty keyPrefix, at which point the two gates disagree on a pasted blank key
+
+### DW-1196: Base.HttpFor maps PROVIDER.EGRESS to 502 rather than the 503 own-configuration class its own doc names
+- source: spec-10-2-the-openai-and-google-gemini-adapters.md | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: Base.cls:546 lists TIMEOUT, UNCONFIGURED, CREDENTIAL, CREDENTIALSTORE, KEYSHAPE and TLS and falls through to 502; no socket is opened on an egress refusal, so it belongs with the 503 group. Pre-existing -- the port produced that code before this story -- and asserted in neither direction
+- 2026-09-19T08:49:50Z status=wontfix-accepted owner=10-2-the-openai-and-google-gemini-adapters by=harvest note=reopen_if=a client or a tool result branches on 502 versus 503 for a provider fault, or a test pins the egress refusal's status
+
+### DW-1197: Test/CatalogAnthropicStub's header still says anthropic is the only provider key AgentRules.Validate ever accepts, which the two new shipped rows make false
+- source: spec-10-2-the-openai-and-google-gemini-adapters.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: CatalogAnthropicStub.cls:2-3 and :7-8 both state it; Catalog now declares anthropic, openai and gemini and Validate accepts all three. The class is Epic 5's footprint and is the stated pattern Test/CatalogProbeShipped copies, so the next author of a shipped-row fixture reads the false claim first
+- 2026-09-19T09:34:37Z status=routed owner=burndown by=cr note=doc only, no behaviour; the two sentences are replaced at their origin, not annotated
+
+### DW-1198: Base.OriginOf compares the authority byte for byte and strips no userinfo, so a RequestUrl override that normalises an endpoint is refused PROVIDER.EGRESS
+- source: spec-10-2-the-openai-and-google-gemini-adapters.md | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: OriginOf folds only the scheme; dropping a default :443 or case-folding a host leaves the address the policy judged identical and the comparison unequal. Unreachable today -- Gemini.MODELPATTERN cannot touch the authority and ProviderPort hands Attempts the judged URL verbatim
+- 2026-09-19T09:34:37Z status=wontfix-accepted owner=10-3-the-openai-compatible-adapter-and-local-models by=cr note=reopen_if=Story 10.3's RequestUrl override normalises an endpoint's authority and a call is refused PROVIDER.EGRESS with the two origins differing only in case or default port
+
+### DW-1199: Gemini's no-empty-auth-header guard cannot be pinned through the stub's header recording, because GetHeader cannot tell an unset header from one set to an empty value
+- source: spec-10-2-the-openai-and-google-gemini-adapters.md | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: ProviderStubTransport.HeaderNames skips a watched header whose GetHeader is empty (%Net.HttpRequest.GetHeader returns the same for both), so dropping Gemini.ApplyAuth's empty-key guard reddens nothing. The OpenAI twin is falsifiable because its value carries the Bearer scheme, and Test/OpenAIAdapter now pins it
+- 2026-09-19T09:34:37Z status=wontfix-accepted owner=10-3-the-openai-compatible-adapter-and-local-models by=cr note=reopen_if=ProviderStubTransport records watched-header presence independently of value, at which point the Gemini guard takes the same leg as the OpenAI one

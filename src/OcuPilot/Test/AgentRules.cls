@@ -129,7 +129,7 @@ Method TestAnUnknownProviderIsRefused()
     Do ..AssertOneViolation(.tValues, "provider", ##class(OcuPilot.Api.Error).#AGENTPROVIDERUNKNOWN, "a provider the catalog does not declare")
 
     Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Provider.Catalog).Keys()), "anthropic,openai,gemini", "the catalog declares the three shipped providers, anthropic first")
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.Provider.Catalog).IsKnown(..#UNKNOWNPROVIDER), 0, "and declares the unknown-provider sentinel in neither block, whatever this instance arms")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Provider.Catalog).IsKnown(..#UNKNOWNPROVIDER), 0, "and does not declare the unknown-provider sentinel: the shipped block always, the armed block wherever this instance arms it")
 }
 
 /// <p>Every shipped row's shape, pinned column by column, in declared order.
@@ -162,7 +162,7 @@ Method AssertRowPinned(pKey As %String, pLabel As %String, pModel As %String, pS
     If '$IsObject(tRow) Quit
     Do $$$AssertEquals(tRow.label, pLabel, pKey _ ": the label")
     Do $$$AssertEquals(tRow.defaultModel, pModel, pKey _ ": the default model")
-    Do $$$AssertEquals(tRow.modelSuggestions.%ToJSON(), pSuggestions, pKey _ ": the suggestion list, most capable first")
+    Do $$$AssertEquals(tRow.modelSuggestions.%ToJSON(), pSuggestions, pKey _ ": the suggestion list, in the order the form offers it")
     Do $$$AssertEquals(tRow.defaultEndpoint, pEndpoint, pKey _ ": the default endpoint")
     Do $$$AssertEquals(+tRow.endpointRequired, 0, pKey _ ": no shipped provider requires an endpoint")
     Do $$$AssertEquals(+tRow.canonicalMaxTokens, pMaxTokens, pKey _ ": the canonical maximum tokens")
@@ -267,7 +267,7 @@ Method TestNormalizationExposesTheGapItCreates()
 }
 
 /// <p>Rule 8 -- a provider whose catalog row says an endpoint is required must have one, and the
-/// rule reads <b>the row's column</b> rather than a provider name, so build step 7 adds a row
+/// rule reads <b>the row's column</b> rather than a provider name, so a later family adds a row
 /// rather than a branch.</p>
 /// <p><b>Driven through <class>OcuPilot.Test.AgentRulesProbe</class></b>, because no shipped
 /// provider row requires an endpoint. Left unexercised the rule would be unfalsifiable: it would

@@ -2,8 +2,9 @@
 title: 'Story 10.2: The OpenAI and Google Gemini adapters'
 type: 'feature'
 created: '2026-09-18'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '0e39b67a7a93ff4b7e23f675543b27531539f599'
+baseline_commit: '0e39b67a7a93ff4b7e23f675543b27531539f599'
 review_loop_iteration: 0
 followup_review_recommended: true
 context:
@@ -259,10 +260,13 @@ OpenAI-compatible row, no local or plain-HTTP allowance — `allowsLocal` is fal
   vendor id on the matching `functionResponse`; add `MALFORMED_FUNCTION_CALL`,
   `UNEXPECTED_TOOL_CALL` and `TOO_MANY_TOOL_CALLS` to `GEMINISTOPREASONS` as `refusal`; correct
   the class doc's Gemini correlation paragraph at its origin.
-- `src/OcuPilot/Test/StubTransport.cls` — the scripted-transport body as class methods taking the
-  identity and the watched-header list, over `ProviderStub`'s own globals and public arming and
-  reading API. `ProviderStub` is unchanged: the orchestrator holds it read-only, and a stub that
-  extends a shipped adapter cannot inherit its instance method anyway.
+- `src/OcuPilot/Test/ProviderStubTransport.cls` — the scripted-transport body as class methods
+  taking the identity and the watched-header list, over `ProviderStub`'s own globals and public
+  arming and reading API. `ProviderStub` is left unchanged because a stub extending a shipped
+  adapter cannot inherit its instance method, and because consolidating would mean threading that
+  class's identity parameter and four instance helpers through a class method, or changing the
+  hierarchy under its ten-plus subclasses — a refactor of the shared test substrate rather than
+  this story's work.
 - `src/OcuPilot/Test/OpenAIStub.cls`, `src/OcuPilot/Test/GeminiStub.cls` — new stubs extending
   the two shipped adapters, delegating transport, `Wait` and `NowSeconds` to those class methods.
 - `src/OcuPilot/Test/CatalogProbeShipped.cls` — `CatalogProbe` subclass that re-adapts the two
@@ -298,6 +302,98 @@ OpenAI-compatible row, no local or plain-HTTP allowance — `allowsLocal` is fal
   answered by name as before (DW-1180).
 - **AC7.** Given every canonical tool the registry advertises, when its wire name is emitted, then
   it matches `^[A-Za-z0-9_-]{1,64}$` — the intersection of both vendors' published name grammars.
+
+### Review Findings
+
+_Code review 2026-09-19 (full, `full-opus`; blind-hunter, edge-case-hunter, verification-gap,
+acceptance-auditor). 45 raw findings, 11 root-cause entries: high 0, med 3, low 8._
+
+- [x] [Review][Patch] `Base.KeyShapeAccepted`'s prefix arm is unexercised and weaker than its own
+  fallback arm [src/OcuPilot/Kernel/Provider/Base.cls:597] -- no catalog row pairs a non-empty
+  `keyPrefix` with an adapter that delegates, and that arm applied no whitespace test, so a key
+  with a carriage return would have reached `SetHeader`, which stores a value verbatim. The
+  whitespace test now guards both arms and `Test/OpenAIAdapter` drives the arm both ways.
+- [x] [Review][Patch] The intent's "no empty auth header" had no pinning test on either new family
+  [src/OcuPilot/Kernel/Provider/OpenAI.cls:77] -- a `keySource: none` call is now asserted to reach
+  the transport carrying no watched header. The Gemini twin is not falsifiable through the stub's
+  header recording and is ledgered (DW-1199).
+- [x] [Review][Patch] `Test/Adapter.cls`'s two tool-name grammar parameters contradict each other
+  on the leading-letter rule [src/OcuPilot/Test/Adapter.cls:51]
+- [x] [Review][Patch] `GeminiStub.WATCHEDHEADERS`'s doc says no other family sends `Authorization`
+  [src/OcuPilot/Test/GeminiStub.cls:20]
+- [x] [Review][Patch] The rule-8 doc keeps the superseded "build step 7" phrase its shipped twin
+  dropped [src/OcuPilot/Test/AgentRules.cls:270]
+- [x] [Review][Patch] Two assertion messages overclaim -- "most capable first" is not true of the
+  `gemini` row, and `IsKnown` reads the armed block only while armed
+  [src/OcuPilot/Test/AgentRules.cls:132]
+- [x] [Review][Patch] AC3's positive control ran with no tools while the call it controls for sends
+  them [src/OcuPilot/Test/GeminiAdapter.cls:279]
+- [x] [Review][Patch] `ProviderStubTransport`'s header claims the same script and recording as
+  `ProviderStub` while carrying neither arming leg
+  [src/OcuPilot/Test/ProviderStubTransport.cls:8]
+- [x] [Review][Defer] `Test/CatalogAnthropicStub`'s header still says `anthropic` is the only key
+  `Validate` accepts [src/OcuPilot/Test/CatalogAnthropicStub.cls:2] -- deferred: Epic 5's
+  footprint; DW-1197, `routed owner=burndown`
+- [x] [Review][Defer] `Base.OriginOf` compares the authority byte for byte and strips no userinfo
+  [src/OcuPilot/Kernel/Provider/Base.cls:356] -- deferred: unreachable from shipped code; DW-1198,
+  `wontfix-accepted` with a probe on Story 10.3's normalization
+- [x] [Review][Defer] Gemini's no-empty-auth-header guard cannot be pinned through the stub's
+  header recording [src/OcuPilot/Test/ProviderStubTransport.cls:107] -- deferred: DW-1199,
+  `wontfix-accepted` with a probe on presence-aware recording
+
+**Rejected.**
+
+- `false` -- nothing enforces the shared wire-name grammar, so a tool named `2fa_reset` would reach
+  Gemini: `Registry.ListTools:127` refuses any `TOOLNAME` outside
+  `^[a-z][a-z0-9]*\.[a-z][a-z0-9]*\.[a-z][a-z0-9]*$`, so a leading digit or underscore cannot
+  reach `WireName`.
+- `low` -- AC7's text names `^[A-Za-z0-9_-]{1,64}$` while the test asserts a stricter pattern: the
+  stricter pattern satisfies AC7 in every case. The Tasks bullet's stale `Test/StubTransport.cls`
+  was corrected at its origin by the lead (2026-09-19).
+- `low` -- `IsSynthesizedCallId` is a bare prefix match: a colliding vendor id then travels on
+  neither part and name-and-order correlation is correct; real only if a vendor documents ids with
+  that prefix.
+- `low` -- a numeric `functionCall.id` is discarded: the vendor's reference types `id` as a string,
+  so the synthesized fallback is the right answer.
+- `low` -- the class doc presents the Gemini `finishReason` list as the vendor's complete enum:
+  settling it needs the vendor's current enum page, and an unlisted blocking reason maps to
+  `end_turn`; no OcuPilot request can produce the image-safety reasons it would most likely add.
+- `low` -- `MALFORMED_FUNCTION_CALL` maps to `refusal`: spec-bound, the Tasks name those three
+  reasons.
+- `low` -- duplicated `ProviderMessage` bodies, `IsApiKeyShapeValid` one-liners, and ~150 shared
+  lines across the two new suites: DW-1193 already owns the `ProviderMessage` root cause, and a
+  shared test base is more than a direct correction.
+- `low` -- `ProviderStub.Reset()` followed by `SecretProbe.SetValue` is a dead re-set: a redundant
+  re-arm is not a defect, and removing it couples the tests to `Reset`'s internals.
+- `low` -- `KeyShapeAccepted`'s `(..ApiKey '= "")` term cannot be false at either call site: both
+  callers refuse an empty key earlier with a more specific code, and a method correct standalone is
+  not a defect.
+- `low` -- the gate bounds no length, so a multi-kilobyte paste is accepted: neither vendor
+  publishes a length grammar.
+- `low` -- a foreign canonical id replayed into a Gemini request is untested: documented behavior,
+  it is emitted on both parts so the pair still correlates, and it is reached only by repointing a
+  stored definition at another family mid-conversation.
+- `low` -- the `followRedirect` comment was compressed: the `"unset"` sentinel's meaning is still
+  stated.
+
+- [ ] [Review] AD-35's named verification is unmet for the two families this story adds. Add
+  `ProviderStub`'s forced-error-log arming and armed-row legs to `Test/ProviderStubTransport.cls`
+  so the sweep reaches `OpenAI.ApplyAuth` and `Gemini.ApplyAuth`, and extend the AD-35 proof in
+  `Test/ProviderSecret.cls` to both. The implementation already conforms -- the lead verified
+  lead-side that the key reaches `Authorization` and `x-goog-api-key` and appears in no fault,
+  status, message or URL -- what is missing is the automated proof. Duplication alone stays
+  deferred (DW-1191).
+- [ ] [Review] `Test/AgentWire.cls:79` carries `"nosuchprovider"` as a bare literal. Change it to
+  reference `##class(OcuPilot.Test.AgentRules).#UNKNOWNPROVIDER` so the fixture is tied to the
+  catalog guard at `AgentRules.cls:132`. Orchestrator-granted 2026-09-19; still exactly one token
+  of surface in that file and nothing else.
+- [ ] [Review] `Test/CatalogProbeShipped.Table` fails open: on a key rename or parameter drift it
+  would let a real outbound POST carrying the probe key reach a vendor, silently and in the
+  direction of making the call. Assert that exactly the two expected rows were replaced, before
+  `Invoke` runs, rather than after it returns. No live exposure today -- the rows match.
+- [ ] [Review] Correct at their origin any remaining doc-comment or spec sentence asserting
+  something the code does not do -- the built-URL containment wording and the Google leading-letter
+  justification were both named. Replace the wrong sentence; do not append a qualifier beside it.
 
 ## Design Notes
 
@@ -433,6 +529,13 @@ instance's copy, recompile the whole package, observe red, revert, confirm `git 
   Asserted against the transform, not against `ProviderTools`'s output: that method already
   refuses a name failing `WIRENAMEPATTERN`, so a grammar check over what it emitted could not
   fail.
+- **The shared key-shape gate's prefix arm** (added at review) --
+  `OpenAIAdapter.TestTheKeyShapeGatesPrefixArmRefusesAKeyOfAnotherShape`. `mutation:` have
+  `Base.KeyShapeAccepted`'s prefix arm answer 1 -> red on the wrong-prefix leg's expected
+  `PROVIDER.KEYSHAPE` and on its zero-calls assertion, every other method staying green.
+- **"No empty auth header"** (added at review) --
+  `OpenAIAdapter.TestACallWithNoKeySendsNoAuthenticationHeader`. `mutation:` drop the
+  `If ..ApiKey = "" Quit` guard from `OpenAI.ApplyAuth` -> red on the recorded header names.
 
 ## Review Triage Log
 
@@ -544,10 +647,13 @@ column, no `Api/**` or `ui/**` change, no shipped branch on a provider key.
 - `Test/AgentWire.cls:79` — the one granted literal.
 - `Test/CatalogProbe.cls`, `Test/Egress.cls` — one superseded clause each; doc only.
 
-**Three deviations.** `Test/ProviderStub.cls` was held read-only by the orchestrator, so the
-scripted transport was lifted into a new `Test/ProviderStubTransport.cls` — named inside this
-story's footprint — and `ProviderStub.cls` is byte-identical to its committed version; the
-consequence is that the recording body now exists in two places (recorded under `deferred:`). AC1's
+**Three deviations.** The scripted transport was lifted into a new
+`Test/ProviderStubTransport.cls` rather than shared from `Test/ProviderStub.cls`, which is
+byte-identical to its committed version; the consequence is that the recording body now exists in
+two places, and the duplication alone is deferred. `ProviderStub.cls` is inside this epic's
+`Test/Provider*` footprint — an earlier draft of this spec said the orchestrator held it read-only,
+which was never true (orchestrator correction, 2026-09-19) — so the split is a judgment about blast
+radius, not a constraint. AC1's
 and AC4's named mutations could not falsify anything as written; both `mutation:` lines were
 replaced with ones that do, and the reason is on each line and in each test's doc comment.
 

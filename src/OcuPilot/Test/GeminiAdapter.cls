@@ -251,6 +251,7 @@ Method TestAModelThatWouldNotSurviveSubstitutionIsRefused()
     Do $$$AssertEquals($Match("../../evil", $Parameter(..#ADAPTER, "MODELPATTERN")), 0, "a model carrying path characters is outside the grammar the adapter admits")
     Do $$$AssertEquals($Match(tRow.defaultModel, $Parameter(..#ADAPTER, "MODELPATTERN")), 1, "and the row's own model is inside it, so the grammar is not simply refusing everything")
 
+    Do ..Tools(.tTools)
     Set tCase = 0
     For tBadModel = "../../evil", "evil.example.com/v1", "a model with spaces" {
         Set tCase = tCase + 1

@@ -582,10 +582,12 @@ ClassMethod ReasonFor(pCode As %String) As %String
     Quit "The provider call did not complete"
 }
 
-/// <p>The concrete key-shape test a family whose keys have no published prefix uses: the catalog
-/// row's <property>KeyPrefix</property> where the row declares one, and otherwise a value that is
-/// non-empty and carries no whitespace or control character -- the paste error a gate with no
-/// grammar to check can still catch.</p>
+/// <p>The concrete key-shape test a family whose keys have no published prefix uses. <b>No
+/// whitespace and no control character, whatever the row declares</b> -- the paste error a gate
+/// with no grammar to check can still catch, and what keeps a carriage return out of the header
+/// the credential is written to, since <method>%Net.HttpRequest.SetHeader</method> stores a value
+/// verbatim. Beyond that: the catalog row's <property>KeyPrefix</property> where the row declares
+/// one, and a non-empty value where it does not.</p>
 /// <p><b><property>ApiKey</property> is read inside the expressions and never into a local</b>, per
 /// <method>IsApiKeyShapeValid</method>'s contract (AD-35, AD-48). It is here rather than in each
 /// adapter so the families that delegate to it cannot answer the same question two ways.
@@ -594,8 +596,9 @@ ClassMethod ReasonFor(pCode As %String) As %String
 /// family on a prefix-less row.</p>
 Method KeyShapeAccepted() As %Boolean
 {
+    If $ZStrip(..ApiKey, "*WC") '= ..ApiKey Quit 0
     If ..KeyPrefix '= "" Quit ($Extract(..ApiKey, 1, $Length(..KeyPrefix)) = ..KeyPrefix)
-    Quit (..ApiKey '= "") && ($ZStrip(..ApiKey, "*WC") = ..ApiKey)
+    Quit (..ApiKey '= "")
 }
 
 /// <p>The reason a <code>PROVIDER.KEYSHAPE</code> refusal carries: it states the prefix the

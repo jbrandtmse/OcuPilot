@@ -16,8 +16,9 @@ Parameter STUBIDENTITY = "geministub";
 
 /// <p>The headers <method>OcuPilot.Test.ProviderStub.Recorded</method>'s
 /// <code>headerNames</code> reports the presence of: the one this family's
-/// <method>OcuPilot.Kernel.Provider.Gemini.ApplyAuth</method> sets, and the three neither this
-/// family nor the other sends, so a test asserts their absence rather than assuming it.</p>
+/// <method>OcuPilot.Kernel.Provider.Gemini.ApplyAuth</method> sets, and the three this family does
+/// not -- the other new family's and the canonical family's two -- so a test asserts their absence
+/// rather than assuming it.</p>
 Parameter WATCHEDHEADERS = "x-goog-api-key,Authorization,x-api-key,anthropic-version";
 
 Method IssueHttpsPost(pRequest As %Net.HttpRequest, pUrl As %String, Output pStatus As %Integer, Output pBody As %String, Output pRetryAfter As %String) As %Status
