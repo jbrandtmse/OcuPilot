@@ -398,6 +398,41 @@ Group 5 — the agent-instruction file:
 - Given each of the twelve routed entries, when this story closes, then it is cited by a Task or an
   I/O row above, or declined by name under `## Design Notes` with its reason — none is silent.
 
+### Review Findings
+
+Code review 2026-09-19 (full-opus tier; `blind-hunter`, `edge-case-hunter`, `verification-gap`,
+`acceptance-auditor`). 36 rows grouped into 19 root-cause entries: high 0, medium 2, low 14, false 3.
+Both mediums and two lows were patched in-pass; no high or medium is left unresolved.
+
+The spec's `followup_review_recommended` risk is **closed by evidence, not carried**: every producer
+that reaches `RecordToolCall` was walked (`Screen/Area.cls:212`, `Screen/Gate.cls:89`,
+`Screen/Tool/Registry.cls:393,415`, the four `Screen/Tool/*` tools, `Port/LogSourcePort.cls:300`,
+`Loop.cls:778`) and none can emit an unspellable pair -- resource halves are IRIS resource names,
+permission halves are `USE`/`READ`/`WRITE` literals. `pTruncated` is computed at write time and
+`ViewForUser` reads the stored column, so no already-stored row can newly be withheld either.
+
+- [x] [Review][Patch] `PairsToString` spelled a three-or-more-element member and reported the set complete [src/OcuPilot/Kernel/Audit/Ledger.cls:268] -- medium, in-story, fix-risk low. The guard read `$ListLength(tPair) < 2`, so a longer member took its first two elements and was spelled, against the method's own doc and against AD-46's withhold. Now `'= 2`; the existing pinning test carries a three-element member and its mutation was observed red.
+- [x] [Review][Patch] the un-nested AdminPort capture leg never observed that `Run()` executed *inside* the window [src/OcuPilot/Test/AdminPortFault.cls:153] -- medium, in-story, fix-risk low. Moving `EndCaptureOutput` above `Run()` left all of the leg's assertions green, so AD-2 step 6's window could be vacated undetected. `EndpointFixture`'s `device` mode now records `captureAtWrite` (the vendor buffer is defined once a capture holds output) and the leg asserts it; the trailing `EndCapture` status is asserted too, so the method cannot leak a capture into a pooled worker.
+- [x] [Review][Patch] `RequiredPairs`'s own doc still defined the truncation flag as "an over-long set was cut" [src/OcuPilot/Kernel/State/Ledger.cls:96] -- low, in-footprint. Corrected at its origin to name both causes.
+- [x] [Review][Patch] `LedgerClientRows.OnBeforeOneTest` never swept [src/OcuPilot/Test/LedgerClientRows.cls:41] -- low, in-story. A row an earlier process left under the prefix reddened the first method's teardown rather than its own; it now sweeps before as well as after, matching both split siblings.
+- [x] [Review][Patch] `panel-principal`'s computed-style comment claimed five pinned ramp properties [ui/browser/panel-principal.browser-spec.mjs:163] -- low, comment only. The body role's weight (400) and tracking (`normal`) are the CSS initial values, so those two assertions hold whether or not the ramp declares them; the comment now says which three are load-bearing. The assertion gap itself is ledgered as DW-1187 (`reopen_if` names the probe) because closing it needs a build, deploy and browser cycle this review pass does not run.
+- [x] [Review][Defer] `LedgerRedaction`'s two `$USERNAME`-row methods clean up only on the happy path [src/OcuPilot/Test/LedgerRedaction.cls:162] -- low, pre-existing shape moved by the split; `Test/Ledger.cls` carries it identically. Ledgered DW-1186 `wontfix-accepted` with an observable probe.
+- [x] [Review][Defer] `PortCapture.ClearFixtures` neither asserts nor clears `^||%capture` [src/OcuPilot/Test/PortCapture.cls:31] -- low; the same root cause as DW-1185, which this change filed. Recorded as an occurrence, not a new entry.
+
+**Rejected.**
+
+- `false` -- the spec's mutation list and the cycle log "contradict each other" on which mutation reddens `PortCapture`: they name two different guards (`MgmntPort.Call`'s `$$$ISOK(tCallSC)` versus MgmntPort's own `BeginCapture` guard) recorded by two different passes (the implement stage's list versus the lead's AD gate).
+- `false` -- DW-1185's evidence "describes a superseded mutation": it describes the AD-gate mutation the cycle log records, which is the pass that filed it.
+- `false` -- the follow-up risk "names the wrong population": the producer survey above settles it in the direction the entry feared, not against it.
+- `low` -- the `## Auto Run Result`'s line counts (337/366 against 340/370), "twelve pinning methods" (14), and the triage header's tallies: the fix edits the spec under review. The DW-1134 argument is unaffected -- both siblings are well under 500.
+- `low` -- `Test/Ledger.UserExists` restores `$NAMESPACE` after the `Try`/`Catch` rather than as the `Catch`'s first line: pre-existing, and the `Catch` body is one statement. `wontfix-theoretical`; real the moment a second statement joins it.
+- `low` -- `LedgerClientRows`'s "reserves no turn" is unasserted and `DeleteWhere` ignores `%SQLCODE`: both fixes add a guard for a failure nothing was shown to reach.
+- `low` -- the split classes' `TurnFixture.RemoveTurns` assertion is inert for their own turns: already adjudicated in the triage log above ("the assertion still catches a leaked turn from anywhere"), and no new evidence was offered.
+- `low` -- DW-1168's new guard pins one of three live copies of the `docker cp` literal, and Epic 6's two spec files still carry the stale one: another epic's artifacts (Rule 11), already reported to the lead under `## Design Notes`.
+- `low` -- DW-1161's consolidated block moved up the cascade with only a source-text pin: verified cascade-safe independently -- all four elements carry exactly one class, the new block is top-level, and the four reveal rules are both higher-specificity and later in the file.
+- `low` -- `AdminPortFault.InvokeFixture`'s `Catch` leaves `tHttp`/`tFault`/`tResult` unset, and `panel-principal` would throw rather than assert if `.ocu-panel-empty` were absent: both are pre-existing, and both already fail the test loudly.
+- `low` -- `Test/Dispatch.InvokeHandler` is the third copy of the `%request`/`%response`-without-`New` idiom: already DW-1184, `open owner=5-0-epic-4-deferred-cleanup`, for this story's ledger gate.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -673,6 +708,15 @@ every descendant's own compiled copy carried the mutation:**
   added that pin: a one-time `grep` cannot stop the two files drifting apart a second time, and this
   project pins its cross-file literals (`compose.test.mjs`, `ci.test.mjs`) rather than trusting
   them. The line was also run verbatim from `ui/` against the throwaway and copied the bundle.
+- mutation (code review): narrowed `PairsToString`'s length guard back to `$ListLength(tPair) < 2` ->
+  `LedgerPairs.TestEveryUnspellablePairIsReportedShort` red alone (run 2518), the failure text showing
+  a three-element member spelled as `OcuPilotProbePairLong:USE` with the set reported complete. The
+  guard now reads `'= 2`, which is what the method's own doc states.
+- mutation (code review): moved `AdminPort.Sequence`'s `EndCaptureOutput` line above the `Run()` call,
+  so the window closes before the endpoint writes -> `AdminPortFault.TestAnUnnestedCallRunsInsideItsOwnCaptureAndClosesIt`
+  red on `captureAtWrite` alone (run 2519), one method of 24; every other assertion in it -- status, 200,
+  the result, the trace, the closed buffer, the fresh capture -- stayed green, which is the gap.
+  Reverted, recompiled, 24/24 green at run 2520.
 
 
 ## Auto Run Result

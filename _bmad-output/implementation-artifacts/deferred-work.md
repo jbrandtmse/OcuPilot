@@ -3016,6 +3016,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-17T04:37:08Z occurrence=4-3-the-docked-panel-present-on-every-route
 - 2026-09-19T03:52:06Z status=routed owner=5-0-epic-4-deferred-cleanup by=spec_gate note=same defect as DW-1168 in the same line of .claude/rules/objectscript-testing.md; Story 5.0 fixes the origin, so this closes with it rather than waiting for 17.2
 - 2026-09-19T03:52:06Z occurrence=5-0-epic-4-deferred-cleanup
+- 2026-09-19T07:05:11Z status=resolved-by:5-0-epic-4-deferred-cleanup by=adjudication note=.claude/rules/objectscript-testing.md now names dist/ocupilot-ui, and ui/tools/angular-json.test.mjs pins it against angular.json's outputPath
 
 ### DW-458: At a viewport where the remembered width makes the side bar yield, narrowing the panel to 352 or less brings the side bar back and the panel can no longer be widened without closing the side bar
 - source: spec-4-3-the-docked-panel-present-on-every-route.md | severity: med | fix-risk: med | footprint: in-story
@@ -3332,6 +3333,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-18T07:36:42Z status=wontfix-accepted owner=burndown by=cr note=a seam for three internal-fault paths is more machinery than the story asks for. reopen_if=a client-fulfilled tool other than shell.screen.open lands
 - 2026-09-18T07:48:55Z status=routed owner=burndown by=adjudication note=lead confirms: pinning the normalised fault branches needs a throwing seam, which is a test-seam change rather than a story fix
 - 2026-09-19T03:20:51Z status=routed owner=5-0-epic-4-deferred-cleanup by=x0 note=chartered into Story 5.0; Epic 5 extends the dispatch, ledger and panel paths these entries sit on
+- 2026-09-19T07:05:11Z status=resolved-by:5-0-epic-4-deferred-cleanup by=adjudication note=Test/ToolDispatchClientFault.cls with ClientCallFault/Probe and /Registry pin all three branches; three mutations at Dispatch.cls:439,:461,:527 each reddened one method
 
 ### DW-1104: One provider call's worst case is ATTEMPTBUDGETSECONDS plus the stored per-call timeout, because the deadline gates when an attempt may start and nothing bounds State.Egress.TimeoutSeconds
 - source: spec-4-8-a-slow-or-rate-limited-provider-degrades-the-turn-rather-than-failing-it.md | severity: med | fix-risk: low | footprint: in-epic
@@ -3407,6 +3409,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: No test outside Test/Ledger*, Test/AuditEvent reads a ledger row; the nav classes that reach the client-call writers contain no ledger reference. TestAnUnreadableStoreIsOneUnavailable- Envelope asserts the fault object, not the route's status. Each is a fixture addition (a faulting turnprobe script, a stopping Boundary probe, a route-side LedgerClass seam). Location: src/OcuPilot/Kernel/Agent/Loop.cls, src/OcuPilot/Api/Ledger.cls
 - 2026-09-18T13:52:26Z status=routed owner=burndown by=harvest note=lead harvest of the 4.9 spec deferred list
 - 2026-09-19T03:20:51Z status=routed owner=5-0-epic-4-deferred-cleanup by=x0 note=chartered into Story 5.0; Epic 5 extends the dispatch, ledger and panel paths these entries sit on
+- 2026-09-19T07:05:12Z status=resolved-by:5-0-epic-4-deferred-cleanup by=adjudication note=Test/LedgerWire.cls and the new Test/LedgerClientRows.cls pin the provider error leg, the three client-call writers, view truncation, the withhold and the 503; two of the six were already pinned by 4.9's rework and are named in Design Notes
 
 ### DW-1124: The 4096 and 512 column bounds are duplicated as literals in `State/Ledger.GuardedAppend` and `Turn.GuardedBegin`; raising `LEDGERROWMAXLENGTH` would cut silently at 4096 with no U+2026 and `argumentsTruncated` still reading 0.
 - source: spec-4-9-the-agent-audit-ledger.md | severity: low | fix-risk: low | footprint: in-epic
@@ -3425,6 +3428,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Neither rejects the separators; the round trip decides whether a row is withheld. IRIS resource names do not contain either character today, which is why this is low. Location: src/OcuPilot/Kernel/Audit/Ledger.cls PairsToString, StringToPairs, RedactedKeys
 - 2026-09-18T13:52:26Z status=routed owner=burndown by=harvest note=lead harvest of the 4.9 spec deferred list
 - 2026-09-19T03:20:51Z status=routed owner=5-0-epic-4-deferred-cleanup by=x0 note=chartered into Story 5.0; Epic 5 extends the dispatch, ledger and panel paths these entries sit on
+- 2026-09-19T07:05:12Z status=resolved-by:5-0-epic-4-deferred-cleanup by=adjudication note=Kernel/Audit/Ledger.cls PairsToString reports pTruncated for every unspellable pair including a three-or-more-element member, and RedactedKeys answers provenance; Test/LedgerPairs.cls pins both with mutations observed red
 
 ### DW-1127: The ledger's only 403 reuses `Error.REASONAUTHNOPRIVILEGE`, whose sentence names a tool call; and `Event.LogFailure`'s hardcoded message reports a configuration change when a dropped `LedgerRead` emission is a read.
 - source: spec-4-9-the-agent-audit-ledger.md | severity: low | fix-risk: low | footprint: in-epic
@@ -3475,6 +3479,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: .claude/rules/objectscript-testing.md keeps a test class to roughly 500 lines; the class was 641 before rework 1 added three methods. Splitting it means re-homing OnAfterOneTest's probe-row assertions. Probe: wc -l src/OcuPilot/Test/Ledger.cls
 - 2026-09-18T15:19:35Z status=routed owner=burndown by=harvest note=lead harvest of the rework 1 deferred entry
 - 2026-09-19T03:20:51Z status=routed owner=5-0-epic-4-deferred-cleanup by=x0 note=chartered into Story 5.0; Epic 5 extends the dispatch, ledger and panel paths these entries sit on
+- 2026-09-19T07:05:12Z status=resolved-by:5-0-epic-4-deferred-cleanup by=adjudication note=split into Ledger.cls 558, LedgerPairs.cls 370, LedgerRedaction.cls 340, each with its own PROBEUSER and teardown; 558 against the AC's ~500 is the reviewed spec-bound exception recorded in the triage log
 
 ### DW-1135: No client-visible response carries the instance's local calendar date, so a client feature needing 'today' cannot compute one - Story 4.10's Home application-errors line reads the newest logged date instead
 - source: spec-4-10-homes-suggested-view-and-the-starter-prompts.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -3505,12 +3510,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: The line selects its text by footerKey the way the panel's footer and banner do, in a second place. Probe: change the panel's precedence and read the line
 - 2026-09-18T18:01:00Z status=routed owner=burndown by=harvest note=lead harvest of the 4.10 spec deferred list
 - 2026-09-19T03:20:51Z status=routed owner=5-0-epic-4-deferred-cleanup by=x0 note=chartered into Story 5.0; Epic 5 extends the dispatch, ledger and panel paths these entries sit on
+- 2026-09-19T07:05:12Z status=resolved-by:5-0-epic-4-deferred-cleanup by=adjudication note=one selector in core/agent-status.ts read by suggested-view.ts and panel.ts; ui/tools/agent-status.test.mjs reddens if either consumer re-derives the ladder
 
 ### DW-1151: suggested-view.browser-spec.mjs copies three helpers from panel.browser-spec.mjs
 - source: spec-4-10-homes-suggested-view-and-the-starter-prompts.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: The same duplication class DW-1086 closed for the turnprobe fixture, now in the panel-shaped specs. Probe: grep the two files for the identical helper bodies
 - 2026-09-18T18:01:00Z status=routed owner=burndown by=harvest note=lead harvest of the 4.10 spec deferred list
 - 2026-09-19T03:20:51Z status=routed owner=5-0-epic-4-deferred-cleanup by=x0 note=chartered into Story 5.0; Epic 5 extends the dispatch, ledger and panel paths these entries sit on
+- 2026-09-19T07:05:12Z status=resolved-by:5-0-epic-4-deferred-cleanup by=adjudication note=ui/browser/panel-spec.mjs holds authHeader, definitions, signedInAt and DEFINITIONS_PATH; five specs import it and break together when it breaks
 
 ### DW-1152: A parked re-read can fire after the user has left Home, costing one wasted request
 - source: spec-4-10-homes-suggested-view-and-the-starter-prompts.md | severity: low | fix-risk: low | footprint: in-epic
@@ -3563,6 +3570,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-18T19:50:39Z status=routed owner=burndown by=cr note=a measured alternative to raising maximumWarning (DW-1153); left unapplied here because three of the four blocks are other stories' rules
 - 2026-09-18T19:55:13Z status=routed owner=burndown by=adjudication note=lead declines the consolidation for now: it touches three other stories' rules in a stylesheet Epic 6 also edits, and DW-1153's raise removes the pressure that would justify the merge risk
 - 2026-09-19T03:20:51Z status=routed owner=5-0-epic-4-deferred-cleanup by=x0 note=chartered into Story 5.0; Epic 5 extends the dispatch, ledger and panel paths these entries sit on
+- 2026-09-19T07:05:12Z status=resolved-by:5-0-epic-4-deferred-cleanup by=adjudication note=the four byte-identical base blocks are one selector list; this branch's own build measured 994.30 to 992.90 kB initial total, and design-tokens.test.mjs asserts the single list
 
 ### DW-1162: _components.scss's .ocu-panel-empty is still pinned by nothing, and DW-1154's leg pins named rules rather than the population of rules a template depends on
 - source: spec-4-10-homes-suggested-view-and-the-starter-prompts.md | severity: med | fix-risk: med | footprint: in-epic
@@ -3570,6 +3578,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-18T19:50:39Z status=routed owner=burndown by=cr note=two parts: a computed-style pin in panel-principal.browser-spec.mjs, and a client-lint rule family matching template classes against the stylesheet
 - 2026-09-18T19:55:13Z status=routed owner=burndown by=adjudication note=lead confirms: a client-lint rule family matching template class names against the stylesheet is the general fix and is story-sized; DW-1154's leg covers the named rules meanwhile
 - 2026-09-19T03:20:51Z status=routed owner=5-0-epic-4-deferred-cleanup by=x0 note=chartered into Story 5.0; Epic 5 extends the dispatch, ledger and panel paths these entries sit on
+- 2026-09-19T07:05:12Z status=resolved-by:5-0-epic-4-deferred-cleanup by=adjudication note=the mechanical half landed - panel-principal asserts .ocu-panel-empty's computed style, not only its presence; the general client-lint rule family was declined at the spec gate and is re-filed as its own entry
 
 ### DW-1163: A faulted source parks a re-read of every source, so N read sources make N faults cost N squared requests
 - source: spec-4-10-homes-suggested-view-and-the-starter-prompts.md | severity: low | fix-risk: med | footprint: in-story
@@ -3607,6 +3616,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: The rule file an agent reads before running a browser spec names a directory that does not exist, so a copy taken from it deploys nothing and the spec reads the old bundle -- the exact failure the rule exists to prevent. Probe: follow the rule's docker cp line verbatim
 - 2026-09-18T22:16:25Z status=routed owner=burndown by=harvest note=an agent-instruction file, so the lead applies the correction rather than a story
 - 2026-09-19T03:20:52Z status=routed owner=5-0-epic-4-deferred-cleanup by=x0 note=chartered into Story 5.0; Epic 5 extends the dispatch, ledger and panel paths these entries sit on
+- 2026-09-19T07:05:12Z status=resolved-by:5-0-epic-4-deferred-cleanup by=adjudication note=same line as DW-457; fixed at its origin and pinned by angular-json.test.mjs
 
 ### DW-1169: The cap-follows-agent-switch browser leg timed out in CI with no statement of which wait it was, and it is green locally
 - source: CI run 35389327505 (story 4.10's head) | severity: med | fix-risk: low | footprint: in-epic
@@ -4061,6 +4071,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Story 4.2's rule allowed a capture only in Port/AdminPort.cls; Epic 6's Port/MgmntPort.cls captures the same way and its own CI never saw the rule, so the merge produced two findings. The allow-list now names both, with the rule still refusing a capture anywhere else. What is unproven is the rule's own reason: that no capture opens inside another. Probe: call MgmntPort from a path that already holds AdminPort's capture and read whether BeginCapture refuses
 - 2026-09-18T23:42:28Z status=routed owner=burndown by=lead note=recorded at the merge rather than resolved: establishing the call graph between the two ports is Epic 6's or a later epic's footprint, not Epic 4's
 - 2026-09-19T03:20:51Z status=routed owner=5-0-epic-4-deferred-cleanup by=x0 note=chartered into Story 5.0; Epic 5 extends the dispatch, ledger and panel paths these entries sit on
+- 2026-09-19T07:05:12Z status=resolved-by:5-0-epic-4-deferred-cleanup by=adjudication note=Test/PortCapture.cls pins the cross-port nesting refusal and AdminPortFault's corrected leg pins the un-nested window; the lead re-demonstrated the MgmntPort guard mutation independently on slot A, runIndex 2505 green, 2506 red, 2508 green
 
 ### DW-1174: The audit spec's agent-marker leg renders every OcuPilot-source row, so it cannot pass on an instance that has been tested on for days
 - source: Epic 4's Rule 22 integrate-forward with Epic 6 | severity: med | fix-risk: low | footprint: cross-epic
@@ -4077,8 +4088,26 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-0-epic-4-deferred-cleanup.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Invoke, InvokeHttp500 and the new InvokeHandler each Set %request without New %request,%response; only %OcuPilotDispatchCap is killed on exit. No current caller is affected, so it is latent. Location: src/OcuPilot/Test/Dispatch.cls
 - 2026-09-19T06:30:02Z status=open owner=5-0-epic-4-deferred-cleanup by=harvest note=harvested from the 5.0 spec deferred list; adjudicated against delivered scope at this story's ledger gate
+- 2026-09-19T07:05:12Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=adjudication note=not delivered and correctly out of scope here - latent, no current caller; 5.3 extends the confirm path and Test/Dispatch.cls is the harness its own tests will use, so the New belongs with the story that next touches all three helpers
 
 ### DW-1185: A lead-side Rule 19 mutation that leaves a capture open leaks it into a pooled Atelier work-queue worker, so a later unrelated class run reddens on Capture Already Active
 - source: lead AD gate for story 5.0 | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Observed on slot A 2026-09-19: removing MgmntPort's BeginCapture guard left ^||%capture and a redirected device set in the worker that served run 2506; run 2507 of PortCapture and a run of AdminPortFault then failed 11 of 24 with Capture Already Active on reverted, recompiled code. Cleared when a class that calls EndCapture next ran in that worker (2510 green 24/24). Location: Verification discipline, not a product defect
 - 2026-09-19T06:33:15Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=the project rule already says destructive verification belongs on a throwaway; this shows a plain code mutation is destructive too when the harness pools processes - 13.2 owns the CI test-suite discipline
+- 2026-09-19T07:02:49Z occurrence=5-0-epic-4-deferred-cleanup
+- 2026-09-19T07:05:12Z status=escalated owner=burndown by=adjudication note=footprint reads in-epic in the body but the owner is an Epic 13 story, so Rule 15 makes it out-of-footprint and escalated; the reviewer caught this. The verification-discipline finding stands and 13.2 is still the right eventual home - the decision sheet confirms the owner rather than a runner assuming it
+
+### DW-1186: A LedgerRedaction or Ledger test method that writes ledger rows under $USERNAME deletes them as its last statement, so a raise leaves live rows the teardown does not count
+- source: spec-5-0-epic-4-deferred-cleanup.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: OnAfterOneTest asserts RowCountFor(PROBEUSER) only; LedgerRedaction.cls:162 and :281 delete by turn key as the method's last statement with no Try/Catch. Pre-existing shape moved by the DW-1134 split; Test/Ledger.cls carries it identically. Location: src/OcuPilot/Test/LedgerRedaction.cls
+- 2026-09-19T07:02:42Z status=wontfix-accepted owner=5-0-epic-4-deferred-cleanup by=cr note=reopen_if=SELECT COUNT(*) FROM OcuPilot_Kernel_State.Ledger WHERE LedgerUser='_SYSTEM' reads non-zero after a green full sweep
+
+### DW-1187: panel-principal's computed-style leg leaves two of the body ramp's five properties unpinned, because the token values equal the CSS initial values
+- source: spec-5-0-epic-4-deferred-cleanup.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: --ocu-type-body-weight is 400 and --ocu-type-body-tracking is normal (ui/src/styles/_typography.scss:86,88), the CSS initial values, so the weight assertion holds with the declaration dropped and tracking is asserted nowhere. Location: ui/browser/panel-principal.browser-spec.mjs:160
+- 2026-09-19T07:02:49Z status=wontfix-accepted owner=5-0-epic-4-deferred-cleanup by=cr note=reopen_if=the body role takes a non-default weight or tracking token; closing it needs a build, deploy and browser cycle a review pass does not run
+
+### DW-1188: No client-lint rule pins the population of ocu- class names a template depends on against the stylesheets, so a template class with no rule installs silently
+- source: spec-5-0-epic-4-deferred-cleanup.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Templates carry 423 distinct ocu- class names against 406 class selectors across the five sheets in ui/src/styles/. The rule needs a curated allow-list of 37 intentionally unstyled test and browser hooks, a policy for runtime-composed names (list-page.ts:180-185, core/reply.ts:268) and for ocu- prefixed ids (panel.ts:35,38,41,44). Attachment point: family 7 in ui/tools/client-lint.mjs:595-602
+- 2026-09-19T07:05:12Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=adjudication note=the general half DW-1162 declined at the 5.0 spec gate, re-filed so the residual is not carried inside a resolved entry; 13.2 owns the lint and CI suite

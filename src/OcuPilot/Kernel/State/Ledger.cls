@@ -94,7 +94,9 @@ Property ResponseTokens As %Integer [ InitialExpression = 0 ];
 /// <code>resource:permission</code>, sorted, de-duplicated and comma-joined -- a scalar, the way
 /// <property>OcuPilot.Kernel.State.Step.FailedPair</property> is, and not a
 /// <code>list Of</code>.</p>
-/// <p><b>An over-long set is cut at a whole-pair boundary and says so</b> (AD-24, AD-41):
+/// <p><b>A set holding fewer pairs than the call required says so</b> (AD-24, AD-41) -- an
+/// over-long set cut at a whole-pair boundary, or a pair the grammar cannot spell left out by
+/// <method>OcuPilot.Kernel.Audit.Ledger.PairsToString</method>:
 /// <property>RequiredPairsTruncated</property> reads 1, and a cross-user read withholds such a row
 /// rather than gating on a set that is missing pairs (AD-46).</p>
 Property RequiredPairs As %String(MAXLEN = 512);

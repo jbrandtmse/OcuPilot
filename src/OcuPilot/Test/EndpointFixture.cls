@@ -86,6 +86,9 @@ ClassMethod Clear()
 /// <code>apiVersion</code>, <code>trace</code> (the calls in order, comma-separated),
 /// <code>asyncAtRun</code> (<code>IsRunningAsync</code> when <code>Run()</code> started),
 /// <code>nameAtRun</code>, <code>sessionUserAtRun</code> (<code>%session.Username</code>),
+/// <code>captureAtWrite</code> (in <code>device</code> mode, 1 when the write landed in a capture
+/// -- the vendor's buffer is defined once a capture holds output, so this says the write happened
+/// <b>inside</b> a capture window rather than only that it happened),
 /// <code>maxRows</code> (the seeded <code>maxRows</code> query parameter, kept across a call that
 /// seeds none) or <code>getNames</code> (the names the <code>list</code> mode's
 /// <code>TYPEGET</code> calls asked for, comma-separated, in order) or <code>getCount</code> (how
@@ -185,6 +188,7 @@ Method Run(ByRef pSC As %Status, pBody As %DynamicAbstractObject) As %DynamicAbs
     If tMode = "device" {
         Set tOutput = {"fixture": "device output"}
         Do tOutput.%ToJSON()
+        Set ^||OcuPilotEndpointFixture("captureAtWrite") = ''$Data(^||%capture)
         Quit {"fixture": "device"}
     }
     If (tMode = "list") && (..Type = ..#TYPEGET) {

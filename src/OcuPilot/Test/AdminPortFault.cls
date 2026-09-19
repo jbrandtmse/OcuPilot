@@ -147,9 +147,14 @@ Method TestAProtectFromRunIsA403()
 /// discards its captured lines, so the observable that the window closed is the buffer
 /// (<file>irislib/%SYS/Capture.int</file> kills it in <code>EndCapture</code>) and a fresh capture
 /// starting cleanly afterwards.</p>
+/// <p>That <code>Run()</code> ran <b>inside</b> the window, and not merely before it closed, is the
+/// fixture's own <code>captureAtWrite</code>: the vendor's buffer is defined once a capture holds
+/// output, so a device write made inside one records 1 and one made outside records 0.</p>
 /// <p>Mutation (Rule 19): remove the <code>If $Data(tCookie) Do ... EndCaptureOutput ...</code>
 /// line from <method>OcuPilot.Port.AdminPort.Sequence</method> -- the port leaves its capture open,
-/// and this goes red on the buffer and on the fresh capture.</p>
+/// and this goes red on the buffer and on the fresh capture. Move that same line above the
+/// <code>Run()</code> call instead and the window closes before the endpoint writes:
+/// <code>captureAtWrite</code> reads 0 and this goes red there alone.</p>
 Method TestAnUnnestedCallRunsInsideItsOwnCaptureAndClosesIt()
 {
     Do $$$AssertEquals($Data(^||%capture), 0, "no capture is open before the call")
@@ -158,13 +163,16 @@ Method TestAnUnnestedCallRunsInsideItsOwnCaptureAndClosesIt()
     Do $$$AssertEquals(tHttp, 200, "at 200")
     Do $$$AssertTrue($IsObject(tResult) && (tResult.fixture = "device"), "the result is the endpoint's return value")
     Do $$$AssertEquals(##class(OcuPilot.Test.EndpointFixture).Recorded("trace"), "ResourcesOR,SaveQueryParams,ValidateQueryParams,ValidateRequest,ValidateSemantics,ShouldRunAsync,Run", "and Run executed, which is what the capture wrapped")
+    Do $$$AssertEquals(##class(OcuPilot.Test.EndpointFixture).Recorded("captureAtWrite"), 1, "with its device write inside the window, not after it closed")
     Do $$$AssertEquals($Data(^||%capture), 0, "the port closed its own capture rather than leaving it open")
 
     ; A capture opened now must start clean: one left open by the port would refuse this outright
     ; once it held the endpoint's output.
     Set tAfterSC = $$BeginCapture^%SYS.Capture(.tCookie)
     Do $$$AssertStatusOK(tAfterSC, "a capture opened after the call starts cleanly")
+    Set tAfterEndSC = $$$OK
     If $Data(tCookie) Set tAfterEndSC = $$EndCapture^%SYS.Capture(tCookie, .tAfterLines)
+    Do $$$AssertStatusOK(tAfterEndSC, "and closes again, so this method leaves none open for the next class")
 }
 
 /// <p>What <code>Run()</code> writes to the device is kept off the caller's device by the port's own

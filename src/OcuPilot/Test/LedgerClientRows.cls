@@ -41,6 +41,9 @@ Parameter PROBE = "OcuPilot.Test.LedgerClientStopProbe";
 Method OnBeforeOneTest() As %Status
 {
     Do $ClassMethod(..#PROBE, "Reset")
+    ; Swept before as well as after: a row an earlier process left under this prefix would
+    ; otherwise redden the first method's teardown rather than its own.
+    Do ..ForgetPrefix()
     Quit $$$OK
 }
 

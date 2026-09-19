@@ -159,8 +159,9 @@ test('DW-378: a least-privileged principal sees the panel on two routes, with th
       // the transcript's own spacing, and the on-surface-variant role rather than full on-surface.
       assert.equal(seen.style.fontSize, seen.tokens.fontSize, "the sentence takes the body ramp's size");
       assert.equal(seen.style.fontWeight, seen.tokens.fontWeight, "and the body ramp's weight");
-      // The ramp mixin sets five properties; asserting two of them would leave the other three
-      // free to be dropped from `typo.ocu-type('body')` with this leg still green.
+      // The ramp mixin sets five properties. Size, family and line height are load-bearing here;
+      // the body role's weight (400) and tracking (`normal`) are the CSS initial values, so those
+      // two assertions hold whether or not the ramp declares them and pin nothing on their own.
       assert.equal(seen.style.fontFamily, seen.tokens.fontFamily, "and its family");
       assert.equal(seen.style.lineHeight, seen.tokens.lineHeight, "and its line height");
       assert.equal(seen.style.margin, '0px 0px 0px 0px', 'with no margin of its own');

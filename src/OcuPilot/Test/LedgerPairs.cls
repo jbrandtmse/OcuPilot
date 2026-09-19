@@ -353,7 +353,7 @@ Method TestAPairHoldingASeparatorIsOmittedAndTheSetReportedShort()
 Method TestEveryUnspellablePairIsReportedShort()
 {
     Set tPlain = $ListBuild("OcuPilotProbePairPlain", "USE")
-    Set tDropped = $ListBuild($ListBuild("OcuPilotProbePairShort"), $ListBuild("", "USE"), $ListBuild("OcuPilotProbePairNoPerm", ""))
+    Set tDropped = $ListBuild($ListBuild("OcuPilotProbePairShort"), $ListBuild("OcuPilotProbePairLong", "USE", "EXTRA"), $ListBuild("", "USE"), $ListBuild("OcuPilotProbePairNoPerm", ""))
     For tI = 1:1:$ListLength(tDropped) {
         Set tText = $ClassMethod(..#LEDGER, "PairsToString", $ListBuild(tPlain, $List(tDropped, tI)), .tCut)
         Do $$$AssertEquals(tText, "OcuPilotProbePairPlain:USE", "member " _ tI _ " is left out, the representable one kept: " _ tText)

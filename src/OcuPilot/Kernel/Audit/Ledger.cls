@@ -265,7 +265,7 @@ ClassMethod PairsToString(pPairs As %List, Output pTruncated As %Boolean) As %St
             ; Every pair this walk drops reports short, whatever the reason it could not be
             ; spelled: a set silently one pair lighter reads back as a smaller requirement than
             ; the call had, which is the release a cross-user read must not make.
-            If '$ListValid(tPair) || ($ListLength(tPair) < 2) {
+            If '$ListValid(tPair) || ($ListLength(tPair) '= 2) {
                 Set pTruncated = 1
                 Continue
             }
