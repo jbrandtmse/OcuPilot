@@ -102,8 +102,8 @@ development_status:
   4-12-epic-4-burn-down: done
   epic-4-retrospective: optional
 
-  epic-5: backlog
-  5-0-epic-4-deferred-cleanup: ready-for-dev
+  epic-5: in-progress
+  5-0-epic-4-deferred-cleanup: in-progress
   5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read: backlog
   5-2-the-proposal-card-the-diff-the-user-reviews: backlog
   5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at: backlog
