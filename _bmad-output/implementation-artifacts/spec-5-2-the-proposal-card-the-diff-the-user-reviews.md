@@ -403,6 +403,17 @@ Instance, the restore path only:
 - **The typed-message row's** mutation is "drop the `cancelLiveCards` call from `sendCurrentDraft`" -> `panel.spec.ts`'s "a typed message cancels every live card" red. It was recorded only in the test file; it belongs here too.
 - **The reload-after-retention row has no mutation**, because it has no producer: no retention sweep exists (Story 5.3 owns it), so nothing can put the instance in the state the row describes. The client half -- an absent or empty `proposals` reading as no cards -- is pinned by `proposal-view.test.mjs`, whose mutation is "have `restoredProposals` throw on a non-array instead of answering `[]`".
 
+**Added in the QA pass (AD-11, `[innerHTML]` markup gap).** `ui/tools/proposal.test.mjs`'s literal
+scan and `proposal-card.spec.ts`'s existing agent-block test both used `textContent`, which strips
+markup on read whichever binding produced it, so neither could tell `{{ rationale }}` apart from
+`[innerHTML]="rationale"`. `proposal-card.spec.ts` (QA) gained one test asserting `children.length
+=== 0` and an exact literal match against a markup-shaped `rationale`/`expectedImpact` (`<b>...</b>`,
+`<i>...</i>`) -- children.length is what a text-node interpolation can never produce and an element
+binding always does. mutation: `{{ rationale }}` -> `[innerHTML]="rationale"` in `proposal-card.ts`
+-> the new test red on `children.length` (a real `<b>` child appears); reverted, tree confirmed
+byte-identical. `expectedImpact` is pinned by the same test, same mechanism, not independently
+mutated (identical code shape, identical binding kind).
+
 ## Auto Run Result
 
 **Change.** The card is the live surface the wire already feeds: `core/proposal-view.ts` maps `TurnProposal` onto `ProposalCardView` and owns the countdown's formatter and its two boundaries; `shell/proposal-card.ts` grows the countdown with its one-shot 1:00 announcement, the disclosure, the masked field, the in-card audit warning, the footer and every terminal status line; `shell/panel.ts` stacks one card per wire proposal, drops Send to secondary while one is live and owns the three client-side cancels. On the instance, the conversation entry now stores its turn key and `Api/Conversation` hangs each turn's proposals off the restored view, which is what closes DW-1213; `Mint` projects the kernel's own audit-warning predicate on the row; and a screen descriptor declares the singular entity noun the card title reads.
