@@ -20,6 +20,9 @@ Parameter CATALOG = "OcuPilot.Test.CatalogProbeShipped";
 /// <p>The stub the <code>openai</code> row answers under that catalog.</p>
 Parameter STUB = "OcuPilot.Test.OpenAIStub";
 
+/// <p>The same catalog with this family's key drifted, so its fail-closed arm has a caller.</p>
+Parameter DRIFTCATALOG = "OcuPilot.Test.CatalogProbeDrift";
+
 /// <p>The shipped provider key under test.</p>
 Parameter PROVIDERKEY = "openai";
 
@@ -248,6 +251,39 @@ Method TestAShippedOpenAiRowIsCalledInItsOwnDialect()
     Do $$$AssertTrue(tResponse.ToolCallsJson [ """tool_use""", "and its tool calls become canonical tool_use blocks: " _ tResponse.ToolCallsJson)
     Do $$$AssertEquals(tResponse.RequestTokens, 31, "with this dialect's own usage field names read")
     Do $$$AssertEquals(tResponse.ResponseTokens, 7, "in both directions")
+}
+
+/// <p>The re-adapting catalog <b>fails closed</b>: a shipped key it cannot match leaves
+/// <method>OcuPilot.Test.CatalogProbeShipped.Table</method> answering an error
+/// <class>%Status</class> and no table, so the port resolves no row and refuses the call. The
+/// direction is what matters -- the alternative to a refusal is a row still naming the shipped
+/// adapter, and a real POST carrying the probe credential to the vendor.</p>
+/// <p><b>The catalog is asserted refused before the call is made</b>, not inferred from what the
+/// call did afterwards.</p>
+/// <p>mutation: delete the guard's refusal in
+/// <method>OcuPilot.Test.CatalogProbeShipped.Table</method> so it answers its table whatever
+/// matched -- red here on the error-status, empty-table and refusal assertions, while
+/// <method>TestAShippedOpenAiRowIsCalledInItsOwnDialect</method> stays green. That test cannot
+/// bite in its place: with the guard gone its drifted row keeps the shipped
+/// <code>adapterClass</code>, so it reddens on the served-by assertion either way and pins the
+/// re-adaptation rather than the refusal.</p>
+Method TestADriftedShippedKeyLeavesTheReAdaptingCatalogAnsweringNothing()
+{
+    Set tRow = ..ShippedRow()
+    If '$IsObject(tRow) Quit
+    Set tId = ..StoredDefinition(tRow)
+    If tId = "" Quit
+    Do ##class(OcuPilot.Test.ProviderStub).Reset()
+    Do $ClassMethod(..#PORT, "SetCatalogClass", ..#DRIFTCATALOG)
+    Set tTableSC = $ClassMethod(..#DRIFTCATALOG, "Table", .tTable)
+    Do $$$AssertStatusNotOK(tTableSC, "a shipped key the table does not declare makes the re-adapting catalog answer an error status")
+    Do $$$AssertTrue('$IsObject(tTable), "and no table at all, so no row it could not re-adapt is handed out")
+    Do ..Canonical(.tMessages)
+    Do ..Tools(.tTools)
+    Set tSC = $ClassMethod(..#PORT, "Invoke", tId, .tMessages, .tTools, ..#SYSTEMPROMPT, .tResponse, .tHttpStatus, .tFault)
+    Do $$$AssertStatusOK(tSC, "the port still answers $$$OK")
+    Do $$$AssertEquals(..FaultCode(tFault), "PROVIDER.UNCONFIGURED", "and refuses the turn, because no row resolved and so no adapter of any kind was constructed: " _ ..Rendered(tFault))
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 0, "the stand-in transport was never entered either")
 }
 
 /// <p>AC4 -- the shared rules hold on this family exactly as they do on the canonical one: a

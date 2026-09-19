@@ -1,8 +1,10 @@
 /// <p>The shipped <class>OcuPilot.Kernel.Provider.OpenAI</class> adapter with its transport, its
 /// sleep and its clock replaced, so a whole call runs with <b>no socket opened</b>.</p>
-/// <p><b>Nothing else is overridden.</b> The body, the authentication header, the key-shape gate
-/// and the response mapping are the shipped adapter's own, which is what makes an assertion about
-/// the recorded request an observation of shipped code rather than of a fixture.</p>
+/// <p><b>Nothing of the wire is replaced.</b> The body, the authentication header, the key-shape
+/// gate and the response mapping are the shipped adapter's own, which is what makes an assertion
+/// about the recorded request an observation of shipped code rather than of a fixture.
+/// <method>ApplyAuth</method> is overridden only to add the armed error-log leg after delegating
+/// to it.</p>
 /// <p>Reached through <class>OcuPilot.Test.CatalogProbeShipped</class>, which re-adapts the
 /// shipped <code>openai</code> row to this class and changes no other column. The script and the
 /// recording are <class>OcuPilot.Test.ProviderStub</class>'s, through
@@ -22,6 +24,17 @@ Parameter STUBIDENTITY = "openaistub";
 /// from its own property, because <method>%Net.HttpRequest.SetHeader</method> diverts that
 /// one.</p>
 Parameter WATCHEDHEADERS = "Authorization,x-goog-api-key,x-api-key,anthropic-version";
+
+/// <p>Write this family's own authentication header through the shipped
+/// <method>OcuPilot.Kernel.Provider.OpenAI.ApplyAuth</method>, then force the armed
+/// application-error entry <b>in this frame</b>, so AD-48's sweep captures whatever
+/// <method>OcuPilot.Kernel.Provider.Base.Invoke</method> and <code>Attempts</code> are holding
+/// while this family serves the call. A run nothing armed is unchanged by it.</p>
+Method ApplyAuth(pRequest As %Net.HttpRequest)
+{
+    Do ##super(pRequest)
+    Do ##class(OcuPilot.Test.ProviderStubTransport).ForceErrorLog()
+}
 
 Method IssueHttpsPost(pRequest As %Net.HttpRequest, pUrl As %String, Output pStatus As %Integer, Output pBody As %String, Output pRetryAfter As %String) As %Status
 {

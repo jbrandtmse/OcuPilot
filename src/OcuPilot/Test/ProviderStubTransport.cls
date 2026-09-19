@@ -5,10 +5,12 @@
 /// <class>OcuPilot.Test.GeminiStub</class> extend the two <b>shipped</b> adapters instead --
 /// which is the whole point of them, since it is the shipped adapter's own body, headers and
 /// response mapping that are under test -- so they reach it here.</p>
-/// <p><b>Same script, same recording, same fake clock -- and no arming legs.</b> The forced
-/// error-log entry and the mid-flight row move <class>OcuPilot.Test.ProviderStub</class> takes
-/// inside its own transport are absent here, so a test that arms either of them is asserting about
-/// the canonical family alone. This class reads and writes
+/// <p><b>Same script, same recording, same fake clock, and the same two arming legs.</b> A run
+/// armed through <method>OcuPilot.Test.ProviderStub.ArmErrorLog</method> forces its application
+/// error here as well, so AD-48's forced-error-log sweep reaches the two families whose stubs
+/// cannot inherit it. The row-move leg is present for parity and <b>no test arms it through this
+/// class</b> -- the only caller of <method>OcuPilot.Test.ProviderStub.ArmRowMove</method> drives
+/// the canonical stub -- so it is capability here, not coverage. This class reads and writes
 /// <class>OcuPilot.Test.ProviderStub</class>'s own process-private globals, so a test arms the run
 /// with <method>OcuPilot.Test.ProviderStub.Reset</method>,
 /// <method>OcuPilot.Test.ProviderStub.QueueAnswer</method>,
@@ -72,6 +74,10 @@ ClassMethod Transport(pIdentity As %String, pWatchedHeaders As %String, pRequest
     If tKind = "failure" {
         Quit $$$ERROR($$$GeneralError, "the stand-in transport could not reach the provider")
     }
+    Do ..ForceErrorLog()
+    ; Mid-flight by construction: the caller is inside its own read-then-write window while this
+    ; runs, which is the only place a second writer can stand.
+    Do ..MoveArmedRow()
     Set pStatus = +$Get(^||OcuPilotProviderStub("script", tIndex, "status"))
     Set pBody = $Get(^||OcuPilotProviderStub("script", tIndex, "body"))
     Set pRetryAfter = $Get(^||OcuPilotProviderStub("script", tIndex, "retryAfter"))
@@ -99,6 +105,56 @@ ClassMethod NowSeconds() As %Numeric
 ClassMethod Advance(pSeconds As %Numeric) [ Private ]
 {
     Set ^||OcuPilotProviderStub("clock") = +$Get(^||OcuPilotProviderStub("clock")) + +pSeconds
+}
+
+/// <p>Raise one genuine, controlled runtime error in this frame and log it to this namespace's
+/// <code>^ERRORS</code>, when <method>OcuPilot.Test.ProviderStub.ArmErrorLog</method> armed the
+/// run; a no-op otherwise. The entry is recorded where that class records its own, so
+/// <method>OcuPilot.Test.ProviderStub.ErrorLogCount</method> and
+/// <method>OcuPilot.Test.ProviderStub.ErrorLogEntry</method> read every entry a run wrote
+/// whichever stub served the call.</p>
+/// <p>The shape is <method>OcuPilot.Test.ProviderStub.ForceErrorLog</method>'s: a real
+/// <code>&lt;DIVIDE&gt;</code> rather than a <code>Throw</code>, because a <code>Throw</code>
+/// leaves <code>$ZError</code> empty and records the useless <code>&lt;LOG ENTRY&gt;</code>
+/// placeholder; the divisor comes out of a variable because the compiler folds the literal
+/// form.</p>
+/// <p><b>Public, and a class method, so a stub's own <method>ApplyAuth</method> can call it</b> as
+/// well as <method>Transport</method> -- which is what puts an entry on a run whose transport
+/// raises before reaching its own leg. That is the only reason it is not
+/// <code>[ Private ]</code> as its twin on <class>OcuPilot.Test.ProviderStub</class> is.
+/// <b>Guarded here as well as at its arming point</b>:
+/// <code>OCUPILOT_ALLOW_ERROR_SEED</code> must read 1, because a class-level check protects the
+/// class that declares it and not a caller that reached this another way. An application error
+/// cannot be un-logged.</p>
+ClassMethod ForceErrorLog()
+{
+    If '+$Get(^||OcuPilotProviderStubLog("armed")) Quit
+    If $System.Util.GetEnviron("OCUPILOT_ALLOW_ERROR_SEED") '= 1 Quit
+    Try {
+        Set tZero = 0
+        Set tUnreachable = 1 / tZero
+    } Catch inner {
+        Set ^||OcuPilotProviderStubLog("entry", $Increment(^||OcuPilotProviderStubLog("entry"))) = $$LOG^%ETN()
+    }
+}
+
+/// <p>Perform the edit <method>OcuPilot.Test.ProviderStub.ArmRowMove</method> armed, once, and
+/// disarm. Answers 0 when nothing was armed.</p>
+/// <p>The edit goes through the ordinary update path, so what the definition's next writer meets
+/// is a row that moved rather than a row a test corrupted.</p>
+ClassMethod MoveArmedRow() As %Boolean [ Private ]
+{
+    Set tId = $Get(^||OcuPilotProviderStub("rowMove", "id"))
+    If tId = "" Quit 0
+    Set tModel = $Get(^||OcuPilotProviderStub("rowMove", "model"))
+    Kill ^||OcuPilotProviderStub("rowMove")
+    Set tSC = ##class(OcuPilot.Kernel.State.Agent).GuardedOpenId(tId, .tRow)
+    If $$$ISERR(tSC) || '$IsObject(tRow) Quit 0
+    Do ##class(OcuPilot.Kernel.State.Agent).SnapshotSecurityFields(tRow, .tSnapshot)
+    Set tRow.Model = tModel
+    Set tMoveSC = ##class(OcuPilot.Kernel.State.Agent).GuardedUpdate(tRow, .tSnapshot)
+    Set tRow = ""
+    Quit $$$ISOK(tMoveSC)
 }
 
 /// <p>The header names <var>pRequest</var> was given a non-empty value for, out of the

@@ -2,11 +2,11 @@
 title: 'Story 10.2: The OpenAI and Google Gemini adapters'
 type: 'feature'
 created: '2026-09-18'
-status: 'in-progress'
-baseline_revision: '0e39b67a7a93ff4b7e23f675543b27531539f599'
+status: 'done'
+baseline_revision: 'a3c11ab82b04053fbb6fda18311882efa9485445'
 baseline_commit: '0e39b67a7a93ff4b7e23f675543b27531539f599'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/.claude/rules/objectscript-basics.md'
@@ -14,17 +14,30 @@ context:
 warnings: ['oversized']
 deferred:
   - summary: >-
-      ProviderStubTransport lacks ProviderStub's error-log arming and armed-row legs, so AD-48's
-      forced-error-log sweep never runs against the two new ApplyAuth bodies.
+      The scripted transport now exists twice, and nothing pins the two copies equal
+      (DW-1191). The AD-48 half of this entry closed in the 2026-09-19 rework.
     evidence: |-
-      ProviderStub.IssueHttpsPost:269-273 calls ForceErrorLog() when ^||OcuPilotProviderStubLog("armed")
-      is set, and MoveArmedRow(); ProviderStubTransport.Transport has neither. Both are [ Private ], so
-      they cannot be called across classes, and ProviderStub.cls is Epic 5's footprint. Test/ProviderSecret
-      therefore proves "no credential in the error log" only for the Anthropic-family stub. Closes by
-      making ProviderStub delegate its transport to ProviderStubTransport once that file is writable.
+      ProviderStub.IssueHttpsPost:227 and ProviderStubTransport.Transport:37 record the same thirteen
+      values and run the same two arming legs; no test compares the two recordings, so a value added
+      to one and not the other leaves every assertion green. The rework grew this copy by the two
+      arming legs (~45 lines) rather than shrinking it. Closes by making ProviderStub delegate its
+      transport, which means threading its identity parameter and four instance helpers through a
+      class method, under its ten-plus subclasses.
     location: >-
-      src/OcuPilot/Test/ProviderStubTransport.cls:32
+      src/OcuPilot/Test/ProviderStubTransport.cls:37
     severity: medium
+  - summary: >-
+      ProviderStubTransport.MoveArmedRow has no executed test host: no test arms a row move on a
+      call routed through this class.
+    evidence: |-
+      ProviderStub.ArmRowMove's only caller is Test/AgentConnection.cls:774, whose fixture switches in
+      CatalogAnthropicStub, so the row move it drives runs ProviderStub's own copy. Replacing this
+      copy's body with Quit 0 reddens nothing. The class header now says so rather than claiming the
+      coverage. Closes with a mid-flight-conflict test on one new family, a surface this story does
+      not otherwise drive through the connection screen.
+    location: >-
+      src/OcuPilot/Test/ProviderStubTransport.cls:145
+    severity: low
   - summary: >-
       A stored Gemini endpoint carrying no {model} placeholder runs a model the definition does not name.
     evidence: |-
@@ -301,7 +314,9 @@ OpenAI-compatible row, no local or plain-HTTP allowance — `allowsLocal` is fal
   built, then its `functionResponse` echoes that id; a call the provider sent without one is
   answered by name as before (DW-1180).
 - **AC7.** Given every canonical tool the registry advertises, when its wire name is emitted, then
-  it matches `^[A-Za-z0-9_-]{1,64}$` — the intersection of both vendors' published name grammars.
+  it matches `^[A-Za-z0-9_-]{1,64}$` — OpenAI's published name grammar. Gemini's is not a narrowing
+  of it: it requires a leading letter or underscore but admits dots. The test therefore asserts a
+  pattern **inside** both rather than their intersection, requiring a leading letter.
 
 ### Review Findings
 
@@ -338,7 +353,7 @@ acceptance-auditor). 45 raw findings, 11 root-cause entries: high 0, med 3, low 
   [src/OcuPilot/Kernel/Provider/Base.cls:356] -- deferred: unreachable from shipped code; DW-1198,
   `wontfix-accepted` with a probe on Story 10.3's normalization
 - [x] [Review][Defer] Gemini's no-empty-auth-header guard cannot be pinned through the stub's
-  header recording [src/OcuPilot/Test/ProviderStubTransport.cls:107] -- deferred: DW-1199,
+  header recording [src/OcuPilot/Test/ProviderStubTransport.cls:166] -- deferred: DW-1199,
   `wontfix-accepted` with a probe on presence-aware recording
 
 **Rejected.**
@@ -376,22 +391,22 @@ acceptance-auditor). 45 raw findings, 11 root-cause entries: high 0, med 3, low 
 - `low` -- the `followRedirect` comment was compressed: the `"unset"` sentinel's meaning is still
   stated.
 
-- [ ] [Review] AD-35's named verification is unmet for the two families this story adds. Add
+- [x] [Review] AD-35's named verification is unmet for the two families this story adds. Add
   `ProviderStub`'s forced-error-log arming and armed-row legs to `Test/ProviderStubTransport.cls`
   so the sweep reaches `OpenAI.ApplyAuth` and `Gemini.ApplyAuth`, and extend the AD-35 proof in
   `Test/ProviderSecret.cls` to both. The implementation already conforms -- the lead verified
   lead-side that the key reaches `Authorization` and `x-goog-api-key` and appears in no fault,
   status, message or URL -- what is missing is the automated proof. Duplication alone stays
   deferred (DW-1191).
-- [ ] [Review] `Test/AgentWire.cls:79` carries `"nosuchprovider"` as a bare literal. Change it to
+- [x] [Review] `Test/AgentWire.cls:79` carries `"nosuchprovider"` as a bare literal. Change it to
   reference `##class(OcuPilot.Test.AgentRules).#UNKNOWNPROVIDER` so the fixture is tied to the
   catalog guard at `AgentRules.cls:132`. Orchestrator-granted 2026-09-19; still exactly one token
   of surface in that file and nothing else.
-- [ ] [Review] `Test/CatalogProbeShipped.Table` fails open: on a key rename or parameter drift it
+- [x] [Review] `Test/CatalogProbeShipped.Table` fails open: on a key rename or parameter drift it
   would let a real outbound POST carrying the probe key reach a vendor, silently and in the
   direction of making the call. Assert that exactly the two expected rows were replaced, before
   `Invoke` runs, rather than after it returns. No live exposure today -- the rows match.
-- [ ] [Review] Correct at their origin any remaining doc-comment or spec sentence asserting
+- [x] [Review] Correct at their origin any remaining doc-comment or spec sentence asserting
   something the code does not do -- the built-URL containment wording and the Google leading-letter
   justification were both named. Replace the wrong sentence; do not append a qualifier beside it.
 
@@ -449,8 +464,9 @@ is owned by 10.3 and untouched: nothing here changes how `message.content` is re
 `Test/AgentWire.cls:79`, `Test/AgentRules.cls:116` and `:343` each use a shipped provider key as
 their *unknown* provider, so making `openai` shipped would cost each of them a violation. All three
 move to the one sentinel; two conventions must not exist. `AgentWire.cls` is Epic 5's footprint and
-the orchestrator granted this one literal there (2026-09-19) — that edit is exactly one literal and
-nothing else, to keep the conflict surface minimal, and it is reported as a footprint extension.
+the orchestrator granted that one value there (2026-09-19); it reads
+`##class(OcuPilot.Test.AgentRules).#UNKNOWNPROVIDER`, so the fixture is tied to the catalog guard at
+`AgentRules.cls:132` — one token of surface and nothing else, reported as a footprint extension.
 **`CatalogProbe`'s probe key is not usable as the sentinel:** `Test/TurnStore.cls:266-271` shows it
 resolves and reads `IsKnown` whenever `OCUPILOT_ALLOW_TEST_PROVIDER` is 1, so an assertion built on
 it would pass or fail by environment. A guard in `Test/AgentRules.cls` asserts the catalog does not
@@ -536,6 +552,32 @@ instance's copy, recompile the whole package, observe red, revert, confirm `git 
 - **"No empty auth header"** (added at review) --
   `OpenAIAdapter.TestACallWithNoKeySendsNoAuthenticationHeader`. `mutation:` drop the
   `If ..ApiKey = "" Quit` guard from `OpenAI.ApplyAuth` -> red on the recorded header names.
+- **AD-35 on the two new families** (added at rework) --
+  `ProviderSecret.TestNoCredentialMaterialReachesTheLogsOrTheEnvelope`'s legs seven to ten, which
+  run on the throwaway alone because they force a real `^ERRORS` entry. Each leg asserts which stub
+  served it and **how many** forced entries it wrote -- `REFUSALENTRIES` 2 for a refusal, its
+  `ApplyAuth` leg and the transport's, and `RAISEENTRIES` 1 for a mid-flight raise, the transport
+  having raised before its own. Counted exactly, not "grew": with a `>` test either leg alone
+  satisfied it and neither was pinned (measured -- the transport-leg mutation below reddened
+  nothing until the assertion was tightened). `mutation:` have `Gemini.RequestUrl` append the
+  credential as the `?key=` query parameter the wider vendor API also accepts -> red on the gemini
+  legs' three variable-table assertions, because `Base.Attempts`'s URL local then carries it, every
+  other leg green. `mutation:` delete the `Do ..ForceErrorLog()` call from
+  `ProviderStubTransport.Transport` -> red on both refusal legs' count assertions and on no other.
+  `mutation:` delete the two stubs' `ApplyAuth` overrides -> red on all four, the mid-flight legs
+  reading 0 entries -- which is what shows those overrides are the only writer on a raise rather
+  than a second copy of the transport's leg.
+- **The re-adapting catalog fails closed** (added at rework) --
+  `OpenAIAdapter.TestADriftedShippedKeyLeavesTheReAdaptingCatalogAnsweringNothing` over
+  `Test/CatalogProbeDrift`, whose `OPENAIKEYSHIPPED` names a key the shipped table does not declare.
+  `mutation:` delete the `If (tOpenAiRows = 1) && (tGeminiRows = 1)` refusal from
+  `CatalogProbeShipped.Table` -> red on that method's error-status, empty-table and
+  `PROVIDER.UNCONFIGURED` assertions and on no other method in the class. **That red is itself the
+  hazard**: with the guard gone the drifted row keeps the shipped `adapterClass`, and the measured
+  run's failure text is the vendor's own `Incorrect API key provided: probeope****...` -- a real POST
+  left the instance. Run that mutation only where outbound egress is acceptable. Changing
+  `OPENAIKEYSHIPPED` instead cannot stand in for it: that reddens with or without the guard, so it
+  pins the re-adaptation rather than the refusal.
 
 ## Review Triage Log
 
@@ -612,102 +654,152 @@ From the Intent Alignment Auditor layer:
   - `low` `patch` the spec named the new file `Test/StubTransport.cls` while the diff ships `ProviderStubTransport.cls` — the file was renamed into this story's footprint and the spec corrected.
   - `false` `reject` cross-epic test edits the intent fenced no boundary for — the sentinel edits are the orchestrator's granted change and are reported as a footprint extension; `Test/AgentViolation.cls` is correctly untouched.
 
+### 2026-09-19 — Review pass (rework iteration 1)
+
+- verdicts: 43 findings — high 0, medium 5, low 15, false 23, maybe-false 0
+- findings:
+
+From the Blind Hunter layer:
+
+  - `false` `reject` `## Auto Run Result` was not updated for this pass -- step-04's Finalize writes that section in this same pass, after the review layers report; it is stale only between those two points.
+  - `false` `reject` the `## Review Triage Log` still records the AD-48 item as `medium defer` -- that log is append-only per-pass history; the workflow appends an entry per pass and never rewrites an earlier one, and this entry records the closure.
+  - `false` `reject` `review_loop_iteration` stayed at 0 although the commit says "rework iteration 1" -- different counters: that field is step-04's bad_spec loopback count, which step-01 resets to 0 on a re-dispatch; the lead's rework count lives in the commit message.
+  - `low` `reject` the three revisions the spec names disagree -- verified, and each is labeled and doing a distinct job: `baseline_revision` anchors this pass's diff, `baseline_commit` the story's, and `## Verification`'s a42aa48 the epic's scope check. Rejected: the fix is an edit to this build's spec and no reader can get a wrong result from picking any of them, only a wider or narrower diff.
+  - `false` `reject` nothing records that the changed code was executed -- refuted by this pass's own run: the whole sweep on throwaway `ocupilot-b-ci` over the committed tree, `ProviderSecret` among it, plus three demonstrated mutations. Recorded under `## Auto Run Result`.
+  - `false` `reject` legs seven and eight can pass vacuously because `ApplyAuth` quits on an empty key -- refuted: `Base.Invoke:157-163` refuses an empty key with `PROVIDER.CREDENTIAL` before the transport, so `ApplyAuth`'s guard is unreachable on this path, and `ProviderStub.Reset()` per leg clears `servedBy`, so an unresolved canary reddens the served-by assertion. The header half is pinned by AC1/AC2 already.
+  - `medium` `patch` the two new `ApplyAuth` overrides are redundant with the transport leg and nothing falsifies them; no new-family leg queues a mid-flight raise -- verified: `Transport` raises before its own leg on a `throw` script, so the `ApplyAuth` leg's only distinguishing case was undriven. Each family now runs a refusal leg and a mid-flight leg, each asserting its own forced-entry count grew.
+  - `low` `patch` `ProviderStubTransport.MoveArmedRow` has no caller that can arm it, while the class header claims the row move reaches the two new families -- verified: `ArmRowMove`'s only caller drives the canonical stub. The leg itself is spec-mandated ("its own forced-error-log arming and armed-row legs"), so the claim was narrowed to capability rather than coverage and the gap deferred.
+  - `medium` `patch` `ProviderSecret` points readers at `ProviderStub`'s header as the authority on covered frames, which does not name the new families' -- verified, and it is the sentence that exists to stop a mutation being read as coverage. The exclusion is now stated for `OpenAI.ApplyAuth` and `Gemini.ApplyAuth` in this pass's own file.
+  - `low` `patch` "It fails closed." is asserted from a check over two keys while the shipped table declares three -- verified: the `anthropic` row still names its shipped adapter under this catalog. Claim narrowed to the two rows the guard covers, and the answer for that family (`CatalogAnthropicStub`) named. The layer's wider guard was refuted: counting every row that names a shipped adapter would refuse the table for every current caller.
+  - `medium` `patch` AC7's replacement sentence contradicts the project's own cited source -- verified at `ToolDefAdapter.cls:29` (dated 2026-09-18): Gemini's grammar admits dots, so it is not a narrowing of OpenAI's. Corrected at AC7 and in `Adapter.cls`'s own doc.
+  - `low` `patch` AC7 quotes `VENDORNAMEPATTERN` while the test asserts `SHAREDNAMEPATTERN` -- grouped with the entry above; AC7 now says which pattern the test applies and why. The half claiming the earlier Rejected entry was contradicted is refuted: that entry rejected changing the regex, and this pass changed the justification clause.
+  - `low` `patch` `SHAREDNAMEPATTERN`'s comment gives one of several reasons and carries an unlabeled inference -- grouped with the AC7 entry: the comment now names OpenAI's leading digit and hyphen as well as the underscore, and the unsourced Gemini length bound carries `(inference)`.
+  - `low` `patch` this pass moved the line DW-1199's evidence anchors at -- verified: the inserted arming legs pushed `HeaderNames` from `:107` to `:166`. Anchor corrected.
+  - `low` `patch` the rewritten deferred entry anchors at prose, not code -- verified: `Transport` is declared at `:37`, not `:35`. Corrected.
+  - `low` `patch` DW-1191's severity fell medium to low while the duplication it tracks grew -- verified: the pass added ~45 lines to the second copy. Severity restored to medium, what closed named in the summary, and the unpinned-equality residual added to the evidence.
+  - `false` `reject` the pass added non-open-item prose to an `oversized` spec -- refuted: that rule binds the lead's next re-open. The additions are the open items' own mandated output (item 4's spec-sentence correction, Rule 19's `mutation:` lines) and the workflow's required Finalize section.
+  - `low` `patch` `ForceErrorLog` widened from a private instance method to a public class method with no reason given -- verified. The doc now names the two `ApplyAuth` overrides as the only reason, and the double guard was already in place.
+  - `low` `patch` the rewritten class header miscounts the rungs -- verified: legs seven onward also resolve through `SecretProbe` on the `env` rung. The enumeration now reads ten legs, eight of them environment-rung.
+  - `low` `reject` `DriveTheNewFamilies` restores the catalog seam only on the success path -- verified real, and bounded: `OnAfterOneTest`'s `Reset` clears it and the class has one test method. Rejected: no developer meets it in ordinary use and the fix adds a Try/Catch rather than correcting a line.
+  - `low` `patch` the new legs fail hard where the credentials-rung leg skips, and the residual-risk bullet predates them -- the method doc already states the resolver dependency; the new dependency is now named under `## Auto Run Result`'s residual risks.
+
+From the Edge Case Hunter layer:
+
+  - `low` `patch` an answered row other than openai/gemini still names a shipped adapter -- duplicate of the fail-closed claim entry; the claim was narrowed and the proposed wider guard refuted.
+  - `low` `patch` a removed `STUBIDENTITY` makes expected and actual both empty, so the served-by assertion degenerates -- verified by the layer live on slot B (`$Parameter` answers `""` for an undefined parameter). Each leg now asserts the expected identity is non-empty first. The assertion is falsifiable for the case it exists to catch, demonstrated by the `OPENAISTUB` mutation.
+  - `low` `reject` a renamed or uncompiled stub makes `$Parameter` raise, aborting the method -- verified real and loud: a raise fails the method and the class reports failed; it is not a silent pass. Rejected: the fix adds an existence branch, and the catalog seam is cleared by `OnAfterOneTest` regardless.
+  - `low` `patch` `MoveArmedRow`'s new copy is reached by no test -- duplicate; claim narrowed, gap deferred.
+  - `low` `reject` a future `RequestUrl` override could interpolate an ungated value into the path -- `wontfix-theoretical`: `Gemini.RequestUrl` is the only override and gates with `MODELPATTERN`, and the doc now states the obligation. Real if a second override interpolates a caller-supplied value.
+  - `medium` `patch` AC7's "Gemini's narrows" -- duplicate of the grammar entry; patched.
+  - `low` `patch` the fail-closed mutation's blast radius is mis-scoped -- grouped with the verification-gap entry below; the mutation line was replaced with one that isolates the guard, and its blast radius measured.
+
+From the Verification Gap Reviewer layer:
+
+  - `medium` `patch` the new AD-35 legs never assert that the two new families wrote a forced entry, so deleting all three `ForceErrorLog()` calls leaves the class green on legs one to six's cumulative count -- filed pre-verified and confirmed by reading the assertions. Each leg now brackets its own `ErrorLogCount()`, and a mid-flight leg per family reaches the `ApplyAuth` frame.
+  - `medium` `patch` the fail-closed guard has no assertion that can fail if it is removed, and the named mutation reddens with or without it -- filed pre-verified. Added `Test/CatalogProbeDrift` and `OpenAIAdapter.TestADriftedShippedKeyLeavesTheReAdaptingCatalogAnsweringNothing`; the guard-removal mutation was demonstrated red on that method alone, five of six green.
+  - `low` `defer` `ProviderStubTransport.MoveArmedRow` has no executed test host -- filed pre-verified with disposition `defer`, taken: the leg is spec-mandated, so it stays and the header stops claiming coverage. Recorded in `deferred:`.
+  - `false` `reject` the rework's changes are outside every verification path and no run is recorded -- refuted by this pass's throwaway run, which the layers could not see because Finalize had not yet written it.
+  - `low` `patch` AC7's corrected sentence still misdescribes its own test -- duplicate of the grammar entry.
+  - `medium` `patch` nothing pins the two copies of the scripted transport equal -- verified; folded into DW-1191's evidence, which is what tracks the duplication.
+  - `low` `patch` the deferred entry's anchors cite a doc-comment line -- duplicate; corrected.
+
+From the Intent Alignment Auditor layer:
+
+  - `false` `reject` the intent's expectations live at the shipped-wire surface and this diff changes none of it -- descriptive and correct: the shipped behavior landed upstream, and a rework closing proof obligations is not expected to move it.
+  - `false` `reject` matrix row 3's doc narrows rather than lands -- the retraction is item 4's own deliverable: the previous sentence claimed containment the code does not give.
+  - `medium` `patch` the new proof stands one frame below the two methods the item names -- duplicate of the frame-exclusion entry; the exclusion is now stated rather than left to `ProviderStub`'s header.
+  - `low` `reject` the served-by assertion, which needs no error seed, sits inside the seed gate -- by design: the class refuses anywhere the seed is absent because an application error cannot be un-logged, and the same drift has an instance-independent pin in `OpenAIAdapter`.
+  - `false` `reject` the stubs' "Nothing else is overridden" argument was weakened -- the sentence was narrowed accurately in the same edit, which is what keeps it true.
+  - `false` `reject` `AgentWire.cls:79` is a fence the intent does not name -- the orchestrator granted it and the spec reports it as a footprint extension; the fence the intent does name, `AgentViolation.cls`, is untouched.
+  - `false` `reject` AC7 was always beyond the intent -- descriptive; the corrected wording is the patch above.
+  - `low` `patch` the deferred entry's anchor lands two lines up -- duplicate; corrected.
+
 ## Auto Run Result
 
 Status: done
 Blocking condition: none
 
-**What was implemented.** Two catalog rows appended after `anthropic` and two `Base` subclasses:
-`OpenAI` sends a Chat Completions body with `max_completion_tokens` and an `Authorization: Bearer`
-header; `Gemini` sends a `generateContent` body with `generationConfig` and an `x-goog-api-key`
-header, and overrides the new `RequestUrl` seam to substitute a shape-gated model for the
-endpoint's `{model}`. `Base` gained that seam, an origin check that refuses `PROVIDER.EGRESS`
-before any socket when the built URL's scheme or authority is not the judged endpoint's, and one
-concrete key-shape test. `MessageAdapter` keeps a vendor Gemini `functionCall.id` and carries it on
-**both** parts of the next request (DW-1180), and maps the three tool-call refusal reasons. No new
-column, no `Api/**` or `ui/**` change, no shipped branch on a provider key.
+**What this pass changed.** The four open `[Review]` items, and nothing else.
 
-**Files changed.**
+1. **AD-35's automated proof now covers all three families.** `Test/ProviderStubTransport` carries
+   its own forced-error-log arming and armed-row legs, reading `ProviderStub`'s globals and public
+   arming API; `Test/OpenAIStub` and `Test/GeminiStub` each gained an `ApplyAuth` override that
+   delegates with `##super` and then forces the armed entry. `Test/ProviderSecret` drives four new
+   legs -- a refusal and a mid-flight raise on each shipped non-canonical row over
+   `CatalogProbeShipped` -- asserting which stub served each and **how many** forced entries it
+   wrote. `ProviderStub.cls` is byte-identical to HEAD.
+2. **`Test/AgentWire.cls:79`** reads `##class(OcuPilot.Test.AgentRules).#UNKNOWNPROVIDER`. That one
+   line is the file's only difference from HEAD.
+3. **`Test/CatalogProbeShipped.Table` fails closed** on the two rows it re-adapts: unless each key
+   matched exactly one row it clears the object and answers an error `%Status`, so `Catalog.Row`
+   resolves nothing and the port refuses before `Invoke`. `Test/CatalogProbeDrift` and
+   `OpenAIAdapter.TestADriftedShippedKeyLeavesTheReAdaptingCatalogAnsweringNothing` pin it.
+4. **Wrong claims replaced at their origin:** `Base.RequestUrl`'s containment sentence (the path is
+   not checked there), `Adapter.cls`'s `SHAREDNAMEPATTERN` grammar sentence and AC7.
 
-- `Kernel/Provider/Base.cls` — `RequestUrl`, private `OriginOf`, the built-URL egress refusal with
-  its own reason, `KeyShapeAccepted`; superseded one-row prose replaced.
-- `Kernel/Provider/OpenAI.cls`, `Kernel/Provider/Gemini.cls` — new adapters.
-- `Kernel/Provider/Catalog.cls` — the two rows, appended after `anthropic`; prose replaced.
-- `Kernel/Provider/MessageAdapter.cls` — DW-1180 on both request parts, `IsSynthesizedCallId`, the
-  three added `GEMINISTOPREASONS` entries, the correlation paragraph corrected at origin.
-- `Kernel/Provider/Anthropic.cls`, `Kernel/AgentRules.cls`, `Kernel/State/Agent.cls` — one
-  superseded one-row sentence each, corrected at origin; doc only.
-- `Test/ProviderStubTransport.cls`, `Test/OpenAIStub.cls`, `Test/GeminiStub.cls`,
-  `Test/CatalogProbeShipped.cls`, `Test/OpenAIAdapter.cls`, `Test/GeminiAdapter.cls`,
-  `Test/ProviderOriginProbe.cls` — new.
-- `Test/Adapter.cls` — AC6's round trip (both request parts), AC7 rewritten over `Registry.WireName`,
-  the three stop reasons.
-- `Test/AgentRules.cls` — the key-set pin, all three rows pinned column by column, the
-  `nosuchprovider` sentinel and the guard that the catalog declares it in neither block.
-- `Test/AgentWire.cls:79` — the one granted literal.
-- `Test/CatalogProbe.cls`, `Test/Egress.cls` — one superseded clause each; doc only.
+**Files changed.** `Test/ProviderStubTransport.cls` (two arming legs, and its header now says the
+row-move leg is capability rather than coverage); `Test/OpenAIStub.cls`, `Test/GeminiStub.cls` (the
+`ApplyAuth` leg); `Test/ProviderSecret.cls` (legs seven to ten, exact entry counts, the frame
+exclusion for the new families); `Test/CatalogProbeShipped.cls` (the guard, scoped to its two rows);
+`Test/CatalogProbeDrift.cls` (new); `Test/OpenAIAdapter.cls` (the fail-closed test);
+`Kernel/Provider/Base.cls`, `Test/Adapter.cls` (one corrected sentence each, doc only);
+`Test/AgentWire.cls` (the one granted value).
 
-**Three deviations.** The scripted transport was lifted into a new
-`Test/ProviderStubTransport.cls` rather than shared from `Test/ProviderStub.cls`, which is
-byte-identical to its committed version; the consequence is that the recording body now exists in
-two places, and the duplication alone is deferred. `ProviderStub.cls` is inside this epic's
-`Test/Provider*` footprint — an earlier draft of this spec said the orchestrator held it read-only,
-which was never true (orchestrator correction, 2026-09-19) — so the split is a judgment about blast
-radius, not a constraint. AC1's
-and AC4's named mutations could not falsify anything as written; both `mutation:` lines were
-replaced with ones that do, and the reason is on each line and in each test's doc comment.
+**Review findings.** 43 findings across four layers -- high 0, medium 5, low 15, false 23.
+**16 patched** (5 medium, 11 low): the two new legs' forced-entry production was unasserted and the
+mid-flight case undriven; the fail-closed guard had no assertion that could fail if removed; the
+`ApplyAuth`-frame exclusion was not stated for the new families; AC7's replacement sentence
+contradicted `ToolDefAdapter.cls:29`'s dated citation (Gemini admits dots, so it is not a narrowing
+of OpenAI's); DW-1191 understated the residual it now tracks; plus ten doc, anchor and assertion
+corrections. **1 deferred:** `ProviderStubTransport.MoveArmedRow` has no executed test host -- the
+leg is spec-mandated, so the header stopped claiming coverage instead. **23 rejected**, the
+substantive ones: the vacuity claim against legs seven and eight (`Base.Invoke:157-163` refuses an
+empty key before the transport, so `ApplyAuth`'s guard is unreachable there); "the code was never
+executed" (refuted by this pass's throwaway run); and the stale `## Auto Run Result` /
+`## Review Triage Log` / `review_loop_iteration` observations, which read the spec between the
+review layers and this section.
 
-**Review findings.** 56 findings across four layers — 18 medium, 30 low, 6 false, 2 maybe-false, no
-high. **14 entries patched in-pass**: the DW-1180 request-side asymmetry (a call id now travels on
-both parts or on neither, with AC6 asserting the call side); the origin-containment arm's missing
-failing case (`Test/ProviderOriginProbe` plus a new AC3 companion test); AC7's unfalsifiable
-assertion (rewritten over `Registry.WireName`'s output for every canonical name, against a shared
-grammar spelled independently); the egress refusal's inaccurate reason (`Base.REASONBUILTURLEGRESS`);
-a positive control in AC3 so a refusal cannot be attributed to an unresolvable host; and nine doc or
-fixture corrections, including four superseded one-row sentences corrected at their origins.
-**15 items deferred** (frontmatter `deferred:`), the four medium ones being AD-48's forced-error-log
-sweep not reaching the two new `ApplyAuth` bodies, a placeholder-free Gemini endpoint running an
-unnamed model, the absent create-time `model` rule, and OpenAI's unconditional `temperature`.
-**6 findings rejected:** the `AgentWire.cls` sentinel should read a parameter — refused, the grant is
-exactly one literal and the guard lives in `AgentRules` (twice, from two layers); the DW-1180 ledger
-entry is unclosed — Rule 15(a) puts that with the lead's harvest; a model of `.` or `..` changes the
-path — refuted, the substituted segment is `.:generateContent`; a numeric `functionCall.id` is
-discarded — the vendor types it a string and the fallback is correct; a vendor id beginning
-`geminicall` is dropped — wontfix-theoretical, it then travels on neither part and name-and-order
-correlation is correct (twice, from two layers); the guard newly refuses a scheme-less endpoint for
-the canonical family — refuted, `ProviderPort.cls:246` requires a scheme before `Attempts` runs;
-`GEMINISTOPREASONS` is unnamed work — the spec's Tasks name those three reasons.
+**One measured surprise, recorded because it changed the work.** The first form of the new
+assertion was "the entry count grew". It reddened to **neither** mutation: each leg's `ApplyAuth`
+override and the transport's own leg each satisfy it alone. The assertions are now exact
+(`REFUSALENTRIES` 2, `RAISEENTRIES` 1), and both legs are individually pinned.
 
-**Follow-up review recommended: true.** Four medium entries were patched on a first pass. The named
-unverified risk is the DW-1180 symmetric-id change: it alters the Gemini request body for every
-replayed tool call, and is verified only against the recording stub — no live exchange confirms the
-vendor accepts a `functionCall.id` OcuPilot did not receive from it.
+**Verification**, all on slot B; no verification of OcuPilot's own behavior opened a provider socket.
 
-**Verification**, all on slot B; no socket was opened to a provider:
-
-- `uv run scripts/check-objectscript.py` clean (488 files, 21 rules);
+- `uv run scripts/check-objectscript.py` clean (489 files, 21 rules);
   `uv run scripts/test_check_objectscript.py` 126/126; `bash scripts/lint-docs.sh` clean.
-- Whole tree loaded and compiled `cuk` on `ocupilot-slot-b` — no errors.
-- From `ui/`: `npm run build` and `npm test` — 1044 `node --test` and 640 component tests, green and
-  unchanged. This story adds no client code.
-- **Whole sweep on the throwaway**, after the review patches (`ci-throwaway.sh up --dir
-  /tmp/ocupilot-b-ci --project ocupilot-b-ci --web 52777 --super 1976`, torn down after):
-  **128 classes, 1244 tests, 0 failed, 0 probe leftovers, 0 overlaps, 0 foreign runs.**
-  `AgentViolation` 8 and `TurnStore` 11 are green **unedited** — both byte-identical to HEAD, as is
-  `ProviderStub.cls`.
-- Seven acceptance mutations demonstrated, plus the two the review added
-  (`Base.Attempts`'s origin term, and `Registry.WireName` leaving a dot — the latter red on the
-  per-name assertion naming all 41 affected tools). Each was applied, the whole tree recompiled, red
-  observed on the named assertions, reverted, and the tree confirmed byte-identical.
-- `git diff --name-only` since the epic baseline touches `src/OcuPilot/**` only — nothing under
-  `ui/` or `Api/`.
+- Whole tree loaded and compiled `cuk` on `ocupilot-slot-b` -- 489/489, no errors.
+- From `ui/`: `npm run build` and `npm test` green and unchanged (1044 `node --test`, 640 component).
+  No file under `ui/` changed this pass.
+- **Whole sweep on throwaway `ocupilot-b-ci`** (mine; `up` and `down` both run here), over the exact
+  committed tree: **128 classes, 1247 tests, 0 failed, 0 probe leftovers, 0 overlaps, 0 foreign
+  runs.** `ProviderSecret` green (run 85), `OpenAIAdapter` 6/6 (run 76), `GeminiAdapter` 4/4 (run
+  53), `Adapter` 20/20 (run 8), `AgentRules` 18/18 (run 16), `AgentWire` 17/17 (run 20).
+  `AgentViolation` 8 (run 19) and `TurnStore` 11 (run 125) green **unedited**.
+- **Four mutations demonstrated**, each applied to the container's source copy, whole tree
+  recompiled, red observed, reverted, `diff -r` confirming the copy identical to the repo again and
+  `git status --short -- src ui` carrying only this pass's intended changes throughout:
+  (a) `Gemini.RequestUrl` appending `?key=` + the credential -> red on the gemini legs' three
+  variable-table assertions, every other leg green; (b) dropping
+  `ProviderStubTransport.Transport`'s `ForceErrorLog()` -> red on both refusal legs' counts alone;
+  (c) dropping both stubs' `ApplyAuth` overrides -> red on all four, the mid-flight legs reading 0;
+  (d) deleting `CatalogProbeShipped.Table`'s refusal -> red on the new drift test alone, five of six
+  green in that class.
+- `git diff --name-only a42aa488..` over `src ui module.xml` touches `src/OcuPilot/**` only.
 
 **Residual risks.**
 
-- Both port-driven legs resolve the shipped endpoints' hosts, so they need a resolver answering
-  `api.openai.com` and `generativelanguage.googleapis.com`; measured public on slot B and the
-  throwaway, and the pre-existing probe rows carry the same dependency on `api.anthropic.com`.
-- Both rows' `keyPrefix` is empty by decision, so the shape gate catches only an empty or
-  whitespace-bearing credential; a wrong-but-well-formed key returns `PROVIDER.REFUSED`.
-- Gemini's per-model output cap was not confirmed for `gemini-3.8-flash`; 32000 is the table's
-  canonical value an operator may lower, not a verified ceiling.
+- Mutation (d)'s red **is** the hazard: with the guard gone the drifted row keeps the shipped
+  `adapterClass`, and the measured failure text was the vendor's own
+  `Incorrect API key provided: probeope****...` -- one real POST left the instance, carrying the
+  fabricated probe key, which the vendor rejected. The `mutation:` line says to run it only where
+  outbound egress is acceptable. No other verification here reached a provider.
+- Legs seven to ten resolve `api.openai.com` and `generativelanguage.googleapis.com`, so the AD-35
+  sweep now carries the resolver dependency the two adapter suites already had; a leg with no
+  resolver reddens on its served-by assertion rather than passing quietly.
+- A local inside the shipped `OpenAI.ApplyAuth` or `Gemini.ApplyAuth` is reachable by no forced
+  entry -- the stubs' overrides delegate first, so those frames have returned. What is proven for
+  both new families is that no frame live during their provider work holds the credential. Stated at
+  `ProviderSecret`'s mutation paragraph so a mutation there is not read as coverage.
+- DW-1191 is back at `medium`: this pass grew the second copy of the scripted transport by the two
+  arming legs, and no test pins the two copies equal.

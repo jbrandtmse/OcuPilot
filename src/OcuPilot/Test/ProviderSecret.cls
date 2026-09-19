@@ -1,7 +1,9 @@
-/// <p><b>AC6, the credential-never-leaks proof.</b> A canary credential is driven through six
-/// forced provider failures -- four on the environment rung, one on the credentials rung, out of
+/// <p><b>AC6, the credential-never-leaks proof.</b> A canary credential is driven through ten
+/// forced provider failures -- eight on the environment rung, one on the credentials rung, out of
 /// a real credential entry resolved by the shipped ladder, and one as a key a Test connection body
-/// carries -- and the two logs OcuPilot itself
+/// carries. Four of the eight drive the canonical family; the other four are a refusal and a
+/// mid-flight raise on each of the two families whose adapters write their own authentication
+/// header -- and the two logs OcuPilot itself
 /// renders, the console log and the application error log, are read afterwards and asserted to carry
 /// no part of it, alongside every returned <code>reason</code>, <code>code</code> and
 /// <code>detail</code>.</p>
@@ -39,6 +41,29 @@ Parameter CREDSNAME = "OcuPilotProbeCanaryCredential";
 
 /// <p>The port the failures are driven through.</p>
 Parameter PORT = "OcuPilot.Test.ProviderPortProbe";
+
+/// <p>The catalog the last two legs switch in: it re-adapts the two shipped non-canonical rows to
+/// stubs that replace the transport alone, so those families' own <code>ApplyAuth</code> runs and
+/// no socket is opened.</p>
+Parameter SHIPPEDCATALOG = "OcuPilot.Test.CatalogProbeShipped";
+
+/// <p>The two shipped provider keys those legs drive, comma-separated, each with the stub its row
+/// answers under <parameter>SHIPPEDCATALOG</parameter>.</p>
+Parameter SHIPPEDFAMILIES = "openai:OcuPilot.Test.OpenAIStub,gemini:OcuPilot.Test.GeminiStub";
+
+/// <p>The refusal body those legs answer with. Both families read
+/// <code>error.message</code>, and none of it is credential material.</p>
+Parameter VENDORERRORBODY = "{""error"":{""code"":401,""status"":""UNAUTHENTICATED"",""message"":""the vendor's own words""}}";
+
+/// <p>How many forced entries one refusal leg on a new family must write: the stub's
+/// <method>ApplyAuth</method> leg and the transport's own, one attempt each, because a 401 is not
+/// retryable. <b>Asserted exactly</b>, so removing either leg reddens rather than leaving the other
+/// to satisfy a "grew" test.</p>
+Parameter REFUSALENTRIES As %Integer = 2;
+
+/// <p>How many one mid-flight raise must write: the <method>ApplyAuth</method> leg alone, the
+/// transport having raised before reaching its own, and never retried.</p>
+Parameter RAISEENTRIES As %Integer = 1;
 
 /// <p>The log port the two logs are read through -- the same readers the screens use, so what this
 /// class searches is what a user would see.</p>
@@ -80,12 +105,15 @@ Method OnAfterOneTest() As %Status
 /// <p><var>pCredentialName</var>, when it is given, moves the definition onto the
 /// <code>creds</code> rung instead -- the reference named, the environment variable cleared, which
 /// is the XOR invariant a stored definition already satisfies.</p>
-ClassMethod Definition(Output pValues, pProvider As %String = "", pCredentialName As %String = "")
+/// <p><var>pUseRowEndpoint</var> leaves the endpoint empty, so the call goes to the provider row's
+/// own canonical endpoint as a create would resolve it
+/// (<method>OcuPilot.Port.ProviderPort.EndpointOf</method>).</p>
+ClassMethod Definition(Output pValues, pProvider As %String = "", pCredentialName As %String = "", pUseRowEndpoint As %Boolean = 0)
 {
     Kill pValues
     Set pValues("provider") = $Select(pProvider = "": ##class(OcuPilot.Test.CatalogProbe).#CANARYKEY, 1: pProvider)
     Set pValues("model") = "probe-canary-model-1"
-    Set pValues("endpointUrl") = "https://api.anthropic.com/v1/messages"
+    Set pValues("endpointUrl") = $Select(pUseRowEndpoint: "", 1: "https://api.anthropic.com/v1/messages")
     Set pValues("markedLocal") = 0
     Set pValues("credType") = $Select(pCredentialName = "": "env", 1: "creds")
     Set pValues("envVarName") = $Select(pCredentialName = "": "OCUPILOT_PROBE_CANARY_KEY", 1: "")
@@ -97,9 +125,9 @@ ClassMethod Definition(Output pValues, pProvider As %String = "", pCredentialNam
 /// <p>Drive one turn through the port and assert that everything it handed back is canary-free.
 /// <var>pKeyBody</var>, when it is an object, is a request body whose <code>apiKey</code> the call
 /// carries instead of any resolved key.</p>
-Method DriveAndAssert(pWhat As %String, pProvider As %String = "", pCredentialName As %String = "", pKeyBody As %DynamicObject = "")
+Method DriveAndAssert(pWhat As %String, pProvider As %String = "", pCredentialName As %String = "", pKeyBody As %DynamicObject = "", pUseRowEndpoint As %Boolean = 0)
 {
-    Do ..Definition(.tValues, pProvider, pCredentialName)
+    Do ..Definition(.tValues, pProvider, pCredentialName, pUseRowEndpoint)
     If $IsObject(pKeyBody) {
         Set tValues("keySource") = ##class(OcuPilot.Kernel.Provider.Base).#KEYSOURCEBODY
         Set tValues("keyBody") = pKeyBody
@@ -127,7 +155,11 @@ Method DriveAndAssert(pWhat As %String, pProvider As %String = "", pCredentialNa
 /// <p><b>The frames this covers are named in
 /// <class>OcuPilot.Test.ProviderStub</class>'s own header</b>, along with the one frame no forced
 /// entry can reach; read that before adding a mutation here, because a mutation outside those
-/// frames leaves this class green and would be recorded as coverage it does not have.</p>
+/// frames leaves this class green and would be recorded as coverage it does not have. <b>The same
+/// exclusion holds for the two new families</b>: their stubs' <method>ApplyAuth</method> overrides
+/// delegate first, so <method>OcuPilot.Kernel.Provider.OpenAI.ApplyAuth</method> and
+/// <method>OcuPilot.Kernel.Provider.Gemini.ApplyAuth</method> have returned before either entry is
+/// raised, and a local held in one of them is not reachable from any forced entry here.</p>
 Method TestNoCredentialMaterialReachesTheLogsOrTheEnvelope()
 {
     Set tMarked = ..MarkConsoleLog(.tOffset, .tIdentity)
@@ -183,6 +215,11 @@ Method TestNoCredentialMaterialReachesTheLogsOrTheEnvelope()
     Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(401, "{""type"":""error"",""error"":{""type"":""authentication_error"",""message"":""invalid x-api-key""}}")
     Do ..DriveAndAssert("a provider refusal of a body key", "", "", ##class(OcuPilot.Test.CredentialFixture).Payload(..#CANARY))
 
+    ; Legs seven and eight: the two families whose adapters write their own authentication
+    ; header, so the sweep covers every ApplyAuth this instance ships rather than the canonical
+    ; one alone.
+    Do ..DriveTheNewFamilies()
+
     Set tEntries = ##class(OcuPilot.Test.ProviderStub).ErrorLogCount()
     Do $$$AssertTrue(tEntries > 0, "the run forced at least one real application-error entry, so the assertion below reads a row rather than nothing: " _ tEntries)
 
@@ -194,6 +231,51 @@ Method TestNoCredentialMaterialReachesTheLogsOrTheEnvelope()
     Do $$$AssertTrue(tErrorsAfter > tErrorsBefore, "the application error log grew, from " _ tErrorsBefore _ " to " _ tErrorsAfter)
     Set tChecked = ..AssertErrorEntriesAreClean(tDate)
     Do $$$AssertTrue(tChecked > 0, "and every entry the run recorded was read back in full: " _ tChecked)
+}
+
+/// <p>Legs seven and eight: drive a provider refusal on each family whose adapter writes its own
+/// authentication header, over the catalog that re-adapts both shipped rows to stubs replacing the
+/// transport alone. The forced entry is then raised from a stack in which that family's adapter is
+/// the one serving the call, which is what extends AD-48's proof beyond the canonical family.</p>
+/// <p>Each leg asserts <b>which class served it</b> and <b>that it wrote a forced entry of its
+/// own</b>: a row that failed to resolve, or an endpoint host this instance cannot resolve, writes
+/// no entry at all and would otherwise read as a further repetition of the environment rung's leg,
+/// which the earlier legs' cumulative count cannot distinguish. The endpoint is each row's own
+/// canonical one, so these legs resolve the two shipped hosts; nothing is connected to.</p>
+/// <p>Each family is driven twice, because the two forced-entry legs fire on different failures: a
+/// refusal reaches the transport's leg, and a mid-flight raise reaches only the stub's
+/// <method>ApplyAuth</method> leg, the transport having raised before its own.</p>
+/// <p>Mutation: point <parameter>OcuPilot.Test.CatalogProbeShipped.OPENAISTUB</parameter> at
+/// <class>OcuPilot.Test.ProviderStub</class>, the canonical family's stub -- red on the
+/// <code>openai</code> leg's served-by assertion. Mutation: have
+/// <method>OcuPilot.Kernel.Provider.Gemini.RequestUrl</method> append the credential as the
+/// <code>?key=</code> query parameter the wider vendor API also accepts -- that leg's forced
+/// entries capture <method>OcuPilot.Kernel.Provider.Base.Attempts</method>'s URL local and the
+/// variable-table assertion goes red, on that leg alone.</p>
+Method DriveTheNewFamilies()
+{
+    Do $ClassMethod(..#PORT, "SetCatalogClass", ..#SHIPPEDCATALOG)
+    For tI = 1:1:$Length(..#SHIPPEDFAMILIES, ",") {
+        Set tFamily = $Piece(..#SHIPPEDFAMILIES, ",", tI)
+        Set tProvider = $Piece(tFamily, ":", 1)
+        Set tIdentity = $Parameter($Piece(tFamily, ":", 2), "STUBIDENTITY")
+        Do $$$AssertNotEquals(tIdentity, "", "the " _ tProvider _ " row's stub declares an identity, so the served-by assertions below compare two values rather than two empty strings")
+        Do ##class(OcuPilot.Test.ProviderStub).Reset()
+        Do ##class(OcuPilot.Test.SecretProbe).SetValue(..#CANARY)
+        Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(401, ..#VENDORERRORBODY)
+        Set tBefore = ##class(OcuPilot.Test.ProviderStub).ErrorLogCount()
+        Do ..DriveAndAssert("a provider refusal on the " _ tProvider _ " family", tProvider, "", "", 1)
+        Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).ServedBy(), tIdentity, "the " _ tProvider _ " refusal was served by that family's own adapter, so its forced entries carry that family's stack")
+        Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).ErrorLogCount() - tBefore, ..#REFUSALENTRIES, "and that leg wrote both its forced entries -- its ApplyAuth leg and the transport's -- rather than resting on an earlier leg's: " _ tBefore _ " -> " _ ##class(OcuPilot.Test.ProviderStub).ErrorLogCount())
+        Do ##class(OcuPilot.Test.ProviderStub).Reset()
+        Do ##class(OcuPilot.Test.SecretProbe).SetValue(..#CANARY)
+        Do ##class(OcuPilot.Test.ProviderStub).QueueThrow()
+        Set tBefore = ##class(OcuPilot.Test.ProviderStub).ErrorLogCount()
+        Do ..DriveAndAssert("a transport that raised mid-flight on the " _ tProvider _ " family", tProvider, "", "", 1)
+        Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).ServedBy(), tIdentity, "the " _ tProvider _ " mid-flight raise was served by that family's own adapter")
+        Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).ErrorLogCount() - tBefore, ..#RAISEENTRIES, "and its ApplyAuth leg wrote its entry although the transport raised before reaching its own: " _ tBefore _ " -> " _ ##class(OcuPilot.Test.ProviderStub).ErrorLogCount())
+    }
+    Do $ClassMethod(..#PORT, "SetCatalogClass", "")
 }
 
 /// <p>Leg five: put the canary into a real credential entry, drive a provider refusal through the

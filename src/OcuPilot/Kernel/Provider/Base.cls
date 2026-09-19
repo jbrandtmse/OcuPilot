@@ -330,8 +330,10 @@ Method Attempts(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %
 /// <p>An override may rewrite the <b>path</b> -- a family whose endpoint names the model in it
 /// does -- and answers <code>""</code> to refuse the call instead. Whatever it answers,
 /// <method>Attempts</method> refuses an empty result and any result whose scheme or authority
-/// differs from the judged endpoint's, so an override can never move the call to an address the
-/// address policy did not see (AD-42, AD-21).</p>
+/// differs from the judged endpoint's, so an override can never move the call to another scheme or
+/// authority. <b>The path it writes is not checked there</b>: an override that builds one gates
+/// its own input before it enters the URL, which is where a caller-supplied value is kept out of a
+/// path, a query or a fragment (AD-42, AD-21).</p>
 Method RequestUrl(ByRef pValues) As %String
 {
     Quit $Get(pValues("endpointUrl"))

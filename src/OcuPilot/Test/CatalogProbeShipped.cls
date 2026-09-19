@@ -26,16 +26,38 @@ Parameter GEMINISTUB = "OcuPilot.Test.GeminiStub";
 /// column, and only that column, answering the stubs. Every other column of every row -- shipped
 /// or added by <class>OcuPilot.Test.CatalogProbe</class> -- is untouched, which is what makes an
 /// assertion over this table an assertion about the shipped row.</p>
+/// <p><b>It fails closed on the two rows it re-adapts.</b> Each of those keys must match exactly
+/// one row: a key renamed in the shipped XData, or declared twice, leaves this class answering an
+/// error <class>%Status</class> and no table at all, so
+/// <method>OcuPilot.Kernel.Provider.Catalog.Row</method> resolves nothing and the port refuses the
+/// call. Answering the table with a row it could not re-adapt would leave that row naming the
+/// shipped adapter, and the next call on it would carry the probe credential to the vendor -- a
+/// drift that must not resolve in the direction of making the call.</p>
+/// <p><b>It re-adapts no other row, and says nothing about one.</b> The <code>anthropic</code> row
+/// still names its shipped adapter here, as it does under
+/// <class>OcuPilot.Test.CatalogProbe</class>; a test that drives that family switches in
+/// <class>OcuPilot.Test.CatalogAnthropicStub</class> instead, and no test drives it through this
+/// catalog.</p>
 ClassMethod Table(Output pObject As %DynamicObject) As %Status
 {
     Set tSC = ##super(.pObject)
     If $$$ISERR(tSC) Quit tSC
+    Set tOpenAiRows = 0
+    Set tGeminiRows = 0
     Set tIterator = pObject.providers.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tRow) {
-        If tRow.key = ..#OPENAIKEYSHIPPED Do tRow.%Set("adapterClass", ..#OPENAISTUB)
-        If tRow.key = ..#GEMINIKEYSHIPPED Do tRow.%Set("adapterClass", ..#GEMINISTUB)
+        If tRow.key = ..#OPENAIKEYSHIPPED {
+            Do tRow.%Set("adapterClass", ..#OPENAISTUB)
+            Set tOpenAiRows = tOpenAiRows + 1
+        }
+        If tRow.key = ..#GEMINIKEYSHIPPED {
+            Do tRow.%Set("adapterClass", ..#GEMINISTUB)
+            Set tGeminiRows = tGeminiRows + 1
+        }
     }
-    Quit tSC
+    If (tOpenAiRows = 1) && (tGeminiRows = 1) Quit tSC
+    Set pObject = ""
+    Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.CatalogProbeShipped re-adapts exactly one " _ ..#OPENAIKEYSHIPPED _ " row and one " _ ..#GEMINIKEYSHIPPED _ " row; this table carried " _ tOpenAiRows _ " and " _ tGeminiRows _ ", so a row it did not re-adapt still names a shipped adapter. No table is answered.")
 }
 
 }

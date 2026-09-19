@@ -48,11 +48,12 @@ Parameter RULEKEYWORDS = "type,description,enum,items,minimum,maximum,minItems,m
 /// what keeps a wire name inside both is the canonical grammar below, not this one.</p>
 Parameter VENDORNAMEPATTERN = "^[a-zA-Z0-9_-]{1,64}$";
 
-/// <p>The grammar asserted of every wire name: OpenAI's published one, narrowed to a leading
-/// <b>letter</b> where <parameter>VENDORNAMEPATTERN</parameter>'s sibling sentence records that
-/// Google admits a letter or an underscore. The narrower form costs nothing, because
-/// <parameter>OcuPilot.Screen.Tool.Registry.TOOLNAMEPATTERN</parameter> already refuses a
-/// canonical name whose first segment does not begin with a lower-case letter.</p>
+/// <p>The grammar asserted of every wire name. It is <b>inside</b> both vendors' published
+/// grammars rather than their intersection: OpenAI admits a leading digit, hyphen or underscore
+/// and Gemini a leading underscore, and this admits none of them. The narrower form costs nothing,
+/// because <parameter>OcuPilot.Screen.Tool.Registry.TOOLNAMEPATTERN</parameter> already refuses a
+/// canonical name whose first segment does not begin with a lower-case letter. The 64-character
+/// cap is OpenAI's published one; no reference in this tree publishes Gemini's (inference).</p>
 /// <p>Spelled here rather than read from
 /// <parameter>OcuPilot.Screen.Tool.Registry.WIRENAMEPATTERN</parameter>, which is OpenAI's alone:
 /// reading it would make the assertion agree with whatever that gate says rather than with what
@@ -692,7 +693,7 @@ Method TestEveryWireToolNameFitsBothVendorGrammars()
         If $Match(tWire, ..#SHAREDNAMEPATTERN) Continue
         Set tOutside = tOutside _ $Select(tOutside = "": "", 1: ",") _ tTool.%Get("name") _ "->" _ tWire
     }
-    Do $$$AssertEquals(tOutside, "", "every canonical name's wire name fits the grammar both families admit -- letters, digits, underscore and hyphen, 1 to 64, leading letter: " _ tOutside)
+    Do $$$AssertEquals(tOutside, "", "every canonical name's wire name is inside both families' grammars -- letters, digits, underscore and hyphen, 1 to 64, and a leading letter, which is narrower than either: " _ tOutside)
 }
 
 /// <p>AC4 -- the three unreadable replies the matrix names are each an error
