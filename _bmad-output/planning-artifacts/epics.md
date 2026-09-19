@@ -3275,6 +3275,10 @@ So that what I confirm cannot differ from what will run.
 - **And** a turn that ended **normally** leaves its proposals confirmable until their own expiry - a turn ends the moment it emits the proposal card, so the ordinary path must not be caught by this rule
 - **And** the turn record carries its terminal state and outlives the job for at least the proposal expiry window, so confirm can read it.
 
+- DW-445: AD-7's Rule still places turn progress in a temp global while AD-33 and the shipped `Turn`/`Step` tables keep it in protected storage; amend the stale clause at the spine step (ledger; routed by merge_gate 2026-09-18)
+- DW-1052: the expanded tool-call card's result block is never populated, because no tool step stores the tool's output (ledger; routed by merge_gate 2026-09-18)
+- DW-1170: `REASONAGENTBADBODY` offers "or no body at all" on routes that refuse an absent body (ledger; routed by merge_gate 2026-09-18)
+
 ### Story 5.2: The proposal card - the diff the user reviews
 
 As a developer-administrator,
@@ -3405,6 +3409,9 @@ So that adopting it does not widen anyone's access, including mine.
 - **When** they are called
 - **Then** they require the same resource the classic portal's log pages require, and each port declares and evaluates its own gate before any call - because unlike `AdminPort` they inherit no vendor gate, and `/api/monitor/metrics` answers **anonymously** on this instance
 - **And** a metric, a log line or an audit row reaches a user through OcuPilot only if that user could have read it directly.
+
+- DW-444: a disabled IRIS account keeps full OcuPilot access until its token pair lapses, and `/refresh` keeps minting pairs - check `Enabled` at authentication and refuse refresh for a disabled user (ledger; routed by merge_gate 2026-09-18)
+- DW-1120: an `llm` row and a pre-dispatch refusal row carry an empty `RequiredPairs`, and an empty pair set is held by everyone (ledger; routed by merge_gate 2026-09-18)
 
 ### Story 5.5: Prohibited actions are absent from the tool set
 
@@ -3623,6 +3630,8 @@ So that the safety model is demonstrated rather than described.
 - **Given** `Security.Audit.Event` publishes no body template and its PUT is an **upsert**
 - **When** an event-level change is proposed instead
 - **Then** its field list is derived from the underlying class and pinned by a test, and a body sent against a target deleted since the read would create a stub rather than fail - which is what the fresh read plus fingerprint covers.
+
+- DW-1171: a dropped `SecurityChange` audit emission is logged as a configuration change (ledger; routed by merge_gate 2026-09-18)
 
 ### Story 5.11: Tasks - resume a task suspended after an error
 
@@ -4666,6 +4675,8 @@ So that adding a provider is adapter work rather than a change to the loop, the 
 - **When** the change is reviewed
 - **Then** **no part of the agent loop, the tool registry, the proposal lifecycle or any screen has changed** - only an adapter and a form entry.
 
+- DW-1104: one provider call's worst case is the attempt budget plus the stored per-call timeout, because the deadline only gates when an attempt may start (ledger; routed by merge_gate 2026-09-18)
+
 ### Story 10.2: The OpenAI and Google Gemini adapters
 
 As an operator with an existing OpenAI or Google account,
@@ -4716,6 +4727,8 @@ So that screen data and log text never leave the instance at all.
 
 ---
 
+- DW-441: a configured proxy is applied even to a marked-local plain-`http` endpoint, which is then requested through the proxy in cleartext; decided at the Epic 4 merge gate: bypass the proxy for a marked-local endpoint (ledger; routed by merge_gate 2026-09-18)
+
 ## Epic 11: The agent explains itself, cites its work, and streams
 
 During the voting week a user can ask what any screen or log entry means in one click, follow a citation chip straight to the row the agent used, see on every turn whether their screen data leaves the instance, and watch a reply arrive token by token. Polish week, ranked first after any step-7 leftovers, because these are what voters see. The data-egress line and the agent audit viewer moved to Epic 16 (16.15, 16.16) on 2026-09-17.
@@ -4741,6 +4754,11 @@ So that understanding a screen does not mean leaving for the documentation.
 - **Given** the action
 - **When** it is placed
 - **Then** it is available on **every** screen, from the panel, as one click.
+
+- DW-458: at the viewport where the remembered width makes the side bar yield, a narrowed panel brings the side bar back and cannot be widened again (ledger; routed by merge_gate 2026-09-18)
+- DW-460: while the panel is full screen the rail stays live, so a rail click changes a side bar or a route the panel covers (ledger; routed by merge_gate 2026-09-18)
+- DW-1077: on Home the context chip names a screen and namespace no turn carries, because Home's declared route is the empty string (ledger; routed by merge_gate 2026-09-18)
+- DW-1112: a status-0 Send raises two identical `role=alert` banners, the panel's fallback restating the shell's connectivity strip (ledger; routed by merge_gate 2026-09-18)
 
 ### Story 11.2: Explain a log or audit entry
 
@@ -4781,6 +4799,10 @@ So that the agent is useful before I have thought of a question.
 - **Given** the screen contract
 - **When** a screen is added after this story
 - **Then** its prompts are declared in its descriptor alongside its command box aliases, so a new screen arrives with prompts rather than needing them retrofitted. This story covers every screen that exists when it runs; the editors of Epics 9 and 12 declare their own, whichever order the epics land in.
+
+- DW-1147: the all-zero starter-prompt fallback also fires when the read behind a line was refused, so a caller who may not read a source is told nothing needs attention (ledger; routed by merge_gate 2026-09-18)
+- DW-1158: Home's block yields its starter prompts to the empty-transcript greeting; decided at the Epic 4 merge gate: EXPERIENCE.md is canonical, so Home shows its prompts (ledger; routed by merge_gate 2026-09-18)
+- DW-1160: a counted line answering zero renders a dateless sentence, which the all-zero fallback hides today (ledger; routed by merge_gate 2026-09-18)
 
 ### Story 11.4: Citation chips with click-through
 
@@ -5070,6 +5092,8 @@ So that a polish-week change cannot silently break a Release 1 write.
 - DW-1079: a Wallet test deletes shared demo data, which makes later suites on that instance read a false red (ledger; routed by merge_gate 2026-09-18)
 - DW-1119: `smoke.sh`'s failure line does not name the check that failed, so a failure is not quotable in a report (ledger; routed by merge_gate 2026-09-18)
 - DW-1146: the audit spec's thousand-row seed read 919 after a full sweep on the same instance, and CI runs that order (ledger; routed by merge_gate 2026-09-18)
+
+- DW-1087: `client-lint.mjs`'s `no-off-origin-url` rule is defeated by string concatenation, so the reviewed-diff guarantee on absolute URLs is void (ledger; routed by merge_gate 2026-09-18)
 
 ### Story 13.3: Publish the package to the community registry
 

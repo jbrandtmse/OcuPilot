@@ -2917,6 +2917,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T17:08:26Z status=routed owner=4-8-a-slow-or-rate-limited-provider-degrades-the-turn-rather-tha by=harvest note=Story 4.8 reworks the provider request path in Base.cls
 - 2026-09-16T17:55:57Z occurrence=4-0-epic-3-deferred-cleanup
 - 2026-09-18T10:06:04Z status=decision-pending owner=burndown by=harvest note=Story 4.8 left today's behaviour and its pinned test untouched as instructed; the spec's Design Notes state three options and recommend bypassing the proxy for a marked-local plain-http endpoint. Latent in Release 1: no shipped route writes the proxy row
+- 2026-09-19T02:12:25Z status=routed owner=10-3-the-openai-compatible-adapter-and-local-models by=merge_gate note=decided: bypass the proxy for a marked-local endpoint; never send a plain-http local call through a proxy in cleartext
 
 ### DW-442: PROVIDER.CREDENTIALSTORE's sentence says the definition was left enabled, which reads false on a Test connection of a disabled definition
 - source: spec-4-0-epic-3-deferred-cleanup.md | severity: low | fix-risk: low | footprint: in-story
@@ -2933,11 +2934,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Probed on the slot-A throwaway 2026-09-16: GET /instance 200 before and twice after Enabled read 0; POST /refresh minted a new pair 0 s and 81 s after the disable and its access token answered 200; only a fresh password login answered 401
 - 2026-09-16T19:04:15Z status=decision-pending owner=burndown by=lead note=Product and security call for the decision sheet: accept the vendor token lifetime, or refuse a disabled account per request, which needs an enabled-flag read AD-8 forbids unescalated; Epic 5 confirm depends on the answer
 - 2026-09-16T22:11:28Z occurrence=4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=cr note=AD-31 says only a password login is refused; the silent cookie /login of AD-28 was never probed for a disabled account
+- 2026-09-19T02:12:25Z status=routed owner=5-4-execution-strictly-as-the-user by=merge_gate note=check Enabled at authentication and refuse /refresh for a disabled user; a security hole, must ship in Release 1
 
 ### DW-445: AD-7's Rule still places turn progress in a temp global keyed by turn id, while AD-33 and the shipped Kernel.State.Turn and Step tables keep it in OcuPilot's protected storage
 - source: spec-4-1-the-turn-runs-in-a-background-job-and-returns-immediately.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: AD-7 Rule text versus AD-33 Rule and src/OcuPilot/Kernel/State/Step.cls; the other half of the implement stage's deferred finding, AD-31 and epics.md, was corrected by the lead at harvest
 - 2026-09-16T21:12:49Z status=escalated owner=burndown by=harvest note=A wording change to AD-7's Rule, which the orchestrator reserved because Epic 6 is amending AD-7 in parallel; recommended to replace temp global with AD-33's protected storage at the spine reconcile
+- 2026-09-19T02:12:25Z status=routed owner=5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read by=merge_gate note=amend AD-7's progress clause to match AD-33 and the shipped Turn/Step tables at your spine step; the clause is stale, not the code
 
 ### DW-446: CLAUDE.md still says check-objectscript.py carries 18 rules; Story 4.1 added a nineteenth, the turn job's reach rule
 - source: spec-4-1-the-turn-runs-in-a-background-job-and-returns-immediately.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -3003,6 +3006,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Screen/Registry.cls names Kernel.EntityType and Kernel.Scope; Screen/Read.cls names Kernel.State and Kernel.Fault; Screen/Tool/Base.cls names Kernel.Fault and Api.Error, all shipped in Epics 1 to 3, against the Invariants line that the registry never depends on the kernel
 - 2026-09-17T01:34:32Z status=escalated owner=burndown by=lead note=Recommended: amend the direction line to admit kernel value types, stores and the error vocabulary as shared leaves, since Epic 6 builds more screens on the same edges
 - 2026-09-17T02:40:32Z occurrence=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea
+- 2026-09-19T02:12:26Z status=decision-pending by=merge_gate note=human=an architecture Update intent on the spine's direction line; two epics of shipped code take the other direction
 
 ### DW-457: The objectscript-testing rule file names the client bundle path as dist/ocupilot/browser, while the build writes dist/ocupilot-ui/browser
 - source: spec-4-3-the-docked-panel-present-on-every-route.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -3014,6 +3018,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-3-the-docked-panel-present-on-every-route.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: resolveLayout decides the side-bar fit from the remembered width and applyWidth clamps to the resulting maximum; at 1,280px a run went 400 to 336 with the bar shown and max 352, then widening stuck at 352
 - 2026-09-17T04:37:08Z status=decision-pending owner=burndown by=harvest note=Two published DESIGN.md rules both hold; recommended that the panel width the user drags wins and the side bar yields again when the drag needs the room
+- 2026-09-19T02:12:25Z status=routed owner=11-1-explain-this-screen by=merge_gate note=at the yielding viewport a narrowed panel traps the side bar and the panel cannot be widened back
 
 ### DW-459: The first-login gate leaves the fresh-sign-in flag unspent after a failed read and retries on every later navigation or agent-status change with no bound, so a user mid-task can be redirected to the Definition form long after sign-in
 - source: spec-4-3-the-docked-panel-present-on-every-route.md | severity: med | fix-risk: low | footprint: in-story
@@ -3025,6 +3030,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-3-the-docked-panel-present-on-every-route.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: Rail.activate has no fullScreen guard while SideBar.onGlobalKeydown ignores Ctrl/Cmd+B in full screen; clicking the visible area's rail item writes ocupilot.side-bar.open=false unseen
 - 2026-09-17T05:12:20Z status=decision-pending owner=burndown by=cr note=Product call: a rail click in full screen is ignored for side-bar areas, or exits full screen and shows the area
+- 2026-09-19T02:12:26Z status=routed owner=11-1-explain-this-screen by=merge_gate note=the rail stays live under a full-screen panel, so a click changes a side bar or route the panel covers
 
 ### DW-1029: Switches.MergeBody treats a JSON object or array sent for any switch field, contextRowCap included, as absent and keeps the stored value instead of refusing
 - source: spec-4-4-screen-context-reaches-the-turn-capped-and-secret-free.md | severity: low | fix-risk: low | footprint: in-story
@@ -3146,6 +3152,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-5-a-turn-watched-progress-cards-and-the-conversation-lock.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: Every tool-step append and finish passes an empty text, so tool-call-card.ts's 12-line result pre never renders; showing it means persisting tool output in Step and Convo entries (AD-24, retention)
 - 2026-09-17T16:50:36Z status=decision-pending owner=burndown by=cr note=Product call: persist and show tool output on the card, or amend the spec body to arguments plus the rows line
+- 2026-09-19T02:12:25Z status=routed owner=5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read by=merge_gate note=store the tool's output on the step so the expanded card's result block can be populated
 
 ### DW-1053: The turn error banner reads 'The turn stopped at : reason.' when error.seq names no recorded step
 - source: spec-4-5-a-turn-watched-progress-cards-and-the-conversation-lock.md | severity: med | fix-risk: low | footprint: in-epic
@@ -3227,6 +3234,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: screens.generated.ts gives Home route '', and Api.Turn.ContextViolation refuses an empty route with 422, so assembleScreenContext omits context entirely there (screen-context.ts:123). The chip still renders 'Home, HSCUSTOM . provider . host' plus the egress pill, which EXPERIENCE.md:712 mandates verbatim. No data leaves that the chip does not claim, so it under-claims rather than over-claims. The three exits each cost something: a non-empty route is a server change the intent contract's Never list forbids; reading contextChipSharingOff on Home contradicts EXPERIENCE.md:712; accepting it leaves the sentence inaccurate on the one screen every user starts on.
 - 2026-09-17T21:58:32Z status=decision-pending owner=burndown by=cr note=product call for the decision sheet; reviewer will not pick between a server change and a UX contract
 - 2026-09-17T22:26:06Z status=decision-pending owner=burndown by=adjudication note=lead agrees this is a product call between a server change and EXPERIENCE.md:712; carried to the owner decision sheet, not decided here
+- 2026-09-19T02:12:26Z status=routed owner=11-1-explain-this-screen by=merge_gate note=Home's empty route makes the chip name a screen no turn carries; say what the turn actually sends
 
 ### DW-1081: DESIGN.md gives reply code blocks a copy icon button; Story 4.6 does not build one
 - source: spec-4-6-replies-render-safely-and-offline.md | severity: low | fix-risk: low | footprint: in-epic
@@ -3242,6 +3250,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-6-replies-render-safely-and-offline.md | severity: low | fix-risk: med | footprint: in-epic
 - evidence: Story 4.6 AC1 says code highlighting; DESIGN.md owns colour, publishes one pair for the code surface, rules teal out of the code block by name and forbids borrowing a status colour, so Release 1 ships weight and slant. hljs-* classes are emitted, so a palette is later a CSS-only change, but it needs four new DESIGN.md tokens plus contrast rows in both modes. Probe: render a sql fence and read the computed colour of .hljs-keyword
 - 2026-09-18T00:46:24Z status=decision-pending owner=burndown by=harvest note=lead gate approved structural highlighting for Release 1 and routed the palette to the owner decision sheet; do not decide without the owner
+- 2026-09-19T02:12:26Z status=by-design by=merge_gate note=structural-only highlighting is the shipped intent while DESIGN.md publishes no syntax palette
 
 ### DW-1084: The built-in system prompt never asks the model to name rows in backticks or offer to select them, so AC6's offer half has no producer
 - source: spec-4-6-replies-render-safely-and-offline.md | severity: med | fix-risk: low | footprint: in-epic
@@ -3265,6 +3274,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Verified by mutation: rewriting reply.spec.ts:15 as a literal reddens the gate ('[no-off-origin-url] https://docs.example.com/p'), while 'https:' + '//' + host passes. The rule's own doc comment states the point is that adding a CDN is an edit a reviewer sees. Pre-existing idiom (panel.spec.ts), extended here; the fix is in Epic 1's shared checker and its regex already documents false positives.
 - 2026-09-18T02:02:31Z status=escalated owner=burndown by=cr note=decision sheet: widen the rule to the concatenated form, or exempt spec files and say so in the rule's comment
 - 2026-09-18T02:13:15Z status=escalated owner=burndown by=adjudication note=lead confirms the escalation: the defeated rule lives in Epic 1s shared client-lint.mjs, outside Epic 4s footprint, so it is carried to the epic report rather than patched here
+- 2026-09-19T02:12:26Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=merge_gate note=no-off-origin-url must catch the concatenated form, or the reviewed-diff guarantee is void
 
 ### DW-1088: core/reply.ts type-imports 'hast', which reaches the build only through lowlight's own dependencies -- the new exact-pin test cannot see an undeclared package
 - source: spec-4-6-replies-render-safely-and-offline.md | severity: low | fix-risk: low | footprint: in-story
@@ -3321,6 +3331,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Base.Attempts reads the deadline only before attempts 2..n, so an attempt already in flight runs to its own timeoutSeconds, and State.Egress.TimeoutSeconds is any %Integer above 0 written through Save with no ceiling. Story 4.8 corrected every document that claimed otherwise and changed no behaviour. Probe: store a definition with timeoutSeconds 3600 and read the worst case against AD-31's declared bound
 - 2026-09-18T10:06:04Z status=decision-pending owner=burndown by=harvest note=the exit is either clamping the stored timeout to the budget or widening AD-31s declared turn bound; that is a product call, so it goes to the owner sheet rather than the burn-down
 - 2026-09-18T11:14:01Z status=decision-pending owner=burndown by=cr note=same root cause on the other stored value: MaxAttempts is unclamped too, so the default 90s timeout still overruns 300s
+- 2026-09-19T02:12:25Z status=routed owner=10-1-the-message-and-tool-definition-adapters by=merge_gate note=bound one call's worst case; ATTEMPTBUDGETSECONDS plus the stored per-call timeout is not a bound
 
 ### DW-1105: PROVIDER.EGRESS is the one provider failure kind no turn job can reach, so it is pinned at the port rather than through the progress route
 - source: spec-4-8-a-slow-or-rate-limited-provider-degrades-the-turn-rather-than-failing-it.md | severity: low | fix-risk: med | footprint: in-epic
@@ -3342,6 +3353,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: panel.ts sendErrorText answers STRINGS.connectivityBannerUnreachable / connectivityServerFault when the refusal carries no envelope; api.ts report() sends every outcome to connectivity.note(), and app.ts renders the same two sentences for isBannerFault. EXPERIENCE.md:486 says one banner. AC8 mandates the fallback, so the two contracts disagree. Second face: refused/absent/rejected have no published connectivity sentence, so a 403/404/422 with no envelope reads as a server fault.
 - 2026-09-18T11:13:39Z status=decision-pending owner=burndown by=cr note=spec-bound: AC8 requires the fallback, EXPERIENCE.md:486 requires one banner -- owner picks which
 - 2026-09-18T11:25:56Z status=decision-pending owner=burndown by=adjudication note=lead agrees this is spec-bound: AC8 requires the fallback banner and EXPERIENCE.md:486 requires one banner, so the exit is a product call; carried to the owner sheet with its second face (a refused, absent or rejected fault publishes no connectivity sentence)
+- 2026-09-19T02:12:26Z status=routed owner=11-1-explain-this-screen by=merge_gate note=one status-0 Send must raise one alert; drop the panel's fallback when the shell strip already says it
 
 ### DW-1113: OcuPilot.Test.TurnProvider's pRetryAfter seam has no caller, so the turn path's Retry-After forwarding is never exercised
 - source: code review of story-4.8 (2026-09-18) | severity: low | fix-risk: low | footprint: in-story
@@ -3365,6 +3377,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-9-the-agent-audit-ledger.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Screen/Gate.cls EvaluatePairs returns 1 for an empty list. A provider call requires no IRIS resource, so the empty set is truthful and the admin resource is the only gate - which is the intent as written. Whether that is the intended exposure (the screen route each turn ran from, and which tools were attempted) is a product call the intent's wording does not settle. Location: src/OcuPilot/Kernel/Audit/Ledger.cls ViewForUser
 - 2026-09-18T13:52:26Z status=decision-pending owner=burndown by=harvest note=product call on what an OcuPilot administrator may see of another users llm rows; carried to the owner sheet
+- 2026-09-19T02:12:25Z status=routed owner=5-4-execution-strictly-as-the-user by=merge_gate note=an empty RequiredPairs must never evaluate true; fix Gate.EvaluatePairs and both row writers
 
 ### DW-1121: `SecretArguments` declared on the abstract intermediates `Kernel/Shell/ReadTool` and `Screen/Tool/Read` makes every present and future subclass inherit "declares none", so the mandatory-declaration refusal cannot bite those two subtrees.
 - source: spec-4-9-the-agent-audit-ledger.md | severity: med | fix-risk: low | footprint: in-epic
@@ -3452,6 +3465,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-10-homes-suggested-view-and-the-starter-prompts.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Task 4 of the 4.10 spec specifies the fallback on every zero, and the I/O matrix settles neither the refused row nor the faulted row against it. A caller without the error log's privilege sees the three starter prompts and no indication that a line could not be read. Probe: sign in as a least-privileged principal on Home and read the block
 - 2026-09-18T18:01:00Z status=decision-pending owner=burndown by=harvest note=product call for the owner sheet: whether a line that could not be read reads as zero, as absent, or as a stated refusal
+- 2026-09-19T02:12:26Z status=routed owner=11-3-suggested-prompts-per-screen by=merge_gate note=distinguish refused from zero; a caller who may not read a source must be told so, not told all is well
 
 ### DW-1148: DESIGN.md's Home 1,920 row gives the side bar 240 and content 672, which the ordinary Home arrival cannot reach
 - source: spec-4-10-homes-suggested-view-and-the-starter-prompts.md | severity: low | fix-risk: low | footprint: in-epic
@@ -3502,6 +3516,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: EXPERIENCE.md's State Patterns Home row says 'When every attention line would be zero the block shows three starter prompts instead', and UJ-2's climax calls the fresh-container state 'the suggested view offering the three starter prompts'. panel.ts:704 returns [] from suggestedPrompts whenever transcriptEmpty, so in exactly that state the block shows only its agent-status line and the greeting carries the prompts. De-duplicating was right (six rows was a high finding); which set yields is a product call, recorded only in the spec's Auto Run Result with no Spec Change Log entry, no amendments: key and no EXPERIENCE.md amendment.
 - 2026-09-18T19:50:14Z status=decision-pending owner=burndown by=cr note=owner picks: amend EXPERIENCE.md 514/716 to publish the greeting as the yielder, or invert so the block keeps them and the greeting drops its prompt rows
 - 2026-09-18T19:55:04Z status=decision-pending owner=burndown by=adjudication note=lead agrees this is the owner's: EXPERIENCE.md's Home suggested-view row and UJ-2 both say the block offers the three starter prompts on a fresh container, while the shipped panel yields the block's set to the greeting's. The de-duplication itself is right; which set survives is the product call. The row now records the shipped behaviour, so a reversal is one row and one branch
+- 2026-09-19T02:12:26Z status=routed owner=11-3-suggested-prompts-per-screen by=merge_gate note=decided: EXPERIENCE.md is canonical, so Home shows its starter prompts; the greeting does not displace them
 
 ### DW-1159: EXPERIENCE.md's Home suggested-view row still publishes the declined tasks-suspended line and 'application errors today per namespace', both superseded by Story 4.10's AC1 amendment
 - source: spec-4-10-homes-suggested-view-and-the-starter-prompts.md | severity: med | fix-risk: low | footprint: in-story
@@ -3514,6 +3529,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: readApplicationErrors sets count 0 and date '' when the rows array is empty or its newest row carries no string date (tools/suggested-view.test.mjs's malformed-body case constructs exactly that and asserts only the count). With one counted source a zero triggers showPrompts, which filters the row out; Story 6.13 appends a second counted source, and a non-zero alerts count beside a zero errors count renders the dangling sentence.
 - 2026-09-18T19:50:26Z status=escalated owner=burndown by=cr note=fix shape depends on DW-1147: answering null on a zero collides with that decision, and a date-free sentence needs a Fixed-strings row
 - 2026-09-18T19:55:13Z status=escalated owner=burndown by=adjudication note=lead confirms the escalation: the fix shape depends on the owner's DW-1147, and the defect is hidden until Story 6.13 appends a second counted source
+- 2026-09-19T02:12:26Z status=routed owner=11-3-suggested-prompts-per-screen by=merge_gate note=a counted line answering zero must not render a dateless sentence
 
 ### DW-1161: Four byte-identical privilege-reason rule blocks cost the eager bundle 1.3 kB, which is more than the headroom DW-1153 reports
 - source: spec-4-10-homes-suggested-view-and-the-starter-prompts.md | severity: med | fix-risk: low | footprint: in-epic
@@ -3573,12 +3589,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Api/Error.cls:375 is rendered by Definitions.RenderBadBody, which Switches.RenderBadBody and Context.HandleUpdate:50 both delegate to. PUT /agent/context with no body reaches '$IsObject(tRequestBody) and answers 422 AGENTCONTEXTSHARE, so the remedy the sentence prescribes is refused; Switches and Definitions POST/PUT require a body too. Probe: PUT /agent/context with an empty body and read the code
 - 2026-09-18T23:21:38Z status=escalated owner=burndown by=cr note=the fix is a new or reworded fixed string, so the wording is the owner's call at the decision sheet
 - 2026-09-18T23:27:12Z status=escalated owner=burndown by=adjudication note=lead confirms the escalation: the sentence prescribes a remedy every route that renders it refuses, and rewording user-facing copy is the owner's
+- 2026-09-19T02:12:25Z status=routed owner=5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read by=merge_gate note=REASONAGENTBADBODY must not offer 'or no body at all' on routes that refuse an absent body
 
 ### DW-1171: A dropped SecurityChange audit emission is logged as a configuration change
 - source: spec-4-12-epic-4-burn-down.md (code review) | severity: med | fix-risk: low | footprint: in-story
 - evidence: Kernel/Audit/Event.cls:188 is $Select(pEventName = EVENTLEDGERREAD: DROPPEDLEDGERREAD, 1: DROPPEDCONFIG) and pEventName is "" for both change events, so a dropped SecurityChange -- DESCRIPTIONGRANT, an administrative role grant -- reports DROPPEDCONFIG. The log line is the only trace of a drop (AD-15), which is what DW-1127 fixed for the ledger-read case. Probe: unregister the SecurityChange event and grant the role
 - 2026-09-18T23:21:44Z status=escalated owner=burndown by=cr note=closing it needs a third fixed string for the security case, so the sentence is the owner's call at the decision sheet
 - 2026-09-18T23:27:12Z status=escalated owner=burndown by=adjudication note=lead confirms: a dropped SecurityChange emission is logged as a configuration change, and closing it needs a third fixed string
+- 2026-09-19T02:12:25Z status=routed owner=5-10-security-and-secrets-disable-and-re-enable-auditing by=merge_gate note=a dropped SecurityChange emission must not be logged as a configuration change; audit fidelity
 
 ### DW-1172: A provider ledger row's Arguments is cut by LEDGERROWMAXLENGTH but always reports ArgumentsTruncated 0
 - source: spec-4-12-epic-4-burn-down.md (code review) | severity: low | fix-risk: low | footprint: in-story
