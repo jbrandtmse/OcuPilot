@@ -285,6 +285,23 @@ deferred:
 
 Each mutation: apply, observe red, revert, and confirm `git status --short` and `git diff --stat` are byte-identical to before.
 
+### Lead AD gate (2026-09-19, throwaway `ocupilot-b-ci` 52777/1976, brought up by the lead)
+
+Two verifications re-run by the lead rather than taken from the implement stage's report.
+
+- **DW-94 keep arm (the condition the footprint grant was given on).** mutation: delete the whole
+  `If '$Data(tRemovedKeys(tRKey)), ##class(Security.Applications).Exists(...) Continue` guard, so a kept
+  application's role is deleted too and the two cases become indistinguishable -> red:
+  `Test.Provenance.TestUninstallLeavesAKeptApplicationsPrivilegeFloorIntact`, assertion "and still carries
+  the matching role it needs to answer at all". Run 2 green (6/6), run 3 red (1 failure), run 4 green after
+  revert. Mutation applied to the throwaway's own source copy, so the repository tree stayed byte-identical
+  (`git status --short` and `git diff --stat` empty throughout).
+- **AC6, AD-45's smoke path.** mutation: run `scripts/smoke.sh` between `Uninstall("",1)` and the reinstall
+  -> `executed=7 passed=0 failed=7 pending=2 skipped=38`, `FAILED`. After
+  `StartPath(1, "/opt/ocupilot/ui/dist/ocupilot-ui/browser")`: `executed=45 passed=45 failed=0 pending=2
+  skipped=0`, `PASSED`. The check is therefore not vacuous: it distinguishes an uninstalled instance from a
+  working one, which is what AC6 asserts.
+
 ## Auto Run Result
 
 Status: done

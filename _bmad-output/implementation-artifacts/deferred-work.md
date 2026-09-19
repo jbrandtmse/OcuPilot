@@ -4280,6 +4280,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-13-1-the-uninstall-hook.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: AC6's evidence is one recorded run (executed=45 passed=45); nothing re-executes a production Uninstall('',1) -- the CI instance job installs and smokes but never uninstalls. The probe-profile classes exercise the same profile-agnostic path. Loopback and auditing-enabled are structurally falsifiable (both helpers answer -1 on a failed read) but neither observed red
 - 2026-09-19T22:46:35Z status=open owner=13-1-the-uninstall-hook by=harvest note=Rule 19 gap on this story's own Verification
+- 2026-09-19T22:51:20Z status=routed owner=13-1-the-uninstall-hook by=adjudication note=AC6 half closed by the lead AD gate (smoke 7-fail vs 45-pass); loopback/auditing halves remain
 
 ### DW-1274: UninstallResidue's Residue() and AC2 target table are narrower than the sentences asserted with them
 - source: spec-13-1-the-uninstall-hook.md | severity: low | fix-risk: low | footprint: in-story
