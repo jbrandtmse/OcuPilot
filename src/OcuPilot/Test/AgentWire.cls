@@ -76,7 +76,7 @@ Method TestACreateBreakingFourRulesAnswersOneEnvelopeAndWritesNothing()
     Set tBefore = ##class(OcuPilot.Test.AgentFixture).ProbeCount()
     Do $$$AssertEquals(tBefore, 0, "no probe definition exists before the refused create")
 
-    Set tSC = ..Call("POST", "", "{""name"":""" _ ..#PROBEPREFIX _ "Four"",""provider"":""openai"",""maxTokens"":99000,""temperature"":3,""credType"":""env"",""credentialName"":""OcuPilotAnthropic""}", .tStatus, .tBody, .tHeaders)
+    Set tSC = ..Call("POST", "", "{""name"":""" _ ..#PROBEPREFIX _ "Four"",""provider"":""nosuchprovider"",""maxTokens"":99000,""temperature"":3,""credType"":""env"",""credentialName"":""OcuPilotAnthropic""}", .tStatus, .tBody, .tHeaders)
     Do $$$AssertStatusOK(tSC, "the create request completes")
     Do $$$AssertEquals(tStatus, 422, "and is refused as a validation failure")
     Do $$$AssertEquals($ZConvert($Get(tHeaders("CONTENT-TYPE")), "L") [ "application/json", 1, "with a JSON content type: " _ $Get(tHeaders("CONTENT-TYPE")))

@@ -6,13 +6,14 @@
 /// duplicated against a defaults class, both of them stale and partly fictional. One table means
 /// a new model is a row edit and a new provider family is one adapter plus one row, not a branch
 /// added in several places.</p>
-/// <p><b>Release 1 ships exactly one row, <code>anthropic</code></b> -- the only Release 1
-/// provider. The other families arrive at build step 7, which is why the columns a second family
-/// needs (<code>endpointRequired</code>, <code>keyPrefix</code>, <code>adapterClass</code>,
-/// <code>allowsLocal</code>, <code>authVersion</code>) are already here and why
-/// <method>Table</method> is overridable: a rule that reads a column no shipped row exercises is
-/// unfalsifiable, so <class>OcuPilot.Test.CatalogProbe</class> supplies a second row and
-/// <class>OcuPilot.Test.AgentRules</class> drives the rule through it.</p>
+/// <p><b>The shipped rows are <code>anthropic</code>, <code>openai</code> and <code>gemini</code>,
+/// in that order, and <code>anthropic</code> stays first</b>: the definition form selects the
+/// first row, and <class>OcuPilot.Test.AgentViolation</class> pins both that row's key and the
+/// projected column set, so a family is appended and never prepended. No shipped row exercises
+/// <code>endpointRequired</code> or <code>allowsLocal</code>, and a rule that reads a column no
+/// shipped row exercises is unfalsifiable -- so <method>Table</method> is overridable,
+/// <class>OcuPilot.Test.CatalogProbe</class> supplies rows that do, and
+/// <class>OcuPilot.Test.AgentRules</class> drives those rules through them.</p>
 Class OcuPilot.Kernel.Provider.Catalog Extends %RegisteredObject
 {
 
@@ -33,14 +34,16 @@ Class OcuPilot.Kernel.Provider.Catalog Extends %RegisteredObject
 /// when a create omits them.</li>
 /// <li><code>defaultEnvVarName</code> / <code>defaultCredentialName</code> -- the two credential
 /// references a form offers. The credential name is OcuPilot's own, never the harvested one.</li>
-/// <li><code>keyPrefix</code> -- the shape a key for this provider starts with. The adapter's
-/// key-shape gate reads it; nothing here reads a key.</li>
+/// <li><code>keyPrefix</code> -- the shape a key for this provider starts with, or <code>""</code>
+/// for a family whose vendor publishes no key grammar, where the gate falls back to refusing an
+/// empty or whitespace-bearing value. The adapter's key-shape gate reads it; nothing here reads a
+/// key.</li>
 /// <li><code>adapterClass</code> -- the <class>OcuPilot.Kernel.Provider.Base</class> subclass that
 /// serves this family. <b>This column is the dispatch</b>: no shipped class branches on a provider
 /// name, so a new family is one row plus one adapter.</li>
 /// <li><code>allowsLocal</code> -- whether a definition on this family may be marked local and so
 /// name a loopback or instance address (AD-42). A column rather than a provider name, the way
-/// <code>endpointRequired</code> is. Release 1's one row sets it false, so the escape is closed in
+/// <code>endpointRequired</code> is. Every shipped row sets it false, so the escape is closed in
 /// production and driven in tests through <class>OcuPilot.Test.CatalogProbe</class>.</li>
 /// <li><code>authVersion</code> -- the API version this family's adapter sends on every request.
 /// Here rather than in the adapter for the reason every other value is: the table is where a
@@ -49,7 +52,9 @@ Class OcuPilot.Kernel.Provider.Catalog Extends %RegisteredObject
 XData Providers
 {
 {"providers":[
-  {"key":"anthropic","label":"Anthropic","defaultModel":"claude-opus-5","modelSuggestions":["claude-opus-5","claude-sonnet-5","claude-haiku-4-5","claude-fable-5-1"],"defaultEndpoint":"https://api.anthropic.com/v1/messages","endpointRequired":false,"canonicalMaxTokens":32000,"canonicalTemperature":0,"defaultEnvVarName":"ANTHROPIC_API_KEY","defaultCredentialName":"OcuPilotAnthropic","keyPrefix":"sk-ant-","adapterClass":"OcuPilot.Kernel.Provider.Anthropic","allowsLocal":false,"authVersion":"2023-06-01"}
+  {"key":"anthropic","label":"Anthropic","defaultModel":"claude-opus-5","modelSuggestions":["claude-opus-5","claude-sonnet-5","claude-haiku-4-5","claude-fable-5-1"],"defaultEndpoint":"https://api.anthropic.com/v1/messages","endpointRequired":false,"canonicalMaxTokens":32000,"canonicalTemperature":0,"defaultEnvVarName":"ANTHROPIC_API_KEY","defaultCredentialName":"OcuPilotAnthropic","keyPrefix":"sk-ant-","adapterClass":"OcuPilot.Kernel.Provider.Anthropic","allowsLocal":false,"authVersion":"2023-06-01"},
+  {"key":"openai","label":"OpenAI","defaultModel":"gpt-5.6-terra","modelSuggestions":["gpt-5.6-terra","gpt-5.6-sol","gpt-5.6-luna"],"defaultEndpoint":"https://api.openai.com/v1/chat/completions","endpointRequired":false,"canonicalMaxTokens":32000,"canonicalTemperature":0,"defaultEnvVarName":"OPENAI_API_KEY","defaultCredentialName":"OcuPilotOpenAI","keyPrefix":"","adapterClass":"OcuPilot.Kernel.Provider.OpenAI","allowsLocal":false,"authVersion":""},
+  {"key":"gemini","label":"Google Gemini","defaultModel":"gemini-3.8-flash","modelSuggestions":["gemini-3.8-flash","gemini-3.5-flash","gemini-2.5-pro"],"defaultEndpoint":"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent","endpointRequired":false,"canonicalMaxTokens":32000,"canonicalTemperature":0,"defaultEnvVarName":"GEMINI_API_KEY","defaultCredentialName":"OcuPilotGemini","keyPrefix":"","adapterClass":"OcuPilot.Kernel.Provider.Gemini","allowsLocal":false,"authVersion":""}
 ]}
 }
 

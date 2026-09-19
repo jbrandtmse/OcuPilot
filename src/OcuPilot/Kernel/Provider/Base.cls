@@ -23,7 +23,10 @@
 /// request may already have been processed, so sending it again risks doing the work twice.</p>
 /// <p>Seams a subclass overrides: <method>ProviderName</method>, <method>CallMessages</method>,
 /// <method>ApplyAuth</method>, <method>IsApiKeyShapeValid</method>, <method>MapResponse</method>
-/// and <method>ProviderMessage</method> are the family contract; <method>IssueHttpsPost</method>
+/// and <method>ProviderMessage</method> are the family contract, and
+/// <method>RequestUrl</method> is the request-URL seam a family whose endpoint carries the model
+/// in its path needs; <method>KeyShapeAccepted</method> is the concrete key-shape test a family
+/// with no published key grammar answers with; <method>IssueHttpsPost</method>
 /// is the one transport seam, which <class>OcuPilot.Test.ProviderStub</class> replaces so the whole
 /// path runs with no socket; <method>SecretClass</method>, <method>Wait</method> and
 /// <method>NowSeconds</method> are the credential, the sleep and the clock. Production overrides
@@ -51,6 +54,14 @@ Parameter KEYSOURCENONE = "none";
 /// configured proxy rather than the endpoint. Kept beside <method>ReasonFor</method> so the
 /// provider sentences stay in one class.</p>
 Parameter REASONPROXYEGRESS = "The proxy this instance's provider calls go through resolves to an address OcuPilot will not call";
+
+/// <p>The reason the built-URL containment refusal carries, beside
+/// <parameter>REASONPROXYEGRESS</parameter>, because <code>PROVIDER.EGRESS</code> has three causes
+/// and <method>ReasonFor</method>'s one sentence names only the endpoint's own address. This one
+/// covers both arms of <method>Attempts</method>'s check -- a URL the adapter could not build from
+/// this definition, and one whose scheme or authority is not the judged endpoint's -- and names no
+/// part of either URL.</p>
+Parameter REASONBUILTURLEGRESS = "The request URL this provider's adapter built from this definition is not the endpoint OcuPilot judged";
 
 /// <p>The resolved credential, for the life of one <method>Invoke</method> and no longer.</p>
 /// <p><code>Internal</code> keeps it out of the published class reference; what actually keeps it
@@ -216,9 +227,22 @@ Method Invoke(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %St
 /// value is stored or a caller supplied. At least one attempt is always made, the shipped defaults
 /// clamp to themselves, and a value that was lowered is logged once before the loop begins --
 /// never refused, because a misconfigured timeout must not stop a turn from calling.</p>
+/// <p><b>The URL actually called is judged against the one the caller judged</b> (AD-42). The
+/// adapter's <method>RequestUrl</method> may rewrite the path -- a family whose endpoint carries
+/// the model in it does -- but a result that is empty, or whose scheme or authority differs from
+/// the judged endpoint's, is refused <code>PROVIDER.EGRESS</code> with no socket opened, because
+/// the address policy never saw it.</p>
 Method Attempts(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %String, ByRef pSettings, ByRef pResponse As OcuPilot.Kernel.Provider.Response, ByRef pFault As %DynamicObject, ByRef pHttpStatus As %Integer) [ Private ]
 {
-    Set tUrl = $Get(pValues("endpointUrl"))
+    Set tUrl = ..RequestUrl(.pValues)
+    Set tOrigin = ..OriginOf(tUrl)
+    Set tJudged = ..OriginOf($Get(pValues("endpointUrl")))
+    If (tOrigin = "") || (tOrigin '= tJudged) {
+        Set pResponse.StopReason = "error"
+        Do ..Fault(##class(OcuPilot.Api.Error).#PROVIDEREGRESS, ..#REASONBUILTURLEGRESS, "", .pFault, .pHttpStatus)
+        Do ..LogRaw("the URL this adapter built for the provider call was not the endpoint the address policy judged", $$$ERROR($$$GeneralError, "judged origin: " _ tJudged _ "; built origin: " _ $Select(tOrigin = "": "(none)", 1: tOrigin)), ##class(OcuPilot.Api.Error).#PROVIDEREGRESS)
+        Quit
+    }
     Set tMaxAttempts = ##class(OcuPilot.Kernel.Provider.Retry).EffectiveAttempts($Get(pSettings("maxAttempts")), ..TimeoutOf(.pSettings))
     Do ..LogClamp(.pSettings, tMaxAttempts)
     Set tCode = ##class(OcuPilot.Api.Error).#PROVIDERTRANSPORT
@@ -299,6 +323,43 @@ Method Attempts(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %
     If tCode = "" Quit
     Set pResponse.StopReason = "error"
     Do ..Fault(tCode, "", tProviderText, .pFault, .pHttpStatus)
+}
+
+/// <p><b>The request-URL seam.</b> The URL this call is issued to, which at this floor is the
+/// endpoint the caller judged and passed in <code>pValues("endpointUrl")</code>.</p>
+/// <p>An override may rewrite the <b>path</b> -- a family whose endpoint names the model in it
+/// does -- and answers <code>""</code> to refuse the call instead. Whatever it answers,
+/// <method>Attempts</method> refuses an empty result and any result whose scheme or authority
+/// differs from the judged endpoint's, so an override can never move the call to an address the
+/// address policy did not see (AD-42, AD-21).</p>
+Method RequestUrl(ByRef pValues) As %String
+{
+    Quit $Get(pValues("endpointUrl"))
+}
+
+/// <p>The scheme and authority of <var>pUrl</var> -- the part the address policy judged -- as
+/// <code>scheme://authority</code> with the scheme folded down, because a URI scheme is
+/// case-insensitive (RFC 3986). <code>""</code> when <var>pUrl</var> carries no scheme or no
+/// authority, which is what makes an unusable URL a refusal rather than a comparison that
+/// accidentally matches.</p>
+/// <p>The authority is compared as written, port included: this is a containment check, not a
+/// resolver, so anything it cannot prove equal it reports unequal.</p>
+ClassMethod OriginOf(pUrl As %String) As %String [ Private ]
+{
+    Set tOrigin = ""
+    Try {
+        If pUrl = "" Quit
+        If '(pUrl [ "://") Quit
+        Set tScheme = $ZConvert($Piece(pUrl, "://", 1), "L")
+        If tScheme = "" Quit
+        Set tRest = $Piece(pUrl, "://", 2, *)
+        Set tAuthority = $Piece($Piece($Piece(tRest, "/", 1), "?", 1), "#", 1)
+        If tAuthority = "" Quit
+        Set tOrigin = tScheme _ "://" _ tAuthority
+    } Catch ex {
+        Set tOrigin = ""
+    }
+    Quit tOrigin
 }
 
 /// <p>A configured <class>%Net.HttpRequest</class> for one attempt.</p>
@@ -519,6 +580,22 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTIMEOUT Quit "The provider did not answer within the time this instance allows"
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTLS Quit "The TLS configuration this instance's provider calls are made through is not present"
     Quit "The provider call did not complete"
+}
+
+/// <p>The concrete key-shape test a family whose keys have no published prefix uses: the catalog
+/// row's <property>KeyPrefix</property> where the row declares one, and otherwise a value that is
+/// non-empty and carries no whitespace or control character -- the paste error a gate with no
+/// grammar to check can still catch.</p>
+/// <p><b><property>ApiKey</property> is read inside the expressions and never into a local</b>, per
+/// <method>IsApiKeyShapeValid</method>'s contract (AD-35, AD-48). It is here rather than in each
+/// adapter so the families that delegate to it cannot answer the same question two ways.
+/// <class>OcuPilot.Kernel.Provider.Anthropic</class> does not delegate and keeps its own prefix
+/// test, which accepts any value where a row declares no prefix; no shipped or probe row puts that
+/// family on a prefix-less row.</p>
+Method KeyShapeAccepted() As %Boolean
+{
+    If ..KeyPrefix '= "" Quit ($Extract(..ApiKey, 1, $Length(..KeyPrefix)) = ..KeyPrefix)
+    Quit (..ApiKey '= "") && ($ZStrip(..ApiKey, "*WC") = ..ApiKey)
 }
 
 /// <p>The reason a <code>PROVIDER.KEYSHAPE</code> refusal carries: it states the prefix the

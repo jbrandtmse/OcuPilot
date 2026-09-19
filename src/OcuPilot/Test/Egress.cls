@@ -5,9 +5,8 @@
 /// fixture that answered canned addresses would pin the test's own arithmetic instead of the
 /// instance's. Nothing here writes anything, and no address is connected to.</p>
 /// <p>The marked-local escape is driven through <class>OcuPilot.Test.CatalogProbe</class>'s
-/// <code>probe-local</code> row, because Release 1's one shipped row sets
-/// <code>allowsLocal</code> false -- so at this floor the escape has no shipped case, and a rule
-/// with no case either way is not enforced.</p>
+/// <code>probe-local</code> row, because every shipped row sets <code>allowsLocal</code> false --
+/// so the escape has no shipped case, and a rule with no case either way is not enforced.</p>
 Class OcuPilot.Test.Egress Extends %UnitTest.TestCase
 {
 

@@ -3,9 +3,9 @@
 /// violation codes they report between them, plus the accumulation the acceptance criterion is
 /// actually about and the XOR credential invariant in both directions.</p>
 /// <p><b>A rule with no failing case is not enforced, it is merely written</b>, so every rule here
-/// has one -- including rule 8, whose shipped catalog row does not require an endpoint at the
-/// one-provider Release 1 floor and which is therefore driven through
-/// <class>OcuPilot.Test.AgentRulesProbe</class> against a second row that does.</p>
+/// has one -- including rule 8, which no shipped catalog row requires an endpoint for and which is
+/// therefore driven through <class>OcuPilot.Test.AgentRulesProbe</class> against a probe row that
+/// does.</p>
 /// <p><b>The sound control matters as much as the refusals.</b> Without
 /// <method>TestASoundSubmissionYieldsNoViolations</method>, a validator that refused everything
 /// would pass every other method in this class.</p>
@@ -18,6 +18,16 @@ Class OcuPilot.Test.AgentRules Extends %UnitTest.TestCase
 /// <p>The prefix every definition this class creates is named with, so teardown can assert the
 /// residue is gone by name rather than by remembering ids.</p>
 Parameter PROBEPREFIX = "OcuPilotProbeAgent";
+
+/// <p>The one provider key this suite uses as its <b>unknown</b> provider, at every site that
+/// needs one.</p>
+/// <p><b>A shipped key cannot serve</b>: rule 2 accepts it, so a key that became shipped would
+/// silently cost the assertion its violation. <class>OcuPilot.Test.CatalogProbe</class>'s probe key
+/// cannot serve either -- <class>OcuPilot.Test.TurnStore</class> shows an armed instance resolves
+/// its own extra rows, so an assertion built on one would pass or fail by environment.
+/// <method>TestAnUnknownProviderIsRefused</method> asserts the catalog declares this key in
+/// neither block, so shipping it one day fails loudly here.</p>
+Parameter UNKNOWNPROVIDER = "nosuchprovider";
 
 /// <p>Remove every definition this class created and assert none survives.</p>
 Method OnAfterOneTest() As %Status
@@ -108,41 +118,61 @@ Method TestADuplicateNameIsRefusedButNotAgainstItself()
     Do $$$AssertEquals(tCount, 0, "the definition that holds the name is not a duplicate of itself")
 }
 
-/// <p>Rule 2 -- the provider must be a key the catalog declares. At this floor that set is exactly
-/// <code>anthropic</code>.</p>
+/// <p>Rule 2 -- the provider must be a key the catalog declares, which is the three shipped rows in
+/// their declared order and nothing else. The sentinel this suite uses as its unknown provider is
+/// declared by neither block, so a later story that ships that key reddens here rather than
+/// silently costing an assertion its violation.</p>
 Method TestAnUnknownProviderIsRefused()
 {
     Do ..SoundValues(..#PROBEPREFIX _ "Prov", .tValues)
-    Set tValues("provider") = "openai"
+    Set tValues("provider") = ..#UNKNOWNPROVIDER
     Do ..AssertOneViolation(.tValues, "provider", ##class(OcuPilot.Api.Error).#AGENTPROVIDERUNKNOWN, "a provider the catalog does not declare")
 
-    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Provider.Catalog).Keys()), "anthropic", "the Release 1 catalog declares exactly one provider")
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Provider.Catalog).Keys()), "anthropic,openai,gemini", "the catalog declares the three shipped providers, anthropic first")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Provider.Catalog).IsKnown(..#UNKNOWNPROVIDER), 0, "and declares the unknown-provider sentinel in neither block, whatever this instance arms")
 }
 
-/// <p>The shipped <code>anthropic</code> row's shape, pinned in full. <code>defaultModel</code>
-/// and <code>defaultEndpoint</code> already move an assertion elsewhere
+/// <p>Every shipped row's shape, pinned column by column, in declared order.
+/// <code>defaultModel</code> and <code>defaultEndpoint</code> already move an assertion elsewhere
 /// (<class>OcuPilot.Test.AgentWire</class>'s create leg), but <code>modelSuggestions</code> has no
 /// consumer yet -- Story 3.5's form is what reads it -- and would drift unnoticed until then.</p>
-/// <p>Mutation: drop <code>claude-fable-5-1</code> from the row's <code>modelSuggestions</code>
-/// array in <class>OcuPilot.Kernel.Provider.Catalog</class>'s <code>Providers</code> XData -- this
-/// goes red on the suggestion list alone, every other assertion here staying green.</p>
-Method TestTheShippedProviderRowIsPinned()
+/// <p><b>The order is part of the contract</b>: the form selects the first row and
+/// <class>OcuPilot.Test.AgentViolation</class> pins that row's key, so a family is appended and
+/// never prepended.</p>
+/// <p>mutation: change the <code>gemini</code> row's <code>defaultModel</code> in
+/// <class>OcuPilot.Kernel.Provider.Catalog</class>'s <code>Providers</code> XData -- this goes red
+/// on that row's model alone, every other assertion here staying green.</p>
+Method TestTheShippedProviderRowsArePinned()
 {
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.Provider.Catalog).Row("anthropic", .tRow), 1, "the shipped anthropic row is readable")
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Provider.Catalog).Keys()), "anthropic,openai,gemini", "the shipped rows, in the order they are declared")
+
+    Do ..AssertRowPinned("anthropic", "Anthropic", "claude-opus-5", "[""claude-opus-5"",""claude-sonnet-5"",""claude-haiku-4-5"",""claude-fable-5-1""]", "https://api.anthropic.com/v1/messages", 32000, 0, "ANTHROPIC_API_KEY", "OcuPilotAnthropic", "sk-ant-", "OcuPilot.Kernel.Provider.Anthropic", "2023-06-01")
+    Do ..AssertRowPinned("openai", "OpenAI", "gpt-5.6-terra", "[""gpt-5.6-terra"",""gpt-5.6-sol"",""gpt-5.6-luna""]", "https://api.openai.com/v1/chat/completions", 32000, 0, "OPENAI_API_KEY", "OcuPilotOpenAI", "", "OcuPilot.Kernel.Provider.OpenAI", "")
+    Do ..AssertRowPinned("gemini", "Google Gemini", "gemini-3.8-flash", "[""gemini-3.8-flash"",""gemini-3.5-flash"",""gemini-2.5-pro""]", "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent", 32000, 0, "GEMINI_API_KEY", "OcuPilotGemini", "", "OcuPilot.Kernel.Provider.Gemini", "")
+}
+
+/// <p>Assert that the shipped row <var>pKey</var> holds exactly the values named, column by
+/// column. <code>endpointRequired</code> and <code>allowsLocal</code> are asserted false for every
+/// shipped row rather than passed in: no shipped family requires an endpoint or may name a local
+/// address, which is why <class>OcuPilot.Test.CatalogProbe</class> has to supply rows that
+/// do.</p>
+Method AssertRowPinned(pKey As %String, pLabel As %String, pModel As %String, pSuggestions As %String, pEndpoint As %String, pMaxTokens As %Integer, pTemperature As %Numeric, pEnvVar As %String, pCredential As %String, pKeyPrefix As %String, pAdapter As %String, pAuthVersion As %String)
+{
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Provider.Catalog).Row(pKey, .tRow), 1, pKey _ ": the shipped row is readable")
     If '$IsObject(tRow) Quit
-    Do $$$AssertEquals(tRow.label, "Anthropic", "the label")
-    Do $$$AssertEquals(tRow.defaultModel, "claude-opus-5", "the default model")
-    Do $$$AssertEquals(tRow.modelSuggestions.%ToJSON(), "[""claude-opus-5"",""claude-sonnet-5"",""claude-haiku-4-5"",""claude-fable-5-1""]", "the suggestion list: the current Claude family, most capable first")
-    Do $$$AssertEquals(tRow.defaultEndpoint, "https://api.anthropic.com/v1/messages", "the default endpoint")
-    Do $$$AssertEquals(+tRow.endpointRequired, 0, "Release 1's one provider does not require an endpoint")
-    Do $$$AssertEquals(+tRow.canonicalMaxTokens, 32000, "the canonical maximum tokens")
-    Do $$$AssertEquals(+tRow.canonicalTemperature, 0, "the canonical temperature")
-    Do $$$AssertEquals(tRow.defaultEnvVarName, "ANTHROPIC_API_KEY", "the default environment variable name")
-    Do $$$AssertEquals(tRow.defaultCredentialName, "OcuPilotAnthropic", "the default credential name is OcuPilot's own, never the harvested original's")
-    Do $$$AssertEquals(tRow.keyPrefix, "sk-ant-", "the key prefix")
-    Do $$$AssertEquals(tRow.adapterClass, "OcuPilot.Kernel.Provider.Anthropic", "the adapter class the port dispatches through, which is the column rather than a branch")
-    Do $$$AssertEquals(+tRow.allowsLocal, 0, "Release 1's one provider does not allow a local address, so the escape is closed in production")
-    Do $$$AssertEquals(tRow.authVersion, "2023-06-01", "and the API version its adapter sends")
+    Do $$$AssertEquals(tRow.label, pLabel, pKey _ ": the label")
+    Do $$$AssertEquals(tRow.defaultModel, pModel, pKey _ ": the default model")
+    Do $$$AssertEquals(tRow.modelSuggestions.%ToJSON(), pSuggestions, pKey _ ": the suggestion list, most capable first")
+    Do $$$AssertEquals(tRow.defaultEndpoint, pEndpoint, pKey _ ": the default endpoint")
+    Do $$$AssertEquals(+tRow.endpointRequired, 0, pKey _ ": no shipped provider requires an endpoint")
+    Do $$$AssertEquals(+tRow.canonicalMaxTokens, pMaxTokens, pKey _ ": the canonical maximum tokens")
+    Do $$$AssertEquals(+tRow.canonicalTemperature, pTemperature, pKey _ ": the canonical temperature")
+    Do $$$AssertEquals(tRow.defaultEnvVarName, pEnvVar, pKey _ ": the default environment variable name")
+    Do $$$AssertEquals(tRow.defaultCredentialName, pCredential, pKey _ ": the default credential name is OcuPilot's own, never the harvested original's")
+    Do $$$AssertEquals(tRow.keyPrefix, pKeyPrefix, pKey _ ": the key prefix, empty where the vendor publishes no key grammar")
+    Do $$$AssertEquals(tRow.adapterClass, pAdapter, pKey _ ": the adapter class the port dispatches through, which is the column rather than a branch")
+    Do $$$AssertEquals(+tRow.allowsLocal, 0, pKey _ ": no shipped provider allows a local address, so the escape is closed in production")
+    Do $$$AssertEquals(tRow.authVersion, pAuthVersion, pKey _ ": the API version its adapter sends, empty where the family sends none")
 }
 
 /// <p>Rule 3 -- the maximum token count is a whole number from 1 to 32000. Digits alone: without
@@ -239,13 +269,13 @@ Method TestNormalizationExposesTheGapItCreates()
 /// <p>Rule 8 -- a provider whose catalog row says an endpoint is required must have one, and the
 /// rule reads <b>the row's column</b> rather than a provider name, so build step 7 adds a row
 /// rather than a branch.</p>
-/// <p><b>Driven through <class>OcuPilot.Test.AgentRulesProbe</class></b>, because Release 1 ships
-/// one provider row and that row does not require an endpoint. Left unexercised the rule would be
-/// unfalsifiable: it would read as coverage while never having run.</p>
+/// <p><b>Driven through <class>OcuPilot.Test.AgentRulesProbe</class></b>, because no shipped
+/// provider row requires an endpoint. Left unexercised the rule would be unfalsifiable: it would
+/// read as coverage while never having run.</p>
 Method TestAProviderRowThatRequiresAnEndpointRefusesAnEmptyOne()
 {
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.Provider.Catalog).Row("anthropic", .tShipped), 1, "the shipped provider row is readable")
-    Do $$$AssertEquals(+tShipped.endpointRequired, 0, "and does not require an endpoint, which is why this rule needs the probe catalog")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Provider.Catalog).Row("anthropic", .tShipped), 1, "the first shipped provider row is readable")
+    Do $$$AssertEquals(+tShipped.endpointRequired, 0, "and requires no endpoint, as no shipped row does, which is why this rule needs the probe catalog")
 
     Do ..SoundValues(..#PROBEPREFIX _ "Ep", .tValues)
     Set tValues("provider") = ##class(OcuPilot.Test.CatalogProbe).#PROBEKEY
@@ -340,7 +370,7 @@ Method TestEnablingAnUnverifiedDefinitionIsRefused()
 Method TestFourBrokenRulesYieldFourViolationsInDeclaredOrder()
 {
     Do ..SoundValues(..#PROBEPREFIX _ "Four", .tValues)
-    Set tValues("provider") = "openai"
+    Set tValues("provider") = ..#UNKNOWNPROVIDER
     Set tValues("maxTokens") = 99000
     Set tValues("temperature") = 3
     Set tValues("credType") = "env"

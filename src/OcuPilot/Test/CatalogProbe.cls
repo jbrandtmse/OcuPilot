@@ -7,8 +7,8 @@
 /// another family's dialect. All but the fourth name a stub <code>adapterClass</code>, so
 /// no call driven through any of them opens a socket; the fourth is never dispatched to, which
 /// is the point of it.</p>
-/// <p>It exists because Release 1 ships exactly one provider row, and that row exercises neither
-/// column: it requires no endpoint and allows no local address. A rule with no failing case is not
+/// <p>It exists because no shipped provider row exercises either column: none requires an endpoint
+/// and none allows a local address. A rule with no failing case is not
 /// enforced, it is merely written, so the seam is what makes both falsifiable -- and the second row
 /// is what makes "the adapter comes from the row" an observation rather than an assertion against
 /// one possible answer.</p>
@@ -16,8 +16,9 @@
 /// <method>Row</method> and <method>IsKnown</method> all read the table through <code>..</code>
 /// dispatch, so they answer the extra rows too.</p>
 /// <p><b>Additive only.</b> <class>OcuPilot.Test.AgentRules</class> asserts that the <i>shipped</i>
-/// table declares exactly <code>anthropic</code>, so a row added to the shipped XData is a
-/// regression while a row added here is a fixture.</p>
+/// table declares exactly <code>anthropic</code>, <code>openai</code> and <code>gemini</code>, in
+/// that order, so a row added to the shipped XData is a regression while a row added here is a
+/// fixture.</p>
 Class OcuPilot.Test.CatalogProbe Extends OcuPilot.Kernel.Provider.Catalog
 {
 

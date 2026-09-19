@@ -48,6 +48,13 @@ Parameter RULEKEYWORDS = "type,description,enum,items,minimum,maximum,minItems,m
 /// what keeps a wire name inside both is the canonical grammar below, not this one.</p>
 Parameter VENDORNAMEPATTERN = "^[a-zA-Z0-9_-]{1,64}$";
 
+/// <p>The grammar <b>both</b> vendors admit: OpenAI's published one narrowed by the leading letter
+/// Google's function-declaration reference additionally requires. Spelled here rather than read
+/// from <parameter>OcuPilot.Screen.Tool.Registry.WIRENAMEPATTERN</parameter>, which is OpenAI's
+/// alone -- so a wire name starting with a digit or an underscore would pass the registry's own
+/// gate and still be refused by one vendor.</p>
+Parameter SHAREDNAMEPATTERN = "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$";
+
 /// <p>The canonical tool-name grammar the registry admits. Every segment begins with a lowercase
 /// letter, so the wire form -- each dot an underscore -- is inside both families' grammars.</p>
 Parameter CANONICALNAMEPATTERN = "^[a-z][a-z0-9]*\.[a-z][a-z0-9]*\.[a-z][a-z0-9]*$";
@@ -593,7 +600,8 @@ Method TestTheGeminiReplyBecomesCanonicalBlocksAndTheRoundTripCloses()
 
     ; Every reason the dialect can send, read on a reply that called no tool -- a reply that did
     ; call one is tool_use only where the vendor's reason said no more than that, asserted above.
-    For tCase = "MAX_TOKENS:max_tokens", "SAFETY:refusal", "SPII:refusal", "LANGUAGE:refusal", "STOP:end_turn", "OTHER:end_turn", "SOMETHINGNEW:end_turn" {
+    ; The three that refuse a tool call are its own vocabulary and map to one canonical refusal.
+    For tCase = "MAX_TOKENS:max_tokens", "SAFETY:refusal", "SPII:refusal", "LANGUAGE:refusal", "MALFORMED_FUNCTION_CALL:refusal", "UNEXPECTED_TOOL_CALL:refusal", "TOO_MANY_TOOL_CALLS:refusal", "STOP:end_turn", "OTHER:end_turn", "SOMETHINGNEW:end_turn" {
         Set tBody = "{""candidates"":[{""content"":{""parts"":[{""text"":""x""}]},""finishReason"":""" _ $Piece(tCase, ":", 1) _ """}]}"
         Set tMapped = ##class(OcuPilot.Kernel.Provider.Response).%New()
         Do $$$AssertStatusOK($ClassMethod(..#MESSAGES, "GeminiToCanonical", tBody, tMapped), "the reply reads for " _ tCase)
@@ -603,6 +611,84 @@ Method TestTheGeminiReplyBecomesCanonicalBlocksAndTheRoundTripCloses()
     Set tTruncated = ##class(OcuPilot.Kernel.Provider.Response).%New()
     Do $$$AssertStatusOK($ClassMethod(..#MESSAGES, "GeminiToCanonical", "{""candidates"":[{""content"":{""parts"":[{""functionCall"":{""name"":""t"",""args"":{}}}]},""finishReason"":""MAX_TOKENS""}]}", tTruncated), "a truncated tool-calling reply reads")
     Do $$$AssertEquals(tTruncated.StopReason, "max_tokens", "and reports the truncation rather than losing it behind tool_use")
+}
+
+/// <p>A Gemini reply whose <b>first</b> function call carries the optional vendor <code>id</code>
+/// and whose second does not, so one body exercises both halves of DW-1180.</p>
+Parameter GEMINIVENDORIDREPLY = "{""candidates"":[{""content"":{""role"":""model"",""parts"":[{""functionCall"":{""id"":""fc-42"",""name"":""logs_errors_read"",""args"":{""maxRows"":5}}},{""functionCall"":{""name"":""logs_errors_read"",""args"":{""maxRows"":9}}}]},""finishReason"":""STOP""}]}";
+
+/// <p>Story 10.2's AC6 (DW-1180) -- a vendor <code>functionCall.id</code> survives into the
+/// canonical block and is echoed on the <code>functionResponse</code> that answers it, while a call
+/// the provider sent without one keeps the synthesized id, is answered by name, and echoes
+/// nothing: a synthesized id names a correlation the provider never made.</p>
+/// <p>mutation: make <method>OcuPilot.Kernel.Provider.MessageAdapter.GeminiToCanonical</method>
+/// synthesize an id even where the reply carried one -- red on the echoed
+/// <code>functionResponse.id</code>.</p>
+Method TestAVendorGeminiCallIdSurvivesTheRoundTrip()
+{
+    Set tResponse = ##class(OcuPilot.Kernel.Provider.Response).%New()
+    Do $$$AssertStatusOK($ClassMethod(..#MESSAGES, "GeminiToCanonical", ..#GEMINIVENDORIDREPLY, tResponse), "the reply reads")
+    Set tBlocks = ##class(%DynamicAbstractObject).%FromJSON(tResponse.ToolCallsJson)
+    Do $$$AssertEquals(tBlocks.%Size(), 2, "both function calls became canonical blocks")
+    Do $$$AssertEquals(tBlocks.%Get(0).%Get("id"), "fc-42", "the vendor's own call id is kept rather than replaced")
+    Set tPrefix = $Parameter(..#MESSAGES, "GEMINICALLIDPREFIX")
+    Do $$$AssertEquals($Extract(tBlocks.%Get(1).%Get("id"), 1, $Length(tPrefix)), tPrefix, "and the call that carried none gets a synthesized one: " _ tBlocks.%Get(1).%Get("id"))
+
+    Kill tMessages
+    Set tMessages = 2
+    Set tMessages(1, "role") = "assistant"
+    Set tMessages(1, "blocks") = tResponse.ToolCallsJson
+    Set tResults = []
+    For tI = 0:1:1 {
+        Set tResult = {}
+        Do tResult.%Set("type", "tool_result", "string")
+        Do tResult.%Set("tool_use_id", tBlocks.%Get(tI).%Get("id"), "string")
+        Do tResult.%Set("content", "row " _ tI, "string")
+        Do tResults.%Push(tResult)
+    }
+    Set tMessages(2, "role") = "user"
+    Set tMessages(2, "blocks") = tResults.%ToJSON()
+    Do $$$AssertStatusOK($ClassMethod(..#MESSAGES, "CanonicalToGemini", .tMessages, "", .tContents, .tSystem), "the next request translates")
+    Set tAnswers = tContents.%Get(1).%Get("parts")
+    Do $$$AssertEquals(tAnswers.%Get(0).%Get("functionResponse").%Get("id"), "fc-42", "and the functionResponse answering the vendor's call echoes its id")
+    Do $$$AssertEquals(tAnswers.%Get(0).%Get("functionResponse").%Get("name"), ..#TOOLNAME, "beside the name the dialect requires")
+    Do $$$AssertEquals(tAnswers.%Get(1).%Get("functionResponse").%GetTypeOf("id"), "unassigned", "while the one answering a synthesized id echoes no id at all")
+    Do $$$AssertEquals(tAnswers.%Get(1).%Get("functionResponse").%Get("name"), ..#TOOLNAME, "and is correlated by name and order, as before")
+    Do $$$AssertEquals(tAnswers.%Get(1).%Get("functionResponse").%Get("response").%Get("content"), "row 1", "carrying its own result")
+
+    ; The call side of the same request: an answer carrying an id must answer a call carrying it,
+    ; or the functionResponse names a call this request does not identify.
+    Set tCalls = tContents.%Get(0).%Get("parts")
+    Do $$$AssertEquals(tCalls.%Get(0).%Get("functionCall").%Get("id"), "fc-42", "the replayed functionCall carries the same id its answer echoes")
+    Do $$$AssertEquals(tCalls.%Get(1).%GetTypeOf("functionCall"), "object", "and the second call is replayed too")
+    Do $$$AssertEquals(tCalls.%Get(1).%Get("functionCall").%GetTypeOf("id"), "unassigned", "carrying no id, as its answer carries none: a call id travels on both parts or on neither")
+}
+
+/// <p>Story 10.2's AC7 -- every canonical tool the registry advertises has a wire name that fits
+/// the grammar both vendors admit, asserted over
+/// <method>OcuPilot.Screen.Tool.Registry.WireName</method>'s own output for every live canonical
+/// name.</p>
+/// <p><b>Asserted against the transform, not against
+/// <method>OcuPilot.Screen.Tool.Registry.ProviderTools</method>'s output</b>: that method already
+/// refuses a name failing <parameter>OcuPilot.Screen.Tool.Registry.WIRENAMEPATTERN</parameter> and
+/// answers an error <class>%Status</class> instead of emitting it, so a grammar check over what it
+/// emitted could not fail. The pattern is spelled here rather than read from the registry, so
+/// widening both copies together still reddens.</p>
+/// <p>mutation: have <method>OcuPilot.Screen.Tool.Registry.WireName</method> leave one dot in
+/// place -- red on the per-name assertion, naming that tool.</p>
+Method TestEveryWireToolNameFitsBothVendorGrammars()
+{
+    Do $$$AssertStatusOK($ClassMethod(..#REGISTRY, "ListTools", .tList), "the live canonical tool list builds")
+    Do $$$AssertTrue($IsObject(tList) && (tList.%Size() > 0), "and advertises at least one tool")
+    If '$IsObject(tList) Quit
+    Set tOutside = ""
+    Set tIterator = tList.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tTool) {
+        Set tWire = $ClassMethod(..#REGISTRY, "WireName", tTool.%Get("name"))
+        If $Match(tWire, ..#SHAREDNAMEPATTERN) Continue
+        Set tOutside = tOutside _ $Select(tOutside = "": "", 1: ",") _ tTool.%Get("name") _ "->" _ tWire
+    }
+    Do $$$AssertEquals(tOutside, "", "every canonical name's wire name fits the grammar both families admit -- letters, digits, underscore and hyphen, 1 to 64, leading letter: " _ tOutside)
 }
 
 /// <p>AC4 -- the three unreadable replies the matrix names are each an error

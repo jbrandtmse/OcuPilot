@@ -21,12 +21,17 @@
 /// <code>tool_use_id</code>, which is unambiguous even when ids repeat across iterations, and a
 /// result with no such call is an error rather than a dropped result. OpenAI carries the call id
 /// itself (<code>tool_calls[].id</code>, echoed as <code>tool_call_id</code>), so the canonical id
-/// passes through in both directions. A Gemini <code>functionResponse</code> carries the function
-/// <b>name</b>, so the request direction resolves the id back to a name and two calls to one tool
-/// stay correlated by the order their responses appear -- which holds because the canonical history
-/// appends a turn's results in the order the calls were made; the reply direction synthesizes a
-/// canonical id (<parameter>GEMINICALLIDPREFIX</parameter>) that the next request resolves back to
-/// the same name.</p>
+/// passes through in both directions. Gemini's <code>functionCall</code> and
+/// <code>functionResponse</code> carry a required <code>name</code> and an <b>optional</b>
+/// <code>id</code> (DW-1180): where a reply's call carried one, the canonical block keeps it and
+/// the next request carries it on <b>both</b> parts -- the replayed <code>functionCall</code> and
+/// the <code>functionResponse</code> answering it -- which is what the vendor's function-calling
+/// guide instructs and what keeps the pair correlated inside one request. Where a reply's call carried none, the reply direction
+/// synthesizes a canonical id (<parameter>GEMINICALLIDPREFIX</parameter>) that the next request
+/// resolves back to the same name and does <b>not</b> echo, since it means nothing to the
+/// provider; two calls to one tool then stay correlated by the order their responses appear, which
+/// holds because the canonical history appends a turn's results in the order the calls were
+/// made.</p>
 /// <p>Wire contracts, verified against the vendors' published references on 2026-09-18 --
 /// OpenAI's Chat Completions reference and function-calling guide
 /// (<code>platform.openai.com/docs/guides/function-calling</code>): a leading
@@ -39,12 +44,12 @@
 /// <code>generateContent</code> reference (<code>ai.google.dev/api/generate-content</code>):
 /// <code>contents[] = {role: "user" | "model", parts[]}</code>, the system prompt in
 /// <code>systemInstruction.parts[].text</code>, parts
-/// <code>{functionCall: {name, args}}</code> and
-/// <code>{functionResponse: {name, response}}</code>, <code>candidates[0].content.parts[]</code>
-/// on the way back, <code>finishReason</code> one of
+/// <code>{functionCall: {id?, name, args}}</code> and
+/// <code>{functionResponse: {id?, name, response}}</code>,
+/// <code>candidates[0].content.parts[]</code> on the way back, <code>finishReason</code> one of
 /// <code>STOP, MAX_TOKENS, SAFETY, RECITATION, BLOCKLIST, PROHIBITED_CONTENT, SPII, LANGUAGE,
-/// OTHER</code>, usage <code>usageMetadata.promptTokenCount</code> /
-/// <code>candidatesTokenCount</code>.</p>
+/// MALFORMED_FUNCTION_CALL, UNEXPECTED_TOOL_CALL, TOO_MANY_TOOL_CALLS, OTHER</code>, usage
+/// <code>usageMetadata.promptTokenCount</code> / <code>candidatesTokenCount</code>.</p>
 Class OcuPilot.Kernel.Provider.MessageAdapter Extends %RegisteredObject
 {
 
@@ -53,12 +58,15 @@ Class OcuPilot.Kernel.Provider.MessageAdapter Extends %RegisteredObject
 /// spelling of <code>tool_calls</code> and maps to the same canonical value.</p>
 Parameter OPENAISTOPREASONS = "stop:end_turn,length:max_tokens,tool_calls:tool_use,function_call:tool_use,content_filter:refusal";
 
-/// <p>Each Gemini <code>finishReason</code> and its canonical stop reason. The six that mean the
+/// <p>Each Gemini <code>finishReason</code> and its canonical stop reason. The nine that mean the
 /// model would not answer -- safety, recitation, the block list, prohibited content, personal
-/// information and an unsupported language -- are one canonical reason, because a caller can do
-/// nothing different about them. <code>OTHER</code> is deliberately absent: an unknown reason is
-/// what <parameter>DEFAULTSTOPREASON</parameter> is for.</p>
-Parameter GEMINISTOPREASONS = "STOP:end_turn,MAX_TOKENS:max_tokens,SAFETY:refusal,RECITATION:refusal,BLOCKLIST:refusal,PROHIBITED_CONTENT:refusal,SPII:refusal,LANGUAGE:refusal";
+/// information, an unsupported language, and the three that refuse a tool call (a call the model
+/// could not form, one it was not meant to make, and more than the request allowed) -- are one
+/// canonical reason, because the canonical vocabulary has no finer one to map them to: it is
+/// Anthropic's, and it distinguishes only ending, truncation, a tool call and a refusal.
+/// <code>OTHER</code> is deliberately absent: an unknown reason is what
+/// <parameter>DEFAULTSTOPREASON</parameter> is for.</p>
+Parameter GEMINISTOPREASONS = "STOP:end_turn,MAX_TOKENS:max_tokens,SAFETY:refusal,RECITATION:refusal,BLOCKLIST:refusal,PROHIBITED_CONTENT:refusal,SPII:refusal,LANGUAGE:refusal,MALFORMED_FUNCTION_CALL:refusal,UNEXPECTED_TOOL_CALL:refusal,TOO_MANY_TOOL_CALLS:refusal";
 
 /// <p>The canonical stop reason a reason outside the family's own vocabulary, and an absent one,
 /// are read as. The canonical vocabulary is closed, so an unmapped value is normalized rather than
@@ -71,8 +79,11 @@ Parameter DEFAULTSTOPREASON = "end_turn";
 Parameter TOOLUSESTOPREASON = "tool_use";
 
 /// <p>The prefix a synthesized Gemini call id carries. The ordinal and the function name follow
-/// it, so the id says which call it belongs to in a log and in a transcript; nothing resolves a
-/// result by parsing it.</p>
+/// it, so the id says which call it belongs to in a log and in a transcript.</p>
+/// <p><b>It is also what tells a synthesized id from a vendor one</b> (DW-1180): a request carries
+/// a call id only where the provider issued it, and <method>IsSynthesizedCallId</method> is the one
+/// place that distinction is made. A canonical id from another family is treated as a vendor one:
+/// it is emitted on both parts, so the pair still correlates within the request it is sent in.</p>
 Parameter GEMINICALLIDPREFIX = "geminicall";
 
 /// <p>Translate the canonical message array <var>pMessages</var> --
@@ -256,8 +267,11 @@ ClassMethod OpenAiToCanonical(pBody As %String, pResponse As OcuPilot.Kernel.Pro
 /// <p>Roles are Gemini's own two: an assistant message is <code>model</code> and everything else
 /// is <code>user</code>. Tool-use blocks become <code>functionCall</code> parts; each
 /// <code>tool_result</code> becomes a <code>functionResponse</code> part naming the
-/// <b>function</b> its id resolves to, in the order the results appear, which is what keeps two
-/// calls to one tool correlated where the dialect carries no call id.</p>
+/// <b>function</b> its id resolves to. <b>A call id travels on both parts or on neither</b>
+/// (DW-1180): where the provider issued one, the replayed <code>functionCall</code> and the
+/// <code>functionResponse</code> answering it both carry it; where it did not, neither does, and
+/// the name and the order the results appear in are the whole correlation, which keeps two calls
+/// to one tool apart.</p>
 /// <p>Answers an error <class>%Status</class>, with both outputs blank, for a
 /// <code>tool_result</code> whose id no preceding <code>tool_use</code> carried.</p>
 ClassMethod CanonicalToGemini(ByRef pMessages, pSystemPrompt As %String = "", Output pContents As %DynamicArray, Output pSystemInstruction As %DynamicObject) As %Status
@@ -298,6 +312,9 @@ ClassMethod CanonicalToGemini(ByRef pMessages, pSystemPrompt As %String = "", Ou
                         Set tCall = {}
                         Do tCall.%Set("name", tBlock.name, "string")
                         Do tCall.%Set("args", ..ArgumentsOf(tBlock.%Get("input")))
+                        ; DW-1180: a call whose answer carries an id must carry the same id here,
+                        ; or the functionResponse names a call this request does not identify.
+                        If (tUseId '= "") && '..IsSynthesizedCallId(tUseId) Do tCall.%Set("id", tUseId, "string")
                         Set tPart = {}
                         Do tPart.%Set("functionCall", tCall)
                         Do tParts.%Push(tPart)
@@ -312,6 +329,10 @@ ClassMethod CanonicalToGemini(ByRef pMessages, pSystemPrompt As %String = "", Ou
                     Set tAnswer = {}
                     Do tAnswer.%Set("response", ..ResponseObject(tBlock))
                     Do tAnswer.%Set("name", tCalled(tResultId), "string")
+                    ; DW-1180: echoed under the same condition the functionCall above carries an
+                    ; id, so the pair correlates within this request. A synthesized id is on
+                    ; neither side: it names a call the provider never issued an id for.
+                    If '..IsSynthesizedCallId(tResultId) Do tAnswer.%Set("id", tResultId, "string")
                     Set tPart = {}
                     Do tPart.%Set("functionResponse", tAnswer)
                     Do tParts.%Push(tPart)
@@ -336,7 +357,8 @@ ClassMethod CanonicalToGemini(ByRef pMessages, pSystemPrompt As %String = "", Ou
 
 /// <p>Read a Gemini reply body <var>pBody</var> into <var>pResponse</var>: the first candidate's
 /// text parts concatenated, each <code>functionCall</code> part as a canonical
-/// <code>tool_use</code> block carrying a synthesized id, the <code>finishReason</code> mapped
+/// <code>tool_use</code> block carrying the vendor's own <code>id</code> where the call had one
+/// and a synthesized one where it did not (DW-1180), the <code>finishReason</code> mapped
 /// into the canonical vocabulary, and
 /// <code>usageMetadata.promptTokenCount</code> / <code>candidatesTokenCount</code> into the two
 /// token counts.</p>
@@ -374,9 +396,13 @@ ClassMethod GeminiToCanonical(pBody As %String, pResponse As OcuPilot.Kernel.Pro
                     Set tSC = $$$ERROR($$$GeneralError, "a function call in the provider's reply names no function")
                     Quit
                 }
+                ; DW-1180: a vendor id is kept so the next request can echo it; only a call that
+                ; carried none gets a synthesized one.
+                Set tVendorId = ""
+                If tPart.functionCall.%GetTypeOf("id") = "string" Set tVendorId = tPart.functionCall.%Get("id")
                 Set tUse = {}
                 Do tUse.%Set("type", "tool_use", "string")
-                Do tUse.%Set("id", ..#GEMINICALLIDPREFIX _ (tToolCalls.%Size() + 1) _ "_" _ tPart.functionCall.name, "string")
+                Do tUse.%Set("id", $Select(tVendorId '= "": tVendorId, 1: ..#GEMINICALLIDPREFIX _ (tToolCalls.%Size() + 1) _ "_" _ tPart.functionCall.name), "string")
                 Do tUse.%Set("name", tPart.functionCall.name, "string")
                 Do tUse.%Set("input", ..ArgumentsOf(tPart.functionCall.args))
                 Do tToolCalls.%Push(tUse)
@@ -394,6 +420,16 @@ ClassMethod GeminiToCanonical(pBody As %String, pResponse As OcuPilot.Kernel.Pro
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>Whether <var>pId</var> is an id this class synthesized for a Gemini call that carried none
+/// (<parameter>GEMINICALLIDPREFIX</parameter>), rather than one the provider issued.</p>
+/// <p>A synthesized id names a call the provider issued no id for, so it is sent on neither the
+/// replayed <code>functionCall</code> nor the <code>functionResponse</code> answering it (DW-1180):
+/// sending it would assert a correlation nothing in the exchange supports.</p>
+ClassMethod IsSynthesizedCallId(pId As %String = "") As %Boolean [ Private ]
+{
+    Quit ($Extract(pId, 1, $Length(..#GEMINICALLIDPREFIX)) = ..#GEMINICALLIDPREFIX)
 }
 
 /// <p>The one error <class>%Status</class> an unmatched <code>tool_result</code> produces, so both

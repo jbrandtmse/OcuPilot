@@ -50,8 +50,8 @@ Property EndpointUrl As %String(MAXLEN = 512);
 /// resolved address is loopback or one of this instance's own interface addresses. It licenses
 /// nothing in the link-local range, which is refused whatever this flag says.</p>
 /// <p>It is a request, not a grant: it takes effect only on a provider whose catalog row sets
-/// <code>allowsLocal</code>, and Release 1's one row does not, so setting it on a shipped
-/// definition is a validation failure rather than an escape.</p>
+/// <code>allowsLocal</code>, and no shipped row does, so setting it on a shipped definition is a
+/// validation failure rather than an escape.</p>
 Property MarkedLocal As %Boolean [ InitialExpression = 0 ];
 
 /// <p><code>env</code> or <code>creds</code> -- which rung of the credential ladder this

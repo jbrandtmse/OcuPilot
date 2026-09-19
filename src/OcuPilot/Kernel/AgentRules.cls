@@ -266,8 +266,8 @@ ClassMethod AddressViolation(pValue As %String, pMarkedLocal As %Boolean, pAllow
 /// <p>Whether <var>pProvider</var>'s catalog row licenses a definition marked local. An unknown
 /// provider licenses nothing -- rule 2 already refuses it.</p>
 /// <p>Reads the row's column the way <method>EndpointRequired</method> does, so the local escape
-/// is a table entry rather than a provider name in a branch: build step 7 opens it by adding a
-/// row, and Release 1's one row leaves it closed.</p>
+/// is a table entry rather than a provider name in a branch: a later family opens it by adding a
+/// row, and every shipped row leaves it closed.</p>
 ClassMethod AllowsLocal(pProvider As %String) As %Boolean
 {
     If '$ClassMethod(..CatalogClass(), "Row", pProvider, .tRow) Quit 0

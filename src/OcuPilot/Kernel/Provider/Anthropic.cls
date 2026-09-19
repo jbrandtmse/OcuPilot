@@ -1,4 +1,4 @@
-/// <p>The Anthropic Messages adapter -- Release 1's only provider, and the family whose message
+/// <p>The Anthropic Messages adapter -- the first shipped provider, and the family whose message
 /// shape is canonical (AD-42). Because it is canonical, everything here is a <b>passthrough</b>:
 /// the body is built in the shape the caller already holds and the reply is read in the shape
 /// <class>OcuPilot.Kernel.Provider.Response</class> already declares. A later family's adapter is

@@ -2,15 +2,164 @@
 title: 'Story 10.2: The OpenAI and Google Gemini adapters'
 type: 'feature'
 created: '2026-09-18'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '0e39b67a7a93ff4b7e23f675543b27531539f599'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/.claude/rules/objectscript-basics.md'
   - '{project-root}/.claude/rules/objectscript-testing.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      ProviderStubTransport lacks ProviderStub's error-log arming and armed-row legs, so AD-48's
+      forced-error-log sweep never runs against the two new ApplyAuth bodies.
+    evidence: |-
+      ProviderStub.IssueHttpsPost:269-273 calls ForceErrorLog() when ^||OcuPilotProviderStubLog("armed")
+      is set, and MoveArmedRow(); ProviderStubTransport.Transport has neither. Both are [ Private ], so
+      they cannot be called across classes, and ProviderStub.cls is Epic 5's footprint. Test/ProviderSecret
+      therefore proves "no credential in the error log" only for the Anthropic-family stub. Closes by
+      making ProviderStub delegate its transport to ProviderStubTransport once that file is writable.
+    location: >-
+      src/OcuPilot/Test/ProviderStubTransport.cls:32
+    severity: medium
+  - summary: >-
+      A stored Gemini endpoint carrying no {model} placeholder runs a model the definition does not name.
+    evidence: |-
+      Gemini.RequestUrl answers an unchanged endpoint when the placeholder is absent, and CallMessages
+      deliberately puts no model in the body, so a definition whose Model is gemini-3.8-flash pointed at a
+      stored .../models/gemini-2.5-pro:generateContent calls 2.5-pro while every screen and ledger row says
+      3.8-flash. Whether to warn, refuse or document it is a product call the spec does not settle; the
+      missing test travels with the decision.
+    location: >-
+      src/OcuPilot/Kernel/Provider/Gemini.cls:61
+    severity: medium
+  - summary: >-
+      Kernel/AgentRules has no create-time rule on model, so a model that cannot enter Gemini's URL path
+      is a turn-time refusal rather than a validation failure at save.
+    evidence: |-
+      The rule list validates name, provider, tokens, temperature, credentials, endpoint, prompt, retention
+      and iterations, never model. This story is what first makes the model load-bearing on the wire. A new
+      rule means a new violation code and changes what the form accepts.
+    location: >-
+      src/OcuPilot/Kernel/AgentRules.cls:82
+    severity: medium
+  - summary: >-
+      OpenAI sends temperature unconditionally; the row's own default model may refuse a non-default value,
+      the same vendor constraint that forced max_completion_tokens.
+    evidence: |-
+      Unverifiable here: confirming it needs a live provider call, which this story forbids. If true, every
+      turn on the shipped openai row fails with PROVIDER.REFUSED. Settled by one call with a key, or by the
+      vendor's per-model parameter table.
+    location: >-
+      src/OcuPilot/Kernel/Provider/OpenAI.cls:54
+    severity: medium (unverified)
+  - summary: >-
+      Anthropic.IsApiKeyShapeValid keeps its own prefix test instead of delegating to Base.KeyShapeAccepted,
+      and answers differently where a row declares no prefix.
+    evidence: |-
+      Anthropic returns 1 for any value when KeyPrefix is empty; KeyShapeAccepted refuses an empty or
+      whitespace-bearing one. Unreachable today: no shipped or probe row puts that family on a prefix-less
+      row. The base's claim has been narrowed to the families that delegate; migrating Anthropic would make
+      it true again.
+    location: >-
+      src/OcuPilot/Kernel/Provider/Anthropic.cls:109
+    severity: low
+  - summary: >-
+      ProviderMessage is three byte-identical bodies across Anthropic, OpenAI and Gemini.
+    evidence: |-
+      Anthropic.cls:165, OpenAI.cls:104 and Gemini.cls:146 parse, type-check and read error.message
+      identically. A Base helper would leave each adapter a one-liner and make "the message alone, never the
+      body" one enforceable rule; it touches the canonical family, so it is not this story's smallest change.
+    severity: low
+  - summary: >-
+      A non-string error.message stringifies an OREF into detail.providerText in all three adapters.
+    evidence: |-
+      Set tMessage = tParsed.error.message with an object or array value yields "N@%Library.DynamicObject",
+      which reaches a screen and a tool result as the vendor's words. The same shape is pre-existing in the
+      Anthropic adapter, so the fix is pattern-level, alongside the ProviderMessage entry above.
+    location: >-
+      src/OcuPilot/Kernel/Provider/OpenAI.cls:112
+    severity: low
+  - summary: >-
+      Base.HttpFor maps PROVIDER.EGRESS to 502 rather than the 503 own-configuration class its own doc
+      names.
+    evidence: |-
+      HttpFor lists TIMEOUT, UNCONFIGURED, CREDENTIAL, CREDENTIALSTORE, KEYSHAPE and TLS and falls through
+      to 502; no socket is opened on an egress refusal, so it belongs with the 503 group. Pre-existing --
+      the port produced that code before this story -- and unasserted either way.
+    location: >-
+      src/OcuPilot/Kernel/Provider/Base.cls:546
+    severity: low
+  - summary: >-
+      The /agent/providers payload's prefix-less keyShapeReason states no rule, and the client's inline
+      check returns early on an empty prefix.
+    evidence: |-
+      Definitions.cls:259 renders the bare REASONAGENTKEYSHAPE sentence for a row with no prefix, which is
+      now two of the three shipped rows; the form shows no inline warning for a pasted key carrying a space.
+      Both surfaces are excluded by this story's intent (no Api/** or ui/** change), and the assertion would
+      have to live in Test/AgentViolation.cls or Test/AgentCredential.cls, outside this footprint.
+    location: >-
+      src/OcuPilot/Api/Definitions.cls:259
+    severity: low
+  - summary: >-
+      AC5's "same fourteen columns" is pinned by value, not by count, so an extra or misspelled column
+      passes.
+    evidence: |-
+      AgentRules.AssertRowPinned asserts thirteen values per row; tRow.somTypo reads "" and a fifteenth
+      column goes unnoticed. AgentViolation.cls pins the projected key set for row 0 only and is Epic 5's
+      file, so a prefix-less row's projection is never checked.
+    location: >-
+      src/OcuPilot/Test/AgentRules.cls:151
+    severity: low
+  - summary: >-
+      The key-shape gate's whitespace test misses U+00A0 and other Unicode spaces.
+    evidence: |-
+      $ZStrip(..ApiKey, "*WC") removes ASCII space, tab and control characters only, so a key pasted from a
+      rendered web page carrying a non-breaking space is accepted and fails later as PROVIDER.REFUSED rather
+      than PROVIDER.KEYSHAPE -- the paste error the gate exists to catch.
+    location: >-
+      src/OcuPilot/Kernel/Provider/Base.cls:585
+    severity: low
+  - summary: >-
+      Both new adapter suites depend on outbound DNS for api.openai.com and generativelanguage.googleapis.com.
+    evidence: |-
+      ProviderPortProbe stubs the permission gate, the secret class and TLS, not Kernel.Egress, so the port
+      judges the shipped endpoint's host for real. On a leg without DNS every method fails as if the product
+      were broken. AC3 now carries a positive control so its refusals stay attributable; the rest do not.
+    location: >-
+      src/OcuPilot/Test/OpenAIAdapter.cls:1
+    severity: low
+  - summary: >-
+      The matrix's "key empty" half is refused earlier as PROVIDER.CREDENTIAL, not PROVIDER.KEYSHAPE.
+    evidence: |-
+      Base.Invoke refuses an unresolvable or empty key at :149-163 before the shape gate at :168, so the
+      ..ApiKey '= "" term in KeyShapeAccepted cannot decide that call. The row's observable contract -- no
+      socket, no key material in the reason -- holds; only the code name differs, and the more specific code
+      is the better answer. The intent-contract is read-only, so the wording stands.
+    location: >-
+      src/OcuPilot/Kernel/Provider/Base.cls:149
+    severity: low
+  - summary: >-
+      Per-family coverage is asymmetric, and the unreadable-body matrix row is covered only by composition.
+    evidence: |-
+      OpenAIAdapter has the exhausted-attempts and key-shape legs; GeminiAdapter has neither, though its
+      PROBEKEY is documented as the prefix-less fallback. The unreadable-body row is met by Adapter.cls:687-690
+      (each family's MapResponse answers an error %Status) plus Provider.cls:385 (the Base mapping to
+      PROVIDER.TRANSPORT), not by a per-family end-to-end leg.
+    location: >-
+      src/OcuPilot/Test/GeminiAdapter.cls:1
+    severity: low
+  - summary: >-
+      ProviderStub.WATCHEDHEADERS does not watch Authorization, so the canonical suite cannot see a leaked
+      OpenAI header.
+    evidence: |-
+      OpenAIStub now watches x-goog-api-key as well as its own, and GeminiStub already watched all four, but
+      ProviderStub.cls is Epic 5's footprint and still watches only x-api-key and anthropic-version.
+    location: >-
+      src/OcuPilot/Test/ProviderStub.cls:32
+    severity: low
 ---
 
 <intent-contract>
@@ -110,10 +259,12 @@ OpenAI-compatible row, no local or plain-HTTP allowance — `allowsLocal` is fal
   vendor id on the matching `functionResponse`; add `MALFORMED_FUNCTION_CALL`,
   `UNEXPECTED_TOOL_CALL` and `TOO_MANY_TOOL_CALLS` to `GEMINISTOPREASONS` as `refusal`; correct
   the class doc's Gemini correlation paragraph at its origin.
-- `src/OcuPilot/Test/ProviderStub.cls` — lift the scripted-transport body into a class method
-  taking the identity, leaving the existing instance method and every recorded key unchanged.
+- `src/OcuPilot/Test/StubTransport.cls` — the scripted-transport body as class methods taking the
+  identity and the watched-header list, over `ProviderStub`'s own globals and public arming and
+  reading API. `ProviderStub` is unchanged: the orchestrator holds it read-only, and a stub that
+  extends a shipped adapter cannot inherit its instance method anyway.
 - `src/OcuPilot/Test/OpenAIStub.cls`, `src/OcuPilot/Test/GeminiStub.cls` — new stubs extending
-  the two shipped adapters, delegating transport, `Wait` and `NowSeconds` to that class method.
+  the two shipped adapters, delegating transport, `Wait` and `NowSeconds` to those class methods.
 - `src/OcuPilot/Test/CatalogProbeShipped.cls` — `CatalogProbe` subclass that re-adapts the two
   shipped rows to those stubs and changes no other column.
 - `src/OcuPilot/Test/OpenAIAdapter.cls`, `src/OcuPilot/Test/GeminiAdapter.cls` — the matrix rows,
@@ -254,27 +405,203 @@ and the whole-suite sweep, runs on the throwaway: `bash scripts/ci-throwaway.sh 
 instance's copy, recompile the whole package, observe red, revert, confirm `git status --short` and
 `git diff --stat` unchanged):
 
-- **AC1** — `OpenAIAdapter.TestAShippedOpenAiRowIsCalledInItsOwnDialect`. `mutation:` point the
-  shipped `openai` row's `adapterClass` at `OcuPilot.Kernel.Provider.Anthropic` → red on the
-  recorded header name and on the `messages` / `max_completion_tokens` body assertions.
+- **AC1** — `OpenAIAdapter.TestAShippedOpenAiRowIsCalledInItsOwnDialect`. `mutation:` point
+  `Test/CatalogProbeShipped`'s `OPENAISTUB` at `OcuPilot.Test.ProviderStub`, the canonical family's
+  stub, so the `openai` row the call resolves names a canonical adapter → red on the recorded
+  header name and on the `messages` / `max_completion_tokens` body assertions. Mutating the
+  shipped row's own column cannot bite: that catalog re-adapts the row to a stub regardless.
 - **AC2** — `GeminiAdapter.TestAShippedGeminiRowIsCalledInItsOwnDialect`. `mutation:` have
   `Gemini.RequestUrl` answer the endpoint unchanged → red on the recorded URL still carrying
   `{model}`.
 - **AC3** — `GeminiAdapter.TestAModelThatWouldNotSurviveSubstitutionIsRefused`. `mutation:` drop
   the model-shape gate in `Gemini.RequestUrl` → red on the expected `PROVIDER.EGRESS` code and on
-  the zero-calls assertion.
+  the zero-calls assertion. The guard's other arm is pinned by
+  `GeminiAdapter.TestABuiltUrlOnAnotherAuthorityIsRefused` over `Test/ProviderOriginProbe`;
+  `mutation:` drop the `tOrigin '= tJudged` term from `Base.Attempts` → red on that method alone.
 - **AC4** — `OpenAIAdapter.TestTheSharedRetryAndRefusalRulesHold` (and its Gemini twin).
-  `mutation:` remove the mid-flight `Quit` in `Base.Attempts` → red on the one-attempt assertion.
+  `mutation:` have `Base.Attempts`'s attempt `Catch` record a retryable status rather than a raise
+  → red on the one-attempt assertion. Removing the mid-flight `Quit` alone cannot bite: the
+  `$$$ISERR(tIssueSC)` exit below it ends the loop on the same attempt.
 - **AC5** — `OcuPilot.Test.AgentRules.TestTheShippedProviderRowsArePinned`. `mutation:` change the
   `gemini` row's `defaultModel` in the `Providers` XData → red on that row's model alone.
 - **AC6** — `OcuPilot.Test.Adapter.TestAVendorGeminiCallIdSurvivesTheRoundTrip`. `mutation:` make
   `GeminiToCanonical` synthesize an id even where the reply carried one → red on the echoed
   `functionResponse.id`.
 - **AC7** — `OcuPilot.Test.Adapter.TestEveryWireToolNameFitsBothVendorGrammars` over
-  `Registry.ProviderTools`. `mutation:` have `Registry.WireName` leave one dot in place → red
-  naming that tool.
+  `Registry.WireName`'s output for every name `Registry.ListTools` advertises. `mutation:` have
+  `Registry.WireName` leave one dot in place → red on the per-name assertion, naming that tool.
+  Asserted against the transform, not against `ProviderTools`'s output: that method already
+  refuses a name failing `WIRENAMEPATTERN`, so a grammar check over what it emitted could not
+  fail.
+
+## Review Triage Log
+
+### 2026-09-19 — Review pass
+
+- verdicts: 56 findings — high 0, medium 18, low 30, false 6, maybe-false 2
+- findings:
+
+From the Blind Hunter layer:
+
+  - `low` `patch` Base.KeyShapeAccepted's "two families cannot answer two ways" is false; Anthropic keeps its own prefix test — verified at `Anthropic.cls:109-113`: it returns 1 for any value on a prefix-less row. No shipped or probe row puts that family on one, so unreachable; the base's claim was narrowed to the families that delegate and the exception named. Migration deferred.
+  - `low` `defer` `ProviderMessage` is a third byte-identical copy — verified across `Anthropic.cls:165`, `OpenAI.cls:104`, `Gemini.cls:146`. A Base helper touches the canonical family; not this story's smallest change.
+  - `medium` `defer` `ProviderStubTransport` dropped ProviderStub's armed-error-log and armed-row legs — verified at `ProviderStub.cls:269-273`; both helpers are `[ Private ]` and `ProviderStub.cls` is Epic 5's, so AD-48's forced-error-log sweep cannot reach the two new `ApplyAuth` bodies from this footprint.
+  - `medium` `patch` the egress guard's origin-differs arm had no failing case — verified: `Gemini.MODELPATTERN` admits no character that changes an authority, so every shipped refusal lands on the empty arm. Added `Test/ProviderOriginProbe` and `GeminiAdapter.TestABuiltUrlOnAnotherAuthorityIsRefused`; mutation demonstrated red on that method alone.
+  - `medium` `patch` the refusal told the operator the endpoint resolves to a refused address — verified: `Fault(code, "", …)` falls through to `ReasonFor(PROVIDEREGRESS)`. Added `Base.REASONBUILTURLEGRESS`, passed at the refusal and asserted in AC3.
+  - `low` `defer` `HttpFor` maps `PROVIDER.EGRESS` to 502 rather than 503 — verified at `Base.cls:546-559`; pre-existing, since the port produced that code before this story.
+  - `medium` `defer` no create-time `model` rule — verified: `AgentRules.cls:82-115` validates nine fields and never `model`. A new rule is a new violation code and changes what the form accepts; not settled by the spec.
+  - `low` `patch` `MODELPATTERN`'s doc claimed it "admits every model id the vendor publishes" — a qualified `models/<id>` is refused, correctly, because the placeholder sits under the endpoint's own `models/`. Sentence narrowed.
+  - `medium` `defer` a placeholder-free Gemini endpoint silently ignores the definition's model — verified at `Gemini.cls:61-63` with `CallMessages` putting no model in the body. Warn, refuse or document is a product call.
+  - `medium` `patch` AC7's assertion could not fail — verified: `Registry.cls:240-241` already refuses a name failing `WIRENAMEPATTERN`, so a grammar check over what `ProviderTools` emitted was vacuous. Rewritten over `WireName`'s output per canonical name from `ListTools`, with the shared grammar spelled independently; the leading-letter overclaim corrected; mutation re-demonstrated.
+  - `medium` `patch` `IsSynthesizedCallId` treats "not my prefix" as "the vendor issued it" — verified: the request direction echoed `functionResponse.id` for a foreign id while the replayed `functionCall` carried none. Fixed symmetrically: a call id now travels on both parts or on neither.
+  - `low` `patch` three `finishReason` values collapsed to `refusal` on a justification that does not hold for them — the mapping is spec-bound (named in Tasks); the sentence was corrected to the real reason, that the canonical vocabulary has no finer value.
+  - `low` `defer` the prefix-less key rule has no operator-facing reason and no client counterpart — both surfaces (`Api/**`, `ui/**`) are excluded by the intent.
+  - `low` `defer` AC5's fourteen columns pinned by value, not by count — verified: `AssertRowPinned` checks thirteen values; the projection pin lives in Epic 5's `AgentViolation.cls`.
+  - `false` `reject` the sentinel is a parameter in one file and a literal in another — the orchestrator granted exactly one literal in `AgentWire.cls`, and the guard the finding wants is present in `AgentRules` (`IsKnown(..#UNKNOWNPROVIDER) = 0`). A `$Parameter` reference would add a cross-class dependency to a file this epic does not own.
+  - `low` `patch` `OpenAIStub.WATCHEDHEADERS` omitted `x-goog-api-key` — added, so its "neither of the other families' headers" assertion can see a leak. The `ProviderStub.WATCHEDHEADERS` half is Epic 5's file and is deferred.
+  - `low` `patch` both suites depend on outbound DNS, so AC3 could pass for the wrong reason — a positive control was added in the same method: the row's own model reaches the transport once.
+  - `low` `defer` the whitespace test misses U+00A0 — `$ZStrip(…, "*WC")` removes ASCII whitespace and control characters only.
+  - `low` `patch` the guard's log could not distinguish its two arms and evaluated `OriginOf` twice — the judged origin is now computed once into `tJudged` and both origins are named in the log line.
+  - `maybe-false` `defer` OpenAI sends `temperature` unconditionally — settling it needs a live provider call, which this story forbids. Recorded with what would settle it.
+  - `low` `patch` smaller consistency gaps — `CatalogProbeShipped.Table` gained the doc comment its siblings carry and `Base`'s seam list now names `KeyShapeAccepted`; the spec's own file name was corrected to `ProviderStubTransport.cls`. The `[ Private ]` half is wrong: `CatalogProbe.Table`, the method it overrides, carries no such keyword.
+  - `false` `reject` the DW-1180 ledger entry is not closed — Rule 15(a): `bmad-build-auto` never writes the ledger; the lead harvests after `dev_complete`.
+
+From the Edge Case Hunter layer:
+
+  - `medium` `patch` a canonical history carrying a foreign `tool_use` id is echoed to Gemini — grouped with the symmetric-id fix above.
+  - `medium` `patch` the rebuilt `functionCall` part omits `id`, so the answer references a call the request does not identify — verified at `MessageAdapter.cls:305-311`; the same fix closes it, and AC6 now asserts the call side.
+  - `low` `reject` a vendor id beginning `geminicall` would be classified synthesized — wontfix-theoretical: it is then sent on neither part and falls back to name-and-order correlation, which is correct; no vendor documents such ids.
+  - `low` `reject` a `functionCall.id` arriving as a number is discarded — the vendor's reference types `id` as a string; the fallback is correct behavior, not a defect.
+  - `medium` `patch` the egress reason names the endpoint when the cause is the model — duplicate of the reason finding above; patched.
+  - `low` `reject` a model of `.` or `..` changes the path — refuted: the placeholder is one segment of `models/{model}:generateContent`, so the substituted segment is `.:generateContent`, never `..`; no traversal, and the guard covers scheme and authority.
+  - `medium` `defer` a placeholder-free endpoint ignores the model — duplicate; deferred.
+  - `maybe-false` `defer` `temperature` on a reasoning model — duplicate; deferred with what would settle it.
+  - `low` `defer` a non-string `error.message` yields an OREF string in `detail.providerText` (OpenAI) — real, and identical in the pre-existing Anthropic adapter, so the fix is pattern-level.
+  - `low` `defer` the same for Gemini — same root cause; one ledger entry.
+  - `low` `patch` AC3 could pass on an unresolvable host with the model gate never running — duplicate of the DNS finding; the positive control closes it.
+  - `medium` `defer` `ProviderStubTransport` dropped the `^%ETN` capture leg, leaving AD-48 unproven for both new `ApplyAuth` bodies — duplicate; deferred with the delegation that closes it.
+  - `low` `patch` `Anthropic.IsApiKeyShapeValid` should delegate — duplicate; the claim was narrowed in-pass, the migration deferred.
+  - `false` `reject` `AgentWire.cls:79` should read the sentinel from a parameter — duplicate; refused for the footprint reason above.
+  - `medium` `patch` `VENDORNAMEPATTERN` is OpenAI's alone and admits `_x` and `9x` — verified; the new AC7 test asserts against a `SHAREDNAMEPATTERN` that carries the leading-letter rule.
+  - `low` `patch` three shipped classes still carried the superseded one-row prose — verified at `Anthropic.cls:1`, `AgentRules.cls:270`, `State/Agent.cls:53`; each corrected at its origin.
+
+From the Verification Gap Reviewer layer:
+
+  - `medium` `patch` AC7's wire-name assertion cannot fail — filed pre-verified; rewritten as above and the spec's `mutation:` line corrected.
+  - `medium` `patch` the origin-containment arm is driven by nothing — filed pre-verified; closed by the new probe adapter and its test.
+  - `medium` `defer` Gemini's placeholder-free branch has no test and silently ignores the model — the test travels with the product decision, so both were deferred together rather than pinning behavior nobody has decided.
+  - `low` `patch` Anthropic does not adopt `Base.KeyShapeAccepted` — the layer's own disposition was defer-and-narrow; the claim was narrowed in-pass and the migration deferred.
+  - `low` `defer` the two new rows' `/agent/providers` projection is unasserted, including the prefix-less key-shape sentence — the assertion would have to live in an Epic 5 file and the sentence in `Api/**`, which the intent excludes.
+  - `low` `defer` the matrix's "key empty" half is not testable as written — verified: `Base.Invoke:149-163` refuses an empty key before the shape gate. The row's observable contract still holds; the intent-contract is read-only.
+  - `low` `patch` `CatalogProbe.cls:18-20` still said the shipped table declares exactly `anthropic` — corrected.
+  - `low` `reject` the `geminicall` prefix collision — duplicate; wontfix-theoretical as above.
+
+From the Intent Alignment Auditor layer:
+
+  - `medium` `patch` the intent's expectation is provenance, the diff's check is a prefix — duplicate of the symmetric-id fix; patched.
+  - `medium` `patch` the guard's second half is unreachable from shipped code and undriven — duplicate; patched.
+  - `false` `reject` the guard newly refuses a scheme-less endpoint for the canonical family too — refuted: `ProviderPort.cls:246` runs `AgentRules.SchemeAccepted`, and both `IsAbsoluteHttps` and `IsAbsoluteHttp` require a scheme, so a scheme-less endpoint never reaches `Attempts`.
+  - `low` `defer` the key-shape matrix row's empty half sits at a different surface, and Gemini has no key-shape leg — duplicate of the two entries above.
+  - `low` `defer` per-family coverage is asymmetric and the unreadable-body row is covered for neither family at adapter level — verified: it is met by composition, `Adapter.cls:687-690` plus `Provider.cls:385`. Recorded rather than patched.
+  - `medium` `defer` AD-48's executable check is bound to the Anthropic-derived stub — duplicate of the `ProviderStubTransport` entry.
+  - `false` `reject` `GEMINISTOPREASONS` is a fourth shared-code change the intent did not name — the spec's Tasks name those three reasons explicitly; it is named work.
+  - `low` `patch` `KeyShapeAccepted`'s claim holds for two of three families, and the name collides with `Api.Definitions.KeyShapeAccepted` — the claim was narrowed; the name is not ambiguous at any call site, both being fully qualified.
+  - `low` `patch` the spec named the new file `Test/StubTransport.cls` while the diff ships `ProviderStubTransport.cls` — the file was renamed into this story's footprint and the spec corrected.
+  - `false` `reject` cross-epic test edits the intent fenced no boundary for — the sentinel edits are the orchestrator's granted change and are reported as a footprint extension; `Test/AgentViolation.cls` is correctly untouched.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**What was implemented.** Two catalog rows appended after `anthropic` and two `Base` subclasses:
+`OpenAI` sends a Chat Completions body with `max_completion_tokens` and an `Authorization: Bearer`
+header; `Gemini` sends a `generateContent` body with `generationConfig` and an `x-goog-api-key`
+header, and overrides the new `RequestUrl` seam to substitute a shape-gated model for the
+endpoint's `{model}`. `Base` gained that seam, an origin check that refuses `PROVIDER.EGRESS`
+before any socket when the built URL's scheme or authority is not the judged endpoint's, and one
+concrete key-shape test. `MessageAdapter` keeps a vendor Gemini `functionCall.id` and carries it on
+**both** parts of the next request (DW-1180), and maps the three tool-call refusal reasons. No new
+column, no `Api/**` or `ui/**` change, no shipped branch on a provider key.
+
+**Files changed.**
+
+- `Kernel/Provider/Base.cls` — `RequestUrl`, private `OriginOf`, the built-URL egress refusal with
+  its own reason, `KeyShapeAccepted`; superseded one-row prose replaced.
+- `Kernel/Provider/OpenAI.cls`, `Kernel/Provider/Gemini.cls` — new adapters.
+- `Kernel/Provider/Catalog.cls` — the two rows, appended after `anthropic`; prose replaced.
+- `Kernel/Provider/MessageAdapter.cls` — DW-1180 on both request parts, `IsSynthesizedCallId`, the
+  three added `GEMINISTOPREASONS` entries, the correlation paragraph corrected at origin.
+- `Kernel/Provider/Anthropic.cls`, `Kernel/AgentRules.cls`, `Kernel/State/Agent.cls` — one
+  superseded one-row sentence each, corrected at origin; doc only.
+- `Test/ProviderStubTransport.cls`, `Test/OpenAIStub.cls`, `Test/GeminiStub.cls`,
+  `Test/CatalogProbeShipped.cls`, `Test/OpenAIAdapter.cls`, `Test/GeminiAdapter.cls`,
+  `Test/ProviderOriginProbe.cls` — new.
+- `Test/Adapter.cls` — AC6's round trip (both request parts), AC7 rewritten over `Registry.WireName`,
+  the three stop reasons.
+- `Test/AgentRules.cls` — the key-set pin, all three rows pinned column by column, the
+  `nosuchprovider` sentinel and the guard that the catalog declares it in neither block.
+- `Test/AgentWire.cls:79` — the one granted literal.
+- `Test/CatalogProbe.cls`, `Test/Egress.cls` — one superseded clause each; doc only.
+
+**Three deviations.** `Test/ProviderStub.cls` was held read-only by the orchestrator, so the
+scripted transport was lifted into a new `Test/ProviderStubTransport.cls` — named inside this
+story's footprint — and `ProviderStub.cls` is byte-identical to its committed version; the
+consequence is that the recording body now exists in two places (recorded under `deferred:`). AC1's
+and AC4's named mutations could not falsify anything as written; both `mutation:` lines were
+replaced with ones that do, and the reason is on each line and in each test's doc comment.
+
+**Review findings.** 56 findings across four layers — 18 medium, 30 low, 6 false, 2 maybe-false, no
+high. **14 entries patched in-pass**: the DW-1180 request-side asymmetry (a call id now travels on
+both parts or on neither, with AC6 asserting the call side); the origin-containment arm's missing
+failing case (`Test/ProviderOriginProbe` plus a new AC3 companion test); AC7's unfalsifiable
+assertion (rewritten over `Registry.WireName`'s output for every canonical name, against a shared
+grammar spelled independently); the egress refusal's inaccurate reason (`Base.REASONBUILTURLEGRESS`);
+a positive control in AC3 so a refusal cannot be attributed to an unresolvable host; and nine doc or
+fixture corrections, including four superseded one-row sentences corrected at their origins.
+**15 items deferred** (frontmatter `deferred:`), the four medium ones being AD-48's forced-error-log
+sweep not reaching the two new `ApplyAuth` bodies, a placeholder-free Gemini endpoint running an
+unnamed model, the absent create-time `model` rule, and OpenAI's unconditional `temperature`.
+**6 findings rejected:** the `AgentWire.cls` sentinel should read a parameter — refused, the grant is
+exactly one literal and the guard lives in `AgentRules` (twice, from two layers); the DW-1180 ledger
+entry is unclosed — Rule 15(a) puts that with the lead's harvest; a model of `.` or `..` changes the
+path — refuted, the substituted segment is `.:generateContent`; a numeric `functionCall.id` is
+discarded — the vendor types it a string and the fallback is correct; a vendor id beginning
+`geminicall` is dropped — wontfix-theoretical, it then travels on neither part and name-and-order
+correlation is correct (twice, from two layers); the guard newly refuses a scheme-less endpoint for
+the canonical family — refuted, `ProviderPort.cls:246` requires a scheme before `Attempts` runs;
+`GEMINISTOPREASONS` is unnamed work — the spec's Tasks name those three reasons.
+
+**Follow-up review recommended: true.** Four medium entries were patched on a first pass. The named
+unverified risk is the DW-1180 symmetric-id change: it alters the Gemini request body for every
+replayed tool call, and is verified only against the recording stub — no live exchange confirms the
+vendor accepts a `functionCall.id` OcuPilot did not receive from it.
+
+**Verification**, all on slot B; no socket was opened to a provider:
+
+- `uv run scripts/check-objectscript.py` clean (488 files, 21 rules);
+  `uv run scripts/test_check_objectscript.py` 126/126; `bash scripts/lint-docs.sh` clean.
+- Whole tree loaded and compiled `cuk` on `ocupilot-slot-b` — no errors.
+- From `ui/`: `npm run build` and `npm test` — 1044 `node --test` and 640 component tests, green and
+  unchanged. This story adds no client code.
+- **Whole sweep on the throwaway**, after the review patches (`ci-throwaway.sh up --dir
+  /tmp/ocupilot-b-ci --project ocupilot-b-ci --web 52777 --super 1976`, torn down after):
+  **128 classes, 1244 tests, 0 failed, 0 probe leftovers, 0 overlaps, 0 foreign runs.**
+  `AgentViolation` 8 and `TurnStore` 11 are green **unedited** — both byte-identical to HEAD, as is
+  `ProviderStub.cls`.
+- Seven acceptance mutations demonstrated, plus the two the review added
+  (`Base.Attempts`'s origin term, and `Registry.WireName` leaving a dot — the latter red on the
+  per-name assertion naming all 41 affected tools). Each was applied, the whole tree recompiled, red
+  observed on the named assertions, reverted, and the tree confirmed byte-identical.
+- `git diff --name-only` since the epic baseline touches `src/OcuPilot/**` only — nothing under
+  `ui/` or `Api/`.
+
+**Residual risks.**
+
+- Both port-driven legs resolve the shipped endpoints' hosts, so they need a resolver answering
+  `api.openai.com` and `generativelanguage.googleapis.com`; measured public on slot B and the
+  throwaway, and the pre-existing probe rows carry the same dependency on `api.anthropic.com`.
+- Both rows' `keyPrefix` is empty by decision, so the shape gate catches only an empty or
+  whitespace-bearing credential; a wrong-but-well-formed key returns `PROVIDER.REFUSED`.
+- Gemini's per-model output cap was not confirmed for `gemini-3.8-flash`; 32000 is the table's
+  canonical value an operator may lower, not a verified ceiling.
