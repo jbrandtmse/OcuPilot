@@ -3225,6 +3225,47 @@ A user asks the agent to change something, reviews a diff the instance computed 
 
 - DW-269: The tasks LIST reports every task as not suspended, so this story's "tasks suspended after an error" line has no source; declare a `rowGet` of type `INFO` (AD-36) or drop the line (ledger; routed by spec_gate 2026-09-14)
 
+### Story 5.0: Epic 4 Deferred Cleanup
+
+As the builder,
+I want Epic 4's unclosed ledger residue fixed before the write path is built on top of it,
+So that the dispatch, ledger and panel code every Epic 5 story extends is pinned by tests that can fail and carries no duplicated rule it will diverge from.
+
+**Acceptance Criteria:**
+
+- **Given** a branch of the turn's dispatch, ledger or panel path that Epic 4 shipped with no executing assertion
+- **When** this story closes
+- **Then** a test observes that branch, and a named mutation applied to the branch reddens it.
+
+- **Given** a rule, helper or precedence order that exists in two copies
+- **When** this story closes
+- **Then** there is one copy, or a test pins the copies equal - never two copies and no test.
+
+- **Given** a string-shaped invariant the ledger and the audit redactor depend on - a `(resource, permission)` pair round trip, a redaction marker
+- **When** a value that breaks it is supplied
+- **Then** the invariant refuses it rather than round-tripping it wrongly, and a caller-sent literal redaction marker is never read as evidence that a key was redacted.
+
+- **Given** a documented command a later gate in this repository runs
+- **When** it is read
+- **Then** it names the path the build actually writes.
+
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-1123: six ledger write and read branches have no assertion - a provider row's `error` leg, the boundary-stop refusal writer, the three client-call writers, and `truncated` reading true (ledger; routed by x0 2026-09-19)
+- DW-1162: `_components.scss`'s `.ocu-panel-empty` is pinned by nothing, and DW-1154's leg pins named rules rather than the population of rules a template depends on (ledger; routed by x0 2026-09-19)
+- DW-1173: two port classes may now open an output capture, and nothing proves one cannot open inside the other (ledger; routed by x0 2026-09-19)
+- DW-1161: four byte-identical privilege-reason rule blocks cost the eager bundle 1.3 kB (ledger; routed by x0 2026-09-19)
+- DW-1097: `Dispatch.ResolveClientCall`'s registry-read, gate-read and Directive-threw branches have no pinning test, so their refusal-not-failure normalization could be reverted with nothing red (ledger; routed by x0 2026-09-19)
+- DW-1126: `PairsToString`/`StringToPairs` accept a resource or permission containing `,` or `:` and cannot round-trip it, and `RedactedKeys` treats a caller-sent literal `[redacted]` as evidence that a key was redacted (ledger; routed by x0 2026-09-19)
+- DW-1150: the agent-status line re-implements the panel's own sentence precedence and nothing pins the two copies equal (ledger; routed by x0 2026-09-19)
+- DW-1128: a ledger read opens up to 201 rows one at a time through the escalated `GuardedOpenId`, and every append runs a `COUNT(*)` over the turn's rows first (ledger; routed by x0 2026-09-19)
+- DW-1133: a tool step's argument string still gets the name pattern alone when the wire name resolved no tool, where the ledger row now withholds the blob (ledger; routed by x0 2026-09-19)
+- DW-1151: `suggested-view.browser-spec.mjs` copies three helpers from `panel.browser-spec.mjs` (ledger; routed by x0 2026-09-19)
+- DW-1134: `Test/Ledger.cls` is 778 lines against the 500-line guidance, and every method shares one teardown (ledger; routed by x0 2026-09-19)
+- DW-1168: `objectscript-testing.md`'s redeploy path says `dist/ocupilot` where the build writes `dist/ocupilot-ui` (ledger; routed by x0 2026-09-19)
+
 ### Story 5.1: The proposal is minted on the instance, from a fresh read
 
 As a security-minded operator,
@@ -3278,6 +3319,7 @@ So that what I confirm cannot differ from what will run.
 - DW-445: AD-7's Rule still places turn progress in a temp global while AD-33 and the shipped `Turn`/`Step` tables keep it in protected storage; amend the stale clause at the spine step (ledger; routed by merge_gate 2026-09-18)
 - DW-1052: the expanded tool-call card's result block is never populated, because no tool step stores the tool's output (ledger; routed by merge_gate 2026-09-18)
 - DW-1170: `REASONAGENTBADBODY` offers "or no body at all" on routes that refuse an absent body (ledger; routed by merge_gate 2026-09-18)
+- DW-1121: `SecretArguments` declared on the abstract intermediates `Kernel/Shell/ReadTool` and `Screen/Tool/Read` makes every subclass inherit "declares none", so the mandatory-declaration refusal cannot bite those two subtrees (ledger; routed by x0 2026-09-19)
 
 ### Story 5.2: The proposal card - the diff the user reviews
 
@@ -3487,6 +3529,8 @@ So that I can prove what changed and how, from the instance's own record.
 - **When** it is measured across the voting week
 - **Then** no confirmed proposal exists without a matching marked event and no marked event without a confirmed proposal - the metric measuring the **pair**, which holds precisely because a failed marker is itself recorded and surfaced rather than silent.
 
+- DW-1174: the audit spec's agent-marker leg renders every OcuPilot-source row, so it cannot pass on an instance that has been tested on for days - scope the assertion to this proposal's own marker (ledger; routed by x0 2026-09-19)
+
 ### Story 5.7: The screen shows the change
 
 As a developer-administrator,
@@ -3662,6 +3706,8 @@ So that a question becomes a fix without me navigating anywhere myself.
 - **Given** the error recurs on the next run
 - **When** the user asks again
 - **Then** the agent's follow-up cites that history row by name rather than claiming success.
+
+- DW-269: the vendor tasks LIST coerces every task's `Suspended` to false, so a suspended task cannot be told from a running one in a list read - declare the `INFO` `rowGet` AD-36 names, or state why this story does not need it (ledger; routed by x0 2026-09-19, first routed by spec_gate 2026-09-14)
 
 ### Story 5.12: OS management - suspend and resume a process
 

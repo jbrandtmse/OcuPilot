@@ -1775,6 +1775,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-14T22:35:47Z status=routed owner=4-10-home-s-suggested-view-and-the-starter-prompts by=cr note=epics.md:2019 Story 2.8 AC3 still promises a suspended task appears; AC2 was amended at origin, AC3 was not
 - 2026-09-16T15:11:12Z status=routed owner=4-10-home-s-suggested-view-and-the-starter-prompts by=x0 note=kept, the suspended-tasks Home line needs it
 - 2026-09-18T15:45:49Z status=routed owner=burndown by=adjudication note=declined in Story 4.10 with a reason: the rowGet grammar closes its key set, Screen/Read hard-codes the detail verb, and adding Suspended to read.fields reddens three assertions written to keep it out -- all in Epic 6's descriptor footprint. The suggested-view block takes lines, so the line joins when a task read that answers Suspended truthfully exists. epics.md AC1 amended to say so
+- 2026-09-19T03:19:43Z status=routed owner=5-11-tasks-resume-a-task-suspended-after-an-error by=x0 note=natural owner: 5.11 needs a suspended task told from a running one; AD-36 already records the INFO rowGet as the mechanism
 
 ### DW-270: A stopped Task Manager raises no banner: the strip matches only Status Suspended, so an instance whose scheduler is not running renders the full schedule silently - the very consequence the banner exists to announce
 - source: spec-2-8-the-task-schedule-list.md | severity: med | fix-risk: low | footprint: in-epic
@@ -3228,6 +3229,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: AgentContext now re-reads on agent-definition as well as agent-switch, fixed under this review and pinned by agent-context.test.mjs's AD-14 test with a demonstrated mutation. That pin is store-level: no browser leg drives definition-actions.ts's mark-default or a form Save and asserts the chip's host and pill follow. A leg needs a second enabled definition on a different endpoint host, which TurnWireFixture does not create today.
 - 2026-09-17T21:58:25Z status=routed owner=burndown by=cr note=needs a fixture that makes two definitions on different hosts; server change, so not a review patch
 - 2026-09-17T22:26:06Z status=routed owner=burndown by=adjudication note=lead confirms: the AD-42 agent-definition re-read is pinned store-level with a demonstrated mutation; the live leg needs a two-host fixture, so burn-down
+- 2026-09-19T03:19:55Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=x0 note=a missing live browser leg is 13.2's charter; context-chip and definitions.browser-spec are Epic 10 contended for Epic 5
 
 ### DW-1077: On Home the context chip names a screen and namespace that no turn carries, because Home's declared route is the empty string
 - source: code review of story 4.11 | severity: low | fix-risk: med | footprint: in-story
@@ -3240,11 +3242,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-6-replies-render-safely-and-offline.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: DESIGN.md message-agent says code blocks carry a copy icon button; no Story 4.6 AC asks for it, and it needs a new Fixed-strings row (Copy) plus a non-secure-context clipboard fallback. Probe: read DESIGN.md message-agent against ui/src/app/shell/reply.ts
 - 2026-09-18T00:46:24Z status=routed owner=burndown by=harvest note=lead harvest of the 4.6 spec deferred list; UX-complete-the-surface work, not an AC
+- 2026-09-19T03:19:56Z status=routed owner=11-4-citation-chips-with-click-through by=x0 note=a new reply-surface affordance; 11.4 is the named story that adds reply-surface affordances
 
 ### DW-1082: GFM tables in an agent reply render as their literal Markdown source, not as a table
 - source: spec-4-6-replies-render-safely-and-offline.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: marked lexes a pipe table as one table token and ui/src/app/core/reply.ts emits token.raw as text, so nothing is dropped but nothing is tabulated. A real table needs EXPERIENCE.md's 2D-scroll exception and column styling neither contract specifies. Probe: send a reply containing a pipe table through reply.browser-spec.mjs
 - 2026-09-18T00:46:24Z status=routed owner=burndown by=harvest note=lead harvest of the 4.6 spec deferred list
+- 2026-09-19T03:20:12Z status=routed owner=11-4-citation-chips-with-click-through by=x0 note=GFM table rendering is the reply surface 11.4 extends; same home as DW-1081
 
 ### DW-1083: Reply code highlighting is structural only because DESIGN.md publishes no syntax palette
 - source: spec-4-6-replies-render-safely-and-offline.md | severity: low | fix-risk: med | footprint: in-epic
@@ -3325,6 +3329,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: The review added Set tSC = $$$OK after the three LogFault branches that previously failed the whole turn, matching AnswerOne (a %Boolean, whose equivalents cannot fail a turn) and the method's own doc comment. Reaching them needs a seam that makes ResolveWire, Gate.Decide or Navigate.Directive throw; ToolDispatchProbe switches dispatch seams but not these. Probe: make Directive throw and read the turn state.
 - 2026-09-18T07:36:42Z status=wontfix-accepted owner=burndown by=cr note=a seam for three internal-fault paths is more machinery than the story asks for. reopen_if=a client-fulfilled tool other than shell.screen.open lands
 - 2026-09-18T07:48:55Z status=routed owner=burndown by=adjudication note=lead confirms: pinning the normalised fault branches needs a throwing seam, which is a test-seam change rather than a story fix
+- 2026-09-19T03:20:51Z status=routed owner=5-0-epic-4-deferred-cleanup by=x0 note=chartered into Story 5.0; Epic 5 extends the dispatch, ledger and panel paths these entries sit on
 
 ### DW-1104: One provider call's worst case is ATTEMPTBUDGETSECONDS plus the stored per-call timeout, because the deadline gates when an attempt may start and nothing bounds State.Egress.TimeoutSeconds
 - source: spec-4-8-a-slow-or-rate-limited-provider-degrades-the-turn-rather-than-failing-it.md | severity: med | fix-risk: low | footprint: in-epic
@@ -3337,16 +3342,19 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-8-a-slow-or-rate-limited-provider-degrades-the-turn-rather-than-failing-it.md | severity: low | fix-risk: med | footprint: in-epic
 - evidence: ProviderPort.Dispatch judges the endpoint before the adapter runs and AgentRules refuses a definition whose endpoint the same judgement refuses, so no stored definition a turn can use carries one; the other four kinds are driven end to end in OcuPilot.Test.TurnProviderFault. Probe: try to store a definition the write path refuses and run a turn on it
 - 2026-09-18T10:06:04Z status=routed owner=burndown by=harvest note=reaching it through a turn needs a seam that stores a refused definition
+- 2026-09-19T03:19:55Z status=routed owner=10-3-the-openai-compatible-adapter-and-local-models by=x0 note=egress refusal is the local-model story's core concern; Kernel/Egress.cls is Epic 10 contended for Epic 5
 
 ### DW-1106: ProviderStub.ScriptElapsed is one value for every call, not the per-queued-answer duration the spec describes
 - source: spec-4-8-a-slow-or-rate-limited-provider-degrades-the-turn-rather-than-failing-it.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: The value lives at ^||OcuPilotProviderStub(elapsed) and is read on every IssueHttpsPost, so no test can script a fast first attempt and a slow second one. Needed to show the attempt deadline binding mid-ladder rather than after a uniform number of equal-length calls. Probe: queue two answers with different intended durations
 - 2026-09-18T10:06:04Z status=routed owner=burndown by=harvest note=test-seam work, no product decision
+- 2026-09-19T03:19:55Z status=routed owner=10-1-the-message-and-tool-definition-adapters by=x0 note=ProviderStub serves the adapter suites 10.1 builds; Test/Provider* is Epic 10 contended for Epic 5
 
 ### DW-1107: The egress resolver lookups are cached but not bounded, so a slow resolver is still a slow first call
 - source: spec-4-8-a-slow-or-rate-limited-provider-degrades-the-turn-rather-than-failing-it.md | severity: low | fix-risk: high | footprint: in-epic
 - evidence: DW-334's other half: $System.INetInfo.HostNameToAddr and HostNameToAddrMulti take (host, family) only, with no timeout and no deadline, so bounding them means JOBbing a resolver per lookup and polling it -- more cost per call than the lookups it bounds. Story 4.8's five-second judgement cache removes the repeat cost only. Probe: point a definition at a host whose resolver hangs and time the first call
 - 2026-09-18T10:06:04Z status=routed owner=burndown by=harvest note=lead harvest of the 4.8 spec deferred list; DW-334 itself is answered in part by the cache
+- 2026-09-19T03:19:55Z status=routed owner=10-3-the-openai-compatible-adapter-and-local-models by=x0 note=bounding the egress resolver cache lands with the story that adds local addresses to it
 
 ### DW-1112: A status-0 Send raises two identical role=alert banners: the panel's envelope-less fallback restates the sentence the shell's connectivity strip already shows
 - source: code review of story-4.8 (2026-09-18) | severity: med | fix-risk: med | footprint: in-story
@@ -3366,6 +3374,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Egress.MultiLookup swallows both lookups' exceptions and contributes an empty list, which Addresses cannot tell from a family with no records; Classify caches on $Data(tResolved) alone. Harm needs an INetInfo raise for one family while the other answers AND the failed family holding the worse record. Egress.cls's class doc now states the window rather than claiming the cache is behaviour-neutral. Closing it needs a failure flag through MultiLookup, which is the seam EgressProbe overrides.
 - 2026-09-18T11:13:56Z status=wontfix-accepted owner=burndown by=cr note=reopen_if=a probe makes one family raise and the other answer, and the verdict is observed cached
 - 2026-09-18T11:25:56Z status=routed owner=burndown by=adjudication note=lead confirms: a half-answered family lookup is a real staleness window, bounded by the five-second TTL, and needs an INetInfo raise to pin
+- 2026-09-19T03:19:55Z status=routed owner=10-3-the-openai-compatible-adapter-and-local-models by=x0 note=half-answered family lookup held for the whole TTL; same file and story as DW-1107
 
 ### DW-1115: The provider attempt deadline and the egress cache TTL both read $ZHorolog, which is local wall-clock and not monotonic
 - source: code review of story-4.8 (2026-09-18) | severity: low | fix-risk: med | footprint: in-story
@@ -3383,16 +3392,19 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-9-the-agent-audit-ledger.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Both answer pDeclared 1 with "". Task 6 names `Read` explicitly, so this is the spec as written; the hazard is the next subclass that does take a secret argument. Per-descriptor declaration is the fix and it is product design. Location: src/OcuPilot/Kernel/Shell/ReadTool.cls, src/OcuPilot/Screen/Tool/Read.cls
 - 2026-09-18T13:52:26Z status=routed owner=burndown by=harvest note=lead harvest of the 4.9 spec deferred list
+- 2026-09-19T03:19:43Z status=routed owner=5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read by=x0 note=5.1 owns the secret-field invariant on stored arguments; per-descriptor declaration belongs with it
 
 ### DW-1122: Nothing bounds the ledger table across turns until Story 14.4; one story's test and browser runs left 534 rows on the throwaway with no sweep, metric or operator-visible count.
 - source: spec-4-9-the-agent-audit-ledger.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: LEDGERMAXROWS caps rows per turn only. The class is deliberately outside Turn.GuardedDelete's cascade and GuardedSweep (AD-37). Measured by direct SQL on ocupilot-ci after the suite: SELECT COUNT(*) FROM OcuPilot_Kernel_State.Ledger = 534. Location: src/OcuPilot/Kernel/State/Ledger.cls
 - 2026-09-18T13:52:26Z status=routed owner=burndown by=harvest note=lead harvest of the 4.9 spec deferred list
+- 2026-09-19T03:19:55Z status=routed owner=14-4-transcripts-retention-and-administrator-access by=x0 note=the entry names Story 14.4 as the bound's home; retention is that story's subject
 
 ### DW-1123: Six write and read branches have no assertion: a provider row's `error` leg, the boundary-stop refusal writer, the three client-call writers (step-cap drop, boundary stop during the wait, settle), `truncated` reading true, the unparseable-requirement withhold, and `Api.Ledger.RenderFault`'s 503 and 
 - source: spec-4-9-the-agent-audit-ledger.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: No test outside Test/Ledger*, Test/AuditEvent reads a ledger row; the nav classes that reach the client-call writers contain no ledger reference. TestAnUnreadableStoreIsOneUnavailable- Envelope asserts the fault object, not the route's status. Each is a fixture addition (a faulting turnprobe script, a stopping Boundary probe, a route-side LedgerClass seam). Location: src/OcuPilot/Kernel/Agent/Loop.cls, src/OcuPilot/Api/Ledger.cls
 - 2026-09-18T13:52:26Z status=routed owner=burndown by=harvest note=lead harvest of the 4.9 spec deferred list
+- 2026-09-19T03:20:51Z status=routed owner=5-0-epic-4-deferred-cleanup by=x0 note=chartered into Story 5.0; Epic 5 extends the dispatch, ledger and panel paths these entries sit on
 
 ### DW-1124: The 4096 and 512 column bounds are duplicated as literals in `State/Ledger.GuardedAppend` and `Turn.GuardedBegin`; raising `LEDGERROWMAXLENGTH` would cut silently at 4096 with no U+2026 and `argumentsTruncated` still reading 0.
 - source: spec-4-9-the-agent-audit-ledger.md | severity: low | fix-risk: low | footprint: in-epic
@@ -3410,6 +3422,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-9-the-agent-audit-ledger.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Neither rejects the separators; the round trip decides whether a row is withheld. IRIS resource names do not contain either character today, which is why this is low. Location: src/OcuPilot/Kernel/Audit/Ledger.cls PairsToString, StringToPairs, RedactedKeys
 - 2026-09-18T13:52:26Z status=routed owner=burndown by=harvest note=lead harvest of the 4.9 spec deferred list
+- 2026-09-19T03:20:51Z status=routed owner=5-0-epic-4-deferred-cleanup by=x0 note=chartered into Story 5.0; Epic 5 extends the dispatch, ledger and panel paths these entries sit on
 
 ### DW-1127: The ledger's only 403 reuses `Error.REASONAUTHNOPRIVILEGE`, whose sentence names a tool call; and `Event.LogFailure`'s hardcoded message reports a configuration change when a dropped `LedgerRead` emission is a read.
 - source: spec-4-9-the-agent-audit-ledger.md | severity: low | fix-risk: low | footprint: in-epic
@@ -3421,6 +3434,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-9-the-agent-audit-ledger.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: ViewForUser loops GuardedRow per id (New $ROLES + AddRoles per call); GuardedAppend's cap check is a COUNT(*) before each write, so each recorded call costs two statements. Location: src/OcuPilot/Kernel/Audit/Ledger.cls ViewForUser, src/OcuPilot/Kernel/State/Ledger.cls
 - 2026-09-18T13:52:26Z status=routed owner=burndown by=harvest note=lead harvest of the 4.9 spec deferred list
+- 2026-09-19T03:20:51Z status=routed owner=5-0-epic-4-deferred-cleanup by=x0 note=chartered into Story 5.0; Epic 5 extends the dispatch, ledger and panel paths these entries sit on
 
 ### DW-1129: `scripts/check-objectscript.py` reports 21 rules while `CLAUDE.md` states 18.
 - source: spec-4-9-the-agent-audit-ledger.md | severity: low | fix-risk: low | footprint: in-epic
@@ -3450,16 +3464,19 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: lead adjudication of story 4.9 rework 1 | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Dispatch.StepArguments delegates to Audit.Ledger.RedactArguments, but on a call whose wire name resolved no tool there is no declaration to pass, so the step's Arguments column keeps the model-authored blob with Log.Redact's name pattern as the only layer. Unlike a ledger row a step dies with its turn's retention window, and changing it alters what the progress cards render. Probe: send a tool_use block naming an unknown tool with a Value argument and read State.Step.Arguments
 - 2026-09-18T15:19:35Z status=routed owner=burndown by=lead note=the ledger half is closed by rework 1; this is the step half, and the exit is a product call about what a progress card shows
+- 2026-09-19T03:20:51Z status=routed owner=5-0-epic-4-deferred-cleanup by=x0 note=chartered into Story 5.0; Epic 5 extends the dispatch, ledger and panel paths these entries sit on
 
 ### DW-1134: Test/Ledger.cls is 778 lines against the 500-line guidance, and every method shares one teardown
 - source: spec-4-9-the-agent-audit-ledger.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: .claude/rules/objectscript-testing.md keeps a test class to roughly 500 lines; the class was 641 before rework 1 added three methods. Splitting it means re-homing OnAfterOneTest's probe-row assertions. Probe: wc -l src/OcuPilot/Test/Ledger.cls
 - 2026-09-18T15:19:35Z status=routed owner=burndown by=harvest note=lead harvest of the rework 1 deferred entry
+- 2026-09-19T03:20:51Z status=routed owner=5-0-epic-4-deferred-cleanup by=x0 note=chartered into Story 5.0; Epic 5 extends the dispatch, ledger and panel paths these entries sit on
 
 ### DW-1135: No client-visible response carries the instance's local calendar date, so a client feature needing 'today' cannot compute one - Story 4.10's Home application-errors line reads the newest logged date instead
 - source: spec-4-10-homes-suggested-view-and-the-starter-prompts.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: GET /api/ocupilot/instance answers seven fields, none a timestamp (ui/src/app/core/instance.ts:63-72). SYS.ApplicationError DateList emits MM/DD/YYYY in the instance's clock, and spec-2-12 records the container reporting 09/15/2026 while the host read 2026-09-14, so a browser-computed today misses. The Conventions row makes +$Horolog the instance's own calendar date.
 - 2026-09-18T15:43:14Z status=routed owner=burndown by=plan note=Epic 6 owns Api/** and LogSourcePort; an instance-local date on a log read or on GET /instance unblocks a truthful today for 4.10's line and 6.13's alerts line
+- 2026-09-19T03:19:55Z status=routed owner=15-4-home-s-system-information-panel by=x0 note=the consequence is Home's application-errors line; 15.4 is the named Home story that revisits it
 
 ### DW-1147: The all-zero starter-prompt fallback also fires when the read behind a line was refused or faulted, so a caller who may not read the error log is told nothing needs attention
 - source: spec-4-10-homes-suggested-view-and-the-starter-prompts.md | severity: med | fix-risk: low | footprint: in-epic
@@ -3471,6 +3488,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-10-homes-suggested-view-and-the-starter-prompts.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: The shipped shell resolves 912 of real content at that viewport, so the published row describes a layout no user sees. Pre-existing DESIGN.md-versus-shell tension, first consumed by Story 4.10's Home width. Probe: open Home at 1920 and measure the content column against DESIGN.md's row
 - 2026-09-18T18:01:00Z status=routed owner=burndown by=harvest note=lead harvest of the 4.10 spec deferred list
+- 2026-09-19T03:19:55Z status=routed owner=15-4-home-s-system-information-panel by=x0 note=DESIGN.md Home geometry against the built arrival; 15.4 revisits Home's panels
 
 ### DW-1149: ERROR_LOG_DATES_PATH duplicates error-log.store.ts's prefix with nothing pinning the two equal, so a path change fails silently as no line
 - source: spec-4-10-homes-suggested-view-and-the-starter-prompts.md | severity: low | fix-risk: low | footprint: in-epic
@@ -3482,17 +3500,20 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-10-homes-suggested-view-and-the-starter-prompts.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: The line selects its text by footerKey the way the panel's footer and banner do, in a second place. Probe: change the panel's precedence and read the line
 - 2026-09-18T18:01:00Z status=routed owner=burndown by=harvest note=lead harvest of the 4.10 spec deferred list
+- 2026-09-19T03:20:51Z status=routed owner=5-0-epic-4-deferred-cleanup by=x0 note=chartered into Story 5.0; Epic 5 extends the dispatch, ledger and panel paths these entries sit on
 
 ### DW-1151: suggested-view.browser-spec.mjs copies three helpers from panel.browser-spec.mjs
 - source: spec-4-10-homes-suggested-view-and-the-starter-prompts.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: The same duplication class DW-1086 closed for the turnprobe fixture, now in the panel-shaped specs. Probe: grep the two files for the identical helper bodies
 - 2026-09-18T18:01:00Z status=routed owner=burndown by=harvest note=lead harvest of the 4.10 spec deferred list
+- 2026-09-19T03:20:51Z status=routed owner=5-0-epic-4-deferred-cleanup by=x0 note=chartered into Story 5.0; Epic 5 extends the dispatch, ledger and panel paths these entries sit on
 
 ### DW-1152: A parked re-read can fire after the user has left Home, costing one wasted request
 - source: spec-4-10-homes-suggested-view-and-the-starter-prompts.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: The suggested view's reads are parked with the connectivity service, which replays them when the instance answers, with no Home check at replay time. Probe: fault a read on Home, navigate away, then let the instance answer
 - 2026-09-18T18:01:01Z status=routed owner=burndown by=harvest note=lead harvest of the 4.10 spec deferred list
 - 2026-09-18T19:50:51Z status=routed owner=burndown by=cr note=residual: on Home re-entry the first read of a visit does not reset, so a parked read that settled off Home renders until the new read lands
+- 2026-09-19T03:20:12Z status=wontfix-accepted by=x0 note=reopen_if=a Home departure issues a request to the Home read after the route has changed, observed in a browser spec's request log - one wasted request with no user-visible effect does not earn a story
 
 ### DW-1153: The client bundle is 778.37 kB against the 780 kB gate, so the next client story has 1.63 kB of headroom
 - source: lead verification of story 4.10 | severity: med | fix-risk: low | footprint: in-epic
@@ -3510,6 +3531,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: lead verification of story 4.10 | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Observed once by the QA stage in an isolated AC8 run and never again in three follow-ups, so it is an observation rather than a verified defect. The shape it suggests: the first-login gate's Back navigation leaves ShellState.currentVisibleArea pointing at the Definition form's area, so Home's arrival reads a side bar the user did not open. Probe: sign in through the first-login gate, press Back to Home, and read the side bar's width against panel-layout's answer
 - 2026-09-18T19:03:33Z status=routed owner=burndown by=lead note=recorded so the next occurrence has a recipe rather than being met as new
+- 2026-09-19T03:20:12Z status=wontfix-accepted by=x0 note=reopen_if=panel.browser-spec.mjs's fresh-sign-in geometry assertion fails again - observed once, not reproduced in three later runs, so there is nothing to fix against
 
 ### DW-1158: Home's block yields its starter prompts to the empty-transcript greeting, which contradicts EXPERIENCE.md's own Home suggested-view row and its UJ-2 climax as written
 - source: spec-4-10-homes-suggested-view-and-the-starter-prompts.md | severity: med | fix-risk: low | footprint: in-story
@@ -3536,12 +3558,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: _components.scss carries .ocu-area-tile-reason, .ocu-locator-reason, .ocu-command-bar-reason and (Story 4.10) .ocu-suggested-reason with byte-identical 14-declaration bodies; only the four reveal rules differ, and each has higher specificity so ordering is irrelevant. No test regexes the base blocks. Measured on this branch: consolidating all four into one selector list builds at 778.17 kB against 779.49 kB as shipped -- 1.32 kB reclaimed, and 0.20 kB below the pre-review baseline. Probe: npm run build and read the Initial total.
 - 2026-09-18T19:50:39Z status=routed owner=burndown by=cr note=a measured alternative to raising maximumWarning (DW-1153); left unapplied here because three of the four blocks are other stories' rules
 - 2026-09-18T19:55:13Z status=routed owner=burndown by=adjudication note=lead declines the consolidation for now: it touches three other stories' rules in a stylesheet Epic 6 also edits, and DW-1153's raise removes the pressure that would justify the merge risk
+- 2026-09-19T03:20:51Z status=routed owner=5-0-epic-4-deferred-cleanup by=x0 note=chartered into Story 5.0; Epic 5 extends the dispatch, ledger and panel paths these entries sit on
 
 ### DW-1162: _components.scss's .ocu-panel-empty is still pinned by nothing, and DW-1154's leg pins named rules rather than the population of rules a template depends on
 - source: spec-4-10-homes-suggested-view-and-the-starter-prompts.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: DW-1154 closed on a browser leg pinning four of the five blocks the implement pass deleted. The fifth, .ocu-panel-empty, renders only for a non-administrator with no enabled definition, which that spec's _SYSTEM session cannot reach; grep shows every reference to it asserts the element's presence, never a computed style. The general gap stands: no gate reads the set of class names a template uses against the stylesheet, so the next accidental deletion is invisible again. Probe: delete a rule block and run every gate.
 - 2026-09-18T19:50:39Z status=routed owner=burndown by=cr note=two parts: a computed-style pin in panel-principal.browser-spec.mjs, and a client-lint rule family matching template classes against the stylesheet
 - 2026-09-18T19:55:13Z status=routed owner=burndown by=adjudication note=lead confirms: a client-lint rule family matching template class names against the stylesheet is the general fix and is story-sized; DW-1154's leg covers the named rules meanwhile
+- 2026-09-19T03:20:51Z status=routed owner=5-0-epic-4-deferred-cleanup by=x0 note=chartered into Story 5.0; Epic 5 extends the dispatch, ledger and panel paths these entries sit on
 
 ### DW-1163: A faulted source parks a re-read of every source, so N read sources make N faults cost N squared requests
 - source: spec-4-10-homes-suggested-view-and-the-starter-prompts.md | severity: low | fix-risk: med | footprint: in-story
@@ -3559,6 +3583,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-12-epic-4-burn-down.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: DW-447's fix stops the vendor text reaching the wire but leaves the status wrong: Api/Turn.cls:41-47 renders an internal error for the same fault, while these two render 400. Threading .tStage through twelve call sites is what the story's intent forbade. Probe: make ReadRequestBody fault on a read rather than on a parse and compare the two routes' statuses
 - 2026-09-18T22:16:24Z status=routed owner=burndown by=harvest note=lead harvest of the 4.12 deferred list
+- 2026-09-19T03:19:55Z status=routed owner=10-1-the-message-and-tool-definition-adapters by=x0 note=Api/Definitions.cls is Epic 10 contended for Epic 5; 10.1 edits it for provider fields
 
 ### DW-1166: The bundle gate's slack went from half a kilobyte to about forty, with no stated policy for when it is re-based
 - source: spec-4-12-epic-4-burn-down.md | severity: med | fix-risk: low | footprint: in-epic
@@ -3577,6 +3602,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-12-epic-4-burn-down.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: The rule file an agent reads before running a browser spec names a directory that does not exist, so a copy taken from it deploys nothing and the spec reads the old bundle -- the exact failure the rule exists to prevent. Probe: follow the rule's docker cp line verbatim
 - 2026-09-18T22:16:25Z status=routed owner=burndown by=harvest note=an agent-instruction file, so the lead applies the correction rather than a story
+- 2026-09-19T03:20:52Z status=routed owner=5-0-epic-4-deferred-cleanup by=x0 note=chartered into Story 5.0; Epic 5 extends the dispatch, ledger and panel paths these entries sit on
 
 ### DW-1169: The cap-follows-agent-switch browser leg timed out in CI with no statement of which wait it was, and it is green locally
 - source: CI run 35389327505 (story 4.10's head) | severity: med | fix-risk: low | footprint: in-epic
@@ -4030,8 +4056,10 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: Epic 4's Rule 22 integrate-forward with Epic 6 | severity: med | fix-risk: low | footprint: cross-epic
 - evidence: Story 4.2's rule allowed a capture only in Port/AdminPort.cls; Epic 6's Port/MgmntPort.cls captures the same way and its own CI never saw the rule, so the merge produced two findings. The allow-list now names both, with the rule still refusing a capture anywhere else. What is unproven is the rule's own reason: that no capture opens inside another. Probe: call MgmntPort from a path that already holds AdminPort's capture and read whether BeginCapture refuses
 - 2026-09-18T23:42:28Z status=routed owner=burndown by=lead note=recorded at the merge rather than resolved: establishing the call graph between the two ports is Epic 6's or a later epic's footprint, not Epic 4's
+- 2026-09-19T03:20:51Z status=routed owner=5-0-epic-4-deferred-cleanup by=x0 note=chartered into Story 5.0; Epic 5 extends the dispatch, ledger and panel paths these entries sit on
 
 ### DW-1174: The audit spec's agent-marker leg renders every OcuPilot-source row, so it cannot pass on an instance that has been tested on for days
 - source: Epic 4's Rule 22 integrate-forward with Epic 6 | severity: med | fix-risk: low | footprint: cross-epic
 - evidence: AC2 computes expectedTotal as the instance's own OcuPilot-source audit count plus the thousand seeded rows, sets the table's max-rows control to that number and waits for exactly that many rows. On the slot-A throwaway the OcuPilot source now holds 3,198 rows against the seed's 1,000, so the leg asks the screen to render 4,198 rows and times out at thirty seconds; on a fresh container the marker count is the installer's own handful and it passes, which is why Epic 6's CI runs were green. Probe: SELECT COUNT(*) FROM %SYS.Audit_List(,,'OcuPilot') before running the leg
 - 2026-09-19T01:28:03Z status=routed owner=burndown by=lead note=the fix is in the test: bound what it renders rather than asking for every marker row. Recorded at the merge; CI on a fresh container is the arbiter for the merged head
+- 2026-09-19T03:19:43Z status=routed owner=5-6-the-agent-marker-and-what-happens-when-it-fails by=x0 note=5.6 owns the agent-marker audit leg; scope the spec to this proposal's marker rather than every OcuPilot-source row
