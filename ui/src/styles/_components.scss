@@ -1357,6 +1357,36 @@ app-database-details-page {
   color: var(--ocu-on-surface-variant);
 }
 
+// --- The clipped privilege reason, shared by four surfaces (Story 5.0, DW-1161) -------------
+//
+// One clipped-to-visible tooltip body for every gated control's reason -- the locator segment, the
+// command bar's row action, Home's area tile and a suggested-view line's Open. The four were four
+// byte-identical fourteen-declaration blocks, so the four surfaces could drift a padding or a
+// colour apart with nothing saying so; `ui/tools/design-tokens.test.mjs` pins this one list.
+//
+// Each surface keeps its own **reveal** rule in its own section, because each names a different
+// hover ancestor and a different focusable sibling -- those are not copies of one another.
+.ocu-locator-reason,
+.ocu-command-bar-reason,
+.ocu-area-tile-reason,
+.ocu-suggested-reason {
+  @include typo.ocu-type('caption');
+
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 2;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  border-radius: var(--ocu-radius-sm);
+  background: var(--ocu-inverse-surface);
+  color: var(--ocu-inverse-on-surface);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
 // --- The locator bar (Story 1.10) ----------------------------------------------------------
 //
 // DESIGN.md `:1033`: 40px under the header, a 1px `outline-variant` bottom edge, navigating
@@ -1446,23 +1476,7 @@ app-database-details-page {
   text-decoration: none;
 }
 
-.ocu-locator-reason {
-  @include typo.ocu-type('caption');
-
-  position: absolute;
-  top: 100%;
-  left: 0;
-  z-index: 2;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  overflow: hidden;
-  border-radius: var(--ocu-radius-sm);
-  background: var(--ocu-inverse-surface);
-  color: var(--ocu-inverse-on-surface);
-  white-space: nowrap;
-  clip-path: inset(50%);
-}
+// The base body is the one selector list in *The clipped privilege reason*, above.
 
 .ocu-locator-link-slot:hover .ocu-locator-reason,
 .ocu-locator-link:focus-visible + .ocu-locator-reason {
@@ -1542,23 +1556,7 @@ app-database-details-page {
 
 // The reason, on hover and on focus. Always in the DOM because it is the button's
 // `aria-describedby`; clipped rather than removed, the same shape the rail tooltip uses.
-.ocu-command-bar-reason {
-  @include typo.ocu-type('caption');
-
-  position: absolute;
-  top: 100%;
-  left: 0;
-  z-index: 2;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  overflow: hidden;
-  border-radius: var(--ocu-radius-sm);
-  background: var(--ocu-inverse-surface);
-  color: var(--ocu-inverse-on-surface);
-  white-space: nowrap;
-  clip-path: inset(50%);
-}
+// The base body is the one selector list in *The clipped privilege reason*, above.
 
 .ocu-command-bar-action-slot:hover .ocu-command-bar-reason,
 .ocu-command-bar-action:focus-visible + .ocu-command-bar-reason {
@@ -1997,23 +1995,7 @@ app-server-flag[data-unbounded] .ocu-server-flag {
   background: var(--ocu-surface-container-lowest);
 }
 
-.ocu-area-tile-reason {
-  @include typo.ocu-type('caption');
-
-  position: absolute;
-  top: 100%;
-  left: 0;
-  z-index: 2;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  overflow: hidden;
-  border-radius: var(--ocu-radius-sm);
-  background: var(--ocu-inverse-surface);
-  color: var(--ocu-inverse-on-surface);
-  white-space: nowrap;
-  clip-path: inset(50%);
-}
+// The base body is the one selector list in *The clipped privilege reason*, above.
 
 .ocu-area-tile-slot:hover .ocu-area-tile-reason,
 .ocu-area-tile:focus-visible + .ocu-area-tile-reason {
@@ -3388,23 +3370,7 @@ app-data-table {
 // `aria-describedby`; clipped rather than removed, the same shape the locator segment, the
 // command bar's row action and the rail tooltip use. The anchor takes DOM focus, so a keyboard
 // user reaching it by Tab gets the sentence a pointer user gets.
-.ocu-suggested-reason {
-  @include typo.ocu-type('caption');
-
-  position: absolute;
-  top: 100%;
-  left: 0;
-  z-index: 2;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  overflow: hidden;
-  border-radius: var(--ocu-radius-sm);
-  background: var(--ocu-inverse-surface);
-  color: var(--ocu-inverse-on-surface);
-  white-space: nowrap;
-  clip-path: inset(50%);
-}
+// The base body is the one selector list in *The clipped privilege reason*, above.
 
 .ocu-suggested-open-slot:hover .ocu-suggested-reason,
 .ocu-suggested-open:focus-visible + .ocu-suggested-reason {

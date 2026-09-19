@@ -771,3 +771,55 @@ test("AC8: a required field's asterisk is a rendered glyph, not only a class on 
   assert.ok(marker, 'expected a .ocu-field-label-required::after rule');
   assert.match(marker[1], /\n\s*content:\s*'\*';/);
 });
+
+test('DW-1161: the four gated-reason surfaces share one selector list and one body', () => {
+  // The four `*-reason` bases were four byte-identical fourteen-declaration blocks in four
+  // sections. Nothing pinned them, which is how four copies could drift a padding or a colour
+  // apart, so the consolidation needs this to be falsifiable: one selector list naming all four
+  // classes, carrying the shared body, and each class named exactly once as a base.
+  //
+  // Their four *reveal* rules are deliberately still four rules, each pinned above -- each names a
+  // different hover ancestor and a different focusable sibling, so they are not copies.
+  //
+  // Mutation (Rule 19): remove one class name from the consolidated list -> this goes red, while
+  // the four reveal tests stay green.
+  const names = [
+    'ocu-locator-reason',
+    'ocu-command-bar-reason',
+    'ocu-area-tile-reason',
+    'ocu-suggested-reason',
+  ];
+  const list = new RegExp(
+    '\\n' + names.map((name) => '\\.' + name).join(',\\n') + '\\s*\\{([\\s\\S]*?)\\n\\}'
+  ).exec(componentsRaw);
+  assert.ok(list, `expected one selector list naming ${names.join(', ')} in that order`);
+
+  // The body every one of the four resolves to, declaration by declaration.
+  const body = list[1];
+  assert.match(body, /@include typo\.ocu-type\('caption'\);/, "the caption ramp, not a size of its own");
+  for (const declaration of [
+    /\n\s*position:\s*absolute;/,
+    /\n\s*top:\s*100%;/,
+    /\n\s*left:\s*0;/,
+    /\n\s*z-index:\s*2;/,
+    /\n\s*width:\s*1px;/,
+    /\n\s*height:\s*1px;/,
+    /\n\s*padding:\s*0;/,
+    /\n\s*overflow:\s*hidden;/,
+    /\n\s*border-radius:\s*var\(--ocu-radius-sm\);/,
+    /\n\s*background:\s*var\(--ocu-inverse-surface\);/,
+    /\n\s*color:\s*var\(--ocu-inverse-on-surface\);/,
+    /\n\s*white-space:\s*nowrap;/,
+    /\n\s*clip-path:\s*inset\(50%\);/,
+  ]) {
+    assert.match(body, declaration, `the shared body carries ${declaration}`);
+  }
+
+  // One base each: a class that grew a second base block would be a copy again, and a reader
+  // could not tell which of the two applies.
+  for (const name of names) {
+    const bases = componentsRaw.match(new RegExp('\\n\\.' + name + '[,\\s]*\\{', 'g')) ?? [];
+    const inList = componentsRaw.match(new RegExp('\\n\\.' + name + ',\\n', 'g')) ?? [];
+    assert.equal(bases.length + inList.length, 1, `.${name} is a base in exactly one rule`);
+  }
+});

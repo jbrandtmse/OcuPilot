@@ -1,7 +1,11 @@
-/// <p>The agent ledger in process (AD-3, AD-9, AD-21, AD-37, AD-41): the two redaction layers and
-/// their order, the mandatory declaration, the pair string's round trip, the per-turn row cap and its
-/// overflow count, the argument cut, the bounded windowed read's binding, and a swept turn leaving
-/// its rows behind.</p>
+/// <p>The agent ledger's store and its read, in process (AD-9, AD-21, AD-37, AD-41, AD-46): the
+/// per-turn row cap and its overflow count, the argument cut, the bounded windowed read's binding,
+/// a swept turn leaving its rows behind, the self/cross-user split and its per-row gate, the two
+/// refusals that record a row before dispatch, a row outliving the account it names, and an
+/// unreadable store as one envelope.</p>
+/// <p><b>Two siblings hold the rest</b>, and call this class's helpers by full name:
+/// <class>OcuPilot.Test.LedgerRedaction</class> the two redaction layers, and
+/// <class>OcuPilot.Test.LedgerPairs</class> the pair string and the bounds around it.</p>
 /// <p><b>Live-safe with one exception.</b> It spawns nothing, creates no principal and touches no
 /// registration. Every row it writes carries a user name starting with
 /// <parameter>PROBEUSER</parameter>'s prefix and a turn key starting with
@@ -60,11 +64,17 @@ Method Clear()
     Do $ClassMethod(..#STORE, "GuardedDeleteForUser", ..#PROBEUSER _ "B")
 }
 
-/// <p>How many rows name this class's probe users, by direct SQL rather than through the store the
-/// tests are checking.</p>
+/// <p>How many rows name this class's probe users.</p>
 ClassMethod RowCount() As %Integer
 {
-    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM OcuPilot_Kernel_State.Ledger WHERE UserName %STARTSWITH ?", ..#PROBEUSER)
+    Quit ..RowCountFor(..#PROBEUSER)
+}
+
+/// <p>How many rows name a user starting with <var>pPrefix</var>, by direct SQL rather than through
+/// the store the tests are checking. The split siblings answer their own teardown through it.</p>
+ClassMethod RowCountFor(pPrefix As %String) As %Integer
+{
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM OcuPilot_Kernel_State.Ledger WHERE UserName %STARTSWITH ?", pPrefix)
     If (tRS.%SQLCODE < 0) || 'tRS.%Next() Quit -1
     Quit +tRS.%GetData(1)
 }
@@ -117,351 +127,6 @@ ClassMethod NewTurnKey() As %String
 ClassMethod Record(pTurnKey As %String, pName As %String, pInput As %DynamicObject, pSecretNames As %List = "", pDeclaredPairs As %List = "", pArgumentPairs As %List = "", pLimits As %String = {..#LIMITS}, pUser As %String = {..#PROBEUSER}, pClassified As %Boolean = 1) As %Status
 {
     Quit $ClassMethod(..#LEDGER, "RecordToolCall", pTurnKey, pUser, "permissions/users", pName, "target-" _ pName, pInput, pDeclaredPairs, pArgumentPairs, pSecretNames, "ok", "", pLimits, pClassified)
-}
-
-/// <p>Every <code>LEDGER*</code> code the error vocabulary declares is in
-/// <method>OcuPilot.Api.Error.LedgerCodes</method> and has a written sentence. Its own copy of the
-/// turn family's test, because that one filters on <code>TURN</code>.</p>
-/// <p>Mutation (Rule 19): remove the <code>LEDGER.UNAVAILABLE</code> branch from
-/// <method>OcuPilot.Api.Error.ReasonForLedger</method> -- this goes red.</p>
-Method TestEveryLedgerCodeHasASentence()
-{
-    Set tDeclared = ##class(OcuPilot.Api.Error).LedgerCodes()
-    Set tFound = 0
-    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT Name FROM %Dictionary.CompiledParameter WHERE parent = ?", "OcuPilot.Api.Error")
-    While tRS.%Next() {
-        Set tName = tRS.%GetData(1)
-        If $Extract(tName, 1, 6) '= "LEDGER" Continue
-        Set tFound = tFound + 1
-        Set tCode = $Parameter("OcuPilot.Api.Error", tName)
-        Do $$$AssertTrue($ListFind(tDeclared, tCode) > 0, tName _ " is in LedgerCodes()")
-        Do $$$AssertNotEquals(##class(OcuPilot.Api.Error).ReasonForLedger(tCode), "", tName _ " has a written sentence")
-    }
-    Do $$$AssertTrue(tFound > 0, "the vocabulary declares ledger codes")
-    Do $$$AssertEquals($ListLength(tDeclared), tFound, "and LedgerCodes() holds no code the class does not declare")
-    Do $$$AssertEquals(##class(OcuPilot.Api.Error).ReasonForLedger("TURN.BUSY"), "", "and no code from another family")
-}
-
-/// <p>AC3 -- a declared secret argument appears nowhere in the stored row, in any column, nor in the
-/// view the read route answers. The declaration is what sees it: <code>Value</code> matches no name
-/// pattern, which is exactly why AD-3 makes the schema layer the defense and the pattern a
-/// backstop.</p>
-/// <p>Mutation (Rule 19): remove layer 1 from
-/// <method>OcuPilot.Kernel.Audit.Ledger.RedactArguments</method>, leaving only
-/// <method>OcuPilot.Kernel.Audit.Log.Redact</method> -- the value appears and this goes red.</p>
-Method TestADeclaredSecretIsAbsentFromTheWholeRow()
-{
-    Set tKey = ..NewTurnKey()
-    Set tInput = {"Name": "probe"}
-    Do tInput.%Set("Value", ..#SECRETVALUE, "string")
-    Do $$$AssertStatusOK(..Record(tKey, "probe.ledger.read", tInput, $ListBuild("Value")), "the call is recorded")
-
-    Set tText = ..RowText(tKey)
-    Do $$$AssertTrue(tText '= "", "the row was stored: " _ tText)
-    Do $$$AssertEquals(tText [ ..#SECRETVALUE, 0, "no column of the stored row carries the declared secret: " _ tText)
-    Do $$$AssertTrue(tText [ "[redacted]", "and the declared argument reads as redacted instead")
-    Do $$$AssertTrue(tText [ "probe", "while the ordinary argument survives")
-
-    Do $$$AssertStatusOK($ClassMethod(..#LEDGER, "ViewForUser", ..#PROBEUSER, "", 0, tKey, 10, .tView, .tFault), "the view reads")
-    Do $$$AssertEquals($IsObject(tFault), 0, "with no fault")
-    Do $$$AssertEquals(tView.%ToJSON() [ ..#SECRETVALUE, 0, "and no serialization of the view carries it either: " _ tView.%ToJSON())
-}
-
-/// <p>AC3 -- the pattern layer adds and the declaration survives it: an undeclared
-/// <code>apiKey</code> is redacted by the backstop, the declared <code>Value</code> is still
-/// redacted after the backstop has run, an ordinary bound is left in clear, and neither secret's
-/// text reaches the answer.</p>
-/// <p>Mutation (Rule 19): in
-/// <method>OcuPilot.Kernel.Audit.Ledger.RedactArguments</method>, pass <var>pInput</var> rather than
-/// the layer-1 copy to <method>OcuPilot.Kernel.Agent.Dispatch.RedactedArguments</method> -- the
-/// declared value reaches the answer, the soundness check refuses, and the two assertions on the
-/// declared name go red while the <code>apiKey</code> one stays green.</p>
-Method TestThePatternAddsAndTheDeclarationSurvivesIt()
-{
-    Set tInput = {"maxTokens": 4000}
-    Do tInput.%Set("Value", ..#SECRETVALUE, "string")
-    Do tInput.%Set("apiKey", "sk-probe-undeclared", "string")
-
-    Set tOut = $ClassMethod(..#LEDGER, "RedactArguments", tInput, $ListBuild("Value"), 4096, .tTruncated, .tRedacted)
-    Do $$$AssertTrue($ListFind(tRedacted, "Value") > 0, "the declared name is redacted after both layers: " _ tOut)
-    Do $$$AssertTrue($ListFind(tRedacted, "apiKey") > 0, "and the pattern added the undeclared credential-named one")
-    Do $$$AssertEquals($ListFind(tRedacted, "maxTokens"), 0, "while an ordinary bound is not redacted")
-    Do $$$AssertEquals(tOut [ ..#SECRETVALUE, 0, "the declared value reaches the answer nowhere: " _ tOut)
-    Do $$$AssertEquals(tOut [ "sk-probe-undeclared", 0, "and neither does the pattern-matched one")
-    Do $$$AssertTrue(tOut [ "4000", "while the ordinary bound is carried in clear")
-    Do $$$AssertEquals(tTruncated, 0, "and nothing was cut")
-
-    ; The caller's own object is untouched: redaction is a logging concern, never a data loss.
-    Do $$$AssertEquals(tInput.%Get("Value"), ..#SECRETVALUE, "the caller still holds its own input unchanged")
-}
-
-/// <p>AC3 -- the wiring gap the review named: <method>TestADeclaredSecretIsAbsentFromTheWholeRow</method>
-/// records its row through <method>OcuPilot.Kernel.Audit.Ledger.RecordToolCall</method> directly with
-/// its own declared-secret list, which pins the redaction but not the read that gets that list off
-/// the resolved tool at the real dispatch site. This drives the same declared secret through
-/// <method>OcuPilot.Kernel.Agent.Dispatch.Answer</method> itself -- the instance-fulfilled path -- and
-/// asserts it reaches no column of the stored row and no serialization of the view.</p>
-/// <p>Mutation (Rule 19): replace the <code>$ClassMethod(tRegistry, "SecretArguments", tTool,
-/// .tSecretDeclared)</code> call in <method>OcuPilot.Kernel.Agent.Dispatch.AnswerOne</method> with
-/// <code>""</code> -- layer 1 has nothing to redact and this goes red. For the step's own argument
-/// string: delete the <method>StepArguments</method> line beside that call -- the step assertions
-/// go red while the row's stay green.</p>
-Method TestADeclaredSecretDispatchedThroughAnswerOneIsAbsentFromTheRow()
-{
-    Set tKey = ..NewTurnKey()
-    Set tUse = {"id": "toolu_secret"}
-    Do tUse.%Set("name", "probe_ledger_read", "string")
-    Set tInput = {"Name": "probe"}
-    Do tInput.%Set("Value", ..#SECRETVALUE, "string")
-    Do tUse.%Set("input", tInput)
-    Set tUses = []
-    Do tUses.%Push(tUse)
-
-    Do $$$AssertStatusOK($ClassMethod("OcuPilot.Test.LedgerDispatchProbe", "Answer", tKey, $Username, "1", tUses, ..#LIMITS, .tResults, .tNames, , , .tDetails, "probe/route"), "the dispatcher answers the call")
-    Do $$$AssertEquals(tResults.%Size(), 1, "with one result")
-    If tResults.%Size() = 1 Do $$$AssertEquals(tResults.%Get(0).%Get("is_error"), 0, "and the call itself succeeds: " _ tResults.%Get(0).%Get("content"))
-
-    Set tText = ..RowText(tKey)
-    Do $$$AssertTrue(tText '= "", "the row was stored: " _ tText)
-    Do $$$AssertEquals(tText [ ..#SECRETVALUE, 0, "no column of the row dispatched through Answer carries the declared secret: " _ tText)
-    Do $$$AssertTrue(tText [ "[redacted]", "and it reads as redacted instead")
-
-    ; The same call's tool-step argument string, which AnswerOne answers alongside the row and its
-    ; caller stores in OcuPilot_Kernel_State.Step: the declaration reaches it too, or the ledger is
-    ; redacted and the step beside it is not.
-    Set tStepArgs = $Select(tDetails.%Size() = 1: tDetails.%Get(0).arguments, 1: "")
-    Do $$$AssertTrue(tStepArgs '= "", "the call answers a step argument string: " _ tStepArgs)
-    Do $$$AssertEquals(tStepArgs [ ..#SECRETVALUE, 0, "which does not carry the declared secret either: " _ tStepArgs)
-    Do $$$AssertTrue(tStepArgs [ "[redacted]", "and reads as redacted instead")
-
-    Do $$$AssertStatusOK($ClassMethod(..#LEDGER, "ViewForUser", $Username, "", 0, tKey, 10, .tView, .tFault), "the view reads")
-    Do $$$AssertEquals($IsObject(tFault), 0, "with no fault")
-    Do $$$AssertEquals(tView.%ToJSON() [ ..#SECRETVALUE, 0, "and no serialization of the view carries it either: " _ tView.%ToJSON())
-
-    Do $ClassMethod(..#STORE, "GuardedDeleteForTurn", tKey)
-}
-
-/// <p>AC3 -- the client-fulfilled half of the same wiring gap:
-/// <method>OcuPilot.Kernel.Agent.Dispatch.ResolveClientCall</method> is the call site
-/// <class>OcuPilot.Kernel.Agent.Loop</class> reads a declared secret's classification off of before a
-/// client-fulfilled call settles (<method>OcuPilot.Kernel.Agent.Loop.RecordClientRow</method>). This
-/// calls it directly with a tool declaring <code>Value</code> secret and records the row from exactly
-/// the pairs and declaration it answered -- not a hand-supplied list -- so the secret's absence is
-/// proof of the resolver's own wiring, not of the ledger's redaction alone.</p>
-/// <p>Mutation (Rule 19): replace the <code>$ClassMethod(tRegistry, "SecretArguments", tTool,
-/// .pSecretDeclared)</code> call in <method>OcuPilot.Kernel.Agent.Dispatch.ResolveClientCall</method>
-/// with <code>""</code> -- the resolver's own declaration reads empty, it reports that nothing
-/// classified the call, and the two declaration assertions below go red. For the step's own argument
-/// string: delete the <method>StepArguments</method> line beside that call -- the argument-string
-/// assertions go red while the row's stay green.</p>
-Method TestADeclaredSecretResolvedForAClientFulfilledCallIsAbsentFromTheRow()
-{
-    Set tBlock = {"id": "toolu_client"}
-    Do tBlock.%Set("name", "probe_ledger_clientread", "string")
-    Set tInput = {"Name": "probe"}
-    Do tInput.%Set("Value", ..#SECRETVALUE, "string")
-    Do tBlock.%Set("input", tInput)
-
-    Set tSC = $ClassMethod("OcuPilot.Test.LedgerClientDispatchProbe", "ResolveClientCall", $Username, tBlock, ..#LIMITS, .tPending, .tToolName, .tRoute, .tEntityId, .tTarget, .tArguments, .tArgTrunc, .tIsError, .tContent, .tReason, .tFailedPair, ..NewTurnKey(), .tCInput, .tDeclaredPairs, .tCallPairs, .tSecretNames, .tSecretDeclared)
-    Do $$$AssertStatusOK(tSC, "the client call resolves")
-    Do $$$AssertEquals(tPending, 1, "and validates through to a directive: " _ tContent)
-    Do $$$AssertEquals($ListToString(tSecretNames), "Value", "carrying the tool's own secret declaration, read by the resolver itself")
-    Do $$$AssertEquals(tSecretDeclared, 1, "and reporting that a classification was read at all")
-    Do $$$AssertEquals(tArguments [ ..#SECRETVALUE, 0, "and answering a step argument string the declaration has already been applied to: " _ tArguments)
-    Do $$$AssertTrue(tArguments [ "[redacted]", "which reads as redacted instead")
-
-    ; Record the row from exactly what the resolver answered -- the same values
-    ; OcuPilot.Kernel.Agent.Loop.RecordClientRow would carry -- so the row's own absence proves the
-    ; wiring, not a hand-supplied declared-secret list.
-    Set tKey = ..NewTurnKey()
-    Do $$$AssertStatusOK($ClassMethod(..#LEDGER, "RecordToolCall", tKey, ..#PROBEUSER, "probe/route", tToolName, tTarget, tCInput, tDeclaredPairs, tCallPairs, tSecretNames, "ok", "", ..#LIMITS, tSecretDeclared), "the row is recorded from the resolver's own outputs")
-
-    Set tText = ..RowText(tKey)
-    Do $$$AssertTrue(tText '= "", "the row was stored: " _ tText)
-    Do $$$AssertEquals(tText [ ..#SECRETVALUE, 0, "no column of the row carries the declared secret: " _ tText)
-    Do $$$AssertTrue(tText [ "[redacted]", "and it reads as redacted instead")
-}
-
-/// <p>A call no declaration was read for withholds its arguments whole: <code>arguments</code>
-/// stores <method>OcuPilot.Kernel.Audit.Log</method>'s redaction mark alone,
-/// <code>argumentsTruncated</code> reads 0, and no value the caller sent reaches any column. The
-/// classified leg beside it records the same input field by field, so the two states are told apart
-/// by what is stored.</p>
-/// <p>Mutation (Rule 19): drop the <var>pClassified</var> branch from
-/// <method>OcuPilot.Kernel.Audit.Ledger.RecordToolCall</method> so it always redacts by
-/// declaration -- the withheld row stores the model's own argument object, whose undeclared
-/// <code>Value</code> no name pattern sees, and this goes red.</p>
-Method TestAnUnclassifiedCallWithholdsItsArgumentsWhole()
-{
-    Set tInput = {"Name": "probe"}
-    Do tInput.%Set("Value", ..#SECRETVALUE, "string")
-
-    Set tKey = ..NewTurnKey()
-    Do $$$AssertStatusOK(..Record(tKey, "probe.ledger.read", tInput, "", "", "", ..#LIMITS, ..#PROBEUSER, 0), "a call nothing classified is recorded")
-    Do $$$AssertStatusOK($ClassMethod(..#LEDGER, "ViewForUser", ..#PROBEUSER, "", 0, tKey, 10, .tView, .tFault), "the view reads")
-    Do $$$AssertEquals($IsObject(tFault), 0, "with no fault")
-    Do $$$AssertEquals(tView.rowsSent, 1, "one row: " _ tView.%ToJSON())
-    If tView.rowsSent = 1 {
-        Set tRow = tView.rows.%Get(0)
-        Do $$$AssertEquals(tRow.arguments, ##class(OcuPilot.Kernel.Audit.Log).#REDACTED, "whose arguments are the redaction mark alone: " _ tRow.arguments)
-        Do $$$AssertEquals(tRow.argumentsTruncated, 0, "and are not reported as cut")
-    }
-    Do $$$AssertEquals(..RowText(tKey) [ ..#SECRETVALUE, 0, "with the value the caller sent in no column: " _ ..RowText(tKey))
-
-    ; The same input from a call whose tool did declare: recorded field by field, the declared name
-    ; redacted and the ordinary one in clear. Without this leg the mark above could be what every
-    ; row stores.
-    Set tKeyB = ..NewTurnKey()
-    Do $$$AssertStatusOK(..Record(tKeyB, "probe.ledger.read", tInput, $ListBuild("Value")), "the same input from a classified call is recorded")
-    Do $$$AssertStatusOK($ClassMethod(..#LEDGER, "ViewForUser", ..#PROBEUSER, "", 0, tKeyB, 10, .tViewB, .tFaultB), "and reads")
-    Do $$$AssertEquals(tViewB.rowsSent, 1, "as one row")
-    If tViewB.rowsSent = 1 {
-        Set tRowB = tViewB.rows.%Get(0)
-        Do $$$AssertNotEquals(tRowB.arguments, ##class(OcuPilot.Kernel.Audit.Log).#REDACTED, "whose arguments are not withheld whole")
-        Do $$$AssertTrue(tRowB.arguments [ "probe", "carrying the ordinary argument in clear: " _ tRowB.arguments)
-        Do $$$AssertTrue(tRowB.arguments [ ##class(OcuPilot.Kernel.Audit.Log).#REDACTED, "and the declared one redacted in place")
-    }
-    Do $$$AssertEquals(..RowText(tKeyB) [ ..#SECRETVALUE, 0, "with the declared value in no column either")
-}
-
-/// <p>The wiring of the withheld row on the path that produces it: a wire name that resolves no
-/// tool. <method>OcuPilot.Kernel.Agent.Dispatch.AnswerOne</method> has no declaration to read on
-/// that branch, so the row it writes at its common exit must withhold the model-authored argument
-/// blob rather than store it behind the name pattern alone -- the row is permanent and its empty
-/// requirement releases it to any administrator.</p>
-/// <p>Mutation (Rule 19): pass <code>1</code> in place of <code>$Get(tSecretDeclared)</code> at
-/// <method>OcuPilot.Kernel.Agent.Dispatch.AnswerOne</method>'s common exit -- the undeclared
-/// <code>Value</code> is stored in clear and this goes red.</p>
-Method TestACallWhoseWireNameResolvedNoToolWithholdsItsArguments()
-{
-    Set tKey = ..NewTurnKey()
-    Set tUse = {"id": "toolu_unknown"}
-    Do tUse.%Set("name", "probe_ledger_missing", "string")
-    Set tInput = {"Name": "probe"}
-    Do tInput.%Set("Value", ..#SECRETVALUE, "string")
-    Do tUse.%Set("input", tInput)
-    Set tUses = []
-    Do tUses.%Push(tUse)
-
-    Do $$$AssertStatusOK($ClassMethod("OcuPilot.Test.LedgerDispatchProbe", "Answer", tKey, $Username, "1", tUses, ..#LIMITS, .tResults, .tNames, , , .tDetails, "probe/route"), "the dispatcher answers the call")
-    Do $$$AssertEquals(tResults.%Size(), 1, "with one result")
-
-    Do $$$AssertStatusOK($ClassMethod(..#LEDGER, "ViewForUser", $Username, "", 0, tKey, 10, .tView, .tFault), "the view reads")
-    Do $$$AssertEquals($IsObject(tFault), 0, "with no fault")
-    Do $$$AssertEquals(tView.rowsSent, 1, "one row was written: " _ tView.%ToJSON())
-    If tView.rowsSent = 1 {
-        Set tRow = tView.rows.%Get(0)
-        Do $$$AssertEquals(tRow.code, ##class(OcuPilot.Api.Error).#TOOLUNKNOWN, "for a wire name no tool answered")
-        Do $$$AssertEquals(tRow.arguments, ##class(OcuPilot.Kernel.Audit.Log).#REDACTED, "whose arguments are withheld whole: " _ tRow.arguments)
-        Do $$$AssertEquals(tRow.argumentsTruncated, 0, "and are not reported as cut")
-    }
-    Do $$$AssertEquals(..RowText(tKey) [ ..#SECRETVALUE, 0, "with the model's own value in no column: " _ ..RowText(tKey))
-
-    Do $ClassMethod(..#STORE, "GuardedDeleteForTurn", tKey)
-}
-
-/// <p>AC2 on the instance-fulfilled path -- a row's <code>requiredPairs</code> is written from the
-/// pairs the dispatcher itself read, both halves of them.
-/// <class>OcuPilot.Test.LedgerTool.Probe</class> declares <code>%Admin_Operate:USE</code> and adds
-/// <code>%DB_IRISSYS:READ</code> only when the call names <code>Name</code>, so the two legs below
-/// tell a row carrying the union from a row carrying the declared half alone. No shipped tool this
-/// exit is reached with requires a pair, so an empty requirement would otherwise be truthful.</p>
-/// <p>Mutation (Rule 19): replace <code>$Get(tPairs), $Get(tArgumentPairs)</code> with
-/// <code>"", ""</code> at <method>OcuPilot.Kernel.Agent.Dispatch.AnswerOne</method>'s common exit --
-/// both rows record no requirement and this goes red.</p>
-Method TestARowsRequiredPairsComeFromTheDispatchersOwnReads()
-{
-    Set tBoth = ..NewTurnKey()
-    Do $$$AssertEquals(..DispatchedPairs(tBoth, {"Name": "probe"}), "%Admin_Operate:USE,%DB_IRISSYS:READ", "a call naming Name records the declared pair unioned with the one its argument adds")
-
-    Set tDeclaredOnly = ..NewTurnKey()
-    Do $$$AssertEquals(..DispatchedPairs(tDeclaredOnly, {}), "%Admin_Operate:USE", "and a call naming none records the declared half alone")
-}
-
-/// <p>The <code>requiredPairs</code> of the one row a call with arguments <var>pInput</var> writes
-/// through the shipped <method>OcuPilot.Kernel.Agent.Dispatch.AnswerOne</method> reading
-/// <class>OcuPilot.Test.LedgerTool.Registry</class>. Answers a sentence naming what went wrong
-/// instead, so a failure reads as itself rather than as a pair mismatch. Removes the turn's rows
-/// before returning: they name <code>$Username</code> rather than
-/// <parameter>PROBEUSER</parameter>.</p>
-ClassMethod DispatchedPairs(pTurnKey As %String, pInput As %DynamicObject) As %String
-{
-    Set tOut = ""
-    Try {
-        Set tUse = {"id": "toolu_pairs"}
-        Do tUse.%Set("name", "probe_ledger_read", "string")
-        Do tUse.%Set("input", pInput)
-        Set tUses = []
-        Do tUses.%Push(tUse)
-        Set tSC = $ClassMethod("OcuPilot.Test.LedgerDispatchProbe", "Answer", pTurnKey, $Username, "1", tUses, ..#LIMITS, .tResults, .tNames, , , .tDetails, "probe/route")
-        If $$$ISERR(tSC) {
-            Set tOut = "the dispatcher failed: " _ $System.Status.GetErrorText(tSC)
-            Quit
-        }
-        Set tViewSC = $ClassMethod(..#LEDGER, "ViewForUser", $Username, "", 0, pTurnKey, 10, .tView, .tFault)
-        If $$$ISERR(tViewSC) || $IsObject(tFault) || '$IsObject(tView) {
-            Set tOut = "the view did not read"
-            Quit
-        }
-        If tView.rowsSent '= 1 {
-            Set tOut = "the call wrote " _ tView.rowsSent _ " rows: " _ tView.%ToJSON()
-            Quit
-        }
-        Set tOut = tView.rows.%Get(0).requiredPairs
-    } Catch ex {
-        Set tOut = "the read raised: " _ ex.DisplayString()
-    }
-    Do $ClassMethod(..#STORE, "GuardedDeleteForTurn", pTurnKey)
-    Quit tOut
-}
-
-/// <p>AC3 -- a tool that declares nothing about its arguments is refused when the tools are
-/// advertised, naming it; the same registry with only the declaring tool advertises. Silence is not
-/// read as "no secrets" (AD-3).</p>
-/// <p>Mutation (Rule 19): make
-/// <method>OcuPilot.Screen.Tool.Registry.ProviderTools</method> skip its
-/// <method>SecretArguments</method> check -- the fixture advertises and this goes red.</p>
-Method TestAToolDeclaringNothingIsRefusedAtRegistration()
-{
-    Set tSC = $ClassMethod("OcuPilot.Test.LedgerTool.All", "ProviderTools", .tAll)
-    Do $$$AssertStatusNotOK(tSC, "a tool declaring no secret-argument classification refuses the advertisement")
-    Do $$$AssertTrue($System.Status.GetErrorText(tSC) [ "probe.silent.read", "naming the tool: " _ $System.Status.GetErrorText(tSC))
-    Do $$$AssertEquals(+$Get(tAll), 0, "and nothing is advertised")
-
-    Do $$$AssertStatusOK($ClassMethod("OcuPilot.Test.LedgerTool.Registry", "ProviderTools", .tDeclared), "the declaring tool alone advertises")
-    Do $$$AssertEquals(+$Get(tDeclared), 1, "as one tool")
-
-    ; The declaration is read through the registry wrapper the advertisement uses, so the two
-    ; cannot come to disagree about what a tool answered.
-    Do $$$AssertStatusOK($ClassMethod("OcuPilot.Test.LedgerTool.Registry", "Resolve", "probe.ledger.read", .tTool), "the declaring tool resolves")
-    Set tNames = ##class(OcuPilot.Screen.Tool.Registry).SecretArguments(tTool, .tDeclaredFlag)
-    Do $$$AssertEquals(tDeclaredFlag _ "|" _ $ListToString(tNames), "1|Value", "and its declaration reads back through the registry")
-}
-
-/// <p>AC2 -- a row's <code>requiredPairs</code> is the declared set unioned with the
-/// argument-derived one, canonically spelled, sorted and de-duplicated, and it round-trips back to
-/// the pair list the gate evaluates.</p>
-/// <p>Mutation (Rule 19): drop <var>pArgumentPairs</var> from
-/// <method>OcuPilot.Kernel.Audit.Ledger.RecordToolCall</method>'s union -- the argument-derived pair
-/// is absent and this goes red.</p>
-Method TestARowsPairsAreTheUnionSortedAndDeduplicated()
-{
-    Set tDeclared = $ListBuild($ListBuild("%Admin_Operate", "USE"), $ListBuild("%Admin_Secure", "USE"))
-    Set tArgument = $ListBuild($ListBuild("%DB_IRISSYS", "READ"), $ListBuild("%Admin_Operate", "USE"))
-    Set tText = $ClassMethod(..#LEDGER, "PairsToString", tDeclared _ tArgument)
-    Do $$$AssertEquals(tText, "%Admin_Operate:USE,%Admin_Secure:USE,%DB_IRISSYS:READ", "the union is sorted and de-duplicated")
-
-    Set tBack = $ClassMethod(..#LEDGER, "StringToPairs", tText)
-    Do $$$AssertEquals($ListLength(tBack), 3, "and round-trips to three pairs")
-    Do $$$AssertEquals($List($List(tBack, 3), 1) _ ":" _ $List($List(tBack, 3), 2), "%DB_IRISSYS:READ", "each carrying its resource and permission")
-    Do $$$AssertEquals($ClassMethod(..#LEDGER, "PairsToString", tBack), tText, "and back again unchanged")
-    Do $$$AssertEquals($ClassMethod(..#LEDGER, "StringToPairs", ""), "", "an empty string is no pair at all")
-
-    Set tKey = ..NewTurnKey()
-    Do $$$AssertStatusOK(..Record(tKey, "probe.ledger.read", {}, "", tDeclared, tArgument), "a call carrying both halves is recorded")
-    Do $$$AssertStatusOK($ClassMethod(..#LEDGER, "ViewForUser", ..#PROBEUSER, "", 0, tKey, 10, .tView, .tFault), "the view reads")
-    Do $$$AssertEquals(tView.rows.%Size(), 1, "one row")
-    If tView.rows.%Size() = 1 Do $$$AssertEquals(tView.rows.%Get(0).requiredPairs, tText, "carrying the union it was written with")
 }
 
 /// <p>AC4 -- past the per-turn row cap a call is counted, not stored: exactly
@@ -618,159 +283,6 @@ Method TestASelfReadIsUngatedAndACrossUserReadIsGatedPerRow()
     Do $$$AssertEquals($IsObject(tDenied), 0, "with no view at all")
 }
 
-/// <p>Every bound a writer cuts at is at most, and where it is the whole column exactly, the
-/// declared <code>MAXLEN</code> of the column it is cut into -- read from
-/// <class>%Dictionary.CompiledProperty</class> rather than recalled (DW-1124).</p>
-/// <p>A declared bound and its column cannot be one literal in ObjectScript: a property's
-/// <code>MAXLEN</code> keyword cannot read a class parameter. So the invariant is asserted here
-/// instead of eliminated, over the shipped bound <b>and every</b> class that inherits it, since a
-/// limits class that overran the column would fail the row's whole write.</p>
-/// <p>The population is <b>derived</b> from the class hierarchy rather than listed: a hand-written
-/// roster is a second place to keep correct, and the first version of this method already omitted
-/// <class>OcuPilot.Test.TurnLimits</class>. A found-count floor is what stops a sweep that read
-/// nothing from passing every row having tested nothing.</p>
-/// <p>Mutation (Rule 19): set <parameter>OcuPilot.Test.LedgerLimits.LEDGERROWMAXLENGTH</parameter>
-/// -- or any other subclass's -- to 8192; this goes red naming the class, the bound and the
-/// column.</p>
-Method TestEveryDeclaredBoundFitsTheColumnItIsCutInto()
-{
-    Set tArgumentsMax = ..MaxLenOf(..#STORE, "Arguments")
-    Do $$$AssertTrue(tArgumentsMax > 0, "the Arguments column declares a MAXLEN: " _ tArgumentsMax)
-    Set tFound = 0
-    Set tSeen = ""
-    ; PrimarySuper, not Super: Super holds a class's *direct* superclasses only, so a sweep over it
-    ; reads the three classes that extend the shipped bound and none of the ones that extend those
-    ; -- OcuPilot.Test.TurnLimitsNav and OcuPilot.Test.TurnLimitsNavCapped, which OcuPilot.Test.
-    ; TurnNavigate installs. PrimarySuper is the whole primary chain, self included, and is
-    ; ~-delimited, so the pattern must carry the delimiters or it matches a class merely named alike.
-    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT ID FROM %Dictionary.CompiledClass WHERE ID = ? OR PrimarySuper LIKE ?", ..#LIMITS, "%~" _ ..#LIMITS _ "~%")
-    While tRS.%Next() {
-        Set tClass = tRS.%Get("ID")
-        Set tBound = +$Parameter(tClass, "LEDGERROWMAXLENGTH")
-        Set tFound = tFound + 1
-        Set tSeen = tSeen _ $ListBuild(tClass)
-        Do $$$AssertTrue(tBound > 0, tClass _ ": declares LEDGERROWMAXLENGTH " _ tBound)
-        Do $$$AssertTrue(tBound <= tArgumentsMax, tClass _ ": LEDGERROWMAXLENGTH " _ tBound _ " fits the Arguments column's MAXLEN " _ tArgumentsMax)
-    }
-    ; A sweep that found nothing, or that missed the subclasses this suite drives, would pass every
-    ; row above having tested nothing -- which is how the hand-written roster this replaced hid
-    ; OcuPilot.Test.TurnLimits.
-    Do $$$AssertTrue(tFound >= 6, "the sweep read the compiled limits hierarchy rather than an empty roster (found " _ tFound _ ")")
-    For tKnown = ..#LIMITS, ..#NARROW, ..#BUDGET, "OcuPilot.Test.TurnLimits", "OcuPilot.Test.TurnLimitsNav", "OcuPilot.Test.TurnLimitsNavCapped" {
-        Do $$$AssertTrue($ListFind(tSeen, tKnown) > 0, tKnown _ " is in the derived population: " _ $ListToString(tSeen, ", "))
-    }
-
-    Set tRouteBound = +$Parameter("OcuPilot.Kernel.State.Base", "ROUTEMAXLENGTH")
-    Do $$$AssertEquals(tRouteBound, ..MaxLenOf(..#STORE, "Route"), "ROUTEMAXLENGTH is the ledger Route column's own length")
-    Do $$$AssertEquals(tRouteBound, ..MaxLenOf("OcuPilot.Kernel.State.Turn", "ContextRoute"), "and the turn ContextRoute column's")
-
-    Do $$$AssertEquals(+$Parameter(..#STORE, "PAIRSMAXLENGTH"), ..MaxLenOf(..#STORE, "RequiredPairs"), "PAIRSMAXLENGTH is the RequiredPairs column's own length")
-}
-
-/// <p>A pair list that <b>raises</b> mid-walk discards every pair, so it answers
-/// <code>pTruncated</code> 1 like any other short set. The empty answer is the dangerous one: an
-/// empty <code>RequiredPairs</code> reads back through <method>StringToPairs</method> as a call
-/// that required nothing, and <method>OcuPilot.Screen.Gate.EvaluatePairs</method> allows an empty
-/// list -- so a row that reported an uncut empty set would be released to a cross-user reader
-/// (AD-46).</p>
-/// <p>Mutation (Rule 19): set <code>pTruncated</code> back to 0 in
-/// <method>OcuPilot.Kernel.Audit.Ledger.PairsToString</method>'s <code>Catch</code> -- this goes
-/// red on the flag, and the withhold assertion with it.</p>
-Method TestAPairListThatRaisesIsReportedShortRatherThanEmpty()
-{
-    ; A %List whose second member is not itself a valid list: $List raises inside the walk.
-    Set tBroken = $ListBuild($ListBuild("OcuPilotProbePairResource01", "USE")) _ "notalist"
-    Set tText = $ClassMethod(..#LEDGER, "PairsToString", tBroken, .tCut)
-    Do $$$AssertEquals(tText, "", "a pair list that raises yields no pairs at all")
-    Do $$$AssertEquals(tCut, 1, "and is reported short, so a cross-user read cannot gate on it")
-
-    ; End to end: the row is stored, and withheld from a cross-user read that holds the admin pair.
-    Set tKey = ..NewTurnKey()
-    Do $$$AssertStatusOK(..Record(tKey, "probe.ledger.read", {}, "", tBroken, ""), "the call is still recorded (AD-15)")
-    Do $$$AssertStatusOK($ClassMethod("OcuPilot.Test.LedgerGateProbe", "ViewForUser", "OcuPilotProbeLedgerReader", ..#PROBEUSER, 0, tKey, 10, .tCross, .tCrossFault), "the cross-user read runs")
-    Do $$$AssertEquals($IsObject(tCrossFault), 0, "with no fault, the administrative pair being held")
-    Do $$$AssertEquals(tCross.rowsSent _ "|" _ tCross.rowsWithheld, "0|1", "and the row is absent and counted")
-}
-
-/// <p>The declared <code>MAXLEN</code> of <var>pClass</var>'s <var>pProperty</var>, falling back to
-/// <class>%Library.String</class>'s default when the property declares none, or <code>-1</code>
-/// when the property does not exist -- which reddens the caller rather than reading as 0.</p>
-ClassMethod MaxLenOf(pClass As %String, pProperty As %String) As %Integer
-{
-    Set tProperty = ##class(%Dictionary.CompiledProperty).%OpenId(pClass _ "||" _ pProperty)
-    If '$IsObject(tProperty) Quit -1
-    Set tMaxLen = ""
-    If $IsObject(tProperty.Parameters) Set tMaxLen = tProperty.Parameters.GetAt("MAXLEN")
-    If tMaxLen = "" Set tMaxLen = $Parameter("%Library.String", "MAXLEN")
-    Quit +tMaxLen
-}
-
-/// <p>A pair set longer than <parameter>OcuPilot.Kernel.State.Ledger.PAIRSMAXLENGTH</parameter> is
-/// stored cut at a <b>whole-pair</b> boundary with
-/// <code>requiredPairsTruncated</code> 1, and a cross-user read withholds that row and counts it --
-/// even from a reader holding every pair the cut set still names (AD-24, AD-41, AD-46).</p>
-/// <p>Mutation (Rule 19): drop the <code>$Length(tCandidate) > tMax</code> guard from
-/// <method>OcuPilot.Kernel.Audit.Ledger.PairsToString</method> -- the whole set is returned uncut,
-/// <code>GuardedAppend</code> stores <property>RequiredPairs</property> as it is given it, the row
-/// overruns its column, the save fails and the row vanishes. (Mutating
-/// <code>GuardedAppend</code> to store the value uncut is a no-op: that is what it already does,
-/// by design -- only <method>PairsToString</method> knows where a pair boundary is.) Separately:
-/// drop the
-/// <code>requiredPairsTruncated</code> branch from
-/// <method>OcuPilot.Kernel.Audit.Ledger.ViewForUser</method> -- the row is sent and the withheld
-/// assertions go red.</p>
-Method TestAnOverLongPairSetIsCutAtAPairBoundaryAndWithheldCrossUser()
-{
-    Set tMax = +$Parameter(..#STORE, "PAIRSMAXLENGTH")
-    Set tPairs = ""
-    For tI = 1:1:40 {
-        Set tResource = "OcuPilotProbePairResource" _ $Extract("0" _ tI, *-1, *)
-        Set tPairs = tPairs _ $ListBuild($ListBuild(tResource, "USE"))
-        Do ##class(OcuPilot.Test.LedgerGate).Grant(tResource, "USE")
-    }
-    Set tWhole = $ClassMethod(..#LEDGER, "PairsToString", tPairs, .tCut)
-    Do $$$AssertEquals(tCut, 1, "forty pairs overrun the bound and PairsToString says so")
-    Do $$$AssertTrue($Length(tWhole) <= tMax, "the answer fits the column: " _ $Length(tWhole) _ " of " _ tMax)
-
-    Set tKey = ..NewTurnKey()
-    Do $$$AssertStatusOK(..Record(tKey, "probe.ledger.read", {}, "", tPairs, ""), "the call is recorded")
-    Do $$$AssertEquals(..RowCount(), 1, "and the row is stored rather than failing the write")
-
-    Do $$$AssertStatusOK($ClassMethod("OcuPilot.Test.LedgerGateProbe", "ViewForUser", ..#PROBEUSER, "", 0, tKey, 10, .tSelf, .tSelfFault), "the owner's own read runs")
-    Do $$$AssertEquals(tSelf.rowsSent, 1, "and keeps the row (AD-46)")
-    If tSelf.rowsSent '= 1 Quit
-    Set tRow = tSelf.rows.%Get(0)
-    Do $$$AssertEquals(tRow.requiredPairsTruncated, 1, "the row says its pair set was cut")
-    Do $$$AssertTrue($Length(tRow.requiredPairs) <= tMax, "the stored set fits the column: " _ $Length(tRow.requiredPairs))
-    Do $$$AssertTrue($Length(tRow.requiredPairs) > 0, "and is not empty")
-    ; Cut on a pair boundary: every comma-separated piece still parses as a whole pair, so no half
-    ; pair reads back as a requirement nobody named.
-    Do $$$AssertEquals($ListLength($ClassMethod(..#LEDGER, "StringToPairs", tRow.requiredPairs)), $Length(tRow.requiredPairs, ","), "every piece of the cut set is a whole pair: " _ tRow.requiredPairs)
-
-    ; The reader holds every pair the cut set names, so the row is withheld for being short and not
-    ; for a privilege it lacks.
-    Do $$$AssertStatusOK($ClassMethod("OcuPilot.Test.LedgerGateProbe", "ViewForUser", "OcuPilotProbeLedgerReader", ..#PROBEUSER, 0, tKey, 10, .tCross, .tCrossFault), "the cross-user read runs")
-    Do $$$AssertEquals($IsObject(tCrossFault), 0, "with no fault, the administrative pair being held")
-    Do $$$AssertEquals(tCross.rowsSent _ "|" _ tCross.rowsWithheld, "0|1", "and the row is absent and counted")
-    Do $$$AssertEquals(tCross.rows.%ToJSON(), "[]", "with nothing of it on the wire")
-}
-
-/// <p>Whether <var>pUser</var> is an account this instance holds, read in <code>%SYS</code> and the
-/// namespace restored on both paths (AD-16).</p>
-ClassMethod UserExists(pUser As %String) As %Boolean
-{
-    Set tExists = 0
-    Set tOrigNS = $NAMESPACE
-    Try {
-        Set $NAMESPACE = "%SYS"
-        Set tExists = ''##class(Security.Users).Exists(pUser)
-    } Catch ex {
-        Set tExists = 0
-    }
-    Set $NAMESPACE = tOrigNS
-    Quit tExists
-}
-
 /// <p>Matrix row "Tool refused before dispatch" -- a call the reply budget cannot answer is refused
 /// without dispatch and still writes one <code>tool</code> row, carrying the refusal code and no
 /// pairs at all: nothing read them, and a row claiming a requirement no check evaluated would be a
@@ -923,6 +435,124 @@ Method TestAnUnreadableStoreIsOneUnavailableEnvelope()
     Do $$$AssertEquals(tFault.code, ##class(OcuPilot.Api.Error).#LEDGERUNAVAILABLE, "carrying the machine code")
     Do $$$AssertEquals(tFault.reason, ##class(OcuPilot.Api.Error).#REASONLEDGERUNAVAILABLE, "and its written sentence")
     Do $$$AssertEquals(tFault.%ToJSON() [ "ledgerprobestorefault", 0, "with none of the store's own text on the wire: " _ tFault.%ToJSON())
+}
+
+/// <p>Whether <var>pUser</var> is an account this instance holds, read in <code>%SYS</code> and the
+/// namespace restored on both paths (AD-16).</p>
+ClassMethod UserExists(pUser As %String) As %Boolean
+{
+    Set tExists = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tExists = ''##class(Security.Users).Exists(pUser)
+    } Catch ex {
+        Set tExists = 0
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tExists
+}
+
+/// <p>The <b>view</b>-level truncation flag (AD-24, AD-41): asked for three of four rows, the view
+/// answers <code>truncated</code> true and <code>rowsSent</code> exactly the cap, and asked for more
+/// rows than there are it answers false. Distinct from the row-level
+/// <code>argumentsTruncated</code> and from the per-turn cap's <code>rowsDropped</code> -- this flag
+/// says the <i>read</i> was cut, which is the only thing telling a caller there is more to ask
+/// for.</p>
+/// <p>Mutation (Rule 19): force <var>tTruncated</var> to 0 in
+/// <method>OcuPilot.Kernel.Audit.Ledger.ViewForUser</method> -- this goes red on the flag.</p>
+Method TestTheViewReportsItsOwnTruncationAtTheRowCap()
+{
+    Set tCap = +$Parameter(..#NARROW, "LEDGERVIEWMAXROWS")
+    Do $$$AssertEquals(tCap, 3, "the narrowed view cap is three rows")
+    Set tKey = ..NewTurnKey()
+    ; Recorded under the shipped bounds: the narrowed class's own LEDGERMAXROWS is 2, and the
+    ; per-turn cap is a different bound from the one under test.
+    For tI = 1:1:(tCap + 1) {
+        Do $$$AssertStatusOK(..Record(tKey, "probe.ledger.read", {}), "row " _ tI _ " is recorded")
+    }
+
+    Do $$$AssertStatusOK($ClassMethod(..#LEDGER, "ViewForUser", ..#PROBEUSER, "", 0, tKey, tCap, .tView, .tFault), "the view reads at the cap")
+    Do $$$AssertEquals($IsObject(tFault), 0, "with no fault")
+    Do $$$AssertEquals(tView.truncated, 1, "and says the read was cut: " _ tView.%ToJSON())
+    Do $$$AssertEquals(tView.rowsSent, tCap, "sending exactly the cap")
+    Do $$$AssertEquals(tView.rows.%Size(), tCap, "and listing as many rows as it counted")
+    Do $$$AssertEquals(tView.rowsDropped, 0, "with nothing dropped by the per-turn cap")
+
+    Do $$$AssertStatusOK($ClassMethod(..#LEDGER, "ViewForUser", ..#PROBEUSER, "", 0, tKey, tCap + 1, .tWhole, .tWholeFault), "the same read above the row count runs")
+    Do $$$AssertEquals(tWhole.truncated, 0, "and is not truncated")
+    Do $$$AssertEquals(tWhole.rowsSent, tCap + 1, "answering every row")
+}
+
+/// <p>A <code>requiredPairs</code> that will not parse is withheld from a cross-user read and
+/// counted, never released as a call that required nothing (AD-46). Reached by writing the column
+/// directly, because <method>OcuPilot.Kernel.Audit.Ledger.PairsToString</method> cannot produce such
+/// a string -- which is the point: the row is a row an older writer, a migration or a hand edit
+/// could leave, and the gate must fail closed on it.</p>
+/// <p>Mutation (Rule 19): remove the <code>Continue</code> from
+/// <method>OcuPilot.Kernel.Audit.Ledger.ViewForUser</method>'s unparseable-requirement branch -- the
+/// row is rendered instead of withheld and this goes red.</p>
+Method TestAnUnparseableRequirementIsWithheldFromACrossUserRead()
+{
+    Set tKey = ..NewTurnKey()
+    Do $$$AssertStatusOK(..Record(tKey, "probe.ledger.read", {}, "", $ListBuild($ListBuild("OcuPilotProbeNoSuchResource", "USE")), ""), "a row is written")
+    Do $$$AssertEquals(..SetRequiredPairs(tKey, "notapair"), 1, "and its requirement is rewritten to a string that will not parse")
+    Do $$$AssertEquals($ClassMethod(..#LEDGER, "StringToPairs", "notapair"), "", "which yields no pair at all")
+
+    ; The reader holds the administrative pair and every resource the probe gate knows of, so a
+    ; withhold here is the parse failure and not a privilege it lacks.
+    Do ##class(OcuPilot.Test.LedgerGate).Grant("OcuPilotProbeNoSuchResource", "USE")
+    Do ##class(OcuPilot.Test.LedgerGate).Grant("notapair", "USE")
+    Do $$$AssertStatusOK($ClassMethod("OcuPilot.Test.LedgerGateProbe", "ViewForUser", "OcuPilotProbeLedgerReader", ..#PROBEUSER, 0, tKey, 10, .tCross, .tCrossFault), "the cross-user read runs")
+    Do $$$AssertEquals($IsObject(tCrossFault), 0, "with no fault, the administrative pair being held")
+    Do $$$AssertEquals(tCross.rowsSent _ "|" _ tCross.rowsWithheld, "0|1", "and the row is absent and counted")
+    Do $$$AssertEquals(tCross.rows.%ToJSON(), "[]", "with nothing of it on the wire")
+
+    ; The owner still sees it, ungated, with the unparseable string rendered as recorded.
+    Do $$$AssertStatusOK($ClassMethod("OcuPilot.Test.LedgerGateProbe", "ViewForUser", ..#PROBEUSER, "", 0, tKey, 10, .tSelf, .tSelfFault), "the owner's own read runs")
+    Do $$$AssertEquals(tSelf.rowsSent, 1, "and keeps the row (AD-46)")
+    If tSelf.rowsSent = 1 Do $$$AssertEquals(tSelf.rows.%Get(0).requiredPairs, "notapair", "as the row recorded it")
+}
+
+/// <p>Write <var>pText</var> into turn <var>pTurnKey</var>'s rows' <code>RequiredPairs</code> column
+/// by direct SQL -- the only way to store a string
+/// <method>OcuPilot.Kernel.Audit.Ledger.PairsToString</method> refuses to produce. Answers how many
+/// rows it changed, so a caller reddens on a write that did nothing rather than on the read
+/// after it.</p>
+ClassMethod SetRequiredPairs(pTurnKey As %String, pText As %String) As %Integer
+{
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "UPDATE OcuPilot_Kernel_State.Ledger SET RequiredPairs = ? WHERE %EXACT(TurnKey) = ?", pText, pTurnKey)
+    If tRS.%SQLCODE < 0 Quit -1
+    Quit +tRS.%ROWCOUNT
+}
+
+/// <p>Matrix row "Store unreadable", over the route: driven in process through
+/// <class>OcuPilot.Test.LedgerRouteProbe</class> with <class>%CSP.Request</class> /
+/// <class>%CSP.Response</class> stubs, the handler answers <b>HTTP 503</b> in one envelope carrying
+/// the landed <code>LEDGER.UNAVAILABLE</code> code and none of the store's own text.</p>
+/// <p>In process rather than over the wire: <method>OcuPilot.Api.Router</method>'s
+/// <code>UrlMap</code> names <class>OcuPilot.Api.Ledger</class> by class, so a fixture subclass has
+/// no route to arrive on -- the precedent <class>OcuPilot.Test.Dispatch</class> exists for.</p>
+/// <p>Mutation (Rule 19): map the <code>LEDGER.UNAVAILABLE</code> leg of
+/// <method>OcuPilot.Api.Ledger.RenderFault</method> to 500 -- the status assertion goes red while
+/// the code and slug assertions stay green.</p>
+Method TestAnUnreadableStoreRendersA503OverTheRoute()
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.Dispatch).InvokeHandler("OcuPilot.Test.LedgerRouteProbe", "Handle", , .tBody, .tStatus), "the handler answers rather than raising")
+    Do $$$AssertEquals(tStatus, 503, "on the unavailable status: " _ tBody)
+    Do $$$AssertEquals(tBody [ "}{", 0, "in exactly one envelope: " _ tBody)
+    Set tAnswer = ""
+    Try {
+        Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+    } Catch {
+        Set tAnswer = ""
+    }
+    Do $$$AssertTrue($IsObject(tAnswer), "which parses as one JSON object: " _ tBody)
+    If '$IsObject(tAnswer) Quit
+    Do $$$AssertEquals(tAnswer.error, ##class(OcuPilot.Api.Error).#UNAVAILABLE, "carrying the slug")
+    Do $$$AssertEquals(tAnswer.code, ##class(OcuPilot.Api.Error).#LEDGERUNAVAILABLE, "and the machine code")
+    Do $$$AssertEquals(tAnswer.reason, ##class(OcuPilot.Api.Error).#REASONLEDGERUNAVAILABLE, "and its written sentence")
+    Do $$$AssertEquals(tBody [ "ledgerprobestorefault", 0, "with none of the store's own text on the wire")
 }
 
 }

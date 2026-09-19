@@ -23,13 +23,18 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
 import { leaveFirstLoginGate, pathOf } from './shell-entry.mjs';
+import {
+  DEFINITIONS_PATH,
+  authHeader as sharedAuthHeader,
+  definitions as sharedDefinitions,
+  signedInAt as sharedSignedInAt,
+} from './panel-spec.mjs';
 
 const config = browserConfig();
 const STRINGS = loadStrings();
 
 const USERS_URL = '/ocupilot/permissions/users?ns=HSCUSTOM';
 const FORM_URL = '/ocupilot/agent/definitions/edit?ns=HSCUSTOM';
-const DEFINITIONS_PATH = '/api/ocupilot/agent/definitions';
 const PREFIX = 'OcuPilotPanelProbe';
 
 let browser = null;
@@ -64,15 +69,11 @@ after(async () => {
 });
 
 function authHeader() {
-  return 'Basic ' + Buffer.from(`${config.username}:${config.password}`).toString('base64');
+  return sharedAuthHeader(config);
 }
 
 async function definitions() {
-  const answer = await fetch(`${config.origin}${DEFINITIONS_PATH}`, { headers: { Authorization: authHeader() } });
-  assert.ok(answer.ok, `the definitions list is readable (HTTP ${answer.status})`);
-  const body = await answer.json();
-  assert.ok(Array.isArray(body.definitions), `and projects a definitions array: ${JSON.stringify(body)}`);
-  return body.definitions;
+  return sharedDefinitions(config);
 }
 
 /** How many definitions this instance currently has enabled -- the state the panel renders on. */
@@ -117,20 +118,8 @@ async function enabledProbeDefinition() {
 }
 
 /** A fresh context signed in through the form, standing on `url` with the frame and the panel laid out. */
-async function signedInAt(url, viewport = config.viewport) {
-  const context = await browser.createBrowserContext();
-  const page = await context.newPage();
-  page.setDefaultNavigationTimeout(config.navigationTimeoutMs);
-  await page.setViewport(viewport);
-  await page.goto(`${config.origin}${url}`, { waitUntil: 'networkidle2' });
-  await page.waitForSelector('#ocu-signin-user', { visible: true, timeout: config.navigationTimeoutMs });
-  await page.type('#ocu-signin-user', config.username);
-  await page.type('#ocu-signin-password', config.password);
-  await page.click('.ocu-signin-card button[type="submit"]');
-  await page.waitForSelector('app-panel aside.ocu-panel', { timeout: config.navigationTimeoutMs });
-  await leaveFirstLoginGate(page, config.navigationTimeoutMs, url);
-  await page.waitForSelector('app-panel [role="separator"]', { timeout: config.navigationTimeoutMs });
-  return { context, page };
+async function signedInAt(url, viewport = config.viewport, mediaFeatures = null) {
+  return sharedSignedInAt(browser, config, url, viewport, mediaFeatures);
 }
 
 /**
@@ -177,7 +166,12 @@ async function composerReady(page) {
   }
 }
 
-/** The row's measured geometry: side bar, content region, its floor, the routed screen's `main`, the panel, and the page's own scroll. */
+/**
+ * The row's measured geometry: side bar, content region, its floor, the routed screen's `main`, the panel, and the page's own scroll.
+ *
+ * Local, not shared: the sibling spec's copy returns a different field set, and unifying them would
+ * change what a spec measures rather than remove a copy (DW-1151).
+ */
 function geometry(page) {
   return page.evaluate(() => {
     const box = (selector) => {
@@ -209,7 +203,10 @@ function geometry(page) {
   });
 }
 
-/** Wait for the panel's width transition to settle at `width`. */
+/**
+ * Wait for the panel's width transition to settle at `width`. Local, not shared: the sibling spec's
+ * copy settles to a different tolerance, and unifying them would change a measurement (DW-1151).
+ */
 async function panelSettlesAt(page, width) {
   await page.waitForFunction(
     (wanted) => Math.abs(document.querySelector('app-panel aside.ocu-panel').getBoundingClientRect().width - wanted) < 0.01,

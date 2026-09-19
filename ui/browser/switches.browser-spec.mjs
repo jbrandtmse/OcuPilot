@@ -30,6 +30,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
+import { authHeader as sharedAuthHeader } from './panel-spec.mjs';
 import { requireFreeSlot } from './turnprobe-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -70,7 +71,7 @@ after(async () => {
 });
 
 function authHeader() {
-  return 'Basic ' + Buffer.from(`${config.username}:${config.password}`).toString('base64');
+  return sharedAuthHeader(config);
 }
 
 /**

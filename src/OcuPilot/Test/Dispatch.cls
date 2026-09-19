@@ -177,6 +177,62 @@ ClassMethod InvokeHttp500(pRouterClass As %String, pStatus As %Status, Output pB
     Quit tSC
 }
 
+/// <p>Capture what <var>pHandlerClass</var>'s no-argument <var>pMethod</var> writes, against
+/// <class>%CSP.Request</class> / <class>%CSP.Response</class> stubs carrying <var>pParams</var> as
+/// query parameters. <var>pBody</var> is the unparsed response body and <var>pStatus</var> the
+/// numeric HTTP status <code>%response.Status</code> was left at.</p>
+/// <p><b>The route table is not involved, deliberately.</b> A handler the router's
+/// <code>UrlMap</code> names by class offers no seam a fixture subclass can arrive through, so a
+/// fixture is driven at the handler's own entry point instead. Everything above it -- the matcher
+/// and <method>OcuPilot.Api.Router.OnPreDispatch</method> -- is <method>Invoke</method>'s subject
+/// and is exercised over the wire besides.</p>
+ClassMethod InvokeHandler(pHandlerClass As %String, pMethod As %String = "Handle", pParams As %DynamicObject = "", Output pBody As %String, Output pStatus As %Integer) As %Status
+{
+    Set tSC = $$$OK
+    Set pBody = ""
+    Set pStatus = 0
+    Set tCapturing = 0
+    Try {
+        Set %request = ##class(%CSP.Request).%New()
+        Set %response = ##class(%CSP.Response).%New()
+        If $IsObject(pParams) {
+            Set tIter = pParams.%GetIterator()
+            While tIter.%GetNext(.tKey, .tVal) {
+                Do %request.Set(tKey, tVal)
+            }
+        }
+
+        Set tInitIO = $IO
+        Set tNull = ##class(%Library.Device).GetNullDevice()
+        Set %OcuPilotDispatchCap = ""
+        ; Armed before the three statements that can strand the process in the mnemonic space,
+        ; for the reason Invoke's own comment gives.
+        Set tCapturing = 1
+        Open tNull:::1
+        Use tNull::("^" _ $ZNAME)
+        Do ##class(%Library.Device).ReDirectIO(1)
+
+        Set tSC = $ClassMethod(pHandlerClass, pMethod)
+
+        Do ##class(%Library.Device).ReDirectIO(0)
+        Use tInitIO
+        Close tNull
+        Set tCapturing = 0
+
+        Set pBody = $Get(%OcuPilotDispatchCap, "")
+        Set pStatus = +%response.Status
+    } Catch ex {
+        If tCapturing {
+            Do ##class(%Library.Device).ReDirectIO(0)
+            Use tInitIO
+            Close tNull
+        }
+        Set tSC = ex.AsStatus()
+    }
+    Kill %OcuPilotDispatchCap
+    Quit tSC
+}
+
 /// <p>Mnemonic I/O space bound via <code>Use tNull::("^"_$ZNAME)</code> in
 /// <method>Invoke</method> — must live in this class's own compiled routine for
 /// <code>$ZNAME</code> to resolve these labels. Accumulates every <code>Write</code> issued

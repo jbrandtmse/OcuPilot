@@ -403,3 +403,26 @@ test('DW-215: every dependency and devDependency is pinned to an exact x.y.z, an
   assert.equal(major, 11);
   assert.equal(minor, 11, `highlight.js ${pinned} must stay inside lowlight's declared ~11.11.0 range`);
 });
+
+test("DW-1168: the redeploy line agents follow names the directory angular.json's outputPath declares", () => {
+  // The rule file tells an agent how to put a fresh bundle in front of a browser spec. It named
+  // `dist/ocupilot/`, a directory no build writes, so the copy silently moved nothing and the spec
+  // read the bundle the container came up with. A one-time correction cannot stop that recurring,
+  // and this project pins its cross-file literals rather than trusting two files to stay equal
+  // (compose.test.mjs and ci.test.mjs do the same for the ports and the Node bands).
+  //
+  // Mutation (Rule 19): change either side -- the `outputPath` in angular.json, or the path in the
+  // rule file's `docker cp` line -- and this goes red naming both.
+  const outputPath = parsed.projects['ocupilot-ui'].architect.build.options.outputPath;
+  assert.equal(typeof outputPath, 'string', 'angular.json declares a string outputPath');
+
+  const rulePath = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '.claude', 'rules', 'objectscript-testing.md');
+  const rule = readFileSync(rulePath, 'utf8');
+  const copyLine = /docker cp (\S+)\/browser\/\.\s/.exec(rule);
+  assert.ok(copyLine, 'expected a `docker cp <dist>/browser/.` line in .claude/rules/objectscript-testing.md');
+  assert.equal(
+    copyLine[1],
+    outputPath,
+    `the rule file copies from ${copyLine[1]} while angular.json writes ${outputPath}`
+  );
+});

@@ -41,6 +41,9 @@ const {
   FOOTER_KEYS,
   UNRESTRAINED,
   formatKillSwitch,
+  readOnlyApplies,
+  readOnlyFooterLine,
+  restraintSentence,
 } = await import(corePath('agent-status.ts'));
 const { STRINGS } = await import(corePath('strings.ts'));
 const { ChangeBus } = await import(corePath('change-bus.ts'));
@@ -494,4 +497,40 @@ test('the published kill-switch banner resolves both slots, and takes its two au
     formatKillSwitch(STRINGS.agentKillSwitchBanner, '', 'no audience'),
     'The agent is switched off for everyone: no audience.'
   );
+});
+
+test('DW-1150: one selector answers the restraint sentence for every footer key, kill switch on and off', () => {
+  // The table is every footer key the verdict may answer with, against both kill-switch states --
+  // the whole input space of the precedence, so a consumer that re-derived it would have to
+  // reproduce all six answers rather than the one case a spot check happens to cover.
+  //
+  // Mutation (Rule 19): swap the precedence in `restraintSentence` so `footerKey` wins over the
+  // kill switch -> the three kill-switch-on rows go red.
+  const killed = formatKillSwitch(STRINGS.agentKillSwitchBanner, 'everyone', 'the freeze');
+  for (const footerKey of FOOTER_KEYS) {
+    const off = { ...UNRESTRAINED, footerKey };
+    assert.equal(
+      restraintSentence(off),
+      STRINGS[footerKey],
+      `kill switch off, ${footerKey}: the published read-only line`
+    );
+    const on = {
+      ...UNRESTRAINED,
+      footerKey,
+      killSwitch: true,
+      killSwitchAudience: 'everyone',
+      killSwitchReason: 'the freeze',
+    };
+    assert.equal(restraintSentence(on), killed, `kill switch on, ${footerKey}: the kill-switch sentence wins`);
+    // The footer's own arm is the read-only line whichever way the switch is set: the panel renders
+    // its banner *and* its footer, so the arm must not follow the ladder.
+    assert.equal(readOnlyFooterLine(on), STRINGS[footerKey], `${footerKey}: the footer arm ignores the kill switch`);
+  }
+  // Every sentence the selector can answer is a published one -- it composes nothing.
+  assert.equal(restraintSentence(UNRESTRAINED), STRINGS.statusReadOnlyOff);
+  // And the restrained predicate reads the off key rather than a fourth spelling of it.
+  assert.equal(readOnlyApplies(UNRESTRAINED), false, 'the off key is not a read-only state');
+  for (const footerKey of FOOTER_KEYS.slice(1)) {
+    assert.equal(readOnlyApplies({ ...UNRESTRAINED, footerKey }), true, `${footerKey} is a read-only state`);
+  }
 });

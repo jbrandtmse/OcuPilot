@@ -2,7 +2,13 @@ import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, inject, sig
 import { Router } from '@angular/router';
 
 import { AgentContext } from '../core/agent-context';
-import { AgentStatus, DEFINITIONS_ROUTE, formatKillSwitch } from '../core/agent-status';
+import {
+  AgentStatus,
+  DEFINITIONS_ROUTE,
+  readOnlyApplies,
+  readOnlyFooterLine,
+  restraintSentence,
+} from '../core/agent-status';
 import { decodeEntityId } from '../core/entity-id';
 import { classifyFault } from '../core/fault';
 import {
@@ -507,17 +513,13 @@ export class Panel {
   }
 
   /**
-   * The published kill-switch banner with its two slots resolved from the verdict: the audience
-   * word out of the placeholder itself, and the operator's own reason verbatim.
+   * The published kill-switch banner with its two slots resolved from the verdict, from the one
+   * selector Home's agent-status line reads as well. Rendered only while `killSwitch` is true, so
+   * the selector's kill-switch arm is the one this gets.
    */
   protected get killSwitchMessage(): string {
     this.generation();
-    const restraint = this.agentStatus.restraint();
-    return formatKillSwitch(
-      STRINGS.agentKillSwitchBanner,
-      restraint.killSwitchAudience,
-      restraint.killSwitchReason
-    );
+    return restraintSentence(this.agentStatus.restraint());
   }
 
   /** Whether read-only is enforced on the instance, which is the one read-only source with a banner. */
@@ -531,13 +533,13 @@ export class Panel {
    */
   protected get readOnlyLine(): string {
     this.generation();
-    return stringFor(this.agentStatus.restraint().footerKey);
+    return readOnlyFooterLine(this.agentStatus.restraint());
   }
 
   /** Whether a read-only state applies, which turns the footer line restrained. */
   protected get readOnlyOn(): boolean {
     this.generation();
-    return this.agentStatus.restraint().footerKey !== 'statusReadOnlyOff';
+    return readOnlyApplies(this.agentStatus.restraint());
   }
 
   /** The composer takes text only while a definition is enabled and the kill switch is off. */

@@ -78,7 +78,13 @@ after(async () => {
 
 test('DW-378: a least-privileged principal sees the panel on two routes, with the configuration-empty state and no reminder banner', async () => {
   // Mutation (Rule 19): render the reminder banner whenever the instance is unconfigured, ignoring
-  // the map's verdict -> this goes red on the banner count.
+  // the map's verdict -> this goes red on the banner count. For the computed style: delete the
+  // `.ocu-panel-empty` block from `_components.scss`, rebuild and redeploy -> the style assertions
+  // go red while the presence and text ones stay green, which is the gap DW-1162 named.
+  //
+  // The style is compared against the tokens themselves rather than against transcribed numbers:
+  // this asserts that the sentence takes the body ramp and the on-surface-variant role, not that
+  // the ramp is any particular size.
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
   page.setDefaultNavigationTimeout(config.navigationTimeoutMs);
@@ -101,14 +107,45 @@ test('DW-378: a least-privileged principal sees the panel on two routes, with th
       await page.waitForSelector('app-panel [role="log"] .ocu-panel-empty', { timeout: config.navigationTimeoutMs });
       const seen = await page.evaluate(() => {
         const panel = document.querySelector('app-panel aside.ocu-panel');
+        const sentence = panel.querySelector('.ocu-panel-empty');
+        const computed = getComputedStyle(sentence);
+        const root = getComputedStyle(document.documentElement);
+        // One probe resolving every token the assertions compare against, so the expected side is
+        // the token's own computed value rather than a number transcribed into the spec.
+        const probe = document.createElement('span');
+        probe.style.color = 'var(--ocu-on-surface-variant)';
+        probe.style.fontFamily = 'var(--ocu-type-body-family)';
+        probe.style.fontSize = 'var(--ocu-type-body-size)';
+        probe.style.lineHeight = 'var(--ocu-type-body-line-height)';
+        document.body.appendChild(probe);
+        const probed = getComputedStyle(probe);
+        const variant = probed.color;
+        const bodyFamily = probed.fontFamily;
+        const bodyLineHeight = probed.lineHeight;
+        probe.remove();
         return {
           path: window.location.pathname,
           width: panel.getBoundingClientRect().width,
-          empty: panel.querySelector('.ocu-panel-empty')?.textContent?.trim() ?? '',
+          empty: sentence.textContent?.trim() ?? '',
           banners: panel.querySelectorAll('.ocu-panel-banner').length,
           example: panel.querySelector('.ocu-proposal-card') !== null,
           composerDisabled: panel.querySelector('.ocu-panel-composer').getAttribute('aria-disabled'),
           notice: document.querySelector('app-instance-notice') !== null,
+          style: {
+            fontSize: computed.fontSize,
+            fontWeight: computed.fontWeight,
+            fontFamily: computed.fontFamily,
+            lineHeight: computed.lineHeight,
+            margin: `${computed.marginTop} ${computed.marginRight} ${computed.marginBottom} ${computed.marginLeft}`,
+            color: computed.color,
+          },
+          tokens: {
+            fontSize: root.getPropertyValue('--ocu-type-body-size').trim(),
+            fontWeight: root.getPropertyValue('--ocu-type-body-weight').trim(),
+            fontFamily: bodyFamily,
+            lineHeight: bodyLineHeight,
+            color: variant,
+          },
         };
       });
       assert.equal(seen.path, new URL(route, 'http://x.invalid').pathname, 'on the route asked for');
@@ -118,6 +155,16 @@ test('DW-378: a least-privileged principal sees the panel on two routes, with th
       assert.equal(seen.banners, 0, 'no administrator reminder for a caller who cannot configure a definition');
       assert.equal(seen.example, true, 'the example card beneath the sentence');
       assert.equal(seen.composerDisabled, 'true');
+      // The rule block itself, which jsdom cannot see: the body ramp, no margin of its own inside
+      // the transcript's own spacing, and the on-surface-variant role rather than full on-surface.
+      assert.equal(seen.style.fontSize, seen.tokens.fontSize, "the sentence takes the body ramp's size");
+      assert.equal(seen.style.fontWeight, seen.tokens.fontWeight, "and the body ramp's weight");
+      // The ramp mixin sets five properties; asserting two of them would leave the other three
+      // free to be dropped from `typo.ocu-type('body')` with this leg still green.
+      assert.equal(seen.style.fontFamily, seen.tokens.fontFamily, "and its family");
+      assert.equal(seen.style.lineHeight, seen.tokens.lineHeight, "and its line height");
+      assert.equal(seen.style.margin, '0px 0px 0px 0px', 'with no margin of its own');
+      assert.equal(seen.style.color, seen.tokens.color, "and the on-surface-variant role's colour");
     }
   } finally {
     await context.close();

@@ -26,13 +26,13 @@
  */
 
 // The `.ts` extensions are what let `node --test` resolve these at runtime.
-import { type AgentStatus, formatKillSwitch } from './agent-status.ts';
+import { type AgentStatus, restraintSentence } from './agent-status.ts';
 import type { ApiService } from './api';
 import type { ConnectivityService } from './connectivity';
 import { classifyFault } from './fault.ts';
 import { ERROR_LOG_DATES_PATH } from './log-paths.ts';
 import type { ScopeService } from './scope';
-import { STRINGS, stringFor } from './strings.ts';
+import { STRINGS } from './strings.ts';
 
 /**
  * The application-errors line's own read (AD-20). Re-exported so this module's existing importers
@@ -298,19 +298,11 @@ export class SuggestedView {
   }
 
   /**
-   * The agent-status line, which always answers. Kill switch on -> the published kill-switch
-   * sentence with its two slots resolved from the verdict; otherwise the footer read-only line the
-   * verdict's own `footerKey` names. Zero new strings.
+   * The agent-status line, which always answers: the one sentence `restraintSentence` returns for
+   * the verdict. The precedence lives there, so this line and the panel's banner cannot drift.
    */
   agentStatusLine(): SuggestedLine {
-    const restraint = this.agentStatus.restraint();
-    const text = restraint.killSwitch
-      ? formatKillSwitch(
-          STRINGS.agentKillSwitchBanner,
-          restraint.killSwitchAudience,
-          restraint.killSwitchReason
-        )
-      : stringFor(restraint.footerKey);
+    const text = restraintSentence(this.agentStatus.restraint());
     return {
       key: AGENT_STATUS_SOURCE.key,
       counted: false,

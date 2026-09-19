@@ -144,13 +144,16 @@ ClassMethod RecordToolCall(pTurnKey As %String, pUser As %String, pRoute As %Str
 /// U+2026. Reused verbatim rather than re-implemented, so a ledger row's argument string and the
 /// tool step's reconcile.</li>
 /// </ol>
-/// <p><var>pRedactedNames</var> comes back as the top-level names that read as redacted after both
-/// layers. <b>The declared set must be a subset of it and no declared value may survive into the
-/// answer</b>; if either stops being true this answers <code>""</code> and logs rather than storing
-/// a string that may carry a secret. The value scan is a substring test, so a declared value that
-/// also appears under another key trips it and costs that row its argument string. Fail-closed is
-/// the right direction here: a missing argument string costs a reader context, and a leaked one
-/// reaches OcuPilot's own screens (AD-35, AD-46).</p>
+/// <p><var>pRedactedNames</var> comes back as the top-level names <b>the layers changed</b> -- a
+/// key whose value the caller already sent as the mark is not reported, because it is evidence
+/// about what the caller sent and not about what redaction did. <b>Every declared name must read as
+/// the mark afterwards and no declared value may survive into the answer</b>; if either stops being
+/// true this answers <code>""</code> and logs rather than storing a string that may carry a secret.
+/// The value scan is a substring test, so a declared value that also appears under another key
+/// trips it and costs that row its argument string -- except a declared value that is itself the
+/// mark, which the answer necessarily carries and which reveals nothing. Fail-closed is the right
+/// direction here: a missing argument string costs a reader context, and a leaked one reaches
+/// OcuPilot's own screens (AD-35, AD-46).</p>
 ClassMethod RedactArguments(pInput As %DynamicAbstractObject, pSecretNames As %List, pMaxLength As %Integer, Output pTruncated As %Boolean, Output pRedactedNames As %List) As %String
 {
     Set pTruncated = 0
@@ -167,16 +170,20 @@ ClassMethod RedactArguments(pInput As %DynamicAbstractObject, pSecretNames As %L
             If tCopy.%GetTypeOf(tName) = "unassigned" Continue
             If tCopy.%GetTypeOf(tName) = "string" {
                 Set tValue = tCopy.%Get(tName)
-                If tValue '= "" Set tValues = tValues _ $ListBuild(tValue)
+                ; The mark itself is skipped: a caller who sent it is not a secret that survived,
+                ; and the answer carries the mark for every redacted key by construction.
+                If (tValue '= "") && (tValue '= ##class(OcuPilot.Kernel.Audit.Log).#REDACTED) Set tValues = tValues _ $ListBuild(tValue)
             }
             Do tCopy.%Set(tName, ##class(OcuPilot.Kernel.Audit.Log).#REDACTED, "string")
             Set tDeclared = tDeclared _ $ListBuild(tName)
         }
         Set tCandidate = ##class(OcuPilot.Kernel.Agent.Dispatch).RedactedArguments(tCopy, pMaxLength, .tTruncated)
-        Set tNames = ..RedactedKeys(##class(OcuPilot.Kernel.Audit.Log).Redact(tCopy))
+        Set tNames = ..RedactedKeys(pInput, ##class(OcuPilot.Kernel.Audit.Log).Redact(tCopy), .tMarked)
         Set tSound = 1
         For tI = 1:1:$ListLength(tDeclared) {
-            If '$ListFind(tNames, $List(tDeclared, tI)) Set tSound = 0
+            ; Soundness is asked of the marked set, not the changed one: a declared name the caller
+            ; already sent the mark under is redacted and is simply not this layer's doing.
+            If '$ListFind(tMarked, $List(tDeclared, tI)) Set tSound = 0
         }
         For tI = 1:1:$ListLength(tValues) {
             If tCandidate [ $List(tValues, tI) Set tSound = 0
@@ -196,18 +203,32 @@ ClassMethod RedactArguments(pInput As %DynamicAbstractObject, pSecretNames As %L
     Quit tOut
 }
 
-/// <p>The top-level names of <var>pObject</var> whose value is
-/// <parameter>OcuPilot.Kernel.Audit.Log.REDACTED</parameter>, as a <class>%List</class>.</p>
-ClassMethod RedactedKeys(pObject As %DynamicAbstractObject) As %List [ Private ]
+/// <p>The top-level names of <var>pAfter</var> whose value is
+/// <parameter>OcuPilot.Kernel.Audit.Log.REDACTED</parameter>, split by provenance against
+/// <var>pBefore</var>: the answer is the names redaction <b>changed</b> -- the mark is there now and
+/// was not there before -- and <var>pMarked</var> is every name reading as the mark whatever it read
+/// before.</p>
+/// <p>The two differ only for a caller who sent the mark as a value. Reporting that key as redacted
+/// would report the caller's own input as evidence that a secret was masked, which is a claim about
+/// a masking that did not happen; it is still in <var>pMarked</var>, because the stored string does
+/// read as the mark there.</p>
+ClassMethod RedactedKeys(pBefore As %DynamicAbstractObject, pAfter As %DynamicAbstractObject, Output pMarked As %List) As %List [ Private ]
 {
+    Set pMarked = ""
     Set tNames = ""
     Try {
-        If '$IsObject(pObject) Quit
-        Set tIterator = pObject.%GetIterator()
+        If '$IsObject(pAfter) Quit
+        Set tMark = ##class(OcuPilot.Kernel.Audit.Log).#REDACTED
+        Set tIterator = pAfter.%GetIterator()
         While tIterator.%GetNext(.tKey, .tValue, .tType) {
-            If (tType = "string") && (tValue = ##class(OcuPilot.Kernel.Audit.Log).#REDACTED) Set tNames = tNames _ $ListBuild(tKey)
+            If (tType '= "string") || (tValue '= tMark) Continue
+            Set pMarked = pMarked _ $ListBuild(tKey)
+            Set tWas = ""
+            If $IsObject(pBefore) && (pBefore.%GetTypeOf(tKey) = "string") Set tWas = pBefore.%Get(tKey)
+            If tWas '= tMark Set tNames = tNames _ $ListBuild(tKey)
         }
     } Catch ex {
+        Set pMarked = ""
         Set tNames = ""
     }
     Quit tNames
@@ -225,6 +246,14 @@ ClassMethod RedactedKeys(pObject As %DynamicAbstractObject) As %List [ Private ]
 /// discards every pair, which is the same thing maximally, so it answers <var>pTruncated</var> 1
 /// too: an empty set reads back as a call that required nothing, which a cross-user read would
 /// release.</p>
+/// <p><b>A pair this grammar cannot spell is left out and the set reports
+/// <var>pTruncated</var> 1</b> -- a member that is not a two-element list, a member with an empty
+/// half, and a member holding <code>,</code> or <code>:</code> in either half. Spelled into the
+/// column, a separator-bearing pair would read back through <method>StringToPairs</method> as some
+/// other pair, a resource nobody named at a permission nobody named; dropped in silence, any of
+/// them leaves the column stating a smaller requirement than the call had. Either way a cross-user
+/// read gating on it would release the row, so the set is reported short and the row is withheld
+/// instead, by the same signal an over-long set uses.</p>
 ClassMethod PairsToString(pPairs As %List, Output pTruncated As %Boolean) As %String
 {
     Set pTruncated = 0
@@ -233,10 +262,25 @@ ClassMethod PairsToString(pPairs As %List, Output pTruncated As %Boolean) As %St
     Try {
         For tI = 1:1:$ListLength(pPairs) {
             Set tPair = $List(pPairs, tI)
-            If '$ListValid(tPair) || ($ListLength(tPair) < 2) Continue
+            ; Every pair this walk drops reports short, whatever the reason it could not be
+            ; spelled: a set silently one pair lighter reads back as a smaller requirement than
+            ; the call had, which is the release a cross-user read must not make.
+            If '$ListValid(tPair) || ($ListLength(tPair) < 2) {
+                Set pTruncated = 1
+                Continue
+            }
             Set tResource = $List(tPair, 1)
             Set tPermission = $List(tPair, 2)
-            If (tResource = "") || (tPermission = "") Continue
+            If (tResource = "") || (tPermission = "") {
+                Set pTruncated = 1
+                Continue
+            }
+            ; Tested on the halves joined, because a separator in either one is the same defect.
+            Set tJoined = tResource _ tPermission
+            If (tJoined [ ",") || (tJoined [ ":") {
+                Set pTruncated = 1
+                Continue
+            }
             Set tSeen(tResource _ ":" _ tPermission) = ""
         }
         Set tMax = +$Parameter(..StoreClass(), "PAIRSMAXLENGTH")

@@ -30,6 +30,7 @@
 import type { ApiService } from './api';
 import type { ChangeBus, ChangeEvent } from './change-bus';
 import type { ConnectivityService } from './connectivity';
+import { STRINGS, stringFor } from './strings.ts';
 
 /** Absolute from the origin root, through the one API service (AD-20). */
 export const AGENT_DEFINITIONS_PATH = '/api/ocupilot/agent/definitions';
@@ -136,6 +137,48 @@ export function formatKillSwitch(template: string, audience: string, reason: str
     .join(word)
     .split(KILL_SWITCH_REASON_PLACEHOLDER)
     .join(reason);
+}
+
+/**
+ * The sentence a restraint state reads as: the published kill-switch banner with both slots
+ * resolved when the switch is on, and otherwise the read-only line the verdict's own `footerKey`
+ * names.
+ *
+ * **This precedence has one home.** Home's agent-status line and the panel's kill-switch banner
+ * both render what this returns, so neither re-derives which of the two sentences applies and the
+ * client composes none of it (AD-39). Zero new strings: both arms resolve a published one.
+ */
+export function restraintSentence(restraint: Restraint): string {
+  return restraint.killSwitch
+    ? formatKillSwitch(
+        STRINGS.agentKillSwitchBanner,
+        restraint.killSwitchAudience,
+        restraint.killSwitchReason
+      )
+    : readOnlyFooterLine(restraint);
+}
+
+/**
+ * `restraintSentence`'s read-only arm on its own -- the line the panel's footer renders
+ * unconditionally, beside its own kill-switch banner rather than instead of it.
+ *
+ * The footer cannot render the ladder: with the kill switch on and read-only by definition, the
+ * panel shows the kill-switch banner *and* the by-definition footer line, which `panel.spec.ts`
+ * pins. So the arm is exported rather than re-derived at the call site.
+ */
+export function readOnlyFooterLine(restraint: Restraint): string {
+  return stringFor(restraint.footerKey);
+}
+
+/**
+ * Whether a read-only state applies, which is what turns the panel's footer line restrained.
+ *
+ * Reads `FOOTER_KEYS[0]` rather than spelling `'statusReadOnlyOff'` again: the panel repeated the
+ * off key as a bare literal beside the one `FOOTER_KEYS` declares, and a rename that missed the
+ * literal would leave a footer permanently restrained with no test saying so.
+ */
+export function readOnlyApplies(restraint: Restraint): boolean {
+  return restraint.footerKey !== FOOTER_KEYS[0];
 }
 
 /**

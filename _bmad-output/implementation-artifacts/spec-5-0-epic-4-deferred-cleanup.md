@@ -2,14 +2,27 @@
 title: 'Epic 4 deferred cleanup'
 type: 'bugfix'
 created: '2026-09-18'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '136b0830c44e3299d478c13035ccf8a9a23834f8'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-5-context.md'
 warnings: ['oversized', 'multiple-goals']
-deferred: []
+deferred:
+  - summary: >-
+      Three `Test/Dispatch` harness helpers assign `%request` and `%response` without `New`, so the
+      stubs outlive the call and any later test in the same process reads them instead of its own
+      state.
+    evidence: |-
+      `Invoke`, `InvokeHttp500` and the new `InvokeHandler` each `Set %request = ##class(%CSP.Request).%New()`
+      with no `New %request, %response`; only `%OcuPilotDispatchCap` is killed on the way out. No
+      current caller is affected -- the one `InvokeHandler` caller reads nothing afterwards -- so
+      this is latent, and a fix belongs to all three rather than to the one this story added.
+    location: >-
+      src/OcuPilot/Test/Dispatch.cls
+    severity: low
 ---
 
 <intent-contract>
@@ -388,6 +401,57 @@ Group 5 — the agent-instruction file:
 
 ## Review Triage Log
 
+### 2026-09-18 — Review pass
+
+- verdicts: 46 findings — high 0, medium 7, low 34, false 5, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` `PairsToString`'s two branches above the new separator check drop a pair without setting `pTruncated` — verified at `Kernel/Audit/Ledger.cls:262,266`; both now report short, pinned by `LedgerPairs.TestEveryUnspellablePairIsReportedShort` with its mutation observed red.
+  - `[low]` `[patch]` `pRedactedNames` has no production consumer, so the provenance split is observable only to tests — verified (`RecordToolCall` and `Dispatch.StepArguments` both discard it); the split is what the spec's own Task asks for, so the fix is the test's doc sentence claiming a stored-row effect, now corrected.
+  - `[medium]` `[patch]` `TestDeviceOutputNeverReachesTheCaller` was rewritten into the refusal case, leaving AdminPort's ordinary capture window untested — verified: `device` mode has exactly two call sites and both now assert `Run()` never executed; new leg `TestAnUnnestedCallRunsInsideItsOwnCaptureAndClosesIt` added with its mutation observed red.
+  - `[low]` `[patch]` `PortCapture`'s class doc claims both nesting directions while its one method drives AdminPort as the inner port — verified; doc corrected to name `Test/MgmntPort`'s own leg as the other direction.
+  - `[low]` `[reject]` the vendor-step trace literal is duplicated across two classes — verified, but it already had four copies in the landed `AdminPortFault` before this change; unifying would rewrite landed assertions this story does not otherwise touch.
+  - `[medium]` `[patch]` `LedgerClientRows.OnAfterOneTest` asserts cleanliness but never sweeps, so a raised method leaves rows in the live stores and reddens every later teardown — verified; teardown now counts, then sweeps by `KEYPREFIX`.
+  - `[false]` `[reject]` `ToolDispatchClientFault`'s "writes no row" claim is unverified — checked against the throwaway after a full class run: zero rows in `Ledger`, `Step` and `Nav` under its turn-key prefix. The claim holds.
+  - `[low]` `[reject]` `InvokeHandler`'s query-parameter branch is unexercised and uses an `[Internal]` vendor method — verified, and it is a verbatim copy of the landed `Test/Dispatch.Invoke` idiom whose own copy is exercised; diverging one of two siblings is worse than the duplication.
+  - `[low]` `[patch]` both split classes claim their `PROBEUSER` prefix makes `TurnFixture.RemoveTurns` sweep their turns, which this change's own record disproves — verified; both doc comments corrected at their origin.
+  - `[low]` `[patch]` `readOnlyApplies`'s comment reports "four spellings" where there was one duplicate spelling among four occurrences — verified against the baseline; reworded.
+  - `[low]` `[patch]` `panel-spec.mjs` exports `DEFINITIONS_PATH` that nothing imports while two specs keep their own copy — verified; `panel` and `gate` now import it.
+  - `[low]` `[patch]` `panel-spec.mjs`'s header miscounts which specs carried `definitions` — verified (`gate` had it too); corrected.
+  - `[low]` `[reject]` DW-1161 is pinned by a regex over SCSS source while DW-1162 in the same change insists on computed style — real inconsistency, but the spec's Task names `design-tokens.test.mjs` as the pin; spec-bound, and the reviewer confirmed the consolidation is cascade-safe today.
+  - `[low]` `[reject]` the new `design-tokens.test.mjs` assertions are anchored to formatting and count bases asymmetrically — verified; a cosmetic reformat of that block is not everyday work, and a more tolerant regex adds complexity to a test whose job is to notice edits.
+  - `[low]` `[patch]` DW-1168's fix has no guard, only a one-time `grep` — verified; `angular-json.test.mjs` now pins the rule file's `docker cp` path against `outputPath`, with its mutation observed red.
+  - `[low]` `[reject]` DW-1134 is partially satisfied: `Test/Ledger.cls` is 558 lines against the AC's "~500" — verified; the spec's own Task mandates keeping the store-and-read half, every class-method helper and three new pins, which is what produces 558. Spec-bound; recorded in the run result below.
+  - `[low]` `[patch]` `panel-principal`'s computed-style leg pins four properties while the body ramp sets five — verified; family and line-height added, with the mutation observed red.
+  - `[false]` `[reject]` `killSwitchMessage` is correct only because the template guards it, with nothing pinning the coupling — disproved: `panel.spec.ts:317,363,402` each assert `.ocu-panel-banner` is null in an unrestrained state, so removing the guard reddens three landed tests.
+  - `[low]` `[patch]` the run result carried narration on a spec already flagged `oversized` — agreed; rewritten to what this pass changed and how it was verified.
+  - `[low]` `[patch]` `MgmntImplFixture`'s `admincall` branch duplicates the `write` branch's device write — verified; merged into one guarded write.
+  - `[medium]` `[patch]` (edge-case) a malformed or empty-half pair is dropped without `pTruncated` — same root cause as the first row; closed by the same patch.
+  - `[medium]` `[patch]` (edge-case) `LedgerClientRows` teardown asserts but never sweeps — same root cause as the sixth row; closed by the same patch.
+  - `[low]` `[patch]` (edge-case) `CountWhere` answers -1 and `Remaining` sums, so one store's SQL failure can cancel another's leftover — verified; `Remaining()` now propagates -1 instead of summing through it.
+  - `[low]` `[patch]` (edge-case) `NestedAdminCall` has no `Try`/`Catch`, so a raise unwinds through the outer port's capture window and `InnerCall()` reads empty — verified; it now answers a sentence naming the raise.
+  - `[low]` `[reject]` (edge-case) the panel's footer reads `readOnlyFooterLine`, not `restraintSentence`, against the AC's "both render the sentence the one selector returns" — verified, and forced by landed `panel.spec.ts:455-475`; the fix would edit this build's spec.
+  - `[low]` `[reject]` (edge-case) `Test/Ledger.cls` is 558 lines against the AC — duplicate of the DW-1134 row above; spec-bound.
+  - `[low]` `[patch]` (edge-case) `LedgerPairs`'s `PROBEUSER` prefix claim is vacuous — duplicate of the split-class doc row; closed by the same patch.
+  - `[medium]` `[patch]` (verification-gap) AdminPort's capture lost its only success-path test; the filed demonstration (drop `EndCaptureOutput` and nothing reddens) was reproduced — closed by the new leg, whose own mutation reddens it.
+  - `[low]` `[patch]` (verification-gap) both split classes' teardown turn assertions are inert — the assertion still catches a leaked turn from anywhere, so it stays; the false doc claim that made it look class-specific is corrected.
+  - `[low]` `[patch]` (verification-gap) the split AC's prefix half has no mutation, and `LedgerPairs` got no substitute — recorded: the prefix is inert for both classes, and the row sweep is the property the split preserves, which each class's own `RowCount() = 0` teardown assertion pins.
+  - `[low]` `[reject]` (verification-gap) DW-1161's AC is pinned by source text only — duplicate of the DW-1161 row; spec-bound.
+  - `[low]` `[reject]` (verification-gap) `AdminPortFault`'s "nothing the endpoint would have written" assertion is redundant once the trace is pinned — verified; harmless, and deleting it removes a reader's cross-check for no gain.
+  - `[low]` `[patch]` (verification-gap) half of DW-1126 has no production consumer — duplicate of the second row; the doc sentence is corrected.
+  - `[low]` `[patch]` (verification-gap) `panel-spec.mjs`'s `DEFINITIONS_PATH` has no importer — duplicate; closed by the same patch.
+  - `[low]` `[defer]` (verification-gap) `InvokeHandler` leaves `%request`/`%response` set on the process — verified, and the landed `Invoke` and `InvokeHttp500` do the same; a fix should cover all three, which is outside this story.
+  - `[low]` `[reject]` (intent) R1's reading is implemented with the behavior-preserving side taken at every fork — descriptive; no defect.
+  - `[low]` `[patch]` (intent) D2: the named expectation lives on a dead output parameter — closed with the doc correction above.
+  - `[false]` `[reject]` (intent) D3: the view-truncation test pins `ViewForUser`'s own argument, not `Api/Ledger`'s clamp — the matrix row names the flag, which is pinned; the clamp is another story's surface.
+  - `[low]` `[reject]` (intent) D4: the 503 method is named "OverTheRoute" but runs in process — the I/O row's scenario says "over the route" and its state column says "driven in process"; the method's own doc states the missing seam.
+  - `[false]` `[reject]` (intent) D6: DW-1097's assertions sit on the resolver's out-parameters, not the step — verified: those three branches write no step, so the resolver is the only surface the invariant exists at.
+  - `[low]` `[reject]` (intent) D7: DW-1126's first half is writer-side only — by design; the reader-side withhold is DW-1123's unparseable-requirement leg, pinned separately.
+  - `[false]` `[reject]` (intent) D8: `Test/Dispatch.cls` is a footprint extension — disproved: `src/OcuPilot/Test/**` is in this story's own footprint, so no extension is required.
+  - `[false]` `[reject]` (intent) D9: the `context-chip` prohibition may have been breached — disproved: the contended path is `ui/src/app/shell/panel/context-chip*`; the edited file is `ui/browser/context-chip.browser-spec.mjs`, inside this story's footprint.
+  - `[low]` `[reject]` (intent) D10: the ~500-line AC — duplicate of the DW-1134 row.
+  - `[low]` `[patch]` (intent) D11: the split's mutation is a substitution and the prefix property is inert — recorded above; the doc claim is corrected.
+  - `[low]` `[reject]` (intent) D5: DW-1161 and DW-1162 pin the same kind of invariant at two surfaces — duplicate of the DW-1161 row; spec-bound.
+
 ## Design Notes
 
 **Governing architecture decisions (Rule 6).** AD-41 — the ledger is a bounded resource, its row is
@@ -517,50 +581,179 @@ contended epic; both edits are one line each.
   `gate` and `switches` specs and `panel-principal`'s new computed-style leg. No browser result
   counts before this rebuild and copy: the spec reads the deployed bundle, not the working tree.
 
-**Planned mutations (Rule 19 — apply, observe red, revert, confirm `git status --short` and
-`git diff --stat` unchanged, then record each as `mutation: <change> -> <test>` here):**
+**Mutations run (Rule 19 — each applied, observed red, reverted, with `git status --short` and
+`git diff --stat` confirmed identical to the pre-mutation snapshot afterwards). The ObjectScript
+ones recompiled the whole `src/OcuPilot/` tree through `$System.OBJ.LoadDir` before the run, so
+every descendant's own compiled copy carried the mutation:**
 
-- DW-1097 registry: delete `Set tSC = $$$OK` at `Dispatch.cls:439` -> `ToolDispatchClientFault`'s
-  registry method red (the refusal becomes a turn failure).
-- DW-1097 gate: same at `:461` -> the gate method red.
-- DW-1097 Directive: same at `:527` -> the Directive method red.
-- DW-1123 provider: force `RecordProviderRow`'s leg at `Loop.cls:752` to `"ok"` unconditionally ->
-  the new `LedgerWire` provider-error method red.
-- DW-1123 client rows: remove each `RecordClientRow` call at `Loop.cls:612`, `:641`, `:702` in turn
-  -> the corresponding `LedgerClientRows` method red, one per writer.
-- DW-1123 view truncation: force `Audit/Ledger.cls:330`'s `tTruncated` to 0 -> the view-truncated
-  method red.
-- DW-1123 withhold: remove the `Continue` at `Audit/Ledger.cls:384` -> the unparseable-requirement
-  method red (the row is rendered instead of withheld).
-- DW-1123 503: map the `LEDGER.UNAVAILABLE` leg at `Api/Ledger.cls:111-113` to 500 -> the status
-  assertion red.
-- DW-1126 separators: drop the separator check from `PairsToString` -> the separator method red (the
-  pair round-trips wrongly and the row is not withheld).
-- DW-1126 marker: restore the bare equality test in `RedactedKeys` -> the caller-sent-marker method
-  red (the argument string is discarded and a redaction failure is logged).
-- DW-1134 split: drop the `OcuPilotProbeTurn` prefix from one new class's `PROBEUSER` -> that
-  class's `OnAfterOneTest` `tRemaining = 0` assertion red (`TurnFixture.RemoveTurns` no longer
-  sweeps its turns), which is the property the split has to preserve.
-- DW-1150: change the selector's precedence so `footerKey` wins over the kill switch ->
-  `agent-status.test.mjs`'s table case red **and** `suggested-view.test.mjs:114-128` red.
-- DW-1151: make `panel-spec.mjs`'s exported `authHeader` return an empty header, rebuild, redeploy
-  -> every converted browser spec red together, which is what one shared copy is for.
-- DW-1161: remove one of the four class names from the consolidated selector list -> the new
-  `design-tokens.test.mjs` assertion red, while the four reveal tests stay green (they pin the
-  reveal rules, not the base).
-- DW-1162: delete the `.ocu-panel-empty` block from `_components.scss`, rebuild and redeploy ->
-  `panel-principal.browser-spec.mjs`'s computed-style leg red (its presence leg alone stays green,
-  which is the gap being closed).
-- DW-1173 AdminPort: remove the `If $$$ISERR(tSC) Quit` after `AdminPort.cls:855` -> the corrected
-  `TestDeviceOutputNeverReachesTheCaller` red (a vendor endpoint runs outside a capture).
-- DW-1173 cross-port: remove `MgmntPort.cls:499-500`'s `tCapturing` guard -> `PortCapture`'s nesting
-  method red (the outer's cookie is ended by the inner).
-- DW-1168: a prose path has no code mutation and no test host, so the check replaces one: after
-  `npm run build`, run the rule file's `docker cp` line verbatim from `ui/` against the throwaway
-  and confirm it copies files, and confirm `grep -n 'dist/ocupilot/' .claude/rules/objectscript-testing.md`
-  returns nothing. Recorded as a check, not as a pass with no mutation.
+- mutation: deleted `Set tSC = $$$OK` from `Dispatch.ResolveClientCall`'s registry branch ->
+  `ToolDispatchClientFault.TestARegistryThatCannotBeReadIsARefusalNotATurnFailure` red alone; the
+  refusal became a turn failure and the other two methods stayed green.
+- mutation: deleted the same line from the gate branch ->
+  `TestAGateThatCannotDecideIsARefusalNotATurnFailure` red alone.
+- mutation: deleted the same line from the `Else` leg of the `Directive` branch ->
+  `TestADirectiveThatFailsWithNoFaultCodeIsARefusalNotATurnFailure` red on its status assertion,
+  naming the fixture's own error text.
+- mutation: forced `Loop.RecordProviderRow`'s status leg to `"ok"` ->
+  `LedgerWire.TestAFailedProviderCallWritesAnErrorRowWithItsCode` red on "carrying the failed
+  outcome", the other four `LedgerWire` methods green. Run on the throwaway, which is the only
+  instance that arms the test provider.
+- mutation: removed the `RecordClientRow` call from `Loop.AnswerClientCall`'s drop branch ->
+  `LedgerClientRows.TestAnAnnouncementPastTheStepCapRecordsOneOkRow` red alone.
+- mutation: removed it from the in-wait boundary branch ->
+  `TestAStopDuringTheWaitRecordsOneStoppedRow` red alone.
+- mutation: removed it from the settle -> `TestACallThatSettlesRecordsOneOkRow` red alone. One
+  writer, one method, three times over.
+- mutation: forced `Audit/Ledger.ViewForUser`'s `tTruncated` to 0 ->
+  `Ledger.TestTheViewReportsItsOwnTruncationAtTheRowCap` red on the flag and on the row count.
+- mutation: removed the `Continue` from the unparseable-requirement branch ->
+  `Ledger.TestAnUnparseableRequirementIsWithheldFromACrossUserRead` red; the row was rendered
+  rather than withheld.
+- mutation: mapped `Api/Ledger.RenderFault`'s `LEDGER.UNAVAILABLE` leg to 500 ->
+  `Ledger.TestAnUnreadableStoreRendersA503OverTheRoute` red on the status alone, with the slug,
+  code and reason assertions green.
+- mutation: dropped the separator check from `PairsToString` ->
+  `LedgerPairs.TestAPairHoldingASeparatorIsOmittedAndTheSetReportedShort` red on all ten
+  assertions, the failure text showing `OcuPilotProbePair,Comma:USE` and
+  `OcuPilotProbePairPermB:US:E` spelled into the column.
+- mutation: restored the bare equality test in `RedactedKeys` ->
+  `LedgerRedaction.TestACallerSentMarkerIsRedactedAndNotReportedAsRedacted` red on "the key is not
+  reported as redacted". Separately, dropping the mark from the value-survival scan's skip reddened
+  the same method on four assertions, including the logged redaction failure — which is the half of
+  the defect that discarded the whole argument string.
+- mutation: dropped the `OcuPilotProbeTurn` prefix from `LedgerRedaction`'s `PROBEUSER` -> **nothing
+  reddened.** Neither split class reserves a turn, so `TurnFixture.RemoveTurns` has none to sweep
+  and the prefix is inert there. The property the split does have to preserve is the row sweep, so
+  the recorded mutation is instead: removed `Clear()` from `LedgerRedaction.OnAfterOneTest` -> three
+  of its eight methods red on `RowCount() = 0`.
+- mutation: made `restraintSentence`'s kill-switch arm unreachable ->
+  `agent-status.test.mjs`'s table case, `suggested-view.test.mjs`'s kill-switch line test and two
+  `panel.spec.ts` kill-switch banner tests red together, which is the integration AC observed from
+  both consumers at once.
+- mutation: removed `.ocu-area-tile-reason` from the consolidated selector list -> the new
+  `design-tokens.test.mjs` assertion red, the four reveal tests green.
+- mutation: made `panel-spec.mjs`'s exported `authHeader` answer an empty header -> **every test of
+  all five converted specs** red together (`panel`, `suggested-view`, `gate`, `context-chip`,
+  `switches`), which is what one shared copy is for. No rebuild was needed after all: the module is
+  imported by the spec process, not bundled, so the deployed bundle is not what carries it.
+- mutation: deleted the `.ocu-panel-empty` block from `_components.scss`, rebuilt and redeployed ->
+  `panel-principal.browser-spec.mjs` red on the computed style, `'16px' !== '13px'` -- the sentence
+  fell back to the inherited size. The presence, text, banner-count and example assertions all
+  precede it in the method and all ran green, which is the gap DW-1162 named. Reverted, rebuilt and
+  redeployed; the spec is green again.
+- mutation: removed the `If $$$ISERR(tSC) Quit` after `AdminPort.Sequence`'s `BeginCaptureOutput` ->
+  `AdminPortFault.TestDeviceOutputNeverReachesTheCaller` red, its line list reading
+  `["{\"outer\":\"open\"}{\"fixture\":\"device output\"}"]` — the endpoint's own output in the
+  caller's buffer — and `PortCapture.TestAnAdminCallInsideTheMgmntCaptureIsRefused` red with it.
+  That one mutation is what both DW-1173 tests turn on, because AdminPort is the inner port in both.
+- mutation: dropped `Set pTruncated = 1` from `PairsToString`'s not-a-pair branch ->
+  `LedgerPairs.TestEveryUnspellablePairIsReportedShort` red alone, the other seven methods green.
+  The review pass widened that signal: the two branches above the separator check dropped a pair in
+  silence, so a set could read complete while stating a smaller requirement than the call had --
+  the release AD-46 forbids, by the mechanism the separator branch was added to stop.
+- mutation: removed the `EndCaptureOutput` line from `AdminPort.Sequence` ->
+  `AdminPortFault.TestAnUnnestedCallRunsInsideItsOwnCaptureAndClosesIt` red, together with ten
+  sibling methods and the class-level cleanup, because a capture left open swallows the rest of the
+  class's output. The review pass added that leg: rewriting
+  `TestDeviceOutputNeverReachesTheCaller` into the refusal case left the window AD-2 step 6 opens on
+  every ordinary call exercised by nothing.
+- mutation: gave `.ocu-panel-empty` a `font-family: monospace` of its own, rebuilt and redeployed ->
+  `panel-principal.browser-spec.mjs` red on "and its family", `'monospace'` against the token's
+  `Inter, system-ui, ...`. The review pass added the family and line-height legs: the ramp mixin
+  sets five properties and the leg asserted two, so three could be dropped from it and stay green.
+- mutation: removed `MgmntPort.Call`'s `$$$ISOK(tCallSC)` guard -> `Test/MgmntPort.cls`'s
+  `TestEveryOtherVendorOutcomeIsAnInternalFault` red on "with no vendor call made outside a
+  capture", and `PortCapture` **green**. That guard is what refuses a call when *MgmntPort* is the
+  inner port, which is MgmntPort's own landed leg; `PortCapture` has AdminPort as the inner port, so
+  it is the mutation above that reddens it.
+- mutation: pointed the rule file's `docker cp` line back at `dist/ocupilot/` ->
+  `angular-json.test.mjs`'s new DW-1168 assertion red, naming both sides ("the rule file copies from
+  dist/ocupilot while angular.json writes dist/ocupilot-ui"). Reverted, green again. The review pass
+  added that pin: a one-time `grep` cannot stop the two files drifting apart a second time, and this
+  project pins its cross-file literals (`compose.test.mjs`, `ci.test.mjs`) rather than trusting
+  them. The line was also run verbatim from `ui/` against the throwaway and copied the bundle.
+
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**What this pass changed.** Two `Kernel/Audit/Ledger.cls` invariants: `PairsToString` reports
+`pTruncated` for every pair it cannot spell -- a separator in either half, a member that is not a
+two-element list, an empty half -- so a recorded set never reads complete while stating a smaller
+requirement than the call had; and `RedactedKeys` answers provenance, with the soundness check
+asking the marked set and the value-survival scan skipping a declared value that is itself the
+mark. `Test/Ledger.cls` split three ways (`LedgerRedaction` 337, `LedgerPairs` 366, the kept
+store-and-read half 558), each with its own `PROBEUSER` and teardown, the siblings calling the kept
+class's helpers by full name. Twelve pinning methods added across `Ledger`, `LedgerPairs`,
+`LedgerRedaction`, `LedgerWire`, the new `LedgerClientRows`, `ToolDispatchClientFault` and
+`PortCapture`, on eight new fixtures; `AdminPortFault` gained the un-nested capture leg, and its
+`TestDeviceOutputNeverReachesTheCaller` now gives its capture output before invoking the port.
+Client: one restraint selector in `core/agent-status.ts` read by `suggested-view.ts` and `panel.ts`;
+`ui/browser/panel-spec.mjs` holding `authHeader`, `definitions`, `signedInAt` and
+`DEFINITIONS_PATH`, imported by five specs; the four `*-reason` base blocks consolidated into one
+selector list; `panel-principal`'s computed-style leg over all five body-ramp properties. Two prose
+fixes and one new pin: the rule file's `docker cp` path, `check-objectscript.py`'s rule-20 sentence,
+and `angular-json.test.mjs` pinning the first against `angular.json`'s `outputPath`.
+
+**Files changed.** `Kernel/Audit/Ledger.cls` (the two invariants); `Test/Ledger.cls`,
+`Test/LedgerPairs.cls`, `Test/LedgerRedaction.cls` (the split and three new pins);
+`Test/LedgerClientRows.cls` with `LedgerClientLoopProbe`, `LedgerClientStopProbe`,
+`LedgerStepCapLimits`, `LedgerNavWaitLimits` (the three client-row writers);
+`Test/ToolDispatchClientFault.cls` with `ClientCallFault/Probe.cls` and `ClientCallFault/Registry.cls`
+(DW-1097's three branches); `Test/LedgerWire.cls` (the provider error row); `Test/LedgerRouteProbe.cls`,
+`Test/LedgerLogProbe.cls` and `Test/Dispatch.cls` (`InvokeHandler`, the in-process handler seam);
+`Test/AdminPortFault.cls`, `Test/PortCapture.cls`, `Test/MgmntImplFixture.cls` (DW-1173, both capture
+cases); `ui/src/app/core/agent-status.ts`, `core/suggested-view.ts`, `shell/panel.ts` (one restraint
+selector); `ui/browser/panel-spec.mjs` and the `panel`, `suggested-view`, `context-chip`, `gate` and
+`switches` specs (one shared copy); `ui/src/styles/_components.scss` and
+`ui/tools/design-tokens.test.mjs` (the consolidation and its pin);
+`ui/browser/panel-principal.browser-spec.mjs` (the computed-style leg);
+`ui/tools/agent-status.test.mjs` and `ui/tools/angular-json.test.mjs` (the selector table, the path
+pin); `.claude/rules/objectscript-testing.md` and `scripts/check-objectscript.py` (one line each).
+
+**Review findings.** 46 findings from four layers; 0 high, 7 medium, 34 low, 5 false. Nine entries
+patched in this pass (3 medium, 6 low), one deferred, the rest rejected -- each one a row in the
+triage log above carrying its refutation, its spec-bound reason, or the action taken. The three
+medium patches: `PairsToString`'s other two silent drops now report short; the un-nested AdminPort
+capture leg that the rewritten DW-1173 test had vacated; `LedgerClientRows`'s teardown, which
+asserted cleanliness without sweeping. Patched by verdict: medium 3, low 6.
+
+**Follow-up review recommended: true.** Two or more medium entries were patched, and one of them
+changes shipped behavior rather than a test: a row whose recorded pair set was silently one pair
+short now reports truncated and is withheld from a cross-user read. That widening is pinned by
+`LedgerPairs.TestEveryUnspellablePairIsReportedShort` with its mutation observed red, and the full
+sweep and the smoke re-ran clean after it -- but **no existing ledger row population was surveyed
+for pairs that would newly be withheld**, which is the specific unverified risk.
+
+**How it was verified.** `check-objectscript.py` 0 problems over 21 rules, its harness 126 OK,
+`lint-docs.sh` 0 issues over 89 files. The whole `src/OcuPilot/` tree compiled clean into slot A
+(488 documents). `cd ui && npm run build` green through all six prebuild checkers, `npm test`
+1047 + 640 green. On a throwaway at 52776/1975 carrying this tree: thirteen named classes one runner
+call at a time, then the full sweep **130 classes / 1231 tests / 0 failed / 0 leftovers / 0 overlaps
+/ 0 foreign runs**, and `smoke.sh` **executed 45 passed 45 failed 0**. Browser suite against the
+rebuilt and redeployed bundle: **184 of 185**, the one failure being DW-1175, the flake the lead
+filed before dispatch -- the same `context-chip` "Cap follows agent-switch" test, which timed out at
+36,078 ms in the full run and passed in 7,231 ms in isolation, both observed this pass. Every
+mutation listed above was applied against a fully recompiled tree, observed, and reverted to a
+byte-identical working tree.
+
+**DW-1161's measurement, on this branch's own build.** Before 994.30 kB initial total (117.42 kB
+styles); after 992.90 kB (116.04 kB) -- 1.40 kB off, both well under `angular.json`'s 1050 kB
+`maximumWarning`. DW-1161's 778.17/779.49 figures were Epic 4's and are not reused.
+
+**Residual risks.** (1) The pair-set widening named above. (2) `Test/Ledger.cls` is 558 lines against
+the AC's "~500": the Task mandates keeping the store-and-read half, every class-method helper and
+three new pins, which is what produces it; the two siblings are 366 and 337. (3) DW-1161 is pinned
+by a regex over SCSS source while DW-1162 insists on computed style -- the spec chose each surface,
+and the consolidated block was confirmed cascade-safe today. (4) The panel's footer renders the
+selector's read-only arm rather than the ladder, because `panel.spec.ts:455-475` pins the
+by-definition footer line beside the kill-switch banner; the ladder has one home and both Home's
+line and the panel's banner read it.
+
+**Reported to the lead.** The dispatch's contended path `ui/src/app/shell/panel/context-chip*` names
+no existing file -- the component is `ui/src/app/shell/context-chip.ts`, and the file this story
+edited is `ui/browser/context-chip.browser-spec.mjs`, inside its own footprint. Footprint extensions
+stand as the spec records them: `.claude/rules/objectscript-testing.md` and
+`scripts/check-objectscript.py`.

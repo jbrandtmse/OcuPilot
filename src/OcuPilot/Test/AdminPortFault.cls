@@ -138,25 +138,72 @@ Method TestAProtectFromRunIsA403()
     Do ..AssertFault(tSC, tHttp, tFault, 403, "forbidden", "PORT.ACCESSDENIED", "<PROTECT> from Run")
 }
 
-/// <p>What <code>Run()</code> writes to the device is captured by the port and never reaches
-/// the caller's device; the result is still the endpoint's return value.</p>
+/// <p>The ordinary call, which is every real one: with no capture already holding output the
+/// port's own <code>BeginCaptureOutput</code> succeeds, <code>Run()</code> executes <b>inside</b>
+/// that window, and <code>EndCaptureOutput</code> closes it -- so the process is left with no
+/// capture open and the caller still gets the endpoint's return value.</p>
+/// <p>The refusal leg below drives the same fixture mode from inside an open capture, so without
+/// this method nothing exercises the window AD-2 step 6 actually opens on every call. The port
+/// discards its captured lines, so the observable that the window closed is the buffer
+/// (<file>irislib/%SYS/Capture.int</file> kills it in <code>EndCapture</code>) and a fresh capture
+/// starting cleanly afterwards.</p>
+/// <p>Mutation (Rule 19): remove the <code>If $Data(tCookie) Do ... EndCaptureOutput ...</code>
+/// line from <method>OcuPilot.Port.AdminPort.Sequence</method> -- the port leaves its capture open,
+/// and this goes red on the buffer and on the fresh capture.</p>
+Method TestAnUnnestedCallRunsInsideItsOwnCaptureAndClosesIt()
+{
+    Do $$$AssertEquals($Data(^||%capture), 0, "no capture is open before the call")
+    Set tSC = ..InvokeFixture("device", .tResult, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the call succeeds with no capture already open")
+    Do $$$AssertEquals(tHttp, 200, "at 200")
+    Do $$$AssertTrue($IsObject(tResult) && (tResult.fixture = "device"), "the result is the endpoint's return value")
+    Do $$$AssertEquals(##class(OcuPilot.Test.EndpointFixture).Recorded("trace"), "ResourcesOR,SaveQueryParams,ValidateQueryParams,ValidateRequest,ValidateSemantics,ShouldRunAsync,Run", "and Run executed, which is what the capture wrapped")
+    Do $$$AssertEquals($Data(^||%capture), 0, "the port closed its own capture rather than leaving it open")
+
+    ; A capture opened now must start clean: one left open by the port would refuse this outright
+    ; once it held the endpoint's output.
+    Set tAfterSC = $$BeginCapture^%SYS.Capture(.tCookie)
+    Do $$$AssertStatusOK(tAfterSC, "a capture opened after the call starts cleanly")
+    If $Data(tCookie) Set tAfterEndSC = $$EndCapture^%SYS.Capture(tCookie, .tAfterLines)
+}
+
+/// <p>What <code>Run()</code> writes to the device is kept off the caller's device by the port's own
+/// capture -- and a caller that already holds a capture <b>with output in it</b> is refused rather
+/// than served: the vendor's <code>BeginCapture</code> answers "Capture Already Active", the
+/// sequence stops there, and no vendor endpoint runs. A vendor endpoint running outside a capture is
+/// what AD-2 step 6 exists to prevent.</p>
+/// <p><b>The outer capture is given output before the call</b>, because a capture holding none is
+/// silently nestable and the inner <code>EndCapture</code> then kills its buffer
+/// (<file>irislib/%SYS/Capture.int</file>): an empty line list asserted against an empty outer
+/// capture reads the same whether the port contained anything or not.
+/// <class>OcuPilot.Test.MgmntPort</class>'s own nesting leg states the same mechanism, and
+/// <class>OcuPilot.Test.PortCapture</class> is the cross-port case.</p>
+/// <p>Mutation (Rule 19): remove the <code>If $$$ISERR(tSC) Quit</code> after
+/// <method>OcuPilot.Port.AdminPort.Sequence</method>'s <code>BeginCaptureOutput</code> -- the
+/// endpoint runs outside a capture, its output lands in the caller's buffer, and this goes red.</p>
 Method TestDeviceOutputNeverReachesTheCaller()
 {
     Set tLines = ""
     Set tCaptureSC = $$BeginCapture^%SYS.Capture(.tCookie)
     Try {
+        ; A capture counts as open once it holds output, so the open one is given some.
+        Set tNoise = {"outer": "open"}
+        Do tNoise.%ToJSON()
         Set tSC = ..InvokeFixture("device", .tResult, .tHttp, .tFault)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
     If $Data(tCookie) Set tEndSC = $$EndCapture^%SYS.Capture(tCookie, .tLines)
     Do $$$AssertStatusOK(tCaptureSC, "the test's own capture started")
-    Do $$$AssertStatusOK(tSC, "the call succeeds")
-    Do $$$AssertTrue($IsObject(tLines), "the test's capture returned its lines")
+    Do ..AssertFault(tSC, tHttp, tFault, 500, "server_error", "INTERNAL", "a port capture refused inside one that holds output")
+    Do $$$AssertEquals(tResult, "", "with no result")
+    ; The whole trace, not a "Run" substring test: ShouldRunAsync carries those three letters.
+    Do $$$AssertEquals(##class(OcuPilot.Test.EndpointFixture).Recorded("trace"), "ResourcesOR,SaveQueryParams,ValidateQueryParams,ValidateRequest,ValidateSemantics,ShouldRunAsync", "the sequence stopped at the capture, so no vendor endpoint ran")
+    Do $$$AssertTrue($IsObject(tLines) && (tLines.%Size() > 0), "the caller's own capture kept its lines rather than losing them to the port's End")
     If $IsObject(tLines) {
-        Do $$$AssertEquals(tLines.%ToJSON(), "[]", "nothing reached the caller's device")
+        Do $$$AssertTrue(tLines.%ToJSON() [ "outer", "including the line it wrote itself: " _ tLines.%ToJSON())
+        Do $$$AssertEquals(tLines.%ToJSON() [ "device output", 0, "and nothing the endpoint would have written: " _ tLines.%ToJSON())
     }
-    Do $$$AssertTrue($IsObject(tResult) && (tResult.fixture = "device"), "the result is the endpoint's return value")
 }
 
 /// <p>An admin API reporting version 1 is refused before any endpoint is constructed, and the
