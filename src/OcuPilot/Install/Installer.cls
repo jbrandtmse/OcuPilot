@@ -3647,18 +3647,22 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
             Set tRemovedKeys(tDKey) = ""
         }
         If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
-        ; DW-94: only the roles of applications this run actually REMOVED. Deleting a role
-        ; strips its name from every application still matching it (verified on this build, and
-        ; pinned by OcuPilot.Test.WebApp), so deleting the role of an application uninstall
-        ; deliberately left in place would take that application's AD-21 privilege floor with
-        ; it -- leaving an anonymous application that cannot load its own dispatch class and
-        ; answers 500 with a <PROTECT> naming the database directory. "Left in place" has to
-        ; mean still working, or uninstall has damaged something it does not own.
+        ; A roster-declared matching role is kept only while an application still sits at that
+        ; key's roster path, and removed otherwise. Two cases, and they are not the same:
+        ; DW-94 -- an application uninstall deliberately LEFT IN PLACE (present, no provenance
+        ; row) keeps its role, because deleting a role strips its name from every application
+        ; still matching it (verified on this build, and pinned by OcuPilot.Test.WebApp), which
+        ; would take that application's AD-21 privilege floor with it and leave an anonymous
+        ; application that cannot load its own dispatch class and answers 500 with a <PROTECT>
+        ; naming the database directory. "Left in place" has to mean still working. An
+        ; application that is ALREADY ABSENT -- removed this run, or by another hand before it
+        ; -- has no floor to preserve, so its role goes: no roster-declared role survives when
+        ; no application sits at its roster path (AD-21's both-directions invariant).
         For tRI = 1:1:$Length(tNames("appKeys"), ",") {
             Set tRKey = $Piece(tNames("appKeys"), ",", tRI)
-            If '$Data(tRemovedKeys(tRKey)) Continue
             Set tRRole = $Get(tNames("appRole", tRKey))
             If tRRole = "" Continue
+            If '$Data(tRemovedKeys(tRKey)), ##class(Security.Applications).Exists($Get(tNames("appName", tRKey)), .tEW2, .tSW2) Continue
             If '##class(Security.Roles).Exists(tRRole, .tEW3, .tSW3) Continue
             Set tSC = ##class(Security.Roles).Delete(tRRole)
             If $$$ISERR(tSC) Quit
