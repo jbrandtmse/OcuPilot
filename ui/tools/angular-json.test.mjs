@@ -362,12 +362,18 @@ test('DW-371: exactly one initial budget, maximumWarning under maximumError, and
   assert.equal(budgets.length, 1, 'expected exactly one budget entry');
   const [budget] = budgets;
   assert.equal(budget.type, 'initial');
-  assert.equal(budget.maximumWarning, '820kB', 'a change to this figure must be a reviewed diff, not a silent edit');
-  assert.equal(budget.maximumError, '1MB');
+  assert.equal(budget.maximumWarning, '1050kB', 'a change to this figure must be a reviewed diff, not a silent edit');
+  assert.equal(budget.maximumError, '1600kB');
 
-  const parseKb = (value) => Number(String(value).replace(/kB$/, '')) * 1000;
-  const parseMb = (value) => Number(String(value).replace(/MB$/, '')) * 1000 * 1000;
-  assert.ok(parseKb(budget.maximumWarning) < parseMb(budget.maximumError), 'maximumWarning must stay under maximumError');
+  // Both budgets are written in the units `@angular/build` prints, where a kB is 1000 bytes and
+  // an MB is 1000 kB. The error budget moved from `1MB` to `1600kB` when Epic 4 and Epic 6's
+  // clients merged, so the parser reads either unit rather than one each.
+  const parseSize = (value) => {
+    const text = String(value);
+    if (text.endsWith('MB')) return Number(text.replace(/MB$/, '')) * 1000 * 1000;
+    return Number(text.replace(/kB$/, '')) * 1000;
+  };
+  assert.ok(parseSize(budget.maximumWarning) < parseSize(budget.maximumError), 'maximumWarning must stay under maximumError');
 });
 
 // DW-215 precedent: every declared dependency is an exact `x.y.z`, `save-exact=true` in `.npmrc`
