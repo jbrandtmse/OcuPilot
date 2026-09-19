@@ -14,6 +14,7 @@ import {
   declarationProblem,
   braceDelta,
   buildMirror,
+  confirmChannelProblem,
   criteriaProblem,
   entityTypesIn,
   extractClassName,
@@ -1700,5 +1701,74 @@ test('declarationProblem returns every sentence OcuPilot.Test.DeclarationCorpus 
         screens: [{ file: 'Hostile.cls', className: 'OcuPilot.Screen.Descriptor.Hostile', declaration: hostile }],
       }),
     /Hostile\.cls \(OcuPilot\.Screen\.Descriptor\.Hostile\): the declaration declares the unknown key 'banners'/
+  );
+});
+
+// DW-1121, AD-3, AD-6: the confirm channel is the descriptor's declaration, and this engine
+// returns the same sentences `OcuPilot.Screen.Registry.ConfirmChannelProblem` returns -- the pair
+// `OcuPilot.Test.Descriptor` holds on the instance side.
+//
+// Mutation (Rule 19): delete the `confirmChannelProblem` call from `buildMirror` -> the hostile
+// declaration below is mirrored verbatim and the last assertion goes red.
+test('confirmChannelProblem returns the instance-side sentences, and every shipped descriptor passes', () => {
+  const { screens, toolFields } = readSources();
+  for (const screen of screens) {
+    assert.equal(
+      confirmChannelProblem(screen.declaration, toolFields),
+      null,
+      `${screen.className}'s confirm channel passes`
+    );
+  }
+
+  const webApp = screens.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.WebAppList');
+  assert.ok(webApp !== undefined, 'the web applications list is among them');
+  const of = (overrides) => ({ ...webApp.declaration, ...overrides });
+
+  assert.equal(
+    confirmChannelProblem(of({ secretArguments: 'not an array' }), toolFields),
+    'secretArguments is not an array of strings'
+  );
+  assert.equal(
+    confirmChannelProblem(of({ secretArguments: ['a', 'a'] }), toolFields),
+    "secretArguments names 'a' twice"
+  );
+  assert.equal(
+    confirmChannelProblem(of({ fingerprintExcludes: ['NoSuchField'] }), toolFields),
+    "fingerprintExcludes names 'NoSuchField', which is not a field of this screen's write tool (AD-6)"
+  );
+  assert.equal(
+    confirmChannelProblem(of({ fingerprintExcludes: ['Timeout'] }), toolFields),
+    null,
+    'an exclusion naming a field of that tool is sound'
+  );
+
+  const withCriterion = of({
+    read: {
+      ...webApp.declaration.read,
+      criteria: {
+        fields: [{ param: 'apiKey', labelKey: 'tableColumnName', kind: 'text', maxLength: 64 }],
+      },
+    },
+  });
+  assert.equal(
+    confirmChannelProblem(withCriterion, toolFields),
+    "read.criteria names 'apiKey', whose name matches the credential pattern and which " +
+      'secretArguments does not declare (AD-3)'
+  );
+  assert.equal(
+    confirmChannelProblem({ ...withCriterion, secretArguments: ['apiKey'] }, toolFields),
+    null,
+    'declaring it is what admits it'
+  );
+
+  // The generator refuses to emit it at all, which is the assertion that makes this rule part of
+  // the build rather than a function nothing calls.
+  assert.throws(
+    () =>
+      buildMirror({
+        ...readSources(),
+        screens: [{ file: 'Hostile.cls', className: 'OcuPilot.Screen.Descriptor.Hostile', declaration: withCriterion }],
+      }),
+    /read\.criteria names 'apiKey'/
   );
 });

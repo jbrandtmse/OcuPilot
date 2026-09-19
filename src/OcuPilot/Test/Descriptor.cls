@@ -77,6 +77,51 @@ Method TestTheWebApplicationsListValidatesAndNamesItsClassicPageInItsOwnCase()
     Do $$$AssertTrue($IsObject(tCompiled), "which is a compiled class on this instance, found under the declaration's own case")
 }
 
+/// <p>DW-1121, AD-3, AD-6 -- the confirm channel is the descriptor's declaration, and a
+/// credential-named field it does not declare is refused where it is declared. Without this rule
+/// <code>secretArguments</code> is a list nothing reads, which is the inversion AD-3 forbids:
+/// the schema layer advisory and the name pattern the real defense.</p>
+/// <p><b>Every shipped descriptor passes it</b>, and the two malformed shapes and the planted
+/// credential-named criterion are refused with the sentence
+/// <file>ui/tools/screen-mirror.mjs</file>'s own <code>confirmChannelProblem</code> returns for the
+/// same input.</p>
+/// <p>Mutation (Rule 19): restore <method>SecretArguments</method> on
+/// <class>OcuPilot.Kernel.Shell.ReadTool</class> and plant a credential-named criterion on a
+/// shipped descriptor -- the refusal below is what bites, and without it the declaration would be
+/// overruled by an intermediate class with nothing noticing.</p>
+Method TestTheConfirmChannelRefusesACredentialNamedFieldItDoesNotDeclare()
+{
+    Set tSC = $ClassMethod("OcuPilot.Screen.Descriptor.WebAppList", "DeclarationJson", .tSound)
+    Do $$$AssertStatusOK(tSC, "the web applications declaration parses")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tSound), "", "and its two declared lists are sound")
+
+    Set tBad = ##class(%DynamicAbstractObject).%FromJSON(tSound.%ToJSON())
+    Do tBad.%Set("secretArguments", "not an array")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "secretArguments is not an array of strings", "a secretArguments that is not an array is refused")
+
+    Set tBad = ##class(%DynamicAbstractObject).%FromJSON(tSound.%ToJSON())
+    Do tBad.%Set("fingerprintExcludes", ["NoSuchField"])
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "fingerprintExcludes names 'NoSuchField', which is not a field of this screen's write tool (AD-6)", "an exclusion covering nothing is refused")
+
+    Set tBad = ##class(%DynamicAbstractObject).%FromJSON(tSound.%ToJSON())
+    Do tBad.%Set("fingerprintExcludes", ["Timeout"])
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "", "while one naming a field of that tool is sound")
+
+    Set tBad = ##class(%DynamicAbstractObject).%FromJSON(tSound.%ToJSON())
+    Do tBad.%Get("read").%Set("criteria", {"fields": [{"param": "apiKey", "labelKey": "tableColumnName", "kind": "text", "maxLength": 64}]})
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "read.criteria names 'apiKey', whose name matches the credential pattern and which secretArguments does not declare (AD-3)", "a credential-named criterion the declaration does not hold is refused")
+    Do tBad.%Set("secretArguments", ["apiKey"])
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "", "and declaring it is what admits it")
+
+    Set tSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tAll)
+    Do $$$AssertStatusOK(tSC, "every shipped descriptor enumerates")
+    For tI = 1:1:$ListLength(tAll) {
+        Set tClass = $List(tAll, tI)
+        Do $ClassMethod(tClass, "DeclarationJson", .tOne)
+        Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tOne), "", tClass _ ": passes the confirm-channel rule")
+    }
+}
+
 /// <p>Story 6.1 -- the REST API explorer and the OpenAPI document viewer pass the read, criteria and
 /// classic-link rules; their routes and tool identifiers resolve to them; both read through the
 /// <code>mgmnt</code> source in the route's namespace scope, over <code>rest-service</code> entities

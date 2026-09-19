@@ -669,12 +669,43 @@ ClassMethod DeniedContent(pFailedPair As %String) As %String [ Private ]
 
 /// <p>The content of an error <code>tool_result</code>: <code>{code}</code>, plus
 /// <code>detail</code> when <var>pDetail</var> is an object (AD-39).</p>
+/// <p><b>A <code>detail.violations[]</code> member reaches the model as <code>{field, code}</code>
+/// alone.</b> A validation envelope's violation carries <code>{field, code, reason}</code>, and the
+/// <code>reason</code> is the screen's half: a tool result renders the machine half, so the written
+/// sentence is projected out here rather than at each producer. Every other detail key travels
+/// unchanged, and <var>pDetail</var> itself is never modified -- the ledger and the progress step
+/// read the same object after this returns.</p>
 ClassMethod ErrorContent(pCode As %String, pDetail As %DynamicObject = "") As %String
 {
     Set tContent = {}
     Do tContent.%Set("code", pCode, "string")
-    If $IsObject(pDetail) Do tContent.%Set("detail", pDetail)
+    If $IsObject(pDetail) Do tContent.%Set("detail", ..ProjectedDetail(pDetail))
     Quit tContent.%ToJSON()
+}
+
+/// <p>A copy of <var>pDetail</var> whose <code>violations</code> array, when it has one, holds
+/// <code>{field, code}</code> objects alone (AD-39, DW-450). A violation that is not an object is
+/// dropped, since a tool result can carry no shape the model would have to interpret.</p>
+ClassMethod ProjectedDetail(pDetail As %DynamicObject) As %DynamicObject [ Private ]
+{
+    Set tOut = pDetail
+    Try {
+        If pDetail.%GetTypeOf("violations") '= "array" Quit
+        Set tOut = ##class(%DynamicAbstractObject).%FromJSON(pDetail.%ToJSON())
+        Set tProjected = []
+        Set tIterator = tOut.%Get("violations").%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tViolation) {
+            If '$IsObject(tViolation) || 'tViolation.%IsA("%Library.DynamicObject") Continue
+            Set tRow = {}
+            Do tRow.%Set("field", tViolation.%Get("field"), "string")
+            Do tRow.%Set("code", tViolation.%Get("code"), "string")
+            Do tProjected.%Push(tRow)
+        }
+        Do tOut.%Set("violations", tProjected)
+    } Catch ex {
+        Set tOut = pDetail
+    }
+    Quit tOut
 }
 
 /// <p><var>pResult</var> within both caps, serialized into <var>pJson</var>. A <code>rows</code>

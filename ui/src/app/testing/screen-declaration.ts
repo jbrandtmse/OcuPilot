@@ -28,6 +28,8 @@ export function screenDeclaration(overrides: Partial<ScreenDeclaration> = {}): S
     parentScope: '',
     id: { kind: 'single', parts: [] },
     context: { fields: [], secretFields: [] },
+    secretArguments: [],
+    fingerprintExcludes: [],
     primaryAction: { id: '', selfProtection: '' },
     rowActions: [],
     emptyStateKey: '',

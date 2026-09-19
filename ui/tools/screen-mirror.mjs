@@ -37,6 +37,8 @@
  */
 
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
+
+import { isCredentialName } from './credential-pattern.mjs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -48,6 +50,7 @@ export const DESCRIPTOR_DIR = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Desc
 export const ENTITY_TYPE_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'EntityType.cls');
 export const SCOPE_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'Scope.cls');
 export const MIRROR_PATH = join(REPO_ROOT, 'ui', 'src', 'app', 'core', 'screens.generated.ts');
+export const TOOL_FIELDS_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'ToolFields.cls');
 
 /** The abstract base lives in the descriptor package and declares no screen. */
 const BASE_FILE = 'Base.cls';
@@ -254,7 +257,100 @@ export function readSources({ descriptorDir = DESCRIPTOR_DIR, areaSource = AREA_
   }
   screens.sort((a, b) => (a.className < b.className ? -1 : a.className > b.className ? 1 : 0));
 
-  return { entityTypes, scopeWords, archetypes, areas, screens };
+  const toolFieldsText = readFileSync(TOOL_FIELDS_SOURCE, 'utf8');
+  const toolFieldsBody = extractXData(toolFieldsText, 'Tools');
+  if (toolFieldsBody === null) throw new Error(`${TOOL_FIELDS_SOURCE} carries no 'XData Tools' block`);
+  const toolFields = parseXDataJson(toolFieldsBody, TOOL_FIELDS_SOURCE, 'Tools');
+
+  return { entityTypes, scopeWords, archetypes, areas, screens, toolFields };
+}
+
+/**
+ * What is wrong with `declaration`'s `secretArguments` and `fingerprintExcludes`, or `null`
+ * (AD-3, AD-6) -- the same sentences `OcuPilot.Screen.Registry.ConfirmChannelProblem` returns.
+ *
+ * Both are optional arrays of non-empty, unique strings. Every `fingerprintExcludes` path names a
+ * field of this screen's write tool, so an exclusion cannot quietly cover nothing. And a declared
+ * criterion, or a settable string field of that tool, whose name matches the credential pattern
+ * and is absent from `secretArguments` is refused (DW-1121): it is a secret the confirm channel
+ * would otherwise carry in clear.
+ *
+ * `toolFields` is the generated `ToolFields.cls` block; a caller that supplies none (every fixture
+ * in `screen-mirror.test.mjs`) is read as "this screen owns no write tool", which is what a
+ * descriptor with no entry means anyway.
+ */
+export function confirmChannelProblem(declaration, toolFields = {}) {
+  const secrets = stringListProblem(declaration, 'secretArguments');
+  if (typeof secrets === 'string') return secrets;
+  const excludes = stringListProblem(declaration, 'fingerprintExcludes');
+  if (typeof excludes === 'string') return excludes;
+
+  const rows = toolFieldRows(declaration.toolIdentifier, toolFields);
+  for (const path of excludes) {
+    if (!(path in rows)) {
+      return `fingerprintExcludes names '${path}', which is not a field of this screen's write tool (AD-6)`;
+    }
+  }
+  const criteria = declaredCriterionParams(declaration);
+  const criterionFault = credentialNameProblem(criteria, secrets, 'read.criteria');
+  if (criterionFault !== null) return criterionFault;
+  const settable = Object.keys(rows).filter((path) => rows[path]);
+  return credentialNameProblem(settable, secrets, "the write tool's settable fields");
+}
+
+/** `declaration[key]` as an array of non-empty unique strings, or a refusal sentence. */
+function stringListProblem(declaration, key) {
+  const value = declaration[key];
+  if (value === undefined || value === null) return [];
+  if (!Array.isArray(value)) return `${key} is not an array of strings`;
+  const seen = [];
+  for (const entry of value) {
+    if (typeof entry !== 'string' || entry === '') return `${key} holds an entry that is not a non-empty string`;
+    if (seen.includes(entry)) return `${key} names '${entry}' twice`;
+    seen.push(entry);
+  }
+  return seen;
+}
+
+/** The parameter names `declaration`'s read declares as server-search criteria. */
+function declaredCriterionParams(declaration) {
+  const read = declaration.read;
+  if (!isObject(read) || !isObject(read.criteria) || !Array.isArray(read.criteria.fields)) return [];
+  return read.criteria.fields
+    .filter((field) => isObject(field) && typeof field.param === 'string' && field.param !== '')
+    .map((field) => field.param);
+}
+
+/**
+ * The classified rows of the write tool `identifier` owns, as `{path: isSettableStringLiteral}`.
+ * A tool name's first two segments are its screen's `toolIdentifier`.
+ */
+function toolFieldRows(identifier, toolFields) {
+  const rows = {};
+  if (typeof identifier !== 'string' || identifier === '' || !isObject(toolFields)) return rows;
+  for (const [name, entry] of Object.entries(toolFields)) {
+    if (name.split('.').slice(0, 2).join('.') !== identifier) continue;
+    if (!isObject(entry) || !Array.isArray(entry.fields)) continue;
+    for (const field of entry.fields) {
+      if (!isObject(field) || typeof field.path !== 'string') continue;
+      rows[field.path] =
+        field.class === 'ordinary' && field.shape === 'literal' && field.templateType === 'string';
+    }
+  }
+  return rows;
+}
+
+/** The first name matching the credential pattern that `secrets` does not declare, as a refusal. */
+function credentialNameProblem(names, secrets, where) {
+  for (const name of names) {
+    if (!isCredentialName(name)) continue;
+    if (secrets.includes(name)) continue;
+    return (
+      `${where} names '${name}', whose name matches the credential pattern and which ` +
+      'secretArguments does not declare (AD-3)'
+    );
+  }
+  return null;
 }
 
 /**
@@ -394,6 +490,8 @@ export const DECLARATION_KEYS = [
   'parentScope',
   'id',
   'context',
+  'secretArguments',
+  'fingerprintExcludes',
   'primaryAction',
   'rowActions',
   'emptyStateKey',
@@ -1706,7 +1804,7 @@ export function declaredStringKeys(declaration) {
   return keys.filter((key) => typeof key === 'string' && key !== '');
 }
 
-export function buildMirror({ entityTypes, scopeWords, archetypes, areas, screens }) {
+export function buildMirror({ entityTypes, scopeWords, archetypes, areas, screens, toolFields = {} }) {
   const known = new Set(entityTypes);
   const knownScopes = new Set(scopeWords ?? []);
   const archetypeKeys = (archetypes ?? []).map((archetype) => archetype.key);
@@ -1802,6 +1900,10 @@ export function buildMirror({ entityTypes, scopeWords, archetypes, areas, screen
     if (criteriaFault !== null) {
       throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${criteriaFault}`);
     }
+    const confirmFault = confirmChannelProblem(screen.declaration, toolFields);
+    if (confirmFault !== null) {
+      throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${confirmFault}`);
+    }
     const bannerFault = bannerProblem(screen.declaration);
     if (bannerFault !== null) {
       throw new Error(`src/OcuPilot/Screen/Descriptor/${screen.file} (${screen.className}): ${bannerFault}`);
@@ -1858,6 +1960,10 @@ export function buildMirror({ entityTypes, scopeWords, archetypes, areas, screen
     banner: screen.declaration.banner ?? null,
     tab: screen.declaration.tab ?? null,
     rowTarget: screen.declaration.rowTarget ?? null,
+    // Defaulted for the reason `read` is: both keys are optional (AD-3, AD-6), every descriptor
+    // written before them declares neither, and the mirror's two fields are not optional.
+    secretArguments: screen.declaration.secretArguments ?? [],
+    fingerprintExcludes: screen.declaration.fingerprintExcludes ?? [],
   }));
 
   const builtArchetypeKeys = archetypeKeys.filter((key) =>
@@ -2172,6 +2278,10 @@ export interface ScreenDeclaration {
   readonly parentScope: string;
   readonly id: IdAccessor;
   readonly context: ContextDeclaration;
+  /** The top-level argument names this screen's write tools take as secret (AD-3, AD-6). */
+  readonly secretArguments: readonly string[];
+  /** The payload paths a proposal's fingerprint leaves out (AD-6); the default is everything else. */
+  readonly fingerprintExcludes: readonly string[];
   readonly primaryAction: ActionDeclaration;
   readonly rowActions: readonly ActionDeclaration[];
   readonly emptyStateKey: string;

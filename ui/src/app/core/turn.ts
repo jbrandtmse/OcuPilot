@@ -36,6 +36,7 @@
  */
 
 import type { ApiService, JsonResult } from './api';
+import type { ChangeBus } from './change-bus';
 import type { ScreenContextPayload } from './screen-context';
 import type { NavigationKind, TokenStorage } from './token-store';
 
@@ -109,6 +110,45 @@ export interface TurnErrorInfo {
   readonly reason: string;
 }
 
+/** The one proposal state a card is live in (`OcuPilot.Kernel.State.Propose`'s `STATELIVE`). */
+export const PROPOSAL_LIVE_STATE = 'live';
+
+/** A proposal's scoped target (AD-13), as the instance minted it. */
+export interface TurnProposalTarget {
+  readonly type: string;
+  readonly scope: string;
+  readonly id: string;
+}
+
+/** One changed field of a proposal's diff, as the instance computed it. */
+export interface TurnProposalDiffRow {
+  readonly field: string;
+  readonly before: string;
+  readonly after: string;
+}
+
+/**
+ * One proposal the turn minted (AD-6), read off the progress payload.
+ *
+ * **Every value here came from the instance.** The client authors no proposal, no diff and no
+ * payload: it reads what the mint stored, publishes the two lifecycle events the auto-refresh
+ * pause rides on (AD-43), and renders what Story 5.2 draws. `expiresAt` is converted to epoch
+ * milliseconds here because that is what `ChangeBus` takes; `0` means the instance's timestamp
+ * could not be read, and the bus substitutes AD-6's own ten minutes for it.
+ */
+export interface TurnProposal {
+  readonly proposalId: string;
+  readonly target: TurnProposalTarget;
+  readonly expiresAt: number;
+  readonly tool: string;
+  readonly changed: readonly TurnProposalDiffRow[];
+  readonly unchangedCount: number;
+  readonly rationale: string;
+  readonly expectedImpact: string;
+  readonly reverse: string;
+  readonly state: string;
+}
+
 /**
  * A pending navigation directive (Story 4.7, AD-11 rule 3): the server's own answer to
  * `OcuPilot.Kernel.State.Turn.GuardedView`'s `navigation?` key, carried only while it is paired
@@ -132,6 +172,9 @@ export interface TurnEntry {
   readonly error: TurnErrorInfo | null;
   readonly steps: readonly TurnStep[];
   readonly stepsDropped: number;
+  /** The proposals this turn minted (AD-6). Empty for a restored entry: the conversation read
+   * carries none, and a proposal restored from a reload is always expired anyway. */
+  readonly proposals: readonly TurnProposal[];
   /** True only for the turn this tab is currently running. Never true for a restored entry. */
   readonly live: boolean;
 }
@@ -239,6 +282,61 @@ function parseNavigation(value: unknown, steps: readonly TurnStep[]): TurnNaviga
   };
 }
 
+function parseProposalTarget(value: unknown): TurnProposalTarget {
+  const row = asRecord(value);
+  if (row === null) return { type: '', scope: '', id: '' };
+  return { type: textAt(row, 'type'), scope: textAt(row, 'scope'), id: textAt(row, 'id') };
+}
+
+function parseProposalDiff(value: unknown): TurnProposalDiffRow[] {
+  if (!Array.isArray(value)) return [];
+  const rows: TurnProposalDiffRow[] = [];
+  for (const raw of value) {
+    const row = asRecord(raw);
+    if (row === null) continue;
+    rows.push({ field: textAt(row, 'field'), before: textAt(row, 'before'), after: textAt(row, 'after') });
+  }
+  return rows;
+}
+
+/**
+ * One `proposals[]` entry, or `null` when it carries no id or no routable target.
+ *
+ * A proposal with no id cannot be published (`ChangeBus.publish` refuses one), and one whose
+ * target is not a complete triple cannot be routed to a screen -- so both are dropped here rather
+ * than reaching a publisher that would have to check again.
+ */
+function parseProposal(value: unknown): TurnProposal | null {
+  const row = asRecord(value);
+  if (row === null) return null;
+  const proposalId = textAt(row, 'proposalId');
+  const target = parseProposalTarget(row['target']);
+  if (proposalId === '' || target.type === '' || target.scope === '' || target.id === '') return null;
+  const expiresAt = Date.parse(textAt(row, 'expiresAt'));
+  return {
+    proposalId,
+    target,
+    expiresAt: Number.isFinite(expiresAt) ? expiresAt : 0,
+    tool: textAt(row, 'tool'),
+    changed: parseProposalDiff(row['changed']),
+    unchangedCount: numberAt(row, 'unchangedCount'),
+    rationale: textAt(row, 'rationale'),
+    expectedImpact: textAt(row, 'expectedImpact'),
+    reverse: textAt(row, 'reverse'),
+    state: textAt(row, 'state'),
+  };
+}
+
+export function parseProposals(value: unknown): TurnProposal[] {
+  if (!Array.isArray(value)) return [];
+  const proposals: TurnProposal[] = [];
+  for (const raw of value) {
+    const proposal = parseProposal(raw);
+    if (proposal !== null) proposals.push(proposal);
+  }
+  return proposals;
+}
+
 function parseError(value: unknown): TurnErrorInfo | null {
   const row = asRecord(value);
   if (row === null) return null;
@@ -285,6 +383,7 @@ function parseRestoredEntry(value: unknown): TurnEntry | null {
     error,
     steps: settledSteps(parseSteps(row['steps']), error),
     stepsDropped: numberAt(row, 'stepsDropped'),
+    proposals: [],
     live: false,
   };
 }
@@ -337,6 +436,13 @@ export interface TurnStoreOptions {
   readonly schedule?: (run: () => void, delayMs: number) => void;
   /** The poll interval in ms. Defaults to 1,000 (Boundaries & Constraints). */
   readonly pollMs?: number;
+  /**
+   * The one client bus (AD-14, AD-43). Given, this store publishes `proposal-open` the first time
+   * a poll carries a live proposal and `proposal-closed` when that id leaves a poll or turns
+   * terminal, which is the channel the auto-refresh pause rides on. Optional, and the same shape
+   * `AgentStatus` already takes, so every existing caller and every existing test is unchanged.
+   */
+  readonly bus?: ChangeBus;
 }
 
 export class TurnStore {
@@ -344,6 +450,10 @@ export class TurnStore {
   private readonly storage: TokenStorage;
   private readonly schedule: (run: () => void, delayMs: number) => void;
   private readonly pollMs: number;
+  private readonly bus: ChangeBus | null;
+
+  /** The proposals this store has published `proposal-open` for and not yet closed, by id. */
+  private readonly openProposals = new Map<string, TurnProposal>();
 
   private conversationIdValue: string | null = null;
   private entriesValue: TurnEntry[] = [];
@@ -388,6 +498,7 @@ export class TurnStore {
         setTimeout(run, delayMs);
       });
     this.pollMs = options.pollMs ?? 1000;
+    this.bus = options.bus ?? null;
 
     const kind = options.navigationType();
     const continuesThisTab = kind === 'reload' || kind === 'back_forward';
@@ -558,6 +669,7 @@ export class TurnStore {
       error: null,
       steps: [],
       stepsDropped: 0,
+      proposals: [],
       live: true,
     };
     this.notify();
@@ -608,8 +720,11 @@ export class TurnStore {
     return true;
   }
 
-  /** Sign-out: drop the id, the transcript and any turn in flight (Boundaries & Constraints). */
+  /** Sign-out: drop the id, the transcript and any turn in flight (Boundaries & Constraints).
+   * Every proposal this store opened is closed first, so no screen is left paused on a diff the
+   * signed-out session can no longer show. */
   endSession(): void {
+    this.publishProposals([]);
     this.pollGeneration += 1;
     this.busyValue = false;
     this.lockedValue = false;
@@ -733,13 +848,64 @@ export class TurnStore {
     // below runs before `finalizeLive` clears it -- so subscribers would otherwise see a live
     // directive for a turn that has already ended.
     this.pendingNavigationValue = isTerminalState(state) ? null : parseNavigation(body['navigation'], steps);
+    const proposals = parseProposals(body['proposals']);
     if (this.liveEntryValue !== null) {
-      this.liveEntryValue = { ...this.liveEntryValue, state, steps, stepsDropped, reply, error };
+      this.liveEntryValue = { ...this.liveEntryValue, state, steps, stepsDropped, reply, error, proposals };
       this.notify();
     }
+    // Published after the store's own state is settled and its subscribers told, so a screen
+    // reacting to the pause reads the same entry the panel is rendering.
+    this.publishProposals(proposals);
     if (!isTerminalState(state)) return false;
     this.finalizeLive(state, reply, error);
     return true;
+  }
+
+  /**
+   * Publish what changed about this turn's proposals since the last poll.
+   *
+   * **A proposal opens once and closes once.** The first poll carrying a live proposal publishes
+   * `proposal-open` with the instance's own expiry; a later poll that no longer carries that id,
+   * or carries it in a terminal state, publishes `proposal-closed`. An id already open is not
+   * re-opened, because the pause is held by a set and a second open for one id would be a pause
+   * one close could not lift.
+   *
+   * **A turn that ends closes nothing.** A proposal outlives its turn by design (AD-6): it stays
+   * confirmable until it expires or the user decides, and polling simply stops. The pause is
+   * lifted by the expiry deadline `RefreshService` already arms, by Story 5.3's confirm, or by
+   * the first poll of the next turn -- which carries none of the previous turn's ids, and so
+   * closes them all, which is the "a typed message cancels every live proposal" rule arriving
+   * through the same channel rather than as a second mechanism.
+   */
+  private publishProposals(proposals: readonly TurnProposal[]): void {
+    const bus = this.bus;
+    if (bus === null) return;
+    const live = new Set<string>();
+    for (const proposal of proposals) {
+      if (proposal.state !== PROPOSAL_LIVE_STATE) continue;
+      live.add(proposal.proposalId);
+      if (this.openProposals.has(proposal.proposalId)) continue;
+      this.openProposals.set(proposal.proposalId, proposal);
+      bus.publish({
+        kind: 'proposal-open',
+        type: proposal.target.type,
+        scope: proposal.target.scope,
+        id: proposal.target.id,
+        proposalId: proposal.proposalId,
+        expiresAt: proposal.expiresAt,
+      });
+    }
+    for (const [proposalId, open] of [...this.openProposals]) {
+      if (live.has(proposalId)) continue;
+      this.openProposals.delete(proposalId);
+      bus.publish({
+        kind: 'proposal-closed',
+        type: open.target.type,
+        scope: open.target.scope,
+        id: open.target.id,
+        proposalId,
+      });
+    }
   }
 
   /** Move the live entry into history with its final outcome, and drop the live slot. */

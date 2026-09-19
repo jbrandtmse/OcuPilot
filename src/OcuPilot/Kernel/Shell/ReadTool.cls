@@ -4,6 +4,9 @@
 /// <p>A shell read takes no arguments and declares no pairs of its own: what it reads is what the
 /// router's gate already admits the caller to read over HTTP, and each payload evaluates its own
 /// per-entry privileges in the calling process.</p>
+/// <p><b>It answers no secret-argument classification</b> (AD-3, DW-1121). Each concrete shell read
+/// declares its own, so the next subclass inherits no answer and is refused when the tools are
+/// advertised rather than inheriting a "none" it never made.</p>
 Class OcuPilot.Kernel.Shell.ReadTool Extends OcuPilot.Screen.Tool.Base [ Abstract ]
 {
 
@@ -13,13 +16,6 @@ Parameter KIND = "read";
 ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
 {
     Quit {"type": "object", "properties": {}, "required": [], "additionalProperties": false}
-}
-
-/// <p>Declared: none (AD-3). A shell read takes no arguments at all.</p>
-ClassMethod SecretArguments(pDescriptor As %String = "", Output pDeclared As %Boolean) As %List
-{
-    Set pDeclared = 1
-    Quit ""
 }
 
 /// <p>The shell read payload this tool answers. Each shell tool names its own.</p>

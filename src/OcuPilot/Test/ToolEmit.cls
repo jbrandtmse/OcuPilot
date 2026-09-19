@@ -177,6 +177,13 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
                 Set tOtherAdded = $ClassMethod(..#REGISTRY, "ArgumentPairs", tTool, {"namespace": (tOther), "date": "09/16/2026"}, .tOtherResolved)
                 Do $$$AssertTrue(tOtherResolved && $ListFind(tOtherAdded, $ListBuild(tOtherResource, "WRITE")) && '$ListFind(tOtherAdded, $ListBuild(tResource, "WRITE")), tTool.name _ ": a call naming " _ tOther _ " adds that namespace's database pairs, not this one's")
             }
+        } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Screen.Tool.Write") {
+            ; Story 5.1: a write tool is a class of its own, so its pairs are its descriptor's plus
+            ; the permission the write itself needs (AD-8). The addition is the point -- a write
+            ; tool that required only what the screen's read requires would let a reader propose.
+            Set tExpected = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(tTool.class, "DESCRIPTORCLASS"), .tExpectedResolved)
+            Do $$$AssertTrue($ListLength(tExpected) > 0, tTool.name _ ": its screen declares pairs")
+            Set tExpected = tExpected _ $ListBuild($ListBuild($Parameter(tTool.class, "WRITERESOURCE"), $Parameter(tTool.class, "WRITEPERMISSION")))
         } ElseIf $ClassMethod(tTool.class, "%Extends", "OcuPilot.Kernel.Shell.ReadTool") {
             Set tExpected = ""
         } ElseIf tTool.class = "OcuPilot.Screen.Tool.Navigate" {
@@ -191,7 +198,7 @@ Method TestEveryLiveToolRequiresItsScreensPairs()
             Do $$$AssertTrue(0, tTool.name _ ": a live tool of a source this test does not know, " _ tTool.class)
             Continue
         }
-        Do $$$AssertEquals(tPairs, tExpected, tTool.name _ ": requires exactly its screen's pairs")
+        Do $$$AssertEquals(tPairs, tExpected, tTool.name _ ": requires exactly its screen's pairs, plus its own write permission where it has one")
         Do $$$AssertEquals(tAdded, tExpectedAdded, tTool.name _ ": and exactly the pairs its arguments add")
     }
 }

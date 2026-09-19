@@ -2,8 +2,8 @@
 title: 'The proposal is minted on the instance, from a fresh read'
 type: 'feature'
 created: '2026-09-19'
-status: 'ready-for-dev'
-baseline_revision: '966ec611a161f6682ac3c452e298b855887edd64'
+status: 'in-review'
+baseline_revision: '3f002a9db607e0d74d1ba8bcdb3fe78a54dff75d'
 baseline_commit: '966ec611a161f6682ac3c452e298b855887edd64'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -317,6 +317,14 @@ allowed files), `check_restraint_containment` :792 (a restraint code is produced
 
 ## Spec Change Log
 
+- 2026-09-19, lead: **the first implement attempt was killed mid-run by an account-level API rate
+  limit**, after its implementation pass but before its four self-review layers ran (the spec was
+  left at `status: in-review`). Its output was kept, not discarded: 502 classes compile clean on
+  slot A, every artefact and member this section names exists, no contended path was touched and
+  `core/strings.ts` is unmodified. It is therefore **unreviewed draft completed by the lead**, and
+  it goes through the full review loop from scratch rather than inheriting a self-review it never
+  had. No self-review finding count is recorded for this story, because none was produced.
+
 ## Review Triage Log
 
 ## Design Notes
@@ -478,6 +486,62 @@ minimum set:
   observed, and the `RefreshService` integration AC red on `paused()`.
 - return the wrong scope from the mint's `EntityRef.Key` -> the `RefreshService` integration AC red,
   because the event no longer matches the bound screen's scope.
+
+**Applied.** Each was applied alone, observed red, reverted, and the tree confirmed identical to
+the pre-mutation snapshot (`git status --short` and `git diff --stat`) afterwards.
+
+- mutation: `Proposal.Mint.Merge` drops `ProbeOnly` from the merged payload ->
+  `Test.Proposal.TestThePayloadCarriesEveryPropertyTheFreshReadReturned` red, naming the property.
+- mutation: `Proposal.Mint.Merge` sets a settable field the fresh read never carried ->
+  `Test.Proposal.TestAFieldTheFreshReadDidNotCarryIsRefusedRatherThanAdded` red.
+- mutation: `Proposal.Fingerprint.Canonical` stops skipping an excluded path ->
+  `Test.Proposal.TestAnExcludedPathIsOutsideTheFingerprint` and
+  `TestTheMintTakesItsExclusionsFromTheDescriptor` red.
+- mutation: `Proposal.Fingerprint.Canonical` emits members in insertion order ->
+  `Test.Proposal.TestTheFingerprintIsDeterministicAcrossKeyOrder` red.
+- mutation: `WebAppUpdate.ExcludedFields` answers empty ->
+  `Test.ToolWrite.TestARoleGrantIsRefusedAsAnUnknownArgument` red on the exclusion. Classifying the
+  subtree `ordinary` on top of it does **not** admit it: a nested path is outside the flat advertised
+  schema, so three independent guards keep a role grant out and the `unassigned` assertion is pinned
+  by outcome rather than by a one-line mutation.
+- mutation: `Proposal.Write.Claim` drops the burned branch ->
+  `Test.ProposalWrite.TestABurnedTokenIsRefused` red alone.
+- mutation: it drops the expiry branch -> `TestAnExpiredProposalIsRefused` red alone.
+- mutation: it drops the user branch -> `TestAnotherUsersTokenIsRefused` red alone.
+- mutation: `ABNORMALSTATES` loses `stopped` ->
+  `TestATurnThatEndedAbnormallyLeavesItsProposalsUnconfirmable` red alone.
+- mutation: `ABNORMALSTATES` gains `completed` -> `TestAProposalOnACompletedTurnIsClaimable` red.
+- mutation: `PROPOSALEXPIRYSECONDS` raised to 1200 ->
+  `TestRetentionOutlivesTheProposalWindow` and `proposal.test.mjs`'s two constant tests red.
+- mutation: `Test.ToolDispatchProbe.ForceRestraint("clear")` left set ->
+  `Test.ToolWrite.TestAHeldUserIsDroppedByTheRealRestraintVerdict` red.
+- mutation: `Dispatch.Restraint`'s two arguments swapped -> the same leg red.
+- mutation: `Dispatch.ErrorContent` renders the detail whole ->
+  `Test.ToolDispatch.TestAValidationViolationReachesTheModelAsFieldAndCodeAlone` red.
+- mutation: `Step.GuardedFinishTool` passes `""` as the text ->
+  `Test.LedgerStep.TestAToolStepStoresTheResultContentTheModelWasHanded` red.
+- mutation: `SecretArguments` restored on `Kernel/Shell/ReadTool.cls` ->
+  `Test.ToolWrite.TestTheSecretArgumentsComeFromTheDescriptor` red on the method origin; planting a
+  credential-named criterion on `WebAppList` -> `Test.Descriptor`'s confirm-channel test red and the
+  client mirror's `buildMirror` refuses to emit.
+- mutation: `TurnStore.publishProposals` omits `proposalId` -> the bus refuses the event and six
+  `proposal.test.mjs` tests red, the `RefreshService` integration among them.
+- mutation: it publishes a fixed scope -> the `RefreshService` integration test red, because the
+  event no longer matches the bound screen's scope.
+
+Three more, added with the assertions the full sweep's own two reds called for:
+
+- mutation: `Step.ApplyContent` assigns `pText` instead of capping it ->
+  `Test.LedgerStep.TestAToolStepStoresTheResultContentTheModelWasHanded`'s cap leg red alone,
+  on the length and on `Truncated`.
+- mutation: `Proposal.Mint.Merge` removes `MatchRoles` from the copied payload ->
+  `Test.ToolWrite.TestWithNothingRestrainingItTheCallMintsAProposal` red alone, on the excluded
+  subtree still travelling in the body the write will send.
+- mutation: `Api.Turn.HandleProgress` stops setting `proposals` ->
+  `Test.TurnWire.TestAStartRunsAsTheCallerAndThePollAnswersItsShape` red on the declared-key
+  roster, which is the story's only over-the-wire assertion on that key. Applied to the
+  throwaway's own source copy and reloaded there, so the repository tree stayed byte-identical
+  throughout.
 
 ## Auto Run Result
 

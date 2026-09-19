@@ -126,6 +126,11 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
     Set pOutcome("reply") = ""
     Set pOutcome("errorSeq") = 0
     Set tLastSeq = 0
+    ; The turn a tool call is being made on behalf of, stashed once for the length of the job
+    ; (AD-40). A write tool reads it to record which turn and which conversation minted a proposal;
+    ; nothing else in the loop reads it, and it is cleared on every exit so a process reused for a
+    ; later request carries no turn.
+    Do ##class(OcuPilot.Kernel.Proposal.Caller).Set(pKey, $Select($IsObject(pConvo): pConvo.ConvKey, 1: ""))
     Try {
         Set tLimits = ..LimitsClass()
         Set tCap = ..IterationCap(pDefinitionId)
@@ -253,6 +258,7 @@ ClassMethod Run(pKey As %String, pUser As %String, pDefinitionId As %String, pMe
         Set pOutcome("code") = ##class(OcuPilot.Api.Error).#TURNUNAVAILABLE
         Set pOutcome("errorSeq") = tLastSeq
     }
+    Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
     Quit tSC
 }
 
@@ -515,7 +521,11 @@ ClassMethod AnswerTools(pKey As %String, pUser As %String, pDefinitionId As %Str
                     Set tCode = ""
                 }
             }
-            Set tSC = ##class(OcuPilot.Kernel.State.Step).GuardedFinishTool(pKey, tSeq, tName, $Select(tIsError: "error", 1: "ok"), tCode, pLimitsClass, tDetail.target, tDetail.arguments, tDetail.result, tDetail.reason, tDetail.failedPair, tDetail.argumentsTruncated)
+            ; The bounded result content the model was handed, stored on the step (DW-1052). It is
+            ; the tool_result content itself -- already cut to the per-call budget by the
+            ; dispatcher -- so the panel's card shows what the model read rather than nothing. The
+            ; dispatcher-failed finish above records none: there was no result.
+            Set tSC = ##class(OcuPilot.Kernel.State.Step).GuardedFinishTool(pKey, tSeq, tName, $Select(tIsError: "error", 1: "ok"), tCode, pLimitsClass, tDetail.target, tDetail.arguments, tDetail.result, tDetail.reason, tDetail.failedPair, tDetail.argumentsTruncated, $Select($IsObject(tResult): tResult.%Get("content"), 1: ""))
             If $$$ISERR(tSC) Quit
             Set tEntry = {}
             Do tEntry.%Set("name", tName, "string")

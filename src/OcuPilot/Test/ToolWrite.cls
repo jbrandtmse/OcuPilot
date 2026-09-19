@@ -1,0 +1,256 @@
+/// <p>Pins the first write tool (Story 5.1, AD-3, AD-10, AD-22, AD-40): the registry advertises it
+/// as a <code>write</code> tool fulfilled on the instance, its schema is derived and admits no
+/// privilege subtree, the model can reach the minting path and not the claim gate, and the
+/// dispatcher's write branch is exercised through the <b>real</b> restraint verdict.</p>
+/// <p><b>What it needs from the environment:</b> OcuPilot installed, an account holding
+/// <code>%All</code>, and one web application the instance already serves --
+/// <parameter>LIVETARGET</parameter>, OcuPilot's own shell application, which is read and never
+/// written. It creates no principal and changes nothing on the instance; the only rows it writes
+/// are its own proposal and ledger rows, removed in <method>OnAfterOneTest</method>.</p>
+/// <p><b>The restraint seam is deliberately left unset</b> (DW-449). Every earlier exercise of the
+/// write branch forced a verdict, so the branch was pinned and the verdict was not: here the real
+/// <method>OcuPilot.Kernel.Restraint.Verdict</method> decides, against a per-user hold this class
+/// writes and removes.</p>
+Class OcuPilot.Test.ToolWrite Extends %UnitTest.TestCase
+{
+
+Parameter TOOL = "webapp.list.update";
+
+Parameter TOOLCLASS = "OcuPilot.Screen.Tool.WebAppUpdate";
+
+Parameter WRITEBASE = "OcuPilot.Screen.Tool.Write";
+
+Parameter REGISTRY = "OcuPilot.Screen.Tool.Registry";
+
+Parameter PROBE = "OcuPilot.Test.ToolDispatchProbe";
+
+Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
+
+/// <p>The web application every live-read test names: OcuPilot's own shell, which the instance
+/// serves and which this class only ever reads.</p>
+Parameter LIVETARGET = "/ocupilot";
+
+Parameter PROBETURN = "OcuPilotProbeToolWriteTurn";
+
+Parameter PROBECONV = "OcuPilotProbeToolWriteConv";
+
+Method OnBeforeOneTest() As %Status
+{
+    Do $ClassMethod(..#PROBE, "Reset")
+    Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
+    Quit $$$OK
+}
+
+Method OnAfterOneTest() As %Status
+{
+    Do $ClassMethod(..#PROBE, "Reset")
+    Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
+    Set tSC = ##class(OcuPilot.Test.SwitchFixture).Reset(.tHolds)
+    Do $$$AssertStatusOK(tSC, "every switch row and hold this class wrote is removed")
+    Do $$$AssertEquals(tHolds, 0, "and none survives")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Propose).GuardedDeleteForTurn(..#PROBETURN), "the probe turn's proposals are removed")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForTurn(..#PROBETURN), "and its ledger rows")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Propose).GuardedCountForTurn(..#PROBETURN, .tLeft), "the remainder is counted")
+    Do $$$AssertEquals(tLeft, 0, "and no proposal of this class survives")
+    Quit $$$OK
+}
+
+/// <p>AD-22: adding a compiled concrete tool class is the whole registration.</p>
+Method TestTheRegistryAdvertisesItAsAWriteToolFulfilledOnTheInstance()
+{
+    Set tSC = $ClassMethod(..#REGISTRY, "Resolve", ..#TOOL, .tTool)
+    Do $$$AssertStatusOK(tSC, "the registry resolves the tool by name")
+    Do $$$AssertTrue($IsObject(tTool), "and finds it")
+    Do $$$AssertEquals(tTool.%Get("kind"), "write", "it is a write tool")
+    Do $$$AssertEquals(tTool.%Get("class"), ..#TOOLCLASS, "answered by its own class")
+    Do $$$AssertEquals(tTool.%Get("descriptor"), "", "with no descriptor of the registry's choosing")
+    Do $$$AssertEquals($ClassMethod(..#REGISTRY, "FulfilmentOf", tTool), "instance", "and it is fulfilled on the instance, never in the browser")
+
+    Set tSC = $ClassMethod(..#REGISTRY, "ProviderTools", .tTools)
+    Do $$$AssertStatusOK(tSC, "the provider tool array builds")
+    Set tFound = 0
+    For tI = 1:1:+$Get(tTools) {
+        If tTools(tI, "name") = "webapp_list_update" Set tFound = tI
+    }
+    Do $$$AssertNotEquals(tFound, 0, "and it is advertised under its wire name")
+    Do $$$AssertNotEquals(tTools(tFound, "description"), "", "with a description")
+}
+
+/// <p>AD-3: the schema is the classified field list, and nothing else.</p>
+Method TestTheSchemaIsDerivedFromTheClassifiedFieldList()
+{
+    Set tSchema = $ClassMethod(..#TOOLCLASS, "InputSchema")
+    Do $$$AssertEquals(tSchema.%Get("additionalProperties"), 0, "the schema is closed")
+    Do $$$AssertEquals(tSchema.%Get("required").%Get(0), "Name", "and requires the target's name")
+    Do $$$AssertEquals(tSchema.%Get("required").%Size(), 1, "and nothing else")
+
+    Set tProperties = tSchema.%Get("properties")
+    Do $$$AssertNotEquals(tProperties.%GetTypeOf("Enabled"), "unassigned", "an ordinary boolean field is admitted")
+    Do $$$AssertEquals(tProperties.%Get("Enabled").%Get("type"), "boolean", "with its own JSON type")
+    Do $$$AssertEquals(tProperties.%Get("Resource").%Get("type"), "string", "and a string field with its")
+    Do $$$AssertEquals(tProperties.%Get("CorsAllowlist").%Get("type"), "array", "an array field is an array")
+    Do $$$AssertEquals(tProperties.%Get("CorsAllowlist").%Get("items").%Get("type"), "string", "of its element type")
+
+    Set tFields = $ClassMethod(..#TOOLCLASS, "SettableFields")
+    Do $$$AssertTrue($ListFind(tFields, "Enabled") > 0, "the settable fields are derived from the same entry")
+    Do $$$AssertEquals($ListFind(tFields, "Name"), 0, "the identifying argument is not one of them")
+    Do $$$AssertEquals($ListFind(tFields, "MatchRoles"), 0, "and neither is the role subtree")
+}
+
+/// <p>AD-10: privilege is not granted through any path, so the role subtree is not in the schema
+/// and a call carrying it is refused as an unknown argument.</p>
+/// <p>Mutation: admit <code>MatchRoles</code> in
+/// <method>OcuPilot.Screen.Tool.WebAppUpdate.InputSchema</method> -- which takes removing it from
+/// <method>ExcludedFields</method> <b>and</b> classifying the subtree <code>ordinary</code> in
+/// <class>OcuPilot.Screen.Tool.Classification</class>, because the two guards are independent --
+/// and this goes red.</p>
+Method TestARoleGrantIsRefusedAsAnUnknownArgument()
+{
+    Set tSchema = $ClassMethod(..#TOOLCLASS, "InputSchema")
+    Do $$$AssertEquals(tSchema.%Get("properties").%GetTypeOf("MatchRoles"), "unassigned", "the schema admits no role subtree")
+    Do $$$AssertTrue($ListFind($ClassMethod(..#TOOLCLASS, "ExcludedFields"), "MatchRoles") > 0, "the tool excludes it by name")
+
+    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Name": "/csp/probe", "MatchRoles": [{"MatchRole": "", "TargetRoles": ["%All"]}]}, .tProblem)
+    Do $$$AssertStatusNotOK(tSC, "a call carrying one is refused")
+    Do $$$AssertTrue(tProblem [ "MatchRoles", "naming the argument")
+
+    Set tSC = $ClassMethod(..#TOOLCLASS, "View", "", {"Name": "/csp/probe", "MatchRoles": []}, 200, .tResult, .tHttp, .tFault)
+    Do $$$AssertStatusNotOK(tSC, "and the view refuses it too")
+    Do $$$AssertEquals(tHttp, 400, "as a 400")
+    Do $$$AssertEquals(tFault.%Get("code"), ##class(OcuPilot.Api.Error).#TOOLARGUMENTS, "with the arguments code")
+}
+
+/// <p>AD-40: the model can mint and cannot apply. No path from a write tool's view reaches the
+/// claim gate.</p>
+Method TestNoPathFromAWriteToolsViewReachesTheClaimGate()
+{
+    For tClass = "OcuPilot.Screen.Tool.Write", "OcuPilot.Screen.Tool.WebAppUpdate", "OcuPilot.Kernel.Proposal.Mint", "OcuPilot.Kernel.Proposal.Fingerprint", "OcuPilot.Kernel.State.Propose" {
+        Set tSC = ##class(%Compiler.UDL.TextServices).GetTextAsString($Namespace, tClass, .tSource)
+        Do $$$AssertStatusOK(tSC, tClass _ ": its source is readable")
+        Do $$$AssertEquals($Find(tSource, "##class(OcuPilot.Kernel.Proposal.Write)"), 0, tClass _ ": names no call into the claim gate")
+        Do $$$AssertEquals($Find(tSource, """OcuPilot.Kernel.Proposal.Write"""), 0, tClass _ ": and reaches it by no dynamic name either")
+    }
+}
+
+/// <p>AD-8: the write requires what the screen requires plus the write permission.</p>
+Method TestThePairsAddTheWritePermission()
+{
+    Set tPairs = $ClassMethod(..#TOOLCLASS, "PrivilegePairs", "", .tResolved)
+    Do $$$AssertEquals(tResolved, 1, "the pairs resolve")
+    Set tSpelled = ""
+    For tI = 1:1:$ListLength(tPairs) {
+        Set tSpelled = tSpelled _ $Select(tI = 1: "", 1: ",") _ $List($List(tPairs, tI), 1) _ ":" _ $List($List(tPairs, tI), 2)
+    }
+    Do $$$AssertTrue(tSpelled [ "%Admin_Secure:USE", "the screen's own use pair is required")
+    Do $$$AssertTrue(tSpelled [ "%DB_IRISSYS:READ", "and its database read")
+    Do $$$AssertTrue(tSpelled [ "%Admin_Secure:WRITE", "and the write adds its own permission")
+}
+
+/// <p>AD-3: a write tool declares which of its arguments are secret, and takes the answer from its
+/// descriptor rather than from a constant.</p>
+Method TestTheSecretArgumentsComeFromTheDescriptor()
+{
+    Set tNames = $ClassMethod(..#TOOLCLASS, "SecretArguments", "", .tDeclared)
+    Do $$$AssertEquals(tDeclared, 1, "the tool declares the classification")
+    Do $$$AssertEquals($ListLength(tNames), 0, "and this screen declares no secret argument")
+    Do $$$AssertEquals($ListLength($ClassMethod("OcuPilot.Screen.Descriptor.WebAppList", "SecretArguments")), 0, "which is the descriptor's own answer")
+
+    Set tProbe = $ClassMethod("OcuPilot.Screen.Tool.Read", "SecretArguments", "OcuPilot.Test.ProposalScreen", .tReadDeclared)
+    Do $$$AssertEquals(tReadDeclared, 1, "a read tool declares it too")
+    Do $$$AssertTrue($ListFind(tProbe, "Password") > 0, "and reads it off the descriptor rather than answering a constant")
+
+    ; DW-1121: an abstract intermediate answers the question for every subclass below it, so the
+    ; next concrete tool would inherit a classification it never made. The two intermediates
+    ; therefore declare none of their own, and each concrete shell read declares its own.
+    Do $$$AssertEquals(..MethodOrigin("OcuPilot.Kernel.Shell.ReadTool", "SecretArguments"), "OcuPilot.Screen.Tool.Base", "the shell read base declares no secret-argument classification of its own")
+    For tClass = "OcuPilot.Kernel.Shell.InstanceRead", "OcuPilot.Kernel.Shell.NamespacesRead", "OcuPilot.Kernel.Shell.PrivilegesRead" {
+        Do $$$AssertEquals(..MethodOrigin(tClass, "SecretArguments"), tClass, tClass _ ": declares its own")
+    }
+}
+
+/// <p>DW-449, first leg: under a restraint the <b>real</b> verdict decides, the write branch drops
+/// the call before any mint, and the verdict's own code is the tool result.</p>
+/// <p>Mutation: leave <method>OcuPilot.Test.ToolDispatchProbe.ForceRestraint</method> set, or swap
+/// <method>OcuPilot.Kernel.Agent.Dispatch.Restraint</method>'s two arguments -- either way this
+/// goes red, because the hold below is no longer what decides.</p>
+Method TestAHeldUserIsDroppedByTheRealRestraintVerdict()
+{
+    Do $ClassMethod(..#PROBE, "SetRegistryClass", ..#REGISTRY)
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.SwitchFixture).Hold($Username, "held while this test runs", .tId), "the calling account is held")
+
+    Set tSC = ..Dispatch({"Name": (..#LIVETARGET), "Description": "probe"}, .tIsError, .tContent)
+    Do $$$AssertStatusOK(tSC, "the dispatcher answers")
+    Do $$$AssertEquals(tIsError, 1, "the call is an error result")
+    Do $$$AssertEquals(tContent.%Get("code"), ##class(OcuPilot.Api.Error).#AGENTKILLSWITCHUSER, "carrying the verdict's own code")
+    Do $$$AssertEquals($ClassMethod(..#PROBE, "Count", "restraint"), 1, "the restraint was asked exactly once")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Propose).GuardedCountForTurn(..#PROBETURN, .tCount), "the turn's proposals are counted")
+    Do $$$AssertEquals(tCount, 0, "and nothing was minted")
+}
+
+/// <p>DW-449, second leg: with nothing restraining it, the same call mints a row and the turn's
+/// progress payload carries it.</p>
+Method TestWithNothingRestrainingItTheCallMintsAProposal()
+{
+    Do $ClassMethod(..#PROBE, "SetRegistryClass", ..#REGISTRY)
+    Set tSC = ..Dispatch({"Name": (..#LIVETARGET), "Description": "OcuPilot shell, renamed by a probe that never confirms"}, .tIsError, .tContent)
+    Do $$$AssertStatusOK(tSC, "the dispatcher answers")
+    Do $$$AssertEquals(tIsError, 0, "the call succeeded")
+    Do $$$AssertNotEquals(tContent.%Get("proposalId"), "", "and the model was answered a proposal id")
+    Do $$$AssertEquals(tContent.%Get("target").%Get("type"), "web-application", "against the scoped target")
+    Do $$$AssertEquals(tContent.%Get("target").%Get("id"), ..#LIVETARGET, "the call named")
+    Do $$$AssertTrue(tContent.%Get("unchangedCount") > 0, "reporting the properties the write still sends unchanged")
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Propose).GuardedCountForTurn(..#PROBETURN, .tCount), "the turn's proposals are counted")
+    Do $$$AssertEquals(tCount, 1, "one row was minted")
+    Set tSC = ##class(OcuPilot.Kernel.State.Propose).GuardedRowsForTurn(..#PROBETURN, $Username, .tRows)
+    Do $$$AssertStatusOK(tSC, "and the turn's progress projection reads it")
+    Do $$$AssertEquals(tRows.%Size(), 1, "carrying that one proposal")
+    Do $$$AssertEquals(tRows.%Get(0).%Get("proposalId"), tContent.%Get("proposalId"), "the same one the model was told about")
+
+    ; AD-10's other half. The tool admits no role subtree, and the fresh read's own still travels
+    ; in the body the write will send (AD-4) -- a payload that dropped it would revoke this
+    ; application's role at confirm, which is the grant rule running backwards.
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Propose).GuardedByKey(tContent.%Get("proposalId"), .tFound, .tValues), "the stored row reads back")
+    Do $$$AssertEquals(tFound, 1, "and is there")
+    Set tPayload = ##class(%DynamicAbstractObject).%FromJSON($Get(tValues("payload")))
+    Kill tQuery
+    Set tQuery("name") = ..#LIVETARGET
+    Do $$$AssertStatusOK(##class(OcuPilot.Port.AdminPort).Invoke("WebApp.App", "GET", .tQuery, "", .tFresh, .tFreshHttp, .tFreshFault), "the same application reads fresh through the port")
+    Do $$$AssertNotEquals(tPayload.%GetTypeOf("MatchRoles"), "unassigned", "the payload still carries a MatchRoles the schema never admitted")
+    If tPayload.%GetTypeOf("MatchRoles") = "unassigned" Quit
+    Do $$$AssertEquals(tPayload.%Get("MatchRoles").%ToJSON(), tFresh.%Get("MatchRoles").%ToJSON(), "unchanged from the fresh read")
+}
+
+/// <p>The class <var>pClass</var> inherits method <var>pName</var> from, or <code>""</code>.</p>
+Method MethodOrigin(pClass As %String, pName As %String) As %String
+{
+    Set tMethod = ##class(%Dictionary.CompiledMethod).IDKEYOpen(pClass, pName, 0)
+    If '$IsObject(tMethod) Quit ""
+    Quit tMethod.Origin
+}
+
+/// <p>Dispatch one <code>webapp.list.update</code> call with <var>pArgs</var> through
+/// <class>OcuPilot.Test.ToolDispatchProbe</class>, inside the probe turn.
+/// <var>pContent</var> is the parsed <code>tool_result</code> content.</p>
+Method Dispatch(pArgs As %DynamicObject, Output pIsError As %Boolean, Output pContent As %DynamicObject) As %Status
+{
+    Set pIsError = 1
+    Set pContent = {}
+    Do ##class(OcuPilot.Kernel.Proposal.Caller).Set(..#PROBETURN, ..#PROBECONV)
+    Set tBlock = {}
+    Do tBlock.%Set("type", "tool_use", "string")
+    Do tBlock.%Set("id", "probe-use", "string")
+    Do tBlock.%Set("name", $ClassMethod(..#REGISTRY, "WireName", ..#TOOL), "string")
+    Do tBlock.%Set("input", pArgs)
+    Set tUses = []
+    Do tUses.%Push(tBlock)
+    Set tSC = $ClassMethod(..#PROBE, "Answer", ..#PROBETURN, $Username, "", tUses, ..#LIMITS, .tResults, .tNames, 0, 0, .tDetails, "")
+    Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
+    If $$$ISERR(tSC) Quit tSC
+    Set tResult = tResults.%Get(0)
+    Set pIsError = ''tResult.%Get("is_error")
+    Set pContent = ##class(%DynamicAbstractObject).%FromJSON(tResult.%Get("content"))
+    Quit $$$OK
+}
+
+}

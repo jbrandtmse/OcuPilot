@@ -146,18 +146,20 @@ const panel = new PanelState({ preferences, shell });
 // of it for the conversation id's own key). `restore()` is fired here, not awaited -- the same
 // "already in flight while Angular is still painting" shape the silent probe above uses -- so a
 // reload's transcript is often there by the time the panel first renders.
+// Story 1.14's three (AD-43, AD-19, AD-14): the one client bus, the one store per descriptor, and
+// the one refresh framework over both. Built here like every other core service so the command
+// bar's chip, the status bar's stamp and whatever screen binds all reach the same instance --
+// three of any of them would be three timers. The bus is constructed before the turn store
+// because that store publishes onto it (Story 5.1).
+const bus = new ChangeBus();
+
 const turn = new TurnStore({
   api,
   storage: readSessionStorage(),
   navigationType: readNavigationKind,
+  bus,
 });
 void turn.restore();
-
-// Story 1.14's three (AD-43, AD-19, AD-14): the one client bus, the one store per descriptor, and
-// the one refresh framework over both. Built here like every other core service so the command
-// bar's chip, the status bar's stamp and whatever screen binds all reach the same instance --
-// three of any of them would be three timers.
-const bus = new ChangeBus();
 const screenStores = new ScreenStores({ preferences });
 const refresh = new RefreshService({
   stores: screenStores,

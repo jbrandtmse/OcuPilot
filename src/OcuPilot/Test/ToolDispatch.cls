@@ -435,4 +435,28 @@ Method TestTheErrorToolsBoundResultConformsToItsResultSchema()
     Do ##class(OcuPilot.Test.ErrorReadStub).Clear()
 }
 
+/// <p>DW-450, AD-39 -- a validation envelope's <code>detail.violations[]</code> reaches the model as
+/// <code>{field, code}</code> and nothing more. The written <code>reason</code> is the screen's
+/// half: a tool result renders the machine half, so it is projected out once, where the content is
+/// built, rather than at each producer. Every other detail key travels unchanged, and the caller's
+/// own object is not modified -- the ledger row and the progress step read it after this
+/// returns.</p>
+/// <p>Mutation (Rule 19): leave <method>OcuPilot.Kernel.Agent.Dispatch.ErrorContent</method>
+/// rendering the detail whole -- the <code>reason</code> assertion below goes red.</p>
+Method TestAValidationViolationReachesTheModelAsFieldAndCodeAlone()
+{
+    Set tDetail = {"failedPair": "%Admin_Secure:WRITE"}
+    Do tDetail.%Set("violations", [{"field": "Enabled", "code": "AGENT.VALIDATION", "reason": "A sentence the screen renders and the model never sees."}])
+    Set tContent = ##class(%DynamicAbstractObject).%FromJSON(##class(OcuPilot.Kernel.Agent.Dispatch).ErrorContent("AGENT.VALIDATION", tDetail))
+    Set tViolation = tContent.%Get("detail").%Get("violations").%Get(0)
+    Do $$$AssertEquals(tViolation.%Get("field"), "Enabled", "the violation names its field")
+    Do $$$AssertEquals(tViolation.%Get("code"), "AGENT.VALIDATION", "and its machine code")
+    Do $$$AssertEquals(tViolation.%GetTypeOf("reason"), "unassigned", "and carries no written sentence at all")
+    Do $$$AssertEquals(tContent.%Get("detail").%Get("failedPair"), "%Admin_Secure:WRITE", "every other detail key travels unchanged")
+    Do $$$AssertEquals(tDetail.%Get("violations").%Get(0).%Get("reason"), "A sentence the screen renders and the model never sees.", "and the caller's own detail object is untouched")
+
+    Set tPlain = ##class(%DynamicAbstractObject).%FromJSON(##class(OcuPilot.Kernel.Agent.Dispatch).ErrorContent("TOOL.ARGUMENTS", {"problem": "argument 'Name' is missing (required)"}))
+    Do $$$AssertEquals(tPlain.%Get("detail").%Get("problem"), "argument 'Name' is missing (required)", "a detail with no violations is passed through as it is")
+}
+
 }

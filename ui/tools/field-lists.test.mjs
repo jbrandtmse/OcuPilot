@@ -29,7 +29,7 @@ import { extractXData } from './screen-mirror.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(here, '..', '..');
-const { lists } = readSources();
+const { lists, entries: committedEntries } = readSources();
 
 /** The emitted field at `path` for `tool`, or undefined. */
 function fieldOf(result, tool, path) {
@@ -144,7 +144,7 @@ function runInTree({ entries, toolFields }, check) {
     const toolDir = join(root, 'src', 'OcuPilot', 'Screen', 'Tool');
     mkdirSync(tools, { recursive: true });
     mkdirSync(toolDir, { recursive: true });
-    for (const name of ['field-lists.mjs', 'screen-mirror.mjs']) copyFileSync(join(here, name), join(tools, name));
+    for (const name of ['field-lists.mjs', 'screen-mirror.mjs', 'credential-pattern.mjs']) copyFileSync(join(here, name), join(tools, name));
     copyFileSync(FIELD_LISTS_SOURCE, join(toolDir, 'FieldLists.cls'));
     const classification = readFileSync(CLASSIFICATION_SOURCE, 'utf8').replace(
       /XData Entries\n\{\n[\s\S]*?\n\}\n\n\}/,
@@ -171,13 +171,22 @@ test('run as a process, --check exits 1 on a credential refusal, naming the tool
 });
 
 test('run as a process, --check exits 1 when the committed ToolFields.cls has drifted', () => {
-  runInTree({ entries: {}, toolFields: 'Class OcuPilot.Screen.Tool.ToolFields Extends %RegisteredObject\n{\n}\n' }, (run) => {
-    assert.equal(run.status, 1, `${run.stdout}${run.stderr}`);
-    assert.match(run.stderr, /ToolFields\.cls is stale/);
-  });
-  runInTree({ entries: {} }, (run) => {
+  // The committed entries, not an empty set: the drift the check exists to catch is between the
+  // two committed inputs and the committed output, so the tree this runs over has to be the
+  // committed one with only the output replaced.
+  runInTree(
+    {
+      entries: committedEntries,
+      toolFields: 'Class OcuPilot.Screen.Tool.ToolFields Extends %RegisteredObject\n{\n}\n',
+    },
+    (run) => {
+      assert.equal(run.status, 1, `${run.stdout}${run.stderr}`);
+      assert.match(run.stderr, /ToolFields\.cls is stale/);
+    }
+  );
+  runInTree({ entries: committedEntries }, (run) => {
     assert.equal(run.status, 0, `an undrifted tree passes: ${run.stdout}${run.stderr}`);
-    assert.match(run.stdout, /^field-lists: up to date; classified \d+ list\(s\), \d+ row\(s\), 0 classification entry\(ies\)\.$/m);
+    assert.match(run.stdout, /^field-lists: up to date; classified \d+ list\(s\), \d+ row\(s\), \d+ classification entry\(ies\)\.$/m);
   });
 });
 

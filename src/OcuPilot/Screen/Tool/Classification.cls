@@ -18,10 +18,67 @@
 Class OcuPilot.Screen.Tool.Classification Extends %RegisteredObject
 {
 
-/// <p>The reviewed entries. No write tool exists yet.</p>
+/// <p>The reviewed entries, one per write tool.</p>
+/// <p><b><code>webapp.list.update</code></b> classifies every classifiable row of
+/// <code>WebApp.App</code> as <code>ordinary</code> except the <code>MatchRoles</code> subtree,
+/// which is left unnamed and so emitted <code>secret</code> by the generator's fail-closed default.
+/// That subtree sets a web application's roles, which AD-10 forbids granting through any path, so
+/// no write tool may carry it into a payload, a diff or the ledger.
+/// <class>OcuPilot.Screen.Tool.WebAppUpdate</class> also excludes it by name, so the exclusion is
+/// stated where a reader of the tool looks for it as well as here.</p>
 XData Entries
 {
 {
+  "webapp.list.update": {
+    "fieldList": "WebApp.App",
+    "classification": {
+      "AutheEnabled": "ordinary",
+      "AutoCompile": "ordinary",
+      "ChangePasswordPage": "ordinary",
+      "CookiePath": "ordinary",
+      "CorsAllowlist[]": "ordinary",
+      "CorsCredentialsAllowed": "ordinary",
+      "CorsHeadersList[]": "ordinary",
+      "CSPZENEnabled": "ordinary",
+      "CSRFToken": "ordinary",
+      "DeepSeeEnabled": "ordinary",
+      "Description": "ordinary",
+      "DispatchClass": "ordinary",
+      "Enabled": "ordinary",
+      "ErrorPage": "ordinary",
+      "EventClass": "ordinary",
+      "GroupById": "ordinary",
+      "iKnowEnabled": "ordinary",
+      "InbndWebServicesEnabled": "ordinary",
+      "IsNameSpaceDefault": "ordinary",
+      "JWTAuthEnabled": "ordinary",
+      "JWTAccessTokenTimeout": "ordinary",
+      "JWTRefreshTokenTimeout": "ordinary",
+      "LockCSPName": "ordinary",
+      "LoginPage": "ordinary",
+      "NameSpace": "ordinary",
+      "Package": "ordinary",
+      "Path": "ordinary",
+      "PermittedClasses": "ordinary",
+      "Recurse": "ordinary",
+      "RedirectEmptyPath": "ordinary",
+      "Resource": "ordinary",
+      "ServeFiles": "ordinary",
+      "ServeFilesTimeout": "ordinary",
+      "SuperClass": "ordinary",
+      "Timeout": "ordinary",
+      "TraceEnabled": "ordinary",
+      "TwoFactorEnabled": "ordinary",
+      "UseCookies": "ordinary",
+      "SessionScope": "ordinary",
+      "UserCookieScope": "ordinary",
+      "WSGIAppLocation": "ordinary",
+      "WSGIAppName": "ordinary",
+      "WSGICallable": "ordinary",
+      "WSGIDebug": "ordinary",
+      "WSGIType": "ordinary"
+    }
+  }
 }
 }
 

@@ -21,8 +21,15 @@
 /// archetype it links out to nothing.</p>
 /// <p><b>The Namespace column is labelled by <code>headerNamespaceLabel</code></b>, the namespace
 /// switch's own accessible name, so the product has one word for a namespace.</p>
+/// <p><b>No argument of its write tool is secret and no payload field is left out of the
+/// fingerprint</b> (AD-3, AD-6): a web application's body carries no credential, and
+/// <code>Security.Applications</code> moves no field of its own as a side effect of a PUT. Both
+/// lists are declared empty rather than omitted, because a declaration is what the registry's
+/// credential-pattern refusal is evaluated against.</p>
 /// <p>It declares no primary or row action, so its empty state names what to do next rather than
-/// inviting the agent, and it does not refresh (AD-43).</p>
+/// inviting the agent, and it does not refresh (AD-43). The write tool
+/// <class>OcuPilot.Screen.Tool.WebAppUpdate</class> registers by class scan and needs no declared
+/// action; the screen's own affordance is Story 5.8's.</p>
 Class OcuPilot.Screen.Descriptor.WebAppList Extends OcuPilot.Screen.Descriptor.Base
 {
 
@@ -46,6 +53,8 @@ XData Declaration
   "primaryAction": {"id": "", "selfProtection": ""},
   "rowActions": [],
   "context": {"fields": ["Name", "Namespace", "Type", "Enabled", "DispatchClass", "Resource"], "secretFields": []},
+  "secretArguments": [],
+  "fingerprintExcludes": [],
   "emptyStateKey": "webAppListEmpty",
   "commandAliases": ["web apps"],
   "classicPage": "%CSP.UI.Portal.Applications.WebList",

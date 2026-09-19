@@ -1,0 +1,259 @@
+/// <p>The base every write tool extends (AD-6, AD-40). A write tool does one thing: it mints a
+/// proposal. It reads the target fresh, merges its resolved arguments over that object, stores the
+/// complete payload with its diff, its fingerprint and a single-use token, and answers the model
+/// the proposal's id and what changed.</p>
+/// <p><b>The model can reach the minting path and nothing else.</b> <method>View</method> is
+/// <code>Final</code> and calls <class>OcuPilot.Kernel.Proposal.Mint</class>; no method here, and
+/// no method a subclass may add, names <class>OcuPilot.Kernel.Proposal.Write</class>. Applying a
+/// proposal is claimed by a user-originated confirm request, which is not a tool and is not in the
+/// registry.</p>
+/// <p><b>Nothing here writes to the instance.</b> The payload is assembled and stored; Story 5.3
+/// sends it inside the atomic transition a confirm claims.</p>
+/// <p><b>The input schema is derived, not transcribed</b> (AD-3). Its properties are the classified
+/// rows of this tool's <class>OcuPilot.Screen.Tool.ToolFields</class> entry: every row the reviewed
+/// classification calls <code>ordinary</code>, minus the subtrees the tool excludes by name and
+/// minus the fields the descriptor declares secret. A row classified anything but
+/// <code>ordinary</code> never reaches the model, which is what makes the generator's fail-closed
+/// default (an unnamed row is <code>secret</code>) a real bound rather than a label.</p>
+/// <p>A concrete tool declares its <parameter>TOOLNAME</parameter>,
+/// <parameter>DESCRIPTORCLASS</parameter> and <parameter>DESCRIPTION</parameter>, answers
+/// <method>Endpoint</method> and <method>SettableFields</method>, and adds the pairs its write
+/// requires beyond its screen's own.</p>
+Class OcuPilot.Screen.Tool.Write Extends OcuPilot.Screen.Tool.Base [ Abstract ]
+{
+
+Parameter KIND = "write";
+
+/// <p>A write is decided on the instance, never in the browser (AD-11 rule 3); the registry
+/// refuses the other combination outright.</p>
+Parameter FULFILMENT = "instance";
+
+/// <p>The screen this tool writes for. A concrete tool names its descriptor class here, the idiom
+/// <class>OcuPilot.Screen.Tool.ErrorRead</class> established.</p>
+Parameter DESCRIPTORCLASS = "";
+
+/// <p>The generated field lists every write tool's schema is derived from.</p>
+Parameter TOOLFIELDSCLASS = "OcuPilot.Screen.Tool.ToolFields";
+
+/// <p>The class a minted proposal is built by. Overridable so a test can observe what a tool
+/// asked for; production never overrides it.</p>
+ClassMethod MintClass() As %String
+{
+    Quit "OcuPilot.Kernel.Proposal.Mint"
+}
+
+/// <p>The admin endpoint this tool's target is read from and written to.</p>
+ClassMethod Endpoint() As %String [ Abstract ]
+{
+    Quit ""
+}
+
+/// <p>The payload field names the merge may set, as a <class>%List</class>. Derived from the
+/// tool's own classified field list (<method>AdmittedFields</method>), never transcribed.</p>
+ClassMethod SettableFields() As %List [ Abstract ]
+{
+    Quit ""
+}
+
+/// <p>The input property that names the target. <code>Name</code> for every admin endpoint keyed
+/// by a name; a tool whose endpoint identifies a target differently overrides it.</p>
+ClassMethod IdArgument() As %String
+{
+    Quit "Name"
+}
+
+/// <p>The query parameter this endpoint's <code>GET</code> identifies a target by, which is the
+/// vendor's own spelling and need not match <method>IdArgument</method>.</p>
+ClassMethod IdParam() As %String
+{
+    Quit "name"
+}
+
+/// <p>The top-level field names this tool never admits, whatever their classification, as a
+/// <class>%List</class>. Empty here; a tool naming a subtree AD-10 forbids declares it and says
+/// why.</p>
+ClassMethod ExcludedFields() As %List
+{
+    Quit ""
+}
+
+/// <p>What <parameter>DESCRIPTORCLASS</parameter> declares secret (AD-3, AD-6), which is what the
+/// confirm channel is closed to all but. <var>pDeclared</var> is always 1: a write tool's
+/// classification is its descriptor's declaration, and an absent list is an empty one.</p>
+ClassMethod SecretArguments(pDescriptor As %String = "", Output pDeclared As %Boolean) As %List
+{
+    Set pDeclared = 1
+    If ..#DESCRIPTORCLASS = "" Quit ""
+    Quit $ClassMethod(..#DESCRIPTORCLASS, "SecretArguments")
+}
+
+/// <p>The rows of this tool's <class>OcuPilot.Screen.Tool.ToolFields</class> entry that a schema
+/// may admit, as <code>pRows(n) = $ListBuild(field, templateType, isArray)</code> in the entry's
+/// own order, with the count in <code>pRows</code>.</p>
+/// <p>A row is admitted when its class is <code>ordinary</code>, its path is a top-level literal
+/// or a top-level array of literals, its name is outside <method>ExcludedFields</method>, and the
+/// descriptor does not declare it secret. A deeper path -- a member of an object, an element of an
+/// array of objects -- is not admitted at all: the advertised schema subset is flat, so a nested
+/// path could only be admitted by a shape the validator does not enforce.</p>
+ClassMethod FieldRows(Output pRows) As %Status
+{
+    Kill pRows
+    Set pRows = 0
+    Set tSC = $$$OK
+    Try {
+        Set tXData = ##class(%Dictionary.XDataDefinition).IDKEYOpen(..#TOOLFIELDSCLASS, "Tools", , .tOpenSC)
+        If '$IsObject(tXData) {
+            Set tSC = $$$ERROR($$$GeneralError, "the generated tool field lists are missing from " _ ..#TOOLFIELDSCLASS)
+            Quit
+        }
+        Do tXData.Data.Rewind()
+        Set tTools = ##class(%DynamicAbstractObject).%FromJSON(tXData.Data)
+        Set tXData = ""
+        Set tEntry = ""
+        If $IsObject(tTools) Set tEntry = tTools.%Get(..#TOOLNAME)
+        If '$IsObject(tEntry) || (tEntry.%GetTypeOf("fields") '= "array") {
+            Set tSC = $$$ERROR($$$GeneralError, ..#TOOLNAME _ " has no entry in " _ ..#TOOLFIELDSCLASS)
+            Quit
+        }
+        Set tExcluded = ..ExcludedFields()
+        Set tSecrets = ..SecretArguments(..#DESCRIPTORCLASS, .tDeclared)
+        Set tIterator = tEntry.%Get("fields").%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tField) {
+            If '$IsObject(tField) Continue
+            If tField.%Get("class") '= "ordinary" Continue
+            If tField.%Get("shape") '= "literal" Continue
+            Set tPath = tField.%Get("path")
+            If tPath [ "." Continue
+            Set tIsArray = ($Extract(tPath, *-1, *) = "[]")
+            Set tName = $Select(tIsArray: $Extract(tPath, 1, *-2), 1: tPath)
+            If tName [ "[" Continue
+            If $ListFind(tExcluded, tName) Continue
+            If $ListFind(tSecrets, tName) Continue
+            Set pRows($Increment(pRows)) = $ListBuild(tName, tField.%Get("templateType"), tIsArray)
+        }
+    } Catch ex {
+        Kill pRows
+        Set pRows = 0
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The names <method>FieldRows</method> admits, as a <class>%List</class> -- what a concrete
+/// tool answers from <method>SettableFields</method>. Empty when the entry cannot be read, which
+/// is what makes an unreadable field list a tool that changes nothing rather than one that changes
+/// anything.</p>
+ClassMethod AdmittedFields() As %List
+{
+    Set tFields = ""
+    Set tSC = ..FieldRows(.tRows)
+    If $$$ISERR(tSC) Quit ""
+    For tI = 1:1:+$Get(tRows) {
+        Set tFields = tFields _ $ListBuild($List(tRows(tI), 1))
+    }
+    Quit tFields
+}
+
+/// <p>The tool's input schema: the identifying property, required; one property per admitted
+/// field; and the agent's own words, all optional. Closed with
+/// <code>additionalProperties: false</code>, so a field the classification did not admit -- a
+/// privilege subtree among them -- is refused as an unknown argument rather than ignored.</p>
+/// <p><var>pDescriptor</var> is ignored: a write tool has a class of its own and derives its
+/// schema from its own field-list entry.</p>
+ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
+{
+    Set tSchema = {"type": "object", "properties": {}, "required": [], "additionalProperties": false}
+    Set tProperties = tSchema.%Get("properties")
+    Do tProperties.%Set(..IdArgument(), {"type": "string", "description": "The target this write is about, exactly as this instance's own list reports it. A target it does not report is refused."})
+    Do tSchema.%Get("required").%Push(..IdArgument())
+    Set tSC = ..FieldRows(.tRows)
+    If $$$ISERR(tSC) Quit tSchema
+    For tI = 1:1:+$Get(tRows) {
+        Set tName = $List(tRows(tI), 1)
+        If tName = ..IdArgument() Continue
+        Set tType = ..JsonType($List(tRows(tI), 2))
+        If $List(tRows(tI), 3) {
+            Set tProperty = {"type": "array", "description": "The new value for this field, replacing the whole list."}
+            Do tProperty.%Set("items", {"type": (tType)})
+        } Else {
+            Set tProperty = {"description": "The new value for this field. Omit it to leave the field as the instance holds it."}
+            Do tProperty.%Set("type", tType, "string")
+        }
+        Do tProperties.%Set(tName, tProperty)
+    }
+    Do tProperties.%Set("rationale", {"type": "string", "description": "Why this change is being proposed, in one sentence, shown to the user above the diff."})
+    Do tProperties.%Set("expectedImpact", {"type": "string", "description": "What the user should expect to happen once this is confirmed, in one sentence."})
+    Do tProperties.%Set("reverse", {"type": "string", "description": "How to undo this change, in one sentence. Omit it where no reversal exists."})
+    Quit tSchema
+}
+
+/// <p>The result a mint answers.</p>
+ClassMethod ResultSchema(pDescriptor As %String = "") As %DynamicObject
+{
+    Quit {
+        "type": "object",
+        "properties": {
+            "proposalId": {"type": "string", "description": "The proposal's identifier. Report it; the user confirms it, and this turn never applies it."},
+            "target": {"type": "object", "description": "The scoped target: its entity type, its scope and its id."},
+            "tool": {"type": "string", "description": "The tool that minted the proposal."},
+            "changed": {"type": "array", "items": {"type": "object"}, "description": "One object per changed field, carrying the field name, the value before and the value after."},
+            "unchangedCount": {"type": "integer", "description": "How many of the target's other properties the write sends unchanged."},
+            "expiresAt": {"type": "string", "description": "When the proposal stops being confirmable, ISO-8601 UTC."}
+        },
+        "required": ["proposalId", "target", "tool", "changed", "unchangedCount", "expiresAt"],
+        "additionalProperties": false
+    }
+}
+
+/// <p>Mint the proposal this call describes. <var>pArgs</var> is validated against
+/// <method>InputSchema</method> before anything is read; a refusal is 400
+/// <code>TOOL.ARGUMENTS</code> and no port is called. <var>pContextCap</var> is ignored: a
+/// proposal carries a diff, not rows.</p>
+/// <p><b>Final, and the only method the model reaches.</b> The turn and the conversation come from
+/// <class>OcuPilot.Kernel.Proposal.Caller</class>, which the turn job stashed; the user is the
+/// process's own, because a tool runs as the caller (AD-1).</p>
+ClassMethod View(pDescriptor As %String, pArgs As %DynamicAbstractObject, pContextCap As %Integer, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Final ]
+{
+    Set tSC = $$$OK
+    Set pResult = ""
+    Set pHttpStatus = 0
+    Set pFault = ""
+    Try {
+        Set tArgs = $Select($IsObject(pArgs): pArgs, pArgs = "": {}, 1: pArgs)
+        Set tValidSC = ##class(OcuPilot.Screen.Tool.Registry).ValidateArguments(..InputSchema(), tArgs, .tProblem)
+        If $$$ISERR(tValidSC) {
+            Set tSC = ..ArgumentsRefusal(tProblem, .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tId = tArgs.%Get(..IdArgument())
+        If tId = "" {
+            Set tSC = ..ArgumentsRefusal("'" _ ..IdArgument() _ "' names the target and cannot be empty", .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tSC = $ClassMethod(..MintClass(), "Mint", ..#DESCRIPTORCLASS, ..#TOOLNAME, $Username, ##class(OcuPilot.Kernel.Proposal.Caller).ConvKey(), ##class(OcuPilot.Kernel.Proposal.Caller).TurnKey(), tArgs, ..LimitsClass(), .pResult, .pHttpStatus, .pFault, ..Endpoint(), ..IdParam(), tId, ..IdArgument(), ..SettableFields())
+    } Catch ex {
+        Set pResult = ""
+        Set tSC = ..InternalRefusal("the write tool failed: " _ ex.DisplayString(), .pHttpStatus, .pFault)
+    }
+    Quit tSC
+}
+
+/// <p>The class the proposal's expiry and its text caps are read from. Overridable so a test
+/// narrows the window; production never overrides it.</p>
+ClassMethod LimitsClass() As %String
+{
+    Quit "OcuPilot.Kernel.Agent.Limits"
+}
+
+/// <p>The JSON type a derived field's template placeholder implies. A placeholder's scalar type is
+/// information rather than contract (AD-3) -- this instance answers a number for five
+/// <code>WebApp.App</code> fields whose template shows a string -- so the merge compares values in
+/// their rendered form and a string spelling of a number changes nothing.</p>
+ClassMethod JsonType(pTemplateType As %String) As %String [ Private ]
+{
+    If pTemplateType = "boolean" Quit "boolean"
+    If pTemplateType = "number" Quit "number"
+    Quit "string"
+}
+
+}

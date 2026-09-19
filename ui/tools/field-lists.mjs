@@ -26,6 +26,11 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
 
 import { extractXData } from './screen-mirror.mjs';
+import { CREDENTIAL_EXACT_NAMES, CREDENTIAL_RE, CREDENTIAL_SUFFIXES, lastSegment } from './credential-pattern.mjs';
+
+// Re-exported so the pattern has one home (`credential-pattern.mjs`) while
+// `credential-lists.test.mjs` keeps reading it here, beside the classifier it governs.
+export { CREDENTIAL_EXACT_NAMES, CREDENTIAL_RE, CREDENTIAL_SUFFIXES, lastSegment };
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const TOOL_DIR = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool');
@@ -54,34 +59,6 @@ function isEmptyValue(value) {
 
 /** `<area>.<screen>.<verb>`, lower case, dots only (Conventions, Tool naming). */
 export const TOOL_NAME_RE = /^[a-z][a-z0-9]*\.[a-z][a-z0-9]*\.[a-z][a-z0-9]*$/;
-
-/**
- * The suffix half of the credential pattern (Conventions, Secrets), held equal by
- * `credential-lists.test.mjs` to `OcuPilot.Kernel.Audit.Log.CREDENTIALSUFFIXES` (DW-399).
- */
-export const CREDENTIAL_SUFFIXES = [
-  'password',
-  'passwd',
-  'pwd',
-  'secret',
-  'secret64',
-  'apikey',
-  'privatekey',
-  'token',
-  'credential',
-];
-
-/**
- * The exact-name half of the credential pattern, held equal by `credential-lists.test.mjs` to
- * `OcuPilot.Kernel.Audit.Log.CREDENTIALEXACTNAMES` (DW-399).
- */
-export const CREDENTIAL_EXACT_NAMES = ['key', 'credentialname'];
-
-/** The credential pattern (Conventions, Secrets), matched against a path's last segment. */
-export const CREDENTIAL_RE = new RegExp(
-  `(${CREDENTIAL_SUFFIXES.join('|')})$|^(${CREDENTIAL_EXACT_NAMES.join('|')})$`,
-  'i'
-);
 
 const SHAPES = ['literal', 'object', 'array'];
 const SOURCES = ['template', 'class', 'none'];
@@ -117,11 +94,6 @@ export function readSources() {
     lists: parseBlock(readFileSync(FIELD_LISTS_SOURCE, 'utf8'), 'Lists', FIELD_LISTS_SOURCE),
     entries: parseBlock(readFileSync(CLASSIFICATION_SOURCE, 'utf8'), 'Entries', CLASSIFICATION_SOURCE),
   };
-}
-
-/** A path's last segment with any `[]` removed: `Resources[].Name` -> `Name`, `CipherList[]` -> `CipherList`. */
-export function lastSegment(path) {
-  return path.split('.').pop().replace(/(\[\])+$/, '');
 }
 
 /** Whether `other` extends `path`: a member (`path.x`) or element (`path[]`) below it. */

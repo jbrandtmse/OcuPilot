@@ -453,6 +453,29 @@ ClassMethod ToolIdentifier() As %String
     Quit ..Field("toolIdentifier")
 }
 
+/// <p>The top-level argument names this screen's write tools take as secret (AD-3, AD-6). Declared
+/// here rather than on a tool class because the confirm channel is the descriptor's: the only keys
+/// a client may supply at confirm are the fields declared secret for that tool, and a tool's input
+/// schema never admits one at all.</p>
+/// <p>An absent key is an empty list, which is the answer for every screen that has no secret
+/// field -- and is a declaration, not silence: <method>OcuPilot.Screen.Registry.Validate</method>
+/// refuses a descriptor whose declared criteria carry a credential-pattern name this list does not
+/// hold, so an unlisted secret is a refusal rather than a default.</p>
+ClassMethod SecretArguments() As %List
+{
+    Quit ..StringList("secretArguments")
+}
+
+/// <p>The payload paths a proposal's fingerprint leaves out (AD-6): the fields the endpoint itself
+/// moves as a side effect -- a next-scheduled time, a last-modified stamp -- which would otherwise
+/// make every confirm read a target that had changed under it.</p>
+/// <p>An absent key is an empty list, and the default is "everything else": a slice never chooses
+/// which fields the fingerprint covers, only which ones it does not.</p>
+ClassMethod FingerprintExcludes() As %List
+{
+    Quit ..StringList("fingerprintExcludes")
+}
+
 /// <p>One value nested one level under <var>pParent</var>, or <code>""</code>. An object or array
 /// value is a copy.</p>
 ClassMethod NestedField(pParent As %String, pName As %String) As %RawString [ Private ]
