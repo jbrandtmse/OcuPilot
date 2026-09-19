@@ -43,9 +43,14 @@ Parameter RULETOPKEYWORDS = "type,properties,required,additionalProperties";
 /// <p>The locked rule's property-level keyword list, likewise.</p>
 Parameter RULEKEYWORDS = "type,description,enum,items,minimum,maximum,minItems,maxItems";
 
-/// <p>The tool-name grammar both families publish, as both translator class doc comments cite it.
-/// The registry's own pattern must be this, or a name it admits is one a family refuses.</p>
+/// <p>OpenAI's published tool-name grammar, as both translator class doc comments cite it. Gemini's
+/// is not the same -- it additionally requires a leading letter or underscore, and admits dots -- so
+/// what keeps a wire name inside both is the canonical grammar below, not this one.</p>
 Parameter VENDORNAMEPATTERN = "^[a-zA-Z0-9_-]{1,64}$";
+
+/// <p>The canonical tool-name grammar the registry admits. Every segment begins with a lowercase
+/// letter, so the wire form -- each dot an underscore -- is inside both families' grammars.</p>
+Parameter CANONICALNAMEPATTERN = "^[a-z][a-z0-9]*\.[a-z][a-z0-9]*\.[a-z][a-z0-9]*$";
 
 /// <p>A value seeded into a response before a refusing translator is called, so "nothing is
 /// reported as a reply" is an assertion that can fail -- an empty <property>Text</property> on a
@@ -66,6 +71,21 @@ Parameter OPENAIREPLY = "{""choices"":[{""index"":0,""message"":{""role"":""assi
 /// <p>A Gemini reply carrying text and <b>two</b> calls to one function, so the correlation the
 /// next request makes is exercised where the dialect carries no call id.</p>
 Parameter GEMINIREPLY = "{""candidates"":[{""content"":{""role"":""model"",""parts"":[{""text"":""looking""},{""functionCall"":{""name"":""logs_errors_read"",""args"":{""maxRows"":5}}},{""functionCall"":{""name"":""logs_errors_read"",""args"":{""maxRows"":9}}}]},""finishReason"":""STOP""}],""usageMetadata"":{""promptTokenCount"":41,""candidatesTokenCount"":11}}";
+
+/// <p>An OpenAI reply whose <code>function.arguments</code> is a JSON array rather than the object
+/// text the dialect declares, so the reply direction's object rule is driven by a body it can
+/// actually receive.</p>
+Parameter OPENAIARRAYARGSREPLY = "{""choices"":[{""index"":0,""message"":{""role"":""assistant"",""tool_calls"":[{""id"":""call1"",""type"":""function"",""function"":{""name"":""logs_errors_read"",""arguments"":[1,2]}}]},""finish_reason"":""tool_calls""}]}";
+
+/// <p>A Gemini reply whose <code>functionCall.args</code> is a JSON array, likewise.</p>
+Parameter GEMINIARRAYARGSREPLY = "{""candidates"":[{""content"":{""role"":""model"",""parts"":[{""functionCall"":{""name"":""logs_errors_read"",""args"":[1,2]}}]},""finishReason"":""STOP""}]}";
+
+/// <p>An OpenAI reply whose one tool call carries no <code>id</code>, which no later request could
+/// answer.</p>
+Parameter OPENAIIDLESSREPLY = "{""choices"":[{""index"":0,""message"":{""role"":""assistant"",""tool_calls"":[{""type"":""function"",""function"":{""name"":""logs_errors_read"",""arguments"":""{}""}}]},""finish_reason"":""tool_calls""}]}";
+
+/// <p>A Gemini reply whose one <code>functionCall</code> part names no function.</p>
+Parameter GEMININAMELESSREPLY = "{""candidates"":[{""content"":{""role"":""model"",""parts"":[{""functionCall"":{""args"":{}}}]},""finishReason"":""STOP""}]}";
 
 /// <p>The system prompt every request leg sends.</p>
 Parameter SYSTEMPROMPT = "you are a probe";
@@ -314,9 +334,11 @@ Method TestTheLockedSubsetIsKeptVerbatimByBothTranslators()
     Do $$$AssertEquals(..Outside(tLiveOpenAi, 0), "", "no OpenAI declaration carries a keyword outside the emitted subset: " _ ..Outside(tLiveOpenAi, 0))
     Do $$$AssertEquals(..Outside(tLiveGemini, 1), "", "and no Gemini declaration does either: " _ ..Outside(tLiveGemini, 1))
 
-    ; One tool-name grammar: the registry's pattern is the one both families publish, so a later
-    ; widening of it cannot silently outrun what either vendor accepts.
-    Do $$$AssertEquals($Parameter(..#REGISTRY, "WIRENAMEPATTERN"), ..#VENDORNAMEPATTERN, "the wire-name grammar is the one both families publish")
+    ; Two tool-name grammars, one inside the other: the wire pattern is OpenAI's published one, and
+    ; the canonical pattern above it starts every segment with a letter, which is the one thing
+    ; Gemini requires and OpenAI's does not. A later widening of either is what this pins.
+    Do $$$AssertEquals($Parameter(..#REGISTRY, "WIRENAMEPATTERN"), ..#VENDORNAMEPATTERN, "the wire-name grammar is OpenAI's published one")
+    Do $$$AssertEquals($Parameter(..#REGISTRY, "TOOLNAMEPATTERN"), ..#CANONICALNAMEPATTERN, "and every canonical name it admits begins with a letter, which is what Gemini additionally requires")
 }
 
 /// <p>Every keyword the schemas under <var>pDeclarations</var> carry, at any depth, that the locked
@@ -374,6 +396,79 @@ Method TestTheOpenAiRequestCarriesThatDialectsOwnFields()
     Do $$$AssertEquals(tOut.%Get(5).%Get("role"), "user", "and the text the same canonical message carried follows its results")
     Do $$$AssertEquals(tOut.%Get(5).%Get("content"), "and now", "as an ordinary user message")
     Do $$$AssertEquals(tOut.%Size(), 6, "six messages and no more: " _ tOut.%ToJSON())
+}
+
+/// <p>The two OpenAI request shapes <method>OcuPilot.Kernel.Agent.Loop.AnswerTools</method> itself
+/// produces: an assistant message whose blocks are calls alone, and the user message whose blocks
+/// are results alone. The first sends <code>content</code> JSON <code>null</code>; the second sends
+/// its tool messages and no empty message beside them.</p>
+/// <p>Mutation: send that <code>content</code> as a string, or drop the empty-companion
+/// <code>Continue</code> -- this method goes red on each.</p>
+Method TestTheOpenAiRequestSendsTheLoopsCallsOnlyAndResultsOnlyShapes()
+{
+    Kill tMessages
+    Set tMessages = 2
+    Set tMessages(1, "role") = "assistant"
+    Set tMessages(1, "blocks") = "[{""type"":""tool_use"",""id"":""call1"",""name"":""" _ ..#TOOLNAME _ """,""input"":{""maxRows"":5}}]"
+    Set tMessages(2, "role") = "user"
+    Set tMessages(2, "blocks") = "[{""type"":""tool_result"",""tool_use_id"":""call1"",""content"":""first""}]"
+    Do $$$AssertStatusOK($ClassMethod(..#MESSAGES, "CanonicalToOpenAi", .tMessages, "", .tOut), "the loop's own two shapes translate")
+    Do $$$AssertEquals(tOut.%Size(), 2, "into one assistant message and one tool message and nothing else: " _ tOut.%ToJSON())
+    Do $$$AssertEquals(tOut.%Get(0).%Get("role"), "assistant", "the calls-only message keeps its role")
+    Do $$$AssertEquals(tOut.%Get(0).%GetTypeOf("content"), "null", "and sends content null, which is what this dialect requires of a message that is calls alone")
+    Do $$$AssertEquals(tOut.%Get(0).%Get("tool_calls").%Size(), 1, "carrying its one call")
+    Do $$$AssertEquals(tOut.%Get(1).%Get("role"), "tool", "and the results-only message travels as its tool message alone")
+    Do $$$AssertEquals(tOut.%Get(1).%Get("tool_call_id"), "call1", "keyed by the call it answers")
+}
+
+/// <p>A canonical <code>input</code>, and a reply's arguments, that is a JSON array is not an
+/// object: no request carries array text where the dialect declares an object, and no canonical
+/// <code>tool_use</code> leaves the reply direction with a non-object <code>input</code>, which is
+/// what <method>OcuPilot.Kernel.Agent.Loop.AnswerTools</method> reads off the block.</p>
+/// <p>Mutation: accept any OREF in
+/// <method>OcuPilot.Kernel.Provider.MessageAdapter.ArgumentsObject</method> -- the OpenAI reply leg
+/// goes red.</p>
+Method TestAnArrayIsNeverSentAsArgumentsAndNeverBecomesACanonicalInput()
+{
+    Kill tMessages
+    Set tMessages = 1
+    Set tMessages(1, "role") = "assistant"
+    Set tMessages(1, "blocks") = "[{""type"":""tool_use"",""id"":""call1"",""name"":""" _ ..#TOOLNAME _ """,""input"":[1,2]}]"
+    Do $$$AssertStatusOK($ClassMethod(..#MESSAGES, "CanonicalToOpenAi", .tMessages, "", .tOut), "a history whose input is an array translates")
+    Do $$$AssertEquals(tOut.%Get(0).%Get("tool_calls").%Get(0).%Get("function").%Get("arguments"), "{}", "and the OpenAI call carries an empty object rather than array text")
+    Do $$$AssertStatusOK($ClassMethod(..#MESSAGES, "CanonicalToGemini", .tMessages, "", .tContents, .tSystem), "the Gemini direction translates it too")
+    Do $$$AssertEquals(tContents.%Get(0).%Get("parts").%Get(0).%Get("functionCall").%GetTypeOf("args"), "object", "carrying an object for args and never the array")
+
+    Set tResponse = ##class(OcuPilot.Kernel.Provider.Response).%New()
+    Set tResponse.Text = ..#UNTOUCHED
+    Do $$$AssertStatusNotOK($ClassMethod(..#MESSAGES, "OpenAiToCanonical", ..#OPENAIARRAYARGSREPLY, tResponse), "an arguments value that is an array is refused rather than carried into a canonical block")
+    Do $$$AssertEquals(tResponse.Text, ..#UNTOUCHED, "with nothing reported as a reply")
+    Do $$$AssertEquals(tResponse.ToolCallsJson, "", "and no canonical blocks")
+
+    Set tGeminiResponse = ##class(OcuPilot.Kernel.Provider.Response).%New()
+    Do $$$AssertStatusOK($ClassMethod(..#MESSAGES, "GeminiToCanonical", ..#GEMINIARRAYARGSREPLY, tGeminiResponse), "the Gemini reply reads")
+    Set tGeminiBlocks = ##class(%DynamicAbstractObject).%FromJSON(tGeminiResponse.ToolCallsJson)
+    Do $$$AssertEquals(tGeminiBlocks.%Get(0).%GetTypeOf("input"), "object", "and its canonical block carries an object input, never the array the model sent")
+}
+
+/// <p>A tool call the next request could never answer -- an OpenAI call with no <code>id</code>, a
+/// Gemini <code>functionCall</code> naming no function -- is refused at the reply direction rather
+/// than stored, because a canonical history carrying one refuses every later request in that
+/// conversation.</p>
+/// <p>Mutation: drop either guard in
+/// <class>OcuPilot.Kernel.Provider.MessageAdapter</class> -- its leg goes red.</p>
+Method TestAReplysUnanswerableToolCallIsRefusedRatherThanStored()
+{
+    Set tResponse = ##class(OcuPilot.Kernel.Provider.Response).%New()
+    Set tResponse.Text = ..#UNTOUCHED
+    Do $$$AssertStatusNotOK($ClassMethod(..#MESSAGES, "OpenAiToCanonical", ..#OPENAIIDLESSREPLY, tResponse), "an OpenAI tool call carrying no id is refused")
+    Do $$$AssertEquals(tResponse.Text, ..#UNTOUCHED, "with nothing reported as a reply")
+    Do $$$AssertEquals(tResponse.ToolCallsJson, "", "and no canonical block stored for a later request to fail on")
+
+    Set tGeminiResponse = ##class(OcuPilot.Kernel.Provider.Response).%New()
+    Set tGeminiResponse.Text = ..#UNTOUCHED
+    Do $$$AssertStatusNotOK($ClassMethod(..#MESSAGES, "GeminiToCanonical", ..#GEMININAMELESSREPLY, tGeminiResponse), "a Gemini functionCall naming no function is refused too")
+    Do $$$AssertEquals(tGeminiResponse.ToolCallsJson, "", "with no canonical block stored")
 }
 
 /// <p>The matrix's Gemini request row -- roles <code>user</code> and <code>model</code>, the
@@ -560,6 +655,24 @@ Method TestASchemaThatWillNotParseStillAdvertisesItsTool()
     Do $$$AssertEquals(tNoGemini.%Size(), 0, "into no declaration entry, so a caller sends no tools rather than an empty list")
 }
 
+/// <p>Gap-fill (QA) -- <method>OcuPilot.Kernel.Provider.ToolDefAdapter.GeminiSchema</method>'s
+/// corrected doc claim: a keyword outside the locked subset is copied through unchanged, because
+/// keeping such a keyword out is <method>OcuPilot.Screen.Tool.Registry.EmitSchema</method>'s job
+/// and not this method's.</p>
+/// <p>Mutation: drop the method's fallback <code>Do tOut.%Set(tKey, tValue)</code> branch -- this
+/// goes red on the copied-through keyword.</p>
+Method TestGeminiSchemaCopiesAnUnrecognizedKeywordThroughUnchanged()
+{
+    Kill tTools
+    Set tTools = 1
+    Set tTools(1, "name") = ..#TOOLNAME
+    Set tTools(1, "description") = "read the error log"
+    Set tTools(1, "inputSchema") = "{""type"":""object"",""properties"":{""code"":{""type"":""string"",""pattern"":""^[A-Z]+$""}},""required"":[]}"
+    Do $$$AssertStatusOK($ClassMethod(..#TOOLDEFS, "ToGemini", .tTools, .tGemini), "a schema carrying a keyword outside the locked subset still translates")
+    Set tProperty = tGemini.%Get(0).%Get("functionDeclarations").%Get(0).%Get("parameters").%Get("properties").%Get("code")
+    Do $$$AssertEquals(tProperty.%Get("pattern"), "^[A-Z]+$", "the keyword outside the subset is copied through unchanged rather than refused or dropped")
+}
+
 /// <p>AC3's arithmetic at its boundaries -- the work budget's own value, one second either side of
 /// it, the divisor boundaries where the attempt count steps down, and a zero timeout, which bounds
 /// nothing because such an attempt spends no time.</p>
@@ -733,6 +846,25 @@ Method TestTheClampLogsOnceWhenItLoweredAValueAndIsSilentOtherwise()
     Do $$$AssertStatusOK(tSecond.Invoke(.tValues, .tMessages, .tTools, "", .tDefaults, .tSecondResponse, .tSecondFault, .tSecondStatus), "the call with the shipped defaults returns $$$OK")
     Set tSecond = ""
     Do $$$AssertEquals(##class(OcuPilot.Test.AdapterProvider).Logged(..#CLAMPMARK), 0, "and said nothing about a clamp, because it lowered nothing")
+}
+
+/// <p>Gap-fill (QA) -- the clamp stays silent for a stored attempt count of zero: the loop's own
+/// floor (<method>OcuPilot.Kernel.Provider.Retry.EffectiveAttempts</method>) and
+/// <method>OcuPilot.Kernel.Provider.Base.LogClamp</method>'s own floor both read zero as "at least
+/// one attempt", so the two numbers agree and nothing was actually lowered.</p>
+/// <p>Mutation: remove <method>LogClamp</method>'s own <code>tAsked &lt; 1</code> floor -- this
+/// goes red on a spurious clamp line for the untouched timeout.</p>
+Method TestTheClampStaysSilentForAStoredAttemptCountOfZero()
+{
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, $Parameter("OcuPilot.Test.Provider", "OKBODY"))
+    Do $ClassMethod("OcuPilot.Test.Provider", "Values", .tValues)
+    Do $ClassMethod("OcuPilot.Test.Provider", "Messages", .tMessages)
+    Do $ClassMethod("OcuPilot.Test.Provider", "Settings", .tSettings, 0)
+    Set tAdapter = ##class(OcuPilot.Test.AdapterProvider).%New()
+    Set tAdapter.SecretClassName = "OcuPilot.Test.SecretProbe"
+    Do $$$AssertStatusOK(tAdapter.Invoke(.tValues, .tMessages, .tTools, "", .tSettings, .tResponse, .tFault, .tHttpStatus), "the call with a stored attempt count of zero returns $$$OK")
+    Set tAdapter = ""
+    Do $$$AssertEquals(##class(OcuPilot.Test.AdapterProvider).Logged(..#CLAMPMARK), 0, "and the clamp says nothing, because the loop's own floor and the log's floor answer zero the same way")
 }
 
 }

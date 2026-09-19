@@ -4,6 +4,7 @@ type: 'feature'
 created: '2026-09-18'
 status: 'done'
 baseline_revision: 'f92e266af4790f89fc17a891e6f8b39d3e28cb24'
+baseline_commit: 'f92e266af4790f89fc17a891e6f8b39d3e28cb24'
 review_loop_iteration: 0
 followup_review_recommended: true
 context:
@@ -129,6 +130,53 @@ Anchors verified against the working tree in this worktree on 2026-09-18.
 - **AC4** -- Given a translation that cannot be completed -- an unmatched tool result, an unparseable arguments string, a reply body missing its own content array -- when it is met, then `Base.Invoke` still returns `$$$OK`, the response's stop reason is `error`, the fault carries a `PROVIDER.*` code, and no vendor raw text or credential material appears on any surface OcuPilot renders.
 - **AC5** -- Given a canonical (Anthropic) definition, when a call is made after this story, then neither translator is reached and the outbound body is byte-identical to the one the same inputs produced before it.
 
+### Review Findings
+
+Code review 2026-09-19 (full-opus, four layers). 9 root-cause entries after grouping -- high 0,
+medium 6, low 3 -- from 59 raw findings (blind-hunter 31, edge-case-hunter 14, verification-gap 9,
+acceptance-auditor 5). Four patched in-pass and pinned; five closed with an owner. No high, so the
+story closes `done`.
+
+**Patched in this review** (`Kernel/Provider/MessageAdapter.cls`, `Test/Adapter.cls`):
+
+- `[med]` A JSON array satisfied the `$IsObject` test in `ArgumentsText`, `ArgumentsOf` and
+  `ArgumentsObject`, so a provider's array `arguments` became a canonical `tool_use` whose `input`
+  is not an object -- against the Boundaries rule and both matrix reply rows -- and a canonical
+  array input traveled as `function.arguments` array text. All three now require a
+  `%Library.DynamicObject`, the check `BodyOf` and `ToolDefAdapter.SchemaOf` already made.
+- `[med]` A reply's tool call with no `id` (OpenAI) or no function name (either family) was stored
+  as a canonical block that no later request can correlate a result with, so every subsequent
+  request in that conversation would answer `PROVIDER.TRANSPORT` -- permanently. Both reply
+  directions now refuse it, so one turn fails cleanly instead.
+- `[med]` Two documented OpenAI request-direction branches -- `content` JSON `null` for a
+  calls-only message, and the suppressed empty companion for a results-only one, which are the two
+  shapes `Loop.AnswerTools` produces -- had no assertion that could fail (Rule 19).
+- `[low]` `VENDORNAMEPATTERN` and `ToolDefAdapter`'s class doc called
+  `Registry.WIRENAMEPATTERN` "the grammar both families publish". Verified against both vendors'
+  references: it is OpenAI's exactly; Gemini additionally requires a leading letter or underscore.
+  What keeps every wire name inside both is `Registry.TOOLNAMEPATTERN`, now asserted beside it.
+
+**Closed with an owner:**
+
+- `[med]` `DW-1179` `escalated` -- `%Net.HttpRequest.Timeout` bounds one socket read, not one
+  attempt, so AD-42's amended 300 s worst case is not a wall-clock bound. The clamp arithmetic is
+  total and correct; the gap is pre-existing and its fix is a spine amendment or a transport-level
+  deadline, neither of which is this stage's.
+- `[med]` `DW-1180` `routed owner=10-2` -- Gemini's reference does declare an optional `id` on
+  `FunctionCall` and `FunctionResponse`.
+- `[med]` `DW-1181` `routed owner=burndown` -- nothing consumes the canonical `refusal` stop
+  reason, so a blocked reply renders as an empty turn; the consuming code is Epic 5's footprint.
+- `[low]` `DW-1182` `wontfix-accepted owner=10-3` -- an OpenAI `content` parts array loses its text.
+- `[low]` `DW-1183` `wontfix-accepted owner=10-2` -- `is_error` is dropped by both request
+  directions.
+
+The lead's three named checks came back: both reply directions are name-transparent and
+`Registry.ResolveWire` is still the one reverse mapping; the clamp's guard is total over every
+value `State.Egress` can store and `ProviderPort.Dispatch` can pass, and `Base`'s two call sites
+reach the division only through `TimeoutOf`; the Gemini id synthesis is collision-safe both for one
+reply calling a function twice (the ordinal differs) and across families (the map is id-to-name and
+the name is in the id).
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -209,6 +257,20 @@ Intent Alignment Auditor:
   - `[low]` `[reject]` The tool-call stop reason overrides the vendor's, and a candidate with no parts answers `$$$OK` - the first is now narrowed to the Gemini case it exists for; the second is documented at the method as "the model answered, with nothing in it".
   - `[false]` `[reject]` The diff is one revision behind the tree on the spec's `status` line - an artifact of when the diff was staged; that line is this workflow's own field, not a reviewed-diff change.
 
+### 2026-09-19 - Code review (full-opus; blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor)
+
+- 59 raw findings, 9 entries after grouping: high 0, medium 6, low 3. 4 patched, 5 ledgered
+  (`DW-1179` to `DW-1183`). Dispositions and evidence are the `### Review Findings` subsection
+  under `## Tasks & Acceptance`.
+- Re-filings of items this story already adjudicated were closed where they closed: the clamp
+  line's level and empty code, `WorkBudgetSec` going negative, `EffectiveAttempts`' unreachable
+  floor and zero-timeout branch, `Test/Adapter.cls`'s length against the 500-line guidance, and
+  `SchemaOf` being public. The superseded sentence at `Kernel/Agent/Limits.cls:91-101` is
+  `DW-1104`'s occurrence and the lead's at adjudication; it was not re-filed.
+- Verified clean and worth recording: `Registry.TOOLNAMEPATTERN` is strictly narrower than both
+  vendors' function-name grammars, so the wire round trip cannot produce a name either family
+  refuses; `Base.cls:324` is the only `%Net.HttpRequest.Timeout` assignment on the provider path.
+
 ## Design Notes
 
 **Consumes:** Story 3.2 (the provider base, the `adapterClass` catalog column, the never-throw template, the `ProviderStub` transport seam); Story 4.2 (`Screen/Tool/Registry.cls`'s emitted schema subset and `WireName`); Story 4.8 (`Retry`'s budgets and the attempt deadline this story turns into a real bound).
@@ -249,6 +311,20 @@ Intent Alignment Auditor:
 - **AC3** -- pinned by `OcuPilot.Test.ProviderRetry.TestAStoredTimeoutFarPastTheDeadlineIsClampedAtThePointOfUse`. `mutation:` make `Retry.EffectiveTimeoutSec` answer its argument unchanged -> red on the recorded timeout (3600) and on the bound (3630 <= 300) (observed 2026-09-18). The row's logging half is pinned by `OcuPilot.Test.Adapter.TestTheClampLogsOnceWhenItLoweredAValueAndIsSilentOtherwise`; `mutation:` return from `Base.LogClamp` before it logs -> red on the one-line assertion (observed 2026-09-18).
 - **AC4** -- pinned by `OcuPilot.Test.Adapter`'s two translation-failure tests. `mutation:` answer `$$$OK` from `MessageAdapter.UnmatchedResult`, so an unmatched result is dropped rather than refused -> red on both refusal legs and on "no call was made" (observed 2026-09-18). Raising instead falsifies nothing: `Base.Invoke`'s outer `Catch` answers `$$$OK` for a raise as for a status, which is the never-throw template working.
 - **AC5** -- pinned by `OcuPilot.Test.Adapter.TestTheCanonicalFamilyIsAByteIdenticalPassthrough` beside `OcuPilot.Test.Provider`'s existing Anthropic body assertions. `mutation:` route the Anthropic adapter's `CallMessages` through `MessageAdapter.CanonicalToOpenAi` -> red on the byte-identity assertion and on the `tool_calls` / `tool_call_id` foreign-field assertions (observed 2026-09-18).
+- **(QA)** AC1, AC2, AC4 and AC5's four mutations above independently re-applied and re-observed on `ocupilot-slot-b` -- red at runs 198/200/201/202, green at 199/203, tree confirmed byte-identical after each revert (observed 2026-09-19).
+- **(QA)** `OcuPilot.Test.Adapter.TestGeminiSchemaCopiesAnUnrecognizedKeywordThroughUnchanged` pins the corrected doc claim that a keyword outside the locked subset is copied through rather than refused. `mutation:` drop `ToolDefAdapter.GeminiSchema`'s fallback `tOut.%Set(tKey, tValue)` copy branch -> red on the copied-through keyword (observed 2026-09-19).
+- **(QA)** `OcuPilot.Test.Adapter.TestTheClampStaysSilentForAStoredAttemptCountOfZero` pins that a stored attempt count of zero logs no clamp line. `mutation:` remove `Base.LogClamp`'s own `tAsked < 1` floor -> red on a spurious clamp line (observed 2026-09-19).
+- **(CR)** `OcuPilot.Test.Adapter.TestAnArrayIsNeverSentAsArgumentsAndNeverBecomesACanonicalInput` and
+  `TestAReplysUnanswerableToolCallIsRefusedRatherThanStored` pin the two guards this review added.
+  `mutation:` the pre-patch code itself -- both methods red at run 205 (16 of 18) against it and
+  green at 206 with the guards in place (observed 2026-09-19).
+- **(CR)** `OcuPilot.Test.Adapter.TestTheOpenAiRequestSendsTheLoopsCallsOnlyAndResultsOnlyShapes`
+  pins the two request shapes `Loop.AnswerTools` produces. `mutation:` send the calls-only message's
+  `content` as a string instead of `null` -> red on the content-type assertion (run 207);
+  `mutation:` drop the empty-companion `Continue` at `MessageAdapter.cls:156` -> red on the message
+  count, which reports the `{"role":"user","content":""}` it lets through (run 208). Both reverted,
+  tree byte-identical, class green at run 209 (observed 2026-09-19).
+- **(QA) Files changed:** `src/OcuPilot/Test/Adapter.cls` (QA) -- two gap-filling test methods added; no other file under `src` or `ui` differs from baseline.
 
 ## Auto Run Result
 

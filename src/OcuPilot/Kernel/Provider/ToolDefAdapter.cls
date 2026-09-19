@@ -25,9 +25,13 @@
 /// dropping it is the safe reading either way, and it costs nothing OcuPilot relies on, because
 /// <method>OcuPilot.Screen.Tool.Registry.ValidateArguments</method> refuses an undeclared argument
 /// on the instance whatever the provider was told (AD-11). Wire contract:
-/// <code>tools[0].functionDeclarations[] = {name, description, parameters}</code>, the same
-/// 64-character name grammar, and <code>Schema.type</code> in Gemini's own upper-case vocabulary
-/// (<parameter>GEMINITYPES</parameter>).</p>
+/// <code>tools[0].functionDeclarations[] = {name, description, parameters}</code>, a name grammar
+/// that is <b>not</b> OpenAI's -- it must start with a letter or an underscore, and admits dots --
+/// and <code>Schema.type</code> in Gemini's own upper-case vocabulary
+/// (<parameter>GEMINITYPES</parameter>). Every name
+/// <method>OcuPilot.Screen.Tool.Registry.WireName</method> can produce satisfies both grammars,
+/// because <parameter>OcuPilot.Screen.Tool.Registry.TOOLNAMEPATTERN</parameter> starts every
+/// segment with a lowercase letter.</p>
 Class OcuPilot.Kernel.Provider.ToolDefAdapter Extends %RegisteredObject
 {
 

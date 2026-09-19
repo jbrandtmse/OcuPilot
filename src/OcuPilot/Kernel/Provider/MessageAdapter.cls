@@ -182,8 +182,11 @@ ClassMethod CanonicalToOpenAi(ByRef pMessages, pSystemPrompt As %String = "", Ou
 /// counts.</p>
 /// <p>Answers an error <class>%Status</class> for a body that is not a JSON object, a body with no
 /// <code>choices</code> array, a first choice carrying no <code>message</code>, and an
-/// <code>arguments</code> string that will not parse as an object -- never a silent empty reply,
-/// which is what a caller would otherwise hand the turn.</p>
+/// <code>arguments</code> value that is not a JSON object -- never a silent empty reply, which is
+/// what a caller would otherwise hand the turn.</p>
+/// <p>A tool call carrying no <code>id</code>, or naming no function, is an error too: a canonical
+/// block the next request could not correlate a result with would refuse <b>every</b> later request
+/// in that conversation, so it is refused here rather than stored.</p>
 ClassMethod OpenAiToCanonical(pBody As %String, pResponse As OcuPilot.Kernel.Provider.Response) As %Status
 {
     Set tSC = $$$OK
@@ -211,8 +214,12 @@ ClassMethod OpenAiToCanonical(pBody As %String, pResponse As OcuPilot.Kernel.Pro
             Set tIterator = tMessage."tool_calls".%GetIterator()
             While tIterator.%GetNext(.tIndex, .tCall) {
                 If '$IsObject(tCall) Continue
-                If '$IsObject(tCall.function) {
+                If '$IsObject(tCall.function) || (tCall.function.name = "") {
                     Set tSC = $$$ERROR($$$GeneralError, "a tool call in the provider's reply names no function")
+                    Quit
+                }
+                If tCall.id = "" {
+                    Set tSC = $$$ERROR($$$GeneralError, "a tool call in the provider's reply carries no id")
                     Quit
                 }
                 Set tInput = ..ArgumentsObject(tCall.function.arguments, .tArgumentsSC)
@@ -333,8 +340,9 @@ ClassMethod CanonicalToGemini(ByRef pMessages, pSystemPrompt As %String = "", Ou
 /// into the canonical vocabulary, and
 /// <code>usageMetadata.promptTokenCount</code> / <code>candidatesTokenCount</code> into the two
 /// token counts.</p>
-/// <p>Answers an error <class>%Status</class> for a body that is not a JSON object and for one
-/// with no <code>candidates</code> array. A candidate that carried no parts is an empty reply and
+/// <p>Answers an error <class>%Status</class> for a body that is not a JSON object, for one with no
+/// <code>candidates</code> array, and for a <code>functionCall</code> part naming no function,
+/// which no later request could answer. A candidate that carried no parts is an empty reply and
 /// not an error: the model answered, with nothing in it.</p>
 ClassMethod GeminiToCanonical(pBody As %String, pResponse As OcuPilot.Kernel.Provider.Response) As %Status
 {
@@ -362,6 +370,10 @@ ClassMethod GeminiToCanonical(pBody As %String, pResponse As OcuPilot.Kernel.Pro
                     Continue
                 }
                 If '$IsObject(tPart.functionCall) Continue
+                If tPart.functionCall.name = "" {
+                    Set tSC = $$$ERROR($$$GeneralError, "a function call in the provider's reply names no function")
+                    Quit
+                }
                 Set tUse = {}
                 Do tUse.%Set("type", "tool_use", "string")
                 Do tUse.%Set("id", ..#GEMINICALLIDPREFIX _ (tToolCalls.%Size() + 1) _ "_" _ tPart.functionCall.name, "string")
@@ -369,6 +381,7 @@ ClassMethod GeminiToCanonical(pBody As %String, pResponse As OcuPilot.Kernel.Pro
                 Do tUse.%Set("input", ..ArgumentsOf(tPart.functionCall.args))
                 Do tToolCalls.%Push(tUse)
             }
+            If $$$ISERR(tSC) Quit
         }
         Set pResponse.Text = tText
         If tToolCalls.%Size() > 0 Set pResponse.ToolCallsJson = tToolCalls.%ToJSON()
@@ -430,7 +443,7 @@ ClassMethod BlocksOf(pBlocks As %String) As %DynamicArray [ Private ]
 /// object.</p>
 ClassMethod ArgumentsText(pInput As %RawString = "") As %String [ Private ]
 {
-    If '$IsObject(pInput) Quit "{}"
+    If '..IsJsonObject(pInput) Quit "{}"
     Quit pInput.%ToJSON()
 }
 
@@ -439,8 +452,18 @@ ClassMethod ArgumentsText(pInput As %RawString = "") As %String [ Private ]
 ClassMethod ArgumentsOf(pInput As %RawString = "") As %DynamicObject [ Private ]
 {
     Set tArgs = {}
-    If $IsObject(pInput) Set tArgs = pInput
+    If ..IsJsonObject(pInput) Set tArgs = pInput
     Quit tArgs
+}
+
+/// <p>Whether <var>pValue</var> is a JSON <b>object</b> -- the check
+/// <method>BodyOf</method> makes, so a JSON array is not read as one anywhere in this class. A
+/// canonical <code>tool_use</code> block's <code>input</code> is an object by contract, and the
+/// loop reads arguments off it by member name.</p>
+ClassMethod IsJsonObject(pValue As %RawString = "") As %Boolean [ Private ]
+{
+    If '$IsObject(pValue) Quit 0
+    Quit ''pValue.%IsA("%Library.DynamicObject")
 }
 
 /// <p>An OpenAI <code>function.arguments</code> value as the canonical <code>input</code> object.
@@ -453,6 +476,10 @@ ClassMethod ArgumentsObject(pArguments As %RawString = "", Output pSC As %Status
     Set tInput = ""
     Try {
         If $IsObject(pArguments) {
+            If '..IsJsonObject(pArguments) {
+                Set pSC = $$$ERROR($$$GeneralError, "a tool call's arguments are not a JSON object")
+                Quit
+            }
             Set tInput = pArguments
             Quit
         }
