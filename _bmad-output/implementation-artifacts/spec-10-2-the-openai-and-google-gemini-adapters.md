@@ -198,17 +198,24 @@ no verification here makes a live turn. Gemini's reference does document an `err
 inside `functionResponse.response`, which is the cheapest fix if the probe ever fires. **DW-1182**
 is owned by 10.3 and untouched: nothing here changes how `message.content` is read.
 
-**Cross-epic dependency (Rule 11 — not planned as an edit).** `src/OcuPilot/Test/AgentWire.cls:79`
-uses `"provider":"openai"` as its *unknown* provider and asserts four violations led by
-`AGENT.PROVIDER.UNKNOWN`. Making `openai` a shipped key turns that into three violations, so the
-class goes red through no fault of its own. The file is inside Epic 5's `Test/**` footprint. The
-minimal repair is the same one-word swap this story makes in `Test/AgentRules.cls` — a key the
-catalog does not declare — and it is for the runner to route to whoever owns that file.
+**The unknown-provider sentinel is `nosuchprovider`, at all three sites.**
+`Test/AgentWire.cls:79`, `Test/AgentRules.cls:116` and `:343` each use a shipped provider key as
+their *unknown* provider, so making `openai` shipped would cost each of them a violation. All three
+move to the one sentinel; two conventions must not exist. `AgentWire.cls` is Epic 5's footprint and
+the orchestrator granted this one literal there (2026-09-19) — that edit is exactly one literal and
+nothing else, to keep the conflict surface minimal, and it is reported as a footprint extension.
+**`CatalogProbe`'s probe key is not usable as the sentinel:** `Test/TurnStore.cls:266-271` shows it
+resolves and reads `IsKnown` whenever `OCUPILOT_ALLOW_TEST_PROVIDER` is 1, so an assertion built on
+it would pass or fail by environment. A guard in `Test/AgentRules.cls` asserts the catalog does not
+declare the sentinel, so shipping that key one day fails loudly there rather than silently costing a
+violation in a file this epic does not own.
 
-**First-row and column constraints.** `Test/AgentViolation.cls:213` asserts the first served row is
-`anthropic` and `:212` pins the twelve projected column names; `strings.ts`'s landing copy names
-Anthropic because the form selects the first row. Appending the two rows and adding no column keeps
-all three true without touching an Epic 5 file or the client.
+**Append after `anthropic`; never prepend — a recorded constraint, not an accident.**
+`Test/AgentViolation.cls:213` asserts `%Get(0).key` is `anthropic` and `:203` asserts a count
+*relative* to `Catalog.Keys()`; `:212` pins the twelve projected column names, and `strings.ts`'s
+landing copy names Anthropic because the form selects the first row. Appending two rows and adding
+no column keeps all four true without touching an Epic 5 file or the client. Reordering the rows
+would break `:213`, so the order is part of this story's contract.
 
 ## Verification
 
