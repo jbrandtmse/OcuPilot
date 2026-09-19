@@ -371,16 +371,45 @@ test('AC8: the fault banner opens messages.log and brings the Logs side bar with
     // Click through an element handle, not an in-page `node.click()`: Puppeteer dispatches a real
     // mouse event and throws `Node is detached from document` if the node has gone, where an
     // in-page click on a detached node silently does nothing and surfaces as a timeout later.
-    let control = null;
-    for (const handle of await page.$$('.ocu-fault-banner button')) {
-      const text = await handle.evaluate((node) => node.textContent.trim());
-      if (text === STRINGS.actionOpenMessagesLog) {
-        control = handle;
-        break;
+    // That throw is the property this press keeps, and it is also why the handle may not be held:
+    // the control sits inside `@if (serverFault)` nested in `@if (visible)` in `fault-banner.ts`,
+    // so a fault that clears and is re-raised during settle DESTROYS and recreates the button and
+    // any handle taken earlier detaches (DW-1156). Re-resolve immediately before each press and
+    // retry only that detachment, within a bound -- a press that detaches every time still FAILS,
+    // and a control pointed anywhere else still fails at the navigation wait below.
+    const pressOpenMessagesLog = async () => {
+      const deadline = Date.now() + config.navigationTimeoutMs;
+      let lastDetach = null;
+      while (Date.now() < deadline) {
+        let control = null;
+        for (const handle of await page.$$('.ocu-fault-banner button')) {
+          const text = await handle.evaluate((node) => node.textContent.trim()).catch(() => null);
+          if (text === STRINGS.actionOpenMessagesLog) {
+            control = handle;
+            break;
+          }
+        }
+        if (control === null) {
+          // The banner is mid-recreation; the un-gated wait above already proved it renders.
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          continue;
+        }
+        try {
+          await control.click();
+          return;
+        } catch (cause) {
+          if (!/detached from document|Node is either not clickable|not visible/i.test(String(cause?.message ?? cause))) throw cause;
+          lastDetach = cause;
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
       }
-    }
-    assert.ok(control !== null, 'the banner carries the published Open messages.log control');
-    await control.click();
+      throw new Error(
+        'the Open messages.log control could not be pressed within ' +
+          `${config.navigationTimeoutMs}ms: it was absent or detached on every attempt` +
+          `${lastDetach === null ? '' : ` (last: ${lastDetach.message})`}`
+      );
+    };
+    await pressOpenMessagesLog();
 
     await waitNamed(
       page,

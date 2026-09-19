@@ -32,6 +32,7 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
+import { authHeader as sharedAuthHeader } from './panel-spec.mjs';
 import {
   armProbeDefinition,
   disarmProbeDefinition,
@@ -192,7 +193,7 @@ function screenContextPayload(messages) {
 }
 
 function authHeader() {
-  return 'Basic ' + Buffer.from(`${config.username}:${config.password}`).toString('base64');
+  return sharedAuthHeader(config);
 }
 
 async function putShare(share) {
@@ -221,8 +222,14 @@ async function putContextRowCap(cap) {
  * uses for os-management/Processes). The entry itself is clicked through Puppeteer's own
  * `page.click` (a real simulated pointer event) rather than an in-page `element.click()`: the
  * synthetic call was observed to leave `Router.navigateByUrl` never invoked when the click
- * landed right after a Switches save, where the real click reliably navigates. */
-async function navigateViaSideBar(page, railItemId, sideBarLabel) {
+ * landed right after a Switches save, where the real click reliably navigates.
+ *
+ * A real pointer event is still absorbed by a router that is mid-settle, which is what cost the
+ * "Cap follows agent-switch" leg 30 s on a cold host (DW-1175). Pass `expectedPath` and the entry
+ * is re-pressed, within a bound, for as long as the URL has not reached it -- which fixes the
+ * absorbed press without weakening the assertion: an entry pointed at any other route never
+ * reaches `expectedPath` and this throws. Omit it and the press happens once, as before. */
+async function navigateViaSideBar(page, railItemId, sideBarLabel, expectedPath = null) {
   await page.click(railItemId);
   try {
     await page.waitForFunction(
@@ -242,7 +249,33 @@ async function navigateViaSideBar(page, railItemId, sideBarLabel) {
     return [...document.querySelectorAll('.ocu-side-bar-item')].findIndex((el) => el.textContent.includes(label));
   }, sideBarLabel);
   assert.ok(index >= 0, `a side-bar entry named "${sideBarLabel}" exists`);
-  await page.click(`.ocu-side-bar-item:nth-of-type(${index + 1})`);
+  const entry = `.ocu-side-bar-item:nth-of-type(${index + 1})`;
+  if (expectedPath === null) {
+    await page.click(entry);
+    return;
+  }
+  const deadline = Date.now() + config.navigationTimeoutMs;
+  const here = async () => page.evaluate(() => new URL(window.location.href).pathname).catch(() => null);
+  while (Date.now() < deadline) {
+    if ((await here()) === expectedPath) return;
+    await page.click(entry).catch(() => {});
+    // One settle's worth before re-reading: long enough that a press that DID land is seen to
+    // have landed, short enough that several attempts fit inside the bound.
+    try {
+      await page.waitForFunction(
+        (path) => new URL(window.location.href).pathname === path,
+        { timeout: 2000 },
+        expectedPath
+      );
+      return;
+    } catch {
+      // Absorbed; the loop re-reads the URL and presses again until the bound.
+    }
+  }
+  throw new Error(
+    `expected pressing the "${sideBarLabel}" side-bar entry to navigate to ${expectedPath} within ` +
+      `${config.navigationTimeoutMs}ms; the URL stayed at ${await here()}`
+  );
 }
 
 /**
@@ -555,7 +588,7 @@ test('Cap follows agent-switch: raising the row cap through the Switches screen 
     // Router.navigateByUrl never invoked, where a real simulated pointer event (what this uses)
     // reliably navigates -- so a cold/slow CI host re-running that same click-right-after-Save
     // sequence is the most plausible loser of the six waits in this leg.
-    await navigateViaSideBar(page, '#ocu-rail-item-permissions', STRINGS.userListLabel);
+    await navigateViaSideBar(page, '#ocu-rail-item-permissions', STRINGS.userListLabel, '/ocupilot/permissions/users');
     await namedWaitForFunction(
       page,
       () => new URL(window.location.href).pathname === '/ocupilot/permissions/users',
