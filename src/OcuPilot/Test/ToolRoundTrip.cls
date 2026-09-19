@@ -17,7 +17,10 @@ Parameter PROBEPREFIX = "OcuPilotProbeAgent";
 /// own <code>View</code> with <code>NAV.NOTINSTANCE</code> -- <code>InvokeTool</code> reaching it
 /// at all is exactly the mis-wiring that code guards against, since
 /// <class>OcuPilot.Kernel.Agent.Dispatch</class> never calls it in production.</p>
-Parameter REFUSEEMPTY = "logs.applicationerrors.read:TOOL.ARGUMENTS,shell.screen.open:NAV.NOTINSTANCE";
+/// <p>Epic 6's six detail reads join the list at the merge: each names the one row it is about,
+/// so an empty argument object has nothing to read. Three refuse at the descriptor's own criterion
+/// check (<code>READ.CRITERION</code>) and three at the port's (<code>PORT.VALIDATION</code>).</p>
+Parameter REFUSEEMPTY = "logs.applicationerrors.read:TOOL.ARGUMENTS,shell.screen.open:NAV.NOTINSTANCE,osmgmt.databasedetails.read:READ.CRITERION,osmgmt.processdetails.read:READ.CRITERION,tasks.taskdetails.read:READ.CRITERION,osmgmt.databasevolumes.read:PORT.VALIDATION,security.secrets.read:PORT.VALIDATION,webapp.openapi.read:PORT.VALIDATION";
 
 Method OnBeforeOneTest() As %Status
 {

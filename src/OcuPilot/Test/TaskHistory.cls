@@ -432,7 +432,7 @@ Method TestTheReadToolAnswersTheRoutesRowsNarrowedByItsCap()
         While tIterator.%GetNext(.tKey, .tValue2) {
             Set tKeys = tKeys _ $Select(tKeys = "": "", 1: ",") _ tKey
         }
-        Do $$$AssertEquals(tKeys, "fields,rows,truncated", tTool _ ": and nothing else")
+        Do $$$AssertEquals(tKeys, "fields,rows,truncated,rowsAvailable", tTool _ ": and nothing else")
     }
 }
 

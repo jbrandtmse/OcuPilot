@@ -285,7 +285,7 @@ Method TestTheReadToolAnswersTheRoutesRowsNarrowedAndNoDocument()
         While tIterator.%GetNext(.tKey, .tValue) {
             Set tKeys = tKeys _ $Select(tKeys = "": "", 1: ",") _ tKey
         }
-        Do $$$AssertEquals(tKeys, "fields,rows,truncated", tTool _ ": and no document key")
+        Do $$$AssertEquals(tKeys, "fields,rows,truncated,rowsAvailable", tTool _ ": and no document key")
     }
 }
 
