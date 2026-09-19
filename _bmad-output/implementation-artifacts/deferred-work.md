@@ -4072,3 +4072,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-0-epic-4-deferred-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: scripts/check-objectscript.py takes no path argument; .githooks/pre-commit:72,101 says so and runs it bare. A reader who trusts the CLAUDE.md sentence expects a staged-path scope the hook does not have. Location: CLAUDE.md, the Running and verifying section
 - 2026-09-19T03:52:06Z status=routed owner=17-2-a-readme-whose-install-steps-work-the-first-time by=spec_gate note=developer-documentation drift beside DW-446 and DW-457; the owner edits CLAUDE.md concurrently so a runner does not rewrite it mid-run
+
+### DW-1184: Three Test/Dispatch harness helpers assign %request and %response without New, so the stubs outlive the call and a later test in the same process reads them instead of its own state
+- source: spec-5-0-epic-4-deferred-cleanup.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Invoke, InvokeHttp500 and the new InvokeHandler each Set %request without New %request,%response; only %OcuPilotDispatchCap is killed on exit. No current caller is affected, so it is latent. Location: src/OcuPilot/Test/Dispatch.cls
+- 2026-09-19T06:30:02Z status=open owner=5-0-epic-4-deferred-cleanup by=harvest note=harvested from the 5.0 spec deferred list; adjudicated against delivered scope at this story's ledger gate
+
+### DW-1185: A lead-side Rule 19 mutation that leaves a capture open leaks it into a pooled Atelier work-queue worker, so a later unrelated class run reddens on Capture Already Active
+- source: lead AD gate for story 5.0 | severity: med | fix-risk: low | footprint: in-epic
+- evidence: Observed on slot A 2026-09-19: removing MgmntPort's BeginCapture guard left ^||%capture and a redirected device set in the worker that served run 2506; run 2507 of PortCapture and a run of AdminPortFault then failed 11 of 24 with Capture Already Active on reverted, recompiled code. Cleared when a class that calls EndCapture next ran in that worker (2510 green 24/24). Location: Verification discipline, not a product defect
+- 2026-09-19T06:33:15Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=the project rule already says destructive verification belongs on a throwaway; this shows a plain code mutation is destructive too when the harness pools processes - 13.2 owns the CI test-suite discipline
