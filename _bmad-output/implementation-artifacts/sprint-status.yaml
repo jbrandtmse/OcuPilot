@@ -168,8 +168,8 @@ development_status:
   9-9-a-cut-editor-ships-reduced-never-half-working: backlog
   epic-9-retrospective: optional
 
-  epic-10: backlog
-  10-1-the-message-and-tool-definition-adapters: ready-for-dev
+  epic-10: in-progress
+  10-1-the-message-and-tool-definition-adapters: in-progress
   10-2-the-openai-and-google-gemini-adapters: backlog
   10-3-the-openai-compatible-adapter-and-local-models: backlog
   epic-10-retrospective: optional
