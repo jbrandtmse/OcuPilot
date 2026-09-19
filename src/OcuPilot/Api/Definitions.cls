@@ -103,7 +103,7 @@ Parameter TESTPROMPT = "Reply with a one-line acknowledgement that this connecti
 /// and the marker moves through its own route.</p>
 ClassMethod Fields() As %List
 {
-    Quit $ListBuild($ListBuild("name", "Name", "string", 1), $ListBuild("provider", "Provider", "string", 1), $ListBuild("model", "Model", "string", 1), $ListBuild("endpointUrl", "EndpointUrl", "string", 1), $ListBuild("markedLocal", "MarkedLocal", "boolean", 1), $ListBuild("credType", "CredType", "string", 1), $ListBuild("envVarName", "EnvVarName", "string", 1), $ListBuild("credentialName", "CredentialName", "string", 1), $ListBuild("maxTokens", "MaxTokens", "number", 1), $ListBuild("temperature", "Temperature", "number", 1), $ListBuild("maxIterationsPerTurn", "MaxIterationsPerTurn", "number", 1), $ListBuild("systemPromptOverride", "SystemPromptOverride", "string", 1), $ListBuild("readOnly", "ReadOnly", "boolean", 1), $ListBuild("retentionDays", "RetentionDays", "number", 1), $ListBuild("enabled", "Enabled", "boolean", 1), $ListBuild("connectionVerified", "ConnectionVerified", "boolean", 0), $ListBuild("createdAt", "CreatedAt", "string", 0), $ListBuild("updatedAt", "UpdatedAt", "string", 0))
+    Quit $ListBuild($ListBuild("name", "Name", "string", 1), $ListBuild("provider", "Provider", "string", 1), $ListBuild("model", "Model", "string", 1), $ListBuild("endpointUrl", "EndpointUrl", "string", 1), $ListBuild("markedLocal", "MarkedLocal", "boolean", 1), $ListBuild("httpAcknowledged", "HttpAcknowledged", "boolean", 1), $ListBuild("credType", "CredType", "string", 1), $ListBuild("envVarName", "EnvVarName", "string", 1), $ListBuild("credentialName", "CredentialName", "string", 1), $ListBuild("maxTokens", "MaxTokens", "number", 1), $ListBuild("temperature", "Temperature", "number", 1), $ListBuild("maxIterationsPerTurn", "MaxIterationsPerTurn", "number", 1), $ListBuild("systemPromptOverride", "SystemPromptOverride", "string", 1), $ListBuild("readOnly", "ReadOnly", "boolean", 1), $ListBuild("retentionDays", "RetentionDays", "number", 1), $ListBuild("enabled", "Enabled", "boolean", 1), $ListBuild("connectionVerified", "ConnectionVerified", "boolean", 0), $ListBuild("createdAt", "CreatedAt", "string", 0), $ListBuild("updatedAt", "UpdatedAt", "string", 0))
 }
 
 /// <p>The wire names of the fields whose change disables a definition -- the property names
@@ -767,7 +767,9 @@ ClassMethod HandleTest(pId As %String) As %Status
 /// none (AD-42). It is on the answer as
 /// <code>keySource</code>, and on the call fault's <code>detail</code> beside
 /// <code>testedAsStored</code>. A test is <b>as stored</b> only when every security field matches
-/// the row and the key is the stored one, so a body key is never recorded as a verification.</p>
+/// the row and the key is the stored configuration's own
+/// (<method>KeySourceIsTheStoredOne</method>), so a body key is never recorded as a
+/// verification.</p>
 /// <p><b>The provider's reply is bounded here</b>, at <parameter>TESTREPLYMAX</parameter>, and
 /// never enters the change record: it is model output (AD-11) and a change record is read on
 /// OcuPilot's own log screens.</p>
@@ -787,7 +789,7 @@ ClassMethod ConnectionOutcome(pId As %String, ByRef pValues, ByRef pStored, Outp
     ; Judged before the call, because InvokeDraft adds to the array in place: an endpoint the
     ; definition left empty comes back filled in from the catalog row, which would read as an edit.
     Set tKeySource = ..KeySourceFor(.pValues, .pStored, pBody)
-    Set tTestedAsStored = ..MatchesStoredSecurityFields(.pValues, .pStored) && (tKeySource = ##class(OcuPilot.Kernel.Provider.Base).#KEYSOURCESTORED)
+    Set tTestedAsStored = ..MatchesStoredSecurityFields(.pValues, .pStored) && ..KeySourceIsTheStoredOne(tKeySource, .pStored)
     ; Taken here for the same reason: the change record a test against unstored values produces
     ; diffs the stored row against the values the caller asked for, not against the budget imposed
     ; below or the endpoint the port fills in.
@@ -896,7 +898,10 @@ ClassMethod ConnectionOutcome(pId As %String, ByRef pValues, ByRef pStored, Outp
 /// (<method>EffectiveEndpoint</method>) and <code>credType</code>, <code>envVarName</code> and
 /// <code>credentialName</code> all hold their stored values: the stored credential goes only where
 /// the row says, and only the one the row names.</li>
-/// <li><code>none</code> -- otherwise. The call is made unauthenticated, and says so.</li>
+/// <li><code>none</code> -- when the values' own <code>credType</code> is <code>none</code>, and
+/// otherwise as the fallback. The call is made unauthenticated, and says so. <b>It is decided
+/// after the body key, not before it</b>: a pasted key is tested even against a keyless
+/// definition, so this rung is a fallback and never a gate.</li>
 /// </ol>
 /// <p>The body member is tested inside the comparison and never bound to a local (AD-48).</p>
 ClassMethod KeySourceFor(ByRef pValues, ByRef pStored, pBody As %DynamicObject = "") As %String
@@ -906,12 +911,30 @@ ClassMethod KeySourceFor(ByRef pValues, ByRef pStored, pBody As %DynamicObject =
             If $ZStrip(pBody.%Get(..#KEYFIELD), "<>WC") '= "" Quit ##class(OcuPilot.Kernel.Provider.Base).#KEYSOURCEBODY
         }
     }
+    ; A definition that names no credential has nothing to resolve, so the call is made without
+    ; one -- which for that configuration is the stored answer rather than a test made without it
+    ; (KeySourceIsTheStoredOne).
+    If $Get(pValues("credType")) = ##class(OcuPilot.Kernel.AgentRules).#CREDTYPENONE Quit ##class(OcuPilot.Kernel.Provider.Base).#KEYSOURCENONE
     Set tTested = ..EffectiveEndpoint(.pValues)
     If (tTested = "") || (tTested '= ..EffectiveEndpoint(.pStored)) Quit ##class(OcuPilot.Kernel.Provider.Base).#KEYSOURCENONE
     For tField = "credType", "envVarName", "credentialName" {
         If $Get(pValues(tField)) '= $Get(pStored(tField)) Return ##class(OcuPilot.Kernel.Provider.Base).#KEYSOURCENONE
     }
     Quit ##class(OcuPilot.Kernel.Provider.Base).#KEYSOURCESTORED
+}
+
+/// <p>Whether <var>pKeySource</var> is the key the stored configuration itself carries: the stored
+/// credential, or -- where the stored <code>credType</code> is <code>none</code> -- no key at all,
+/// which is that configuration's own answer and not a test made without the key it names.</p>
+/// <p><b>It is half of "tested as stored"</b>, beside
+/// <method>MatchesStoredSecurityFields</method>, and so half of what lets a verification be
+/// recorded. Without the second arm a keyless definition could never be verified, and so never
+/// enabled.</p>
+ClassMethod KeySourceIsTheStoredOne(pKeySource As %String, ByRef pStored) As %Boolean
+{
+    If pKeySource = ##class(OcuPilot.Kernel.Provider.Base).#KEYSOURCESTORED Quit 1
+    If pKeySource '= ##class(OcuPilot.Kernel.Provider.Base).#KEYSOURCENONE Quit 0
+    Quit ($Get(pStored("credType")) = ##class(OcuPilot.Kernel.AgentRules).#CREDTYPENONE)
 }
 
 /// <p>The endpoint a call against <var>pValues</var> goes to: <code>endpointUrl</code>, or, when

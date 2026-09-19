@@ -76,7 +76,7 @@ Method TestACreateBreakingFourRulesAnswersOneEnvelopeAndWritesNothing()
     Set tBefore = ##class(OcuPilot.Test.AgentFixture).ProbeCount()
     Do $$$AssertEquals(tBefore, 0, "no probe definition exists before the refused create")
 
-    Set tSC = ..Call("POST", "", "{""name"":""" _ ..#PROBEPREFIX _ "Four"",""provider"":""openai"",""maxTokens"":99000,""temperature"":3,""credType"":""env"",""credentialName"":""OcuPilotAnthropic""}", .tStatus, .tBody, .tHeaders)
+    Set tSC = ..Call("POST", "", "{""name"":""" _ ..#PROBEPREFIX _ "Four"",""provider"":""" _ ##class(OcuPilot.Test.AgentRules).#UNKNOWNPROVIDER _ """,""maxTokens"":99000,""temperature"":3,""credType"":""env"",""credentialName"":""OcuPilotAnthropic""}", .tStatus, .tBody, .tHeaders)
     Do $$$AssertStatusOK(tSC, "the create request completes")
     Do $$$AssertEquals(tStatus, 422, "and is refused as a validation failure")
     Do $$$AssertEquals($ZConvert($Get(tHeaders("CONTENT-TYPE")), "L") [ "application/json", 1, "with a JSON content type: " _ $Get(tHeaders("CONTENT-TYPE")))
@@ -110,7 +110,9 @@ Method TestASoundCreateIsReturnedByTheListImmediately()
     Do $$$AssertEquals(tCreated.readOnly, 1, "a definition is created read-only, which is the safe default Story 3.7 enforces")
     Do $$$AssertEquals(tCreated.retentionDays, 30, "with the settled retention default")
     Do $$$AssertEquals(tCreated.maxIterationsPerTurn, 10, "and the settled per-turn iteration ceiling")
-    Do $$$AssertEquals(..KeysOf(tCreated), "id,name,provider,model,endpointUrl,markedLocal,credType,envVarName,credentialName,maxTokens,temperature,maxIterationsPerTurn,systemPromptOverride,readOnly,retentionDays,enabled,connectionVerified,createdAt,updatedAt,default", "the full projection carries exactly these keys, and no key that could hold a credential value")
+    ; Story 10.3 appended httpAcknowledged to OcuPilot.Api.Definitions.Fields(); the key list is
+    ; pinned exactly, so the projection gaining a key is a deliberate edit here (granted 2026-09-19).
+    Do $$$AssertEquals(..KeysOf(tCreated), "id,name,provider,model,endpointUrl,markedLocal,httpAcknowledged,credType,envVarName,credentialName,maxTokens,temperature,maxIterationsPerTurn,systemPromptOverride,readOnly,retentionDays,enabled,connectionVerified,createdAt,updatedAt,default", "the full projection carries exactly these keys, and no key that could hold a credential value")
 
     Set tSC2 = ..Call("GET", "", "", .tListStatus, .tListBody, .tListHeaders)
     Do $$$AssertStatusOK(tSC2, "the list request completes")

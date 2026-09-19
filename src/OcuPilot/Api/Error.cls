@@ -448,10 +448,18 @@ Parameter AGENTENDPOINTSCHEME = "AGENT.ENDPOINT.SCHEME";
 Parameter AGENTENDPOINTADDRESS = "AGENT.ENDPOINT.ADDRESS";
 
 /// <p>Violation code (AD-42, FR-27): the endpoint resolves into the link-local range
-/// (<code>169.254.0.0/16</code> or <code>fe80::/10</code>), which is refused
-/// <b>unconditionally</b> -- no catalog row and no marked-local flag opens it. That range is
-/// where a cloud instance's metadata service lives, and no local model lives there.</p>
+/// (<code>169.254.0.0/16</code> or <code>fe80::/10</code>), or onto one of the published cloud
+/// instance-metadata addresses outside it
+/// (<parameter>OcuPilot.Kernel.Egress.METADATAADDRESSES</parameter>). Refused
+/// <b>unconditionally</b> -- no catalog row and no marked-local flag opens it. That is where a
+/// cloud instance's metadata service lives, and no local model lives there.</p>
 Parameter AGENTENDPOINTLINKLOCAL = "AGENT.ENDPOINT.LINKLOCAL";
+
+/// <p>Violation code (AD-42): the endpoint is a plain <code>http://</code> address and the
+/// definition carries a credential, without the stored acknowledgment that the key crosses the
+/// network unencrypted. Rendered on the field <code>httpAcknowledged</code>.</p>
+/// <p>A <code>credType</code> of <code>none</code> never earns it: there is no key to expose.</p>
+Parameter AGENTHTTPACKREQUIRED = "AGENT.HTTP.ACK.REQUIRED";
 
 /// <p>Violation code (AD-42): the definition is marked local on a provider whose catalog row does
 /// not allow it. Rendered on the field <code>markedLocal</code>.</p>
@@ -1034,6 +1042,7 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If pCode = ..#AGENTENDPOINTSCHEME Quit ..#REASONAGENTENDPOINTSCHEME
     If pCode = ..#AGENTENDPOINTADDRESS Quit ..#REASONAGENTENDPOINTADDRESS
     If pCode = ..#AGENTENDPOINTLINKLOCAL Quit ..#REASONAGENTENDPOINTLINKLOCAL
+    If pCode = ..#AGENTHTTPACKREQUIRED Quit ..#REASONAGENTHTTPACKREQUIRED
     If pCode = ..#AGENTLOCALUNSUPPORTED Quit ..#REASONAGENTLOCALUNSUPPORTED
     If pCode = ..#AGENTSYSTEMPROMPTLENGTH Quit ..#REASONAGENTSYSTEMPROMPTLENGTH
     If pCode = ..#AGENTRETENTIONRANGE Quit ..#REASONAGENTRETENTIONRANGE
@@ -1059,7 +1068,7 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
 /// re-spelling either, which is what catches a code added with no sentence behind it.</p>
 ClassMethod ViolationCodes() As %List
 {
-    Quit $ListBuild(..#AGENTNAMEREQUIRED, ..#AGENTNAMEDUPLICATE, ..#AGENTPROVIDERUNKNOWN, ..#AGENTMAXTOKENSRANGE, ..#AGENTTEMPERATURERANGE, ..#AGENTCREDTYPEUNKNOWN, ..#AGENTENVVARREQUIRED, ..#AGENTCREDNAMEREQUIRED, ..#AGENTCREDNAMELENGTH, ..#AGENTENDPOINTREQUIRED, ..#AGENTENDPOINTSCHEME, ..#AGENTENDPOINTADDRESS, ..#AGENTENDPOINTLINKLOCAL, ..#AGENTLOCALUNSUPPORTED, ..#AGENTSYSTEMPROMPTLENGTH, ..#AGENTRETENTIONRANGE, ..#AGENTITERATIONSRANGE, ..#AGENTENABLEUNVERIFIED, ..#AGENTDEFAULTDISABLED, ..#AGENTCREDENTIALREQUIRED, ..#AGENTCREDENTIALENVUNWRITABLE, ..#AGENTCREDENTIALRUNGUNAVAILABLE, ..#AGENTKEYSHAPE, ..#AGENTCREDENTIALNOTOWNED, ..#AGENTCREDENTIALNOPRIVILEGE, ..#AGENTSWITCHREASONREQUIRED, ..#AGENTSWITCHCONTEXTROWCAP, ..#AGENTHOLDUSERREQUIRED, ..#AGENTHOLDREASONREQUIRED, ..#AGENTHOLDDUPLICATE)
+    Quit $ListBuild(..#AGENTNAMEREQUIRED, ..#AGENTNAMEDUPLICATE, ..#AGENTPROVIDERUNKNOWN, ..#AGENTMAXTOKENSRANGE, ..#AGENTTEMPERATURERANGE, ..#AGENTCREDTYPEUNKNOWN, ..#AGENTENVVARREQUIRED, ..#AGENTCREDNAMEREQUIRED, ..#AGENTCREDNAMELENGTH, ..#AGENTENDPOINTREQUIRED, ..#AGENTENDPOINTSCHEME, ..#AGENTENDPOINTADDRESS, ..#AGENTENDPOINTLINKLOCAL, ..#AGENTHTTPACKREQUIRED, ..#AGENTLOCALUNSUPPORTED, ..#AGENTSYSTEMPROMPTLENGTH, ..#AGENTRETENTIONRANGE, ..#AGENTITERATIONSRANGE, ..#AGENTENABLEUNVERIFIED, ..#AGENTDEFAULTDISABLED, ..#AGENTCREDENTIALREQUIRED, ..#AGENTCREDENTIALENVUNWRITABLE, ..#AGENTCREDENTIALRUNGUNAVAILABLE, ..#AGENTKEYSHAPE, ..#AGENTCREDENTIALNOTOWNED, ..#AGENTCREDENTIALNOPRIVILEGE, ..#AGENTSWITCHREASONREQUIRED, ..#AGENTSWITCHCONTEXTROWCAP, ..#AGENTHOLDUSERREQUIRED, ..#AGENTHOLDREASONREQUIRED, ..#AGENTHOLDDUPLICATE)
 }
 
 /// <p>Refusal sentence for <parameter>AGENTNAMEREQUIRED</parameter>.</p>
@@ -1100,7 +1109,10 @@ Parameter REASONAGENTENDPOINTSCHEME = "The endpoint is an absolute https:// addr
 Parameter REASONAGENTENDPOINTADDRESS = "That endpoint resolves to this instance or to a loopback address, which OcuPilot will not call.";
 
 /// <p>Refusal sentence for <parameter>AGENTENDPOINTLINKLOCAL</parameter>.</p>
-Parameter REASONAGENTENDPOINTLINKLOCAL = "That endpoint resolves to a link-local address, which OcuPilot never calls.";
+Parameter REASONAGENTENDPOINTLINKLOCAL = "That endpoint resolves to a link-local or cloud instance-metadata address, which OcuPilot never calls.";
+
+/// <p>Refusal sentence for <parameter>AGENTHTTPACKREQUIRED</parameter>.</p>
+Parameter REASONAGENTHTTPACKREQUIRED = "This endpoint is not encrypted, so the key travels across the network in clear; acknowledge that to save it.";
 
 /// <p>Refusal sentence for <parameter>AGENTLOCALUNSUPPORTED</parameter>.</p>
 Parameter REASONAGENTLOCALUNSUPPORTED = "This provider serves no local model, so the definition cannot be marked local.";

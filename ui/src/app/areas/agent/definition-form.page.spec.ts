@@ -56,6 +56,40 @@ const TWO_PROVIDERS = {
   ],
 };
 
+/**
+ * A plain-`http://` value for the endpoint field. The scheme alone, because the scheme is all
+ * `showHttpAcknowledge` reads and `ui/tools/client-lint.mjs`'s off-origin rule holds a closed list
+ * of absolute URLs `ui/src` may carry that a plain-http host is not on -- and assembling one past
+ * that scanner is the trick this project refuses elsewhere. With no host it names no resource, and
+ * nothing here fetches it: it is typed into an input and read back.
+ */
+const PLAIN_HTTP = 'http://';
+
+/**
+ * Two rows where the second licenses a local address and a keyless rung (Story 10.3's
+ * `compatible` row). Every other fixture in this file sets `allowsLocal` false, so without this
+ * one `localAllowed` is never true and the three controls it gates have no test host at all.
+ */
+const LOCAL_PROVIDERS = {
+  providers: [
+    PROVIDERS_BODY.providers[0],
+    {
+      ...PROVIDERS_BODY.providers[0],
+      key: 'compatible',
+      label: 'OpenAI-compatible',
+      defaultModel: '',
+      modelSuggestions: [],
+      defaultEndpoint: '',
+      endpointRequired: true,
+      defaultEnvVarName: 'OPENAI_COMPATIBLE_API_KEY',
+      defaultCredentialName: 'OcuPilotCompatible',
+      keyPrefix: '',
+      allowsLocal: true,
+      keyShapeReason: '',
+    },
+  ],
+};
+
 const FORM_SCREEN = {
   descriptor: 'OcuPilot.Screen.Descriptor.AgentDefinitionForm',
   route: 'agent/definitions/edit',
@@ -1065,5 +1099,210 @@ describe('the Definition form', () => {
       mapLoaded: false,
     });
     expect(noMap.host.querySelector('.ocu-form-gate-banner')).toBeNull();
+  });
+
+  it('Story 10.3 AC2: the local controls render only on a row that licenses them, and the acknowledgment only for a key crossing plain http', async () => {
+    // The gap this closes: the three controls are gated on `allowsLocal`, which no other fixture
+    // in this file sets, so inverting `showHttpAcknowledge` to `false` reddened nothing.
+    const { fixture, host } = await mount((path) =>
+      path.endsWith('/agent/providers') ? ok(LOCAL_PROVIDERS) : ok({ definitions: [] })
+    );
+    const provider = host.querySelector('#ocu-definition-provider') as HTMLSelectElement;
+    const endpoint = host.querySelector('#ocu-definition-endpointUrl') as HTMLInputElement;
+
+    // On the vendor row the row licenses nothing, so neither the declaration nor the keyless
+    // choice is offered -- and a plain-http endpoint does not summon the acknowledgment either,
+    // because the server refuses that endpoint on its own field there.
+    endpoint.value = PLAIN_HTTP;
+    endpoint.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    expect(host.querySelector('#ocu-definition-markedLocal')).toBeNull();
+    expect(host.querySelector('#ocu-definition-credType')).toBeNull();
+    expect(host.querySelector('#ocu-definition-httpAcknowledged')).toBeNull();
+
+    provider.value = 'compatible';
+    provider.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    expect(host.querySelector('#ocu-definition-markedLocal')).not.toBeNull();
+    expect(host.querySelector('#ocu-definition-credType')).not.toBeNull();
+
+    // The cascade emptied the endpoint with the row's own default, so type it again.
+    endpoint.value = PLAIN_HTTP;
+    endpoint.dispatchEvent(new Event('input'));
+    await settle(fixture);
+
+    // Still not offered: the row licenses a local address but the definition has not declared
+    // itself one, and `AgentRules.SchemeAccepted` refuses plain http on `endpointUrl` itself
+    // until both terms hold -- a refusal this control cannot clear.
+    expect(host.querySelector('#ocu-definition-httpAcknowledged')).toBeNull();
+    const markedLocal = host.querySelector('#ocu-definition-markedLocal') as HTMLInputElement;
+    markedLocal.checked = true;
+    markedLocal.dispatchEvent(new Event('change'));
+    await settle(fixture);
+
+    const acknowledge = host.querySelector('#ocu-definition-httpAcknowledged') as HTMLInputElement;
+    expect(acknowledge).not.toBeNull();
+    expect(acknowledge.closest('.ocu-field')?.classList.contains('ocu-field-egress')).toBe(true);
+    expect(acknowledge.parentElement?.textContent?.trim()).toBe(STRINGS.agentDefinitionHttpAcknowledge);
+
+    // An encrypted endpoint is never asked.
+    endpoint.value = 'https://ocupilot.invalid/v1';
+    endpoint.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    expect(host.querySelector('#ocu-definition-httpAcknowledged')).toBeNull();
+
+    // Neither is a keyless definition: there is no key to expose.
+    endpoint.value = PLAIN_HTTP;
+    endpoint.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    const noKey = host.querySelector('#ocu-definition-credType') as HTMLInputElement;
+    noKey.checked = true;
+    noKey.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    expect(host.querySelector('#ocu-definition-httpAcknowledged')).toBeNull();
+  });
+
+  it('Story 10.3 AC2: ticking the acknowledgment sends it, and unticking No API key restores the rung it displaced', async () => {
+    const { fixture, host, calls } = await mount((path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(LOCAL_PROVIDERS);
+      if (init.method === 'POST') return created(definition({ provider: 'compatible' }));
+      return ok({ definitions: [] });
+    });
+    const provider = host.querySelector('#ocu-definition-provider') as HTMLSelectElement;
+    provider.value = 'compatible';
+    provider.dispatchEvent(new Event('change'));
+    await settle(fixture);
+
+    // Tick the keyless choice and untick it: the rung must come back as it was, not as `creds`
+    // chosen for the operator.
+    const noKey = host.querySelector('#ocu-definition-credType') as HTMLInputElement;
+    noKey.checked = true;
+    noKey.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    noKey.checked = false;
+    noKey.dispatchEvent(new Event('change'));
+    await settle(fixture);
+
+    const name = host.querySelector('#ocu-definition-name') as HTMLInputElement;
+    name.value = 'Local';
+    name.dispatchEvent(new Event('input'));
+    const model = host.querySelector('#ocu-definition-model') as HTMLInputElement;
+    model.value = 'llama-3.3-70b-instruct';
+    model.dispatchEvent(new Event('input'));
+    const endpoint = host.querySelector('#ocu-definition-endpointUrl') as HTMLInputElement;
+    endpoint.value = PLAIN_HTTP;
+    endpoint.dispatchEvent(new Event('input'));
+    await settle(fixture);
+
+    const markedLocal = host.querySelector('#ocu-definition-markedLocal') as HTMLInputElement;
+    markedLocal.checked = true;
+    markedLocal.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    const acknowledge = host.querySelector('#ocu-definition-httpAcknowledged') as HTMLInputElement;
+    acknowledge.checked = true;
+    acknowledge.dispatchEvent(new Event('change'));
+    await settle(fixture);
+
+    ([...host.querySelectorAll('.ocu-form-bar-actions button')].at(-1) as HTMLButtonElement).click();
+    await settle(fixture);
+    const posted = JSON.parse(calls.filter((call) => call.method === 'POST').at(-1)?.body ?? '{}');
+    expect(posted.httpAcknowledged).toBe(true);
+    expect(posted.markedLocal).toBe(true);
+    expect(posted.credType).toBe('creds');
+  });
+
+  it('Story 10.3: cascading off the local row clears the two flags and the keyless rung, so no control leaves the screen holding a value', async () => {
+    // Without the clear-down the buffer keeps `credType: none` and `markedLocal: true` after the
+    // controls have gone, and Save is refused on two fields the form renders nothing for.
+    const { fixture, host, calls } = await mount((path, init) => {
+      if (path.endsWith('/agent/providers')) return ok(LOCAL_PROVIDERS);
+      if (init.method === 'POST') return created(definition());
+      return ok({ definitions: [] });
+    });
+    const provider = host.querySelector('#ocu-definition-provider') as HTMLSelectElement;
+    provider.value = 'compatible';
+    provider.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    (host.querySelector('#ocu-definition-markedLocal') as HTMLInputElement).checked = true;
+    (host.querySelector('#ocu-definition-markedLocal') as HTMLInputElement).dispatchEvent(new Event('change'));
+    await settle(fixture);
+
+    // The acknowledgment is ticked before the cascade, so the assertion below observes the
+    // clear-down rather than the buffer's own initial `false`: without it, `httpAcknowledged`
+    // is never true on this path and the POST would read `false` whether or not the row's
+    // `allowsLocal` clause exists.
+    const endpoint = host.querySelector('#ocu-definition-endpointUrl') as HTMLInputElement;
+    endpoint.value = PLAIN_HTTP;
+    endpoint.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    const acknowledge = host.querySelector('#ocu-definition-httpAcknowledged') as HTMLInputElement;
+    acknowledge.checked = true;
+    acknowledge.dispatchEvent(new Event('change'));
+    await settle(fixture);
+
+    const noKey = host.querySelector('#ocu-definition-credType') as HTMLInputElement;
+    noKey.checked = true;
+    noKey.dispatchEvent(new Event('change'));
+    await settle(fixture);
+
+    provider.value = 'anthropic';
+    provider.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    expect(host.querySelector('#ocu-definition-markedLocal')).toBeNull();
+    expect(host.querySelector('#ocu-definition-credType')).toBeNull();
+
+    const name = host.querySelector('#ocu-definition-name') as HTMLInputElement;
+    name.value = 'Claude';
+    name.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    ([...host.querySelectorAll('.ocu-form-bar-actions button')].at(-1) as HTMLButtonElement).click();
+    await settle(fixture);
+    const posted = JSON.parse(calls.filter((call) => call.method === 'POST').at(-1)?.body ?? '{}');
+    expect(posted.markedLocal).toBe(false);
+    expect(posted.httpAcknowledged).toBe(false);
+    expect(posted.credType).toBe('creds');
+  });
+
+  it('Story 10.3 AC2: unticking No API key restores an `env` rung rather than forcing `creds`', async () => {
+    // The gap this closes: the only other observation of the restore starts from `creds`, which
+    // is also what the behaviour it replaced produced, so it could not tell the two apart. A
+    // stored `env` definition is the only state that can. `credType` is a security field
+    // (`State/Agent.SecurityFields`), so a silent move would disable the definition until Test
+    // connection passed again, against a rung the operator never chose.
+    const stored = definition({
+      name: 'Local',
+      provider: 'compatible',
+      model: 'llama-3.3-70b-instruct',
+      endpointUrl: 'https://ocupilot.invalid/v1',
+      credType: 'env',
+      envVarName: 'OPENAI_COMPATIBLE_API_KEY',
+      credentialName: '',
+    });
+    const { fixture, host, calls } = await mount(
+      (path) => (path.endsWith('/agent/providers') ? ok(LOCAL_PROVIDERS) : ok(stored)),
+      '/agent/definitions/edit/7'
+    );
+
+    const noKey = host.querySelector('#ocu-definition-credType') as HTMLInputElement;
+    expect(noKey.checked).toBe(false);
+    noKey.checked = true;
+    noKey.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    noKey.checked = false;
+    noKey.dispatchEvent(new Event('change'));
+    await settle(fixture);
+
+    // A benign edit, so the save is issued whatever the dirty tracking makes of a value that
+    // left and came back.
+    const name = host.querySelector('#ocu-definition-name') as HTMLInputElement;
+    name.value = 'Local model';
+    name.dispatchEvent(new Event('input'));
+    await settle(fixture);
+
+    ([...host.querySelectorAll('.ocu-form-bar-actions button')].at(-1) as HTMLButtonElement).click();
+    await settle(fixture);
+    const posted = JSON.parse(calls.filter((call) => call.method === 'PUT').at(-1)?.body ?? '{}');
+    expect(posted.credType).toBe('env');
+    expect(posted.envVarName).toBe('OPENAI_COMPATIBLE_API_KEY');
   });
 });

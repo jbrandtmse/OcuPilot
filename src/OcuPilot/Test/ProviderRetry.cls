@@ -1,7 +1,9 @@
-/// <p>Story 4.8's retry arithmetic and the two budgets that bound one provider call: the status
+/// <p>Story 4.8's retry arithmetic and the two budgets that bound one provider call, and Story
+/// 10.1's clamp that holds a stored pair inside them: the status
 /// table over its whole range including the determinate-server-error carve-out, both
 /// <code>Retry-After</code> forms, the backoff window, the wait truncated to the retry budget, the
-/// attempt deadline, the three failure kinds the transport loop tells apart, and the relation the
+/// attempt deadline, the effective timeout and attempt count a stored pair is served with, the
+/// three failure kinds the transport loop tells apart, and the relation the
 /// turn-side and provider-side ceilings stand in.</p>
 /// <p><b>Every number is read with <code>$Parameter</code></b> from the class that declares it --
 /// <class>OcuPilot.Kernel.Provider.Retry</class>, <class>OcuPilot.Kernel.State.Egress</class> and
@@ -254,12 +256,16 @@ Method TestTwoHintsAtTheCeilingBuyOneWaitAndNotTwo()
     Do $$$AssertEquals(tHttpStatus, 502, "answered as a gateway failure")
 }
 
-/// <p>AC3 -- a stored per-call timeout large enough that two attempts pass
+/// <p>AC3 -- two attempts that between them pass
 /// <parameter>OcuPilot.Kernel.Provider.Retry.ATTEMPTBUDGETSECONDS</parameter>: no further attempt
 /// is started and the call ends <code>PROVIDER.TIMEOUT</code>, however many attempts the settings
-/// still allow.</p>
-/// <p>Mutation: raise that parameter to 100000 -- the call spends all nine attempts and the call
-/// count and the code both go red.</p>
+/// and the clamp still allow.</p>
+/// <p>The stored timeout is the shipped default, so the clamp leaves three attempts available and
+/// what stops the third is the deadline. The seconds each attempt stands for come from
+/// <method>OcuPilot.Test.ProviderStub.ScriptElapsed</method>, which is the fixture's stand-in for
+/// time the call spent and is deliberately larger than the timeout it was given.</p>
+/// <p>Mutation: raise that parameter to 100000 -- the deadline never fires, the clamp allows every
+/// attempt the settings ask for, and the call count and the code both go red.</p>
 Method TestTheAttemptDeadlineRefusesAFurtherAttempt()
 {
     Set tDeadline = $Parameter(..#RETRY, "ATTEMPTBUDGETSECONDS")
@@ -267,10 +273,10 @@ Method TestTheAttemptDeadlineRefusesAFurtherAttempt()
     Do ##class(OcuPilot.Test.ProviderStub).ScriptElapsed(tPerCall)
     Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(503, "")
     Do $ClassMethod(..#DRIVER, "Settings", .tSettings, 9)
-    Set tSettings("timeoutSeconds") = tPerCall
+    Set tSettings("timeoutSeconds") = $Parameter(..#EGRESS, "DEFAULTTIMEOUT")
     Set tSC = ..Call(.tSettings, .tResponse, .tFault, .tHttpStatus)
     Do $$$AssertStatusOK(tSC, "the call returns $$$OK rather than raising")
-    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 2, "two attempts, each taking more than half the deadline, and no third is started")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), 2, "two attempts, each standing in for more than half the deadline, and no third is started")
     Do $$$AssertTrue(##class(OcuPilot.Test.ProviderStub).Clock() >= tDeadline, "the clock the loop reads did pass the deadline: " _ ##class(OcuPilot.Test.ProviderStub).Clock())
     Do $$$AssertEquals(..FaultCode(tFault), ##class(OcuPilot.Api.Error).#PROVIDERTIMEOUT, "and the call ends PROVIDER.TIMEOUT rather than spending its whole attempt bound")
     Do $$$AssertEquals(tHttpStatus, 504, "answered as a gateway timeout")
@@ -342,27 +348,48 @@ ClassMethod ProviderText(pFault As %RawString = "") As %String
     Quit pFault.detail.providerText
 }
 
-/// <p>Residual risk (frontmatter <code>deferred:</code>, not decided by this spec) --
-/// <parameter>OcuPilot.Kernel.Provider.Retry.ATTEMPTBUDGETSECONDS</parameter> is read only
-/// <i>between</i> attempts, so it bounds when a further attempt may <b>start</b> and not when one
-/// already running must end. Nothing clamps a stored <code>timeoutSeconds</code> to it, so a
-/// value many times the deadline reaches the request exactly as configured. Pinned here so this
-/// worst case is a stated fact the next reader can see failing rather than one they have to
-/// re-derive from <method>TestTheAttemptDeadlineRefusesAFurtherAttempt</method>, which only shows
-/// the deadline stopping the <i>next</i> attempt.</p>
-/// <p>Mutation: clamp <method>OcuPilot.Kernel.Provider.Base.NewRequest</method>'s
-/// <code>Timeout</code> to <parameter>OcuPilot.Kernel.Provider.Retry.ATTEMPTBUDGETSECONDS</parameter>
-/// -- this goes red, the recorded timeout reporting the budget instead of the configured value.</p>
-Method TestAStoredTimeoutFarPastTheDeadlineReachesTheRequestWithNoClamp()
+/// <p>AC3 (DW-1104) -- a stored per-call timeout of 3600 seconds beside a stored attempt count of
+/// three: the request carries the <b>clamped</b> timeout, one attempt of it is all the work budget
+/// holds, and this call's worst case is inside
+/// <parameter>OcuPilot.Kernel.Provider.Retry.ATTEMPTBUDGETSECONDS</parameter>. The call is still
+/// made -- the clamp lowers, it never refuses.</p>
+/// <p>Mutation: make <method>OcuPilot.Kernel.Provider.Retry.EffectiveTimeoutSec</method> answer its
+/// argument unchanged -- the recorded timeout reports 3600 and the bound goes red.</p>
+Method TestAStoredTimeoutFarPastTheDeadlineIsClampedAtThePointOfUse()
 {
     Set tDeadline = $Parameter(..#RETRY, "ATTEMPTBUDGETSECONDS")
-    Set tHuge = tDeadline * 10
-    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(200, $Parameter(..#DRIVER, "OKBODY"))
-    Do $ClassMethod(..#DRIVER, "Settings", .tSettings, 1)
-    Set tSettings("timeoutSeconds") = tHuge
+    Set tSleepBudget = $Parameter(..#RETRY, "RETRYBUDGETSECONDS")
+    Set tWork = $ClassMethod(..#RETRY, "WorkBudgetSec")
+    Do $$$AssertEquals(tWork, tDeadline - tSleepBudget, "the work budget is the deadline less the sleeps the retry budget reserves, computed rather than spelled a third time")
+    ; A retryable status, so an unclamped attempt count would show as further calls.
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(503, "")
+    Do $ClassMethod(..#DRIVER, "Settings", .tSettings, 3)
+    Set tSettings("timeoutSeconds") = 3600
+    Set tSC = ..Call(.tSettings, .tResponse, .tFault, .tHttpStatus)
+    Do $$$AssertStatusOK(tSC, "the call returns $$$OK, and is made rather than refused")
+    Set tTimeout = ##class(OcuPilot.Test.ProviderStub).Recorded("timeout", 1)
+    Set tCalls = ##class(OcuPilot.Test.ProviderStub).Calls()
+    Do $$$AssertEquals(tTimeout, tWork, "the request's own socket timeout carries the clamped value and not the stored 3600: " _ tTimeout)
+    Do $$$AssertEquals(tCalls, 1, "and one attempt of it is all the work budget holds, whatever the stored count says: " _ tCalls)
+    Do $$$AssertTrue(((tCalls * tTimeout) + tSleepBudget) <= tDeadline, "so this call's worst case is inside the deadline: " _ ((tCalls * tTimeout) + tSleepBudget) _ " <= " _ tDeadline)
+    Do $$$AssertEquals(..FaultCode(tFault), ##class(OcuPilot.Api.Error).#PROVIDERUNAVAILABLE, "the retryable status on its one attempt ends the call PROVIDER.UNAVAILABLE")
+}
+
+/// <p>AC3's other half -- the shipped defaults clamp to themselves, so an instance that stored
+/// nothing still makes the three 90-second attempts it made before the clamp existed.</p>
+Method TestTheShippedDefaultsAreUnchangedByTheClamp()
+{
+    Set tAttempts = $Parameter(..#EGRESS, "DEFAULTMAXATTEMPTS")
+    Set tTimeout = $Parameter(..#EGRESS, "DEFAULTTIMEOUT")
+    Do $$$AssertEquals($ClassMethod(..#RETRY, "EffectiveTimeoutSec", tTimeout), tTimeout, "the shipped per-call timeout clamps to itself")
+    Do $$$AssertEquals($ClassMethod(..#RETRY, "EffectiveAttempts", tAttempts, tTimeout), tAttempts, "and so does the shipped attempt count")
+    Do ##class(OcuPilot.Test.ProviderStub).QueueAnswer(429, "")
+    Do $ClassMethod(..#DRIVER, "Settings", .tSettings, tAttempts)
+    Set tSettings("timeoutSeconds") = tTimeout
     Set tSC = ..Call(.tSettings, .tResponse, .tFault, .tHttpStatus)
     Do $$$AssertStatusOK(tSC, "the call returns $$$OK")
-    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("timeout", 1), tHuge, "the request's own socket timeout carries the configured value unclamped, ten times the attempt deadline: nothing in this loop bounds an attempt already committed to")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Recorded("timeout", 1), tTimeout, "the request carries the stored timeout unchanged")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProviderStub).Calls(), tAttempts, "and every attempt the defaults allow is made")
 }
 
 /// <p>AC13 -- the turn's declared ceiling on one provider call and the one the provider actually
@@ -385,7 +412,24 @@ Method TestTheTurnSideAndProviderSideCeilingsAgree()
     Set tBudget = $Parameter(..#RETRY, "RETRYBUDGETSECONDS")
     Do $$$AssertEquals(tDeclared, tEnforced, "the turn declares the same ceiling on one provider call that the provider enforces")
     Do $$$AssertTrue(tDeclared < tWallClock, "and it is inside the turn's own wall clock, so one call can never be the whole turn: " _ tDeclared _ " < " _ tWallClock)
-    Do $$$AssertTrue(((tAttempts * tTimeout) + tBudget) <= tEnforced, "the shipped per-call defaults and the sleep budget fit inside the deadline, so it binds only a stored timeout larger than the default: " _ ((tAttempts * tTimeout) + tBudget) _ " <= " _ tEnforced)
+    Do $$$AssertTrue(((tAttempts * tTimeout) + tBudget) <= tEnforced, "the shipped per-call defaults and the sleep budget fit inside the deadline: " _ ((tAttempts * tTimeout) + tBudget) _ " <= " _ tEnforced)
+    ; The bound over every pair a stored row could hold, not only over the defaults (AC3): the
+    ; clamped product plus the sleep budget is inside the deadline, the clamp only ever lowers, and
+    ; at least one attempt always survives.
+    Set tOutside = ""
+    Set tNoAttempt = ""
+    For tStoredTimeout = 1, 5, 89, 90, 91, 134, 135, 136, 269, 270, 271, 3600, 100000 {
+        For tStoredAttempts = 1, 2, 3, 9, 1000 {
+            Set tPair = tStoredTimeout _ "s x" _ tStoredAttempts
+            Set tUsedTimeout = $ClassMethod(..#RETRY, "EffectiveTimeoutSec", tStoredTimeout)
+            Set tUsedAttempts = $ClassMethod(..#RETRY, "EffectiveAttempts", tStoredAttempts, tStoredTimeout)
+            If ((tUsedAttempts * tUsedTimeout) + tBudget) > tEnforced Set tOutside = tOutside _ " over:" _ tPair
+            If (tUsedTimeout > tStoredTimeout) || (tUsedAttempts > tStoredAttempts) Set tOutside = tOutside _ " raised:" _ tPair
+            If tUsedAttempts < 1 Set tNoAttempt = tNoAttempt _ " " _ tPair
+        }
+    }
+    Do $$$AssertEquals(tOutside, "", "every stored pair's clamped worst case is inside the deadline, and the clamp only lowers; these were not:" _ tOutside)
+    Do $$$AssertEquals(tNoAttempt, "", "and at least one attempt survives every pair; these were left with none:" _ tNoAttempt)
     Do $$$AssertTrue(tBudget <= $Parameter(..#RETRY, "MAXRETRYAFTERSECONDS"), "and the sleep budget is one honoured Retry-After at its own ceiling, never two")
     Do $$$AssertTrue($Parameter(..#LIMITS, "NAVWAITSECONDS") < tDeclared, "a client-fulfilled wait and a provider call are separate steps, each bounded on its own, and the wait is the narrower of the two bounds: " _ $Parameter(..#LIMITS, "NAVWAITSECONDS") _ " < " _ tDeclared)
 }

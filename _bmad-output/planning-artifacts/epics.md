@@ -4723,7 +4723,7 @@ So that screen data and log text never leave the instance at all.
 
 - **Given** a loopback or private-network endpoint
 - **When** it is validated
-- **Then** it is **allowed**, because local models are a supported case - while the link-local metadata range stays refused, and the definition must be explicitly marked local to name a loopback or link-local address.
+- **Then** it is **allowed**, because local models are a supported case - while a cloud instance-metadata endpoint stays refused in every address family and the marked-local flag licenses none, and the definition must be explicitly marked local to name a loopback or link-local address. [AMENDED 2026-09-19 - see the story change log]
 
 - **Given** a local provider is in use
 - **When** the context chip renders

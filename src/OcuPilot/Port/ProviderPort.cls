@@ -213,7 +213,13 @@ ClassMethod InvokeDraft(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPro
 /// forward proxy is not special-cased. Where the endpoint is https the request always
 /// CONNECT-tunnels through the proxy and negotiates TLS inside the tunnel, whatever the stored
 /// <code>proxyTunnel</code> and <code>proxyHttps</code> say, so the proxy never terminates the
-/// session that carries the key; a plain-http endpoint keeps both stored values.</p>
+/// session that carries the key.</p>
+/// <p><b>A marked-local endpoint bypasses the proxy entirely</b> (DW-441, AD-42): a model on the
+/// operator's own network is not reached through the instance's outbound proxy, and
+/// <method>OcuPilot.Kernel.Egress.LeavesInstance</method> reads the same flag first, so the chip's
+/// statement and the request that is issued cannot disagree. The proxy is still <i>judged</i>
+/// before it is dropped: a configured proxy the address policy refuses ends the call, which is the
+/// fail-safe direction on a value an operator has misconfigured.</p>
 /// <p><b>The adapter comes from the row's <code>adapterClass</code> column and from nowhere
 /// else.</b> No branch here reads a provider key, so a second family is one row plus one class
 /// (AC1).</p>
@@ -271,6 +277,11 @@ ClassMethod Dispatch(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt
         }
         ; The vendor negotiates TLS inside a CONNECT tunnel only when ProxyHTTPS is set, so both
         ; flags are forced: a tunnel alone would carry the key in cleartext.
+        ; Since DW-441 the condition no longer discriminates on any permitted configuration: plain
+        ; HTTP is licensed only for a marked-local definition, and the block below blanks every
+        ; proxy setting for one, so a call that carries a proxy is always https here. Kept rather
+        ; than deleted because it is what states the rule, and a later change to either licence
+        ; would make it discriminate again.
         If ..IsHttps(tEndpoint) {
             Set tSettings("proxyTunnel") = 1
             Set tSettings("proxyHttps") = 1
@@ -294,6 +305,14 @@ ClassMethod Dispatch(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt
         ; cleared rather than set on a request that will never negotiate.
         Set tSettings("sslConfiguration") = ""
     }
+    If tMarkedLocal {
+        ; DW-441: dropped after the judgement above, so a refused proxy still ends the call, and
+        ; before NewRequest, so the request this call issues carries none of it.
+        Set tSettings("proxyServer") = ""
+        Set tSettings("proxyPort") = ""
+        Set tSettings("proxyHttps") = ""
+        Set tSettings("proxyTunnel") = ""
+    }
 
     Set tAdapter = $ClassMethod(tAdapterClass, "%New")
     If '$IsObject(tAdapter) || 'tAdapter.%IsA("OcuPilot.Kernel.Provider.Base") {
@@ -313,7 +332,9 @@ ClassMethod Dispatch(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt
 /// <method>ProxyHostOf</method> <method>Dispatch</method> uses (Story 4.4's context status read,
 /// AD-42): <var>pProvider</var> the catalog key, <var>pHost</var> the endpoint's authority
 /// (<method>OcuPilot.Kernel.Egress.HostOf</method>), <var>pMarkedLocal</var> the definition's own
-/// flag and <var>pProxyHost</var> the configured proxy or <code>""</code>. Answers 0, with every
+/// flag and <var>pProxyHost</var> the configured proxy, or <code>""</code> where none is configured
+/// <b>or the definition is marked local</b> -- such a call bypasses the proxy, so reporting one
+/// would describe a hop it does not make (DW-441). Answers 0, with every
 /// output <code>""</code>/0, for an id no row holds, a disabled definition, or a provider whose
 /// catalog row cannot be read.</p>
 ClassMethod ResolveEndpoint(pDefinitionId As %String, Output pProvider As %String, Output pHost As %String, Output pMarkedLocal As %Boolean, Output pProxyHost As %String) As %Boolean
@@ -334,7 +355,7 @@ ClassMethod ResolveEndpoint(pDefinitionId As %String, Output pProvider As %Strin
         Set pProvider = $Get(tValues("provider"))
         Set pMarkedLocal = ''$Get(tValues("markedLocal"))
         Set pHost = ##class(OcuPilot.Kernel.Egress).HostOf(tEndpoint)
-        Set pProxyHost = ..ProxyHostOf(.tSettings)
+        Set pProxyHost = $Select(pMarkedLocal: "", 1: ..ProxyHostOf(.tSettings))
         Set tOk = 1
     } Catch ex {
         Set pProvider = ""
@@ -370,6 +391,8 @@ ClassMethod ProxyHostOf(ByRef pSettings) As %String [ Private ]
 /// <p>The stored definition <var>pId</var> as the ByRef value array the adapter reads.
 /// <var>pFound</var> is 0 for an id no row holds -- an ordinary answer, never an error, so a
 /// deleted definition and a failed read stay distinguishable.</p>
+/// <p><code>keySource</code> is set only for a <code>credType</code> of <code>none</code>; see the
+/// comment at that line.</p>
 ClassMethod ValuesFor(pId As %String, Output pValues, Output pFound As %Boolean) As %Status [ Private ]
 {
     Kill pValues
@@ -388,6 +411,13 @@ ClassMethod ValuesFor(pId As %String, Output pValues, Output pFound As %Boolean)
     Set pValues("credType") = tRow.CredType
     Set pValues("envVarName") = tRow.EnvVarName
     Set pValues("credentialName") = tRow.CredentialName
+    ; The one key source this method names. Every other definition leaves it unset, and the adapter
+    ; reads an unset source as the stored credential; a definition that carries none has to say so
+    ; here, or the adapter resolves nothing and faults PROVIDER.CREDENTIAL before building a
+    ; request.
+    If tRow.CredType = ##class(OcuPilot.Kernel.AgentRules).#CREDTYPENONE {
+        Set pValues("keySource") = ##class(OcuPilot.Kernel.Provider.Base).#KEYSOURCENONE
+    }
     Set pValues("maxTokens") = +tRow.MaxTokens
     Set pValues("temperature") = +tRow.Temperature
     Set pValues("systemPromptOverride") = tRow.SystemPromptOverride
