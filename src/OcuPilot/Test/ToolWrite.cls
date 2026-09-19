@@ -99,11 +99,12 @@ Method TestTheSchemaIsDerivedFromTheClassifiedFieldList()
 
 /// <p>AD-10: privilege is not granted through any path, so the role subtree is not in the schema
 /// and a call carrying it is refused as an unknown argument.</p>
-/// <p>Mutation: admit <code>MatchRoles</code> in
-/// <method>OcuPilot.Screen.Tool.WebAppUpdate.InputSchema</method> -- which takes removing it from
-/// <method>ExcludedFields</method> <b>and</b> classifying the subtree <code>ordinary</code> in
-/// <class>OcuPilot.Screen.Tool.Classification</class>, because the two guards are independent --
-/// and this goes red.</p>
+/// <p>Mutation: classify the subtree <code>ordinary</code> in
+/// <class>OcuPilot.Screen.Tool.Classification</class> and give it a top-level field-list row --
+/// this goes red. Removing <code>MatchRoles</code> from <method>ExcludedFields</method> alone does
+/// not admit it: its two field-list paths are dotted, so the nested-path filter drops them first.
+/// The exclusion filter's own effect is pinned by
+/// <method>TestAnExcludedFieldLeavesTheSchemaAndTheSettableList</method>.</p>
 Method TestARoleGrantIsRefusedAsAnUnknownArgument()
 {
     Set tSchema = $ClassMethod(..#TOOLCLASS, "InputSchema")
@@ -118,6 +119,24 @@ Method TestARoleGrantIsRefusedAsAnUnknownArgument()
     Do $$$AssertStatusNotOK(tSC, "and the view refuses it too")
     Do $$$AssertEquals(tHttp, 400, "as a 400")
     Do $$$AssertEquals(tFault.%Get("code"), ##class(OcuPilot.Api.Error).#TOOLARGUMENTS, "with the arguments code")
+}
+
+/// <p>The exclusion filter is load-bearing: a name in <method>ExcludedFields</method> is gone from
+/// the advertised schema and from the settable list, while an unlisted sibling stays. Driven
+/// through <class>OcuPilot.Test.WriteExclusion</class>, because the shipped tool's only exclusion
+/// is a subtree the nested-path filter already drops.</p>
+/// <p>Mutation: delete <code>If $ListFind(tExcluded, tName) Continue</code> from
+/// <method>OcuPilot.Screen.Tool.Write.FieldRows</method> -- this goes red.</p>
+Method TestAnExcludedFieldLeavesTheSchemaAndTheSettableList()
+{
+    Set tProbe = "OcuPilot.Test.WriteExclusion"
+    Do $$$AssertTrue($ListFind($ClassMethod(..#TOOLCLASS, "SettableFields"), "Description") > 0, "Description is settable on the shipped tool")
+    Do $$$AssertEquals($ClassMethod(..#TOOLCLASS, "InputSchema").%Get("properties").%GetTypeOf("Description"), "object", "and advertised in its schema")
+
+    Do $$$AssertEquals($ListFind($ClassMethod(tProbe, "ExcludedFields"), "Description"), 1, "the probe tool excludes that one name")
+    Do $$$AssertEquals($ListFind($ClassMethod(tProbe, "SettableFields"), "Description"), 0, "so it is not settable there")
+    Do $$$AssertEquals($ClassMethod(tProbe, "InputSchema").%Get("properties").%GetTypeOf("Description"), "unassigned", "and not advertised there")
+    Do $$$AssertTrue($ListFind($ClassMethod(tProbe, "SettableFields"), "Enabled") > 0, "while an unlisted sibling is still settable")
 }
 
 /// <p>AD-40: the model can mint and cannot apply. No path from a write tool's view reaches the

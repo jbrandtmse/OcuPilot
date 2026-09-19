@@ -185,6 +185,18 @@ Method TestAnExcludedPathIsOutsideTheFingerprint()
     Set tThree = {"Enabled": false, "LastModified": "2026-09-01T00:00:00Z", "Nested": {"Stamp": "a", "Kept": 1}}
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Proposal.Fingerprint).Of(tThree, tExcludes, .tThird), "a property outside the exclusions is digested")
     Do $$$AssertNotEquals(tFirst, tThird, "and moving it moves the digest")
+
+    ; An array field's ToolFields path carries the generator's [] suffix, and that is the only
+    ; spelling OcuPilot.Screen.Registry.ConfirmChannelProblem accepts for it, so it is the spelling
+    ; the digest has to honour.
+    Set tListExcludes = $ListBuild("CorsAllowlist[]")
+    Set tListOne = {"Enabled": true, "CorsAllowlist": ["https://a.example"]}
+    Set tListTwo = {"Enabled": true, "CorsAllowlist": ["https://b.example", "https://c.example"]}
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Proposal.Fingerprint).Of(tListOne, tListExcludes, .tListFirst), "an array field excluded by its [] path is digested")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Proposal.Fingerprint).Of(tListTwo, tListExcludes, .tListSecond), "and so is the same field holding other elements")
+    Do $$$AssertEquals(tListFirst, tListSecond, "a [] exclusion takes the whole array out of the digest")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.Proposal.Fingerprint).Of(tListOne, "", .tListWhole), "the same object with nothing excluded")
+    Do $$$AssertNotEquals(tListFirst, tListWhole, "so the [] exclusion is load-bearing, not accepted and ignored")
 }
 
 /// <p>The descriptor's own exclusion reaches the stored digest: the mint takes it from the
@@ -201,6 +213,24 @@ Method TestTheMintTakesItsExclusionsFromTheDescriptor()
     Do $$$AssertStatusOK(tSC, "the second mint succeeds")
     Set tSecondPrint = ##class(OcuPilot.Test.ProposalFixture).Field(tSecond.%Get("proposalId"), "Fingerprint")
     Do $$$AssertEquals(tFirstPrint, tSecondPrint, "the declared exclusion keeps a side-effect stamp out of the stored digest")
+}
+
+/// <p>AD-4: an array-valued settable field merges into the payload as an array, so a write tool
+/// whose schema advertises one can mint against it.</p>
+Method TestAnArrayValuedFieldIsMergedIntoThePayload()
+{
+    Do ##class(OcuPilot.Test.ProposalFixture).Arm("{""Enabled"":false,""CorsAllowlist"":[""https://a.example""]}")
+    Set tArgs = {"Name": "/csp/probe", "CorsAllowlist": ["https://a.example", "https://b.example"]}
+    Set tSC = $ClassMethod(..#MINT, "Mint", ..#SCREEN, "probe.proposal.update", ..#PROBEUSER, "probe-conv", "probe-turn", tArgs, ..#LIMITS, .tProposal, .tHttp, .tFault, "WebApp.App", "name", "/csp/probe", "Name", $ListBuild("Enabled", "CorsAllowlist"))
+    Do $$$AssertStatusOK(tSC, "the mint succeeds for an array-valued argument")
+    Do $$$AssertEquals(tHttp, 200, "answering 200, not an internal error")
+
+    Set tPayload = ..StoredPayload(tProposal.%Get("proposalId"))
+    Do $$$AssertEquals(tPayload.%GetTypeOf("CorsAllowlist"), "array", "the payload keeps the field an array")
+    Do $$$AssertEquals(tPayload.%Get("CorsAllowlist").%Size(), 2, "carrying both elements the arguments sent")
+    Do $$$AssertEquals(tPayload.%Get("CorsAllowlist").%Get(1), "https://b.example", "including the added one")
+    Do $$$AssertEquals(tProposal.%Get("changed").%Size(), 1, "one field changed")
+    Do $$$AssertEquals(tProposal.%Get("changed").%Get(0).%Get("field"), "CorsAllowlist", "and the diff names the array field")
 }
 
 /// <p>A minted row records the turn, the conversation, the tool and the agent's own words, and its

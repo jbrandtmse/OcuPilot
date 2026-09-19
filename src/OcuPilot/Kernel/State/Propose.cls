@@ -107,6 +107,12 @@ Index ProposalTokenIdx On Token [ Unique ];
 /// matches <code>%EXACT</code> (a weak reference is compared as stored, AD-37).</p>
 Index ProposalUserStateIdx On (UserName As Exact, State);
 
+/// <p>A turn's own proposals, the predicate <method>GuardedRowsForTurn</method> runs once per
+/// progress poll -- about once a second while a turn is live. Without it that read filters
+/// <property>TurnKey</property> against the master map for every row the user has ever minted,
+/// because nothing else indexes it and the retention sweep is Story 5.3's.</p>
+Index ProposalTurnIdx On (TurnKey As Exact, UserName As Exact);
+
 /// <p>Mint one row and answer its id, token and expiry.</p>
 /// <p><b>Caller contract:</b> <var>pValues</var> carries <code>user</code>, <code>convKey</code>,
 /// <code>turnKey</code>, <code>toolName</code>, <code>targetRef</code>, <code>fingerprint</code>,
@@ -215,7 +221,7 @@ ClassMethod GuardedRowsForTurn(pTurnKey As %String, pUser As %String, Output pRo
         If $$$ISERR(tOpenSC) Continue
         Set tValuesSC = ..RowValues(tRow, .tValues)
         Set tRow = ""
-        If $$$ISERR(tValuesSC) Quit tValuesSC
+        If $$$ISERR(tValuesSC) Set tSC = tValuesSC Quit
         Set tSC = ##class(OcuPilot.Kernel.EntityRef).Parse(tValues("targetRef"), .tType, .tScope, .tId)
         If $$$ISERR(tSC) Quit
         Set tSC = ##class(OcuPilot.Kernel.EntityRef).Wire(tType, tScope, tId, .tTarget)

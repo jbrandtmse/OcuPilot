@@ -98,7 +98,7 @@ Method TestTheStoredBodyIsNotOnTheWire()
     Set tSC = ##class(OcuPilot.Kernel.State.Propose).GuardedRowsForTurn(tTurn, ..#PROBEUSER, .tRows)
     Do $$$AssertStatusOK(tSC, "the turn's proposals are read")
     Set tJson = tRows.%ToJSON()
-    Do $$$AssertEquals(tJson [ "ProbeOnly", 0, "no payload property reaches the wire")
+    Do $$$AssertEquals(tJson [ "Resource", 0, "no payload property reaches the wire")
     Do $$$AssertEquals(tJson [ "fingerprint", 0, "nor the fingerprint")
     Do $$$AssertEquals(tJson [ "token", 0, "and certainly not the token")
 }

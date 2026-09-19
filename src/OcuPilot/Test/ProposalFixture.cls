@@ -25,6 +25,7 @@ ClassMethod Arm(pJson As %String)
 {
     Set ^||OcuPilotProposalFixture("answer") = pJson
     Kill ^||OcuPilotProposalFixture("missing")
+    Kill ^||OcuPilotProposalFixture("empty")
 }
 
 /// <p>Answer the next <method>Invoke</method> the way the port answers a target the instance no
@@ -32,6 +33,7 @@ ClassMethod Arm(pJson As %String)
 ClassMethod ArmMissing()
 {
     Kill ^||OcuPilotProposalFixture("answer")
+    Kill ^||OcuPilotProposalFixture("empty")
     Set ^||OcuPilotProposalFixture("missing") = 1
 }
 

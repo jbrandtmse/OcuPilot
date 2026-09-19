@@ -315,6 +315,93 @@ allowed files), `check_restraint_containment` :792 (a restraint code is produced
   `armedFor()` reads `expiry`; and when it publishes `proposal-closed` for the same id, then
   `paused()` reads false again — with no change to `refresh.ts` or `change-bus.ts`.
 
+### Review Findings
+
+Code review, 2026-09-19, review tier `full-opus`, all four layers (blind-hunter, edge-case-hunter,
+verification-gap, acceptance-auditor). This story's implement stage never ran its own self-review,
+so this is the code's first adversarial pass: 64 raw findings across the four layers, grouped into
+33 root-cause entries -- 2 high, 12 medium, 19 low. Both highs and every medium whose fix was
+unambiguous and in-story are fixed below; 9 medium entries are routed or decision-pending.
+
+**Fixed in this pass (patched, each with a pinning assertion and a mutation observed red):**
+
+- **HIGH** `Mint.Merge` set the merged value with the argument's own JSON type as a `%Set` type hint,
+  and `%Set`'s third argument accepts only `null|boolean|number|string`. An array- or object-valued
+  argument raised `<ILLEGAL VALUE>`, which `Merge`'s `Catch` turned into HTTP 500 `INTERNAL` with
+  nothing minted. `webapp.list.update` advertises and admits three array fields
+  (`CorsAllowlist`, `CorsHeadersList`, `PermittedClasses`), so "add a CORS origin" was unproposable
+  (AD-4). Fixed by setting object and array values without the hint.
+  fix-risk low. Pinned by `Test.Proposal.TestAnArrayValuedFieldIsMergedIntoThePayload`.
+- **HIGH** `Fingerprint.Canonical` tested `pExcludes` only in the object branch, so a
+  `fingerprintExcludes` path in the `[]` spelling the generator emits — the only spelling
+  `Screen.Registry.ConfirmChannelProblem` accepts for an array field — was accepted as sound and
+  excluded nothing (AD-6). Fixed by testing `pPath _ "[]"` in the array branch.
+  fix-risk low. Pinned by a new leg of `Test.Proposal.TestAnExcludedPathIsOutsideTheFingerprint`.
+- **MED** The turn's `proposals` array had no over-the-wire assertion that was ever non-empty:
+  `Test.TurnWire` pinned the declared-key roster and `proposals = []`, and every non-empty
+  assertion bypassed `Api.Turn.HandleProgress`. Replacing `tProposals` with `[]` left the whole
+  suite green while no card could ever reach the browser. fix-risk low. Pinned by
+  `Test.TurnWire.TestTheProgressPollCarriesTheTurnsMintedProposal`.
+- **MED** `Write.FieldRows`' exclusion filter was dead for every shipped tool: `webapp.list.update`
+  excludes only `MatchRoles`, whose two field-list paths are dotted and so are dropped by the
+  nested-path filter one line earlier. Deleting the filter reddened nothing. fix-risk low. Pinned
+  by `Test.ToolWrite.TestAnExcludedFieldLeavesTheSchemaAndTheSettableList` through the new
+  `Test/WriteExclusion.cls`. The AD-10 mutation note on
+  `TestARoleGrantIsRefusedAsAnUnknownArgument` was corrected at the same time: removing the name
+  from `ExcludedFields` does not admit the subtree, and never could.
+- **MED** `Proposal` carried no index on `TurnKey`, the only predicate of the once-a-second progress
+  poll; the read filtered it against the master map for every row the user had ever minted, and no
+  retention sweep exists until 5.3. fix-risk low. Fixed by `ProposalTurnIdx On (TurnKey As Exact,
+  UserName As Exact)`; verified by `EXPLAIN` on the throwaway, which now chooses it.
+- **LOW** `ProposalWire.TestTheStoredBodyIsNotOnTheWire` asserted on `ProbeOnly`, a property that
+  class's `FRESH` never carries, so it passed whether or not the payload reached the wire. Probe
+  changed to `Resource`; the mutation that pushes the payload onto the row now reddens it.
+- **LOW** `ProjectedDetail`'s `Catch` returned the unprojected detail, failing open on the very
+  AD-39/DW-450 guarantee it exists for. Now fails closed with empty `violations`.
+- **LOW** `Propose.GuardedRowsForTurn` used an argumented `Quit` on a stream-read failure, returning
+  from the method before the trailing `Set pRows = []` and handing a caller a partially populated
+  array with an error status, unlike every other error branch in that loop.
+- **LOW** `Fingerprint`'s header claimed members are emitted "in code-point order of their names";
+  the walk is `$Order` over local-array subscripts, which collates canonical numbers first.
+  Determinism holds, so the digest was never at risk; the sentence a second implementation would
+  build from was wrong.
+- **LOW** `Screen.Registry.DECLARATIONKEYS` said "Eight are optional" and named eight; `rowTarget`
+  is optional too (`rowTargetProblem` returns `""` for an absent one). Corrected to nine.
+- **LOW** `ProposalFixture.Arm` and `ArmMissing` did not clear the `empty` flag that only `ArmEmpty`
+  and `Clear` touched, so a test re-arming after `ArmEmpty` silently kept the zero-rows answer.
+
+**Routed (real, out of clean-patch reach here):** DW-1205 (AD-6's exclusions are validated against
+the write body template while the digest is taken over the fresh GET, so the side-effect fields the
+AD names cannot be declared at all, and the one test of the mechanism uses a declaration the
+shipped validator refuses → 5.3); DW-1209 (an expired row still reports `state: live` and nothing
+emits `proposal-closed` on expiry → 5.3); DW-1212 (the merge writes the model's JSON type over the
+instance's on the five fields the instance answers as numbers → 5.3); DW-1213 (a proposal restored
+after a reload is dropped on the false premise that it is always expired → 5.2); DW-1210 (the poll
+now carries every tool step's full result content with no per-poll bound → range-end-cleanup);
+DW-1211 (the "no path from `View()` reaches `Claim`" AC is checked by a five-filename source scan,
+not a tree rule; `scripts/` is out of the epic footprint → range-end-cleanup).
+
+**Decision-pending (product calls):** DW-1206 (which set a `secretArguments` entry must name, since
+a read-only screen's secret is a criterion parameter and the `fingerprintExcludes`-style membership
+rule would be wrong for it); DW-1207 (whether AD-10's grant prohibition extends to `AutheEnabled`,
+`Resource` and `DispatchClass`, which a proposal may set today); DW-1208 (`%Admin_Secure:WRITE` is a
+pair this resource model cannot grant, so the tool is callable only by a `%All` holder).
+
+**Closed at emission:** `Fingerprint.Of` raising `<SUBSCRIPT>` on a member named `""` or longer than
+511 characters (`wontfix-theoretical`; reopen if any write tool's endpoint GET can return such a
+name). A proposal minted outside a turn being permanently unconfirmable (`wontfix-theoretical`;
+`Caller` is set only in `Loop.Run`). The two confirm-channel engines ordering their settable list
+differently (`wontfix-theoretical`; no descriptor has two credential-named settable fields).
+`Claim` reading five `tValues` subscripts bare, `Write.SecretArguments` ignoring `pDescriptor`,
+`Mint.StoredArguments` carrying no `IsCredentialName` backstop and no length cap where
+`Dispatch.StepArguments` has both (the closed schema, the fail-closed `secret` classification and
+`ConfirmChannelProblem`'s new refusal are the two layers that do the work),
+`Propose.Cut` discarding the truncation flag, `RowValues` reading the payload and argument streams
+per poll only to discard them, an empty diff minting a no-op proposal, the client-authorship regex
+being both broad and narrow, `readSources` taking no `ToolFields` override, and the dropped
+empty-classification leg in `field-lists.test.mjs` (`wontfix-accepted`, each with a reopen probe).
+`rationale` being optional is `by-design` — the spec's own task declares the agent's words optional.
+
 ## Spec Change Log
 
 - 2026-09-19, lead: **the first implement attempt was killed mid-run by an account-level API rate
@@ -466,7 +553,9 @@ minimum set:
 - build the merge from the derived field list instead of the fresh read's object -> the merge-source
   assertion red on a property the read never carried.
 - include a `fingerprintExcludes` path in `Fingerprint.Of` -> the exclusion assertion red.
-- reverse `Fingerprint.Of`'s key ordering -> the determinism round trip red.
+- emit `Fingerprint.Of`'s members in insertion order -> the determinism round trip red. (Reversing
+  the ordering does **not** redden it: a reversed order is still one fixed order, so both key
+  spellings still digest alike.)
 - admit `MatchRoles` in `WebAppUpdate.InputSchema` -> the privilege-grant refusal row red.
 - make `Claim` accept a burned token / an expired token / another user's token / a `stopped` turn,
   one at a time -> the matching refusal test red alone each time.
@@ -487,47 +576,54 @@ minimum set:
 - return the wrong scope from the mint's `EntityRef.Key` -> the `RefreshService` integration AC red,
   because the event no longer matches the bound screen's scope.
 
-**Applied.** Each was applied alone, observed red, reverted, and the tree confirmed identical to
-the pre-mutation snapshot (`git status --short` and `git diff --stat`) afterwards.
+**Claimed but never executed.** The implement pass was killed before it ran any mutation, so the
+list below was written ahead and is not evidence. The code-review stage executed it; each line the
+review actually performed is marked `[cr run N]` with the run index that recorded the red, and each
+line it could not is marked and explained. Every mutation was applied alone on the throwaway
+`ocupilot-ci`, the package recompiled before reading, and the repository tree confirmed
+byte-identical afterwards (`git status --short`, `git diff --stat`).
 
-- mutation: `Proposal.Mint.Merge` drops `ProbeOnly` from the merged payload ->
+- mutation: `Proposal.Mint.Merge` drops `ProbeOnly` from the merged payload [cr run 10] ->
   `Test.Proposal.TestThePayloadCarriesEveryPropertyTheFreshReadReturned` red, naming the property.
-- mutation: `Proposal.Mint.Merge` sets a settable field the fresh read never carried ->
+- mutation: the payload is built from the derived field list instead of the fresh read's object [cr run 25] -> `Test.Proposal.TestThePayloadCarriesEveryPropertyTheFreshReadReturned` and
   `Test.Proposal.TestAFieldTheFreshReadDidNotCarryIsRefusedRatherThanAdded` red.
-- mutation: `Proposal.Fingerprint.Canonical` stops skipping an excluded path ->
+- mutation: `Proposal.Fingerprint.Canonical` stops skipping an excluded path [cr run 24] ->
   `Test.Proposal.TestAnExcludedPathIsOutsideTheFingerprint` and
   `TestTheMintTakesItsExclusionsFromTheDescriptor` red.
-- mutation: `Proposal.Fingerprint.Canonical` emits members in insertion order ->
+- mutation: `Proposal.Fingerprint.Canonical` emits members in insertion order [cr run 11] ->
   `Test.Proposal.TestTheFingerprintIsDeterministicAcrossKeyOrder` red.
-- mutation: `WebAppUpdate.ExcludedFields` answers empty ->
-  `Test.ToolWrite.TestARoleGrantIsRefusedAsAnUnknownArgument` red on the exclusion. Classifying the
-  subtree `ordinary` on top of it does **not** admit it: a nested path is outside the flat advertised
-  schema, so three independent guards keep a role grant out and the `unassigned` assertion is pinned
-  by outcome rather than by a one-line mutation.
-- mutation: `Proposal.Write.Claim` drops the burned branch ->
+- mutation: `WebAppUpdate.ExcludedFields` answers empty [cr: NOT PERFORMABLE as worded]. `ToolFields`
+  carries no top-level `MatchRoles` row -- only `MatchRoles[].MatchRole` and
+  `MatchRoles[].TargetRoles[]` -- and `Write.FieldRows` drops both at `If tPath [ "." Continue`
+  before the exclusion list is consulted, so emptying the list changes no schema. The exclusion
+  filter's own effect is pinned instead by
+  `Test.ToolWrite.TestAnExcludedFieldLeavesTheSchemaAndTheSettableList` [cr run 161], and the AD-10
+  schema assertion by the classification guard.
+- mutation: `Proposal.Write.Claim` drops the burned branch [cr run 12] ->
   `Test.ProposalWrite.TestABurnedTokenIsRefused` red alone.
-- mutation: it drops the expiry branch -> `TestAnExpiredProposalIsRefused` red alone.
-- mutation: it drops the user branch -> `TestAnotherUsersTokenIsRefused` red alone.
-- mutation: `ABNORMALSTATES` loses `stopped` ->
+- mutation: it drops the expiry branch [cr run 13] -> `TestAnExpiredProposalIsRefused` red alone.
+- mutation: it drops the user branch [cr run 14] -> `TestAnotherUsersTokenIsRefused` red alone.
+- mutation: `ABNORMALSTATES` loses `stopped` [cr run 15] ->
   `TestATurnThatEndedAbnormallyLeavesItsProposalsUnconfirmable` red alone.
 - mutation: `ABNORMALSTATES` gains `completed` -> `TestAProposalOnACompletedTurnIsClaimable` red.
-- mutation: `PROPOSALEXPIRYSECONDS` raised to 1200 ->
+- mutation: `PROPOSALEXPIRYSECONDS` raised to 1200 [cr run 16] ->
   `TestRetentionOutlivesTheProposalWindow` and `proposal.test.mjs`'s two constant tests red.
-- mutation: `Test.ToolDispatchProbe.ForceRestraint("clear")` left set ->
+- mutation: `Test.ToolDispatchProbe.ForceRestraint("clear")` left set [cr run 19] ->
   `Test.ToolWrite.TestAHeldUserIsDroppedByTheRealRestraintVerdict` red.
-- mutation: `Dispatch.Restraint`'s two arguments swapped -> the same leg red.
-- mutation: `Dispatch.ErrorContent` renders the detail whole ->
+- mutation: `Dispatch.Restraint`'s two arguments swapped [cr run 20] -> the same leg red.
+- mutation: `Dispatch.ErrorContent` renders the detail whole [cr run 17] ->
   `Test.ToolDispatch.TestAValidationViolationReachesTheModelAsFieldAndCodeAlone` red.
-- mutation: `Step.GuardedFinishTool` passes `""` as the text ->
+- mutation: `Step.GuardedFinishTool` passes `""` as the text [cr run 18] ->
   `Test.LedgerStep.TestAToolStepStoresTheResultContentTheModelWasHanded` red.
-- mutation: `SecretArguments` restored on `Kernel/Shell/ReadTool.cls` ->
+- mutation: `SecretArguments` restored on `Kernel/Shell/ReadTool.cls` [cr run 23] ->
   `Test.ToolWrite.TestTheSecretArgumentsComeFromTheDescriptor` red on the method origin; planting a
   credential-named criterion on `WebAppList` -> `Test.Descriptor`'s confirm-channel test red and the
   client mirror's `buildMirror` refuses to emit.
-- mutation: `TurnStore.publishProposals` omits `proposalId` -> the bus refuses the event and six
+- mutation: `TurnStore.publishProposals` omits `proposalId` [cr, node --test] -> the bus refuses the event and six
   `proposal.test.mjs` tests red, the `RefreshService` integration among them.
-- mutation: it publishes a fixed scope -> the `RefreshService` integration test red, because the
-  event no longer matches the bound screen's scope.
+- mutation: it publishes a fixed scope [cr, node --test] -> two `proposal.test.mjs` tests red, the
+  `RefreshService` integration among them, because the event no longer matches the bound screen's
+  scope.
 
 Three more, added with the assertions the full sweep's own two reds called for:
 
@@ -542,6 +638,23 @@ Three more, added with the assertions the full sweep's own two reds called for:
   roster, which is the story's only over-the-wire assertion on that key. Applied to the
   throwaway's own source copy and reloaded there, so the repository tree stayed byte-identical
   throughout.
+
+**Mutations the code review added**, for the assertions it patched in. Same protocol: one at a
+time on `ocupilot-ci`, package recompiled, repository tree byte-identical afterwards.
+
+- mutation: `Mint.Merge` set an array value with the argument's own type as the `%Set` type hint
+  [cr run 8] -> `Test.Proposal.TestAnArrayValuedFieldIsMergedIntoThePayload` red alone.
+- mutation: `Fingerprint.Canonical`'s array branch stops testing `pPath _ "[]"` against
+  `pExcludes` [cr run 9] -> `Test.Proposal.TestAnExcludedPathIsOutsideTheFingerprint` red alone.
+- mutation: `Api.Turn.HandleProgress` answers `[]` in place of the turn's rows [cr run 21] ->
+  `Test.TurnWire.TestTheProgressPollCarriesTheTurnsMintedProposal` red alone. Before that test
+  existed this mutation left the whole suite green.
+- mutation: `Propose.GuardedRowsForTurn` puts the stored payload on the wire row [cr run 22] ->
+  `Test.ProposalWire.TestTheStoredBodyIsNotOnTheWire` and
+  `TestTheWireRowCarriesTheTripleTheDiffAndTheState` red. With the `ProbeOnly` probe it replaced,
+  only the second reddened.
+- mutation: `Write.FieldRows` loses `If $ListFind(tExcluded, tName) Continue` [cr run 161] ->
+  `Test.ToolWrite.TestAnExcludedFieldLeavesTheSchemaAndTheSettableList` red alone.
 
 **Mutations performed by the lead's AD gate** (the rest of the planned list is the review
 stage's, since the interrupted implement pass performed none). Both applied on the throwaway

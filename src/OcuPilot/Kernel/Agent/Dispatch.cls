@@ -703,7 +703,9 @@ ClassMethod ProjectedDetail(pDetail As %DynamicObject) As %DynamicObject [ Priva
         }
         Do tOut.%Set("violations", tProjected)
     } Catch ex {
-        Set tOut = pDetail
+        ; Fail closed: a projection that threw must not hand the model the detail it was there to
+        ; narrow, so the violations go out empty rather than whole.
+        Set tOut = {"violations": []}
     }
     Quit tOut
 }

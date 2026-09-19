@@ -1,6 +1,7 @@
 /// <p>The three turn routes over HTTP, driven by two least-privileged principals whose turns run as
 /// real jobs against the armed <code>turnprobe</code> row (AD-7, AD-8, AD-9, AD-31, AD-33, AD-41):
-/// start, body refusals, refused starts, busy with a concurrent pair, the poll's shape, 404 for
+/// start, body refusals, refused starts, busy with a concurrent pair, the poll's shape, a minted
+/// proposal on that poll, 404 for
 /// another principal, the job's identity, revocation and deletion mid-turn, sign-out with both
 /// principals running, a lost job, and a UTF-8 message.</p>
 /// <p><b>It creates IRIS users and a role and spawns turn jobs, so <method>OnBeforeAllTests</method>
@@ -142,6 +143,43 @@ Method TestAStartRunsAsTheCallerAndThePollAnswersItsShape()
     Set tSent = ##class(%DynamicArray).%FromJSON(##class(OcuPilot.Test.TurnProvider).Recorded(..#TAG, 1, "messages"))
     Do $$$AssertEquals(tSent.%Get(0).content, tMessage, "and the message arrived with both characters intact")
     Do $$$AssertEquals(##class(OcuPilot.Test.TurnProvider).Recorded(..#TAG, 1, "system"), ##class(OcuPilot.Kernel.Agent.Prompt).Builtin(), "under the built-in system prompt")
+}
+
+/// <p>Story 5.1, AD-6 and AD-43: the progress poll the panel already makes is the only route a
+/// minted proposal reaches the browser by, so a proposal minted on the caller's own turn arrives on
+/// that payload carrying its id, AD-13's scoped triple and the diff the card renders.</p>
+/// <p>Mutation: stop setting <code>proposals</code> in
+/// <method>OcuPilot.Api.Turn.HandleProgress</method> -- this goes red on the array's size, which
+/// the declared-key roster alone cannot see.</p>
+Method TestTheProgressPollCarriesTheTurnsMintedProposal()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "the principal holds %Admin_Operate")
+    Set tUser = $Parameter(..#FIXTURE, "USERA")
+    Do ##class(OcuPilot.Test.TurnProvider).Script(..#TAG, 1, ##class(OcuPilot.Test.TurnProvider).TextReply("done"))
+    Set tId = ..Start(tUser, "propose something", .tStatus, .tText)
+    Do $$$AssertEquals(tStatus, 202, "the start is accepted: " _ tText)
+    Do $$$AssertEquals(..AwaitEnd(tId, tUser, 30, .tView), "completed", "the turn completes")
+
+    ; Minted directly on that turn for that principal: this pins the route's projection, not the
+    ; dispatch that would reach it, which OcuPilot.Test.ToolWrite already drives.
+    Do ##class(OcuPilot.Test.ProposalFixture).Arm("{""Enabled"":false,""Description"":""before"",""Resource"":""""}")
+    Set tArgs = {"Name": "/csp/probe", "Description": "after", "rationale": "why", "expectedImpact": "what", "reverse": "how"}
+    Set tMintSC = $ClassMethod("OcuPilot.Test.ProposalMint", "Mint", "OcuPilot.Test.ProposalScreen", "probe.proposal.update", tUser, "probe-conv", tId, tArgs, "OcuPilot.Kernel.Agent.Limits", .tProposal, .tMintHttp, .tMintFault, "WebApp.App", "name", "/csp/probe", "Name", $ListBuild("Description"))
+    Do ##class(OcuPilot.Test.ProposalFixture).Clear()
+    Do $$$AssertStatusOK(tMintSC, "a proposal is minted on the caller's own turn")
+
+    Do ..Poll(tId, tUser, .tStatus, .tText, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "the poll answers")
+    Set tPolled = ##class(%DynamicObject).%FromJSON(tText)
+    Do $$$AssertEquals(tPolled.%GetTypeOf("proposals"), "array", "proposals is an array")
+    Do $$$AssertEquals(tPolled.proposals.%Size(), 1, "carrying the one proposal the turn minted")
+    Set tRow = tPolled.proposals.%Get(0)
+    Do $$$AssertEquals(tRow.%Get("proposalId"), tProposal.%Get("proposalId"), "under the id the mint answered")
+    Set tTriple = tRow.%Get("target").%Get("type") _ "|" _ tRow.%Get("target").%Get("scope") _ "|" _ tRow.%Get("target").%Get("id")
+    Do $$$AssertEquals(tTriple, "web-application|instance|/csp/probe", "with the scoped triple")
+    Do $$$AssertEquals(tRow.%Get("changed").%Get(0).%Get("field"), "Description", "and the diff the card renders")
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Propose).GuardedDeleteForUser(tUser), "the probe proposal is removed")
 }
 
 /// <p>A body that is not a JSON object is 400 <code>TURN.BADBODY</code> with its written sentence

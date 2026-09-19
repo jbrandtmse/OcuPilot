@@ -2966,6 +2966,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: ToolDispatchProbe.Restraint forces the verdict in every write leg and Release 1 ships no write tool
 - 2026-09-17T00:36:43Z status=routed owner=5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read by=harvest note=The first write tool pins the branch through the real Kernel.Restraint.Verdict on the throwaway
+- 2026-09-19T13:44:23Z status=resolved-by:5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read by=adjudication note=the write branch now runs through the real Kernel.Restraint.Verdict; both mutations the entry names were performed by the review - the restraint seam left forced and Dispatch.Restraint's arguments swapped - and each reddened the leg alone
 
 ### DW-450: A tool fault's detail object reaches the model whole, so a validation envelope's violation reasons would reach it too
 - source: spec-4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -2973,6 +2974,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-17T00:36:44Z status=routed owner=5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read by=harvest note=Real once a write tool answers a validation envelope
 - 2026-09-19T08:00:02Z occurrence=5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read
 - 2026-09-19T08:00:02Z status=routed owner=5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read by=lead note=ledger-only: Story 5.1's acceptance bullets are at routed_story_max 6, so this is the counted excess. It still reaches the plan spawn through the story's ledger inbox, which is where it will be addressed or declined
+- 2026-09-19T13:44:23Z status=resolved-by:5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read by=adjudication note=ErrorContent no longer renders the fault detail whole; leaving it whole reddens the violation-reason assertion, mutation performed by the review
 
 ### DW-451: AD-24's rows-actually-sent count is not recorded on a tool step, so the read tool-call card has nothing to show
 - source: spec-4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea.md | severity: med | fix-risk: low | footprint: in-epic
@@ -2998,6 +3000,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Prompt.BUILTIN now reads 'Your tools read this instance and change nothing: say so when a request needs a change'. True while the registry holds read tools only (AD-7, AD-11 rule 1); a proposal-minting tool needs the constant to say what a proposal is.
 - 2026-09-17T01:30:47Z status=routed owner=5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read by=cr note=5.1 registers the first write tool; restate the prompt's tool sentence in the same change
+- 2026-09-19T13:44:23Z status=resolved-by:5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read by=adjudication note=Prompt.BUILTIN's tool sentence restated in the same change that registers the first write tool, as the entry required
 
 ### DW-455: The spine's Structural Seed places tool dispatch under Screen/Tool/, while the registry-never-depends-on-the-kernel rule puts it in Kernel/Agent/
 - source: spec-4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -3160,6 +3163,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Every tool-step append and finish passes an empty text, so tool-call-card.ts's 12-line result pre never renders; showing it means persisting tool output in Step and Convo entries (AD-24, retention)
 - 2026-09-17T16:50:36Z status=decision-pending owner=burndown by=cr note=Product call: persist and show tool output on the card, or amend the spec body to arguments plus the rows line
 - 2026-09-19T02:12:25Z status=routed owner=5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read by=merge_gate note=store the tool's output on the step so the expanded card's result block can be populated
+- 2026-09-19T13:44:23Z status=resolved-by:5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read by=adjudication note=a tool step now stores the tool's output; reverting GuardedFinishTool's text to empty reddens the step-output assertion, mutation performed by the review
 
 ### DW-1053: The turn error banner reads 'The turn stopped at : reason.' when error.seq names no recorded step
 - source: spec-4-5-a-turn-watched-progress-cards-and-the-conversation-lock.md | severity: med | fix-risk: low | footprint: in-epic
@@ -3400,6 +3404,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Both answer pDeclared 1 with "". Task 6 names `Read` explicitly, so this is the spec as written; the hazard is the next subclass that does take a secret argument. Per-descriptor declaration is the fix and it is product design. Location: src/OcuPilot/Kernel/Shell/ReadTool.cls, src/OcuPilot/Screen/Tool/Read.cls
 - 2026-09-18T13:52:26Z status=routed owner=burndown by=harvest note=lead harvest of the 4.9 spec deferred list
 - 2026-09-19T03:19:43Z status=routed owner=5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read by=x0 note=5.1 owns the secret-field invariant on stored arguments; per-descriptor declaration belongs with it
+- 2026-09-19T13:44:23Z status=resolved-by:5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read by=adjudication note=secretArguments is read per descriptor rather than inherited from the abstract intermediates; restoring SecretArguments on Kernel/Shell/ReadTool with a credential-named criterion reddens the descriptor refusal, mutation performed by the review
 
 ### DW-1122: Nothing bounds the ledger table across turns until Story 14.4; one story's test and browser runs left 534 rows on the throwaway with no sweep, metric or operator-visible count.
 - source: spec-4-9-the-agent-audit-ledger.md | severity: med | fix-risk: low | footprint: in-epic
@@ -4143,3 +4148,48 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: Story 5.1 verification 2026-09-19 | severity: med | fix-risk: med | footprint: in-epic
 - evidence: Measured on ocupilot-ci: after the 134-class sweep, smoke and two AD-gate mutation cycles, the full browser suite read 178/185 with all seven losses in audit.browser-spec.mjs (AC1 10.7 s then six sub-second cascades). The same spec ran 7/7 green in isolation on that same container, and the full suite ran 185/185 on a container brought up fresh and given nothing but the bundle. So the cause is accumulated instance state - the sweep's own test classes write audit rows - not the spec and not the story's code. CI is unaffected because it brings up a fresh container per run
 - 2026-09-19T12:40:08Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=cr note=the general case behind DW-1190; 13.2 owns the CI suite. Until it is fixed the browser gate must run on a container the sweep has not touched, which is what this story did
+
+### DW-1205: fingerprintExcludes is validated against the write body template while the digest is taken over the fresh GET, so the side-effect fields AD-6 names cannot be declared at all
+- source: spec-5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read.md | severity: med | fix-risk: high | footprint: src/OcuPilot/Screen/Registry.cls, src/OcuPilot/Kernel/Proposal/Mint.cls
+- evidence: Probed on ocupilot-slot-a: ConfirmChannelProblem refuses fingerprintExcludes ['LastModified'] and ['Name'] as 'not a field of this screen's write tool', because it tests membership in the RequestBodySchema-derived ToolFields rows; Mint takes the digest over a copy of the GET's object. Both shipped lists are empty, so nothing is reachable today. The one test that proves the mint honours a declared exclusion (Test.Proposal.TestTheMintTakesItsExclusionsFromTheDescriptor) uses Test/ProposalScreen.cls, a declaration that same validator refuses, and escapes only because OcuPilot.Test is outside DESCRIPTORPACKAGE.
+- 2026-09-19T13:18:54Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=cr note=Which set an exclusion is validated against is a design call: the GET's property set is not knowable from any static source at validation time. It bites where the confirm re-computes the digest, which is 5.3.
+
+### DW-1206: secretArguments entries are not validated against anything while fingerprintExcludes entries are, so one typo leaves a credential-named field settable and reachable by the model
+- source: spec-5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read.md | severity: med | fix-risk: high | footprint: src/OcuPilot/Screen/Registry.cls, ui/tools/screen-mirror.mjs
+- evidence: Screen/Registry.ConfirmChannelProblem runs the '(tRows(tPath))' membership test over tExcludes only; a secretArguments entry naming nothing is accepted, and Mint.FirstNamed refuses by exact name, so a misspelled declaration means the real field stays in InputSchema. The correct set is not the write tool's fields alone - a read-only screen's secret argument is a criterion parameter - so the rule needs a union the two engines agree on.
+- 2026-09-19T13:19:06Z status=decision-pending owner=5-10-security-and-secrets-disable-and-re-enable-auditing by=cr note=note=human=which set a secretArguments entry must name (write-tool settable fields, declared criterion params, or their union), since a read-only screen's secret is a criterion and refusing it would be wrong.
+
+### DW-1207: AutheEnabled, Resource and DispatchClass are settable ordinary arguments of the first write tool, so a proposal can make a web application unauthenticated, drop its authorization resource, or point its URL at arbitrary compiled code
+- source: spec-5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read.md | severity: med | fix-risk: med | footprint: src/OcuPilot/Screen/Tool/Classification.cls
+- evidence: Verified on ocupilot-slot-a: Security.Applications.AutheEnabled is a bitmask (/csp/sys 96, /ocupilot 64), so setting 32 makes an application reachable unauthenticated; clearing Resource removes the authorization gate. AD-10 excludes only the MatchRoles subtree, and Classification.cls classifies these three ordinary, so the model may author them and only the confirm card stands between.
+- 2026-09-19T13:19:06Z status=decision-pending owner=5-8-web-applications-enable-a-disabled-application-and-grant-it by=cr note=note=human=whether AD-10's grant prohibition extends to authentication and dispatch settings, or whether the confirm gate is the intended and sufficient control for them.
+
+### DW-1208: webapp.list.update requires %Admin_Secure:WRITE, a pair this resource model cannot grant, so the first write tool is callable only by a %All holder
+- source: spec-5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read.md | severity: med | fix-risk: med | footprint: src/OcuPilot/Screen/Tool/WebAppUpdate.cls
+- evidence: Verified on ocupilot-slot-a: %Manager's resource string grants %Admin_Secure:U, and every %Admin_*, %Service_* and %Development resource is :U - only %DB_* resources carry R/W. Check('%Admin_Secure','WRITE') answers 1 for _SYSTEM only through %All. Test.ToolWrite.TestThePairsAddTheWritePermission asserts the pair is present, never that a non-%All admin can satisfy it.
+- 2026-09-19T13:19:18Z status=decision-pending owner=5-8-web-applications-enable-a-disabled-application-and-grant-it by=cr note=note=human=which pair a write beyond the screen's own read should require, given that IRIS application and system resources carry no WRITE permission.
+
+### DW-1209: A proposal past its ExpiresAt is still reported state live on the progress payload, and nothing emits proposal-closed on expiry, which the story's own Events row requires
+- source: spec-5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read.md | severity: med | fix-risk: med | footprint: src/OcuPilot/Kernel/State/Propose.cls, ui/src/app/core/turn.ts
+- evidence: GuardedRowsForTurn selects on TurnKey and UserName only and puts State on the wire without comparing ExpiresAt to now; only STATELIVE is ever written, because the sweep and the burn are 5.3's. turn.ts publishProposals closes an id only when it leaves a poll or turns terminal, so the bus sees no close on expiry - the pause is lifted instead by refresh.ts sweepExpired(), a different mechanism from the one the Events row names.
+- 2026-09-19T13:19:18Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=cr note=Non-blocking: the user-visible pause still lifts client-side. The state transition and the retention sweep are 5.3's declared scope, so the projection filter belongs with them.
+
+### DW-1210: The progress poll now carries every tool step's full result content with no per-poll bound, up to roughly 6.4 MB of body once a second
+- source: spec-5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read.md | severity: med | fix-risk: med | footprint: src/OcuPilot/Kernel/State/Step.cls, src/OcuPilot/Api/Turn.cls
+- evidence: DW-1052's fix has Loop.AnswerTools pass the tool result into GuardedFinishTool, stored on Step.Text capped at TEXTMAXLENGTH 131072; tool results cap at TOOLRESULTMAXLENGTH 65536 and MAXSTEPS is 100, and Step.GuardedRows projects text for every step on every poll at about 1 Hz. Before this change a tool step's text was always empty. Nothing in the change bounds the projection.
+- 2026-09-19T13:19:31Z status=routed owner=range-end-cleanup by=cr note=Non-blocking: it neither gates the 2026-09-27 floor nor any downstream story - the card that renders step text is 5.2's and reads whatever the poll carries. What it needs is a per-poll bound on the steps projection, which no story owns.
+
+### DW-1211: The acceptance criterion that no path from a write tool's View reaches the claim gate is checked by a five-filename source scan, not by a tree rule
+- source: spec-5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read.md | severity: med | fix-risk: med | footprint: scripts/check-objectscript.py
+- evidence: Test.ToolWrite.TestNoPathFromAWriteToolsViewReachesTheClaimGate reads five class sources with GetTextAsString and asserts $Find of the claim class is 0 in each; the list is a literal in the test. Classes actually on View()'s call path that it omits include Kernel.Proposal.Caller (called from View itself), Screen.Tool.Base, Screen.Gate and Kernel.Fault, and any class a second write tool adds. Adding the claim call to Caller leaves the test green. This project already puts containment rules of exactly this shape in check_restraint_containment and check_tool_dispatch.
+- 2026-09-19T13:19:31Z status=routed owner=range-end-cleanup by=cr note=Out of the epic footprint - scripts/ is not in it, and a 22nd rule moves the count pin at scripts/test_check_objectscript.py:275-300. Blocks no downstream story: the separation itself holds today, only its guard is hand-maintained.
+
+### DW-1212: The merge writes the model's JSON type over the instance's, so a changed value on the five WebApp.App fields the instance answers as numbers is sent back as a string
+- source: spec-5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read.md | severity: med | fix-risk: med | footprint: src/OcuPilot/Kernel/Proposal/Mint.cls
+- evidence: Mint.Merge sets the new value with pArgs' own type hint. Write.JsonType's own comment records that this instance answers a number for five WebApp.App fields whose template shows a string, so the schema advertises string, the model sends a string, and the payload the confirm will PUT carries a string where the GET returned a number. Nothing in this story round-trips a changed value back through the endpoint.
+- 2026-09-19T13:19:45Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=cr note=Surfaces only where the payload is actually sent, which is 5.3's transition. Non-blocking here: nothing in 5.1 writes to the instance.
+
+### DW-1213: A proposal restored after a browser reload is dropped on the false premise that it is always expired, so the user loses the card for up to nine of its ten minutes with no other route to it
+- source: spec-5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read.md | severity: med | fix-risk: low | footprint: ui/src/app/core/turn.ts
+- evidence: TurnEntry.proposals' own comment reads 'Empty for a restored entry: the conversation read carries none, and a proposal restored from a reload is always expired anyway.' PROPOSALEXPIRYSECONDS is 600, so a reload one minute after a mint drops a proposal that stays confirmable for nine more; proposals ride only the progress poll, so there is no other route to it.
+- 2026-09-19T13:19:45Z status=routed owner=5-2-the-proposal-card-the-diff-the-user-reviews by=cr note=The card and its restore path are 5.2's; 5.1 ships only the publisher. Non-blocking: the proposal is still claimable by id, and nothing renders a card yet.

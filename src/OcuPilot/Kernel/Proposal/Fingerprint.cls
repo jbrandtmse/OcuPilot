@@ -6,9 +6,10 @@
 /// default is everything else. That is what makes "the target moved under the diff" a question the
 /// instance can answer rather than one each write tool answers for itself.</p>
 /// <p><b>Canonical means key insertion order cannot change the answer.</b> An object's members are
-/// emitted in code-point order of their names; an array's elements keep their own order, because
-/// an array's order is part of the value. A string is emitted with its length, so no concatenation
-/// of two members can be read as one.</p>
+/// emitted in <code>$Order</code> collation of their names -- one fixed order, whatever order they
+/// were inserted in, with canonical numbers ahead of other strings; an array's elements keep their
+/// own order, because an array's order is part of the value. A string is emitted with its length,
+/// so no concatenation of two members can be read as one.</p>
 /// <p><b>An excluded path is a <class>OcuPilot.Screen.Tool.ToolFields</class> path</b>: dotted
 /// members, with <code>[]</code> for an array's elements (<code>MatchRoles[].MatchRole</code>). It
 /// is the same grammar <method>OcuPilot.Screen.Registry.ConfirmChannelProblem</method> checks a
@@ -44,14 +45,17 @@ ClassMethod Of(pPayload As %DynamicObject, pExcludes As %List = "", Output pDige
 /// <p>The canonical text of <var>pValue</var> at path <var>pPath</var>, with every path in
 /// <var>pExcludes</var> left out.</p>
 /// <p>An object emits <code>{</code>, each surviving member as
-/// <code>&lt;length&gt;:&lt;name&gt;=&lt;value&gt;</code> in code-point order of the name, joined
-/// by <code>,</code>, then <code>}</code>. An array emits its elements in order. A scalar emits
+/// <code>&lt;length&gt;:&lt;name&gt;=&lt;value&gt;</code> in <code>$Order</code> collation of the
+/// name, joined by <code>,</code>, then <code>}</code>. An array emits its elements in order, or
+/// <code>[]</code> when its own <code>[]</code> path is excluded -- which is how an exclusion the
+/// generator spells <code>CorsAllowlist[]</code> takes that field out of the digest. A scalar emits
 /// its JSON type and its text, length-prefixed, so <code>"1"</code> and <code>1</code> cannot
 /// serialise alike.</p>
 ClassMethod Canonical(pValue As %RawString, pPath As %String, pExcludes As %List) As %String [ Private ]
 {
     If '$IsObject(pValue) Quit ..Scalar("string", pValue)
     If pValue.%IsA("%Library.DynamicArray") {
+        If $ListFind(pExcludes, pPath _ "[]") Quit "[]"
         Set tOut = "["
         Set tFirst = 1
         Set tIterator = pValue.%GetIterator()

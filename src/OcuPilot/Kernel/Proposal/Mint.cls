@@ -202,7 +202,12 @@ ClassMethod Merge(pFresh As %DynamicObject, pArgs As %DynamicObject, pIdArgument
             Set tBefore = ..Display(pPayload.%Get(tField), pPayload.%GetTypeOf(tField))
             Set tAfter = ..Display(pArgs.%Get(tField), pArgs.%GetTypeOf(tField))
             If tAfter = tBefore Continue
-            Do pPayload.%Set(tField, pArgs.%Get(tField), pArgs.%GetTypeOf(tField))
+            Set tAfterType = pArgs.%GetTypeOf(tField)
+            If (tAfterType = "object") || (tAfterType = "array") {
+                Do pPayload.%Set(tField, pArgs.%Get(tField))
+            } Else {
+                Do pPayload.%Set(tField, pArgs.%Get(tField), tAfterType)
+            }
             Set tRow = {}
             Do tRow.%Set("field", tField, "string")
             Do tRow.%Set("before", tBefore, "string")

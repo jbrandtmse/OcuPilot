@@ -318,11 +318,12 @@ ClassMethod Validate(Output pProblem As %String) As %Status
 
 /// <p>The keys a screen declaration may carry at its top level -- the whole vocabulary, in the
 /// order <class>OcuPilot.Screen.Descriptor.Base</class> reads them (AD-5).</p>
-/// <p>Eight are optional and the rest are not, but this parameter says nothing about which:
+/// <p>Nine are optional and the rest are not, but this parameter says nothing about which:
 /// <method>DeclarationProblem</method> is an <b>unknown-key</b> check, never a presence check. A
 /// declaration missing an optional key -- <code>refreshes</code>, <code>refreshRates</code>,
 /// <code>read</code>, <code>table</code>, <code>banner</code>, <code>tab</code>,
-/// <code>secretArguments</code>, <code>fingerprintExcludes</code> -- is sound, and a declaration
+/// <code>rowTarget</code>, <code>secretArguments</code>, <code>fingerprintExcludes</code> -- is
+/// sound, and a declaration
 /// missing a required one is already refused by the rule that reads it, with a sentence naming what
 /// it was for.</p>
 Parameter DECLARATIONKEYS = "route,area,labelKey,sideBarPosition,archetype,built,refreshes,refreshRates,privileges,entityType,secondaryEntityTypes,scope,parentScope,id,context,secretArguments,fingerprintExcludes,primaryAction,rowActions,emptyStateKey,commandAliases,classicPage,classicLinkExemption,read,table,banner,tab,toolIdentifier,rowTarget";
