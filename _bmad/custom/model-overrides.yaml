@@ -54,11 +54,11 @@ history:
   - date: 2026-09-18
     action: re-escalate-implement-to-opus
     evidence: >-
-      Owner decision on cycle time after 1.5 days on sonnet. Per story, plan spawn to commit, medians:
-      Epic 6 2.6 h on opus (5 stories) vs 3.8 h on sonnet (6); Epic 4 4.3 h on opus (4) vs 5.2 h on
-      sonnet (3). Implement re-spawned for rework 1 of 9 opus stories vs 4 of 9 sonnet; CI red after
-      commit 0 of 9 vs 3 of 9. Confounded by harder stories (4.4-4.6, 6.9-6.11) but the rework and
-      red-CI pattern matches the Epic 1 telemetry, and each rework re-runs the opus review. At the
-      sonnet-era pace the 4-12 range projected to 2026-09-26 with Epic 14 outside the deadline; at
-      the opus-era pace to 2026-09-24. The quota cost is accepted for the schedule.
+      Owner decision after 1.5 days on sonnet, taken on rework and CI-red counts: implement re-spawned
+      1 of 9 opus stories vs 5 of 12 sonnet; CI red after commit 0 of 9 vs 4 of 12; each rework re-runs
+      the opus review. Cycle time itself did not differ (corrected 2026-09-19, first commit per story,
+      quota pauses excluded): plan spawn to commit median 2.8 h opus vs 3.1 h sonnet, implement stage
+      1.4 h vs 1.3 h. The figures first quoted here were inflated by CI-fix commits logged under an
+      earlier story's name. Confounded by story mix. The quota cost is accepted for fewer reworks on
+      the critical path.
     approved_by: user
