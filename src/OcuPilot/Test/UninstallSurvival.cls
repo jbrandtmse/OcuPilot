@@ -89,7 +89,7 @@ Method TestAnEmittedRowOutlivesItsRegistration()
     Set tType = ##class(OcuPilot.Kernel.Audit.Event).Type()
     Set tEvent = $ListGet(##class(OcuPilot.Kernel.Audit.Event).Names(..#PROBESUFFIX), 1)
     Do $$$AssertTrue(tEvent '= "", "the probe roster declares a triple to emit through")
-    Do $$$AssertTrue(..RegistrationExists(tSource, tType, tEvent), "the probe triple " _ tEvent _ " is registered after install")
+    Do $$$AssertEquals(..RegistrationExists(tSource, tType, tEvent), 1, "the probe triple " _ tEvent _ " is registered after install")
 
     Set tMarker = ..Marker()
     Set tSince = ..Now()
@@ -101,7 +101,8 @@ Method TestAnEmittedRowOutlivesItsRegistration()
     Set tSC = ##class(OcuPilot.Install.Installer).Uninstall("probe", 1)
     Do $$$AssertStatusOK(tSC, "confirmed uninstall succeeds: " _ $System.Status.GetErrorText(tSC))
 
-    Do $$$AssertTrue('..RegistrationExists(tSource, tType, tEvent), "the triple's registration is gone after uninstall")
+    Set tStillRegistered = ..RegistrationExists(tSource, tType, tEvent)
+    Do $$$AssertEquals(tStillRegistered, 0, "the triple's registration is gone after uninstall; read=" _ tStillRegistered)
     Set tRowsAfter = ..RowsCarrying(tSince, tEvent, tMarker)
     Do $$$AssertEquals(tRowsAfter, 1, "and the row emitted under it is STILL readable from %SYS.Audit -- the rows are the instance's record, not OcuPilot's (AD-15, AD-46); read=" _ tRowsAfter)
     Set tAuditing = ..AuditingEnabled()
@@ -109,15 +110,18 @@ Method TestAnEmittedRowOutlivesItsRegistration()
 }
 
 /// <p>AC4 -- uninstall then install returns the profile to the state it was in, and the
-/// profile's unauthenticated API application serves again. The fingerprint is the oracle:
-/// it folds every setting the ensure steps assert, so a reinstall that skipped one moves it,
-/// though it does not cover the SQL grant (DW-96). The loopback request stands beside it for
-/// a different reason: the fingerprint reads state through the same guard-then-act path that
-/// wrote it, while an anonymous GET proves the recreated application is reachable, routes,
-/// and loads its dispatch class behind its AD-21 floor. The request asserts reachability
-/// only -- <method>OcuPilot.Api.Readiness</method> answers 200 in every gate state and
-/// reports the state in its body, so a 200 is not itself a claim that the instance is
-/// installed.</p>
+/// profile's unauthenticated API application serves again. The fingerprint is read three
+/// times, and the middle reading is what makes the equality load-bearing: on its own,
+/// <var>tAfter</var> = <var>tBefore</var> is an <b>idempotency</b> guard that a `Uninstall`
+/// regressed to a complete no-op would also satisfy, because uninstall deletes every object
+/// the fingerprint folds and install recreates them from roster constants. Asserting that the
+/// post-uninstall reading <b>differs</b> pins that the cycle the equality spans actually
+/// happened. The fingerprint does not cover the SQL grant, and it is compared only against
+/// itself, so the loopback request stands beside it as a live oracle: an anonymous GET proves
+/// the recreated application is reachable, routes, and loads its dispatch class behind its
+/// AD-21 floor. The request asserts reachability only --
+/// <method>OcuPilot.Api.Readiness</method> answers 200 in every gate state and reports the
+/// state in its body, so a 200 is not itself a claim that the instance is installed.</p>
 Method TestUninstallThenInstallRestoresTheProfileAndServes()
 {
     Set tPath = ..ReadinessPath()
@@ -129,20 +133,26 @@ Method TestUninstallThenInstallRestoresTheProfileAndServes()
 
     Set tSC = ##class(OcuPilot.Install.Installer).Uninstall("probe", 1)
     Do $$$AssertStatusOK(tSC, "confirmed uninstall succeeds: " _ $System.Status.GetErrorText(tSC))
+    Set tMid = ##class(OcuPilot.Install.Installer).StateFingerprint("probe")
+    Do $$$AssertNotEquals(tMid, tBefore, "the uninstall moved the state the fingerprint folds, so the equality below compares two readings a real cycle separates; before=" _ tBefore _ " mid=" _ tMid)
     Set tSC2 = ##class(OcuPilot.Install.Installer).Install("probe")
     Do $$$AssertStatusOK(tSC2, "the reinstall succeeds: " _ $System.Status.GetErrorText(tSC2))
 
     Set tAfter = ##class(OcuPilot.Install.Installer).StateFingerprint("probe")
+    Do $$$AssertTrue($Extract(tAfter, 1, 6) '= "ERROR:", "the post-reinstall fingerprint was read: " _ tAfter)
     Do $$$AssertEquals(tAfter, tBefore, "the fingerprint is byte-identical after uninstall then install; before=" _ tBefore _ " after=" _ tAfter)
     Set tAfterStatus = ..Answers(tPath)
     Do $$$AssertEquals(tAfterStatus, 200, "and the probe API answers over loopback again; status=" _ tAfterStatus)
 }
 
-/// <p>Whether the triple <var>pSource</var>/<var>pType</var>/<var>pEvent</var> is registered.
-/// Switches to <code>%SYS</code> and restores (AD-16).</p>
-Method RegistrationExists(pSource As %String, pType As %String, pEvent As %String) As %Boolean
+/// <p>Whether the triple <var>pSource</var>/<var>pType</var>/<var>pEvent</var> is registered:
+/// <code>1</code> registered, <code>0</code> absent, <code>-1</code> when the read itself
+/// failed. Three-valued rather than Boolean because the caller asserts the <b>negative</b>
+/// after uninstall, and a failed lookup read as a negative result would pass that assertion on
+/// no evidence. Switches to <code>%SYS</code> and restores (AD-16).</p>
+Method RegistrationExists(pSource As %String, pType As %String, pEvent As %String) As %Integer
 {
-    Set tExists = 0
+    Set tExists = -1
     Set tOrigNS = $NAMESPACE
     Try {
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
@@ -150,6 +160,7 @@ Method RegistrationExists(pSource As %String, pType As %String, pEvent As %Strin
         Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS
+        Set tExists = -1
     }
     Quit tExists
 }
@@ -218,11 +229,15 @@ Method Marker() As %String
     Quit "OcuPilotProbeSurvival" _ $Translate($System.Util.CreateGUID(), "-", "")
 }
 
-/// <p>The audit database's own clock, in the form <code>%SYS.Audit.UTCTimeStamp</code>
-/// carries.</p>
+/// <p>A lower bound for the read below, in the ODBC form <code>%SYS.Audit.UTCTimeStamp</code>
+/// carries. <b>Truncated to whole seconds deliberately:</b> that column is
+/// <class>%String</class>, so <code>&gt;=</code> compares lexicographically, and a bound
+/// carrying more fractional digits than the stored value sorts <i>after</i> the very row it
+/// must include. Widening the bound costs nothing -- the run's own marker, not the time, is
+/// what identifies the row.</p>
 Method Now() As %String
 {
-    Quit $ZDateTime($ZTimeStamp, 3, , 3)
+    Quit $ZDateTime($ZTimeStamp, 3, , 0)
 }
 
 /// <p>The probe profile's path for the unauthenticated readiness application, derived from
@@ -232,16 +247,21 @@ Method Now() As %String
 Method ReadinessPath() As %String
 {
     Set tFound = ""
-    Set tKeys = ##class(OcuPilot.Install.Roster).Keys()
-    For tI = 1:1:$Length(tKeys, ",") {
-        Set tKey = $Piece(tKeys, ",", tI)
-        If tKey = "" Continue
-        Set tSC = ##class(OcuPilot.Install.Roster).Application(tKey, .tApp)
-        If $$$ISERR(tSC) Continue
-        If '$IsObject(tApp.manifest) Continue
-        If tApp.manifest.DispatchClass '= ..#READINESSCLASS Continue
-        Set tFound = ##class(OcuPilot.Install.Installer).ProbeApplicationPath(tApp.path)
-        Quit
+    Try {
+        Set tKeys = ##class(OcuPilot.Install.Roster).Keys()
+        For tI = 1:1:$Length(tKeys, ",") {
+            Set tKey = $Piece(tKeys, ",", tI)
+            If tKey = "" Continue
+            Set tSC = ##class(OcuPilot.Install.Roster).Application(tKey, .tApp)
+            If $$$ISERR(tSC) Continue
+            If '$IsObject(tApp) Continue
+            If '$IsObject(tApp.manifest) Continue
+            If tApp.manifest.DispatchClass '= ..#READINESSCLASS Continue
+            Set tFound = ##class(OcuPilot.Install.Installer).ProbeApplicationPath(tApp.path)
+            Quit
+        }
+    } Catch ex {
+        Set tFound = ""
     }
     If tFound = "" Quit ""
     Quit tFound _ "/"

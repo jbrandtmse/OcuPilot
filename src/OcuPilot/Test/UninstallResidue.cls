@@ -1,13 +1,17 @@
 /// <p>Story 13.1, AC1 and AC2 -- what <method>OcuPilot.Install.Installer.Uninstall</method>
-/// removes when the instance is <b>not</b> in the state install left it in. Three legs: a real
+/// removes when the instance is <b>not</b> in the state install left it in. Four legs: a real
 /// <class>%SYS.Task</class> demo fixture and its inventory row; one target removed by hand
-/// before the uninstall, once per target; and a roster-declared matching role whose
-/// application another hand had already removed.</p>
-/// <p>Every assertion runs against the disposable <code>"probe"</code> profile, whose names
-/// are derived here from the same declarations the installer reads rather than transcribed --
-/// except the global mapping pattern, which <method>OcuPilot.Install.Installer.Names</method>
-/// makes a wholesale distinct literal that production's own does not yield
-/// (<parameter>PROBEMAPPING</parameter>).
+/// before the uninstall, once per target; a roster-declared matching role whose application
+/// another hand had already removed; and, on a plain cycle, the shell bundle directory and
+/// this profile's own provenance and version bookkeeping.</p>
+/// <p>Every assertion runs against the disposable <code>"probe"</code> profile, whose object
+/// names are derived here from the same declarations the installer reads rather than
+/// transcribed. Three literals are not derived and are named at their declarations: the global
+/// mapping pattern (<parameter>PROBEMAPPING</parameter>), which
+/// <method>OcuPilot.Install.Installer.Names</method> makes a wholesale distinct literal that
+/// production's own does not yield; the fixture task class
+/// (<parameter>TASKCLASS</parameter>); and the shell roster key
+/// (<parameter>SHELLKEY</parameter>).
 /// It also runs OcuPilot's <b>production</b> install -- the probe's protected database is
 /// created through production's own privileged routine application -- so it runs on a
 /// throwaway container only (<file>scripts/ci-throwaway.sh</file>) and refuses wherever
@@ -33,6 +37,13 @@ Parameter TASKCLASS As %String = "OcuPilot.Install.DemoTask";
 /// <p>The suffix on this class's own disposable task name, kept distinct from the demo
 /// fixture's own so a run never removes a fixture another profile owns.</p>
 Parameter TASKNAME As %String = "Residue purge";
+
+/// <p>The roster key of the shell application, whose bundle directory
+/// <method>ShellDirectory</method> derives. The key itself is named here rather than read
+/// from the roster's <code>bundle.destinationApplication</code>;
+/// <class>OcuPilot.Test.Manifest</class> pins the roster's keys, so a key that moved fails
+/// there rather than silently here.</p>
+Parameter SHELLKEY As %String = "shell";
 
 /// <p>Refuse to run at all unless this instance is armed for a production install.</p>
 Method OnBeforeAllTests() As %Status
@@ -133,8 +144,12 @@ Method TaskName() As %String
 }
 
 /// <p>Every probe-profile object install creates that is still on the instance, comma
-/// separated, or <code>""</code>. A failed read answers with its own text, never with
-/// <code>""</code>, so "could not tell" is never read as "clean".</p>
+/// separated, or <code>""</code>. A failed <code>%SYS</code> switch, or anything that throws,
+/// answers with its own text rather than with <code>""</code>. <b>An individual
+/// <code>Exists</code> that fails to read is not distinguished from one that answers
+/// "absent"</b> (the statuses the ten calls below take by reference are not inspected), so
+/// this method's <code>""</code> means "no residue was found", not "no residue is there" --
+/// the same unsafe direction DW-1271 records for the caller-side guard.</p>
 Method Residue() As %String
 {
     Set tOut = ""
@@ -216,11 +231,14 @@ Method RoledApplication(Output pRole As %String) As %String
     Quit tPath
 }
 
-/// <p>Whether the role <var>pRole</var> exists. Switches to <code>%SYS</code> and restores
-/// (AD-16).</p>
-Method RoleExists(pRole As %String) As %Boolean
+/// <p>Whether the role <var>pRole</var> exists: <code>1</code> present, <code>0</code> absent,
+/// <code>-1</code> when the read itself failed. Three-valued rather than Boolean because the
+/// caller asserts the <b>negative</b> after uninstall -- that the orphaned role is gone, this
+/// story's core claim -- and a failed lookup read as a negative result would pass that
+/// assertion on no evidence. Switches to <code>%SYS</code> and restores (AD-16).</p>
+Method RoleExists(pRole As %String) As %Integer
 {
-    Set tExists = 0
+    Set tExists = -1
     Set tOrigNS = $NAMESPACE
     Try {
         Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
@@ -228,15 +246,17 @@ Method RoleExists(pRole As %String) As %Boolean
         Set $NAMESPACE = tOrigNS
     } Catch ex {
         Set $NAMESPACE = tOrigNS
+        Set tExists = -1
     }
     Quit tExists
 }
 
 /// <p>Remove one of this profile's targets by hand, as another operator or another product
 /// would: <var>pTarget</var> is <code>roledapplication</code>, <code>adminrole</code>,
-/// <code>sslconfig</code>, <code>mapping</code> or <code>auditevent</code>. Returns the
-/// removal's own status; an unknown target is an error rather than a silent no-op, so a
-/// mistyped row in the table below cannot pass as a leg that removed something.</p>
+/// <code>adminresource</code>, <code>sslconfig</code>, <code>mapping</code> or
+/// <code>auditevent</code>. Returns the removal's own status; an unknown target is an error
+/// rather than a silent no-op, so a mistyped row in the table below cannot pass as a leg that
+/// removed something.</p>
 Method DeleteTarget(pTarget As %String) As %Status
 {
     Set tSC = $$$OK
@@ -260,6 +280,8 @@ Method DeleteTarget(pTarget As %String) As %Status
             Set tSC = ##class(Security.Applications).Delete(tRoled)
         } ElseIf pTarget = "adminrole" {
             Set tSC = ##class(Security.Roles).Delete(tAdmin)
+        } ElseIf pTarget = "adminresource" {
+            Set tSC = ##class(Security.Resources).Delete(tAdmin)
         } ElseIf pTarget = "sslconfig" {
             Set tSC = ##class(Security.SSLConfigs).Delete(tSsl)
         } ElseIf pTarget = "mapping" {
@@ -310,7 +332,7 @@ Method TestUninstallRemovesARealScheduledTaskFixture()
 /// guarding would fail its own row rather than the whole table.</p>
 Method TestUninstallCompletesWithOneTargetAlreadyAbsent()
 {
-    Set tTargets = $ListBuild("roledapplication", "adminrole", "sslconfig", "mapping", "auditevent")
+    Set tTargets = $ListBuild("roledapplication", "adminrole", "adminresource", "sslconfig", "mapping", "auditevent")
     For tI = 1:1:$ListLength(tTargets) {
         Set tTarget = $ListGet(tTargets, tI)
         Do $$$AssertStatusOK(..CleanProbe(), "the instance is clean before the '" _ tTarget _ "' leg")
@@ -333,23 +355,110 @@ Method TestUninstallRemovesAMatchingRoleWhoseApplicationIsAlreadyGone()
 {
     Set tPath = ..RoledApplication(.tRole)
     Do $$$AssertTrue(tPath '= "", "the roster declares an application with a matching role, so this leg asserts something")
-    Do $$$AssertTrue(..RoleExists(tRole), "that application's matching role " _ tRole _ " exists after install")
+    Do $$$AssertEquals(..RoleExists(tRole), 1, "that application's matching role " _ tRole _ " exists after install")
 
     Do $$$AssertStatusOK(..DeleteTarget("roledapplication"), "the application " _ tPath _ " is removed by hand, leaving its role")
-    Do $$$AssertTrue(..RoleExists(tRole), "the role outlives the application it was matched to")
+    Do $$$AssertEquals(..RoleExists(tRole), 1, "the role outlives the application it was matched to")
 
     Set tSC = ##class(OcuPilot.Install.Installer).Uninstall("probe", 1)
     Do $$$AssertStatusOK(tSC, "confirmed uninstall succeeds: " _ $System.Status.GetErrorText(tSC))
 
-    Do $$$AssertTrue('..RoleExists(tRole), "the orphaned matching role is removed -- no roster-declared role survives with no application at its roster path")
+    Set tRoleLeft = ..RoleExists(tRole)
+    Do $$$AssertEquals(tRoleLeft, 0, "the orphaned matching role is removed -- no roster-declared role survives with no application at its roster path; read=" _ tRoleLeft)
     Set tLeft = ..Residue()
     Do $$$AssertEquals(tLeft, "", "and nothing else install created is left; left=" _ tLeft)
 }
 
+/// <p>AC1 -- three targets <method>Residue</method> does not check: the shell
+/// application's bundle directory, this profile's
+/// <class>OcuPilot.Kernel.State.WebApp</class> provenance rows, and its
+/// <class>OcuPilot.Kernel.State.Version</class> row. None of the three is a demo-fixture
+/// kind, so none is covered by the Design Notes' demo-inventory scope-out -- each is an
+/// object a plain (not hand-mutilated) probe install always creates and a plain confirmed
+/// uninstall is required to remove.</p>
+Method TestUninstallRemovesTheShellDirectoryAndItsOwnProvenanceBookkeeping()
+{
+    Set tDir = ..ShellDirectory()
+    Do $$$AssertTrue(tDir '= "", "the roster declares a shell application, so this leg asserts something")
+    Do $$$AssertTrue(##class(%File).DirectoryExists(tDir), "the shell bundle directory exists after install: " _ tDir)
+    Set tWebAppBefore = ..WebAppProvenanceRows()
+    Do $$$AssertTrue(tWebAppBefore > 0, "at least one WebApp provenance row is recorded for this profile after install; found=" _ tWebAppBefore)
+    Set tVersionBefore = ..VersionRows()
+    Do $$$AssertEquals(tVersionBefore, 1, "exactly one Version row is recorded for the probe profile after install; found=" _ tVersionBefore)
+
+    Set tSC = ##class(OcuPilot.Install.Installer).Uninstall("probe", 1)
+    Do $$$AssertStatusOK(tSC, "confirmed uninstall succeeds: " _ $System.Status.GetErrorText(tSC))
+
+    Do $$$AssertTrue('##class(%File).DirectoryExists(tDir), "the shell bundle directory is gone after uninstall: " _ tDir)
+    Set tWebAppAfter = ..WebAppProvenanceRows()
+    Do $$$AssertEquals(tWebAppAfter, 0, "and every WebApp provenance row for this profile is gone too; found=" _ tWebAppAfter)
+    Set tVersionAfter = ..VersionRows()
+    Do $$$AssertEquals(tVersionAfter, 0, "and the Version row is gone too; found=" _ tVersionAfter)
+    Set tLeft = ..Residue()
+    Do $$$AssertEquals(tLeft, "", "and every object the residue sweep covers is gone as well; left=" _ tLeft)
+}
+
+/// <p>The probe profile's shell-application bundle directory, computed the same way
+/// <method>OcuPilot.Install.Installer.EnsureShellFiles</method> resolves it -- from the
+/// roster's <parameter>SHELLKEY</parameter> application path through
+/// <method>OcuPilot.Api.StaticHandler.RootDirectory</method> -- rather than transcribed.
+/// <code>""</code> when the roster declares no such application.</p>
+Method ShellDirectory() As %String
+{
+    Set tDir = ""
+    Try {
+        Set tSC = ##class(OcuPilot.Install.Roster).Application(..#SHELLKEY, .tApp)
+        If $$$ISERR(tSC) Quit
+        If '$IsObject(tApp) Quit
+        Set tPath = ##class(OcuPilot.Install.Installer).ProbeApplicationPath(tApp.path)
+        If tPath = "" Quit
+        Set tDir = ##class(OcuPilot.Api.StaticHandler).RootDirectory(tPath)
+    } Catch ex {
+        Set tDir = ""
+    }
+    Quit tDir
+}
+
+/// <p>How many <class>OcuPilot.Kernel.State.WebApp</class> provenance rows the
+/// <code>"probe"</code> profile carries, across every application path -- not one hand-picked
+/// path, so a row left behind for any of the profile's applications is visible.
+/// <code>-1</code> when the read failed, so a failed read is never counted as zero rows.</p>
+Method WebAppProvenanceRows() As %Integer
+{
+    Set tCount = -1
+    Try {
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) AS N FROM OcuPilot_Kernel_State.WebApp WHERE Profile = 'probe'")
+        If tRS.%SQLCODE < 0 Quit
+        If 'tRS.%Next() Quit
+        Set tCount = tRS.N
+    } Catch ex {
+        Set tCount = -1
+    }
+    Quit tCount
+}
+
+/// <p>How many <class>OcuPilot.Kernel.State.Version</class> rows the <code>"probe"</code>
+/// profile carries -- one while installed (that class's own header), zero after a clean
+/// uninstall. <code>-1</code> when the read failed, so a failed read is never counted as
+/// zero rows.</p>
+Method VersionRows() As %Integer
+{
+    Set tCount = -1
+    Try {
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) AS N FROM OcuPilot_Kernel_State.Version WHERE Profile = 'probe'")
+        If tRS.%SQLCODE < 0 Quit
+        If 'tRS.%Next() Quit
+        Set tCount = tRS.N
+    } Catch ex {
+        Set tCount = -1
+    }
+    Quit tCount
+}
+
 /// <p>Create one real <class>%SYS.Task</class> the fixture removal path can find: the class
 /// and name it queries by, bound to <var>pScope</var>. Scheduled daily at 03:00 so the Task
-/// Manager never runs it during a test run, and the object reference is released
-/// immediately -- a held reference leaves an exclusive lock on the task's own global.</p>
+/// Manager never runs it during a test run, and the object reference is released as soon as
+/// the save returns rather than held across the rest of the method.</p>
 Method CreateTask(pName As %String, pScope As %String) As %Status
 {
     Set tSC = $$$OK

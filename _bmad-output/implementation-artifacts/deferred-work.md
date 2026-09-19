@@ -3877,11 +3877,12 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 
 ### DW-1079: A Wallet test appears to delete the demo collection on the shared dev instance, leaving two suites red there
 - source: spec-6-10-the-locks-view.md | severity: med | fix-risk: low | footprint: in-footprint
-- evidence: On ocupilot-slot-b (OCUPILOT_DEMO=1) WalletCollectionList answers zero rows, so Test/ScreenRead.TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow and Test/Smoke.TestTheSecurityListsAreLiveChecks fail there; both are green on a fresh throwaway, where the installer creates the collection. A Wallet test's own cleanup deleting the demo collection is the likely cause (inference). Reproduce: run Test/Wallet* on a demo instance, then the two tests above
+- evidence: On ocupilot-slot-b (OCUPILOT_DEMO=1) WalletCollectionList answers zero rows, so Test/ScreenRead.TestEveryDeclaredReadFieldIsAKeyOfTheLiveRow and Test/Smoke.TestTheSecurityListsAreLiveChecks fail there; both are green on a fresh throwaway, where the installer creates the collection. REFUTED 2026-09-19 (Epic 13 runner, before planning 13.2): no Test/Wallet* class exists anywhere in src, on feature or on any branch, so the original reproduce step named a class that has never existed. Measured instead on the demo-enabled throwaway ocupilot-b-ci: %Wallet.Collection held OcuPilotDemo before the suite, mid-sweep, and after all 132 classes / 1269 tests -- so no test in the suite deletes the collection. The remaining explanation is stale state on the long-lived ocupilot-slot-b, whose demo data predates the Wallet fixture; DW-1079's own trailer records the symptom being cleared there by re-running the fixture, and slot-b reads one collection today. Residual question for 13.2: whether anything OTHER than a test leaves a demo-enabled instance without the collection across a source refresh
 - 2026-09-17T22:27:39Z status=routed owner=burndown by=runner note=observed twice during Story 6.10 (implement and code review both read it as a story signal first); a test that deletes demo fixture data leaves every later story on that instance reading a false red
 - 2026-09-18T16:42:53Z status=escalated owner=burndown by=burndown note=the Wallet list story that owns the test is done and no story in Epic 7 or 16 touches Wallet tests; the symptom was repaired on ocupilot-slot-b by re-running the fixture, but a test that deletes demo fixture data on a shared instance makes every later story read a false red there
 - 2026-09-18T19:44:55Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=merge_gate note=a test must not delete shared demo data; use a throwaway or restore what it removes
 - 2026-09-19T21:23:38Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=runner note=no Test/Wallet* exists anywhere in src; probe slot-b for the collection BEFORE any test run, then correct at origin
+- 2026-09-19T23:54:30Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=runner note=cause refuted by measurement; evidence line corrected at origin; re-scope to the stale-instance question
 
 ### DW-1080: Database details' background-tasks section: charter it, or add a query-backed source kind to AD-36
 - source: spec-6-11-databases-with-free-space-arriving-as-it-lands.md | severity: med | fix-risk: high | footprint: out-of-footprint
@@ -4254,11 +4255,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-13-1-the-uninstall-hook.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Installer.cls:3532 lists a role only when $Data(tRecorded(tUName)); the :3665 loop now also deletes a role whose application is absent. Reachable when GuardedPathsForProfile fails (:3507) or an install died between EnsureApplicationRoles and EnsureApplications. Only orphan roles affected, so no AD-21 floor is stripped
 - 2026-09-19T22:46:22Z status=routed owner=burndown by=harvest note=introduced by 13.1's granted role-loop edit; the fix is at :3509,:3528-3536, outside the lines granted
+- 2026-09-19T23:31:41Z occurrence=13-1-the-uninstall-hook
 
 ### DW-1269: The AC5 StateFingerprint equality is green but no mutation has been shown to redden it
 - source: spec-13-1-the-uninstall-hook.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: Both readings come from the same guard-then-act path against the same freshly-uninstalled state, so a uniform change to Install moves them together; the asymmetric attempt left it green because Install repairs an application already at its roster path. Settled by a genuinely asymmetric mutation, or by re-scoping the assertion to idempotency
 - 2026-09-19T22:46:22Z status=open owner=13-1-the-uninstall-hook by=harvest note=Rule 19 gap on a test this story created
+- 2026-09-19T23:31:41Z status=resolved-by:13-1-the-uninstall-hook owner=13-1-the-uninstall-hook by=cr note=AC5 leg made falsifiable by a third fingerprint reading between uninstall and reinstall; no-op-Uninstall mutation red at run 14, green 15/16
 
 ### DW-1270: Story 13.1's intent-contract Symmetry row and AC6 name Install(''), but the reinstall that reaches a smoke-green instance is StartPath(pDemo, pBundleSource)
 - source: spec-13-1-the-uninstall-hook.md | severity: low | fix-risk: low | footprint: in-story
@@ -4270,29 +4273,40 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-13-1-the-uninstall-hook.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: Installer.cls:3665 discards the by-ref status; Exists answers 0 both for absence and for a failed read. The application loop at :3639 shares the pattern but fails safe. A correct fix needs an error-code-specific branch, and getting it wrong silently reverts this story's core behavior
 - 2026-09-19T22:46:22Z status=open owner=13-1-the-uninstall-hook by=harvest note=LOW, not a two-way door; disposition at adjudication
+- 2026-09-19T23:31:42Z occurrence=13-1-the-uninstall-hook
+- 2026-09-19T23:34:07Z status=wontfix-accepted owner=13-1-the-uninstall-hook by=cr note=LOW, fix-risk med, in a file patch-frozen to this story; re-raised by 3 of 4 review layers; reopen_if=a Security.Applications.Exists in %SYS answers a status other than ApplicationDoesNotExist during an uninstall, or an adopted application is found without its matching role after one
 
 ### DW-1272: Test/Provenance.cls's Rule 19 recipe names the pre-edit guard text of Uninstall's role loop
 - source: spec-13-1-the-uninstall-hook.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: Provenance.cls:238-240 says to drop "'\$Data(tRemovedKeys(tRKey)) Continue"; the guard is now a compound condition. The recipe still reddens as written (verified: removing the whole guard produced the run-8 red), so this is wording drift, not a broken recipe
 - 2026-09-19T22:46:35Z status=routed owner=burndown by=harvest note=Provenance.cls is an existing Test/* file Epic 5 holds; editing it needs a Clarification
+- 2026-09-19T23:31:42Z occurrence=13-1-the-uninstall-hook
 
 ### DW-1273: Story 13.1's AC6 production cycle and the loopback / auditing-enabled assertions carry no mutation line
 - source: spec-13-1-the-uninstall-hook.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: AC6's evidence is one recorded run (executed=45 passed=45); nothing re-executes a production Uninstall('',1) -- the CI instance job installs and smokes but never uninstalls. The probe-profile classes exercise the same profile-agnostic path. Loopback and auditing-enabled are structurally falsifiable (both helpers answer -1 on a failed read) but neither observed red
 - 2026-09-19T22:46:35Z status=open owner=13-1-the-uninstall-hook by=harvest note=Rule 19 gap on this story's own Verification
 - 2026-09-19T22:51:20Z status=routed owner=13-1-the-uninstall-hook by=adjudication note=AC6 half closed by the lead AD gate (smoke 7-fail vs 45-pass); loopback/auditing halves remain
+- 2026-09-19T23:31:41Z status=resolved-by:13-1-the-uninstall-hook owner=13-1-the-uninstall-hook by=cr note=AC6 half closed by the lead AD gate; loopback and auditing halves reddened by the QA pass at runs 8 and 10 but never recorded here
 
 ### DW-1274: UninstallResidue's Residue() and AC2 target table are narrower than the sentences asserted with them
 - source: spec-13-1-the-uninstall-hook.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Residue() omits the shell bundle directory, the Kernel.State.Version row, the Kernel.State.WebApp provenance rows and the five non-task demo-inventory kinds, yet backs 'every other object install created is gone too'. DeleteTarget covers 5 of roughly 11 separately guarded targets in Uninstall
 - 2026-09-19T22:46:35Z status=open owner=13-1-the-uninstall-hook by=harvest note=overstated assertion message on a test this story created
+- 2026-09-19T23:31:41Z status=resolved-by:13-1-the-uninstall-hook owner=13-1-the-uninstall-hook by=cr note=QA added the shell-dir/WebApp/Version leg and the adminresource row (6 of 11); evidence in the spec QA pass, never recorded here
 
 ### DW-1275: Probe-role cleanup is asymmetric between UninstallResidue and UninstallSurvival, and two helpers swallow every failure
 - source: spec-13-1-the-uninstall-hook.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: UninstallResidue.CleanProbe sweeps orphaned probe roles; UninstallSurvival's teardown calls a bare ProbeApps.Remove(), which deletes a role only when its application is still present, and ci-unit-test.sh's PROBEAPPS check reads applications only. RemoveProbeRoles and RemoveTaskAndRows return nothing and Catch into a discard, so CleanProbe can answer OK with residue on the instance
 - 2026-09-19T22:46:35Z status=open owner=13-1-the-uninstall-hook by=harvest note=both files are this story's own
+- 2026-09-19T23:32:04Z status=wontfix-accepted owner=13-1-the-uninstall-hook by=cr note=asymmetry is harmless (UninstallSurvival orphans no role and ProbeApps.Remove now uninstalls first); reopen_if=PROBEAPPS or a Probe* role sweep reports a leftover role after a full suite run
 
 ### DW-1276: scripts/ci-throwaway.sh's arming-roster comment is stale at its origin
 - source: spec-13-1-the-uninstall-hook.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: It names 'the twelve test classes that run OcuPilot's PRODUCTION install' and enumerates them; both of 13.1's new classes run Install('') under that variable, making it fourteen, and the OCUPILOT_ALLOW_AUDIT_EVENTS line omits UninstallSurvival. check-objectscript.py's destructive-test-guard rule is pattern-based and cannot catch a stale comment roster
 - 2026-09-19T22:46:35Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=scripts/ci-*.sh is Epic 13's footprint and 13.2 already owns DW-439 in that file
+
+### DW-1277: Uninstall's new roster-role comment attributes the name-based rule to AD-21's both-directions invariant, which states something else
+- source: spec-13-1-the-uninstall-hook.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Installer.cls:3665's comment ends '(AD-21's both-directions invariant)'. The spine states that invariant as 'no OcuPilot application carries any role beyond the floor its own roster entry declares, and no application outside the roster carries an OcuPilot role' -- both directions are about which applications carry which roles. The clause that authorises the new arm is AD-21's 'created and removed by the installer'. Installer.cls is patch-frozen to Story 13.1, so it was not corrected at origin
+- 2026-09-19T23:32:10Z status=routed owner=burndown by=cr note=one-line citation fix in the same region as DW-1268; fold into that edit

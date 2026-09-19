@@ -178,6 +178,81 @@ deferred:
 - Given `Uninstall("probe",1)` followed by `Install("probe")`, when both have returned OK, then `StateFingerprint` equals its pre-uninstall value and the probe API answers over loopback.
 - Given a production `Uninstall("",1)` then `StartPath(pDemo, pBundleSource)` on a throwaway, when both have returned OK, then `scripts/smoke.sh` reports a non-zero executed-check count with no failure. [AMENDED 2026-09-19 — see the story change log: `Install` takes no demo opt-in and no bundle source (AD-25), so a bare `Install("")` cannot reach a smoke-green instance and the criterion was unsatisfiable as worded.]
 
+### Review Findings
+
+Code review, 2026-09-19, review_tier `full-opus`; four layers (blind-hunter, edge-case-hunter,
+verification-gap, acceptance-auditor), 54 raw rows grouped to 30 root causes: high 0, med 5,
+low 18, false/dismissed 7. One med left unresolved (`routed`). Every patch below was applied to
+this story's own two test classes and re-run one class per call on the slot-B throwaway;
+`Installer.cls` was not edited.
+
+**Patched (med).**
+
+- A failed read was indistinguishable from the asserted outcome at three sites, all backing a
+  **negative** assertion. `RoleExists` and `RegistrationExists` answered `0` both for "absent"
+  and for a failed `%SYS` switch or a thrown `Exists`, and stood behind "the orphaned matching
+  role is removed" (this story's core claim) and "the triple's registration is gone"; the AC4
+  leg checked the `ERROR:` sentinel on the pre-uninstall fingerprint only, so two identical read
+  failures compared equal and passed. Both helpers are now three-valued (`-1` = could not tell)
+  and asserted against `0`; the post-reinstall fingerprint carries its own sentinel check. This
+  is the repo's own "never read a failed lookup as a negative result" pitfall.
+- AC5's `StateFingerprint` equality (DW-1269) is unfalsifiable as written and blind to an
+  `Uninstall` regressed to a no-op. Closed by a third reading between the uninstall and the
+  reinstall, asserted to differ — mutation applied, observed red on that assertion alone,
+  reverted, green again; recorded under `## Verification`.
+- Two claims were false at origin and are corrected there: "`Enabled` is not folded into the
+  fingerprint" (it is — a roster `manifest` key reaches `appProperties` and
+  `ApplicationFingerprint` reads it; run 10 stayed green because both installs took the same
+  Create branch), and DW-1269's universal "every property the fingerprint folds is written by an
+  `Ensure*` step that sets a fixed target" (refuted by the `%DB_` resource's `Type`, which
+  `EnsureDatabaseResource` sets on create and deliberately never repairs).
+- The QA pass's closures of DW-1273 and DW-1274 existed only in this spec; the ledger still
+  carried both as live work the burn-down would re-pick. Trailers written.
+
+**Routed (med).** DW-1277 — the new roster-role comment attributes the name-based rule to
+"AD-21's both-directions invariant", which states something else (the authorising clause is
+AD-21's "created and removed by the installer"). `Installer.cls` is patch-frozen here;
+`owner=burndown`, to fold into DW-1268's edit in the same region.
+
+**Patched (low).** `Residue()`'s doc no longer claims a failed read can never read as clean (its
+ten `Exists` statuses are discarded — DW-1271's direction); `CreateTask`'s doc no longer cites a
+retained-lock mechanism that applies to `RunNow`, not to `%New`/`%Save`; the class header says
+four legs, not three, and names all three transcribed literals rather than one; a finding id is
+out of a doc comment; `ReadinessPath()` gained the `Try`/`Catch` and `$IsObject` guard its
+sibling already had; the QA-added method gained the `Residue()` backstop its three siblings
+carry; `Now()` truncates to whole seconds, because `%SYS.Audit.UTCTimeStamp` is a `%String` and a
+bound with more fractional digits than the stored value sorts after the row it must include; and
+the `## Auto Run Result` counts are scoped to the tree as it stood at `dev_complete`.
+
+**Closed without patch.** AD-37's name-based role deletion is `by-design`, but on stronger
+ground than "the AC says so": AD-21 makes the role installer-owned by name ("created **and
+removed** by the installer"), AD-37's own bounded exception is "OcuPilot deletes what OcuPilot
+created", and no role provenance record exists to gate on (`Kernel/State/WebApp.cls` records
+application paths only), so the name-based rule is the only implementable one — no spine
+amendment is required. `wontfix-accepted`: the run indexes in the three verification sections
+span at least two throwaway generations and none names its own, so a citation is not
+independently re-checkable (reopen_if: a recorded mutation is re-run and cannot be located);
+`RowCount`/`WebAppProvenanceRows`/`VersionRows` are three copies of one helper (reopen_if: a
+fourth is added); the class is 517 lines against the ~500 guidance; the spec is `oversized` and
+this pass added to it; `(DW-85)`/`(DW-96)` stay in doc comments because they carry technical
+constraints rather than review history. `wontfix-theoretical`: a role delete failing mid-roster
+leaves applications removed and later roles behind (uninstall returns an error and the retry is
+idempotent; the pre-existing application loop has the same shape) — real if a role delete is ever
+observed to fail in `%SYS`.
+
+**AD cross-check (Rule 6).** No violation. AD-9's teardown order is unmoved (fixtures →
+applications → roster roles → bundle directory → mapping → routine application → admin role →
+resource → database → events → SSL). AD-21 holds in both directions, checked over the whole
+roster rather than a sample: the three declared `matchRole` values are distinct, pinned by
+`Test.Manifest`, and `AssertNoForeignOcuPilotRole` refuses an install where a duplicate could
+arise — so no key's role deletion can strip a surviving application's floor. AD-16, AD-17,
+AD-25, AD-37, AD-45 and AD-46 re-checked against the changed lines; each holds.
+
+**Rule 3 (real-runtime evidence).** This story is install/uninstall tooling and touches no
+user-facing surface, so Rule 3's browser/API tier does not apply — stated rather than assumed.
+Its tests nonetheless run against a real IRIS instance and a real production install, and AC6's
+evidence is `scripts/smoke.sh` against a throwaway.
+
 ## Spec Change Log
 
 - 2026-09-19, lead Rule 5 tier-1 amendment (apply-and-report): acceptance criterion 6 named `Install("")` as the production reinstall. `Install` takes neither the demo opt-in nor the bundle source (AD-25), so that call leaves the `demofixture`, `x509` and `wallet` smoke checks failing on a healthy instance and the criterion could not be met as worded. Corrected to `StartPath(pDemo, pBundleSource)`, the container hook's own entry point, which is what the recorded run used. Intent unchanged: uninstall then install still has to reach a working OcuPilot. The deferred item that raised this also named the intent-contract's Symmetry row; that row reads `Install("probe")`, which is correct -- the probe profile's test does call `Install`. Only criterion 6 was wrong.
@@ -217,7 +292,7 @@ deferred:
   - `[low]` `[defer]` blind-hunter: the `$Get` form decides a destruction — same root cause as the `Exists` finding → deferred #4.
   - `[low]` `[defer]` edge-case: `Exists` fails for a reason other than absence → role deleted — same root cause → deferred #4.
   - `[low]` `[reject]` edge-case: roster role present, application absent, never recorded → deleted against AD-37 — spec-bound, same refutation as the AD-37 row above.
-  - `[low]` `[patch]` edge-case: `OnAfterAllTests` arming asymmetry — patched (above). The stated consequence (a confirmed data-loss uninstall) overstated it: the teardown calls `ProbeApps.Remove()`, not `Uninstall`.
+  - `[low]` `[patch]` edge-case: `OnAfterAllTests` arming asymmetry — patched (above). The stated consequence was right, not overstated: `ProbeApps.Remove` (`:76`) opens with `Uninstall("probe", 1)`, so an unarmed teardown would have run a confirmed data-loss uninstall. The patch is what makes the class header's claim true.
   - `[low]` `[patch]` edge-case: `#DATABASENAME` change would silently stop the directory check — patched (above).
   - `[low]` `[defer]` edge-case: `Provenance.cls:238` recipe names a deleted line — same root cause → deferred #5.
   - `[low]` `[defer]` edge-case: adopted-application survival is conditional on `Exists` answering non-zero — same root cause → deferred #4.
@@ -281,7 +356,8 @@ deferred:
 - AC2, per-target absence -- mutation: the SSL configuration's `##class(Security.SSLConfigs).Exists` guard in `Uninstall` replaced by `If 1` -> `Test.UninstallResidue.TestUninstallCompletesWithOneTargetAlreadyAbsent` red on the `sslconfig` row alone, carrying `ERROR #979: SSL configuration OcuPilotProviderProbe does not exist`; every other row stayed green (run 15).
 - AC3 -- mutation: `Uninstall` gains `Do ##class(%SYS.Audit).Delete(.tMutNum, "2000-01-01 00:00:00", "2999-12-31 23:59:59")` after its event-registration deletes -> `Test.UninstallSurvival.TestAnEmittedRowOutlivesItsRegistration` red on the row-survives assertion alone, with the registration-absent and auditing-enabled assertions green: the pair is what discriminates (run 18). `DELETE FROM %SYS.Audit` (SQLCODE -134) and `%SYS.Audit.%DeleteId` (ERROR #673) are both refused in `%SYS` by the instance itself, so the vendor's own date-range `Delete` is the only route that removes a row at all.
 - AC (DW-94), the kept-application arm -- mutation: the whole `If '$Data(tRemovedKeys(tRKey)), ##class(Security.Applications).Exists(...) Continue` guard removed from the roster-role loop, so an adopted application's role is deleted with the rest -> `Test.Provenance.TestUninstallLeavesAKeptApplicationsPrivilegeFloorIntact` red on "and still carries the matching role it needs to answer at all", the other five methods green (run 8); green again on the reverted tree (run 11). This is the arm the footprint grant was conditioned on, and it is the mutation `Test/Provenance.cls:238-240` already names.
-- AC4 -- mutation: `Install` takes `Set tSC = $$$OK` in place of `..EnsureApplications(...)` -> `Test.UninstallSurvival.TestUninstallThenInstallRestoresTheProfileAndServes` red (run 21). The red lands on the install rather than on the fingerprint comparison, because `Install`'s own `AssertApplications` catches the incomplete install first. **The `StateFingerprint` equality itself was not reddened by any uniform change to `Install`**: both readings come from the same guard-then-act path against the same freshly-uninstalled state, so a uniform change moves them together. It is falsifiable only by an asymmetric change -- an uninstall that removes what install does not restore -- and the one tried, `Uninstall` skipping the application delete, left it green (run 20), because install recognises and repairs an application already sitting at its own roster path. The equality stands as an idempotency regression guard rather than as a mutation-falsified assertion; the loopback half of the same test is what pins "working".
+- AC4 -- mutation: `Install` takes `Set tSC = $$$OK` in place of `..EnsureApplications(...)` -> `Test.UninstallSurvival.TestUninstallThenInstallRestoresTheProfileAndServes` red (run 21). The red lands on the install rather than on the fingerprint comparison, because `Install`'s own `AssertApplications` catches the incomplete install first.
+- AC4 / AC5, the symmetry leg itself (code review, container generation of runs 12-16) -- the `tAfter = tBefore` equality is an idempotency guard and cannot redden on its own (DW-1269 below). The leg is made falsifiable by a third reading taken **between** the uninstall and the reinstall, asserted to differ from the first. mutation: `Uninstall`'s "nothing is installed" early return (`:3516`) becomes `If 1`, so a confirmed uninstall returns OK having removed nothing -> `Test.UninstallSurvival.TestUninstallThenInstallRestoresTheProfileAndServes` red on **that assertion alone** (`AssertNotEquals`, before = mid), while the `tAfter = tBefore` equality and both loopback assertions stayed green -- which is the demonstration: the equality is blind to an uninstall regressed to a total no-op and the new assertion is not. `Test.AnEmittedRowOutlivesItsRegistration` reddened with it on "the triple's registration is gone after uninstall; read=1" (run 14, 2 of 2 methods failed). Reverted; runs 15 and 16 green (2/2 and 4/4, confirmed by the `%UnitTest_Result` latest-run SQL probe), repository tree byte-identical throughout (`git status --short` / `git diff --stat` unchanged; the mutation was applied to the throwaway's own bind-mounted source copy).
 
 Each mutation: apply, observe red, revert, and confirm `git status --short` and `git diff --stat` are byte-identical to before.
 
@@ -302,6 +378,59 @@ Two verifications re-run by the lead rather than taken from the implement stage'
   skipped=0`, `PASSED`. The check is therefore not vacuous: it distinguishes an uninstalled instance from a
   working one, which is what AC6 asserts.
 
+### QA gap-closure pass (2026-09-19, throwaway `ocupilot-b-ci` 52777/1976, reused, not brought up by this stage)
+
+Targeted the three open ledger items this story's own Verification named as gaps
+(DW-1269, DW-1273, DW-1274). Two closed with new evidence; one investigated and left filed.
+
+- **DW-1274 (closed).** `Residue()`'s per-target sweep never covered the shell bundle
+  directory, the `OcuPilot.Kernel.State.WebApp` provenance rows or the
+  `OcuPilot.Kernel.State.Version` row -- all three are objects a plain install creates and a
+  plain uninstall must remove, and none is a demo-fixture kind the Design Notes already scope
+  out. Added `Test.UninstallResidue.TestUninstallRemovesTheShellDirectoryAndItsOwnProvenanceBookkeeping`
+  (QA), a full clean install-then-uninstall cycle pinning all three directly, plus a
+  `WebAppProvenanceRows()`/`VersionRows()`/`ShellDirectory()` helper trio and an
+  `adminresource` leg added to `DeleteTarget` and the already-absent table in
+  `TestUninstallCompletesWithOneTargetAlreadyAbsent` (`DeleteTarget` now covers 6 of the
+  roughly 11 separately guarded targets, up from 5). mutation: `Uninstall`'s provenance-purge
+  loop (`:3748`) takes `Set tForgetSC = $$$OK` in place of
+  `##class(OcuPilot.Kernel.State.WebApp).DeleteByPath(tRemovedApps(tRN))` -> red on "and every
+  WebApp provenance row for this profile is gone too; found=3" alone, the shell-directory and
+  Version-row assertions in the same method staying green (run 6). Reverted; run 7 green (4/4).
+  The five non-task demo-inventory kinds stay out of scope, per the Design Notes' own
+  exclusion, and are not touched here.
+- **DW-1273 (closed).** Neither the loopback nor the auditing-enabled half of
+  `Test.UninstallSurvival` had ever been observed red. Two mutations against the existing
+  assertions, no test-class edit needed:
+  - mutation: `Uninstall`'s %SYS block gains `Set tAuditMut("AuditEnabled")=0  Do
+    ##class(Security.System).Modify("SYSTEM", .tAuditMut)` right before the namespace restore
+    that follows the SSL delete (`:3727`) ->
+    `Test.UninstallSurvival.TestAnEmittedRowOutlivesItsRegistration` red on
+    "and instance-wide auditing is still enabled; read=0" alone, the registration-absent and
+    row-survives assertions staying green (run 8). Reverted; run 9 green (2/2).
+  - mutation: `EnsureWebApplication`'s `Create` branch gains `Set tCreate("Enabled") = 0`
+    (`:2431`) -- `Enabled` is copied into every application's `pWant` from the roster manifest
+    but is not one of the properties `AssertApplications` re-verifies, so `Install` still
+    returns OK -> `Test.UninstallSurvival.TestUninstallThenInstallRestoresTheProfileAndServes`
+    red on both loopback assertions (`status=404`), while the `StateFingerprint` equality
+    stayed green. `Enabled` **is** folded into the fingerprint -- it is a roster `manifest`
+    key, `Roster.AssertedProperties` unions every manifest key into `appProperties`, and
+    `ApplicationFingerprint` reads each one -- and the equality stayed green because the
+    mutation sits in the **Create** branch, which both of that method's installs take, so both
+    readings folded `Enabled=0` identically (run 10). Reverted; run 11 green (2/2).
+- **DW-1269 (investigated, closed at code review).** The equality `tAfter = tBefore` is not
+  falsifiable by any mutation a real uninstall regression takes, and the reason is narrower
+  than "every `Ensure*` step sets a fixed target": `Uninstall`'s only verb is `Delete`, so a
+  fingerprinted object is either removed (and recreated by `Install`'s create branch at the
+  roster target) or left carrying the target `Install` last wrote — both readings converge
+  either way. Run 20 (`Uninstall` skipping the application delete) is the observed case. The
+  one component with a create-only value and no repair path is the `%DB_` resource's `Type`
+  (`EnsureDatabaseResource` repairs `PublicPermission` only, and says at `:1860` that `Type` is
+  filer-assigned and could be detected but never repaired), so an asymmetric mutation does
+  exist — but only by having `Uninstall` *recreate* that resource as an ordinary one, which is
+  not a shape `Uninstall` has. The equality is therefore an idempotency guard, and code review
+  made the AC5 leg falsifiable instead of re-scoping it: see the AC4 mutation bullet above.
+
 ## Auto Run Result
 
 Status: done
@@ -312,14 +441,15 @@ role is now kept only while an application still sits at that key's roster path,
 application another hand removed no longer survives, while DW-94's kept-application floor is
 untouched. Added the two test classes that pin AC1's uncovered targets, AC2's per-target absence,
 AC3's survival pair and AC4's symmetry, and recorded a Rule 19 mutation for every AC including the
-keep arm the footprint grant was conditioned on.
+keep arm the footprint grant was conditioned on -- except AC5's `StateFingerprint` equality, which
+this pass left green and unreddened and code review closed (see `## Verification`).
 
 **Files.**
 
 - `src/OcuPilot/Install/Installer.cls` -- the granted edit, `Uninstall`'s roster-role loop only:
   the guard gains a `Security.Applications.Exists` conjunct, and the comment states both arms.
-- `src/OcuPilot/Test/UninstallResidue.cls` -- new; the task-fixture leg, the five-row
-  already-absent table, and the orphaned-role leg.
+- `src/OcuPilot/Test/UninstallResidue.cls` -- new; the task-fixture leg, the already-absent
+  table (five rows at this pass, six after QA's), and the orphaned-role leg.
 - `src/OcuPilot/Test/UninstallSurvival.cls` -- new; the AC3 registration/row pair and the AC4
   fingerprint-plus-loopback symmetry leg.
 - `_bmad-output/implementation-artifacts/spec-13-1-the-uninstall-hook.md` -- `## Verification`
@@ -342,7 +472,7 @@ coarse mutation is unavoidable because the instance refuses every scoped `%SYS.A
 - Throwaway `ocupilot-b-ci` (52777/1976) brought up by this stage; every destructive class ran
   there, one class per call, never on `ocupilot-slot-b`.
 - After patches, re-run one class per call and confirmed against `%UnitTest_Result` by
-  latest-run SQL probe: `UninstallResidue` 3/3, `UninstallSurvival` 2/2, `UninstallGuard` 3/3,
+  latest-run SQL probe, **as the tree stood at `dev_complete`**: `UninstallResidue` 3/3, `UninstallSurvival` 2/2, `UninstallGuard` 3/3,
   `Installer` 27/27, `WebApp` 25/25, `Provenance` 6/6, `InstallLock` 6/6 -- 72 methods, 0 failures.
 - AC6 production cycle on the throwaway: `Uninstall("",1)` then
   `StartPath(1, "/opt/ocupilot/ui/dist/ocupilot-ui/browser")`, then `scripts/smoke.sh` --
@@ -354,7 +484,7 @@ coarse mutation is unavoidable because the instance refuses every scoped `%SYS.A
 - AC3 is settled empirically and the answer is the safe one: an audit row emitted under OcuPilot's
   triple survives `Security.Events.Delete` of its registration. No HIGH defect, no intent gap.
 
-**Residual risk.** The `StateFingerprint` equality is green but has never been observed red
-(deferred #2); the unconfirmed dry-run preview now under-reports the orphan roles the confirmed
-run removes, and its fix lies outside this story's granted footprint (deferred #1). Neither
-affects the delivered behavior: no AD-21 privilege floor is stripped in any state reached.
+**Residual risk.** The unconfirmed dry-run preview now under-reports the orphan roles the
+confirmed run removes, and its fix lies outside this story's granted footprint (deferred #1,
+DW-1268). It does not affect the delivered behavior: no AD-21 privilege floor is stripped in any
+state reached. Deferred #2 closed at code review (DW-1269).
