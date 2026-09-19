@@ -46,10 +46,95 @@ ClassMethod ArmEmpty()
     Set ^||OcuPilotProposalFixture("empty") = 1
 }
 
+/// <p>Answer the next mutating <method>Invoke</method> with the object <var>pJson</var>. A type the
+/// fixture holds no armed answer for falls back to the one <method>Arm</method> stored, so a read
+/// and a write can be armed together or separately.</p>
+ClassMethod ArmWrite(pJson As %String)
+{
+    Set ^||OcuPilotProposalFixture("write") = pJson
+    Kill ^||OcuPilotProposalFixture("writefault")
+}
+
+/// <p>Answer the next mutating <method>Invoke</method> the way the port answers an endpoint that
+/// refused: an error status at <var>pHttpStatus</var> with a wire-safe fault.</p>
+ClassMethod ArmWriteFault(pHttpStatus As %Integer = 500)
+{
+    Set ^||OcuPilotProposalFixture("writefault") = pHttpStatus
+}
+
+/// <p>The body of the last mutating call, as compact JSON; <code>""</code> when none was made.</p>
+ClassMethod LastWriteBody() As %String
+{
+    Quit $Get(^||OcuPilotProposalFixture("writebody"))
+}
+
+/// <p>How many mutating calls were made since the last <method>Clear</method>.</p>
+ClassMethod WriteCount() As %Integer
+{
+    Quit +$Get(^||OcuPilotProposalFixture("writes"))
+}
+
+/// <p>Refuse the pair <var>pPair</var> (<code>resource:permission</code>) to
+/// <class>OcuPilot.Test.ConfirmFixture</class>'s privilege check, so AD-8's re-check at the write
+/// can be driven without changing a single grant on the instance. <code>""</code> refuses
+/// none.</p>
+ClassMethod DenyPair(pPair As %String = "")
+{
+    If pPair = "" {
+        Kill ^||OcuPilotProposalFixture("deniedpair")
+        Quit
+    }
+    Set ^||OcuPilotProposalFixture("deniedpair") = pPair
+}
+
+/// <p>The pair <method>DenyPair</method> last refused, or <code>""</code>.</p>
+ClassMethod DeniedPair() As %String
+{
+    Quit $Get(^||OcuPilotProposalFixture("deniedpair"))
+}
+
+/// <p>Answer AD-10's seam with <var>pClass</var> for
+/// <class>OcuPilot.Test.ConfirmFixture</class>, so the prohibited-set refusal branch can be driven
+/// before Story 5.5 creates the set's one home. <code>""</code> restores the shipped answer.</p>
+ClassMethod ArmProhibited(pClass As %String = "")
+{
+    If pClass = "" {
+        Kill ^||OcuPilotProposalFixture("prohibited")
+        Quit
+    }
+    Set ^||OcuPilotProposalFixture("prohibited") = pClass
+}
+
+/// <p>The class <method>ArmProhibited</method> last armed, or <code>""</code>.</p>
+ClassMethod ProhibitedClass() As %String
+{
+    Quit $Get(^||OcuPilotProposalFixture("prohibited"))
+}
+
+/// <p>A prohibited set that refuses every write, for
+/// <method>OcuPilot.Test.ConfirmFixture.ProhibitedClassName</method> to answer with. The signature
+/// is the one <class>OcuPilot.Kernel.Proposal.Confirm</class> calls; Story 5.5's real set
+/// implements the same one.</p>
+ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %String, Output pProhibits As %Boolean, Output pCode As %String) As %Status
+{
+    Set pProhibits = 1
+    Set pCode = "AGENT.PROHIBITED"
+    Quit $$$OK
+}
+
 /// <p>Forget every armed answer and every recorded call.</p>
 ClassMethod Clear()
 {
     Kill ^||OcuPilotProposalFixture
+}
+
+/// <p>Set one stored column of proposal <var>pKey</var>, for a test that needs a row in a state no
+/// shipped path writes -- a stale definition version among them.</p>
+ClassMethod SetDefinition(pKey As %String, pDefinitionId As %String, pDefinitionVersion As %String) As %Status
+{
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "UPDATE OcuPilot_Kernel_State.Proposal SET DefinitionId = ?, DefinitionVersion = ? WHERE %EXACT(ProposalKey) = ?", pDefinitionId, pDefinitionVersion, pKey)
+    If tRS.%SQLCODE < 0 Quit $$$ERROR($$$GeneralError, "the probe definition could not be set: SQLCODE=" _ tRS.%SQLCODE _ " " _ tRS.%Message)
+    Quit $$$OK
 }
 
 /// <p>How many times <method>Invoke</method> was called since the last <method>Clear</method>.</p>
@@ -86,6 +171,22 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         If tName = "" Quit
         Set ^||OcuPilotProposalFixture("query", tName) = pQuery(tName)
     }
+    If $ListFind($ListFromString($Parameter("OcuPilot.Port.AdminPort", "MUTATINGTYPES")), pType) {
+        ; A mutating call, classified by the port's own list rather than by "not GET" -- LIST, INFO
+        ; and the other read suffixes are reads here as they are there. Recorded in full, because
+        ; what the port receives is what the story is about (AD-6 -- the stored payload, with only
+        ; declared secret values merged in).
+        Do $Increment(^||OcuPilotProposalFixture("writes"))
+        Set ^||OcuPilotProposalFixture("writebody") = $Select($IsObject(pBody): pBody.%ToJSON(), 1: "")
+        If $Data(^||OcuPilotProposalFixture("writefault")) {
+            Set pHttpStatus = +^||OcuPilotProposalFixture("writefault")
+            Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, "The instance refused that operation")
+            Quit $$$ERROR($$$GeneralError, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED)
+        }
+        Set pHttpStatus = 200
+        Set pResult = ##class(%DynamicAbstractObject).%FromJSON($Get(^||OcuPilotProposalFixture("write"), $Get(^||OcuPilotProposalFixture("answer"), "{}")))
+        Quit $$$OK
+    }
     If $Get(^||OcuPilotProposalFixture("missing")) {
         Set pHttpStatus = 404
         Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#NOTFOUND, ##class(OcuPilot.Api.Error).#PORTNOTFOUND, "That item is no longer present on this instance")
@@ -97,11 +198,23 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
     Quit $$$OK
 }
 
+/// <p>Seed one proposal row directly, for a test that needs a stored proposal without driving a
+/// mint: <var>pValues</var> is <method>OcuPilot.Kernel.State.Propose.GuardedMint</method>'s own
+/// argument array, and the new row's id and token come back.</p>
+ClassMethod SeedProposal(ByRef pValues, Output pKey As %String, Output pToken As %String) As %Status
+{
+    Quit ##class(OcuPilot.Kernel.State.Propose).GuardedMint(.pValues, "OcuPilot.Kernel.Agent.Limits", .pKey, .pToken, .tExpiresAt)
+}
+
 /// <p>Insert a turn row for <var>pUser</var> in <var>pState</var>, as a job that has already
 /// finished would have left it, and answer its key in <var>pKey</var>.</p>
 ClassMethod SeedTurn(pUser As %String, pState As %String, Output pKey As %String) As %Status
 {
     Set pKey = $ZConvert(##class(%xsd.hexBinary).LogicalToXSD($System.Encryption.GenCryptRand(16)), "L")
+    ; Recorded so a class whose rows name the running account rather than PROBEPREFIX -- every
+    ; confirm test, since the claim's privilege re-check is against a real principal -- can still
+    ; remove exactly what it wrote (RemoveSeeded).
+    Set ^||OcuPilotProposalFixtureTurns(pKey) = ""
     Set tNow = ##class(OcuPilot.Kernel.State.Turn).Timestamp()
     Set tRS = ##class(%SQL.Statement).%ExecDirect(, "INSERT INTO OcuPilot_Kernel_State.Turn (TurnKey, UserName, State, QueuedAt, StartedAt, EndedAt, RowVersion) VALUES (?, ?, ?, ?, ?, ?, 1)", pKey, pUser, pState, tNow, tNow, tNow)
     If tRS.%SQLCODE < 0 Quit $$$ERROR($$$GeneralError, "the probe turn could not be seeded: SQLCODE=" _ tRS.%SQLCODE _ " " _ tRS.%Message)
@@ -187,6 +300,125 @@ ClassMethod Remove(Output pRemaining As %Integer, pPrefix As %String = {..#PROBE
     If (tProposals < 0) || (tTurns < 0) Quit $$$ERROR($$$GeneralError, "the probe rows could not be counted")
     Set pRemaining = tProposals + tTurns
     Quit $$$OK
+}
+
+/// <p>Remove every proposal minted on a turn <method>SeedTurn</method> seeded in this process, and
+/// those turns, and report in <var>pRemaining</var> how many of either survive.</p>
+/// <p><method>Remove</method>'s counterpart for rows that name the running account: the probe
+/// prefix cannot find them, but the seeded turn key can.</p>
+ClassMethod RemoveSeeded(Output pRemaining As %Integer) As %Status
+{
+    Set pRemaining = 0
+    Do ..Clear()
+    Set tKey = ""
+    For {
+        Set tKey = $Order(^||OcuPilotProposalFixtureTurns(tKey))
+        If tKey = "" Quit
+        Set tSC = ..Update("DELETE FROM OcuPilot_Kernel_State.Proposal WHERE %EXACT(TurnKey) = ?", tKey)
+        If $$$ISERR(tSC) Quit
+        Set tSC = ..Update("DELETE FROM OcuPilot_Kernel_State.Turn WHERE %EXACT(TurnKey) = ?", tKey)
+        If $$$ISERR(tSC) Quit
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT COUNT(*) FROM OcuPilot_Kernel_State.Proposal WHERE %EXACT(TurnKey) = ?", tKey)
+        If tRS.%Next() Set pRemaining = pRemaining + +tRS.%GetData(1)
+    }
+    Kill ^||OcuPilotProposalFixtureTurns
+    If $Get(tSC, $$$OK) '= $$$OK Quit tSC
+    Quit $$$OK
+}
+
+/// <p>The web application <method>EnsureWriteTarget</method> creates and
+/// <method>RemoveWriteTarget</method> deletes: this suite's own, on the probe prefix, and never
+/// one the instance already had.</p>
+Parameter WRITETARGET = "/csp/ocupilotprobeconfirm";
+
+/// <p>The Description <method>EnsureWriteTarget</method> stamps its own application with, and the
+/// only one <method>RemoveWriteTarget</method> will delete.</p>
+Parameter WRITEMARKER = "OcuPilot confirm probe";
+
+/// <p>Create <parameter>WRITETARGET</parameter> as a minimal CSP application in <var>pNamespace</var>,
+/// so a confirmed write has something of its own to write to.</p>
+/// <p><b>Its own application, never one the instance had.</b> The path carries the probe prefix, and
+/// an application that already exists under it is a <b>refusal</b>, not a silent adoption: this
+/// fixture must never hand a caller an application it did not make, because
+/// <method>RemoveWriteTarget</method> would then delete it. That pairing is why the refusal is an
+/// error rather than a no-op. Nothing but a throwaway should ever run this: it changes the
+/// instance's web-application table.</p>
+ClassMethod EnsureWriteTarget(pNamespace As %String = {$Namespace}, Output pCreated As %Boolean) As %Status
+{
+    Set pCreated = 0
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If ##class(Security.Applications).Exists(..#WRITETARGET) {
+            Set $NAMESPACE = tOrigNS
+            Set tSC = $$$ERROR($$$GeneralError, "the probe application " _ ..#WRITETARGET _ " already exists on this instance; this fixture creates its own and will not adopt one it did not make")
+            Quit
+        }
+        Kill tProps
+        Set tProps("NameSpace") = pNamespace
+        Set tProps("Description") = ..#WRITEMARKER
+        Set tProps("Enabled") = 1
+        Set tProps("AutheEnabled") = 32
+        Set tSC = ##class(Security.Applications).Create(..#WRITETARGET, .tProps)
+        Set $NAMESPACE = tOrigNS
+        If $$$ISERR(tSC) Quit
+        Set pCreated = 1
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p><parameter>WRITETARGET</parameter>'s stored property <var>pField</var>, or <code>""</code>
+/// when the instance carries no such application. What a confirmed write is read back through --
+/// the instance's own record, beside the screen the user would look at.</p>
+ClassMethod WriteTargetField(pField As %String = "Enabled") As %String
+{
+    Set tValue = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If ##class(Security.Applications).Exists(..#WRITETARGET, .tRow) {
+            Set tValue = $Property(tRow, pField)
+            Set tRow = ""
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tValue = ""
+    }
+    Quit tValue
+}
+
+/// <p>Remove <parameter>WRITETARGET</parameter> again. An application that is not there is not an
+/// error.</p>
+ClassMethod RemoveWriteTarget() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        ; Only what this fixture made. The marker is the Description EnsureWriteTarget wrote,
+        ; because the two calls run in different sessions and no process-private state survives
+        ; between them -- and deleting a web application the instance already had is the one
+        ; mistake this fixture must not be able to make.
+        If ##class(Security.Applications).Exists(..#WRITETARGET, .tRow) {
+            If $IsObject(tRow) && (tRow.Description = ..#WRITEMARKER) {
+                Set tRow = ""
+                Set tSC = ##class(Security.Applications).Delete(..#WRITETARGET)
+            } Else {
+                Set tRow = ""
+                Set tSC = $$$ERROR($$$GeneralError, "the application at " _ ..#WRITETARGET _ " is not this fixture's own, so it was left alone")
+            }
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
 }
 
 /// <p>Run <var>pSql</var> with one or two bound values.</p>

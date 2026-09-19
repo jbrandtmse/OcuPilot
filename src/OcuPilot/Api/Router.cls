@@ -9,7 +9,8 @@
 /// console-log page <code>GET /logs/messages</code>, the three turn routes under
 /// <code>/turn</code>, and the three shell routes, <code>GET /instance</code>,
 /// <code>/agent/switches</code> and <code>/agent/restraint</code>, the eight agent-definition
-/// routes under <code>/agent/definitions</code> -- together the map's only write verbs -- the
+/// routes under <code>/agent/definitions</code>, the two proposal decisions
+/// <code>POST /proposal/:id/{confirm,cancel}</code> -- together the map's only write verbs -- the
 /// provider catalog the Definition form cascades from, the generic screen read,
 /// <code>GET /screens/:screen/read</code>, the four application-error-log levels
 /// <code>GET /logs/errors/{namespaces,dates,list,detail}</code>, the console-log page
@@ -101,6 +102,8 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/turn/:id/navigation" Method="POST" Call="TurnNavigation"/>
   <Route Url="/turn/abandon" Method="POST" Call="TurnAbandon"/>
   <Route Url="/turn" Method="POST" Call="TurnStart"/>
+  <Route Url="/proposal/:id/confirm" Method="POST" Call="ProposalConfirm"/>
+  <Route Url="/proposal/:id/cancel" Method="POST" Call="ProposalCancel"/>
   <Route Url="/conversation/:id" Method="GET" Call="ConversationRead"/>
   <Route Url="/conversation" Method="POST" Call="ConversationCreate"/>
   <Route Url="/instance" Method="GET" Call="Instance"/>
@@ -321,6 +324,22 @@ ClassMethod TurnAbandon() As %Status
 ClassMethod TurnStart() As %Status
 {
     Quit ##class(OcuPilot.Api.Turn).HandleStart()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /proposal/:id/confirm</code>: delegates to
+/// <class>OcuPilot.Api.Confirm</class> and carries no logic of its own. A method other than
+/// <code>POST</code> on this path is the framework's own 405 through
+/// <method>Http405</method>, which is why no guard route is declared for it.</p>
+ClassMethod ProposalConfirm(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Api.Confirm).HandleConfirm(pId)
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /proposal/:id/cancel</code> -- see
+/// <method>ProposalConfirm</method>.</p>
+ClassMethod ProposalCancel(pId As %String) As %Status
+{
+    Quit ##class(OcuPilot.Api.Confirm).HandleCancel(pId)
 }
 
 /// <p>Thin <code>Call=</code> target for <code>GET /conversation/:id</code>: delegates to

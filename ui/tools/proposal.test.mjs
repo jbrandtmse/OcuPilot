@@ -128,6 +128,9 @@ async function running(polls, bus) {
     storage: memoryStorage(),
     navigationType: () => 'navigate',
     schedule: (run) => scheduled.push(run),
+    // The same fixed clock the bus reads. The store closes a proposal whose own `expiresAt` has
+    // passed (DW-1209), so a wall clock here would read every fixture proposal as already expired.
+    now: () => NOW_MS,
     bus,
   });
   await turn.send('do it');
@@ -419,7 +422,14 @@ test('nothing shipped in the client authors a proposal value, and nothing posts 
   // `true` and `false` as well as a quoted, numeric or template value.
   const authoring =
     /\b(before|after|unchangedCount|rationale|expectedImpact|reverse|fingerprint|auditWarning)\s*:\s*('|"|\d|`|true\b|false\b)/;
-  const posting = /method:\s*'(POST|PUT)'[\s\S]{0,200}proposal/i;
+  // Since Story 5.3 the client does POST to a proposal route -- the id in the path and, in the
+  // body, only the fields the target screen declares secret-typed. What it still may not do is
+  // post a proposal's own content, so the scan is for a request body that names one.
+  // `closedReason` and `confirmedAt` are deliberately absent from the list: the client READS both
+  // off the answer to that same POST, within the scan's own window, so naming them here would
+  // flag the reader rather than an author.
+  const posting =
+    /method:\s*'(POST|PUT)'[\s\S]{0,200}\b(payload|fingerprint|changed|diff|unchangedCount|targetRef|rationale|expectedImpact|reverse|auditWarning)\b/i;
   const offenders = [];
   for (const path of clientSources()) {
     if (path === EXAMPLE_PROPOSAL || path.endsWith('.spec.ts') || path.includes(`${join('app', 'testing')}`)) {

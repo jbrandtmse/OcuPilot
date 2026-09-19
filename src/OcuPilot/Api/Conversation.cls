@@ -25,6 +25,14 @@ ClassMethod HandleCreate() As %Status
     Set tSC = $$$OK
     Try {
         Set tUser = ..CallerUsername()
+        ; New conversation replaces the caller's whole transcript, so every live proposal it held
+        ; closes with the reason the user's own decision carries. Done here rather than in the
+        ; browser, so a proposal cannot survive the transcript that explained it.
+        Set tCloseSC = ##class(OcuPilot.Kernel.State.Propose).GuardedCloseLiveForUser(tUser, ##class(OcuPilot.Kernel.State.Propose).#REASONYOU, .tClosedCount)
+        If $$$ISERR(tCloseSC) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tCloseSC))
+            Quit
+        }
         Set tConvo = ##class(OcuPilot.Kernel.State.Convo).LoadOrCreate("", tUser, ..#LOCKTIMEOUT, .tStatus, .tLockConflict)
         If '$IsObject(tConvo) {
             Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tStatus))

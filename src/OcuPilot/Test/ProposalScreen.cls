@@ -1,6 +1,10 @@
 /// <p>Fixture descriptor for the proposal suite: an <code>instance</code>-scoped
 /// <code>web-application</code> screen that declares one secret argument and one fingerprint
 /// exclusion, so the two halves of AD-6's closed confirm channel can be driven against a mint.</p>
+/// <p>The excluded path is one of this screen's own declared read fields, so the declaration is one
+/// <method>OcuPilot.Screen.Registry.ConfirmChannelProblem</method> accepts on its merits rather than
+/// one that is never validated because the class sits outside
+/// <parameter>OcuPilot.Screen.Registry.DESCRIPTORPACKAGE</parameter>.</p>
 /// <p>It lives under <package>OcuPilot.Test</package>, which
 /// <parameter>OcuPilot.Screen.Registry.DESCRIPTORPACKAGE</parameter> does not enumerate, so it
 /// reaches no roster, no route table and no read tool. Nothing but a test names it.</p>
@@ -35,7 +39,7 @@ XData Declaration
   "classicLinkExemption": {"exempt": false, "reason": "", "label": "", "href": ""},
   "read": {
     "source": {"port": "admin", "endpoint": "WebApp.App", "type": "LIST"},
-    "fields": ["Name"],
+    "fields": ["Name", "LastModified"],
     "filter": ["Name"],
     "sort": {"fields": ["Name"], "default": "Name", "direction": "asc"},
     "paging": "cap"

@@ -101,11 +101,15 @@ Method TestTheConfirmChannelRefusesACredentialNamedFieldItDoesNotDeclare()
 
     Set tBad = ##class(%DynamicAbstractObject).%FromJSON(tSound.%ToJSON())
     Do tBad.%Set("fingerprintExcludes", ["NoSuchField"])
-    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "fingerprintExcludes names 'NoSuchField', which is not a field of this screen's write tool (AD-6)", "an exclusion covering nothing is refused")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "fingerprintExcludes names 'NoSuchField', which is neither a field of this screen's write tool nor one its read declares (AD-6)", "an exclusion covering nothing is refused")
 
     Set tBad = ##class(%DynamicAbstractObject).%FromJSON(tSound.%ToJSON())
     Do tBad.%Set("fingerprintExcludes", ["Timeout"])
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "", "while one naming a field of that tool is sound")
+
+    Set tBad = ##class(%DynamicAbstractObject).%FromJSON(tSound.%ToJSON())
+    Do tBad.%Set("fingerprintExcludes", [(tSound.%Get("read").%Get("fields").%Get(0))])
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "", "and so is one naming a field this screen's own read declares (DW-1205)")
 
     Set tBad = ##class(%DynamicAbstractObject).%FromJSON(tSound.%ToJSON())
     Do tBad.%Get("read").%Set("criteria", {"fields": [{"param": "apiKey", "labelKey": "tableColumnName", "kind": "text", "maxLength": 64}]})

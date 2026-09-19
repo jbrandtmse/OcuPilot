@@ -1951,11 +1951,14 @@ ClassMethod NameArrayProblem(pParent As %DynamicObject, pKey As %String, pAllowe
 /// <p>What is wrong with <var>pDeclaration</var>'s <code>secretArguments</code> and
 /// <code>fingerprintExcludes</code>, or <code>""</code> (AD-3, AD-6).</p>
 /// <p>Both are optional arrays of non-empty, unique strings. Every
-/// <code>fingerprintExcludes</code> path names a field of this screen's write tool -- a row of the
+/// <code>fingerprintExcludes</code> path names a field this screen already knows: a row of the
 /// <class>OcuPilot.Screen.Tool.ToolFields</class> entry whose tool name this screen's
-/// <code>toolIdentifier</code> owns -- so an exclusion cannot quietly cover nothing, which is the
-/// failure mode that would leave a side-effect field inside the fingerprint and every confirm
-/// refusing on a target nobody touched.</p>
+/// <code>toolIdentifier</code> owns, <b>or</b> a field the screen's own read declares -- its
+/// <code>read.fields</code>, its <code>rowGet</code> detail fields and its derived field names. So
+/// an exclusion cannot quietly cover nothing, which is the failure mode that would leave a
+/// side-effect field inside the fingerprint and every confirm refusing on a target nobody touched,
+/// and a screen whose side-effect field the write tool does not settle can still declare it while a
+/// typo is still refused.</p>
 /// <p><b>A credential-named field the list does not hold is refused</b> (DW-1121). A declared
 /// criterion, and a settable string field of this screen's write tool, whose name matches the
 /// credential pattern (Conventions, Secrets) and is absent from <code>secretArguments</code> is a
@@ -1981,11 +1984,12 @@ ClassMethod ConfirmChannelProblem(pDeclaration As %DynamicObject) As %String
         If pDeclaration.%GetTypeOf("toolIdentifier") = "string" Set tIdentifier = pDeclaration.%Get("toolIdentifier")
         Set tProblem = ..ToolFieldRows(tIdentifier, .tRows)
         If tProblem '= "" Quit
+        Set tReadFields = ..DeclaredReadFields(pDeclaration)
 
         For tI = 1:1:$ListLength(tExcludes) {
             Set tPath = $List(tExcludes, tI)
-            If '$Data(tRows(tPath)) {
-                Set tProblem = "fingerprintExcludes names '" _ tPath _ "', which is not a field of this screen's write tool (AD-6)"
+            If '$Data(tRows(tPath)) && '$ListFind(tReadFields, tPath) {
+                Set tProblem = "fingerprintExcludes names '" _ tPath _ "', which is neither a field of this screen's write tool nor one its read declares (AD-6)"
                 Quit
             }
         }
@@ -2005,6 +2009,52 @@ ClassMethod ConfirmChannelProblem(pDeclaration As %DynamicObject) As %String
         Set tProblem = "the confirm channel could not be validated: " _ ex.DisplayString()
     }
     Quit tProblem
+}
+
+/// <p>The field names <var>pDeclaration</var>'s read declares, as a <class>%List</class>: its
+/// <code>read.fields</code>, its <code>read.source.rowGet.fields</code> and the
+/// <code>field</code> of each <code>read.source.rowGet.derived</code> entry.</p>
+/// <p>Read for <method>ConfirmChannelProblem</method> alone, and read leniently: a malformed read
+/// contributes no names here rather than a second refusal, because
+/// <method>ReadProblem</method> has already refused it by the time this runs.</p>
+ClassMethod DeclaredReadFields(pDeclaration As %DynamicObject) As %List [ Private ]
+{
+    Set tFields = ""
+    Try {
+        If pDeclaration.%GetTypeOf("read") '= "object" Quit
+        Set tRead = pDeclaration.%Get("read")
+        Do ..AppendNames(tRead, "fields", .tFields)
+        If tRead.%GetTypeOf("source") '= "object" Quit
+        Set tSource = tRead.%Get("source")
+        If tSource.%GetTypeOf("rowGet") '= "object" Quit
+        Set tRowGet = tSource.%Get("rowGet")
+        Do ..AppendNames(tRowGet, "fields", .tFields)
+        If tRowGet.%GetTypeOf("derived") '= "array" Quit
+        Set tIterator = tRowGet.%Get("derived").%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tEntry) {
+            If '$IsObject(tEntry) Continue
+            If tEntry.%GetTypeOf("field") '= "string" Continue
+            If tEntry.%Get("field") = "" Continue
+            If $ListFind(tFields, tEntry.%Get("field")) Continue
+            Set tFields = tFields _ $ListBuild(tEntry.%Get("field"))
+        }
+    } Catch {
+        Set tFields = tFields
+    }
+    Quit tFields
+}
+
+/// <p>Append <var>pParent</var>'s string array <var>pKey</var> to <var>pNames</var>, skipping
+/// anything that is not a non-empty string and anything already there.</p>
+ClassMethod AppendNames(pParent As %DynamicObject, pKey As %String, ByRef pNames As %List) [ Private ]
+{
+    If pParent.%GetTypeOf(pKey) '= "array" Quit
+    Set tIterator = pParent.%Get(pKey).%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tValue, .tType) {
+        If (tType '= "string") || (tValue = "") Continue
+        If $ListFind(pNames, tValue) Continue
+        Set pNames = pNames _ $ListBuild(tValue)
+    }
 }
 
 /// <p>What is wrong with <var>pDeclaration</var>'s optional array-of-strings key <var>pKey</var>,

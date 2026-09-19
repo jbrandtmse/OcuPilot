@@ -1735,12 +1735,17 @@ test('confirmChannelProblem returns the instance-side sentences, and every shipp
   );
   assert.equal(
     confirmChannelProblem(of({ fingerprintExcludes: ['NoSuchField'] }), toolFields),
-    "fingerprintExcludes names 'NoSuchField', which is not a field of this screen's write tool (AD-6)"
+    "fingerprintExcludes names 'NoSuchField', which is neither a field of this screen's write tool nor one its read declares (AD-6)"
   );
   assert.equal(
     confirmChannelProblem(of({ fingerprintExcludes: ['Timeout'] }), toolFields),
     null,
     'an exclusion naming a field of that tool is sound'
+  );
+  assert.equal(
+    confirmChannelProblem(of({ fingerprintExcludes: [webApp.declaration.read.fields[0]] }), toolFields),
+    null,
+    'and so is one naming a field the screen\'s own read declares'
   );
 
   const withCriterion = of({

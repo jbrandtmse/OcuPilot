@@ -403,19 +403,25 @@ describe('the proposal card', () => {
     }
   });
 
-  it('every terminal phase reads its own published status line, and only expiry offers Re-propose', () => {
+  it('every terminal phase reads its own published status line, and two of them offer Re-propose', () => {
     const lines: [ProposalPhase, string][] = [
       ['canceled-sibling', STRINGS.proposalStatusCanceledSibling],
       ['switched-off', STRINGS.proposalStatusAgentSwitchedOff],
       ['expired', STRINGS.proposalStatusExpired],
+      ['target-changed', STRINGS.proposalTargetChanged],
     ];
+    const reproposable = new Set<ProposalPhase>(['expired', 'target-changed']);
     for (const [phase, line] of lines) {
       const { card } = mount(liveView(), { phase });
-      expect(card.querySelector('.ocu-proposal-card-status')?.textContent?.trim()).toBe(line);
+      const status = card.querySelector('.ocu-proposal-card-status') as HTMLElement;
+      // The fingerprint refusal renders its line inside the warning banner, whose glyph is
+      // `aria-hidden` -- so the sentence is the banner's message span, not the whole node's text.
+      const sentence = status.querySelector('.ocu-banner-message') ?? status;
+      expect(sentence.textContent?.trim()).toBe(line);
       expect(card.classList.contains('ocu-proposal-card-restrained')).toBe(true);
       // A card that arrived terminal never had buttons to disable.
       expect(card.querySelector('.ocu-proposal-card-confirm')).toBeNull();
-      expect(card.querySelector('.ocu-proposal-card-repropose') === null).toBe(phase !== 'expired');
+      expect(card.querySelector('.ocu-proposal-card-repropose') === null).toBe(!reproposable.has(phase));
     }
     const confirmed = mount(liveView(), { phase: 'confirmed', confirmedAt: '10:31:04' });
     expect(confirmed.card.querySelector('.ocu-proposal-card-status')?.textContent?.trim()).toBe(
@@ -487,6 +493,110 @@ describe('the proposal card', () => {
     expect(card.querySelector('.ocu-proposal-card-confirm')).not.toBeNull();
     expect(card.querySelector('.ocu-proposal-card-status')).toBeNull();
     expect(card.classList.contains('ocu-proposal-card-restrained')).toBe(false);
+  });
+
+  // --- The in-flight Confirm, the fingerprint banner and the announcement (Story 5.3) ------------
+
+  it('AC8: Confirm in flight shows progress, is aria-disabled, and keeps focus', () => {
+    // Mutation (Rule 19): drop the `confirming` arm from `confirmAriaDisabled` -> the second
+    // assertion goes red, and a second press would post the same confirm twice.
+    const { fixture, card } = mount(liveView({ maskedFields: [] }), { phase: 'live' });
+    const confirm = card.querySelector('.ocu-proposal-card-confirm') as HTMLButtonElement;
+    confirm.focus();
+
+    fixture.componentRef.setInput('phase', 'confirming');
+    fixture.detectChanges();
+    const busy = card.querySelector('.ocu-proposal-card-confirm') as HTMLButtonElement;
+    expect(busy.querySelector('.ocu-proposal-card-confirm-spinner')).not.toBeNull();
+    expect(busy.getAttribute('aria-disabled')).toBe('true');
+    expect(busy.hasAttribute('disabled')).toBe(false);
+    expect(document.activeElement).toBe(busy);
+    // In flight is not terminal: no status line yet, and the card is not restrained.
+    expect(card.querySelector('.ocu-proposal-card-status')).toBeNull();
+    expect(card.classList.contains('ocu-proposal-card-restrained')).toBe(false);
+  });
+
+  it('AC8: a confirmed card replaces its buttons with the line the instance stamped', async () => {
+    const { fixture, card } = mount(liveView({ maskedFields: [] }), { phase: 'live' });
+    (card.querySelector('.ocu-proposal-card-confirm') as HTMLButtonElement).focus();
+    fixture.componentRef.setInput('phase', 'confirming');
+    fixture.detectChanges();
+    fixture.componentRef.setInput('phase', 'confirmed');
+    fixture.componentRef.setInput('confirmedAt', '10:31:04');
+    fixture.detectChanges();
+
+    const status = card.querySelector('.ocu-proposal-card-status') as HTMLElement;
+    expect(status.textContent?.trim()).toBe('Confirmed by _SYSTEM \u00b7 10:31:04');
+    expect(status.classList.contains('ocu-proposal-card-status-confirmed')).toBe(true);
+    expect(document.activeElement).toBe(status);
+    await macrotask();
+    fixture.detectChanges();
+    expect(card.querySelector('.ocu-proposal-card-confirm')).toBeNull();
+    expect(card.querySelector('.ocu-proposal-card-cancel')).toBeNull();
+  });
+
+  it('AC4: the fingerprint refusal draws its line inside the warning banner, with only Re-propose', () => {
+    const { card } = mount(liveView(), { phase: 'target-changed' });
+    const status = card.querySelector('.ocu-proposal-card-status') as HTMLElement;
+    expect(status.classList.contains('ocu-banner')).toBe(true);
+    expect(status.classList.contains('ocu-banner-warning')).toBe(true);
+    expect(status.querySelector('.ocu-banner-message')?.textContent?.trim()).toBe(
+      STRINGS.proposalTargetChanged
+    );
+    expect(status.getAttribute('tabindex')).toBe('-1');
+    // The banner is above the footer's own buttons, and the only action offered is Re-propose.
+    expect(card.querySelector('.ocu-proposal-card-confirm')).toBeNull();
+    expect(card.querySelector('.ocu-proposal-card-cancel')).toBeNull();
+    // Re-propose keeps the product's gated-control discipline: never the `disabled` attribute, so
+    // it stays in the tab order and reachable. Asserting the absence of `aria-disabled` alone
+    // could not fail -- on a rendered Re-propose the binding is always null.
+    const repropose = card.querySelector('.ocu-proposal-card-repropose') as HTMLButtonElement;
+    expect(repropose).not.toBeNull();
+    expect(repropose.hasAttribute('disabled')).toBe(false);
+    expect(repropose.tabIndex).toBeGreaterThanOrEqual(0);
+  });
+
+  it('AC8: Cancel is refused while a Confirm is in flight', () => {
+    // Mutation (Rule 19): drop the `confirming` arm from `cancelAriaDisabled` -> this goes red,
+    // and a card would read "Canceled by you" over a proposal the instance had confirmed.
+    const { fixture, card } = mount(liveView({ maskedFields: [] }), { phase: 'live' });
+    const seen: string[] = [];
+    fixture.componentInstance.cancel.subscribe((id: string) => seen.push(id));
+
+    fixture.componentRef.setInput('phase', 'confirming');
+    fixture.detectChanges();
+    const cancel = card.querySelector('.ocu-proposal-card-cancel') as HTMLButtonElement;
+    expect(cancel.getAttribute('aria-disabled')).toBe('true');
+    // Reachable, not removed: the discipline is `aria-disabled`, never the `disabled` attribute.
+    expect(cancel.hasAttribute('disabled')).toBe(false);
+    cancel.click();
+    expect(seen).toEqual([]);
+  });
+
+  it('DW-1229: the status line is a status region only when it did not take focus', () => {
+    // Mutation (Rule 19): bind `role="status"` unconditionally -> the first half goes red, and a
+    // transition the user pressed would announce twice -- once as a focus move, once as a region.
+    const pressed = mount(liveView({ maskedFields: [] }), { phase: 'live' });
+    (pressed.card.querySelector('.ocu-proposal-card-cancel') as HTMLButtonElement).focus();
+    pressed.fixture.componentRef.setInput('phase', 'canceled-by-you');
+    pressed.fixture.detectChanges();
+    const focused = pressed.card.querySelector('.ocu-proposal-card-status') as HTMLElement;
+    expect(document.activeElement).toBe(focused);
+    expect(focused.getAttribute('role')).toBeNull();
+
+    const outside = document.createElement('button');
+    document.body.appendChild(outside);
+    try {
+      const elsewhere = mount(liveView({ maskedFields: [] }), { phase: 'live' });
+      outside.focus();
+      elsewhere.fixture.componentRef.setInput('phase', 'canceled-by-message');
+      elsewhere.fixture.detectChanges();
+      const announced = elsewhere.card.querySelector('.ocu-proposal-card-status') as HTMLElement;
+      expect(document.activeElement).toBe(outside);
+      expect(announced.getAttribute('role')).toBe('status');
+    } finally {
+      outside.remove();
+    }
   });
 
   it('Confirm, Cancel and Re-propose each emit the proposal they are about', () => {

@@ -168,12 +168,14 @@ ClassMethod GuardedSaveIfCurrent(pObject As Base, pExpected As %Integer = 0) As 
 {
     Set tSC = $$$OK
     Set tInTx = 0
+    Set tPriorVersion = ""
     New $ROLES
     Try {
         Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
         If $$$ISERR(tSC) Quit
         Set tNext = +pExpected + 1
         If pObject.%Id() = "" {
+            Set tPriorVersion = pObject.RowVersion
             Set pObject.RowVersion = 1
             Set tSC = pObject.%Save()
             Quit
@@ -194,16 +196,24 @@ ClassMethod GuardedSaveIfCurrent(pObject As Base, pExpected As %Integer = 0) As 
             Set tSC = $$$ERROR($$$GeneralError, ..#STALESAVEREASON)
             Quit
         }
+        Set tPriorVersion = pObject.RowVersion
         Set pObject.RowVersion = tNext
         Set tSC = pObject.%Save()
         If $$$ISERR(tSC) Quit
         TCOMMIT
         Set tInTx = 0
+        Set tPriorVersion = ""
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
     If tInTx {
         TROLLBACK 1
+    }
+    ; The rolled-back row still reads the version it was read at, so the in-memory copy must
+    ; too: a caller that fixes the cause and retries the same object would otherwise send a
+    ; version the row never carried and be refused for ever.
+    If $$$ISERR(tSC) && (tPriorVersion '= "") {
+        Set pObject.RowVersion = tPriorVersion
     }
     Quit tSC
 }
@@ -849,6 +859,49 @@ ClassMethod GuardedIdsBounded(pSelectPrefix As %String, pFragment As %String, pS
             Set pIds($Increment(pIds)) = tRS.%GetData(1)
         }
     } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Run the update <var>pSql</var> through the escalated frame with <var>pParams</var> bound in
+/// order, and answer in <var>pRowCount</var> how many rows it changed.</p>
+/// <p><b>The row count is the answer, not a diagnostic.</b> A conditional update whose
+/// <code>WHERE</code> clause carries the state it is claiming changes one row for the caller that
+/// wins and none for every other, so the count is what a single-winner claim reads. Callers that
+/// need several such statements to commit together open the transaction themselves; this method
+/// joins whatever transaction is already open and starts none of its own.</p>
+/// <p>Same call-site-literal and <code>Private</code> rules as
+/// <method>GuardedExecuteOneParam</method>: reach it through inherited (<code>..</code>) dispatch
+/// from a subclass in this package, with the statement spelled as a literal and every value
+/// bound.</p>
+ClassMethod GuardedExecuteRows(pSql As %String, ByRef pParams As %DynamicArray, Output pRowCount As %Integer) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pRowCount = 0
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Kill tArgs
+        Set tArgs = 0
+        If $IsObject($Get(pParams)) {
+            For tI = 0:1:pParams.%Size() - 1 {
+                Set tArgs($Increment(tArgs)) = pParams.%Get(tI)
+            }
+        }
+        If tArgs = 0 {
+            Set tRS = ##class(%SQL.Statement).%ExecDirect(, pSql)
+        } Else {
+            Set tRS = ##class(%SQL.Statement).%ExecDirect(, pSql, tArgs...)
+        }
+        If tRS.%SQLCODE < 0 {
+            Set tSC = $$$ERROR($$$GeneralError, "GuardedExecuteRows failed: SQLCODE=" _ tRS.%SQLCODE _ " " _ tRS.%Message)
+            Quit
+        }
+        Set pRowCount = +tRS.%ROWCOUNT
+    } Catch ex {
+        Set pRowCount = 0
         Set tSC = ex.AsStatus()
     }
     Quit tSC

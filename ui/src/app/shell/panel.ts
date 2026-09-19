@@ -88,6 +88,19 @@ interface SuggestedRowView {
 }
 
 /**
+ * The `hh:mm:ss` the confirmed status line reads, from the instance's own ISO-8601 UTC stamp.
+ *
+ * The clock is the stamp's own time-of-day, cut out of the text rather than re-formatted through a
+ * locale: the instance stamped it, and a card that re-derived it could show a different second
+ * from the row the ledger holds. A stamp this cannot read leaves the line's placeholder alone.
+ */
+function clockOf(stamp: string): string {
+  const time = stamp.split('T')[1] ?? '';
+  const clock = time.slice(0, 8);
+  return /^\d{2}:\d{2}:\d{2}$/.test(clock) ? clock : '';
+}
+
+/**
  * One proposal card's rendered view: the mapped content, where it is in the lifecycle, and the id
  * `@for` tracks it by -- so a card keeps its own masked-field input and disclosure state across a
  * poll that re-reads the turn.
@@ -96,6 +109,8 @@ interface PanelProposalView {
   readonly proposalId: string;
   readonly view: ProposalCardView;
   readonly phase: ProposalPhase;
+  /** The moment the instance committed the write, for the confirmed status line; `''` until then. */
+  readonly confirmedAt: string;
 }
 
 /** One turn's rendered view, precomputed once per read so the template does no substitution. */
@@ -322,7 +337,10 @@ interface PanelTurnView {
                   [phase]="proposal.phase"
                   [nowMs]="nowMs"
                   [userName]="userName"
+                  [confirmedAt]="proposal.confirmedAt"
+                  (confirm)="onCardConfirm($event)"
                   (cancel)="onCardCancel($event)"
+                  (repropose)="onCardRepropose($event)"
                 />
               }
               @if (turn.reply !== null) {
@@ -734,6 +752,7 @@ export class Panel {
         screen === null ? [] : screen.secretArguments
       ),
       phase: this.phaseFor(proposal),
+      confirmedAt: clockOf(proposal.confirmedAt),
     };
   }
 
@@ -745,7 +764,7 @@ export class Panel {
   private phaseFor(proposal: TurnProposal): ProposalPhase {
     const decided = this.cardPhases().get(proposal.proposalId);
     if (decided !== undefined) return decided;
-    const phase = phaseForState(proposal.state);
+    const phase = phaseForState(proposal.state, proposal.closedReason);
     if (phase !== 'live') return phase;
     // The clock is read through the same two `core/proposal-view.ts` functions the card itself
     // reads (`ProposalCard.livePhase`), because the two must not be able to disagree: a card that
@@ -821,13 +840,92 @@ export class Panel {
     this.bump();
   }
 
-  /** Cancel was pressed on one card: its own transition, and no other card's. */
-  protected onCardCancel(proposalId: string): void {
+  /**
+   * Confirm was pressed on one card: the in-flight phase while the request is out, then the
+   * instance's own answer.
+   *
+   * **The terminal phase is the wire's.** This records `confirming` so the button shows progress
+   * and keeps focus, posts the confirm, and then drops its own decision -- so whatever the store
+   * recorded from the answer, confirmed or a refusal that closed the row, is what the card draws.
+   * A refusal that left the row live drops back to `live` the same way, with Confirm offered
+   * again.
+   */
+  protected async onCardConfirm(proposalId: string): Promise<void> {
     if (proposalId === '') return;
+    this.setCardPhase(proposalId, 'confirming');
+    try {
+      await this.turn.confirmProposal(proposalId, this.secretsFor(proposalId));
+    } finally {
+      this.setCardPhase(proposalId, null);
+    }
+  }
+
+  /**
+   * Cancel was pressed on one card: its own transition, and no other card's.
+   *
+   * The transition is recorded before the request goes out, so the card answers the press rather
+   * than the round trip -- and it is not taken back afterwards: a cancel the instance refused is a
+   * row that was already closed, and a card that went back to offering Confirm on a refusal would
+   * invite the very decision the user has just declined. The instance is told because a row left
+   * live there is one a later confirm could still claim.
+   */
+  protected async onCardCancel(proposalId: string): Promise<void> {
+    if (proposalId === '') return;
+    this.setCardPhase(proposalId, 'canceled-by-you');
+    await this.turn.cancelProposal(proposalId);
+  }
+
+  /**
+   * Re-propose was pressed: ask the agent again, as a new turn carrying the message that produced
+   * this proposal's own turn (DW-1224).
+   *
+   * That message is the transcript's, never re-typed by the user and never composed here -- the
+   * accommodation for the expiry limit is a fresh read and a fresh diff of the same request
+   * (WCAG 2.2.1), so the request has to be the same one.
+   */
+  protected async onCardRepropose(proposalId: string): Promise<void> {
+    if (proposalId === '') return;
+    const message = this.messageBehind(proposalId);
+    if (message === '') return;
+    const outcome = await this.turn.send(message, this.assembleContext());
+    if (outcome === 'sent') {
+      // A Re-propose is a message like any other, and the instance closes the conversation's live
+      // proposals as it accepts the turn. Drawing the same transition here keeps the other cards
+      // from offering Confirm on rows that are already canceled (DW-1231).
+      this.cancelLiveCards('canceled-by-message');
+    }
+  }
+
+  /** The message of the turn that minted `proposalId`, or `''` when this panel no longer holds it. */
+  private messageBehind(proposalId: string): string {
+    for (const entry of this.turn.entries()) {
+      if (entry.proposals.some((proposal) => proposal.proposalId === proposalId)) return entry.message;
+    }
+    return '';
+  }
+
+  /** Record `phase` for one card, or drop this panel's own decision when it is `null`. */
+  private setCardPhase(proposalId: string, phase: ProposalPhase | null): void {
     const next = new Map(this.cardPhases());
-    next.set(proposalId, 'canceled-by-you');
+    if (phase === null) {
+      next.delete(proposalId);
+    } else {
+      next.set(proposalId, phase);
+    }
     this.cardPhases.set(next);
     this.bump();
+  }
+
+  /**
+   * The declared secret values one card holds, for the confirm body.
+   *
+   * Empty today, and deliberately: no shipped descriptor declares a secret argument, so the card
+   * renders no masked field and there is nothing for it to hand over. The seam is here so the
+   * first descriptor that declares one has a caller rather than a second mechanism.
+   */
+  private secretsFor(proposalId: string): Record<string, string> {
+    void proposalId;
+    return {};
   }
 
   /** Arm the one-second ticker while a card is live, and disarm it when none is. */
@@ -1169,12 +1267,13 @@ export class Panel {
       return;
     }
     this.secretWarningVisibleSignal.set(false);
-    // EXPERIENCE.md's cancel step: sending a message cancels every live proposal, which is what
-    // the card's own guard caption warns about. Recorded before the request goes out, so a user
-    // who types "yes" from habit never sees a card that still offers Confirm.
-    this.cancelLiveCards('canceled-by-message');
     const outcome = await this.turn.send(text, this.assembleContext());
     if (outcome === 'sent') {
+      // EXPERIENCE.md's cancel step: sending a message cancels every live proposal, which is what
+      // the card's own guard caption warns about. The instance closed them as it accepted the
+      // turn; this draws the same transition without waiting for a poll. Recorded only on an
+      // accepted send, because a refused one cancelled nothing (DW-1231).
+      this.cancelLiveCards('canceled-by-message');
       this.panel.setDraft('');
       this.acknowledgedSecretText.set(null);
     }

@@ -199,6 +199,17 @@ Method TestAnExcludedPathIsOutsideTheFingerprint()
     Do $$$AssertNotEquals(tListFirst, tListWhole, "so the [] exclusion is load-bearing, not accepted and ignored")
 }
 
+/// <p>DW-1205: the fixture's own declaration is one the shipped validator accepts, so the exclusion
+/// these tests rely on is declarable rather than merely unvalidated.</p>
+/// <p>Mutation: refuse a read-declared path in
+/// <method>OcuPilot.Screen.Registry.ConfirmChannelProblem</method> -- this goes red.</p>
+Method TestTheFixturesOwnConfirmChannelIsSound()
+{
+    Set tSC = $ClassMethod(..#SCREEN, "DeclarationJson", .tDeclaration)
+    Do $$$AssertStatusOK(tSC, "the fixture declaration parses")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tDeclaration), "", "and its declared exclusion is one the validator accepts")
+}
+
 /// <p>The descriptor's own exclusion reaches the stored digest: the mint takes it from the
 /// descriptor, not from the tool.</p>
 Method TestTheMintTakesItsExclusionsFromTheDescriptor()
@@ -213,6 +224,52 @@ Method TestTheMintTakesItsExclusionsFromTheDescriptor()
     Do $$$AssertStatusOK(tSC, "the second mint succeeds")
     Set tSecondPrint = ##class(OcuPilot.Test.ProposalFixture).Field(tSecond.%Get("proposalId"), "Fingerprint")
     Do $$$AssertEquals(tFirstPrint, tSecondPrint, "the declared exclusion keeps a side-effect stamp out of the stored digest")
+}
+
+/// <p>AD-4, DW-1212: the merged body keeps the property TYPES the instance's own read answered
+/// with, so a numeric instance field set from a string argument is sent back as a number.</p>
+/// <p>A tool schema's scalar type is derived from a template placeholder, which is information
+/// rather than contract -- this instance answers a number for five <code>WebApp.App</code> fields
+/// whose template shows a string -- so the model can only ever send the string.</p>
+/// <p>Mutation: take the type from the arguments again in
+/// <method>OcuPilot.Kernel.Proposal.Mint.Merge</method> -- this goes red, with the payload holding
+/// the string spelling.</p>
+Method TestTheMergedPayloadKeepsTheFreshReadsOwnTypes()
+{
+    Do ##class(OcuPilot.Test.ProposalFixture).Arm("{""Timeout"":900,""Recurse"":false,""Description"":""before""}")
+    Set tArgs = {"Name": "/csp/probe", "Timeout": "300", "Recurse": "true"}
+    Set tSC = $ClassMethod(..#MINT, "Mint", ..#SCREEN, "probe.proposal.update", ..#PROBEUSER, "probe-conv", "probe-turn", tArgs, ..#LIMITS, .tProposal, .tHttp, .tFault, "WebApp.App", "name", "/csp/probe", "Name", $ListBuild("Timeout", "Recurse"))
+    Do $$$AssertStatusOK(tSC, "the mint succeeds")
+    If $$$ISERR(tSC) Quit
+
+    Set tPayload = ..StoredPayload(tProposal.%Get("proposalId"))
+    Do $$$AssertEquals(tPayload.%GetTypeOf("Timeout"), "number", "a numeric instance field stays a number")
+    Do $$$AssertEquals(tPayload.%Get("Timeout"), 300, "carrying the value the arguments sent")
+    Do $$$AssertEquals(tPayload.%GetTypeOf("Recurse"), "boolean", "and a boolean one stays a boolean")
+    Do $$$AssertEquals(''tPayload.%Get("Recurse"), 1, "reading the argument's own true")
+}
+
+/// <p>AD-4, AD-6: a value the instance's own property type cannot carry is refused at the mint
+/// rather than coerced, so the diff the user reviews and the body the confirmed write sends are
+/// the same thing. A silent coercion would show "soon" in the card and send <code>0</code>.</p>
+/// <p>Mutation: drop the <method>OcuPilot.Kernel.Proposal.Mint.Representable</method> guard from
+/// <method>Merge</method> -- the mint succeeds and this goes red.</p>
+Method TestAValueTheInstanceTypeCannotCarryIsRefusedAtTheMint()
+{
+    Do ##class(OcuPilot.Test.ProposalFixture).Arm("{""Timeout"":900,""Recurse"":false,""Description"":""before""}")
+    Set tArgs = {"Name": "/csp/probe", "Timeout": "soon"}
+    Set tSC = $ClassMethod(..#MINT, "Mint", ..#SCREEN, "probe.proposal.update", ..#PROBEUSER, "probe-conv", "probe-turn", tArgs, ..#LIMITS, .tProposal, .tHttp, .tFault, "WebApp.App", "name", "/csp/probe", "Name", $ListBuild("Timeout", "Recurse"))
+    Do $$$AssertStatusNotOK(tSC, "the mint is refused")
+    Do $$$AssertEquals($IsObject($Get(tProposal)), 0, "and no proposal is minted")
+    ; The wire reason stays the family's own -- the field that could not be carried is a detail of
+    ; the instance's property types, not something the refusal spells out to a caller.
+    Do $$$AssertTrue($IsObject($Get(tFault)), "with a wire-safe fault beside it")
+
+    ; A numeric spelling of the same field still mints, so the guard refuses the value and not the
+    ; conversion.
+    Set tArgs = {"Name": "/csp/probe", "Timeout": "300"}
+    Set tSC = $ClassMethod(..#MINT, "Mint", ..#SCREEN, "probe.proposal.update", ..#PROBEUSER, "probe-conv", "probe-turn", tArgs, ..#LIMITS, .tProposal, .tHttp, .tFault, "WebApp.App", "name", "/csp/probe", "Name", $ListBuild("Timeout", "Recurse"))
+    Do $$$AssertStatusOK(tSC, "a numeric spelling still mints")
 }
 
 /// <p>AD-4: an array-valued settable field merges into the payload as an array, so a write tool

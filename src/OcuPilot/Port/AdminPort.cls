@@ -117,6 +117,23 @@ Parameter ASYNCLOCATION = "async-result?id=";
 /// only that endpoint's <code>TYPEINFO</code> answers <code>ShouldRunAsync()</code> true.</p>
 Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST";
 
+/// <p>The <b>mutating</b> request-type suffixes <method>Invoke</method> accepts, resolved through
+/// the endpoint's own <code>TYPE&lt;suffix&gt;</code> parameter exactly as
+/// <parameter>TYPESUFFIXES</parameter> is. Listed apart from the reads because the two are not
+/// interchangeable to a reviewer: everything in the other list changes nothing on the instance,
+/// and everything here does.</p>
+/// <p><b>Reached only by a confirmed proposal.</b> A mutating call is issued by
+/// <class>OcuPilot.Kernel.Proposal.Confirm</class> after its claim has committed (AD-34, AD-40);
+/// no tool, no screen read and no turn reaches one, and the port itself decides nothing about
+/// whether the write may happen.</p>
+/// <p><b>Synchronous on the endpoints that ship today.</b> The vendor's base
+/// <code>ShouldRunAsync()</code> answers false and <code>Security.Applications</code>'s endpoint
+/// does not override it, so a <code>PUT</code> runs in the caller's job and its answer is the
+/// endpoint's own. An endpoint that does queue would be reported by <method>AwaitTask</method>,
+/// which consults no pair table -- that is a gap to close when the first queueing write ships,
+/// not one this list reaches today.</p>
+Parameter MUTATINGTYPES = "PUT";
+
 /// <p>The pair set the <b>backing query or class</b> of an endpoint requires, beyond the
 /// endpoint's own <code>ResourcesOR()</code> gate (AD-29). Comma-separated entries of the form
 /// <code>&lt;endpoint&gt;/&lt;type&gt;=&lt;pair&gt;|&lt;pair&gt;</code>, each pair
@@ -370,7 +387,7 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
             Quit
         }
 
-        Set tSeqSC = ..RunSequence(pEndpoint, tClass, tType, .pQuery, pBody, .tAnswer, .tHttp, .tLocation)
+        Set tSeqSC = ..RunSequence(pEndpoint, tClass, tType, .pQuery, pBody, .tAnswer, .tHttp, .tLocation, ..HttpMethodFor(pType))
         If $$$ISOK(tSeqSC) && (tHttp = 202) && (tLocation [ ..#ASYNCLOCATION) {
             Set tAnswer = ""
             Set tGuid = $Piece($Piece(tLocation, ..#ASYNCLOCATION, 2), "&", 1)
@@ -705,6 +722,17 @@ ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String =
     Do ##class(OcuPilot.Kernel.Fault).LogRaw("adminport", pMessage, pStatus, pCode)
 }
 
+/// <p>The HTTP method the request stub carries for the suffix <var>pSuffix</var>: the suffix itself
+/// for a <parameter>MUTATINGTYPES</parameter> entry, <code>GET</code> for everything else.</p>
+/// <p>The vendor's endpoints read their own <code>Type</code> property rather than
+/// <code>%request.Method</code>, so nothing dispatches on this; it is set truthfully so the stub
+/// does not describe a read while a write runs against it.</p>
+ClassMethod HttpMethodFor(pSuffix As %String) As %String [ Private ]
+{
+    If $ListFind($ListFromString(..#MUTATINGTYPES), pSuffix) Quit pSuffix
+    Quit "GET"
+}
+
 /// <p>The vendor type number for suffix <var>pSuffix</var> on <var>pEndpoint</var>'s class
 /// <var>pClass</var>, or <code>""</code> when the class declares no such parameter or
 /// <method>ImplementsRead</method> says the class does not implement that read. A suffix
@@ -719,23 +747,24 @@ ClassMethod EndpointType(pEndpoint As %String, pClass As %String, pSuffix As %St
         If (tBare = "") || '..ImplementsRead(pClass, pSuffix) Quit ""
         Quit tBare
     }
-    If '$ListFind($ListFromString(..#TYPESUFFIXES), pSuffix) Quit ""
+    If '$ListFind($ListFromString(..#TYPESUFFIXES), pSuffix) && '$ListFind($ListFromString(..#MUTATINGTYPES), pSuffix) Quit ""
     Set tType = $Parameter(pClass, "TYPE" _ pSuffix)
     If tType = "" Quit ""
     If '..ImplementsRead(pClass, pSuffix) Quit ""
     Quit tType
 }
 
-/// <p>Whether <var>pClass</var> implements the read <var>pSuffix</var> names. The base class's
-/// <code>Run()</code> sends <code>GET</code> to <code>RunGet</code> and <code>LIST</code> to
-/// <code>RunList</code>, answers <code>{}</code> for any other type, and both runners answer
-/// <code>{}</code>; so a read is implemented when <code>Run</code>, or the runner for that
-/// suffix, is defined below <parameter>ENDPOINTBASECLASS</parameter>. A class that overrides
-/// <code>Run</code> is trusted to dispatch its own types.</p>
+/// <p>Whether <var>pClass</var> implements the operation <var>pSuffix</var> names. The base class's
+/// <code>Run()</code> sends <code>GET</code> to <code>RunGet</code>, <code>LIST</code> to
+/// <code>RunList</code> and <code>PUT</code> to <code>RunPut</code>, answers <code>{}</code> for
+/// any other type, and every one of those runners answers <code>{}</code>; so an operation is
+/// implemented when <code>Run</code>, or the runner for that suffix, is defined below
+/// <parameter>ENDPOINTBASECLASS</parameter>. A class that overrides <code>Run</code> is trusted to
+/// dispatch its own types.</p>
 ClassMethod ImplementsRead(pClass As %String, pSuffix As %String) As %Boolean [ Private ]
 {
     If ..MethodOrigin(pClass, "Run") '= ..#ENDPOINTBASECLASS Quit 1
-    Set tRunner = $Case(pSuffix, "GET": "RunGet", "LIST": "RunList", : "")
+    Set tRunner = $Case(pSuffix, "GET": "RunGet", "LIST": "RunList", "PUT": "RunPut", : "")
     If tRunner = "" Quit 0
     Quit ..MethodOrigin(pClass, tRunner) '= ..#ENDPOINTBASECLASS
 }
@@ -757,7 +786,7 @@ ClassMethod MethodOrigin(pClass As %String, pMethod As %String) As %String [ Pri
 /// <p>The endpoint is constructed before the switch, in the caller's namespace, because a
 /// class compiled only there cannot be constructed from <code>%SYS</code>; the vendor's
 /// <code>%OnNew</code> records the type and version and nothing else.</p>
-ClassMethod RunSequence(pEndpoint As %String, pClass As %String, pType As %Integer, ByRef pQuery, pBody As %DynamicAbstractObject, Output pAnswer, Output pHttpStatus As %Integer, Output pLocation As %String) As %Status [ Private ]
+ClassMethod RunSequence(pEndpoint As %String, pClass As %String, pType As %Integer, ByRef pQuery, pBody As %DynamicAbstractObject, Output pAnswer, Output pHttpStatus As %Integer, Output pLocation As %String, pMethod As %String = "GET") As %Status [ Private ]
 {
     Set tSC = $$$OK
     Set pAnswer = ""
@@ -767,7 +796,7 @@ ClassMethod RunSequence(pEndpoint As %String, pClass As %String, pType As %Integ
     Set tOrigNS = $NAMESPACE
     Try {
         Set %request = ##class(%CSP.Request).%New()
-        Set %request.Method = "GET"
+        Set %request.Method = pMethod
         Set %request.URL = ..#STUBURLPREFIX _ $ZConvert($Translate(pEndpoint, ".", "/"), "L")
         Set tName = $Order(pQuery(""))
         While tName '= "" {

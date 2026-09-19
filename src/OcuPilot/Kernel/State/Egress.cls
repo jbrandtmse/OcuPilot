@@ -56,6 +56,15 @@ Property MaxAttempts As %Integer [ InitialExpression = 0 ];
 /// creates.</p>
 Property SslConfiguration As %String(MAXLEN = 64);
 
+/// <p>The singleton discriminator: <code>1</code> on the instance's one row, and the same value on
+/// any second row a concurrent first create would write -- which the unique index below then
+/// refuses (DW-435). Without it two callers that both read "no row" would both create one and
+/// <code>SELECT TOP 1 ... ORDER BY ID</code> would silently answer the older of the two for ever
+/// after.</p>
+Property Singleton As %Integer [ InitialExpression = 1 ];
+
+Index EgressSingletonIdx On Singleton [ Unique ];
+
 /// <p>The settings in force, as <var>pSettings</var> subscripted by
 /// <code>proxyServer</code>, <code>proxyPort</code>, <code>proxyHttps</code>,
 /// <code>proxyTunnel</code>, <code>timeoutSeconds</code>, <code>maxAttempts</code> and
@@ -110,6 +119,7 @@ ClassMethod SetGuarded(ByRef pValues, pExpectedVersion As %String = "") As %Stat
         Set tSC = ..GuardedCurrent(.tRow)
         If $$$ISERR(tSC) Quit
         If '$IsObject(tRow) Set tRow = ..%New()
+        Set tRow.Singleton = 1
         Set tVersion = $Select(pExpectedVersion '= "": +pExpectedVersion, 1: +tRow.RowVersion)
         If $Data(pValues("proxyServer")) Set tRow.ProxyServer = pValues("proxyServer")
         If $Data(pValues("proxyPort")) Set tRow.ProxyPort = +pValues("proxyPort")

@@ -25,7 +25,7 @@ Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
 Parameter FRESH = "{""Enabled"":false,""Description"":""before"",""Resource"":""""}";
 
 /// <p>The keys the progress payload's <code>proposals[]</code> entry carries, comma-separated.</p>
-Parameter WIREKEYS = "proposalId,target,expiresAt,tool,changed,unchangedCount,rationale,expectedImpact,reverse,state,auditWarning";
+Parameter WIREKEYS = "proposalId,target,expiresAt,tool,changed,unchangedCount,rationale,expectedImpact,reverse,state,closedReason,confirmedAt,auditWarning";
 
 Method OnBeforeOneTest() As %Status
 {

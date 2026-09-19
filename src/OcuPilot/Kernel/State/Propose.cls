@@ -32,6 +32,20 @@ Parameter STATECANCELED = "canceled";
 /// <p>Past <property>ExpiresAt</property> and swept.</p>
 Parameter STATEEXPIRED = "expired";
 
+/// <p><property>ClosedReason</property>: the minting user pressed Cancel.</p>
+Parameter REASONYOU = "you";
+
+/// <p><property>ClosedReason</property>: the user's next message closed it.</p>
+Parameter REASONMESSAGE = "message";
+
+/// <p><property>ClosedReason</property>: a proposal on the same scoped target was confirmed
+/// (AD-34).</p>
+Parameter REASONSIBLING = "sibling";
+
+/// <p><property>ClosedReason</property>: the target moved under the diff, so the fingerprint no
+/// longer matched (AD-6, FR-17).</p>
+Parameter REASONTARGETCHANGED = "target-changed";
+
 /// <p>The opaque, server-minted proposal id: 32 lower-case hex characters. Unique; matched
 /// exactly.</p>
 Property ProposalKey As %String(MAXLEN = 64);
@@ -107,6 +121,24 @@ Property State As %String(MAXLEN = 16);
 /// different once a newer OcuPilot reads it.</p>
 Property AuditWarning As %Boolean [ InitialExpression = 0 ];
 
+/// <p>When the confirmed write was committed, ISO-8601 UTC; <code>""</code> while the row is not
+/// <parameter>STATECONFIRMED</parameter>. Written inside the claim's own transition and read by the
+/// card's confirmed status line.</p>
+Property ConfirmedAt As %String(MAXLEN = 32);
+
+/// <p>Why a <parameter>STATECANCELED</parameter> row closed: <code>you</code>, <code>message</code>,
+/// <code>sibling</code> or <code>target-changed</code>. <code>""</code> while the row is live, and
+/// on any state that is not <code>canceled</code>.</p>
+Property ClosedReason As %String(MAXLEN = 16);
+
+/// <p>The agent definition in force when this proposal was minted, and the version
+/// <method>OcuPilot.Kernel.State.Agent.GuardedVersion</method> answered for it. Confirm refuses
+/// when the definition has moved or gone (FR-17); <code>""</code> in
+/// <property>DefinitionVersion</property> is "no row", never <code>0</code>.</p>
+Property DefinitionId As %String(MAXLEN = 64);
+
+Property DefinitionVersion As %String(MAXLEN = 32);
+
 Index ProposalKeyIdx On ProposalKey [ Unique ];
 
 Index ProposalTokenIdx On Token [ Unique ];
@@ -128,12 +160,19 @@ Index ProposalTurnIdx On (TurnKey As Exact, UserName As Exact);
 /// <code>ProposalTurnIdx</code> exists to stop the per-turn read doing.</p>
 Index ProposalConvIdx On (ConvKey As Exact, UserName As Exact);
 
+/// <p>A scoped target's own proposals by state, the predicate the sibling cancel inside
+/// <method>GuardedClaimAndClose</method> runs while a claim's transaction is open (AD-34). Without
+/// it that update filters <property>TargetRef</property> against the master map with the claimed
+/// row's transaction still holding its locks.</p>
+Index ProposalTargetIdx On (TargetRef As Exact, State);
+
 /// <p>Mint one row and answer its id, token and expiry.</p>
 /// <p><b>Caller contract:</b> <var>pValues</var> carries <code>user</code>, <code>convKey</code>,
 /// <code>turnKey</code>, <code>toolName</code>, <code>targetRef</code>, <code>fingerprint</code>,
 /// <code>arguments</code>, <code>payload</code>, <code>diff</code>, <code>unchangedCount</code>,
-/// <code>rationale</code>, <code>expectedImpact</code>, <code>reverse</code> and
-/// <code>auditWarning</code>, every one already
+/// <code>rationale</code>, <code>expectedImpact</code>, <code>reverse</code>,
+/// <code>auditWarning</code>, <code>definitionId</code> and <code>definitionVersion</code>, every
+/// one already
 /// built and already stripped of secret-declared keys by
 /// <method>OcuPilot.Kernel.Proposal.Mint.Mint</method>; nothing here strips anything.
 /// <var>pLimitsClass</var> is the class <code>PROPOSALEXPIRYSECONDS</code> is read from, so a test
@@ -165,6 +204,8 @@ ClassMethod GuardedMint(ByRef pValues, pLimitsClass As %String, Output pKey As %
         Set tRow.ExpectedImpact = ..Cut($Get(pValues("expectedImpact")), tSummaryMax)
         Set tRow.Reverse = ..Cut($Get(pValues("reverse")), tSummaryMax)
         Set tRow.AuditWarning = ''$Get(pValues("auditWarning"))
+        Set tRow.DefinitionId = ..Cut($Get(pValues("definitionId")), 64)
+        Set tRow.DefinitionVersion = ..Cut($Get(pValues("definitionVersion")), 32)
         Set tRow.CreatedAt = ..Stamp(tStamp)
         Set tRow.ExpiresAt = ..StampOfSeconds(tSeconds)
         Set tRow.State = ..#STATELIVE
@@ -185,7 +226,8 @@ ClassMethod GuardedMint(ByRef pValues, pLimitsClass As %String, Output pKey As %
 /// <code>toolName</code>, <code>targetRef</code>, <code>fingerprint</code>,
 /// <code>unchangedCount</code>, <code>rationale</code>, <code>expectedImpact</code>,
 /// <code>reverse</code>, <code>createdAt</code>, <code>expiresAt</code>, <code>state</code>,
-/// <code>auditWarning</code>,
+/// <code>storedState</code>, <code>closedReason</code>, <code>confirmedAt</code>,
+/// <code>definitionId</code>, <code>definitionVersion</code>, <code>auditWarning</code>,
 /// <code>burned</code>, <code>arguments</code>, <code>payload</code> and <code>diff</code>.
 /// <var>pFound</var> is 0 when no row carries that token.</p>
 /// <p>Data, not a decision: this package names nothing outside it (AD-9), so the caller is what
@@ -217,6 +259,164 @@ ClassMethod GuardedByKey(pKey As %String, Output pFound As %Boolean, Output pVal
     If $$$ISERR(tSC) Quit tSC
     Set pFound = 1
     Quit $$$OK
+}
+
+/// <p>Claim proposal <var>pProposalKey</var> and close its siblings, in one transaction (AD-34).</p>
+/// <p><b>Caller contract:</b> every gate that decides whether the write may happen has already been
+/// evaluated by the caller (<class>OcuPilot.Kernel.Proposal.Confirm</class>) and none of them is
+/// re-asked here; <var>pExpectedVersion</var> is the <property>RowVersion</property> the caller read
+/// the row at, and <var>pTargetRef</var> its stored scoped target. Nothing outside this package is
+/// named (AD-9), and the vendor write follows the commit rather than sitting inside it.</p>
+/// <p><b>Exactly one caller wins.</b> The conditional <code>UPDATE</code> matches only while the row
+/// is still unburned, still <parameter>STATELIVE</parameter> and still at that version, so the row
+/// count is 1 for the winner and 0 for every other. A winner's own statement carries the burn, the
+/// terminal state and the confirmation stamp together, and the sibling cancel runs inside the same
+/// transaction -- so there is no window in which one row is burned and a sibling is still live.</p>
+/// <p><b>Siblings are closed whatever user owns them.</b> The target moved for everyone, and a
+/// sibling left live would offer a decision against a diff that is already stale.</p>
+/// <p>A row count of 0 leaves <var>pWon</var> 0 and answers the row's current state in
+/// <var>pTerminal</var> -- projected, so a row past its expiry reads <code>expired</code> -- which
+/// is what the loser is refused with. It is never retried.</p>
+ClassMethod GuardedClaimAndClose(pProposalKey As %String, pExpectedVersion As %Integer, pTargetRef As %String, Output pWon As %Boolean, Output pTerminal As %String) As %Status
+{
+    Set pWon = 0
+    Set pTerminal = ""
+    Set tSC = $$$OK
+    Set tInTx = 0
+    Try {
+        If pProposalKey = "" {
+            Set tSC = $$$ERROR($$$GeneralError, "a claim needs a proposal id")
+            Quit
+        }
+        Set tNow = ..Stamp()
+        TSTART
+        Set tInTx = 1
+        Set tClaim = [].%Push(..#STATECONFIRMED).%Push(tNow).%Push(+pExpectedVersion + 1).%Push(pProposalKey).%Push(..#STATELIVE).%Push(+pExpectedVersion)
+        Set tSC = ..GuardedExecuteRows("UPDATE OcuPilot_Kernel_State.Proposal SET Burned = 1, State = ?, ConfirmedAt = ?, RowVersion = ? WHERE %EXACT(ProposalKey) = ? AND Burned = 0 AND %EXACT(State) = ? AND COALESCE(RowVersion, 0) = ?", .tClaim, .tClaimed)
+        If $$$ISERR(tSC) Quit
+        If tClaimed = 0 Quit
+        Set pWon = 1
+        If pTargetRef '= "" {
+            Set tSiblings = [].%Push(..#STATECANCELED).%Push(..#REASONSIBLING).%Push(pTargetRef).%Push(..#STATELIVE).%Push(pProposalKey)
+            Set tSC = ..GuardedExecuteRows("UPDATE OcuPilot_Kernel_State.Proposal SET State = ?, ClosedReason = ? WHERE %EXACT(TargetRef) = ? AND %EXACT(State) = ? AND %EXACT(ProposalKey) <> ?", .tSiblings, .tCanceled)
+            If $$$ISERR(tSC) Quit
+        }
+        TCOMMIT
+        Set tInTx = 0
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If tInTx {
+        TROLLBACK 1
+        Set pWon = 0
+    }
+    If $$$ISOK(tSC) && 'pWon {
+        Set tReadSC = ..GuardedByKey(pProposalKey, .tFound, .tValues)
+        If $$$ISERR(tReadSC) Quit tReadSC
+        Set pTerminal = $Select(tFound: $Get(tValues("state")), 1: "")
+    }
+    Quit tSC
+}
+
+/// <p>Close proposal <var>pProposalKey</var>, owned by <var>pUser</var>, as
+/// <parameter>STATECANCELED</parameter> with reason <var>pReason</var>. <var>pClosed</var> is 1
+/// when a live row was closed and 0 when none matched -- an id nobody owns, a row already terminal,
+/// and a row another user minted are the same 0.</p>
+/// <p>A row past its expiry is flipped to <parameter>STATEEXPIRED</parameter> first, so a cancel
+/// arriving after the window closes records the expiry rather than overwriting it (DW-1209).</p>
+ClassMethod GuardedClose(pProposalKey As %String, pUser As %String, pReason As %String, Output pClosed As %Boolean) As %Status
+{
+    Set pClosed = 0
+    If (pProposalKey = "") || (pUser = "") Quit $$$OK
+    Set tExpireSC = ..GuardedExpireStale()
+    If $$$ISERR(tExpireSC) Quit tExpireSC
+    Set tParams = [].%Push(..#STATECANCELED).%Push(pReason).%Push(pProposalKey).%Push(pUser).%Push(..#STATELIVE)
+    Set tSC = ..GuardedExecuteRows("UPDATE OcuPilot_Kernel_State.Proposal SET State = ?, ClosedReason = ? WHERE %EXACT(ProposalKey) = ? AND %EXACT(UserName) = ? AND %EXACT(State) = ? AND Burned = 0", .tParams, .tRows)
+    If $$$ISERR(tSC) Quit tSC
+    Set pClosed = (tRows > 0)
+    Quit $$$OK
+}
+
+/// <p>Close every live proposal of conversation <var>pConvKey</var> owned by <var>pUser</var> with
+/// reason <var>pReason</var>, and answer how many closed in <var>pCount</var>.</p>
+/// <p>This is what makes "a typed message cancels every live proposal" and "New conversation cancels
+/// them too" facts of the instance rather than optimistic client writes: the row is closed before
+/// the turn job is spawned, so a confirm arriving afterwards meets a row that is no longer live.</p>
+ClassMethod GuardedCloseLiveForConvo(pConvKey As %String, pUser As %String, pReason As %String, Output pCount As %Integer) As %Status
+{
+    Set pCount = 0
+    If (pConvKey = "") || (pUser = "") Quit $$$OK
+    Set tExpireSC = ..GuardedExpireStale()
+    If $$$ISERR(tExpireSC) Quit tExpireSC
+    Set tParams = [].%Push(..#STATECANCELED).%Push(pReason).%Push(pConvKey).%Push(pUser).%Push(..#STATELIVE)
+    Set tSC = ..GuardedExecuteRows("UPDATE OcuPilot_Kernel_State.Proposal SET State = ?, ClosedReason = ? WHERE %EXACT(ConvKey) = ? AND %EXACT(UserName) = ? AND %EXACT(State) = ? AND Burned = 0", .tParams, .tRows)
+    If $$$ISERR(tSC) Quit tSC
+    Set pCount = +tRows
+    Quit $$$OK
+}
+
+/// <p>Close every live proposal <var>pUser</var> owns, whatever conversation minted it, with reason
+/// <var>pReason</var>, and answer how many closed in <var>pCount</var>.</p>
+/// <p>What New conversation calls: the transcript it replaces is the caller's whole panel, and the
+/// handler is given no earlier conversation id to narrow it by.</p>
+ClassMethod GuardedCloseLiveForUser(pUser As %String, pReason As %String, Output pCount As %Integer) As %Status
+{
+    Set pCount = 0
+    If pUser = "" Quit $$$OK
+    Set tExpireSC = ..GuardedExpireStale(pUser)
+    If $$$ISERR(tExpireSC) Quit tExpireSC
+    Set tParams = [].%Push(..#STATECANCELED).%Push(pReason).%Push(pUser).%Push(..#STATELIVE)
+    Set tSC = ..GuardedExecuteRows("UPDATE OcuPilot_Kernel_State.Proposal SET State = ?, ClosedReason = ? WHERE %EXACT(UserName) = ? AND %EXACT(State) = ? AND Burned = 0", .tParams, .tRows)
+    If $$$ISERR(tSC) Quit tSC
+    Set pCount = +tRows
+    Quit $$$OK
+}
+
+/// <p>Close every live proposal of <var>pUser</var> whose window has passed, recording the state
+/// <method>RowValues</method> already projects for it (DW-1209). Called by the three close paths
+/// before they touch a row -- the confirm path does not need it, because
+/// <method>OcuPilot.Kernel.Proposal.Write.Claim</method> refuses a row past its window before the
+/// claim is reached. A scheduled retention sweep over these rows is not this story's.
+/// <var>pUser</var> <code>""</code> flips every user's stale rows, which is what a path holding no
+/// user calls it with.</p>
+ClassMethod GuardedExpireStale(pUser As %String = "") As %Status
+{
+    Set tNow = ..Stamp()
+    If pUser = "" {
+        Set tParams = [].%Push(..#STATEEXPIRED).%Push(..#STATELIVE).%Push(tNow)
+        Quit ..GuardedExecuteRows("UPDATE OcuPilot_Kernel_State.Proposal SET State = ? WHERE %EXACT(State) = ? AND Burned = 0 AND %EXACT(ExpiresAt) < ?", .tParams, .tRows)
+    }
+    Set tParams = [].%Push(..#STATEEXPIRED).%Push(pUser).%Push(..#STATELIVE).%Push(tNow)
+    Quit ..GuardedExecuteRows("UPDATE OcuPilot_Kernel_State.Proposal SET State = ? WHERE %EXACT(UserName) = ? AND %EXACT(State) = ? AND Burned = 0 AND %EXACT(ExpiresAt) < ?", .tParams, .tRows)
+}
+
+/// <p>The version proposal <var>pProposalKey</var>'s row currently carries, or <code>0</code> when
+/// no row holds that id. The snapshot a claim is made conditional on; never taken from a
+/// request.</p>
+ClassMethod GuardedRowVersion(pProposalKey As %String, Output pVersion As %Integer) As %Status
+{
+    Set pVersion = 0
+    If pProposalKey = "" Quit $$$OK
+    Set tSC = ..GuardedOpenOneWhere("SELECT ID FROM OcuPilot_Kernel_State.Proposal WHERE %EXACT(ProposalKey) = ?", pProposalKey, .tRow)
+    If $$$ISERR(tSC) Quit tSC
+    If $IsObject(tRow) Set pVersion = +tRow.RowVersion
+    Set tRow = ""
+    Quit $$$OK
+}
+
+/// <p>The state a reader is shown for a row stored <var>pStored</var> expiring at
+/// <var>pExpiresAt</var>: <parameter>STATEEXPIRED</parameter> for a still-live row whose window has
+/// passed, and the stored state otherwise (DW-1209).</p>
+/// <p><b>Read-time projection, so no reader can see a live card the instance would refuse.</b> The
+/// stored value is flipped to match the next time the confirm or cancel path touches the row; until
+/// then the two agree everywhere it is read, because every read goes through here.</p>
+ClassMethod ProjectedState(pStored As %String, pExpiresAt As %String) As %String
+{
+    If pStored '= ..#STATELIVE Quit pStored
+    Set tExpires = ..SecondsOf(pExpiresAt)
+    If tExpires = "" Quit pStored
+    If ..NowSeconds() > tExpires Quit ..#STATEEXPIRED
+    Quit pStored
 }
 
 /// <p>Turn <var>pTurnKey</var>'s proposals owned by <var>pUser</var>, oldest first, as the wire
@@ -326,7 +526,12 @@ ClassMethod RowValues(pRow As OcuPilot.Kernel.State.Propose, Output pValues) As 
     Set pValues("reverse") = ..Text(pRow.Reverse)
     Set pValues("createdAt") = ..Text(pRow.CreatedAt)
     Set pValues("expiresAt") = ..Text(pRow.ExpiresAt)
-    Set pValues("state") = ..Text(pRow.State)
+    Set pValues("storedState") = ..Text(pRow.State)
+    Set pValues("state") = ..ProjectedState(pValues("storedState"), pValues("expiresAt"))
+    Set pValues("closedReason") = ..Text(pRow.ClosedReason)
+    Set pValues("confirmedAt") = ..Text(pRow.ConfirmedAt)
+    Set pValues("definitionId") = ..Text(pRow.DefinitionId)
+    Set pValues("definitionVersion") = ..Text(pRow.DefinitionVersion)
     Set pValues("auditWarning") = ''pRow.AuditWarning
     Set tSC = ..GuardedStreamText(pRow, "Arguments", .tArguments)
     If $$$ISERR(tSC) Quit tSC
@@ -363,6 +568,8 @@ ClassMethod WireRow(ByRef pValues, Output pOut As %DynamicObject) As %Status [ P
     Do tOut.%Set("expectedImpact", $Get(pValues("expectedImpact")), "string")
     Do tOut.%Set("reverse", $Get(pValues("reverse")), "string")
     Do tOut.%Set("state", $Get(pValues("state")), "string")
+    Do tOut.%Set("closedReason", $Get(pValues("closedReason")), "string")
+    Do tOut.%Set("confirmedAt", $Get(pValues("confirmedAt")), "string")
     Do tOut.%Set("auditWarning", ''$Get(pValues("auditWarning")), "boolean")
     Set pOut = tOut
     Quit $$$OK

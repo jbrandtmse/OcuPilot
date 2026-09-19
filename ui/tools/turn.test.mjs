@@ -34,6 +34,8 @@ const {
   turnProgressPath,
   turnStopPath,
   turnNavigationPath,
+  proposalConfirmPath,
+  proposalCancelPath,
   NAV_REFUSED_UNSAVED_CODE,
   stepLabel,
   turnErrorBanner,
@@ -45,8 +47,41 @@ function ok(body, status = 200) {
   return { kind: 'ok', status, body };
 }
 
-function err(status, code, reason = 'refused') {
-  return { kind: 'error', status, code, reason, detail: null };
+function err(status, code, reason = 'refused', detail = null) {
+  return { kind: 'error', status, code, reason, detail };
+}
+
+/** One wire proposal, as a poll or a restore carries it. */
+function wireProposal(overrides = {}) {
+  return {
+    proposalId: 'p1',
+    target: { type: 'web-application', scope: 'instance', id: '/csp/myapp' },
+    expiresAt: '2026-09-19T10:05:00Z',
+    tool: 'webapp.list.update',
+    changed: [{ field: 'Enabled', before: 'false', after: 'true' }],
+    unchangedCount: 2,
+    rationale: 'because',
+    expectedImpact: 'it serves',
+    reverse: 'set it back',
+    state: 'live',
+    closedReason: '',
+    confirmedAt: '',
+    auditWarning: false,
+    ...overrides,
+  };
+}
+
+/** A fixed moment inside the fixture proposals' own window. */
+const NOW_MS = Date.parse('2026-09-19T10:00:00Z');
+
+/** A bus that records what was published, over the same fixed moment. */
+function recordingBus() {
+  const events = [];
+  return {
+    events,
+    publish: (event) => events.push(event),
+    subscribe: () => () => {},
+  };
 }
 
 /** Per-path response queues, and every call recorded (path, method, body). */
@@ -1104,4 +1139,188 @@ test('isTerminalState is true for the four terminal states and false for queued/
   assert.equal(isTerminalState('failed'), true);
   assert.equal(isTerminalState('queued'), false);
   assert.equal(isTerminalState('running'), false);
+});
+
+// --- Confirm and cancel (Story 5.3) ------------------------------------------------------------
+
+test('confirmProposal posts the id in the route and only the declared secrets in the body', async () => {
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+    ],
+    [proposalConfirmPath('p1')]: [ok({ proposalId: 'p1', state: 'confirmed', closedReason: '', confirmedAt: '2026-09-19T10:01:02Z' })],
+  });
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' });
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab(), now: () => NOW_MS });
+  await turn.restore();
+
+  const outcome = await turn.confirmProposal('p1', { Password: 'hunter2' });
+  assert.equal(outcome.ok, true);
+  assert.equal(outcome.state, 'confirmed');
+  assert.equal(outcome.confirmedAt, '2026-09-19T10:01:02Z');
+
+  const posted = api.calls.filter((call) => call.method === 'POST');
+  assert.equal(posted.length, 1);
+  assert.equal(posted[0].path, proposalConfirmPath('p1'), 'the id travels in the route');
+  assert.deepEqual(JSON.parse(posted[0].body), { Password: 'hunter2' }, 'and the body is the secrets alone');
+  // AD-6: nothing of the stored proposal is sent back.
+  for (const key of ['changed', 'payload', 'unchangedCount', 'fingerprint', 'target']) {
+    assert.equal(posted[0].body.includes(key), false, `the body carries no ${key}`);
+  }
+
+  const [entry] = turn.entries();
+  assert.equal(entry.proposals[0].state, 'confirmed', "the store records the instance's own answer");
+  assert.equal(entry.proposals[0].confirmedAt, '2026-09-19T10:01:02Z');
+});
+
+test('a refusal that closed the row records the state it closed in, from the envelope detail', async () => {
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+    ],
+    [proposalConfirmPath('p1')]: [
+      err(409, 'PROPOSAL.TARGETCHANGED', 'the target changed', { state: 'canceled', closedReason: 'target-changed' }),
+    ],
+  });
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' });
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab(), now: () => NOW_MS });
+  await turn.restore();
+
+  const outcome = await turn.confirmProposal('p1');
+  assert.equal(outcome.ok, false);
+  assert.equal(outcome.code, 'PROPOSAL.TARGETCHANGED');
+  assert.equal(outcome.state, 'canceled');
+  assert.equal(outcome.closedReason, 'target-changed');
+  assert.equal(turn.entries()[0].proposals[0].closedReason, 'target-changed');
+});
+
+test('a refusal that left the row live records nothing, so the card offers Confirm again', async () => {
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+    ],
+    [proposalConfirmPath('p1')]: [err(403, 'AGENT.READONLY.ENFORCED', 'read-only is enforced')],
+  });
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' });
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab(), now: () => NOW_MS });
+  await turn.restore();
+
+  const before = turn.entries()[0].proposals[0];
+  const outcome = await turn.confirmProposal('p1');
+  assert.equal(outcome.ok, false);
+  assert.equal(outcome.state, '', 'the instance said nothing about the row, so nothing is recorded');
+  assert.deepEqual(turn.entries()[0].proposals[0], before);
+});
+
+test('cancelProposal posts the cancel route and records the row the instance closed', async () => {
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+    ],
+    [proposalCancelPath('p1')]: [ok({ proposalId: 'p1', state: 'canceled', closedReason: 'you', confirmedAt: '' })],
+  });
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' });
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab(), now: () => NOW_MS });
+  await turn.restore();
+
+  const outcome = await turn.cancelProposal('p1');
+  assert.equal(outcome.ok, true);
+  assert.equal(outcome.closedReason, 'you');
+  assert.equal(turn.entries()[0].proposals[0].state, 'canceled');
+  const posted = api.calls.filter((call) => call.method === 'POST');
+  assert.equal(posted[0].path, proposalCancelPath('p1'));
+});
+
+test('a confirm closes the AD-43 pause on the same transition the card renders', async () => {
+  const bus = recordingBus();
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+    ],
+    [turnProgressPath('turn-1')]: [
+      ok({ state: 'completed', steps: [], stepsDropped: 0, reply: 'done', error: null, proposals: [wireProposal()] }),
+    ],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+    [CONVERSATION_PATH]: [ok({ conversationId: 'c1' }, 201)],
+    [proposalConfirmPath('p1')]: [ok({ proposalId: 'p1', state: 'confirmed', closedReason: '', confirmedAt: '2026-09-19T10:01:02Z' })],
+  });
+  const { schedule, scheduled } = fakeSchedule();
+  const turn = new TurnStore({
+    api,
+    storage: memoryStorage(),
+    navigationType: freshTab(),
+    schedule,
+    now: () => NOW_MS,
+    bus,
+  });
+  await turn.send('do it');
+  await settle();
+  scheduled.shift()?.run();
+  await settle();
+  assert.deepEqual(bus.events.map((event) => event.kind), ['proposal-open']);
+
+  await turn.confirmProposal('p1');
+  assert.deepEqual(
+    bus.events.map((event) => event.kind),
+    ['proposal-open', 'proposal-closed'],
+    'the pause lifts on the confirm rather than waiting for a poll that will not come'
+  );
+});
+
+test('a live row past its own expiresAt opens no pause (DW-1209)', async () => {
+  const bus = recordingBus();
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+    ],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+    [CONVERSATION_PATH]: [ok({ conversationId: 'c1' }, 201)],
+    [turnProgressPath('turn-1')]: [
+      ok({ state: 'running', steps: [], stepsDropped: 0, reply: null, error: null, proposals: [wireProposal()] }),
+    ],
+  });
+  const { schedule, scheduled } = fakeSchedule();
+  const turn = new TurnStore({
+    api,
+    storage: memoryStorage(),
+    navigationType: freshTab(),
+    schedule,
+    // Ten minutes after the fixture proposal's own window closed.
+    now: () => Date.parse('2026-09-19T10:15:00Z'),
+    bus,
+  });
+  await turn.send('do it');
+  await settle();
+  scheduled.shift()?.run();
+  await settle();
+  assert.deepEqual(bus.events, [], 'a row the instance would project expired holds no screen');
+});
+
+test('New conversation closes every proposal this store had open (DW-1243)', async () => {
+  const bus = recordingBus();
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'c2' }, 201)],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+    [turnProgressPath('turn-1')]: [
+      ok({ state: 'completed', steps: [], stepsDropped: 0, reply: 'done', error: null, proposals: [wireProposal()] }),
+    ],
+  });
+  const { schedule, scheduled } = fakeSchedule();
+  const turn = new TurnStore({
+    api,
+    storage: memoryStorage(),
+    navigationType: freshTab(),
+    schedule,
+    now: () => NOW_MS,
+    bus,
+  });
+  await turn.send('do it');
+  await settle();
+  scheduled.shift()?.run();
+  await settle();
+  assert.deepEqual(bus.events.map((event) => event.kind), ['proposal-open']);
+
+  assert.equal(await turn.newConversation(), true);
+  assert.deepEqual(bus.events.map((event) => event.kind), ['proposal-open', 'proposal-closed']);
+  assert.deepEqual(turn.entries(), []);
 });

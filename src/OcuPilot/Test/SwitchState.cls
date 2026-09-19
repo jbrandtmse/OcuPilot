@@ -27,6 +27,25 @@ Method OnAfterOneTest() As %Status
     Quit $$$OK
 }
 
+/// <p>DW-435: the instance's one switch row is one row because the store <b>refuses</b> a second,
+/// not because every writer happens to check first. Two callers that both read "no row" would
+/// otherwise both create one, and <code>SELECT TOP 1 ... ORDER BY ID</code> would answer the older
+/// of the two for ever after.</p>
+/// <p>Mutation: delete <code>Index SwitchSingletonIdx</code> from
+/// <class>OcuPilot.Kernel.State.Switch</class>, or the <code>Set tRow.Singleton = 1</code> line from
+/// <method>SetGuarded</method>, and recompile the package -- this goes red.</p>
+Method TestASecondSwitchRowIsRefused()
+{
+    Kill tValues
+    Set tValues("enforcedReadOnly") = 0
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Switch).SetGuarded(.tValues), "the instance's one row is written")
+    Do $$$AssertEquals(##class(OcuPilot.Test.SwitchFixture).SwitchRowCount(), 1, "and there is exactly one")
+
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "INSERT INTO OcuPilot_Kernel_State.SwitchState (Singleton, RowVersion) VALUES (1, 1)")
+    Do $$$AssertTrue(tRS.%SQLCODE < 0, "a second row is refused by the store itself: SQLCODE=" _ tRS.%SQLCODE)
+    Do $$$AssertEquals(##class(OcuPilot.Test.SwitchFixture).SwitchRowCount(), 1, "and the instance still holds exactly one")
+}
+
 /// <p><b>A clean instance answers the defaults and holds no row</b>, which is what "a fresh install
 /// leaves the kill switch off and writes no switch row" means.</p>
 Method TestACleanInstanceAnswersTheDefaultsWithNoRow()

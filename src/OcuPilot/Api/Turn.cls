@@ -160,6 +160,15 @@ ClassMethod HandleStart() As %Status
         Set tValues("context") = tContextJson
         Set tValues("contextRowCap") = tRowCap
         Set tValues("conversationId") = tConversationId
+        ; EXPERIENCE.md's cancel step, as a fact of the instance: a typed message closes every live
+        ; proposal of this conversation before the turn that carries it is spawned, so a confirm
+        ; arriving afterwards meets a row that is no longer live. Recorded, never optimistic -- the
+        ; client's own transition mirrors this rather than standing in for it.
+        Set tCloseSC = ##class(OcuPilot.Kernel.State.Propose).GuardedCloseLiveForConvo(tConversationId, tUser, ##class(OcuPilot.Kernel.State.Propose).#REASONMESSAGE, .tClosedCount)
+        If $$$ISERR(tCloseSC) {
+            Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ##class(%Exception.StatusException).CreateFromStatus(tCloseSC))
+            Quit
+        }
         Set tStartSC = ##class(OcuPilot.Kernel.Agent.Job).Start(.tValues, .tStarted)
         If $$$ISERR(tStartSC) || 'tStarted Do ##class(OcuPilot.Kernel.Fault).LogRaw("turn", "the turn job could not be started", $Select($$$ISERR(tStartSC): tStartSC, 1: $$$ERROR($$$GeneralError, "the spawn was not accepted within its timeout")), ##class(OcuPilot.Api.Error).#TURNUNAVAILABLE)
         If 'tStarted {

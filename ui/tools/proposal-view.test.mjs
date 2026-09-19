@@ -17,8 +17,12 @@ import { readFileSync } from 'node:fs';
 //   unknown-expiry test goes red, on a live card shown expired.
 // - drop the mask from `toCardView`'s declared-secret row -> the masking test goes red, and the
 //   secret would reach the diff in clear.
-// - have `restoredProposals` pass the wire `state` through -> the restore test goes red, and a
-//   restored card would render live with Confirm available.
+// - have `restoredProposals` pass the wire `state` through -> the still-live restore test goes
+//   red, and a restored card would render live with Confirm available.
+// - have `restoredProposals` overwrite every state, not only `live` -> the DW-1225 test goes red,
+//   and a confirmed write would read as expired after a reload.
+// - drop the `closedReason` arm from `phaseForState` -> the reason table goes red, and every
+//   cancel would read as the user's own.
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const corePath = (name) => join(uiRoot, 'src', 'app', 'core', name);
@@ -147,7 +151,7 @@ test('the countdown caption substitutes the published m:ss rather than replacing
 
 // --- The phases ---------------------------------------------------------------------------------
 
-test('the six terminal phases each read their published status line, and live reads none', () => {
+test('the seven terminal phases each read their published status line, and live reads none', () => {
   assert.equal(statusLineFor('live', '_SYSTEM', '10:00:00'), '');
   assert.equal(statusLineFor('confirming', '_SYSTEM', '10:00:00'), '');
   assert.equal(
@@ -162,23 +166,50 @@ test('the six terminal phases each read their published status line, and live re
   assert.equal(statusLineFor('canceled-sibling', '', ''), STRINGS.proposalStatusCanceledSibling);
   assert.equal(statusLineFor('expired', '', ''), STRINGS.proposalStatusExpired);
   assert.equal(statusLineFor('switched-off', '', ''), STRINGS.proposalStatusAgentSwitchedOff);
+  // EXPERIENCE.md publishes one fixed string for the fingerprint refusal and DESIGN.md says the
+  // warning banner's fixed string is EXPERIENCE.md's -- so the status line IS the banner's text,
+  // and no second piece of copy exists for it.
+  assert.equal(statusLineFor('target-changed', '', ''), STRINGS.proposalTargetChanged);
 });
 
-test('every phase but live and confirming is terminal, and only expiry offers Re-propose', () => {
+test('every phase but live and confirming is terminal, and two of them offer Re-propose', () => {
   for (const phase of ['live', 'confirming']) assert.equal(isTerminalPhase(phase), false, phase);
   for (const phase of [
     'confirmed',
     'canceled-by-you',
     'canceled-by-message',
     'canceled-sibling',
+    'target-changed',
     'expired',
     'switched-off',
   ]) {
     assert.equal(isTerminalPhase(phase), true, phase);
   }
+  // The expiry limit's accommodation (WCAG 2.2.1) and the fingerprint refusal's are the same act:
+  // ask again, and the instance reads the target fresh and diffs it fresh.
   assert.equal(offersRepropose('expired'), true);
+  assert.equal(offersRepropose('target-changed'), true);
   assert.equal(offersRepropose('canceled-by-you'), false);
+  assert.equal(offersRepropose('confirmed'), false);
   assert.equal(offersRepropose('live'), false);
+});
+
+test('a canceled row reads its phase from the reason the instance recorded with it', () => {
+  const propose = readFileSync(PROPOSE_CLS, 'utf8');
+  const reasonOf = (name) => {
+    const match = new RegExp(`Parameter ${name} = "([^"]+)";`).exec(propose);
+    assert.ok(match, `${PROPOSE_CLS} declares Parameter ${name}`);
+    return match[1];
+  };
+  const canceled = (/Parameter STATECANCELED = "([^"]+)";/.exec(propose) ?? [])[1];
+  assert.ok(canceled, 'the store declares its canceled state');
+  assert.equal(phaseForState(canceled, reasonOf('REASONYOU')), 'canceled-by-you');
+  assert.equal(phaseForState(canceled, reasonOf('REASONMESSAGE')), 'canceled-by-message');
+  assert.equal(phaseForState(canceled, reasonOf('REASONSIBLING')), 'canceled-sibling');
+  assert.equal(phaseForState(canceled, reasonOf('REASONTARGETCHANGED')), 'target-changed');
+  // A reason this client has never heard of claims least about why, rather than inventing one.
+  assert.equal(phaseForState(canceled, 'something new'), 'canceled-by-you');
+  assert.equal(phaseForState(canceled), 'canceled-by-you');
 });
 
 test("phaseForState reads the store's own vocabulary, and an unknown state reads as expired", () => {
@@ -198,7 +229,7 @@ test("phaseForState reads the store's own vocabulary, and an unknown state reads
 
 // --- The restore path (DW-1213) -----------------------------------------------------------------
 
-test('a restored proposal is recorded terminal whatever the wire said, so its card is expired', () => {
+test('a still-live restored proposal is shown expired, with Re-propose', () => {
   const [restored] = restoredProposals([wireProposal()]);
   assert.equal(restored.state, PROPOSAL_EXPIRED_STATE);
   assert.equal(phaseForState(restored.state), 'expired');
@@ -207,6 +238,22 @@ test('a restored proposal is recorded terminal whatever the wire said, so its ca
   assert.equal(restored.proposalId, 'p1');
   assert.equal(restored.changed.length, 2);
   assert.equal(restored.unchangedCount, 38);
+});
+
+test('a restored row the instance already closed keeps the state it closed in (DW-1225)', () => {
+  const rows = restoredProposals([
+    wireProposal({ proposalId: 'p-confirmed', state: 'confirmed', confirmedAt: '2026-09-19T10:00:00Z' }),
+    wireProposal({ proposalId: 'p-sibling', state: 'canceled', closedReason: 'sibling' }),
+    wireProposal({ proposalId: 'p-changed', state: 'canceled', closedReason: 'target-changed' }),
+  ]);
+  assert.equal(rows[0].state, 'confirmed');
+  assert.equal(phaseForState(rows[0].state, rows[0].closedReason), 'confirmed');
+  assert.equal(rows[0].confirmedAt, '2026-09-19T10:00:00Z', 'the moment of the write survives the reload');
+  assert.equal(phaseForState(rows[1].state, rows[1].closedReason), 'canceled-sibling');
+  assert.equal(phaseForState(rows[2].state, rows[2].closedReason), 'target-changed');
+  assert.equal(offersRepropose(phaseForState(rows[2].state, rows[2].closedReason)), true);
+  // Only the still-live one is overwritten, which is the whole of the product decision.
+  assert.equal(restoredProposals([wireProposal()])[0].state, PROPOSAL_EXPIRED_STATE);
 });
 
 test('a restored turn with no proposals key reads as no cards rather than as a failure', () => {

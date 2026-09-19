@@ -59,9 +59,31 @@ export function turnNavigationPath(id: string): string {
   return TURN_PATH + '/' + encodeURIComponent(id) + '/navigation';
 }
 
+/** The confirm and cancel routes of one proposal (Story 5.3). */
+export const PROPOSAL_PATH = '/api/ocupilot/proposal';
+
+export function proposalConfirmPath(id: string): string {
+  return PROPOSAL_PATH + '/' + encodeURIComponent(id) + '/confirm';
+}
+
+export function proposalCancelPath(id: string): string {
+  return PROPOSAL_PATH + '/' + encodeURIComponent(id) + '/cancel';
+}
+
 /** The one refusal code this client is ever the author of (Story 4.7, `POST /turn/:id/navigation`'s
  * closed vocabulary) -- a dirty `form-page`'s decline, and nothing else. */
 export const NAV_REFUSED_UNSAVED_CODE = 'NAV.REFUSEDUNSAVED';
+
+/** What a decision answers when there was nothing to decide, or the transport gave no envelope. */
+const NO_OUTCOME: ProposalOutcome = {
+  ok: false,
+  state: '',
+  closedReason: '',
+  confirmedAt: '',
+  status: 0,
+  code: '',
+  reason: '',
+};
 
 /** Storage key for the per-tab conversation id (Boundaries & Constraints). */
 export const CONVERSATION_STORAGE_KEY = 'ocupilot.conversation';
@@ -155,6 +177,10 @@ export interface TurnProposal {
   readonly expectedImpact: string;
   readonly reverse: string;
   readonly state: string;
+  /** Why a `canceled` row closed: `you`, `message`, `sibling` or `target-changed`; `''` otherwise. */
+  readonly closedReason: string;
+  /** When a confirmed write was committed, as the instance stamped it; `''` until one is. */
+  readonly confirmedAt: string;
   /** Whether this write would stop the instance marking agent writes (AD-10, AD-15). */
   readonly auditWarning: boolean;
 }
@@ -195,6 +221,26 @@ export interface TurnEntry {
 }
 
 export type SendOutcome = 'sent' | 'locked' | 'error';
+
+/**
+ * What a confirm or a cancel answered (Story 5.3).
+ *
+ * **Every value here came from the instance.** `state`, `closedReason` and `confirmedAt` are the
+ * row's own, read off the 200 body or off the refusal's `detail` where the refusal closed the row;
+ * a refusal that left the row live carries none and leaves `state` `''`. The client authors no
+ * proposal state (AD-6).
+ */
+export interface ProposalOutcome {
+  readonly ok: boolean;
+  /** The row's terminal state, or `''` when the refusal left it exactly as it was. */
+  readonly state: string;
+  readonly closedReason: string;
+  readonly confirmedAt: string;
+  /** The refusal's own envelope, for the panel's banner; `0`/`''` on success. */
+  readonly status: number;
+  readonly code: string;
+  readonly reason: string;
+}
 
 /**
  * A refused Send, as the panel renders it (Story 4.8, DW-1054): the envelope's own `code` and
@@ -339,6 +385,8 @@ function parseProposal(value: unknown): TurnProposal | null {
     expectedImpact: textAt(row, 'expectedImpact'),
     reverse: textAt(row, 'reverse'),
     state: textAt(row, 'state'),
+    closedReason: textAt(row, 'closedReason'),
+    confirmedAt: textAt(row, 'confirmedAt'),
     auditWarning: boolAt(row, 'auditWarning'),
   };
 }
@@ -354,16 +402,20 @@ export function parseProposals(value: unknown): TurnProposal[] {
 }
 
 /**
- * `proposals[]` as a **restored** turn carries them: parsed, then recorded terminal.
+ * `proposals[]` as a **restored** turn carries them: parsed, and shown expired only where the
+ * instance still calls them live.
  *
- * The wire's own `state` is `live` on every row the instance answers with, because the expiry that
- * closes one is Story 5.3's. A restored card is nonetheless shown expired, with Re-propose -- so
- * the terminal state is decided here, on the restore path, and never read off the wire. That is
- * also what keeps a reload from arming the AD-43 pause: `publishProposals` opens a proposal only
- * while its state is live, so a set that is terminal on arrival publishes nothing.
+ * A row the instance has already closed is shown in the state it closed in -- confirmed, canceled
+ * with its reason, expired -- because that state is a fact the transcript should not overwrite. A
+ * row that is still live is shown expired, with Re-propose, by product decision: a card restored
+ * from a reloaded transcript is always shown that way (EXPERIENCE.md's expiry step). Either way
+ * every restored row is terminal, which is what keeps a reload from arming the AD-43 pause:
+ * `publishProposals` opens a proposal only while its state is live.
  */
 export function restoredProposals(value: unknown): TurnProposal[] {
-  return parseProposals(value).map((proposal) => ({ ...proposal, state: PROPOSAL_EXPIRED_STATE }));
+  return parseProposals(value).map((proposal) =>
+    proposal.state === PROPOSAL_LIVE_STATE ? { ...proposal, state: PROPOSAL_EXPIRED_STATE } : proposal
+  );
 }
 
 /** Every proposal `entries` carries, flattened -- what `restore()` hands the publisher. */
@@ -471,6 +523,11 @@ export interface TurnStoreOptions {
   /** The poll interval in ms. Defaults to 1,000 (Boundaries & Constraints). */
   readonly pollMs?: number;
   /**
+   * The moment, in epoch milliseconds. Defaults to `Date.now`. Injected so a test drives a
+   * proposal past its own `expiresAt` without waiting AD-6's ten minutes out.
+   */
+  readonly now?: () => number;
+  /**
    * The one client bus (AD-14, AD-43). Given, this store publishes `proposal-open` the first time
    * a poll carries a live proposal and `proposal-closed` when that id leaves a poll or turns
    * terminal, which is the channel the auto-refresh pause rides on. Optional, and the same shape
@@ -484,6 +541,7 @@ export class TurnStore {
   private readonly storage: TokenStorage;
   private readonly schedule: (run: () => void, delayMs: number) => void;
   private readonly pollMs: number;
+  private readonly now: () => number;
   private readonly bus: ChangeBus | null;
 
   /** The proposals this store has published `proposal-open` for and not yet closed, by id. */
@@ -532,6 +590,7 @@ export class TurnStore {
         setTimeout(run, delayMs);
       });
     this.pollMs = options.pollMs ?? 1000;
+    this.now = options.now ?? (() => Date.now());
     this.bus = options.bus ?? null;
 
     const kind = options.navigationType();
@@ -738,6 +797,101 @@ export class TurnStore {
   }
 
   /**
+   * Confirm proposal `id`, with `secrets` as the body -- the fields the target screen declares
+   * secret-typed, and nothing else (AD-6: the channel is closed, and the instance refuses any
+   * other key outright).
+   *
+   * **The payload is the instance's.** This posts the id in the route and the declared secret
+   * values in the body; the stored arguments, the stored payload and the target are never sent.
+   * The answer's `state`, `closedReason` and `confirmedAt` are recorded against the proposal so
+   * the card reads its terminal phase off the wire rather than from a client-side decision, and a
+   * refusal that closed the row on the instance is recorded the same way, from its `detail`.
+   */
+  async confirmProposal(id: string, secrets: Record<string, string> = {}): Promise<ProposalOutcome> {
+    return this.decideProposal(proposalConfirmPath(id), id, JSON.stringify(secrets));
+  }
+
+  /** Cancel proposal `id`: the user's own decision not to apply it. */
+  async cancelProposal(id: string): Promise<ProposalOutcome> {
+    return this.decideProposal(proposalCancelPath(id), id, '{}');
+  }
+
+  /** The one request both decisions make, and the one place either answer is recorded. */
+  private async decideProposal(path: string, id: string, body: string): Promise<ProposalOutcome> {
+    if (id === '') return NO_OUTCOME;
+    const result = await this.api.requestJson<Record<string, unknown>>(path, {
+      method: 'POST',
+      body,
+    });
+    if (result.kind === 'ok') {
+      const outcome: ProposalOutcome = {
+        ok: true,
+        state: textAt(result.body, 'state'),
+        closedReason: textAt(result.body, 'closedReason'),
+        confirmedAt: textAt(result.body, 'confirmedAt'),
+        status: 200,
+        code: '',
+        reason: '',
+      };
+      this.recordProposalState(id, outcome);
+      return outcome;
+    }
+    if (result.kind !== 'error') return NO_OUTCOME;
+    // A refusal that closed the row carries the row's own new state in `detail`; one that left it
+    // live carries none, and the card goes back to offering Confirm.
+    const detail = result.detail;
+    const outcome: ProposalOutcome = {
+      ok: false,
+      state: detail === null ? '' : textAt(detail, 'state'),
+      closedReason: detail === null ? '' : textAt(detail, 'closedReason'),
+      confirmedAt: '',
+      status: result.status,
+      code: result.code ?? '',
+      reason: result.reason ?? '',
+    };
+    if (outcome.state !== '') this.recordProposalState(id, outcome);
+    return outcome;
+  }
+
+  /**
+   * Record `outcome`'s state on proposal `id` wherever this store holds it, then republish, so the
+   * AD-43 pause lifts on the same transition the card renders.
+   */
+  private recordProposalState(id: string, outcome: ProposalOutcome): void {
+    const apply = (proposals: readonly TurnProposal[]): readonly TurnProposal[] =>
+      proposals.some((proposal) => proposal.proposalId === id)
+        ? proposals.map((proposal) =>
+            proposal.proposalId === id
+              ? {
+                  ...proposal,
+                  state: outcome.state,
+                  closedReason: outcome.closedReason,
+                  confirmedAt: outcome.confirmedAt,
+                }
+              : proposal
+          )
+        : proposals;
+    this.entriesValue = this.entriesValue.map((entry) => {
+      const proposals = apply(entry.proposals);
+      return proposals === entry.proposals ? entry : { ...entry, proposals };
+    });
+    if (this.liveEntryValue !== null) {
+      const proposals = apply(this.liveEntryValue.proposals);
+      if (proposals !== this.liveEntryValue.proposals) {
+        this.liveEntryValue = { ...this.liveEntryValue, proposals };
+      }
+    }
+    this.notify();
+    this.publishProposals(this.everyProposal());
+  }
+
+  /** Every proposal this store holds, live entry included. */
+  private everyProposal(): readonly TurnProposal[] {
+    const live = this.liveEntryValue === null ? [] : [...this.liveEntryValue.proposals];
+    return [...proposalsOf(this.entriesValue), ...live];
+  }
+
+  /**
    * Start a fresh conversation and clear the transcript. Refused while busy -- the caller
    * (`panel.ts`) also holds the control `aria-disabled` for the same reason, but this guard
    * keeps the store correct on its own.
@@ -754,6 +908,10 @@ export class TurnStore {
     }
     this.entriesValue = [];
     this.lockedValue = false;
+    // The instance closed every live proposal of this caller when it minted the conversation, and
+    // the transcript that explained them is gone -- so every pause this store opened is lifted
+    // here, through the store's one publisher (DW-1243).
+    this.publishProposals([]);
     // A refusal belongs to the Send that met it. Leaving it set here would float it over a fresh,
     // empty transcript belonging to a conversation it was never about.
     this.sendErrorValue = null;
@@ -922,8 +1080,12 @@ export class TurnStore {
     const bus = this.bus;
     if (bus === null) return;
     const live = new Set<string>();
+    const nowMs = this.now();
     for (const proposal of proposals) {
       if (proposal.state !== PROPOSAL_LIVE_STATE) continue;
+      // DW-1209: the instance projects a row past its window as expired at every read, and the
+      // pause must lift on the same boundary -- a poll that stops arriving is not a close.
+      if (proposal.expiresAt > 0 && proposal.expiresAt <= nowMs) continue;
       live.add(proposal.proposalId);
       if (this.openProposals.has(proposal.proposalId)) continue;
       this.openProposals.set(proposal.proposalId, proposal);

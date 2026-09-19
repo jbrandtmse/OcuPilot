@@ -290,10 +290,12 @@ export function entityLabelProblem(declaration) {
  * (AD-3, AD-6) -- the same sentences `OcuPilot.Screen.Registry.ConfirmChannelProblem` returns.
  *
  * Both are optional arrays of non-empty, unique strings. Every `fingerprintExcludes` path names a
- * field of this screen's write tool, so an exclusion cannot quietly cover nothing. And a declared
- * criterion, or a settable string field of that tool, whose name matches the credential pattern
- * and is absent from `secretArguments` is refused (DW-1121): it is a secret the confirm channel
- * would otherwise carry in clear.
+ * field of this screen's write tool, or a field its own read declares (`read.fields`, the
+ * `rowGet` detail fields and the derived field names), so an exclusion cannot quietly cover
+ * nothing while a side-effect field the write tool does not settle can still be declared. And a
+ * declared criterion, or a settable string field of that tool, whose name matches the credential
+ * pattern and is absent from `secretArguments` is refused (DW-1121): it is a secret the confirm
+ * channel would otherwise carry in clear.
  *
  * `toolFields` is the generated `ToolFields.cls` block; a caller that supplies none (every fixture
  * in `screen-mirror.test.mjs`) is read as "this screen owns no write tool", which is what a
@@ -306,9 +308,10 @@ export function confirmChannelProblem(declaration, toolFields = {}) {
   if (typeof excludes === 'string') return excludes;
 
   const rows = toolFieldRows(declaration.toolIdentifier, toolFields);
+  const readFields = declaredReadFields(declaration);
   for (const path of excludes) {
-    if (!(path in rows)) {
-      return `fingerprintExcludes names '${path}', which is not a field of this screen's write tool (AD-6)`;
+    if (!(path in rows) && !readFields.includes(path)) {
+      return `fingerprintExcludes names '${path}', which is neither a field of this screen's write tool nor one its read declares (AD-6)`;
     }
   }
   const criteria = declaredCriterionParams(declaration);
@@ -316,6 +319,39 @@ export function confirmChannelProblem(declaration, toolFields = {}) {
   if (criterionFault !== null) return criterionFault;
   const settable = Object.keys(rows).filter((path) => rows[path]);
   return credentialNameProblem(settable, secrets, "the write tool's settable fields");
+}
+
+/**
+ * The field names `declaration`'s read declares: `read.fields`, `read.source.rowGet.fields` and
+ * the `field` of each `read.source.rowGet.derived` entry.
+ *
+ * Read for `confirmChannelProblem` alone, and read leniently: a malformed read contributes no
+ * names rather than a second refusal, because `readProblem` has already refused it.
+ */
+function declaredReadFields(declaration) {
+  const names = [];
+  const push = (value) => {
+    if (!Array.isArray(value)) return;
+    for (const entry of value) {
+      if (typeof entry !== 'string' || entry === '') continue;
+      if (!names.includes(entry)) names.push(entry);
+    }
+  };
+  const read = declaration.read;
+  if (read === undefined || read === null || typeof read !== 'object') return names;
+  push(read.fields);
+  const source = read.source;
+  if (source === undefined || source === null || typeof source !== 'object') return names;
+  const rowGet = source.rowGet;
+  if (rowGet === undefined || rowGet === null || typeof rowGet !== 'object') return names;
+  push(rowGet.fields);
+  if (!Array.isArray(rowGet.derived)) return names;
+  for (const entry of rowGet.derived) {
+    if (entry === null || typeof entry !== 'object') continue;
+    if (typeof entry.field !== 'string' || entry.field === '') continue;
+    if (!names.includes(entry.field)) names.push(entry.field);
+  }
+  return names;
 }
 
 /** `declaration[key]` as an array of non-empty unique strings, or a refusal sentence. */

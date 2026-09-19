@@ -62,6 +62,15 @@ Property ContextRowCap As %Integer [ InitialExpression = 200 ];
 /// <p>ISO-8601 UTC timestamp of the last write to this row.</p>
 Property UpdatedAt As %String(MAXLEN = 32);
 
+/// <p>The singleton discriminator: <code>1</code> on the instance's one row, and the same value on
+/// any second row a concurrent first create would write -- which the unique index below then
+/// refuses (DW-435). Without it two callers that both read "no row" would both create one and
+/// <code>SELECT TOP 1 ... ORDER BY ID</code> would silently answer the older of the two for ever
+/// after.</p>
+Property Singleton As %Integer [ InitialExpression = 1 ];
+
+Index SwitchSingletonIdx On Singleton [ Unique ];
+
 /// <p>The switches in force, as <var>pValues</var> subscripted by <code>killSwitch</code>,
 /// <code>killSwitchReason</code>, <code>enforcedReadOnly</code>, <code>shareContextByDefault</code>
 /// and <code>updatedAt</code>: the stored row's values where the instance holds one, the defaults
@@ -117,6 +126,7 @@ ClassMethod SetGuarded(ByRef pValues, pExpectedVersion As %String = "") As %Stat
         Set tSC = ..GuardedCurrent(.tRow)
         If $$$ISERR(tSC) Quit
         If '$IsObject(tRow) Set tRow = ..%New()
+        Set tRow.Singleton = 1
         Set tVersion = $Select(pExpectedVersion '= "": +pExpectedVersion, 1: +tRow.RowVersion)
         If $Data(pValues("killSwitch")) Set tRow.KillSwitch = ''+pValues("killSwitch")
         If $Data(pValues("killSwitchReason")) Set tRow.KillSwitchReason = pValues("killSwitchReason")

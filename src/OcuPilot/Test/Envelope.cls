@@ -349,19 +349,21 @@ Method TestRender405SetsAllowHeader()
 
 /// <p>I/O matrix "Handler success" row: a fixture route returning a
 /// <class>%DynamicObject</class> is written exactly once through
-/// <class>OcuPilot.Api.Response</class>, and <code>%response.ContentType</code> is
+/// <class>OcuPilot.Api.Response</class>, and the response's <code>ContentType</code> is
 /// <code>application/json</code> (mutation: delete the <code>%response.ContentType</code>
 /// assignment from <method>OcuPilot.Api.Response.JSON</method> and watch this go red).</p>
 Method TestHandlerSuccessWritesJsonOnceWithContentType()
 {
-    Set tSC = ##class(OcuPilot.Test.Dispatch).Invoke("OcuPilot.Test.RouterFixture", "/success", "GET", , .tBody, .tStatus)
+    ; The content type is read back as an output, not off %response: the dispatch's stubs are
+    ; New'd in its own frame and do not outlive the call (DW-1184).
+    Set tSC = ##class(OcuPilot.Test.Dispatch).Invoke("OcuPilot.Test.RouterFixture", "/success", "GET", , .tBody, .tStatus, .tAllow, , , .tContentType)
     Do $$$AssertStatusOK(tSC, "dispatch completes")
     Do $$$AssertEquals(tStatus, 200, "the success route returns 200")
     Do $$$AssertEquals((tBody [ "}{"), 0, "no double-write on the success path")
     Set tObj = ##class(%DynamicObject).%FromJSON(tBody)
     Do $$$AssertTrue($IsObject(tObj), "the success body parses as a single JSON object")
     Do $$$AssertEquals(tObj.ok, 1, "Response.JSON wrote the fixture's own payload, once")
-    Do $$$AssertEquals(%response.ContentType, "application/json", "Response.JSON sets application/json on the success path")
+    Do $$$AssertEquals(tContentType, "application/json", "Response.JSON sets application/json on the success path")
 }
 
 }

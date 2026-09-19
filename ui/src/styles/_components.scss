@@ -4296,6 +4296,45 @@ app-data-table {
   color: var(--ocu-success);
 }
 
+// The fingerprint refusal draws its status line inside the warning banner, above the footer's
+// Re-propose: EXPERIENCE.md publishes one fixed string for this transition and DESIGN.md says the
+// banner's fixed string is EXPERIENCE.md's, so the line IS the banner's text. The banner's own
+// colours win over the restrained ones above; the focus ring is still the status line's.
+.ocu-proposal-card-status-target-changed {
+  align-items: center;
+  font-weight: 600;
+}
+
+// Confirm while the request is out: the control stays where it is, at its own size, with a
+// spinner ahead of its label -- it is `aria-disabled` rather than removed, and it keeps focus.
+.ocu-proposal-card-confirm-busy {
+  cursor: progress;
+}
+
+.ocu-proposal-card-confirm-spinner {
+  display: inline-block;
+  width: 0.85em;
+  height: 0.85em;
+  margin-right: var(--ocu-space-1);
+  border: 2px solid currentcolor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  vertical-align: -0.1em;
+  animation: ocu-proposal-card-spin 0.8s linear infinite;
+}
+
+@keyframes ocu-proposal-card-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ocu-proposal-card-confirm-spinner {
+    animation: none;
+  }
+}
+
 // The restrained card: expired, canceled, confirmed-and-spent or kill-switched. **By role, at
 // opacity 1** (DESIGN.md rule 7: a 60% fade measured 2.77-4.38:1 over the sheet, and a receded
 // card is still read -- a reloaded transcript is made of them). The agent's two blocks keep their

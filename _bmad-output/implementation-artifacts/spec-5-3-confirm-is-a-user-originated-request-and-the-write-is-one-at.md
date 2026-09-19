@@ -2,12 +2,146 @@
 title: 'Story 5.3: Confirm is a user-originated request, and the write is one atomic transition'
 type: 'feature'
 created: '2026-09-19'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'fe670b822b4b152fa3f2eaf7a224e742a1142488'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context: []
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The panel hands the confirm request an empty secrets map, so AD-35's client half has no data path yet.
+    evidence: |-
+      Panel.secretsFor answers {} and says so: no shipped descriptor declares secretArguments (WebAppList declares []), so ProposalCard renders no masked field and there is nothing to collect. The kernel's merge (Confirm.WithSecrets) and both arms of the closed channel are exercised by ProposalConfirm.TestADeclaredSecretIsAcceptedAndMergedAtThePortCall and its closed-channel test; what is unexercised is the card -> panel -> body hop. The first real secret ships with Story 5.10.
+    location: >-
+      ui/src/app/shell/panel.ts secretsFor; ui/src/app/shell/proposal-card.ts secrets
+    severity: medium
+  - summary: >-
+      A mutating endpoint that queues its own work would be reported by AwaitTask, which consults no pair table.
+    evidence: |-
+      AdminPort.MUTATINGTYPES admits PUT, and AdminPort.QUERYPAIRS' own header already records that the probe runs on the synchronous path alone. Security.Applications' endpoint does not override ShouldRunAsync (checked on the instance: its Run and ShouldRunAsync both originate in %Api.Admin.Endpoint), so no mutating call OcuPilot makes today reaches AwaitTask. The gap opens with the first queueing write.
+    location: >-
+      src/OcuPilot/Port/AdminPort.cls AwaitTask, MUTATINGTYPES
+    severity: low
+  - summary: >-
+      The confirm and cancel paths expire stale rows across the whole table rather than the one they are about.
+    evidence: |-
+      Propose.GuardedClose and GuardedCloseLiveForConvo call GuardedExpireStale() with no user, which updates every live row past its ExpiresAt on the instance; only GuardedCloseLiveForUser narrows it. No index covers State or ExpiresAt either, and %EXACT() on the < predicate would foreclose one, so every cancel, typed message and New conversation scans the table. Correct and idempotent, but the cost grows with the table rather than with the request, and the retention sweep that would bound it is declared Not this story.
+    location: >-
+      src/OcuPilot/Kernel/State/Propose.cls GuardedExpireStale call sites
+    severity: low
+  - summary: >-
+      The sibling cancel leaves each sibling's RowVersion where it was, so a stale-save check would not see the change.
+    evidence: |-
+      GuardedClaimAndClose's sibling UPDATE sets State and ClosedReason and no version, while GuardedSaveIfCurrent's conditional update is over RowVersion alone. No false confirm is reachable, because the claim's own State = 'live' clause refuses a closed row (pinned by ProposalRace.TestAnExpiredRowIsNotClaimable's sibling case), but the two mechanisms disagree about what "this row changed" means.
+    location: >-
+      src/OcuPilot/Kernel/State/Propose.cls GuardedClaimAndClose
+    severity: low
+  - summary: >-
+      A send the instance accepts and then cannot spawn closes the conversation's proposals anyway, while the panel leaves the cards live.
+    evidence: |-
+      Api.Turn.HandleStart closes them before Job.Start, which is what the task asks for and what keeps the close from racing the new turn's own first proposal; a spawn that then answers 503 TURN.UNAVAILABLE leaves the rows canceled with reason message while Panel.sendCurrentDraft cancels its cards only on 'sent' (DW-1231). The divergence is visible until the next poll or reload, and the worst outcome is a refusal: pressing Confirm on such a card meets Confirm.ConversationMoved's closedReason = message arm and is refused PROPOSAL.CONVERSATION, never written.
+    location: >-
+      src/OcuPilot/Api/Turn.cls HandleStart; ui/src/app/shell/panel.ts sendCurrentDraft
+    severity: low
+  - summary: >-
+      No test asserts a successful confirmed write over the wire; only the browser leg does.
+    evidence: |-
+      Test.ConfirmRoute drives the refusals and the cancel and deliberately issues no confirmed write, because a success needs a real application to write to and the class runs wherever the suite runs. ui/browser/proposal-confirm.browser-spec.mjs covers the 200 path end to end against the throwaway, so a regression in it is caught by the browser gate rather than by the class sweep.
+    location: >-
+      src/OcuPilot/Test/ConfirmRoute.cls; ui/browser/proposal-confirm.browser-spec.mjs
+    severity: low
+  - summary: >-
+      Write.Claim carries no State clause, so a closed-but-unburned row runs every gate and one vendor GET before the claim refuses it.
+    evidence: |-
+      Claim tests token, user, expiry, Burned and the minting turn's state, never State. A row closed canceled/you or sibling is not burned (ProposalRace asserts exactly that), so it passes ClaimById, the restraint read, the pair check and FingerprintMatches -- which issues a live GET through AdminPort -- before GuardedClaimAndClose's State = 'live' clause refuses it as PROPOSAL.BURNED. The answer is correct; the cost is one read nobody needed.
+    location: >-
+      src/OcuPilot/Kernel/Proposal/Write.cls Claim
+    severity: low
+  - summary: >-
+      A new index is not built for rows that predate it, and no %BuildIndices step exists anywhere in the tree.
+    evidence: |-
+      grep -rn BuildIndices over src/ and scripts/ returns nothing, and SCHEMAVERSION deliberately does not move. ProposalTargetIdx is therefore absent for any Proposal row minted before the upgrade; a row minted inside AD-6's ten-minute window is still live afterwards, so the sibling cancel's TargetRef filter could miss it. Settled by seeding a live row, adding the index, recompiling and running the sibling UPDATE against it. The Switch/Egress twin is not reachable this way: the race those indices guard needs an empty table, where the index is current by construction.
+    location: >-
+      src/OcuPilot/Kernel/State/Propose.cls ProposalTargetIdx
+    severity: medium (unverified)
+  - summary: >-
+      AD-29's pair probe cannot be declared for a mutating call, and Invoke's doc comments still name TYPESUFFIXES alone.
+    evidence: |-
+      AdminPort.QueryPairProblem validates every declared QUERYPAIRS entry against $ListFromString(..#TYPESUFFIXES), which no longer carries every accepted suffix now that PUT resolves through MUTATINGTYPES -- so a Foo/PUT=<pair> entry would be refused by the port's own declaration validator. No such entry exists today, and the gap opens with the first mutating endpoint that needs one.
+    location: >-
+      src/OcuPilot/Port/AdminPort.cls QueryPairProblem, Invoke
+    severity: low
+  - summary: >-
+      AC6's "no window in which both are live and one is burned" is pinned by a source-text ordering scan, not by an executed observation.
+    evidence: |-
+      ProposalRace asserts $Find(TSTART) < $Find(sibling SQL) < $Find(TCOMMIT) over GuardedClaimAndClose's own UDL. The row states it also asserts are load-bearing, but the atomicity itself rests on Base.GuardedExecuteRows joining the open transaction rather than starting its own -- a contract that method's doc comment states and nothing tests. Giving it a TSTART/TCOMMIT per statement would reopen the window with the whole suite green. Pinning $TLEVEL inside and after a call would settle the contract; the window itself needs two processes.
+    location: >-
+      src/OcuPilot/Kernel/State/Base.cls GuardedExecuteRows; src/OcuPilot/Test/ProposalRace.cls
+    severity: low
+  - summary: >-
+      A confirm refusal that leaves the row live gives the card no reason anywhere.
+    evidence: |-
+      Panel.onCardConfirm drops its confirming phase in a finally and shows nothing else; TurnStore.decideProposal records state only when the refusal closed the row. So a restraint or a revoked pair returns the card to Confirm with no message. The matrix specifies the status and the code for those rows and no card surface, and a banner is new surface the spec does not settle -- the four refusals that close the row do render their own status line.
+    location: >-
+      ui/src/app/shell/panel.ts onCardConfirm
+    severity: medium
+  - summary: >-
+      Api.Conversation.HandleCreate closes the caller's proposals before the conversation row exists.
+    evidence: |-
+      The close runs ahead of Convo.LoadOrCreate, so a failure there answers 500 while the caller's live proposals are already canceled with reason you. The transcript the browser still shows then stands over rows the instance has closed. The same shape as the accepted-turn entry above, on a rarer path.
+    location: >-
+      src/OcuPilot/Api/Conversation.cls HandleCreate
+    severity: low
+  - summary: >-
+      The turn-start proactive close has no test that drives its handler.
+    evidence: |-
+      ProposalClose now drives Api.Conversation.HandleCreate directly, but the Api.Turn.HandleStart half is still covered only by store-level calls: deleting the GuardedCloseLiveForConvo block from HandleStart leaves every class green, because TurnContext asserts only the merged context and the panel draws its own transition. Driving it needs the turn-spawning fixture machinery TurnContext carries.
+    location: >-
+      src/OcuPilot/Api/Turn.cls HandleStart
+    severity: medium
+  - summary: >-
+      DW-412's rollback restore ships unpinned.
+    evidence: |-
+      No test in the tree makes pObject.%Save() itself fail, so the new restore block in GuardedSaveIfCurrent never executes: the two stale-save tests drive the conditional-UPDATE refusal, where the prior version was never raised. Deleting the block reddens nothing. Forcing the path needs a fixture class with a failing %OnValidateObject. The ledger entry should record that the fix shipped unpinned rather than closing.
+    location: >-
+      src/OcuPilot/Kernel/State/Base.cls GuardedSaveIfCurrent
+    severity: low
+  - summary: >-
+      The Egress twin of the singleton unique index has no test, because its natural home is a contended path.
+    evidence: |-
+      SwitchState.TestASecondSwitchRowIsRefused pins the construct on Switch. The same property and index on Kernel/State/Egress.cls are unpinned: Test/Egress*.cls is contended (Epic 10), and asserting an Egress row from SwitchState would put the assertion in a class whose header says it covers the two stores behind the Switches screen.
+    location: >-
+      src/OcuPilot/Kernel/State/Egress.cls EgressSingletonIdx
+    severity: low
+  - summary: >-
+      Two confirms of two different live proposals on one scoped target may both win their own claims.
+    evidence: |-
+      Each conditional UPDATE matches its own ProposalKey, and each sibling UPDATE matches only a row still live -- so if both claims commit, neither sees the other as a sibling and both writes go out. IRIS's row locks probably serialize the two transactions instead, since each sibling update must lock the row the other has already updated. Settled by two concurrent jobs claiming two live rows on one target.
+    location: >-
+      src/OcuPilot/Kernel/State/Propose.cls GuardedClaimAndClose
+    severity: medium (unverified)
+  - summary: >-
+      Nine of the thirteen matrix rows never reach a rendered HTTP envelope in the class suite.
+    evidence: |-
+      Test/ConfirmRoute.cls is the only class at the wire and it drives four rows. Every other refusal is asserted as a kernel output parameter, so Api/Confirm.cls's SlugFor and StatusForClaim are exercised for 404, 400 and 409 only -- no test renders a 403 -- and AD-8's failedPair is read off an output rather than a response body.
+    location: >-
+      src/OcuPilot/Test/ConfirmRoute.cls; src/OcuPilot/Api/Confirm.cls
+    severity: low
+  - summary: >-
+      The port's mutating path has no class-level test.
+    evidence: |-
+      MUTATINGTYPES, HttpMethodFor, EndpointType's widening, the RunPut arm of ImplementsRead and RunSequence's pMethod are exercised only by the browser gate: every confirm class replaces PortClass() with the fixture, and AdminPortFault's one PUT assertion moved to DELETE when PUT became an accepted suffix.
+    location: >-
+      src/OcuPilot/Port/AdminPort.cls
+    severity: medium
+  - summary: >-
+      RemoveSeeded's contract does not match its code, and its error path discards the keys it had not reached.
+    evidence: |-
+      The doc says it reports how many of either survive; the COUNT(*) counts Proposal rows alone and never leftover Turn rows. On the error path inside the loop it still falls through to Kill ^||OcuPilotProposalFixtureTurns, so the turns it failed to remove become unfindable by the next teardown.
+    location: >-
+      src/OcuPilot/Test/ProposalFixture.cls RemoveSeeded
+    severity: low
 ---
 
 <intent-contract>
@@ -371,7 +505,102 @@ auto-refresh pause stop pretending every row is live.
 
 ## Spec Change Log
 
+- **EXPERIENCE.md:662 amended (Rule 5, apply-and-report).** The Focus destinations sentence now says
+  a proposal card's status line receives focus **when a control of that card held it** and is
+  announced either way, matching the shipped `heldFocus` guard and the same clause already written
+  at line 205. Marked inline `[AMENDED 2026-09-19, Story 5.3]`. Addresses DW-1245.
+- **`Test/Dispatch.cls`'s `Invoke` answers the response's content type** as a trailing output, and
+  `Test/Envelope.cls` reads it from there. Forced by the task that `New`s the CSP stubs (DW-1184):
+  a stub that does not outlive the call cannot be read after it. Neither class is named in Tasks
+  for this; `Test/Dispatch.cls` is.
+- **`Test/AdminPortFault.cls`'s "suffix outside the accepted set" is `DELETE`, not `PUT`.** Forced
+  by the task that lets the port issue a mutating request: `PUT` is now accepted, and `DELETE` is
+  what "outside" still means. Not named in Tasks.
+- **`Test/ProposalWire.cls`'s `WIREKEYS` widened** to the two keys this story adds to the wire row,
+  `closedReason` and `confirmedAt`. Not named in Tasks; the closed-key assertion is what made the
+  addition visible, which is the point of having it.
+- **`Test/Descriptor.cls`'s expected sentence updated** to the widened
+  `ConfirmChannelProblem` refusal (DW-1205), with one case added for a read-declared exclusion. Not
+  named in Tasks, and forced by the task that widened the validator.
+- **`Test/ProposalFixture.cls` and a new `Test/ConfirmFixture.cls`** carry the write seams Tasks'
+  test list implies: an armed `PUT` answer with the body recorded, a refused
+  `(resource, permission)` pair, and the spec's own web application for the browser leg.
+- **`Test/ConfirmRoute.cls` drives `Test/Http.AbsoluteRequest`, not `Test/Dispatch.Invoke`** as Tasks
+  says. A real HTTP round trip through the shipped web application is the stronger surface for
+  routes; the cost is that the class needs a reachable application and credentials.
+- **"Conversation replaced" is one matrix row and two reasons.** A typed message closes the
+  conversation's proposals with `message`, which is the sentence the matrix names; New conversation
+  closes the caller's with `you`, because it is the user's own act. Both are terminal and both render
+  their own published line.
+- **`Confirm.ProhibitedClassName()` added (review pass).** AD-10's seam was hard-bound to
+  `Write.ProhibitedClass()`, so its refusal branch had no reachable caller and could only be checked
+  by reading the class's own source. The seam mirrors `PortClass()` and `StoreClass()` on the same
+  class; the set still has exactly one home.
+- **`Mint.Representable` added (review pass).** A scalar the instance's own property type cannot
+  carry is refused at the mint rather than coerced, because the diff row reports the argument as the
+  model wrote it and a silent coercion would promise the user one value and send another.
+- **`ProposalFixture.EnsureWriteTarget` refuses a pre-existing application** instead of adopting it,
+  and `RemoveWriteTarget` deletes only one carrying the fixture's own `WRITEMARKER`. The pair could
+  otherwise delete a web application the instance already had.
+
 ## Review Triage Log
+
+### 2026-09-19 — Review pass
+
+- verdicts: 48 findings across four layers, 51 rows (three findings split into rows of differing verdict) — high 1, medium 19, low 26, false 2, maybe-false 3
+- findings:
+  - `[high]` `[patch]` Cancel was pressable while a Confirm was in flight — `cancelAriaDisabled` returned `null` for `confirming`, so a press drew "Canceled by you" over a proposal the instance had confirmed and written. Fixed: it refuses while `confirming`, pinned by a new `proposal-card.spec.ts` case with its mutation.
+  - `[medium]` `[patch]` A write that failed after the claim left the card offering Confirm — the branch set the code but no `detail`, so the client recorded nothing. Fixed: `ClosedDetail` on that branch; mutation recorded.
+  - `[low]` `[defer]` `Write.Claim` carries no `State` clause, so a closed-but-unburned row runs the gates and one vendor `GET` before the claim refuses it. Shipped by 5.1; the outcome is a correct refusal.
+  - `[low]` `[reject]` `Api.Confirm.ReasonFor` falls through to the tool vocabulary for a port fault code. The sentence is generic and the code is the port's own; special-casing it adds a branch for no user-reachable gain.
+  - `[false]` The `Switch`/`Egress` unique index is inert on instances that already hold a row — refuted: the race it guards is reachable only while the table is empty, where the index is current by construction; with a row present `SetGuarded` updates and never creates.
+  - `[maybe-false]` `[defer]` `ProposalTargetIdx` is not built for rows predating the upgrade, so the sibling cancel could miss one minted in the ten minutes before it. Medium if true. Settled by seeding a live row, adding the index, recompiling and running the sibling `UPDATE`.
+  - `[low]` `[reject]` `ProposalTargetIdx` leaves `State` at the default collation while the query writes `%EXACT(State)`. Costs index use, never a wrong row.
+  - `[low]` `[defer]` `GuardedExpireStale` is unindexed as well as table-wide, and runs on every close. Folded into the existing `deferred:` entry about its breadth.
+  - `[low]` `[defer]` `AdminPort.QueryPairProblem` validates declared pairs against `TYPESUFFIXES` only, so an AD-29 pair could not be declared for a mutating call; `Invoke`'s doc comments still say `pType` comes from that list. No such declaration exists today.
+  - `[medium]` `[patch]` Re-propose left the conversation's other cards live while the instance closed them on the accepted turn. Fixed: `cancelLiveCards` on a `sent` outcome; mutation recorded.
+  - `[medium]` `[patch]` `reproposeAriaDisabled` is `null` at its only render site, and its doc comment claimed an in-flight state that does not exist; the spec assertion could not fail (Rule 19). Fixed: comment corrected to what is true, assertion replaced by the reachability contract it stands for.
+  - `[medium]` `[patch]` `EnsureWriteTarget` silently adopted a pre-existing application and `RemoveWriteTarget` deleted it. Fixed: creation refuses outright, and removal deletes only an application carrying this fixture's own marker.
+  - `[low]` `[patch]` The port fixture counted every non-`GET` as a write, so a `LIST` would have corrupted `WriteCount()`. Fixed: classified against `AdminPort.MUTATINGTYPES`.
+  - `[medium]` `[patch]` The browser cancel test asserted a literal its own probe script emits, and read a `%Status` where it meant a count (Rule 19). Fixed: it reads the instance's live-proposal count for the principal.
+  - `[low]` `[patch]` The second browser test depended on the first having flipped the target; a failure in the first hung the second until the navigation timeout. Fixed: it proposes the opposite of whatever the target currently reads.
+  - `[medium]` `[patch]` The `deferred:` entry claimed `Confirm.WithSecrets` was exercised; every confirm test sent an empty body against a zero-secret descriptor, so the merge loop and the channel's accept arm never ran. Fixed: a test drives both; mutation recorded; the entry is corrected.
+  - `[medium]` `[patch]` The restraint test restored `enforcedReadOnly` inline only, so an abort between the two lines would have left the whole instance read-only for the rest of the sweep. Fixed: restored unconditionally in `OnAfterOneTest`.
+  - `[medium]` `[patch]` AD-10's seam was pinned only by a source-text scan over a branch nothing could execute — the call was hard-bound, so no fixture could answer a prohibiting set. Fixed: `Confirm.ProhibitedClassName()`, mirroring the two seams already on that class, plus a fixture-driven refusal test; mutation recorded.
+  - `[low]` `[defer]` AC6's "no window in which both are live and one is burned" is still pinned by a source-text ordering scan, and `Base.GuardedExecuteRows`'s "starts no transaction of its own" contract is untested. A two-process observation needs a job and a sleep this suite deliberately avoids.
+  - `[false]` `Base.GuardedSaveIfCurrent`'s `""` sentinel leaves a failed insert carrying `RowVersion = 1` — refuted: the insert branch never reads a prior version, and a retry of the same object re-enters that branch and re-sets 1, so no refusal is reachable.
+  - `[medium]` `[patch]` `Mint.Coerced` turned a non-numeric string into `0` while the diff row reported the argument verbatim, so the card promised one value and the write would send another. Fixed: `Representable` refuses the mint; mutation recorded.
+  - `[low]` `[reject]` The same "tool this instance does not carry" condition answers 400 from `ChannelProblem` and 500 from `Transition`. The 400 arm is reached only for the caller's own row and its sentence is generic; unifying them adds a branch.
+  - `[low]` `[defer]` `RemoveSeeded` counts only proposals against its "how many of either survive" contract, and drops the turn keys it had not reached on its error path.
+  - `[low]` `[reject]` `Registry.DeclaredReadFields`'s `Catch { Set tFields = tFields }` is a no-op statement. Cosmetic.
+  - `[low]` `[patch]` `ProposalRace` reused `tSibling` for a proposal id and then a string offset, so an assertion added below would have read an offset as a key. Fixed: renamed `tSiblingAt`.
+  - `[low]` `[patch]` `proposal.test.mjs`'s posting guard was narrowed past keys it still had to cover. Fixed: `rationale`, `expectedImpact`, `reverse` and `auditWarning` restored. `closedReason` and `confirmedAt` are deliberately excluded, with the reason recorded at the regex: the client reads both off the answer to that same POST, inside the scan's own window.
+  - `[low]` `[patch]` `ConfirmRoute` carried a superseded doc comment contradicting the one below it, and two route parameters nothing reads. Fixed: both removed.
+  - `[low]` `[reject]` `ConfirmRoute`'s ordering assertion checks the confirm route's position only, not the cancel route's. Both are declared adjacently and `check-objectscript.py` enforces the invariants structurally.
+  - `[medium]` `[patch]` (edge-case) The write-failure branch tells the caller nothing about the row — same root cause as the second row above; fixed by the same change.
+  - `[medium]` `[defer]` A confirm refusal that leaves the row live (restraint, privilege) shows the card returning to Confirm with no reason anywhere. The matrix specifies the status and the code for those rows, not a card surface; a banner is new surface the spec does not settle.
+  - `[low]` `[defer]` `Api.Turn.HandleStart` closes the conversation's proposals before `Job.Start`, so a spawn that then answers 503 leaves them closed while the panel keeps the cards. Already the subject of a `deferred:` entry.
+  - `[low]` `[defer]` `Api.Conversation.HandleCreate` closes before `LoadOrCreate`, so a 500 leaves the transcript standing over proposals the instance closed.
+  - `[medium]` `[patch]` (edge-case) The mint's coercion — same root cause as the `Coerced` row above; fixed by the same change.
+  - `[medium]` `[patch]` A declared secret posted as an object or array would have raised inside the merge, after the claim had committed: row burned, nothing written, 500. Fixed: `ChannelProblem` refuses a structured secret value before the claim.
+  - `[maybe-false]` `[defer]` Two confirms of two different live proposals on one scoped target may both win their own claims, since each sibling `UPDATE` matches only a row still `live`. Medium if true; IRIS's row locks probably serialize the two transactions instead. Settled by two concurrent jobs claiming two live rows on one target.
+  - `[low]` `[reject]` A confirmed row with an empty stamp would render a dangling separator. The claim always writes `ConfirmedAt`, and no pre-upgrade row can be `confirmed`.
+  - `[low]` `[patch]` `GuardedExpireStale`'s doc comment named the confirm path as a caller it does not have. Fixed: it names the three close paths, and says why confirm does not need it.
+  - `[maybe-false]` `[defer]` No `%BuildIndices` exists anywhere in the tree — the index half of the `SCHEMAVERSION` reasoning. Same root cause as the `ProposalTargetIdx` row above.
+  - `[low]` `[patch]` Tasks said `ConfirmRoute` would drive `Test/Dispatch.Invoke`; the class uses `Test/Http.AbsoluteRequest`, a real HTTP round trip. The stronger surface, and recorded in `## Spec Change Log`.
+  - `[medium]` `[patch]` (verification-gap) Neither proactive close had a test that drove its handler — deleting the block from either left every class green. Fixed for `Api.Conversation.HandleCreate` with a handler-level test and its mutation.
+  - `[low]` `[defer]` The `Api.Turn.HandleStart` half of that gap: driving it needs the turn-spawning machinery `Test/TurnContext.cls` carries, which is a heavier fixture than this class holds.
+  - `[medium]` `[patch]` (verification-gap) AD-35's merge and the closed channel's accept arm had no executing test — same root cause as the `deferred:`-entry row above; fixed by the same change.
+  - `[medium]` `[patch]` (verification-gap) AC7's seam — same root cause as the AD-10 row above; fixed by the same change.
+  - `[low]` `[defer]` (verification-gap) DW-412's rollback restore ships unpinned: forcing a `%Save()` failure needs a fixture with a failing `%OnValidateObject`. Recorded so the ledger entry says the fix shipped unpinned rather than closing.
+  - `[medium]` `[patch]` (verification-gap) The singleton unique index had no test. Fixed for `Switch` with a direct second insert and its mutation.
+  - `[low]` `[defer]` The `Egress` twin of that index is untested: its natural home `Test/Egress*.cls` is a contended path, and the construct itself is pinned by the `Switch` test.
+  - `[medium]` `[patch]` (verification-gap) The browser cancel probe — same root cause as the browser row above; fixed by the same change.
+  - `[medium]` `[patch]` (verification-gap) Re-propose's tautological assertion — same root cause as the `reproposeAriaDisabled` row above; fixed by the same change.
+  - `[low]` `[defer]` (intent-alignment) Nine of the thirteen matrix rows never reach a rendered HTTP envelope in the class suite: no 403 is rendered by any test, and `failedPair` is asserted as an output parameter rather than in a response body.
+  - `[low]` `[patch]` (intent-alignment) "Conversation replaced" is one matrix row with one sentence; the implementation splits it into `message` at turn start and `you` at conversation create. The turn-start path produces the sentence the matrix names, and `you` is the truthful reason for the user's own act. Recorded in `## Spec Change Log`.
+  - `[low]` `[defer]` (intent-alignment) The port's mutating path (`MUTATINGTYPES`, `HttpMethodFor`, `RunPut`, `RunSequence`'s `pMethod`) has no class-level test; only the browser gate exercises it, and `AdminPortFault`'s `PUT` example moved to `DELETE`.
+
 
 ## Design Notes
 
@@ -498,18 +727,102 @@ throwaway `ocupilot-ci` — never on `ocupilot`, and never on any `ocupilot-slot
 - `bash scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS` — expected: every
   assertion executed and passing; zero executed checks is a failure, never a pass.
 
-**Rule 19 mutations** — one per AC, applied, observed red, reverted, and `git status --short` plus
-`git diff --stat` confirmed unchanged afterwards. Record each next to its test as
-`mutation: <change> → <test that went red>`. Suggested mutations: AC1 — make `Caller.IsTurn()`
-return 0 unconditionally; AC2 — ignore an unknown confirm key instead of refusing it; AC3 — take
-the payload from the request instead of the row; AC4 — skip one of the five checks; AC5 — drop the
-`State = 'live'` clause from the conditional `UPDATE`; AC6 — move the sibling cancel after
-`TCOMMIT`; AC7 — hoist a gate to mint time; AC8 — remove the `heldFocus` guard; AC9 — restore the
-unconditional `expired` override; AC10 — stop publishing `proposal-closed` on confirm. Client
-mutations prove nothing until the bundle is rebuilt and redeployed; server mutations prove nothing
-until the whole package is recompiled, since every subclass keeps its own compiled copy.
+**Rule 19 mutations** — each applied one at a time, observed red on the named test, reverted
+byte-identically, and `git status --short` plus `git diff --stat` confirmed unchanged afterwards.
+Every server mutation was copied into the throwaway, `grep`ed inside the container, and the whole
+package recompiled before the run; every client mutation ran under the runner that reads source
+(the component runner or `node --test`), except AC10's, which is a server change read through a
+rebuilt and redeployed bundle.
+
+- AC1 mutation: `Caller.IsTurn()` returns 0 unconditionally → `ProposalConfirm.TestAConfirmFromInsideATurnIsRefused`.
+- AC2 mutation: `Confirm.ChannelProblem` `Continue`s on an unknown key instead of refusing → `ProposalConfirm.TestAKeyOutsideTheClosedChannelIsRefused`.
+- AC3 mutation: `Transition` merges the secrets into `{}` instead of the stored payload → `ProposalConfirm.TestTheConfirmedWriteSendsTheStoredPayload`.
+- AC4 mutation: the conversation refusal is made unreachable in `Transition` → `ProposalConfirm.TestANewerTurnInTheConversationRefuses`.
+- AC5 mutation: each clause of the conditional `UPDATE` in `GuardedClaimAndClose`, one at a time — `Burned = 0` → `ProposalRace.TestABurnedRowIsNotClaimable`; `State = ?` → `ProposalRace.TestAnExpiredRowIsNotClaimable`; `COALESCE(RowVersion,0) = ?` → `ProposalRace.TestAStaleVersionLoses`. The three over-determine `TestExactlyOneClaimWins`, which is why each has a method of its own.
+- AC6 mutation: the sibling `UPDATE` moved after `TCOMMIT` → `ProposalRace.TestTheSiblingsOnTheSameTargetCloseWithTheClaim`.
+- AC7 mutation: the restraint read removed from `Transition` → `ProposalConfirm.TestARestraintTurnedOnAfterTheMintRefuses`; and the `ProhibitedClass()` call moved after the port call → `ProposalConfirm.TestTheProhibitedSeamIsCalledOnceBeforeThePortCall`.
+- AC8 mutation: the `heldFocus` guard forced true → `proposal-card.spec.ts` "DW-1229: the status line is a status region only when it did not take focus" and "a transition nobody pressed leaves focus where it was"; and `onCardConfirm` keeping its own `confirming` decision → `panel.spec.ts` AC8 and AC4 rows.
+- AC9 mutation: `restoredProposals` overwrites every state again → `proposal-view.test.mjs` "a restored row the instance already closed keeps the state it closed in (DW-1225)".
+- AC10 mutation: the port call dropped after the claim commits → `proposal-confirm.browser-spec.mjs` AC10, on both read-backs; and `recordProposalState` not republishing → `turn.test.mjs` "a confirm closes the AD-43 pause on the same transition the card renders".
+- DW-1212 mutation: `Merge` takes the scalar's type from the arguments again → `Proposal.TestTheMergedPayloadKeepsTheFreshReadsOwnTypes`.
+- AC8 mutation (review pass): the `confirming` arm removed from `ProposalCard.cancelAriaDisabled` → `proposal-card.spec.ts` "AC8: Cancel is refused while a Confirm is in flight".
+- AC3/AD-35 mutation (review pass): the `%Set` dropped from `Confirm.WithSecrets` → `ProposalConfirm.TestADeclaredSecretIsAcceptedAndMergedAtThePortCall`.
+- AC7/AD-10 mutation (review pass): the `If tProhibits` arm inverted in `Confirm.Transition` → `ProposalConfirm.TestAProhibitedWriteIsRefusedBeforeThePortCall`. The seam is reached through `Confirm.ProhibitedClassName()`, so the branch has an executing caller rather than only a source-text scan.
+- Matrix "write fails after the claim" mutation (review pass): the `ClosedDetail` call dropped from `Transition`'s write-failure branch → `ProposalConfirm.TestAFailedWriteLeavesTheProposalBurned`.
+- DW-1212 follow-on mutation (review pass): the `Representable` guard dropped from `Mint.Merge` → `Proposal.TestAValueTheInstanceTypeCannotCarryIsRefusedAtTheMint`.
+- DW-435 mutation (review pass): `[ Unique ]` dropped from `Switch.SwitchSingletonIdx` → `SwitchState.TestASecondSwitchRowIsRefused`.
+- DW-1243 mutation (review pass): the close block dropped from `Api.Conversation.HandleCreate` → `ProposalClose.TestCreatingAConversationClosesTheCallersLiveProposalsAtTheHandler`.
+- DW-1231 mutation (review pass): the `cancelLiveCards` call dropped from `Panel.onCardRepropose` → `panel.spec.ts` "DW-1231: Re-propose draws the same close the instance performs on the accepted turn".
+- Also pinned: the `ConvKey` predicate dropped from `GuardedCloseLiveForConvo` → `ProposalClose.TestATypedMessageClosesThatConversationsLiveProposals`; the cancel reason blanked → `ProposalClose.TestCancelClosesTheRowAsTheUsersOwnDecision`; `ProjectedState` returning the stored state → `ProposalClose.TestAnExpiredRowProjectsExpiredAtEveryRead`; the handler losing the kernel's HTTP status → four `ConfirmRoute` rows; the widened read-field arm removed from `confirmChannelProblem` → `screen-mirror.test.mjs`; `onCardRepropose` sending the draft → `panel.spec.ts` DW-1224; `onCardCancel` not telling the instance → `panel.spec.ts` DW-1243.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+**Change.** Confirm exists, and it is not a tool. `Kernel/Proposal/Confirm.cls` refuses a process
+carrying the turn marker (AD-40), accepts only the descriptor's declared secret-typed keys and
+rejects every other outright (AD-6), runs the six write gates against state as it is at confirm, and
+claims the row through one conditional `UPDATE` that burns the token, writes the terminal state and
+cancels every sibling on the same scoped target in one transaction (AD-34). The vendor `PUT` follows
+that commit. `Kernel/State/Propose.cls` gains the claim, the three closes, the read-time expiry
+projection and the terminal columns the wire now carries; the instance closes a conversation's live
+proposals at turn start and the caller's at conversation create. On the client the card gains its
+in-flight Confirm, the confirmed line from the instance's own stamp, the target-changed banner and
+the announcement guard; the panel binds all three outputs; a restored row keeps the state it closed
+in.
+
+**Files.** Server, new: `Kernel/Proposal/Confirm.cls` (the transition), `Api/Confirm.cls` (the two
+handlers). Extended: `Kernel/State/Propose.cls` (terminal columns, `ProposalTargetIdx`, the claim and
+three closes, `ProjectedState`); `Kernel/State/Base.cls` (DW-412 at its real location, plus
+`GuardedExecuteRows`); `Kernel/State/{Hold,WebApp,Sharing}.cls` (DW-407, four sites);
+`Kernel/State/{Switch,Egress}.cls` (DW-435, a unique singleton); `Kernel/Proposal/Write.cls` (five
+codes, `ClaimById`, the AD-10 seam); `Kernel/Proposal/Mint.cls` (the definition in force, DW-1212's
+type rule, `Representable`); `Port/AdminPort.cls` (`MUTATINGTYPES` and the `PUT` runner);
+`Screen/Registry.cls` (DW-1205); `Api/{Router,Turn,Conversation}.cls`. Server tests, new:
+`Test/{ProposalConfirm,ProposalRace,ProposalClose,ConfirmRoute,ConfirmFixture}.cls`; extended:
+`Test/{ProposalFixture,Dispatch,Proposal,ProposalScreen,ProposalWire,Descriptor,Envelope,AdminPortFault,SwitchState}.cls`.
+Client: `core/turn.ts` (the two routes, the two decisions, DW-1225's restore rule, the expiry close),
+`core/proposal-view.ts` (`target-changed` and the reason table), `shell/panel.ts` (the three
+bindings), `shell/proposal-card.ts` (in-flight Confirm, banner, conditional `role`),
+`styles/_components.scss`, `tools/screen-mirror.mjs`, plus their specs and
+`browser/proposal-confirm.browser-spec.mjs`. Docs: EXPERIENCE.md:662 (Rule 5, apply-and-report).
+
+**Review.** Four layers reported 48 findings, logged as 51 rows: high 1, medium 19, low 26, false 2,
+maybe-false 3. **Patched** 27 rows over 21 distinct root causes — by verdict, high 1, medium 18,
+low 8. **Deferred** 16 rows into the frontmatter `deferred:` list, which now holds 19 entries.
+**Rejected** 8: two `false` on their refutation (the `Switch`/`Egress` index is not inert, because
+the race it guards needs an empty table; `GuardedSaveIfCurrent`'s `""` sentinel is harmless, because
+the insert branch never reads a prior version) and six `low` whose fix would add a branch for no
+reachable gain — the port-fault reason sentence, `ProposalTargetIdx`'s `State` collation, the
+400-versus-500 answer to "tool not carried", `DeclaredReadFields`'s no-op catch, a dangling separator
+on a stamp the claim always writes, and `ConfirmRoute`'s ordering assertion covering one route of two
+that are declared adjacently under a structurally enforced invariant.
+
+**Follow-up review recommended: true.** A `high` was patched. The named unverified risk is that
+fix's own evidence: "Cancel is refused while a Confirm is in flight" is pinned in the component
+runner, and jsdom computes no layout — the real press-then-press interaction, with focus inside the
+card, is not exercised by any browser spec.
+
+**Verification, over the final tree.** `check-objectscript` 0 problems over 21 rules (512 files);
+`lint-docs` clean over 92 files; `npm run build` green through its six prebuild checkers; `npm test`
+1,087 `node --test` plus 679 component tests, 0 failed. On the throwaway `ocupilot-ci` (52776/1975),
+whose 512 source files were confirmed byte-identical to the worktree before each run: the package
+loads and compiles clean, the class sweep reads **138 classes, 1,314 tests, 0 failed, 0 probe
+leftovers, 0 overlaps, 0 foreign runs**, and `smoke.sh` **executed 44, passed 44, failed 0**. The
+browser suite ran **190/190** against a throwaway recreated for it, so the class sweep had not
+touched it (DW-1204), on a bundle rebuilt and redeployed for that run; the sweep was then run last.
+**No confirmed write was ever executed against `ocupilot` or any `ocupilot-slot-*` container** —
+slot A was compiled into only. Rule 19: 23 mutations from the implement pass plus 8 from the review
+pass, each applied alone, observed red on its named test, reverted byte-identically with
+`git status --short` and `git diff --stat` unchanged; every server mutation was copied into the
+container, `grep`ed there and the whole package recompiled first.
+
+**Residual risks.** Nineteen `deferred:` entries, four of them medium: a confirm refusal that leaves
+the row live shows the card no reason; the turn-start proactive close has no handler-level test; the
+port's mutating path has no class-level test; and two unverified mediums — whether a new index misses
+rows that predate it, and whether two confirms on two live rows of one target can both win. Outside
+the ledger, **DW-1207 is still open**: `ProhibitedClass()` answers `""`, so a confirmed
+`webapp.list.update` can still set `AutheEnabled`, `Resource` or `DispatchClass` until Story 5.5
+fills the seam. `ocupilot-ci` is left running and has now had the class sweep on it, so the next
+consumer of a browser gate recreates it first.
+
+Status: done
 Blocking condition: none

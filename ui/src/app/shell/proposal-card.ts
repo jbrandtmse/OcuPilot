@@ -171,24 +171,40 @@ import {
     @if (footerVisible) {
       <div class="ocu-proposal-card-footer">
         @if (statusVisible) {
-          <p
-            #status
-            class="ocu-proposal-card-status"
-            tabindex="-1"
-            role="status"
-            [class.ocu-proposal-card-status-confirmed]="confirmed"
-          >
-            {{ statusLine }}
-          </p>
+          @if (targetChanged) {
+            <p
+              #status
+              class="ocu-banner ocu-banner-warning ocu-proposal-card-status ocu-proposal-card-status-target-changed"
+              tabindex="-1"
+              [attr.role]="statusRole"
+            >
+              <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
+              <span class="ocu-banner-message">{{ statusLine }}</span>
+            </p>
+          } @else {
+            <p
+              #status
+              class="ocu-proposal-card-status"
+              tabindex="-1"
+              [attr.role]="statusRole"
+              [class.ocu-proposal-card-status-confirmed]="confirmed"
+            >
+              {{ statusLine }}
+            </p>
+          }
         }
         @if (buttonsVisible) {
           <p class="ocu-proposal-card-runs-as">{{ runsAsCaption }}</p>
           <button
             type="button"
             class="ocu-button-primary ocu-proposal-card-confirm"
+            [class.ocu-proposal-card-confirm-busy]="confirming"
             [attr.aria-disabled]="confirmAriaDisabled"
             (click)="onConfirm()"
           >
+            @if (confirming) {
+              <span class="ocu-proposal-card-confirm-spinner" aria-hidden="true"></span>
+            }
             {{ STRINGS.actionConfirm }}
           </button>
           <button
@@ -207,6 +223,7 @@ import {
           <button
             type="button"
             class="ocu-button-secondary ocu-proposal-card-repropose"
+            [attr.aria-disabled]="reproposeAriaDisabled"
             (click)="onRepropose()"
           >
             {{ STRINGS.actionRepropose }}
@@ -221,9 +238,9 @@ export class ProposalCard {
   readonly view = input.required<ProposalCardView>();
 
   /**
-   * Where this card is in the lifecycle, or `null` for the static example. `live` is the only
-   * value that draws a footer with buttons; the panel supplies the client-side transitions and
-   * Story 5.3 makes the confirmed, canceled and target-changed lines authoritative.
+   * Where this card is in the lifecycle, or `null` for the static example. `live` and `confirming`
+   * draw a footer with buttons; every terminal value draws the status line the instance's own
+   * state resolved to.
    */
   readonly phase = input<ProposalPhase | null>(null);
 
@@ -233,13 +250,13 @@ export class ProposalCard {
   /** The account the write would run as, for the footer's caption and the confirmed line. */
   readonly userName = input<string>('');
 
-  /** The moment a confirmed write landed, as `hh:mm:ss` (Story 5.3 supplies it). */
+  /** The moment a confirmed write landed, as `hh:mm:ss`, from the instance's own stamp. */
   readonly confirmedAt = input<string>('');
 
-  /** Confirm was pressed. The request itself is Story 5.3's; this is the seam it fills. */
+  /** Confirm was pressed. The panel makes the request; the terminal phase comes back on `phase`. */
   readonly confirm = output<string>();
 
-  /** Cancel was pressed. Its transition is client-side (the panel's). */
+  /** Cancel was pressed. The panel makes the request, and the instance closes the row. */
   readonly cancel = output<string>();
 
   /** Re-propose was pressed: the accommodation for the expiry limit (WCAG 2.2.1). */
@@ -276,6 +293,17 @@ export class ProposalCard {
   /** The phase the status line was last focused for, so focus moves once per transition. */
   private focusedFor: ProposalPhase | null = null;
 
+  /**
+   * Whether the transition this card is showing was one a control of this card held focus for.
+   *
+   * It decides the status line's `role`. The transcript is a `role="log"`, so a text change inside
+   * it is announced by construction; adding `role="status"` on a line that also takes focus makes
+   * the same sentence announce twice. So the line is a status region only when focus did NOT move
+   * to it -- a typed message closing three cards, the kill switch going on -- and is a plain
+   * paragraph when it did (DW-1229).
+   */
+  private readonly tookFocus = signal(false);
+
   constructor() {
     effect(() => {
       const phase = this.livePhase;
@@ -289,6 +317,7 @@ export class ProposalCard {
         // would fail on every transition after the first.
         this.buttonsRetired.set(false);
         this.focusedFor = null;
+        this.tookFocus.set(false);
         // A live card announces the last minute exactly once: the caption is not a live region,
         // so this is the only thing that speaks, and it speaks on the tick that crosses 1:00.
         if (this.countdownReading === 'warning' && this.announcementText() === '') {
@@ -307,7 +336,9 @@ export class ProposalCard {
       // for a control that is going away, and a transition the user did not press -- a typed
       // message canceling three cards, the kill switch going on -- must not pull focus out of the
       // composer they are typing in.
-      if (this.heldFocus(element.nativeElement)) element.nativeElement.focus();
+      const held = this.heldFocus(element.nativeElement);
+      this.tookFocus.set(held);
+      if (held) element.nativeElement.focus();
       // The outgoing buttons were `aria-disabled` across the transition rather than removed while
       // one of them could hold focus; the destination has had its chance now, so they may go.
       setTimeout(() => this.buttonsRetired.set(true), 0);
@@ -438,6 +469,21 @@ export class ProposalCard {
     return this.livePhase === 'confirmed';
   }
 
+  /** The fingerprint refusal, which draws its status line inside the warning banner. */
+  protected get targetChanged(): boolean {
+    return this.livePhase === 'target-changed';
+  }
+
+  /** Whether the confirm request is in flight, which is what the button's progress reads. */
+  protected get confirming(): boolean {
+    return this.livePhase === 'confirming';
+  }
+
+  /** `status` only for a transition this card did not take focus for (see `tookFocus`). */
+  protected get statusRole(): string | null {
+    return this.tookFocus() ? null : 'status';
+  }
+
   /** The countdown shows on a live card whose expiry the instance actually sent (`0` is unknown). */
   protected get countdownVisible(): boolean {
     return this.live && this.remainingMs !== null;
@@ -487,11 +533,29 @@ export class ProposalCard {
 
   protected get confirmAriaDisabled(): string | null {
     if (!this.live) return 'true';
+    // In flight it stays in the tab order and keeps focus, and refuses a second press -- the
+    // `aria-disabled` discipline every gated control in this product keeps.
+    if (this.confirming) return 'true';
     return this.secretsFilled ? null : 'true';
   }
 
+  /**
+   * Re-propose takes the same discipline as the other two: `aria-disabled` rather than the
+   * `disabled` attribute, so it stays in the tab order and its reason is announced. It has no
+   * in-flight state of its own -- the turn it starts locks the composer -- so on a rendered button
+   * the attribute is always absent; the binding exists so the three controls read the same way.
+   */
+  protected get reproposeAriaDisabled(): string | null {
+    return this.reproposeVisible ? null : 'true';
+  }
+
   protected get cancelAriaDisabled(): string | null {
-    return this.live ? null : 'true';
+    if (!this.live) return 'true';
+    // Refused while a Confirm is out, for the same reason Confirm itself is: the decision has
+    // already been made and may already have been written. A Cancel accepted here would draw
+    // "Canceled by you" over a proposal the instance confirmed.
+    if (this.confirming) return 'true';
+    return null;
   }
 
   /** The guard caption is a live card's own: it says what sending a message would do to it. */
@@ -519,6 +583,7 @@ export class ProposalCard {
   }
 
   protected onRepropose(): void {
+    if (this.reproposeAriaDisabled !== null) return;
     this.repropose.emit(this.view().proposalId ?? '');
   }
 }

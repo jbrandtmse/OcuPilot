@@ -70,11 +70,8 @@ export interface ProposalCardView {
 }
 
 /**
- * Where one card is in the proposal lifecycle: live, the in-flight Confirm, and the six terminal
+ * Where one card is in the proposal lifecycle: live, the in-flight Confirm, and the seven terminal
  * states EXPERIENCE.md's status-line row publishes a sentence for.
- *
- * `target-changed` is deliberately absent: it is the fingerprint mismatch Story 5.3 answers, and
- * its published sentence has no writer until the confirm request exists.
  */
 export type ProposalPhase =
   | 'live'
@@ -83,6 +80,7 @@ export type ProposalPhase =
   | 'canceled-by-you'
   | 'canceled-by-message'
   | 'canceled-sibling'
+  | 'target-changed'
   | 'expired'
   | 'switched-off';
 
@@ -92,6 +90,7 @@ const TERMINAL_PHASES: ReadonlySet<ProposalPhase> = new Set<ProposalPhase>([
   'canceled-by-you',
   'canceled-by-message',
   'canceled-sibling',
+  'target-changed',
   'expired',
   'switched-off',
 ]);
@@ -100,25 +99,39 @@ export function isTerminalPhase(phase: ProposalPhase): boolean {
   return TERMINAL_PHASES.has(phase);
 }
 
-/** Which terminal phases offer Re-propose, the WCAG 2.2.1 accommodation for the expiry limit. */
-const REPROPOSABLE_PHASES: ReadonlySet<ProposalPhase> = new Set<ProposalPhase>(['expired']);
+/**
+ * Which terminal phases offer Re-propose: the expiry limit's WCAG 2.2.1 accommodation, and the
+ * fingerprint mismatch, whose own refusal is terminal and whose accommodation is the same fresh
+ * read and fresh diff (EXPERIENCE.md's target-changed step).
+ */
+const REPROPOSABLE_PHASES: ReadonlySet<ProposalPhase> = new Set<ProposalPhase>([
+  'expired',
+  'target-changed',
+]);
 
 export function offersRepropose(phase: ProposalPhase): boolean {
   return REPROPOSABLE_PHASES.has(phase);
 }
 
 /**
- * The phase a wire `state` reads as.
+ * The phase a wire `state` and its `closedReason` read as.
  *
- * `live` is the only state the instance writes today (Story 5.3 closes the rest), and anything
- * this client does not recognise reads as `expired`: a card drawn restrained with no Confirm is
- * the restrained direction, and the alternative -- treating an unknown state as live -- would
- * offer a decision on a proposal whose fate the instance has already settled.
+ * `canceled` is four phases, told apart by the reason the instance recorded with it -- and a
+ * `canceled` row whose reason this client does not recognise reads as the user's own decision,
+ * which is the one of the four that claims least about why. Anything this client does not
+ * recognise at all reads as `expired`: a card drawn restrained with no Confirm is the restrained
+ * direction, and the alternative -- treating an unknown state as live -- would offer a decision on
+ * a proposal whose fate the instance has already settled.
  */
-export function phaseForState(state: string): ProposalPhase {
+export function phaseForState(state: string, closedReason = ''): ProposalPhase {
   if (state === 'live') return 'live';
   if (state === 'confirmed') return 'confirmed';
-  if (state === 'canceled') return 'canceled-by-you';
+  if (state === 'canceled') {
+    if (closedReason === 'message') return 'canceled-by-message';
+    if (closedReason === 'sibling') return 'canceled-sibling';
+    if (closedReason === 'target-changed') return 'target-changed';
+    return 'canceled-by-you';
+  }
   return 'expired';
 }
 
@@ -202,6 +215,10 @@ export function statusLineFor(phase: ProposalPhase, userName: string, at: string
   if (phase === 'canceled-by-you') return STRINGS.proposalStatusCanceledByYou;
   if (phase === 'canceled-by-message') return STRINGS.proposalStatusCanceledByMessage;
   if (phase === 'canceled-sibling') return STRINGS.proposalStatusCanceledSibling;
+  // EXPERIENCE.md publishes one fixed string for this transition, and DESIGN.md says the warning
+  // banner's fixed string is EXPERIENCE.md's -- so the status line IS the banner's text, rendered
+  // inside it, rather than a second piece of copy invented here.
+  if (phase === 'target-changed') return STRINGS.proposalTargetChanged;
   if (phase === 'expired') return STRINGS.proposalStatusExpired;
   if (phase === 'switched-off') return STRINGS.proposalStatusAgentSwitchedOff;
   return '';

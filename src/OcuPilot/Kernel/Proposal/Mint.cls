@@ -146,6 +146,15 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
             Quit
         }
         Set tValues("auditWarning") = ..WarnsAuditingOff(pToolName, tType, tScope, pArgs)
+        ; FR-17's definition condition is answered at confirm against the definition that was in
+        ; force here. Read, never written: the definition store is Epic 10's.
+        Set tDefinitionSC = ..DefinitionInForce(.tDefinitionId, .tDefinitionVersion)
+        If $$$ISERR(tDefinitionSC) {
+            Set tSC = ..Internal("the proposal's definition could not be read: " _ $System.Status.GetErrorText(tDefinitionSC), .pHttpStatus, .pFault)
+            Quit
+        }
+        Set tValues("definitionId") = tDefinitionId
+        Set tValues("definitionVersion") = tDefinitionVersion
         Set tSC = $ClassMethod(..StoreClass(), "GuardedMint", .tValues, pLimitsClass, .tKey, .tToken, .tExpiresAt)
         If $$$ISERR(tSC) {
             Set tSC = ..Internal("the proposal could not be stored: " _ $System.Status.GetErrorText(tSC), .pHttpStatus, .pFault)
@@ -240,11 +249,25 @@ ClassMethod Merge(pFresh As %DynamicObject, pArgs As %DynamicObject, pIdArgument
             Set tBefore = ..Display(pPayload.%Get(tField), pPayload.%GetTypeOf(tField))
             Set tAfter = ..Display(pArgs.%Get(tField), pArgs.%GetTypeOf(tField))
             If tAfter = tBefore Continue
-            Set tAfterType = pArgs.%GetTypeOf(tField)
-            If (tAfterType = "object") || (tAfterType = "array") {
+            Set tArgType = pArgs.%GetTypeOf(tField)
+            If (tArgType = "object") || (tArgType = "array") {
                 Do pPayload.%Set(tField, pArgs.%Get(tField))
             } Else {
-                Do pPayload.%Set(tField, pArgs.%Get(tField), tAfterType)
+                ; AD-4: the body keeps the property set AND the property types the instance's own
+                ; read answered with. A tool schema's scalar type is derived from a template
+                ; placeholder, which is information rather than contract -- this instance answers a
+                ; number for five WebApp.App fields whose template shows a string -- so a numeric
+                ; instance field set from a string argument is sent back as a number, not as its
+                ; string spelling.
+                Set tAfterType = ..SettableType(pPayload.%GetTypeOf(tField), tArgType)
+                ; A value the instance's own type cannot carry is refused here rather than coerced:
+                ; the diff row below reports the argument as the model wrote it, so a silent
+                ; coercion would promise the user one value and send the instance another.
+                If '..Representable(pArgs.%Get(tField), tAfterType) {
+                    Set pProblem = "'" _ tField _ "' is " _ tAfterType _ " on this instance, and '" _ tAfter _ "' is not one"
+                    Quit
+                }
+                Do pPayload.%Set(tField, ..Coerced(pArgs.%Get(tField), tAfterType), tAfterType)
             }
             Set tRow = {}
             Do tRow.%Set("field", tField, "string")
@@ -268,6 +291,20 @@ ClassMethod Merge(pFresh As %DynamicObject, pArgs As %DynamicObject, pIdArgument
     Quit tSC
 }
 
+/// <p>The agent definition in force and the version it carries, for the proposal's row.</p>
+/// <p><var>pVersion</var> is <method>OcuPilot.Kernel.State.Agent.GuardedVersion</method>'s answer,
+/// where <code>""</code> is "no row" and is never conflated with <code>0</code>. No definition in
+/// force leaves both empty, which is the configuration-empty state rather than a failure.</p>
+ClassMethod DefinitionInForce(Output pId As %String, Output pVersion As %String) As %Status [ Private ]
+{
+    Set pId = ""
+    Set pVersion = ""
+    Set tSC = ##class(OcuPilot.Kernel.State.Agent).ResolveDefault(.pId)
+    If $$$ISERR(tSC) Quit tSC
+    If pId = "" Quit $$$OK
+    Quit ##class(OcuPilot.Kernel.State.Agent).GuardedVersion(pId, .pVersion)
+}
+
 /// <p>The admin endpoint <var>pDescriptor</var>'s own declared read lists through, or
 /// <code>""</code>.</p>
 ClassMethod EndpointOf(pDescriptor As %String) As %String [ Private ]
@@ -282,6 +319,46 @@ ClassMethod EndpointOf(pDescriptor As %String) As %String [ Private ]
         Set tEndpoint = ""
     }
     Quit tEndpoint
+}
+
+/// <p>The JSON type a merged scalar is written with: the fresh read's own type <var>pFreshType</var>
+/// where that read carried the field as a scalar, else the argument's own <var>pArgType</var>.</p>
+/// <p>An absent or null fresh value settles nothing about the field's type, so the argument's type
+/// stands; an object or array on either side never reaches here.</p>
+ClassMethod SettableType(pFreshType As %String, pArgType As %String) As %String [ Private ]
+{
+    If (pFreshType = "unassigned") || (pFreshType = "null") Quit pArgType
+    If (pFreshType = "object") || (pFreshType = "array") Quit pArgType
+    Quit pFreshType
+}
+
+/// <p>Whether <var>pValue</var> can be carried by <var>pType</var> without changing what it says:
+/// a number needs a numeric spelling, a boolean one of <code>true</code>, <code>false</code>,
+/// <code>0</code> or <code>1</code>, and every other type takes anything.</p>
+/// <p>The gate in front of <method>Coerced</method>, which otherwise answers <code>0</code> for a
+/// word. Refusing at the mint is what keeps the diff the user reviews and the body the confirmed
+/// write sends the same thing (AD-4, AD-6).</p>
+ClassMethod Representable(pValue As %RawString, pType As %String) As %Boolean [ Private ]
+{
+    If pType = "number" Quit ''$IsValidNum(pValue)
+    If pType = "boolean" Quit ((pValue = "true") || (pValue = "false") || (pValue = 0) || (pValue = 1))
+    Quit 1
+}
+
+/// <p><var>pValue</var> as <var>pType</var> spells it: a number numerically, a boolean as 0 or 1
+/// reading <code>true</code>/<code>false</code> as well as 0 and 1, and anything else
+/// verbatim.</p>
+/// <p><b>Caller contract:</b> <method>Representable</method> has already answered true for the
+/// pair; this method does not validate.</p>
+ClassMethod Coerced(pValue As %RawString, pType As %String) As %RawString [ Private ]
+{
+    If pType = "number" Quit +pValue
+    If pType = "boolean" {
+        If pValue = "true" Quit 1
+        If pValue = "false" Quit 0
+        Quit ''pValue
+    }
+    Quit pValue
 }
 
 /// <p>The first name in <var>pNames</var> that <var>pArgs</var> carries, or <code>""</code>.</p>

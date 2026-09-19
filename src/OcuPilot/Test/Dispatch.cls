@@ -28,7 +28,11 @@ Class OcuPilot.Test.Dispatch Extends %RegisteredObject
 /// <p>Returns the dispatched <class>%Status</class>; <var>pBody</var> is the captured,
 /// <b>unparsed</b> response body, <var>pStatus</var> is the numeric HTTP status
 /// <code>%response.Status</code> was left at, and <var>pAllowHeader</var> is whatever
-/// <code>%response</code>'s <code>Allow</code> header was set to (empty when none was set).</p>
+/// <code>%response</code>'s <code>Allow</code> header was set to (empty when none was set), and
+/// <var>pContentType</var> whatever its <code>ContentType</code> was left at.</p>
+/// <p><b>Every answer is an output, because the stubs do not outlive the call</b> (DW-1184): they
+/// are <code>New</code>ed in this frame, so a caller reading <code>%response</code> after this
+/// returns would read its own, not the dispatch's.</p>
 /// <p><var>pApplication</var>, when supplied, is the web application the CSP server would
 /// have matched. Only a handler that reads <code>%request.Application</code> needs it —
 /// <class>OcuPilot.Api.StaticHandler</class> resolves its bundle directory from it (AD-21),
@@ -45,13 +49,17 @@ Class OcuPilot.Test.Dispatch Extends %RegisteredObject
 /// rather than one this harness asserted. <code>UpdateURL</code> switches to the
 /// application's namespace, so the caller's namespace is saved and restored around it
 /// (AD-16).</p>
-ClassMethod Invoke(pRouterClass As %String, pUrl As %String, pMethod As %String, pParams As %DynamicObject = "", Output pBody As %String, Output pStatus As %Integer, Output pAllowHeader As %String, pApplication As %String = "", pRequestBody As %String = "") As %Status
+ClassMethod Invoke(pRouterClass As %String, pUrl As %String, pMethod As %String, pParams As %DynamicObject = "", Output pBody As %String, Output pStatus As %Integer, Output pAllowHeader As %String, pApplication As %String = "", pRequestBody As %String = "", Output pContentType As %String) As %Status
 {
     Set tSC = $$$OK
     Set pBody = ""
     Set pStatus = 0
     Set pAllowHeader = ""
+    Set pContentType = ""
     Set tCapturing = 0
+    ; The stubs are this call's, not the process's: without New they outlive the dispatch and the
+    ; next thing in the same process reads a request nobody made (DW-1184).
+    New %request, %response
     Try {
         Set %request = ##class(%CSP.Request).%New()
         If pApplication '= "" {
@@ -109,6 +117,7 @@ ClassMethod Invoke(pRouterClass As %String, pUrl As %String, pMethod As %String,
         Set pBody = $Get(%OcuPilotDispatchCap, "")
         Set pStatus = +%response.Status
         Set pAllowHeader = %response.GetHeader("Allow")
+        Set pContentType = %response.ContentType
     } Catch ex {
         ; Restore first (AD-16). UpdateURL switches to the matched application's namespace,
         ; so a throw from it -- or from anything after it -- would otherwise leave this
@@ -144,6 +153,7 @@ ClassMethod InvokeHttp500(pRouterClass As %String, pStatus As %Status, Output pB
     Set pBody = ""
     Set pHttpStatus = 0
     Set tCapturing = 0
+    New %request, %response
     Try {
         Set %request = ##class(%CSP.Request).%New()
         Set %response = ##class(%CSP.Response).%New()
@@ -192,6 +202,7 @@ ClassMethod InvokeHandler(pHandlerClass As %String, pMethod As %String = "Handle
     Set pBody = ""
     Set pStatus = 0
     Set tCapturing = 0
+    New %request, %response
     Try {
         Set %request = ##class(%CSP.Request).%New()
         Set %response = ##class(%CSP.Response).%New()
