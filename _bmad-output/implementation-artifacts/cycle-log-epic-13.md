@@ -12,3 +12,6 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-19T21:05:25Z	Epic 13	retro_review_skipped	reason=assigned_skip_handled_by_epic_5
 2026-09-19T21:07:18Z	Epic 13	epic_context_compiled	reason=initial model=claude-opus-5[1m]
 2026-09-19T21:07:52Z	Story 13.1	stage_spawned	stage=plan spawn_at=2026-09-19T21:07:52Z model=claude-opus-5[1m] agent_name=13-1-the-uninstall-hook-plan-1 cycle_iteration=1
+2026-09-19T21:19:59Z	Story 13.1	story_created	spawn_at=2026-09-19T21:10:14Z model=claude-opus-5[1m] path=_bmad-output/implementation-artifacts/spec-13-1-the-uninstall-hook.md build_status=ready-for-dev epic_context=reused warnings=oversized
+2026-09-19T21:19:59Z	Story 13.1	spec_validated	service_introducing=false integration_ac=declared-none adr_constrained_acs=AD-9,AD-10,AD-15,AD-16,AD-17,AD-21,AD-25,AD-32,AD-37,AD-38,AD-45,AD-46 decision_dependency=none sections_created=none owned_ledger=none addressed=0 declined=0 mutates_shared_runtime=true model=claude-opus-5[1m] lead_corrections=dw244_claim_corrected_at_origin
+2026-09-19T21:19:59Z	Story 13.1	plan_clarification_requested	topic=contended_path_installer_cls reason=epic5_also_holds_src/OcuPilot/Install/**
