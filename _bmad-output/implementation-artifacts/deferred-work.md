@@ -2942,6 +2942,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: AD-7 Rule text versus AD-33 Rule and src/OcuPilot/Kernel/State/Step.cls; the other half of the implement stage's deferred finding, AD-31 and epics.md, was corrected by the lead at harvest
 - 2026-09-16T21:12:49Z status=escalated owner=burndown by=harvest note=A wording change to AD-7's Rule, which the orchestrator reserved because Epic 6 is amending AD-7 in parallel; recommended to replace temp global with AD-33's protected storage at the spine reconcile
 - 2026-09-19T02:12:25Z status=routed owner=5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read by=merge_gate note=amend AD-7's progress clause to match AD-33 and the shipped Turn/Step tables at your spine step; the clause is stale, not the code
+- 2026-09-19T09:05:21Z status=resolved-by:5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read by=spec_gate note=AD-7's Rule amended at its origin in the spine at this gate, with the memlog entry; the clause now names AD-33's protected storage rather than a temp global. lint_spine reports no ad_id or ad_fields finding
 
 ### DW-446: CLAUDE.md still says check-objectscript.py carries 18 rules; Story 4.1 added a nineteenth, the turn job's reach rule
 - source: spec-4-1-the-turn-runs-in-a-background-job-and-returns-immediately.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -3632,6 +3633,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-18T23:21:38Z status=escalated owner=burndown by=cr note=the fix is a new or reworded fixed string, so the wording is the owner's call at the decision sheet
 - 2026-09-18T23:27:12Z status=escalated owner=burndown by=adjudication note=lead confirms the escalation: the sentence prescribes a remedy every route that renders it refuses, and rewording user-facing copy is the owner's
 - 2026-09-19T02:12:25Z status=routed owner=5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read by=merge_gate note=REASONAGENTBADBODY must not offer 'or no body at all' on routes that refuse an absent body
+- 2026-09-19T09:05:21Z status=routed owner=10-1-the-message-and-tool-definition-adapters by=spec_gate note=declined by the 5.1 plan because its only fix site is Api/Error.cls:375, contended by Epic 10, and AD-39 confines every fixed refusal sentence to that file so it cannot be fixed elsewhere. Routed to the Epic 10 story already editing Error.cls rather than to range-end-cleanup: that story is in the file anyway, so this costs no cleanup slot
 
 ### DW-1171: A dropped SecurityChange audit emission is logged as a configuration change
 - source: spec-4-12-epic-4-burn-down.md (code review) | severity: med | fix-risk: low | footprint: in-story
