@@ -2,15 +2,38 @@
 title: 'Story 10.1: The message and tool-definition adapters'
 type: 'feature'
 created: '2026-09-18'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'f92e266af4790f89fc17a891e6f8b39d3e28cb24'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/.claude/rules/objectscript-basics.md'
   - '{project-root}/.claude/rules/objectscript-testing.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      Kernel/Agent/Limits.cls:91-101 still states that one provider call's true worst case is the
+      attempt deadline plus the stored TimeoutSeconds, which the clamp this story added makes false.
+    evidence: |-
+      The sentence is the same superseded claim this story corrected at its two other origins
+      (Retry.ATTEMPTBUDGETSECONDS and Base.Attempts). The file is Epic 5's footprint, so it was
+      read and not written here. Settle by replacing the one sentence; the spine's AD-42 already
+      carries the amended bound.
+    location: >-
+      src/OcuPilot/Kernel/Agent/Limits.cls:91-101
+    severity: medium
+  - summary: >-
+      A turn stopped at a boundary may leave a tool_use in the stored canonical history with no
+      answering tool_result, which every family's request direction would then send unanswered.
+    evidence: |-
+      Both new request directions refuse the converse (a result with no call) and neither refuses
+      this one; the canonical Anthropic path has the same exposure, so it is not introduced here.
+      Settle by reading Kernel/Agent/Loop.cls's Boundary exit: whether it appends a tool_result for
+      the blocks it did not dispatch before it quits the loop.
+    location: >-
+      src/OcuPilot/Kernel/Provider/MessageAdapter.cls:135
+    severity: medium (unverified)
 ---
 
 <intent-contract>
@@ -110,6 +133,82 @@ Anchors verified against the working tree in this worktree on 2026-09-18.
 
 ## Review Triage Log
 
+- Matrix Test Audit (implement, 2026-09-18): the clamp row's "logged once" cell had no pinning assertion. Patched in-pass -- `Test/AdapterProvider.cls` gains a `LogRaw` capture seam and `Logged`, and `Test/Adapter.cls` the method named on AC3's line above.
+
+### 2026-09-18 - Review pass
+
+- verdicts: 57 findings - high 0, medium 17, low 35, false 4, maybe-false 1
+- findings:
+
+Blind Hunter:
+
+  - `[low]` `[patch]` `LogClamp`'s doc called its line "informational" while `Fault.LogRaw` routes it to `Audit.Log.Error` (severity 2, operator console) - the doc now states the seam and level it actually uses; the level itself is rejected below.
+  - `[low]` `[reject]` The clamp line carries its two numbers in a fabricated `$$$ERROR` and logs an empty code - `pStatus` is `Fault.LogRaw`'s only detail channel and `pCode` is empty because no client response pairs with this line.
+  - `[medium]` `[defer]` `Kernel/Agent/Limits.cls:91-101` still carries the worst-case sentence this story falsifies, with nothing machine-readable recording it - filed in frontmatter `deferred:`; Epic 5's footprint.
+  - `[medium]` `[patch]` `GEMINISTOPREASONS` omits values the class's own cited enumeration lists - `LANGUAGE:refusal` added; `OTHER` left to the documented default; `MALFORMED_FUNCTION_CALL` not added, being unverified against the reference this class cites.
+  - `[medium]` `[patch]` `StopReason` let any tool call overwrite `length` or `content_filter` - the override now fires only where the mapped reason was the default, so a truncated or filtered tool-calling reply keeps the reason a caller can act on.
+  - `[low]` `[reject]` The request direction turns a non-object `input` into an empty object while the reply direction refuses one - every path that builds a canonical block yields an object (`ArgumentsObject` refuses, `ArgumentsOf` normalizes, Anthropic passes the vendor's own), and the fix guards state not shown reachable.
+  - `[medium]` `[patch]` A `tool_use` with an empty id registered an empty subscript, so a result with an empty id "matched" and traveled as an empty `tool_call_id` - an id-less call is no longer registered and such a result is refused, as the class doc promises.
+  - `[medium]` `[patch]` `GeminiSchema`'s "no keyword outside the emitted subset can enter" was an overclaim; an unrecognized keyword is copied through - the clause is replaced and `Registry.EmitSchema` named as the enforcer.
+  - `[low]` `[patch]` `GeminiSchema` described itself as producing a copy while aliasing `enum` and `required` - stated at the method, in the same correction.
+  - `[low]` `[reject]` Unknown block types are dropped silently and the two dialects differ on the resulting message - `Loop` builds only `text`, `tool_use` and `tool_result`; the fix adds a branch on state not shown reachable.
+  - `[low]` `[patch]` The Gemini ordering claim rested on an unstated invariant - the class doc now names the canonical history's call order as what it depends on.
+  - `[low]` `[patch]` `AdapterProvider`'s Gemini body is not Gemini's real shape (top-level `model`, no `generationConfig`) - the fixture's doc now says the body carries only the translators' output and is not to be copied as a family adapter.
+  - `[low]` `[reject]` `CANONICALBODY` cannot demonstrate AC5's "before" half - the identity follows from `Anthropic.cls` being unchanged since `baseline_revision`, which `git diff` shows; the literal pins forward stability.
+  - `[medium]` `[patch]` AC1's emitted-then-translated chain was never linked in one test - `Registry.ProviderTools`' own emitted schemas now go through both translators and `Outside()` asserts no keyword outside the subset at any depth.
+  - `[medium]` `[patch]` AC1's mutation exercised only the literal comparison - a second mutation over the live chain was named, applied, observed red and reverted; AC1's `## Verification` line records it.
+  - `[low]` `[reject]` `EffectiveAttempts`' `tAllowed` floor is unreachable given the timeout clamp - it is a documented boundary of a pure arithmetic method driven directly over its range; deleting it would leave a future caller dividing by zero.
+  - `[low]` `[reject]` The story changes what the attempt deadline is for without saying so - the rewritten `ATTEMPTBUDGETSECONDS` paragraph states both roles, the between-attempts deadline and the clamp ceiling, at its origin.
+  - `[low]` `[reject]` `LogClamp` re-implements the "never fewer than one" floor - that copy is what suppresses a phantom "clamped" line for a stored count of 0, so removing it is a behavior change rather than a deletion.
+  - `[medium]` `[reject]` The run result reported 12 methods and 12 of 12 for a 13-method class - the fix is to edit this build's spec; finalize records 13 of 13 and the post-patch run indices.
+  - `[low]` `[reject]` `Test/Adapter.cls` is 659 lines against the ~500-line guidance - a split is well beyond a two-way door and the class is cohesive by subject; reopen_if it passes 800 lines or a method's subject leaves the class header.
+  - `[false]` `[reject]` `Test/Adapter.cls`'s header overclaims its footprint - the spec's own Verification defines instance-level state as security objects, web applications, credentials, tasks, databases and namespaces; an OcuPilot state row and a console line are none of those.
+  - `[low]` `[reject]` `Test/ProviderPortProbe.cls:4`'s adapter count is now stale - that file is outside this story's footprint (Epic 5 owns it); reopen_if a fourth stub adapter is added.
+  - `[low]` `[patch]` No test pinned the function-name grammar both new class docs assert - `Registry.WIRENAMEPATTERN` is now asserted equal to the grammar they cite.
+  - `[low]` `[reject]` `ToolDefAdapter`'s `%Status` returns are unreachable and `SchemaOf` is public with no outside caller - the `%Status` is the seam 10.2 and 10.3 call through and narrowing it would change their contract; `SchemaOf` mirrors `Anthropic.SchemaOf` deliberately.
+  - `[false]` `[reject]` AC2's recorded `git diff` command does not produce the recorded result - it is evaluated against the finalize commit; both the working-tree and committed forms return exactly the eight Code Map paths.
+
+Edge Case Hunter:
+
+  - `[low]` `[reject]` `BlocksOf` swallows an unparseable blocks JSON and the message's calls vanish - the canonical adapter parses blocks the same way and falls back identically, so this is not introduced here.
+  - `[low]` `[reject]` A blocks array yielding nothing sends OpenAI an empty message where Gemini sends none - same root cause as the dropped-block-type row above.
+  - `[medium]` `[patch]` A first choice carrying no `message` answered `$$$OK` with empty text, against the matrix's own DW-336 rule - a guard now refuses it, with a test leg.
+  - `[low]` `[reject]` A canonical role absent or outside OpenAI's four - `Loop` writes only `user` and `assistant`; the fix adds a mapping on state not shown reachable.
+  - `[medium]` `[patch]` An empty `tool_use_id` passes the existence test - grouped with the empty-id row above and fixed with it.
+  - `[maybe-false]` `[defer]` A `tool_use` left unanswered in stored history would be sent unanswered - if true this is medium; filed in frontmatter `deferred:` with what would settle it.
+  - `[low]` `[reject]` An `input` parsing as a JSON array reaches `function.arguments` as array text - grouped with the non-object-input row above.
+  - `[low]` `[patch]` `SchemaOf` accepted any object, so an array schema reached OpenAI's `parameters` while Gemini silently got an empty one - it now requires a `%Library.DynamicObject`, the check `BodyOf` already made.
+  - `[low]` `[reject]` A non-string schema `type` emits a stringified OREF - `Registry.SCHEMATYPES` admits only the six string types and `EmitSchema` refuses anything else, so no caller reaches it; the fix adds a guard.
+  - `[low]` `[reject]` `WorkBudgetSec` would go non-positive if the two budgets were set within nothing of each other - both are shipped parameters pinned against the turn-side ceiling; theoretical.
+  - `[low]` `[patch]` The test helper `Path()` returned a mid-path scalar instead of an empty string - fixed, so its documented contract holds and an AC2 assertion cannot pass against a wrong-shaped body.
+  - `[low]` `[reject]` The deadline pin's stored timeout and its elapsed stand-in are no longer coupled - grouped with the deadline-purpose row above.
+  - `[false]` `[reject]` Removing the no-clamp test left "the clamp only lowers" unpinned - `EffectiveTimeoutSec(tWork-1)` pins an in-budget value passing through and the defaults test pins 90 end to end through `NewRequest`.
+  - `[medium]` `[reject]` The run result's method count disagrees with the class - grouped with the 12-versus-13 row above.
+  - `[medium]` `[patch]` Four of six reported greens predated the in-pass patch - all seven classes were re-run after the patch set; runs 184 to 192 are recorded at finalize.
+  - `[medium]` `[patch]` The matrix's "never a silent empty reply" was falsified by a choices array whose first entry is empty - grouped with the no-message row above and fixed with it.
+
+Verification Gap Reviewer:
+
+  - `[medium]` `[patch]` The Gemini `finishReason` map had no executed assertion, every test body short-circuiting on tool calls or carrying no reason - a sweep over a reply with no `functionCall` part was added, plus a truncated tool-calling leg.
+  - `[low]` `[patch]` The clamp line's level and code are observed by nothing - the doc half is corrected above; the level is rejected as the one every other `Attempts` exit uses, reopen_if an operator reports console noise from a clamped call.
+  - `[low]` `[reject]` `Retry`'s `tAllowed` floor is unreachable and its apparent pins cannot redden - grouped with the floor row above.
+  - `[low]` `[reject]` `Retry`'s zero-timeout branch is unreachable from production - grouped with the same row.
+  - `[medium]` `[patch]` Two refusal legs asserted an empty `Text` on a fresh response, which is the only value it could have had - both now seed `Text` before the refusing call and assert it was not overwritten.
+  - `[medium]` `[reject]` The run result undercounts the class it certifies - grouped with the 12-versus-13 row above.
+  - `[low]` `[reject]` `lint-docs.sh` and `npm test` outcomes are not recorded - the fix is to edit this build's spec; both are recorded at finalize.
+  - `[low]` `[patch]` `GeminiSchema` copies non-rewritten members by reference - stated at the method, grouped with the copy row above.
+
+Intent Alignment Auditor:
+
+  - `[low]` `[reject]` The row-to-family hop is unpinned: two probe rows name one `adapterClass` and the dialect comes from a switch - the spec's Code Map chose one fixture with a dialect switch, the row-to-adapter hop is pinned by `ServedBy` and AC2's mutation, and the per-family adapters are 10.2's and 10.3's.
+  - `[low]` `[reject]` The shipped seam has no shipped caller - by design; `Consumed-by` names 10.2 and 10.3 and Rule 1's Integration AC is satisfied by the probe row plus the fixture.
+  - `[medium]` `[patch]` The locked subset is enforced upstream of the translators, not in them - grouped with the overclaim and live-chain rows above.
+  - `[low]` `[reject]` The degenerate pair satisfies the product inequality but not a wall-clock reading - grouped with the zero-timeout row above.
+  - `[low]` `[reject]` No test stores an `Egress` row, so the matrix's named state is one hop from what is pinned - `Egress.Resolve` to the settings array is pinned by `Test.Egress`, `Dispatch`'s pass-through by `Test.ProviderPort`, and the clamp over that array by the new tests; mutating the instance's single shared row here would court the cross-class fixture hazard DW-54 names for no new information.
+  - `[low]` `[reject]` "Logged once" is pinned at the seam rather than at the rendered line - `Base.LogRaw` is this class's designed seam and the one `ProviderPortProbe` already captures; asserting the console line would pin `Audit.Log`'s formatting, which `Test.Log` owns.
+  - `[low]` `[reject]` The tool-call stop reason overrides the vendor's, and a candidate with no parts answers `$$$OK` - the first is now narrowed to the Gemini case it exists for; the second is documented at the method as "the model answered, with nothing in it".
+  - `[false]` `[reject]` The diff is one revision behind the tree on the spec's `status` line - an artifact of when the diff was staged; that line is this workflow's own field, not a reviewed-diff change.
+
 ## Design Notes
 
 **Consumes:** Story 3.2 (the provider base, the `adapterClass` catalog column, the never-throw template, the `ProviderStub` transport seam); Story 4.2 (`Screen/Tool/Registry.cls`'s emitted schema subset and `WireName`); Story 4.8 (`Retry`'s budgets and the attempt deadline this story turns into a real bound).
@@ -145,13 +244,106 @@ Anchors verified against the working tree in this worktree on 2026-09-18.
 
 **Pinning tests and their mutations** (Rule 19 -- one demonstrated mutation per AC; a mutation is applied to the instance's copy of `src/`, the whole tree is recompiled, red is observed, the mutation is reverted, and `git status --short` plus `git diff --stat` are confirmed unchanged):
 
-- **AC1** -- pinned by `OcuPilot.Test.Adapter`'s subset test. `mutation:` add `pattern` to `Screen/Tool/Registry.cls` `EMITTEDKEYWORDS` -> the subset pin goes red.
-- **AC2** -- pinned by `OcuPilot.Test.Adapter`'s probe-family test driving `ProviderPort.Invoke`. `mutation:` point the probe row's `adapterClass` at `OcuPilot.Kernel.Provider.Anthropic` -> the recorded outbound body is the canonical shape and the assertion on the target family's field names goes red.
-- **AC3** -- pinned by `OcuPilot.Test.ProviderRetry`'s worst-case test. `mutation:` make the clamp method in `Kernel/Provider/Retry.cls` return its argument unchanged -> the bound over a stored 3600-second timeout goes red.
-- **AC4** -- pinned by `OcuPilot.Test.Adapter`'s translation-failure tests. `mutation:` in `MessageAdapter`, raise instead of returning an error `%Status` on an unmatched `tool_use_id` -> the `$$$OK`-on-every-path assertion goes red.
-- **AC5** -- pinned by `OcuPilot.Test.Provider`'s existing Anthropic body assertions plus a new byte-identity test in `OcuPilot.Test.Adapter`. `mutation:` route the Anthropic adapter's `CallMessages` through `MessageAdapter.CanonicalToOpenAi` -> the canonical-passthrough test goes red.
+- **AC1** -- pinned by `OcuPilot.Test.Adapter.TestTheLockedSubsetIsKeptVerbatimByBothTranslators`. `mutation:` add `pattern` to `Screen/Tool/Registry.cls` `EMITTEDKEYWORDS` -> red on the emitted-property-keyword assertion (observed 2026-09-18). That test now also carries `Registry.ProviderTools`' own emitted schemas through both translators; `mutation:` have `ToolDefAdapter.GeminiSchema` emit Gemini's `format` keyword beside each `type` -> red on "no Gemini declaration carries a keyword outside the emitted subset" (observed 2026-09-18).
+- **AC2** -- pinned by `OcuPilot.Test.Adapter.TestAProbeFamilyIsOneCatalogRowPlusOneAdapter`, driving `ProviderPort.Invoke` against a stored probe definition. `mutation:` point `CatalogProbe.DIALECTADAPTER` at `OcuPilot.Test.ProviderStub` -- the canonical adapter over the transport seam, which is `Anthropic` without the socket this story may not open -> red on `ServedBy` and on every field-name assertion in both dialects (observed 2026-09-18).
+- **AC3** -- pinned by `OcuPilot.Test.ProviderRetry.TestAStoredTimeoutFarPastTheDeadlineIsClampedAtThePointOfUse`. `mutation:` make `Retry.EffectiveTimeoutSec` answer its argument unchanged -> red on the recorded timeout (3600) and on the bound (3630 <= 300) (observed 2026-09-18). The row's logging half is pinned by `OcuPilot.Test.Adapter.TestTheClampLogsOnceWhenItLoweredAValueAndIsSilentOtherwise`; `mutation:` return from `Base.LogClamp` before it logs -> red on the one-line assertion (observed 2026-09-18).
+- **AC4** -- pinned by `OcuPilot.Test.Adapter`'s two translation-failure tests. `mutation:` answer `$$$OK` from `MessageAdapter.UnmatchedResult`, so an unmatched result is dropped rather than refused -> red on both refusal legs and on "no call was made" (observed 2026-09-18). Raising instead falsifies nothing: `Base.Invoke`'s outer `Catch` answers `$$$OK` for a raise as for a status, which is the never-throw template working.
+- **AC5** -- pinned by `OcuPilot.Test.Adapter.TestTheCanonicalFamilyIsAByteIdenticalPassthrough` beside `OcuPilot.Test.Provider`'s existing Anthropic body assertions. `mutation:` route the Anthropic adapter's `CallMessages` through `MessageAdapter.CanonicalToOpenAi` -> red on the byte-identity assertion and on the `tool_calls` / `tool_call_id` foreign-field assertions (observed 2026-09-18).
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**What was implemented.** Two translator classes under `Kernel/Provider/` carry the canonical
+(Anthropic) message array into the OpenAI and Gemini dialects and each dialect's reply back into
+canonical `tool_use` blocks, and the canonical tool array into each family's declaration shape;
+neither branches on a provider name and neither reads a credential. The effective per-call timeout
+and attempt count are clamped at the point of use, so `(attempts x timeout) + RETRYBUDGETSECONDS`
+is at most `ATTEMPTBUDGETSECONDS` for any stored or caller-supplied pair, at least one attempt is
+always made, and the shipped 90 x 3 + 30 defaults clamp to themselves. Nothing above
+`ProviderPort` changed.
+
+**Files changed** -- the eight the Code Map names, plus this spec:
+
+- `Kernel/Provider/MessageAdapter.cls` -- new: both directions of both dialects, correlating a
+  result with the nearest preceding call and synthesizing an id for Gemini.
+- `Kernel/Provider/ToolDefAdapter.cls` -- new: the tool array in each family's declaration shape;
+  Gemini loses only `additionalProperties`, named in `GEMINIDROPPED`.
+- `Kernel/Provider/Retry.cls` -- `WorkBudgetSec`, `EffectiveTimeoutSec`, `EffectiveAttempts`; the
+  superseded `ATTEMPTBUDGETSECONDS` paragraph replaced at its origin.
+- `Kernel/Provider/Base.cls` -- the clamp applied at `Attempts` and at `NewRequest` through a
+  private `TimeoutOf`, `LogClamp` logging once when a value was lowered; the superseded `Attempts`
+  paragraph replaced.
+- `Test/Adapter.cls` -- new: 13 methods over every matrix row and error column, the clamp's
+  boundaries and its log line, AC2's port leg and AC5's byte identity.
+- `Test/AdapterProvider.cls` -- new: the probe family adapter, a `ProviderStub` subclass whose
+  dialect is a switch, with a log-capture seam.
+- `Test/CatalogProbe.cls` -- two probe rows naming that adapter. No shipped row added.
+- `Test/ProviderRetry.cls` -- the no-clamp residual-risk pin replaced by the clamp pin, a
+  defaults-unchanged pin, and a 65-pair worst-case sweep.
+
+**Review findings.** 57 across four layers: high 0, medium 17, low 35, false 4, maybe-false 1.
+Routed 22 patch, 2 defer, 33 reject. Every rejected finding's reason is its own row under
+`## Review Triage Log` above.
+
+Patched, grouped by root cause -- 8 medium entries and 5 low:
+
+- medium: the Gemini `finishReason` map was unexercised and incomplete; the stop reason let a tool
+  call overwrite a truncation or a filter; an id-less call correlated with an id-less result; the
+  two translator docs overclaimed what they enforce and hid both the aliasing and the ordering
+  dependency; AC1 was pinned against a fixture schema rather than the registry's own emitted
+  output; a first choice with no message was answered as an empty reply; two refusal-leg assertions
+  could not fail; four reported greens predated the in-pass patch.
+- low: `LogClamp`'s doc word; `SchemaOf` accepted a non-object; the test helper `Path()` returned a
+  mid-path scalar; the fixture's body could be read as a family adapter's; the vendor name grammar
+  was unpinned.
+
+Deferred, in frontmatter `deferred:`: the superseded sentence at `Kernel/Agent/Limits.cls:91-101`
+(Epic 5's footprint), and an unverified exposure where a boundary-stopped turn could leave a
+`tool_use` unanswered in stored history.
+
+**Follow-up review recommended: true.** Eight medium entries were patched on a first pass. The
+unverified risk it names: the two translators still have no shipped caller, so every wire-shape
+claim rests on a fixture's composed body rather than on a family adapter's request, and this pass
+changed canonical stop-reason behavior that only that fixture exercises. Story 10.2's adapters are
+the first real exercise of it.
+
+**Verification**, all on `ocupilot-slot-b` (IRIS 2026.2 build 221U, instance GUID
+`EE371308-B136-11F1-B1BD-82DD33222152`); no socket was opened to a provider:
+
+- `uv run scripts/check-objectscript.py` -- clean, 479 files over 21 rules.
+- `uv run scripts/test_check_objectscript.py` -- 126 of 126.
+- All 479 classes loaded and compiled `cku`, then the provider tree force-compiled `ck` so no
+  subclass kept a stale copy of an inherited method -- no errors.
+- `bash scripts/lint-docs.sh` -- clean: markdownlint 0 issues, check-prose 0 problems in 89 files.
+- From `ui/`: `npm test` -- 1044 `node --test` and 640 component tests passing, unchanged.
+- `node ui/tools/ci-runner.mjs --container ocupilot-slot-b --class <one class>`, one per
+  invocation, every run after the patch set and each confirmed against `%UnitTest_Result`:
+  `Adapter` 13/13 (run 192), `ProviderRetry` 12/12 (185), `Provider` 20/20 (186), `ProviderPort`
+  20/20 (187), `ProviderConsumer` 6/6 (188), `AgentRules` 18/18 (189), `ReadTool` 27/27 (190).
+  `ReadTool` was added to the set: it is what pins `Registry.ValidateArguments` refusing an
+  undeclared argument, which is the matrix row that says Gemini losing `additionalProperties`
+  costs nothing.
+- `OcuPilot.Test.ProviderSecret` cannot run on a dev instance -- its own `OCUPILOT_ALLOW_ERROR_SEED`
+  guard refuses there. It ran 1/1 green on this slot's throwaway
+  (`scripts/ci-throwaway.sh up --dir /tmp/ocupilot-b-ci --project ocupilot-b-ci --web 52777
+  --super 1976`), which was then torn down. The class is unchanged by this story.
+- AC2's second half: `git diff --name-only 84a5fdc..HEAD -- src ui module.xml` returns exactly the
+  eight Code Map paths and nothing under `Kernel/Agent/`, `Kernel/Proposal/`, `Screen/`, `Api/`,
+  `Install/`, `module.xml` or `ui/`.
+- Six mutations demonstrated: the five on the `## Verification` lines above plus the clamp's log
+  line, each applied, recompiled over the whole package, observed red, reverted, and the tree
+  confirmed byte-identical.
+
+**Residual risks.**
+
+- No shipped caller reaches either translator until Story 10.2, so the wire bodies are pinned as
+  the translators' own output and as a fixture's composition of it, never as a shipped family
+  adapter's request.
+- The clamp's log line is written at the level and through the seam every other `Attempts` exit
+  uses, which puts a misconfiguration on the operator console. That is deliberate and recorded;
+  reopen it if an operator reports noise from a clamped call.
+- The Gemini reply direction synthesizes call ids, so a history that reached Gemini and then a
+  different family carries ids no other vendor issued. Both request directions resolve them only
+  locally, so this is inert today.

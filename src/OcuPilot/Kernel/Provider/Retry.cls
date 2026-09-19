@@ -1,5 +1,7 @@
 /// <p>AD-42's retry arithmetic: which statuses are worth trying again, how long to wait, how to
-/// read the provider's own hint, and the two budgets that bound what one call may spend. Pure but
+/// read the provider's own hint, the two budgets that bound what one call may spend, and the clamp
+/// that holds a stored timeout and attempt count inside them
+/// (<method>EffectiveTimeoutSec</method>, <method>EffectiveAttempts</method>). Pure but
 /// for one clock read -- <method>HttpDateDeltaSec</method>, because a <code>Retry-After</code> date
 /// names a moment and only the clock turns that into a delay.</p>
 /// <p>Split out from <class>OcuPilot.Kernel.Provider.Base</class> so the decision can be driven
@@ -50,20 +52,61 @@ Parameter MAXRETRYAFTERSECONDS As %Integer = 30;
 /// whatever is left, and a call with nothing left stops rather than sleeping.</p>
 Parameter RETRYBUDGETSECONDS As %Integer = 30;
 
-/// <p>The seconds a provider call may have spent -- its attempts and the sleeps between them --
-/// before a further attempt is refused. It is read between attempts, so it bounds when the last
-/// attempt may <i>start</i>, not when it must end: an attempt already in flight runs to its own
-/// <code>timeoutSeconds</code>, and one call's worst case is this plus that. It is
-/// <parameter>OcuPilot.Kernel.State.Egress.DEFAULTMAXATTEMPTS</parameter> x
+/// <p><b>The seconds one provider call may spend in total</b> -- its attempts and the sleeps
+/// between them. It is both the deadline <method>OcuPilot.Kernel.Provider.Base.Attempts</method>
+/// reads between attempts, which refuses a further attempt once it has passed, and the ceiling
+/// <method>EffectiveTimeoutSec</method> and <method>EffectiveAttempts</method> clamp a stored
+/// per-call timeout and attempt count to, so <code>(attempts x timeout) +
+/// <parameter>RETRYBUDGETSECONDS</parameter></code> is at most this whatever is stored (AD-42).
+/// The deadline alone bounded only when a further attempt may <i>start</i>, which left the last
+/// attempt free to run out an unbounded stored <code>timeoutSeconds</code>.</p>
+/// <p>It is <parameter>OcuPilot.Kernel.State.Egress.DEFAULTMAXATTEMPTS</parameter> x
 /// <parameter>OcuPilot.Kernel.State.Egress.DEFAULTTIMEOUT</parameter> plus
-/// <parameter>RETRYBUDGETSECONDS</parameter> exactly, so with the shipped defaults the attempt
-/// bound is reached first and this never fires. It binds where a stored
-/// <property>OcuPilot.Kernel.State.Egress.MaxAttempts</property> or
-/// <property>OcuPilot.Kernel.State.Egress.TimeoutSeconds</property> makes that product larger --
-/// neither of which anything else bounds.
+/// <parameter>RETRYBUDGETSECONDS</parameter> exactly, so the shipped defaults clamp to themselves
+/// and three 90-second attempts are what they were.
 /// <parameter>OcuPilot.Kernel.Agent.Limits.PROVIDERCALLSECONDS</parameter> is the turn-side
 /// declaration of this same ceiling, and a test pins the two equal.</p>
 Parameter ATTEMPTBUDGETSECONDS As %Integer = 300;
+
+/// <p>The seconds one call's <b>attempts</b> may spend between them:
+/// <parameter>ATTEMPTBUDGETSECONDS</parameter> less the sleeps
+/// <parameter>RETRYBUDGETSECONDS</parameter> already reserves. Computed rather than spelled a
+/// third time, so moving either budget moves the clamp with it.</p>
+ClassMethod WorkBudgetSec() As %Integer
+{
+    Quit ..#ATTEMPTBUDGETSECONDS - ..#RETRYBUDGETSECONDS
+}
+
+/// <p>The per-call timeout one attempt may actually be given: <var>pTimeoutSeconds</var> cut to
+/// <method>WorkBudgetSec</method>.</p>
+/// <p><b>It only ever lowers.</b> A caller resolves its own default first -- a non-positive value
+/// is the caller's to interpret, and is handed back unchanged -- so this composes with the
+/// lowering <method>OcuPilot.Port.ProviderPort.Dispatch</method> already does rather than
+/// fighting it.</p>
+ClassMethod EffectiveTimeoutSec(pTimeoutSeconds As %Numeric) As %Numeric
+{
+    If +pTimeoutSeconds > ..WorkBudgetSec() Quit ..WorkBudgetSec()
+    Quit +pTimeoutSeconds
+}
+
+/// <p>How many attempts of <var>pTimeoutSeconds</var> one call may make:
+/// <var>pMaxAttempts</var> cut to as many whole <method>EffectiveTimeoutSec</method> timeouts as
+/// <method>WorkBudgetSec</method> holds, and <b>never fewer than one</b> -- a timeout so long that
+/// no whole attempt fits still buys the one attempt, clamped, rather than a refusal.</p>
+/// <p>A timeout of zero or less bounds nothing, because such an attempt spends no time the budget
+/// measures (<class>%Net.HttpRequest</class> reads <code>Timeout</code> 0 as no wait at all), so
+/// the count is handed back as given; the attempt deadline is what bounds that call.</p>
+ClassMethod EffectiveAttempts(pMaxAttempts As %Integer, pTimeoutSeconds As %Numeric) As %Integer
+{
+    Set tAttempts = +pMaxAttempts
+    If tAttempts < 1 Set tAttempts = 1
+    Set tTimeout = ..EffectiveTimeoutSec(pTimeoutSeconds)
+    If tTimeout <= 0 Quit tAttempts
+    Set tAllowed = ..WorkBudgetSec() \ tTimeout
+    If tAllowed < 1 Set tAllowed = 1
+    If tAttempts > tAllowed Quit tAllowed
+    Quit tAttempts
+}
 
 /// <p>Whether <var>pStatus</var> is a status the same request may be sent again on: one of
 /// <parameter>RETRYABLESTATUSES</parameter>, or any server error other than the two

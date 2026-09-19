@@ -206,13 +206,21 @@ Method Invoke(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %St
 /// <parameter>OcuPilot.Kernel.Provider.Retry.ATTEMPTBUDGETSECONDS</parameter> bounds when a
 /// further attempt may start, read through <method>NowSeconds</method>: once it has passed, no
 /// further attempt is begun and that exit is <code>PROVIDER.TIMEOUT</code>. It is read between
-/// attempts and never during one, so an attempt already in flight still runs to its own
-/// <code>timeoutSeconds</code>.</p>
+/// attempts and never during one.</p>
+/// <p><b>The clamp is what makes the worst case a number</b> (AD-42, DW-1104). The attempt count
+/// and the per-call timeout are both read through
+/// <method>OcuPilot.Kernel.Provider.Retry.EffectiveAttempts</method> and
+/// <method>OcuPilot.Kernel.Provider.Retry.EffectiveTimeoutSec</method>, so
+/// <code>(attempts x timeout) + RETRYBUDGETSECONDS</code> is at most
+/// <parameter>OcuPilot.Kernel.Provider.Retry.ATTEMPTBUDGETSECONDS</parameter> however large a
+/// value is stored or a caller supplied. At least one attempt is always made, the shipped defaults
+/// clamp to themselves, and a value that was lowered is logged once before the loop begins --
+/// never refused, because a misconfigured timeout must not stop a turn from calling.</p>
 Method Attempts(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %String, ByRef pSettings, ByRef pResponse As OcuPilot.Kernel.Provider.Response, ByRef pFault As %DynamicObject, ByRef pHttpStatus As %Integer) [ Private ]
 {
     Set tUrl = $Get(pValues("endpointUrl"))
-    Set tMaxAttempts = +$Get(pSettings("maxAttempts"))
-    If tMaxAttempts < 1 Set tMaxAttempts = 1
+    Set tMaxAttempts = ##class(OcuPilot.Kernel.Provider.Retry).EffectiveAttempts($Get(pSettings("maxAttempts")), ..TimeoutOf(.pSettings))
+    Do ..LogClamp(.pSettings, tMaxAttempts)
     Set tCode = ##class(OcuPilot.Api.Error).#PROVIDERTRANSPORT
     Set tProviderText = ""
     Set tStartedAt = ..NowSeconds()
@@ -311,9 +319,9 @@ Method NewRequest(ByRef pSettings) As %Net.HttpRequest
     ; resetting them. The shipped default is already off for a POST -- it is set here so the
     ; endpoint OcuPilot judged is the only endpoint the key reaches, whatever that default becomes.
     Set tRequest.FollowRedirect = 0
-    ; The shipped default is read from the class that owns it rather than spelled again here, and
-    ; a non-positive stored value takes it too: %Net.HttpRequest reads Timeout 0 as no wait at all.
-    Set tRequest.Timeout = $Select(+$Get(pSettings("timeoutSeconds")) > 0: +pSettings("timeoutSeconds"), 1: ##class(OcuPilot.Kernel.State.Egress).#DEFAULTTIMEOUT)
+    ; Clamped at the point of use, which is the one place that bounds a stored value and a
+    ; caller-supplied one alike (AD-42, DW-1104).
+    Set tRequest.Timeout = ##class(OcuPilot.Kernel.Provider.Retry).EffectiveTimeoutSec(..TimeoutOf(.pSettings))
     If $Get(pSettings("sslConfiguration")) '= "" {
         Set tRequest.SSLConfiguration = pSettings("sslConfiguration")
     }
@@ -324,6 +332,35 @@ Method NewRequest(ByRef pSettings) As %Net.HttpRequest
         Set tRequest.ProxyTunnel = ''+$Get(pSettings("proxyTunnel"))
     }
     Quit tRequest
+}
+
+/// <p>The per-call timeout <var>pSettings</var> asks for, before the clamp: the stored value where
+/// it is positive, and <parameter>OcuPilot.Kernel.State.Egress.DEFAULTTIMEOUT</parameter>
+/// otherwise. The shipped default is read from the class that owns it rather than spelled again
+/// here, and a non-positive stored value takes it too, because
+/// <class>%Net.HttpRequest</class> reads <code>Timeout</code> 0 as no wait at all.</p>
+Method TimeoutOf(ByRef pSettings) As %Numeric [ Private ]
+{
+    If +$Get(pSettings("timeoutSeconds")) > 0 Quit +pSettings("timeoutSeconds")
+    Quit ##class(OcuPilot.Kernel.State.Egress).#DEFAULTTIMEOUT
+}
+
+/// <p>Log one line, through this class's own log seam and at the level every other exit of
+/// <method>Attempts</method> uses, when this call's timeout or attempt count was lowered to keep
+/// the call inside <parameter>OcuPilot.Kernel.Provider.Retry.ATTEMPTBUDGETSECONDS</parameter> -- a
+/// stored setting that cannot be honoured is a misconfiguration an operator should see. Silent when
+/// neither value was lowered, which is every call the shipped defaults serve.</p>
+/// <p><var>pEffectiveAttempts</var> is the count the loop will actually use, so the line reports
+/// what happened rather than recomputing it. It names the two numbers and nothing else: there is
+/// no credential anywhere near them (AD-35).</p>
+Method LogClamp(ByRef pSettings, pEffectiveAttempts As %Integer) [ Private ]
+{
+    Set tTimeout = ..TimeoutOf(.pSettings)
+    Set tClamped = ##class(OcuPilot.Kernel.Provider.Retry).EffectiveTimeoutSec(tTimeout)
+    Set tAsked = +$Get(pSettings("maxAttempts"))
+    If tAsked < 1 Set tAsked = 1
+    If (tClamped = tTimeout) && (pEffectiveAttempts = tAsked) Quit
+    Do ..LogRaw("this call's per-call timeout or attempt count was lowered to keep one provider call inside the time this instance allows", $$$ERROR($$$GeneralError, "timeout " _ tTimeout _ " to " _ tClamped _ " seconds, attempts " _ tAsked _ " to " _ pEffectiveAttempts), "")
 }
 
 /// <p><b>The one transport seam.</b> Issues <var>pRequest</var> as a POST to <var>pUrl</var> and
