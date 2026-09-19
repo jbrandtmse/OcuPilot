@@ -2,9 +2,9 @@
 title: 'The proposal is minted on the instance, from a fresh read'
 type: 'feature'
 created: '2026-09-19'
-status: 'in-review'
+status: 'done'
 baseline_revision: '3f002a9db607e0d74d1ba8bcdb3fe78a54dff75d'
-baseline_commit: '966ec611a161f6682ac3c452e298b855887edd64'
+baseline_commit: '3f002a9'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
