@@ -732,6 +732,12 @@ Every UX Design Requirement is owned by at least one story. Where a UX-DR is a *
 
 **Owner amendment, 2026-09-19.** Story 13.4 (optional bonus items) is scratched: no article, video or short is planned, and FR-79's bonus half is dropped. Epics 13 and 15 join the parallel run, each depending on Epic 1 alone, to fill the slot that would otherwise idle while Epic 5 runs; Story 13.3 (the registry publish) is held until the owner's release decision because what it publishes is public and is whatever the build is when it runs.
 
+**Orchestrator amendment, 2026-09-19.** Two consequences of the amendment above, settled on the owner's
+instruction. Story 13.3's acceptance criteria are rewritten so none of them can be closed by publishing:
+the archive is proven by a dry-run build and a local install, and a third criterion forbids touching the
+registry or any credential at all. Story 15.6 is sequenced after Epic 5 merges, because it edits the
+style tokens Epic 5 is editing, so Epic 15 ships Stories 15.1 to 15.5 and 15.6 is dispatched afterwards.
+
 That choice was weighed against organizing by portal area instead - one epic each for Web applications, Permissions, Security, Tasks, OS management and Logs. Area epics would touch fewer files per epic, but they cannot express the floor, which demands one live list in **every** area before any area's editors, and one confirmed agent write in **every** area by the end of step 2. An area-shaped plan would let the project arrive at 2026-09-27 with two finished areas and four empty ones, which is the thin interface the contest rules reject.
 
 **On file overlap.** Epics 2, 6, 7, 8 and 9 do each touch the same area slices. That overlap is additive rather than churning, because AD-5 makes a screen one declarative descriptor: adding a row action adds a declaration and a derived tool schema, not a rewrite of the list page. This is the "fully pre-designed, no feedback loop" case - the pre-design is what removes the pressure to consolidate.
@@ -5105,15 +5111,32 @@ As an operator who installs through IPM,
 I want OcuPilot on the registry,
 So that installing it is one command against a source I already trust.
 
+**HELD by the owner.** Everything up to the publish is planned and implemented; the publish itself is
+performed by the owner, by hand. The acceptance criteria below are deliberately written so that every
+one of them is satisfiable **without** contacting the registry - the earlier wording ("when it is
+published to the community registry, then it installs from there") could only be closed by publishing,
+which is a public, irreversible act that ships whatever the build is at that moment
+[AMENDED 2026-09-19 by merge_gate on the owner's instruction].
+
 **Acceptance Criteria:**
 
 - **Given** the IPM module
-- **When** it is published to the community registry
-- **Then** it installs from there on an instance that has IPM, with the built bundle inside the archive.
+- **When** the archive is produced by the publish path running in its dry-run form, which contacts no
+  registry
+- **Then** the archive carries the built bundle, and installing it from the local file on a fresh
+  instance that has IPM yields a working OcuPilot - the same assertion the registry would have proven,
+  taken one step earlier.
 
 - **Given** the manifest
-- **When** it is published
+- **When** the archive is produced
 - **Then** it was generated from the same roster the installer compiles, so it cannot have drifted.
+
+- **Given** this story is held
+- **When** it is implemented, reviewed and reported
+- **Then** nothing in it contacts the public registry, no registry credential or token is read,
+  configured, requested or used, the publish command is exercised only in its dry-run or local form,
+  and the story is **not** reported done by having published. A gate that can only be closed by
+  publishing is an unmet gate, to be escalated rather than closed - the release is the owner's alone.
 
 ---
 
@@ -5424,6 +5447,12 @@ So that my sort, my filter and my panel width are not re-set every morning.
 - **Then** it lives **on the instance**, not in the browser - the browser holding only the per-tab token pair, which is deliberately not persistent.
 
 ### Story 15.6: The light and dark theme
+
+**Sequenced after Epic 5 merges** [AMENDED 2026-09-19 by merge_gate on the owner's instruction]. The
+toggle is a flag flip, but it lands in `ui/src/styles/**` and its contrast guards run in both modes,
+and Epic 5 is styling the proposal card in those same token files while Epic 15 runs. Epic 15 therefore
+ships Stories 15.1 to 15.5 and leaves this one in `backlog`; the orchestrator dispatches it once Epic 5
+has merged. It is not dropped, and an Epic 15 run that reports done without it is correct.
 
 As a developer-administrator who works at night,
 I want a dark theme,

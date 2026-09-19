@@ -3,7 +3,7 @@
 # edges the orchestrator's analysis added, per the owner's standing instruction (2026-09-16):
 # "If your analysis adds an edge, take the more conservative graph and note the difference in the
 # parallel log; if it would remove one of these, keep mine."
-epics_md_hash: "6f16ce9f5f662df9b6f7e75978510b4fa479cb7eedbb49f0aebc96d0eff59f45"
+epics_md_hash: "6daf9a2e3077edd79f8fbbae543adc29a2d845c09a800c732953009381b8c3f4"
 analyzed_by: claude-opus-5
 analyzed_at: "2026-09-16T15:02:34Z"
 approved: true
@@ -81,9 +81,31 @@ epics:
   epic-13:
     depends_on: [epic-1]
     submodules: []
-    hold_stories: ["13-3-publish-the-package-to-the-community-registry"]   # owner releases by hand; the publish is public and ships whatever the build is
+    hold_stories: ["13-3-publish-the-package-to-the-community-registry"]
+    # HARD HOLD, strengthened 2026-09-19 on the owner's instruction. Plan and implement everything up
+    # to the publish; do NOT publish. The owner releases by hand. Story 13.3's acceptance criteria in
+    # epics.md were rewritten so none of them can be closed by publishing (the archive is proven by a
+    # dry-run build plus a local install), because the earlier wording -- "when it is published to the
+    # community registry, then it installs from there" -- was satisfiable ONLY by publishing, and a
+    # conscientious runner would have closed its own gate by doing the irreversible thing.
+    # Every Epic 13 spawn prompt must carry, verbatim: the publish path may be exercised only in its
+    # dry-run or local form; no registry credential or token may be read, configured, requested or
+    # used; 13.3 may not be reported done by having published; and a gate closable only by publishing
+    # is an UNMET gate, to be escalated as a Clarification rather than closed.
     paths_hint: ["src/OcuPilot/Install/**", ".github/workflows/ci.yml", "scripts/ci-*.sh", "scripts/smoke.sh", "ui/tools/ci*.mjs", "ui/tools/client-lint.mjs", "ui/browser.config.mjs", "ui/src/**/*.browser.spec.ts", "src/OcuPilot/Test/**", "module.xml", "spec/**"]
   epic-15:
     depends_on: [epic-1]
     submodules: []
+    deferred_stories:
+      - story: "15-6-the-light-and-dark-theme"
+        after: epic-5        # released automatically once epic-5 MERGES -- not an owner hold
+        reason: >-
+          15.6 edits ui/src/styles/** token files that Epic 5 is editing to style the proposal card,
+          and its contrast guards run in both modes. Owner decision 2026-09-19: sequence it after
+          Epic 5 lands. Epic 15 ships 15.1-15.5 and reports done with 15.6 left in backlog; the
+          orchestrator dispatches 15.6 afterwards. It is NOT dropped -- see pending_units in
+          .worktrees/.coordination/dispatch.yaml, which is what stops it being forgotten.
+    # Owner carve 2026-09-19: Epic 15 works OUTSIDE ui/src/app/shell/panel, proposal-card, reply and
+    # tool-call-card, which Epic 5 owns. Its own shell surfaces are header*, account-menu*, side-bar*
+    # and command-box*.
     paths_hint: ["ui/src/app/shell/header*", "ui/src/app/shell/account-menu*", "ui/src/app/shell/side-bar*", "ui/src/app/shell/command-box*", "ui/src/app/core/**", "ui/src/styles/**", "src/OcuPilot/Screen/Descriptor/Home.cls", "src/OcuPilot/Api/Account*.cls", "src/OcuPilot/Api/Ui*.cls"]
