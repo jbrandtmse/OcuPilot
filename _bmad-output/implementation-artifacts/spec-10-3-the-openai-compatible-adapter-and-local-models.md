@@ -2,7 +2,7 @@
 title: 'Story 10.3: The OpenAI-compatible adapter, and local models'
 type: 'feature'
 created: '2026-09-19'
-status: 'blocked'
+status: 'in-progress'
 baseline_revision: 'e4f7a39b767cc1c15d98a3c295fcad9018dd632a'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -102,6 +102,23 @@ deferred: []
 - Given the catalog, when `Keys()` is read, then `anthropic` is still first and `compatible` is last.
 - Given a definition whose `provider`, `endpointUrl`, `markedLocal`, `credType` or `httpAcknowledged` changes, when it is saved, then it is disabled until Test connection passes again.
 - Given the README, when it describes providers, then it presents small local models as the privacy option and states the multi-field tool-call caveat.
+
+- [ ] [Review] The three contended pins are GRANTED (orchestrator, 2026-09-19) and the edits already
+  in the tree stand: `Test/AgentViolation.cls:47,:90` (the error-code count, under the widened
+  standing grant for pins that count or enumerate a surface this epic ships),
+  `Test/ContextBound.cls:220`, and the additive `.ocu-field-egress` rule in
+  `ui/src/styles/_components.scss`. Report each under footprint extensions with its line and the
+  forcing surface.
+- [ ] [Review] **Condition on the `ContextBound` flip: the new assertion must name `DW-441`** -- in
+  its message or a one-line comment beside it. Flipping an expected value is exactly what makes a
+  red suite go green, and the diff alone cannot later tell a decided change from a convenient one.
+  The message already says why; the id says who decided it and when. This applies to every
+  expectation flip from here, not only this one.
+- [ ] [Review] Re-demonstrate **both halves** of DW-1214's mutation on a **fresh** throwaway, since
+  the repair touches `Egress` again and the previous observation was lost with its container:
+  `fd00:ec2::254`, `fd20:ce::254` and the mixed-case expanded spelling refused while marked-local,
+  **and** `fd12:3456:789a::1` still permitted while marked-local. The second half is the one that
+  matters -- a guard refusing both would look identical to a working one.
 
 ## Spec Change Log
 
