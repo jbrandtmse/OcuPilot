@@ -26,8 +26,13 @@
  *
  * Run: `npm run build` (only if client source changed -- this file adds no production code),
  * then, against the already-deployed bundle:
- * `OCUPILOT_BROWSER_ORIGIN=http://localhost:52779 OCUPILOT_BROWSER_CONTAINER=ocupilot-c-ci \
+ * `OCUPILOT_BROWSER_ORIGIN=<your slot's browser_origin> OCUPILOT_BROWSER_CONTAINER=<its container> \
  *   node --test --test-concurrency=1 browser/preferences-integration.browser-spec.mjs`
+ *
+ * Both values come from your own slot's `throwaway` block in `_bmad/custom/parallel.yaml`; the
+ * spec itself reads them through `browserConfig()` and hardcodes no port, so it runs on any slot.
+ * Setting only the origin execs into another slot's throwaway -- `browser.config.mjs` carries its
+ * own container default.
  */
 
 import { test, before, after } from 'node:test';
