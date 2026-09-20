@@ -393,9 +393,9 @@ ClassMethod Target(pToolName As %String, pId As %String, Output pTarget As %Dyna
 /// <p><var>pPath</var> is the id the proposal carries, so both sides are compared through
 /// <method>NormalizedPath</method>: the instance resolves a re-cased or slash-suffixed id to the
 /// same application, and a predicate that did not would read OcuPilot's own API as somebody
-/// else's while the write reached it (DW-1352). Install's record is looked up by the normalized
-/// path and, where that differs, by the id as it came, so a record written in either spelling is
-/// still found.</p>
+/// else's while the write reached it (DW-1352). Install's record is looked up by that normalized
+/// path alone -- every path install records is a roster or probe literal already in that
+/// form.</p>
 /// <p>A roster that cannot be read is an error, never an empty declaration: an empty one would
 /// make every OcuPilot path writable.</p>
 ClassMethod ServesOcuPilot(pPath As %String, Output pServes As %Boolean) As %Status [ Private ]
@@ -417,9 +417,6 @@ ClassMethod ServesOcuPilot(pPath As %String, Output pServes As %Boolean) As %Sta
         If $$$ISERR(tSC) Quit
         If pServes Quit
         Set tSC = ..Recorded(tPath, .pServes)
-        If $$$ISERR(tSC) Quit
-        If pServes || (tPath = pPath) Quit
-        Set tSC = ..Recorded(pPath, .pServes)
     } Catch ex {
         Set pServes = 0
         Set tSC = ex.AsStatus()
@@ -428,8 +425,8 @@ ClassMethod ServesOcuPilot(pPath As %String, Output pServes As %Boolean) As %Sta
 }
 
 /// <p>Whether install recorded an application at exactly <var>pPath</var>, in <var>pServes</var>.
-/// The record's own lookup is an exact compare, which is why <method>ServesOcuPilot</method> asks
-/// it for more than one spelling rather than trusting either.</p>
+/// The record's own lookup is an exact compare, so the caller passes the normalized path: every
+/// path install writes is a roster or probe literal already in that form.</p>
 ClassMethod Recorded(pPath As %String, Output pServes As %Boolean) As %Status [ Private ]
 {
     Set pServes = 0
@@ -440,26 +437,21 @@ ClassMethod Recorded(pPath As %String, Output pServes As %Boolean) As %Status [ 
     Quit tSC
 }
 
-/// <p><var>pPath</var> in the form this instance resolves a web application name in: lower case,
-/// with every trailing <code>/</code> removed. Two spellings that normalize alike name one
-/// application to the instance, so they must earn one verdict from the set.</p>
-/// <p><b>Probed, not assumed</b> (<code>ocupilot-ci</code>, 2026-09-20): both
-/// <code>Security.Applications.Exists</code> and the vendor <code>WebApp.App</code>
-/// <code>GET</code> answer the real <code>/api/ocupilot</code> for <code>/API/OcuPilot</code>,
-/// <code>/api/ocupilot/</code> and <code>/API/OCUPILOT///</code>, and 404 for
-/// <code>api/ocupilot</code>, <code>/api//ocupilot</code>, <code>/api/ocupilot/.</code> and a
-/// trailing space -- so the normalization goes exactly this far. Going further would refuse a
-/// write the instance resolves somewhere else; stopping short is what let a confirmed write reach
-/// OcuPilot's own application past the serving-path predicate.
-/// <class>OcuPilot.Test.ProhibitedRoute</class> pins this against the instance's own answers
-/// rather than against the sentence above.</p>
+/// <p><var>pPath</var> in the form this instance resolves a web application name in. Two spellings
+/// that normalize alike name one application to the instance, so they must earn one verdict from
+/// the set.</p>
+/// <p><b>The rule is the identity layer's, not this class's</b>: a web application's canonical
+/// spelling is what <method>OcuPilot.Kernel.EntityRef.NormalizedId</method> answers, because the
+/// same rule decides which reference key a proposal's target gets and so which lock and which
+/// siblings a confirm of it takes (AD-34). The set delegates to it; making AD-10's one home the
+/// project's path normalizer would point the identity layer at the safety gate. This method stays
+/// because a caller of the set reads its verdict here, and because the roster paths and install's
+/// records it compares are not references.</p>
+/// <p><class>OcuPilot.Test.ProhibitedRoute</class> pins the rule against the instance's own
+/// answers, which is the only way that agreement can fail for the right reason.</p>
 ClassMethod NormalizedPath(pPath As %String) As %String
 {
-    Set tPath = $ZConvert(pPath, "L")
-    While (tPath '= "") && ($Extract(tPath, $Length(tPath)) = "/") {
-        Set tPath = $Extract(tPath, 1, $Length(tPath) - 1)
-    }
-    Quit tPath
+    Quit ##class(OcuPilot.Kernel.EntityRef).NormalizedId(##class(OcuPilot.Kernel.EntityRef).#TYPEWEBAPPLICATION, pPath)
 }
 
 /// <p><var>pObject</var>'s member <var>pName</var> in the rendered form the diff and the

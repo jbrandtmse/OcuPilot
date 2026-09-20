@@ -16,6 +16,15 @@
 /// the composite keys Release 1 administers are IRIS identifiers, namespace names and
 /// web-application paths, none of which can hold a control character (inference) -- so a
 /// composite id passes through a key unharmed and splits back on its own separator.</p>
+/// <p><b>One entity, one key.</b> An id reaches a key through <method>NormalizedId</method>, which
+/// is keyed by entity type because the instance's own resolution is: two spellings a web
+/// application resolves alike are one target to AD-34's per-target lock, to its sibling cancel and
+/// to the <property>OcuPilot.Kernel.State.Propose.TargetRef</property> the ledger and the proposal
+/// panel show. <method>Canonical</method> is the same answer for a caller handed a stored key
+/// rather than one it built. The rule itself lives here alone --
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.NormalizedPath</method> delegates here rather than
+/// holding a copy -- while which entry point applies it is each one's own decision:
+/// <method>Key</method> does, <method>Wire</method> deliberately does not.</p>
 /// <p><b>No production consumer yet.</b> Nothing writes in Epic 1, so nothing publishes a
 /// change event; the first consumers are Story 1.14's re-fetch routing and Epic 5's proposal
 /// targets and audit markers. <file>ui/src/app/core/entity-ref.ts</file> is the client mirror of
@@ -29,19 +38,27 @@ Class OcuPilot.Kernel.EntityRef Extends %RegisteredObject
 /// value.</p>
 Parameter REFSEPARATOR = 2;
 
+/// <p>The one entity type whose id has a canonical spelling in Release 1
+/// (<method>NormalizedId</method>).</p>
+Parameter TYPEWEBAPPLICATION = "web-application";
+
 /// <p>Build the reference key for <var>pType</var> / <var>pScope</var> / <var>pId</var>.
 /// Refuses a type the kernel vocabulary does not hold, and an empty scope or id -- a reference
 /// names something, and the scope of an object that has none is the literal
 /// <code>instance</code>, never the empty string.</p>
+/// <p>The id reaches the key in the spelling <method>NormalizedId</method> answers for that type,
+/// so two ids the instance resolves to one entity produce one key. An id that normalizes to
+/// nothing is refused as an empty id rather than building a key with none.</p>
 ClassMethod Key(pType As %String, pScope As %String, pId As %String, Output pKey As %String) As %Status
 {
     Set tSC = $$$OK
     Set pKey = ""
     Try {
-        Set tSC = ..Validate(pType, pScope, pId)
+        Set tId = ..NormalizedId(pType, pId)
+        Set tSC = ..Validate(pType, pScope, tId)
         If $$$ISERR(tSC) Quit
         Set tSeparator = $Char(..#REFSEPARATOR)
-        Set pKey = pType _ tSeparator _ pScope _ tSeparator _ pId
+        Set pKey = pType _ tSeparator _ pScope _ tSeparator _ tId
     } Catch ex {
         Set pKey = ""
         Set tSC = ex.AsStatus()
@@ -82,8 +99,16 @@ ClassMethod Parse(pKey As %String, Output pType As %String, Output pScope As %St
 }
 
 /// <p>The triple as the object a change event, a proposal target or an audit marker puts on the
-/// wire: <code>{type, scope, id}</code>. It refuses exactly what <method>Key</method> refuses,
-/// so a reference cannot reach a consumer in one form and be rejected in the other.</p>
+/// wire: <code>{type, scope, id}</code>. It asks of a triple what <method>Validate</method> asks,
+/// which is what <method>Key</method> asks of the id it has already normalized -- so the two agree
+/// except where that normalization is the difference: a web-application id of <code>/</code>
+/// normalizes to nothing and <method>Key</method> refuses it, while this method answers the raw
+/// triple.</p>
+/// <p>It renders the id it is handed rather than normalizing it: a change event's subject is the
+/// spelling its publisher read the object under, which is the spelling the screen that subscribes
+/// holds too, and normalizing here would make those two disagree. A proposal's target is already
+/// canonical when it reaches this method, because <class>OcuPilot.Kernel.Proposal.Mint</class>
+/// hands it <method>Parse</method>'s reading of the key it stored.</p>
 ClassMethod Wire(pType As %String, pScope As %String, pId As %String, Output pObject As %DynamicObject) As %Status
 {
     Set tSC = $$$OK
@@ -112,6 +137,55 @@ ClassMethod ScopeFor(pDeclaredScope As %String) As %String
     If pDeclaredScope = ##class(OcuPilot.Kernel.Scope).#SCOPENAMESPACE Quit ##class(OcuPilot.Kernel.Scope).Current()
     If pDeclaredScope = ##class(OcuPilot.Kernel.Scope).#SCOPEINSTANCE Quit ##class(OcuPilot.Kernel.Scope).#SCOPEINSTANCE
     Quit ""
+}
+
+/// <p><var>pId</var> in the one spelling a reference to an entity of type <var>pType</var>
+/// carries. Two ids that answer alike here name one entity and so build one key.</p>
+/// <p><b>The rule is per entity type</b>, because the instance's own resolution is: a web
+/// application's path resolves case-insensitively and with trailing slashes ignored, while a user
+/// name, a role name and a task name are the instance's own strings. A type this method holds no
+/// rule for is answered verbatim, so adding one is a decision about that type's identity rather
+/// than a default applied to it.</p>
+/// <p><b>Probed on this build, not assumed</b> (<code>ocupilot-ci</code>, 2026-09-20):
+/// <code>Security.Applications</code> keeps a name's case as created
+/// (<code>/csp/OcuPilotProbeCase</code> reads back verbatim) and resolves either spelling, and the
+/// vendor <code>WebApp.App</code> <code>GET</code> answers the same application for
+/// <code>/API/OcuPilot</code>, <code>/api/ocupilot/</code> and <code>/API/OCUPILOT///</code> but
+/// nothing for <code>api/ocupilot</code>, <code>/api//ocupilot</code>,
+/// <code>/api/ocupilot/.</code> or a trailing space -- so the rule goes exactly this far.
+/// <method>OcuPilot.Test.ProhibitedRoute.TestTheSetNormalizesAPathTheWayTheInstanceResolvesIt</method>
+/// compares it with the port's own answers rather than with this sentence.</p>
+/// <p>The canonical form is not the instance's own spelling of the object, which is why a caller
+/// addressing a target by a canonical id relies on that case-insensitive resolution.</p>
+ClassMethod NormalizedId(pType As %String, pId As %String) As %String
+{
+    If pType '= ..#TYPEWEBAPPLICATION Quit pId
+    Set tId = $ZConvert(pId, "L")
+    While (tId '= "") && ($Extract(tId, $Length(tId)) = "/") {
+        Set tId = $Extract(tId, 1, $Length(tId) - 1)
+    }
+    Quit tId
+}
+
+/// <p><var>pKey</var> with its id in the spelling <method>Key</method> would have built it in.</p>
+/// <p><b>Caller contract:</b> it is for a caller handed a <b>stored</b> reference rather than one
+/// it built, and a key this class cannot read comes back verbatim so such a caller behaves as it
+/// did before rather than failing on a value it was given.
+/// <method>OcuPilot.Kernel.State.Propose.GuardedClaimAndClose</method> is the caller that needs
+/// it: it is handed the ref a row stored, and a row written into the store directly -- or minted
+/// before <method>NormalizedId</method> existed -- would otherwise take a lock of its own and
+/// serialize against no other confirm of the same target.</p>
+ClassMethod Canonical(pKey As %String) As %String
+{
+    Set tKey = pKey
+    Try {
+        If $$$ISERR(..Parse(pKey, .tType, .tScope, .tId)) Quit
+        If $$$ISERR(..Key(tType, tScope, tId, .tBuilt)) Quit
+        Set tKey = tBuilt
+    } Catch ex {
+        Set tKey = pKey
+    }
+    Quit tKey
 }
 
 /// <p>What every entry point above requires of a triple, in one place: a type the kernel

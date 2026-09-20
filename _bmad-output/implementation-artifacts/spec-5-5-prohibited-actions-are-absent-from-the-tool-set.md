@@ -2,49 +2,50 @@
 title: 'Story 5.5: Prohibited actions are absent from the tool set'
 type: 'feature'
 created: '2026-09-20'
-status: 'in-progress'
-baseline_revision: '777d484527e4fc695fe62e8ca8fdd970f7f162c1'
+status: 'done'
+baseline_revision: '266c37299a70919b0b9d29cde0ae5d1e11b6a0a3'
 baseline_commit: '98ad9596bc9c33dd3c29eaa9f94754613e3b59ba'
-review_loop_iteration: 2
-followup_review_recommended: true
+review_loop_iteration: 3
+followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['oversized']
 deferred:
   - summary: >-
-      Two spellings of one web application are two scoped targets to the claim, so AD-34's
-      per-target lock and its sibling cancel do not cover a re-cased or slash-suffixed id.
+      The client mirror `ui/src/app/core/entity-ref.ts` builds a reference key without
+      normalizing, so a web-application key it builds no longer matches the server's.
     evidence: |-
-      `EntityRef.Key` concatenates the id verbatim, `Propose.TargetLockKey` digests the reference
-      text and the sibling cancel is `%EXACT(TargetRef)` -- verified at `Propose.cls:283,345`. Two
-      confirms against `/api/ocupilot` and `/API/OcuPilot` take different locks, so the second is
-      refused 409 by the fingerprint gate rather than serialized, and a sibling stays live rather
-      than being canceled. Closing it means normalizing an id per entity type where the mint builds
-      the ref, which is wider than this story. reopen_if=a second write tool ships, or two proposals
-      on one target are observed both live.
-    location: 'src/OcuPilot/Kernel/EntityRef.cls:44'
+      `entityRefKey` concatenates the id verbatim and `change-bus.ts:106` keys AD-14's change bus
+      on it, while the server now folds a `web-application` id. Nothing diverges today -- every id
+      the client keys on comes from a read whose spelling the server did not alter, and no shipped
+      path publishes a change event on a proposal's target, whose id is now canonical. The fix is
+      a client change, which this story's intent contract excludes ("no client or UI change").
+      reopen_if=a confirmed write publishes its proposal's target on the change bus, or a screen
+      highlights a row from a server-built key.
+    location: 'ui/src/app/core/entity-ref.ts:59'
     severity: medium
   - summary: >-
-      `ServesOcuPilot` asks install's record store twice -- once for the normalized path, once for
-      the id as it came -- because the store's own lookup is an exact compare.
+      The identity layer now canonicalizes an id per entity type, which later write-tool stories
+      must extend, and no AD says so.
     evidence: |-
-      `WebApp.GuardedForPath` is `WHERE %EXACT(Path) = ?`, so neither call answers a record written
-      in some third spelling. Every record install writes carries a roster or probe literal, and a
-      test asserts each roster path is already in the instance's own form; the store is out of this
-      story's footprint (`Kernel/State/**`). reopen_if=anything but install writes a record.
-    location: 'src/OcuPilot/Kernel/Proposal/Prohibited.cls:412'
-    severity: low
+      AD-13 defines the scoped triple and the encode-twice/decode-once URL codec; neither is
+      contradicted -- `EntityId` is untouched and `Test.EntityId` is green -- but "which spelling
+      of an id names one entity" is now a kernel rule that Stories 5.9-5.13 each extend for their
+      own type, and a rule later builders would drift on belongs in the spine (Rule 20). A
+      planning-artifact amendment is the lead's, not this workflow's (Rule 5).
+    location: '_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md:237'
+    severity: medium
   - summary: >-
-      That the mint checks all three of its stream writes is pinned from its source, not from a
-      failing write.
+      `Kernel.State.WebApp.GuardedRecord` stores a path verbatim, so the set's single remaining
+      record lookup rests on a convention nothing enforces.
     evidence: |-
-      No input a caller can hand the mint makes a global stream refuse a write -- probed on
-      `ocupilot-ci`: a file stream aimed at an unwritable path and `%Stream.NullCharacter` both
-      answer `$$$OK`, and `%Stream.Object` is abstract. A fixture object whose own `Write` refuses
-      cannot be declared either: `check-objectscript.py`'s one-writer rule (AD-12) refuses a method
-      named `Write` outside `Api/Response.cls` and `Api/Error.cls`. The round trip pins that the
-      three texts still store.
-    location: 'src/OcuPilot/Test/ProhibitedByEffect.cls:445'
+      `GuardedForPath` is `WHERE %EXACT(Path) = ?` and `Recorded` now asks it for the normalized
+      path alone. Every production caller is `Installer.RecordApplicationProvenance` over
+      roster-derived entries, and `ProhibitedByEffect` pins that every roster path is already
+      canonical, so no path reaches it non-canonical today. Normalizing at the store is out of
+      this story's footprint (`Kernel/State/**`). reopen_if=anything but install writes a record,
+      or a recorded path differs from its normalized form.
+    location: 'src/OcuPilot/Kernel/Proposal/Prohibited.cls:417'
     severity: low
 ---
 
@@ -189,48 +190,19 @@ tool, no client or UI change, no string-table entry. Do not edit `scripts/` (Epi
   whose diff names nothing is no longer producible*, with the producer half pinned in
   `ProhibitedByEffect.TestAProposalIsJudgedOnWhatItChanges`.
 
-Open after the first code review, **rework iteration 3 of 3 -- the last**. Work ONLY these
-two items; iterations 1 and 2 are closed above and are not revisited.
+**Rework iteration 3's two items are closed.**
 
-- `[Review]` **DW-1359 (high).** Two spellings of one web application are two scoped targets to the
-  claim, so AD-34's per-target lock and its sibling cancel do not cover a re-cased or
-  slash-suffixed id. **This is worse than the entry first recorded and the correction is at the
-  entry**: the target lock is taken inside `GuardedClaimAndClose`, *after* `FingerprintMatches`, so
-  two **concurrent** confirms both match, take different locks, both win their conditional UPDATE
-  and both PUT. That is the AD-34 race DW-1250 closed in Story 5.3, alive again through a re-cased
-  id; the 409 bound holds for sequential confirms only.
-  Fix it where the review placed it, not where the lead first guessed: **normalize inside
-  `EntityRef.Key`, keyed by entity type, next to `EntityRef.Validate`.** Do **not** reuse
-  `Prohibited.NormalizedPath` as the normalizer -- that makes AD-10's one home the project's path
-  normalizer and gives the identity layer a dependency on the safety gate. The set **delegates** to
-  the identity layer; it does not own it. Three things mint-time normalization alone would leave
-  open, all of which `EntityRef.Key` closes: rows minted before the change stay a second scoped
-  target until they expire; `GuardedClaimAndClose` trusts the **stored** ref with nothing enforcing
-  it at the point of use (and this story spent two passes learning that the directly-stored row is
-  the case the gates must survive); and the sibling cancel's `%EXACT(TargetRef)` is a second silent
-  dependant. State both consequences in `## Design Notes`: `TargetRef` is what the ledger and the
-  panel show, so the recorded id stops being the agent's spelling; and DW-1360's second
-  record-store lookup becomes dead, so remove it in the same pass.
-  **It is not closed without a two-confirm concurrency test.** Story 5.3 shipped the idiom
-  (`OcuPilot.Test.ProposalRace`) -- two confirms against the same real target through different
-  spellings, where exactly one wins and exactly one write reaches the port. A test that only
-  asserts the two refs now produce one key is not enough: it is the second write that must be
-  shown absent.
-  **The lead authorizes `src/OcuPilot/Kernel/EntityRef.cls` as a footprint extension for this item
-  only**, verified byte-identical (`14c2f93`) on `origin/feature/OCU-1_ocupilot-mvp`,
-  `origin/OCU-1-epic15` and this branch, so no live epic contends it. Nothing else outside the
-  standing footprint is opened, and `Kernel/State/Base.cls` remains untouchable.
-- `[Review]` **DW-1362 (low).** The `## Design Notes` present `FingerprintMatches`' stored-payload
-  digest as the backstop that makes the fingerprint cover the write, but the mint takes the
-  fingerprint over the very payload it stores, so it is a tautology for every minted row and
-  constrains only a row no mint wrote. Correct the claim where it is made -- delete the wrong
-  sentence, do not append a paragraph explaining it was wrong -- and let DW-1354's composition
-  stand on DW-1353 alone, which is where the review found its actual weight.
-
-Each item needs a pinning test and a `mutation:` line in `## Verification`, demonstrated in this
-pass (Rule 19). **This is the last iteration**: anything that does not converge here is a
-stop-and-surface, so if DW-1359 needs more than the review scoped, HALT `blocked` and say what it
-needs rather than widening the pass.
+- `[x]` **DW-1359 (high).** Closed: a web application's id reaches a reference key in one
+  spelling, through `EntityRef.NormalizedId` -- keyed by entity type, next to `EntityRef.Validate`,
+  and delegated to by `Prohibited.NormalizedPath` rather than the other way round. The stored ref
+  is canonicalized again at the point of use, in `Propose.GuardedClaimAndClose`
+  (`EntityRef.Canonical`), so a row written into the store directly serializes on its target's own
+  lock too. Pinned by `ProposalSpelling.TestTwoSpellingsOfOneApplicationAreOneScopedTarget` (the
+  sibling cancel) and `…TestASecondSpellingCannotWriteWhileAnotherConfirmIsInFlight` (the lock,
+  with a rival in flight and the second write shown absent on the instance), and by
+  `EntityRef.TestAWebApplicationIdReachesAKeyInOneSpelling` for the necessary condition alone.
+- `[x]` **DW-1362 (low).** Closed: the stored-payload sentence is gone from `## Design Notes`, and
+  DW-1354's composition stands on DW-1353.
 
 **Acceptance Criteria:**
 
@@ -473,6 +445,47 @@ DW-1355 `decision-pending`.
   - `[low]` `[reject]` The seventh code refuses by name-membership rather than by evaluating an effect -- the fail-closed default *is* the effect claim's shape, and it is what the re-open required; an effect evaluation per vendor property is the enumeration it replaced.
   - `[low]` `[patch]` (same root cause as the array-leg row) the array-schema assertion moved to a probe surface, so no shipped tool exercises an array shape -- the set's own array leg is added; the schema generator's array path stays pinned through `WriteExclusion`.
 
+### 2026-09-20 -- Review pass (rework 3)
+
+- verdicts: 35 findings -- high 0, medium 8, low 25, false 2, maybe-false 0
+- findings:
+  - `[low]` `[patch]` The `deferred:` entry for DW-1359 still described `EntityRef.Key` as concatenating the id verbatim -- the list is cleared and rewritten this pass, as the dispatch requires.
+  - `[low]` `[patch]` The `deferred:` entry for DW-1360 described a second record-store lookup this pass deleted -- same rewrite.
+  - `[low]` `[patch]` `Prohibited.NormalizedPath` delegated using its own `TYPEWEBAPPLICATION` literal, and `NormalizedId` answers an unrecognized type verbatim -- it now passes `EntityRef`'s own parameter. The drift is not silent (`ProhibitedByEffect`'s eleven non-canonical spellings redden on it), which is why this is `low` rather than `medium`.
+  - `[low]` `[patch]` `Wire`'s doc claimed it refuses what `Key` refuses; `Key("web-application","instance","/")` is now refused and `Wire` is not -- the sentence now says what is true. No consumer reaches the gap: every `Wire` call site is fed by `Parse` of a key `Key` built, or carries no web-application id.
+  - `[low]` `[reject]` An id that normalizes to nothing reaches `Mint` and renders 500 `INTERNAL` rather than a refusal -- an agent naming a web application `/` is not everyday input and the fix adds a branch.
+  - `[medium]` `[patch]` The confirmed write is now addressed by the canonical id and no probe application in the suite was anything but lower case, so the resolution the write relies on was never exercised -- `ProposalSpelling.TestACanonicalIdStillAddressesAMixedCaseApplication` creates a mixed-case application and pins it; mutation, run 380.
+  - `[medium]` `[defer]` The client mirror builds a key without normalizing -- in `deferred:`; a client change is excluded by the intent contract.
+  - `[low]` `[reject]` A composite `web-application` id has its namespace half case-folded, and the composite test moved to another type -- no production path builds a composite web-application id (`JoinComposite` has no caller outside tests), and the separator claim the test carries is type-independent.
+  - `[low]` `[patch]` A failed `Lock` did not stop the in-flight test, so it would `Job` a confirm that really writes -- `If 'tHeld Quit` added.
+  - `[low]` `[patch]` That test asserted only that the jobbed confirm was non-OK -- it now pins the status, the code and the refusal's own text, read from a real run rather than guessed.
+  - `[low]` `[defer]` `GuardedRecord` stores a path verbatim, so the single remaining record lookup rests on an unenforced convention -- in `deferred:`; the fix is out of footprint.
+  - `[medium]` `[defer]` No AD records that ids are now canonicalized per entity type -- in `deferred:`. AD-13 is not contradicted: its round-trip guarantee is `EntityId.Encode`/`Decode`, untouched and green.
+  - `[low]` `[patch]` The class header's "Nothing outside this class normalizes an id" read as "every id is normalized", which `Wire` deliberately is not -- the header now says the rule lives here while each entry point decides whether to apply it.
+  - `[low]` `[reject]` The spec grew while flagged `oversized` -- the growth was what the rework item demanded, and the fix would be to edit this build's spec.
+  - `[low]` `[reject]` `^OcuPilotProbeSpellingResult` is residue the runner's roster-derived marker cannot see -- DW-1363's accepted root cause; `OnAfterOneTest` kills it and every run reported it undefined.
+  - `[low]` `[patch]` (same root cause as the `Wire` row) `Key` refuses an all-slash id where `Wire` accepts it.
+  - `[low]` `[reject]` (same root cause as the 500 row) caller input answered `SERVERERROR` instead of an argument refusal.
+  - `[low]` `[reject]` Two live rows both storing one **non-canonical** ref are no longer siblings of each other, because the cancel predicate is canonical -- real, bounded and already stated under residual risks: the target lock still serializes them and the fingerprint gate refuses the second 409, within the ten-minute expiry, and only for rows minted before this change. Matching both refs adds a branch to the claim.
+  - `[medium]` `[patch]` (same root cause as the mixed-case row) the vendor `PUT` is issued with a folded id that no test resolves.
+  - `[low]` `[reject]` Nothing asserts that every covered entity type has a normalization arm -- the verbatim default is correct for a type whose ids are the instance's own strings, so the proposed floor would assert something untrue of `user` and `role`.
+  - `[medium]` `[defer]` (same root cause as the client-mirror row) mirror keys diverge with no gate comparing the two sides.
+  - `[low]` `[reject]` (same root cause as the composite row) the namespace half of a composite id is folded with the path.
+  - `[low]` `[reject]` A jobbed confirm answering after the wait expires is not killed -- the wait is four times the lock timeout, the outcome is a red plus residue rather than a false green, and it is `ProposalRace`'s pre-existing idiom.
+  - `[low]` `[patch]` (same root cause as the failed-`Lock` row) the method proceeds unlocked.
+  - `[low]` `[defer]` (same root cause as the `GuardedRecord` row) a provenance row at a non-canonical path would reopen DW-1352.
+  - `[medium]` `[patch]` (verification-gap layer, same root cause as the mixed-case row) no test exercises a target the instance holds under a spelling the canonical id must resolve to.
+  - `[medium]` `[patch]` The producer half was pinned by nothing: every canonical-ref assertion built its own ref, and the one test reading a ref a real mint stored used an already-canonical id, so hand-assembling the key in `Mint` left all twenty-six classes green -- `ProposalSpelling.TestAMintOfASecondSpellingStoresTheCanonicalTarget` drives the shipped write tool with the second spelling and pins the stored `TargetRef`; mutation, run 379.
+  - `[low]` `[patch]` `AssertEquals(Snapshot(), tAfterFirst, "the application carries the one write and nothing else")` could not fail, because both rows carry the same end state -- deleted; the clause is carried by the unspent-token assertion above it.
+  - `[low]` `[patch]` (same root cause as the `Wire` row) the symmetry sentence was reworded rather than made true.
+  - `[low]` `[patch]` `Recorded`'s doc justified the removal with a reason that does not bear on it -- `ServesOcuPilot` normalizes its own argument before the lookup, so the caller's spelling never mattered; the sentence is gone and the pinned reason stands alone.
+  - `[low]` `[defer]` (intent layer, same root cause as the `GuardedRecord` row) the one place this pass touches the prohibited set is subtractive and covered by an inspected rather than a pinned invariant.
+  - `[false]` `[reject]` The new test's vehicle is the matrix's "not prohibited" hardening row -- that is deliberate and stated at the class: the row has to pass every gate in front of the claim for the claim to be what refuses the second confirm.
+  - `[false]` `[reject]` The largest change is to a class the intent contract never names -- `Kernel/EntityRef.cls` is the lead's recorded footprint extension for DW-1359, and none of the contract's named prohibitions is touched.
+  - `[medium]` `[defer]` (same root cause as the client-mirror row) "no client or UI change" is honoured in letter while the mirror drifts.
+  - `[low]` `[patch]` (same root cause as the `Wire` row) `Key` validates the normalized id and `Wire` the raw one.
+
+
 ## Design Notes
 
 **Governing ADs (Rule 6).** **AD-10** (the set, its single home in the kernel, effect-not-verb, never
@@ -536,10 +549,30 @@ records a diff row for every field it moves, and since DW-1353 a stream write it
 answers an error and saves no row at all -- so a stored payload and a stored diff are written
 together or not at all. What remains is a direct write into OcuPilot's protected storage, which AD-9
 (nothing outside `Kernel/State` holds the escalation) and AD-33 (that database is reached only
-through those methods) put outside the threat model; behind that, AD-6's fingerprint gate still
-refuses any row whose payload its own digest does not cover. The closure is therefore a composition
+through those methods) put outside the threat model. The closure is therefore a composition
 of gates already here, not a third mechanism: the set is not keyed on the stored arguments, which
 this story's intent contract forbids, and the fingerprint gate did not move ahead of the seam.
+
+**One target, one key (DW-1359).** A web application's id reaches a reference key in one spelling,
+because `EntityRef.Key` puts it through `EntityRef.NormalizedId` first. That is what makes AD-34's
+"one winner per target" true of a **target** rather than of a spelling of one: both the per-target
+lock and the sibling cancel's `%EXACT(TargetRef)` key on the stored ref, and two spellings the
+instance resolves alike would otherwise be two targets to both. The hook is keyed by entity type
+and sits next to `EntityRef.Validate`, which already switches on type, because normalization is
+per type -- a web application's path case-folds and a user name does not -- and the identity layer
+owns it: `Prohibited.NormalizedPath` delegates here, so AD-10's one home reads the rule and does
+not become the project's path normalizer. `Propose.GuardedClaimAndClose` canonicalizes the ref it
+is handed as well (`EntityRef.Canonical`), because it is handed the **stored** ref: a row written
+directly into the store, or minted before this existed, would otherwise take a lock no other
+confirm of that target holds. Two consequences, stated rather than slipped in. `TargetRef` is what
+the ledger and the proposal panel show (AD-37's weak reference), so the recorded id is the
+canonical spelling and no longer the one the agent asked for; the instance's own spelling of the
+application may differ from it in case, and a canonical id still addresses the target because the
+vendor endpoint resolves either -- verified on `ocupilot-ci`, where the `WebApp.App` `GET` answers
+byte-identical JSON for `/csp/ocupilotprobeconfirm` and `/CSP/OcuPilotProbeConfirm/`. And
+`ServesOcuPilot`'s second record-store lookup "for the id as it came" (DW-1360) is dead once a
+stored ref's id is canonical, so it is removed: install writes only roster and probe literals,
+which are already in that form.
 
 **DW-1207 (floor-blocking, must-ship).** Addressed by the three matrix rows naming it, the fourth
 acceptance criterion, and the `DispatchClass` exclusion. Not declined, not re-owned.
@@ -570,7 +603,9 @@ on any `ocupilot-slot-*` container. Tear down only a throwaway whose `up` this t
   `…ProposalConfirm`, `…ConfirmRoute`,
   `…ProposalWrite`, `…Proposal`, `…ProposalRace`, `…ProposalClose`, `…ProposalWire`, `…ToolWrite`,
   `…ToolRoundTrip`, `…ToolSetFull`, `…ToolEmit`, `…ToolDispatch`, `…WebApp`, `…ReadTool`,
-  `…Envelope`, `…Wire` -- nineteen classes.
+  `…Envelope`, `…Wire` -- nineteen classes, and since rework 3 seven more that read the identity
+  layer or the claim: `…ProposalSpelling`, `…EntityRef`, `…EntityId`, `…AuditEvent`, `…Descriptor`,
+  `…TurnWire`, `…LedgerWire`.
   `…ProposalMint`, `…Dispatch` and `…WriteExclusion` are fixtures, not test classes: they declare no
   test method, and the runner fails an invocation that names one. Confirm the totals with the
   `%UnitTest_Result` SQL probe (numeric
@@ -686,6 +721,40 @@ named test, reverted, and the throwaway's tree confirmed byte-identical to the w
   are what make "a payload that changes something cannot be stored beside a diff that names
   nothing" falsifiable.
 
+- DW-1359: `EntityRef.NormalizedId`'s web-application arm answering `pId` verbatim (`If 1` in place
+  of the type test) -> run 346 `EntityRef.TestAWebApplicationIdReachesAKeyInOneSpelling` red on all
+  three one-key assertions, on `Canonical`'s reading of a stored second spelling and on the
+  empty-id refusal, with the type-keyed task and role assertions green; run 347 both
+  `ProposalSpelling` methods red -- the first confirm canceled no sibling, the second confirm was
+  applied 200 rather than refused 409, and the in-flight leg's **"the application's properties on
+  the instance are what they were"** failed, which is the second write itself.
+- DW-1359 at the point of use: `Propose.GuardedClaimAndClose` keying its lock and its sibling
+  cancel on `pTargetRef` again in place of `EntityRef.Canonical(pTargetRef)` -> run 348
+  `ProposalSpelling.TestASecondSpellingCannotWriteWhileAnotherConfirmIsInFlight` red **alone**, the
+  jobbed confirm of the directly-stored second spelling taking a lock nobody held, winning and
+  writing while the rival was in flight. The sibling-cancel leg stays green, which is what
+  separates the two mechanisms.
+- Both reverted by copying each file back from the worktree and **re-loading** it (never by
+  recompiling the dictionary), grepped inside the container afterwards, and re-verified green: run
+  349, then runs 350-375 over the twenty-six classes.
+- DW-1359 at the producer: `Mint.Mint` assembling the target key by hand from `pIdValue`, in place
+  of `EntityRef.Key`'s answer -> run 379
+  `ProposalSpelling.TestAMintOfASecondSpellingStoresTheCanonicalTarget` red **alone**, on the
+  stored `TargetRef`: the shipped write tool, driven through `Screen.Tool.Write.View` with the
+  re-cased and slash-suffixed spelling, stored that spelling as its scoped target.
+- DW-1359's write half: `EntityRef.NormalizedId` stripping the leading slash as well as the
+  trailing ones, so the canonical id is a spelling the instance resolves to nothing -> run 380
+  `ProposalSpelling.TestACanonicalIdStillAddressesAMixedCaseApplication` red on the port read of
+  its own mixed-case probe application by that id, with
+  `TestTwoSpellingsOfOneApplicationAreOneScopedTarget` red beside it.
+- Both applied alone in `ocupilot-ci`'s mount, grepped inside the container, then reverted by
+  copying the file back from the worktree and **re-loading** it (never by recompiling the
+  dictionary), grepped again, `diff -rq src/ /tmp/ocupilot-ci/src/` clean and `git status --short`
+  and `git diff --stat` unchanged, and re-verified green one class at a time: runs 381
+  (`ProposalSpelling` 4/0), 382 (`EntityRef` 8/0), 383 (`Prohibited` 11/0), 384
+  (`ProhibitedByEffect` 6/0), 385 (`ProhibitedRoute` 4/0) and 386 (`Proposal` 14/0), each
+  reporting no probe-application residue.
+
 **Code review (2026-09-20), AC1's untouched-application clause.** `ProhibitedRoute.Seed` now builds
 a row the way a mint does for the two fields the tool admits: one `Mint.Merge` over one real
 argument supplies the payload, the diff and the unchanged count, and the fingerprint is that
@@ -743,51 +812,71 @@ it here.
 Status: done
 Blocking condition: none
 
-**Change (rework 2, the three open items).** DW-1352: the serving-path predicate compares a target's
-id and the roster's paths through `Prohibited.NormalizedPath` -- lower case, with every trailing
-slash removed -- which is what the instance itself does. Probed on `ocupilot-ci` rather than
-recalled: `Security.Applications.Exists` and the vendor `WebApp.App` `GET` both answer the real
-`/api/ocupilot` for `/API/OcuPilot`, `/api/ocupilot/` and `/API/OCUPILOT///`, and 404 for
-`api/ocupilot`, `/api//ocupilot`, `/api/ocupilot/.` and a trailing space, so the normalization goes
-exactly that far and no further. Install's own record is looked up by the normalized path and, where
-that differs, by the id as it came, because that store's lookup is an exact compare. Before this the
-endpoint reached OcuPilot's own API while the predicate read the target as somebody else's, so a
-confirmed write could disable OcuPilot through a re-cased or slash-suffixed id, which AD-38 makes
-unrecoverable. DW-1353: `GuardedMint` takes the status of each of its three stream writes and saves
-no row on a failure. DW-1354: closed by composition and written out in `## Design Notes` -- no third
-mechanism, the set is not keyed on the stored arguments, and the fingerprint gate did not move.
+**Change (rework 3, the last two items).** DW-1359: a web application's id reaches a reference key
+in one spelling. `EntityRef.NormalizedId` holds the rule -- keyed by entity type, beside
+`EntityRef.Validate`, which already switches on type -- `EntityRef.Key` puts every id through it,
+and `Prohibited.NormalizedPath` delegates to it, so the identity layer owns normalization and the
+safety gate reads it. `Propose.GuardedClaimAndClose` canonicalizes the ref it is handed
+(`EntityRef.Canonical`) before taking the target lock and canceling siblings, which covers a row
+whose stored ref nothing normalized at the mint. Before this, two spellings of one application were
+two scoped targets: two concurrent confirms matched their fingerprints, took two locks, both won
+their conditional UPDATE and both reached the vendor PUT -- the AD-34 race DW-1250 closed in Story
+5.3. DW-1360's second record-store lookup is dead once a stored id is canonical and is removed.
+DW-1362: the stored-payload sentence is deleted from `## Design Notes`.
 
 **Files changed.**
 
-- `src/OcuPilot/Kernel/Proposal/Prohibited.cls` -- `NormalizedPath`, the normalized compare in
-  `ServesOcuPilot`, and `Recorded` so the record store is asked for both spellings.
-- `src/OcuPilot/Kernel/State/Propose.cls` -- the three stream writes are status-checked.
-- `src/OcuPilot/Test/ProhibitedByEffect.cls` -- each roster and recorded path driven under three
-  spellings the instance resolves, a floor that the roster's own spellings are already canonical,
-  the mint's stream-write test, and DW-1354's producer legs.
-- `src/OcuPilot/Test/ProhibitedRoute.cls` -- the set's normalization compared against the shipped
-  port's own resolution over six spellings, read-only.
+- `src/OcuPilot/Kernel/EntityRef.cls` -- `NormalizedId`, `Canonical`, and `Key` building its key
+  from the normalized id.
+- `src/OcuPilot/Kernel/State/Propose.cls` -- the claim's lock and sibling cancel key on the
+  canonical ref.
+- `src/OcuPilot/Kernel/Proposal/Prohibited.cls` -- `NormalizedPath` delegates, and
+  `ServesOcuPilot`'s second record-store lookup is gone.
+- `src/OcuPilot/Test/ProposalSpelling.cls` -- the four legs against real applications: the sibling
+  cancel, the lock with a rival in flight, the shipped mint's stored target, and a canonical id
+  addressing a mixed-case application.
+- `src/OcuPilot/Test/EntityRef.cls` -- the one-key and type-keyed assertions, and the composite-id
+  method moved off `web-application`, whose ids are canonicalized.
 
-**Verified.** `check-objectscript.py` 0 problems over 557 files; `lint-docs.sh` clean; `ui`
-`npm run build` green and `npm test` 1087 + 687. On the throwaway `ocupilot-ci`, the nineteen
-classes one at a time through `ui/tools/ci-runner.mjs`, runs 313-331: 221 tests, 0 failed, 0 probe
-leftovers, 0 overlaps, 0 foreign runs, confirmed against `%UnitTest_Result` (classes 19, total 221,
-passed 221, failed 0 over those run indices). `smoke.sh --container ocupilot-ci`: executed 45,
-passed 45, failed 0, pending 2, skipped 0. Each mutation line above was applied alone in the
-throwaway's mount, grepped inside the container, loaded with its subclasses recompiled, observed red
-on its named test and reverted; `diff -rq src/ /tmp/ocupilot-ci/src/` reports no differences
-afterwards and the worktree carries only the four files above.
+**Review findings.** 35 findings -- 0 high, 8 medium, 25 low, 2 false. Nine entries patched in
+pass: 2 medium (the write half of the canonical id, and the producer half, each now pinned against
+a real application with its own demonstrated mutation) and 7 low (the duplicated type literal, the
+`Wire`/`Key` symmetry claim and the class header, the unaborted `Lock`, the too-weak refusal
+assertion, the unfalsifiable snapshot assertion, `Recorded`'s doc justification, and the stale
+`deferred:` list). Three entries deferred, all in `deferred:`: the un-normalizing client mirror
+(medium, excluded by the intent contract), the missing spine record of a per-type identity rule
+(medium, the lead's to write under Rule 20), and `GuardedRecord` storing a path verbatim (low, out
+of footprint). Eleven rejected -- the 500 on an id that normalizes to nothing and the composite-id
+fold, both `low` whose fix adds a branch to input no caller sends; the sibling pair that both store
+one non-canonical ref, bounded by the target lock, the fingerprint gate and the ten-minute expiry
+and stated under residual risks; a floor asserting a normalization arm per covered type, which
+would be untrue of `user` and `role`; the unkilled jobbed confirm, `ProposalRace`'s own idiom;
+the probe global, DW-1363's accepted root cause; the spec's growth, whose fix is to edit this
+build's spec; and the two descriptive intent-layer observations. Every row is in the triage log.
 
-**Follow-up review recommended: true.** This pass patched two `high` entries. The named unverified
-risk is the widened refusal: `SERVINGPATH` now answers a spelling that previously earned the
-reviewed-few code or no refusal at all, so a caller addressing an OcuPilot application by a
-non-canonical id is refused where it was not. That is the intent, and no shipped caller does it, but
-it is a behavior change beyond the three items. `GuardedMint` likewise now answers an error instead
-of saving a row when a stream write fails, on a path no input can reach.
+**Follow-up review recommended: false.** Evaluated as a follow-up pass: no patched entry was
+`high`, so the work has converged and patch volume is not grounds. Patched by verdict: high 0,
+medium 2, low 7.
 
-**Residual risks.** Two spellings of one application are still two scoped targets to the claim, so
-AD-34's per-target lock and sibling cancel do not cover a re-cased id; the fingerprint gate bounds
-that to a 409 and a row left live rather than canceled. That, the record store's exact-compare
-lookup, and the source-level half of the DW-1353 pin are in `deferred:`. The four items the lead
-routed elsewhere -- the narrowed schema on the decision sheet, and DW-1356 to DW-1358 at
-`range-end-cleanup` -- are not in that list and are not this pass's.
+**Verified.** `check-objectscript.py` 0 problems over 558 files; `lint-docs.sh` clean; `ui`
+`npm run build` green and `npm test` 1087 + 687, with no client file and no generated field list
+changed. On the throwaway `ocupilot-ci`, each changed file copied to its exact relative path,
+loaded one at a time and grepped inside the container before any red or green was read. The
+twenty-six classes one at a time through `ui/tools/ci-runner.mjs`, runs 388-413: 313 tests, 0
+failed, 0 probe leftovers, 0 overlaps, 0 foreign runs, confirmed against `%UnitTest_Result`
+(classes 26, total 313, passed 313, failed 0 over those run indices) with the proposal table
+empty afterwards. `smoke.sh --container ocupilot-ci`: executed 45, passed 45, failed 0, pending 2,
+skipped 0. Each mutation in `## Verification` was applied alone in the throwaway's mount, observed
+red on its named test, and reverted by re-loading the file from the worktree; `diff -rq src/
+/tmp/ocupilot-ci/src/` reports no differences afterwards.
+
+**Residual risks.** A row minted before this normalization keeps its own spelling in the
+`TargetRef` the sibling cancel matches `%EXACT`, so such a row is serialized on the target's lock
+but not canceled as a sibling; the fingerprint gate then refuses it 409 after the other confirm's
+write, and the ten-minute expiry bounds it. `TargetRef` is now the canonical spelling, so the
+ledger and the proposal panel show it rather than the spelling the agent asked for; this build
+cannot hold two applications differing only in case (`Security.Applications`' IdKey is
+`NameLowerCase`), and the new mixed-case leg pins that a canonical id still reaches such an
+application. Normalization is declared for one entity type, which is the only one Release 1 can
+target; a story that adds a write tool adds its type's rule beside it or its ids stay the
+instance's own strings.

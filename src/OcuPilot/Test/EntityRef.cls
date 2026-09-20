@@ -71,6 +71,9 @@ Method TestOneNameInTwoNamespacesIsTwoEntities()
 /// <p>A composite id passes through a key unharmed: the two separators are different code
 /// points, so the key splits into three parts and the id then splits into its own on the
 /// codec's separator.</p>
+/// <p>The type is one whose ids are the instance's own strings, so the id reaches the key
+/// verbatim and the round trip is over every byte of it. A web application's id is canonicalized
+/// instead, which <method>TestAWebApplicationIdReachesAKeyInOneSpelling</method> pins.</p>
 /// <p>Mutation: set <parameter>OcuPilot.Kernel.EntityRef.REFSEPARATOR</parameter> equal to
 /// <parameter>OcuPilot.Kernel.EntityId.COMPOSITESEPARATOR</parameter> -> the composite id's first
 /// part is read as the key's id and the rest is lost, so the part assertions go red.</p>
@@ -79,7 +82,7 @@ Method TestACompositeIdPassesThroughAKeyUnharmed()
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).#REFSEPARATOR, ##class(OcuPilot.Kernel.EntityId).#COMPOSITESEPARATOR + 1, "the reference separator is one code point above the composite one")
 
     Set tJoined = ##class(OcuPilot.Kernel.EntityId).JoinComposite($ListBuild("HSCUSTOM", "/csp/myapp"))
-    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.EntityRef).Key("web-application", "instance", tJoined, .tKey), "a composite id builds a key")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.EntityRef).Key(..#KNOWNTYPE, "instance", tJoined, .tKey), "a composite id builds a key")
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.EntityRef).Parse(tKey, .tType, .tScope, .tId), "and it parses back")
     Do $$$AssertEquals(tId, tJoined, "with the composite id whole")
 
@@ -87,6 +90,46 @@ Method TestACompositeIdPassesThroughAKeyUnharmed()
     Do $$$AssertEquals($ListLength(tParts), 2, "which still splits into its own parts")
     Do $$$AssertEquals($List(tParts, 1), "HSCUSTOM", "in order")
     Do $$$AssertEquals($List(tParts, 2), "/csp/myapp", "including the part that holds a slash")
+}
+
+/// <p>AD-34, DW-1359 -- a web application's id reaches a key in one spelling, so two spellings the
+/// instance resolves to one application are one scoped target. Normalization is keyed by entity
+/// type: a task's name and a user's name are the instance's own strings and reach a key
+/// untouched.</p>
+/// <p>This is the necessary condition only. That the second confirm of one target is refused and
+/// its write never reaches the port is
+/// <class>OcuPilot.Test.ProposalSpelling</class>'s, against a real application.</p>
+/// <p>Mutation: answer <var>pId</var> verbatim from
+/// <method>OcuPilot.Kernel.EntityRef.NormalizedId</method>'s web-application arm -> every
+/// one-key assertion below goes red and the type-keyed ones stay green.</p>
+Method TestAWebApplicationIdReachesAKeyInOneSpelling()
+{
+    Set tForms = $ListBuild("/CSP/OcuPilotProbeSpelling", "/csp/ocupilotprobespelling/", "/CSP/OCUPILOTPROBESPELLING///")
+    Set tSC = ##class(OcuPilot.Kernel.EntityRef).Key("web-application", "instance", "/csp/ocupilotprobespelling", .tCanonical)
+    Do $$$AssertStatusOK(tSC, "the canonical spelling builds a key")
+    For tI = 1:1:$ListLength(tForms) {
+        Set tForm = $List(tForms, tI)
+        Do $$$AssertStatusOK(##class(OcuPilot.Kernel.EntityRef).Key("web-application", "instance", tForm, .tKey), "'" _ tForm _ "' builds a key")
+        Do $$$AssertEquals(tKey, tCanonical, "and it is the same key the canonical spelling built, so the two are one scoped target")
+    }
+
+    ; A stored reference is canonicalized at the point of use as well, which is what serializes a
+    ; row written into the store directly (OcuPilot.Kernel.State.Propose.GuardedClaimAndClose).
+    Set tSeparator = $Char(##class(OcuPilot.Kernel.EntityRef).#REFSEPARATOR)
+    Set tStored = "web-application" _ tSeparator _ "instance" _ tSeparator _ "/CSP/OcuPilotProbeSpelling/"
+    Do $$$AssertNotEquals(tStored, tCanonical, "a ref stored in a second spelling is not the canonical one")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).Canonical(tStored), tCanonical, "and Canonical reads it as the target it names")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).Canonical("not a reference key"), "not a reference key", "while a key it cannot read comes back as it came")
+
+    ; Type-keyed: a name the instance holds case-sensitively is not folded.
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.EntityRef).Key(..#KNOWNTYPE, "USER", "Nightly Purge", .tTask), "a task name builds a key")
+    Do $$$AssertTrue((tTask [ "Nightly Purge"), "and reaches it in the case it was given")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.EntityRef).Key("role", "instance", "%All", .tRole), "a role name builds a key")
+    Do $$$AssertTrue((tRole [ "%All"), "and so does a role name")
+
+    ; An id that normalizes to nothing is an id no reference carries, rather than a key with none.
+    Do $$$AssertStatusNotOK(##class(OcuPilot.Kernel.EntityRef).Key("web-application", "instance", "/", .tSlash), "an id that normalizes to nothing is refused")
+    Do $$$AssertEquals(tSlash, "", "with no key handed back")
 }
 
 /// <p>The type is the kernel's closed vocabulary, on every entry point: a key, a parse and a wire

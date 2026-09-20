@@ -300,6 +300,12 @@ ClassMethod TargetLockKey(pTargetRef As %String) As %String
 /// each sibling update reads the other's uncommitted claim as already confirmed, matches nothing
 /// and never asks for its lock. A claim that cannot take the target lock within
 /// <parameter>CLAIMLOCKSECONDS</parameter> answers an error and writes nothing.</p>
+/// <p><b>The stored ref is canonicalized here, not trusted.</b> The lock and the sibling cancel are
+/// taken on <method>OcuPilot.Kernel.EntityRef.Canonical</method>'s reading of
+/// <var>pTargetRef</var>, so a row carrying a second spelling of one target -- written into the
+/// store directly, or minted before that normalization existed -- serializes against the other
+/// confirms of that target instead of taking a lock nobody else holds. A ref that class cannot
+/// read is used as it came.</p>
 /// <p><b>Siblings are closed whatever user owns them.</b> The target moved for everyone, and a
 /// sibling left live would offer a decision against a diff that is already stale.</p>
 /// <p>A row count of 0 leaves <var>pWon</var> 0 and answers the row's current state in
@@ -322,8 +328,9 @@ ClassMethod GuardedClaimAndClose(pProposalKey As %String, pExpectedVersion As %I
         ; claim's uncommitted State = 'confirmed', matches nothing and asks for no lock -- without
         ; this both claims commit, neither cancels the other, and two writes go out against one
         ; target. Observed on this build, 2026-09-19.
-        If pTargetRef '= "" {
-            Set tLockKey = ..TargetLockKey(pTargetRef)
+        Set tTargetRef = ##class(OcuPilot.Kernel.EntityRef).Canonical(pTargetRef)
+        If tTargetRef '= "" {
+            Set tLockKey = ..TargetLockKey(tTargetRef)
             Set tSC = ..GuardedTargetLock(tLockKey, ..#CLAIMLOCKSECONDS, .tHeld)
             If $$$ISERR(tSC) Quit
             If 'tHeld {
@@ -340,8 +347,8 @@ ClassMethod GuardedClaimAndClose(pProposalKey As %String, pExpectedVersion As %I
         If $$$ISERR(tSC) Quit
         If tClaimed = 0 Quit
         Set pWon = 1
-        If pTargetRef '= "" {
-            Set tSiblings = [].%Push(..#STATECANCELED).%Push(..#REASONSIBLING).%Push(pTargetRef).%Push(..#STATELIVE).%Push(pProposalKey)
+        If tTargetRef '= "" {
+            Set tSiblings = [].%Push(..#STATECANCELED).%Push(..#REASONSIBLING).%Push(tTargetRef).%Push(..#STATELIVE).%Push(pProposalKey)
             Set tSC = ..GuardedExecuteRows("UPDATE OcuPilot_Kernel_State.Proposal SET State = ?, ClosedReason = ? WHERE %EXACT(TargetRef) = ? AND %EXACT(State) = ? AND %EXACT(ProposalKey) <> ?", .tSiblings, .tCanceled)
             If $$$ISERR(tSC) Quit
         }
