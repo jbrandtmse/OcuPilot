@@ -13,3 +13,6 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-20T00:59:30Z	Epic 15	epic_context_compiled	sha=pending reason=initial model=claude-opus-5[1m] path=_bmad-output/implementation-artifacts/epic-15-context.md lines=143 scope=15.1-15.5 deferred=15.6
 2026-09-20T00:59:30Z	Epic 15	ledger_routed_planned	story=15-1-change-your-own-password entries=1 excess=0 by=load dw=DW-115 trigger=reopen_if_fired note=epics.md_bullet_added;epic-15-context.md:103_already_carries_it_so_cache_not_stale_in_substance;no_recompile
 2026-09-20T00:59:44Z	Story 15.1	stage_spawned	stage=plan spawn_at=2026-09-20T00:59:44Z model=claude-opus-5[1m] agent_name=15-1-change-your-own-password-plan-1 cycle_iteration=1
+2026-09-20T01:26:20Z	Story 15.1	story_created	spawn_at=2026-09-20T01:00:29Z model=claude-opus-5[1m] path=_bmad-output/implementation-artifacts/spec-15-1-change-your-own-password.md build_status=ready-for-dev epic_context=reused cycle_iteration=1 warnings=oversized
+2026-09-20T01:26:20Z	Epic 15	spine_updated	ad=AD-49 reason=spec_gate by=runner story=15-1-change-your-own-password lint=ok claimed_from=spine-next-id next_now=50 ads=49
+2026-09-20T01:26:20Z	Story 15.1	spec_gate_paused	reason=contended_path_clarification files=src/OcuPilot/Api/Router.cls,EXPERIENCE.md epic5_head=0185257 merge_base=d220487 evidence=epic5_modified_both scope=epic_wide

@@ -7,7 +7,7 @@ paradigm: 'Descriptor-driven vertical slices, hexagonal at the edges'
 scope: 'OcuPilot in full: Release 1 (119 P0 rows, contest deadline 2026-09-27) binding; Stages 2-6 decided where their gates are already clear, named as staged decisions where they are not.'
 status: final
 created: '2026-09-08'
-updated: '2026-09-19'
+updated: '2026-09-20'
 binds:
   - 'Areas 5.1-5.12 (shell, agent co-pilot, agent tools, agent config, web apps + REST explorer, permissions, security and secrets, tasks, OS management, logs, packaging, polish)'
   - 'FR-1 through FR-79, NFR-1 through NFR-14'
@@ -529,6 +529,17 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
   **The captured payload is sensitive and has no schema.** An `^ERRORS` entry captures every local variable at every stack level, plus `$ROLES` and `$USERNAME`, for whichever application faulted. AD-3's derived classification cannot reach it — there is no template to classify against — so the error **detail** payload is secret-by-default: it never enters screen context (AD-24) and is never sent to the model as tool-result content. The read tool returns the summary fields only — time, error number, routine, line, error text. A user reads the full variable table on screen; the agent does not. On an IRIS for Health instance those tables can hold patient data, and AD-35 covers only the converse case of OcuPilot's own credentials landing in the log.
 
   **The gate is resolved per namespace.** `^ERRORS` is unmapped and lives in each namespace's own globals database, so the required permission is a function of the selected namespace, not a constant. The classic portal's own keys for this screen are `%Admin_Operate` plus read and write on the database holding the target namespace's global. AD-29's per-port gate resolves that at call time; a single static descriptor resource cannot express it.
+
+### AD-49 — A self-service account action is the user's own write, outside the agent write path
+
+- **Binds:** Story 15.1 (change own password) and every later self-service account action, 15.6's theme choice among them; AD-1, AD-2, AD-6, AD-8, AD-15, AD-27, AD-40
+- **Prevents:** two stories answering "which surface does an account action use" differently — one reaching for `AdminPort`, the next minting a proposal for a change the user made with their own hands
+- **Rule:** An action a user performs on **their own account, from the shell, with no agent involved** is not an agent write and does not enter the agent write path. It mints no proposal, takes no confirm token, emits no OcuPilot agent marker, and is never advertised as a tool (AD-40 already makes confirm user-originated; this is the converse case). It calls the **documented `%SYSTEM.*` method for the operation, in the caller's own process**, as AD-8 requires — `$System.Security.ChangePassword($Username, new, old, .tSC)` for the password, which is the call the vendor's own self-service dialog makes.
+
+  **It does not go through `AdminPort`, and that is not a containment breach.** AD-2 and AD-27 confine the *experimental admin API* to one file; a stable, documented `%SYSTEM.Security` method is not that dependency, and `AdminPort` could not carry it anyway — its request types are read-shaped. The admin API's `POST /security/user/password` is the **administrator-resets-another-user** operation: it requires `%Admin_Secure`, which AD-8 forbids elevating to, and it takes no old password, so it cannot express "prove you are who you say you are". That route belongs to the admin story, not to this one.
+
+  **Two consequences that stop it becoming a loophole.** The action is still gated by the process's own privileges (AD-8) and still carries the whole secret discipline (AD-21, AD-35, Conventions › Secrets) — a password exists as a stack local and reaches no log, status, exception or audit payload. And where IRIS emits its own audit event for the operation (`%System`/`%Security`/`UserChange`, registered and enabled on this build, firing on failure as well as success), OcuPilot adds no second record: AD-15 binds agent writes, and AD-46 already shows the vendor's row on the audit screen. An operation for which IRIS emits **no** event is the case that needs an OcuPilot marker, and the story that finds one says so here.
+
 
 ## Consistency Conventions
 
