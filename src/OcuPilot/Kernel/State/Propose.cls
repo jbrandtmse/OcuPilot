@@ -177,6 +177,9 @@ Index ProposalTargetIdx On (TargetRef As Exact, State);
 /// <method>OcuPilot.Kernel.Proposal.Mint.Mint</method>; nothing here strips anything.
 /// <var>pLimitsClass</var> is the class <code>PROPOSALEXPIRYSECONDS</code> is read from, so a test
 /// narrows the window rather than waiting it out.</p>
+/// <p>Each of the three stream writes is checked and no row is saved on a failure: a row stored
+/// with a payload its diff does not describe reads to every diff-scoped gate behind the mint as a
+/// proposal that changes nothing (DW-1353).</p>
 ClassMethod GuardedMint(ByRef pValues, pLimitsClass As %String, Output pKey As %String, Output pToken As %String, Output pExpiresAt As %String) As %Status
 {
     Set pKey = ""
@@ -195,9 +198,12 @@ ClassMethod GuardedMint(ByRef pValues, pLimitsClass As %String, Output pKey As %
         Set tRow.ToolName = ..Cut($Get(pValues("toolName")), 128)
         Set tRow.TargetRef = ..Cut($Get(pValues("targetRef")), 512)
         Set tRow.Fingerprint = ..Cut($Get(pValues("fingerprint")), 128)
-        Do tRow.Arguments.Write($Get(pValues("arguments")))
-        Do tRow.Payload.Write($Get(pValues("payload")))
-        Do tRow.Diff.Write($Get(pValues("diff")))
+        Set tSC = tRow.Arguments.Write($Get(pValues("arguments")))
+        If $$$ISERR(tSC) Quit
+        Set tSC = tRow.Payload.Write($Get(pValues("payload")))
+        If $$$ISERR(tSC) Quit
+        Set tSC = tRow.Diff.Write($Get(pValues("diff")))
+        If $$$ISERR(tSC) Quit
         Set tRow.UnchangedCount = +$Get(pValues("unchangedCount"))
         Set tSummaryMax = +$Parameter(pLimitsClass, "SUMMARYMAXLENGTH")
         Set tRow.Rationale = ..Cut($Get(pValues("rationale")), tSummaryMax)

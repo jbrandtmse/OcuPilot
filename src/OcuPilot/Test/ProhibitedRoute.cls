@@ -2,8 +2,12 @@
 /// AD-39): the shipped <class>OcuPilot.Kernel.Proposal.Confirm</class>, the shipped
 /// <class>OcuPilot.Port.AdminPort</class>, and the instance's own record of the target read back
 /// afterwards.</p>
+/// <p>It also pins the set's idea of which spellings of a path name one application against the
+/// instance's own resolution (DW-1352), which is the one claim in that predicate that no fixture
+/// can answer.</p>
 /// <p><b>What it needs from the environment:</b> the OcuPilot web application reachable on this
-/// instance's own web-server port, an account holding <code>%All</code>, and
+/// instance's own web-server port, the applications the install roster declares, an account
+/// holding <code>%All</code>, and
 /// <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>.
 /// <method>OnBeforeAllTests</method> refuses anywhere it does not, because this class creates and
 /// deletes a web application; only <file>scripts/ci-throwaway.sh</file> sets it.</p>
@@ -205,6 +209,58 @@ Method TestAWeakenedAuthenticationIsRefusedOverTheWire()
 Method TestARepointedDispatchClassIsRefusedOverTheWire()
 {
     Do ..Weakened("DispatchClass", "OcuPilot.Api.Router", "string", $Parameter("OcuPilot.Kernel.Proposal.Prohibited", "DISPATCH"))
+}
+
+/// <p>DW-1352: the set normalizes a web application's name exactly as far as this instance
+/// resolves it. For every path the install roster declares, a spelling the shipped port's own
+/// <code>GET</code> answers that same application for must normalize to it, and one the port
+/// answers nothing for must not -- so a re-cased or slash-suffixed id cannot reach OcuPilot's own
+/// API through the endpoint while the serving-path predicate reads the target as somebody
+/// else's.</p>
+/// <p>The instance is the authority here, not a remembered rule: each leg asks the port and the set
+/// the same question and compares the two answers, so a build that normalized differently reddens
+/// this rather than passing silently.</p>
+/// <p><b>It reads only:</b> no proposal is seeded, no application is modified, and the probe
+/// application plays no part.</p>
+/// <p>Mutations: drop the trailing-slash loop from
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.NormalizedPath</method>, or make it strip a leading
+/// slash as well -- the first goes red on the slash-suffixed spellings and the second on the
+/// leading-slash-less one, because in each case the set and the instance disagree.</p>
+Method TestTheSetNormalizesAPathTheWayTheInstanceResolvesIt()
+{
+    Set tKeys = ##class(OcuPilot.Install.Roster).Keys()
+    Do $$$AssertNotEquals(tKeys, "", "the roster declares its application keys")
+    For tI = 1:1:$Length(tKeys, ",") {
+        Set tSC = ##class(OcuPilot.Install.Roster).Application($Piece(tKeys, ",", tI), .tApp)
+        Do $$$AssertStatusOK(tSC, "the roster reads application " _ $Piece(tKeys, ",", tI))
+        If $$$ISERR(tSC) Continue
+        Set tPath = tApp.path
+        Set tCanonical = ..Read(tPath)
+        Do $$$AssertNotEquals(tCanonical, "", tPath _ " reads back through the port, so the comparison below has an answer to compare with")
+        If tCanonical = "" Continue
+        ; Three spellings this build resolves and three it does not, so the agreement is asserted
+        ; in both directions rather than only where the set says yes.
+        Set tForms = $ListBuild($ZConvert(tPath, "U"), tPath _ "/", $ZConvert(tPath, "U") _ "///")
+        Set tForms = tForms _ $ListBuild($Extract(tPath, 2, $Length(tPath)), "/" _ tPath, tPath _ " ")
+        For tJ = 1:1:$ListLength(tForms) {
+            Set tForm = $List(tForms, tJ)
+            Set tResolves = (..Read(tForm) = tCanonical)
+            Set tNormalizes = (##class(OcuPilot.Kernel.Proposal.Prohibited).NormalizedPath(tForm) = ##class(OcuPilot.Kernel.Proposal.Prohibited).NormalizedPath(tPath))
+            Do $$$AssertEquals(tNormalizes, tResolves, "the set and the instance agree about '" _ tForm _ "', which the instance resolves to " _ tPath _ ": " _ tResolves)
+        }
+    }
+}
+
+/// <p>The application at <var>pPath</var> as the shipped port's own <code>GET</code> renders it, or
+/// <code>""</code> where the instance resolves none. Quiet on purpose: a refusal is one of the two
+/// answers this question has, not a failure.</p>
+Method Read(pPath As %String) As %String
+{
+    Kill tQuery
+    Set tQuery("name") = pPath
+    Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke("WebApp.App", "GET", .tQuery, "", .tFresh, .tHttp, .tFault)
+    If $$$ISERR(tSC) || '$IsObject(tFresh) Quit ""
+    Quit tFresh.%ToJSON()
 }
 
 }

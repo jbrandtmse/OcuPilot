@@ -1,9 +1,11 @@
 /// <p>Pins the shape AD-10's prohibited set refuses <b>by</b> (Story 5.5): the reviewed-few field
 /// rule (DW-1345, DW-1346), the one permitted authentication change out of the whole
-/// <code>AutheEnabled</code> mask (DW-1346), OcuPilot's own applications (DW-1347), the diff
-/// scoping that keeps a third party's change from being answered as the agent's (DW-1351), and the
+/// <code>AutheEnabled</code> mask (DW-1346), OcuPilot's own applications under every spelling the
+/// instance resolves to one of them (DW-1347, DW-1352), the diff
+/// scoping that keeps a third party's change from being answered as the agent's (DW-1351), the
 /// fingerprint gate's own cover of the stored payload, which is what keeps that scoping from
-/// letting an unscoped payload through.</p>
+/// letting an unscoped payload through, and the mint's own stream writes, which are what keep a
+/// row with no diff from existing at all (DW-1353, DW-1354).</p>
 /// <p><b>Why a property this build does not carry is in here.</b> Each of the three highs is about a
 /// family of vendor properties, not about the members that happen to exist today, so the test that
 /// makes the claim falsifiable puts an invented property with the same effect in front of the set
@@ -78,7 +80,7 @@ Method Ask(pFresh As %String, pPayload As %String, pFields As %String, Output pP
 /// row proposing nothing is seeded, and <var>pFingerprint</var> is the digest the row carries: the
 /// default <code>0</code> matches no target, so a test that needs the confirm to reach the gates
 /// behind the fingerprint passes the digest the confirm will re-compute.</p>
-Method Seed(pPayload As %String, pFields As %String, pPath As %String = {..#TARGET}, pDiff As %String = "", pFingerprint As %String = "0") As %String
+Method Seed(pPayload As %String, pFields As %String, pPath As %String = {..#TARGET}, pDiff As %String = "", pFingerprint As %String = "0", Output pToken As %String) As %String
 {
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurnKey)
     Do $$$AssertStatusOK(tSC, "a probe turn is seeded")
@@ -97,7 +99,7 @@ Method Seed(pPayload As %String, pFields As %String, pPath As %String = {..#TARG
     Set tValues("payload") = pPayload
     Set tValues("diff") = $Select(pDiff '= "": pDiff, 1: ##class(OcuPilot.Test.ProhibitedFixture).Diff(pFields))
     Set tValues("unchangedCount") = 0
-    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedProposal(.tValues, .tKey, .tToken)
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedProposal(.tValues, .tKey, .pToken)
     Do $$$AssertStatusOK(tSC, "a probe proposal is seeded")
     If $$$ISERR(tSC) Quit ""
     Quit tKey
@@ -251,9 +253,13 @@ Method Masked(pValue As %RawString) As %String
 /// unreachable OcuPilot an instance nobody can repair through OcuPilot. Driven for every path the
 /// install roster declares and for one only install's own record names, and an application that is
 /// not OcuPilot's may still be disabled.</p>
+/// <p>DW-1352: driven for each of those paths as the instance also resolves it -- re-cased, and
+/// with trailing slashes -- because the id a proposal carries is the model's spelling and the
+/// vendor endpoint answers the same application for every one of them.</p>
 /// <p>Mutations: make <method>OcuPilot.Kernel.Proposal.Prohibited.ServesOcuPilot</method> answer
-/// 0, and drop its <class>OcuPilot.Kernel.State.WebApp</class> lookup -- the first reddens every
-/// leg, the second the recorded one alone.</p>
+/// 0, drop its <class>OcuPilot.Kernel.State.WebApp</class> lookup, and compare both sides raw
+/// again instead of through <method>OcuPilot.Kernel.Proposal.Prohibited.NormalizedPath</method> --
+/// the first reddens every leg, the second the recorded one alone, the third the spellings alone.</p>
 Method TestAChangeToOcuPilotsOwnApplicationIsRefused()
 {
     Set tExpected = $Parameter(..#SHIPPEDSET, "SERVINGPATH")
@@ -263,7 +269,16 @@ Method TestAChangeToOcuPilotsOwnApplicationIsRefused()
         Set tAppSC = ##class(OcuPilot.Install.Roster).Application($Piece(tKeys, ",", tI), .tApp)
         Do $$$AssertStatusOK(tAppSC, "the roster reads application " _ $Piece(tKeys, ",", tI))
         If $$$ISERR(tAppSC) Continue
+        ; The roster spells its paths the way the instance resolves them, which is what makes a
+        ; lookup of install's own record by the normalized path the same question.
+        Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Prohibited).NormalizedPath(tApp.path), tApp.path, tApp.path _ " is already spelled the way the instance resolves it")
         Do ..OwnPath(tApp.path, tExpected)
+        ; DW-1352: the instance resolves each of these to that same application, so the set must
+        ; read each of them as OcuPilot's own -- otherwise the write reaches the application the
+        ; predicate said was somebody else's.
+        Do ..OwnSpelling($ZConvert(tApp.path, "U"), tExpected)
+        Do ..OwnSpelling(tApp.path _ "/", tExpected)
+        Do ..OwnSpelling($ZConvert(tApp.path, "U") _ "///", tExpected)
     }
 
     ; The recorded half: a path the roster does not declare but install's own record does. The
@@ -273,6 +288,8 @@ Method TestAChangeToOcuPilotsOwnApplicationIsRefused()
     ; OnAfterOneTest removes it, so a failure between the write and the removal cannot leave a
     ; record behind and change the next run's serving-path answers.
     Do ..OwnPath(..#RECORDEDPATH, tExpected)
+    Do ..OwnSpelling($ZConvert(..#RECORDEDPATH, "U"), tExpected)
+    Do ..OwnSpelling(..#RECORDEDPATH _ "/", tExpected)
 
     ; An application that is not OcuPilot's: disabling it, and renaming it, are both proposable.
     Set tSC = ..Ask(..Target(), ##class(OcuPilot.Test.ProhibitedFixture).App(..#TARGET, 32, "%Development", "Probe.Dispatch", "", 0), "Enabled", .tProhibits, .tCode)
@@ -313,6 +330,19 @@ Method OwnPath(pPath As %String, pExpected As %String)
         Do $$$AssertEquals(tProhibits, 1, pPath _ " is one of OcuPilot's own, so its " _ $List(tCase, 1) _ " is not proposable")
         Do $$$AssertEquals(tCode, pExpected, "with the serving-path code")
     }
+}
+
+/// <p>Disabling the application at <var>pPath</var> is refused <var>pExpected</var> -- one case,
+/// driven for a spelling of a roster or recorded path that the instance resolves to that same
+/// application (DW-1352).</p>
+Method OwnSpelling(pPath As %String, pExpected As %String)
+{
+    Set tFresh = ##class(OcuPilot.Test.ProhibitedFixture).App(pPath, 32, "", "OcuPilot.Api.Router", "", 1)
+    Set tPayload = ##class(OcuPilot.Test.ProhibitedFixture).App(pPath, 32, "", "OcuPilot.Api.Router", "", 0)
+    Set tSC = ..Ask(tFresh, tPayload, "Enabled", .tProhibits, .tCode, pPath)
+    Do $$$AssertStatusOK(tSC, "the set answers the spelling " _ pPath)
+    Do $$$AssertEquals(tProhibits, 1, pPath _ " names one of OcuPilot's own, so disabling it is not proposable")
+    Do $$$AssertEquals(tCode, pExpected, "with the serving-path code")
 }
 
 /// <p>DW-1351: the verdict is about what the proposal changes. A field a third party moved after
@@ -361,6 +391,62 @@ Method TestAProposalIsJudgedOnWhatItChanges()
     Do $$$AssertEquals(tProblem, "", "with no argument problem")
     Do $$$AssertEquals(tMintDiff.%Size(), 1, "and records the one changed field")
     Do $$$AssertEquals(tMintDiff.%Get(0).%Get("field"), "Description", "under the key Changed() reads")
+
+    ; DW-1354, the producer half: the mint records a row for every field its own merge moved, so a
+    ; payload that changes something cannot be stored beside a diff that names nothing. With the
+    ; mint the only producer of a stored row (DW-1353), that is what leaves the diff scoping above
+    ; nothing unscoped to be silent about.
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Merge(##class(%DynamicAbstractObject).%FromJSON(tLive), {"Description": "after", "Enabled": false}, $ClassMethod(..#TOOLCLASS, "IdArgument"), $ClassMethod(..#TOOLCLASS, "SettableFields"), .tPayload, .tBothDiff, .tUnchanged, .tProblem)
+    Do $$$AssertStatusOK(tSC, "the shipped merge runs over two changed arguments")
+    Do $$$AssertEquals(tProblem, "", "with no argument problem")
+    Do $$$AssertEquals(tBothDiff.%Size(), 2, "and names both of the fields it moved")
+    Set tNamed = ""
+    Set tIterator = tBothDiff.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If $IsObject(tRow) Set tNamed = tNamed _ $ListBuild(tRow.%Get("field"))
+    }
+    Do $$$AssertNotEquals($ListFind(tNamed, "Description"), 0, "the description among them")
+    Do $$$AssertNotEquals($ListFind(tNamed, "Enabled"), 0, "and the enabled flag")
+}
+
+/// <p>DW-1353: the mint takes the status of each of its three stream writes and saves no row on a
+/// failure, so a row whose diff never landed does not exist. That is the other half of DW-1354's
+/// argument -- with no producer of a row whose payload changes something while its diff names
+/// nothing, such a row is reachable only by a direct write into OcuPilot's protected storage, which
+/// AD-9 and AD-33 put outside the threat model.</p>
+/// <p><b>Why half of this is read from the source.</b> A global stream refuses no write for any
+/// input a caller can hand the mint -- probed on <code>ocupilot-ci</code>: a file stream aimed at an
+/// unwritable path and <class>%Stream.NullCharacter</class> both answer <code>$$$OK</code>, and
+/// <class>%Stream.Object</class> is abstract -- so the failure is unreachable and only the shape of
+/// the call can be pinned. The round trip below is what pins that the three writes still store what
+/// they were handed.</p>
+/// <p>Mutations: write one of the three streams with a bare <code>Do</code> again, or drop the
+/// <code>If $$$ISERR(tSC) Quit</code> behind one -- that field's source leg goes red; delete one of
+/// the three writes outright -- the round trip goes red.</p>
+Method TestAMintChecksEachStreamWriteOrStoresNoRow()
+{
+    Set tText = ""
+    Set tSC = ##class(%Compiler.UDL.TextServices).GetTextAsString($Namespace, "OcuPilot.Kernel.State.Propose", .tText)
+    Do $$$AssertStatusOK(tSC, "the proposal store's source reads back")
+    If $$$ISERR(tSC) Quit
+    For tField = "Arguments", "Payload", "Diff" {
+        Set tCall = "Set tSC = tRow." _ tField _ ".Write("
+        Do $$$AssertEquals(tText [ tCall, 1, "the mint takes the status of its " _ tField _ " write")
+        Do $$$AssertEquals(tText [ ("Do tRow." _ tField _ ".Write("), 0, "and writes it through no unchecked Do")
+        Do $$$AssertEquals($Piece($Piece(tText, tCall, 2), $Char(10), 2) [ "If $$$ISERR(tSC) Quit", 1, "quitting on a failed " _ tField _ " write before the row is saved")
+    }
+
+    ; The round trip: the three texts a mint is handed are the three the store reads back, so a
+    ; write that was dropped rather than mis-checked reddens here.
+    Set tDiff = ##class(OcuPilot.Test.ProhibitedFixture).Diff("Description")
+    Set tKey = ..Seed(..Target(), "", ..#TARGET, tDiff, "0", .tToken)
+    If tKey = "" Quit
+    Set tSC = ##class(OcuPilot.Kernel.State.Propose).GuardedByToken(tToken, .tFound, .tStored)
+    Do $$$AssertStatusOK(tSC, "the minted row reads back by its token")
+    Do $$$AssertEquals(tFound, 1, "and is found")
+    Do $$$AssertEquals($Get(tStored("arguments")), "{}", "with the arguments it was handed")
+    Do $$$AssertEquals($Get(tStored("payload")), ..Target(), "the payload it was handed")
+    Do $$$AssertEquals($Get(tStored("diff")), tDiff, "and the diff it was handed")
 }
 
 /// <p>AD-6: the diff scopes the set, so the gate behind it covers the payload the port would be

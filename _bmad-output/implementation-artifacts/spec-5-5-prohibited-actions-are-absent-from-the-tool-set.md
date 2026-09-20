@@ -2,84 +2,48 @@
 title: 'Story 5.5: Prohibited actions are absent from the tool set'
 type: 'feature'
 created: '2026-09-20'
-status: 'in-progress'
+status: 'done'
 baseline_revision: '777d484527e4fc695fe62e8ca8fdd970f7f162c1'
-review_loop_iteration: 1
+review_loop_iteration: 2
 followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['oversized']
 deferred:
   - summary: >-
-      A row whose `arguments`, `payload` and `fingerprint` agree with each other but whose `diff`
-      names nothing still reaches the port for the four reviewed fields.
+      Two spellings of one web application are two scoped targets to the claim, so AD-34's
+      per-target lock and its sibling cancel do not cover a re-cased or slash-suffixed id.
     evidence: |-
-      `FingerprintMatches` now pins the stored payload to `Merge(live, storedArguments)`, so a forged
-      payload can differ from the live target only in a `SettableFields()` name. `Changed` scopes the
-      predicates to the diff, so `AutheEnabled` 32 -> 96 behind an empty diff is unrefused. Closing it
-      needs the set to key on the stored arguments rather than the diff, or the fingerprint gate ahead
-      of the seam -- both settled outside this story (the intent contract forbids the first, the lead
-      the second).
-    location: 'src/OcuPilot/Kernel/Proposal/Prohibited.cls:304'
+      `EntityRef.Key` concatenates the id verbatim, `Propose.TargetLockKey` digests the reference
+      text and the sibling cancel is `%EXACT(TargetRef)` -- verified at `Propose.cls:283,345`. Two
+      confirms against `/api/ocupilot` and `/API/OcuPilot` take different locks, so the second is
+      refused 409 by the fingerprint gate rather than serialized, and a sibling stays live rather
+      than being canceled. Closing it means normalizing an id per entity type where the mint builds
+      the ref, which is wider than this story. reopen_if=a second write tool ships, or two proposals
+      on one target are observed both live.
+    location: 'src/OcuPilot/Kernel/EntityRef.cls:44'
     severity: medium
   - summary: >-
-      `Propose` discards the status of its three stream writes, so a failed `Diff.Write` stores a row
-      with a payload and no diff.
+      `ServesOcuPilot` asks install's record store twice -- once for the normalized path, once for
+      the id as it came -- because the store's own lookup is an exact compare.
     evidence: |-
-      `Do tRow.Diff.Write($Get(pValues("diff")))` -- and the same for `Arguments` and `Payload`. The
-      row then saves and the set has nothing to scope by. Pre-existing shape, out of this story's
-      footprint (`Kernel/State/**`).
-    location: 'src/OcuPilot/Kernel/State/Propose.cls:200'
-    severity: medium
-  - summary: >-
-      `ServesOcuPilot` matches the roster's paths with an exact string compare and is now the first
-      predicate, so a differently-spelled id that the vendor endpoint still resolves would read as
-      not-OcuPilot's.
-    evidence: |-
-      `If $IsObject(tApp) && (tApp.path = pPath)` -- no case or trailing-slash normalization. Settled
-      by one probe: ask the `WebApp.App` endpoint for `/API/OcuPilot` and see whether it answers the
-      real application. Every test drives the roster's exact spellings, so nothing pins it either way.
-    location: 'src/OcuPilot/Kernel/Proposal/Prohibited.cls:382'
-    severity: medium (unverified)
-  - summary: >-
-      The advertised schema narrowed from forty-five fields to four, which is a product-facing
-      reduction in what the agent may propose about a web application.
-    evidence: |-
-      It is the consequence of AD-10's title once every change to the unreviewed fields is prohibited,
-      and it is fail-closed against a vendor property a later build adds. A later story that needs
-      `Timeout` or the CORS list adds the name to `PermittedChangeFields` and to `PERMITTEDFIELDS`
-      together; the reviewed-few floor now fails the suite if it adds only one. The owner may want a
-      wider reviewed set.
-    location: 'src/OcuPilot/Screen/Tool/WebAppUpdate.cls:48'
-    severity: medium
-  - summary: >-
-      Disabling any web application that is not OcuPilot's own -- `/csp/sys`, `/api/atelier` -- is
-      proposable.
-    evidence: |-
-      `Enabled` is one of the four reviewed fields and carries no asymmetric predicate, and the
-      serving-path predicate covers only paths the roster declares or install recorded. AD-38's
-      argument is about OcuPilot's own reachability, so this is by design; whether the Management
-      Portal's own application should be refused too is a product call.
-    location: 'src/OcuPilot/Kernel/Proposal/Prohibited.cls:124'
-    severity: medium
-  - summary: >-
-      `PROHIBITED.UNCOVEREDFIELD` names no field, and the refusing field is picked in collation
-      order, so a multi-field diff does not tell the user which setting was refused.
-    evidence: |-
-      The sentence is one per code (AD-39) and the loop walks `$Order(pChanged(tField))`. Naming the
-      field would mean carrying a detail alongside the code, which the seam's contract does not have;
-      `Confirm.Transition` already does exactly that for the privilege refusal's `failedPair`.
-    location: 'src/OcuPilot/Kernel/Proposal/Prohibited.cls:279'
+      `WebApp.GuardedForPath` is `WHERE %EXACT(Path) = ?`, so neither call answers a record written
+      in some third spelling. Every record install writes carries a roster or probe literal, and a
+      test asserts each roster path is already in the instance's own form; the store is out of this
+      story's footprint (`Kernel/State/**`). reopen_if=anything but install writes a record.
+    location: 'src/OcuPilot/Kernel/Proposal/Prohibited.cls:412'
     severity: low
   - summary: >-
-      `Screen.Registry.ToolFieldRows` still computes a write tool's settable fields from the
-      generated entry without the positive list, so it over-approximates by forty-one names.
+      That the mint checks all three of its stream writes is pinned from its source, not from a
+      failing write.
     evidence: |-
-      The direction is conservative -- it would refuse a declaration naming a field the tool no longer
-      admits -- so nothing is unsafe; its refusal message's wording is now inaccurate. Out of this
-      story's footprint (`Screen/Registry.cls`). reopen_if=a descriptor declaration is refused for a
-      field `webapp.list.update` does not advertise.
-    location: 'src/OcuPilot/Screen/Registry.cls:2010'
+      No input a caller can hand the mint makes a global stream refuse a write -- probed on
+      `ocupilot-ci`: a file stream aimed at an unwritable path and `%Stream.NullCharacter` both
+      answer `$$$OK`, and `%Stream.Object` is abstract. A fixture object whose own `Write` refuses
+      cannot be declared either: `check-objectscript.py`'s one-writer rule (AD-12) refuses a method
+      named `Write` outside `Api/Response.cls` and `Api/Error.cls`. The round trip pins that the
+      three texts still store.
+    location: 'src/OcuPilot/Test/ProhibitedByEffect.cls:445'
     severity: low
 ---
 
@@ -208,34 +172,21 @@ tool, no client or UI change, no string-table entry. Do not edit `scripts/` (Epi
   `TestTheProhibitedSeamIsCalledOnceBeforeThePortCall`: the seam now answers the kernel class, and the
   call-once/before-the-write assertions stay. Do not weaken either.
 
-**Open after the lead's harvest gate (rework iteration 2) -- work ONLY these. Iteration 1's four
-items are closed; do not revisit them.**
+**Rework iteration 2's three items are closed. Iteration 1's four were closed before it.**
 
-- `[Review]` **DW-1352 (high).** `ServesOcuPilot` compares the roster's paths with an exact string,
-  but **the instance does not**. Settled by the lead on `ocupilot-slot-a`, not left as a question:
-  `Security.Applications.Exists("/API/OcuPilot")` returns 1 and hands back the real application
-  object, and `Exists("/api/ocupilot/")` does the same. So the vendor endpoint reaches
-  `/api/ocupilot` while the predicate reads the target as not-OcuPilot's, and a confirmed write can
-  disable OcuPilot's own API through a re-cased or slash-suffixed id. Normalize the way the instance
-  does -- and pin it with a test that drives both spellings against the real roster paths, so the
-  normalization is what is asserted rather than the happy spelling.
-- `[Review]` **DW-1353 (high when composed).** `Kernel/State/Propose.cls:200` discards the status of
-  its three stream writes (`Do tRow.Diff.Write(...)`, and the same for `Arguments` and `Payload`),
-  so a failed `Diff.Write` saves a row with a payload and no diff -- exactly the shape that makes
-  the diff-scoped predicates skip. Check all three. **The lead authorizes
-  `src/OcuPilot/Kernel/State/Propose.cls` as a footprint extension for this item only**: Epic 5
-  created that method in Story 5.1 and no other live epic touches it. Nothing else in
-  `Kernel/State/**` is opened.
-- `[Review]` **DW-1354 (med), closed by composition, not by a third mechanism.** With DW-1353's
-  producer gone, a row whose `arguments`, `payload` and `fingerprint` agree while its `diff` names
-  nothing is reachable only by a direct write into OcuPilot's protected storage, which AD-9 and
-  AD-33 put outside the threat model. Write that argument into `## Design Notes` in one short
-  paragraph and pin what can be pinned. Do **not** key the set on the stored arguments -- this
-  story's own intent contract forbids a match on argument fields -- and do **not** move the
-  fingerprint gate ahead of the seam; both were settled outside this pass.
-
-Each item needs a pinning test and a `mutation:` line in `## Verification`, demonstrated in this
-pass (Rule 19).
+- `[x]` **DW-1352 (high).** Closed: `ServesOcuPilot` compares both sides through
+  `Prohibited.NormalizedPath` -- lower case with every trailing slash removed, which is the
+  normalization the instance itself performs. Pinned by
+  `ProhibitedByEffect.TestAChangeToOcuPilotsOwnApplicationIsRefused` (each roster and recorded path
+  under three spellings the instance resolves) and by
+  `ProhibitedRoute.TestTheSetNormalizesAPathTheWayTheInstanceResolvesIt`, which compares the set's
+  answer with the shipped port's for six spellings, three resolved and three not.
+- `[x]` **DW-1353 (high when composed).** Closed: `GuardedMint` takes the status of all three
+  stream writes and saves no row on a failure. Pinned by
+  `ProhibitedByEffect.TestAMintChecksEachStreamWriteOrStoresNoRow`.
+- `[x]` **DW-1354 (med).** Closed by composition, argued in `## Design Notes` under *Why a row
+  whose diff names nothing is no longer producible*, with the producer half pinned in
+  `ProhibitedByEffect.TestAProposalIsJudgedOnWhatItChanges`.
 
 **Acceptance Criteria:**
 
@@ -427,6 +378,18 @@ excluded fields); Stories 5.9-5.13, each of which must add its entity type's pre
 before its write tool can register (`user`, `role`, `resource`, `service`, `process`, `database`);
 Story 5.6 (a refused write emits no marker, because nothing is written).
 
+**Why a row whose diff names nothing is no longer producible (DW-1354).** The set is scoped to the
+stored diff, so a row whose payload weakens the live target while its diff names nothing would be
+passed over. Nothing can produce one. The mint is the only writer of a proposal row, its own `Merge`
+records a diff row for every field it moves, and since DW-1353 a stream write it could not complete
+answers an error and saves no row at all -- so a stored payload and a stored diff are written
+together or not at all. What remains is a direct write into OcuPilot's protected storage, which AD-9
+(nothing outside `Kernel/State` holds the escalation) and AD-33 (that database is reached only
+through those methods) put outside the threat model; behind that, AD-6's fingerprint gate still
+refuses any row whose payload its own digest does not cover. The closure is therefore a composition
+of gates already here, not a third mechanism: the set is not keyed on the stored arguments, which
+this story's intent contract forbids, and the fingerprint gate did not move ahead of the seam.
+
 **DW-1207 (floor-blocking, must-ship).** Addressed by the three matrix rows naming it, the fourth
 acceptance criterion, and the `DispatchClass` exclusion. Not declined, not re-owned.
 
@@ -545,6 +508,26 @@ named test, reverted, and the throwaway's tree confirmed byte-identical to the w
   `ToolWrite.TestTheSchemaIsDerivedFromTheClassifiedFieldList` red on the shipped tool advertising a
   field the set has not reviewed.
 
+- DW-1352: `ServesOcuPilot` comparing both sides raw again, with the two
+  `Prohibited.NormalizedPath` calls removed -> run 307
+  `ProhibitedByEffect.TestAChangeToOcuPilotsOwnApplicationIsRefused` red on all eleven
+  non-canonical spellings and green on every canonical one, which is the bypass itself.
+- DW-1352: `Prohibited.NormalizedPath` reduced to the case fold, with the trailing-slash loop
+  dropped -> run 308 `ProhibitedRoute.TestTheSetNormalizesAPathTheWayTheInstanceResolvesIt` red on
+  the six slash-suffixed spellings, each of which the shipped port resolved to the roster path.
+- DW-1352, the other direction: `Prohibited.NormalizedPath` stripping a leading slash as well ->
+  run 309 the same test red on the three leading-slash-less spellings, which the port resolves to
+  nothing -- so the agreement is pinned where the set must say no as well as where it must say yes.
+- DW-1353: `Propose.GuardedMint` writing its diff stream with a bare `Do` again -> run 310
+  `ProhibitedByEffect.TestAMintChecksEachStreamWriteOrStoresNoRow` red on all three of that field's
+  source legs.
+- DW-1353: the same write storing `$Get(pValues("diff")) _ " "` -> run 311 the same test red on the
+  round trip alone, which is what pins that the three texts a mint is handed are the three stored.
+- DW-1354: `Mint.Merge` pushing only its first diff row (`If tChanged = 0 Do pDiff.%Push(tRow)`) ->
+  run 312 `ProhibitedByEffect.TestAProposalIsJudgedOnWhatItChanges` red on the producer legs, which
+  are what make "a payload that changes something cannot be stored beside a diff that names
+  nothing" falsifiable.
+
 **Manual check, performed:** `ProhibitedRoute.Weakened` reads the probe application's complete
 property set back through the shipped port before and after each confirm and asserts it equal, and
 the seeded row carries the digest the confirm re-computes, so the 403 is the only gate left between
@@ -555,90 +538,51 @@ that confirm and a vendor write.
 Status: done
 Blocking condition: none
 
-**Change (rework 1, the four open items).** The set now **permits by name and refuses by shape**.
-`PermittedChangeFields(pType)` names the four web-application settings this release has reviewed
-(`AutheEnabled`, `Description`, `Enabled`, `Resource`); every other changed field is refused
-`PROHIBITED.UNCOVEREDFIELD`, a seventh code with its own sentence. That is what closes DW-1345 and
-DW-1346 without enumerating vendor property names: `EventClass`, `SuperClass`, `Package`, `Path`,
-`NameSpace`, the page and WSGI properties, `TwoFactorEnabled`, `CSRFToken`, `JWTAuthEnabled`,
-`UseCookies`, `SessionScope`, `GroupById` and `Timeout` are all refused, and so are two properties
-this build's endpoint does not carry at all. `AutheEnabled`, the one authentication field that stays
-proposable, is judged by `ClearsUnauthenticatedOnly`: the only payload it permits is the target's own
-mask with the unauthenticated bit cleared, because the mask carries strength modifiers as well as
-mechanisms and a subset test reads two-factor backwards in both directions. That refuses 32 -> 0,
-32 -> 8192, 32 -> 16384, 1056's undefined bit and two-factor either way.
-DW-1347: a web application OcuPilot itself is
-served by is refused **any** change (`SERVINGPATH`), so `NameSpace` and `Path` are covered by the
-predicate being over the application rather than over a property list; the end-state "leaves it not
-enabled" clause is gone, since the payload that carries it proposes no change. DW-1351: `Prohibits`
-takes the stored diff, and `Changed` answers the fields the diff names **and** whose payload value
-differs from the live target, so a field a third party moved after the mint is answered 409
-`PROPOSAL.TARGETCHANGED` by the fingerprint gate rather than 403 by the set. AD-10's other half
-follows: `Screen.Tool.Write` gains a positive `PermittedFields()` filter and `WebAppUpdate` declares
-the same four names, so the advertised schema went from 45 fields to 4 and a vendor property a later
-build adds reaches no schema until somebody reviews it. The seam stayed where Story 5.3 put it and
-5.3's gate order is unchanged.
+**Change (rework 2, the three open items).** DW-1352: the serving-path predicate compares a target's
+id and the roster's paths through `Prohibited.NormalizedPath` -- lower case, with every trailing
+slash removed -- which is what the instance itself does. Probed on `ocupilot-ci` rather than
+recalled: `Security.Applications.Exists` and the vendor `WebApp.App` `GET` both answer the real
+`/api/ocupilot` for `/API/OcuPilot`, `/api/ocupilot/` and `/API/OCUPILOT///`, and 404 for
+`api/ocupilot`, `/api//ocupilot`, `/api/ocupilot/.` and a trailing space, so the normalization goes
+exactly that far and no further. Install's own record is looked up by the normalized path and, where
+that differs, by the id as it came, because that store's lookup is an exact compare. Before this the
+endpoint reached OcuPilot's own API while the predicate read the target as somebody else's, so a
+confirmed write could disable OcuPilot through a re-cased or slash-suffixed id, which AD-38 makes
+unrecoverable. DW-1353: `GuardedMint` takes the status of each of its three stream writes and saves
+no row on a failure. DW-1354: closed by composition and written out in `## Design Notes` -- no third
+mechanism, the set is not keyed on the stored arguments, and the fingerprint gate did not move.
 
 **Files changed.**
 
-- `src/OcuPilot/Kernel/Proposal/Prohibited.cls` -- the reviewed-few rule,
-  `ClearsUnauthenticatedOnly`, `Changed`, the serving-path predicate, the seventh code; `Unauthenticated` and `Enabled` are gone with the
-  readings they served, and `UNAUTHENTICATEDBIT` is the one bit `ClearsUnauthenticatedOnly` permits a
-  payload to change.
-- `src/OcuPilot/Kernel/Proposal/Confirm.cls` -- the seam is handed the stored diff, and
-  `FingerprintMatches` requires the stored payload to digest to the row's own fingerprint (AD-6).
-- `src/OcuPilot/Screen/Tool/Write.cls` -- `PermittedFields()` and its filter in `FieldRows`.
-- `src/OcuPilot/Screen/Tool/WebAppUpdate.cls` -- `PERMITTEDFIELDS`, and a header that says which
-  families the four leave out.
-- `src/OcuPilot/Screen/Tool/Classification.cls` -- one sentence separating `ordinary` from "the tool
-  admits it"; the reviewed XData is unchanged.
-- `src/OcuPilot/Test/ProhibitedByEffect.cls` (new) -- the four pinning tests.
-- `src/OcuPilot/Test/ProhibitedFixture.cls` -- the suite's shared builders, so neither test class
-  duplicates them and `Test/Prohibited.cls` stays inside the ~500-line guidance.
-- `src/OcuPilot/Test/Prohibited.cls`, `…/ProhibitedRoute.cls` -- every seeded row carries the diff a
-  mint would have recorded; the reviewed-few floor is asserted per write tool.
-- `src/OcuPilot/Test/ProposalFixture.cls`, `…/ToolWrite.cls`, `…/WriteExclusion.cls` -- the fixture's
-  seam signature, and the array-shape assertion moved to the probe tool that still admits one.
+- `src/OcuPilot/Kernel/Proposal/Prohibited.cls` -- `NormalizedPath`, the normalized compare in
+  `ServesOcuPilot`, and `Recorded` so the record store is asked for both spellings.
+- `src/OcuPilot/Kernel/State/Propose.cls` -- the three stream writes are status-checked.
+- `src/OcuPilot/Test/ProhibitedByEffect.cls` -- each roster and recorded path driven under three
+  spellings the instance resolves, a floor that the roster's own spellings are already canonical,
+  the mint's stream-write test, and DW-1354's producer legs.
+- `src/OcuPilot/Test/ProhibitedRoute.cls` -- the set's normalization compared against the shipped
+  port's own resolution over six spellings, read-only.
 
 **Verified.** `check-objectscript.py` 0 problems over 557 files; `lint-docs.sh` clean; `ui`
-`npm run build` and `npm test` green (1087 + 687). On the throwaway `ocupilot-ci`, one class per
-call through `ui/tools/ci-runner.mjs` and confirmed against `%UnitTest_Result`: `Prohibited` 11,
-`ProhibitedByEffect` 5, `ProhibitedRoute` 3, `ProposalConfirm` 16, `ConfirmRoute` 6, `ProposalWrite`
-11, `Proposal` 14, `ProposalRace` 6, `ProposalClose` 7, `ProposalWire` 11, `ToolWrite` 9,
-`ToolRoundTrip` 2, `ToolSetFull` 2, `ToolEmit` 11, `ToolDispatch` 18, `WebApp` 25, `ReadTool` 27,
-`Envelope` 15, `Wire` 20 -- 19 classes, 219 tests, 0 failed, 0 probe leftovers, 0 overlaps, 0 foreign
-runs. `smoke.sh --container ocupilot-ci`: executed 45, passed 45, failed 0, pending 2, skipped 0 before
-the suite had written any agent switch on that instance, and 44 executed, 44 passed, 1 skipped
-afterwards, because `agentswitches` reports that it can no longer tell whether the install wrote
-none. Each
-mutation line above was applied alone on the throwaway, grepped inside the container, loaded and
-recompiled with its subclasses, observed red on its named test and reverted;
-`diff -rq src/ /tmp/ocupilot-ci/src/` reports no differences afterwards.
-
-**Review findings.** 48 findings from four layers -- high 2 root causes (6 members), medium 6, low 23,
-false 5. 38 rows patched, 5 deferred, 5 rejected; patched entries after grouping: 2 high, 4 medium,
-14 low. Both highs are this pass's own work, not the baseline's: the diff scoping DW-1351 asked for
-left a row whose payload weakened the live target unrefused whenever its diff named nothing, and the
-whole-mask subset test read two-factor backwards in both directions. The first is fixed where AD-6's
-Rule already put it -- the fingerprint now covers the stored payload as well as the re-merged read,
-so such a row is refused 409 `PROPOSAL.TARGETCHANGED` and closed rather than written, and the
-prohibited seam did not move. Every rejected finding carries its reason in the triage log above.
+`npm run build` green and `npm test` 1087 + 687. On the throwaway `ocupilot-ci`, the nineteen
+classes one at a time through `ui/tools/ci-runner.mjs`, runs 313-331: 221 tests, 0 failed, 0 probe
+leftovers, 0 overlaps, 0 foreign runs, confirmed against `%UnitTest_Result` (classes 19, total 221,
+passed 221, failed 0 over those run indices). `smoke.sh --container ocupilot-ci`: executed 45,
+passed 45, failed 0, pending 2, skipped 0. Each mutation line above was applied alone in the
+throwaway's mount, grepped inside the container, loaded with its subclasses recompiled, observed red
+on its named test and reverted; `diff -rq src/ /tmp/ocupilot-ci/src/` reports no differences
+afterwards and the worktree carries only the four files above.
 
 **Follow-up review recommended: true.** This pass patched two `high` entries. The named unverified
-risk is the one change outside the set: `Confirm.FingerprintMatches` now requires a second digest,
-and every confirm the product makes runs it. Its premise -- that the mint stores the digest of the
-very payload it stores, with the same descriptor exclusions -- was read in `Mint` and probed live on
-`ocupilot-ci` (a real `WebApp.App` read merged and digested, then re-parsed from the stored JSON and
-digested identically), and the 19-class sweep includes the three classes that mint and confirm
-through the shipped path. It is still a strengthened gate on Story 5.3's surface that did not exist
-when this story was first reviewed.
+risk is the widened refusal: `SERVINGPATH` now answers a spelling that previously earned the
+reviewed-few code or no refusal at all, so a caller addressing an OcuPilot application by a
+non-canonical id is refused where it was not. That is the intent, and no shipped caller does it, but
+it is a behavior change beyond the three items. `GuardedMint` likewise now answers an error instead
+of saving a row when a stream write fails, on a path no input can reach.
 
-**Residual risks.** The advertised schema is now four fields, which is a deliberate narrowing of what
-the agent may propose about a web application and the thing to review first: a later story that needs
-`Timeout` or the CORS list adds it to `PermittedChangeFields` and to the tool's `PERMITTEDFIELDS`
-together, and the reviewed-few floor now fails the suite if it adds only one. Behind the new
-fingerprint check, a row whose `arguments`, `payload` and `fingerprint` agree with each other and
-whose `diff` names nothing can still reach the port for those four fields; closing that needs the set
-to key on the stored arguments, which the intent contract's "never by a match on request or argument
-fields" forbids, or the fingerprint gate ahead of the seam, which the lead reserved. Both readings and
-the five other open items are in `deferred:`.
+**Residual risks.** Two spellings of one application are still two scoped targets to the claim, so
+AD-34's per-target lock and sibling cancel do not cover a re-cased id; the fingerprint gate bounds
+that to a 409 and a row left live rather than canceled. That, the record store's exact-compare
+lookup, and the source-level half of the DW-1353 pin are in `deferred:`. The four items the lead
+routed elsewhere -- the narrowed schema on the decision sheet, and DW-1356 to DW-1358 at
+`range-end-cleanup` -- are not in that list and are not this pass's.

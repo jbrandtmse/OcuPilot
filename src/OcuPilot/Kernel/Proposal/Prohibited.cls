@@ -390,6 +390,12 @@ ClassMethod Target(pToolName As %String, pId As %String, Output pTarget As %Dyna
 /// <var>pServes</var>: a path <class>OcuPilot.Install.Roster</class> declares, or one
 /// <class>OcuPilot.Kernel.State.WebApp</class> recorded at install -- the production applications
 /// and a probe profile's alike.</p>
+/// <p><var>pPath</var> is the id the proposal carries, so both sides are compared through
+/// <method>NormalizedPath</method>: the instance resolves a re-cased or slash-suffixed id to the
+/// same application, and a predicate that did not would read OcuPilot's own API as somebody
+/// else's while the write reached it (DW-1352). Install's record is looked up by the normalized
+/// path and, where that differs, by the id as it came, so a record written in either spelling is
+/// still found.</p>
 /// <p>A roster that cannot be read is an error, never an empty declaration: an empty one would
 /// make every OcuPilot path writable.</p>
 ClassMethod ServesOcuPilot(pPath As %String, Output pServes As %Boolean) As %Status [ Private ]
@@ -397,6 +403,7 @@ ClassMethod ServesOcuPilot(pPath As %String, Output pServes As %Boolean) As %Sta
     Set pServes = 0
     Set tSC = $$$OK
     Try {
+        Set tPath = ..NormalizedPath(pPath)
         Set tKeys = ##class(OcuPilot.Install.Roster).Keys()
         If tKeys = "" {
             Set tSC = $$$ERROR($$$GeneralError, "the install roster's application keys could not be read, so which paths serve OcuPilot is unknown")
@@ -405,19 +412,54 @@ ClassMethod ServesOcuPilot(pPath As %String, Output pServes As %Boolean) As %Sta
         For tI = 1:1:$Length(tKeys, ",") {
             Set tSC = ##class(OcuPilot.Install.Roster).Application($Piece(tKeys, ",", tI), .tApp)
             If $$$ISERR(tSC) Quit
-            If $IsObject(tApp) && (tApp.path = pPath) Set pServes = 1
+            If $IsObject(tApp) && (..NormalizedPath(tApp.path) = tPath) Set pServes = 1
         }
         If $$$ISERR(tSC) Quit
         If pServes Quit
-        Set tSC = ##class(OcuPilot.Kernel.State.WebApp).GuardedForPath(pPath, .tRow)
+        Set tSC = ..Recorded(tPath, .pServes)
         If $$$ISERR(tSC) Quit
-        If $IsObject(tRow) Set pServes = 1
-        Set tRow = ""
+        If pServes || (tPath = pPath) Quit
+        Set tSC = ..Recorded(pPath, .pServes)
     } Catch ex {
         Set pServes = 0
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>Whether install recorded an application at exactly <var>pPath</var>, in <var>pServes</var>.
+/// The record's own lookup is an exact compare, which is why <method>ServesOcuPilot</method> asks
+/// it for more than one spelling rather than trusting either.</p>
+ClassMethod Recorded(pPath As %String, Output pServes As %Boolean) As %Status [ Private ]
+{
+    Set pServes = 0
+    Set tSC = ##class(OcuPilot.Kernel.State.WebApp).GuardedForPath(pPath, .tRow)
+    If $$$ISERR(tSC) Quit tSC
+    If $IsObject(tRow) Set pServes = 1
+    Set tRow = ""
+    Quit tSC
+}
+
+/// <p><var>pPath</var> in the form this instance resolves a web application name in: lower case,
+/// with every trailing <code>/</code> removed. Two spellings that normalize alike name one
+/// application to the instance, so they must earn one verdict from the set.</p>
+/// <p><b>Probed, not assumed</b> (<code>ocupilot-ci</code>, 2026-09-20): both
+/// <code>Security.Applications.Exists</code> and the vendor <code>WebApp.App</code>
+/// <code>GET</code> answer the real <code>/api/ocupilot</code> for <code>/API/OcuPilot</code>,
+/// <code>/api/ocupilot/</code> and <code>/API/OCUPILOT///</code>, and 404 for
+/// <code>api/ocupilot</code>, <code>/api//ocupilot</code>, <code>/api/ocupilot/.</code> and a
+/// trailing space -- so the normalization goes exactly this far. Going further would refuse a
+/// write the instance resolves somewhere else; stopping short is what let a confirmed write reach
+/// OcuPilot's own application past the serving-path predicate.
+/// <class>OcuPilot.Test.ProhibitedRoute</class> pins this against the instance's own answers
+/// rather than against the sentence above.</p>
+ClassMethod NormalizedPath(pPath As %String) As %String
+{
+    Set tPath = $ZConvert(pPath, "L")
+    While (tPath '= "") && ($Extract(tPath, $Length(tPath)) = "/") {
+        Set tPath = $Extract(tPath, 1, $Length(tPath) - 1)
+    }
+    Quit tPath
 }
 
 /// <p><var>pObject</var>'s member <var>pName</var> in the rendered form the diff and the
