@@ -4253,3 +4253,43 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: CI run 35466022679 on 240618d, attempt 1: tests 45-49 of ui/browser/error-log.browser-spec.mjs all failed 'Navigation timeout of 30000 ms exceeded' on page.goto inside the shared signedInAtScreen() helper at :342, five sequential 30 s losses, then the rest of the suite ran normally and only DW-1169 failed. Attempt 2 on the same head, same code, was 185/186 with those five passing. Both parents of the merge were individually healthy (epic 10 cf2012f 186/186, feature ed11819 184/185), so this is not an integration regression. Something makes the instance briefly unable to serve that screen's route -- the error-log spec's own seeding is the obvious suspect since it is the heaviest fixture in the suite. Probe: run error-log.browser-spec.mjs alone against a fresh throwaway with the instance's process table and journal watched, and check whether the seed step precedes the stall
 - 2026-09-19T20:59:38Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=merge_gate note=a five-test loss that vanishes on re-run is the shape that teaches a reader to re-run reds reflexively, which is exactly the habit that hides a real regression
 - 2026-09-20T00:48:34Z status=routed owner=range-end-cleanup by=merge_gate note=RE-ROUTED off story 13.2. Epic 13 declined it correctly: all three need edits in ui/browser/*.browser-spec.mjs, which is Epic 5's footprint, and Epic 13 has no browser-spec footprint at all. That was an orchestrator error - epic-dependencies.yaml gave Epic 13 the glob ui/src/**/*.browser.spec.ts, which is the wrong directory, extension and separator and matched nothing; the real specs are the 34 ui/browser/*.browser-spec.mjs files. Glob dropped from the graph with the reason recorded inline. Non-blocking under Rule 27: none of the three blocks the 2026-09-27 floor or a downstream-epic story, and DW-1223's five error-log timeouts have already failed to reproduce twice
+
+### DW-1289: A password refused by a configured PasswordValidationRoutine answers 500, not the 422 with the instance's own reason the matrix promises
+- source: spec-15-1-change-your-own-password.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Measured on the slot C throwaway: with a validation routine configured ChangePassword returns 0 with codes 1446,5001 and the routine's own sentence; 5001 is outside POLICYCODES (845,958) so RenderChangeRefusal takes the 500 arm. Same closed list also makes 838 (no such user) opaque, which is correct, and a delegated or LDAP account opaque, which is not.
+- 2026-09-20T04:10:58Z status=open owner=15-1-change-your-own-password by=harvest note=Widening must be surgical: add 5001 only. 838 must stay opaque -- the Boundaries forbid distinguishing wrong-current-password from no-such-user. Not an AC failure on the tested instance (PasswordPattern 3.255ANP, no validation routine), so it is a field-configuration gap.
+
+### DW-1290: The wire test derives its expected policy sentence with the same index-2 assumption the code uses, so both would move together and stay green
+- source: spec-15-1-change-your-own-password.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: TestAPolicyRefusalCarriesTheInstancesOwnText calls GetOneStatusText(tProbeSC,2); PolicyText derives its index from the allow-listed code's position in GetErrorCodes. A refusal carrying more than one embedded error moves both.
+- 2026-09-20T04:10:58Z status=open owner=15-1-change-your-own-password by=harvest note=Rule 19 vacuity: the assertion cannot discriminate the bug it exists to catch.
+
+### DW-1291: The change-password dialog does not submit on Enter, where the house credential form does
+- source: spec-15-1-change-your-own-password.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: The two inputs sit in bare divs with a type=button action and dialog.ts carries no Enter binding; sign-in.ts:112-162 uses a real form (submit). No existing app-dialog call site has a text input, so no house dialog pattern is departed from.
+- 2026-09-20T04:10:58Z status=open owner=15-1-change-your-own-password by=harvest note=A form inside projected content is not a trivial change; weigh against the polish-week floor at adjudication.
+
+### DW-1292: A read or decode fault while reading the request body is answered 422 as the caller's malformed body, where Api/Context.cls splits the two apart
+- source: spec-15-1-change-your-own-password.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Context.cls:44-53 routes a non-parse stage to a different refusal. The split was implemented and then reverted: no constructible input reaches the read or decode stage -- an invalid-UTF-8 body parses through -- so the branch could not be pinned by any test.
+- 2026-09-20T04:10:58Z status=wontfix-accepted owner=15-1-change-your-own-password by=harvest note=reopen_if=an input is found that reaches Account.cls's body read or decode stage without parsing
+
+### DW-1293: A new ACCOUNT.* field-level violation code with no ReasonForViolation arm renders a blank reason with no test going red
+- source: spec-15-1-change-your-own-password.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: OcuPilot.Test.AgentViolation.cls:84 skips any parameter whose name does not start with AGENT, so the ACCOUNT.* family is outside the roster guard by construction. Widening the sweep edits an existing file under Epic 13's contended src/OcuPilot/Test/**.
+- 2026-09-20T04:10:59Z status=wontfix-accepted owner=15-1-change-your-own-password by=harvest note=reopen_if=a response is observed carrying an ACCOUNT.* violation with a blank reason
+
+### DW-1294: Two handlers render field violations, because Definitions.RenderViolations fixes the envelope code at AGENT.VALIDATION
+- source: spec-15-1-change-your-own-password.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Api/Account.RenderViolations duplicates Api/Definitions.cls:1270 so it can send ACCOUNT.VALIDATION. Both serialize through the one Kernel/AgentRules.ViolationsJson, so AD-12's single writer holds; the fix is an optional pCode parameter on Definitions.cls.
+- 2026-09-20T04:11:11Z status=routed owner=range-end-cleanup by=harvest note=Non-blocking: AD-12's one-writer invariant is not violated, only the code literal is duplicated. Epic 5 has not touched Definitions.cls (checked at d220487..3a2d15f), but the dedupe is not worth a contended-path edit mid-epic.
+
+### DW-1295: The dialog's empty-field reason reuses the published Required string, whose EXPERIENCE.md row names the OpenAPI viewer and not this dialog
+- source: spec-15-1-change-your-own-password.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: strings.test.mjs asserts an exact key count and the spec allowed exactly six new keys, so reusing the published literal was the only compliant option; the table row now under-describes where the string is used.
+- 2026-09-20T04:11:11Z status=routed owner=range-end-cleanup by=harvest note=Non-blocking: documentation drift in a table row, no user-visible effect. The epic-wide EXPERIENCE.md grant would permit the line-neutral amendment, but it does not block the 2026-09-27 floor or any downstream story.
+
+### DW-1296: Three different naming conventions now exist for a masked field's reveal toggle
+- source: spec-15-1-change-your-own-password.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: sign-in.ts:154 labels its toggle STRINGS.fieldPassword, definition-form.page.ts uses agentDefinitionShowKey/HideKey, and this dialog uses accountShowPassword/HidePassword. The first two already differed before this story.
+- 2026-09-20T04:11:11Z status=routed owner=range-end-cleanup by=harvest note=Non-blocking and pre-existing: two of the three conventions predate Story 15.1, which only added a third consistent-with-neither. strings.ts is shared-append across epics, so a rename is a cross-epic edit.
