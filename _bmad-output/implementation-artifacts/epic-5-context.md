@@ -20,8 +20,8 @@ per area.
 - Story 5.2: The proposal card — the diff the user reviews — **done**
 - Story 5.3: Confirm is user-originated, and the write is one atomic transition — **done**
   (`596c773`, `9de53d3`)
-- Story 5.4: Execution strictly as the user ← **next**
-- Story 5.5: Prohibited actions are absent from the tool set
+- Story 5.4: Execution strictly as the user — **done** (`d213550`)
+- Story 5.5: Prohibited actions are absent from the tool set ← **next**
 - Story 5.6: The agent marker, and what happens when it fails
 - Story 5.7: The screen shows the change
 - Story 5.8: Web applications — enable a disabled application and grant it a resource
@@ -41,78 +41,90 @@ single-use token, expiring on a server-side ten minutes. Secret-typed values are
 never accepted from the model. The payload is the whole merged object; the diff is only what the
 user reviews. The card, its phase model, countdown and terminal status lines are built.
 
-**Story 5.3's contract, which 5.4 inherits whole.** Confirm is a **separate authenticated POST**
-(`Kernel/Proposal/Confirm.cls`) — not a tool, absent from the registry, and refused outright when
-the calling process carries the turn marker (`Kernel.Proposal.Caller.IsTurn()`). The barrier is
-explicit precisely because in-process tools removed the HTTP one. The executor uses the **stored**
-arguments and stored payload; the only client-suppliable keys are the descriptor's declared
-secret-typed fields for that tool, any other key is **rejected outright, not ignored**, and the
-identifying key is never accepted from the client. Only the minting user can confirm.
-`Propose.GuardedClaimAndClose` is the claim: **one** conditional UPDATE inside a per-target lock
-which, in one transaction, burns the token, writes the terminal state and cancels same-target
-siblings; the loser is refused with the row's terminal state and never retried; the vendor PUT
-follows `TCOMMIT`. Every gate that decides whether a write may happen — the prohibited-set seam,
-`Restraint.Verdict` (kill switch, enforced read-only, per-user hold, definition read-only flag), the
-declared `(resource, permission)` pairs, and the fingerprint re-read — is evaluated **inside that
-transition**, never at the tool call that minted the proposal. All five FR-17 refusals are built:
-user, conversation, definition, read-only state, fingerprint. `Write.Claim` carries six refusal
-codes; `Write.ProhibitedClass()` returns `""` and is **AD-10's single seam for Story 5.5 to fill**.
+**Story 5.3's contract, which everything downstream inherits whole.** Confirm is a **separate
+authenticated POST** (`Kernel/Proposal/Confirm.cls`) — not a tool, absent from the registry, and
+refused outright when the calling process carries the turn marker
+(`Kernel.Proposal.Caller.IsTurn()`). The executor uses the **stored** arguments and stored payload;
+the only client-suppliable keys are the descriptor's declared secret-typed fields for that tool, any
+other key is **rejected outright, not ignored**, and the identifying key is never accepted from the
+client. Only the minting user can confirm. `Propose.GuardedClaimAndClose` is the claim: **one**
+conditional UPDATE inside a per-target lock which, in one transaction, burns the token, writes the
+terminal state and cancels same-target siblings; the loser is refused with the row's terminal state
+and never retried; the vendor PUT follows `TCOMMIT`. Every gate that decides whether a write may
+happen — the prohibited-set seam, `Restraint.Verdict` (kill switch, enforced read-only, per-user
+hold, definition read-only flag), the declared `(resource, permission)` pairs, and the fingerprint
+re-read — is evaluated **inside that transition**, never at the tool call that minted the proposal.
+All five FR-17 refusals are built: user, conversation, definition, read-only state, fingerprint.
 
-**Story 5.4 — what execution as the user must prove.** Every tool body runs in the calling process
-under the caller's own `$USERNAME`/`$ROLES`, with **no service account and no credential other than
-the user's own**. The tool set advertised to the model is the **full set** — privilege is checked at
-call time, never by hiding tools — and a tool's 403 is byte-for-byte the screen's 403, surfaced on
-the tool-call card as `failed — <resource>` and **reported, never retried with another credential or
-another path**. The one permitted escalation is OcuPilot's own protected storage, and it is **not in
-effect while any tool, port or provider code runs**; no storage method calls a tool, a port, or code
-that could, and nothing is spawned or re-entered from inside an escalated frame. Any token the
-instance holds on the user's behalf during a turn lives in process memory only, never reaches the
-ledger or a transcript, and is discarded when the turn ends. **Each port declares and evaluates its
-own gate before any call** — the log ports inherit no vendor gate and `/api/monitor/metrics` answers
-**anonymously** on this instance — and the log endpoints require the same resource the classic
-portal's log pages require, so a metric, a log line or an audit row reaches a user through OcuPilot
-only if that user could have read it directly.
+**Story 5.4's settled contract, which 5.5 consumes.** Execution is **strictly as the user**: every
+tool body runs in the calling process under the caller's own `$USERNAME`/`$ROLES`, with no service
+account and no credential other than the user's own. The tool set advertised to the model is the
+**full set** — privilege is checked at call time, never by hiding tools — and a tool's 403 is
+byte-for-byte the screen's 403, surfaced as `failed — <resource>` and **reported, never retried**
+with another credential or another path. The **only elevation on the request path** is AD-9's
+privileged routine application, now joined by a **second, narrowly scoped application for one
+identity read** — whether the authenticating user's account is enabled. AD-8 and AD-9 were
+**amended under Rule 5 on 2026-09-20** to say so; it is a settled contract, not an exception to
+argue. `New $ROLES` is confined by `scripts/check-objectscript.py` to `Kernel/State/Base.cls`, so
+the escalation has **exactly one legal home**. Neither escalation is in effect while any tool, port
+or provider code runs; nothing is spawned or re-entered from inside an escalated frame. A drifted
+`OcuPilotIdentity` application now surfaces as **`503 INSTALL.UNREADABLE`, never `AUTH.DISABLED`**
+(AD-38) — OcuPilot saying it cannot read its own state, not that the user did something. Each port
+declares and evaluates its own gate before any call; the log ports inherit no vendor gate and
+`/api/monitor/metrics` answers anonymously on this instance.
 
-**Ahead in the epic.** Prohibited actions absent from the tool set, defined by effect not verb, in
-**exactly one home in the kernel** (5.5). Every confirmed write emits a correlatable audit marker; a
-failed marker never fails the write (5.6). One change event, screens re-fetch in place and highlight
-within two seconds (5.7). The six area writes are 5.8–5.13.
+**Story 5.5 — what the prohibited set must prove.** The Release 1 prohibited set lives in **exactly
+one home in the kernel**, as predicates evaluated against the **resolved target** — never duplicated
+into a screen, a descriptor or a policy file, and **never expressed as a match on request fields**,
+which a caller can vary. Because a predicate reads live state (who the last `%All` holder is, which
+application serves OcuPilot), it is evaluated **inside Story 5.3's atomic transition, inside the
+per-target lock, before the vendor PUT**, so the answer cannot change between the check and the
+effect. The set is defined **by effect, not by verb**, and covers:
+
+- deleting or disabling the current user, the last `%All` holder, or `_SYSTEM`;
+- **granting privilege through any path** — setting `MatchRoles` or `Roles` on any web application,
+  adding a role to a resource, or adding `%All` or any `%Admin_*` role to any user or role. Granting
+  `%All` as an application role on OcuPilot's own API is neither a delete nor a disable and would
+  make every later request, including every turn job, run elevated — quietly falsifying AD-8.
+  Privilege **grants** are Level 4 in Release 1 and are **not proposable at any confirmation level**;
+- **disabling the path that serves OcuPilot** — the web application, the **web service** behind it
+  (`%Service_Web` and the CSP service), and the superserver;
+- terminating IRIS system processes;
+- deleting OcuPilot's own web applications, resource, role or database.
+
+A prohibited action is **never advertised as a tool** and is refused on the instance whatever the
+caller. Governance can disable a permitted tool; it can **never enable a prohibited one**. A
+self-protection rule a screen enforces in its UI is an **affordance, not a prohibition** — the
+instance refuses it on the write path regardless of what the UI does.
+
+**Ahead in the epic.** Every confirmed write emits a correlatable audit marker; a failed marker never
+fails the write and surfaces as "done · audit not marked" on the card's collapsed line (5.6). One
+change event, screens re-fetch in place and highlight within two seconds (5.7). The six area writes
+are 5.8–5.13.
 
 ## Technical Decisions
 
-- **Governing ADs.** 5.4: **AD-8** (privilege is the process's, checked at call time, never cached;
-  the descriptor declares a **set** of `(resource, permission)` pairs, the gate requires all of it,
-  and a denial names the pair that failed), **AD-1** (tools in-process, so "runs as the user" is a
-  property of the process rather than something a token asserts), **AD-9** (the protected-storage
-  escalation and its two ordering rules), **AD-29** (per-port gate), **AD-31** (the turn job
-  re-validates between steps with `$SYSTEM.Security.CheckUserPermission`; wall-clock 600 s,
-  iterations capped at 100, 500,000 provider tokens, 120 s poll lease), **AD-35** (no credential in
-  an exception, status, log line or trap). Then 5.5: AD-10, 34, 40. 5.6: AD-15, 41, 46. 5.7: AD-14,
-  43, 13. AD-7 (amended — progress lives in AD-33's protected storage, not a temp global), AD-30,
-  AD-33 and AD-12/AD-39 hold throughout.
+- **Governing ADs.** 5.5: **AD-10** (the set, its single home, effect-not-verb), **AD-34** (the
+  atomic transition the predicates run inside), **AD-40** (the gate is on the write, not on the tool
+  call that minted the proposal — a check made only at mint time is a check against state that has
+  since moved). Then 5.6: AD-15, 41, 46. 5.7: AD-14, 43, 13. AD-8 and AD-9 as amended, AD-1, AD-29,
+  AD-31, AD-35, AD-7 (amended), AD-30, AD-33 and AD-12/AD-39 hold throughout.
+- **The seam 5.5 fills already exists.** `Kernel/Proposal/Write.cls`'s `ProhibitedClass()` returns
+  `""` today and is AD-10's **single seam**, reached through `Confirm.ProhibitedClassName()` inside
+  the transition and before the write type is dispatched; `Test/ProposalConfirm.cls` already pins
+  that call's position. Fill the seam — do not add a second decision point.
+- **IRIS's default isolation is READ UNCOMMITTED, and that fact is load-bearing (AD-34).** The 5.3
+  review found a real violation: a rival claim's **uncommitted** `confirmed` made the other claim's
+  `%EXACT(State) = 'live'` sibling UPDATE match zero rows, so it never requested the lock — two
+  confirmed rows on one target and two vendor PUTs. The per-target lock closes it. Any new
+  conditional-update-plus-cancel pattern in this epic carries the same hazard, and a prohibited-set
+  predicate that reads live state is subject to exactly the same window.
 - **AD-29's pair set is established two ways together, never from `ResourcesOR()` alone.** The
   vendor's gate is a **lower bound**: read the backing query or class's own privilege check in
   `irislib/`, then run the read as a **real least-privileged principal** on a throwaway and add what
   the instance still refuses. Probed: `%Api.Admin.Endpoints.Process` answers `%Admin_Operate` alone
   while `%SYS.ProcessQuery.AllowToOpen` admits four different ways in and `VariableByPid` requires
   `%Admin_Manage:USE` outright. A port without a named gate is a review failure.
-- **IRIS's default isolation is READ UNCOMMITTED, and that fact is load-bearing (AD-34).** The 5.3
-  review found a real violation: a rival claim's **uncommitted** `confirmed` made the other claim's
-  `%EXACT(State) = 'live'` sibling UPDATE match zero rows, so it never requested the lock — two
-  confirmed rows on one target and two vendor PUTs. The per-target lock closes it. Any new
-  conditional-update-plus-cancel pattern in this epic carries the same hazard.
-- **DW-444 is DECIDED, not open, and 5.4 ships it.** Refuse a disabled account: check `Enabled` at
-  authentication and refuse `/refresh` for a disabled user. The enabled-flag read AD-8 would
-  otherwise forbid is **escalated deliberately** because this is a security hole that ships in
-  Release 1 — carry it as a settled constraint, not a question. The non-obvious constraint:
-  `/login`, `/refresh`, `/logout` and `/revoke` are **intercepted by the CSP server before
-  dispatch** (`irissys/%CSP/REST.cls`), so `Api/Router.cls`'s `UrlMap` has no route for any of them
-  and the refusal cannot live in a route handler. Probed on 2026.2: a disabled account's access
-  token keeps answering and `/refresh` keeps minting pairs; only a fresh password login is refused.
-- **DW-1120 is 5.4's too.** An `llm` row and a pre-dispatch refusal row carry an empty
-  `RequiredPairs`, and `Screen.Gate.EvaluatePairs("")` returns 1 — held by everyone — so a
-  cross-user reader holding only `OcuPilotAdmin:USE` receives them ungated. An empty pair set must
-  never evaluate true; both row writers and the gate need the fix.
 - **Every browser spec this epic writes uses `saveAndSettle()` (DW-1169, closed on a
   reproduction).** Waiting on a value the test itself typed is **vacuous** — the field reads it
   before any request leaves — so the spec walks on while the save is in flight, and
@@ -148,6 +160,20 @@ within two seconds (5.7). The six area writes are 5.8–5.13.
   handler gets an HTTP test on status, content type and body shape; every tool a round-trip test over
   its generated schema; a denial test uses a purpose-built least-privileged role, never `%Operator`.
 
+## Standing rulings
+
+- **A deferred entry that names an AD's own invariant is not a deferral candidate.** Rule 6 already
+  grades it high, so it is standing work on the story that owns it, not something the burn-down gate
+  re-weighs.
+- **Rule 19 falsifiability mutations run on the runner's own throwaway container, never on the
+  shared dev instance** (DW-1185). For slot A that is `ocupilot-ci` on 52776/1975.
+
+## Instance and slot
+
+Every IRIS MCP call from this runner carries `server: "ocupilot-slot-a"`. The slot's dev container is
+`ocupilot`; its throwaway is `ocupilot-ci` on 52776/1975. Never `up`, `down`, stop, remove or
+recreate the dev container.
+
 ## UX & Interaction Patterns
 
 - **The card, as shipped.** Target heading; changed fields as instance-computed diff rows; the rest
@@ -167,36 +193,35 @@ within two seconds (5.7). The six area writes are 5.8–5.13.
   **no "Confirm all"**; while one is live Send drops to secondary. A typed message cancels every live
   proposal and the agent's next reply says so and offers to re-propose; New conversation cancels the
   same way; **Stop cancels nothing**.
-- **For 5.4 specifically:** a refused tool call renders on the tool-call card through the existing
-  `toolCallStatusFailed` string (`failed — <reason>`), carrying the failed pair; the agent states the
-  refusal rather than retrying. Auto-refresh pauses under a live proposal and resumes on confirm,
-  cancel or expiry (AD-43).
+- **For 5.5 specifically:** a prohibited action is not a tool the model can see, so there is no card
+  for it; a refusal that does reach the user renders through the existing `toolCallStatusFailed`
+  string (`failed — <reason>`) and the agent states the refusal rather than retrying. Auto-refresh
+  pauses under a live proposal and resumes on confirm, cancel or expiry (AD-43).
 
 ## Cross-Story Dependencies
 
-- **Story 5.4's ledger inbox is two entries, both already decided** — DW-444 (refuse a disabled
-  account at authentication and at `/refresh`) and DW-1120 (an empty `RequiredPairs` must never
-  evaluate true). Name each against the story; neither is a question to re-open.
-- **Four `decision-pending` entries remain owner-level and are not settled inside a story.**
+- **Story 5.5's ledger inbox is DW-1207, and it is floor-blocking by owner decision (2026-09-19) —
+  not re-ownable and not deferrable.** `AutheEnabled`, `Resource` and `DispatchClass` are settable
+  **ordinary** arguments of the first write tool, so a confirmed write can make a web application
+  unauthenticated, drop its authorization resource, or repoint its dispatch at arbitrary compiled
+  code. AD-10's set exists so some actions are never offered **even with confirmation**; this ships
+  in Release 1 through `Write.ProhibitedClass()`.
+- **Three `decision-pending` entries remain owner-level and are not settled inside a story.**
   **DW-456**: shipped registry-layer classes already name kernel and API classes the spine's
-  direction line forbids. **DW-1207**, now **FLOOR-BLOCKING and routed to 5.5**: `AutheEnabled`,
-  `Resource` and `DispatchClass` are settable **ordinary** arguments of the first write tool, so a
-  confirmed write could make a web application unauthenticated, drop its authorization resource, or
-  repoint its dispatch at arbitrary compiled code — AD-10 exists so some actions are never offered
-  even with confirmation, and 5.5 must treat it as must-ship. **DW-1208**, decided: Release 1 ships
-  the **`%All`-only write**, with the limitation stated in the story and, if the screen can carry it,
-  in user-facing text naming `%Admin_Secure:WRITE`; later non-`%All` write targets are the recorded
-  follow-on. **DW-1206** lands *with* 5.10, validating `secretArguments` against the same declared
-  field set `fingerprintExcludes` already uses.
-- **Footprint, as the orchestrator settled it 2026-09-19.** `src/OcuPilot/Test/**` and
-  `ui/src/app/core/**` are **shared-create**: any epic creates files there freely, and modifying a
-  file another epic created or modified is a **Clarification**. `core/proposal-view.ts` and
-  `core/turn.ts`'s proposal publisher are Epic 5's, as are `panel*`, `proposal-card*`, `reply*`,
-  `tool-call-card*`. **Epic 15** (running now) holds
-  `ui/src/app/shell/{header,account-menu,side-bar,command-box}*` and `ui/src/styles/**`. **Epic 13**
-  (on 13.2) holds `ui/tools/ci*.mjs`, `.github/workflows/**`, `scripts/`, `Install/Uninstall*`,
-  `module.xml`, `spec/**`. **`Api/Router.cls` and EXPERIENCE.md's Fixed-strings table are epic-wide
-  shared-append — additions at the tail only.**
+  direction line forbids. **DW-1208**, decided: Release 1 ships the **`%All`-only write**, with the
+  limitation stated in the story and, if the screen can carry it, in user-facing text naming
+  `%Admin_Secure:WRITE`; later non-`%All` write targets are the recorded follow-on. **DW-1206** lands
+  *with* 5.10, validating `secretArguments` against the same declared field set `fingerprintExcludes`
+  already uses.
+- **Footprint, settled.** `src/OcuPilot/Test/**` and `ui/src/app/core/**` are **shared-create**: any
+  epic creates files there freely, and modifying a file another epic created or modified is a
+  **Clarification**. `ui/src/app/core/proposal-view.ts` and `ui/src/app/core/turn.ts` are Epic 5's,
+  as are `panel*`, `proposal-card*`, `reply*`, `tool-call-card*`. **Epic 13** (live on 13.2) holds
+  `ui/tools/ci*.mjs`, `.github/workflows/**`, `scripts/`, `Install/Uninstall*`, `module.xml`,
+  `spec/**`. **Epic 15** (live on 15.1) holds
+  `ui/src/app/shell/{header,account-menu,side-bar,command-box}*` and `ui/src/styles/**`.
+  **`src/OcuPilot/Api/Router.cls` and EXPERIENCE.md's Fixed-strings table are epic-wide
+  shared-append** — additions at the tail only; expect a union merge.
 - **Other standing routes.** 5.6 carries DW-1174; 5.8 DW-1223; 5.10 DW-1171 and DW-1206; 5.11 DW-269,
   also routed at the epic level.
 - **From Epic 4 and earlier.** The turn job with its progress and lease contract; `Dispatch`'s gate
