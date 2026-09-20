@@ -5087,9 +5087,9 @@ So that a polish-week change cannot silently break a Release 1 write.
 - **When** it is extended
 - **Then** it keeps at least one test per OcuPilot API endpoint, the confirmation-binding tests, the state-protection test and the audit-marker round trip, and grows from there.
 
-- **Given** any polish-week change
-- **When** it lands
-- **Then** the suite proves no Release 1 screen and no Release 1 agent write regressed - which is the mechanical form of the rule that nothing in the polish week may break either.
+- **Given** the Release 1 screen set (every descriptor `Screen/Registry` declares built) and the Release 1 agent write set (every tool `Screen/Tool/Registry` classifies `write`)
+- **When** CI runs on any push
+- **Then** every member of both sets carries at least one pinning test the suite executes, held equal in both directions by a derived-versus-declared check, so a member gained with no test - or a test deleted from a member - fails CI naming the member. This is the mechanical form of the rule that nothing in the polish week may break a Release 1 screen or a Release 1 agent write. [AMENDED 2026-09-19 - see the story change log in spec-13-2: the previous wording, "the suite proves no Release 1 screen and no Release 1 agent write regressed", is a negative over an open set with an unbounded subject and has no pinning test short of deleting the suite.]
 
 - **Given** the published admin API spec (`intersystems-community/sysadmin-api-specification`, `mainspec_v2.json`)
 - **When** CI runs
