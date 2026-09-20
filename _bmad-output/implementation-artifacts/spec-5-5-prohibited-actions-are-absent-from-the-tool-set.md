@@ -2,7 +2,7 @@
 title: 'Story 5.5: Prohibited actions are absent from the tool set'
 type: 'feature'
 created: '2026-09-20'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '777d484527e4fc695fe62e8ca8fdd970f7f162c1'
 review_loop_iteration: 1
 followup_review_recommended: true
@@ -208,36 +208,34 @@ tool, no client or UI change, no string-table entry. Do not edit `scripts/` (Epi
   `TestTheProhibitedSeamIsCalledOnceBeforeThePortCall`: the seam now answers the kernel class, and the
   call-once/before-the-write assertions stay. Do not weaken either.
 
-**Open after the lead's harvest gate (rework iteration 1) -- work ONLY these:**
+**Open after the lead's harvest gate (rework iteration 2) -- work ONLY these. Iteration 1's four
+items are closed; do not revisit them.**
 
-- [x] `[Review]` **DW-1345 (high).** `PROHIBITED.DISPATCH` compares `DispatchClass` alone, while
-  `EventClass`, `SuperClass`, `Package`, `Path`, `NameSpace`, `LoginPage` and `ErrorPage` are
-  settable and decide just as completely which compiled code answers at the URL. AD-10's Rule is
-  **by effect, not by verb**: express the family as one predicate over "what answers here", so a
-  new vendor property with that effect is covered by the predicate's shape rather than by having
-  been enumerated. Verified by the lead: `Screen/Tool/FieldLists.cls:519-549`.
-- [x] `[Review]` **DW-1346 (high).** `PROHIBITED.UNAUTHENTICATED` keys on bit 64 of `AutheEnabled`
-  alone. `TwoFactorEnabled`, `CSRFToken`, `JWTAuthEnabled` and `UseCookies` are settable, and any
-  non-64 `AutheEnabled` change (32 -> 0 among them) passes. Express authentication weakening as the
-  effect it is, in the same by-effect shape.
-- [x] `[Review]` **DW-1347 (high).** `PROHIBITED.SERVINGPATH` refuses only a payload that leaves
-  OcuPilot's own path not enabled. `NameSpace` and `Path` are exactly what the installer asserts for
-  `/ocupilot`, `/api/ocupilot` and `/api/ocupilot/readiness` (lead-verified on `ocupilot-slot-a`:
-  all three read `NameSpace` `HSCUSTOM`), and a payload repointing either leaves `Enabled` true and
-  passes. AD-38 makes an unreachable OcuPilot an unrecoverable instance, so this one is the
-  serving-path predicate's whole point.
-- [x] `[Review]` **DW-1351 (med).** The set compares the mint-time payload against the live target, so a
-  third party adding a `Resource` after the mint earns 403 `PROHIBITED.AUTHORIZATION` -- a sentence
-  about a change the agent never proposed -- and the row stays live. Report a prohibition only for a
-  field the proposal actually **changes** relative to the target it was minted against, and let the
-  fingerprint gate answer a target that moved with 409 `PROPOSAL.TARGETCHANGED`. **Do not reorder the
-  gates**: the verdict stays where Story 5.3 put the seam, before the restraint verdict, per the
-  Design Notes' AD-9 argument.
+- `[Review]` **DW-1352 (high).** `ServesOcuPilot` compares the roster's paths with an exact string,
+  but **the instance does not**. Settled by the lead on `ocupilot-slot-a`, not left as a question:
+  `Security.Applications.Exists("/API/OcuPilot")` returns 1 and hands back the real application
+  object, and `Exists("/api/ocupilot/")` does the same. So the vendor endpoint reaches
+  `/api/ocupilot` while the predicate reads the target as not-OcuPilot's, and a confirmed write can
+  disable OcuPilot's own API through a re-cased or slash-suffixed id. Normalize the way the instance
+  does -- and pin it with a test that drives both spellings against the real roster paths, so the
+  normalization is what is asserted rather than the happy spelling.
+- `[Review]` **DW-1353 (high when composed).** `Kernel/State/Propose.cls:200` discards the status of
+  its three stream writes (`Do tRow.Diff.Write(...)`, and the same for `Arguments` and `Payload`),
+  so a failed `Diff.Write` saves a row with a payload and no diff -- exactly the shape that makes
+  the diff-scoped predicates skip. Check all three. **The lead authorizes
+  `src/OcuPilot/Kernel/State/Propose.cls` as a footprint extension for this item only**: Epic 5
+  created that method in Story 5.1 and no other live epic touches it. Nothing else in
+  `Kernel/State/**` is opened.
+- `[Review]` **DW-1354 (med), closed by composition, not by a third mechanism.** With DW-1353's
+  producer gone, a row whose `arguments`, `payload` and `fingerprint` agree while its `diff` names
+  nothing is reachable only by a direct write into OcuPilot's protected storage, which AD-9 and
+  AD-33 put outside the threat model. Write that argument into `## Design Notes` in one short
+  paragraph and pin what can be pinned. Do **not** key the set on the stored arguments -- this
+  story's own intent contract forbids a match on argument fields -- and do **not** move the
+  fingerprint gate ahead of the seam; both were settled outside this pass.
 
-Each of the four needs a pinning test and a `mutation:` line in `## Verification`, demonstrated in
-this pass (Rule 19). The three high items are **not** closed by enumerating today's vendor property
-names in a list: a test that adds a plausible new property with the same effect and expects a refusal
-is what makes the by-effect claim falsifiable.
+Each item needs a pinning test and a `mutation:` line in `## Verification`, demonstrated in this
+pass (Rule 19).
 
 **Acceptance Criteria:**
 
