@@ -776,6 +776,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: ui/src/app/shell/account-menu.ts:65. With one item there is nowhere to arrow to and the item already holds focus on open; EXPERIENCE.md's Interaction Primitives defines an arrow model for the side-bar and table rows but none for menus, so there is no UX contract to build against. Distinct from DW-109 (dismissal).
 - 2026-09-12T07:53:13Z status=wontfix-accepted owner=1-7-sign-out by=cr note=reopen_if=the account menu carries a second role=menuitem
 - 2026-09-20T00:58:43Z status=routed owner=15-1-change-your-own-password by=load note=reopen_if fired: 15.1 adds Change password as the account menu's second role=menuitem. Address the menu keyboard model in 15.1 or decline with a reason.
+- 2026-09-20T04:51:41Z status=resolved-by:15-1-change-your-own-password by=cr note=the house n-item model from data-table.ts:811-839 shipped on the account menu with tabindex=-1 per menuitem and wrap-around Arrow/Home/End off document.activeElement. Pinned by account-menu.spec.ts's two DW-115 cases including an explicit three-item case, and by change-password.browser-spec.mjs's AC7 case against real focus; recorded mutation: clamp instead of wrap -> all three red.
 
 ### DW-116: Token.cls discards the %Status from its PostToken/PostTokenTo/GetApiRoot call sites, so a transport failure reads as 'expected 200, got 0'
 - source: spec-1-7-sign-out.md | severity: low | fix-risk: low | footprint: in-story
@@ -2454,6 +2455,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: measured by the Story 3.6 plan: the data-table row cites :389 where ### data-table is at :394, three stale before this story's five rows made it eight; scripts/check-prose.py does not validate them, so the drift is silent and grows with every amendment
 - 2026-09-16T01:10:13Z status=routed owner=burndown by=lead note=either sweep them once and add a checker that pins them, or replace the line numbers with section anchors that do not move; a contract document whose self-references are wrong is worse than one with none
 - 2026-09-16T10:21:59Z status=routed owner=17-2-a-readme-whose-install-steps-work-the-first-time by=burndown_gate note=documentation self-references, beside the citation gate
+- 2026-09-20T04:51:41Z occurrence=15-1-change-your-own-password by=cr note=the mechanism bit the appending story itself, not only the rows below it: 15.1's new Fixed strings row cited :395 and :414, the pre-insertion numbers for status-bar and masked-secret-field, which its own append at :381 had already shifted to :396 and :415. Corrected in that row at code review; the unfixed population below :381 is untouched.
 
 ### DW-376: DW-373's second half - inline-on-blur validation for every field but the key - is unreachable without a validate-only endpoint, because every field-level sentence is authored once on the server and the only mechanism that hands the client one is a refusal from an actual save
 - source: spec-3-6 | severity: med | fix-risk: med | footprint: in-epic
@@ -2938,6 +2940,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T19:04:15Z status=decision-pending owner=burndown by=lead note=Product and security call for the decision sheet: accept the vendor token lifetime, or refuse a disabled account per request, which needs an enabled-flag read AD-8 forbids unescalated; Epic 5 confirm depends on the answer
 - 2026-09-16T22:11:28Z occurrence=4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=cr note=AD-31 says only a password login is refused; the silent cookie /login of AD-28 was never probed for a disabled account
 - 2026-09-19T02:12:25Z status=routed owner=5-4-execution-strictly-as-the-user by=merge_gate note=check Enabled at authentication and refuse /refresh for a disabled user; a security hole, must ship in Release 1
+- 2026-09-20T04:51:41Z occurrence=15-1-change-your-own-password by=cr note=a self-service password change is the same shape as the disable this entry describes: the credential moves and the account's outstanding Bearer pairs keep answering, so every other signed-in tab and device keeps working on the superseded password. The matrix's Session survives row covers the changing tab deliberately (AD-28); nothing covers the others.
 
 ### DW-445: AD-7's Rule still places turn progress in a temp global keyed by turn id, while AD-33 and the shipped Kernel.State.Turn and Step tables keep it in OcuPilot's protected storage
 - source: spec-4-1-the-turn-runs-in-a-background-job-and-returns-immediately.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -4258,16 +4261,21 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-15-1-change-your-own-password.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: Measured on the slot C throwaway: with a validation routine configured ChangePassword returns 0 with codes 1446,5001 and the routine's own sentence; 5001 is outside POLICYCODES (845,958) so RenderChangeRefusal takes the 500 arm. Same closed list also makes 838 (no such user) opaque, which is correct, and a delegated or LDAP account opaque, which is not.
 - 2026-09-20T04:10:58Z status=open owner=15-1-change-your-own-password by=harvest note=Widening must be surgical: add 5001 only. 838 must stay opaque -- the Boundaries forbid distinguishing wrong-current-password from no-such-user. Not an AC failure on the tested instance (PasswordPattern 3.255ANP, no validation routine), so it is a field-configuration gap.
+- 2026-09-20T04:48:27Z occurrence=15-1-change-your-own-password by=cr note=code review re-confirmed the closed list reaches further than the ledger title: WRONGPASSWORDCODE is likewise closed to 952, so a legacy-hash, LDAP or delegated account's wrong-password refusal is an opaque 500 too. The 500 fall-through arm this entry describes has no server-side test, and the spec's Review Triage Log records it as patched by a patch that in fact drives the body-refusal branch.
+- 2026-09-20T04:51:32Z status=escalated owner=range-end-cleanup by=cr note=re-owned off 15.1 because the fix is an architecture amendment, not a code change: the embedded code a PasswordValidationRoutine refusal carries is 5001, which is $$$GeneralError, so allow-listing it opens the catch-all channel AD-39 exists to close. The matrix's Policy-rejection row names PasswordValidationRoutine in its trigger while its own Error Handling column closes the list to 845 and 958 -- the implementation follows the column, so it is by-design against the spec as written. Closing it needs AD-39 to say how a validation routine's text reaches a caller without the general-error channel.
 
 ### DW-1290: The wire test derives its expected policy sentence with the same index-2 assumption the code uses, so both would move together and stay green
 - source: spec-15-1-change-your-own-password.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: TestAPolicyRefusalCarriesTheInstancesOwnText calls GetOneStatusText(tProbeSC,2); PolicyText derives its index from the allow-listed code's position in GetErrorCodes. A refusal carrying more than one embedded error moves both.
 - 2026-09-20T04:10:58Z status=open owner=15-1-change-your-own-password by=harvest note=Rule 19 vacuity: the assertion cannot discriminate the bug it exists to catch.
+- 2026-09-20T04:48:27Z occurrence=15-1-change-your-own-password by=cr note=the same probe is also a live write: TestAPolicyRefusalCarriesTheInstancesOwnText calls ChangePassword with TOOSHORTPASSWORD from the privileged test process, so on any build whose PasswordPattern admits two characters it changes the account under test and the later methods 401 on a misleading failure.
+- 2026-09-20T04:51:32Z status=escalated owner=range-end-cleanup by=cr note=re-owned off 15.1; the recorded fix-risk low is too low. Every candidate oracle for the allow-listed code's text re-implements PolicyText's own index derivation (containment in GetErrorText passes for a wrong index too), so settling it needs a second independent source for that sentence, which does not exist on this build. The failure mode stays contained: the wire test still proves the reason is the instance's and not OcuPilot's fallback.
 
 ### DW-1291: The change-password dialog does not submit on Enter, where the house credential form does
 - source: spec-15-1-change-your-own-password.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: The two inputs sit in bare divs with a type=button action and dialog.ts carries no Enter binding; sign-in.ts:112-162 uses a real form (submit). No existing app-dialog call site has a text input, so no house dialog pattern is departed from.
 - 2026-09-20T04:10:58Z status=open owner=15-1-change-your-own-password by=harvest note=A form inside projected content is not a trivial change; weigh against the polish-week floor at adjudication.
+- 2026-09-20T04:51:32Z status=resolved-by:15-1-change-your-own-password by=cr note=patched at code review: (keydown.enter)="submit()" on both masked inputs, the idiom data-table.ts:341 already uses. Not a <form>, because the confirming action is projected into app-dialog's action slot and would sit outside one. Pinned by change-password-dialog.spec.ts's DW-1291 case; mutation: drop both bindings -> that case alone red, 15 of 16 green. Reverted byte-identical.
 
 ### DW-1292: A read or decode fault while reading the request body is answered 422 as the caller's malformed body, where Api/Context.cls splits the two apart
 - source: spec-15-1-change-your-own-password.md | severity: low | fix-risk: low | footprint: in-story
@@ -4278,6 +4286,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-15-1-change-your-own-password.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: OcuPilot.Test.AgentViolation.cls:84 skips any parameter whose name does not start with AGENT, so the ACCOUNT.* family is outside the roster guard by construction. Widening the sweep edits an existing file under Epic 13's contended src/OcuPilot/Test/**.
 - 2026-09-20T04:10:59Z status=wontfix-accepted owner=15-1-change-your-own-password by=harvest note=reopen_if=a response is observed carrying an ACCOUNT.* violation with a blank reason
+- 2026-09-20T04:48:27Z occurrence=15-1-change-your-own-password by=cr note=reopen_if has not fired, but the gap is wider than the title: REASONACCOUNTPASSWORDPOLICY is reached only when an allow-listed code carries no text, and no test anywhere calls ReasonForViolation on it, so deleting that arm reddens nothing across the wire test, the roster sweep, the client suite and the browser spec.
 
 ### DW-1294: Two handlers render field violations, because Definitions.RenderViolations fixes the envelope code at AGENT.VALIDATION
 - source: spec-15-1-change-your-own-password.md | severity: low | fix-risk: low | footprint: in-epic
@@ -4293,3 +4302,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-15-1-change-your-own-password.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: sign-in.ts:154 labels its toggle STRINGS.fieldPassword, definition-form.page.ts uses agentDefinitionShowKey/HideKey, and this dialog uses accountShowPassword/HidePassword. The first two already differed before this story.
 - 2026-09-20T04:11:11Z status=routed owner=range-end-cleanup by=harvest note=Non-blocking and pre-existing: two of the three conventions predate Story 15.1, which only added a third consistent-with-neither. strings.ts is shared-append across epics, so a rename is a cross-epic edit.
+
+### DW-1298: The corrected REST route-ordering wording has two unamended homes: Router.cls's class doc and check-objectscript.py's own diagnostic
+- source: spec-15-1-change-your-own-password.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: The spine's Consistency Conventions row was corrected to the leading-segments form in this story (7373b40); Router.cls:69 and scripts/check-objectscript.py:1804 still read 'N-segment routes before (N-1)-segment routes', which this story's own tail-appended /account/password contradicts as written.
+- 2026-09-20T04:48:13Z status=routed owner=range-end-cleanup by=cr note=Router.cls is tail-append-only under the orchestrator's shared-append grant until Epic 15 merges and scripts/** is Epic 13's footprint, so no story in flight can amend both; nothing observable turns on it -- check_route_ordering implements the leading-segments form and passes clean over 496 files.
+
+### DW-1299: The account menu's Change password item declares no aria-haspopup, so a screen reader gives no advance notice that it opens a modal
+- source: spec-15-1-change-your-own-password.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: command-bar.ts:190 and :233 set aria-haspopup=menu on menu triggers and command-bar.spec.ts:778 asserts it, so the attribute has a house precedent; account-menu.ts's item opens app-dialog with none. Publishing the value is a third EXPERIENCE.md edit, beyond the two the shared-append grant covers.
+- 2026-09-20T04:48:19Z status=wontfix-accepted owner=15-1-change-your-own-password by=cr note=reopen_if=the account menu's accessibility contract is next amended in EXPERIENCE.md, or a second menuitem opens a dialog

@@ -69,6 +69,9 @@ ClassMethod HandlePasswordChange() As %Status
             If (tKey '= "currentPassword") && (tKey '= "newPassword") Set tExtra = 1
         }
         Set tIgnored = ""
+        ; The iterator holds its own reference to the parsed body, so dropping tRequestBody alone
+        ; would not release the two values.
+        Set tIterator = ""
         If tExtra || (tRequestBody.%GetTypeOf("currentPassword") '= "string") || (tRequestBody.%GetTypeOf("newPassword") '= "string") {
             Set tSC = ..RenderBodyRefusal("shape")
             Quit
@@ -90,11 +93,15 @@ ClassMethod HandlePasswordChange() As %Status
     } Catch ex {
         Set tCurrent = ""
         Set tNew = ""
+        Set tIgnored = ""
+        Set tIterator = ""
         Set tRequestBody = ""
         Set tSC = ##class(OcuPilot.Api.Error).RenderInternal("An internal error occurred", ex)
     }
     Set tCurrent = ""
     Set tNew = ""
+    Set tIgnored = ""
+    Set tIterator = ""
     Set tRequestBody = ""
     Quit tSC
 }

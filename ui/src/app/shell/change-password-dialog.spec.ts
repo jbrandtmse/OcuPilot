@@ -19,7 +19,9 @@ import { ChangePasswordDialog } from './change-password-dialog';
  * reverted: drop the empty-field guard from `submit()` -> "an empty field is refused before the
  * request" red; render the refusal without `aria-describedby` -> "a refusal is wired to the field
  * it names" red; keep the values on the inputs after a success -> "a change clears both fields"
- * red.
+ * red; delete the `finished` re-check after the awaited `changePassword` call -> "dismissing
+ * mid-flight" red, because the resolved `ok` outcome then re-emits `changed` and clears the
+ * (already-removed) fields after the user had already dismissed the dialog.
  */
 
 const CURRENT = 'theOldOne9Z';
@@ -41,6 +43,8 @@ describe('the change password dialog', () => {
   let answer: JsonResult<unknown>;
   let closes: number;
   let changes: number;
+  /** What `requestJson` awaits before answering -- resolved by default, held open by one case. */
+  let pending: Promise<void>;
   const planted: HTMLElement[] = [];
 
   const fields = (): HTMLInputElement[] => [
@@ -72,12 +76,14 @@ describe('the change password dialog', () => {
     closes = 0;
     changes = 0;
     answer = { kind: 'ok', status: 200, body: {} };
+    pending = Promise.resolve();
     const api = {
       requestJson: async (
         path: string,
         init: { method?: string; body?: string } = {}
       ): Promise<JsonResult<unknown>> => {
         requests.push({ path, method: init.method ?? 'GET', body: init.body });
+        await pending;
         return answer;
       },
     };
@@ -276,6 +282,57 @@ describe('the change password dialog', () => {
     expect(changes).toBe(1);
   });
 
+  it('dismissing the dialog while the change is still in flight applies nothing and does not re-emit', async () => {
+    // The request is still awaited when Cancel fires: nothing here is a guess about timing --
+    // `pending` only resolves when this test releases it, after the dismissal has already run.
+    let release = (): void => {};
+    pending = new Promise((resolve) => {
+      release = resolve;
+    });
+    fields()[0].value = CURRENT;
+    fields()[1].value = NEXT;
+    action().click();
+    cancel().click();
+    fixture.detectChanges();
+    expect(closes).toBe(1);
+    expect(changes).toBe(0);
+
+    // The instance's answer -- an applied change -- arrives after the user already dismissed the
+    // dialog. Without the `finished` re-check, this `ok` outcome re-emits `changed` (an
+    // announcement for a dialog no longer open) and touches the two field elements again.
+    // `pending` resolving only starts that chain -- `requestJson`, then `changePassword`, then
+    // `submit()`'s own continuation each add a further microtask hop, so a real macrotask boundary
+    // (not another microtask-only wait) is what guarantees every hop has run before the assertion.
+    release();
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(closes).toBe(1);
+    expect(changes).toBe(0);
+  });
+
+  it('DW-1291: Enter in either field submits, as the house credential form does', async () => {
+    // A refusal, so the dialog is still open for the second press; a 200 would close it after the
+    // first and the second iteration would prove nothing.
+    answer = refusal('currentPassword', 'ACCOUNT.PASSWORD.CURRENT', 'not the current one');
+    for (const index of [0, 1]) {
+      requests = [];
+      fields()[0].value = CURRENT;
+      fields()[1].value = NEXT;
+      fields()[index].dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, bubbles: true })
+      );
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(requests).toHaveLength(1);
+      expect(JSON.parse(String(requests[0].body))).toEqual({
+        currentPassword: CURRENT,
+        newPassword: NEXT,
+      });
+    }
+    expect(closes).toBe(0);
+  });
+
   it('AC8: Cancel closes it with nothing sent and no value retained', () => {
     fields()[0].value = CURRENT;
     fields()[1].value = NEXT;
@@ -290,10 +347,16 @@ describe('the change password dialog', () => {
   it('AC6: no password value is rendered anywhere, on any path', async () => {
     answer = refusal('newPassword', 'ACCOUNT.PASSWORD.POLICY', 'too short');
     await submitWith(CURRENT, NEXT);
-    // `textContent` covers the summary, the field reasons and the labels; `outerHTML` also covers
-    // every attribute, which is where a value echoed back would land.
+    // First that the two values are where this case thinks they are: without it every assertion
+    // below passes against a dialog that was never given either password.
+    expect(fields().map((field) => field.value)).toEqual([CURRENT, NEXT]);
+    // `textContent` covers the summary, the field reasons and the labels.
     expect(fixture.nativeElement.textContent).not.toContain(CURRENT);
     expect(fixture.nativeElement.textContent).not.toContain(NEXT);
+    // A value held on an input's `value` *property* is not reflected into the `value` attribute, so
+    // `outerHTML` alone cannot fail. The attribute is where an echo would land, and it is asserted
+    // directly rather than left implied.
+    expect(fields().map((field) => field.getAttribute('value'))).toEqual([null, null]);
     expect(fixture.nativeElement.outerHTML).not.toContain(CURRENT);
     expect(fixture.nativeElement.outerHTML).not.toContain(NEXT);
   });

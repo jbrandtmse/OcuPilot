@@ -124,7 +124,8 @@ deferred:
     severity: low
 footprint_extensions:
   - "src/OcuPilot/Api/Router.cls -- tail-append only (one <Route>, one wrapper); shared-append grant; Epic 5 head a5202e0"
-  - "_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md -- one Fixed strings row appended at :381, Dialogs line :173 amended in place and line-neutral; shared-append grant; Epic 5 head a5202e0"
+  - "_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md -- one Fixed strings row appended at :381; three lines amended in place and line-neutral: Dialogs :173, the Sign out screens-table row :81, the status-bar component row :396; shared-append grant; Epic 5 head a5202e0, re-checked 3a2d15f at code review"
+  - "_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md -- the Consistency Conventions 'REST route ordering' row amended in place and line-neutral (the lead's correction at origin, 7373b40); owned by no concurrent epic; Epic 5 head 3a2d15f at code review"
   - "src/OcuPilot/Api/Error.cls -- four codes, four REASON parameters and four ReasonForViolation arms appended; owned by no concurrent epic"
   - "src/OcuPilot/Test/AccountPasswordWire.cls -- NEW under Epic 13's src/OcuPilot/Test/**; check_handler_wire_tests makes it a build gate for the route"
   - "ui/src/app/shell/status-bar.spec.ts -- one assertion now reads both menu items instead of the first; forced by the second item"
@@ -236,7 +237,101 @@ footprint_extensions:
 - Given the dialog open, when Escape, Cancel or the scrim dismisses it, then no request is sent, no value is retained, and focus returns to the trigger.
 - **Integration AC (Rule 1):** Given the consumer `ui/src/app/shell/change-password-dialog.ts` reading through `ui/src/app/core/account.ts` against the real `src/OcuPilot/Api/Account.cls` on the throwaway instance, when the browser spec submits a password the instance's policy refuses, then the observable effect is the instance's own reason text rendered in the dialog and wired to the `newPassword` field — produced by a real `422`, never a mock.
 
+### Review Findings
+
+2026-09-20, code-review stage. Full tier; four layers (blind-hunter, edge-case, verification-gap,
+acceptance-auditor), no model override. 54 rows grouped into 19 root-cause entries: high 0, med 7,
+low 12. AD-49 was re-audited clause by clause and holds; every AC carries a `mutation:` line.
+
+#### Patched in this pass (6)
+
+- `[med]` `[patch]` fix-risk low — the browser spec typed real keys into the current-password field
+  only and assigned `.value` on the new-password one, so the `readonly`-or-obstructed guarantee its
+  own doc comment claims covered half the dialog. `submit()` now clicks and types both and reads
+  both back.
+- `[med]` `[patch]` fix-risk low — the dialog spec's AC6 case asserted absence from `outerHTML`,
+  which cannot hold a value set on an input's `value` *property*, and passed against a dialog given
+  neither password. It now asserts both values arrived and that neither is reflected into a `value`
+  attribute, which is where an echo would land.
+- `[med]` `[patch]` fix-risk low — **DW-1291** closed rather than deferred: `(keydown.enter)` on
+  both inputs, the idiom `data-table.ts:341` already uses. Not a `<form>` — the confirming action is
+  projected into `app-dialog`'s action slot and would sit outside one.
+- `[med]` `[patch]` fix-risk low — three edits were outside `footprint_extensions`, which the
+  orchestrator's merge gate reads: `EXPERIENCE.md:81` and `:396`, and `ARCHITECTURE-SPINE.md`, which
+  appeared there not at all. Declared; all three are line-neutral in-place amendments.
+- `[low]` `[patch]` fix-risk low — `tIgnored` (an iterator-bound password value) and `tIterator`
+  (which holds its own reference to the parsed body) were cleared on neither the exception path nor
+  the tail, against the class's own "cleared on every path". Both now are.
+- `[low]` `[patch]` fix-risk low — the new Fixed strings row cited `:395` and `:414`, the
+  pre-insertion numbers for `status-bar` and `masked-secret-field`, which its own append at `:381`
+  had shifted to `:396` and `:415`. Corrected; occurrence appended to DW-375.
+
+#### Escalated or routed, non-blocking (5)
+
+- `[med]` `escalated` owner `range-end-cleanup`, fix-risk high — **DW-1289**. The closed allow-lists
+  also make `WRONGPASSWORDCODE` opaque for a legacy-hash, LDAP or delegated account, and the 500
+  fall-through has no server-side test; the Review Triage Log above records it as patched by a patch
+  that in fact drives the body-refusal branch. Re-owned off this story because the embedded code is
+  5001 — `$$$GeneralError` — so allow-listing it opens the catch-all channel AD-39 exists to close.
+  The matrix names `PasswordValidationRoutine` in the row's trigger while the row's own Error
+  Handling column closes the list to 845 and 958; the code follows the column.
+- `[med]` `escalated` owner `range-end-cleanup`, fix-risk high (recorded low is too low) —
+  **DW-1290**. Every candidate oracle for the allow-listed code's text re-implements `PolicyText`'s
+  index derivation, so settling it needs a second independent source that this build does not offer.
+- `[med]` `routed` owner `5-4-execution-strictly-as-the-user` — a password change does not end the
+  account's other OcuPilot sessions; their Bearer pairs keep answering. Same root cause as
+  **DW-444** (a disabled account), occurrence appended rather than re-filed.
+- `[low]` `routed` owner `range-end-cleanup` — **DW-1298**, new: the route-ordering wording
+  corrected in the spine still stands in `Router.cls:69` and `scripts/check-objectscript.py:1804`.
+  Neither is amendable from here — `Router.cls` is tail-append-only under the grant, `scripts/**` is
+  Epic 13's.
+- `[low]` `wontfix-accepted` owner this story — **DW-1299**, new: the Change password item declares
+  no `aria-haspopup`, where `command-bar.ts` sets `aria-haspopup="menu"` on its menu triggers.
+  Publishing the value is a third EXPERIENCE.md edit, beyond the grant.
+
+**Occurrences appended, no new entry (2)** — **DW-1293** (the `ACCOUNT.*` family sits outside
+`AgentViolation`'s `AGENT.*` sweep, so `REASONACCOUNTPASSWORDPOLICY` could be deleted with nothing
+red; `fieldView`'s `invalid = reason !== ''` and `violations.ts`'s reason-less violation disagree
+about the same case) and **DW-375** above. **DW-115** closed `resolved-by` this story.
+
+#### Rejected, with what refutes them (6)
+
+- `[false]` an empty `currentPassword` may read as omitted and skip verification — refuted by
+  measurement, recorded under `## Verification`: omitted returns 1, `""` returns 0.
+- `[false]` the dialog has no in-flight affordance — `[attr.aria-disabled]` on the action *is* the
+  house treatment (`definition-form.page.ts:305`, `:450`); this is not a deviation.
+- `[wontfix-theoretical]` `RenderChangeRefusal($Get(tChangeSC, $$$OK))` can answer 500 and log
+  nothing — the second half is now measured (`CreateFromStatus(1)` returns a null OREF, and
+  `RenderInternal` logs only `If $IsObject`), but nothing shows `ChangePassword` can return 0 with
+  its status unset. Real when one is observed. Not patched, on this story's own DW-1292 precedent:
+  a branch no test can reach is not shipped.
+- `[wontfix-theoretical]` `@for … track entry.field` breaks if two violations name one field —
+  `RenderChangeRefusal` emits exactly one. Real when a server arm emits two on one field.
+- `[by-design]` a caller holding no `%Admin_*` resource gets 403 rather than a password change —
+  `Router.OnPreDispatch:550` gates every route; such a user cannot use OcuPilot at all.
+- `[low]` `wontfix-accepted` — the cosmetics bundle: the split `fault` type import, `reason !== ''`
+  against `panel.ts`'s `!== null && !== ''`, `$ListFromString` rebuilt per loop iteration over three
+  codes, positional field selectors in both specs, the browser spec's order-dependent third test,
+  the AC8 case title naming an unasserted clause, the planted-id click in `panel.browser-spec.mjs`,
+  `Router.cls`'s class-doc route list, and AC4's "summary focused" wording against the house
+  contract `definition-form.page.ts:1069-1071` implements. `reopen_if=` any of these is the
+  proximate cause of a failure or a second reviewer re-derives the AC4 reading a third time.
+
+**Noted, not findings** — the spec's `deferred:` frontmatter is a consumed input to the harvest
+stage and was left as written; two of its entries are superseded by this same tree (the spine's
+route-ordering row was amended, and `EXPERIENCE.md:395` was rewritten). Its `:505` half is refuted
+by the reading already recorded here: that banner's user cannot sign in, so the classic portal
+remains the only advice available to them.
+
+**Gates re-run after every patch** — `check-objectscript.py` clean (496 files, 21 rules, 0
+problems); `lint-docs.sh` clean (92 files); `npm test` 1,055 tools and 666 component tests, 0
+failed; `npm run build` clean through all six prebuild checkers; `OcuPilot.Test.AccountPasswordWire`
+4/4 methods and 87 assertions on the throwaway with the patched `Api/Account.cls` compiled in;
+`change-password.browser-spec.mjs` 4/4 against a rebuilt and redeployed bundle.
+
 ## Spec Change Log
+
+- 2026-09-20, lead harvest: the frontmatter `deferred:` list holds 11 entries against 8 minted ledger ids, which is a mapping rather than a loss. Two entries share one root cause (the closed `POLICYCODES` allow-list) and were filed once as DW-1289 with the second recorded in its evidence; two were corrected at their origin instead of filed -- the spine's "REST route ordering" convention row, which stated the N-segment rule unconditionally where `check_route_ordering` binds only a prefix family, and `EXPERIENCE.md`'s two lines still saying the polish week would add Change password. The remaining eight are DW-1289 to DW-1296.
 
 - 2026-09-20, lead spec gate: AD-49 added to the governing ADs -- the lead wrote it into the spine at this gate, after the plan stage had run, so the plan could not have cited it. The `Router.cls` task changed from inserting the route between `/conversation` and `/instance` to appending it at the tail of `<Routes>`, and the wrapper likewise, per condition 1 of the orchestrator's shared-append grant. The grant and its four conditions are recorded under Design Notes.
 
@@ -372,6 +467,41 @@ Added at the review pass, each applied, observed red, reverted, and the tree con
   `reason` in `Api/Account.RenderChangeRefusal` becomes `..#REASONACCOUNTPASSWORDPOLICY` →
   `change-password.browser-spec.mjs`'s "Integration AC, AC4" case red, because the rendered sentence
   is then OcuPilot's fallback and not the instance's own.
+
+**QA pass (2026-09-20).** One case added to `ui/src/app/shell/change-password-dialog.spec.ts` (QA),
+the one gap found across the four existing tiers: the review pass's `finished` re-check for a
+dialog dismissed mid-request (Review Triage Log, edge-case layer) was patched but had no test of
+its own.
+
+- mutation: delete the `if (this.finished) return;` re-check placed immediately after the awaited
+  `changePassword()` call in `change-password-dialog.ts` → the new "dismissing the dialog while the
+  change is still in flight" case red (the other 14 cases in the file stayed green). Reverted;
+  `git diff --stat` on `change-password-dialog.ts` empty afterward.
+
+**Code-review pass (2026-09-20).** Three tests changed or added; each mutation applied, observed
+red, reverted, and the file confirmed byte-identical by checksum.
+
+- mutation: `submit()` in `change-password.browser-spec.mjs` clicks the reveal toggle instead of the
+  second field before typing → that spec's two submitting cases red on *both masked fields accept
+  real keystrokes*, 2 of 4. Before this pass the new-password field was filled by assignment, so the
+  helper's own `readonly`-or-obstructed guarantee did not cover it.
+- mutation: `change-password-dialog.refuse()` clears both inputs → the dialog spec's AC6 case alone
+  red on the two values it now asserts arrived. Before this pass every AC6 assertion passed against
+  a dialog that had been given neither password.
+- mutation: both `(keydown.enter)="submit()"` bindings deleted → the dialog spec's DW-1291 case
+  alone red, 15 of 16 green.
+
+**Premises measured at the code-review pass** (throwaway `ocupilot-c-ci`, each on a probe principal
+created and deleted in the same session):
+
+- `$System.Security.ChangePassword(user, new, , .sc)` with the old password **omitted** returns 1
+  and changes it for a caller holding IRISSYS write; with `""` it returns 0 and
+  `ERROR #1446`. The handler always passes the third argument, so the vendor's documented
+  omitted-argument bypass is unreachable from this route — AD-49's "the caller proves identity to
+  the operation itself" holds.
+- `%System`/`%Security`/`UserChange` fires on a **refused** change as well as a successful one
+  (`Change password user <u> failed`, EventData `ERROR #1446: Password change failed`, no password),
+  which is the premise AD-49 rests on when it says OcuPilot adds no second record.
 
 ## Auto Run Result
 

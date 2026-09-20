@@ -147,19 +147,22 @@ async function openMenu(page) {
 /**
  * Fill the two dialog fields and press the confirming action.
  *
- * The first field is filled by **real key presses**, not by assigning `.value`: an input the user
+ * **Both** fields are filled by real key presses, not by assigning `.value`: an input the user
  * cannot type into -- `readonly`, or covered by the reveal toggle -- passes every assignment-based
  * fill in this repository and fails here, which is the only place that difference is observable.
+ * Filling either one by assignment would leave that field's own typeability unpinned.
  */
 async function submit(page, current, next) {
-  await page.click('.ocu-dialog input.ocu-field-input');
+  const inputs = await page.$$('.ocu-dialog input.ocu-field-input');
+  assert.equal(inputs.length, 2, 'the dialog carries both masked fields');
+  await inputs[0].click();
   await page.keyboard.type(current);
-  await page.evaluate((nextValue) => {
-    const fields = [...document.querySelectorAll('.ocu-dialog input.ocu-field-input')];
-    fields[1].value = nextValue;
-  }, next);
-  const typed = await page.$eval('.ocu-dialog input.ocu-field-input', (node) => node.value);
-  assert.equal(typed, current, 'the current-password field accepts real keystrokes');
+  await inputs[1].click();
+  await page.keyboard.type(next);
+  const typed = await page.$$eval('.ocu-dialog input.ocu-field-input', (nodes) =>
+    nodes.map((node) => node.value)
+  );
+  assert.deepEqual(typed, [current, next], 'both masked fields accept real keystrokes');
   await page.click('.ocu-dialog-actions .ocu-button-primary');
 }
 

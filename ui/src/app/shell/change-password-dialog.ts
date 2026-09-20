@@ -54,6 +54,10 @@ interface FieldView {
  * successful change clears the two inputs before the dialog closes, so no password survives this
  * component in any form (NFR-5, AD-35, AD-47).
  *
+ * **Enter in either field submits**, as `sign-in.ts`'s credential form does. The binding sits on
+ * the two inputs rather than on a `<form>`, because the confirming action is projected into
+ * `app-dialog`'s own action slot and would sit outside any form declared here.
+ *
  * **The refusal copy is the instance's.** A rejected change renders each violation's own `reason`
  * on the field its `field` names, through `aria-describedby`, with the summary focused as
  * `role="alert"` (AD-39) -- the client publishes no sentence for a policy this instance owns. The
@@ -100,6 +104,7 @@ interface FieldView {
             autocomplete="current-password"
             [attr.aria-invalid]="currentView.invalid"
             [attr.aria-describedby]="currentView.describedBy"
+            (keydown.enter)="submit()"
           />
           <button
             type="button"
@@ -127,6 +132,7 @@ interface FieldView {
             autocomplete="new-password"
             [attr.aria-invalid]="newView.invalid"
             [attr.aria-describedby]="newView.describedBy"
+            (keydown.enter)="submit()"
           />
           <button
             type="button"
