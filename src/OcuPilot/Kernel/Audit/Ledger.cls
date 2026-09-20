@@ -64,22 +64,119 @@ ClassMethod RegistryClass() As %String
 /// <p>What the screen route <var>pRoute</var> requires, as the gate's pair list, and
 /// <code>""</code> when the turn carried no screen context, when no descriptor declares that
 /// route, or when the requirement could not be read.</p>
-/// <p><b>An unreadable requirement answers empty deliberately</b>: an empty recorded requirement
-/// is withheld from every cross-user reader (<method>ViewForUser</method>), so a route this
-/// cannot resolve fails closed rather than releasing the row.</p>
-ClassMethod RoutePairs(pRoute As %String) As %List [ Private ]
+/// <p><var>pResolved</var> is 1 only when the requirement was actually read -- a route that names
+/// a descriptor whose declared set is empty answers an empty list with <var>pResolved</var> 1,
+/// which is what lets <method>RecordProviderCall</method> record
+/// <parameter>OcuPilot.Kernel.State.Ledger.SENSENONE</parameter> rather than a requirement nobody
+/// read (DW-1305).</p>
+/// <p><b>An unreadable requirement answers empty with <var>pResolved</var> 0</b>: such a row is
+/// withheld from every cross-user reader (<method>ViewForUser</method>), so a route this cannot
+/// resolve fails closed rather than releasing the row.</p>
+/// <p><b><code>""</code> is a route, not the absence of one</b>, and it is asked of the registry
+/// like any other. <class>OcuPilot.Screen.Descriptor.Home</class> declares <code>Route()</code> as
+/// the empty string -- Home is the root -- and
+/// <method>OcuPilot.Screen.Registry.DescriptorForRoute</method> matches a descriptor's declared
+/// route exactly, so <code>""</code> answers Home and an unknown route answers nothing (verified on
+/// <code>ocupilot-ci</code>: <code>"no/such/route"</code> and <code>"/"</code> both answer
+/// <code>""</code>). Accepted consequence, stated rather than hidden: a turn that carried no
+/// screen context records the same route value as a turn started from Home, so its row records
+/// <code>none</code> too. Both are true in the same sense -- neither turn's screen required a
+/// privilege -- and a cross-user reader still has to hold the ledger's own administrative pair
+/// (AD-46).</p>
+ClassMethod RoutePairs(pRoute As %String, Output pResolved As %Boolean) As %List [ Private ]
 {
     Set tPairs = ""
+    Set pResolved = 0
     Try {
-        If pRoute = "" Quit
         Set tDescriptor = $ClassMethod(..RegistryClass(), "DescriptorForRoute", pRoute)
         If tDescriptor = "" Quit
         Set tPairs = $ClassMethod(..GateClass(), "RequiredPairs", tDescriptor, .tResolved)
-        If 'tResolved Set tPairs = ""
+        If 'tResolved {
+            Set tPairs = ""
+            Quit
+        }
+        Set pResolved = 1
     } Catch ex {
         Set tPairs = ""
+        Set pResolved = 0
     }
     Quit tPairs
+}
+
+/// <p>The four senses <property>OcuPilot.Kernel.State.Ledger.PairsSense</property> holds, each read
+/// from the store's own declaration so no caller spells one.</p>
+ClassMethod SenseChecked() As %String
+{
+    Quit $Parameter(..StoreClass(), "SENSECHECKED")
+}
+
+ClassMethod SenseDeclared() As %String
+{
+    Quit $Parameter(..StoreClass(), "SENSEDECLARED")
+}
+
+ClassMethod SenseRoute() As %String
+{
+    Quit $Parameter(..StoreClass(), "SENSEROUTE")
+}
+
+ClassMethod SenseNone() As %String
+{
+    Quit $Parameter(..StoreClass(), "SENSENONE")
+}
+
+/// <p>The sense a writer records: <var>pSense</var> ordinarily, and
+/// <method>SenseNone</method> when the writer <b>resolved</b> its pairs (<var>pResolved</var>) and
+/// there were none (DW-1305).</p>
+/// <p><b>A writer that could not read its requirement keeps its own sense</b>, so its empty set
+/// stays the withheld one: the distinction this method draws is between "there is no requirement"
+/// and "nobody read the requirement", and only the first is safe to release.</p>
+ClassMethod SenseFor(pSense As %String, pPairs As %List, pResolved As %Boolean) As %String
+{
+    If ''pResolved && ($ListLength(pPairs) = 0) Quit ..SenseNone()
+    Quit pSense
+}
+
+/// <p><var>pNames</var> -- a <class>%List</class> of field names -- as the canonical
+/// <property>OcuPilot.Kernel.State.Ledger.Fields</property> value: sorted, de-duplicated and
+/// comma-joined, bounded at that column's own
+/// <parameter>OcuPilot.Kernel.State.Ledger.FIELDSMAXLENGTH</parameter> and cut only on a whole-name
+/// boundary, with <var>pTruncated</var> 1 when a name was left out.</p>
+/// <p>A name holding <code>,</code> is dropped and reports short, for the reason
+/// <method>PairsToString</method> drops a separator-bearing pair: spelled into the column it would
+/// read back as two field names, neither of which the write sent. An empty name is dropped the same
+/// way.</p>
+ClassMethod FieldsToString(pNames As %List, Output pTruncated As %Boolean) As %String
+{
+    Set pTruncated = 0
+    Set tOut = ""
+    Kill tSeen
+    Try {
+        For tI = 1:1:$ListLength(pNames) {
+            Set tName = $List(pNames, tI)
+            If (tName = "") || (tName [ ",") {
+                Set pTruncated = 1
+                Continue
+            }
+            Set tSeen(tName) = ""
+        }
+        Set tMax = +$Parameter(..StoreClass(), "FIELDSMAXLENGTH")
+        Set tKey = ""
+        For {
+            Set tKey = $Order(tSeen(tKey))
+            If tKey = "" Quit
+            Set tCandidate = tOut _ $Select(tOut = "": "", 1: ",") _ tKey
+            If $Length(tCandidate) > tMax {
+                Set pTruncated = 1
+                Quit
+            }
+            Set tOut = tCandidate
+        }
+    } Catch ex {
+        Set tOut = ""
+        Set pTruncated = 1
+    }
+    Quit tOut
 }
 
 /// <p>The resource a cross-user read requires, at <parameter>ADMINPERMISSION</parameter>.</p>
@@ -111,10 +208,16 @@ ClassMethod RecordProviderCall(pTurnKey As %String, pUser As %String, pRoute As 
         Do tArguments.%Set("iteration", +pIteration, "number")
         Do tArguments.%Set("httpStatus", +pHttpStatus, "number")
         ; The requirement the turn actually carries: what the screen route it ran from declares.
-        ; Empty for a turn with no screen context, and empty is safe now -- an empty recorded
-        ; requirement is withheld from a cross-user reader rather than released (DW-1120).
-        Set tPairs = ..PairsToString(..RoutePairs(pRoute), .tPairsCut)
-        Set tSC = $ClassMethod(..StoreClass(), "GuardedAppend", pTurnKey, pUser, pRoute, $Parameter(..StoreClass(), "KINDLLM"), pProvider, pModel, "", tArguments.%ToJSON(), 0, pStatus, pCode, +pRequestTokens, +pResponseTokens, tPairs, pLimitsClass, .tSeq, .tStored, tPairsCut)
+        ; Empty where that route declares none -- Home's, whose route is the empty string -- and
+        ; empty under a sense that says nobody read it where the route resolves to no descriptor
+        ; at all. Only the first is released to a cross-user reader (DW-1120, DW-1305).
+        Set tRoutePairs = ..RoutePairs(pRoute, .tRouteResolved)
+        Set tPairs = ..PairsToString(tRoutePairs, .tPairsCut)
+        ; What claim the set makes (DW-1305, DW-1321). A route this writer resolved that declares
+        ; no pair -- every turn started from Home -- records "none" and is readable cross-user; a
+        ; route it could not resolve keeps "route" and its empty set stays withheld.
+        Set tSense = ..SenseFor(..SenseRoute(), tRoutePairs, tRouteResolved)
+        Set tSC = $ClassMethod(..StoreClass(), "GuardedAppend", pTurnKey, pUser, pRoute, $Parameter(..StoreClass(), "KINDLLM"), pProvider, pModel, "", tArguments.%ToJSON(), 0, pStatus, pCode, +pRequestTokens, +pResponseTokens, tPairs, pLimitsClass, .tSeq, .tStored, tPairsCut, tSense)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
@@ -143,7 +246,11 @@ ClassMethod RecordProviderCall(pTurnKey As %String, pUser As %String, pRoute As 
 /// caller-supplied value reaches the column. A reader tells the three states apart:
 /// <code>""</code> means no arguments were sent, the mark alone means they were sent and withheld,
 /// and an object means they were recorded field by field.</p>
-ClassMethod RecordToolCall(pTurnKey As %String, pUser As %String, pRoute As %String, pName As %String, pTarget As %String, pInput As %DynamicAbstractObject, pDeclaredPairs As %List, pArgumentPairs As %List, pSecretNames As %List, pStatus As %String, pCode As %String, pLimitsClass As %String, pClassified As %Boolean = 0) As %Status
+/// <p><var>pPairsSense</var> is what claim the recorded pair set makes
+/// (<property>OcuPilot.Kernel.State.Ledger.PairsSense</property>), resolved by the caller through
+/// <method>SenseFor</method>. It is trailing and defaults to <code>""</code>, the legacy sense,
+/// so a caller that does not answer leaves its row withheld from every cross-user reader.</p>
+ClassMethod RecordToolCall(pTurnKey As %String, pUser As %String, pRoute As %String, pName As %String, pTarget As %String, pInput As %DynamicAbstractObject, pDeclaredPairs As %List, pArgumentPairs As %List, pSecretNames As %List, pStatus As %String, pCode As %String, pLimitsClass As %String, pClassified As %Boolean = 0, pPairsSense As %String = "") As %Status
 {
     Set tSC = $$$OK
     Try {
@@ -155,11 +262,64 @@ ClassMethod RecordToolCall(pTurnKey As %String, pUser As %String, pRoute As %Str
             If $IsObject(pInput) && pInput.%IsA("%Library.DynamicObject") Set tArguments = ##class(OcuPilot.Kernel.Audit.Log).#REDACTED
         }
         Set tPairs = ..PairsToString(pDeclaredPairs _ pArgumentPairs, .tPairsCut)
-        Set tSC = $ClassMethod(..StoreClass(), "GuardedAppend", pTurnKey, pUser, pRoute, $Parameter(..StoreClass(), "KINDTOOL"), pName, "", pTarget, tArguments, tTruncated, pStatus, pCode, 0, 0, tPairs, pLimitsClass, .tSeq, .tStored, tPairsCut)
+        Set tSC = $ClassMethod(..StoreClass(), "GuardedAppend", pTurnKey, pUser, pRoute, $Parameter(..StoreClass(), "KINDTOOL"), pName, "", pTarget, tArguments, tTruncated, pStatus, pCode, 0, 0, tPairs, pLimitsClass, .tSeq, .tStored, tPairsCut, pPairsSense)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
     If $$$ISERR(tSC) Do ..LogFailure("a tool answer could not be recorded in the agent ledger", tSC)
+    Quit tSC
+}
+
+/// <p>Open the ledger row for one confirmed write, <b>before</b> the port call (AD-41): a
+/// <parameter>OcuPilot.Kernel.State.Ledger.KINDWRITE</parameter> row on the proposal's own turn key
+/// at the next sequence, <parameter>OcuPilot.Kernel.State.Ledger.STATUSPENDING</parameter>, naming
+/// the tool and the canonical target and nothing about the outcome. <var>pLedgerKey</var> is what
+/// <method>FinalizeConfirmedWrite</method> takes, and is <code>""</code> when the turn's row cap
+/// counted the call instead of storing it.</p>
+/// <p><b>Why first.</b> A row that only ever appeared on success could not record a write that
+/// raised mid-flight, which is the one case an operator most needs to find; the
+/// <code>pending</code> row left behind is that trace.</p>
+/// <p><b>Never fails the confirm</b> (AD-15): the status is logged by this class and the caller
+/// does not propagate it.</p>
+ClassMethod OpenConfirmedWrite(pTurnKey As %String, pUser As %String, pToolName As %String, pTargetRef As %String, pLimitsClass As %String, Output pLedgerKey As %String) As %Status
+{
+    Set pLedgerKey = ""
+    Set tSC = $$$OK
+    Try {
+        Set tStore = ..StoreClass()
+        Set tSC = $ClassMethod(tStore, "GuardedAppend", pTurnKey, pUser, "", $Parameter(tStore, "KINDWRITE"), pToolName, "", pTargetRef, "", 0, $Parameter(tStore, "STATUSPENDING"), "", 0, 0, "", pLimitsClass, .tSeq, .tStored, 0, "", .pLedgerKey)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) Do ..LogFailure("a confirmed write could not be opened in the agent ledger", tSC)
+    Quit tSC
+}
+
+/// <p>Finalize the row <method>OpenConfirmedWrite</method> opened with what was actually executed
+/// (AD-41): <var>pStatus</var> and <var>pCode</var> as the port answered them, <var>pTargetRef</var>
+/// the canonical reference the write was issued against, <var>pFieldNames</var> the names the body
+/// carried, <var>pPairs</var> the <code>(resource, permission)</code> pairs the confirm evaluated,
+/// and <var>pAuditMarked</var> the marker's own outcome.</p>
+/// <p><b>Secret-declared names never reach <var>pFieldNames</var></b> -- the caller excludes them
+/// at write time rather than redacting them here (AD-3, AD-41), so no name a descriptor declared
+/// secret is ever stored and then removed.</p>
+/// <p>The pair set is recorded with <method>SenseChecked</method>: the confirm evaluates the tool's
+/// declared pairs against the caller's live grants before it claims, so the row states a
+/// requirement somebody checked -- and <method>SenseFor</method> records
+/// <method>SenseNone</method> where that requirement was resolved and empty.</p>
+/// <p><b>Never fails the confirm</b> (AD-15), for the reason above.</p>
+ClassMethod FinalizeConfirmedWrite(pLedgerKey As %String, pStatus As %String, pCode As %String, pTargetRef As %String, pFieldNames As %List, pPairs As %List, pAuditMarked As %String) As %Status
+{
+    Set tSC = $$$OK
+    Try {
+        Set tFields = ..FieldsToString(pFieldNames, .tFieldsCut)
+        Set tPairs = ..PairsToString(pPairs, .tPairsCut)
+        Set tSense = ..SenseFor(..SenseChecked(), pPairs, 1)
+        Set tSC = $ClassMethod(..StoreClass(), "GuardedFinalize", pLedgerKey, pStatus, pCode, pTargetRef, tFields, tFieldsCut, tPairs, tPairsCut, tSense, pAuditMarked)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) Do ..LogFailure("a confirmed write could not be finalized in the agent ledger", tSC)
     Quit tSC
 }
 
@@ -373,6 +533,11 @@ ClassMethod StringToPairs(pText As %String) As %List
 /// <code>rowsWithheld</code>; it is never returned with fields removed, because a row's identity is
 /// itself the thing withheld. A non-empty requirement that yields no pair is withheld too: a
 /// requirement that will not parse is not an absent one.</p>
+/// <p><b>One empty set is readable</b> (DW-1305): a row whose
+/// <property>OcuPilot.Kernel.State.Ledger.PairsSense</property> is
+/// <method>SenseNone</method> recorded that its writer resolved the pairs and found none, so it
+/// states a requirement and the requirement is nothing. Every other sense with an empty or
+/// unparseable set, and every row stored before that column existed, stays withheld.</p>
 /// <p>A cross-user read emits one <parameter>OcuPilot.Kernel.Audit.Event.EVENTLEDGERREAD</parameter>
 /// row after the read has resolved, and its status is ignored -- registration is what makes it land
 /// and emission never fails the read (AD-15).</p>
@@ -459,10 +624,18 @@ ClassMethod ViewForUser(pCaller As %String, pSubject As %String, pWindowHours As
                 Set tWithheld = tWithheld + 1
                 Continue
             }
+            ; An empty set is two different facts, told apart by the sense the writer recorded
+            ; (DW-1305, DW-1321). "none" is "the writer resolved the pairs and there were none",
+            ; so the row requires nothing and is readable. Every other sense with an empty set --
+            ; and every legacy row, whose sense is "" -- is a requirement nobody read, and stays
+            ; withheld exactly as it was.
+            If (tPairs = "") && ($Get(tValues(tI, "pairsSense")) = ..SenseNone()) {
+                Do tRows.%Push(..RowObject(.tValues, tI))
+                Continue
+            }
             ; EvaluateRequired, not EvaluatePairs: a row whose recorded requirement is empty
             ; names no check anybody made, so releasing on it would release on a requirement
-            ; nobody named (DW-1120). Every such row is withheld, including rows stored before
-            ; the two writers below recorded what they know.
+            ; nobody named (DW-1120).
             If '$ClassMethod(..GateClass(), "EvaluateRequired", tPairs, .tFailedPair) {
                 Set tWithheld = tWithheld + 1
                 Continue
@@ -501,7 +674,10 @@ ClassMethod AppliedWindow(pWindowHours As %String, pTurnKey As %String) As %Inte
 }
 
 /// <p>One row of <var>pValues</var> as the wire object a view carries. <code>requiredPairs</code>
-/// travels as the canonical string the row stores, so a reader sees what the row was gated on.</p>
+/// travels as the canonical string the row stores, so a reader sees what the row was gated on, and
+/// <code>pairsSense</code> beside it says what claim that string makes (DW-1321).
+/// <code>auditMarked</code> is a confirmed write's own marker outcome (AD-15) and <code>""</code>
+/// on every other kind.</p>
 ClassMethod RowObject(ByRef pValues, pIndex As %Integer) As %DynamicObject [ Private ]
 {
     Set tRow = {}
@@ -523,6 +699,8 @@ ClassMethod RowObject(ByRef pValues, pIndex As %Integer) As %DynamicObject [ Pri
     Do tRow.%Set("responseTokens", +$Get(pValues(pIndex, "responseTokens")), "number")
     Do tRow.%Set("requiredPairs", $Get(pValues(pIndex, "requiredPairs")), "string")
     Do tRow.%Set("requiredPairsTruncated", ''$Get(pValues(pIndex, "requiredPairsTruncated")), "boolean")
+    Do tRow.%Set("pairsSense", $Get(pValues(pIndex, "pairsSense")), "string")
+    Do tRow.%Set("auditMarked", $Get(pValues(pIndex, "auditMarked")), "string")
     Quit tRow
 }
 

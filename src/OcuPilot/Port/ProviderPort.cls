@@ -82,18 +82,25 @@ Parameter SSLABSENTCODE = 979;
 /// <method>OcuPilot.Kernel.Provider.Base.Invoke</method> documents. Epic 4's turn is the caller.</p>
 /// <p>Refuses <code>PROVIDER.UNCONFIGURED</code> for an id no definition holds: a caller that
 /// named a definition that has been deleted gets a named refusal rather than a 500.</p>
+/// <p><var>pUser</var> is the <b>turn owner</b> -- the account the turn was started by, which the
+/// caller passes in (DW-1309, AD-31). The gate below is evaluated against that user's <b>live</b>
+/// grants, not against the calling process: a turn job froze <code>$ROLES</code> at the spawn and
+/// keeps that copy for its whole life, so a grant revoked while the turn ran would still admit the
+/// call if the process were asked. <code>""</code> falls back to the calling process's own
+/// identity, which is what a caller with no turn behind it is.</p>
 /// <p><b>Caller contract:</b> must not be called from an escalated frame (AD-9); the caller's
 /// namespace is unchanged on return.</p>
-ClassMethod Invoke(pDefinitionId As %String = "", ByRef pMessages, ByRef pTools, pSystemPrompt As %String = "", Output pResponse As OcuPilot.Kernel.Provider.Response, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status
+ClassMethod Invoke(pDefinitionId As %String = "", ByRef pMessages, ByRef pTools, pSystemPrompt As %String = "", Output pResponse As OcuPilot.Kernel.Provider.Response, Output pHttpStatus As %Integer, Output pFault As %DynamicObject, pUser As %String = "") As %Status
 {
     Do ..Blank(.pResponse, .pHttpStatus, .pFault)
     Try {
         If '..Authenticated(.pHttpStatus, .pFault) Quit
         ; The named gate this port's primary entry evaluates before its outbound call (AD-29).
         ; An OR-set: any one administrative pair admits, an empty or unreadable set admits
-        ; nobody, and nothing leaves the instance before it has answered.
+        ; nobody, and nothing leaves the instance before it has answered. Asked of the turn
+        ; owner's live grants rather than of the job's frozen roles (AD-31, DW-1309).
         Set tFailedPair = ""
-        If '..GateAnyOf(..InvokePairs(), .tFailedPair) {
+        If '..GateAnyOfForUser($Select(pUser '= "": pUser, 1: ..ResolvedUsername()), ..InvokePairs(), .tFailedPair) {
             Do ..RefusePair(tFailedPair, .pHttpStatus, .pFault)
             Quit
         }
@@ -179,6 +186,10 @@ ClassMethod FlagUnresolvedCredential(pId As %String, ByRef pValues, ByRef pFault
 /// <p>Make one provider call against <var>pValues</var> -- a definition as a caller supplied it,
 /// subscripted by wire field name -- rather than against a stored row. <b>Always returns
 /// <code>$$$OK</code></b>.</p>
+/// <p><b>Its gate stays the calling process's</b> (DW-1309). Test connection is a foreground
+/// request whose caller <b>is</b> the user, so there is no frozen role set to go stale and no turn
+/// owner to name; <method>Invoke</method>'s question is about a background job, and asking it here
+/// would be asking the same account twice.</p>
 /// <p><b>Additionally requires <parameter>DRAFTPAIRS</parameter></b>, because these values have
 /// not passed the write gate AD-42 puts on the endpoint field. The address rules are applied here
 /// regardless, so the privilege buys the ability to try an unsaved definition, never the ability
@@ -462,6 +473,56 @@ ClassMethod Gate(pPairs As %List, Output pFailedPair As %String) As %Boolean [ P
 ClassMethod GateAnyOf(pPairs As %List, Output pFailedPair As %String) As %Boolean [ Private ]
 {
     Quit $ClassMethod(..GateClass(), "EvaluateAnyOf", pPairs, .pFailedPair)
+}
+
+/// <p>Whether <var>pUser</var>'s <b>live</b> grants hold any one pair in <var>pPairs</var>
+/// (AD-31, DW-1309). The OR-set semantics are <method>OcuPilot.Screen.Gate.EvaluateAnyOf</method>'s
+/// -- an empty or unreadable set admits nobody, and <var>pFailedPair</var> names the <b>first</b>
+/// pair, which is the one the caller would have to be granted -- but the question asked of each
+/// pair is about a named account rather than about this process.</p>
+ClassMethod GateAnyOfForUser(pUser As %String, pPairs As %List, Output pFailedPair As %String) As %Boolean [ Private ]
+{
+    Set pFailedPair = ""
+    If '$ListValid(pPairs) || ($ListLength(pPairs) = 0) Quit 0
+    Set tAllowed = 0
+    Try {
+        For tI = 1:1:$ListLength(pPairs) {
+            Set tPair = $List(pPairs, tI)
+            If '$ListValid(tPair) || ($ListLength(tPair) '= 2) Continue
+            If ..HoldsPairForUser(pUser, $List(tPair, 1), $List(tPair, 2)) {
+                Set tAllowed = 1
+                Quit
+            }
+        }
+        If 'tAllowed {
+            Set tFirst = $List(pPairs, 1)
+            If $ListValid(tFirst) && ($ListLength(tFirst) = 2) Set pFailedPair = $List(tFirst, 1) _ ":" _ $List(tFirst, 2)
+        }
+    } Catch ex {
+        Set tAllowed = 0
+        Set pFailedPair = ""
+    }
+    Quit tAllowed
+}
+
+/// <p>Whether <var>pUser</var>'s current grants hold <var>pPermission</var> on
+/// <var>pResource</var> -- <code>$SYSTEM.Security.CheckUserPermission</code>, the idiom AD-31 names
+/// and <method>OcuPilot.Kernel.Agent.Dispatch.HoldsPair</method> already uses. A user the instance
+/// no longer holds holds nothing.</p>
+/// <p><b>Deliberately not asked through <method>GateClass</method></b>: that evaluator answers
+/// about the calling process, and the whole point of this question is that the process is not the
+/// authority. <b>Overridable</b> so a test can drive a revoked grant without changing a single
+/// grant on the instance -- <code>%UnitTest</code> runs as an account holding <code>%All</code>.
+/// Production never overrides it.</p>
+ClassMethod HoldsPairForUser(pUser As %String, pResource As %String, pPermission As %String) As %Boolean
+{
+    Set tHolds = 0
+    Try {
+        Set tHolds = ($SYSTEM.Security.CheckUserPermission(pUser, pResource, pPermission) = 1)
+    } Catch {
+        Set tHolds = 0
+    }
+    Quit tHolds
 }
 
 /// <p>Set the 403 a refused pair set answers with, naming <var>pFailedPair</var> when there is

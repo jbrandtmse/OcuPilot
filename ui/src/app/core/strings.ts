@@ -65,6 +65,8 @@ export const STRINGS = {
   auditingTurnOnAction: 'Turn auditing on',
   /** EXPERIENCE.md:259 */
   proposalTargetChanged: 'target changed, re-propose',
+  /** EXPERIENCE.md Fixed strings, tail row */
+  auditMarkerReplySentence: 'This change was applied but not marked in the audit database.',
   /** EXPERIENCE.md:260 */
   contextChipLeavesInstance: 'leaves the instance',
   /** EXPERIENCE.md:260 */
@@ -1002,6 +1004,7 @@ export const STRINGS = {
   // the product name (never typeset as the wordmark -- DESIGN.md -- but an ordinary
   // word wherever running text or a document <title> needs it).
   auditMarkerFailed: 'done \u00b7 audit not marked',
+  auditMarkerMarked: 'done \u00b7 audit marked',
   accessibilityReducedMotionSpinnerWord: 'running',
   productName: 'OcuPilot',
 

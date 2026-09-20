@@ -194,8 +194,8 @@ services:
       # by package, so a runner pointed at an instance someone cares about would otherwise create
       # principals on it. scripts/check-objectscript.py's destructive-test-guard rule holds the
       # population.
-      # classes: AgentWireSecurity, ConfigGate, CredentialPrivilege, DenialParity, Disabled
-      # classes: ErrorLogDenial, LedgerWire, LogSourceDenial, MgmntPortDenial, OAuthTabs
+      # classes: AgentWireSecurity, AuditMarker, ConfigGate, CredentialPrivilege, DenialParity
+      # classes: Disabled, ErrorLogDenial, LedgerWire, LogSourceDenial, MgmntPortDenial, OAuthTabs
       # classes: ProhibitedRoute, ProposalFixture, ProposalSpelling, State, Token, ToolSetFull
       # classes: ToolWire, TurnContext, TurnConversation, TurnLong, TurnProviderFault, TurnWire
       # classes: TurnWireFixture, UnexpireScope, Version, Wire, WireOAuthRead, WireSecurityRead
@@ -211,8 +211,9 @@ services:
       # RoleGranted triple every install registers. One degree worse again: while a registration
       # is gone every row OcuPilot would write under that triple is dropped with no error and no
       # log line, so a runner pointed at an instance someone cares about would silently stop
-      # auditing it.
-      # classes: AuditEvent, UninstallSurvival
+      # auditing it. AuditMarker deletes the AgentWrite triple for the same reason and creates a
+      # web application to write to, so it declares OCUPILOT_ALLOW_PRINCIPALS as well.
+      # classes: AuditEvent, AuditMarker, UninstallSurvival
       OCUPILOT_ALLOW_AUDIT_EVENTS: "1"
       # Runs OcuPilot's PRODUCTION install. A production install is not one side effect but a
       # whole set of them -- a database, a resource, a role, three web applications, the audit

@@ -29,6 +29,11 @@ Parameter DEFAULTENFORCEDREADONLY As %Integer = 0;
 /// them.</p>
 Parameter DEFAULTSHARECONTEXT As %Integer = 1;
 
+/// <p>Whether the instance was marking agent writes when that was last observed, on an instance
+/// that has stored nothing. <b>On</b>: an instance nobody has observed is not announced as
+/// unmarked, and the banner's absence is never a positive claim that marking works (AD-15).</p>
+Parameter DEFAULTWRITESMARKED As %Integer = 1;
+
 /// <p>The row cap a turn's screen context, and every read tool result, is bounded to on an
 /// instance that has stored nothing, or that stored an empty or out-of-range value (Story 4.4,
 /// AD-24). Every read tool, whether descriptor-derived or a class of its own -- this switch is the
@@ -59,6 +64,23 @@ Property ShareContextByDefault As %Boolean [ InitialExpression = 1 ];
 /// descriptor-derived tools; the row count this property names is not.</p>
 Property ContextRowCap As %Integer [ InitialExpression = 200 ];
 
+/// <p>Whether the instance is marking agent writes in its audit database, as the last party that
+/// could see the answer observed it (AD-15).</p>
+/// <p><b>Observed, never operator-set.</b> It is not in <method>OcuPilot.Api.Switches.Fields</method>'s
+/// table, so no request can write it and it is absent from <code>GET /agent/switches</code>; the two
+/// writers are install, which reads the instance flag and the marker registration's own
+/// <code>Enabled</code> in <code>%SYS</code>, and the confirm executor, whose emission return value
+/// is the instance's own answer. It can therefore be stale for one window, which is acceptable only
+/// because the banner it feeds makes no positive claim: nothing says marking is working.</p>
+/// <p><b>Added with no <code>SCHEMAVERSION</code> move</b> (Consistency Conventions: when
+/// SCHEMAVERSION moves). A row stored before this property existed holds nothing in its slot and
+/// reads back <code>""</code>, which <code>''</code> normalizes to 0 -- so an older row would read
+/// as "not marking" and show the banner. <method>Resolve</method> therefore reads the slot's
+/// presence rather than its truth: an untouched row answers
+/// <parameter>DEFAULTWRITESMARKED</parameter>, exactly as an instance with no row does, and the
+/// first observation writes the real answer. No older row means anything different.</p>
+Property WritesMarked As %Boolean [ InitialExpression = 1 ];
+
 /// <p>ISO-8601 UTC timestamp of the last write to this row.</p>
 Property UpdatedAt As %String(MAXLEN = 32);
 
@@ -87,6 +109,7 @@ ClassMethod Resolve(Output pValues) As %Status
     Set pValues("enforcedReadOnly") = ..#DEFAULTENFORCEDREADONLY
     Set pValues("shareContextByDefault") = ..#DEFAULTSHARECONTEXT
     Set pValues("contextRowCap") = ..#DEFAULTCONTEXTROWCAP
+    Set pValues("writesMarked") = ..#DEFAULTWRITESMARKED
     Set pValues("updatedAt") = ""
     Set tSC = $$$OK
     Try {
@@ -99,6 +122,9 @@ ClassMethod Resolve(Output pValues) As %Status
         Set pValues("shareContextByDefault") = ''tRow.ShareContextByDefault
         Set tRowCap = +tRow.ContextRowCap
         If (tRowCap >= 1) && (tRowCap <= 1000) Set pValues("contextRowCap") = tRowCap
+        ; The slot's presence, not its truth -- a row written before this property existed holds
+        ; nothing there, and reading that as 0 would show the banner over a healthy instance.
+        If tRow.WritesMarked '= "" Set pValues("writesMarked") = ''tRow.WritesMarked
         Set pValues("updatedAt") = ..Text(tRow.UpdatedAt)
         Set tRow = ""
     } Catch ex {
@@ -133,6 +159,7 @@ ClassMethod SetGuarded(ByRef pValues, pExpectedVersion As %String = "") As %Stat
         If $Data(pValues("enforcedReadOnly")) Set tRow.EnforcedReadOnly = ''+pValues("enforcedReadOnly")
         If $Data(pValues("shareContextByDefault")) Set tRow.ShareContextByDefault = ''+pValues("shareContextByDefault")
         If $Data(pValues("contextRowCap")) Set tRow.ContextRowCap = +pValues("contextRowCap")
+        If $Data(pValues("writesMarked")) Set tRow.WritesMarked = ''+pValues("writesMarked")
         Set tRow.UpdatedAt = ..Timestamp()
         Set tSC = ..GuardedSaveIfCurrent(tRow, tVersion)
         Set tRow = ""

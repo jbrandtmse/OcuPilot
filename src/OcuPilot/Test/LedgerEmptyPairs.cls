@@ -7,6 +7,13 @@
 /// deliberately; inverting that would lock every account out of Home.
 /// <method>EvaluateRequired</method> asks whether a requirement was named at all, which is what the
 /// ledger's per-row gate and every port's declared <code>Parameter</code> need.</p>
+/// <p><b>DW-1305 changed what "empty" means here.</b> When these methods were written, every empty
+/// recorded requirement was withheld from every cross-user reader, because the column could not
+/// say whether the writer had resolved the pairs and found none or had never read them at all.
+/// <property>OcuPilot.Kernel.State.Ledger.PairsSense</property> now records that, and an empty set
+/// under <code>none</code> is released. The two methods below therefore assert the narrower claim
+/// they always meant: a requirement <b>nobody read</b> is withheld. The released case and the
+/// sense column itself are <class>OcuPilot.Test.LedgerSense</class>'s.</p>
 /// <p><b>Live-safe.</b> It spawns nothing, creates no principal and touches no registration. Every
 /// row it writes names <parameter>PROBEUSER</parameter>, and <method>OnAfterOneTest</method>
 /// asserts none survives.</p>
@@ -108,16 +115,22 @@ Method TestHomeIsStillAdmitted()
     Do $$$AssertEquals(tFailed, "", "with no pair named")
 }
 
-/// <p><b>AC8</b> -- a stored row whose recorded requirement is empty is withheld from a cross-user
-/// reader holding the OcuPilot administrative pair, and visible to its owner.</p>
+/// <p><b>AC8</b> (DW-1120), as DW-1305 narrowed it -- a stored row whose requirement <b>nobody
+/// read</b> is withheld from a cross-user reader holding the OcuPilot administrative pair, and is
+/// visible to its owner.</p>
+/// <p>The row below carries no sense, which is what a writer that could not read the requirement
+/// records and what every row stored before that column existed holds. A row whose writer resolved
+/// the pairs and found none is a different fact and is released;
+/// <method>OcuPilot.Test.LedgerSense.TestARowThatNeedsNoPrivilegeIsReadableCrossUser</method> is
+/// that half.</p>
 /// <p>Mutation (Rule 19): point <method>OcuPilot.Kernel.Audit.Ledger.ViewForUser</method>'s per-row
 /// gate back at <method>EvaluatePairs</method> -> the withheld row is released and this goes
 /// red.</p>
 Method TestARowWithNoRecordedRequirementIsWithheldCrossUser()
 {
     Set tKey = ..NewTurnKey()
-    ; Recorded through the shipped tool recorder with both pair halves empty, which is the shape
-    ; every pre-DW-1120 llm and pre-dispatch refusal row was stored in.
+    ; Recorded through the shipped tool recorder with both pair halves empty and no sense, which is
+    ; the shape every pre-DW-1120 llm and pre-dispatch refusal row was stored in.
     Do $$$AssertStatusOK($ClassMethod(..#LEDGER, "RecordToolCall", tKey, ..#PROBEUSER, "", "probe.empty.read", "", {}, "", "", "", "ok", "", ..#LIMITS, 1), "a row with no recorded requirement is stored")
 
     ; The owner's own read is never gated on the row's requirement (AD-46).
@@ -131,6 +144,7 @@ Method TestARowWithNoRecordedRequirementIsWithheldCrossUser()
     Do $$$AssertEquals($IsObject(tFault), 0, "and is not refused at the cross-user gate")
     Do $$$AssertEquals(tView.rowsSent, 0, "the row is withheld: " _ tView.%ToJSON())
     Do $$$AssertEquals(tView.rowsWithheld, 1, "and counted as withheld")
+    Do $$$AssertEquals(tOwn.rows.%Get(0).pairsSense, "", "because the row states no sense, which is what 'nobody read it' looks like (DW-1305)")
 
     ; A row that DOES record a requirement the reader holds is still released, so the assertion
     ; above is about the empty requirement and not about the gate refusing everything.
@@ -143,7 +157,14 @@ Method TestARowWithNoRecordedRequirementIsWithheldCrossUser()
 }
 
 /// <p><b>AC8</b> -- the provider-call writer records the requirement the turn carries: the pair set
-/// of the screen route it ran from, and empty for a turn with no screen context.</p>
+/// of the screen route it ran from, and, for a turn whose route declares none, an empty set under
+/// the <code>none</code> sense (DW-1305).</p>
+/// <p><b>A turn with no screen context carries the empty route, and the empty route is Home's.</b>
+/// <class>OcuPilot.Screen.Descriptor.Home</class> declares <code>Route()</code> as <code>""</code>
+/// because Home is the root, so the registry maps that value to Home and the writer records what
+/// Home requires, which is nothing. That row is therefore readable cross-user, where before
+/// DW-1305 every empty set was withheld. A route the registry cannot place is the case that stays
+/// withheld, and <class>OcuPilot.Test.LedgerSense</class> holds both halves.</p>
 /// <p>Mutation (Rule 19): pass <code>""</code> for the pair set in
 /// <method>OcuPilot.Kernel.Audit.Ledger.RecordProviderCall</method> again -> the routed row records
 /// nothing and this goes red.</p>
@@ -161,6 +182,7 @@ Method TestTheProviderWriterRecordsTheTurnsRequirement()
         Set tRow = tView.rows.%Get(0)
         Do $$$AssertEquals(tRow.kind, "llm", "an llm row")
         Do $$$AssertEquals(tRow.requiredPairs, tExpected, "carrying the pair set the screen route declares")
+        Do $$$AssertEquals(tRow.pairsSense, $ClassMethod(..#LEDGER, "SenseRoute"), "under the sense that says so")
     }
 
     Set tKey2 = ..NewTurnKey()
@@ -168,8 +190,15 @@ Method TestTheProviderWriterRecordsTheTurnsRequirement()
     Do $$$AssertStatusOK($ClassMethod(..#LEDGER, "ViewForUser", ..#PROBEUSER, "", 0, tKey2, 10, .tView2, .tFault2), "that owner's read resolves too")
     Do $$$AssertEquals(tView2.rowsSent, 1, "one row for the turn with no screen context: " _ tView2.%ToJSON())
     If tView2.rowsSent = 1 {
-        Do $$$AssertEquals(tView2.rows.%Get(0).requiredPairs, "", "which records nothing, and is withheld cross-user for it")
+        Do $$$AssertEquals(tView2.rows.%Get(0).requiredPairs, "", "which records nothing")
+        ; Under `none`: the empty route is Home's own, the registry resolves it, and what Home
+        ; requires is nothing -- a requirement that was read, not one nobody read (DW-1305).
+        Do $$$AssertEquals(tView2.rows.%Get(0).pairsSense, $ClassMethod(..#LEDGER, "SenseNone"), "under the none sense, because the route resolved and declared nothing")
     }
+    Do ##class(OcuPilot.Test.LedgerGate).Clear()
+    Do $$$AssertStatusOK($ClassMethod(..#GATEPROBE, "ViewForUser", ..#READER, ..#PROBEUSER, 0, tKey2, 10, .tCross2, .tCrossFault2), "a cross-user read of that row resolves")
+    Do $$$AssertEquals(tCross2.rowsSent, 1, "and it is released, holding the ledger's admin pair alone")
+    Do $$$AssertEquals(tCross2.rowsWithheld, 0, "with nothing withheld")
 }
 
 /// <p>The route of the first declared screen whose requirement is non-empty, with that

@@ -367,4 +367,49 @@ Method TestEveryUnspellablePairIsReportedShort()
     Do $$$AssertEquals(tWholeCut, 0, "and the set is not reported short")
 }
 
+/// <p><b>Story 5.6, AD-41.</b> <method>OcuPilot.Kernel.Audit.Ledger.FieldsToString</method> is the
+/// field-name twin of <method>PairsToString</method>, and its three defensive branches are driven
+/// here for the same reason that method's are: a confirmed write's own body cannot be made to carry
+/// a comma-bearing name or to overrun 512 characters, so the branches would otherwise be reached by
+/// nothing and could be deleted unnoticed.</p>
+/// <p>Mutation (Rule 19): delete the
+/// <code>(tName = "") || (tName [ ",")</code> guard from
+/// <method>OcuPilot.Kernel.Audit.Ledger.FieldsToString</method> -- the comma and empty-name
+/// assertions go red. Second mutation: stop setting <var>pTruncated</var> on the length cut -- the
+/// overrun assertion goes red.</p>
+Method TestFieldNamesAreSpelledSortedDedupedAndBounded()
+{
+    ; The ordinary shape: sorted, de-duplicated, comma-joined, and not reported short.
+    Set tText = $ClassMethod(..#LEDGER, "FieldsToString", $ListBuild("Resource", "Name", "Resource", "Enabled"), .tCut)
+    Do $$$AssertEquals(tText, "Enabled,Name,Resource", "the names spell sorted and de-duplicated: " _ tText)
+    Do $$$AssertEquals(tCut, 0, "and a set that fits is not reported short")
+
+    ; A name carrying the separator would read back as two names the write never sent, so it is
+    ; dropped and the set reports short rather than lying about what was sent.
+    Set tComma = $ClassMethod(..#LEDGER, "FieldsToString", $ListBuild("Name", "Bad,Name"), .tCommaCut)
+    Do $$$AssertEquals(tComma, "Name", "a separator-bearing name is dropped: " _ tComma)
+    Do $$$AssertEquals(tCommaCut, 1, "and the set says it is incomplete")
+
+    ; An empty name names nothing and is dropped the same way.
+    Set tEmpty = $ClassMethod(..#LEDGER, "FieldsToString", $ListBuild("Name", ""), .tEmptyCut)
+    Do $$$AssertEquals(tEmpty, "Name", "an empty name is dropped: " _ tEmpty)
+    Do $$$AssertEquals(tEmptyCut, 1, "and the set says so")
+
+    ; More names than the column can hold: cut on a whole-name boundary, never mid-name, and said.
+    Set tMany = ""
+    For tI = 1:1:60 {
+        Set tMany = tMany _ $ListBuild("OcuPilotProbeFieldNameNumber" _ $Justify(tI, 3))
+    }
+    Set tLong = $ClassMethod(..#LEDGER, "FieldsToString", tMany, .tLongCut)
+    Do $$$AssertEquals(tLongCut, 1, "sixty names overrun the bound and FieldsToString says so")
+    Do $$$AssertTrue($Length(tLong) <= +$Parameter("OcuPilot.Kernel.State.Ledger", "FIELDSMAXLENGTH"), "the stored value fits the column: " _ $Length(tLong))
+    Do $$$AssertTrue($Length(tLong) > 0, "and is not emptied by the cut")
+    ; Every surviving name is whole -- the cut fell on a boundary, so nothing reads as a name the
+    ; write did not send.
+    For tI = 1:1:$Length(tLong, ",") {
+        Set tName = $Piece(tLong, ",", tI)
+        Do $$$AssertTrue($ListFind(tMany, tName) > 0, "the stored name " _ tName _ " is one of the names passed in")
+    }
+}
+
 }

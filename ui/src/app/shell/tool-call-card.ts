@@ -45,7 +45,7 @@ import { type TurnStep, stepLabel } from '../core/turn';
             @if (running) {
               <span class="ocu-tool-call-spinner" aria-hidden="true"></span>
             }
-            <span class="ocu-tool-call-status-word" [class.ocu-tool-call-status-warning]="failed">{{
+            <span class="ocu-tool-call-status-word" [class.ocu-tool-call-status-warning]="warned">{{
               statusText
             }}</span>
           </span>
@@ -87,6 +87,16 @@ export class ToolCallCard {
     return this.step().status === 'error';
   }
 
+  /**
+   * Whether the status word carries the warning class. **Not only `error`** (AD-15, FR-22): a
+   * confirmed write whose audit marker was dropped succeeded, so its status is `ok` and its line
+   * still has to read as a warning -- and it has to read that way on the **collapsed** line, which
+   * is where this word is, rather than only in the body a reader may never open.
+   */
+  protected get warned(): boolean {
+    return this.failed || this.step().auditMarked === false;
+  }
+
   protected get label(): string {
     return stepLabel(this.step());
   }
@@ -104,6 +114,12 @@ export class ToolCallCard {
       // granted. Every other failure keeps the reason it already carried.
       const detail = step.failedPair !== '' ? step.failedPair : step.reason;
       return STRINGS.toolCallStatusFailed.split('<reason>').join(detail);
+    }
+    // A confirmed write's card says what became of its marker; every other card, whose step
+    // carries `null`, reads the plain word (AD-15). Nothing here claims marking is working in
+    // general -- the sentence is about this write.
+    if (step.auditMarked !== null) {
+      return step.auditMarked ? STRINGS.auditMarkerMarked : STRINGS.auditMarkerFailed;
     }
     return STRINGS.toolCallStatusDone;
   }

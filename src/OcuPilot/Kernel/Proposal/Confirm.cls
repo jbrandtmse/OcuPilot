@@ -15,6 +15,12 @@
 /// <code>(resource, permission)</code> pairs, the conversation, the agent definition's version and
 /// the fingerprint re-read. All six run before the claim commits, against state that may have moved
 /// since the proposal was minted.</p>
+/// <p><b>The marker and the ledger row are the executor's, and neither can fail the write</b>
+/// (AD-15, AD-41). The ledger row opens before the port call and is finalized after it with what
+/// was actually executed; the audit marker is emitted once, here, after the write reads OK, and its
+/// return value is checked because an unregistered triple drops the event silently. A failure of
+/// either is recorded on the row and answered as <code>auditMarked</code>; neither ever changes
+/// the status the caller receives.</p>
 /// <p><b>Why the port call follows the commit.</b> AD-34's transition is the point of no return --
 /// burning the token and committing to the write. A vendor call inside a <code>TSTART</code> frame
 /// is refused on two grounds: the project's ObjectScript rule forbids a side effect inside a
@@ -48,6 +54,30 @@ ClassMethod StoreClass() As %String
     Quit "OcuPilot.Kernel.State.Propose"
 }
 
+/// <p>The agent ledger the confirmed write's own row is opened and finalized through (AD-41).
+/// Overridable so a test can observe what a transition recorded without reading the store;
+/// production never overrides it.</p>
+ClassMethod LedgerClass() As %String
+{
+    Quit "OcuPilot.Kernel.Audit.Ledger"
+}
+
+/// <p>The audit emitter the write's marker is written through (AD-15). Overridable for the reason
+/// <class>OcuPilot.Test.EventProbe</class> exists -- a dropped emission produces no row and no
+/// console line of its own, so the report is otherwise unobservable. Production never overrides
+/// it.</p>
+ClassMethod EventClass() As %String
+{
+    Quit "OcuPilot.Kernel.Audit.Event"
+}
+
+/// <p>The bounds the confirmed write's ledger row is written under (AD-41). Overridable so a test
+/// can drive the row cap; production never overrides it.</p>
+ClassMethod LimitsClass() As %String
+{
+    Quit "OcuPilot.Kernel.Agent.Limits"
+}
+
 /// <p>AD-10's prohibited set, as <method>OcuPilot.Kernel.Proposal.Write.ProhibitedClass</method>
 /// answers it -- <class>OcuPilot.Kernel.Proposal.Prohibited</class>.</p>
 /// <p>Overridable for the reason <method>PortClass</method> and <method>StoreClass</method> are: a
@@ -62,7 +92,8 @@ ClassMethod ProhibitedClassName() As %String
 /// <p>Confirm proposal <var>pProposalId</var> for <var>pUser</var>, with
 /// <var>pSuppliedSecrets</var> as the body the request carried.</p>
 /// <p>On success the status is OK, <var>pHttpStatus</var> 200 and <var>pResult</var>
-/// <code>{proposalId, state, closedReason, confirmedAt}</code>. On a refusal the status is an
+/// <code>{proposalId, state, closedReason, confirmedAt, auditMarked}</code> -- the last being
+/// whether the write's audit marker landed a row, which never changes the status (AD-15). On a refusal the status is an
 /// error, <var>pCode</var> is the machine code, <var>pHttpStatus</var> the HTTP status it is
 /// rendered at, and <var>pDetail</var> carries the structured detail that code owns
 /// (<code>failedPair</code> for a privilege refusal) or is <code>""</code>.</p>
@@ -298,6 +329,19 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
         Set tBody = ..WithSecrets($Get(pRow("payload")), pSuppliedSecrets, tSecretNames)
         Kill tQuery
         Set tQuery(tIdParam) = tIdValue
+
+        ; AD-41: the row is opened BEFORE the port call and finalized after it. A row that only
+        ; ever appeared on success could not record a write that raised mid-flight; the `pending`
+        ; row this leaves is that trace. AD-3: the field names are taken from the body with the
+        ; descriptor's declared secret names excluded here, at write time, never redacted later.
+        Set tFieldNames = ..FieldNames(tBody, tSecretNames)
+        Set tLedgerKey = ""
+        Do $ClassMethod(..LedgerClass(), "OpenConfirmedWrite", $Get(pRow("turnKey")), pUser, $Get(pRow("toolName")), $Get(pRow("targetRef")), ..LimitsClass(), .tLedgerKey)
+        ; The window the marker and the vendor's own change row are joined inside: taken on the
+        ; instance immediately before the call, so the vendor row is the *Change row for this
+        ; target and this user at or after it.
+        Set tWrittenAt = ##class(OcuPilot.Kernel.State.Turn).Timestamp()
+
         Set tWriteSC = $ClassMethod(..PortClass(), "Invoke", tEndpoint, ..#WRITETYPE, .tQuery, tBody, .tWritten, .tWriteHttp, .tWriteFault)
         If $$$ISERR(tWriteSC) {
             ; The claim has committed and the token is spent: the proposal stays confirmed and the
@@ -311,11 +355,28 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
             ; the same detail the other two closing refusals carry. Without it a card would fall
             ; back to the state its last poll saw and offer Confirm again on a spent token.
             Do ..ClosedDetail(pProposalId, .pDetail)
+            ; The write did not happen, so no marker is emitted and the row makes no claim about
+            ; marking. The row stops being `pending`, which is what separates "it failed" from
+            ; "nobody can account for it".
+            Do $ClassMethod(..LedgerClass(), "FinalizeConfirmedWrite", tLedgerKey, "error", pCode, $Get(pRow("targetRef")), tFieldNames, tPairs, $Parameter("OcuPilot.Kernel.State.Ledger", "MARKEDNONE"))
             Set tSC = tWriteSC
             Quit
         }
 
-        Set tSC = ..Answer(pProposalId, .pResult, .pHttpStatus, .pCode)
+        ; AD-15. The write has succeeded; this is the one place a marker is emitted, so a write
+        ; made any other way emits none. The return value is checked here because
+        ; $System.Security.Audit answers 0 and drops the event when its triple is unregistered,
+        ; with no error and no log line -- and the marker never fails the write and never
+        ; propagates: tSC is untouched on either arm.
+        Set tMarkSC = $ClassMethod(..EventClass(), "RecordAgentWrite", pProposalId, $Get(pRow("toolName")), $Get(pRow("targetRef")), pUser, tWrittenAt, tFieldNames)
+        Set tMarked = $$$ISOK(tMarkSC)
+        Do $ClassMethod(..LedgerClass(), "FinalizeConfirmedWrite", tLedgerKey, "ok", "", $Get(pRow("targetRef")), tFieldNames, tPairs, $Select(tMarked: $Parameter("OcuPilot.Kernel.State.Ledger", "MARKEDYES"), 1: $Parameter("OcuPilot.Kernel.State.Ledger", "MARKEDNO")))
+        ; The emission's own answer is the instance's answer to "are writes being marked", and it
+        ; is the only one a least-privileged process can get. Recorded so the panel's banner is
+        ; showing on the next read; a refresh that fails is logged and never propagated.
+        Do $ClassMethod(..EventClass(), "RecordMarking", tMarked)
+
+        Set tSC = ..Answer(pProposalId, .pResult, .pHttpStatus, .pCode, $Select(tMarked: 1, 1: 0))
     } Catch ex {
         Set pResult = ""
         Set tSC = ..Internal("the confirm transition failed: " _ ex.DisplayString(), .pHttpStatus, .pCode)
@@ -559,10 +620,10 @@ ClassMethod HoldsPair(pUser As %String, pResource As %String, pPermission As %St
 }
 
 /// <p>The proposal's closed state as the caller is answered it:
-/// <code>{proposalId, state, closedReason, confirmedAt}</code>, read back from the row so the
-/// answer and the wire cannot disagree. A row that is no longer there is answered as an internal
+/// <code>{proposalId, state, closedReason, confirmedAt}</code>, plus <code>auditMarked</code> where
+/// a write was made, read back from the row so the answer and the wire cannot disagree. A row that is no longer there is answered as an internal
 /// failure, never as a 200 carrying empty fields.</p>
-ClassMethod Answer(pProposalId As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pCode As %String) As %Status [ Private ]
+ClassMethod Answer(pProposalId As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pCode As %String, pAuditMarked As %String = "") As %Status [ Private ]
 {
     Set pResult = ""
     Set tSC = $ClassMethod(..StoreClass(), "GuardedByKey", pProposalId, .tFound, .tValues)
@@ -575,8 +636,32 @@ ClassMethod Answer(pProposalId As %String, Output pResult As %DynamicObject, Out
     Do pResult.%Set("state", $Get(tValues("state")), "string")
     Do pResult.%Set("closedReason", $Get(tValues("closedReason")), "string")
     Do pResult.%Set("confirmedAt", $Get(tValues("confirmedAt")), "string")
+    ; Present only where a write was made, so a cancel does not answer "this was not marked" about
+    ; a write that never happened. The card's collapsed status line reads it (AD-15).
+    If pAuditMarked '= "" Do pResult.%Set("auditMarked", ''pAuditMarked, "boolean")
     Set pHttpStatus = 200
     Quit $$$OK
+}
+
+/// <p>The top-level field names <var>pBody</var> carries, minus every name in
+/// <var>pSecretNames</var>: what the ledger row records the write as having sent (AD-41).</p>
+/// <p><b>The exclusion is at write time, not a redaction afterwards</b> (AD-3): a secret-declared
+/// name never reaches the ledger row at all, so there is nothing stored to remove and no window in
+/// which it was stored. No value of any field is read here -- only names.</p>
+ClassMethod FieldNames(pBody As %DynamicObject, pSecretNames As %List) As %List [ Private ]
+{
+    Set tNames = ""
+    Try {
+        If '$IsObject(pBody) || 'pBody.%IsA("%Library.DynamicObject") Quit
+        Set tIterator = pBody.%GetIterator()
+        While tIterator.%GetNext(.tKey, .tValue) {
+            If $ListFind(pSecretNames, tKey) Continue
+            Set tNames = tNames _ $ListBuild(tKey)
+        }
+    } Catch ex {
+        Set tNames = ""
+    }
+    Quit tNames
 }
 
 /// <p>The state a refusal leaves the row in, as <code>{state, closedReason}</code> in

@@ -409,6 +409,36 @@ test('the kill switch and enforced read-only are each restraining; the definitio
   }
 });
 
+// --- Story 5.6: the marking fact the not-marked banner reads ------------------------------------
+
+test("writesMarked comes off the instance's own answer, and an absent key reads as marking", async () => {
+  // The panel renders only the `false` arm (AD-15), so `false` has to survive the parse -- and an
+  // answer that does not carry the key at all must NOT read as `false`, or the warning banner is
+  // drawn over a healthy instance, which is a positive claim in the one direction this story forbids.
+  //
+  // mutation: hard-code `writesMarked: true` in `restraintOf` -> the false case goes red. Second
+  // mutation: make the absent-key arm `flagAt(row, 'writesMarked')` again -> the third case goes red.
+  const cases = [
+    [{ ...UNRESTRAINED, writesMarked: false }, false, 'a false answer is carried through'],
+    [{ ...UNRESTRAINED, writesMarked: true }, true, 'and so is a true one'],
+    [omitWritesMarked(UNRESTRAINED), true, 'an answer with no key at all reads as the default'],
+  ];
+  for (const [body, expected, why] of cases) {
+    const status = new AgentStatus({ api: stubApi([ok(rows(true))], [ok(body)]) });
+    await status.load();
+    assert.equal(status.restraint().writesMarked, expected, why);
+    // Marking is not a restraint (AD-30): it blocks nothing whichever way it reads.
+    assert.equal(status.restrained(), false, `${why}: marking never restrains`);
+  }
+});
+
+/** `UNRESTRAINED` without its `writesMarked` key -- the shape an answer that omits it has. */
+function omitWritesMarked(verdict) {
+  const { writesMarked, ...rest } = verdict;
+  void writesMarked;
+  return rest;
+}
+
 test('a restraint read that fails settles nothing, so no banner is drawn from an answer nobody gave', async () => {
   const status = new AgentStatus({ api: stubApi([ok(rows(true))], [REFUSED]) });
   await status.load();

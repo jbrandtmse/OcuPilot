@@ -67,6 +67,15 @@ export interface ProposalCardView {
   readonly maskedFields?: readonly string[];
   /** Whether this write would stop the instance marking agent writes (AD-15). */
   readonly auditWarning?: boolean;
+  /**
+   * The written `reason` of the refusal this proposal's last decision met, or `''` (DW-1348).
+   *
+   * It is the server's own sentence, carried through unchanged (AD-39): a prohibited or restrained
+   * confirm leaves the row **live**, so nothing about the row says the press was refused and the
+   * card would otherwise return to offering Confirm with no trace. The client authors none of this
+   * copy and invents no phase -- the row is still live, and a phase is a terminal state.
+   */
+  readonly refusalReason?: string;
 }
 
 /**
@@ -240,6 +249,9 @@ function maskedRow(row: ProposalDiffRow): ProposalDiffRow {
  * declares, `secretArguments` the names that screen declares secret, and everything else is
  * `proposal`'s own -- the instance-computed diff with every declared secret masked on both sides,
  * the unchanged count, the agent's two blocks, the reversal, the expiry and the audit warning.
+ * `refusalReason` is the envelope's own sentence for a decision the instance refused on a row it
+ * left live (DW-1348), passed in for the same reason the screen's two facts are: it is the
+ * caller's to hold, and nothing here writes it.
  *
  * Both of the screen's facts are parameters rather than a lookup of `screens.generated.ts` here,
  * for the reason the header gives: no shipped descriptor declares a secret argument yet, so a test
@@ -250,7 +262,8 @@ function maskedRow(row: ProposalDiffRow): ProposalDiffRow {
 export function toCardView(
   proposal: TurnProposal,
   entityLabel: string,
-  secretArguments: readonly string[] = []
+  secretArguments: readonly string[] = [],
+  refusalReason = ''
 ): ProposalCardView {
   const secrets = new Set(secretArguments);
   return {
@@ -265,5 +278,6 @@ export function toCardView(
     expiresAt: proposal.expiresAt,
     maskedFields: secretArguments,
     auditWarning: proposal.auditWarning,
+    refusalReason,
   };
 }

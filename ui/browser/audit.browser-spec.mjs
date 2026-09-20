@@ -61,6 +61,24 @@ const SEED_NAME = 'SeededRow';
 /** The rows the seed writes. AC6 caps the search at this figure, so the population can fill it. */
 const SEED_ROWS = 1000;
 
+/**
+ * The triple the marker population is topped up under -- OcuPilot's own Source, its own Type, and
+ * a roster name the installer registers -- and how many rows it is brought to.
+ *
+ * **DW-1174 is about this population being large.** AC2 used to bound itself with the instance's
+ * whole `OcuPilot`-source count, which is fine on a container whose only rows are the installer's
+ * handful and hopeless on a long-lived one. The leg is rescoped to a `beginDateTime` window, and
+ * the population is seeded here so the rescoping is exercised rather than asserted: with a
+ * thousand rows under the marker's own Source, a whole-population bound is what times out.
+ */
+const MARKER_TYPE = 'Security';
+const MARKER_BULK_NAME = 'ConfigChange';
+const MARKER_BULK_ROWS = 1000;
+
+/** The rows AC2 writes inside its own window: enough to be a proper non-empty subset of the pair. */
+const WINDOW_MARKER_ROWS = 3;
+const WINDOW_SEED_ROWS = 5;
+
 /** NFR-1's budget, applied to the Search press rather than to navigation (see the spec's notes). */
 const FIRST_ROW_BUDGET_MS = 2000;
 
@@ -184,11 +202,84 @@ function markerRowCount() {
   return count;
 }
 
+/**
+ * Bring the population under the **marker's own** Source up to `MARKER_BULK_ROWS`, so the instance
+ * this spec runs against is the long-lived one DW-1174 is about.
+ *
+ * It writes under a roster triple the installer already registered, so the rows are the same kind
+ * of row the product writes; an unregistered triple would be dropped silently, which is what the
+ * `WRITTEN` assertion catches.
+ */
+function seedMarkerBulk() {
+  const { values, output } = irisSession(
+    [
+      `Set tRs=##class(%SQL.Statement).%ExecDirect(,"SELECT COUNT(*) FROM %SYS.Audit_List(,,?)","${MARKER_SOURCE}")`,
+      'Set tHeld=0 If tRs.%Next() { Set tHeld=tRs.%GetData(1) }',
+      `Set tWanted=${MARKER_BULK_ROWS}-tHeld Set:tWanted<0 tWanted=0`,
+      `Set tWritten=0 For tI=1:1:tWanted { Set tOk=$System.Security.Audit("${MARKER_SOURCE}","${MARKER_TYPE}","${MARKER_BULK_NAME}","bulk marker row "_tI,"bulk="_tI) Set:tOk tWritten=tWritten+1 }`,
+      'Write "OCU"_"-WANTED-START:"_tWanted_":OCU"_"-WANTED-END",!',
+      'Write "OCU"_"-WRITTEN-START:"_tWritten_":OCU"_"-WRITTEN-END",!',
+    ],
+    ['WANTED', 'WRITTEN'],
+    '%SYS'
+  );
+  assert.equal(
+    values.WRITTEN,
+    values.WANTED,
+    `every bulk marker row must be written -- an unregistered triple is dropped silently; transcript:\n${output}`
+  );
+}
+
+/**
+ * The instance's own local clock, in the `YYYY-MM-DD HH:MM:SS` spelling the `beginDateTime`
+ * criterion publishes (`STRINGS.auditCriteriaTimeHint`).
+ *
+ * Read from the **instance**, never from this process: the criterion is instance local time, and a
+ * container in another zone would make a Node-side clock silently select the wrong window.
+ */
+function instanceStamp() {
+  const { values, output } = irisSession(
+    ['Write "OCU"_"-STAMP-START:"_$ZDateTime($Horolog,3)_":OCU"_"-STAMP-END",!'],
+    ['STAMP'],
+    '%SYS'
+  );
+  assert.match(
+    values.STAMP ?? '',
+    /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/,
+    `the instance's own local clock must read back as the criterion spells it; transcript:\n${output}`
+  );
+  return values.STAMP;
+}
+
+/**
+ * Write `markers` rows under the marker's own Source and `seeds` under the seed's, all inside the
+ * window a `beginDateTime` taken a moment earlier opens.
+ *
+ * Every row is asserted written, because `$System.Security.Audit` drops an unregistered triple
+ * with no error -- a seeding step that quietly wrote nothing would make the counts below read as a
+ * filter that narrowed to zero.
+ */
+function seedWindowRows(markers, seeds) {
+  const { values, output } = irisSession(
+    [
+      `Set tM=0 For tI=1:1:${markers} { Set tOk=$System.Security.Audit("${MARKER_SOURCE}","${MARKER_TYPE}","${MARKER_BULK_NAME}","window marker "_tI,"window="_tI) Set:tOk tM=tM+1 }`,
+      `Set tS=0 For tI=1:1:${seeds} { Set tOk=$System.Security.Audit("${SEED_SOURCE}","${SEED_TYPE}","${SEED_NAME}","window seed "_tI,"window="_tI) Set:tOk tS=tS+1 }`,
+      'Write "OCU"_"-MARKERS-START:"_tM_":OCU"_"-MARKERS-END",!',
+      'Write "OCU"_"-SEEDS-START:"_tS_":OCU"_"-SEEDS-END",!',
+    ],
+    ['MARKERS', 'SEEDS'],
+    '%SYS'
+  );
+  assert.equal(values.MARKERS, String(markers), `every window marker row is written; transcript:\n${output}`);
+  assert.equal(values.SEEDS, String(seeds), `every window seed row is written; transcript:\n${output}`);
+}
+
 before(async () => {
   assert.notEqual(config.container, LIVE_CONTAINER, 'this spec writes audit rows, so it never runs against the live container');
   const ready = await (await fetch(`${config.origin}${READINESS_PATH}`)).json();
   assert.equal(ready.state, 'installed', `the throwaway must be installed, not ${JSON.stringify(ready)}`);
   seedAuditRows();
+  seedMarkerBulk();
   markerRowCount();
   browser = await puppeteer.launch(launchOptions(config));
 });
@@ -436,24 +527,43 @@ test('AC1 regression: leaving the audit screen after a Search and returning re-r
   }
 });
 
-test('AC2: the agent-marker filter narrows to a proper non-empty subset, overriding the Event source criterion', async () => {
+/**
+ * AC2, rescoped by DW-1174. The leg bounds its population with `beginDateTime` and asserts on the
+ * rows that window holds, never on the instance's whole marker count.
+ *
+ * **Why it had to change.** It read `markerRowCount()` and `seedRowsPresent()`, set the view's cap
+ * to their sum, and waited for exactly that many rows. On a container whose only `OcuPilot` rows
+ * are the installer's handful that is quick; on an instance carrying thousands -- which this one
+ * now is, because `before()` seeds a thousand under the marker's own Source -- it asks the browser
+ * to render the whole population twice and times out. The window is what makes the counts small,
+ * exact and independent of whatever the instance already held.
+ *
+ * mutation: put the whole-population bound back -- `setMaxRows(markerRowCount() + seedRowsPresent())`
+ * with a `waitForCount` at that figure, and no `beginDateTime` -- and the leg fails against the
+ * seeded instance, which is the DW-1174 reproduction. Measured here: 32.7 s and red, the view
+ * holding 1,228 of the 2,238 rows it demanded, against 1.4 s green with the window.
+ */
+test('AC2: inside its own window, the agent-marker filter narrows to a proper non-empty subset, overriding the Event source criterion', async () => {
+  // The window opens before a single row of this leg's own population exists, and is read from
+  // the instance because the criterion is instance local time.
+  const since = instanceStamp();
+  seedWindowRows(WINDOW_MARKER_ROWS, WINDOW_SEED_ROWS);
+  const windowTotal = WINDOW_MARKER_ROWS + WINDOW_SEED_ROWS;
+
   const { context, page, reads } = await signedInAtScreen();
   try {
-    // Both populations, named explicitly and read at a cap that holds all of them, so the two
-    // counts below are exact rather than whatever the newest thousand rows happened to be. The
-    // vendor matches a comma list by membership, which is the same rule the marker's override
-    // exists because of.
+    // Both populations, bounded to this leg's own window. The vendor matches a comma list by
+    // membership, which is the same rule the marker's override exists because of.
+    await typeCriterion(page, '#ocu-audit-criterion-beginDateTime', since);
     await typeCriterion(page, SOURCE_FIELD, `${MARKER_SOURCE},${SEED_SOURCE}`);
     await search(page, reads);
     await waitForRows(page, config.navigationTimeoutMs);
-    // The cap is the two populations added, read from the instance rather than fixed: it has to be
-    // above whatever the throwaway actually holds -- a suite run and a second pass of this spec both
-    // add rows -- or the counts below would be of the newest capful rather than of the populations.
-    const expectedTotal = markerRowCount() + seedRowsPresent();
-    await setMaxRows(page, expectedTotal);
-    await waitForCount(page, { min: expectedTotal, max: expectedTotal }, `all ${expectedTotal} rows of the two populations at the wide cap`);
+    assert.ok(
+      reads[reads.length - 1].includes('beginDateTime='),
+      `the read carries the window bound: ${reads[reads.length - 1]}`
+    );
+    await waitForCount(page, { min: windowTotal, max: windowTotal }, `the ${windowTotal} rows this leg wrote`);
     const total = await viewCount(page);
-    assert.ok(total > SEED_ROWS, `both populations are in the view, so it is wider than the seed alone: ${total}`);
 
     // A value in the Event source field, so the override has something to override.
     await typeCriterion(page, SOURCE_FIELD, SEED_SOURCE);
@@ -461,18 +571,19 @@ test('AC2: the agent-marker filter narrows to a proper non-empty subset, overrid
     await waitForDisabled(page, true, 'the Event source control goes unavailable while the marker is on');
 
     await search(page, reads);
-    await waitForCount(page, { min: 1, max: total - 1 }, `a proper non-empty subset of ${total}`);
+    await waitForCount(page, { min: WINDOW_MARKER_ROWS, max: WINDOW_MARKER_ROWS }, `the ${WINDOW_MARKER_ROWS} marker rows of ${total}`);
     const kept = await viewCount(page);
     const marked = reads[reads.length - 1];
     assert.ok(marked.includes(`eventSources=${MARKER_SOURCE}`), `the read carries the marker's Source: ${marked}`);
     assert.ok(!marked.includes(SEED_SOURCE), `and not the value the field held, because the marker overrides rather than merges: ${marked}`);
+    // The window bound is still the criterion the form holds; the marker overrides one field.
+    assert.ok(marked.includes('beginDateTime='), `and still the window bound: ${marked}`);
 
-    // Both directions. A filter that matches nothing and one that matches everything each pass one
-    // half alone, so the subset is bounded from both sides -- and the lower bound is exact: the
-    // view holds precisely the rows the instance itself counts under that Source.
+    // Both directions. The subset is proper and non-empty, bounded from both sides, and its lower
+    // bound is exact: the view holds precisely the marker rows this leg wrote.
     assert.ok(kept > 0, `the marker filter keeps OcuPilot's own rows: ${kept}`);
     assert.ok(kept < total, `and narrows the view: ${kept} of ${total}`);
-    assert.equal(kept, markerRowCount(), "and keeps exactly the instance's own rows under that Source");
+    assert.equal(kept, WINDOW_MARKER_ROWS, 'keeping exactly the marker rows the window holds');
 
     const markedSources = await page.$$eval(ROW_SELECTOR, (rows) =>
       rows.map((row) => row.querySelectorAll('[role="gridcell"]')[1].textContent.trim())
@@ -480,19 +591,22 @@ test('AC2: the agent-marker filter narrows to a proper non-empty subset, overrid
     assert.deepEqual([...new Set(markedSources)], [MARKER_SOURCE], 'and every rendered row is one of them');
 
     // Off again: the same search returns strictly more rows, and OcuPilot's own are among them --
-    // never hidden (AD-46). Exact rather than "more": the unfiltered view is the two populations
-    // added, which is only true if both are in it.
+    // never hidden (AD-46). Exact rather than "more": the unfiltered view is the window's two
+    // populations added, which is only true if both are in it.
     await page.click(MARKER_BOX);
     await waitForDisabled(page, false, 'the control comes back when the marker is turned off');
     await typeCriterion(page, SOURCE_FIELD, `${MARKER_SOURCE},${SEED_SOURCE}`);
     await search(page, reads);
-    await waitForCount(page, { min: total, max: total }, `the whole ${total}-row view again`);
+    await waitForCount(page, { min: total, max: total }, `the whole ${total}-row window again`);
     const reopened = await viewCount(page);
     assert.ok(reopened > kept, `the unfiltered view is strictly wider: ${reopened} against ${kept}`);
-    assert.equal(
-      reopened,
-      kept + seedRowsPresent(),
-      "and is the two populations added, so OcuPilot's own rows are in it"
+    assert.equal(reopened, kept + WINDOW_SEED_ROWS, "and is the window's two populations added, so OcuPilot's own rows are in it");
+
+    // The instance holds far more marker rows than the window does, which is what says the bound
+    // above is doing the narrowing rather than the instance being small (DW-1174).
+    assert.ok(
+      markerRowCount() > WINDOW_MARKER_ROWS * 10,
+      `the instance carries a marker population this window is a small part of: ${markerRowCount()}`
     );
   } finally {
     await context.close();

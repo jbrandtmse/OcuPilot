@@ -259,6 +259,51 @@ describe('the agent co-pilot panel', () => {
     expect(aside.querySelector('app-panel-resize-handle [role="separator"]')).not.toBeNull();
   });
 
+  /**
+   * Integration AC (Rule 1), Story 5.6 / AD-15 / FR-22: the panel is the consumer of
+   * `GET /agent/restraint`'s `writesMarked`, and what it produces is the reserved slot filled with
+   * the published sentence and nothing beside it.
+   *
+   * mutation: render the banner outside `data-slot="not-marked"` (as a sibling of the slot div)
+   * -> the slot-order assertion below goes red, because `.ocu-panel-banners > *` gains a member.
+   * Second mutation: make `writesNotMarked` read `restraint().writesMarked` -> the banner is
+   * absent and the first assertions go red.
+   */
+  it('AC: writesMarked false fills the reserved not-marked slot with the banner sentence alone', async () => {
+    // One enabled definition, so the reminder banner is not in the way and the slot list below is
+    // this story's banner beside the one slot Story 4.5 already reserved.
+    const { host } = await mount({ rows: [{ enabled: true }], restraint: { writesMarked: false } });
+    const body = host.querySelector('.ocu-panel-body') as HTMLElement;
+
+    const slot = body.querySelector('[data-slot="not-marked"]') as HTMLElement;
+    const banner = slot.querySelector('.ocu-panel-banner') as HTMLElement;
+    expect(banner).not.toBeNull();
+    expect(banner.classList.contains('ocu-banner-warning')).toBe(true);
+    expect(banner.querySelector('.ocu-banner-message')?.textContent?.trim()).toBe(
+      STRINGS.auditingOffBanner
+    );
+    // The sentence alone: the published link and action stay unrendered until Story 7.4.
+    expect(slot.querySelector('a')).toBeNull();
+    expect(slot.querySelector('button')).toBeNull();
+    expect(slot.textContent).not.toContain(STRINGS.auditingConfigurationLink);
+    expect(slot.textContent).not.toContain(STRINGS.auditingTurnOnAction);
+    // Nothing anywhere says marking IS working, which is what makes a stale fact acceptable.
+    expect(body.textContent).not.toContain('are being marked');
+
+    // The slot order is unchanged: the banner is INSIDE the slot the panel already reserved.
+    const slots = [...body.querySelectorAll('.ocu-panel-banners > *')].map(
+      (node) => node.id || node.getAttribute('data-slot')
+    );
+    expect(slots).toEqual(['not-marked', 'lock']);
+  });
+
+  it('AC: an answered instance that is marking shows no banner in that slot', async () => {
+    const { host } = await mount({ rows: [{ enabled: true }], restraint: { writesMarked: true } });
+    const slot = host.querySelector('[data-slot="not-marked"]') as HTMLElement;
+    expect(slot.querySelector('.ocu-panel-banner')).toBeNull();
+    expect(slot.textContent?.trim()).toBe('');
+  });
+
   it('AC5: an administrator with nothing enabled and the kill switch on reads kill switch, reminder, chip slot, log, then the footer', async () => {
     // Mutation (Rule 19): move the reminder banner above the kill-switch banner in the template ->
     // this goes red on the order.
@@ -3082,10 +3127,22 @@ describe('Story 5.3: confirming, cancelling and re-proposing a card', () => {
     expect(host.querySelector('.ocu-proposal-card-repropose')).not.toBeNull();
   });
 
-  it('a refusal that left the row live gives the card its Confirm back', async () => {
+  it('a refusal that left the row live gives the card its Confirm back, and says it was refused', async () => {
+    // DW-1348 (Story 5.6). The Confirm coming back is the pre-existing half; what this adds is
+    // that the press is no longer invisible -- the envelope's own written reason is on the card.
+    //
+    // mutation: drop the `recordProposalRefusal` call from `decideProposal`'s error path in
+    // `core/turn.ts` -> the reason assertions go red while the Confirm one stays green, which is
+    // exactly the state this story found.
     const { host, fixture } = await mountDecidable({
       [proposalConfirmPath('p1')]: [
-        { kind: 'error', status: 403, code: 'AGENT.READONLY.ENFORCED', reason: 'read-only', detail: null },
+        {
+          kind: 'error',
+          status: 403,
+          code: 'AGENT.READONLY.ENFORCED',
+          reason: 'Read-only mode is enforced on this instance.',
+          detail: null,
+        },
       ],
     });
     (host.querySelector('.ocu-proposal-card-confirm') as HTMLButtonElement).click();
@@ -3093,6 +3150,88 @@ describe('Story 5.3: confirming, cancelling and re-proposing a card', () => {
     fixture.detectChanges();
     expect(host.querySelector('.ocu-proposal-card-status')).toBeNull();
     expect(host.querySelector('.ocu-proposal-card-confirm')).not.toBeNull();
+    const refusal = host.querySelector('[data-slot="refusal"]') as HTMLElement;
+    expect(refusal).not.toBeNull();
+    expect(refusal.textContent).toContain('Read-only mode is enforced on this instance.');
+    // No card was appended for a write that never happened.
+    expect(host.querySelectorAll('app-tool-call-card')).toHaveLength(0);
+  });
+
+  /**
+   * Integration AC (Rule 1), Story 5.6: the panel is the consumer of the confirm answer's
+   * `auditMarked`, and what it produces is a tool-call card whose **collapsed** line says what
+   * became of the marker, plus the published sentence on the reply.
+   *
+   * mutation: stop passing `outcome.auditMarked` in `Panel.recordWriteCard` (record `true`
+   * unconditionally) -> the status-word and reply assertions below go red, while the marked case
+   * stays green.
+   */
+  it('AC: a confirmed write whose marker was dropped appends a card reading done \u00b7 audit not marked, and the reply says so', async () => {
+    const { host, fixture } = await mountDecidable({
+      [proposalConfirmPath('p1')]: [
+        {
+          kind: 'ok',
+          status: 200,
+          body: {
+            proposalId: 'p1',
+            state: 'confirmed',
+            closedReason: '',
+            confirmedAt: '2026-09-19T10:31:04Z',
+            auditMarked: false,
+          },
+        },
+      ],
+    });
+    expect(host.querySelectorAll('app-tool-call-card')).toHaveLength(0);
+    (host.querySelector('.ocu-proposal-card-confirm') as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+
+    const cards = host.querySelectorAll('app-tool-call-card');
+    expect(cards).toHaveLength(1);
+    const card = cards[0] as HTMLElement;
+    const toggle = card.querySelector('.ocu-tool-call-toggle') as HTMLElement;
+    // Collapsed, and the sentence is on the line the user can see without opening anything.
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(card.querySelector('.ocu-tool-call-body')).toBeNull();
+    const word = card.querySelector('.ocu-tool-call-status-word') as HTMLElement;
+    expect(word.textContent?.trim()).toBe(STRINGS.auditMarkerFailed);
+    expect(word.classList.contains('ocu-tool-call-status-warning')).toBe(true);
+    // The card names the write it is about.
+    expect(card.querySelector('.ocu-tool-call-name')?.textContent).toContain('webapp.list.update');
+
+    const reply = host.querySelector('.ocu-panel-message-agent-text')?.textContent ?? '';
+    expect(reply).toContain(STRINGS.auditMarkerReplySentence);
+    // The write happened: nothing calls it a failure (AD-15).
+    expect(reply).not.toContain(STRINGS.toolCallStatusFailed.split(' <reason>')[0]);
+  });
+
+  it('AC: a confirmed write that was marked reads done \u00b7 audit marked, and the reply gains no sentence', async () => {
+    const { host, fixture } = await mountDecidable({
+      [proposalConfirmPath('p1')]: [
+        {
+          kind: 'ok',
+          status: 200,
+          body: {
+            proposalId: 'p1',
+            state: 'confirmed',
+            closedReason: '',
+            confirmedAt: '2026-09-19T10:31:04Z',
+            auditMarked: true,
+          },
+        },
+      ],
+    });
+    (host.querySelector('.ocu-proposal-card-confirm') as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+
+    const card = host.querySelector('app-tool-call-card') as HTMLElement;
+    const word = card.querySelector('.ocu-tool-call-status-word') as HTMLElement;
+    expect(word.textContent?.trim()).toBe(STRINGS.auditMarkerMarked);
+    expect(word.classList.contains('ocu-tool-call-status-warning')).toBe(false);
+    const reply = host.querySelector('.ocu-panel-message-agent-text')?.textContent ?? '';
+    expect(reply).not.toContain(STRINGS.auditMarkerReplySentence);
   });
 
   it('Cancel reaches the instance as well as the card (DW-1243)', async () => {

@@ -205,7 +205,11 @@ function extractToolCallCardStatuses(markdown) {
   );
   assert.equal(quoted[0], 'running', 'the first status must be "running"');
   assert.equal(quoted[4].startsWith('failed'), true, 'the fifth status must be the failed template');
-  return [quoted[1], quoted[4]];
+  // The third is the marked status the confirmed-write card reads (Story 5.6). Its sibling, the
+  // fourth, is `REQUIRED_ALONGSIDE_TABLE`'s first entry and stays there: that array is the
+  // three it was, and this one is re-derived from the document like every other prose literal.
+  assert.equal(quoted[2], `${quoted[1]} \u00b7 audit marked`, 'the third status is the marked one');
+  return [quoted[1], quoted[2], quoted[4]];
 }
 
 /**
@@ -241,7 +245,8 @@ const [expectedServerFaultSentence, ...expectedServerFaultActions] =
   extractServerFaultBanner(experienceMdRaw);
 const expectedTranscriptName = extractTranscriptName(experienceMdRaw);
 const expectedMacComposerCaption = extractMacComposerCaption(fixedStringsRows);
-const [expectedToolCallDone, expectedToolCallFailed] = extractToolCallCardStatuses(experienceMdRaw);
+const [expectedToolCallDone, expectedToolCallMarked, expectedToolCallFailed] =
+  extractToolCallCardStatuses(experienceMdRaw);
 const expectedComposerLockedReason = extractComposerLockedReason(experienceMdRaw);
 const expectedNewConversationLockedReason = extractNewConversationLockedReason(experienceMdRaw);
 
@@ -261,6 +266,7 @@ const EXTRACTED_FROM_PROSE = [
   ...expectedTranscriptName,
   ...expectedMacComposerCaption,
   expectedToolCallDone,
+  expectedToolCallMarked,
   expectedToolCallFailed,
   ...expectedComposerLockedReason,
   ...expectedNewConversationLockedReason,

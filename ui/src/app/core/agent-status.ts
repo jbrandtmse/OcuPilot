@@ -75,6 +75,15 @@ export interface Restraint {
   readonly killSwitchAudience: string;
   readonly killSwitchReason: string;
   readonly enforcedReadOnly: boolean;
+  /**
+   * Whether the instance was marking agent writes when that was last observed (AD-15).
+   *
+   * **Not part of the verdict**: marking is not a restraint (AD-30), so it blocks nothing and the
+   * agent is not switched off by it. Only its `false` arm is rendered -- the panel's `not-marked`
+   * banner -- and nothing anywhere says marking is working, which is what makes the fact being a
+   * recorded observation rather than a live read acceptable.
+   */
+  readonly writesMarked: boolean;
 }
 
 /**
@@ -101,6 +110,9 @@ export const UNRESTRAINED: Restraint = {
   killSwitchAudience: '',
   killSwitchReason: '',
   enforcedReadOnly: false,
+  // `true`, deliberately: an unanswered read must never show the not-marked banner over a healthy
+  // instance, and the banner's absence is never a claim that marking works.
+  writesMarked: true,
 };
 
 /** The audience word the published kill-switch banner's `<everyone / you>` slot resolves to. */
@@ -252,6 +264,10 @@ function restraintOf(body: unknown): Restraint {
     killSwitchAudience: textAt(row, 'killSwitchAudience'),
     killSwitchReason: textAt(row, 'killSwitchReason'),
     enforcedReadOnly: flagAt(row, 'enforcedReadOnly'),
+    // Absent reads as the UNRESTRAINED default, never as `false`: `flagAt` answers `false` for a
+    // key that is not there, and a body without this one would otherwise draw the not-marked
+    // banner over a healthy instance -- a positive claim in the one direction this story forbids.
+    writesMarked: 'writesMarked' in row ? flagAt(row, 'writesMarked') : UNRESTRAINED.writesMarked,
   };
 }
 
@@ -265,7 +281,8 @@ function sameRestraint(a: Restraint, b: Restraint): boolean {
     a.killSwitch === b.killSwitch &&
     a.killSwitchAudience === b.killSwitchAudience &&
     a.killSwitchReason === b.killSwitchReason &&
-    a.enforcedReadOnly === b.enforcedReadOnly
+    a.enforcedReadOnly === b.enforcedReadOnly &&
+    a.writesMarked === b.writesMarked
   );
 }
 

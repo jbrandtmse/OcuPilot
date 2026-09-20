@@ -169,6 +169,10 @@ ClassMethod Names(pProfile As %String, Output pNames) As %Status [ Private ]
         Set pNames("eventSource") = ##class(OcuPilot.Kernel.State.Base).#AUDITSOURCE
         Set pNames("eventType") = ##class(OcuPilot.Kernel.State.Base).#AUDITTYPE
         Set pNames("eventName") = ##class(OcuPilot.Kernel.State.Base).#AUDITNAME _ tSuffix
+        ; The roster entry a confirmed agent write is marked with (AD-15, Story 5.6). Resolved
+        ; here for the same reason every other name is, and asserted against the roster below so a
+        ; rename cannot leave install observing a registration nothing carries.
+        Set pNames("markerEvent") = ##class(OcuPilot.Kernel.Audit.Event).#EVENTAGENTWRITE _ tSuffix
 
         ; The audit-event roster (AD-15). Declared by OcuPilot.Kernel.Audit.Event, which is also
         ; the only class that emits through it, so the set registration carries and the set the
@@ -188,6 +192,10 @@ ClassMethod Names(pProfile As %String, Output pNames) As %Status [ Private ]
         }
         If '$ListFind(tRosterNames, pNames("eventName")) {
             Set tSC = $$$ERROR($$$GeneralError, "the audit-event roster does not carry the grant marker '" _ pNames("eventName") _ "', which EnsureGrant emits; every triple emitted is one registration carries")
+            Quit
+        }
+        If '$ListFind(tRosterNames, pNames("markerEvent")) {
+            Set tSC = $$$ERROR($$$GeneralError, "the audit-event roster does not carry the agent-write marker '" _ pNames("markerEvent") _ "', which every confirmed write emits; every triple emitted is one registration carries")
             Quit
         }
         Set pNames("sslConfig") = ##class(OcuPilot.Kernel.State.Base).#SSLCONFIG _ tSuffix
@@ -868,6 +876,12 @@ ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0, pBundle
         Set tFailingStep = "EnsureAuditingEnabled"
         Set tSC = ..EnsureAuditingEnabled(.tReports)
         If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
+        ; AD-15, AD-17, AD-38: install is one of the two parties that can see whether this
+        ; instance marks agent writes, so it reads the answer here, inside the %SYS window, and
+        ; records it after the restore -- OcuPilot's own classes are not reachable from %SYS.
+        Set tFailingStep = "ObserveAuditMarking"
+        Set tSC = ..ObserveAuditMarking(.tNames, .tMarkingObserved, .tReports)
+        If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
         Set tFailingStep = "EnsureGrant"
         Set tSC = ..EnsureGrant(.tNames, .tGrantOutcome, .tGrantedUser, .tGrantCommand, $Username, .tReports)
         If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
@@ -894,6 +908,11 @@ ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0, pBundle
         Set tSC = ..RecordApplicationProvenance(pProfile, .tRecordedApps)
         If $$$ISERR(tSC) Quit
         Set tFailingStep = ""
+
+        ; The observation above, stored where the panel's banner reads it. Never fails install
+        ; (AD-15): a banner that could not be refreshed is a stale fact, and the fact makes no
+        ; positive claim -- nothing anywhere says marking is working.
+        Do ..RecordAuditMarking($Get(tMarkingObserved, 1), .tReports)
 
         ; Never fails install (AD-27's fallback) -- ReportGatewayGap always returns OK. Moved
         ; out of the %SYS window in Story 1.17: it reads the provenance record, which is an
@@ -3004,6 +3023,64 @@ ClassMethod EnableInstanceAuditing() As %Status [ Private ]
 {
     Set tProps("AuditEnabled") = 1
     Quit ##class(Security.System).Modify("SYSTEM", .tProps)
+}
+
+/// <p>Read whether this instance is marking agent writes (AD-15): instance-wide auditing is on
+/// <b>and</b> the roster's agent-write registration exists and is enabled. Both are
+/// <code>%SYS</code>-only reads, which is why install is one of the two parties that can make
+/// them at all.</p>
+/// <p><b>Caller contract:</b> <code>$NAMESPACE</code> must already be <code>%SYS</code>, and
+/// <method>RecordAuditMarking</method> stores the answer after the restore.</p>
+/// <p><b>Read from the instance, never through <method>AuditEnabledSetting</method>'s seam.</b>
+/// That seam exists so <class>OcuPilot.Test.AuditOff</class> can report auditing as off without
+/// turning it off; this answer is written into state every later session reads, so a test's
+/// reported answer must not become the instance's recorded one.</p>
+/// <p>A read that fails answers 1 and says so: the banner this feeds must not be shown because a
+/// read did not happen, since its absence is never a claim that marking works.</p>
+ClassMethod ObserveAuditMarking(ByRef pNames, Output pMarked As %Boolean, ByRef pReports) As %Status [ Private ]
+{
+    Set pMarked = 1
+    Set tSC = $$$OK
+    Try {
+        Set tSysSC = ##class(Security.System).Get("SYSTEM", .tSysProps)
+        If $$$ISERR(tSysSC) {
+            Do ..Report(.pReports, "warn", "The instance auditing flag could not be read, so agent-write marking is recorded as on", "")
+            Quit
+        }
+        Set tAuditing = +$Get(tSysProps("AuditEnabled"))
+        Set tName = $Get(pNames("markerEvent"))
+        Set tEventEnabled = 0
+        If (tName '= "") && ##class(Security.Events).Exists(pNames("eventSource"), pNames("eventType"), tName, .tEvObj, .tEvSC) {
+            Set tGetSC = ##class(Security.Events).Get(pNames("eventSource"), pNames("eventType"), tName, .tEvProps)
+            If $$$ISOK(tGetSC) Set tEventEnabled = (+$Get(tEvProps("Enabled")) = 1)
+        }
+        Set pMarked = (tAuditing = 1) && tEventEnabled
+        Do ..Report(.pReports, $Select(pMarked: "info", 1: "warn"), $Select(pMarked: "Agent writes are being marked in the audit database", 1: "Agent writes are NOT being marked in the audit database"), {"auditEnabled": (tAuditing), "markerEnabled": ($Select(tEventEnabled: 1, 1: 0)), "event": (tName)})
+    } Catch ex {
+        Set pMarked = 1
+        Do ..Report(.pReports, "warn", "The agent-write marking state could not be read, so it is recorded as on", "")
+    }
+    Quit tSC
+}
+
+/// <p>Store what <method>ObserveAuditMarking</method> read, where
+/// <code>GET /agent/restraint</code> reads it back
+/// (<property>OcuPilot.Kernel.State.Switch.WritesMarked</property>).</p>
+/// <p><b>Caller contract:</b> <code>$NAMESPACE</code> must be the install namespace again --
+/// <class>OcuPilot.Kernel.Audit.Event</class> is not reachable from <code>%SYS</code>. It never
+/// fails install (AD-15).</p>
+ClassMethod RecordAuditMarking(pMarked As %Boolean, ByRef pReports) [ Private ]
+{
+    Try {
+        Set tSC = ##class(OcuPilot.Kernel.Audit.Event).RecordMarking(pMarked)
+        If $$$ISERR(tSC) {
+            Do ..Report(.pReports, "warn", "The observed agent-write marking state could not be recorded", {"reason": ($System.Status.GetErrorText(tSC))})
+            Quit
+        }
+        Do ..Report(.pReports, "info", "Recorded the observed agent-write marking state", {"writesMarked": ($Select(pMarked: 1, 1: 0))})
+    } Catch ex {
+        Do ..Report(.pReports, "warn", "The observed agent-write marking state could not be recorded", {"reason": (ex.DisplayString())})
+    }
 }
 
 /// <p>Ensure the administrative role is granted (AC9, DW-16), using the process's own

@@ -83,6 +83,7 @@ const NO_OUTCOME: ProposalOutcome = {
   status: 0,
   code: '',
   reason: '',
+  auditMarked: false,
 };
 
 /** Storage key for the per-tab conversation id (Boundaries & Constraints). */
@@ -124,6 +125,15 @@ export interface TurnStep {
   readonly result: TurnStepResult | null;
   readonly reason: string;
   readonly failedPair: string;
+  /**
+   * A confirmed write's own marker outcome (AD-15), or `null` for every step the instance sent.
+   *
+   * `null` is "this card is not about a confirmed write", which is what keeps the status line
+   * reading plain `done` for every ordinary tool call: only the card the panel appends from a
+   * confirm answer carries `true` or `false`, and only that card reads `done · audit marked`
+   * or `done · audit not marked`.
+   */
+  readonly auditMarked: boolean | null;
 }
 
 export interface TurnErrorInfo {
@@ -240,6 +250,12 @@ export interface ProposalOutcome {
   readonly status: number;
   readonly code: string;
   readonly reason: string;
+  /**
+   * Whether the confirmed write's audit marker landed a row (AD-15). `false` on every answer that
+   * is not a confirmed write, including a cancel and every refusal -- the instance sends the key
+   * only where a write was made, and a card reads it only for the write it just confirmed.
+   */
+  readonly auditMarked: boolean;
 }
 
 /**
@@ -309,6 +325,9 @@ function parseStep(value: unknown): TurnStep | null {
     result: parseStepResult(row['result']),
     reason: textAt(row, 'reason'),
     failedPair: textAt(row, 'failedPair'),
+    // The progress payload carries no marker outcome: a marker belongs to a confirmed write, which
+    // is a foreground request and not a step of the turn.
+    auditMarked: null,
   };
 }
 
@@ -475,6 +494,41 @@ function parseRestoredEntry(value: unknown): TurnEntry | null {
 }
 
 /** A step's rendered label: its canonical name, plus its target when it carries one. */
+/**
+ * The tool-call card a confirmed write leaves in the transcript (AD-15, FR-22).
+ *
+ * The instance sends no step for it: a confirm is a foreground request, not a step of the turn, so
+ * the card is composed here from the proposal the user confirmed and the answer that confirm gave.
+ * Everything in it is the instance's -- the tool's canonical name, the target the proposal stored
+ * and the marker outcome the confirm answered -- and `seq` is the caller's, because the transcript
+ * tracks its cards by it and a synthesized card must not collide with a step the turn recorded.
+ *
+ * `status` is `'ok'` whatever `auditMarked` says: the write succeeded, and a dropped marker is
+ * never a failed write (AD-15). The warning it carries is the status word's, on the collapsed line.
+ */
+export function confirmedWriteStep(
+  proposal: Pick<TurnProposal, 'tool' | 'target'>,
+  auditMarked: boolean,
+  seq: number
+): TurnStep {
+  return {
+    seq,
+    kind: 'tool',
+    name: proposal.tool,
+    status: 'ok',
+    summary: '',
+    text: '',
+    code: '',
+    truncated: false,
+    target: proposal.target.id,
+    arguments: '',
+    result: null,
+    reason: '',
+    failedPair: '',
+    auditMarked,
+  };
+}
+
 export function stepLabel(step: Pick<TurnStep, 'name' | 'target'>): string {
   return step.target === '' ? step.name : step.name + ' ' + step.target;
 }
@@ -563,6 +617,17 @@ export class TurnStore {
    * press the user just made and either press can be the one refused. */
   private mintRefusalValue: SendRefusal | null = null;
 
+  /**
+   * The last refusal each proposal's own decision met, by proposal id (DW-1348).
+   *
+   * A confirm refused 403 `PROHIBITED.*`, or by the restraint verdict, leaves the row **live** on
+   * purpose -- the condition can clear -- so nothing about the row changes and the card would
+   * otherwise return to its pre-press state with no trace that the press was refused. This is
+   * where the envelope's own `reason` is kept until the next decision on that proposal, a poll
+   * that closes it, or a new conversation.
+   */
+  private proposalRefusalsValue: ReadonlyMap<string, SendRefusal> = new Map();
+
   /** The live turn's own pending navigation directive, or `null` (Story 4.7). */
   private pendingNavigationValue: TurnNavigation | null = null;
 
@@ -640,6 +705,28 @@ export class TurnStore {
    */
   sendError(): SendRefusal | null {
     return this.sendErrorValue;
+  }
+
+  /**
+   * The refusal proposal `id`'s last decision met, or `null` when its last decision was accepted
+   * or none has been made (DW-1348). The card renders its `reason`; nothing here composes copy.
+   */
+  proposalRefusal(id: string): SendRefusal | null {
+    return this.proposalRefusalsValue.get(id) ?? null;
+  }
+
+  /** Record, or with `null` clear, proposal `id`'s refusal, and republish. */
+  private recordProposalRefusal(id: string, refusal: SendRefusal | null): void {
+    const held = this.proposalRefusalsValue.get(id) ?? null;
+    if (refusal === null && held === null) return;
+    const next = new Map(this.proposalRefusalsValue);
+    if (refusal === null) {
+      next.delete(id);
+    } else {
+      next.set(id, refusal);
+    }
+    this.proposalRefusalsValue = next;
+    this.notify();
   }
 
   /**
@@ -832,8 +919,10 @@ export class TurnStore {
         status: 200,
         code: '',
         reason: '',
+        auditMarked: boolAt(result.body, 'auditMarked'),
       };
       this.recordProposalState(id, outcome);
+      this.recordProposalRefusal(id, null);
       return outcome;
     }
     if (result.kind !== 'error') return NO_OUTCOME;
@@ -848,8 +937,19 @@ export class TurnStore {
       status: result.status,
       code: result.code ?? '',
       reason: result.reason ?? '',
+      auditMarked: false,
     };
     if (outcome.state !== '') this.recordProposalState(id, outcome);
+    // DW-1348: a refusal that left the row live closes nothing and so records no state, and until
+    // now left the caller nothing to render -- the card went back to offering Confirm as though
+    // the press had not happened. The envelope's own written reason is published here, per
+    // proposal, for the card that was refused to draw (AD-39: the server's words, not a second
+    // client-authored copy).
+    this.recordProposalRefusal(id, {
+      status: outcome.status,
+      code: outcome.code === '' ? null : outcome.code,
+      reason: outcome.reason === '' ? null : outcome.reason,
+    });
     return outcome;
   }
 
@@ -915,6 +1015,8 @@ export class TurnStore {
     // A refusal belongs to the Send that met it. Leaving it set here would float it over a fresh,
     // empty transcript belonging to a conversation it was never about.
     this.sendErrorValue = null;
+    // The same reasoning for every card's own refusal: the cards are gone with the transcript.
+    this.proposalRefusalsValue = new Map();
     this.notify();
     return true;
   }
@@ -929,6 +1031,7 @@ export class TurnStore {
     this.lockedValue = false;
     this.sendErrorValue = null;
     this.mintRefusalValue = null;
+    this.proposalRefusalsValue = new Map();
     this.currentTurnId = null;
     this.liveEntryValue = null;
     this.entriesValue = [];

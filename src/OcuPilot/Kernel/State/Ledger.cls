@@ -30,6 +30,35 @@ Parameter KINDTOOL = "tool";
 /// <p>The kind the one per-turn overflow row carries.</p>
 Parameter KINDOVERFLOW = "overflow";
 
+/// <p>The kind a confirmed write's own row carries (Story 5.6, AD-41). One per confirmed write,
+/// on the proposal's turn key, opened <parameter>STATUSPENDING</parameter> before the port call
+/// and finalized after it.</p>
+Parameter KINDWRITE = "write";
+
+/// <p>The <property>Status</property> a row carries between its open and its finalize. <b>The one
+/// status a reader must not read as an outcome</b>: a row still holding it records a write that
+/// was issued and never accounted for, which is the trace a row written only on success could not
+/// leave (AD-41).</p>
+Parameter STATUSPENDING = "pending";
+
+/// <p><property>PairsSense</property>: the writer resolved the call's pairs and checked them
+/// against the caller (<class>OcuPilot.Kernel.Agent.Dispatch</class>, the confirm).</p>
+Parameter SENSECHECKED = "checked";
+
+/// <p><property>PairsSense</property>: the writer recorded the tool's <b>declared</b> pairs, for a
+/// call refused before anything was checked
+/// (<method>OcuPilot.Kernel.Agent.Loop.RecordRefusedRow</method>).</p>
+Parameter SENSEDECLARED = "declared";
+
+/// <p><property>PairsSense</property>: the writer recorded what the turn's screen route requires
+/// (<method>OcuPilot.Kernel.Audit.Ledger.RecordProviderCall</method>).</p>
+Parameter SENSEROUTE = "route";
+
+/// <p><property>PairsSense</property>: the writer resolved its pairs and there were none. The one
+/// sense on which an <b>empty</b> <property>RequiredPairs</property> is readable cross-user
+/// (DW-1305): the row states a requirement, and the requirement is nothing.</p>
+Parameter SENSENONE = "none";
+
 /// <p>The <property>Seq</property> the overflow row takes, so a stored call's own sequence starts
 /// at 1 and the pair <code>(TurnKey, Seq)</code> stays unique.</p>
 Parameter OVERFLOWSEQ As %Integer = 0;
@@ -79,6 +108,56 @@ Property Arguments As %String(MAXLEN = 4096);
 
 /// <p>Whether that cut cut anything.</p>
 Property ArgumentsTruncated As %Boolean [ InitialExpression = 0 ];
+
+/// <p>On a <parameter>KINDWRITE</parameter> row, the <b>names</b> of the fields the write actually
+/// sent, comma-joined -- never a value (AD-41). <b>Secret-declared names are excluded by the
+/// writer at write time</b> (AD-3), so nothing here is redacted afterwards. <code>""</code> on
+/// every other kind.</p>
+Property Fields As %String(MAXLEN = 512);
+
+/// <p>Whether <property>Fields</property> holds fewer names than the write sent, because the cut
+/// at <parameter>FIELDSMAXLENGTH</parameter> fell on a whole-name boundary short of the set.</p>
+Property FieldsTruncated As %Boolean [ InitialExpression = 0 ];
+
+/// <p>The declared length of <property>Fields</property>, read by
+/// <method>OcuPilot.Kernel.Audit.Ledger.FieldsToString</method> so the bound it cuts at is not a
+/// second literal.</p>
+Parameter FIELDSMAXLENGTH As %Integer = 512;
+
+/// <p>What claim <property>RequiredPairs</property> makes on this row:
+/// <parameter>SENSECHECKED</parameter>, <parameter>SENSEDECLARED</parameter>,
+/// <parameter>SENSEROUTE</parameter> or <parameter>SENSENONE</parameter>, and <code>""</code> on a
+/// row stored before this column existed.</p>
+/// <p><b>One column carried three incompatible meanings</b> (DW-1305, DW-1321), and an empty set
+/// could not be told from a requirement the writer could not read -- so every empty set was
+/// withheld from every cross-user reader, including the honestly-empty ones every turn from Home
+/// produces. This column records which claim the row makes:
+/// <method>OcuPilot.Kernel.Audit.Ledger.ViewForUser</method> releases an empty set on
+/// <parameter>SENSENONE</parameter> alone and withholds it under every other sense.</p>
+/// <p><b>Added with no <code>SCHEMAVERSION</code> move</b> (Consistency Conventions: when
+/// SCHEMAVERSION moves): a row stored before this column existed reads back <code>""</code>, and
+/// <code>""</code> is withheld cross-user -- which is exactly what that row already got. No
+/// pre-existing row is reinterpreted, and the new answer is available only to rows a writer that
+/// knows the sense wrote.</p>
+Property PairsSense As %String(MAXLEN = 16);
+
+/// <p>On a <parameter>KINDWRITE</parameter> row, what became of the write's audit marker
+/// (AD-15): <code>""</code> while the row is <parameter>STATUSPENDING</parameter>,
+/// <code>marked</code> when the emission landed a row, <code>not-marked</code> when the instance
+/// dropped it, and <code>not-marking</code> when no marker was emitted at all because the write
+/// did not happen -- the row that makes no claim about marking. <code>""</code> on every other
+/// kind.</p>
+Property AuditMarked As %String(MAXLEN = 16);
+
+/// <p><property>AuditMarked</property>: the emission landed a row.</p>
+Parameter MARKEDYES = "marked";
+
+/// <p><property>AuditMarked</property>: the emission was made and the instance dropped it.</p>
+Parameter MARKEDNO = "not-marked";
+
+/// <p><property>AuditMarked</property>: no marker was emitted, because the write did not
+/// happen.</p>
+Parameter MARKEDNONE = "not-marking";
 
 /// <p><code>ok</code>, <code>error</code> or <code>stopped</code>.</p>
 Property Status As %String(MAXLEN = 16);
@@ -137,11 +216,17 @@ Index LedgerTurnSeqIdx On (TurnKey, Seq) [ Unique ];
 /// <var>pRequiredPairs</var> is the canonical joined string
 /// <method>OcuPilot.Kernel.Audit.Ledger.PairsToString</method> answers, already cut at a whole-pair
 /// boundary, and <var>pRequiredPairsTruncated</var> is that method's own truncation answer -- it is
-/// trailing and defaults to 0 so the provider-call caller, which declares no pairs, is unchanged.</p>
-ClassMethod GuardedAppend(pTurnKey As %String, pUser As %String, pRoute As %String, pKind As %String, pName As %String, pModel As %String, pTarget As %String, pArguments As %String, pArgumentsTruncated As %Boolean, pStatus As %String, pCode As %String, pRequestTokens As %Integer, pResponseTokens As %Integer, pRequiredPairs As %String, pLimitsClass As %String, Output pSeq As %Integer, Output pStored As %Boolean, pRequiredPairsTruncated As %Boolean = 0) As %Status
+/// trailing and defaults to 0 so the provider-call caller, which declares no pairs, is unchanged.
+/// <var>pPairsSense</var> is what claim that set makes (<property>PairsSense</property>), trailing
+/// and defaulting to <code>""</code> for the same reason. <var>pLedgerKey</var> comes back as the
+/// new row's own key, or <code>""</code> when the cap counted the call instead of storing it --
+/// which is what <method>GuardedFinalize</method> needs and what makes a finalize on an
+/// overflowed call a no-op rather than a write to somebody else's row.</p>
+ClassMethod GuardedAppend(pTurnKey As %String, pUser As %String, pRoute As %String, pKind As %String, pName As %String, pModel As %String, pTarget As %String, pArguments As %String, pArgumentsTruncated As %Boolean, pStatus As %String, pCode As %String, pRequestTokens As %Integer, pResponseTokens As %Integer, pRequiredPairs As %String, pLimitsClass As %String, Output pSeq As %Integer, Output pStored As %Boolean, pRequiredPairsTruncated As %Boolean = 0, pPairsSense As %String = "", Output pLedgerKey As %String) As %Status
 {
     Set pSeq = 0
     Set pStored = 0
+    Set pLedgerKey = ""
     Set tSC = $$$OK
     Try {
         Set tSC = ..GuardedIdsWhere("SELECT COUNT(*) FROM OcuPilot_Kernel_State.Ledger WHERE %EXACT(TurnKey) = ? AND Seq > 0", pTurnKey, .tCount)
@@ -172,11 +257,50 @@ ClassMethod GuardedAppend(pTurnKey As %String, pUser As %String, pRoute As %Stri
         Set tRow.ResponseTokens = +pResponseTokens
         Set tRow.RequiredPairs = pRequiredPairs
         Set tRow.RequiredPairsTruncated = ''pRequiredPairsTruncated
+        Set tRow.PairsSense = ..Cut(pPairsSense, 16)
         Set tSC = ..GuardedSaveIfCurrent(tRow, 0)
         If $$$ISERR(tSC) Quit
         Set pSeq = tRow.Seq
+        Set pLedgerKey = tRow.LedgerKey
         Set tRow = ""
         Set pStored = 1
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Finalize the row <var>pLedgerKey</var> names with what was actually executed (AD-41): the
+/// outcome, the machine code, the resolved target, the field names the write sent, the pairs it
+/// evaluated and the marker's own outcome.</p>
+/// <p><b>Caller contract:</b> <var>pLedgerKey</var> is <method>GuardedAppend</method>'s own answer.
+/// <code>""</code> -- the key an overflowed call answers -- is not an error and writes nothing.
+/// <var>pFields</var> and <var>pRequiredPairs</var> are already the canonical joined strings
+/// <class>OcuPilot.Kernel.Audit.Ledger</class> builds, already cut at a whole-member boundary, and
+/// their truncation flags are that class's own answers; nothing here redacts or cuts anything.</p>
+/// <p>The save is conditional on the version just read (Consistency Conventions: concurrent writes
+/// to OcuPilot's own state). A row that has gone is not an error: a ledger row is not the write,
+/// and the write has already happened.</p>
+ClassMethod GuardedFinalize(pLedgerKey As %String, pStatus As %String, pCode As %String, pTarget As %String, pFields As %String, pFieldsTruncated As %Boolean, pRequiredPairs As %String, pRequiredPairsTruncated As %Boolean, pPairsSense As %String, pAuditMarked As %String) As %Status
+{
+    Set tSC = $$$OK
+    Try {
+        If pLedgerKey = "" Quit
+        Set tSC = ..GuardedOpenOneWhere("SELECT ID FROM OcuPilot_Kernel_State.Ledger WHERE %EXACT(LedgerKey) = ?", pLedgerKey, .tRow)
+        If $$$ISERR(tSC) Quit
+        If '$IsObject(tRow) Quit
+        Set tExpected = +tRow.RowVersion
+        Set tRow.Status = ..Cut(pStatus, 16)
+        Set tRow.Code = ..Cut(pCode, 64)
+        Set tRow.Target = ..Cut(pTarget, 256)
+        Set tRow.Fields = pFields
+        Set tRow.FieldsTruncated = ''pFieldsTruncated
+        Set tRow.RequiredPairs = pRequiredPairs
+        Set tRow.RequiredPairsTruncated = ''pRequiredPairsTruncated
+        Set tRow.PairsSense = ..Cut(pPairsSense, 16)
+        Set tRow.AuditMarked = ..Cut(pAuditMarked, 16)
+        Set tSC = ..GuardedSaveIfCurrent(tRow, tExpected)
+        Set tRow = ""
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
@@ -273,8 +397,9 @@ ClassMethod GuardedDroppedFor(pUser As %String, pWindowHours As %String, pTurnKe
 /// <code>kind</code>, <code>name</code>, <code>model</code>, <code>route</code>,
 /// <code>target</code>, <code>arguments</code>, <code>argumentsTruncated</code>,
 /// <code>status</code>, <code>code</code>, <code>requestTokens</code>,
-/// <code>responseTokens</code>, <code>requiredPairs</code>, <code>requiredPairsTruncated</code>
-/// and <code>dropped</code>.</p>
+/// <code>responseTokens</code>, <code>requiredPairs</code>, <code>requiredPairsTruncated</code>,
+/// <code>pairsSense</code>, <code>fields</code>, <code>fieldsTruncated</code>,
+/// <code>auditMarked</code> and <code>dropped</code>.</p>
 /// <p>Data, not a projection: this package names nothing outside it (AD-9), so the caller is what
 /// turns these into a view and what evaluates <code>requiredPairs</code>.</p>
 /// <p><b>A row that is gone answers no values and no error.</b>
@@ -307,6 +432,10 @@ ClassMethod GuardedRow(pId As %String, Output pValues) As %Status
     Set pValues("responseTokens") = +tRow.ResponseTokens
     Set pValues("requiredPairs") = ..Text(tRow.RequiredPairs)
     Set pValues("requiredPairsTruncated") = ''tRow.RequiredPairsTruncated
+    Set pValues("pairsSense") = ..Text(tRow.PairsSense)
+    Set pValues("fields") = ..Text(tRow.Fields)
+    Set pValues("fieldsTruncated") = ''tRow.FieldsTruncated
+    Set pValues("auditMarked") = ..Text(tRow.AuditMarked)
     Set pValues("dropped") = +tRow.Dropped
     Set tRow = ""
     Quit $$$OK

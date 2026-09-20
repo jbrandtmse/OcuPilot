@@ -56,6 +56,12 @@ import {
  * thing. The countdown is announced once, at 1:00, into a polite region of its own -- the caption
  * itself is never a live region, so it does not announce per second.
  *
+ * **A refusal the instance left live is drawn, not swallowed** (DW-1348). A prohibited or
+ * restrained Confirm leaves the row `live` on purpose, so the card keeps its buttons and gains the
+ * envelope's own written `reason` in a warning banner above the footer -- the server's words, never
+ * a second client-authored copy (AD-39), and no new phase, because a phase is a terminal state and
+ * this is not one.
+ *
  * Everything drawn comes from the view model, which is data; the card's chrome is published copy.
  * Every control-flow condition is paren-free, for the reason `sign-in.ts` records:
  * `ui/tools/client-lint.mjs`'s blanker matches `@if` plus one parenthesised group, so a call
@@ -163,6 +169,17 @@ import {
       <p class="ocu-banner ocu-banner-warning ocu-proposal-card-warning" role="status">
         <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
         <span class="ocu-banner-message">{{ STRINGS.proposalAuditWarning }}</span>
+      </p>
+    }
+
+    @if (refusalVisible) {
+      <p
+        class="ocu-banner ocu-banner-warning ocu-proposal-card-warning"
+        role="alert"
+        data-slot="refusal"
+      >
+        <span class="ocu-banner-glyph" aria-hidden="true">{{ bannerGlyph }}</span>
+        <span class="ocu-banner-message">{{ refusalReason }}</span>
       </p>
     }
 
@@ -436,6 +453,21 @@ export class ProposalCard {
 
   protected get auditWarningVisible(): boolean {
     return this.phase() !== null && this.view().auditWarning === true;
+  }
+
+  /** The envelope's own written reason for a decision the instance refused (DW-1348). */
+  protected get refusalReason(): string {
+    return this.view().refusalReason ?? '';
+  }
+
+  /**
+   * Whether that reason shows. On a live card and nothing else: a refusal that CLOSED the row
+   * leaves its own terminal status line, and drawing both would say two things about one press.
+   * Confirm and Cancel stay offered beside it, because a prohibited or restrained refusal is about
+   * this write and not about this proposal's validity -- the condition can clear (AD-10).
+   */
+  protected get refusalVisible(): boolean {
+    return this.refusalReason !== '' && this.live;
   }
 
   /** The phase as the card resolves it, or `null` for the static example. */

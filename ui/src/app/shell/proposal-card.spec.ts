@@ -485,6 +485,54 @@ describe('the proposal card', () => {
     expect(mount(liveView(), { phase: 'live' }).card.querySelector('.ocu-proposal-card-warning')).toBeNull();
   });
 
+  /**
+   * DW-1348 (Story 5.6). A confirm refused 403 `PROHIBITED.*`, or by the restraint verdict, leaves
+   * the row **live** on purpose -- the condition can clear -- so nothing about the row says the
+   * press happened, and until now the card returned to its pre-press state with no trace.
+   *
+   * What is asserted is the whole of the AC: the envelope's own written reason is on the card,
+   * above the footer, and Confirm and Cancel are still offered beside it.
+   *
+   * mutation: drop the `recordProposalRefusal` call from `decideProposal`'s error path in
+   * `core/turn.ts` -> the panel passes `''` and this goes red on the reason. Second mutation: make
+   * `refusalVisible` read `this.restrained` instead of `this.live` -> the banner is absent on a
+   * live card and this goes red the same way.
+   */
+  it('a refusal that left the row live is on the card, above a footer that still offers Confirm', () => {
+    const reason = 'Granting privilege is not something the agent may propose on this instance.';
+    const { card } = mount(liveView({ refusalReason: reason }), { phase: 'live' });
+
+    const banner = card.querySelector('[data-slot="refusal"]') as HTMLElement;
+    expect(banner).not.toBeNull();
+    // The server's own words, carried through (AD-39): the client authors no second copy.
+    expect(banner.textContent).toContain(reason);
+    expect(banner.classList.contains('ocu-banner-warning')).toBe(true);
+
+    const footer = card.querySelector('.ocu-proposal-card-footer') as HTMLElement;
+    expect(banner.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    // The press was refused, not the proposal: both decisions stay offered and neither is gated.
+    const confirm = card.querySelector('.ocu-proposal-card-confirm') as HTMLElement;
+    const cancel = card.querySelector('.ocu-proposal-card-cancel') as HTMLElement;
+    expect(confirm.getAttribute('aria-disabled')).toBeNull();
+    expect(cancel.getAttribute('aria-disabled')).toBeNull();
+    // And no phase was invented for it: the card is not restrained and shows no status line.
+    expect(card.classList.contains('ocu-proposal-card-restrained')).toBe(false);
+    expect(card.querySelector('.ocu-proposal-card-status')).toBeNull();
+
+    // A card with no refusal draws none, so the assertion above is about the reason and not about
+    // a banner that is always there.
+    expect(mount(liveView(), { phase: 'live' }).card.querySelector('[data-slot="refusal"]')).toBeNull();
+  });
+
+  it('a refusal that closed the row shows its terminal status line and not the refusal banner', () => {
+    // A refusal that CLOSED the row leaves its own status line; drawing both would say two things
+    // about one press.
+    const { card } = mount(liveView({ refusalReason: 'stale' }), { phase: 'target-changed' });
+    expect(card.querySelector('[data-slot="refusal"]')).toBeNull();
+    expect(card.querySelector('.ocu-proposal-card-status')).not.toBeNull();
+  });
+
   it('an unreadable expiry renders no time and leaves the card live', () => {
     // `core/turn.ts` records 0 for a wire timestamp it could not parse. Treated as unknown, never
     // as expired: the card keeps its Confirm.

@@ -38,6 +38,7 @@ const {
   proposalCancelPath,
   NAV_REFUSED_UNSAVED_CODE,
   stepLabel,
+  confirmedWriteStep,
   turnErrorBanner,
   isTerminalState,
 } = await import(corePath('turn.ts'));
@@ -1210,6 +1211,135 @@ test('a refusal that left the row live records nothing, so the card offers Confi
   assert.equal(outcome.ok, false);
   assert.equal(outcome.state, '', 'the instance said nothing about the row, so nothing is recorded');
   assert.deepEqual(turn.entries()[0].proposals[0], before);
+});
+
+// --- The audit marker and the refusal surface (Story 5.6) --------------------------------------
+
+test("confirmProposal carries the instance's own auditMarked answer, both ways", async () => {
+  // AD-15: a dropped marker is recorded on the answer and changes nothing else about it -- the
+  // status is 200 and the row is confirmed exactly as a marked write's is.
+  //
+  // mutation: read `auditMarked` from anywhere but the 200 body in `decideProposal` (hard-code
+  // `true`) -> the dropped leg goes red while the marked leg stays green.
+  for (const marked of [true, false]) {
+    const api = fakeApi({
+      [conversationReadPath('c1')]: [
+        ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+      ],
+      [proposalConfirmPath('p1')]: [
+        ok({
+          proposalId: 'p1',
+          state: 'confirmed',
+          closedReason: '',
+          confirmedAt: '2026-09-19T10:01:02Z',
+          auditMarked: marked,
+        }),
+      ],
+    });
+    const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' });
+    const turn = new TurnStore({ api, storage, navigationType: reloadedTab(), now: () => NOW_MS });
+    await turn.restore();
+
+    const outcome = await turn.confirmProposal('p1');
+    assert.equal(outcome.ok, true, 'a dropped marker never fails the confirm');
+    assert.equal(outcome.state, 'confirmed');
+    assert.equal(outcome.auditMarked, marked);
+  }
+});
+
+test('an answer with no auditMarked key reads false, and a cancel never claims a marker', async () => {
+  // The instance sends the key only where a write was made, so a cancel's answer carries none.
+  // `false` is the safe reading: it claims nothing was marked, which is true of a cancel.
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+    ],
+    [proposalCancelPath('p1')]: [
+      ok({ proposalId: 'p1', state: 'canceled', closedReason: 'you', confirmedAt: '' }),
+    ],
+  });
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' });
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab(), now: () => NOW_MS });
+  await turn.restore();
+
+  const outcome = await turn.cancelProposal('p1');
+  assert.equal(outcome.ok, true);
+  assert.equal(outcome.auditMarked, false);
+});
+
+test('DW-1348: a refusal that left the row live is published per proposal, and cleared by the next answer', async () => {
+  // The row is unchanged -- that half is the test above -- and what is new is that the refusal is
+  // no longer lost: the envelope's own code and reason are readable per proposal, which is what
+  // the card renders beside the Confirm it goes back to offering.
+  //
+  // mutation: delete the `recordProposalRefusal` call from `decideProposal`'s error path ->
+  // `proposalRefusal` answers null and this goes red.
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+    ],
+    [proposalConfirmPath('p1')]: [
+      err(403, 'PROHIBITED.PRIVILEGEGRANT', 'Granting privilege is not something the agent may propose.'),
+      ok({ proposalId: 'p1', state: 'confirmed', closedReason: '', confirmedAt: '2026-09-19T10:01:02Z', auditMarked: true }),
+    ],
+  });
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' });
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab(), now: () => NOW_MS });
+  await turn.restore();
+
+  assert.equal(turn.proposalRefusal('p1'), null, 'nothing is published before a decision is made');
+  await turn.confirmProposal('p1');
+  const refusal = turn.proposalRefusal('p1');
+  assert.notEqual(refusal, null, 'the refusal is published for the card that met it');
+  assert.equal(refusal.status, 403);
+  assert.equal(refusal.code, 'PROHIBITED.PRIVILEGEGRANT');
+  assert.equal(refusal.reason, 'Granting privilege is not something the agent may propose.');
+  // And it is about that proposal alone.
+  assert.equal(turn.proposalRefusal('p2'), null);
+
+  // The condition cleared and the second press was accepted: the reason goes with it.
+  await turn.confirmProposal('p1');
+  assert.equal(turn.proposalRefusal('p1'), null, 'an accepted decision clears the refusal it replaced');
+});
+
+test('confirmedWriteStep composes a card from the proposal and the confirm answer, and nothing else', () => {
+  // The instance sends no step for a confirmed write, so this is what the transcript appends.
+  // mutation: return `status: 'error'` instead of `'ok'` -> the status assertion goes red, and a
+  // write that happened would render as a failure (AD-15).
+  const proposal = { tool: 'webapp.list.update', target: { type: 'web-application', scope: 'instance', id: '/csp/myapp' } };
+  const step = confirmedWriteStep(proposal, false, 7);
+  assert.equal(step.seq, 7);
+  assert.equal(step.kind, 'tool');
+  assert.equal(step.name, 'webapp.list.update');
+  assert.equal(step.target, '/csp/myapp');
+  assert.equal(step.status, 'ok', 'a dropped marker is never a failed write');
+  assert.equal(step.auditMarked, false);
+  assert.equal(stepLabel(step), 'webapp.list.update /csp/myapp');
+  assert.equal(confirmedWriteStep(proposal, true, 1).auditMarked, true);
+});
+
+test('a step the instance sent carries no marker outcome, so its card reads the plain word', () => {
+  // `auditMarked` is null for every parsed step: a marker belongs to a confirmed write, and a
+  // turn's own steps are not writes.
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({
+        turns: [
+          {
+            seq: 1,
+            message: 'do it',
+            state: 'completed',
+            steps: [{ seq: 1, kind: 'tool', name: 'webapp.list.read', status: 'ok' }],
+          },
+        ],
+      }),
+    ],
+  });
+  const storage = memoryStorage({ [CONVERSATION_STORAGE_KEY]: 'c1' });
+  const turn = new TurnStore({ api, storage, navigationType: reloadedTab(), now: () => NOW_MS });
+  return turn.restore().then(() => {
+    assert.equal(turn.entries()[0].steps[0].auditMarked, null);
+  });
 });
 
 test('cancelProposal posts the cancel route and records the row the instance closed', async () => {

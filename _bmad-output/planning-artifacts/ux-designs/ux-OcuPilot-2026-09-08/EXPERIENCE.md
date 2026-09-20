@@ -380,6 +380,7 @@ Microcopy. Brand voice and aesthetic posture live in `DESIGN.md`.
 | "messages.log" · "Clear filter" | messages.log viewer (Story 6.14): its side-bar entry and screen title, the second Logs entry (`:85`, `:163`); and the control that clears the severity-chip filter (`:412`), published here rather than reused because `:403` names "Clear filter" only as a `button-text` example in Component Patterns and no Fixed strings row has carried it (DW-1109) |
 | "Web application" | proposal card title's singular entity noun for the `web-application` entity type, declared on the screen descriptor (AD-5, AD-14) |
 | "Agent writes will no longer be marked in the audit database." | proposal card warning above the footer, on a write that would turn auditing off (FR-22, FR-47) |
+| "This change was applied but not marked in the audit database." | the sentence appended to the agent's reply after a confirmed write whose audit marker was dropped (FR-21, FR-22, AD-15); the write's own tool-call card carries "done · audit not marked" beside it |
 
 ## Component Patterns
 

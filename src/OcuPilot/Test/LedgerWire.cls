@@ -359,7 +359,9 @@ Method TestTheRouteReturnsTheTurnsRowsOverTheWire()
     Do $$$AssertEquals(..KeysOf(tView), "rows,rowsSent,truncated,rowsWithheld,rowsDropped,windowHours", "with the declared keys")
     Do $$$AssertTrue(tView.rowsSent > 0, "and that turn's rows")
     Do $$$AssertEquals(tView.rows.%Size(), tView.rowsSent, "counted as it sent them")
-    Do $$$AssertEquals(..KeysOf(tView.rows.%Get(0)), "ledgerId,user,loggedAt,turnKey,seq,kind,name,model,route,target,arguments,argumentsTruncated,status,code,requestTokens,responseTokens,requiredPairs,requiredPairsTruncated", "each row carrying the declared keys")
+    ; `pairsSense` says what claim `requiredPairs` makes and `auditMarked` is a confirmed write's
+    ; own marker outcome, both added by Story 5.6 (DW-1321, AD-15).
+    Do $$$AssertEquals(..KeysOf(tView.rows.%Get(0)), "ledgerId,user,loggedAt,turnKey,seq,kind,name,model,route,target,arguments,argumentsTruncated,status,code,requestTokens,responseTokens,requiredPairs,requiredPairsTruncated,pairsSense,auditMarked", "each row carrying the declared keys")
     Do $$$AssertEquals(tView.rows.%Get(0).turnKey, tId, "for the turn that was asked for")
 
     For tCase = "?windowHours=9999|400|LEDGER.WINDOW.INVALID", "?windowHours=x|400|LEDGER.WINDOW.INVALID", "?maxRows=0|400|LEDGER.MAXROWS.INVALID", "?maxRows=99999|400|LEDGER.MAXROWS.INVALID", "?user=bad!name|400|LEDGER.USER.INVALID" {

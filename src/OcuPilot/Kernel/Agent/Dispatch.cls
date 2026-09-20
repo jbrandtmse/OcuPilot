@@ -281,6 +281,9 @@ ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %Strin
             Do ..LogFault("turn " _ pKey _ ": the privilege pairs the arguments of " _ pName _ " add could not be read", $$$ERROR($$$GeneralError, "unresolved argument pairs"), tUnavailable)
             Quit
         }
+        ; Both halves of the requirement were read, which is what lets the row below say "there is
+        ; no requirement" rather than "nobody read one" when the union is empty (DW-1305).
+        Set tPairsRead = 1
         Set tFailedPair = ..MissingPair(pUser, tArgumentPairs)
         If tFailedPair '= "" {
             Set pContent = ..DeniedContent(tFailedPair)
@@ -347,7 +350,7 @@ ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %Strin
     ; whatever the call got as far as (Story 4.9). tPairs and tArgumentPairs are undefined on a
     ; refusal that never reached them, which is what $Get guards; a row whose call was refused
     ; before its pairs were read records none, which is the truth about that call.
-    Do ..RecordLedger(pKey, pUser, pRoute, pName, pTarget, $Get(tInput), $Get(tPairs), $Get(tArgumentPairs), $Get(tSecretNames), tIsError, pContent, pLimitsClass, $Get(tSecretDeclared))
+    Do ..RecordLedger(pKey, pUser, pRoute, pName, pTarget, $Get(tInput), $Get(tPairs), $Get(tArgumentPairs), $Get(tSecretNames), tIsError, pContent, pLimitsClass, $Get(tSecretDeclared), $Get(tPairsRead))
     Quit tIsError
 }
 
@@ -360,7 +363,12 @@ ClassMethod AnswerOne(pKey As %String, pUser As %String, pDefinitionId As %Strin
 /// <p><var>pClassified</var> is <method>AnswerOne</method>'s <code>$Get</code> of the registry's own
 /// <code>pDeclared</code> output, undefined -- and so 0 -- on the branches where the wire name
 /// resolved no tool. The ledger withholds such a row's arguments whole.</p>
-ClassMethod RecordLedger(pKey As %String, pUser As %String, pRoute As %String, pName As %String, pTarget As %String, pInput As %DynamicAbstractObject, pPairs As %List, pArgumentPairs As %List, pSecretNames As %List, pIsError As %Boolean, pContent As %String, pLimitsClass As %String, pClassified As %Boolean = 0) [ Private ]
+/// <p><var>pPairsRead</var> is 1 only when both halves of the requirement were resolved, which is
+/// what tells an honestly-empty requirement from one a refusal never reached (DW-1305): the row's
+/// recorded sense is <code>checked</code> ordinarily and <code>none</code> when the resolved union
+/// was empty. It is <code>$Get</code>-guarded by the caller and so 0 on every branch that refused
+/// before the pairs were read.</p>
+ClassMethod RecordLedger(pKey As %String, pUser As %String, pRoute As %String, pName As %String, pTarget As %String, pInput As %DynamicAbstractObject, pPairs As %List, pArgumentPairs As %List, pSecretNames As %List, pIsError As %Boolean, pContent As %String, pLimitsClass As %String, pClassified As %Boolean = 0, pPairsRead As %Boolean = 0) [ Private ]
 {
     Try {
         Set tCode = ""
@@ -371,7 +379,8 @@ ClassMethod RecordLedger(pKey As %String, pUser As %String, pRoute As %String, p
                 Set tCode = ""
             }
         }
-        Do $ClassMethod(..LedgerClass(), "RecordToolCall", pKey, pUser, pRoute, pName, pTarget, pInput, pPairs, pArgumentPairs, pSecretNames, $Select(pIsError: "error", 1: "ok"), tCode, pLimitsClass, pClassified)
+        Set tSense = $ClassMethod(..LedgerClass(), "SenseFor", $ClassMethod(..LedgerClass(), "SenseChecked"), pPairs _ pArgumentPairs, pPairsRead)
+        Do $ClassMethod(..LedgerClass(), "RecordToolCall", pKey, pUser, pRoute, pName, pTarget, pInput, pPairs, pArgumentPairs, pSecretNames, $Select(pIsError: "error", 1: "ok"), tCode, pLimitsClass, pClassified, tSense)
     } Catch ex {
         Do ..LogFault("turn " _ pKey _ ": a tool call could not be recorded in the agent ledger", ex.AsStatus(), ##class(OcuPilot.Api.Error).#LEDGERUNAVAILABLE)
     }
@@ -400,13 +409,19 @@ ClassMethod RecordLedger(pKey As %String, pUser As %String, pRoute As %String, p
 /// as reading. <var>pSecretDeclared</var> is 1 only when the resolved tool answered the
 /// secret-argument question; it is 0 for a wire name that resolved no tool, and the ledger withholds
 /// such a row's arguments whole rather than storing a blob the name pattern alone has seen.</p>
-ClassMethod ResolveClientCall(pUser As %String, pBlock As %DynamicObject, pLimitsClass As %String, Output pPending As %Boolean, Output pToolName As %String, Output pRoute As %String, Output pEntityId As %String, Output pTarget As %String, Output pArguments As %String, Output pArgumentsTruncated As %Boolean, Output pIsError As %Boolean, Output pContent As %String, Output pReason As %String, Output pFailedPair As %String, pKey As %String = "", Output pInput As %DynamicAbstractObject, Output pDeclaredPairs As %List, Output pCallPairs As %List, Output pSecretNames As %List, Output pSecretDeclared As %Boolean) As %Status
+/// <p><var>pPairsResolved</var> is 1 only once this method has <b>read</b> the tool's privilege
+/// pairs, which is later in the chain than <var>pSecretDeclared</var> and after three refusals that
+/// return before any pair is read. It is what tells an honestly-empty requirement from one nobody
+/// read (DW-1305); <var>pSecretDeclared</var> cannot answer that question and must not be used
+/// for it.</p>
+ClassMethod ResolveClientCall(pUser As %String, pBlock As %DynamicObject, pLimitsClass As %String, Output pPending As %Boolean, Output pToolName As %String, Output pRoute As %String, Output pEntityId As %String, Output pTarget As %String, Output pArguments As %String, Output pArgumentsTruncated As %Boolean, Output pIsError As %Boolean, Output pContent As %String, Output pReason As %String, Output pFailedPair As %String, pKey As %String = "", Output pInput As %DynamicAbstractObject, Output pDeclaredPairs As %List, Output pCallPairs As %List, Output pSecretNames As %List, Output pSecretDeclared As %Boolean, Output pPairsResolved As %Boolean) As %Status
 {
     Set pInput = ""
     Set pDeclaredPairs = ""
     Set pCallPairs = ""
     Set pSecretNames = ""
     Set pSecretDeclared = 0
+    Set pPairsResolved = 0
     Set tUnavailable = ##class(OcuPilot.Api.Error).#TOOLUNAVAILABLE
     Set pPending = 0
     Set pToolName = ""
@@ -479,6 +494,9 @@ ClassMethod ResolveClientCall(pUser As %String, pBlock As %DynamicObject, pLimit
             Do ..LogFault("turn " _ pKey _ ": a client tool call's privilege pairs of " _ pToolName _ " could not be read", $$$ERROR($$$GeneralError, "unresolved pairs"), tUnavailable)
             Quit
         }
+        ; The requirement has been read, which is what lets the row below say "there is none"
+        ; rather than "nobody read one" when it is empty (DW-1305).
+        Set pPairsResolved = 1
         Set tFailedPair = ..MissingPair(pUser, tPairs)
         If tFailedPair '= "" {
             Set pContent = ..DeniedContent(tFailedPair)
