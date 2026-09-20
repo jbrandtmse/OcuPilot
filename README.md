@@ -27,10 +27,21 @@ the hidden `/api/admin` v2 service:
 
 Only a handful of endpoints (`messages.log`, the application error log, the agent runtime) are new
 server code — the rest is UI and an agent layered over an API IRIS already exposes. The agent is
-bring-your-own-model: OpenAI, Anthropic, Google Gemini, or any OpenAI-compatible endpoint, including
-local models, configured on first login. OcuPilot installs as one IPM module, and the Docker Compose
+bring-your-own-model: OpenAI, Anthropic, Google Gemini, or any OpenAI-compatible endpoint,
+configured on first login. OcuPilot installs as one IPM module, and the Docker Compose
 workspace in this repo self-installs it on start; it runs on IRIS Community and IRIS for Health
 Community.
+
+**The OpenAI-compatible option is the privacy option.** A small model served on your own network —
+Ollama, vLLM or LM Studio on the instance's host or beside it — is configured by declaring the
+endpoint local, needs no API key, and sends no screen data and no log text off your own network:
+the context chip says as much, and a call to such an endpoint does not go through a configured
+outbound proxy either. The caveat is capability, not privacy: OcuPilot's read path works with a modest local
+model, while the write path asks the model for tool calls carrying several fields at once, so a
+model that cannot form those reliably will propose changes you have to reject. Size the local model
+for what you intend to do with it. (The capability sentence is an **inference** from the write
+path's multi-field tool-call shape, not a measurement: no verification here makes a live provider
+call.)
 
 Past the contest, the goal is full parity with the classic System Management Portal, harvesting from
 sibling projects — **iris-session-agent** for the agent core and

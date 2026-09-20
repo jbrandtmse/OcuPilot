@@ -53,8 +53,22 @@ Parameter KINDPUBLIC = "public";
 /// flag and no catalog escape.</p>
 Parameter KINDLOOPBACK = "loopback";
 
-/// <p>Kind: the address is in <code>169.254.0.0/16</code> or <code>fe80::/10</code>.</p>
+/// <p>Kind: the address is in <code>169.254.0.0/16</code> or <code>fe80::/10</code>, or is one of
+/// the cloud instance-metadata addresses <parameter>METADATAADDRESSES</parameter> names.</p>
 Parameter KINDLINKLOCAL = "linklocal";
+
+/// <p>The published cloud instance-metadata endpoints, in both address families, which are refused
+/// with <b>no escape</b> however a definition is marked (DW-1214). They answer this kind rather
+/// than a kind of their own, because the treatment is exactly the one IPv4 link-local already
+/// has -- <code>169.254.169.254</code> is in that range, and the asymmetry being removed is the
+/// escape the IPv6 addresses had, not the range.</p>
+/// <p><b>The unique-local range itself is not refused.</b> <code>fc00::/7</code> is how a private
+/// IPv6 network is addressed and a local model legitimately sits in it, so refusing the range would
+/// trade this family's own use case for a narrow risk. Only these addresses are named.</p>
+/// <p><b>A denylist cannot be complete.</b> A provider that publishes a new metadata address is
+/// uncovered until this list learns it; the durable posture is an allowlist of endpoints an
+/// operator declared, which is an AD-42 amendment and not this parameter.</p>
+Parameter METADATAADDRESSES = "169.254.169.254,169.254.170.2,fd00:ec2::254,fd20:ce::254";
 
 /// <p>Kind: the address is one this instance's own interfaces carry.</p>
 Parameter KINDINSTANCE = "instance";
@@ -196,7 +210,9 @@ ClassMethod IsFresh(pWrittenAt As %String) As %Boolean [ Private ]
 /// <p>Whether OcuPilot will call <var>pUrl</var>, with the kind it classified as
 /// <var>pKind</var> so a caller can name the refusal.</p>
 /// <p><parameter>KINDLINKLOCAL</parameter> is refused whatever <var>pMarkedLocal</var> and
-/// <var>pAllowsLocal</var> say -- that range is FR-27's metadata service and has no escape.
+/// <var>pAllowsLocal</var> say -- that range is FR-27's metadata service, and the metadata
+/// addresses outside it (<parameter>METADATAADDRESSES</parameter>) answer that kind for the same
+/// reason; neither has an escape.
 /// <parameter>KINDLOOPBACK</parameter> and <parameter>KINDINSTANCE</parameter> are permitted only
 /// when the definition is marked local <b>and</b> its provider's catalog row allows it.
 /// <parameter>KINDUNRESOLVABLE</parameter> is refused: a host OcuPilot cannot resolve is a host it
@@ -369,7 +385,13 @@ ClassMethod KindOf(pAddress As %String, ByRef pInstance) As %String [ Private ]
 {
     Set tKind = ..#KINDPUBLIC
     Set tAddress = ..Canonical(pAddress)
-    If ..IsLinkLocal(tAddress) {
+    If ..IsMetadataAddress(tAddress) {
+        ; Here rather than in IsPermitted, because this is where the whole resolved set is seen:
+        ; AWS's and GCP's IPv6 metadata addresses are unique-local, which classifies public, and a
+        ; check on Classify's single deciding address would miss one that shared a record set with
+        ; a loopback address on a marked-local definition.
+        Set tKind = ..#KINDLINKLOCAL
+    } ElseIf ..IsLinkLocal(tAddress) {
         Set tKind = ..#KINDLINKLOCAL
     } ElseIf ..IsLoopback(tAddress) {
         Set tKind = ..#KINDLOOPBACK
@@ -439,6 +461,37 @@ ClassMethod IsLoopback(pAddress As %String) As %Boolean [ Private ]
     ; 1 is ::1; 0 is the unspecified address ::, which reaches this host for the same reason
     ; 0.0.0.0 does.
     Quit (tGroups(8) = 1) || (tGroups(8) = 0)
+}
+
+/// <p>Whether <var>pAddress</var> is one of the addresses
+/// <parameter>METADATAADDRESSES</parameter> names, compared numerically so every spelling of an
+/// IPv6 literal answers the same (DW-1214).</p>
+/// <p><b>It is a denylist and cannot be complete</b> -- see that parameter.</p>
+ClassMethod IsMetadataAddress(pAddress As %String) As %Boolean [ Private ]
+{
+    Set tMatch = 0
+    Try {
+        Set tAddress = ..Canonical(pAddress)
+        If tAddress = "" Quit
+        Set tIsQuad = ..IsDottedQuad(tAddress)
+        If 'tIsQuad && '..V6Groups(tAddress, .tGroups) Quit
+        For tI = 1:1:$Length(..#METADATAADDRESSES, ",") {
+            Set tKnown = ..Canonical($Piece(..#METADATAADDRESSES, ",", tI))
+            If tIsQuad {
+                If tKnown = tAddress Set tMatch = 1
+                Continue
+            }
+            If '..V6Groups(tKnown, .tKnownGroups) Continue
+            Set tSame = 1
+            For tGroup = 1:1:8 {
+                If tGroups(tGroup) '= tKnownGroups(tGroup) Set tSame = 0
+            }
+            If tSame Set tMatch = 1
+        }
+    } Catch ex {
+        Set tMatch = 0
+    }
+    Quit tMatch
 }
 
 /// <p>Whether <var>pAddress</var> is link-local: <code>169.254.0.0/16</code>, or
@@ -552,13 +605,18 @@ ClassMethod IsPrivate(pAddress As %String) As %Boolean
 }
 
 /// <p>Whether a provider call to <var>pHost</var>, through the proxy <var>pProxyHost</var> when
-/// one is configured, leaves this instance (Story 4.4's context status read, AD-42). A proxy is a
-/// destination too, judged by its addresses alone: when it leaves, the call leaves. Otherwise false
-/// when <var>pMarkedLocal</var>, and else <var>pHost</var> is judged the same way.</p>
+/// one is configured, leaves this instance (Story 4.4's context status read, AD-42).</p>
+/// <p><b><var>pMarkedLocal</var> is read first, and the proxy is not read at all for such a
+/// call</b> (DW-441): a marked-local endpoint bypasses the configured proxy
+/// (<method>OcuPilot.Port.ProviderPort.Dispatch</method>), so counting the proxy here would make
+/// this answer disagree with the request that is actually issued -- by construction, on every
+/// instance that has a proxy configured. For every other call the proxy is a destination too,
+/// judged by its addresses alone: when it leaves, the call leaves; otherwise <var>pHost</var> is
+/// judged the same way.</p>
 ClassMethod LeavesInstance(pHost As %String, pMarkedLocal As %Boolean, pProxyHost As %String = "") As %Boolean
 {
-    If (pProxyHost '= "") && ..HostLeaves(pProxyHost) Quit 1
     If pMarkedLocal Quit 0
+    If (pProxyHost '= "") && ..HostLeaves(pProxyHost) Quit 1
     Quit ..HostLeaves(pHost)
 }
 

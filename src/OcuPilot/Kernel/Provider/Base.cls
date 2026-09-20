@@ -22,8 +22,14 @@
 /// call that <b>raised</b>, and a call that <b>timed out</b>, are never retried at all: the
 /// request may already have been processed, so sending it again risks doing the work twice.</p>
 /// <p>Seams a subclass overrides: <method>ProviderName</method>, <method>CallMessages</method>,
-/// <method>ApplyAuth</method>, <method>IsApiKeyShapeValid</method>, <method>MapResponse</method>
-/// and <method>ProviderMessage</method> are the family contract; <method>IssueHttpsPost</method>
+/// <method>ApplyAuth</method>, <method>IsApiKeyShapeValid</method> and <method>MapResponse</method>
+/// are the family contract, and
+/// <method>RequestUrl</method> is the request-URL seam a family whose endpoint carries the model
+/// in its path needs; <method>ProviderMessage</method> and <method>KeyShapeAccepted</method> are
+/// concrete here, the first because the three vendor families answer an error body shaped
+/// <code>{error: {message}}</code> -- see that method for what the <code>compatible</code> family
+/// does -- and the second the key-shape test a family
+/// with no published key grammar answers with; <method>IssueHttpsPost</method>
 /// is the one transport seam, which <class>OcuPilot.Test.ProviderStub</class> replaces so the whole
 /// path runs with no socket; <method>SecretClass</method>, <method>Wait</method> and
 /// <method>NowSeconds</method> are the credential, the sleep and the clock. Production overrides
@@ -51,6 +57,14 @@ Parameter KEYSOURCENONE = "none";
 /// configured proxy rather than the endpoint. Kept beside <method>ReasonFor</method> so the
 /// provider sentences stay in one class.</p>
 Parameter REASONPROXYEGRESS = "The proxy this instance's provider calls go through resolves to an address OcuPilot will not call";
+
+/// <p>The reason the built-URL containment refusal carries, beside
+/// <parameter>REASONPROXYEGRESS</parameter>, because <code>PROVIDER.EGRESS</code> has three causes
+/// and <method>ReasonFor</method>'s one sentence names only the endpoint's own address. This one
+/// covers both arms of <method>Attempts</method>'s check -- a URL the adapter could not build from
+/// this definition, and one whose scheme or authority is not the judged endpoint's -- and names no
+/// part of either URL.</p>
+Parameter REASONBUILTURLEGRESS = "The request URL this provider's adapter built from this definition is not the endpoint OcuPilot judged";
 
 /// <p>The resolved credential, for the life of one <method>Invoke</method> and no longer.</p>
 /// <p><code>Internal</code> keeps it out of the published class reference; what actually keeps it
@@ -206,13 +220,34 @@ Method Invoke(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %St
 /// <parameter>OcuPilot.Kernel.Provider.Retry.ATTEMPTBUDGETSECONDS</parameter> bounds when a
 /// further attempt may start, read through <method>NowSeconds</method>: once it has passed, no
 /// further attempt is begun and that exit is <code>PROVIDER.TIMEOUT</code>. It is read between
-/// attempts and never during one, so an attempt already in flight still runs to its own
-/// <code>timeoutSeconds</code>.</p>
+/// attempts and never during one.</p>
+/// <p><b>The clamp is what makes the worst case a number</b> (AD-42, DW-1104). The attempt count
+/// and the per-call timeout are both read through
+/// <method>OcuPilot.Kernel.Provider.Retry.EffectiveAttempts</method> and
+/// <method>OcuPilot.Kernel.Provider.Retry.EffectiveTimeoutSec</method>, so
+/// <code>(attempts x timeout) + RETRYBUDGETSECONDS</code> is at most
+/// <parameter>OcuPilot.Kernel.Provider.Retry.ATTEMPTBUDGETSECONDS</parameter> however large a
+/// value is stored or a caller supplied. At least one attempt is always made, the shipped defaults
+/// clamp to themselves, and a value that was lowered is logged once before the loop begins --
+/// never refused, because a misconfigured timeout must not stop a turn from calling.</p>
+/// <p><b>The URL actually called is judged against the one the caller judged</b> (AD-42). The
+/// adapter's <method>RequestUrl</method> may rewrite the path -- a family whose endpoint carries
+/// the model in it does -- but a result that is empty, or whose scheme or authority differs from
+/// the judged endpoint's, is refused <code>PROVIDER.EGRESS</code> with no socket opened, because
+/// the address policy never saw it.</p>
 Method Attempts(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %String, ByRef pSettings, ByRef pResponse As OcuPilot.Kernel.Provider.Response, ByRef pFault As %DynamicObject, ByRef pHttpStatus As %Integer) [ Private ]
 {
-    Set tUrl = $Get(pValues("endpointUrl"))
-    Set tMaxAttempts = +$Get(pSettings("maxAttempts"))
-    If tMaxAttempts < 1 Set tMaxAttempts = 1
+    Set tUrl = ..RequestUrl(.pValues)
+    Set tOrigin = ..OriginOf(tUrl)
+    Set tJudged = ..OriginOf($Get(pValues("endpointUrl")))
+    If (tOrigin = "") || (tOrigin '= tJudged) {
+        Set pResponse.StopReason = "error"
+        Do ..Fault(##class(OcuPilot.Api.Error).#PROVIDEREGRESS, ..#REASONBUILTURLEGRESS, "", .pFault, .pHttpStatus)
+        Do ..LogRaw("the URL this adapter built for the provider call was not the endpoint the address policy judged", $$$ERROR($$$GeneralError, "judged origin: " _ tJudged _ "; built origin: " _ $Select(tOrigin = "": "(none)", 1: tOrigin)), ##class(OcuPilot.Api.Error).#PROVIDEREGRESS)
+        Quit
+    }
+    Set tMaxAttempts = ##class(OcuPilot.Kernel.Provider.Retry).EffectiveAttempts($Get(pSettings("maxAttempts")), ..TimeoutOf(.pSettings))
+    Do ..LogClamp(.pSettings, tMaxAttempts)
     Set tCode = ##class(OcuPilot.Api.Error).#PROVIDERTRANSPORT
     Set tProviderText = ""
     Set tStartedAt = ..NowSeconds()
@@ -293,6 +328,45 @@ Method Attempts(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPrompt As %
     Do ..Fault(tCode, "", tProviderText, .pFault, .pHttpStatus)
 }
 
+/// <p><b>The request-URL seam.</b> The URL this call is issued to, which at this floor is the
+/// endpoint the caller judged and passed in <code>pValues("endpointUrl")</code>.</p>
+/// <p>An override may rewrite the <b>path</b> -- a family whose endpoint names the model in it
+/// does -- and answers <code>""</code> to refuse the call instead. Whatever it answers,
+/// <method>Attempts</method> refuses an empty result and any result whose scheme or authority
+/// differs from the judged endpoint's, so an override can never move the call to another scheme or
+/// authority. <b>The path it writes is not checked there</b>: an override that builds one gates
+/// its own input before it enters the URL, which is where a caller-supplied value is kept out of a
+/// path, a query or a fragment (AD-42, AD-21).</p>
+Method RequestUrl(ByRef pValues) As %String
+{
+    Quit $Get(pValues("endpointUrl"))
+}
+
+/// <p>The scheme and authority of <var>pUrl</var> -- the part the address policy judged -- as
+/// <code>scheme://authority</code> with the scheme folded down, because a URI scheme is
+/// case-insensitive (RFC 3986). <code>""</code> when <var>pUrl</var> carries no scheme or no
+/// authority, which is what makes an unusable URL a refusal rather than a comparison that
+/// accidentally matches.</p>
+/// <p>The authority is compared as written, port included: this is a containment check, not a
+/// resolver, so anything it cannot prove equal it reports unequal.</p>
+ClassMethod OriginOf(pUrl As %String) As %String [ Private ]
+{
+    Set tOrigin = ""
+    Try {
+        If pUrl = "" Quit
+        If '(pUrl [ "://") Quit
+        Set tScheme = $ZConvert($Piece(pUrl, "://", 1), "L")
+        If tScheme = "" Quit
+        Set tRest = $Piece(pUrl, "://", 2, *)
+        Set tAuthority = $Piece($Piece($Piece(tRest, "/", 1), "?", 1), "#", 1)
+        If tAuthority = "" Quit
+        Set tOrigin = tScheme _ "://" _ tAuthority
+    } Catch ex {
+        Set tOrigin = ""
+    }
+    Quit tOrigin
+}
+
 /// <p>A configured <class>%Net.HttpRequest</class> for one attempt.</p>
 /// <p>Every value comes from <var>pSettings</var> -- the instance's stored outbound settings --
 /// and none from a parameter of this class (AD-32). <property>SSLCheckServerIdentity</property> is
@@ -311,9 +385,9 @@ Method NewRequest(ByRef pSettings) As %Net.HttpRequest
     ; resetting them. The shipped default is already off for a POST -- it is set here so the
     ; endpoint OcuPilot judged is the only endpoint the key reaches, whatever that default becomes.
     Set tRequest.FollowRedirect = 0
-    ; The shipped default is read from the class that owns it rather than spelled again here, and
-    ; a non-positive stored value takes it too: %Net.HttpRequest reads Timeout 0 as no wait at all.
-    Set tRequest.Timeout = $Select(+$Get(pSettings("timeoutSeconds")) > 0: +pSettings("timeoutSeconds"), 1: ##class(OcuPilot.Kernel.State.Egress).#DEFAULTTIMEOUT)
+    ; Clamped at the point of use, which is the one place that bounds a stored value and a
+    ; caller-supplied one alike (AD-42, DW-1104).
+    Set tRequest.Timeout = ##class(OcuPilot.Kernel.Provider.Retry).EffectiveTimeoutSec(..TimeoutOf(.pSettings))
     If $Get(pSettings("sslConfiguration")) '= "" {
         Set tRequest.SSLConfiguration = pSettings("sslConfiguration")
     }
@@ -324,6 +398,35 @@ Method NewRequest(ByRef pSettings) As %Net.HttpRequest
         Set tRequest.ProxyTunnel = ''+$Get(pSettings("proxyTunnel"))
     }
     Quit tRequest
+}
+
+/// <p>The per-call timeout <var>pSettings</var> asks for, before the clamp: the stored value where
+/// it is positive, and <parameter>OcuPilot.Kernel.State.Egress.DEFAULTTIMEOUT</parameter>
+/// otherwise. The shipped default is read from the class that owns it rather than spelled again
+/// here, and a non-positive stored value takes it too, because
+/// <class>%Net.HttpRequest</class> reads <code>Timeout</code> 0 as no wait at all.</p>
+Method TimeoutOf(ByRef pSettings) As %Numeric [ Private ]
+{
+    If +$Get(pSettings("timeoutSeconds")) > 0 Quit +pSettings("timeoutSeconds")
+    Quit ##class(OcuPilot.Kernel.State.Egress).#DEFAULTTIMEOUT
+}
+
+/// <p>Log one line, through this class's own log seam and at the level every other exit of
+/// <method>Attempts</method> uses, when this call's timeout or attempt count was lowered to keep
+/// the call inside <parameter>OcuPilot.Kernel.Provider.Retry.ATTEMPTBUDGETSECONDS</parameter> -- a
+/// stored setting that cannot be honoured is a misconfiguration an operator should see. Silent when
+/// neither value was lowered, which is every call the shipped defaults serve.</p>
+/// <p><var>pEffectiveAttempts</var> is the count the loop will actually use, so the line reports
+/// what happened rather than recomputing it. It names the two numbers and nothing else: there is
+/// no credential anywhere near them (AD-35).</p>
+Method LogClamp(ByRef pSettings, pEffectiveAttempts As %Integer) [ Private ]
+{
+    Set tTimeout = ..TimeoutOf(.pSettings)
+    Set tClamped = ##class(OcuPilot.Kernel.Provider.Retry).EffectiveTimeoutSec(tTimeout)
+    Set tAsked = +$Get(pSettings("maxAttempts"))
+    If tAsked < 1 Set tAsked = 1
+    If (tClamped = tTimeout) && (pEffectiveAttempts = tAsked) Quit
+    Do ..LogRaw("this call's per-call timeout or attempt count was lowered to keep one provider call inside the time this instance allows", $$$ERROR($$$GeneralError, "timeout " _ tTimeout _ " to " _ tClamped _ " seconds, attempts " _ tAsked _ " to " _ pEffectiveAttempts), "")
 }
 
 /// <p><b>The one transport seam.</b> Issues <var>pRequest</var> as a POST to <var>pUrl</var> and
@@ -429,12 +532,34 @@ Method MapResponse(pBody As %String, pResponse As OcuPilot.Kernel.Provider.Respo
     Quit $$$OK
 }
 
-/// <p>The provider's own message out of an error body, for the fault's
+/// <p>The provider's own <code>error.message</code> out of an error body, for the fault's
 /// <code>detail.providerText</code>, or <code>""</code>. The <b>message</b> alone: the raw body
 /// goes to the log and nowhere else (AD-39).</p>
-Method ProviderMessage(pBody As %String) As %String [ Abstract ]
+/// <p><b>Concrete, and one implementation for every family</b>: the three vendors answer an error
+/// body shaped <code>{error: {message}}</code>, and three copies of this method were three copies
+/// of the same defect. The <code>compatible</code> family is any endpoint an operator names rather
+/// than a vendor, so the shape is what it happens to answer; a body that does not carry
+/// <code>error.message</code> as a string yields <code>""</code>, and the raw body still reaches
+/// the log. Widening the shapes read is a change with no vendor contract behind it and is not made
+/// from a guess.</p>
+/// <p><b><code>message</code> is read only where it is a JSON string.</b> A vendor that answered an
+/// object or an array there would otherwise reach the envelope as
+/// <code>N@%Library.DynamicObject</code> -- the OREF's own stringification -- presented to a reader
+/// as the provider's words (DW-1193).</p>
+Method ProviderMessage(pBody As %String) As %String
 {
-    Quit ""
+    Set tMessage = ""
+    Try {
+        If pBody = "" Quit
+        Set tParsed = ##class(%DynamicAbstractObject).%FromJSON(pBody)
+        If '$IsObject(tParsed) || 'tParsed.%IsA("%Library.DynamicObject") Quit
+        If '$IsObject(tParsed.error) Quit
+        If tParsed.error.%GetTypeOf("message") '= "string" Quit
+        Set tMessage = tParsed.error.%Get("message")
+    } Catch ex {
+        Set tMessage = ""
+    }
+    Quit tMessage
 }
 
 /// <p>Build the wire fault for <var>pCode</var> and the HTTP status to answer with.</p>
@@ -482,6 +607,25 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTIMEOUT Quit "The provider did not answer within the time this instance allows"
     If pCode = ##class(OcuPilot.Api.Error).#PROVIDERTLS Quit "The TLS configuration this instance's provider calls are made through is not present"
     Quit "The provider call did not complete"
+}
+
+/// <p>The concrete key-shape test a family whose keys have no published prefix uses. <b>No
+/// whitespace and no control character, whatever the row declares</b> -- the paste error a gate
+/// with no grammar to check can still catch, and what keeps a carriage return out of the header
+/// the credential is written to, since <method>%Net.HttpRequest.SetHeader</method> stores a value
+/// verbatim. Beyond that: the catalog row's <property>KeyPrefix</property> where the row declares
+/// one, and a non-empty value where it does not.</p>
+/// <p><b><property>ApiKey</property> is read inside the expressions and never into a local</b>, per
+/// <method>IsApiKeyShapeValid</method>'s contract (AD-35, AD-48). It is here rather than in each
+/// adapter so the families that delegate to it cannot answer the same question two ways.
+/// <class>OcuPilot.Kernel.Provider.Anthropic</class> does not delegate and keeps its own prefix
+/// test, which accepts any value where a row declares no prefix; no shipped or probe row puts that
+/// family on a prefix-less row.</p>
+Method KeyShapeAccepted() As %Boolean
+{
+    If $ZStrip(..ApiKey, "*WC") '= ..ApiKey Quit 0
+    If ..KeyPrefix '= "" Quit ($Extract(..ApiKey, 1, $Length(..KeyPrefix)) = ..KeyPrefix)
+    Quit (..ApiKey '= "")
 }
 
 /// <p>The reason a <code>PROVIDER.KEYSHAPE</code> refusal carries: it states the prefix the

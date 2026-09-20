@@ -62,6 +62,10 @@ if [ "$WEB_PORT" = "52775" ] || [ "$SUPER_PORT" = "1974" ]; then
     echo "ci-throwaway: 52775 and 1974 are slot B's published ports; a throwaway never takes them"
     exit 2
 fi
+if [ "$WEB_PORT" = "52778" ] || [ "$SUPER_PORT" = "1977" ]; then
+    echo "ci-throwaway: 52778 and 1977 are slot C's published ports; a throwaway never takes them"
+    exit 2
+fi
 # `down` removes $DIR recursively, and $DIR is caller-supplied. Every other destructive surface
 # in this script and in ci-image-compile.sh is guarded by name (52774, 1973, project `ocupilot`,
 # container `ocupilot`); this one was not, so a mistyped --dir deleted whatever it named.

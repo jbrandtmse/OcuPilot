@@ -762,7 +762,7 @@ A user opens each of the six areas and sees real data from the instance they are
 
 **Implementation notes:** `AdminPort` is built here and is the **only** code that will ever name an `%Api.Admin.*` class (AD-2, AD-27) - eight steps reproducing the vendor dispatcher, four of them load-bearing and each easy to omit silently. AD-27's endpoint-inventory fixture goes into CI in this epic, which is what retires "exercise the payload on the instance" as a per-story task. **Two source readings resolved here, both flagged for the user:** (1) PRD section 10.1 requires one live list per area including Logs, while `EXPERIENCE.md`'s IA table puts every Logs screen at step 3 - section 10.1 is authoritative by the IA table's own note, so Logs gets screens in this epic; (2) the Logs area needs **two** surfaces this early, not one - the audit database viewer, because UJ-3's resolution and SM-4's one-minute demo both end at a marked audit event, and the application error drill-down, because AD-48 requires the delete's namespace to come from the level the user has drilled to, which needs the screen to exist before Epic 5's confirmed write can be AD-48-compliant.
 
-## Epic 3: Configure the agent, and hold the switches that restrain it
+### Epic 3: Configure the agent, and hold the switches that restrain it
 
 An OcuPilot administrator picks a provider, pastes a key, proves it works before enabling it, and from then on holds two switches that restrain or silence the agent instance-wide without any screen losing function - while a user with no agent configured still gets every screen and a panel that shows them what a proposal would look like. First half of build step 2, and a prerequisite for every turn.
 
@@ -4775,7 +4775,7 @@ So that screen data and log text never leave the instance at all.
 
 - **Given** a loopback or private-network endpoint
 - **When** it is validated
-- **Then** it is **allowed**, because local models are a supported case - while the link-local metadata range stays refused, and the definition must be explicitly marked local to name a loopback or link-local address.
+- **Then** it is **allowed**, because local models are a supported case - while a cloud instance-metadata endpoint stays refused in every address family and the marked-local flag licenses none, and the definition must be explicitly marked local to name a loopback or link-local address. [AMENDED 2026-09-19 - see the story change log]
 
 - **Given** a local provider is in use
 - **When** the context chip renders

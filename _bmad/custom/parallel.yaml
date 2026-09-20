@@ -1,7 +1,7 @@
 # Parallel epic execution — read by /epic-cycle (orchestrator mode).
 # Safe defaults; tune per project.
 
-max_parallel_epics: 2            # raise only after reviewing a full parallel run's telemetry
+max_parallel_epics: 3            # raised 2 -> 3 by the owner on 2026-09-19 after Epics 4, 6 and 10 ran clean in parallel; slot c below
 worktree_base: .worktrees        # short path under repo root; use e.g. C:\wt\<proj> if MAX_PATH bites
 runner_isolation: subagent       # subagent (supported) | headless (designed, Phase 3 — not yet implemented)
 submodule_mode: gitlink-worktree # gitlink-worktree (default; shared objects, teardown-safe)
@@ -57,3 +57,16 @@ slots:
       super: 1976
       browser_origin: http://localhost:52777
       browser_container: ocupilot-b-ci      # OCUPILOT_BROWSER_CONTAINER -- without it a slot B browser run execs into slot A's throwaway (2026-09-16)
+  - name: c
+    mcp_profile: ocupilot-slot-c          # ../OcuPilot-slot-c/compose.yml, owner-managed (added 2026-09-19)
+    dev_container: ocupilot-slot-c
+    dev_web_port: 52778
+    dev_super_port: 1977
+    throwaway:
+      dir: /tmp/ocupilot-c-ci
+      project: ocupilot-c-ci
+      container: ocupilot-c-ci
+      web: 52779
+      super: 1978
+      browser_origin: http://localhost:52779
+      browser_container: ocupilot-c-ci      # OCUPILOT_BROWSER_CONTAINER for npm run test:browser

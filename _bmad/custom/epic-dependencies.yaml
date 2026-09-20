@@ -3,7 +3,7 @@
 # edges the orchestrator's analysis added, per the owner's standing instruction (2026-09-16):
 # "If your analysis adds an edge, take the more conservative graph and note the difference in the
 # parallel log; if it would remove one of these, keep mine."
-epics_md_hash: "6daf9a2e3077edd79f8fbbae543adc29a2d845c09a800c732953009381b8c3f4"
+epics_md_hash: "71e2072806f48fce15a8db4112e170197efeede9573c07073db48cb578f1ddd7"
 analyzed_by: claude-opus-5
 analyzed_at: "2026-09-16T15:02:34Z"
 approved: true
@@ -66,10 +66,13 @@ epics:
     depends_on: [epic-7, epic-8]
     submodules: []
     paths_hint: ["src/OcuPilot/Screen/Descriptor/**", "src/OcuPilot/Screen/Tool/**", "ui/tools/field-lists.mjs", "scripts/check-objectscript.py", "src/OcuPilot/Port/AdminPort.cls", "src/OcuPilot/Api/**", "src/OcuPilot/Install/Smoke.cls", "src/OcuPilot/Test/**", "ui/src/app/shell/**", "ui/src/app/areas/permissions/**", "ui/src/app/areas/web-applications/**", "ui/src/app/areas/tasks/**", "ui/src/app/areas/security/**", "ui/src/app/core/**", "ui/tools/**", "ui/src/styles/**", "ui/browser/**"]
+  # 2026-09-19: context-chip corrected from "ui/src/app/shell/panel/context-chip*" -- shell/panel/ is not a
+  # directory; the component is the flat file shell/context-chip.ts. Keep notes OUT of the flow sequence
+  # below: a `#` inside a single-line [...] comments out the rest of the line, closing bracket included.
   epic-10:
     depends_on: [epic-3, epic-4]
     submodules: []
-    paths_hint: ["src/OcuPilot/Kernel/Provider/**", "src/OcuPilot/Port/ProviderPort.cls", "src/OcuPilot/Kernel/AgentRules.cls", "src/OcuPilot/Kernel/Egress.cls", "src/OcuPilot/Kernel/State/Agent.cls", "src/OcuPilot/Api/Definitions.cls", "src/OcuPilot/Api/Error.cls", "src/OcuPilot/Screen/Tool/Registry.cls", "src/OcuPilot/Test/OpenAI*.cls", "src/OcuPilot/Test/Gemini*.cls", "src/OcuPilot/Test/Compatible*.cls", "src/OcuPilot/Test/Adapter*.cls", "src/OcuPilot/Test/CatalogProbe*.cls", "src/OcuPilot/Test/AgentRules*.cls", "src/OcuPilot/Test/Provider*.cls", "src/OcuPilot/Test/Egress*.cls", "ui/src/app/areas/agent/definition-form.*", "ui/src/app/shell/context-chip.ts"   # CORRECTED 2026-09-19: ui/src/app/shell/panel/ does not exist; the component is a flat file in shell/, "ui/src/app/core/strings.ts", "ui/tools/strings.test.mjs", "ui/browser/definitions.browser-spec.mjs", "README.md"]
+    paths_hint: ["src/OcuPilot/Kernel/Provider/**", "src/OcuPilot/Port/ProviderPort.cls", "src/OcuPilot/Kernel/AgentRules.cls", "src/OcuPilot/Kernel/Egress.cls", "src/OcuPilot/Kernel/State/Agent.cls", "src/OcuPilot/Api/Definitions.cls", "src/OcuPilot/Api/Error.cls", "src/OcuPilot/Screen/Tool/Registry.cls", "src/OcuPilot/Test/OpenAI*.cls", "src/OcuPilot/Test/Gemini*.cls", "src/OcuPilot/Test/Compatible*.cls", "src/OcuPilot/Test/Adapter*.cls", "src/OcuPilot/Test/CatalogProbe*.cls", "src/OcuPilot/Test/AgentRules*.cls", "src/OcuPilot/Test/Provider*.cls", "src/OcuPilot/Test/Egress*.cls", "ui/src/app/areas/agent/definition-form.*", "ui/src/app/shell/context-chip.ts", "ui/src/app/core/strings.ts", "ui/tools/strings.test.mjs", "ui/browser/definitions.browser-spec.mjs", "README.md"]
   epic-11:
     depends_on: [epic-4, epic-5, epic-6, epic-10]
     submodules: []

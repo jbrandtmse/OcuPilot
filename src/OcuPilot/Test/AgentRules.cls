@@ -1,11 +1,10 @@
-/// <p>AC2 and AC3 -- the eleven harvested rules and the two OcuPilot's own that
-/// <class>OcuPilot.Kernel.AgentRules</class> applies, one failing case for each of the fourteen
-/// violation codes they report between them, plus the accumulation the acceptance criterion is
-/// actually about and the XOR credential invariant in both directions.</p>
+/// <p>AC2 and AC3 -- the eleven harvested rules and the three of OcuPilot's own that
+/// <class>OcuPilot.Kernel.AgentRules</class> applies, one failing case for each violation code they
+/// report between them, plus the accumulation the acceptance criterion is actually about and the XOR
+/// credential invariant in both directions.</p>
 /// <p><b>A rule with no failing case is not enforced, it is merely written</b>, so every rule here
-/// has one -- including rule 8, whose shipped catalog row does not require an endpoint at the
-/// one-provider Release 1 floor and which is therefore driven through
-/// <class>OcuPilot.Test.AgentRulesProbe</class> against a second row that does.</p>
+/// has one -- including rule 8, driven against both the shipped <code>compatible</code> row and
+/// <class>OcuPilot.Test.AgentRulesProbe</class>'s probe row.</p>
 /// <p><b>The sound control matters as much as the refusals.</b> Without
 /// <method>TestASoundSubmissionYieldsNoViolations</method>, a validator that refused everything
 /// would pass every other method in this class.</p>
@@ -18,6 +17,16 @@ Class OcuPilot.Test.AgentRules Extends %UnitTest.TestCase
 /// <p>The prefix every definition this class creates is named with, so teardown can assert the
 /// residue is gone by name rather than by remembering ids.</p>
 Parameter PROBEPREFIX = "OcuPilotProbeAgent";
+
+/// <p>The one provider key this suite uses as its <b>unknown</b> provider, at every site that
+/// needs one.</p>
+/// <p><b>A shipped key cannot serve</b>: rule 2 accepts it, so a key that became shipped would
+/// silently cost the assertion its violation. <class>OcuPilot.Test.CatalogProbe</class>'s probe key
+/// cannot serve either -- <class>OcuPilot.Test.TurnStore</class> shows an armed instance resolves
+/// its own extra rows, so an assertion built on one would pass or fail by environment.
+/// <method>TestAnUnknownProviderIsRefused</method> asserts the catalog declares this key in
+/// neither block, so shipping it one day fails loudly here.</p>
+Parameter UNKNOWNPROVIDER = "nosuchprovider";
 
 /// <p>Remove every definition this class created and assert none survives.</p>
 Method OnAfterOneTest() As %Status
@@ -108,41 +117,65 @@ Method TestADuplicateNameIsRefusedButNotAgainstItself()
     Do $$$AssertEquals(tCount, 0, "the definition that holds the name is not a duplicate of itself")
 }
 
-/// <p>Rule 2 -- the provider must be a key the catalog declares. At this floor that set is exactly
-/// <code>anthropic</code>.</p>
+/// <p>Rule 2 -- the provider must be a key the catalog declares, which is the four shipped rows in
+/// their declared order and nothing else. The sentinel this suite uses as its unknown provider is
+/// declared by neither block, so a later story that ships that key reddens here rather than
+/// silently costing an assertion its violation.</p>
 Method TestAnUnknownProviderIsRefused()
 {
     Do ..SoundValues(..#PROBEPREFIX _ "Prov", .tValues)
-    Set tValues("provider") = "openai"
+    Set tValues("provider") = ..#UNKNOWNPROVIDER
     Do ..AssertOneViolation(.tValues, "provider", ##class(OcuPilot.Api.Error).#AGENTPROVIDERUNKNOWN, "a provider the catalog does not declare")
 
-    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Provider.Catalog).Keys()), "anthropic", "the Release 1 catalog declares exactly one provider")
+    ; The fourth key is Story 10.3's appended catalog row (Tasks); its own AC pins anthropic first and compatible last.
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Provider.Catalog).Keys()), "anthropic,openai,gemini,compatible", "the catalog declares the four shipped providers, anthropic first and compatible last")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Provider.Catalog).IsKnown(..#UNKNOWNPROVIDER), 0, "and does not declare the unknown-provider sentinel: the shipped block always, the armed block wherever this instance arms it")
 }
 
-/// <p>The shipped <code>anthropic</code> row's shape, pinned in full. <code>defaultModel</code>
-/// and <code>defaultEndpoint</code> already move an assertion elsewhere
+/// <p>Every shipped row's shape, pinned column by column, in declared order.
+/// <code>defaultModel</code> and <code>defaultEndpoint</code> already move an assertion elsewhere
 /// (<class>OcuPilot.Test.AgentWire</class>'s create leg), but <code>modelSuggestions</code> has no
 /// consumer yet -- Story 3.5's form is what reads it -- and would drift unnoticed until then.</p>
-/// <p>Mutation: drop <code>claude-fable-5-1</code> from the row's <code>modelSuggestions</code>
-/// array in <class>OcuPilot.Kernel.Provider.Catalog</class>'s <code>Providers</code> XData -- this
-/// goes red on the suggestion list alone, every other assertion here staying green.</p>
-Method TestTheShippedProviderRowIsPinned()
+/// <p><b>The order is part of the contract</b>: the form selects the first row and
+/// <class>OcuPilot.Test.AgentViolation</class> pins that row's key, so a family is appended and
+/// never prepended.</p>
+/// <p>mutation: change the <code>gemini</code> row's <code>defaultModel</code> in
+/// <class>OcuPilot.Kernel.Provider.Catalog</class>'s <code>Providers</code> XData -- this goes red
+/// on that row's model alone, every other assertion here staying green.</p>
+Method TestTheShippedProviderRowsArePinned()
 {
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.Provider.Catalog).Row("anthropic", .tRow), 1, "the shipped anthropic row is readable")
+    ; Four keys since Story 10.3's Tasks appended the compatible row; the same AC pins its position.
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Provider.Catalog).Keys()), "anthropic,openai,gemini,compatible", "the shipped rows, in the order they are declared")
+
+    Do ..AssertRowPinned("anthropic", "Anthropic", "claude-opus-5", "[""claude-opus-5"",""claude-sonnet-5"",""claude-haiku-4-5"",""claude-fable-5-1""]", "https://api.anthropic.com/v1/messages", 0, 32000, 0, "ANTHROPIC_API_KEY", "OcuPilotAnthropic", "sk-ant-", "OcuPilot.Kernel.Provider.Anthropic", 0, "2023-06-01")
+    Do ..AssertRowPinned("openai", "OpenAI", "gpt-5.6-terra", "[""gpt-5.6-terra"",""gpt-5.6-sol"",""gpt-5.6-luna""]", "https://api.openai.com/v1/chat/completions", 0, 32000, 0, "OPENAI_API_KEY", "OcuPilotOpenAI", "", "OcuPilot.Kernel.Provider.OpenAI", 0, "")
+    Do ..AssertRowPinned("gemini", "Google Gemini", "gemini-3.8-flash", "[""gemini-3.8-flash"",""gemini-3.5-flash"",""gemini-2.5-pro""]", "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent", 0, 32000, 0, "GEMINI_API_KEY", "OcuPilotGemini", "", "OcuPilot.Kernel.Provider.Gemini", 0, "")
+    ; The one shipped row that exercises endpointRequired and allowsLocal, and the only one whose
+    ; model and endpoint are the operator's: no vendor publishes either for this family.
+    Do ..AssertRowPinned("compatible", "OpenAI-compatible", "", "[]", "", 1, 32000, 0, "OPENAI_COMPATIBLE_API_KEY", "OcuPilotCompatible", "", "OcuPilot.Kernel.Provider.Compatible", 1, "")
+}
+
+/// <p>Assert that the shipped row <var>pKey</var> holds exactly the values named, column by
+/// column -- <code>endpointRequired</code> and <code>allowsLocal</code> included, because Story
+/// 10.3's Tasks append the <code>compatible</code> row, which sets both where the three vendor rows
+/// set neither.</p>
+Method AssertRowPinned(pKey As %String, pLabel As %String, pModel As %String, pSuggestions As %String, pEndpoint As %String, pEndpointRequired As %Boolean, pMaxTokens As %Integer, pTemperature As %Numeric, pEnvVar As %String, pCredential As %String, pKeyPrefix As %String, pAdapter As %String, pAllowsLocal As %Boolean, pAuthVersion As %String)
+{
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Provider.Catalog).Row(pKey, .tRow), 1, pKey _ ": the shipped row is readable")
     If '$IsObject(tRow) Quit
-    Do $$$AssertEquals(tRow.label, "Anthropic", "the label")
-    Do $$$AssertEquals(tRow.defaultModel, "claude-opus-5", "the default model")
-    Do $$$AssertEquals(tRow.modelSuggestions.%ToJSON(), "[""claude-opus-5"",""claude-sonnet-5"",""claude-haiku-4-5"",""claude-fable-5-1""]", "the suggestion list: the current Claude family, most capable first")
-    Do $$$AssertEquals(tRow.defaultEndpoint, "https://api.anthropic.com/v1/messages", "the default endpoint")
-    Do $$$AssertEquals(+tRow.endpointRequired, 0, "Release 1's one provider does not require an endpoint")
-    Do $$$AssertEquals(+tRow.canonicalMaxTokens, 32000, "the canonical maximum tokens")
-    Do $$$AssertEquals(+tRow.canonicalTemperature, 0, "the canonical temperature")
-    Do $$$AssertEquals(tRow.defaultEnvVarName, "ANTHROPIC_API_KEY", "the default environment variable name")
-    Do $$$AssertEquals(tRow.defaultCredentialName, "OcuPilotAnthropic", "the default credential name is OcuPilot's own, never the harvested original's")
-    Do $$$AssertEquals(tRow.keyPrefix, "sk-ant-", "the key prefix")
-    Do $$$AssertEquals(tRow.adapterClass, "OcuPilot.Kernel.Provider.Anthropic", "the adapter class the port dispatches through, which is the column rather than a branch")
-    Do $$$AssertEquals(+tRow.allowsLocal, 0, "Release 1's one provider does not allow a local address, so the escape is closed in production")
-    Do $$$AssertEquals(tRow.authVersion, "2023-06-01", "and the API version its adapter sends")
+    Do $$$AssertEquals(tRow.label, pLabel, pKey _ ": the label")
+    Do $$$AssertEquals(tRow.defaultModel, pModel, pKey _ ": the default model")
+    Do $$$AssertEquals(tRow.modelSuggestions.%ToJSON(), pSuggestions, pKey _ ": the suggestion list, in the order the form offers it")
+    Do $$$AssertEquals(tRow.defaultEndpoint, pEndpoint, pKey _ ": the default endpoint")
+    Do $$$AssertEquals(+tRow.endpointRequired, +pEndpointRequired, pKey _ ": whether a definition on this family must name an endpoint")
+    Do $$$AssertEquals(+tRow.canonicalMaxTokens, pMaxTokens, pKey _ ": the canonical maximum tokens")
+    Do $$$AssertEquals(+tRow.canonicalTemperature, pTemperature, pKey _ ": the canonical temperature")
+    Do $$$AssertEquals(tRow.defaultEnvVarName, pEnvVar, pKey _ ": the default environment variable name")
+    Do $$$AssertEquals(tRow.defaultCredentialName, pCredential, pKey _ ": the default credential name is OcuPilot's own, never the harvested original's")
+    Do $$$AssertEquals(tRow.keyPrefix, pKeyPrefix, pKey _ ": the key prefix, empty where the vendor publishes no key grammar")
+    Do $$$AssertEquals(tRow.adapterClass, pAdapter, pKey _ ": the adapter class the port dispatches through, which is the column rather than a branch")
+    Do $$$AssertEquals(+tRow.allowsLocal, +pAllowsLocal, pKey _ ": whether this family licenses a local address and a keyless credential type")
+    Do $$$AssertEquals(tRow.authVersion, pAuthVersion, pKey _ ": the API version its adapter sends, empty where the family sends none")
 }
 
 /// <p>Rule 3 -- the maximum token count is a whole number from 1 to 32000. Digits alone: without
@@ -175,12 +208,83 @@ Method TestTemperatureOutsideItsRangeIsRefused()
     }
 }
 
-/// <p>Rule 5 -- the credential type is one of the two declared.</p>
+/// <p>Rule 5 -- the credential type is one of the two declared rungs, or <code>none</code> on a
+/// provider whose catalog row allows local.</p>
+/// <p><b>The third type rides the row, not the type name</b>: the same <code>none</code> that a
+/// shipped vendor family refuses is accepted on the <code>compatible</code> row, which is what
+/// makes the licence the column rather than a branch.</p>
+/// <p>mutation: drop the <code>pAllowsLocal</code> term from
+/// <method>OcuPilot.Kernel.AgentRules.CredTypeAccepted</method> -- red on the refused leg, where a
+/// vendor family then accepts a definition with no credential at all.</p>
 Method TestAnUnknownCredentialTypeIsRefused()
 {
     Do ..SoundValues(..#PROBEPREFIX _ "Cred", .tValues)
     Set tValues("credType") = "wallet"
-    Do ..AssertOneViolation(.tValues, "credType", ##class(OcuPilot.Api.Error).#AGENTCREDTYPEUNKNOWN, "a credential type outside the two declared")
+    Do ..AssertOneViolation(.tValues, "credType", ##class(OcuPilot.Api.Error).#AGENTCREDTYPEUNKNOWN, "a credential type outside the three declared")
+
+    Do ..SoundValues(..#PROBEPREFIX _ "CredNone", .tVendor)
+    Set tVendor("credType") = ##class(OcuPilot.Kernel.AgentRules).#CREDTYPENONE
+    Set tVendor("envVarName") = ""
+    Do ..AssertOneViolation(.tVendor, "credType", ##class(OcuPilot.Api.Error).#AGENTCREDTYPEUNKNOWN, "credType none on a family whose row forbids local")
+
+    Do ..CompatibleValues(..#PROBEPREFIX _ "CredNoneOk", .tLocal)
+    Set tLocal("credType") = ##class(OcuPilot.Kernel.AgentRules).#CREDTYPENONE
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.AgentRules).Validate(.tLocal, "", .tOk), 0, "and is accepted on the row that allows local, naming neither credential reference (" _ ##class(OcuPilot.Kernel.AgentRules).ViolationsJson(.tOk).%ToJSON() _ ")")
+}
+
+/// <p>A submission on the shipped <code>compatible</code> row every rule accepts: a marked-local
+/// loopback endpoint with no credential, which is the configuration Story 10.3 exists to make
+/// storable. The shape the <code>credType</code> and plain-HTTP methods break one field of.</p>
+ClassMethod CompatibleValues(pName As %String, Output pValues)
+{
+    Kill pValues
+    Set pValues("name") = pName
+    Set pValues("provider") = "compatible"
+    Set pValues("model") = "llama-3.3-70b-instruct"
+    Set pValues("endpointUrl") = "http://127.0.0.1:11434/v1"
+    Set pValues("markedLocal") = 1
+    Set pValues("credType") = ##class(OcuPilot.Kernel.AgentRules).#CREDTYPENONE
+    Set pValues("envVarName") = ""
+    Set pValues("credentialName") = ""
+    Set pValues("httpAcknowledged") = 0
+    Set pValues("maxTokens") = 32000
+    Set pValues("temperature") = 0
+    Set pValues("maxIterationsPerTurn") = 10
+    Set pValues("systemPromptOverride") = ""
+    Set pValues("readOnly") = 1
+    Set pValues("retentionDays") = 30
+    Set pValues("enabled") = 0
+    Set pValues("connectionVerified") = 0
+}
+
+/// <p>AC2 -- a plain-HTTP endpoint carrying a <b>credential</b> needs the stored acknowledgment
+/// that the key crosses the network in clear; the same endpoint with no credential does not, and
+/// the acknowledged one is accepted.</p>
+/// <p>mutation: drop the <code>credType</code>-or-acknowledgment term from
+/// <method>OcuPilot.Kernel.AgentRules.SchemeAccepted</method> -- red on the expected
+/// <code>AGENT.HTTP.ACK.REQUIRED</code> violation, every other rule's legs staying green.</p>
+Method TestPlainHttpWithAStoredCredentialNeedsTheAcknowledgment()
+{
+    Do ..CompatibleValues(..#PROBEPREFIX _ "Ack", .tUnacknowledged)
+    Set tUnacknowledged("credType") = "env"
+    Set tUnacknowledged("envVarName") = "OPENAI_COMPATIBLE_API_KEY"
+    Do ..AssertOneViolation(.tUnacknowledged, "httpAcknowledged", ##class(OcuPilot.Api.Error).#AGENTHTTPACKREQUIRED, "a stored credential over plain HTTP with no acknowledgment")
+
+    Do ..CompatibleValues(..#PROBEPREFIX _ "AckOn", .tAcknowledged)
+    Set tAcknowledged("credType") = "env"
+    Set tAcknowledged("envVarName") = "OPENAI_COMPATIBLE_API_KEY"
+    Set tAcknowledged("httpAcknowledged") = 1
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.AgentRules).Validate(.tAcknowledged, "", .tAckOk), 0, "the same definition with the acknowledgment stored is accepted (" _ ##class(OcuPilot.Kernel.AgentRules).ViolationsJson(.tAckOk).%ToJSON() _ ")")
+
+    Do ..CompatibleValues(..#PROBEPREFIX _ "AckNone", .tKeyless)
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.AgentRules).Validate(.tKeyless, "", .tKeylessOk), 0, "and a keyless definition never asks for it, because there is no key to expose (" _ ##class(OcuPilot.Kernel.AgentRules).ViolationsJson(.tKeylessOk).%ToJSON() _ ")")
+
+    Do ..CompatibleValues(..#PROBEPREFIX _ "AckHttps", .tHttps)
+    Set tHttps("credType") = "env"
+    Set tHttps("envVarName") = "OPENAI_COMPATIBLE_API_KEY"
+    Set tHttps("endpointUrl") = "https://192.0.2.1/v1"
+    Set tHttps("markedLocal") = 0
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.AgentRules).Validate(.tHttps, "", .tHttpsOk), 0, "an encrypted endpoint never asks for it either (" _ ##class(OcuPilot.Kernel.AgentRules).ViolationsJson(.tHttpsOk).%ToJSON() _ ")")
 }
 
 /// <p>Rules 6 and 7 -- each credential type requires its own reference.</p>
@@ -221,6 +325,17 @@ Method TestTheCredentialInvariantNormalizesInBothDirections()
     Do $$$AssertEquals(tCreds("credentialName"), "OcuPilotAnthropic", "credType creds keeps the credential name")
     Do $$$AssertEquals(tCreds("envVarName"), "", "and clears the environment variable")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.AgentRules).Validate(.tCreds, "", .tV2), 0, "and is likewise not an error")
+
+    ; Story 10.3's third rung selects neither reference, so it clears both: a reference left on a
+    ; keyless definition would become live again the moment the type moved back.
+    Do ..CompatibleValues(..#PROBEPREFIX _ "Xor3", .tNone)
+    Set tNone("credType") = ##class(OcuPilot.Kernel.AgentRules).#CREDTYPENONE
+    Set tNone("envVarName") = "OPENAI_COMPATIBLE_API_KEY"
+    Set tNone("credentialName") = "OcuPilotCompatible"
+    Do ##class(OcuPilot.Kernel.AgentRules).Normalize(.tNone)
+    Do $$$AssertEquals(tNone("envVarName"), "", "credType none keeps no environment variable")
+    Do $$$AssertEquals(tNone("credentialName"), "", "and no credential name either")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.AgentRules).Validate(.tNone, "", .tV3), 0, "and the keyless definition is accepted: " _ ##class(OcuPilot.Kernel.AgentRules).ViolationsJson(.tV3).%ToJSON())
 }
 
 /// <p>AC3's second half -- normalization runs <b>before</b> validation, so a body that selects the
@@ -237,15 +352,22 @@ Method TestNormalizationExposesTheGapItCreates()
 }
 
 /// <p>Rule 8 -- a provider whose catalog row says an endpoint is required must have one, and the
-/// rule reads <b>the row's column</b> rather than a provider name, so build step 7 adds a row
+/// rule reads <b>the row's column</b> rather than a provider name, so a later family adds a row
 /// rather than a branch.</p>
-/// <p><b>Driven through <class>OcuPilot.Test.AgentRulesProbe</class></b>, because Release 1 ships
-/// one provider row and that row does not require an endpoint. Left unexercised the rule would be
-/// unfalsifiable: it would read as coverage while never having run.</p>
+/// <p>The shipped <code>compatible</code> row requires one, and
+/// <class>OcuPilot.Test.AgentRulesProbe</class>'s probe row is kept beside it: the probe row pairs
+/// <code>endpointRequired</code> with a provider the shipped catalog does not declare, which is the
+/// combination a shipped row cannot supply.</p>
 Method TestAProviderRowThatRequiresAnEndpointRefusesAnEmptyOne()
 {
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.Provider.Catalog).Row("anthropic", .tShipped), 1, "the shipped provider row is readable")
-    Do $$$AssertEquals(+tShipped.endpointRequired, 0, "and does not require an endpoint, which is why this rule needs the probe catalog")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Provider.Catalog).Row("anthropic", .tShipped), 1, "the first shipped provider row is readable")
+    Do $$$AssertEquals(+tShipped.endpointRequired, 0, "and requires no endpoint, as no vendor row does")
+
+    ; The shipped case, which the compatible row supplies: no vendor publishes an endpoint for this
+    ; family, so the row requires one and an empty value is refused through the shipped catalog.
+    Do ..CompatibleValues(..#PROBEPREFIX _ "EpShipped", .tShippedValues)
+    Set tShippedValues("endpointUrl") = ""
+    Do ..AssertOneViolation(.tShippedValues, "endpointUrl", ##class(OcuPilot.Api.Error).#AGENTENDPOINTREQUIRED, "an empty endpoint on the shipped row that requires one")
 
     Do ..SoundValues(..#PROBEPREFIX _ "Ep", .tValues)
     Set tValues("provider") = ##class(OcuPilot.Test.CatalogProbe).#PROBEKEY
@@ -340,7 +462,7 @@ Method TestEnablingAnUnverifiedDefinitionIsRefused()
 Method TestFourBrokenRulesYieldFourViolationsInDeclaredOrder()
 {
     Do ..SoundValues(..#PROBEPREFIX _ "Four", .tValues)
-    Set tValues("provider") = "openai"
+    Set tValues("provider") = ..#UNKNOWNPROVIDER
     Set tValues("maxTokens") = 99000
     Set tValues("temperature") = 3
     Set tValues("credType") = "env"

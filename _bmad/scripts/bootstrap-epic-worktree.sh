@@ -21,6 +21,12 @@ for ref in irislib irissys irisui irisdocs; do
   else echo "ABSENT $ref in the main checkout (reference tree not exported; agents fall back to the instance)"; fi
 done
 
+# A symlinked ui/node_modules (seen on the epic-13 worktree, 2026-09-19) passes the stamp check
+# through the link and shows as untracked to git, since .gitignore's trailing-slash pattern matches
+# directories only. Replace it with a real install.
+if [ -L "$WT/ui/node_modules" ]; then
+  rm "$WT/ui/node_modules"; echo "REMOVED symlinked ui/node_modules (a worktree needs its own install)"
+fi
 STAMP="$WT/ui/node_modules/.ocupilot-bootstrap.sha"
 WANT="$(shasum -a 256 "$WT/ui/package-lock.json" | cut -d' ' -f1)"
 if [ -f "$STAMP" ] && [ "$(cat "$STAMP")" = "$WANT" ]; then

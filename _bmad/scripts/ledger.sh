@@ -22,7 +22,7 @@ usage() {
   cat >&2 <<'EOF'
 usage: bash ledger.sh <deferred-work.md> <command> [args]
   load                        counts: total open routed escalated decision_pending terminal status_unknown owner_unknown, then owner:<key>=<n> for non-terminal
-                              (an owner that is not `burndown`, not `range-end-cleanup` and not a key in the sibling sprint-status.yaml is suffixed " UNKNOWN")
+                              (an owner that is not `burndown`, not `range-end-cleanup`, and not a key in the sibling sprint-status.yaml is suffixed " UNKNOWN")
   slice <owner>|all|unknown   non-terminal entries: DW-n TAB status TAB owner TAB summary (`unknown` = owners the tracker does not know)
   show DW-<n>                 print one entry verbatim
   next-id                     next unused DW number

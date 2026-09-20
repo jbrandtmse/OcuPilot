@@ -12,6 +12,10 @@
  * 3. **The Definition form is routable and never advertised** (AC5): the Agent co-pilot side bar
  *    lists Definitions alone, and the command box offers no Definition screen, while the form's
  *    own URL renders the form.
+ * 4. **A keyless local model is configurable through the form** (Story 10.3's AC1 and AC3): choosing the
+ *    OpenAI-compatible provider offers the local-model declaration and the no-API-key choice, and
+ *    a plain-`http://` loopback endpoint saved with neither a key nor a credential name is
+ *    accepted with no violation on the endpoint field.
  *
  * **It refuses the live container**, for the reason its siblings do: the throwaway is the instance
  * a browser run drives, and this spec creates a definition. It **creates the rows it filters and
@@ -45,7 +49,10 @@ const DEFINITIONS_PATH = '/api/ocupilot/agent/definitions';
 /** Every definition this spec creates is named with this prefix and removed in `after`. */
 const PREFIX = 'OcuPilotBrowserProbe';
 
-const NAMES = [`${PREFIX}Alpha`, `${PREFIX}Beta`];
+const NAMES = [`${PREFIX}Alpha`, `${PREFIX}Beta`, `${PREFIX}Local`];
+
+/** The loopback endpoint the local-model leg stores. Nothing here connects to it. */
+const LOCAL_ENDPOINT = 'http://127.0.0.1:11434/v1';
 
 let browser = null;
 
@@ -416,6 +423,68 @@ test('AC5: the form is routable and listed nowhere -- the area\'s listed entries
     await page.goto(`${config.origin}${FORM_URL}`, { waitUntil: 'networkidle2' });
     await page.waitForSelector('#ocu-definition-name', { visible: true, timeout: config.navigationTimeoutMs });
     assert.equal(pathOf(page), '/ocupilot/agent/definitions/edit', 'the unlisted screen renders at its own route');
+  } finally {
+    await context.close();
+  }
+});
+
+test('Story 10.3 AC1/AC3: the OpenAI-compatible provider offers the local-model controls, and a keyless loopback endpoint saves', async () => {
+  const { context, page } = await signedInAt(FORM_URL);
+  try {
+    await page.waitForSelector('#ocu-definition-name', { visible: true, timeout: config.navigationTimeoutMs });
+    await fill(page, 'ocu-definition-name', NAMES[2]);
+
+    // Neither local-model control is on screen for the first row, which is a vendor family: they
+    // are gated on the catalog's own `allowsLocal`, and only the compatible row sets it.
+    assert.equal(await page.$('#ocu-definition-markedLocal'), null, 'no local-model control for a vendor provider');
+
+    // The provider select carries a row whose value is the shipped catalog key.
+    await page.select('#ocu-definition-provider', 'compatible');
+    await page.waitForSelector('#ocu-definition-markedLocal', { visible: true, timeout: config.navigationTimeoutMs });
+    await page.waitForSelector('#ocu-definition-credType', { visible: true, timeout: config.navigationTimeoutMs });
+
+    await fill(page, 'ocu-definition-endpointUrl', LOCAL_ENDPOINT);
+    await page.click('#ocu-definition-markedLocal');
+    await page.click('#ocu-definition-credType');
+
+    const save = (await page.$$('.ocu-form-bar-actions button')).at(-1);
+    assert.ok(save, 'the sticky bar carries a primary action');
+    await save.click();
+
+    // The definition is accepted: the pending-test sentence appears, and no violation was
+    // rendered on the endpoint field or anywhere else.
+    await page.waitForFunction(
+      (sentence) => document.querySelector('.ocu-form-bar-status')?.textContent?.includes(sentence) === true,
+      { timeout: config.navigationTimeoutMs },
+      STRINGS.formSavedPendingTest
+    );
+    assert.equal(
+      await page.$('#ocu-definition-endpointUrl-reason'),
+      null,
+      'no violation is rendered on the endpoint field'
+    );
+    const summary = await page.$$eval('.ocu-form-summary-list li', (nodes) => nodes.map((node) => node.textContent.trim()));
+    assert.deepEqual(summary, [], `and the error summary is empty: ${JSON.stringify(summary)}`);
+
+    // Read back through the routes, so the claim is about what the instance stored. The list
+    // answers the selection projection, so the endpoint and the two declarations are read from the
+    // single-definition route, which answers the full one.
+    const answer = await fetch(`${config.origin}${DEFINITIONS_PATH}`, { headers: { Authorization: authHeader() } });
+    assert.ok(answer.ok, 'the definitions route answers');
+    const body = await answer.json();
+    const listed = (Array.isArray(body.definitions) ? body.definitions : []).find((row) => row?.name === NAMES[2]);
+    assert.ok(listed, `the definition was stored: ${JSON.stringify(body.definitions)}`);
+    assert.equal(listed.provider, 'compatible', 'on the OpenAI-compatible row');
+
+    const one = await fetch(`${config.origin}${DEFINITIONS_PATH}/${encodeURIComponent(listed.id)}`, {
+      headers: { Authorization: authHeader() },
+    });
+    assert.ok(one.ok, 'the single-definition route answers');
+    const stored = await one.json();
+    assert.equal(stored.endpointUrl, LOCAL_ENDPOINT, 'carrying the loopback endpoint the form sent');
+    assert.equal(stored.markedLocal, true, 'declared local');
+    assert.equal(stored.credType, 'none', 'and naming no credential at all');
+    assert.equal(stored.httpAcknowledged, false, 'with no acknowledgment asked for, there being no key to expose');
   } finally {
     await context.close();
   }
