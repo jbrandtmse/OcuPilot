@@ -97,17 +97,6 @@ deferred:
       src/OcuPilot/Kernel/Proposal/Confirm.cls:371
     severity: low
   - summary: >-
-      instanceStamp reads the instance's local clock where the task says to take a UTC timestamp,
-      and the suite cannot tell the two apart on a UTC container.
-    evidence: |-
-      The helper reads `$ZDateTime($Horolog,3)` and its own comment says the criterion is instance
-      local time; the throwaway runs UTC, so local and UTC coincide and the leg passes either way.
-      Settled by reading beginDateTime's interpretation in `Screen/Descriptor/AuditList.cls` and the
-      vendor's own handling, or by running a throwaway in a non-UTC zone.
-    location: >-
-      ui/browser/audit.browser-spec.mjs:240
-    severity: medium (unverified)
-  - summary: >-
       The pending ledger row -- the trace a write nobody can account for leaves -- is written by the
       code and asserted by no test.
     evidence: |-
@@ -368,7 +357,9 @@ or `ui/src/styles/**` (Epic 15 holds them). Do not write `deferred-work.md`.
   matrix rows: `auditMarked` parsing, the banner in its slot with the slot order unchanged, the two
   `done · …` statuses with the warning class, and the refusal reason rendered on a card whose row
   stayed live.
-- `ui/browser/audit.browser-spec.mjs` -- **DW-1174:** rescope the AC2 leg. Take a UTC timestamp
+- `ui/browser/audit.browser-spec.mjs` -- **DW-1174:** rescope the AC2 leg. Take a timestamp in the
+  instance's **local** time (`$ZDateTime($Horolog,3)`), which is the unit `%SYS.Audit` declares
+  for `BeginDateTime` -- storage is UTC, the criterion is not
   before the confirm, type it into `#ocu-audit-criterion-beginDateTime`, and assert on the rows that
   window holds -- the marker filter still narrowing to a proper non-empty subset and still overriding
   `eventSources`. Never compute a bound from the instance's whole `OcuPilot`-source count.
@@ -408,6 +399,15 @@ or `ui/src/styles/**` (Epic 15 holds them). Do not write `deferred-work.md`.
   audit-marker assertion still passes and the executed-check count is non-zero.
 
 ## Spec Change Log
+
+- 2026-09-20, lead harvest gate: the `instanceStamp` item the implement pass filed as
+  `medium (unverified)` -- that `$ZDateTime($Horolog,3)` reads local time where the task said UTC --
+  was **settled rather than harvested, and it is not a defect**. The vendor declares the parameter's
+  own units: `%SYS.Audit`'s `BeginDateTime` documentation reads "`$zdatetime($H,3)` value of the
+  first audit record", `$H` being instance local time, and `Copy` calls `ConvertUTCToLocal` when it
+  derives a default from a stored node -- storage is UTC, the criterion is local. The helper and its
+  comment were right; the task text saying UTC was the thing that was wrong, and it is corrected
+  below rather than left to be re-probed.
 
 - **The empty route is Home's route, so DW-1305's `none` is reached through the registry rather
   than around it.** The spec's matrix names "every turn from Home" as the `PairsSense = "none"`
@@ -484,7 +484,7 @@ or `ui/src/styles/**` (Epic 15 holds them). Do not write `deferred-work.md`.
   - `[low]` `[defer]` (edge-case) The AC2 window has no upper bound -- same entry as above.
   - `[low]` `[defer]` (edge-case) On a probe profile install observes a suffixed registration the emitter never writes under -- verified, and inherent to the pre-existing suffix design: on the production profile, the only one where the banner matters, the two names agree.
   - `[low]` `[defer]` (edge-case) `GateAnyOf` is now dead -- verified (`InvokeDraft` uses `Gate`). Not deleted: it is the named target of a recorded, observed Rule 19 mutation.
-  - `[maybe-false]` `[defer]` (edge-case) `instanceStamp` reads the instance's local clock where the task says a UTC timestamp -- on a UTC container the two are identical, so the suite cannot tell. Settled by reading the criterion's own interpretation or by running the throwaway in a non-UTC zone; medium if true.
+  - `[false]` `[reject]` (edge-case) `instanceStamp` reads the instance's local clock where the task said UTC. Settled at the lead's harvest gate by reading the criterion's own declared units rather than by running a non-UTC throwaway: `%SYS.Audit` documents `BeginDateTime` as a `$zdatetime($H,3)` value and converts a stored UTC node with `ConvertUTCToLocal` when deriving a default. The helper was right and the task text was wrong; the task is corrected.
   - `[high]` `[patch]` (edge-case) The four writers' `none` rule is inverted on three refusal paths -- same root cause and fix as the first row.
   - `[medium]` `[patch]` (verification-gap) A false `writesMarked` was never produced by the instance in any test -- filed pre-verified; patched with a route leg and three parser cases. The layer's own demonstration (hard-code the answer) was applied and observed red.
   - `[low]` `[reject]` (verification-gap) `Loop.Run`'s owner argument is unpinned -- refuted on its consequence: `ResolvedUsername()` is the process username and the turn job runs as the owner (AD-7), so the fallback asks about the same account. The live-grants property DW-1309 is about survives the mutation; the explicit pass is defensive clarity.

@@ -5141,3 +5141,48 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: code review, spec-5-5-prohibited-actions-are-absent-from-the-tool-set.md | severity: low | fix-risk: med | footprint: in-story
 - evidence: Key(web-application, instance, '/') now fails Validate on an empty normalized id, and Mint maps any Key failure to ..Internal(). Degenerate input only, and no shipped caller sends it. A narrow fix would have Mint consult NormalizedId to decide the refusal, which is a caller applying the identity rule -- what AD-13's amendment says must not happen.
 - 2026-09-20T16:28:52Z status=wontfix-accepted owner=5-5-prohibited-actions-are-absent-from-the-tool-set by=cr note=reopen_if=a web-application id whose canonical form is empty reaches a tool call from a real agent turn
+
+### DW-1378: The auditingOffBanner's second sentence tells the operator auditing is off on this instance, which is not established when only the AgentWrite registration is missing or a single emission dropped
+- source: spec-5-6-the-agent-marker-and-what-happens-when-it-fails.md | severity: med | fix-risk: low | footprint: ui/src/app/core/strings.ts
+- evidence: The banner is shown from Switch.WritesMarked 0, which the executor also sets when one emission returns 0 for any reason; instance-wide auditing being off is only one of the causes
+- 2026-09-20T20:33:42Z status=open owner=5-6-the-agent-marker-and-what-happens-when-it-fails by=harvest note=IN-STORY and re-graded from the stages low. This is the product telling the user something that is not so -- the same untruthfulness the owner ruled on for DW-1366's 500 and for the Gemini endpoint the UI does not name -- and it lands in the ONE banner whose correctness the lead made a requirement at this story's spec gate. Fix the sentence to state what is actually known (agent writes are not being marked) without asserting a cause that was not read
+
+### DW-1379: A marker that fails before reaching the audit call records the instance-wide not-marking fact, so a single per-write failure shows the banner to every user
+- source: spec-5-6-the-agent-marker-and-what-happens-when-it-fails.md | severity: med | fix-risk: low | footprint: src/OcuPilot/Kernel/Proposal/Confirm.cls
+- evidence: Confirm.cls:371 records the condition on any failure path, including ones that never reached $System.Security.Audit and therefore say nothing about the instance
+- 2026-09-20T20:33:42Z status=open owner=5-6-the-agent-marker-and-what-happens-when-it-fails by=harvest note=IN-STORY, same family as the banner sentence: an instance-wide claim derived from a per-write failure. The write's own card is the truthful place for a per-write failure; the instance-wide flag should be set only by an answer the instance actually gave
+
+### DW-1380: The pending ledger row -- the trace a write nobody can account for leaves -- is written by the code and asserted by no test
+- source: spec-5-6-the-agent-marker-and-what-happens-when-it-fails.md | severity: med | fix-risk: low | footprint: src/OcuPilot/Kernel/Audit/Ledger.cls
+- evidence: The failure leg arms a 500 through the fixture and asserts the row is finalized error; no test observes the row in its pending state, which is the state that exists precisely when the process died between the open and the finalize
+- 2026-09-20T20:33:42Z status=open owner=5-6-the-agent-marker-and-what-happens-when-it-fails by=harvest note=IN-STORY under Rule 19: AD-41's create-before/finalize-after exists so an unaccountable write leaves a trace, and the pending state is the whole point of the shape. An assertion only over the finalized states does not pin it
+
+### DW-1381: The none pairs-sense releases a turn that carried no screen context, not only one started from Home
+- source: spec-5-6-the-agent-marker-and-what-happens-when-it-fails.md | severity: med | fix-risk: med | footprint: src/OcuPilot/Kernel/Audit/Ledger.cls
+- evidence: Ledger.cls:70 reads none as cross-user readable; the condition it actually tests is the absence of screen context rather than the Home origin the sense was introduced for
+- 2026-09-20T20:33:42Z status=open owner=5-6-the-agent-marker-and-what-happens-when-it-fails by=harvest note=IN-STORY: the implement stages own review already found one HIGH in exactly this column -- a sense derived from the wrong flag released a row to a cross-user administrator, the DW-1120 failure the column exists to prevent. A second over-release through the same column is not a low
+
+### DW-1382: smoke.sh's auditmarker and agentwrite checks are still pending, so AD-45's one confirmed agent write and the audit marker half of the smoke path is unmet
+- source: spec-5-6-the-agent-marker-and-what-happens-when-it-fails.md | severity: med | fix-risk: med | footprint: src/OcuPilot/Install/Smoke.cls
+- evidence: Install/Smoke.cls:1179-1180 notes both pending with the reason Epic 3. The marker exists as of Story 5.6, so both are now lightable; the executed auditevent assertion already covers the new AgentWrite triple and passes
+- 2026-09-20T20:34:00Z status=routed owner=5-8-web-applications-enable-a-disabled-application-and-grant-it by=harvest note=DOWNSTREAM-BLOCKING judgment recorded per Rule 27, and the AD-invariant rule CHECKED rather than pattern-matched: AD-45's Rule literally names one confirmed agent write and the audit marker as part of the one smoke path, so a pending check there is the AD's own invariant unmet and it is not re-ownable to range-end-cleanup. It is NOT 5.6's, because a pending check with a named reason is the sanctioned way to say not-built-yet and the capability only landed now. Story 5.8 is the first end-to-end confirmed write in a real area and its ACs are the demo, so it is where both checks light
+
+### DW-1383: ProviderPort.GateAnyOfForUser hand-copies Screen.Gate.EvaluateAnyOf's OR-set walk, and GateAnyOf is now dead
+- source: spec-5-6-the-agent-marker-and-what-happens-when-it-fails.md | severity: low | fix-risk: low | footprint: src/OcuPilot/Port/ProviderPort.cls
+- evidence: Two copies of one OR-set walk, and a method no caller reaches
+- 2026-09-20T20:34:00Z status=routed owner=range-end-cleanup by=harvest note=NOT blocking, judgment recorded per Rule 27: a duplicated walk and a dead method are tidiness, and nothing in this range fails while they stand. reopen_if=the two walks disagree on a case
+
+### DW-1384: A confirmed write's tool-call card and its not-marked sentence do not survive a page reload
+- source: spec-5-6-the-agent-marker-and-what-happens-when-it-fails.md | severity: low | fix-risk: med | footprint: ui/src/app/shell/panel.ts
+- evidence: The card is composed from Panel.writeCards, an in-memory signal, so a reload loses both the card and the marker warning it carried
+- 2026-09-20T20:34:00Z status=routed owner=range-end-cleanup by=harvest note=NOT blocking, judgment recorded per Rule 27: the audit database is the durable record this story exists to make, and the ledger row survives the reload even though the card does not, so nothing is lost that matters. reopen_if=a story's AC requires a write's outcome to be visible after a reload
+
+### DW-1385: The rescoped AC2 browser leg bounds its window only at the start, so its exact counts assume nothing else writes an OcuPilot- or seed-Source audit row while it runs
+- source: spec-5-6-the-agent-marker-and-what-happens-when-it-fails.md | severity: low | fix-risk: low | footprint: ui/browser/audit.browser-spec.mjs
+- evidence: The waitForCount bounds and the kept-row equality are exact; it ran green twice back to back but the assumption is unstated
+- 2026-09-20T20:34:00Z status=routed owner=range-end-cleanup by=harvest note=NOT blocking, judgment recorded per Rule 27: the browser suite runs one spec at a time against a throwaway nothing else writes to. reopen_if=the leg reddens on a count rather than a timeout
+
+### DW-1386: On a probe profile, install observes a suffixed AgentWrite registration that the emitter never writes under
+- source: spec-5-6-the-agent-marker-and-what-happens-when-it-fails.md | severity: low | fix-risk: low | footprint: src/OcuPilot/Install/Installer.cls
+- evidence: Installer.cls:3049 registers the roster name with the profile suffix; the emitter uses the unsuffixed production triple
+- 2026-09-20T20:34:00Z status=routed owner=range-end-cleanup by=harvest note=NOT blocking, judgment recorded per Rule 27: the probe profile exists for install and uninstall tests, which never emit a marker, and production is unaffected. reopen_if=a probe-profile install is expected to mark a write
