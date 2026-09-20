@@ -4373,7 +4373,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-13-3-publish-the-package-to-the-community-registry.md / code-review | severity: high | fix-risk: med | footprint: in-story
 - evidence: Run 35503250843 (head 8085072, the code under review), job 106058629958: the script exits 1 at 09:50:03 with 'is missing 14 staged bundle file(s)' naming every bundle file. The archive it built is 1,083,080 bytes against the macOS run's 1,083,507, and the AC1 mutation shows a bundle-less archive is 542,321 - so the bundle's bytes ARE in the CI archive and the member PATH differs. The class check (^src/cls/OcuPilot/.*\.cls$) passed on the same archive, so it is the FileCopy branch alone. Never observed on Linux before: the story's evidence is one macOS run.
 - 2026-09-20T10:10:37Z status=open owner=13-3-publish-the-package-to-the-community-registry by=cr note=reopens the story; diagnosis needs the CI archive member list, which the job now prints (patched this pass)
-- 2026-09-20T10:19:52Z status=open owner=13-3-publish-the-package-to-the-community-registry by=adjudication note=diagnosed: IPM emits doubled-slash members; tar tzf runs host-side and BSD normalizes what GNU preserves; fix is to normalize MEMBERS once
+- 2026-09-20T10:19:52Z status=open owner=13-3-publish-the-package-to-the-community-registry by=adjudication note=diagnosed: IPM emits doubled-slash members; the check compares the single-slash form; fix is to normalize MEMBERS once, tar-independently
+- 2026-09-20T10:55:15Z status=resolved-by:13-3-publish-the-package-to-the-community-registry by=adjudication note=MEMBERS normalized once at :277; the lead's BSD-vs-GNU cause was REFUTED (bsdtar 3.5.3 here lists // unchanged); why macOS was green is unexplained
 
 ### DW-1338: epics.md:737 still says the archive is proven by a dry-run build, the claim the same amendment corrected at :5124
 - source: spec-13-3-publish-the-package-to-the-community-registry.md / code-review | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -4384,3 +4385,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-13-3-publish-the-package-to-the-community-registry.md / code-review | severity: low | fix-risk: med | footprint: in-story
 - evidence: element_lines matches <Dependency ...> with attributes. module.xml declares none today, so the arm contributes 0 lines on both sides and the 11-declaration floor is met without it. Whether IPM re-serializes a dependency as an attributed <Dependency> or as <Dependencies><ModuleReference><Name>..., which element_lines cannot read, was not measured - fixing it correctly needs an observed export carrying one.
 - 2026-09-20T10:10:48Z status=wontfix-accepted owner=range-end-cleanup by=cr note=reopen_if=module.xml gains a <Dependency> and the archive-manifest comparison still passes with it absent from one side
+
+### DW-1343: The archive's bundle arm is a containment check, not an equality, while the spec and triage log both call it an equality
+- source: spec-13-3-publish-the-package-to-the-community-registry.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Every staged bundle file must appear among the members, but an extra member under the bundle prefix passes. The class arm is a true equality (CLASS_COUNT -eq STAGED_CLASSES); the bundle arm is one-directional. Either tighten it or stop calling it an equality
+- 2026-09-20T10:55:28Z status=routed owner=range-end-cleanup by=harvest note=a wrong word in the record rather than a hole in the gate; the archive is built by IPM from the staged tree, so a spurious extra member is not a reachable state today
+
+### DW-1344: The manifest comparison's DECLARED -lt 11 anti-vacuity floor is a literal, not the roster's own declaration count
+- source: spec-13-3-publish-the-package-to-the-community-registry.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: It stops being tight the moment the roster declares a twelfth item: the floor still reads 11 and a dropped declaration goes unnoticed. Same mechanism DW-1339 records for the Node pin
+- 2026-09-20T10:55:28Z status=routed owner=range-end-cleanup by=harvest note=pairs with DW-1339; derive the floor from the roster instead of pinning a number
