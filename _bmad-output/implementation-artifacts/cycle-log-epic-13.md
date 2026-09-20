@@ -27,3 +27,4 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-19T23:54:39Z	Story 13.1	cr_complete	spawn_at=2026-09-19T23:12:39Z model=claude-opus-5[1m] resolved=13 by_design=1 wontfix_theoretical=0 routed=1 escalated=0 decision_pending=0 dismissed=7 high=0 med=5 low=18 rows=54 unresolved_high_med=1 clarifications=0 closing_sections_present=true
 2026-09-19T23:54:39Z	Story 13.1	ledger_adjudicated	owned=6 resolved=4 reowned=0 terminal=2 model=claude-opus-5[1m]
 2026-09-19T23:54:39Z	Story 13.1	smoke_complete	method=cli result=pass iterations=1 defects_caught=0 evidence=smoke_executed45_passed45_failed0_plus_full_sweep_132classes_1269tests_0failed_and_ui_1044+644 model=claude-opus-5[1m]
+2026-09-20T00:01:08Z	Story 13.1	committed	sha=85b12ef submodules= ci=pending run=35477394323 amendments=_bmad-output/implementation-artifacts/spec-13-1-the-uninstall-hook.md:AC6_Install_to_StartPath
