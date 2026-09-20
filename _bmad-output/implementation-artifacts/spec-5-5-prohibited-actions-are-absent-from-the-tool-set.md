@@ -4,6 +4,7 @@ type: 'feature'
 created: '2026-09-20'
 status: 'done'
 baseline_revision: '777d484527e4fc695fe62e8ca8fdd970f7f162c1'
+baseline_commit: '98ad9596bc9c33dd3c29eaa9f94754613e3b59ba'
 review_loop_iteration: 2
 followup_review_recommended: true
 context:
@@ -532,6 +533,29 @@ named test, reverted, and the throwaway's tree confirmed byte-identical to the w
 property set back through the shipped port before and after each confirm and asserts it equal, and
 the seeded row carries the digest the confirm re-computes, so the 403 is the only gate left between
 that confirm and a vendor write.
+
+**QA (2026-09-20).** `src/OcuPilot/Test/ToolWrite.cls` (QA, existing file) gained two methods
+closing the one gap left in AC3/AC4's mints-nothing rigor: `TestNoWriteToolAdmitsAnAlwaysProhibitedField`
+already proved `DispatchClass` mints nothing against a real target, but `MatchRoles` (the other
+always-prohibited field) and an unreviewed-but-otherwise-ordinary field were only checked at the
+schema level, with no mint-count assertion against a live application. Every other leg the QA
+prompt named -- the confirm-side HTTP refusal for `Resource`, `AutheEnabled` and `DispatchClass`,
+byte-for-byte, over the wire -- is already `ProhibitedRoute`'s; the Review Triage Log's own
+`[reject]` on adding `MatchRoles` as a fourth HTTP leg stands, so no wire-level test was added for
+it here.
+
+- `TestARoleGrantIsRefusedAndMintsNothingAgainstARealTarget` -- mutation: classify `MatchRoles`
+  ordinary and give it a top-level field-list row (as `TestARoleGrantIsRefusedAsAnUnknownArgument`
+  already names). Applied as a stand-in on `ocupilot-ci` -- `Write.View`'s own argument check
+  disabled (`If 0` in place of `If $$$ISERR(tValidSC)`), which is the shared gate both mutations
+  bypass -- red on both new methods (runs 333-334, refusal, HTTP and code assertions, and the mint
+  count: two real proposal rows landed against `/ocupilot`), reverted (reloaded from source and
+  recompiled, not merely recompiled -- a first revert attempt recompiled the still-cached mutated
+  dictionary and stayed red), re-verified green (run 336, 11/11), stray rows deleted, `diff -rq`
+  against the worktree and `git status --short`/`git diff --stat` confirmed clean.
+- `TestAnUnreviewedFieldIsRefusedAndMintsNothingAgainstARealTarget` -- same mutation and run,
+  covering `EventClass` (ordinary-classified, outside `PERMITTEDFIELDS`) as the distinct
+  fail-closed-by-positive-list path AD-10's second half relies on.
 
 ## Auto Run Result
 

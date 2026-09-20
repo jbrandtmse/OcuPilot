@@ -125,6 +125,51 @@ Method TestARoleGrantIsRefusedAsAnUnknownArgument()
     Do $$$AssertEquals(tFault.%Get("code"), ##class(OcuPilot.Api.Error).#TOOLARGUMENTS, "with the arguments code")
 }
 
+/// <p>QA (Story 5.5): <method>OcuPilot.Test.Prohibited.TestNoWriteToolAdmitsAnAlwaysProhibitedField</method>
+/// proves <code>DispatchClass</code> mints nothing against a real target; this is the same rigor for
+/// <code>MatchRoles</code>, which that test only checks at the schema level. Against
+/// <parameter>LIVETARGET</parameter> -- a real, never-written application -- a role grant is refused
+/// before any proposal exists, not only before the shipped tool's own schema.</p>
+/// <p>Mutation: classify the <code>MatchRoles</code> subtree <code>ordinary</code> in
+/// <class>OcuPilot.Screen.Tool.Classification</class> and give it a top-level field-list row (the
+/// same mutation <method>TestARoleGrantIsRefusedAsAnUnknownArgument</method> names) -- this goes red
+/// on the refusal and on the mint count.</p>
+Method TestARoleGrantIsRefusedAndMintsNothingAgainstARealTarget()
+{
+    Set tBefore = ##class(OcuPilot.Test.ProposalFixture).ProposalCount($Username)
+    Do $$$AssertTrue(tBefore > -1, "the running account's proposal rows are counted")
+    Set tSC = $ClassMethod(..#TOOLCLASS, "View", "", {"Name": (..#LIVETARGET), "MatchRoles": [{"MatchRole": "", "TargetRoles": ["%All"]}]}, 200, .tResult, .tHttp, .tFault)
+    ; Read before anything is asserted, so a call that was not refused is still counted rather
+    ; than raising on the absent fault and leaving this unanswered.
+    Set tAfter = ##class(OcuPilot.Test.ProposalFixture).ProposalCount($Username)
+    Do $$$AssertStatusNotOK(tSC, "a call asking for a role grant against a real, live target is refused")
+    Do $$$AssertEquals(tAfter, tBefore, "and no proposal was minted for this account")
+    Do $$$AssertEquals(tHttp, 400, "at 400")
+    Do $$$AssertEquals($Select($IsObject(tFault): tFault.%Get("code"), 1: ""), ##class(OcuPilot.Api.Error).#TOOLARGUMENTS, "with the arguments code")
+}
+
+/// <p>QA (Story 5.5): the same mints-nothing rigor for a field AD-10's set has simply never reviewed
+/// (<code>EventClass</code> -- classified <code>ordinary</code> in
+/// <class>OcuPilot.Screen.Tool.Classification</class>, but outside
+/// <parameter>OcuPilot.Screen.Tool.WebAppUpdate.PERMITTEDFIELDS</parameter>): the positive list is
+/// what refuses it, not a named exclusion the way <code>MatchRoles</code> and
+/// <code>DispatchClass</code> are, and the model asking for it against a real target is still
+/// refused before any proposal exists.</p>
+/// <p>Mutation: add <code>EventClass</code> to
+/// <parameter>OcuPilot.Screen.Tool.WebAppUpdate.PERMITTEDFIELDS</parameter> -- this goes red on the
+/// refusal and on the mint count.</p>
+Method TestAnUnreviewedFieldIsRefusedAndMintsNothingAgainstARealTarget()
+{
+    Set tBefore = ##class(OcuPilot.Test.ProposalFixture).ProposalCount($Username)
+    Do $$$AssertTrue(tBefore > -1, "the running account's proposal rows are counted")
+    Set tSC = $ClassMethod(..#TOOLCLASS, "View", "", {"Name": (..#LIVETARGET), "EventClass": "Probe.Event"}, 200, .tResult, .tHttp, .tFault)
+    Set tAfter = ##class(OcuPilot.Test.ProposalFixture).ProposalCount($Username)
+    Do $$$AssertStatusNotOK(tSC, "a call asking for an unreviewed field against a real, live target is refused")
+    Do $$$AssertEquals(tAfter, tBefore, "and no proposal was minted for this account")
+    Do $$$AssertEquals(tHttp, 400, "at 400")
+    Do $$$AssertEquals($Select($IsObject(tFault): tFault.%Get("code"), 1: ""), ##class(OcuPilot.Api.Error).#TOOLARGUMENTS, "with the arguments code")
+}
+
 /// <p>The exclusion filter is load-bearing: a name in <method>ExcludedFields</method> is gone from
 /// the advertised schema and from the settable list, while an unlisted sibling stays. Driven
 /// through <class>OcuPilot.Test.WriteExclusion</class>, which excludes a name the shipped tool
