@@ -3031,6 +3031,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-17T04:37:08Z occurrence=4-3-the-docked-panel-present-on-every-route
 - 2026-09-20T17:09:13Z occurrence=15-3-about-help-shortcuts-and-the-links-panel
 - 2026-09-20T17:09:13Z by=harvest note=rediscovered a fourth time from 15.3; already corrected on origin/OCU-1-epic5 (dist/ocupilot-ui) and resolves at that merge, so Epic 15 did not edit the file -- Epic 5 has modified it and it is a Clarification for this epic
+- 2026-09-20T17:54:09Z status=resolved-by:orchestrator-2026-09-20 by=adjudication note=fixed at its origin on the feature branch in 661c3b1 (the rule file now reads dist/ocupilot-ui/browser); integrated into OCU-1-epic15 at the 15.3/15.4 boundary and verified in the merged tree
 
 ### DW-458: At a viewport where the remembered width makes the side bar yield, narrowing the panel to 352 or less brings the side bar back and the panel can no longer be widened without closing the side bar
 - source: spec-4-3-the-docked-panel-present-on-every-route.md | severity: med | fix-risk: med | footprint: in-story
