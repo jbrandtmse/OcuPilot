@@ -4269,12 +4269,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-19T20:59:38Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=merge_gate note=a five-test loss that vanishes on re-run is the shape that teaches a reader to re-run reds reflexively, which is exactly the habit that hides a real regression
 - 2026-09-20T00:30:58Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=runner note=did NOT reproduce in run 35477669085 on 74631d8 (error-log spec fully green); still unexplained, not yet a pattern
 - 2026-09-20T04:09:30Z status=routed owner=range-end-cleanup by=adjudication note=ui/browser/** is Epic 5's; did not reproduce in run 35477669085, so no pattern to act on yet
+- 2026-09-20T11:45:59Z status=routed owner=range-end-cleanup by=burndown note=ui/browser/** is Epic 5's; did not reproduce in 35477669085 or 35506409237, so no pattern to act on from Epic 13
 
 ### DW-1268: Uninstall's unconfirmed dry-run preview filters the role list by provenance, so it under-reports the orphan roles the confirmed run now deletes, and one warning states the opposite
 - source: spec-13-1-the-uninstall-hook.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Installer.cls:3532 lists a role only when $Data(tRecorded(tUName)); the :3665 loop now also deletes a role whose application is absent. Reachable when GuardedPathsForProfile fails (:3507) or an install died between EnsureApplicationRoles and EnsureApplications. Only orphan roles affected, so no AD-21 floor is stripped
 - 2026-09-19T22:46:22Z status=routed owner=burndown by=harvest note=introduced by 13.1's granted role-loop edit; the fix is at :3509,:3528-3536, outside the lines granted
 - 2026-09-19T23:31:41Z occurrence=13-1-the-uninstall-hook
+- 2026-09-20T11:45:59Z status=routed owner=range-end-cleanup by=burndown note=preview under-reports orphan roles after 13.1's fix; AD-21's floor is NOT stripped by its own evidence, so no AD invariant is violated and Rule 27 governs; bounded edit in Installer.cls
 
 ### DW-1269: The AC5 StateFingerprint equality is green but no mutation has been shown to redden it
 - source: spec-13-1-the-uninstall-hook.md | severity: med | fix-risk: low | footprint: in-story
@@ -4300,6 +4302,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Provenance.cls:238-240 says to drop "'\$Data(tRemovedKeys(tRKey)) Continue"; the guard is now a compound condition. The recipe still reddens as written (verified: removing the whole guard produced the run-8 red), so this is wording drift, not a broken recipe
 - 2026-09-19T22:46:35Z status=routed owner=burndown by=harvest note=Provenance.cls is an existing Test/* file Epic 5 holds; editing it needs a Clarification
 - 2026-09-19T23:31:42Z occurrence=13-1-the-uninstall-hook
+- 2026-09-20T11:45:59Z status=routed owner=range-end-cleanup by=burndown note=wording drift in Test/Provenance.cls, another epic's file; the recipe still reddens as written, so nothing is unpinned
 
 ### DW-1273: Story 13.1's AC6 production cycle and the loopback / auditing-enabled assertions carry no mutation line
 - source: spec-13-1-the-uninstall-hook.md | severity: low | fix-risk: low | footprint: in-story
@@ -4336,11 +4339,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-13-2-the-test-suite-grows-in-ci-against-a-stock-image.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: It deletes the row then calls ConnectionOutcome, so since DW-362 added the version capture at Api/Definitions.cls:802 it lands on the GuardedVersion-unreadable refusal at :809, not the GuardedSetVerification refusal at :853. Both render 500/INTERNAL and the test asserts only status and code, so it passes either way, and its recorded mutation would not redden it
 - 2026-09-20T01:17:06Z status=routed owner=burndown by=harvest note=Test/AgentConnection.cls is an existing Test class Epic 5 holds; correcting it needs a Clarification
+- 2026-09-20T11:46:00Z status=routed owner=range-end-cleanup by=burndown note=Rule 19 coverage gap on Api/Definitions.cls:853, not an AD invariant; the file and the test are other epics'
 
 ### DW-1287: Api/Definitions.cls names OcuPilot.Kernel.State.Agent by literal ##class throughout, so four of DW-421's error shapes cannot be driven without a state-class seam
 - source: spec-13-2-the-test-suite-grows-in-ci-against-a-stock-image.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: The handler indirects its secret class (SecretClass() :1194) and its port class but not its state class, so :580, :661, :665 and :853 have no seam a test can fault. Same cause DW-429 was declined for. Production code outside Epic 13's footprint
 - 2026-09-20T01:17:06Z status=routed owner=burndown by=harvest note=pairs with DW-429 and DW-421's residual; one seam unblocks all of them
+- 2026-09-20T11:46:00Z status=routed owner=range-end-cleanup by=burndown note=a testability seam in Api/Definitions.cls, not an AD invariant; pairs with DW-429 and DW-421's residual, one seam unblocks all three
 
 ### DW-1288: A SurfaceCoverage row carrying corpus= is pinned only by its method existing, so the assertion that observes the member can be deleted with the coverage floor green
 - source: spec-13-2-the-test-suite-grows-in-ci-against-a-stock-image.md | severity: med | fix-risk: med | footprint: in-story
