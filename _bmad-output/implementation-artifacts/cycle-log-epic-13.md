@@ -85,3 +85,4 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-20T11:47:49Z	Epic 13	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp feature_head=3be6986 merge_sha=f11ffcc conflicts=0 code_files_changed=0
 2026-09-20T11:47:49Z	Epic 13	ledger_burndown_complete	open_before=2 resolved=0 terminal=0 chartered=0 chartered_size=0 overflow=2 reowned=2 to_decision_sheet=0 open_after=0 cap=8 story_max=12 note=second_pass_DW-1336_and_DW-1337_arrived_by_integrate-forward_after_the_first_gate;DW-1337_is_HIGH_and_out-of-footprint_and_is_surfaced_for_the_orchestrator_rather_than_silently_downgraded
 2026-09-20T11:47:49Z	Epic 13	epic_runner_complete	stories=3 head=f11ffcc
+2026-09-20T12:15:06Z	Epic 13	ci_green_verified	run=35508824724 head=365a7f0 note=all_seven_jobs_success_gates_3of3_images_2of2_instance_package;browser_spec_186_tests_186_pass_0_fail
