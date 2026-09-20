@@ -82,3 +82,6 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-20T11:46:40Z	Epic 13	model_tier_checkpoint	armed=true stack_risk=uncommon review_tier=full-opus implement_model=claude-opus-5[1m] high_med_avg=7.67 unresolved_high_med_avg=1.00 metric=unresolved rework_stories=1 review_loop_thrash=0 rework_lang_defects=0 review_high=1 review_med=22 result=hold applied=false note=escalation_threshold_is_2.0_unresolved_per_story_on_a_sonnet_implement_tier;implement_ran_on_opus_and_the_mean_is_1.00_so_neither_escalation_nor_the_mixed_offer_is_reached;no_offer_to_pre-answer
 2026-09-20T11:46:40Z	Epic 13	epic_retro_skipped	reason=orchestrator_owned_post_merge_rule_23_pre-answered_no
 2026-09-20T11:46:40Z	Epic 13	decision_sheet_skipped	reason=empty
+2026-09-20T11:47:49Z	Epic 13	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp feature_head=3be6986 merge_sha=f11ffcc conflicts=0 code_files_changed=0
+2026-09-20T11:47:49Z	Epic 13	ledger_burndown_complete	open_before=2 resolved=0 terminal=0 chartered=0 chartered_size=0 overflow=2 reowned=2 to_decision_sheet=0 open_after=0 cap=8 story_max=12 note=second_pass_DW-1336_and_DW-1337_arrived_by_integrate-forward_after_the_first_gate;DW-1337_is_HIGH_and_out-of-footprint_and_is_surfaced_for_the_orchestrator_rather_than_silently_downgraded
+2026-09-20T11:47:49Z	Epic 13	epic_runner_complete	stories=3 head=f11ffcc
