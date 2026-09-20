@@ -123,8 +123,8 @@ Method TestARoleGrantIsRefusedAsAnUnknownArgument()
 
 /// <p>The exclusion filter is load-bearing: a name in <method>ExcludedFields</method> is gone from
 /// the advertised schema and from the settable list, while an unlisted sibling stays. Driven
-/// through <class>OcuPilot.Test.WriteExclusion</class>, because the shipped tool's only exclusion
-/// is a subtree the nested-path filter already drops.</p>
+/// through <class>OcuPilot.Test.WriteExclusion</class>, which excludes a name the shipped tool
+/// leaves settable, so the two answers are compared on one tool.</p>
 /// <p>Mutation: delete <code>If $ListFind(tExcluded, tName) Continue</code> from
 /// <method>OcuPilot.Screen.Tool.Write.FieldRows</method> -- this goes red.</p>
 Method TestAnExcludedFieldLeavesTheSchemaAndTheSettableList()

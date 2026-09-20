@@ -378,7 +378,10 @@ ClassMethod FirstNamed(pArgs As %DynamicObject, pNames As %List) As %String [ Pr
 /// <p>One value as the diff shows it and as the fingerprint's own comparison reads it: a string
 /// verbatim, a boolean as <code>true</code>/<code>false</code>, a null as <code>""</code>, and an
 /// object or an array as its compact JSON.</p>
-ClassMethod Display(pValue As %RawString, pType As %String) As %String [ Private ]
+/// <p>Not <code>Private</code>, because <class>OcuPilot.Kernel.Proposal.Prohibited</class>'s
+/// predicates compare a payload against a live read and must read "changed" exactly as the diff
+/// the user reviewed does. One rendering, not two.</p>
+ClassMethod Display(pValue As %RawString, pType As %String) As %String
 {
     If (pType = "null") || (pType = "unassigned") Quit ""
     If pType = "boolean" Quit $Select(''pValue: "true", 1: "false")

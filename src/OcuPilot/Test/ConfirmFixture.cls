@@ -26,8 +26,8 @@ ClassMethod HoldsPair(pUser As %String, pResource As %String, pPermission As %St
 
 /// <p>The shipped seam, except for the class
 /// <method>OcuPilot.Test.ProposalFixture.ProhibitedClass</method> names -- so AD-10's refusal branch
-/// can be driven before Story 5.5 creates the set's one home. <code>""</code> is the shipped
-/// answer.</p>
+/// is driven against an armed target rather than the instance's own. <code>""</code> falls through
+/// to the shipped set.</p>
 ClassMethod ProhibitedClassName() As %String
 {
     Set tArmed = ##class(OcuPilot.Test.ProposalFixture).ProhibitedClass()

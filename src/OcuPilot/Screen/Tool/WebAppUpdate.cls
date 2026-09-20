@@ -6,11 +6,18 @@
 /// every concrete class under <package>OcuPilot</package> that extends the tool base, so adding
 /// this class is the whole registration; the descriptor declares no action, and declaring one
 /// would make the screen write-capable, which is Story 5.8's affordance and not this story's.</p>
-/// <p><b>The <code>MatchRoles</code> subtree is excluded by name</b> (AD-10): setting a web
-/// application's roles grants privilege, which is not proposable at any confirmation level. The
-/// reviewed classification leaves that subtree unnamed as well, so the generator emits it
-/// <code>secret</code> and the schema would refuse it on that ground too; the exclusion is stated
-/// here because this is where a reader of the tool looks for it.</p>
+/// <p><b>Two fields are excluded by name, and AD-10 has two halves for each</b>: they are absent
+/// from the tool set, so the model cannot author them, and every change to them is refused at the
+/// write by <class>OcuPilot.Kernel.Proposal.Prohibited</class> whatever the caller. They are
+/// excluded because <i>every</i> change is prohibited -- <code>MatchRoles</code> grants privilege
+/// through a path, and <code>DispatchClass</code> decides which compiled code answers at a URL.</p>
+/// <p><b>Why <code>AutheEnabled</code> and <code>Resource</code> stay settable.</b> Only weakening
+/// them is an effect AD-10 forbids -- adding the unauthenticated bit, and clearing a resource that
+/// was set -- so hardening stays proposable and the asymmetry lives in the prohibited set, which
+/// compares against the live target, rather than in a field list, which cannot.</p>
+/// <p>The reviewed classification leaves the <code>MatchRoles</code> subtree unnamed as well, so
+/// the generator emits it <code>secret</code> and the schema would refuse it on that ground too;
+/// both exclusions are stated here because this is where a reader of the tool looks for them.</p>
 Class OcuPilot.Screen.Tool.WebAppUpdate Extends OcuPilot.Screen.Tool.Write
 {
 
@@ -20,8 +27,12 @@ Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.WebAppList";
 
 Parameter DESCRIPTION = "Propose a change to one web application's configuration on this instance. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the application exactly as the web applications list reports it, and send only the fields to change.";
 
-/// <p>The one subtree AD-10 forbids: a web application's application and matching roles.</p>
+/// <p>The subtree AD-10 forbids: a web application's application and matching roles.</p>
 Parameter EXCLUDEDFIELD = "MatchRoles";
+
+/// <p>The field that decides which compiled code answers at the application's address. Every
+/// change to it is prohibited (DW-1207), so it is not advertised.</p>
+Parameter EXCLUDEDDISPATCH = "DispatchClass";
 
 /// <p>The permission a change to a web application requires beyond the screen's own read set: the
 /// vendor's endpoint gates on <code>%Admin_Secure</code>, and writing needs more than using it.</p>
@@ -41,10 +52,11 @@ ClassMethod SettableFields() As %List
     Quit ..AdmittedFields()
 }
 
-/// <p><parameter>EXCLUDEDFIELD</parameter>, so no path of this tool admits a role grant.</p>
+/// <p><parameter>EXCLUDEDFIELD</parameter> and <parameter>EXCLUDEDDISPATCH</parameter>, so no path
+/// of this tool admits a role grant or a repointed dispatch class.</p>
 ClassMethod ExcludedFields() As %List
 {
-    Quit $ListBuild(..#EXCLUDEDFIELD)
+    Quit $ListBuild(..#EXCLUDEDFIELD, ..#EXCLUDEDDISPATCH)
 }
 
 /// <p>What the caller must hold: the screen's own pairs

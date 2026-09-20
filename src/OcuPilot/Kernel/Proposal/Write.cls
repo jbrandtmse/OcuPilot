@@ -62,6 +62,10 @@ Parameter DEFINITION = "PROPOSAL.DEFINITION";
 /// accommodation.</p>
 Parameter TARGETCHANGED = "PROPOSAL.TARGETCHANGED";
 
+/// <p>The prefix <method>ReasonFor</method> hands to <method>ProhibitedClass</method> rather than
+/// answering itself (AD-10).</p>
+Parameter PROHIBITEDPREFIX = "PROHIBITED.";
+
 /// <p>Every <code>PROPOSAL.*</code> code this class declares, as a <class>%List</class>.</p>
 ClassMethod Codes() As %List
 {
@@ -69,8 +73,10 @@ ClassMethod Codes() As %List
 }
 
 /// <p>The written sentence a <code>PROPOSAL.*</code> code carries, or <code>""</code> for any other
-/// code (AD-39). The handler renders it beside the code; no other family's resolver is named
-/// here.</p>
+/// code (AD-39). The handler renders it beside the code.</p>
+/// <p>A <code>PROHIBITED.</code>-prefixed code is delegated to <method>ProhibitedClass</method>,
+/// the set's one home, so AD-10's sentences are written once and are still reachable from the one
+/// resolver <class>OcuPilot.Api.Confirm</class> asks. No other family's resolver is named here.</p>
 ClassMethod ReasonFor(pCode As %String) As %String
 {
     If pCode = ..#NOTOKEN Quit "This request named no proposal."
@@ -84,6 +90,10 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#CONVERSATION Quit "This conversation has moved on since that proposal was made. Ask the agent to propose it again."
     If pCode = ..#DEFINITION Quit "The agent definition in force has changed since that proposal was made."
     If pCode = ..#TARGETCHANGED Quit "The target changed after this proposal was made, so the change was not applied. Ask the agent to propose it again."
+    If $Extract(pCode, 1, $Length(..#PROHIBITEDPREFIX)) = ..#PROHIBITEDPREFIX {
+        Set tProhibited = ..ProhibitedClass()
+        If tProhibited '= "" Quit $ClassMethod(tProhibited, "ReasonFor", pCode)
+    }
     Quit ""
 }
 
@@ -189,15 +199,14 @@ ClassMethod ClaimById(pProposalId As %String, pUser As %String, Output pProposal
     Quit tSC
 }
 
-/// <p>The class AD-10's prohibited set is answered by, or <code>""</code> while none exists.</p>
-/// <p><b>This is AD-10's single call site and nothing more.</b> Story 5.5 creates the kernel home
-/// for the set and points this method at it; until then the confirm transition asks the question,
-/// is told "not prohibited", and carries on. The seam is here rather than in
-/// <class>OcuPilot.Kernel.Proposal.Confirm</class> so the set has exactly one home to be named
-/// from (AD-10).</p>
+/// <p>The class AD-10's prohibited set is answered by.</p>
+/// <p><b>This is AD-10's single named home and nothing more.</b> The confirm transition asks the
+/// question through this method; the set itself decides. Naming it here rather than in
+/// <class>OcuPilot.Kernel.Proposal.Confirm</class> is what keeps the set reachable from exactly
+/// one place (AD-10), and it is why <method>ReasonFor</method> delegates the family here too.</p>
 ClassMethod ProhibitedClass() As %String
 {
-    Quit ""
+    Quit "OcuPilot.Kernel.Proposal.Prohibited"
 }
 
 /// <p>Whether <var>pState</var> is one of <parameter>ABNORMALSTATES</parameter>. An empty state --

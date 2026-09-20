@@ -26,6 +26,7 @@ ClassMethod Arm(pJson As %String)
     Set ^||OcuPilotProposalFixture("answer") = pJson
     Kill ^||OcuPilotProposalFixture("missing")
     Kill ^||OcuPilotProposalFixture("empty")
+    Kill ^||OcuPilotProposalFixture("readfault")
 }
 
 /// <p>Answer the next <method>Invoke</method> the way the port answers a target the instance no
@@ -34,6 +35,7 @@ ClassMethod ArmMissing()
 {
     Kill ^||OcuPilotProposalFixture("answer")
     Kill ^||OcuPilotProposalFixture("empty")
+    Kill ^||OcuPilotProposalFixture("readfault")
     Set ^||OcuPilotProposalFixture("missing") = 1
 }
 
@@ -43,7 +45,20 @@ ClassMethod ArmEmpty()
 {
     Kill ^||OcuPilotProposalFixture("answer")
     Kill ^||OcuPilotProposalFixture("missing")
+    Kill ^||OcuPilotProposalFixture("readfault")
     Set ^||OcuPilotProposalFixture("empty") = 1
+}
+
+/// <p>Answer the next reading <method>Invoke</method> the way the port answers a read that failed
+/// for a reason other than absence: an error status at <var>pHttpStatus</var>, which is not 404,
+/// with a wire-safe fault. <method>ArmMissing</method>'s counterpart on the read path, and
+/// <method>ArmWriteFault</method>'s on the reading side.</p>
+ClassMethod ArmReadFault(pHttpStatus As %Integer = 500)
+{
+    Kill ^||OcuPilotProposalFixture("answer")
+    Kill ^||OcuPilotProposalFixture("missing")
+    Kill ^||OcuPilotProposalFixture("empty")
+    Set ^||OcuPilotProposalFixture("readfault") = pHttpStatus
 }
 
 /// <p>Answer the next mutating <method>Invoke</method> with the object <var>pJson</var>. A type the
@@ -94,8 +109,8 @@ ClassMethod DeniedPair() As %String
 }
 
 /// <p>Answer AD-10's seam with <var>pClass</var> for
-/// <class>OcuPilot.Test.ConfirmFixture</class>, so the prohibited-set refusal branch can be driven
-/// before Story 5.5 creates the set's one home. <code>""</code> restores the shipped answer.</p>
+/// <class>OcuPilot.Test.ConfirmFixture</class>, so the prohibited-set refusal branch is driven
+/// against an armed target. <code>""</code> restores the shipped answer.</p>
 ClassMethod ArmProhibited(pClass As %String = "")
 {
     If pClass = "" {
@@ -113,8 +128,8 @@ ClassMethod ProhibitedClass() As %String
 
 /// <p>A prohibited set that refuses every write, for
 /// <method>OcuPilot.Test.ConfirmFixture.ProhibitedClassName</method> to answer with. The signature
-/// is the one <class>OcuPilot.Kernel.Proposal.Confirm</class> calls; Story 5.5's real set
-/// implements the same one.</p>
+/// is the one <class>OcuPilot.Kernel.Proposal.Confirm</class> calls;
+/// <class>OcuPilot.Kernel.Proposal.Prohibited</class> implements the same one.</p>
 ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %String, Output pProhibits As %Boolean, Output pCode As %String) As %Status
 {
     Set pProhibits = 1
@@ -186,6 +201,11 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         Set pHttpStatus = 200
         Set pResult = ##class(%DynamicAbstractObject).%FromJSON($Get(^||OcuPilotProposalFixture("write"), $Get(^||OcuPilotProposalFixture("answer"), "{}")))
         Quit $$$OK
+    }
+    If $Data(^||OcuPilotProposalFixture("readfault")) {
+        Set pHttpStatus = +^||OcuPilotProposalFixture("readfault")
+        Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, "The instance refused that read")
+        Quit $$$ERROR($$$GeneralError, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED)
     }
     If $Get(^||OcuPilotProposalFixture("missing")) {
         Set pHttpStatus = 404

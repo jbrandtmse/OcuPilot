@@ -269,10 +269,12 @@ Method TestAChangedTargetRefusesAndClosesTheRow()
 }
 
 /// <p>AC7, AD-10: the prohibited-set seam is called once, inside the transition and before the port
-/// call, and answers "not prohibited" until Story 5.5 fills it.</p>
+/// call, and answers the kernel class that is the set's one home.</p>
+/// <p>Mutation: point <method>OcuPilot.Kernel.Proposal.Write.ProhibitedClass</method> back at
+/// <code>""</code> -- this goes red.</p>
 Method TestTheProhibitedSeamIsCalledOnceBeforeThePortCall()
 {
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Write).ProhibitedClass(), "", "the seam answers no prohibited set yet")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Write).ProhibitedClass(), "OcuPilot.Kernel.Proposal.Prohibited", "the seam answers the set's one home")
     Set tSource = ""
     Do ##class(%Compiler.UDL.TextServices).GetTextAsString($Namespace, "OcuPilot.Kernel.Proposal.Confirm", .tSource)
     Set tBody = $Piece(tSource, "ClassMethod Transition", 2)

@@ -49,11 +49,11 @@ ClassMethod StoreClass() As %String
 }
 
 /// <p>AD-10's prohibited set, as <method>OcuPilot.Kernel.Proposal.Write.ProhibitedClass</method>
-/// answers it -- <code>""</code> until Story 5.5 creates the set's one home.</p>
-/// <p>Overridable for the reason <method>PortClass</method> and <method>StoreClass</method> are: the
-/// refusal branch the seam guards has no production answer yet, so without a seam it could only be
-/// checked by reading this class's own source. Production never overrides it, and the set itself is
-/// still named in exactly one place (AD-10).</p>
+/// answers it -- <class>OcuPilot.Kernel.Proposal.Prohibited</class>.</p>
+/// <p>Overridable for the reason <method>PortClass</method> and <method>StoreClass</method> are: a
+/// fixture answers with the set reading an armed target, so the refusal branch is driven without
+/// the instance's own. Production never overrides it, and the set itself is still named in exactly
+/// one place (AD-10).</p>
 ClassMethod ProhibitedClassName() As %String
 {
     Quit ##class(OcuPilot.Kernel.Proposal.Write).ProhibitedClass()
@@ -183,8 +183,7 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
             Quit
         }
 
-        ; AD-10's single call site. Empty until Story 5.5 creates the set's one home; asked here,
-        ; inside the transition and before the port call, so the seam has a caller from the start.
+        ; AD-10's single call site: asked inside the transition and before the port call.
         Set tProhibited = ..ProhibitedClassName()
         If tProhibited '= "" {
             Set tProhibitSC = $ClassMethod(tProhibited, "Prohibits", $Get(pRow("toolName")), $Get(pRow("targetRef")), $Get(pRow("payload")), .tProhibits, .tProhibitCode)
