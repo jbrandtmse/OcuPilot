@@ -291,8 +291,13 @@ with source copied to its exact relative path under the host-side bind mount `/t
   epic creates files there freely, and modifying a file a **concurrent** epic created is a
   Clarification. Epic 5's client files are `ui/src/app/shell/panel.ts`, `panel.spec.ts`,
   `proposal-card*`, `reply*`, `tool-call-card*`, `ui/src/app/core/proposal-view.ts` and
-  `core/turn.ts`. **`ui/src/app/shell/panel-resize-handle*` is NO LONGER Epic 5's — Epic 15 holds
-  it, and Epic 15 is live on Story 15.5**, along with
+  `core/turn.ts`. **`ui/src/app/shell/panel-resize-handle*` was RELEASED TO TRUNK, which is not the
+  same as transferred** (owner correction 2026-09-20): Epic 4 created it and Epic 4 has merged, so
+  the ordinary rules apply to Epic 5 and Epic 15 alike — either may edit it, verifying it against the
+  other's pushed head immediately before doing so, and a new file either creates there is its own.
+  Epic 15's grant covers three assertions in one of its specs and is not an exclusive claim, so a
+  later Epic 5 story that legitimately needs the file edits it under the ordinary rules rather than
+  raising a Clarification it does not owe. Genuinely Epic 15's, and live on Story 15.5:
   `ui/src/app/shell/{header,account-menu,side-bar,command-box}*` and `ui/src/styles/**`.
   **`src/OcuPilot/Api/Router.cls` and EXPERIENCE.md's Fixed-strings table are epic-wide
   shared-append** — tail only, union merge expected (see the in-place-edit ruling above).

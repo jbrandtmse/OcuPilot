@@ -49,8 +49,7 @@ call carries `server: "ocupilot-slot-a"`; the throwaway is `ocupilot-ci` on 5277
 **Never:** No new route, no new tool, no `SCHEMAVERSION` move, so no `EndpointCoverage` or
 `SurfaceCoverage` roster row. No server-to-client push channel: the publisher is the client, at the
 moment the confirm answers. No edit to `ui/src/styles/**` or to
-`ui/src/app/shell/{header,account-menu,side-bar,command-box,panel-resize-handle}*` -- Epic 15 holds
-them and is live (see Design Notes, *Where the toast's styles live*). No toast for an error (those
+`ui/src/app/shell/{header,account-menu,side-bar,command-box}*` -- Epic 15 holds those and is live (see Design Notes, *Where the toast's styles live*). No toast for an error (those
 are banners) and none for a change on the screen the user is looking at. No cross-tab broadcast
 (AD-47). No second entity-type vocabulary and no free string on a descriptor. Do not write
 `deferred-work.md`.
@@ -331,8 +330,10 @@ epics' `paths_hint` and no other epic writes it; it is authorized for the toast 
 and recorded as a `footprint_extensions:` entry at the commit. `ui/src/styles/**` is **contended** --
 Epic 15 is live on Story 15.5 -- so the toast's rules stay component-scoped on
 `ui/src/app/shell/toast-host.ts` and use only tokens that already exist; folding them into
-`_components.scss` is a one-commit move after Epic 15 merges and is not this story's. `panel-resize-handle*`
-is Epic 15's and is not touched. `EXPERIENCE.md`'s Fixed-strings table takes its new rows at the
+`_components.scss` is a one-commit move after Epic 15 merges and is not this story's.
+`panel-resize-handle*` is **trunk's, not Epic 15's** (owner correction 2026-09-20: Epic 4 created it
+and has merged, so either live epic may edit it under the ordinary rules, verifying against the
+other's pushed head first). This story has no reason to touch it and does not. `EXPERIENCE.md`'s Fixed-strings table takes its new rows at the
 **tail** (shared-append); the narrow in-place allowance the owner granted applies only to a line that
 is itself the subject of a fix, which none of these are.
 
