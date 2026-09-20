@@ -22,6 +22,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-12T08:27:50Z status=decision-pending owner=burndown by=spec_gate note=server half is in 1.8 (buildIdentity on the instance response). The client reload prompt needs two things this project does not have: UX copy in neither DESIGN.md nor EXPERIENCE.md, and a real build identity (Installer.cls:73 is the literal 'dev'). Owner call at the decision sheet
 - 2026-09-12T09:46:32Z occurrence=1-8-instance-identity-and-the-api-version-guard
 - 2026-09-13T21:00:46Z status=routed owner=15-3-about-help-shortcuts-and-the-links-panel by=merge_gate note=owner-delegated decision: charter both halves, a real build identity (Installer.cls:73 is the literal dev) and the stale-bundle reload prompt with its copy. The About panel is where build identity is displayed, so it owns the stamp and the prompt that compares against it
+- 2026-09-20T17:49:08Z status=resolved-by:15-3-about-help-shortcuts-and-the-links-panel by=adjudication note=both chartered halves delivered: Installer.BundleIdentity replaces the dev literal with the deployed bundle's hashed main-*.js name (recorded on the version row, pinned by Test/Instance and Test/Wire), and shell/stale-bundle-notice.ts plus core/build-identity.ts render the polite Reload prompt whose copy is published in EXPERIENCE.md; the Integration AC's browser mutation (chooseReload made a no-op) was observed red and reverted
 
 ### DW-4: Several in-flight calls return 401 at once, each triggering its own refresh
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
@@ -4545,43 +4546,56 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: HelpLinks.load adds the route to asked before awaiting and never removes it on failure; helpHrefFor collapses a refusal, an unavailable answer and an unreachable instance to the same empty string. Closing it gives helpHrefFor a third outcome, which changes its contract. ui/src/app/core/help.ts
 - 2026-09-20T17:09:25Z status=open owner=15-3-about-help-shortcuts-and-the-links-panel by=harvest note=implement-stage deferral
+- 2026-09-20T17:49:09Z status=routed owner=range-end-cleanup by=adjudication note=residual: HelpLinks.load adds a route to asked before awaiting and never removes it on failure, so one transient refusal hides that screen's Help control until reload. Non-blocking for the 2026-09-27 floor and for every downstream story: Help is a convenience link to vendor documentation, the instance is unaffected, and a reload clears it. Closing it gives helpHrefFor a third outcome, which changes a contract this story just published
 
 ### DW-1369: stale-bundle-notice.ts has no component spec and app.spec.ts's band-order row was not extended to it
 - source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: The browser tier covers render, role, copy, never-self-reloads and the Reload click, and isStale is unit-tested; what has no jsdom host is where the region sits in the frame, which app.spec.ts pins for its sibling app-fault-banner with a recorded mutation
 - 2026-09-20T17:09:25Z status=open owner=15-3-about-help-shortcuts-and-the-links-panel by=harvest note=implement-stage deferral
+- 2026-09-20T17:44:36Z status=resolved-by:15-3-about-help-shortcuts-and-the-links-panel by=cr note=QA added ui/src/app/shell/stale-bundle-notice.spec.ts (5 cases, 2 mutations) and app.spec.ts's band-order row; verified at code review
 
 ### DW-1370: The About dialog renders thirteen blank values between mount and the read settling
 - source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: unanswered is false while neither answered() nor failed() is set, so the first paint is a definition list of empty values rather than a pending state. Sub-second, values arrive in place. ui/src/app/shell/about-dialog.ts
 - 2026-09-20T17:09:25Z status=open owner=15-3-about-help-shortcuts-and-the-links-panel by=harvest note=implement-stage deferral
+- 2026-09-20T17:49:09Z status=wontfix-accepted by=adjudication note=reopen_if=the About dialog's first paint is observed holding empty values for longer than one frame on a normally-loaded instance, or a user-visible flash is reported. Sub-second, the values arrive in place, and the dialog is opened deliberately rather than rendered on arrival
 
 ### DW-1371: The stale-bundle strip can stand above the blocking instance notice
 - source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: app.ts renders app-stale-bundle-notice outside the signed-in branch beside the fault banner; the blocking notice is meant to replace the product surface rather than share it. ui/src/app/app.ts
 - 2026-09-20T17:09:25Z status=open owner=15-3-about-help-shortcuts-and-the-links-panel by=harvest note=implement-stage deferral
+- 2026-09-20T17:49:09Z status=routed owner=range-end-cleanup by=adjudication note=residual: app.ts renders app-stale-bundle-notice outside the signed-in branch, so the strip can stand above the blocking instance notice that EXPERIENCE.md says replaces the product surface rather than sharing it. Non-blocking: both surfaces are correct in isolation and the overlap needs an install or upgrade to be in flight while a stale bundle is held. Belongs with the other shell-chrome polish rather than re-opening a done story for a z-order
 
 ### DW-1372: The reload prompt's role=status region is inserted when it becomes true rather than kept mounted and populated, which is commonly not announced
 - source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: The house idiom in home.page.ts and account-menu.ts keeps a hidden region mounted and sets its text. EXPERIENCE.md now publishes this prompt among the polite status messages, so the announcement is a published contract; the browser spec asserts the attribute, not that anything was announced
 - 2026-09-20T17:09:25Z status=open owner=15-3-about-help-shortcuts-and-the-links-panel by=harvest note=implement-stage deferral; touches a published EXPERIENCE.md contract
+- 2026-09-20T17:49:09Z status=routed owner=range-end-cleanup by=adjudication note=residual: the prompt's role=status region is inserted when it becomes true rather than kept mounted and populated, which is commonly not announced, while EXPERIENCE.md now publishes it among the polite status messages. Non-blocking for the floor; the spine's own Deferred row puts accessibility mechanics with EXPERIENCE.md as component-level and not an architecture concern, so this names no AD invariant. The visual prompt and its Reload are pinned in two tiers
 
 ### DW-1373: Nothing in the suite executes the real audit-log call for the new uiabout subsystem
 - source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: OcuPilot.Test.UiAboutFixture.LogSourceFailure overrides the seam without ##super, so every test driving a refused source records into a process-private global and Kernel.Audit.Log.Error(..#LOGSUBSYSTEM, ...) is never run. src/OcuPilot/Test/UiAboutFixture.cls
 - 2026-09-20T17:09:36Z status=open owner=15-3-about-help-shortcuts-and-the-links-panel by=harvest note=implement-stage deferral
+- 2026-09-20T17:49:19Z status=routed owner=range-end-cleanup by=adjudication note=residual: Test/UiAboutFixture.LogSourceFailure overrides the seam without ##super, so no test executes Kernel.Audit.Log.Error for the new uiabout subsystem. Non-blocking: the logger itself is pinned by its own suite and every other subsystem exercises the same call; what is unpinned is this subsystem's string reaching it. A one-line ##super plus an assertion, deliberately not taken in a done story
 
 ### DW-1374: Installer.BundleIdentity's fallback branch has no test in any tier
 - source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: It is [ Private ], so reaching it needs an installer fixture subclass or an install run with the shell bundle directory emptied. The happy path is covered on every throwaway install; the fallback's failure mode is a Build row reading dev, which the client now never compares
 - 2026-09-20T17:09:36Z status=open owner=15-3-about-help-shortcuts-and-the-links-panel by=harvest note=implement-stage deferral
+- 2026-09-20T17:49:19Z status=routed owner=range-end-cleanup by=adjudication note=residual: Installer.BundleIdentity's fallback branch is [ Private ] and reachable only via an installer fixture subclass or an install with the shell bundle directory emptied. Non-blocking: the happy path runs on every throwaway install and is asserted there, and the fallback's failure mode is a Build row reading dev, which the client now never compares because isStale requires two hashed names
 
 ### DW-1375: Home's Shortcuts empty state is unreachable, so STRINGS.shortcutsEmpty is published but cannot be displayed
 - source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: shortcutScreens() filters the shipped mirror, which always resolves some rows, and a component spec may not replace the mirror. Removing the string means editing the published Fixed strings row as well. ui/src/app/areas/home/home.page.ts
 - 2026-09-20T17:09:36Z status=open owner=15-3-about-help-shortcuts-and-the-links-panel by=harvest note=implement-stage deferral
+- 2026-09-20T17:49:19Z status=routed owner=range-end-cleanup by=adjudication note=residual: shortcutScreens() filters the shipped mirror, which always resolves some rows, so STRINGS.shortcutsEmpty is published but unreachable. Non-blocking and deliberately left: removing the string means editing a published Fixed strings row, and the empty state becomes reachable the moment an instance gates every shortcut, which is exactly when it is wanted
 
 ### DW-1376: DESIGN.md's polish-week enumeration was not extended with Shortcuts and Links
 - source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: low | fix-risk: low | footprint: out-of-footprint
 - evidence: DESIGN.md:898 still reads 'Polish-week additions (system information, favorites, recents) go above or beside the grid' -- the line this story's Design Notes cite for placing both new blocks
 - 2026-09-20T17:09:36Z status=routed owner=range-end-cleanup by=harvest note=planning-artifact wording; non-blocking for the 2026-09-27 floor and for every downstream story, so Rule 27 re-owns it
+
+### DW-1377: HELP.ROUTE is the third field-level violation code family outside the only gate that checks such a code has a published sentence
+- source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: AgentViolation.TestViolationCodesHoldsEveryDeclaredFieldLevelCode filters %Dictionary.CompiledParameter on $Extract(tName,1,5)='AGENT', so HELPROUTE - like ACCOUNT* and PREFERENCES* before it - is invisible to it; a later HELP* code with no ReasonForViolation arm renders a blank refusal line under the field and only a hand-written wire assertion would catch it
+- 2026-09-20T17:44:55Z status=routed owner=range-end-cleanup by=cr note=pre-existing gap widened by one family; this story's own code is pinned over the wire by UiAboutWire

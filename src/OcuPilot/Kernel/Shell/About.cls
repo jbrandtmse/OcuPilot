@@ -7,8 +7,9 @@
 /// sign-in those reads.</p>
 /// <p><b>Every one of the twelve <method>Members</method> is read in the calling process, each
 /// behind its own <code>Try</code></b> (<method>Field</method>), so a refused or broken source
-/// degrades that one member to <code>""</code>, names itself in the log and leaves the other eleven
-/// answering --
+/// degrades that one member and leaves the other eleven answering: to <code>""</code> with a log
+/// line where the accessor raises, and to the accessor's own failure value where it traps instead
+/// (<method>%SYS.System.GetGlobalCache</method> answers 0) --
 /// <class>OcuPilot.Kernel.Shell.Instance</class>'s <method>ReadSource</method> seam, copied. None
 /// of the twelve switches namespace (AD-16); <method>DocBookEnabled</method> is the one thing here
 /// that does, by explicit save and restore.</p>
@@ -105,8 +106,10 @@ ClassMethod Field(pField As %String) As %String
 /// <p>Two accessors are marked <code>[ Internal ]</code> by the vendor --
 /// <method>%SYS.System.GetGlobalCache</method> and <method>GetRoutineCache</method> -- and are the
 /// classic About page's own calls on a class this product already reads twice. Accepted for a
-/// display-only integer: the per-field <code>Try</code> turns a vendor change into one blank
-/// field. <method>%Studio.General.GetWebServerPort</method> is used rather than
+/// display-only integer: a vendor change costs that one member rather than the read. Both trap
+/// their own error rather than reaching <method>Field</method>'s <code>Try</code>, so
+/// <method>GetRoutineCache</method> answers <code>""</code> and <method>GetGlobalCache</method>
+/// answers 0. <method>%Studio.General.GetWebServerPort</method> is used rather than
 /// <method>%RoutineMgr.GetWebServerPort</method>, which is itself <code>[ Internal ]</code> and
 /// forwards to it.</p>
 ClassMethod ReadSource(pField As %String) As %String

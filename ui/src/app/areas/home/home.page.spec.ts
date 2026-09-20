@@ -846,20 +846,36 @@ describe('Home', () => {
     }
   });
 
-  it('Story 15.3: an allowed shortcut opens its screen', async () => {
+  it('Story 15.3: an allowed shortcut opens its screen, carrying the namespace, and moves an open side bar to its area', async () => {
     // Mutation (Rule 19): make `openShortcut` return unconditionally -> this goes red. Its gated
     // sibling below cannot see that change: that row asserts the URL is *unchanged*, which a
-    // handler that never navigates satisfies by construction.
+    // handler that never navigates satisfies by construction. Two more this row alone sees:
+    // replace `withQuery(row.route, this.router.url)` with `row.route` -> the namespace
+    // assertion goes red; drop the `showArea` line -> the side-bar assertion does.
     const first = shortcutScreens()[0];
     expect(first.route).toBe('os-management/databases');
+
+    // An open side bar showing another area, so "moved to the shortcut's own" is observable at
+    // all; a collapsed one is left collapsed and would prove nothing either way.
+    tiles()[0].click();
+    await fixture.whenStable();
+    expect(shell.visibleArea()).toBe('logs');
+    expect(shell.open()).toBe(true);
+
+    await router.navigateByUrl('/?ns=USER');
+    fixture.detectChanges();
+
     const open = fixedBlocks()[0].querySelector('.ocu-home-block-open') as HTMLButtonElement;
     expect(open.getAttribute('aria-disabled')).toBeNull();
 
     open.click();
     await fixture.whenStable();
 
-    // `withQuery` carries the current URL's query, and the harness starts at `/` with none.
-    expect(router.url).toBe(`/${first.route}`);
+    // `?ns=` is data scope (AD-44), so `withQuery` carries it; the side bar follows the screen,
+    // so the list beside it is that screen's own.
+    expect(router.url).toBe(`/${first.route}?ns=USER`);
+    expect(shell.visibleArea()).toBe('os-management');
+    expect(shell.open()).toBe(true);
   });
 
   it('Story 15.3: an instance that answered no address at all renders no Links block, not a heading over nothing', async () => {

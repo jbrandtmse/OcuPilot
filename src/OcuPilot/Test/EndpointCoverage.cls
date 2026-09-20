@@ -109,6 +109,12 @@ XData Probes
 <probe class="Api.Router" method="GET" url="/instance" path="/api/ocupilot/instance" disposition="envelope"/>
 <probe class="Api.Router" method="GET" url="/namespaces" path="/api/ocupilot/namespaces" disposition="envelope"/>
 <probe class="Api.Router" method="GET" url="/navigation" path="/api/ocupilot/navigation" disposition="envelope"/>
+<probe class="Api.Router" method="GET" url="/ui/about" path="/api/ocupilot/ui/about" disposition="envelope"/>
+<!-- /ui/help carries no route here: path is rebuilt from url and a query string would not
+     survive that, so this row draws the documented 422 HELP.ROUTE envelope instead of a 200.
+     It is still a dispatch, which is what this class asserts; the route's own answers are
+     OcuPilot.Test.UiAboutWire's. -->
+<probe class="Api.Router" method="GET" url="/ui/help" path="/api/ocupilot/ui/help" disposition="envelope"/>
 <probe class="Api.Readiness" method="GET" url="/" path="/api/ocupilot/readiness/" disposition="envelope"/>
 <probe class="Api.StaticHandler" method="GET" url="/(.*)" path="/ocupilot/index.html" disposition="bytes"/>
 <probe class="Api.StaticHandler" method="HEAD" url="/(.*)" path="/ocupilot/index.html" disposition="bytes"/>

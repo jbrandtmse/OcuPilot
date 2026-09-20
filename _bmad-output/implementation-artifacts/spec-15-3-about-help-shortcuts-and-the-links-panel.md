@@ -237,6 +237,104 @@ deferred:
 - **Integration AC (Rule 1):** Given an instance whose version row carries a bundle-derived build identity, when a browser holds a bundle whose own identity differs, then the shell shows the polite Reload prompt — and when the identities match, or either is empty, no prompt appears. Observable in the browser tier against the deployed bundle; `DW-3`.
 - Given the shell, when these four surfaces render, then no request leaves the instance's origin: the only off-origin traffic any of them can cause is a navigation the user clicks.
 
+### Review Findings
+
+2026-09-20 code review (full, Opus; blind-hunter, edge-case-hunter, verification-gap,
+acceptance-auditor). 30 rows -> 8 root-cause entries: high 1, med 2, low 5. All patches applied in
+the pass; one med routed with an owner.
+
+- [x] [Review][Patch] **The two new routes had no `EndpointCoverage` probe row, so the merged tree
+  would have reddened CI's `instance` job** [src/OcuPilot/Test/EndpointCoverage.cls:112] — all four
+  layers found it; re-derived here as 42 routes against 40 probes, the difference exactly
+  `Api.Router|GET|/ui/about` and `Api.Router|GET|/ui/help`. The same failure mode already hit this
+  branch once at the Epic 13 merge (cycle log, `merge_regression_fixed`, 37 vs 40), and the
+  orchestrator's `footprint_grant` of 2026-09-20T14:54:17Z covers the file. Two rows added;
+  `/ui/help` carries no query because `ExpectedPath` rebuilds `path` from `url`, so it draws the
+  documented 422 `HELP.ROUTE` envelope, which is still a dispatch. Verified on `ocupilot-slot-b`:
+  `TestEveryRouteHasAProbeAndEveryProbeHasARoute` **passes**;
+  `TestEveryProbeDispatchesToItsRoute` fails only on the two `Api.StaticHandler` rows at 503, which
+  is that instance's empty `/durable/iris/csp/ocupilot` since 2026-09-15 and not this story's.
+- [x] [Review][Patch] **`HomePage.openShortcut`'s query preservation and side-bar move were
+  observed by no test** [ui/src/app/areas/home/home.page.spec.ts:849] — the allowed-shortcut row ran
+  from `/` with no query and asserted the route alone; its gated sibling asserts the URL is
+  *unchanged*, which a dead handler satisfies. Dropping `withQuery` (AD-44 data scope) or the
+  `showArea` line left every gate green. Row extended and both mutations demonstrated red
+  (`## Verification`, AC3).
+- [x] [Review][Patch] **The Fixed strings row this story appended carries a wrong position claim
+  and two anchors its own insertion made stale**
+  [_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md:383] — About is
+  the account menu's **first** `role="menuitem"` (`account-menu.ts:103`, `#firstItem`), not its
+  third; and inserting at `:383` pushed the locator-bar row to `:400` and the Status messages
+  bullet to `:664`. Corrected in place, line-neutral.
+- [x] [Review][Patch] **`Kernel/Shell/About.cls`'s header claimed a degrade the vendor does not
+  perform** [src/OcuPilot/Kernel/Shell/About.cls:8] — `%SYS.System.GetGlobalCache` sets its own
+  `$ZTrap` and returns `0`, and `GetRoutineCache` returns `""`, so neither reaches `Field`'s `Try`
+  or `LogSourceFailure`: a broken `databaseCacheMb` renders a plausible `0`, not a blank, and logs
+  nothing. Claim corrected at its origin, in the header and in `ReadSource`'s `[ Internal ]`
+  paragraph.
+- [x] [Review][Patch] **`core/shortcuts.ts` stated an inference as a mechanism**
+  [ui/src/app/core/shortcuts.ts:11] — "they stay declared, so the block completes itself as those
+  screens land" rests on seven route spellings that appear nowhere else in `src/`, `ui/src/`,
+  `ui/tools/` or the planning artifacts, and `system-explorer` is not one of the mirror's eight
+  area keys. Labeled `(inference)` with what would verify it, per the project's prose rule.
+- [x] [Review][Patch] **Two acceptance-criterion halves had no `mutation:` line** — AC1's
+  focus-return clause and AC3's Links half. Closed inside this pass per Rule 19: named, applied,
+  observed red, reverted, working tree confirmed byte-identical, lines written to
+  `## Verification`.
+- [x] [Review][Patch] **DW-1369 was still carried open although QA's own commit closed it** —
+  `ui/src/app/shell/stale-bundle-notice.spec.ts` (5 cases, 2 recorded mutations) and
+  `app.spec.ts`'s band-order row exist and pass. Ledger closed
+  `status=resolved-by:15-3-about-help-shortcuts-and-the-links-panel`. The frontmatter `deferred:`
+  list and `## Auto Run Result`'s residual-risk paragraph still name it; both are the implement
+  stage's record and were left as written.
+- [x] [Review][Defer] **`HELP.ROUTE` is the third field-level code family outside the gate that
+  checks such a code has a published sentence** [src/OcuPilot/Test/AgentViolation.cls:84] —
+  deferred: pre-existing (`ACCOUNT*` and `PREFERENCES*` are already outside the `AGENT`-prefix
+  filter), out of this story's footprint, and this story's own code is pinned over the wire by
+  `UiAboutWire`. **DW-1377**, `routed owner=range-end-cleanup`.
+
+**Rejected** — 16 rows, with the reason each was not carried:
+
+- *false*: the About payload widens what an unprivileged caller learns. `%CSP.UI.Portal.About`
+  declares no `RESOURCE`, and neither does anything in its inheritance chain, so the classic
+  surface this replaces is equally ungated and the fields are its own set.
+- *low, fix is more than a correction*: Links entries are not privilege-filtered. `DocBookEnabled`
+  reads whether the instance serves `/csp/docbook`, which is exactly what
+  `%ZEN.Portal.standardPage.GetDocURL` reads and equally per-instance; making an outbound URL
+  carry a per-caller verdict is new server semantics, not a fix. (Already adjudicated as
+  intent-alignment 3.3 in the triage log.)
+- *low, not user-reachable*: Home's own route (`""`) takes the 422 branch rather than the matrix's
+  200 `available:false`. `hasClassicPage('')` is false, so the client issues no such request, and
+  the method documents the choice; the alternative fix edits the frozen intent block.
+- *low, theoretical*: `IsRosterRoute` folds an unreadable roster into a 422. A registry that cannot
+  be read is the whole product down, not one refusal misworded.
+- *low, theoretical*: `EnsureVersion` now records a disk-derived stamp on the `failed` path too. A
+  `failed` row's stamp is never compared — the install gate refuses before any About read.
+- *low, dev-only*: a `docker cp` redeploy without re-install leaves a prompt reloading cannot
+  clear. Every real start re-runs install and re-records the stamp.
+- *low, already adjudicated*: "one artifact is both sides" understates that the two halves read
+  different sources. `EnsureShellFiles` clears the directory before copying, so there is one.
+- *low, no named harm*: `DocBookEnabled` could read `$$$SecurityGlobalApplications` in place
+  instead of switching namespace. The current code is AD-16-compliant as written.
+- *low*: nothing dedupes the About read, so arriving at Home and opening About issues two. The
+  store's request counter makes the pair safe and each read is in-process. `reopen_if` = an About
+  read shows on Home's NFR-1 first-paint budget.
+- *low*: `IsRosterRoute` and `HelpHref` each sweep the registry. Once per screen visit, 40 screens.
+- *low*: `HandleAbout`'s `RenderInternal` arm is unexecuted. Reaching it needs a new seam on
+  `Payload` itself.
+- *low*: `.ocu-home-block-fixed` has no style rule. It is a semantic modifier separating the fixed
+  blocks from the removable ones, read by both the component spec and the browser spec.
+- *low*: `externalGlyph = '\u2197'` is declared in four components. `reopen_if` = a fifth copy, or
+  two of them disagreeing.
+- *low*: the Help control's place in the focus order is unpinned. It is a native anchor in the
+  locator bar and in tab order by construction.
+- *low*: `encryptionKeyId` and `licenseServer` render blank both when unset and when unreadable.
+  The distinction needs a new published string; `reopen_if` = an operator reads a blank
+  encryption row as a failed read.
+- *low, bookkeeping*: the Verified block never swept the ObjectScript suite. Same root cause as the
+  `EndpointCoverage` entry above and closed by it.
+
+
 ## Spec Change Log
 
 - 2026-09-20 (lead, spec gate): corrected the redeploy path in `## Verification` from `dist/ocupilot/browser/.` to `dist/ocupilot-ui/browser/.` (`ui/angular.json` sets `outputPath: dist/ocupilot-ui`; the wrong path copies nothing and leaves a stale bundle answering the browser spec), and added the missing `up` action to the `ci-throwaway.sh` invocation.
@@ -367,9 +465,9 @@ deferred:
 
 **Mutations (Rule 19)** — each applied, observed red, reverted, and the file confirmed byte-identical with `cmp` afterwards:
 
-- AC1: `mutation: drop journalFile from Kernel/Shell/About.Members, recompile About and every descendant -> OcuPilot.Test.UiAboutWire` — **red**, `TestTheAboutReadCarriesEveryMemberOverTheWire` failing `AssertTrue: the body carries journalFile` (1 of 7).
+- AC1: `mutation: drop journalFile from Kernel/Shell/About.Members, recompile About and every descendant -> OcuPilot.Test.UiAboutWire` — **red**, `TestTheAboutReadCarriesEveryMemberOverTheWire` failing `AssertTrue: the body carries journalFile` (1 of 7). Focus-return clause (added at code review): `mutation: make AccountMenu.chooseAbout close the menu without refocusing the trigger -> account-menu.spec.ts` — **red**, "Escape closes About through the stack and returns focus to the trigger" (2 of 16).
 - AC2: `mutation: make Kernel/Shell/About.HelpHref set pAvailable=0 for a route whose descriptor names a classic page -> OcuPilot.Test.UiAboutRead` — **red**, `TestAScreenWithAClassicHelpAddressResolvesIt` (1 of 10). Client half, since `locator-bar.spec.ts` drives a stubbed `HelpLinks` and cannot see a server change: `mutation: make LocatorBar.helpControl return false -> locator-bar.spec.ts` — **red**, "a screen whose classic page publishes a help address gets a Help control".
-- AC3: `mutation: drop the screenVerdict filter from Home's Shortcuts rows -> home.page.spec.ts` — **red**, "a shortcut the user may not open stays listed and focusable".
+- AC3: `mutation: drop the screenVerdict filter from Home's Shortcuts rows -> home.page.spec.ts` — **red**, "a shortcut the user may not open stays listed and focusable". Three more (added at code review, all on `home.page.spec.ts`): `mutation: replace withQuery(row.route, this.router.url) with row.route in HomePage.openShortcut` — **red**, "an allowed shortcut opens its screen, carrying the namespace, and moves an open side bar to its area" on `expected '/os-management/databases' to be '/os-management/databases?ns=USER'`; `mutation: drop the showArea line from HomePage.openShortcut` — **red**, the same row on `expected 'logs' to be 'os-management'`; Links half, `mutation: drop the Support destination from HomePage.resolvedLinks` — **red**, "the Links block lists the three destinations as anchors opening in a new tab".
 - Integration AC (DW-3): `mutation: make core/build-identity.ts isStale() return false unconditionally, rebuild, redeploy -> about-help-links.browser-spec.mjs` — **red**, the mismatch leg timing out on `.ocu-stale-bundle`.
 - AC5 (no off-origin request): `mutation: make Home's Links block fetch the support URL as well as linking to it, rebuild, redeploy -> about-help-links.browser-spec.mjs` — **green at first, and that is the finding**: the bundle's own `connect-src 'self'` refuses the fetch in the renderer (AD-47), so no request is issued and a request-list assertion cannot see it. The leg now watches the console for that refusal beside the request list, and the same mutation is **red** on it: `and none of these surfaces was refused for trying: ["Refused to connect to 'https://www.intersystems.com/support/index.html' ... \"connect-src 'self'\""]`.
 
@@ -388,6 +486,23 @@ Two more from the review pass's patches:
 
 - Reload is not inert: `mutation: make StaleBundleNotice.chooseReload a no-op, rebuild, redeploy -> about-help-links.browser-spec.mjs` — **red**, the mismatch leg timing out at 32 s on the navigation that never happens. (It also reddens the matching leg, because the mutated build has its own hash while the version row still names the installed one — the redeploy-without-reinstall case, where "stale" is the right verdict.) Reverted, rebuilt to the same `main-PKXZPYYT.js`, redeployed, 6/6 green.
 - The shortcuts roster's recorded mutation was corrected and re-demonstrated: `mutation: make shortcutScreens return SHORTCUT_ROUTES.map(screenForRoute) without dropping the nulls -> ui/tools/about.test.mjs` — **red**, 2 rows. The line previously recorded (`drop the !screen.built filter`) could not redden: every one of the 40 screens the shipped mirror declares is built (measured), so the seven unresolved roster routes return null, and null is what the filter's other half rejects.
+
+**QA pass — closing the deferred component-tier gap (Rule 19).** The Integration AC (DW-3) was
+pinned end to end only by the browser tier; `StaleBundleNotice` itself had no jsdom host, and
+`app.spec.ts`'s band-order proof for `<app-fault-banner />` was never extended to its sibling
+(`deferred:` entry, medium). Closed with `ui/src/app/shell/stale-bundle-notice.spec.ts` (QA) and
+one added case in `ui/src/app/app.spec.ts` (QA). Each mutation applied to the checked-in file,
+observed red under `npx ng test --include <spec>`, reverted, and confirmed byte-identical with
+`git status --short` / `git diff --stat`:
+
+- `mutation: StaleBundleNotice.stale getter returns false unconditionally -> stale-bundle-notice.spec.ts` — **red**, 3 of 5 ("renders the polite reload prompt…", "reacts to a later instance update…", "Reload asks the document to fetch itself again…").
+- `mutation: StaleBundleNotice.chooseReload becomes a no-op -> stale-bundle-notice.spec.ts` — **red**, 1 of 5 ("Reload asks the document to fetch itself again, and never on its own").
+- `mutation: move <app-stale-bundle-notice /> inside the signed-in branch in app.ts -> app.spec.ts` — **red**, 1 of 33 ("Story 15.3: the stale-bundle notice is `<app-fault-banner />`'s sibling, not the signed-in branch's").
+
+`cd ui && npm test` re-run clean after all three reverts: 1168 `node --test` + 718 component
+tests over 52 files (+1 file, +6 tests over the story's own count). `npm run build` green,
+`screen-mirror.mjs --check` up to date with no regeneration, bundle hash unchanged at
+`main-PKXZPYYT.js`.
 
 **Manual checks:**
 

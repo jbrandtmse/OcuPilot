@@ -873,6 +873,34 @@ describe('the shell frame', () => {
     ]);
   });
 
+  it('Story 15.3: the stale-bundle notice is `<app-fault-banner />`\'s sibling, not the signed-in branch\'s', () => {
+    // Deferred finding (spec-15-3): the band-order proof above covers `<app-fault-banner />` but
+    // was never extended to its new neighbour. Same proof, same shape: present while signed out,
+    // present again once the frame is up, and immediately after the banner both times.
+    //
+    // Mutation (Rule 19): move `<app-stale-bundle-notice />` inside the signed-in branch in
+    // `app.ts` -> the sign-in-state assertion below goes red.
+    session.move('form');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-sign-in')).not.toBeNull();
+    const rootChildrenSignedOut = Array.from(fixture.nativeElement.children as HTMLCollection).map(
+      (child) => (child as HTMLElement).tagName.toLowerCase()
+    );
+    const bannerAt = rootChildrenSignedOut.indexOf('app-fault-banner');
+    expect(bannerAt).toBeGreaterThanOrEqual(0);
+    expect(rootChildrenSignedOut[bannerAt + 1]).toBe('app-stale-bundle-notice');
+
+    session.move('signed-in');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.ocu-shell')).not.toBeNull();
+    const rootChildrenSignedIn = Array.from(fixture.nativeElement.children as HTMLCollection).map(
+      (child) => (child as HTMLElement).tagName.toLowerCase()
+    );
+    const bannerAtSignedIn = rootChildrenSignedIn.indexOf('app-fault-banner');
+    expect(bannerAtSignedIn).toBeGreaterThanOrEqual(0);
+    expect(rootChildrenSignedIn[bannerAtSignedIn + 1]).toBe('app-stale-bundle-notice');
+  });
+
   it("AC4: the shell brings the Definitions list's action handlers into existence", () => {
     // `DefinitionActions` registers the list's four handlers in its own constructor, and nothing
     // constructs it except `App`'s injection of it -- the descriptor declares the actions, but a

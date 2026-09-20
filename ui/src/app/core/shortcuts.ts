@@ -10,8 +10,10 @@
  * **A row naming no built screen is dropped** (AD-37 degrade). Seven of the seventeen replace
  * screens OcuPilot has not built -- the four System Explorer views are Stage 3, and namespace
  * configuration, memory and startup, and background tasks are later work -- so their routes
- * resolve to nothing in the mirror and `shortcutScreens()` leaves them out. They stay declared, so
- * the block completes itself as those screens land rather than needing this file edited again.
+ * resolve to nothing in the mirror and `shortcutScreens()` leaves them out. They stay declared so
+ * the block can complete itself as those screens land (**inference** -- no descriptor declares any
+ * of those seven routes yet, so each spelling is this file's guess at one and nothing fails if the
+ * screen lands under another; check them against the descriptors when those screens are built).
  *
  * **A row adds no string.** Its label is the screen's own `labelKey`, read from the mirror, so a
  * screen renamed once is renamed everywhere (AD-5).
