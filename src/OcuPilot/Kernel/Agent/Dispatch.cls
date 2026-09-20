@@ -494,9 +494,6 @@ ClassMethod ResolveClientCall(pUser As %String, pBlock As %DynamicObject, pLimit
             Do ..LogFault("turn " _ pKey _ ": a client tool call's privilege pairs of " _ pToolName _ " could not be read", $$$ERROR($$$GeneralError, "unresolved pairs"), tUnavailable)
             Quit
         }
-        ; The requirement has been read, which is what lets the row below say "there is none"
-        ; rather than "nobody read one" when it is empty (DW-1305).
-        Set pPairsResolved = 1
         Set tFailedPair = ..MissingPair(pUser, tPairs)
         If tFailedPair '= "" {
             Set pContent = ..DeniedContent(tFailedPair)
@@ -524,6 +521,12 @@ ClassMethod ResolveClientCall(pUser As %String, pBlock As %DynamicObject, pLimit
             Do ..LogFault("turn " _ pKey _ ": a client tool call's argument pairs of " _ pToolName _ " could not be read", $$$ERROR($$$GeneralError, "unresolved argument pairs"), tUnavailable)
             Quit
         }
+        ; Both halves of the requirement were read, which is what lets the row below say "there is
+        ; none" rather than "nobody read one" when the union is empty (DW-1305). It is set here and
+        ; not after RequiredPairs: OcuPilot.Screen.Tool.Navigate declares no static pair at all and
+        ; resolves its whole requirement per call, so a refusal between the two halves knows
+        ; nothing about what the call required. AnswerOne sets its own flag at the same point.
+        Set pPairsResolved = 1
         Set tFailedPair = ..MissingPair(pUser, tArgumentPairs)
         If tFailedPair '= "" {
             Set pContent = ..DeniedContent(tFailedPair)

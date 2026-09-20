@@ -84,6 +84,14 @@ Method OnBeforeOneTest() As %Status
 Method OnAfterOneTest() As %Status
 {
     Do ##class(OcuPilot.Test.EventProbe).Clear()
+    ; A method that deletes a registration re-installs it at its own tail, and an assertion that
+    ; fails before that tail is reached would leave the triple deleted for every later method in
+    ; the class -- which surfaces as four unrelated failures rather than the one real one. The
+    ; restore belongs where it runs whatever the method did; Install is idempotent (AD-17) and is
+    ; called only when something is actually missing.
+    If ##class(OcuPilot.Test.AuditEvent).MissingTriples() '= "" {
+        Do $$$AssertStatusOK(##class(OcuPilot.Install.Installer).Install(""), "the audit registrations this method deleted are put back")
+    }
     Do $$$AssertStatusOK(..Unharden(), "the probe application's resource is cleared again")
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining)
     Do $$$AssertStatusOK(tSC, "the probe proposals and turns are removed")
@@ -436,7 +444,10 @@ Method TestADroppedMarkerNeitherFailsTheWriteNorPassesSilently()
     Do $$$AssertEquals(..MarkerRows(tSince, """proposalId"":""" _ tKey _ """", .tNone), 0, "and no audit row records it, which is the cost the caller is not told about")
     Do $$$AssertEquals(##class(OcuPilot.Test.EventProbe).Captured("calls"), 1, "the drop is reported exactly once")
     Do $$$AssertEquals(##class(OcuPilot.Test.EventProbe).Captured("message"), $Parameter(..#EVENT, "DROPPEDAGENTWRITE"), "with the confirmed-write sentence")
-    Do $$$AssertTrue(##class(OcuPilot.Test.EventProbe).Captured("reason") '= "", "and the reason the audit call gave")
+    ; Not "is non-empty": $System.Status.GetErrorText of the raw 0 the audit call answers renders
+    ; "ERROR #00: (no error description)", which is non-empty and says nothing, so that assertion
+    ; could not fail. The reason has to carry the answer the call actually gave.
+    Do $$$AssertTrue(##class(OcuPilot.Test.EventProbe).Captured("reason") [ $Parameter(..#EVENT, "DROPPEDANSWER"), "and the reason names the answer the audit call gave, not an empty status text")
 
     Do $$$AssertEquals(..WriteRow(tTurnKey, .tRow), 1, "one write-kind ledger row")
     Do $$$AssertEquals($Get(tRow("Status")), "ok", "finalized ok, because the write happened")
@@ -523,7 +534,37 @@ Method TestARowIsLeftPendingWhenTheWriteRaises()
     Do $$$AssertEquals($Get(tRow("Status")), $Parameter(..#STORE, "STATUSPENDING"), "left pending -- nobody finalized it, which is the trace itself")
     Do $$$AssertEquals($Get(tRow("Code")), "", "carrying no code, because nothing set one")
     Do $$$AssertEquals($Get(tRow("AuditMarked")), "", "and no claim about marking either, exactly as when the row was opened")
+    ; The trace has to be reachable by whoever investigates it, not only by its own author: the
+    ; open records the requirement the confirm had already evaluated, so the cross-user gate has
+    ; the row's own pairs to answer on (AD-46) instead of withholding it under an empty sense.
+    Do $$$AssertNotEquals($Get(tRow("RequiredPairs")), "", "recording the requirement the confirm evaluated before it called the port")
+    Do $$$AssertEquals($Get(tRow("PairsSense")), $Parameter(..#STORE, "SENSECHECKED"), "under the sense that says somebody read it")
     Do $$$AssertEquals(..MarkerRows(tSince, """proposalId"":""" _ tKey _ """", .tNone), 0, "no agent-write marker was written")
+}
+
+/// <p><b>DW-1379.</b> The instance-wide "writes are not being marked" fact is an observation about
+/// the instance, so only an answer the instance gave may set it. A marker that fails <b>before</b>
+/// <code>$System.Security.Audit</code> -- a stored reference that will not parse -- asked the
+/// instance nothing, and <method>OcuPilot.Kernel.Audit.Event.RecordAgentWrite</method> says so
+/// through <var>pEmitted</var> rather than through its status, which is an error either way.</p>
+/// <p>Driven at the emitter because the confirm cannot reach the branch: <code>FingerprintMatches</code>
+/// parses the same stored <code>TargetRef</code> first and refuses outright, so no fixture seam
+/// reaches the marker's parse. The consequence this pins is the executor's rule -- refresh the
+/// instance-wide fact only when <var>pEmitted</var> is 1 -- and the branch that makes it matter.</p>
+/// <p>Mutation (Rule 19): set <var>pEmitted</var> to 1 at the top of <code>RecordAgentWrite</code>
+/// instead of immediately before the audit call, and this goes red on the unparseable arm -- a
+/// per-write failure would again be recorded as the instance's own answer.</p>
+Method TestAMarkerThatNeverAskedTheInstanceSaysSo()
+{
+    Set tSC = $ClassMethod(..#EVENT, "RecordAgentWrite", "probe-proposal", ..#TOOL, "not-a-reference", $Username, "2026-09-20T00:00:00Z", "", .tEmitted)
+    Do $$$AssertStatusNotOK(tSC, "an unparseable stored reference fails the marker")
+    Do $$$AssertEquals($Get(tEmitted, -1), 0, "and reports that the audit call was never made, so it is no evidence about the instance")
+
+    Set tRef = ..Reference()
+    Do $$$AssertTrue(tRef '= "", "the suite's own canonical reference is built for the control arm")
+    Set tOkSC = $ClassMethod(..#EVENT, "RecordAgentWrite", "probe-proposal", ..#TOOL, tRef, $Username, "2026-09-20T00:00:00Z", "", .tOkEmitted)
+    Do $$$AssertStatusOK(tOkSC, "a reference that parses reaches the audit call")
+    Do $$$AssertEquals($Get(tOkEmitted, -1), 1, "and reports that the instance was asked, which is what may refresh the recorded fact")
 }
 
 /// <p><b>AC1</b>, the half no shipped descriptor can drive: a name the descriptor declared secret

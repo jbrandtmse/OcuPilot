@@ -336,7 +336,7 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
         ; descriptor's declared secret names excluded here, at write time, never redacted later.
         Set tFieldNames = ..FieldNames(tBody, tSecretNames)
         Set tLedgerKey = ""
-        Do $ClassMethod(..LedgerClass(), "OpenConfirmedWrite", $Get(pRow("turnKey")), pUser, $Get(pRow("toolName")), $Get(pRow("targetRef")), ..LimitsClass(), .tLedgerKey)
+        Do $ClassMethod(..LedgerClass(), "OpenConfirmedWrite", $Get(pRow("turnKey")), pUser, $Get(pRow("toolName")), $Get(pRow("targetRef")), ..LimitsClass(), .tLedgerKey, tPairs)
         ; The window the marker and the vendor's own change row are joined inside: taken on the
         ; instance immediately before the call, so the vendor row is the *Change row for this
         ; target and this user at or after it.
@@ -368,13 +368,18 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
         ; $System.Security.Audit answers 0 and drops the event when its triple is unregistered,
         ; with no error and no log line -- and the marker never fails the write and never
         ; propagates: tSC is untouched on either arm.
-        Set tMarkSC = $ClassMethod(..EventClass(), "RecordAgentWrite", pProposalId, $Get(pRow("toolName")), $Get(pRow("targetRef")), pUser, tWrittenAt, tFieldNames)
+        Set tMarkSC = $ClassMethod(..EventClass(), "RecordAgentWrite", pProposalId, $Get(pRow("toolName")), $Get(pRow("targetRef")), pUser, tWrittenAt, tFieldNames, .tEmitted)
         Set tMarked = $$$ISOK(tMarkSC)
         Do $ClassMethod(..LedgerClass(), "FinalizeConfirmedWrite", tLedgerKey, "ok", "", $Get(pRow("targetRef")), tFieldNames, tPairs, $Select(tMarked: $Parameter("OcuPilot.Kernel.State.Ledger", "MARKEDYES"), 1: $Parameter("OcuPilot.Kernel.State.Ledger", "MARKEDNO")))
         ; The emission's own answer is the instance's answer to "are writes being marked", and it
         ; is the only one a least-privileged process can get. Recorded so the panel's banner is
         ; showing on the next read; a refresh that fails is logged and never propagated.
-        Do $ClassMethod(..EventClass(), "RecordMarking", tMarked)
+        ; Only when the instance was actually asked (DW-1379): a marker that failed before the
+        ; audit call -- an unparseable stored reference -- says nothing about the instance, and
+        ; recording it would show the banner to every user over one write's own fault. That write
+        ; is still reported as not marked on its own card and its own ledger row, which is where a
+        ; per-write failure belongs.
+        If $Get(tEmitted, 0) Do $ClassMethod(..EventClass(), "RecordMarking", tMarked)
 
         Set tSC = ..Answer(pProposalId, .pResult, .pHttpStatus, .pCode, $Select(tMarked: 1, 1: 0))
     } Catch ex {

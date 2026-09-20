@@ -4164,6 +4164,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: AC2 computes expectedTotal as the instance's own OcuPilot-source audit count plus the thousand seeded rows, sets the table's max-rows control to that number and waits for exactly that many rows. On the slot-A throwaway the OcuPilot source now holds 3,198 rows against the seed's 1,000, so the leg asks the screen to render 4,198 rows and times out at thirty seconds; on a fresh container the marker count is the installer's own handful and it passes, which is why Epic 6's CI runs were green. Probe: SELECT COUNT(*) FROM %SYS.Audit_List(,,'OcuPilot') before running the leg
 - 2026-09-19T01:28:03Z status=routed owner=burndown by=lead note=the fix is in the test: bound what it renders rather than asking for every marker row. Recorded at the merge; CI on a fresh container is the arbiter for the merged head
 - 2026-09-19T03:19:43Z status=routed owner=5-6-the-agent-marker-and-what-happens-when-it-fails by=x0 note=5.6 owns the agent-marker audit leg; scope the spec to this proposal's marker rather than every OcuPilot-source row
+- 2026-09-20T21:57:21Z status=resolved-by:5-6-the-agent-marker-and-what-happens-when-it-fails by=adjudication note=the audit spec's AC2 leg is rescoped to its own window with a beginDateTime criterion, so it no longer renders every OcuPilot-source row. The timestamp unit was settled at the lead's harvest gate rather than left unverified: %SYS.Audit declares BeginDateTime as a $zdatetime($H,3) value, so instance-local is correct and the spec's UTC task text was the error
 
 ### DW-1177: CLAUDE.md says the pre-commit hook runs check-objectscript.py on staged paths, but the script has no per-file mode and the hook runs it bare over the tree
 - source: spec-5-0-epic-4-deferred-cleanup.md | severity: low | fix-risk: low | footprint: out-of-footprint
@@ -4757,6 +4758,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: DW-1120's fix makes an empty RequiredPairs never held, which is right for a refusal row and wrong for a tool that genuinely needs no IRIS resource. Location: src/OcuPilot/Kernel/Audit/Ledger.cls
 - 2026-09-20T05:33:29Z status=routed owner=5-6-the-agent-marker-and-what-happens-when-it-fails by=harvest note=downstream-blocking (Rule 27): 5.6 owns the ledger row's own contract and is where the distinction between no-pairs-needed and no-pairs-known belongs
 - 2026-09-20T06:02:47Z by=code-review note=population widened: this is not only Navigate's tool rows. Screen/Descriptor/Home.cls declares route "" and privileges [], so RecordProviderCall records an empty requirement for every turn started from the default landing screen, and every such llm row is withheld from every cross-user reader including an %All holder
+- 2026-09-20T21:57:21Z status=resolved-by:5-6-the-agent-marker-and-what-happens-when-it-fails by=adjudication note=settled together with DW-1321 by one PairsSense column recording WHICH claim a row makes -- checked, declared, route or none -- so a tool that legitimately declares no pairs is readable while every other empty or unresolved set stays withheld. Gate.EvaluateRequired's empty-is-never-held is preserved, not softened; it is simply no longer the only question asked
 
 ### DW-1306: EvaluateAnyOf's OR semantics are pinned by no test, and every new port-gate assertion runs with the gate class substituted
 - source: spec-5-4-execution-strictly-as-the-user.md | severity: med | fix-risk: low | footprint: in-epic
@@ -4778,6 +4780,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-4-execution-strictly-as-the-user.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: AD-31 has the turn job re-validate against the owner's current grants; the new gate reads the calling process instead. Location: src/OcuPilot/Port/ProviderPort.cls
 - 2026-09-20T05:33:29Z status=routed owner=5-6-the-agent-marker-and-what-happens-when-it-fails by=harvest note=downstream-blocking (Rule 27): the turn-owner-versus-caller distinction lands with the story that records what was actually exercised
+- 2026-09-20T21:57:21Z status=resolved-by:5-6-the-agent-marker-and-what-happens-when-it-fails by=adjudication note=ProviderPort.Invoke now gates on the TURN OWNER's live grants rather than on the calling process; Loop.cls already had pUser in scope. The review refuted its own layer's claim that dropping pUser reverts this -- ResolvedUsername() is $Username and the turn job runs as the owner, so the fallback asks about the same account
 
 ### DW-1310: AC1's tool-identity assertion has no shipped-code falsifier, and the identity role's absence is asserted on a path where it could not be present
 - source: spec-5-4-execution-strictly-as-the-user.md | severity: low | fix-risk: low | footprint: in-epic
@@ -4836,6 +4839,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cr | severity: med | fix-risk: med | footprint: in-epic
 - evidence: A requirement evaluated against the caller (Dispatch), a tool's declaration no check ever read (Loop.RecordRefusedRow) and the originating screen route's pairs (Ledger.RecordProviderCall) are stored in one column, so an AD-46 reader cannot tell which claim a row makes. Location: src/OcuPilot/Kernel/Audit/Ledger.cls
 - 2026-09-20T06:03:03Z status=routed owner=5-6-the-agent-marker-and-what-happens-when-it-fails by=code-review note=same owner as DW-1305, which owns the ledger row's own contract; the distinction has to be settled once for all three writers
+- 2026-09-20T21:57:21Z status=resolved-by:5-6-the-agent-marker-and-what-happens-when-it-fails by=adjudication note=same column. The requiredPairs column no longer carries three incompatible meanings because PairsSense says which one is meant, and ViewForUser gates on the sense rather than on emptiness
 
 ### DW-1322: EvaluateAnyOf reports the first member of the OR-set as failedPair, which is not the pair the caller must obtain
 - source: cr | severity: low | fix-risk: low | footprint: in-epic
@@ -4880,6 +4884,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-5-prohibited-actions-are-absent-from-the-tool-set.md | severity: med | fix-risk: med | footprint: ui/src/app/core/turn.ts,ui/src/app/shell/panel.ts
 - evidence: turn.ts decideProposal records an outcome only when the refusal carried detail.state, and panel.ts onCardConfirm drops its own decision in its finally; a prohibited refusal does not close the row, so neither the code nor the reason reaches a card. Pre-existing: AD-30's restraint refusal has the same shape
 - 2026-09-20T11:27:28Z status=routed owner=5-6-the-agent-marker-and-what-happens-when-it-fails by=harvest note=DOWNSTREAM-BLOCKING judgment recorded per Rule 27: the prohibited set is the one control AD-10 says must hold even with confirmation, and a user who presses Confirm on a prohibited action currently sees nothing at all. Story 5.6 is what happens when a write does not complete, so the card's refusal state is its charter. Not range-end-cleanup: it ships in Release 1 and makes 5.5's floor-blocking fix invisible from the user's seat
+- 2026-09-20T21:57:21Z status=resolved-by:5-6-the-agent-marker-and-what-happens-when-it-fails by=adjudication note=a live-row refusal is now drawn on the card that was refused, so a prohibited or restrained confirm shows the user the envelope's own reason instead of silently re-offering Confirm. This is what makes Story 5.5's floor-blocking prohibited set observable from the user's seat
 
 ### DW-1349: No Release 1 write tool declares a delete operation, so the delete half of AD-10's clauses is unreachable and the coverage gate checks entity types only
 - source: spec-5-5-prohibited-actions-are-absent-from-the-tool-set.md | severity: med | fix-risk: low | footprint: src/OcuPilot/Kernel/Proposal/Prohibited.cls
@@ -5146,21 +5151,25 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-6-the-agent-marker-and-what-happens-when-it-fails.md | severity: med | fix-risk: low | footprint: ui/src/app/core/strings.ts
 - evidence: The banner is shown from Switch.WritesMarked 0, which the executor also sets when one emission returns 0 for any reason; instance-wide auditing being off is only one of the causes
 - 2026-09-20T20:33:42Z status=open owner=5-6-the-agent-marker-and-what-happens-when-it-fails by=harvest note=IN-STORY and re-graded from the stages low. This is the product telling the user something that is not so -- the same untruthfulness the owner ruled on for DW-1366's 500 and for the Gemini endpoint the UI does not name -- and it lands in the ONE banner whose correctness the lead made a requirement at this story's spec gate. Fix the sentence to state what is actually known (agent writes are not being marked) without asserting a cause that was not read
+- 2026-09-20T21:23:24Z status=resolved-by:5-6-the-agent-marker-and-what-happens-when-it-fails by=cr note=banner now reads 'Agent writes are not being marked in the audit database.' -- what WritesMarked 0 establishes, with no cause asserted. strings.ts and EXPERIENCE.md:258 changed together; strings gate and panel.spec slot assertion green
 
 ### DW-1379: A marker that fails before reaching the audit call records the instance-wide not-marking fact, so a single per-write failure shows the banner to every user
 - source: spec-5-6-the-agent-marker-and-what-happens-when-it-fails.md | severity: med | fix-risk: low | footprint: src/OcuPilot/Kernel/Proposal/Confirm.cls
 - evidence: Confirm.cls:371 records the condition on any failure path, including ones that never reached $System.Security.Audit and therefore say nothing about the instance
 - 2026-09-20T20:33:42Z status=open owner=5-6-the-agent-marker-and-what-happens-when-it-fails by=harvest note=IN-STORY, same family as the banner sentence: an instance-wide claim derived from a per-write failure. The write's own card is the truthful place for a per-write failure; the instance-wide flag should be set only by an answer the instance actually gave
+- 2026-09-20T21:23:24Z status=resolved-by:5-6-the-agent-marker-and-what-happens-when-it-fails by=cr note=RecordAgentWrite gained Output pEmitted set only immediately before $System.Security.Audit; Confirm refreshes RecordMarking only when pEmitted is 1. Pinned by AuditMarker.TestAMarkerThatNeverAskedTheInstanceSaysSo, mutation applied on ocupilot-ci and observed red
 
 ### DW-1380: The pending ledger row -- the trace a write nobody can account for leaves -- is written by the code and asserted by no test
 - source: spec-5-6-the-agent-marker-and-what-happens-when-it-fails.md | severity: med | fix-risk: low | footprint: src/OcuPilot/Kernel/Audit/Ledger.cls
 - evidence: The failure leg arms a 500 through the fixture and asserts the row is finalized error; no test observes the row in its pending state, which is the state that exists precisely when the process died between the open and the finalize
 - 2026-09-20T20:33:42Z status=open owner=5-6-the-agent-marker-and-what-happens-when-it-fails by=harvest note=IN-STORY under Rule 19: AD-41's create-before/finalize-after exists so an unaccountable write leaves a trace, and the pending state is the whole point of the shape. An assertion only over the finalized states does not pin it
+- 2026-09-20T21:23:32Z status=resolved-by:5-6-the-agent-marker-and-what-happens-when-it-fails by=cr note=QA's TestARowIsLeftPendingWhenTheWriteRaises verified real -- drives a genuine raise via ProposalFixture.ArmWriteException and observes the row pending. Code half also closed: OpenConfirmedWrite now records the pairs the confirm evaluated under sense checked, so a pending trace is reachable by a cross-user administrator (AD-46) instead of withheld under the legacy empty sense
 
 ### DW-1381: The none pairs-sense releases a turn that carried no screen context, not only one started from Home
 - source: spec-5-6-the-agent-marker-and-what-happens-when-it-fails.md | severity: med | fix-risk: med | footprint: src/OcuPilot/Kernel/Audit/Ledger.cls
 - evidence: Ledger.cls:70 reads none as cross-user readable; the condition it actually tests is the absence of screen context rather than the Home origin the sense was introduced for
 - 2026-09-20T20:33:42Z status=open owner=5-6-the-agent-marker-and-what-happens-when-it-fails by=harvest note=IN-STORY: the implement stages own review already found one HIGH in exactly this column -- a sense derived from the wrong flag released a row to a cross-user administrator, the DW-1120 failure the column exists to prevent. A second over-release through the same column is not a low
+- 2026-09-20T21:23:32Z status=decision-pending owner=burndown by=cr note=Home and a context-less turn are indistinguishable on the wire: Api.Turn.ContextViolation refuses a context whose route is empty (TURN.CONTEXT.INVALID) and assembleScreenContext sends none for Home, so EVERY empty route is a turn that carried no context. Withholding the absence case would withhold every Home llm row, which is the population DW-1305 was filed to release. Product call, not a reviewer call. Scope corrected at RoutePairs
 
 ### DW-1382: smoke.sh's auditmarker and agentwrite checks are still pending, so AD-45's one confirmed agent write and the audit marker half of the smoke path is unmet
 - source: spec-5-6-the-agent-marker-and-what-happens-when-it-fails.md | severity: med | fix-risk: med | footprint: src/OcuPilot/Install/Smoke.cls
@@ -5186,3 +5195,38 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-6-the-agent-marker-and-what-happens-when-it-fails.md | severity: low | fix-risk: low | footprint: src/OcuPilot/Install/Installer.cls
 - evidence: Installer.cls:3049 registers the roster name with the profile suffix; the emitter uses the unsuffixed production triple
 - 2026-09-20T20:34:00Z status=routed owner=range-end-cleanup by=harvest note=NOT blocking, judgment recorded per Rule 27: the probe profile exists for install and uninstall tests, which never emit a marker, and production is unaffected. reopen_if=a probe-profile install is expected to mark a write
+
+### DW-1393: ResolveClientCall set pPairsResolved before the argument half of the requirement was read, so a client call refused between the two halves recorded none and was released cross-user
+- source: spec-5-6-the-agent-marker-and-what-happens-when-it-fails.md | severity: high | fix-risk: low | footprint: in-story
+- evidence: Dispatch.cls set the flag right after RequiredPairs; Navigate declares no static pair and resolves its whole requirement in ArgumentPairs, so the ValidateArguments and argument-pairs-unresolved refusals both recorded an empty set under none. AnswerOne sets its own flag after both halves. Second over-release through the column the implement pass already fixed one HIGH in.
+- 2026-09-20T21:23:40Z status=resolved-by:5-6-the-agent-marker-and-what-happens-when-it-fails owner=5-6-the-agent-marker-and-what-happens-when-it-fails by=cr note=moved the flag below the ArgumentPairs resolution; LedgerSense.TestACallRefusedBetweenTheTwoHalvesOfItsRequirementIsNotNone added and its mutation observed red on the sense AND the cross-user release while the other 7 methods stayed green
+
+### DW-1394: Test/LedgerSense.Clear deleted every ledger row the running account owns, not the rows the class wrote
+- source: spec-5-6-the-agent-marker-and-what-happens-when-it-fails.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Clear() ran GuardedDeleteForUser($Username) in both OnBeforeOneTest and OnAfterOneTest; that is an unscoped DELETE ... WHERE UserName = ?, and on a development instance the running account is the operator's. Six sibling ledger suites clean by GuardedDeleteForTurn.
+- 2026-09-20T21:23:50Z status=resolved-by:5-6-the-agent-marker-and-what-happens-when-it-fails owner=5-6-the-agent-marker-and-what-happens-when-it-fails by=cr note=the two legs that write under $USERNAME now delete by their own turn key and the user-wide sweep is gone; class header corrected to match. LedgerSense green 8/8
+
+### DW-1395: Test/AuditMarker restored the deleted AgentWrite registration only at the drop test's own tail, so an assertion failing before it left four later methods running unregistered
+- source: spec-5-6-the-agent-marker-and-what-happens-when-it-fails.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: OnAfterOneTest did not restore; only OnAfterAllTests did, after the damage. The drop test's WriteRow SQL is not inside a Try, and the spec already records one occasion where the mutated method raised before its own re-install.
+- 2026-09-20T21:23:50Z status=resolved-by:5-6-the-agent-marker-and-what-happens-when-it-fails owner=5-6-the-agent-marker-and-what-happens-when-it-fails by=cr note=OnAfterOneTest now re-installs when AuditEvent.MissingTriples() is non-empty -- idempotent per AD-17 and paid for only when something is actually missing. AuditMarker green 8/8
+
+### DW-1396: The switch row's WritesMarked presence guard -- the one line that stops an upgraded instance showing the not-marked banner to every user -- had no test that could fail
+- source: spec-5-6-the-agent-marker-and-what-happens-when-it-fails.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Every test writes the row through SetGuarded, whose %New() fills the slot from InitialExpression, so no test could produce the shape an Epic 3/4 row has. Making Resolve's assignment unconditional left the whole suite green while GET /agent/restraint would answer writesMarked false on every upgraded instance.
+- 2026-09-20T21:24:00Z status=resolved-by:5-6-the-agent-marker-and-what-happens-when-it-fails owner=5-6-the-agent-marker-and-what-happens-when-it-fails by=cr note=SwitchState.TestARowPredatingTheMarkingSlotAnswersItsDefault clears the stored slot through SQL, which is the older row's shape; mutation applied on ocupilot-ci and observed red on all three reads
+
+### DW-1397: Install's ObserveAuditMarking can only ever answer its hard-coded default, so the NOT-being-marked report arm and both warn arms are unreachable and untested
+- source: spec-5-6-the-agent-marker-and-what-happens-when-it-fails.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: It runs after EnsureAuditEvents (which repairs a disabled registration and aborts install on failure) and EnsureAuditingEnabled (which sets the flag and aborts on failure), so both conditions it reads are already true on every path that reaches it. No doc claims install detects not-marking, and removing the reads would be wrong defensive-code-wise.
+- 2026-09-20T21:24:00Z status=wontfix-theoretical owner=5-6-the-agent-marker-and-what-happens-when-it-fails by=cr note=what would make it real: ObserveAuditMarking being called before either Ensure step, or either Ensure step ceasing to abort install on failure
+
+### DW-1398: The dropped-marker log line's reason rendered GetErrorText of the raw 0 the audit call answers, and the assertion guarding it could not fail
+- source: spec-5-6-the-agent-marker-and-what-happens-when-it-fails.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: $System.Security.Audit answers a boolean, so LogFailure received 0 and $System.Status.GetErrorText(0) renders 'ERROR #00: (no error description)' on AD-15's only trace of a drop. AuditMarker asserted only that the reason was non-empty, which the constant string guarantees.
+- 2026-09-20T21:24:12Z status=resolved-by:5-6-the-agent-marker-and-what-happens-when-it-fails owner=5-6-the-agent-marker-and-what-happens-when-it-fails by=cr note=RecordAgentWrite converts the raw 0 into a named status (DROPPEDANSWER, which states the answer and asserts no cause); the assertion now requires that text. Scoped to the new emitter -- Event.Record has the same pre-existing shape and is not this story's
+
+### DW-1399: restraintOf reads writesMarked with a strict === true, so a value present but not a JSON boolean would draw the not-marked banner over a healthy instance
+- source: spec-5-6-the-agent-marker-and-what-happens-when-it-fails.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: flagAt answers source[key] === true, so 1, 'true', null or 0 all read false. The absent-key case is already guarded. Api.Switches writes the key with %Set(...,'boolean'), so only a server that is not OcuPilot's own can produce the shape.
+- 2026-09-20T21:24:12Z status=wontfix-theoretical owner=5-6-the-agent-marker-and-what-happens-when-it-fails by=cr note=what would make it real: any producer of GET /agent/restraint that emits writesMarked as a number or a string -- a proxy that re-serialises the body, or a later handler that stops using %Set's boolean type hint

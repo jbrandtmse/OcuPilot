@@ -371,9 +371,11 @@ or `ui/src/styles/**` (Epic 15 holds them). Do not write `deferred-work.md`.
   `write`-kind row on the proposal's turn key whose `Status` is `ok`, whose target is the canonical
   ref, whose `Fields` names exactly the fields the port was sent with no secret-declared name among
   them, whose `PairsSense` is `checked`, and whose `AuditMarked` is `marked`.
-- Given the port call raises after the claim committed, when the confirm answers, then the ledger row
-  exists and is finalized `error`, no `AgentWrite` row was written, and the proposal is still
-  `confirmed` and burned.
+- Given the port call **returns an error** after the claim committed, when the confirm answers, then
+  the ledger row exists and is finalized `error`, no `AgentWrite` row was written, and the proposal
+  is still `confirmed` and burned. Given it **raises** instead, the row is left `pending` — the
+  matrix's Error Handling column, and the trace AD-41's create-before/finalize-after shape exists
+  for.
 - Given the `AgentWrite` registration is deleted, when a write is confirmed, then the HTTP status is
   200, the target really changed on the instance, and the only trace of the drop is the ledger row,
   one `LogFailure` report and `auditMarked: false` on the answer -- the status the caller receives is
@@ -398,6 +400,85 @@ or `ui/src/styles/**` (Epic 15 holds them). Do not write `deferred-work.md`.
   runs the audit spec, then its agent-marker leg passes within its timeout. (DW-1174)
 - Given `bash scripts/smoke.sh`, when it runs against a throwaway with OcuPilot installed, then its
   audit-marker assertion still passes and the executed-check count is non-zero.
+
+### Review Findings
+
+**2026-09-20 — code review (tier `full-opus`; layers: blind-hunter, edge-case-hunter, verification-gap,
+acceptance-auditor).** Every finding is dispositioned here (Rule 15); the ledger carries the canonical
+entries.
+
+- `[high]` `[patched]` fix-risk low, in-story. `Dispatch.ResolveClientCall` set `pPairsResolved` right
+  after `RequiredPairs`, so a client call refused **between** the two halves of its requirement — the
+  `ValidateArguments` refusal and the argument-pairs-unresolved refusal — recorded an empty set under
+  `none` and `ViewForUser` released it to a cross-user administrator. `Screen.Tool.Navigate`, the one
+  shipped client-fulfilled tool, declares no static pair and resolves its whole requirement in
+  `ArgumentPairs`, so the released rows are exactly the ones that state nothing. This is the second
+  over-release through the column the implement pass already fixed one HIGH in (AD-46's gate is the
+  resources recorded on the row). The flag now sits below the argument-pairs resolution, where
+  `AnswerOne` has always set its own. DW-1393; pinned by
+  `LedgerSense.TestACallRefusedBetweenTheTwoHalvesOfItsRequirementIsNotNone`, whose mutation reddens the
+  sense **and** the cross-user release while the class's other seven methods stay green.
+- `[med]` `[patched]` fix-risk low, in-story. **DW-1378.** `auditingOffBanner` asserted a cause nobody
+  read. It now reads `Agent writes are not being marked in the audit database.` — what `WritesMarked` 0
+  establishes and nothing more. `strings.ts` and `EXPERIENCE.md:258` changed together.
+- `[med]` `[patched]` fix-risk low, in-story. **DW-1379.** `RecordAgentWrite` gained `Output pEmitted`,
+  set only immediately before `$System.Security.Audit`; `Confirm.Transition` refreshes the
+  instance-wide fact from `pEmitted`, never from the status alone. DW-1379; pinned by
+  `AuditMarker.TestAMarkerThatNeverAskedTheInstanceSaysSo`.
+- `[med]` `[closed]` **DW-1380.** QA's `TestARowIsLeftPendingWhenTheWriteRaises` verified real — a
+  genuine raise through `ProposalFixture.ArmWriteException`, the row observed `pending`, falsifiable
+  under its recorded mutation. Code half also closed: `OpenConfirmedWrite` now records the pairs the
+  confirm had already evaluated under sense `checked`, so a row that stays `pending` is reachable by
+  the administrator investigating it (AD-46) instead of withheld under the legacy empty sense.
+- `[med]` `[decision-pending]` **DW-1381**, handed to the epic decision sheet with the evidence the
+  grading lacked: Home and a context-less turn are **indistinguishable on the wire**.
+  `Api.Turn.ContextViolation` refuses a context whose `route` is empty (`TURN.CONTEXT.INVALID`) and the
+  client's `assembleScreenContext` sends none for Home, so *every* empty route in the ledger is a turn
+  that carried no screen context. Withholding the absence case would withhold every Home `llm` row —
+  the population DW-1305 was filed to release, and an AC of this story. Narrowing it is a product call.
+  Two reviewer-side actions taken instead: `RoutePairs`' doc now states the true scope of what it
+  releases, and a proposed "answer the empty route directly" hardening was **written and reverted**
+  after measurement — `Screen.Gate.RequiredPairs` folds in any custom classic resource an operator has
+  assigned to Home's page (`%CSP.Portal.Home`, AD-44), so in the one configuration where the sense
+  matters that change would have *widened* release rather than narrowed it.
+- `[med]` `[patched]` fix-risk low, in-story. `Switch.Resolve`'s `WritesMarked` presence guard — the one
+  line stopping every upgraded Epic 3/4 instance drawing the banner for every user — had no test that
+  could fail: every writer goes through `SetGuarded`, whose `%New()` fills the slot. DW-1396;
+  `SwitchState.TestARowPredatingTheMarkingSlotAnswersItsDefault` clears the stored slot through SQL.
+- `[med]` `[patched]` fix-risk low, in-story. `Test/LedgerSense.Clear` ran
+  `GuardedDeleteForUser($Username)` — an unscoped delete of every ledger row the running account owns —
+  before and after every method. The two legs that write under `$USERNAME` now delete by their own turn
+  key. DW-1394.
+- `[med]` `[patched]` fix-risk low, in-story. `Test/AuditMarker` restored the deleted `AgentWrite`
+  registration only at the drop test's own tail, so an assertion failing earlier left four later methods
+  running unregistered. `OnAfterOneTest` now restores when `MissingTriples()` is non-empty. DW-1395.
+- `[med]` `[patched]` fix-risk low, in-story, Rule 19. The dropped-marker log line's `reason` rendered
+  `GetErrorText` of the raw `0` the audit call answers — `ERROR #00: (no error description)` on AD-15's
+  only trace — and the assertion guarding it (`reason '= ""`) could not fail. The emitter now converts
+  the raw 0 into `DROPPEDANSWER`, which states the answer and asserts no cause, and the assertion
+  requires that text. DW-1398.
+- `[low]` `[patched]` mechanical. `Test/SwitchesWire`'s route-contract doc block had been extended in
+  place and now sat on `TestRecordingTheMarkingFactAlreadyHeldWritesNoRow`, leaving the two methods it
+  describes undocumented. Split back onto the methods it belongs to; "the sibling above" now names it.
+- `[low]` `[patched]` mechanical. AC2 said the port call "raises" and expected `error`, contradicting the
+  matrix's "a write that raises leaves the row `pending`". The implementation does both correctly for
+  the two different cases; the AC text now distinguishes them.
+- `[low]` `[patched]` mechanical. Two counts in `## Auto Run Result` were wrong and both were grep
+  artifacts — `Deferred: 10` against 9 frontmatter entries, and `21 Rule 19 mutations` against 23 in the
+  two `## Verification` lists. Corrected at their origin, counted off the structure.
+- `[low]` `[wontfix-theoretical]` `restraintOf` reads `writesMarked` with `=== true`, so a value present
+  but not a JSON boolean would draw the banner over a healthy instance. The absent-key case is already
+  guarded and `Api.Switches` writes the key with `%Set`'s boolean type hint. DW-1399 names what would
+  make it real.
+- `[low]` `[wontfix-theoretical]` Install's `ObserveAuditMarking` can only ever answer its hard-coded
+  default: it runs after `EnsureAuditEvents` and `EnsureAuditingEnabled`, both of which force the
+  conditions it reads true and abort install on failure. No doc claims install *detects* not-marking, and
+  removing the reads would delete correct defensive code. DW-1397 names what would make it real.
+- `[rejected]` The `Fields` column has no reader (by design, already recorded); `OpenConfirmedWrite`
+  stores no route (a confirm is a foreground request with no screen route); `NOT_MARKED_ID` is bound but
+  unread (an element id is not a defect); the AC2 browser leg's same-second window boundary (DW-1385,
+  already dispositioned); the deferred-list severities that read `low` in the frontmatter and `med` in the
+  ledger (the ledger is authoritative and the frontmatter is build-auto's machine state).
 
 ## Spec Change Log
 
@@ -726,6 +807,24 @@ the same account.
 Each mutation's outcome is recorded here as `mutation: <change> -> <test>` by whoever adds or
 materially changes the pinning test.
 
+**Rule 19 mutations added at the code-review pass** (applied on `ocupilot-ci` against its own
+bind-mounted source copy, observed red, reverted and reconfirmed green; `git status --short` and
+`git diff --stat` on the tracked worktree unchanged after each, and `Dispatch`'s descendants were
+recompiled before the result was read):
+
+- mutation: move `Set pPairsResolved = 1` back above `MissingPair(pUser, tPairs)` in
+  `Kernel/Agent/Dispatch.cls` `ResolveClientCall`, where the implement pass left it ->
+  `LedgerSense.TestACallRefusedBetweenTheTwoHalvesOfItsRequirementIsNotNone` goes red on the
+  recorded sense **and on the cross-user release**. The other seven methods of that class stayed
+  green, which is why the defect survived the implement pass's own fix.
+- mutation: set `pEmitted` to 1 at the top of `Kernel/Audit/Event.cls` `RecordAgentWrite` instead of
+  immediately before the audit call -> `AuditMarker.TestAMarkerThatNeverAskedTheInstanceSaysSo` goes
+  red on the unparseable arm.
+- mutation: make `Kernel/State/Switch.cls` `Resolve`'s `writesMarked` assignment unconditional (drop
+  the `'= ""` presence guard) -> `SwitchState.TestARowPredatingTheMarkingSlotAnswersItsDefault` goes
+  red on all three reads. Before this pass no test could produce a row with an empty slot, because
+  every writer goes through `SetGuarded`, whose `%New()` fills it from `InitialExpression`.
+
 **QA pass additions (test generation stage, three deferred-list gaps).** No new test files;
 methods added to three already-shipped classes plus one fixture extension. Each was run alone on
 `ocupilot-ci`, landed in `%UnitTest_Result` before the next call, and every mutation below was
@@ -825,7 +924,7 @@ maybe-false 1; every one has a row in the Review Triage Log above.
   denial recorded `none` and `ViewForUser` released the row to a cross-user administrator. The fix
   adds a genuine pairs-resolved answer; the mutation was applied on `ocupilot-ci` and the new test
   went red on the release itself, not on a proxy for it.
-- **Deferred: 10 items** on the frontmatter list, each with its evidence and what would settle it.
+- **Deferred: 9 items** on the frontmatter list, each with its evidence and what would settle it.
 - **Rejected**, with reasons recorded per row: two refutations (the null sentinel on a `%Boolean`
   with no SQL UPDATE path; the drop report's replaced seam), one finding whose stated consequence
   does not follow (dropping the owner argument from `Loop.cls` does not revert DW-1309, because the
@@ -860,7 +959,11 @@ instance):
   runner: immediately after a browser run, `agentswitches` reads `skipped` rather than `pass`,
   because the switches browser spec writes the switch row and the check reads its stamp. That is the
   check's own documented answer, it is not a failure, and clearing the row restores `pass`.
-- **21 Rule 19 mutations** in total -- 14 from the implement pass and 7 added at review -- each
+- **23 Rule 19 mutations** in total -- 16 from the implement pass and 7 added at its review, counted
+  off the two lists in `## Verification` rather than by matching the word `mutation` (the implement
+  list is 15 `- mutation:` bullets plus the DW-1174 audit-spec bullet; the review list is 6 bullets,
+  one of which carries a second mutation inline). The QA pass added 2 and the code-review pass 3,
+  each recorded in its own block -- each
   applied, observed red and reverted, with `git status --short` and `git diff --stat` unchanged
   afterwards. Two mutations the implement pass had recorded were found not to do what they claimed
   and are corrected in `## Verification` rather than left standing.

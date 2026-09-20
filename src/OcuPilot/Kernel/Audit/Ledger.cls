@@ -78,11 +78,13 @@ ClassMethod RegistryClass() As %String
 /// <method>OcuPilot.Screen.Registry.DescriptorForRoute</method> matches a descriptor's declared
 /// route exactly, so <code>""</code> answers Home and an unknown route answers nothing (verified on
 /// <code>ocupilot-ci</code>: <code>"no/such/route"</code> and <code>"/"</code> both answer
-/// <code>""</code>). Accepted consequence, stated rather than hidden: a turn that carried no
-/// screen context records the same route value as a turn started from Home, so its row records
-/// <code>none</code> too. Both are true in the same sense -- neither turn's screen required a
-/// privilege -- and a cross-user reader still has to hold the ledger's own administrative pair
-/// (AD-46).</p>
+/// <code>""</code>). <b>Accepted consequence, and it is wider than Home</b> (DW-1381): no turn can
+/// carry a context whose route is empty -- <method>OcuPilot.Api.Turn.ContextViolation</method>
+/// refuses one with <code>TURN.CONTEXT.INVALID</code> and the client's own
+/// <code>assembleScreenContext</code> sends none for Home -- so every empty route here is a turn
+/// that carried no screen context at all, whether it began on Home or on a gated screen whose user
+/// has context sharing off. Those two are indistinguishable on the wire, and this releases both.
+/// A cross-user reader still has to hold the ledger's own administrative pair (AD-46).</p>
 ClassMethod RoutePairs(pRoute As %String, Output pResolved As %Boolean) As %List [ Private ]
 {
     Set tPairs = ""
@@ -279,15 +281,23 @@ ClassMethod RecordToolCall(pTurnKey As %String, pUser As %String, pRoute As %Str
 /// <p><b>Why first.</b> A row that only ever appeared on success could not record a write that
 /// raised mid-flight, which is the one case an operator most needs to find; the
 /// <code>pending</code> row left behind is that trace.</p>
+/// <p><b>The requirement is recorded at the open, not only at the finalize.</b> <var>pPairs</var>
+/// is the pair set the confirm has already evaluated against the caller's live grants by the time
+/// this runs, recorded under <method>SenseChecked</method> -- so a row that stays
+/// <code>pending</code> is gated cross-user on what the write actually required (AD-46) instead of
+/// being withheld from every reader by an empty legacy sense. A trace only its own author can read
+/// is not the trace AD-41 asks for.</p>
 /// <p><b>Never fails the confirm</b> (AD-15): the status is logged by this class and the caller
 /// does not propagate it.</p>
-ClassMethod OpenConfirmedWrite(pTurnKey As %String, pUser As %String, pToolName As %String, pTargetRef As %String, pLimitsClass As %String, Output pLedgerKey As %String) As %Status
+ClassMethod OpenConfirmedWrite(pTurnKey As %String, pUser As %String, pToolName As %String, pTargetRef As %String, pLimitsClass As %String, Output pLedgerKey As %String, pPairs As %List = "") As %Status
 {
     Set pLedgerKey = ""
     Set tSC = $$$OK
     Try {
         Set tStore = ..StoreClass()
-        Set tSC = $ClassMethod(tStore, "GuardedAppend", pTurnKey, pUser, "", $Parameter(tStore, "KINDWRITE"), pToolName, "", pTargetRef, "", 0, $Parameter(tStore, "STATUSPENDING"), "", 0, 0, "", pLimitsClass, .tSeq, .tStored, 0, "", .pLedgerKey)
+        Set tPairs = ..PairsToString(pPairs, .tPairsCut)
+        Set tSense = ..SenseFor(..SenseChecked(), pPairs, 1)
+        Set tSC = $ClassMethod(tStore, "GuardedAppend", pTurnKey, pUser, "", $Parameter(tStore, "KINDWRITE"), pToolName, "", pTargetRef, "", 0, $Parameter(tStore, "STATUSPENDING"), "", 0, 0, tPairs, pLimitsClass, .tSeq, .tStored, tPairsCut, tSense, .pLedgerKey)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }

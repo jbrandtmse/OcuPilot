@@ -299,20 +299,6 @@ Method TestDeletingAnAbsentHoldIsANamedNotFound()
     Do $$$AssertEquals(tAnswer.error, "not_found", "on the not-found slug")
 }
 
-/// <p><b><code>GET /agent/restraint</code> answers the calling user's own verdict</b>, in the shape
-/// the panel renders its banners and its footer line from.</p>
-/// <p>It is the one switch route that gates on nothing beyond the router, for the reason
-/// <method>OcuPilot.Api.Definitions.HandleList</method> is: the audience for the kill-switch banner
-/// is precisely the people who cannot change it -- and, since Story 5.6, for the audience of the
-/// not-marked banner, which is every user whose writes are the ones not being marked.</p>
-/// <p><b>Story 5.6, AD-15.</b> The marking fact travels the route in <b>both</b> directions. The
-/// sibling above asserts the healthy arm, which is the one a clean instance answers; this one writes
-/// the recorded fact 0 and reads the route back, because the panel renders only the <b>false</b> arm
-/// and a fact that could never arrive false would leave the banner unreachable with every gate
-/// green.</p>
-/// <p>Mutation (Rule 19): hard-code <code>1</code> in
-/// <method>OcuPilot.Api.Switches.HandleRestraint</method>'s <code>writesMarked</code> line -- this
-/// goes red while the sibling above stays green.</p>
 /// <p><b>Story 5.6, AD-15/AD-17.</b> Recording the marking observation that is <b>already</b> the
 /// answer writes no row at all.</p>
 /// <p>That is not a micro-optimisation. <class>OcuPilot.Kernel.State.Switch</class> is a store whose
@@ -340,6 +326,14 @@ Method TestRecordingTheMarkingFactAlreadyHeldWritesNoRow()
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Audit.Event).WritesMarked(), 0, "carrying the new observation")
 }
 
+/// <p><b>Story 5.6, AD-15.</b> The marking fact travels <code>GET /agent/restraint</code> in
+/// <b>both</b> directions. <method>TestTheRestraintReadAnswersTheCallersOwnVerdict</method> asserts
+/// the healthy arm, which is the one a clean instance answers; this one writes the recorded fact 0
+/// and reads the route back, because the panel renders only the <b>false</b> arm and a fact that
+/// could never arrive false would leave the banner unreachable with every gate green.</p>
+/// <p>Mutation (Rule 19): hard-code <code>1</code> in
+/// <method>OcuPilot.Api.Switches.HandleRestraint</method>'s <code>writesMarked</code> line -- this
+/// goes red while <method>TestTheRestraintReadAnswersTheCallersOwnVerdict</method> stays green.</p>
 Method TestTheRestraintReadCarriesARecordedNotMarkingFact()
 {
     Kill tValues
@@ -358,6 +352,12 @@ Method TestTheRestraintReadCarriesARecordedNotMarkingFact()
     Do $$$AssertEquals(tAnswer.killSwitch, 0, "with the kill switch still off")
 }
 
+/// <p><b><code>GET /agent/restraint</code> answers the calling user's own verdict</b>, in the shape
+/// the panel renders its banners and its footer line from.</p>
+/// <p>It is the one switch route that gates on nothing beyond the router, for the reason
+/// <method>OcuPilot.Api.Definitions.HandleList</method> is: the audience for the kill-switch banner
+/// is precisely the people who cannot change it -- and, since Story 5.6, for the audience of the
+/// not-marked banner, which is every user whose writes are the ones not being marked.</p>
 Method TestTheRestraintReadAnswersTheCallersOwnVerdict()
 {
     Set tSC = ..Call("GET", "/agent/restraint", "", .tStatus, .tBody, .tHeaders)

@@ -47,6 +47,36 @@ Method TestASecondSwitchRowIsRefused()
     Do $$$AssertEquals(##class(OcuPilot.Test.SwitchFixture).SwitchRowCount(), 1, "and the instance still holds exactly one")
 }
 
+/// <p><b>A row written before <property>OcuPilot.Kernel.State.Switch.WritesMarked</property>
+/// existed answers that property's default, not 0.</b> The property was added with no
+/// <code>SCHEMAVERSION</code> move (Consistency Conventions), which is only sound because
+/// <method>Resolve</method> reads the slot's <b>presence</b> rather than its truth: an untouched
+/// slot reads <code>""</code>, <code>''""</code> is 0, and every instance upgraded from an earlier
+/// OcuPilot that had ever written this row -- a kill switch set, enforced read-only set, one
+/// <code>PUT /agent/switches</code> -- would draw the not-marked banner for every user over an
+/// instance that is marking perfectly well.</p>
+/// <p>No writer can produce such a row: <method>SetGuarded</method> builds the object with
+/// <code>%New()</code> and the property's <code>InitialExpression</code> fills the slot. The
+/// stored slot is therefore cleared through SQL, which is exactly the shape an older row has.</p>
+/// <p>Mutation (Rule 19): drop the <code>'= ""</code> guard from <method>Resolve</method> -- make
+/// the assignment unconditional -- and this goes red on the resolved value.</p>
+Method TestARowPredatingTheMarkingSlotAnswersItsDefault()
+{
+    Kill tValues
+    Set tValues("enforcedReadOnly") = 1
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Switch).SetGuarded(.tValues), "an instance with a switch row, as every upgraded one has")
+    Do $$$AssertEquals(##class(OcuPilot.Test.SwitchFixture).SwitchRowCount(), 1, "exactly one row")
+
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "UPDATE OcuPilot_Kernel_State.SwitchState SET WritesMarked = NULL")
+    Do $$$AssertTrue(tRS.%SQLCODE = 0, "the stored slot is cleared, which is what an older row holds: SQLCODE=" _ tRS.%SQLCODE)
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Switch).Resolve(.tRead), "the switches still resolve")
+    Do $$$AssertEquals($Get(tRead("writesMarked")), ##class(OcuPilot.Kernel.State.Switch).#DEFAULTWRITESMARKED, "and the empty slot answers the declared default")
+    Do $$$AssertEquals($Get(tRead("writesMarked")), 1, "which is 'marking', so no banner is drawn over an upgraded instance")
+    Do $$$AssertEquals($Get(tRead("enforcedReadOnly")), 1, "while the fields the older row did carry are unchanged")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Audit.Event).WritesMarked(), 1, "and the reader the restraint route uses answers the same")
+}
+
 /// <p><b>A clean instance answers the defaults and holds no row</b>, which is what "a fresh install
 /// leaves the kill switch off and writes no switch row" means.</p>
 Method TestACleanInstanceAnswersTheDefaultsWithNoRow()

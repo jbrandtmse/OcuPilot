@@ -72,6 +72,12 @@ Parameter DROPPEDCONFIG = "the configuration change was made and no audit row wa
 /// besides the ledger row's own <code>AuditMarked</code>.</p>
 Parameter DROPPEDAGENTWRITE = "the confirmed write was applied and no audit row was written";
 
+/// <p>The reason a dropped <parameter>EVENTAGENTWRITE</parameter> emission reports.
+/// <code>$System.Security.Audit</code> answers a boolean and names no cause, so this states the
+/// answer it gave and asserts nothing about why -- the instance flag, the registration and a
+/// per-call failure all look the same from here.</p>
+Parameter DROPPEDANSWER = "$System.Security.Audit answered 0 and wrote no row";
+
 /// <p>The log message a dropped <parameter>EVENTLEDGERREAD</parameter> emission reports. A read is
 /// not a change, and saying it was one sends an operator looking for a configuration edit that
 /// never happened.</p>
@@ -226,9 +232,17 @@ ClassMethod Record(pVerb As %String, pType As %String, pId As %String, pChanges 
 /// let the returned status change the caller's own. The status is returned so the executor can
 /// record the outcome on the ledger row and answer <code>auditMarked</code>; a write that happened
 /// is never reported as a failure because its marker was dropped (AD-15).</p>
+/// <p><var>pEmitted</var> is 1 only when <code>$System.Security.Audit</code> was actually called,
+/// and it is a <b>different</b> question from the returned status: a reference that will not parse
+/// fails this method without asking the instance anything. Only an answer the instance gave is
+/// evidence about the instance, so <method>OcuPilot.Kernel.Proposal.Confirm.Transition</method>
+/// refreshes <method>RecordMarking</method> from <var>pEmitted</var> and never from the status
+/// alone (DW-1379). The write's own card still reads the status, because that is a per-write
+/// fact.</p>
 /// <p><b>No namespace switch</b>, for the reason <method>Record</method>'s header gives.</p>
-ClassMethod RecordAgentWrite(pProposalId As %String, pToolName As %String, pTargetRef As %String, pUser As %String, pWrittenAt As %String, pFields As %List = "") As %Status
+ClassMethod RecordAgentWrite(pProposalId As %String, pToolName As %String, pTargetRef As %String, pUser As %String, pWrittenAt As %String, pFields As %List = "", Output pEmitted As %Boolean) As %Status
 {
+    Set pEmitted = 0
     Set tSC = $$$OK
     Try {
         Set tRefSC = ##class(OcuPilot.Kernel.EntityRef).Parse(pTargetRef, .tType, .tScope, .tId)
@@ -254,7 +268,13 @@ ClassMethod RecordAgentWrite(pProposalId As %String, pToolName As %String, pTarg
         }
         Do tPayload.%Set("fields", tFields)
         Set tText = ##class(OcuPilot.Kernel.Audit.Log).Redact(tPayload).%ToJSON()
+        Set pEmitted = 1
         Set tSC = $System.Security.Audit(..Source(), ..Type(), ..#EVENTAGENTWRITE, tText, ..#DESCRIPTIONAGENTWRITE)
+        ; The call answers a boolean, not a %Status, so a dropped emission reaches LogFailure as 0
+        ; and $System.Status.GetErrorText(0) renders "ERROR #00: (no error description)" -- a
+        ; reason that says nothing on the one line AD-15 leaves behind. Say what is known and no
+        ; more: the call was made and wrote nothing. Why it wrote nothing is not readable here.
+        If 'tSC Set tSC = $$$ERROR($$$GeneralError, ..#DROPPEDANSWER)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }

@@ -58,7 +58,7 @@ export const STRINGS = {
   /** EXPERIENCE.md:257 */
   agentWriteBlockedByReadOnly: 'blocked by read-only mode',
   /** EXPERIENCE.md:258 */
-  auditingOffBanner: 'Agent writes are not being marked. Auditing is off on this instance.',
+  auditingOffBanner: 'Agent writes are not being marked in the audit database.',
   /** EXPERIENCE.md:258 */
   auditingConfigurationLink: 'Auditing configuration',
   /** EXPERIENCE.md:258 */

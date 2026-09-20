@@ -9,8 +9,10 @@
 /// empty set under <code>none</code> alone.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot's protected state, an account holding
 /// <code>%All</code>, and nothing else. It spawns nothing, creates no principal and touches no
-/// registration; every row it writes names <parameter>PROBEUSER</parameter> or
-/// <code>$USERNAME</code>, and <method>OnAfterOneTest</method> asserts none survives.</p>
+/// registration. Every row it writes names <parameter>PROBEUSER</parameter>, which
+/// <method>OnAfterOneTest</method> asserts none of survives, or <code>$USERNAME</code> -- and the
+/// latter are removed by their own turn key at the leg that wrote them, never by sweeping the
+/// running account (<method>Clear</method>).</p>
 Class OcuPilot.Test.LedgerSense Extends %UnitTest.TestCase
 {
 
@@ -62,11 +64,17 @@ Method OnAfterOneTest() As %Status
     Quit $$$OK
 }
 
+/// <p>Remove what this class wrote. <parameter>PROBEUSER</parameter> is a name no other class uses,
+/// so deleting that account's rows whole reaches nothing else. The rows a leg writes under
+/// <code>$USERNAME</code> are deleted <b>by turn key</b> at the leg that wrote them: the running
+/// account on a development instance is the operator's, and
+/// <code>GuardedDeleteForUser($Username)</code> is an unscoped
+/// <code>DELETE ... WHERE UserName = ?</code> that would take every real ledger row that account
+/// owns with it.</p>
 Method Clear()
 {
     Do ##class(OcuPilot.Test.LedgerGate).Clear()
     Do $ClassMethod(..#STORE, "GuardedDeleteForUser", ..#PROBEUSER)
-    Do $ClassMethod(..#STORE, "GuardedDeleteForUser", $Username)
 }
 
 /// <p>A turn key no other class and no other call uses.</p>
@@ -332,6 +340,7 @@ Method TestAGovernanceGateErrorRefusedBeforeItsPairsWereReadIsNotNone()
     }
     Do $$$AssertEquals(..CrossUserRows(tKey, .tWithheld, tUser), 0, "and it is withheld cross-user")
     Do $$$AssertEquals(tWithheld, 1, "counted as withheld")
+    Do $ClassMethod(..#STORE, "GuardedDeleteForTurn", tKey)
     Do ##class(OcuPilot.Kernel.State.Turn).GuardedFinish(tKey, tUser, "completed", "", "", "done", 0, ..#LIMITS)
     Do $$$AssertStatusOK(##class(OcuPilot.Test.TurnFixture).RemoveTurns(.tRemaining, tUser), "the probe turn run under the process account is removed")
     Do $$$AssertEquals(tRemaining, 0, "and none survives")
@@ -372,6 +381,52 @@ Method TestAToolDeniedRefusedBeforeItsPairsWereReadIsNotNone()
     }
     Do $$$AssertEquals(..CrossUserRows(tKey, .tWithheld, tUser), 0, "and it is withheld cross-user")
     Do $$$AssertEquals(tWithheld, 1, "counted as withheld")
+    Do $ClassMethod(..#STORE, "GuardedDeleteForTurn", tKey)
+    Do ##class(OcuPilot.Kernel.State.Turn).GuardedFinish(tKey, tUser, "completed", "", "", "done", 0, ..#LIMITS)
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.TurnFixture).RemoveTurns(.tRemaining, tUser), "the probe turn run under the process account is removed")
+    Do $$$AssertEquals(tRemaining, 0, "and none survives")
+}
+
+/// <p><b>The refusal between the two halves of the requirement.</b>
+/// <method>OcuPilot.Kernel.Agent.Dispatch.ResolveClientCall</method> reads a tool's declared pairs
+/// first and the pairs its arguments add second, and a call whose arguments fail validation is
+/// refused in between. A tool that declares no static pair -- which
+/// <class>OcuPilot.Screen.Tool.Navigate</class>, the one shipped client-fulfilled tool, does not,
+/// resolving its whole requirement per call -- therefore has an empty union at that point with
+/// nothing read about what the call actually required. The row must stay <code>checked</code> and
+/// withheld, not <code>none</code> and released (DW-1120, DW-1305).</p>
+/// <p>Mutation (Rule 19): move <code>Set pPairsResolved = 1</code> back above
+/// <code>MissingPair(pUser, tPairs)</code> in <method>ResolveClientCall</method> -- where it sat
+/// before this review -- and this goes red on the recorded sense <b>and</b> on the cross-user
+/// release, which is the defect itself.</p>
+Method TestACallRefusedBetweenTheTwoHalvesOfItsRequirementIsNotNone()
+{
+    Set tUser = $Username
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedReserve(tUser, "1", "TURN.ABANDONED.JOBLOST", ..#LIMITS, .tKey, .tBusy, .tSweep), "a turn is reserved")
+    Do $$$AssertEquals(tBusy, 0, "and is not busy")
+    If $Get(tKey) = "" Quit
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedBegin(tKey, tUser, ..#LIMITS, .tBegun, .tStarted, "permissions/users"), "and begun")
+
+    ; additionalProperties is false on the probe tool's input schema, so this is refused by
+    ; ValidateArguments -- after the declared pairs were read and before the argument pairs are.
+    Set tBlock = {"id": "toolu_badargs"}
+    Do tBlock.%Set("name", ..#CLIENTWIRE, "string")
+    Do tBlock.%Set("input", {"NotADeclaredArgument": "x"})
+    Set tUses = []
+    Do tUses.%Push(tBlock)
+    Set tLog = []
+    Set tMessages = 0
+    Set tSC = $ClassMethod(..#CLIENTLOOP, "AnswerTools", tKey, tUser, "1", "", tUses, ..#LIMITS, .tMessages, tLog, .tLastSeq, 0, "", 0, 0, .tState, .tCode, 0, "permissions/users")
+    Do $$$AssertStatusOK(tSC, "the client call is answered as an ordinary refusal")
+
+    Set tRow = ..OwnRow(tUser, tKey)
+    If $IsObject(tRow) {
+        Do $$$AssertEquals(tRow.requiredPairs, "", "the row records no requirement, because the half that would have carried one was never read")
+        Do $$$AssertEquals(tRow.pairsSense, $ClassMethod(..#LEDGER, "SenseChecked"), "under checked rather than none: a declared set that is empty is not the whole requirement")
+    }
+    Do $$$AssertEquals(..CrossUserRows(tKey, .tWithheld, tUser), 0, "and it is withheld cross-user")
+    Do $$$AssertEquals(tWithheld, 1, "counted as withheld")
+    Do $ClassMethod(..#STORE, "GuardedDeleteForTurn", tKey)
     Do ##class(OcuPilot.Kernel.State.Turn).GuardedFinish(tKey, tUser, "completed", "", "", "done", 0, ..#LIMITS)
     Do $$$AssertStatusOK(##class(OcuPilot.Test.TurnFixture).RemoveTurns(.tRemaining, tUser), "the probe turn run under the process account is removed")
     Do $$$AssertEquals(tRemaining, 0, "and none survives")
