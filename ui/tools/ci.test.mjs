@@ -1230,6 +1230,7 @@ test('the throwaway and the image probe refuse to touch the live container', () 
   assert.match(throwaway, /"\$PROJECT" = "ocupilot"/, 'and the live project name');
   assert.match(throwaway, /ocupilot-slot-\*\)/, 'and every slot dev-instance project name');
   assert.match(throwaway, /"\$WEB_PORT" = "52775"/, "and slot B's web port");
+  assert.match(throwaway, /"\$WEB_PORT" = "52778"/, "and slot C's web port");
   assert.match(throwaway, /"\$SUPER_PORT" = "1974"/, "and slot B's SuperServer port");
   assert.match(throwaway, /docker compose ls -a --format json[^\n]*Name/, 'and it asks Compose whether the project name is already taken');
   assert.match(throwaway, /ConfigFiles[^\n]*\$COMPOSE_FILE/, 'recognizing its own earlier run only by this config file');
