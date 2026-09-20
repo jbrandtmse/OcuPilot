@@ -41,6 +41,24 @@ added_edges:
     - {epic: 12, depends_on: 11, pairs: "11-12 0.31", why: "11.3 prompts go into 12's editor descriptors; 12.3 and 11.2 both land on the audit viewer; order follows the Epic List's polish-week ranking (11 first)"}
   soft:  # footprint_overlap_threshold 0.20 exceeded with semantic overlap (estimates, inference)
 
+# SHARED-CREATE DIRECTORIES (orchestrator correction 2026-09-20).
+# Two paths below appear in one epic's paths_hint but are structurally shared by every epic, and
+# listing them as if exclusive was an orchestrator error caught by Epic 5:
+#
+#   src/OcuPilot/Test/**   -- the only home for %UnitTest classes in this project (282 files on
+#                             feature; Epic 5 alone added 28 across stories 5.0-5.3). Treating it
+#                             as Epic 13's exclusive footprint would make Rule 19 IMPOSSIBLE for
+#                             every ObjectScript AC in every other epic: the code could be written
+#                             but not pinned, which the project's rules treat as worse than not
+#                             shipping. Story 13.2's charter is the suite IN CI -- ui/tools/ci*.mjs,
+#                             .github/workflows/**, scripts/ -- not the per-story classes each epic
+#                             writes.
+#   ui/src/app/core/**     -- Epic 15 holds it for the shell conveniences, but Epic 5 created
+#                             core/proposal-view.ts and writes core/turn.ts's proposal publisher.
+#
+# The rule for both: every epic CREATES files there freely (a path that did not exist cannot
+# collide). Modifying a file another epic created or has modified is a Clarification. This is the
+# same rule already used elsewhere; the error was never writing it down for these two paths.
 epics:
   epic-4:
     depends_on: [epic-3]
@@ -81,6 +99,10 @@ epics:
     depends_on: [epic-6, epic-7, epic-8]
     submodules: []
     paths_hint: ["src/OcuPilot/Screen/Descriptor/**", "src/OcuPilot/Screen/Tool/**", "ui/tools/field-lists.mjs", "ui/tools/field-lists.test.mjs", "ui/tools/classic-links.mjs", "ui/tools/classic-links.test.mjs", "src/OcuPilot/Port/AdminPort.cls", "src/OcuPilot/Api/**", "src/OcuPilot/Install/Smoke.cls", "src/OcuPilot/Test/**", "ui/src/app/areas/security/**", "ui/src/app/areas/permissions/**", "ui/src/app/areas/logs/**", "ui/src/app/shell/**", "ui/src/app/core/**", "ui/tools/**", "ui/src/styles/**", "ui/browser/**"]
+  # 2026-09-19: dropped a bogus paths_hint entry "ui/src/**/*.browser.spec.ts" -- wrong directory,
+  # wrong extension and wrong separator, so it matched nothing. The real specs are the 34
+  # ui/browser/*.browser-spec.mjs files, which are Epic 5's. Epic 13 therefore has NO browser-spec
+  # footprint, by design rather than by accident: DW-1015, DW-1146 and DW-1223 are Epic 5's to fix.
   epic-13:
     depends_on: [epic-1]
     submodules: []
@@ -95,7 +117,7 @@ epics:
     # dry-run or local form; no registry credential or token may be read, configured, requested or
     # used; 13.3 may not be reported done by having published; and a gate closable only by publishing
     # is an UNMET gate, to be escalated as a Clarification rather than closed.
-    paths_hint: ["src/OcuPilot/Install/**", ".github/workflows/ci.yml", "scripts/ci-*.sh", "scripts/smoke.sh", "ui/tools/ci*.mjs", "ui/tools/client-lint.mjs", "ui/browser.config.mjs", "ui/src/**/*.browser.spec.ts", "src/OcuPilot/Test/**", "module.xml", "spec/**"]
+    paths_hint: ["src/OcuPilot/Install/**", ".github/workflows/ci.yml", "scripts/ci-*.sh", "scripts/smoke.sh", "ui/tools/ci*.mjs", "ui/tools/client-lint.mjs", "ui/browser.config.mjs", "src/OcuPilot/Test/**", "module.xml", "spec/**"]
   epic-15:
     depends_on: [epic-1]
     submodules: []
