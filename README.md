@@ -466,13 +466,14 @@ indistinguishable from one that passed, and a smoke script is exactly the gate a
 ### What CI runs (Story 1.17)
 
 [.github/workflows/ci.yml](.github/workflows/ci.yml) is the first place in this repository where a
-gate is run rather than described. Three jobs, split by what each needs:
+gate is run rather than described. Four jobs, split by what each needs:
 
 | Job | Needs | Runs |
 | --- | --- | --- |
 | `gates` | a checkout, Node and uv | `npm ci`, `npm run build`, `npm test`, `uv run scripts/check-objectscript.py`, `uv run scripts/test_check_objectscript.py`, `bash scripts/lint-docs.sh` — **once per Node band** `ui/package.json` declares (`22.22.3`, `24.15.0`, `26.0.0`, each band's floor), `fail-fast: false`. `ui/tools/ci.test.mjs` holds that list equal to `engines.node` in both directions, so a declared band CI never runs is red |
 | `instance` | a throwaway container | first `scripts/ci-durable-ownership.sh` (the Linux durable-directory reproduction, on named volumes), then the client build, `scripts/ci-throwaway.sh up`, `scripts/wait-readiness.sh`, `ui/tools/ci-runner.mjs`, `scripts/smoke.sh`, `npm run test:browser`, then — on failure only — `scripts/ci-throwaway.sh logs`, and always `scripts/ci-throwaway.sh down` |
 | `images` | both stock Community editions at the pinned `2026.2` | `scripts/ci-image-compile.sh` per edition: `src/OcuPilot/` compiles, and the admin API reports v2 through `AdminPort`'s own version read — a compile and a version read, not an HTTP request (NFR-13) |
+| `package` | two throwaway containers with **no network at all** | the client build, then `scripts/ci-ipm-archive.sh`: the distributable IPM archive is built on one fresh instance and loaded on a second, which `scripts/smoke.sh` then reports on. Runs beside `instance` rather than after it |
 
 **The ObjectScript suite runs one class at a time.** `ui/tools/ci-runner.mjs` drives
 `scripts/ci-unit-test.sh` once per class and confirms each run landed — its index, its method
@@ -642,30 +643,21 @@ regenerate.
 
 **An IPM install is a destructive, whole-instance operation, and IPM is not part of this
 project's runtime (AD-18).** Never load IPM into, or `zpm install` against, the `ocupilot`
-container: use a throwaway built exactly as
-[Verifying the start path against a throwaway container](#verifying-the-start-path-against-a-throwaway-container)
-describes, with two additions — a read-only mount of the **repository root** (the compose file
-mounts only `./src`, `./scripts` and `./ui`, and IPM must see `module.xml`), and, for the
-expired-`_SYSTEM` check, a `command:` override so no start hook runs.
+container. [scripts/ci-ipm-archive.sh](scripts/ci-ipm-archive.sh) does the whole rehearsal on
+throwaways of its own, and CI's `package` job runs it on every push: it builds the distributable
+archive with IPM's local `package` verb on one fresh instance, loads that `.tgz` on a second one,
+and reports `scripts/smoke.sh`'s verdict over the result. **Both containers run with
+`--network none`**, so nothing either of them does can reach a package registry — and the script
+asserts that `%IPM_Repo.Definition` is empty on each, checks the archive's members and its
+manifest host-side, removes both containers on an `EXIT` trap, and refuses the name of the live
+instance, of any `ocupilot-slot-*` and of any slot's throwaway. IPM 0.10.5 prints no line naming
+the file `package` wrote, so the script reads the artifact back from the directory it wrote into
+rather than predicting its name.
 
 ```bash
-# Inside the throwaway container only:
-docker compose -p ocupilot-ipm -f <scratch-dir>/compose.json exec -T iris \
-  iris session iris -U HSCUSTOM
+cd ui && npm run build   # the manifest copies this bundle into the package
+sh scripts/ci-ipm-archive.sh --image intersystems/irishealth-community:2026.2
 ```
-
-```objectscript
-do $System.OBJ.Load("/usr/irissys/dist/install/misc/zpm.xml","ck")
-do ##class(%IPM.Main).Shell("load -dev -v /opt/ocupilot",1,0)
-do ##class(%IPM.Main).Shell("list",1,0)
-do ##class(%IPM.Main).Shell("package ocupilot -path /tmp/out",1,0)
-do ##class(%IPM.Main).Shell("uninstall ocupilot",1,0)
-```
-
-`Shell`'s third argument halts the session when the command finishes, so pass `0` to run more
-than one command in a session. `package … -path /tmp/out` writes `/tmp/out.tgz`, not a
-directory; `tar tzf` it to confirm it carries `ui/dist/ocupilot-ui/browser/` and no
-`OcuPilot/Test/`.
 
 The image ships that offline IPM installer at `/usr/irissys/dist/install/misc/zpm.xml`
 (version 0.10.5) but loads none of it: a stock instance carries no `%IPM` or `%ZPM` class at

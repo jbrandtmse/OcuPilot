@@ -2,14 +2,64 @@
 title: 'Story 13.3: Publish the package to the community registry'
 type: 'feature'
 created: '2026-09-19'
-status: 'ready-for-dev'
-baseline_revision: 'a68b8944affd0c72c4d626bc7ace3c38acb9e45a'
-baseline_commit: 'a68b8944affd0c72c4d626bc7ace3c38acb9e45a'
+status: 'done'
+baseline_revision: 'f5588ae72fda83f9b4d403d702c9d7a704ce4625'
+baseline_commit: 'f5588ae72fda83f9b4d403d702c9d7a704ce4625'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context: []
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      epics.md still says the archive is produced by the publish path "running in its dry-run form";
+      IPM 0.10.5 has no dry-run modifier on publish and the local `package` form is what exists
+    evidence: |-
+      Measured on the pinned image this pass: `%IPM.Main||Commands` declares `publish` with exactly
+      `repo` and `use-external-name`, and the only `dry-run` in the grammar belongs to
+      `run-from-file`. `package` exists, runs `Initialize,Reload,*,Validate,Compile,Activate,Package`
+      and wrote an installable 1,083,507-byte `ocupilot.tgz` that loaded on a second fresh instance
+      with smoke PASS. That run is the evidence the Spec Change Log's Clarification (1) asked for;
+      the recommended correction at origin is "its dry-run form" -> "its local (`package`) form",
+      at epics.md:5124 and again at :737. Planning artifact, so the lead's to amend, not this stage's.
+    location: >-
+      _bmad-output/planning-artifacts/epics.md:5124
+    severity: medium
+  - summary: >-
+      CLAUDE.md says CI has three jobs; it now has four
+    evidence: |-
+      This story added the `package` job, so `.github/workflows/ci.yml` declares gates, instance,
+      images and package, and `ui/tools/ci.test.mjs` holds that four-name list as an equality.
+      README.md's own "Three jobs" sentence and table were corrected in this story's diff;
+      CLAUDE.md is an agent-context file and was reserved for the lead by Spec Change Log (4).
+    location: >-
+      CLAUDE.md
+    severity: low
+  - summary: >-
+      scripts/ci-image-compile.sh's floating-tag guard accepts `:latest-em`, the gap this story
+      closed in its own script
+    evidence: |-
+      Its pattern is `*latest-cd*|*:latest`, so `intersystems/irishealth-community:latest-em` -- a
+      tag InterSystems really publishes -- passes as explicit and AD-27 is not enforced.
+      `scripts/ci-ipm-archive.sh` now refuses `*:latest|*:latest-*` and `ui/tools/ipm-archive.test.mjs`
+      drives `:latest-em`; the same widening in ci-image-compile.sh is outside this story's three
+      criteria and would need its own test pass.
+    location: >-
+      scripts/ci-image-compile.sh:44
+    severity: medium
+  - summary: >-
+      IPM's exporter drops <SystemRequirements>, so the distributable archive carries no
+      ">=2026.2" / ">=0.10.0" floor
+    evidence: |-
+      Measured by comparing the repository's module.xml with the one extracted from the produced
+      archive: `<SystemRequirements Version="&gt;=2026.2" IPMVersion="&gt;=0.10.0"/>` is present in
+      the first and absent from the second, alongside the already-known dropped `<Packaging>`.
+      An operator installing the .tgz on an older IRIS therefore gets no refusal from the manifest.
+      Not fixable in this story -- it is the exporter's behavior, not this script's -- and it belongs
+      with the owner's release alongside DW-1300's listing metadata. The comparison deliberately
+      excludes the element for that reason, and the script header records why.
+    location: >-
+      module.xml:24
+    severity: medium
 ---
 
 <intent-contract>
@@ -87,6 +137,60 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-19 — Review pass
+
+- verdicts: 49 findings — high 0, medium 26, low 17, false 6, maybe-false 0
+- findings:
+  - `[low]` `[reject]` blind-hunter: `-U HSCUSTOM` is hard-coded where `ci-image-compile.sh` detects the namespace — real, but every invocation in the tree passes the pinned IRIS for Health tag, and another edition surfaces as `wait_for_session`'s named 300 s failure with `docker logs` attached; the fix adds branches or a parameter.
+  - `[medium]` `[patch]` blind-hunter: the archive-contents assertions are `-lt 1` floors, so an archive carrying 1 of 135 classes passes — fixed: both are now equalities against the staged tree (`CLASS_COUNT -eq STAGED_CLASSES`, and every staged bundle file by name), so neither side is a literal to maintain.
+  - `[medium]` `[patch]` blind-hunter: `declarations()` compares neither `<WebApplication>` nor `<Dependency>`, and its single-line reader cannot see a multi-line element — fixed: `element_lines` flattens newlines and emits every attribute sorted, over Resource, FileCopy, Invoke, WebApplication and Dependency, plus an `<Arg>` count; the compared set went from 6 declarations to 11, and the new coverage is what the demonstrated AC2 mutation reddens.
+  - `[medium]` `[patch]` blind-hunter: the zero-repository-row count is taken before the verbs it is offered as evidence about — fixed: `assert_no_repositories` re-reads it after the load and package verbs and after the archive install.
+  - `[low]` `[reject]` blind-hunter: the default container names and `--dir` are not per-slot, so two concurrent runs collide — `--build-name`, `--install-name` and `--dir` exist for that case, only Epic 13 runs this script, and per-slot defaults add parameters and branches.
+  - `[medium]` `[patch]` blind-hunter: `trap cleanup EXIT` alone does not fire on an uncaught interrupt, leaving two IRIS containers — fixed: `trap 'cleanup; exit 130' INT TERM`, the idiom already at `scripts/ci-durable-ownership.sh:39`.
+  - `[low]` `[patch]` blind-hunter: `wait_for_session` omits `-i`, so its heredoc never reaches the container and the loop tests only that `iris session` starts — fixed by adding `-i`, matching every other session call in the file.
+  - `[low]` `[reject]` blind-hunter: `$DIR` is not removed on exit — deliberate and useful: the archive and the extracted manifest are what a manual `tar tzf` reads afterwards, and the next run clears it.
+  - `[low]` `[reject]` blind-hunter: a missing `node` is reported as manifest drift — the message carries the exit status, so 127 is distinguishable from 1; separating them adds a branch.
+  - `[medium]` `[patch]` blind-hunter: the `$TMPDIR` arm of the scratch-root guard has no separator, so `TMPDIR=/tmp` makes `/tmpfoo` pass into `rm -rf` — fixed: the value is stripped of a trailing slash and the arm is written `"$SCRATCH_TMPDIR"/?*`.
+  - `[low]` `[reject]` blind-hunter: the module-presence check greps IPM's coloured `list` table — the image is pinned to an explicit 2026.2 tag, so its output format cannot change under this script, and replacing `list` with a SQL probe would redden the three-verb allow-list the spec declares.
+  - `[medium]` `[patch]` blind-hunter: `ipmVerbs`, `ipmCommands` and `dockerRunLines` read literal text, so a command or container built from a variable is invisible to the allow-list and the `--network none` assertion — fixed: every `Shell(` call must be a literal `Shell("…")`, and `docker create`, `docker start`, `docker compose`, `--mount`, `--volume` and a line-continued `docker run` are refused outright.
+  - `[low]` `[reject]` blind-hunter: `DECLARED_GATES` compares sorted multisets, so a `run:` step could move between jobs — deleting the job reddens the `jobNames` equality, and mis-ordering inside the job is self-detecting (the script exits 2 naming the unbuilt bundle); a containment assertion is an addition, not a correction.
+  - `[medium]` `[patch]` blind-hunter: `README.md:469` still reads "Three jobs" over a three-row table, in a file this story edits — fixed at origin: "Four jobs", plus the `package` row.
+  - `[medium]` `[reject]` blind-hunter: the spec's matrix and Tasks still name IPM's `Module package generated:` line, which does not exist — the fix is an edit to this build's spec; the correction is recorded in this story's Auto Run Result section and the origin correction in `epics.md` is filed as a deferred item for the lead.
+  - `[false]` `[reject]` blind-hunter: frontmatter `status` disagrees with `## Auto Run Result`'s `Status:` — `in-review` is this step's own transient value; finalize writes `done` into both.
+  - `[medium]` `[defer]` blind-hunter: the hand-off items carry no tracking — filed as three `deferred:` items (the `epics.md` wording, `CLAUDE.md`'s job count, `ci-image-compile.sh`'s narrower tag guard) for the lead's harvest, which is where Rule 15 puts them.
+  - `[low]` `[reject]` blind-hunter: the staged set is hard-coded while the manifest is generated — a `<FileCopy>` source outside those three paths fails the Activate phase inside the container and the script exits naming it; tying the staged set to the manifest adds a parser.
+  - `[medium]` `[patch]` blind-hunter: `runRefused` drives the real script against the real repository root and never passes `--dir` — fixed together with the verification-gap layer's sharper form of the same defect (below).
+  - `[low]` `[reject]` blind-hunter: the `package` job has no failure-capture step — the containers are gone by the time a job-level `if: failure()` step could run; every session-based failure already prints its own last 40 lines, `wait_for_session` prints `docker logs`, and the member list and the manifest diff are printed at their own failures.
+  - `[medium]` `[patch]` edge-case: `--dir /tmp/../anywhere` passes the scratch-root guard and is then removed recursively — fixed: a `*..*` arm refuses it before the guard, naming the directory.
+  - `[medium]` `[patch]` edge-case: `:latest-em` and every other `:latest-*` alias is as floating as `:latest-cd` and was accepted — fixed: the pattern is now `*:latest|*:latest-*`, and `ipm-archive.test.mjs` drives `:latest-em`.
+  - `[low]` `[reject]` edge-case: a flag supplied as the final argument with no value fails on `shift 2` rather than exiting 2 with a message — a guard per flag arm is four new branches for a caller error that still stops the script.
+  - `[medium]` `[patch]` edge-case: `$DIR/artifact` never receives the `chmod -R a+rX` the staged tree gets, though it is mounted into the second container — fixed: the same adjustment is applied after `docker cp`.
+  - `[medium]` `[patch]` edge-case: only `EXIT` is trapped — same root cause as the blind-hunter's trap finding; fixed by the same line.
+  - `[low]` `[reject]` edge-case: `docker rm -f` before `docker run` could remove a pre-existing container of the same name — the six names this project runs are refused outright, and an existence check adds a branch for a name the caller chose.
+  - `[medium]` `[patch]` edge-case: `declarations()` reads no `<WebApplication>` and no `<Invoke>` `<Arg>` child — same root cause as the blind-hunter's manifest finding; the `<Arg>` half is covered by the new `argcount=` line.
+  - `[medium]` `[patch]` edge-case: the archive assertions are floors, not the counts on disk — same root cause as the blind-hunter's floors finding.
+  - `[medium]` `[patch]` edge-case: `ipmVerbs`/`ipmCommands` see only literal `Shell("…")` — same root cause as the blind-hunter's literal-scan finding.
+  - `[medium]` `[patch]` edge-case: only `docker run` lines and the `-v` short form are inspected — same root cause; the new containment test bans the other forms.
+  - `[low]` `[reject]` edge-case: the README rehearsal that was replaced was the only exercise of `zpm uninstall`, which the README still instructs — the intent closes the verb set at `load`, `package` and `list`, so adding an uninstall leg is forbidden here; the uninstall path is exercised by `OcuPilot.Test.UninstallGuard`, `UninstallResidue` and `UninstallSurvival` in the class sweep.
+  - `[low]` `[reject]` edge-case: the replaced README text carried the note that `Shell`'s third argument halts the session — the script's own calls all pass `0` and `Halt` explicitly; restating it is prose this story does not need.
+  - `[medium]` `[reject]` edge-case: the spec still describes the `Module package generated:` mechanism and a different `-path` — the fix is an edit to this build's spec; same disposition as the blind-hunter's form of it.
+  - `[false]` `[reject]` edge-case: the whole-file token ban was narrowed to `Shell("…")` strings — the literal ban is unsatisfiable: the script must name `--install-name` and the pinned `irishealth-community` reference (`install ` appears twice, `-community` once). What ships is stronger, not weaker: `publish` is banned case-insensitively over the raw file, `-community` is checked by shape over the raw file, and the new literal-command test closes the only gap the narrowing could have opened.
+  - `[medium]` `[patch]` verification-gap: the exported manifest is compared on five declaration kinds and the three `<WebApplication>` elements are not among them — fixed; the demonstrated AC2 mutation below reddens on exactly that line.
+  - `[medium]` `[patch]` verification-gap: AC2's new half, the archive-manifest comparison, had no demonstrated mutation, and mutating the extractor cannot redden it because it is applied to both sides — fixed: a mutation that alters the staged copy after `--check` has run (`JWTAccessTokenTimeout` 60 → 3600) was applied, observed red at exit 1 on the `webapp=` line for `/api/ocupilot`, reverted with the file byte-identical by md5, and recorded in `## Verification`.
+  - `[medium]` `[patch]` verification-gap: the refusal tests drive the real script with `--dir /` and `--dir /tmp`, so the Rule 19 mutation they invite would make `npm test` delete the developer's `/tmp` — fixed: `runRefused` now stubs `rm` and `cp` alongside `docker`, and every executed refusal asserts neither was reached.
+  - `[low]` `[patch]` verification-gap: `assert.ok(!existsSync(join(dir, 'ui', 'dist')))` asserts a property of a fixture the test just built and cannot fail — fixed by deletion; the two assertions that follow are the ones that stand for the refusal.
+  - `[low]` `[patch]` verification-gap: a doc comment claims `install` is shape-checked separately, and it is not — fixed by replacing the sentence with what is actually checked and why it suffices.
+  - `[medium]` `[patch]` verification-gap: the archive-contents floors are weaker than AC1's plural — same root cause as the floors finding; fixed by the equalities.
+  - `[low]` `[patch]` verification-gap: deleting the `MANIFEST_STATUS` guard reddens nothing — fixed: the drift-ordering test now also pins that a non-zero status stops the script, matching the assertion already held for smoke.
+  - `[false]` `[reject]` intent-alignment: five of ten matrix rows are held only by the script's own assertions — those rows are runtime rows and the script is their executor; it runs on every push in the new `package` job and was run twice by hand this pass, so each row is covered by a test that ran and passed.
+  - `[medium]` `[reject]` intent-alignment: the spec's task text still carries the literal `Module package generated:` reading — the fix is an edit to this build's spec; the origin correction is deferred to the lead.
+  - `[medium]` `[patch]` intent-alignment: "the shipped `OcuPilot` classes" is a completeness claim and the script asserted presence — fixed by the equalities.
+  - `[false]` `[reject]` intent-alignment: the `package` job itself reaches the npm registry and pulls an image — the intent scopes the isolation explicitly ("Both containers run with no network at all"), and the stealth policy is about publishing OcuPilot, which neither `npm ci` nor an image pull does.
+  - `[medium]` `[patch]` intent-alignment: `README.md:469` still says three jobs — same root cause as the blind-hunter's form; fixed at origin.
+  - `[low]` `[patch]` intent-alignment: the workflow header claims the job "adds nothing to the critical path", which nothing measures — fixed by replacing the claim with what is true at the dependency surface: it waits on nothing, so it runs beside `instance` rather than after it.
+  - `[false]` `[reject]` intent-alignment: a commented-out `Shell("install …")` is invisible to the verb equality — a comment does not execute, and the new literal-command test covers every command that does.
+  - `[false]` `[reject]` intent-alignment: the intent quotes a `zpm` CLI invocation and the script uses `%IPM.Main.Shell` — forced and documented: a stock instance carries no `%IPM` class at all (AD-18), so no `zpm` binary exists until `zpm.xml` is imported; the verbs and their arguments are the intent's.
+
 ## Design Notes
 
 **Governing ADs.** **AD-18** (IPM is a distribution channel, never a runtime dependency — which is exactly why this story needs instances of its own: the shipped image carries no loaded IPM, and nothing in the install path may assume one). **AD-17** (one installer class, two entry points; the roster generates both the installer's class list and the manifest, which is AC2; and the IPM `<Invoke>` carries no `<Arg>`, so `pUnexpire` keeps `0`). **AD-25** (the demo fixture is opt-in and absent from every non-container path including IPM — so `wallet` and `demofixture` skip, and a skip is not a failure). **AD-45** (one smoke path, which is also the health check — this story asks it the question rather than inventing a second notion of "working"). **AD-38** (install completes before traffic; on a first IPM install the gate answers `unreadable` across the activation window, inside the window this AD already accepts — the script smokes after `load` returns, so it never observes it). **AD-27** (the image tag is explicit, never `latest-cd`). **AD-21** (the manifest carries no privilege properties; the two unauthenticated applications get their role floor from `Install`, which runs `When="After"` Activate — so a correct IPM install is one where the applications exist *and* `Install` ran). **AD-9** (`zpm uninstall` is not `Installer.Uninstall`; nothing here uninstalls). Stack rows: **IPM** `0.10.x`, **Docker Compose** image pinned to an explicit 2026.2 tag, **CI**.
@@ -131,8 +235,8 @@ deferred: []
 
 **Pinning tests and mutations (Rule 19) — one demonstrated mutation per AC, reverted and confirmed byte-identical (`git status --short` and `git diff --stat` unchanged) before the next:**
 
-- **AC1** — pinning test: the `package` job's end-to-end leg (`ci-ipm-archive.sh`'s archive-contents assertions plus the smoke verdict on the install container). `mutation: drop ui/dist/ocupilot-ui/browser/ from the staging copy in scripts/ci-ipm-archive.sh → the archive-contents assertion goes red naming the missing bundle path (and, before it, IPM's Activate fails on the FileCopy resource)`.
-- **AC2** — pinning test: the pre-stage `ipm-manifest.mjs --check` plus the archive-manifest-versus-roster comparison. `mutation: change <Version> in module.xml by hand without touching src/OcuPilot/Install/Roster.cls → ipm-manifest.mjs --check exits 1 naming <Version>, and the script stops before any container starts`.
+- **AC1** — pinning test: the `package` job's end-to-end leg (`ci-ipm-archive.sh`'s archive-contents assertions plus the smoke verdict on the install container). `mutation: drop the bundle's staging copy from scripts/ci-ipm-archive.sh → exit 1 at the archive-contents check, "the staged bundle holds no file, so a comparison against it would pass having compared nothing", with the archive down from 1,083,507 to 542,321 bytes`. Activate does not fail first: `mkdir -p` leaves the staged directory there and empty, so IPM exports nothing from it and the host-side check is what catches it. The archive-side arm of the same assertion is the per-file `MISSING_BUNDLE` list, which names every staged file the archive does not carry.
+- **AC2** — pinning test: the pre-stage `ipm-manifest.mjs --check` plus the archive-manifest-versus-roster comparison. One mutation per arm, because the first stops the script before the second runs. `mutation: change <Version> in module.xml by hand without touching src/OcuPilot/Install/Roster.cls → ipm-manifest.mjs --check exits 1 naming <Version>, and the script stops before any container starts`. `mutation: alter the staged copy of module.xml after it is staged (JWTAccessTokenTimeout 60 → 3600 in $DIR/module/module.xml), which --check does not see → the archive-manifest comparison exits 1 on the webapp= line for /api/ocupilot, naming both sides`.
 - **AC3** — pinning test: `ui/tools/ipm-archive.test.mjs`'s network-isolation and verb-allow-list assertions. `mutation: delete --network none from one docker run line in scripts/ci-ipm-archive.sh → ipm-archive.test.mjs goes red naming that container`. **No network call is issued in either direction** — the mutation is observed entirely host-side, which is the point.
 - **Integration AC** — pinning test: `ci.test.mjs`'s `DECLARED_GATES` equality and the widened `jobNames` equality. `mutation: delete one run: step from the package job in .github/workflows/ci.yml → ci.test.mjs goes red naming the orphaned declared gate`.
 
@@ -143,15 +247,94 @@ deferred: []
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Planning only; the invocation directed a halt after planning and nothing was implemented. The plan
-was written against sources read once this pass: the architecture spine in full (48 ADs), `epics.md`
-Story 13.3, `epic-13-context.md`, Story 13.2's spec for continuity, `module.xml`, `Roster.cls`'s
-`XData Manifest`, `ci-image-compile.sh`, `ci-throwaway.sh`, `smoke.sh`, `Smoke.cls`'s transport,
-`README.md:574-683`, and the IPM 0.10.5 source recovered from the image's own
-`/usr/irissys/dist/install/misc/zpm.xml`. Two measured facts changed the shape: `publish` has no
-dry-run flag in IPM 0.10.5, so the local `package` form is what AC1 must use (Clarification 1); and
-the smoke path is loopback-only, so both containers can run with no network, which turns AC3's
-strongest clause from a promise into a mechanism. `ledger.sh slice` for this story returned nothing.
+**What landed.** `scripts/ci-ipm-archive.sh` (new): the two phases in order, on two containers of its
+own started `--network none` from the pinned tag and removed on an `EXIT`, `INT` and `TERM` trap. It
+runs `ipm-manifest.mjs --check` and refuses an absent bundle before staging anything; refuses the
+live, slot and throwaway container names, the two names being equal, a floating or absent image tag,
+and a `--dir` that is outside a scratch root or contains `..`; asserts zero `%IPM_Repo.Definition`
+rows on both instances after the import and again after every verb; reads the artifact back from the
+directory it wrote into; holds the archive's members and its manifest equal to the staged tree
+host-side; unexpires `_SYSTEM` by name as an operator act (AD-17); and reads `smoke.sh`'s status from
+the command rather than through a pipeline. `ui/tools/ipm-archive.test.mjs` (new, 17 tests) pins the
+network isolation, the three-verb allow-list in both directions, that every IPM command is a literal
+so those scans can see all of them, that no container is created by any other form, the credential
+and upload absences, and every refusal -- all host-side with stub `docker`, `rm` and `cp`, so no
+container is created and no refusal test can delete anything. `.github/workflows/ci.yml` gains a
+fourth job, `package`, running beside `instance`; `ui/tools/ci.test.mjs` declares its three `run:`
+steps, widens the `jobNames` equality to four, and applies its seven stealth-absence patterns to the
+new script as well. `README.md`'s hand-typed rehearsal is replaced by one paragraph pointing at the
+script, and its CI table gains the fourth row (a declared footprint extension).
+
+**The held claim, settled by running it.** IPM 0.10.5's `publish` declares exactly `repo` and
+`use-external-name` -- no dry-run modifier; the only `dry-run` in the grammar belongs to
+`run-from-file`. `package` exists and works:
+`##class(%IPM.Main).Shell("package ocupilot -path /tmp/ocupilot-package/ocupilot",1,0)` runs the
+lifecycle through `Package SUCCESS` and writes one `.tgz`. The upload verb was never run in any form,
+no registry credential or token was read, configured, requested or used, and `--network none` needed
+no fallback: the stock image starts, imports IPM offline, loads, packages and smokes under it.
+
+**Three plan assumptions corrected from what the run showed.** IPM 0.10.5 prints **no**
+`Module package generated:` line, so the artifact is identified by requiring exactly one `.tgz` in an
+output directory emptied first -- still read, never predicted. The archive re-roots class members
+under `src/cls/`. And IPM's exporter drops `<SystemRequirements>` as well as `<Packaging>`, so the
+compared set excludes it and the gap is filed under `deferred:` rather than absorbed.
+
+**Verified.** `sh scripts/ci-ipm-archive.sh --image intersystems/irishealth-community:2026.2` -> exit
+0: `ocupilot.tgz`, 1,083,507 bytes, 172 members -- `module.xml`, all 135 staged `OcuPilot` classes
+(equal to the 135 non-test `.cls` on disk, read back by hand with `tar tzf`), all 14 staged bundle
+files, and **no** member under `OcuPilot/Test/`.
+The archive's manifest declares the same 11 items as the roster's, and smoke reported PASS with
+`executed=42 passed=42 failed=0 pending=2 skipped=3` on the second instance -- `wallet`, `demofixture` and `x509` among the skips, which AD-25
+makes correct rather than a failure. Both instances reported 0 package-repository rows after the
+import and again after every verb. `cd ui && npm run build` green (six checkers); `npm test`
+1,118 node tests + 644 component tests, 0 failed; `bash scripts/lint-docs.sh` clean;
+`node tools/ci-runner.mjs --container ocupilot-b-ci` `137 class(es), 1283 test(s), 0 failed, 0 with probe leftovers, 0 overlap(s), 0 foreign run(s)`, the ordinary sweep DW-1297 names;
+`--build-name ocupilot-ci` -> exit 2 naming it, before any container.
+
+**Mutations (Rule 19), each reverted with the file byte-identical by md5.** AC1: drop the bundle from
+the staging copy -> exit 1 at the archive-contents check, "the staged bundle holds no file, so a
+comparison against it would pass having compared nothing", the archive down from 1,083,507 to
+542,321 bytes. Activate does not fail first, as the plan predicted it would: the staged directory
+is still there and empty, so IPM exports nothing from it and the host-side check is what catches it. AC2 has one mutation per arm, because the first stops the script
+before the second runs: `<Version>` hand-edited -> `--check` exits 1 naming it with no container
+started; and the staged copy altered after `--check` has run (`JWTAccessTokenTimeout` 60 -> 3600) ->
+the archive-manifest comparison exits 1 on the `webapp=` line for `/api/ocupilot`, naming both sides.
+That second one is the review's finding: AC2's novel half had never been shown to redden, and
+mutating the extractor cannot redden it because it runs over both sides. AC3: `--network none`
+deleted from one `docker run` -> `ipm-archive.test.mjs` red naming that container, entirely
+host-side. Integration: one `run:` step deleted from the `package` job -> `ci.test.mjs` red on three
+assertions, naming the orphaned declared gate.
+
+**Review.** 49 findings across four layers: 0 high, 26 medium, 17 low, 6 false. 27 of them were
+patched, grouped into 16 entries by root cause (11 medium, 5 low) -- the archive-contents floors became equalities against the staged
+tree; the manifest comparison went from 6 hand-picked fields to 11 declarations with every attribute,
+including the three `<WebApplication>` elements, any `<Dependency>` and an `<Arg>` count; the
+repository-row zero is re-read after every verb; `INT`/`TERM` are trapped; `--dir` refuses `..` and a
+`$TMPDIR` without a separator; `:latest-em` and every `:latest-*` alias is refused (AD-27); the
+artifact directory gets the same `chmod` as the staged tree; `wait_for_session` gained the `-i` its
+heredoc needs; the literal-only scans are now backed by assertions that nothing evades them; the
+refusal harness stubs `rm` and `cp`; one unfalsifiable assertion was deleted and one inaccurate
+comment replaced; `README.md`'s "Three jobs" was corrected at origin; and two unmeasured claims in
+the workflow header were replaced with what is true. One finding was deferred, and the frontmatter
+`deferred:` list carries four items -- two of them found here rather than by a layer. The remaining
+21 were rejected, each with its reason in the triage log: 6 as false, 9 as low defects whose fix
+would add guards, branches or parameters rather than correct or delete something, 3 because the fix
+is an edit to this build's spec, and 3 because the intent forecloses the fix (the verb set is closed
+at `load`, `package` and `list`).
+
+**Follow-up review recommended: true.** Eleven medium entries were patched, so the rule sets it. The
+specific unverified risk: the class equality `CLASS_COUNT -eq STAGED_CLASSES` assumes IPM's exporter
+carries exactly the non-test `.cls` set under `src/cls/`, which held on the pinned 2026.2 image in
+three runs this pass but is IPM's behavior rather than this script's; an exporter that started
+emitting an extra generated class would redden the `package` job with a message that names the counts
+rather than the cause.
+
+**Open at origin, not this stage's to change.** `epics.md:5124` and `:737` still read "its dry-run
+form"; the runs above are the evidence Spec Change Log (1) asked for, and the recommended correction
+is "its local (`package`) form". `CLAUDE.md` says CI has three jobs; it now has four. Both are filed
+under `deferred:` for the lead, per Spec Change Log (1) and (4). The spec's own matrix and task text
+still name the `Module package generated:` line; that text is inside this build's spec, so it is
+corrected here rather than edited.

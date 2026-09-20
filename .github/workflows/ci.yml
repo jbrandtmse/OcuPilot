@@ -6,7 +6,7 @@
 # and run by a human at most once; `/epic-cycle` recorded `ci=none` for all sixteen stories
 # before this one.
 #
-# Three jobs, and the split is by what each needs rather than by taste:
+# Four jobs, and the split is by what each needs rather than by taste:
 #
 #   gates     nothing but a checkout, Node and uv. Every mechanical checker, and the build and
 #             the client suite they gate -- once per Node band `ui/package.json` declares, at
@@ -16,6 +16,9 @@
 #   images    both stock Community editions at the pinned version: src/OcuPilot/ compiles, and
 #             the admin API reports v2 through the port's own version read, so no
 #             HealthShare-only dependency can go unnoticed (NFR-13).
+#   package   two throwaway containers with NO NETWORK AT ALL: the distributable IPM archive is
+#             built on the first and loaded on the second, which smoke then reports on. It waits
+#             on nothing, so it runs beside `instance` rather than after it.
 #
 # NOTHING HERE PUBLISHES, LISTS, RELEASES OR PUSHES TO ANY REGISTRY. No Open Exchange step, no
 # `npm publish`, no container push, no GitHub release, no `secrets.` reference of any kind
@@ -177,3 +180,28 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: compile and read the admin API version on this edition
         run: sh scripts/ci-image-compile.sh --image ${{ matrix.image }}
+
+  package:
+    name: package
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 22.22.3
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+      - name: install client dependencies
+        working-directory: ui
+        run: npm ci
+      # The manifest copies this bundle into the package, and the script refuses before it starts a
+      # container when it is absent -- so the archive cannot be built from a checkout alone.
+      - name: build the client bundle the package carries
+        working-directory: ui
+        run: npm run build
+      # Both containers run with `--network none`, and the script asserts that the IPM repository
+      # table is empty on each, so "nothing resolved anything from a package registry" is what the
+      # runtime allowed rather than what a comment claims. NOTHING HERE UPLOADS ANYTHING.
+      - name: build the IPM archive and load it on a second fresh instance
+        run: sh scripts/ci-ipm-archive.sh --image intersystems/irishealth-community:2026.2

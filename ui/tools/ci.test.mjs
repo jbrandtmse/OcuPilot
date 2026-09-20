@@ -124,6 +124,11 @@ export const DECLARED_GATES = [
   'sh scripts/ci-throwaway.sh down',
   // images
   'sh scripts/ci-image-compile.sh --image ${{ matrix.image }}',
+  // package -- `npm ci` and `npm run build` run a THIRD time here, in a job with its own
+  // checkout, because the IPM manifest copies the built bundle into the archive.
+  'npm ci',
+  'npm run build',
+  'sh scripts/ci-ipm-archive.sh --image intersystems/irishealth-community:2026.2',
 ];
 
 /**
@@ -321,6 +326,11 @@ test('every file a gate command names actually exists', () => {
 // --- The absences ---------------------------------------------------------------------------
 
 test('nothing in the workflow publishes, releases or pushes to a registry (stealth policy)', () => {
+  // The same seven patterns are applied to `scripts/ci-ipm-archive.sh` as well as to the workflow:
+  // that script builds the distributable archive, so a forbidden token inside it would publish
+  // exactly as effectively as one in a step that calls it. Comment lines are kept on the script
+  // side -- a comment naming an upload token is a reader's instruction to add one.
+  const archive = readFileSync(join(REPO_ROOT, 'scripts', 'ci-ipm-archive.sh'), 'utf8');
   for (const [what, pattern] of [
     ['a secret reference', /secrets\./],
     ['npm publish', /npm\s+publish/],
@@ -334,6 +344,11 @@ test('nothing in the workflow publishes, releases or pushes to a registry (steal
       workflow,
       pattern,
       `the workflow carries ${what}; nothing in CI publishes before the owner's release (stealth policy)`
+    );
+    assert.doesNotMatch(
+      archive,
+      pattern,
+      `scripts/ci-ipm-archive.sh carries ${what}; the archive builder never uploads what it builds (Story 13.3)`
     );
   }
 });
@@ -405,8 +420,10 @@ test('a superseded run is cancelled rather than queued behind the one that repla
   assert.match(workflow, /group: ci-/, 'grouped per workflow and ref');
 });
 
-test('the three jobs are declared, and the instance job waits on readiness before any suite', () => {
-  assert.deepEqual(jobNames(workflow), ['gates', 'instance', 'images']);
+test('the four jobs are declared, and the instance job waits on readiness before any suite', () => {
+  // An equality, not a superset: a job nothing here names is how a step nothing here describes
+  // arrives, which is the same reason the run-command list is held equal in both directions.
+  assert.deepEqual(jobNames(workflow), ['gates', 'instance', 'images', 'package']);
 
   const waitAt = workflow.indexOf('scripts/wait-readiness.sh');
   const runnerAt = workflow.indexOf('tools/ci-runner.mjs');
