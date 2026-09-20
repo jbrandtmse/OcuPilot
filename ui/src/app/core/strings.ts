@@ -1099,6 +1099,22 @@ export const STRINGS = {
   /** EXPERIENCE.md:378 */
   logViewerClearFilter: 'Clear filter',
 
+  // Story 15.1's six: the account menu's Change password item, which is also the dialog's title,
+  // the two masked fields, the two names its reveal toggle takes -- they say password where
+  // `agentDefinitionShowKey`/`HideKey` say key -- and the polite confirmation after the change.
+  /** EXPERIENCE.md:381 */
+  accountChangePassword: 'Change password',
+  /** EXPERIENCE.md:381 */
+  accountCurrentPasswordLabel: 'Current password',
+  /** EXPERIENCE.md:381 */
+  accountNewPasswordLabel: 'New password',
+  /** EXPERIENCE.md:381 */
+  accountShowPassword: 'Show password',
+  /** EXPERIENCE.md:381 */
+  accountHidePassword: 'Hide password',
+  /** EXPERIENCE.md:381 */
+  accountPasswordChanged: 'Password changed',
+
   // Two connectivity sentences EXPERIENCE.md publishes outside the Fixed strings table, each
   // authorized by its own targeted extractor in `ui/tools/strings.test.mjs`, never by being
   // added to REQUIRED_ALONGSIDE_TABLE, whose own comment calls that the bypass it must not

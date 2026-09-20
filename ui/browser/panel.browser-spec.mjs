@@ -463,13 +463,22 @@ test('Signing out clears the panel draft and full screen; the next sign-in start
     // the hit test below goes red.
     await page.click('#ocu-account-trigger');
     await page.waitForSelector('[role="menuitem"]', { visible: true, timeout: config.navigationTimeoutMs });
-    const hit = await page.evaluate(() => {
-      const item = document.querySelector('[role="menuitem"]');
+    // Sign out by NAME, not by position: Story 15.1 put Change password above it, and a menu that
+    // grows again (15.6's theme toggle) must not silently turn this into a click on something else.
+    const signOut = await page.evaluate((label) => {
+      const item = [...document.querySelectorAll('[role="menuitem"]')].find(
+        (candidate) => candidate.textContent.trim() === label
+      );
+      if (item === undefined) return null;
       const box = item.getBoundingClientRect();
-      return item.contains(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2));
-    });
-    assert.equal(hit, true, 'the account menu item is the element under the pointer, not clipped by the status bar');
-    await page.click('[role="menuitem"]');
+      item.id = 'ocu-probe-sign-out';
+      return {
+        hit: item.contains(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)),
+      };
+    }, STRINGS.actionSignOut);
+    assert.notEqual(signOut, null, 'the account menu lists Sign out');
+    assert.equal(signOut.hit, true, 'the account menu item is the element under the pointer, not clipped by the status bar');
+    await page.click('#ocu-probe-sign-out');
     await page.waitForSelector('#ocu-signin-user', { visible: true, timeout: config.navigationTimeoutMs });
 
     await page.type('#ocu-signin-user', config.username);

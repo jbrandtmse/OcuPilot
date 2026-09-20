@@ -106,6 +106,7 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/instance" Method="GET" Call="Instance"/>
   <Route Url="/namespaces" Method="GET" Call="Namespaces"/>
   <Route Url="/navigation" Method="GET" Call="Navigation"/>
+  <Route Url="/account/password" Method="POST" Call="AccountPasswordChange"/>
 </Routes>
 }
 
@@ -364,6 +365,16 @@ ClassMethod Navigation() As %Status
 ClassMethod Namespaces() As %Status
 {
     Quit ##class(OcuPilot.Api.Namespaces).Handle()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /account/password</code> (Story 15.1):
+/// delegates to <class>OcuPilot.Api.Account</class> and carries no logic of its own.</p>
+/// <p>Declared last in the map above, after every one-segment route. The third ordering invariant
+/// binds only a shorter route that matches a longer one's leading segments, and no route shares
+/// the <code>/account</code> prefix.</p>
+ClassMethod AccountPasswordChange() As %Status
+{
+    Quit ##class(OcuPilot.Api.Account).HandlePasswordChange()
 }
 
 /// <p>Resolves the authenticated caller for this request. Returns <code>$Username</code> —

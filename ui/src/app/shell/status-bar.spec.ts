@@ -304,9 +304,9 @@ describe('the status bar', () => {
 
     (controls[0] as HTMLButtonElement).click();
     fixture.detectChanges();
-    expect(band().querySelector('[role="menuitem"]')?.textContent?.trim()).toBe(
-      STRINGS.actionSignOut
-    );
+    expect(
+      [...band().querySelectorAll('[role="menuitem"]')].map((entry) => entry.textContent?.trim())
+    ).toEqual([STRINGS.accountChangePassword, STRINGS.actionSignOut]);
   });
 
   it('a segment whose value the instance could not report does not render', () => {

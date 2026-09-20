@@ -2,14 +2,133 @@
 title: 'Story 15.1: Change your own password'
 type: 'feature'
 created: '2026-09-19'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'a290a4a74a245fa48ecb5e02153d0bf99fe4968d'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-15-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      A password the instance refuses through PasswordValidationRoutine answers 500, not the 422
+      with the instance's own reason the matrix's "Policy rejection" row promises.
+    evidence: |-
+      Measured on the slot C throwaway: with a validation routine configured,
+      $System.Security.ChangePassword returns 0 with codes "1446,5001" and the routine's own
+      sentence. 5001 is outside POLICYCODES ("845,958"), so RenderChangeRefusal takes the 500 arm.
+    location: >-
+      src/OcuPilot/Api/Account.cls (Parameter POLICYCODES)
+    severity: medium
+  - summary: >-
+      The same closed allow-list turns every other real refusal -- a delegated or LDAP account, a
+      disabled one -- into an opaque 500, against the Design Notes' stated observable cost.
+    evidence: |-
+      Same root cause as the entry above; measured codes 838 (no such user) and 5001 both fall
+      through. The Design Notes predicted such a user "sees the instance's own refusal text";
+      with the list closed they see the generic internal-error reason instead.
+    location: >-
+      src/OcuPilot/Api/Account.cls (RenderChangeRefusal)
+    severity: medium
+  - summary: >-
+      A read or decode fault while reading the body is answered 422 as the caller's malformed
+      body, where Api/Context.cls splits the two apart (DW-24).
+    evidence: |-
+      Context.cls:44-53 routes a non-parse stage to a different refusal. The split was implemented
+      and then reverted: no constructible input reaches the read or decode stage (an invalid-UTF-8
+      body parses through), so the branch could not be pinned by any test.
+    location: >-
+      src/OcuPilot/Api/Account.cls:52-58
+    severity: low
+  - summary: >-
+      The wire test's policy assertion derives its expected sentence with the same index-2
+      assumption PolicyText uses, so the two would move together and stay green.
+    evidence: |-
+      TestAPolicyRefusalCarriesTheInstancesOwnText calls GetOneStatusText(tProbeSC, 2); PolicyText
+      derives its index from the allow-listed code's position in GetErrorCodes. A refusal carrying
+      more than one embedded error would move both.
+    location: >-
+      src/OcuPilot/Test/AccountPasswordWire.cls
+    severity: medium
+  - summary: >-
+      The change-password dialog does not submit on Enter, where the house credential form does.
+    evidence: |-
+      The two inputs sit in bare divs with a type="button" action; dialog.ts carries no Enter
+      binding. sign-in.ts:112-162 uses a real <form (submit)>. No existing app-dialog call site has
+      a text input, so there is no house dialog pattern this departs from -- and a form inside the
+      projected content is not a trivial change.
+    location: >-
+      ui/src/app/shell/change-password-dialog.ts
+    severity: medium
+  - summary: >-
+      A new ACCOUNT.* field-level violation code with no ReasonForViolation arm would render a
+      blank reason with no test going red.
+    evidence: |-
+      OcuPilot.Test.AgentViolation.cls:84 skips any parameter whose name does not start with
+      "AGENT", so the ACCOUNT.* family is outside the roster guard by construction. Widening the
+      sweep edits Epic 13's contended src/OcuPilot/Test/** path.
+    location: >-
+      src/OcuPilot/Test/AgentViolation.cls:84
+    severity: low
+  - summary: >-
+      Two handlers now render violations, because Definitions.RenderViolations fixes the envelope
+      code at AGENT.VALIDATION.
+    evidence: |-
+      Api/Account.RenderViolations duplicates Api/Definitions.cls:1270 so it can send
+      ACCOUNT.VALIDATION. Both serialize through the one Kernel/AgentRules.ViolationsJson, so
+      AD-12's single writer holds; the fix is an optional pCode parameter on a file outside this
+      story's footprint.
+    location: >-
+      src/OcuPilot/Api/Definitions.cls:1270
+    severity: low
+  - summary: >-
+      The REST route-ordering convention is worded "N-segment routes before (N-1)-segment routes"
+      unconditionally, which the tail-appended /account/password contradicts as written.
+    evidence: |-
+      check_route_ordering implements only the leading-segments form and passes, and no route
+      shares the /account prefix, so nothing misroutes. The wording lives in the spine's
+      Consistency Conventions and in Router.cls's class doc, and the tail append is condition 1 of
+      the orchestrator's shared-append grant.
+    location: >-
+      ARCHITECTURE-SPINE.md, Consistency Conventions, "REST route ordering"
+    severity: low
+  - summary: >-
+      The dialog's empty-field reason reuses "Required", whose EXPERIENCE.md row names the OpenAPI
+      viewer, and the story's own new row does not list it.
+    evidence: |-
+      strings.test.mjs asserts an exact key count and the spec allowed exactly six new keys, so
+      reusing the published literal was the only compliant option. Reconciling the table is a
+      third EXPERIENCE.md edit, beyond the two the shared-append grant covers.
+    location: >-
+      ui/src/app/shell/change-password-dialog.ts (STRINGS.openApiRequired)
+    severity: low
+  - summary: >-
+      Three different naming conventions now exist for a masked field's reveal toggle.
+    evidence: |-
+      sign-in.ts:154 labels its toggle STRINGS.fieldPassword, definition-form.page.ts uses
+      agentDefinitionShowKey/HideKey, and this dialog uses accountShowPassword/HidePassword. The
+      first two already differed before this story.
+    location: >-
+      ui/src/app/core/strings.ts
+    severity: low
+  - summary: >-
+      EXPERIENCE.md:395 still says the polish week adds Change password, and :505 still sends an
+      expired-password user to the classic portal by name.
+    evidence: |-
+      Both are now stale or half-past-tense. The shared-append grant covers exactly two edits to
+      this file -- the :381 append and the line-neutral :173 amendment -- so a third is the lead's.
+    location: >-
+      _bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md:395
+    severity: low
+footprint_extensions:
+  - "src/OcuPilot/Api/Router.cls -- tail-append only (one <Route>, one wrapper); shared-append grant; Epic 5 head a5202e0"
+  - "_bmad-output/planning-artifacts/ux-designs/ux-OcuPilot-2026-09-08/EXPERIENCE.md -- one Fixed strings row appended at :381, Dialogs line :173 amended in place and line-neutral; shared-append grant; Epic 5 head a5202e0"
+  - "src/OcuPilot/Api/Error.cls -- four codes, four REASON parameters and four ReasonForViolation arms appended; owned by no concurrent epic"
+  - "src/OcuPilot/Test/AccountPasswordWire.cls -- NEW under Epic 13's src/OcuPilot/Test/**; check_handler_wire_tests makes it a build gate for the route"
+  - "ui/src/app/shell/status-bar.spec.ts -- one assertion now reads both menu items instead of the first; forced by the second item"
+  - "ui/browser/panel.browser-spec.mjs -- its sign-out click selects the item by name instead of by position; forced by the second item"
+  - "ui/src/app/core/strings.ts -- shared-append: six keys added at the tail, nothing reordered, renamed or reflowed"
 ---
 
 <intent-contract>
@@ -122,6 +241,57 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-20 — Review pass
+
+- verdicts: 46 findings — high 0, medium 9, low 21, false 11, maybe-false 5
+- findings:
+  - `[medium]` `[patch]` blind-hunter: the dialog computes a five-way fault classification and always renders `connectivityServerFault` — verified; `panel.ts:606` and `fault-banner.ts:148` both branch on `fault.kind === 'unreachable'` off the same helper. Patched: `core/account.ts`'s error arm now carries the envelope's own `reason`, and the dialog renders that when present, else the unreachable/server-fault split, exactly as `panel.ts` chooses it.
+  - `[low]` `[reject]` blind-hunter: `focusField()` treats an unknown field name as `newPassword` — real but only reachable if the server sends a third field name, which `Api/Account.cls` cannot; the fix adds a filter guarding state never demonstrated.
+  - `[false]` `[reject]` blind-hunter: the class doc and `refuse()` disagree about where focus lands — refuted: `definition-form.page.ts:1069-1071` (`focusRefusal`, the precedent the spec's Code Map names) is byte-for-byte the same sequence, summary then field. This is the house contract, not a deviation. The residual gap — nothing pinned the focus destination — is patched below.
+  - `[low]` `[patch]` blind-hunter: two of the four new `ReasonForViolation` arms are unreachable — verified; `ACCOUNT.VALIDATION` and `ACCOUNT.PASSWORD.BODY` are envelope codes, never violation codes. Patched: both arms deleted.
+  - `[low]` `[defer]` blind-hunter: the `ACCOUNT.*` family is outside `AgentViolation`'s roster sweep — verified at `src/OcuPilot/Test/AgentViolation.cls:84` (`$Extract(tName,1,5) '= "AGENT"`). Widening it edits Epic 13's contended path; deferred, and the overstated doc sentence on `ViolationCodes()` was corrected in place.
+  - `[low]` `[defer]` blind-hunter: `/account/password` contradicts the "N-segment before (N-1)-segment" invariant as that invariant is worded — verified: `check_route_ordering` implements only the leading-segments form and passes, and no route shares the `/account` prefix, so nothing misroutes. The tail-append is condition 1 of the orchestrator's grant; the wording lives in the spine and is the lead's to amend.
+  - `[low]` `[defer]` blind-hunter: `Account.RenderViolations` duplicates `Definitions.RenderViolations` — verified; the helper fixes the envelope code at `AGENTVALIDATION`, so a shared renderer needs an optional `pCode` parameter on a file outside this footprint.
+  - `[medium]` `[patch]` blind-hunter: the 500 fallthrough arm is untested and logs unexamined vendor text — split: the logging is spec-mandated ("the raw `%Status` reaches `Audit.Log.Error` only"), so `by-design`; the untested half is the same root cause as the verification-gap layer's first finding and is patched there.
+  - `[low]` `[patch]` blind-hunter: `tRequestBody` still holds both passwords when the handler returns while the doc claims both are cleared — verified. Patched: the parsed body is dropped once the two locals hold the values, and on both remaining exits.
+  - `[medium]` `[patch]` blind-hunter: the browser spec's "no password in a log line" assertion cannot fail — verified and demonstrated; grouped with the verification-gap layer's first finding, patched and now falsifiable.
+  - `[false]` `[reject]` blind-hunter: AC6 named `Audit.Log`'s rows but the spec reads messages.log — refuted: `Kernel/Audit/Log.Emit` → `WriteConsole` → `%SYS.System.WriteToConsoleLog`, so messages.log **is** where `Audit.Log` writes. Same surface, not a substitution.
+  - `[low]` `[patch]` blind-hunter: `.ocu-account-status` re-declares `.ocu-visually-hidden` byte for byte — verified at `_components.scss:3601-3610`. Patched: the menu uses the existing utility and the new rule is gone, which withdrew the `_components.scss` footprint extension entirely.
+  - `[low]` `[patch]` blind-hunter: the new browser spec loads strings by a route no sibling uses — verified; six specs use `loadStrings()` from `../tools/strings.mjs`. Patched (it also removes the `MODULE_TYPELESS_PACKAGE_JSON` warning the run emitted).
+  - `[low]` `[defer]` blind-hunter: the empty-field reason reuses `openApiRequired`, published against another screen's row — verified; `strings.test.mjs` asserts an exact key count and the spec allowed exactly six, so reuse was forced. Reconciling the table row is a planning-artifact edit beyond the two EXPERIENCE.md edits the grant covers.
+  - `[low]` `[patch]` blind-hunter: `strings.ts` is edited but missing from `footprint_extensions` — verified. Patched: declared (frontmatter bookkeeping the orchestrator's merge gate reads, not a spec-content change).
+  - `[medium]` `[defer]` blind-hunter: Enter does not submit the dialog — verified: no `<form>`, and `dialog.ts` has no Enter binding. No existing `app-dialog` call site carries a text input, so there is no house pattern this departs from; a form inside the projected content is not a trivial fix.
+  - `[false]` `[reject]` blind-hunter: no ObjectScript suite was reported although `Api/Error.cls` changed — refuted by this stage's own runs: the full `OcuPilot.Test` package ran on the throwaway (131 classes, 1,267 tests, 0 failed), `Envelope` and both `AgentViolation` roster tests among them.
+  - `[false]` `[reject]` blind-hunter: a third browser failure was dismissed rather than explained — refuted for this tree: this stage's full suite lost exactly one test, the named inherited DW-1169 case; `suggested-view` passed.
+  - `[low]` `[patch]` blind-hunter: nothing pins the busy guard — verified: `submit()` raises `busy` before awaiting and the action carries only `aria-disabled`. Patched with a two-press case asserting one request.
+  - `[medium]` `[defer]` blind-hunter: the wire test's policy assertion reproduces `PolicyText`'s own index-2 assumption — verified; both sides would move together. Settling it needs an independent location of the allow-listed code's text, which is more than a direct correction.
+  - `[low]` `[patch]` blind-hunter: the spec's Verification names `dist/ocupilot/browser/.` but the builder writes `dist/ocupilot-ui` — verified against `ui/angular.json`. Patched in `## Verification`, which Rule 19 names a tracking section.
+  - `[medium]` `[defer]` edge-case: `POLICYCODES` is closed to 845/958, so a `PasswordValidationRoutine` refusal answers 500 — **measured** on the throwaway: with a validation routine configured, `ChangePassword` returns `1446,5001` carrying the routine's own sentence, outside the allow-list. Real and user-visible on such an instance, but widening the list contradicts the matrix's explicit "pass the text through only for 845 and 958" and AD-39's normalization rule — spec-bound, so it is the lead's call, not a patch.
+  - `[medium]` `[defer]` edge-case: a refusal that is not a wrong password (838 no-such-user, 959 disabled, a delegated account) answers an opaque 500 — same root cause as the entry above; grouped with it. The route cannot distinguish wrong-password from no-such-user because `$Username` is always the authenticated caller, so the Never-clause holds; what diverges is the Design Notes' prediction that a delegated user "sees the instance's own refusal text".
+  - `[false]` `[reject]` edge-case: `refuse()` never leaves focus on the summary — refuted with the blind-hunter's duplicate above, against `definition-form.page.ts:1069-1071`.
+  - `[medium]` `[patch]` edge-case: dismissing the dialog while the POST is in flight changes the password with nothing announced and emits on a destroyed output — verified: Escape is reachable throughout the await. Patched with a `finished` re-check immediately after the await.
+  - `[medium]` `[patch]` edge-case: fault kinds are not distinguished — duplicate of the blind-hunter's first finding; same patch.
+  - `[low]` `[defer]` edge-case: a read or decode fault is answered 422 as a client body error, against DW-24 — verified: `Context.cls:44-53`, the precedent the spec names, does split them. Patched, then **reverted**: no constructible input reaches those stages (an invalid-UTF-8 body parses through to the change), so the split adds a branch no test can exercise. Deferred with that evidence rather than shipping an unpinned branch.
+  - `[maybe-false]` `[reject]` edge-case: `ChangePassword` may return 0 without assigning its status, logging nothing — the defensive `$Get(tChangeSC, $$$OK)` already exists; nothing shows the vendor call can do this, and the proposed guard adds a branch on undemonstrated state.
+  - `[low]` `[reject]` edge-case: a violation naming an unknown field renders an unlabelled summary entry — duplicate of the blind-hunter's second finding; same reasoning.
+  - `[maybe-false]` `[reject]` edge-case: a menu keydown with `document.activeElement` outside the items makes ArrowUp land second-to-last — the panel is not focusable, the first item takes focus on open, `onMenuMouseDown` prevents the default that would move it, and the two document handlers close the menu when focus leaves it; no reachable path was shown.
+  - `[low]` `[patch]` edge-case: `REASONACCOUNTPASSWORDPOLICY` is documented as a fallback but is unreachable — verified: the newPassword arm was entered only when the text was non-empty, so a matched code with no text answered 500. Patched: `PolicyText` now reports the match separately from the text, so a matched policy code always renders the violation and the published sentence is the real fallback.
+  - `[medium]` `[patch]` verification-gap: the body-refusal branch is the only code on this route that logs, and no test read a log after triggering it — pre-verified and confirmed by demonstration. Patched: the browser spec now POSTs a malformed body carrying the live password before reading messages.log back, and the mutation that reverses the guard reddens it.
+  - `[medium]` `[patch]` verification-gap: `core/account.ts` classifies the fault and the dialog discards it — duplicate of the blind-hunter's first finding; same patch, plus a dialog case asserting the unreachable sentence.
+  - `[medium]` `[patch]` verification-gap: nothing types into the two dialog fields, so `readonly` would pass every test — pre-verified. Patched: the browser spec fills the current-password field with real key presses and asserts the value arrived.
+  - `[low]` `[patch]` verification-gap (Rule 19): AC3, AC6 and AC8 have no `mutation:` line, and the Integration AC's lives only in a test comment — verified. Closed in-pass: all four mutations named, applied, observed red, reverted, and written into `## Verification`; the tree was byte-identical either side.
+  - `[low]` `[patch]` verification-gap (other): the `ViolationCodes()` doc overstates what the wire test holds, and the carve-out changes nothing — verified. Patched: the sentence now says the list is `AGENT.*` because its test sweeps that prefix, and names the two `ACCOUNT.*` codes the wire test actually asserts.
+  - `[low]` `[patch]` verification-gap (other): `REASONACCOUNTPASSWORDPOLICY` and the two envelope-code arms are unreachable — grouped with the two entries above; same patches.
+  - `[low]` `[reject]` verification-gap (other): `account.ts`'s `fault ?? {...}` fallback is dead — true, and its own comment says so; removing it needs a non-null assertion, which is more complexity than the dead branch.
+  - `[medium]` `[reject]` intent-alignment D1: the Problem's second clause (the sign-in expired-password banner) is untouched and the reading was taken silently — verified, and there is exactly one possible reading: `/api/ocupilot` is Bearer-only (AD-28) and `session.ts:49-59` records `password-expired` as having no trigger on this build, so the banner's user provably cannot reach this flow. Not an intent gap; the reading is recorded in this spec's result section.
+  - `[false]` `[reject]` intent-alignment D2: the summary-focus divergence — refuted above, against `definition-form.page.ts:1069-1071`.
+  - `[low]` `[defer]` intent-alignment D3: three naming conventions now exist for a reveal toggle — verified; `sign-in.ts` and `definition-form.page.ts` already differed before this story, so reconciling them is not this change's to make.
+  - `[low]` `[patch]` intent-alignment D4: "never store it in the client session" is asserted everywhere except browser storage — verified. Patched: the browser spec now reads `sessionStorage` and `localStorage` back and asserts neither password is in either.
+  - `[false]` `[reject]` intent-alignment D5: the server's malformed-body reason is authored, tested and never displayed — refuted as of this pass: the dialog now renders the envelope's own `reason`, so that sentence reaches the user, with a case pinning it.
+  - `[low]` `[reject]` intent-alignment D6: the keyboard model is a second copy rather than a shared helper — the spec's task list says "copied from `data-table.ts:811-839`"; extracting a shared helper would alter specified behavior.
+  - `[low]` `[patch]` intent-alignment D7: `Parameter CHANGEFAILEDCODE` is declared and never read — verified by search. Patched: deleted, with its one load-bearing sentence (why containment, not equality) folded into `WRONGPASSWORDCODE`.
+  - `[low]` `[defer]` intent-alignment D8: `EXPERIENCE.md:395` still reads "polish week adds Change password" and `:505` is D1's row — verified; both are beyond the two EXPERIENCE.md edits the shared-append grant covers.
+
 ## Design Notes
 
 **Governing ADs (Rule 6):** **AD-49** (this story is the AD's originating case: a self-service account action is the user's own write, outside the agent write path, calling the documented `%SYSTEM.*` method in the caller's process -- written into the spine at this story's spec gate), AD-8 (the mechanism: process privilege, no elevation, no service account), AD-12 and AD-39 (one envelope; `detail.violations[]` as `{field, code, reason}`; vendor text normalized before it reaches either consumer — which is why exactly two error codes are allow-listed for pass-through), AD-16 (no `%SYS` switch is needed: `%SYSTEM.Security` resolves from any namespace, as the vendor's own portal dialog demonstrates), AD-19 (framework-free `core/`, components mirror), AD-20 (absolute path through the one API service), AD-21 and AD-35 and Conventions › Secrets (nothing secret reaches a surface OcuPilot displays), AD-28 (Bearer-only; the change does not end the session), AD-5 (shell chrome, so no screen descriptor — `Screen/Descriptor/Home.cls` is untouched), AD-15 (agent-write markers; this is a human write), AD-27 and AD-1 and AD-40 (the admin API stays in `AdminPort`; this is not a tool and never reaches the confirm path), AD-47 (no password in any browser storage). Conventions rows: REST route ordering, Error shape, Status handling, Secrets, Tests, Client asset homes.
@@ -155,7 +325,7 @@ deferred: []
 - `uv run scripts/check-objectscript.py` -- expected: clean, including `check_handler_wire_tests` for `/account/password`, `check_route_ordering`, `check_destructive_test_guard` and `check_escalation_containment`.
 - `bash scripts/lint-docs.sh` -- expected: clean over the amended EXPERIENCE.md.
 - `bash scripts/smoke.sh --container ocupilot-slot-c --user _SYSTEM --password SYS` -- expected: non-zero executed checks, all passing.
-- `cd ui && OCUPILOT_BROWSER_ORIGIN=http://localhost:52779 OCUPILOT_BROWSER_CONTAINER=ocupilot-c-ci npm run test:browser` -- expected: the new spec green. Rebuild and `docker cp dist/ocupilot/browser/.` into the throwaway first; the spec reads the deployed bundle, not the working tree.
+- `cd ui && OCUPILOT_BROWSER_ORIGIN=http://localhost:52779 OCUPILOT_BROWSER_CONTAINER=ocupilot-c-ci npm run test:browser` -- expected: the new spec green. Rebuild and `docker cp dist/ocupilot-ui/browser/.` into the throwaway first (`ui/angular.json` sets `outputPath: dist/ocupilot-ui`); the spec reads the deployed bundle, not the working tree.
 
 **Manual checks:**
 
@@ -163,9 +333,98 @@ deferred: []
 - Confirm the embedded code for a policy rejection is `845` (or `958`) before hard-coding the allow-list; only `1446,952` for a wrong old password has been measured.
 - After any failed request, read `OcuPilot.Kernel.Audit.Log`'s rows and the container's messages.log and confirm neither password value appears.
 
-**Mutations (Rule 19):** each AC's pinning test is named above; the implement stage records `mutation: <what was changed> → <which test went red>` here for each, and rebuilds and redeploys the bundle before reading any browser result.
+**Mutations (Rule 19)** -- each applied, observed red, reverted, and the tree confirmed byte-identical after:
+
+- mutation: `Account.WRONGPASSWORDCODE` 952 -> 953 → `AccountPasswordWire.TestAWrongCurrentPasswordIsAViolationOnThatField` red (AC5).
+- mutation: `Account.POLICYCODES` `"845,958"` -> `"958"` → `AccountPasswordWire.TestAPolicyRefusalCarriesTheInstancesOwnText` red (AC4).
+- mutation: `Account.HandlePasswordChange`'s extra-member test replaced by `If 0` → `AccountPasswordWire.TestAMalformedBodyIsOneRefusalNamingNoValue` red (matrix "Malformed body").
+- mutation: `ChangePassword` sent `tCurrent` as the new password → `AccountPasswordWire.TestZCorrectChangeSucceedsAndLeavesTheAccountAuthorized` and the policy test red (AC2, AC3).
+- mutation: `account.ts` decided `rejected` from `result.status === 422` rather than from `violationsOf` → `account.test.mjs`'s body-refusal and unreadable-violations rows red.
+- mutation: `account.ts` sent the two members as `oldPassword`/`password` → `account.test.mjs`'s request row red.
+- mutation: `change-password-dialog.ts` lost its empty-field guard → the dialog spec's "Empty field" case red.
+- mutation: `change-password-dialog.ts` returned `describedBy: null` → the dialog spec's AC4 and AC5 cases red.
+- mutation: `change-password-dialog.ts` kept the two input values after a success → the dialog spec's AC2 case red.
+- mutation: `account-menu.ts`'s arrow model clamped instead of wrapping → the menu spec's two DW-115 cases red, and -- after a rebuild and a `docker cp` of the bundle into the throwaway -- `change-password.browser-spec.mjs`'s AC7 case red.
+- mutation: `account-menu.ts` dropped `tabindex="-1"` from the first item → the menu spec's AC1 case red.
+- mutation: `account-menu.onPasswordChanged` announced `''` → the menu spec's AC2 case red.
+
+Added at the review pass, each applied, observed red, reverted, and the tree confirmed byte-identical
+(9 modified + 7 untracked, `405 insertions(+), 33 deletions(-)`, unchanged either side):
+
+- **AC3** -- mutation: `change-password-dialog.submit()` calls `sessionStorage.clear()` on success →
+  `change-password.browser-spec.mjs`'s "AC2, AC3, AC6" case red on *the tab is still authorized after
+  the change*. Rebuilt and `docker cp`-ed before reading.
+- **AC6 (the log half)** -- mutation: `Api/Account.HandlePasswordChange` logs the parsed body through
+  `Fault.LogRaw` → the same case red on *no password value reaches a log line*. Before this pass the
+  assertion could not fail: the route's only logging branch is the body refusal, and the spec drove
+  nothing through it. It now sends a malformed body whose two members are the live password first.
+- **AC8** -- mutation: `account-menu.chooseChangePassword()` drops `closeAndRefocus()` for a bare
+  `openFlag.set(false)`, so the trigger is never focused before `app-dialog` mounts → that spec's
+  "AC8: Escape on the open dialog" case red on the focus destination.
+- **Integration AC** -- mutation (recorded here rather than only beside the test): the violation's
+  `reason` in `Api/Account.RenderChangeRefusal` becomes `..#REASONACCOUNTPASSWORDPOLICY` →
+  `change-password.browser-spec.mjs`'s "Integration AC, AC4" case red, because the rendered sentence
+  is then OcuPilot's fallback and not the instance's own.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**What shipped.** `POST /api/ocupilot/account/password` calls
+`$System.Security.ChangePassword($Username, new, old, .tSC)` in the caller's own process (AD-49,
+AD-8) and maps the outcome to one AD-12 envelope: `200 {}`, a 422 violation on `currentPassword`
+or on `newPassword` carrying the instance's own sentence, or a 500 whose detail reaches the log
+alone. The account menu gained Change password above Sign out with the house n-item keyboard model
+(DW-115), and a dialog over two masked, write-only fields.
+
+**Files.** `Api/Account.cls` (new handler), `Api/Error.cls` (four `ACCOUNT.*` codes and their
+sentences), `Api/Router.cls` (tail-appended route and wrapper), `Test/AccountPasswordWire.cls` (new
+wire test); `core/account.ts` + `tools/account.test.mjs`, `shell/change-password-dialog.ts` +
+`.spec.ts`, `shell/account-menu.ts` + `.spec.ts`, `core/strings.ts` (six keys),
+`browser/change-password.browser-spec.mjs` (new); `EXPERIENCE.md` (one row appended at `:381`, the
+Dialogs line amended in place at `:173`); `status-bar.spec.ts` and `browser/panel.browser-spec.mjs`
+each one assertion, forced by the second menu item.
+
+**Review.** 46 findings across four layers: 0 high, 9 medium, 21 low, 11 false, 5 maybe-false.
+Patched 14 entries — 4 medium (the dialog discarded `classifyFault`'s verdict and always said
+"check messages.log"; the route's only logging branch had no test reading a log after triggering
+it; dismissing the dialog mid-request changed the password with nothing announced; no test ever
+typed into either field, so `readonly` would have passed everything) and 10 low. Deferred 11.
+Rejected 21, the substantive ones being: the summary-focus "deviation" (refuted — it is
+`definition-form.page.ts:1069-1071`'s sequence exactly), AC6 reading messages.log rather than
+`Audit.Log` (refuted — `Audit.Log.Emit` writes to messages.log), and the sign-in expired-password
+banner being left alone (exactly one reading is possible: the API is Bearer-only per AD-28 and
+`session.ts:49-59` records `password-expired` as having no trigger on this build, so that banner's
+user cannot reach this flow).
+
+One patch was applied and then **reverted**: splitting the body read's `read`/`decode` stages from
+`parse`, as `Context.cls:44-53` does, could not be pinned — no constructible input reaches those
+stages (an invalid-UTF-8 body parses straight through), so it would have added an unexercised
+branch. It is deferred with that evidence instead.
+
+**Verification** (slot C; throwaway `ocupilot-c-ci` on 52779/1978, brought up and torn down by this
+stage). `uv run scripts/check-objectscript.py` clean, 21 rules over 496 files, 0 problems —
+re-run after every `Router.cls`-touching change. `bash scripts/lint-docs.sh` clean, 92 files.
+`npm test` 1,055 tools tests and 664 component tests, 0 failed. `npm run build` clean through all
+six prebuild checkers. `smoke.sh --container ocupilot-slot-c` 45 executed, 45 passed;
+`--container ocupilot-c-ci` the same on a fresh install of this tree. The full `OcuPilot.Test`
+package on the throwaway: 131 classes, 1,267 tests, 0 failed. Browser suite 190 tests, 189 passed;
+the single failure is the inherited `ui/browser/context-chip.browser-spec.mjs` "Cap follows
+agent-switch" (DW-1169), Epic 5's file and open defect — named, not repaired. The new
+`change-password.browser-spec.mjs` is 4/4 on its own and in the full run.
+
+**Follow-up review recommended: true.** Four medium entries were patched. The named unverified
+risk: the dialog's error arm was reworked in the review pass — it now renders the envelope's own
+`reason` and otherwise picks the connectivity sentence off `classifyFault` — and the mid-flight
+dismissal guard was added beside it. Both are pinned only by component cases against stubbed
+answers; no browser case drives a genuinely unreachable instance or a real dismissal during an
+in-flight request.
+
+**Residual risks.** The two measured `deferred` entries are the ones that reach a user: on an
+instance configured with a `PasswordValidationRoutine`, a real policy refusal returns `1446,5001`
+(measured) and falls outside the closed `845,958` allow-list, so it renders as an internal error
+rather than the instance's reason; the same closed list turns a delegated or LDAP account's refusal
+into an opaque 500, against the Design Notes' stated observable cost. Both are spec-bound —
+widening the list contradicts the matrix's explicit "only 845 and 958" and AD-39 — so they are the
+lead's call, not this pass's.
