@@ -137,8 +137,8 @@ above and the container detail below this block are the operational essentials.
   `ocupilot-slot-b`, and under `/epic-cycle` the name comes from your spawn prompt, never from this line. The assertions live in `OcuPilot.Install.Smoke` inside the
   instance, so CI and a local run ask the same question; zero executed checks is a failure, never
   a pass.
-- **CI runs all of the above on every push** (`.github/workflows/ci.yml`, three jobs: `gates`,
-  `instance`, `images`). `gates` runs **once per Node band `engines.node` declares, at each
+- **CI runs all of the above on every push** (`.github/workflows/ci.yml`, four jobs: `gates`,
+  `instance`, `images`, `package`). `gates` runs **once per Node band `engines.node` declares, at each
   band's floor** (22.22.3 / 24.15.0 / 26.0.0) — `ui/tools/ci.test.mjs` holds that list and
   `engines.node` equal in both directions, so a declared band with no leg is red. A single-version
   job cannot tell "this works" from "this works on the one version we run": `npm test` ran

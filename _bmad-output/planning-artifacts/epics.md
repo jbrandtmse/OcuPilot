@@ -5141,13 +5141,13 @@ So that a polish-week change cannot silently break a Release 1 write.
 - **When** it is extended
 - **Then** it keeps at least one test per OcuPilot API endpoint, the confirmation-binding tests, the state-protection test and the audit-marker round trip, and grows from there.
 
-- **Given** any polish-week change
-- **When** it lands
-- **Then** the suite proves no Release 1 screen and no Release 1 agent write regressed - which is the mechanical form of the rule that nothing in the polish week may break either.
+- **Given** the Release 1 screen set (every descriptor `Screen/Registry` declares built) and the Release 1 agent write set (every tool `Screen/Tool/Registry` classifies `write`)
+- **When** CI runs on any push
+- **Then** every member of both sets carries at least one pinning test the suite executes, held equal in both directions by a derived-versus-declared check, so a member gained with no test - or a test deleted from a member - fails CI naming the member. This is the mechanical form of the rule that nothing in the polish week may break a Release 1 screen or a Release 1 agent write. [AMENDED 2026-09-19 - see the story change log in spec-13-2: the previous wording, "the suite proves no Release 1 screen and no Release 1 agent write regressed", is a negative over an open set with an unbounded subject and has no pinning test short of deleting the suite.]
 
 - **Given** the published admin API spec (`intersystems-community/sysadmin-api-specification`, `mainspec_v2.json`)
 - **When** CI runs
-- **Then** the file is vendored with its commit SHA and a test diffs its v2 path and method set against the instance's generated spec (`GET /api/mgmnt/v1/%25SYS/spec/api/admin`), so 2027.1 drift fails with a named source rather than a user.
+- **Then** the **derived v2 path-and-method table** is vendored, carrying the upstream commit SHA it was derived from, alongside the checked-in derivation that regenerates it from the upstream document, and a test diffs that table against the instance's generated spec (`GET /api/mgmnt/v1/%25SYS/spec/api/admin`), so 2027.1 drift fails with a named source rather than a user. The table is cited in `ATTRIBUTIONS.md` with the repository, the commit SHA and the retrieval date, and says the document itself is deliberately not vendored. [AMENDED 2026-09-19 by the orchestrator's decision - see the story change log in spec-13-2: the previous wording vendored `mainspec_v2.json` itself, and that repository declares no license (`license: null`, no LICENSE file), so copying the document into this public repository would be a redistribution nobody has a grant for. A table of paths and methods is a set of facts about an API rather than the document describing it, which moots the question instead of requiring a ruling on it; the commit SHA is kept because it is what makes a drift attributable.]
 
 - DW-439: the CI throwaway's fixed host port can already be bound when the instance job starts, killing it before a test runs - probe for a free pair or retry the bind (ledger; routed by merge_gate 2026-09-18)
 - DW-1015: browser specs that exec into a container refuse only the live `ocupilot`, never an owner-managed `ocupilot-slot-*` (ledger; routed by merge_gate 2026-09-18)
@@ -5175,8 +5175,13 @@ which is a public, irreversible act that ships whatever the build is at that mom
 **Acceptance Criteria:**
 
 - **Given** the IPM module
-- **When** the archive is produced by the publish path running in its dry-run form, which contacts no
-  registry
+- **When** the archive is produced by the publish path running in its local (`package`) form, which contacts no
+  registry [AMENDED 2026-09-20 - see the story change log in spec-13-3: IPM 0.10.5's `publish` declares only
+  `repo` and `use-external-name` and has no dry-run modifier, so the criterion named a flag that does not exist.
+  `package` runs the same lifecycle through the `Package` phase that `%IPM.Lifecycle.Base:%Publish` itself calls
+  before resolving an upload server, so it is the publish path minus the upload - the local form the owner's hold
+  already permits. Observed: `package ocupilot -path ...` reached `Package SUCCESS` and wrote a 1,083,507-byte
+  archive of 172 members]
 - **Then** the archive carries the built bundle, and installing it from the local file on a fresh
   instance that has IPM yields a working OcuPilot - the same assertion the registry would have proven,
   taken one step earlier.
