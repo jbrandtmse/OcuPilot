@@ -72,8 +72,20 @@ epics:
     depends_on: [epic-2]
     submodules: []
     paths_hint: ["src/OcuPilot/Screen/Descriptor/**", "src/OcuPilot/Screen/Read.cls", "src/OcuPilot/Screen/Registry.cls", "src/OcuPilot/Screen/Area.cls", "src/OcuPilot/Port/MonitorPort.cls", "src/OcuPilot/Port/MgmntPort.cls", "src/OcuPilot/Port/AdminPort.cls", "src/OcuPilot/Port/LogSourcePort.cls", "src/OcuPilot/Api/**", "src/OcuPilot/Install/**", "src/OcuPilot/Test/**", "ui/src/app/areas/**", "ui/src/app/shell/**", "ui/src/app/core/**", "ui/tools/**", "ui/src/styles/**", "ui/browser/**"]
+  # Owner amendment 1d31fe2 (2026-09-20): Story 7.6 carries a vendor-quirk note that MUST reach
+  # Epic 7's runner prompt at dispatch. Recorded as prompt_notes below rather than only in
+  # epics.md, because Epic 7 dispatches after Epic 5 merges -- possibly in a later session --
+  # and a note that lives only in an orchestrator's context does not survive that.
   epic-7:
     depends_on: [epic-5, epic-6]
+    prompt_notes:
+      - story: "7.6"
+        source: "owner amendment 1d31fe2, 2026-09-20; from another entry's validation notes, IRIS 2026.2"
+        note: >-
+          The task list's `Suspended` field does not reflect a suspend or resume that has just been
+          applied, while the task's own info read does. So the in-place row update and the write's
+          VERIFICATION must both read task info, never the list's field. A verification that reads
+          the list field sees stale data -- which fails a correct write, or worse passes a wrong one.
     submodules: []
     paths_hint: ["src/OcuPilot/Screen/Descriptor/**", "src/OcuPilot/Screen/Tool/**", "src/OcuPilot/Kernel/Proposal/**", "src/OcuPilot/Kernel/Restraint.cls", "src/OcuPilot/Port/AdminPort.cls", "src/OcuPilot/Port/LogSourcePort.cls", "src/OcuPilot/Api/**", "src/OcuPilot/Install/Smoke.cls", "src/OcuPilot/Test/**", "ui/src/app/areas/security/**", "ui/src/app/areas/permissions/**", "ui/src/app/areas/tasks/**", "ui/src/app/areas/os-management/**", "ui/src/app/areas/logs/**", "ui/src/app/shell/**", "ui/src/app/core/**", "ui/tools/**", "ui/src/styles/**", "ui/browser/**"]
   epic-8:
