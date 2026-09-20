@@ -55,3 +55,11 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-20T11:00:30Z	Epic 15	ledger_appended	dw=DW-1335 by=runner-15 finding=identified_as_command_bar_row_filter_on_a_formless_route evidence=chrome-devtools_live_measurement_on_ocupilot-c-ci not_repaired=out_of_15.2_footprint;epic_handed_back_before_15.3
 2026-09-20T11:29:29Z	Story 15.2	ci_resolved	story=15.2 run=35506634883 result=success resolved_at=handback head=6552dbc jobs=gates_22.22.3,gates_24.15.0,gates_26.0.0,instance,images_x2 all=success note=supersedes_cancelled_runs_35506547415_and_35506569451_on_earlier_heads_of_the_same_work
 2026-09-20T11:29:29Z	Epic 15	epic_runner_handback	reason=slot_c_retired_for_rate_limit_capacity owner_directive=2026-09-20 stories_completed=2 stories_done=15.1,15.2 next=15.3_not_started ready_for_merge=false worktree=kept branch=OCU-1-epic15 resumes=after_epic_12_on_slot_a_or_b slot_c_dependencies_left=none throwaway=torn_down_by_owner_runner
+2026-09-20T13:23:18Z	Epic 15	lead_model_gate	model=claude-opus-5[1m] action=proceed role=epic-runner slot=b resumed=true
+2026-09-20T13:23:18Z	Epic 15	runtime_gate	bmad=6.12.0 uv=0.12.9 ci=gh python=ok skills=ok impl_artifacts_tracked=true
+2026-09-20T13:23:18Z	Epic 15	runtime_gate	check=rule21_slot_binding slot=b docker_port=52775 profile_baseurl=http://localhost:52775 agree=true verified_by=runner note=slot_c_roster_entry_still_present_at_52778_but_retired_and_never_used
+2026-09-20T13:23:18Z	Epic 15	epic_branch_checked_out	repos=. head=0321850 branch=OCU-1-epic15 mode=RESUME clean=true unpushed=none
+2026-09-20T13:23:18Z	Epic 15	spine_resolved	path=_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md ads=50 status=final read_in_full=true rule26=held
+2026-09-20T13:23:18Z	Epic 15	telemetry_gate	pending=0 action=none
+2026-09-20T13:23:18Z	Epic 15	runner_resumed	reason=slot_c_retired_epic_resumed_on_slot_b inherited_stories=15.1,15.2 next=15.3 deferred=15.6 ledger_counter=1352 spine_counter=51 retro_review=skip_handled_by_epic5
+2026-09-20T13:23:23Z	Epic 15	retro_review_skipped	reason=assigned_skip_by_orchestrator handled_by=epic_5 note=already_skipped_at_epic_start_by_previous_runner;re-logged_on_resume_for_this_runner
