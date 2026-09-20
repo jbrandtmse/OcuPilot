@@ -4704,3 +4704,88 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-parallel.md (Epic 10 merge gate) | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: CI run 35466022679 on 240618d, attempt 1: tests 45-49 of ui/browser/error-log.browser-spec.mjs all failed 'Navigation timeout of 30000 ms exceeded' on page.goto inside the shared signedInAtScreen() helper at :342, five sequential 30 s losses, then the rest of the suite ran normally and only DW-1169 failed. Attempt 2 on the same head, same code, was 185/186 with those five passing. Both parents of the merge were individually healthy (epic 10 cf2012f 186/186, feature ed11819 184/185), so this is not an integration regression. Something makes the instance briefly unable to serve that screen's route -- the error-log spec's own seeding is the obvious suspect since it is the heaviest fixture in the suite. Probe: run error-log.browser-spec.mjs alone against a fresh throwaway with the instance's process table and journal watched, and check whether the seed step precedes the stall
 - 2026-09-19T20:59:38Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=merge_gate note=a five-test loss that vanishes on re-run is the shape that teaches a reader to re-run reds reflexively, which is exactly the habit that hides a real regression
+
+### DW-1301: An identity read that fails for any reason is reported as AUTH.DISABLED, so a missing or broken OcuPilotIdentity application locks every account out
+- source: spec-5-4-execution-strictly-as-the-user.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: The refusal cannot distinguish 'this account is disabled' from 'the escalation could not read anything'. AD-38's contract is that install completes or fails loudly; this fails silently into a total lockout. Location: src/OcuPilot/Kernel/Identity.cls, Api/Router.cls OnPreDispatch
+- 2026-09-20T05:33:12Z status=routed owner=5-4-execution-strictly-as-the-user by=harvest note=kept on this story with items 2 and 3: together they are the new escalation's install path, untested, whose failure mode is nobody can sign in. The code review decides, as it did for the AD-34 race on 5.3
+
+### DW-1302: EnsureIdentityApplication's create and drift-repair path has no test, so a regression there is a silent total lockout
+- source: spec-5-4-execution-strictly-as-the-user.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: No test drives the create, the drift repair or the removal of the second privileged routine application. Location: src/OcuPilot/Install/Installer.cls
+- 2026-09-20T05:33:12Z status=routed owner=5-4-execution-strictly-as-the-user by=harvest note=kept on this story: same cluster as the AUTH.DISABLED conflation
+
+### DW-1303: The install drift oracle does not fold the identity application or its role, so drift on the new escalation is invisible
+- source: spec-5-4-execution-strictly-as-the-user.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: The oracle enumerates the shell, API and readiness applications and their roles; the identity application is absent from it. Location: src/OcuPilot/Install/Installer.cls
+- 2026-09-20T05:33:12Z status=routed owner=5-4-execution-strictly-as-the-user by=harvest note=kept on this story: same cluster
+
+### DW-1304: Api.Definitions.RenderForbidden is a third privilege-refusal sentence across twelve Definitions and Switches routes
+- source: spec-5-4-execution-strictly-as-the-user.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: Story 5.4 unified the refusal into Kernel/Denial.cls for the read, dispatch and port paths; the Definitions and Switches routes still render their own. Location: src/OcuPilot/Api/Definitions.cls
+- 2026-09-20T05:33:29Z status=routed owner=range-end-cleanup by=harvest note=non-blocking (Rule 27): a third sentence saying the same thing, on routes no Epic 5 story takes; Epic 10 has merged so the file is free by the range end
+
+### DW-1305: A tool that legitimately declares no privilege pairs now has its ledger row withheld from every cross-user reader
+- source: spec-5-4-execution-strictly-as-the-user.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: DW-1120's fix makes an empty RequiredPairs never held, which is right for a refusal row and wrong for a tool that genuinely needs no IRIS resource. Location: src/OcuPilot/Kernel/Audit/Ledger.cls
+- 2026-09-20T05:33:29Z status=routed owner=5-6-the-agent-marker-and-what-happens-when-it-fails by=harvest note=downstream-blocking (Rule 27): 5.6 owns the ledger row's own contract and is where the distinction between no-pairs-needed and no-pairs-known belongs
+
+### DW-1306: EvaluateAnyOf's OR semantics are pinned by no test, and every new port-gate assertion runs with the gate class substituted
+- source: spec-5-4-execution-strictly-as-the-user.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: The new OR evaluation ships unexercised, and the port-gate tests inject a stub gate rather than the shipped one. Location: src/OcuPilot/Screen/Gate.cls and the 5.4 port tests
+- 2026-09-20T05:33:29Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=13.2 owns the CI suite; a gate asserted only through a substituted class is the vacuous-pin shape
+
+### DW-1307: TurnSecretResidue sweeps no log line although its class header and AC5 both name one
+- source: spec-5-4-execution-strictly-as-the-user.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: The class asserts residue in the ledger and the transcript and not in the log, which is the surface AD-35 is most concerned with. Location: src/OcuPilot/Test/TurnSecretResidue.cls
+- 2026-09-20T05:33:29Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=13.2 owns coverage; a header promising a sweep the code does not perform is the claim this project corrects at origin
+
+### DW-1308: The matrix's exactly-one-refused-ledger-row-per-refused-call is asserted nowhere
+- source: spec-5-4-execution-strictly-as-the-user.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: DenialParity asserts the sentence and not the row count. Location: src/OcuPilot/Test/DenialParity.cls
+- 2026-09-20T05:33:29Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=13.2 owns coverage
+
+### DW-1309: The provider port's new gate evaluates the calling process where the matrix row describes the turn owner's live grants
+- source: spec-5-4-execution-strictly-as-the-user.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: AD-31 has the turn job re-validate against the owner's current grants; the new gate reads the calling process instead. Location: src/OcuPilot/Port/ProviderPort.cls
+- 2026-09-20T05:33:29Z status=routed owner=5-6-the-agent-marker-and-what-happens-when-it-fails by=harvest note=downstream-blocking (Rule 27): the turn-owner-versus-caller distinction lands with the story that records what was actually exercised
+
+### DW-1310: AC1's tool-identity assertion has no shipped-code falsifier, and the identity role's absence is asserted on a path where it could not be present
+- source: spec-5-4-execution-strictly-as-the-user.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Location: the 5.4 identity tests
+- 2026-09-20T05:33:46Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=13.2 owns coverage; an assertion on a path where the thing could not be present is the vacuous shape
+
+### DW-1311: The per-request identity read is unmeasured
+- source: spec-5-4-execution-strictly-as-the-user.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: OnPreDispatch now performs New $ROLES, AddRoles and a %SYS switch on every dispatched request and nothing measures the cost. Location: src/OcuPilot/Api/Router.cls
+- 2026-09-20T05:33:46Z status=routed owner=range-end-cleanup by=harvest note=non-blocking (Rule 27): no measurement establishes a cost, and NFR-1's budget is about page and refresh latency
+
+### DW-1312: No operator documentation names OcuPilotIdentity
+- source: spec-5-4-execution-strictly-as-the-user.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: README warns by name that deleting OcuPilotState by hand breaks the instance; the second application has no such line. Location: README.md
+- 2026-09-20T05:33:46Z status=routed owner=17-2-a-readme-whose-install-steps-work-the-first-time by=harvest note=17.2 owns the developer and operator documentation, beside DW-446 and DW-457
+
+### DW-1313: Two retired refusal sentences survive in fixtures
+- source: spec-5-4-execution-strictly-as-the-user.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Test/ErrorReadStub.cls:56 and a web-apps area fixture still carry sentences Kernel/Denial.cls replaced. Location: the 5.4 fixtures
+- 2026-09-20T05:33:46Z status=routed owner=range-end-cleanup by=harvest note=non-blocking (Rule 27): fixture text with no shipped consequence
+
+### DW-1314: refused-tool.browser-spec.mjs drives a turn without the turn-slot guard its siblings use
+- source: spec-5-4-execution-strictly-as-the-user.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: context-chip and the other turn-driving specs call requireFreeSlot first; this one does not, so it can collide with AD-41's one-turn bound. Location: ui/browser/refused-tool.browser-spec.mjs
+- 2026-09-20T05:33:46Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=13.2 owns suite hygiene; an unguarded turn is a flake source of exactly the class this epic has already paid for twice
+
+### DW-1315: The IsEnabled-before-HoldsAdminResource ordering in OnPreDispatch is unexercised
+- source: spec-5-4-execution-strictly-as-the-user.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Location: src/OcuPilot/Test/Disabled.cls
+- 2026-09-20T05:33:46Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=13.2 owns coverage
+
+### DW-1316: The doc claim that a second application gives the escalation to one method overstates the containment
+- source: spec-5-4-execution-strictly-as-the-user.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: The application grants the role to whatever runs inside the New $ROLES frame, not to one named method. Location: src/OcuPilot/Kernel/State/Base.cls doc comment
+- 2026-09-20T05:33:46Z status=routed owner=range-end-cleanup by=harvest note=non-blocking (Rule 27) but it is a wrong claim in a doc comment about the security boundary, so the range-end pass corrects it at origin rather than reprhasing it elsewhere
+
+### DW-1317: AC3 is measured at Dispatch.Advertise rather than at the provider request the matrix names
+- source: spec-5-4-execution-strictly-as-the-user.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: ToolSetFull asserts the advertised set at the dispatcher, one layer before the request the AC describes. Location: src/OcuPilot/Test/ToolSetFull.cls
+- 2026-09-20T05:33:46Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=13.2 owns coverage
