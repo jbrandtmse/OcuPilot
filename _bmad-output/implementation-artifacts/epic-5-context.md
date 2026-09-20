@@ -22,8 +22,8 @@ per area.
   (`596c773`, `9de53d3`)
 - Story 5.4: Execution strictly as the user — **done** (`d213550`)
 - Story 5.5: Prohibited actions are absent from the tool set — **done** (`be39be4`)
-- Story 5.6: The agent marker, and what happens when it fails ← **next**
-- Story 5.7: The screen shows the change
+- Story 5.6: The agent marker, and what happens when it fails — **done** (`b04e2a1`)
+- Story 5.7: The screen shows the change ← **next**
 - Story 5.8: Web applications — enable a disabled application and grant it a resource
 - Story 5.9: Permissions — the area's first confirmed user write
 - Story 5.10: Security and secrets — disable and re-enable auditing
@@ -71,66 +71,93 @@ home**. Neither escalation is in effect while any tool, port or provider code ru
 (AD-38). Each port declares and evaluates its own gate before any call; the log ports inherit no
 vendor gate and `/api/monitor/metrics` answers anonymously on this instance.
 
-**Story 5.5's settled contract, for 5.6 to consume.** `Kernel/Proposal/Prohibited.cls` is AD-10's
-**one home**, reached only through `Write.ProhibitedClass()` at the single seam in
-`Confirm.Transition` — before the restraint verdict, the pairs, the fingerprint re-read and the port
-call. The set **permits by name and refuses by shape**: `webapp.list.update` advertises an allowlist
-of four reviewed fields (`AutheEnabled`, `Description`, `Enabled`, `Resource`) with
-`additionalProperties: false`, and every other changed field is refused — so a vendor property a
-later IRIS build adds is covered without having been enumerated. A fifth field is added in exactly
-two places, `Screen.Tool.WebAppUpdate.PERMITTEDFIELDS` and
-`Kernel.Proposal.Prohibited.PermittedChangeFields`, and the suite fails if only one is added. An
-entity type the set does not evaluate is refused wholesale (`PROHIBITED.UNCOVERED`), so Stories
-5.9–5.13 must each add their type's predicates before their write tool can register. The set is
-defined by **effect, not verb** and covers: deleting or disabling the current user, the last `%All`
-holder or `_SYSTEM`; **granting privilege through any path** (Level 4, not proposable at any
-confirmation level); disabling the path that serves OcuPilot (application, web service,
-superserver); terminating IRIS system processes; deleting OcuPilot's own applications, resource,
-role or database. Governance can disable a permitted tool; it can **never** enable a prohibited one.
+**Story 5.5's settled contract.** `Kernel/Proposal/Prohibited.cls` is AD-10's **one home**, reached
+only through `Write.ProhibitedClass()` at the single seam in `Confirm.Transition` — before the
+restraint verdict, the pairs, the fingerprint re-read and the port call. The set **permits by name
+and refuses by shape**: `webapp.list.update` advertises an allowlist of four reviewed fields
+(`AutheEnabled`, `Description`, `Enabled`, `Resource`) with `additionalProperties: false`, and every
+other changed field is refused — so a vendor property a later IRIS build adds is covered without
+having been enumerated. A fifth field is added in exactly two places,
+`Screen.Tool.WebAppUpdate.PERMITTEDFIELDS` and `Kernel.Proposal.Prohibited.PermittedChangeFields`,
+and the suite fails if only one is added. An entity type the set does not evaluate is refused
+wholesale (`PROHIBITED.UNCOVERED`), so Stories 5.9–5.13 must each add their type's predicates before
+their write tool can register. The set is defined by **effect, not verb** and covers: deleting or
+disabling the current user, the last `%All` holder or `_SYSTEM`; **granting privilege through any
+path** (Level 4, not proposable at any confirmation level); disabling the path that serves OcuPilot
+(application, web service, superserver); terminating IRIS system processes; deleting OcuPilot's own
+applications, resource, role or database. Governance can disable a permitted tool; it can **never**
+enable a prohibited one.
 
-**Identity canonicalization is new and touches everything (AD-13, amended under Rule 20).**
+**Identity canonicalization is settled and touches everything (AD-13, amended under Rule 20).**
 `EntityRef.NormalizedId(type, id)` decides the canonical form per entity type, beside
 `EntityRef.Validate`; `EntityRef.Key` builds from it; `EntityRef.Canonical` re-reads a stored key;
 and `Propose.GuardedClaimAndClose` takes AD-34's per-target lock and runs its sibling cancel on
 **both** the canonical ref and the ref as stored. For `web-application` the rule is case-fold plus
 strip trailing slashes — what the instance itself does. A type with no rule canonicalizes to itself;
-a later write-tool story adds its own. Two consequences downstream stories must know: the `TargetRef`
-a proposal, the ledger and the panel show is now the **canonical** spelling, not the one the agent
-typed; and the client mirror `ui/src/app/core/entity-ref.ts` does **not** normalize yet (DW-1364,
-routed to Story 5.7, which is its reopen condition).
+a later write-tool story adds its own. The `TargetRef` a proposal, the ledger and the panel show is
+the **canonical** spelling, not the one the agent typed.
 
-**Story 5.6 — what the marker must prove.** Every confirmed write emits an audit event carrying the
-agent marker, the proposal id, the tool, the target identity and the user, **alongside** the vendor's
-own change event for the same operation, and either record locates the other. The same write made by
-hand through a screen emits **no** such marker — the marker is what distinguishes agent from human.
-The audit viewer's agent-marker filter shows the write under the user's own name, described as
-coming through the agent co-pilot. When the marker fails, **the write does not fail and the failure
-does not propagate**: the condition is recorded on the ledger row and shown on the tool-call card as
-"done · audit not marked" in `warning` on its **collapsed** line, never only in the body, and the
-reply mentions it. `$System.Security.Audit()`'s return value is checked, because it silently returns
-0 and drops the event when its Source/Type/Name triple was never registered. When auditing is off on
-the instance, or OcuPilot's own events are disabled, the banner "Agent writes are not being marked.
-Auditing is off on this instance." shows to every user and the executor records the condition on each
-write; the banner carries its sentence alone until Story 7.4's Auditing configuration screen makes
-its link and "Turn auditing on" action live. The ledger row is created **before** the port call and
-**finalized after** it, recording what was **actually executed** — resolved target, fields actually
-sent, privileges actually exercised — not what the proposal predicted, with secret-typed fields
-excluded at write time rather than redacted afterwards. The pairing metric measures the **pair**: no
-confirmed proposal without a marked event and no marked event without a confirmed proposal, which
-holds precisely because a failed marker is itself recorded and surfaced rather than silent.
+**Story 5.6's settled contract, for 5.7 to consume.** A confirmed write emits an audit event
+carrying the agent marker, the proposal id, the tool, the **canonical** `TargetRef` and the user,
+from **one site** in `Confirm.Transition` after the write reads OK. `$System.Security.Audit`'s
+return value is **checked** there, because it returns 0 and drops the event when its triple was
+never registered — silently, no error, no log. A drop is recorded on the ledger row, answered as
+`auditMarked: false`, and rendered `done · audit not marked` on the tool-call card's **collapsed**
+line. A ledger row for a confirmed write is new in 5.6: opened `pending` before the port call and
+finalized after it (AD-41). A `PairsSense` column (`checked` | `declared` | `route` | `none`)
+records which claim a row makes, and `ViewForUser` gates a cross-user read on it — **two separate
+HIGHs were found and fixed in that column during 5.6**, both over-releases to a cross-user
+administrator, so treat it as sharp. The `auditingOffBanner` now states only that agent writes are
+not being marked, never a cause nobody read, and **the banner's absence is never a positive claim
+that marking works**. A confirm refusal that leaves the row live is now drawn on the card that was
+refused (DW-1348) — that is what makes Story 5.5's prohibited set observable from the user's seat.
 
-**Ahead in the epic.** One change event, screens re-fetch in place and highlight within two seconds
-(5.7). The six area writes are 5.8–5.13.
+**Story 5.7 — what the screen must show.** A confirmed write publishes AD-13's scoped triple plus an
+action on **one** client-side event bus, and a screen editor's own Save publishes to the same bus,
+so an open list updates after a form save exactly as it does after an agent write. The entity-type
+vocabulary is a **single closed enum owned by the kernel** and the build fails on an unknown value.
+A screen showing that type **re-fetches in place** — no screen mutates its own rows from a write
+response — preserving sort, filter, selection and scroll, and **highlights within two seconds** of
+the write completing, scrolling the row or field into view: change-highlight background, 3px agent
+bar, a "Changed" tag, settling over two seconds and holding until the next interaction with that row
+or field. A deleted row leaves and, if selected, clears the selection and the locator's entity
+segment; a created row appears highlighted and selected. When the affected screen is **not** open, a
+toast names the change in one sentence and carries "Open in <screen>", which navigates with the
+entity selected; toasts stack at most three deep, newest on top, a fourth dropping the oldest; one
+without an action persists ten seconds and one carrying an action thirty; the timer **pauses while
+any toast is hovered or focused**; every toast has a dismiss control. The agent's reply names the
+same change, so nothing is lost when a toast expires. Toasts are **never** used for errors — those
+are banners — and never to confirm what the user just did on the open screen, where the row
+highlight is the confirmation. The bus **does not cross tabs**: a list open in another tab is not
+updated. While a proposal against a screen's entity type is live, that screen's auto-refresh
+**pauses**, its chip reads "Auto-refresh paused — a proposal is awaiting confirmation", and it
+resumes on confirm, cancel or expiry — so the diff under review cannot move.
+
+**Ahead in the epic.** The six area writes are 5.8–5.13.
 
 ## Technical Decisions
 
-- **Governing ADs.** 5.6: **AD-15** (registered events under OcuPilot's own Source; marker alongside
-  the vendor's `%System/%Security/*Change`; emission never fails or propagates), **AD-41** (turns and
-  the ledger are bounded; the row finalized after the write, recording what was executed), **AD-46**
-  (OcuPilot's markers are ordinary audit rows, never hidden; the ledger is protected per-user state
-  and its cross-user gate lives with the ledger, not the screen), **AD-13 as amended**. Then 5.7:
-  AD-14, 43, 13. AD-8/AD-9 as amended, AD-10, AD-34, AD-40, AD-1, AD-29, AD-31, AD-35, AD-7
-  (amended), AD-30, AD-33 and AD-12/AD-39 hold throughout.
+- **Governing ADs for 5.7.** **AD-14** (one change event; screens re-fetch, never patch; the closed
+  kernel-owned entity-type enum; the entity-type key comes from the screen descriptor so two screens
+  over one entity cannot disagree about what to listen for), **AD-43** (auto-refresh is one shared
+  framework over **seven** screens — Processes, Process details, Databases, Database details, Task
+  schedule, Task details, System usage, per EXPERIENCE.md's Auto-refresh controls row, which is the
+  roster; the proposal lifecycle publishes **proposal-open and proposal-closed** events on the same
+  bus, and that is the channel the pause rides on), **AD-13 as amended** (an id is never an identity
+  on its own — every reference crossing a boundary carries `(entity type, scope, id)`, scope being
+  the namespace or the constant `instance`). AD-15, AD-41, AD-46, AD-8/AD-9 as amended, AD-10,
+  AD-34, AD-40, AD-1, AD-29, AD-31, AD-35, AD-7 (amended), AD-30, AD-33, AD-44 and AD-12/AD-39 hold
+  throughout.
+- **The bus, the highlights and the refresh framework already exist in `ui/src/app/core/`** —
+  `change-bus.ts`, `detail-highlights.ts`, `refresh.ts`, `entity-ref.ts`. 5.7's work is to make the
+  confirmed write a publisher on that bus and to build the unbuilt surfaces (toasts, the list
+  highlight path), not to invent the channel.
+- **DW-1364 is the entry 5.7 must close, and it is where the latency ends.** The client mirror
+  `ui/src/app/core/entity-ref.ts` builds a reference key **without normalizing**, while the server
+  now folds a `web-application` id (case-fold plus strip trailing slashes, per entity type, in
+  `EntityRef.NormalizedId`). `change-bus.ts:106` keys AD-14's change bus on the client key. Nothing
+  diverges *today* only because no shipped path publishes a change event on a proposal's target,
+  whose id is canonical — **and Story 5.7's first acceptance criterion is exactly that path**.
 - **Audit events must be registered.** `Security.Events.Create()` at install under OcuPilot's own
   Source; the `Audit()` return value is checked at every emission site, never discarded.
 - **IRIS's default isolation is READ UNCOMMITTED, and that fact is load-bearing (AD-34).** The 5.3
@@ -171,12 +198,31 @@ holds precisely because a failed marker is itself recorded and surfaced rather t
   `%UnitTest` classes run **one at a time**, each landed in `%UnitTest_Result` before the next. Every
   handler gets an HTTP test on status, content type and body shape; every tool a round-trip test over
   its generated schema; a denial test uses a purpose-built least-privileged role, never `%Operator`.
-- **Epic 13's coverage gates are now on the trunk and bind this epic.**
+- **Epic 13's coverage gates are on the trunk and bind this epic.**
   `src/OcuPilot/Test/EndpointCoverage.cls` holds declared probes equal to compiled routes and
-  `Test/SurfaceCoverage.cls` holds coverage rows equal to registered tools — a new route or a new
-  write tool must declare its row or the `instance` job reddens. `ui/tools/ci.test.mjs` holds
-  `scripts/ci-throwaway.sh`'s arming rosters equal to the classes declaring each variable. CI now
-  runs **seven** jobs (a `package` job was added).
+  `Test/SurfaceCoverage.cls` holds coverage rows equal to registered tools and named floor members —
+  a new route or a new write tool must declare its row or the `instance` job reddens.
+  `ui/tools/ci.test.mjs` holds `scripts/ci-throwaway.sh`'s arming rosters equal to the classes
+  declaring each variable. CI runs **seven** jobs.
+
+## Verification rhythm — Rules 28 and 29 (new, 2026-09-20)
+
+- **Rule 28.** CI resolves immediately before the next `stage_spawned stage=implement`, never before
+  the plan spawn: after `committed … ci=pending` the lead proceeds at once to the next story's plan
+  spawn, spec validation and spec gate. On `failure` the red path applies to the **previous** story —
+  re-open, rework, re-review, re-smoke, re-commit — while the new spec stays `ready-for-dev`
+  untouched.
+- **Rule 29.** Inside implement (handoff, the stage's own verification, patching after review
+  layers, and every rework pass) run **the story's own tests**: the browser specs it touches as
+  files, the ObjectScript classes it touches by name one at a time, and the client tiers it touches.
+  The **full** browser suite and the **full** ObjectScript sweep run **once**, at the end of the
+  implement stage before `dev_complete`, then again at the lead's smoke gate and in CI. The plan
+  stage writes `## Verification` in that shape: targeted commands marked `(loop)`, then the two full
+  runs marked `(once, before dev_complete)`.
+- **The smoke script's `executed=` count is not a stable invariant** — 45 on a clean instance, 44
+  right after a browser run, because `switches.browser-spec.mjs` writes the switch row
+  `agentswitches` reads and the check then declines to assert. Read the skip lines, not the number
+  (DW-1402). Zero executed checks is still a failure, never a pass.
 
 ## Standing rulings
 
@@ -190,13 +236,19 @@ holds precisely because a failed marker is itself recorded and surfaced rather t
   shared dev instance** (DW-1185). For slot A that is `ocupilot-ci` on 52776/1975.
 - **A file another epic created is a Clarification only while that epic is a concurrent writer.**
   Once that epic merges, the file is the trunk's and is edited like any other.
+- **A hedged or unverified finding is probed, not filed.** Then either fix the code or fix the
+  claim, and file only what survives — filing a non-defect costs a later reader the same probe.
+- **On a shared-append file, an in-place edit to an existing line is permitted** when that line is
+  itself the subject of the fix, the line is verified byte-identical across every concurrent branch
+  immediately before the edit, and the change is line-neutral. Disclose each one.
 
 ## Instance and slot
 
 Every IRIS MCP call from this runner carries `server: "ocupilot-slot-a"`. The slot's dev container is
 `ocupilot`; never `up`, `down`, stop, remove or recreate it. Its throwaway is `ocupilot-ci` on
-52776/1975, for which **there is no MCP profile** — it is driven by `docker exec` plus
-`scripts/ci-unit-test.sh` / `ui/tools/ci-runner.mjs`.
+52776/1975, for which **there is no MCP profile** — it is driven by `docker exec`,
+`node ui/tools/ci-runner.mjs --container ocupilot-ci --class <name>`, or `scripts/ci-unit-test.sh`,
+with source copied to its exact relative path under the host-side bind mount `/tmp/ocupilot-ci/src/`.
 
 ## UX & Interaction Patterns
 
@@ -217,30 +269,18 @@ Every IRIS MCP call from this runner carries `server: "ocupilot-slot-a"`. The sl
   **no "Confirm all"**; while one is live Send drops to secondary. A typed message cancels every live
   proposal and the agent's next reply says so and offers to re-propose; New conversation cancels the
   same way; **Stop cancels nothing**.
-- **For 5.6 specifically:** the collapsed tool-call line carries "done · audit not marked" in
-  `warning` — collapsed, not only in the body — and the reply mentions it. The panel banner "Agent
-  writes are not being marked. Auditing is off on this instance." shows to every user, in the panel's
-  established banner order and its reserved `not-marked` slot, and carries no link until 7.4. A
-  refusal the user can reach renders through the existing `toolCallStatusFailed` string
-  (`failed — <reason>`) and the agent states the refusal rather than retrying.
+- **Marking, as shipped (5.6).** The collapsed tool-call line carries "done · audit not marked" in
+  `warning` — collapsed, not only in the body — and the reply mentions it. The panel's
+  `auditingOffBanner` shows to every user in the panel's established banner order and its reserved
+  `not-marked` slot, states only that agent writes are not being marked, and carries no link until
+  Story 7.4's Auditing configuration screen makes it live. A refusal the user can reach renders
+  through `toolCallStatusFailed` (`failed — <reason>`) on the card that was refused, and the agent
+  states the refusal rather than retrying.
 
 ## Cross-Story Dependencies
 
-- **Story 5.6's ledger inbox is five entries.** **DW-1348** (the one 5.5 sent it, and the reason this
-  is 5.6's and not `range-end-cleanup`'s): a confirm refusal that leaves the proposal row live is
-  invisible in the panel — `turn.ts decideProposal` records an outcome only when the refusal carried
-  `detail.state`, and `panel.ts onCardConfirm` drops its own decision in its `finally` — so a
-  prohibited or restrained refusal shows the user nothing and the card simply offers Confirm again,
-  making 5.5's floor-blocking prohibited set unobservable from the user's seat. AD-30's restraint
-  refusal has the same shape. **DW-1305** and **DW-1321** together settle the ledger row's own
-  contract: an empty `RequiredPairs` must distinguish no-pairs-*needed* from no-pairs-*known* (today
-  every such row, including every `llm` row from the default landing screen, is withheld from every
-  cross-user reader), and the column currently carries three incompatible meanings — a requirement
-  evaluated against the caller, a tool's unchecked declaration, and the originating screen route's
-  pairs — which `ViewForUser` gates identically. **DW-1309**: the provider port's gate evaluates the
-  calling process where AD-31 has the turn job re-validate against the **turn owner's** live grants.
-  **DW-1174**: the audit browser spec's agent-marker leg renders every OcuPilot-source row, so it
-  times out on an instance that has been tested on for days — scope it to this proposal's own marker.
+- **Story 5.7's ledger inbox is one entry: DW-1364**, routed forward from 5.5 and described under
+  Technical Decisions. 5.7 is its reopen condition.
 - **Three `decision-pending` entries remain owner-level and are not settled inside a story.**
   **DW-456**: shipped registry-layer classes already name kernel and API classes the spine's
   direction line forbids. **DW-1208**, decided: Release 1 ships the **`%All`-only write**, with the
@@ -249,24 +289,27 @@ Every IRIS MCP call from this runner carries `server: "ocupilot-slot-a"`. The sl
   declared field set `fingerprintExcludes` already uses.
 - **Footprint, settled.** `src/OcuPilot/Test/**` and `ui/src/app/core/**` are **shared-create**: any
   epic creates files there freely, and modifying a file a **concurrent** epic created is a
-  Clarification. `ui/src/app/core/proposal-view.ts` and `core/turn.ts` are Epic 5's, as are `panel*`,
-  `proposal-card*`, `reply*`, `tool-call-card*`. **`src/OcuPilot/Api/Router.cls` and EXPERIENCE.md's
-  Fixed-strings table are epic-wide shared-append** — tail only, union merge expected. **Epic 15** is
-  live on slot B and holds `ui/src/app/shell/{header,account-menu,side-bar,command-box}*` and
-  `ui/src/styles/**`. **Epic 13 has merged and been torn down**: `ui/tools/ci*.mjs`,
-  `.github/workflows/**`, `scripts/`, `Install/Uninstall*`, `module.xml` and `spec/**` are the
-  trunk's now, and its coverage gates bind (see Technical Decisions).
-- **Other standing routes.** 5.7 carries DW-1364; 5.8 DW-1223; 5.10 DW-1171 and DW-1206; 5.11 DW-269,
-  also routed at the epic level.
+  Clarification. Epic 5's client files are `ui/src/app/shell/panel.ts`, `panel.spec.ts`,
+  `proposal-card*`, `reply*`, `tool-call-card*`, `ui/src/app/core/proposal-view.ts` and
+  `core/turn.ts`. **`ui/src/app/shell/panel-resize-handle*` is NO LONGER Epic 5's — Epic 15 holds
+  it, and Epic 15 is live on Story 15.5**, along with
+  `ui/src/app/shell/{header,account-menu,side-bar,command-box}*` and `ui/src/styles/**`.
+  **`src/OcuPilot/Api/Router.cls` and EXPERIENCE.md's Fixed-strings table are epic-wide
+  shared-append** — tail only, union merge expected (see the in-place-edit ruling above).
+  **Epic 13 has merged and its files are the trunk's**: `ui/tools/ci*.mjs`, `.github/workflows/**`,
+  `scripts/`, `Install/Uninstall*`, `module.xml`, `spec/**`, `Test/EndpointCoverage.cls` and
+  `Test/SurfaceCoverage.cls`.
+- **Other standing routes.** 5.8 carries DW-1223; 5.10 DW-1171 and DW-1206; 5.11 DW-269, also routed
+  at the epic level.
 - **From Epic 4 and earlier.** The turn job with its progress and lease contract; `Dispatch`'s gate
   chain (governance → restraint for `kind=write` → declared pairs → schema → `Registry.InvokeTool`)
-  and its restraint branch; the ledger (one row per call, `RequiredPairs`, schema-driven redaction,
-  finalized **after** the write and recording what was actually executed); the panel with its banner
-  order and reserved `not-marked` slot; `AdminPort`'s eight-step vendor dispatch — the only code
-  naming an `%Api.Admin.*` class; the audit viewer with its agent-marker filter; the kill switch,
-  enforced read-only and the definition's read-only flag; protected storage and its resource; the
-  closed entity-type enum; the descriptor mechanism; the string table; the registered audit events;
-  and the smoke script that defines "step complete".
+  and its restraint branch; the ledger (one row per call, `RequiredPairs`, `PairsSense`,
+  schema-driven redaction, finalized **after** the write and recording what was actually executed);
+  the panel with its banner order and reserved `not-marked` slot; `AdminPort`'s eight-step vendor
+  dispatch — the only code naming an `%Api.Admin.*` class; the audit viewer with its agent-marker
+  filter; the kill switch, enforced read-only and the definition's read-only flag; protected storage
+  and its resource; the closed entity-type enum; the descriptor mechanism; the string table; the
+  registered audit events; and the smoke script that defines "step complete".
 - **Deliberate forward references.** 5.10's write must be the **same operation** Story 7.4's Auditing
   configuration screen later calls, and 5.6's and 5.10's banner carries its sentence alone until 7.4
   makes its link live. 5.11 navigates to the Task schedule list with the task selected; retargeting
