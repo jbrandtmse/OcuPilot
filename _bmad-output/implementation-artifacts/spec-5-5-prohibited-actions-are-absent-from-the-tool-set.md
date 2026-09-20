@@ -2,7 +2,7 @@
 title: 'Story 5.5: Prohibited actions are absent from the tool set'
 type: 'feature'
 created: '2026-09-20'
-status: 'done'
+status: 'in-progress'
 baseline_revision: '98ad9596bc9c33dd3c29eaa9f94754613e3b59ba'
 review_loop_iteration: 0
 followup_review_recommended: true
@@ -202,6 +202,37 @@ tool, no client or UI change, no string-table entry. Do not edit `scripts/` (Epi
 - `src/OcuPilot/Test/ProposalConfirm.cls` -- update
   `TestTheProhibitedSeamIsCalledOnceBeforeThePortCall`: the seam now answers the kernel class, and the
   call-once/before-the-write assertions stay. Do not weaken either.
+
+**Open after the lead's harvest gate (rework iteration 1) -- work ONLY these:**
+
+- `[Review]` **DW-1345 (high).** `PROHIBITED.DISPATCH` compares `DispatchClass` alone, while
+  `EventClass`, `SuperClass`, `Package`, `Path`, `NameSpace`, `LoginPage` and `ErrorPage` are
+  settable and decide just as completely which compiled code answers at the URL. AD-10's Rule is
+  **by effect, not by verb**: express the family as one predicate over "what answers here", so a
+  new vendor property with that effect is covered by the predicate's shape rather than by having
+  been enumerated. Verified by the lead: `Screen/Tool/FieldLists.cls:519-549`.
+- `[Review]` **DW-1346 (high).** `PROHIBITED.UNAUTHENTICATED` keys on bit 64 of `AutheEnabled`
+  alone. `TwoFactorEnabled`, `CSRFToken`, `JWTAuthEnabled` and `UseCookies` are settable, and any
+  non-64 `AutheEnabled` change (32 -> 0 among them) passes. Express authentication weakening as the
+  effect it is, in the same by-effect shape.
+- `[Review]` **DW-1347 (high).** `PROHIBITED.SERVINGPATH` refuses only a payload that leaves
+  OcuPilot's own path not enabled. `NameSpace` and `Path` are exactly what the installer asserts for
+  `/ocupilot`, `/api/ocupilot` and `/api/ocupilot/readiness` (lead-verified on `ocupilot-slot-a`:
+  all three read `NameSpace` `HSCUSTOM`), and a payload repointing either leaves `Enabled` true and
+  passes. AD-38 makes an unreachable OcuPilot an unrecoverable instance, so this one is the
+  serving-path predicate's whole point.
+- `[Review]` **DW-1351 (med).** The set compares the mint-time payload against the live target, so a
+  third party adding a `Resource` after the mint earns 403 `PROHIBITED.AUTHORIZATION` -- a sentence
+  about a change the agent never proposed -- and the row stays live. Report a prohibition only for a
+  field the proposal actually **changes** relative to the target it was minted against, and let the
+  fingerprint gate answer a target that moved with 409 `PROPOSAL.TARGETCHANGED`. **Do not reorder the
+  gates**: the verdict stays where Story 5.3 put the seam, before the restraint verdict, per the
+  Design Notes' AD-9 argument.
+
+Each of the four needs a pinning test and a `mutation:` line in `## Verification`, demonstrated in
+this pass (Rule 19). The three high items are **not** closed by enumerating today's vendor property
+names in a list: a test that adds a plausible new property with the same effect and expects a refusal
+is what makes the by-effect claim falsifiable.
 
 **Acceptance Criteria:**
 
