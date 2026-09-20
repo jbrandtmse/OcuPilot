@@ -61,17 +61,6 @@ deferred:
       module.xml:24
     severity: medium
   - summary: >-
-      deferred-work.md's DW-1334 evidence records a root cause this pass measured to be false
-    evidence: |-
-      The entry says `tar tzf` runs host-side and "BSD normalizes what GNU preserves". Measured here:
-      `bsdtar 3.5.3` lists `ui/dist/b//index.html` unchanged from gnu, ustar and pax archives, so the
-      listing does not explain the macOS-green / Linux-red split. The spec's own diagnosis was
-      corrected at origin this pass; the ledger entry was not, because bmad-build-auto never writes
-      the ledger (Rule 15 (a)). Left standing it will be mined later as evidence.
-    location: >-
-      _bmad-output/implementation-artifacts/deferred-work.md (DW-1334)
-    severity: medium
-  - summary: >-
       the archive's bundle arm is containment, not an equality, so extra members under the bundle
       prefix pass while two records call it an equality
     evidence: |-
@@ -81,7 +70,7 @@ deferred:
       ("holds the archive's members equal to the staged tree") both overstate the bundle half.
       Either bound the bundle side or correct the two sentences.
     location: >-
-      scripts/ci-ipm-archive.sh:295
+      scripts/ci-ipm-archive.sh:313
     severity: medium
   - summary: >-
       the manifest comparison's `DECLARED -lt 11` floor is not held to the roster's own declaration
@@ -95,7 +84,7 @@ deferred:
       `declarations()` out of the script, runs it over the repository's module.xml, and asserts the
       emitted line count equals the floor literal read back from the script.
     location: >-
-      scripts/ci-ipm-archive.sh:325
+      scripts/ci-ipm-archive.sh:377
     severity: medium
 ---
 
@@ -218,6 +207,29 @@ in-pass, one high open. Open items only.
   unmeasured budget. It is ample — on the runner, phase 1 (image pull, cold IRIS start, IPM import,
   module load, `package`, the repository re-read and `docker cp`) ran 09:47:31 → 09:50:03, 2 m 32 s.
   The "roughly an hour" figure is the macOS run, not the runner.
+
+Third review (2026-09-20, rework re-review, scope `d965e4d..HEAD`). 0 high, 2 medium, 7 low; every
+one patched in-pass, nothing open. The story closes (Rule 15 exit condition).
+
+- **`[med]` The result section still said AC1's end-to-end leg was unobserved green on Linux** —
+  contradicted by the `ci_resolved` line the same range adds. Replaced at origin with run
+  `35506409237`'s result, and the local-run cost separated from the CI job's.
+- **`[med]` The `Scope="test"` exclusion had no pin under a doubled join** — `grep 'OcuPilot/Test/'`
+  does not match `src//cls/OcuPilot//Test//fixture.xml`, so without the normalization a
+  `Scope="test"` member is a false green rather than a red. A fourth arm on the doubled-slash test
+  pins it, with its mutation in `## Verification`.
+- **`[low]`, patched:** the diagnostic's raw listing had no assertion; the scratch-root guard
+  accepted a relative `$TMPDIR`, which made a relative `--dir` removable (absolute arm added, with
+  its test and mutation); the `deferred:` item asking for a ledger correction `a132686` had already
+  applied; two `deferred:` `location:` line numbers, now `:313` and `:377`; `archiveContentsBlock`'s
+  doc comment claimed `fail()` is the script's when the prelude supplies it; the SIGTERM floor's
+  failure message misread a count of zero as "the trap did not fire".
+- **Ledger, by trailer rather than re-filed:** DW-1344's evidence miscalls DW-1339 "the Node pin";
+  DW-1343's record half is done here, leaving only the optional tightening.
+- **Refuted:** the widened diagnostic filter `^src/*cls/` "hides the `src//cls` evidence" — it is
+  what stops the 40-line dump being flooded by class members, and the bundle joins, the branch that
+  actually fails, still show their doubling. `baseline_commit` differing from `baseline_revision` is
+  deliberate: the rework's base and the story's base answer different questions.
 
 ## Spec Change Log
 
@@ -403,6 +415,9 @@ in-pass, one high open. Open items only.
 - **AC1, the member comparison (DW-1334)** — pinning test: `ipm-archive.test.mjs`'s *the archive-contents comparison accepts a member list with doubled slashes at the joins*, which runs the script's own archive-contents block against a staged fixture with a stub `tar` — the doubled listing, the collapsed one, and a third where a staged bundle file is genuinely absent, so the comparison is pinned in both directions. `mutation: delete the repeated-slash normalization of MEMBERS from scripts/ci-ipm-archive.sh → red on the doubled list, node exit 1 read directly, 22 of 23`.
 - **The scratch-root guard** — pinning test: `ipm-archive.test.mjs`'s *a degenerate TMPDIR does not widen the scratch-root guard to every absolute path*. `mutation: delete the empty-$SCRATCH_TMPDIR fallback from scripts/ci-ipm-archive.sh → red, node exit 1 read directly, 22 of 23, because TMPDIR=/ strips to the empty string and the arm becomes /?*`.
 - **The interrupt trap** — pinning test: `ipm-archive.test.mjs`'s *SIGTERM mid-run still removes both containers by name*, whose build-container arm is a floor of two removals rather than one, since the script removes a stale container by name before `docker run`. `mutation: delete the build container's removal from cleanup() in scripts/ci-ipm-archive.sh → red, node exit 1 read directly, 22 of 23`. Each of these three was reverted with `scripts/ci-ipm-archive.sh` byte-identical by md5 (`705170f59e25afff6e55f21e374becd6`) before the next.
+- **The failure diagnostic's raw listing** — pinning test: `ipm-archive.test.mjs`'s *the archive-contents comparison accepts a member list with doubled slashes at the joins*, whose reject arm also asserts the dump still carries its doubling. `mutation: dump $MEMBERS instead of $RAW_MEMBERS in the MISSING_BUNDLE diagnostic in scripts/ci-ipm-archive.sh → red naming the collapsed dump, node exit 1 read directly, 22 of 23`.
+- **The `Scope="test"` exclusion under a doubled join** — pinning test: the same test's fourth arm, a member `src//cls/OcuPilot//Test//fixture.xml`. `mutation: replace the normalization with MEMBERS="$RAW_MEMBERS" in scripts/ci-ipm-archive.sh → red, node exit 1 read directly, 22 of 23`. This is the one arm where a missed doubling is a false green: `grep 'OcuPilot/Test/'` does not match the doubled path and does match it collapsed, confirmed directly.
+- **The scratch root must be absolute** — pinning test: *a degenerate TMPDIR does not widen the scratch-root guard to every absolute path*, its relative-`TMPDIR` loop. `mutation: delete the absolute-$SCRATCH_TMPDIR arm from scripts/ci-ipm-archive.sh → red, node exit 1 read directly, 22 of 23`. These three were each reverted with the script byte-identical by md5 (`be2254e904682a674a360c696b036e23`).
 - **AC2** — pinning test: the pre-stage `ipm-manifest.mjs --check` plus the archive-manifest-versus-roster comparison. One mutation per arm, because the first stops the script before the second runs. `mutation: change <Version> in module.xml by hand without touching src/OcuPilot/Install/Roster.cls → ipm-manifest.mjs --check exits 1 naming <Version>, and the script stops before any container starts`. `mutation: alter the staged copy of module.xml after it is staged (JWTAccessTokenTimeout 60 → 3600 in $DIR/module/module.xml), which --check does not see → the archive-manifest comparison exits 1 on the webapp= line for /api/ocupilot, naming both sides`.
 - **AC3** — pinning test: `ui/tools/ipm-archive.test.mjs`'s network-isolation and verb-allow-list assertions. `mutation: delete --network none from one docker run line in scripts/ci-ipm-archive.sh → ipm-archive.test.mjs goes red naming that container`. **No network call is issued in either direction** — the mutation is observed entirely host-side, which is the point.
 - **Integration AC** — pinning test: `ci.test.mjs`'s `DECLARED_GATES` equality and the widened `jobNames` equality. `mutation: delete one run: step from the package job in .github/workflows/ci.yml → ci.test.mjs goes red naming the orphaned declared gate`.
@@ -479,6 +494,18 @@ reverted, and the file confirmed byte-identical by md5 before the next. Suite 11
 `scripts/ci-ipm-archive.sh` md5 is `6983c0a437acc61694dadffb03bbb539` after this pass's patches
 (`be2440169b8a041e7cb3a615174458cd` was the pre-review file).
 
+### Lead smoke gate (2026-09-20)
+
+- Full class sweep on `ocupilot-b-ci`: `137 class(es), 1283 test(s), 0 failed, 0 probe leftovers, 0 overlaps`,
+  exit 0 - unchanged by this story, which adds no ObjectScript class.
+- `smoke.sh --container ocupilot-b-ci`: `executed=45 passed=45 failed=0 pending=2 skipped=0`, exit 0.
+- `npm test`: 1,124 node tests and 644 component tests, 0 failed; `check-objectscript.py` 0 problems over 502 files.
+- **AC1's end-to-end leg, proven on Linux for the first time** (run `35506409237`, `package` job **success**):
+  `ocupilot.tgz (1083100 bytes, 135 class(es), 14 bundle member(s)) installed on a second fresh instance and
+  smoke PASSED with 42 check(s) executed`; the archive's manifest declares the same 11 items as the roster; and
+  **0 package-repository rows both before and after the install**, on containers started with no network, no port
+  mapping and no durable volume. The hold is proven by mechanism rather than asserted.
+
 ## Auto Run Result
 
 Status: done
@@ -515,9 +542,12 @@ component tests, 0 failed; `node --test tools/ipm-archive.test.mjs` 23 of 23 and
 `tools/ci.test.mjs` 65 of 65; `/bin/sh -n` and `/bin/dash -n` on the script; `bash
 scripts/lint-docs.sh` clean. Every exit code read directly. Three mutations, each reverted with the
 script byte-identical by md5 `705170f59e25afff6e55f21e374becd6`, are recorded in `## Verification`.
-The end-to-end `package` job was not run: it takes about an hour and cannot reproduce this defect on
-macOS, which is the whole reason it is CI's gate. **The fix is proven host-side only; the Linux
-runner is where AC1's end-to-end leg is still unobserved green.**
+The end-to-end `package` job was not run locally: a local run takes about an hour and macOS cannot
+reproduce this defect, which is the whole reason CI is its gate. **CI has since run it and it is
+green** -- run `35506409237` on head `a132686`, job `package` success: `ocupilot.tgz` (1,083,100
+bytes, 135 class(es), 14 bundle member(s)) installed on a second fresh instance with smoke PASS over
+42 executed checks, the manifest declaring the same 11 items as the roster, and 0 package-repository
+rows both before and after. AC1's end-to-end leg, never before observed green on Linux, now has been.
 
 **What landed.** `scripts/ci-ipm-archive.sh` (new): the two phases in order, on two containers of its
 own started `--network none` from the pinned tag and removed on an `EXIT`, `INT` and `TERM` trap. It
@@ -525,8 +555,8 @@ runs `ipm-manifest.mjs --check` and refuses an absent bundle before staging anyt
 live, slot and throwaway container names, the two names being equal, a floating or absent image tag,
 and a `--dir` that is outside a scratch root or contains `..`; asserts zero `%IPM_Repo.Definition`
 rows on both instances after the import and again after every verb; reads the artifact back from the
-directory it wrote into; holds the archive's members and its manifest equal to the staged tree
-host-side; unexpires `_SYSTEM` by name as an operator act (AD-17); and reads `smoke.sh`'s status from
+directory it wrote into; holds the archive's class members equal to the staged tree host-side, every
+staged bundle file present by name, and its manifest equal to the roster's declarations; unexpires `_SYSTEM` by name as an operator act (AD-17); and reads `smoke.sh`'s status from
 the command rather than through a pipeline. `ui/tools/ipm-archive.test.mjs` (new, 23 tests) pins the
 network isolation, the three-verb allow-list in both directions, that every IPM command is a literal
 so those scans can see all of them, that no container is created by any other form, the credential

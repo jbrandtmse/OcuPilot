@@ -103,6 +103,12 @@ while [ "$SCRATCH_TMPDIR" != "${SCRATCH_TMPDIR%/}" ]; do
     SCRATCH_TMPDIR="${SCRATCH_TMPDIR%/}"
 done
 [ -n "$SCRATCH_TMPDIR" ] || SCRATCH_TMPDIR=/nonexistent-tmpdir
+# And it must be absolute: a relative TMPDIR makes the arm below relative too, so a relative --dir
+# under it would pass and then be removed relative to wherever the script happened to be invoked.
+case "$SCRATCH_TMPDIR" in
+    /?*) ;;
+    *) SCRATCH_TMPDIR=/nonexistent-tmpdir ;;
+esac
 case "$DIR" in
     /tmp/?*|/private/tmp/?*|"$SCRATCH_TMPDIR"/?*) ;;
     *) echo "ci-ipm-archive: '$DIR' is not under a scratch root; this directory is removed recursively, so it must be under /tmp, /private/tmp or \$TMPDIR"; exit 2 ;;

@@ -388,6 +388,22 @@ test('a degenerate TMPDIR does not widen the scratch-root guard to every absolut
     assert.deepEqual(refused.docker, []);
     assertNothingRemovedOrCopied(refused);
   }
+
+  // The other degenerate shape: a TMPDIR that is not absolute makes the arm relative too, so a
+  // relative --dir under it passes and is then removed relative to wherever the script was run --
+  // which, for the invocations in this tree, is the repository root.
+  for (const value of ['work', './work']) {
+    const refused = runRefused(['--image', PINNED_IMAGE, '--dir', 'work/ocupilot-ipm'], {
+      env: { TMPDIR: value },
+    });
+    assert.equal(
+      refused.status,
+      2,
+      `TMPDIR=${value} let a relative --dir through the guard on a directory the script removes recursively: ${refused.output}`
+    );
+    assert.deepEqual(refused.docker, []);
+    assertNothingRemovedOrCopied(refused);
+  }
 });
 
 test('an unbuilt client bundle is refused, naming the directory and the command that builds it', () => {
@@ -481,8 +497,10 @@ test('the staged-class count excludes OcuPilot/Test/ and counts only .cls files'
 
 /**
  * The script's archive-contents block, from the line that builds `MEMBERS` to the line that
- * reports what the archive carries. Sliced out of the script rather than restated, so the code
- * this runs is the code that runs in CI.
+ * reports what the archive carries. Sliced out of the script rather than restated, so the
+ * comparisons this runs are the comparisons that run in CI. `fail()` is the caller's, supplied by
+ * the prelude below, so what the block does with a verdict is pinned here and what `fail()` itself
+ * prints is not.
  */
 export function archiveContentsBlock(text) {
   const lines = text.split('\n');
@@ -569,6 +587,37 @@ test('the archive-contents comparison accepts a member list with doubled slashes
       /is missing 1 staged bundle file\(s\)[^\n]*index\.html/,
       `the failure did not name the missing member: ${rejected.stdout}${rejected.stderr}`
     );
+    // The diagnostic under that failure is the only place the shape IPM actually stored is ever
+    // visible -- the container the archive came from is gone by the time anyone reads the CI log,
+    // and it is what let DW-1334 be diagnosed at all. It must dump the listing as tar gave it, not
+    // the collapsed one the comparisons read.
+    assert.match(
+      rejected.stdout,
+      /exactly as tar listed them:[\s\S]*browser\/media\/\/Inter-OFL\.txt/,
+      `the diagnostic dumped a slash-collapsed listing, so the next failure cannot show what IPM stored: ${rejected.stdout}`
+    );
+
+    // A member under OcuPilot/Test/ must still be excluded when the join is doubled. This is the
+    // one arm where a missed doubling is a false GREEN rather than a false red: the exclusion is
+    // an unanchored `grep 'OcuPilot/Test/'`, which `OcuPilot//Test//x` does not match, so without
+    // the normalization a Scope="test" member would ship unnoticed. The member here is not a .cls,
+    // so the arm is exercised alone -- a doubled-join .cls under Test is caught twice over, by
+    // this arm and by the class equality, whose staged side excludes OcuPilot/Test/.
+    writeFileSync(membersFile, `${[...doubled, 'src//cls/OcuPilot//Test//fixture.xml'].join('\n')}\n`);
+    const shippedTest = spawnSync('sh', ['-c', `${prelude}\n${block}`], {
+      encoding: 'utf8',
+      env: stubEnv(bin, { OCUPILOT_TAR_MEMBERS: membersFile }),
+    });
+    assert.equal(
+      shippedTest.status,
+      1,
+      `an archive carrying a doubled-join OcuPilot/Test/ member was accepted: ${shippedTest.stdout}${shippedTest.stderr}`
+    );
+    assert.match(
+      shippedTest.stdout,
+      /carries a member under OcuPilot\/Test\//,
+      `the failure did not name the Scope="test" member: ${shippedTest.stdout}${shippedTest.stderr}`
+    );
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -637,7 +686,7 @@ test('SIGTERM mid-run still removes both containers by name, via the same trap a
     // The floor rather than a count, because the TERM trap's own `exit` re-enters the EXIT trap.
     assert.ok(
       lines.filter((line) => line === 'rm -f ocupilot-ipm-build').length >= 2,
-      `the pre-run removal is there but cleanup did not remove the build container: ${lines.join('\n')}`
+      `the build container was removed fewer than twice, so the trap did not add its own removal to the pre-run one: ${lines.join('\n')}`
     );
     assert.ok(
       lines.includes('rm -f ocupilot-ipm-install'),

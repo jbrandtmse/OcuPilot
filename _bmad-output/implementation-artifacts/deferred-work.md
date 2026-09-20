@@ -4390,8 +4390,10 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-13-3-publish-the-package-to-the-community-registry.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: Every staged bundle file must appear among the members, but an extra member under the bundle prefix passes. The class arm is a true equality (CLASS_COUNT -eq STAGED_CLASSES); the bundle arm is one-directional. Either tighten it or stop calling it an equality
 - 2026-09-20T10:55:28Z status=routed owner=range-end-cleanup by=harvest note=a wrong word in the record rather than a hole in the gate; the archive is built by IPM from the staged tree, so a spurious extra member is not a reachable state today
+- 2026-09-20T11:16:49Z status=routed owner=range-end-cleanup by=cr note=record half done at cr: Auto Run Result no longer calls the bundle arm an equality; only the optional tightening remains
 
 ### DW-1344: The manifest comparison's DECLARED -lt 11 anti-vacuity floor is a literal, not the roster's own declaration count
 - source: spec-13-3-publish-the-package-to-the-community-registry.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: It stops being tight the moment the roster declares a twelfth item: the floor still reads 11 and a dropped declaration goes unnoticed. Same mechanism DW-1339 records for the Node pin
 - 2026-09-20T10:55:28Z status=routed owner=range-end-cleanup by=harvest note=pairs with DW-1339; derive the floor from the roster instead of pinning a number
+- 2026-09-20T11:16:49Z status=routed owner=range-end-cleanup by=cr note=correction: DW-1339 is this script's <Dependency> arm, not a Node pin
