@@ -3465,7 +3465,7 @@ So that adopting it does not widen anyone's access, including mine.
 - **And** a metric, a log line or an audit row reaches a user through OcuPilot only if that user could have read it directly.
 
 - DW-444: a disabled IRIS account keeps full OcuPilot access until its token pair lapses, and `/refresh` keeps minting pairs - check `Enabled` at authentication and refuse refresh for a disabled user (ledger; routed by merge_gate 2026-09-18)
-- DW-1120: an `llm` row and a pre-dispatch refusal row carry an empty `RequiredPairs`, and an empty pair set is held by everyone (ledger; routed by merge_gate 2026-09-18)
+- DW-1120: an `llm` row and a pre-dispatch refusal row carry an empty `RequiredPairs`, and an empty pair set is held by everyone - fix it with a separate required-pairs evaluation, not by inverting `EvaluatePairs`, whose empty list is how an ungated screen is declared (ledger; routed by merge_gate 2026-09-18, corrected by spec_gate 2026-09-19)
 
 ### Story 5.5: Prohibited actions are absent from the tool set
 
