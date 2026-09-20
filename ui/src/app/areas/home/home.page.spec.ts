@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { InstanceService } from '../../core/instance';
 import { NavigationService, orderedAreas, screenForRoute, type Verdict } from '../../core/navigation';
@@ -16,6 +16,8 @@ import { AccountPreferences } from '../../core/account-preferences';
 import { stubAccountPreferences } from '../../testing/account-preferences';
 import { About } from '../../core/about';
 import { stubAbout } from '../../testing/about';
+import { SYSTEM_INFO_FIELDS, SystemInfo } from '../../core/system-info';
+import { stubSystemInfo, type StubbedSystemInfo } from '../../testing/system-info';
 import { SHORTCUT_ROUTES, shortcutScreens } from '../../core/shortcuts';
 import type { StubbedAbout } from '../../testing/about';
 
@@ -175,6 +177,7 @@ describe('Home', () => {
   let router: Router;
   let preferences: AccountPreferences;
   let about: StubbedAbout;
+  let systemInfo: StubbedSystemInfo;
 
   /**
    * The two remembered blocks. Story 15.3 added two more sections of the same shape beside them --
@@ -195,6 +198,31 @@ describe('Home', () => {
     );
   const openButton = (index: number, row: number): HTMLButtonElement =>
     blockRows(index)[row].querySelector('.ocu-home-block-open') as HTMLButtonElement;
+
+  /**
+   * The System Information panel, found by its own heading rather than by position -- the idiom
+   * `ui/browser/preferences-integration.browser-spec.mjs` uses, and the one the positional form
+   * cost this change once already.
+   */
+  const systemPanel = (): HTMLElement => {
+    const panel = fixedBlocks().find(
+      (block) =>
+        block.querySelector('.ocu-home-block-heading')?.textContent?.trim() ===
+        STRINGS.systemInfoHeading
+    );
+    expect(panel).toBeDefined();
+    return panel as HTMLElement;
+  };
+  const systemRows = (): HTMLElement[] =>
+    Array.from(fixture.nativeElement.querySelectorAll('.ocu-home-system-row'));
+  const rowLabelsOf = (block: HTMLElement): string[] =>
+    Array.from(block.querySelectorAll('.ocu-home-system-label')).map(
+      (label) => label.textContent?.trim() ?? ''
+    );
+  const rowValuesOf = (block: HTMLElement): string[] =>
+    Array.from(block.querySelectorAll('.ocu-home-system-value')).map(
+      (value) => value.textContent?.trim() ?? ''
+    );
 
   const tiles = (): HTMLButtonElement[] =>
     Array.from(fixture.nativeElement.querySelectorAll('.ocu-area-tile'));
@@ -218,6 +246,7 @@ describe('Home', () => {
     // Two built screens the shipped mirror declares, plus one route it does not: the AD-37
     // degrade row needs a stored route that resolves to nothing.
     about = stubAbout();
+    systemInfo = stubSystemInfo();
     preferences = stubAccountPreferences({
       favorites: ['logs/alerts', 'no-such-area/no-such-screen'],
       // `agent/definitions/edit` is built but unlisted (sideBarPosition 0) and keyed by an entity
@@ -227,6 +256,7 @@ describe('Home', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: About, useValue: about },
+        { provide: SystemInfo, useValue: systemInfo },
         { provide: AccountPreferences, useValue: preferences },
         provideRouter([
           { path: '', children: [] },
@@ -776,7 +806,11 @@ describe('Home', () => {
     const headings = fixedBlocks().map(
       (block) => block.querySelector('.ocu-home-block-heading')?.textContent?.trim() ?? ''
     );
-    expect(headings).toEqual([STRINGS.shortcutsHeading, STRINGS.linksHeading]);
+    expect(headings).toEqual([
+      STRINGS.shortcutsHeading,
+      STRINGS.linksHeading,
+      STRINGS.systemInfoHeading,
+    ]);
 
     // Above the grid, like the two they sit beside.
     const section: HTMLElement = fixture.nativeElement.querySelector('.ocu-home');
@@ -886,7 +920,7 @@ describe('Home', () => {
     const headings = fixedBlocks().map(
       (block) => block.querySelector('.ocu-home-block-heading')?.textContent?.trim() ?? ''
     );
-    expect(headings).toEqual([STRINGS.shortcutsHeading]);
+    expect(headings).toEqual([STRINGS.shortcutsHeading, STRINGS.systemInfoHeading]);
     expect(fixture.nativeElement.querySelector('.ocu-home-block-link')).toBeNull();
   });
 
@@ -902,6 +936,100 @@ describe('Home', () => {
     expect(anchors[0].querySelector('.ocu-home-block-label')?.textContent?.trim()).toBe(
       STRINGS.linksDocumentation
     );
+  });
+
+  it('Story 15.4: the System Information panel is a fifth block of seven labelled rows, each carrying its word', async () => {
+    await systemInfo.load();
+    fixture.detectChanges();
+
+    const panel = systemPanel();
+    expect(panel.querySelector('.ocu-home-block-heading')?.textContent?.trim()).toBe(
+      STRINGS.systemInfoHeading
+    );
+    const rows = systemRows();
+    expect(rows).toHaveLength(SYSTEM_INFO_FIELDS.length);
+    expect(rowLabelsOf(panel)).toEqual([
+      STRINGS.systemInfoUptime,
+      STRINGS.systemInfoMirror,
+      STRINGS.systemInfoDatabase,
+      STRINGS.systemInfoJournal,
+      // Two labels this story publishes no key for: the value already exists, so the row reuses
+      // the key that holds it.
+      STRINGS.lockListLabel,
+      STRINGS.systemUsageWriteDaemon,
+      STRINGS.systemInfoProduction,
+    ]);
+    // Every row carries the instance's own word as text, so colour is never the only signal.
+    expect(rowValuesOf(panel)).toEqual(SYSTEM_INFO_FIELDS.map((field) => `${field}-value`));
+    expect(panel.querySelectorAll('.ocu-home-system-absent')).toHaveLength(0);
+  });
+
+  it('Story 15.4: a member the instance did not report keeps its label and reads the not-reported word', async () => {
+    systemInfo.setFields({ production: '', mirror: '' });
+    await systemInfo.load();
+    fixture.detectChanges();
+
+    const panel = systemPanel();
+    // The labels are unchanged: the panel has the same seven rows whatever the instance answers.
+    expect(rowLabelsOf(panel)).toHaveLength(SYSTEM_INFO_FIELDS.length);
+    const values = rowValuesOf(panel);
+    expect(values[SYSTEM_INFO_FIELDS.indexOf('mirror')]).toBe(STRINGS.systemInfoNotReported);
+    expect(values[SYSTEM_INFO_FIELDS.indexOf('production')]).toBe(STRINGS.systemInfoNotReported);
+    expect(values[SYSTEM_INFO_FIELDS.indexOf('uptime')]).toBe('uptime-value');
+    expect(panel.querySelectorAll('.ocu-home-system-absent')).toHaveLength(2);
+  });
+
+  it('Story 15.4: a failed read after an answer keeps the answer on screen', async () => {
+    await systemInfo.load();
+    fixture.detectChanges();
+    expect(rowValuesOf(systemPanel())[0]).toBe('uptime-value');
+
+    systemInfo.setUnreachable(true);
+    await systemInfo.load();
+    fixture.detectChanges();
+
+    // Parked, not cleared: an instance that did not reply is not an instance reporting nothing.
+    expect(rowValuesOf(systemPanel())[0]).toBe('uptime-value');
+  });
+
+  it('Story 15.4: a panel whose read has never answered shows the fault, not seven confident rows', async () => {
+    // The state `stubSystemInfo({ unreachable: true })` mounts in -- no answer held and the last
+    // read failed -- arranged on the mounted store, because this spec has one mount point.
+    systemInfo.reset();
+    systemInfo.setUnreachable(true);
+    await systemInfo.load();
+    fixture.detectChanges();
+
+    const panel = systemPanel();
+    expect(panel.querySelector('.ocu-home-block-empty')?.textContent?.trim()).toBe(
+      STRINGS.connectivityServerFault
+    );
+    expect(panel.querySelectorAll('.ocu-home-system-row')).toHaveLength(0);
+  });
+
+  it('Story 15.4 (AD-43): the panel settles with its own read and starts no timer', async () => {
+    expect(systemInfo.calls.length).toBe(1);
+    expect(systemInfo.calls[0].path).toBe('/api/ocupilot/ui/system');
+
+    // Home is not on the auto-refresh roster. The clock is faked **before** the component is
+    // constructed, because a timer the constructor registers against the real clock is invisible
+    // to a fake one installed afterwards; ten minutes of fake time then outruns any period the
+    // product would plausibly use, and `vi.getTimerCount()` makes "registers no timer" an
+    // observation rather than an absence of evidence -- `log-viewer.spec.ts`'s idiom.
+    vi.useFakeTimers();
+    try {
+      const second = TestBed.createComponent(HomePage);
+      second.detectChanges();
+      await vi.advanceTimersByTimeAsync(0);
+      const issued = systemInfo.calls.length;
+
+      await vi.advanceTimersByTimeAsync(10 * 60 * 1000);
+      expect(systemInfo.calls.length).toBe(issued);
+      expect(vi.getTimerCount()).toBe(0);
+      second.destroy();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('Story 15.3: the shipped roster resolves rows, so Shortcuts renders its list and not its empty state', () => {

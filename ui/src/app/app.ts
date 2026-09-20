@@ -32,6 +32,7 @@ import { Session, isInstallStateUnreadable, isSignedIn } from './core/session';
 import { ShellState } from './core/shell-state';
 import { STRINGS } from './core/strings';
 import { SuggestedView } from './core/suggested-view';
+import { SystemInfo } from './core/system-info';
 import { AgentNavigator } from './shell/agent-navigator';
 import { RecentsRecorder } from './shell/recents-recorder';
 import { CommandBar } from './shell/command-bar';
@@ -194,6 +195,7 @@ export class App {
   private readonly accountPreferences = inject(AccountPreferences);
   private readonly about = inject(About);
   private readonly helpLinks = inject(HelpLinks);
+  private readonly systemInfo = inject(SystemInfo);
   private readonly suggested = inject(SuggestedView);
   private readonly scope = inject(ScopeService);
   private readonly router = inject(Router);
@@ -491,6 +493,11 @@ export class App {
       // instance's answers to this caller (Story 15.3, AD-8), and the next sign-in asks again.
       this.about.reset();
       this.helpLinks.reset();
+      // The seventeenth: the instance state Home's System Information panel renders. Every member
+      // is what the instance answered *this* caller, degrading where their privileges refused
+      // (Story 15.4, AD-8), so the next sign-in in this tab asks again rather than showing a
+      // departed principal's answer.
+      this.systemInfo.reset();
       return;
     }
     void this.instance.verify();

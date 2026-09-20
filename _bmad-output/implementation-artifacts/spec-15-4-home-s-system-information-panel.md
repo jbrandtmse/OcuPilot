@@ -2,14 +2,83 @@
 title: "Story 15.4: Home's System Information panel"
 type: 'feature'
 created: '2026-09-20'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '3a3acf5789513ec0a6e6c93cf5dd03748037a31c'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-15-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      Running the full browser suite twice against one throwaway reddens two messages-log
+      tests, because that spec's own seeded entries fall out of the rendered tail window and
+      its before-hook refuses to re-seed while the markers are still in the file.
+    evidence: |-
+      Measured twice on ocupilot-b-ci. On a fresh container the suite is 198/199; the seed
+      lands at lines 768-773 and both rows pass. The suite's own other specs then write ~460
+      further console lines, and the second run reads 197/199 with "the measured window
+      carries a debug row; saw info,severe,warning" and "the filter narrows the list: 283 -> 0".
+      The before-hook at browser/messages-log.browser-spec.mjs:77-83 re-seeds only when
+      `grep -c` finds fewer than five markers, and they are still there.
+    location: >-
+      ui/browser/messages-log.browser-spec.mjs:77
+    severity: medium
+  - summary: >-
+      Resizing a tab from 1,440 px to 720 px leaves the document scrolling horizontally by
+      about 22 px; the overflowing element is app-panel / .ocu-panel, not Home.
+    evidence: |-
+      Measured by the implement pass with and without this story's block, identical either
+      way, so the panel's remembered width is not re-clamped on resize. Out of footprint:
+      ui/src/app/shell/panel* is Epic 5's by decision. Story 15.4's AC2 is asserted with the
+      viewport set before the document loads, which is what "Home at a supported width" means.
+    location: >-
+      ui/src/app/shell/panel.ts
+    severity: medium
+  - summary: >-
+      scripts/ci-throwaway.sh writes its compose file from an unquoted heredoc whose body
+      contains a backticked word, so the shell command-substitutes it away.
+    evidence: |-
+      `cat > "$COMPOSE_FILE" <<EOF` at :155 with "`classes:`" at :172 prints
+      "classes:: command not found" on stderr and the generated /tmp/<dir>/compose.yml reads
+      "one or more  lines" with the word gone. Harmless today because the loss is inside a
+      YAML comment, but any $ or backtick meant literally in that body expands too.
+    location: >-
+      scripts/ci-throwaway.sh:172
+    severity: low
+  - summary: >-
+      EndpointCoverage.TestEveryProbeDispatchesToItsRoute fails on the slot B dev instance
+      because that container serves no client bundle, so its two Api.StaticHandler probes
+      answer 503 STATIC.NOBUNDLE.
+    evidence: |-
+      /durable/iris/csp/ocupilot/ is empty on ocupilot-slot-b. The method passed at run 434
+      and has failed since run 454, both before this story's implement pass began. Environmental,
+      not a code defect: the same class's TestEveryRouteHasAProbeAndEveryProbeHasARoute, which is
+      what a new route needs, passes, and the whole class passes on the throwaway.
+    location: >-
+      src/OcuPilot/Test/EndpointCoverage.cls
+    severity: low
+  - summary: >-
+      Api/UiSystem.HandleSystem's two Error.RenderInternal paths are never exercised, because
+      Payload() only answers an error if %Set itself raises.
+    evidence: |-
+      The same gap exists for Api/UiAbout, landed by Story 15.3, so it is the pair's shape
+      rather than this story's. Closing it needs a seam on Payload that neither class has.
+    location: >-
+      src/OcuPilot/Api/UiSystem.cls
+    severity: low
+  - summary: >-
+      .ocu-home-system-row sets a hard height where DESIGN.md says every height outside the
+      virtualized lists is a minimum, so a text-only resize clips the row.
+    evidence: |-
+      DESIGN.md:912 states the rule; _components.scss uses `height: var(--ocu-control-height)`
+      in 13 places and `min-height: var(--ocu-control-height)` in none, so this story followed
+      the codebase rather than the design document. Fixing it here alone would make one row
+      behave unlike every other control-height row.
+    location: >-
+      ui/src/styles/_components.scss:5020
+    severity: low
 ---
 
 <intent-contract>
@@ -109,6 +178,19 @@ deferred: []
 - `ui/src/app/areas/home/home.page.spec.ts` — the component leg: the fifth block renders with its seven labeled rows; a field the instance did not report keeps its label and shows the not-reported word; a failed read after an answer keeps the answer on screen.
 - `ui/browser/home-system-information.browser-spec.mjs` — NEW, against the redeployed bundle on the throwaway: read one state word from the panel and assert it equals what the instance reports; and, at 1,440 px and again at 720 px with all five blocks present, assert the block row wraps (the last block's `offsetTop` exceeds the first's) and `document.documentElement.scrollWidth <= clientWidth`.
 
+**Review patch set (2026-09-20, first review pass) — apply each with the smallest change that does the job:**
+
+- **P1 (HIGH) `src/OcuPilot/Kernel/Shell/SystemInfo.cls` — the `production` member ignores `?ns=`.** Measured on `ocupilot-b-ci`: `GET /api/ocupilot/ui/system?ns=%SYS` answers `production` `"Stopped"` while `##class(%Library.EnsembleMgr).IsEnsembleNamespace("%SYS")` is `0`, so the matrix's *Non-interop namespace* row (which requires `""`) is violated. Cause: `Api/Router.cls` never assigns `$NAMESPACE` — `OnPreDispatch` stashes the resolved scope with `##class(OcuPilot.Kernel.Scope).Set(tNs)` at `:628`, and `Kernel/Scope.cls`'s own header states every handler reads `Current()` rather than `$Namespace`. Fix: resolve the namespace from `##class(OcuPilot.Kernel.Scope).Current()`, falling back to `$NAMESPACE` when the stash is empty (an in-process caller, which the read tests are); evaluate `ProductionEnabled()` against it and run the `Ens.Director` call in it under AD-16 explicit save/restore with the restore as the first line of the `Catch` and before any rethrow. Replace the false sentence in `ProductionState()`'s doc comment, and the same claim where it is repeated in `ui/src/app/core/system-info.ts`'s header and `ui/tools/system-info.test.mjs`'s rationale comment, with what the router actually does. Pin it: a `UiSystemRead` row for a scoped non-interop namespace, and a `UiSystemWire` row asserting `?ns=%SYS` answers 200 with `production` `""` while the request's own namespace answers a word. Record the mutation.
+- **P2 (MED) `ui/src/app/areas/home/home.page.ts` — the panel has no error state.** `SystemInfo.failed()` and `answered()` have no production consumer, so an unreachable instance renders seven confident "Not reported" rows — which the store's own header says it avoids and which the matrix's *Read unreachable* row forbids. Fix on the house precedent `ui/src/app/shell/about-dialog.ts:130` (`!answered() && failed()`), rendering the existing `STRINGS.connectivityServerFault` in place of the rows. No new string, so EXPERIENCE.md is untouched. Pin it with a `home.page.spec.ts` row mounting `stubSystemInfo({ unreachable: true })`.
+- **P3 (MED) `ui/src/app/areas/home/home.page.spec.ts` — the AD-43 no-timer test cannot fail against a realistic timer.** Its 60 ms real-clock wait passes untouched against any auto-refresh period the product actually uses. Rewrite it on this project's own idiom at `ui/src/app/areas/logs/log-viewer.spec.ts:196`: `vi.useFakeTimers()`, `await vi.advanceTimersByTimeAsync(10 * 60 * 1000)`, assert both the call count unchanged and `vi.getTimerCount() === 0`, restoring real timers in a `finally`. Re-record AC5's `mutation:` line against a 10 s interval.
+- **P4 (MED) `src/OcuPilot/Test/UiSystemRead.cls` — the four alert-word assertions test the code against itself.** `TestTheCarriedValuesAreTheInstancesOwn` compares `Payload()`'s values against a second `SystemInfo.Dashboard()` call, so swapping two property-to-member mappings inside `SampleDashboard` moves both sides together and stays green. Assert the four against the vendor object's own properties instead, from one `SYS.Stats.Dashboard.Sample()` the test takes in `%SYS` itself.
+- **P5 (MED) `src/OcuPilot/Kernel/Shell/SystemInfo.cls` — an unrecognized production state reaches the panel as a diagnostic token.** `Ens.Config.Production.ProductionStateToText` has no arm for `eProductionStateNetworkStopped` (5), `eProductionStateShardWorkerProhibited` (6) or `eProductionStateBackupNetworkStopped` (-5) and falls through to `"Unrecognized:"_pState`; `Ens.Director.GetProductionStatus` reaches 5 on its `$$$EnsRuntime("System")` branch. Degrade such an answer to `""` so the row shows its not-reported word rather than publishing a token, and say so at the method. This needs a `ProductionStatus()` seam mirroring `MirrorStatus()` (production never overrides it) so both this branch and the `$$$ISERR` degrade branch are reachable from `OcuPilot.Test.UiSystemFixture`; add the fixture override and one `UiSystemRead` row for each.
+- **P6 (LOW) `src/OcuPilot/Test/UiSystemRead.cls` — the production `LogSourceFailure` body never executes.** Every case goes through the fixture's override, so the `Try`/`Catch` that keeps a degraded member from becoming a 500 is unrun. Add one row calling `##class(OcuPilot.Kernel.Shell.SystemInfo).LogSourceFailure(...)` directly, modeled on `src/OcuPilot/Test/Instance.cls:356`.
+- **P7 (LOW) `src/OcuPilot/Test/UiSystemRead.cls` — `TestARefusedDashboardSampleDegradesItsFiveMembersAndLogsOnce` asserts the log count but not the name.** Changing the logged argument to a member name keeps the count at 1 and stays green; assert `SourceLogged()` is `"dashboard"`.
+- **P8 (LOW) `src/OcuPilot/Test/UiSystemRead.cls` — a doc comment records a mutation that cannot redden its test.** `UiSystemFixture.SampleDashboard` calls `##super` and then overwrites `uptime`, so a transformation applied inside `SampleDashboard` is discarded before the armed assertion runs. Replace the wrong sentence with the right one; do not append a correction to it.
+- **P9 (LOW) `ui/browser/about-help-links.browser-spec.mjs` — the repaired selector dereferences a possibly-undefined block.** A renamed heading surfaces as an in-page TypeError rather than naming the missing block; assert the block was found first.
+- **P10 (LOW) `ui/src/app/areas/home/home.page.spec.ts` — the new rows select the panel as `fixedBlocks()[2]`,** reintroducing the positional idiom this same change had to repair in the browser spec. Select by heading, as `ui/browser/preferences-integration.browser-spec.mjs:114` does.
+
 **Acceptance Criteria:**
 
 - Given Home, when the panel renders, then it shows uptime, mirror state, the database, journal, lock and write-daemon state words and production status, each labeled and each carrying its word, so color is never the only signal.
@@ -123,6 +205,52 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-20 — Review pass
+
+- verdicts: 40 findings — high 1, medium 13, low 25, false 1, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` Blind Hunter: the panel has no error state though the matrix's *Read unreachable* row requires one — verified: `failed()`/`answered()` had no production consumer, so an unreachable instance rendered seven "Not reported" rows. P2 adopted `about-dialog.ts:130`'s `!answered() && failed()` shape over the existing `connectivityServerFault`.
+  - `[medium]` `[patch]` Blind Hunter: a failed read and "the instance reported nothing" are indistinguishable, and no component case covers a first read that fails — same root cause; P2 plus a new `home.page.spec.ts` row.
+  - `[medium]` `[patch]` Blind Hunter: the AD-43 no-timer test's 60 ms real-clock wait cannot fail against a realistic timer — verified; P3 rewrote it on `log-viewer.spec.ts:196`'s fake-timer idiom, and it reddens at a 10 s interval.
+  - `[low]` `[patch]` Blind Hunter: a doc comment records an uptime mutation the fixture discards — verified: `UiSystemFixture.SampleDashboard` overwrites after `##super`. P8 replaced the sentence.
+  - `[medium]` `[patch]` Blind Hunter: the four alert-word assertions compare `Payload()` against `Dashboard()`, the same path — verified; P4 asserts against `SYS.Stats.Dashboard`'s own properties.
+  - `[medium]` `[patch]` Blind Hunter: `ProductionStateToText` has no arm for states 5, 6 and -5 and falls through to `Unrecognized:<n>` — verified against `irislib/%syInterop.inc:13` and `Ens/Config/Production.cls:263`. P5 degrades such an answer to `""`.
+  - `[low]` `[reject]` Blind Hunter: the mirror vocabulary is not closed — the code renders whatever word the accessor returns, which is the intent; the overstatement is in this build's spec, and a finding whose fix edits it is rejected.
+  - `[false]` Blind Hunter: hard `##class()` references to `Ens.Director` in a namespace that may not carry it — `ProductionEnabled()` returns before either reference is evaluated, and a compiled reference resolves only when its line runs.
+  - `[low]` `[reject]` Blind Hunter: the production read's lock parameters differ between code and test — P5's `ProductionStatus()` seam now owns them in one place; asserting the literals would pin an implementation detail, not behavior.
+  - `[low]` `[reject]` Blind Hunter: "Database" and "Journal" drop the vendor property's "space" — the labels are ratified in EXPERIENCE.md's Fixed strings table; changing them is a product call, and the fix edits this build's published row.
+  - `[low]` `[reject]` Blind Hunter: `title` is a mouse-only affordance and is set unconditionally — it mirrors Home's existing block idiom; a second affordance is more than a direct correction.
+  - `[low]` `[reject]` Blind Hunter: the row's fixed height clips on a text-only resize — `_components.scss` uses `height: var(--ocu-control-height)` in 13 places and `min-height` in none, so this story followed the codebase; recorded as deferred rather than changed here alone.
+  - `[low]` `[patch]` Blind Hunter: `home.page.spec.ts` selects the panel positionally — P10 selects by heading.
+  - `[low]` `[patch]` Blind Hunter: the repaired browser spec dereferences a possibly-undefined block — P9 asserts it was found first.
+  - `[low]` `[patch]` Blind Hunter: AC4's "exactly once" half is untested — a new `UiSystemRead` row pins that About still declines both members; mutation applied and observed red.
+  - `[low]` `[defer]` Blind Hunter: the handler's two `Error.RenderInternal` paths are unexercised — the same gap as Story 15.3's `UiAbout`; closing it needs a seam neither class has.
+  - `[low]` `[patch]` Blind Hunter: the production `LogSourceFailure` body never runs — P6 calls it directly, on `Test/Instance.cls:357`'s shape.
+  - `[low]` `[reject]` Blind Hunter: AC2's 1,440 px leg over-constrains the layout — the AC names both widths; a change that fits five blocks on one line is a deliberate design change that should update the test.
+  - `[low]` `[patch]` Blind Hunter: files touched but not declared under the spec's Rule 11 block — the declaration now names every one, including the modified shared-create browser spec.
+  - `[low]` `[patch]` Blind Hunter: `UiSystemFixture.cls` is absent from the Execution list — same root cause; named in the declaration.
+  - `[low]` `[reject]` Blind Hunter: no refresh affordance or "as of" stamp — spec-bound: AD-43 closes the auto-refresh roster and the ACs name no control.
+  - `[low]` `[reject]` Blind Hunter: the panel's name is spelled two ways — the rendered string is ratified as "System information"; capitalizing it as a proper noun in prose is not a defect.
+  - `[low]` `[reject]` Blind Hunter: `stubSystemInfo.setFields` accepts unknown field names — a typo'd member fails the assertion it was arranging; a guard is added complexity for no reachable harm.
+  - `[low]` `[reject]` Edge Case Hunter: `Sample()` answering a non-object blanks five members without logging — no path was shown by which the vendor returns a non-object instead of raising.
+  - `[medium]` `[patch]` Edge Case Hunter: unrecognized production states reach the panel as a token — grouped with the Blind Hunter row; P5.
+  - `[low]` `[patch]` Edge Case Hunter: `about-help-links`'s `find()` is dereferenced unguarded — grouped; P9.
+  - `[medium]` `[patch]` Edge Case Hunter: the panel has no error state (claim, high confidence) — grouped; P2.
+  - `[medium]` `[patch]` Verification Gap: AC5's no-timer test proves nothing against a realistic period — grouped; P3.
+  - `[medium]` `[patch]` Verification Gap: `failed()` has no consumer and nothing asserts an error state — grouped; P2.
+  - `[low]` `[patch]` Verification Gap: the production `LogSourceFailure` body never executes — grouped; P6.
+  - `[medium]` `[patch]` Verification Gap: the production member's failure branch is unreachable, the fixture having no seam for it — verified; P5 added `ProductionStatus()` and a row for each branch.
+  - `[low]` `[patch]` Verification Gap: AC1's recorded mutation does not exercise its client half — a second mutation is now recorded: swapping two `SYSTEM_INFO_LABELS` entries reddens the label row (1 failed, 40 passed).
+  - `[low]` `[reject]` Verification Gap: the browser spec's `row.value !== ''` is near-tautological — it does catch a missing value element, and the row's real guard is the write-daemon equality above it.
+  - `[low]` `[patch]` Verification Gap: the dashboard sample's log name is unasserted — P7 asserts `SourceLogged()` is `"dashboard"`.
+  - `[medium]` `[patch]` Verification Gap: `system-info.ts`'s error-state sentence is false as shipped — P2 makes it true.
+  - `[medium]` `[patch]` Intent Alignment (A): the unreachable-read expectation lives at the template while the change and its tests live at the store — grouped; P2.
+  - `[high]` `[patch]` Intent Alignment (B): the `production` member ignored `?ns=` — **verified independently**: `Api/Router.cls` never assigns `$NAMESPACE` (it stashes the scope at `:628`, and `Kernel/Scope.cls`'s header states handlers read `Current()`), and `GET /ui/system?ns=%SYS` answered `"Stopped"` while `IsEnsembleNamespace("%SYS")` is 0, where the matrix requires `""`. P1 resolves the scope from `Kernel.Scope.Current()` and enters it under AD-16 save/restore; measured after: `?ns=%SYS` → `""`, `?ns=USER` and `?ns=HSCUSTOM` → `Stopped`.
+  - `[low]` `[reject]` Intent Alignment (C): the matrix's "the other six answer" against a per-source dashboard degrade — the spec's own Execution bullet chooses one sample per payload for the five; the single-source case is pinned separately.
+  - `[medium]` `[defer]` Intent Alignment (D): the 720 px floor holds on load but a live resize leaves ~22 px of horizontal scroll — the overflowing element is `app-panel`, which Epic 5 owns by decision.
+  - `[low]` `[patch]` Intent Alignment (E): "same shape" turned out positional, and the repair moved a shared file — grouped with the Blind Hunter rows; P9, P10 and the corrected footprint declaration.
+
+
 ## Design Notes
 
 **Governing ADs (Rule 6):** **AD-5** (shell chrome declares no descriptor; its "a page may issue another built screen's declared read" clause was weighed and declined, below), **AD-36** (the shell-chrome exception to the declared read; the `parts` mechanism weighed), **AD-43** (the roster is closed at seven and Home is not in it), **AD-16** (the `%SYS` switch for `SYS.Stats.Dashboard`), **AD-8** (privilege is the process's at call time; a refused source degrades one field), **AD-44** and **AD-21** (`?ns=` is the router's validated data scope and the only namespace input), **AD-27** (no `%Api.Admin.*` class is named, so containment is untouched). Also binding: AD-11 rule 4, AD-12, AD-19, AD-20, AD-24, AD-39, AD-47. Conventions rows: *REST route ordering*, *Error shape*, *Client asset homes*, *Tests*, *ObjectScript naming*.
@@ -131,7 +259,7 @@ deferred: []
 
 **Three sources, each with its provenance.** `SYS.Stats.Dashboard` is documented and neither `[Internal]` nor `[Hidden]` — better provenance than the two `[Internal]` accessors 15.3 accepted — and is what the vendor's own dashboard endpoint is a view over. Mirror state uses `GetMemberStatus()` rather than `GetStatus()` because the former answers a state word from a closed vocabulary and the latter the raw token `NOTINIT`; neither that word nor the dashboard's `Normal`/`Warning`/`Troubled` is translated. Production state uses `ProductionStateToText(state, 0)`, the vendor's own mapping, so OcuPilot publishes no state vocabulary of its own — only the row labels are new strings.
 
-**Production status is scoped to the request's namespace, deliberately.** Interoperability is per namespace (`IsEnsembleNamespace()` true for `HSCUSTOM` on slot B — a per-namespace fact, not an instance-wide one), and the router resolves, validates and switches to `?ns=` before a handler runs, so `Ens.Director` in `$NAMESPACE` needs no new plumbing and no new caller input. The classic panel instead enumerates productions across every namespace (`Home.cls:2665-2690`); that is a list, and a list belongs to a declared read under AD-36. *(inference: that the scoped namespace is the one a user reading Home means — the ACs do not say which.)*
+**Production status is scoped to the request's namespace, deliberately.** Interoperability is per namespace (`IsEnsembleNamespace()` true for `HSCUSTOM` on slot B — a per-namespace fact, not an instance-wide one), and the router resolves and validates `?ns=` and stashes it as the request's scope (`Kernel/Scope.cls`), which this read enters by explicit save and restore, so it needs no new caller input. The classic panel instead enumerates productions across every namespace (`Home.cls:2665-2690`); that is a list, and a list belongs to a declared read under AD-36. *(inference: that the scoped namespace is the one a user reading Home means — the ACs do not say which.)*
 
 **The mirror accessor catches its own errors.** `GetMemberStatus()` returns `$LB("Error", $ZE)` instead of throwing, so the per-field `Try` never fires — the caveat 15.3 measured about vendor accessors that set their own trap. Normalize the leading `Error` element to `""` at the read site, or a failed read renders as a plausible mirror state.
 
@@ -139,7 +267,7 @@ deferred: []
 
 **Ledger inbox (Rule 17):** `ledger.sh slice 15-4-home-s-system-information-panel` is **empty** — this story owns no ledger entries, so there is nothing to address or decline.
 
-**Contended and out-of-footprint paths, declared (Rule 11).** Shared-append, epic-wide grant: `src/OcuPilot/Api/Router.cls`, `ui/src/app/core/strings.ts`, `ui/src/styles/_components.scss`, and EXPERIENCE.md's Fixed strings table after `:383`. Shared-create: `src/OcuPilot/Test/UiSystemRead.cls`, `UiSystemWire.cls`, `ui/src/app/core/system-info.ts`, `ui/browser/home-system-information.browser-spec.mjs`. In Epic 15's own footprint: `src/OcuPilot/Api/UiSystem.cls` (`Api/Ui*.cls`), `ui/src/styles/**`. **To be reported under `footprint_extensions:`** — `src/OcuPilot/Kernel/Shell/SystemInfo.cls` (new), `src/OcuPilot/Test/EndpointCoverage.cls`, `ui/src/app/areas/home/home.page.ts` (+ spec), `ui/src/main.ts`, `ui/src/app/app.ts`, `ui/tools/system-info.test.mjs`. None is on Epic 5's carve list (`shell/panel*`, `proposal-card*`, `reply*`, `tool-call-card*`, `core/proposal-view.ts`, `core/turn.ts`), and `core/` files Epic 5 has modified (`agent-status.ts`, `navigation.ts`, `proposal-view.ts`, `screens.generated.ts`, `suggested-view.ts`, `turn.ts`) are read-only here.
+**Contended and out-of-footprint paths, declared (Rule 11).** Shared-append, epic-wide grant: `src/OcuPilot/Api/Router.cls`, `ui/src/app/core/strings.ts`, `ui/src/styles/_components.scss`, and EXPERIENCE.md's Fixed strings table after `:383`. Shared-create: `src/OcuPilot/Test/UiSystemRead.cls`, `UiSystemWire.cls`, `ui/src/app/core/system-info.ts`, `ui/browser/home-system-information.browser-spec.mjs`. In Epic 15's own footprint: `src/OcuPilot/Api/UiSystem.cls` (`Api/Ui*.cls`), `ui/src/styles/**`. **To be reported under `footprint_extensions:`** — `src/OcuPilot/Kernel/Shell/SystemInfo.cls` (new), `src/OcuPilot/Test/UiSystemFixture.cls` (new, the seam the two test classes share), `src/OcuPilot/Test/EndpointCoverage.cls`, `ui/src/app/areas/home/home.page.ts` (+ spec), `ui/src/main.ts`, `ui/src/app/app.ts` (+ `app.spec.ts`, `app.wire.spec.ts`, `app.gate-outlet.wire.spec.ts`), `ui/src/app/shell/screen-outlet.spec.ts`, `ui/src/app/testing/system-info.ts` (new), `ui/tools/system-info.test.mjs`. The four `*.spec.ts` files and `screen-outlet.spec.ts` are touched only to provide the new store to a `TestBed` that injects it; none is on a contended path. **One existing shared-create file was modified** — `ui/browser/about-help-links.browser-spec.mjs`, which selected Home's Links block as the last `.ocu-home-block-fixed` and stopped finding it once a fifth block landed; it now selects by heading, as `ui/browser/preferences-integration.browser-spec.mjs:114` does. It was created by this epic's own Story 15.3 and Epic 5 has never touched it (`git log`, and Epic 5's branch diff), so it is this epic's file rather than a contended one — reported for the lead to ratify. None is on Epic 5's carve list (`shell/panel*`, `proposal-card*`, `reply*`, `tool-call-card*`, `core/proposal-view.ts`, `core/turn.ts`), and `core/` files Epic 5 has modified (`agent-status.ts`, `navigation.ts`, `proposal-view.ts`, `screens.generated.ts`, `suggested-view.ts`, `turn.ts`) are read-only here.
 
 **Consumes:** `ui/src/app/core/api.ts` (`requestJson`, its scope parameter `:407-415`); `OcuPilot.Kernel.Shell.About`'s `ReadSource` idiom; `OcuPilot.Api.Response` / `Error.RenderInternal`; `Api/Router.cls`'s resolved namespace.
 
@@ -168,11 +296,22 @@ deferred: []
 
 **Mutations (Rule 19)** — one per AC, each applied, observed red, reverted, and the tree confirmed byte-identical; record each as `mutation: <change> -> <test that went red>` here:
 
-- AC1 — drop one member from `Kernel/Shell/SystemInfo.Members`, recompile the class and every descendant → `OcuPilot.Test.UiSystemWire`.
-- AC2 — remove `flex-wrap: wrap` from `.ocu-home-remembered`, rebuild, redeploy → `home-system-information.browser-spec.mjs`.
-- Integration AC — make the store's `load()` return a fixed word rather than the instance's, rebuild, redeploy → `home-system-information.browser-spec.mjs`.
-- AC4 — make `Kernel/Shell/SystemInfo` answer the mirror field from `GetStatus()` instead → `OcuPilot.Test.UiSystemRead`.
-- AC5 — give the panel a timer that re-issues `load()` → `home.page.spec.ts`.
+- AC1 — `mutation: drop "writeDaemon" from Kernel/Shell/SystemInfo.Members, recompile the package -> OcuPilot.Test.UiSystemWire 2/3 red ("the body carries writeDaemon", "the write daemon publishes only two")`. The client half is a second mutation, because `ui/src/app/core/system-info.ts`'s `SYSTEM_INFO_FIELDS` is an independent list: `mutation: swap the uptime and mirror entries in home.page.ts SYSTEM_INFO_LABELS -> home.page.spec.ts "the System Information panel is a fifth block of seven labeled rows" red at the label list (1 failed, 40 passed)`.
+- AC2 — `mutation: remove flex-wrap: wrap from .ocu-home-remembered, rebuild, redeploy -> home-system-information.browser-spec.mjs red at 1440px (firstTop 203 = lastTop 203, so the row widened instead of wrapping)`.
+- Integration AC — `mutation: make SystemInfo.load() store the fixed word "Troubled" rather than the answered body, rebuild, redeploy -> home-system-information.browser-spec.mjs red on the write-daemon row`. Measured: a first attempt with `'Normal'` reddened only the uptime assertion, because `Normal` is what this instance's write daemon actually reports — the mutation has to name a word the instance does not.
+- AC4 — `mutation: answer the mirror member from %SYSTEM.Mirror.GetStatus() instead of GetMemberStatus() -> OcuPilot.Test.UiSystemRead red (the raw token is not a $List and carries no word, so the mirror assertions fail)`. The AC's "exactly once" half is a second mutation: `mutation: add "uptime" to Kernel/Shell/About.Members, recompile -> UiSystemRead.TestUptimeAndMirrorAreReportedOnceAcrossTheTwoChromeReads red ("About declines the uptime")`.
+- AC5 — `mutation: give the panel a setInterval(load, 10s) -> home.page.spec.ts "the panel settles with its own read and starts no timer" red (62 reads against 1 over ten minutes of fake time)`. The row installs the fake clock **before** the component is constructed; installed afterwards it cannot see a timer the constructor registered, which is what the 60 ms real-clock form could not catch.
+
+**Review patch set mutations (2026-09-20)** — each applied, observed red, reverted, the tree confirmed byte-identical:
+
+- P1 — `mutation: answer SystemInfo.ProductionEnabled from $NAMESPACE instead of OcuPilot.Kernel.Scope.Current, recompile the class and every descendant -> UiSystemRead.TestTheProductionMemberFollowsTheRequestsScope red (<CLASS DOES NOT EXIST> *Ens.Director, the scoped read entering %SYS)`. Measured over the wire on `ocupilot-b-ci`: `?ns=%25SYS` now answers `production` `""` while the unscoped call answers `Stopped`.
+- P2 — `mutation: drop the @if (systemUnanswered) branch from the panel -> home.page.spec.ts "a panel whose read has never answered shows the fault" red`.
+- P4 — `mutation: answer "databaseSpace" from the literal "Warning" in SystemInfo.SampleDashboard -> UiSystemRead.TestTheCarriedValuesAreTheInstancesOwn red`. The old self-comparing form stayed green under it, which is the finding. (Swapping the journal and lock mappings cannot redden anything on a healthy container: both report `Normal`.)
+- P5 — `mutation: remove the PRODUCTIONUNRECOGNIZED degrade from SystemInfo.ProductionState -> UiSystemRead.TestAnUnrecognizedProductionStateIsNotPublishedAsAToken red`.
+- P6 — `mutation: delete the Try from SystemInfo.LogSourceFailure -> UiSystemRead.TestTheProductionLogSeamRunsAndSwallowsItsOwnFailure red`.
+- P7 — `mutation: log "uptime" rather than DASHBOARDSOURCE in SystemInfo.Dashboard's Catch -> UiSystemRead.TestARefusedDashboardSampleDegradesItsFiveMembersAndLogsOnce red on the name (the count stays 1)`.
+- P8 — the doc comment now names the mutation that can redden it: `reformat the uptime in SystemInfo.ReadSource ($ZStrip(<value>, "*W")) -> UiSystemRead.TestTheCarriedValuesAreTheInstancesOwn red at the armed assertion`. Applied and observed; the sentence it replaced named `SampleDashboard`, whose result the fixture overwrites.
+- P3, P9, P10 are the tests' own shape rather than new coverage: P3's is AC5's line above, and P9 and P10 replace a positional or unguarded selector with a by-heading one.
 
 A single-file `npx vitest run` cannot host a client mutation: the Angular `@angular/build:unit-test` builder supplies the test environment, so a bare vitest invocation fails on `Cannot read properties of null (reading 'ngModule')`. Use `npx ng test --include <spec>`.
 
@@ -182,5 +321,15 @@ A single-file `npx vitest run` cannot host a client mutation: the Angular `@angu
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**What this pass built.** `GET /api/ocupilot/ui/system` as `Kernel/Shell/SystemInfo` (payload) plus `Api/UiSystem` (thin handler), copying Story 15.3's `About` seam: seven scalars from three in-process sources, each member behind its own `Try` so a refused source degrades that member to `""` and logs. One `SYS.Stats.Dashboard.Sample()` per payload serves five of them inside a single `%SYS` save/restore (AD-16); the mirror accessor's `$LB("Error", ...)` answer is normalized to `""`; production answers the vendor's own English word for the **request's scoped namespace**. Home renders a fifth `ocu-home-block-fixed` of seven labeled rows, each carrying its word, with no timer (AD-43). New: one route, one probe row, three test classes, a framework-free `core/system-info.ts` store, one browser spec, one EXPERIENCE.md Fixed-strings row and seven `strings.ts` keys.
+
+**Files changed.** `Kernel/Shell/SystemInfo.cls`, `Api/UiSystem.cls`, `Api/Router.cls` (tail route + wrapper), `Test/EndpointCoverage.cls` (one probe row), `Test/UiSystemRead.cls`, `Test/UiSystemWire.cls`, `Test/UiSystemFixture.cls`; `ui/src/app/core/system-info.ts`, `ui/src/app/testing/system-info.ts`, `ui/src/app/areas/home/home.page.ts` (+ spec), `ui/src/app/core/strings.ts`, `ui/src/styles/_components.scss`, `ui/src/main.ts`, `ui/src/app/app.ts` (+ three wire specs), `ui/src/app/shell/screen-outlet.spec.ts`, `ui/tools/system-info.test.mjs`, `ui/browser/home-system-information.browser-spec.mjs`, `ui/browser/about-help-links.browser-spec.mjs`, EXPERIENCE.md `:384`.
+
+**Review.** 40 findings over four layers: 1 high, 13 medium, 25 low, 1 false. Twelve entries patched in-pass (1 high, 5 medium, 6 low), one medium and five low deferred to frontmatter, the rest rejected with their reasons in the triage log. The high: the `production` member read `$NAMESPACE` on a premise that does not hold — the router stashes the resolved scope rather than switching — so it answered for the install namespace whatever `?ns=` asked for; it now resolves `Kernel.Scope.Current()` and enters it under AD-16.
+
+**Verification.** `check-objectscript` 518 files / 21 rules / 0 problems; `lint-docs` 98 files / 0 issues; `npm run build` with all six prebuild checkers and **`screen-mirror --check` up to date with no regeneration**; `npm test` 1,182 `node --test` + 723 component. Instance (`ocupilot-slot-b`): `UiSystemRead` 15/15 and `UiSystemWire` 4/4 by name, and the **full sweep** at run 477 — 1,023 tests over 101 classes, 1,022 passed, confirmed against `%UnitTest_Result`. The one failure is environmental and predates this story: `EndpointCoverage.TestEveryProbeDispatchesToItsRoute`'s two `Api.StaticHandler` rows answer 503 because slot B's dev container serves no client bundle; the gate a new route needs, `TestEveryRouteHasAProbeAndEveryProbeHasARoute`, passes. **Full browser suite** against a freshly recreated `ocupilot-b-ci` serving this tree's bundle: **198/199**, the sole failure DW-1169's `context-chip.browser-spec.mjs` "Cap follows agent-switch", whose repair is unmerged on Epic 5's branch and which passed on the next run. All twelve Rule 19 mutations applied, observed red, reverted, tree confirmed byte-identical.
+
+**Residual risk.** The scoped production read is measured across three namespace shapes — non-interop, the install namespace and a second interop namespace — but on a throwaway where no namespace runs a production, so all three answer `Stopped` or `""`. That the read reports *a different namespace's running* production is inferred from the switch, not observed. `followup_review_recommended` is `true` on that ground alone.

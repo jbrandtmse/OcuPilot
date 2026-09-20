@@ -115,6 +115,7 @@ XData Probes
      It is still a dispatch, which is what this class asserts; the route's own answers are
      OcuPilot.Test.UiAboutWire's. -->
 <probe class="Api.Router" method="GET" url="/ui/help" path="/api/ocupilot/ui/help" disposition="envelope"/>
+<probe class="Api.Router" method="GET" url="/ui/system" path="/api/ocupilot/ui/system" disposition="envelope"/>
 <probe class="Api.Readiness" method="GET" url="/" path="/api/ocupilot/readiness/" disposition="envelope"/>
 <probe class="Api.StaticHandler" method="GET" url="/(.*)" path="/ocupilot/index.html" disposition="bytes"/>
 <probe class="Api.StaticHandler" method="HEAD" url="/(.*)" path="/ocupilot/index.html" disposition="bytes"/>

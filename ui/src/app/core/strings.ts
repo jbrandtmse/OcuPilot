@@ -1203,6 +1203,27 @@ export const STRINGS = {
   /** EXPERIENCE.md:383 */
   actionReload: 'Reload',
 
+  // Story 15.4's seven: Home's System Information block heading, five of its seven row labels,
+  // and the word a row shows when the instance reports no value for it. The other two labels are
+  // keys that already exist -- `lockListLabel` for "Locks" and `systemUsageWriteDaemon` for
+  // "Write daemon" -- because a value already published belongs to one key. Neither the four
+  // alert words nor the mirror and production states are strings here: they are the source's own
+  // and are rendered as it reports them.
+  /** EXPERIENCE.md:384 */
+  systemInfoHeading: 'System information',
+  /** EXPERIENCE.md:384 */
+  systemInfoUptime: 'Uptime',
+  /** EXPERIENCE.md:384 */
+  systemInfoMirror: 'Mirror',
+  /** EXPERIENCE.md:384 */
+  systemInfoDatabase: 'Database',
+  /** EXPERIENCE.md:384 */
+  systemInfoJournal: 'Journal',
+  /** EXPERIENCE.md:384 */
+  systemInfoProduction: 'Production',
+  /** EXPERIENCE.md:384 */
+  systemInfoNotReported: 'Not reported',
+
   // Two connectivity sentences EXPERIENCE.md publishes outside the Fixed strings table, each
   // authorized by its own targeted extractor in `ui/tools/strings.test.mjs`, never by being
   // added to REQUIRED_ALONGSIDE_TABLE, whose own comment calls that the bypass it must not

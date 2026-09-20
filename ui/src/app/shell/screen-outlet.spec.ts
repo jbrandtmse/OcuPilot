@@ -27,8 +27,10 @@ import {
 import { AccountPreferences } from '../core/account-preferences';
 import { stubAccountPreferences } from '../testing/account-preferences';
 import { About } from '../core/about';
+import { SystemInfo } from '../core/system-info';
 import { HelpLinks } from '../core/help';
 import { stubAbout, stubHelpLinks } from '../testing/about';
+import { stubSystemInfo } from '../testing/system-info';
 
 /**
  * The deep-link path, rendered: a route the user's privileges do not allow shows the screen's
@@ -140,6 +142,7 @@ describe('the routed screen outlet', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: About, useValue: stubAbout() },
+        { provide: SystemInfo, useValue: stubSystemInfo() },
         { provide: HelpLinks, useValue: stubHelpLinks() },
         { provide: AccountPreferences, useValue: stubAccountPreferences() },
         provideRouter([

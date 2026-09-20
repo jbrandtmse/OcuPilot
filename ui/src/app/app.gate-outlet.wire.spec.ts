@@ -29,8 +29,10 @@ import { ViewOptions } from './core/view-options';
 import { AccountPreferences } from './core/account-preferences';
 import { stubAccountPreferences } from './testing/account-preferences';
 import { About } from './core/about';
+import { SystemInfo } from './core/system-info';
 import { HelpLinks } from './core/help';
 import { stubAbout, stubHelpLinks } from './testing/about';
+import { stubSystemInfo } from './testing/system-info';
 
 /**
  * The first-login gate against the requested screen's declared read (FR-28, AD-36).
@@ -291,6 +293,7 @@ describe('the first-login gate and the requested screen it may move off', () => 
     TestBed.configureTestingModule({
       providers: [
         { provide: About, useValue: stubAbout() },
+        { provide: SystemInfo, useValue: stubSystemInfo() },
         { provide: HelpLinks, useValue: stubHelpLinks() },
         { provide: AccountPreferences, useValue: stubAccountPreferences() },
         provideRouter(routes),

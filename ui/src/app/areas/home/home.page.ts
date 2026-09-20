@@ -18,6 +18,11 @@ import {
 import { About } from '../../core/about';
 import { InstanceService, serverFlagKind } from '../../core/instance';
 import {
+  SYSTEM_INFO_FIELDS,
+  SystemInfo,
+  type SystemInfoField,
+} from '../../core/system-info';
+import {
   NavigationService,
   areaByKey,
   firstAllowedScreen,
@@ -103,6 +108,35 @@ interface LinkRow {
   readonly href: string;
 }
 
+/** One row of the System Information panel, resolved for rendering. */
+interface SystemRow {
+  readonly key: string;
+  readonly label: string;
+  /** The value the instance reported, or the not-reported word when it reported none. */
+  readonly value: string;
+  /** Whether that value is the not-reported word rather than something the instance said. */
+  readonly absent: boolean;
+}
+
+/**
+ * The panel's row labels, one per member the read carries.
+ *
+ * Two are keys that already exist: "Locks" is the Locks view's own word and "Write daemon" is
+ * System usage's, and a value published once belongs to one key (`ui/tools/strings.test.mjs`
+ * refuses a duplicate value). The state words themselves are never keys here -- they are the
+ * dashboard's, the mirror accessor's and the interoperability runtime's own, rendered as those
+ * sources report them.
+ */
+const SYSTEM_INFO_LABELS: Readonly<Record<SystemInfoField, string>> = {
+  uptime: STRINGS.systemInfoUptime,
+  mirror: STRINGS.systemInfoMirror,
+  databaseSpace: STRINGS.systemInfoDatabase,
+  journalSpace: STRINGS.systemInfoJournal,
+  lockTable: STRINGS.lockListLabel,
+  writeDaemon: STRINGS.systemUsageWriteDaemon,
+  production: STRINGS.systemInfoProduction,
+};
+
 /** One value on the instance line. The flag segment is a badge rather than text. */
 interface LineSegment {
   readonly key: string;
@@ -179,6 +213,20 @@ interface LineSegment {
  * traffic either can cause is a navigation the user clicks (AD-11 rule 4, AD-47). Neither block
  * offers a remove or a Clear: they are fixed rosters, not stored lists, so there is nothing to
  * announce and neither uses the polite region below.
+ *
+ * **System information is the fifth block** (Story 15.4, FR-73; EXPERIENCE.md
+ * "Home - System Information panel - favorites - recents"): the same
+ * `role="list"` shape, one labelled row per member of its own caller-own read. Every state word
+ * is the instance's own -- the dashboard's Normal / Warning / Troubled, the mirror accessor's
+ * word and the interoperability runtime's -- rendered as the source reports it and never
+ * translated, and each row carries that word as text so colour is never the only signal. It
+ * reports uptime and mirror state because About declines both, so the product reports each once.
+ * A read that has never answered renders the connectivity fault in place of the rows, because
+ * seven not-reported rows would be a confident claim about an instance that did not reply.
+ * With five blocks the row wraps rather than widening: `.ocu-home-remembered` is already a
+ * wrapping flex row and `.ocu-home-block` already carries `min-width: 0`, and
+ * `ui/browser/home-system-information.browser-spec.mjs` is what pins that against a regression,
+ * because jsdom computes no layout.
  *
  * **The two remembered blocks are announced from one polite region on this page**, not from the row that
  * disappears: a removed row cannot announce its own removal. The region is visually hidden
@@ -273,6 +321,26 @@ interface LineSegment {
           </div>
         </section>
       }
+      <section class="ocu-home-block ocu-home-block-fixed">
+        <h2 class="ocu-home-block-heading">{{ STRINGS.systemInfoHeading }}</h2>
+        @if (systemUnanswered) {
+          <p class="ocu-home-block-empty">{{ STRINGS.connectivityServerFault }}</p>
+        } @else {
+          <div class="ocu-home-block-list" role="list">
+            @for (row of systemRows; track row.key) {
+              <span class="ocu-home-block-row ocu-home-system-row" role="listitem">
+                <span class="ocu-home-system-label">{{ row.label }}</span>
+                <span
+                  class="ocu-home-system-value"
+                  [class.ocu-home-system-absent]="row.absent"
+                  [title]="row.value"
+                  >{{ row.value }}</span
+                >
+              </span>
+            }
+          </div>
+        }
+      </section>
     </div>
     <span class="ocu-home-status ocu-visually-hidden" role="status">{{ announcement }}</span>
     <div class="ocu-area-tile-grid" role="list">
@@ -333,6 +401,7 @@ export class HomePage {
   private readonly router = inject(Router);
   private readonly preferences = inject(AccountPreferences);
   private readonly about = inject(About);
+  private readonly systemInfo = inject(SystemInfo);
 
   protected readonly STRINGS = STRINGS;
 
@@ -353,6 +422,9 @@ export class HomePage {
 
   /** Bumped whenever the About read settles, so the links panel follows it. */
   private readonly aboutGeneration = signal(0);
+
+  /** Bumped whenever the System information read settles, so the panel follows it. */
+  private readonly systemGeneration = signal(0);
 
   /** The polite region's text: empty until a removal or a clear has changed the store. */
   private readonly announcementValue = signal('');
@@ -495,6 +567,33 @@ export class HomePage {
   });
 
   /**
+   * The panel's seven rows, in the order the read carries them, each with the value the instance
+   * reported.
+   *
+   * **A value the instance did not report shows the not-reported word, never a blank cell.** A
+   * member reads `''` for three different reasons -- the source refused, the Application Monitor
+   * has not collected that metric, or this namespace is not production-enabled -- and none of
+   * them is a state the row could show instead. The row keeps its label either way, so the panel
+   * has the same seven rows whatever the instance answers.
+   *
+   * **Colour is never the only signal**: the word is the cell's own text, and
+   * `.ocu-home-system-absent` only restrains a not-reported value rather than encoding one.
+   */
+  private readonly resolvedSystemRows = computed<readonly SystemRow[]>(() => {
+    this.systemGeneration();
+    const fields = this.systemInfo.fields();
+    return SYSTEM_INFO_FIELDS.map((field) => {
+      const value = fields[field];
+      return {
+        key: field,
+        label: SYSTEM_INFO_LABELS[field],
+        value: value === '' ? STRINGS.systemInfoNotReported : value,
+        absent: value === '',
+      };
+    });
+  });
+
+  /**
    * The five values in DESIGN.md `:896`'s order, with the ones the instance could not report
    * dropped. The flag is a segment like any other so the separators fall where the rendered
    * values are, and its own "nothing is set" state (`serverFlagKind` `none`, the ordinary case
@@ -543,6 +642,14 @@ export class HomePage {
       this.aboutGeneration.set(this.aboutGeneration() + 1)
     );
     void this.about.load();
+    // The System Information panel's own read (Story 15.4). It is chrome, not a declared read,
+    // and it runs no timer: Home is not on AD-43's auto-refresh roster, so the panel settles with
+    // this one call. Read here for the reason the About read is -- the panel is on Home, and a
+    // tab that never opens Home never spends the request.
+    const stopSystem = this.systemInfo.subscribe(() =>
+      this.systemGeneration.set(this.systemGeneration() + 1)
+    );
+    void this.systemInfo.load();
     inject(DestroyRef).onDestroy(() => {
       stopNavigation();
       stopInstance();
@@ -550,6 +657,7 @@ export class HomePage {
       stopSession();
       stopPreferences();
       stopAbout();
+      stopSystem();
     });
   }
 
@@ -567,6 +675,21 @@ export class HomePage {
 
   protected get links(): readonly LinkRow[] {
     return this.resolvedLinks();
+  }
+
+  protected get systemRows(): readonly SystemRow[] {
+    return this.resolvedSystemRows();
+  }
+
+  /**
+   * Whether the panel has nothing the instance said -- a read that failed with no earlier answer
+   * held. Seven "Not reported" rows would be a confident claim about an instance that never
+   * replied, so the block renders the connectivity fault instead; once a read has answered, a
+   * later failure leaves that answer standing (`about-dialog.ts`'s shape).
+   */
+  protected get systemUnanswered(): boolean {
+    this.systemGeneration();
+    return !this.systemInfo.answered() && this.systemInfo.failed();
   }
 
   protected get announcement(): string {

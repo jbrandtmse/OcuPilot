@@ -44,8 +44,10 @@ import { screenDeclaration } from './testing/screen-declaration';
 import { AccountPreferences } from './core/account-preferences';
 import { stubAccountPreferences } from './testing/account-preferences';
 import { About } from './core/about';
+import { SystemInfo } from './core/system-info';
 import { HelpLinks } from './core/help';
 import { stubAbout, stubHelpLinks, type StubbedAbout, type StubbedHelpLinks } from './testing/about';
+import { stubSystemInfo, type StubbedSystemInfo } from './testing/system-info';
 
 /**
  * The frame itself (DW-138, UX-DR80): which bands render, in what order, and around what.
@@ -358,6 +360,7 @@ describe('the shell frame', () => {
   /** Captured, so the signed-in read and the sign-out drop are both observable (Story 15.2). */
   let accountPreferences: AccountPreferences;
   let about: StubbedAbout;
+  let systemInfo: StubbedSystemInfo;
   let helpLinks: StubbedHelpLinks;
   /** The definitions the stubbed read answers with. Mutated to arrange an Enable. */
   let definitionRows: { enabled: boolean }[];
@@ -395,6 +398,7 @@ describe('the shell frame', () => {
     // Story 15.3: both are the instance's answers to *this* caller, so both are dropped at
     // sign-out; held by name so the sign-out row below can see whether they were.
     about = stubAbout();
+    systemInfo = stubSystemInfo();
     helpLinks = stubHelpLinks({ 'permissions/users': '/csp/docbook/DocBook.UI.PortalHelpPage.cls?KEY=Users' });
     scope = new StubScope();
     connectivity = new StubConnectivity();
@@ -425,6 +429,7 @@ describe('the shell frame', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: About, useValue: about },
+        { provide: SystemInfo, useValue: systemInfo },
         { provide: HelpLinks, useValue: helpLinks },
         { provide: AccountPreferences, useValue: accountPreferences },
         // Three real routes, so "the gate navigated" and "the gate did not" are different
@@ -729,10 +734,12 @@ describe('the shell frame', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(accountPreferences.recents()).toEqual(['permissions/users']);
 
-    // Prime both, so the resets below are observable rather than no-ops.
+    // Prime all three, so the resets below are observable rather than no-ops.
     await about.load();
     await helpLinks.load('permissions/users');
+    await systemInfo.load();
     expect(about.answered()).toBe(true);
+    expect(systemInfo.answered()).toBe(true);
     expect(helpLinks.hrefFor('permissions/users')).toBe(
       '/csp/docbook/DocBook.UI.PortalHelpPage.cls?KEY=Users'
     );
@@ -766,6 +773,10 @@ describe('the shell frame', () => {
     // The addresses are the instance's rather than the account's, but a sign-out is also the one
     // gesture after which the shell underneath may have been upgraded.
     expect(helpLinks.hrefFor('permissions/users')).toBe('');
+    // Mutation (Rule 19): delete `this.systemInfo.reset()` from the same branch -> this goes red,
+    // and Home's System Information panel would open on the state the departed principal's own
+    // privileges answered, degraded members included (AD-8).
+    expect(systemInfo.answered()).toBe(false);
 
     // Mutation (Rule 19): delete `this.recentsRecorder.reset()` from the same branch -> this goes
     // red, answering []. The next principal resumes on the screen this tab is already on, and a

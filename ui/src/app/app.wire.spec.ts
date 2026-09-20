@@ -34,8 +34,10 @@ import { screenDeclaration } from './testing/screen-declaration';
 import { AccountPreferences } from './core/account-preferences';
 import { stubAccountPreferences } from './testing/account-preferences';
 import { About } from './core/about';
+import { SystemInfo } from './core/system-info';
 import { HelpLinks } from './core/help';
 import { stubAbout, stubHelpLinks } from './testing/about';
+import { stubSystemInfo } from './testing/system-info';
 
 /**
  * The one crossing left after `app.spec.ts` and the two bar specs: `app.spec.ts` mounts the real
@@ -264,6 +266,7 @@ describe('the real shell, routed to the real Home screen, sharing one real Refre
     TestBed.configureTestingModule({
       providers: [
         { provide: About, useValue: stubAbout() },
+        { provide: SystemInfo, useValue: stubSystemInfo() },
         { provide: HelpLinks, useValue: stubHelpLinks() },
         { provide: AccountPreferences, useValue: stubAccountPreferences() },
         provideRouter(routes),

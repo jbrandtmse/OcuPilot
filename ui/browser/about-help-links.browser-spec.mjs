@@ -249,16 +249,22 @@ test('AC3 and AC5: Home\u2019s Links block names the three destinations, and not
     await page.waitForSelector('.ocu-home-block-fixed', { timeout: config.navigationTimeoutMs });
 
     const answered = await read(ABOUT_PATH);
-    const links = await page.evaluate(() => {
-      const blocks = [...document.querySelectorAll('.ocu-home-block-fixed')];
-      const panel = blocks[blocks.length - 1];
+    // Selected by its own heading rather than by position, the way
+    // `preferences-integration.browser-spec.mjs` selects a Home block: Story 15.4 added a fifth
+    // block after this one, and "the last fixed block" stopped being Links the day it landed.
+    const links = await page.evaluate((heading) => {
+      const panel = [...document.querySelectorAll('.ocu-home-block-fixed')].find(
+        (candidate) => candidate.querySelector('.ocu-home-block-heading')?.textContent.trim() === heading
+      );
+      if (panel === undefined) return null;
       return [...panel.querySelectorAll('.ocu-home-block-link')].map((anchor) => ({
         label: anchor.querySelector('.ocu-home-block-label').textContent.trim(),
         href: anchor.getAttribute('href'),
         target: anchor.getAttribute('target'),
         rel: anchor.getAttribute('rel'),
       }));
-    });
+    }, STRINGS.linksHeading);
+    assert.notEqual(links, null, `Home renders a fixed block headed "${STRINGS.linksHeading}"`);
     assert.deepEqual(
       links.map((link) => link.label),
       [STRINGS.linksDocumentation, STRINGS.linksSupport, STRINGS.linksInterSystems]

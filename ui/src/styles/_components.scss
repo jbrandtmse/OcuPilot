@@ -5012,3 +5012,40 @@ app-data-table {
 .ocu-stale-bundle-text {
   @include typo.ocu-type('body');
 }
+
+// Story 15.4. Home's System Information block reuses `.ocu-home-block*` wholesale; only the
+// label/value row inside it is new. A row is a label and the word the instance reported, so it
+// takes the remembered row's own 32px height and insets and lays the two out at opposite ends --
+// no new token, and `_tokens.scss` is untouched (Story 15.6 owns it).
+.ocu-home-system-row {
+  justify-content: space-between;
+  gap: var(--ocu-space-3);
+  height: var(--ocu-control-height);
+}
+
+.ocu-home-system-label {
+  @include typo.ocu-type('caption');
+
+  flex: 0 0 auto;
+  color: var(--ocu-on-surface-variant);
+}
+
+// The value is instance data and may be a production name or a preformatted uptime, so it
+// ellipsizes inside its own half of the row rather than widening the block. The template gives it
+// a `title`, so a truncated word stays readable.
+.ocu-home-system-value {
+  @include typo.ocu-type('body');
+
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ocu-on-surface);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// A value the instance did not report is restrained rather than hidden: the row keeps its label
+// and reads its not-reported word, which is the signal -- the colour only says the word is not a
+// state the instance is in.
+.ocu-home-system-value.ocu-home-system-absent {
+  color: var(--ocu-restrained);
+}
