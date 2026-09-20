@@ -4,6 +4,7 @@ type: 'feature'
 created: '2026-09-19'
 status: 'done'
 baseline_revision: '5a119d1a8c124b92c61c423ca94d76d86cce3318'
+baseline_commit: '5a119d1a8c124b92c61c423ca94d76d86cce3318'
 review_loop_iteration: 0
 followup_review_recommended: true
 context: []
@@ -265,6 +266,15 @@ reverted, and the tree confirmed byte-identical afterwards (`git status --short`
 - `git status --short` and `git diff --stat` byte-identical before and after every mutation is reverted, for each mutation above.
 - No `run:` step, no `uses:`, no `secrets.` reference in `ci.yml` touches a registry, a publish, a release or an Open Exchange listing (stealth policy; `ci.test.mjs:1321-1337` asserts the absences and must stay green).
 - `spec/admin-v2-paths.json` appears in no `<FileCopy>` and in no roster package, so it reaches neither the built bundle nor the IPM archive.
+
+### Lead AD gate (2026-09-19, throwaway `ocupilot-b-ci` 52777/1976)
+
+Two AD-tooled criteria re-verified by the lead rather than taken from the implement stage's report.
+
+- **AC4, AD-27's drift gate.** mutation: delete one `/v2/` path from the vendored table `spec/admin-v2-paths.json` -> `ui/tools/admin-spec.mjs --origin` refuses with three independent named reasons (not byte-identical to its own canonical serialization, 184 paths against a pin of 185, 270 verb entries against 271) and **exits 1**; after revert it reports `185 vendored, 185 on the instance, 184 common, 0 method-set differences, 1 declared known difference` and **exits 0**. The exit code was read directly, not through a pipeline: a `| tail` reports the exit of `tail`, and a gate whose non-zero exit is never checked is the vacuous kind this project's rules exist to catch.
+- **AC2, the endpoint coverage floor.** mutation: delete one `<probe/>` row from `OcuPilot.Test.EndpointCoverage`'s XData -> red on `TestEveryRouteHasAProbeAndEveryProbeHasARoute`, assertion "the declared probes and the compiled routes agree" (run 575, 1 failure); green again after revert (run 576, 2/2). Recompiled by `LoadDir` over the whole tree each time, since a subclass keeps its own compiled copy of an inherited method.
+- Both mutations were applied to the throwaway's own bind-mounted source copy, so the repository tree stayed byte-identical throughout (`git status --short` showed no source change before or after).
+- **Route count confirmed structurally**, not by substring: `grep -c "<Route"` answers 35, but one of those is line 74's `<Routes>` container tag; `grep -cE '^\s*<Route '` answers **34**. The implement stage's correction of the intent-contract from 38 to 37 total routes (34 + readiness + 2 static) is therefore right, and the lead confirms it as a Rule 5 tier-1 amendment.
 
 ## Auto Run Result
 
