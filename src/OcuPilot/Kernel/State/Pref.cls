@@ -195,8 +195,13 @@ ClassMethod GuardedTouch(pUserName As %String, pKind As %String, pName As %Strin
     Quit tSC
 }
 
-/// <p>Keep the <var>pKeep</var> newest rows of <var>pKind</var> and delete the rest. A set already
-/// at or under the bound is left alone.</p>
+/// <p>Keep the first <var>pKeep</var> rows <method>IdsForUser</method> answers for
+/// <var>pKind</var> and delete the rest. A set already at or under the bound is left alone.</p>
+/// <p><b>"First" is that kind's own order, so this keeps the newest only for
+/// <parameter>KINDRECENT</parameter>.</b> Every other kind falls to
+/// <method>IdsForUser</method>'s default branch, which reads oldest-first, and trimming one there
+/// would delete its newest rows. A later kind that needs trimming adds its own ordering branch
+/// first.</p>
 ClassMethod GuardedTrim(pUserName As %String, pKind As %String, pKeep As %Integer) As %Status
 {
     Set tSC = $$$OK

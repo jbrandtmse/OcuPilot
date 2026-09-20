@@ -286,6 +286,10 @@ Method TestAMalformedBodyIsOneRefusalNamingNoValue()
         Do $$$AssertEquals(tFault.code, ##class(OcuPilot.Api.Error).#PREFERENCESBODY, "with the body code: " _ tSent)
         Do $$$AssertEquals(tFault.reason, ##class(OcuPilot.Api.Error).#REASONPREFERENCESBODY, "and the published sentence: " _ tSent)
         Do $$$AssertEquals(tFault.%IsDefined("detail"), 0, "and no violations list, because no field was reached: " _ tSent)
+        ; "Naming no value" is the half the assertions above cannot see: each of these bodies
+        ; carries an offending value the envelope must not echo back (AD-35), and a handler that
+        ; quoted it would satisfy every assertion before this one.
+        Do $$$AssertEquals((tBody [ "bookmark") + (tBody [ "toggle") + (tBody [ "_SYSTEM"), 0, "and the refusal echoes no value the caller sent: " _ tSent _ " -> " _ tBody)
     }
     Do $$$AssertEquals(..Count("favorites"), 0, "and nothing was written")
     Do $$$AssertEquals(..Count("recents"), 0, "on either list")

@@ -4322,28 +4322,49 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-15-2-favorites-recent-items-and-menu-search.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: core/account-preferences.ts settle returns on result.kind!=='ok' and no consumer reads a refusal. At the 20-favorite cap the instance answers 422 PREFERENCES.LIMIT with a written reason that reaches no surface.
 - 2026-09-20T07:01:48Z status=open owner=15-2-favorites-recent-items-and-menu-search by=harvest note=Needs a published string and an EXPERIENCE.md row -- both available under the epic-wide shared-append grant, so the cost is the copy decision, not the path.
+- 2026-09-20T10:51:53Z status=escalated owner=15-5-ui-state-that-survives-a-sign-out by=cr note=confirmed at review and unchanged. Two riders for whoever fixes it: testing/account-preferences.ts has no refusal path at all, so the surfacing has no client test until the stub can refuse; and the announcement guards in locator-bar.toggleFavorite and home.page.announceOnChange are the code that would carry the reason.
 
 ### DW-1327: Two concurrent adds of the same (user, kind, route) can trip the unique index and answer 500 instead of the documented no-op
 - source: spec-15-2-favorites-recent-items-and-menu-search.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: Pref.GuardedAdd is check-then-insert: OpenByKey finds nothing in both processes and both save, so one loses on PrefUserKindNameIdx. Reachable from two tabs pinning or visiting the same screen at once. The matrix's concurrency row covers the update path, not the create path.
 - 2026-09-20T07:01:48Z status=open owner=15-2-favorites-recent-items-and-menu-search by=harvest note=AD-50 inherits Base's guarded save for updates; the create path has no equivalent. Catching the index violation and re-reading is the likely shape.
+- 2026-09-20T10:51:45Z status=escalated owner=15-5-ui-state-that-survives-a-sign-out by=cr note=two more sites on the same root cause: GuardedAdd's cap check is read-then-write so two adds of DIFFERENT routes can both pass at 19 and store 21, which catching the unique-index violation would not fix; and GuardedTouch's create branch has the identical race and is the path RecentsRecorder drives on every navigation. Reachable from one tab by double-clicking the locator star, not only from two tabs.
 
 ### DW-1328: When every stored row in a Home block names no built screen, the block shows its empty state and no Clear control, so rows the instance still holds are invisible and unclearable
 - source: spec-15-2-favorites-recent-items-and-menu-search.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: home.page.ts renders the list and Clear under @if (block.rows.length) and rowsFor drops routes resolving to no built screen (AD-37). The per-row remove path is open but the row is not rendered to remove.
 - 2026-09-20T07:01:48Z status=open owner=15-2-favorites-recent-items-and-menu-search by=harvest note=AD-37 says an unresolvable weak reference renders as no-longer-present rather than failing the screen; vanishing entirely with no way to clear is the failure mode that rule exists to prevent.
+- 2026-09-20T10:51:53Z status=escalated owner=15-5-ui-state-that-survives-a-sign-out by=cr note=widened at review: rowsFor now also drops a stored route naming an UNLISTED screen (sideBarPosition 0), so the all-unresolvable case this entry describes is reachable by one more route than when it was filed. AD-37's Rule is still met for the per-row case; what is missing is a stored count the block does not carry.
 
 ### DW-1329: Story 15.2's Integration AC has no browser-level observable: sign out, sign in in a new tab, clear site data, both lists still there was never executed
 - source: spec-15-2-favorites-recent-items-and-menu-search.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: Each link is covered separately -- PreferencesWire on the instance, the app.spec rows on the wiring, api.test.mjs's localStorage ban -- but the composition is not. The implement stage did not deploy this story's bundle and server code into the slot C throwaway.
 - 2026-09-20T07:01:48Z status=open owner=15-2-favorites-recent-items-and-menu-search by=harvest note=The lead closes this at the per-story smoke gate, which owns the throwaway; a deployed bundle is the only place the composition is observable.
+- 2026-09-20T10:51:38Z status=resolved-by:15-2-favorites-recent-items-and-menu-search by=cr note=ui/browser/preferences-integration.browser-spec.mjs drives it in a second BrowserContext; code review extended it to AC2 remove and Clear and falsified both against the redeployed bundle
 
 ### DW-1330: app.ts's inject(RecentsRecorder) -- the only thing that brings the recorder into existence in the shipped app -- is pinned by no test
 - source: spec-15-2-favorites-recent-items-and-menu-search.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: recents-recorder.spec.ts injects the service itself, so deleting the app.ts field reddens nothing and Recent items would be permanently empty. tsconfig sets no noUnusedLocals.
 - 2026-09-20T07:01:49Z status=open owner=15-2-favorites-recent-items-and-menu-search by=harvest note=Rule 19 vacuity: an assertion that cannot fail. An app.spec row navigating the real router and asserting a visit on the captured stub settles it.
+- 2026-09-20T10:51:38Z status=resolved-by:15-2-favorites-recent-items-and-menu-search by=cr note=app.spec.ts pins inject(RecentsRecorder) and, added at review, recentsRecorder.reset() on the sign-out branch; both falsified
 
 ### DW-1331: No test measures that a long remembered-screen label actually ellipsizes
 - source: spec-15-2-favorites-recent-items-and-menu-search.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: min-width: 0 was added to .ocu-home-block-label this pass, but jsdom computes no layout, so only a browser spec can observe it -- the shape classic-link-card.browser-spec.mjs already uses (scrollWidth > clientWidth plus the computed text-overflow).
 - 2026-09-20T07:01:49Z status=open owner=15-2-favorites-recent-items-and-menu-search by=harvest note=Two-way door and browser-only; rides with the Integration AC's browser spec if one is written, otherwise wontfix-accepted with that probe.
+- 2026-09-20T10:51:45Z status=resolved-by:15-2-favorites-recent-items-and-menu-search by=cr note=browser spec measures the ellipsis; the load-bearing rule is .ocu-home-block-open min-width 0, and _components.scss's comment at .ocu-home-block-label was corrected at review to say so
+
+### DW-1340: OcuPilot.Test.PreferencesWire clears the calling account's whole favorites and recents lists, so running it on a dev instance deletes the operator's own
+- source: spec-15-2-favorites-recent-items-and-menu-search.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: OnBeforeOneTest calls Clear(), which GuardedClears Http.GetTestUsername() -- _SYSTEM by default, the account the owner uses on slot A/B/C. PrefState avoids exactly this by writing only probe users; the wire suite cannot, because the route answers for $Username alone. Fix is snapshot-and-restore around each test.
+- 2026-09-20T10:52:02Z status=open owner=range-end-cleanup by=cr note=Harmless on a throwaway, which is where CI runs it; it bites the owner only on a slot instance. Snapshot/restore also has to change the teardown assertion that both lists are empty.
+
+### DW-1341: RecentsRecorder stays subscribed after sign-out, so a Back press on the sign-in card issues an authenticated preference write with no principal
+- source: spec-15-2-favorites-recent-items-and-menu-search.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: app.ts resets lastRoute on sign-out but leaves the router subscription armed, and screenForUrl reads the static generated mirror rather than the reset navigation map. A NavigationEnd after sign-out therefore still resolves a built screen and POSTs /account/preferences, which ApiService meets with its lapsed-pair refresh path. Every other per-principal read in the client is gated on the signed-in state.
+- 2026-09-20T10:52:09Z status=open owner=range-end-cleanup by=cr note=Outcome is a refused write nobody sees, not a wrong render; the fix is a session check in record().
+
+### DW-1342: The locator favorite toggle has no in-flight guard, so two activations inside one round trip both send add and the screen ends pinned
+- source: spec-15-2-favorites-recent-items-and-menu-search.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: toggleFavorite reads isFavorite() synchronously at click time and the store only moves when the instance answers, so a user who presses the star twice to undo sends two adds rather than an add and a remove. The instance's add is idempotent, so the outcome is pinned -- the opposite of what the second press meant. Same shape on Home's per-row remove, where the double send is harmless.
+- 2026-09-20T10:52:16Z status=open owner=range-end-cleanup by=cr note=Distinct from DW-1327: that entry is the server-side race the two requests can trip, this is the client offering the gesture at all. Fix is a pending-route guard in the component.

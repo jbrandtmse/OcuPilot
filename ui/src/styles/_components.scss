@@ -4822,9 +4822,12 @@ app-data-table {
 }
 
 .ocu-home-block-label {
-  // The reason `.ocu-status-bar-version` carries the same line: a flex item will not shrink below
-  // its content without this, so `text-overflow` alone would push the row wider instead of
-  // ellipsizing. The template gives the span a `title`, so a truncated name stays readable.
+  // What actually lets a long name ellipsize here is `.ocu-home-block-open`'s `min-width: 0`:
+  // that button is the flex item whose automatic minimum size would otherwise hold the row open
+  // at its content width. This element's own `min-width: 0` is belt and braces -- its
+  // `overflow: hidden` already gives it an automatic minimum size of 0 -- and both were measured
+  // in `ui/browser/preferences-integration.browser-spec.mjs`, which reddens for the button's and
+  // not for this one. The template gives the span a `title`, so a truncated name stays readable.
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;

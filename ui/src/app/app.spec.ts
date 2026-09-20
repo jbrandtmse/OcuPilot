@@ -195,8 +195,11 @@ class StubNavigation {
     return [];
   }
 
+  /** What `screenForUrl` answers -- null by default, the way this file's other tests need it. */
+  screenForUrlAnswer: ScreenDeclaration | null = null;
+
   screenForUrl(): ScreenDeclaration | null {
-    return null;
+    return this.screenForUrlAnswer;
   }
 
   areaVerdict(): Verdict {
@@ -702,6 +705,14 @@ describe('the shell frame', () => {
     await fixture.whenStable();
     expect(accountPreferences.answered()).toBe(true);
 
+    // Visit a screen before signing out, so the recorder is holding that route as `lastRoute`.
+    // Without this the reset below would be a no-op and the assertion at the end of this test
+    // could not fail.
+    navigation.screenForUrlAnswer = screenDeclaration({ route: 'permissions/users' });
+    await TestBed.inject(Router).navigateByUrl('/permissions/users');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(accountPreferences.recents()).toEqual(['permissions/users']);
+
     session.move('form');
     fixture.detectChanges();
 
@@ -722,6 +733,16 @@ describe('the shell frame', () => {
     // Mutation (Rule 19): delete `this.accountPreferences.reset()` from the same branch -> this
     // goes red, and Home would show a departed principal's favorites and recent items.
     expect(accountPreferences.answered()).toBe(false);
+
+    // Mutation (Rule 19): delete `this.recentsRecorder.reset()` from the same branch -> this goes
+    // red, answering []. The next principal resumes on the screen this tab is already on, and a
+    // recorder still holding that route as `lastRoute` skips it -- so the one screen they land on
+    // is the one screen their recents never get. `recents-recorder.spec.ts` calls `reset()`
+    // itself, so nothing there can see whether the shell ever does.
+    await TestBed.inject(Router).navigateByUrl('/');
+    await TestBed.inject(Router).navigateByUrl('/permissions/users');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(accountPreferences.recents()).toEqual(['permissions/users']);
   });
 
   it('an unverified instance renders the blocking notice and none of the frame', () => {
@@ -833,6 +854,27 @@ describe('the shell frame', () => {
     for (const id of [ENABLE_ACTION, DISABLE_ACTION, SET_DEFAULT_ACTION, CREATE_ACTION]) {
       expect(actions.has(DEFINITION_LIST_DESCRIPTOR, id)).toBe(true);
     }
+  });
+
+  it('Story 15.2 AC3: the shell brings the recents recorder into existence, so visiting a built screen registers it', async () => {
+    // `RecentsRecorder` subscribes to router navigation in its own constructor, and nothing
+    // constructs it except `App`'s injection of it (DW-1330) -- `recents-recorder.spec`'s own
+    // spec injects the service itself, so its assertions hold whether or not the shipped shell
+    // ever builds it. This is the composition: the real router, navigated to a built screen,
+    // through the whole `App` tree.
+    //
+    // Mutation (Rule 19): replace `inject(RecentsRecorder)` in `app.ts` with `{ reset: () => {} }`
+    // -> this goes red, and Recent items stays permanently empty on the real screen while the
+    // whole client suite (including `recents-recorder.spec.ts`) stays green. Deleting the field
+    // outright is not the mutation: `App`'s sign-out branch calls `this.recentsRecorder.reset()`,
+    // so that reddens the build rather than this assertion.
+    navigation.screenForUrlAnswer = screenDeclaration({ route: 'permissions/users' });
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/permissions/users');
+    // A visit is fire and forget by contract (`recents-recorder.ts`), so one macrotask is what
+    // drains the stubbed request's microtasks -- the same wait `recents-recorder.spec.ts` uses.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(accountPreferences.recents()).toEqual(['permissions/users']);
   });
 
   it('AD-8: leaving the signed-in state drops this principal\'s namespace list', async () => {

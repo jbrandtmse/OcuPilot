@@ -200,7 +200,9 @@ describe('Home', () => {
     // degrade row needs a stored route that resolves to nothing.
     preferences = stubAccountPreferences({
       favorites: ['logs/alerts', 'no-such-area/no-such-screen'],
-      recents: ['permissions/users'],
+      // `agent/definitions/edit` is built but unlisted (sideBarPosition 0) and keyed by an entity
+      // id, so a row for it would open the Definition form with no definition.
+      recents: ['permissions/users', 'agent/definitions/edit'],
     });
     TestBed.configureTestingModule({
       providers: [
@@ -617,6 +619,33 @@ describe('Home', () => {
     expect(rowLabels(0)).toEqual([STRINGS.alertLogListLabel]);
   });
 
+  it('Story 15.2: an unlisted screen is dropped from the rendering, because its row would open a create form', async () => {
+    await preferences.load();
+    fixture.detectChanges();
+
+    // Both are stored; only the listed one is a place to return to. `agent/definitions/edit`
+    // declares sideBarPosition 0 and takes an entity id, so the stored route is the id-less
+    // parent and its button would open the Definition form empty.
+    expect(preferences.recents()).toHaveLength(2);
+    // Mutation (Rule 19): drop `|| !isListedScreen(screen)` from `HomePage.rowsFor` -> this goes
+    // red with a second row labelled "Definition" that opens a create form.
+    expect(rowLabels(1)).toEqual([STRINGS.userListLabel]);
+  });
+
+  it('Story 15.2: Home reads the remembered lists on arrival, not only at sign-in', async () => {
+    // `App.verifyWhenSignedIn` issues the tab's first read on a session state change, so a tab
+    // that stays signed in never reads again -- and a write whose answer the store parked would
+    // leave these two blocks wrong for the life of the tab. Arriving at Home is the gesture that
+    // has to repair it.
+    //
+    // Mutation (Rule 19): drop `void this.preferences.load()` from `HomePage`'s constructor ->
+    // this goes red, because nothing else in this harness ever reads.
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(preferences.answered()).toBe(true);
+    expect(rowLabels(0)).toEqual([STRINGS.alertLogListLabel]);
+  });
+
   it('Story 15.2: a per-row remove control names the screen it removes, and removing one re-renders from the instance', async () => {
     await preferences.load();
     fixture.detectChanges();
@@ -649,6 +678,39 @@ describe('Home', () => {
     const status: HTMLElement = fixture.nativeElement.querySelector('.ocu-home-status');
     expect(status.getAttribute('role')).toBe('status');
     expect(status.textContent?.trim()).toBe(STRINGS.recentsCleared);
+  });
+
+  it('Story 15.2: each block names its own list, so the two blocks cannot be crossed', async () => {
+    // Three of the fifteen published strings are wired at exactly one site each, and the rows
+    // above read the other member of each pair -- remove on Favorites, Clear on Recent items. A
+    // crossed binding would announce "Removed from favorites" for a recent item, and name a
+    // recent row's remove control "Remove Users from favorites", with the whole suite green.
+    await preferences.load();
+    fixture.detectChanges();
+
+    // Mutation (Rule 19): swap `STRINGS.recentsRemoveNamed` for `STRINGS.favoritesRemoveNamed` in
+    // `HomePage.resolvedBlocks` -> the first assertion goes red.
+    const recentRemove = blockRows(1)[0].querySelector('.ocu-home-block-remove') as HTMLButtonElement;
+    expect(recentRemove.getAttribute('aria-label')).toBe(
+      STRINGS.recentsRemoveNamed.replace('<name>', STRINGS.userListLabel)
+    );
+
+    // Mutation: swap `STRINGS.recentsRemoved` for `STRINGS.favoritesRemoved` -> this goes red.
+    recentRemove.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.ocu-home-status')?.textContent?.trim()).toBe(
+      STRINGS.recentsRemoved
+    );
+
+    // Mutation: swap `STRINGS.favoritesCleared` for `STRINGS.recentsCleared` -> this goes red.
+    const clearFavorites = blocks()[0].querySelector('.ocu-home-block-clear') as HTMLButtonElement;
+    clearFavorites.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.ocu-home-status')?.textContent?.trim()).toBe(
+      STRINGS.favoritesCleared
+    );
   });
 
   it('Story 15.2: a gated row stays listed and focusable with its reason inline, and does not navigate', async () => {

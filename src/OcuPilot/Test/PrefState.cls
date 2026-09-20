@@ -184,8 +184,11 @@ Method TestRecentsReadNewestFirstAndTrimToTheDeclaredMaximum()
     Set tVisits = tKeep + 2
     For tI = 1:1:tVisits {
         Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Pref).GuardedTouch(..#PROBEUSER, "recent", "probe/visit" _ tI), "visit " _ tI _ " is registered")
-        ; The order column is a one-second ISO stamp, so the visits are separated far enough apart
-        ; for "newest first" to be a fact about the data rather than about insertion order.
+        ; Separated past a whole second deliberately, which is the case a stamp of any resolution
+        ; orders. It is the weaker of the two: with these Hangs the assertion below cannot tell
+        ; ORDER BY UpdatedAt DESC from ORDER BY ID DESC, so the sub-second sibling
+        ; TestARevisitInsideOneSecondStillMovesToTheFront is what pins the ordering column. The
+        ; two are kept apart rather than merged so the second-boundary case stays covered.
         Hang 1.1
     }
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Pref).GuardedTrim(..#PROBEUSER, "recent", tKeep), "the list is trimmed")

@@ -19,6 +19,7 @@ import {
   areaByKey,
   firstAllowedScreen,
   formatRequires,
+  isListedScreen,
   listForDocumentScreen,
   parentListFor,
   tabGroupFor,
@@ -109,7 +110,8 @@ const UNGATED_SEGMENT = {
  * standing beside the screen title for the component's life. It is written **after** the write
  * settles and only when the store's answer actually moved, so the cap's refusal announces
  * nothing rather than announcing a pin that did not happen; clearing it first is what gives a
- * repeat action a change to announce at all.
+ * repeat action a change to announce at all, and a route change clears it again so a sentence
+ * about one screen is not left standing beside the next.
  *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records: `ui/tools/client-lint.mjs`'s blanker matches `@if` plus one parenthesised group.
@@ -364,6 +366,11 @@ export class LocatorBar {
     const stopRouter = this.router.events.subscribe(() => {
       this.bump();
       syncStoreSubscription();
+      // This bar lives for the shell, so a confirmation left standing would sit in the
+      // accessibility tree beside every screen the user opened afterwards, readable by a virtual
+      // cursor as text about a screen they have left. It announced once, on the screen it was
+      // about; leaving it is a second, stale claim.
+      this.announcement.set('');
     });
     const stopNavigation = this.navigation.subscribe(() => this.bump());
     const stopShell = this.shell.subscribe(() => this.bump());
@@ -414,8 +421,7 @@ export class LocatorBar {
    * The navigation is never awaited on this, but the announcement is: the store re-settles from
    * the instance's own answer, so a refusal -- an unknown route, the favorites cap, an instance
    * that did not reply -- leaves the toggle unpressed and says nothing, rather than confirming a
-   * change that was refused. Surfacing the refusal itself needs a published string and is not
-   * this pass's.
+   * change that was refused. Surfacing the refusal itself needs a published string (DW-1326).
    */
   protected toggleFavorite(): void {
     const route = this.favoriteRoute();
@@ -434,10 +440,20 @@ export class LocatorBar {
     });
   }
 
-  /** The route the toggle acts on, or `''` when this screen names none (Home). */
+  /**
+   * The route the toggle acts on, or `''` when this screen is not one to pin.
+   *
+   * Home names no route. An **unlisted** screen (`sideBarPosition` 0) names one that is not the
+   * screen on display: it is keyed by an entity id, and the declared route is the id-less parent,
+   * so pinning it would put a row on Home whose button opens a create form. The command box
+   * filters the same roster the same way, so a favorite it could never rank is one this control
+   * does not offer either.
+   */
   private favoriteRoute(): string {
     this.generation();
-    return this.screen()?.route ?? '';
+    const screen = this.screen();
+    if (screen === null || !isListedScreen(screen)) return '';
+    return screen.route;
   }
 
   private isPinned(): boolean {

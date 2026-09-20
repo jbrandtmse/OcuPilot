@@ -122,6 +122,7 @@ describe('the locator bar', () => {
           { path: 'permissions/users/details/:id', children: [] },
           { path: 'web-applications/rest-apis/document/:id', children: [] },
           { path: 'security/oauth/clients/:id', children: [] },
+          { path: 'agent/definitions/edit/:id', children: [] },
           { path: '**', children: [] },
         ]),
         {
@@ -492,6 +493,25 @@ describe('the locator bar', () => {
 
   it('Story 15.2: Home names no route, so it carries no toggle', async () => {
     await go('/');
+    expect(toggle()).toBeNull();
+  });
+
+  it('Story 15.2: an unlisted screen carries no toggle, because the route it would pin is not the screen on display', async () => {
+    // `agent/definitions/edit` declares sideBarPosition 0 and takes an entity id, so its declared
+    // route is the id-less parent. Pinning that would put a row on Home whose button opens the
+    // Definition form with no definition, and the command box -- which filters the same roster the
+    // same way -- could never rank the favorite either.
+    //
+    // Mutation (Rule 19): drop `|| !isListedScreen(screen)` from `LocatorBar.favoriteRoute` ->
+    // this goes red, and the star appears on every entity editor in the product.
+    navigation.screenForUrl = (url: string) => {
+      const path = url.split('?')[0].replace(/^\/+/, '');
+      return path.startsWith('agent/definitions/edit')
+        ? screenForRoute('agent/definitions/edit')
+        : null;
+    };
+
+    await go('/agent/definitions/edit/42');
     expect(toggle()).toBeNull();
   });
 

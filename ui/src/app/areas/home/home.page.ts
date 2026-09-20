@@ -21,6 +21,7 @@ import {
   areaByKey,
   firstAllowedScreen,
   formatRequires,
+  isListedScreen,
   screenForRoute,
   withQuery,
 } from '../../core/navigation';
@@ -406,6 +407,14 @@ export class HomePage {
     const stopPreferences = this.preferences.subscribe(() =>
       this.preferenceGeneration.set(this.preferenceGeneration() + 1)
     );
+    // Read the remembered lists on arrival, not only once at sign-in. `App.verifyWhenSignedIn`
+    // issues the tab's first read, but it fires on a session *state change*, so a tab that stays
+    // signed in never reads again -- and this is the only surface that renders both lists. Without
+    // this, a write whose answer the store parked (a newer request settled first, or the instance
+    // did not reply) leaves Home showing the wrong lists for the life of the tab, and arriving at
+    // Home is exactly the gesture that cannot repair it. A failed read still parks rather than
+    // clearing, so the matrix's unreachable-instance row is unchanged.
+    void this.preferences.load();
     inject(DestroyRef).onDestroy(() => {
       stopNavigation();
       stopInstance();
@@ -481,20 +490,25 @@ export class HomePage {
 
   /**
    * Announce <code>label</code> once <code>write</code> has settled, and only when the stored list
-   * for <code>kind</code> is a different length from the one the write was issued against.
+   * for <code>kind</code> no longer holds what it held when the write was issued.
    *
-   * <code>write</code> is a function rather than a promise so the length it is compared against
-   * is read before the request goes out, whatever the store does synchronously on the way.
+   * <code>write</code> is a function rather than a promise so the list it is compared against is
+   * read before the request goes out, whatever the store does synchronously on the way.
+   *
+   * The comparison is on membership rather than on length, because a concurrent visit can add a
+   * row as this one removes one and leave the length where it was -- which would announce nothing
+   * although the row the user asked about did go.
    *
    * Cleared before the wait for two reasons: a sentence the region already carries is not read
    * out again when it is re-written, and a refusal must not leave the previous action's
    * confirmation standing as though it were this one's.
    */
   private announceOnChange(kind: PreferenceKind, label: string, write: () => Promise<void>): void {
-    const held = this.stored(kind).length;
+    const held = [...this.stored(kind)];
     this.announcementValue.set('');
     void write().then(() => {
-      if (this.stored(kind).length === held) return;
+      const now = this.stored(kind);
+      if (held.every((route) => now.includes(route)) && held.length === now.length) return;
       this.announcementValue.set(label);
     });
   }
@@ -508,12 +522,17 @@ export class HomePage {
    * One block's rows: the routes the instance answered, less the ones that no longer name a built
    * screen (AD-37 -- dropped from the rendering, never from the store), each carrying the verdict
    * this user's navigation map holds for it.
+   *
+   * An **unlisted** screen is dropped on the same terms. `sideBarPosition` 0 marks one reached only
+   * from its own list and keyed by an entity id, so the stored route is the id-less parent and a
+   * row for it would open the screen with no entity -- a create form the user did not ask for.
+   * `recents-recorder.ts` no longer records one; this drops the rows an earlier build stored.
    */
   private rowsFor(routes: readonly string[], removeTemplate: string): readonly RememberedRow[] {
     const rows: RememberedRow[] = [];
     for (const route of routes) {
       const screen = screenForRoute(route);
-      if (screen === null || !screen.built) continue;
+      if (screen === null || !screen.built || !isListedScreen(screen)) continue;
       const label = stringFor(screen.labelKey);
       const verdict = this.navigation.screenVerdict(route);
       rows.push({

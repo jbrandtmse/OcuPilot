@@ -137,13 +137,18 @@ test('DW-1329 (Integration AC): favorites and recents held before sign-out rende
     );
 
     // AC3: a recent is registered by visiting a second built screen, with no explicit action.
+    // `page.goto` is a fresh SPA bootstrap, and the first-login gate re-fires on every one of
+    // those on a throwaway with no enabled definition -- so every `goto` to a non-gate route
+    // needs its own `leaveFirstLoginGate`, the same as `signedInAt`'s own sign-in navigation.
     await first.page.goto(`${config.origin}${ALERTS_URL}`, { waitUntil: 'networkidle2' });
+    await leaveFirstLoginGate(first.page, config.navigationTimeoutMs, ALERTS_URL);
     await first.page.waitForSelector('app-rail .ocu-rail', { timeout: config.navigationTimeoutMs });
     // `registerVisit` is fire and forget (`recents-recorder.ts`): give its POST a turn to land
     // before reading Home, the way `recents-recorder.spec.ts`'s own `settled()` does.
     await new Promise((resolve) => setTimeout(resolve, 500));
 
     await first.page.goto(`${config.origin}${HOME_URL}`, { waitUntil: 'networkidle2' });
+    await leaveFirstLoginGate(first.page, config.navigationTimeoutMs, HOME_URL);
     await first.page.waitForSelector('.ocu-home-block', { timeout: config.navigationTimeoutMs });
     const beforeFavorites = await blockLabels(first.page, STRINGS.favoritesHeading);
     const beforeRecents = await blockLabels(first.page, STRINGS.recentsHeading);
@@ -155,6 +160,55 @@ test('DW-1329 (Integration AC): favorites and recents held before sign-out rende
     assert.ok(
       beforeRecents.includes(STRINGS.alertLogListLabel),
       `Recent items lists the visited screen before sign-out: ${JSON.stringify(beforeRecents)}`
+    );
+
+    // DW-1331: a long remembered-screen label ellipsizes rather than widening the block or its
+    // row. The property that actually gates this is `.ocu-home-block-open`'s `min-width: 0` in
+    // `_components.scss` -- verified by removing it, rebuilding and redeploying: the button grows
+    // to the label's full content width and the assertion below reddens. `.ocu-home-block-label`'s
+    // own `min-width: 0` is not load-bearing for this element: its `overflow: hidden` already
+    // gives it an automatic minimum size of 0 per the flexbox spec, so removing that declaration
+    // alone (verified the same way) leaves this assertion green. jsdom computes no layout, so
+    // only a browser can observe any of this, and no shipped screen's own label is long enough to
+    // overflow on its own -- the label is stretched here the same way
+    // `classic-link-card.browser-spec.mjs` pads its own probe label, rather than standing up a
+    // second fixture harness for one assertion.
+    const overflow = await first.page.evaluate(() => {
+      const label = document.querySelector('.ocu-home-block-label');
+      label.textContent = 'A remembered screen name long enough to overrun the block it sits in for sure'.padEnd(
+        140,
+        'x'
+      );
+      return {
+        scrollWidth: label.scrollWidth,
+        clientWidth: label.clientWidth,
+        textOverflow: getComputedStyle(label).textOverflow,
+      };
+    });
+    assert.equal(overflow.textOverflow, 'ellipsis', 'a remembered-screen label ends in an ellipsis');
+    assert.ok(
+      overflow.scrollWidth > overflow.clientWidth,
+      `and there is more label than room, so the ellipsis is showing: ${JSON.stringify(overflow)}`
+    );
+
+    // The writing context's own storage, read before the sign-out clears anything. This is the
+    // half that matters: the second context only ever *read* the lists, so a client that mirrored
+    // them to browser storage **on write** would leave nothing there and the assertion at the end
+    // of this test would pass anyway. `api.test.mjs` bans `localStorage` outside
+    // `core/preferences.ts` by source scan, but it scores `sessionStorage` as no violation, so
+    // that ban does not cover this on its own.
+    const wroteStorage = await clientStorageEntries(first.page);
+    const holdsRoute = (entries) =>
+      entries.some(([, value]) => value.includes('permissions/users') || value.includes('logs/alerts'));
+    assert.equal(
+      holdsRoute(wroteStorage.local),
+      false,
+      `the tab that pinned and visited put no route in localStorage: ${JSON.stringify(wroteStorage.local)}`
+    );
+    assert.equal(
+      holdsRoute(wroteStorage.session),
+      false,
+      `nor in sessionStorage: ${JSON.stringify(wroteStorage.session)}`
     );
 
     // Sign out for real: the CSP session the first context held is ended, so the second
@@ -187,10 +241,70 @@ test('DW-1329 (Integration AC): favorites and recents held before sign-out rende
     // And the surface the claim is actually about: this (second) tab's own storage, which never
     // held the token pair the first tab minted, holds neither favorited nor visited route either.
     const storage = await clientStorageEntries(second.page);
-    const holdsEither = (entries) =>
-      entries.some(([, value]) => value.includes('permissions/users') || value.includes('logs/alerts'));
-    assert.equal(holdsEither(storage.local), false, `no favorite or recent route reached localStorage: ${JSON.stringify(storage.local)}`);
-    assert.equal(holdsEither(storage.session), false, `no favorite or recent route reached sessionStorage: ${JSON.stringify(storage.session)}`);
+    assert.equal(holdsRoute(storage.local), false, `no favorite or recent route reached localStorage: ${JSON.stringify(storage.local)}`);
+    assert.equal(holdsRoute(storage.session), false, `no favorite or recent route reached sessionStorage: ${JSON.stringify(storage.session)}`);
+
+    // AC2, in a real browser rather than in jsdom: the per-row remove and the Clear control both
+    // drive the instance and both announce afterwards. Their announcement path fires only once
+    // the write settles, which `stubAccountPreferences` cannot exercise -- it never refuses and
+    // never fails -- so this is the first time either is driven against a real one.
+    const removeFirst = async (page, heading) =>
+      page.evaluate((wantedHeading) => {
+        const section = [...document.querySelectorAll('.ocu-home-block')].find(
+          (candidate) => candidate.querySelector('.ocu-home-block-heading')?.textContent.trim() === wantedHeading
+        );
+        const control = section?.querySelector('.ocu-home-block-remove');
+        if (!control) return false;
+        control.id = 'ocu-probe-remove';
+        return true;
+      }, heading);
+
+    assert.ok(await removeFirst(second.page, STRINGS.favoritesHeading), 'Favorites offers a per-row remove');
+    await second.page.click('#ocu-probe-remove');
+    await second.page.waitForFunction(
+      (empty) => document.querySelector('.ocu-home-block-empty')?.textContent.trim() === empty,
+      { timeout: config.navigationTimeoutMs },
+      STRINGS.favoritesEmpty
+    );
+    assert.deepEqual(
+      await blockLabels(second.page, STRINGS.favoritesHeading),
+      [],
+      'removing the only favorite empties the block against the real instance'
+    );
+    const removedSentence = await second.page.evaluate(
+      () => document.querySelector('.ocu-home-status')?.textContent.trim() ?? ''
+    );
+    assert.equal(removedSentence, STRINGS.favoritesRemoved, 'and the polite region says so once the write landed');
+
+    // Clear the other block the same way, then read both back over the wire: what the screen
+    // shows and what the instance holds have to be the same answer.
+    const cleared = await second.page.evaluate((heading) => {
+      const section = [...document.querySelectorAll('.ocu-home-block')].find(
+        (candidate) => candidate.querySelector('.ocu-home-block-heading')?.textContent.trim() === heading
+      );
+      const control = section?.querySelector('.ocu-home-block-clear');
+      if (!control) return false;
+      control.id = 'ocu-probe-clear';
+      return true;
+    }, STRINGS.recentsHeading);
+    assert.ok(cleared, 'Recent items offers a Clear control');
+    await second.page.click('#ocu-probe-clear');
+    await second.page.waitForFunction(
+      (sentence) => document.querySelector('.ocu-home-status')?.textContent.trim() === sentence,
+      { timeout: config.navigationTimeoutMs },
+      STRINGS.recentsCleared
+    );
+    assert.deepEqual(
+      await blockLabels(second.page, STRINGS.recentsHeading),
+      [],
+      'and Clear empties Recent items'
+    );
+
+    const held = await (
+      await fetch(`${config.origin}${PREFERENCES_PATH}`, { headers: { Authorization: authHeader() } })
+    ).json();
+    assert.deepEqual(held.favorites, [], 'the instance holds no favorite after the removal');
+    assert.deepEqual(held.recents, [], 'and no recent item after the clear');
   } finally {
     if (first !== null) await first.context.close();
     if (second !== null) await second.context.close();

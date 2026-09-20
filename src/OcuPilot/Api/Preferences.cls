@@ -78,10 +78,13 @@ ClassMethod HandleUpdate() As %Status
     Try {
         Set tReadSC = ##class(OcuPilot.Kernel.Utils).ReadRequestBody(.tRequestBody, .tStage)
         If $$$ISERR(tReadSC) {
-            ; A read or decode fault is the server's, not the caller's, so the raw status reaches
-            ; the log before the refusal is rendered (Api/Account.RenderBodyRefusal's shape). The
-            ; preferences body carries no secret, so the stage is logged with it.
-            Do ##class(OcuPilot.Kernel.Fault).LogRaw("preferences", "preferences body refused", $$$ERROR($$$GeneralError, "the preferences body was refused at the " _ tStage _ " stage"), ##class(OcuPilot.Api.Error).#PREFERENCESBODY)
+            ; A read or decode fault is the server's, not the caller's, so it is logged before the
+            ; refusal is rendered. The status ReadRequestBody answered is logged with the stage,
+            ; Api/Definitions.RenderBadBody's shape rather than Api/Account.RenderBodyRefusal's:
+            ; Account withholds it because that parser exception can quote the document and its
+            ; document is two passwords (AD-35), while this one is a kind, an action and a route
+            ; and carries no secret. Without it a genuine decode fault leaves no diagnostic at all.
+            Do ##class(OcuPilot.Kernel.Fault).LogRaw("preferences", "preferences body refused at the " _ tStage _ " stage", tReadSC, ##class(OcuPilot.Api.Error).#PREFERENCESBODY)
             Set tSC = ..RenderBodyRefusal()
             Quit
         }

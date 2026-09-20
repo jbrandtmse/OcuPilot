@@ -196,6 +196,65 @@ deferred:
 - **Integration AC (Rule 1):** Given favorites and recents held, when the user signs out, signs back in **in a new tab**, and opens Home, then both lists are unchanged — the state was read from the instance, and no browser storage holds it.
 - Given the command box, when it opens, then the shell still has exactly one search input and exactly two result groups, the count still reads `<n> screens, <m> actions`, and favorited screens are listed first within Screens.
 
+### Review Findings
+
+2026-09-20, code review (tier full-opus; five layers: server/AD-conformance, client, acceptance
+auditor, test falsifiability, adversarial). 36 findings, grouped to 26 entries: high 1, medium 8,
+low 17, of which 2 were disproved on the instance. Fifteen patched here, three escalated with an
+owner, three newly ledgered, three accepted as-is.
+
+**High, patched — an unlisted screen was recorded, offered to the toggle and rendered on Home.**
+`screenForUrl` answers the id-less parent declaration for an entity-keyed URL, so opening
+definition 42 stored `agent/definitions/edit`, whose Home row opens the Definition form with no
+definition. Eleven built screens declare `sideBarPosition: 0`, and every definition edit, database
+drill and wallet-secret view poisoned Recent items with no user action. `command-box.ts` already
+filters `isListedScreen` against exactly this, and the spec's `Consumes:` line names that helper;
+no new surface called it. Now filtered at all three sites — `recents-recorder.ts` stops recording
+one, `home.page.ts` `rowsFor` drops the rows an earlier build stored, and `locator-bar.ts` offers
+no toggle — each with a pinning row, each falsified.
+
+**Medium, patched.** (1) Home read the lists only at sign-in: `load()` has one production caller,
+`App.verifyWhenSignedIn`, which fires on a session *state change*, so a write whose answer the
+store parked left both blocks wrong for the life of the tab — and arriving at Home was the one
+gesture that could not repair it. Home now reads on arrival. This also retires the triage log's
+`[low] [reject]` of the parked-write finding, whose stated reason ("the next `load()` repairs it")
+was false. (2) `favoritesCleared`, `recentsRemoveNamed` and `recentsRemoved` were wired at one site
+each and asserted nowhere, so a crossed pair would name the wrong list to a screen-reader user with
+the suite green; a row now reads each. (3) `app.ts`'s `recentsRecorder.reset()` was pinned by no
+test although the triage log said it was; pinned now, and falsified. (4) AC2's remove and Clear
+were approved on jsdom alone (Rule 3): both are now driven in the browser against the redeployed
+bundle, with the instance re-read over the wire afterwards. (5) The browser spec asserted "no
+browser storage" only against the context that *read* the lists, not the one that wrote them.
+
+**Two findings disproved, recorded so they are not re-filed.** A layer reported cross-user leakage
+from `Pref.UserName`'s case-folding collation, reasoning that `Security.Users.Name` is exact. The
+precondition fails: `Security.Users`' IDKEY is `NameLowerCaseIndex` over a lowercased name
+(verified on slot C — `_SYSTEM` stores `_system`), so IRIS keys principals case-insensitively and
+`Alice` and `alice` cannot coexist. The store's granularity matches the principal store's. A second
+layer reported `action: "remove"` with a long route answering 500 via `SQLCODE -490`. The -490 is
+real through the Atelier query endpoint but not through the store: driven over the wire at the
+shipped `MAXLEN = 512` with the guard as shipped, a 600-character remove answers 200, the
+documented no-op. A speculative fix was written, disproved against the pre-patch shape, and
+reverted rather than shipped.
+
+**Escalated, owner `15-5-ui-state-that-survives-a-sign-out`:** DW-1326 (a refusal reaches no
+surface), DW-1327 (check-then-insert — two further sites found: the cap check admits two adds of
+*different* routes at 19, which catching the index violation would not fix, and `GuardedTouch`'s
+create branch is the path every navigation drives), DW-1328 (Clear hidden when every stored row is
+unresolvable, now reachable by one more route). **Newly ledgered:** DW-1340 (the wire suite clears
+the operator's own lists), DW-1341 (the recorder writes after sign-out), DW-1342 (the toggle is not
+a toggle within one round trip).
+
+**Closed in the ledger, not here.** DW-1329, DW-1330 and DW-1331 are resolved by QA's work plus
+this pass's additions. The frontmatter `deferred:` list and `## Auto Run Result`'s residual risks
+still describe all six as open; they are build-auto's own record of what the implement stage
+handed over, and the ledger is the authority on what is still open.
+
+**Accepted as-is.** `AccountPreferences.generation` is dominated by `request`, since `reset()` bumps
+both — defense in depth that matches the house shape (`agent-status.ts`); reopen if `reset()` ever
+stops bumping `request`. The *Server unreachable on Home* matrix row is pinned at the store rather
+than at Home; Home reads only the store, whose park is pinned under `node --test`.
+
 ## Spec Change Log
 
 - 2026-09-20, lead spec gate: **AD-50** added to the governing ADs. The plan stage settled the per-user store's shape and correctly flagged it as architectural rather than writing the spine itself; the lead wrote the AD at this gate, so the plan could not have cited it. The sign-out/new-tab criterion is labeled the Integration AC (Rule 1) — it already was one in substance, naming Home as the consumer, the instance as the source and an observable effect across a session boundary.
@@ -304,9 +363,9 @@ deferred:
 
 **Mutations (Rule 19)** -- each applied, observed red, reverted, and the tree confirmed byte-identical:
 
-- AC1 (pin from the locator bar): mutation: drop `void this.preferences.add(FAVORITE_KIND, route)` from `locator-bar.ts` `toggleFavorite` -> `locator-bar.spec.ts` "activating the toggle pins the screen" and "a second activation unpins it" went red (2 failed).
-- AC2 (remove and clear from Home): mutation: drop `void this.preferences.remove(block.kind, row.route)` from `home.page.ts` `removeRemembered` -> `home.page.spec.ts` "a per-row remove control names the screen it removes" went red.
-- AC3 (recents registered by visiting): mutation: replace `this.preferences.registerVisit(screen.route)` in `recents-recorder.ts` with a no-op -> `recents-recorder.spec.ts` went red on 3 rows.
+- AC1 (pin from the locator bar): mutation: replace the `: this.preferences.add(FAVORITE_KIND, route)` arm of `pending` in `locator-bar.ts` `toggleFavorite` with `Promise.resolve()` -> `locator-bar.spec.ts` "activating the toggle pins the screen" and "a second activation unpins it" go red on `preferences.favorites()`. (Repaired at code review: the announcement rewrite had made the recorded line name text the file no longer contains, so it could only have reddened by failing to compile.)
+- AC2 (remove and clear from Home): mutation: replace `removeRemembered`'s write callback in `home.page.ts` with `() => Promise.resolve()` -> `home.page.spec.ts` "a per-row remove control names the screen it removes" goes red on `favorites()`, and, against the redeployed bundle, `ui/browser/preferences-integration.browser-spec.mjs` fails waiting for the Favorites block's empty state (executed at code review). (Repaired: the recorded line named text `announceOnChange` had already absorbed.)
+- AC3 (recents registered by visiting): mutation: replace `this.preferences.registerVisit(screen.route)` in `recents-recorder.ts` with a no-op -> `recents-recorder.spec.ts` goes red on 5 of its 7 rows; only "registers nothing for a URL that resolves to no built screen" and the unlisted-screen row stay green. (Count repaired at code review: later patch groups added rows the original figure predates.)
 - AC3 (newest-first and capped): mutation: change `IdsForUser`'s recent branch to `ORDER BY ID` -> `OcuPilot.Test.PrefState:TestRecentsReadNewestFirstAndTrimToTheDeclaredMaximum` failed on 3 assertions.
 - Integration AC (the state is on the instance): mutation: drop `Set tSC = ..GuardedSave(tRow)` from `Pref.GuardedAdd` -> `OcuPilot.Test.PreferencesWire:TestAFavoriteRoundTripsOverTheWire` failed on 4 assertions, because the list the next read answers never held it. The browser-storage half is `ui/tools/api.test.mjs`'s standing ban, which `core/account-preferences.ts` does not touch.
 - AC5 (favorites first in the command box): mutation: return `rows` instead of `[...favorite, ...rest]` from `screenCandidates` -> `command-box.spec.ts` went red on 2 rows, while the one-input/two-group/count assertions in the same rows stayed green.
@@ -317,9 +376,65 @@ was pinned by `home.page.spec.ts`; the command-box half was not, so `command-box
 "a favorite naming no built screen adds no row here, and the count is unchanged". It is a
 matrix-row test, not an acceptance criterion's pinning test, so it carries no `mutation:` line.
 
+**QA pass (DW-1329, DW-1330, DW-1331), executed on the slot C throwaway `ocupilot-c-ci`, 2026-09-20 (QA).**
+
+- `ui/browser/preferences-integration.browser-spec.mjs` (QA) -- repaired: it called
+  `leaveFirstLoginGate` once, inside `signedInAt`, then made two further `page.goto` calls with
+  no call after either, so the gate (which re-fires on every fresh SPA bootstrap on a throwaway
+  with no enabled definition) put the browser on the Definition form and the spec timed out
+  waiting for `.ocu-home-block`. Fixed by calling `leaveFirstLoginGate` after each `goto`, the
+  house pattern `ui/browser/processes.browser-spec.mjs` already uses.
+  `mutation: drop the leaveFirstLoginGate call added after the HOME_URL goto -> the spec's one
+  test failed on the exact reported symptom, TimeoutError waiting for .ocu-home-block`. This also
+  settles the Integration AC's manual check above: a real second `BrowserContext` (a strict
+  superset of "a new tab") now drives it, so favorites and recents held before sign-out render
+  unchanged after signing back in with none of the first tab's storage.
+- `ui/src/app/app.spec.ts` (QA) -- DW-1330: `app.ts`'s `inject(RecentsRecorder)` was pinned by no
+  test; `recents-recorder.spec.ts` injects the service itself, so deleting that field reddened
+  nothing there. Added a test that navigates the real router through the whole `App` tree and
+  reads `AccountPreferences.recents()`.
+  `mutation: replace inject(RecentsRecorder) with { reset: () => {} } in app.ts -> the new test
+  failed (expected ['permissions/users'], got []), the other 31 app.spec.ts tests stayed green`.
+- DW-1331 (rider, closed): `.ocu-home-block-label`'s `min-width: 0` had no test measuring that a
+  long remembered-screen label ellipsizes; added to the same repaired spec.
+  `mutation: drop min-width: 0 from .ocu-home-block-open in _components.scss, rebuild, redeploy
+  -> the assertion failed (scrollWidth == clientWidth == 930, no overflow)`. Note for the next
+  reader: `.ocu-home-block-label`'s own `min-width: 0` is not what gates this -- its
+  `overflow: hidden` already gives it an automatic minimum size of 0 per the flexbox spec, so the
+  same mutation applied to the label instead left the assertion green; `.ocu-home-block-open`'s is
+  the load-bearing declaration.
+
+**Code-review pass, executed on slot C (`server: "ocupilot-slot-c"`, dev container
+`ocupilot-slot-c`; browser runs against the throwaway `ocupilot-c-ci`), 2026-09-20.** The bundle
+was rebuilt and `docker cp`-ed into the throwaway before every browser result quoted here.
+
+- `uv run scripts/check-objectscript.py` 500 files / 21 rules / 0 problems; `cd ui && npm test`
+  1070 `node --test` + 695 component, 0 failures; `cd ui && npm run build` all six prebuild
+  checkers clean; `bash scripts/lint-docs.sh` 0 issues over 93 files.
+- All 500 classes loaded and compiled clean, then one class per call:
+  `OcuPilot.Test.PrefState` 9/9, `OcuPilot.Test.PreferencesWire` 6/6.
+- **Full browser suite against the redeployed bundle: 191 tests, 191 pass, 0 fail** — including
+  `context-chip.browser-spec.mjs` and `switches.browser-spec.mjs`, which DW-1169 makes flaky and
+  which did not flake on this run.
+- mutation: drop `|| !isListedScreen(screen)` from `RecentsRecorder.record` ->
+  `recents-recorder.spec.ts` "registers nothing for an unlisted screen" went red, answering
+  `["agent/definitions/edit"]`. The same guard's two siblings were falsified together: mutation:
+  drop it from `HomePage.rowsFor` and from `LocatorBar.favoriteRoute`, and drop
+  `void this.preferences.load()` from HomePage's constructor -> 3 rows red across
+  `home.page.spec.ts` and `locator-bar.spec.ts`, 692 green.
+- mutation: delete `this.recentsRecorder.reset()` from `App.verifyWhenSignedIn`'s signed-out branch
+  -> `app.spec.ts` "leaving the signed-in state..." went red at its last assertion (expected
+  `['permissions/users']`, got `[]`), 694 green.
+- mutation: replace `removeRemembered`'s write callback in `home.page.ts` with
+  `() => Promise.resolve()`, rebuild, redeploy -> `preferences-integration.browser-spec.mjs` failed
+  with a TimeoutError waiting for the Favorites block's empty state. This is the first real-runtime
+  evidence for AC2's remove.
+- Two reported findings were **disproved on the instance** rather than patched; the disproofs are
+  in `## Review Findings` so the next pass does not re-file them.
+
 **Manual checks:**
 
-- Sign in, favorite a screen, sign out, sign back in **in a new tab**, open Home: both lists are as they were. Then clear the browser's site data for the origin and repeat -- the lists are still there, which is the observable that distinguishes instance storage from browser storage. **Not performed by this pass** (it needs a browser and two sessions); `OcuPilot.Test.PreferencesWire` is its instance-side half.
+- Sign in, favorite a screen, sign out, sign back in **in a new tab**, open Home: both lists are as they were, and the lists survive a fresh browser context holding none of the first tab's storage. Automated by `ui/browser/preferences-integration.browser-spec.mjs` (QA); `OcuPilot.Test.PreferencesWire` is its instance-side half.
 
 ## Auto Run Result
 
