@@ -3028,6 +3028,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: The rule's redeploy recipe in .claude/rules/objectscript-testing.md copies dist/ocupilot/browser; ui/angular.json and scripts/ci-throwaway.sh use dist/ocupilot-ui/browser
 - 2026-09-17T03:37:30Z status=routed owner=17-2-a-readme-whose-install-steps-work-the-first-time by=lead note=Developer documentation drift for the story that owns the developer docs, beside DW-446
 - 2026-09-17T04:37:08Z occurrence=4-3-the-docked-panel-present-on-every-route
+- 2026-09-20T17:09:13Z occurrence=15-3-about-help-shortcuts-and-the-links-panel
+- 2026-09-20T17:09:13Z by=harvest note=rediscovered a fourth time from 15.3; already corrected on origin/OCU-1-epic5 (dist/ocupilot-ui) and resolves at that merge, so Epic 15 did not edit the file -- Epic 5 has modified it and it is a Clarification for this epic
 
 ### DW-458: At a viewport where the remembered width makes the side bar yield, narrowing the panel to 352 or less brings the side bar back and the panel can no longer be widened without closing the side bar
 - source: spec-4-3-the-docked-panel-present-on-every-route.md | severity: med | fix-risk: med | footprint: in-story
@@ -4538,3 +4540,48 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-20T10:10:38Z status=open owner=burndown by=merge_gate note=this is a gap in how the project proves the client works, not a defect in a screen; it is the reason the other two entries exist and were found by a human eye rather than a gate
 - 2026-09-20T11:47:39Z status=routed owner=range-end-cleanup by=burndown note=HIGH and out-of-footprint; Epic 13's charter is the suite IN CI, not client geometry; routed only so no entry is left owned by burndown -- the orchestrator should route this deliberately, see decisions_for_user
 - 2026-09-20T13:18:06Z status=decision-pending owner=burndown by=merge_gate note=TAKEN OFF range-end-cleanup, and Epic 13 was right to refuse to grade it down. Three reasons it cannot sit there: Rule 15 says a HIGH is not a deferral candidate; range-end-cleanup is chartered AFTER Epic 12 merges and runs before the demo freeze or in the voting week, i.e. AFTER the 2026-09-27 floor this defect class is visible at; and Epic 13's charter is the suite IN CI, not client geometry, so it was never its to own. AWAITING THE OWNER on scope, asked 2026-09-20 and not yet answered: whether to add a structural-invariants gate over every screen the registry declares (every input/select/textarea has an accessible name; no interactive control narrower than its declared minimum; no element overflowing its container) and if so whether it lands in Epic 13's suite story, at the range end, or sooner as floor-blocking. The orchestrator's recommendation stands: structural invariants, not golden-image diffing, which across 40 screens is brittle and fails on every legitimate change so it gets disabled within a week. Do not re-own this to a story without that answer - the entry's whole point is that no story pinned the figures these defects broke
+
+### DW-1368: A transient help-read failure removes that screen's Help control for the rest of the session
+- source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: HelpLinks.load adds the route to asked before awaiting and never removes it on failure; helpHrefFor collapses a refusal, an unavailable answer and an unreachable instance to the same empty string. Closing it gives helpHrefFor a third outcome, which changes its contract. ui/src/app/core/help.ts
+- 2026-09-20T17:09:25Z status=open owner=15-3-about-help-shortcuts-and-the-links-panel by=harvest note=implement-stage deferral
+
+### DW-1369: stale-bundle-notice.ts has no component spec and app.spec.ts's band-order row was not extended to it
+- source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: The browser tier covers render, role, copy, never-self-reloads and the Reload click, and isStale is unit-tested; what has no jsdom host is where the region sits in the frame, which app.spec.ts pins for its sibling app-fault-banner with a recorded mutation
+- 2026-09-20T17:09:25Z status=open owner=15-3-about-help-shortcuts-and-the-links-panel by=harvest note=implement-stage deferral
+
+### DW-1370: The About dialog renders thirteen blank values between mount and the read settling
+- source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: unanswered is false while neither answered() nor failed() is set, so the first paint is a definition list of empty values rather than a pending state. Sub-second, values arrive in place. ui/src/app/shell/about-dialog.ts
+- 2026-09-20T17:09:25Z status=open owner=15-3-about-help-shortcuts-and-the-links-panel by=harvest note=implement-stage deferral
+
+### DW-1371: The stale-bundle strip can stand above the blocking instance notice
+- source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: app.ts renders app-stale-bundle-notice outside the signed-in branch beside the fault banner; the blocking notice is meant to replace the product surface rather than share it. ui/src/app/app.ts
+- 2026-09-20T17:09:25Z status=open owner=15-3-about-help-shortcuts-and-the-links-panel by=harvest note=implement-stage deferral
+
+### DW-1372: The reload prompt's role=status region is inserted when it becomes true rather than kept mounted and populated, which is commonly not announced
+- source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The house idiom in home.page.ts and account-menu.ts keeps a hidden region mounted and sets its text. EXPERIENCE.md now publishes this prompt among the polite status messages, so the announcement is a published contract; the browser spec asserts the attribute, not that anything was announced
+- 2026-09-20T17:09:25Z status=open owner=15-3-about-help-shortcuts-and-the-links-panel by=harvest note=implement-stage deferral; touches a published EXPERIENCE.md contract
+
+### DW-1373: Nothing in the suite executes the real audit-log call for the new uiabout subsystem
+- source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: OcuPilot.Test.UiAboutFixture.LogSourceFailure overrides the seam without ##super, so every test driving a refused source records into a process-private global and Kernel.Audit.Log.Error(..#LOGSUBSYSTEM, ...) is never run. src/OcuPilot/Test/UiAboutFixture.cls
+- 2026-09-20T17:09:36Z status=open owner=15-3-about-help-shortcuts-and-the-links-panel by=harvest note=implement-stage deferral
+
+### DW-1374: Installer.BundleIdentity's fallback branch has no test in any tier
+- source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: It is [ Private ], so reaching it needs an installer fixture subclass or an install run with the shell bundle directory emptied. The happy path is covered on every throwaway install; the fallback's failure mode is a Build row reading dev, which the client now never compares
+- 2026-09-20T17:09:36Z status=open owner=15-3-about-help-shortcuts-and-the-links-panel by=harvest note=implement-stage deferral
+
+### DW-1375: Home's Shortcuts empty state is unreachable, so STRINGS.shortcutsEmpty is published but cannot be displayed
+- source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: shortcutScreens() filters the shipped mirror, which always resolves some rows, and a component spec may not replace the mirror. Removing the string means editing the published Fixed strings row as well. ui/src/app/areas/home/home.page.ts
+- 2026-09-20T17:09:36Z status=open owner=15-3-about-help-shortcuts-and-the-links-panel by=harvest note=implement-stage deferral
+
+### DW-1376: DESIGN.md's polish-week enumeration was not extended with Shortcuts and Links
+- source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: DESIGN.md:898 still reads 'Polish-week additions (system information, favorites, recents) go above or beside the grid' -- the line this story's Design Notes cite for placing both new blocks
+- 2026-09-20T17:09:36Z status=routed owner=range-end-cleanup by=harvest note=planning-artifact wording; non-blocking for the 2026-09-27 floor and for every downstream story, so Rule 27 re-owns it
