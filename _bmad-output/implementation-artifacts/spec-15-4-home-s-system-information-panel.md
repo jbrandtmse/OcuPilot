@@ -4,6 +4,7 @@ type: 'feature'
 created: '2026-09-20'
 status: 'done'
 baseline_revision: '3a3acf5789513ec0a6e6c93cf5dd03748037a31c'
+baseline_commit: '3a3acf5789513ec0a6e6c93cf5dd03748037a31c'
 review_loop_iteration: 0
 followup_review_recommended: true
 context:
@@ -131,7 +132,7 @@ deferred:
 - `src/OcuPilot/Kernel/Shell/About.cls` — **the shape to copy whole**: `Members()` `:56`, `Payload(Output pObject)` `:67`, the per-field `Try` in `Field(pField)` `:90-100`, the `ReadSource(pField)` seam `:115-130`, `LogSourceFailure` `:303`, `Parameter LOGSUBSYSTEM` `:23`. Its header `:16-18` is where uptime, mirror and cluster were deferred to this story.
 - `src/OcuPilot/Api/UiAbout.cls:13` — `Extends OcuPilot.Kernel.Shell.About`; `HandleAbout()` `:21` calls `..Payload(.tObject)` `:25` then `Response.JSON` `:30`, `Error.RenderInternal` `:27`/`:32`. Mirror this split exactly.
 - `src/OcuPilot/Api/Namespaces.cls:34` — the `%SYS` explicit save/restore precedent (AD-16).
-- `src/OcuPilot/Api/Router.cls` — `<Routes>` tail `:112` `/ui/about`, `:113` `/ui/help`, `:114` `</Routes>`; last wrappers `UiAbout()` `:408` and `UiHelp()` `:415` (ends `:418`). `OnPreDispatch` resolves and switches to the `?ns=` namespace once, validated by `CanonicalNamespace` `:497` and `MayEnterNamespace` `:474` (`:596-604`), so a handler already runs in the scoped namespace.
+- `src/OcuPilot/Api/Router.cls` — `<Routes>` tail `:112` `/ui/about`, `:113` `/ui/help`, `:114` `</Routes>`; last wrappers `UiAbout()` `:408` and `UiHelp()` `:415` (ends `:418`). `OnPreDispatch` resolves and validates the `?ns=` namespace once (`CanonicalNamespace` `:497`, `MayEnterNamespace` `:474`, `:596-604`) and then **stashes** it with `##class(OcuPilot.Kernel.Scope).Set(tNs)` `:628`. It **never assigns `$NAMESPACE`**, so a handler does **not** run in the scoped namespace: it reads `##class(OcuPilot.Kernel.Scope).Current()` and enters that namespace itself under AD-16 where it needs to.
 - `src/OcuPilot/Test/EndpointCoverage.cls` — `XData Probes` `:72`, 43 rows, `/ui/help` last at `:117`, `</probes>` `:121`. Row format verbatim (`:112`): `<probe class="Api.Router" method="GET" url="/ui/about" path="/api/ocupilot/ui/about" disposition="envelope"/>`. `TestEveryRouteHasAProbeAndEveryProbeHasARoute()` `:326` is what reddens CI without it.
 - `scripts/check-objectscript.py:1473-1478` — the four `WIRE_MARKERS`; `:1558` `names_key` requires the route path to appear **in code**, not in a comment (`:1483-1491` strips comments). `src/OcuPilot/Test/UiAboutWire.cls` satisfies all five at `:27`, `:39`, `:49`, `:51` and `Parameter ABOUTPATH` `:15`.
 - `src/OcuPilot/Test/UiAboutRead.cls` — the read-test shape: `Parameter WIREMEMBERS` `:17`, `OnBeforeOneTest`/`OnAfterOneTest` `:27`/`:33` clearing the seam fixture.

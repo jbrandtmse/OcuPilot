@@ -4600,3 +4600,33 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: AgentViolation.TestViolationCodesHoldsEveryDeclaredFieldLevelCode filters %Dictionary.CompiledParameter on $Extract(tName,1,5)='AGENT', so HELPROUTE - like ACCOUNT* and PREFERENCES* before it - is invisible to it; a later HELP* code with no ReasonForViolation arm renders a blank refusal line under the field and only a hand-written wire assertion would catch it
 - 2026-09-20T17:44:55Z status=routed owner=range-end-cleanup by=cr note=pre-existing gap widened by one family; this story's own code is pinned over the wire by UiAboutWire
+
+### DW-1387: Running the full browser suite twice against one throwaway reddens two messages-log tests, because that spec's seeded entries fall out of the rendered tail window
+- source: spec-15-4-home-s-system-information-panel.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: messages-log.browser-spec.mjs:77 seeds five console entries once per container and refuses to re-seed while the markers exist; the suite's other specs then write ~460 further log lines, pushing the seed out of the tail. Measured twice, seed at lines 768-773 of a 1235-line file. CI is unaffected because it builds a fresh container per run
+- 2026-09-20T21:07:26Z status=routed owner=range-end-cleanup by=harvest note=the file is one Epic 5 has modified, so Epic 15 may not repair it; non-blocking because every CI run gets a fresh container
+
+### DW-1388: Resizing a tab from 1440px to 720px leaves the document scrolling horizontally by about 22px, and the overflowing element is the agent panel rather than Home
+- source: spec-15-4-home-s-system-information-panel.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Measured during Story 15.4's AC2 browser work: Home's own block row wraps correctly (.ocu-home-remembered is flex-wrap:wrap with min-width:0 per block), and the element that overflows is app-panel / .ocu-panel, which is Epic 5's carve
+- 2026-09-20T21:07:26Z status=escalated owner=range-end-cleanup by=harvest note=for the user at the decision sheet: a user-visible horizontal scroll at the 720px 200%-zoom floor, on a file Epic 15 is forbidden to touch, so it needs an owner outside this epic rather than a silent re-own
+
+### DW-1389: ci-throwaway.sh writes its compose file from an unquoted heredoc whose body contains a backticked word, so the shell command-substitutes it away
+- source: spec-15-4-home-s-system-information-panel.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: scripts/ci-throwaway.sh:172; the emitted compose file loses the backticked word from a comment. Latent rather than active: the throwaway comes up correctly
+- 2026-09-20T21:07:26Z status=routed owner=range-end-cleanup by=harvest note=non-blocking; the corruption is confined to a comment in the generated file
+
+### DW-1390: EndpointCoverage's dispatch test fails on the slot B dev instance because that container serves no client bundle
+- source: spec-15-4-home-s-system-information-panel.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: TestEveryProbeDispatchesToItsRoute's two Api.StaticHandler rows answer 503 on ocupilot-slot-b, whose /durable/iris/csp/ocupilot is empty because slot B is compiled into and never installed into. Passed at run 434, failing since run 454, both before Story 15.4's implement pass. It passes wherever the install runs, including CI and a throwaway
+- 2026-09-20T21:07:38Z status=wontfix-accepted owner=15-4-home-s-system-information-panel by=harvest note=reopen_if=the two Api.StaticHandler rows fail on a properly installed instance -- a throwaway or CI -- rather than only on the compiled-into dev instance
+
+### DW-1391: Api/UiSystem.HandleSystem's two Error.RenderInternal paths are never exercised
+- source: spec-15-4-home-s-system-information-panel.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Payload() only answers an error if %Set itself raises, which no constructible input reaches, so neither internal-error arm has a pinning test
+- 2026-09-20T21:07:38Z status=routed owner=range-end-cleanup by=harvest note=non-blocking coverage gap on an arm no constructible input reaches; pinning it needs a fault-injection seam the class does not have
+
+### DW-1392: The System Information row sets a hard height where DESIGN.md says every height outside the virtualized lists is a minimum, so a text-only resize clips the row
+- source: spec-15-4-home-s-system-information-panel.md | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: ui/src/styles/_components.scss:5020 sets height on .ocu-home-system-row; DESIGN.md makes heights outside the virtualized lists minimums, so text-only zoom clips rather than growing the row
+- 2026-09-20T21:07:38Z status=routed owner=range-end-cleanup by=harvest note=non-blocking at the shipped type scale and contradicts a published DESIGN.md contract rather than an AD; a one-line min-height change belongs with the other shell-chrome polish
