@@ -487,6 +487,45 @@ Method TestTheRowRecordsWhatWasExecuted()
     Do $$$AssertEquals(..MarkerRows(tSince, """proposalId"":""" _ tKey _ """", .tNone), 0, "no agent-write marker was written")
 }
 
+/// <p><b>DW-1380.</b> The row <method>OpenConfirmedWrite</method> opens is the trace a write
+/// nobody can account for leaves -- but only if an exception escaping mid-flight actually leaves
+/// it <code>pending</code>, rather than every failure eventually finalizing it. This drives a real
+/// exception out of the port call, not a returned error status: <method>ArmWriteFault</method>
+/// (<method>TestTheRowRecordsWhatWasExecuted</method> above) exercises the
+/// <code>$$$ISERR(tWriteSC)</code> branch, which finalizes <code>error</code>; a process that dies
+/// between the open and that branch never reaches it at all, and
+/// <method>OcuPilot.Test.ProposalFixture.ArmWriteException</method> is what a real crash looks
+/// like from the caller's side.</p>
+/// <p>Mutation (Rule 19): in <method>OcuPilot.Kernel.Proposal.Confirm.Transition</method>'s outer
+/// <code>Catch</code>, finalize the ledger row <code>error</code> the same way the write-failure
+/// branch does, using the caught exception's status as <var>pCode</var> -- the row reads
+/// <code>error</code> instead of <code>pending</code> and this goes red.</p>
+Method TestARowIsLeftPendingWhenTheWriteRaises()
+{
+    Do ##class(OcuPilot.Test.ProposalFixture).Clear()
+    If '..Fresh(.tFresh) Quit
+    Set tSince = ##class(OcuPilot.Test.AuditEvent).Now()
+    Set tKey = ..Seed(tFresh, .tTurnKey)
+    If tKey = "" Quit
+
+    ; Same fingerprint setup as the finalized-error leg above: the fixture must answer the object
+    ; the mint merged over, or the fingerprint refuses before the claim is even made.
+    Do ##class(OcuPilot.Test.ProposalFixture).Arm(tFresh.%ToJSON())
+    Do ##class(OcuPilot.Test.ProposalFixture).ArmWriteException()
+
+    Set tSC = $ClassMethod(..#FIXTURECONFIRM, "Confirm", tKey, "", $Username, .tResult, .tHttp, .tCode, .tDetail)
+    Do $$$AssertStatusNotOK(tSC, "the confirm answers the raised exception as an internal failure")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 1, "the port really was called before it raised")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "State"), "confirmed", "the claim already committed, so the proposal is still confirmed")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "Burned"), 1, "and burned")
+
+    Do $$$AssertEquals(..WriteRow(tTurnKey, .tRow), 1, "the row opened before the call is still there")
+    Do $$$AssertEquals($Get(tRow("Status")), $Parameter(..#STORE, "STATUSPENDING"), "left pending -- nobody finalized it, which is the trace itself")
+    Do $$$AssertEquals($Get(tRow("Code")), "", "carrying no code, because nothing set one")
+    Do $$$AssertEquals($Get(tRow("AuditMarked")), "", "and no claim about marking either, exactly as when the row was opened")
+    Do $$$AssertEquals(..MarkerRows(tSince, """proposalId"":""" _ tKey _ """", .tNone), 0, "no agent-write marker was written")
+}
+
 /// <p><b>AC1</b>, the half no shipped descriptor can drive: a name the descriptor declared secret
 /// is excluded from the row's field list <b>at write time</b> (AD-3), never redacted afterwards.
 /// No shipped screen declares a secret argument yet, so the declaration is supplied as data.</p>

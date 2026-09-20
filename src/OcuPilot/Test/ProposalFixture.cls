@@ -68,6 +68,7 @@ ClassMethod ArmWrite(pJson As %String)
 {
     Set ^||OcuPilotProposalFixture("write") = pJson
     Kill ^||OcuPilotProposalFixture("writefault")
+    Kill ^||OcuPilotProposalFixture("writeexception")
 }
 
 /// <p>Answer the next mutating <method>Invoke</method> the way the port answers an endpoint that
@@ -75,6 +76,20 @@ ClassMethod ArmWrite(pJson As %String)
 ClassMethod ArmWriteFault(pHttpStatus As %Integer = 500)
 {
     Set ^||OcuPilotProposalFixture("writefault") = pHttpStatus
+    Kill ^||OcuPilotProposalFixture("writeexception")
+}
+
+/// <p>Answer the next mutating <method>Invoke</method> by raising an actual ObjectScript
+/// exception rather than returning an error status -- the shape a process dying mid-call takes.
+/// <method>ArmWriteFault</method> cannot reach this: it <i>returns</i> an error, which
+/// <method>OcuPilot.Kernel.Proposal.Confirm.Transition</method> handles in its normal
+/// <code>$$$ISERR(tWriteSC)</code> branch and finalizes; an exception instead escapes to
+/// <method>Transition</method>'s own <code>Catch</code>, which never calls
+/// <method>FinalizeConfirmedWrite</method> at all -- the DW-1380 <code>pending</code> trace.</p>
+ClassMethod ArmWriteException()
+{
+    Set ^||OcuPilotProposalFixture("writeexception") = 1
+    Kill ^||OcuPilotProposalFixture("writefault")
 }
 
 /// <p>The body of the last mutating call, as compact JSON; <code>""</code> when none was made.</p>
@@ -193,6 +208,12 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         ; declared secret values merged in).
         Do $Increment(^||OcuPilotProposalFixture("writes"))
         Set ^||OcuPilotProposalFixture("writebody") = $Select($IsObject(pBody): pBody.%ToJSON(), 1: "")
+        If $Get(^||OcuPilotProposalFixture("writeexception")) {
+            ; The call really reached the port -- the increment above already counted it -- and
+            ; then raised instead of returning, which is what leaves a caller's ledger row
+            ; unfinalized rather than finalized error.
+            Throw ##class(%Exception.General).%New("OcuPilot.Test.ProposalFixture: forced write exception")
+        }
         If $Data(^||OcuPilotProposalFixture("writefault")) {
             Set pHttpStatus = +^||OcuPilotProposalFixture("writefault")
             Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, "The instance refused that operation")

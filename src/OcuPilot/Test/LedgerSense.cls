@@ -105,11 +105,14 @@ Method OwnRow(pUser As %String, pTurnKey As %String) As %DynamicObject
 }
 
 /// <p>How many of <var>pTurnKey</var>'s rows a cross-user reader holding the administrative pair
-/// and nothing else is given, with the withheld count in <var>pWithheld</var>.</p>
-Method CrossUserRows(pTurnKey As %String, Output pWithheld As %Integer) As %Integer
+/// and nothing else is given, with the withheld count in <var>pWithheld</var>. <var>pOwner</var>
+/// defaults to <parameter>PROBEUSER</parameter>; the two governance-refusal legs below pass
+/// <code>$Username</code>, whose turn they drive directly rather than through the mismatch this
+/// class's cheapest refusal uses.</p>
+Method CrossUserRows(pTurnKey As %String, Output pWithheld As %Integer, pOwner As %String = {..#PROBEUSER}) As %Integer
 {
     Set pWithheld = -1
-    Set tSC = $ClassMethod(..#GATEPROBE, "ViewForUser", ..#READER, ..#PROBEUSER, 0, pTurnKey, 10, .tView, .tFault)
+    Set tSC = $ClassMethod(..#GATEPROBE, "ViewForUser", ..#READER, pOwner, 0, pTurnKey, 10, .tView, .tFault)
     Do $$$AssertStatusOK(tSC, "the cross-user read resolves")
     Do $$$AssertEquals($IsObject(tFault), 0, "and is not refused at the cross-user gate")
     If '$IsObject(tView) Quit -1
@@ -286,6 +289,92 @@ Method TestAClientCallRefusedBeforeItsPairsWereReadIsNotNone()
     Do $$$AssertEquals(..CrossUserRows(tKey, .tWithheld), 0, "and it is withheld cross-user")
     Do $$$AssertEquals(tWithheld, 1, "counted as withheld")
     Do ##class(OcuPilot.Kernel.State.Turn).GuardedFinish(tKey, tUser, "completed", "", "", "done", 0, ..#LIMITS)
+}
+
+/// <p><b>DW-1381, the governance-gate-error branch.</b> The user-mismatch leg above is the
+/// cheapest of the three refusals <method>ResolveClientCall</method> returns before it reads a
+/// privilege pair, but the review pass's fix threads <var>pPairsResolved</var> through all four
+/// <method>OcuPilot.Kernel.Agent.Loop.RecordClientRow</method> call sites uniformly, and only that
+/// one leg carried its own assertion. This drives the second: the governance gate itself answers
+/// with an error status, which <method>ResolveClientCall</method> reads the same way as
+/// <code>TOOL.UNAVAILABLE</code> -- refused before <var>pPairsResolved</var> is ever set. The
+/// turn's owner is <code>$USERNAME</code> itself here, not <parameter>PROBEUSER</parameter>, so
+/// the call reaches the gate rather than refusing on identity first.</p>
+/// <p>Mutation (Rule 19): pass <var>pClassified</var> in place of <var>pPairsResolved</var> at
+/// <method>Loop.RecordClientRow</method>'s <method>SenseFor</method> call -- the same production
+/// change <method>TestAClientCallRefusedBeforeItsPairsWereReadIsNotNone</method> pins -- and this
+/// goes red on the sense and on the cross-user release, because this branch also carries
+/// <var>pSecretDeclared</var> 1 with no pair ever read.</p>
+Method TestAGovernanceGateErrorRefusedBeforeItsPairsWereReadIsNotNone()
+{
+    Set tUser = $Username
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedReserve(tUser, "1", "TURN.ABANDONED.JOBLOST", ..#LIMITS, .tKey, .tBusy, .tSweep), "a turn is reserved")
+    Do $$$AssertEquals(tBusy, 0, "and is not busy")
+    If $Get(tKey) = "" Quit
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedBegin(tKey, tUser, ..#LIMITS, .tBegun, .tStarted, "permissions/users"), "and begun")
+
+    Set tBlock = {"id": "toolu_gateerror"}
+    Do tBlock.%Set("name", ..#CLIENTWIRE, "string")
+    Do tBlock.%Set("input", {"Name": "probe"})
+    Set tUses = []
+    Do tUses.%Push(tBlock)
+    Set tLog = []
+    Set tMessages = 0
+    Do ##class(OcuPilot.Test.LedgerClientDispatchProbe).FailGate()
+    Set tSC = $ClassMethod(..#CLIENTLOOP, "AnswerTools", tKey, tUser, "1", "", tUses, ..#LIMITS, .tMessages, tLog, .tLastSeq, 0, "", 0, 0, .tState, .tCode, 0, "permissions/users")
+    Do ##class(OcuPilot.Test.LedgerClientDispatchProbe).ClearGate()
+    Do $$$AssertStatusOK(tSC, "the client call is answered even though the gate failed")
+
+    Set tRow = ..OwnRow(tUser, tKey)
+    If $IsObject(tRow) {
+        Do $$$AssertEquals(tRow.requiredPairs, "", "the row records no requirement, because nothing read one")
+        Do $$$AssertEquals(tRow.pairsSense, $ClassMethod(..#LEDGER, "SenseChecked"), "under checked rather than none: the gate refused before any pair was read")
+    }
+    Do $$$AssertEquals(..CrossUserRows(tKey, .tWithheld, tUser), 0, "and it is withheld cross-user")
+    Do $$$AssertEquals(tWithheld, 1, "counted as withheld")
+    Do ##class(OcuPilot.Kernel.State.Turn).GuardedFinish(tKey, tUser, "completed", "", "", "done", 0, ..#LIMITS)
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.TurnFixture).RemoveTurns(.tRemaining, tUser), "the probe turn run under the process account is removed")
+    Do $$$AssertEquals(tRemaining, 0, "and none survives")
+}
+
+/// <p><b>DW-1381, the tool-denied branch.</b> The third refusal
+/// <method>ResolveClientCall</method> returns before it reads a privilege pair: the gate decides
+/// and denies. Same shape and same reason as the governance-gate-error leg above -- only the
+/// gate's own answer differs.</p>
+/// <p>Mutation (Rule 19): pass <var>pClassified</var> in place of <var>pPairsResolved</var> at
+/// <method>Loop.RecordClientRow</method>'s <method>SenseFor</method> call -- the same production
+/// change the two legs above pin -- and this goes red on the sense and on the cross-user
+/// release.</p>
+Method TestAToolDeniedRefusedBeforeItsPairsWereReadIsNotNone()
+{
+    Set tUser = $Username
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedReserve(tUser, "1", "TURN.ABANDONED.JOBLOST", ..#LIMITS, .tKey, .tBusy, .tSweep), "a turn is reserved")
+    Do $$$AssertEquals(tBusy, 0, "and is not busy")
+    If $Get(tKey) = "" Quit
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedBegin(tKey, tUser, ..#LIMITS, .tBegun, .tStarted, "permissions/users"), "and begun")
+
+    Set tBlock = {"id": "toolu_tooldenied"}
+    Do tBlock.%Set("name", ..#CLIENTWIRE, "string")
+    Do tBlock.%Set("input", {"Name": "probe"})
+    Set tUses = []
+    Do tUses.%Push(tBlock)
+    Set tLog = []
+    Set tMessages = 0
+    Do ##class(OcuPilot.Test.LedgerClientDispatchProbe).DenyGate("AGENT.PROBEDENIED")
+    Set tSC = $ClassMethod(..#CLIENTLOOP, "AnswerTools", tKey, tUser, "1", "", tUses, ..#LIMITS, .tMessages, tLog, .tLastSeq, 0, "", 0, 0, .tState, .tCode, 0, "permissions/users")
+    Do ##class(OcuPilot.Test.LedgerClientDispatchProbe).ClearGate()
+    Do $$$AssertStatusOK(tSC, "the client call is answered even though the gate denied")
+
+    Set tRow = ..OwnRow(tUser, tKey)
+    If $IsObject(tRow) {
+        Do $$$AssertEquals(tRow.requiredPairs, "", "the row records no requirement, because nothing read one")
+        Do $$$AssertEquals(tRow.pairsSense, $ClassMethod(..#LEDGER, "SenseChecked"), "under checked rather than none: the gate denied before any pair was read")
+    }
+    Do $$$AssertEquals(..CrossUserRows(tKey, .tWithheld, tUser), 0, "and it is withheld cross-user")
+    Do $$$AssertEquals(tWithheld, 1, "counted as withheld")
+    Do ##class(OcuPilot.Kernel.State.Turn).GuardedFinish(tKey, tUser, "completed", "", "", "done", 0, ..#LIMITS)
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.TurnFixture).RemoveTurns(.tRemaining, tUser), "the probe turn run under the process account is removed")
+    Do $$$AssertEquals(tRemaining, 0, "and none survives")
 }
 
 /// <p>The sense the shipped dispatcher wrote for one answered call on <var>pTurnKey</var>, read

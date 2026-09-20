@@ -4,6 +4,7 @@ type: 'feature'
 created: '2026-09-20'
 status: 'done'
 baseline_revision: '814ae9e41db722a1cdbec7984eeffc4ca72a3f41'
+baseline_commit: '814ae9e'
 review_loop_iteration: 0
 followup_review_recommended: true
 context:
@@ -724,6 +725,42 @@ the same account.
 
 Each mutation's outcome is recorded here as `mutation: <change> -> <test>` by whoever adds or
 materially changes the pinning test.
+
+**QA pass additions (test generation stage, three deferred-list gaps).** No new test files;
+methods added to three already-shipped classes plus one fixture extension. Each was run alone on
+`ocupilot-ci`, landed in `%UnitTest_Result` before the next call, and every mutation below was
+applied, observed red, reverted and reconfirmed green, with `git status --short` unchanged
+afterwards (mutations ran against the throwaway's own bind-mounted source copy, never the tracked
+worktree, so the tracked tree carries no trace of them).
+
+- `OcuPilot.Test.AuditMarker.TestARowIsLeftPendingWhenTheWriteRaises` (DW-1380): a real exception
+  out of the port call (`OcuPilot.Test.ProposalFixture.ArmWriteException`, new) leaves the
+  `write`-kind row `pending` -- `OpenConfirmedWrite` ran, nothing after it did.
+  mutation: in `Confirm.Transition`'s outer `Catch`, finalize the row `error` the same way the
+  write-failure branch does -> the test's `Status`/`Code`/`AuditMarked` assertions go red (reads
+  `error` instead of `pending`).
+- `OcuPilot.Test.LedgerSense.TestAGovernanceGateErrorRefusedBeforeItsPairsWereReadIsNotNone` and
+  `.TestAToolDeniedRefusedBeforeItsPairsWereReadIsNotNone` (DW-1381): the two refusal branches
+  the review pass's fix left unpinned -- `OcuPilot.Test.LedgerClientDispatchProbe` gained an
+  armable `GateClass` (`FailGate`/`DenyGate`, mirroring `OcuPilot.Test.ToolDispatchProbe`'s
+  pattern) so both reach `ResolveClientCall` with the turn's owner as `$USERNAME` rather than the
+  mismatch the existing leg drives.
+  mutation (same production change both legs share): pass `pClassified` in place of
+  `pPairsResolved` at `Loop.RecordClientRow`'s `SenseFor` call -> both new tests go red on the
+  recorded sense **and** on the cross-user release, exactly as the existing user-mismatch test
+  does.
+- DW-1378/DW-1379 (the banner sentence and the instance-wide flag conflating "the instance said
+  no" with "we never asked"): no test added. `FingerprintMatches` and `RecordAgentWrite` parse the
+  *same* stored `TargetRef` with `EntityRef.Parse`, and the former runs first and refuses the
+  confirm outright on a parse failure -- so a `TargetRef` malformed enough to fail the marker's
+  parse never reaches the marker step at all; it refuses earlier instead. No fixture seam reaches
+  the marker's parse without first tripping the fingerprint's, so the branch DW-1379 names has no
+  drivable path without a production change, matching the review pass's own finding at that row.
+  A hollow test (asserting the drop path's already-covered shape a second time) was not written.
+
+New test file: none. Files touched:
+`src/OcuPilot/Test/AuditMarker.cls`, `src/OcuPilot/Test/LedgerSense.cls`,
+`src/OcuPilot/Test/LedgerClientDispatchProbe.cls`, `src/OcuPilot/Test/ProposalFixture.cls` (QA).
 
 ## Auto Run Result
 
