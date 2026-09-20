@@ -64,6 +64,18 @@ epics:
     depends_on: [epic-3]
     submodules: []
     paths_hint: ["src/OcuPilot/Kernel/Agent/**", "src/OcuPilot/Kernel/State/**", "src/OcuPilot/Kernel/Audit/**", "src/OcuPilot/Kernel/Restraint.cls", "src/OcuPilot/Kernel/Utils.cls", "src/OcuPilot/Kernel/Egress.cls", "src/OcuPilot/Kernel/Secret/Ladder.cls", "src/OcuPilot/Kernel/Provider/**", "src/OcuPilot/Port/ProviderPort.cls", "src/OcuPilot/Port/AdminPort.cls", "src/OcuPilot/Screen/Tool/**", "src/OcuPilot/Screen/Read.cls", "src/OcuPilot/Screen/Registry.cls", "src/OcuPilot/Screen/Descriptor/Base.cls", "src/OcuPilot/Screen/Descriptor/Home.cls", "src/OcuPilot/Api/Turn*.cls", "src/OcuPilot/Api/Router.cls", "src/OcuPilot/Api/Error.cls", "src/OcuPilot/Api/Definitions.cls", "src/OcuPilot/Install/Installer.cls", "src/OcuPilot/Install/Smoke.cls", "src/OcuPilot/Test/**", "scripts/check-objectscript.py", "scripts/test_check_objectscript.py", "ui/src/app/shell/**", "ui/src/app/app.ts", "ui/src/app/app.spec.ts", "ui/src/app/core/**", "ui/src/app/areas/home/**", "ui/src/styles/**", "ui/package.json", "ui/package-lock.json", "ui/angular.json", "ui/tools/**", "ui/browser/**"]
+  # CARVE, narrowed 2026-09-20 (orchestrator correction, third of its kind this run).
+  # Epic 5 holds the PROPOSAL AND TURN SURFACE, named as files rather than as a glob:
+  #   ui/src/app/shell/{panel.ts,panel.spec.ts,proposal-card*,reply*,tool-call-card*}
+  #   ui/src/app/core/{proposal-view.ts,turn.ts}
+  # RELEASED from the carve: ui/src/app/shell/panel-resize-handle* -- it matched the old
+  # "shell/panel*" glob BY NAME ONLY. Epic 4 created it (Story 4.3) and has merged, and Epic 5
+  # never touched it across six stories, so it is trunk under the ordinary rules.
+  # The glob caught a file the reason behind the carve does not reach. Three carves of mine this
+  # run forbade something they were never meant to: Test/** would have made Rule 19 impossible
+  # for every ObjectScript AC; ui/browser/** left an Integration AC with no verification; this
+  # one would have forced an AC amendment or a localStorage copy AD-50 says FAILS the criterion.
+  # Draw a carve from the files a reason reaches, not from a name they happen to share.
   epic-5:
     depends_on: [epic-4]
     submodules: []
