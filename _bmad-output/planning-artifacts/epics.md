@@ -3497,6 +3497,8 @@ So that no policy change or configuration mistake can make them reachable.
 - **Then** it is **never advertised as a tool** and is refused on the instance whatever the caller
 - **And** governance can disable a permitted tool but can **never enable a prohibited one**.
 
+- DW-1207 (**floor-blocking**, owner decision 2026-09-19): `AutheEnabled`, `Resource` and `DispatchClass` are settable ordinary arguments of the first write tool, so a confirmed write can make a web application unauthenticated, drop its authorization resource, or repoint its dispatch at arbitrary compiled code. AD-10's set exists so some actions are never offered **even with confirmation**; this must ship in Release 1, and Story 5.3 left `Write.ProhibitedClass()` as the single seam inside the atomic transition for it (ledger; routed by merge_gate 2026-09-19)
+
 - **Given** a screen enforces a self-protection rule in its UI - refusing to disable the current user, act on the user's own process, or delete OcuPilot's own applications
 - **When** that rule is assessed
 - **Then** it is an affordance, **not a prohibition**: the instance refuses it on the write path regardless of what the UI does.

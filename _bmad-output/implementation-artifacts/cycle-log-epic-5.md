@@ -113,3 +113,4 @@ Runner mode (parallel /epic-cycle), slot A, worktree `.worktrees/epic-5`, branch
 2026-09-20T07:24:48Z	Story 5.4	ci_resolved	story=5.4 run=35495500607 result=success resolved_at=next_plan note=all_six_jobs_green_on_head_9e1d41e;the_earlier_run_on_d213550_read_cancelled_because_my_follow-up_bookkeeping_push_superseded_it
 2026-09-20T07:24:48Z	Epic 5	ci_green_verified	run=35495500607 head=9e1d41e
 2026-09-20T07:24:58Z	Epic 5	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp at=2bb7ab5 merge_sha=e54eaee conflicts=0 note=bookkeeping_only_-_cycle-log-parallel,_deferred-work_union_merge_and_epic-dependencies;no_source_changed_so_no_re-verification_owed
+2026-09-20T07:25:31Z	Epic 5	ledger_routed_planned	story=5-5-prohibited-actions-are-absent-from-the-tool-set entries=1 excess=0 by=merge_gate note=DW-1207_re-owned_from_5-8_and_bulleted_as_floor-blocking_per_the_owners_decision
