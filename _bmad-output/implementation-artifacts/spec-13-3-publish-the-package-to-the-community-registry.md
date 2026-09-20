@@ -4,7 +4,7 @@ type: 'feature'
 created: '2026-09-19'
 status: 'done'
 baseline_revision: 'f5588ae72fda83f9b4d403d702c9d7a704ce4625'
-baseline_commit: 'f5588ae72fda83f9b4d403d702c9d7a704ce4625'
+baseline_commit: 'd965e4d'
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []

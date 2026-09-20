@@ -69,3 +69,6 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-20T10:14:55Z	Story 13.3	rework_opened	cycle_iteration=1 iteration=1 trigger=high items=DW-1334 scope_baseline=4fa4c4f
 2026-09-20T10:20:03Z	Story 13.3	ci_resolved	story=13.3 run=35503250843 result=failure resolved_at=rework verdict=real_regression_package_job job=106058629958 evidence=archive_phase_exit1_missing_14_staged_bundle_files
 2026-09-20T10:20:03Z	Story 13.3	stage_spawned	stage=implement spawn_at=2026-09-20T10:20:03Z model=claude-opus-5[1m] agent_name=13-3-publish-the-package-implement-2 cycle_iteration=2
+2026-09-20T11:01:31Z	Story 13.3	dev_complete	spawn_at=2026-09-20T10:22:31Z model=claude-opus-5[1m] build_sha=6dbc16c baseline_revision=f5588ae review_loop_iteration=1 followup_review_recommended=false deferred=3 files=5 cycle_iteration=2
+2026-09-20T11:01:31Z	Story 13.3	ci_resolved	story=13.3 run=35506409237 result=package_job_success resolved_at=rework evidence=archive_1083100_bytes_135_classes_14_bundle_members_manifest_11_declarations_0_repo_rows_before_and_after_smoke_42of42_PASSED_on_a_second_fresh_instance_no_network
+2026-09-20T11:01:31Z	Story 13.3	stage_spawned	stage=code-review spawn_at=2026-09-20T11:01:31Z model=claude-opus-5[1m] agent_name=13-3-publish-the-package-cr-3 cycle_iteration=2 scope=rework_only
