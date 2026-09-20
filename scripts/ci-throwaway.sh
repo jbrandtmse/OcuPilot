@@ -77,6 +77,24 @@ esac
 
 COMPOSE_FILE="$DIR/compose.yml"
 
+# How many times a bring-up that failed on a host-port bind is retried (DW-439), and the base of
+# the wait between attempts. The wait grows with the attempt (2s, then 4s), because three cycles
+# run back to back would otherwise ask for the port again well inside the seconds a transient
+# occupant holds it for. Overridable so a test that stubs docker can set it to 0.
+BIND_ATTEMPTS=3
+BIND_RETRY_SECONDS="${OCUPILOT_BIND_RETRY_SECONDS:-2}"
+
+# The kernel's ephemeral port range, named in the exhaustion message so the next occurrence is a
+# measurement rather than the inference the ledger entry recorded. Linux only; anywhere else it
+# says so rather than printing nothing.
+ephemeral_range() {
+    if [ -r /proc/sys/net/ipv4/ip_local_port_range ]; then
+        tr '\t' '-' < /proc/sys/net/ipv4/ip_local_port_range | tr -d '\n'
+    else
+        printf 'not readable on this platform'
+    fi
+}
+
 # Remove the throwaway's durable directory, whoever owns what is in it.
 #
 # IRIS creates /durable/iris and everything under it as its own user, uid 51773. On Linux -- every
@@ -151,59 +169,74 @@ services:
     environment:
       ISC_DATA_DIRECTORY: /durable/iris
       OCUPILOT_DEMO: "1"
-      # Arms OcuPilot.Test.LogSourceRotation, which rotates the instance's own messages.log.
-      # Set here and nowhere else: this container is discarded, and the test refuses to run
-      # anywhere the variable is absent rather than trusting a doc comment to keep it off a
-      # development instance.
+      # ARMING ROSTERS. Each block below carries one or more `classes:` lines naming, in
+      # OcuPilot.Test.* short form, every class that declares that variable -- and nothing else
+      # does. ui/tools/ci.test.mjs derives the same set from the declarations under
+      # src/OcuPilot/Test/ and holds the two equal in both directions, so a class that gains or
+      # loses an arming declaration reddens here rather than leaving a roster nobody re-read.
+      # The derivation is structural (the arming Parameter, or an inline \$System.Util.GetEnviron),
+      # never a substring scan: a variable named in a comment and not armed by it is not a
+      # member, and counting one as a member is how a grep-shaped count came out wrong by one.
+      # What is held equal is DECLARING the variable, not refusing on it: a fixture supplies the
+      # destructive helper, declares the variable its callers refuse on, and holds no refusal of
+      # its own (TurnWireFixture). Keeping a declared variable while deleting the refusal beside
+      # it is a change these rosters cannot see -- scripts/check-objectscript.py's
+      # destructive-test-guard rule is what reads that, and DW-419 is where its limits are
+      # recorded.
+      #
+      # Rotates the instance's own messages.log. Set here and nowhere else: this container is
+      # discarded, and the test refuses to run anywhere the variable is absent rather than
+      # trusting a doc comment to keep it off a development instance.
+      # classes: LogSourceRotation
       OCUPILOT_ALLOW_LOG_ROTATION: "1"
-      # Arms every test class that creates or deletes IRIS principals: AgentWireSecurity,
-      # ConfigGate, CredentialPrivilege, LogSourceDenial, ErrorLogDenial, State, Token,
-      # UnexpireScope, Version, Wire and WireSecurityRead.
-      # ConfigGate, LogSourceDenial, ErrorLogDenial, State, Token, UnexpireScope, Version, Wire,
-      # WireSecurityRead and WireOAuthRead -- and OAuthTabs, which creates and removes OAuth 2.0
-      # configuration objects the same way.
-      # Same reasoning, same single home: test classes are selected by package, so a runner
-      # pointed at an instance someone cares about would otherwise create principals on it.
-      # scripts/check-objectscript.py's destructive-test-guard rule holds the population.
+      # Every class that creates or deletes IRIS principals, or the OAuth 2.0 configuration
+      # objects handled the same way. Same reasoning, same single home: test classes are selected
+      # by package, so a runner pointed at an instance someone cares about would otherwise create
+      # principals on it. scripts/check-objectscript.py's destructive-test-guard rule holds the
+      # population.
+      # classes: AgentWireSecurity, ConfigGate, CredentialPrivilege, ErrorLogDenial, LedgerWire
+      # classes: LogSourceDenial, MgmntPortDenial, OAuthTabs, State, Token, ToolWire
+      # classes: TurnContext, TurnConversation, TurnLong, TurnProviderFault, TurnWire
+      # classes: TurnWireFixture, UnexpireScope, Version, Wire, WireOAuthRead, WireSecurityRead
       OCUPILOT_ALLOW_PRINCIPALS: "1"
-      # Arms OcuPilot.Test.ErrorLogSeed, which writes an application error to a namespace's own
-      # ^ERRORS. Same reasoning again, and one degree worse: an application error cannot be
-      # un-logged -- the delete is Epic 5's -- so a runner pointed elsewhere would leave it there.
+      # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
+      # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere
+      # would leave it there.
+      # classes: ErrorLogSeed, ProviderSecret, ProviderStub, ProviderStubTransport
+      # classes: SecretLeak, SecretStoreProbe
       OCUPILOT_ALLOW_ERROR_SEED: "1"
-      # Arms OcuPilot.Test.AuditEvent, which deletes OcuPilot's own audit event registrations to
-      # prove an unregistered triple drops its row, then reinstalls to put them back. It deletes
-      # the configuration triple, and in the smoke-check method the BASELINE RoleGranted triple
-      # that every install since Story 1.3 registers and that EnsureGrant itself emits through.
-      # Same reasoning, one degree worse again: while a registration is gone every row OcuPilot
-      # would write under that triple is dropped with no error and no log line, so a runner
-      # pointed at an instance someone cares about would silently stop auditing it.
+      # Deletes OcuPilot's own audit event registrations to prove an unregistered triple drops
+      # its row, then reinstalls to put them back -- the configuration triple, and the BASELINE
+      # RoleGranted triple every install registers. One degree worse again: while a registration
+      # is gone every row OcuPilot would write under that triple is dropped with no error and no
+      # log line, so a runner pointed at an instance someone cares about would silently stop
+      # auditing it.
+      # classes: AuditEvent, UninstallSurvival
       OCUPILOT_ALLOW_AUDIT_EVENTS: "1"
-      # Arms the twelve test classes that run OcuPilot's PRODUCTION install and had no arming
-      # variable of their own: AuditRecord, AuditVerbs, Static, InstallNamespaceSource,
-      # GatewayGapIpmPath, Manifest, WebApp, UninstallGuard, GrantReadBack, Provenance, Installer
-      # and DemoOptIn (which reaches the install through OcuPilot.Test.InstallerProbe.StartPath
-      # rather than by naming the installer).
-      # It is not the whole population that installs: seven further classes -- ConfigGate, State,
-      # Token, UnexpireScope, Version, Wire and AuditEvent -- run the same install and were already
-      # armed, by OCUPILOT_ALLOW_PRINCIPALS or OCUPILOT_ALLOW_AUDIT_EVENTS. They are protected,
-      # under a variable named for a narrower effect than the one they have.
-      # A production install is not one side effect but a whole set of them -- a database, a
-      # resource, a role, three web applications, the audit registrations and the _SYSTEM unexpire
-      # -- which is why it gets a variable of its own rather than riding on
-      # OCUPILOT_ALLOW_AUDIT_EVENTS: naming it after one of those would mislead the next reader
-      # about what arming it permits.
-      # Consequence, stated plainly: after this, those twelve classes run here and on CI, never on a
-      # development container someone cares about.
+      # Runs OcuPilot's PRODUCTION install. A production install is not one side effect but a
+      # whole set of them -- a database, a resource, a role, three web applications, the audit
+      # registrations and the _SYSTEM unexpire -- which is why it has a variable of its own
+      # rather than riding on a narrower one. It is not the whole population that installs:
+      # seven further classes run the same install and are armed by OCUPILOT_ALLOW_PRINCIPALS or
+      # OCUPILOT_ALLOW_AUDIT_EVENTS instead, under a variable named for a narrower effect than
+      # the one they have. Consequence, stated plainly: the classes below run here and on CI,
+      # never on a development container someone cares about.
+      # classes: AuditRecord, AuditVerbs, DemoOptIn, GatewayGapIpmPath, GrantReadBack
+      # classes: InstallNamespaceSource, Installer, Manifest, Provenance, Static
+      # classes: UninstallGuard, UninstallResidue, UninstallSurvival, WebApp
       OCUPILOT_ALLOW_PRODUCTION_INSTALL: "1"
-      # Arms OcuPilot.Test.ProviderSsl, which runs the installer's EnsureSslConfiguration step
-      # under the probe profile and so creates -- and leaves -- a TLS configuration in the
-      # instance's own security database. Same reasoning as the three above: a runner pointed at
-      # an instance someone cares about would otherwise add a security object to it.
+      # Runs the installer's EnsureSslConfiguration step under the probe profile and so creates
+      # -- and leaves -- a TLS configuration in the instance's own security database. Same
+      # reasoning as the blocks above: a runner pointed at an instance someone cares about would
+      # otherwise add a security object to it.
+      # classes: ProviderSsl
       OCUPILOT_ALLOW_SSL_CONFIG: "1"
       # Arms the turnprobe provider row OcuPilot.Kernel.Provider.Catalog resolves only under it,
-      # and with it OcuPilot.Test.TurnWire, TurnLong and TurnChain, which spawn turn jobs against
-      # that row's scripted adapter. A turn job is a separate process no in-process stub reaches, so
-      # the row is armed by the environment, and only here.
+      # and with it the classes that spawn turn jobs against that row's scripted adapter. A turn
+      # job is a separate process no in-process stub reaches, so the row is armed by the
+      # environment, and only here.
+      # classes: LedgerWire, ToolWire, TurnChain, TurnContext, TurnConversation
+      # classes: TurnLong, TurnProviderFault, TurnStore, TurnWire, TurnWireFixture
       OCUPILOT_ALLOW_TEST_PROVIDER: "1"
     volumes:
       - $DIR/data:/durable
@@ -229,7 +262,54 @@ services:
       - $DIR/scripts:/opt/ocupilot/scripts:ro
 EOF
         echo "ci-throwaway: wrote $COMPOSE_FILE ($IMAGE, web $WEB_PORT, superserver $SUPER_PORT)"
-        docker compose -f "$COMPOSE_FILE" up -d --wait
+        # The bring-up, retried a BOUNDED number of times and ONLY on a host-port bind (DW-439).
+        #
+        # 52776 sits inside the ephemeral range a Linux runner allocates outbound source ports
+        # from -- the kernel default is 32768-60999 -- so an outbound connection opened by
+        # anything else on the box can hold it when compose asks for it, a failure that is over in
+        # seconds and is not about this container at all. 1975 is an order of magnitude below that
+        # floor and cannot be taken that way; a bind failure there is another listener, which the
+        # same retry survives only if that listener goes away. Moving the ports is not the fix:
+        # 52776/1975 are written into CLAUDE.md, _bmad/custom/parallel.yaml and every parallel
+        # runner's spawn prompt.
+        #
+        # Every other failure exits at once. A retry loop that swallows "the image is not
+        # available" or "the install failed" turns one clear error into three and then a
+        # misleading one about a port.
+        #
+        # The bring-up is STREAMED, not captured: the first start takes several minutes, and a
+        # `--wait` that hangs until the job is cancelled printed nothing at all under a captured
+        # bring-up -- the exact situation DW-439 exists for. POSIX sh has no PIPESTATUS, so the
+        # exit code goes to a file inside the pipeline and is read back beside the text.
+        UP_OUTPUT_FILE="$DIR/up-output.txt"
+        UP_RC_FILE="$DIR/up-rc.txt"
+        ATTEMPT=1
+        while : ; do
+            # Cleared first: the exit code is written from inside the pipeline, so if that write
+            # never happens -- the left side killed, the file unwritable -- `cat` would otherwise
+            # read whatever an earlier attempt or an earlier run of this script left behind, and a
+            # stale `0` reads as a bring-up that succeeded. Absent, it reads empty, which is not
+            # "0" and takes the failure path.
+            rm -f "$UP_RC_FILE"
+            { docker compose -f "$COMPOSE_FILE" up -d --wait 2>&1; echo "$?" > "$UP_RC_FILE"; } | tee "$UP_OUTPUT_FILE"
+            if [ "$(cat "$UP_RC_FILE" 2>/dev/null)" = "0" ]; then break; fi
+            UP_OUTPUT=$(cat "$UP_OUTPUT_FILE")
+            case "$UP_OUTPUT" in
+                *"address already in use"*|*"port is already allocated"*|*"ports are not available"*|*"Bind for "*) ;;
+                *)
+                    echo "ci-throwaway: the bring-up failed for a reason that is not a host-port bind; not retried"
+                    exit 1
+                    ;;
+            esac
+            if [ "$ATTEMPT" -ge "$BIND_ATTEMPTS" ]; then
+                echo "ci-throwaway: host port $WEB_PORT (or superserver $SUPER_PORT) was still bound after $BIND_ATTEMPTS attempt(s); this runner's ephemeral port range is $(ephemeral_range), which bears on $WEB_PORT -- $SUPER_PORT is below any default range's floor, so a bind failure there is another listener"
+                exit 1
+            fi
+            echo "ci-throwaway: host port $WEB_PORT is bound; removing this project's containers and retrying (attempt $ATTEMPT of $BIND_ATTEMPTS)"
+            docker compose -f "$COMPOSE_FILE" down -v || true
+            if [ "$BIND_RETRY_SECONDS" -gt 0 ]; then sleep $((BIND_RETRY_SECONDS * ATTEMPT)); fi
+            ATTEMPT=$((ATTEMPT + 1))
+        done
         docker compose -f "$COMPOSE_FILE" ps
         ;;
     logs)

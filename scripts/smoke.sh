@@ -181,7 +181,27 @@ case "$VERDICT" in
         exit 0
         ;;
     FAIL)
-        echo "smoke: the instance did not pass; the failing check is named above"
+        # Every failing check by name, on one quotable line (DW-1079). A report row is
+        # "  " + <outcome padded to 9> + <name> [+ " -- " + reason] (OcuPilot.Install.Smoke), so
+        # awk's default whitespace split puts the outcome in $1 and the name in $2. Without this
+        # the line said only that "the failing check is named above", which is an unattributable
+        # red in a CI log nobody can grep -- and the class-side line names only the first.
+        FAILED=$(printf '%s\n' "$REPORT" | awk '$1 == "fail" { printf "%s%s", (n++ ? ", " : ""), $2 }')
+        NAMED=$(printf '%s\n' "$REPORT" | awk '$1 == "fail" { n++ } END { print n + 0 }')
+        # What the class itself counted, from its own counts line. The criterion is that the line
+        # names EVERY failing check, and the two numbers are the only thing that says it did: a
+        # row the class fails closed on (an outcome outside the four it writes) carries that
+        # outcome in $1 and is invisible to the awk above, so a silent under-report would read as
+        # a complete one. Held equal here rather than assumed.
+        COUNTED=$(printf '%s\n' "$REPORT" | sed -n 's/.*[[:space:]]failed=\([0-9][0-9]*\).*/\1/p' | tail -n 1)
+        if [ -n "$FAILED" ]; then
+            echo "smoke: FAILED check(s): $FAILED"
+            if [ -n "$COUNTED" ] && [ "$COUNTED" != "$NAMED" ]; then
+                echo "smoke: the report counted $COUNTED failure(s) and $NAMED could be named; the rest are in the report above"
+            fi
+        else
+            echo "smoke: the instance did not pass; the failing check is named above"
+        fi
         exit 1
         ;;
     *)
