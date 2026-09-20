@@ -14,40 +14,23 @@ Launch a subagent with no prior conversation context, with this prompt:
 > Containment (/epic-cycle Rule 18): work only in the working directory you were given — verify `git rev-parse --show-toplevel` matches it before acting. You may edit files. You may NOT run `git commit`, `git push`, `git reset`, `git rebase`, or anything that mutates a remote or triggers CI or a deploy — the agent that spawned you commits. You may NOT `SendMessage` any agent, and you will not be messaged after you return: return exactly once, when your work is complete, with the full report above; a partial or interim return strands your work. Run stateful tests against a shared runtime (a live database, an instance, a dev server) one test class or suite per tool call and wait for each to complete — never several test-runner calls in one message, never a re-submit on a client-side timeout. If you cannot finish, say exactly what is missing in the report and stop.
 """
 
+# Owner decision 2026-09-20 (velocity): the implement stage runs TWO self-review layers, verification-gap
+# and intent-alignment. blind-hunter and edge-case-hunter were removed here -- they filed 45-65 findings per
+# story that the stage then spent 30-60 min patching, most re-litigated by the Opus code review that follows
+# every story and still runs all of ITS layers (bmad-code-review.toml, review_tier full-opus). The removed
+# The renderer fills any layer absent from this file from customize.toml, so the two are kept here with an
+# EMPTY instruction, which is the documented way to disable a layer (customize.toml: "empty `instruction`
+# disables it"). Restore them by pasting the kit defaults back into `instruction`.
+
 [[workflow.review_layers]]
 id = "blind-hunter"
 name = "Blind Hunter"
-instruction = """
-Launch a context-free subagent with this prompt:
-
-Conduct a review of CONTENT.
-Look for what's missing, not only what's wrong.
-Find every real issue to fix or improve — there are usually many; if you find fewer than ten, say so rather than pad the list.
-Output a Markdown list of findings only — no severity, priority, or ranking.
-If the content is empty, stop and say so.
-If you have zero findings, re-check once; an empty list after a second pass is a valid result — report it as such, do not manufacture findings.
-
-CONTENT: the unified diff at `{diff_file}`. Read that file — it is the content under review.
-
-Do not invoke any skill, and do not spawn subagents of your own — you are the reviewer. Return your findings as text in your final message; do not route them through any findings-reporting tool the host may offer. Containment (/epic-cycle Rule 18): you read and report only — do not edit files, do not run any git command that writes, do not SendMessage any agent, run at most one test class or suite at a time (never several test-runner calls in one message), and return exactly once.
-
-"""
+instruction = ""
 
 [[workflow.review_layers]]
 id = "edge-case-hunter"
 name = "Edge Case Hunter"
-instruction = """
-Launch a context-free subagent with this prompt:
-
-Read `{skill-root}/review-prompts/edge-case-hunter.md` completely and follow it as your review instructions.
-
-claims_file (leave unread until your instructions call for it): {claims_file}
-
-Review content: the unified diff at `{diff_file}`. Read that file — it is the content under review.
-
-Do not invoke any skill, and do not spawn subagents of your own — you are the reviewer. If the instruction file is unreadable, report that exact failure and stop. Return your findings as text in your final message; do not route them through any findings-reporting tool the host may offer. Containment (/epic-cycle Rule 18): you read and report only — do not edit files, do not run any git command that writes, do not SendMessage any agent, run at most one test class or suite at a time (never several test-runner calls in one message), and return exactly once.
-
-"""
+instruction = ""
 
 [[workflow.review_layers]]
 id = "verification-gap"

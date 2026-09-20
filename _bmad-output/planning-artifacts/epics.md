@@ -592,7 +592,7 @@ Where an FR is split, the epic that first delivers user-visible value from it is
 #### Polish week
 
 - FR-70: Epic 11 - "Explain this screen", per-entry explain entry points and suggested prompts.
-- FR-71: Epic 11 (citation chips), then Epic 16 (the data-egress line and the agent audit viewer, 16.15 and 16.16).
+- FR-71: Epic 11 (citation chips; the privilege line on the proposal card, 11.8), then Epic 16 (the data-egress line and the agent audit viewer, 16.15 and 16.16).
 - FR-72: Epic 14 - copy-out drafts, the governance policy, the sanitizer with its seeded-injection test, and transcripts with retention.
 - FR-73: Epic 15 - the eleven shell conveniences and the light or dark theme.
 - FR-74: Epic 16 - try-it, web sessions, effective privileges and the permission-check tool.
@@ -659,7 +659,7 @@ The epic-level map above says *which epic* owns each requirement and why it is s
 | FR-28 | 3.6 | FR-68 | 1.17, 8.9 |
 | FR-29 | 1.3, 3.8 | FR-69 | 17.1-17.7 |
 | FR-30 | 2.5, 9.2 | FR-70 | 11.1-11.3 |
-| FR-31 | 8.1 | FR-71 | 11.4, 16.15, 16.16 |
+| FR-31 | 8.1 | FR-71 | 11.4, 11.8, 16.15, 16.16 |
 | FR-32 | 5.8, 7.1 | FR-72 | 14.1-14.4 |
 | FR-33 | 6.1 | FR-73 | 15.1-15.6 |
 | FR-34 | 6.1 | FR-74 | 16.1-16.3 |
@@ -731,6 +731,8 @@ Every UX Design Requirement is owned by at least one story. Where a UX-DR is a *
 **Parallel-run amendments, 2026-09-17.** Two more forward references moved so Epic 12 runs beside Epic 9 rather than after Epic 11: the SSL/TLS test connection from Story 12.1 to Story 9.5, and suggested prompts, which every editor now declares in its own descriptor per Story 11.3's contract. Six stories above the floor moved to the polish week as Stories 16.11 to 16.16: Task Manager control (7.7) and lock removal (7.9), which build step 4's list never named; the service editor (9.4) and the LDAP and Kerberos editor (9.6), last in step 6's order, with their reduced forms in Story 9.9 and the LDAP test authentication following its editor; the data-egress line (11.5) and the agent audit viewer (11.6). Epic 11 depends on Epics 4, 5, 6 and 10; Epic 12 on Epics 6, 7 and 8.
 
 **Owner amendment, 2026-09-19.** Story 13.4 (optional bonus items) is scratched: no article, video or short is planned, and FR-79's bonus half is dropped. Epics 13 and 15 join the parallel run, each depending on Epic 1 alone, to fill the slot that would otherwise idle while Epic 5 runs; Story 13.3 (the registry publish) is held until the owner's release decision because what it publishes is public and is whatever the build is when it runs.
+
+**Owner amendment, 2026-09-20 (contest field).** Story 11.8 adds the privilege line to the proposal card from the endpoint's `ResourcesOR()` list and the shell's privilege map; Story 17.6 also ships the walkthrough as a static no-credentials page; Story 7.6 records the 2026.2 task-list `Suspended` quirk. No dependency changes.
 
 **Orchestrator amendment, 2026-09-19.** Two consequences of the amendment above, settled on the owner's
 instruction. Story 13.3's acceptance criteria are rewritten so none of them can be closed by publishing:
@@ -4255,6 +4257,8 @@ So that fixing a stopped task does not need an editor.
 - **When** the agent's navigation target for a suspended task is re-pointed from the schedule list to Task details
 - **Then** UJ-6 is replayed end to end: the agent navigates to **Task details**, the Status **field** highlights, and a toast reads the change with "Open in Task schedule" - completing the journey as the PRD writes it, with no earlier story left unverified.
 
+**Vendor quirk, recorded 2026-09-20 from another entry's validation notes (IRIS 2026.2):** the task list's `Suspended` field does not reflect a suspend or resume that has just been applied, while the task's own info read does. The in-place row update and the write's verification read task info, never the list's field.
+
 ### Story 7.8: Terminate, suspend and resume a process
 
 As a production administrator,
@@ -4917,6 +4921,34 @@ So that a slow model reads as thinking rather than as a hang.
 - **Given** reduced motion or a failure mid-stream
 - **When** either occurs
 - **Then** the reply still resolves to the same final rendering a non-streamed turn would produce.
+
+---
+
+### Story 11.8: The proposal names the privilege it needs
+
+As a developer-administrator reviewing a proposal,
+I want the card to tell me which `%Admin_*` resource the write requires and whether I hold it,
+So that a refusal is predictable before Confirm rather than discovered after it.
+
+**Acceptance Criteria:**
+
+- **Given** a proposal card for any write tool
+- **When** it renders
+- **Then** it carries one line naming the resource the endpoint declares through its `ResourcesOR()` list - the same list `AdminPort` already gates on (AD-29) - and whether the signed-in user holds it, read from the privilege map the shell already loads (Story 1.9, FR-4); no new derivation and no second source of truth.
+
+- **Given** the user lacks the resource
+- **When** the card renders
+- **Then** Confirm stays enabled - the instance is the authority and refuses as it does today - the line reads as a warning naming the missing resource, and the audit marker and the ledger are unchanged.
+
+- **Given** `ResourcesOR()` is a lower bound (AD-29: some vendor queries refuse for resources the list does not name)
+- **When** the line is worded
+- **Then** it says "requires", never "sufficient"; the instance's answer remains the verdict.
+
+- **Given** a row action or a form's Save on a screen from Epics 7 to 9 and 12
+- **When** the same two facts are at hand
+- **Then** the action's tooltip or the Save bar may carry the same line at no extra derivation; where it is not wired, that is a recorded omission rather than a defect.
+
+*Added 2026-09-20 from the contest field: one competing entry previews the required privilege per operation; OcuPilot already holds both facts.*
 
 ---
 
@@ -6067,6 +6099,10 @@ So that the entry's central claim is legible to me even though I will not run it
 - **Given** no hosted demo instance ships, at any point
 - **When** the judge-without-a-key path is assessed
 - **Then** the screenshots and the per-provider key guidance are the whole mitigation, and that is a recorded owner decision rather than an omission.
+
+- **Given** the contest field on 2026-09-20 (three of five competing entries ship a static, no-credentials walkthrough)
+- **When** the walkthrough is assembled
+- **Then** it also ships as a **static page** in the repository (`docs/walkthrough/`, publishable on GitHub Pages) that a judge opens with no instance, no key and no sign-in: the UJ-2 and UJ-3 screenshots in order with captions, labeled plainly as captured from a real build and not live. It is collateral, produced in the same one pass as the screenshots, and it is not an "online demo".
 
 - **Given** the walkthrough's screenshots
 - **When** they are captured
