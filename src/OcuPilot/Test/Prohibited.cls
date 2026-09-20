@@ -277,8 +277,10 @@ Method TestAnUnreadableTargetFailsClosedAndAMissingOneDoesNot()
 /// <p>Mutations: add a field to
 /// <parameter>OcuPilot.Screen.Tool.WebAppUpdate.PERMITTEDFIELDS</parameter> that
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.PermittedChangeFields</method> does not name, add
-/// one to <method>OcuPilot.Kernel.Proposal.Prohibited.PermittedChangeFields</method> alone, and
-/// make the tool declare <code>DispatchClass</code> a secret argument -- each goes red. Dropping
+/// one to <method>OcuPilot.Kernel.Proposal.Prohibited.PermittedChangeFields</method> alone, make
+/// the tool declare <code>DispatchClass</code> a secret argument, declare an unreviewed field such
+/// as <code>EventClass</code> a secret argument, or put a settable field in the descriptor's
+/// <method>FingerprintExcludes</method> -- each goes red. Dropping
 /// <code>DispatchClass</code> from
 /// <method>OcuPilot.Screen.Tool.WebAppUpdate.ExcludedFields</method> does not: the positive list is
 /// what admits a field now, and the exclusions are belt and braces over it.</p>
@@ -329,6 +331,26 @@ Method TestNoWriteToolAdmitsAnAlwaysProhibitedField()
         ; the reviewed few.
         For tI = 1:1:$ListLength(tAlways) {
             Do $$$AssertEquals($ListFind(tPermitted, $List(tAlways, tI)), 0, $List(tAlways, tI) _ " is not among the fields the set permits a change to for " _ tType)
+        }
+        ; Every declared secret is one of the reviewed few, not merely not always-prohibited. The
+        ; confirm merges a supplied secret's value over the stored payload AFTER the prohibited
+        ; verdict is reached, so a name the set has no predicate for, declared secret, would reach
+        ; the vendor body unevaluated and unadvertised -- past the reviewed-few floor above, which
+        ; reads the settable list a secret is not on.
+        For tI = 1:1:$ListLength(tSecrets) {
+            Set tField = $List(tSecrets, tI)
+            Do $$$AssertTrue($ListFind(tPermitted, tField) > 0, tEntry.%Get("name") _ " declares '" _ tField _ "' secret, and the prohibited set has reviewed it for " _ tType)
+        }
+        ; And no field the tool can set is excluded from the fingerprint. AD-6's exclusions are for
+        ; properties the endpoint itself moves as a side effect; an excluded field the tool can set
+        ; may differ between the stored payload and the live target with neither digest noticing,
+        ; and the set is scoped to the diff, so a diff that does not name it makes it invisible to
+        ; both gates.
+        Set tExcludes = ""
+        If tDescriptor '= "" Set tExcludes = $ClassMethod(tDescriptor, "FingerprintExcludes")
+        For tI = 1:1:$ListLength(tExcludes) {
+            Set tField = $List(tExcludes, tI)
+            Do $$$AssertEquals($ListFind(tSettable, tField), 0, tEntry.%Get("name") _ " excludes '" _ tField _ "' from the fingerprint, so it must not be a field the tool can set")
         }
     }
     Do $$$AssertTrue(tWrites > 0, "there is at least one registered write tool to check")

@@ -433,10 +433,21 @@ ClassMethod DefinitionMoved(pDefinitionId As %String, pStoredVersion As %String,
 /// exclusions. A target the instance no longer holds does not match, which closes the row rather
 /// than writing to something that is not there.</p>
 /// <p><b>Two digests must equal the stored one, not one</b> (AD-6): the fresh read merged as above,
-/// and the stored payload the port will actually be sent. The second is what makes the fingerprint
-/// cover the complete property set the write sends -- the mint stores the digest of that very
-/// payload, so a genuine row passes it, and a row whose payload does not describe the write its
-/// fingerprint promises does not match whatever its diff says.</p>
+/// and the stored payload the port will actually be sent.</p>
+/// <p>What the second one does, stated exactly, because it is easy to read more into it. The mint
+/// takes the row's fingerprint over that same payload, so for every row a mint produced the two are
+/// equal by construction and this comparison refuses nothing -- it is not what makes the fingerprint
+/// cover the write. What it refuses is a row whose payload no mint wrote: one stored directly into
+/// OcuPilot's protected tables, or altered after minting. Both sit outside the threat model AD-9 and
+/// AD-33 draw, so this is a backstop behind them rather than a gate the product's own path depends
+/// on -- what keeps a stored payload and its diff describing each other is that the mint writes both
+/// or saves no row at all (DW-1353).</p>
+/// <p>Two things it does not reach either way: a field the descriptor excludes, since both digests
+/// use the same exclusions, and a declared secret's value, which is merged over the payload after
+/// this method returns. Neither is reachable for a registered write tool --
+/// <method>OcuPilot.Test.Prohibited.TestNoWriteToolAdmitsAnAlwaysProhibitedField</method> asserts
+/// that no tool excludes a field it can set and declares no secret outside the prohibited set's
+/// reviewed few -- and that assertion is what holds it, not this comparison.</p>
 ClassMethod FingerprintMatches(pTool As %DynamicObject, ByRef pRow, Output pMatches As %Boolean, Output pEndpoint As %String, Output pIdParam As %String, Output pIdValue As %String) As %Status [ Private ]
 {
     Set pMatches = 0
