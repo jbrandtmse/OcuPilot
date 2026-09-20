@@ -10,8 +10,8 @@
 # that install anything (`load`, and `package` on the build instance), which is what turns
 # "resolved nothing from a package registry" from a promise into a measurement over the phases
 # rather than a snapshot taken before them. `list` only reports what is already there and is the
-# last verb either instance runs. The archive crosses from one container to the other by
-# `docker cp`, which is not network.
+# install instance's last verb; the build instance's last verb is `package`. The archive crosses
+# from one container to the other by `docker cp`, which is not network.
 #
 # The three IPM verbs it issues are `load`, `package` and `list`, and `ui/tools/ipm-archive.test.mjs`
 # holds that set equal to its declared allow-list in both directions.
@@ -96,8 +96,13 @@ case "$DIR" in
 esac
 # The $TMPDIR arm is written with its own separator rather than appended raw: a TMPDIR of `/tmp`
 # would otherwise make `/tmpanything` a sibling that passes as if it were inside.
+# Every trailing slash comes off, not just one: a TMPDIR of `/` would otherwise be stripped to the
+# empty string and make the arm below `/?*`, which passes every absolute path into `rm -rf`.
 SCRATCH_TMPDIR="${TMPDIR:-/nonexistent-tmpdir}"
-SCRATCH_TMPDIR="${SCRATCH_TMPDIR%/}"
+while [ "$SCRATCH_TMPDIR" != "${SCRATCH_TMPDIR%/}" ]; do
+    SCRATCH_TMPDIR="${SCRATCH_TMPDIR%/}"
+done
+[ -n "$SCRATCH_TMPDIR" ] || SCRATCH_TMPDIR=/nonexistent-tmpdir
 case "$DIR" in
     /tmp/?*|/private/tmp/?*|"$SCRATCH_TMPDIR"/?*) ;;
     *) echo "ci-ipm-archive: '$DIR' is not under a scratch root; this directory is removed recursively, so it must be under /tmp, /private/tmp or \$TMPDIR"; exit 2 ;;
@@ -269,7 +274,14 @@ echo "ci-ipm-archive: $ARTIFACT_NAME is $ARCHIVE_BYTES bytes, copied to $ARCHIVE
 
 # --- What is in it, read host-side from the file itself ----------------------------------------
 
-MEMBERS=$(tar tzf "$ARCHIVE")
+RAW_MEMBERS=$(tar tzf "$ARCHIVE")
+# IPM stores some members with a doubled slash at the join, because the declared name already
+# ends in one: `ui/dist/ocupilot-ui/browser//index.html`, `src//cls`. Whether a listing shows
+# that doubling depends on the archive and on the tar implementation reading it, so every
+# comparison below is made over a member list whose repeated slashes are collapsed once, here.
+# $RAW_MEMBERS is kept as listed, because the diagnostic below is the only place the shape IPM
+# actually stored is ever visible -- the container it came from is gone by the time anyone reads it.
+MEMBERS=$(printf '%s\n' "$RAW_MEMBERS" | sed 's#//*#/#g')
 count_members() { printf '%s\n' "$MEMBERS" | grep -c "$1" || true; }
 
 if [ "$(count_members '^module\.xml$')" -lt 1 ]; then
@@ -304,8 +316,8 @@ if [ -n "$MISSING_BUNDLE" ]; then
     # only what it looked for, and a bundle exported under some other prefix is indistinguishable
     # from one that was never exported -- a distinction nobody can make from a CI log afterwards,
     # because the trap has removed the container the archive came from.
-    echo "ci-ipm-archive: $ARTIFACT_NAME carries these non-class members:"
-    printf '%s\n' "$MEMBERS" | grep -v '^src/cls/' | grep -v '^module\.xml$' | head -n 40
+    echo "ci-ipm-archive: $ARTIFACT_NAME carries these non-class members, exactly as tar listed them:"
+    printf '%s\n' "$RAW_MEMBERS" | grep -v '^src/*cls/' | grep -v '^module\.xml$' | head -n 40
     fail "archive" "$ARTIFACT_NAME is missing $(printf '%s' "$MISSING_BUNDLE" | wc -w | tr -d ' ') staged bundle file(s) under '$BUNDLE/':$MISSING_BUNDLE"
 fi
 TEST_MEMBERS=$(printf '%s\n' "$MEMBERS" | grep 'OcuPilot/Test/' || true)

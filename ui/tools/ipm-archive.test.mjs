@@ -258,7 +258,7 @@ test('the manifest drift check runs before anything is staged, and drift stops t
 // --- The refusals, executed with a stub `docker` on PATH ----------------------------------------
 
 /** Run the script with a stub `docker` first on PATH, and report what the stub was asked to do. */
-function runRefused(args, { root = REPO_ROOT } = {}) {
+function runRefused(args, { root = REPO_ROOT, env = {} } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'ocupilot-ipm-archive-'));
   try {
     const bin = join(dir, 'bin');
@@ -272,7 +272,7 @@ function runRefused(args, { root = REPO_ROOT } = {}) {
     const result = spawnSync('sh', [join(root, 'scripts', 'ci-ipm-archive.sh'), ...args], {
       cwd: root,
       encoding: 'utf8',
-      env: stubEnv(bin, { OCUPILOT_DOCKER_CAPTURE: capture, OCUPILOT_DESTRUCTIVE_CAPTURE: destructive }),
+      env: stubEnv(bin, { OCUPILOT_DOCKER_CAPTURE: capture, OCUPILOT_DESTRUCTIVE_CAPTURE: destructive, ...env }),
     });
     return {
       ...result,
@@ -372,6 +372,24 @@ test('a --dir outside a scratch root is refused, because the script removes it r
   }
 });
 
+test('a degenerate TMPDIR does not widen the scratch-root guard to every absolute path', () => {
+  // The guard's $TMPDIR arm is `"$SCRATCH_TMPDIR"/?*`. A TMPDIR that is nothing but slashes strips
+  // to the empty string, and the arm becomes `/?*` -- which every absolute path matches, so the
+  // directory the script is about to `rm -rf` would no longer have to be a scratch directory.
+  for (const value of ['/', '//']) {
+    const refused = runRefused(['--image', PINNED_IMAGE, '--dir', '/Users/someone/work'], {
+      env: { TMPDIR: value },
+    });
+    assert.equal(
+      refused.status,
+      2,
+      `TMPDIR=${value} let a non-scratch --dir through the guard on a directory the script removes recursively: ${refused.output}`
+    );
+    assert.deepEqual(refused.docker, []);
+    assertNothingRemovedOrCopied(refused);
+  }
+});
+
 test('an unbuilt client bundle is refused, naming the directory and the command that builds it', () => {
   // Driven from a scratch repository root rather than this one, where the bundle is normally
   // present: the script derives its root from its own path, so a copy of it in a tree that has a
@@ -459,6 +477,103 @@ test('the staged-class count excludes OcuPilot/Test/ and counts only .cls files'
   }
 });
 
+// --- The member comparison does not depend on which tar listed the archive ----------------------
+
+/**
+ * The script's archive-contents block, from the line that builds `MEMBERS` to the line that
+ * reports what the archive carries. Sliced out of the script rather than restated, so the code
+ * this runs is the code that runs in CI.
+ */
+export function archiveContentsBlock(text) {
+  const lines = text.split('\n');
+  const start = lines.findIndex((line) => line.startsWith('RAW_MEMBERS=$(tar tzf'));
+  const end = lines.findIndex((line) => line.includes('and no OcuPilot/Test/ member"'));
+  assert.ok(start >= 0, 'RAW_MEMBERS=$(tar tzf ...) was not found in the script');
+  assert.ok(end > start, 'the archive-contents summary line was not found after MEMBERS');
+  return lines.slice(start, end + 1).join('\n');
+}
+
+test('the archive-contents comparison accepts a member list with doubled slashes at the joins', () => {
+  // IPM stores `ui/dist/ocupilot-ui/browser//index.html` and `src//cls`, because the declared
+  // <FileCopy> name already ends in a slash and IPM joins another. A listing may or may not show
+  // that doubling, and the comparison must not care: the same archive must read the same way.
+  // Run the script's own block against a staged fixture with a stub `tar`, once per listing shape.
+  const block = archiveContentsBlock(source);
+  const dir = mkdtempSync(join(tmpdir(), 'ocupilot-members-'));
+  try {
+    const bundle = 'ui/dist/ocupilot-ui/browser';
+    mkdirSync(join(dir, 'module', 'src', 'OcuPilot', 'Sub'), { recursive: true });
+    mkdirSync(join(dir, 'module', 'src', 'OcuPilot', 'Test'), { recursive: true });
+    mkdirSync(join(dir, 'module', bundle, 'media'), { recursive: true });
+    writeFileSync(join(dir, 'module', 'src', 'OcuPilot', 'A.cls'), '');
+    writeFileSync(join(dir, 'module', 'src', 'OcuPilot', 'Sub', 'B.cls'), '');
+    writeFileSync(join(dir, 'module', 'src', 'OcuPilot', 'Test', 'D.cls'), '');
+    writeFileSync(join(dir, 'module', bundle, 'index.html'), '');
+    writeFileSync(join(dir, 'module', bundle, 'media', 'Inter-OFL.txt'), '');
+
+    const doubled = [
+      'module.xml',
+      'src//cls/',
+      'src/cls/OcuPilot/A.cls',
+      'src/cls/OcuPilot/Sub/B.cls',
+      `${bundle}//index.html`,
+      `${bundle}/media//Inter-OFL.txt`,
+    ];
+    const collapsed = doubled.map((member) => member.replace(/\/{2,}/g, '/'));
+
+    const bin = join(dir, 'bin');
+    const membersFile = join(dir, 'members.txt');
+    writeStub(bin, 'tar', ['cat "$OCUPILOT_TAR_MEMBERS"']);
+    const prelude = [
+      'set -e',
+      `DIR=${JSON.stringify(dir)}`,
+      `BUNDLE=${JSON.stringify(bundle)}`,
+      'ARCHIVE=/dev/null',
+      'ARTIFACT_NAME=ocupilot.tgz',
+      'fail() { echo "FAIL $1: $2"; exit 1; }',
+    ].join('\n');
+
+    for (const [label, members] of [['doubled', doubled], ['collapsed', collapsed]]) {
+      writeFileSync(membersFile, `${members.join('\n')}\n`);
+      const result = spawnSync('sh', ['-c', `${prelude}\n${block}`], {
+        encoding: 'utf8',
+        env: stubEnv(bin, { OCUPILOT_TAR_MEMBERS: membersFile }),
+      });
+      assert.equal(
+        result.status,
+        0,
+        `the ${label} member list was rejected, so the comparison depends on how the archive was listed: ${result.stdout}${result.stderr}`
+      );
+      assert.match(
+        result.stdout,
+        /all 2 staged OcuPilot class\(es\), all 2 staged bundle file\(s\)/,
+        `the ${label} member list did not match the staged tree: ${result.stdout}`
+      );
+    }
+
+    // The other direction, so the normalization cannot be widened into something that accepts
+    // anything: a member that is genuinely absent must still be named and still exit non-zero.
+    // This is the branch that failed on the Linux runner, and nothing else executes it.
+    writeFileSync(membersFile, `${doubled.filter((member) => !member.endsWith('index.html')).join('\n')}\n`);
+    const rejected = spawnSync('sh', ['-c', `${prelude}\n${block}`], {
+      encoding: 'utf8',
+      env: stubEnv(bin, { OCUPILOT_TAR_MEMBERS: membersFile }),
+    });
+    assert.equal(
+      rejected.status,
+      1,
+      `an archive genuinely missing a staged bundle file was accepted: ${rejected.stdout}${rejected.stderr}`
+    );
+    assert.match(
+      rejected.stdout,
+      /is missing 1 staged bundle file\(s\)[^\n]*index\.html/,
+      `the failure did not name the missing member: ${rejected.stdout}${rejected.stderr}`
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 // --- The trap covers an interrupt, not only a clean exit ----------------------------------------
 
 test('SIGTERM mid-run still removes both containers by name, via the same trap as EXIT', async () => {
@@ -517,7 +632,13 @@ test('SIGTERM mid-run still removes both containers by name, via the same trap a
     assert.equal(exitCode, 130, 'the TERM trap exits 130');
 
     const lines = captured(capture);
-    assert.ok(lines.includes('rm -f ocupilot-ipm-build'), `cleanup did not remove the build container: ${lines.join('\n')}`);
+    // More than once: the script removes a stale build container by name before `docker run`, so a
+    // single occurrence is that pre-run removal and says nothing about whether the trap fired.
+    // The floor rather than a count, because the TERM trap's own `exit` re-enters the EXIT trap.
+    assert.ok(
+      lines.filter((line) => line === 'rm -f ocupilot-ipm-build').length >= 2,
+      `the pre-run removal is there but cleanup did not remove the build container: ${lines.join('\n')}`
+    );
     assert.ok(
       lines.includes('rm -f ocupilot-ipm-install'),
       `cleanup did not remove the install container, though it was never started -- the trap removes both by name regardless: ${lines.join('\n')}`

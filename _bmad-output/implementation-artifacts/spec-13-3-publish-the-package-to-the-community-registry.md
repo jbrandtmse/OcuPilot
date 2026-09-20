@@ -2,11 +2,11 @@
 title: 'Story 13.3: Publish the package to the community registry'
 type: 'feature'
 created: '2026-09-19'
-status: 'in-progress'
+status: 'done'
 baseline_revision: 'f5588ae72fda83f9b4d403d702c9d7a704ce4625'
 baseline_commit: 'f5588ae72fda83f9b4d403d702c9d7a704ce4625'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context: []
 warnings: ['oversized']
 deferred:
@@ -59,6 +59,43 @@ deferred:
       excludes the element for that reason, and the script header records why.
     location: >-
       module.xml:24
+    severity: medium
+  - summary: >-
+      deferred-work.md's DW-1334 evidence records a root cause this pass measured to be false
+    evidence: |-
+      The entry says `tar tzf` runs host-side and "BSD normalizes what GNU preserves". Measured here:
+      `bsdtar 3.5.3` lists `ui/dist/b//index.html` unchanged from gnu, ustar and pax archives, so the
+      listing does not explain the macOS-green / Linux-red split. The spec's own diagnosis was
+      corrected at origin this pass; the ledger entry was not, because bmad-build-auto never writes
+      the ledger (Rule 15 (a)). Left standing it will be mined later as evidence.
+    location: >-
+      _bmad-output/implementation-artifacts/deferred-work.md (DW-1334)
+    severity: medium
+  - summary: >-
+      the archive's bundle arm is containment, not an equality, so extra members under the bundle
+      prefix pass while two records call it an equality
+    evidence: |-
+      `scripts/ci-ipm-archive.sh` asserts every staged bundle file is present by name and sets no
+      upper bound, while the class arm is a true `CLASS_COUNT -eq STAGED_CLASSES`. The 2026-09-19
+      triage log ("both are now equalities against the staged tree") and `## Auto Run Result`
+      ("holds the archive's members equal to the staged tree") both overstate the bundle half.
+      Either bound the bundle side or correct the two sentences.
+    location: >-
+      scripts/ci-ipm-archive.sh:295
+    severity: medium
+  - summary: >-
+      the manifest comparison's `DECLARED -lt 11` floor is not held to the roster's own declaration
+      count, so it stops being tight the moment the roster declares a twelfth item
+    evidence: |-
+      `module.xml` yields exactly 11 declaration lines today, which is what makes the floor
+      meaningful. With a twelfth, dropping an `element_lines` arm leaves both sides equally short,
+      `diff -u` clean and `DECLARED` at 11 or more, and the script reports agreement having stopped
+      comparing a kind -- the exporter-drops-an-element failure this check exists to catch. DW-1339
+      records the same mechanism for the `<Dependency>` arm. Settled by a test that slices
+      `declarations()` out of the script, runs it over the repository's module.xml, and asserts the
+      emitted line count equals the floor literal read back from the script.
+    location: >-
+      scripts/ci-ipm-archive.sh:325
     severity: medium
 ---
 
@@ -113,7 +150,7 @@ deferred:
 
 **Execution:**
 
-- [ ] [Review] **DW-1334 (HIGH)** — the `package` CI job fails on the Linux runner: the archive's bundle
+- [x] [Review] **DW-1334 (HIGH)** — the `package` CI job fails on the Linux runner: the archive's bundle
   members are not under `ui/dist/ocupilot-ui/browser/`, so AC1's contents check and the Integration AC are red
   (run `35503250843`, head `8085072`, job `106058629958`, exit 1 at the archive phase). The bundle's bytes are
   present — 1,083,080 bytes against a bundle-less 542,321 — so it is the member **path** that differs, in the
@@ -127,9 +164,11 @@ deferred:
   `ui/dist/ocupilot-ui/browser/media//Inter-OFL.txt`, `src//cls` — because `<FileCopy Name="…/browser/">`
   already ends in `/` and IPM joins another. The check looks for the single-slash form, so it misses every one.
   The archive is not wrong and the bytes are all there; the **comparison** is.
-  Why it was green on macOS and red on Linux: `MEMBERS=$(tar tzf "$ARCHIVE")` at `:272` runs **host-side**, and
-  BSD tar normalizes `//` in its listing while GNU tar preserves it. The same archive lists differently on the
-  two platforms, which is precisely why CI is the gate that counts.
+  Why it was green on macOS and red on Linux: the host's `tar` does **not** explain it — `bsdtar 3.5.3` here
+  lists `//` unchanged from gnu, ustar and pax archives, measured this pass — and the two runs' archives differ
+  in size (1,083,507 against 1,083,080), so what differed is what IPM stored, not how it was listed
+  *(inference)*. Either way the comparison must not depend on the listing, which is why CI is the gate that
+  counts.
   **The fix: normalize repeated slashes in the member list once, where `MEMBERS` is built, so every downstream
   comparison is tar-implementation-independent.** Do not special-case the bundle branch — `src//cls` shows the
   same join elsewhere — and do not change `module.xml`'s `Name`, which is correct as written and is what the
@@ -256,6 +295,66 @@ in-pass, one high open. Open items only.
   - `[false]` `[reject]` intent-alignment: a commented-out `Shell("install …")` is invisible to the verb equality — a comment does not execute, and the new literal-command test covers every command that does.
   - `[false]` `[reject]` intent-alignment: the intent quotes a `zpm` CLI invocation and the script uses `%IPM.Main.Shell` — forced and documented: a stock instance carries no `%IPM` class at all (AD-18), so no `zpm` binary exists until `zpm.xml` is imported; the verbs and their arguments are the intent's.
 
+### 2026-09-20 — Review pass (rework, DW-1334)
+
+- verdicts: 55 findings — high 0, medium 6, low 42, false 6, maybe-false 1
+- findings:
+  - `[false]` `[reject]` blind-hunter: the slash normalization does not reach `tar xzf "$ARCHIVE" -C "$DIR/extract" module.xml`, so a joined `module.xml` name would die bare under `set -e` — refuted: the extraction runs only after `count_members '^module\.xml$'` is at least 1, and the only raw member that normalizes to exactly `module.xml` is `module.xml` itself (collapsing slashes never removes them), so the literal the extraction names is known to exist.
+  - `[medium]` `[defer]` blind-hunter: `deferred-work.md`'s DW-1334 evidence records the BSD/GNU tar root cause this pass measured to be false, while the spec now records the measurement — the ledger is the lead's to write (Rule 15), so filed for correction at origin.
+  - `[medium]` `[patch]` blind-hunter: the diagnosis does not account for its own evidence (the macOS run passed, the archives differ by 427 bytes) — the wrong sentence was replaced at origin this pass and the residual is labeled `(inference)`; the normalization holds under either explanation, and the raw listing is now preserved for the next CI failure (see the diagnostic row below).
+  - `[low]` `[reject]` blind-hunter: `Status: done` is claimed while AC1 was last observed red on CI — the criterion's end-to-end leg is the `package` job, which runs on push; the story is reported on what was verified, and `## Auto Run Result` says plainly that the fix is proven host-side only.
+  - `[low]` `[reject]` blind-hunter: DW-1334 is still `status=open` in `deferred-work.md` — `bmad-build-auto` never writes the ledger (Rule 15 (a)); the lead closes it at `ledger_adjudicated`.
+  - `[false]` `[reject]` blind-hunter: `epics.md:5142` is an uncorrected third "dry-run" site — refuted: `:5142` reads "only in its dry-run **or local** form", which already admits the form this story used and is the wording the spec's Design Notes rely on. DW-1338's `:737` is the only site still wrong.
+  - `[low]` `[reject]` blind-hunter: the `epics.md:5124` amendment appends rather than replaces — `epics.md` is a planning artifact the lead amended under Rule 5; not this stage's file.
+  - `[low]` `[reject]` blind-hunter: the amendment's `%IPM.Lifecycle.Base:%Publish` claim is not cited to a read — same owner as the row above; the claim is the lead's, at origin.
+  - `[low]` `[reject]` blind-hunter: `## Auto Run Result` restates the previous pass — the earlier text is that pass's record; this pass appends only its own paragraph, which is what the prose rule asks of a rework.
+  - `[low]` `[reject]` blind-hunter: the spec is `oversized` and gained sections — the triage log and the result section are this workflow's required outputs; each row here is one line.
+  - `[low]` `[patch]` blind-hunter: `**What landed.**` still reads "(new, 17 tests)" against a file of 23 — corrected at origin to 23.
+  - `[false]` `[reject]` blind-hunter: frontmatter `in-review` disagrees with the body's `Status: done` — `in-review` is this step's own transient value; finalize writes `done` into both. Carried from the 2026-09-19 row.
+  - `[low]` `[reject]` blind-hunter: `review_loop_iteration` is 0 although the cycle log records `iteration=1` — the frontmatter counter counts this workflow's bad-spec loopbacks, of which there have been none; the lead's rework iteration is a different count.
+  - `[low]` `[reject]` blind-hunter: three unreconciled baselines (frontmatter, cycle log, DW-1334) — they answer three different questions (the spec's diff base, the lead's rework scope base, the CI head that failed); reconciling them is bookkeeping in the lead's files.
+  - `[low]` `[reject]` blind-hunter: the `timeout-minutes: 45` refutation measured only phase 1 — true, and the recorded figure says "phase 1"; the budget is still unexceeded on every run so far, and widening it on an unmeasured second phase would be the same error in the other direction.
+  - `[low]` `[patch]` blind-hunter: nothing pins that the member comparison still *rejects* — the branch that failed on CI had no executed test. Fixed: the doubled-slash test now also feeds a listing with one staged bundle file genuinely absent and asserts exit 1 naming it.
+  - `[medium]` `[defer]` blind-hunter: the bundle arm has no upper bound, so an archive carrying extra `$BUNDLE/` members passes while the triage log and result section call it an equality — filed; the class arm is a true equality, the bundle arm is containment.
+  - `[low]` `[reject]` blind-hunter: `for tFile in $(… find …)` word-splits on a bundle filename containing a space — the failure direction is a false red, no such name exists in an Angular bundle, and the fix restructures the loop across a pipeline that would break the `BUNDLE_STAGED` accumulation.
+  - `[low]` `[reject]` blind-hunter: `grep -c '<Arg'` counts lines, so two `<Arg>` on one line read as 1 — the manifest declares no `<Arg>` at all (AD-17), so both sides are 0; the undercount needs IPM to emit two on one line, which no export has.
+  - `[low]` `[reject]` blind-hunter: `text_element` is positional and would read a nested element first — `module.xml` carries exactly one of each of the three, and the fix is a parser.
+  - `[low]` `[reject]` blind-hunter: the new tests spawn `sh` only, while `shell-scripts.test.mjs` runs its pins under `shellsFor('sh')` — the script is syntax-checked under `/bin/sh` and `/bin/dash` in this pass, and the extracted-block test is about listing shape, not shell dialect.
+  - `[low]` `[reject]` blind-hunter: `ocupilot-ipm-build` / `ocupilot-ipm-install` appear in no agent-context file — the fix edits `CLAUDE.md`, which this stage does not write.
+  - `[low]` `[reject]` blind-hunter: `OCUPILOT_IPM_DIR` is an undocumented override on a directory the script removes — the `..` and scratch-root guards run on `$DIR` whatever set it, so the environment form is guarded identically to the flag.
+  - `[low]` `[patch]` blind-hunter: `README.md` says the script "removes both containers on an `EXIT` trap" when the trap is `EXIT`, `INT` and `TERM` — corrected. The claim that the paragraph drops the operational cost is refuted by its first sentence, which names the operation destructive and whole-instance.
+  - `[low]` `[patch]` blind-hunter: the script header says `list` "is the last verb either instance runs", but the build instance's last verb is `package` — corrected at origin.
+  - `[low]` `[reject]` blind-hunter: the pinned image literal is now in a sixth place with nothing holding it to `docker-compose.yml` — a pre-existing pattern (`ci-throwaway.sh` and `ci-durable-ownership.sh` carried it before this story), and the fix is new cross-file equality machinery rather than a correction.
+  - `[low]` `[reject]` blind-hunter: archive members are checked by name, not size, so 14 zero-length bundle members would pass — the install leg loads the archive and smokes it, and `Smoke.cls` answers whether the result works; a size equality over an exporter's output is a second notion of "correct" this story declined (AD-45).
+  - `[low]` `[reject]` blind-hunter: the refusal tests apply `assertNothingRemovedOrCopied` and `assertNoContainerStarted` inconsistently — every refusal test asserts both properties, by helper or inline; uniformity here is style.
+  - `[low]` `[reject]` blind-hunter: `sprint-status.yaml` moves only `last_updated` — the lead's file and the lead's gate.
+  - `[low]` `[reject]` blind-hunter: the DW-1334 item is checked `[x]` while its body still reads as an instruction to a future stage — the body is the lead's re-open text, preserved verbatim as the record of what was asked; the `DIAGNOSED` paragraph below it supersedes the imperatives.
+  - `[medium]` `[patch]` edge-case: a `TMPDIR` of `/` strips to the empty string, so the scratch-root arm becomes `/?*` and every absolute `--dir` passes into `rm -rf` — confirmed in a shell. Fixed: every trailing slash is stripped and an empty result falls back to `/nonexistent-tmpdir`; pinned by a new executed test and a demonstrated mutation.
+  - `[low]` `[reject]` edge-case: the staged-bundle loop word-splits on a filename with whitespace — same root cause as the blind-hunter's row; same reason.
+  - `[false]` `[reject]` edge-case: a non-canonical `module.xml` member makes the extraction die with no phase named — same refutation as the blind-hunter's first row: the presence check guarantees the literal member.
+  - `[low]` `[reject]` edge-case: a listing that prefixes members with `./` still diverges — no listing observed on either platform does, the failure direction is a named red rather than a silent pass, and stripping `./` adds a guard for a condition never shown reachable.
+  - `[low]` `[reject]` edge-case: `argcount` undercounts two `<Arg>` on one line — same root cause as the blind-hunter's row; same reason.
+  - `[low]` `[reject]` edge-case: a bundle directory that exists but is empty passes the pre-flight refusal — the archive check then fails with "the staged bundle holds no file, so a comparison against it would pass having compared nothing", which names it; an emptiness pre-check is a second guard for a case the first already reports.
+  - `[low]` `[reject]` edge-case: a `docker run` / `cp` / `exec` that itself fails exits under `set -e` with no phase named — docker's own message and status reach the caller; wrapping each of six calls in `|| fail` is guards, not a correction.
+  - `[low]` `[patch]` edge-case: `assert.ok(lines.includes('rm -f ocupilot-ipm-build'))` in the SIGTERM test is already satisfied by the pre-run removal, so that arm cannot fail — fixed: it is now a floor of two occurrences, and the mutation that deletes the build container's removal from `cleanup()` reddens it.
+  - `[maybe-false]` `[reject]` edge-case: the spawned child could block on an unread stdout pipe before `docker run` — would be `low` if true (a flaky test, not a product defect); the script writes three short lines before `run` and the test has never reached its 15 s deadline. What would settle it: a run with the script's pre-`run` output padded past the pipe buffer.
+  - `[low]` `[reject]` edge-case: the README still instructs `zpm uninstall` with no remaining documented place to run it — carried from the 2026-09-19 row, rejected there on the same grounds: the intent closes the verb set at `load`, `package` and `list`.
+  - `[low]` `[reject]` edge-case: the spec's Tasks and matrix still name IPM's `Module package generated:` line — the fix is an edit to this build's spec. Carried.
+  - `[low]` `[reject]` edge-case: the Tasks text says `install `, `repo `, `enable ` and `search` are banned file-wide when they are banned inside `Shell("…")` — same disposition as the row above, and the narrowing is recorded in the 2026-09-19 log as forced (the script must name `--install-name` and the `irishealth-community` reference).
+  - `[low]` `[patch]` edge-case: "(new, 17 tests)" against a file of 22 — same root cause as the blind-hunter's row; corrected to 23.
+  - `[low]` `[reject]` edge-case: "every archive-contents comparison reads the same member list whichever tar listed it" is narrower than claimed, since the extraction bypasses `MEMBERS` — the extraction is guarded by the presence check (see the first row); the sentence is about the comparisons, which is what it says.
+  - `[medium]` `[defer]` verification-gap: the `DECLARED -lt 11` floor is not held to the roster's declaration count, so once the roster declares a twelfth item a dropped `element_lines` arm leaves both sides equally short and the manifest comparison passes having stopped comparing a kind — filed pre-verified, with the same mechanism DW-1339 already records; outside this pass's mandate, which is DW-1334 alone.
+  - `[low]` `[reject]` verification-gap: the staged-bundle loop word-splits — same root cause; same reason.
+  - `[medium]` `[patch]` verification-gap: the DW-1334 diagnostic now dumps the normalized member list, so the next `package` failure no longer shows the shape IPM actually stored — the one evidence the dump exists to capture. Fixed: `RAW_MEMBERS` keeps the listing as `tar` gave it and the dump prints that.
+  - `[low]` `[reject]` verification-gap: `argcount=0` is one of the 11 counted lines, so the success message reports 11 items over a manifest declaring 10 — a message, not a comparison; renaming the count changes no verdict.
+  - `[false]` `[reject]` verification-gap: `assertNoContainerStarted()` passes vacuously on an empty array — refuted: an empty array *is* the property under test ("no container was started"); the helper exists to allow the trap's own removals and nothing else.
+  - `[low]` `[reject]` verification-gap: nothing pins that the `package` job carries no `needs:` — the consequence of adding one is latency, not a wrong answer.
+  - `[low]` `[reject]` verification-gap: DW-1332 (`ci-image-compile.sh` accepts `:latest-em`) has no test that would flag it — confirmation of an entry already filed and routed to `range-end-cleanup`; not re-filed.
+  - `[false]` `[reject]` intent-alignment: normalization trades fidelity for portability, since an archive that genuinely stored a stray-slash path would now pass — refuted as a defect: the criterion is about which files the archive carries, not how the exporter spells a separator, and `src//cls` shows the join is the exporter's own habit rather than a corruption.
+  - `[low]` `[reject]` intent-alignment: the registry guards are regexes over shell source whose coverage grows by imagination — true, stated in the test file's own header, and the honesty note under AC3 is the story's answer; closing it would need a different mechanism, which is a story rather than a patch.
+  - `[low]` `[reject]` intent-alignment: the README's human rehearsal was removed rather than replaced, so the tree holds no artifact of what a correct archive looks like — the replacement paragraph and the `package` job are the intent's own answer ("nothing in the tree ever builds the archive or proves it installs"); a checked-in expected-member list is a second source of truth the story declined.
+  - `[low]` `[reject]` intent-alignment: the runtime matrix rows are covered only by the `package` CI job, and no test in the diff imports IPM or builds an archive — carried from the 2026-09-19 `[false]` row: those rows are runtime rows and the script is their executor, running on every push.
+
 ## Design Notes
 
 **Governing ADs.** **AD-18** (IPM is a distribution channel, never a runtime dependency — which is exactly why this story needs instances of its own: the shipped image carries no loaded IPM, and nothing in the install path may assume one). **AD-17** (one installer class, two entry points; the roster generates both the installer's class list and the manifest, which is AC2; and the IPM `<Invoke>` carries no `<Arg>`, so `pUnexpire` keeps `0`). **AD-25** (the demo fixture is opt-in and absent from every non-container path including IPM — so `wallet` and `demofixture` skip, and a skip is not a failure). **AD-45** (one smoke path, which is also the health check — this story asks it the question rather than inventing a second notion of "working"). **AD-38** (install completes before traffic; on a first IPM install the gate answers `unreadable` across the activation window, inside the window this AD already accepts — the script smokes after `load` returns, so it never observes it). **AD-27** (the image tag is explicit, never `latest-cd`). **AD-21** (the manifest carries no privilege properties; the two unauthenticated applications get their role floor from `Install`, which runs `When="After"` Activate — so a correct IPM install is one where the applications exist *and* `Install` ran). **AD-9** (`zpm uninstall` is not `Installer.Uninstall`; nothing here uninstalls). Stack rows: **IPM** `0.10.x`, **Docker Compose** image pinned to an explicit 2026.2 tag, **CI**.
@@ -301,6 +400,9 @@ in-pass, one high open. Open items only.
 **Pinning tests and mutations (Rule 19) — one demonstrated mutation per AC, reverted and confirmed byte-identical (`git status --short` and `git diff --stat` unchanged) before the next:**
 
 - **AC1** — pinning test: the `package` job's end-to-end leg (`ci-ipm-archive.sh`'s archive-contents assertions plus the smoke verdict on the install container). `mutation: drop the bundle's staging copy from scripts/ci-ipm-archive.sh → exit 1 at the archive-contents check, "the staged bundle holds no file, so a comparison against it would pass having compared nothing", with the archive down from 1,083,507 to 542,321 bytes`. Activate does not fail first: `mkdir -p` leaves the staged directory there and empty, so IPM exports nothing from it and the host-side check is what catches it. The archive-side arm of the same assertion is the per-file `MISSING_BUNDLE` list, which names every staged file the archive does not carry.
+- **AC1, the member comparison (DW-1334)** — pinning test: `ipm-archive.test.mjs`'s *the archive-contents comparison accepts a member list with doubled slashes at the joins*, which runs the script's own archive-contents block against a staged fixture with a stub `tar` — the doubled listing, the collapsed one, and a third where a staged bundle file is genuinely absent, so the comparison is pinned in both directions. `mutation: delete the repeated-slash normalization of MEMBERS from scripts/ci-ipm-archive.sh → red on the doubled list, node exit 1 read directly, 22 of 23`.
+- **The scratch-root guard** — pinning test: `ipm-archive.test.mjs`'s *a degenerate TMPDIR does not widen the scratch-root guard to every absolute path*. `mutation: delete the empty-$SCRATCH_TMPDIR fallback from scripts/ci-ipm-archive.sh → red, node exit 1 read directly, 22 of 23, because TMPDIR=/ strips to the empty string and the arm becomes /?*`.
+- **The interrupt trap** — pinning test: `ipm-archive.test.mjs`'s *SIGTERM mid-run still removes both containers by name*, whose build-container arm is a floor of two removals rather than one, since the script removes a stale container by name before `docker run`. `mutation: delete the build container's removal from cleanup() in scripts/ci-ipm-archive.sh → red, node exit 1 read directly, 22 of 23`. Each of these three was reverted with `scripts/ci-ipm-archive.sh` byte-identical by md5 (`705170f59e25afff6e55f21e374becd6`) before the next.
 - **AC2** — pinning test: the pre-stage `ipm-manifest.mjs --check` plus the archive-manifest-versus-roster comparison. One mutation per arm, because the first stops the script before the second runs. `mutation: change <Version> in module.xml by hand without touching src/OcuPilot/Install/Roster.cls → ipm-manifest.mjs --check exits 1 naming <Version>, and the script stops before any container starts`. `mutation: alter the staged copy of module.xml after it is staged (JWTAccessTokenTimeout 60 → 3600 in $DIR/module/module.xml), which --check does not see → the archive-manifest comparison exits 1 on the webapp= line for /api/ocupilot, naming both sides`.
 - **AC3** — pinning test: `ui/tools/ipm-archive.test.mjs`'s network-isolation and verb-allow-list assertions. `mutation: delete --network none from one docker run line in scripts/ci-ipm-archive.sh → ipm-archive.test.mjs goes red naming that container`. **No network call is issued in either direction** — the mutation is observed entirely host-side, which is the point.
 - **Integration AC** — pinning test: `ci.test.mjs`'s `DECLARED_GATES` equality and the widened `jobNames` equality. `mutation: delete one run: step from the package job in .github/workflows/ci.yml → ci.test.mjs goes red naming the orphaned declared gate`.
@@ -382,6 +484,41 @@ reverted, and the file confirmed byte-identical by md5 before the next. Suite 11
 Status: done
 Blocking condition: none
 
+**Rework 2026-09-20 (DW-1334).** The member list is now built as `RAW_MEMBERS=$(tar tzf …)` and
+collapsed once into `MEMBERS` with `sed 's#//*#/#g'`, so every archive-contents comparison below it
+reads the same list whichever tar listed the archive and whatever IPM stored at the joins. No branch
+is special-cased and `module.xml` is untouched. `RAW_MEMBERS` is kept because the failure diagnostic
+is the only place the shape IPM actually stored is ever visible — the container is gone by the time
+anyone reads the log — so that dump prints the listing as `tar` gave it.
+
+The diagnosis's own explanation of the macOS-green / Linux-red split was replaced at origin: the
+host's `bsdtar 3.5.3` lists `//` unchanged from gnu, ustar and pax archives, measured this pass, so
+the listing does not explain it; the two runs' archives also differ by 427 bytes, so what differed
+is more likely what IPM stored *(inference)*. The normalization holds under either explanation.
+
+Files changed this pass: `scripts/ci-ipm-archive.sh` (the normalization, the raw-listing diagnostic,
+the scratch-root guard's empty-`$TMPDIR` fallback, one corrected header sentence);
+`ui/tools/ipm-archive.test.mjs` (21 → 23 tests: the doubled-slash comparison in both directions, the
+degenerate-`TMPDIR` refusal, and the SIGTERM trap's build-container arm turned into a floor of two);
+`README.md` (the trap is `EXIT`, `INT` and `TERM`, not `EXIT` alone); this spec.
+
+**Review.** 55 findings across four layers: 0 high, 6 medium, 42 low, 6 false, 1 maybe-false. Nine
+rows patched, grouped into seven fixes by root cause (3 medium, 4 low); three medium entries
+deferred (the ledger's DW-1334 evidence line, the bundle arm's missing upper bound, the
+`DECLARED -lt 11` floor); 43 rejected, each with its reason in the triage log.
+
+**Follow-up review recommended: false.** This is a follow-up pass and no patched entry was `high`,
+so the work has converged. Patched by verdict: medium 3, low 4.
+
+**Verified.** `cd ui && npm run build` green; `cd ui && npm test` → 1,124 node tests and 644
+component tests, 0 failed; `node --test tools/ipm-archive.test.mjs` 23 of 23 and
+`tools/ci.test.mjs` 65 of 65; `/bin/sh -n` and `/bin/dash -n` on the script; `bash
+scripts/lint-docs.sh` clean. Every exit code read directly. Three mutations, each reverted with the
+script byte-identical by md5 `705170f59e25afff6e55f21e374becd6`, are recorded in `## Verification`.
+The end-to-end `package` job was not run: it takes about an hour and cannot reproduce this defect on
+macOS, which is the whole reason it is CI's gate. **The fix is proven host-side only; the Linux
+runner is where AC1's end-to-end leg is still unobserved green.**
+
 **What landed.** `scripts/ci-ipm-archive.sh` (new): the two phases in order, on two containers of its
 own started `--network none` from the pinned tag and removed on an `EXIT`, `INT` and `TERM` trap. It
 runs `ipm-manifest.mjs --check` and refuses an absent bundle before staging anything; refuses the
@@ -390,7 +527,7 @@ and a `--dir` that is outside a scratch root or contains `..`; asserts zero `%IP
 rows on both instances after the import and again after every verb; reads the artifact back from the
 directory it wrote into; holds the archive's members and its manifest equal to the staged tree
 host-side; unexpires `_SYSTEM` by name as an operator act (AD-17); and reads `smoke.sh`'s status from
-the command rather than through a pipeline. `ui/tools/ipm-archive.test.mjs` (new, 17 tests) pins the
+the command rather than through a pipeline. `ui/tools/ipm-archive.test.mjs` (new, 23 tests) pins the
 network isolation, the three-verb allow-list in both directions, that every IPM command is a literal
 so those scans can see all of them, that no container is created by any other form, the credential
 and upload absences, and every refusal -- all host-side with stub `docker`, `rm` and `cp`, so no
@@ -457,7 +594,7 @@ would add guards, branches or parameters rather than correct or delete something
 is an edit to this build's spec, and 3 because the intent forecloses the fix (the verb set is closed
 at `load`, `package` and `list`).
 
-**Follow-up review recommended: true.** Eleven medium entries were patched, so the rule sets it. The
+**Follow-up review recommended (first pass): true.** Eleven medium entries were patched, so the rule sets it. The
 specific unverified risk: the class equality `CLASS_COUNT -eq STAGED_CLASSES` assumes IPM's exporter
 carries exactly the non-test `.cls` set under `src/cls/`, which held on the pinned 2026.2 image in
 three runs this pass but is IPM's behavior rather than this script's; an exporter that started

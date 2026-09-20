@@ -649,8 +649,8 @@ archive with IPM's local `package` verb on one fresh instance, loads that `.tgz`
 and reports `scripts/smoke.sh`'s verdict over the result. **Both containers run with
 `--network none`**, so nothing either of them does can reach a package registry — and the script
 asserts that `%IPM_Repo.Definition` is empty on each, checks the archive's members and its
-manifest host-side, removes both containers on an `EXIT` trap, and refuses the name of the live
-instance, of any `ocupilot-slot-*` and of any slot's throwaway. IPM 0.10.5 prints no line naming
+manifest host-side, removes both containers on exit, interrupt or termination, and refuses the
+name of the live instance, of any `ocupilot-slot-*` and of any slot's throwaway. IPM 0.10.5 prints no line naming
 the file `package` wrote, so the script reads the artifact back from the directory it wrote into
 rather than predicting its name.
 
