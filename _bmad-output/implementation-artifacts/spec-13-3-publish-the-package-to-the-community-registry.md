@@ -2,7 +2,7 @@
 title: 'Story 13.3: Publish the package to the community registry'
 type: 'feature'
 created: '2026-09-19'
-status: 'done'
+status: 'in-progress'
 baseline_revision: 'f5588ae72fda83f9b4d403d702c9d7a704ce4625'
 baseline_commit: 'f5588ae72fda83f9b4d403d702c9d7a704ce4625'
 review_loop_iteration: 0
@@ -113,6 +113,17 @@ deferred:
 
 **Execution:**
 
+- [ ] [Review] **DW-1334 (HIGH)** — the `package` CI job fails on the Linux runner: the archive's bundle
+  members are not under `ui/dist/ocupilot-ui/browser/`, so AC1's contents check and the Integration AC are red
+  (run `35503250843`, head `8085072`, job `106058629958`, exit 1 at the archive phase). The bundle's bytes are
+  present — 1,083,080 bytes against a bundle-less 542,321 — so it is the member **path** that differs, in the
+  `<FileCopy>` branch alone; the class check passed over the same archive. The diagnostic that prints the
+  archive's actual non-class members is already in the script from the review pass. **Read that list from the
+  next CI run and fix the comparison against what IPM actually emits — do not guess a prefix.** The containers
+  are Linux in both environments, so the host-side staging is the only variable and a local macOS run cannot
+  reproduce it.
+
+
 - `scripts/ci-ipm-archive.sh` — create. One script, the two phases in order, modeled line-for-line on `ci-image-compile.sh`'s shape (argument parsing, refusals, `trap cleanup EXIT`, the readiness loop, split markers, `grep -o`/`sed` extraction). Flags: `--image` (required; the same two floating-tag refusals), `--dir` (default `/tmp/ocupilot-ipm`, refused unless under a scratch root), `--build-name` (default `ocupilot-ipm-build`), `--install-name` (default `ocupilot-ipm-install`). Refuse either container name if it is `ocupilot`, matches `ocupilot-slot-*`, or is `ocupilot-ci` / `ocupilot-b-ci` / `ocupilot-c-ci`. Order: run `node tools/ipm-manifest.mjs --check` from `ui/` and stop on drift; refuse when `ui/dist/ocupilot-ui/browser/` is absent, naming it and `cd ui && npm run build`; stage `src/`, `module.xml` and the bundle into `$DIR/module/` at their repo-relative paths; `docker run -d --network none --name <build> -v $DIR/module:/opt/ocupilot:ro <image>`; wait for a session; `$System.OBJ.Load("/usr/irissys/dist/install/misc/zpm.xml","ck")`; assert `%IPM_Repo.Definition` holds **zero** rows; `Shell("load -dev /opt/ocupilot",1,0)`; `Shell("package ocupilot -path /tmp/ocupilot",1,0)`; take the artifact path from IPM's own `Module package generated:` line rather than predicting it; `docker cp` it to `$DIR/artifact/`. Then a **second** `docker run -d --network none --name <install> …` from the same image with `$DIR/artifact:/opt/ocupilot-archive:ro`; wait; import IPM; assert zero repository rows again; `Shell("load /opt/ocupilot-archive/<file>",1,0)`; unexpire `_SYSTEM` **by name** (`##class(Security.Users).UnExpireUserPasswords("_SYSTEM")` in `%SYS`), printing why; then `sh scripts/smoke.sh --container <install> --user _SYSTEM --password SYS` and read its exit status directly. Print one summary line and exit non-zero naming the phase that failed. A phase that executed nothing is a failure, never a pass.
 - `scripts/ci-ipm-archive.sh` archive assertions — in the same script, host-side over the copied-out `.tgz` with `tar tzf`: it carries `module.xml`; it carries at least one `OcuPilot` class and the count is reported; it carries `ui/dist/ocupilot-ui/browser/`; it carries **no** path under `OcuPilot/Test/`. Each failure names the member.
 - `ui/tools/ipm-archive.test.mjs` — create. Host-side, no instance, picked up by `npm test`'s `node --test tools/*.test.mjs` with no wiring. Pins, in the `stub-bin.mjs` idiom so no container is ever created: **both `docker run` invocations carry `--network none`** and publish no port; the set of IPM verbs the script issues, derived from its `Shell("` occurrences, equals the declared allow-list `{load, package, list}` **in both directions**, and the file contains none of `publish`, `install `, `repo `, `enable `, `search`, `-community`, `secrets.` or a token/credential environment variable; each refusal above (live, slot and throwaway container names; floating or absent image tag; `--dir` outside a scratch root; absent bundle) exits 2 with the offending value named; `ipm-manifest.mjs --check` runs before any staging; and the script reads `smoke.sh`'s status directly rather than through a pipe.
@@ -126,6 +137,34 @@ deferred:
 - Given the manifest, when the archive is produced, then `ipm-manifest.mjs --check` has already held `module.xml` equal to `src/OcuPilot/Install/Roster.cls`'s `XData Manifest` in both directions before anything was staged, and the manifest inside the archive declares the same module name, version, resource set, file copy and invoke as that roster — so a hand-edited manifest and an un-regenerated roster both fail before a container starts (AC2).
 - Given that this story is held, when it is implemented, reviewed and reported, then both containers it creates run with no network at all, the IPM verbs it issues equal a declared three-verb allow-list in both directions, no registry credential or token is read, configured, requested or used, no publish is performed in any form, and the story is reported done on the archive and the local install alone (AC3).
 - Given a pushed commit, when CI runs, then the `package` job executes the script on every push and `ui/tools/ci.test.mjs` holds its `run:` steps and the workflow's job list equal in both directions, so deleting the job or a step fails `gates` naming it (Integration AC).
+
+### Review Findings
+
+Second review (2026-09-20, `followup_review_recommended: true`). 1 high, 3 medium, 4 low; seven patched
+in-pass, one high open. Open items only.
+
+- **`[high]` DW-1334 — AC1 and the Integration AC are red on CI.** Run 35503250843 (head `8085072`, the
+  code under review), job 106058629958: `ci-ipm-archive.sh` exits 1 at the archive-contents check,
+  `is missing 14 staged bundle file(s)`, naming every bundle file. The archive it built is 1,083,080
+  bytes against the macOS run's 1,083,507, and the AC1 mutation puts a bundle-less archive at 542,321 —
+  so the bundle's bytes are in the CI archive and it is the member **path** that differs. The class
+  check (`^src/cls/OcuPilot/.*\.cls$`) passed over the same archive, so the divergence is the
+  `<FileCopy>` branch alone. The story's whole evidence base is one macOS run; the Linux export path was
+  never observed. **Not diagnosable from the CI log as it stood** — the failure named only what it
+  looked for — so this pass added a dump of the archive's non-class members at that failure. The next
+  CI run prints the actual prefix. Re-opens the story.
+- **`[med]` DW-1338 — `epics.md:737`** still reads "the archive is proven by a dry-run build", the claim
+  the same amendment corrected at `:5124`. The spec's own `deferred:` item named both sites; one was
+  applied. Outside this reviewer's footprint; `routed owner=range-end-cleanup`.
+- **`[low]` DW-1339 — the `<Dependency>` arm of the manifest comparison matches nothing** against IPM's
+  own serialization. `wontfix-accepted`; `reopen_if` on the entry.
+- **Record correction, not a defect:** frontmatter `deferred:` items 1 and 2 read as open, and the
+  2026-09-20 Spec Change Log entry applied both — `CLAUDE.md`'s job count in full, `epics.md` at `:5124`
+  of the two sites item 1 names. Only `epics.md:737` (DW-1338) is still open. The lead owns the harvest.
+- **Refuted, with evidence:** the `package` job's `timeout-minutes: 45` was flagged by two layers as an
+  unmeasured budget. It is ample — on the runner, phase 1 (image pull, cold IRIS start, IPM import,
+  module load, `package`, the repository re-read and `docker cp`) ran 09:47:31 → 09:50:03, 2 m 32 s.
+  The "roughly an hour" figure is the macOS run, not the runner.
 
 ## Spec Change Log
 
@@ -298,6 +337,31 @@ implement stage's report.
   `SELECT COUNT(*) FROM %IPM_Repo.Definition` assertions; the protected-name guard refuses `ocupilot`,
   `ocupilot-slot-*` and all three slot throwaways, and refuses a build/install name collision; and no
   `ocupilot-ipm-*` container survived the run (`docker ps -a`), so the EXIT trap cleaned up.
+
+### Code review (2026-09-20) (CR)
+
+Three mutations applied to the code under test, observed red with node's exit code read directly,
+reverted, and the file confirmed byte-identical by md5 before the next. Suite 1122 of 1122 after,
+`ui/tools/ipm-archive.test.mjs` 21 of 21, `ci.test.mjs` 65 of 65, `lint-docs.sh` clean.
+
+- `mutation: add a fifth command built from a shell variable, Shell("$EXTRA_VERB ocupilot",1,0), to
+  scripts/ci-ipm-archive.sh -> every IPM command is a literal goes red naming the command`. The
+  allow-list equality and the registry-token scan both stayed **green**, which is the hole: `ipmVerbs`
+  reads `/Shell\("([a-z-]+)/`, so a command opening with `$` or a capital yields no verb and
+  contributes to neither side of the equality. The new assertion requires the verb spelled out at the
+  front of every command. Script md5 `be2440169b8a041e7cb3a615174458cd` before and after.
+- `mutation: insert docker network connect bridge "$BUILD_NAME" before wait_for_session ->
+  containers are created only by the two docker run lines goes red, node exit 1, 20 of 21`. *Both
+  containers run with no network at all* stayed **green** — the flag is read off the creation line, so
+  a network attached afterwards was invisible. `docker network` is now in the banned-forms list.
+- `mutation: set the package job's node-version to 22.0.0 in .github/workflows/ci.yml -> every job that
+  pins a literal Node goes red naming the package job, node exit 1, 64 of 65`. The previous form read
+  `jobSlice(workflow, 'instance')` only and stayed green; the widened form also holds the list of
+  literal-pinning jobs equal to the jobs that carry one. `ci.yml` md5 `c8bf4972f442b754cd764e43ae9059dd`
+  before and after.
+
+`scripts/ci-ipm-archive.sh` md5 is `6983c0a437acc61694dadffb03bbb539` after this pass's patches
+(`be2440169b8a041e7cb3a615174458cd` was the pre-review file).
 
 ## Auto Run Result
 

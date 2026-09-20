@@ -655,7 +655,7 @@ the file `package` wrote, so the script reads the artifact back from the directo
 rather than predicting its name.
 
 ```bash
-cd ui && npm run build   # the manifest copies this bundle into the package
+(cd ui && npm run build)   # the manifest copies this bundle into the package
 sh scripts/ci-ipm-archive.sh --image intersystems/irishealth-community:2026.2
 ```
 

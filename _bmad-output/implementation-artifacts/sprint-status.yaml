@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '09-20-2026 07:02'
+last_updated: '09-20-2026 10:11'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -197,7 +197,7 @@ development_status:
   epic-13: in-progress
   13-1-the-uninstall-hook: done
   13-2-the-test-suite-grows-in-ci-against-a-stock-image: done
-  13-3-publish-the-package-to-the-community-registry: review
+  13-3-publish-the-package-to-the-community-registry: in-progress
   epic-13-retrospective: optional
 
   epic-14: backlog

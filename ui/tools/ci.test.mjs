@@ -325,11 +325,14 @@ test('every file a gate command names actually exists', () => {
 
 // --- The absences ---------------------------------------------------------------------------
 
-test('nothing in the workflow publishes, releases or pushes to a registry (stealth policy)', () => {
+test('nothing in the workflow or the archive builder publishes, releases or pushes to a registry (stealth policy)', () => {
   // The same seven patterns are applied to `scripts/ci-ipm-archive.sh` as well as to the workflow:
   // that script builds the distributable archive, so a forbidden token inside it would publish
   // exactly as effectively as one in a step that calls it. Comment lines are kept on the script
   // side -- a comment naming an upload token is a reader's instruction to add one.
+  // `ui/tools/ipm-archive.test.mjs` runs a STRICTER version of this scan over the same script --
+  // the bare word `publish` rather than `npm publish`, plus a credential-variable pattern. This
+  // one is the floor the workflow and the script share; that one is the script's own.
   const archive = readFileSync(join(REPO_ROOT, 'scripts', 'ci-ipm-archive.sh'), 'utf8');
   for (const [what, pattern] of [
     ['a secret reference', /secrets\./],
@@ -538,23 +541,41 @@ test('the gates job runs on the floor of every Node band the workspace declares 
   );
 });
 
-test('the instance job pins a Node the engines range admits', () => {
-  // The instance job is not a matrix -- it builds the bundle a container installs, once -- so it
-  // carries a literal, and the literal has to be inside the declared range like any other.
+test('every job that pins a literal Node pins one the engines range admits', () => {
+  // `instance` and `package` are not matrices -- each builds the bundle a container installs,
+  // once -- so each carries a literal, and a literal has to be inside the declared range like any
+  // other. Both are named here rather than only `instance`: a second job pinning a literal that
+  // this test did not read would keep a stale pin when the floor moves, and `engine-strict` would
+  // report it as an npm failure in a job no gate had ever looked at.
   const packageJson = JSON.parse(readFileSync(join(here, '..', 'package.json'), 'utf8'));
   const declared = packageJson.engines.node;
-  const pinned = /node-version:\s*(\S+)/.exec(jobSlice(workflow, 'instance'));
-  assert.ok(pinned, 'the instance job pins a node version');
-  const [major, minor, patch] = pinned[1].split('.').map(Number);
-  assert.ok(
-    declared.includes(`^${major}.`),
-    `CI pins Node ${pinned[1]} and the workspace declares ${declared}; a pin outside the range fails at npm ci with engine-strict`
-  );
-  const floor = new RegExp(`\\^${major}\\.(\\d+)\\.(\\d+)`).exec(declared);
-  assert.ok(floor, `the engines range names a ^${major} band`);
-  assert.ok(
-    minor > Number(floor[1]) || (minor === Number(floor[1]) && patch >= Number(floor[2])),
-    `CI pins Node ${pinned[1]}, below the ${declared} floor`
+  const literalPinners = ['instance', 'package'];
+  for (const job of literalPinners) {
+    const pinned = /node-version:\s*(\S+)/.exec(jobSlice(workflow, job));
+    assert.ok(pinned, `the ${job} job pins a node version`);
+    assert.doesNotMatch(pinned[1], /\$\{\{/, `the ${job} job pins a literal, not a matrix expression`);
+    const [major, minor, patch] = pinned[1].split('.').map(Number);
+    assert.ok(
+      declared.includes(`^${major}.`),
+      `the ${job} job pins Node ${pinned[1]} and the workspace declares ${declared}; a pin outside the range fails at npm ci with engine-strict`
+    );
+    const floor = new RegExp(`\\^${major}\\.(\\d+)\\.(\\d+)`).exec(declared);
+    assert.ok(floor, `the engines range names a ^${major} band`);
+    assert.ok(
+      minor > Number(floor[1]) || (minor === Number(floor[1]) && patch >= Number(floor[2])),
+      `the ${job} job pins Node ${pinned[1]}, below the ${declared} floor`
+    );
+  }
+  // And the list above is held equal to the jobs that actually carry one, so a third such job
+  // cannot be added without being covered here.
+  const withLiteralPin = jobNames(workflow).filter((job) => {
+    const pin = /node-version:\s*(\S+)/.exec(jobSlice(workflow, job));
+    return pin !== null && !pin[1].includes('${{');
+  });
+  assert.deepEqual(
+    withLiteralPin.sort(),
+    [...literalPinners].sort(),
+    'a job pins a literal Node version that this test does not check against engines.node'
   );
 });
 

@@ -4361,8 +4361,25 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-13-3-publish-the-package-to-the-community-registry.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: AD-27 pins the image to an explicit version tag, never a rolling alias. The guard in ci-image-compile.sh rejects :latest and :latest-cd but not :latest-em; the new ci-ipm-archive.sh closes the same gap in its own guard. One condition, in Epic 13's own footprint
 - 2026-09-20T07:02:13Z status=routed owner=range-end-cleanup by=harvest note=one-line guard widening, blocks no floor and no downstream story (Rule 27)
+- 2026-09-20T10:10:56Z occurrence=13-3-publish-the-package-to-the-community-registry
+- 2026-09-20T10:10:56Z status=routed owner=range-end-cleanup by=cr note=re-sighted: its only test is a source-text /latest-cd/ match, which the narrow guard satisfies
 
 ### DW-1333: IPM's exporter drops <SystemRequirements>, so the distributable archive carries no IRIS or IPM version floor
 - source: spec-13-3-publish-the-package-to-the-community-registry.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: Observed across three package runs on the pinned image: the roster declares the requirement and module.xml carries it, but the .tgz manifest does not, so an operator on an older IRIS or IPM gets no refusal at install time. It is IPM's serializer, not OcuPilot's manifest, so it is not fixable in the roster
 - 2026-09-20T07:02:13Z status=routed owner=range-end-cleanup by=harvest note=belongs with the owner's release beside DW-1300; a distribution property, not an install-path defect
+
+### DW-1334: The package job fails in CI: the archive's bundle members are not under ui/dist/ocupilot-ui/browser/ on the Linux runner, so AC1's contents check and the Integration AC are red
+- source: spec-13-3-publish-the-package-to-the-community-registry.md / code-review | severity: high | fix-risk: med | footprint: in-story
+- evidence: Run 35503250843 (head 8085072, the code under review), job 106058629958: the script exits 1 at 09:50:03 with 'is missing 14 staged bundle file(s)' naming every bundle file. The archive it built is 1,083,080 bytes against the macOS run's 1,083,507, and the AC1 mutation shows a bundle-less archive is 542,321 - so the bundle's bytes ARE in the CI archive and the member PATH differs. The class check (^src/cls/OcuPilot/.*\.cls$) passed on the same archive, so it is the FileCopy branch alone. Never observed on Linux before: the story's evidence is one macOS run.
+- 2026-09-20T10:10:37Z status=open owner=13-3-publish-the-package-to-the-community-registry by=cr note=reopens the story; diagnosis needs the CI archive member list, which the job now prints (patched this pass)
+
+### DW-1338: epics.md:737 still says the archive is proven by a dry-run build, the claim the same amendment corrected at :5124
+- source: spec-13-3-publish-the-package-to-the-community-registry.md / code-review | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: The spec's deferred: item named both sites ('at epics.md:5124 and again at :737'); the 2026-09-20 Spec Change Log entry applied the amendment at :5124 only. :737 reads 'the archive is proven by a dry-run build and a local install'. IPM 0.10.5 has no dry-run modifier on publish, so the surviving sentence is the wrong claim left at an origin a later plan stage reads.
+- 2026-09-20T10:10:48Z status=routed owner=range-end-cleanup by=cr note=one-line lead edit in epics.md, outside this reviewer's footprint; same amendment as :5124
+
+### DW-1339: ci-ipm-archive.sh's <Dependency> comparison arm matches nothing against IPM's own serialization, so a dependency could drift uncompared
+- source: spec-13-3-publish-the-package-to-the-community-registry.md / code-review | severity: low | fix-risk: med | footprint: in-story
+- evidence: element_lines matches <Dependency ...> with attributes. module.xml declares none today, so the arm contributes 0 lines on both sides and the 11-declaration floor is met without it. Whether IPM re-serializes a dependency as an attributed <Dependency> or as <Dependencies><ModuleReference><Name>..., which element_lines cannot read, was not measured - fixing it correctly needs an observed export carrying one.
+- 2026-09-20T10:10:48Z status=wontfix-accepted owner=range-end-cleanup by=cr note=reopen_if=module.xml gains a <Dependency> and the archive-manifest comparison still passes with it absent from one side

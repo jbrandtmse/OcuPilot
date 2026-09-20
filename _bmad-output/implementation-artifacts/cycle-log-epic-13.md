@@ -65,3 +65,5 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-20T07:16:59Z	Story 13.3	stage_spawned	stage=code-review spawn_at=2026-09-20T07:16:59Z model=claude-opus-5[1m] agent_name=13-3-publish-the-package-cr-1 cycle_iteration=1
 2026-09-20T09:46:18Z	Epic 13	runner_resumed	reason=api_rate_limit_not_a_stop_condition killed_stage=code-review_13.3 recovered=qa_output_verified_from_artifacts_record_completed_by_lead
 2026-09-20T09:47:00Z	Story 13.3	stage_spawned	stage=code-review spawn_at=2026-09-20T09:47:00Z model=claude-opus-5[1m] agent_name=13-3-publish-the-package-cr-2 cycle_iteration=1 note=fresh_respawn_after_rate_limit_kill_never_a_sendmessage_resume
+2026-09-20T10:14:55Z	Story 13.3	cr_complete	spawn_at=2026-09-20T09:12:44Z model=claude-opus-5[1m] resolved=7 by_design=6 wontfix_theoretical=0 routed=3 escalated=0 decision_pending=0 dismissed=16 high=1 med=5 low=5 rows=11 unresolved_high_med=1 clarifications=0 closing_sections_present=true
+2026-09-20T10:14:55Z	Story 13.3	rework_opened	cycle_iteration=1 iteration=1 trigger=high items=DW-1334 scope_baseline=4fa4c4f

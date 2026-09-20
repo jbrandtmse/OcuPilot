@@ -154,6 +154,17 @@ test('every IPM command is a literal, so the scans above can see all of them', (
     calls,
     'an IPM command is built from a variable, so the allow-list and the registry-token scan cannot see it'
   );
+  // Being a literal is not enough: `ipmVerbs` reads `/Shell\("([a-z-]+)/`, so a command whose
+  // first character is a `$` or a capital yields NO verb at all and passes the allow-list equality
+  // by contributing nothing to either side. The verb itself must therefore be written out, in the
+  // spelling IPM's grammar uses, at the front of every command.
+  for (const command of ipmCommands(code)) {
+    assert.match(
+      command,
+      new RegExp(`^(${ALLOWED_IPM_VERBS.join('|')})(\\s|$)`),
+      `the IPM command ${JSON.stringify(command)} does not begin with a spelled-out allow-listed verb, so the allow-list equality above cannot see which verb it runs`
+    );
+  }
 });
 
 test('containers are created only by the two docker run lines the network check reads', () => {
@@ -166,6 +177,9 @@ test('containers are created only by the two docker run lines the network check 
     ['docker compose', /docker[\s-]+compose\b/],
     ['a --mount or --volume form the -v reader does not see', /--mount\b|--volume\b/],
     ['a docker run continued onto another line', /docker run[^\n]*\\\n/],
+    // `--network none` is read off the creation line, so a network attached afterwards would
+    // leave every assertion above green over a container that had one.
+    ['a network attached after the container was created', /docker\s+network\b/],
   ]) {
     assert.doesNotMatch(code, pattern, `the script creates a container with ${what}, which the --network none assertion above cannot read`);
   }

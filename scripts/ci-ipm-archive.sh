@@ -6,10 +6,12 @@
 # IPM's local `package` verb -- the module lifecycle run to completion, minus the upload -- and
 # both containers run with `--network none`, so each has a loopback interface and nothing else.
 # No credential, token or repository row is read, written or asked for: this script asserts that
-# `%IPM_Repo.Definition` is EMPTY on both instances, after the IPM import and again after every
-# verb, which is what turns "resolved nothing from a package registry" from a promise into a
-# measurement over the phases rather than a snapshot taken before them. The archive crosses from one container to
-# the other by `docker cp`, which is not network.
+# `%IPM_Repo.Definition` is EMPTY on both instances, after the IPM import and again after the verbs
+# that install anything (`load`, and `package` on the build instance), which is what turns
+# "resolved nothing from a package registry" from a promise into a measurement over the phases
+# rather than a snapshot taken before them. `list` only reports what is already there and is the
+# last verb either instance runs. The archive crosses from one container to the other by
+# `docker cp`, which is not network.
 #
 # The three IPM verbs it issues are `load`, `package` and `list`, and `ui/tools/ipm-archive.test.mjs`
 # holds that set equal to its declared allow-list in both directions.
@@ -166,8 +168,9 @@ EOF
 }
 
 # The same count, read again after a verb has run. Taken only once, at import, the zero would
-# describe the instance BEFORE the phases it is offered as evidence about; every verb below is
-# followed by this, so no row can appear and go unread.
+# describe the instance BEFORE the phases it is offered as evidence about; every verb that installs
+# anything is followed by this, so no row created while a module was being brought in can appear
+# and go unread.
 assert_no_repositories() {
     RAW=$(docker exec -i "$1" iris session iris -U HSCUSTOM 2>&1 <<'EOF'
 Set tRS = ##class(%SQL.Statement).%ExecDirect(,"SELECT COUNT(*) FROM %IPM_Repo.Definition")
@@ -286,7 +289,10 @@ MISSING_BUNDLE=""
 BUNDLE_STAGED=0
 for tFile in $(cd "$DIR/module/$BUNDLE" && find . -type f | sed 's#^\./##'); do
     BUNDLE_STAGED=$((BUNDLE_STAGED + 1))
-    if [ "$(printf '%s\n' "$MEMBERS" | grep -c "^$BUNDLE/$tFile\$" || true)" -lt 1 ]; then
+    # -F -x: the member path is compared as a fixed whole line. A staged name carrying a regex
+    # metacharacter would otherwise be matched as a pattern, which can only ever match MORE than
+    # the file it stands for.
+    if [ "$(printf '%s\n' "$MEMBERS" | grep -Fxc "$BUNDLE/$tFile" || true)" -lt 1 ]; then
         MISSING_BUNDLE="$MISSING_BUNDLE $tFile"
     fi
 done
@@ -294,7 +300,13 @@ if [ "$BUNDLE_STAGED" -lt 1 ]; then
     fail "archive" "the staged bundle holds no file, so a comparison against it would pass having compared nothing"
 fi
 if [ -n "$MISSING_BUNDLE" ]; then
-    fail "archive" "$ARTIFACT_NAME is missing $(printf '%s' "$MISSING_BUNDLE" | wc -w | tr -d ' ') staged bundle file(s):$MISSING_BUNDLE"
+    # What the archive DOES carry outside src/cls/ and module.xml. Without it the failure names
+    # only what it looked for, and a bundle exported under some other prefix is indistinguishable
+    # from one that was never exported -- a distinction nobody can make from a CI log afterwards,
+    # because the trap has removed the container the archive came from.
+    echo "ci-ipm-archive: $ARTIFACT_NAME carries these non-class members:"
+    printf '%s\n' "$MEMBERS" | grep -v '^src/cls/' | grep -v '^module\.xml$' | head -n 40
+    fail "archive" "$ARTIFACT_NAME is missing $(printf '%s' "$MISSING_BUNDLE" | wc -w | tr -d ' ') staged bundle file(s) under '$BUNDLE/':$MISSING_BUNDLE"
 fi
 TEST_MEMBERS=$(printf '%s\n' "$MEMBERS" | grep 'OcuPilot/Test/' || true)
 if [ -n "$TEST_MEMBERS" ]; then
@@ -339,9 +351,13 @@ declarations() {
 }
 declarations "$REPO_ROOT/module.xml" > "$DIR/extract/declared-by-the-roster.txt"
 declarations "$DIR/extract/module.xml" > "$DIR/extract/declared-in-the-archive.txt"
-DECLARED=$(grep -c '[^[:space:]]' < "$DIR/extract/declared-by-the-roster.txt" || true)
+# Only declarations that carry a VALUE are counted. `text_element` prints its label whether or not
+# the element is there, so a manifest that had lost <Name> and <Version> would still produce
+# eleven lines, and `name=` would then compare equal to `name=` on both sides -- the floor meeting
+# its own number while two of the declarations AC2 names by word had compared nothing.
+DECLARED=$(grep -c '=[^[:space:]]' < "$DIR/extract/declared-by-the-roster.txt" || true)
 if [ "${DECLARED:-0}" -lt 11 ]; then
-    fail "archive" "the manifest comparison read only ${DECLARED:-0} declaration(s) from the roster's manifest, fewer than the 11 it declares; a comparison that read less than the file holds is a pass that means nothing"
+    fail "archive" "the manifest comparison read only ${DECLARED:-0} declaration(s) carrying a value from the roster's manifest, fewer than the 11 it declares; a comparison that read less than the file holds is a pass that means nothing"
 fi
 if ! diff -u "$DIR/extract/declared-by-the-roster.txt" "$DIR/extract/declared-in-the-archive.txt"; then
     fail "archive" "the manifest inside $ARTIFACT_NAME declares something other than what the roster does"
