@@ -51,6 +51,26 @@ const ZOOM_FLOOR_WIDTH = 720;
 /** The five blocks Home carries above the tile grid once 15.2, 15.3 and 15.4 have all landed. */
 const BLOCK_COUNT = 5;
 
+/**
+ * Each member of the read against the label its row carries, in the order the panel lists them.
+ *
+ * **This is the only place the wire's member names and the client's field list are compared.**
+ * `Kernel/Shell/SystemInfo.Members()` and `core/system-info.ts`'s `SYSTEM_INFO_FIELDS` are two
+ * independent lists, and every other tier asserts one of them against its own second copy: rename
+ * a member on the instance and the client asks for a key the body no longer carries, reads `''`,
+ * and renders "Not reported" for ever with the whole suite green. Comparing every rendered value
+ * against the answered body is what refuses that.
+ */
+const ROW_LABELS = [
+  ['uptime', STRINGS.systemInfoUptime],
+  ['mirror', STRINGS.systemInfoMirror],
+  ['databaseSpace', STRINGS.systemInfoDatabase],
+  ['journalSpace', STRINGS.systemInfoJournal],
+  ['lockTable', STRINGS.lockListLabel],
+  ['writeDaemon', STRINGS.systemUsageWriteDaemon],
+  ['production', STRINGS.systemInfoProduction],
+];
+
 let browser = null;
 
 before(async () => {
@@ -100,7 +120,12 @@ async function signedInAtHome(width = config.viewport.width) {
   await page.click('.ocu-signin-card button[type="submit"]');
   await page.waitForSelector('app-rail .ocu-rail', { timeout: config.navigationTimeoutMs });
   await leaveFirstLoginGate(page, config.navigationTimeoutMs, HOME_URL);
+  // The panel renders its rows only once its own read has settled, so this is a wait for the
+  // answer and not merely for the block. The Links block is a second in-flight read (About), and
+  // it renders only when the instance has answered an address -- so the five-block count has to
+  // wait for that one too, or an About answer that lands second reads as four blocks.
   await page.waitForSelector('.ocu-home-system-row', { timeout: config.navigationTimeoutMs });
+  await page.waitForSelector('.ocu-home-block-link', { timeout: config.navigationTimeoutMs });
   return { context, page };
 }
 
@@ -127,24 +152,39 @@ test('Integration AC: the write-daemon row carries the word the instance itself 
     const rows = await readPanelRows(page);
     assert.equal(rows.length, 7, `the panel renders its seven rows: ${JSON.stringify(rows)}`);
 
+    // Every member, not only the write daemon: this is the one tier where both ends of the wire
+    // contract are present, so it is where a member renamed on the instance -- or dropped from
+    // the client's own field list -- has to be caught.
+    for (const [member, label] of ROW_LABELS) {
+      const row = rows.find((candidate) => candidate.label === label);
+      assert.ok(row, `a row is labelled ${JSON.stringify(label)} for ${member}: ${JSON.stringify(rows)}`);
+
+      if (member === 'uptime') {
+        // Compared for presence only, deliberately. It is a live duration read twice, a moment
+        // apart, so an exact comparison reddens whenever the minute ticks between the two reads;
+        // that the vendor's own string is carried verbatim, double space included, is pinned
+        // without a clock by OcuPilot.Test.UiSystemRead's armed-value assertion.
+        assert.notEqual(row.value, '', `the uptime row carries a value: ${JSON.stringify(row)}`);
+        continue;
+      }
+
+      // Colour is never the only signal, and a member the instance could not report keeps its
+      // label and shows the published not-reported word rather than an empty cell.
+      const wanted = answered[member] === '' ? STRINGS.systemInfoNotReported : answered[member];
+      assert.equal(
+        row.value,
+        wanted,
+        `the ${member} row reads what the instance answered, end to end through the route, the store and the block: ${JSON.stringify({ row, answered: answered[member] })}`
+      );
+    }
+
+    // The Integration AC's own named member, asserted again in its own right so a failure says so.
     const daemon = rows.find((row) => row.label === STRINGS.systemUsageWriteDaemon);
-    assert.ok(daemon, `a row is labelled ${JSON.stringify(STRINGS.systemUsageWriteDaemon)}`);
     assert.equal(
       daemon.value,
       answered.writeDaemon,
-      'and reads the dashboard word the instance answered, end to end through the route, the store and the block'
+      'the write-daemon row carries the dashboard word the instance itself reports'
     );
-
-    // The uptime is the same evidence for the member that is not a state word, and it is what a
-    // reader that reformatted the vendor's own string would fail: the value is compared verbatim.
-    const uptime = rows.find((row) => row.label === STRINGS.systemInfoUptime);
-    assert.ok(uptime, 'a row is labelled Uptime');
-    assert.equal(uptime.value, answered.uptime, 'carrying the instance uptime verbatim');
-
-    // Colour is never the only signal: every rendered row carries a word of its own.
-    for (const row of rows) {
-      assert.notEqual(row.value, '', `${row.label} carries a word: ${JSON.stringify(row)}`);
-    }
   } finally {
     await context.close();
   }

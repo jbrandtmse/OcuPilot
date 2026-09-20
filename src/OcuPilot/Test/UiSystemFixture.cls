@@ -66,6 +66,24 @@ ClassMethod SetProductionStatusFails()
     Set ^||OcuPilotSystemFixture("productionfails") = 1
 }
 
+/// <p>Arm the production read to <code>Throw</code> rather than answer a status, so the
+/// <code>Catch</code> in <method>OcuPilot.Kernel.Shell.SystemInfo.ProductionState</method> -- the
+/// one AD-16 requires to restore the namespace before it rethrows -- is reached. No healthy
+/// instance produces it; <method>SetProductionStatusFails</method> covers the refusal that does.</p>
+ClassMethod SetProductionStatusThrows()
+{
+    Set ^||OcuPilotSystemFixture("productionthrows") = 1
+}
+
+/// <p>The namespace <code>$NAMESPACE</code> held when the production seam was last called. AD-16
+/// says the scoped read enters its namespace by explicit save and restore, and this is what makes
+/// "it ran in the scoped namespace" an observation rather than an inference: the seam's own caller
+/// contract is that the switch has already happened.</p>
+ClassMethod ProductionNamespace() As %String
+{
+    Quit $Get(^||OcuPilotSystemFixture("productionns"), "")
+}
+
 /// <p>Forget every override and any captured log call.</p>
 ClassMethod Clear()
 {
@@ -122,6 +140,10 @@ ClassMethod ProductionEnabled() As %Boolean
 
 ClassMethod ProductionStatus(Output pName As %String, Output pState As %Integer) As %Status
 {
+    Set ^||OcuPilotSystemFixture("productionns") = $NAMESPACE
+    If $Data(^||OcuPilotSystemFixture("productionthrows")) {
+        Throw ##class(%Exception.General).%New("UiSystemFixture", 1, , "fixture: the production read raised")
+    }
     If $Data(^||OcuPilotSystemFixture("productionfails")) {
         Set pName = ""
         Set pState = ""

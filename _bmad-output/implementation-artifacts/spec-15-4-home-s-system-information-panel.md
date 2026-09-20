@@ -200,6 +200,88 @@ deferred:
 - Given About declines uptime and mirror state to this story, when the panel renders, then both are present on Home, so the product reports each exactly once.
 - Given the panel, when Home stays open, then no auto-refresh timer runs: it settles with its own read and Home stays absent from AD-43's roster.
 
+### Review Findings
+
+Code-review stage, 2026-09-20. Opus tier (`review_tier: full-opus`), four layers: Blind Hunter, Edge
+Case Hunter, Verification Gap, Acceptance Auditor. 38 raw findings -> 28 root-cause entries after
+grouping, of which 13 survived: **0 high, 4 medium patched, 6 low patched, 2 medium routed, 1 false**;
+the other 15 were rejected on verification. Every AD the
+spec names was checked against its Rule and none is violated — AD-16's restore-first shape holds at
+both switch sites, AD-43's roster is untouched, AD-27 names no `%Api.Admin.*`, AD-44/AD-21's scope is
+the router's validated stash. Ten patches applied in-pass; nothing left unresolved.
+
+#### Patched (medium)
+
+- **CR1 — the panel had no pending state, so "not asked yet" rendered as seven confident
+  "Not reported" rows** and stood for good against an instance that never replies. `systemUnanswered`
+  covered only the failed path. It is also what made the browser spec's `waitForSelector` insufficient:
+  `.ocu-home-system-row` existed before the read settled. Fixed on the Links block's own precedent
+  (`resolvedLinks`: "a heading over an empty list says there are no links when the truth is that the
+  instance has not said") — the rows render only once `answered()`, which makes that selector a correct
+  "the read has settled" wait. No new string.
+- **CR2 — `ProductionState`'s namespace switch and its `Catch` restore were executed by no test, and
+  the one assertion claiming to cover them could not fail.** `TestTheProductionMemberFollowsTheRequestsScope`
+  scopes to `%SYS`, which is not production-enabled, so the method returns at `If '..ProductionEnabled()`
+  before `Set $NAMESPACE = tScope`; its `$NAMESPACE` assertion therefore compared a variable with itself.
+  Deleting either the switch or the restore reddened nothing. The dashboard switch has
+  `TestTheNamespaceIsRestoredOnBothDashboardPaths`; the production one had no equivalent (Rule 19, AD-16).
+  Fixed: the fixture records `$NAMESPACE` at the `ProductionStatus` seam and gains a throwing arm; two
+  new rows pin the scoped execution and the restore-before-rethrow; the vacuous assertion is gone.
+- **CR3 — the panel kept the previous namespace's Production word after a namespace switch.** Home is
+  not re-created by a switch (it subscribes to `scope` for exactly that reason) and nothing re-read the
+  panel, so the row contradicted the instance line beside it — the client-side twin of the defect P1 fixed
+  on the instance. Fixed with `onScopeChange`, the channel whose own header names it as AD-44's
+  "switching re-fetches rather than re-routing": an event, not a timer, so AD-43 is unaffected.
+- **CR4 — the wire's member names were pinned only against second copies of the same list.**
+  `Members()` and `SYSTEM_INFO_FIELDS` are independent, and every tier asserted one against its own
+  literal; the browser spec's only cross-tier guard was `row.value !== ''`, which the rendered
+  "Not reported" satisfies. A member renamed on the instance shipped five permanently unreported rows
+  with every gate green. Fixed: the browser spec now compares all seven rendered values against the
+  answered body.
+
+#### Patched (low)
+
+- **CR5** — the Integration AC compared `uptime` across two samples of a live duration, so it flaked
+  whenever the minute ticked between them; `UiSystemRead` already pins verbatim-ness against an armed
+  value without a clock. The browser row now asserts presence and says where the verbatim pin lives.
+- **CR6** — AC2's five-block count raced the About read, which the Links block renders on; the spec now
+  waits for that block too.
+- **CR7** — `TestAnUnrecognizedProductionStateIsNotPublishedAsAToken`'s comment named the wrong vendor
+  branch for state 5. Verified: `%syInterop.inc:41-42` and `Ens/Director.cls:584` make 5
+  `eProductionStateNetworkStopped` on the `$$$EnsRuntime("System")` branch; 6 is the shard-worker one
+  (`:539`). `SystemInfo.cls`'s own doc was already right.
+- **CR8** — `UiSystemRead`'s header said "it reads and writes nothing" while the log-seam row emits two
+  real `messages.log` lines; the sentence is replaced with what the class does.
+- **CR9** — the AD-43 row's `second.destroy()` sat inside the `try`, so a failed expectation left a
+  second `HomePage` mounted against the fake clock for every row after it.
+- **CR10** — EXPERIENCE.md `:384` was the only line in the file using curly apostrophes.
+
+#### Routed (out of footprint, ledgered with an owner, non-blocking)
+
+- **DW-1400** — the shell-chrome read seam is in its third verbatim copy with no extracted base
+  (`About`, `Instance`, `SystemInfo`), so the per-field degrade contract has three homes.
+- **DW-1401** — `about-dialog.ts:83` and `home.page.ts:327` both render EXPERIENCE.md `:520`'s
+  internal-error sentence as a bare paragraph, without its published `role="alert"`, Retry and Open
+  messages.log; and `failed()` is a boolean that discards `result.kind`, so neither can pick the
+  unreachable wording `panel.ts:606` uses.
+
+**Rejected, with the reason** — 21, the load-bearing ones being: a claim that DW-1388's
+`owner=range-end-cleanup` contradicts its own note (**false** — Rule 27 charters that story after Epic 12,
+which is outside this epic); a privilege refusal rendering as "Not reported" and `production` composing
+`Running (Demo)` (**by-design** — the matrix's *One source refuses* and *Interop namespace* rows say
+exactly that); `BLOCK_COUNT = 5` (**by-design** — AC2 names five blocks); `home.page.spec.ts` deriving
+row *values* from `SYSTEM_INFO_FIELDS` (the pinning assertion for AC1 is the spelled-out label list,
+whose recorded mutation reddens it); `ProductionStateToText(-10)` answering a sentence rather than a word
+(**wontfix-accepted**, `reopen_if=` a mirror-backup member reports a truncated Production row); the test's
+reference `GetProductionStatus` using the vendor defaults rather than the read's `(2, 1)`
+(**wontfix-theoretical** — needs a contended runtime lock during the run); `Sample()` answering a
+non-object, and `UiSystemWire`'s alert-word assertions on a monitor that has not sampled (neither layer
+showed a path either is reachable by); four findings whose only fix is to edit this spec (its
+`EXPERIENCE.md:703` pointer, now `:704`; `status`; `review_loop_iteration`; the Always list's "each
+field" against the shipped one-sample-per-payload, which the Execution bullet authorizes and the triage
+log already adjudicated); and DW-1392, an adjudicated ledger entry that takes an occurrence rather than
+a re-file.
+
 ## Spec Change Log
 
 - 2026-09-20 (lead, spec gate): restructured `## Verification` into owner Rule 29's shape (targeted commands marked `(loop)`, the full ObjectScript sweep and full browser suite marked `(once, before dev_complete)`). The rule landed at `686acf4` after this spec was planned; the substance of the verification is unchanged and both full runs are retained.
@@ -313,6 +395,16 @@ deferred:
 - P7 — `mutation: log "uptime" rather than DASHBOARDSOURCE in SystemInfo.Dashboard's Catch -> UiSystemRead.TestARefusedDashboardSampleDegradesItsFiveMembersAndLogsOnce red on the name (the count stays 1)`.
 - P8 — the doc comment now names the mutation that can redden it: `reformat the uptime in SystemInfo.ReadSource ($ZStrip(<value>, "*W")) -> UiSystemRead.TestTheCarriedValuesAreTheInstancesOwn red at the armed assertion`. Applied and observed; the sentence it replaced named `SampleDashboard`, whose result the fixture overwrites.
 - P3, P9, P10 are the tests' own shape rather than new coverage: P3's is AC5's line above, and P9 and P10 replace a positional or unguarded selector with a by-heading one.
+
+**Code-review patch mutations (2026-09-20, code-review stage)** — each applied, observed red, reverted, the tree confirmed byte-identical (`git diff --stat` on the mutated file empty afterwards):
+
+- CR1 — `mutation: render the panel's rows unconditionally again (@if (true) in place of @if (systemAnswered)) -> home.page.spec.ts "a panel whose read has not answered yet renders no rows at all" AND "a panel whose read has never answered shows the fault" both red (2 failed, 41 passed)`.
+- CR2 — two, one per switch half, each recompiling `SystemInfo` and every descendant (`UiSystem`, `UiSystemFixture`, `UiSystemRead`): `mutation: delete Set $NAMESPACE = tScope from SystemInfo.ProductionState -> UiSystemRead.TestTheProductionReadRunsInTheScopedNamespace red, 16 of 17 still green (run 484)`, and `mutation: delete Set $NAMESPACE = tOrigNS from that method's Catch -> UiSystemRead.TestARaisingProductionReadRestoresTheNamespaceBeforeItRethrows red (run 485); the leak is real enough that OnAfterOneTest then fails <CLASS DOES NOT EXIST> with the process stranded in %SYS, which aborted the run at 4 tests`. Both reverted; 17/17 at run 486.
+- CR3 — `mutation: make HomePage's onScopeChange callback a no-op -> home.page.spec.ts "a namespace switch re-reads the panel" red (1 failed, 42 passed)`.
+- CR4 — `mutation: make core/system-info.ts's stringOf answer '' for lockTable, as a server-side rename of that member would look to the client; rebuild and redeploy -> home-system-information.browser-spec.mjs red ("the lockTable row reads what the instance answered": row "Not reported" against answered "Normal")`. The pre-patch loop (`row.value !== ''`) passed under the same mutation, which is the finding.
+- CR5–CR10 are a test's own shape, a wait, or a corrected sentence rather than new coverage, so they carry no mutation of their own.
+
+Gates after the patches: `check-objectscript` 518 files / 21 rules / 0 problems; `lint-docs` 98 files / 0 issues; `npm run build` with all six prebuild checkers and **`screen-mirror --check` up to date with no regeneration**; `npm test` 1,182 `node --test` + 725 component (723 before). Instance (`ocupilot-slot-b`): `UiSystemRead` 17/17 (15 before) and `UiSystemWire` 4/4, by name, one class per call. Browser: `home-system-information.browser-spec.mjs` 2/2 against the rebuilt bundle redeployed into `ocupilot-b-ci`.
 
 A single-file `npx vitest run` cannot host a client mutation: the Angular `@angular/build:unit-test` builder supplies the test environment, so a bare vitest invocation fails on `Cannot read properties of null (reading 'ngModule')`. Use `npx ng test --include <spec>`.
 

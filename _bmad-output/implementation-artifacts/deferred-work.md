@@ -4630,3 +4630,14 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-15-4-home-s-system-information-panel.md | severity: low | fix-risk: low | footprint: in-footprint
 - evidence: ui/src/styles/_components.scss:5020 sets height on .ocu-home-system-row; DESIGN.md makes heights outside the virtualized lists minimums, so text-only zoom clips rather than growing the row
 - 2026-09-20T21:07:38Z status=routed owner=range-end-cleanup by=harvest note=non-blocking at the shipped type scale and contradicts a published DESIGN.md contract rather than an AD; a one-line min-height change belongs with the other shell-chrome polish
+- 2026-09-20T21:41:36Z occurrence=15-4-home-s-system-information-panel
+
+### DW-1400: The shell-chrome read seam is in its third verbatim copy -- Members/Payload/Field/ReadSource/LogSourceFailure/LOGSUBSYSTEM -- with no extracted base, so a change to the per-field degrade contract has to be made in three places
+- source: spec-15-4-home-s-system-information-panel.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Kernel/Shell/About.cls, Kernel/Shell/Instance.cls and Kernel/Shell/SystemInfo.cls each carry the six members; Test/Instance.cls:357 and Test/UiSystemRead.cls's log-seam row are the same test copied too
+- 2026-09-20T21:40:27Z status=routed owner=range-end-cleanup by=cr note=the spec ratifies copying About whole; at three copies it needs a base class, which touches two earlier stories' files
+
+### DW-1401: Two chrome surfaces render EXPERIENCE.md's Generic internal error sentence as a plain paragraph, without the role=alert and the Retry and Open messages.log actions that row publishes, and neither can tell an unreachable instance from a 5xx
+- source: spec-15-4-home-s-system-information-panel.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: EXPERIENCE.md:520 specifies role=alert plus both actions; about-dialog.ts:83 (Story 15.3) and home.page.ts:327 both render a bare p, and About.failed()/SystemInfo.failed() are booleans that discard result.kind, which panel.ts:606 and fault-banner.ts:148 do use
+- 2026-09-20T21:40:34Z status=routed owner=range-end-cleanup by=cr note=about-dialog is the house precedent this story followed; fixing one surface alone would split the pattern

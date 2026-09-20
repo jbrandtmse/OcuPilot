@@ -31,7 +31,7 @@ import {
   screenForRoute,
   withQuery,
 } from '../../core/navigation';
-import { ScopeService } from '../../core/scope';
+import { ScopeService, onScopeChange } from '../../core/scope';
 import { shortcutScreens } from '../../core/shortcuts';
 import { Session } from '../../core/session';
 import { ShellState } from '../../core/shell-state';
@@ -325,7 +325,8 @@ interface LineSegment {
         <h2 class="ocu-home-block-heading">{{ STRINGS.systemInfoHeading }}</h2>
         @if (systemUnanswered) {
           <p class="ocu-home-block-empty">{{ STRINGS.connectivityServerFault }}</p>
-        } @else {
+        }
+        @if (systemAnswered) {
           <div class="ocu-home-block-list" role="list">
             @for (row of systemRows; track row.key) {
               <span class="ocu-home-block-row ocu-home-system-row" role="listitem">
@@ -650,6 +651,13 @@ export class HomePage {
       this.systemGeneration.set(this.systemGeneration() + 1)
     );
     void this.systemInfo.load();
+    // The production member is scoped to the request's namespace, so the panel has to re-read
+    // when the shell's namespace moves: Home is not re-created by a switch (it subscribes to
+    // `scope` above for exactly that reason), and without this the Production row keeps the
+    // previous namespace's word beside an instance line already showing the new one. This is
+    // AD-44's "switching re-fetches rather than re-routing" on the channel `onScopeChange`
+    // exists to carry -- an event, not a timer, so AD-43's closed roster is unaffected.
+    const stopSystemScope = onScopeChange(this.scope, () => void this.systemInfo.load());
     inject(DestroyRef).onDestroy(() => {
       stopNavigation();
       stopInstance();
@@ -658,6 +666,7 @@ export class HomePage {
       stopPreferences();
       stopAbout();
       stopSystem();
+      stopSystemScope();
     });
   }
 
@@ -690,6 +699,21 @@ export class HomePage {
   protected get systemUnanswered(): boolean {
     this.systemGeneration();
     return !this.systemInfo.answered() && this.systemInfo.failed();
+  }
+
+  /**
+   * Whether the instance has answered this panel's read at least once.
+   *
+   * **The rows exist only once it has.** Before the first read settles the store holds seven
+   * empty members, and rendering them would say "Not reported" about an instance that has not
+   * been asked yet -- the same confident claim `systemUnanswered` exists to prevent on the
+   * failed path, and one that stands indefinitely against an instance that never replies.
+   * `.ocu-home-system-row` is therefore also a correct "the read has settled" signal for
+   * `browser/home-system-information.browser-spec.mjs`, which waits on it.
+   */
+  protected get systemAnswered(): boolean {
+    this.systemGeneration();
+    return this.systemInfo.answered();
   }
 
   protected get announcement(): string {

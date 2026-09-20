@@ -1007,6 +1007,41 @@ describe('Home', () => {
     expect(panel.querySelectorAll('.ocu-home-system-row')).toHaveLength(0);
   });
 
+  it('Story 15.4: a panel whose read has not answered yet renders no rows at all', async () => {
+    // Between construction and the first answer the store holds seven empty members. Rendering
+    // them would say "Not reported" about an instance nobody has heard from -- the same
+    // confident claim the fault branch exists to prevent, and one that would stand for good
+    // against an instance that never replies. It is also what makes `.ocu-home-system-row` a
+    // correct "the read has settled" wait for the browser spec.
+    systemInfo.reset();
+    fixture.detectChanges();
+
+    const panel = systemPanel();
+    expect(panel.querySelectorAll('.ocu-home-system-row')).toHaveLength(0);
+    expect(panel.querySelector('.ocu-home-block-empty')).toBeNull();
+
+    await systemInfo.load();
+    fixture.detectChanges();
+    expect(systemPanel().querySelectorAll('.ocu-home-system-row')).toHaveLength(
+      SYSTEM_INFO_FIELDS.length
+    );
+  });
+
+  it('Story 15.4 (AD-44): a namespace switch re-reads the panel, so the Production row is not the old scope', async () => {
+    await systemInfo.load();
+    fixture.detectChanges();
+    const before = systemInfo.calls.length;
+
+    // The production member is scoped to the request's namespace and Home is not re-created by a
+    // switch, so without the `onScopeChange` subscription the row keeps the previous namespace's
+    // word beside an instance line already showing the new one.
+    scope.namespaceValue = 'USER';
+    scope.notify();
+    await fixture.whenStable();
+
+    expect(systemInfo.calls.length).toBe(before + 1);
+  });
+
   it('Story 15.4 (AD-43): the panel settles with its own read and starts no timer', async () => {
     expect(systemInfo.calls.length).toBe(1);
     expect(systemInfo.calls[0].path).toBe('/api/ocupilot/ui/system');
@@ -1017,8 +1052,9 @@ describe('Home', () => {
     // product would plausibly use, and `vi.getTimerCount()` makes "registers no timer" an
     // observation rather than an absence of evidence -- `log-viewer.spec.ts`'s idiom.
     vi.useFakeTimers();
+    let second: ReturnType<typeof TestBed.createComponent<HomePage>> | null = null;
     try {
-      const second = TestBed.createComponent(HomePage);
+      second = TestBed.createComponent(HomePage);
       second.detectChanges();
       await vi.advanceTimersByTimeAsync(0);
       const issued = systemInfo.calls.length;
@@ -1026,8 +1062,10 @@ describe('Home', () => {
       await vi.advanceTimersByTimeAsync(10 * 60 * 1000);
       expect(systemInfo.calls.length).toBe(issued);
       expect(vi.getTimerCount()).toBe(0);
-      second.destroy();
     } finally {
+      // In the `finally` beside the clock: a failed expectation above must not leave a second
+      // HomePage mounted against the fake timers for every row that follows.
+      second?.destroy();
       vi.useRealTimers();
     }
   });

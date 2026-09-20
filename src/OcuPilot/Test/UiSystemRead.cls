@@ -1,8 +1,10 @@
 /// <p>The System information payload (Story 15.4): every member present, one refused source
 /// degrading that member alone, an unsampled metric reading <code>""</code>, the mirror
 /// accessor's caught-error answer normalized, and the two production branches.</p>
-/// <p>Needs an installed instance whose process may reach <code>%SYS</code>; it reads and writes
-/// nothing. Four branches are unreachable on a healthy container without a seam --
+/// <p>Needs an installed instance whose process may reach <code>%SYS</code>. It changes no
+/// instance state; the one row that drives the real audit-log seam emits two error lines to
+/// <code>messages.log</code>, which is that seam running rather than a side effect to clean up.
+/// Four branches are unreachable on a healthy container without a seam --
 /// <class>OcuPilot.Test.UiSystemFixture</class> is that seam: no source refuses here, the monitor
 /// has collected every metric, this instance is not a mirror member, and
 /// <code>HSCUSTOM</code> is production-enabled.</p>
@@ -243,18 +245,56 @@ Method TestTheNamespaceIsRestoredOnBothDashboardPaths()
 /// the class and every descendant -- this goes red on the scoped assertion.</p>
 Method TestTheProductionMemberFollowsTheRequestsScope()
 {
-    Set tOrigNS = $NAMESPACE
     Do $$$AssertNotEquals(##class(OcuPilot.Kernel.Shell.SystemInfo).ProductionState(), "", "unscoped, this production-enabled namespace answers a word")
 
     Do ##class(OcuPilot.Kernel.Scope).Set("%SYS")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Shell.SystemInfo).ProductionState(), "", "a scope that is not production-enabled answers nothing")
-    Do $$$AssertEquals($NAMESPACE, tOrigNS, "and the read left the caller's own namespace alone")
+}
+
+/// <p><b>The production read runs in the scoped namespace and restores the caller's</b> (AD-16).
+/// The row above settles which namespace the <i>enabled</i> check consults; it cannot settle this
+/// one, because a scope that is not production-enabled returns before the switch is reached.</p>
+/// <p>Mutation: delete <code>Set $NAMESPACE = tScope</code> from
+/// <method>OcuPilot.Kernel.Shell.SystemInfo.ProductionState</method>, recompile the class and
+/// every descendant -- the seam then records the caller's namespace and this goes red.</p>
+Method TestTheProductionReadRunsInTheScopedNamespace()
+{
+    Set tOrigNS = $NAMESPACE
+    Do ##class(OcuPilot.Test.UiSystemFixture).SetEnsembleNamespace(1)
+    Do ##class(OcuPilot.Test.UiSystemFixture).SetProductionStatusFails()
+    Do ##class(OcuPilot.Kernel.Scope).Set("%SYS")
+
+    Set tSC = ##class(OcuPilot.Test.UiSystemFixture).Payload(.tObject)
+    Do $$$AssertStatusOK(tSC, "the payload builds")
+    Do $$$AssertEquals(##class(OcuPilot.Test.UiSystemFixture).ProductionNamespace(), "%SYS", "the production seam ran in the scoped namespace, not the caller's")
+    Do $$$AssertEquals($NAMESPACE, tOrigNS, "and the caller's own namespace is restored afterwards")
+}
+
+/// <p><b>A production read that raises restores the namespace before it rethrows</b> (AD-16: the
+/// restore is the first line of the <code>Catch</code>). Without it the process would carry on in
+/// the scoped namespace for the rest of the payload and the rest of the request.</p>
+/// <p>Mutation: delete <code>Set $NAMESPACE = tOrigNS</code> from that <code>Catch</code>,
+/// recompile the class and every descendant -- the namespace assertion goes red.</p>
+Method TestARaisingProductionReadRestoresTheNamespaceBeforeItRethrows()
+{
+    Set tOrigNS = $NAMESPACE
+    Do ##class(OcuPilot.Test.UiSystemFixture).SetEnsembleNamespace(1)
+    Do ##class(OcuPilot.Test.UiSystemFixture).SetProductionStatusThrows()
+    Do ##class(OcuPilot.Kernel.Scope).Set("%SYS")
+
+    Set tSC = ##class(OcuPilot.Test.UiSystemFixture).Payload(.tObject)
+    Do $$$AssertStatusOK(tSC, "a raising production read is not a failed payload")
+    Do $$$AssertEquals($NAMESPACE, tOrigNS, "the caller's namespace is restored before the rethrow")
+    If '$IsObject(tObject) Quit
+    Do $$$AssertEquals(tObject.production, "", "the member degrades to the empty string")
+    Do $$$AssertEquals(##class(OcuPilot.Test.UiSystemFixture).SourceLogged(), "production", "and the failure reaches the log naming the member")
 }
 
 /// <p><b>A state the vendor's own text mapping has no arm for degrades to <code>""</code></b>
 /// rather than publishing its <code>Unrecognized:&lt;code&gt;</code> diagnostic token as though it
-/// were a state. Codes 5, 6 and -5 all reach that fall-through, and
-/// <method>Ens.Director.GetProductionStatus</method> answers 5 on its own shard-worker branch.</p>
+/// were a state. Codes 5, 6 and -5 all reach that fall-through;
+/// <method>Ens.Director.GetProductionStatus</method> answers 5 on its
+/// <code>$$$EnsRuntime("System")</code> branch and 6 on its shard-worker one.</p>
 /// <p>It is not a refusal: absence is what the row shows, and nothing is logged.</p>
 Method TestAnUnrecognizedProductionStateIsNotPublishedAsAToken()
 {
