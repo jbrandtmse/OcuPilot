@@ -194,9 +194,10 @@ services:
       # by package, so a runner pointed at an instance someone cares about would otherwise create
       # principals on it. scripts/check-objectscript.py's destructive-test-guard rule holds the
       # population.
-      # classes: AgentWireSecurity, ConfigGate, CredentialPrivilege, ErrorLogDenial, LedgerWire
-      # classes: LogSourceDenial, MgmntPortDenial, OAuthTabs, State, Token, ToolWire
-      # classes: TurnContext, TurnConversation, TurnLong, TurnProviderFault, TurnWire
+      # classes: AgentWireSecurity, ConfigGate, CredentialPrivilege, DenialParity, Disabled
+      # classes: ErrorLogDenial, LedgerWire, LogSourceDenial, MgmntPortDenial, OAuthTabs
+      # classes: ProhibitedRoute, ProposalFixture, ProposalSpelling, State, Token, ToolSetFull
+      # classes: ToolWire, TurnContext, TurnConversation, TurnLong, TurnProviderFault, TurnWire
       # classes: TurnWireFixture, UnexpireScope, Version, Wire, WireOAuthRead, WireSecurityRead
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
@@ -222,7 +223,7 @@ services:
       # the one they have. Consequence, stated plainly: the classes below run here and on CI,
       # never on a development container someone cares about.
       # classes: AuditRecord, AuditVerbs, DemoOptIn, GatewayGapIpmPath, GrantReadBack
-      # classes: InstallNamespaceSource, Installer, Manifest, Provenance, Static
+      # classes: IdentityInstall, InstallNamespaceSource, Installer, Manifest, Provenance, Static
       # classes: UninstallGuard, UninstallResidue, UninstallSurvival, WebApp
       OCUPILOT_ALLOW_PRODUCTION_INSTALL: "1"
       # Runs the installer's EnsureSslConfiguration step under the probe profile and so creates
