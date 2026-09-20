@@ -63,3 +63,4 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-20T07:05:08Z	Story 13.3	stage_spawned	stage=qa spawn_at=2026-09-20T07:05:08Z model=claude-sonnet-5 agent_name=13-3-publish-the-package-qa-1 cycle_iteration=1
 2026-09-20T07:16:59Z	Story 13.3	qa_complete	spawn_at=2026-09-20T07:02:15Z model=claude-sonnet-5 tests=ui/tools/ipm-archive.test.mjs tests_added=4 mutations_demonstrated=4 first_run_failures=0 clarifications=0 closing_sections_present=true
 2026-09-20T07:16:59Z	Story 13.3	stage_spawned	stage=code-review spawn_at=2026-09-20T07:16:59Z model=claude-opus-5[1m] agent_name=13-3-publish-the-package-cr-1 cycle_iteration=1
+2026-09-20T09:46:18Z	Epic 13	runner_resumed	reason=api_rate_limit_not_a_stop_condition killed_stage=code-review_13.3 recovered=qa_output_verified_from_artifacts_record_completed_by_lead

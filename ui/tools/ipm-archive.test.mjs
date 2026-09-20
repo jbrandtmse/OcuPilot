@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -384,4 +384,158 @@ test('an unknown argument is refused rather than ignored', () => {
   assert.equal(refused.status, 2, refused.output);
   assert.match(refused.output, /unknown argument --upload/);
   assert.deepEqual(refused.docker, []);
+});
+
+test('an empty --build-name or --install-name is refused, not silently taken', () => {
+  // `refuse_taken_name` has an explicit `""` arm distinct from the six protected-name arms, and it
+  // is reachable: `--build-name ''` sets BUILD_NAME to the empty string via ordinary shell
+  // assignment, the same as any other value.
+  for (const flag of ['--build-name', '--install-name']) {
+    const refused = runRefused(['--image', PINNED_IMAGE, flag, '']);
+    assert.equal(refused.status, 2, `${flag} '' was not refused: ${refused.output}`);
+    assert.match(refused.output, /cannot be empty/, `the refusal names the empty value: ${refused.output}`);
+    assert.deepEqual(refused.docker, [], `nothing was asked of docker: ${JSON.stringify(refused.docker)}`);
+    assertNothingRemovedOrCopied(refused);
+  }
+});
+
+// --- The class-count equality's own half (AC1's residual risk) ---------------------------------
+
+/**
+ * The exact `find` invocation the script uses to compute `STAGED_CLASSES` (the count the archive's
+ * own class count is compared against). Extracted rather than duplicated, so a change to the
+ * pattern in the script is what this test sees.
+ */
+export function stagedClassesCommand(text) {
+  const line = text.split('\n').find((l) => l.includes('STAGED_CLASSES=$('));
+  assert.ok(line, 'STAGED_CLASSES=$(...) was not found in the script');
+  const match = line.match(/STAGED_CLASSES=\$\((.*)\)$/);
+  assert.ok(match, `could not extract the find command from: ${line}`);
+  return match[1];
+}
+
+test('the staged-class count excludes OcuPilot/Test/ and counts only .cls files', () => {
+  // The spec's Verification section names an unclosed residual risk: the archive-vs-staged class
+  // count equality (ci-ipm-archive.sh:280) assumes IPM's exporter emits exactly the non-test .cls
+  // set, which is IPM's own behavior and not this script's -- not falsifiable here without running
+  // a real archive. What IS this script's own behavior, and was not previously pinned, is the other
+  // side of that equality: the `find` command that decides what counts as "staged" in the first
+  // place. This runs that exact command against a fixture tree, host-side, no container involved.
+  const dir = mkdtempSync(join(tmpdir(), 'ocupilot-staged-classes-'));
+  try {
+    const ocupilot = join(dir, 'OcuPilot');
+    mkdirSync(join(ocupilot, 'Sub'), { recursive: true });
+    mkdirSync(join(ocupilot, 'Test', 'Sub'), { recursive: true });
+    writeFileSync(join(ocupilot, 'A.cls'), '');
+    writeFileSync(join(ocupilot, 'Sub', 'B.cls'), '');
+    writeFileSync(join(ocupilot, 'C.mac'), ''); // not a .cls: must not be counted
+    writeFileSync(join(ocupilot, 'Test', 'D.cls'), ''); // under Test/: must be excluded
+    writeFileSync(join(ocupilot, 'Test', 'Sub', 'E.cls'), ''); // nested under Test/: must be excluded
+
+    const command = stagedClassesCommand(code).replace('"$DIR/module/src/OcuPilot"', JSON.stringify(ocupilot));
+    const result = spawnSync('sh', ['-c', command], { encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(
+      result.stdout.trim(),
+      '2',
+      `expected exactly A.cls and Sub/B.cls (2): stdout=${JSON.stringify(result.stdout)} stderr=${JSON.stringify(result.stderr)}`
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// --- The trap covers an interrupt, not only a clean exit ----------------------------------------
+
+test('SIGTERM mid-run still removes both containers by name, via the same trap as EXIT', async () => {
+  // The trap covers INT and TERM as well as EXIT specifically because an uncaught interrupt would
+  // otherwise leave two IRIS containers running under names a later run removes without asking
+  // (Review Triage Log, blind-hunter). That fix was never demonstrated red/green; this drives the
+  // script from a minimal fixture root -- the same idiom as the unbuilt-bundle refusal test below,
+  // with a stub `ipm-manifest.mjs` that exits 0 and a tiny bundle so staging is real but small and
+  // fast under load -- with a stubbed docker that never reports the build container ready, so the
+  // script is still inside wait_for_session's readiness loop, with one real docker run behind it,
+  // when the signal arrives.
+  const dir = mkdtempSync(join(tmpdir(), 'ocupilot-ipm-sigterm-'));
+  try {
+    mkdirSync(join(dir, 'scripts'), { recursive: true });
+    mkdirSync(join(dir, 'ui', 'tools'), { recursive: true });
+    mkdirSync(join(dir, 'src', 'OcuPilot'), { recursive: true });
+    mkdirSync(join(dir, 'ui', 'dist', 'ocupilot-ui', 'browser'), { recursive: true });
+    writeFileSync(join(dir, 'scripts', 'ci-ipm-archive.sh'), source);
+    writeFileSync(join(dir, 'ui', 'tools', 'ipm-manifest.mjs'), '// a manifest that has not drifted\n');
+    writeFileSync(join(dir, 'module.xml'), '<Export><Document/></Export>\n');
+    writeFileSync(join(dir, 'src', 'OcuPilot', 'Placeholder.cls'), '');
+    writeFileSync(join(dir, 'ui', 'dist', 'ocupilot-ui', 'browser', 'index.html'), '<html></html>\n');
+
+    const bin = join(dir, 'bin');
+    const capture = join(dir, 'docker-argv.txt');
+    writeFileSync(capture, '');
+    writeStub(bin, 'docker', [
+      'printf \'%s\\n\' "$*" >> "$OCUPILOT_DOCKER_CAPTURE"',
+      'case "$1" in',
+      '  exec) exit 1 ;;', // never ready, so wait_for_session is still looping when TERM arrives
+      '  *) exit 0 ;;',
+      'esac',
+    ]);
+    const scratch = join(dir, 'scratch');
+    const child = spawn(
+      'sh',
+      [join(dir, 'scripts', 'ci-ipm-archive.sh'), '--image', PINNED_IMAGE, '--dir', scratch],
+      { cwd: dir, env: stubEnv(bin, { OCUPILOT_DOCKER_CAPTURE: capture }) }
+    );
+
+    const deadline = Date.now() + 15000;
+    while (Date.now() < deadline && !captured(capture).some((line) => line.startsWith('run '))) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    assert.ok(
+      captured(capture).some((line) => line.startsWith('run ')),
+      `docker run was never issued before the deadline: ${captured(capture).join('\n')}`
+    );
+
+    const exited = new Promise((resolve) => child.on('exit', (exitCode) => resolve(exitCode)));
+    child.kill('SIGTERM');
+    const exitCode = await Promise.race([
+      exited,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('the script did not exit within 10s of SIGTERM')), 10000)),
+    ]);
+    assert.equal(exitCode, 130, 'the TERM trap exits 130');
+
+    const lines = captured(capture);
+    assert.ok(lines.includes('rm -f ocupilot-ipm-build'), `cleanup did not remove the build container: ${lines.join('\n')}`);
+    assert.ok(
+      lines.includes('rm -f ocupilot-ipm-install'),
+      `cleanup did not remove the install container, though it was never started -- the trap removes both by name regardless: ${lines.join('\n')}`
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// --- _SYSTEM is unexpired by name, in the right place -------------------------------------------
+
+test('_SYSTEM is unexpired by name, in %SYS, strictly after the archive install and before smoke.sh', () => {
+  assert.match(
+    code,
+    /UnExpireUserPasswords\("_SYSTEM"\)/,
+    'the call must name _SYSTEM literally, the same discipline the container start hook follows'
+  );
+  assert.doesNotMatch(code, /UnExpireUserPasswords\("\*"\)/, 'the all-users form must never appear');
+
+  assert.match(
+    code,
+    /docker exec -i "\$INSTALL_NAME" iris session iris -U %SYS[\s\S]*?UnExpireUserPasswords/,
+    'UnExpireUserPasswords must run inside a session opened with -U %SYS, not HSCUSTOM'
+  );
+
+  const installAt = code.indexOf('Shell("load /opt/ocupilot-archive/');
+  const unexpireAt = code.indexOf('UnExpireUserPasswords');
+  const smokeAt = code.indexOf('smoke.sh');
+  assert.ok(installAt > 0 && unexpireAt > 0 && smokeAt > 0, 'all three steps must be present in the script');
+  assert.ok(
+    unexpireAt > installAt,
+    'the account is unexpired strictly after the archive is installed, never before -- AD-17 requires the IPM install itself to leave it alone'
+  );
+  assert.ok(smokeAt > unexpireAt, 'and strictly before smoke.sh runs, or every HTTP check would read 401');
 });

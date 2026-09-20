@@ -257,6 +257,26 @@ deferred:
 - `tar tzf` the produced archive once by hand and read the member list: `module.xml`, `OcuPilot` classes, `ui/dist/ocupilot-ui/browser/`, and nothing under `OcuPilot/Test/`. Record the counts in `## Auto Run Result` rather than asserting them from the script's own output alone.
 - Confirm on both containers that `SELECT COUNT(*) FROM %IPM_Repo.Definition` is 0 after the IPM import — the runtime half of AC3.
 
+### QA pass (2026-09-20) (QA)
+
+Four tests added to `ui/tools/ipm-archive.test.mjs` (17 -> 21 in the file; suite 1118 -> 1122), each with a
+mutation applied, observed red, reverted, and the script confirmed byte-identical by md5
+(`be2440169b8a041e7cb3a615174458cd`) before and after every one:
+
+- `mutation: drop the "" arm from refuse_taken_name -> an empty --build-name or --install-name is refused, not silently taken` (the one guard arm no test reached).
+- `mutation: drop -not -path '*/Test/*' from the STAGED_CLASSES find -> the staged-class count excludes OcuPilot/Test/ and counts only .cls files` (2 expected against 4 actual).
+- `mutation: delete trap 'cleanup; exit 130' INT TERM -> SIGTERM mid-run still removes both containers by name, via the same trap as EXIT` (exit code `null` instead of 130, and neither container removed). **A dynamic proof, not an inspection**: the test spawns the script and signals it. The triage log had recorded this trap as patched while nothing had ever shown it red, which is the state Rule 19 exists to catch.
+- `mutation: UnExpireUserPasswords("_SYSTEM") -> UnExpireUserPasswords("*") -> _SYSTEM is unexpired by name, in %SYS, strictly after the archive install and before smoke.sh` (AD-17's by-name discipline).
+
+The package-verb allow-list got no new test: its existing sorted-set `deepEqual` already holds both directions.
+The exporter half of AC1's class equality stays correctly unfalsifiable here - QA pinned the script's half
+(the `find`), while what IPM's exporter emits is IPM's behavior, recorded as the story's named residual risk.
+
+**Provenance.** The QA stage was killed mid-close-out by an API session limit. Its code was complete and is
+verified here from the artifacts rather than from its report - the four tests are present and named, the file
+runs 21 of 21 and the suite 1122 of 1122 with exit codes read directly, and the script's md5 shows no mutation
+leaked. Its record was **not** written, so this subsection is the lead's, from the stage's reported mutations.
+
 ### Lead AD gate (2026-09-20)
 
 AC3's mechanism - the one the owner's hold rests on - re-verified by the lead rather than taken from the
