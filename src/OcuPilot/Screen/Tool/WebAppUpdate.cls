@@ -6,18 +6,28 @@
 /// every concrete class under <package>OcuPilot</package> that extends the tool base, so adding
 /// this class is the whole registration; the descriptor declares no action, and declaring one
 /// would make the screen write-capable, which is Story 5.8's affordance and not this story's.</p>
-/// <p><b>Two fields are excluded by name, and AD-10 has two halves for each</b>: they are absent
-/// from the tool set, so the model cannot author them, and every change to them is refused at the
-/// write by <class>OcuPilot.Kernel.Proposal.Prohibited</class> whatever the caller. They are
-/// excluded because <i>every</i> change is prohibited -- <code>MatchRoles</code> grants privilege
-/// through a path, and <code>DispatchClass</code> decides which compiled code answers at a URL.</p>
-/// <p><b>Why <code>AutheEnabled</code> and <code>Resource</code> stay settable.</b> Only weakening
-/// them is an effect AD-10 forbids -- adding the unauthenticated bit, and clearing a resource that
-/// was set -- so hardening stays proposable and the asymmetry lives in the prohibited set, which
-/// compares against the live target, rather than in a field list, which cannot.</p>
-/// <p>The reviewed classification leaves the <code>MatchRoles</code> subtree unnamed as well, so
-/// the generator emits it <code>secret</code> and the schema would refuse it on that ground too;
-/// both exclusions are stated here because this is where a reader of the tool looks for them.</p>
+/// <p><b>It admits four of the forty-five ordinary top-level fields its classified field list
+/// carries</b> (<parameter>PERMITTEDFIELDS</parameter>), and AD-10 has two halves for every other
+/// one: it is absent from the tool set, so the model cannot author it, and a change to it is
+/// refused at the write by <class>OcuPilot.Kernel.Proposal.Prohibited</class> whatever the caller.
+/// The four are the ones this release has reviewed; the rest decide which compiled code answers at
+/// the URL (<code>DispatchClass</code>, <code>EventClass</code>, <code>SuperClass</code>,
+/// <code>Package</code>, <code>Path</code>, <code>NameSpace</code>, the page properties, the WSGI
+/// properties), how a caller gets in (<code>MatchRoles</code>, <code>TwoFactorEnabled</code>,
+/// <code>CSRFToken</code>, <code>JWTAuthEnabled</code>, the session and CORS properties), or
+/// something nobody has yet reviewed -- and a positive list is what keeps the next vendor property
+/// out of the schema instead of admitting it until somebody notices.</p>
+/// <p><b>Why <code>AutheEnabled</code> and <code>Resource</code> are among the four.</b> Each has
+/// exactly one change AD-10 does not forbid -- clearing the option of reaching the application
+/// without signing in, and setting a resource where none was set -- so that one change stays
+/// proposable and the asymmetry lives in the prohibited set, which compares against the live
+/// target, rather than in a field list, which cannot.</p>
+/// <p><b>Two names are excluded as well as unpermitted</b>, because <i>every</i> change to them is
+/// prohibited by a predicate of its own: <code>MatchRoles</code> grants privilege through a path,
+/// and <code>DispatchClass</code> decides which compiled code answers at a URL (DW-1207). The
+/// reviewed classification leaves the <code>MatchRoles</code> subtree unnamed too, so the generator
+/// emits it <code>secret</code> and the schema would refuse it on that ground as well; the
+/// exclusions are stated here because this is where a reader of the tool looks for them.</p>
 Class OcuPilot.Screen.Tool.WebAppUpdate Extends OcuPilot.Screen.Tool.Write
 {
 
@@ -33,6 +43,12 @@ Parameter EXCLUDEDFIELD = "MatchRoles";
 /// <p>The field that decides which compiled code answers at the application's address. Every
 /// change to it is prohibited (DW-1207), so it is not advertised.</p>
 Parameter EXCLUDEDDISPATCH = "DispatchClass";
+
+/// <p>The only top-level fields this tool admits, comma-separated: the web-application settings
+/// whose change AD-10's prohibited set has reviewed
+/// (<method>OcuPilot.Kernel.Proposal.Prohibited.PermittedChangeFields</method>). A test asserts the
+/// two agree; the kernel is never read from here.</p>
+Parameter PERMITTEDFIELDS = "AutheEnabled,Description,Enabled,Resource";
 
 /// <p>The permission a change to a web application requires beyond the screen's own read set: the
 /// vendor's endpoint gates on <code>%Admin_Secure</code>, and writing needs more than using it.</p>
@@ -57,6 +73,14 @@ ClassMethod SettableFields() As %List
 ClassMethod ExcludedFields() As %List
 {
     Quit $ListBuild(..#EXCLUDEDFIELD, ..#EXCLUDEDDISPATCH)
+}
+
+/// <p><parameter>PERMITTEDFIELDS</parameter>, so a field the prohibited set has not reviewed is
+/// absent from the schema and from <method>SettableFields</method> whether or not anyone has
+/// thought to exclude it by name.</p>
+ClassMethod PermittedFields() As %List
+{
+    Quit $ListFromString(..#PERMITTEDFIELDS)
 }
 
 /// <p>What the caller must hold: the screen's own pairs

@@ -183,10 +183,11 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
             Quit
         }
 
-        ; AD-10's single call site: asked inside the transition and before the port call.
+        ; AD-10's single call site: asked inside the transition and before the port call. The set
+        ; is handed the stored row's tool, target, payload and diff, and nothing of the request's.
         Set tProhibited = ..ProhibitedClassName()
         If tProhibited '= "" {
-            Set tProhibitSC = $ClassMethod(tProhibited, "Prohibits", $Get(pRow("toolName")), $Get(pRow("targetRef")), $Get(pRow("payload")), .tProhibits, .tProhibitCode)
+            Set tProhibitSC = $ClassMethod(tProhibited, "Prohibits", $Get(pRow("toolName")), $Get(pRow("targetRef")), $Get(pRow("payload")), $Get(pRow("diff")), .tProhibits, .tProhibitCode)
             If $$$ISERR(tProhibitSC) {
                 Set tSC = ..Internal("the prohibited set could not be read", .pHttpStatus, .pCode)
                 Quit
@@ -431,6 +432,11 @@ ClassMethod DefinitionMoved(pDefinitionId As %String, pStoredVersion As %String,
 /// read exactly as the mint merged them, and the digest is taken with the descriptor's own
 /// exclusions. A target the instance no longer holds does not match, which closes the row rather
 /// than writing to something that is not there.</p>
+/// <p><b>Two digests must equal the stored one, not one</b> (AD-6): the fresh read merged as above,
+/// and the stored payload the port will actually be sent. The second is what makes the fingerprint
+/// cover the complete property set the write sends -- the mint stores the digest of that very
+/// payload, so a genuine row passes it, and a row whose payload does not describe the write its
+/// fingerprint promises does not match whatever its diff says.</p>
 ClassMethod FingerprintMatches(pTool As %DynamicObject, ByRef pRow, Output pMatches As %Boolean, Output pEndpoint As %String, Output pIdParam As %String, Output pIdValue As %String) As %Status [ Private ]
 {
     Set pMatches = 0
@@ -469,7 +475,10 @@ ClassMethod FingerprintMatches(pTool As %DynamicObject, ByRef pRow, Output pMatc
         If tDescriptor '= "" Set tExcludes = $ClassMethod(tDescriptor, "FingerprintExcludes")
         Set tSC = ##class(OcuPilot.Kernel.Proposal.Fingerprint).Of(tPayload, tExcludes, .tDigest)
         If $$$ISERR(tSC) Quit
-        Set pMatches = (tDigest = $Get(pRow("fingerprint")))
+        If tDigest '= $Get(pRow("fingerprint")) Quit
+        Set tSC = ##class(OcuPilot.Kernel.Proposal.Fingerprint).Of(..ParsedObject($Get(pRow("payload"))), tExcludes, .tStoredDigest)
+        If $$$ISERR(tSC) Quit
+        Set pMatches = (tStoredDigest = $Get(pRow("fingerprint")))
     } Catch ex {
         Set pMatches = 0
         Set tSC = ex.AsStatus()

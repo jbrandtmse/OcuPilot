@@ -92,6 +92,9 @@ Method Snapshot(Output pFresh As %DynamicObject) As %String
 /// <p>Seed one completed turn and one live proposal whose payload is the target as the instance
 /// holds it now, with <var>pField</var> set to <var>pValue</var> -- the complete property set AD-4
 /// requires, with exactly one property weakened.</p>
+/// <p>The row carries a diff naming that one property, which is what a mint over these arguments
+/// would have recorded and what scopes the set's verdict to the field the proposal changes. A row
+/// seeded with an empty diff proposes no change at all, and the set is silent on it.</p>
 Method Seed(pFresh As %DynamicObject, pField As %String, pValue As %RawString, pType As %String) As %String
 {
     Set tUser = ##class(OcuPilot.Test.Http).GetTestUsername()
@@ -112,7 +115,7 @@ Method Seed(pFresh As %DynamicObject, pField As %String, pValue As %RawString, p
     Set tValues("fingerprint") = ..Digest(pFresh)
     Set tValues("arguments") = "{}"
     Set tValues("payload") = tPayload.%ToJSON()
-    Set tValues("diff") = "[]"
+    Set tValues("diff") = ##class(OcuPilot.Test.ProhibitedFixture).Diff(pField)
     Set tValues("unchangedCount") = 0
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedProposal(.tValues, .tKey, .tToken)
     Do $$$AssertStatusOK(tSC, "a probe proposal is seeded")
@@ -123,10 +126,11 @@ Method Seed(pFresh As %DynamicObject, pField As %String, pValue As %RawString, p
 /// <p>The digest the shipped confirm will re-compute for this target: the stored arguments merged
 /// over the fresh read and hashed with the descriptor's own exclusions, through the same shipped
 /// methods <method>OcuPilot.Kernel.Proposal.Confirm.FingerprintMatches</method> calls.</p>
-/// <p>A seeded row carries this rather than a literal, so the fingerprint gate behind the
-/// prohibited set passes and the 403 is the only thing between the confirm and a vendor write.
-/// Without it a removed prohibition would be caught by that gate instead, and the clauses below
-/// asserting nothing was written could not fail.</p>
+/// <p>A seeded row carries this rather than a literal, so the target's own re-read digests to what
+/// the row stored and the 403 is what answers. Without it a removed prohibition would be caught by
+/// the fingerprint gate instead, and the clauses below asserting nothing was written could not
+/// fail. That gate is never reached here: it also covers the stored payload, which these rows
+/// weaken deliberately.</p>
 Method Digest(pFresh As %DynamicObject) As %String
 {
     Set tSC = ##class(OcuPilot.Screen.Tool.Registry).Resolve(..#TOOL, .tTool)

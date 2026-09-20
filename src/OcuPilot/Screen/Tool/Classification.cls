@@ -26,6 +26,10 @@ Class OcuPilot.Screen.Tool.Classification Extends %RegisteredObject
 /// no write tool may carry it into a payload, a diff or the ledger.
 /// <class>OcuPilot.Screen.Tool.WebAppUpdate</class> also excludes it by name, so the exclusion is
 /// stated where a reader of the tool looks for it as well as here.</p>
+/// <p><b><code>ordinary</code> here is not "the tool admits it".</b> Classification decides how a
+/// path may be carried; which paths a write tool advertises is that tool's own positive list
+/// (<parameter>OcuPilot.Screen.Tool.WebAppUpdate.PERMITTEDFIELDS</parameter>, four of these rows),
+/// and <code>DispatchClass</code> and the rest stay <code>ordinary</code> and unadvertised.</p>
 XData Entries
 {
 {

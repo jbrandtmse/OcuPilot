@@ -2,82 +2,85 @@
 title: 'Story 5.5: Prohibited actions are absent from the tool set'
 type: 'feature'
 created: '2026-09-20'
-status: 'in-progress'
-baseline_revision: '98ad9596bc9c33dd3c29eaa9f94754613e3b59ba'
-review_loop_iteration: 0
+status: 'done'
+baseline_revision: '777d484527e4fc695fe62e8ca8fdd970f7f162c1'
+review_loop_iteration: 1
 followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['oversized']
 deferred:
   - summary: >-
-      A confirm refusal that leaves the proposal row live is invisible in the panel, so a prohibited
-      (or restrained) refusal shows the user nothing and the card simply offers Confirm again.
+      A row whose `arguments`, `payload` and `fingerprint` agree with each other but whose `diff`
+      names nothing still reaches the port for the four reviewed fields.
     evidence: |-
-      `turn.ts` `decideProposal` records an outcome only when the refusal carried `detail.state`, and
-      `panel.ts` `onCardConfirm` drops its own decision in its `finally`. A prohibited refusal does
-      not close the row, so neither the code nor the reason reaches a card. Pre-existing: AD-30's
-      restraint refusal at confirm has the same shape. Out of this story's footprint (Epic 5 owns
-      `panel*`, so it is in-epic, not out) and outside its ACs, which do not specify a card state.
-    location: 'ui/src/app/core/turn.ts:840; ui/src/app/shell/panel.ts:852'
+      `FingerprintMatches` now pins the stored payload to `Merge(live, storedArguments)`, so a forged
+      payload can differ from the live target only in a `SettableFields()` name. `Changed` scopes the
+      predicates to the diff, so `AutheEnabled` 32 -> 96 behind an empty diff is unrefused. Closing it
+      needs the set to key on the stored arguments rather than the diff, or the fingerprint gate ahead
+      of the seam -- both settled outside this story (the intent contract forbids the first, the lead
+      the second).
+    location: 'src/OcuPilot/Kernel/Proposal/Prohibited.cls:304'
     severity: medium
   - summary: >-
-      No Release 1 write tool declares a delete operation, so the delete half of AD-10's clauses is
-      unreachable and the coverage gate checks entity types only.
+      `Propose` discards the status of its three stream writes, so a failed `Diff.Write` stores a row
+      with a payload and no diff.
     evidence: |-
-      `Kernel.Proposal.Confirm` issues one write type (`Parameter WRITETYPE = "PUT"`, `:36`); a tool
-      declares no operation of its own. Every predicate here is therefore expressed as an effect
-      visible in the payload against the live target. The first delete-capable write tool must extend
-      the predicates to its operation and extend the coverage gate past entity type.
+      `Do tRow.Diff.Write($Get(pValues("diff")))` -- and the same for `Arguments` and `Payload`. The
+      row then saves and the set has nothing to scope by. Pre-existing shape, out of this story's
+      footprint (`Kernel/State/**`).
+    location: 'src/OcuPilot/Kernel/State/Propose.cls:200'
     severity: medium
   - summary: >-
-      A resource-to-resource swap on a web application is not refused; only dropping the resource is.
+      `ServesOcuPilot` matches the roster's paths with an exact string compare and is now the first
+      predicate, so a differently-spelled id that the vendor endpoint still resolves would read as
+      not-OcuPilot's.
     evidence: |-
-      `%Admin_Secure` -> `%Development` may weaken the gate, but "weaker" needs a privilege lattice the
-      instance does not publish. The owner's DW-1207 decision names "drop Resource", which is what
-      `PROHIBITED.AUTHORIZATION` refuses. The swap stays a confirmed, audited write by a user who
-      holds `%Admin_Secure:WRITE`.
+      `If $IsObject(tApp) && (tApp.path = pPath)` -- no case or trailing-slash normalization. Settled
+      by one probe: ask the `WebApp.App` endpoint for `/API/OcuPilot` and see whether it answers the
+      real application. Every test drives the roster's exact spellings, so nothing pins it either way.
+    location: 'src/OcuPilot/Kernel/Proposal/Prohibited.cls:382'
+    severity: medium (unverified)
+  - summary: >-
+      The advertised schema narrowed from forty-five fields to four, which is a product-facing
+      reduction in what the agent may propose about a web application.
+    evidence: |-
+      It is the consequence of AD-10's title once every change to the unreviewed fields is prohibited,
+      and it is fail-closed against a vendor property a later build adds. A later story that needs
+      `Timeout` or the CORS list adds the name to `PermittedChangeFields` and to `PERMITTEDFIELDS`
+      together; the reviewed-few floor now fails the suite if it adds only one. The owner may want a
+      wider reviewed set.
+    location: 'src/OcuPilot/Screen/Tool/WebAppUpdate.cls:48'
+    severity: medium
+  - summary: >-
+      Disabling any web application that is not OcuPilot's own -- `/csp/sys`, `/api/atelier` -- is
+      proposable.
+    evidence: |-
+      `Enabled` is one of the four reviewed fields and carries no asymmetric predicate, and the
+      serving-path predicate covers only paths the roster declares or install recorded. AD-38's
+      argument is about OcuPilot's own reachability, so this is by design; whether the Management
+      Portal's own application should be refused too is a product call.
+    location: 'src/OcuPilot/Kernel/Proposal/Prohibited.cls:124'
+    severity: medium
+  - summary: >-
+      `PROHIBITED.UNCOVEREDFIELD` names no field, and the refusing field is picked in collation
+      order, so a multi-field diff does not tell the user which setting was refused.
+    evidence: |-
+      The sentence is one per code (AD-39) and the loop walks `$Order(pChanged(tField))`. Naming the
+      field would mean carrying a detail alongside the code, which the seam's contract does not have;
+      `Confirm.Transition` already does exactly that for the privilege refusal's `failedPair`.
+    location: 'src/OcuPilot/Kernel/Proposal/Prohibited.cls:279'
     severity: low
   - summary: >-
-      The set refuses a repointed `DispatchClass`, but every other field that decides which compiled
-      code answers at a web application's URL stays settable and unrefused.
+      `Screen.Registry.ToolFieldRows` still computes a write tool's settable fields from the
+      generated entry without the positive list, so it over-approximates by forty-one names.
     evidence: |-
-      `webapp.list.update` admits 45 ordinary top-level fields, `EventClass`, `SuperClass`, `Package`,
-      `Path`, `NameSpace`, `LoginPage`, `ErrorPage`, `ChangePasswordPage` and `PermittedClasses`
-      among them. `PROHIBITED.DISPATCH` compares `DispatchClass` alone. DW-1207 names the three
-      fields this story covers; the wider family is the same effect by another property.
-    location: 'src/OcuPilot/Kernel/Proposal/Prohibited.cls:216'
-    severity: high
-  - summary: >-
-      `PROHIBITED.UNAUTHENTICATED` keys on bit 64 of `AutheEnabled` alone, so every other
-      authentication weakening the tool admits is unrefused.
-    evidence: |-
-      `TwoFactorEnabled`, `CSRFToken`, `JWTAuthEnabled`, `UseCookies`, `SessionScope`,
-      `CorsAllowlist` and `CorsCredentialsAllowed` are settable, and so is any non-64 change to
-      `AutheEnabled` itself (32 -> 8192 delegated, 32 -> 16384 login token, 32 -> 0). Turning off
-      two-factor authentication is a weakening the set does not see.
-    location: 'src/OcuPilot/Kernel/Proposal/Prohibited.cls:208'
-    severity: high
-  - summary: >-
-      `PROHIBITED.SERVINGPATH` refuses only a payload that leaves OcuPilot's own path not enabled;
-      `NameSpace` and `Path` break it just as completely and are settable.
-    evidence: |-
-      `NameSpace` and `Path` are exactly the properties the installer asserts for `/ocupilot`,
-      `/api/ocupilot` and `/api/ocupilot/readiness` (`ipm-manifest --check`). A payload repointing
-      `/api/ocupilot`'s namespace leaves `Enabled` true and passes the predicate.
-    location: 'src/OcuPilot/Kernel/Proposal/Prohibited.cls:228'
-    severity: high
-  - summary: >-
-      A third party changing the target between mint and confirm makes the set answer a
-      `PROHIBITED.*` sentence for a change the agent never proposed, and leaves the row live.
-    evidence: |-
-      The set runs before the fingerprint re-read and compares the mint-time payload against the live
-      target, so an operator adding a `Resource` after the mint earns 403 `PROHIBITED.AUTHORIZATION`
-      -- "Removing the resource that guards a web application is not something the agent can propose"
-      -- where the truthful answer is 409 `PROPOSAL.TARGETCHANGED`, which would also close the row.
-      The gate order is settled by the spec's Design Notes; the misleading sentence is not.
-    location: 'src/OcuPilot/Kernel/Proposal/Prohibited.cls:204'
-    severity: medium
+      The direction is conservative -- it would refuse a declaration naming a field the tool no longer
+      admits -- so nothing is unsafe; its refusal message's wording is now inaccurate. Out of this
+      story's footprint (`Screen/Registry.cls`). reopen_if=a descriptor declaration is refused for a
+      field `webapp.list.update` does not advertise.
+    location: 'src/OcuPilot/Screen/Registry.cls:2010'
+    severity: low
 ---
 
 <intent-contract>
@@ -136,7 +139,8 @@ tool, no client or UI change, no string-table entry. Do not edit `scripts/` (Epi
 - `src/OcuPilot/Kernel/Proposal/Confirm.cls:57` -- `ProhibitedClassName()`; `:186-199` the call site
   inside `Transition`, before the restraint verdict, the pairs, the fingerprint re-read and the port
   call. The seam's contract is fixed there:
-  `Prohibits(toolName, targetRef, payloadJson, .prohibits, .code)` returning `%Status`, refused at 403
+  `Prohibits(toolName, targetRef, payloadJson, diffJson, .prohibits, .code)` returning `%Status`,
+  refused at 403
   with the set's own code; an error status becomes 500 `INTERNAL`.
 - `src/OcuPilot/Kernel/Proposal/Confirm.cls:435-479` -- `FingerprintMatches`: the idiom for resolving a
   tool to its endpoint, id parameter and id value, and for reading the target fresh through `PortClass()`.
@@ -183,7 +187,8 @@ tool, no client or UI change, no string-table entry. Do not edit `scripts/` (Epi
 - `src/OcuPilot/Kernel/Proposal/Prohibited.cls` -- create AD-10's one home. It declares its codes and
   one written reason each (`Codes()`, `ReasonFor()`); `COVEREDTYPES` (Release 1: `web-application`);
   `AlwaysProhibitedFields(pType)` (`MatchRoles`, `DispatchClass`); an overridable `PortClass()`; and
-  `Prohibits(pToolName, pTargetRef, pPayload, .pProhibits, .pCode)`, which parses the ref, refuses
+  `Prohibits(pToolName, pTargetRef, pPayload, pDiff, .pProhibits, .pCode)`, which parses the ref,
+  refuses
   `PROHIBITED.UNCOVERED` for an unparseable ref or an uncovered type, and otherwise runs that type's
   predicates in declared order against the target read live through the port -- first hit wins.
   `UncoveredWriteTools()` answers the registered write tools whose entity type has no predicate.
@@ -205,23 +210,23 @@ tool, no client or UI change, no string-table entry. Do not edit `scripts/` (Epi
 
 **Open after the lead's harvest gate (rework iteration 1) -- work ONLY these:**
 
-- `[Review]` **DW-1345 (high).** `PROHIBITED.DISPATCH` compares `DispatchClass` alone, while
+- [x] `[Review]` **DW-1345 (high).** `PROHIBITED.DISPATCH` compares `DispatchClass` alone, while
   `EventClass`, `SuperClass`, `Package`, `Path`, `NameSpace`, `LoginPage` and `ErrorPage` are
   settable and decide just as completely which compiled code answers at the URL. AD-10's Rule is
   **by effect, not by verb**: express the family as one predicate over "what answers here", so a
   new vendor property with that effect is covered by the predicate's shape rather than by having
   been enumerated. Verified by the lead: `Screen/Tool/FieldLists.cls:519-549`.
-- `[Review]` **DW-1346 (high).** `PROHIBITED.UNAUTHENTICATED` keys on bit 64 of `AutheEnabled`
+- [x] `[Review]` **DW-1346 (high).** `PROHIBITED.UNAUTHENTICATED` keys on bit 64 of `AutheEnabled`
   alone. `TwoFactorEnabled`, `CSRFToken`, `JWTAuthEnabled` and `UseCookies` are settable, and any
   non-64 `AutheEnabled` change (32 -> 0 among them) passes. Express authentication weakening as the
   effect it is, in the same by-effect shape.
-- `[Review]` **DW-1347 (high).** `PROHIBITED.SERVINGPATH` refuses only a payload that leaves
+- [x] `[Review]` **DW-1347 (high).** `PROHIBITED.SERVINGPATH` refuses only a payload that leaves
   OcuPilot's own path not enabled. `NameSpace` and `Path` are exactly what the installer asserts for
   `/ocupilot`, `/api/ocupilot` and `/api/ocupilot/readiness` (lead-verified on `ocupilot-slot-a`:
   all three read `NameSpace` `HSCUSTOM`), and a payload repointing either leaves `Enabled` true and
   passes. AD-38 makes an unreachable OcuPilot an unrecoverable instance, so this one is the
   serving-path predicate's whole point.
-- `[Review]` **DW-1351 (med).** The set compares the mint-time payload against the live target, so a
+- [x] `[Review]` **DW-1351 (med).** The set compares the mint-time payload against the live target, so a
   third party adding a `Resource` after the mint earns 403 `PROHIBITED.AUTHORIZATION` -- a sentence
   about a change the agent never proposed -- and the row stays live. Report a prohibition only for a
   field the proposal actually **changes** relative to the target it was minted against, and let the
@@ -315,6 +320,59 @@ is what makes the by-effect claim falsifiable.
   - `[low]` `[reject]` `ProhibitedClass()` now has two call sites, the transition and `ReasonFor` -- the spec's Tasks require the delegation so the sentences have one home; a lookup is not a decision point.
   - `[low]` `[reject]` The serving-path predicate refuses an end state rather than a change, so it refuses a no-op -- the diff states and justifies that reading, and the matrix row is satisfied under either.
 
+### 2026-09-20 -- Review pass (rework 1)
+
+- verdicts: 48 findings -- high 2, medium 6, low 23, false 5, maybe-false 0
+- findings:
+  - `[high]` `[patch]` The set judged only the stored diff, so a row whose payload weakens the live target while its diff names nothing passed it silently and was written -- verified: `Confirm.Transition:298` sends the stored payload and `FingerprintMatches` digested only `Merge(fresh, storedArguments)`. Fixed at the gate AD-6's Rule names: the stored payload must digest to the row's own fingerprint. Mutation 295.
+  - `[high]` `[patch]` (same root cause) an empty, absent or unparseable diff disarmed every predicate, `SERVINGPATH` included, where every other unreadable input fails closed -- the four legs of the new test cover `[]` and `"not json"`.
+  - `[low]` `[patch]` Nothing tied `Changed()`'s `"field"` key to the `Mint.Merge` that writes it -- one assertion added over a real merge; mutation 300 renames the key and reddens it.
+  - `[low]` `[patch]` `PROHIBITED.UNCOVEREDFIELD` cannot fire through the shipped tool, because the mint diffs only settable fields -- true and by design; the code is the backstop for a row the tool did not mint, which the new fingerprint check is what makes reachable-and-safe. The class header no longer overstates it.
+  - `[high]` `[patch]` `AutheEnabled` carries strength modifiers as well as mechanisms (`irissys/%sySecurityMacros.inc:15-40`), so the subset test permitted turning two-factor off -- the exact weakening DW-1346 named -- and refused requiring it with a false sentence. Replaced by "clearing the unauthenticated bit and nothing else"; mutation 297.
+  - `[low]` `[patch]` `32 -> 2080` was labeled "a mechanism this build does not define"; 2048 is `AutheLDAP`, which it does. Replaced by 1056 in the test and corrected in `## Auto Run Result`.
+  - `[medium]` `[patch]` The reviewed-few floor was asserted in one direction only while the tool and the spec both claimed agreement -- the converse and a disjointness assertion added; mutation 298.
+  - `[low]` `[patch]` The recorded mutation "drop `DispatchClass` from `ExcludedFields()`" no longer reddens anything, because the positive list governs admission -- the doc now names the mutations that do and says what the exclusions are now.
+  - `[low]` `[patch]` `ProhibitedByEffect`'s header said nothing there writes to the instance while it writes a `Kernel.State.WebApp` record and seeds rows -- sentence corrected and the record's removal moved into `OnAfterOneTest`.
+  - `[low]` `[reject]` `Write.PermittedFields()` defaults to no restriction, so the protection is opt-in per tool -- a base class cannot know a subclass's reviewed set, and the per-tool floor test reddens on drift. Rejecting a low whose fix adds a branch.
+  - `[low]` `[patch]` `$ListFromString(..#PERMITTEDFIELDS)` does not trim, so a space-padded edit would silently drop fields -- closed by the converse assertion above, which reddens on a smaller settable list.
+  - `[low]` `[patch]` No leg drove an array-valued property through `Rendered`/`Changed` -- a `CorsAllowlist` leg added.
+  - `[medium]` `[patch]` `Widens`'s fail-closed branches were unreachable from any test, and `\ 1` truncated `32.5` into a no-op check -- the replacement refuses a value that is not a non-negative whole number and the test drives a fractional and two non-numeric values.
+  - `[low]` `[patch]` That test's own mutation recipe named the wrong legs -- rewritten with the predicate.
+  - `[medium]` `[defer]` `Enabled` is permitted with no asymmetric predicate, so disabling `/csp/sys` or `/api/atelier` is proposable -- the AD-38 argument covers OcuPilot's own paths only, so it is by design; the product question is in `deferred:`. The doc's claim about the reviewed argument is now written out.
+  - `[medium]` `[defer]` `ServesOcuPilot` is an exact string compare and is now the first predicate -- unverified whether the vendor endpoint resolves a differently-cased id to the same application; in `deferred:` with the probe that settles it.
+  - `[low]` `[defer]` `PROHIBITED.UNCOVEREDFIELD` names no field and picks it in collation order -- in `deferred:`; naming it means a detail alongside the code, which the seam's contract does not carry.
+  - `[low]` `[patch]` `Codes()`, the parameter block and `WebApplication`'s doc gave three different predicate orders -- all three now give the evaluation order.
+  - `[low]` `[patch]` `followup_review_recommended` was `true` with no named risk -- named under `## Auto Run Result`.
+  - `[false]` `[reject]` "The rework deleted the previous pass's record" -- a rework's `## Auto Run Result` records this pass and does not restate earlier ones (project prose discipline), and the deleted slot-A paragraph was a wrong diagnosis the lead verified against.
+  - `[low]` `[patch]` The `## Verification` command list named 17 classes against 19 run -- aligned.
+  - `[low]` `[patch]` The smoke numbers were reported as 44/44 with one skip and no cause shown -- both readings recorded; the skip is `agentswitches` after this suite writes switches, and a clean run reads executed=45 passed=45 skipped=0.
+  - `[false]` `[reject]` `"webapp.list.update"` in three constants can diverge unnoticed -- every direct call in both suites goes through the same tool, and a divergence reddens the first leg it reaches.
+  - `[low]` `[patch]` `Classification.cls` still described the old model, with `ordinary` reading as "the tool admits it" -- one sentence added; the reviewed XData is untouched.
+  - `[high]` `[patch]` (edge-case layer, same root cause as the first row) an empty or absent diff skips every predicate.
+  - `[high]` `[patch]` (same root cause) a non-array or truncated diff reads as no changes.
+  - `[medium]` `[defer]` `Propose` discards the status of `Diff.Write`, so a failed stream write stores a row with no diff -- out of footprint (`Kernel/State/**`); in `deferred:`.
+  - `[medium]` `[patch]` (same root cause as the first row) a `FingerprintExcludes` path was checked by neither the set nor the fingerprint -- the stored-payload digest uses the same excludes, and any non-permitted field the payload moves is now refused by the set.
+  - `[low]` `[patch]` A target mask of 0 makes every payload a refusal, so a genuine hardening on such an application cannot be proposed -- true of the new predicate too and now stated at the method; fixing it would need a ranking of mechanisms the instance does not publish.
+  - `[medium]` `[patch]` (same root cause as the reviewed-few floor row) a name added to `PermittedChangeFields` alone reddened nothing.
+  - `[high]` `[patch]` (same root cause as the first row) AC4's "by any other route" was not pinned by anything, and `ProhibitedRoute.Seed` had to gain a real diff for its legs to stay red.
+  - `[low]` `[patch]` The first Execution bullet still stated the five-argument seam -- corrected.
+  - `[high]` `[patch]` (verification-gap layer, same root cause as the first row) the diff is the set's only trigger and no test seeds a prohibited payload with an empty diff.
+  - `[medium]` `[patch]` (same root cause as the `Widens` row) the fail-closed branches are unreachable from any test.
+  - `[medium]` `[patch]` (same root cause as the reviewed-few floor row) the spec claimed both directions.
+  - `[low]` `[patch]` `ParsedObject`'s new doc comment was wrong about what an unreadable payload does -- corrected.
+  - `[low]` `[patch]` (same root cause as the class-list row) the two lists disagreed on which classes were run.
+  - `[low]` `[patch]` No mutation line covered `Changed()`'s live-comparison half -- mutation 299 added.
+  - `[low]` `[defer]` `Screen.Registry.ToolFieldRows` over-approximates a write tool's settable fields by 41 names -- conservative direction, inaccurate message, out of footprint; in `deferred:`.
+  - `[false]` `[reject]` (intent layer) "the verdict gained an input the matrix does not have" -- true of the diff, and the matrix rows are decidable again now that the fingerprint gate covers the stored payload; DW-1351 required the third input.
+  - `[medium]` `[patch]` (same root cause as the first row) the kernel's reach became a subset of the tool layer's field list.
+  - `[medium]` `[defer]` The schema narrowing is forty-one fields wider than the intent's own clause -- the consequence of AD-10's title once every change to the unreviewed fields is prohibited; in `deferred:` for the owner.
+  - `[false]` `[reject]` "No copy of the set in a screen" is strained by `PERMITTEDFIELDS` -- it is the pattern the baseline established for the two excluded names and the two lists are now asserted equal, so neither can drift.
+  - `[low]` `[patch]` `64 -> 96` was pinned as refused under a "widening" sentence that did not describe it -- the new predicate and its sentence describe every refusal it makes.
+  - `[low]` `[reject]` The serving-path predicate now permits a no-op on an already-disabled OcuPilot path -- DW-1351 requires the verdict to be about what the proposal changes, and a payload that changes nothing writes nothing.
+  - `[false]` `[reject]` Fail-closed is asserted at one input and fails open at two others -- true of the diff before this pass; the fingerprint gate now refuses a row whose payload it does not cover, and the four legs pin it.
+  - `[low]` `[reject]` The seventh code refuses by name-membership rather than by evaluating an effect -- the fail-closed default *is* the effect claim's shape, and it is what the re-open required; an effect evaluation per vendor property is the enumeration it replaced.
+  - `[low]` `[patch]` (same root cause as the array-leg row) the array-schema assertion moved to a probe surface, so no shipped tool exercises an array shape -- the set's own array leg is added; the schema generator's array path stays pinned through `WriteExclusion`.
+
 ## Design Notes
 
 **Governing ADs (Rule 6).** **AD-10** (the set, its single home in the kernel, effect-not-verb, never
@@ -395,9 +453,11 @@ on any `ocupilot-slot-*` container. Tear down only a throwaway whose `up` this t
 - Load and compile **one file at a time** to its exact relative path with the IRIS MCP tools, then
   `grep` the loaded source inside the container before believing a red or a green.
 - `iris_execute_tests`, **one class per tool call**, each landed in `%UnitTest_Result` before the next:
-  `OcuPilot.Test.Prohibited`, `…ProhibitedRoute`, then the shipped `…ProposalConfirm`, `…ConfirmRoute`,
+  `OcuPilot.Test.Prohibited`, `…ProhibitedByEffect`, `…ProhibitedRoute`, then the shipped
+  `…ProposalConfirm`, `…ConfirmRoute`,
   `…ProposalWrite`, `…Proposal`, `…ProposalRace`, `…ProposalClose`, `…ProposalWire`, `…ToolWrite`,
-  `…ToolRoundTrip`, `…ToolSetFull`, `…WebApp`, `…ToolDispatch`, `…Envelope`, `…Wire`.
+  `…ToolRoundTrip`, `…ToolSetFull`, `…ToolEmit`, `…ToolDispatch`, `…WebApp`, `…ReadTool`,
+  `…Envelope`, `…Wire` -- nineteen classes.
   `…ProposalMint`, `…Dispatch` and `…WriteExclusion` are fixtures, not test classes: they declare no
   test method, and the runner fails an invocation that names one. Confirm the totals with the
   `%UnitTest_Result` SQL probe (numeric
@@ -421,9 +481,12 @@ named test, reverted, and the throwaway's tree confirmed byte-identical to the w
   reach AC5's test, whose confirm fixture answers an armed set rather than falling through.
 - AC2: `PROHIBITED.DISPATCH` copied into `Kernel/Governance/Gate.cls` -> run 194
   `Prohibited.TestTheSetHasOneHomeAndOneSentencePerCode` red, naming the offending class.
-- AC3, and AC4's 400 half: `DispatchClass` dropped from `WebAppUpdate.ExcludedFields()` -> run 203
+- AC3, and AC4's 400 half: `DispatchClass` added to `WebAppUpdate`'s `PERMITTEDFIELDS` and dropped
+  from its `ExcludedFields()` -> run 273
   `Prohibited.TestNoWriteToolAdmitsAnAlwaysProhibitedField` red on the schema, the settable list, the
-  400 and the mints-nothing clause; the unrefused call minted a row, removed afterwards.
+  reviewed-few floor, the 400 and the mints-nothing clause; the unrefused call minted a row, removed
+  afterwards. The positive list is what admits a field now, so dropping the name from
+  `ExcludedFields()` alone no longer advertises it.
 - AC3: a probe write tool registered over an uncovered entity type (`database`) -> run 168
   `Prohibited.TestNoRegisteredWriteToolHasAnUncoveredEntityType` red. It had to sit outside
   `OcuPilot.Test.`, which `Registry.ExcludedPackage()` skips; the probe class was deleted from the
@@ -433,9 +496,12 @@ named test, reverted, and the throwaway's tree confirmed byte-identical to the w
   floor, and run 193 all three `ProhibitedRoute` legs red -- each confirm succeeded and wrote.
 - AC6: the `SERVINGPATH` sentence removed from `Prohibited.ReasonFor()` -> run 169
   `Prohibited.TestTheSetHasOneHomeAndOneSentencePerCode` red.
-- `ServesOcuPilot` answers 0 -> run 195 `Prohibited.TestDisablingOcuPilotsOwnPathIsRefused` red.
-- its `Kernel.State.WebApp` lookup dropped -> run 196 the same test red on the recorded-path leg
-  alone, which is the only leg that branch answers.
+- DW-1347: the serving-path predicate narrowed back to the enabled flag
+  (`If pServes && $Data(pChanged("Enabled"))`) -> run 263
+  `ProhibitedByEffect.TestAChangeToOcuPilotsOwnApplicationIsRefused` red -- the `NameSpace` and
+  `Path` legs answer the reviewed-few code instead and the `Description` leg is not refused at all.
+- DW-1347: `ServesOcuPilot`'s `Kernel.State.WebApp` lookup dropped -> run 264 the same test red on
+  the recorded-path leg alone, which is the only leg that branch answers.
 - `Prohibits`'s uncovered arms answer `pProhibits = 0` -> run 197
   `Prohibited.TestAnUncoveredEntityTypeIsRefusedWholesale` red.
 - `Registry.ListTools` reports every tool `read` -> run 198 both write-tool floors red, in
@@ -446,6 +512,40 @@ named test, reverted, and the throwaway's tree confirmed byte-identical to the w
   `Prohibited.TestTheSetHasOneHomeAndOneSentencePerCode` red.
 - `WebAppUpdate` declaring `DispatchClass` a secret argument -> run 201
   `Prohibited.TestNoWriteToolAdmitsAnAlwaysProhibitedField` red.
+- DW-1345 and DW-1346: the reviewed-few loop deleted from `Prohibited.WebApplication` -> run 261
+  `ProhibitedByEffect.TestAFieldTheReleaseHasNotReviewedIsRefused` red on all 21 unreviewed
+  properties, the two invented ones among them, and on the over-the-confirm leg. `DispatchClass`
+  stays green there, which is its own predicate answering.
+- DW-1346: `Prohibited.ClearsUnauthenticatedOnly` replaced by the subset reading -- permitted iff the
+  payload sets no bit the target does not -- -> run 297
+  `ProhibitedByEffect.TestOnlyClearingUnauthenticatedAccessIsProposable` red on the two legs that
+  reading permits: turning two-factor password authentication off (2097184 -> 32) and leaving no way
+  in at all (32 -> 0).
+- DW-1351: `Prohibited.Changed` ignoring the diff and comparing every payload member -> run 265
+  `ProhibitedByEffect.TestAProposalIsJudgedOnWhatItChanges` red, answering the misleading 403
+  `PROHIBITED.AUTHORIZATION` DW-1351 names and leaving the row live.
+- DW-1351's other half: `Prohibited.Changed` trusting the diff, with
+  `..Rendered(pPayload, tField) = ..Rendered(pTarget, tField)` dropped -> run 299
+  `ProhibitedByEffect.TestAProposalIsJudgedOnWhatItChanges` red on its last leg, which is what pins
+  the live comparison: a field the diff names whose value the instance already holds is refused
+  403 `PROHIBITED.AUTHORIZATION`.
+- AD-6, the fingerprint's cover of the stored payload: the second comparison removed from
+  `Confirm.FingerprintMatches` -> run 295
+  `ProhibitedByEffect.TestARowWhosePayloadItsFingerprintDoesNotCoverIsRefused` red on all four legs,
+  each confirm succeeding and reaching the port.
+- The reviewed-few floor in the other direction: `Timeout` added to
+  `Prohibited.PermittedChangeFields` alone -> run 298
+  `Prohibited.TestNoWriteToolAdmitsAnAlwaysProhibitedField` red on the converse assertion, naming the
+  field the tool does not advertise.
+- The diff row's own key: `Mint.Merge` writing `name` instead of `field` -> run 300
+  `ProhibitedByEffect.TestAProposalIsJudgedOnWhatItChanges` red, which is what ties `Changed()`'s
+  reader to the mint's writer.
+- `NameSpace` added to `WebAppUpdate`'s `PERMITTEDFIELDS` -> run 266
+  `Prohibited.TestNoWriteToolAdmitsAnAlwaysProhibitedField` red on the reviewed-few floor, which is
+  what keeps the tool's admitted names and the set's reviewed few from drifting apart.
+- the positive filter deleted from `Screen.Tool.Write.FieldRows` -> run 267
+  `ToolWrite.TestTheSchemaIsDerivedFromTheClassifiedFieldList` red on the shipped tool advertising a
+  field the set has not reviewed.
 
 **Manual check, performed:** `ProhibitedRoute.Weakened` reads the probe application's complete
 property set back through the shipped port before and after each confirm and asserts it equal, and
@@ -457,80 +557,90 @@ that confirm and a vendor write.
 Status: done
 Blocking condition: none
 
-**Change.** AD-10's set gets its one home. `Kernel/Proposal/Prohibited.cls` (new) declares six dotted
-codes with one sentence each, `COVEREDTYPES` (`web-application`), `AlwaysProhibitedFields`, an
-overridable `PortClass()`/`RegistryClass()`, and `Prohibits`, which parses the target reference,
-refuses `PROHIBITED.UNCOVERED` for an unparseable ref or an uncovered type, resolves whether the path
-serves OcuPilot (roster, then `Kernel.State.WebApp`, both before the port is entered so no escalated
-frame nests a port call, AD-9), reads the target live through the tool's own endpoint, and runs five
-web-application predicates in declared order -- unauthenticated bit added, resource dropped, dispatch
-repointed, roles changed, OcuPilot's own path left disabled. A 404 is "not prohibited" and the
-fingerprint gate answers it; any other read failure is an error status the confirm renders 500.
-Values compare through `Mint.Display`, which loses `[ Private ]` so the predicates and the diff the
-user reviewed read "changed" the same way. `Write.ProhibitedClass()` answers the new class and
-`Write.ReasonFor()` delegates the `PROHIBITED.` family to it. `WebAppUpdate` excludes `DispatchClass`
-as well as `MatchRoles`, so neither reaches the advertised schema or `SettableFields()`. The seam
-stayed exactly where Story 5.3 put it; 5.3's gate order is unchanged.
+**Change (rework 1, the four open items).** The set now **permits by name and refuses by shape**.
+`PermittedChangeFields(pType)` names the four web-application settings this release has reviewed
+(`AutheEnabled`, `Description`, `Enabled`, `Resource`); every other changed field is refused
+`PROHIBITED.UNCOVEREDFIELD`, a seventh code with its own sentence. That is what closes DW-1345 and
+DW-1346 without enumerating vendor property names: `EventClass`, `SuperClass`, `Package`, `Path`,
+`NameSpace`, the page and WSGI properties, `TwoFactorEnabled`, `CSRFToken`, `JWTAuthEnabled`,
+`UseCookies`, `SessionScope`, `GroupById` and `Timeout` are all refused, and so are two properties
+this build's endpoint does not carry at all. `AutheEnabled`, the one authentication field that stays
+proposable, is judged by `ClearsUnauthenticatedOnly`: the only payload it permits is the target's own
+mask with the unauthenticated bit cleared, because the mask carries strength modifiers as well as
+mechanisms and a subset test reads two-factor backwards in both directions. That refuses 32 -> 0,
+32 -> 8192, 32 -> 16384, 1056's undefined bit and two-factor either way.
+DW-1347: a web application OcuPilot itself is
+served by is refused **any** change (`SERVINGPATH`), so `NameSpace` and `Path` are covered by the
+predicate being over the application rather than over a property list; the end-state "leaves it not
+enabled" clause is gone, since the payload that carries it proposes no change. DW-1351: `Prohibits`
+takes the stored diff, and `Changed` answers the fields the diff names **and** whose payload value
+differs from the live target, so a field a third party moved after the mint is answered 409
+`PROPOSAL.TARGETCHANGED` by the fingerprint gate rather than 403 by the set. AD-10's other half
+follows: `Screen.Tool.Write` gains a positive `PermittedFields()` filter and `WebAppUpdate` declares
+the same four names, so the advertised schema went from 45 fields to 4 and a vendor property a later
+build adds reaches no schema until somebody reviews it. The seam stayed where Story 5.3 put it and
+5.3's gate order is unchanged.
 
 **Files changed.**
 
-- `src/OcuPilot/Kernel/Proposal/Prohibited.cls` (new) -- the set, its codes and its predicates.
-- `src/OcuPilot/Kernel/Proposal/Write.cls` -- the seam answers the set; `ReasonFor` delegates the family.
-- `src/OcuPilot/Kernel/Proposal/Mint.cls` -- `Display()` loses `[ Private ]`, one rendering not two.
-- `src/OcuPilot/Kernel/Proposal/Confirm.cls` -- the seam's doc and call-site comment corrected; no code change.
-- `src/OcuPilot/Screen/Tool/WebAppUpdate.cls` -- `DispatchClass` excluded; the header states both halves.
-- `src/OcuPilot/Test/Prohibited.cls` (new) -- the matrix, the acceptance criteria and the tree sweep.
-- `src/OcuPilot/Test/ProhibitedRoute.cls` (new) -- three legs over HTTP against a real probe application.
-- `src/OcuPilot/Test/ProhibitedFixture.cls` (new) -- the shipped set with the port replaced.
-- `src/OcuPilot/Test/ProposalFixture.cls` -- `ArmReadFault` added; two stale sentences corrected.
-- `src/OcuPilot/Test/ProposalConfirm.cls` -- the seam test asserts the kernel class; its call-once and before-the-write assertions are unchanged.
-- `src/OcuPilot/Test/ConfirmFixture.cls`, `Test/ToolWrite.cls`, `Test/WriteExclusion.cls` -- stale claims corrected at their origin.
+- `src/OcuPilot/Kernel/Proposal/Prohibited.cls` -- the reviewed-few rule,
+  `ClearsUnauthenticatedOnly`, `Changed`, the serving-path predicate, the seventh code; `Unauthenticated` and `Enabled` are gone with the
+  readings they served, and `UNAUTHENTICATEDBIT` is the one bit `ClearsUnauthenticatedOnly` permits a
+  payload to change.
+- `src/OcuPilot/Kernel/Proposal/Confirm.cls` -- the seam is handed the stored diff, and
+  `FingerprintMatches` requires the stored payload to digest to the row's own fingerprint (AD-6).
+- `src/OcuPilot/Screen/Tool/Write.cls` -- `PermittedFields()` and its filter in `FieldRows`.
+- `src/OcuPilot/Screen/Tool/WebAppUpdate.cls` -- `PERMITTEDFIELDS`, and a header that says which
+  families the four leave out.
+- `src/OcuPilot/Screen/Tool/Classification.cls` -- one sentence separating `ordinary` from "the tool
+  admits it"; the reviewed XData is unchanged.
+- `src/OcuPilot/Test/ProhibitedByEffect.cls` (new) -- the four pinning tests.
+- `src/OcuPilot/Test/ProhibitedFixture.cls` -- the suite's shared builders, so neither test class
+  duplicates them and `Test/Prohibited.cls` stays inside the ~500-line guidance.
+- `src/OcuPilot/Test/Prohibited.cls`, `…/ProhibitedRoute.cls` -- every seeded row carries the diff a
+  mint would have recorded; the reviewed-few floor is asserted per write tool.
+- `src/OcuPilot/Test/ProposalFixture.cls`, `…/ToolWrite.cls`, `…/WriteExclusion.cls` -- the fixture's
+  seam signature, and the array-shape assertion moved to the probe tool that still admits one.
 
-Nothing under `scripts/`, `.github/`, `module.xml`, `Install/`, `ui/tools/ci*.mjs` or the client.
+**Verified.** `check-objectscript.py` 0 problems over 557 files; `lint-docs.sh` clean; `ui`
+`npm run build` and `npm test` green (1087 + 687). On the throwaway `ocupilot-ci`, one class per
+call through `ui/tools/ci-runner.mjs` and confirmed against `%UnitTest_Result`: `Prohibited` 11,
+`ProhibitedByEffect` 5, `ProhibitedRoute` 3, `ProposalConfirm` 16, `ConfirmRoute` 6, `ProposalWrite`
+11, `Proposal` 14, `ProposalRace` 6, `ProposalClose` 7, `ProposalWire` 11, `ToolWrite` 9,
+`ToolRoundTrip` 2, `ToolSetFull` 2, `ToolEmit` 11, `ToolDispatch` 18, `WebApp` 25, `ReadTool` 27,
+`Envelope` 15, `Wire` 20 -- 19 classes, 219 tests, 0 failed, 0 probe leftovers, 0 overlaps, 0 foreign
+runs. `smoke.sh --container ocupilot-ci`: executed 45, passed 45, failed 0, pending 2, skipped 0 before
+the suite had written any agent switch on that instance, and 44 executed, 44 passed, 1 skipped
+afterwards, because `agentswitches` reports that it can no longer tell whether the install wrote
+none. Each
+mutation line above was applied alone on the throwaway, grepped inside the container, loaded and
+recompiled with its subclasses, observed red on its named test and reverted;
+`diff -rq src/ /tmp/ocupilot-ci/src/` reports no differences afterwards.
 
-**Deviation from the task list.** The suite is two classes, not one: the end-to-end leg needs
-`EnsureWriteTarget`, which is armed for a throwaway, so a single class would have kept the whole suite
-off any unarmed instance. `Test/Prohibited.cls` runs anywhere and `Test/ProhibitedRoute.cls` carries
-the arming guard. It is now 522 lines, just past the "~500, split if it grows past that" guidance.
+**Review findings.** 48 findings from four layers -- high 2 root causes (6 members), medium 6, low 23,
+false 5. 38 rows patched, 5 deferred, 5 rejected; patched entries after grouping: 2 high, 4 medium,
+14 low. Both highs are this pass's own work, not the baseline's: the diff scoping DW-1351 asked for
+left a row whose payload weakened the live target unrefused whenever its diff named nothing, and the
+whole-mask subset test read two-factor backwards in both directions. The first is fixed where AD-6's
+Rule already put it -- the fingerprint now covers the stored payload as well as the re-merged read,
+so such a row is refused 409 `PROPOSAL.TARGETCHANGED` and closed rather than written, and the
+prohibited seam did not move. Every rejected finding carries its reason in the triage log above.
 
-**Review findings.** 45 findings from four layers -- high 5, medium 17, low 22, false 1.
-22 patched, 8 deferred, 15 rejected. Patched entries after grouping: 9 medium, 4 low, 0 high. Every
-rejected finding carries its reason in the triage log above. The four deferred items are in the
-frontmatter `deferred:` list for the lead to harvest; three are high and name the same shape -- the
-set refuses the three fields DW-1207 names and the serving path's `Enabled` flag, while the wider
-families of fields with the same effect (`EventClass`, `SuperClass`, `NameSpace`, `Path`,
-`TwoFactorEnabled`, `CSRFToken` and the rest) stay settable and unrefused.
+**Follow-up review recommended: true.** This pass patched two `high` entries. The named unverified
+risk is the one change outside the set: `Confirm.FingerprintMatches` now requires a second digest,
+and every confirm the product makes runs it. Its premise -- that the mint stores the digest of the
+very payload it stores, with the same descriptor exclusions -- was read in `Mint` and probed live on
+`ocupilot-ci` (a real `WebApp.App` read merged and digested, then re-parsed from the stored JSON and
+digested identically), and the 19-class sweep includes the three classes that mint and confirm
+through the shipped path. It is still a strengthened gate on Story 5.3's surface that did not exist
+when this story was first reviewed.
 
-**Follow-up review recommended: true.** Nine medium entries were patched on a first pass. The named
-unverified risk is the patch pass's two changes to shared surfaces: `ProposalFixture.ArmReadFault`
-adds a branch to `Invoke` ahead of the 404 branch in a fixture ten other classes use, and
-`ProhibitedRoute.Seed` now computes its digest through `Registry.Resolve` -> `Mint.Merge` ->
-`Fingerprint.Of` rather than storing `"0"`. Both are covered by the 16-class sweep, which is green,
-but neither existed when the implementation was first reviewed.
-
-**Verified.** `check-objectscript.py` 0 problems over 556 files; `lint-docs.sh` clean; `ui`
-`npm run build` and `npm test` green (1087 + 687). On the throwaway `ocupilot-ci`, through
-`ui/tools/ci-runner.mjs` one class at a time: `Prohibited` 12, `ProhibitedRoute` 3, `ProposalConfirm`
-16, `ConfirmRoute` 6, `ProposalWrite` 11, `Proposal` 14, `ProposalRace` 6, `ProposalClose` 7,
-`ProposalWire` 11, `ToolWrite` 9, `ToolRoundTrip` 2, `ToolSetFull` 2, `WebApp` 25, `ToolDispatch` 18,
-`Envelope` 15, `Wire` 20 -- 16 classes, 177 tests, 0 failed, 0 probe leftovers, 0 overlaps, 0 foreign
-runs. `smoke.sh --container ocupilot-ci`: executed 45, passed 45, failed 0, pending 2. Every Rule 19
-mutation in `## Verification` was applied alone on `ocupilot-ci`, observed red on its named test and
-reverted; `diff -rq src/ /tmp/ocupilot-ci/src/` reports no differences.
-
-**The development instance `ocupilot` (slot A) is broken, and not by this story.** Every `OcuPilot*`
-resource, role and privileged application is absent from it, while its version row still reads
-`installed` and was last written 2026-09-16 -- so `Installer.Install("")` is a no-op and cannot repair
-it. Consequently `GuardedUserEnabled` cannot enter its escalation, every OcuPilot route there answers
-503 `INSTALL.UNREADABLE`, and any route-dispatch suite fails on slot A for that reason alone
-(`OcuPilot.Test.Envelope` 8 of 15). The same source is byte-identical on `ocupilot-ci` and green
-there, the project carries no class projection that a recompile could have fired, and the story's own
-diff touches no security object, no install path and no router. Repairing it needs the version row
-removed and the installer re-run, or the container recreated -- the owner's call, so it was not done.
-Story 5.5's verification was completed on `ocupilot-ci` throughout.
-
-**Residual risks.** The three high deferred items above are the material one: the set is a real
-control over exactly the effects DW-1207 names, and a caller who can reach confirm can still repoint a
-web application's event class, super class, namespace or physical path, or drop its second factor. The
-`UNCOVERED` refusal does not extend to them, because `web-application` is a covered type. Story 5.8
-and Stories 5.9-5.13 are where the set grows; the entries name the fields.
+**Residual risks.** The advertised schema is now four fields, which is a deliberate narrowing of what
+the agent may propose about a web application and the thing to review first: a later story that needs
+`Timeout` or the CORS list adds it to `PermittedChangeFields` and to the tool's `PERMITTEDFIELDS`
+together, and the reviewed-few floor now fails the suite if it adds only one. Behind the new
+fingerprint check, a row whose `arguments`, `payload` and `fingerprint` agree with each other and
+whose `diff` names nothing can still reach the port for those four fields; closing that needs the set
+to key on the stored arguments, which the intent contract's "never by a match on request or argument
+fields" forbids, or the fingerprint gate ahead of the seam, which the lead reserved. Both readings and
+the five other open items are in `deferred:`.

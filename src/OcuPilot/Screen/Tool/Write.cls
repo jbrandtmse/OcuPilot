@@ -77,6 +77,18 @@ ClassMethod ExcludedFields() As %List
     Quit ""
 }
 
+/// <p>The <b>only</b> top-level field names this tool admits, as a <class>%List</class>;
+/// <code>""</code> means no positive restriction and every <code>ordinary</code> top-level field of
+/// the entry is admitted.</p>
+/// <p>Empty here. A tool whose entity type has reviewed predicates for a few of its properties
+/// names those few, so a vendor property a later IRIS build adds to the endpoint's own template is
+/// absent from the advertised schema until somebody reviews it -- which is AD-10's "absent from the
+/// tool set" for the fields the prohibited set refuses by shape rather than by name.</p>
+ClassMethod PermittedFields() As %List
+{
+    Quit ""
+}
+
 /// <p>What <parameter>DESCRIPTORCLASS</parameter> declares secret (AD-3, AD-6), which is what the
 /// confirm channel is closed to all but. <var>pDeclared</var> is always 1: a write tool's
 /// classification is its descriptor's declaration, and an absent list is an empty one.</p>
@@ -91,10 +103,11 @@ ClassMethod SecretArguments(pDescriptor As %String = "", Output pDeclared As %Bo
 /// may admit, as <code>pRows(n) = $ListBuild(field, templateType, isArray)</code> in the entry's
 /// own order, with the count in <code>pRows</code>.</p>
 /// <p>A row is admitted when its class is <code>ordinary</code>, its path is a top-level literal
-/// or a top-level array of literals, its name is outside <method>ExcludedFields</method>, and the
-/// descriptor does not declare it secret. A deeper path -- a member of an object, an element of an
-/// array of objects -- is not admitted at all: the advertised schema subset is flat, so a nested
-/// path could only be admitted by a shape the validator does not enforce.</p>
+/// or a top-level array of literals, its name is outside <method>ExcludedFields</method>, its name
+/// is inside <method>PermittedFields</method> where that list is not empty, and the descriptor does
+/// not declare it secret. A deeper path -- a member of an object, an element of an array of objects
+/// -- is not admitted at all: the advertised schema subset is flat, so a nested path could only be
+/// admitted by a shape the validator does not enforce.</p>
 ClassMethod FieldRows(Output pRows) As %Status
 {
     Kill pRows
@@ -116,6 +129,7 @@ ClassMethod FieldRows(Output pRows) As %Status
             Quit
         }
         Set tExcluded = ..ExcludedFields()
+        Set tPermitted = ..PermittedFields()
         Set tSecrets = ..SecretArguments(..#DESCRIPTORCLASS, .tDeclared)
         Set tIterator = tEntry.%Get("fields").%GetIterator()
         While tIterator.%GetNext(.tIndex, .tField) {
@@ -128,6 +142,7 @@ ClassMethod FieldRows(Output pRows) As %Status
             Set tName = $Select(tIsArray: $Extract(tPath, 1, *-2), 1: tPath)
             If tName [ "[" Continue
             If $ListFind(tExcluded, tName) Continue
+            If (tPermitted '= "") && '$ListFind(tPermitted, tName) Continue
             If $ListFind(tSecrets, tName) Continue
             Set pRows($Increment(pRows)) = $ListBuild(tName, tField.%Get("templateType"), tIsArray)
         }

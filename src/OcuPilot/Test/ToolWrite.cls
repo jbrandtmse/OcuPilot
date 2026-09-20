@@ -88,8 +88,12 @@ Method TestTheSchemaIsDerivedFromTheClassifiedFieldList()
     Do $$$AssertNotEquals(tProperties.%GetTypeOf("Enabled"), "unassigned", "an ordinary boolean field is admitted")
     Do $$$AssertEquals(tProperties.%Get("Enabled").%Get("type"), "boolean", "with its own JSON type")
     Do $$$AssertEquals(tProperties.%Get("Resource").%Get("type"), "string", "and a string field with its")
-    Do $$$AssertEquals(tProperties.%Get("CorsAllowlist").%Get("type"), "array", "an array field is an array")
-    Do $$$AssertEquals(tProperties.%Get("CorsAllowlist").%Get("items").%Get("type"), "string", "of its element type")
+    ; The shipped tool admits four reviewed fields (AD-10), none of them an array, so the array
+    ; shape is read on the probe subclass that lifts the positive restriction and nothing else.
+    Set tWide = $ClassMethod("OcuPilot.Test.WriteExclusion", "InputSchema").%Get("properties")
+    Do $$$AssertEquals(tWide.%Get("CorsAllowlist").%Get("type"), "array", "an array field is an array")
+    Do $$$AssertEquals(tWide.%Get("CorsAllowlist").%Get("items").%Get("type"), "string", "of its element type")
+    Do $$$AssertEquals(tProperties.%GetTypeOf("CorsAllowlist"), "unassigned", "and the shipped tool advertises no field the prohibited set has not reviewed")
 
     Set tFields = $ClassMethod(..#TOOLCLASS, "SettableFields")
     Do $$$AssertTrue($ListFind(tFields, "Enabled") > 0, "the settable fields are derived from the same entry")
