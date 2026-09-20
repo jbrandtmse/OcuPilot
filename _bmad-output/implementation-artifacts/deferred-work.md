@@ -4373,6 +4373,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-13-3-publish-the-package-to-the-community-registry.md / code-review | severity: high | fix-risk: med | footprint: in-story
 - evidence: Run 35503250843 (head 8085072, the code under review), job 106058629958: the script exits 1 at 09:50:03 with 'is missing 14 staged bundle file(s)' naming every bundle file. The archive it built is 1,083,080 bytes against the macOS run's 1,083,507, and the AC1 mutation shows a bundle-less archive is 542,321 - so the bundle's bytes ARE in the CI archive and the member PATH differs. The class check (^src/cls/OcuPilot/.*\.cls$) passed on the same archive, so it is the FileCopy branch alone. Never observed on Linux before: the story's evidence is one macOS run.
 - 2026-09-20T10:10:37Z status=open owner=13-3-publish-the-package-to-the-community-registry by=cr note=reopens the story; diagnosis needs the CI archive member list, which the job now prints (patched this pass)
+- 2026-09-20T10:19:52Z status=open owner=13-3-publish-the-package-to-the-community-registry by=adjudication note=diagnosed: IPM emits doubled-slash members; tar tzf runs host-side and BSD normalizes what GNU preserves; fix is to normalize MEMBERS once
 
 ### DW-1338: epics.md:737 still says the archive is proven by a dry-run build, the claim the same amendment corrected at :5124
 - source: spec-13-3-publish-the-package-to-the-community-registry.md / code-review | severity: med | fix-risk: low | footprint: out-of-footprint

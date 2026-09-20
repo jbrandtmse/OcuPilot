@@ -122,6 +122,20 @@ deferred:
   next CI run and fix the comparison against what IPM actually emits — do not guess a prefix.** The containers
   are Linux in both environments, so the host-side staging is the only variable and a local macOS run cannot
   reproduce it.
+  **DIAGNOSED 2026-09-20 from the diagnostic's own output** (run `35504554421`, job `106062047391`): IPM emits
+  member paths with a **doubled slash** at the join — `ui/dist/ocupilot-ui/browser//index.html`,
+  `ui/dist/ocupilot-ui/browser/media//Inter-OFL.txt`, `src//cls` — because `<FileCopy Name="…/browser/">`
+  already ends in `/` and IPM joins another. The check looks for the single-slash form, so it misses every one.
+  The archive is not wrong and the bytes are all there; the **comparison** is.
+  Why it was green on macOS and red on Linux: `MEMBERS=$(tar tzf "$ARCHIVE")` at `:272` runs **host-side**, and
+  BSD tar normalizes `//` in its listing while GNU tar preserves it. The same archive lists differently on the
+  two platforms, which is precisely why CI is the gate that counts.
+  **The fix: normalize repeated slashes in the member list once, where `MEMBERS` is built, so every downstream
+  comparison is tar-implementation-independent.** Do not special-case the bundle branch — `src//cls` shows the
+  same join elsewhere — and do not change `module.xml`'s `Name`, which is correct as written and is what the
+  manifest equality checks. Demonstrate it: a mutation that removes the normalization must redden a test that
+  feeds a GNU-tar-shaped (doubled-slash) member list through the comparison, so the guard cannot silently
+  depend on which tar ran.
 
 
 - `scripts/ci-ipm-archive.sh` — create. One script, the two phases in order, modeled line-for-line on `ci-image-compile.sh`'s shape (argument parsing, refusals, `trap cleanup EXIT`, the readiness loop, split markers, `grep -o`/`sed` extraction). Flags: `--image` (required; the same two floating-tag refusals), `--dir` (default `/tmp/ocupilot-ipm`, refused unless under a scratch root), `--build-name` (default `ocupilot-ipm-build`), `--install-name` (default `ocupilot-ipm-install`). Refuse either container name if it is `ocupilot`, matches `ocupilot-slot-*`, or is `ocupilot-ci` / `ocupilot-b-ci` / `ocupilot-c-ci`. Order: run `node tools/ipm-manifest.mjs --check` from `ui/` and stop on drift; refuse when `ui/dist/ocupilot-ui/browser/` is absent, naming it and `cd ui && npm run build`; stage `src/`, `module.xml` and the bundle into `$DIR/module/` at their repo-relative paths; `docker run -d --network none --name <build> -v $DIR/module:/opt/ocupilot:ro <image>`; wait for a session; `$System.OBJ.Load("/usr/irissys/dist/install/misc/zpm.xml","ck")`; assert `%IPM_Repo.Definition` holds **zero** rows; `Shell("load -dev /opt/ocupilot",1,0)`; `Shell("package ocupilot -path /tmp/ocupilot",1,0)`; take the artifact path from IPM's own `Module package generated:` line rather than predicting it; `docker cp` it to `$DIR/artifact/`. Then a **second** `docker run -d --network none --name <install> …` from the same image with `$DIR/artifact:/opt/ocupilot-archive:ro`; wait; import IPM; assert zero repository rows again; `Shell("load /opt/ocupilot-archive/<file>",1,0)`; unexpire `_SYSTEM` **by name** (`##class(Security.Users).UnExpireUserPasswords("_SYSTEM")` in `%SYS`), printing why; then `sh scripts/smoke.sh --container <install> --user _SYSTEM --password SYS` and read its exit status directly. Print one summary line and exit non-zero naming the phase that failed. A phase that executed nothing is a failure, never a pass.
