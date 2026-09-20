@@ -211,8 +211,8 @@ development_status:
   14-8-the-seeded-injection-test: backlog
   epic-14-retrospective: optional
 
-  epic-15: backlog
-  15-1-change-your-own-password: ready-for-dev
+  epic-15: in-progress
+  15-1-change-your-own-password: in-progress
   15-2-favorites-recent-items-and-menu-search: backlog
   15-3-about-help-shortcuts-and-the-links-panel: backlog
   15-4-home-s-system-information-panel: backlog
