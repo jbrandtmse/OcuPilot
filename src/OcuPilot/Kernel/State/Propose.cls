@@ -261,6 +261,22 @@ ClassMethod GuardedByKey(pKey As %String, Output pFound As %Boolean, Output pVal
     Quit $$$OK
 }
 
+/// <p>How long a claim waits for its scoped target's lock before giving up. The transition it
+/// guards is two SQL statements, so a wait this long means a genuinely concurrent confirm.</p>
+Parameter CLAIMLOCKSECONDS As %Integer = 10;
+
+/// <p>The lock subscript a claim on <var>pTargetRef</var> serializes on -- a SHA-256 digest of the
+/// reference rather than the reference itself, because <property>TargetRef</property> holds up to
+/// 512 characters and a lock name does not. <code>""</code> for an unscoped claim, which has no
+/// siblings to cancel and takes no lock.</p>
+/// <p>Public so a test can name the same lock a claim takes rather than rebuilding it, which is
+/// the only way an assertion about the serialization can fail for the right reason.</p>
+ClassMethod TargetLockKey(pTargetRef As %String) As %String
+{
+    If pTargetRef = "" Quit ""
+    Quit $ZConvert(##class(%xsd.hexBinary).LogicalToXSD($System.Encryption.SHAHash(256, $ZConvert(pTargetRef, "O", "UTF8"))), "L")
+}
+
 /// <p>Claim proposal <var>pProposalKey</var> and close its siblings, in one transaction (AD-34).</p>
 /// <p><b>Caller contract:</b> every gate that decides whether the write may happen has already been
 /// evaluated by the caller (<class>OcuPilot.Kernel.Proposal.Confirm</class>) and none of them is
@@ -272,6 +288,12 @@ ClassMethod GuardedByKey(pKey As %String, Output pFound As %Boolean, Output pVal
 /// count is 1 for the winner and 0 for every other. A winner's own statement carries the burn, the
 /// terminal state and the confirmation stamp together, and the sibling cancel runs inside the same
 /// transaction -- so there is no window in which one row is burned and a sibling is still live.</p>
+/// <p><b>One transition per scoped target at a time.</b> A scoped claim holds
+/// <method>TargetLockKey</method>'s lock across its whole transaction, because the row locks alone
+/// do not order two claims of two different rows on one target: at IRIS's READ UNCOMMITTED default
+/// each sibling update reads the other's uncommitted claim as already confirmed, matches nothing
+/// and never asks for its lock. A claim that cannot take the target lock within
+/// <parameter>CLAIMLOCKSECONDS</parameter> answers an error and writes nothing.</p>
 /// <p><b>Siblings are closed whatever user owns them.</b> The target moved for everyone, and a
 /// sibling left live would offer a decision against a diff that is already stale.</p>
 /// <p>A row count of 0 leaves <var>pWon</var> 0 and answers the row's current state in
@@ -283,10 +305,26 @@ ClassMethod GuardedClaimAndClose(pProposalKey As %String, pExpectedVersion As %I
     Set pTerminal = ""
     Set tSC = $$$OK
     Set tInTx = 0
+    Set tLockKey = ""
     Try {
         If pProposalKey = "" {
             Set tSC = $$$ERROR($$$GeneralError, "a claim needs a proposal id")
             Quit
+        }
+        ; AD-34. Confirms of one scoped target are serialized here, and not by the rows' own locks.
+        ; IRIS's default isolation is READ UNCOMMITTED, so the sibling update below reads a rival
+        ; claim's uncommitted State = 'confirmed', matches nothing and asks for no lock -- without
+        ; this both claims commit, neither cancels the other, and two writes go out against one
+        ; target. Observed on this build, 2026-09-19.
+        If pTargetRef '= "" {
+            Set tLockKey = ..TargetLockKey(pTargetRef)
+            Set tSC = ..GuardedTargetLock(tLockKey, ..#CLAIMLOCKSECONDS, .tHeld)
+            If $$$ISERR(tSC) Quit
+            If 'tHeld {
+                Set tLockKey = ""
+                Set tSC = $$$ERROR($$$GeneralError, "another confirm of this target is in flight")
+                Quit
+            }
         }
         Set tNow = ..Stamp()
         TSTART
@@ -309,6 +347,10 @@ ClassMethod GuardedClaimAndClose(pProposalKey As %String, pExpectedVersion As %I
     If tInTx {
         TROLLBACK 1
         Set pWon = 0
+    }
+    If tLockKey '= "" {
+        Set tUnlockSC = ..GuardedTargetUnlock(tLockKey)
+        If $$$ISERR(tUnlockSC) && $$$ISOK(tSC) Set tSC = tUnlockSC
     }
     If $$$ISOK(tSC) && 'pWon {
         Set tReadSC = ..GuardedByKey(pProposalKey, .tFound, .tValues)

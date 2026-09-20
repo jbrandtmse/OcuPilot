@@ -32,8 +32,9 @@ Method OnAfterOneTest() As %Status
 /// otherwise both create one, and <code>SELECT TOP 1 ... ORDER BY ID</code> would answer the older
 /// of the two for ever after.</p>
 /// <p>Mutation: delete <code>Index SwitchSingletonIdx</code> from
-/// <class>OcuPilot.Kernel.State.Switch</class>, or the <code>Set tRow.Singleton = 1</code> line from
-/// <method>SetGuarded</method>, and recompile the package -- this goes red.</p>
+/// <class>OcuPilot.Kernel.State.Switch</class> and recompile the package -- this goes red.
+/// Dropping <code>Set tRow.Singleton = 1</code> from <method>SetGuarded</method> is not a second
+/// mutation: the property's own <code>InitialExpression</code> writes 1, so the row is unchanged.</p>
 Method TestASecondSwitchRowIsRefused()
 {
     Kill tValues

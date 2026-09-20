@@ -1,4 +1,4 @@
-/// <p>Test-only <class>OcuPilot.Kernel.Proposal.Confirm</class> subclass with two replaced seams:
+/// <p>Test-only <class>OcuPilot.Kernel.Proposal.Confirm</class> subclass with three replaced seams:
 /// the port answers <class>OcuPilot.Test.ProposalFixture</class>'s armed objects and records what a
 /// write was sent, and the privilege check honours that fixture's refused pair.</p>
 /// <p>Everything else -- the turn barrier, the closed channel, the claim, the gate order, the
@@ -41,6 +41,14 @@ ClassMethod ProhibitedClassName() As %String
 ClassMethod MergeSecrets(pPayloadJson As %String, pBody As %DynamicObject, pNames As %List) As %DynamicObject
 {
     Quit ..WithSecrets(pPayloadJson, pBody, pNames)
+}
+
+/// <p><method>OcuPilot.Kernel.Proposal.Confirm.Answer</method> as a test can reach it, so the
+/// read-back's own refusal can be driven with an id no row carries -- the state a row deleted
+/// between the transition and the read-back leaves behind. Nothing but a test calls this.</p>
+ClassMethod AnswerFor(pProposalId As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pCode As %String) As %Status
+{
+    Quit ..Answer(pProposalId, .pResult, .pHttpStatus, .pCode)
 }
 
 }

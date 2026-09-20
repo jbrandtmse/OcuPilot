@@ -2693,6 +2693,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T12:29:17Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=merge_gate note=re-owned off burndown at the Epic 3 close. This is optimistic-concurrency residue on OcuPilot's own stores, and 5-3 is the story whose whole subject is that a confirmed write happens once against the state it was minted from
 - 2026-09-19T19:18:01Z occurrence=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at
 - 2026-09-19T19:18:01Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=spec_gate note=partially addressed here: four call sites are routed onto the conditional save, which makes the spine's Conventions row true for every store this story can reach. The residual is Agent.GuardedCreate alone, on the contended Kernel/State/Agent.cls, and it rides with DW-430 to range-end-cleanup
+- 2026-09-20T00:07:29Z status=resolved-by:5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=adjudication note=four call sites routed onto the conditional save, so the spine's Conventions row is true for every store this story can reach; the Agent.GuardedCreate residual rode to range-end-cleanup with DW-430 because Kernel/State/Agent.cls is contended
 
 ### DW-408: The sibling credential query folds case where the credential store does not, so two references differing only in case are siblings to OcuPilot and different entries to the vendor
 - source: spec-3-9 | severity: med | fix-risk: med | footprint: in-epic
@@ -2734,6 +2735,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T11:42:04Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=harvest note=restore on rollback, or document that a refused caller must re-read
 - 2026-09-16T15:11:12Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=x0 note=optimistic-concurrency residue, with the cluster Epic 3 already routed to the confirmed write story
 - 2026-09-19T19:18:01Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=spec_gate note=EVIDENCE CORRECTED at origin: the body says the in-memory RowVersion is raised before the conditional update and not restored on the zero-row-count path. Base.cls:188-197 assigns it only AFTER the row-count check, so that path never raises it. The real residue is the %Save()-failure path across TROLLBACK 1, and that is what the story fixes - do not mine the body's original wording as evidence
+- 2026-09-20T00:07:29Z status=resolved-by:5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=adjudication note=the real residue - the %Save failure path across TROLLBACK 1 - now restores RowVersion; the entry's original claim about the zero-row-count path was corrected at origin at the spec gate. The restore itself ships unpinned and is filed to 13.2
 
 ### DW-413: Addresses' single-form HostNameToAddr fallback sits outside the new MultiLookup seam, so a real resolver answer is unioned into the address set a probe supplies
 - source: spec-3-9 | severity: med | fix-risk: low | footprint: in-epic
@@ -2888,6 +2890,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Kernel/State/Switch.cls:100 and Kernel/State/Egress.cls:112 route a first write through GuardedSaveIfCurrent's no-id branch, which creates rather than refuses -- correct for one writer. Two concurrent first writers would each create, and GuardedCurrent reads SELECT TOP 1, so one administrator's flip is silently invisible. UNVERIFIED: no probe was run and the window exists only before the singleton row exists.
 - 2026-09-16T12:22:08Z status=routed owner=burndown by=cr note=What would settle it: two concurrent first writes on a store with no row, then SELECT COUNT(*). A unique discriminator index would refuse the second create if it is real.
 - 2026-09-16T12:29:17Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=merge_gate note=re-owned off burndown at the Epic 3 close. This is optimistic-concurrency residue on OcuPilot's own stores, and 5-3 is the story whose whole subject is that a confirmed write happens once against the state it was minted from
+- 2026-09-20T00:07:29Z status=resolved-by:5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=adjudication note=the singleton first-write race is closed by a unique index; the review refuted the claim that the index is inert on upgraded instances, since the race it guards needs an empty table
 
 ### DW-436: A row deleted between a caller's read and its conditional save is refused as a stale save, so the operator is told to reload and save a row that is gone
 - source: bmad-code-review Story 3.9 (edge-case-hunter) | severity: low | fix-risk: low | footprint: in-epic
@@ -4113,6 +4116,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: Invoke, InvokeHttp500 and the new InvokeHandler each Set %request without New %request,%response; only %OcuPilotDispatchCap is killed on exit. No current caller is affected, so it is latent. Location: src/OcuPilot/Test/Dispatch.cls
 - 2026-09-19T06:30:02Z status=open owner=5-0-epic-4-deferred-cleanup by=harvest note=harvested from the 5.0 spec deferred list; adjudicated against delivered scope at this story's ledger gate
 - 2026-09-19T07:05:12Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=adjudication note=not delivered and correctly out of scope here - latent, no current caller; 5.3 extends the confirm path and Test/Dispatch.cls is the harness its own tests will use, so the New belongs with the story that next touches all three helpers
+- 2026-09-20T00:07:29Z status=resolved-by:5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=adjudication note=Test/Dispatch's three helpers now New %request and %response, so the stubs no longer outlive the call
 
 ### DW-1185: A lead-side Rule 19 mutation that leaves a capture open leaks it into a pooled Atelier work-queue worker, so a later unrelated class run reddens on Capture Already Active
 - source: lead AD gate for story 5.0 | severity: med | fix-risk: low | footprint: in-epic
@@ -4169,6 +4173,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read.md | severity: med | fix-risk: high | footprint: src/OcuPilot/Screen/Registry.cls, src/OcuPilot/Kernel/Proposal/Mint.cls
 - evidence: Probed on ocupilot-slot-a: ConfirmChannelProblem refuses fingerprintExcludes ['LastModified'] and ['Name'] as 'not a field of this screen's write tool', because it tests membership in the RequestBodySchema-derived ToolFields rows; Mint takes the digest over a copy of the GET's object. Both shipped lists are empty, so nothing is reachable today. The one test that proves the mint honours a declared exclusion (Test.Proposal.TestTheMintTakesItsExclusionsFromTheDescriptor) uses Test/ProposalScreen.cls, a declaration that same validator refuses, and escapes only because OcuPilot.Test is outside DESCRIPTORPACKAGE.
 - 2026-09-19T13:18:54Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=cr note=Which set an exclusion is validated against is a design call: the GET's property set is not knowable from any static source at validation time. It bites where the confirm re-computes the digest, which is 5.3.
+- 2026-09-20T00:07:29Z status=resolved-by:5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=adjudication note=secretArguments is validated against the write tool's field list, the same way fingerprintExcludes already was
 
 ### DW-1206: secretArguments entries are not validated against anything while fingerprintExcludes entries are, so one typo leaves a credential-named field settable and reachable by the model
 - source: spec-5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read.md | severity: med | fix-risk: high | footprint: src/OcuPilot/Screen/Registry.cls, ui/tools/screen-mirror.mjs
@@ -4189,6 +4194,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read.md | severity: med | fix-risk: med | footprint: src/OcuPilot/Kernel/State/Propose.cls, ui/src/app/core/turn.ts
 - evidence: GuardedRowsForTurn selects on TurnKey and UserName only and puts State on the wire without comparing ExpiresAt to now; only STATELIVE is ever written, because the sweep and the burn are 5.3's. turn.ts publishProposals closes an id only when it leaves a poll or turns terminal, so the bus sees no close on expiry - the pause is lifted instead by refresh.ts sweepExpired(), a different mechanism from the one the Events row names.
 - 2026-09-19T13:19:18Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=cr note=Non-blocking: the user-visible pause still lifts client-side. The state transition and the retention sweep are 5.3's declared scope, so the projection filter belongs with them.
+- 2026-09-20T00:07:29Z status=resolved-by:5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=adjudication note=a proposal past its ExpiresAt is projected expired at read time and flipped on next touch, so the wire no longer reports it live
 
 ### DW-1210: The progress poll now carries every tool step's full result content with no per-poll bound, up to roughly 6.4 MB of body once a second
 - source: spec-5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read.md | severity: med | fix-risk: med | footprint: src/OcuPilot/Kernel/State/Step.cls, src/OcuPilot/Api/Turn.cls
@@ -4204,6 +4210,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read.md | severity: med | fix-risk: med | footprint: src/OcuPilot/Kernel/Proposal/Mint.cls
 - evidence: Mint.Merge sets the new value with pArgs' own type hint. Write.JsonType's own comment records that this instance answers a number for five WebApp.App fields whose template shows a string, so the schema advertises string, the model sends a string, and the payload the confirm will PUT carries a string where the GET returned a number. Nothing in this story round-trips a changed value back through the endpoint.
 - 2026-09-19T13:19:45Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=cr note=Surfaces only where the payload is actually sent, which is 5.3's transition. Non-blocking here: nothing in 5.1 writes to the instance.
+- 2026-09-20T00:07:29Z status=resolved-by:5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=adjudication note=the merge no longer writes the model's JSON type over the instance's own for a field the fresh read carried; Mint.Coerced's silent string-to-zero was patched in the same pass
 
 ### DW-1213: A proposal restored after a browser reload is dropped on the false premise that it is always expired, so the user loses the card for up to nine of its ten minutes with no other route to it
 - source: spec-5-1-the-proposal-is-minted-on-the-instance-from-a-fresh-read.md | severity: med | fix-risk: low | footprint: ui/src/app/core/turn.ts
@@ -4221,11 +4228,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: The card emits a repropose output carrying the proposal id; panel.ts binds only cancel. This is an unmet clause of Story 5.2's own AC (Re-propose offers a fresh turn with a fresh read and a fresh diff). Location: ui/src/app/shell/proposal-card.ts, panel.ts
 - 2026-09-19T18:03:06Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=harvest note=downstream-blocking (Rule 27): 5.3 wires the card's actions, so it is the story whose gate fails while this stands. Residual restated: the AC is 5.2's and is not met
+- 2026-09-20T00:07:30Z status=resolved-by:5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=adjudication note=Re-propose is wired: it asks the agent for a fresh proposal as a new turn
 
 ### DW-1225: The single canceled wire word and the unconditional restore-to-expired override are both insufficient once terminal states are written
 - source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: restoredProposals maps EVERY restored proposal to expired and phaseForState maps the store's one canceled state to canceled-by-you. Correct and mandated today because the wire state is live on every row; the moment confirmed or canceled is written, a reload shows a confirmed write as Expired with Re-propose. Location: ui/src/app/core/turn.ts, proposal-view.ts
 - 2026-09-19T18:03:06Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=harvest note=downstream-blocking (Rule 27): 5.3 writes the terminal transitions and must revisit both with them
+- 2026-09-20T00:07:30Z status=resolved-by:5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=adjudication note=the wire carries the real terminal state and the restore no longer overrides every proposal to expired, which is what this story's confirmed and canceled writes required
 
 ### DW-1226: Mint.WarnsAuditingOff answers false for a non-boolean auditing argument, so 0, false or a null would mint an auditing-off write with no in-card warning
 - source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: low | fix-risk: low | footprint: in-epic
@@ -4246,16 +4255,19 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: Two review layers reached opposite conclusions about the interaction and neither is pinned by a browser assertion; jsdom computes no announcement. Location: ui/src/app/shell/proposal-card.ts
 - 2026-09-19T18:03:23Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=harvest note=downstream-blocking (Rule 27): 5.3 writes the terminal transitions this status line reports, so the announcement contract settles with them
+- 2026-09-20T00:07:30Z status=resolved-by:5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=adjudication note=the terminal status line's live-region and focus-target roles are reconciled and pinned
 
 ### DW-1230: The confirming and canceled-sibling phases and the confirmedAt input ship with no writer, and a confirmed wire state would render its status line from nothing
 - source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: The phases exist in the view model and nothing produces them until the confirm path is built. Location: ui/src/app/core/proposal-view.ts
 - 2026-09-19T18:03:23Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=harvest note=downstream-blocking (Rule 27): 5.3 is the writer these phases wait for
+- 2026-09-20T00:07:30Z status=resolved-by:5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=adjudication note=the confirming and canceled-sibling phases and confirmedAt now have their writer - this story's confirm path
 
 ### DW-1231: A typed message cancels every live card before the send is known to have succeeded
 - source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: sendCurrentDraft calls cancelLiveCards before the request resolves, so a failed send leaves the proposals canceled with nothing sent. Location: ui/src/app/shell/panel.ts
 - 2026-09-19T18:03:23Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=harvest note=downstream-blocking (Rule 27): cancel semantics and the atomic terminal transition are 5.3's subject
+- 2026-09-20T00:07:30Z status=resolved-by:5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=adjudication note=a typed message no longer cancels live cards before the send is known to have succeeded
 
 ### DW-1232: A Confirm disabled by an unfilled masked field says nothing about why, and no published string exists to say it
 - source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: low | fix-risk: low | footprint: in-epic
@@ -4317,6 +4329,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: panel.ts onCardCancel/cancelLiveCards write only the component-local cardPhases map and publish nothing; turn.ts newConversation() clears entriesValue without the publishProposals([]) that endSession() does make. refresh.ts lifts a pause only on proposal-closed or the per-proposal expiresAt deadline, so the pause outlives the card by up to ten minutes. Bounded and self-healing, and the instance's row is still live until 5.3 makes Cancel a real request - which is why the close belongs with that transition, beside DW-1209.
 - 2026-09-19T18:48:17Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=cr note=AD-43 resumes-on-close; 5.3 owns the terminal transitions and DW-1209 on the same channel
+- 2026-09-20T00:07:30Z status=resolved-by:5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=adjudication note=Cancel and New conversation now publish proposal-closed, so a bound screen resumes rather than staying paused for the rest of AD-6's window
 
 ### DW-1244: Mint's audit-warning constants name a tool and a field that do not exist until Story 5.10, and the only test that reads them asserts the constants against themselves
 - source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: med | fix-risk: low | footprint: in-epic
@@ -4327,6 +4340,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: The guard is deliberate and pinned: the spec's mutation list records that focusing unconditionally reddens 'a transition nobody pressed leaves focus where it was', without which a typed message cancelling three cards pulls focus out of the composer. The implementation is right and the document is imprecise; the sentence was not amended, and Story 5.3 implements the confirmed and target-changed transitions from it.
 - 2026-09-19T18:48:28Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=cr note=one-line EXPERIENCE.md amendment, made where 5.3 rewrites those transitions
+- 2026-09-20T00:07:30Z status=resolved-by:5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=adjudication note=EXPERIENCE.md:662's terminal status line contract is now pinned, and the line itself amended under Rule 5
 
 ### DW-1246: The in-card audit warning is a third polite live region mounting in the same frame as two others, and it is the only ocu-banner-warning in the shell that is not role=alert
 - source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: low | fix-risk: low | footprint: in-epic
@@ -4352,6 +4366,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: Each conditional UPDATE matches its own row, so two callers claiming two live rows of one TargetRef can both succeed before either's sibling cancel runs. AD-34's Rule makes the sibling state a consequence of the mechanism rather than a racing step. Unverified by the implement pass. Location: src/OcuPilot/Kernel/State/Propose.cls GuardedClaimAndClose
 - 2026-09-19T22:43:49Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=harvest note=kept on this story: it is AD-34's own invariant, which is this story's subject, and Rule 6 makes an AD mismatch high rather than a low deferrable. The code review decides
+- 2026-09-19T23:47:46Z status=resolved-by:5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=cr note=confirmed real, then fixed: GuardedClaimAndClose now holds a per-TargetRef lock across its transaction; ProposalRace pins it
 
 ### DW-1251: The panel hands the confirm request an empty secrets map, so AD-35's client half has no data path
 - source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: med | fix-risk: low | footprint: in-epic
@@ -4437,3 +4452,44 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: The doc comment promises a sweep the method does not perform on its error path. Location: the 5.3 test fixtures
 - 2026-09-19T22:44:23Z status=routed owner=range-end-cleanup by=harvest note=non-blocking (Rule 27): a fixture-hygiene defect with no shipped consequence
+
+### DW-1278: ChannelProblem's accept arm and its structured-secret guard are executed by no test, because no shipped descriptor declares a secret
+- source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: med | fix-risk: low | footprint: in-epic
+- evidence: WebAppList declares secretArguments [], so every key fails the membership test at Confirm.cls:353 and the object/array guard at :359-362 is never reached. The accept arm is likewise unreached; ProposalConfirm exercises WithSecrets through ConfirmFixture.MergeSecrets with a list the test supplies. A declared secret posted as an object would raise inside WithSecrets after the claim committed. Location: src/OcuPilot/Kernel/Proposal/Confirm.cls ChannelProblem
+- 2026-09-19T23:47:47Z status=routed owner=5-10-security-and-secrets-disable-and-re-enable-auditing by=cr note=5.10 ships the first descriptor that declares a secret, which is what makes either arm reachable at all
+
+### DW-1279: AdminPort's queueing path saves the request body to the vendor async task row, so the first queueing mutating endpoint persists supplied secrets
+- source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: Sequence reaches tTask.SaveRequestBody(pBody) under pEndpoint.ShouldRunAsync() with no type restriction, and MUTATINGTYPES flows through the same Sequence. The body there is Confirm.WithSecrets' merged object. AD-35 says secrets are never stored. Not reachable today: no mutating endpoint OcuPilot calls overrides ShouldRunAsync (DW-1259 records that half). Location: src/OcuPilot/Port/AdminPort.cls Sequence
+- 2026-09-19T23:47:47Z status=routed owner=5-10-security-and-secrets-disable-and-re-enable-auditing by=cr note=AD-35 is the secrets story's own invariant and 5.10 ships the first real secret; the gap opens with the first queueing write
+
+### DW-1280: A write that fails after the claim tells the user a tool could not be answered, on a path whose own class header says confirm is not a tool
+- source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: Api.Confirm.ReasonFor falls through to Error.ReasonForToolCode, whose terminal fallback is REASONTOOLUNAVAILABLE. The codes that reach it are PORT.*, set on Confirm.Transition's write-failure branch where the row is burned and confirmed. A correct sentence needs either new copy or a PORT arm in the contended Api/Error.cls, which this story's ruling (c) forbids. Location: src/OcuPilot/Api/Confirm.cls ReasonFor
+- 2026-09-19T23:47:47Z status=routed owner=5-8-web-applications-enable-a-disabled-application-and-grant-it by=cr note=5.8 drives a confirm end to end for UJ-3 and owns the refusal the user sees, as DW-1252 is already owned there
+- 2026-09-19T23:49:40Z status=wontfix-accepted owner=range-end-cleanup by=cr note=the implement pass rejected this with a stated reason and this pass has no new evidence; reopen_if=a user reports the write-failed refusal as a tool problem
+
+### DW-1281: A confirm that cannot take its target's lock is answered 500 rather than as the contention it is
+- source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: GuardedClaimAndClose returns an error status when CLAIMLOCKSECONDS elapses, and Confirm.Transition maps every claim error to Internal. The row is untouched and a retry succeeds, so the outcome is safe; the code and sentence are wrong. Base.IsLockConflict exists but GuardedExecuteRows and the lock path do not build statuses it matches. Location: src/OcuPilot/Kernel/State/Propose.cls GuardedClaimAndClose; src/OcuPilot/Api/Confirm.cls
+- 2026-09-19T23:48:07Z status=routed owner=range-end-cleanup by=cr note=non-blocking (Rule 27): needs two confirms of one target inside ten seconds, the row survives, and a retry works
+
+### DW-1282: Api/Router.cls's class header is duplicated end to end and its only-write-verbs sentence is false
+- source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: The header lists the definition routes, the provider catalog, the generic screen read, the error-log levels and GET /logs/messages twice, omits /agent/context entirely, and claims the two new proposal routes are the map's only write verbs while the UrlMap declares a dozen others. Location: src/OcuPilot/Api/Router.cls
+- 2026-09-19T23:48:07Z status=routed owner=range-end-cleanup by=cr note=non-blocking (Rule 27): a doc comment, wrong for readers only; no gate and no downstream story reads it
+
+### DW-1283: The confirm pair check is a verbatim second copy of Dispatch's, so the mint-time and confirm-time answers can drift
+- source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: low | fix-risk: med | footprint: in-epic
+- evidence: Confirm.MissingPair and Confirm.HoldsPair duplicate Kernel/Agent/Dispatch.cls's, forced only because Dispatch's are Private. Dispatch.cls is not contended, so making them reachable was available. AD-8's two gates would disagree silently if one copy changed. Location: src/OcuPilot/Kernel/Proposal/Confirm.cls MissingPair, HoldsPair
+- 2026-09-19T23:48:07Z status=routed owner=range-end-cleanup by=cr note=non-blocking (Rule 27): both copies are correct today and pinned by their own tests; the risk is future drift
+
+### DW-1284: Screen/Registry.DeclaredReadFields swallows its exception with a no-op assignment, and its screen-mirror twin does not
+- source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: The Catch has no exception variable and its only statement is Set tFields = tFields, so a raise inside the read-field walk returns whatever was accumulated. ui/tools/screen-mirror.mjs's equivalent simply returns names, so the two implementations of one rule now differ in error handling as well as in language. Location: src/OcuPilot/Screen/Registry.cls DeclaredReadFields
+- 2026-09-19T23:48:07Z status=routed owner=range-end-cleanup by=cr note=non-blocking (Rule 27): descriptors are compiled classes and no shipped one raises there; the mirror check is green either way
+
+### DW-1285: The proposal card's warning banner is drawn with the information glyph while the product's other warning banner uses the warning glyph
+- source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: proposal-card.ts bannerGlyph is the information sign; ui/src/app/shell/list-page.ts renders the same ocu-banner-warning class with the warning sign. DESIGN.md was not consulted for which is intended, so this is an inconsistency to settle rather than a defect to patch blind. Location: ui/src/app/shell/proposal-card.ts bannerGlyph
+- 2026-09-19T23:48:07Z status=routed owner=range-end-cleanup by=cr note=non-blocking (Rule 27): cosmetic, and the choice between the two glyphs is DESIGN.md's to state

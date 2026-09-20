@@ -335,18 +335,30 @@ Parameter WRITETARGET = "/csp/ocupilotprobeconfirm";
 /// only one <method>RemoveWriteTarget</method> will delete.</p>
 Parameter WRITEMARKER = "OcuPilot confirm probe";
 
+/// <p>The environment variable that arms <method>EnsureWriteTarget</method>. Only
+/// <file>scripts/ci-throwaway.sh</file> sets it, so the application this fixture creates exists on
+/// the container that script builds and nowhere else; absent, empty, or <code>0</code> refuses.</p>
+Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_PRINCIPALS";
+
 /// <p>Create <parameter>WRITETARGET</parameter> as a minimal CSP application in <var>pNamespace</var>,
 /// so a confirmed write has something of its own to write to.</p>
 /// <p><b>Its own application, never one the instance had.</b> The path carries the probe prefix, and
 /// an application that already exists under it is a <b>refusal</b>, not a silent adoption: this
 /// fixture must never hand a caller an application it did not make, because
 /// <method>RemoveWriteTarget</method> would then delete it. That pairing is why the refusal is an
-/// error rather than a no-op. Nothing but a throwaway should ever run this: it changes the
-/// instance's web-application table.</p>
+/// error rather than a no-op.</p>
+/// <p><b>Throwaway only, enforced.</b> This changes the instance's web-application table, so it
+/// refuses unless <parameter>ARMINGVARIABLE</parameter> reads <code>1</code> -- the same gate
+/// <class>OcuPilot.Test.State</class> keeps over the principals it creates, and set only by
+/// <file>scripts/ci-throwaway.sh</file>. A doc comment is a barrier only a reader can enforce, and
+/// this method is reachable from any session on any instance.</p>
 ClassMethod EnsureWriteTarget(pNamespace As %String = {$Namespace}, Output pCreated As %Boolean) As %Status
 {
     Set pCreated = 0
     Set tSC = $$$OK
+    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
+        Quit $$$ERROR($$$GeneralError, "EnsureWriteTarget creates a web application on this instance and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was created. Bring one up with scripts/ci-throwaway.sh, which sets it.")
+    }
     Set tOrigNS = $NAMESPACE
     Try {
         Set $NAMESPACE = "%SYS"

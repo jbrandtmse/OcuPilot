@@ -151,7 +151,7 @@ ClassMethod Cancel(pProposalId As %String, pUser As %String, Output pResult As %
             Set tSC = ..Refuse(404, ##class(OcuPilot.Kernel.Proposal.Write).#UNKNOWN, .pHttpStatus, .pCode)
             Quit
         }
-        Set tSC = ..Answer(pProposalId, .pResult, .pHttpStatus)
+        Set tSC = ..Answer(pProposalId, .pResult, .pHttpStatus, .pCode)
     } Catch ex {
         Set pResult = ""
         Set tSC = ..Internal("the cancel failed: " _ ex.DisplayString(), .pHttpStatus, .pCode)
@@ -315,7 +315,7 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
             Quit
         }
 
-        Set tSC = ..Answer(pProposalId, .pResult, .pHttpStatus)
+        Set tSC = ..Answer(pProposalId, .pResult, .pHttpStatus, .pCode)
     } Catch ex {
         Set pResult = ""
         Set tSC = ..Internal("the confirm transition failed: " _ ex.DisplayString(), .pHttpStatus, .pCode)
@@ -541,12 +541,16 @@ ClassMethod HoldsPair(pUser As %String, pResource As %String, pPermission As %St
 
 /// <p>The proposal's closed state as the caller is answered it:
 /// <code>{proposalId, state, closedReason, confirmedAt}</code>, read back from the row so the
-/// answer and the wire cannot disagree.</p>
-ClassMethod Answer(pProposalId As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer) As %Status [ Private ]
+/// answer and the wire cannot disagree. A row that is no longer there is answered as an internal
+/// failure, never as a 200 carrying empty fields.</p>
+ClassMethod Answer(pProposalId As %String, Output pResult As %DynamicObject, Output pHttpStatus As %Integer, Output pCode As %String) As %Status [ Private ]
 {
     Set pResult = ""
     Set tSC = $ClassMethod(..StoreClass(), "GuardedByKey", pProposalId, .tFound, .tValues)
     If $$$ISERR(tSC) Quit tSC
+    ; A row that cannot be read back after its transition is not a 200 with empty fields: an empty
+    ; state projects as expired on the card, which would offer Re-propose over a spent token.
+    If 'tFound Quit ..Internal("the proposal could not be read back after its transition", .pHttpStatus, .pCode)
     Set pResult = {}
     Do pResult.%Set("proposalId", pProposalId, "string")
     Do pResult.%Set("state", $Get(tValues("state")), "string")

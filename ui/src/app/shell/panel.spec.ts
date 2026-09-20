@@ -2984,6 +2984,45 @@ describe('Story 5.3: confirming, cancelling and re-proposing a card', () => {
     return { ...mounted, api, scheduled };
   }
 
+  it('AC8: the card draws the in-flight Confirm while the request is still out', async () => {
+    // The half of AC8 that only exists between the press and the answer, and the one the Cancel
+    // guard depends on: `cancelAriaDisabled` refuses during `confirming`, which is unreachable
+    // unless the panel actually enters that phase.
+    // Mutation (Rule 19): delete `this.setCardPhase(proposalId, 'confirming')` from
+    // `Panel.onCardConfirm` -> the card stays `live` for the whole round trip and the spinner and
+    // both `aria-disabled` assertions below go red.
+    let answer!: (value: unknown) => void;
+    const held = new Promise((resolve) => {
+      answer = resolve;
+    });
+    const { host, fixture } = await mountDecidable({ [proposalConfirmPath('p1')]: [held] });
+
+    (host.querySelector('.ocu-proposal-card-confirm') as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+
+    // Nothing has answered yet: this is the card mid-flight.
+    const confirm = host.querySelector('.ocu-proposal-card-confirm');
+    expect(confirm).not.toBeNull();
+    expect(confirm?.getAttribute('aria-disabled')).toBe('true');
+    expect(confirm?.classList.contains('ocu-proposal-card-confirm-busy')).toBe(true);
+    expect(host.querySelector('.ocu-proposal-card-confirm-spinner')).not.toBeNull();
+    expect(host.querySelector('.ocu-proposal-card-cancel')?.getAttribute('aria-disabled')).toBe('true');
+    expect(host.querySelector('.ocu-proposal-card-status')).toBeNull();
+
+    answer({
+      kind: 'ok',
+      status: 200,
+      body: { proposalId: 'p1', state: 'confirmed', closedReason: '', confirmedAt: '2026-09-19T10:31:04Z' },
+    });
+    await turnSettle();
+    fixture.detectChanges();
+    expect(host.querySelector('.ocu-proposal-card-confirm-spinner')).toBeNull();
+    expect(host.querySelector('.ocu-proposal-card-status')?.textContent?.trim()).toBe(
+      'Confirmed by _SYSTEM \u00b7 10:31:04'
+    );
+  });
+
   it('AC8: Confirm posts the confirm route and the card ends in the state the instance answered', async () => {
     // Mutation (Rule 19): stop dropping this panel's own `confirming` decision in `onCardConfirm`
     // -> the confirmed status line never appears and this goes red, because the panel's decision

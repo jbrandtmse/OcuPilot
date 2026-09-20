@@ -354,4 +354,75 @@ Method TestAFailedWriteLeavesTheProposalBurned()
     Do $$$AssertEquals(tCode, ##class(OcuPilot.Kernel.Proposal.Write).#BURNED, "as already decided")
 }
 
+/// <p>AC1, AD-40, first clause: the confirm path is absent from the shipped tool registry, so the
+/// barrier in <method>OcuPilot.Kernel.Proposal.Confirm.Confirm</method> is the second line of
+/// defence and not the only one. The registry is enumerated rather than asserted about, because
+/// the property has to hold over whatever the discovery query returns.</p>
+/// <p>Mutation: give a class under
+/// <method>OcuPilot.Screen.Tool.Registry.ToolPackage</method> a <code>TOOLNAME</code> naming the
+/// confirm path, or a class of <class>OcuPilot.Kernel.Proposal.Confirm</class> -- this goes red.</p>
+Method TestTheConfirmPathIsNotInTheToolRegistry()
+{
+    Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ListTools(.tTools)
+    Do $$$AssertStatusOK(tSC, "the registry enumerates")
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertTrue($IsObject(tTools) && (tTools.%Size() > 0), "and is not empty, so an absence below means something")
+    If '$IsObject(tTools) Quit
+
+    Set tNamed = 0
+    Set tClassed = 0
+    Set tIterator = tTools.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tTool) {
+        If $Find($ZConvert(tTool.%Get("name"), "L"), "confirm") Set tNamed = tNamed + 1
+        If $Find($ZConvert(tTool.%Get("name"), "L"), "cancel") Set tNamed = tNamed + 1
+        If tTool.%Get("class") = "OcuPilot.Kernel.Proposal.Confirm" Set tClassed = tClassed + 1
+    }
+    Do $$$AssertEquals(tNamed, 0, "no entry of the registry names the confirm or cancel path")
+    Do $$$AssertEquals(tClassed, 0, "and none is fulfilled by the confirm class")
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Screen.Tool.Registry).Resolve("proposal.confirm", .tResolved), "and asking the registry for it is not itself an error")
+    Do $$$AssertTrue('$IsObject(tResolved), "but it resolves to no tool")
+}
+
+/// <p>AC4, FR-17's conversation condition, backstop arm: a row the turn-start proactive close
+/// already canceled with reason <code>message</code> is refused as the conversation having moved,
+/// not as a spent token. This is the arm a typed message leaves behind, and the one a user meets
+/// after sending while a card was on screen.</p>
+/// <p>Mutation: delete the <parameter>REASONMESSAGE</parameter> arm from
+/// <method>OcuPilot.Kernel.Proposal.Confirm.ConversationMoved</method> -- the code assertion goes
+/// red, because the claim's own state clause then refuses it as
+/// <parameter>OcuPilot.Kernel.Proposal.Write.BURNED</parameter> instead.</p>
+Method TestAProposalTheTypedMessageClosedRefusesAsTheConversation()
+{
+    Set tConv = "probe-confirm-typed-message-conv"
+    Set tKey = ..Seed("after", tConv)
+    If tKey = "" Quit
+    Set tSC = ##class(OcuPilot.Kernel.State.Propose).GuardedCloseLiveForConvo(tConv, $Username, ##class(OcuPilot.Kernel.State.Propose).#REASONMESSAGE, .tClosed)
+    Do $$$AssertStatusOK(tSC, "the typed message closes the conversation's live proposals")
+    Do $$$AssertEquals(tClosed, 1, "this one among them")
+    Set tAfterClose = ##class(OcuPilot.Test.ProposalFixture).CallCount()
+
+    Set tSC = ..Confirm(tKey, "", .tHttp, .tCode, .tResult, .tDetail)
+    Do $$$AssertStatusNotOK(tSC, "confirming it is refused")
+    Do $$$AssertEquals(tCode, ##class(OcuPilot.Kernel.Proposal.Write).#CONVERSATION, "as the conversation having moved on")
+    Do $$$AssertEquals(tHttp, 409, "at 409")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 0, "no write is made")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).CallCount(), tAfterClose, "and the refusal costs no port read either")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "Burned"), 0, "the token is not spent")
+}
+
+/// <p>A transition whose row cannot be read back afterwards is an internal failure, not a 200
+/// carrying empty fields -- an empty state projects as <code>expired</code> on the card, which
+/// would offer Re-propose over a token that has been spent.</p>
+/// <p>Mutation: drop the <code>'tFound</code> arm from
+/// <method>OcuPilot.Kernel.Proposal.Confirm.Answer</method> -- this goes red.</p>
+Method TestARowThatCannotBeReadBackIsNotAnsweredTwoHundred()
+{
+    Set tSC = $ClassMethod(..#CONFIRM, "AnswerFor", "probe-confirm-no-such-proposal", .tResult, .tHttp, .tCode)
+    Do $$$AssertStatusNotOK(tSC, "a read-back that finds nothing is an error")
+    Do $$$AssertEquals(tHttp, 500, "rendered at 500")
+    Do $$$AssertEquals(tCode, ##class(OcuPilot.Api.Error).#INTERNAL, "under the internal code")
+    Do $$$AssertTrue('$IsObject(tResult), "and no answer object is built")
+}
+
 }

@@ -16,6 +16,14 @@ Parameter OTHERUSER = "OcuPilotProbeProposalRacerTwo";
 
 Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
 
+/// <p>How long <method>TestTwoClaimsOnOneTargetCannotBothWin</method> waits for the jobbed claim's
+/// answer. It has to outlast IRIS's own SQL lock timeout, which is what refuses that claim.</p>
+Parameter RACEWAITSECONDS = 40;
+
+/// <p>Where <method>ClaimInSecondProcess</method> leaves its answer. A real global, not a
+/// process-private one, because the two processes are the point.</p>
+Parameter RESULTGLOBAL = "OcuPilotProbeRaceResult";
+
 /// <p>The two scoped targets, built through <method>OcuPilot.Kernel.EntityRef.Key</method> so the
 /// separator is the one the store actually holds rather than a transcription of it.</p>
 ClassMethod TargetOne() As %String
@@ -37,6 +45,7 @@ Method OnAfterOneTest() As %Status
     Do $$$AssertEquals(tRemaining, 0, "and none survives the removal")
     Set tSC = ##class(OcuPilot.Kernel.State.Propose).GuardedDeleteForUser(..#OTHERUSER)
     Do $$$AssertStatusOK(tSC, "and so are the second user's")
+    Kill @("^" _ ..#RESULTGLOBAL)
     Quit $$$OK
 }
 
@@ -164,5 +173,84 @@ Method TestAnExpiredRowIsNotClaimable()
     Do $$$AssertEquals(tWon, 0, "and loses")
     Do $$$AssertEquals(tTerminal, "expired", "with the state the loser is refused with")
 }
+
+/// <p>Run the real claim for <var>pKey</var> in a second process and leave its answer under
+/// <parameter>RESULTGLOBAL</parameter> as <code>$ListBuild(ok, won, terminal, error)</code>.
+/// JOBbed by <method>TestTwoClaimsOnOneTargetCannotBothWin</method>; not a test method, and the
+/// name deliberately does not begin with <code>Test</code>.</p>
+ClassMethod ClaimInSecondProcess(pKey As %String, pVersion As %Integer, pTargetRef As %String, pSlot As %String)
+{
+    Set tWon = 0
+    Set tTerminal = ""
+    Set tSC = $$$OK
+    Try {
+        Set tSC = ##class(OcuPilot.Kernel.State.Propose).GuardedClaimAndClose(pKey, pVersion, pTargetRef, .tWon, .tTerminal)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set @("^" _ ..#RESULTGLOBAL)@(pSlot) = $ListBuild(''$$$ISOK(tSC), +tWon, tTerminal, $Select($$$ISOK(tSC): "", 1: $System.Status.GetErrorText(tSC)))
+    Quit
+}
+
+/// <p>AC6, AD-34 (DW-1250): two confirms of two <b>different</b> live proposals on one scoped
+/// target cannot both win.</p>
+/// <p>The rival is played the way a real one looks from the outside: it holds the target lock and
+/// has already run its own claim, so its row reads <code>confirmed</code> from an
+/// <b>uncommitted</b> transaction. That is what makes this the interleaving the row locks do not
+/// catch -- at IRIS's READ UNCOMMITTED default the jobbed claim's sibling update reads that
+/// uncommitted state, matches nothing and asks for no row lock, so only the target lock can order
+/// the two. The rival's claim is issued here as raw SQL because the rival must stay in flight,
+/// which the real method, which commits, cannot do.</p>
+/// <p>Mutation: remove the <method>OcuPilot.Kernel.State.Propose.TargetLockKey</method> lock from
+/// <method>OcuPilot.Kernel.State.Propose.GuardedClaimAndClose</method> -- the jobbed claim then
+/// burns its row while the rival is mid-transition and cancels nothing, which is the defect
+/// itself, and every assertion below goes red.</p>
+Method TestTwoClaimsOnOneTargetCannotBothWin()
+{
+    Kill @("^" _ ..#RESULTGLOBAL)
+    Set tFirst = ..Seed(..TargetOne())
+    Set tRival = ..Seed(..TargetOne())
+    If (tFirst = "") || (tRival = "") Quit
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Propose).GuardedRowVersion(tFirst, .tFirstVersion), "the first row's version reads")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Propose).GuardedRowVersion(tRival, .tRivalVersion), "and so does the rival's")
+
+    Set tLockKey = ##class(OcuPilot.Kernel.State.Propose).TargetLockKey(..TargetOne())
+    Do $$$AssertNotEquals(tLockKey, "", "the scoped target names a lock")
+    Lock +^OcuPilotProposalTarget(tLockKey):5
+    Do $$$AssertTrue($Test, "which the rival holds, as its own claim does")
+
+    TSTART
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "UPDATE OcuPilot_Kernel_State.Proposal SET Burned = 1, State = 'confirmed', RowVersion = ? WHERE %EXACT(ProposalKey) = ? AND Burned = 0 AND %EXACT(State) = 'live' AND COALESCE(RowVersion, 0) = ?", tRivalVersion + 1, tRival, tRivalVersion)
+    Set tRivalClaimed = $Select(tRS.%SQLCODE < 0: -1, 1: +tRS.%ROWCOUNT)
+
+    Job ##class(OcuPilot.Test.ProposalRace).ClaimInSecondProcess(tFirst, tFirstVersion, ..TargetOne(), "rival")::10
+    Set tJobbed = $Test
+    Set tWaited = 0
+    While '$Data(@("^" _ ..#RESULTGLOBAL)@("rival")) && (tWaited < ..#RACEWAITSECONDS) {
+        Hang 1
+        Set tWaited = tWaited + 1
+    }
+    Set tAnswer = $Get(@("^" _ ..#RESULTGLOBAL)@("rival"))
+    ; The rival withdraws: its row goes back to live, so what is read below is the jobbed claim's
+    ; doing and nothing else.
+    TROLLBACK
+    Lock -^OcuPilotProposalTarget(tLockKey)
+
+    Do $$$AssertEquals(tRivalClaimed, 1, "the rival's own claim took its row")
+    Do $$$AssertTrue(tJobbed, "a second process runs the other claim")
+    Do $$$AssertTrue(tAnswer '= "", "and answers inside the wait")
+    If tAnswer = "" Quit
+    Do $$$AssertEquals($ListGet(tAnswer, 2), 0, "a claim made while another confirm of this target is in flight does not win")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tFirst, "Burned"), 0, "and its token is not spent")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tFirst, "State"), "live", "and its row is left live for whoever claims next")
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Propose).GuardedClaimAndClose(tRival, tRivalVersion, ..TargetOne(), .tWon, .tTerminal), "the rival's claim then runs on its own")
+    Do $$$AssertEquals(tWon, 1, "and is the one winner of the two")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tRival, "Burned"), 1, "exactly one of the two rows is burned")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tFirst, "Burned"), 0, "and it is not the other one")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tFirst, "State"), "canceled", "which closes as its sibling")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tFirst, "ClosedReason"), "sibling", "with the reason that names why")
+}
+
 
 }

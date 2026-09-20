@@ -385,6 +385,44 @@ ClassMethod GuardedTurnSlotUnlock(pUser As %String) As %Status [ Private ]
     Quit tSC
 }
 
+/// <p>Take the proposal target lock
+/// <code>^OcuPilotProposalTarget(</code><var>pKey</var><code>)</code>, waiting at most
+/// <var>pTimeout</var> seconds. <var>pHeld</var> is 1 when this process now holds it.</p>
+/// <p>The lock outlives this frame and is released by <method>GuardedTargetUnlock</method> or by
+/// the process ending. Reach it through <code>..</code> dispatch from
+/// <class>OcuPilot.Kernel.State.Propose</class>, whose claim is the only caller.</p>
+ClassMethod GuardedTargetLock(pKey As %String, pTimeout As %Integer, Output pHeld As %Boolean) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Set pHeld = 0
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Lock +^OcuPilotProposalTarget(pKey):+pTimeout
+        Set pHeld = $Test
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Release one hold of the proposal target lock <var>pKey</var>. Releasing a lock this process
+/// does not hold changes nothing.</p>
+ClassMethod GuardedTargetUnlock(pKey As %String) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Lock -^OcuPilotProposalTarget(pKey)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>Set the scalar signal node <code>^OcuPilotTurnSignal(</code><var>pKey</var><code>,
 /// </code><var>pName</var><code>)</code> to <var>pValue</var>.</p>
 ClassMethod GuardedTurnSignalSet(pKey As %String, pName As %String, pValue As %String) As %Status [ Private ]
