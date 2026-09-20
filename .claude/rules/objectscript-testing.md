@@ -186,7 +186,7 @@ Rebuild and redeploy before reading any browser result you intend to report:
 
 ```bash
 cd ui && npm run build                       # the bundle the spec will actually load
-docker cp dist/ocupilot/browser/. \
+docker cp dist/ocupilot-ui/browser/. \
   <throwaway-container>:/durable/iris/csp/ocupilot/     # then re-run npm run test:browser
 ```
 
