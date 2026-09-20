@@ -14,8 +14,11 @@
 /// separator is one code point above that codec's
 /// <parameter>OcuPilot.Kernel.EntityId.COMPOSITESEPARATOR</parameter>, on the same inference --
 /// the composite keys Release 1 administers are IRIS identifiers, namespace names and
-/// web-application paths, none of which can hold a control character (inference) -- so a
-/// composite id passes through a key unharmed and splits back on its own separator.</p>
+/// web-application paths, none of which can hold a control character (inference) -- so a composite
+/// id reaches the key with its parts intact and splits back on its own separator. What the
+/// separator does not protect is the parts' spelling: <method>NormalizedId</method> answers on the
+/// whole id, so a composite id of a type that has a rule has every part folded by it. No caller
+/// builds one today.</p>
 /// <p><b>One entity, one key.</b> An id reaches a key through <method>NormalizedId</method>, which
 /// is keyed by entity type because the instance's own resolution is: two spellings a web
 /// application resolves alike are one target to AD-34's per-target lock, to its sibling cancel and

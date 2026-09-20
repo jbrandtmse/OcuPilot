@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 07:49
-last_updated: '09-20-2026 16:12'
+last_updated: '09-20-2026 17:00'
 project: OcuPilot
 project_key: NOKEY
 tracking_system: file-system
@@ -108,7 +108,7 @@ development_status:
   5-2-the-proposal-card-the-diff-the-user-reviews: done
   5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at: done
   5-4-execution-strictly-as-the-user: done
-  5-5-prohibited-actions-are-absent-from-the-tool-set: in-progress
+  5-5-prohibited-actions-are-absent-from-the-tool-set: done
   5-6-the-agent-marker-and-what-happens-when-it-fails: backlog
   5-7-the-screen-shows-the-change: backlog
   5-8-web-applications-enable-a-disabled-application-and-grant-it: backlog

@@ -42,11 +42,11 @@ Parameter WRITEKIND = "write";
 /// <file>ui/tools/ci-runner.mjs</file>'s on-disk-versus-instance check, which compares CLASS
 /// lists -- so deleting the named test METHOD from any of them left every gate green. These rows
 /// put those methods under the same <method>PinProblem</method> the coverage table uses.</p>
-/// <p><b>The write half has no members on this branch</b> -- no tool classifies
-/// <code>write</code> yet -- and that zero is asserted rather than assumed, so a derivation that
-/// silently returned nothing cannot read as a pass. The derived side binds automatically at the
-/// integrate-forward, because it is <method>ListTools</method>; the explicit zero does not, and
-/// is deleted in the same pass that lands the first write tool and its coverage row.</p>
+/// <p><b>The write half has one member.</b> Story 5.5 landed the first tool the registry
+/// classifies <code>write</code>, <code>webapp.list.update</code>, and with it the explicit zero
+/// this block used to assert -- which was written to be deleted in exactly that pass. The derived
+/// side is <method>ListTools</method>, so a second write tool binds itself and reddens here until
+/// it declares its row.</p>
 XData Coverage
 {
 <coverage>
@@ -90,6 +90,7 @@ XData Coverage
 <screen name="WalletSecretList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="WebAppList" class="OcuPilot.Test.Descriptor" method="TestTheWebApplicationsListValidatesAndNamesItsClassicPageInItsOwnCase"/>
 <screen name="X509CredentialList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
+<tool name="webapp.list.update" class="OcuPilot.Test.ToolWrite" method="TestTheRegistryAdvertisesItAsAWriteToolFulfilledOnTheInstance"/>
 <member name="state-protection" class="OcuPilot.Test.State" method="TestDeniedUserCannotReachAnyStateClass"/>
 <member name="audit-round-trip-record" class="OcuPilot.Test.AuditRecord" method="TestACreateRecordsTheFieldsItCreatedAtTheirDefaults"/>
 <member name="audit-round-trip-verbs" class="OcuPilot.Test.AuditVerbs" method="TestADeleteIsRecordedWithWhatBecameOfItsCredentialEntry"/>
@@ -277,7 +278,7 @@ Method TestEveryWriteToolHasACoverageRowAndBack()
     Set tDrift = ..Drift(.tTools, .tRows, "tool", "a write tool", .tDerived, .tDeclared)
     Do $$$AssertEquals(tDrift, "", "the write tools and the coverage table agree")
     Do $$$AssertEquals(tDeclared, tDerived, "and the two are the same size")
-    Do $$$AssertEquals(tDerived, 0, "no tool classifies write on this branch, which is asserted rather than assumed")
+    Do $$$AssertTrue(tDerived > 0, "the write half is not empty -- the first write tool landed in Story 5.5, so a derivation that silently returned nothing cannot read as a pass here either (" _ tDerived _ ")")
 }
 
 /// <p>AC3 -- the both-directions comparison itself, over synthetic sets. Both halves above call

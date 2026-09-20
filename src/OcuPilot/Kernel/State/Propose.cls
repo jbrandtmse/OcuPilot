@@ -306,6 +306,11 @@ ClassMethod TargetLockKey(pTargetRef As %String) As %String
 /// store directly, or minted before that normalization existed -- serializes against the other
 /// confirms of that target instead of taking a lock nobody else holds. A ref that class cannot
 /// read is used as it came.</p>
+/// <p><b>The cancel matches the stored spelling as well as the canonical one.</b> Stored refs are
+/// compared byte-for-byte, so canonicalizing only the bound value would stop a row finding the
+/// siblings written at its own spelling -- rows that were siblings of each other before any
+/// normalization existed. Both are bound, so the set of rows closed is a superset of what either
+/// spelling alone reaches.</p>
 /// <p><b>Siblings are closed whatever user owns them.</b> The target moved for everyone, and a
 /// sibling left live would offer a decision against a diff that is already stale.</p>
 /// <p>A row count of 0 leaves <var>pWon</var> 0 and answers the row's current state in
@@ -348,8 +353,8 @@ ClassMethod GuardedClaimAndClose(pProposalKey As %String, pExpectedVersion As %I
         If tClaimed = 0 Quit
         Set pWon = 1
         If tTargetRef '= "" {
-            Set tSiblings = [].%Push(..#STATECANCELED).%Push(..#REASONSIBLING).%Push(tTargetRef).%Push(..#STATELIVE).%Push(pProposalKey)
-            Set tSC = ..GuardedExecuteRows("UPDATE OcuPilot_Kernel_State.Proposal SET State = ?, ClosedReason = ? WHERE %EXACT(TargetRef) = ? AND %EXACT(State) = ? AND %EXACT(ProposalKey) <> ?", .tSiblings, .tCanceled)
+            Set tSiblings = [].%Push(..#STATECANCELED).%Push(..#REASONSIBLING).%Push(tTargetRef).%Push(pTargetRef).%Push(..#STATELIVE).%Push(pProposalKey)
+            Set tSC = ..GuardedExecuteRows("UPDATE OcuPilot_Kernel_State.Proposal SET State = ?, ClosedReason = ? WHERE (%EXACT(TargetRef) = ? OR %EXACT(TargetRef) = ?) AND %EXACT(State) = ? AND %EXACT(ProposalKey) <> ?", .tSiblings, .tCanceled)
             If $$$ISERR(tSC) Quit
         }
         TCOMMIT

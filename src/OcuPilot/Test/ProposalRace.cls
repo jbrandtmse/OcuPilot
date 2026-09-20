@@ -119,7 +119,7 @@ Method TestTheSiblingsOnTheSameTargetCloseWithTheClaim()
     Set tSource = ""
     Do ##class(%Compiler.UDL.TextServices).GetTextAsString($Namespace, "OcuPilot.Kernel.State.Propose", .tSource)
     Set tBody = $Piece($Piece(tSource, "ClassMethod GuardedClaimAndClose", 2), "ClassMethod GuardedClose", 1)
-    Set tSiblingAt = $Find(tBody, "ClosedReason = ? WHERE %EXACT(TargetRef)")
+    Set tSiblingAt = $Find(tBody, "ClosedReason = ? WHERE")
     Do $$$AssertTrue(tSiblingAt > 0, "the sibling update is in the claim")
     Do $$$AssertTrue($Find(tBody, "TSTART") < tSiblingAt, "opened inside the claim's transaction")
     Do $$$AssertTrue(tSiblingAt < $Find(tBody, "TCOMMIT"), "and committed with it, never after it")
@@ -217,7 +217,11 @@ Method TestTwoClaimsOnOneTargetCannotBothWin()
     Set tLockKey = ##class(OcuPilot.Kernel.State.Propose).TargetLockKey(..TargetOne())
     Do $$$AssertNotEquals(tLockKey, "", "the scoped target names a lock")
     Lock +^OcuPilotProposalTarget(tLockKey):5
-    Do $$$AssertTrue($Test, "which the rival holds, as its own claim does")
+    Set tHeld = $Test
+    Do $$$AssertTrue(tHeld, "which the rival holds, as its own claim does")
+    ; Without that lock there is no rival, and the jobbed claim below burns a row and cancels
+    ; siblings for reasons that have nothing to do with the serialization under test.
+    If 'tHeld Quit
 
     TSTART
     Set tRS = ##class(%SQL.Statement).%ExecDirect(, "UPDATE OcuPilot_Kernel_State.Proposal SET Burned = 1, State = 'confirmed', RowVersion = ? WHERE %EXACT(ProposalKey) = ? AND Burned = 0 AND %EXACT(State) = 'live' AND COALESCE(RowVersion, 0) = ?", tRivalVersion + 1, tRival, tRivalVersion)
@@ -226,7 +230,7 @@ Method TestTwoClaimsOnOneTargetCannotBothWin()
     Job ##class(OcuPilot.Test.ProposalRace).ClaimInSecondProcess(tFirst, tFirstVersion, ..TargetOne(), "rival")::10
     Set tJobbed = $Test
     Set tWaited = 0
-    While '$Data(@("^" _ ..#RESULTGLOBAL)@("rival")) && (tWaited < ..#RACEWAITSECONDS) {
+    While tJobbed && '$Data(@("^" _ ..#RESULTGLOBAL)@("rival")) && (tWaited < ..#RACEWAITSECONDS) {
         Hang 1
         Set tWaited = tWaited + 1
     }

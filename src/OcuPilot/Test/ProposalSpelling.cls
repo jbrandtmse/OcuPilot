@@ -482,7 +482,7 @@ Method TestASecondSpellingCannotWriteWhileAnotherConfirmIsInFlight()
     Job ##class(OcuPilot.Test.ProposalSpelling).ConfirmInSecondProcess(tOther, $Username, "other")::10
     Set tJobbed = $Test
     Set tWaited = 0
-    While '$Data(@("^" _ ..#RESULTGLOBAL)@("other")) && (tWaited < ..#RACEWAITSECONDS) {
+    While tJobbed && '$Data(@("^" _ ..#RESULTGLOBAL)@("other")) && (tWaited < ..#RACEWAITSECONDS) {
         Hang 1
         Set tWaited = tWaited + 1
     }
@@ -511,6 +511,45 @@ Method TestASecondSpellingCannotWriteWhileAnotherConfirmIsInFlight()
     Do ..Snapshot(.tFinalFresh)
     Set tFinalResource = ..ResourceOf(tFinalFresh)
     Do $$$AssertEquals(tFinalResource, ..#HARDENRESOURCE, "so the row was confirmable all along and the lock is what refused it")
+}
+
+/// <p>AD-34's sibling cancel over the rows normalization never reached: two live rows storing one
+/// <b>non-canonical</b> ref are siblings of each other, because the cancel matches the ref as
+/// stored as well as the canonical one.</p>
+/// <p>Nothing behind the cancel would catch the second row. Both carry
+/// <parameter>HARDENRESOURCE</parameter>, so after the first has written the second's stored
+/// payload still digests to its own fingerprint and
+/// <method>OcuPilot.Kernel.Proposal.Confirm.FingerprintMatches</method> passes it -- the cancel is
+/// all that stands between it and a second vendor <code>PUT</code>.</p>
+/// <p>Mutation: bind the sibling cancel to <var>tTargetRef</var> alone in
+/// <method>OcuPilot.Kernel.State.Propose.GuardedClaimAndClose</method> -- the second row stays
+/// live, confirms, and writes.</p>
+Method TestTwoRowsStoringOneSecondSpellingAreSiblings()
+{
+    Set tBefore = ..Snapshot(.tFresh)
+    If tBefore = "" Quit
+    Set tStored = ..StoredReference(..#OTHERSPELLING)
+    Do $$$AssertNotEquals(tStored, ..Reference(..#TARGET), "both rows store a ref no mint would write")
+    Set tFirst = ..Seed(tFresh, tStored)
+    Set tSecond = ..Seed(tFresh, tStored)
+    If (tFirst = "") || (tSecond = "") Quit
+    Do $$$AssertNotEquals(tFirst, tSecond, "the two rows are two proposals")
+
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tFirst, "", $Username, .tResult, .tHttp, .tCode, .tDetail)
+    Do $$$AssertStatusOK(tSC, "the first confirm runs")
+    Do $$$AssertEquals(tHttp, 200, "and is applied: " _ tCode)
+    Do ..Snapshot(.tAfterFresh)
+    Do $$$AssertEquals(..ResourceOf(tAfterFresh), ..#HARDENRESOURCE, "its write reached the instance")
+
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tSecond, "State"), "canceled", "the other row on that same stored spelling closed with it")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tSecond, "ClosedReason"), "sibling", "as a sibling of the target that moved")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tSecond, "Burned"), 0, "with its own token unspent")
+
+    Set tSecondSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tSecond, "", $Username, .tResultTwo, .tHttpTwo, .tCodeTwo, .tDetailTwo)
+    Do $$$AssertStatusNotOK(tSecondSC, "confirming it afterwards is refused")
+    Do $$$AssertEquals(tHttpTwo, 409, "at 409")
+    Do $$$AssertEquals(tCodeTwo, ##class(OcuPilot.Kernel.Proposal.Write).#BURNED, "because that target has already been decided")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tSecond, "Burned"), 0, "and its token is still unspent, so no second write followed")
 }
 
 /// <p><var>pFresh</var>'s guarding resource, or <code>""</code> when the read answered no

@@ -333,6 +333,68 @@ spec under review: `## Tasks & Acceptance` not describing `PermittedChangeFields
 `NormalizedPath`, the seventh code or the 45-to-4 narrowing -- the substantive half is already
 DW-1355 `decision-pending`.
 
+### Review Findings -- 2026-09-20, rework-3 re-review
+
+Scoped to `git diff 266c372 a1b1500`, tier `full-opus`, layers `blind-hunter`, `edge-case-hunter`,
+`verification-gap`, `acceptance-auditor`. All patches applied in-pass; two mutations executed on
+`ocupilot-ci` (recorded under `## Verification`).
+
+- `[x]` `[Review][Patch]` **HIGH -- the sibling cancel bound the canonical ref only, so two live
+  rows storing one non-canonical `TargetRef` stopped being siblings of each other and the second
+  reached the vendor `PUT`** [`src/OcuPilot/Kernel/State/Propose.cls:352`]. Stored refs are
+  compared byte-for-byte, so canonicalizing the bound value alone matched no row written at a
+  second spelling -- rows that canceled each other before this pass. Against AD-34's Rule
+  ("confirming one proposal cancels its siblings on the same scoped target in the same
+  transition"). The rejection recorded at iteration 3's triage rested on a bound that does not
+  hold: the fingerprint gate does **not** refuse the second row, because
+  `FingerprintMatches` re-merges the stored arguments over the fresh read and both rows here
+  propose the same end state -- which is what `ProposalSpelling`'s own `HARDENRESOURCE` parameter
+  is chosen for. Fixed by binding the canonical ref **and** the ref as stored; pinned by
+  `ProposalSpelling.TestTwoRowsStoringOneSecondSpellingAreSiblings`, red alone under run 415 with
+  the second row confirmed 200 and its token spent. Residual risks corrected at their origin.
+- `[x]` `[Review][Patch]` **`ProposalRace.TestTwoClaimsOnOneTargetCannotBothWin` kept the
+  unguarded `Lock` this pass fixed only where it was noticed** [`src/OcuPilot/Test/ProposalRace.cls:219`]
+  -- `If 'tHeld Quit` added, and both race tests' wait loops now short-circuit on a failed `Job`
+  rather than spinning `RACEWAITSECONDS` inside an open `TSTART`. That test's source locator for
+  the sibling `UPDATE` was narrowed to `ClosedReason = ? WHERE`, which the new bind does not move.
+- `[x]` `[Review][Patch]` **`EntityRef`'s class header still claimed a composite id passes through
+  a key unharmed** [`src/OcuPilot/Kernel/EntityRef.cls:17`], which `NormalizedId` made false for
+  `web-application` -- the sentence the moved composite test walked away from was left standing.
+  Corrected at its origin: the separator keeps the parts intact, the rule folds them, and no
+  caller builds one today.
+- `[x]` `[Review][Patch]` **The DW-1359 mutation line was stale** -- it recorded "both
+  `ProposalSpelling` methods red" against a class that now declares five. Re-observed (run 424,
+  four of five red) and rewritten, with the one method the mutation leaves green named.
+- `[x]` `[Review][Escalate]` **DW-1366 (med)** -- a confirm that cannot take the target lock
+  answers 500 `INTERNAL`, where AD-34 says the loser is refused with the proposal's terminal
+  state. Pre-existing from Story 5.3; this pass widens the population reaching it and pins it as
+  contract. A published status code is a product call -- epic decision sheet.
+- `[x]` `[Review][Defer]` **DW-1367 (low, `wontfix-accepted`)** -- `Key`'s new empty-normalized-id
+  refusal surfaces from `Mint` as 500 `INTERNAL`. A narrow fix would have a caller consult the
+  identity rule, which AD-13's amendment forbids.
+- `[x]` `[Review][Defer]` **DW-1359 `occurrence`** -- the sibling-cancel half of that root cause,
+  patched here; the trailer records it.
+
+**Verified against the instance, not inferred.** The trailing-slash collapse the edge-case layer
+raised is not reachable: on `ocupilot-ci`, `Security.Applications.Create("/csp/x/")` against an
+existing `/csp/x` answers *ERROR #867 -- an application by that name already exists*, and `Exists`
+answers 1 for both the slash-suffixed and the re-cased spelling. Two applications differing only
+by a trailing slash cannot coexist, so `NormalizedId` cannot merge two distinct targets. Probe
+application and global removed afterwards.
+
+**Rejected.** `by-design`: `Canonical` answering a ref it cannot read verbatim (its stated
+contract, and `EntityType` is a compile-time closed enum); `Parse` not normalizing (it would break
+the key round trip, and AD-13's "where a stored key is read back" is delivered by `Canonical` at
+the one place identity decides anything); later entity types having no rule yet (AD-13's amendment
+says a type with no rule canonicalizes to itself and each write-tool story adds its own).
+`false`: the spec's green claim at `a1b1500` predating `ProposalSpelling`'s arming-roster row --
+Epic 13's `ci.test.mjs` gate reached this branch only at the later merge `e50d8dc`. `low`, not
+worth the complexity: `ResourceOf` not normalizing `$Char(0)` (it reads the port's JSON, not a
+SQL column); `CaseRows`' unused `pStored` on the pre-write call (positional); the mixed-case leg's
+`tRows = 1` clause, which this build cannot falsify by case alone and which the spec already says
+so -- its load-bearing assertions are the port read and the resource, both falsifiable under the
+recorded mutation.
+
 ## Spec Change Log
 
 - 2026-09-20, lead spec gate: the plan stage's finding that DW-1207's evidence line inverts the
@@ -487,6 +549,18 @@ DW-1355 `decision-pending`.
 
 
 ## Design Notes
+
+**The four reviewed fields are an allowlist, and here is where a fifth goes.** `AutheEnabled`,
+`Description`, `Enabled` and `Resource` are the web-application settings this release has reviewed.
+Everything else the vendor exposes is refused, including a property a later IRIS build adds that
+nobody here has seen. That is the point: an allowlist of four is safe **by construction**, where
+advertising the vendor's forty-five would be safe only if the enumeration of what is harmless were
+correct and stayed correct. [OWNER DECISION 2026-09-20, DW-1355: ship the four.] A later story that
+needs a fifth adds the same name in **two** places --
+`OcuPilot.Screen.Tool.WebAppUpdate.PERMITTEDFIELDS` (what the tool advertises) and
+`OcuPilot.Kernel.Proposal.Prohibited.PermittedChangeFields` (what the set will let through) -- and
+the suite fails if it adds only one. Widen it; do not re-derive the decision.
+
 
 **Governing ADs (Rule 6).** **AD-10** (the set, its single home in the kernel, effect-not-verb, never
 advertised, governance can never enable it), **AD-34** (the atomic transition the verdict is reached
@@ -724,16 +798,28 @@ named test, reverted, and the throwaway's tree confirmed byte-identical to the w
 - DW-1359: `EntityRef.NormalizedId`'s web-application arm answering `pId` verbatim (`If 1` in place
   of the type test) -> run 346 `EntityRef.TestAWebApplicationIdReachesAKeyInOneSpelling` red on all
   three one-key assertions, on `Canonical`'s reading of a stored second spelling and on the
-  empty-id refusal, with the type-keyed task and role assertions green; run 347 both
-  `ProposalSpelling` methods red -- the first confirm canceled no sibling, the second confirm was
-  applied 200 rather than refused 409, and the in-flight leg's **"the application's properties on
-  the instance are what they were"** failed, which is the second write itself.
+  empty-id refusal, with the type-keyed task and role assertions green; run 424 four of
+  `ProposalSpelling`'s five methods red -- the sibling-cancel leg (the first confirm canceled no
+  sibling and the second was applied 200 rather than refused 409), the mint and mixed-case legs,
+  and the in-flight leg's **"the application's properties on the instance are what they were"**,
+  which is the second write itself. The same-spelling sibling leg stays green, because with the
+  rule removed both of that claim's binds collapse to the one stored string.
 - DW-1359 at the point of use: `Propose.GuardedClaimAndClose` keying its lock and its sibling
   cancel on `pTargetRef` again in place of `EntityRef.Canonical(pTargetRef)` -> run 348
   `ProposalSpelling.TestASecondSpellingCannotWriteWhileAnotherConfirmIsInFlight` red **alone**, the
   jobbed confirm of the directly-stored second spelling taking a lock nobody held, winning and
   writing while the rival was in flight. The sibling-cancel leg stays green, which is what
   separates the two mechanisms.
+- Code review 2026-09-20, the cancel over the rows normalization never reached:
+  `Propose.GuardedClaimAndClose` binding the sibling cancel to `tTargetRef` alone, in place of the
+  canonical ref **and** the ref as stored -> run 415
+  `ProposalSpelling.TestTwoRowsStoringOneSecondSpellingAreSiblings` red **alone**: the second row
+  was left live, confirmed 200 instead of 409 `PROPOSAL.BURNED`, and spent its token -- the second
+  vendor `PUT`. Reverted by copying the file back from the worktree and **re-loading** it, grepped
+  inside the container, `diff` per file clean; re-verified green one class at a time -- runs 416
+  (`ProposalSpelling` 5/0), 418 (`ProposalRace` 6/0), 419 and 426 (`EntityRef` 8/0), 420
+  (`Proposal` 14/0), 421 (`ProposalClose` 7/0), 422 (`ProposalConfirm` 16/0), 423 (`ProposalWire`
+  11/0), 425 (`ProposalSpelling` 5/0), each reporting no probe-application residue.
 - Both reverted by copying each file back from the worktree and **re-loading** it (never by
   recompiling the dictionary), grepped inside the container afterwards, and re-verified green: run
   349, then runs 350-375 over the twenty-six classes.
@@ -870,10 +956,13 @@ skipped 0. Each mutation in `## Verification` was applied alone in the throwaway
 red on its named test, and reverted by re-loading the file from the worktree; `diff -rq src/
 /tmp/ocupilot-ci/src/` reports no differences afterwards.
 
-**Residual risks.** A row minted before this normalization keeps its own spelling in the
-`TargetRef` the sibling cancel matches `%EXACT`, so such a row is serialized on the target's lock
-but not canceled as a sibling; the fingerprint gate then refuses it 409 after the other confirm's
-write, and the ten-minute expiry bounds it. `TargetRef` is now the canonical spelling, so the
+**Residual risks.** The sibling cancel binds the canonical ref and the ref as stored, so rows
+written at one spelling still close each other and a row at the canonical spelling closes too. A
+row stored at a *third* spelling of that target is serialized on the target's lock but not
+canceled, and nothing behind the cancel refuses it: when both rows propose the same end state the
+second row's stored payload still digests to its own fingerprint after the first has written, so
+`FingerprintMatches` passes it and a second vendor `PUT` goes out. The ten-minute expiry is the
+only bound. `TargetRef` is now the canonical spelling, so the
 ledger and the proposal panel show it rather than the spelling the agent asked for; this build
 cannot hold two applications differing only in case (`Security.Applications`' IdKey is
 `NameLowerCase`), and the new mixed-case leg pins that a canonical id still reaches such an
