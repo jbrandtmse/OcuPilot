@@ -4312,3 +4312,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-15-1-change-your-own-password.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: command-bar.ts:190 and :233 set aria-haspopup=menu on menu triggers and command-bar.spec.ts:778 asserts it, so the attribute has a house precedent; account-menu.ts's item opens app-dialog with none. Publishing the value is a third EXPERIENCE.md edit, beyond the two the shared-append grant covers.
 - 2026-09-20T04:48:19Z status=wontfix-accepted owner=15-1-change-your-own-password by=cr note=reopen_if=the account menu's accessibility contract is next amended in EXPERIENCE.md, or a second menuitem opens a dialog
+
+### DW-1318: The PRD's catalog extract still records SH-13/SH-14 favorites and recents storage as undecided, which epics.md and AD-50 have since decided
+- source: spec-15-2-favorites-recent-items-and-menu-search.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: prds/prd-OcuPilot-2026-09-08/extract-catalog.md:530 reads 'undecided' for the storage location; epics.md:5395 requires per-user state on the instance and AD-50 now fixes the store's shape. The decision never propagated back to the PRD or the feature catalog.
+- 2026-09-20T05:44:42Z status=routed owner=range-end-cleanup by=harvest note=Non-blocking: the binding documents (epics.md, the spine) are correct and are what the build reads; the stale line is in a derived extract. Correcting the PRD is a planning-artifact edit with more gravity than a runner should take mid-epic.
