@@ -5121,8 +5121,13 @@ which is a public, irreversible act that ships whatever the build is at that mom
 **Acceptance Criteria:**
 
 - **Given** the IPM module
-- **When** the archive is produced by the publish path running in its dry-run form, which contacts no
-  registry
+- **When** the archive is produced by the publish path running in its local (`package`) form, which contacts no
+  registry [AMENDED 2026-09-20 - see the story change log in spec-13-3: IPM 0.10.5's `publish` declares only
+  `repo` and `use-external-name` and has no dry-run modifier, so the criterion named a flag that does not exist.
+  `package` runs the same lifecycle through the `Package` phase that `%IPM.Lifecycle.Base:%Publish` itself calls
+  before resolving an upload server, so it is the publish path minus the upload - the local form the owner's hold
+  already permits. Observed: `package ocupilot -path ...` reached `Package SUCCESS` and wrote a 1,083,507-byte
+  archive of 172 members]
 - **Then** the archive carries the built bundle, and installing it from the local file on a fresh
   instance that has IPM yields a working OcuPilot - the same assertion the registry would have proven,
   taken one step earlier.

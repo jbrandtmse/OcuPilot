@@ -4356,3 +4356,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-13-3-publish-the-package-to-the-community-registry.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: The generated manifest declares module, version, packages, a FileCopy and one Invoke, and none of the three listing elements. The repository ships an MIT LICENSE at its root, so <License>MIT</License> is uncontroversial. It is a roster edit plus a regenerate, not a code change
 - 2026-09-20T05:32:42Z status=routed owner=range-end-cleanup by=harvest note=out of 13.3's three criteria (Rule 27); belongs with the owner's release rather than with the archive, and the release is the owner's alone
+
+### DW-1332: scripts/ci-image-compile.sh's floating-tag guard accepts :latest-em, so an AD-27-forbidden rolling tag passes it
+- source: spec-13-3-publish-the-package-to-the-community-registry.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: AD-27 pins the image to an explicit version tag, never a rolling alias. The guard in ci-image-compile.sh rejects :latest and :latest-cd but not :latest-em; the new ci-ipm-archive.sh closes the same gap in its own guard. One condition, in Epic 13's own footprint
+- 2026-09-20T07:02:13Z status=routed owner=range-end-cleanup by=harvest note=one-line guard widening, blocks no floor and no downstream story (Rule 27)
+
+### DW-1333: IPM's exporter drops <SystemRequirements>, so the distributable archive carries no IRIS or IPM version floor
+- source: spec-13-3-publish-the-package-to-the-community-registry.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: Observed across three package runs on the pinned image: the roster declares the requirement and module.xml carries it, but the .tgz manifest does not, so an operator on an older IRIS or IPM gets no refusal at install time. It is IPM's serializer, not OcuPilot's manifest, so it is not fixable in the roster
+- 2026-09-20T07:02:13Z status=routed owner=range-end-cleanup by=harvest note=belongs with the owner's release beside DW-1300; a distribution property, not an install-path defect

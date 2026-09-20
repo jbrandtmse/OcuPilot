@@ -129,6 +129,18 @@ deferred:
 
 ## Spec Change Log
 
+- 2026-09-20, lead, after the implement run supplied the evidence Spec Change Log (1) required.
+  **(1) applied:** `epics.md:5124`'s "its dry-run form" is now "its local (`package`) form", marked `[AMENDED]`,
+  on the strength of the observed run rather than the plan's reading - `publish` declares only `repo` and
+  `use-external-name`, and `package ocupilot -path ...` reached `Package SUCCESS` and wrote a 1,083,507-byte,
+  172-member archive. **(4) applied:** `CLAUDE.md`'s "three jobs" is now "four jobs", after parsing
+  `.github/workflows/ci.yml` and reading back `['gates','instance','images','package']`. Both are Rule 5 tier-1
+  (a name the criterion cited that did not exist; a count that had stopped being true) and both are reported
+  under `amendments:` / `footprint_extensions:`.
+  The other two deferred findings are harvested rather than fixed here: **DW-1332** (`ci-image-compile.sh`'s
+  floating-tag guard accepts `:latest-em`) and **DW-1333** (IPM's exporter drops `<SystemRequirements>`, so the
+  archive carries no version floor - a distribution property that belongs with the release, beside DW-1300).
+
 - 2026-09-20, lead spec gate. The plan's four Clarifications are answered here rather than deferred.
   **(1) AC1's wording stands unamended for now.** The recommended correction ("its dry-run form" -> "its local (`package`) form") is very likely right, but it rests on a reading of IPM 0.10.5's grammar recovered from the image's own `zpm.xml`, and the lead's independent extraction of that file did not complete. A criterion is not amended on an unverified claim: the implement stage exercises `package` directly, and if it works the correction is applied at origin **with that run as evidence**; if `package` does not exist or does not produce an archive, that is an `intent gap` to raise, not a wording fix. Nothing in the plan waits on this either way.
   **(2) `README.md` approved as a footprint extension** (Rule 11 (b)): outside Epic 13's declared footprint, owned by no contended epic, so it is edited and reported under `footprint_extensions:`. One paragraph.
@@ -244,6 +256,28 @@ deferred:
 
 - `tar tzf` the produced archive once by hand and read the member list: `module.xml`, `OcuPilot` classes, `ui/dist/ocupilot-ui/browser/`, and nothing under `OcuPilot/Test/`. Record the counts in `## Auto Run Result` rather than asserting them from the script's own output alone.
 - Confirm on both containers that `SELECT COUNT(*) FROM %IPM_Repo.Definition` is 0 after the IPM import — the runtime half of AC3.
+
+### Lead AD gate (2026-09-20)
+
+AC3's mechanism - the one the owner's hold rests on - re-verified by the lead rather than taken from the
+implement stage's report.
+
+- mutation: drop `--network none` from the BUILD container's `docker run` (`scripts/ci-ipm-archive.sh:220`)
+  -> `ui/tools/ipm-archive.test.mjs` red on *both containers the script creates run with no network at all*,
+  asserting "a container is started without --network none, so 'it could not reach a package registry' would be
+  a promise rather than a mechanism". Node's **real** exit code 1 (16 of 17), read directly and not through a
+  pipeline; 0 and 17 of 17 after revert, with the file's md5 `be2440169b8a041e7cb3a615174458cd` identical before
+  and after.
+- A first attempt of this mutation deleted the `--network none` in the file's **header comment** (line 7) rather
+  than a `docker run` line, and the suite stayed green - correctly, since nothing about the mechanism had changed.
+  Recorded because the green was momentarily mistaken for a vacuous gate: a mutation that changes prose and not
+  the code under test proves nothing in either direction, and the check is to confirm which line was edited
+  before reading the result.
+- The hold itself re-checked at the source, not inferred: `grep -ci '\bpublish\b' scripts/ci-ipm-archive.sh` is
+  **0**; the only credential-shaped references are the policy comment and the two
+  `SELECT COUNT(*) FROM %IPM_Repo.Definition` assertions; the protected-name guard refuses `ocupilot`,
+  `ocupilot-slot-*` and all three slot throwaways, and refuses a build/install name collision; and no
+  `ocupilot-ipm-*` container survived the run (`docker ps -a`), so the EXIT trap cleaned up.
 
 ## Auto Run Result
 
