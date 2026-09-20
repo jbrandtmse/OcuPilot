@@ -409,6 +409,162 @@ test('a comment that names a URL to explain why it is not used does not fail the
   assert.equal(result.ok, true, `expected the comment exempt: ${JSON.stringify(result.errors)}`);
 });
 
+test('DW-1087: a URL built by concatenation is rejected in a file that ships', () => {
+  // `OFF_ORIGIN_URL_RE` matches a whole URL inside one literal, so splitting it across a `+`
+  // walked straight past the rule the shipped document's one-origin guarantee rests on.
+  for (const sample of [
+    "const docs = 'https:' + '//cdn.example.com/x.js';",
+    "await fetch('http:' + '//' + '203.0.113.9' + '/beacon');",
+    "const src = base + '//telemetry.example.com/t.js';",
+  ]) {
+    const result = checkOffOriginUrls({ path: 'src/app/core/probe.ts', text: sample });
+    assert.equal(result.ok, false, `expected a violation for ${sample}`);
+    const concatenated = result.errors.filter((e) => e.rule === 'no-concatenated-url');
+    assert.ok(concatenated.length >= 1, `expected a no-concatenated-url for ${sample}: ${JSON.stringify(result.errors)}`);
+    assert.equal(concatenated[0].line, 1);
+  }
+});
+
+test('DW-1087: every scheme-boundary placement of the `+` is caught, not one of them', () => {
+  // The three places the `+` can fall at a scheme boundary. Verified before the widening: only
+  // the first pair was reported, and the other two passed -- a rule that reads as closed and was
+  // open at two of its three split points.
+  const scheme = 'https:';
+  const host = 'cdn.example.com/x.js';
+  const splits = [
+    [scheme, `//${host}`],
+    [`${scheme}/`, `/${host}`],
+    [`${scheme}//`, host],
+  ];
+  for (const [left, right] of splits) {
+    const sample = `const docs = '${left}' + '${right}';`;
+    const result = checkOffOriginUrls({ path: 'src/app/core/probe.ts', text: sample });
+    const concatenated = result.errors.filter((e) => e.rule === 'no-concatenated-url');
+    assert.ok(concatenated.length >= 1, `expected a no-concatenated-url for ${sample}: ${JSON.stringify(result.errors)}`);
+  }
+});
+
+test('DW-1087: `+=` builds a string the same way `+` does, and is caught the same way', () => {
+  // The other idiomatic accumulation. Mutation: narrow adjacentToConcatenation back to `/\+\s*$/`
+  // -> this goes red while the `+` cases above stay green.
+  const result = checkOffOriginUrls({
+    path: 'src/app/core/probe.ts',
+    text: "let u = 'https:';\nu += '//cdn.example.com/x.js';",
+  });
+  const concatenated = result.errors.filter((e) => e.rule === 'no-concatenated-url');
+  assert.ok(concatenated.length >= 1, `expected a no-concatenated-url: ${JSON.stringify(result.errors)}`);
+});
+
+test('DW-1087: a URL whose host is interpolated is caught too', () => {
+  // The most idiomatic way TypeScript builds a URL, and it reached neither rule: the whole-URL
+  // regex stops at the `$`, and a template literal is one unbroken literal with no `+` beside it.
+  //
+  // Mutation (Rule 19): delete the INTERPOLATED_HOST_RE loop from checkOffOriginUrls -> these go
+  // red while every `+` case above stays green.
+  for (const sample of [
+    'const docs = `https://${host}/x.js`;',
+    'const docs = `//${host}/x.js`;',
+    'await fetch(`http://${ip}:9000/beacon`);',
+  ]) {
+    const result = checkOffOriginUrls({ path: 'src/app/core/probe.ts', text: sample });
+    const flagged = result.errors.filter((e) => e.rule === 'no-concatenated-url');
+    assert.ok(flagged.length >= 1, `expected a violation for ${sample}: ${JSON.stringify(result.errors)}`);
+  }
+});
+
+test('DW-1087: a same-origin path built by interpolation stays green', () => {
+  // One leading slash and no scheme is this client's own URL, not a host. Reporting it would make
+  // the widened rule unusable, which is the failure mode the dotted-host requirement exists for.
+  for (const sample of [
+    'const url = `/api/ocupilot/agent/definitions/${id}`;',
+    'const url = `${base}/api/ocupilot/instance`;',
+    'const label = `${count} row(s)`;',
+  ]) {
+    const result = checkOffOriginUrls({ path: 'src/app/core/probe.ts', text: sample });
+    assert.equal(result.ok, true, `expected no violation for ${sample}: ${JSON.stringify(result.errors)}`);
+  }
+});
+
+test('DW-1087: what the concatenation rule does NOT see is written down, not implied', () => {
+  // The rule matches a split at a scheme boundary or a dotted host behind slashes. A split inside
+  // the scheme or inside the host leaves neither half recognizable as a URL. Asserted rather than
+  // left to the comment, so the rule's reach is a fact a reader can check instead of a claim --
+  // and so widening it later is a visible change to this list.
+  for (const sample of [
+    "const docs = 'https://cdn' + '.example.com/x.js';",
+    "const docs = 'htt' + 'ps://cdn.example.com/x.js';",
+  ]) {
+    const result = checkOffOriginUrls({ path: 'src/app/core/probe.ts', text: sample });
+    const concatenated = result.errors.filter((e) => e.rule === 'no-concatenated-url');
+    assert.equal(concatenated.length, 0, `not reached by this rule, by design: ${sample}`);
+  }
+});
+
+test('DW-1087: a same-origin path built by concatenation is not a host and stays green', () => {
+  // The widened host fragment stays dotted for this: `base + '/api/ocupilot/x'` is how the client
+  // builds its own URLs, and reporting it would make the rule unusable.
+  for (const sample of [
+    "const url = base + '/api/ocupilot/instance';",
+    "const href = origin + '/csp/sys/UtilHome.csp';",
+    "const asset = root + '/assets/lockup/mark.svg';",
+  ]) {
+    const result = checkOffOriginUrls({ path: 'src/app/core/probe.ts', text: sample });
+    assert.equal(result.ok, true, `expected no violation for ${sample}: ${JSON.stringify(result.errors)}`);
+  }
+});
+
+test("DW-1087: url.protocol === 'http:' is a comparison, not a concatenated URL", () => {
+  // `core/reply.ts`'s link guard. A scheme literal with no `+` beside it stays green, which is
+  // what keeps the widened rule from reddening the file that enforces the same policy at runtime.
+  const result = checkOffOriginUrls({
+    path: 'src/app/core/reply.ts',
+    text: "return url !== null && (url.protocol === 'http:' || url.protocol === 'https:');",
+  });
+  assert.equal(result.ok, true, `expected no violation: ${JSON.stringify(result.errors)}`);
+});
+
+test('DW-1087: the same concatenated text inside a *.spec.ts passes, and the whole-URL rule still runs there', () => {
+  // A spec writes its fixture URLs split on purpose, and is not shipped: what keeps it out of the
+  // bundle is ui/tsconfig.app.json's `"files": ["src/main.ts"]`. The exemption is the
+  // CONCATENATION half only -- exempting the family would have retired the whole-URL rule on all
+  // 48 spec files to make room for a rule that only needed the split convention tolerated.
+  // Mutation: move the `.spec.ts` early return back above the whole-URL loop -> the second
+  // assertion goes red; delete it entirely -> the first goes red.
+  for (const path of ['src/app/shell/reply.spec.ts', 'src/app/shell/panel.spec.ts']) {
+    const concatenated = checkOffOriginUrls({ path, text: "const DOCS = 'https:' + '//' + 'docs.example.com' + '/p';" });
+    assert.equal(concatenated.ok, true, `${path}: ${JSON.stringify(concatenated.errors)}`);
+    const whole = checkOffOriginUrls({ path, text: `const DOCS = '${CDN}';` });
+    assert.equal(whole.ok, false, `${path}: a whole off-origin URL in a spec is still reported`);
+    assert.equal(whole.errors[0].rule, 'no-off-origin-url');
+    // And an allowlisted one still passes there, so the rule is the same rule, not a stricter one.
+    const allowed = checkOffOriginUrls({ path, text: "const BASE = 'https://ocupilot.invalid';" });
+    assert.equal(allowed.ok, true, `${path}: ${JSON.stringify(allowed.errors)}`);
+  }
+  // And the exemption is by extension, not by directory: a shipped file beside it still fails.
+  const shipped = checkOffOriginUrls({ path: 'src/app/shell/reply.ts', text: "const DOCS = 'https:' + '//docs.example.com/p';" });
+  assert.equal(shipped.ok, false, 'a shipped sibling is not exempt');
+});
+
+test('DW-1087: client-lint.mjs exits 1 naming a non-spec file that concatenates a URL, through the CLI', () => {
+  // The direct calls above pass whether or not the widened rule is wired into lintClient. This
+  // drives the binary the prebuild runs, which is the only thing that observes the wiring.
+  const root = mkdtempSync(join(tmpdir(), 'ocupilot-client-lint-'));
+  try {
+    mkdirSync(join(root, 'src', 'app', 'core'), { recursive: true });
+    writeFileSync(join(root, 'src', 'app', 'core', 'leak.ts'), "export const CDN = 'https:' + '//cdn.example.com/x.js';\n");
+    // The split convention a real spec uses -- host in its own literal, so no half of it is a
+    // whole off-origin URL either. That is what the exemption tolerates; a spec that names a
+    // whole off-origin URL is still reported, which the direct calls above assert.
+    writeFileSync(join(root, 'src', 'app', 'core', 'leak.spec.ts'), "const CDN = 'https:' + '//' + 'cdn.example.com' + '/x.js';\n");
+    const run = spawnSync(process.execPath, [join(here, 'client-lint.mjs'), '--root', root], { encoding: 'utf8' });
+    assert.equal(run.status, 1, `expected exit 1, got ${run.status}: ${run.stdout}${run.stderr}`);
+    assert.match(run.stderr, /src\/app\/core\/leak\.ts:1: \[no-concatenated-url\]/);
+    assert.doesNotMatch(run.stderr, /leak\.spec\.ts/, 'and the spec file beside it is not reported');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('every allowlisted URL passes, and the list is a closed set of documented exceptions', () => {
   assert.ok(ALLOWED_ABSOLUTE_URLS.length > 0, 'the allowlist is the mechanism, so it must not be empty');
   for (const allowed of ALLOWED_ABSOLUTE_URLS) {
