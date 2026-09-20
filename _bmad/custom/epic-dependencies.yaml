@@ -41,6 +41,24 @@ added_edges:
     - {epic: 12, depends_on: 11, pairs: "11-12 0.31", why: "11.3 prompts go into 12's editor descriptors; 12.3 and 11.2 both land on the audit viewer; order follows the Epic List's polish-week ranking (11 first)"}
   soft:  # footprint_overlap_threshold 0.20 exceeded with semantic overlap (estimates, inference)
 
+# SHARED-CREATE DIRECTORIES (orchestrator correction 2026-09-20).
+# Two paths below appear in one epic's paths_hint but are structurally shared by every epic, and
+# listing them as if exclusive was an orchestrator error caught by Epic 5:
+#
+#   src/OcuPilot/Test/**   -- the only home for %UnitTest classes in this project (282 files on
+#                             feature; Epic 5 alone added 28 across stories 5.0-5.3). Treating it
+#                             as Epic 13's exclusive footprint would make Rule 19 IMPOSSIBLE for
+#                             every ObjectScript AC in every other epic: the code could be written
+#                             but not pinned, which the project's rules treat as worse than not
+#                             shipping. Story 13.2's charter is the suite IN CI -- ui/tools/ci*.mjs,
+#                             .github/workflows/**, scripts/ -- not the per-story classes each epic
+#                             writes.
+#   ui/src/app/core/**     -- Epic 15 holds it for the shell conveniences, but Epic 5 created
+#                             core/proposal-view.ts and writes core/turn.ts's proposal publisher.
+#
+# The rule for both: every epic CREATES files there freely (a path that did not exist cannot
+# collide). Modifying a file another epic created or has modified is a Clarification. This is the
+# same rule already used elsewhere; the error was never writing it down for these two paths.
 epics:
   epic-4:
     depends_on: [epic-3]
