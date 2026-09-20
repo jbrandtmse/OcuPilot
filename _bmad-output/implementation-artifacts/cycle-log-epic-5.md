@@ -110,3 +110,5 @@ Runner mode (parallel /epic-cycle), slot A, worktree `.worktrees/epic-5`, branch
 2026-09-20T06:54:36Z	Story 5.4	ledger_adjudicated	owned=2 resolved=2 reowned=0 terminal=0 note=DW-444_and_DW-1120_resolved-by model=claude-opus-5[1m]
 2026-09-20T06:54:36Z	Story 5.4	smoke_complete	method=cli+api+browser result=pass iterations=1 defects_caught=0 evidence=smoke_45of45;sweep_152classes_1394tests_0failed;npm_test_1087_plus_687;browser_192of192_on_a_recreated_unswept_container;checker_0_over_21_rules_across_552_files model=claude-opus-5[1m]
 2026-09-20T06:55:30Z	Story 5.4	committed	sha=d213550 submodules= ci=pending run=35495485520 amendments=ARCHITECTURE-SPINE.md_AD-8_and_AD-9,epics.md_DW-1120_bullet footprint_extensions=src/OcuPilot/Test/MgmntPort.cls,src/OcuPilot/Test/MgmntPortDenial.cls
+2026-09-20T07:24:48Z	Story 5.4	ci_resolved	story=5.4 run=35495500607 result=success resolved_at=next_plan note=all_six_jobs_green_on_head_9e1d41e;the_earlier_run_on_d213550_read_cancelled_because_my_follow-up_bookkeeping_push_superseded_it
+2026-09-20T07:24:48Z	Epic 5	ci_green_verified	run=35495500607 head=9e1d41e
