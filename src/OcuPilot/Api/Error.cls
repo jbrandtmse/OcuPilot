@@ -1062,6 +1062,8 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If pCode = ..#AGENTHOLDDUPLICATE Quit ..#REASONAGENTHOLDDUPLICATE
     If pCode = ..#ACCOUNTPASSWORDCURRENT Quit ..#REASONACCOUNTPASSWORDCURRENT
     If pCode = ..#ACCOUNTPASSWORDPOLICY Quit ..#REASONACCOUNTPASSWORDPOLICY
+    If pCode = ..#PREFERENCESROUTE Quit ..#REASONPREFERENCESROUTE
+    If pCode = ..#PREFERENCESLIMIT Quit ..#REASONPREFERENCESLIMIT
     Quit ""
 }
 
@@ -1221,6 +1223,34 @@ Parameter ACCOUNTPASSWORDBODY = "ACCOUNT.PASSWORD.BODY";
 /// <p>The envelope's <code>reason</code> for <parameter>ACCOUNTPASSWORDBODY</parameter>. It names
 /// the two members and never a value the caller sent (AD-35).</p>
 Parameter REASONACCOUNTPASSWORDBODY = "The body must carry exactly two members, the strings currentPassword and newPassword.";
+
+/// <p>Machine code (Story 15.2, AD-50): the preferences body is not the members the route
+/// accepts. Rendered on the <parameter>VALIDATIONFAILED</parameter> slug with
+/// <parameter>REASONPREFERENCESBODY</parameter> alone and no <code>detail</code>, because no field
+/// was reached.</p>
+Parameter PREFERENCESBODY = "PREFERENCES.BODY";
+
+/// <p>The envelope's <code>reason</code> for <parameter>PREFERENCESBODY</parameter>. It names the
+/// members and their vocabularies, never a value the caller sent.</p>
+Parameter REASONPREFERENCESBODY = "The body must carry the strings kind (favorite or recent) and action (add, remove or clear), and route only when the action is add or remove.";
+
+/// <p>Machine code (Story 15.2): the submitted route is not a built screen's route, or is longer
+/// than <parameter>OcuPilot.Kernel.State.Base.ROUTEMAXLENGTH</parameter>. Rendered on the
+/// <parameter>VALIDATIONFAILED</parameter> slug with one violation on <code>route</code>.</p>
+Parameter PREFERENCESROUTE = "PREFERENCES.ROUTE";
+
+/// <p>Refusal sentence for <parameter>PREFERENCESROUTE</parameter>.</p>
+Parameter REASONPREFERENCESROUTE = "That is not a screen this instance serves, so it cannot be remembered.";
+
+/// <p>Machine code (Story 15.2): the caller already holds as many favorites as the instance keeps,
+/// so another cannot be added. Rendered on the <parameter>VALIDATIONFAILED</parameter> slug with
+/// one violation on <code>route</code>.</p>
+Parameter PREFERENCESLIMIT = "PREFERENCES.LIMIT";
+
+/// <p>Refusal sentence for <parameter>PREFERENCESLIMIT</parameter>. It names no number: the bound
+/// is <parameter>OcuPilot.Kernel.State.Pref.FAVORITEMAX</parameter>, declared once where it is
+/// enforced, and a sentence carrying a second copy of it is a second thing to keep equal.</p>
+Parameter REASONPREFERENCESLIMIT = "This account already holds as many favorites as the instance keeps. Remove one before adding another.";
 
 /// <p>The shape every machine code has: one or more dotted segments, each starting with a
 /// letter and continuing with capitals and digits. No lower case, no underscore, no leading

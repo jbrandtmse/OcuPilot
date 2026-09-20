@@ -11,6 +11,8 @@ import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
 import { screenDeclaration } from '../testing/screen-declaration';
 import { COMMAND_BOX_OVERLAY_ID, CommandBox } from './command-box';
+import { AccountPreferences } from '../core/account-preferences';
+import { stubAccountPreferences } from '../testing/account-preferences';
 
 /**
  * The command box's rendered contract (EXPERIENCE.md "Opens on click or Ctrl/Cmd+K; typing", "*Header, center.* Opens on click"; DESIGN.md `:1017`),
@@ -86,6 +88,7 @@ describe('the command box', () => {
   let navigation: StubNavigation;
   let shell: ShellState;
   let preferences: PreferenceStore;
+  let accountPreferences: AccountPreferences;
   let overlays: OverlayStack;
   let actions: ScreenActions;
   let creates: number;
@@ -119,8 +122,10 @@ describe('the command box', () => {
     actions = new ScreenActions();
     creates = 0;
     unregisterCreate = actions.register(USERS.descriptor, 'create', () => (creates += 1));
+    accountPreferences = stubAccountPreferences();
     TestBed.configureTestingModule({
       providers: [
+        { provide: AccountPreferences, useValue: accountPreferences },
         provideRouter([
           { path: '', children: [] },
           { path: 'permissions/users', children: [] },
@@ -531,5 +536,61 @@ describe('the command box', () => {
     expect(fixture.nativeElement.querySelector('textarea')).toBeNull();
     expect(fixture.nativeElement.querySelector('[class*="avatar"]')).toBeNull();
     expect(fixture.nativeElement.querySelectorAll('input')).toHaveLength(1);
+  });
+
+  // --- Story 15.2: menu search is this box, and only its ranking moves ------------------------
+
+  it('Story 15.2: a favorited screen is listed first within Screens, and nothing else about the box moves', async () => {
+    // Declaration order is USERS then LOGS; pinning the second puts it first.
+    await accountPreferences.add('favorite', 'logs/messages');
+    fixture.detectChanges();
+    chord();
+
+    const groups = fixture.nativeElement.querySelectorAll('[role="group"]');
+    expect(groups).toHaveLength(2);
+    const screens: HTMLElement[] = Array.from(groups[0].querySelectorAll('[role="option"]'));
+    expect(screens).toHaveLength(2);
+    expect(screens[0].textContent).toContain(STRINGS.navAreaLogs);
+    expect(screens[1].textContent).toContain(STRINGS.navAreaPermissions);
+
+    // One input, two groups, the same count sentence: the ranking is the only change.
+    expect(fixture.nativeElement.querySelectorAll('input')).toHaveLength(1);
+    expect(count()).toBe('2 screens, 2 actions');
+  });
+
+  it('Story 15.2: with nothing pinned, the Screens group keeps the declaration order', () => {
+    chord();
+    const screens: HTMLElement[] = Array.from(
+      fixture.nativeElement.querySelectorAll('[role="group"]')[0].querySelectorAll('[role="option"]')
+    );
+    expect(screens[0].textContent).toContain(STRINGS.navAreaPermissions);
+    expect(screens[1].textContent).toContain(STRINGS.navAreaLogs);
+  });
+
+  it('Story 15.2 (AD-37): a favorite naming no built screen adds no row here, and the count is unchanged', async () => {
+    // The stored row survives on the instance; what it cannot do is put an option in this box.
+    // Rows come from the navigation roster alone -- a favorite only partitions them -- so a route
+    // the roster does not hold has nothing to rank.
+    await accountPreferences.add('favorite', 'no-such-area/no-such-screen');
+    fixture.detectChanges();
+    chord();
+
+    expect(accountPreferences.favorites()).toEqual(['no-such-area/no-such-screen']);
+    const screens: HTMLElement[] = Array.from(
+      fixture.nativeElement.querySelectorAll('[role="group"]')[0].querySelectorAll('[role="option"]')
+    );
+    expect(screens).toHaveLength(2);
+    expect(screens[0].textContent).toContain(STRINGS.navAreaPermissions);
+    expect(count()).toBe('2 screens, 2 actions');
+  });
+
+  it('Story 15.2: the ranking survives a filter, and the count still reports what is listed', async () => {
+    await accountPreferences.add('favorite', 'logs/messages');
+    fixture.detectChanges();
+    chord();
+    type('a');
+
+    expect(count()).toBe('2 screens, 1 actions');
+    expect(options()[0].textContent).toContain(STRINGS.navAreaLogs);
   });
 });

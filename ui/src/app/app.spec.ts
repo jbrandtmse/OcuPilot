@@ -41,6 +41,8 @@ import { stubAgentStatus } from './testing/agent-status';
 import { stubSuggestedView } from './testing/suggested-view';
 import { stubTurnStore } from './testing/turn';
 import { screenDeclaration } from './testing/screen-declaration';
+import { AccountPreferences } from './core/account-preferences';
+import { stubAccountPreferences } from './testing/account-preferences';
 
 /**
  * The frame itself (DW-138, UX-DR80): which bands render, in what order, and around what.
@@ -342,6 +344,8 @@ describe('the shell frame', () => {
   let agentStatus: AgentStatus;
   let agentContext: AgentContext;
   let suggested: SuggestedView;
+  /** Captured, so the signed-in read and the sign-out drop are both observable (Story 15.2). */
+  let accountPreferences: AccountPreferences;
   /** The definitions the stubbed read answers with. Mutated to arrange an Enable. */
   let definitionRows: { enabled: boolean }[];
   let scope: StubScope;
@@ -372,6 +376,9 @@ describe('the shell frame', () => {
     // Unanswered by default, for the same reason: Home's suggested view renders nothing until a
     // test that is about it loads it.
     suggested = stubSuggestedView();
+    // Not loaded here: `App`'s own signed-in pass is what settles it, which is the line the
+    // sign-out test below pins.
+    accountPreferences = stubAccountPreferences();
     scope = new StubScope();
     connectivity = new StubConnectivity();
     // The real framework, timer seam neutralized: the frame mounts the chip and the stamp, and
@@ -400,6 +407,7 @@ describe('the shell frame', () => {
     });
     TestBed.configureTestingModule({
       providers: [
+        { provide: AccountPreferences, useValue: accountPreferences },
         // Three real routes, so "the gate navigated" and "the gate did not" are different
         // observations rather than the same `/`. The two the gate names are the mirror's own.
         provideRouter([
@@ -688,6 +696,11 @@ describe('the shell frame', () => {
     expect(agentContext.answered()).toBe(true);
     await suggested.load();
     expect(suggested.answered()).toBe(true);
+    // Mutation (Rule 19): delete `void this.accountPreferences.load()` from
+    // `App.verifyWhenSignedIn` -> this goes red, and the locator toggle, Home's two blocks and
+    // the command box's ranking would all render off a store nothing ever read.
+    await fixture.whenStable();
+    expect(accountPreferences.answered()).toBe(true);
 
     session.move('form');
     fixture.detectChanges();
@@ -706,6 +719,9 @@ describe('the shell frame', () => {
     // Mutation (Rule 19): delete `this.suggested.reset()` from the same branch -> this goes red,
     // and Home's first paint for the next principal would carry the previous principal's counts.
     expect(suggested.answered()).toBe(false);
+    // Mutation (Rule 19): delete `this.accountPreferences.reset()` from the same branch -> this
+    // goes red, and Home would show a departed principal's favorites and recent items.
+    expect(accountPreferences.answered()).toBe(false);
   });
 
   it('an unverified instance renders the blocking notice and none of the frame', () => {

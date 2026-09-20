@@ -24,6 +24,8 @@ import {
   resolveArchetypePage,
   resolveScreenPage,
 } from './screen-outlet';
+import { AccountPreferences } from '../core/account-preferences';
+import { stubAccountPreferences } from '../testing/account-preferences';
 
 /**
  * The deep-link path, rendered: a route the user's privileges do not allow shows the screen's
@@ -129,6 +131,7 @@ describe('the routed screen outlet', () => {
     shell = new ShellState({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
     TestBed.configureTestingModule({
       providers: [
+        { provide: AccountPreferences, useValue: stubAccountPreferences() },
         provideRouter([
           { path: '', pathMatch: 'full', component: ScreenOutlet },
           { path: 'probe/:id', component: ScreenOutlet },

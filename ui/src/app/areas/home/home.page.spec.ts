@@ -12,6 +12,8 @@ import { ShellState } from '../../core/shell-state';
 import { STRINGS } from '../../core/strings';
 import { screenDeclaration } from '../../testing/screen-declaration';
 import { HomePage } from './home.page';
+import { AccountPreferences } from '../../core/account-preferences';
+import { stubAccountPreferences } from '../../testing/account-preferences';
 
 /**
  * Home's rendered contract (DESIGN.md `:896`, `:1102`; EXPERIENCE.md "Six tiles in daily-use order").
@@ -162,6 +164,18 @@ describe('Home', () => {
   let shell: ShellState;
   let storage: ReturnType<typeof memoryStorage>;
   let router: Router;
+  let preferences: AccountPreferences;
+
+  const blocks = (): HTMLElement[] =>
+    Array.from(fixture.nativeElement.querySelectorAll('.ocu-home-block'));
+  const blockRows = (index: number): HTMLElement[] =>
+    Array.from(blocks()[index].querySelectorAll('.ocu-home-block-row'));
+  const rowLabels = (index: number): string[] =>
+    blockRows(index).map(
+      (row) => row.querySelector('.ocu-home-block-label')?.textContent?.trim() ?? ''
+    );
+  const openButton = (index: number, row: number): HTMLButtonElement =>
+    blockRows(index)[row].querySelector('.ocu-home-block-open') as HTMLButtonElement;
 
   const tiles = (): HTMLButtonElement[] =>
     Array.from(fixture.nativeElement.querySelectorAll('.ocu-area-tile'));
@@ -182,8 +196,15 @@ describe('Home', () => {
     session = new StubSession();
     storage = memoryStorage();
     shell = new ShellState({ preferences: new PreferenceStore({ storage }) });
+    // Two built screens the shipped mirror declares, plus one route it does not: the AD-37
+    // degrade row needs a stored route that resolves to nothing.
+    preferences = stubAccountPreferences({
+      favorites: ['logs/alerts', 'no-such-area/no-such-screen'],
+      recents: ['permissions/users'],
+    });
     TestBed.configureTestingModule({
       providers: [
+        { provide: AccountPreferences, useValue: preferences },
         provideRouter([
           { path: '', children: [] },
           { path: 'os-management/processes', children: [] },
@@ -195,6 +216,9 @@ describe('Home', () => {
           // The gated tile's own target has to resolve here, or its "does not navigate" row
           // asserts a URL the harness could never have reached and cannot fail.
           { path: 'permissions/users', children: [] },
+          // A remembered row's own target, so the row that opens one asserts a URL the harness
+          // could have reached.
+          { path: 'logs/alerts', children: [] },
         ]),
         { provide: NavigationService, useValue: navigation as unknown as NavigationService },
         { provide: InstanceService, useValue: instance as unknown as InstanceService },
@@ -533,5 +557,128 @@ describe('Home', () => {
     expect(version.hasAttribute('title')).toBe(false);
     // The stylesheet half -- that nothing ellipsizes it -- is design-tokens.test.mjs's.
     expect(version.classList.contains('ocu-status-bar-version')).toBe(false);
+  });
+
+  // --- Story 15.2: the Favorites and Recent items blocks -------------------------------------
+
+  it('Story 15.2: both blocks render above the tile grid, each with its published heading', () => {
+    const headings = blocks().map(
+      (block) => block.querySelector('.ocu-home-block-heading')?.textContent?.trim() ?? ''
+    );
+    expect(headings).toEqual([STRINGS.favoritesHeading, STRINGS.recentsHeading]);
+
+    // Above the grid, not beside or below it: the blocks' wrapper precedes it in document order.
+    const section: HTMLElement = fixture.nativeElement.querySelector('.ocu-home');
+    const children = Array.from(section.children);
+    const remembered = children.findIndex((el) => el.classList.contains('ocu-home-remembered'));
+    const grid = children.findIndex((el) => el.classList.contains('ocu-area-tile-grid'));
+    expect(remembered).toBeGreaterThanOrEqual(0);
+    expect(remembered).toBeLessThan(grid);
+  });
+
+  it('Story 15.2: an account that has remembered nothing sees both empty states and no list', async () => {
+    expect(blocks()[0].querySelector('.ocu-home-block-empty')?.textContent?.trim()).toBe(
+      STRINGS.favoritesEmpty
+    );
+    expect(blocks()[1].querySelector('.ocu-home-block-empty')?.textContent?.trim()).toBe(
+      STRINGS.recentsEmpty
+    );
+    expect(fixture.nativeElement.querySelector('.ocu-home-block-list')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.ocu-home-block-clear')).toBeNull();
+  });
+
+  it('Story 15.2: each block is a list of listitems wrapping real buttons, with a Clear control', async () => {
+    await preferences.load();
+    fixture.detectChanges();
+
+    const lists: HTMLElement[] = Array.from(
+      fixture.nativeElement.querySelectorAll('.ocu-home-block-list')
+    );
+    expect(lists).toHaveLength(2);
+    for (const list of lists) expect(list.getAttribute('role')).toBe('list');
+    for (const row of blockRows(0)) expect(row.getAttribute('role')).toBe('listitem');
+    expect(openButton(0, 0).tagName).toBe('BUTTON');
+
+    const clears: HTMLButtonElement[] = Array.from(
+      fixture.nativeElement.querySelectorAll('.ocu-home-block-clear')
+    );
+    expect(clears.map((clear) => clear.textContent?.trim())).toEqual([
+      STRINGS.favoritesClear,
+      STRINGS.recentsClear,
+    ]);
+  });
+
+  it('Story 15.2 (AD-37): a stored route that names no built screen is dropped from the rendering, not from the store', async () => {
+    await preferences.load();
+    fixture.detectChanges();
+
+    // Two favorites are stored; one of them resolves to no built screen and never renders.
+    expect(preferences.favorites()).toHaveLength(2);
+    expect(rowLabels(0)).toEqual([STRINGS.alertLogListLabel]);
+  });
+
+  it('Story 15.2: a per-row remove control names the screen it removes, and removing one re-renders from the instance', async () => {
+    await preferences.load();
+    fixture.detectChanges();
+
+    const remove = blockRows(0)[0].querySelector('.ocu-home-block-remove') as HTMLButtonElement;
+    expect(remove.getAttribute('aria-label')).toBe(
+      STRINGS.favoritesRemoveNamed.replace('<name>', STRINGS.alertLogListLabel)
+    );
+
+    remove.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(preferences.favorites()).not.toContain('logs/alerts');
+    expect(fixture.nativeElement.querySelector('.ocu-home-status')?.textContent?.trim()).toBe(
+      STRINGS.favoritesRemoved
+    );
+  });
+
+  it('Story 15.2: Clear empties the block and announces it politely', async () => {
+    await preferences.load();
+    fixture.detectChanges();
+
+    const clear = blocks()[1].querySelector('.ocu-home-block-clear') as HTMLButtonElement;
+    clear.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(preferences.recents()).toEqual([]);
+    const status: HTMLElement = fixture.nativeElement.querySelector('.ocu-home-status');
+    expect(status.getAttribute('role')).toBe('status');
+    expect(status.textContent?.trim()).toBe(STRINGS.recentsCleared);
+  });
+
+  it('Story 15.2: a gated row stays listed and focusable with its reason inline, and does not navigate', async () => {
+    navigation.screenVerdicts.set('logs/alerts', {
+      allowed: false,
+      failedPair: '%Admin_Operate:USE',
+    });
+    await preferences.load();
+    fixture.detectChanges();
+
+    const open = openButton(0, 0);
+    expect(open.getAttribute('aria-disabled')).toBe('true');
+    expect(open.hasAttribute('disabled')).toBe(false);
+    // The reason is inside the button's own content, so it is inside its accessible name.
+    expect(open.textContent).toContain('%Admin_Operate:USE');
+
+    const before = router.url;
+    open.click();
+    await fixture.whenStable();
+    expect(router.url).toBe(before);
+  });
+
+  it('Story 15.2: an allowed row navigates to its screen, carrying the namespace', async () => {
+    await preferences.load();
+    fixture.detectChanges();
+
+    await router.navigateByUrl('/?ns=USER');
+    openButton(0, 0).click();
+    await fixture.whenStable();
+
+    expect(router.url).toBe('/logs/alerts?ns=USER');
   });
 });

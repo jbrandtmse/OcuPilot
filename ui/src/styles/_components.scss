@@ -4736,3 +4736,182 @@ app-data-table {
   align-self: flex-start;
   margin: var(--ocu-space-2) var(--ocu-space-4);
 }
+
+// --- Home's remembered-screen blocks and the locator bar's favorite toggle (Story 15.2) -------
+//
+// DESIGN.md publishes no block of its own for either, so both are drawn from the
+// `row-overflow-menu` metrics (`:353-366`), which is the product's own published treatment for a
+// short list of named rows: `{colors.surface-container-lowest}` behind a 1px `outline-variant`
+// at `{rounded.sm}`, 32px rows in `{typography.body}`, and a gated row in `{colors.restrained}`
+// with its reason trailing in `{typography.caption}`. Existing tokens only -- Story 15.6 owns
+// `_tokens.scss` and this story adds no token.
+//
+// The one literal here is the remove control's 24px square, which is the row's own height less
+// its inset rather than a value from the scale.
+
+.ocu-home-remembered {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ocu-space-4);
+}
+
+.ocu-home-block {
+  display: flex;
+  flex: 1 1 var(--ocu-side-bar-width);
+  flex-direction: column;
+  gap: var(--ocu-space-1);
+  min-width: 0;
+}
+
+.ocu-home-block-heading {
+  @include typo.ocu-type('caption');
+
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-home-block-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--ocu-outline-variant);
+  border-radius: var(--ocu-radius-sm);
+  background: var(--ocu-surface-container-lowest);
+}
+
+.ocu-home-block-row {
+  display: flex;
+  align-items: center;
+  gap: var(--ocu-space-1);
+  padding: 0 var(--ocu-space-1) 0 var(--ocu-space-2);
+}
+
+.ocu-home-block-open {
+  @include typo.ocu-type('body');
+
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: var(--ocu-space-2);
+  min-width: 0;
+  height: var(--ocu-control-height);
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--ocu-on-surface);
+  text-align: left;
+  cursor: pointer;
+}
+
+.ocu-home-block-open:hover {
+  text-decoration: underline;
+}
+
+.ocu-home-block-open:focus-visible {
+  @include ocu-focus-ring;
+}
+
+// A gated row keeps its place, its focus and its shape and refuses on activation (AD-8): it is
+// `aria-disabled`, never the `disabled` attribute, so the colour is the only visual difference.
+.ocu-home-block-open[aria-disabled='true'] {
+  color: var(--ocu-restrained);
+  cursor: default;
+}
+
+.ocu-home-block-open[aria-disabled='true']:hover {
+  text-decoration: none;
+}
+
+.ocu-home-block-label {
+  // The reason `.ocu-status-bar-version` carries the same line: a flex item will not shrink below
+  // its content without this, so `text-overflow` alone would push the row wider instead of
+  // ellipsizing. The template gives the span a `title`, so a truncated name stays readable.
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ocu-home-block-reason {
+  @include typo.ocu-type('caption');
+
+  flex: 0 0 auto;
+  color: var(--ocu-restrained);
+}
+
+.ocu-home-block-remove {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: var(--ocu-radius-sm);
+  background: transparent;
+  color: var(--ocu-on-surface-variant);
+  cursor: pointer;
+}
+
+.ocu-home-block-remove:hover {
+  background: var(--ocu-surface-container-high);
+}
+
+.ocu-home-block-remove:focus-visible {
+  @include ocu-focus-ring;
+}
+
+.ocu-home-block-clear {
+  @include typo.ocu-type('caption');
+
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--ocu-secondary);
+  cursor: pointer;
+}
+
+.ocu-home-block-clear:hover {
+  text-decoration: underline;
+}
+
+.ocu-home-block-clear:focus-visible {
+  @include ocu-focus-ring;
+}
+
+.ocu-home-block-empty {
+  @include typo.ocu-type('caption');
+
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
+}
+
+// The locator bar's favorite toggle: the same 32px square control the row-overflow trigger is,
+// beside the screen segment rather than inside it.
+.ocu-locator-favorite {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: var(--ocu-icon-button-size);
+  height: var(--ocu-icon-button-size);
+  padding: 0;
+  border: none;
+  border-radius: var(--ocu-radius-sm);
+  background: transparent;
+  color: var(--ocu-on-surface-variant);
+  cursor: pointer;
+}
+
+.ocu-locator-favorite:hover {
+  background: var(--ocu-surface-container-high);
+}
+
+.ocu-locator-favorite:focus-visible {
+  @include ocu-focus-ring;
+}
+
+.ocu-locator-favorite[aria-pressed='true'] {
+  color: var(--ocu-primary);
+}

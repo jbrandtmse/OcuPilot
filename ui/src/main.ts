@@ -4,6 +4,7 @@ import { provideRouter } from '@angular/router';
 
 import { App } from './app/app';
 import { routes } from './app/app.routes';
+import { AccountPreferences } from './app/core/account-preferences';
 import { AgentContext } from './app/core/agent-context';
 import { AgentStatus } from './app/core/agent-status';
 import { ApiService } from './app/core/api';
@@ -183,6 +184,11 @@ const suggested = new SuggestedView({ api, agentStatus, scope, connectivity });
 // or default definition from going stale.
 const agentContext = new AgentContext({ api, bus, connectivity });
 
+// The caller's own favorites and recent items (Story 15.2, AD-50). Built here like every other
+// core service so the locator bar's toggle, Home's two blocks and the command box's ranking all
+// read one answer -- three would be three reads and three disagreeing views of the same account.
+const accountPreferences = new AccountPreferences({ api });
+
 // The one authority over Escape (DW-137). Built here like every other core service so the
 // command box, the account menu and the side bar all register with the same instance --
 // three stacks would be three independent Escape handlers again.
@@ -227,6 +233,7 @@ bootstrapApplication(App, {
     { provide: FormDirty, useValue: formDirty },
     { provide: AgentStatus, useValue: agentStatus },
     { provide: AgentContext, useValue: agentContext },
+    { provide: AccountPreferences, useValue: accountPreferences },
     { provide: SuggestedView, useValue: suggested },
   ],
 }).catch((err) => console.error(err));

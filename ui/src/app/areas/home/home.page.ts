@@ -8,11 +8,20 @@ import {
 } from '@angular/core';
 import { Router } from '@angular/router';
 
+import {
+  AccountPreferences,
+  FAVORITE_KIND,
+  RECENT_KIND,
+  formatNamed,
+  type PreferenceKind,
+} from '../../core/account-preferences';
 import { InstanceService, serverFlagKind } from '../../core/instance';
 import {
   NavigationService,
+  areaByKey,
   firstAllowedScreen,
   formatRequires,
+  screenForRoute,
   withQuery,
 } from '../../core/navigation';
 import { ScopeService } from '../../core/scope';
@@ -42,6 +51,34 @@ interface AreaTile {
   /** The area's first built screen, or `''` when it has none yet. */
   readonly route: string;
   readonly hasScreen: boolean;
+}
+
+/** One remembered screen, resolved for rendering in the Favorites or Recent items block. */
+interface RememberedRow {
+  readonly route: string;
+  readonly label: string;
+  readonly gated: boolean;
+  readonly ariaDisabled: string | null;
+  /** The failed `(resource, permission)` pair, rendered inside the row's own accessible name. */
+  readonly reason: string;
+  /** The remove control's accessible name, with `<name>` resolved to this screen. */
+  readonly removeLabel: string;
+  /** The area whose side bar opening the row shows, as a tile activation does. */
+  readonly area: string;
+}
+
+/** One of the two remembered-screen blocks above the tile grid, resolved for rendering. */
+interface RememberedBlock {
+  readonly key: string;
+  readonly kind: PreferenceKind;
+  readonly heading: string;
+  readonly emptyLabel: string;
+  readonly clearLabel: string;
+  /** The polite sentence removing one row announces. */
+  readonly removedLabel: string;
+  /** The polite sentence clearing the block announces. */
+  readonly clearedLabel: string;
+  readonly rows: readonly RememberedRow[];
 }
 
 /** One value on the instance line. The flag segment is a badge rather than text. */
@@ -102,6 +139,24 @@ interface LineSegment {
  * instance version is readable (**DW-146**): the 24px status bar has to truncate it to a
  * `title`, and this is page content that wraps instead.
  *
+ * **Favorites and Recent items sit above the grid** (DESIGN.md `:898`; EXPERIENCE.md
+ * "Home — System Information panel · favorites · recents", whose Where column reads "fit
+ * above/beside the tile row"; Story 15.2, AD-50). Each is a `role="list"` of `role="listitem"` rows wrapping real buttons --
+ * the page's own keyboard model, the same one the tile grid uses, so no roving-tabindex model is
+ * invented here. A row whose route no longer resolves to a built screen is **dropped** rather than
+ * rendered as a button that opens nothing (AD-37 degrade); the row stays stored, because what the
+ * user saved is not this client's to delete. A row the user may no longer open stays listed,
+ * focusable and `aria-disabled="true"` with its reason inside the button's own content, which is
+ * the shape the command box uses for the same verdict.
+ *
+ * **The two blocks are announced from one polite region on this page**, not from the row that
+ * disappears: a removed row cannot announce its own removal. The region is visually hidden
+ * (`account-menu.ts`'s idiom) rather than a caption, so one removal does not leave a sentence
+ * standing under the blocks for the component's life. It is written **after** the write settles
+ * and only when the block's stored list actually moved, so a refusal or an unreachable instance
+ * announces nothing rather than a removal that did not happen; clearing it first is what gives a
+ * second removal a change to announce at all.
+ *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records: `ui/tools/client-lint.mjs`'s blanker matches `@if` plus one parenthesised group.
  */
@@ -110,6 +165,46 @@ interface LineSegment {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ServerFlag],
   template: `<section class="ocu-home">
+    <div class="ocu-home-remembered">
+      @for (block of blocks; track block.key) {
+        <section class="ocu-home-block">
+          <h2 class="ocu-home-block-heading">{{ block.heading }}</h2>
+          @if (block.rows.length) {
+            <div class="ocu-home-block-list" role="list">
+              @for (row of block.rows; track row.route) {
+                <span class="ocu-home-block-row" role="listitem">
+                  <button
+                    type="button"
+                    class="ocu-home-block-open"
+                    [attr.aria-disabled]="row.ariaDisabled"
+                    (click)="openRemembered(row)"
+                  >
+                    <span class="ocu-home-block-label" [title]="row.label">{{ row.label }}</span>
+                    @if (row.gated) {
+                      <span class="ocu-home-block-reason">{{ row.reason }}</span>
+                    }
+                  </button>
+                  <button
+                    type="button"
+                    class="ocu-home-block-remove"
+                    [attr.aria-label]="row.removeLabel"
+                    (click)="removeRemembered(block, row)"
+                  >
+                    <span class="ocu-home-block-glyph" aria-hidden="true">{{ removeGlyph }}</span>
+                  </button>
+                </span>
+              }
+            </div>
+            <button type="button" class="ocu-home-block-clear" (click)="clearRemembered(block)">
+              {{ block.clearLabel }}
+            </button>
+          } @else {
+            <p class="ocu-home-block-empty">{{ block.emptyLabel }}</p>
+          }
+        </section>
+      }
+    </div>
+    <span class="ocu-home-status ocu-visually-hidden" role="status">{{ announcement }}</span>
     <div class="ocu-area-tile-grid" role="list">
       @for (tile of tiles; track tile.key) {
         <span class="ocu-area-tile-slot" role="listitem">
@@ -166,6 +261,7 @@ export class HomePage {
   private readonly session = inject(Session);
   private readonly shell = inject(ShellState);
   private readonly router = inject(Router);
+  private readonly preferences = inject(AccountPreferences);
 
   /**
    * The middle dot DESIGN.md `:896` and EXPERIENCE.md "Six tiles in daily-use order" join with, produced in TypeScript
@@ -178,6 +274,19 @@ export class HomePage {
 
   /** Bumped whenever the navigation map changes, so the tiles' verdicts follow it. */
   private readonly mapGeneration = signal(0);
+
+  /** Bumped whenever the remembered lists change, so the two blocks follow them. */
+  private readonly preferenceGeneration = signal(0);
+
+  /** The polite region's text: empty until a removal or a clear has changed the store. */
+  private readonly announcementValue = signal('');
+
+  /**
+   * The remove control's glyph, produced in TypeScript so no non-ASCII byte enters a template
+   * (Rule 14). It is `aria-hidden`, so the control's accessible name is its `aria-label` alone --
+   * which names the screen it removes.
+   */
+  protected readonly removeGlyph = '\u00d7';
 
   /** Mirrors the framework-free services into the reactive graph, as the status bar does. */
   private readonly serverName = signal(this.instance.serverName());
@@ -237,6 +346,33 @@ export class HomePage {
       });
   });
 
+  private readonly resolvedBlocks = computed<readonly RememberedBlock[]>(() => {
+    this.preferenceGeneration();
+    this.mapGeneration();
+    return [
+      {
+        key: 'favorites',
+        kind: FAVORITE_KIND,
+        heading: STRINGS.favoritesHeading,
+        emptyLabel: STRINGS.favoritesEmpty,
+        clearLabel: STRINGS.favoritesClear,
+        removedLabel: STRINGS.favoritesRemoved,
+        clearedLabel: STRINGS.favoritesCleared,
+        rows: this.rowsFor(this.preferences.favorites(), STRINGS.favoritesRemoveNamed),
+      },
+      {
+        key: 'recents',
+        kind: RECENT_KIND,
+        heading: STRINGS.recentsHeading,
+        emptyLabel: STRINGS.recentsEmpty,
+        clearLabel: STRINGS.recentsClear,
+        removedLabel: STRINGS.recentsRemoved,
+        clearedLabel: STRINGS.recentsCleared,
+        rows: this.rowsFor(this.preferences.recents(), STRINGS.recentsRemoveNamed),
+      },
+    ];
+  });
+
   /**
    * The five values in DESIGN.md `:896`'s order, with the ones the instance could not report
    * dropped. The flag is a segment like any other so the separators fall where the rendered
@@ -267,16 +403,28 @@ export class HomePage {
     });
     const stopScope = this.scope.subscribe(() => this.namespace.set(this.scope.namespace()));
     const stopSession = this.session.subscribe(() => this.userName.set(this.session.userName()));
+    const stopPreferences = this.preferences.subscribe(() =>
+      this.preferenceGeneration.set(this.preferenceGeneration() + 1)
+    );
     inject(DestroyRef).onDestroy(() => {
       stopNavigation();
       stopInstance();
       stopScope();
       stopSession();
+      stopPreferences();
     });
   }
 
   protected get tiles(): readonly AreaTile[] {
     return this.resolvedTiles();
+  }
+
+  protected get blocks(): readonly RememberedBlock[] {
+    return this.resolvedBlocks();
+  }
+
+  protected get announcement(): string {
+    return this.announcementValue();
   }
 
   protected get instanceLine(): readonly LineSegment[] {
@@ -298,5 +446,86 @@ export class HomePage {
     this.shell.showArea(tile.key);
     if (!tile.hasScreen) return;
     void this.router.navigateByUrl(withQuery(tile.route, this.router.url));
+  }
+
+  /**
+   * Open a remembered screen. A gated row does nothing: `aria-disabled` carries no behaviour of
+   * its own, so the refusal has to be here -- the same shape the tiles and the command box use.
+   *
+   * An open side bar is moved to the screen's area first, so the list beside the screen is that
+   * screen's own; a collapsed one stays collapsed, because Ctrl/Cmd+B's choice is remembered. The
+   * current query travels, because `?ns=` is data scope (AD-44).
+   */
+  protected openRemembered(row: RememberedRow): void {
+    if (row.gated) return;
+    const area = areaByKey(row.area);
+    if (area !== null && !area.navigates && this.shell.open()) this.shell.showArea(area.key);
+    void this.router.navigateByUrl(withQuery(row.route, this.router.url));
+  }
+
+  /**
+   * Drop one row, and announce which list it left once the instance's answer says it did. That
+   * answer re-renders the block, so a removal the instance refused -- or never heard -- leaves
+   * the row where it is and announces nothing.
+   */
+  protected removeRemembered(block: RememberedBlock, row: RememberedRow): void {
+    this.announceOnChange(block.kind, block.removedLabel, () =>
+      this.preferences.remove(block.kind, row.route)
+    );
+  }
+
+  /** Empty one block, and announce it on the same terms. */
+  protected clearRemembered(block: RememberedBlock): void {
+    this.announceOnChange(block.kind, block.clearedLabel, () => this.preferences.clear(block.kind));
+  }
+
+  /**
+   * Announce <code>label</code> once <code>write</code> has settled, and only when the stored list
+   * for <code>kind</code> is a different length from the one the write was issued against.
+   *
+   * <code>write</code> is a function rather than a promise so the length it is compared against
+   * is read before the request goes out, whatever the store does synchronously on the way.
+   *
+   * Cleared before the wait for two reasons: a sentence the region already carries is not read
+   * out again when it is re-written, and a refusal must not leave the previous action's
+   * confirmation standing as though it were this one's.
+   */
+  private announceOnChange(kind: PreferenceKind, label: string, write: () => Promise<void>): void {
+    const held = this.stored(kind).length;
+    this.announcementValue.set('');
+    void write().then(() => {
+      if (this.stored(kind).length === held) return;
+      this.announcementValue.set(label);
+    });
+  }
+
+  /** The routes the store holds for one kind, whatever this page renders of them. */
+  private stored(kind: PreferenceKind): readonly string[] {
+    return kind === FAVORITE_KIND ? this.preferences.favorites() : this.preferences.recents();
+  }
+
+  /**
+   * One block's rows: the routes the instance answered, less the ones that no longer name a built
+   * screen (AD-37 -- dropped from the rendering, never from the store), each carrying the verdict
+   * this user's navigation map holds for it.
+   */
+  private rowsFor(routes: readonly string[], removeTemplate: string): readonly RememberedRow[] {
+    const rows: RememberedRow[] = [];
+    for (const route of routes) {
+      const screen = screenForRoute(route);
+      if (screen === null || !screen.built) continue;
+      const label = stringFor(screen.labelKey);
+      const verdict = this.navigation.screenVerdict(route);
+      rows.push({
+        route,
+        label,
+        gated: !verdict.allowed,
+        ariaDisabled: verdict.allowed ? null : 'true',
+        reason: formatRequires(STRINGS.privilegeRequiresResource, verdict.failedPair),
+        removeLabel: formatNamed(removeTemplate, label),
+        area: screen.area,
+      });
+    }
+    return rows;
   }
 }

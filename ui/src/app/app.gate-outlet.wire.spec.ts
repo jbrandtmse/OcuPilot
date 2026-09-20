@@ -26,6 +26,8 @@ import { SuggestedView } from './core/suggested-view';
 import { stubSuggestedView } from './testing/suggested-view';
 import { stubTurnStore } from './testing/turn';
 import { ViewOptions } from './core/view-options';
+import { AccountPreferences } from './core/account-preferences';
+import { stubAccountPreferences } from './testing/account-preferences';
 
 /**
  * The first-login gate against the requested screen's declared read (FR-28, AD-36).
@@ -280,6 +282,7 @@ describe('the first-login gate and the requested screen it may move off', () => 
     const shellState = new ShellState({ preferences });
     TestBed.configureTestingModule({
       providers: [
+        { provide: AccountPreferences, useValue: stubAccountPreferences() },
         provideRouter(routes),
         { provide: Session, useValue: new StubSession() as unknown as Session },
         { provide: InstanceService, useValue: new StubInstance() as unknown as InstanceService },

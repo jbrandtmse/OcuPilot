@@ -2,14 +2,82 @@
 title: 'Story 15.2: Favorites, recent items and menu search'
 type: 'feature'
 created: '2026-09-19'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '31619c352286199e8dcfe223d31fea9984c0a210'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-15-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      A refused preference write is never surfaced to the user: the client parks every
+      non-ok result and no component reads a fault.
+    evidence: |-
+      `core/account-preferences.ts` `settle` returns on `result.kind !== 'ok'`, and no
+      consumer reads a refusal. At the 20-favorite cap the instance answers 422
+      PREFERENCES.LIMIT with a written reason (`Api/Error.cls` REASONPREFERENCESLIMIT)
+      that reaches no surface. Fixing it needs a published string and an EXPERIENCE.md row.
+    location: >-
+      ui/src/app/core/account-preferences.ts (settle) and ui/src/app/shell/locator-bar.ts
+    severity: medium
+  - summary: >-
+      Two concurrent adds of the same (user, kind, route) can trip the unique index and
+      answer 500 instead of the documented no-op.
+    evidence: |-
+      `Pref.GuardedAdd` is check-then-insert: `OpenByKey` finds nothing in both processes
+      and both save, so one loses on PrefUserKindNameIdx. Reachable from two tabs pinning
+      or visiting the same screen at once. The matrix's concurrency row covers the update
+      path (GuardedTouch/GuardedSaveIfCurrent), not the create path.
+    location: >-
+      src/OcuPilot/Kernel/State/Pref.cls GuardedAdd
+    severity: medium
+  - summary: >-
+      When every stored row in a Home block names no built screen, the block shows its
+      empty state and no Clear control, so rows the instance still holds are invisible and
+      unclearable.
+    evidence: |-
+      `home.page.ts` renders the list and the Clear button under `@if (block.rows.length)`,
+      and `rowsFor` drops routes that resolve to no built screen (AD-37). Reachable once a
+      screen is withdrawn from the product. The per-row remove path is now open (the handler
+      no longer requires a built route on remove), but the row is not rendered to remove.
+    location: >-
+      ui/src/app/areas/home/home.page.ts template
+    severity: medium
+  - summary: >-
+      The Integration AC's browser-level observable -- sign out, sign in in a new tab, clear
+      site data, both lists still there -- was not executed.
+    evidence: |-
+      The spec's Verification names it as a manual check and this pass did not perform it;
+      it needs a browser and two sessions. Each link is covered separately (PreferencesWire
+      on the instance, the app.spec rows on the wiring, api.test.mjs's localStorage ban),
+      but the composition is not. A browser spec against the slot-C throwaway, with this
+      story's bundle and server code deployed into it, would settle it.
+    location: >-
+      ui/browser/ (no spec) and the spec's ## Verification manual check
+    severity: medium
+  - summary: >-
+      `app.ts`'s `inject(RecentsRecorder)` -- the only thing that brings the recorder into
+      existence in the shipped app -- is pinned by no test.
+    evidence: |-
+      `recents-recorder.spec.ts` injects the service itself, so deleting the `app.ts` field
+      reddens nothing and Recent items would be permanently empty. tsconfig sets no
+      noUnusedLocals. An app.spec row navigating the real router to a built screen and
+      asserting a visit on the captured stub would settle it.
+    location: >-
+      ui/src/app/app.ts:211
+    severity: medium
+  - summary: >-
+      No test measures that a long remembered-screen label actually ellipsizes.
+    evidence: |-
+      `min-width: 0` was added to `.ocu-home-block-label` this pass, but jsdom computes no
+      layout, so only a browser spec can observe it -- the shape
+      `ui/browser/classic-link-card.browser-spec.mjs` already uses
+      (`scrollWidth > clientWidth` plus the computed `text-overflow`).
+    location: >-
+      ui/src/styles/_components.scss .ocu-home-block-label
+    severity: low
 ---
 
 <intent-contract>
@@ -133,6 +201,65 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-09-20 — Review pass
+
+- verdicts: 52 findings — high 0, medium 24, low 24, false 4, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` A favorite whose screen is no longer built cannot be removed — `HandleUpdate` ran `IsBuiltRoute` for `remove` as well as `add`, so the row was stuck consuming a cap slot; the check is now add-only and `PreferencesWire` gained a leg proving a `remove` of an unbuilt route answers 200.
+  - `[medium]` `[patch]` Every confirmation was announced before the write and never reflected its outcome — the two handlers now clear the region, issue the write, and set the sentence in `.then()` only when the store actually moved.
+  - `[medium]` `[defer]` No refusal is ever surfaced to the user — real; fixing it needs a published string and an EXPERIENCE.md row, so it is deferred rather than invented here.
+  - `[medium]` `[patch]` The two polite regions were visible page text that never cleared — both spans now carry `ocu-visually-hidden` (the `account-menu.ts:122` idiom) and the wrong SCSS comment is gone.
+  - `[medium]` `[patch]` Repeating an action announced nothing — clearing the region before the write gives a repeat a real change to announce.
+  - `[low]` `[patch]` `answered()` has no consumer and Home contradicts its documented contract — Home's empty-on-unreachable rendering is what the matrix asks for, so the wrong doc sentence was replaced rather than a gate added.
+  - `[low]` `[patch]` `RecentsRecorder.lastRoute` survived a principal change — the recorder gained `reset()`, called from `app.ts`'s sign-out branch, pinned by a new spec row.
+  - `[medium]` `[patch]` Recents could not re-order within one second — `Turn.Timestamp()` is whole seconds; `Pref.cls` now stamps at microsecond resolution and a new `PrefState` row (A, B, A with no `Hang`) is red at second resolution.
+  - `[low]` `[patch]` The wire suite's ordering assertion was not load-bearing — the same stamp fix makes `ORDER BY UpdatedAt DESC` decide it; the 14 s `Hang` test is kept as the second-boundary case.
+  - `[low]` `[patch]` `PreferencesWire` cleared the wrong account when the process user and the test user differ — `Clear()` now resolves `Http.GetTestUsername()`, which is the account the requests authenticate as.
+  - `[low]` `[reject]` The wire suite hard-asserts the size of the screen roster — a roster shrinking below 21 built screens is not an everyday state, and the failure is loud and self-describing; guarding it would add a skip path.
+  - `[low]` `[reject]` `Pref.DeleteAllGuarded()` is dead — the spec's Tasks name it explicitly, on the `Sharing`/`Hold` precedent; removing it is spec-bound.
+  - `[medium]` `[defer]` The Integration AC's sign-out/new-tab/cleared-site-data observable was not executed — deferred with the browser-spec recipe that would settle it.
+  - `[medium]` `[patch]` `app.ts`'s `accountPreferences.reset()` was pinned nowhere — `app.spec.ts` now captures the stub and carries two `Mutation (Rule 19)` assertions beside the three already there.
+  - `[low]` `[reject]` AC2's "the locator toggle reads unpressed" after a Home removal is asserted in no single spec — both surfaces read one shared store, so the composition holds by construction; a cross-surface mount is more machinery than the claim is worth.
+  - `[low]` `[reject]` The block headings are `<h2>`, siblings of the screen title — neither DESIGN.md nor EXPERIENCE.md fixes a level for them, so any change is a guess with no named harm.
+  - `[low]` `[patch]` An ellipsized row label had no `title` — bound `[title]="row.label"`, the DW-146 remedy this file already records.
+  - `[low]` `[reject]` Route validation uses `DescriptorForRoute` where the spec's Code Map names `Roster` — both are `Screen.Registry` and the behavior is identical; the only fix is to edit this build's spec.
+  - `[low]` `[patch]` `OpenByKey`'s doc asserted an unverified case-insensitive-collation fact — the claim is deleted; the doc states only what the method does.
+  - `[low]` `[reject]` `GuardedTouch` and `GuardedTrim` are two unguarded steps — a failure between them leaves the list one row over its cap until the next visit trims it; no user-reachable harm, and a transaction is complexity for a self-healing window.
+  - `[low]` `[patch]` A dead `.map()` in the new command-box row (the assertion was on array length) — now asserts on `screens` directly. The two `async` rows with no `await` are harmless and were left.
+  - `[low]` `[patch]` A body-read fault was refused 422 with nothing logged — `Account.cls`'s precedent logs the stage through `Fault.LogRaw`; `Preferences.cls` now does the same. The 422 and its code are unchanged, which is correct per that same precedent.
+  - `[medium]` `[defer]` Two concurrent adds of the same key can trip the unique index — real check-then-insert race on the create path; the fix guards state this pass did not demonstrate.
+  - `[medium]` `[patch]` A revisit inside one second does not move to the front — same root cause as the stamp finding above; closed by the microsecond stamp.
+  - `[low]` `[reject]` A parked write discards a concurrent in-flight read — reachable only when a refused or failed write overlaps the first read, and the next `load()` repairs it; the fix adds branching to the request counter.
+  - `[low]` `[patch]` Home paints its empty state before the first read settles — the matrix asks for exactly that on an unreachable instance; the store's wrong doc sentence was corrected instead.
+  - `[medium]` `[defer]` The Clear control is hidden when every stored row is unresolvable — real; rendering it needs the block to carry a stored count the rendering does not have.
+  - `[medium]` `[patch]` The locator toggle announces before the write — closed with the announcement rewrite above.
+  - `[medium]` `[patch]` Home's remove and clear announce before the write — closed with the same rewrite.
+  - `[medium]` `[patch]` Two consecutive removals announce once — closed by clearing the region first.
+  - `[low]` `[patch]` `lastRoute` is not reset on a principal change — closed by `RecentsRecorder.reset()`.
+  - `[low]` `[patch]` `PreferencesWire.Clear()` resolves the process user, not the request user — closed by `Http.GetTestUsername()`.
+  - `[low]` `[reject]` `answered()` is documented as a render gate with no consumer — closed as a doc correction above; adding the gate would contradict the matrix's unreachable-Home row.
+  - `[low]` `[reject]` The testing stub validates no route and enforces no cap — that is what a stub is for; both instance halves are pinned by `PreferencesWire`.
+  - `[medium]` `[patch]` `void this.accountPreferences.load()` was pinned nowhere — closed by the `app.spec.ts` rows above.
+  - `[medium]` `[patch]` `this.accountPreferences.reset()` was pinned nowhere — closed by the same rows.
+  - `[medium]` `[defer]` Nothing constructs `RecentsRecorder` under an app-level test — deferred with the app.spec navigation row that would settle it.
+  - `[medium]` `[patch]` Two `recents-recorder.spec.ts` rows could not fail for the guard they name — `stubAccountPreferences` now records its calls and both rows assert no POST was issued; the Home row also had to start from another route, since a same-URL navigation fires no `NavigationEnd`.
+  - `[medium]` `[patch]` `.ocu-home-block-label` cannot ellipsize without `min-width: 0` — added, citing the same rule `.ocu-status-bar-version` carries. The browser measurement is deferred.
+  - `[medium]` `[patch]` The locator toggle announces success before the write and never retracts it — closed with the announcement rewrite.
+  - `[low]` `[patch]` `AccountPreferences.answered()` has no production consumer — closed as the doc correction above.
+  - `[low]` `[reject]` Re-ranking an open command box moves the active option — reachable only if a favorites answer settles in the seconds the box is open during the first read; the fix adds a branch to the bump path.
+  - `[false]` `[reject]` The added AD-37 command-box row cannot fail — it is red against the implementation the matrix row exists to exclude (a Screens group fed from the stored favorites rather than from the navigation roster), which is the realistic wrong shape, not a type-level tautology.
+  - `[false]` `[reject]` Three AC sub-clauses carry no `mutation:` line — Rule 19 scopes one demonstrated mutation per acceptance criterion, not per clause, and every AC has one.
+  - `[false]` `[reject]` `PREFERENCESBODY` has no `ReasonForViolation` arm — the layer filed this as "no gap there" itself: the code is an envelope reason, never a field violation, and the wire test asserts the flat shape.
+  - `[medium]` `[patch]` The two new `app.ts` lines are pinned at no surface — closed by the `app.spec.ts` rows.
+  - `[medium]` `[patch]` Recents ordering is exercised only at a timing regime the product does not produce — closed by the microsecond stamp, which makes the no-`Hang` row the pin.
+  - `[medium]` `[defer]` The refusal's user-facing surface is never exercised against a refusal — same entry as the deferred refusal surfacing above.
+  - `[false]` `[reject]` The command box's "drop" clause is a no-op — descriptive and correct: rows come from the navigation roster, so the clause is satisfied by construction rather than unimplemented; the added row pins that it stays so.
+  - `[low]` `[patch]` `answered()` is a declared render gate with no consumer — closed as the doc correction.
+  - `[low]` `[reject]` Caller-own is asserted where the username is an argument — `PrefState` pins per-user isolation through the store and `PreferencesWire` pins that the route accepts no `user` member; there is no second principal the route can reach.
+  - `[medium]` `[defer]` The Integration AC's observable is declared not performed — same entry as the deferred Integration AC above.
+  - `[low]` `[reject]` `IsBuiltRoute`'s length guard cannot produce an outcome distinct from the registry lookup — true, and it is a cheap defense-in-depth the spec names; removing it buys nothing.
+
+
 ## Design Notes
 
 **Governing ADs (Rule 6):** **AD-50** (written into the spine at this story's spec gate, after planning: per-user preferences are one `Kind`-discriminated store in the protected database, read through a caller-own shell-chrome route rather than a declared read — this story is its originating case and Story 15.5 extends it by adding `Kind` values, never `State` subclasses), **AD-9** (the store is OcuPilot's own state in the protected database, escalating only inside the storage frame and re-entering nothing) and **AD-37** (route and username are both weak references; an unresolvable one degrades) are the two this story turns on. Also binding: AD-8, AD-12, AD-39, AD-19, AD-20, AD-21, AD-5, AD-40, AD-28, AD-47. Conventions rows: *Concurrent writes to OcuPilot's own state*, *ObjectScript naming* (the 29-character cap), *REST route ordering*, *Error shape*, *Tests*, *Client asset homes*.
@@ -168,11 +295,84 @@ deferred: []
 - Compile through the IRIS MCP tools against `ocupilot-slot-c`, then run `OcuPilot.Test.PrefState` and `OcuPilot.Test.PreferencesWire` **one class per call**, waiting for each to land in `%UnitTest_Result` before sending the next.
 - `bash scripts/smoke.sh --container ocupilot-slot-c --user _SYSTEM --password SYS` — expected: non-zero executed checks, all passing.
 
+**Mutations (Rule 19)** -- each applied, observed red, reverted, and the tree confirmed byte-identical:
+
+- AC1 (pin from the locator bar): mutation: drop `void this.preferences.add(FAVORITE_KIND, route)` from `locator-bar.ts` `toggleFavorite` -> `locator-bar.spec.ts` "activating the toggle pins the screen" and "a second activation unpins it" went red (2 failed).
+- AC2 (remove and clear from Home): mutation: drop `void this.preferences.remove(block.kind, row.route)` from `home.page.ts` `removeRemembered` -> `home.page.spec.ts` "a per-row remove control names the screen it removes" went red.
+- AC3 (recents registered by visiting): mutation: replace `this.preferences.registerVisit(screen.route)` in `recents-recorder.ts` with a no-op -> `recents-recorder.spec.ts` went red on 3 rows.
+- AC3 (newest-first and capped): mutation: change `IdsForUser`'s recent branch to `ORDER BY ID` -> `OcuPilot.Test.PrefState:TestRecentsReadNewestFirstAndTrimToTheDeclaredMaximum` failed on 3 assertions.
+- Integration AC (the state is on the instance): mutation: drop `Set tSC = ..GuardedSave(tRow)` from `Pref.GuardedAdd` -> `OcuPilot.Test.PreferencesWire:TestAFavoriteRoundTripsOverTheWire` failed on 4 assertions, because the list the next read answers never held it. The browser-storage half is `ui/tools/api.test.mjs`'s standing ban, which `core/account-preferences.ts` does not touch.
+- AC5 (favorites first in the command box): mutation: return `rows` instead of `[...favorite, ...rest]` from `screenCandidates` -> `command-box.spec.ts` went red on 2 rows, while the one-input/two-group/count assertions in the same rows stayed green.
+
+**Matrix coverage added at the implement gate's audit:** the *Route no longer built* row says the
+client drops such a route from both rendered lists **and from the command box**. The rendering half
+was pinned by `home.page.spec.ts`; the command-box half was not, so `command-box.spec.ts` gained
+"a favorite naming no built screen adds no row here, and the count is unchanged". It is a
+matrix-row test, not an acceptance criterion's pinning test, so it carries no `mutation:` line.
+
 **Manual checks:**
 
-- Sign in, favorite a screen, sign out, sign back in **in a new tab**, open Home: both lists are as they were. Then clear the browser's site data for the origin and repeat — the lists are still there, which is the observable that distinguishes instance storage from browser storage.
+- Sign in, favorite a screen, sign out, sign back in **in a new tab**, open Home: both lists are as they were. Then clear the browser's site data for the origin and repeat -- the lists are still there, which is the observable that distinguishes instance storage from browser storage. **Not performed by this pass** (it needs a browser and two sessions); `OcuPilot.Test.PreferencesWire` is its instance-side half.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**Built.** `Kernel/State/Pref.cls` (AD-50's one `Kind`-discriminated per-user store, keyed
+`(UserName, Kind, Name)` unique, microsecond `UpdatedAt`), `Api/Preferences.cls` behind the two
+`/account/preferences` routes appended to `Api/Router.cls`, three violation codes appended to
+`Api/Error.cls`, `core/account-preferences.ts`, `shell/recents-recorder.ts`, the locator bar's
+favorite toggle, Home's Favorites and Recent items blocks, the command box's favorites-first
+partition, `_components.scss` rules from the published `row-overflow-menu` metrics, the fifteen
+strings with their EXPERIENCE.md row, `main.ts`/`app.ts` wiring, and five test files.
+
+**Files changed.** Server: `Kernel/State/Pref.cls` (new, the store), `Api/Preferences.cls` (new,
+the caller-own handler), `Api/Error.cls` (+3 codes, append-only), `Api/Router.cls` (+2 routes and
+their wrappers, append-only at the tail), `Test/PrefState.cls` and `Test/PreferencesWire.cls`
+(new). Client: `core/account-preferences.ts` (new store), `shell/recents-recorder.ts` (new),
+`shell/locator-bar.ts` (toggle), `areas/home/home.page.ts` (two blocks), `shell/command-box.ts`
+(ranking), `core/strings.ts` (+15 keys, append-only), `main.ts` and `app.ts` (construct, provide,
+load, reset), `styles/_components.scss` (block and toggle rules), `testing/account-preferences.ts`
+(new stub with a call log), `tools/account-preferences.test.mjs` (new), `tools/strings.test.mjs`
+(band widened with its reason), plus the component specs and the six app-level specs that now
+provide the store.
+
+**Review.** 52 findings over four layers: 0 high, 24 medium, 24 low, 4 false. Twelve patch groups
+applied (the add-only route check, the body-read log, the microsecond stamp, the wire test's
+account, the post-settle announcements on both surfaces, `ocu-visually-hidden`, `min-width: 0`
+plus `[title]`, the stub's call log, the two `app.spec.ts` mutation rows, `RecentsRecorder.reset()`,
+two doc corrections and a dead `map`). Six items deferred to the frontmatter `deferred:` list.
+Rejected, each with its reason in the triage log: the roster-size assertion, `DeleteAllGuarded`
+(spec-bound), the cross-surface AC2 clause, the heading level, the `Roster` naming (its fix edits
+this spec), the two-step trim window, the parked-write request counter, the stub's missing cap,
+the open command box's re-ranking, the caller-own framing, the length guard, and four `false`
+findings.
+
+**Follow-up review recommended: true.** Two or more medium entries were patched on a first pass.
+The specific unverified risk: the announcement path was rewritten in `locator-bar.ts` and
+`home.page.ts` to fire only after the write settles, and the stored timestamp changed resolution.
+Neither has been exercised against a real refusal or a real browser -- `stubAccountPreferences`
+cannot refuse, and jsdom computes no layout -- so both are verified in jsdom and on the instance,
+not on the deployed bundle.
+
+**Verified** (slot C, `server: "ocupilot-slot-c"`, container `ocupilot-slot-c`), all re-run after
+the patches: `uv run scripts/check-objectscript.py` 500 files / 21 rules / 0 problems;
+`cd ui && npm test` 1070 `node --test` + 689 component tests, 0 failures; `cd ui && npm run build`
+all six prebuild checkers clean; `bash scripts/lint-docs.sh` 0 issues over 93 files; all 500 classes
+loaded and compiled clean; `OcuPilot.Test.PrefState` 9/9 then `OcuPilot.Test.PreferencesWire` 6/6,
+one class per call; `bash scripts/smoke.sh --container ocupilot-slot-c` executed=45 passed=45
+failed=0 pending=2. Matrix Test Audit: every I/O row covered by a test that ran and passed; the
+*Route no longer built* row's command-box half had no covering test and gained one.
+
+**Residual risks.** The Integration AC's browser-level observable was not executed (deferred, with
+the recipe). A refused write announces nothing rather than announcing a reason (deferred). A stored
+route whose screen is withdrawn is now removable over the wire but is not rendered on Home, so it
+is reachable only by Clear (deferred). Two concurrent adds of the same key can trip the unique
+index (deferred).
+
+**Beyond the declared footprint**, to be reported under `footprint_extensions:`:
+`ui/src/app/testing/account-preferences.ts` (new stub), `ui/src/app/shell/recents-recorder.spec.ts`
+(new), and a provider line in `app.spec.ts`, `app.wire.spec.ts`, `app.gate-outlet.wire.spec.ts`,
+`shell/command-bar.spec.ts`, `shell/header.spec.ts` and `shell/screen-outlet.spec.ts`, each of
+which mounts a component that now injects `AccountPreferences`.

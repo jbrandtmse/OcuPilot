@@ -10,6 +10,8 @@ import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
 import { screenDeclaration } from '../testing/screen-declaration';
 import { LocatorBar } from './locator-bar';
+import { AccountPreferences } from '../core/account-preferences';
+import { stubAccountPreferences } from '../testing/account-preferences';
 
 /**
  * The locator bar's rendered contract (EXPERIENCE.md "locator-bar | top of content", "link is the first Tab stop"; DESIGN.md `:1033`).
@@ -88,6 +90,10 @@ describe('the locator bar', () => {
   let router: Router;
   let navigation: StubNavigation;
   let shell: ShellState;
+  let preferences: AccountPreferences;
+
+  const toggle = (): HTMLButtonElement | null =>
+    fixture.nativeElement.querySelector('.ocu-locator-favorite');
 
   const segments = (): HTMLElement[] =>
     Array.from(
@@ -103,8 +109,10 @@ describe('the locator bar', () => {
   beforeEach(() => {
     navigation = new StubNavigation();
     shell = new ShellState({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
+    preferences = stubAccountPreferences();
     TestBed.configureTestingModule({
       providers: [
+        { provide: AccountPreferences, useValue: preferences },
         provideRouter([
           { path: '', children: [] },
           { path: 'permissions/users', children: [] },
@@ -465,5 +473,62 @@ describe('the locator bar', () => {
     await router.navigateByUrl('/nope');
     fixture.detectChanges();
     expect(segments()).toHaveLength(0);
+  });
+
+  // --- Story 15.2: the favorite toggle -------------------------------------------------------
+
+  it('Story 15.2: a built screen that names a route carries the toggle, unpressed and named for what it does', async () => {
+    await go('/permissions/users');
+
+    const control = toggle();
+    expect(control).not.toBeNull();
+    expect(control?.getAttribute('aria-pressed')).toBe('false');
+    expect(control?.getAttribute('aria-label')).toBe(STRINGS.favoritesAdd);
+    // The glyph is decorative: the accessible name is the label alone.
+    expect(
+      control?.querySelector('.ocu-locator-favorite-glyph')?.getAttribute('aria-hidden')
+    ).toBe('true');
+  });
+
+  it('Story 15.2: Home names no route, so it carries no toggle', async () => {
+    await go('/');
+    expect(toggle()).toBeNull();
+  });
+
+  it('Story 15.2: activating the toggle pins the screen, flips aria-pressed and announces it politely', async () => {
+    await go('/permissions/users');
+    toggle()?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(preferences.favorites()).toEqual(['permissions/users']);
+    expect(toggle()?.getAttribute('aria-pressed')).toBe('true');
+    expect(toggle()?.getAttribute('aria-label')).toBe(STRINGS.favoritesRemove);
+
+    const status: HTMLElement = fixture.nativeElement.querySelector('.ocu-locator-status');
+    expect(status.getAttribute('role')).toBe('status');
+    expect(status.textContent?.trim()).toBe(STRINGS.favoritesAdded);
+  });
+
+  it('Story 15.2: a second activation unpins it, and the toggle reads unpressed again', async () => {
+    await go('/permissions/users');
+    toggle()?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    toggle()?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(preferences.favorites()).toEqual([]);
+    expect(toggle()?.getAttribute('aria-pressed')).toBe('false');
+    expect(
+      fixture.nativeElement.querySelector('.ocu-locator-status').textContent?.trim()
+    ).toBe(STRINGS.favoritesRemoved);
+  });
+
+  it('Story 15.2: the toggle reads pressed on return to a screen pinned elsewhere', async () => {
+    await preferences.add('favorite', 'permissions/users');
+    await go('/permissions/users');
+    expect(toggle()?.getAttribute('aria-pressed')).toBe('true');
   });
 });

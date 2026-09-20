@@ -14,6 +14,7 @@ import { DefinitionActions } from './areas/agent/definition-actions';
 import { DefinitionForm } from './areas/agent/definition-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
 import { ErrorLogDrill } from './areas/logs/error-log.store';
+import { AccountPreferences } from './core/account-preferences';
 import { AgentContext } from './core/agent-context';
 import { AgentStatus, DEFINITIONS_ROUTE } from './core/agent-status';
 import { ConnectivityService } from './core/connectivity';
@@ -30,6 +31,7 @@ import { ShellState } from './core/shell-state';
 import { STRINGS } from './core/strings';
 import { SuggestedView } from './core/suggested-view';
 import { AgentNavigator } from './shell/agent-navigator';
+import { RecentsRecorder } from './shell/recents-recorder';
 import { CommandBar } from './shell/command-bar';
 import { FaultBanner } from './shell/fault-banner';
 import { Header } from './shell/header';
@@ -184,6 +186,7 @@ export class App {
   private readonly navigation = inject(NavigationService);
   private readonly agentStatus = inject(AgentStatus);
   private readonly agentContext = inject(AgentContext);
+  private readonly accountPreferences = inject(AccountPreferences);
   private readonly suggested = inject(SuggestedView);
   private readonly scope = inject(ScopeService);
   private readonly router = inject(Router);
@@ -203,6 +206,9 @@ export class App {
   // the agent's navigation directive, so injecting it here is what brings it into existence for
   // the life of the tab (`shell/agent-navigator.ts`).
   private readonly agentNavigator = inject(AgentNavigator);
+  // Constructed for its own sake, the same way: nothing renders the recents recorder, and it has
+  // to live for the tab so every arrival at a built screen is registered (Story 15.2).
+  private readonly recentsRecorder = inject(RecentsRecorder);
   private readonly overlays = inject(OverlayStack);
   private readonly panel = inject(PanelState);
   private readonly turn = inject(TurnStore);
@@ -465,6 +471,14 @@ export class App {
       // application errors they may read in the namespace they were scoped to. The next sign-in
       // in this tab reads them again rather than rendering a departed principal's counts (AD-8).
       this.suggested.reset();
+      // The thirteenth: the favorites and recent items are one account's rows (Story 15.2,
+      // AD-50), and Home renders them. The next sign-in in this tab reads them again rather than
+      // showing a departed principal's list (AD-8).
+      this.accountPreferences.reset();
+      // The fourteenth: the recorder's own memory of the last route registered. Sign-out leaves
+      // the tab on the same URL, so a recorder that still held it would silently skip the one
+      // screen the next principal resumes on (Story 15.2, AD-8).
+      this.recentsRecorder.reset();
       return;
     }
     void this.instance.verify();
@@ -483,6 +497,11 @@ export class App {
     // The fifth: the context chip's own answer, read beside the status so the chip is never
     // showing off a definition that Enable/kill-switch just changed underneath it.
     void this.agentContext.load();
+    // The sixth: the remembered lists the locator toggle, Home's two blocks and the command box's
+    // ranking all read. Issued on every signed-in pass for the same reason the status read is --
+    // a reloaded tab reaches `signed-in` without an authentication, and Home may be the first
+    // screen it paints.
+    void this.accountPreferences.load();
     void this.runFirstLoginGate(map, status);
   }
 

@@ -21,6 +21,8 @@ import { tableDeclaration } from '../testing/table-declaration';
 import { CommandBar, SORT_MENU_OVERLAY_ID, VIEW_MENU_OVERLAY_ID } from './command-bar';
 import { CommandBox } from './command-box';
 import { ListPage } from './list-page';
+import { AccountPreferences } from '../core/account-preferences';
+import { stubAccountPreferences } from '../testing/account-preferences';
 
 /**
  * The command bar's rendered contract (EXPERIENCE.md "below the locator-bar", DESIGN.md `:1037`), including the
@@ -118,6 +120,7 @@ describe('the command bar', () => {
     viewOptionsSvc = new ViewOptions();
     TestBed.configureTestingModule({
       providers: [
+        { provide: AccountPreferences, useValue: stubAccountPreferences() },
         provideRouter([{ path: '', children: [] }, { path: '**', children: [] }]),
         { provide: NavigationService, useValue: navigation as unknown as NavigationService },
         { provide: RefreshService, useValue: refresh },

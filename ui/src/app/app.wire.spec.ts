@@ -31,6 +31,8 @@ import { stubAgentStatus } from './testing/agent-status';
 import { stubSuggestedView } from './testing/suggested-view';
 import { stubTurnStore } from './testing/turn';
 import { screenDeclaration } from './testing/screen-declaration';
+import { AccountPreferences } from './core/account-preferences';
+import { stubAccountPreferences } from './testing/account-preferences';
 
 /**
  * The one crossing left after `app.spec.ts` and the two bar specs: `app.spec.ts` mounts the real
@@ -253,6 +255,7 @@ describe('the real shell, routed to the real Home screen, sharing one real Refre
     const shellState = new ShellState({ preferences: shellPreferences });
     TestBed.configureTestingModule({
       providers: [
+        { provide: AccountPreferences, useValue: stubAccountPreferences() },
         provideRouter(routes),
         { provide: Session, useValue: new StubSession() as unknown as Session },
         { provide: InstanceService, useValue: new StubInstance() as unknown as InstanceService },

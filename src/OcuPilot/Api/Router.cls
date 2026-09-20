@@ -107,6 +107,8 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/namespaces" Method="GET" Call="Namespaces"/>
   <Route Url="/navigation" Method="GET" Call="Navigation"/>
   <Route Url="/account/password" Method="POST" Call="AccountPasswordChange"/>
+  <Route Url="/account/preferences" Method="GET" Call="AccountPreferencesRead"/>
+  <Route Url="/account/preferences" Method="POST" Call="AccountPreferencesUpdate"/>
 </Routes>
 }
 
@@ -375,6 +377,24 @@ ClassMethod Namespaces() As %Status
 ClassMethod AccountPasswordChange() As %Status
 {
     Quit ##class(OcuPilot.Api.Account).HandlePasswordChange()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /account/preferences</code> (Story 15.2):
+/// delegates to <class>OcuPilot.Api.Preferences</class> and carries no logic of its own.</p>
+/// <p>Declared at the tail of the map above, after <code>/account/password</code>. The third
+/// ordering invariant binds a prefix family -- a shorter route whose Url matches a longer one's
+/// leading segments -- and this route shares none: <code>/account/password</code> is the same
+/// length and matches nothing here.</p>
+ClassMethod AccountPreferencesRead() As %Status
+{
+    Quit ##class(OcuPilot.Api.Preferences).HandleRead()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>POST /account/preferences</code> (Story 15.2):
+/// delegates to <class>OcuPilot.Api.Preferences</class> and carries no logic of its own.</p>
+ClassMethod AccountPreferencesUpdate() As %Status
+{
+    Quit ##class(OcuPilot.Api.Preferences).HandleUpdate()
 }
 
 /// <p>Resolves the authenticated caller for this request. Returns <code>$Username</code> —

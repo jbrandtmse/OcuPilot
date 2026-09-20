@@ -12,6 +12,7 @@ import {
 } from '@angular/core';
 import { Router } from '@angular/router';
 
+import { AccountPreferences, FAVORITE_KIND } from '../core/account-preferences';
 import { decodeEntityId } from '../core/entity-id';
 import {
   NavigationService,
@@ -95,6 +96,21 @@ const UNGATED_SEGMENT = {
  * screens their own `screenVerdict` refuses, is gated here too rather than navigating into a
  * refusal page.
  *
+ * **The favorite toggle sits beside the screen segment** (Story 15.2, AD-50). It is the one
+ * control the shell offers for pinning a screen, it is on every route that names one, and
+ * `aria-pressed` is what says whether this screen is pinned -- so the same control reads the state
+ * and changes it. Home is the exception and carries none: it declares the empty route, it is where
+ * the two lists are read, and the instance refuses an empty route outright.
+ *
+ * **The confirmation is announced from this component's own polite region**, not from the toggle:
+ * the toggle's accessible name changes as a consequence of the change, and a name that changes
+ * under focus is not an announcement of what happened. The region is visually hidden
+ * (`account-menu.ts`'s idiom) rather than a caption, so one toggle does not leave a sentence
+ * standing beside the screen title for the component's life. It is written **after** the write
+ * settles and only when the store's answer actually moved, so the cap's refusal announces
+ * nothing rather than announcing a pin that did not happen; clearing it first is what gives a
+ * repeat action a change to announce at all.
+ *
  * Every control-flow condition is a paren-free member reference, for the reason `sign-in.ts`
  * records: `ui/tools/client-lint.mjs`'s blanker matches `@if` plus one parenthesised group.
  */
@@ -132,6 +148,17 @@ const UNGATED_SEGMENT = {
             >
           }
         </h2>
+        @if (favoriteToggle) {
+          <button
+            type="button"
+            class="ocu-locator-favorite"
+            [attr.aria-pressed]="favoritePressed"
+            [attr.aria-label]="favoriteLabel"
+            (click)="toggleFavorite()"
+          >
+            <span class="ocu-locator-favorite-glyph" aria-hidden="true">{{ favoriteGlyph }}</span>
+          </button>
+        }
       } @else {
         @if (segment.navigates) {
           <span class="ocu-locator-link-slot">
@@ -161,6 +188,9 @@ const UNGATED_SEGMENT = {
         }
       }
     }
+    <span class="ocu-locator-status ocu-visually-hidden" role="status">{{
+      favoriteAnnouncement
+    }}</span>
   </nav>`,
 })
 export class LocatorBar {
@@ -170,6 +200,19 @@ export class LocatorBar {
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
   private readonly injector = inject(Injector);
   private readonly changeDetector = inject(ChangeDetectorRef);
+  private readonly preferences = inject(AccountPreferences);
+
+  /** The polite region's text: empty until a toggle has changed the store, then its sentence. */
+  private readonly announcement = signal('');
+
+  /**
+   * The two glyphs the toggle draws, produced in TypeScript so no non-ASCII byte enters a
+   * template (Rule 14). Both are `aria-hidden`: the control's accessible name is its
+   * `aria-label`, which says what activating it does.
+   */
+  protected readonly pinnedGlyph = '\u2605';
+
+  protected readonly unpinnedGlyph = '\u2606';
 
   /** The arrival token last focused (Story 4.7, AC5), so a re-render for an unrelated reason --
    * a navigation-map verdict changing, a router event on the same route -- does not steal focus
@@ -324,18 +367,83 @@ export class LocatorBar {
     });
     const stopNavigation = this.navigation.subscribe(() => this.bump());
     const stopShell = this.shell.subscribe(() => this.bump());
+    // The toggle's pressed state is the store's answer, so this bar re-renders when another tab's
+    // change, or this one's own write, settles it.
+    const stopPreferences = this.preferences.subscribe(() => this.bump());
     syncStoreSubscription();
 
     inject(DestroyRef).onDestroy(() => {
       stopRouter.unsubscribe();
       stopNavigation();
       stopShell();
+      stopPreferences();
       stopStore?.();
     });
   }
 
   protected get segments(): readonly LocatorSegment[] {
     return this.resolved();
+  }
+
+  /** Whether this route is one that can be pinned: a built screen that names a route at all. */
+  protected get favoriteToggle(): boolean {
+    return this.favoriteRoute() !== '';
+  }
+
+  /** `"true"` while this screen is pinned, and `"false"` while it is not -- never absent. */
+  protected get favoritePressed(): string {
+    return this.isPinned() ? 'true' : 'false';
+  }
+
+  /** The control's accessible name: what activating it does, not what it currently is. */
+  protected get favoriteLabel(): string {
+    return this.isPinned() ? STRINGS.favoritesRemove : STRINGS.favoritesAdd;
+  }
+
+  protected get favoriteGlyph(): string {
+    return this.isPinned() ? this.pinnedGlyph : this.unpinnedGlyph;
+  }
+
+  protected get favoriteAnnouncement(): string {
+    return this.announcement();
+  }
+
+  /**
+   * Pin or unpin the screen on display, and announce which happened once it has.
+   *
+   * The navigation is never awaited on this, but the announcement is: the store re-settles from
+   * the instance's own answer, so a refusal -- an unknown route, the favorites cap, an instance
+   * that did not reply -- leaves the toggle unpressed and says nothing, rather than confirming a
+   * change that was refused. Surfacing the refusal itself needs a published string and is not
+   * this pass's.
+   */
+  protected toggleFavorite(): void {
+    const route = this.favoriteRoute();
+    if (route === '') return;
+    const pinned = this.preferences.isFavorite(route);
+    // Cleared first, so pinning a second screen has a change to announce rather than re-writing
+    // the sentence already standing, which a live region does not read out again.
+    this.announcement.set('');
+    const pending = pinned
+      ? this.preferences.remove(FAVORITE_KIND, route)
+      : this.preferences.add(FAVORITE_KIND, route);
+    void pending.then(() => {
+      if (this.preferences.isFavorite(route) === pinned) return;
+      this.announcement.set(pinned ? STRINGS.favoritesRemoved : STRINGS.favoritesAdded);
+      this.changeDetector.markForCheck();
+    });
+  }
+
+  /** The route the toggle acts on, or `''` when this screen names none (Home). */
+  private favoriteRoute(): string {
+    this.generation();
+    return this.screen()?.route ?? '';
+  }
+
+  private isPinned(): boolean {
+    this.generation();
+    const route = this.favoriteRoute();
+    return route !== '' && this.preferences.isFavorite(route);
   }
 
   /**

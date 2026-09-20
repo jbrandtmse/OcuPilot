@@ -1115,6 +1115,41 @@ export const STRINGS = {
   /** EXPERIENCE.md:381 */
   accountPasswordChanged: 'Password changed',
 
+  // Story 15.2's fifteen: the two Home blocks' headings, empty states, per-row remove names and
+  // Clear controls, the locator bar's favorite toggle in its two states, and the five polite
+  // confirmations the two surfaces announce. The two `*RemoveNamed` values carry a <name>
+  // placeholder the row resolves to the screen it removes.
+  /** EXPERIENCE.md:382 */
+  favoritesHeading: 'Favorites',
+  /** EXPERIENCE.md:382 */
+  favoritesEmpty: 'No favorites yet.',
+  /** EXPERIENCE.md:382 */
+  favoritesAdd: 'Add to favorites',
+  /** EXPERIENCE.md:382 */
+  favoritesRemove: 'Remove from favorites',
+  /** EXPERIENCE.md:382 */
+  favoritesRemoveNamed: 'Remove <name> from favorites',
+  /** EXPERIENCE.md:382 */
+  favoritesClear: 'Clear favorites',
+  /** EXPERIENCE.md:382 */
+  favoritesAdded: 'Added to favorites',
+  /** EXPERIENCE.md:382 */
+  favoritesRemoved: 'Removed from favorites',
+  /** EXPERIENCE.md:382 */
+  favoritesCleared: 'Favorites cleared',
+  /** EXPERIENCE.md:382 */
+  recentsHeading: 'Recent items',
+  /** EXPERIENCE.md:382 */
+  recentsEmpty: 'No recent items yet.',
+  /** EXPERIENCE.md:382 */
+  recentsRemoveNamed: 'Remove <name> from recent items',
+  /** EXPERIENCE.md:382 */
+  recentsClear: 'Clear recent items',
+  /** EXPERIENCE.md:382 */
+  recentsRemoved: 'Removed from recent items',
+  /** EXPERIENCE.md:382 */
+  recentsCleared: 'Recent items cleared',
+
   // Two connectivity sentences EXPERIENCE.md publishes outside the Fixed strings table, each
   // authorized by its own targeted extractor in `ui/tools/strings.test.mjs`, never by being
   // added to REQUIRED_ALONGSIDE_TABLE, whose own comment calls that the bypass it must not

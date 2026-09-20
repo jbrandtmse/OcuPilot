@@ -12,6 +12,8 @@ import type { ScreenDeclaration } from '../core/screens.generated';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
 import { Header } from './header';
+import { AccountPreferences } from '../core/account-preferences';
+import { stubAccountPreferences } from '../testing/account-preferences';
 
 /**
  * The header's rendered contract (DESIGN.md `:1007-1017`, EXPERIENCE.md "`{spacing.header-height}` band").
@@ -99,6 +101,7 @@ describe('the header', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [
+        { provide: AccountPreferences, useValue: stubAccountPreferences() },
         provideRouter([
           { path: '', children: [] },
           { path: 'permissions/users', children: [] },
@@ -221,6 +224,7 @@ describe('the header', () => {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
+        { provide: AccountPreferences, useValue: stubAccountPreferences() },
         provideRouter([{ path: '', children: [] }]),
         {
           provide: NavigationService,
