@@ -32,7 +32,7 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
-import { authHeader as sharedAuthHeader } from './panel-spec.mjs';
+import { authHeader as sharedAuthHeader, saveAndSettle } from './panel-spec.mjs';
 import {
   armProbeDefinition,
   disarmProbeDefinition,
@@ -574,14 +574,9 @@ test('Cap follows agent-switch: raising the row cap through the Switches screen 
       node.value = '200';
       node.dispatchEvent(new Event('input', { bubbles: true }));
     });
-    await page.click('.ocu-form-bar-actions .ocu-button-primary');
-    await namedWaitForFunction(
-      page,
-      () => document.querySelector('#ocu-switches-contextRowCap')?.value === '200',
-      [],
-      '#ocu-switches-contextRowCap to read "200" after clicking Save',
-      (p) => p.$eval('#ocu-switches-contextRowCap', (node) => node.value).catch(() => '(field absent)')
-    );
+    // Not `value === '200'`: the field read that the moment it was typed, before any request left.
+    // The navigation below then fired into a page still saving, which is DW-1169's cause.
+    await saveAndSettle(page, config);
 
     // This is the leg's most timing-sensitive step: navigateViaSideBar's own doc comment records
     // that a synthetic click landing right after a Switches save was once observed to leave

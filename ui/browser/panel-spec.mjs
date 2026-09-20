@@ -73,3 +73,29 @@ export async function signedInAt(browser, config, url, viewport = config.viewpor
   await page.waitForSelector('app-panel [role="separator"]', { timeout: config.navigationTimeoutMs });
   return { context, page };
 }
+
+/**
+ * Press a form page's Save and wait until the save has actually COMPLETED in the browser.
+ *
+ * The obvious wait -- that the field now reads what was typed into it -- is vacuous: the field read
+ * that value the moment the user typed it, before any request left. An out-of-band `fetch` is not
+ * enough either; it proves the INSTANCE stored the value, not that this page's save promise
+ * resolved. Meanwhile `switches.store.ts`'s `save()` opens with `if (this.savingValue) return false`
+ * and the page's handler with `if (this.busyFlag) return`, so a second press inside that window is
+ * ABSORBED -- no error, no effect, and the next wait times out with nothing naming the cause.
+ *
+ * `savedValue` is cleared when a save starts and set when one succeeds, and the form bar renders it
+ * as a `role="status"` element, so waiting for that element is waiting for the window to close
+ * (DW-1169).
+ */
+export async function saveAndSettle(page, config) {
+  await page.click('.ocu-form-bar-actions .ocu-button-primary');
+  try {
+    await page.waitForSelector('.ocu-form-bar-status [role="status"]', { timeout: config.navigationTimeoutMs });
+  } catch (cause) {
+    throw new Error(
+      'expected the form bar to report a completed save after pressing Save; it never did ' +
+        `(underlying: ${cause.message}). A press landing inside a previous save's window is absorbed.`
+    );
+  }
+}

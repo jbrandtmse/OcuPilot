@@ -30,7 +30,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
-import { authHeader as sharedAuthHeader } from './panel-spec.mjs';
+import { authHeader as sharedAuthHeader, saveAndSettle } from './panel-spec.mjs';
 import { requireFreeSlot } from './turnprobe-spec.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -276,11 +276,10 @@ test('Story 4.4: the context row cap saves as a number and renders the server vi
       node.value = '500';
       node.dispatchEvent(new Event('input', { bubbles: true }));
     });
-    await page.click('.ocu-form-bar-actions .ocu-button-primary');
-    await page.waitForFunction(
-      () => document.querySelector('#ocu-switches-contextRowCap')?.value === '500',
-      { timeout: config.navigationTimeoutMs }
-    );
+    // Not `value === '500'`: the field read that the moment it was typed, before any request left,
+    // so that wait is vacuous and the NEXT press lands inside this save's window and is absorbed
+    // (DW-1169).
+    await saveAndSettle(page, config);
     const stored = await (
       await fetch(`${config.origin}${SWITCHES_PATH}`, { headers: { Authorization: authHeader() } })
     ).json();
