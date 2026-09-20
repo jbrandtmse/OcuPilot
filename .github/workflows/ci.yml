@@ -118,10 +118,23 @@ jobs:
       - name: install the pinned headless browser
         working-directory: ui
         run: npx puppeteer browsers install chrome
+      # DW-439's measurement, on the record before the bind that may fail: 52776 sits inside the
+      # range a Linux runner allocates outbound source ports from (the kernel default is
+      # 32768-60999), so a transient occupant is the explanation the ledger entry could only
+      # infer. 1975 is below that floor and cannot be taken that way. This runs BEFORE the bind
+      # that may fail, so the range is on the record even for a run that dies at the bring-up.
+      - name: the runner's ephemeral port range
+        run: cat /proc/sys/net/ipv4/ip_local_port_range
       - name: bring up a throwaway container
         run: sh scripts/ci-throwaway.sh up
       - name: wait for readiness to report installed
         run: sh scripts/wait-readiness.sh --url http://localhost:52776/api/ocupilot/readiness/
+      # Before the long suites, so a vendor drift fails in seconds rather than forty minutes in:
+      # the instance's own generated admin API spec against the derived path-and-method table
+      # vendored at a named upstream commit (AD-27).
+      - name: admin API drift against the vendored table
+        working-directory: ui
+        run: node tools/admin-spec.mjs --origin http://localhost:52776
       - name: objectscript suite, one class at a time
         working-directory: ui
         run: node tools/ci-runner.mjs --container ocupilot-ci

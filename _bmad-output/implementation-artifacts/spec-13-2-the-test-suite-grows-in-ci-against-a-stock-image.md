@@ -2,10 +2,10 @@
 title: 'Story 13.2: The test suite grows in CI against a stock image'
 type: 'feature'
 created: '2026-09-19'
-status: 'ready-for-dev'
-baseline_revision: '4466d102bcd6bf41e84216e325c4165e464695ac'
+status: 'done'
+baseline_revision: '5a119d1a8c124b92c61c423ca94d76d86cce3318'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context: []
 warnings: ['oversized']
 deferred:
@@ -37,7 +37,7 @@ deferred:
 
 | Scenario | Input / State | Expected Output / Behavior | Error Handling |
 |----------|--------------|---------------------------|----------------|
-| Endpoint floor, steady state | The 38 routes the three OcuPilot `UrlMap`s declare; a probe row for each | Each probe is issued and its response is the declared disposition — an AD-12 envelope, never the router's route-not-found | No error expected |
+| Endpoint floor, steady state | The 37 routes the three OcuPilot `UrlMap`s declare; a probe row for each | Each probe is issued and its response is the declared disposition — an AD-12 envelope, never the router's route-not-found | No error expected |
 | Endpoint floor, route added with no probe | Epic 5's confirm route merges forward | Red, naming the route and "add a probe row" | Fails the class, not the job silently |
 | Endpoint floor, probe row for a route that no longer exists | A route deleted from `Router.cls` | Red, naming the orphan probe row | Both-directions equality |
 | Surface floor, steady state | 40 built descriptors, 0 write tools; a coverage row per member | Every member has a row naming a compiled test method the sweep executes; corpus rows counted and reported | No error expected |
@@ -65,7 +65,7 @@ Anchors re-read after merge `dd9db59` (slot C). That merge touched only `scripts
 - `scripts/smoke.sh` — 194 lines. `$REPORT` captured whole at `:169-172` (prompts and blanks already stripped); `:183-185` is the `FAIL)` arm whose line names no check. A report row is `"  " _ <outcome padded to 9> _ <name> _ [" -- " _ reason]` (rendered at `src/OcuPilot/Install/Smoke.cls:1199`, **read-only**), outcomes exactly `pass|fail|pending|skipped`, so the failing names parse in the shell without touching the class. **Ours.**
 - `ui/tools/client-lint.mjs` — 629 lines. `OFF_ORIGIN_URL_RE` `:318-319`, `ALLOWED_ABSOLUTE_URLS` `:327-335`, `checkOffOriginUrls` `:343-357`, `lintClient()` `:531-587` (the `ui/src` walk `:538-551`), `checkTestingImports`'s `.spec.ts` skip `:416` — the existing precedent for the exemption. `RULE_FAMILIES` `:595-602` (the CLI's count is derived from it, `:614`). Every error is `{file, line, literal, rule}`. `ui/tools/client-lint.test.mjs` — 530 lines; inline-string fixtures are the dominant form (`:39-45`), a real temp dir only to drive the CLI (`:498-517`). **Ours.**
 - `ui/src/app/core/reply.ts:161` — `url.protocol === 'http:'`, a scheme literal with no `+`. The new rule must not flag it. The eight concatenated-URL sites are in `ui/src/app/shell/reply.spec.ts` and `panel.spec.ts`, both **read-only** and `panel.spec.ts` changed on Epic 5; the chosen fix edits neither. `ui/tools/build-output.test.mjs:205,287` is the bundle-level backstop that makes the spec-file exemption sound.
-- `src/OcuPilot/Api/Router.cls` — 35 routes; `Api/Readiness.cls` — `GET /`; `Api/StaticHandler.cls` — `GET` and `HEAD` on `/(.*)`. **38 today.** `Router.cls` is changed on Epic 5 — read-only here; the coverage class reads the compiled `UrlMap`, so it tracks Epic 5's additions automatically. `Api/Confirm.cls` does not exist on this branch and no confirm or proposal route is declared.
+- `src/OcuPilot/Api/Router.cls` — 34 routes; `Api/Readiness.cls` — `GET /`; `Api/StaticHandler.cls` — `GET` and `HEAD` on `/(.*)`. **37 today**, counted from the `<Route ` declarations and confirmed against the compiled `UrlMap`s on `ocupilot-slot-b`. `Router.cls` is changed on Epic 5 — read-only here; the coverage class reads the compiled `UrlMap`, so it tracks Epic 5's additions automatically. `Api/Confirm.cls` does not exist on this branch and no confirm or proposal route is declared.
 - `src/OcuPilot/Screen/Registry.cls:84` `Descriptors(Output pList)` — embedded-SQL enumeration over `%Dictionary.CompiledClass`; a query that did not open or a fetch that stopped early is an error, never a shorter list. `Screen/Descriptor/Base.cls:203` `IsBuilt()` reads the `"built"` key of `XData Declaration`. 40 descriptor classes today, **all 40 built**. `Screen/Registry.cls` is changed on Epic 5 — called, never edited.
 - `src/OcuPilot/Screen/Tool/Registry.cls:104` `ListTools(Output pTools As %DynamicArray)` → `{name, kind, class, descriptor}`, kind from `Parameter KIND` (`Tool/Base.cls:30`, legal values `read,write` at `Registry.cls:36`), excluding `OcuPilot.Test.` (`:27`). **No tool classifies `write` on this branch**; `Screen/Tool/Classification.cls:21-26` says so and its `XData Entries` is `{}`. Epic 5 adds `Tool/Write.cls` (`KIND = "write"`) and `Tool/WebAppUpdate.cls` (`webapp.list.update`). `Tool/Registry.cls` is **not** changed on Epic 5.
 - `src/OcuPilot/Test/AdminInventory.cls:39,118,157,276` and `src/OcuPilot/Test/Inventory.cls:14-42` — the XData-plus-`Derive`/`Stored` idiom to copy: `%Dictionary.XDataDefinition.IDKEYOpen` + `Data.ReadLine()` parsing, one accumulated `tDrift` string naming each member, a single `$$$AssertEquals(tDrift, "", ...)`, and `unreadable` as a value rather than a fallback. **Read-only: copy the idiom, do not edit.** Neither is changed on Epic 5.
@@ -118,9 +118,70 @@ Anchors re-read after merge `dd9db59` (slot C). That merge touched only `scripts
 - 2026-09-19, **orchestrator decision on the AC4 license question**: vendor the derived v2 path-and-method table, not `mainspec_v2.json`. The upstream repository declares no license (`license: null`, public, no LICENSE/COPYING/NOTICE at root, verified by the lead via the GitHub API), and **this repository is itself public**, so vendoring the 1 MB document is the redistribution regardless of what the bundle or the IPM archive contains - the plan's exclusion proposal measured the wrong boundary. A table of paths and methods is a set of facts about an API rather than the expressive document describing it, so option 3 moots the licensing question instead of requiring a ruling on it. Four constraints carry into the re-plan: (a) the table records the upstream **commit** SHA `f764aea427e5c0b1dd08a4c18a0457e0ff7b3b34` (last commit touching `mainspec_v2.json`, 2026-09-14T18:53:01Z; the file blob is `373e8627e755c0cb89fee855fb70514f48376d60`, 1,004,473 bytes; the repository's default branch is `master`, not `main`), because the SHA is what makes a drift attributable to a named source; (b) the table is **derived by a checked-in script or documented one-liner**, never hand-transcribed, so the next reader re-derives rather than trusts - the table is the artifact, the derivation is the evidence; (c) `ATTRIBUTIONS.md` cites the repository, the commit SHA and the retrieval date, and states in one line that the document is deliberately not vendored and why; (d) the spec says plainly that the drift test pins **instance versus upstream-at-SHA**, which is what it actually tests - the criterion must not keep implying the whole document is present. If the owner later wants the full file vendored, that is the distributor's call and does not reopen this story: the table is a subset, not a contradiction.
 - 2026-09-19, lead Rule 5 **tier-1 amendment (apply-and-report)**: acceptance criterion 3 in `epics.md` replaced. Previous wording: "Given any polish-week change / When it lands / Then the suite proves no Release 1 screen and no Release 1 agent write regressed." That is a negative over an open set with an unbounded subject, so it has no pinning test short of deleting the suite (Rule 19), and its second half quantifies over the Release 1 agent write set, which has no members on this branch. Amended to the plan's recommended form, keyed to two closed derivable sets, with a both-directions derived-versus-declared check. **Intent unchanged** - a polish-week change still may not silently break a Release 1 screen or agent write; the amendment makes that measurable and falsifiable. The write half becomes binding at the Rule 22 integrate-forward once Epic 5 lands, with no change to the mechanism.
 - 2026-09-19, lead **Rule 20 spine write**: AD-27's clause "its 185 v2 paths match the 2026.2 instance's own generated spec path for path" corrected at origin. Re-measured by the lead, not taken from the plan: the upstream blob `373e8627` declares 185 `/v2/*` paths, the instance's generated spec (`GET /api/mgmnt/v1/%25SYS/spec/api/admin` on `ocupilot-b-ci`, HTTP 200, 305 paths) declares 185, **184 are common**, and the HTTP method set is identical on all 184. The single difference is `/v2/security/oauth2/revoke` upstream versus `/v2/security/oauth2/server/revoke` on the instance. A first naive diff of mine reported 75 method-set differences; those were OpenAPI's path-level `parameters` key, not HTTP verbs - counting verbs only, 0, which is what the plan reported. Recorded so the wrong number is not mined later.
-- 2026-09-19, **re-plan (cycle_iteration 2), intent-contract clauses carrying the two amendments**. The preserved `<intent-contract>` described AC4 as "a vendored `mainspec_v2.json` with its commit SHA" and carried matrix rows keyed to that file and its sha256; both were superseded by the orchestrator's decision above, and the AC3 amendment added a second closed-set floor the contract did not mention. Preserving those clauses verbatim would have made the spec contradict its own acceptance criteria, which the ready-for-development standard refuses. The Approach sentence and the Admin-spec matrix rows are therefore restated to the amended criteria with an inline `[AMENDED 2026-09-19 — see the story change log]` marker, a surface-floor row and a failed-derivation row are added, the endpoint-floor row count is corrected from 37 to **38** (`Router.cls` declares 35, `Readiness.cls` 1, `StaticHandler.cls` 2 — re-counted, not carried), and the smoke row is re-keyed from DW-1119 to DW-1079 since the orchestrator re-owned DW-1119 to `range-end-cleanup`. Everything else in the contract is unchanged. **Verified by the runner on 2026-09-19, not carried from the previous pass:** the commit-pinned raw URL answers HTTP 200 with 1,004,473 bytes hashing to `1ab154c7…`; deriving from it gives 190 paths of which **185** are `/v2/*`, carrying **271** verb entries, document version **OpenAPI 3.0.0**; the instance's generated spec on `ocupilot-b-ci` answers HTTP 200 with 305 paths of which 185 are `/v2/*`, document version **Swagger 2.0**; common 184, method-set differences **0**, the one difference `/v2/security/oauth2/revoke` against `/v2/security/oauth2/server/revoke`.
+- 2026-09-19, **re-plan (cycle_iteration 2), intent-contract clauses carrying the two amendments**. The preserved `<intent-contract>` described AC4 as "a vendored `mainspec_v2.json` with its commit SHA" and carried matrix rows keyed to that file and its sha256; both were superseded by the orchestrator's decision above, and the AC3 amendment added a second closed-set floor the contract did not mention. Preserving those clauses verbatim would have made the spec contradict its own acceptance criteria, which the ready-for-development standard refuses. The Approach sentence and the Admin-spec matrix rows are therefore restated to the amended criteria with an inline `[AMENDED 2026-09-19 — see the story change log]` marker, a surface-floor row and a failed-derivation row are added, the endpoint-floor row count is **37** (`Router.cls` declares 34, `Readiness.cls` 1, `StaticHandler.cls` 2 — counted from the `<Route ` declarations during implementation; the re-plan's 38 was one too many), and the smoke row is re-keyed from DW-1119 to DW-1079 since the orchestrator re-owned DW-1119 to `range-end-cleanup`. Everything else in the contract is unchanged. **Verified by the runner on 2026-09-19, not carried from the previous pass:** the commit-pinned raw URL answers HTTP 200 with 1,004,473 bytes hashing to `1ab154c7…`; deriving from it gives 190 paths of which **185** are `/v2/*`, carrying **271** verb entries, document version **OpenAPI 3.0.0**; the instance's generated spec on `ocupilot-b-ci` answers HTTP 200 with 305 paths of which 185 are `/v2/*`, document version **Swagger 2.0**; common 184, method-set differences **0**, the one difference `/v2/security/oauth2/revoke` against `/v2/security/oauth2/server/revoke`.
 
 ## Review Triage Log
+
+### 2026-09-19 — Review pass
+
+- verdicts: 56 findings — high 0, medium 30, low 25, false 1, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` `no-concatenated-url` catches only one split point — verified by calling `checkOffOriginUrls` directly: `'https:' + '//host'` flags, `'https://' + 'host'` and `'https:/' + '/host'` both pass, and the whole-URL rule misses them too. `SCHEME_FRAGMENT_RE` widened to a scheme with any trailing-slash count and a leading-slash host; a fixture per split point added.
+  - `[low]` `[reject]` the `.spec.ts` early return also retires the whole-URL rule for spec files — spec-bound, closed by-design: the Execution task says "Exempt `*.spec.ts` from rule family 3", and family 3 is `no-off-origin-url` in both halves.
+  - `[low]` `[patch]` `tableProblems`' doc comment claims a hand-edited table fails before any diff runs; a count-preserving canonical edit passes — sentence replaced with what it actually catches and a plain statement that a count-preserving edit is undetectable without the unvendored document.
+  - `[medium]` `[patch]` `--fetch` is inert and `--derive` alone reaches GitHub, contradicting the file's own "CI never fetches" contract — `--derive` now refuses without `--from` or `--fetch`.
+  - `[low]` `[patch]` a stale `EXPECTED_PATHS`/`EXPECTED_VERBS` after a pin move reads as a hand edit — both count messages now name the constants to update.
+  - `[medium]` `[patch]` no test executes the admin-spec CLI — grouped with the failure-path gap below; the CLI is now driven against a local server fixture.
+  - `[medium]` `[patch]` `main()` has no rejection handler and `--origin`/`--from` take an unvalidated next token — `.catch` added; a missing or `--`-prefixed value exits 2 with the usage line.
+  - `[medium]` `[patch]` "52776 and 1975 sit inside the range a Linux runner allocates outbound source ports from" is false for 1975 (kernel default 32768-60999) — corrected at all three origins and in the exhaustion message, which now says which port the measured range bears on.
+  - `[medium]` `[patch]` the bind retry fires three attempts back to back, so the transient occupant it names cannot have cleared — a growing wait added, env-overridable so the stubbed tests stay fast.
+  - `[low]` `[reject]` the ephemeral-range step has no `|| true` and would hard-fail a non-Linux runner — wontfix-theoretical: all three jobs are `runs-on: ubuntu-24.04`, where the proc file always exists. reopen_if a self-hosted or non-Linux runner is added.
+  - `[medium]` `[patch]` `armedClasses` collects every `GetEnviron` literal while the declared side matches only `OCUPILOT_ALLOW_*`, so an unrelated env read would redden the roster gate blaming the rosters — derived side filtered to the same population.
+  - `[medium]` `[patch]` the arming-`Parameter` derivation is a closed list of four spellings, so a fifth spelling leaves a class armed and invisible to both sides — now matches any parameter whose value is `OCUPILOT_ALLOW_*`; verified a fifth spelling is derived and a non-arming parameter is not.
+  - `[low]` `[patch]` the hard-asserted write-tool zero contradicts the "binds automatically with no later edit" claim made four times — claim corrected in the class header and method doc; the zero is kept, as specified.
+  - `[medium]` `[patch]` the `bytes` disposition asserts only that the row says "bytes", and `CodeOf()` answers `""` for any non-JSON body, so both `StaticHandler` probes pass on a 404 HTML page — 2xx and a non-empty body now asserted (HEAD excepted, documented at the assertion).
+  - `[low]` `[reject]` no read probe asserts a 2xx — a 5xx AD-12 envelope still satisfies the contracted disposition, and a blanket 2xx is wrong for the `:param` probes that legitimately 404; the fix adds branching for a defect the floor does not claim to catch.
+  - `[medium]` `[patch]` the `POST /turn/abandon` probe's `why` asserts a precondition it never reads, and a turn job can outlive the class that spawned it — the row now carries `expect="abandoned=0"` and the probe loop asserts it.
+  - `[low]` `[patch]` `Parameter PROBEID` is dead while `ocupilot-coverage-probe` is hand-written into nine paths — made load-bearing by the path-versus-url rebuild below.
+  - `[low]` `[patch]` `Attribute()` matches any attribute name *ending* in the requested name — anchored on a preceding space in both classes; now load-bearing, since `why` and `substitutewhy` coexist on one row.
+  - `[medium]` `[patch]` `DefinitionsFaults` resets every fixture at both ends except `ProviderStub`, leaving a queued unconsumed answer behind — reset added to both hooks.
+  - `[low]` `[patch]` `CredentialRepoint`'s header does not state that every test needs the credentials rung — one sentence added naming the license and namespace requirement.
+  - `[low]` `[patch]` `ATTRIBUTIONS.md` asserts in prose that the table reaches neither the bundle nor the IPM archive and nothing holds it — a test now reads `module.xml` and asserts no `<FileCopy>` names `spec/`.
+  - `[low]` `[reject]` nothing schedules a revisit of the pin — wontfix-accepted: an expiry would make the gate depend on wall-clock time, and hermeticity is the property the design bought. reopen_if the 2027.1 upgrade lands, which the `--origin` gate itself surfaces.
+  - `[medium]` `[patch]` the bind retry has no backoff — grouped with the retry-delay entry above.
+  - `[medium]` `[patch]` the bring-up is captured rather than streamed, so a `--wait` that hangs until job cancellation logs nothing — replaced with the POSIX exit-code-to-file plus `tee` form; the three stubbed bind tests pass unchanged.
+  - `[low]` `[reject]` a report row whose outcome is outside `pass|fail|pending|skipped` is never named — wontfix-theoretical: `OcuPilot.Install.Smoke.Note()` is the only writer and its contract fixes those four.
+  - `[low]` `[reject]` a check name containing whitespace truncates at awk's `$2` — wontfix-theoretical: every name is a single identifier; the fix adds parsing for a case that cannot arise.
+  - `[medium]` `[patch]` `--origin`/`--from` with no following argument — grouped with the argument-validation entry.
+  - `[medium]` `[patch]` `main()` has no `.catch` — grouped with the argument-validation entry.
+  - `[medium]` `[patch]` `--derive` with neither flag fetches — grouped with the `--fetch` entry.
+  - `[low]` `[patch]` a `UrlMap` carrying `<Map Prefix= Forward=>` is silently under-covered — `Derive()` now refuses such a block with an error naming the class.
+  - `[medium]` `[patch]` a `bytes` probe answering 404 or 500 passes — grouped with the `bytes` disposition entry.
+  - `[medium]` `[patch]` a non-`OCUPILOT_ALLOW_` env read reddens the roster gate — grouped with the `armedClasses` entry.
+  - `[medium]` `[patch]` an arming parameter outside the four spellings — grouped with the parameter-allowlist entry.
+  - `[medium]` `[patch]` the `ProviderStub` leak — grouped with the hook-reset entry.
+  - `[low]` `[patch]` a write tool whose `name` is empty writes a `""` subscript `$Order` never reaches — now an error naming the class.
+  - `[medium]` `[patch]` a URL split anywhere else evades both rules — grouped with the concatenation entry.
+  - `[low]` `[reject]` the `.spec.ts` early return retires `OFF_ORIGIN_URL_RE` — grouped with the exemption entry, by-design.
+  - `[low]` `[reject]` "the class performs no write" is overstated — the class header already names both exceptions in the following sentence; the remaining overstatement is in this build's spec, which a review may not edit.
+  - `[medium]` `[patch]` `compare()`, `derive()` and `main()` are unexported and unexecuted, so the `--origin` gate's whole failure path is untested — changing its drift `return 1` to `return 0` left the suite green. The CLI is now driven against a local `http.createServer` fixture across four drift shapes plus the clean case; the mutation reddens exactly those four.
+  - `[medium]` `[patch]` a probe row's `path` is tied to nothing, so a row copied from a neighbour with a stale path passes both tests — the expected path is now rebuilt from the declared `url` with `PROBEID` substituted, the web-application prefix read from `Install/Roster`; the one real-identifier substitution declares itself and its reason.
+  - `[medium]` `[patch]` AC2's named members are pinned by a class-list equality that cannot see a deleted method — a third `<member/>` roster added, checked by the existing `PinProblem`; the three named test classes were not edited.
+  - `[medium]` `[patch]` `Calls() = 0` reads 0 with and without the guard, so the counter was never shown live on this path — the test now drives `ConnectionOutcome` with the row intact first and observes `Calls() = 1` and the queued answer consumed.
+  - `[medium]` `[patch]` AC3's write half compares two empty sets and had never been falsified — the both-directions comparison is extracted into `Drift()` and driven over synthetic sets in each direction; inverting a `$Data` test reddens it.
+  - `[low]` `[patch]` the `.spec.ts` exemption cites a backstop narrower than claimed — comment corrected to name `ui/tsconfig.app.json`'s `"files"` as what keeps a spec out of the bundle, and to state exactly what `build-output.test.mjs` checks.
+  - `[medium]` `[patch]` `--derive` silently fetches — grouped with the `--fetch` entry.
+  - `[medium]` `[patch]` the arming allowlist — grouped with the parameter-allowlist entry.
+  - `[medium]` `[patch]` the bring-up is captured not streamed — grouped with the streaming entry.
+  - `[low]` `[patch]` the route set is derived by string-scanning `<Route ` lines and `<Map>` is unparsed — grouped with the `<Map>` refusal entry.
+  - `[low]` `[reject]` both floors read the compiled instance while every matrix trigger is a source event — by-design: the Design Notes choose the registries deliberately, and the `instance` job builds the throwaway from the checkout, so the two coincide where the gate runs.
+  - `[low]` `[reject]` the two floors differ in strength and 20 of 40 screen rows share one corpus method — contracted: the matrix asks only that corpus rows be counted and reported, which the class does and bounds with `tCorpus < tChecked`. The `bytes` half of this divergence is patched above.
+  - `[low]` `[patch]` every enforced admin-table check lives inside the repo, so the hand-edit escape is narrowed rather than closed — grouped with the `tableProblems` claim correction.
+  - `[low]` `[reject]` the bind classifier's four literals are pinned only by a fabricated fixture — wontfix-accepted: an unmatched message takes the exit-at-once path, which is the safe direction. reopen_if a real CI bind failure is seen whose message matches none of the four.
+  - `[low]` `[reject]` the DW-1079 report shape is re-declared in the test rather than derived from `Install/Smoke.cls` — wontfix-accepted: that class is on the never-edit list and the `awk` depends only on field order, not padding. reopen_if `Smoke.cls` changes its row renderer.
+  - `[medium]` `[patch]` the arming derivation is structural but over a closed list of spellings — grouped with the parameter-allowlist entry.
+  - `[low]` `[reject]` one existing gate is lowered at a surface the contract has no row for — grouped with the `.spec.ts` exemption entry, by-design.
+  - `[false]` `[reject]` the declared route count and the derivation that enforces it were settled in the same pass — refuted: the count was confirmed independently of the diff's spec edit, by counting 34 + 1 + 2 `<Route>` declarations in the three dispatch classes and 37 unique `class|method|url` probe keys in the XData.
 
 ## Design Notes
 
@@ -182,20 +243,22 @@ Anchors re-read after merge `dd9db59` (slot C). That merge touched only `scripts
 - `node tools/ci-runner.mjs --container ocupilot-b-ci` — expected: the full sweep green, `0 probe leftovers, 0 overlaps`, with `EndpointCoverage`, `SurfaceCoverage`, `CredentialRepoint`, `SecretLicense` and `DefinitionsFaults` among the classes run. Baseline to beat: `132 class(es), 1269 test(s), 0 failed`.
 - `bash scripts/smoke.sh --container ocupilot-b-ci --user _SYSTEM --password SYS` — expected: `executed>0 failed=0`, exit 0.
 
-**Rule 19 — pinning test and named mutation per criterion:**
+**Rule 19 — pinning test and observed mutation per criterion.** Each was applied, observed red,
+reverted, and the tree confirmed byte-identical afterwards (`git status --short` and
+`git diff --stat` unchanged; `spec/admin-v2-paths.json` re-hashed).
 
-- AC1 (CI shape) — pinning: `ci.test.mjs`'s `DECLARED_GATES` both-directions equality. `mutation: delete the "objectscript suite, one class at a time" step from ci.yml → ci.test.mjs goes red naming the divergence.`
-- AC2 endpoint floor — pinning: `OcuPilot.Test.EndpointCoverage`'s both-directions equality plus its dispatch assertion. `mutation: delete one <probe/> row from the XData → red naming the uncovered route; delete GET /namespaces from Router.cls and recompile the package → red naming the orphan probe.` Recompile the **package**, not the class: an inherited method recompiled alone proves nothing.
-- AC2 named members — pinning: the state-protection and audit-marker classes run in the sweep. `mutation: rename OcuPilot.Test.State's TestDeniedUserCannotRead method so it is not discovered → the sweep's class total drops and ci-runner.mjs's on-disk-versus-instance check names it.`
-- AC3 surface floor — pinning: `OcuPilot.Test.SurfaceCoverage`'s two both-directions equalities and its method-resolution assertion. `mutation: flip one descriptor's "built" key to false and recompile the package → red naming the orphan coverage row; delete one <screen/> row from the XData → red naming the uncovered descriptor; point one row's method at a name that does not exist → red naming the member and the missing method.` The write half's zero is asserted explicitly, so a derivation that silently returned nothing cannot read as a pass.
-- AC4 — pinning: `admin-spec.mjs`'s differ plus `admin-spec.test.mjs`'s canonical-form assertions. `mutation: remove one "/v2/..." key from spec/admin-v2-paths.json → the 185-key and canonical-form checks fail first, naming the hand-edit; restore it and instead add a fabricated entry to KNOWN_DIFFERENCES → the declared-versus-observed check goes red naming the entry that matches nothing.`
-- DW-439 — pinning: `ci.test.mjs`'s six-site port equality and a `stub-bin.mjs`-driven test of the retry. `mutation: delete the retry wrapper's bind-message guard so it retries on any failure → the stubbed-docker test goes red; delete the ephemeral-range step from ci.yml → DECLARED_GATES goes red.`
-- DW-1079 — pinning: a new test in `ui/tools/ci.test.mjs`, beside the two that already execute `scripts/smoke.sh` against an inline `iris` stub (`:1092`, `:1191`), driving it over a report fixture carrying one `fail` row. `mutation: drop the name from the quotable line → the test goes red on the missing name.`
-- DW-1087 — pinning: `client-lint.test.mjs`'s three fixtures. `mutation: revert the concatenation branch of checkOffOriginUrls → the non-spec fixture passes and the test goes red; drop the .spec.ts exemption → the spec fixture fails and the test goes red.`
-- DW-1276 — pinning: the derived arming-roster equality in `ci.test.mjs`. `mutation: remove UninstallSurvival from the OCUPILOT_ALLOW_AUDIT_EVENTS comment → red naming it; add SwitchesWire to the PRINCIPALS comment → red naming it, because it is mentioned in a doc comment and not structurally armed.`
-- DW-414 — pinning: `OcuPilot.Test.CredentialRepoint`'s two directions. `mutation: delete the credential-changed guard at Api/Definitions.cls:415-417 and recompile the package → the "last definition repointed away" direction goes red because the entry survives.`
-- DW-420 — pinning: `OcuPilot.Test.SecretLicense`. `mutation: delete the license conjunct at Kernel/Secret/Ladder.cls:133 and recompile the package → red, because the predicate now answers 1 against SecretUnlicensedRung.` This is the mutation `Test/Secret.cls:130` cannot detect.
-- DW-421 — pinning: `OcuPilot.Test.DefinitionsFaults`' two assertions. `mutation: delete the GuardedVersion guard at Api/Definitions.cls:803-811 and recompile the package → red, because the call proceeds to the provider and the zero-provider-calls assertion fails.`
+- AC1 (CI shape) — pinning: `ci.test.mjs`'s `DECLARED_GATES` both-directions equality. `mutation: deleted the "objectscript suite, one class at a time" step from ci.yml -> "the declared gates and the workflow run: commands are the same multiset" went red naming the divergence.`
+- AC2 endpoint floor — pinning: `OcuPilot.Test.EndpointCoverage`'s both-directions equality plus its dispatch assertion. `mutation: deleted the <probe/> row for GET /namespaces -> TestEveryRouteHasAProbeAndEveryProbeHasARoute went red, "36 probe(s), 37 route(s)"; restored it and deleted GET /namespaces from Router.cls, recompiling Router with RouterFixture, GateFixture and PreFault -> the same test went red the other way ("37 probe(s), 36 route(s)") and TestEveryProbeDispatchesToItsRoute went red naming Api.Router|GET|/namespaces falling to the router's route-not-found.`
+- AC2 named members — pinning: `OcuPilot.Test.State`, `OcuPilot.Test.AuditRecord` and `OcuPilot.Test.AuditVerbs` run green in the sweep, and `ci-runner.mjs` refuses a run over a subset. `mutation: added one test class to the checkout that the instance does not carry -> ci-runner exited 1 before running anything, "the instance did not offer 1 test class(es) the checkout carries -- OcuPilot.Test.ZzSweepProbe".` The plan's mutation (renaming a method) is not the one this mechanism detects: the check compares the CLASS list on disk with the class list the instance offers, and a renamed method changes neither.
+- AC3 surface floor — pinning: `OcuPilot.Test.SurfaceCoverage`'s two both-directions equalities and its method-resolution assertion. `mutation: flipped OcuPilot.Screen.Descriptor.LockList's "built" key to false and recompiled -> TestEveryBuiltScreenHasACoverageRowAndBack went red, "40 row(s), 39 built screen(s)"; deleted the LockList <screen/> row instead -> the same test went red the other way, "39 row(s), 40 built screen(s)"; pointed Home's row at TestThisMethodDoesNotExist -> TestEveryCoverageRowNamesATestTheSuiteExecutes went red.` The write half's zero is asserted beside a non-zero `ListTools()` total, so a derivation that returned nothing cannot read as a pass.
+- AC4 — pinning: `admin-spec.mjs`'s differ plus `admin-spec.test.mjs`'s canonical-form assertions. `mutation: removed one "/v2/..." key from spec/admin-v2-paths.json -> the canonical-form case went red, "the table carries 184 /v2/ path(s); the pin was derived at 185"; restored it and added a fabricated KNOWN_DIFFERENCES entry -> "exactly one known difference is declared" went red.`
+- DW-439 — pinning: `ci.test.mjs`'s six-site port equality and three `stub-bin.mjs`-driven tests of the retry. `mutation: deleted the bind-message guard from ci-throwaway.sh -> "a failure that is not a host-port bind exits at once, unretried" went red; deleted the ephemeral-range step from ci.yml -> DECLARED_GATES went red; moved the admin-spec step's origin off 52776 in both ci.yml and DECLARED_GATES -> the port equality went red naming the sixth site.`
+- DW-1079 — pinning: a new `ci.test.mjs` test that executes `scripts/smoke.sh` over a report fixture carrying two `fail` rows, beside the two that already execute it against an inline `iris` stub. `mutation: dropped $FAILED from the quotable line -> the test went red on the missing names.`
+- DW-1087 — pinning: `client-lint.test.mjs`'s four fixtures, one of them through the CLI so the wiring is observed. `mutation: reverted the concatenation branch of checkOffOriginUrls -> the non-spec fixtures went red; dropped the .spec.ts early return -> the spec fixture went red.`
+- DW-1276 — pinning: the derived arming-roster equality in `ci.test.mjs`, read from `# classes:` lines rather than from prose (half the test package's class names are ordinary words). `mutation: removed UninstallSurvival from the OCUPILOT_ALLOW_AUDIT_EVENTS block -> red naming it; added SwitchesWire to the PRINCIPALS block -> red naming it, because it mentions the variable in a doc comment and is not armed by it.`
+- DW-414 — pinning: `OcuPilot.Test.CredentialRepoint`'s two directions. `mutation: deleted the changed-reference clause at Api/Definitions.cls and recompiled Definitions with DefinitionsProbe -> TestRepointingTheLastDefinitionNamingAnEntryRemovesIt went red on "and is removed once nothing names it", while the survivor direction stayed green.`
+- DW-420 — pinning: `OcuPilot.Test.SecretLicense`. `mutation: deleted the license conjunct from Kernel/Secret/Ladder.cls and recompiled the ladder with all eight of its subclasses -> TestAnUnlicensedInstanceCannotReachTheCredentialsRung went red, the predicate answering 1 against SecretUnlicensedRung.`
+- DW-421 — pinning: `OcuPilot.Test.DefinitionsFaults`' two assertions. `mutation: deleted the GuardedVersion guard from Api/Definitions.cls ConnectionOutcome and recompiled -> TestAnUnreadableVersionRefusesBeforeTheProviderIsCalled went red on the status, the code and the reason.` The call then reaches the port and comes back with the port's own fault, so the provider counter stayed 0 under this mutation; the three envelope assertions are what detect it.
 
 **Manual checks:**
 
@@ -205,9 +268,60 @@ Anchors re-read after merge `dd9db59` (slot C). That merge touched only `scripts
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-Both previously blocking criteria are resolved in `epics.md` and planned above: AC3 now names two closed, derivable sets and is carried by `OcuPilot.Test.SurfaceCoverage`, whose derived side reads `Screen/Registry` and `Screen/Tool/Registry` so Epic 5's `webapp.list.update` binds the write half automatically at the Rule 22 integrate-forward with no later edit; AC4 vendors the derived path-and-method table under the orchestrator's four constraints. No third criterion is unimplementable as worded, so no Rule 5 halt is raised.
+**What landed.** Four derived-versus-declared gates, each a both-directions equality that names what is
+missing. New: `ui/tools/admin-spec.mjs` (three modes over one pure differ; verbs only; reads `.paths`
+without assuming OpenAPI 3 or Swagger 2) with `spec/admin-v2-paths.json` produced by running the
+derivation, and `ui/tools/admin-spec.test.mjs`; `OcuPilot.Test.EndpointCoverage` (route set from the
+compiled `UrlMap`s, each probe issued), `SurfaceCoverage` (built screens and write tools from the
+registries), `CredentialRepoint` (AD-37's repoint clause, both directions), `SecretUnlicensedRung` +
+`SecretLicense` (the license conjunct that had no seam), `DefinitionsFaults` (the two error shapes
+reachable without a state-class seam). Edited: `ci.yml` (ephemeral-range probe, admin-spec drift step),
+`ci.test.mjs` (two `DECLARED_GATES` entries, the port equality extended to a sixth site, the derived
+arming-roster equality, bind-retry and smoke tests), `ci-throwaway.sh` (bind-gated bounded retry with a
+growing wait, streamed bring-up, seven corrected arming rosters on machine-checked `# classes:` lines),
+`smoke.sh` (every failing check named on one quotable line), `client-lint.mjs` and its suite
+(concatenated-scheme detection, `*.spec.ts` exempt from family 3), `ATTRIBUTIONS.md`.
 
-Measured by this runner during planning rather than carried from the previous pass: the commit-pinned upstream URL (HTTP 200, 1,004,473 bytes, sha256 `1ab154c7…`), its derivation (190 paths, 185 `/v2/*`, 271 verb entries, OpenAPI 3.0.0), the instance's generated spec on `ocupilot-b-ci` (HTTP 200, 305 paths, 185 `/v2/*`, Swagger 2.0), the diff (184 common, 0 method-set differences, one named path difference), the route count (38, not 37), the built-descriptor count (40 of 40) and the empty write set, and the seven arming-variable populations DW-1276 turns on. Two findings are recorded in frontmatter `deferred:` for the lead to harvest: a stale test in `Test/AgentConnection.cls` that no longer reaches the branch it names, and the state-class seam that blocks four of DW-421's shapes.
+**Amendments applied and reported (Rule 5, tier 1).** The endpoint floor is **37** routes, not 38:
+`Router.cls` declares 34 `<Route>`, `Readiness.cls` 1, `StaticHandler.cls` 2. The number was corrected at
+its origin, which includes the matrix row inside `<intent-contract>` and the re-plan's change-log entry.
+That block is otherwise frozen; the lead should confirm the edit post hoc. The count was re-verified
+independently of the edit, structurally, and the derivation enforces it regardless.
+
+**Review.** 56 findings from four layers: 0 high, 30 medium, 25 low, 1 false. 25 grouped entries were
+patched (16 medium, 9 low); nothing was deferred; 13 findings were rejected — the `*.spec.ts` family-3
+exemption and its whole-URL half (spec-bound, by-design, three rows), the read probes' missing 2xx (a 5xx
+envelope still satisfies the contracted disposition and a blanket 2xx is wrong for the `:param` rows), the
+ephemeral-range step's missing `|| true` and the two `smoke.sh` awk edge cases (theoretical: `ubuntu-24.04`
+always has the proc file, and `Install/Smoke.cls` writes only four outcomes and whitespace-free names), no
+pin expiry and the report-shape re-declaration and the bind classifier's fixture (wontfix-accepted, each
+with a reopen probe), the instance-versus-source surface and the corpus concentration (by-design, argued in
+Design Notes), the write-free overstatement (the class header is accurate; the remaining sentence is this
+build's spec), and one false count claim, refuted by an independent structural count. Every row with its
+reason is in `## Review Triage Log`.
+
+**Follow-up review recommended: true.** Sixteen medium entries were patched. The specific unverified risk
+is `scripts/ci-throwaway.sh`'s bring-up plumbing: the exit-code-to-file plus `tee` form and the growing
+retry wait are exercised only against a stubbed `docker`, so the real `docker compose up -d --wait` has not
+run through the new form on this branch. CI's `instance` job is the first thing that will.
+
+**Verified on `ocupilot-slot-b`'s throwaway `ocupilot-b-ci` (52777/1976), after the patch round, with the
+throwaway's source refreshed from this worktree and the package recompiled:** `npm run build` green
+(all six prebuild checkers); `npm test` **1086** tools tests and **644** component tests over 48 files
+(baselines 1044 / 644); `node tools/ci-runner.mjs --container ocupilot-b-ci` **137 class(es), 1283 test(s),
+0 failed, 0 with probe leftovers, 0 overlap(s), 0 foreign run(s)** (baseline 132 / 1269);
+`bash scripts/smoke.sh --container ocupilot-b-ci` `executed=45 passed=45 failed=0`, exit 0;
+`node tools/admin-spec.mjs --origin http://localhost:52777` 185/185 v2 paths, 184 common, 0 method-set
+differences, one declared known difference, exit 0; `--derive --fetch` reproduces the committed table byte
+for byte (sha256 `37cfd593`); `uv run scripts/check-objectscript.py` 502 files over 21 rules, 0 problems;
+its harness 126 tests; `bash scripts/lint-docs.sh` green over 93 files. Every matrix row is covered by a
+test that ran and passed. Fourteen mutations were applied before the review and reverted with the tree
+confirmed byte-identical; the patch round's new assertions were each falsified in turn.
+
+**Residual risks.** The bring-up plumbing above. The hand-edit escape on the vendored table is narrowed,
+not closed: a count-preserving canonical edit is undetectable without the document, which is deliberately
+not vendored — `tableProblems`' comment now says so rather than claiming otherwise. The `deferred:`
+findings are unchanged; no new ledger item was raised.

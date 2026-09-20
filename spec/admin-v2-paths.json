@@ -1,0 +1,656 @@
+{
+  "source": {
+    "repository": "intersystems-community/sysadmin-api-specification",
+    "branch": "master",
+    "commit": "f764aea427e5c0b1dd08a4c18a0457e0ff7b3b34",
+    "path": "mainspec_v2.json",
+    "blob": "373e8627e755c0cb89fee855fb70514f48376d60",
+    "bytes": 1004473,
+    "sha256": "1ab154c7c5d9b25e6b227944a44a120c670686f876c2e14abfb9ee5898596650",
+    "retrieved": "2026-09-19",
+    "note": "The specification document itself is deliberately not vendored: the upstream repository declares no license and this repository is public. What is checked in is this derived path-and-method table, regenerable with `node ui/tools/admin-spec.mjs --derive --fetch`."
+  },
+  "paths": {
+    "/v2/async-result": [
+      "get"
+    ],
+    "/v2/async-result/cancel": [
+      "post"
+    ],
+    "/v2/async-result/pause": [
+      "post"
+    ],
+    "/v2/async-result/resume": [
+      "post"
+    ],
+    "/v2/async-results": [
+      "get"
+    ],
+    "/v2/database": [
+      "delete",
+      "get",
+      "put"
+    ],
+    "/v2/database-dir": [
+      "delete",
+      "get",
+      "post",
+      "put"
+    ],
+    "/v2/database-dir/compact": [
+      "post"
+    ],
+    "/v2/database-dir/defragment": [
+      "post"
+    ],
+    "/v2/database-dir/dismount": [
+      "post"
+    ],
+    "/v2/database-dir/expand-volume": [
+      "post"
+    ],
+    "/v2/database-dir/info": [
+      "post"
+    ],
+    "/v2/database-dir/integrity-check": [
+      "post"
+    ],
+    "/v2/database-dir/modify-size": [
+      "post"
+    ],
+    "/v2/database-dir/mount": [
+      "post"
+    ],
+    "/v2/database-dir/truncate": [
+      "post"
+    ],
+    "/v2/database-dir/volumes": [
+      "get"
+    ],
+    "/v2/database-dirs": [
+      "get"
+    ],
+    "/v2/databases": [
+      "get"
+    ],
+    "/v2/device": [
+      "delete",
+      "get",
+      "put"
+    ],
+    "/v2/device/settings": [
+      "get",
+      "put"
+    ],
+    "/v2/device/subtype": [
+      "delete",
+      "get",
+      "put"
+    ],
+    "/v2/device/subtypes": [
+      "get"
+    ],
+    "/v2/devices": [
+      "get"
+    ],
+    "/v2/doc-db": [
+      "delete",
+      "get",
+      "put"
+    ],
+    "/v2/doc-dbs": [
+      "get"
+    ],
+    "/v2/ecp/application-server-ssl-connection": [
+      "delete"
+    ],
+    "/v2/ecp/application-server-ssl-connection/authorize": [
+      "post"
+    ],
+    "/v2/ecp/application-server-ssl-connection/reject": [
+      "post"
+    ],
+    "/v2/ecp/application-server-ssl-connections": [
+      "get"
+    ],
+    "/v2/ecp/application-servers": [
+      "get"
+    ],
+    "/v2/ecp/data-server": [
+      "delete",
+      "get",
+      "put"
+    ],
+    "/v2/ecp/data-server/action": [
+      "post"
+    ],
+    "/v2/ecp/data-server/databases": [
+      "get"
+    ],
+    "/v2/ecp/data-servers": [
+      "get"
+    ],
+    "/v2/ecp/settings": [
+      "get",
+      "put"
+    ],
+    "/v2/ext-lang-server": [
+      "delete",
+      "get",
+      "put"
+    ],
+    "/v2/ext-lang-server/activity": [
+      "get"
+    ],
+    "/v2/ext-lang-server/start": [
+      "post"
+    ],
+    "/v2/ext-lang-server/stop": [
+      "post"
+    ],
+    "/v2/ext-lang-servers": [
+      "get"
+    ],
+    "/v2/fs-access-purpose": [
+      "delete",
+      "get",
+      "put"
+    ],
+    "/v2/fs-access-purpose/path": [
+      "delete",
+      "put"
+    ],
+    "/v2/fs-access-purpose/paths": [
+      "get"
+    ],
+    "/v2/fs-access-purposes": [
+      "get"
+    ],
+    "/v2/journal/file": [
+      "get"
+    ],
+    "/v2/journal/file/integrity-check": [
+      "post"
+    ],
+    "/v2/journal/file/record": [
+      "get"
+    ],
+    "/v2/journal/file/records": [
+      "post"
+    ],
+    "/v2/journal/files": [
+      "get"
+    ],
+    "/v2/journal/settings": [
+      "get",
+      "put"
+    ],
+    "/v2/journal/switch-dir": [
+      "post"
+    ],
+    "/v2/journal/switch-file": [
+      "post"
+    ],
+    "/v2/license/key": [
+      "get",
+      "put"
+    ],
+    "/v2/license/key/validate": [
+      "post"
+    ],
+    "/v2/license/server": [
+      "delete",
+      "get",
+      "put"
+    ],
+    "/v2/license/servers": [
+      "get"
+    ],
+    "/v2/lock": [
+      "delete"
+    ],
+    "/v2/locks": [
+      "get"
+    ],
+    "/v2/monitor/dashboard/ecp": [
+      "get"
+    ],
+    "/v2/monitor/dashboard/globals-and-routines": [
+      "get"
+    ],
+    "/v2/monitor/dashboard/main": [
+      "get"
+    ],
+    "/v2/monitor/dashboard/system-resources": [
+      "get"
+    ],
+    "/v2/monitor/license-usage": [
+      "get"
+    ],
+    "/v2/monitor/system-usage": [
+      "get"
+    ],
+    "/v2/monitor/system-usage/shared-memory": [
+      "get"
+    ],
+    "/v2/namespace": [
+      "delete",
+      "get",
+      "put"
+    ],
+    "/v2/namespace/copy-mappings": [
+      "post"
+    ],
+    "/v2/namespace/enable-interop": [
+      "post"
+    ],
+    "/v2/namespace/global-mapping": [
+      "delete",
+      "get",
+      "put"
+    ],
+    "/v2/namespace/global-mappings": [
+      "get"
+    ],
+    "/v2/namespace/package-mapping": [
+      "delete",
+      "get",
+      "put"
+    ],
+    "/v2/namespace/package-mappings": [
+      "get"
+    ],
+    "/v2/namespace/routine-mapping": [
+      "delete",
+      "get",
+      "put"
+    ],
+    "/v2/namespace/routine-mappings": [
+      "get"
+    ],
+    "/v2/namespaces": [
+      "get"
+    ],
+    "/v2/process": [
+      "get"
+    ],
+    "/v2/process/broadcast": [
+      "post"
+    ],
+    "/v2/process/resume": [
+      "post"
+    ],
+    "/v2/process/suspend": [
+      "post"
+    ],
+    "/v2/process/terminate": [
+      "post"
+    ],
+    "/v2/processes": [
+      "get"
+    ],
+    "/v2/security/audit/enabled": [
+      "get",
+      "put"
+    ],
+    "/v2/security/audit/event": [
+      "delete",
+      "get",
+      "put"
+    ],
+    "/v2/security/audit/event/clear-count": [
+      "post"
+    ],
+    "/v2/security/audit/events": [
+      "get"
+    ],
+    "/v2/security/audit/record": [
+      "get"
+    ],
+    "/v2/security/audit/record/copy": [
+      "post"
+    ],
+    "/v2/security/audit/record/purge": [
+      "post"
+    ],
+    "/v2/security/audit/records": [
+      "post"
+    ],
+    "/v2/security/encryption/data-element-keys": [
+      "get"
+    ],
+    "/v2/security/encryption/file": [
+      "post"
+    ],
+    "/v2/security/encryption/file/activate": [
+      "post"
+    ],
+    "/v2/security/encryption/file/admin": [
+      "delete",
+      "post"
+    ],
+    "/v2/security/encryption/file/admins": [
+      "get"
+    ],
+    "/v2/security/encryption/file/key": [
+      "delete",
+      "post"
+    ],
+    "/v2/security/encryption/file/keys": [
+      "get"
+    ],
+    "/v2/security/encryption/key/deactivate": [
+      "post"
+    ],
+    "/v2/security/encryption/keys": [
+      "get"
+    ],
+    "/v2/security/encryption/settings": [
+      "get",
+      "put"
+    ],
+    "/v2/security/ldap/configuration": [
+      "delete",
+      "get",
+      "put"
+    ],
+    "/v2/security/ldap/configuration/search-password": [
+      "post"
+    ],
+    "/v2/security/ldap/configurations": [
+      "get"
+    ],
+    "/v2/security/ldap/test": [
+      "post"
+    ],
+    "/v2/security/mft/connection": [
+      "delete",
+      "get",
+      "put"
+    ],
+    "/v2/security/mft/connection/auth-code-url": [
+      "get"
+    ],
+    "/v2/security/mft/connection/token": [
+      "delete"
+    ],
+    "/v2/security/mft/connections": [
+      "get"
+    ],
+    "/v2/security/oauth2/client/client-configuration": [
+      "delete",
+      "get",
+      "put"
+    ],
+    "/v2/security/oauth2/client/client-configuration/register-client": [
+      "post"
+    ],
+    "/v2/security/oauth2/client/client-configuration/rotate-keys": [
+      "post"
+    ],
+    "/v2/security/oauth2/client/client-configuration/secrets": [
+      "post"
+    ],
+    "/v2/security/oauth2/client/client-configurations": [
+      "get"
+    ],
+    "/v2/security/oauth2/client/server-definition": [
+      "delete",
+      "get",
+      "post",
+      "put"
+    ],
+    "/v2/security/oauth2/client/server-definition/initial-access-token": [
+      "post"
+    ],
+    "/v2/security/oauth2/client/server-definitions": [
+      "get"
+    ],
+    "/v2/security/oauth2/resource-server": [
+      "delete",
+      "get",
+      "put"
+    ],
+    "/v2/security/oauth2/resource-server/mapping": [
+      "delete",
+      "get",
+      "put"
+    ],
+    "/v2/security/oauth2/resource-server/mappings": [
+      "get"
+    ],
+    "/v2/security/oauth2/resource-server/secret": [
+      "post"
+    ],
+    "/v2/security/oauth2/resource-servers": [
+      "get"
+    ],
+    "/v2/security/oauth2/revoke": [
+      "post"
+    ],
+    "/v2/security/oauth2/server": [
+      "delete",
+      "get",
+      "put"
+    ],
+    "/v2/security/oauth2/server/client": [
+      "delete",
+      "get",
+      "post",
+      "put"
+    ],
+    "/v2/security/oauth2/server/client/secret": [
+      "post"
+    ],
+    "/v2/security/oauth2/server/clients": [
+      "get"
+    ],
+    "/v2/security/oauth2/server/password": [
+      "post"
+    ],
+    "/v2/security/privileged-routine": [
+      "delete",
+      "get",
+      "put"
+    ],
+    "/v2/security/privileged-routines": [
+      "get"
+    ],
+    "/v2/security/resource": [
+      "delete",
+      "get",
+      "put"
+    ],
+    "/v2/security/resources": [
+      "get"
+    ],
+    "/v2/security/role": [
+      "delete",
+      "get",
+      "put"
+    ],
+    "/v2/security/role/owners": [
+      "get"
+    ],
+    "/v2/security/roles": [
+      "get"
+    ],
+    "/v2/security/service": [
+      "get",
+      "put"
+    ],
+    "/v2/security/services": [
+      "get"
+    ],
+    "/v2/security/sql-admin-privilege": [
+      "head"
+    ],
+    "/v2/security/sql-admin-privilege/grant": [
+      "post"
+    ],
+    "/v2/security/sql-admin-privilege/revoke": [
+      "post"
+    ],
+    "/v2/security/sql-admin-privileges": [
+      "get"
+    ],
+    "/v2/security/sql-column-privilege": [
+      "head"
+    ],
+    "/v2/security/sql-column-privilege/grant": [
+      "post"
+    ],
+    "/v2/security/sql-column-privilege/revoke": [
+      "post"
+    ],
+    "/v2/security/sql-column-privileges": [
+      "get"
+    ],
+    "/v2/security/sql-privilege": [
+      "head"
+    ],
+    "/v2/security/sql-privilege/grant": [
+      "post"
+    ],
+    "/v2/security/sql-privilege/revoke": [
+      "post"
+    ],
+    "/v2/security/sql-privileges": [
+      "get"
+    ],
+    "/v2/security/ssl-configuration": [
+      "delete",
+      "get",
+      "put"
+    ],
+    "/v2/security/ssl-configuration/test": [
+      "post"
+    ],
+    "/v2/security/ssl-configurations": [
+      "get"
+    ],
+    "/v2/security/superserver": [
+      "delete",
+      "get",
+      "put"
+    ],
+    "/v2/security/superservers": [
+      "get"
+    ],
+    "/v2/security/user": [
+      "delete",
+      "get",
+      "post",
+      "put"
+    ],
+    "/v2/security/user/password": [
+      "post"
+    ],
+    "/v2/security/users": [
+      "get"
+    ],
+    "/v2/security/web-auth": [
+      "get",
+      "put"
+    ],
+    "/v2/security/web-auth/smtp-password": [
+      "post"
+    ],
+    "/v2/security/x509-credential": [
+      "delete",
+      "get",
+      "post",
+      "put"
+    ],
+    "/v2/security/x509-credential/certificate": [
+      "get"
+    ],
+    "/v2/security/x509-credentials": [
+      "get"
+    ],
+    "/v2/task": [
+      "delete",
+      "get",
+      "post",
+      "put"
+    ],
+    "/v2/task/history": [
+      "get"
+    ],
+    "/v2/task/info": [
+      "get"
+    ],
+    "/v2/task/manager": [
+      "get"
+    ],
+    "/v2/task/manager/resume": [
+      "post"
+    ],
+    "/v2/task/manager/run": [
+      "post"
+    ],
+    "/v2/task/manager/suspend": [
+      "post"
+    ],
+    "/v2/task/resume": [
+      "post"
+    ],
+    "/v2/task/run": [
+      "post"
+    ],
+    "/v2/task/suspend": [
+      "post"
+    ],
+    "/v2/task/upcoming": [
+      "get"
+    ],
+    "/v2/tasks": [
+      "get"
+    ],
+    "/v2/wallet/collection": [
+      "delete",
+      "get",
+      "put"
+    ],
+    "/v2/wallet/collections": [
+      "get"
+    ],
+    "/v2/wallet/secret": [
+      "delete",
+      "put"
+    ],
+    "/v2/wallet/secrets": [
+      "get"
+    ],
+    "/v2/web-app": [
+      "delete",
+      "get",
+      "put"
+    ],
+    "/v2/web-app/pct-access": [
+      "delete",
+      "get",
+      "put"
+    ],
+    "/v2/web-app/pct-accesses": [
+      "get"
+    ],
+    "/v2/web-apps": [
+      "get"
+    ],
+    "/v2/web-session": [
+      "delete"
+    ],
+    "/v2/web-sessions": [
+      "get"
+    ],
+    "/v2/wqm-categories": [
+      "get"
+    ],
+    "/v2/wqm-category": [
+      "delete",
+      "get",
+      "put"
+    ]
+  }
+}

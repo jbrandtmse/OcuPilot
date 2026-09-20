@@ -335,13 +335,47 @@ export const ALLOWED_ABSOLUTE_URLS = [
 ];
 
 /**
+ * A string literal spelling a URL scheme with any number of trailing slashes (`http:`, `https:/`,
+ * `https://`), or a host fragment behind one or two leading slashes (`//cdn.example.com/x`,
+ * `/cdn.example.com/x`).
+ *
+ * Splitting a URL across a concatenation is how a shipped off-origin reference evades
+ * `OFF_ORIGIN_URL_RE`, which matches a whole URL in one literal and sees none of
+ * `'https:' + '//cdn.example.com/x.js'`. A split can fall at any character, so both halves of all
+ * three placements of the `+` are matched here -- matching only one of them is a rule that reads
+ * as closed and is open at the other two. The host fragment stays dotted: `base + '/api/x'` is a
+ * same-origin path, not a host. The adjacency test below is what separates all of this from
+ * `url.protocol === 'http:'` in `core/reply.ts`, which compares a scheme and concatenates
+ * nothing.
+ */
+const SCHEME_FRAGMENT_RE =
+  /(['"`])(https?:\/*|\/{1,2}[A-Za-z0-9][A-Za-z0-9-]*(?:\.[A-Za-z0-9-]+)+[^'"`\n]*)\1/g;
+
+/** Whether a `+` sits immediately before or after the literal `code` matched at `at`..`end`. */
+function adjacentToConcatenation(code, at, end) {
+  return /\+\s*$/.test(code.slice(0, at)) || /^\s*\+/.test(code.slice(end));
+}
+
+/**
  * Rule family 3: pure. Reports every absolute or protocol-relative URL in `text` that is not on
- * `ALLOWED_ABSOLUTE_URLS`. Comments are blanked first, for the reason the color rule blanks
- * them: a comment that names a URL to explain why it is not used is prose, and failing the
- * build on one leaves no way to write the explanation.
+ * `ALLOWED_ABSOLUTE_URLS`, and every scheme or `//host` fragment built into a URL by
+ * concatenation. Comments are blanked first, for the reason the color rule blanks them: a
+ * comment that names a URL to explain why it is not used is prose, and failing the build on one
+ * leaves no way to write the explanation.
+ *
+ * **`*.spec.ts` is exempt from this family, deliberately.** A spec file writes its fixture URLs
+ * split precisely so the whole-URL rule does not fire on them, and the concatenation rule would
+ * turn that convention into a violation. What keeps a spec out of the bundle is
+ * `ui/tsconfig.app.json`, whose `"files": ["src/main.ts"]` is the application compilation's only
+ * entry point, so nothing a spec imports is reachable from it. `build-output.test.mjs` checks
+ * the artifact alongside that, though less widely than this exemption would need on its own: it
+ * asserts three named harness markers are absent from the emitted js, html and css, and scans
+ * the emitted CSS and `index.html` -- not the emitted JS -- for an off-origin host.
+ * `checkTestingImports` skips `.spec.ts` for the same reason.
  */
 export function checkOffOriginUrls({ path, text }) {
   const errors = [];
+  if (path.endsWith('.spec.ts')) return { ok: true, errors };
   const code = blankComments(blankHtmlComments(text));
   for (const m of code.matchAll(OFF_ORIGIN_URL_RE)) {
     const url = m[0];
@@ -351,6 +385,15 @@ export function checkOffOriginUrls({ path, text }) {
       line: lineNumberAt(code, m.index),
       literal: url,
       rule: 'no-off-origin-url',
+    });
+  }
+  for (const m of code.matchAll(SCHEME_FRAGMENT_RE)) {
+    if (!adjacentToConcatenation(code, m.index, m.index + m[0].length)) continue;
+    errors.push({
+      file: path,
+      line: lineNumberAt(code, m.index),
+      literal: `${m[2]} -- a URL built by concatenation is still an off-origin URL`,
+      rule: 'no-concatenated-url',
     });
   }
   return { ok: errors.length === 0, errors };

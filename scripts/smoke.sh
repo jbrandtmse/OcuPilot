@@ -181,7 +181,17 @@ case "$VERDICT" in
         exit 0
         ;;
     FAIL)
-        echo "smoke: the instance did not pass; the failing check is named above"
+        # Every failing check by name, on one quotable line (DW-1079). A report row is
+        # "  " + <outcome padded to 9> + <name> [+ " -- " + reason] (OcuPilot.Install.Smoke), so
+        # awk's default whitespace split puts the outcome in $1 and the name in $2. Without this
+        # the line said only that "the failing check is named above", which is an unattributable
+        # red in a CI log nobody can grep -- and the class-side line names only the first.
+        FAILED=$(printf '%s\n' "$REPORT" | awk '$1 == "fail" { printf "%s%s", (n++ ? ", " : ""), $2 }')
+        if [ -n "$FAILED" ]; then
+            echo "smoke: FAILED check(s): $FAILED"
+        else
+            echo "smoke: the instance did not pass; the failing check is named above"
+        fi
         exit 1
         ;;
     *)
