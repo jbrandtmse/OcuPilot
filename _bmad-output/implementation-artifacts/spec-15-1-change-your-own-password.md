@@ -334,6 +334,12 @@ footprint_extensions:
 - Confirm the embedded code for a policy rejection is `845` (or `958`) before hard-coding the allow-list; only `1446,952` for a wrong old password has been measured.
 - After any failed request, read `OcuPilot.Kernel.Audit.Log`'s rows and the container's messages.log and confirm neither password value appears.
 
+**Lead AD gate (AD-49), executed by the lead on the slot C throwaway `ocupilot-c-ci`, 2026-09-20:**
+
+- `mutation: OcuPilot.Api.Account.CallerUsername() returns "_SYSTEM" instead of $Username -> OcuPilot.Test.AccountPasswordWire went red, 2 of 4 methods` -- `TestZCorrectChangeSucceedsAndLeavesTheAccountAuthorized` on "the change is applied" and "the account is still authorized with the new password", and `TestAPolicyRefusalCarriesTheInstancesOwnText` on all three of its assertions. Baseline before the mutation was 4/4 pass read from `%UnitTest_Result`, not from the runner envelope; after revert and recompile it is 4/4 again, with `CallerUsername()` read back live. The copy mutated was the throwaway's deployed one under `/tmp/ocupilot-c-ci/src`, so the working tree was byte-identical throughout rather than restored afterwards. This pins AD-49's load-bearing claim: the change runs as the **calling** user, never a name supplied from anywhere else.
+- Read-only premises checked on the instance rather than recalled: `%System`/`%Security`/`UserChange` reads `exists=1 enabled=1` on slot C, which is what AD-49 rests on when it says OcuPilot adds no second audit record; and `Api/Account.cls` carries no `$System.Security.Audit` call, no `%SYS` switch, no `New $ROLES` and no tool registration -- its only `proposal` and `$ROLES` matches are the doc comment asserting their absence.
+
+
 **Mutations (Rule 19)** -- each applied, observed red, reverted, and the tree confirmed byte-identical after:
 
 - mutation: `Account.WRONGPASSWORDCODE` 952 -> 953 → `AccountPasswordWire.TestAWrongCurrentPasswordIsAViolationOnThatField` red (AC5).
