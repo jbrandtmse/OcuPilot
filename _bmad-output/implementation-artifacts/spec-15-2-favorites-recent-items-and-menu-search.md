@@ -287,6 +287,12 @@ deferred:
 
 ## Verification
 
+**Lead AD gate (AD-50), executed by the lead on the slot C throwaway `ocupilot-c-ci`, 2026-09-20.** The throwaway was rebuilt from this story's source and bundle first, so the thing measured was the shipped artifact rather than the working tree.
+
+- `mutation: OcuPilot.Kernel.State.Pref's three query sites change WHERE UserName = ? to WHERE UserName <> ? -> OcuPilot.Test.PreferencesWire went red, 3 of 6 methods` -- `TestAFavoriteRoundTripsOverTheWire` failed on "answering the list the read would answer", on the second-add no-op and on "leaving one entry". Baseline 6/6 before, 6/6 again after revert and recompile, and the throwaway's copy diffed byte-identical against the working tree. This pins AD-50's load-bearing claim -- that the store is keyed per user -- at all three sites at once rather than at the one a single test happens to reach.
+- End-to-end on the same instance before the mutation: `GET /api/ocupilot/account/preferences` answers `200` with `{"favorites":[],"recents":[]}`, and `OcuPilot.Kernel.State.Pref` and `OcuPilot.Api.Preferences` are both compiled there.
+
+
 **Commands** (slot C — every IRIS MCP call carries `server: "ocupilot-slot-c"`; the dev container is `ocupilot-slot-c`; the throwaway is `--dir /tmp/ocupilot-c-ci --project ocupilot-c-ci --web 52779 --super 1978`; a browser run exports `OCUPILOT_BROWSER_ORIGIN=http://localhost:52779` and `OCUPILOT_BROWSER_CONTAINER=ocupilot-c-ci`):
 
 - `uv run scripts/check-objectscript.py` — expected: green, including `check_naming` (the 29-character cap on `OcuPilot.Kernel.State.Pref`), `check_state_package_isolation`, `check_state_sql_literal`, `check_route_ordering` and `check_handler_wire_tests` over the two new routes.
