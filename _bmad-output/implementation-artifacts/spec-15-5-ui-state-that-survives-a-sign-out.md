@@ -2,7 +2,7 @@
 title: 'Story 15.5: UI state that survives a sign-out'
 type: 'feature'
 created: '2026-09-20'
-status: 'blocked'
+status: 'ready-for-dev'
 baseline_revision: '42dd2018caacb38fe15f4b1485530734cda87430'
 baseline_commit: '42dd2018caacb38fe15f4b1485530734cda87430'
 review_loop_iteration: 0
@@ -125,6 +125,8 @@ deferred: []
 
 ## Spec Change Log
 
+- 2026-09-20 (lead, after the orchestrator's ruling): unblocked. `panel-resize-handle*` is released from Epic 5's carve and treated as trunk, so the three `PANEL_WIDTH_KEY` assertions in `ui/src/app/shell/panel-resize-handle.spec.ts` are re-pointed at the account store; the file is reported under `footprint_extensions:` against `origin/OCU-1-epic5` at `b04e2a1`. Frontmatter `status` reset `blocked` -> `ready-for-dev`.
+
 ## Review Triage Log
 
 ## Design Notes
@@ -143,7 +145,7 @@ deferred: []
 
 **Contended and out-of-footprint paths, declared (Rule 11).** Epic 15's own: `ui/src/app/core/**` (except the six files Epic 5 has modified, which stay read-only), `ui/src/app/shell/{side-bar,command-box,locator-bar,rail,status-bar}*`, `ui/src/styles/**`, `src/OcuPilot/Api/*`. Shared-append: `src/OcuPilot/Api/Error.cls`, `ui/src/app/core/strings.ts`, EXPERIENCE.md's Fixed strings table after `:384`. Shared-create: `ui/browser/ui-state-survives-sign-out.browser-spec.mjs`. To be reported under `footprint_extensions:` — `src/OcuPilot/Kernel/State/Pref.cls`, `src/OcuPilot/Test/{PrefState,PreferencesWire}.cls`, `ui/src/main.ts`, `ui/src/app/app.ts`, `ui/src/app/areas/home/home.page.ts` (+ spec), `ui/src/app/testing/account-preferences.ts`, and the `ui/tools/*.test.mjs` and `*.spec.ts` files listed under Execution. `ui/browser/panel.browser-spec.mjs:298` asserts the width survives a reload, which it still does — expected to stay green, re-verify rather than edit.
 
-**The one path this story cannot decide (the blocking condition).** `ui/src/app/shell/panel-resize-handle.spec.ts` asserts `stored.get(PANEL_WIDTH_KEY)` at `:69`, `:91` and `:102`. It matches `ui/src/app/shell/panel*`, which Epic 5 owns as a decision. The **production** path needs no Epic 5 file — `shell/panel-resize-handle.ts` names neither `preferences` nor the key, and all persistence is behind `core/panel-layout.ts` — so the lead's stated trigger is not met; this is the test file the lead's measurement did not list. The three assertions cannot stay green once the width leaves `localStorage`, and a contended path is never a judgment call.
+**`panel-resize-handle*` is trunk, and the three assertions are in scope (orchestrator ruling 2026-09-20).** `ui/src/app/shell/panel-resize-handle.spec.ts` asserts `stored.get(PANEL_WIDTH_KEY)` at `:69`, `:91` and `:102`; those cannot stay green once the width leaves browser storage. The carve on `shell/panel*` protects Epic 5's proposal and turn surface, and this file matched it by name only: Epic 4 created it in Story 4.3 and has merged, Epic 5 has never touched it or `panel-resize-handle.ts`, and the production file names neither `preferences` nor the key. The carve is now narrowed to `panel.ts`, `panel.spec.ts`, `proposal-card*`, `reply*`, `tool-call-card*`, `core/proposal-view.ts` and `core/turn.ts`. Re-point the three assertions at the account store and report the file under `footprint_extensions:` against `origin/OCU-1-epic5` at `b04e2a1`.
 
 **Consumes:** `OcuPilot.Kernel.State.Base`'s guarded conditional save; `OcuPilot.Api.Response` / `Error.RenderViolation`; `ui/src/app/core/api.ts`'s `requestJson`; `core/account-preferences.ts`'s landed store shape; `Screen.Registry`'s built-route set.
 
@@ -177,9 +179,9 @@ deferred: []
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: contended path — the design needs three assertions changed in `ui/src/app/shell/panel-resize-handle.spec.ts`, which matches Epic 5's `ui/src/app/shell/panel*` carve
+Status: ready-for-dev
+Blocking condition: none
 
 **What this pass planned.** The whole story is specified and dev-ready apart from one decision the runner may not take. AC2 states the browser holds only the per-tab token pair, so the six preferences move onto AD-50's `Pref` store — its first `Value` property, three new `Kind` values, a widened `/account/preferences` envelope, the three `core/` stores re-pointed, and `ui/src/app/core/preferences.ts` with its `localStorage` exemption removed. All three ledger entries are chartered as Tasks & Acceptance items.
 
-**The decision needed.** The production path stays inside `core/`, as the lead required: `shell/panel-resize-handle.ts` references neither `preferences` nor `PANEL_WIDTH_KEY`, and every width write goes through `core/panel-layout.ts:303` and `:330`. But `ui/src/app/shell/panel-resize-handle.spec.ts` asserts `stored.get(PANEL_WIDTH_KEY)` at `:69`, `:91` and `:102`, and those three assertions cannot stay green once the width leaves browser storage. That file matches `ui/src/app/shell/panel*` — Epic 5's by decision, regardless of what a diff shows (Rule 11) — and it is not among the five files the lead measured as holding the panel width. Either (a) Story 15.5 may re-point those three assertions at the account store, or (b) the panel width alone keeps a `localStorage` copy, which contradicts AC2 and is recorded as the worse option rather than taken.
+**The decision taken.** The production path stays inside `core/`: `shell/panel-resize-handle.ts` references neither `preferences` nor `PANEL_WIDTH_KEY`, and every width write goes through `core/panel-layout.ts:303` and `:330`. The orchestrator granted option (a) on 2026-09-20 and narrowed the carve: `panel-resize-handle*` is released as trunk, so the three assertions are re-pointed at the account store. Option (b), a `localStorage` copy for the width alone, was costed and rejected because it contradicts AC2 and AD-50.
