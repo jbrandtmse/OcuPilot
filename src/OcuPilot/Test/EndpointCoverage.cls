@@ -8,10 +8,12 @@
 /// (<code>..#APIBASE _ pSuffix</code>, <code>tPath</code>), so matching them to routes would
 /// attribute coverage it cannot see and miss coverage that exists. Issuing each probe from here
 /// makes "at least one test per endpoint" literally true.</p>
-/// <p><b>Nothing here writes.</b> Every probe on a write verb sends a body chosen to draw a
-/// refusal and is asserted to answer 4xx. The two write routes that cannot be made to refuse
-/// declare <code>why</code>, and the one that creates a row declares <code>cleanup</code> and is
-/// undone inside the probe loop.</p>
+/// <p><b>Every write a probe makes is declared.</b> A probe on a write verb sends a body chosen
+/// to draw a refusal and is asserted to answer 4xx, which is the handler declining before the
+/// write it would have made. The two write routes that cannot be made to refuse declare
+/// <code>why</code>: one creates a conversation row, declares <code>cleanup</code> and is undone
+/// inside the probe loop; the other abandons the calling account's own in-flight turns, and
+/// <code>expect</code> holds the precondition that there were none.</p>
 /// <p>Needs an installed instance reachable over HTTP as the suite's own account
 /// (<class>OcuPilot.Test.Http</class>). No arming variable applies: nothing here mutates a
 /// principal, a log or the install.</p>
@@ -23,6 +25,11 @@ Class OcuPilot.Test.EndpointCoverage Extends %UnitTest.TestCase
 /// <code>path</code> from its <code>url</code> with this in every <code>:param</code> segment, so
 /// a row whose path was left stale by a copy-paste does not agree with its own key.</p>
 Parameter PROBEID = "ocupilot-coverage-probe";
+
+/// <p>The prefix <method>WebAppPath</method> answers when the install roster could not be read at
+/// all, so a failed lookup is a named value rather than the same <code>""</code> a roster with no
+/// declaration answers -- the <class>OcuPilot.Test.AdminInventory</class> idiom.</p>
+Parameter UNREADABLE = "unreadable:";
 
 /// <p>The request body every write-verb probe sends: not JSON, so a handler that reads a body
 /// refuses before it does anything.</p>
@@ -255,15 +262,23 @@ ClassMethod WebAppPath(pClass As %String) As %String
         For tI = 1:1:$Length(tKeys, ",") {
             Set tKey = $Piece(tKeys, ",", tI)
             If tKey = "" Continue
-            If $$$ISERR(##class(OcuPilot.Install.Roster).Application(tKey, .tApp)) Continue
-            If '$IsObject(tApp) Continue
-            If '$IsObject(tApp.manifest) Continue
+            ; A roster entry that will not open is UNREADABLE, never "declares no application":
+            ; scoring a failed lookup as a negative result is what makes a broken roster read as
+            ; a missing declaration, and the caller's message would then name the wrong cause.
+            If $$$ISERR(##class(OcuPilot.Install.Roster).Application(tKey, .tApp)) {
+                Set tPath = ..#UNREADABLE _ tKey
+                Quit
+            }
+            If '$IsObject(tApp) || '$IsObject(tApp.manifest) {
+                Set tPath = ..#UNREADABLE _ tKey
+                Quit
+            }
             If tApp.manifest.DispatchClass '= tFull Continue
             Set tPath = tApp.path
             Quit
         }
     } Catch ex {
-        Set tPath = ""
+        Set tPath = ..#UNREADABLE _ $Piece(ex.DisplayString(), " ", 1)
     }
     Quit tPath
 }
@@ -272,7 +287,9 @@ ClassMethod WebAppPath(pClass As %String) As %String
 /// web application the roster declares for that class, plus <var>pUrl</var> with every
 /// <code>:param</code> segment replaced by <parameter>PROBEID</parameter>, or by
 /// <var>pSubstitute</var> where the row declares one. <code>""</code> where the roster declares
-/// no application for the class.</p>
+/// no application for the class, and a <parameter>UNREADABLE</parameter>-prefixed value where the
+/// roster could not be read -- which the caller asserts on separately, so a broken roster is
+/// never reported as a missing declaration.</p>
 ClassMethod ExpectedPath(pClass As %String, pUrl As %String, pSubstitute As %String = "") As %String
 {
     Set tBase = ..WebAppPath(pClass)
@@ -342,8 +359,9 @@ Method TestEveryRouteHasAProbeAndEveryProbeHasARoute()
             Do $$$AssertNotEquals($Piece(tRow, "|", 8), "", tProbe _ ": a row substituting an identifier for PROBEID declares substitutewhy")
         }
         Set tExpected = ..ExpectedPath($Piece(tProbe, "|", 1), tUrl, tSubstitute)
+        Do $$$AssertEquals($Extract(tExpected, 1, $Length(..#UNREADABLE)) = ..#UNREADABLE, 0, tProbe _ ": the install roster reads (" _ tExpected _ ")")
         Do $$$AssertNotEquals(tExpected, "", tProbe _ ": the install roster declares a web application for its dispatch class")
-        If tExpected = "" Continue
+        If (tExpected = "") || ($Extract(tExpected, 1, $Length(..#UNREADABLE)) = ..#UNREADABLE) Continue
         Set tRebuilt = tRebuilt + 1
         Do $$$AssertEquals($Piece(tRow, "|", 1), tExpected, tProbe _ ": its path is its web application plus its url with every :param substituted")
     }
@@ -408,15 +426,14 @@ Method TestEveryProbeDispatchesToItsRoute()
         If tExpect '= "" {
             Set tMember = $Piece(tExpect, "=", 1)
             Set tWanted = $Piece(tExpect, "=", 2)
-            Set tRead = ""
-            If ..IsJson(tAnswer) Set tRead = ##class(%DynamicAbstractObject).%FromJSON(tAnswer).%Get(tMember)
+            Set tRead = ..MemberOf(tAnswer, tMember)
             Do $$$AssertEquals($Get(tRead), tWanted, tKey _ ": " _ tMember _ " reads " _ tWanted _ ", the precondition its why rests on (" _ $Extract(tAnswer, 1, 120) _ ")")
             Set tExpectations = tExpectations + 1
         }
 
         If tWrites {
             If tRefusal = 1 {
-                Do $$$AssertTrue((+tStatus >= 400) && (+tStatus < 500), tKey _ ": the body it was sent draws a refusal, so the probe writes nothing (status " _ tStatus _ ")")
+                Do $$$AssertTrue((+tStatus >= 400) && (+tStatus < 500), tKey _ ": the body it was sent is refused at 4xx, which is the handler declining before any write it would have made (status " _ tStatus _ ")")
                 Set tRefusals = tRefusals + 1
             } Else {
                 Do $$$AssertNotEquals(tWhy, "", tKey _ ": a write-verb probe that is not asserted to refuse declares why it cannot be made to")
@@ -425,8 +442,7 @@ Method TestEveryProbeDispatchesToItsRoute()
         }
 
         If tCleanup = "conversation" {
-            Set tCreated = ""
-            If ..IsJson(tAnswer) Set tCreated = ##class(%DynamicAbstractObject).%FromJSON(tAnswer).%Get("conversationId")
+            Set tCreated = ..MemberOf(tAnswer, "conversationId")
             Do $$$AssertNotEquals(tCreated, "", tKey _ ": the conversation it created is named in the answer, so it can be removed")
             If tCreated '= "" {
                 Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Convo).GuardedDelete(tCreated), tKey _ ": and it is removed again, so the probe leaves no row behind")
@@ -445,17 +461,27 @@ ClassMethod IsJson(pBody As %String) As %Boolean
     Quit (tFirst = "{") || (tFirst = "[")
 }
 
+/// <p>The <var>pMember</var> member of a JSON answer, or <code>""</code> where the answer is not
+/// JSON or does not parse. <method>IsJson</method> reads only the first character, so a truncated
+/// or malformed body that begins with <code>{</code> reaches the parser and throws; the parse is
+/// guarded here, once, so every caller reads a value rather than losing the rest of its loop to
+/// an exception raised from the middle of it.</p>
+ClassMethod MemberOf(pBody As %String, pMember As %String) As %String
+{
+    Set tValue = ""
+    Try {
+        If ..IsJson(pBody) Set tValue = ##class(%DynamicAbstractObject).%FromJSON(pBody).%Get(pMember)
+    } Catch ex {
+        Set tValue = ""
+    }
+    Quit $Get(tValue)
+}
+
 /// <p>The <code>code</code> member of an AD-12 error envelope, or <code>""</code> where the answer
 /// is not one. A body that cannot be parsed answers <code>""</code>, never the caller's code.</p>
 ClassMethod CodeOf(pBody As %String) As %String
 {
-    Set tCode = ""
-    Try {
-        If ..IsJson(pBody) Set tCode = ##class(%DynamicAbstractObject).%FromJSON(pBody).%Get("code")
-    } Catch ex {
-        Set tCode = ""
-    }
-    Quit $Get(tCode)
+    Quit ..MemberOf(pBody, "code")
 }
 
 }

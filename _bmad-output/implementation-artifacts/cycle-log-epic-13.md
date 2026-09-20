@@ -48,3 +48,6 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-20T03:15:28Z	Story 13.2	stage_spawned	stage=qa spawn_at=2026-09-20T03:15:28Z model=claude-sonnet-5 agent_name=13-2-the-test-suite-grows-in-ci-qa-1 cycle_iteration=1
 2026-09-20T03:22:14Z	Story 13.2	qa_complete	spawn_at=2026-09-20T03:25:11Z model=claude-sonnet-5 tests=ui/tools/ci.test.mjs tests_added=2 mutations_demonstrated=2 first_run_failures=0 clarifications=0 closing_sections_present=true
 2026-09-20T03:22:14Z	Story 13.2	stage_spawned	stage=code-review spawn_at=2026-09-20T03:22:14Z model=claude-opus-5[1m] agent_name=13-2-the-test-suite-grows-in-ci-cr-1 cycle_iteration=1
+2026-09-20T04:45:19Z	Story 13.2	cr_complete	spawn_at=2026-09-20T03:31:52Z model=claude-opus-5[1m] resolved=19 by_design=1 wontfix_theoretical=0 routed=2 escalated=0 decision_pending=0 dismissed=20 high=0 med=10 low=11 rows=66 unresolved_high_med=1 clarifications=0 closing_sections_present=true
+2026-09-20T04:45:19Z	Story 13.2	ledger_adjudicated	owned=13 resolved=9 reowned=4 terminal=0 model=claude-opus-5[1m]
+2026-09-20T04:45:19Z	Story 13.2	smoke_complete	method=cli result=pass iterations=2 defects_caught=0 evidence=fresh_throwaway_sweep_137classes_1283tests_0failed_exit0;smoke_executed45_passed45_failed0;ui_1101_plus_644;reused_throwaway_red_attributed_as_DW-1297 model=claude-opus-5[1m]

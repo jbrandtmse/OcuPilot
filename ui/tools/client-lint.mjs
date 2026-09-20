@@ -341,9 +341,13 @@ export const ALLOWED_ABSOLUTE_URLS = [
  *
  * Splitting a URL across a concatenation is how a shipped off-origin reference evades
  * `OFF_ORIGIN_URL_RE`, which matches a whole URL in one literal and sees none of
- * `'https:' + '//cdn.example.com/x.js'`. A split can fall at any character, so both halves of all
- * three placements of the `+` are matched here -- matching only one of them is a rule that reads
- * as closed and is open at the other two. The host fragment stays dotted: `base + '/api/x'` is a
+ * `'https:' + '//cdn.example.com/x.js'`. What is matched here is a split that falls at a scheme
+ * boundary -- after `https:`, `https:/` or `https://` -- or that leaves a dotted host behind one
+ * or two slashes, which is where the three placements of the `+` in a scheme-plus-host URL fall.
+ * A split INSIDE the scheme (`'htt' + 'ps://...'`) or inside the host
+ * (`'https://cdn' + '.example.com/x'`) leaves neither half recognizable as a URL and is not
+ * matched; nor is an interpolated `` `https://${host}/x` ``, which no literal spells. The host
+ * fragment stays dotted: `base + '/api/x'` is a
  * same-origin path, not a host. The adjacency test below is what separates all of this from
  * `url.protocol === 'http:'` in `core/reply.ts`, which compares a scheme and concatenates
  * nothing.
@@ -351,9 +355,25 @@ export const ALLOWED_ABSOLUTE_URLS = [
 const SCHEME_FRAGMENT_RE =
   /(['"`])(https?:\/*|\/{1,2}[A-Za-z0-9][A-Za-z0-9-]*(?:\.[A-Za-z0-9-]+)+[^'"`\n]*)\1/g;
 
-/** Whether a `+` sits immediately before or after the literal `code` matched at `at`..`end`. */
+/**
+ * A template literal whose host is interpolated: `` `https://${host}/x.js` ``.
+ *
+ * `OFF_ORIGIN_URL_RE` reads a whole URL out of one literal and stops at the `$`; the
+ * concatenation rule above reads quoted fragments and a template literal is one unbroken literal
+ * with no `+` beside it. So interpolation -- the most idiomatic way TypeScript builds a URL --
+ * reached neither rule. Matched here: a scheme, or a protocol-relative `//`, immediately followed
+ * by an interpolation. A same-origin `` `/api/${id}` `` has one leading slash and no scheme, and
+ * is not matched.
+ */
+const INTERPOLATED_HOST_RE = /`[^`]*?(https?:\/*\$\{|(?<![:A-Za-z0-9/])\/\/\$\{)/g;
+
+/**
+ * Whether a `+` or `+=` sits immediately before or after the literal `code` matched at
+ * `at`..`end`. `+=` is the other idiomatic way to build a string a piece at a time, so a rule
+ * that reads only `+` is closed at one half of the same construct and open at the other.
+ */
 function adjacentToConcatenation(code, at, end) {
-  return /\+\s*$/.test(code.slice(0, at)) || /^\s*\+/.test(code.slice(end));
+  return /\+=?\s*$/.test(code.slice(0, at)) || /^\s*\+/.test(code.slice(end));
 }
 
 /**
@@ -363,19 +383,20 @@ function adjacentToConcatenation(code, at, end) {
  * comment that names a URL to explain why it is not used is prose, and failing the build on one
  * leaves no way to write the explanation.
  *
- * **`*.spec.ts` is exempt from this family, deliberately.** A spec file writes its fixture URLs
- * split precisely so the whole-URL rule does not fire on them, and the concatenation rule would
- * turn that convention into a violation. What keeps a spec out of the bundle is
- * `ui/tsconfig.app.json`, whose `"files": ["src/main.ts"]` is the application compilation's only
- * entry point, so nothing a spec imports is reachable from it. `build-output.test.mjs` checks
- * the artifact alongside that, though less widely than this exemption would need on its own: it
- * asserts three named harness markers are absent from the emitted js, html and css, and scans
- * the emitted CSS and `index.html` -- not the emitted JS -- for an off-origin host.
- * `checkTestingImports` skips `.spec.ts` for the same reason.
+ * **`*.spec.ts` is exempt from the CONCATENATION half only, deliberately.** A spec file writes
+ * its fixture URLs split precisely so the whole-URL rule does not fire on them, and the
+ * concatenation rule would turn that convention into a violation. The whole-URL rule keeps
+ * running on spec files, because nothing about the split convention needs it off and turning it
+ * off would retire the coverage those 48 files already have. What keeps a spec out of the bundle
+ * is `ui/tsconfig.app.json`, whose `"files": ["src/main.ts"]` is the application compilation's
+ * only entry point, so nothing a spec imports is reachable from it. `build-output.test.mjs`
+ * checks the artifact alongside that, though less widely: it asserts three named harness markers
+ * are absent from the emitted js, html and css, and scans the emitted CSS and `index.html` --
+ * not the emitted JS -- for an off-origin host. `checkTestingImports` skips `.spec.ts` whole,
+ * which is the precedent for exempting a spec at all.
  */
 export function checkOffOriginUrls({ path, text }) {
   const errors = [];
-  if (path.endsWith('.spec.ts')) return { ok: true, errors };
   const code = blankComments(blankHtmlComments(text));
   for (const m of code.matchAll(OFF_ORIGIN_URL_RE)) {
     const url = m[0];
@@ -387,6 +408,15 @@ export function checkOffOriginUrls({ path, text }) {
       rule: 'no-off-origin-url',
     });
   }
+  for (const m of code.matchAll(INTERPOLATED_HOST_RE)) {
+    errors.push({
+      file: path,
+      line: lineNumberAt(code, m.index),
+      literal: `${m[1]} -- a URL whose host is interpolated is still an off-origin URL`,
+      rule: 'no-concatenated-url',
+    });
+  }
+  if (path.endsWith('.spec.ts')) return { ok: errors.length === 0, errors };
   for (const m of code.matchAll(SCHEME_FRAGMENT_RE)) {
     if (!adjacentToConcatenation(code, m.index, m.index + m[0].length)) continue;
     errors.push({

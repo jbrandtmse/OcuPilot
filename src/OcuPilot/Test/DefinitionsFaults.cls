@@ -159,6 +159,9 @@ Method TestAnUnreadableVersionRefusesBeforeTheProviderIsCalled()
     If tId = "" Quit
     Set tOpenSC = ##class(OcuPilot.Kernel.State.Agent).GuardedOpenId(tId, .tRow)
     Do $$$AssertStatusOK(tOpenSC, "the row opens")
+    ; Nothing below has a meaning without the row, and reading it undefined is an <UNDEFINED>
+    ; raised from the middle of the method rather than the named failure just asserted.
+    If $$$ISERR(tOpenSC) || '$IsObject(tRow) Quit
     Do ##class(OcuPilot.Test.DefinitionsProbe).ValuesFromRow(tRow, .tStored)
     Set tRow = ""
     Kill tValues

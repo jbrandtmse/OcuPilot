@@ -175,8 +175,14 @@ services:
       # src/OcuPilot/Test/ and holds the two equal in both directions, so a class that gains or
       # loses an arming declaration reddens here rather than leaving a roster nobody re-read.
       # The derivation is structural (the arming Parameter, or an inline \$System.Util.GetEnviron),
-      # never a substring scan: a variable named in a doc comment and not armed by it is not a
+      # never a substring scan: a variable named in a comment and not armed by it is not a
       # member, and counting one as a member is how a grep-shaped count came out wrong by one.
+      # What is held equal is DECLARING the variable, not refusing on it: a fixture supplies the
+      # destructive helper, declares the variable its callers refuse on, and holds no refusal of
+      # its own (TurnWireFixture). Keeping a declared variable while deleting the refusal beside
+      # it is a change these rosters cannot see -- scripts/check-objectscript.py's
+      # destructive-test-guard rule is what reads that, and DW-419 is where its limits are
+      # recorded.
       #
       # Rotates the instance's own messages.log. Set here and nowhere else: this container is
       # discarded, and the test refuses to run anywhere the variable is absent rather than
@@ -279,8 +285,14 @@ EOF
         UP_RC_FILE="$DIR/up-rc.txt"
         ATTEMPT=1
         while : ; do
+            # Cleared first: the exit code is written from inside the pipeline, so if that write
+            # never happens -- the left side killed, the file unwritable -- `cat` would otherwise
+            # read whatever an earlier attempt or an earlier run of this script left behind, and a
+            # stale `0` reads as a bring-up that succeeded. Absent, it reads empty, which is not
+            # "0" and takes the failure path.
+            rm -f "$UP_RC_FILE"
             { docker compose -f "$COMPOSE_FILE" up -d --wait 2>&1; echo "$?" > "$UP_RC_FILE"; } | tee "$UP_OUTPUT_FILE"
-            if [ "$(cat "$UP_RC_FILE")" = "0" ]; then break; fi
+            if [ "$(cat "$UP_RC_FILE" 2>/dev/null)" = "0" ]; then break; fi
             UP_OUTPUT=$(cat "$UP_OUTPUT_FILE")
             case "$UP_OUTPUT" in
                 *"address already in use"*|*"port is already allocated"*|*"ports are not available"*|*"Bind for "*) ;;

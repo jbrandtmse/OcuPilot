@@ -70,11 +70,11 @@ XData Coverage
 <screen name="OAuthServerClientTab" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="OAuthServerDescriptionTab" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="OAuthServerTab" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
-<screen name="OpenApiViewer" class="OcuPilot.Test.Descriptor" method="TestTheRestApiExplorerAndDocumentViewerValidate"/>
+<screen name="OpenApiViewer" class="OcuPilot.Test.Descriptor" method="TestTheRestApiExplorerAndDocumentViewerValidate" corpus="one test method validates both the REST API explorer and the document viewer, so neither member has a method of its own"/>
 <screen name="ProcessDetails" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="ProcessList" class="OcuPilot.Test.Descriptor" method="TestTheProcessesListValidatesAndNamesTheVendorsNamespaceKey"/>
 <screen name="ResourceList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
-<screen name="RestApiList" class="OcuPilot.Test.Descriptor" method="TestTheRestApiExplorerAndDocumentViewerValidate"/>
+<screen name="RestApiList" class="OcuPilot.Test.Descriptor" method="TestTheRestApiExplorerAndDocumentViewerValidate" corpus="one test method validates both the REST API explorer and the document viewer, so neither member has a method of its own"/>
 <screen name="RoleList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="ServiceList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="SslConfigList" class="OcuPilot.Test.Descriptor" method="TestTheSslConfigurationsListValidatesAndNamesItsClassicPageInItsOwnCase"/>
@@ -181,7 +181,14 @@ ClassMethod Stored(Output pRows) As %Status
             If tLine [ "<member " Set tKind = "member"
             If tKind = "" Continue
             Set tName = ..Attribute(tLine, "name")
-            If tName = "" Continue
+            ; A row whose name is absent or misspelled is an ERROR, never a row quietly dropped.
+            ; A dropped <screen/> row is caught by the both-directions equality, but a dropped
+            ; <member/> row is not: the member half is a one-directional roster, so a malformed
+            ; row would take AC2's named floor member with it and leave every assertion green.
+            If tName = "" {
+                Set tSC = $$$ERROR($$$GeneralError, "a <" _ tKind _ "/> coverage row declares no name: " _ tLine)
+                Quit
+            }
             Set pRows(tKind, tName) = ..Attribute(tLine, "class") _ "|" _ ..Attribute(tLine, "method") _ "|" _ ..Attribute(tLine, "corpus")
         }
         Set tXData = ""
@@ -330,7 +337,14 @@ Method TestEveryCoverageRowNamesATestTheSuiteExecutes()
             Set tMethod = $Piece(tRow, "|", 2)
             Set tChecked = tChecked + 1
             If tKind = "member" Set tMembers = $Get(tMembers, 0) + 1
-            If $Piece(tRow, "|", 3) '= "" Set tCorpus = tCorpus + 1
+            If $Piece(tRow, "|", 3) '= "" {
+                Set tCorpus = tCorpus + 1
+            } Else {
+                ; A method named by two rows covers two members, which is what `corpus` means --
+                ; so an undeclared sharing makes the reported "by a method of their own" count
+                ; overstate the granularity this floor has. Counted here rather than trusted.
+                Set tShared(tClass _ ":" _ tMethod) = $Get(tShared(tClass _ ":" _ tMethod)) _ $Select($Get(tShared(tClass _ ":" _ tMethod)) = "": "", 1: ", ") _ tName
+            }
             Set tProblem = ..PinProblem(tClass, tMethod)
             If tProblem '= "" {
                 Set tDrift = tDrift _ $Select(tDrift = "": "", 1: "; ") _ tKind _ " " _ tName _ ": " _ tProblem
@@ -344,6 +358,15 @@ Method TestEveryCoverageRowNamesATestTheSuiteExecutes()
     ; the number of them is what says how fine-grained this floor really is (AD-44's treatment of
     ; exemptions). What is asserted is that they are not all of it.
     Do $$$AssertTrue(tCorpus < tChecked, tChecked _ " coverage row(s), of which " _ tCorpus _ " are pinned by a whole-corpus method and " _ (tChecked - tCorpus) _ " by a method of their own")
+
+    ; And that the second number means what it says.
+    Set tSharedDrift = "", tPair = ""
+    For {
+        Set tPair = $Order(tShared(tPair))
+        Quit:tPair=""
+        If tShared(tPair) [ ", " Set tSharedDrift = tSharedDrift _ $Select(tSharedDrift = "": "", 1: "; ") _ tPair _ " pins " _ tShared(tPair)
+    }
+    Do $$$AssertEquals(tSharedDrift, "", "no two rows claim a method of their own that is the same method; such a row declares corpus")
 }
 
 /// <p>Why <var>pClass</var>.<var>pMethod</var> is not a test the suite executes, or

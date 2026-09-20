@@ -16,8 +16,10 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { spawn, spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { createServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -31,6 +33,7 @@ import {
   instanceSpecUrl,
   serializeTable,
   tableProblems,
+  upstreamMismatch,
   upstreamUrl,
   UPSTREAM,
   v2PathTable,
@@ -353,4 +356,114 @@ test('no <FileCopy> in module.xml names spec/ or the vendored table', () => {
     assert.doesNotMatch(copy, /spec\//, `${copy} would put the vendored table into the IPM archive`);
     assert.doesNotMatch(copy, /admin-v2-paths/, copy);
   }
+});
+
+test('no <Resource> in module.xml names a top-level directory either', () => {
+  // The SECOND half of the same sentence in ATTRIBUTIONS.md -- "and no roster package names a
+  // top-level directory". The FileCopy read above leaves it unheld, so the prose was broader
+  // than its guard. Every resource is a `.PKG` class package; a directory resource is what would
+  // sweep `spec/` in.
+  const manifest = readFileSync(join(here, '..', '..', 'module.xml'), 'utf8');
+  const resources = [...manifest.matchAll(/<Resource\b[^>]*\bName="([^"]+)"[^>]*>/g)].map((match) => match[1]);
+  assert.ok(resources.length > 0, 'the manifest declares at least one Resource, so this read is not vacuous');
+  for (const name of resources) {
+    assert.match(name, /\.PKG$/, `${name} is not a class package, so it may carry files the prose says are absent`);
+    assert.doesNotMatch(name, /spec/i, name);
+  }
+});
+
+// --- The pin's own integrity ---------------------------------------------------------------------
+
+test('--derive refuses a document that is not the pinned one, rather than stamping it with the pin', async () => {
+  // The table records the upstream commit, blob, byte count and digest, and ATTRIBUTIONS.md
+  // cites the same commit. Nothing downstream can re-check that, because the document is
+  // deliberately not vendored -- so the read is the only place it can be checked. Without this
+  // the integrity fields are decorative: any local file at all derives a table asserting it came
+  // from f764aea.
+  //
+  // Mutation (Rule 19): delete the `upstreamMismatch` call from `derive()` -> this goes red, and
+  // the committed table is rewritten from the wrong document.
+  const dir = mkdtempSync(join(tmpdir(), 'ocupilot-admin-spec-derive-'));
+  try {
+    const wrong = join(dir, 'not-the-pin.json');
+    writeFileSync(wrong, JSON.stringify({ openapi: '3.0.0', paths: { '/v2/x': { get: {} } } }));
+    const before = readFileSync(TABLE_PATH, 'utf8');
+    const run = spawnSync(process.execPath, [CLI, '--derive', '--from', wrong], { encoding: 'utf8' });
+    assert.equal(run.status, 1, `${run.stdout}${run.stderr}`);
+    assert.match(run.stderr, /is not intersystems-community\/sysadmin-api-specification@/);
+    assert.match(run.stderr, /byte\(s\); the pin was taken at 1004473/);
+    assert.equal(readFileSync(TABLE_PATH, 'utf8'), before, 'and the committed table is untouched');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('upstreamMismatch names the digest when the length happens to match', () => {
+  const pinned = { bytes: 4, sha256: createHash('sha256').update('good').digest('hex') };
+  assert.equal(upstreamMismatch(Buffer.from('good'), pinned), '');
+  assert.match(upstreamMismatch(Buffer.from('bad!'), pinned), /hashes to [0-9a-f]{64}; the pin was taken at/);
+  assert.match(upstreamMismatch(Buffer.from('longer'), pinned), /is 6 byte\(s\); the pin was taken at 4/);
+});
+
+test('a declared known difference whose two spellings answer different verbs is a drift, not an excuse', async () => {
+  // The declared entry pairs two spellings of ONE endpoint, so neither spelling is a common path
+  // and neither reaches the method-set comparison. That left the single path the gate excuses as
+  // the only one whose methods it never compared.
+  //
+  // Mutation (Rule 19): delete the `knownMethodDifferences` loop from `diffAdminSpec` -> this
+  // goes red while every other --origin case stays green.
+  const run = await runAgainst(servedDocument((paths) => { paths[DECLARED_INSTANCE_ONLY] = { post: {}, get: {} }; }));
+  assert.notEqual(run.code, 0, run.output);
+  assert.match(run.output, /is excused as one endpoint under two spellings/);
+  assert.ok(run.output.includes(DECLARED_INSTANCE_ONLY), run.output);
+});
+
+test('the CLI asks the instance for its generated admin spec, with credentials', async () => {
+  // The unit test above pins what `instanceSpecUrl` composes; nothing pinned that `compare()`
+  // requests it, or that the Basic header the throwaway needs is sent at all.
+  let seen = null;
+  const run = await runOrigin((request, response) => {
+    seen = { url: request.url, authorization: request.headers.authorization };
+    response.writeHead(200, { 'content-type': 'application/json' });
+    response.end(JSON.stringify(servedDocument()));
+  });
+  assert.equal(run.code, 0, run.output);
+  assert.equal(seen.url, '/api/mgmnt/v1/%25SYS/spec/api/admin');
+  assert.equal(seen.authorization, `Basic ${Buffer.from('_SYSTEM:SYS').toString('base64')}`);
+});
+
+test('tableProblems names a malformed row, not only a miscount (AC4)', () => {
+  // AC4 asks the gate to exit "naming the malformed row". The count, sort-order and commit
+  // branches were driven; the shape branches were not, so the clause the criterion names was the
+  // untested half.
+  const good = JSON.parse(readFileSync(TABLE_PATH, 'utf8'));
+  const withPaths = (paths) => serializeTable({ source: good.source, paths });
+
+  assert.equal(tableProblems('{not json').length, 1);
+  assert.match(tableProblems('{not json')[0], /^the table is not JSON: /);
+  assert.deepEqual(tableProblems('[]'), ['the table carries no `paths` object']);
+  assert.ok(
+    tableProblems(JSON.stringify({ paths: {} })).includes(
+      'the table carries no `source` block, so a drift could not name what it drifted from'
+    ),
+    'a table with no source block is named as such'
+  );
+  assert.ok(
+    tableProblems(withPaths({ '/v1/legacy': ['get'] })).some((problem) => problem === '/v1/legacy is not a /v2/ path'),
+    'a key outside the v2 surface is named'
+  );
+  assert.ok(
+    tableProblems(withPaths({ '/v2/x': [] })).some((problem) => problem === '/v2/x carries no verb list'),
+    'an empty verb list is named'
+  );
+  assert.ok(
+    tableProblems(withPaths({ '/v2/x': ['parameters'] })).some((problem) => problem.includes('which is not an HTTP verb')),
+    'and the path-level `parameters` key, the one that produced the fictitious 75-difference reading, is not a verb'
+  );
+  const missingField = { ...good.source };
+  delete missingField.sha256;
+  assert.ok(
+    tableProblems(serializeTable({ source: missingField, paths: good.paths })).includes('the source block names no sha256'),
+    'each absent source field is named on its own'
+  );
 });

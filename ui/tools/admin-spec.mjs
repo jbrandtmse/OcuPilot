@@ -20,6 +20,7 @@
 // upstream is OpenAPI 3.0.0, the instance's generated spec is Swagger 2.0 -- so `.paths` is read
 // without assuming either.
 
+import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -145,11 +146,34 @@ export function diffAdminSpec({ vendored, instance, knownDifferences = KNOWN_DIF
       (entry.upstreamOnly !== undefined && !removed.includes(entry.upstreamOnly))
   );
 
+  // A declared difference pairs two spellings of ONE endpoint, so neither spelling is a common
+  // path and neither reaches `methodDifferences` above. Without this the method set of the one
+  // path the gate excuses is the only one it never compares -- a rename that also re-methoded
+  // the endpoint would pass, which is the drift this gate exists for.
+  const knownMethodDifferences = [];
+  for (const entry of knownDifferences) {
+    if (entry.upstreamOnly === undefined || entry.instanceOnly === undefined) continue;
+    const ours = vendored[entry.upstreamOnly];
+    const theirs = instance[entry.instanceOnly];
+    if (ours === undefined || theirs === undefined) continue;
+    const oursText = [...ours].sort().join(',');
+    const theirsText = [...theirs].sort().join(',');
+    if (oursText !== theirsText) {
+      knownMethodDifferences.push({
+        upstreamOnly: entry.upstreamOnly,
+        instanceOnly: entry.instanceOnly,
+        vendored: oursText,
+        instance: theirsText,
+      });
+    }
+  }
+
   return {
     added,
     removed,
     common,
     methodDifferences,
+    knownMethodDifferences,
     undeclaredAdded: added.filter((path) => !declaredAdded.has(path)),
     undeclaredRemoved: removed.filter((path) => !declaredRemoved.has(path)),
     staleDifferences,
@@ -226,18 +250,58 @@ export const EXPECTED_VERBS = 271;
 
 // --- The impure half: fetching, reading and the CLI ------------------------------------------
 
-async function fetchJson(url, { username, password } = {}) {
+/**
+ * The seconds a fetch may take before it is abandoned. The gate is placed ahead of the long
+ * suites so a drift fails in seconds; without a deadline an instance that accepts the connection
+ * and never answers would hold the step open to the job's own cap instead.
+ */
+export const FETCH_TIMEOUT_MS = 30000;
+
+async function fetchText(url, { username, password } = {}) {
   const headers = {};
   if (username) headers.Authorization = `Basic ${Buffer.from(`${username}:${password ?? ''}`).toString('base64')}`;
-  const response = await fetch(url, { headers });
+  const response = await fetch(url, { headers, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
   if (!response.ok) throw new Error(`${url} answered HTTP ${response.status}`);
-  return JSON.parse(await response.text());
+  return Buffer.from(await response.arrayBuffer());
+}
+
+async function fetchJson(url, credentials) {
+  return JSON.parse((await fetchText(url, credentials)).toString('utf8'));
+}
+
+/**
+ * Why `bytes` is not the document the pin names, or `""` when it is.
+ *
+ * The table stamps every row it writes with `UPSTREAM`'s commit, blob, byte count and digest, and
+ * `ATTRIBUTIONS.md` cites the same commit. Nothing downstream can re-check that -- the document
+ * is deliberately not vendored -- so the one moment it CAN be checked is here, as the bytes are
+ * read. Without this the integrity fields are decorative: any document at all derives a table
+ * asserting it came from `f764aea`.
+ */
+export function upstreamMismatch(bytes, upstream = UPSTREAM) {
+  if (bytes.length !== upstream.bytes) {
+    return `the document is ${bytes.length} byte(s); the pin was taken at ${upstream.bytes}`;
+  }
+  const digest = createHash('sha256').update(bytes).digest('hex');
+  if (digest !== upstream.sha256) {
+    return `the document hashes to ${digest}; the pin was taken at ${upstream.sha256}`;
+  }
+  return '';
 }
 
 /** `from` reads a local copy; otherwise `--fetch` was given and the pinned commit is fetched. */
 async function derive({ from }) {
   const source = from === '' ? upstreamUrl() : from;
-  const document = from === '' ? await fetchJson(upstreamUrl()) : JSON.parse(readFileSync(from, 'utf8'));
+  const bytes = from === '' ? await fetchText(upstreamUrl()) : readFileSync(from);
+  const mismatch = upstreamMismatch(bytes);
+  if (mismatch !== '') {
+    console.error(
+      `admin-spec: ${source} is not ${UPSTREAM.repository}@${UPSTREAM.commit} (${UPSTREAM.path}) -- ${mismatch}.\n` +
+        '  Deriving from it would stamp the table with a commit it did not come from. Move the pin in UPSTREAM deliberately, or fetch the pinned commit.'
+    );
+    return 1;
+  }
+  const document = JSON.parse(bytes.toString('utf8'));
   const paths = v2PathTable(document);
   const text = serializeTable({ source: UPSTREAM, paths });
   writeFileSync(TABLE_PATH, text);
@@ -273,6 +337,12 @@ async function compare(origin, { username, password }) {
   }
   for (const { path, vendored: ours, instance: theirs } of result.methodDifferences) {
     failures.push(`${path} answers [${theirs}] on the instance and [${ours}] in the vendored table`);
+  }
+  for (const { upstreamOnly, instanceOnly, vendored: ours, instance: theirs } of result.knownMethodDifferences) {
+    failures.push(
+      `the declared known difference ${JSON.stringify(upstreamOnly)} against ${JSON.stringify(instanceOnly)} is excused as one endpoint under two spellings, ` +
+        `but the instance answers [${theirs}] there and the vendored table [${ours}]`
+    );
   }
   for (const entry of result.staleDifferences) {
     failures.push(

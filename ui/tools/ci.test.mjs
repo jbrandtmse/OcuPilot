@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import {
   chmodSync,
   existsSync,
@@ -419,6 +419,17 @@ test('the three jobs are declared, and the instance job waits on readiness befor
 
   const upAt = workflow.indexOf('ci-throwaway.sh up');
   assert.ok(upAt > 0 && upAt < waitAt, 'the throwaway comes up first');
+
+  // Both new steps are placed for their position, and the DECLARED_GATES equality above compares
+  // SORTED multisets -- so without these two assertions either could be moved with every gate
+  // green. DW-439's criterion is that the range is logged "whether or not the bind succeeded",
+  // which is only true while the probe runs BEFORE the bring-up that may fail; and the admin-spec
+  // step is placed to fail in seconds rather than forty minutes into the suites.
+  const rangeAt = workflow.indexOf('cat /proc/sys/net/ipv4/ip_local_port_range');
+  assert.ok(rangeAt > 0 && rangeAt < upAt, 'the ephemeral-range probe runs before the bind that may fail (DW-439)');
+  const adminSpecAt = workflow.indexOf('tools/admin-spec.mjs --origin');
+  assert.ok(adminSpecAt > waitAt, 'the admin API drift gate runs after readiness');
+  assert.ok(adminSpecAt < runnerAt, 'and before the long suites, so a vendor drift fails in seconds (AD-27)');
 });
 
 test('the images job covers both stock Community editions at the pinned version (NFR-13)', () => {
@@ -1619,7 +1630,12 @@ export function declaredArmingRosters(source) {
   return rosters;
 }
 
-/** Every `.cls` under a directory, as `{shortName, code}` with `///` doc comments removed. */
+/**
+ * Every `.cls` under a directory, as `{shortName, code}` with comments removed -- `///` class
+ * documentation and `;` in-method comments alike. Stripping only the first would leave the
+ * derivation's own stated property ("a mention in a comment is not an arming declaration") true
+ * of one comment form and false of the other, which is the substring trap under a new spelling.
+ */
 function testClassSources(root, prefix = '') {
   const classes = [];
   for (const entry of readdirSync(root, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
@@ -1631,7 +1647,7 @@ function testClassSources(root, prefix = '') {
     if (!entry.name.endsWith('.cls')) continue;
     const code = readFileSync(full, 'utf8')
       .split('\n')
-      .filter((line) => !line.trimStart().startsWith('///'))
+      .filter((line) => !line.trimStart().startsWith('///') && !line.trimStart().startsWith(';'))
       .join('\n');
     classes.push({ shortName: `${prefix}${entry.name.slice(0, -4)}`, code });
   }
@@ -1719,10 +1735,49 @@ test('DW-1276: a doc-comment mention is not an arming declaration', () => {
   );
 });
 
+test('DW-1276: neither comment form is an arming declaration', () => {
+  // The property is asserted on the tree for `///` by the test above. ObjectScript has a second
+  // comment form -- `;` inside a method body -- and the derivation stripped only the first, so
+  // the stated property held for one spelling and not the other. No file carries such a comment
+  // today, which is exactly why it needs pinning here rather than being noticed later.
+  //
+  // Mutation (Rule 19): drop the `;` clause from testClassSources' filter -> this goes red.
+  const root = mkdtempSync(join(tmpdir(), 'ocupilot-arming-comments-'));
+  try {
+    writeFileSync(
+      join(root, 'CommentOnly.cls'),
+      [
+        'Class OcuPilot.Test.CommentOnly Extends %UnitTest.TestCase',
+        '{',
+        'Method TestSomething()',
+        '{',
+        '    ; OCUPILOT_ALLOW_PRINCIPALS is what SwitchesWire would arm on; this class does not.',
+        '    ; $System.Util.GetEnviron("OCUPILOT_ALLOW_PRINCIPALS") is not called here.',
+        '    Quit',
+        '}',
+        '}',
+      ].join('\n')
+    );
+    writeFileSync(
+      join(root, 'ReallyArmed.cls'),
+      [
+        'Class OcuPilot.Test.ReallyArmed Extends %UnitTest.TestCase',
+        '{',
+        'Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_PRINCIPALS";',
+        '}',
+      ].join('\n')
+    );
+    const derived = armedClasses(root);
+    assert.deepEqual([...(derived.get('OCUPILOT_ALLOW_PRINCIPALS') ?? [])].sort(), ['ReallyArmed']);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 // --- The bounded bind retry (DW-439) ---------------------------------------------------------
 
 /** Run `ci-throwaway.sh up` against a stub docker that fails `up` a given number of times. */
-function runThrowawayUp({ fails, message }) {
+function runThrowawayUp({ fails, message, retrySeconds = '0' }) {
   const dir = mkdtempSync(join(tmpdir(), 'ocupilot-throwaway-bind-'));
   const bin = join(dir, 'bin');
   const scratch = join(dir, 'scratch');
@@ -1758,9 +1813,10 @@ function runThrowawayUp({ fails, message }) {
         OCUPILOT_UP_COUNT: counter,
         OCUPILOT_UP_FAILS: String(fails),
         OCUPILOT_UP_MESSAGE: message,
-        // The retry's growing wait, turned off so the stubbed runs stay fast. That the wait is
-        // overridable at all is what the assertion below reads.
-        OCUPILOT_BIND_RETRY_SECONDS: '0',
+        // The retry's growing wait. Callers that only care about the retry count or the final
+        // status pass the default '0' to keep the run fast; the backoff test below overrides it
+        // to observe the wait actually elapsing.
+        OCUPILOT_BIND_RETRY_SECONDS: retrySeconds,
       }),
     });
     const argv = existsSync(capture) ? readFileSync(capture, 'utf8') : '';
@@ -1838,6 +1894,95 @@ test('DW-439: a failure that is not a host-port bind exits at once, unretried', 
   assert.match(run.output, /not a host-port bind/, 'saying which of the two it is');
 });
 
+test('DW-439: the retry actually waits, and the second wait outlasts the first', () => {
+  // The two tests above pin the SHAPE of the backoff by reading the source text -- a non-zero,
+  // overridable default and a `sleep` keyed to `ATTEMPT`. Neither one runs the script and watches
+  // a clock, so a change that keeps both regexes matching but breaks the growth (a stray
+  // `ATTEMPT=1` reset between attempts, or a `$((BIND_RETRY_SECONDS))` that drops the
+  // multiplication) would still pass them. This drives the real retry with `OCUPILOT_BIND_RETRY_SECONDS`
+  // set to a real, small, non-zero value and asserts on the wall-clock elapsed, which is what
+  // downstream users actually experience.
+  //
+  // Mutation (Rule 19): replace `sleep $((BIND_RETRY_SECONDS * ATTEMPT))` with a constant
+  // `sleep $BIND_RETRY_SECONDS` -> the elapsed floor below (which needs the SECOND wait to be
+  // longer than the first, i.e. growth) goes red while the two source-text tests above stay green.
+  const start = Date.now();
+  const run = runThrowawayUp({ fails: 2, message: BIND_MESSAGE, retrySeconds: '1' });
+  const elapsedMs = Date.now() - start;
+  assert.equal(run.status, 0, `expected the third attempt to succeed: ${run.output}`);
+  assert.equal(run.ups, 3, 'three bring-up attempts');
+  // Attempt 1's wait is BIND_RETRY_SECONDS*1 = 1s, attempt 2's is BIND_RETRY_SECONDS*2 = 2s: the
+  // two real sleeps sum to at least 3s. A flat (non-growing) 1s-per-attempt backoff would total
+  // only ~2s, so this floor distinguishes growth from a fixed wait as well as from no wait at all.
+  assert.ok(elapsedMs >= 2900, `expected at least ~3s of growing backoff (1s + 2s), took ${elapsedMs}ms`);
+});
+
+test('DW-439: the bring-up streams output as it happens, never only at exit', () => {
+  // The regex test above pins the exit-code-to-file-plus-`tee` SHAPE in the source. It cannot
+  // observe whether output actually arrives while the command is still running, which is the one
+  // property DW-439 is about: a `--wait` that hangs until the job is cancelled must still have
+  // shown something on screen. This drives the real script asynchronously against a stub that
+  // prints a marker and then sleeps, and asserts the marker reaches this process's stdout well
+  // before the stub's sleep (and so the whole command) completes.
+  //
+  // Mutation (Rule 19): revert to `UP_OUTPUT=$(docker compose ... up -d --wait 2>&1)` (a captured,
+  // unstreamed form) -> the marker is buffered until the child exits, so it arrives only after the
+  // full sleep, and the "well before" assertion below goes red while the regex test stays green
+  // only if the reverted line still happened to match a stale pattern -- here it is read from
+  // observed timing, not text, so it cannot pass by accident.
+  const dir = mkdtempSync(join(tmpdir(), 'ocupilot-throwaway-stream-'));
+  const bin = join(dir, 'bin');
+  const scratch = join(dir, 'scratch');
+  const SLEEP_MS = 2000;
+  const MARKER = 'OCUPILOT_STREAM_MARKER';
+  mkdirSync(bin);
+  writeStub(bin, 'docker', [
+    'case "$*" in',
+    `  *"up -d --wait"*)`,
+    `    printf '%s\\n' '${MARKER}'`,
+    `    sleep ${SLEEP_MS / 1000}`,
+    '    exit 0',
+    '    ;;',
+    'esac',
+    'exit 0',
+  ]);
+  return new Promise((resolve, reject) => {
+    const start = Date.now();
+    let markerAtMs = null;
+    const child = spawn('sh', [join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), 'up', '--dir', scratch], {
+      cwd: REPO_ROOT,
+      env: stubEnv(bin, { OCUPILOT_BIND_RETRY_SECONDS: '0' }),
+    });
+    child.stdout.on('data', (chunk) => {
+      if (markerAtMs === null && chunk.toString().includes(MARKER)) markerAtMs = Date.now() - start;
+    });
+    child.on('error', reject);
+    child.on('close', (code) => {
+      const closeAtMs = Date.now() - start;
+      try {
+        rmSync(dir, { recursive: true, force: true });
+        assert.equal(code, 0, 'the bring-up itself still succeeds');
+        assert.ok(markerAtMs !== null, 'the marker line reached this process\'s stdout at all');
+        // Measured against the child's OWN exit, not against an absolute budget from `spawn`.
+        // Node's spawn, `sh` startup, the compose-file write and `rm_durable` all sit between
+        // `start` and the stub's first line, and on a loaded three-band matrix that overhead is
+        // unbounded -- a fixed budget would read "output was not streamed" when the runner was
+        // merely busy. The overhead shifts marker and close together, so their DISTANCE is the
+        // streamed-versus-captured property: streamed, the marker leads the close by the stub's
+        // whole sleep; captured, both arrive together.
+        assert.ok(
+          closeAtMs - markerAtMs > SLEEP_MS / 2,
+          `expected the marker at least ${SLEEP_MS / 2}ms before the bring-up finished (streamed); ` +
+            `observed the marker at ${markerAtMs}ms and the close at ${closeAtMs}ms (captured would put them together)`
+        );
+        resolve();
+      } catch (err) {
+        reject(err);
+      }
+    });
+  });
+});
+
 // --- The named failing checks (DW-1079) ------------------------------------------------------
 
 /** Run `smoke.sh` against a stub `iris` that prints `report` between the script's own markers. */
@@ -1904,6 +2049,40 @@ test('DW-1079: a failing smoke run names every failing check on one quotable lin
   assert.match(run.output, /^smoke: FAILED check\(s\): wallet, demofixture$/m, run.output);
   assert.doesNotMatch(run.output, /^smoke: FAILED check\(s\):[^\n]*readiness/m, 'and names no check that passed');
   assert.doesNotMatch(run.output, /^smoke: FAILED check\(s\):[^\n]*signin/m, 'nor one that was skipped');
+});
+
+test('DW-1079: a failure the row parser cannot name is reported as missing, not passed over', () => {
+  // The criterion is that the line names EVERY failing check. `Smoke.Render` fails closed on an
+  // outcome outside the four it writes -- it counts the row as a failure -- and such a row
+  // carries that outcome in $1, so the awk cannot see it. Without holding the named count equal
+  // to the class's own `failed=`, a line naming one of two failures reads exactly like a
+  // complete one.
+  //
+  // Mutation (Rule 19): delete the COUNTED/NAMED comparison from smoke.sh -> this goes red while
+  // the two-failure case above stays green.
+  const report = [
+    'ocupilot-smoke: docker exec ocupilot-ci',
+    reportRow('fail', 'wallet', 'the demo wallet collection is absent'),
+    reportRow('faild', 'mistyped', 'an outcome outside the four the class writes'),
+    'ocupilot-smoke: executed=2 passed=0 failed=2 pending=0 skipped=0',
+    'ocupilot-smoke: FAILED -- 2 check(s) failed; the first is named above',
+  ].join('\n');
+  const run = runSmokeOverReport(report);
+  assert.equal(run.status, 1, run.output);
+  assert.match(run.output, /^smoke: FAILED check\(s\): wallet$/m, run.output);
+  assert.match(run.output, /^smoke: the report counted 2 failure\(s\) and 1 could be named/m, run.output);
+});
+
+test('DW-1079: a report whose failures are all named says nothing about a shortfall', () => {
+  const report = [
+    'ocupilot-smoke: docker exec ocupilot-ci',
+    reportRow('fail', 'wallet'),
+    'ocupilot-smoke: executed=1 passed=0 failed=1 pending=0 skipped=0',
+    'ocupilot-smoke: FAILED -- 1 check(s) failed; the first is named above',
+  ].join('\n');
+  const run = runSmokeOverReport(report);
+  assert.match(run.output, /^smoke: FAILED check\(s\): wallet$/m, run.output);
+  assert.doesNotMatch(run.output, /could be named/, 'the complete case stays one line');
 });
 
 test('DW-1079: a FAIL verdict with no parseable row still says the run did not pass', () => {

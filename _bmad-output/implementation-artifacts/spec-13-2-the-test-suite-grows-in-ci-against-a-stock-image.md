@@ -114,6 +114,78 @@ Anchors re-read after merge `dd9db59` (slot C). That merge touched only `scripts
 - Given an instance that is not licensed for the interoperability feature, when `CredentialsRungAvailable()` is evaluated with the other two conditions true, then it answers 0 (DW-420).
 - Given a credential store that fails and a definition id that holds no row, when the handler runs, then each answers 500 with code `INTERNAL` and its own reason, and the second makes no provider call (DW-421).
 
+### Review Findings
+
+Code review 2026-09-20 (full, four layers, `review_tier: full-opus`). 0 high. Every entry below is
+patched in this pass unless its disposition says otherwise; each patch was falsified.
+
+- `[med]` `[patched]` The `*.spec.ts` exemption sat above **both** loops, so the pre-existing
+  `no-off-origin-url` rule stopped running on all 48 spec files. The exemption now guards the
+  concatenation loop only. Verified before patching that no spec file trips the whole-URL rule, so
+  the narrowing costs nothing.
+- `[med]` `[patched]` `--derive` never checked the document it read against the `bytes`/`sha256`
+  the table then stamps it with, so any document derived a table asserting it came from `f764aea`.
+  Demonstrated live: with the check removed, `--derive --from <other file>` rewrote
+  `spec/admin-v2-paths.json`. `upstreamMismatch()` now refuses before the write.
+- `[med]` `[patched]` The one declared known difference pairs two spellings of one endpoint, so
+  neither side is a common path and its method set was the only one the gate never compared.
+  `knownMethodDifferences` compares them.
+- `[med]` `[patched]` The ephemeral-range step's position — the whole of DW-439's "whether or not
+  the bind succeeded" — was pinned by nothing: `DECLARED_GATES` compares sorted multisets. Both new
+  steps now carry order assertions.
+- `[med]` `[patched]` `smoke.sh` named the failing checks it could parse and said nothing when it
+  parsed fewer than the report counted, so an under-report read as a complete one. The named count
+  is now held against the class's own `failed=`.
+- `[med]` `[patched]` A URL whose host is interpolated (`` `https://${host}/x` ``) reached neither
+  off-origin rule. Verified zero such sites exist in `ui/src`, then closed.
+- `[med]` `[patched]` `SurfaceCoverage.Stored()` dropped a row with no `name` silently; for a
+  `<member/>` row nothing else would notice, so AC2's named floor could shrink with every assertion
+  green. It is now an error.
+- `[med]` `[patched]` Two `<screen/>` rows shared one pinning method without declaring `corpus`, so
+  the reported "by a method of their own" count overstated the floor's granularity by two. Both rows
+  declare it, and an undeclared sharing is now an assertion.
+- `[low]` `[patched]` `EndpointCoverage` parsed JSON unguarded at two sites while `CodeOf` guarded
+  it; a malformed body beginning `{` threw out of the probe loop. Both go through `MemberOf()`.
+- `[low]` `[patched]` `WebAppPath()` returned `""` for a roster that could not be read and for one
+  declaring no application, so a failed lookup was reported as a missing declaration — the pitfall
+  `CLAUDE.md` records. It answers an `UNREADABLE`-prefixed value, asserted separately.
+- `[low]` `[patched]` `adjacentToConcatenation` read `+` and not `+=`.
+- `[low]` `[patched]` The arming derivation stripped `///` and not `;`, so its stated property held
+  for one ObjectScript comment form and not the other.
+- `[low]` `[patched]` The streaming test's budget was absolute from `spawn`, so spawn overhead on a
+  loaded matrix read as "output was not streamed". It now measures the marker against the child's
+  own exit, which is overhead-independent.
+- `[low]` `[patched]` `ci-throwaway.sh` read `up-rc.txt` without clearing it, so a stale `0` from an
+  earlier attempt could read as a bring-up that succeeded.
+- `[low]` `[patched]` `DefinitionsFaults` used `tRow` after a failed `GuardedOpenId`.
+- `[low]` `[patched]` Untested `tableProblems` branches were exactly the "naming the malformed row"
+  clause AC4 names; the CLI's request path and credentials were unasserted; the `<Resource>` half of
+  `ATTRIBUTIONS.md`'s two-part claim was unheld. All three now have assertions.
+- `[low]` `[patched]` Three doc comments claimed more than the code does: "A split can fall at any
+  character", "so the probe writes nothing", "Nothing here writes". Replaced at origin with what the
+  code establishes.
+- `[med]` `[by-design]` A `corpus` row is pinned only by its method existing, so the assertion that
+  observes the member can be deleted with both gates green (20 of 44 rows). The Design Notes choose
+  this deliberately — the count is reported rather than the coverage verified — and AC3 asks only
+  that the method resolve. The shared-pin assertion above is the part worth closing now.
+- `[med]` `[occurrence DW-419]` The roster equality holds *declaring* an arming variable, not
+  refusing on it: `TurnWireFixture` declares both and guards neither (its callers do), and deleting a
+  guard while leaving its `Parameter` is a change these rosters cannot see. That is
+  `check-objectscript.py`'s rule, which is Epic 5's file and was declined here. The roster comment now
+  says which of the two it holds.
+- `[low]` `[occurrence DW-1087]` The concatenation rule reaches a split at a scheme boundary, not one
+  inside the scheme or the host. Written into the rule's comment and pinned by a test, rather than
+  implied.
+- `[false]` A `Test*` ClassMethod would not be executed by `%UnitTest`, so `PinProblem` should
+  reject one — refuted: `%UnitTest.Manager.getTestMethods` enumerates `$$$cCLASSmethod` members with
+  no `ClassMethod` filter, and `.claude/rules/objectscript-testing.md` records generated ClassMethod
+  helpers being discovered and run.
+- `[rejected]` A duplicate `<probe/>` key (the both-directions equality reddens on the route it
+  orphans); the two `smoke.sh` `awk` edge cases and the missing `|| true` on the range probe (already
+  `wontfix-theoretical`, unchanged); the two timing tests' wall-clock cost; `tableProblems` throwing
+  on a non-array verb list (it still exits 1 with a named error).
+
+
 ## Spec Change Log
 
 - 2026-09-19, **orchestrator decision on the AC4 license question**: vendor the derived v2 path-and-method table, not `mainspec_v2.json`. The upstream repository declares no license (`license: null`, public, no LICENSE/COPYING/NOTICE at root, verified by the lead via the GitHub API), and **this repository is itself public**, so vendoring the 1 MB document is the redistribution regardless of what the bundle or the IPM archive contains - the plan's exclusion proposal measured the wrong boundary. A table of paths and methods is a set of facts about an API rather than the expressive document describing it, so option 3 moots the licensing question instead of requiring a ruling on it. Four constraints carry into the re-plan: (a) the table records the upstream **commit** SHA `f764aea427e5c0b1dd08a4c18a0457e0ff7b3b34` (last commit touching `mainspec_v2.json`, 2026-09-14T18:53:01Z; the file blob is `373e8627e755c0cb89fee855fb70514f48376d60`, 1,004,473 bytes; the repository's default branch is `master`, not `main`), because the SHA is what makes a drift attributable to a named source; (b) the table is **derived by a checked-in script or documented one-liner**, never hand-transcribed, so the next reader re-derives rather than trusts - the table is the artifact, the derivation is the evidence; (c) `ATTRIBUTIONS.md` cites the repository, the commit SHA and the retrieval date, and states in one line that the document is deliberately not vendored and why; (d) the spec says plainly that the drift test pins **instance versus upstream-at-SHA**, which is what it actually tests - the criterion must not keep implying the whole document is present. If the owner later wants the full file vendored, that is the distributor's call and does not reopen this story: the table is a subset, not a contradiction.
@@ -254,6 +326,7 @@ reverted, and the tree confirmed byte-identical afterwards (`git status --short`
 - AC3 surface floor — pinning: `OcuPilot.Test.SurfaceCoverage`'s two both-directions equalities and its method-resolution assertion. `mutation: flipped OcuPilot.Screen.Descriptor.LockList's "built" key to false and recompiled -> TestEveryBuiltScreenHasACoverageRowAndBack went red, "40 row(s), 39 built screen(s)"; deleted the LockList <screen/> row instead -> the same test went red the other way, "39 row(s), 40 built screen(s)"; pointed Home's row at TestThisMethodDoesNotExist -> TestEveryCoverageRowNamesATestTheSuiteExecutes went red.` The write half's zero is asserted beside a non-zero `ListTools()` total, so a derivation that returned nothing cannot read as a pass.
 - AC4 — pinning: `admin-spec.mjs`'s differ plus `admin-spec.test.mjs`'s canonical-form assertions. `mutation: removed one "/v2/..." key from spec/admin-v2-paths.json -> the canonical-form case went red, "the table carries 184 /v2/ path(s); the pin was derived at 185"; restored it and added a fabricated KNOWN_DIFFERENCES entry -> "exactly one known difference is declared" went red.`
 - DW-439 — pinning: `ci.test.mjs`'s six-site port equality and three `stub-bin.mjs`-driven tests of the retry. `mutation: deleted the bind-message guard from ci-throwaway.sh -> "a failure that is not a host-port bind exits at once, unretried" went red; deleted the ephemeral-range step from ci.yml -> DECLARED_GATES went red; moved the admin-spec step's origin off 52776 in both ci.yml and DECLARED_GATES -> the port equality went red naming the sixth site.`
+- DW-439 (QA) — the two retry tests named in the followup-review risk (the growing wait and the streamed bring-up) were pinned only by a source-text regex, which cannot distinguish real behavior from a coincidentally-matching edit. Two behavioral tests added to `ui/tools/ci.test.mjs`, both driving the real script against a stubbed `docker` with no container brought up: `mutation: replaced "sleep $((BIND_RETRY_SECONDS * ATTEMPT))" with "sleep $BIND_RETRY_SECONDS" -> "the retry actually waits, and the second wait outlasts the first" went red (took ~2.5s against a ~2.9s floor) while the pre-existing regex test stayed green; reverted to the captured form "UP_OUTPUT=$(docker compose ... up -d --wait 2>&1)" -> "the bring-up streams output as it happens, never only at exit" went red (marker observed at ~2.4s, after the stub's 2s sleep, instead of well before it) while the pre-existing regex test stayed green.` Both mutations were applied to `scripts/ci-throwaway.sh`, confirmed red, reverted, and the tree confirmed byte-identical (`diff` against a pre-mutation copy; `git status --short` unchanged throughout, since the file was never staged).
 - DW-1079 — pinning: a new `ci.test.mjs` test that executes `scripts/smoke.sh` over a report fixture carrying two `fail` rows, beside the two that already execute it against an inline `iris` stub. `mutation: dropped $FAILED from the quotable line -> the test went red on the missing names.`
 - DW-1087 — pinning: `client-lint.test.mjs`'s four fixtures, one of them through the CLI so the wiring is observed. `mutation: reverted the concatenation branch of checkOffOriginUrls -> the non-spec fixtures went red; dropped the .spec.ts early return -> the spec fixture went red.`
 - DW-1276 — pinning: the derived arming-roster equality in `ci.test.mjs`, read from `# classes:` lines rather than from prose (half the test package's class names are ordinary words). `mutation: removed UninstallSurvival from the OCUPILOT_ALLOW_AUDIT_EVENTS block -> red naming it; added SwitchesWire to the PRINCIPALS block -> red naming it, because it mentions the variable in a doc comment and is not armed by it.`
@@ -275,6 +348,42 @@ Two AD-tooled criteria re-verified by the lead rather than taken from the implem
 - **AC2, the endpoint coverage floor.** mutation: delete one `<probe/>` row from `OcuPilot.Test.EndpointCoverage`'s XData -> red on `TestEveryRouteHasAProbeAndEveryProbeHasARoute`, assertion "the declared probes and the compiled routes agree" (run 575, 1 failure); green again after revert (run 576, 2/2). Recompiled by `LoadDir` over the whole tree each time, since a subclass keeps its own compiled copy of an inherited method.
 - Both mutations were applied to the throwaway's own bind-mounted source copy, so the repository tree stayed byte-identical throughout (`git status --short` showed no source change before or after).
 - **Route count confirmed structurally**, not by substring: `grep -c "<Route"` answers 35, but one of those is line 74's `<Routes>` container tag; `grep -cE '^\s*<Route '` answers **34**. The implement stage's correction of the intent-contract from 38 to 37 total routes (34 + readiness + 2 static) is therefore right, and the lead confirms it as a Rule 5 tier-1 amendment.
+
+### Code-review pass (2026-09-20)
+
+Each assertion added by the review was falsified the same way: mutation applied, red observed,
+reverted, tree confirmed byte-identical. The ObjectScript mutations ran against the throwaway's
+bind-mounted source copy, so the repository tree never carried one.
+
+- AC4 (vendored table) — `mutation: replaced upstreamMismatch()'s result with "" in derive() -> "--derive refuses a document that is not the pinned one" went red AND --derive --from a fabricated file rewrote spec/admin-v2-paths.json; restored the check, restored the table from HEAD, re-hashed to 37cfd593.`
+- AC4 (known difference) — `mutation: made the knownMethodDifferences verb comparison unreachable -> "a declared known difference whose two spellings answer different verbs is a drift" went red while the other --origin cases stayed green.`
+- DW-439 (step order) — `mutation: moved the ephemeral-range step below "ci-throwaway.sh up" in ci.yml -> "the three jobs are declared, and the instance job waits on readiness before any suite" went red; DECLARED_GATES stayed green, which is why the order needed its own assertion.`
+- DW-1079 (completeness) — `mutation: replaced smoke.sh's COUNTED/NAMED comparison with "if false" -> "a failure the row parser cannot name is reported as missing" went red while the two-failure case stayed green.`
+- DW-1087 (spec exemption) — `mutation: moved the .spec.ts early return back above the whole-URL loop -> "the same concatenated text inside a *.spec.ts passes, and the whole-URL rule still runs there" went red.`
+- DW-1087 (interpolation) — `mutation: made the INTERPOLATED_HOST_RE loop unreachable -> "a URL whose host is interpolated is caught too" went red while every `+` case stayed green.`
+- DW-1276 (comment forms) — `mutation: dropped the ";" clause from testClassSources' filter -> "neither comment form is an arming declaration" went red.`
+
+
+### Lead smoke gate (2026-09-20)
+
+The full sweep went **red on a reused throwaway and green on a fresh one from the same tree**, and the
+difference was attributed rather than re-run away (DW-1297).
+
+- Reused `ocupilot-b-ci` - which had served a production `Uninstall("",1)` + `StartPath` at 13.1's AD gate,
+  roughly 850 test runs and the review's 11 mutations: `137 class(es), 1283 test(s), 12 failed`, exit 1.
+  `EgressLocal` 1/2, `InstallLock` 4/6, `Installer` 7/27; every message was `Install refused for profile
+  'probe': another install, uninstall or start mark of that profile still held its install lock`.
+- Each of the three passed in isolation immediately afterwards (`InstallLock` 6/6, `Installer` 27/27,
+  `EgressLocal` 2/2) and `%SYS.LockQuery` showed no OcuPilot lock held, so the contention was gone by then.
+- Fresh throwaway, identical tree: `137 class(es), 1283 test(s), 0 failed, 0 probe leftovers, 0 overlaps`,
+  exit 0 - the same class and test counts, so instance state was the only variable.
+- `smoke.sh` on that fresh instance: `executed=45 passed=45 failed=0 pending=2 skipped=0`, exit 0.
+- Client suite: `node --test tools/*.test.mjs` 1101 passing, component runner 644 across 48 files.
+
+None of the three classes is touched by this story (`git diff --name-only 5a119d1..HEAD` lists none of them),
+and CI builds a fresh throwaway per run, so the shipped gate is unaffected. The finding is filed as DW-1297
+rather than dismissed: a red that vanishes on re-run is the shape that teaches a reader to re-run reds
+reflexively, which is the habit that hides a real regression.
 
 ## Auto Run Result
 
