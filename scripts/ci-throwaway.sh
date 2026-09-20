@@ -194,10 +194,11 @@ services:
       # by package, so a runner pointed at an instance someone cares about would otherwise create
       # principals on it. scripts/check-objectscript.py's destructive-test-guard rule holds the
       # population.
-      # classes: AgentWireSecurity, ConfigGate, CredentialPrivilege, ErrorLogDenial, LedgerWire
-      # classes: LogSourceDenial, MgmntPortDenial, OAuthTabs, State, Token, ToolWire
-      # classes: TurnContext, TurnConversation, TurnLong, TurnProviderFault, TurnWire
-      # classes: TurnWireFixture, UnexpireScope, Version, Wire, WireOAuthRead, WireSecurityRead
+      # classes: AccountPasswordWire, AgentWireSecurity, ConfigGate, CredentialPrivilege
+      # classes: ErrorLogDenial, LedgerWire, LogSourceDenial, MgmntPortDenial, OAuthTabs
+      # classes: State, Token, ToolWire, TurnContext, TurnConversation, TurnLong
+      # classes: TurnProviderFault, TurnWire, TurnWireFixture, UnexpireScope, Version
+      # classes: Wire, WireOAuthRead, WireSecurityRead
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere

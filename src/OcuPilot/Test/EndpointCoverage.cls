@@ -72,6 +72,9 @@ Parameter ROUTENOTFOUND = "ROUTE.NOTFOUND";
 XData Probes
 {
 <probes>
+<probe class="Api.Router" method="POST" url="/account/password" path="/api/ocupilot/account/password" disposition="envelope" refusal="1"/>
+<probe class="Api.Router" method="GET" url="/account/preferences" path="/api/ocupilot/account/preferences" disposition="envelope"/>
+<probe class="Api.Router" method="POST" url="/account/preferences" path="/api/ocupilot/account/preferences" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="DELETE" url="/agent/switches/holds/:id" path="/api/ocupilot/agent/switches/holds/ocupilot-coverage-probe" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="POST" url="/agent/switches/holds" path="/api/ocupilot/agent/switches/holds" disposition="envelope" refusal="1"/>
 <probe class="Api.Router" method="GET" url="/agent/switches" path="/api/ocupilot/agent/switches" disposition="envelope"/>
