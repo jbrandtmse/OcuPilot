@@ -145,6 +145,30 @@ async function openMenu(page) {
 }
 
 /**
+ * Open the menu and reach Change password through the keyboard.
+ *
+ * Story 15.3 put About above it, so the item focus lands on is no longer this one. The move is a
+ * real ArrowDown rather than a click, so the keyboard path this file exists to exercise still
+ * reaches the dialog; `openMenu` above already waited for focus to be on a menu item.
+ */
+async function openChangePassword(page) {
+  await openMenu(page);
+  await page.waitForFunction(
+    (label) => document.activeElement?.textContent?.trim() === label,
+    { timeout: config.navigationTimeoutMs },
+    STRINGS.aboutTitle
+  );
+  await page.keyboard.press('ArrowDown');
+  await page.waitForFunction(
+    (label) => document.activeElement?.textContent?.trim() === label,
+    { timeout: config.navigationTimeoutMs },
+    STRINGS.accountChangePassword
+  );
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('.ocu-dialog[role="dialog"]', { timeout: config.navigationTimeoutMs });
+}
+
+/**
  * Fill the two dialog fields and press the confirming action.
  *
  * **Both** fields are filled by real key presses, not by assigning `.value`: an input the user
@@ -166,7 +190,7 @@ async function submit(page, current, next) {
   await page.click('.ocu-dialog-actions .ocu-button-primary');
 }
 
-test('AC7, DW-115: the arrow model moves real focus between the two items, with wrap-around and Home/End', async () => {
+test('AC7, DW-115: the arrow model moves real focus between the three items, with wrap-around and Home/End', async () => {
   // Mutation (Rule 19): drop the `% items.length` wrap from `onMenuKeydown` in `account-menu.ts`
   // -> the two wrap assertions go red. jsdom moves focus on `.focus()` but never through a real
   // key press, so the whole path from keydown to `document.activeElement` is only observable here.
@@ -177,19 +201,22 @@ test('AC7, DW-115: the arrow model moves real focus between the two items, with 
       nodes.map((node) => ({ text: node.textContent.trim(), tabindex: node.getAttribute('tabindex') }))
     );
     assert.deepEqual(labels, [
+      { text: STRINGS.aboutTitle, tabindex: '-1' },
       { text: STRINGS.accountChangePassword, tabindex: '-1' },
       { text: STRINGS.actionSignOut, tabindex: '-1' },
     ]);
-    assert.equal(await focusedItemText(page), STRINGS.accountChangePassword);
+    assert.equal(await focusedItemText(page), STRINGS.aboutTitle);
 
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await focusedItemText(page), STRINGS.accountChangePassword);
     await page.keyboard.press('ArrowDown');
     assert.equal(await focusedItemText(page), STRINGS.actionSignOut);
     await page.keyboard.press('ArrowDown');
-    assert.equal(await focusedItemText(page), STRINGS.accountChangePassword, 'ArrowDown wraps');
+    assert.equal(await focusedItemText(page), STRINGS.aboutTitle, 'ArrowDown wraps');
     await page.keyboard.press('ArrowUp');
     assert.equal(await focusedItemText(page), STRINGS.actionSignOut, 'ArrowUp wraps');
     await page.keyboard.press('Home');
-    assert.equal(await focusedItemText(page), STRINGS.accountChangePassword);
+    assert.equal(await focusedItemText(page), STRINGS.aboutTitle);
     await page.keyboard.press('End');
     assert.equal(await focusedItemText(page), STRINGS.actionSignOut);
 
@@ -211,9 +238,7 @@ test('AC7, DW-115: the arrow model moves real focus between the two items, with 
 test('AC8: Escape on the open dialog sends nothing and returns focus to the menu trigger', async () => {
   const { context, page } = await signedInAsProbe(FIRST_PASSWORD);
   try {
-    await openMenu(page);
-    await page.keyboard.press('Enter');
-    await page.waitForSelector('.ocu-dialog[role="dialog"]', { timeout: config.navigationTimeoutMs });
+    await openChangePassword(page);
     // The shared dialog's initial focus is the first field, and both fields are empty.
     assert.deepEqual(
       await page.$$eval('.ocu-dialog input.ocu-field-input', (nodes) =>
@@ -264,9 +289,7 @@ test("Integration AC, AC4: a policy-refused change renders the instance's own re
 
   const { context, page } = await signedInAsProbe(FIRST_PASSWORD);
   try {
-    await openMenu(page);
-    await page.keyboard.press('Enter');
-    await page.waitForSelector('.ocu-dialog[role="dialog"]', { timeout: config.navigationTimeoutMs });
+    await openChangePassword(page);
     await submit(page, FIRST_PASSWORD, TOO_SHORT);
     await page.waitForSelector('.ocu-dialog .ocu-form-summary', { timeout: config.navigationTimeoutMs });
 
@@ -300,9 +323,7 @@ test('AC2, AC3, AC6: a correct change is applied, announced, and leaves the tab 
   // `Api/Account.cls` -> the "signed in with the new password" leg goes red.
   const { context, page } = await signedInAsProbe(FIRST_PASSWORD);
   try {
-    await openMenu(page);
-    await page.keyboard.press('Enter');
-    await page.waitForSelector('.ocu-dialog[role="dialog"]', { timeout: config.navigationTimeoutMs });
+    await openChangePassword(page);
     await submit(page, FIRST_PASSWORD, NEXT_PASSWORD);
     await page.waitForFunction(() => document.querySelector('.ocu-dialog') === null, {
       timeout: config.navigationTimeoutMs,

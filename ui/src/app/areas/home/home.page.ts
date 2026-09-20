@@ -15,6 +15,7 @@ import {
   formatNamed,
   type PreferenceKind,
 } from '../../core/account-preferences';
+import { About } from '../../core/about';
 import { InstanceService, serverFlagKind } from '../../core/instance';
 import {
   NavigationService,
@@ -26,6 +27,7 @@ import {
   withQuery,
 } from '../../core/navigation';
 import { ScopeService } from '../../core/scope';
+import { shortcutScreens } from '../../core/shortcuts';
 import { Session } from '../../core/session';
 import { ShellState } from '../../core/shell-state';
 import { STRINGS, stringFor } from '../../core/strings';
@@ -80,6 +82,25 @@ interface RememberedBlock {
   /** The polite sentence clearing the block announces. */
   readonly clearedLabel: string;
   readonly rows: readonly RememberedRow[];
+}
+
+/** One shortcut, resolved for rendering in the fixed Shortcuts block. */
+interface ShortcutRow {
+  readonly route: string;
+  readonly label: string;
+  readonly gated: boolean;
+  readonly ariaDisabled: string | null;
+  /** The failed `(resource, permission)` pair, rendered inside the row's own accessible name. */
+  readonly reason: string;
+  /** The area whose side bar opening the row shows, as a tile activation does. */
+  readonly area: string;
+}
+
+/** One destination of the links panel, resolved for rendering. */
+interface LinkRow {
+  readonly key: string;
+  readonly label: string;
+  readonly href: string;
 }
 
 /** One value on the instance line. The flag segment is a badge rather than text. */
@@ -150,7 +171,16 @@ interface LineSegment {
  * focusable and `aria-disabled="true"` with its reason inside the button's own content, which is
  * the shape the command box uses for the same verdict.
  *
- * **The two blocks are announced from one polite region on this page**, not from the row that
+ * **Shortcuts and Links sit beside them** (Story 15.3, FR-73; DESIGN.md `:898`). Shortcuts is the
+ * classic portal's own fixed roster named as OcuPilot routes (`core/shortcuts.ts`) -- a roster, not
+ * a second finder, because the command box is the one finder -- and a row naming no built screen is
+ * dropped. Links is the three destinations the classic links panel names, as anchors carrying the
+ * house outbound pattern; nothing on either block fetches from another host, so the only off-origin
+ * traffic either can cause is a navigation the user clicks (AD-11 rule 4, AD-47). Neither block
+ * offers a remove or a Clear: they are fixed rosters, not stored lists, so there is nothing to
+ * announce and neither uses the polite region below.
+ *
+ * **The two remembered blocks are announced from one polite region on this page**, not from the row that
  * disappears: a removed row cannot announce its own removal. The region is visually hidden
  * (`account-menu.ts`'s idiom) rather than a caption, so one removal does not leave a sentence
  * standing under the blocks for the component's life. It is written **after** the write settles
@@ -202,6 +232,45 @@ interface LineSegment {
           } @else {
             <p class="ocu-home-block-empty">{{ block.emptyLabel }}</p>
           }
+        </section>
+      }
+      <section class="ocu-home-block ocu-home-block-fixed">
+        <h2 class="ocu-home-block-heading">{{ STRINGS.shortcutsHeading }}</h2>
+        @if (shortcuts.length) {
+          <div class="ocu-home-block-list" role="list">
+            @for (row of shortcuts; track row.route) {
+              <span class="ocu-home-block-row" role="listitem">
+                <button
+                  type="button"
+                  class="ocu-home-block-open"
+                  [attr.aria-disabled]="row.ariaDisabled"
+                  (click)="openShortcut(row)"
+                >
+                  <span class="ocu-home-block-label" [title]="row.label">{{ row.label }}</span>
+                  @if (row.gated) {
+                    <span class="ocu-home-block-reason">{{ row.reason }}</span>
+                  }
+                </button>
+              </span>
+            }
+          </div>
+        } @else {
+          <p class="ocu-home-block-empty">{{ STRINGS.shortcutsEmpty }}</p>
+        }
+      </section>
+      @if (links.length) {
+        <section class="ocu-home-block ocu-home-block-fixed">
+          <h2 class="ocu-home-block-heading">{{ STRINGS.linksHeading }}</h2>
+          <div class="ocu-home-block-list" role="list">
+            @for (row of links; track row.key) {
+              <span class="ocu-home-block-row" role="listitem">
+                <a class="ocu-home-block-link" [href]="row.href" target="_blank" rel="noreferrer">
+                  <span class="ocu-home-block-label" [title]="row.label">{{ row.label }}</span>
+                  <span class="ocu-external-glyph" aria-hidden="true">{{ externalGlyph }}</span>
+                </a>
+              </span>
+            }
+          </div>
         </section>
       }
     </div>
@@ -263,6 +332,9 @@ export class HomePage {
   private readonly shell = inject(ShellState);
   private readonly router = inject(Router);
   private readonly preferences = inject(AccountPreferences);
+  private readonly about = inject(About);
+
+  protected readonly STRINGS = STRINGS;
 
   /**
    * The middle dot DESIGN.md `:896` and EXPERIENCE.md "Six tiles in daily-use order" join with, produced in TypeScript
@@ -279,6 +351,9 @@ export class HomePage {
   /** Bumped whenever the remembered lists change, so the two blocks follow them. */
   private readonly preferenceGeneration = signal(0);
 
+  /** Bumped whenever the About read settles, so the links panel follows it. */
+  private readonly aboutGeneration = signal(0);
+
   /** The polite region's text: empty until a removal or a clear has changed the store. */
   private readonly announcementValue = signal('');
 
@@ -288,6 +363,13 @@ export class HomePage {
    * which names the screen it removes.
    */
   protected readonly removeGlyph = '\u00d7';
+
+  /**
+   * The north-east arrow every outbound link in the shell carries (`instance-notice.ts`,
+   * `classic-link-card.ts`), written as its escape so no non-ASCII byte enters a template
+   * (Rule 14). `aria-hidden`, so each link's accessible name is its own word.
+   */
+  protected readonly externalGlyph = '\u2197';
 
   /** Mirrors the framework-free services into the reactive graph, as the status bar does. */
   private readonly serverName = signal(this.instance.serverName());
@@ -375,6 +457,44 @@ export class HomePage {
   });
 
   /**
+   * The fixed shortcuts roster, less the rows naming no built screen (AD-37 degrade), each
+   * carrying this user's own verdict for it.
+   */
+  private readonly resolvedShortcuts = computed<readonly ShortcutRow[]>(() => {
+    this.mapGeneration();
+    return shortcutScreens().map((screen) => {
+      const verdict = this.navigation.screenVerdict(screen.route);
+      return {
+        route: screen.route,
+        label: stringFor(screen.labelKey),
+        gated: !verdict.allowed,
+        ariaDisabled: verdict.allowed ? null : 'true',
+        reason: formatRequires(STRINGS.privilegeRequiresResource, verdict.failedPair),
+        area: screen.area,
+      };
+    });
+  });
+
+  /**
+   * The three links-panel destinations, in the classic portal's own order, less any the instance
+   * did not answer an address for -- an anchor with no `href` is not a link.
+   *
+   * When that leaves none -- a read that has not answered yet, or one that failed with nothing
+   * held -- the block does not render at all. A heading standing over an empty list says there are
+   * no links when the truth is that the instance has not said; and unlike the remembered blocks
+   * beside it, there is nothing here a person did that an empty state could report back to them.
+   */
+  private readonly resolvedLinks = computed<readonly LinkRow[]>(() => {
+    this.aboutGeneration();
+    const links = this.about.links();
+    return [
+      { key: 'documentation', label: STRINGS.linksDocumentation, href: links.documentation },
+      { key: 'support', label: STRINGS.linksSupport, href: links.support },
+      { key: 'intersystems', label: STRINGS.linksInterSystems, href: links.intersystems },
+    ].filter((row) => row.href !== '');
+  });
+
+  /**
    * The five values in DESIGN.md `:896`'s order, with the ones the instance could not report
    * dropped. The flag is a segment like any other so the separators fall where the rendered
    * values are, and its own "nothing is set" state (`serverFlagKind` `none`, the ordinary case
@@ -415,12 +535,21 @@ export class HomePage {
     // Home is exactly the gesture that cannot repair it. A failed read still parks rather than
     // clearing, so the matrix's unreachable-instance row is unchanged.
     void this.preferences.load();
+    // The links panel's three destinations come from the same caller-own read About uses: the
+    // documentation one follows whether this instance serves its own copy, so a second source for
+    // it could disagree with the Help control about where the documentation is. Read here because
+    // Home is where the panel is; a tab that never opens Home never spends the request.
+    const stopAbout = this.about.subscribe(() =>
+      this.aboutGeneration.set(this.aboutGeneration() + 1)
+    );
+    void this.about.load();
     inject(DestroyRef).onDestroy(() => {
       stopNavigation();
       stopInstance();
       stopScope();
       stopSession();
       stopPreferences();
+      stopAbout();
     });
   }
 
@@ -430,6 +559,14 @@ export class HomePage {
 
   protected get blocks(): readonly RememberedBlock[] {
     return this.resolvedBlocks();
+  }
+
+  protected get shortcuts(): readonly ShortcutRow[] {
+    return this.resolvedShortcuts();
+  }
+
+  protected get links(): readonly LinkRow[] {
+    return this.resolvedLinks();
   }
 
   protected get announcement(): string {
@@ -466,6 +603,21 @@ export class HomePage {
    * current query travels, because `?ns=` is data scope (AD-44).
    */
   protected openRemembered(row: RememberedRow): void {
+    if (row.gated) return;
+    const area = areaByKey(row.area);
+    if (area !== null && !area.navigates && this.shell.open()) this.shell.showArea(area.key);
+    void this.router.navigateByUrl(withQuery(row.route, this.router.url));
+  }
+
+  /**
+   * Open a shortcut. A gated row does nothing, the same shape the tiles, the remembered rows and
+   * the command box use for the same verdict: `aria-disabled` carries no behaviour of its own.
+   *
+   * An open side bar is moved to the screen's area first, so the list beside the screen is that
+   * screen's own; a collapsed one stays collapsed. The current query travels, because `?ns=` is
+   * data scope (AD-44).
+   */
+  protected openShortcut(row: ShortcutRow): void {
     if (row.gated) return;
     const area = areaByKey(row.area);
     if (area !== null && !area.navigates && this.shell.open()) this.shell.showArea(area.key);

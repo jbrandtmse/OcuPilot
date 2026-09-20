@@ -1064,6 +1064,7 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If pCode = ..#ACCOUNTPASSWORDPOLICY Quit ..#REASONACCOUNTPASSWORDPOLICY
     If pCode = ..#PREFERENCESROUTE Quit ..#REASONPREFERENCESROUTE
     If pCode = ..#PREFERENCESLIMIT Quit ..#REASONPREFERENCESLIMIT
+    If pCode = ..#HELPROUTE Quit ..#REASONHELPROUTE
     Quit ""
 }
 
@@ -1251,6 +1252,15 @@ Parameter PREFERENCESLIMIT = "PREFERENCES.LIMIT";
 /// is <parameter>OcuPilot.Kernel.State.Pref.FAVORITEMAX</parameter>, declared once where it is
 /// enforced, and a sentence carrying a second copy of it is a second thing to keep equal.</p>
 Parameter REASONPREFERENCESLIMIT = "This account already holds as many favorites as the instance keeps. Remove one before adding another.";
+
+/// <p>Machine code (Story 15.3): the <code>route</code> the help read was asked for is not a route
+/// the screen registry's roster carries, or is longer than
+/// <parameter>OcuPilot.Kernel.State.Base.ROUTEMAXLENGTH</parameter>. Rendered on the
+/// <parameter>VALIDATIONFAILED</parameter> slug with one violation on <code>route</code>.</p>
+Parameter HELPROUTE = "HELP.ROUTE";
+
+/// <p>Refusal sentence for <parameter>HELPROUTE</parameter>. It names no route the caller sent.</p>
+Parameter REASONHELPROUTE = "That is not a screen this instance serves, so there is no help address for it.";
 
 /// <p>The shape every machine code has: one or more dotted segments, each starting with a
 /// letter and continuing with capitals and digits. No lower case, no underscore, no leading

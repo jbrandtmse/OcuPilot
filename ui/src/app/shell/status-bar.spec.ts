@@ -14,6 +14,8 @@ import { Session, type SessionState } from '../core/session';
 import { STRINGS } from '../core/strings';
 import { screenDeclaration } from '../testing/screen-declaration';
 import { StatusBar } from './status-bar';
+import { About } from '../core/about';
+import { stubAbout } from '../testing/about';
 
 /**
  * The status bar's rendered contract (DESIGN.md `:1021`, `:1025`; EXPERIENCE.md "server · instance · user ▾", "`{spacing.status-bar-height}` band",
@@ -54,6 +56,11 @@ class StubInstance {
 
   instanceName(): string {
     return this.instanceNameValue;
+  }
+
+  /** Story 15.3: the stale-bundle prompt reads this; '' means there is nothing to compare. */
+  buildIdentity(): string {
+    return '';
   }
 
   instanceVersion(): string {
@@ -187,6 +194,7 @@ describe('the status bar', () => {
     });
     TestBed.configureTestingModule({
       providers: [
+        { provide: About, useValue: stubAbout() },
         { provide: InstanceService, useValue: instance as unknown as InstanceService },
         { provide: Session, useValue: session as unknown as Session },
         {
@@ -306,7 +314,7 @@ describe('the status bar', () => {
     fixture.detectChanges();
     expect(
       [...band().querySelectorAll('[role="menuitem"]')].map((entry) => entry.textContent?.trim())
-    ).toEqual([STRINGS.accountChangePassword, STRINGS.actionSignOut]);
+    ).toEqual([STRINGS.aboutTitle, STRINGS.accountChangePassword, STRINGS.actionSignOut]);
   });
 
   it('a segment whose value the instance could not report does not render', () => {

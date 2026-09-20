@@ -12,6 +12,7 @@ import {
 import { OverlayStack } from '../core/overlay-stack';
 import { Session } from '../core/session';
 import { STRINGS } from '../core/strings';
+import { AboutDialog } from './about-dialog';
 import { ChangePasswordDialog } from './change-password-dialog';
 
 /** The account menu's name on the overlay stack (DW-109, DW-137). */
@@ -34,7 +35,8 @@ export const ACCOUNT_MENU_OVERLAY_ID = 'account-menu';
  * `tabindex="-1"` and the container owns the arrow model: ArrowDown and ArrowUp move with
  * wrap-around, Home and End jump to the ends, all resolved off `document.activeElement`. It is the
  * house model, copied from `data-table.ts`'s row menu, which DESIGN.md `:1023` already styles this
- * menu as; and it is **n-item**, not two-item, because Story 15.6 adds a third. Escape closes the
+ * menu as; and it is **n-item**, not two-item: Story 15.3 added About as a third, and a
+ * fourth would need no keyboard work either. Escape closes the
  * menu and returns focus to the trigger. The trigger is focused *before* the items are removed
  * from the DOM, because removing a control while it holds focus is banned outright
  * (EXPERIENCE.md, Interaction Primitives) -- and it is what makes the dialog's own focus return
@@ -71,7 +73,7 @@ export const ACCOUNT_MENU_OVERLAY_ID = 'account-menu';
 @Component({
   selector: 'app-account-menu',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ChangePasswordDialog],
+  imports: [AboutDialog, ChangePasswordDialog],
   host: {
     '(document:pointerdown)': 'onOutside($event)',
     '(document:focusin)': 'onOutside($event)',
@@ -104,6 +106,15 @@ export const ACCOUNT_MENU_OVERLAY_ID = 'account-menu';
             class="ocu-account-item"
             role="menuitem"
             tabindex="-1"
+            (click)="chooseAbout()"
+          >
+            {{ STRINGS.aboutTitle }}
+          </button>
+          <button
+            type="button"
+            class="ocu-account-item"
+            role="menuitem"
+            tabindex="-1"
             (click)="chooseChangePassword()"
           >
             {{ STRINGS.accountChangePassword }}
@@ -120,6 +131,9 @@ export const ACCOUNT_MENU_OVERLAY_ID = 'account-menu';
         </div>
       }
       <p class="ocu-visually-hidden" role="status">{{ announcement }}</p>
+      @if (aboutOpen) {
+        <app-about-dialog (closed)="onAboutClosed()" />
+      }
       @if (dialogOpen) {
         <app-change-password-dialog (changed)="onPasswordChanged()" (closed)="onDialogClosed()" />
       }
@@ -147,6 +161,8 @@ export class AccountMenu {
   private readonly openFlag = signal(false);
 
   private readonly dialogFlag = signal(false);
+
+  private readonly aboutFlag = signal(false);
 
   private readonly announcementValue = signal('');
 
@@ -180,6 +196,10 @@ export class AccountMenu {
     return this.dialogFlag();
   }
 
+  protected get aboutOpen(): boolean {
+    return this.aboutFlag();
+  }
+
   /** The polite region's text: empty until a change lands, and the published sentence after. */
   protected get announcement(): string {
     return this.announcementValue();
@@ -207,7 +227,7 @@ export class AccountMenu {
 
   /**
    * The house menu keyboard model (`data-table.ts`), resolved off `document.activeElement` and
-   * over however many items the menu holds -- two today, three once Story 15.6 lands.
+   * over however many items the menu holds -- three today, and n by construction.
    */
   protected onMenuKeydown(event: KeyboardEvent): void {
     const items = this.menuButtons();
@@ -252,6 +272,22 @@ export class AccountMenu {
     this.announcementValue.set('');
     this.closeAndRefocus();
     this.dialogFlag.set(true);
+  }
+
+  /**
+   * Close the menu, returning focus to the trigger, then open About. The order is the one
+   * `chooseChangePassword` documents: `app-dialog` records whatever is focused when it mounts, and
+   * the item it was chosen from is about to be removed.
+   */
+  protected chooseAbout(): void {
+    this.announcementValue.set('');
+    this.closeAndRefocus();
+    this.aboutFlag.set(true);
+  }
+
+  /** Every dismissal path for About. Focus return is the dialog's. */
+  protected onAboutClosed(): void {
+    this.aboutFlag.set(false);
   }
 
   /** The instance applied the change: announce it politely, from a region the dialog does not own. */

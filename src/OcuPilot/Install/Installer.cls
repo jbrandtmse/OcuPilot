@@ -67,9 +67,10 @@ Class OcuPilot.Install.Installer Extends %RegisteredObject
 /// first, then raise this number, never the other way round.</p>
 Parameter SCHEMAVERSION As %Integer = 1;
 
-/// <p>The deployed build identity, recorded on the version row alongside the schema
-/// version (Story 1.5's DW-3: a stale browser bundle can eventually be prompted to
-/// reload). Opaque and unversioned by this story.</p>
+/// <p>The build identity recorded on the version row when the install deployed no hashed client
+/// bundle it could name (Story 1.5's DW-3). <method>BundleIdentity</method> is what the row
+/// normally carries; this is its fallback, so a run that installed no bundle still records
+/// something rather than clearing the stamp.</p>
 Parameter BUILDIDENTITY As %String = "dev";
 
 /// <p>The names this class refuses as an install target, whatever the caller's current
@@ -1390,7 +1391,7 @@ ClassMethod EnsureVersion(pProfile As %String, pPhase As %String, pFailingStep A
         Set tRow.Phase = pPhase
         Set tRow.FailingStep = pFailingStep
         Set tRow.UpdatedAt = $Translate($ZDateTime($ZTimeStamp, 3, 1), " ", "T") _ "Z"
-        Set tRow.BuildIdentity = ..#BUILDIDENTITY
+        Set tRow.BuildIdentity = ..BundleIdentity(.pNames)
         Set tSC = ##class(OcuPilot.Kernel.State.Base).GuardedSave(tRow)
         If $$$ISERR(tSC) Quit
         Do ..Report(.pReports, $Select(pPhase = "failed": "warn", 1: "info"), "Recorded the version row", {"profile": (pProfile), "phase": (pPhase), "schemaVersion": (pSchemaVersion), "failingStep": (pFailingStep)})
@@ -1398,6 +1399,48 @@ ClassMethod EnsureVersion(pProfile As %String, pPhase As %String, pFailingStep A
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>The identity of the client bundle installed under the shell application's own directory: the
+/// hashed <code>main-*.js</code> filename <code>outputHashing: all</code> guarantees, or
+/// <parameter>BUILDIDENTITY</parameter> when there is no hashed main to name (Story 15.3, DW-3,
+/// AD-38).</p>
+/// <p><b>This is the whole of the stale-bundle comparison's server half.</b> The running client
+/// reads its own <code>main-*.js</code> name out of the document it was served, so one artifact is
+/// both sides of the comparison and there is no second thing to keep in step. A directory that
+/// holds no hashed main -- a run that installed no bundle, or a build with hashing off -- records
+/// the fallback, so the About dialog's Build row still says something; the fallback is not a bundle
+/// name, and <file>ui/src/app/core/build-identity.ts</file> compares only two bundle names, so it
+/// is never read as a mismatch.</p>
+/// <p><var>pNames</var> need not be populated: a caller that has not resolved
+/// <code>shellDirectory</code> reads the fallback rather than failing.</p>
+ClassMethod BundleIdentity(ByRef pNames) As %String [ Private ]
+{
+    Set tIdentity = ..#BUILDIDENTITY
+    Try {
+        Set tDirectory = $Get(pNames("shellDirectory"))
+        If tDirectory = "" Quit
+        If '##class(%File).DirectoryExists(tDirectory) Quit
+        Set tRS = ##class(%ResultSet).%New("%File:FileSet")
+        Set tSC = tRS.Execute(tDirectory, "main-*.js", "", 0)
+        If $$$ISERR(tSC) Quit
+        Set tFound = ""
+        While tRS.Next() {
+            Set tLeaf = tRS.Get("ItemName")
+            If tLeaf = "" Continue
+            ; Deterministic rather than "whichever came first": EnsureShellFiles clears the
+            ; directory before it copies, so there is one, and a second would otherwise make the
+            ; recorded stamp depend on directory order.
+            If (tFound = "") || (tLeaf ] tFound) Set tFound = tLeaf
+        }
+        If tFound '= "" Set tIdentity = tFound
+    } Catch {
+        Set tIdentity = ..#BUILDIDENTITY
+    }
+    ; Closed on every path, including the three early quits above and the catch: the result set
+    ; holds a process-private global for as long as it is open.
+    If $IsObject($Get(tRS)) { Do tRS.Close() }
+    Quit tIdentity
 }
 
 /// <p>Unexpire <var>pAccount</var>'s password, on a genuinely first install only (AC14)

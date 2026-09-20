@@ -14,6 +14,7 @@ import { Router } from '@angular/router';
 
 import { AccountPreferences, FAVORITE_KIND } from '../core/account-preferences';
 import { decodeEntityId } from '../core/entity-id';
+import { HelpLinks } from '../core/help';
 import {
   NavigationService,
   areaByKey,
@@ -103,6 +104,12 @@ const UNGATED_SEGMENT = {
  * and changes it. Home is the exception and carries none: it declares the empty route, it is where
  * the two lists are read, and the instance refuses an empty route outright.
  *
+ * **The Help control sits beside the toggle** (Story 15.3, AD-44). It opens the classic page this
+ * screen replaces at that page's own documentation address, resolved on the instance from the
+ * descriptor's `classicPage` -- so no screen-descriptor key was added for it and the mirror is
+ * consumed read-only. It is rendered only once an address has been resolved, and it is the one
+ * outbound link on this bar: `target="_blank"`, `rel="noreferrer"`, the house pattern.
+ *
  * **The confirmation is announced from this component's own polite region**, not from the toggle:
  * the toggle's accessible name changes as a consequence of the change, and a name that changes
  * under focus is not an announcement of what happened. The region is visually hidden
@@ -161,6 +168,18 @@ const UNGATED_SEGMENT = {
             <span class="ocu-locator-favorite-glyph" aria-hidden="true">{{ favoriteGlyph }}</span>
           </button>
         }
+        @if (helpControl) {
+          <a
+            class="ocu-locator-help"
+            [href]="helpHref"
+            target="_blank"
+            rel="noreferrer"
+            [attr.aria-label]="STRINGS.helpForScreen"
+          >
+            <span class="ocu-locator-help-word">{{ STRINGS.helpLabel }}</span>
+            <span class="ocu-external-glyph" aria-hidden="true">{{ externalGlyph }}</span>
+          </a>
+        }
       } @else {
         @if (segment.navigates) {
           <span class="ocu-locator-link-slot">
@@ -203,6 +222,7 @@ export class LocatorBar {
   private readonly injector = inject(Injector);
   private readonly changeDetector = inject(ChangeDetectorRef);
   private readonly preferences = inject(AccountPreferences);
+  private readonly help = inject(HelpLinks);
 
   /** The polite region's text: empty until a toggle has changed the store, then its sentence. */
   private readonly announcement = signal('');
@@ -223,7 +243,16 @@ export class LocatorBar {
   private lastFocusedToken: number | null = null;
   private readonly stores = inject(ScreenStores);
 
+  protected readonly STRINGS = STRINGS;
+
   protected readonly landmark = STRINGS.navLocatorLandmark;
+
+  /**
+   * The north-east arrow every outbound link in the shell carries (`instance-notice.ts`,
+   * `classic-link-card.ts`), written as its escape so no non-ASCII byte enters a source file
+   * (Rule 14). `aria-hidden`, so the link's accessible name is its own.
+   */
+  protected readonly externalGlyph = '\u2197';
 
   /**
    * The single right-angle-quote separator, produced in TypeScript so no non-ASCII byte
@@ -366,6 +395,7 @@ export class LocatorBar {
     const stopRouter = this.router.events.subscribe(() => {
       this.bump();
       syncStoreSubscription();
+      this.syncHelp();
       // This bar lives for the shell, so a confirmation left standing would sit in the
       // accessibility tree beside every screen the user opened afterwards, readable by a virtual
       // cursor as text about a screen they have left. It announced once, on the screen it was
@@ -377,13 +407,19 @@ export class LocatorBar {
     // The toggle's pressed state is the store's answer, so this bar re-renders when another tab's
     // change, or this one's own write, settles it.
     const stopPreferences = this.preferences.subscribe(() => this.bump());
+    // The resolved help address arrives after the route does, so this bar re-renders when it
+    // lands. `HelpLinks.load` is idempotent per route and asks nothing at all for a screen the
+    // mirror says has no classic page, so a router event costs at most one request per screen.
+    const stopHelp = this.help.subscribe(() => this.bump());
     syncStoreSubscription();
+    this.syncHelp();
 
     inject(DestroyRef).onDestroy(() => {
       stopRouter.unsubscribe();
       stopNavigation();
       stopShell();
       stopPreferences();
+      stopHelp();
       stopStore?.();
     });
   }
@@ -413,6 +449,26 @@ export class LocatorBar {
 
   protected get favoriteAnnouncement(): string {
     return this.announcement();
+  }
+
+  /**
+   * Whether this screen offers a Help control: the instance resolved a documentation address for
+   * it.
+   *
+   * Presence is the resolved address rather than the mere presence of a `classicPage`, because
+   * several shipped screens' classic pages are CSP pages that publish no `HELPADDRESS` at all --
+   * and a control that opened nothing would be the inert control this epic's contract forbids.
+   * The mirror is what decides whether the instance is asked (`hasClassicPage`), so a screen with
+   * no classic equivalent costs no request and shows no control.
+   */
+  protected get helpControl(): boolean {
+    return this.helpHref !== '';
+  }
+
+  protected get helpHref(): string {
+    this.generation();
+    const screen = this.screen();
+    return screen === null ? '' : this.help.hrefFor(screen.route);
   }
 
   /**
@@ -511,6 +567,13 @@ export class LocatorBar {
     const screen = this.screen();
     if (segment.key === 'area' && screen !== null) this.shell.showArea(screen.area);
     void this.router.navigateByUrl(withQuery(segment.route, this.router.url));
+  }
+
+  /** Ask the instance for this screen's documentation address, once per screen. */
+  private syncHelp(): void {
+    const screen = this.screen();
+    if (screen === null) return;
+    void this.help.load(screen.route);
   }
 
   private bump(): void {

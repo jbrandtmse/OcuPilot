@@ -43,6 +43,9 @@ import { stubTurnStore } from './testing/turn';
 import { screenDeclaration } from './testing/screen-declaration';
 import { AccountPreferences } from './core/account-preferences';
 import { stubAccountPreferences } from './testing/account-preferences';
+import { About } from './core/about';
+import { HelpLinks } from './core/help';
+import { stubAbout, stubHelpLinks, type StubbedAbout, type StubbedHelpLinks } from './testing/about';
 
 /**
  * The frame itself (DW-138, UX-DR80): which bands render, in what order, and around what.
@@ -132,6 +135,11 @@ class StubInstance {
 
   instanceName(): string {
     return 'IRIS';
+  }
+
+  /** Story 15.3: the stale-bundle prompt reads this; '' means there is nothing to compare. */
+  buildIdentity(): string {
+    return '';
   }
 
   instanceVersion(): string {
@@ -349,6 +357,8 @@ describe('the shell frame', () => {
   let suggested: SuggestedView;
   /** Captured, so the signed-in read and the sign-out drop are both observable (Story 15.2). */
   let accountPreferences: AccountPreferences;
+  let about: StubbedAbout;
+  let helpLinks: StubbedHelpLinks;
   /** The definitions the stubbed read answers with. Mutated to arrange an Enable. */
   let definitionRows: { enabled: boolean }[];
   let scope: StubScope;
@@ -382,6 +392,10 @@ describe('the shell frame', () => {
     // Not loaded here: `App`'s own signed-in pass is what settles it, which is the line the
     // sign-out test below pins.
     accountPreferences = stubAccountPreferences();
+    // Story 15.3: both are the instance's answers to *this* caller, so both are dropped at
+    // sign-out; held by name so the sign-out row below can see whether they were.
+    about = stubAbout();
+    helpLinks = stubHelpLinks({ 'permissions/users': '/csp/docbook/DocBook.UI.PortalHelpPage.cls?KEY=Users' });
     scope = new StubScope();
     connectivity = new StubConnectivity();
     // The real framework, timer seam neutralized: the frame mounts the chip and the stamp, and
@@ -410,6 +424,8 @@ describe('the shell frame', () => {
     });
     TestBed.configureTestingModule({
       providers: [
+        { provide: About, useValue: about },
+        { provide: HelpLinks, useValue: helpLinks },
         { provide: AccountPreferences, useValue: accountPreferences },
         // Three real routes, so "the gate navigated" and "the gate did not" are different
         // observations rather than the same `/`. The two the gate names are the mirror's own.
@@ -713,6 +729,14 @@ describe('the shell frame', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(accountPreferences.recents()).toEqual(['permissions/users']);
 
+    // Prime both, so the resets below are observable rather than no-ops.
+    await about.load();
+    await helpLinks.load('permissions/users');
+    expect(about.answered()).toBe(true);
+    expect(helpLinks.hrefFor('permissions/users')).toBe(
+      '/csp/docbook/DocBook.UI.PortalHelpPage.cls?KEY=Users'
+    );
+
     session.move('form');
     fixture.detectChanges();
 
@@ -733,6 +757,15 @@ describe('the shell frame', () => {
     // Mutation (Rule 19): delete `this.accountPreferences.reset()` from the same branch -> this
     // goes red, and Home would show a departed principal's favorites and recent items.
     expect(accountPreferences.answered()).toBe(false);
+
+    // Mutation (Rule 19): delete `this.about.reset()` from the same branch -> this goes red, and
+    // Home's Links block and the About dialog would open on the departed principal's answer about
+    // the instance, licensee included (AD-8).
+    expect(about.answered()).toBe(false);
+    // Mutation (Rule 19): delete `this.helpLinks.reset()` from the same branch -> this goes red.
+    // The addresses are the instance's rather than the account's, but a sign-out is also the one
+    // gesture after which the shell underneath may have been upgraded.
+    expect(helpLinks.hrefFor('permissions/users')).toBe('');
 
     // Mutation (Rule 19): delete `this.recentsRecorder.reset()` from the same branch -> this goes
     // red, answering []. The next principal resumes on the screen this tab is already on, and a

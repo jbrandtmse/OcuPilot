@@ -3,7 +3,7 @@ import { Router, provideRouter } from '@angular/router';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { InstanceService } from '../../core/instance';
-import { NavigationService, orderedAreas, type Verdict } from '../../core/navigation';
+import { NavigationService, orderedAreas, screenForRoute, type Verdict } from '../../core/navigation';
 import { PreferenceStore, SIDE_BAR_OPEN_KEY } from '../../core/preferences';
 import { ScopeService } from '../../core/scope';
 import type { AreaDeclaration, ScreenDeclaration } from '../../core/screens.generated';
@@ -14,6 +14,10 @@ import { screenDeclaration } from '../../testing/screen-declaration';
 import { HomePage } from './home.page';
 import { AccountPreferences } from '../../core/account-preferences';
 import { stubAccountPreferences } from '../../testing/account-preferences';
+import { About } from '../../core/about';
+import { stubAbout } from '../../testing/about';
+import { SHORTCUT_ROUTES, shortcutScreens } from '../../core/shortcuts';
+import type { StubbedAbout } from '../../testing/about';
 
 /**
  * Home's rendered contract (DESIGN.md `:896`, `:1102`; EXPERIENCE.md "Six tiles in daily-use order").
@@ -101,6 +105,11 @@ class StubInstance {
     return this.serverNameValue;
   }
 
+  /** Story 15.3: the stale-bundle prompt reads this; '' means there is nothing to compare. */
+  buildIdentity(): string {
+    return '';
+  }
+
   instanceVersion(): string {
     return this.instanceVersionValue;
   }
@@ -165,9 +174,19 @@ describe('Home', () => {
   let storage: ReturnType<typeof memoryStorage>;
   let router: Router;
   let preferences: AccountPreferences;
+  let about: StubbedAbout;
 
+  /**
+   * The two remembered blocks. Story 15.3 added two more sections of the same shape beside them --
+   * Shortcuts and Links -- which are fixed rosters rather than stored lists and carry
+   * `ocu-home-block-fixed`; this helper names the two these rows are about.
+   */
   const blocks = (): HTMLElement[] =>
-    Array.from(fixture.nativeElement.querySelectorAll('.ocu-home-block'));
+    Array.from(
+      fixture.nativeElement.querySelectorAll('.ocu-home-block:not(.ocu-home-block-fixed)')
+    );
+  const fixedBlocks = (): HTMLElement[] =>
+    Array.from(fixture.nativeElement.querySelectorAll('.ocu-home-block-fixed'));
   const blockRows = (index: number): HTMLElement[] =>
     Array.from(blocks()[index].querySelectorAll('.ocu-home-block-row'));
   const rowLabels = (index: number): string[] =>
@@ -198,6 +217,7 @@ describe('Home', () => {
     shell = new ShellState({ preferences: new PreferenceStore({ storage }) });
     // Two built screens the shipped mirror declares, plus one route it does not: the AD-37
     // degrade row needs a stored route that resolves to nothing.
+    about = stubAbout();
     preferences = stubAccountPreferences({
       favorites: ['logs/alerts', 'no-such-area/no-such-screen'],
       // `agent/definitions/edit` is built but unlisted (sideBarPosition 0) and keyed by an entity
@@ -206,10 +226,14 @@ describe('Home', () => {
     });
     TestBed.configureTestingModule({
       providers: [
+        { provide: About, useValue: about },
         { provide: AccountPreferences, useValue: preferences },
         provideRouter([
           { path: '', children: [] },
           { path: 'os-management/processes', children: [] },
+          // Story 15.3: the first built shortcut's own target, so the row that opens one asserts a
+          // URL the harness could have reached rather than one it could never fail on.
+          { path: 'os-management/databases', children: [] },
           // DW-161's second screen: the tile's target when the first one's verdict refuses. It
           // has to resolve here, or the row asserting the skip would assert a URL the harness
           // could never have reached.
@@ -585,7 +609,7 @@ describe('Home', () => {
     expect(blocks()[1].querySelector('.ocu-home-block-empty')?.textContent?.trim()).toBe(
       STRINGS.recentsEmpty
     );
-    expect(fixture.nativeElement.querySelector('.ocu-home-block-list')).toBeNull();
+    for (const block of blocks()) expect(block.querySelector('.ocu-home-block-list')).toBeNull();
     expect(fixture.nativeElement.querySelector('.ocu-home-block-clear')).toBeNull();
   });
 
@@ -593,8 +617,8 @@ describe('Home', () => {
     await preferences.load();
     fixture.detectChanges();
 
-    const lists: HTMLElement[] = Array.from(
-      fixture.nativeElement.querySelectorAll('.ocu-home-block-list')
+    const lists: HTMLElement[] = blocks().flatMap((block) =>
+      Array.from(block.querySelectorAll<HTMLElement>('.ocu-home-block-list'))
     );
     expect(lists).toHaveLength(2);
     for (const list of lists) expect(list.getAttribute('role')).toBe('list');
@@ -743,4 +767,136 @@ describe('Home', () => {
 
     expect(router.url).toBe('/logs/alerts?ns=USER');
   });
+
+  it('Story 15.3: Shortcuts and Links render beside the remembered blocks, each with its published heading', async () => {
+    // Links renders once the instance has answered an address; Shortcuts is a local roster.
+    await about.load();
+    fixture.detectChanges();
+
+    const headings = fixedBlocks().map(
+      (block) => block.querySelector('.ocu-home-block-heading')?.textContent?.trim() ?? ''
+    );
+    expect(headings).toEqual([STRINGS.shortcutsHeading, STRINGS.linksHeading]);
+
+    // Above the grid, like the two they sit beside.
+    const section: HTMLElement = fixture.nativeElement.querySelector('.ocu-home');
+    const children = Array.from(section.children);
+    const remembered = children.findIndex((el) => el.classList.contains('ocu-home-remembered'));
+    const grid = children.findIndex((el) => el.classList.contains('ocu-area-tile-grid'));
+    expect(remembered).toBeLessThan(grid);
+  });
+
+  it('Story 15.3 (AD-37): a roster route naming no built screen is dropped, and the rest keep roster order', () => {
+    // The roster is the shipped one, read through the real mirror: seven of its seventeen name
+    // screens this product has not built, so the block is the ten that resolve. Deriving the
+    // expectation from `screenForRoute` rather than from `shortcutScreens()` is what keeps this
+    // from asserting the code against itself.
+    const labels = Array.from(
+      fixedBlocks()[0].querySelectorAll('.ocu-home-block-label')
+    ).map((label) => label.textContent?.trim() ?? '');
+    const wanted: string[] = [];
+    for (const route of SHORTCUT_ROUTES) {
+      const screen = screenForRoute(route);
+      if (screen === null || !screen.built) continue;
+      wanted.push(STRINGS[screen.labelKey as keyof typeof STRINGS]);
+    }
+
+    expect(labels).toEqual(wanted);
+    expect(labels.length).toBeGreaterThan(0);
+    expect(labels.length).toBeLessThan(SHORTCUT_ROUTES.length);
+  });
+
+  it('Story 15.3: a shortcut the user may not open stays listed and focusable, with its reason inline, and does not navigate', async () => {
+    const first = shortcutScreens()[0];
+    navigation.screenVerdicts.set(first.route, {
+      allowed: false,
+      failedPair: '%Admin_Manage:USE',
+    });
+    navigation.notify();
+    fixture.detectChanges();
+
+    const open = fixedBlocks()[0].querySelector('.ocu-home-block-open') as HTMLButtonElement;
+    expect(open.getAttribute('aria-disabled')).toBe('true');
+    expect(open.hasAttribute('disabled')).toBe(false);
+    expect(open.textContent).toContain('%Admin_Manage:USE');
+
+    const before = router.url;
+    open.click();
+    await fixture.whenStable();
+    expect(router.url).toBe(before);
+  });
+
+  it('Story 15.3: the Links block lists the three destinations as anchors opening in a new tab', async () => {
+    // Home issues the read on arrival; this waits for it, the way the remembered rows do.
+    await about.load();
+    fixture.detectChanges();
+
+    const anchors = Array.from(
+      fixedBlocks()[1].querySelectorAll<HTMLAnchorElement>('.ocu-home-block-link')
+    );
+    expect(anchors.map((anchor) => anchor.querySelector('.ocu-home-block-label')?.textContent?.trim())).toEqual([
+      STRINGS.linksDocumentation,
+      STRINGS.linksSupport,
+      STRINGS.linksInterSystems,
+    ]);
+    for (const anchor of anchors) {
+      expect(anchor.getAttribute('target')).toBe('_blank');
+      expect(anchor.getAttribute('rel')).toBe('noreferrer');
+      expect(anchor.getAttribute('href')).not.toBe('');
+    }
+  });
+
+  it('Story 15.3: an allowed shortcut opens its screen', async () => {
+    // Mutation (Rule 19): make `openShortcut` return unconditionally -> this goes red. Its gated
+    // sibling below cannot see that change: that row asserts the URL is *unchanged*, which a
+    // handler that never navigates satisfies by construction.
+    const first = shortcutScreens()[0];
+    expect(first.route).toBe('os-management/databases');
+    const open = fixedBlocks()[0].querySelector('.ocu-home-block-open') as HTMLButtonElement;
+    expect(open.getAttribute('aria-disabled')).toBeNull();
+
+    open.click();
+    await fixture.whenStable();
+
+    // `withQuery` carries the current URL's query, and the harness starts at `/` with none.
+    expect(router.url).toBe(`/${first.route}`);
+  });
+
+  it('Story 15.3: an instance that answered no address at all renders no Links block, not a heading over nothing', async () => {
+    about.setLinks({ documentation: '', support: '', intersystems: '' });
+    await about.load();
+    fixture.detectChanges();
+
+    const headings = fixedBlocks().map(
+      (block) => block.querySelector('.ocu-home-block-heading')?.textContent?.trim() ?? ''
+    );
+    expect(headings).toEqual([STRINGS.shortcutsHeading]);
+    expect(fixture.nativeElement.querySelector('.ocu-home-block-link')).toBeNull();
+  });
+
+  it('Story 15.3: a destination the instance did not answer an address for is not rendered as a link', async () => {
+    about.setLinks({ support: '', intersystems: '' });
+    await about.load();
+    fixture.detectChanges();
+
+    const anchors = Array.from(
+      fixedBlocks()[1].querySelectorAll<HTMLAnchorElement>('.ocu-home-block-link')
+    );
+    expect(anchors).toHaveLength(1);
+    expect(anchors[0].querySelector('.ocu-home-block-label')?.textContent?.trim()).toBe(
+      STRINGS.linksDocumentation
+    );
+  });
+
+  it('Story 15.3: the shipped roster resolves rows, so Shortcuts renders its list and not its empty state', () => {
+    // The empty state is unreachable here: `shortcutScreens()` reads the real mirror, which this
+    // spec may not replace, and the shipped roster always resolves some rows. So this row asserts
+    // which of the two branches the shipped mirror takes -- not the empty one, which has no test
+    // host on this side and is pinned in `ui/tools/about.test.mjs` at the roster level instead.
+    expect(shortcutScreens().length).toBeGreaterThan(0);
+    const block = fixedBlocks()[0];
+    expect(block.querySelector('.ocu-home-block-empty')).toBeNull();
+    expect(block.querySelector('.ocu-home-block-list')).not.toBeNull();
+  });
+
 });

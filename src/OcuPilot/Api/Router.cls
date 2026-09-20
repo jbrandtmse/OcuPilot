@@ -109,6 +109,8 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
   <Route Url="/account/password" Method="POST" Call="AccountPasswordChange"/>
   <Route Url="/account/preferences" Method="GET" Call="AccountPreferencesRead"/>
   <Route Url="/account/preferences" Method="POST" Call="AccountPreferencesUpdate"/>
+  <Route Url="/ui/about" Method="GET" Call="UiAbout"/>
+  <Route Url="/ui/help" Method="GET" Call="UiHelp"/>
 </Routes>
 }
 
@@ -395,6 +397,24 @@ ClassMethod AccountPreferencesRead() As %Status
 ClassMethod AccountPreferencesUpdate() As %Status
 {
     Quit ##class(OcuPilot.Api.Preferences).HandleUpdate()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /ui/about</code> (Story 15.3): delegates to
+/// <class>OcuPilot.Api.UiAbout</class> and carries no logic of its own.</p>
+/// <p>Declared at the tail of the map above. The third ordering invariant binds a prefix family --
+/// a shorter route whose Url matches a longer one's leading segments -- and <code>/ui</code>
+/// is shared with nothing else in the map, so both <code>/ui/*</code> routes are unconstrained in
+/// position and neither is a prefix of the other.</p>
+ClassMethod UiAbout() As %Status
+{
+    Quit ##class(OcuPilot.Api.UiAbout).HandleAbout()
+}
+
+/// <p>Thin <code>Call=</code> target for <code>GET /ui/help</code> (Story 15.3) -- see
+/// <method>UiAbout</method>.</p>
+ClassMethod UiHelp() As %Status
+{
+    Quit ##class(OcuPilot.Api.UiAbout).HandleHelp()
 }
 
 /// <p>Resolves the authenticated caller for this request. Returns <code>$Username</code> —

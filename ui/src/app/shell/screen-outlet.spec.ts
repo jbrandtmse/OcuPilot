@@ -26,6 +26,9 @@ import {
 } from './screen-outlet';
 import { AccountPreferences } from '../core/account-preferences';
 import { stubAccountPreferences } from '../testing/account-preferences';
+import { About } from '../core/about';
+import { HelpLinks } from '../core/help';
+import { stubAbout, stubHelpLinks } from '../testing/about';
 
 /**
  * The deep-link path, rendered: a route the user's privileges do not allow shows the screen's
@@ -100,6 +103,11 @@ class StubReadout {
     return '';
   }
 
+  /** Story 15.3: the stale-bundle prompt reads this; '' means there is nothing to compare. */
+  buildIdentity(): string {
+    return '';
+  }
+
   instanceVersion(): string {
     return '';
   }
@@ -131,6 +139,8 @@ describe('the routed screen outlet', () => {
     shell = new ShellState({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
     TestBed.configureTestingModule({
       providers: [
+        { provide: About, useValue: stubAbout() },
+        { provide: HelpLinks, useValue: stubHelpLinks() },
         { provide: AccountPreferences, useValue: stubAccountPreferences() },
         provideRouter([
           { path: '', pathMatch: 'full', component: ScreenOutlet },

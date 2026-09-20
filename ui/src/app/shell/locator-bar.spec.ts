@@ -12,6 +12,8 @@ import { screenDeclaration } from '../testing/screen-declaration';
 import { LocatorBar } from './locator-bar';
 import { AccountPreferences } from '../core/account-preferences';
 import { stubAccountPreferences } from '../testing/account-preferences';
+import { HelpLinks } from '../core/help';
+import { stubHelpLinks, type StubbedHelpLinks } from '../testing/about';
 
 /**
  * The locator bar's rendered contract (EXPERIENCE.md "locator-bar | top of content", "link is the first Tab stop"; DESIGN.md `:1033`).
@@ -91,9 +93,14 @@ describe('the locator bar', () => {
   let navigation: StubNavigation;
   let shell: ShellState;
   let preferences: AccountPreferences;
+  let help: StubbedHelpLinks;
+  let helpHrefs: Record<string, string>;
 
   const toggle = (): HTMLButtonElement | null =>
     fixture.nativeElement.querySelector('.ocu-locator-favorite');
+
+  const helpLink = (): HTMLAnchorElement | null =>
+    fixture.nativeElement.querySelector('.ocu-locator-help');
 
   const segments = (): HTMLElement[] =>
     Array.from(
@@ -110,8 +117,11 @@ describe('the locator bar', () => {
     navigation = new StubNavigation();
     shell = new ShellState({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
     preferences = stubAccountPreferences();
+    helpHrefs = {};
+    help = stubHelpLinks(helpHrefs);
     TestBed.configureTestingModule({
       providers: [
+        { provide: HelpLinks, useValue: help },
         { provide: AccountPreferences, useValue: preferences },
         provideRouter([
           { path: '', children: [] },
@@ -551,4 +561,43 @@ describe('the locator bar', () => {
     await go('/permissions/users');
     expect(toggle()?.getAttribute('aria-pressed')).toBe('true');
   });
+
+  it('Story 15.3: a screen whose classic page publishes a help address gets a Help control opening it in a new tab', async () => {
+    await go('/permissions/users');
+    // The address arrives from the instance after the route does; `reset()` lets this spec seed an
+    // answer for a route the component has already asked about once.
+    helpHrefs['permissions/users'] = 'https://ocupilot.invalid/docs/page?KEY=A%2CB';
+    help.reset();
+    await help.load('permissions/users');
+    fixture.detectChanges();
+
+    const link = helpLink();
+    expect(link).not.toBeNull();
+    expect(link?.getAttribute('href')).toBe('https://ocupilot.invalid/docs/page?KEY=A%2CB');
+    expect(link?.getAttribute('target')).toBe('_blank');
+    expect(link?.getAttribute('rel')).toBe('noreferrer');
+    // Its visible word is Help and its accessible name says which screen's help it is.
+    expect(link?.textContent).toContain(STRINGS.helpLabel);
+    expect(link?.getAttribute('aria-label')).toBe(STRINGS.helpForScreen);
+  });
+
+  it('Story 15.3: a screen whose classic page publishes no help address gets no control at all', async () => {
+    await go('/permissions/users');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    // The stub answered unavailable, which is what a classic page with no HELPADDRESS answers.
+    expect(help.calls.map((call) => call.path)).toEqual([
+      '/api/ocupilot/ui/help?route=permissions%2Fusers',
+    ]);
+    expect(helpLink()).toBeNull();
+  });
+
+  it('Story 15.3: a screen with no classic page is never asked about, and gets no control', async () => {
+    await go('/');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(help.calls).toEqual([]);
+    expect(helpLink()).toBeNull();
+  });
+
 });

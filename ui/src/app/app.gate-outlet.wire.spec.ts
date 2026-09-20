@@ -28,6 +28,9 @@ import { stubTurnStore } from './testing/turn';
 import { ViewOptions } from './core/view-options';
 import { AccountPreferences } from './core/account-preferences';
 import { stubAccountPreferences } from './testing/account-preferences';
+import { About } from './core/about';
+import { HelpLinks } from './core/help';
+import { stubAbout, stubHelpLinks } from './testing/about';
 
 /**
  * The first-login gate against the requested screen's declared read (FR-28, AD-36).
@@ -109,6 +112,11 @@ class StubInstance {
 
   instanceName(): string {
     return 'IRIS';
+  }
+
+  /** Story 15.3: the stale-bundle prompt reads this; '' means there is nothing to compare. */
+  buildIdentity(): string {
+    return '';
   }
 
   instanceVersion(): string {
@@ -282,6 +290,8 @@ describe('the first-login gate and the requested screen it may move off', () => 
     const shellState = new ShellState({ preferences });
     TestBed.configureTestingModule({
       providers: [
+        { provide: About, useValue: stubAbout() },
+        { provide: HelpLinks, useValue: stubHelpLinks() },
         { provide: AccountPreferences, useValue: stubAccountPreferences() },
         provideRouter(routes),
         { provide: Session, useValue: new StubSession() as unknown as Session },

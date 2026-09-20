@@ -14,10 +14,12 @@ import { DefinitionActions } from './areas/agent/definition-actions';
 import { DefinitionForm } from './areas/agent/definition-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
 import { ErrorLogDrill } from './areas/logs/error-log.store';
+import { About } from './core/about';
 import { AccountPreferences } from './core/account-preferences';
 import { AgentContext } from './core/agent-context';
 import { AgentStatus, DEFINITIONS_ROUTE } from './core/agent-status';
 import { ConnectivityService } from './core/connectivity';
+import { HelpLinks } from './core/help';
 import { FormDirty } from './core/form-dirty';
 import { InstanceService, isInstanceReady } from './core/instance';
 import { NavigationService, editorScreenFor, routeFromUrl, screenForRoute, withQuery } from './core/navigation';
@@ -41,6 +43,7 @@ import { COMPOSER_ID, Panel } from './shell/panel';
 import { Rail } from './shell/rail';
 import { SIDE_BAR_OVERLAY_ID, SideBar } from './shell/side-bar';
 import { SignIn } from './shell/sign-in';
+import { StaleBundleNotice } from './shell/stale-bundle-notice';
 import { StatusBar } from './shell/status-bar';
 
 /** The content area's own element, which Escape returns focus to when nothing is open. */
@@ -131,6 +134,7 @@ export function isComposerChord(event: KeyboardEvent): boolean {
     SignIn,
     InstanceNotice,
     FaultBanner,
+    StaleBundleNotice,
     Header,
     Rail,
     SideBar,
@@ -151,6 +155,7 @@ export function isComposerChord(event: KeyboardEvent): boolean {
     }
     <h1 class="ocu-product-heading">{{ STRINGS.productName }}</h1>
     <app-fault-banner />
+    <app-stale-bundle-notice />
     @if (installUnreadable) {
       <app-instance-notice />
     } @else {
@@ -187,6 +192,8 @@ export class App {
   private readonly agentStatus = inject(AgentStatus);
   private readonly agentContext = inject(AgentContext);
   private readonly accountPreferences = inject(AccountPreferences);
+  private readonly about = inject(About);
+  private readonly helpLinks = inject(HelpLinks);
   private readonly suggested = inject(SuggestedView);
   private readonly scope = inject(ScopeService);
   private readonly router = inject(Router);
@@ -479,6 +486,11 @@ export class App {
       // the tab on the same URL, so a recorder that still held it would silently skip the one
       // screen the next principal resumes on (Story 15.2, AD-8).
       this.recentsRecorder.reset();
+      // The fifteenth and sixteenth: the instance overview the About dialog and Home's links panel
+      // render, and the per-screen help addresses the locator bar resolved. Both are the
+      // instance's answers to this caller (Story 15.3, AD-8), and the next sign-in asks again.
+      this.about.reset();
+      this.helpLinks.reset();
       return;
     }
     void this.instance.verify();

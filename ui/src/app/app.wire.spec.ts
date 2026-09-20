@@ -33,6 +33,9 @@ import { stubTurnStore } from './testing/turn';
 import { screenDeclaration } from './testing/screen-declaration';
 import { AccountPreferences } from './core/account-preferences';
 import { stubAccountPreferences } from './testing/account-preferences';
+import { About } from './core/about';
+import { HelpLinks } from './core/help';
+import { stubAbout, stubHelpLinks } from './testing/about';
 
 /**
  * The one crossing left after `app.spec.ts` and the two bar specs: `app.spec.ts` mounts the real
@@ -110,6 +113,11 @@ class StubInstance {
 
   instanceName(): string {
     return 'IRIS';
+  }
+
+  /** Story 15.3: the stale-bundle prompt reads this; '' means there is nothing to compare. */
+  buildIdentity(): string {
+    return '';
   }
 
   instanceVersion(): string {
@@ -255,6 +263,8 @@ describe('the real shell, routed to the real Home screen, sharing one real Refre
     const shellState = new ShellState({ preferences: shellPreferences });
     TestBed.configureTestingModule({
       providers: [
+        { provide: About, useValue: stubAbout() },
+        { provide: HelpLinks, useValue: stubHelpLinks() },
         { provide: AccountPreferences, useValue: stubAccountPreferences() },
         provideRouter(routes),
         { provide: Session, useValue: new StubSession() as unknown as Session },

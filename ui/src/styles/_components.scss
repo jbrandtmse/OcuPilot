@@ -4918,3 +4918,97 @@ app-data-table {
 .ocu-locator-favorite[aria-pressed='true'] {
   color: var(--ocu-primary);
 }
+
+// Story 15.3. Home's Shortcuts and Links blocks reuse `.ocu-home-block*` wholesale; only the
+// anchor a Links row wraps is new, and it takes the same metrics as a remembered row's own button
+// so the four blocks line up.
+.ocu-home-block-link {
+  @include typo.ocu-type('body');
+
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  align-items: center;
+  gap: var(--ocu-space-1);
+  padding: 0;
+  color: var(--ocu-secondary);
+  text-decoration: none;
+}
+
+.ocu-home-block-link:hover {
+  text-decoration: underline;
+}
+
+.ocu-home-block-link:focus-visible {
+  @include ocu-focus-ring;
+}
+
+// The locator bar's Help control: a word and the shared external glyph, beside the favorite
+// toggle rather than inside the screen heading.
+.ocu-locator-help {
+  @include typo.ocu-type('caption');
+
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--ocu-space-1);
+  padding: 0 var(--ocu-space-1);
+  border-radius: var(--ocu-radius-sm);
+  color: var(--ocu-secondary);
+  text-decoration: none;
+}
+
+.ocu-locator-help:hover {
+  text-decoration: underline;
+}
+
+.ocu-locator-help:focus-visible {
+  @include ocu-focus-ring;
+}
+
+// The About dialog's definition list: a two-column grid, labels sized to their content and values
+// taking the rest. A value is instance data and may be a long file path, so it wraps inside its own
+// column rather than widening the dialog.
+.ocu-about-list {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--ocu-space-1) var(--ocu-space-3);
+  margin: 0;
+}
+
+.ocu-about-term {
+  @include typo.ocu-type('caption');
+
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
+}
+
+.ocu-about-value {
+  @include typo.ocu-type('body');
+
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.ocu-about-fault {
+  @include typo.ocu-type('body');
+
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
+}
+
+// DW-3's stale-bundle prompt: a polite strip above the frame, offering Reload and blocking
+// nothing.
+.ocu-stale-bundle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ocu-space-3);
+  padding: var(--ocu-space-2) var(--ocu-space-3);
+  background: var(--ocu-surface-container-high);
+  color: var(--ocu-on-surface);
+}
+
+.ocu-stale-bundle-text {
+  @include typo.ocu-type('body');
+}

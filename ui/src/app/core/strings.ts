@@ -1150,6 +1150,59 @@ export const STRINGS = {
   /** EXPERIENCE.md:382 */
   recentsCleared: 'Recent items cleared',
 
+  // Story 15.3's twenty-three: the account menu's About item, which is also the dialog's title,
+  // the twelve field labels on its definition list -- the thirteenth reuses
+  // `statusSegmentLicensedTo` and its dismissing action reuses `auditDialogClose`, because a value
+  // already published belongs to one key -- Home's Shortcuts and Links blocks with the three
+  // destinations the links panel names, the locator bar's Help control in its two names, and
+  // DW-3's stale-bundle prompt with its one action.
+  /** EXPERIENCE.md:383 */
+  aboutTitle: 'About',
+  /** EXPERIENCE.md:383 */
+  aboutVersion: 'Version',
+  /** EXPERIENCE.md:383 */
+  aboutComponents: 'Components',
+  /** EXPERIENCE.md:383 */
+  aboutConfiguration: 'Configuration',
+  /** EXPERIENCE.md:383 */
+  aboutDatabaseCache: 'Database cache (MB)',
+  /** EXPERIENCE.md:383 */
+  aboutRoutineCache: 'Routine cache (MB)',
+  /** EXPERIENCE.md:383 */
+  aboutJournalFile: 'Journal file',
+  /** EXPERIENCE.md:383 */
+  aboutSuperServerPort: 'Superserver port',
+  /** EXPERIENCE.md:383 */
+  aboutWebServerPort: 'Web server port',
+  /** EXPERIENCE.md:383 */
+  aboutLicenseServer: 'License server',
+  /** EXPERIENCE.md:383 */
+  aboutEncryptionKeyId: 'Encryption key identifier',
+  /** EXPERIENCE.md:383 */
+  aboutLocale: 'Locale',
+  /** EXPERIENCE.md:383 */
+  aboutBuild: 'Build',
+  /** EXPERIENCE.md:383 */
+  shortcutsHeading: 'Shortcuts',
+  /** EXPERIENCE.md:383 */
+  shortcutsEmpty: 'No shortcuts available.',
+  /** EXPERIENCE.md:383 */
+  linksHeading: 'Links',
+  /** EXPERIENCE.md:383 */
+  linksDocumentation: 'Documentation',
+  /** EXPERIENCE.md:383 */
+  linksSupport: 'Support',
+  /** EXPERIENCE.md:383 */
+  linksInterSystems: 'InterSystems',
+  /** EXPERIENCE.md:383 */
+  helpLabel: 'Help',
+  /** EXPERIENCE.md:383 */
+  helpForScreen: 'Help for this screen',
+  /** EXPERIENCE.md:383 */
+  staleBundleNotice: 'A newer version of OcuPilot is installed. Reload to use it.',
+  /** EXPERIENCE.md:383 */
+  actionReload: 'Reload',
+
   // Two connectivity sentences EXPERIENCE.md publishes outside the Fixed strings table, each
   // authorized by its own targeted extractor in `ui/tools/strings.test.mjs`, never by being
   // added to REQUIRED_ALONGSIDE_TABLE, whose own comment calls that the bypass it must not

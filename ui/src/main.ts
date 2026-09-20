@@ -4,6 +4,7 @@ import { provideRouter } from '@angular/router';
 
 import { App } from './app/app';
 import { routes } from './app/app.routes';
+import { About } from './app/core/about';
 import { AccountPreferences } from './app/core/account-preferences';
 import { AgentContext } from './app/core/agent-context';
 import { AgentStatus } from './app/core/agent-status';
@@ -11,6 +12,7 @@ import { ApiService } from './app/core/api';
 import { ChangeBus } from './app/core/change-bus';
 import { ConnectivityService } from './app/core/connectivity';
 import { FormDirty } from './app/core/form-dirty';
+import { HelpLinks } from './app/core/help';
 import { transportFault } from './app/core/fault';
 import { InstanceService } from './app/core/instance';
 import { NavigationService } from './app/core/navigation';
@@ -189,6 +191,13 @@ const agentContext = new AgentContext({ api, bus, connectivity });
 // read one answer -- three would be three reads and three disagreeing views of the same account.
 const accountPreferences = new AccountPreferences({ api });
 
+// The instance overview (Story 15.3): the About dialog and Home's links panel both read it, so one
+// store means one request and one answer rather than two that can disagree about where this
+// instance's documentation is. Alongside it, the per-screen help addresses the locator bar
+// resolves -- held per screen, so a screen visited twice is asked for once.
+const about = new About({ api });
+const helpLinks = new HelpLinks({ api });
+
 // The one authority over Escape (DW-137). Built here like every other core service so the
 // command box, the account menu and the side bar all register with the same instance --
 // three stacks would be three independent Escape handlers again.
@@ -234,6 +243,8 @@ bootstrapApplication(App, {
     { provide: AgentStatus, useValue: agentStatus },
     { provide: AgentContext, useValue: agentContext },
     { provide: AccountPreferences, useValue: accountPreferences },
+    { provide: About, useValue: about },
+    { provide: HelpLinks, useValue: helpLinks },
     { provide: SuggestedView, useValue: suggested },
   ],
 }).catch((err) => console.error(err));
