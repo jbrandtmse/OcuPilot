@@ -775,6 +775,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-7-sign-out.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: ui/src/app/shell/account-menu.ts:65. With one item there is nowhere to arrow to and the item already holds focus on open; EXPERIENCE.md's Interaction Primitives defines an arrow model for the side-bar and table rows but none for menus, so there is no UX contract to build against. Distinct from DW-109 (dismissal).
 - 2026-09-12T07:53:13Z status=wontfix-accepted owner=1-7-sign-out by=cr note=reopen_if=the account menu carries a second role=menuitem
+- 2026-09-20T00:58:43Z status=routed owner=15-1-change-your-own-password by=load note=reopen_if fired: 15.1 adds Change password as the account menu's second role=menuitem. Address the menu keyboard model in 15.1 or decline with a reason.
 
 ### DW-116: Token.cls discards the %Status from its PostToken/PostTokenTo/GetApiRoot call sites, so a transport failure reads as 'expected 200, got 0'
 - source: spec-1-7-sign-out.md | severity: low | fix-risk: low | footprint: in-story

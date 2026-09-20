@@ -5364,6 +5364,12 @@ So that a routine task does not send me to the classic portal.
 - **When** a new password is rejected
 - **Then** the instance's own reason is shown rather than a generic failure.
 
+---
+
+**Routed from the deferred-work ledger** - each must be addressed in this story or declined with a reason:
+
+- DW-115: The account menu ships role=menu/role=menuitem without the arrow, Home/End or roving tabindex model those roles imply; Change password is the second menuitem its `reopen_if` named (ledger; routed by load 2026-09-20)
+
 ### Story 15.2: Favorites, recent items and menu search
 
 As a developer-administrator with four screens I use daily,
