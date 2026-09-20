@@ -34,13 +34,6 @@ ClassMethod StateRole() As %String
     Quit $Parameter("OcuPilot.Kernel.State.Base", "DBRESOURCE")
 }
 
-/// <p>The role the identity escalation obtains (DW-444), read the same way and for the same
-/// reason. Its application and its role carry one name.</p>
-ClassMethod IdentityRole() As %String
-{
-    Quit $Parameter("OcuPilot.Kernel.State.Base", "IDENTITYAPPLICATION")
-}
-
 Method OnBeforeOneTest() As %Status
 {
     Do $ClassMethod(..#PROBE, "Reset")
@@ -104,11 +97,15 @@ Method TestNoStateRoleIsPresentInsideAToolBody()
     Do $$$AssertEquals(tResult.%Get("is_error"), 0, "the call is not an error: " _ tResult.%Get("content"))
     Do $$$AssertEquals(##class(OcuPilot.Test.AsTheUserProbe).Observed("port", "count"), 1, "the body reached the port exactly once")
 
+    ; The identity role is deliberately not asserted here. Its escalation is entered only from
+    ; OcuPilot.Api.Router.OnPreDispatch, which this in-process call never reaches, so an assertion
+    ; that it is absent could not fail for any implementation and would read as coverage it is
+    ; not. What the identity role does and does not reach is pinned where it can fail, by
+    ; OcuPilot.Test.IdentityInstall against the installed objects.
     For tWhere = "tool", "port" {
         Set tRoles = ##class(OcuPilot.Test.AsTheUserProbe).Observed(tWhere, "roles")
         Do $$$AssertNotEquals(tRoles, "", tWhere _ ": observed a role set at all")
         Do $$$AssertEquals(##class(OcuPilot.Test.AsTheUserProbe).CarriesRole(tRoles, ..StateRole()), 0, tWhere _ ": carries no OcuPilot state role: " _ tRoles)
-        Do $$$AssertEquals(##class(OcuPilot.Test.AsTheUserProbe).CarriesRole(tRoles, ..IdentityRole()), 0, tWhere _ ": carries no OcuPilot identity role either (DW-444's escalation is not on this path): " _ tRoles)
         Do $$$AssertEquals(##class(OcuPilot.Test.AsTheUserProbe).Observed(tWhere, "user"), $Username, tWhere _ ": ran as the caller")
     }
 }

@@ -7,9 +7,14 @@
 Class OcuPilot.Test.IdentityUnknownState Extends %RegisteredObject
 {
 
-ClassMethod GuardedUserEnabled(pUserName As %String, Output pKnown As %Boolean) As %Boolean
+/// <p><var>pUnavailable</var> is 0 on purpose: the escalation is reported as having been in
+/// effect, so what this fixture drives is the "the read answered nothing about the account"
+/// branch and not the "OcuPilot's install is broken" branch, which
+/// <class>OcuPilot.Test.Disabled</class> drives against the real application instead.</p>
+ClassMethod GuardedUserEnabled(pUserName As %String, Output pKnown As %Boolean, Output pUnavailable As %Boolean) As %Boolean
 {
     Set pKnown = 0
+    Set pUnavailable = 0
     Quit 1
 }
 

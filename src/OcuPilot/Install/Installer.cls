@@ -2086,7 +2086,8 @@ ClassMethod EnsureApplication(ByRef pNames, pInstallNs As %String, ByRef pReport
 /// (AD-9, DW-444).</p>
 /// <p><b>Separate from <code>OcuPilotState</code> on purpose.</b> Adding this role to that
 /// application would give every guarded storage call the right to read the security database;
-/// a second application gives it to one method. The role's resource set is
+/// a second application, whose <code>Routines</code> entry admits only
+/// <class>OcuPilot.Kernel.State.Base</class>, confines it to that one file. The role's resource set is
 /// <parameter>OcuPilot.Kernel.State.Base.IDENTITYRESOURCES</parameter> and reaches none of
 /// OcuPilot's own data.</p>
 /// <p>Guard-then-act with drift repair, like every other ensure step.</p>
@@ -2136,7 +2137,13 @@ ClassMethod EnsureIdentityApplication(ByRef pNames, pInstallNs As %String, ByRef
             If +$Get(tProps("Enabled")) '= 1 Set tNeedsRepair = 1
             If $Get(tProps("MatchRoles")) '= tWantMatchRoles Set tNeedsRepair = 1
             If $Get(tProps("Routines")) '= tWantRoutines Set tNeedsRepair = 1
+            ; Type too: an application of any other type grants no role, so AddRoles refuses and
+            ; every account on the instance is refused. Repairing it may be rejected by the
+            ; instance, which fails the install loudly -- the AD-38-correct outcome, and the one
+            ; a comparison that omitted Type could not reach.
+            If +$Get(tProps("Type")) '= 4 Set tNeedsRepair = 1
             If tNeedsRepair {
+                Set tModProps("Type") = 4
                 Set tModProps("Enabled") = 1
                 Set tModProps("MatchRoles") = tWantMatchRoles
                 Set tModProps("Routines") = tWantRoutines
@@ -3313,6 +3320,27 @@ ClassMethod StateFingerprint(pProfile As %String = "") As %String
             Set tAppRoutines = $Select($$$ISERR(tGetSC): "READFAILED", 1: $Get(tAppProps("Routines")))
         }
 
+        ; DW-444, added at Story 5.4's code review: the identity pair is folded exactly as the
+        ; state pair above is. Drift on it is not cosmetic -- the escalation it carries is read
+        ; on every dispatched request, and an application that is disabled or a role that has
+        ; lost a resource refuses every account on the instance. An oracle that did not fold it
+        ; would report a drifted instance as correct.
+        Set tIdentityRoleResources = ""
+        If ##class(Security.Roles).Exists(tNames("identityRole"), .tIdRoleObj, .tIdRoleSC) {
+            Set tGetSC = ##class(Security.Roles).Get(tNames("identityRole"), .tIdRoleProps, .tIdRoleObj2)
+            Set tIdentityRoleResources = $Select($$$ISERR(tGetSC): "READFAILED", 1: $Get(tIdRoleProps("Resources")))
+        }
+
+        Set tIdentityAppEnabled = ""
+        Set tIdentityAppMatchRoles = ""
+        Set tIdentityAppRoutines = ""
+        If ##class(Security.Applications).Exists(tNames("identityApplication"), .tIdAppObj, .tIdAppSC) {
+            Set tGetSC = ##class(Security.Applications).Get(tNames("identityApplication"), .tIdAppProps)
+            Set tIdentityAppEnabled = $Select($$$ISERR(tGetSC): "READFAILED", 1: $Get(tIdAppProps("Enabled")))
+            Set tIdentityAppMatchRoles = $Select($$$ISERR(tGetSC): "READFAILED", 1: $Get(tIdAppProps("MatchRoles")))
+            Set tIdentityAppRoutines = $Select($$$ISERR(tGetSC): "READFAILED", 1: $Get(tIdAppProps("Routines")))
+        }
+
         Set tMapDatabase = ""
         If ##class(Config.MapGlobals).Exists(tInstallNs, tNames("mappingPattern"), .tMapObj, .tMapSC) {
             Set tGetSC = ##class(Config.MapGlobals).Get(tInstallNs, tNames("mappingPattern"), .tMapProps)
@@ -3380,7 +3408,7 @@ ClassMethod StateFingerprint(pProfile As %String = "") As %String
             Set tAppFold = tAppFold _ "|" _ tFRoleResources _ "|" _ ..ApplicationFingerprint($Get(tNames("appName", tFKey)), $Get(tNames("appProperties", tFKey)))
         }
 
-        Set tResult = tDbResourceName _ "|" _ tRoleResources _ "|" _ tAppEnabled _ "|" _ tAppMatchRoles _ "|" _ tAppRoutines _ "|" _ tMapDatabase _ "|" _ tEventEnabled _ "|" _ tDbResourcePublic _ "|" _ tDbResourceType _ "|" _ tAdminResourcePublic _ "|" _ tAuditingEnabled _ "|" _ tVerSchemaVersion _ "|" _ tVerPhase _ tAppFold
+        Set tResult = tDbResourceName _ "|" _ tRoleResources _ "|" _ tAppEnabled _ "|" _ tAppMatchRoles _ "|" _ tAppRoutines _ "|" _ tMapDatabase _ "|" _ tEventEnabled _ "|" _ tDbResourcePublic _ "|" _ tDbResourceType _ "|" _ tAdminResourcePublic _ "|" _ tAuditingEnabled _ "|" _ tVerSchemaVersion _ "|" _ tVerPhase _ "|" _ tIdentityRoleResources _ "|" _ tIdentityAppEnabled _ "|" _ tIdentityAppMatchRoles _ "|" _ tIdentityAppRoutines _ tAppFold
     } Catch ex {
         Set tResult = "ERROR:" _ ex.DisplayString()
     }

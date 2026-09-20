@@ -1,7 +1,7 @@
 /// <p>AD-35 across a whole turn (Story 5.4, AC5): a canary provider key is driven through a turn
 /// that <b>completes</b> and a turn that <b>fails</b>, and every place the turn left a record --
-/// every ledger column, every transcript step column, the progress record and the console log --
-/// is swept for it. The in-memory holder is asked directly whether it is empty when the call
+/// every ledger column, every transcript step column and the progress record -- is swept for it.
+/// The console log is the sibling's, named below. The in-memory holder is asked directly whether it is empty when the call
 /// returns.</p>
 /// <p><b>The sibling this does not duplicate.</b> <class>OcuPilot.Test.ProviderSecret</class> pins
 /// the key out of the two logs and the envelope under forced failures, from the adapter's own call

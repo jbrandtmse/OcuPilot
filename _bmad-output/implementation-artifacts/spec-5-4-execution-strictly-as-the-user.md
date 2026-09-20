@@ -16,27 +16,6 @@ deferred:
   - 'spec-4-9''s Verification table (lines 525 and 530) names `Ledger.TestARefusalBeforeDispatchRecordsARowWithNoPairs` and `Ledger.TestABoundaryStopBeforeDispatchRecordsARowWithNoPairs`, which DW-1120 renamed here because those rows now record the tool''s declared pairs. Epic 4''s spec is done and out of this story''s footprint, so the two names are left stale rather than edited.'
   - 'The matrix row "Provider port gate" expects a `PROVIDER.*` refusal, which contradicts the same intent-contract''s Always clause ("A privilege refusal carries `AUTH.NOPRIVILEGE`, `#REASONAUTHNOPRIVILEGE` and `detail.failedPair`, built once and rendered twice") and AD-39. `ProviderPort.Invoke` therefore refuses `AUTH.NOPRIVILEGE` through `Kernel.Denial`, which is what `PortGate.TestEveryPortEvaluatesItsDeclaredGate` asserts; the row''s behavioural claim -- refused before the outbound request leaves, no request issued -- is pinned. The cell is a drafting residue predating the AD-39 unification in this same spec and needs correcting at its origin; the intent-contract is read-only to this stage.'
   - summary: >-
-      An identity read that fails for any reason is reported as AUTH.DISABLED, so a missing or broken OcuPilotIdentity locks every account out behind a message that names the wrong cause and offers no repair path.
-    evidence: |-
-      Identity.IsEnabled fails closed on pKnown 0 (spec-pinned, and Disabled.TestAnUnreadableEnabledFlagRefuses pins it), and Router.OnPreDispatch renders the single AUTH.DISABLED code. Install creates the application on every run, so the state needs a code deploy without install; an operator deleting the application by hand reaches it directly. Distinguishing needs a second code and branch, which the spec does not settle.
-    location: >-
-      src/OcuPilot/Kernel/Identity.cls:34
-    severity: medium
-  - summary: >-
-      EnsureIdentityApplication's create and drift-repair path has no test, so a regression there is a silent total lockout that every other gate reports as green.
-    evidence: |-
-      Test/Installer.cls has TestSecondRunRepairsDriftedApplication for OcuPilotStateProbe and no sibling for the identity pair; TestUninstallLeavesNoResidue names neither identity object. A fresh install still produces a correct application, so the whole suite, the browser gate and smoke stay green.
-    location: >-
-      src/OcuPilot/Install/Installer.cls:2093
-    severity: medium
-  - summary: >-
-      The install drift oracle does not fold the identity application or its role, so drift on the new escalation is invisible to it.
-    evidence: |-
-      Installer.cls:3383 reports tAppEnabled and tRoleResources for the state pair only.
-    location: >-
-      src/OcuPilot/Install/Installer.cls:3383
-    severity: medium
-  - summary: >-
       Api.Definitions.RenderForbidden is a third privilege-refusal sentence, across twelve Definitions and Switches routes, for the same OcuPilotAdmin:USE pair whose sibling sentence this story deleted.
     evidence: |-
       It renders 403 / FORBIDDEN / AUTH.NOPRIVILEGE / detail.failedPair with its own wording. The spec's Code Map names it as answering a different question and the intent scopes the divergence to tool-versus-screen, so it is out of this story rather than wrong in it. Tests assert the code and the pair, never the sentence.
@@ -58,7 +37,7 @@ deferred:
       src/OcuPilot/Test/AsTheUser.cls:80
     severity: medium
   - summary: >-
-      EvaluateAnyOf's OR semantics are pinned by no test, and every new port-gate assertion runs with the gate class substituted.
+      Every new port-gate assertion runs with the gate class substituted (the OR semantics themselves are pinned by refused-tool.browser-spec.mjs).
     evidence: |-
       Test.ProviderGate answers all-or-nothing, so nothing drives a caller holding exactly one member of INVOKEPAIRS; swapping GateAnyOf for the AND evaluator in ProviderPort.Invoke would leave the suite green while refusing every real caller short of all thirteen resources. Test.ScreenGate already has Hold(resource, permission) and could express it.
     location: >-
@@ -119,13 +98,6 @@ deferred:
       Test.Disabled's principal always holds %Admin_Operate, so nothing pins that a disabled account holding no administrative resource reads 401 AUTH.DISABLED rather than 403 AUTH.NOADMIN.
     location: >-
       src/OcuPilot/Api/Router.cls:571
-    severity: low
-  - summary: >-
-      The doc claim that a second application gives the escalation to one method overstates the containment.
-    evidence: |-
-      The Routines allow-list is OcuPilot.Kernel.State.Base:<db>:1, the same whole-class granularity EnsureApplication uses, so any guarded method in that file could call AddRoles for it. The claim appears in both Installer.cls and Base.cls.
-    location: >-
-      src/OcuPilot/Kernel/State/Base.cls:55
     severity: low
   - summary: >-
       AC3 is measured at Dispatch.Advertise rather than at the provider request the matrix names.
@@ -523,9 +495,105 @@ for a least-privileged principal, and a residue sweep proving no provider key su
   holding only `OcuPilotAdmin:USE` reads it, then it is withheld; and given `Home`, whose descriptor
   declares an empty privilege set, when it is gated, then it is still admitted.
 
+### Review Findings
+
+Code review, 2026-09-20, Tier 1 full, four layers on the Opus tier (`review_tier: full-opus`).
+
+- **AC7/AD-38 — `[high]` `[patched]`.** A failure of the identity escalation was reported as
+  `AUTH.DISABLED`, so an absent, disabled, wrong-typed or drifted `OcuPilotIdentity` refused every
+  account on the instance behind a message naming the account as the cause and offering no repair
+  — and no OcuPilot route could repair it, because every route answered 401. Install itself is
+  loud (`EnsureIdentityApplication`'s status aborts `Install`), so AD-38 holds at install; what
+  broke AD-38's own `unreadable` distinction was the answer *after* install. Fixed:
+  `Base.GuardedUserEnabled` answers `pUnavailable` from a positive check that the grants took
+  (`IdentityGrantsInEffect`, which `AddRoles`'s status cannot substitute for — a role that lost
+  `%Admin_Secure` still returns success), `Identity.IsEnabled` propagates it, and
+  `Router.OnPreDispatch` renders 503 `INSTALL.UNREADABLE`, whose sentence names the repair.
+  `Disabled.TestABrokenIdentityEscalationIsNotReportedAsADisabledAccount` drives both faults over
+  the wire against the real application and asserts the disabled-account answer is still 401, so
+  the two causes are distinguishable. Resolves DW-1301.
+- **AC7 — `[high]` `[patched]`.** `EnsureIdentityApplication`'s create, drift-repair and removal
+  paths had no test, and `Installer.StateFingerprint` did not fold either object, so drift on the
+  escalation was invisible to the install oracle. Fixed: `Test/IdentityInstall.cls` (new) pins the
+  created shape, both repair arms and the uninstall removal against the `"probe"` profile;
+  `StateFingerprint` folds the identity role's resources and the application's `Enabled`,
+  `MatchRoles` and `Routines`; the repair comparison gained `Type`, without which an application
+  recreated as another type reads "already correct" and grants no role. Resolves DW-1302, DW-1303.
+- **AC6 — `[medium]` `[patched]`.** `Test/PortGate.cls` enumerated only one package level, so a
+  port shipped as `OcuPilot.Port.Monitor.MetricsPort` was never required to be on its roster —
+  the exact arrival this class exists to make impossible for Epic 6. Fixed: the depth filter is
+  gone.
+- **AC6 — `[medium]` `[patched]`.** `Gate.ParsePairSpec` dropped a member missing either half, so
+  a mis-typed `Parameter` left an AND-gate evaluating fewer pairs than it declares and a port
+  measurably weaker than the declaration a reader checks. Fixed: a malformed member voids the
+  whole specification, which `EvaluateRequired` refuses;
+  `PortGate.TestAMalformedPairSpecFailsClosed` and a per-member count on the roster walk pin it.
+- **AC1 — `[medium]` `[patched]`.** `AsTheUser`'s identity-role absence assertion could not fail:
+  the escalation is entered only from `OnPreDispatch`, which that in-process call never reaches,
+  so no implementation could have put the role there. Deleted, with the reason recorded at the
+  site; what the identity role reaches is pinned where it can fail, by `Test/IdentityInstall`.
+  Half-closes DW-1310.
+- **AC7 — `[low]` `[patched]`.** `Disabled`'s enabled-state control was `NotEquals 401`, which a
+  403 at the administrative gate or an anonymous request also satisfies. It now names both.
+- **`[low]` `[patched]`.** Two doc claims corrected at origin: "a second application gives it to
+  one method" (the `Routines` entry admits a file, which is the same granularity the storage
+  application has) and `TurnSecretResidue`'s header claim to sweep the console log. Resolves
+  DW-1316, and answers the wording half of DW-1307.
+- **`[low]` `[corrected]`.** The residual-risk line "`EvaluateAnyOf`'s OR semantics are pinned by
+  no test" is false: `refused-tool.browser-spec.mjs` runs a real turn as a principal holding one
+  member of `INVOKEPAIRS` and asserts two provider calls, which AND semantics would refuse.
+  Corrected here and on DW-1306, which keeps only the substituted-gate half.
+- **`[medium]` `[routed]`.** DW-1305's population was understated: `Home` declares `"route": ""`
+  and `"privileges": []`, so `RecordProviderCall` records an empty requirement for every turn
+  started from the default landing screen and every such `llm` row is withheld from every
+  cross-user reader, `%All` included. Widened at the entry; the three meanings `requiredPairs` now
+  carries are DW-1321, routed to 5.6 with it.
+- **`[low]` `[routed]`.** New: DW-1319 (the spine's decisions row still says `/refresh` is refused
+  at the mint), DW-1320 (`Install.Smoke` names neither identity object), DW-1322
+  (`EvaluateAnyOf`'s arbitrary `failedPair`), DW-1323 (`EnsureApplication`'s own missing `Type`
+  comparison), DW-1324 (`/login`, `/logout`, `/revoke` unmeasured), DW-1325 (`NewTurnKey`
+  duplicated with its narration).
+**Open for one rework iteration.** Everything above is patched and verified on `ocupilot-ci`:
+`check-objectscript.py` 552 files / 0 problems; `lint-docs.sh` clean; `npm run build` green through
+its six prebuild checkers; `npm test` 1087 + 687, 0 failed; the full class sweep run twice on
+`ocupilot-ci`, before the patches (**152 classes / 1393 tests / 0 failed**) and after (**152 / 1394
+/ 0 failed**, the extra test being the malformed-pair-spec pin), each with 0 probe leftovers, 0
+overlaps and 0 foreign runs; `smoke.sh --container ocupilot-ci` **executed=45 passed=45 failed=0
+pending=2 PASSED**; six Rule 19 mutations applied alone, each observed red on its named test and
+reverted byte-identically (`cmp` clean). What is **not** re-run is the full browser suite, which
+DW-1204 requires on a throwaway the class sweep has not touched — this one has now had two. That
+one leg, on a fresh throwaway against this tree, is the rework's whole scope; no code change is
+open, and no client file was touched at this review.
+
+- **`[false]`.** The spec's `status: done` against `sprint-status.yaml`'s `review` is the stage
+  machinery, not a disagreement. A delegated or LDAP principal with no `Security.Users` row is not
+  reachable: `/api/ocupilot` is `AutheEnabled: 32`, password only — `wontfix-theoretical`, real
+  only if another authentication mode is enabled on that application.
+
 ## Spec Change Log
 
 ## Review Triage Log
+
+### 2026-09-20 — Code review (Tier 1 full, four layers, Opus tier)
+
+- verdicts: 41 findings grouped to 22 entries — high 2, medium 6, low 11, false 3.
+- patched (8): the identity escalation's unavailability answered as a caller fault; its install,
+  drift-repair, removal and oracle coverage; `PortGate`'s package-depth blind spot;
+  `ParsePairSpec`'s fail-open on a malformed member; `AsTheUser`'s unfalsifiable identity-role
+  assertion; `Disabled`'s weak enabled-state control; two doc claims corrected at origin; the
+  `EvaluateAnyOf` residual-risk line corrected at origin.
+- routed (7 new + 2 widened): DW-1319..DW-1325; DW-1305 widened to the Home population, DW-1306
+  narrowed to the substituted gate class.
+- rejected: `Router`'s namespace-refusal detail builder (a different code, `AUTH.NSDENIED`);
+  `Kernel/Denial`'s asymmetric surface and `Detail()` returning `""` (deliberate — the key is
+  omitted, never sent empty); `LogSourcePort.Page`'s now-redundant empty-pair pre-check (harmless);
+  the spec/sprint-status status disagreement (**false** — stage machinery); a delegated principal
+  with no `Security.Users` row (**false** — the application is password-only); the count in
+  `## Auto Run Result` and the Rule 19 recompile wording were corrected rather than rejected,
+  because both are load-bearing for the next pass.
+- **Not re-opened**, per this stage's brief: `scripts/check-objectscript.py` (Epic 13's),
+  `/refresh` refused at use rather than at the mint, and `EvaluatePairs`'s declared-empty
+  affordance. No layer proposed inverting `EvaluatePairs`.
 
 ### 2026-09-19 — Review pass
 
@@ -772,8 +840,12 @@ anything the instance still refuses. Reading `ResourcesOR()` alone settles nothi
 
 **Rule 19 mutations** — each applied alone, observed red on its named test, reverted byte-identically,
 with `git status --short` and `git diff --stat` confirmed unchanged afterwards. Every server mutation
-is copied into the throwaway, `grep`ed inside the container, and the **whole package** recompiled
-before the run (a subclass keeps its own compiled copy of an inherited method). Every client mutation
+is copied into the throwaway, `grep`ed inside the container, and then **loaded and recompiled across
+`OcuPilot.*`, not across the mutated class's own package**: every one of the recipes below mutates a
+method the pinning test reaches through an `OcuPilot.Test.*` subclass, and a subclass keeps its own
+compiled copy of an inherited method. `LoadDir` on `src/OcuPilot` followed by
+`CompilePackage("OcuPilot")` is what was used here; `CompilePackage` alone recompiles what is already
+in IRIS and never re-reads the mutated file. Every client mutation
 that a browser spec reads is rebuilt and redeployed before the run.
 
 - AC1 mutation: `AsTheUserProbe.Tool.View` records a fixed identity in place of `$Username` →
@@ -800,6 +872,16 @@ that a browser spec reads is rebuilt and redeployed before the run.
   `LedgerEmptyPairs.TestAnEmptyRequirementIsNeverHeld`; and `Gate.Evaluate` pointed at
   `EvaluateRequired` → `LedgerEmptyPairs.TestHomeIsStillAdmitted` (the falsifier for the Home
   affordance this story deliberately preserves).
+- AC7 mutation, added at code review: the `tIdentityUnavailable` branch removed from
+  `Router.OnPreDispatch` -> `Disabled.TestABrokenIdentityEscalationIsNotReportedAsADisabledAccount`
+  (both faults answer `401|AUTH.DISABLED`); and `IdentityGrantsInEffect`'s call removed from
+  `Base.GuardedUserEnabled` -> the same test's role leg only. **Both applied and observed red.**
+- AC7 mutation, added at code review: the four identity components removed from
+  `Installer.StateFingerprint` -> `IdentityInstall.TestTheDriftOracleFoldsTheIdentityPair`; and
+  `EnsureIdentityApplication`'s `tNeedsRepair` test neutered ->
+  `IdentityInstall.TestASecondRunRepairsADriftedIdentityApplication`. **Both applied and observed
+  red.** (The first attempt at the second mutation hit `EnsureApplication`'s identical lines
+  instead and correctly reddened nothing here.)
 - Client mutation: `tool-call-card.ts:101` ignores `step.failedPair` again →
   `tool-call-card.spec.ts` "a privilege refusal names the pair" and
   `refused-tool.browser-spec.mjs` AC2.
@@ -835,7 +917,7 @@ parameter, the corrected `OnPreDispatch` contract); `Api/ScreenRead.cls`, `Kerne
 route pairs); `Kernel/Agent/Loop.cls` (the refusal row's declared pairs); `Kernel/State/Base.cls`
 (the identity escalation); `Install/Installer.cls` (creates, repairs, removes and now announces the
 identity application and role); `ui/src/app/shell/tool-call-card.ts` (the pair in the status word).
-Ten new test classes plus a four-class probe package, `tool-call-card.spec.ts` and
+Eighteen new classes under `Test/` -- thirteen top-level plus `AsTheUserProbe` and its four subclasses -- `tool-call-card.spec.ts` and
 `refused-tool.browser-spec.mjs`; `Test/{Ledger,LedgerWire,MgmntPort,MgmntPortDenial}.cls` and
 `panel.spec.ts` follow the unified sentence and the recorded pairs.
 
@@ -886,11 +968,11 @@ unverified risk: the turn-key defect was latent in two new classes and surfaced 
 assertion stopped being skipped, so `LedgerEmptyPairs` and `TurnSecretResidue` wrote rows under
 genuinely distinct keys for the first time in this pass -- their per-method teardown assertions have
 one full-sweep run of evidence at that key shape, not the several the rest of the suite has.
-Beyond that: the identity escalation has no test for its install, drift-repair or removal path, and
-a failure there reports as `AUTH.DISABLED` for every account; `EvaluateAnyOf`'s OR semantics are
-pinned by no test; and the intent-contract's "Provider port gate" row expects `PROVIDER.*` where
+Beyond that: the intent-contract's "Provider port gate" row expects `PROVIDER.*` where
 its own Always clause and AD-39 require `AUTH.NOPRIVILEGE` -- a contradiction inside the frozen
-block that needs correcting at its origin.
+block that needs correcting at its origin. (The identity escalation's install, drift-repair,
+removal and oracle coverage, and the answer a failure of it gives, were the code review's two
+high-severity findings and are fixed there.)
 
 Status: done
 Blocking condition: none

@@ -18,6 +18,12 @@ Parameter AUTHDISABLED = "AUTH.DISABLED";
 /// <p>The written sentence the refusal carries.</p>
 Parameter REASONDISABLED = "This account is disabled on this instance.";
 
+/// <p>The sentence carried when the identity escalation itself could not be entered. It names
+/// the repair, because waiting never helps: the privileged routine application
+/// <parameter>OcuPilot.Kernel.State.Base.IDENTITYAPPLICATION</parameter> and its role are
+/// install-created objects, and running install again recreates or repairs them.</p>
+Parameter REASONUNAVAILABLE = "OcuPilot cannot read this instance's account state; waiting will not help, and an administrator needs to run install again";
+
 /// <p>The store the enabled flag is read through. Overridable so a fixture can drive the
 /// unreadable-flag branch, which no instance produces on demand; production never overrides
 /// it.</p>
@@ -31,14 +37,23 @@ ClassMethod StateClass() As %String
 /// <p><b>An unreadable flag is a refusal, not an admission.</b> A read that answered nothing says
 /// nothing about whether the account is enabled, and admitting on it would make every failure of
 /// the identity escalation a silent reopening of the hole this closes.</p>
-ClassMethod IsEnabled(pUserName As %String) As %Boolean
+/// <p><b>Refusing and blaming the caller are two decisions, and only the first is this class's.</b>
+/// <var>pUnavailable</var> is 1 when the escalation could not be entered at all, which refuses
+/// every account on the instance and is a fault in OcuPilot's own install rather than in any
+/// account. A caller that renders it as <code>AUTH.DISABLED</code> tells every user their account
+/// was disabled and names no repair; <class>OcuPilot.Api.Router</class> renders it as AD-38's
+/// <code>unreadable</code> answer instead.</p>
+ClassMethod IsEnabled(pUserName As %String, Output pUnavailable As %Boolean) As %Boolean
 {
+    Set pUnavailable = 0
     Set tEnabled = 0
     Try {
-        Set tEnabled = $ClassMethod(..StateClass(), "GuardedUserEnabled", pUserName, .tKnown)
+        Set tEnabled = $ClassMethod(..StateClass(), "GuardedUserEnabled", pUserName, .tKnown, .tUnavailable)
+        Set pUnavailable = ''+$Get(tUnavailable)
         If '+$Get(tKnown) Set tEnabled = 0
     } Catch ex {
         Set tEnabled = 0
+        Set pUnavailable = 1
     }
     Quit tEnabled
 }

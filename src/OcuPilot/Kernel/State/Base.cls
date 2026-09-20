@@ -50,9 +50,11 @@ Class OcuPilot.Kernel.State.Base Extends %Persistent [ Abstract ]
 Parameter APPLICATION As %String = "OcuPilotState";
 
 /// <p>Name of the <b>second</b> privileged routine application, the one AD-9's identity read
-/// escalates through (DW-444). It grants the one resource
+/// escalates through (DW-444). It grants the resources
 /// <method>Security.Users.Get</method> requires and nothing else, and reaches none of
-/// OcuPilot's own data -- so no guarded storage call gains any privilege from its existing.
+/// OcuPilot's own data -- so no guarded storage call gains any privilege from its existing. Its
+/// <code>Routines</code> entry admits this file, which is the same whole-class granularity
+/// <parameter>APPLICATION</parameter> has: the containment is the file, not the method.
 /// Kernel-visible for the reason <parameter>APPLICATION</parameter> is: the installer creates
 /// it and the uninstall confirmation lists it.</p>
 Parameter IDENTITYAPPLICATION As %String = "OcuPilotIdentity";
@@ -497,16 +499,31 @@ ClassMethod GuardedTurnSignalKill(pKey As %String) As %Status [ Private ]
 /// <p>It calls no tool, no port and no provider, and starts no process, so AD-9's two ordering
 /// rules hold unchanged. The <code>%SYS</code> window is the explicit save-and-restore pair
 /// (AD-16), restored as the first line of the <code>Catch</code>.</p>
-ClassMethod GuardedUserEnabled(pUserName As %String, Output pKnown As %Boolean) As %Boolean
+/// <p><var>pUnavailable</var> is 1 when the escalation itself could not be entered -- the
+/// application or its role is absent, disabled or no longer grants
+/// <parameter>IDENTITYRESOURCES</parameter> -- and 0 whenever the escalation was in effect,
+/// whatever the read then found. <b>The two are different facts and a caller must not merge
+/// them:</b> <code>pKnown</code> 0 with <code>pUnavailable</code> 0 is a statement about the
+/// account, while <code>pUnavailable</code> 1 is a statement about OcuPilot's own install, and
+/// reporting the second as the first tells every user their account is disabled (AD-38's
+/// <code>unreadable</code> distinction, applied to this read).</p>
+ClassMethod GuardedUserEnabled(pUserName As %String, Output pKnown As %Boolean, Output pUnavailable As %Boolean) As %Boolean
 {
     Set pKnown = 0
+    Set pUnavailable = 0
     Set tEnabled = 0
     If pUserName = "" Quit 0
+    Set tEscalated = 0
     New $ROLES
     Set tOriginalNs = $NAMESPACE
     Try {
         Set tSC = $SYSTEM.Security.AddRoles(..#IDENTITYAPPLICATION)
         If $$$ISERR(tSC) Quit
+        ; The positive check that the escalation took. AddRoles reports success for an
+        ; application whose role has since lost a resource, so the status alone does not say
+        ; the read can be done; this asks the process directly.
+        If '..IdentityGrantsInEffect() Quit
+        Set tEscalated = 1
         ; Entered through the harvested pair while an OcuPilot class still resolves; LEFT by a
         ; plain assignment, because inside %SYS a dispatch to OcuPilot.Kernel.Utils raises
         ; <CLASS DOES NOT EXIST> and the restore would never run (AD-16, the installer's idiom).
@@ -526,9 +543,46 @@ ClassMethod GuardedUserEnabled(pUserName As %String, Output pKnown As %Boolean) 
         Set $NAMESPACE = tOriginalNs
         Set pKnown = 0
         Set tEnabled = 0
+        Kill tProperties
+        ; A raise past the grant check is a <PROTECT> on Security.Users in %SYS, which is the
+        ; same install fault by another route -- not a fact about the account.
+        Set tEscalated = 0
     }
     Set $NAMESPACE = tOriginalNs
+    Set pUnavailable = 'tEscalated
     Quit tEnabled
+}
+
+/// <p>Whether this process actually holds every pair
+/// <parameter>IDENTITYRESOURCES</parameter> declares. Called inside
+/// <method>GuardedUserEnabled</method>'s escalated frame as the oracle for "the escalation is in
+/// effect": it asks the same question <method>Security.Users.Get</method> will ask, before the
+/// answer can be confused with one about the account.</p>
+/// <p>It escalates nothing of its own and is meaningless outside an escalated frame.</p>
+ClassMethod IdentityGrantsInEffect() As %Boolean [ Private ]
+{
+    Set tHeld = 1
+    Try {
+        For tI = 1:1:$Length(..#IDENTITYRESOURCES, ",") {
+            Set tPair = $Piece(..#IDENTITYRESOURCES, ",", tI)
+            Set tResource = $Piece(tPair, ":", 1)
+            Set tPermission = $Piece(tPair, ":", 2)
+            If tPermission = "U" Set tPermission = "USE"
+            If tPermission = "R" Set tPermission = "READ"
+            If tPermission = "W" Set tPermission = "WRITE"
+            If (tResource = "") || (tPermission = "") {
+                Set tHeld = 0
+                Quit
+            }
+            If '$System.Security.Check(tResource, tPermission) {
+                Set tHeld = 0
+                Quit
+            }
+        }
+    } Catch ex {
+        Set tHeld = 0
+    }
+    Quit tHeld
 }
 
 /// <p>Test-only introspection: returns the process's <code>$ROLES</code> as observed

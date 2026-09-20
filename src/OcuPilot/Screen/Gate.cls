@@ -216,9 +216,14 @@ ClassMethod AdminPairSpec() As %String
 }
 
 /// <p><var>pSpec</var>, a comma-separated list of <code>resource:permission</code>, as the
-/// <code>%List</code> of two-element <code>%List</code>s this gate's evaluators take. A member
-/// without both halves is dropped, so a malformed specification reports short and the evaluators
-/// fail closed on what is left.</p>
+/// <code>%List</code> of two-element <code>%List</code>s this gate's evaluators take.</p>
+/// <p><b>A member without both halves voids the whole specification</b>, which
+/// <method>EvaluateRequired</method> then refuses. Dropping only the unreadable member would
+/// leave an <code>AND</code> gate evaluating fewer pairs than its <code>Parameter</code>
+/// declares -- a port measurably weaker than the declaration a reader checks it against -- and
+/// a shorter list is exactly what such a gate cannot notice. An empty member, from a trailing
+/// separator, is skipped rather than treated as malformed; an empty specification parses to an
+/// empty list, which the evaluator already refuses.</p>
 ClassMethod ParsePairSpec(pSpec As %String) As %List
 {
     Set tPairs = ""
@@ -227,8 +232,17 @@ ClassMethod ParsePairSpec(pSpec As %String) As %List
         If tMember = "" Continue
         Set tResource = $Piece(tMember, ":", 1)
         Set tPermission = $Piece(tMember, ":", 2)
-        If (tResource = "") || (tPermission = "") Continue
+        If (tResource = "") || (tPermission = "") Quit
         Set tPairs = tPairs _ $ListBuild($ListBuild(tResource, tPermission))
+    }
+    If $Length(pSpec, ",") > 0, tPairs '= "" {
+        ; The loop stops on the first malformed member; a short answer therefore means "the rest
+        ; was never read", which must not be handed to an evaluator as a requirement.
+        Set tDeclared = 0
+        For tI = 1:1:$Length(pSpec, ",") {
+            If $Piece(pSpec, ",", tI) '= "" Set tDeclared = tDeclared + 1
+        }
+        If $ListLength(tPairs) '= tDeclared Set tPairs = ""
     }
     Quit tPairs
 }

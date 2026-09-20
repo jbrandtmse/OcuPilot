@@ -2950,6 +2950,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T19:04:15Z status=decision-pending owner=burndown by=lead note=Product and security call for the decision sheet: accept the vendor token lifetime, or refuse a disabled account per request, which needs an enabled-flag read AD-8 forbids unescalated; Epic 5 confirm depends on the answer
 - 2026-09-16T22:11:28Z occurrence=4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=cr note=AD-31 says only a password login is refused; the silent cookie /login of AD-28 was never probed for a disabled account
 - 2026-09-19T02:12:25Z status=routed owner=5-4-execution-strictly-as-the-user by=merge_gate note=check Enabled at authentication and refuse /refresh for a disabled user; a security hole, must ship in Release 1
+- 2026-09-20T06:40:05Z status=resolved-by:5-4-execution-strictly-as-the-user by=adjudication note=the decided refusal shipped: a disabled account is refused 401 AUTH.DISABLED on every dispatched route, from one narrow escalated Enabled read behind the second privileged routine application OcuPilotIdentity, with AD-8 and AD-9 amended at the spec gate to name it. /refresh is not refused at the mint - every overridable %CSP.REST hook is called from code the four token paths never reach and HandleTokenResponse is Final - so the refusal lives at use, which makes a pair minted for a disabled account inert. The code review then found and fixed the failure mode this created: a drifted identity application made EVERY account read AUTH.DISABLED, now separated as 503 INSTALL.UNREADABLE per AD-38
 
 ### DW-445: AD-7's Rule still places turn progress in a temp global keyed by turn id, while AD-33 and the shipped Kernel.State.Turn and Step tables keep it in OcuPilot's protected storage
 - source: spec-4-1-the-turn-runs-in-a-background-job-and-returns-immediately.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -3426,6 +3427,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-18T13:52:26Z status=decision-pending owner=burndown by=harvest note=product call on what an OcuPilot administrator may see of another users llm rows; carried to the owner sheet
 - 2026-09-19T02:12:25Z status=routed owner=5-4-execution-strictly-as-the-user by=merge_gate note=an empty RequiredPairs must never evaluate true; fix Gate.EvaluatePairs and both row writers
 - 2026-09-20T02:41:45Z status=routed owner=5-4-execution-strictly-as-the-user by=spec_gate note=DIRECTIVE CORRECTED at origin: the routed instruction said to make an empty RequiredPairs never evaluate true by fixing Gate.EvaluatePairs. Applied literally that locks every user out of Home - Screen/Descriptor/Home.cls:37 declares privileges [] deliberately and EvaluatePairs' own doc comment names an empty list as how an ungated SCREEN is expressed. The fix is a new EvaluateRequired, where empty is never held, used at the ledger's per-row gate and at every port, plus both row writers, with a falsifier pinning that Home is still admitted. EvaluatePairs keeps its screen meaning
+- 2026-09-20T06:40:05Z status=resolved-by:5-4-execution-strictly-as-the-user by=adjudication note=fixed as the corrected directive required: a new Gate.EvaluateRequired where an empty list is never held, used at the ledger's per-row gate and at every port, with both row writers recording what they know. Gate.EvaluatePairs keeps its screen meaning, so Home's deliberate privileges [] still admits everyone - pinned by a falsifier. The residual, that a tool legitimately declaring no pairs now has its row withheld cross-user, is routed to 5.6 where the ledger row's own contract lives
 
 ### DW-1121: `SecretArguments` declared on the abstract intermediates `Kernel/Shell/ReadTool` and `Screen/Tool/Read` makes every present and future subclass inherit "declares none", so the mandatory-declaration refusal cannot bite those two subtrees.
 - source: spec-4-9-the-agent-audit-ledger.md | severity: med | fix-risk: low | footprint: in-epic
@@ -4709,16 +4711,19 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-4-execution-strictly-as-the-user.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: The refusal cannot distinguish 'this account is disabled' from 'the escalation could not read anything'. AD-38's contract is that install completes or fails loudly; this fails silently into a total lockout. Location: src/OcuPilot/Kernel/Identity.cls, Api/Router.cls OnPreDispatch
 - 2026-09-20T05:33:12Z status=routed owner=5-4-execution-strictly-as-the-user by=harvest note=kept on this story with items 2 and 3: together they are the new escalation's install path, untested, whose failure mode is nobody can sign in. The code review decides, as it did for the AD-34 race on 5.3
+- 2026-09-20T06:02:46Z status=resolved-by:5-4-execution-strictly-as-the-user by=code-review note=the two causes are now distinguishable on the wire - an escalation that could not be entered answers 503 INSTALL.UNREADABLE naming the repair, a disabled account 401 AUTH.DISABLED; Base.GuardedUserEnabled answers pUnavailable from a positive check that the grants took, pinned by Disabled.TestABrokenIdentityEscalationIsNotReportedAsADisabledAccount, both mutations observed red
 
 ### DW-1302: EnsureIdentityApplication's create and drift-repair path has no test, so a regression there is a silent total lockout
 - source: spec-5-4-execution-strictly-as-the-user.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: No test drives the create, the drift repair or the removal of the second privileged routine application. Location: src/OcuPilot/Install/Installer.cls
 - 2026-09-20T05:33:12Z status=routed owner=5-4-execution-strictly-as-the-user by=harvest note=kept on this story: same cluster as the AUTH.DISABLED conflation
+- 2026-09-20T06:02:46Z status=resolved-by:5-4-execution-strictly-as-the-user by=code-review note=Test/IdentityInstall.cls pins the created shape (role resources, GrantedRoles, app Enabled/Type/MatchRoles/Routines), both drift-repair arms and the uninstall removal; the repair-arm mutation was observed red
 
 ### DW-1303: The install drift oracle does not fold the identity application or its role, so drift on the new escalation is invisible
 - source: spec-5-4-execution-strictly-as-the-user.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: The oracle enumerates the shell, API and readiness applications and their roles; the identity application is absent from it. Location: src/OcuPilot/Install/Installer.cls
 - 2026-09-20T05:33:12Z status=routed owner=5-4-execution-strictly-as-the-user by=harvest note=kept on this story: same cluster
+- 2026-09-20T06:02:47Z status=resolved-by:5-4-execution-strictly-as-the-user by=code-review note=StateFingerprint folds the identity role's resources and the identity application's Enabled, MatchRoles and Routines; IdentityInstall.TestTheDriftOracleFoldsTheIdentityPair went red when the four components were removed
 
 ### DW-1304: Api.Definitions.RenderForbidden is a third privilege-refusal sentence across twelve Definitions and Switches routes
 - source: spec-5-4-execution-strictly-as-the-user.md | severity: med | fix-risk: med | footprint: in-epic
@@ -4729,11 +4734,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-4-execution-strictly-as-the-user.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: DW-1120's fix makes an empty RequiredPairs never held, which is right for a refusal row and wrong for a tool that genuinely needs no IRIS resource. Location: src/OcuPilot/Kernel/Audit/Ledger.cls
 - 2026-09-20T05:33:29Z status=routed owner=5-6-the-agent-marker-and-what-happens-when-it-fails by=harvest note=downstream-blocking (Rule 27): 5.6 owns the ledger row's own contract and is where the distinction between no-pairs-needed and no-pairs-known belongs
+- 2026-09-20T06:02:47Z by=code-review note=population widened: this is not only Navigate's tool rows. Screen/Descriptor/Home.cls declares route "" and privileges [], so RecordProviderCall records an empty requirement for every turn started from the default landing screen, and every such llm row is withheld from every cross-user reader including an %All holder
 
 ### DW-1306: EvaluateAnyOf's OR semantics are pinned by no test, and every new port-gate assertion runs with the gate class substituted
 - source: spec-5-4-execution-strictly-as-the-user.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: The new OR evaluation ships unexercised, and the port-gate tests inject a stub gate rather than the shipped one. Location: src/OcuPilot/Screen/Gate.cls and the 5.4 port tests
 - 2026-09-20T05:33:29Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=13.2 owns the CI suite; a gate asserted only through a substituted class is the vacuous-pin shape
+- 2026-09-20T06:02:47Z by=code-review note=correction at origin: EvaluateAnyOf's OR semantics ARE pinned - refused-tool.browser-spec.mjs runs a real turn as a principal holding one member of INVOKEPAIRS and asserts two provider calls, which AND semantics would refuse. What stands is only the substituted gate class in the class-level port assertions
 
 ### DW-1307: TurnSecretResidue sweeps no log line although its class header and AC5 both name one
 - source: spec-5-4-execution-strictly-as-the-user.md | severity: med | fix-risk: low | footprint: in-epic
@@ -4754,6 +4761,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-4-execution-strictly-as-the-user.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: Location: the 5.4 identity tests
 - 2026-09-20T05:33:46Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=13.2 owns coverage; an assertion on a path where the thing could not be present is the vacuous shape
+- 2026-09-20T06:02:47Z by=code-review note=half closed: the identity-role absence assertion was deleted from Test/AsTheUser.cls because it could not fail on that path, and what the identity role reaches is now pinned where it can fail (Test/IdentityInstall.cls). The AC1 tool-identity falsifier half stands with this owner
 
 ### DW-1311: The per-request identity read is unmeasured
 - source: spec-5-4-execution-strictly-as-the-user.md | severity: low | fix-risk: low | footprint: in-epic
@@ -4783,9 +4791,45 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 ### DW-1316: The doc claim that a second application gives the escalation to one method overstates the containment
 - source: spec-5-4-execution-strictly-as-the-user.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: The application grants the role to whatever runs inside the New $ROLES frame, not to one named method. Location: src/OcuPilot/Kernel/State/Base.cls doc comment
-- 2026-09-20T05:33:46Z status=routed owner=range-end-cleanup by=harvest note=non-blocking (Rule 27) but it is a wrong claim in a doc comment about the security boundary, so the range-end pass corrects it at origin rather than reprhasing it elsewhere
+- 2026-09-20T05:33:46Z status=routed owner=range-end-cleanup by=harvest note=non-blocking (Rule 27) but it is a wrong claim in a doc comment about the security boundary, so the range-end pass corrects it at origin rather than rephrasing it elsewhere
+- 2026-09-20T06:02:47Z status=resolved-by:5-4-execution-strictly-as-the-user by=code-review note=corrected at both origins (Kernel/State/Base.cls and Install/Installer.cls): the containment is the file the Routines entry admits, not one method
 
 ### DW-1317: AC3 is measured at Dispatch.Advertise rather than at the provider request the matrix names
 - source: spec-5-4-execution-strictly-as-the-user.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: ToolSetFull asserts the advertised set at the dispatcher, one layer before the request the AC describes. Location: src/OcuPilot/Test/ToolSetFull.cls
 - 2026-09-20T05:33:46Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=harvest note=13.2 owns coverage
+
+### DW-1319: The spine's decisions table still records the Epic 4 decision as refuse /refresh for a disabled user, which Story 5.4 disproved
+- source: cr | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: ARCHITECTURE-SPINE.md:743 reads 'check Enabled at authentication and refuse /refresh for a disabled user'. Story 5.4 established that no overridable %CSP.REST hook is reached on the four token paths, so the refusal lives at use; AD-8's amended rule text reflects that and this row does not. Location: ARCHITECTURE-SPINE.md:743
+- 2026-09-20T06:03:02Z status=routed owner=range-end-cleanup by=code-review note=non-blocking (Rule 27) but a superseded claim left where a later reader mines it; the runner can fold it into this story's gate as one more line of the AD-8/AD-9 amendment it already applies under Rule 20
+
+### DW-1320: OcuPilot.Install.Smoke asserts nothing about the identity application or its role, although their absence refuses every account
+- source: cr | severity: low | fix-risk: low | footprint: in-epic
+- evidence: grep over src/OcuPilot/Install/Smoke.cls returns no hit for OcuPilotIdentity or IDENTITYAPPLICATION. The install drift oracle and Test/IdentityInstall now cover it, so this is the smoke contract catching up rather than an uncovered hazard. Location: src/OcuPilot/Install/Smoke.cls
+- 2026-09-20T06:03:03Z status=routed owner=range-end-cleanup by=code-review note=non-blocking (Rule 27): the objects are pinned by tests and by the fingerprint; smoke is the third reader and can be added with the other range-end assertions
+
+### DW-1321: The ledger's requiredPairs column now carries three incompatible meanings and ViewForUser gates all three identically
+- source: cr | severity: med | fix-risk: med | footprint: in-epic
+- evidence: A requirement evaluated against the caller (Dispatch), a tool's declaration no check ever read (Loop.RecordRefusedRow) and the originating screen route's pairs (Ledger.RecordProviderCall) are stored in one column, so an AD-46 reader cannot tell which claim a row makes. Location: src/OcuPilot/Kernel/Audit/Ledger.cls
+- 2026-09-20T06:03:03Z status=routed owner=5-6-the-agent-marker-and-what-happens-when-it-fails by=code-review note=same owner as DW-1305, which owns the ledger row's own contract; the distinction has to be settled once for all three writers
+
+### DW-1322: EvaluateAnyOf reports the first member of the OR-set as failedPair, which is not the pair the caller must obtain
+- source: cr | severity: low | fix-risk: low | footprint: in-epic
+- evidence: For INVOKEPAIRS the first member is %Admin_ExternalLanguageServerEdit:USE, first only because the list is alphabetical; any of the thirteen would satisfy the gate. Verified it reaches no card: a provider fault updates a model step and Step.GuardedUpdate carries no failedPair. Location: src/OcuPilot/Screen/Gate.cls
+- 2026-09-20T06:03:03Z status=routed owner=range-end-cleanup by=code-review note=non-blocking (Rule 27): no user-visible surface renders it today, and the honest answer is either the whole set or no pair at all
+
+### DW-1323: EnsureApplication omits Type from the state application's drift comparison, the same gap repaired on the identity application
+- source: cr | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Installer.cls EnsureApplication compares Enabled, MatchRoles and Routines; an application recreated as a non-routine type reads 'already correct' and grants no role. Pre-existing (Story 1.4); the identity twin was folded in at this review. Location: src/OcuPilot/Install/Installer.cls EnsureApplication
+- 2026-09-20T06:03:15Z status=routed owner=range-end-cleanup by=code-review note=non-blocking (Rule 27): with the identity pair's answer now loud (503 INSTALL.UNREADABLE) the same fault on the state application surfaces as a failing guarded write rather than silence
+
+### DW-1324: Test/Disabled exercises only the dispatched routes and /refresh; /login, /logout and /revoke for a disabled account are unmeasured
+- source: cr | severity: low | fix-risk: low | footprint: in-epic
+- evidence: The class header names 'the four token paths' and drives one of them. Whether the vendor refuses a disabled account's /login is IRIS behaviour rather than OcuPilot's, which is why it is coverage and not a hole. Location: src/OcuPilot/Test/Disabled.cls
+- 2026-09-20T06:03:15Z status=routed owner=13-2-the-test-suite-grows-in-ci-against-a-stock-image by=code-review note=13.2 owns coverage; the refusal at use already covers every route a minted pair can be presented to
+
+### DW-1325: NewTurnKey is duplicated verbatim in two new test classes, review narration included
+- source: cr | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Identical bodies and identical three-line comments explaining the $ZHex defect appear in Test/LedgerEmptyPairs.cls and Test/TurnSecretResidue.cls, and the same account is told again in the cycle log and the spec's Auto Run Result. The prose-discipline rule puts review history in the triage log, not in a doc comment. Location: src/OcuPilot/Test/LedgerEmptyPairs.cls
+- 2026-09-20T06:03:15Z status=routed owner=range-end-cleanup by=code-review note=non-blocking (Rule 27): cosmetic, and the shared helper it wants belongs with the other test-fixture consolidation the range-end pass carries

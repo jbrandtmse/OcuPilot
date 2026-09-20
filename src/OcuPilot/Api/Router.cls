@@ -417,9 +417,10 @@ ClassMethod GateStatus() As %String
 /// disabling a real account on a shared instance; the refusal is also exercised end to end
 /// against a real disabled principal by <class>OcuPilot.Test.Disabled</class>. Production code
 /// never overrides this.</p>
-ClassMethod IsEnabled(pUser As %String) As %Boolean
+ClassMethod IsEnabled(pUser As %String, Output pUnavailable As %Boolean) As %Boolean
 {
-    Quit ##class(OcuPilot.Kernel.Identity).IsEnabled(pUser)
+    Set pUnavailable = 0
+    Quit ##class(OcuPilot.Kernel.Identity).IsEnabled(pUser, .pUnavailable)
 }
 
 /// <p>Whether the calling process holds at least one of
@@ -499,7 +500,10 @@ ClassMethod CanonicalNamespace(pNamespace As %String) As %String
 /// until it lapses, and the four token paths never reach this class, so the refusal lives
 /// here, at use: <method>IsEnabled</method> answers through
 /// <class>OcuPilot.Kernel.Identity</class> and a disabled -- or unreadable -- account is
-/// refused 401 <code>AUTH.DISABLED</code>. This is the one concern that reaches
+/// refused 401 <code>AUTH.DISABLED</code>. An escalation that could not be entered at all
+/// refuses <b>every</b> account, so it is answered as AD-38's 503
+/// <code>INSTALL.UNREADABLE</code> instead, which names the repair; the two are told apart by
+/// <var>pUnavailable</var> and never merged. This is the one concern that reaches
 /// <code>%SYS</code>, and it does so inside
 /// <method>OcuPilot.Kernel.State.Base.GuardedUserEnabled</method>, which owns the switch and
 /// the restore; nothing is switched in this method's own frame.</li>
@@ -581,8 +585,17 @@ ClassMethod OnPreDispatch(pUrl As %String, pMethod As %String, ByRef pContinue A
         ; handles /login, /refresh, /logout and /revoke before DispatchRequest, so a pair
         ; /refresh mints for a disabled account cannot be refused at the mint -- only at every
         ; route it can be presented to, which is this one.
-        If '..IsEnabled(tUser) {
+        Set tIdentityUnavailable = 0
+        If '..IsEnabled(tUser, .tIdentityUnavailable) {
             Set pContinue = 0
+            If tIdentityUnavailable {
+                ; The escalation could not be entered, so this refuses every account on the
+                ; instance. Answering AUTH.DISABLED here would tell every user their account was
+                ; disabled and name no repair; AD-38 already fixes the answer for "OcuPilot
+                ; cannot read its own state and waiting will not help".
+                Do ##class(OcuPilot.Api.Error).Render(503, ##class(OcuPilot.Api.Error).#UNAVAILABLE, ##class(OcuPilot.Kernel.Identity).#REASONUNAVAILABLE, ##class(OcuPilot.Api.Error).#INSTALLUNREADABLE)
+                Quit
+            }
             Do ##class(OcuPilot.Api.Error).Render(401, ##class(OcuPilot.Api.Error).#UNAUTHORIZED, ##class(OcuPilot.Kernel.Identity).#REASONDISABLED, ##class(OcuPilot.Kernel.Identity).#AUTHDISABLED)
             Quit
         }

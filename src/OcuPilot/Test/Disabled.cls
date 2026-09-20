@@ -63,7 +63,67 @@ Method %OnNew(initvalue As %String = "") As %Status
 Method OnAfterOneTest() As %Status
 {
     Do ..SetEnabled(1)
+    ; The identity pair is instance-wide: a method that raised between breaking it and repairing
+    ; it would leave every route on this container answering 503 for every account, including
+    ; every later class in the sweep.
+    Do ..SetIdentityApplicationEnabled(1)
+    Do ..SetIdentityRoleResources(##class(OcuPilot.Kernel.State.Base).#IDENTITYRESOURCES)
     Quit $$$OK
+}
+
+/// <p>Set the identity privileged routine application's <code>Enabled</code> flag, and answer
+/// whether the instance read it back that way.</p>
+Method SetIdentityApplicationEnabled(pEnabled As %Boolean) As %Boolean
+{
+    Set tOk = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tName = ##class(OcuPilot.Kernel.State.Base).#IDENTITYAPPLICATION
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        If $$$ISERR(tSC) Quit
+        Kill tProps
+        Set tProps("Enabled") = pEnabled
+        Set tSC = ##class(Security.Applications).Modify(tName, .tProps)
+        If $$$ISERR(tSC) Quit
+        Kill tRead
+        Set tSC = ##class(Security.Applications).Get(tName, .tRead)
+        If $$$ISERR(tSC) Quit
+        Set tOk = (+$Get(tRead("Enabled")) = +pEnabled)
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tOk = 0
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tOk
+}
+
+/// <p>Set the identity role's <code>Resources</code>, and answer whether the instance read them
+/// back. Used to drive the case <method>Security.Applications.Modify</method> cannot:
+/// <code>AddRoles</code> still succeeds and the frame still gains the role, but the role no
+/// longer carries what the read needs.</p>
+Method SetIdentityRoleResources(pResources As %String) As %Boolean
+{
+    Set tOk = 0
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tRole = ##class(OcuPilot.Kernel.State.Base).#IDENTITYAPPLICATION
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOrigNS)
+        If $$$ISERR(tSC) Quit
+        Kill tProps
+        Set tProps("Resources") = pResources
+        Set tProps("ForceSave") = 2
+        Set tSC = ##class(Security.Roles).Modify(tRole, .tProps)
+        If $$$ISERR(tSC) Quit
+        Kill tRead
+        Set tSC = ##class(Security.Roles).Get(tRole, .tRead)
+        If $$$ISERR(tSC) Quit
+        Set tOk = ($Get(tRead("Resources")) = pResources)
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tOk = 0
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tOk
 }
 
 Method OnBeforeAllTests() As %Status
@@ -245,6 +305,11 @@ Method TestADisabledAccountsTokenIsRefused()
         Set tRoute = $Piece(..#ROUTES, ",", tI)
         Set tAnswer = ..GetAs(tRoute, tAccess)
         Do $$$AssertNotEquals($Piece(tAnswer, "|", 1), 401, tRoute _ ": is served while the account is enabled: " _ tAnswer)
+        ; Not 401 alone would be satisfied by a principal that never had working access -- a 403
+        ; at the administrative gate, or an anonymous request whose token never arrived, would
+        ; both pass it. These name the two states that would make the refusals below vacuous.
+        Do $$$AssertNotEquals($Piece(tAnswer, "|", 2), ##class(OcuPilot.Api.Error).#AUTHANONYMOUS, tRoute _ ": the token authenticated: " _ tAnswer)
+        Do $$$AssertNotEquals($Piece(tAnswer, "|", 2), ##class(OcuPilot.Api.Error).#AUTHNOADMIN, tRoute _ ": and cleared the administrative gate: " _ tAnswer)
     }
 
     Do $$$AssertTrue(..SetEnabled(0), "the account is disabled and the instance reads it back disabled")
@@ -322,6 +387,67 @@ Method TestAnUnreadableEnabledFlagRefuses()
     ; about the unreadable flag and not about the class refusing everything.
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Identity).IsEnabled(..#DISABLEDUSER), 1, "while the real read of the same enabled account admits")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Identity).IsEnabled("OcuPilotNoSuchAccountAtAll"), 0, "and an account the instance does not hold is refused")
+}
+
+/// <p><b>AD-38, added at Story 5.4's code review.</b> A broken identity escalation refuses every
+/// account on the instance. It must not be reported as <code>AUTH.DISABLED</code>: that names the
+/// wrong cause, offers no repair, and is indistinguishable from the account genuinely being
+/// disabled -- so a total lockout reads to an operator as "everyone was disabled at once". It is
+/// answered as AD-38's 503 <code>INSTALL.UNREADABLE</code>, whose sentence names the repair.</p>
+/// <p>Two faults, because they fail at different points: an application that is absent or
+/// disabled (<code>AddRoles</code> refuses) and a role that no longer grants
+/// <parameter>OcuPilot.Kernel.State.Base.IDENTITYRESOURCES</parameter> (<code>AddRoles</code>
+/// succeeds and the read is still denied). The second is what
+/// <method>OcuPilot.Kernel.State.Base.IdentityGrantsInEffect</method> exists for.</p>
+/// <p>Mutation (Rule 19): make <method>OcuPilot.Kernel.Identity.IsEnabled</method> report
+/// <var>pUnavailable</var> 0 unconditionally, or delete the <code>tIdentityUnavailable</code>
+/// branch from <method>OcuPilot.Api.Router.OnPreDispatch</method> -> both faults answer
+/// <code>401|AUTH.DISABLED</code> and this goes red. Removing the
+/// <method>IdentityGrantsInEffect</method> call alone reddens the role leg only.</p>
+Method TestABrokenIdentityEscalationIsNotReportedAsADisabledAccount()
+{
+    Do $$$AssertTrue(..PreparedSetupOk, "setup confirmed the principal")
+    Set tPair = ..SignIn()
+    Do $$$AssertTrue($IsObject(tPair), "the enabled account signs in")
+    If '$IsObject(tPair) Quit
+    Set tAccess = tPair.%Get("access_token")
+    Do $$$AssertNotEquals(tAccess, "", "and is issued an access token")
+    ; The absent-turn progress poll, for the reason TestADisabledAccountsProgressPollIsRefused
+    ; uses it: while the request is served it answers a deterministic 404 from the handler, so
+    ; "served" and "refused before the handler" are told apart by the answer itself rather than
+    ; by a not-401 that any error would satisfy.
+    Set tRoute = "/turn/" _ ..#ABSENTTURN _ "/progress"
+    Set tServed = "404|" _ ##class(OcuPilot.Api.Error).#TURNNOTFOUND
+
+    ; The control: with the escalation intact the same token on the same route reaches the
+    ; handler, so every refusal below is about the fault this method induces and nothing else.
+    Do $$$AssertEquals(..GetAs(tRoute, tAccess), tServed, "with the identity escalation intact the request reaches the handler")
+
+    ; Fault one: the privileged routine application is disabled, so AddRoles refuses.
+    Do $$$AssertTrue(..SetIdentityApplicationEnabled(0), "the identity routine application is disabled and the instance reads it back disabled")
+    Set tAnswer = ..GetAs(tRoute, tAccess)
+    Do $$$AssertEquals(tAnswer, "503|" _ ##class(OcuPilot.Api.Error).#INSTALLUNREADABLE, "a disabled identity application answers AD-38's unreadable refusal, which names the repair")
+    Do $$$AssertNotEquals($Piece(tAnswer, "|", 2), ##class(OcuPilot.Kernel.Identity).#AUTHDISABLED, "and never AUTH.DISABLED, which would name the account as the cause")
+    Do $$$AssertTrue(..SetIdentityApplicationEnabled(1), "the identity routine application is repaired")
+    Do $$$AssertEquals(..GetAs(tRoute, tAccess), tServed, "and the same token reaches the handler again, so the refusal was the fault and not the token")
+
+    ; Fault two: the application is enabled and AddRoles succeeds, but the role no longer carries
+    ; the resources the read needs. This is the drift AddRoles cannot report.
+    ; %DB_IRISSYS:R is deliberately left in place: without it the read raises <PROTECT> and the
+    ; Catch would answer "unavailable" anyway. Dropping only %Admin_Secure is the case where
+    ; AddRoles succeeds AND Security.Users.Get returns an ordinary access-denied status, which is
+    ; what IdentityGrantsInEffect exists to catch.
+    Do $$$AssertTrue(..SetIdentityRoleResources("%DB_IRISSYS:R"), "the identity role loses %Admin_Secure and the instance reads the narrower set back")
+    Set tAnswer2 = ..GetAs(tRoute, tAccess)
+    Do $$$AssertEquals(tAnswer2, "503|" _ ##class(OcuPilot.Api.Error).#INSTALLUNREADABLE, "a role that no longer grants %Admin_Secure answers the same unreadable refusal, although AddRoles succeeded")
+    Do $$$AssertNotEquals($Piece(tAnswer2, "|", 2), ##class(OcuPilot.Kernel.Identity).#AUTHDISABLED, "and never AUTH.DISABLED")
+    Do $$$AssertTrue(..SetIdentityRoleResources(##class(OcuPilot.Kernel.State.Base).#IDENTITYRESOURCES), "the identity role is repaired")
+    Do $$$AssertEquals(..GetAs(tRoute, tAccess), tServed, "and the route is served again")
+
+    ; And the two answers are different facts: a genuinely disabled account still reads 401.
+    Do $$$AssertTrue(..SetEnabled(0), "the account itself is disabled")
+    Do $$$AssertEquals(..GetAs(tRoute, tAccess), "401|" _ ##class(OcuPilot.Kernel.Identity).#AUTHDISABLED, "which is the other answer, so the two causes are distinguishable on the wire")
+    Do $$$AssertTrue(..SetEnabled(1), "the account is re-enabled for the teardown")
 }
 
 }

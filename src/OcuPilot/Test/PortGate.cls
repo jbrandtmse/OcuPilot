@@ -63,8 +63,9 @@ ClassMethod PortClasses() As %List
     Set tRS = tStatement.%Execute(..#PORTPACKAGE)
     While tRS.%Next() {
         Set tName = tRS.%GetData(1)
-        ; One package level only: a port is OcuPilot.Port.<Name>, never nested deeper.
-        If $Length($Extract(tName, $Length(..#PORTPACKAGE) + 1, *), ".") '= 1 Continue
+        ; Every class under the package, at any depth. The depth convention is a convention: a
+        ; port shipped as OcuPilot.Port.Monitor.MetricsPort is still a port, and a roster that
+        ; could not see it is a roster Epic 6's MonitorPort could arrive gateless past.
         Set tList = tList _ $ListBuild(tName)
     }
     Do tRS.%Close()
@@ -111,8 +112,25 @@ Method TestEveryPortDeclaresANamedGate()
             Do $$$AssertNotEquals(tSpec, "", tClass _ "." _ tParameter _ ": is declared and non-empty")
             Set tPairs = ##class(OcuPilot.Screen.Gate).ParsePairSpec(tSpec)
             Do $$$AssertTrue($ListLength(tPairs) > 0, tClass _ "." _ tParameter _ ": parses to at least one (resource, permission) pair: " _ tSpec)
+            Do $$$AssertEquals($ListLength(tPairs), $Length(tSpec, ","), tClass _ "." _ tParameter _ ": every declared member parses, so the gate evaluates the whole declaration: " _ tSpec)
         }
     }
+}
+
+/// <p><b>AC6</b> -- a pair spec with a member the parser cannot read fails closed. A parser that
+/// dropped the unreadable member would leave an <code>AND</code> gate evaluating fewer pairs than
+/// its <code>Parameter</code> declares, which is a port quietly weaker than it reads.</p>
+/// <p>Mutation: make <method>OcuPilot.Screen.Gate.ParsePairSpec</method> <code>Continue</code>
+/// past a malformed member again -> the first two assertions go red.</p>
+Method TestAMalformedPairSpecFailsClosed()
+{
+    Set tGate = ##class(OcuPilot.Screen.Gate).ParsePairSpec("%Admin_Secure:USE,%DB_IRISSYS")
+    Do $$$AssertEquals($ListLength(tGate), 0, "a spec whose second member names no permission parses to nothing at all, not to its readable half")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Gate).EvaluateRequired(tGate, .tFailed), 0, "so the evaluator refuses rather than admitting on the half it could read")
+
+    ; The control: the same spec spelled correctly parses to both pairs, so the refusal above is
+    ; the malformed member and not the parser refusing everything.
+    Do $$$AssertEquals($ListLength(##class(OcuPilot.Screen.Gate).ParsePairSpec("%Admin_Secure:USE,%DB_IRISSYS:READ")), 2, "the well-formed spelling of the same spec parses to both pairs")
 }
 
 /// <p><b>AC6</b> -- every port's outbound entry refuses <code>AUTH.NOPRIVILEGE</code> when its
