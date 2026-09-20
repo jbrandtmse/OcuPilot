@@ -29,3 +29,5 @@ TAB-separated: `<UTC>\t<Story <id> | Epic <N>>\t<stage>\t<metadata>`
 2026-09-19T23:54:39Z	Story 13.1	smoke_complete	method=cli result=pass iterations=1 defects_caught=0 evidence=smoke_executed45_passed45_failed0_plus_full_sweep_132classes_1269tests_0failed_and_ui_1044+644 model=claude-opus-5[1m]
 2026-09-20T00:01:08Z	Story 13.1	committed	sha=85b12ef submodules= ci=pending run=35477394323 amendments=_bmad-output/implementation-artifacts/spec-13-1-the-uninstall-hook.md:AC6_Install_to_StartPath
 2026-09-20T00:01:37Z	Epic 13	integrate_forward	from=origin/feature/OCU-1_ocupilot-mvp feature_head=7335f3b merge_sha=33766a5 conflicts=0 code_files_changed=0 note=merge_touched_only_cycle-log-parallel_and_epic-dependencies_so_suite_verdict_unchanged
+2026-09-20T00:08:44Z	Story 13.1	ci_resolved	story=13.1 run=35477394323 result=cancelled resolved_at=next_plan note=superseded_by_integrate_forward_push_cancel-in-progress
+2026-09-20T00:08:44Z	Epic 13	ci_pending	head=74631d8 run=35477669085 note=integrate_forward_head_the_run_that_must_resolve_before_13.2_plan
