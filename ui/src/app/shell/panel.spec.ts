@@ -923,8 +923,10 @@ describe('Story 4.5: Send/Stop, the lock banner, Enter vs Shift+Enter, cards, an
     const toggle = host.querySelector('.ocu-tool-call-toggle') as HTMLButtonElement;
     expect(toggle).not.toBeNull();
     const statusWord = toggle.querySelector('.ocu-tool-call-status-word') as HTMLElement;
+    // Story 5.4, AC2: a privilege refusal resolves the <reason> slot with the pair that failed,
+    // which is the privilege the user has to be granted; the generic sentence names none.
     expect(statusWord.textContent).toBe(
-      STRINGS.toolCallStatusFailed.split('<reason>').join('This account does not hold the privilege this request requires.')
+      STRINGS.toolCallStatusFailed.split('<reason>').join('%Admin_Secure:USE')
     );
     expect(statusWord.classList.contains('ocu-tool-call-status-warning')).toBe(true);
     // A failed card is still a disclosure, not a restrained bar: it stays expandable, unlike Stop.

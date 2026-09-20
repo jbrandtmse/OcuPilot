@@ -155,6 +155,16 @@ ClassMethod Names(pProfile As %String, Output pNames) As %Status [ Private ]
         Set pNames("adminResource") = ##class(OcuPilot.Kernel.State.Base).#ADMINRESOURCE _ tSuffix
         Set pNames("adminRole") = pNames("adminResource")
         Set pNames("application") = ##class(OcuPilot.Kernel.State.Base).#APPLICATION _ tSuffix
+        ; The second privileged routine application and its role (DW-444). Its role is a role of
+        ; its own rather than a %DB_ resource's implicit one, because the read it covers is not a
+        ; read of OcuPilot's own data; the two names are equal for the reason adminRole and
+        ; adminResource are.
+        Set pNames("identityApplication") = ##class(OcuPilot.Kernel.State.Base).#IDENTITYAPPLICATION _ tSuffix
+        Set pNames("identityRole") = pNames("identityApplication")
+        ; Resolved here, in the install namespace, for the reason every other name above is:
+        ; EnsureIdentityApplication runs switched to %SYS, where an OcuPilot class reference
+        ; raises <CLASS DOES NOT EXIST> (this class's own header).
+        Set pNames("identityResources") = ##class(OcuPilot.Kernel.State.Base).#IDENTITYRESOURCES
         Set pNames("mappingPattern") = $Select(tIsProbe: "ProbeOcuPilotState*", 1: ##class(OcuPilot.Kernel.State.Base).#MAPPINGPATTERN)
         Set pNames("eventSource") = ##class(OcuPilot.Kernel.State.Base).#AUDITSOURCE
         Set pNames("eventType") = ##class(OcuPilot.Kernel.State.Base).#AUDITTYPE
@@ -814,6 +824,9 @@ ClassMethod Install(pProfile As %String = "", pUnexpire As %Boolean = 0, pBundle
         If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
         Set tFailingStep = "EnsureApplication"
         Set tSC = ..EnsureApplication(.tNames, tInstallNs, .tReports)
+        If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
+        Set tFailingStep = "EnsureIdentityApplication"
+        Set tSC = ..EnsureIdentityApplication(.tNames, tInstallNs, .tReports)
         If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
         Set tFailingStep = "EnsureMapping"
         Set tSC = ..EnsureMapping(.tNames, tInstallNs, .tReports)
@@ -2058,6 +2071,90 @@ ClassMethod EnsureApplication(ByRef pNames, pInstallNs As %String, ByRef pReport
             Set tSC = ##class(Security.Applications).Create(tName, .tProps2)
             If $$$ISERR(tSC) Quit
             Do ..Report(.pReports, "info", "Created the privileged routine application", {"application": (tName)})
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Ensure the <b>second</b> privileged routine application and its role exist, enabled,
+/// granting that role unconditionally (<code>MatchRoles = ":&lt;identityRole&gt;"</code>) to the
+/// one class allowed to call it
+/// (<code>Routines = "OcuPilot.Kernel.State.Base:&lt;codeDatabase&gt;:1"</code>) -- the same shape
+/// <method>EnsureApplication</method> gives the storage escalation, for a separate purpose
+/// (AD-9, DW-444).</p>
+/// <p><b>Separate from <code>OcuPilotState</code> on purpose.</b> Adding this role to that
+/// application would give every guarded storage call the right to read the security database;
+/// a second application gives it to one method. The role's resource set is
+/// <parameter>OcuPilot.Kernel.State.Base.IDENTITYRESOURCES</parameter> and reaches none of
+/// OcuPilot's own data.</p>
+/// <p>Guard-then-act with drift repair, like every other ensure step.</p>
+ClassMethod EnsureIdentityApplication(ByRef pNames, pInstallNs As %String, ByRef pReports) As %Status [ Private ]
+{
+    Set tSC = $$$OK
+    Try {
+        Set tRole = pNames("identityRole")
+        Set tName = pNames("identityApplication")
+        Set tWantResources = pNames("identityResources")
+        Set tNsObj = ##class(Config.Namespaces).Open(pInstallNs)
+        If '$IsObject(tNsObj) {
+            Set tSC = $$$ERROR($$$GeneralError, "Could not open namespace configuration for " _ pInstallNs)
+            Quit
+        }
+        Set tCodeDb = tNsObj.Routines
+        If tCodeDb = "" {
+            Set tSC = $$$ERROR($$$GeneralError, "Could not resolve the routine database for namespace " _ pInstallNs)
+            Quit
+        }
+        Set tWantRoutines = "OcuPilot.Kernel.State.Base:" _ tCodeDb _ ":1"
+        Set tWantMatchRoles = ":" _ tRole
+
+        If ##class(Security.Roles).Exists(tRole, .tRoleObj, .tRoleExistSC) {
+            Set tSC = ##class(Security.Roles).Get(tRole, .tRoleProps)
+            If $$$ISERR(tSC) Quit
+            If ($Get(tRoleProps("Resources")) '= tWantResources) || ($Get(tRoleProps("GrantedRoles")) '= "") {
+                Set tRoleMod("Resources") = tWantResources
+                Set tRoleMod("GrantedRoles") = ""
+                Set tRoleMod("ForceSave") = 2
+                Set tSC = ##class(Security.Roles).Modify(tRole, .tRoleMod)
+                If $$$ISERR(tSC) Quit
+                Do ..Report(.pReports, "warn", "Repaired the identity role's resources", {"role": (tRole)})
+            } Else {
+                Do ..Report(.pReports, "info", "Identity role already correct", {"role": (tRole)})
+            }
+        } Else {
+            Set tSC = ##class(Security.Roles).Create(tRole, "OcuPilot identity read", tWantResources, "")
+            If $$$ISERR(tSC) Quit
+            Do ..Report(.pReports, "info", "Created the identity role", {"role": (tRole)})
+        }
+
+        If ##class(Security.Applications).Exists(tName, .tExisting, .tExistSC) {
+            Set tSC = ##class(Security.Applications).Get(tName, .tProps)
+            If $$$ISERR(tSC) Quit
+            Set tNeedsRepair = 0
+            If +$Get(tProps("Enabled")) '= 1 Set tNeedsRepair = 1
+            If $Get(tProps("MatchRoles")) '= tWantMatchRoles Set tNeedsRepair = 1
+            If $Get(tProps("Routines")) '= tWantRoutines Set tNeedsRepair = 1
+            If tNeedsRepair {
+                Set tModProps("Enabled") = 1
+                Set tModProps("MatchRoles") = tWantMatchRoles
+                Set tModProps("Routines") = tWantRoutines
+                Set tSC = ##class(Security.Applications).Modify(tName, .tModProps)
+                If $$$ISERR(tSC) Quit
+                Do ..Report(.pReports, "warn", "Repaired the identity routine application", {"application": (tName)})
+            } Else {
+                Do ..Report(.pReports, "info", "Identity routine application already correct", {"application": (tName)})
+            }
+        } Else {
+            Set tProps2("Type") = 4
+            Set tProps2("Enabled") = 1
+            Set tProps2("Description") = "OcuPilot identity read"
+            Set tProps2("MatchRoles") = tWantMatchRoles
+            Set tProps2("Routines") = tWantRoutines
+            Set tSC = ##class(Security.Applications).Create(tName, .tProps2)
+            If $$$ISERR(tSC) Quit
+            Do ..Report(.pReports, "info", "Created the identity routine application", {"application": (tName)})
         }
     } Catch ex {
         Set tSC = ex.AsStatus()
@@ -3342,6 +3439,8 @@ ClassMethod AnyObjectExists(ByRef pNames, pInstallNs As %String) As %Boolean [ P
     If ##class(Security.Resources).Exists(pNames("adminResource"), .t3, .s3) Quit 1
     If ##class(Security.Roles).Exists(pNames("adminRole"), .t4, .s4) Quit 1
     If ##class(Security.Applications).Exists(pNames("application"), .t5, .s5) Quit 1
+    If ##class(Security.Applications).Exists(pNames("identityApplication"), .t5b, .s5b) Quit 1
+    If ##class(Security.Roles).Exists(pNames("identityRole"), .t5c, .s5c) Quit 1
     If ##class(Config.MapGlobals).Exists(pInstallNs, pNames("mappingPattern"), .t6, .s6) Quit 1
     If ##class(%File).Exists(pNames("directory") _ "IRIS.DAT") Quit 1
     ; Every triple the roster declares, so a registration an uninstall left behind is residue
@@ -3534,7 +3633,7 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
                 If tURole '= "" Set tRoleList = tRoleList _ $Select(tRoleList = "": "", 1: ", ") _ "'" _ tURole _ "'"
             }
             If tAppList = "" Set tAppList = "(no web application carries a provenance record, so none would be removed)"
-            Set tSC = $$$ERROR($$$GeneralError, "Uninstall('" _ pProfile _ "') would destroy: database '" _ tNames("database") _ "' at " _ tNames("directory") _ ", resources '" _ tNames("dbResource") _ "' and '" _ tNames("adminResource") _ "', roles '" _ tNames("adminRole") _ "'" _ $Select(tRoleList = "": "", 1: " and " _ tRoleList) _ ", applications '" _ tNames("application") _ "' and " _ tAppList _ ", the shell bundle directory " _ tNames("shellDirectory") _ ", mapping '" _ tNames("mappingPattern") _ "', audit events '" _ ..EventList(.tNames) _ "', TLS configuration '" _ tNames("sslConfig") _ "', and any opt-in demo fixture objects this profile owns (AD-25). Pass pConfirmDataLoss=1 to proceed.")
+            Set tSC = $$$ERROR($$$GeneralError, "Uninstall('" _ pProfile _ "') would destroy: database '" _ tNames("database") _ "' at " _ tNames("directory") _ ", resources '" _ tNames("dbResource") _ "' and '" _ tNames("adminResource") _ "', roles '" _ tNames("adminRole") _ "' and '" _ tNames("identityRole") _ "'" _ $Select(tRoleList = "": "", 1: " and " _ tRoleList) _ ", applications '" _ tNames("application") _ "', '" _ tNames("identityApplication") _ "' and " _ tAppList _ ", the shell bundle directory " _ tNames("shellDirectory") _ ", mapping '" _ tNames("mappingPattern") _ "', audit events '" _ ..EventList(.tNames) _ "', TLS configuration '" _ tNames("sslConfig") _ "', and any opt-in demo fixture objects this profile owns (AD-25). Pass pConfirmDataLoss=1 to proceed.")
             Set $NAMESPACE = tOrigNS
             Quit
         }
@@ -3679,6 +3778,16 @@ ClassMethod Uninstall(pProfile As %String = "", pConfirmDataLoss As %Boolean = 0
         }
         If ##class(Security.Applications).Exists(tNames("application"), .tE2, .tS2) {
             Set tSC = ##class(Security.Applications).Delete(tNames("application"))
+            If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
+        }
+        ; The identity application before its role: an application still naming a deleted role
+        ; is drift nothing removes (the EnsureApplicationRoles ordering, for the same reason).
+        If ##class(Security.Applications).Exists(tNames("identityApplication"), .tE2b, .tS2b) {
+            Set tSC = ##class(Security.Applications).Delete(tNames("identityApplication"))
+            If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
+        }
+        If ##class(Security.Roles).Exists(tNames("identityRole"), .tE2c, .tS2c) {
+            Set tSC = ##class(Security.Roles).Delete(tNames("identityRole"))
             If $$$ISERR(tSC) { Set $NAMESPACE = tOrigNS  Quit }
         }
         If ##class(Security.Roles).Exists(tNames("adminRole"), .tE3, .tS3) {

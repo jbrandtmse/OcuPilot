@@ -49,6 +49,21 @@ Class OcuPilot.Kernel.State.Base Extends %Persistent [ Abstract ]
 /// of the string.</p>
 Parameter APPLICATION As %String = "OcuPilotState";
 
+/// <p>Name of the <b>second</b> privileged routine application, the one AD-9's identity read
+/// escalates through (DW-444). It grants the one resource
+/// <method>Security.Users.Get</method> requires and nothing else, and reaches none of
+/// OcuPilot's own data -- so no guarded storage call gains any privilege from its existing.
+/// Kernel-visible for the reason <parameter>APPLICATION</parameter> is: the installer creates
+/// it and the uninstall confirmation lists it.</p>
+Parameter IDENTITYAPPLICATION As %String = "OcuPilotIdentity";
+
+/// <p>The resource set <parameter>IDENTITYAPPLICATION</parameter>'s role grants, comma-separated
+/// as <code>resource:permission</code>. Measured on a throwaway as a least-privileged principal,
+/// not inherited: <code>Security.Users.Get</code> answers <code>ERROR #822: Access Denied</code>
+/// without <code>%Admin_Secure</code>, and database READ <i>is</i> routine-execution permission,
+/// so the class cannot be executed in <code>%SYS</code> without <code>%DB_IRISSYS</code>.</p>
+Parameter IDENTITYRESOURCES As %String = "%Admin_Secure:U,%DB_IRISSYS:R";
+
 /// <p>Name of OcuPilot's protected-state database (AD-9).</p>
 Parameter DATABASENAME As %String = "OCUPILOT";
 
@@ -468,6 +483,52 @@ ClassMethod GuardedTurnSignalKill(pKey As %String) As %Status [ Private ]
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>Whether the IRIS account <var>pUserName</var> is enabled, read through the identity
+/// escalation (AD-8 as amended 2026-09-19, AD-9, DW-444). <var>pKnown</var> is 1 only when the
+/// flag was actually read; a caller that treats <code>pKnown</code> 0 as "enabled" has invented a
+/// permission, and <class>OcuPilot.Kernel.Identity</class> is the one caller and does not.</p>
+/// <p><b>The narrowest escalation in the tree.</b> One argument, one field, one boolean answer,
+/// through <parameter>IDENTITYAPPLICATION</parameter> rather than
+/// <parameter>APPLICATION</parameter>, so a frame that can read this flag can read none of
+/// OcuPilot's own data and a guarded storage frame gains nothing. The role is obtained in this
+/// method's own frame and is gone when the frame unwinds, on the exception path as well.</p>
+/// <p>It calls no tool, no port and no provider, and starts no process, so AD-9's two ordering
+/// rules hold unchanged. The <code>%SYS</code> window is the explicit save-and-restore pair
+/// (AD-16), restored as the first line of the <code>Catch</code>.</p>
+ClassMethod GuardedUserEnabled(pUserName As %String, Output pKnown As %Boolean) As %Boolean
+{
+    Set pKnown = 0
+    Set tEnabled = 0
+    If pUserName = "" Quit 0
+    New $ROLES
+    Set tOriginalNs = $NAMESPACE
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#IDENTITYAPPLICATION)
+        If $$$ISERR(tSC) Quit
+        ; Entered through the harvested pair while an OcuPilot class still resolves; LEFT by a
+        ; plain assignment, because inside %SYS a dispatch to OcuPilot.Kernel.Utils raises
+        ; <CLASS DOES NOT EXIST> and the restore would never run (AD-16, the installer's idiom).
+        Set tSC = ##class(OcuPilot.Kernel.Utils).SwitchNamespace("%SYS", .tOriginalNs)
+        If $$$ISERR(tSC) Quit
+        Kill tProperties
+        Set tSC = ##class(Security.Users).Get(pUserName, .tProperties)
+        If $$$ISERR(tSC) Quit
+        If '$Data(tProperties("Enabled")) Quit
+        Set tEnabled = ''+$Get(tProperties("Enabled"))
+        Set pKnown = 1
+        ; Security.Users.Get fills the array with every property of the account, the password
+        ; hash and salt among them, to answer one boolean. Drop it here rather than let it live
+        ; to the frame's end (AD-35).
+        Kill tProperties
+    } Catch ex {
+        Set $NAMESPACE = tOriginalNs
+        Set pKnown = 0
+        Set tEnabled = 0
+    }
+    Set $NAMESPACE = tOriginalNs
+    Quit tEnabled
 }
 
 /// <p>Test-only introspection: returns the process's <code>$ROLES</code> as observed

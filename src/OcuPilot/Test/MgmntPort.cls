@@ -115,7 +115,7 @@ ClassMethod FaultText(pHttp As %Integer, pFault As %DynamicObject) As %String
 /// short of <code>%Admin_Secure:USE</code> is answered 403 <code>AUTH.NOPRIVILEGE</code> naming it on
 /// either endpoint, with no vendor call and whatever the arguments; a caller short of
 /// <code>%DB_IRISSYS:READ</code> is named that pair; a caller holding both reaches the vendor.</p>
-/// <p>Mutation: move the <code>EvaluatePairs</code> call in
+/// <p>Mutation: move the <code>EvaluateRequired</code> call in
 /// <method>OcuPilot.Port.MgmntPort.Invoke</method> below the argument checks -&gt; the malformed-call
 /// legs answer 400 or 501 and go red.</p>
 Method TestTheGateIsEvaluatedBeforeAnyArgumentOrVendorCall()
@@ -127,11 +127,11 @@ Method TestTheGateIsEvaluatedBeforeAnyArgumentOrVendorCall()
     For tEndpoint = "Applications", "Document" {
         Set tSC = ..Call(tEndpoint, "USER", "/api/probe", .tRows, .tHttp, .tFault, .tDocument)
         Do $$$AssertStatusNotOK(tSC, tEndpoint _ ": the call is refused")
-        Do $$$AssertEquals(..FaultText(tHttp, tFault), "403 AUTH.NOPRIVILEGE This account may not read the management API. %Admin_Secure:USE", tEndpoint _ ": naming the pair the caller lacks")
+        Do $$$AssertEquals(..FaultText(tHttp, tFault), "403 AUTH.NOPRIVILEGE This account does not hold the privilege this request requires. %Admin_Secure:USE", tEndpoint _ ": naming the pair the caller lacks")
         Do $$$AssertEquals(tDocument, "", tEndpoint _ ": with no document")
     }
     Set tSC = ..Call("Nothing", "", "", .tRows, .tHttp, .tFault, .tDocument)
-    Do $$$AssertEquals(..FaultText(tHttp, tFault), "403 AUTH.NOPRIVILEGE This account may not read the management API. %Admin_Secure:USE", "an unknown endpoint with no namespace is refused by the gate first")
+    Do $$$AssertEquals(..FaultText(tHttp, tFault), "403 AUTH.NOPRIVILEGE This account does not hold the privilege this request requires. %Admin_Secure:USE", "an unknown endpoint with no namespace is refused by the gate first")
     Set tSC = ..Call("Document", "bad namespace", "", .tRows, .tHttp, .tFault, .tDocument)
     Do $$$AssertEquals(tHttp, 403, "and so is a malformed document call")
     Do $$$AssertEquals(##class(OcuPilot.Test.MgmntImplFixture).CallCount(), 0, "and no vendor method was called")
@@ -139,7 +139,7 @@ Method TestTheGateIsEvaluatedBeforeAnyArgumentOrVendorCall()
     Do ##class(OcuPilot.Test.ScreenGate).Reset()
     Do ##class(OcuPilot.Test.ScreenGate).Hold("%Admin_Secure", "USE")
     Set tSC = ..Call("Applications", "USER", "", .tRows, .tHttp, .tFault, .tDocument)
-    Do $$$AssertEquals(..FaultText(tHttp, tFault), "403 AUTH.NOPRIVILEGE This account may not read the management API. %DB_IRISSYS:READ", "a caller short of the system read is named that pair")
+    Do $$$AssertEquals(..FaultText(tHttp, tFault), "403 AUTH.NOPRIVILEGE This account does not hold the privilege this request requires. %DB_IRISSYS:READ", "a caller short of the system read is named that pair")
     Do $$$AssertEquals(##class(OcuPilot.Test.MgmntImplFixture).CallCount(), 0, "still with no vendor call")
 
     Do ##class(OcuPilot.Test.ScreenGate).Hold("%DB_IRISSYS", "READ")

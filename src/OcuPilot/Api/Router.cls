@@ -23,7 +23,7 @@
 /// <class>OcuPilot.Test.RouterFixture</class>, which inherits this class's real
 /// <method>OnPreDispatch</method>, <method>ReportHttpStatusCode</method> and
 /// <method>Http405</method> unchanged.</p>
-Class OcuPilot.Api.Router Extends %CSP.REST
+Class OcuPilot.Api.Router Extends %CSP.REST [ DependsOn = OcuPilot.Screen.Gate ]
 {
 
 /// <p>Stateless REST: no CSP session per request.</p>
@@ -46,11 +46,12 @@ Parameter HandleCorsRequest = 0;
 /// tests, comma-separated. Holding <b>any one</b> of them at <code>USE</code> is what the
 /// FR-65 gate requires of a caller; holding none of them is a 403, whatever else the caller
 /// holds.</p>
-/// <p>Read from the instance on 2026-09-11 (<code>Security.Resources:List</code> over
-/// <code>%Admin*</code>) -- all thirteen it defines. A closed list, not a wildcard scan:
-/// what OcuPilot admits must not silently widen because a later IRIS release adds a
-/// resource, and a list is what a reviewer can check.</p>
-Parameter ADMINRESOURCES = "%Admin_ExternalLanguageServerEdit,%Admin_FileSystemAccess,%Admin_Journal,%Admin_Manage,%Admin_OAuth2_Client,%Admin_OAuth2_Registration,%Admin_OAuth2_Server,%Admin_Operate,%Admin_RoleEdit,%Admin_Secure,%Admin_Task,%Admin_UserEdit,%Admin_Wallet";
+/// <p><b>Derived, not held.</b> The list's one home is
+/// <parameter>OcuPilot.Screen.Gate.ADMINRESOURCES</parameter>, which
+/// <class>OcuPilot.Port.ProviderPort</class> reads too; this parameter is that value at
+/// compile time, so no second copy exists to drift. <class>OcuPilot.Test.PortGate</class>
+/// asserts the two equal at run time, which is what catches a stale compilation.</p>
+Parameter ADMINRESOURCES As %String = {##class(OcuPilot.Screen.Gate).#ADMINRESOURCES};
 
 /// <p><code>%CSP.REST</code> tries routes in file order and dispatches to the first one
 /// whose URL pattern and HTTP method both match. A <code>:param</code> segment becomes the capture
@@ -409,6 +410,18 @@ ClassMethod GateStatus() As %String
     Quit ##class(OcuPilot.Install.Installer).GateStatus()
 }
 
+/// <p>Whether the IRIS account <var>pUser</var> is enabled on this instance (DW-444).
+/// Delegates to <class>OcuPilot.Kernel.Identity</class>, which owns the one identity read and
+/// its fail-closed discipline.</p>
+/// <p>Overridable so <class>OcuPilot.Test.RouterFixture</class> can drive the refusal without
+/// disabling a real account on a shared instance; the refusal is also exercised end to end
+/// against a real disabled principal by <class>OcuPilot.Test.Disabled</class>. Production code
+/// never overrides this.</p>
+ClassMethod IsEnabled(pUser As %String) As %Boolean
+{
+    Quit ##class(OcuPilot.Kernel.Identity).IsEnabled(pUser)
+}
+
 /// <p>Whether the calling process holds at least one of
 /// <parameter>ADMINRESOURCES</parameter> at <code>USE</code>, evaluated in that process at
 /// the moment of the call and never cached (AD-8). <code>$System.Security.Check</code> is a
@@ -469,7 +482,7 @@ ClassMethod CanonicalNamespace(pNamespace As %String) As %String
 }
 
 /// <p>Runs once per request, before any route is dispatched (AD-16's single resolution
-/// point). Four concerns, each resolved exactly once, the install gate <b>first</b> and
+/// point). Five concerns, each resolved exactly once, the install gate <b>first</b> and
 /// <b>before authentication</b> (AD-38 — a request must not learn anything about the
 /// instance, not even whether the caller is who they say, while install has not
 /// finished):</p>
@@ -482,6 +495,14 @@ ClassMethod CanonicalNamespace(pNamespace As %String) As %String
 /// <code>UnknownUser</code> and <code>_PUBLIC</code> explicitly (AD-21) — anonymous does
 /// not mean unprivileged, so this never infers authorization from <code>$Roles</code>
 /// alone.</li>
+/// <li><b>Account enabled (DW-444).</b> A disabled IRIS account keeps a usable token pair
+/// until it lapses, and the four token paths never reach this class, so the refusal lives
+/// here, at use: <method>IsEnabled</method> answers through
+/// <class>OcuPilot.Kernel.Identity</class> and a disabled -- or unreadable -- account is
+/// refused 401 <code>AUTH.DISABLED</code>. This is the one concern that reaches
+/// <code>%SYS</code>, and it does so inside
+/// <method>OcuPilot.Kernel.State.Base.GuardedUserEnabled</method>, which owns the switch and
+/// the restore; nothing is switched in this method's own frame.</li>
 /// <li><b>Administrative privilege (FR-65).</b> The caller must hold at least one
 /// <code>%Admin_*</code> resource at <code>USE</code>
 /// (<method>HoldsAdminResource</method>, against the closed
@@ -507,14 +528,14 @@ ClassMethod CanonicalNamespace(pNamespace As %String) As %String
 /// what makes the route's scope a value the request carries rather than something each
 /// handler re-derives (AD-44).</li>
 /// </ol>
-/// <p>None of the four reaches <code>%SYS</code> or any other namespace from here — the
-/// gate's own namespace switching lives entirely inside
-/// <class>OcuPilot.Install.Installer</class> — so this method never switches
-/// <code>$NAMESPACE</code> and there is nothing to restore on the error path. A future
-/// story whose resolution needs a <code>%SYS</code>-only call must bracket it with
-/// <class>OcuPilot.Kernel.Utils</class>'s <method>SwitchNamespace</method> /
-/// <method>RestoreNamespace</method> pair, restoring first in its <code>Catch</code>
-/// (AD-16) — the pair is harvested and ready for exactly that.</p>
+/// <p>This method switches <code>$NAMESPACE</code> itself for none of the five, so there is
+/// nothing to restore on its error path. Where a concern needs a <code>%SYS</code>-only call
+/// -- the enabled read above, and the install gate's own work inside
+/// <class>OcuPilot.Install.Installer</class> -- the switch and its restore belong to the
+/// method that makes the call, bracketed with <class>OcuPilot.Kernel.Utils</class>'s
+/// <method>SwitchNamespace</method> / <method>RestoreNamespace</method> pair and restoring
+/// first in its <code>Catch</code> (AD-16). A future concern needing one follows that shape
+/// rather than switching here.</p>
 /// <p>A denial never <code>Write</code>s directly: it sets <var>pContinue</var> to 0 and
 /// renders through <class>OcuPilot.Api.Error</class>, the tree's one error writer.</p>
 ClassMethod OnPreDispatch(pUrl As %String, pMethod As %String, ByRef pContinue As %Boolean) As %Status
@@ -552,6 +573,17 @@ ClassMethod OnPreDispatch(pUrl As %String, pMethod As %String, ByRef pContinue A
         If '##class(OcuPilot.Screen.Gate).IsAuthenticatedPrincipal(tUser) {
             Set pContinue = 0
             Do ##class(OcuPilot.Api.Error).Render(401, ##class(OcuPilot.Api.Error).#UNAUTHORIZED, "Authentication required", ##class(OcuPilot.Api.Error).#AUTHANONYMOUS)
+            Quit
+        }
+
+        ; A disabled account is refused at the front of every dispatched route (DW-444). It runs
+        ; here, at use, because the four token paths never reach this class: the CSP server
+        ; handles /login, /refresh, /logout and /revoke before DispatchRequest, so a pair
+        ; /refresh mints for a disabled account cannot be refused at the mint -- only at every
+        ; route it can be presented to, which is this one.
+        If '..IsEnabled(tUser) {
+            Set pContinue = 0
+            Do ##class(OcuPilot.Api.Error).Render(401, ##class(OcuPilot.Api.Error).#UNAUTHORIZED, ##class(OcuPilot.Kernel.Identity).#REASONDISABLED, ##class(OcuPilot.Kernel.Identity).#AUTHDISABLED)
             Quit
         }
 

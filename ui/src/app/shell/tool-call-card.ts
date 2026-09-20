@@ -98,7 +98,13 @@ export class ToolCallCard {
   protected get statusText(): string {
     const step = this.step();
     if (step.status === 'running') return STRINGS.accessibilityReducedMotionSpinnerWord;
-    if (step.status === 'error') return STRINGS.toolCallStatusFailed.split('<reason>').join(step.reason);
+    if (step.status === 'error') {
+      // AD-8: a privilege refusal names the pair that failed. The generic reason says a
+      // privilege is missing; the pair says which one, which is what the user has to be
+      // granted. Every other failure keeps the reason it already carried.
+      const detail = step.failedPair !== '' ? step.failedPair : step.reason;
+      return STRINGS.toolCallStatusFailed.split('<reason>').join(detail);
+    }
     return STRINGS.toolCallStatusDone;
   }
 

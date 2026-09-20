@@ -54,6 +54,34 @@ ClassMethod EventClass() As %String
     Quit "OcuPilot.Kernel.Audit.Event"
 }
 
+/// <p>The descriptor registry a provider row's screen route is resolved through. Overridable for
+/// the same reason <method>GateClass</method> is; production never overrides it.</p>
+ClassMethod RegistryClass() As %String
+{
+    Quit "OcuPilot.Screen.Registry"
+}
+
+/// <p>What the screen route <var>pRoute</var> requires, as the gate's pair list, and
+/// <code>""</code> when the turn carried no screen context, when no descriptor declares that
+/// route, or when the requirement could not be read.</p>
+/// <p><b>An unreadable requirement answers empty deliberately</b>: an empty recorded requirement
+/// is withheld from every cross-user reader (<method>ViewForUser</method>), so a route this
+/// cannot resolve fails closed rather than releasing the row.</p>
+ClassMethod RoutePairs(pRoute As %String) As %List [ Private ]
+{
+    Set tPairs = ""
+    Try {
+        If pRoute = "" Quit
+        Set tDescriptor = $ClassMethod(..RegistryClass(), "DescriptorForRoute", pRoute)
+        If tDescriptor = "" Quit
+        Set tPairs = $ClassMethod(..GateClass(), "RequiredPairs", tDescriptor, .tResolved)
+        If 'tResolved Set tPairs = ""
+    } Catch ex {
+        Set tPairs = ""
+    }
+    Quit tPairs
+}
+
 /// <p>The resource a cross-user read requires, at <parameter>ADMINPERMISSION</parameter>.</p>
 ClassMethod AdminResource() As %String
 {
@@ -82,7 +110,11 @@ ClassMethod RecordProviderCall(pTurnKey As %String, pUser As %String, pRoute As 
         Set tArguments = {}
         Do tArguments.%Set("iteration", +pIteration, "number")
         Do tArguments.%Set("httpStatus", +pHttpStatus, "number")
-        Set tSC = $ClassMethod(..StoreClass(), "GuardedAppend", pTurnKey, pUser, pRoute, $Parameter(..StoreClass(), "KINDLLM"), pProvider, pModel, "", tArguments.%ToJSON(), 0, pStatus, pCode, +pRequestTokens, +pResponseTokens, "", pLimitsClass, .tSeq, .tStored)
+        ; The requirement the turn actually carries: what the screen route it ran from declares.
+        ; Empty for a turn with no screen context, and empty is safe now -- an empty recorded
+        ; requirement is withheld from a cross-user reader rather than released (DW-1120).
+        Set tPairs = ..PairsToString(..RoutePairs(pRoute), .tPairsCut)
+        Set tSC = $ClassMethod(..StoreClass(), "GuardedAppend", pTurnKey, pUser, pRoute, $Parameter(..StoreClass(), "KINDLLM"), pProvider, pModel, "", tArguments.%ToJSON(), 0, pStatus, pCode, +pRequestTokens, +pResponseTokens, tPairs, pLimitsClass, .tSeq, .tStored, tPairsCut)
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
@@ -335,7 +367,8 @@ ClassMethod StringToPairs(pText As %String) As %List
 /// row itself"). A self read answers every row it finds and <code>rowsWithheld</code> 0.</p>
 /// <p><b>It is evaluated outside every escalated frame</b> (AD-9). Every guarded read returns first
 /// -- the ids, then each row as data, then the dropped count -- and only then is each row's own
-/// <code>requiredPairs</code> evaluated through <method>OcuPilot.Screen.Gate.EvaluatePairs</method>.
+/// <code>requiredPairs</code> evaluated through <method>OcuPilot.Screen.Gate.EvaluateRequired</method>,
+/// on which a row that recorded no requirement is never held (DW-1120).
 /// A row the caller cannot hold is absent from <code>rows</code> and counted in
 /// <code>rowsWithheld</code>; it is never returned with fields removed, because a row's identity is
 /// itself the thing withheld. A non-empty requirement that yields no pair is withheld too: a
@@ -426,7 +459,11 @@ ClassMethod ViewForUser(pCaller As %String, pSubject As %String, pWindowHours As
                 Set tWithheld = tWithheld + 1
                 Continue
             }
-            If '$ClassMethod(..GateClass(), "EvaluatePairs", tPairs, .tFailedPair) {
+            ; EvaluateRequired, not EvaluatePairs: a row whose recorded requirement is empty
+            ; names no check anybody made, so releasing on it would release on a requirement
+            ; nobody named (DW-1120). Every such row is withheld, including rows stored before
+            ; the two writers below recorded what they know.
+            If '$ClassMethod(..GateClass(), "EvaluateRequired", tPairs, .tFailedPair) {
                 Set tWithheld = tWithheld + 1
                 Continue
             }

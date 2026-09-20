@@ -660,11 +660,12 @@ ClassMethod MissingPair(pUser As %String, pPairs As %List) As %String [ Private 
 
 /// <p>The content of a pair refusal: <code>AUTH.NOPRIVILEGE</code> naming
 /// <var>pFailedPair</var> as <code>detail.failedPair</code> (AD-8).</p>
+/// <p>The tool half of the one privilege refusal (AD-39). The code and the detail are
+/// <class>OcuPilot.Kernel.Denial</class>'s, which is also what
+/// <class>OcuPilot.Api.ScreenRead</class>'s 403 renders, so the two cannot diverge.</p>
 ClassMethod DeniedContent(pFailedPair As %String) As %String [ Private ]
 {
-    Set tDetail = {}
-    Do tDetail.%Set("failedPair", pFailedPair, "string")
-    Quit ..ErrorContent(##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE, tDetail)
+    Quit ##class(OcuPilot.Kernel.Denial).Content(pFailedPair)
 }
 
 /// <p>The content of an error <code>tool_result</code>: <code>{code}</code>, plus

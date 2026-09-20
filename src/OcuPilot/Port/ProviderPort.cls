@@ -39,7 +39,7 @@
 /// <method>OcuPilot.Kernel.State.Agent.GuardedClearVerification</method>, which escalates in its own
 /// frame (AD-9). That is a write to OcuPilot's own protected state, not a mutation of the instance
 /// the agent acts on (AD-7). See <method>FlagUnresolvedCredential</method>.</p>
-Class OcuPilot.Port.ProviderPort Extends %RegisteredObject
+Class OcuPilot.Port.ProviderPort Extends %RegisteredObject [ DependsOn = OcuPilot.Screen.Gate ]
 {
 
 /// <p>The class the pair set is evaluated through.</p>
@@ -53,8 +53,18 @@ Parameter CATALOGCLASS = "OcuPilot.Kernel.Provider.Catalog";
 
 /// <p>The pair set <method>InvokeDraft</method> requires, comma-separated as
 /// <code>resource:permission</code>: OcuPilot's own administrative resource, which is what the
-/// write gate on the endpoint field requires too.</p>
+/// write gate on the endpoint field requires too. Every pair is required.</p>
 Parameter DRAFTPAIRS = "OcuPilotAdmin:USE";
+
+/// <p>The pair set <method>Invoke</method> requires, comma-separated as
+/// <code>resource:permission</code>: the instance-level administrative floor, of which <b>any
+/// one</b> pair admits the call (AD-29). A caller who could not reach any OcuPilot API route
+/// cannot make the instance call a provider on their behalf either.</p>
+/// <p><b>Derived, not held</b>: the list's one home is
+/// <parameter>OcuPilot.Screen.Gate.ADMINRESOURCES</parameter>, spelled into pair form by
+/// <method>OcuPilot.Screen.Gate.AdminPairSpec</method> at compile time, so this port cannot come
+/// to admit a caller <class>OcuPilot.Api.Router</class> would refuse.</p>
+Parameter INVOKEPAIRS As %String = {##class(OcuPilot.Screen.Gate).AdminPairSpec()};
 
 /// <p>The subsystem this port's log lines are written under.</p>
 Parameter LOGSUBSYSTEM = "providerport";
@@ -79,6 +89,14 @@ ClassMethod Invoke(pDefinitionId As %String = "", ByRef pMessages, ByRef pTools,
     Do ..Blank(.pResponse, .pHttpStatus, .pFault)
     Try {
         If '..Authenticated(.pHttpStatus, .pFault) Quit
+        ; The named gate this port's primary entry evaluates before its outbound call (AD-29).
+        ; An OR-set: any one administrative pair admits, an empty or unreadable set admits
+        ; nobody, and nothing leaves the instance before it has answered.
+        Set tFailedPair = ""
+        If '..GateAnyOf(..InvokePairs(), .tFailedPair) {
+            Do ..RefusePair(tFailedPair, .pHttpStatus, .pFault)
+            Quit
+        }
         Set tSC = ..ValuesFor(pDefinitionId, .tValues, .tFound)
         If $$$ISERR(tSC) {
             Do ..Refuse(##class(OcuPilot.Api.Error).#PROVIDERUNCONFIGURED, .pHttpStatus, .pFault)
@@ -184,14 +202,7 @@ ClassMethod InvokeDraft(ByRef pValues, ByRef pMessages, ByRef pTools, pSystemPro
         If '..Authenticated(.pHttpStatus, .pFault) Quit
         Set tFailedPair = ""
         If '..Gate(..DraftPairs(), .tFailedPair) {
-            Set tDetail = ""
-            If tFailedPair '= "" {
-                Set tDetail = {}
-                Do tDetail.%Set("failedPair", tFailedPair)
-            }
-            Set pHttpStatus = 403
-            Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Api.Error).#FORBIDDEN, ##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE, "This account may not test an unsaved agent definition")
-            If $IsObject(tDetail) Do pFault.%Set("detail", tDetail)
+            Do ..RefusePair(tFailedPair, .pHttpStatus, .pFault)
             Quit
         }
         Do ##class(OcuPilot.Kernel.AgentRules).Normalize(.pValues)
@@ -440,23 +451,42 @@ ClassMethod Authenticated(ByRef pHttpStatus As %Integer, ByRef pFault As %Dynami
 
 /// <p>Whether the calling process holds every pair in <var>pPairs</var>, asked of
 /// <method>GateClass</method>'s evaluator so the check and the spelling of a failure are the
-/// gate's and not a second copy.</p>
+/// gate's and not a second copy. A requirement that names no pair is never held (DW-1120).</p>
 ClassMethod Gate(pPairs As %List, Output pFailedPair As %String) As %Boolean [ Private ]
 {
-    Quit $ClassMethod(..GateClass(), "EvaluatePairs", pPairs, .pFailedPair)
+    Quit $ClassMethod(..GateClass(), "EvaluateRequired", pPairs, .pFailedPair)
+}
+
+/// <p>Whether the calling process holds <b>any one</b> pair in <var>pPairs</var>, asked of the
+/// same evaluator for the same reason. An empty set admits nobody.</p>
+ClassMethod GateAnyOf(pPairs As %List, Output pFailedPair As %String) As %Boolean [ Private ]
+{
+    Quit $ClassMethod(..GateClass(), "EvaluateAnyOf", pPairs, .pFailedPair)
+}
+
+/// <p>Set the 403 a refused pair set answers with, naming <var>pFailedPair</var> when there is
+/// one to name. Code, sentence and detail are <class>OcuPilot.Kernel.Denial</class>'s, so this
+/// port's refusal is the one refusal a screen read and a tool call also produce (AD-39).</p>
+ClassMethod RefusePair(pFailedPair As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) [ Private ]
+{
+    Set pHttpStatus = ##class(OcuPilot.Kernel.Denial).#STATUS
+    Set pFault = ##class(OcuPilot.Kernel.Fault).Build(##class(OcuPilot.Kernel.Denial).Slug(), ##class(OcuPilot.Kernel.Denial).Code(), ##class(OcuPilot.Kernel.Denial).Reason())
+    Set tDetail = ##class(OcuPilot.Kernel.Denial).Detail(pFailedPair)
+    If $IsObject(tDetail) Do pFault.%Set("detail", tDetail)
 }
 
 /// <p><parameter>DRAFTPAIRS</parameter> as the <code>(resource, permission)</code> list the gate
 /// takes.</p>
 ClassMethod DraftPairs() As %List
 {
-    Set tPairs = ""
-    For tI = 1:1:$Length(..#DRAFTPAIRS, ",") {
-        Set tPair = $Piece(..#DRAFTPAIRS, ",", tI)
-        If tPair = "" Continue
-        Set tPairs = tPairs _ $ListBuild($ListBuild($Piece(tPair, ":", 1), $Piece(tPair, ":", 2)))
-    }
-    Quit tPairs
+    Quit $ClassMethod(..GateClass(), "ParsePairSpec", ..#DRAFTPAIRS)
+}
+
+/// <p><parameter>INVOKEPAIRS</parameter> as the <code>(resource, permission)</code> list the gate
+/// takes.</p>
+ClassMethod InvokePairs() As %List
+{
+    Quit $ClassMethod(..GateClass(), "ParsePairSpec", ..#INVOKEPAIRS)
 }
 
 /// <p>The class <method>Gate</method> and <method>Authenticated</method> ask. Overridable so a

@@ -77,9 +77,6 @@ Parameter VERBS = "get,put,post,delete,options,head,patch";
 /// <p>The subsystem raw vendor text is logged under.</p>
 Parameter LOGSUBSYSTEM = "mgmntport";
 
-/// <p>The reason a caller short of the pair set is refused with.</p>
-Parameter REASONDENIED = "This account may not read the management API.";
-
 /// <p>The reason a request the port does not serve is refused with.</p>
 Parameter REASONNOTIMPLEMENTED = "This instance does not implement that operation.";
 
@@ -167,13 +164,11 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
     Set pDocument = ""
     Try {
         Set tFailedPair = ""
-        If '$ClassMethod(..GateClass(), "EvaluatePairs", ..Pairs(), .tFailedPair) {
-            Set tDetail = ""
-            If tFailedPair '= "" {
-                Set tDetail = {}
-                Do tDetail.%Set("failedPair", tFailedPair)
-            }
-            Set tSC = ..Refuse(403, ##class(OcuPilot.Api.Error).#FORBIDDEN, ##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE, ..#REASONDENIED, .pHttpStatus, .pFault, tDetail)
+        ; EvaluateRequired, not EvaluatePairs: a PAIRS parameter mis-edited to empty must fail
+        ; closed rather than open the port to everyone (DW-1120).
+        If '$ClassMethod(..GateClass(), "EvaluateRequired", ..Pairs(), .tFailedPair) {
+            Set tDenial = ##class(OcuPilot.Kernel.Denial).Detail(tFailedPair)
+            Set tSC = ..Refuse(##class(OcuPilot.Kernel.Denial).#STATUS, ##class(OcuPilot.Kernel.Denial).Slug(), ##class(OcuPilot.Kernel.Denial).Code(), ##class(OcuPilot.Kernel.Denial).Reason(), .pHttpStatus, .pFault, tDenial)
             Quit
         }
 

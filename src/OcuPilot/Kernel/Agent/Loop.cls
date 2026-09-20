@@ -766,26 +766,33 @@ ClassMethod RecordProviderRow(pKey As %String, pUser As %String, pRoute As %Stri
 }
 
 /// <p>Record one tool call this method refused before it reached the dispatcher (Story 4.9) -- a
-/// stop caught at the per-call boundary, and the reply-budget refusal. Its pairs are empty because
-/// nothing read them: the call never got as far as the dispatcher's pair checks, and a row that
-/// claimed a requirement nobody evaluated would be a claim about a check that did not happen.</p>
-/// <p><b>The tool's secret-argument declaration is not skipped with them.</b> <var>pTool</var> is
+/// stop caught at the per-call boundary, and the reply-budget refusal.</p>
+/// <p><b>The row records the requirement the refusal knows, never one nobody read</b> (DW-1120):
+/// the tool's own declared pairs when <var>pTool</var> resolved, and empty when it did not.
+/// Neither refusal this method serves is a pair denial -- a pair denial happens inside
+/// <class>OcuPilot.Kernel.Agent.Dispatch</class>, which records its own pairs -- so there is no
+/// failed pair to record here. An empty recorded requirement is withheld from a cross-user reader
+/// rather than released, so the row that can state nothing fails closed.</p>
+/// <p><b>The tool's secret-argument declaration is read the same way.</b> <var>pTool</var> is
 /// whatever the refusal site's own <code>ResolveWire</code> answered, so layer 1 of the redaction
-/// runs for every call whose wire name resolved (AD-3): a pair check that did not happen says
-/// nothing about which arguments are secret, and a name pattern cannot see a value in a field
-/// called <code>Value</code>. A wire name that resolved no tool classified nothing, and the ledger
-/// withholds such a row's arguments whole rather than storing a blob the name pattern alone has
-/// seen.</p>
+/// runs for every call whose wire name resolved (AD-3): a name pattern cannot see a value in a
+/// field called <code>Value</code>. A wire name that resolved no tool classified nothing, and the
+/// ledger withholds such a row's arguments whole rather than storing a blob the name pattern alone
+/// has seen.</p>
 ClassMethod RecordRefusedRow(pKey As %String, pUser As %String, pRoute As %String, pName As %String, pTarget As %String, pInput As %DynamicAbstractObject, pStatus As %String, pCode As %String, pLimitsClass As %String, pTool As %DynamicObject = "") [ Private ]
 {
     Try {
         Set tSecretNames = ""
         Set tClassified = 0
+        Set tDeclaredPairs = ""
         If $IsObject(pTool) {
-            Set tSecretNames = $ClassMethod($ClassMethod(..DispatchClass(), "RegistryClass"), "SecretArguments", pTool, .tSecretDeclared)
+            Set tRegistry = $ClassMethod(..DispatchClass(), "RegistryClass")
+            Set tSecretNames = $ClassMethod(tRegistry, "SecretArguments", pTool, .tSecretDeclared)
             Set tClassified = ''tSecretDeclared
+            Set tDeclaredPairs = $ClassMethod(tRegistry, "RequiredPairs", pTool, .tPairsResolved)
+            If 'tPairsResolved Set tDeclaredPairs = ""
         }
-        Do $ClassMethod(..LedgerClass(), "RecordToolCall", pKey, pUser, pRoute, pName, pTarget, pInput, "", "", tSecretNames, pStatus, pCode, pLimitsClass, tClassified)
+        Do $ClassMethod(..LedgerClass(), "RecordToolCall", pKey, pUser, pRoute, pName, pTarget, pInput, tDeclaredPairs, "", tSecretNames, pStatus, pCode, pLimitsClass, tClassified)
     } Catch ex {
         Do ..LogFault("turn " _ pKey _ ": a refused tool call could not be recorded in the agent ledger", ex.AsStatus(), ##class(OcuPilot.Api.Error).#LEDGERUNAVAILABLE)
     }

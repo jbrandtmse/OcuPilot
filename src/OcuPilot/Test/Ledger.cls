@@ -284,9 +284,11 @@ Method TestASelfReadIsUngatedAndACrossUserReadIsGatedPerRow()
 }
 
 /// <p>Matrix row "Tool refused before dispatch" -- a call the reply budget cannot answer is refused
-/// without dispatch and still writes one <code>tool</code> row, carrying the refusal code and no
-/// pairs at all: nothing read them, and a row claiming a requirement no check evaluated would be a
-/// claim about a check that did not happen.</p>
+/// without dispatch and still writes one <code>tool</code> row, carrying the refusal code and the
+/// tool's own declared pair set. The refusal never read those pairs against the caller, but the
+/// tool declares them, and an empty recorded requirement is withheld from every cross-user reader
+/// (DW-1120) -- so recording what the refusal knows is what keeps the row readable by an
+/// administrator who holds it.</p>
 /// <p>It also pins <property>OcuPilot.Kernel.State.Turn.ContextRoute</property>, whose only writer
 /// is the <method>GuardedBegin</method> call this method makes and whose only reader today is this
 /// assertion: the turn row says which screen it ran from after its progress has been swept.</p>
@@ -299,7 +301,7 @@ Method TestASelfReadIsUngatedAndACrossUserReadIsGatedPerRow()
 /// <property>ContextRoute</property> assignment in
 /// <method>OcuPilot.Kernel.State.Turn.GuardedBegin</method> -- the added assertion goes red. For the declaration: pass <code>""</code> in place of <var>pTool</var> at
 /// that same call -- the declared value reaches the row and the absence assertions go red.</p>
-Method TestARefusalBeforeDispatchRecordsARowWithNoPairs()
+Method TestARefusalBeforeDispatchRecordsTheToolsDeclaredPairs()
 {
     Set tUser = ..#PROBEUSER
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedReserve(tUser, "1", "TURN.ABANDONED.JOBLOST", ..#LIMITS, .tKey, .tBusy, .tSweep), "a turn is reserved")
@@ -330,7 +332,7 @@ Method TestARefusalBeforeDispatchRecordsARowWithNoPairs()
         Do $$$AssertEquals(tRow.name, "probe.ledger.read", "naming the tool it would have run")
         Do $$$AssertEquals(tRow.status, "error", "refused")
         Do $$$AssertEquals(tRow.code, ##class(OcuPilot.Api.Error).#TOOLRESULTTOOLARGE, "with the refusal's own code")
-        Do $$$AssertEquals(tRow.requiredPairs, "", "and no pairs, because nothing read them")
+        Do $$$AssertEquals(tRow.requiredPairs, "%Admin_Operate:USE", "and the tool's own declared pairs, which the refusal does know (DW-1120)")
         Do $$$AssertEquals(tRow.route, "permissions/users", "recorded against the screen the turn ran from")
         ; A pair check that did not happen says nothing about which arguments are secret: the
         ; refusal resolved the tool, so its declaration is read and layer 1 runs (AD-3).
@@ -342,15 +344,15 @@ Method TestARefusalBeforeDispatchRecordsARowWithNoPairs()
     Do ##class(OcuPilot.Kernel.State.Turn).GuardedFinish(tKey, tUser, "completed", "", "", "done", 0, ..#LIMITS)
 }
 
-/// <p>The unpinned sibling of <method>TestARefusalBeforeDispatchRecordsARowWithNoPairs</method>: a
+/// <p>The unpinned sibling of <method>TestARefusalBeforeDispatchRecordsTheToolsDeclaredPairs</method>: a
 /// stop caught at the per-call boundary itself -- distinct from the reply-budget refusal, and reached
 /// through <class>OcuPilot.Test.LedgerLoopStopProbe</class>, whose <method>Boundary</method> always
-/// answers stop -- still writes one <code>tool</code> row, carrying <code>TURN.STOPPED</code> and no
-/// pairs, with the tool's declared secret redacted the same way.</p>
+/// answers stop -- still writes one <code>tool</code> row, carrying <code>TURN.STOPPED</code> and
+/// the tool's own declared pair set, with the tool's declared secret redacted the same way.</p>
 /// <p>Mutation (Rule 19): delete the <method>RecordRefusedRow</method> call at
 /// <method>OcuPilot.Kernel.Agent.Loop.AnswerTools</method>'s boundary-stop branch -- no row is
 /// written and this goes red.</p>
-Method TestABoundaryStopBeforeDispatchRecordsARowWithNoPairs()
+Method TestABoundaryStopRecordsTheToolsDeclaredPairs()
 {
     Set tUser = ..#PROBEUSER
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Turn).GuardedReserve(tUser, "1", "TURN.ABANDONED.JOBLOST", ..#LIMITS, .tKey, .tBusy, .tSweep), "a turn is reserved")
@@ -380,7 +382,7 @@ Method TestABoundaryStopBeforeDispatchRecordsARowWithNoPairs()
         Do $$$AssertEquals(tRow.name, "probe.ledger.read", "naming the tool it would have run")
         Do $$$AssertEquals(tRow.status, "stopped", "the boundary's own status")
         Do $$$AssertEquals(tRow.code, ##class(OcuPilot.Api.Error).#TURNSTOPPED, "with the stop's own code")
-        Do $$$AssertEquals(tRow.requiredPairs, "", "and no pairs, because nothing read them")
+        Do $$$AssertEquals(tRow.requiredPairs, "%Admin_Operate:USE", "and the tool's own declared pairs, which the refusal does know (DW-1120)")
         Do $$$AssertEquals(tRow.route, "permissions/users", "recorded against the screen the turn ran from")
         Do $$$AssertEquals(tRow.arguments [ ..#SECRETVALUE, 0, "and the tool's declared secret nowhere in the row's arguments: " _ tRow.arguments)
         Do $$$AssertTrue(tRow.arguments [ "[redacted]", "which reads as redacted instead")

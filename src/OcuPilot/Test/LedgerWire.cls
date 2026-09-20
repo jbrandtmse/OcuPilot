@@ -37,6 +37,12 @@ Parameter SCREENRESOURCES = "%Admin_Secure:U,%DB_IRISSYS:R";
 /// <p>The route the turns in this class are started from, which every row they write records.</p>
 Parameter CONTEXTROUTE = "os-management/processes";
 
+/// <p>The resources <parameter>CONTEXTROUTE</parameter>'s screen requires, in the grant grammar
+/// <method>SetReaderResources</method> takes. A turn's <code>llm</code> rows record the pair set of
+/// the screen route the turn ran from (Story 5.4, DW-1120), so a cross-user reader sees them only
+/// while it holds these too.</p>
+Parameter CONTEXTRESOURCES = "%Admin_Operate:U,%Admin_Manage:U,%DB_IRISSYS:R";
+
 /// <p>The screen <code>shell.screen.open</code> is asked for, and whose pairs the refused call's row
 /// carries.</p>
 Parameter TARGETROUTE = "permissions/users";
@@ -286,7 +292,7 @@ Method TestARowCarriesTheResourceTheToolRequired()
 /// resource asking for another user is refused, naming the pair; and a caller always sees their
 /// own rows.</p>
 /// <p>Mutation (Rule 19): remove the per-row
-/// <method>OcuPilot.Screen.Gate.EvaluatePairs</method> branch from
+/// <method>OcuPilot.Screen.Gate.EvaluateRequired</method> branch from
 /// <method>OcuPilot.Kernel.Audit.Ledger.ViewForUser</method> -- the withheld row appears in the
 /// first read and this goes red.</p>
 Method TestARowIsWithheldFromAnAdministratorWhoLacksItsResource()
@@ -311,8 +317,11 @@ Method TestARowIsWithheldFromAnAdministratorWhoLacksItsResource()
     Do $$$AssertTrue(tView.rowsWithheld > 0, "and is counted as withheld")
     Do $$$AssertEquals(tText [ ..#TARGETROUTE, 0, "with nothing of that row on the wire")
 
-    ; Granting them makes it appear.
-    Do $$$AssertStatusOK(..SetReaderResources(..#ADMINRESOURCES _ "," _ ..#SCREENRESOURCES), "the administrator is granted the row's own resources")
+    ; Granting them makes it appear. The context route's resources are granted with them: since
+    ; Story 5.4 an llm row records the pair set of the screen the turn ran from (DW-1120), so a
+    ; reader short of those would still be withholding one row here, and "withholding nothing"
+    ; below would be a claim about the tool row alone.
+    Do $$$AssertStatusOK(..SetReaderResources(..#ADMINRESOURCES _ "," _ ..#SCREENRESOURCES _ "," _ ..#CONTEXTRESOURCES), "the administrator is granted the row's own resources")
     Set tGranted = ..Read(..Reader(), "?user=" _ ..Subject() _ "&turnKey=" _ tId, .tStatus, .tText, .tHeaders)
     Do $$$AssertEquals(tStatus, 200, "the same read answers: " _ tText)
     Do $$$AssertTrue($IsObject(..RowOfKind(tGranted, "tool")), "and the row now appears")

@@ -461,20 +461,14 @@ ClassMethod Page(pSource As %String = "", pOffset As %String = "", pMaxBytes As 
 
         Set tPairs = ..PairsFor(pSource)
         If '$ListValid(tPairs) || ($ListLength(tPairs) = 0) {
-            ; An empty pair set is held by everyone (OcuPilot.Screen.Gate.EvaluatePairs), so a
-            ; source whose requirement is empty or unreadable is refused here rather than handed
-            ; to the gate, which would admit it. No pair is named: there is none to report.
-            Set tSC = ..Refuse(403, ##class(OcuPilot.Api.Error).#FORBIDDEN, ##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE, "This account may not read that log source", .pHttpStatus, .pFault)
+            ; A source whose requirement is empty or unreadable is refused here rather than
+            ; handed to the gate. No pair is named: there is none to report.
+            Set tSC = ..DeniedRefusal("", .pHttpStatus, .pFault)
             Quit
         }
         Set tFailedPair = ""
         If '..Gate(tPairs, .tFailedPair) {
-            Set tDetail = ""
-            If tFailedPair '= "" {
-                Set tDetail = {}
-                Do tDetail.%Set("failedPair", tFailedPair)
-            }
-            Set tSC = ..Refuse(403, ##class(OcuPilot.Api.Error).#FORBIDDEN, ##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE, "This account may not read that log source", .pHttpStatus, .pFault, tDetail)
+            Set tSC = ..DeniedRefusal(tFailedPair, .pHttpStatus, .pFault)
             Quit
         }
 
@@ -779,14 +773,12 @@ ClassMethod Errors(pLevel As %String = "", pNamespace As %String = "", pDate As 
 
 /// <p>The 403 a refused pair set answers with, naming <var>pFailedPair</var> as the envelope's
 /// <code>detail.failedPair</code> when there is one to name (AD-8, AD-39).</p>
+/// <p>The code, the sentence and the detail are <class>OcuPilot.Kernel.Denial</class>'s, so this
+/// port's refusal and the one a screen read or a tool call produces for the same missing pair are
+/// the same refusal.</p>
 ClassMethod DeniedRefusal(pFailedPair As %String, Output pHttpStatus As %Integer, Output pFault As %DynamicObject) As %Status [ Private ]
 {
-    Set tDetail = ""
-    If pFailedPair '= "" {
-        Set tDetail = {}
-        Do tDetail.%Set("failedPair", pFailedPair)
-    }
-    Quit ..Refuse(403, ##class(OcuPilot.Api.Error).#FORBIDDEN, ##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE, "This account may not read that log source", .pHttpStatus, .pFault, tDetail)
+    Quit ..Refuse(##class(OcuPilot.Kernel.Denial).#STATUS, ##class(OcuPilot.Kernel.Denial).Slug(), ##class(OcuPilot.Kernel.Denial).Code(), ##class(OcuPilot.Kernel.Denial).Reason(), .pHttpStatus, .pFault, ##class(OcuPilot.Kernel.Denial).Detail(pFailedPair))
 }
 
 /// <p>The one <code>%SYS</code> window an application-error read takes (AD-16): entered once,
@@ -1174,9 +1166,12 @@ ClassMethod DetailRows(pType As %Integer, pNamespace As %String, pDate As %Strin
 /// <p>Whether the calling process holds every pair in <var>pPairs</var>, asked of
 /// <method>GateClass</method>'s evaluator so the check and the spelling of a failure are the
 /// gate's and not a second copy (the <class>OcuPilot.Api.Namespaces</class> idiom).</p>
+/// <p><b>A requirement that names no pair is never held</b> (DW-1120): this asks
+/// <method>EvaluateRequired</method>, not <method>EvaluatePairs</method>, so a pair set that
+/// resolved to nothing fails closed at the port instead of opening it to everyone.</p>
 ClassMethod Gate(pPairs As %List, Output pFailedPair As %String) As %Boolean [ Private ]
 {
-    Quit $ClassMethod(..GateClass(), "EvaluatePairs", pPairs, .pFailedPair)
+    Quit $ClassMethod(..GateClass(), "EvaluateRequired", pPairs, .pFailedPair)
 }
 
 /// <p>The path source <var>pSource</var> reads, resolved from <method>ManagerDirectory</method>
