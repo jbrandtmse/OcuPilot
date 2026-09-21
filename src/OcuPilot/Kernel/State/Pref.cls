@@ -271,7 +271,8 @@ ClassMethod GuardedTouch(pUserName As %String, pKind As %String, pName As %Strin
 /// outcome already true, while a lost value write leaves a value the caller did not ask for.</p>
 /// <p><b>The create race answers by updating</b> (DW-1327): a key another writer inserted between
 /// the look-up and the save is re-read and written, so the value the caller sent is the value
-/// stored rather than a 500.</p>
+/// stored rather than a 500. A row removed again before that re-read is a fault, never a
+/// success: answering OK for a set that stored nothing is worse than refusing it.</p>
 ClassMethod GuardedSetValue(pUserName As %String, pKind As %String, pName As %String, pValue As %String) As %Status
 {
     Set tSC = $$$OK
@@ -291,7 +292,13 @@ ClassMethod GuardedSetValue(pUserName As %String, pKind As %String, pName As %St
             If '..IsDuplicateKey(tSC) Quit
             Set tSC = ..OpenByKey(pUserName, pKind, pName, .tRow)
             If $$$ISERR(tSC) Quit
-            If '$IsObject(tRow) Quit
+            ; The racing row was removed again before this re-read. Returning $$$OK here would
+            ; answer 200 for a set that stored nothing, which is the one outcome worse than a
+            ; refusal: the caller believes the instance holds a value it does not.
+            If '$IsObject(tRow) {
+                Set tSC = $$$ERROR($$$GeneralError, "the row a concurrent write created was removed before it could be set")
+                Quit
+            }
         }
         Set tExpected = +tRow.RowVersion
         Set tRow.Value = pValue

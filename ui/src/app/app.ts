@@ -466,8 +466,11 @@ export class App {
       // map's verdict. Dropped in the same gesture as the map, so the two can never be one
       // principal's answer and another's (AD-8).
       this.agentStatus.reset();
-      // The draft and full screen are this principal's too; the remembered width is the browser's.
+      // The draft, the full screen and the remembered width are all this principal's (Story 15.5:
+      // the width is one account's row on the instance, not the browser's), and so is the side
+      // bar's open state, which is the same row family.
       this.panel.endSession();
+      this.shell.endSession();
       // The tenth: the conversation id and transcript are this principal's own (Story 4.5); the
       // next sign-in in this tab must start fresh rather than adopting a departed principal's
       // conversation (AD-8), and any poll this principal's turn left running must stop.

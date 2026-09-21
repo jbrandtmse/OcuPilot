@@ -31,7 +31,7 @@
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { pathToFileURL } from 'node:url';
 
 /** The directory the browser specs live in, relative to `ui/`. */
 export const BROWSER_DIR = 'browser';
@@ -60,25 +60,43 @@ export function declaredExemption(source) {
   return null;
 }
 
+/** How many times `needle` occurs in `source`. */
+export function occurrences(source, needle) {
+  let count = 0;
+  let at = source.indexOf(needle);
+  while (at !== -1) {
+    count += 1;
+    at = source.indexOf(needle, at + needle.length);
+  }
+  return count;
+}
+
 /**
  * What is wrong with one spec file, or `null` when nothing is.
  *
  * A file that opens no context is never a problem, whatever else it does.
+ *
+ * **The count is per context, not per file.** A file that resets once and then opens a second
+ * context later is the regression this check exists to stop -- the most likely one, because it is
+ * a test added to a spec that already passes -- so one reset is required for each context opened
+ * rather than one for the file.
  */
 export function resetProblem(name, source) {
-  if (!source.includes(CONTEXT_CALL)) return null;
+  const contexts = occurrences(source, CONTEXT_CALL);
+  if (contexts === 0) return null;
   const exemption = declaredExemption(source);
+  const resets = occurrences(source, RESET_CALL);
   if (exemption !== null) {
     if (exemption.reason === '') {
       return `${name} declares ${EXEMPT_MARKER} with no reason after it`;
     }
-    if (source.includes(RESET_CALL)) {
+    if (resets > 0) {
       return `${name} both declares ${EXEMPT_MARKER} and calls ${RESET_CALL} -- one or the other`;
     }
     return null;
   }
-  if (!source.includes(RESET_CALL)) {
-    return `${name} opens a browser context but never calls ${RESET_CALL}; preferences live on the instance since Story 15.5, so a fresh context no longer resets them. Call it where the context is created, or declare ${EXEMPT_MARKER} <reason> if this spec clears the state itself`;
+  if (resets < contexts) {
+    return `${name} opens ${contexts} browser context(s) but calls ${RESET_CALL} ${resets} time(s); preferences live on the instance since Story 15.5, so a fresh context no longer resets them. Call it wherever a context is created, or declare ${EXEMPT_MARKER} <reason> if this spec clears the state itself`;
   }
   return null;
 }
@@ -128,6 +146,6 @@ function main() {
   console.log('browser-reset: clean.');
 }
 
-if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(fileURLToPath(import.meta.url)).href && process.argv[1].endsWith('browser-reset.mjs')) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main();
 }

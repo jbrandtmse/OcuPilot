@@ -248,7 +248,7 @@ test('formatNamed resolves the <name> placeholder, and a template without one is
 // - make `loaded()` return `answeredValue` -> "a write's answer is not a read's" goes red, and a
 //   dismissal the user made before the first read settled would be undone by the next write.
 
-const { VIEW_KIND, REFRESH_KIND, SHELL_KIND, SHELL_SIDE_BAR_OPEN } = await import(
+const { VIEW_KIND, REFRESH_KIND, SHELL_KIND, SHELL_SIDE_BAR_OPEN, SHELL_PANEL_WIDTH } = await import(
   join(uiRoot, 'src', 'app', 'core', 'account-preferences.ts')
 );
 
@@ -457,15 +457,18 @@ test('rapid writes to one key are serialized and collapsed to the latest value',
   };
   const store = new AccountPreferences({ api });
 
-  void store.setValue(SHELL_KIND, SHELL_SIDE_BAR_OPEN, '1');
-  void store.setValue(SHELL_KIND, SHELL_SIDE_BAR_OPEN, '0');
-  const last = store.setValue(SHELL_KIND, SHELL_SIDE_BAR_OPEN, '1');
-  assert.deepEqual(sent, ['1'], 'only the first is in flight');
+  // Three distinct values, and the last is not the one in flight: with '1', '0', '1' the
+  // assertion passes just as well if `drain` re-sent whatever it was already holding, so it
+  // could not tell the claim from the defect.
+  void store.setValue(SHELL_KIND, SHELL_PANEL_WIDTH, '416');
+  void store.setValue(SHELL_KIND, SHELL_PANEL_WIDTH, '432');
+  const last = store.setValue(SHELL_KIND, SHELL_PANEL_WIDTH, '448');
+  assert.deepEqual(sent, ['416'], 'only the first is in flight');
 
   release();
   await last;
   await new Promise((resolve) => setTimeout(resolve, 0));
-  assert.deepEqual(sent, ['1', '1'], 'and the burst collapses to its latest value, sent after it');
+  assert.deepEqual(sent, ['416', '448'], 'and the burst collapses to its latest value, sent after it');
 });
 
 test('writes to different keys do not queue behind one another', async () => {

@@ -28,7 +28,6 @@
 
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
@@ -54,8 +53,8 @@ const FILTER = 'IRIS';
 let browser = null;
 
 before(async () => {
-  // On one line, because `ui/tools/angular-json.test.mjs`'s DW-159 gate matches this refusal by
-  // its own text in any spec that runs a docker command.
+  // Not required by DW-159's gate, which only binds specs that run a docker command: this one
+  // writes the signed-in account's own rows, which is reason enough to refuse the live instance.
   assert.notEqual(config.container, LIVE_CONTAINER, "this spec writes the signed-in user's remembered state, so it never runs against the live container");
   const ready = await (await fetch(`${config.origin}${READINESS_PATH}`)).json();
   assert.equal(ready.state, 'installed', `the throwaway must be installed, not ${JSON.stringify(ready)}`);
@@ -89,28 +88,20 @@ async function preferences() {
 /**
  * Put this caller's remembered state back to empty.
  *
- * The membership kinds clear through their own action. The three value kinds have none -- one row
- * per key is the shape, so `clear` is refused for them -- and are cleared through the store inside
- * the container, which is what `OcuPilot.Test.PreferencesWire` does for the same reason.
+ * Every kind clears through the shipped route: `clear` is the one action all five take, value
+ * kinds included (`Api/Preferences.cls` `ACTIONCLEAR`). Doing it over HTTP keeps the setup inside
+ * what this spec is about -- a container-exec failure here would fail the Integration AC for a
+ * reason it does not test.
  */
 async function clearPreferences() {
-  for (const kind of ['favorite', 'recent']) {
+  for (const kind of ['favorite', 'recent', 'view', 'refresh', 'shell']) {
     const answer = await fetch(`${config.origin}${PREFERENCES_PATH}`, {
       method: 'POST',
       headers: { Authorization: authHeader(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ kind, action: 'clear' }),
     });
-    assert.equal(answer.status, 200, `${kind}s cleared: ${await answer.text()}`);
+    assert.equal(answer.status, 200, `the ${kind} kind cleared: ${await answer.text()}`);
   }
-  const script = ['view', 'refresh', 'shell']
-    .map((kind) => `Do ##class(OcuPilot.Kernel.State.Pref).GuardedClear("${config.username}", "${kind}")`)
-    .concat('Halt')
-    .join('\n');
-  const run = spawnSync('docker', ['exec', '-i', config.container, 'iris', 'session', 'iris', '-U', 'HSCUSTOM'], {
-    input: `${script}\n`,
-    encoding: 'utf8',
-  });
-  assert.equal(run.status, 0, `the value kinds cleared: ${run.stdout ?? ''}${run.stderr ?? ''}`);
   const held = await preferences();
   assert.deepEqual(
     [held.views.length, held.refreshRates.length, held.shell.length],

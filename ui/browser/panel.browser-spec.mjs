@@ -24,7 +24,7 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
 import { leaveFirstLoginGate, pathOf } from './shell-entry.mjs';
-import { resetRememberedState } from './preferences-reset.mjs';
+import { rememberedShellMember, resetRememberedState } from './preferences-reset.mjs';
 
 const config = browserConfig();
 const STRINGS = loadStrings();
@@ -225,6 +225,17 @@ function geometry(page) {
  * for seconds. Each `page.evaluate` binds to the live execution context, which is what makes the
  * poll see the page the reload produced.
  */
+/**
+ * Give a fire-and-forget preference write time to arrive, for an assertion that it does not.
+ *
+ * A poll is the right shape for a value that must appear (`panelSettlesAt`); a value that must
+ * stay absent has nothing to poll for, so this bounds how long "absent" was given to become
+ * "present".
+ */
+async function settleWrites() {
+  await new Promise((resolve) => setTimeout(resolve, 500));
+}
+
 async function panelSettlesAt(page, width) {
   const deadline = Date.now() + config.navigationTimeoutMs;
   let seen = null;
@@ -619,14 +630,21 @@ test('Yield order at 1,920, 1,280 (and reopened), 1,024 and 900px; the page body
 
     shown = await at(1280);
     assert.deepEqual([shown.sideBar, Math.round(shown.panelWidth), Math.round(shown.contentWidth)], [0, 400, 832]);
-    assert.equal(await page.evaluate(() => localStorage.getItem('ocupilot.side-bar.open')), null, 'the yield writes no preference');
+    // Story 15.5 (DW-134): the open state is the instance's now, so reading `localStorage` here
+    // asserted nothing -- the key is banned everywhere under `ui/src` and is null whatever the
+    // yield does. `signedInAt` cleared this account's rows, so "no row" is still the whole claim.
+    // The wait is a settle for a write that must NOT arrive, which is the one case a poll cannot
+    // serve.
+    await settleWrites();
+    assert.equal(await rememberedShellMember('sideBarOpen'), null, 'the yield writes no preference');
 
     await page.focus('main#ocu-content');
     await chord(page, 'KeyB');
     await panelSettlesAt(page, 352);
     shown = await geometry(page);
     assert.deepEqual([shown.sideBar, Math.round(shown.panelWidth), Math.round(shown.contentWidth)], [240, 352, 640]);
-    assert.equal(await page.evaluate(() => localStorage.getItem('ocupilot.panel.width')), null, 'the reopen writes no stored width');
+    await settleWrites();
+    assert.equal(await rememberedShellMember('panelWidth'), null, 'the reopen writes no stored width');
 
     // The chord again returns the reopened side bar to the yield, still writing no preference.
     await page.focus('main#ocu-content');
@@ -634,7 +652,8 @@ test('Yield order at 1,920, 1,280 (and reopened), 1,024 and 900px; the page body
     await panelSettlesAt(page, 400);
     shown = await geometry(page);
     assert.deepEqual([shown.sideBar, Math.round(shown.panelWidth), Math.round(shown.contentWidth)], [0, 400, 832]);
-    assert.equal(await page.evaluate(() => localStorage.getItem('ocupilot.side-bar.open')), null);
+    await settleWrites();
+    assert.equal(await rememberedShellMember('sideBarOpen'), null);
 
     shown = await at(1024);
     assert.deepEqual([shown.sideBar, Math.round(shown.panelWidth), Math.round(shown.contentWidth)], [0, 336, 640]);

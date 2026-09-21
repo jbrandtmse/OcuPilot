@@ -50,8 +50,8 @@ export class ShellState {
    *
    * **The published default renders until the read settles, and the remembered state applies
    * once, on the answer.** A later notification -- another preference being written -- must not
-   * re-apply it over a toggle the user has made since, and a `reset()` on sign-out drops it so the
-   * next principal's answer is adopted in its turn.
+   * re-apply it over a toggle the user has made since, and `endSession()` drops it on sign-out so
+   * the next principal's answer is adopted in its turn.
    */
   private adopted = false;
 
@@ -265,6 +265,21 @@ export class ShellState {
   toggleOpen(): void {
     if (this.currentVisibleArea === '') this.currentVisibleArea = this.currentActiveArea;
     this.setOpen(!this.currentOpen);
+    this.notify();
+  }
+
+  /**
+   * Drop the departing principal's side bar back to the published default (Story 15.5, AD-8).
+   *
+   * The open state is one account's row on the instance now, not the browser's, so without this
+   * the next sign-in in this tab renders the departed principal's bar until their own read
+   * settles -- and indefinitely if it never does. `PanelState.endSession` does the same for the
+   * width; this is the side bar's half of it.
+   */
+  endSession(): void {
+    this.adopted = false;
+    if (this.currentOpen === SIDE_BAR_OPEN_DEFAULT) return;
+    this.currentOpen = SIDE_BAR_OPEN_DEFAULT;
     this.notify();
   }
 

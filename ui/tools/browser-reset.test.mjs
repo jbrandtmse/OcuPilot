@@ -7,18 +7,27 @@
  * starting state. Needs nothing from the environment: every case here is a string.
  *
  * Mutations (Rule 19), each applied, observed red and reverted:
- * - drop the `!source.includes(RESET_CALL)` arm from `resetProblem` -> "a spec that opens a
- *   context and never resets is refused" goes red.
+ * - drop the `resets < contexts` arm from `resetProblem` -> "a spec that opens a context and
+ *   never resets is refused" goes red.
  * - make `declaredExemption` answer the marker's line without trimming -> "a bare marker is
  *   refused, because a reason must follow it" goes red.
- * - drop the `source.includes(CONTEXT_CALL)` guard -> "a file that opens no context is never a
- *   problem" goes red.
+ * - drop the `contexts === 0` guard -> "a file that opens no context is never a problem" goes red.
+ * - compare `resets` and `contexts` with `> 0` instead of `>=` -> "two contexts and one reset is
+ *   refused" goes red.
+ * - drop `process.exit(1)` from `main()` -> "the script exits non-zero on a refusal" goes red.
+ * - remove the checker from `prebuild`, from `prestart`, or from the pre-commit hook -> "the check
+ *   is named in prebuild, in prestart and in the pre-commit hook, and can block" goes red.
+ * - add a `preferences-reset-exempt:` marker to a third spec -> "exactly these specs are exempt"
+ *   goes red.
  */
 
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import {
   BROWSER_DIR,
@@ -26,9 +35,24 @@ import {
   EXEMPT_MARKER,
   RESET_CALL,
   declaredExemption,
+  occurrences,
   resetProblem,
   specFileNames,
 } from './browser-reset.mjs';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = join(here, '..', '..');
+const SCRIPT = join(here, 'browser-reset.mjs');
+
+/**
+ * The specs that clear this state themselves instead of calling the helper. Named here so a third
+ * one is a red test rather than one more honored-exemption line nobody reads: opting a spec out is
+ * the cheapest way to quiet this check, and it is the one thing the check cannot notice.
+ */
+const EXEMPT_SPECS = [
+  'preferences-integration.browser-spec.mjs',
+  'ui-state-survives-sign-out.browser-spec.mjs',
+];
 
 const OPENS = `const context = await browser.${CONTEXT_CALL});`;
 const RESETS = `await ${RESET_CALL});`;
@@ -42,6 +66,19 @@ test('a spec that opens a context and never resets is refused, naming the call',
   assert.notEqual(problem, null);
   assert.match(problem, /forgot\.browser-spec\.mjs/);
   assert.match(problem, /resetRememberedState/);
+});
+
+test('two contexts and one reset is refused -- the count is per context, not per file', () => {
+  const problem = resetProblem('half.browser-spec.mjs', `${RESETS}\n${OPENS}\n${OPENS}`);
+  assert.notEqual(problem, null, 'a context added to an already-passing spec is the regression to catch');
+  assert.match(problem, /opens 2 browser context\(s\) but calls .* 1 time\(s\)/);
+  assert.equal(resetProblem('whole.browser-spec.mjs', `${RESETS}\n${OPENS}\n${RESETS}\n${OPENS}`), null);
+});
+
+test('occurrences counts every hit, including adjacent ones', () => {
+  assert.equal(occurrences('', CONTEXT_CALL), 0);
+  assert.equal(occurrences(`${CONTEXT_CALL}${CONTEXT_CALL}`, CONTEXT_CALL), 2);
+  assert.equal(occurrences(`a ${CONTEXT_CALL} b ${CONTEXT_CALL} c`, CONTEXT_CALL), 2);
 });
 
 test('a file that opens no context is never a problem, whatever else it contains', () => {
@@ -76,7 +113,7 @@ test('a file declaring no exemption answers null rather than an empty reason', (
 });
 
 test('the real browser directory passes its own check, and is not empty', () => {
-  const dir = join(process.cwd(), BROWSER_DIR);
+  const dir = join(here, '..', BROWSER_DIR);
   const names = specFileNames(dir);
   assert.ok(names.length > 0, 'the browser directory has spec files -- a zero scan is not a pass');
 
@@ -87,4 +124,65 @@ test('the real browser directory passes its own check, and is not empty', () => 
     assert.equal(resetProblem(name, source), null, `${name} satisfies the reset check`);
   }
   assert.ok(opened > 0, 'at least one spec opens a browser context -- otherwise this pins nothing');
+});
+
+test('exactly these specs are exempt -- an opt-out is a red test, not a log line', () => {
+  const dir = join(here, '..', BROWSER_DIR);
+  const exempt = specFileNames(dir).filter(
+    (name) => declaredExemption(readFileSync(join(dir, name), 'utf8')) !== null
+  );
+  assert.deepEqual(exempt, EXEMPT_SPECS);
+});
+
+// --- The script, and the gates it is wired into ---------------------------------------------
+
+/** Run the checker with `cwd` at a throwaway tree holding exactly `files` under `browser/`. */
+function runOver(files) {
+  const root = mkdtempSync(join(tmpdir(), 'browser-reset-'));
+  try {
+    mkdirSync(join(root, BROWSER_DIR));
+    for (const [name, source] of Object.entries(files)) {
+      writeFileSync(join(root, BROWSER_DIR, name), source, 'utf8');
+    }
+    return spawnSync(process.execPath, [SCRIPT], { cwd: root, encoding: 'utf8' });
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
+// The block that prints the refusals and exits non-zero is what every gate below depends on, and
+// nothing above executes it: a reporting-only checker is indistinguishable from a blocking one
+// until a commit slips through, which this project has already shipped once (ipm-manifest).
+test('the script exits non-zero on a refusal, names the file, and reports what it scanned', () => {
+  const run = runOver({ 'forgot.browser-spec.mjs': OPENS });
+  assert.equal(run.status, 1, 'a refusal blocks');
+  assert.match(run.stderr, /forgot\.browser-spec\.mjs/);
+  assert.match(run.stdout, /scanned 1 file\(s\)/, 'and still says what it looked at');
+});
+
+test('the script exits zero on a clean tree and reports the exemptions it honored', () => {
+  const run = runOver({
+    'ok.browser-spec.mjs': `${RESETS}\n${OPENS}`,
+    'exempt.browser-spec.mjs': ` * ${EXEMPT_MARKER} it is about the state surviving.\n${OPENS}`,
+  });
+  assert.equal(run.status, 0, `a clean tree passes: ${run.stderr}`);
+  assert.match(run.stdout, /honored exemption -- exempt\.browser-spec\.mjs: it is about the state surviving\./);
+  assert.match(run.stdout, /browser-reset: clean\./);
+});
+
+// Mutation (Rule 19): remove the browser-reset dispatch from .githooks/pre-commit -> this goes red.
+test('the check is named in prebuild, in prestart and in the pre-commit hook, and can block', () => {
+  const scripts = JSON.parse(readFileSync(join(here, '..', 'package.json'), 'utf8')).scripts;
+  for (const [name, chain] of [
+    ['prebuild', scripts.prebuild],
+    ['prestart', scripts.prestart],
+  ]) {
+    const segments = chain.split('&&').map((segment) => segment.trim());
+    assert.ok(segments.includes('node tools/browser-reset.mjs'), `${name} runs the check as a link of its own`);
+    assert.doesNotMatch(chain, /browser-reset\.mjs[^&]*\|\|/, `${name} does not swallow its exit code`);
+  }
+  const hook = readFileSync(join(REPO_ROOT, '.githooks', 'pre-commit'), 'utf8');
+  const trigger = hook.slice(hook.indexOf('if [ -n "$OS_TRIGGER" ]'));
+  const block = trigger.slice(0, trigger.indexOf('\nfi\n'));
+  assert.match(block, /node tools\/browser-reset\.mjs\)?\s*\|\|\s*STATUS=1/, 'the hook dispatches it inside OS_TRIGGER and feeds STATUS');
 });

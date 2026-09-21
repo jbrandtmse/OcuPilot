@@ -236,3 +236,22 @@ test('clearing the arrival drops it, so it never survives into the next navigati
   stop();
   assert.equal(notified, 1, 'clearing nothing changes nothing');
 });
+
+test("sign-out returns the bar to the published default, so it is not the departed principal's (Story 15.5)", async () => {
+  // Mutation (Rule 19): drop `this.currentOpen = SIDE_BAR_OPEN_DEFAULT` from `endSession` -> this
+  // goes red. The open state left browser storage in this story, so a fresh sign-in in the same
+  // tab no longer starts from a blank slate by construction: without this the next principal sees
+  // the departed one's bar until their own read settles, and for good if it never does.
+  const account = await settled({ [SHELL_SIDE_BAR_OPEN]: SIDE_BAR_OPEN_DEFAULT ? '0' : '1' });
+  const shell = shellOver(account);
+  assert.equal(shell.open(), !SIDE_BAR_OPEN_DEFAULT, 'A signed in with the bar they remembered');
+
+  account.reset();
+  shell.endSession();
+  assert.equal(shell.open(), SIDE_BAR_OPEN_DEFAULT, 'sign-out leaves the published default standing');
+
+  // And the next principal's answer is still adopted in its turn: `endSession` drops `adopted`, so
+  // the first read that settles after it applies rather than being skipped as already taken.
+  await account.load();
+  assert.equal(shell.open(), !SIDE_BAR_OPEN_DEFAULT, "the next principal's own answer is adopted");
+});
