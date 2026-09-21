@@ -3603,8 +3603,7 @@ So that the product's central claim is visible in under a minute.
 - **Given** the Web applications list shows `/csp/myapp` disabled with no resource
 - **When** the user types "enable /csp/myapp and give it the %Development resource"
 - **Then** a read tool-call card runs and completes, then a proposal card appears headed "Proposal - Web application /csp/myapp" with two diff rows - Enabled: No to Yes, Resource: (none) to %Development - and the remaining fields collapsed under "N unchanged fields"
-- **And** the rationale and expected impact render as the agent's labeled text, with "Reverse: disable /csp/myapp and clear its resource"
-- **And** the list's auto-refresh chip reads paused.
+- **And** the rationale and expected impact render as the agent's labeled text, with "Reverse: disable /csp/myapp and clear its resource" [AMENDED 2026-09-21, Epic 5 runner, Rule 5 tier-1 (orchestrator-authorised): the deleted clause read "**And** the list's auto-refresh chip reads paused." Story 5.7's final AC owns the pause, conditioned on `**When** that screen's auto-refresh is on`; the Web applications list declares `refreshes: false` and is absent from AD-43's seven-screen roster, so the condition is not met here. The deleted clause restated 5.7's promise without the condition that makes it true, asserting the chip reads paused on a screen that has no chip]
 
 - **Given** the user presses Confirm
 - **When** the write runs
@@ -3625,7 +3624,7 @@ So that the product's central claim is visible in under a minute.
 
 - DW-1223: the card's "N unchanged fields" disclosure has no rows behind it - `WireRow` emits only `unchangedCount`, so this story's own "remaining fields collapsed" clause has nothing to collapse; exclude secret-typed fields from whatever is added (ledger; routed by cr 2026-09-19)
 - DW-1208: the write tool must require `%Admin_Secure:USE`, not `:WRITE` - no shipped role grants WRITE on a built-in `%Admin_*` resource, so a WRITE pair is a gate only `%All` can pass, and USE is exactly what the classic editor's `%CSP.Portal.Application.CheckSecurity` checks, which is what makes this story's "the same 403 the editor would give" satisfiable (ledger; decided by merge_gate 2026-09-21)
-- DW-1252: a confirm refusal that leaves the row live gives the card no reason anywhere - the refusal must reach the card as a stated reason rather than a silent non-event (ledger; routed by cr 2026-09-19)
+- DW-1426: a refused confirm produces **no write tool-call card at all** (`panel.ts:1012-1018` returns early), so this story's own AC4 `failed - <resource>` has no producer; `panel.spec.ts:3130-3157` pins that absence and must be refined, not loosened. (Supersedes DW-1252, which was dropped as a duplicate of DW-1348 - that entry's code half landed in Story 5.6.) (ledger; routed by merge_gate 2026-09-21)
 - DW-1382: `smoke.sh`'s `agentwrite` and `auditmarker` checks are still `pending`, and AD-45's Rule names one confirmed agent write and its audit marker as part of the one smoke path - this story is the first end-to-end confirmed write in a real area, so it is where they stop being pending (ledger; routed by harvest 2026-09-20)
 
 ### Story 5.9: Permissions - the area's first confirmed user write

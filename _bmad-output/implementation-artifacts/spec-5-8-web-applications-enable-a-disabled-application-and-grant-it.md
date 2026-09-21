@@ -2,7 +2,7 @@
 title: 'Story 5.8: Web applications - enable a disabled application and grant it a resource'
 type: 'feature'
 created: '2026-09-20'
-status: 'blocked'
+status: 'draft'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -189,6 +189,21 @@ Do not write `deferred-work.md`.
 - Given an agent navigation naming a criterion the target descriptor does not declare, when the directive is resolved, then it is refused with `NAV.CRITERIONUNKNOWN` and no arrival is announced.
 
 ## Spec Change Log
+
+- **2026-09-21, lead.** The `intent gap` this spec halted on is resolved. `epics.md:3606` is amended
+  (Rule 5 tier-1, orchestrator-authorised): AC1's `**And** the list's auto-refresh chip reads paused`
+  is deleted. Story 5.7's final AC already owns the pause, conditioned on `**When** that screen's
+  auto-refresh is on` -- a condition satisfiable only on AD-43's seven roster screens. The Web
+  applications list declares `refreshes: false` and is absent from that roster, so the deleted clause
+  restated 5.7's promise without the condition that makes it true. Status reset to `draft` to re-plan.
+- **2026-09-21, lead.** `DW-1252` is dropped as a duplicate of `DW-1348` (code half landed in Story
+  5.6). Its genuine narrower residual is now **`DW-1426`**: a refused confirm produces no write
+  tool-call card at all, so AC4's `failed - <resource>` has no producer. The ledger inbox and the
+  `epics.md` acceptance bullets both carry `DW-1426` in its place.
+- **2026-09-21, lead.** `DW-1208`'s decision is confirmed and is stronger than it looked:
+  `WebAppList.cls:50` already declares `[{"resource": "%Admin_Secure", "permission": "USE"}, ...]`,
+  so the write requires **exactly the pair the screen's own read already declares** -- not merely a
+  satisfiable pair, but the one already on the descriptor. That belongs in the spec's rationale.
 
 ## Review Triage Log
 

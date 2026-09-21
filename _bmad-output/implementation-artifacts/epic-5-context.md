@@ -12,9 +12,7 @@ finished path once per area and add nothing to it.**
 
 ## Stories
 
-- Stories 5.0–5.7 — **done**: Epic 4 cleanup; proposal minted on the instance from a fresh read; the
-  proposal card; confirm as one atomic transition; execution strictly as the user; the prohibited
-  set; the agent marker; the screen shows the change.
+- Stories 5.0–5.7 — **done**: the whole write path; the two sections below carry what survives.
 - Story 5.8: Web applications — enable a disabled application and grant it a resource ← **next**
 - Story 5.9: Permissions — the area's first confirmed user write
 - Story 5.10: Security and secrets — disable and re-enable auditing
@@ -29,7 +27,7 @@ path.** A disabled `/csp/myapp` with no resource; one typed sentence; a read too
 completes; a proposal card headed "Proposal — Web application /csp/myapp" shows **two** diff rows
 (Enabled No→Yes, Resource (none)→%Development) with the rest behind "N unchanged fields"; rationale
 and expected impact render as labeled agent text with "Reverse: disable /csp/myapp and clear its
-resource"; the list's auto-refresh chip reads paused. On Confirm the write runs as that user through
+resource". On Confirm the write runs as that user through
 **the same endpoint the screen's editor uses**, sending the **complete merged property set**, not the
 two changed fields; the status line reads "Confirmed by <user name> · hh:mm:ss" and takes focus; the
 write's card reads "done · audit marked"; the row re-fetches and highlights within two seconds. The
@@ -38,6 +36,15 @@ Audit database with the agent-marker filter, where the event appears under the u
 Without the privilege the user gets **the same 403 the editor would give**, the card reads
 "failed — <resource>", and the agent states the refusal without retrying. OcuPilot's own applications
 are refused on the instance and were never advertised as a tool.
+
+**AC1 carries no auto-refresh-chip clause — deleted 2026-09-21 (Rule 5 tier-1, orchestrator-authorised).
+Do not plan it back.** 5.7's final AC already owns the proposal pause, conditioned on `**When** that
+screen's auto-refresh is on` — satisfiable only on AD-43's seven roster screens (Processes, Process
+details, Databases, Database details, Task schedule, Task details, System usage). The Web applications
+list declares `"refreshes": false` / `"refreshRates": []` in `WebAppList.cls` and is absent from that
+roster, and AD-43's Rule requires **both** the declaration and the roster row, never either alone. The
+clause restated 5.7's promise without the condition that makes it true — asserting the chip reads
+paused on a screen that has no chip. Deleting it removed a contradiction; it dropped no promise.
 
 **5.8's four ledger bullets.**
 
@@ -48,18 +55,21 @@ are refused on the instance and were never advertised as a tool.
   can pass. `USE` is *exactly* what the classic editor checks: the Web Applications editor pages
   declare `Parameter RESOURCE = "%Admin_Secure"` with no suffix, and
   `%CSP.Portal.Application.CheckSecurity` is in full `Quit $System.Security.Check(pResource,"USE")`.
-  That makes 5.8's "the same 403 the editor would give" satisfiable **by construction**. The rejected
-  alternative — an OcuPilot-owned resource carrying its own WRITE — is technically viable but creates
-  a second authorization model that must be kept in step with the vendor's, the failure shape this
-  epic has ruled against repeatedly. Apply the rule to every later `%Admin_*` pair.
+  That makes 5.8's "the same 403 the editor would give" satisfiable **by construction**;
+  `WebAppList.cls:50` declares `"privileges": [{"resource": "%Admin_Secure", "permission": "USE"},
+  {"resource": "%DB_IRISSYS", "permission": "READ"}]`, so the write requires **exactly the pair the
+  screen's own read already declares**, not merely a satisfiable one. The rejected alternative, an OcuPilot-owned resource
+  carrying its own WRITE, creates a second authorization model to keep in step with the vendor's —
+  the failure shape this epic has ruled against. Apply the rule to every later `%Admin_*` pair.
 - **DW-1223.** The "N unchanged fields" disclosure has **no rows behind it** — `WireRow` emits only
   `unchangedCount`, so 5.8's own "remaining fields collapsed" clause has nothing to collapse. Add the
   rows; exclude secret-typed fields.
-- **DW-1252.** A confirm refusal that leaves the row live gives the card **no reason anywhere**; the
-  refusal must reach the card as a stated reason, not a silent non-event.
 - **DW-1382.** `smoke.sh`'s `agentwrite` and `auditmarker` checks are still `pending`, and AD-45's
   Rule names one confirmed agent write and its marker as part of the one smoke path. 5.8 is where
   they stop being pending.
+- **DW-1426.** A refused confirm produces **no write tool-call card at all** (`panel.ts:1012-1018`
+  returns early), so 5.8's own AC4 "failed — <resource>" has no producer. `panel.spec.ts:3130-3157`
+  currently **pins that absence**, so it must be refined, not loosened.
 
 **Inherited from 5.1–5.6 — consumed, never re-decided.** The instance mints every proposal from a
 fresh read (server id, user, conversation, tool, resolved arguments, AD-13's scoped target triple, a
@@ -92,18 +102,18 @@ write tool can register.**
   AD-43's pause, in that order.
 - The per-type id rule is a **declared table** — `EntityRef.IDRULES`/`IDRULENAMES` — that
   `ui/tools/screen-mirror.mjs` mirrors and **throws at prebuild** on an undeclared rule, unknown type,
-  a rule the client cannot implement, or a duplicate type; `REFSEPARATOR` likewise. There is **no**
-  second identity rule hand-written in TypeScript — that second source is what AD-5 forbids and is how
-  the original divergence arose. `web-application` folds case and strips trailing slashes.
+  a rule the client cannot implement, or a duplicate type; `REFSEPARATOR` likewise. There is **no** second
+  identity rule hand-written in TypeScript — AD-5 forbids that second source, and it is how the
+  original divergence arose. `web-application` folds case and strips trailing slashes.
 - **Sharp edge for any story that marks a row.** `Mint` stores a **folded** `targetRef` while a row's
   key is the name the instance returns, **case-preserved** (`Security.Applications` keeps the name as
-  created). Two separate HIGH defects came from that gap in 5.7 alone — the mark never landing, then
-  never clearing — **both found with the whole suite green**. `DataTable.viewKeyFor` and
+  created). Two HIGH defects came from that gap in 5.7 — the mark never landing, then never
+  clearing — **both with the whole suite green**. `DataTable.viewKeyFor` and
   `changedKeyFor` are the reconciliation points, and 5.8 marks a `/csp/myapp` row.
-- `DefinitionForm.publishChange()` now takes its action, so a create publishes `created` and an edit
-  `updated`; it previously hard-coded `updated`, leaving AD-14's `created` unreachable.
-- The off-screen toast exists — store, stack of three, two lifetimes, counted hover/focus hold,
-  dismiss, "Open in <screen>" — with real browser coverage for geometry, stacking and pointer-events.
+- `DefinitionForm.publishChange()` now takes its action (create → `created`, edit → `updated`); it
+  hard-coded `updated`, leaving AD-14's `created` unreachable.
+- The off-screen toast is built (store, stack of three, two lifetimes, hover/focus hold, dismiss,
+  "Open in <screen>") with real browser coverage — consume it, never rebuild it.
 
 ## Technical Decisions
 
@@ -120,10 +130,10 @@ write tool can register.**
   boundary-crossing reference carries `(entity type, scope, id)`, scope being the namespace or the
   constant `instance`). AD-45, AD-41, AD-15, AD-46, AD-8/AD-9 as amended, AD-10, AD-34, AD-36, AD-40,
   AD-1, AD-29, AD-31, AD-33, AD-35, AD-44, AD-12/AD-39 hold throughout.
-- **IRIS's default isolation is READ UNCOMMITTED (AD-34).** A rival claim's *uncommitted* `confirmed`
-  once made the other claim's `%EXACT(State) = 'live'` sibling UPDATE match zero rows — two confirmed
-  rows on one target and two vendor PUTs. The per-target lock closes it; any new
-  conditional-update-plus-cancel pattern carries the same hazard.
+- **IRIS's default isolation is READ UNCOMMITTED (AD-34).** An *uncommitted* rival `confirmed` once
+  made a sibling `%EXACT(State) = 'live'` UPDATE match zero rows — two confirmed rows on one target,
+  two vendor PUTs. The per-target lock closes it; any new conditional-update-plus-cancel pattern
+  carries the same hazard.
 - **One envelope `{error, reason, code, detail}`**: screens render `reason`, tool results `code`,
   vendor `%Status` normalized at the port boundary with the raw kept for log and ledger only;
   `detail.violations[]` is projected to `{field, code}` before it reaches the model. `Api/Error.cls`
@@ -140,7 +150,7 @@ write tool can register.**
   must declare its row or the `instance` job reddens. `smoke.sh`'s `executed=` count is **not** a stable
   invariant (45 clean, 44 after a browser run) — read the skip lines, not the number (DW-1402).
 - **Prefer the shape that cannot be quietly wrong over the shape that is only right if an enumeration
-  was complete** — 5.5's allowlist plus `additionalProperties: false` is the worked example. A deferred
+  was complete** (5.5's allowlist plus `additionalProperties: false`). A deferred
   entry naming an AD's own invariant is standing work, not a deferral candidate. A hedged finding is
   **probed, not filed**. Rule 19 mutations run on the runner's own throwaway (DW-1185).
 
@@ -163,7 +173,8 @@ write tool can register.**
   the screen is **not** open a toast names the change and carries "Open in <screen>". Toasts are
   **never** used for errors (banners are) nor to confirm what the user just did on the open screen; the
   bus **does not cross tabs**. A live proposal against a screen's entity type **pauses** its
-  auto-refresh with the chip "Auto-refresh paused — a proposal is awaiting confirmation".
+  auto-refresh with the chip "Auto-refresh paused — a proposal is awaiting confirmation" — on
+  AD-43's seven roster screens only, not the Web applications list.
 - **Marking.** The **collapsed** tool-call line carries "done · audit not marked" in `warning` and the
   reply mentions it. The panel's `auditingOffBanner` states **only** that agent writes are not being
   marked and carries no link until Story 7.4; **its absence is never a positive claim that marking
@@ -172,14 +183,13 @@ write tool can register.**
 
 ## Cross-Story Dependencies
 
-- **Ledger routes.** 5.8: DW-1223, DW-1208 (decided), DW-1252, DW-1382. 5.10: DW-1171, DW-1206
+- **Ledger routes.** 5.8: DW-1208 (decided), DW-1223, DW-1382, DW-1426. 5.10: DW-1171, DW-1206
   (validate `secretArguments` against the same declared field set `fingerprintExcludes` uses). 5.11:
   DW-269 (the vendor tasks LIST coerces every task's `Suspended` to false, so a suspended task cannot
   be told from a running one in a list read — declare the `INFO` `rowGet` AD-36 names or state why the
-  story does not need it) and **DW-1419** (AC4's "with the entity selected" is unimplemented — the
-  toast's route names the entity but nothing selects it, because `list-page.ts` injects no
-  `ActivatedRoute` and never reads the id segment; 5.11's own target is the Task schedule list **with
-  that task selected**, so that clause lands here). **DW-456** stays owner-level.
+  story does not need it) and **DW-1419** (AC4's "with the entity selected" is unimplemented — the toast's
+  route names the entity but `list-page.ts` injects no `ActivatedRoute` and never reads the id
+  segment; 5.11's target is the Task schedule list **with that task selected**, so it lands here). **DW-456** stays owner-level.
 - **Per-area shape.** 5.9 writes `Security.User`, one of the 28 non-merging endpoints, and must prove
   by test that a two-field change leaves every other field intact; privilege grants (`%All`, any
   `%Admin_*` role) are **prohibited at any confirmation level**. 5.10's disable-auditing write is
@@ -193,15 +203,14 @@ write tool can register.**
 - **Footprint.** `src/OcuPilot/Test/**` and `ui/src/app/core/**` are **shared-create**; modifying a
   file a **concurrent** epic created is a Clarification. Epic 5's client files:
   `ui/src/app/shell/panel.ts`, `panel.spec.ts`, `proposal-card*`, `reply*`, `tool-call-card*`,
-  `core/proposal-view.ts`, `core/turn.ts`. `shell/panel-resize-handle*` was **released to trunk** (not
-  transferred): Epic 4 created it and has merged, so Epic 5 and Epic 15 alike may edit it, verifying
-  against the other's pushed head immediately before. Genuinely Epic 15's, live on 15.5:
+  `core/proposal-view.ts`, `core/turn.ts`. `shell/panel-resize-handle*` is the trunk's (Epic 4 created
+  it and merged), so Epic 5 and Epic 15 may both edit it, each verifying against the other's pushed
+  head immediately before. Genuinely Epic 15's, live on 15.5:
   `ui/src/app/shell/{header,account-menu,side-bar,command-box}*`, `ui/src/styles/**`.
   `src/OcuPilot/Api/Router.cls` and EXPERIENCE.md's Fixed-strings table are epic-wide **shared-append**
   — tail only, union merge. **Epics 4, 6 and 13 have merged; their files are the trunk's.**
-- **Forward references.** 5.11 navigates to the Task schedule list with the task selected; retargeting
-  at the details route is the one-line change assigned to 7.6. Typed-name confirmation arrives in full
-  at 14.7. Epic 8 depends on Epics 5 and 6; Epic 11 on 4, 5, 6 and 10. **Rule 27** governs the epic's
+- **Forward references.** Retargeting 5.11's navigation at the details route is the one-line change
+  assigned to 7.6. Typed-name confirmation arrives in full at 14.7. Epic 8 depends on Epics 5 and 6; Epic 11 on 4, 5, 6 and 10. **Rule 27** governs the epic's
   burn-down gate, not the stories: only entries blocking the 2026-09-27 floor or a downstream epic's
   story are chartered there; the rest are re-owned to the range-end cleanup story chartered after Epic
   12 merges.
