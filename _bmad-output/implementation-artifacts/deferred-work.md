@@ -5271,3 +5271,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-7-the-screen-shows-the-change.md | severity: low | fix-risk: low | footprint: ui/tools/turn.test.mjs,ui/src/app/shell/panel.spec.ts
 - evidence: The rows are true, and the tests that make them true predate this story; the gap is attribution rather than coverage
 - 2026-09-21T01:31:03Z status=routed owner=range-end-cleanup by=harvest note=NOT blocking, judgment recorded per Rule 27: the behaviour is pinned, just not by this story's own tests, so nothing is unasserted. reopen_if=one of the four rows changes without a test reddening
+
+### DW-1412: A toast still standing from an earlier turn covers the panel's own Send button at 1440x900, so a click-based send lands on the toast
+- source: spec-5-7-the-screen-shows-the-change.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: QA's toast.browser-spec.mjs reached it with two turns in one tab; elementFromPoint on the Send button's centre returns .ocu-toast-message, not the button. Worked around in the test by sending with Enter (panel.ts's own documented path), not fixed.
+- 2026-09-21T02:34:35Z status=open owner=5-7-the-screen-shows-the-change by=qa note=Found while BUILDING the toast's first browser coverage, which is the point of DW-1405: jsdom computes no layout, so nothing below the browser tier could have seen it. The toast is 5.7's own new surface and the panel is Epic 5's, so it is in-story rather than routed.

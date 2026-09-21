@@ -727,6 +727,42 @@ redeployed before the run.
   `'Yes' !== 'No'` while the highlight still landed in 6 ms and every assertion above it stayed
   green -- which is what the new written-value assertion exists to catch. (AC2, AC8)
 
+**QA follow-up (stage: qa, 2026-09-20-21).** Closed the two highest-priority residual-risk gaps
+against a real browser; `OcuPilot.Test.ProposalFixture` gained a paired mixed-case fixture
+(`EnsureMixedCaseWriteTarget` / `MixedCaseWriteTargetField` / `RemoveMixedCaseWriteTarget`,
+`/csp/OcuPilotProbeConfirmMixedCase`) for the first of the two, own application, distinct from the
+existing canonical one so the two never collide.
+
+- `ui/browser/change-highlight-noncanonical.browser-spec.mjs` (QA, new) -- DW-1406's own gap: no
+  browser leg exercised a confirmed write against a non-canonically-spelled application. Confirmed
+  the mixed-case fixture's row (`Security.Applications` keeps the name as created) still carries
+  the highlight, the Changed tag and the re-fetched value within budget.
+  - mutation: `DataTable.viewKeyFor` reverted to an exact `lastKeys` hit or `''` (the pre-DW-1406
+    shape) -> `.ocu-data-table-row-changed` never appeared, timing out at 10 s. Reverted; rebuilt
+    and redeployed; reran green.
+- `ui/browser/toast.browser-spec.mjs` (QA, new) -- DW-1405's own gap: the toast has no browser-tier
+  coverage at all. Two tests: the stack's geometry (position and width against `--ocu-space-3/4`
+  and `--ocu-status-bar-height`, read at runtime rather than assumed; `z-index: 5`), two toasts
+  raised in the same tab with the newer visually on top, and a real click dismissing one; and the
+  "Open in <screen>" action resolving to the real route table and the real `app-list-page`
+  (`toast-host.spec.ts` stands the same click on a two-route stub and asserts the URL string only).
+  - mutation: `pointer-events: auto` removed from `.ocu-toast-region`'s style rule in
+    `toast-host.ts` -> reddened on `regionPointerEvents` directly (`'none' !== 'auto'`) in the
+    first test and on the navigation wait in the second, both because a real click's hit-testing --
+    which jsdom's `.click()` does not perform -- no longer reaches the button once the region
+    inherits `:host`'s `pointer-events: none`. Reverted; rebuilt and redeployed; reran green.
+  - Found in passing, not this story's regression: at this spec's 1440x900 viewport, a toast
+    standing from an earlier turn in the same tab visually and functionally covers the panel's own
+    Send button (`elementFromPoint` on Send's center landed on `.ocu-toast-message`). Two-turns-
+    in-one-tab is what surfaced it; the test now sends with Enter (`panel.ts`'s own documented
+    Enter-sends path) rather than clicking Send, which is unaffected by the overlap. Reported to
+    the lead rather than fixed -- see `## Issues Encountered` in the QA stage's own report.
+- DW-1404 (`DefinitionForm` publishes `updated` on a create) -- judged a code defect, not a test
+  gap: pinning the current behavior would enshrine the bug rather than test it. Left to review.
+- DW-1403 (`REF_SEPARATOR` hand-copied, no build gate) -- judged out of scope for a QA-added test:
+  closing it means teaching `screen-mirror.mjs` to emit the kernel's separator as generated data,
+  which is a generator change, not a test. Left as a follow-up story per the ledger entry.
+
 ## Auto Run Result
 
 Status: done

@@ -474,6 +474,97 @@ ClassMethod RemoveWriteTarget() As %Status
     Quit tSC
 }
 
+/// <p>A second write target, this suite's own, spelled with mixed case at creation
+/// (<class>Security.Applications</class> keeps a name's case exactly as created -- probed on this
+/// build, <class>OcuPilot.Kernel.EntityRef</class>'s own header names the same probe). Exists so a
+/// confirmed write against it exercises the row a canonically-spelled target (<parameter>WRITETARGET</parameter>)
+/// cannot: the client's bus carries the fold-cased canonical id, while the row this application's
+/// own name column renders is spelled as created (DW-1406).</p>
+Parameter WRITETARGETMIXEDCASE = "/csp/OcuPilotProbeConfirmMixedCase";
+
+/// <p>The Description <method>EnsureMixedCaseWriteTarget</method> stamps its own application with,
+/// and the only one <method>RemoveMixedCaseWriteTarget</method> will delete.</p>
+Parameter WRITEMARKERMIXEDCASE = "OcuPilot confirm probe (mixed case)";
+
+/// <p>Create <parameter>WRITETARGETMIXEDCASE</parameter> in <var>pNamespace</var>, mirroring
+/// <method>EnsureWriteTarget</method> in every respect but the path's case, which is deliberate --
+/// see the parameter's own doc comment. Same throwaway-only gate, same never-adopt refusal.</p>
+ClassMethod EnsureMixedCaseWriteTarget(pNamespace As %String = {$Namespace}, Output pCreated As %Boolean) As %Status
+{
+    Set pCreated = 0
+    Set tSC = $$$OK
+    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
+        Quit $$$ERROR($$$GeneralError, "EnsureMixedCaseWriteTarget creates a web application on this instance and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was created. Bring one up with scripts/ci-throwaway.sh, which sets it.")
+    }
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If ##class(Security.Applications).Exists(..#WRITETARGETMIXEDCASE) {
+            Set $NAMESPACE = tOrigNS
+            Set tSC = $$$ERROR($$$GeneralError, "the probe application " _ ..#WRITETARGETMIXEDCASE _ " already exists on this instance; this fixture creates its own and will not adopt one it did not make")
+            Quit
+        }
+        Kill tProps
+        Set tProps("NameSpace") = pNamespace
+        Set tProps("Description") = ..#WRITEMARKERMIXEDCASE
+        Set tProps("Enabled") = 1
+        Set tProps("AutheEnabled") = 32
+        Set tSC = ##class(Security.Applications).Create(..#WRITETARGETMIXEDCASE, .tProps)
+        Set $NAMESPACE = tOrigNS
+        If $$$ISERR(tSC) Quit
+        Set pCreated = 1
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p><parameter>WRITETARGETMIXEDCASE</parameter>'s stored property <var>pField</var>, or
+/// <code>""</code> when the instance carries no such application.</p>
+ClassMethod MixedCaseWriteTargetField(pField As %String = "Enabled") As %String
+{
+    Set tValue = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If ##class(Security.Applications).Exists(..#WRITETARGETMIXEDCASE, .tRow) {
+            Set tValue = $Property(tRow, pField)
+            Set tRow = ""
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tValue = ""
+    }
+    Quit tValue
+}
+
+/// <p>Remove <parameter>WRITETARGETMIXEDCASE</parameter> again. An application that is not there
+/// is not an error.</p>
+ClassMethod RemoveMixedCaseWriteTarget() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If ##class(Security.Applications).Exists(..#WRITETARGETMIXEDCASE, .tRow) {
+            If $IsObject(tRow) && (tRow.Description = ..#WRITEMARKERMIXEDCASE) {
+                Set tRow = ""
+                Set tSC = ##class(Security.Applications).Delete(..#WRITETARGETMIXEDCASE)
+            } Else {
+                Set tRow = ""
+                Set tSC = $$$ERROR($$$GeneralError, "the application at " _ ..#WRITETARGETMIXEDCASE _ " is not this fixture's own, so it was left alone")
+            }
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>Run <var>pSql</var> with one or two bound values.</p>
 ClassMethod Update(pSql As %String, pFirst As %String, pSecond As %String = "") As %Status [ Private ]
 {
