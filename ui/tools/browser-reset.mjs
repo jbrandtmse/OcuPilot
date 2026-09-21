@@ -52,6 +52,17 @@ export const DEFAULT_CONTEXT_CALL = 'browser.newPage(';
 /** The helper call that restores the slate the context no longer provides. */
 export const RESET_CALL = 'resetRememberedState(';
 
+/**
+ * The import that makes `RESET_CALL` resolve.
+ *
+ * Counting the call without checking the import passes a spec that throws
+ * `ReferenceError: resetRememberedState is not defined` on its first test -- which is what an
+ * integrate-forward produces when one side adds the call and the other side's import loses a
+ * merge (2026-09-21: two specs shipped that way and only CI caught them, because this checker
+ * and `npm test` both pass on a file the browser tier cannot load).
+ */
+export const RESET_IMPORT = "from './preferences-reset.mjs'";
+
 /** The marker a spec uses to declare it clears the state itself. A reason must follow it. */
 export const EXEMPT_MARKER = 'preferences-reset-exempt:';
 
@@ -104,6 +115,9 @@ export function resetProblem(name, source) {
       return `${name} both declares ${EXEMPT_MARKER} and calls ${RESET_CALL} -- one or the other`;
     }
     return null;
+  }
+  if (resets > 0 && !source.includes(RESET_IMPORT)) {
+    return `${name} calls ${RESET_CALL} but does not import it (${RESET_IMPORT}), so it throws ReferenceError on its first test -- the call and the import have to travel together`;
   }
   if (resets < contexts) {
     return `${name} opens ${contexts} browser context(s) but calls ${RESET_CALL} ${resets} time(s); preferences live on the instance since Story 15.5, so a fresh context no longer resets them. Call it wherever a context is created, or declare ${EXEMPT_MARKER} <reason> if this spec clears the state itself`;

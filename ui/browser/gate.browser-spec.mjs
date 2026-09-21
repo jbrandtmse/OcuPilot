@@ -46,6 +46,7 @@ import {
   authHeader as sharedAuthHeader,
   definitions as sharedDefinitions,
 } from './panel-spec.mjs';
+import { resetRememberedState } from './preferences-reset.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));

@@ -45,6 +45,7 @@ import {
   setTag as sharedSetTag,
   requireFreeSlot as sharedRequireFreeSlot,
 } from './turnprobe-spec.mjs';
+import { resetRememberedState } from './preferences-reset.mjs';
 
 const config = browserConfig();
 const STRINGS = loadStrings();

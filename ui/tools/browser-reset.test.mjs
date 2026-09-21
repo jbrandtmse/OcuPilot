@@ -21,6 +21,10 @@
  *   goes red.
  * - drop `DEFAULT_CONTEXT_CALL` from `resetProblem`'s `contexts` sum -> "a spec that takes the
  *   browser's default context is counted too" goes red.
+ * - drop the `RESET_IMPORT` arm from `resetProblem` -> "a spec that calls the reset but does not
+ *   import it is refused" goes red. Demonstrated against the tree as well as the fixtures:
+ *   deleting the import line from `browser/context-chip.browser-spec.mjs` made the CLI report
+ *   1 refusal naming that file, and reverting it read clean again.
  */
 
 import assert from 'node:assert/strict';
@@ -40,6 +44,7 @@ import {
   declaredExemption,
   occurrences,
   resetProblem,
+  RESET_IMPORT,
   specFileNames,
 } from './browser-reset.mjs';
 
@@ -58,7 +63,9 @@ const EXEMPT_SPECS = [
 ];
 
 const OPENS = `const context = await browser.${CONTEXT_CALL});`;
-const RESETS = `await ${RESET_CALL});`;
+const RESET_ONLY = `await ${RESET_CALL});`;
+// A real spec that resets also imports; the call alone is the `RESET_IMPORT` refusal below.
+const RESETS = `import { resetRememberedState } ${RESET_IMPORT};\n${RESET_ONLY}`;
 
 test('a spec that opens a context and resets first is accepted', () => {
   assert.equal(resetProblem('ok.browser-spec.mjs', `${RESETS}\n${OPENS}`), null);
@@ -76,6 +83,18 @@ test('two contexts and one reset is refused -- the count is per context, not per
   assert.notEqual(problem, null, 'a context added to an already-passing spec is the regression to catch');
   assert.match(problem, /opens 2 browser context\(s\) but calls .* 1 time\(s\)/);
   assert.equal(resetProblem('whole.browser-spec.mjs', `${RESETS}\n${OPENS}\n${RESETS}\n${OPENS}`), null);
+});
+
+test('a spec that calls the reset but does not import it is refused, naming the import', () => {
+  // The defect this arm exists for, from the 2026-09-21 Epic 15 integrate-forward: one side added
+  // the call, the other side's import lost the merge, and the spec threw
+  // `ReferenceError: resetRememberedState is not defined` on its first test. Both this checker and
+  // `npm test` passed on it -- only the browser tier loads the file, so only CI saw it.
+  const problem = resetProblem('unimported.browser-spec.mjs', `${RESET_ONLY}\n${OPENS}`);
+  assert.notEqual(problem, null, 'counting the call without the import passes a file that cannot load');
+  assert.match(problem, /unimported\.browser-spec\.mjs/);
+  assert.match(problem, /does not import it/);
+  assert.equal(resetProblem('imported.browser-spec.mjs', `${RESETS}\n${OPENS}`), null);
 });
 
 test('a spec that takes the browser\'s default context is counted too', () => {
