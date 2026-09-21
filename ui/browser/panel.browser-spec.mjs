@@ -5,8 +5,9 @@
  * minimum measured at the narrowest supported viewport.
  *
  * jsdom computes no layout and has no pointer, focus order or reload, so each of these is only
- * observable here. Every test opens its own browser context, so a width one test stores is never
- * another's starting point, and the stored preference dies with the context.
+ * observable here. The width a test stores now lives on the instance under the one account every
+ * spec signs in as (AD-50), so a new browser context does not reset it: each test here starts from
+ * the slate `preferences-reset.mjs` restores where the context is created.
  *
  * It refuses the live container. The draft test enables a probe definition (created over the
  * shipped route, flagged through `OcuPilot.Test.AgentFixture.SetFlags` inside the container) and
@@ -29,6 +30,7 @@ import {
   definitions as sharedDefinitions,
   signedInAt as sharedSignedInAt,
 } from './panel-spec.mjs';
+import { rememberedShellMember } from './preferences-reset.mjs';
 
 const config = browserConfig();
 const STRINGS = loadStrings();
@@ -119,6 +121,9 @@ async function enabledProbeDefinition() {
 
 /** A fresh context signed in through the form, standing on `url` with the frame and the panel laid out. */
 async function signedInAt(url, viewport = config.viewport, mediaFeatures = null) {
+  // Story 15.5 (AD-50) resets the instance-held remembered state; that reset lives inside
+  // `panel-spec.mjs`'s `signedInAt` rather than here, so every caller of the shared helper gets
+  // it and no caller has to remember to.
   return sharedSignedInAt(browser, config, url, viewport, mediaFeatures);
 }
 
@@ -204,15 +209,39 @@ function geometry(page) {
 }
 
 /**
- * Wait for the panel's width transition to settle at `width`. Local, not shared: the sibling spec's
- * copy settles to a different tolerance, and unifying them would change a measurement (DW-1151).
+ * Wait for the panel's width transition to settle at `width`. Local, not shared: the sibling
+ * spec's copy settles to a different tolerance, and unifying them would change a measurement
+ * (DW-1151).
+ *
+ * **Polled from the runner, not with `waitForFunction`.** Since Story 15.5 the remembered width
+ * arrives from the instance after the first paint, so on a reloaded tab this waits on a change
+ * that lands after the navigation settles -- and a `waitForFunction` issued straight after
+ * `page.reload` sat through it, reporting a timeout on a panel that had been at the right width
+ * for seconds. Each `page.evaluate` binds to the live execution context, which is what makes the
+ * poll see the page the reload produced.
  */
+/**
+ * Give a fire-and-forget preference write time to arrive, for an assertion that it does not.
+ *
+ * A poll is the right shape for a value that must appear (`panelSettlesAt`); a value that must
+ * stay absent has nothing to poll for, so this bounds how long "absent" was given to become
+ * "present".
+ */
+async function settleWrites() {
+  await new Promise((resolve) => setTimeout(resolve, 500));
+}
+
 async function panelSettlesAt(page, width) {
-  await page.waitForFunction(
-    (wanted) => Math.abs(document.querySelector('app-panel aside.ocu-panel').getBoundingClientRect().width - wanted) < 0.01,
-    { timeout: config.navigationTimeoutMs },
-    width
-  );
+  const deadline = Date.now() + config.navigationTimeoutMs;
+  let seen = null;
+  while (Date.now() < deadline) {
+    seen = await page.evaluate(
+      () => document.querySelector('app-panel aside.ocu-panel')?.getBoundingClientRect().width ?? null
+    );
+    if (seen !== null && Math.abs(seen - width) < 0.01) return;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  assert.fail(`the panel never settled at ${width}; it last measured ${JSON.stringify(seen)}`);
 }
 
 async function pressOnHandle(page, key, times) {
@@ -257,7 +286,10 @@ test('AC3: the handle resizes by keyboard and pointer between 320 and the 640px 
     let shown = await geometry(page);
     assert.equal(shown.valueNow, 432, 'Left widens by 16px a press');
     assert.equal(shown.atStop, false);
-    assert.equal(await page.evaluate(() => localStorage.getItem('ocupilot.panel.width')), '432', 'the stored width updates');
+    // Story 15.5: the width is remembered on the instance, not in the browser. That it comes back
+    // is the AC2 reload test below and `ui-state-survives-sign-out.browser-spec.mjs`; what this
+    // asserts is the other half -- nothing about it reaches browser storage (AD-28, AD-47).
+    assert.equal(await page.evaluate(() => localStorage.getItem('ocupilot.panel.width')), null, 'no width reaches browser storage');
 
     // Drag the edge far past the maximum, then far past the minimum.
     const edge = await page.$eval('app-panel [role="separator"]', (node) => {
@@ -278,7 +310,7 @@ test('AC3: the handle resizes by keyboard and pointer between 320 and the 640px 
     shown = await geometry(page);
     assert.equal(shown.valueNow, 320, 'never below the minimum');
     assert.equal(shown.atStop, true, 'restrained at the minimum as well');
-    assert.equal(await page.evaluate(() => localStorage.getItem('ocupilot.panel.width')), '320');
+    assert.equal(await page.evaluate(() => localStorage.getItem('ocupilot.panel.width')), null);
 
     const cursor = await page.$eval('app-panel [role="separator"]', (node) => getComputedStyle(node).cursor);
     assert.equal(cursor, 'col-resize');
@@ -293,7 +325,7 @@ test('AC3: the handle resizes by keyboard and pointer between 320 and the 640px 
 });
 
 test('AC2: the same panel element, draft and width survive navigation, and the width survives a reload', async () => {
-  // Mutation (Rule 19): make `PreferenceStore.setPanelWidth` write nothing -> this goes red on the
+  // Mutation (Rule 19): make `PanelState.rememberWidth` send nothing -> this goes red on the
   // width after the reload.
   // DW-1048: both inside the try, with the context hoisted, so a throw between creating the probe
   // definition and signing in still reaches the `finally` that removes it. Left outside, a failed
@@ -460,13 +492,22 @@ test('Signing out clears the panel draft and full screen; the next sign-in start
     // the hit test below goes red.
     await page.click('#ocu-account-trigger');
     await page.waitForSelector('[role="menuitem"]', { visible: true, timeout: config.navigationTimeoutMs });
-    const hit = await page.evaluate(() => {
-      const item = document.querySelector('[role="menuitem"]');
+    // Sign out by NAME, not by position: Story 15.1 put Change password above it, and a menu that
+    // grows again (15.6's theme toggle) must not silently turn this into a click on something else.
+    const signOut = await page.evaluate((label) => {
+      const item = [...document.querySelectorAll('[role="menuitem"]')].find(
+        (candidate) => candidate.textContent.trim() === label
+      );
+      if (item === undefined) return null;
       const box = item.getBoundingClientRect();
-      return item.contains(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2));
-    });
-    assert.equal(hit, true, 'the account menu item is the element under the pointer, not clipped by the status bar');
-    await page.click('[role="menuitem"]');
+      item.id = 'ocu-probe-sign-out';
+      return {
+        hit: item.contains(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)),
+      };
+    }, STRINGS.actionSignOut);
+    assert.notEqual(signOut, null, 'the account menu lists Sign out');
+    assert.equal(signOut.hit, true, 'the account menu item is the element under the pointer, not clipped by the status bar');
+    await page.click('#ocu-probe-sign-out');
     await page.waitForSelector('#ocu-signin-user', { visible: true, timeout: config.navigationTimeoutMs });
 
     await page.type('#ocu-signin-user', config.username);
@@ -584,14 +625,21 @@ test('Yield order at 1,920, 1,280 (and reopened), 1,024 and 900px; the page body
 
     shown = await at(1280);
     assert.deepEqual([shown.sideBar, Math.round(shown.panelWidth), Math.round(shown.contentWidth)], [0, 400, 832]);
-    assert.equal(await page.evaluate(() => localStorage.getItem('ocupilot.side-bar.open')), null, 'the yield writes no preference');
+    // Story 15.5 (DW-134): the open state is the instance's now, so reading `localStorage` here
+    // asserted nothing -- the key is banned everywhere under `ui/src` and is null whatever the
+    // yield does. `signedInAt` cleared this account's rows, so "no row" is still the whole claim.
+    // The wait is a settle for a write that must NOT arrive, which is the one case a poll cannot
+    // serve.
+    await settleWrites();
+    assert.equal(await rememberedShellMember('sideBarOpen'), null, 'the yield writes no preference');
 
     await page.focus('main#ocu-content');
     await chord(page, 'KeyB');
     await panelSettlesAt(page, 352);
     shown = await geometry(page);
     assert.deepEqual([shown.sideBar, Math.round(shown.panelWidth), Math.round(shown.contentWidth)], [240, 352, 640]);
-    assert.equal(await page.evaluate(() => localStorage.getItem('ocupilot.panel.width')), null, 'the reopen writes no stored width');
+    await settleWrites();
+    assert.equal(await rememberedShellMember('panelWidth'), null, 'the reopen writes no stored width');
 
     // The chord again returns the reopened side bar to the yield, still writing no preference.
     await page.focus('main#ocu-content');
@@ -599,7 +647,8 @@ test('Yield order at 1,920, 1,280 (and reopened), 1,024 and 900px; the page body
     await panelSettlesAt(page, 400);
     shown = await geometry(page);
     assert.deepEqual([shown.sideBar, Math.round(shown.panelWidth), Math.round(shown.contentWidth)], [0, 400, 832]);
-    assert.equal(await page.evaluate(() => localStorage.getItem('ocupilot.side-bar.open')), null);
+    await settleWrites();
+    assert.equal(await rememberedShellMember('sideBarOpen'), null);
 
     shown = await at(1024);
     assert.deepEqual([shown.sideBar, Math.round(shown.panelWidth), Math.round(shown.contentWidth)], [0, 336, 640]);

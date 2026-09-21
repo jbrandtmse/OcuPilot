@@ -42,7 +42,9 @@ const {
 const { ChangeBus, PROPOSAL_EXPIRY_MS } = await import(corePath('change-bus.ts'));
 const { RefreshService } = await import(corePath('refresh.ts'));
 const { ScreenStores } = await import(corePath('screen-store.ts'));
-const { PreferenceStore } = await import(corePath('preferences.ts'));
+const { stubAccountPreferences } = await import(
+  new URL('../src/app/testing/account-preferences.ts', import.meta.url).href
+);
 
 const LIMITS_PATH = join(repoRoot, 'src', 'OcuPilot', 'Kernel', 'Agent', 'Limits.cls');
 const APP_DIR = join(uiRoot, 'src', 'app');
@@ -267,7 +269,7 @@ test('sign-out closes every proposal this store opened', async () => {
 /** The refresh framework wired the way `src/main.ts` wires it, over `bus`. */
 function boundRefresh(bus) {
   const scheduled = [];
-  const stores = new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
+  const stores = new ScreenStores({ account: stubAccountPreferences() });
   const refresh = new RefreshService({
     stores,
     connectivity: { park: () => () => {}, isOnline: () => true },

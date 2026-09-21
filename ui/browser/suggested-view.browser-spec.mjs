@@ -41,6 +41,7 @@ import {
   signedInAt as sharedSignedInAt,
 } from './panel-spec.mjs';
 import { armProbeDefinition, disarmProbeDefinition, removeDefinition } from './turnprobe-spec.mjs';
+import { rememberedShellMember, resetRememberedState } from './preferences-reset.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -198,9 +199,9 @@ test('AC9: leaving Home returns the panel to the remembered width, which the Hom
   try {
     await panelSettlesAt(page, 960);
     assert.equal(
-      await page.evaluate(() => localStorage.getItem('ocupilot.panel.width')),
+      await rememberedShellMember('panelWidth'),
       null,
-      'the Home target writes no stored width'
+      'the Home target writes no remembered width'
     );
 
     // A client-side route change, so the tab stays signed in and the panel is never re-created
@@ -216,7 +217,7 @@ test('AC9: leaving Home returns the panel to the remembered width, which the Hom
     );
     await panelSettlesAt(page, 400);
     assert.equal(
-      await page.evaluate(() => localStorage.getItem('ocupilot.panel.width')),
+      await rememberedShellMember('panelWidth'),
       null,
       'and it is still the default the Home target never wrote'
     );
@@ -284,8 +285,11 @@ test('AC11: a drag on the handle while on Home lands where the pointer is and is
     await panelSettlesAt(page, 880);
     const shown = await geometry(page);
     assert.equal(shown.valueNow, 880, 'the handle reports the width it was dragged to');
+    // Story 15.5: the remembered width is the instance's, not the browser's, and the write settles
+    // after the drag ends.
+    await new Promise((resolve) => setTimeout(resolve, 500));
     assert.equal(
-      await page.evaluate(() => localStorage.getItem('ocupilot.panel.width')),
+      await rememberedShellMember('panelWidth'),
       '880',
       'and that width is the stored remembered width'
     );

@@ -40,6 +40,7 @@ import {
   scriptReply,
   setTag,
 } from './turnprobe-spec.mjs';
+import { resetRememberedState } from './preferences-reset.mjs';
 
 const config = browserConfig();
 const STRINGS = loadStrings();
@@ -113,6 +114,10 @@ test('AC2: a tool the principal may not call renders a card naming the pair, and
   scriptReply(probe, tag, 0, `##class(OcuPilot.Test.TurnProvider).ToolUseReply("${escapeOs(REFUSED_TOOL)}")`);
   scriptReply(probe, tag, 0, '##class(OcuPilot.Test.TurnProvider).TextReply("I could not read that.")');
 
+  // Story 15.5 (AD-50): the remembered screen and shell state lives on the instance now, keyed
+  // by the one account this spec signs in as, so a fresh `BrowserContext` is no longer a fresh
+  // slate on its own.
+  await resetRememberedState();
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
   page.setDefaultNavigationTimeout(config.navigationTimeoutMs);

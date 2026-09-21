@@ -30,6 +30,7 @@ import { checkClassicLinks } from '../tools/classic-links.mjs';
 import { parseMarkers } from './iris-session.mjs';
 import { clickRowCentre, waitForRows } from './list-spec.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
+import { resetRememberedState } from './preferences-reset.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -162,6 +163,10 @@ after(async () => {
  * recorded and every screen read's JSON answer captured.
  */
 async function signedInAt(url, user, password) {
+  // Story 15.5: the remembered screen and shell state lives on the instance now, keyed by the
+  // one account every spec signs in as, so a fresh context is no longer a fresh slate on its
+  // own -- see `preferences-reset.mjs`.
+  await resetRememberedState();
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
   page.setDefaultNavigationTimeout(config.navigationTimeoutMs);

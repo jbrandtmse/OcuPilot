@@ -51,6 +51,7 @@ import {
   scriptReply as sharedScriptReply,
   setTag as sharedSetTag,
 } from './turnprobe-spec.mjs';
+import { resetRememberedState } from './preferences-reset.mjs';
 
 const config = browserConfig();
 const probe = { container: config.container, marker: 'DEMO' };
@@ -228,6 +229,11 @@ function textReply(text) {
 
 /** A fresh context signed in as this file's own principal, standing on `url`. */
 async function signedInAsPrincipal(url) {
+  // Story 15.5 (AD-50): the remembered screen and shell state lives on the instance now, keyed
+  // by the account signing in, so a fresh `BrowserContext` is no longer a fresh slate. This spec
+  // builds its own context for its own least-privileged principal rather than going through
+  // `panel-spec.mjs`'s helper, so it makes the call itself.
+  await resetRememberedState();
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
   page.setDefaultNavigationTimeout(config.navigationTimeoutMs);

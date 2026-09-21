@@ -194,7 +194,7 @@ services:
       # by package, so a runner pointed at an instance someone cares about would otherwise create
       # principals on it. scripts/check-objectscript.py's destructive-test-guard rule holds the
       # population.
-      # classes: AgentWireSecurity, AuditMarker, ConfigGate, CredentialPrivilege, DenialParity
+      # classes: AccountPasswordWire, AgentWireSecurity, AuditMarker, ConfigGate, CredentialPrivilege, DenialParity
       # classes: Disabled, ErrorLogDenial, LedgerWire, LogSourceDenial, MgmntPortDenial, OAuthTabs
       # classes: ProhibitedRoute, ProposalFixture, ProposalSpelling, State, Token, ToolSetFull
       # classes: ToolWire, TurnContext, TurnConversation, TurnLong, TurnProviderFault, TurnWire

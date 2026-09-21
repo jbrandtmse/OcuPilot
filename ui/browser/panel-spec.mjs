@@ -25,6 +25,8 @@
  * measurement rather than remove a copy.
  */
 
+import { resetRememberedState } from './preferences-reset.mjs';
+
 import assert from 'node:assert/strict';
 
 import { leaveFirstLoginGate } from './shell-entry.mjs';
@@ -58,6 +60,12 @@ export async function definitions(config) {
  * panel laid out. `mediaFeatures`, when supplied, is emulated before the first navigation.
  */
 export async function signedInAt(browser, config, url, viewport = config.viewport, mediaFeatures = null) {
+  // Story 15.5 (AD-50): the remembered screen and shell state lives on the instance now, keyed by
+  // the one account every spec signs in as, so a fresh `BrowserContext` is no longer a fresh slate
+  // on its own. The reset belongs HERE rather than in each caller: this helper exists because five
+  // specs held copies that drifted silently, and a reset the callers each remember to make is the
+  // same shape of drift one refactor later.
+  await resetRememberedState();
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
   page.setDefaultNavigationTimeout(config.navigationTimeoutMs);

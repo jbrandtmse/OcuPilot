@@ -21,6 +21,7 @@ import puppeteer from 'puppeteer';
 import { READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { clickRowCentre, filterToSubset, viewCount, waitForRows } from './list-spec.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
+import { resetRememberedState } from './preferences-reset.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -50,6 +51,10 @@ after(async () => {
  * recorded and every screen read's JSON answer captured, newest last.
  */
 async function signedInAt(url) {
+  // Story 15.5: the remembered screen and shell state lives on the instance now, keyed by the
+  // one account every spec signs in as, so a fresh context is no longer a fresh slate on its
+  // own -- see `preferences-reset.mjs`.
+  await resetRememberedState();
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
   page.setDefaultNavigationTimeout(config.navigationTimeoutMs);

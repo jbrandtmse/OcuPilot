@@ -32,6 +32,7 @@ import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '..
 import { leaveFirstLoginGate } from './shell-entry.mjs';
 import { authHeader as sharedAuthHeader, saveAndSettle } from './panel-spec.mjs';
 import { requireFreeSlot } from './turnprobe-spec.mjs';
+import { resetRememberedState } from './preferences-reset.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -108,6 +109,10 @@ async function setSwitches(body) {
 
 /** A fresh context signed in through the shell's own form, landed at `url`. */
 async function signedInAt(url) {
+  // Story 15.5: the remembered screen and shell state lives on the instance now, keyed by the
+  // one account every spec signs in as, so a fresh context is no longer a fresh slate on its
+  // own -- see `preferences-reset.mjs`.
+  await resetRememberedState();
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
   page.setDefaultNavigationTimeout(config.navigationTimeoutMs);

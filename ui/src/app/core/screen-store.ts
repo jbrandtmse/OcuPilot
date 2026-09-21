@@ -7,9 +7,9 @@
  * in the component would be lost on the first navigation and fought over on the first tick.
  *
  * **Two lifetimes.** `rate`, `sort`, `direction`, `filter` and `maxRows` are what the user chose,
- * and survive leaving and returning to the screen (EXPERIENCE.md, Screen Synchronization): the
- * rate through `PreferenceStore`'s rate map and the other four through its view map, restored when
- * the store is created. `data`, `truncated`, `banner`, `lastUpdate`, `selection`, `active`,
+ * and survive leaving and returning to the screen -- and a sign-out (Story 15.5, AD-50): the rate
+ * and the other four are two rows on the instance, keyed by this screen's route, adopted on the
+ * first answered read of `AccountPreferences`. `data`, `truncated`, `banner`, `lastUpdate`, `selection`, `active`,
  * `changed`, `refusal` and
  * `scroll` are what the instance last said and where the user last was, so they live for as long
  * as the tab holds the store and are never persisted -- a remembered scroll offset into rows that
@@ -29,7 +29,8 @@
  * is where the refresh framework's own pins live.
  */
 
-import type { PreferenceStore } from './preferences';
+import { AccountPreferences, REFRESH_KIND, VIEW_KIND } from './account-preferences.ts';
+import { screenForDescriptor } from './navigation.ts';
 
 /** The sort directions a table view may hold; `''` takes the declared direction. */
 export type SortDirection = '' | 'asc' | 'desc';
@@ -43,19 +44,51 @@ export const DEFAULT_MAX_ROWS = 1000;
 /** Off, which is every screen's default refresh setting (EXPERIENCE.md "Auto-refresh off"). */
 export const RATE_OFF = 0;
 
+/** What a screen remembers of its table's view: its sort, direction, filter and max rows. */
+export interface ScreenViewPreference {
+  readonly sort: string;
+  readonly direction: string;
+  readonly filter: string;
+  readonly maxRows: number;
+}
+
+/**
+ * The longest remembered value the instance keeps, equal to
+ * `OcuPilot.Kernel.State.Pref.VALUEMAXLENGTH`. A serialized view longer than this is refused by
+ * the handler, so `rememberView` does not send it -- the in-memory filter is unaffected and only
+ * the remembering is skipped, the way `setMaxRows` refuses a cap that is not a row count.
+ */
+export const PREFERENCE_VALUE_MAX = 256;
+
 export interface ScreenStoreOptions {
   /** The descriptor class name this store is keyed by. */
   readonly descriptor: string;
+  /**
+   * The route the remembered rate and view are stored under, `''` for a screen with none.
+   *
+   * **Keyed by route, not by descriptor** (Story 15.5): the stored row is a weak reference to a
+   * screen (AD-37), and a route is what the instance can gate with the screen registry, exactly as
+   * it gates a favorite. The store itself is still keyed by descriptor, which is the identity AD-5
+   * makes stable.
+   */
+  readonly route: string;
   /** The rates the descriptor permits, so a stored rate outside them falls back. */
   readonly rates: readonly number[];
-  /** Where the rate and the view choices are remembered (AD-47's carve-out). */
-  readonly preferences: PreferenceStore;
+  /** Where the rate and the view choices are remembered (AD-50). */
+  readonly account: AccountPreferences;
 }
 
 export class ScreenStore {
   private readonly descriptor: string;
+  private readonly route: string;
   private readonly permitted: readonly number[];
-  private readonly preferences: PreferenceStore;
+  private readonly account: AccountPreferences;
+
+  /** Whether the instance's answer has been adopted since the last sign-in; `ShellState`'s flag. */
+  private adopted = false;
+
+  /** Released by `ScreenStores.reset()`, so a dropped store stops listening to the account store. */
+  private stopAccount: () => void = () => {};
 
   private rows: readonly ScreenRow[] = [];
   private truncatedFlag = false;
@@ -78,20 +111,79 @@ export class ScreenStore {
 
   constructor(options: ScreenStoreOptions) {
     this.descriptor = options.descriptor;
+    this.route = options.route;
     this.permitted = options.rates;
-    this.preferences = options.preferences;
-    this.rateSeconds = this.preferences.refreshRate(this.descriptor, this.permitted);
-    const view = this.preferences.screenView(this.descriptor, DEFAULT_MAX_ROWS);
+    this.account = options.account;
+    this.stopAccount = this.account.subscribe(() => this.adoptRemembered());
+    this.adoptRemembered();
+  }
+
+  /**
+   * Take the instance's remembered rate and view, once, on the first answer that carries them.
+   *
+   * Until the read settles the published defaults render -- off, and a cap of `DEFAULT_MAX_ROWS`
+   * -- and a read that failed keeps them rather than clearing anything. A rate the descriptor no
+   * longer permits falls back to off, which is the published default and a state the chip can
+   * name; a view member of the wrong shape falls back field by field.
+   */
+  private adoptRemembered(): void {
+    if (!this.account.loaded()) {
+      this.adopted = false;
+      return;
+    }
+    if (this.adopted || this.route === '') return;
+    this.adopted = true;
+    let moved = false;
+    const rate = Number(this.account.refreshRates().get(this.route) ?? '');
+    if (Number.isFinite(rate) && this.permitted.includes(rate) && rate !== this.rateSeconds) {
+      this.rateSeconds = rate;
+      moved = true;
+    }
+    const view = this.storedView();
     if (view !== null) {
       this.sortBy = view.sort;
       this.sortDirection = view.direction === 'asc' || view.direction === 'desc' ? view.direction : '';
       this.filterText = view.filter;
       this.rowCap = view.maxRows;
+      moved = true;
     }
+    if (moved) this.notify();
+  }
+
+  /** The remembered view, or `null` when nothing usable is stored. */
+  private storedView(): ScreenViewPreference | null {
+    const raw = this.account.views().get(this.route);
+    if (raw === undefined) return null;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw) as unknown;
+    } catch {
+      return null;
+    }
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return null;
+    const view = parsed as Record<string, unknown>;
+    const text = (value: unknown): string => (typeof value === 'string' ? value : '');
+    const cap = view['maxRows'];
+    return {
+      sort: text(view['sort']),
+      direction: text(view['direction']),
+      filter: text(view['filter']),
+      maxRows: typeof cap === 'number' && Number.isSafeInteger(cap) && cap > 0 ? cap : DEFAULT_MAX_ROWS,
+    };
   }
 
   key(): string {
     return this.descriptor;
+  }
+
+  /**
+   * Stop listening to the account store. Called only by `ScreenStores.reset()`: a store the map
+   * has dropped is unreachable, and one still subscribed would be notified for the life of the tab
+   * -- one leaked listener per screen the departed principal opened.
+   */
+  release(): void {
+    this.stopAccount();
+    this.stopAccount = () => {};
   }
 
   subscribe(listener: () => void): () => void {
@@ -281,7 +373,7 @@ export class ScreenStore {
     this.notify();
   }
 
-  // --- What the user chose, remembered per browser --------------------------------------------
+  // --- What the user chose, remembered per user on the instance -------------------------------
 
   sort(): string {
     return this.sortBy;
@@ -347,18 +439,25 @@ export class ScreenStore {
   setRate(seconds: number): boolean {
     if (seconds !== RATE_OFF && !this.permitted.includes(seconds)) return false;
     this.rateSeconds = seconds;
-    this.preferences.setRefreshRate(this.descriptor, seconds);
+    if (this.route !== '') void this.account.setValue(REFRESH_KIND, this.route, String(seconds));
     this.notify();
     return true;
   }
 
+  /**
+   * Send this screen's view to the instance. Never awaited: the table has already moved, and a
+   * refusal is recorded as a fault the shell's surfaces announce (DW-1326).
+   */
   private rememberView(): void {
-    this.preferences.setScreenView(this.descriptor, {
+    if (this.route === '') return;
+    const value = JSON.stringify({
       sort: this.sortBy,
       direction: this.sortDirection,
       filter: this.filterText,
       maxRows: this.rowCap,
     });
+    if (value.length > PREFERENCE_VALUE_MAX) return;
+    void this.account.setValue(VIEW_KIND, this.route, value);
   }
 
   private notify(): void {
@@ -373,28 +472,39 @@ export class ScreenStore {
  * and held across navigation so "the stored rate is restored" needs no re-read on the way back.
  */
 export class ScreenStores {
-  private readonly preferences: PreferenceStore;
+  private readonly account: AccountPreferences;
   private readonly stores = new Map<string, ScreenStore>();
 
-  constructor(options: { readonly preferences: PreferenceStore }) {
-    this.preferences = options.preferences;
+  constructor(options: { readonly account: AccountPreferences }) {
+    this.account = options.account;
   }
 
-  /** The store for `descriptor`, created on first ask. */
-  for(descriptor: string, rates: readonly number[]): ScreenStore {
+  /**
+   * The store for `descriptor`, created on first ask.
+   *
+   * `route` is what the store's remembered rate and view are keyed by (Story 15.5). A caller
+   * holding the screen declaration passes its own, which is what lets a declaration the mirror
+   * does not carry -- a test's, a fixture's -- be remembered too; every other caller lets it
+   * resolve from the mirror, so no page has to hold both identities. A descriptor with neither,
+   * and Home, whose route is the empty string, remember nothing.
+   */
+  for(descriptor: string, rates: readonly number[], route?: string): ScreenStore {
     const held = this.stores.get(descriptor);
     if (held !== undefined) return held;
-    const store = new ScreenStore({ descriptor, rates, preferences: this.preferences });
+    const keyedBy = route ?? screenForDescriptor(descriptor)?.route ?? '';
+    const store = new ScreenStore({ descriptor, route: keyedBy, rates, account: this.account });
     this.stores.set(descriptor, store);
     return store;
   }
 
   /**
    * Drop every store. Sign-out clears the tab in place without a reload, and a screen's rows are
-   * data **this** principal was allowed to read (AD-8); the persisted choices are per browser and
-   * are deliberately not cleared, being preferences rather than answers.
+   * data **this** principal was allowed to read (AD-8). The remembered choices are the departing
+   * principal's own rows on the instance and are not touched: dropping the stores is what makes
+   * the next principal's own answer the one the next store adopts.
    */
   reset(): void {
+    for (const store of this.stores.values()) store.release();
     this.stores.clear();
   }
 }

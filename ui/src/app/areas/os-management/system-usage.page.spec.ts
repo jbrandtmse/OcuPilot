@@ -7,7 +7,6 @@ import { ChangeBus } from '../../core/change-bus';
 import type { ConnectivityService } from '../../core/connectivity';
 import { NavigationService } from '../../core/navigation';
 import { OverlayStack } from '../../core/overlay-stack';
-import { PreferenceStore } from '../../core/preferences';
 import { RefreshService } from '../../core/refresh';
 import { ScopeService } from '../../core/scope';
 import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
@@ -15,6 +14,7 @@ import { ScreenStores } from '../../core/screen-store';
 import { SCREENS } from '../../core/screens.generated';
 import { STRINGS, stringFor } from '../../core/strings';
 import { SystemUsagePage } from './system-usage.page';
+import { stubAccountPreferences } from '../../testing/account-preferences';
 
 /**
  * System usage (Story 6.9), wired end to end over a stub of the HTTP answer, with the real
@@ -94,7 +94,7 @@ async function mount(initialRows: unknown[] = [row()], url = '/os-management/sys
       return { kind: 'ok', status: 200, body: { fields: [], rows: answerRows, truncated: false, banner: '' } as T };
     },
   };
-  const stores = new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
+  const stores = new ScreenStores({ account: stubAccountPreferences() });
   const refresh = new RefreshService({
     stores,
     connectivity: { retryWhenReachable: () => {} } as unknown as ConnectivityService,

@@ -4,18 +4,20 @@ import { provideRouter } from '@angular/router';
 
 import { App } from './app/app';
 import { routes } from './app/app.routes';
+import { About } from './app/core/about';
+import { AccountPreferences } from './app/core/account-preferences';
 import { AgentContext } from './app/core/agent-context';
 import { AgentStatus } from './app/core/agent-status';
 import { ApiService } from './app/core/api';
 import { ChangeBus } from './app/core/change-bus';
 import { ConnectivityService } from './app/core/connectivity';
 import { FormDirty } from './app/core/form-dirty';
+import { HelpLinks } from './app/core/help';
 import { transportFault } from './app/core/fault';
 import { InstanceService } from './app/core/instance';
 import { NavigationService } from './app/core/navigation';
 import { OverlayStack } from './app/core/overlay-stack';
 import { PanelState } from './app/core/panel-layout';
-import { PreferenceStore, readPreferenceStorage } from './app/core/preferences';
 import { RefreshService } from './app/core/refresh';
 import { ScopeService, onScopeChange } from './app/core/scope';
 import { ScreenActions } from './app/core/screen-actions';
@@ -23,6 +25,7 @@ import { ScreenStores } from './app/core/screen-store';
 import { Session } from './app/core/session';
 import { ShellState } from './app/core/shell-state';
 import { SuggestedView } from './app/core/suggested-view';
+import { SystemInfo } from './app/core/system-info';
 import { TokenStore, readNavigationKind, readSessionStorage } from './app/core/token-store';
 import { TurnStore } from './app/core/turn';
 import { ViewOptions } from './app/core/view-options';
@@ -129,17 +132,18 @@ onScopeChange(scope, () => {
   refresh.noteScopeChanged();
 });
 
-// The one module permitted to touch persistent storage, and the shell state it backs. Read
-// through `readPreferenceStorage()` rather than `localStorage` directly, for the reason
-// `readSessionStorage()` exists: in a browser with site data blocked the property access
-// itself throws, and at module scope that would abort the bootstrap before anything painted.
-const preferences = new PreferenceStore({ storage: readPreferenceStorage() });
-const shell = new ShellState({ preferences });
+// Everything this user's account remembers (Stories 15.2 and 15.5, AD-50): favorites, recent
+// items, each screen's table view and refresh rate, and the two pieces of shell chrome the user
+// can move. Built here, before the three stores that read it, so the locator bar's toggle, Home's
+// blocks, the command box's ranking, the side bar and the panel all read one answer -- and so that
+// nothing of it is in browser storage (AD-28, AD-47).
+const accountPreferences = new AccountPreferences({ api });
+const shell = new ShellState({ account: accountPreferences });
 
 // The row's width budget and the panel's own state (Story 4.3): the remembered width, the draft,
-// full screen and the yield order, over the same preferences and the same shell. `App` feeds it the
-// viewport width; the side bar, the rail and the panel read the layout it resolves.
-const panel = new PanelState({ preferences, shell });
+// full screen and the yield order, over the same account store and the same shell. `App` feeds it
+// the viewport width; the side bar, the rail and the panel read the layout it resolves.
+const panel = new PanelState({ account: accountPreferences, shell });
 
 // The turn store (Story 4.5): send, poll, stop, restore and New conversation, over the same API
 // service and the same per-tab `sessionStorage` the token pair uses (a second, independent read
@@ -160,7 +164,7 @@ const turn = new TurnStore({
   bus,
 });
 void turn.restore();
-const screenStores = new ScreenStores({ preferences });
+const screenStores = new ScreenStores({ account: accountPreferences });
 const refresh = new RefreshService({
   stores: screenStores,
   connectivity,
@@ -184,6 +188,19 @@ const suggested = new SuggestedView({ api, agentStatus, scope, connectivity });
 // the chip and the Send path both read one answer, and the bus is what keeps a changed row cap
 // or default definition from going stale.
 const agentContext = new AgentContext({ api, bus, connectivity });
+
+// The instance overview (Story 15.3): the About dialog and Home's links panel both read it, so one
+// store means one request and one answer rather than two that can disagree about where this
+// instance's documentation is. Alongside it, the per-screen help addresses the locator bar
+// resolves -- held per screen, so a screen visited twice is asked for once.
+const about = new About({ api });
+const helpLinks = new HelpLinks({ api });
+
+// Home's System Information panel (Story 15.4). Built here like every other core service, and
+// scoped like every other call: its production member is per namespace, so it rides the shell's
+// own `?ns=` rather than naming one of its own (AD-44). It runs no timer -- Home is not on AD-43's
+// auto-refresh roster.
+const systemInfo = new SystemInfo({ api });
 
 // The one authority over Escape (DW-137). Built here like every other core service so the
 // command box, the account menu and the side bar all register with the same instance --
@@ -216,7 +233,6 @@ bootstrapApplication(App, {
     { provide: InstanceService, useValue: instance },
     { provide: NavigationService, useValue: navigation },
     { provide: ScopeService, useValue: scope },
-    { provide: PreferenceStore, useValue: preferences },
     { provide: ShellState, useValue: shell },
     { provide: PanelState, useValue: panel },
     { provide: TurnStore, useValue: turn },
@@ -229,6 +245,10 @@ bootstrapApplication(App, {
     { provide: FormDirty, useValue: formDirty },
     { provide: AgentStatus, useValue: agentStatus },
     { provide: AgentContext, useValue: agentContext },
+    { provide: AccountPreferences, useValue: accountPreferences },
+    { provide: About, useValue: about },
+    { provide: HelpLinks, useValue: helpLinks },
+    { provide: SystemInfo, useValue: systemInfo },
     { provide: SuggestedView, useValue: suggested },
   ],
 }).catch((err) => console.error(err));

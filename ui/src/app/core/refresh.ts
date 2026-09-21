@@ -235,7 +235,7 @@ export class RefreshService {
       refreshes: screen.refreshes,
       screen,
       read,
-      store: this.stores.for(screen.descriptor, screen.refreshRates),
+      store: this.stores.for(screen.descriptor, screen.refreshRates, screen.route),
     };
     this.lastFault = null;
     this.loadedOnce = false;

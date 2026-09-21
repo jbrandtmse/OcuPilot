@@ -14,9 +14,12 @@ import { DefinitionActions } from './areas/agent/definition-actions';
 import { DefinitionForm } from './areas/agent/definition-form.store';
 import { AuditSearch } from './areas/logs/audit.store';
 import { ErrorLogDrill } from './areas/logs/error-log.store';
+import { About } from './core/about';
+import { AccountPreferences } from './core/account-preferences';
 import { AgentContext } from './core/agent-context';
 import { AgentStatus, DEFINITIONS_ROUTE } from './core/agent-status';
 import { ConnectivityService } from './core/connectivity';
+import { HelpLinks } from './core/help';
 import { FormDirty } from './core/form-dirty';
 import { InstanceService, isInstanceReady } from './core/instance';
 import { NavigationService, editorScreenFor, routeFromUrl, screenForRoute, withQuery } from './core/navigation';
@@ -29,7 +32,9 @@ import { Session, isInstallStateUnreadable, isSignedIn } from './core/session';
 import { ShellState } from './core/shell-state';
 import { STRINGS } from './core/strings';
 import { SuggestedView } from './core/suggested-view';
+import { SystemInfo } from './core/system-info';
 import { AgentNavigator } from './shell/agent-navigator';
+import { RecentsRecorder } from './shell/recents-recorder';
 import { CommandBar } from './shell/command-bar';
 import { FaultBanner } from './shell/fault-banner';
 import { Header } from './shell/header';
@@ -39,6 +44,7 @@ import { COMPOSER_ID, Panel } from './shell/panel';
 import { Rail } from './shell/rail';
 import { SIDE_BAR_OVERLAY_ID, SideBar } from './shell/side-bar';
 import { SignIn } from './shell/sign-in';
+import { StaleBundleNotice } from './shell/stale-bundle-notice';
 import { StatusBar } from './shell/status-bar';
 import { ToastHost } from './shell/toast-host';
 
@@ -130,6 +136,7 @@ export function isComposerChord(event: KeyboardEvent): boolean {
     SignIn,
     InstanceNotice,
     FaultBanner,
+    StaleBundleNotice,
     Header,
     Rail,
     SideBar,
@@ -151,6 +158,7 @@ export function isComposerChord(event: KeyboardEvent): boolean {
     }
     <h1 class="ocu-product-heading">{{ STRINGS.productName }}</h1>
     <app-fault-banner />
+    <app-stale-bundle-notice />
     @if (installUnreadable) {
       <app-instance-notice />
     } @else {
@@ -187,6 +195,10 @@ export class App {
   private readonly navigation = inject(NavigationService);
   private readonly agentStatus = inject(AgentStatus);
   private readonly agentContext = inject(AgentContext);
+  private readonly accountPreferences = inject(AccountPreferences);
+  private readonly about = inject(About);
+  private readonly helpLinks = inject(HelpLinks);
+  private readonly systemInfo = inject(SystemInfo);
   private readonly suggested = inject(SuggestedView);
   private readonly scope = inject(ScopeService);
   private readonly router = inject(Router);
@@ -206,6 +218,9 @@ export class App {
   // the agent's navigation directive, so injecting it here is what brings it into existence for
   // the life of the tab (`shell/agent-navigator.ts`).
   private readonly agentNavigator = inject(AgentNavigator);
+  // Constructed for its own sake, the same way: nothing renders the recents recorder, and it has
+  // to live for the tab so every arrival at a built screen is registered (Story 15.2).
+  private readonly recentsRecorder = inject(RecentsRecorder);
   private readonly overlays = inject(OverlayStack);
   private readonly panel = inject(PanelState);
   private readonly turn = inject(TurnStore);
@@ -454,8 +469,11 @@ export class App {
       // map's verdict. Dropped in the same gesture as the map, so the two can never be one
       // principal's answer and another's (AD-8).
       this.agentStatus.reset();
-      // The draft and full screen are this principal's too; the remembered width is the browser's.
+      // The draft, the full screen and the remembered width are all this principal's (Story 15.5:
+      // the width is one account's row on the instance, not the browser's), and so is the side
+      // bar's open state, which is the same row family.
       this.panel.endSession();
+      this.shell.endSession();
       // The tenth: the conversation id and transcript are this principal's own (Story 4.5); the
       // next sign-in in this tab must start fresh rather than adopting a departed principal's
       // conversation (AD-8), and any poll this principal's turn left running must stop.
@@ -468,6 +486,24 @@ export class App {
       // application errors they may read in the namespace they were scoped to. The next sign-in
       // in this tab reads them again rather than rendering a departed principal's counts (AD-8).
       this.suggested.reset();
+      // The thirteenth: the favorites and recent items are one account's rows (Story 15.2,
+      // AD-50), and Home renders them. The next sign-in in this tab reads them again rather than
+      // showing a departed principal's list (AD-8).
+      this.accountPreferences.reset();
+      // The fourteenth: the recorder's own memory of the last route registered. Sign-out leaves
+      // the tab on the same URL, so a recorder that still held it would silently skip the one
+      // screen the next principal resumes on (Story 15.2, AD-8).
+      this.recentsRecorder.reset();
+      // The fifteenth and sixteenth: the instance overview the About dialog and Home's links panel
+      // render, and the per-screen help addresses the locator bar resolved. Both are the
+      // instance's answers to this caller (Story 15.3, AD-8), and the next sign-in asks again.
+      this.about.reset();
+      this.helpLinks.reset();
+      // The seventeenth: the instance state Home's System Information panel renders. Every member
+      // is what the instance answered *this* caller, degrading where their privileges refused
+      // (Story 15.4, AD-8), so the next sign-in in this tab asks again rather than showing a
+      // departed principal's answer.
+      this.systemInfo.reset();
       return;
     }
     void this.instance.verify();
@@ -486,6 +522,11 @@ export class App {
     // The fifth: the context chip's own answer, read beside the status so the chip is never
     // showing off a definition that Enable/kill-switch just changed underneath it.
     void this.agentContext.load();
+    // The sixth: the remembered lists the locator toggle, Home's two blocks and the command box's
+    // ranking all read. Issued on every signed-in pass for the same reason the status read is --
+    // a reloaded tab reaches `signed-in` without an authentication, and Home may be the first
+    // screen it paints.
+    void this.accountPreferences.load();
     void this.runFirstLoginGate(map, status);
   }
 

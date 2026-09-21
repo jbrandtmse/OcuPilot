@@ -24,6 +24,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
+import { resetRememberedState } from './preferences-reset.mjs';
 
 const config = browserConfig();
 const STRINGS = loadStrings();
@@ -85,6 +86,12 @@ test('DW-378: a least-privileged principal sees the panel on two routes, with th
   // The style is compared against the tokens themselves rather than against transcribed numbers:
   // this asserts that the sentence takes the body ramp and the on-surface-variant role, not that
   // the ramp is any particular size.
+  //
+  // Story 15.5 (AD-50): the remembered screen and shell state lives on the instance now, keyed by
+  // the one account every spec signs in as, so a fresh context is no longer a fresh slate on its
+  // own -- see `preferences-reset.mjs`. This spec builds its own context rather than going through
+  // `panel-spec.mjs`'s helper, so it makes the call itself.
+  await resetRememberedState();
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
   page.setDefaultNavigationTimeout(config.navigationTimeoutMs);

@@ -22,6 +22,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-12T08:27:50Z status=decision-pending owner=burndown by=spec_gate note=server half is in 1.8 (buildIdentity on the instance response). The client reload prompt needs two things this project does not have: UX copy in neither DESIGN.md nor EXPERIENCE.md, and a real build identity (Installer.cls:73 is the literal 'dev'). Owner call at the decision sheet
 - 2026-09-12T09:46:32Z occurrence=1-8-instance-identity-and-the-api-version-guard
 - 2026-09-13T21:00:46Z status=routed owner=15-3-about-help-shortcuts-and-the-links-panel by=merge_gate note=owner-delegated decision: charter both halves, a real build identity (Installer.cls:73 is the literal dev) and the stale-bundle reload prompt with its copy. The About panel is where build identity is displayed, so it owns the stamp and the prompt that compares against it
+- 2026-09-20T17:49:08Z status=resolved-by:15-3-about-help-shortcuts-and-the-links-panel by=adjudication note=both chartered halves delivered: Installer.BundleIdentity replaces the dev literal with the deployed bundle's hashed main-*.js name (recorded on the version row, pinned by Test/Instance and Test/Wire), and shell/stale-bundle-notice.ts plus core/build-identity.ts render the polite Reload prompt whose copy is published in EXPERIENCE.md; the Integration AC's browser mutation (chooseReload made a no-op) was observed red and reverted
 
 ### DW-4: Several in-flight calls return 401 at once, each triggering its own refresh
 - source: epics-review-findings.json | severity: med | fix-risk: low | footprint: in-story
@@ -775,6 +776,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-1-7-sign-out.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: ui/src/app/shell/account-menu.ts:65. With one item there is nowhere to arrow to and the item already holds focus on open; EXPERIENCE.md's Interaction Primitives defines an arrow model for the side-bar and table rows but none for menus, so there is no UX contract to build against. Distinct from DW-109 (dismissal).
 - 2026-09-12T07:53:13Z status=wontfix-accepted owner=1-7-sign-out by=cr note=reopen_if=the account menu carries a second role=menuitem
+- 2026-09-20T00:58:43Z status=routed owner=15-1-change-your-own-password by=load note=reopen_if fired: 15.1 adds Change password as the account menu's second role=menuitem. Address the menu keyboard model in 15.1 or decline with a reason.
+- 2026-09-20T04:51:41Z status=resolved-by:15-1-change-your-own-password by=cr note=the house n-item model from data-table.ts:811-839 shipped on the account menu with tabindex=-1 per menuitem and wrap-around Arrow/Home/End off document.activeElement. Pinned by account-menu.spec.ts's two DW-115 cases including an explicit three-item case, and by change-password.browser-spec.mjs's AC7 case against real focus; recorded mutation: clamp instead of wrap -> all three red.
 
 ### DW-116: Token.cls discards the %Status from its PostToken/PostTokenTo/GetApiRoot call sites, so a transport failure reads as 'expected 200, got 0'
 - source: spec-1-7-sign-out.md | severity: low | fix-risk: low | footprint: in-story
@@ -2454,6 +2457,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: measured by the Story 3.6 plan: the data-table row cites :389 where ### data-table is at :394, three stale before this story's five rows made it eight; scripts/check-prose.py does not validate them, so the drift is silent and grows with every amendment
 - 2026-09-16T01:10:13Z status=routed owner=burndown by=lead note=either sweep them once and add a checker that pins them, or replace the line numbers with section anchors that do not move; a contract document whose self-references are wrong is worse than one with none
 - 2026-09-16T10:21:59Z status=routed owner=17-2-a-readme-whose-install-steps-work-the-first-time by=burndown_gate note=documentation self-references, beside the citation gate
+- 2026-09-20T04:51:41Z occurrence=15-1-change-your-own-password by=cr note=the mechanism bit the appending story itself, not only the rows below it: 15.1's new Fixed strings row cited :395 and :414, the pre-insertion numbers for status-bar and masked-secret-field, which its own append at :381 had already shifted to :396 and :415. Corrected in that row at code review; the unfixed population below :381 is untouched.
 
 ### DW-376: DW-373's second half - inline-on-blur validation for every field but the key - is unreachable without a validate-only endpoint, because every field-level sentence is authored once on the server and the only mechanism that hands the client one is a refusal from an actual save
 - source: spec-3-6 | severity: med | fix-risk: med | footprint: in-epic
@@ -2758,6 +2762,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T11:42:04Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=harvest note=the Switches test's shape applies unchanged
 - 2026-09-16T15:11:12Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=x0 note=optimistic-concurrency residue, with the cluster Epic 3 already routed to the confirmed write story
 - 2026-09-19T18:55:05Z status=routed owner=10-1-the-message-and-tool-definition-adapters by=lead note=re-owned off 5.3: the untested branch is Api/Definitions.HandleUpdate's own, and Api/Definitions.cls is contended by Epic 10 for the whole of Epic 5. 10.1 is already editing that file
+- 2026-09-21T02:40:37Z occurrence=15-5-ui-state-that-survives-a-sign-out
 
 ### DW-416: scripts/check-prose.py has no test harness, so its new spec-structure check can stop checking with every gate green
 - source: spec-3-9 | severity: med | fix-risk: low | footprint: in-epic
@@ -2960,6 +2965,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-16T22:11:28Z occurrence=4-1-the-turn-runs-in-a-background-job-and-returns-immediately by=cr note=AD-31 says only a password login is refused; the silent cookie /login of AD-28 was never probed for a disabled account
 - 2026-09-19T02:12:25Z status=routed owner=5-4-execution-strictly-as-the-user by=merge_gate note=check Enabled at authentication and refuse /refresh for a disabled user; a security hole, must ship in Release 1
 - 2026-09-20T06:40:05Z status=resolved-by:5-4-execution-strictly-as-the-user by=adjudication note=the decided refusal shipped: a disabled account is refused 401 AUTH.DISABLED on every dispatched route, from one narrow escalated Enabled read behind the second privileged routine application OcuPilotIdentity, with AD-8 and AD-9 amended at the spec gate to name it. /refresh is not refused at the mint - every overridable %CSP.REST hook is called from code the four token paths never reach and HandleTokenResponse is Final - so the refusal lives at use, which makes a pair minted for a disabled account inert. The code review then found and fixed the failure mode this created: a drifted identity application made EVERY account read AUTH.DISABLED, now separated as 503 INSTALL.UNREADABLE per AD-38
+- 2026-09-20T04:51:41Z occurrence=15-1-change-your-own-password by=cr note=a self-service password change is the same shape as the disable this entry describes: the credential moves and the account's outstanding Bearer pairs keep answering, so every other signed-in tab and device keeps working on the superseded password. The matrix's Session survives row covers the changing tab deliberately (AD-28); nothing covers the others.
 
 ### DW-445: AD-7's Rule still places turn progress in a temp global keyed by turn id, while AD-33 and the shipped Kernel.State.Turn and Step tables keep it in OcuPilot's protected storage
 - source: spec-4-1-the-turn-runs-in-a-background-job-and-returns-immediately.md | severity: med | fix-risk: low | footprint: out-of-footprint
@@ -3048,6 +3054,9 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-19T03:52:06Z status=routed owner=5-0-epic-4-deferred-cleanup by=spec_gate note=same defect as DW-1168 in the same line of .claude/rules/objectscript-testing.md; Story 5.0 fixes the origin, so this closes with it rather than waiting for 17.2
 - 2026-09-19T03:52:06Z occurrence=5-0-epic-4-deferred-cleanup
 - 2026-09-19T07:05:11Z status=resolved-by:5-0-epic-4-deferred-cleanup by=adjudication note=.claude/rules/objectscript-testing.md now names dist/ocupilot-ui, and ui/tools/angular-json.test.mjs pins it against angular.json's outputPath
+- 2026-09-20T17:09:13Z occurrence=15-3-about-help-shortcuts-and-the-links-panel
+- 2026-09-20T17:09:13Z by=harvest note=rediscovered a fourth time from 15.3; already corrected on origin/OCU-1-epic5 (dist/ocupilot-ui) and resolves at that merge, so Epic 15 did not edit the file -- Epic 5 has modified it and it is a Clarification for this epic
+- 2026-09-20T17:54:09Z status=resolved-by:orchestrator-2026-09-20 by=adjudication note=fixed at its origin on the feature branch in 661c3b1 (the rule file now reads dist/ocupilot-ui/browser); integrated into OCU-1-epic15 at the 15.3/15.4 boundary and verified in the merged tree
 
 ### DW-458: At a viewport where the remembered width makes the side bar yield, narrowing the panel to 352 or less brings the side bar back and the panel can no longer be widened without closing the side bar
 - source: spec-4-3-the-docked-panel-present-on-every-route.md | severity: med | fix-risk: med | footprint: in-story
@@ -5056,6 +5065,120 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-19T23:32:10Z status=routed owner=burndown by=cr note=one-line citation fix in the same region as DW-1268; fold into that edit
 - 2026-09-20T00:48:34Z status=routed owner=range-end-cleanup by=merge_gate note=RE-ROUTED off story 13.2. Epic 13 declined it correctly: all three need edits in ui/browser/*.browser-spec.mjs, which is Epic 5's footprint, and Epic 13 has no browser-spec footprint at all. That was an orchestrator error - epic-dependencies.yaml gave Epic 13 the glob ui/src/**/*.browser.spec.ts, which is the wrong directory, extension and separator and matched nothing; the real specs are the 34 ui/browser/*.browser-spec.mjs files. Glob dropped from the graph with the reason recorded inline. Non-blocking under Rule 27: none of the three blocks the 2026-09-27 floor or a downstream-epic story, and DW-1223's five error-log timeouts have already failed to reproduce twice
 
+### DW-1289: A password refused by a configured PasswordValidationRoutine answers 500, not the 422 with the instance's own reason the matrix promises
+- source: spec-15-1-change-your-own-password.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Measured on the slot C throwaway: with a validation routine configured ChangePassword returns 0 with codes 1446,5001 and the routine's own sentence; 5001 is outside POLICYCODES (845,958) so RenderChangeRefusal takes the 500 arm. Same closed list also makes 838 (no such user) opaque, which is correct, and a delegated or LDAP account opaque, which is not.
+- 2026-09-20T04:10:58Z status=open owner=15-1-change-your-own-password by=harvest note=Widening must be surgical: add 5001 only. 838 must stay opaque -- the Boundaries forbid distinguishing wrong-current-password from no-such-user. Not an AC failure on the tested instance (PasswordPattern 3.255ANP, no validation routine), so it is a field-configuration gap.
+- 2026-09-20T04:48:27Z occurrence=15-1-change-your-own-password by=cr note=code review re-confirmed the closed list reaches further than the ledger title: WRONGPASSWORDCODE is likewise closed to 952, so a legacy-hash, LDAP or delegated account's wrong-password refusal is an opaque 500 too. The 500 fall-through arm this entry describes has no server-side test, and the spec's Review Triage Log records it as patched by a patch that in fact drives the body-refusal branch.
+- 2026-09-20T04:51:32Z status=escalated owner=range-end-cleanup by=cr note=re-owned off 15.1 because the fix is an architecture amendment, not a code change: the embedded code a PasswordValidationRoutine refusal carries is 5001, which is $$$GeneralError, so allow-listing it opens the catch-all channel AD-39 exists to close. The matrix's Policy-rejection row names PasswordValidationRoutine in its trigger while its own Error Handling column closes the list to 845 and 958 -- the implementation follows the column, so it is by-design against the spec as written. Closing it needs AD-39 to say how a validation routine's text reaches a caller without the general-error channel.
+
+### DW-1290: The wire test derives its expected policy sentence with the same index-2 assumption the code uses, so both would move together and stay green
+- source: spec-15-1-change-your-own-password.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: TestAPolicyRefusalCarriesTheInstancesOwnText calls GetOneStatusText(tProbeSC,2); PolicyText derives its index from the allow-listed code's position in GetErrorCodes. A refusal carrying more than one embedded error moves both.
+- 2026-09-20T04:10:58Z status=open owner=15-1-change-your-own-password by=harvest note=Rule 19 vacuity: the assertion cannot discriminate the bug it exists to catch.
+- 2026-09-20T04:48:27Z occurrence=15-1-change-your-own-password by=cr note=the same probe is also a live write: TestAPolicyRefusalCarriesTheInstancesOwnText calls ChangePassword with TOOSHORTPASSWORD from the privileged test process, so on any build whose PasswordPattern admits two characters it changes the account under test and the later methods 401 on a misleading failure.
+- 2026-09-20T04:51:32Z status=escalated owner=range-end-cleanup by=cr note=re-owned off 15.1; the recorded fix-risk low is too low. Every candidate oracle for the allow-listed code's text re-implements PolicyText's own index derivation (containment in GetErrorText passes for a wrong index too), so settling it needs a second independent source for that sentence, which does not exist on this build. The failure mode stays contained: the wire test still proves the reason is the instance's and not OcuPilot's fallback.
+
+### DW-1291: The change-password dialog does not submit on Enter, where the house credential form does
+- source: spec-15-1-change-your-own-password.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: The two inputs sit in bare divs with a type=button action and dialog.ts carries no Enter binding; sign-in.ts:112-162 uses a real form (submit). No existing app-dialog call site has a text input, so no house dialog pattern is departed from.
+- 2026-09-20T04:10:58Z status=open owner=15-1-change-your-own-password by=harvest note=A form inside projected content is not a trivial change; weigh against the polish-week floor at adjudication.
+- 2026-09-20T04:51:32Z status=resolved-by:15-1-change-your-own-password by=cr note=patched at code review: (keydown.enter)="submit()" on both masked inputs, the idiom data-table.ts:341 already uses. Not a <form>, because the confirming action is projected into app-dialog's action slot and would sit outside one. Pinned by change-password-dialog.spec.ts's DW-1291 case; mutation: drop both bindings -> that case alone red, 15 of 16 green. Reverted byte-identical.
+
+### DW-1292: A read or decode fault while reading the request body is answered 422 as the caller's malformed body, where Api/Context.cls splits the two apart
+- source: spec-15-1-change-your-own-password.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Context.cls:44-53 routes a non-parse stage to a different refusal. The split was implemented and then reverted: no constructible input reaches the read or decode stage -- an invalid-UTF-8 body parses through -- so the branch could not be pinned by any test.
+- 2026-09-20T04:10:58Z status=wontfix-accepted owner=15-1-change-your-own-password by=harvest note=reopen_if=an input is found that reaches Account.cls's body read or decode stage without parsing
+
+### DW-1293: A new ACCOUNT.* field-level violation code with no ReasonForViolation arm renders a blank reason with no test going red
+- source: spec-15-1-change-your-own-password.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: OcuPilot.Test.AgentViolation.cls:84 skips any parameter whose name does not start with AGENT, so the ACCOUNT.* family is outside the roster guard by construction. Widening the sweep edits an existing file under Epic 13's contended src/OcuPilot/Test/**.
+- 2026-09-20T04:10:59Z status=wontfix-accepted owner=15-1-change-your-own-password by=harvest note=reopen_if=a response is observed carrying an ACCOUNT.* violation with a blank reason
+- 2026-09-20T04:48:27Z occurrence=15-1-change-your-own-password by=cr note=reopen_if has not fired, but the gap is wider than the title: REASONACCOUNTPASSWORDPOLICY is reached only when an allow-listed code carries no text, and no test anywhere calls ReasonForViolation on it, so deleting that arm reddens nothing across the wire test, the roster sweep, the client suite and the browser spec.
+
+### DW-1294: Two handlers render field violations, because Definitions.RenderViolations fixes the envelope code at AGENT.VALIDATION
+- source: spec-15-1-change-your-own-password.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Api/Account.RenderViolations duplicates Api/Definitions.cls:1270 so it can send ACCOUNT.VALIDATION. Both serialize through the one Kernel/AgentRules.ViolationsJson, so AD-12's single writer holds; the fix is an optional pCode parameter on Definitions.cls.
+- 2026-09-20T04:11:11Z status=routed owner=range-end-cleanup by=harvest note=Non-blocking: AD-12's one-writer invariant is not violated, only the code literal is duplicated. Epic 5 has not touched Definitions.cls (checked at d220487..3a2d15f), but the dedupe is not worth a contended-path edit mid-epic.
+
+### DW-1295: The dialog's empty-field reason reuses the published Required string, whose EXPERIENCE.md row names the OpenAPI viewer and not this dialog
+- source: spec-15-1-change-your-own-password.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: strings.test.mjs asserts an exact key count and the spec allowed exactly six new keys, so reusing the published literal was the only compliant option; the table row now under-describes where the string is used.
+- 2026-09-20T04:11:11Z status=routed owner=range-end-cleanup by=harvest note=Non-blocking: documentation drift in a table row, no user-visible effect. The epic-wide EXPERIENCE.md grant would permit the line-neutral amendment, but it does not block the 2026-09-27 floor or any downstream story.
+
+### DW-1296: Three different naming conventions now exist for a masked field's reveal toggle
+- source: spec-15-1-change-your-own-password.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: sign-in.ts:154 labels its toggle STRINGS.fieldPassword, definition-form.page.ts uses agentDefinitionShowKey/HideKey, and this dialog uses accountShowPassword/HidePassword. The first two already differed before this story.
+- 2026-09-20T04:11:11Z status=routed owner=range-end-cleanup by=harvest note=Non-blocking and pre-existing: two of the three conventions predate Story 15.1, which only added a third consistent-with-neither. strings.ts is shared-append across epics, so a rename is a cross-epic edit.
+
+### DW-1298: The corrected REST route-ordering wording has two unamended homes: Router.cls's class doc and check-objectscript.py's own diagnostic
+- source: spec-15-1-change-your-own-password.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: The spine's Consistency Conventions row was corrected to the leading-segments form in this story (7373b40); Router.cls:69 and scripts/check-objectscript.py:1804 still read 'N-segment routes before (N-1)-segment routes', which this story's own tail-appended /account/password contradicts as written.
+- 2026-09-20T04:48:13Z status=routed owner=range-end-cleanup by=cr note=Router.cls is tail-append-only under the orchestrator's shared-append grant until Epic 15 merges and scripts/** is Epic 13's footprint, so no story in flight can amend both; nothing observable turns on it -- check_route_ordering implements the leading-segments form and passes clean over 496 files.
+
+### DW-1299: The account menu's Change password item declares no aria-haspopup, so a screen reader gives no advance notice that it opens a modal
+- source: spec-15-1-change-your-own-password.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: command-bar.ts:190 and :233 set aria-haspopup=menu on menu triggers and command-bar.spec.ts:778 asserts it, so the attribute has a house precedent; account-menu.ts's item opens app-dialog with none. Publishing the value is a third EXPERIENCE.md edit, beyond the two the shared-append grant covers.
+- 2026-09-20T04:48:19Z status=wontfix-accepted owner=15-1-change-your-own-password by=cr note=reopen_if=the account menu's accessibility contract is next amended in EXPERIENCE.md, or a second menuitem opens a dialog
+
+### DW-1318: The PRD's catalog extract still records SH-13/SH-14 favorites and recents storage as undecided, which epics.md and AD-50 have since decided
+- source: spec-15-2-favorites-recent-items-and-menu-search.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: prds/prd-OcuPilot-2026-09-08/extract-catalog.md:530 reads 'undecided' for the storage location; epics.md:5395 requires per-user state on the instance and AD-50 now fixes the store's shape. The decision never propagated back to the PRD or the feature catalog.
+- 2026-09-20T05:44:42Z status=routed owner=range-end-cleanup by=harvest note=Non-blocking: the binding documents (epics.md, the spine) are correct and are what the build reads; the stale line is in a derived extract. Correcting the PRD is a planning-artifact edit with more gravity than a runner should take mid-epic.
+
+### DW-1326: A refused preference write is never surfaced to the user: the client parks every non-ok result and no component reads a fault
+- source: spec-15-2-favorites-recent-items-and-menu-search.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: core/account-preferences.ts settle returns on result.kind!=='ok' and no consumer reads a refusal. At the 20-favorite cap the instance answers 422 PREFERENCES.LIMIT with a written reason that reaches no surface.
+- 2026-09-20T07:01:48Z status=open owner=15-2-favorites-recent-items-and-menu-search by=harvest note=Needs a published string and an EXPERIENCE.md row -- both available under the epic-wide shared-append grant, so the cost is the copy decision, not the path.
+- 2026-09-20T10:51:53Z status=escalated owner=15-5-ui-state-that-survives-a-sign-out by=cr note=confirmed at review and unchanged. Two riders for whoever fixes it: testing/account-preferences.ts has no refusal path at all, so the surfacing has no client test until the stub can refuse; and the announcement guards in locator-bar.toggleFavorite and home.page.announceOnChange are the code that would carry the reason.
+- 2026-09-21T02:44:45Z status=resolved-by:15-5-ui-state-that-survives-a-sign-out by=adjudication note=delivered: AccountPreferences.fault() records the refusal and locator-bar and home.page announce it; testing/account-preferences.ts gained the refusal path the entry asked for. Code review found settle recorded the fault AFTER the newest-wins guard so an overtaken refusal was dropped, patched it, and added the pinning row 'a refusal overtaken by a later write is still announced'. Pinned: account-preferences.test.mjs, locator-bar.spec.ts:567, home.page.spec.ts:708; mutation fault() returns '' reddens both.
+
+### DW-1327: Two concurrent adds of the same (user, kind, route) can trip the unique index and answer 500 instead of the documented no-op
+- source: spec-15-2-favorites-recent-items-and-menu-search.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Pref.GuardedAdd is check-then-insert: OpenByKey finds nothing in both processes and both save, so one loses on PrefUserKindNameIdx. Reachable from two tabs pinning or visiting the same screen at once. The matrix's concurrency row covers the update path, not the create path.
+- 2026-09-20T07:01:48Z status=open owner=15-2-favorites-recent-items-and-menu-search by=harvest note=AD-50 inherits Base's guarded save for updates; the create path has no equivalent. Catching the index violation and re-reading is the likely shape.
+- 2026-09-20T10:51:45Z status=escalated owner=15-5-ui-state-that-survives-a-sign-out by=cr note=two more sites on the same root cause: GuardedAdd's cap check is read-then-write so two adds of DIFFERENT routes can both pass at 19 and store 21, which catching the unique-index violation would not fix; and GuardedTouch's create branch has the identical race and is the path RecentsRecorder drives on every navigation. Reachable from one tab by double-clicking the locator star, not only from two tabs.
+- 2026-09-21T02:44:45Z status=resolved-by:15-5-ui-state-that-survives-a-sign-out by=adjudication note=delivered on all three sites the entry names: Base.IsDuplicateKey is called from GuardedAdd (Pref.cls:180), GuardedTouch's create branch (:250) and GuardedSetValue (:292), so the create race answers by re-reading rather than 500; Base.GuardedSaveWithinCap (:178) moves the cap count and the save into one locked escalated frame, which is the read-then-write overshoot the cr rider added. Code review caught IsCapBusy having no caller (a capped add still answered 500) and wired it at Api/Preferences.cls:211. Pinned by OcuPilot.Test.PrefState 16/16 and PreferencesWire 10/10 on slot B.
+
+### DW-1328: When every stored row in a Home block names no built screen, the block shows its empty state and no Clear control, so rows the instance still holds are invisible and unclearable
+- source: spec-15-2-favorites-recent-items-and-menu-search.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: home.page.ts renders the list and Clear under @if (block.rows.length) and rowsFor drops routes resolving to no built screen (AD-37). The per-row remove path is open but the row is not rendered to remove.
+- 2026-09-20T07:01:48Z status=open owner=15-2-favorites-recent-items-and-menu-search by=harvest note=AD-37 says an unresolvable weak reference renders as no-longer-present rather than failing the screen; vanishing entirely with no way to clear is the failure mode that rule exists to prevent.
+- 2026-09-20T10:51:53Z status=escalated owner=15-5-ui-state-that-survives-a-sign-out by=cr note=widened at review: rowsFor now also drops a stored route naming an UNLISTED screen (sideBarPosition 0), so the all-unresolvable case this entry describes is reachable by one more route than when it was filed. AD-37's Rule is still met for the per-row case; what is missing is a stored count the block does not carry.
+- 2026-09-21T02:44:45Z status=resolved-by:15-5-ui-state-that-survives-a-sign-out by=adjudication note=delivered: RememberedBlock.hasStored is read from the stored rows rather than the rendered ones, so a block whose every row names no built screen keeps its Clear control and says rememberedNoScreensHere. It is a sentence beside Clear, not a count -- the wording in DW-1410's evidence was wrong and code review corrected it at origin. Pinned by home.page.spec.ts:675 with its mutation (make hasStored read rows.length -> Clear disappears and the row reddens).
+
+### DW-1329: Story 15.2's Integration AC has no browser-level observable: sign out, sign in in a new tab, clear site data, both lists still there was never executed
+- source: spec-15-2-favorites-recent-items-and-menu-search.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: Each link is covered separately -- PreferencesWire on the instance, the app.spec rows on the wiring, api.test.mjs's localStorage ban -- but the composition is not. The implement stage did not deploy this story's bundle and server code into the slot C throwaway.
+- 2026-09-20T07:01:48Z status=open owner=15-2-favorites-recent-items-and-menu-search by=harvest note=The lead closes this at the per-story smoke gate, which owns the throwaway; a deployed bundle is the only place the composition is observable.
+- 2026-09-20T10:51:38Z status=resolved-by:15-2-favorites-recent-items-and-menu-search by=cr note=ui/browser/preferences-integration.browser-spec.mjs drives it in a second BrowserContext; code review extended it to AC2 remove and Clear and falsified both against the redeployed bundle
+
+### DW-1330: app.ts's inject(RecentsRecorder) -- the only thing that brings the recorder into existence in the shipped app -- is pinned by no test
+- source: spec-15-2-favorites-recent-items-and-menu-search.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: recents-recorder.spec.ts injects the service itself, so deleting the app.ts field reddens nothing and Recent items would be permanently empty. tsconfig sets no noUnusedLocals.
+- 2026-09-20T07:01:49Z status=open owner=15-2-favorites-recent-items-and-menu-search by=harvest note=Rule 19 vacuity: an assertion that cannot fail. An app.spec row navigating the real router and asserting a visit on the captured stub settles it.
+- 2026-09-20T10:51:38Z status=resolved-by:15-2-favorites-recent-items-and-menu-search by=cr note=app.spec.ts pins inject(RecentsRecorder) and, added at review, recentsRecorder.reset() on the sign-out branch; both falsified
+
+### DW-1331: No test measures that a long remembered-screen label actually ellipsizes
+- source: spec-15-2-favorites-recent-items-and-menu-search.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: min-width: 0 was added to .ocu-home-block-label this pass, but jsdom computes no layout, so only a browser spec can observe it -- the shape classic-link-card.browser-spec.mjs already uses (scrollWidth > clientWidth plus the computed text-overflow).
+- 2026-09-20T07:01:49Z status=open owner=15-2-favorites-recent-items-and-menu-search by=harvest note=Two-way door and browser-only; rides with the Integration AC's browser spec if one is written, otherwise wontfix-accepted with that probe.
+- 2026-09-20T10:51:45Z status=resolved-by:15-2-favorites-recent-items-and-menu-search by=cr note=browser spec measures the ellipsis; the load-bearing rule is .ocu-home-block-open min-width 0, and _components.scss's comment at .ocu-home-block-label was corrected at review to say so
+
+### DW-1340: OcuPilot.Test.PreferencesWire clears the calling account's whole favorites and recents lists, so running it on a dev instance deletes the operator's own
+- source: spec-15-2-favorites-recent-items-and-menu-search.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: OnBeforeOneTest calls Clear(), which GuardedClears Http.GetTestUsername() -- _SYSTEM by default, the account the owner uses on slot A/B/C. PrefState avoids exactly this by writing only probe users; the wire suite cannot, because the route answers for $Username alone. Fix is snapshot-and-restore around each test.
+- 2026-09-20T10:52:02Z status=open owner=range-end-cleanup by=cr note=Harmless on a throwaway, which is where CI runs it; it bites the owner only on a slot instance. Snapshot/restore also has to change the teardown assertion that both lists are empty.
+
+### DW-1341: RecentsRecorder stays subscribed after sign-out, so a Back press on the sign-in card issues an authenticated preference write with no principal
+- source: spec-15-2-favorites-recent-items-and-menu-search.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: app.ts resets lastRoute on sign-out but leaves the router subscription armed, and screenForUrl reads the static generated mirror rather than the reset navigation map. A NavigationEnd after sign-out therefore still resolves a built screen and POSTs /account/preferences, which ApiService meets with its lapsed-pair refresh path. Every other per-principal read in the client is gated on the signed-in state.
+- 2026-09-20T10:52:09Z status=open owner=range-end-cleanup by=cr note=Outcome is a refused write nobody sees, not a wrong render; the fix is a session check in record().
+
+### DW-1342: The locator favorite toggle has no in-flight guard, so two activations inside one round trip both send add and the screen ends pinned
+- source: spec-15-2-favorites-recent-items-and-menu-search.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: toggleFavorite reads isFavorite() synchronously at click time and the store only moves when the instance answers, so a user who presses the star twice to undo sends two adds rather than an add and a remove. The instance's add is idempotent, so the outcome is pinned -- the opposite of what the second press meant. Same shape on Home's per-row remove, where the double send is harmless.
+- 2026-09-20T10:52:16Z status=open owner=range-end-cleanup by=cr note=Distinct from DW-1327: that entry is the server-side race the two requests can trip, this is the client offering the gesture at all. Fix is a pending-route guard in the component.
 ### DW-1286: OcuPilot.Test.AgentConnection's verification-write test no longer reaches the branch it names, so Api/Definitions.cls:853 is undriven
 - source: spec-13-2-the-test-suite-grows-in-ci-against-a-stock-image.md | severity: med | fix-risk: low | footprint: out-of-footprint
 - evidence: It deletes the row then calls ConnectionOutcome, so since DW-362 added the version capture at Api/Definitions.cls:802 it lands on the GuardedVersion-unreadable refusal at :809, not the GuardedSetVerification refusal at :853. Both render 500/INTERNAL and the test asserts only status and code, so it passes either way, and its recorded mutation would not redden it
@@ -5127,6 +5250,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: owner screenshot 2026-09-20, ocupilot-c-ci :52779 /ocupilot/agent/definitions/edit | severity: high | fix-risk: low | footprint: out-of-footprint
 - evidence: Owner-reported from a live screenshot of /ocupilot/agent/definitions/edit?ns=HSCUSTOM. Between the breadcrumb and the info banner sits an empty white box with a grey border, roughly 290px wide, carrying no label and no visible purpose; it reads as an unlabelled text input. NOT either form banner: hasSummary is guarded by violations.length > 0 (definition-form.page.ts:554-556), hasReason by reason !== '' (:589-591), and .ocu-form-summary paints a destructive red background (_components.scss:2881), not a white bordered box. The form's own declared fields are all labelled. Identity unknown from static reading. Probe: load that route on a throwaway with no definitions present and read the DOM between .ocu-form-page's open and the first .ocu-banner, then walk up to whichever component emitted it
 - 2026-09-20T10:10:38Z status=open owner=burndown by=merge_gate note=an unlabelled control is an accessibility defect as well as a visual one, and the suite has no assertion that would notice an element nobody declared
+- 2026-09-20T11:00:20Z by=runner-15 note=IDENTIFIED. It is the command bar's own row filter -- input.ocu-command-bar-filter, type=search, aria-label='Filter rows' -- rendering on a form route that has no rows. Measured live on ocupilot-c-ci :52779 at /ocupilot/agent/definitions/edit?ns=HSCUSTOM with chrome-devtools, viewport 1512 dPR 2: the input is 220x32 at x=304 y=98, and .ocu-form-gate-banner is at y=155, so it sits directly above the banner as reported. The owner's ~290px is a screenshot measurement; 220 CSS px is the live value. The bar renders .ocu-command-bar 741x50 at y=89 whose innerHTML is that one input plus an empty p.ocu-command-bar-count (0x0), an empty span.ocu-command-bar-spacer and seven empty Angular anchors -- so the filter is the only visible child, which is why it reads as a lone unlabelled box. It has an aria-label, so it is not an accessibility defect in the a11y-tree sense; the defect is that a rows filter is mounted on a screen with no rows. The fix belongs wherever the command bar decides to render its filter: gate it on the screen declaring a read/table (the archetype is already a closed vocabulary in Screen/Archetype.cls). Not repaired here -- out of Story 15.2's footprint and the epic handed back before 15.3.
 - 2026-09-20T11:33:05Z status=routed owner=16-15-the-data-egress-line by=merge_gate note=IDENTIFIED by epic-runner-15, which had a browser on that exact route and MEASURED it rather than reasoning about it. It is the command bar's own row filter - input.ocu-command-bar-filter, type=search, aria-label='Filter rows' - mounted on a FORM route that has no rows. Live on :52779 at /ocupilot/agent/definitions/edit, viewport 1512 dPR 2: the input is 220x32 at x=304 y=98 and .ocu-form-gate-banner is at y=155, so it sits directly above the banner as reported; the bar renders 741x50 at y=89 and its entire innerHTML is that one input plus an empty p.ocu-command-bar-count (0x0), an empty spacer and seven empty anchors, which is WHY it reads as a lone unlabelled box. TWO CORRECTIONS TO THE ORCHESTRATOR'S FRAMING: it DOES carry an aria-label so this is not an accessibility-tree defect and the severity drops from high to med; and the defect is not a stray control but a rows filter rendered on a screen with no rows, so the fix belongs where the command bar decides to render itself - gating on the screen declaring a read or table, which Screen/Archetype.cls already makes a closed vocabulary. The orchestrator's elimination of both form banners was right but did not reach the cause
 - 2026-09-20T11:33:05Z severity=med by=merge_gate note=downgraded from high on the identification: an aria-label is present, so screen-reader users get 'Filter rows' rather than an unlabelled control. It remains a visible defect on a form screen and is still worth fixing before release
 
@@ -5372,3 +5496,144 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-5.md | severity: low | fix-risk: low | footprint: _bmad/scripts/ledger.sh
 - evidence: Seven entries across three dates and two gates carry it - DW-1190, DW-1206, DW-1207, DW-1208, DW-1355, DW-1429, DW-1430 - by=cr and by=harvest alike, so it is a convention collision and not one caller's slip. Detection is UNAFFECTED: note=note=human= contains note=human= as a substring, so a decision-sheet grep still matches all 7.
 - 2026-09-21T09:46:14Z status=routed owner=range-end-cleanup by=lead note=Rule 15's grammar says a human-owned entry carries note=human=<what>, and ledger.sh prefixes note= itself, so a caller who follows the rule literally produces the doubling every time. The FIX IS AT THE CAUSE - either the grammar drops its note= or the tool detects an already-prefixed value - and NOT seven appended correction lines, which would add noise without fixing anything and would be a correction longer than the claim it corrects. Cosmetic only: the human= marker is present and greppable, so every affected entry still reaches the decision sheet correctly. Found by the 5.8 reviewer, which read the entries rather than the counts.
+### DW-1368: A transient help-read failure removes that screen's Help control for the rest of the session
+- source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: HelpLinks.load adds the route to asked before awaiting and never removes it on failure; helpHrefFor collapses a refusal, an unavailable answer and an unreachable instance to the same empty string. Closing it gives helpHrefFor a third outcome, which changes its contract. ui/src/app/core/help.ts
+- 2026-09-20T17:09:25Z status=open owner=15-3-about-help-shortcuts-and-the-links-panel by=harvest note=implement-stage deferral
+- 2026-09-20T17:49:09Z status=routed owner=range-end-cleanup by=adjudication note=residual: HelpLinks.load adds a route to asked before awaiting and never removes it on failure, so one transient refusal hides that screen's Help control until reload. Non-blocking for the 2026-09-27 floor and for every downstream story: Help is a convenience link to vendor documentation, the instance is unaffected, and a reload clears it. Closing it gives helpHrefFor a third outcome, which changes a contract this story just published
+
+### DW-1369: stale-bundle-notice.ts has no component spec and app.spec.ts's band-order row was not extended to it
+- source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: The browser tier covers render, role, copy, never-self-reloads and the Reload click, and isStale is unit-tested; what has no jsdom host is where the region sits in the frame, which app.spec.ts pins for its sibling app-fault-banner with a recorded mutation
+- 2026-09-20T17:09:25Z status=open owner=15-3-about-help-shortcuts-and-the-links-panel by=harvest note=implement-stage deferral
+- 2026-09-20T17:44:36Z status=resolved-by:15-3-about-help-shortcuts-and-the-links-panel by=cr note=QA added ui/src/app/shell/stale-bundle-notice.spec.ts (5 cases, 2 mutations) and app.spec.ts's band-order row; verified at code review
+
+### DW-1370: The About dialog renders thirteen blank values between mount and the read settling
+- source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: unanswered is false while neither answered() nor failed() is set, so the first paint is a definition list of empty values rather than a pending state. Sub-second, values arrive in place. ui/src/app/shell/about-dialog.ts
+- 2026-09-20T17:09:25Z status=open owner=15-3-about-help-shortcuts-and-the-links-panel by=harvest note=implement-stage deferral
+- 2026-09-20T17:49:09Z status=wontfix-accepted by=adjudication note=reopen_if=the About dialog's first paint is observed holding empty values for longer than one frame on a normally-loaded instance, or a user-visible flash is reported. Sub-second, the values arrive in place, and the dialog is opened deliberately rather than rendered on arrival
+
+### DW-1371: The stale-bundle strip can stand above the blocking instance notice
+- source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: app.ts renders app-stale-bundle-notice outside the signed-in branch beside the fault banner; the blocking notice is meant to replace the product surface rather than share it. ui/src/app/app.ts
+- 2026-09-20T17:09:25Z status=open owner=15-3-about-help-shortcuts-and-the-links-panel by=harvest note=implement-stage deferral
+- 2026-09-20T17:49:09Z status=routed owner=range-end-cleanup by=adjudication note=residual: app.ts renders app-stale-bundle-notice outside the signed-in branch, so the strip can stand above the blocking instance notice that EXPERIENCE.md says replaces the product surface rather than sharing it. Non-blocking: both surfaces are correct in isolation and the overlap needs an install or upgrade to be in flight while a stale bundle is held. Belongs with the other shell-chrome polish rather than re-opening a done story for a z-order
+
+### DW-1372: The reload prompt's role=status region is inserted when it becomes true rather than kept mounted and populated, which is commonly not announced
+- source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: The house idiom in home.page.ts and account-menu.ts keeps a hidden region mounted and sets its text. EXPERIENCE.md now publishes this prompt among the polite status messages, so the announcement is a published contract; the browser spec asserts the attribute, not that anything was announced
+- 2026-09-20T17:09:25Z status=open owner=15-3-about-help-shortcuts-and-the-links-panel by=harvest note=implement-stage deferral; touches a published EXPERIENCE.md contract
+- 2026-09-20T17:49:09Z status=routed owner=range-end-cleanup by=adjudication note=residual: the prompt's role=status region is inserted when it becomes true rather than kept mounted and populated, which is commonly not announced, while EXPERIENCE.md now publishes it among the polite status messages. Non-blocking for the floor; the spine's own Deferred row puts accessibility mechanics with EXPERIENCE.md as component-level and not an architecture concern, so this names no AD invariant. The visual prompt and its Reload are pinned in two tiers
+
+### DW-1373: Nothing in the suite executes the real audit-log call for the new uiabout subsystem
+- source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: OcuPilot.Test.UiAboutFixture.LogSourceFailure overrides the seam without ##super, so every test driving a refused source records into a process-private global and Kernel.Audit.Log.Error(..#LOGSUBSYSTEM, ...) is never run. src/OcuPilot/Test/UiAboutFixture.cls
+- 2026-09-20T17:09:36Z status=open owner=15-3-about-help-shortcuts-and-the-links-panel by=harvest note=implement-stage deferral
+- 2026-09-20T17:49:19Z status=routed owner=range-end-cleanup by=adjudication note=residual: Test/UiAboutFixture.LogSourceFailure overrides the seam without ##super, so no test executes Kernel.Audit.Log.Error for the new uiabout subsystem. Non-blocking: the logger itself is pinned by its own suite and every other subsystem exercises the same call; what is unpinned is this subsystem's string reaching it. A one-line ##super plus an assertion, deliberately not taken in a done story
+
+### DW-1374: Installer.BundleIdentity's fallback branch has no test in any tier
+- source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: It is [ Private ], so reaching it needs an installer fixture subclass or an install run with the shell bundle directory emptied. The happy path is covered on every throwaway install; the fallback's failure mode is a Build row reading dev, which the client now never compares
+- 2026-09-20T17:09:36Z status=open owner=15-3-about-help-shortcuts-and-the-links-panel by=harvest note=implement-stage deferral
+- 2026-09-20T17:49:19Z status=routed owner=range-end-cleanup by=adjudication note=residual: Installer.BundleIdentity's fallback branch is [ Private ] and reachable only via an installer fixture subclass or an install with the shell bundle directory emptied. Non-blocking: the happy path runs on every throwaway install and is asserted there, and the fallback's failure mode is a Build row reading dev, which the client now never compares because isStale requires two hashed names
+
+### DW-1375: Home's Shortcuts empty state is unreachable, so STRINGS.shortcutsEmpty is published but cannot be displayed
+- source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: shortcutScreens() filters the shipped mirror, which always resolves some rows, and a component spec may not replace the mirror. Removing the string means editing the published Fixed strings row as well. ui/src/app/areas/home/home.page.ts
+- 2026-09-20T17:09:36Z status=open owner=15-3-about-help-shortcuts-and-the-links-panel by=harvest note=implement-stage deferral
+- 2026-09-20T17:49:19Z status=routed owner=range-end-cleanup by=adjudication note=residual: shortcutScreens() filters the shipped mirror, which always resolves some rows, so STRINGS.shortcutsEmpty is published but unreachable. Non-blocking and deliberately left: removing the string means editing a published Fixed strings row, and the empty state becomes reachable the moment an instance gates every shortcut, which is exactly when it is wanted
+
+### DW-1376: DESIGN.md's polish-week enumeration was not extended with Shortcuts and Links
+- source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: DESIGN.md:898 still reads 'Polish-week additions (system information, favorites, recents) go above or beside the grid' -- the line this story's Design Notes cite for placing both new blocks
+- 2026-09-20T17:09:36Z status=routed owner=range-end-cleanup by=harvest note=planning-artifact wording; non-blocking for the 2026-09-27 floor and for every downstream story, so Rule 27 re-owns it
+
+### DW-1377: HELP.ROUTE is the third field-level violation code family outside the only gate that checks such a code has a published sentence
+- source: spec-15-3-about-help-shortcuts-and-the-links-panel.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: AgentViolation.TestViolationCodesHoldsEveryDeclaredFieldLevelCode filters %Dictionary.CompiledParameter on $Extract(tName,1,5)='AGENT', so HELPROUTE - like ACCOUNT* and PREFERENCES* before it - is invisible to it; a later HELP* code with no ReasonForViolation arm renders a blank refusal line under the field and only a hand-written wire assertion would catch it
+- 2026-09-20T17:44:55Z status=routed owner=range-end-cleanup by=cr note=pre-existing gap widened by one family; this story's own code is pinned over the wire by UiAboutWire
+
+### DW-1387: Running the full browser suite twice against one throwaway reddens two messages-log tests, because that spec's seeded entries fall out of the rendered tail window
+- source: spec-15-4-home-s-system-information-panel.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: messages-log.browser-spec.mjs:77 seeds five console entries once per container and refuses to re-seed while the markers exist; the suite's other specs then write ~460 further log lines, pushing the seed out of the tail. Measured twice, seed at lines 768-773 of a 1235-line file. CI is unaffected because it builds a fresh container per run
+- 2026-09-20T21:07:26Z status=routed owner=range-end-cleanup by=harvest note=the file is one Epic 5 has modified, so Epic 15 may not repair it; non-blocking because every CI run gets a fresh container
+
+### DW-1388: Resizing a tab from 1440px to 720px leaves the document scrolling horizontally by about 22px, and the overflowing element is the agent panel rather than Home
+- source: spec-15-4-home-s-system-information-panel.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Measured during Story 15.4's AC2 browser work: Home's own block row wraps correctly (.ocu-home-remembered is flex-wrap:wrap with min-width:0 per block), and the element that overflows is app-panel / .ocu-panel, which is Epic 5's carve
+- 2026-09-20T21:07:26Z status=escalated owner=range-end-cleanup by=harvest note=for the user at the decision sheet: a user-visible horizontal scroll at the 720px 200%-zoom floor, on a file Epic 15 is forbidden to touch, so it needs an owner outside this epic rather than a silent re-own
+
+### DW-1389: ci-throwaway.sh writes its compose file from an unquoted heredoc whose body contains a backticked word, so the shell command-substitutes it away
+- source: spec-15-4-home-s-system-information-panel.md | severity: low | fix-risk: low | footprint: out-of-footprint
+- evidence: scripts/ci-throwaway.sh:172; the emitted compose file loses the backticked word from a comment. Latent rather than active: the throwaway comes up correctly
+- 2026-09-20T21:07:26Z status=routed owner=range-end-cleanup by=harvest note=non-blocking; the corruption is confined to a comment in the generated file
+
+### DW-1390: EndpointCoverage's dispatch test fails on the slot B dev instance because that container serves no client bundle
+- source: spec-15-4-home-s-system-information-panel.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: TestEveryProbeDispatchesToItsRoute's two Api.StaticHandler rows answer 503 on ocupilot-slot-b, whose /durable/iris/csp/ocupilot is empty because slot B is compiled into and never installed into. Passed at run 434, failing since run 454, both before Story 15.4's implement pass. It passes wherever the install runs, including CI and a throwaway
+- 2026-09-20T21:07:38Z status=wontfix-accepted owner=15-4-home-s-system-information-panel by=harvest note=reopen_if=the two Api.StaticHandler rows fail on a properly installed instance -- a throwaway or CI -- rather than only on the compiled-into dev instance
+
+### DW-1391: Api/UiSystem.HandleSystem's two Error.RenderInternal paths are never exercised
+- source: spec-15-4-home-s-system-information-panel.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: Payload() only answers an error if %Set itself raises, which no constructible input reaches, so neither internal-error arm has a pinning test
+- 2026-09-20T21:07:38Z status=routed owner=range-end-cleanup by=harvest note=non-blocking coverage gap on an arm no constructible input reaches; pinning it needs a fault-injection seam the class does not have
+
+### DW-1392: The System Information row sets a hard height where DESIGN.md says every height outside the virtualized lists is a minimum, so a text-only resize clips the row
+- source: spec-15-4-home-s-system-information-panel.md | severity: low | fix-risk: low | footprint: in-footprint
+- evidence: ui/src/styles/_components.scss:5020 sets height on .ocu-home-system-row; DESIGN.md makes heights outside the virtualized lists minimums, so text-only zoom clips rather than growing the row
+- 2026-09-20T21:07:38Z status=routed owner=range-end-cleanup by=harvest note=non-blocking at the shipped type scale and contradicts a published DESIGN.md contract rather than an AD; a one-line min-height change belongs with the other shell-chrome polish
+- 2026-09-20T21:41:36Z occurrence=15-4-home-s-system-information-panel
+
+### DW-1400: The shell-chrome read seam is in its third verbatim copy -- Members/Payload/Field/ReadSource/LogSourceFailure/LOGSUBSYSTEM -- with no extracted base, so a change to the per-field degrade contract has to be made in three places
+- source: spec-15-4-home-s-system-information-panel.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: Kernel/Shell/About.cls, Kernel/Shell/Instance.cls and Kernel/Shell/SystemInfo.cls each carry the six members; Test/Instance.cls:357 and Test/UiSystemRead.cls's log-seam row are the same test copied too
+- 2026-09-20T21:40:27Z status=routed owner=range-end-cleanup by=cr note=the spec ratifies copying About whole; at three copies it needs a base class, which touches two earlier stories' files
+
+### DW-1401: Two chrome surfaces render EXPERIENCE.md's Generic internal error sentence as a plain paragraph, without the role=alert and the Retry and Open messages.log actions that row publishes, and neither can tell an unreachable instance from a 5xx
+- source: spec-15-4-home-s-system-information-panel.md | severity: med | fix-risk: med | footprint: out-of-footprint
+- evidence: EXPERIENCE.md:520 specifies role=alert plus both actions; about-dialog.ts:83 (Story 15.3) and home.page.ts:327 both render a bare p, and About.failed()/SystemInfo.failed() are booleans that discard result.kind, which panel.ts:606 and fault-banner.ts:148 do use
+- 2026-09-20T21:40:34Z status=routed owner=range-end-cleanup by=cr note=about-dialog is the house precedent this story followed; fixing one surface alone would split the pattern
+
+### DW-1410: A view or refresh row whose route no longer names a built screen is never read and no surface clears it; only clear on the kind removes it
+- source: spec-15-5-ui-state-that-survives-a-sign-out.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: AD-37 degrade is met (the row never renders); Home's Remembered block reports the stored count so the row is visible as a number
+- 2026-09-21T02:04:52Z status=wontfix-accepted owner=15-5-ui-state-that-survives-a-sign-out by=harvest note=reopen_if=a user reports a stale remembered view they cannot remove without clearing the whole kind
+- 2026-09-21T02:40:37Z status=wontfix-accepted owner=15-5-ui-state-that-survives-a-sign-out by=cr note=evidence line was wrong: the block reports no count, it shows 'No screens this instance still serves.' beside Clear; AC5 is met by that sentence
+
+### DW-1411: A serialized view longer than Pref.VALUEMAXLENGTH (256) is not sent, so a filter of roughly 200+ characters is in force on screen but not remembered
+- source: spec-15-5-ui-state-that-survives-a-sign-out.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: the refusal is client-side before the write; the screen still filters, only the memory of it is dropped
+- 2026-09-21T02:04:52Z status=wontfix-accepted owner=15-5-ui-state-that-survives-a-sign-out by=harvest note=reopen_if=a screen ships a filter whose ordinary use exceeds 256 characters
+
+### DW-1413: epics.md still says the six remembered things are per browser at :409, :437, :1348 and :2814, the claim Story 15.5 corrected at its origin in EXPERIENCE.md and prd.md
+- source: spec-15-5-ui-state-that-survives-a-sign-out.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: UX-DR22 and UX-DR44 plus Story 1.9's and Story 4.3's acceptance lines; Epic 1 and Epic 4 are merged, so the runner may not edit their story blocks (Rule 11)
+- 2026-09-21T02:40:44Z status=routed owner=range-end-cleanup by=cr note=same shape as DW-1338; a later plan stage reads epics.md and would implement the wording AD-50 falsified
+
+### DW-1414: AccountPreferences.fault() is one unscoped slot, so a background write's refusal is announced as the user's own gesture failing and Home speaks it twice
+- source: spec-15-5-ui-state-that-survives-a-sign-out.md | severity: med | fix-risk: high | footprint: in-story
+- evidence: home.page.ts:359 and locator-bar.ts:215 are two role=alert regions both reading fault(); app.ts:171 puts the locator bar on Home, so one refusal is announced twice
+- 2026-09-21T02:40:55Z status=escalated owner=burndown by=cr note=scoping needs an origin tag on every write plus a filtered fault() across 5 call sites; AC4 is met as written
+- 2026-09-21T05:20:45Z status=routed owner=range-end-cleanup by=merge_gate note=DECIDED at Epic 15's merge gate. Not floor-blocking: AC4 is met as written and the defect is a MISATTRIBUTION rather than a lost refusal -- the refusal IS announced, just as though the user's own gesture had failed, and Home speaks it twice. Nothing on the demo path breaks. Not deferred to nowhere either: the fix threads an origin tag through five call sites, fix-risk high by the runner's own assessment, and a high-fix-risk change to a SHARED fault slot is exactly what must not be attempted beside a live epic on the same tree -- Epic 5 is concurrently writing ui/src/app/shell and ui/src/app/core. Routed to range-end-cleanup so it lands in one pass after Epic 12 merges, with no concurrent writer and alongside any other fault-scoping work, rather than five call sites being edited twice. If an Epic 16 story is later chartered that owns the fault channel, that is a better home and this entry moves to it rather than being done in both.
+
+### DW-1415: A gesture made before the first preferences read settles is overwritten by it, leaving screen and instance disagreeing until the next reload
+- source: spec-15-5-ui-state-that-survives-a-sign-out.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: the three adoptRemembered() guards key off  alone; a side bar toggle or panel drag inside the read's round trip is replaced by the stored value while the instance keeps the gesture
+- 2026-09-21T02:40:55Z status=by-design owner=burndown by=cr note=the I/O matrix row specifies adopt-on-answer; changing it needs a spec amendment (Rule 5)
+- 2026-09-21T02:41:08Z status=by-design owner=15-5-ui-state-that-survives-a-sign-out by=cr note=evidence word lost to shell quoting: the three adoptRemembered() guards key off the adopted flag alone
+
+### DW-1416: resetRememberedState() always authenticates as the suite account, so a browser spec signing in as a probe user gets no clean slate
+- source: spec-15-5-ui-state-that-survives-a-sign-out.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: preferences-reset.mjs authHeader() uses config.username; users.browser-spec.mjs:247 and permissions.browser-spec.mjs:365 sign in as SECURE_USER. Both reach denied screens today, so nothing leaks yet
+- 2026-09-21T02:40:55Z status=wontfix-accepted owner=15-5-ui-state-that-survives-a-sign-out by=cr note=reopen_if=a browser spec signing in as a probe user asserts a sort, a filter or panel geometry
+
+### DW-1417: A browser upgraded across Story 15.5 keeps four orphaned localStorage keys forever, because the module that owned them was deleted and nothing sweeps them
+- source: spec-15-5-ui-state-that-survives-a-sign-out.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: core/preferences.ts was deleted with its four keys; a sweep would have to name localStorage inside ui/src, which api.test.mjs now bans outright, so the fix contradicts AC2
+- 2026-09-21T02:41:22Z status=wontfix-accepted owner=15-5-ui-state-that-survives-a-sign-out by=cr note=reopen_if=an upgraded browser is observed reading one of the four retired keys; they are unreachable by any shipped code
+
+### DW-1418: Twenty-two component spec files keep a memoryStorage() helper nothing calls after the browser-storage re-point
+- source: spec-15-5-ui-state-that-survives-a-sign-out.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: grep counts one occurrence per file (the definition); fault-banner.wire.spec.ts and instance-notice.spec.ts still use theirs. Several of the 22 are contended Epic 5 paths this review may not edit
+- 2026-09-21T02:41:22Z status=wontfix-accepted owner=15-5-ui-state-that-survives-a-sign-out by=cr note=reopen_if=client-lint grows an unused-local-function rule, or one of the 22 files is reopened for other work

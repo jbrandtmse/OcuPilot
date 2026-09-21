@@ -119,6 +119,15 @@ Property RowVersion As %Integer [ InitialExpression = 0 ];
 /// established.</p>
 Parameter STALESAVEREASON = "the row changed on this instance after it was read, so the save was refused";
 
+/// <p>Seconds <method>GuardedSaveWithinCap</method> waits for a bounded list's lock before
+/// refusing. Short, because the critical section it guards is a count and a save.</p>
+Parameter CAPLOCKTIMEOUT As %Integer = 5;
+
+/// <p>The sentence a cap-bounded save is refused with when its critical section could not be
+/// entered. A parameter rather than a literal, for <parameter>STALESAVEREASON</parameter>'s
+/// reason: the refusal and <method>IsCapBusy</method> name one text rather than two copies.</p>
+Parameter CAPBUSYREASON = "another write to this account's bounded list held it, so the save was refused";
+
 /// <p>The declared length of the two route columns cut against it: the ledger's
 /// <property>OcuPilot.Kernel.State.Ledger.Route</property> and the turn's
 /// <property>OcuPilot.Kernel.State.Turn.ContextRoute</property>. Declared once here so the cap a
@@ -243,6 +252,71 @@ ClassMethod IsStaleSave(pStatus As %Status) As %Boolean
 {
     If $$$ISOK(pStatus) Quit 0
     Quit $System.Status.GetErrorText(pStatus) [ ..#STALESAVEREASON
+}
+
+/// <p>Whether <var>pStatus</var> is a unique-index violation -- a create whose key another
+/// writer inserted between this caller's look-up and its save (DW-1327).</p>
+/// <p>One check, so a store re-reading the row a race created does not spell the test twice.
+/// Asked of the error code rather than of its text, which is localized.</p>
+ClassMethod IsDuplicateKey(pStatus As %Status) As %Boolean
+{
+    If $$$ISOK(pStatus) Quit 0
+    Quit $System.Status.Equals(pStatus, $$$KeyNotUnique)
+}
+
+/// <p>Whether <var>pStatus</var> is <method>GuardedSaveWithinCap</method>'s busy refusal rather
+/// than a write failure.</p>
+ClassMethod IsCapBusy(pStatus As %Status) As %Boolean
+{
+    If $$$ISOK(pStatus) Quit 0
+    Quit $System.Status.GetErrorText(pStatus) [ ..#CAPBUSYREASON
+}
+
+/// <p>Save <var>pObject</var> only while <var>pCountSql</var> -- a whole SQL literal taking the
+/// two key values as its parameters -- answers fewer than <var>pMax</var> rows.
+/// <var>pAtLimit</var> is 1, and nothing is written, when it does not.</p>
+/// <p><b>The count and the save are one critical section</b> (DW-1327). Both run inside this
+/// frame's escalation while <code>^OcuPilotStateCap(pKey1, pKey2)</code> is held, so two adds of
+/// different names cannot both read the bound as not-yet-reached and both write. A read-then-write
+/// cap outside a lock stores <var>pMax</var> + 1; a transaction alone does not close it, because
+/// a count takes no row lock. A caller that cannot enter the section is refused with
+/// <parameter>CAPBUSYREASON</parameter> rather than writing past the bound.</p>
+/// <p>The lock is released in this same frame, on every path.</p>
+ClassMethod GuardedSaveWithinCap(pObject As Base, pKey1 As %String, pKey2 As %String, pCountSql As %String, pMax As %Integer, Output pAtLimit As %Boolean) As %Status [ Private ]
+{
+    Set pAtLimit = 0
+    Set tSC = $$$OK
+    Set tHeld = 0
+    New $ROLES
+    Try {
+        Set tSC = $SYSTEM.Security.AddRoles(..#APPLICATION)
+        If $$$ISERR(tSC) Quit
+        Lock +^OcuPilotStateCap(pKey1, pKey2):..#CAPLOCKTIMEOUT
+        Set tHeld = $Test
+        If 'tHeld {
+            Set tSC = $$$ERROR($$$GeneralError, ..#CAPBUSYREASON)
+            Quit
+        }
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, pCountSql, pKey1, pKey2)
+        If tRS.%SQLCODE < 0 {
+            Set tSC = $$$ERROR($$$GeneralError, "GuardedSaveWithinCap failed: SQLCODE=" _ tRS.%SQLCODE _ " " _ tRS.%Message)
+            Quit
+        }
+        Set tCount = 0
+        If tRS.%Next() Set tCount = +tRS.%GetData(1)
+        Set tRS = ""
+        If tCount >= +pMax {
+            Set pAtLimit = 1
+            Quit
+        }
+        Set tSC = pObject.%Save()
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If tHeld {
+        Lock -^OcuPilotStateCap(pKey1, pKey2)
+    }
+    Quit tSC
 }
 
 /// <p>The SQL table <var>pClassName</var> projects to, qualified and quoted as the dictionary

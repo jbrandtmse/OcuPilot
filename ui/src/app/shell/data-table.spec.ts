@@ -6,7 +6,6 @@ import { ChangeBus } from '../core/change-bus';
 import type { ConnectivityService } from '../core/connectivity';
 import type { Fault } from '../core/fault';
 import { OverlayStack } from '../core/overlay-stack';
-import { PreferenceStore } from '../core/preferences';
 import { RefreshService, type RefreshReadResult } from '../core/refresh';
 import { ScopeService } from '../core/scope';
 import { ScreenActions } from '../core/screen-actions';
@@ -15,6 +14,7 @@ import type { ScreenDeclaration } from '../core/screens.generated';
 import { STRINGS, stringFor } from '../core/strings';
 import { tableDeclaration } from '../testing/table-declaration';
 import { DataTable, TABLE_STRING_LOOKUP } from './data-table';
+import { stubAccountPreferences } from '../testing/account-preferences';
 
 /**
  * The data table's rendered contract in jsdom: what the frame shows before the first read, after a
@@ -78,7 +78,7 @@ const planted: HTMLElement[] = [];
 
 async function wire(declaration: ScreenDeclaration, first: () => RefreshReadResult): Promise<Wired> {
   TestBed.resetTestingModule();
-  const stores = new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
+  const stores = new ScreenStores({ account: stubAccountPreferences() });
   const refresh = new RefreshService({
     stores,
     connectivity: { retryWhenReachable: () => {} } as unknown as ConnectivityService,

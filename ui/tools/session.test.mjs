@@ -2845,8 +2845,8 @@ test('main.ts starts the probe at bootstrap and provides the instance service th
   );
   assert.match(
     source,
-    /\{\s*provide:\s*PreferenceStore,\s*useValue:\s*preferences\s*\}/,
-    "without this the side bar's remembered open state has no store behind it"
+    /\{\s*provide:\s*AccountPreferences,\s*useValue:\s*accountPreferences\s*\}/,
+    'without this the locator bar, Home and every remembered preference have no store behind them'
   );
   // The same guard for the one root service Story 1.10 added. Every component spec supplies
   // its own OverlayStack -- app.spec.ts included -- so without this clause the bootstrap

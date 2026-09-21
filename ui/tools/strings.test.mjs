@@ -453,9 +453,20 @@ test("EXPERIENCE.md's Fixed strings table itself holds roughly 200 distinct lite
   // for a turn whose failure names no step) and Story 4.10's three (the suggested view's eyebrow,
   // its open control and the application-errors line). The 520 bound Story 6.11 set absorbs them,
   // so no widening is needed here -- only the measured figure in the message moves.
+  //
+  // **Story 15.2 moves the bound to 600, which is this file's documented widening protocol rather
+  // than a loosening of the assertion.** Its one row publishes fifteen literals -- the two Home
+  // blocks' headings, empty states, per-row remove names and Clear controls, the locator bar's
+  // favorite toggle in its two states, and the five polite confirmations the two surfaces announce
+  // -- taking the table to 505. Fifteen of headroom against the four Epic 15 stories still to land
+  // (15.3's About, help, shortcuts and links panel alone publishes more than that) is not headroom,
+  // so the bound moves now rather than inside the story that would have tripped it. What the
+  // tripwire is for is unchanged -- it catches a run that read a fraction of the table or far too
+  // much of the document -- and the exact count assertion below, derived from the table itself, is
+  // what still holds strings.ts to the table literal for literal.
   assert.ok(
-    expectedLiterals.length >= 150 && expectedLiterals.length <= 520,
-    `expected between 150 and 520 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
+    expectedLiterals.length >= 150 && expectedLiterals.length <= 600,
+    `expected between 150 and 600 distinct literals, extracted ${expectedLiterals.length} -- the extractor's row range or quote-matching may have drifted from the table`
   );
 });
 

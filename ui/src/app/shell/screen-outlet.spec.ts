@@ -8,7 +8,6 @@ import { routes } from '../app.routes';
 import { encodeEntityId } from '../core/entity-id';
 import { InstanceService } from '../core/instance';
 import { NavigationService, type Verdict } from '../core/navigation';
-import { PreferenceStore } from '../core/preferences';
 import { ScopeService } from '../core/scope';
 import { Session } from '../core/session';
 import { ShellState } from '../core/shell-state';
@@ -24,6 +23,13 @@ import {
   resolveArchetypePage,
   resolveScreenPage,
 } from './screen-outlet';
+import { AccountPreferences } from '../core/account-preferences';
+import { stubAccountPreferences } from '../testing/account-preferences';
+import { About } from '../core/about';
+import { SystemInfo } from '../core/system-info';
+import { HelpLinks } from '../core/help';
+import { stubAbout, stubHelpLinks } from '../testing/about';
+import { stubSystemInfo } from '../testing/system-info';
 
 /**
  * The deep-link path, rendered: a route the user's privileges do not allow shows the screen's
@@ -98,6 +104,11 @@ class StubReadout {
     return '';
   }
 
+  /** Story 15.3: the stale-bundle prompt reads this; '' means there is nothing to compare. */
+  buildIdentity(): string {
+    return '';
+  }
+
   instanceVersion(): string {
     return '';
   }
@@ -126,9 +137,13 @@ describe('the routed screen outlet', () => {
   beforeEach(() => {
     TestBed.resetTestingModule();
     navigation = new StubNavigation();
-    shell = new ShellState({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
+    shell = new ShellState({ account: stubAccountPreferences() });
     TestBed.configureTestingModule({
       providers: [
+        { provide: About, useValue: stubAbout() },
+        { provide: SystemInfo, useValue: stubSystemInfo() },
+        { provide: HelpLinks, useValue: stubHelpLinks() },
+        { provide: AccountPreferences, useValue: stubAccountPreferences() },
         provideRouter([
           { path: '', pathMatch: 'full', component: ScreenOutlet },
           { path: 'probe/:id', component: ScreenOutlet },

@@ -296,6 +296,10 @@ async function namedWaitForFunction(page, fn, args, wanted, diagnose) {
 
 /** A fresh context signed in as the configured user, standing on `url` with the panel laid out. */
 async function signedInAt(url) {
+  // Story 15.5: the remembered screen and shell state lives on the instance now, keyed by the
+  // one account every spec signs in as, so a fresh context is no longer a fresh slate on its
+  // own -- see `preferences-reset.mjs`.
+  await resetRememberedState();
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
   page.setDefaultNavigationTimeout(config.navigationTimeoutMs);

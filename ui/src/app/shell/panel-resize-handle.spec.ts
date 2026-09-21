@@ -2,40 +2,38 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { PanelState } from '../core/panel-layout';
-import { PANEL_WIDTH_KEY, PreferenceStore } from '../core/preferences';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
 import { PanelResizeHandle } from './panel-resize-handle';
+import {
+  SHELL_PANEL_WIDTH,
+  type StubbedAccountPreferences,
+  lastRemembered,
+  stubAccountPreferences,
+} from '../testing/account-preferences';
 
 /**
  * The panel's resize handle: its separator semantics, keyboard and pointer resize, and the grip's
  * stops, over a real `PanelState` at a 1,280px viewport with the side bar yielded (panel 400,
  * maximum 592). Geometry is the browser suite's; this pins the attributes and the store calls.
+ *
+ * The remembered width is the instance's (Story 15.5, AD-50), so "stored" here is what the handle
+ * sent to `/account/preferences`, read off the stub's own request log rather than off a browser
+ * storage map.
  */
 describe('the panel resize handle', () => {
   let fixture: ComponentFixture<PanelResizeHandle>;
   let panel: PanelState;
-  let stored: Map<string, string>;
+  let account: StubbedAccountPreferences;
 
   const handle = (): HTMLElement => fixture.nativeElement.querySelector('[role="separator"]');
 
   beforeEach(() => {
     TestBed.resetTestingModule();
-    stored = new Map();
-    const preferences = new PreferenceStore({
-      storage: {
-        getItem: (key) => stored.get(key) ?? null,
-        setItem: (key, value) => {
-          stored.set(key, value);
-        },
-        removeItem: (key) => {
-          stored.delete(key);
-        },
-      },
-    });
-    const shell = new ShellState({ preferences });
+    account = stubAccountPreferences();
+    const shell = new ShellState({ account });
     shell.setActiveArea('permissions');
-    panel = new PanelState({ preferences, shell });
+    panel = new PanelState({ account, shell });
     panel.setViewport(1280);
     TestBed.configureTestingModule({ providers: [{ provide: PanelState, useValue: panel }] });
     fixture = TestBed.createComponent(PanelResizeHandle);
@@ -66,7 +64,7 @@ describe('the panel resize handle', () => {
     // Mutation (Rule 19): drop the `atStop` class binding -> the restrained assertions go red.
     key('ArrowLeft');
     expect(handle().getAttribute('aria-valuenow')).toBe('416');
-    expect(stored.get(PANEL_WIDTH_KEY)).toBe('416');
+    expect(lastRemembered(account.calls, SHELL_PANEL_WIDTH)).toBe('416');
     expect(handle().classList).not.toContain('ocu-panel-resize-handle-at-stop');
 
     for (let step = 0; step < 20; step += 1) key('ArrowLeft');
@@ -88,7 +86,7 @@ describe('the panel resize handle', () => {
     expect(handle().classList).toContain('ocu-panel-resize-handle-dragging');
     pointer('pointermove', 850);
     expect(handle().getAttribute('aria-valuenow')).toBe('430');
-    expect(stored.has(PANEL_WIDTH_KEY)).toBe(false);
+    expect(lastRemembered(account.calls, SHELL_PANEL_WIDTH)).toBeUndefined();
 
     let reachedDocument = false;
     const listener = () => {
@@ -99,7 +97,7 @@ describe('the panel resize handle', () => {
     document.removeEventListener('keydown', listener);
     expect(reachedDocument).toBe(false);
     expect(handle().classList).not.toContain('ocu-panel-resize-handle-dragging');
-    expect(stored.get(PANEL_WIDTH_KEY)).toBe('430');
+    expect(lastRemembered(account.calls, SHELL_PANEL_WIDTH)).toBe('430');
 
     // After Escape the pointer no longer drives the width.
     pointer('pointermove', 600);

@@ -23,6 +23,7 @@ import puppeteer from 'puppeteer';
 
 import { browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
+import { resetRememberedState } from './preferences-reset.mjs';
 
 const config = browserConfig();
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -138,6 +139,10 @@ after(async () => {
 });
 
 async function cardPage() {
+  // Story 15.5: the remembered screen and shell state lives on the instance now, keyed by the
+  // one account every spec signs in as, so a fresh context is no longer a fresh slate on its
+  // own -- see `preferences-reset.mjs`.
+  await resetRememberedState();
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
   await page.goto(`${origin}${PAGE_PATH}`, { waitUntil: 'networkidle0' });

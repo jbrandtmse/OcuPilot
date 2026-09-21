@@ -5,12 +5,12 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { AgentStatus } from '../core/agent-status';
 import type { ApiService } from '../core/api';
 import { NavigationService } from '../core/navigation';
-import { PreferenceStore } from '../core/preferences';
 import { PanelState } from '../core/panel-layout';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
 import { stubAgentStatus } from '../testing/agent-status';
 import { Rail } from './rail';
+import { stubAccountPreferences } from '../testing/account-preferences';
 
 /**
  * DW-132 -- the map-to-rail join, exercised as one path rather than through a hand-written
@@ -383,7 +383,7 @@ describe('the rail, wired to the real NavigationService reading a live-captured 
     };
     const navigation = new NavigationService({ api: api as unknown as ApiService });
     await navigation.load();
-    const shell = new ShellState({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
+    const shell = new ShellState({ account: stubAccountPreferences() });
 
     TestBed.configureTestingModule({
       providers: [
@@ -391,7 +391,7 @@ describe('the rail, wired to the real NavigationService reading a live-captured 
         { provide: NavigationService, useValue: navigation },
         { provide: AgentStatus, useValue: stubAgentStatus() },
         { provide: ShellState, useValue: shell },
-        { provide: PanelState, useValue: new PanelState({ preferences: new PreferenceStore({ storage: memoryStorage() }), shell }) },
+        { provide: PanelState, useValue: new PanelState({ account: stubAccountPreferences(), shell }) },
       ],
     });
     fixture = TestBed.createComponent(Rail);
