@@ -111,7 +111,7 @@ development_status:
   5-5-prohibited-actions-are-absent-from-the-tool-set: done
   5-6-the-agent-marker-and-what-happens-when-it-fails: done
   5-7-the-screen-shows-the-change: done
-  5-8-web-applications-enable-a-disabled-application-and-grant-it: ready-for-dev
+  5-8-web-applications-enable-a-disabled-application-and-grant-it: in-progress
   5-9-permissions-the-area-s-first-confirmed-user-write: backlog
   5-10-security-and-secrets-disable-and-re-enable-auditing: backlog
   5-11-tasks-resume-a-task-suspended-after-an-error: backlog
