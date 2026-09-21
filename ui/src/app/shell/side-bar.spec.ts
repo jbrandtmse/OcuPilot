@@ -334,7 +334,7 @@ describe('the primary side bar', () => {
     expect(lastRemembered(account.calls, SHELL_SIDE_BAR_OPEN)).toBe('1');
   });
 
-  it('the remembered state survives a sign-out, because the instance holds it', async () => {
+  it('a bar the instance remembers closed renders closed on this screen\'s first paint', async () => {
     await build({ [SHELL_SIDE_BAR_OPEN]: '0' });
     shell.setActiveArea('permissions');
     fixture.detectChanges();

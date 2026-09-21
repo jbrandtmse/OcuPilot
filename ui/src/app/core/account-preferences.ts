@@ -408,12 +408,17 @@ export class AccountPreferences {
     const request = (this.request += 1);
     const result = await pending;
     if (generation !== this.generation) return;
-    if (request !== this.request) return;
     // A refusal is not an answer about what the account holds, and neither is an instance that did
     // not reply: both leave the previous lists standing rather than emptying the blocks. What the
     // refusal does now leave is its published sentence (DW-1326), which the two writing surfaces
     // announce; it used to leave nothing at all, so a refused write looked like a write that had
     // not happened yet.
+    //
+    // **It is read before the newest-wins guard below, not after.** That guard exists so a stale
+    // *body* cannot overwrite a newer one; a refusal carries no body and replaces no list. Every
+    // value write on this store is fire and forget -- a panel drag, a sort, a side bar toggle --
+    // so a refused write is overtaken by the next one routinely, and recording the fault after the
+    // guard threw exactly the refusals DW-1326 exists to announce.
     if (result.kind !== 'ok') {
       const reason = result.kind === 'error' && typeof result.reason === 'string' ? result.reason : '';
       if (reason !== this.faultValue) {
@@ -422,6 +427,7 @@ export class AccountPreferences {
       }
       return;
     }
+    if (request !== this.request) return;
     const favorites = routesOf(result.body, FAVORITES_MEMBER);
     const recents = routesOf(result.body, RECENTS_MEMBER);
     const views = valuesOf(result.body, VIEWS_MEMBER, ROUTE_MEMBER);

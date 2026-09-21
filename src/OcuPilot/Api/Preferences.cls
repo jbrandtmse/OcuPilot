@@ -96,9 +96,14 @@ ClassMethod HandleRead() As %Status
 /// <parameter>ACTIONREMOVE</parameter> takes any string and is the one way out of a row whose
 /// screen stopped resolving -- which the client drops from its rendering (AD-37) and could
 /// otherwise never remove. A route no row holds is the documented no-op answering 200.</p>
-/// <p>A value write that lost the conditional save answers 409
+/// <p>A write another write refused answers 409
 /// <parameter>OcuPilot.Api.Error.STATECONFLICT</parameter>: it is a refusal, never a retry
-/// (Consistency Conventions: concurrent writes to OcuPilot's own state).</p>
+/// (Consistency Conventions: concurrent writes to OcuPilot's own state). Both of
+/// <class>OcuPilot.Kernel.State.Base</class>'s concurrency refusals take that arm -- a value write
+/// that lost its conditional save (<method>OcuPilot.Kernel.State.Base.IsStaleSave</method>) and a
+/// capped add that could not enter the cap's critical section
+/// (<method>OcuPilot.Kernel.State.Base.IsCapBusy</method>). Neither is an internal error, so
+/// neither may fall through to <method>OcuPilot.Api.Error.RenderInternal</method>.</p>
 ClassMethod HandleUpdate() As %Status
 {
     Set tSC = $$$OK
@@ -203,7 +208,7 @@ ClassMethod HandleUpdate() As %Status
         Set tUser = ..CallerUsername()
         Set tApplySC = ..Apply(tUser, tKind, tAction, tKey, tValue, .tAtLimit)
         If $$$ISERR(tApplySC) {
-            If ##class(OcuPilot.Kernel.State.Base).IsStaleSave(tApplySC) {
+            If ##class(OcuPilot.Kernel.State.Base).IsStaleSave(tApplySC) || ##class(OcuPilot.Kernel.State.Base).IsCapBusy(tApplySC) {
                 Set tSC = ..RenderConflict()
                 Quit
             }

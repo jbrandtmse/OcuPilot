@@ -368,6 +368,7 @@ describe('the shell frame', () => {
   let refresh: RefreshService;
   let overlays: OverlayStack;
   let panelState: PanelState;
+  let shellState: ShellState;
   let turn: TurnStore;
   let turnStorage: Map<string, string>;
   const planted: HTMLElement[] = [];
@@ -412,7 +413,7 @@ describe('the shell frame', () => {
     });
     overlays = new OverlayStack();
     const shellPreferences = stubAccountPreferences();
-    const shellState = new ShellState({ account: shellPreferences });
+    shellState = new ShellState({ account: shellPreferences });
     panelState = new PanelState({ account: shellPreferences, shell: shellState });
     // A reload-adopted id, so the sign-out test below can observe `App` dropping it -- the same
     // shape the real `readNavigationKind`/`readSessionStorage` pair produces in `main.ts`.
@@ -711,6 +712,11 @@ describe('the shell frame', () => {
     panelState.resizeBy(16);
     panelState.setDraft('Why is /csp/myapp disabled?');
     panelState.toggleFullScreen();
+    // The side bar is the other half of the same row family (Story 15.5), and it is the one the
+    // next principal signing in on this tab sees first. Closed here so the reset below is
+    // observable rather than a no-op.
+    shellState.toggleOpen();
+    expect(shellState.open()).toBe(false);
     expect(turn.conversationId()).toBe('convo-1');
 
     // The context chip's sharing choice is this principal's own (Story 4.11); loaded here so the
@@ -749,6 +755,11 @@ describe('the shell frame', () => {
     expect(panelState.draft()).toBe('');
     expect(panelState.fullScreen()).toBe(false);
     expect(panelState.remembered()).toBe(400);
+    // Mutation (Rule 19): delete `this.shell.endSession()` from the same branch -> this goes red,
+    // and the next principal signing in on this tab would look at the departed principal's
+    // collapsed side bar, indefinitely if their own read never settles (AD-8). The width's half of
+    // this reset was pinned above; the side bar's was pinned only on `ShellState` itself.
+    expect(shellState.open()).toBe(true);
     // Mutation (Rule 19): delete `this.turn.endSession()` from the same branch -> this goes red,
     // and the next principal to sign in on this tab would adopt a departed principal's
     // conversation (AD-8).

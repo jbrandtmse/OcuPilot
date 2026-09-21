@@ -429,9 +429,11 @@ Method TestTheValueRefusalsCarryTheirPublishedSentences()
 }
 
 /// <p><b>The widened grammar still refuses everything outside it</b>, 422 before anything is
-/// written: a membership kind carrying a value or a name, a value kind carrying an add or a
-/// remove, a value-kind clear carrying a key, a shell kind carrying a route, a screen-scoped kind carrying a name, and a set with no
-/// value at all.</p>
+/// written. Nine shapes, in the order <var>tBodies</var> sends them: a membership kind carrying a
+/// value; a membership kind carrying a name; a membership kind taking <code>set</code>; a value
+/// kind taking <code>add</code>; a <code>set</code> with no value at all; a screen-scoped kind
+/// carrying a name; a shell kind carrying a route; a value-kind <code>clear</code> carrying a key;
+/// and a value that is not a string.</p>
 /// <p>Mutation: delete any one of the kind-and-action checks in
 /// <method>OcuPilot.Api.Preferences.HandleUpdate</method> -- the matching leg goes red.</p>
 Method TestTheWidenedGrammarRefusesAMemberTheKindDoesNotTake()

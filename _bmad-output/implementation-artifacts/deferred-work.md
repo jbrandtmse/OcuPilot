@@ -2755,6 +2755,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: the Switches half is driven and the definitions half is not, though both were added by the same fix
 - 2026-09-16T11:42:04Z status=routed owner=4-2-the-tool-registry-its-one-gate-point-and-the-three-shell-rea by=harvest note=the Switches test's shape applies unchanged
 - 2026-09-16T15:11:12Z status=routed owner=5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at by=x0 note=optimistic-concurrency residue, with the cluster Epic 3 already routed to the confirmed write story
+- 2026-09-21T02:40:37Z occurrence=15-5-ui-state-that-survives-a-sign-out
 
 ### DW-416: scripts/check-prose.py has no test harness, so its new spec-structure check can stop checking with every gate green
 - source: spec-3-9 | severity: med | fix-risk: low | footprint: in-epic
@@ -4409,18 +4410,21 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: core/account-preferences.ts settle returns on result.kind!=='ok' and no consumer reads a refusal. At the 20-favorite cap the instance answers 422 PREFERENCES.LIMIT with a written reason that reaches no surface.
 - 2026-09-20T07:01:48Z status=open owner=15-2-favorites-recent-items-and-menu-search by=harvest note=Needs a published string and an EXPERIENCE.md row -- both available under the epic-wide shared-append grant, so the cost is the copy decision, not the path.
 - 2026-09-20T10:51:53Z status=escalated owner=15-5-ui-state-that-survives-a-sign-out by=cr note=confirmed at review and unchanged. Two riders for whoever fixes it: testing/account-preferences.ts has no refusal path at all, so the surfacing has no client test until the stub can refuse; and the announcement guards in locator-bar.toggleFavorite and home.page.announceOnChange are the code that would carry the reason.
+- 2026-09-21T02:44:45Z status=resolved-by:15-5-ui-state-that-survives-a-sign-out by=adjudication note=delivered: AccountPreferences.fault() records the refusal and locator-bar and home.page announce it; testing/account-preferences.ts gained the refusal path the entry asked for. Code review found settle recorded the fault AFTER the newest-wins guard so an overtaken refusal was dropped, patched it, and added the pinning row 'a refusal overtaken by a later write is still announced'. Pinned: account-preferences.test.mjs, locator-bar.spec.ts:567, home.page.spec.ts:708; mutation fault() returns '' reddens both.
 
 ### DW-1327: Two concurrent adds of the same (user, kind, route) can trip the unique index and answer 500 instead of the documented no-op
 - source: spec-15-2-favorites-recent-items-and-menu-search.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: Pref.GuardedAdd is check-then-insert: OpenByKey finds nothing in both processes and both save, so one loses on PrefUserKindNameIdx. Reachable from two tabs pinning or visiting the same screen at once. The matrix's concurrency row covers the update path, not the create path.
 - 2026-09-20T07:01:48Z status=open owner=15-2-favorites-recent-items-and-menu-search by=harvest note=AD-50 inherits Base's guarded save for updates; the create path has no equivalent. Catching the index violation and re-reading is the likely shape.
 - 2026-09-20T10:51:45Z status=escalated owner=15-5-ui-state-that-survives-a-sign-out by=cr note=two more sites on the same root cause: GuardedAdd's cap check is read-then-write so two adds of DIFFERENT routes can both pass at 19 and store 21, which catching the unique-index violation would not fix; and GuardedTouch's create branch has the identical race and is the path RecentsRecorder drives on every navigation. Reachable from one tab by double-clicking the locator star, not only from two tabs.
+- 2026-09-21T02:44:45Z status=resolved-by:15-5-ui-state-that-survives-a-sign-out by=adjudication note=delivered on all three sites the entry names: Base.IsDuplicateKey is called from GuardedAdd (Pref.cls:180), GuardedTouch's create branch (:250) and GuardedSetValue (:292), so the create race answers by re-reading rather than 500; Base.GuardedSaveWithinCap (:178) moves the cap count and the save into one locked escalated frame, which is the read-then-write overshoot the cr rider added. Code review caught IsCapBusy having no caller (a capped add still answered 500) and wired it at Api/Preferences.cls:211. Pinned by OcuPilot.Test.PrefState 16/16 and PreferencesWire 10/10 on slot B.
 
 ### DW-1328: When every stored row in a Home block names no built screen, the block shows its empty state and no Clear control, so rows the instance still holds are invisible and unclearable
 - source: spec-15-2-favorites-recent-items-and-menu-search.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: home.page.ts renders the list and Clear under @if (block.rows.length) and rowsFor drops routes resolving to no built screen (AD-37). The per-row remove path is open but the row is not rendered to remove.
 - 2026-09-20T07:01:48Z status=open owner=15-2-favorites-recent-items-and-menu-search by=harvest note=AD-37 says an unresolvable weak reference renders as no-longer-present rather than failing the screen; vanishing entirely with no way to clear is the failure mode that rule exists to prevent.
 - 2026-09-20T10:51:53Z status=escalated owner=15-5-ui-state-that-survives-a-sign-out by=cr note=widened at review: rowsFor now also drops a stored route naming an UNLISTED screen (sideBarPosition 0), so the all-unresolvable case this entry describes is reachable by one more route than when it was filed. AD-37's Rule is still met for the per-row case; what is missing is a stored count the block does not carry.
+- 2026-09-21T02:44:45Z status=resolved-by:15-5-ui-state-that-survives-a-sign-out by=adjudication note=delivered: RememberedBlock.hasStored is read from the stored rows rather than the rendered ones, so a block whose every row names no built screen keeps its Clear control and says rememberedNoScreensHere. It is a sentence beside Clear, not a count -- the wording in DW-1410's evidence was wrong and code review corrected it at origin. Pinned by home.page.spec.ts:675 with its mutation (make hasStored read rows.length -> Clear disappears and the row reddens).
 
 ### DW-1329: Story 15.2's Integration AC has no browser-level observable: sign out, sign in in a new tab, clear site data, both lists still there was never executed
 - source: spec-15-2-favorites-recent-items-and-menu-search.md | severity: med | fix-risk: med | footprint: in-story
@@ -4646,8 +4650,40 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-15-5-ui-state-that-survives-a-sign-out.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: AD-37 degrade is met (the row never renders); Home's Remembered block reports the stored count so the row is visible as a number
 - 2026-09-21T02:04:52Z status=wontfix-accepted owner=15-5-ui-state-that-survives-a-sign-out by=harvest note=reopen_if=a user reports a stale remembered view they cannot remove without clearing the whole kind
+- 2026-09-21T02:40:37Z status=wontfix-accepted owner=15-5-ui-state-that-survives-a-sign-out by=cr note=evidence line was wrong: the block reports no count, it shows 'No screens this instance still serves.' beside Clear; AC5 is met by that sentence
 
 ### DW-1411: A serialized view longer than Pref.VALUEMAXLENGTH (256) is not sent, so a filter of roughly 200+ characters is in force on screen but not remembered
 - source: spec-15-5-ui-state-that-survives-a-sign-out.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: the refusal is client-side before the write; the screen still filters, only the memory of it is dropped
 - 2026-09-21T02:04:52Z status=wontfix-accepted owner=15-5-ui-state-that-survives-a-sign-out by=harvest note=reopen_if=a screen ships a filter whose ordinary use exceeds 256 characters
+
+### DW-1413: epics.md still says the six remembered things are per browser at :409, :437, :1348 and :2814, the claim Story 15.5 corrected at its origin in EXPERIENCE.md and prd.md
+- source: spec-15-5-ui-state-that-survives-a-sign-out.md | severity: med | fix-risk: low | footprint: out-of-footprint
+- evidence: UX-DR22 and UX-DR44 plus Story 1.9's and Story 4.3's acceptance lines; Epic 1 and Epic 4 are merged, so the runner may not edit their story blocks (Rule 11)
+- 2026-09-21T02:40:44Z status=routed owner=range-end-cleanup by=cr note=same shape as DW-1338; a later plan stage reads epics.md and would implement the wording AD-50 falsified
+
+### DW-1414: AccountPreferences.fault() is one unscoped slot, so a background write's refusal is announced as the user's own gesture failing and Home speaks it twice
+- source: spec-15-5-ui-state-that-survives-a-sign-out.md | severity: med | fix-risk: high | footprint: in-story
+- evidence: home.page.ts:359 and locator-bar.ts:215 are two role=alert regions both reading fault(); app.ts:171 puts the locator bar on Home, so one refusal is announced twice
+- 2026-09-21T02:40:55Z status=escalated owner=burndown by=cr note=scoping needs an origin tag on every write plus a filtered fault() across 5 call sites; AC4 is met as written
+
+### DW-1415: A gesture made before the first preferences read settles is overwritten by it, leaving screen and instance disagreeing until the next reload
+- source: spec-15-5-ui-state-that-survives-a-sign-out.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: the three adoptRemembered() guards key off  alone; a side bar toggle or panel drag inside the read's round trip is replaced by the stored value while the instance keeps the gesture
+- 2026-09-21T02:40:55Z status=by-design owner=burndown by=cr note=the I/O matrix row specifies adopt-on-answer; changing it needs a spec amendment (Rule 5)
+- 2026-09-21T02:41:08Z status=by-design owner=15-5-ui-state-that-survives-a-sign-out by=cr note=evidence word lost to shell quoting: the three adoptRemembered() guards key off the adopted flag alone
+
+### DW-1416: resetRememberedState() always authenticates as the suite account, so a browser spec signing in as a probe user gets no clean slate
+- source: spec-15-5-ui-state-that-survives-a-sign-out.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: preferences-reset.mjs authHeader() uses config.username; users.browser-spec.mjs:247 and permissions.browser-spec.mjs:365 sign in as SECURE_USER. Both reach denied screens today, so nothing leaks yet
+- 2026-09-21T02:40:55Z status=wontfix-accepted owner=15-5-ui-state-that-survives-a-sign-out by=cr note=reopen_if=a browser spec signing in as a probe user asserts a sort, a filter or panel geometry
+
+### DW-1417: A browser upgraded across Story 15.5 keeps four orphaned localStorage keys forever, because the module that owned them was deleted and nothing sweeps them
+- source: spec-15-5-ui-state-that-survives-a-sign-out.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: core/preferences.ts was deleted with its four keys; a sweep would have to name localStorage inside ui/src, which api.test.mjs now bans outright, so the fix contradicts AC2
+- 2026-09-21T02:41:22Z status=wontfix-accepted owner=15-5-ui-state-that-survives-a-sign-out by=cr note=reopen_if=an upgraded browser is observed reading one of the four retired keys; they are unreachable by any shipped code
+
+### DW-1418: Twenty-two component spec files keep a memoryStorage() helper nothing calls after the browser-storage re-point
+- source: spec-15-5-ui-state-that-survives-a-sign-out.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: grep counts one occurrence per file (the definition); fault-banner.wire.spec.ts and instance-notice.spec.ts still use theirs. Several of the 22 are contended Epic 5 paths this review may not edit
+- 2026-09-21T02:41:22Z status=wontfix-accepted owner=15-5-ui-state-that-survives-a-sign-out by=cr note=reopen_if=client-lint grows an unused-local-function rule, or one of the 22 files is reopened for other work

@@ -141,8 +141,7 @@ test('Yield order: clicking the visible area\'s rail item reopens a yielded side
     await page.click(`.ocu-rail-item[aria-label="${label}"]`);
     await page.waitForSelector('app-side-bar nav.ocu-side-bar', { timeout: config.navigationTimeoutMs });
     // Story 15.5: the open state is the instance's, not the browser's, so the baseline is read
-    // back over the shipped route. It settles after the click, so this waits for it.
-    await page.waitForFunction(() => true, { polling: 100, timeout: 1000 }).catch(() => {});
+    // back over the shipped route. The write is fire and forget, so this lets it land first.
     await new Promise((resolve) => setTimeout(resolve, 500));
     const afterReopen = await rememberedShellMember('sideBarOpen');
     assert.equal(afterReopen, '1', 'the reopen records the bar as open');

@@ -418,6 +418,38 @@ test('a write that overtakes the read still settles it, so the stores are not le
   assert.equal(store.loaded(), true, 'and the overtaken read changes nothing when it lands');
 });
 
+test('a refusal overtaken by a later write is still announced (DW-1326)', async () => {
+  // Mutation (Rule 19): move the non-ok branch in `settle` back below the
+  // `request !== this.request` guard -> this goes red. Every value write on this store is fire and
+  // forget -- a panel drag, a sort, a side bar toggle -- so a refused write is routinely overtaken
+  // before its answer lands, and a fault recorded after the guard is dropped on the floor.
+  const refusal = { kind: 'error', status: 409, code: 'STATE.CONFLICT', reason: 'the instance refused it', detail: null };
+  const calls = [];
+  let resolveRefused = null;
+  const api = {
+    calls,
+    requestJson(path, init = {}) {
+      calls.push({ path, method: init.method ?? 'GET', body: init.body ?? null });
+      if (calls.length === 1) {
+        return new Promise((resolve) => {
+          resolveRefused = () => resolve(refusal);
+        });
+      }
+      return Promise.resolve(ok(wholeBody({ shell: { sideBarOpen: '1' } })));
+    },
+  };
+  const store = new AccountPreferences({ api });
+
+  const refused = store.add(FAVORITE_KIND, 'permissions/users');
+  await store.setValue(SHELL_KIND, SHELL_SIDE_BAR_OPEN, '1');
+  assert.equal(store.fault(), '', 'the later write succeeded, so nothing is standing yet');
+
+  resolveRefused();
+  await refused;
+  assert.equal(store.fault(), 'the instance refused it', 'the overtaken refusal is still announced');
+  assert.equal(store.shell().get(SHELL_SIDE_BAR_OPEN), '1', 'and the later write\'s body is not rolled back');
+});
+
 test('reset drops the value maps and the standing refusal as well as the lists', async () => {
   const api = stubApi([
     ok(wholeBody({ favorites: ['logs/alerts'], shell: { sideBarOpen: '0' } })),

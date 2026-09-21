@@ -125,6 +125,60 @@ deferred:
 - Given a Home block all of whose stored rows name no built screen, when Home renders, then the block reports that it holds rows and keeps its Clear control (DW-1328).
 - Given AD-43's seven-screen roster, when this story ships, then the roster is unchanged and no screen descriptor is edited — `screen-mirror.mjs --check` is green with no regeneration.
 
+### Review Findings
+
+Code review 2026-09-21, first completed review. Four layers on the Opus tier (`review_tier:
+full-opus`): `blind-hunter`, `edge-case-hunter`, `verification-gap`, `acceptance-auditor`. 44 raw
+rows grouped to 13 root-cause entries — high 0, med 4, low 9. Unresolved high+med after patching: 2
+(both ledgered with an owner, neither blocking).
+
+**Patched in this pass (7):**
+
+| # | Finding | Sev / fix-risk | Files |
+|---|---|---|---|
+| 1 | `Base.IsCapBusy` had no caller, so a capped add that could not enter the cap's critical section answered **500** instead of the published refusal. Four layers converged. | med / low | `src/OcuPilot/Api/Preferences.cls` |
+| 2 | `AccountPreferences.settle` recorded a refusal **after** the newest-wins guard, so a refused write overtaken by the next one was dropped — and every value write here is fire and forget, so that is the common case, not the rare one. DW-1326's own promise. | med / low | `ui/src/app/core/account-preferences.ts`, `ui/tools/account-preferences.test.mjs` |
+| 3 | `App`'s new `this.shell.endSession()` was pinned only on `ShellState` itself; `app.spec.ts`'s sign-out row asserted the width's half of the reset and not the side bar's. | med / low | `ui/src/app/app.spec.ts` |
+| 4 | `browser-reset.mjs` counted only `createBrowserContext(`, so a spec written with `browser.newPage()` passed the gate with no reset at all. | low / low | `ui/tools/browser-reset.mjs`, `ui/tools/browser-reset.test.mjs` |
+| 5 | `rail.browser-spec.mjs` carried `waitForFunction(() => true).catch(() => {})` — a wait that resolves on its first poll and cannot fail. | low / low | `ui/browser/rail.browser-spec.mjs` |
+| 6 | `side-bar.spec.ts`'s renamed row advertised "survives a sign-out" while its body neither signs out nor observes the instance. | low / low | `ui/src/app/shell/side-bar.spec.ts` |
+| 7 | `TestTheWidenedGrammarRefusesAMemberTheKindDoesNotTake` enumerated six refused shapes and sends nine. | low / low | `src/OcuPilot/Test/PreferencesWire.cls` |
+
+**Rule 19, closed inside the pass:** five acceptance legs had a pinning test and no `mutation:`
+line — AC1's width, side bar and rate legs, AC2's storage clause, AC6. Each mutation was named,
+applied, observed red and reverted with the file byte-identical; the lines are in `## Verification`.
+
+**Ledgered, not blocking (6):**
+
+| Entry | Disposition |
+|---|---|
+| DW-415 | `occurrence=` — `Api/Preferences.HandleUpdate`'s 409 `STATE.CONFLICT` arm is reached by no test, the third handler with that gap. The canonical entry is owned by `5-3-…`; a `PreferencesStaleProbe` of `SwitchesStaleProbe`'s shape is the fix. |
+| DW-1413 | `routed owner=range-end-cleanup` — `epics.md` still says "per browser" at `:409`, `:437`, `:1348`, `:2814`. Out of footprint: `:1348` and `:2814` are Epic 1's and Epic 4's story blocks (Rule 11). |
+| DW-1414 | `escalated` — `fault()` is one unscoped slot: a background write's refusal is announced as the user's own gesture failing, and Home holds two `role="alert"` regions carrying it at once. AC4 is met as written; scoping is a redesign. |
+| DW-1415 | `by-design` — a gesture inside the first read's round trip is overwritten by it. The I/O matrix's *Read has not answered yet* row specifies adopt-on-answer, so changing it needs a spec amendment. |
+| DW-1416 | `wontfix-accepted` — `resetRememberedState()` always authenticates as the suite account; the two probe-user contexts reach denied screens, so nothing leaks today. |
+| DW-1417, DW-1418 | `wontfix-accepted` — four orphaned `localStorage` keys on an upgraded browser (a sweep would have to name `localStorage` inside `ui/src`, which `api.test.mjs` now bans); and a dead `memoryStorage()` helper left in 22 spec files, several of them contended Epic 5 paths. |
+
+**Closed at emission, not ledgered:** `COUNTFORUSERSQL` without `%EXACT()` (IRIS user names are
+case-insensitive, and `Kind` values are server literals) and `ScreenStores.for` returning a cached
+store when a second caller passes a different route (descriptor→route is 1:1 in the mirror) are
+`wontfix-theoretical`; the testing stub's `clear` on a value kind falling into the membership branch
+is unreachable because `AccountPreferences.clear` is typed `PreferenceKind` (favorite | recent).
+"`prebuild` chains six checkers" in `## Auto Run Result` below is stale — it is seven, and
+`CLAUDE.md` already says so — but correcting it would edit the spec under review, so it is recorded
+here instead.
+
+**Not re-filed (adjudicated before this review):** `audit.page.spec.ts`'s forced two-line edit on a
+contended path; `EndpointCoverage`'s static-handler 503 on `ocupilot-slot-b`; DW-1387; DW-1169;
+`home.page.spec.ts`'s node-26 AD-43 row.
+
+**Verification run for this pass:** `check-objectscript.py` clean (518 files, 21 rules);
+`npm run test:tools` 1213/1213; `npm run test:components` 728/728; all seven `prebuild` checkers
+green with no regeneration; `npm run build` clean; `OcuPilot.Test.PrefState` 16/16 and
+`OcuPilot.Test.PreferencesWire` 10/10 against `ocupilot-slot-b`, one class per call. Per Rule 29 the
+full browser suite and the full ObjectScript sweep were not re-run here; they run at the lead's
+smoke gate and in CI.
+
 ## Spec Change Log
 
 - 2026-09-20 (lead, after the orchestrator's ruling): unblocked. `panel-resize-handle*` is released from Epic 5's carve and treated as trunk, so the three `PANEL_WIDTH_KEY` assertions in `ui/src/app/shell/panel-resize-handle.spec.ts` are re-pointed at the account store; the file is reported under `footprint_extensions:` against `origin/OCU-1-epic5` at `b04e2a1`. Frontmatter `status` reset `blocked` -> `ready-for-dev`.
@@ -186,6 +240,18 @@ deferred:
 - mutation (server): the arms added to `Api/Error.ReasonForViolation` are the ones `Test/PreferencesWire.TestTheValueRefusalsCarryTheirPublishedSentences` asserts a non-empty `reason` on.
 - mutation: `ShellState.endSession` keeps the departed principal's open state -> `shell-state.test.mjs`'s sign-out row went red (AC2; the side bar's half of the width's `PanelState.endSession`).
 - mutation: HomePage registers one bare 30-minute `setTimeout` -> `home.page.spec.ts`'s AD-43 row went red with `expected 1 to be +0`, confirming the row still catches a timer that issues no read; reverted, `home.page.ts` byte-identical.
+
+Added at code review (Rule 19 — the AC legs above left unrecorded), each applied, observed red and
+reverted with the file byte-identical:
+
+- mutation (AC1, the width leg): `PanelState.adoptRemembered` returns before reading `SHELL_PANEL_WIDTH` -> `panel-layout.test.mjs` went red on 5 rows, "a stored width wider than the viewport allows is clamped by the layout" among them.
+- mutation (AC1, the side bar leg): `ShellState.adoptRemembered` returns before reading `SHELL_SIDE_BAR_OPEN` -> `shell-state.test.mjs` went red on 4 rows, "Ctrl/Cmd+B toggles, and remembers the answer per user on the instance" among them.
+- mutation (AC1, the rate leg): `ScreenStore.adoptRemembered`'s rate branch is made unreachable -> `refresh.test.mjs` went red on 2 rows, "the rate persists per screen, and returning to the screen restores it" among them.
+- mutation (AC2, the storage clause): a `void localStorage;` added to `core/shell-state.ts` -> `api.test.mjs`'s "no code under `ui/src` writes a cookie, persistent storage, a cross-tab channel or a frame message" went red. This is the falsifiable half of AC2: the browser spec's `wrote.local.length === 0` holds for any build this gate lets through.
+- mutation (AC6): `"sideBarPosition": 2` in `Screen/Descriptor/Home.cls` without regenerating -> `screen-mirror.mjs --check` exited 1 with "the checked-in mirror is stale".
+- mutation (code review patch): the non-ok branch in `AccountPreferences.settle` moved back below the `request !== this.request` guard -> `account-preferences.test.mjs`'s "a refusal overtaken by a later write is still announced" went red.
+- mutation (code review patch): `this.shell.endSession()` deleted from `App.verifyWhenSignedIn` -> `app.spec.ts`'s sign-out row went red; `app.ts` byte-identical after the revert.
+- mutation (code review patch): `DEFAULT_CONTEXT_CALL` dropped from `resetProblem`'s `contexts` sum -> `browser-reset.test.mjs`'s "a spec that takes the browser's default context is counted too" went red.
 
 **Manual checks:**
 

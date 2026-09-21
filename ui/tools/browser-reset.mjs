@@ -39,6 +39,16 @@ export const BROWSER_DIR = 'browser';
 /** The call that opens a context and therefore no longer starts from a clean slate. */
 export const CONTEXT_CALL = 'createBrowserContext(';
 
+/**
+ * The other way a spec reaches a signed-in page: the browser's own default context.
+ *
+ * It starts from a clean slate even less than a fresh context does -- the default context is
+ * shared with every other page in the run -- so a spec written this way is exactly the one that
+ * must reset, and counting only `CONTEXT_CALL` would wave it through with no reset at all.
+ * `context.newPage(` is not this: it follows a `createBrowserContext(` that is already counted.
+ */
+export const DEFAULT_CONTEXT_CALL = 'browser.newPage(';
+
 /** The helper call that restores the slate the context no longer provides. */
 export const RESET_CALL = 'resetRememberedState(';
 
@@ -82,7 +92,7 @@ export function occurrences(source, needle) {
  * rather than one for the file.
  */
 export function resetProblem(name, source) {
-  const contexts = occurrences(source, CONTEXT_CALL);
+  const contexts = occurrences(source, CONTEXT_CALL) + occurrences(source, DEFAULT_CONTEXT_CALL);
   if (contexts === 0) return null;
   const exemption = declaredExemption(source);
   const resets = occurrences(source, RESET_CALL);

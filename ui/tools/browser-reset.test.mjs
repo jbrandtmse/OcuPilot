@@ -19,6 +19,8 @@
  *   is named in prebuild, in prestart and in the pre-commit hook, and can block" goes red.
  * - add a `preferences-reset-exempt:` marker to a third spec -> "exactly these specs are exempt"
  *   goes red.
+ * - drop `DEFAULT_CONTEXT_CALL` from `resetProblem`'s `contexts` sum -> "a spec that takes the
+ *   browser's default context is counted too" goes red.
  */
 
 import assert from 'node:assert/strict';
@@ -32,6 +34,7 @@ import { fileURLToPath } from 'node:url';
 import {
   BROWSER_DIR,
   CONTEXT_CALL,
+  DEFAULT_CONTEXT_CALL,
   EXEMPT_MARKER,
   RESET_CALL,
   declaredExemption,
@@ -73,6 +76,20 @@ test('two contexts and one reset is refused -- the count is per context, not per
   assert.notEqual(problem, null, 'a context added to an already-passing spec is the regression to catch');
   assert.match(problem, /opens 2 browser context\(s\) but calls .* 1 time\(s\)/);
   assert.equal(resetProblem('whole.browser-spec.mjs', `${RESETS}\n${OPENS}\n${RESETS}\n${OPENS}`), null);
+});
+
+test('a spec that takes the browser\'s default context is counted too', () => {
+  // Mutation (Rule 19): drop `DEFAULT_CONTEXT_CALL` from `resetProblem`'s `contexts` sum -> this
+  // goes red, and a spec written with `browser.newPage()` passes the gate with no reset at all
+  // while sharing the account's remembered rows with every other page in the run.
+  const opensDefault = `const page = await ${DEFAULT_CONTEXT_CALL});`;
+  const problem = resetProblem('default.browser-spec.mjs', opensDefault);
+  assert.notEqual(problem, null, 'the default context is the least isolated one there is');
+  assert.match(problem, /opens 1 browser context\(s\) but calls .* 0 time\(s\)/);
+  assert.equal(resetProblem('default-ok.browser-spec.mjs', `${RESETS}\n${opensDefault}`), null);
+  const mixed = resetProblem('mixed.browser-spec.mjs', `${RESETS}\n${OPENS}\n${opensDefault}`);
+  assert.notEqual(mixed, null, 'one reset does not cover a fresh context and the default one');
+  assert.match(mixed, /opens 2 browser context\(s\) but calls .* 1 time\(s\)/);
 });
 
 test('occurrences counts every hit, including adjacent ones', () => {
