@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 import { Router } from '@angular/router';
 
+import { AccountPreferences } from '../core/account-preferences';
 import {
   NavigationService,
   areaByKey,
@@ -94,6 +95,12 @@ interface CommandRow {
  * gave the account menu, and for the same reason: the field is a Tab stop while the sheet is
  * shut, so a box left open covered the screen with `aria-expanded="true"` while the user
  * worked elsewhere. Like the menu's, that dismissal does not move focus.
+ *
+ * **Favorited screens are listed first within Screens** (Story 15.2): "menu search" is this box
+ * and nothing else -- EXPERIENCE.md's Rejected list already records "menu-only search with a
+ * 220 ms typeahead" as rejected in favour of the command box -- so this story adds no input, no
+ * group and no change to the count sentence. Only the order inside the Screens group moves, and it is a stable partition: among
+ * favorites, and among the rest, the declaration order the mirror already fixes is unchanged.
  *
  * **It is not a channel to the agent** (EXPERIENCE.md "Gated entries stay listed and arrow-reachable"): typed text never becomes a
  * turn and the avatar never appears here.
@@ -202,6 +209,7 @@ export class CommandBox {
   private readonly actions = inject(ScreenActions);
   private readonly router = inject(Router);
   private readonly shell = inject(ShellState);
+  private readonly preferences = inject(AccountPreferences);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
 
   protected readonly STRINGS = STRINGS;
@@ -236,10 +244,14 @@ export class CommandBox {
     const stopNavigation = this.navigation.subscribe(() => this.bump());
     const stopRouter = this.router.events.subscribe(() => this.bump());
     const stopActions = this.actions.subscribe(() => this.bump());
+    // Which screens are favorited decides the Screens group's order, so a change to the lists
+    // re-ranks an open box rather than waiting for the next router event.
+    const stopPreferences = this.preferences.subscribe(() => this.bump());
     inject(DestroyRef).onDestroy(() => {
       stopNavigation();
       stopRouter.unsubscribe();
       stopActions();
+      stopPreferences();
       this.overlays.remove(COMMAND_BOX_OVERLAY_ID);
     });
   }
@@ -419,7 +431,16 @@ export class CommandBox {
         ariaDisabled: verdict.allowed ? null : 'true',
       });
     }
-    return rows;
+    // Story 15.2: favorited screens first, everything else after, each half in the order it was
+    // already in. A stable partition rather than a sort, so the declaration order the mirror
+    // fixes is the tie-break -- a comparator returning 0 leaves that to the engine.
+    const favorite: CommandRow[] = [];
+    const rest: CommandRow[] = [];
+    for (const row of rows) {
+      if (this.preferences.isFavorite(row.route)) favorite.push(row);
+      else rest.push(row);
+    }
+    return [...favorite, ...rest];
   }
 
   /**

@@ -9,14 +9,14 @@
  * second CSS path (AD-19).
  *
  * `PanelState` holds what the panel remembers and what the user is doing to it: the remembered
- * width (through `PreferenceStore`, the only module that touches persistent storage), the draft,
- * full screen, a drag in progress, and whether the user reopened a side bar the yield collapsed.
- * The viewport width is fed in by a shell component; nothing here reads the DOM (AD-19).
+ * width (through `AccountPreferences`, on the instance -- Story 15.5, AD-50), the draft, full
+ * screen, a drag in progress, and whether the user reopened a side bar the yield collapsed. The
+ * viewport width is fed in by a shell component; nothing here reads the DOM (AD-19).
  */
 
 // The `.ts` extensions are what let `node --test` resolve these at runtime.
+import { AccountPreferences, SHELL_KIND, SHELL_PANEL_WIDTH } from './account-preferences.ts';
 import { HOME_AREA_KEY, areaByKey } from './navigation.ts';
-import { PreferenceStore } from './preferences.ts';
 import { ShellState } from './shell-state.ts';
 
 /** DESIGN.md `spacing.rail-width`. */
@@ -135,13 +135,21 @@ export function areaHasSideBar(areaKey: string): boolean {
 }
 
 export interface PanelStateOptions {
-  readonly preferences: PreferenceStore;
+  readonly account: AccountPreferences;
   readonly shell: ShellState;
 }
 
 export class PanelState {
-  private readonly preferences: PreferenceStore;
+  private readonly account: AccountPreferences;
   private readonly shell: ShellState;
+
+  /**
+   * Whether the instance's remembered width has been adopted since the last sign-in. The
+   * published default renders until the read settles; the remembered width applies once, on the
+   * answer, and a later write of some other preference never re-applies it over a drag since
+   * (`ShellState`'s own `adopted` flag, for the same reason).
+   */
+  private adopted = false;
 
   private viewportWidth = 0;
   private rememberedWidth: number;
@@ -165,10 +173,12 @@ export class PanelState {
   private readonly listeners = new Set<() => void>();
 
   constructor(options: PanelStateOptions) {
-    this.preferences = options.preferences;
+    this.account = options.account;
     this.shell = options.shell;
-    this.rememberedWidth = this.preferences.panelWidth(PANEL_DEFAULT_WIDTH, PANEL_MIN_WIDTH);
+    this.rememberedWidth = PANEL_DEFAULT_WIDTH;
     this.lastActiveArea = this.shell.activeArea();
+    this.account.subscribe(() => this.adoptRemembered());
+    this.adoptRemembered();
     // A side bar the user closed is no longer reopened; the next open meets the yield afresh.
     // A route that left the area ends the Home release: the target is per visit.
     this.shell.subscribe(() => {
@@ -180,6 +190,29 @@ export class PanelState {
       }
       this.notify();
     });
+  }
+
+  /**
+   * Take the instance's remembered width, once, on the first answer that carries it. There is no
+   * usable one when nothing is stored, when the stored value is not a finite number, or when it is
+   * below the minimum; the upper bound depends on the viewport, so `resolveLayout` clamps it
+   * rather than this reader.
+   */
+  private adoptRemembered(): void {
+    if (!this.account.loaded()) {
+      this.adopted = false;
+      return;
+    }
+    if (this.adopted) return;
+    this.adopted = true;
+    const stored = this.account.shell().get(SHELL_PANEL_WIDTH);
+    if (stored === undefined) return;
+    const width = Number(stored);
+    if (!Number.isFinite(width) || width < PANEL_MIN_WIDTH) return;
+    const next = Math.round(width);
+    if (next === this.rememberedWidth) return;
+    this.rememberedWidth = next;
+    this.notify();
   }
 
   subscribe(listener: () => void): () => void {
@@ -242,14 +275,20 @@ export class PanelState {
 
   /**
    * The session left `signed-in`. The draft and full screen belong to the user who made them, so the
-   * next sign-in in this tab starts without either; the remembered width is per browser and stays.
+   * next sign-in in this tab starts without either, and the remembered width returns to the published
+   * default until the next principal's own answer carries theirs.
    */
   endSession(): void {
     this.endDrag();
+    // The next principal's own remembered width is adopted on their first answered read; until
+    // then the published default renders rather than the departing principal's width.
+    const widthMoved = this.rememberedWidth !== PANEL_DEFAULT_WIDTH;
+    this.adopted = false;
+    this.rememberedWidth = PANEL_DEFAULT_WIDTH;
     // The Home release is per visit to Home, and the next principal's first Home paint is a new
     // visit: signing out does not change the area, so `ShellState` notifies nothing and without
     // this the next sign-in would open Home on the departed principal's dragged width.
-    if (this.draftText === '' && !this.full && !this.homeWidthReleased) return;
+    if (!widthMoved && this.draftText === '' && !this.full && !this.homeWidthReleased) return;
     this.draftText = '';
     this.full = false;
     this.homeWidthReleased = false;
@@ -300,7 +339,7 @@ export class PanelState {
   endDrag(): void {
     if (this.drag === null) return;
     this.drag = null;
-    this.preferences.setPanelWidth(this.rememberedWidth);
+    this.rememberWidth(this.rememberedWidth);
     this.notify();
   }
 
@@ -327,8 +366,17 @@ export class PanelState {
     }
     const changed = bounded !== this.rememberedWidth;
     this.rememberedWidth = bounded;
-    if (persist) this.preferences.setPanelWidth(bounded);
+    if (persist) this.rememberWidth(bounded);
     if (changed || persist) this.notify();
+  }
+
+  /**
+   * Send the width to the instance. Never awaited: the panel has already moved, and the store
+   * re-settles from the answer. A refusal is recorded as a fault the shell's surfaces announce
+   * (DW-1326).
+   */
+  private rememberWidth(width: number): void {
+    void this.account.setValue(SHELL_KIND, SHELL_PANEL_WIDTH, String(width));
   }
 
   private sideBarPreferred(): boolean {

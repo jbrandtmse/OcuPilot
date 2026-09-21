@@ -3,13 +3,16 @@ import { Router, provideRouter } from '@angular/router';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { NavigationService, screenForRoute, type Verdict } from '../core/navigation';
-import { PreferenceStore } from '../core/preferences';
 import { ScreenStores } from '../core/screen-store';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
 import { screenDeclaration } from '../testing/screen-declaration';
 import { LocatorBar } from './locator-bar';
+import { AccountPreferences } from '../core/account-preferences';
+import { stubAccountPreferences } from '../testing/account-preferences';
+import { HelpLinks } from '../core/help';
+import { stubHelpLinks, type StubbedHelpLinks } from '../testing/about';
 
 /**
  * The locator bar's rendered contract (EXPERIENCE.md "locator-bar | top of content", "link is the first Tab stop"; DESIGN.md `:1033`).
@@ -88,6 +91,15 @@ describe('the locator bar', () => {
   let router: Router;
   let navigation: StubNavigation;
   let shell: ShellState;
+  let preferences: ReturnType<typeof stubAccountPreferences>;
+  let help: StubbedHelpLinks;
+  let helpHrefs: Record<string, string>;
+
+  const toggle = (): HTMLButtonElement | null =>
+    fixture.nativeElement.querySelector('.ocu-locator-favorite');
+
+  const helpLink = (): HTMLAnchorElement | null =>
+    fixture.nativeElement.querySelector('.ocu-locator-help');
 
   const segments = (): HTMLElement[] =>
     Array.from(
@@ -100,11 +112,16 @@ describe('the locator bar', () => {
     fixture.detectChanges();
   };
 
-  beforeEach(() => {
-    navigation = new StubNavigation();
-    shell = new ShellState({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
+  /**
+   * Mount the bar over whatever `preferences` currently holds. Split out of `beforeEach` so a
+   * spec about a refused write can seed its own store first: `AccountPreferences` is read at
+   * construction, so swapping it afterwards would leave the component on the first one.
+   */
+  const build = () => {
     TestBed.configureTestingModule({
       providers: [
+        { provide: HelpLinks, useValue: help },
+        { provide: AccountPreferences, useValue: preferences },
         provideRouter([
           { path: '', children: [] },
           { path: 'permissions/users', children: [] },
@@ -114,6 +131,7 @@ describe('the locator bar', () => {
           { path: 'permissions/users/details/:id', children: [] },
           { path: 'web-applications/rest-apis/document/:id', children: [] },
           { path: 'security/oauth/clients/:id', children: [] },
+          { path: 'agent/definitions/edit/:id', children: [] },
           { path: '**', children: [] },
         ]),
         {
@@ -123,12 +141,21 @@ describe('the locator bar', () => {
         { provide: ShellState, useValue: shell },
         // Story 6.7: the locator injects ScreenStores to read a parent-scoped detail screen's
         // loaded row for its entity label.
-        { provide: ScreenStores, useValue: new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) }) },
+        { provide: ScreenStores, useValue: new ScreenStores({ account: stubAccountPreferences() }) },
       ],
     });
     fixture = TestBed.createComponent(LocatorBar);
     router = TestBed.inject(Router);
     fixture.detectChanges();
+  };
+
+  beforeEach(() => {
+    navigation = new StubNavigation();
+    shell = new ShellState({ account: stubAccountPreferences() });
+    preferences = stubAccountPreferences();
+    helpHrefs = {};
+    help = stubHelpLinks(helpHrefs);
+    build();
   });
 
   it('is a nav named Breadcrumb, with the area navigating and the screen current', async () => {
@@ -466,4 +493,148 @@ describe('the locator bar', () => {
     fixture.detectChanges();
     expect(segments()).toHaveLength(0);
   });
+
+  // --- Story 15.2: the favorite toggle -------------------------------------------------------
+
+  it('Story 15.2: a built screen that names a route carries the toggle, unpressed and named for what it does', async () => {
+    await go('/permissions/users');
+
+    const control = toggle();
+    expect(control).not.toBeNull();
+    expect(control?.getAttribute('aria-pressed')).toBe('false');
+    expect(control?.getAttribute('aria-label')).toBe(STRINGS.favoritesAdd);
+    // The glyph is decorative: the accessible name is the label alone.
+    expect(
+      control?.querySelector('.ocu-locator-favorite-glyph')?.getAttribute('aria-hidden')
+    ).toBe('true');
+  });
+
+  it('Story 15.2: Home names no route, so it carries no toggle', async () => {
+    await go('/');
+    expect(toggle()).toBeNull();
+  });
+
+  it('Story 15.2: an unlisted screen carries no toggle, because the route it would pin is not the screen on display', async () => {
+    // `agent/definitions/edit` declares sideBarPosition 0 and takes an entity id, so its declared
+    // route is the id-less parent. Pinning that would put a row on Home whose button opens the
+    // Definition form with no definition, and the command box -- which filters the same roster the
+    // same way -- could never rank the favorite either.
+    //
+    // Mutation (Rule 19): drop `|| !isListedScreen(screen)` from `LocatorBar.favoriteRoute` ->
+    // this goes red, and the star appears on every entity editor in the product.
+    navigation.screenForUrl = (url: string) => {
+      const path = url.split('?')[0].replace(/^\/+/, '');
+      return path.startsWith('agent/definitions/edit')
+        ? screenForRoute('agent/definitions/edit')
+        : null;
+    };
+
+    await go('/agent/definitions/edit/42');
+    expect(toggle()).toBeNull();
+  });
+
+  it('Story 15.2: activating the toggle pins the screen, flips aria-pressed and announces it politely', async () => {
+    await go('/permissions/users');
+    toggle()?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(preferences.favorites()).toEqual(['permissions/users']);
+    expect(toggle()?.getAttribute('aria-pressed')).toBe('true');
+    expect(toggle()?.getAttribute('aria-label')).toBe(STRINGS.favoritesRemove);
+
+    const status: HTMLElement = fixture.nativeElement.querySelector('.ocu-locator-status');
+    expect(status.getAttribute('role')).toBe('status');
+    expect(status.textContent?.trim()).toBe(STRINGS.favoritesAdded);
+  });
+
+  it('Story 15.2: a second activation unpins it, and the toggle reads unpressed again', async () => {
+    await go('/permissions/users');
+    toggle()?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    toggle()?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(preferences.favorites()).toEqual([]);
+    expect(toggle()?.getAttribute('aria-pressed')).toBe('false');
+    expect(
+      fixture.nativeElement.querySelector('.ocu-locator-status').textContent?.trim()
+    ).toBe(STRINGS.favoritesRemoved);
+  });
+
+  it("Story 15.5 (DW-1326): a refused pin is announced assertively, in the instance's own words", async () => {
+    // Mutation (Rule 19): drop the `role="alert"` region, or make `favoriteRefusal` read `''` ->
+    // this goes red, and the cap's refusal would again be surfaced nowhere at all.
+    TestBed.resetTestingModule();
+    preferences = stubAccountPreferences({
+      writeAnswer: 'refused',
+      refusalReason: 'This account already holds as many favorites as the instance keeps.',
+    });
+    build();
+
+    await go('/permissions/users');
+    toggle()?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const regions: HTMLElement[] = Array.from(
+      fixture.nativeElement.querySelectorAll('.ocu-locator-status')
+    );
+    const alert = regions.find((region) => region.getAttribute('role') === 'alert');
+    const polite = regions.find((region) => region.getAttribute('role') === 'status');
+    expect(alert?.textContent?.trim()).toBe(
+      'This account already holds as many favorites as the instance keeps.'
+    );
+    // The pin did not happen, so nothing confirms it politely.
+    expect(polite?.textContent?.trim()).toBe('');
+    expect(preferences.favorites()).toEqual([]);
+    expect(toggle()?.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('Story 15.2: the toggle reads pressed on return to a screen pinned elsewhere', async () => {
+    await preferences.add('favorite', 'permissions/users');
+    await go('/permissions/users');
+    expect(toggle()?.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('Story 15.3: a screen whose classic page publishes a help address gets a Help control opening it in a new tab', async () => {
+    await go('/permissions/users');
+    // The address arrives from the instance after the route does; `reset()` lets this spec seed an
+    // answer for a route the component has already asked about once.
+    helpHrefs['permissions/users'] = 'https://ocupilot.invalid/docs/page?KEY=A%2CB';
+    help.reset();
+    await help.load('permissions/users');
+    fixture.detectChanges();
+
+    const link = helpLink();
+    expect(link).not.toBeNull();
+    expect(link?.getAttribute('href')).toBe('https://ocupilot.invalid/docs/page?KEY=A%2CB');
+    expect(link?.getAttribute('target')).toBe('_blank');
+    expect(link?.getAttribute('rel')).toBe('noreferrer');
+    // Its visible word is Help and its accessible name says which screen's help it is.
+    expect(link?.textContent).toContain(STRINGS.helpLabel);
+    expect(link?.getAttribute('aria-label')).toBe(STRINGS.helpForScreen);
+  });
+
+  it('Story 15.3: a screen whose classic page publishes no help address gets no control at all', async () => {
+    await go('/permissions/users');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    // The stub answered unavailable, which is what a classic page with no HELPADDRESS answers.
+    expect(help.calls.map((call) => call.path)).toEqual([
+      '/api/ocupilot/ui/help?route=permissions%2Fusers',
+    ]);
+    expect(helpLink()).toBeNull();
+  });
+
+  it('Story 15.3: a screen with no classic page is never asked about, and gets no control', async () => {
+    await go('/');
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(help.calls).toEqual([]);
+    expect(helpLink()).toBeNull();
+  });
+
 });

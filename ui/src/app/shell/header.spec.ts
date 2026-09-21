@@ -5,13 +5,14 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { NavigationService, type Verdict } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
-import { PreferenceStore } from '../core/preferences';
 import { ScopeService, type NamespaceEntry, type UnresolvedScope } from '../core/scope';
 import { ScreenActions } from '../core/screen-actions';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
 import { Header } from './header';
+import { AccountPreferences } from '../core/account-preferences';
+import { stubAccountPreferences } from '../testing/account-preferences';
 
 /**
  * The header's rendered contract (DESIGN.md `:1007-1017`, EXPERIENCE.md "`{spacing.header-height}` band").
@@ -99,6 +100,7 @@ describe('the header', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [
+        { provide: AccountPreferences, useValue: stubAccountPreferences() },
         provideRouter([
           { path: '', children: [] },
           { path: 'permissions/users', children: [] },
@@ -110,7 +112,7 @@ describe('the header', () => {
         { provide: ScopeService, useValue: new StubScope() as unknown as ScopeService },
         { provide: OverlayStack, useValue: new OverlayStack() },
         { provide: ScreenActions, useValue: new ScreenActions() },
-        { provide: ShellState, useValue: new ShellState({ preferences: new PreferenceStore({ storage: null }) }) },
+        { provide: ShellState, useValue: new ShellState({ account: stubAccountPreferences() }) },
       ],
     });
     fixture = TestBed.createComponent(Header);
@@ -221,6 +223,7 @@ describe('the header', () => {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [
+        { provide: AccountPreferences, useValue: stubAccountPreferences() },
         provideRouter([{ path: '', children: [] }]),
         {
           provide: NavigationService,
@@ -229,7 +232,7 @@ describe('the header', () => {
         { provide: ScopeService, useValue: new StubScopeNamed() as unknown as ScopeService },
         { provide: OverlayStack, useValue: new OverlayStack() },
         { provide: ScreenActions, useValue: new ScreenActions() },
-        { provide: ShellState, useValue: new ShellState({ preferences: new PreferenceStore({ storage: null }) }) },
+        { provide: ShellState, useValue: new ShellState({ account: stubAccountPreferences() }) },
       ],
     });
     const named = TestBed.createComponent(Header);

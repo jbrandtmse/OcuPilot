@@ -1060,12 +1060,22 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If pCode = ..#AGENTHOLDUSERREQUIRED Quit ..#REASONAGENTHOLDUSERREQUIRED
     If pCode = ..#AGENTHOLDREASONREQUIRED Quit ..#REASONAGENTHOLDREASONREQUIRED
     If pCode = ..#AGENTHOLDDUPLICATE Quit ..#REASONAGENTHOLDDUPLICATE
+    If pCode = ..#ACCOUNTPASSWORDCURRENT Quit ..#REASONACCOUNTPASSWORDCURRENT
+    If pCode = ..#ACCOUNTPASSWORDPOLICY Quit ..#REASONACCOUNTPASSWORDPOLICY
+    If pCode = ..#PREFERENCESROUTE Quit ..#REASONPREFERENCESROUTE
+    If pCode = ..#PREFERENCESLIMIT Quit ..#REASONPREFERENCESLIMIT
+    If pCode = ..#HELPROUTE Quit ..#REASONHELPROUTE
+    If pCode = ..#PREFERENCESVALUE Quit ..#REASONPREFERENCESVALUE
+    If pCode = ..#PREFERENCESNAME Quit ..#REASONPREFERENCESNAME
     Quit ""
 }
 
-/// <p>Every field-level violation code that carries a sentence, as a <class>%List</class>. Exists
-/// so a test can hold <method>ReasonForViolation</method> to the code vocabulary without
-/// re-spelling either, which is what catches a code added with no sentence behind it.</p>
+/// <p>Every <code>AGENT.*</code> field-level violation code that carries a sentence, as a
+/// <class>%List</class>. Exists so a test can hold <method>ReasonForViolation</method> to the code
+/// vocabulary without re-spelling either, which is what catches a code added with no sentence
+/// behind it. The list is <code>AGENT.*</code> only because its test sweeps that prefix; the two
+/// <code>ACCOUNT.*</code> field codes are held instead by
+/// <class>OcuPilot.Test.AccountPasswordWire</class>, which asserts each sentence over the wire.</p>
 ClassMethod ViolationCodes() As %List
 {
     Quit $ListBuild(..#AGENTNAMEREQUIRED, ..#AGENTNAMEDUPLICATE, ..#AGENTPROVIDERUNKNOWN, ..#AGENTMAXTOKENSRANGE, ..#AGENTTEMPERATURERANGE, ..#AGENTCREDTYPEUNKNOWN, ..#AGENTENVVARREQUIRED, ..#AGENTCREDNAMEREQUIRED, ..#AGENTCREDNAMELENGTH, ..#AGENTENDPOINTREQUIRED, ..#AGENTENDPOINTSCHEME, ..#AGENTENDPOINTADDRESS, ..#AGENTENDPOINTLINKLOCAL, ..#AGENTHTTPACKREQUIRED, ..#AGENTLOCALUNSUPPORTED, ..#AGENTSYSTEMPROMPTLENGTH, ..#AGENTRETENTIONRANGE, ..#AGENTITERATIONSRANGE, ..#AGENTENABLEUNVERIFIED, ..#AGENTDEFAULTDISABLED, ..#AGENTCREDENTIALREQUIRED, ..#AGENTCREDENTIALENVUNWRITABLE, ..#AGENTCREDENTIALRUNGUNAVAILABLE, ..#AGENTKEYSHAPE, ..#AGENTCREDENTIALNOTOWNED, ..#AGENTCREDENTIALNOPRIVILEGE, ..#AGENTSWITCHREASONREQUIRED, ..#AGENTSWITCHCONTEXTROWCAP, ..#AGENTHOLDUSERREQUIRED, ..#AGENTHOLDREASONREQUIRED, ..#AGENTHOLDDUPLICATE)
@@ -1176,6 +1186,105 @@ Parameter REASONAGENTHOLDREASONREQUIRED = "Give a reason for switching the agent
 
 /// <p>Refusal sentence for <parameter>AGENTHOLDDUPLICATE</parameter>.</p>
 Parameter REASONAGENTHOLDDUPLICATE = "The agent is already switched off for that user.";
+
+/// <p>Machine code (Story 15.1, AD-49): the caller's own password change was refused on a field.
+/// Rendered on the <parameter>VALIDATIONFAILED</parameter> slug by
+/// <class>OcuPilot.Api.Account</class>, with the field-level codes below in
+/// <code>detail.violations</code>. <code>ACCOUNT.*</code> rather than <code>AGENT.*</code>
+/// because a self-service account action is outside the agent write path.</p>
+Parameter ACCOUNTVALIDATION = "ACCOUNT.VALIDATION";
+
+/// <p>The envelope's <code>reason</code> for <parameter>ACCOUNTVALIDATION</parameter>. Generic,
+/// like every validation envelope's: it stands for the list of violations beside it.</p>
+Parameter REASONACCOUNTVALIDATION = "The password change was refused.";
+
+/// <p>Violation code (Story 15.1): the current password the caller sent is not this account's.
+/// Produced on the field <code>currentPassword</code>.</p>
+/// <p>It never distinguishes a wrong password from an account that does not exist -- the change
+/// runs as <code>$Username</code>, so the account is always the caller's own, and one code for
+/// both is what keeps the refusal from answering a question nobody asked.</p>
+Parameter ACCOUNTPASSWORDCURRENT = "ACCOUNT.PASSWORD.CURRENT";
+
+/// <p>Refusal sentence for <parameter>ACCOUNTPASSWORDCURRENT</parameter>.</p>
+Parameter REASONACCOUNTPASSWORDCURRENT = "That is not the current password for this account. Enter it again.";
+
+/// <p>Violation code (Story 15.1): the new password does not satisfy this instance's own password
+/// policy. Produced on the field <code>newPassword</code>.</p>
+/// <p>Its <code>reason</code> is <b>the instance's own text</b>, passed through from the one
+/// allow-listed embedded status, because the policy is the operator's and OcuPilot cannot restate
+/// a rule it does not hold. The sentence below is the fallback for a refusal that names none.</p>
+Parameter ACCOUNTPASSWORDPOLICY = "ACCOUNT.PASSWORD.POLICY";
+
+/// <p>Refusal sentence for <parameter>ACCOUNTPASSWORDPOLICY</parameter>.</p>
+Parameter REASONACCOUNTPASSWORDPOLICY = "The new password does not meet this instance's password policy.";
+
+/// <p>Machine code (Story 15.1): the password-change body is not exactly the two string members
+/// the route accepts. Rendered on the <parameter>VALIDATIONFAILED</parameter> slug with
+/// <parameter>REASONACCOUNTPASSWORDBODY</parameter> alone and no <code>detail</code>.</p>
+Parameter ACCOUNTPASSWORDBODY = "ACCOUNT.PASSWORD.BODY";
+
+/// <p>The envelope's <code>reason</code> for <parameter>ACCOUNTPASSWORDBODY</parameter>. It names
+/// the two members and never a value the caller sent (AD-35).</p>
+Parameter REASONACCOUNTPASSWORDBODY = "The body must carry exactly two members, the strings currentPassword and newPassword.";
+
+/// <p>Machine code (Story 15.2, AD-50): the preferences body is not the members the route
+/// accepts. Rendered on the <parameter>VALIDATIONFAILED</parameter> slug with
+/// <parameter>REASONPREFERENCESBODY</parameter> alone and no <code>detail</code>, because no field
+/// was reached.</p>
+Parameter PREFERENCESBODY = "PREFERENCES.BODY";
+
+/// <p>The envelope's <code>reason</code> for <parameter>PREFERENCESBODY</parameter>. It names the
+/// members and their vocabularies, never a value the caller sent.</p>
+Parameter REASONPREFERENCESBODY = "The body must carry the strings kind (favorite, recent, view, refresh or shell) and action (add or remove for a list, set for a remembered value, clear for either); route names the screen, name names the shell member, and value is carried by a set alone.";
+
+/// <p>Machine code (Story 15.2): the submitted route is not a built screen's route, or is longer
+/// than <parameter>OcuPilot.Kernel.State.Base.ROUTEMAXLENGTH</parameter>. Rendered on the
+/// <parameter>VALIDATIONFAILED</parameter> slug with one violation on <code>route</code>.</p>
+Parameter PREFERENCESROUTE = "PREFERENCES.ROUTE";
+
+/// <p>Refusal sentence for <parameter>PREFERENCESROUTE</parameter>.</p>
+Parameter REASONPREFERENCESROUTE = "That is not a screen this instance serves, so it cannot be remembered.";
+
+/// <p>Machine code (Story 15.2): the caller already holds as many favorites as the instance keeps,
+/// so another cannot be added. Rendered on the <parameter>VALIDATIONFAILED</parameter> slug with
+/// one violation on <code>route</code>.</p>
+Parameter PREFERENCESLIMIT = "PREFERENCES.LIMIT";
+
+/// <p>Refusal sentence for <parameter>PREFERENCESLIMIT</parameter>. It names no number: the bound
+/// is <parameter>OcuPilot.Kernel.State.Pref.FAVORITEMAX</parameter>, declared once where it is
+/// enforced, and a sentence carrying a second copy of it is a second thing to keep equal.</p>
+Parameter REASONPREFERENCESLIMIT = "This account already holds as many favorites as the instance keeps. Remove one before adding another.";
+
+/// <p>Machine code (Story 15.3): the <code>route</code> the help read was asked for is not a route
+/// the screen registry's roster carries, or is longer than
+/// <parameter>OcuPilot.Kernel.State.Base.ROUTEMAXLENGTH</parameter>. Rendered on the
+/// <parameter>VALIDATIONFAILED</parameter> slug with one violation on <code>route</code>.</p>
+Parameter HELPROUTE = "HELP.ROUTE";
+
+/// <p>Refusal sentence for <parameter>HELPROUTE</parameter>. It names no route the caller sent.</p>
+Parameter REASONHELPROUTE = "That is not a screen this instance serves, so there is no help address for it.";
+
+/// <p>Machine code (Story 15.5, AD-50): a preference write carried no usable <code>value</code> --
+/// absent, empty, or longer than
+/// <parameter>OcuPilot.Kernel.State.Pref.VALUEMAXLENGTH</parameter>. Rendered on the
+/// <parameter>VALIDATIONFAILED</parameter> slug with one violation on <code>value</code>.</p>
+/// <p>An empty one is refused rather than stored because IRIS stores an empty <code>%String</code>
+/// as SQL <code>NULL</code>, which the key look-up never matches again.</p>
+Parameter PREFERENCESVALUE = "PREFERENCES.VALUE";
+
+/// <p>Refusal sentence for <parameter>PREFERENCESVALUE</parameter>. It names no number and no
+/// value the caller sent: the bound is declared once where it is enforced.</p>
+Parameter REASONPREFERENCESVALUE = "That preference needs a value, and one short enough for the instance to keep.";
+
+/// <p>Machine code (Story 15.5, AD-50): the <code>name</code> a shell preference write carried is
+/// outside the closed set <method>OcuPilot.Kernel.State.Pref.IsShellMember</method> answers.
+/// Rendered on the <parameter>VALIDATIONFAILED</parameter> slug with one violation on
+/// <code>name</code>.</p>
+Parameter PREFERENCESNAME = "PREFERENCES.NAME";
+
+/// <p>Refusal sentence for <parameter>PREFERENCESNAME</parameter>. It names no value the caller
+/// sent (AD-35).</p>
+Parameter REASONPREFERENCESNAME = "That is not a piece of shell state this instance remembers.";
 
 /// <p>The shape every machine code has: one or more dotted segments, each starting with a
 /// letter and continuing with capitals and digits. No lower case, no underscore, no leading

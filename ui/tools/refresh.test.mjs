@@ -41,23 +41,15 @@ const {
 } = await import(corePath('refresh.ts'));
 const { ChangeBus } = await import(corePath('change-bus.ts'));
 const { ScreenStores, DEFAULT_MAX_ROWS } = await import(corePath('screen-store.ts'));
-const { PreferenceStore, SCREEN_REFRESH_RATES_KEY } = await import(corePath('preferences.ts'));
+const { stubAccountPreferences, settledAccountPreferences } = await import(
+  new URL('../src/app/testing/account-preferences.ts', import.meta.url).href
+);
 const { STRINGS } = await import(corePath('strings.ts'));
 
 const NOW_MS = 1_700_000_000_000;
 const DESCRIPTOR = 'OcuPilot.Screen.Descriptor.Probe';
 
 const settle = () => new Promise((resolve) => setImmediate(resolve));
-
-function memoryStorage() {
-  const map = new Map();
-  return {
-    getItem: (key) => (map.has(key) ? map.get(key) : null),
-    setItem: (key, value) => map.set(key, value),
-    removeItem: (key) => map.delete(key),
-    map,
-  };
-}
 
 /** A screen declaration shaped the way the mirror shapes one. */
 function screen(extra = {}) {
@@ -81,7 +73,7 @@ function screen(extra = {}) {
 function wired(options = {}) {
   const scheduled = [];
   const parks = [];
-  const storage = options.storage ?? memoryStorage();
+  const account = options.account ?? stubAccountPreferences();
   let nowMs = options.nowMs ?? NOW_MS;
 
   const reads = [];
@@ -97,8 +89,7 @@ function wired(options = {}) {
     },
   };
   const bus = new ChangeBus({ now: () => new Date(nowMs) });
-  const preferences = new PreferenceStore({ storage });
-  const stores = new ScreenStores({ preferences });
+  const stores = new ScreenStores({ account });
   const refresh = new RefreshService({
     stores,
     connectivity,
@@ -112,8 +103,7 @@ function wired(options = {}) {
     refresh,
     bus,
     stores,
-    preferences,
-    storage,
+    account,
     scheduled,
     parks,
     reads,
@@ -264,7 +254,7 @@ test('the default cap is what an untouched screen reads with', async () => {
 });
 
 test('one arm at a time across bind, rate change and unbind', async () => {
-  const harness = wired({ storage: memoryStorage() });
+  const harness = wired({ account: stubAccountPreferences() });
   harness.refresh.bind(screen({ refreshRates: [10, 30] }), harness.read);
   harness.refresh.setRate(10);
   assert.equal(harness.refresh.armedFor(), 'tick');
@@ -1005,46 +995,42 @@ test('AC3: the OAuth 2.0 tab re-reads on a change to either secondary type and n
 
 // --- Persistence ----------------------------------------------------------------------------
 
-test('the rate persists per screen, and returning to the screen restores it', () => {
-  const storage = memoryStorage();
-  const first = wired({ storage });
+test('the rate persists per screen, and returning to the screen restores it', async () => {
+  const account = await settledAccountPreferences();
+  const first = wired({ account });
   first.refresh.bind(screen(), first.read);
   first.refresh.setRate(10);
   first.refresh.unbind();
 
-  // A second tab -- a new service over the same browser storage -- finds the choice.
-  const second = wired({ storage });
+  // A second tab -- a new service over the same account on the instance -- finds the choice.
+  await settle();
+  const second = wired({ account });
   second.refresh.bind(screen(), second.read);
   assert.equal(second.refresh.rate(), 10);
   assert.equal(second.refresh.armedFor(), 'tick', 'and arms at the remembered rate');
   assert.equal(second.scheduled[second.scheduled.length - 1].delayMs, 10_000);
 });
 
-test('a stored rate the descriptor no longer permits falls back to off, without throwing', () => {
-  const storage = memoryStorage();
-  storage.setItem(SCREEN_REFRESH_RATES_KEY, JSON.stringify({ [DESCRIPTOR]: 30 }));
+test('a stored rate the descriptor no longer permits falls back to off, without throwing', async () => {
+  const account = await settledAccountPreferences({ refreshRates: { 'os-management/processes': '30' } });
 
-  const harness = wired({ storage });
+  const harness = wired({ account });
   harness.refresh.bind(screen({ refreshRates: [10] }), harness.read);
 
   assert.equal(harness.refresh.rate(), 0, 'off is the published default (EXPERIENCE.md "Auto-refresh off")');
   assert.equal(harness.refresh.chipLabel(), STRINGS.statusAutoRefreshOff);
 });
 
-test('an unparseable preference blob falls back to off, without throwing', () => {
-  const storage = memoryStorage();
-  storage.setItem(SCREEN_REFRESH_RATES_KEY, '{not json at all');
+test('a remembered rate that is not a number falls back to off, without throwing', async () => {
+  const account = await settledAccountPreferences({ refreshRates: { 'os-management/processes': 'often' } });
 
-  const harness = wired({ storage });
+  const harness = wired({ account });
   harness.refresh.bind(screen(), harness.read);
   assert.equal(harness.refresh.rate(), 0);
 
-  // And a well-formed blob of the wrong shape is the same answer for the same reason.
-  const other = wired({ storage: (() => {
-    const store = memoryStorage();
-    store.setItem(SCREEN_REFRESH_RATES_KEY, JSON.stringify(['not', 'a', 'map']));
-    return store;
-  })() });
+  // And a value the instance answered for another screen entirely is the same answer, because the
+  // row is keyed by route and this screen's route holds nothing.
+  const other = wired({ account: await settledAccountPreferences({ refreshRates: { 'logs/alerts': '10' } }) });
   other.refresh.bind(screen(), other.read);
   assert.equal(other.refresh.rate(), 0);
 });
@@ -1097,15 +1083,16 @@ test('reset drops the bound screen, its stores and its timer', async () => {
   assert.equal(harness.reads.length, 1, 'and no armed callback survives the sign-out');
 });
 
-test('the rate survives a sign-out, because it is a preference and not an answer', () => {
-  const storage = memoryStorage();
-  const harness = wired({ storage });
+test('the rate survives a sign-out, because it is a preference and not an answer', async () => {
+  const account = await settledAccountPreferences();
+  const harness = wired({ account });
   harness.refresh.bind(screen(), harness.read);
   harness.refresh.setRate(10);
+  await settle();
   harness.refresh.reset();
 
   harness.refresh.bind(screen(), harness.read);
-  assert.equal(harness.refresh.rate(), 10, 'remembered per browser, like the side bar');
+  assert.equal(harness.refresh.rate(), 10, 'remembered per user on the instance, like the side bar');
 });
 
 // --- The published copy -----------------------------------------------------------------------

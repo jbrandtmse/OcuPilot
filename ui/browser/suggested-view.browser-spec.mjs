@@ -36,6 +36,7 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { leaveFirstLoginGate, pathOf } from './shell-entry.mjs';
 import { armProbeDefinition, disarmProbeDefinition, removeDefinition } from './turnprobe-spec.mjs';
+import { rememberedShellMember, resetRememberedState } from './preferences-reset.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -116,6 +117,10 @@ async function newestErrorDate() {
 
 /** A fresh context signed in through the form, standing on `url` with the panel laid out. */
 async function signedInAt(url, viewport = config.viewport, mediaFeatures = null) {
+  // Story 15.5: the remembered screen and shell state lives on the instance now, keyed by the
+  // one account every spec signs in as, so a fresh context is no longer a fresh slate on its
+  // own -- see `preferences-reset.mjs`.
+  await resetRememberedState();
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
   page.setDefaultNavigationTimeout(config.navigationTimeoutMs);
@@ -203,9 +208,9 @@ test('AC9: leaving Home returns the panel to the remembered width, which the Hom
   try {
     await panelSettlesAt(page, 960);
     assert.equal(
-      await page.evaluate(() => localStorage.getItem('ocupilot.panel.width')),
+      await rememberedShellMember('panelWidth'),
       null,
-      'the Home target writes no stored width'
+      'the Home target writes no remembered width'
     );
 
     // A client-side route change, so the tab stays signed in and the panel is never re-created
@@ -221,7 +226,7 @@ test('AC9: leaving Home returns the panel to the remembered width, which the Hom
     );
     await panelSettlesAt(page, 400);
     assert.equal(
-      await page.evaluate(() => localStorage.getItem('ocupilot.panel.width')),
+      await rememberedShellMember('panelWidth'),
       null,
       'and it is still the default the Home target never wrote'
     );
@@ -289,8 +294,11 @@ test('AC11: a drag on the handle while on Home lands where the pointer is and is
     await panelSettlesAt(page, 880);
     const shown = await geometry(page);
     assert.equal(shown.valueNow, 880, 'the handle reports the width it was dragged to');
+    // Story 15.5: the remembered width is the instance's, not the browser's, and the write settles
+    // after the drag ends.
+    await new Promise((resolve) => setTimeout(resolve, 500));
     assert.equal(
-      await page.evaluate(() => localStorage.getItem('ocupilot.panel.width')),
+      await rememberedShellMember('panelWidth'),
       '880',
       'and that width is the stored remembered width'
     );

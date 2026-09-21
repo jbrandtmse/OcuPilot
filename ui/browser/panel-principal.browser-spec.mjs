@@ -24,6 +24,7 @@ import puppeteer from 'puppeteer';
 
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
+import { resetRememberedState } from './preferences-reset.mjs';
 
 const config = browserConfig();
 const STRINGS = loadStrings();
@@ -79,6 +80,10 @@ after(async () => {
 test('DW-378: a least-privileged principal sees the panel on two routes, with the configuration-empty state and no reminder banner', async () => {
   // Mutation (Rule 19): render the reminder banner whenever the instance is unconfigured, ignoring
   // the map's verdict -> this goes red on the banner count.
+  // Story 15.5: the remembered screen and shell state lives on the instance now, keyed by the
+  // one account every spec signs in as, so a fresh context is no longer a fresh slate on its
+  // own -- see `preferences-reset.mjs`.
+  await resetRememberedState();
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
   page.setDefaultNavigationTimeout(config.navigationTimeoutMs);

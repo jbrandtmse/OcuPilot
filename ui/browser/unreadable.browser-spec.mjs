@@ -31,6 +31,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as sleep } from 'node:timers/promises';
 import puppeteer from 'puppeteer';
+import { resetRememberedState } from './preferences-reset.mjs';
 
 import {
   LIVE_CONTAINER,
@@ -173,6 +174,10 @@ test('DW-96, DW-229: wait-readiness.sh exits 1 on its first poll, naming the sta
 });
 
 test('DW-96: the SPA shows the unreadable notice, never "Signing in", arms no retry, and Retry re-checks once', async () => {
+  // Story 15.5: the remembered screen and shell state lives on the instance now, keyed by the
+  // one account every spec signs in as, so a fresh context is no longer a fresh slate on its
+  // own -- see `preferences-reset.mjs`.
+  await resetRememberedState();
   const context = await browser.createBrowserContext();
   try {
     const page = await context.newPage();

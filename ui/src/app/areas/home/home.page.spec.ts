@@ -1,10 +1,9 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { InstanceService } from '../../core/instance';
-import { NavigationService, orderedAreas, type Verdict } from '../../core/navigation';
-import { PreferenceStore, SIDE_BAR_OPEN_KEY } from '../../core/preferences';
+import { NavigationService, orderedAreas, screenForRoute, type Verdict } from '../../core/navigation';
 import { ScopeService } from '../../core/scope';
 import type { AreaDeclaration, ScreenDeclaration } from '../../core/screens.generated';
 import { Session } from '../../core/session';
@@ -12,6 +11,14 @@ import { ShellState } from '../../core/shell-state';
 import { STRINGS } from '../../core/strings';
 import { screenDeclaration } from '../../testing/screen-declaration';
 import { HomePage } from './home.page';
+import { AccountPreferences } from '../../core/account-preferences';
+import { stubAccountPreferences } from '../../testing/account-preferences';
+import { About } from '../../core/about';
+import { stubAbout } from '../../testing/about';
+import { SYSTEM_INFO_FIELDS, SystemInfo } from '../../core/system-info';
+import { stubSystemInfo, type StubbedSystemInfo } from '../../testing/system-info';
+import { SHORTCUT_ROUTES, shortcutScreens } from '../../core/shortcuts';
+import type { StubbedAbout } from '../../testing/about';
 
 /**
  * Home's rendered contract (DESIGN.md `:896`, `:1102`; EXPERIENCE.md "Six tiles in daily-use order").
@@ -99,6 +106,11 @@ class StubInstance {
     return this.serverNameValue;
   }
 
+  /** Story 15.3: the stale-bundle prompt reads this; '' means there is nothing to compare. */
+  buildIdentity(): string {
+    return '';
+  }
+
   instanceVersion(): string {
     return this.instanceVersionValue;
   }
@@ -162,6 +174,54 @@ describe('Home', () => {
   let shell: ShellState;
   let storage: ReturnType<typeof memoryStorage>;
   let router: Router;
+  let preferences: ReturnType<typeof stubAccountPreferences>;
+  let about: StubbedAbout;
+  let systemInfo: StubbedSystemInfo;
+
+  /**
+   * The two remembered blocks. Story 15.3 added two more sections of the same shape beside them --
+   * Shortcuts and Links -- which are fixed rosters rather than stored lists and carry
+   * `ocu-home-block-fixed`; this helper names the two these rows are about.
+   */
+  const blocks = (): HTMLElement[] =>
+    Array.from(
+      fixture.nativeElement.querySelectorAll('.ocu-home-block:not(.ocu-home-block-fixed)')
+    );
+  const fixedBlocks = (): HTMLElement[] =>
+    Array.from(fixture.nativeElement.querySelectorAll('.ocu-home-block-fixed'));
+  const blockRows = (index: number): HTMLElement[] =>
+    Array.from(blocks()[index].querySelectorAll('.ocu-home-block-row'));
+  const rowLabels = (index: number): string[] =>
+    blockRows(index).map(
+      (row) => row.querySelector('.ocu-home-block-label')?.textContent?.trim() ?? ''
+    );
+  const openButton = (index: number, row: number): HTMLButtonElement =>
+    blockRows(index)[row].querySelector('.ocu-home-block-open') as HTMLButtonElement;
+
+  /**
+   * The System Information panel, found by its own heading rather than by position -- the idiom
+   * `ui/browser/preferences-integration.browser-spec.mjs` uses, and the one the positional form
+   * cost this change once already.
+   */
+  const systemPanel = (): HTMLElement => {
+    const panel = fixedBlocks().find(
+      (block) =>
+        block.querySelector('.ocu-home-block-heading')?.textContent?.trim() ===
+        STRINGS.systemInfoHeading
+    );
+    expect(panel).toBeDefined();
+    return panel as HTMLElement;
+  };
+  const systemRows = (): HTMLElement[] =>
+    Array.from(fixture.nativeElement.querySelectorAll('.ocu-home-system-row'));
+  const rowLabelsOf = (block: HTMLElement): string[] =>
+    Array.from(block.querySelectorAll('.ocu-home-system-label')).map(
+      (label) => label.textContent?.trim() ?? ''
+    );
+  const rowValuesOf = (block: HTMLElement): string[] =>
+    Array.from(block.querySelectorAll('.ocu-home-system-value')).map(
+      (value) => value.textContent?.trim() ?? ''
+    );
 
   const tiles = (): HTMLButtonElement[] =>
     Array.from(fixture.nativeElement.querySelectorAll('.ocu-area-tile'));
@@ -174,19 +234,24 @@ describe('Home', () => {
       )
     );
 
-  beforeEach(() => {
-    TestBed.resetTestingModule();
-    navigation = new StubNavigation();
-    instance = new StubInstance();
-    scope = new StubScope();
-    session = new StubSession();
-    storage = memoryStorage();
-    shell = new ShellState({ preferences: new PreferenceStore({ storage }) });
+  /**
+   * Mount Home over one account store. Split out of `beforeEach` so a spec about what the
+   * instance remembers can mount over its own seed -- `AccountPreferences` is read at
+   * construction, so swapping it afterwards would leave the component on the first one.
+   */
+  const buildWith = (account: ReturnType<typeof stubAccountPreferences>) => {
+    preferences = account;
     TestBed.configureTestingModule({
       providers: [
+        { provide: About, useValue: about },
+        { provide: SystemInfo, useValue: systemInfo },
+        { provide: AccountPreferences, useValue: account },
         provideRouter([
           { path: '', children: [] },
           { path: 'os-management/processes', children: [] },
+          // Story 15.3: the first built shortcut's own target, so the row that opens one asserts a
+          // URL the harness could have reached rather than one it could never fail on.
+          { path: 'os-management/databases', children: [] },
           // DW-161's second screen: the tile's target when the first one's verdict refuses. It
           // has to resolve here, or the row asserting the skip would assert a URL the harness
           // could never have reached.
@@ -195,6 +260,9 @@ describe('Home', () => {
           // The gated tile's own target has to resolve here, or its "does not navigate" row
           // asserts a URL the harness could never have reached and cannot fail.
           { path: 'permissions/users', children: [] },
+          // A remembered row's own target, so the row that opens one asserts a URL the harness
+          // could have reached.
+          { path: 'logs/alerts', children: [] },
         ]),
         { provide: NavigationService, useValue: navigation as unknown as NavigationService },
         { provide: InstanceService, useValue: instance as unknown as InstanceService },
@@ -206,6 +274,27 @@ describe('Home', () => {
     fixture = TestBed.createComponent(HomePage);
     router = TestBed.inject(Router);
     fixture.detectChanges();
+  };
+
+  beforeEach(() => {
+    TestBed.resetTestingModule();
+    navigation = new StubNavigation();
+    instance = new StubInstance();
+    scope = new StubScope();
+    session = new StubSession();
+    storage = memoryStorage();
+    shell = new ShellState({ account: stubAccountPreferences() });
+    // Two built screens the shipped mirror declares, plus one route it does not: the AD-37
+    // degrade row needs a stored route that resolves to nothing.
+    about = stubAbout();
+    systemInfo = stubSystemInfo();
+    preferences = stubAccountPreferences({
+      favorites: ['logs/alerts', 'no-such-area/no-such-screen'],
+      // `agent/definitions/edit` is built but unlisted (sideBarPosition 0) and keyed by an entity
+      // id, so a row for it would open the Definition form with no definition.
+      recents: ['permissions/users', 'agent/definitions/edit'],
+    });
+    buildWith(preferences);
   });
 
   it('renders one tile per area in rail order, with Home and Agent co-pilot absent', () => {
@@ -426,7 +515,6 @@ describe('Home', () => {
     await fixture.whenStable();
     expect(shell.open()).toBe(true);
     expect(shell.visibleArea()).toBe('logs');
-    expect(storage.map.get(SIDE_BAR_OPEN_KEY)).toBe('true');
   });
 
   it('Enter and Space activate exactly as a click does, because the tile is a native button', () => {
@@ -534,4 +622,558 @@ describe('Home', () => {
     // The stylesheet half -- that nothing ellipsizes it -- is design-tokens.test.mjs's.
     expect(version.classList.contains('ocu-status-bar-version')).toBe(false);
   });
+
+  // --- Story 15.2: the Favorites and Recent items blocks -------------------------------------
+
+  it('Story 15.2: both blocks render above the tile grid, each with its published heading', () => {
+    const headings = blocks().map(
+      (block) => block.querySelector('.ocu-home-block-heading')?.textContent?.trim() ?? ''
+    );
+    expect(headings).toEqual([STRINGS.favoritesHeading, STRINGS.recentsHeading]);
+
+    // Above the grid, not beside or below it: the blocks' wrapper precedes it in document order.
+    const section: HTMLElement = fixture.nativeElement.querySelector('.ocu-home');
+    const children = Array.from(section.children);
+    const remembered = children.findIndex((el) => el.classList.contains('ocu-home-remembered'));
+    const grid = children.findIndex((el) => el.classList.contains('ocu-area-tile-grid'));
+    expect(remembered).toBeGreaterThanOrEqual(0);
+    expect(remembered).toBeLessThan(grid);
+  });
+
+  it('Story 15.2: an account that has remembered nothing sees both empty states and no list', async () => {
+    expect(blocks()[0].querySelector('.ocu-home-block-empty')?.textContent?.trim()).toBe(
+      STRINGS.favoritesEmpty
+    );
+    expect(blocks()[1].querySelector('.ocu-home-block-empty')?.textContent?.trim()).toBe(
+      STRINGS.recentsEmpty
+    );
+    for (const block of blocks()) expect(block.querySelector('.ocu-home-block-list')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.ocu-home-block-clear')).toBeNull();
+  });
+
+  it('Story 15.2: each block is a list of listitems wrapping real buttons, with a Clear control', async () => {
+    await preferences.load();
+    fixture.detectChanges();
+
+    const lists: HTMLElement[] = blocks().flatMap((block) =>
+      Array.from(block.querySelectorAll<HTMLElement>('.ocu-home-block-list'))
+    );
+    expect(lists).toHaveLength(2);
+    for (const list of lists) expect(list.getAttribute('role')).toBe('list');
+    for (const row of blockRows(0)) expect(row.getAttribute('role')).toBe('listitem');
+    expect(openButton(0, 0).tagName).toBe('BUTTON');
+
+    const clears: HTMLButtonElement[] = Array.from(
+      fixture.nativeElement.querySelectorAll('.ocu-home-block-clear')
+    );
+    expect(clears.map((clear) => clear.textContent?.trim())).toEqual([
+      STRINGS.favoritesClear,
+      STRINGS.recentsClear,
+    ]);
+  });
+
+  it('Story 15.5 (DW-1328): a block whose every stored row names no screen here still says so, and keeps Clear', async () => {
+    // Mutation (Rule 19): make `RememberedBlock.hasStored` read `rows.length` -> the Clear control
+    // disappears and the first two assertions go red, leaving rows the instance holds invisible
+    // and unclearable (AD-37: no longer present, never absent).
+    TestBed.resetTestingModule();
+    const ghosts = stubAccountPreferences({
+      favorites: ['no-such-area/no-such-screen', 'another/ghost'],
+      recents: [],
+    });
+    await ghosts.load();
+    buildWith(ghosts);
+
+    const favorites = blocks()[0];
+    expect(favorites.querySelector('.ocu-home-block-list')).toBeNull();
+    expect(favorites.querySelector('.ocu-home-block-empty')?.textContent?.trim()).toBe(
+      STRINGS.rememberedNoScreensHere
+    );
+    expect(favorites.querySelector('.ocu-home-block-clear')).not.toBeNull();
+    expect(ghosts.favorites()).toHaveLength(2);
+
+    // The block that genuinely holds nothing keeps its own wording and offers no Clear.
+    const recents = blocks()[1];
+    expect(recents.querySelector('.ocu-home-block-empty')?.textContent?.trim()).toBe(
+      STRINGS.recentsEmpty
+    );
+    expect(recents.querySelector('.ocu-home-block-clear')).toBeNull();
+
+    (favorites.querySelector('.ocu-home-block-clear') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(ghosts.favorites()).toEqual([]);
+  });
+
+  it('Story 15.5 (DW-1326): a refused preference write is announced assertively, with the instance\'s own sentence', async () => {
+    // Mutation (Rule 19): drop the `role="alert"` region, or make `refusal` read `''` -> this goes
+    // red, and a refused write would again be surfaced nowhere at all.
+    TestBed.resetTestingModule();
+    const refusing = stubAccountPreferences({
+      favorites: ['logs/alerts'],
+      writeAnswer: 'refused',
+      refusalReason: 'That is not a screen this instance serves, so it cannot be remembered.',
+    });
+    await refusing.load();
+    buildWith(refusing);
+
+    const alert = (): HTMLElement => fixture.nativeElement.querySelector('[role="alert"]');
+    expect(alert().textContent?.trim()).toBe('');
+
+    (blocks()[0].querySelector('.ocu-home-block-clear') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(alert().textContent?.trim()).toBe(
+      'That is not a screen this instance serves, so it cannot be remembered.'
+    );
+    // The polite region says nothing: the clear the user asked for did not happen.
+    const polite: HTMLElement = fixture.nativeElement.querySelector('[role="status"]');
+    expect(polite.textContent?.trim()).toBe('');
+    expect(refusing.favorites()).toEqual(['logs/alerts']);
+  });
+
+  it('Story 15.2 (AD-37): a stored route that names no built screen is dropped from the rendering, not from the store', async () => {
+    await preferences.load();
+    fixture.detectChanges();
+
+    // Two favorites are stored; one of them resolves to no built screen and never renders.
+    expect(preferences.favorites()).toHaveLength(2);
+    expect(rowLabels(0)).toEqual([STRINGS.alertLogListLabel]);
+  });
+
+  it('Story 15.2: an unlisted screen is dropped from the rendering, because its row would open a create form', async () => {
+    await preferences.load();
+    fixture.detectChanges();
+
+    // Both are stored; only the listed one is a place to return to. `agent/definitions/edit`
+    // declares sideBarPosition 0 and takes an entity id, so the stored route is the id-less
+    // parent and its button would open the Definition form empty.
+    expect(preferences.recents()).toHaveLength(2);
+    // Mutation (Rule 19): drop `|| !isListedScreen(screen)` from `HomePage.rowsFor` -> this goes
+    // red with a second row labelled "Definition" that opens a create form.
+    expect(rowLabels(1)).toEqual([STRINGS.userListLabel]);
+  });
+
+  it('Story 15.2: Home reads the remembered lists on arrival, not only at sign-in', async () => {
+    // `App.verifyWhenSignedIn` issues the tab's first read on a session state change, so a tab
+    // that stays signed in never reads again -- and a write whose answer the store parked would
+    // leave these two blocks wrong for the life of the tab. Arriving at Home is the gesture that
+    // has to repair it.
+    //
+    // Mutation (Rule 19): drop `void this.preferences.load()` from `HomePage`'s constructor ->
+    // this goes red, because nothing else in this harness ever reads.
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(preferences.answered()).toBe(true);
+    expect(rowLabels(0)).toEqual([STRINGS.alertLogListLabel]);
+  });
+
+  it('Story 15.2: a per-row remove control names the screen it removes, and removing one re-renders from the instance', async () => {
+    await preferences.load();
+    fixture.detectChanges();
+
+    const remove = blockRows(0)[0].querySelector('.ocu-home-block-remove') as HTMLButtonElement;
+    expect(remove.getAttribute('aria-label')).toBe(
+      STRINGS.favoritesRemoveNamed.replace('<name>', STRINGS.alertLogListLabel)
+    );
+
+    remove.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(preferences.favorites()).not.toContain('logs/alerts');
+    expect(fixture.nativeElement.querySelector('.ocu-home-status')?.textContent?.trim()).toBe(
+      STRINGS.favoritesRemoved
+    );
+  });
+
+  it('Story 15.2: Clear empties the block and announces it politely', async () => {
+    await preferences.load();
+    fixture.detectChanges();
+
+    const clear = blocks()[1].querySelector('.ocu-home-block-clear') as HTMLButtonElement;
+    clear.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(preferences.recents()).toEqual([]);
+    const status: HTMLElement = fixture.nativeElement.querySelector('.ocu-home-status');
+    expect(status.getAttribute('role')).toBe('status');
+    expect(status.textContent?.trim()).toBe(STRINGS.recentsCleared);
+  });
+
+  it('Story 15.2: each block names its own list, so the two blocks cannot be crossed', async () => {
+    // Three of the fifteen published strings are wired at exactly one site each, and the rows
+    // above read the other member of each pair -- remove on Favorites, Clear on Recent items. A
+    // crossed binding would announce "Removed from favorites" for a recent item, and name a
+    // recent row's remove control "Remove Users from favorites", with the whole suite green.
+    await preferences.load();
+    fixture.detectChanges();
+
+    // Mutation (Rule 19): swap `STRINGS.recentsRemoveNamed` for `STRINGS.favoritesRemoveNamed` in
+    // `HomePage.resolvedBlocks` -> the first assertion goes red.
+    const recentRemove = blockRows(1)[0].querySelector('.ocu-home-block-remove') as HTMLButtonElement;
+    expect(recentRemove.getAttribute('aria-label')).toBe(
+      STRINGS.recentsRemoveNamed.replace('<name>', STRINGS.userListLabel)
+    );
+
+    // Mutation: swap `STRINGS.recentsRemoved` for `STRINGS.favoritesRemoved` -> this goes red.
+    recentRemove.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.ocu-home-status')?.textContent?.trim()).toBe(
+      STRINGS.recentsRemoved
+    );
+
+    // Mutation: swap `STRINGS.favoritesCleared` for `STRINGS.recentsCleared` -> this goes red.
+    const clearFavorites = blocks()[0].querySelector('.ocu-home-block-clear') as HTMLButtonElement;
+    clearFavorites.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.ocu-home-status')?.textContent?.trim()).toBe(
+      STRINGS.favoritesCleared
+    );
+  });
+
+  it('Story 15.2: a gated row stays listed and focusable with its reason inline, and does not navigate', async () => {
+    navigation.screenVerdicts.set('logs/alerts', {
+      allowed: false,
+      failedPair: '%Admin_Operate:USE',
+    });
+    await preferences.load();
+    fixture.detectChanges();
+
+    const open = openButton(0, 0);
+    expect(open.getAttribute('aria-disabled')).toBe('true');
+    expect(open.hasAttribute('disabled')).toBe(false);
+    // The reason is inside the button's own content, so it is inside its accessible name.
+    expect(open.textContent).toContain('%Admin_Operate:USE');
+
+    const before = router.url;
+    open.click();
+    await fixture.whenStable();
+    expect(router.url).toBe(before);
+  });
+
+  it('Story 15.2: an allowed row navigates to its screen, carrying the namespace', async () => {
+    await preferences.load();
+    fixture.detectChanges();
+
+    await router.navigateByUrl('/?ns=USER');
+    openButton(0, 0).click();
+    await fixture.whenStable();
+
+    expect(router.url).toBe('/logs/alerts?ns=USER');
+  });
+
+  it('Story 15.3: Shortcuts and Links render beside the remembered blocks, each with its published heading', async () => {
+    // Links renders once the instance has answered an address; Shortcuts is a local roster.
+    await about.load();
+    fixture.detectChanges();
+
+    const headings = fixedBlocks().map(
+      (block) => block.querySelector('.ocu-home-block-heading')?.textContent?.trim() ?? ''
+    );
+    expect(headings).toEqual([
+      STRINGS.shortcutsHeading,
+      STRINGS.linksHeading,
+      STRINGS.systemInfoHeading,
+    ]);
+
+    // Above the grid, like the two they sit beside.
+    const section: HTMLElement = fixture.nativeElement.querySelector('.ocu-home');
+    const children = Array.from(section.children);
+    const remembered = children.findIndex((el) => el.classList.contains('ocu-home-remembered'));
+    const grid = children.findIndex((el) => el.classList.contains('ocu-area-tile-grid'));
+    expect(remembered).toBeLessThan(grid);
+  });
+
+  it('Story 15.3 (AD-37): a roster route naming no built screen is dropped, and the rest keep roster order', () => {
+    // The roster is the shipped one, read through the real mirror: seven of its seventeen name
+    // screens this product has not built, so the block is the ten that resolve. Deriving the
+    // expectation from `screenForRoute` rather than from `shortcutScreens()` is what keeps this
+    // from asserting the code against itself.
+    const labels = Array.from(
+      fixedBlocks()[0].querySelectorAll('.ocu-home-block-label')
+    ).map((label) => label.textContent?.trim() ?? '');
+    const wanted: string[] = [];
+    for (const route of SHORTCUT_ROUTES) {
+      const screen = screenForRoute(route);
+      if (screen === null || !screen.built) continue;
+      wanted.push(STRINGS[screen.labelKey as keyof typeof STRINGS]);
+    }
+
+    expect(labels).toEqual(wanted);
+    expect(labels.length).toBeGreaterThan(0);
+    expect(labels.length).toBeLessThan(SHORTCUT_ROUTES.length);
+  });
+
+  it('Story 15.3: a shortcut the user may not open stays listed and focusable, with its reason inline, and does not navigate', async () => {
+    const first = shortcutScreens()[0];
+    navigation.screenVerdicts.set(first.route, {
+      allowed: false,
+      failedPair: '%Admin_Manage:USE',
+    });
+    navigation.notify();
+    fixture.detectChanges();
+
+    const open = fixedBlocks()[0].querySelector('.ocu-home-block-open') as HTMLButtonElement;
+    expect(open.getAttribute('aria-disabled')).toBe('true');
+    expect(open.hasAttribute('disabled')).toBe(false);
+    expect(open.textContent).toContain('%Admin_Manage:USE');
+
+    const before = router.url;
+    open.click();
+    await fixture.whenStable();
+    expect(router.url).toBe(before);
+  });
+
+  it('Story 15.3: the Links block lists the three destinations as anchors opening in a new tab', async () => {
+    // Home issues the read on arrival; this waits for it, the way the remembered rows do.
+    await about.load();
+    fixture.detectChanges();
+
+    const anchors = Array.from(
+      fixedBlocks()[1].querySelectorAll<HTMLAnchorElement>('.ocu-home-block-link')
+    );
+    expect(anchors.map((anchor) => anchor.querySelector('.ocu-home-block-label')?.textContent?.trim())).toEqual([
+      STRINGS.linksDocumentation,
+      STRINGS.linksSupport,
+      STRINGS.linksInterSystems,
+    ]);
+    for (const anchor of anchors) {
+      expect(anchor.getAttribute('target')).toBe('_blank');
+      expect(anchor.getAttribute('rel')).toBe('noreferrer');
+      expect(anchor.getAttribute('href')).not.toBe('');
+    }
+  });
+
+  it('Story 15.3: an allowed shortcut opens its screen, carrying the namespace, and moves an open side bar to its area', async () => {
+    // Mutation (Rule 19): make `openShortcut` return unconditionally -> this goes red. Its gated
+    // sibling below cannot see that change: that row asserts the URL is *unchanged*, which a
+    // handler that never navigates satisfies by construction. Two more this row alone sees:
+    // replace `withQuery(row.route, this.router.url)` with `row.route` -> the namespace
+    // assertion goes red; drop the `showArea` line -> the side-bar assertion does.
+    const first = shortcutScreens()[0];
+    expect(first.route).toBe('os-management/databases');
+
+    // An open side bar showing another area, so "moved to the shortcut's own" is observable at
+    // all; a collapsed one is left collapsed and would prove nothing either way.
+    tiles()[0].click();
+    await fixture.whenStable();
+    expect(shell.visibleArea()).toBe('logs');
+    expect(shell.open()).toBe(true);
+
+    await router.navigateByUrl('/?ns=USER');
+    fixture.detectChanges();
+
+    const open = fixedBlocks()[0].querySelector('.ocu-home-block-open') as HTMLButtonElement;
+    expect(open.getAttribute('aria-disabled')).toBeNull();
+
+    open.click();
+    await fixture.whenStable();
+
+    // `?ns=` is data scope (AD-44), so `withQuery` carries it; the side bar follows the screen,
+    // so the list beside it is that screen's own.
+    expect(router.url).toBe(`/${first.route}?ns=USER`);
+    expect(shell.visibleArea()).toBe('os-management');
+    expect(shell.open()).toBe(true);
+  });
+
+  it('Story 15.3: an instance that answered no address at all renders no Links block, not a heading over nothing', async () => {
+    about.setLinks({ documentation: '', support: '', intersystems: '' });
+    await about.load();
+    fixture.detectChanges();
+
+    const headings = fixedBlocks().map(
+      (block) => block.querySelector('.ocu-home-block-heading')?.textContent?.trim() ?? ''
+    );
+    expect(headings).toEqual([STRINGS.shortcutsHeading, STRINGS.systemInfoHeading]);
+    expect(fixture.nativeElement.querySelector('.ocu-home-block-link')).toBeNull();
+  });
+
+  it('Story 15.3: a destination the instance did not answer an address for is not rendered as a link', async () => {
+    about.setLinks({ support: '', intersystems: '' });
+    await about.load();
+    fixture.detectChanges();
+
+    const anchors = Array.from(
+      fixedBlocks()[1].querySelectorAll<HTMLAnchorElement>('.ocu-home-block-link')
+    );
+    expect(anchors).toHaveLength(1);
+    expect(anchors[0].querySelector('.ocu-home-block-label')?.textContent?.trim()).toBe(
+      STRINGS.linksDocumentation
+    );
+  });
+
+  it('Story 15.4: the System Information panel is a fifth block of seven labelled rows, each carrying its word', async () => {
+    await systemInfo.load();
+    fixture.detectChanges();
+
+    const panel = systemPanel();
+    expect(panel.querySelector('.ocu-home-block-heading')?.textContent?.trim()).toBe(
+      STRINGS.systemInfoHeading
+    );
+    const rows = systemRows();
+    expect(rows).toHaveLength(SYSTEM_INFO_FIELDS.length);
+    expect(rowLabelsOf(panel)).toEqual([
+      STRINGS.systemInfoUptime,
+      STRINGS.systemInfoMirror,
+      STRINGS.systemInfoDatabase,
+      STRINGS.systemInfoJournal,
+      // Two labels this story publishes no key for: the value already exists, so the row reuses
+      // the key that holds it.
+      STRINGS.lockListLabel,
+      STRINGS.systemUsageWriteDaemon,
+      STRINGS.systemInfoProduction,
+    ]);
+    // Every row carries the instance's own word as text, so colour is never the only signal.
+    expect(rowValuesOf(panel)).toEqual(SYSTEM_INFO_FIELDS.map((field) => `${field}-value`));
+    expect(panel.querySelectorAll('.ocu-home-system-absent')).toHaveLength(0);
+  });
+
+  it('Story 15.4: a member the instance did not report keeps its label and reads the not-reported word', async () => {
+    systemInfo.setFields({ production: '', mirror: '' });
+    await systemInfo.load();
+    fixture.detectChanges();
+
+    const panel = systemPanel();
+    // The labels are unchanged: the panel has the same seven rows whatever the instance answers.
+    expect(rowLabelsOf(panel)).toHaveLength(SYSTEM_INFO_FIELDS.length);
+    const values = rowValuesOf(panel);
+    expect(values[SYSTEM_INFO_FIELDS.indexOf('mirror')]).toBe(STRINGS.systemInfoNotReported);
+    expect(values[SYSTEM_INFO_FIELDS.indexOf('production')]).toBe(STRINGS.systemInfoNotReported);
+    expect(values[SYSTEM_INFO_FIELDS.indexOf('uptime')]).toBe('uptime-value');
+    expect(panel.querySelectorAll('.ocu-home-system-absent')).toHaveLength(2);
+  });
+
+  it('Story 15.4: a failed read after an answer keeps the answer on screen', async () => {
+    await systemInfo.load();
+    fixture.detectChanges();
+    expect(rowValuesOf(systemPanel())[0]).toBe('uptime-value');
+
+    systemInfo.setUnreachable(true);
+    await systemInfo.load();
+    fixture.detectChanges();
+
+    // Parked, not cleared: an instance that did not reply is not an instance reporting nothing.
+    expect(rowValuesOf(systemPanel())[0]).toBe('uptime-value');
+  });
+
+  it('Story 15.4: a panel whose read has never answered shows the fault, not seven confident rows', async () => {
+    // The state `stubSystemInfo({ unreachable: true })` mounts in -- no answer held and the last
+    // read failed -- arranged on the mounted store, because this spec has one mount point.
+    systemInfo.reset();
+    systemInfo.setUnreachable(true);
+    await systemInfo.load();
+    fixture.detectChanges();
+
+    const panel = systemPanel();
+    expect(panel.querySelector('.ocu-home-block-empty')?.textContent?.trim()).toBe(
+      STRINGS.connectivityServerFault
+    );
+    expect(panel.querySelectorAll('.ocu-home-system-row')).toHaveLength(0);
+  });
+
+  it('Story 15.4: a panel whose read has not answered yet renders no rows at all', async () => {
+    // Between construction and the first answer the store holds seven empty members. Rendering
+    // them would say "Not reported" about an instance nobody has heard from -- the same
+    // confident claim the fault branch exists to prevent, and one that would stand for good
+    // against an instance that never replies. It is also what makes `.ocu-home-system-row` a
+    // correct "the read has settled" wait for the browser spec.
+    systemInfo.reset();
+    fixture.detectChanges();
+
+    const panel = systemPanel();
+    expect(panel.querySelectorAll('.ocu-home-system-row')).toHaveLength(0);
+    expect(panel.querySelector('.ocu-home-block-empty')).toBeNull();
+
+    await systemInfo.load();
+    fixture.detectChanges();
+    expect(systemPanel().querySelectorAll('.ocu-home-system-row')).toHaveLength(
+      SYSTEM_INFO_FIELDS.length
+    );
+  });
+
+  it('Story 15.4 (AD-44): a namespace switch re-reads the panel, so the Production row is not the old scope', async () => {
+    await systemInfo.load();
+    fixture.detectChanges();
+    const before = systemInfo.calls.length;
+
+    // The production member is scoped to the request's namespace and Home is not re-created by a
+    // switch, so without the `onScopeChange` subscription the row keeps the previous namespace's
+    // word beside an instance line already showing the new one.
+    scope.namespaceValue = 'USER';
+    scope.notify();
+    await fixture.whenStable();
+
+    expect(systemInfo.calls.length).toBe(before + 1);
+  });
+
+  it('Story 15.4 (AD-43): the panel settles with its own read and starts no timer', async () => {
+    expect(systemInfo.calls.length).toBe(1);
+    expect(systemInfo.calls[0].path).toBe('/api/ocupilot/ui/system');
+
+    // Home is not on the auto-refresh roster. The clock is faked **before** the component is
+    // constructed, because a timer the constructor registers against the real clock is invisible
+    // to a fake one installed afterwards; ten minutes of fake time then outruns any period the
+    // product would plausibly use, and `vi.getTimerCount()` makes "registers no timer" an
+    // observation rather than an absence of evidence -- `log-viewer.spec.ts`'s idiom.
+    //
+    // The count is environment-global, so what it reports has to be made this component's, in two
+    // steps. **Real timers are still pending when this row begins** -- earlier rows in this file
+    // leave them -- and `advanceTimersByTimeAsync` yields to the real event loop between its
+    // steps, so one of them can fire inside the measurement window and schedule onto the fake
+    // clock, where the count reports it as the second HomePage's. Observed as `4` on node 26 and
+    // `1` on node 24 while node 22 stayed green, which is the shape of contamination rather than
+    // of a timer the component registers: a component's own count would not vary by band.
+    //
+    // So: wait for the real loop to be **verifiably** empty rather than for a guessed duration (a
+    // fixed 100 ms held on node 26 and did not on node 24), and then advance the window
+    // **synchronously**, which yields to the real loop not at all. A repeating timer still fires
+    // and still re-registers under a synchronous advance, and a read it issues still lands in
+    // `systemInfo.calls`, so neither assertion below loses any of its reach.
+    //
+    // The synchronous advance is what makes the measurement sound; the drain only narrows the one
+    // remaining yield, the `advanceTimersByTimeAsync(0)` settle. So the drain is best-effort and
+    // is deliberately not asserted on: a real timer still pending is the environment's business,
+    // and failing here for it would report an earlier row's leak as this component's defect.
+    const pendingRealTimers = () =>
+      (process as unknown as { getActiveResourcesInfo(): string[] })
+        .getActiveResourcesInfo()
+        .filter((resource) => resource === 'Timeout').length;
+    for (let attempt = 0; attempt < 50 && pendingRealTimers() > 0; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    vi.useFakeTimers();
+    let second: ReturnType<typeof TestBed.createComponent<HomePage>> | null = null;
+    try {
+      second = TestBed.createComponent(HomePage);
+      second.detectChanges();
+      await vi.advanceTimersByTimeAsync(0);
+      const issued = systemInfo.calls.length;
+
+      vi.advanceTimersByTime(10 * 60 * 1000);
+      expect(systemInfo.calls.length).toBe(issued);
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      // In the `finally` beside the clock: a failed expectation above must not leave a second
+      // HomePage mounted against the fake timers for every row that follows.
+      second?.destroy();
+      vi.useRealTimers();
+    }
+  });
+
+  it('Story 15.3: the shipped roster resolves rows, so Shortcuts renders its list and not its empty state', () => {
+    // The empty state is unreachable here: `shortcutScreens()` reads the real mirror, which this
+    // spec may not replace, and the shipped roster always resolves some rows. So this row asserts
+    // which of the two branches the shipped mirror takes -- not the empty one, which has no test
+    // host on this side and is pinned in `ui/tools/about.test.mjs` at the roster level instead.
+    expect(shortcutScreens().length).toBeGreaterThan(0);
+    const block = fixedBlocks()[0];
+    expect(block.querySelector('.ocu-home-block-empty')).toBeNull();
+    expect(block.querySelector('.ocu-home-block-list')).not.toBeNull();
+  });
+
 });

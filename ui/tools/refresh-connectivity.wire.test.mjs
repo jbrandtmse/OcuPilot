@@ -42,7 +42,8 @@ const { screenDeclaration } = await import(
 const { RefreshService, REFRESH_PARK_KEY } = await import(corePath('refresh.ts'));
 const { ChangeBus } = await import(corePath('change-bus.ts'));
 const { ScreenStores } = await import(corePath('screen-store.ts'));
-const { PreferenceStore } = await import(corePath('preferences.ts'));
+const { stubAccountPreferences, settledAccountPreferences, lastRemembered, SHELL_SIDE_BAR_OPEN, SHELL_PANEL_WIDTH } =
+  await import(new URL('../src/app/testing/account-preferences.ts', import.meta.url).href);
 const { ConnectivityService, PROBE_BACKOFF_BASE_MS } = await import(corePath('connectivity.ts'));
 const { ApiService } = await import(corePath('api.ts'));
 const { Session } = await import(corePath('session.ts'));
@@ -134,8 +135,8 @@ function wired() {
   };
 
   const bus = new ChangeBus({ now: () => new Date(NOW_MS) });
-  const preferences = new PreferenceStore({ storage: memoryStorage() });
-  const stores = new ScreenStores({ preferences });
+  const preferences = stubAccountPreferences();
+  const stores = new ScreenStores({ account: preferences });
   const refresh = new RefreshService({
     stores,
     connectivity,
@@ -479,8 +480,8 @@ function wiredForResumeGate() {
   };
 
   const bus = new ChangeBus({ now: () => new Date(NOW_MS) });
-  const preferences = new PreferenceStore({ storage: memoryStorage() });
-  const stores = new ScreenStores({ preferences });
+  const preferences = stubAccountPreferences();
+  const stores = new ScreenStores({ account: preferences });
   const refresh = new RefreshService({
     stores,
     connectivity,

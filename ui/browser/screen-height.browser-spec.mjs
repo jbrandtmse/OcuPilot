@@ -27,6 +27,7 @@ import puppeteer from 'puppeteer';
 import { READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { ROW_SELECTOR, clickRowCentre, waitForRows } from './list-spec.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
+import { resetRememberedState } from './preferences-reset.mjs';
 
 const config = browserConfig();
 
@@ -76,6 +77,10 @@ after(async () => {
 
 /** A fresh context signed in through the shell's own form, landing on `route`. */
 async function signedInAt(route) {
+  // Story 15.5: the remembered screen and shell state lives on the instance now, keyed by the
+  // one account every spec signs in as, so a fresh context is no longer a fresh slate on its
+  // own -- see `preferences-reset.mjs`.
+  await resetRememberedState();
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
   page.setDefaultNavigationTimeout(config.navigationTimeoutMs);

@@ -4,13 +4,18 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { AgentStatus, formatKillSwitch } from '../core/agent-status';
 import { NavigationService, type Verdict } from '../core/navigation';
-import { PreferenceStore } from '../core/preferences';
 import { PanelState } from '../core/panel-layout';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
 import type { AreaDeclaration, ScreenDeclaration } from '../core/screens.generated';
 import { stubAgentStatus } from '../testing/agent-status';
 import { Rail } from './rail';
+import {
+  SHELL_SIDE_BAR_OPEN,
+  type StubbedAccountPreferences,
+  lastRemembered,
+  stubAccountPreferences,
+} from '../testing/account-preferences';
 
 /**
  * The rail's rendered contract (EXPERIENCE.md "`{spacing.rail-width}` icon", "**Mechanism** (the accessibility contract; component rows point here)."; DESIGN.md `:972-1003`), asserted
@@ -21,19 +26,6 @@ import { Rail } from './rail';
  * arranged without a principal: what the server actually answers for a real one is
  * `OcuPilot.Test.Wire`'s, over the wire.
  */
-
-function memoryStorage() {
-  const map = new Map<string, string>();
-  return {
-    getItem: (key: string) => map.get(key) ?? null,
-    setItem: (key: string, value: string) => {
-      map.set(key, value);
-    },
-    removeItem: (key: string) => {
-      map.delete(key);
-    },
-  };
-}
 
 const ALLOWED: Verdict = { allowed: true, failedPair: '' };
 
@@ -112,8 +104,8 @@ describe('the activity rail', () => {
   let restraint: Record<string, unknown>;
   let shell: ShellState;
   let panel: PanelState;
-  /** The storage behind both the shell's and the panel's preferences. */
-  let storage: ReturnType<typeof memoryStorage>;
+  /** The account store behind both the shell's and the panel's remembered state. */
+  let account: StubbedAccountPreferences;
 
   /** The attention dot, or null. There is at most one on the whole rail, ever. */
   const dot = (): HTMLElement | null => fixture.nativeElement.querySelector('.ocu-rail-dot');
@@ -126,10 +118,9 @@ describe('the activity rail', () => {
     definitionRows = [];
     restraint = {};
     agentStatus = stubAgentStatus(definitionRows, restraint);
-    storage = memoryStorage();
-    const preferences = new PreferenceStore({ storage });
-    shell = new ShellState({ preferences });
-    panel = new PanelState({ preferences, shell });
+    account = stubAccountPreferences();
+    shell = new ShellState({ account });
+    panel = new PanelState({ account, shell });
     TestBed.configureTestingModule({
       providers: [
         // Two real routes, so a navigation that does not happen is observable. With an empty
@@ -293,20 +284,20 @@ describe('the activity rail', () => {
     panel.setViewport(1280);
     fixture.detectChanges();
     expect(panel.sideBarYielded()).toBe(true);
-    const stored = storage.getItem('ocupilot.side-bar.open');
-    expect(stored).toBe('true');
+    const stored = lastRemembered(account.calls, SHELL_SIDE_BAR_OPEN);
+    expect(stored).toBe('1');
 
     items()[1].click();
     fixture.detectChanges();
     expect(panel.sideBarReopened()).toBe(true);
-    expect(storage.getItem('ocupilot.side-bar.open')).toBe(stored);
+    expect(lastRemembered(account.calls, SHELL_SIDE_BAR_OPEN)).toBe(stored);
 
     items()[1].click();
     fixture.detectChanges();
     expect(panel.sideBarReopened()).toBe(false);
     expect(panel.sideBarYielded()).toBe(true);
     expect(shell.open()).toBe(true);
-    expect(storage.getItem('ocupilot.side-bar.open')).toBe(stored);
+    expect(lastRemembered(account.calls, SHELL_SIDE_BAR_OPEN)).toBe(stored);
   });
 
   it('DW-134: a rail navigation keeps the namespace the route is scoped to', async () => {

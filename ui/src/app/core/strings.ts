@@ -1099,6 +1099,137 @@ export const STRINGS = {
   /** EXPERIENCE.md:378 */
   logViewerClearFilter: 'Clear filter',
 
+  // Story 15.1's six: the account menu's Change password item, which is also the dialog's title,
+  // the two masked fields, the two names its reveal toggle takes -- they say password where
+  // `agentDefinitionShowKey`/`HideKey` say key -- and the polite confirmation after the change.
+  /** EXPERIENCE.md:381 */
+  accountChangePassword: 'Change password',
+  /** EXPERIENCE.md:381 */
+  accountCurrentPasswordLabel: 'Current password',
+  /** EXPERIENCE.md:381 */
+  accountNewPasswordLabel: 'New password',
+  /** EXPERIENCE.md:381 */
+  accountShowPassword: 'Show password',
+  /** EXPERIENCE.md:381 */
+  accountHidePassword: 'Hide password',
+  /** EXPERIENCE.md:381 */
+  accountPasswordChanged: 'Password changed',
+
+  // Story 15.2's fifteen: the two Home blocks' headings, empty states, per-row remove names and
+  // Clear controls, the locator bar's favorite toggle in its two states, and the five polite
+  // confirmations the two surfaces announce. The two `*RemoveNamed` values carry a <name>
+  // placeholder the row resolves to the screen it removes.
+  /** EXPERIENCE.md:382 */
+  favoritesHeading: 'Favorites',
+  /** EXPERIENCE.md:382 */
+  favoritesEmpty: 'No favorites yet.',
+  /** EXPERIENCE.md:382 */
+  favoritesAdd: 'Add to favorites',
+  /** EXPERIENCE.md:382 */
+  favoritesRemove: 'Remove from favorites',
+  /** EXPERIENCE.md:382 */
+  favoritesRemoveNamed: 'Remove <name> from favorites',
+  /** EXPERIENCE.md:382 */
+  favoritesClear: 'Clear favorites',
+  /** EXPERIENCE.md:382 */
+  favoritesAdded: 'Added to favorites',
+  /** EXPERIENCE.md:382 */
+  favoritesRemoved: 'Removed from favorites',
+  /** EXPERIENCE.md:382 */
+  favoritesCleared: 'Favorites cleared',
+  /** EXPERIENCE.md:382 */
+  recentsHeading: 'Recent items',
+  /** EXPERIENCE.md:382 */
+  recentsEmpty: 'No recent items yet.',
+  /** EXPERIENCE.md:382 */
+  recentsRemoveNamed: 'Remove <name> from recent items',
+  /** EXPERIENCE.md:382 */
+  recentsClear: 'Clear recent items',
+  /** EXPERIENCE.md:382 */
+  recentsRemoved: 'Removed from recent items',
+  /** EXPERIENCE.md:382 */
+  recentsCleared: 'Recent items cleared',
+
+  // Story 15.3's twenty-three: the account menu's About item, which is also the dialog's title,
+  // the twelve field labels on its definition list -- the thirteenth reuses
+  // `statusSegmentLicensedTo` and its dismissing action reuses `auditDialogClose`, because a value
+  // already published belongs to one key -- Home's Shortcuts and Links blocks with the three
+  // destinations the links panel names, the locator bar's Help control in its two names, and
+  // DW-3's stale-bundle prompt with its one action.
+  /** EXPERIENCE.md:383 */
+  aboutTitle: 'About',
+  /** EXPERIENCE.md:383 */
+  aboutVersion: 'Version',
+  /** EXPERIENCE.md:383 */
+  aboutComponents: 'Components',
+  /** EXPERIENCE.md:383 */
+  aboutConfiguration: 'Configuration',
+  /** EXPERIENCE.md:383 */
+  aboutDatabaseCache: 'Database cache (MB)',
+  /** EXPERIENCE.md:383 */
+  aboutRoutineCache: 'Routine cache (MB)',
+  /** EXPERIENCE.md:383 */
+  aboutJournalFile: 'Journal file',
+  /** EXPERIENCE.md:383 */
+  aboutSuperServerPort: 'Superserver port',
+  /** EXPERIENCE.md:383 */
+  aboutWebServerPort: 'Web server port',
+  /** EXPERIENCE.md:383 */
+  aboutLicenseServer: 'License server',
+  /** EXPERIENCE.md:383 */
+  aboutEncryptionKeyId: 'Encryption key identifier',
+  /** EXPERIENCE.md:383 */
+  aboutLocale: 'Locale',
+  /** EXPERIENCE.md:383 */
+  aboutBuild: 'Build',
+  /** EXPERIENCE.md:383 */
+  shortcutsHeading: 'Shortcuts',
+  /** EXPERIENCE.md:383 */
+  shortcutsEmpty: 'No shortcuts available.',
+  /** EXPERIENCE.md:383 */
+  linksHeading: 'Links',
+  /** EXPERIENCE.md:383 */
+  linksDocumentation: 'Documentation',
+  /** EXPERIENCE.md:383 */
+  linksSupport: 'Support',
+  /** EXPERIENCE.md:383 */
+  linksInterSystems: 'InterSystems',
+  /** EXPERIENCE.md:383 */
+  helpLabel: 'Help',
+  /** EXPERIENCE.md:383 */
+  helpForScreen: 'Help for this screen',
+  /** EXPERIENCE.md:383 */
+  staleBundleNotice: 'A newer version of OcuPilot is installed. Reload to use it.',
+  /** EXPERIENCE.md:383 */
+  actionReload: 'Reload',
+
+  // Story 15.4's seven: Home's System Information block heading, five of its seven row labels,
+  // and the word a row shows when the instance reports no value for it. The other two labels are
+  // keys that already exist -- `lockListLabel` for "Locks" and `systemUsageWriteDaemon` for
+  // "Write daemon" -- because a value already published belongs to one key. Neither the four
+  // alert words nor the mirror and production states are strings here: they are the source's own
+  // and are rendered as it reports them.
+  /** EXPERIENCE.md:384 */
+  systemInfoHeading: 'System information',
+  /** EXPERIENCE.md:384 */
+  systemInfoUptime: 'Uptime',
+  /** EXPERIENCE.md:384 */
+  systemInfoMirror: 'Mirror',
+  /** EXPERIENCE.md:384 */
+  systemInfoDatabase: 'Database',
+  /** EXPERIENCE.md:384 */
+  systemInfoJournal: 'Journal',
+  /** EXPERIENCE.md:384 */
+  systemInfoProduction: 'Production',
+  /** EXPERIENCE.md:384 */
+  systemInfoNotReported: 'Not reported',
+
+  // Story 15.5's one: the empty state a Home block shows when every row the instance holds for it
+  // names a screen this build does not serve (DW-1328). One value for both blocks, so neither
+  // republishes it, and the block keeps its Clear control beside it.
+  /** EXPERIENCE.md:385 */
+  rememberedNoScreensHere: 'No screens this instance still serves.',
+
   // Two connectivity sentences EXPERIENCE.md publishes outside the Fixed strings table, each
   // authorized by its own targeted extractor in `ui/tools/strings.test.mjs`, never by being
   // added to REQUIRED_ALONGSIDE_TABLE, whose own comment calls that the bypass it must not

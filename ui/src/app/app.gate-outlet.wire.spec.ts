@@ -13,7 +13,6 @@ import { FormDirty } from './core/form-dirty';
 import { InstanceService, type InstanceStatus } from './core/instance';
 import { NavigationService } from './core/navigation';
 import { OverlayStack } from './core/overlay-stack';
-import { PreferenceStore } from './core/preferences';
 import { RefreshService } from './core/refresh';
 import { ScopeService, type NamespaceEntry, type UnresolvedScope } from './core/scope';
 import { ScreenActions } from './core/screen-actions';
@@ -26,6 +25,13 @@ import { SuggestedView } from './core/suggested-view';
 import { stubSuggestedView } from './testing/suggested-view';
 import { stubTurnStore } from './testing/turn';
 import { ViewOptions } from './core/view-options';
+import { AccountPreferences } from './core/account-preferences';
+import { stubAccountPreferences } from './testing/account-preferences';
+import { About } from './core/about';
+import { SystemInfo } from './core/system-info';
+import { HelpLinks } from './core/help';
+import { stubAbout, stubHelpLinks } from './testing/about';
+import { stubSystemInfo } from './testing/system-info';
 
 /**
  * The first-login gate against the requested screen's declared read (FR-28, AD-36).
@@ -107,6 +113,11 @@ class StubInstance {
 
   instanceName(): string {
     return 'IRIS';
+  }
+
+  /** Story 15.3: the stale-bundle prompt reads this; '' means there is nothing to compare. */
+  buildIdentity(): string {
+    return '';
   }
 
   instanceVersion(): string {
@@ -275,11 +286,15 @@ describe('the first-login gate and the requested screen it may move off', () => 
     paths = stub.paths;
     release = stub.release;
     const connectivity = new StubConnectivity() as unknown as ConnectivityService;
-    const preferences = new PreferenceStore({ storage: memoryStorage() });
-    const screenStores = new ScreenStores({ preferences });
-    const shellState = new ShellState({ preferences });
+    const preferences = stubAccountPreferences();
+    const screenStores = new ScreenStores({ account: preferences });
+    const shellState = new ShellState({ account: preferences });
     TestBed.configureTestingModule({
       providers: [
+        { provide: About, useValue: stubAbout() },
+        { provide: SystemInfo, useValue: stubSystemInfo() },
+        { provide: HelpLinks, useValue: stubHelpLinks() },
+        { provide: AccountPreferences, useValue: stubAccountPreferences() },
         provideRouter(routes),
         { provide: Session, useValue: new StubSession() as unknown as Session },
         { provide: InstanceService, useValue: new StubInstance() as unknown as InstanceService },
@@ -303,9 +318,8 @@ describe('the first-login gate and the requested screen it may move off', () => 
           }),
         },
         { provide: ScreenStores, useValue: screenStores },
-        { provide: PreferenceStore, useValue: preferences },
         { provide: ShellState, useValue: shellState },
-        { provide: PanelState, useValue: new PanelState({ preferences, shell: shellState }) },
+        { provide: PanelState, useValue: new PanelState({ account: preferences, shell: shellState }) },
         { provide: TurnStore, useValue: stubTurnStore() },
         { provide: OverlayStack, useValue: new OverlayStack() },
         { provide: ScreenActions, useValue: new ScreenActions() },

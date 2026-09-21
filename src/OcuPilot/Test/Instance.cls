@@ -9,8 +9,9 @@
 Class OcuPilot.Test.Instance Extends %UnitTest.TestCase
 {
 
-/// <p>A build identity no real version row would carry, so the passthrough assertion cannot
-/// pass by accident against the live <code>dev</code> stamp.</p>
+/// <p>A build identity no real version row would carry, so the passthrough assertion cannot pass
+/// by accident against whatever the install recorded -- since Story 15.3 that is the deployed
+/// bundle's hashed <code>main-*.js</code> name, and only the fallback is still <code>dev</code>.</p>
 Parameter FIXTUREBUILD = "fixture-build-1.8";
 
 Method OnAfterOneTest() As %Status
@@ -206,9 +207,9 @@ Method TestACleanVerificationLogsNothing()
 /// <parameter>OcuPilot.Install.Installer.BUILDIDENTITY</parameter> from
 /// <method>OcuPilot.Api.Instance.Payload</method> instead of calling
 /// <method>BuildIdentity</method> -> the fixture assertion goes red. The mutation has to
-/// bypass the seam rather than change what it reads: on the live instance the deployed
-/// constant and the row's value are both <code>dev</code>, so only a fixture value no row
-/// carries can tell the two apart.</p>
+/// bypass the seam rather than change what it reads: only a fixture value no row carries can
+/// tell the constant and the row apart, which since Story 15.3 also holds on an installed
+/// instance, where the row carries the deployed bundle's name and the constant does not.</p>
 Method TestThePayloadCarriesTheVersionRowsBuildIdentity()
 {
     Do ##class(OcuPilot.Test.InstanceFixture).SetVerification(2, "")

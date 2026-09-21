@@ -26,13 +26,13 @@ import type { ApiService, JsonResult } from '../../core/api';
 import { ChangeBus } from '../../core/change-bus';
 import type { ConnectivityService } from '../../core/connectivity';
 import { OverlayStack } from '../../core/overlay-stack';
-import { PreferenceStore } from '../../core/preferences';
 import { RefreshService } from '../../core/refresh';
 import { ScopeService } from '../../core/scope';
 import { ScreenActions } from '../../core/screen-actions';
 import { createScreenRead } from '../../core/screen-read';
 import { ScreenStores } from '../../core/screen-store';
 import { DataTable } from '../../shell/data-table';
+import { stubAccountPreferences } from '../account-preferences';
 import { tableDeclaration } from '../table-declaration';
 
 /** What `reread` answers the next reads with, instead of the origin. */
@@ -85,7 +85,7 @@ const api: Pick<ApiService, 'requestJson'> = {
 };
 
 const bus = new ChangeBus();
-const stores = new ScreenStores({ preferences: new PreferenceStore({ storage: null }) });
+const stores = new ScreenStores({ account: stubAccountPreferences() });
 const refresh = new RefreshService({
   stores,
   connectivity: { retryWhenReachable: () => {} } as unknown as ConnectivityService,

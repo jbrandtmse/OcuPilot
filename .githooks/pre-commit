@@ -159,6 +159,17 @@ if [ -n "$OS_TRIGGER" ]; then
   else
     echo "pre-commit: node not found, skipping field-lists" >&2
   fi
+
+  # The browser-context reset check (Story 15.5, AD-50). Since the remembered screen and shell
+  # state moved onto the instance, a fresh BrowserContext no longer resets it, so a spec that
+  # opens one without forgetting that state first does not fail itself -- it makes some other
+  # spec flake. Same trigger as the checks above; it reads the whole ui/browser tree and reports
+  # what it scanned on every run, clean or not.
+  if command -v node >/dev/null 2>&1; then
+    (cd ui && node tools/browser-reset.mjs) || STATUS=1
+  else
+    echo "pre-commit: node not found, skipping browser-reset" >&2
+  fi
 fi
 
 # --- The checker's own harness --------------------------------------------------------
@@ -199,6 +210,11 @@ pre-commit: checks failed on staged files.
                            src/OcuPilot/Install/Roster.cls. Edit the roster, never
                            the manifest, then run
                            `cd ui && node tools/ipm-manifest.mjs` and re-stage both.
+  Browser reset:           a ui/browser spec opened a browser context without calling
+                           resetRememberedState() first. Add the call where the
+                           context is created, or declare
+                           `preferences-reset-exempt: <reason>` in that spec if it
+                           clears the state itself, then re-stage.
   Field lists:             src/OcuPilot/Screen/Tool/ToolFields.cls is generated from
                            FieldLists.cls and Classification.cls. Fix the entry
                            field-lists.mjs names, run

@@ -6,7 +6,6 @@ import { ChangeBus } from '../core/change-bus';
 import type { ConnectivityService } from '../core/connectivity';
 import { NavigationService, type Verdict } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
-import { PreferenceStore } from '../core/preferences';
 import { RefreshService } from '../core/refresh';
 import { ScopeService } from '../core/scope';
 import { REFRESH_ACTION_ID, ScreenActions } from '../core/screen-actions';
@@ -21,6 +20,8 @@ import { tableDeclaration } from '../testing/table-declaration';
 import { CommandBar, SORT_MENU_OVERLAY_ID, VIEW_MENU_OVERLAY_ID } from './command-bar';
 import { CommandBox } from './command-box';
 import { ListPage } from './list-page';
+import { AccountPreferences } from '../core/account-preferences';
+import { stubAccountPreferences } from '../testing/account-preferences';
 
 /**
  * The command bar's rendered contract (EXPERIENCE.md "below the locator-bar", DESIGN.md `:1037`), including the
@@ -57,7 +58,7 @@ function memoryStorage() {
 /** The real framework, with its timer seam neutralized and its connectivity park a no-op. */
 function realRefresh(): { refresh: RefreshService; bus: ChangeBus; stores: ScreenStores } {
   const bus = new ChangeBus();
-  const stores = new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
+  const stores = new ScreenStores({ account: stubAccountPreferences() });
   const refresh = new RefreshService({
     stores,
     connectivity: { retryWhenReachable: () => {} } as unknown as ConnectivityService,
@@ -118,6 +119,7 @@ describe('the command bar', () => {
     viewOptionsSvc = new ViewOptions();
     TestBed.configureTestingModule({
       providers: [
+        { provide: AccountPreferences, useValue: stubAccountPreferences() },
         provideRouter([{ path: '', children: [] }, { path: '**', children: [] }]),
         { provide: NavigationService, useValue: navigation as unknown as NavigationService },
         { provide: RefreshService, useValue: refresh },
@@ -131,7 +133,7 @@ describe('the command bar', () => {
         { provide: ScreenActions, useValue: actions },
         { provide: OverlayStack, useValue: overlays },
         { provide: ViewOptions, useValue: viewOptionsSvc },
-        { provide: ShellState, useValue: new ShellState({ preferences: new PreferenceStore({ storage: memoryStorage() }) }) },
+        { provide: ShellState, useValue: new ShellState({ account: stubAccountPreferences() }) },
         { provide: ScopeService, useValue: { loaded: () => true, namespace: () => 'HSCUSTOM', subscribe: () => () => {} } as unknown as ScopeService },
       ],
     });

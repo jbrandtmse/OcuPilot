@@ -9,7 +9,6 @@ import type { ConnectivityService } from '../../core/connectivity';
 import { joinCompositeId } from '../../core/entity-id';
 import { NavigationService } from '../../core/navigation';
 import { OverlayStack } from '../../core/overlay-stack';
-import { PreferenceStore } from '../../core/preferences';
 import { RefreshService } from '../../core/refresh';
 import { ScopeService } from '../../core/scope';
 import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
@@ -18,6 +17,7 @@ import { SCREENS, type ScreenDeclaration } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
 import { AuditPage } from './audit.page';
 import { AuditSearch } from './audit.store';
+import { stubAccountPreferences } from '../../testing/account-preferences';
 
 /**
  * The audit database viewer, wired end to end over stubs of the two things an instance supplies --
@@ -94,7 +94,7 @@ async function mount(initialRows: unknown[] = [row('RoleGranted', 'OcuPilot')]) 
   // a router outlet, as `list-page.spec.ts` creates its subject, so the segment is pushed here; the
   // real `<route>/:id` wiring is the browser leg's.
   const params = new BehaviorSubject(convertToParamMap({}));
-  const stores = new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
+  const stores = new ScreenStores({ account: stubAccountPreferences() });
   const refresh = new RefreshService({
     stores,
     connectivity: { retryWhenReachable: () => {} } as unknown as ConnectivityService,

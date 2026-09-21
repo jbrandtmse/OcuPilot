@@ -24,7 +24,6 @@ import type { Fault, FaultKind } from './core/fault';
 import { InstanceService, type InstanceStatus } from './core/instance';
 import { NavigationService, type Verdict } from './core/navigation';
 import { OverlayStack } from './core/overlay-stack';
-import { PreferenceStore } from './core/preferences';
 import { RefreshService } from './core/refresh';
 import { ScopeService, type NamespaceEntry, type UnresolvedScope } from './core/scope';
 import { ScreenActions } from './core/screen-actions';
@@ -41,6 +40,13 @@ import { stubAgentStatus } from './testing/agent-status';
 import { stubSuggestedView } from './testing/suggested-view';
 import { stubTurnStore } from './testing/turn';
 import { screenDeclaration } from './testing/screen-declaration';
+import { AccountPreferences } from './core/account-preferences';
+import { stubAccountPreferences } from './testing/account-preferences';
+import { About } from './core/about';
+import { SystemInfo } from './core/system-info';
+import { HelpLinks } from './core/help';
+import { stubAbout, stubHelpLinks, type StubbedAbout, type StubbedHelpLinks } from './testing/about';
+import { stubSystemInfo, type StubbedSystemInfo } from './testing/system-info';
 
 /**
  * The frame itself (DW-138, UX-DR80): which bands render, in what order, and around what.
@@ -132,6 +138,11 @@ class StubInstance {
     return 'IRIS';
   }
 
+  /** Story 15.3: the stale-bundle prompt reads this; '' means there is nothing to compare. */
+  buildIdentity(): string {
+    return '';
+  }
+
   instanceVersion(): string {
     return 'IRIS for UNIX 2026.2';
   }
@@ -193,8 +204,11 @@ class StubNavigation {
     return [];
   }
 
+  /** What `screenForUrl` answers -- null by default, the way this file's other tests need it. */
+  screenForUrlAnswer: ScreenDeclaration | null = null;
+
   screenForUrl(): ScreenDeclaration | null {
-    return null;
+    return this.screenForUrlAnswer;
   }
 
   areaVerdict(): Verdict {
@@ -342,6 +356,11 @@ describe('the shell frame', () => {
   let agentStatus: AgentStatus;
   let agentContext: AgentContext;
   let suggested: SuggestedView;
+  /** Captured, so the signed-in read and the sign-out drop are both observable (Story 15.2). */
+  let accountPreferences: AccountPreferences;
+  let about: StubbedAbout;
+  let systemInfo: StubbedSystemInfo;
+  let helpLinks: StubbedHelpLinks;
   /** The definitions the stubbed read answers with. Mutated to arrange an Enable. */
   let definitionRows: { enabled: boolean }[];
   let scope: StubScope;
@@ -349,6 +368,7 @@ describe('the shell frame', () => {
   let refresh: RefreshService;
   let overlays: OverlayStack;
   let panelState: PanelState;
+  let shellState: ShellState;
   let turn: TurnStore;
   let turnStorage: Map<string, string>;
   const planted: HTMLElement[] = [];
@@ -372,11 +392,19 @@ describe('the shell frame', () => {
     // Unanswered by default, for the same reason: Home's suggested view renders nothing until a
     // test that is about it loads it.
     suggested = stubSuggestedView();
+    // Not loaded here: `App`'s own signed-in pass is what settles it, which is the line the
+    // sign-out test below pins.
+    accountPreferences = stubAccountPreferences();
+    // Story 15.3: both are the instance's answers to *this* caller, so both are dropped at
+    // sign-out; held by name so the sign-out row below can see whether they were.
+    about = stubAbout();
+    systemInfo = stubSystemInfo();
+    helpLinks = stubHelpLinks({ 'permissions/users': '/csp/docbook/DocBook.UI.PortalHelpPage.cls?KEY=Users' });
     scope = new StubScope();
     connectivity = new StubConnectivity();
     // The real framework, timer seam neutralized: the frame mounts the chip and the stamp, and
     // this file is about the frame. `refresh.test.mjs` and the two bar specs drive the framework.
-    const screenStores = new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
+    const screenStores = new ScreenStores({ account: stubAccountPreferences() });
     refresh = new RefreshService({
       stores: screenStores,
       connectivity: connectivity as unknown as ConnectivityService,
@@ -384,9 +412,9 @@ describe('the shell frame', () => {
       schedule: () => {},
     });
     overlays = new OverlayStack();
-    const shellPreferences = new PreferenceStore({ storage: memoryStorage() });
-    const shellState = new ShellState({ preferences: shellPreferences });
-    panelState = new PanelState({ preferences: shellPreferences, shell: shellState });
+    const shellPreferences = stubAccountPreferences();
+    shellState = new ShellState({ account: shellPreferences });
+    panelState = new PanelState({ account: shellPreferences, shell: shellState });
     // A reload-adopted id, so the sign-out test below can observe `App` dropping it -- the same
     // shape the real `readNavigationKind`/`readSessionStorage` pair produces in `main.ts`.
     turnStorage = new Map([['ocupilot.conversation', 'convo-1']]);
@@ -400,6 +428,10 @@ describe('the shell frame', () => {
     });
     TestBed.configureTestingModule({
       providers: [
+        { provide: About, useValue: about },
+        { provide: SystemInfo, useValue: systemInfo },
+        { provide: HelpLinks, useValue: helpLinks },
+        { provide: AccountPreferences, useValue: accountPreferences },
         // Three real routes, so "the gate navigated" and "the gate did not" are different
         // observations rather than the same `/`. The two the gate names are the mirror's own.
         provideRouter([
@@ -673,13 +705,18 @@ describe('the shell frame', () => {
     expect(document.activeElement).toBe(toggle);
   });
 
-  it('leaving the signed-in state clears the draft and full screen, and keeps the remembered width', async () => {
+  it('leaving the signed-in state clears the draft, full screen and the departed width', async () => {
     // Mutation (Rule 19): delete `this.panel.endSession()` from `App.verifyWhenSignedIn` -> the draft
     // and full-screen assertions go red.
     panelState.setViewport(1920);
     panelState.resizeBy(16);
     panelState.setDraft('Why is /csp/myapp disabled?');
     panelState.toggleFullScreen();
+    // The side bar is the other half of the same row family (Story 15.5), and it is the one the
+    // next principal signing in on this tab sees first. Closed here so the reset below is
+    // observable rather than a no-op.
+    shellState.toggleOpen();
+    expect(shellState.open()).toBe(false);
     expect(turn.conversationId()).toBe('convo-1');
 
     // The context chip's sharing choice is this principal's own (Story 4.11); loaded here so the
@@ -688,13 +725,41 @@ describe('the shell frame', () => {
     expect(agentContext.answered()).toBe(true);
     await suggested.load();
     expect(suggested.answered()).toBe(true);
+    // Mutation (Rule 19): delete `void this.accountPreferences.load()` from
+    // `App.verifyWhenSignedIn` -> this goes red, and the locator toggle, Home's two blocks and
+    // the command box's ranking would all render off a store nothing ever read.
+    await fixture.whenStable();
+    expect(accountPreferences.answered()).toBe(true);
+
+    // Visit a screen before signing out, so the recorder is holding that route as `lastRoute`.
+    // Without this the reset below would be a no-op and the assertion at the end of this test
+    // could not fail.
+    navigation.screenForUrlAnswer = screenDeclaration({ route: 'permissions/users' });
+    await TestBed.inject(Router).navigateByUrl('/permissions/users');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(accountPreferences.recents()).toEqual(['permissions/users']);
+
+    // Prime all three, so the resets below are observable rather than no-ops.
+    await about.load();
+    await helpLinks.load('permissions/users');
+    await systemInfo.load();
+    expect(about.answered()).toBe(true);
+    expect(systemInfo.answered()).toBe(true);
+    expect(helpLinks.hrefFor('permissions/users')).toBe(
+      '/csp/docbook/DocBook.UI.PortalHelpPage.cls?KEY=Users'
+    );
 
     session.move('form');
     fixture.detectChanges();
 
     expect(panelState.draft()).toBe('');
     expect(panelState.fullScreen()).toBe(false);
-    expect(panelState.remembered()).toBe(416);
+    expect(panelState.remembered()).toBe(400);
+    // Mutation (Rule 19): delete `this.shell.endSession()` from the same branch -> this goes red,
+    // and the next principal signing in on this tab would look at the departed principal's
+    // collapsed side bar, indefinitely if their own read never settles (AD-8). The width's half of
+    // this reset was pinned above; the side bar's was pinned only on `ShellState` itself.
+    expect(shellState.open()).toBe(true);
     // Mutation (Rule 19): delete `this.turn.endSession()` from the same branch -> this goes red,
     // and the next principal to sign in on this tab would adopt a departed principal's
     // conversation (AD-8).
@@ -706,6 +771,32 @@ describe('the shell frame', () => {
     // Mutation (Rule 19): delete `this.suggested.reset()` from the same branch -> this goes red,
     // and Home's first paint for the next principal would carry the previous principal's counts.
     expect(suggested.answered()).toBe(false);
+    // Mutation (Rule 19): delete `this.accountPreferences.reset()` from the same branch -> this
+    // goes red, and Home would show a departed principal's favorites and recent items.
+    expect(accountPreferences.answered()).toBe(false);
+
+    // Mutation (Rule 19): delete `this.about.reset()` from the same branch -> this goes red, and
+    // Home's Links block and the About dialog would open on the departed principal's answer about
+    // the instance, licensee included (AD-8).
+    expect(about.answered()).toBe(false);
+    // Mutation (Rule 19): delete `this.helpLinks.reset()` from the same branch -> this goes red.
+    // The addresses are the instance's rather than the account's, but a sign-out is also the one
+    // gesture after which the shell underneath may have been upgraded.
+    expect(helpLinks.hrefFor('permissions/users')).toBe('');
+    // Mutation (Rule 19): delete `this.systemInfo.reset()` from the same branch -> this goes red,
+    // and Home's System Information panel would open on the state the departed principal's own
+    // privileges answered, degraded members included (AD-8).
+    expect(systemInfo.answered()).toBe(false);
+
+    // Mutation (Rule 19): delete `this.recentsRecorder.reset()` from the same branch -> this goes
+    // red, answering []. The next principal resumes on the screen this tab is already on, and a
+    // recorder still holding that route as `lastRoute` skips it -- so the one screen they land on
+    // is the one screen their recents never get. `recents-recorder.spec.ts` calls `reset()`
+    // itself, so nothing there can see whether the shell ever does.
+    await TestBed.inject(Router).navigateByUrl('/');
+    await TestBed.inject(Router).navigateByUrl('/permissions/users');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(accountPreferences.recents()).toEqual(['permissions/users']);
   });
 
   it('an unverified instance renders the blocking notice and none of the frame', () => {
@@ -803,6 +894,34 @@ describe('the shell frame', () => {
     ]);
   });
 
+  it('Story 15.3: the stale-bundle notice is `<app-fault-banner />`\'s sibling, not the signed-in branch\'s', () => {
+    // Deferred finding (spec-15-3): the band-order proof above covers `<app-fault-banner />` but
+    // was never extended to its new neighbour. Same proof, same shape: present while signed out,
+    // present again once the frame is up, and immediately after the banner both times.
+    //
+    // Mutation (Rule 19): move `<app-stale-bundle-notice />` inside the signed-in branch in
+    // `app.ts` -> the sign-in-state assertion below goes red.
+    session.move('form');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-sign-in')).not.toBeNull();
+    const rootChildrenSignedOut = Array.from(fixture.nativeElement.children as HTMLCollection).map(
+      (child) => (child as HTMLElement).tagName.toLowerCase()
+    );
+    const bannerAt = rootChildrenSignedOut.indexOf('app-fault-banner');
+    expect(bannerAt).toBeGreaterThanOrEqual(0);
+    expect(rootChildrenSignedOut[bannerAt + 1]).toBe('app-stale-bundle-notice');
+
+    session.move('signed-in');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.ocu-shell')).not.toBeNull();
+    const rootChildrenSignedIn = Array.from(fixture.nativeElement.children as HTMLCollection).map(
+      (child) => (child as HTMLElement).tagName.toLowerCase()
+    );
+    const bannerAtSignedIn = rootChildrenSignedIn.indexOf('app-fault-banner');
+    expect(bannerAtSignedIn).toBeGreaterThanOrEqual(0);
+    expect(rootChildrenSignedIn[bannerAtSignedIn + 1]).toBe('app-stale-bundle-notice');
+  });
+
   it("AC4: the shell brings the Definitions list's action handlers into existence", () => {
     // `DefinitionActions` registers the list's four handlers in its own constructor, and nothing
     // constructs it except `App`'s injection of it -- the descriptor declares the actions, but a
@@ -817,6 +936,27 @@ describe('the shell frame', () => {
     for (const id of [ENABLE_ACTION, DISABLE_ACTION, SET_DEFAULT_ACTION, CREATE_ACTION]) {
       expect(actions.has(DEFINITION_LIST_DESCRIPTOR, id)).toBe(true);
     }
+  });
+
+  it('Story 15.2 AC3: the shell brings the recents recorder into existence, so visiting a built screen registers it', async () => {
+    // `RecentsRecorder` subscribes to router navigation in its own constructor, and nothing
+    // constructs it except `App`'s injection of it (DW-1330) -- `recents-recorder.spec`'s own
+    // spec injects the service itself, so its assertions hold whether or not the shipped shell
+    // ever builds it. This is the composition: the real router, navigated to a built screen,
+    // through the whole `App` tree.
+    //
+    // Mutation (Rule 19): replace `inject(RecentsRecorder)` in `app.ts` with `{ reset: () => {} }`
+    // -> this goes red, and Recent items stays permanently empty on the real screen while the
+    // whole client suite (including `recents-recorder.spec.ts`) stays green. Deleting the field
+    // outright is not the mutation: `App`'s sign-out branch calls `this.recentsRecorder.reset()`,
+    // so that reddens the build rather than this assertion.
+    navigation.screenForUrlAnswer = screenDeclaration({ route: 'permissions/users' });
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/permissions/users');
+    // A visit is fire and forget by contract (`recents-recorder.ts`), so one macrotask is what
+    // drains the stubbed request's microtasks -- the same wait `recents-recorder.spec.ts` uses.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(accountPreferences.recents()).toEqual(['permissions/users']);
   });
 
   it('AD-8: leaving the signed-in state drops this principal\'s namespace list', async () => {
