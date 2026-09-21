@@ -2,7 +2,7 @@
 title: 'Story 5.10: Security and secrets - disable and re-enable auditing'
 type: 'feature'
 created: '2026-09-21'
-status: 'blocked'
+status: 'in-progress'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -483,15 +483,22 @@ Line anchors were read in this checkout on 2026-09-21. Measured facts carry thei
   through `Security.Audit.Enabled` PUT as that user with `%Admin_Secure:USE`, and a caller holding
   neither that pair nor the code-database read is refused 403 naming the failed pair, with auditing
   unchanged.
-- **AC5 ⛔ BLOCKED — see `## Auto Run Result`.** The epics wording ("it is marked while auditing is
-  still on") is measured unreachable. The recommended wording, which this spec's I/O matrix and
-  Verification are written to: given the disable write, when its marker is emitted at the one site
+- **AC5 (the marker, and why the epics clause was amended).** `epics.md` asked both that the disable's
+  marker land "while auditing is still on" **and** that "the gap being visible on the ledger rows rather
+  than silent" — **the two cannot both hold, because if the marker lands there is no gap.** The
+  incompatible clause was removed and the observable one kept (amended 2026-09-21, orchestrator-authorised;
+  AD-15 carries the impossibility, scoped to a write that closes the audit channel). It is a physical
+  constraint, not a trade-off: no marker can land in a database that is closed, and emitting before the
+  write instead was **considered and rejected** as strictly worse — it would record an agent write that may
+  then fail, the failure AD-15's after-OK site exists to prevent. What survives is one-directional and both
+  halves are named: **ledger → audit by timestamp**, via the vendor's registered and enabled `SystemChange`
+  and `AuditChange` rows; **audit → ledger is lost**, because those rows carry no proposal id. Given the disable write, when its marker is emitted at the one site
   after the write reads OK, then it is dropped because auditing is already off and **the drop is
   recorded** — the ledger row reads not-marked, the collapsed tool-call line reads "done · audit not
   marked", and the banner turns on — while the audit database's own record of the change is the
   vendor's `SystemChange` and `AuditChange` rows written before auditing stopped; and the re-enable
-  write's marker lands once auditing is back, so the unaudited window is one write wide and visible
-  on the ledger rows rather than silent.
+  write's marker lands once auditing is back, so the ledger shows exactly **one unmarked row bracketed
+  by marked ones** — the gap one write wide and legible rather than merely absent.
 - **AC6 (the banner).** Given auditing is off, when any signed-in user's panel reads
   `/agent/restraint`, then the banner carries its sentence alone with no link and no action, and it
   clears on the read following the re-enable. The writing user's own tab re-reads on the confirm.
@@ -517,6 +524,14 @@ Line anchors were read in this checkout on 2026-09-21. Measured facts carry thei
   write, read through a consumer rather than through the tool's own state.
 
 ## Spec Change Log
+
+- **2026-09-21, lead, orchestrator-authorised option (a).** The Rule 5 intent gap is closed by amending
+  `epics.md`'s fifth acceptance block rather than by planning around it. The clause asked both that the
+  disable's marker land "while auditing is still on" and that the gap be visible on the ledger; the two are
+  incompatible, so the first was removed and the second kept. AD-15 gained a scoped impossibility note
+  (spine `updated: 2026-09-21`), worded as an impossibility rather than a relaxation and covering only a
+  write that closes the audit channel. AC5 is unblocked and two Rule 19 mutations are now REQUIRED: the
+  drop's *recording* must be falsifiable, and the bracketing must be pinned as a pair.
 
 ## Review Triage Log
 
@@ -660,6 +675,8 @@ alone would leave Confirm permanently `aria-disabled` and AC7's round trip unrea
   - `mutation: answer the id verbatim for the singleton rule in EntityRef.NormalizedId -> OcuPilot.Test.AuditingUpdate's two-spellings sibling-cancel leg (AC4's one-lock half)`
   - `mutation: remove the auditing type from Prohibited.COVEREDTYPES -> OcuPilot.Test.Prohibited (the zero-uncovered-write-tools assertion) and every confirm leg in OcuPilot.Test.AuditingUpdate (PROHIBITED.UNCOVERED)`
   - `mutation: skip RecordMarking in Confirm.Transition -> the banner legs of ui/browser/auditing-write.browser-spec.mjs (AC6) and OcuPilot.Test.AuditingUpdate's recorded-fact leg`
+  - `mutation (AC5, REQUIRED - the drop's RECORDING, not the drop): with Audit() answering 0, suppress the recording - no not-marked ledger row, no "done | audit not marked" line, no banner -> OcuPilot.Test.AuditingUpdate's drop-is-recorded leg and ui/browser/auditing-write.browser-spec.mjs. The gate here is not that the marker drops; it is that the drop is VISIBLE, which is the whole substance of the amendment and would otherwise be an unfalsifiable claim`
+  - `mutation (AC5, REQUIRED - the BRACKETING as a pair): make the re-enable's marker drop too -> the paired leg asserting exactly ONE unmarked ledger row between two marked ones. Pin the pair, never each half alone: one marked row plus one unmarked row does not distinguish a one-write gap from an unbounded one`
   - `mutation: misspell the probe screen's secretArguments entry -> OcuPilot.Test.Descriptor and ui/tools/screen-mirror.test.mjs (AC8's refusing direction); and separately, remove the criteria half from the shared builder -> the planted apiKey assertions in both files (AC8's accepting direction)`
   - `mutation: accept an object at Confirm.ChannelProblem's type guard -> OcuPilot.Test.ProposalConfirm's structured-secret leg, with the row asserted still live and the token unburned (AC9)`
   - `mutation: return an empty map from panel.secretsFor -> the confirm-body leg of ui/browser/auditing-write.browser-spec.mjs or panel.spec.ts (AC9's data path)`

@@ -7,7 +7,7 @@ paradigm: 'Descriptor-driven vertical slices, hexagonal at the edges'
 scope: 'OcuPilot in full: Release 1 (119 P0 rows, contest deadline 2026-09-27) binding; Stages 2-6 decided where their gates are already clear, named as staged decisions where they are not.'
 status: final
 created: '2026-09-08'
-updated: '2026-09-20'
+updated: '2026-09-21'
 binds:
   - 'Areas 5.1-5.12 (shell, agent co-pilot, agent tools, agent config, web apps + REST explorer, permissions, security and secrets, tasks, OS management, logs, packaging, polish)'
   - 'FR-1 through FR-79, NFR-1 through NFR-14'
@@ -249,6 +249,7 @@ Dependency direction: UI → API → (Kernel, Slice) → Registry → Ports → 
 - **Binds:** FR-21, FR-22, NFR-7, SM-5
 - **Prevents:** an agent write indistinguishable from a human write, and a marker that cannot be tied to the vendor's own record of the same change
 - **Rule:** OcuPilot registers its audit events with `Security.Events.Create()` at install, under its own Source — without registration `$System.Security.Audit()` silently returns 0 and drops the event. On every confirmed write it emits a marker carrying the proposal id, the tool, the target identity and the user, alongside the vendor's own change event (`%System/%Security/*Change`, enabled by default) for the same operation. Either record locates the other. Audit emission never fails a write, and never propagates; a failed marker surfaces as "done · audit not marked".
+- **Amended 2026-09-21 (Story 5.10, orchestrator-authorised).** *A write whose effect is to close the audit channel cannot be marked at all, and that is a physical constraint, not a relaxation of this Rule.* Disabling system auditing is such a write: the marker is emitted after the write reads OK, and by then the database that would record it is closed. Measured on this build, with the check that rules out the obvious misread — `Security.Events.Exists` for the triple is 1 throughout, so a 0 return is the closed channel and not an unregistered event — `$System.Security.Audit()` answers 1 with auditing on, **0** in the same process immediately after `AuditEnabled=0`, and 1 after the restore. No implementation preserves both directions for it: emitting before the write instead would record an agent write that may then fail, which is exactly the failure this Rule's after-OK site exists to prevent — considered and rejected, not deferred. So for this one operation the correlation is one-directional, and both halves are named: **ledger → audit survives by timestamp**, because the vendor's own `%System/%Security/AuditChange` and `SystemChange` are registered and `Enabled` (verified on this build) and land before auditing stops; **audit → ledger is lost**, because those rows carry no proposal id. The drop is recorded rather than silent — a not-marked ledger row, "done · audit not marked", the banner — and the re-enable's marker lands, so the gap is one write wide and legible on the ledger. **This covers only a write that closes the audit channel.** It is not license for any other write whose marker fails; those remain this Rule's ordinary failure case above.
 
 ### AD-16 — Namespace is switched by explicit save and restore
 

@@ -3693,7 +3693,8 @@ So that the safety model is demonstrated rather than described.
 
 - **Given** the disable write itself
 - **When** its marker is emitted
-- **Then** it is marked while auditing is still on, and the re-enable write's marker lands once auditing is back - the gap being visible on the ledger rows rather than silent.
+- **Then** the emission is attempted at the one site AD-15 names, is dropped because the audit channel it would write to is by then closed, and **the drop is recorded rather than silent** — a not-marked ledger row, "done · audit not marked", and the banner
+- **And** the re-enable write's marker lands once auditing is back, so the ledger shows exactly one unmarked row **bracketed by marked ones** — the gap one write wide and legible rather than merely absent. [AMENDED 2026-09-21, Story 5.10, orchestrator-authorised: the previous wording asked both that the disable's marker land "while auditing is still on" and that "the gap being visible on the ledger rows rather than silent" — **the two cannot both hold, because if the marker lands there is no gap.** The incompatible clause is removed and the observable one kept. No marker can land in a database that is closed; AD-15 carries the impossibility, scoped to a write that closes the audit channel.]
 
 - **Given** `Security.Audit.Event` publishes no body template and its PUT is an **upsert**
 - **When** an event-level change is proposed instead
