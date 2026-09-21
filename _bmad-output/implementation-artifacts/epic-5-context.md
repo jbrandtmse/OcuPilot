@@ -40,27 +40,46 @@ a target deleted since the read creates a stub rather than failing — which the
 fingerprint already covers.
 
 **5.10's ledger inbox is 10 entries — the largest of any remaining story** (`slice
-5-10-security-and-secrets-disable-and-re-enable-auditing`). Most are reachable only once 5.10 ships
-the first real secret field and `security.auditing.update`: DW-1171 (a dropped `SecurityChange`
-emission logged as a configuration change), DW-1226 (`Mint.WarnsAuditingOff` answers false for a
-non-boolean auditing argument, so `0`/`false`/null mints an auditing-off write with no warning),
-DW-1227 (masked-field lookup keys on entity type rather than the proposal's own tool, is not filtered
-to the diff's fields, and `screenForEntityType` has no test), DW-1232 (a Confirm disabled by an
-unfilled masked field says nothing about why, and no published string exists to say it), DW-1244
-(`Mint`'s audit-warning constants name a tool and a field that do not exist yet, and the only test
-asserts them against themselves), DW-1246 (the in-card warning is a third polite live region in the
-same frame, and the only shell `ocu-banner-warning` that is not `role=alert`), DW-1251 (the panel
-hands confirm an empty secrets map, so AD-35's client half has no data path), DW-1278
-(`ChannelProblem`'s accept arm and structured-secret guard are executed by no test), DW-1279
-(`AdminPort`'s queueing path saves the request body to the vendor async task row, so the first
-queueing mutating endpoint persists supplied secrets).
+5-10-security-and-secrets-disable-and-re-enable-auditing`), and **the plan stage must address or
+decline all ten.** Six are acceptance bullets in the story's `epics.md` block — DW-1171, DW-1206,
+DW-1226, DW-1244, DW-1251, DW-1278. The other four — DW-1227, DW-1232, DW-1246, DW-1279 — are
+ledger-only because the per-story bullet cap is six, **not** because they are optional; they are in
+the story's inbox and carry the same obligation. Most are reachable only once 5.10 ships the first
+real secret field and `security.auditing.update`: DW-1171 (a dropped `SecurityChange` emission
+logged as a configuration change), DW-1226 (`Mint.WarnsAuditingOff` answers false for a non-boolean
+auditing argument, so `0`/`false`/null mints an auditing-off write with no warning), DW-1227
+(masked-field lookup keys on entity type rather than the proposal's own tool, is not filtered to the
+diff's fields, and `screenForEntityType` has no test), DW-1232 (a Confirm disabled by an unfilled
+masked field says nothing about why, and no published string exists to say it), DW-1244 (`Mint`'s
+audit-warning constants name a tool and a field that do not exist yet, and the only test asserts
+them against themselves), DW-1246 (the in-card warning is a third polite live region in the same
+frame, and the only shell `ocu-banner-warning` that is not `role=alert`), DW-1251 (the panel hands
+confirm an empty secrets map, so AD-35's client half has no data path), DW-1278 (`ChannelProblem`'s
+accept arm and structured-secret guard are executed by no test), DW-1279 (`AdminPort`'s queueing
+path saves the request body to the vendor async task row, so the first queueing mutating endpoint
+persists supplied secrets).
 
-**DW-1206 is `decision-pending` and the lead must settle it at the spec gate before the story can be
-planned on it.** `secretArguments` entries are validated against nothing while `fingerprintExcludes`
-entries are, so one typo leaves a credential-named field settable and reachable by the model. The
-open question is *which set* an entry must name — the write tool's settable fields, the declared
-criterion params, or their union — because a read-only screen's secret **is** a criterion and
-refusing it would be wrong. Raise it; do not build on a guess.
+**DW-1206 is decided — build on the ruling.** The defect is that **a credential declaration that
+names nothing is accepted, so the field it meant to protect stays settable** and reachable by the
+model; "`secretArguments` is unvalidated" is true but understates the consequence. The set an entry
+must name is the write tool's **settable fields ∪ everything the screen's read declares** (its read
+fields and its declared flag criteria) — not the settable fields alone, because a read-only screen's
+secret argument **is** a criterion and refusing it would break a legitimate declaration; not the
+criteria alone, for the mirror reason. **The binding half of the ruling is not the set but where it
+lives: extract the union ONCE and have both validators consume it.** `Registry.cls:1991` already
+computes and applies exactly this union for `fingerprintExcludes`, and the defect exists *precisely
+because* two sibling declarations are validated against different sets — so deriving a second union
+beside the first reproduces the cause in a new place; the two would agree today and drift the first
+time either read shape changes. The existing `fingerprintExcludes` message and the new
+`secretArguments` message become two callers of one rule. If the criteria half is not already in
+`tReadFields`, adding it to the shared builder is the one genuine addition; it tightens
+`fingerprintExcludes` as a side effect, and the spec must **say so** rather than let a silent
+strengthening of a neighbouring gate go unremarked. `screen-mirror.mjs` **derives** the set from the
+kernel's declaration and throws on mismatch — the `IDRULES` pattern Story 5.7 established, where the
+kernel declares and the mirror cannot silently diverge — and never re-implements the rule. Fix-risk
+is high, so it is falsified in **both** directions: a **misspelled** `secretArguments` entry must now
+**fail**, and a read-only screen declaring a criterion as a secret must still **pass**. A fix that
+catches the typo and also refuses the legitimate criterion is not a fix.
 
 ### Settled in Story 5.9 (`c93fff6`) — record, do not revisit
 
@@ -239,7 +258,8 @@ confirmed agent write and its marker, inside the one smoke path).
 
 ## Cross-Story Dependencies
 
-- **Ledger routes.** 5.10: the 10 entries above, DW-1206 needing a lead decision at the spec gate.
+- **Ledger routes.** 5.10: all 10 entries above — six as acceptance bullets, four ledger-only, none
+  optional; DW-1206 is decided and no longer a spec-gate question.
   5.11: DW-269 (the vendor tasks LIST coerces every task's `Suspended` to false, so a suspended task
   cannot be told from a running one in a list read — declare the `INFO` `rowGet` AD-36 names or say
   why not) and **DW-1419** (AC4's "with the entity selected" is unimplemented: `list-page.ts` injects
