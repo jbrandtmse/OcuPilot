@@ -960,16 +960,39 @@ test('AC8: a changed event for the bound type and scope marks its id and issues 
   await harness.refresh.readNow();
   const before = harness.reads.length;
 
-  harness.bus.publish({ kind: 'changed', type: 'process', scope: 'HSCUSTOM', id: '1234' });
+  harness.bus.publish({ kind: 'changed', type: 'process', scope: 'HSCUSTOM', id: '1234', action: 'updated' });
   await settle();
 
   assert.equal(harness.reads.length, before + 1, 'exactly one read');
   assert.deepEqual([...harness.stores.for(DESCRIPTOR, [10]).changed()], ['1234']);
 
-  harness.bus.publish({ kind: 'changed', type: 'task', scope: 'HSCUSTOM', id: '9' });
-  harness.bus.publish({ kind: 'changed', type: 'process', scope: 'USER', id: '9' });
+  harness.bus.publish({ kind: 'changed', type: 'task', scope: 'HSCUSTOM', id: '9', action: 'updated' });
+  harness.bus.publish({ kind: 'changed', type: 'process', scope: 'USER', id: '9', action: 'updated' });
   await settle();
   assert.equal(harness.reads.length, before + 1, 'another type or scope reads nothing');
+});
+
+test("AD-14: the action travels with the mark, and only a `created` asks for the row's selection", async () => {
+  // Mutation (Rule 19): set the pending selection for every action rather than for `created` ->
+  // the `updated` assertion goes red, and every confirmed write would move the user's caret.
+  const harness = wired();
+  harness.refresh.bind(screen(), harness.read);
+  await harness.refresh.readNow();
+  const store = harness.stores.for(DESCRIPTOR, [10]);
+
+  harness.bus.publish({ kind: 'changed', type: 'process', scope: 'HSCUSTOM', id: '1234', action: 'updated' });
+  await settle();
+  assert.equal(store.changedAction('1234'), 'updated', 'the mark carries what happened, for the announcement');
+  assert.equal(store.pendingSelection(), '', 'an update leaves the caret where the user put it');
+
+  harness.bus.publish({ kind: 'changed', type: 'process', scope: 'HSCUSTOM', id: '5678', action: 'created' });
+  await settle();
+  assert.equal(store.changedAction('5678'), 'created');
+  assert.equal(store.pendingSelection(), '5678', 'a row that did not exist is the one the user has not seen');
+
+  harness.bus.publish({ kind: 'changed', type: 'process', scope: 'HSCUSTOM', id: '9999', action: 'deleted' });
+  await settle();
+  assert.equal(store.pendingSelection(), '5678', 'a delete asks for no selection of its own');
 });
 
 // Story 6.4 AC3, AD-5 / AD-14: the OAuth 2.0 screen's first tab declares a primary type and two
@@ -990,15 +1013,15 @@ test('AC3: the OAuth 2.0 tab re-reads on a change to either secondary type and n
   await harness.refresh.readNow();
   const before = harness.reads.length;
 
-  harness.bus.publish({ kind: 'changed', type: 'oauth2-client-configuration', scope: 'instance', id: 'OcuPilotTestB' });
+  harness.bus.publish({ kind: 'changed', type: 'oauth2-client-configuration', scope: 'instance', id: 'OcuPilotTestB', action: 'updated' });
   await settle();
   assert.equal(harness.reads.length, before + 1, 'a client configuration change re-reads the tab');
 
-  harness.bus.publish({ kind: 'changed', type: 'oauth2-resource-server', scope: 'instance', id: 'OcuPilotTestResource' });
+  harness.bus.publish({ kind: 'changed', type: 'oauth2-resource-server', scope: 'instance', id: 'OcuPilotTestResource', action: 'updated' });
   await settle();
   assert.equal(harness.reads.length, before + 2, 'and so does a resource server change');
 
-  harness.bus.publish({ kind: 'changed', type: 'oauth2-server-client', scope: 'instance', id: 'OcuPilotTestRegistration' });
+  harness.bus.publish({ kind: 'changed', type: 'oauth2-server-client', scope: 'instance', id: 'OcuPilotTestRegistration', action: 'updated' });
   await settle();
   assert.equal(harness.reads.length, before + 2, 'a server client change reads nothing');
 });

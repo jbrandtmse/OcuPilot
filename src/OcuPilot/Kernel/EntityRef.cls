@@ -41,9 +41,30 @@ Class OcuPilot.Kernel.EntityRef Extends %RegisteredObject
 /// value.</p>
 Parameter REFSEPARATOR = 2;
 
-/// <p>The one entity type whose id has a canonical spelling in Release 1
-/// (<method>NormalizedId</method>).</p>
+/// <p>The web-application entity type's key, spelled once for the callers that name that type
+/// directly (<method>OcuPilot.Kernel.Proposal.Prohibited.NormalizedPath</method>). Which types
+/// have a canonical spelling is <parameter>IDRULES</parameter>, not this parameter.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
+
+/// <p>The per-type canonical id rules, as comma-separated <code>type:rule</code> pairs. A type
+/// absent from this table canonicalizes to itself, so adding one is a decision about that type's
+/// identity rather than a default applied to it.</p>
+/// <p><b>It is declared as data because a generator reads it.</b>
+/// <file>ui/tools/screen-mirror.mjs</file> mirrors it into
+/// <file>ui/src/app/core/screens.generated.ts</file> so the client's key builder applies the same
+/// rule this class does (AD-5: one source, two readers). A pair naming a type outside
+/// <parameter>OcuPilot.Kernel.EntityType.TYPES</parameter>, or a rule the generator cannot
+/// implement, fails <code>npm run build</code> rather than reaching the client as a silent
+/// no-op. A later write-tool story adds one pair here, never a branch in two languages.</p>
+Parameter IDRULES = "web-application:foldcase-striptrailingslash";
+
+/// <p>The closed rule vocabulary <parameter>IDRULES</parameter> selects from. A rule named there
+/// and absent here is a declaration error, pinned by
+/// <class>OcuPilot.Test.EntityRef</class>.</p>
+Parameter IDRULENAMES = "foldcase-striptrailingslash";
+
+/// <p>The one rule Release 1 declares: fold to lower case, then strip every trailing slash.</p>
+Parameter RULEFOLDCASESTRIPTRAILINGSLASH = "foldcase-striptrailingslash";
 
 /// <p>Build the reference key for <var>pType</var> / <var>pScope</var> / <var>pId</var>.
 /// Refuses a type the kernel vocabulary does not hold, and an empty scope or id -- a reference
@@ -144,11 +165,12 @@ ClassMethod ScopeFor(pDeclaredScope As %String) As %String
 
 /// <p><var>pId</var> in the one spelling a reference to an entity of type <var>pType</var>
 /// carries. Two ids that answer alike here name one entity and so build one key.</p>
-/// <p><b>The rule is per entity type</b>, because the instance's own resolution is: a web
+/// <p><b>The rule is per entity type and declared as data</b>, in
+/// <parameter>IDRULES</parameter>, because the instance's own resolution is per type: a web
 /// application's path resolves case-insensitively and with trailing slashes ignored, while a user
-/// name, a role name and a task name are the instance's own strings. A type this method holds no
-/// rule for is answered verbatim, so adding one is a decision about that type's identity rather
-/// than a default applied to it.</p>
+/// name, a role name and a task name are the instance's own strings. A type the table holds no
+/// pair for is answered verbatim. This method applies the named rule; it does not decide which
+/// types have one.</p>
 /// <p><b>Probed on this build, not assumed</b> (<code>ocupilot-ci</code>, 2026-09-20):
 /// <code>Security.Applications</code> keeps a name's case as created
 /// (<code>/csp/OcuPilotProbeCase</code> reads back verbatim) and resolves either spelling, and the
@@ -162,12 +184,30 @@ ClassMethod ScopeFor(pDeclaredScope As %String) As %String
 /// addressing a target by a canonical id relies on that case-insensitive resolution.</p>
 ClassMethod NormalizedId(pType As %String, pId As %String) As %String
 {
-    If pType '= ..#TYPEWEBAPPLICATION Quit pId
+    Set tRule = ..IdRuleFor(pType)
+    If tRule = "" Quit pId
+    If tRule '= ..#RULEFOLDCASESTRIPTRAILINGSLASH Quit pId
     Set tId = $ZConvert(pId, "L")
     While (tId '= "") && ($Extract(tId, $Length(tId)) = "/") {
         Set tId = $Extract(tId, 1, $Length(tId) - 1)
     }
     Quit tId
+}
+
+/// <p>The rule <parameter>IDRULES</parameter> declares for <var>pType</var>, or <code>""</code>
+/// when it declares none.</p>
+ClassMethod IdRuleFor(pType As %String) As %String [ Private ]
+{
+    Set tFound = ""
+    If pType = "" Quit tFound
+    Set tRaw = ..#IDRULES
+    For tI = 1:1:$Length(tRaw, ",") {
+        Set tPair = $Piece(tRaw, ",", tI)
+        If $Piece(tPair, ":", 1) '= pType Continue
+        Set tFound = $Piece(tPair, ":", 2)
+        Quit
+    }
+    Quit tFound
 }
 
 /// <p><var>pKey</var> with its id in the spelling <method>Key</method> would have built it in.</p>

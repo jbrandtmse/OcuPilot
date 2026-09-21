@@ -704,6 +704,7 @@ export class DefinitionForm {
       type: AGENT_DEFINITION_ENTITY,
       scope: AGENT_DEFINITION_SCOPE,
       id: this.idValue,
+      action: 'updated',
     });
   }
 

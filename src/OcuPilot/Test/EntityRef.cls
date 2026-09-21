@@ -190,6 +190,55 @@ Method TestTheScopeHalfResolvesFromTheDeclaredScope()
     Do $$$AssertEquals($ClassMethod("OcuPilot.Test.Screen.Sub", "Scope"), "namespace", "and a namespace-scoped fixture declares the other")
 }
 
+/// <p>DW-1364 -- the id rule is a declared table, not a branch, because
+/// <file>ui/tools/screen-mirror.mjs</file> reads it and the client applies the same rule. This
+/// pins the declaration itself: every pair names a type the kernel vocabulary holds and a rule
+/// <parameter>OcuPilot.Kernel.EntityRef.IDRULENAMES</parameter> declares, the declared rule is
+/// what <method>OcuPilot.Kernel.EntityRef.NormalizedId</method> applies, and a type with no pair
+/// is verbatim.</p>
+/// <p>That the client ends up with the same key is <file>ui/tools/entity-ref.test.mjs</file>'s;
+/// that the generator refuses an undeclared rule is
+/// <file>ui/tools/screen-mirror.test.mjs</file>'s. This is the instance half.</p>
+/// <p>Mutation: add <code>task:foldcase-striptrailingslash</code> to
+/// <parameter>OcuPilot.Kernel.EntityRef.IDRULES</parameter> -> the verbatim-for-an-unruled-type
+/// assertion goes red; remove the <code>web-application</code> pair -> the folded assertions go
+/// red while the roster assertions stay green.</p>
+Method TestTheIdRuleTableIsDeclaredAndIsWhatNormalizationApplies()
+{
+    Set tRaw = ##class(OcuPilot.Kernel.EntityRef).#IDRULES
+    Set tNames = ##class(OcuPilot.Kernel.EntityRef).#IDRULENAMES
+    Do $$$AssertTrue(tRaw '= "", "the table declares at least one pair, so the generator has something to mirror")
+
+    Set tRuled = ""
+    For tI = 1:1:$Length(tRaw, ",") {
+        Set tPair = $Piece(tRaw, ",", tI)
+        If tPair = "" Continue
+        Set tType = $Piece(tPair, ":", 1)
+        Set tRule = $Piece(tPair, ":", 2)
+        Do $$$AssertTrue(##class(OcuPilot.Kernel.EntityType).IsKnown(tType), "pair " _ tI _ " names a declared entity type: " _ tType)
+        Do $$$AssertTrue($ListFind($ListFromString(tNames, ","), tRule) > 0, "pair " _ tI _ " names a rule IDRULENAMES declares: " _ tRule)
+        Set tRuled = tRuled _ $ListBuild(tType)
+    }
+
+    ; The one rule Release 1 declares, applied by the type the table names it for and by no other.
+    Do $$$AssertTrue($ListFind(tRuled, "web-application") > 0, "the web-application pair is the one DW-1359 added")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("web-application", "/API/OcuPilot/"), "/api/ocupilot", "the declared rule folds case and strips every trailing slash")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("web-application", "/API/OCUPILOT///"), "/api/ocupilot", "including several")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("web-application", "api/ocupilot"), "api/ocupilot", "and it goes exactly as far as the instance's own resolution does")
+
+    ; A type the table holds no pair for canonicalizes to itself, which is what makes adding one a
+    ; decision about that type rather than a default applied to it.
+    Do $$$AssertTrue($ListFind(tRuled, ..#KNOWNTYPE) = 0, "the corpus type declares no rule")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId(..#KNOWNTYPE, "/API/OcuPilot/"), "/API/OcuPilot/", "so its ids are the instance's own strings")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("role", "%All"), "%All", "and so are a role's")
+
+    ; A key built from a non-canonical spelling is the key built from the canonical one, which is
+    ; the necessary condition behind AD-34's per-target lock.
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.EntityRef).Key("web-application", "instance", "/API/OcuPilot/", .tFromForm), "a non-canonical spelling builds a key")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.EntityRef).Key("web-application", "instance", "/api/ocupilot", .tFromCanonical), "and so does the canonical one")
+    Do $$$AssertEquals(tFromForm, tFromCanonical, "and the two are one key")
+}
+
 /// <p>The wire form a change event, a proposal target and an audit marker carry: exactly
 /// <code>{type, scope, id}</code>, with the scope resolved by the caller.</p>
 Method TestTheWireFormCarriesTheTripleAndNothingElse()

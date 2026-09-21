@@ -38,6 +38,7 @@ import { ScreenStores } from '../core/screen-store';
 import { Session } from '../core/session';
 import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
+import { formatChangeSentence } from '../core/toasts';
 import { SuggestedView, type SuggestedLine } from '../core/suggested-view';
 import {
   TURN_PATH,
@@ -789,7 +790,10 @@ export class Panel {
         reply:
           errorBanner === null
             ? this.replyWithMarkerSentence(
-                this.replyWithConfirmSentence(entry.reply, proposals),
+                this.replyWithChangeSentence(
+                  this.replyWithConfirmSentence(entry.reply, proposals),
+                  entry.proposals
+                ),
                 entry.proposals
               )
             : null,
@@ -860,6 +864,34 @@ export class Panel {
     if (!proposals.some((proposal) => !isTerminalPhase(proposal.phase))) return reply;
     if (reply.trimEnd().endsWith(STRINGS.proposalConfirmSentence)) return reply;
     return reply + '\n\n' + STRINGS.proposalConfirmSentence;
+  }
+
+  /**
+   * `reply` with the published change sentence at its end, one per confirmed write of this turn.
+   *
+   * **It is what makes the AC's "nothing is lost when the toast expires" true by construction.**
+   * A toast is transient and may never have been raised at all -- the user may have been looking
+   * at the very screen that changed -- so the turn's own record carries the same published
+   * sentence the toast would have. The sentence is the panel's copy, not the model's: "the
+   * agent's reply names the change" is not assertable against model-authored prose.
+   *
+   * `updated` for the reason `TurnStore` publishes `updated`: every shipped write tool is a PUT
+   * against an object that already exists.
+   */
+  private replyWithChangeSentence(
+    reply: string | null,
+    proposals: readonly TurnProposal[]
+  ): string | null {
+    if (reply === null) return null;
+    const cards = this.writeCards();
+    let text = reply;
+    for (const proposal of proposals) {
+      if (!cards.has(proposal.proposalId)) continue;
+      const sentence = formatChangeSentence(STRINGS.tableChangeUpdated, proposal.target.id);
+      if (text.includes(sentence)) continue;
+      text = text + '\n\n' + sentence;
+    }
+    return text;
   }
 
   /**

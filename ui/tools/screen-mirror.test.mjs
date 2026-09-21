@@ -18,12 +18,16 @@ import {
   confirmChannelProblem,
   criteriaProblem,
   entityTypesIn,
+  ENTITY_REF_SOURCE,
   extractClassName,
   extractXData,
   generate,
   malformedPair,
   parentScopeResolutionProblem,
+  IMPLEMENTED_ID_RULES,
   parseEntityTypes,
+  parseIdRuleNames,
+  parseIdRules,
   parseScopeWords,
   readCheckedInMirror,
   declaredStringKeys,
@@ -154,6 +158,64 @@ test('every string key a table or banner declaration names is one the key check 
     ['notAStringKey', 'notAnEmptyCellKey', 'notABannerStringKey', 'notASecondBannerStringKey', 'notATabStringKey'],
     'and a key the string source lacks is found, both banner cases\' among them'
   );
+});
+
+// AD-13 as amended by DW-1359, and DW-1364 itself: the kernel declares its per-type id rules as
+// data and this generator mirrors them, so the client's key builder folds what the instance folds.
+// A declaration the client cannot honour must fail the BUILD -- mirroring it as a rule name
+// nothing implements is exactly the silent divergence the amendment exists to close.
+//
+// Mutation (Rule 19): return the pairs unchecked from `checkedIdRules` -> all three refusals below
+// go red, and a rule named in `IDRULES` would reach `screens.generated.ts` with no implementation.
+test('AD-13: the id-rule table is read from the kernel and is what the mirror emits', () => {
+  const text = readFileSync(ENTITY_REF_SOURCE, 'utf8');
+  const rules = parseIdRules(text);
+  assert.deepEqual(rules, [['web-application', 'foldcase-striptrailingslash']]);
+  assert.deepEqual(parseIdRuleNames(text), ['foldcase-striptrailingslash']);
+  // `null`, never `[]`, when the parameter is missing: an absent table and a table that declares
+  // nothing are different facts, and only one of them is a source to build from.
+  assert.equal(parseIdRules('Class X { }'), null);
+  assert.equal(parseIdRuleNames('Class X { }'), null);
+  assert.match(generate(), /export const ENTITY_ID_RULES/, 'and the emission carries it');
+});
+
+test('AD-13: the generator refuses an id rule no reader can apply, naming the rule and the file', () => {
+  const sources = readSources();
+  const refusals = [
+    {
+      idRules: [['not-an-entity-type', 'foldcase-striptrailingslash']],
+      idRuleNames: ['foldcase-striptrailingslash'],
+      pattern: /not-an-entity-type/,
+      why: 'a rule for a type outside the kernel enum',
+    },
+    {
+      idRules: [['task', 'trim-whitespace']],
+      idRuleNames: ['foldcase-striptrailingslash'],
+      pattern: /IDRULENAMES does not declare/,
+      why: 'a rule the kernel itself does not declare',
+    },
+    {
+      idRules: [['task', 'trim-whitespace']],
+      idRuleNames: ['foldcase-striptrailingslash', 'trim-whitespace'],
+      pattern: /cannot implement on the client/,
+      why: 'a rule this generator has no client implementation for',
+    },
+  ];
+  for (const { idRules, idRuleNames, pattern, why } of refusals) {
+    assert.throws(
+      () => buildMirror({ ...sources, idRules, idRuleNames }),
+      (error) => {
+        assert.match(error.message, /EntityRef\.cls/, `${why}: the refusal names the file`);
+        assert.match(error.message, pattern, `${why}: and says what is wrong`);
+        return true;
+      },
+      why
+    );
+  }
+
+  // The roster the third refusal is judged against is the one `entity-ref.ts` is pinned equal to
+  // by `ui/tools/entity-ref.test.mjs`, so neither side can grow a rule alone.
+  assert.deepEqual(IMPLEMENTED_ID_RULES, ['foldcase-striptrailingslash']);
 });
 
 test('AD-14: the generator refuses an entity type the kernel enum does not hold, naming both', () => {

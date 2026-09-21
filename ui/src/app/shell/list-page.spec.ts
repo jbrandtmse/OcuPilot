@@ -162,13 +162,64 @@ describe('the list page', () => {
     const page = await mount(declaration, named('A', 'B'));
     const before = page.paths.length;
 
-    page.bus.publish({ kind: 'changed', type: 'web-application', scope: 'HSCUSTOM', id: 'B' });
+    page.bus.publish({ kind: 'changed', type: 'web-application', scope: 'HSCUSTOM', id: 'B', action: 'updated' });
     await settle(page.fixture);
 
     expect(page.paths.length).toBe(before + 1);
     const changed = page.host().querySelector('.ocu-data-table-row-changed') as HTMLElement;
     expect(changed.querySelector('.ocu-data-table-link')?.textContent?.trim()).toBe('B');
     expect(changed.querySelector('.ocu-data-table-changed-tag')).not.toBeNull();
+
+    // Story 5.7: the change is announced once, politely, naming the row and what happened. The
+    // refresh stamp and every silent tick stay unannounced, which is what keeps auto-refresh
+    // silent (EXPERIENCE.md's accessibility floor).
+    const announcement = page.host().querySelector('.ocu-data-table-announcement') as HTMLElement;
+    expect(announcement.getAttribute('role')).toBe('status');
+    expect(announcement.textContent?.trim()).toBe('Updated: B updated');
+  });
+
+  it('Story 5.7: a created row arrives highlighted and selected, and an updated one leaves the caret alone', async () => {
+    // Mutation (Rule 19): drop `applyPendingSelection` from `DataTable.sync` -> the selection
+    // assertion goes red while the highlight stays green, which is what separates "the row is
+    // marked" from "the caret is on the row the user has not seen".
+    const declaration = tableDeclaration();
+    const page = await mount(declaration, named('A', 'B'));
+    const store = page.stores.for(declaration.descriptor, []);
+    store.setSelection(['A']);
+    store.setActive('A');
+
+    page.setRows(named('A', 'B', 'C'));
+    page.bus.publish({ kind: 'changed', type: 'web-application', scope: 'HSCUSTOM', id: 'C', action: 'created' });
+    await settle(page.fixture);
+
+    expect(rowNames(page.host())).toEqual(['A', 'B', 'C']);
+    expect(store.selection()).toEqual(['C']);
+    expect(store.active()).toBe('C');
+    const changed = page.host().querySelector('.ocu-data-table-row-changed') as HTMLElement;
+    expect(changed.querySelector('.ocu-data-table-link')?.textContent?.trim()).toBe('C');
+
+    // An update of another row marks it and moves nothing.
+    page.bus.publish({ kind: 'changed', type: 'web-application', scope: 'HSCUSTOM', id: 'A', action: 'updated' });
+    await settle(page.fixture);
+    expect(store.selection()).toEqual(['C']);
+  });
+
+  it('Story 5.7: a deleted row leaves, and the selection it held clears', async () => {
+    // The clear is `table-model.reconcile`'s, which this exercises through the real store and the
+    // real table rather than by calling it -- a selected key absent from the new row set is what
+    // a delete looks like from the view's side.
+    const declaration = tableDeclaration();
+    const page = await mount(declaration, named('A', 'B'));
+    const store = page.stores.for(declaration.descriptor, []);
+    store.setSelection(['B']);
+    store.setActive('B');
+
+    page.setRows(named('A'));
+    page.bus.publish({ kind: 'changed', type: 'web-application', scope: 'HSCUSTOM', id: 'B', action: 'deleted' });
+    await settle(page.fixture);
+
+    expect(rowNames(page.host())).toEqual(['A']);
+    expect(store.selection()).toEqual([]);
   });
 
   it('before the namespace list arrives the page reads nothing, and the scope resolving reads once', async () => {

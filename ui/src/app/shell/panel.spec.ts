@@ -3234,6 +3234,59 @@ describe('Story 5.3: confirming, cancelling and re-proposing a card', () => {
     expect(reply).not.toContain(STRINGS.auditMarkerReplySentence);
   });
 
+  it('Story 5.7: a confirmed write names its change in the reply, once, so an expired toast loses nothing', async () => {
+    // The toast is transient and may never have been raised at all -- the user may have been
+    // looking at the very screen that changed -- so the turn's own record carries the same
+    // published sentence. The sentence is the panel's copy, not the model's: "the agent's reply
+    // names the change" is not assertable against model-authored prose.
+    //
+    // Mutation (Rule 19): drop the `text.includes(sentence)` guard in `replyWithChangeSentence`
+    // -> the "once" assertion goes red on a doubled sentence, which the `toContain` half above
+    // would not see.
+    const { host, fixture } = await mountDecidable({
+      [proposalConfirmPath('p1')]: [
+        {
+          kind: 'ok',
+          status: 200,
+          body: {
+            proposalId: 'p1',
+            state: 'confirmed',
+            closedReason: '',
+            confirmedAt: '2026-09-19T10:31:04Z',
+            auditMarked: true,
+          },
+        },
+      ],
+    });
+    const before = host.querySelector('.ocu-panel-message-agent-text')?.textContent ?? '';
+    const sentence = STRINGS.tableChangeUpdated.replace('<entity>', '/csp/myapp');
+    expect(before).not.toContain(sentence);
+
+    (host.querySelector('.ocu-proposal-card-confirm') as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+
+    const reply = host.querySelector('.ocu-panel-message-agent-text')?.textContent ?? '';
+    expect(reply).toContain(sentence);
+    expect(reply.split(sentence)).toHaveLength(2);
+    // The published word, not a placeholder: shipping `<entity>` is what a formatter exists to stop.
+    expect(reply).not.toContain('<entity>');
+  });
+
+  it('Story 5.7: a cancelled card names no change -- nothing was written', async () => {
+    const { host, fixture } = await mountDecidable({
+      [proposalCancelPath('p1')]: [
+        { kind: 'ok', status: 200, body: { proposalId: 'p1', state: 'canceled', closedReason: 'you', confirmedAt: '' } },
+      ],
+    });
+    (host.querySelector('.ocu-proposal-card-cancel') as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+
+    const reply = host.querySelector('.ocu-panel-message-agent-text')?.textContent ?? '';
+    expect(reply).not.toContain(STRINGS.tableChangeUpdated.replace('<entity>', '/csp/myapp'));
+  });
+
   it('Cancel reaches the instance as well as the card (DW-1243)', async () => {
     // Mutation (Rule 19): drop the `turn.cancelProposal` call from `onCardCancel` -> this goes
     // red, and a card the user cancelled would still be claimable on the instance.

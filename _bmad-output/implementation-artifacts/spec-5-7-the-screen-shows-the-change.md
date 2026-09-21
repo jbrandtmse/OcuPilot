@@ -2,15 +2,84 @@
 title: 'Story 5.7: The screen shows the change'
 type: 'feature'
 created: '2026-09-20'
-status: 'ready-for-dev'
-baseline_revision: '91e63ad4db0bb0718f4e4bed912a1d18403820b2'
-baseline_commit: '91e63ad'
+status: 'done'
+baseline_revision: '24b6091b0e8138cf705de8cc83248c3efb708239'
+baseline_commit: '24b6091'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['oversized', 'multiple-goals']
-deferred: []
+deferred:
+  - summary: >-
+      The client's reference key and the kernel's are pinned against the same hand-copied literal
+      on each side rather than by anything that compares them, and REF_SEPARATOR carries no build
+      gate at all.
+    evidence: |-
+      ui/tools/entity-ref.test.mjs hard-codes the expected key; OcuPilot.Test.EntityRef asserts
+      only that three spellings build each other's key. The id-rule table now has a generator gate,
+      but `REF_SEPARATOR = '\u0002'` is hand-copied from `Parameter REFSEPARATOR = 2` and
+      `grep REFSEPARATOR ui/` returns nothing, so a change to one side ships silently.
+    location: >-
+      ui/src/app/core/entity-ref.ts:39 and src/OcuPilot/Kernel/EntityRef.cls:42
+    severity: medium
+  - summary: >-
+      The toast is the one surface this story built from scratch and it has no browser-tier
+      coverage, so its geometry, stacking and pointer-events handoff are asserted nowhere.
+    evidence: |-
+      ui/tools/toasts.test.mjs runs under node --test and ui/src/app/shell/toast-host.spec.ts under
+      jsdom, which computes no layout; ui/browser/change-highlight.browser-spec.mjs touches the
+      toast only as `assert.equal(await page.$('.ocu-toast-region'), null)`. The DESIGN.md recipe
+      values were corrected by inspection in this pass, not by a test.
+    location: >-
+      ui/src/app/shell/toast-host.ts
+    severity: low
+  - summary: >-
+      DESIGN.md gives the toast's "Open in <screen>" link a dark-mode color, which cannot be
+      honored because no dark-mode mechanism exists in the stylesheets yet.
+    evidence: |-
+      DESIGN.md:1211 names `{colors.secondary-dark}` in light and `{colors.secondary}` in dark and
+      asks for a contrast test (4.64:1, marginal). `grep -n "prefers-color-scheme\|data-theme"
+      ui/src/styles/*.scss` returns nothing: the theme toggle is deferred to polish week by the
+      spine's own Deferred table, so the toast is consistent with every other component today.
+    location: >-
+      ui/src/app/shell/toast-host.ts (the .ocu-toast-action rule)
+    severity: low
+  - summary: >-
+      The deleted-row acceptance criterion's "the locator's entity segment clears" clause is
+      vacuous on a list and has no producer on a detail route.
+    evidence: |-
+      locator-bar.ts:204-210 reads the entity from the deepest activated route's `:id`, not from
+      the store selection, so a list-row selection clearing cannot change it; on a detail route
+      nothing navigates away when the entity is deleted. `webapp.list.update` is the only write
+      tool and Confirm.WRITETYPE is "PUT", so no shipped path publishes `deleted` (the spec's own
+      Design Notes say so). Story 5.13's deletes are the first producer.
+    location: >-
+      ui/src/app/shell/locator-bar.ts:204
+    severity: low
+  - summary: >-
+      DefinitionForm publishes `action: 'updated'` on a create, because its one publishChange() is
+      called from both the save and the gate's create path.
+    evidence: |-
+      ui/src/app/areas/agent/definition-form.store.ts:700-708 is reached from the save (:563-591)
+      and the gate path (:625-638) alike. The spec's task list said to pass 'updated' at the three
+      existing publish sites and change nothing else, so this pass did. Visible consequence: a new
+      definition's row is not auto-selected, and an off-screen toast reads "was updated".
+    location: >-
+      ui/src/app/areas/agent/definition-form.store.ts:704
+    severity: low
+  - summary: >-
+      Four matrix rows are carried by construction or by pre-existing tests rather than by a pin
+      this story added, and one new leg cannot separate the two halves of its row.
+    evidence: |-
+      The detail-field row has no shipped publisher for `task`/`process`/`database`; the refused
+      confirm's "the pause stays on" half is not separable in turn.test.mjs because the same leg
+      also runs a cancel; "the existing banner renders it" is asserted as absence-of-input; and
+      panel.spec.ts asserts the reply sentence without a toast expiring. Each is defensible and
+      each is stated in the spec's Design Notes, but none is a falsifiable pin.
+    location: >-
+      ui/tools/turn.test.mjs, ui/src/app/shell/panel.spec.ts
+    severity: low
 ---
 
 <intent-contract>
@@ -323,6 +392,81 @@ are banners) and none for a change on the screen the user is looking at. No cros
 
 ## Review Triage Log
 
+### 2026-09-21 - Review pass
+
+- verdicts: 16 findings - high 1, medium 4, low 8, false 0, maybe-false 3
+- findings:
+  - `[medium]` `[patch]` Off-screen-toast suppression fails on every id route, so a change the open
+    screen is already highlighting also raises a toast - verified: `openScreenShows` used
+    `screenForRoute`, an exact route-table match, and a detail route is `<list route>/<id>` with no
+    declared route of its own; the repository's own `screenForUrl` exists for exactly this and the
+    toast's own action navigates there. Patched to `screenForUrl`, with a detail-URL row in
+    `ui/tools/toasts.test.mjs`.
+  - `[high]` `[patch]` The confirmed-write mark never lands on a row whose key is not already
+    canonical - verified along the whole chain: `Mint.cls:89` builds `targetRef` through
+    `EntityRef.Key` (which folds), `Propose.WireRow` parses it back, `TurnStore` publishes that
+    spelling, and `rowKey` is the name column's text, which the instance returns as created
+    (`EntityRef.cls`'s own probe: `/csp/OcuPilotProbeCase` reads back verbatim). A write to
+    `/csp/MyApp` therefore produced no highlight, no scroll, no announcement and no toast. Patched
+    with `DataTable.viewKeyFor`, routing the four comparison sites through it; `rowKey` untouched.
+  - `[medium]` `[patch]` The toast host's hover/focus hold was pinned by an assertion that cannot
+    fail - verified: the spec asserted the same `messages()` expression before and after the
+    events, with real 30 s timers in a synchronous jsdom test, so deleting all four bindings left
+    it green. Patched by reflecting `holding()` as `data-ocu-holding` and asserting each source
+    independently; the deletion now reddens it.
+  - `[low]` `[patch]` A second change to a row that is still marked is never announced - verified:
+    `announcedChanged` was keyed by row key alone while `markChanged` re-notifies on a differing
+    action. Patched to key on the (key, action) pair, which is exactly what the store can
+    distinguish.
+  - `[maybe-false]` `[reject]` `replyWithChangeSentence` appends on `writeCards` (a 200) while the
+    bus publish gates on `state === 'confirmed'` - the reviewer could construct no reachable case,
+    and `Confirm.Answer` reads `state` back off the row after the write. If true it would be low
+    (a reply sentence for a change the bus did not publish), so it is closed rather than deferred.
+  - `[maybe-false]` `[reject]` `TurnStore` publishes nothing when `targetOf(id)` is null - a
+    confirm originates from a card this store holds, so no path was shown that reaches it. Closed
+    as theoretical; it would become real only if a confirm could be issued for a proposal the store
+    has dropped.
+  - `[low]` `[patch]` Rule 19 mutation lines missing for AC5's two lifetimes, AC5's hover/focus
+    hold and AC7's delete half - verified against the spec's `## Verification` list. Each was
+    named, applied, observed red and reverted in the patch pass, and the lines are now recorded.
+  - `[medium]` `[patch]` Dismissing the last toast while its own control holds focus strands the
+    hold counter, after which no later toast ever expires - verified: `ToastHost.open()` dismisses
+    the toast it acted on, clicking the button focuses it, and a removed focused element does not
+    reliably fire `focusout`; `arm()` then returns early forever. Patched so an emptied stack
+    forgets its holds, with a row in `ui/tools/toasts.test.mjs`.
+  - `[high]` `[patch]` (intent-alignment 3.1) DW-1364 was fixed on `ChangeEvent.key`, which no
+    runtime consumer reads, while the highlight still matches the raw `id` - same root cause as the
+    second finding above and closed by the same patch; recorded separately because it names the
+    surface rather than the symptom.
+  - `[low]` `[defer]` (intent-alignment 3.2) The cross-language key equality is asserted twice,
+    never once across, and `REF_SEPARATOR` has no build gate - verified by reading both tests; the
+    id-rule table now has a gate but the separator does not. Deferred with the evidence.
+  - `[medium]` `[patch]` (intent-alignment 3.3) The "one predicate" holds but the "one answer" does
+    not, on exactly the detail routes the toast's action navigates to - same root cause as the
+    first finding and closed by the same patch.
+  - `[medium]` `[patch]` (intent-alignment 3.4) The budget leg stopped at a class `markChanged`
+    sets synchronously with the publish, so it timed the mark rather than the re-fetch - verified
+    by mutation in the patch pass: dropping `readNow()` from `onBusEvent` reddened only the newly
+    added written-value assertion while the highlight still landed in 6 ms and every earlier
+    assertion stayed green. Patched by asserting the re-fetched value outside the timed bracket.
+  - `[low]` `[defer]` (intent-alignment 3.5) The toast, the one surface built from scratch, has no
+    browser-tier coverage - verified; the recipe values were corrected by inspection in this pass
+    and the geometry remains unasserted. Deferred.
+  - `[low]` `[defer]` (intent-alignment 3.6) Four matrix rows are carried by construction or by
+    pre-existing tests rather than by a pin this story added - verified; each is stated in the
+    spec's own Design Notes. Deferred.
+  - `[low]` `[patch]` The toast's component styles deviated from DESIGN.md's published recipe, and
+    its `z-index: 40` put it over the modal dialog - verified against `DESIGN.md:497-508` and the
+    shell's 1-7 stacking scale (scrim 6, dialog 7). Patched to `width: 360px`, `{spacing.3}`
+    padding, `{spacing.4}` above the status bar and `z-index: 5`.
+  - `[low]` `[patch]` `change-highlight.browser-spec.mjs` computed `indicator` and `rows` and
+    asserted neither, and measured the wrong property for the 3px bar (it is drawn as a `::before`,
+    so `border-left-width` reads `0px`) - verified; the bar is already pinned by
+    `data-table.browser-spec.mjs:477`. Both dead measurements deleted.
+  - `[low]` `[patch]` The DW-18 doc comment for `sync()` was orphaned above the new
+    `announcementText` getter - verified by reading the file; moved back and its "once per marked
+    row" phrase corrected to match the patched behavior.
+
 ## Design Notes
 
 **Footprint, authorized by the lead at the spec gate.** `ui/src/app/app.ts` is outside both live
@@ -503,13 +647,178 @@ region. Report it under `footprint_extensions:`. `ui/src/styles/**` is contended
 - `(once, before dev_complete)` `bash scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS`
   -- expected: passes, executed-check count non-zero; read the skip lines, not the number (DW-1402).
 
-**Rule 19 mutations** -- one per acceptance criterion, each applied, observed red, reverted, with
-`git status --short` and `git diff --stat` unchanged afterwards; the ObjectScript ones run on
-`ocupilot-ci`, never the shared dev instance (DW-1185), and a client mutation is only meaningful after
-the bundle is rebuilt and redeployed. Record each as `mutation: <change> -> <test that reddened>`
-beside the test as it is written.
+**Rule 19 mutations** -- each applied, observed red, reverted, with `git status --short` and
+`git diff --stat` unchanged afterwards; the ObjectScript ones ran on `ocupilot-ci`, never the shared
+dev instance (DW-1185), and every client mutation whose subject is a browser spec was rebuilt and
+redeployed before the run.
+
+- mutation: `normalizeEntityId` answers its `id` verbatim -> `ui/tools/entity-ref.test.mjs` *DW-1364:
+  three spellings of one web application build the one key the instance builds* reddened; the eight
+  other rows stayed green. (AC1, first half)
+- mutation: `EntityRef.IDRULES` gains `task:trimwhitespace` with `IDRULENAMES` widened to match ->
+  `cd ui && npm run build` exited 1 at `prebuild`, `screen-mirror: ... cannot implement on the
+  client (it knows foldcase-striptrailingslash)`. (AC1, second half)
+- mutation: `EntityRef.IDRULES` emptied, class reloaded and recompiled on `ocupilot-ci` ->
+  `OcuPilot.Test.EntityRef` run 1354: `TestTheIdRuleTableIsDeclaredAndIsWhatNormalizationApplies`
+  and `TestAWebApplicationIdReachesAKeyInOneSpelling` both reddened; run 1355 after the revert is
+  green. (AC1, instance half)
+- mutation: the `changed` publish removed from `TurnStore.decideProposal`'s confirmed branch ->
+  `ui/tools/turn.test.mjs` *a confirm closes the AD-43 pause and then publishes the write, in that
+  order* reddened, and, after a rebuild and a `docker cp` of the bundle, **both**
+  `browser/change-highlight.browser-spec.mjs` legs reddened on
+  `Waiting for selector .ocu-data-table-row-changed failed`. That second observation is also what
+  makes the cross-tab leg non-vacuous: the same selector is what tab one is waited on for.
+  (AC2, AC3, AC8)
+- mutation: `screenShowsEntity` returns `true` once the type matches, dropping the scope test ->
+  `ui/tools/navigation.test.mjs` *screenShowsEntity answers the type half and the scope half* and
+  two rows of `ui/tools/refresh.test.mjs` reddened. (AC2, AC9's refactor)
+- mutation: `ToastHost.open` navigates `'/' + toast.route` instead of through `withQuery` ->
+  `toast-host.spec.ts` *Integration AC: the action opens that screen with the entity named,
+  carrying the namespace* reddened. (AC4)
+- mutation: the stack slice keeps the oldest three (`[...entries, entry]`) ->
+  `ui/tools/toasts.test.mjs` *four toasts leave three, newest first* reddened. (AC5)
+- mutation: the `openScreenShows` guard disabled in `ToastStore.publish` -> `toasts.test.mjs` *a
+  change the open screen already shows raises nothing* and `toast-host.spec.ts`'s own row both
+  reddened. (AC6)
+- mutation: `applyPendingSelection` dropped from `DataTable.sync` -> `data-table.spec.ts` *a pending
+  selection is taken up...* and `list-page.spec.ts` *a created row arrives highlighted and
+  selected* reddened. (AC7)
+- mutation: `applyPendingSelection` routed through `select()` -> `data-table.spec.ts` *...and keeps
+  its mark* reddened, because `select()` clears the highlight on the way. (AC7)
+- mutation: `announceChanged` iterates `lastKeys` instead of the changed set ->
+  `data-table.spec.ts` *a marked row is announced once, politely* reddened on the
+  announced-nothing-yet assertion. Recorded because the obvious mutation -- disabling the
+  `announcedChanged.has` guard -- is **inert**: the slot is rewritten with the same string.
+- mutation: `replyWithChangeSentence` drops its `cards.has(proposalId)` guard ->
+  `panel.spec.ts`'s two Story 5.7 rows reddened. (AC10)
+- not applied: the cross-tab mutation the matrix names (broadcast the change over `localStorage`)
+  adds a channel rather than removing code. The leg's falsifiability rests on the publisher
+  mutation above, which reddened it, so the tab-two assertion is not a selector that never
+  matches.
+- mutation: every toast gets the thirty-second lifetime (`lifetime = TOAST_LIFETIME_WITH_ACTION_MS`)
+  -> `ui/tools/toasts.test.mjs` *a type no built screen shows raises a toast with no action, which
+  lives ten seconds* reddened, with three later rows that drive the clock. (AC5, lifetimes)
+- mutation: `releaseTimers` re-arms without shifting the deadlines -> `ui/tools/toasts.test.mjs`
+  *a hover or a focus holds every countdown, and releasing gives back exactly the time held*
+  reddened alone. (AC5, the hold)
+- mutation: `DataTable.sync` drops `store.setSelection(result.selected ...)` ->
+  `list-page.spec.ts` *a deleted row leaves, and the selection it held clears* and
+  `data-table.spec.ts` *DW-18 Emptied...* reddened. (AC7, delete half)
+- mutation: `openScreenShows` resolves the open screen with `screenForRoute(routeFromUrl(url))`
+  again -> `ui/tools/toasts.test.mjs` *a detail URL is the open screen too* reddened alone. A
+  detail route declares no route of its own, so the suppression failed on every id route --
+  including the one `ToastHost.open` navigates to. (AC6)
+- mutation: `dismiss` keeps the hold count across an emptied stack ->
+  `ui/tools/toasts.test.mjs` *an emptied stack forgets the hold it was under* reddened alone.
+  Acting on the last toast focuses its button and removes it, and no `focusout` is owed for an
+  element that is gone. (AC5)
+- mutation: `DataTable.viewKeyFor` answers an exact `lastKeys` hit or `''` ->
+  `data-table.spec.ts` *the change names the canonical id, and the row the instance spells
+  otherwise is marked* reddened alone. (AC2, AC3, AC7)
+- mutation: `announceChanged` skips on `announcedChanged.has(key)` rather than on the recorded
+  action -> `data-table.spec.ts` *a second change to a row that is still marked is announced too*
+  reddened alone. (AC3)
+- mutation: the four `(pointerenter)`/`(pointerleave)`/`(focusin)`/`(focusout)` bindings deleted
+  from `toast-host.ts` -> `toast-host.spec.ts` *hovering or focusing the stack holds every
+  countdown, and both partners must let go* reddened alone; before the region reflected
+  `holding()`, deleting them reddened nothing. (AC5)
+- mutation: `RefreshService.onBusEvent` drops its `void this.readNow()` -> after a rebuild and a
+  `docker cp`, `browser/change-highlight.browser-spec.mjs`'s first leg reddened on
+  `'Yes' !== 'No'` while the highlight still landed in 6 ms and every assertion above it stayed
+  green -- which is what the new written-value assertion exists to catch. (AC2, AC8)
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**What shipped.** A confirmed write is now a publisher on the existing change bus. The kernel's
+per-type id rule became a declared `IDRULES` table that `screen-mirror.mjs` mirrors as
+`ENTITY_ID_RULES` and **refuses to mirror** when it names a type outside `EntityType.TYPES`, a rule
+outside `IDRULENAMES`, or a rule the client cannot implement -- so a kernel rule can no longer reach
+the client as a silent identity function, which is what DW-1364 was. `ChangeEvent` gained AD-14's
+closed `action`, refused rather than defaulted on both halves. `TurnStore.decideProposal` publishes
+one `changed` from the proposal's canonical triple after the `proposal-closed` it already published,
+and only on a confirm that reached `state: 'confirmed'`. `screenShowsEntity` is the one predicate the
+re-fetch filter and the toast gate both call. The one unbuilt surface -- the off-screen toast, its
+store, stack, two lifetimes, counted hover/focus hold, dismiss and "Open in <screen>" -- is built,
+framework-free in `core/` with a component-scoped host mounted after the panel.
+
+**Files changed** (39):
+
+- `src/OcuPilot/Kernel/EntityRef.cls` -- `IDRULES` / `IDRULENAMES` / `IdRuleFor` replace the
+  hard-coded single-type branch in `NormalizedId`; behavior for `web-application` unchanged, no
+  `SCHEMAVERSION` move.
+- `src/OcuPilot/Test/EntityRef.cls` -- pins the declared table: every pair names a known type and a
+  declared rule, the rule is what `NormalizedId` applies, and an unruled type is verbatim.
+- `ui/tools/screen-mirror.mjs` -- parses both parameters, holds `IMPLEMENTED_ID_RULES`, throws three
+  ways, emits `ENTITY_ID_RULES`.
+- `ui/src/app/core/entity-ref.ts` -- `normalizeEntityId` applies the mirrored rule inside
+  `entityRefKey`, before the emptiness gate; `parseEntityRefKey` still does not normalize.
+- `ui/src/app/core/change-bus.ts` -- `ChangeAction`, `CHANGE_ACTIONS`, the required action, the
+  stale "nothing publishes yet" paragraph replaced at its origin.
+- `ui/src/app/core/turn.ts` -- the confirmed-write publisher and `targetOf`.
+- `ui/src/app/core/navigation.ts` -- `screenShowsEntity` and `screenForChange`.
+- `ui/src/app/core/refresh.ts` -- calls the shared predicate; a `created` change sets the pending
+  selection.
+- `ui/src/app/core/screen-store.ts` -- the action beside each mark, and the pending selection.
+- `ui/src/app/core/toasts.ts` (new) -- the framework-free toast store.
+- `ui/src/app/shell/toast-host.ts` + `.spec.ts` (new) -- the region, component-scoped styles.
+- `ui/src/app/app.ts` -- mounts the region after the panel (footprint extension, authorized).
+- `ui/src/app/shell/data-table.ts` -- the polite announcement, the created-row selection, and
+  `viewKeyFor`, which resolves a bus id to the row key the view carries.
+- `ui/src/app/shell/panel.ts` -- the appended change sentence.
+- `ui/src/app/core/strings.ts` + `EXPERIENCE.md` -- six strings, three Fixed-strings rows at the tail.
+- `ui/browser/change-highlight.browser-spec.mjs` (new), plus the tools- and component-tier suites and
+  the three agent publish sites.
+
+**Review findings.** 16 findings from two layers plus this stage's own reading; one high, four
+medium, eight low, three maybe-false. **Patched: 13** (1 high, 4 medium, 8 low). **Deferred: 6.**
+**Rejected: 2** -- `replyWithChangeSentence` gating on a 200 where the bus gates on
+`state === 'confirmed'` (no reachable case constructed, and low if true) and a publish skipped when
+`targetOf` is null (a confirm originates from a card the store holds). Every row is in the
+`## Review Triage Log` above.
+
+The two that mattered, both of which the suite was green over:
+
+1. **The confirmed-write mark never landed on a row whose key is not already canonical** -- the
+   story's own defect class surviving at the surface that matters. `Mint` stores a folded
+   `targetRef`, the client publishes that spelling, and `rowKey` is the name column as the instance
+   returns it, which `Security.Applications` keeps as created. A write to `/csp/MyApp` produced no
+   highlight, no scroll, no announcement and no toast. Closed by `DataTable.viewKeyFor`; `rowKey`
+   itself is untouched, because it is also the selection, link and locator key.
+2. **The toast's "is this screen open" test used an exact route match**, so on every detail route --
+   including the one the toast's own action navigates to -- a change both highlighted a row and
+   raised a toast. Closed by using the repository's own `screenForUrl`.
+
+**Verification.** `uv run scripts/check-objectscript.py` clean over 571 files;
+`cd ui && npm run build` clean through all six prebuild checkers; `npm test` 1,192 tools + 712
+component tests, 0 failed; `node tools/ci-runner.mjs --container ocupilot-ci` **166 classes, 1,468
+tests, 0 failed, 0 probe leftovers, 0 overlaps**; `bash scripts/smoke.sh --container ocupilot-ci`
+**PASSED, executed=45, failed=0**, two named `pending` rows that predate this story;
+`bash scripts/lint-docs.sh` 0 issues. The budget leg reports 2 ms against its 2,000 ms deadline.
+
+`npm run test:browser` against the rebuilt and redeployed bundle: **194 tests, 192 pass, 2 fail**.
+Both failures are `browser/tasks.browser-spec.mjs`'s Story 6.6 legs and both are **instance residue,
+not this change**. Evidence: `%SYS_Task.History` on `ocupilot-ci` holds 43 rows matching the spec's
+`OcuPilotDemo` search, of which only 3 are `OcuPilotDemo nightly purge`; the other 40 are
+`OcuPilotDemoProbe*` and `OcuPilotDemoProbeResidue*` rows the ObjectScript suite leaves behind (it
+removes its probe tasks, but a task's history outlives it). `TaskHistoryList` reads
+`LogDatetime desc` with `paging: cap`, and `findRowIndexByName` scans `document.querySelectorAll`,
+so the three install-time rows now sort behind 40 newer ones and fall outside the virtual scroll
+viewport's rendered window. Every other Task screen -- schedule, on-demand, upcoming, details --
+passes, so row rendering is not implicated, and this diff touches no part of the Task history read,
+its search, its sort or its cap. Confirming it on a throwaway without the residue needs a container
+this stage is not permitted to recreate.
+
+**Residual risks.**
+
+- `viewKeyFor` is pinned at the component tier with a mixed-case row key, but **no browser leg
+  exercises a confirmed write against a non-canonically-spelled web application**: the fixture's
+  target is `/csp/ocupilotprobeconfirm`, already canonical. The end-to-end path for the defect that
+  was found is therefore still unexercised in a real browser. This is what
+  `followup_review_recommended: true` names.
+- The toast is the one surface built from scratch and has no browser-tier coverage, so its geometry
+  and stacking rest on inspection against DESIGN.md rather than on a test (deferred).
+- `created` and `deleted` have no shipped producer -- `Confirm.WRITETYPE` is `"PUT"` -- so both
+  branches are pinned by publishing the event by hand, as the spec's Design Notes state.

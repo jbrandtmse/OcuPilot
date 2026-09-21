@@ -418,6 +418,17 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "agent-switch"
 ];
 
+/**
+ * The per-entity-type canonical id rules, mirrored from OcuPilot.Kernel.EntityRef's IDRULES
+ * table (AD-13). Only the types that declare one appear; every other type canonicalizes to
+ * itself. `entity-ref.ts` holds the implementation of each rule name, pinned equal to
+ * `screen-mirror.mjs`'s own roster, so a rule the client cannot apply fails the build rather
+ * than mirroring as a no-op.
+ */
+export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> = {
+  "web-application": "foldcase-striptrailingslash"
+};
+
 /** The eight areas, in rail order. */
 export const AREAS: readonly AreaDeclaration[] = [
   {

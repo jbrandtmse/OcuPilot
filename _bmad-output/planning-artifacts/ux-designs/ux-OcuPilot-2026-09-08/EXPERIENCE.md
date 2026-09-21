@@ -381,6 +381,9 @@ Microcopy. Brand voice and aesthetic posture live in `DESIGN.md`.
 | "Web application" | proposal card title's singular entity noun for the `web-application` entity type, declared on the screen descriptor (AD-5, AD-14) |
 | "Agent writes will no longer be marked in the audit database." | proposal card warning above the footer, on a write that would turn auditing off (FR-22, FR-47) |
 | "This change was applied but not marked in the audit database." | the sentence appended to the agent's reply after a confirmed write whose audit marker was dropped (FR-21, FR-22, AD-15); the write's own tool-call card carries "done · audit not marked" beside it |
+| "<entity> was created" · "<entity> was updated" · "<entity> was deleted" | the off-screen change toast's sentence, one per AD-14 action, and the sentence the panel appends to a confirmed write's reply so the record outlives the toast (Story 5.7); `<entity>` resolves to the entity's own id, and the toast's "Open in <screen>" link (`:289`) names the screen the noun belongs to |
+| "Changes" · "Dismiss" | the change toast region's accessible name (`role="status"`, bottom right, reached with Tab after the panel) and the accessible name of each toast's dismiss control (Story 5.7) |
+| "Updated: <entity> <action>" | the polite announcement a data table makes once when a change event marks one of its rows (Story 5.7, `:664`); `<entity>` is the row's own id and `<action>` is AD-14's closed action word, which is machine vocabulary rendered as reported rather than translated copy |
 
 ## Component Patterns
 

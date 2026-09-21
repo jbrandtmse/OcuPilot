@@ -377,10 +377,13 @@ describe('the shell frame', () => {
     // The real framework, timer seam neutralized: the frame mounts the chip and the stamp, and
     // this file is about the frame. `refresh.test.mjs` and the two bar specs drive the framework.
     const screenStores = new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
+    // One bus, shared with the toast host the frame mounts (Story 5.7): two would be two
+    // channels, and the host's subscription would hear nothing the framework published.
+    const changeBus = new ChangeBus();
     refresh = new RefreshService({
       stores: screenStores,
       connectivity: connectivity as unknown as ConnectivityService,
-      bus: new ChangeBus(),
+      bus: changeBus,
       schedule: () => {},
     });
     overlays = new OverlayStack();
@@ -424,6 +427,7 @@ describe('the shell frame', () => {
           useValue: connectivity as unknown as ConnectivityService,
         },
         { provide: RefreshService, useValue: refresh },
+        { provide: ChangeBus, useValue: changeBus },
         { provide: ScreenStores, useValue: screenStores },
         { provide: OverlayStack, useValue: overlays },
         { provide: ScreenActions, useValue: new ScreenActions() },
@@ -456,13 +460,16 @@ describe('the shell frame', () => {
     expect(order).toEqual(['app-header', 'div', 'app-status-bar']);
 
     const shell = root.querySelector('.ocu-shell') as HTMLElement;
-    // The panel is the row's last member, after the content column: the reading order is header,
-    // rail, side bar, content, panel (EXPERIENCE.md's Focus order).
+    // The panel is the row's last laid-out member, after the content column: the reading order is
+    // header, rail, side bar, content, panel (EXPERIENCE.md's Focus order). The change-toast
+    // region follows the panel, so Tab reaches it last of the row (Story 5.7); it is fixed to the
+    // viewport and takes no space in the row.
     expect(Array.from(shell.children).map((child) => child.tagName.toLowerCase())).toEqual([
       'app-rail',
       'app-side-bar',
       'div',
       'app-panel',
+      'app-toast-host',
     ]);
 
     // The content region scrolls its 640px floor, which holds the column's three bands.

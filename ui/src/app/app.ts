@@ -40,6 +40,7 @@ import { Rail } from './shell/rail';
 import { SIDE_BAR_OVERLAY_ID, SideBar } from './shell/side-bar';
 import { SignIn } from './shell/sign-in';
 import { StatusBar } from './shell/status-bar';
+import { ToastHost } from './shell/toast-host';
 
 /** The content area's own element, which Escape returns focus to when nothing is open. */
 const CONTENT_ID = 'ocu-content';
@@ -136,6 +137,7 @@ export function isComposerChord(event: KeyboardEvent): boolean {
     CommandBar,
     StatusBar,
     Panel,
+    ToastHost,
   ],
   host: {
     '(document:keydown.escape)': 'onEscape()',
@@ -168,6 +170,7 @@ export function isComposerChord(event: KeyboardEvent): boolean {
               </div>
             </div>
             <app-panel [style.width.px]="panelWidth" />
+            <app-toast-host />
           </div>
           <app-status-bar />
         } @else {

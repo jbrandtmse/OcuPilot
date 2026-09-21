@@ -301,7 +301,7 @@ test("AD-14: a definition's `changed` event re-reads, and nothing else on the bu
   assert.equal(api.calls.length, 2, 'one load, two reads');
 
   // Another entity type's change says nothing about the agent.
-  bus.publish({ kind: 'changed', type: 'web-application', scope: 'HSCUSTOM', id: '/csp/myapp' });
+  bus.publish({ kind: 'changed', type: 'web-application', scope: 'HSCUSTOM', id: '/csp/myapp', action: 'updated' });
   // A proposal against a definition says a proposal is live, not that the instance moved.
   bus.publish({
     kind: 'proposal-open',
@@ -318,6 +318,7 @@ test("AD-14: a definition's `changed` event re-reads, and nothing else on the bu
     type: AGENT_DEFINITION_ENTITY,
     scope: AGENT_DEFINITION_SCOPE,
     id: '1',
+    action: 'updated',
   });
   await SETTLE();
   await SETTLE();
@@ -476,6 +477,7 @@ test('AD-14: a switch `changed` event re-reads, like a definition\'s', async () 
     type: AGENT_SWITCH_ENTITY,
     scope: AGENT_DEFINITION_SCOPE,
     id: 'instance',
+    action: 'updated',
   });
   await SETTLE();
   await SETTLE();

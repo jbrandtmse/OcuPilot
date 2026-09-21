@@ -29,7 +29,8 @@
 
 import type { ApiService } from './api';
 import type { ConnectivityService } from './connectivity';
-import { decodeEntityId } from './entity-id.ts';
+import { decodeEntityId, encodeEntityId } from './entity-id.ts';
+import { scopeFor } from './entity-ref.ts';
 import { AREAS, SCREENS, type AreaDeclaration, type ScreenDeclaration } from './screens.generated.ts';
 import { createSingleFlight } from './single-flight.ts';
 
@@ -343,6 +344,63 @@ export function screenForDescriptor(descriptor: string): ScreenDeclaration | nul
 export function screenForEntityType(type: string): ScreenDeclaration | null {
   if (type === '') return null;
   return SCREENS.find((screen) => screen.built && screen.entityType === type) ?? null;
+}
+
+/**
+ * The two halves of a reference a caller tests a screen against: the entity type and the resolved
+ * scope (AD-13). Structural, so a `ChangeEvent` and a toast entry both satisfy it without either
+ * module importing the other.
+ */
+export interface EntityReference {
+  readonly type: string;
+  readonly scope: string;
+}
+
+/**
+ * Whether `screen` shows the entity `event` names, in the namespace the shell is scoped to
+ * (AD-13, AD-14): the type is the screen's primary or one of its secondaries, and the scope is
+ * the one the screen's declared `scope` resolves to.
+ *
+ * **One predicate, two callers, and that is the point.** `RefreshService` asks it to decide
+ * whether to re-fetch and highlight; the toast store asks it to decide whether to raise a toast
+ * at all, which is the same question with the opposite answer. Two inline copies would be two
+ * answers, and a screen that re-fetched *and* raised a toast -- or did neither -- is exactly the
+ * divergence AD-14's last sentence is about.
+ */
+export function screenShowsEntity(
+  screen: ScreenDeclaration,
+  event: EntityReference,
+  namespace: string
+): boolean {
+  const types = [screen.entityType, ...screen.secondaryEntityTypes].filter((type) => type !== '');
+  if (!types.includes(event.type)) return false;
+  return event.scope === scopeFor(screen.scope, namespace);
+}
+
+/** The screen a change can be opened in, and the route that opens it with the entity named. */
+export interface ChangeTarget {
+  readonly screen: ScreenDeclaration;
+  readonly route: string;
+}
+
+/**
+ * The built screen that shows `type`, with the route that opens it on `id`, or `null` when no
+ * built screen shows that entity type (AD-5, AD-13).
+ *
+ * The route is the screen's own plus the entity as one percent-encoded segment, through the one
+ * shared encoder -- never a second grammar -- so the locator bar reads the entity the toast
+ * named. A screen whose descriptor declares no id route takes the bare route: there is no segment
+ * for the entity to occupy, and appending one would be a URL the route table does not hold.
+ *
+ * `null` is not a fault. It is the "a type no built screen shows" row of this story's matrix: the
+ * toast still says what changed, with no action to offer.
+ */
+export function screenForChange(event: { readonly type: string; readonly id: string }): ChangeTarget | null {
+  const screen = screenForEntityType(event.type);
+  if (screen === null) return null;
+  const route =
+    hasIdRoute(screen) && event.id !== '' ? `${screen.route}/${encodeEntityId(event.id)}` : screen.route;
+  return { screen, route };
 }
 
 /** Whether a screen is keyed by an id, and therefore carries an `/:id` route. */

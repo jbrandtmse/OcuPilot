@@ -53,8 +53,8 @@
 
 import type { ChangeBus, ChangeEvent } from './change-bus';
 import type { ConnectivityService } from './connectivity';
-import { scopeFor } from './entity-ref.ts';
 import { type Fault, isBannerFault } from './fault.ts';
+import { screenShowsEntity } from './navigation.ts';
 import { RATE_OFF, type ScreenStore, type ScreenStores } from './screen-store.ts';
 import type { ScreenDeclaration } from './screens.generated';
 import { STRINGS } from './strings.ts';
@@ -143,8 +143,8 @@ export type ArmKind = 'none' | 'tick' | 'expiry';
 interface Bound {
   readonly descriptor: string;
   readonly refreshes: boolean;
-  readonly entityTypes: readonly string[];
-  readonly declaredScope: string;
+  /** The declaration itself, so the bus filter asks `screenShowsEntity` rather than re-deriving it. */
+  readonly screen: ScreenDeclaration;
   readonly read: RefreshRead | null;
   readonly store: ScreenStore;
 }
@@ -233,10 +233,7 @@ export class RefreshService {
     this.bound = {
       descriptor: screen.descriptor,
       refreshes: screen.refreshes,
-      entityTypes: [screen.entityType, ...screen.secondaryEntityTypes].filter(
-        (type) => type !== ''
-      ),
-      declaredScope: screen.scope,
+      screen,
       read,
       store: this.stores.for(screen.descriptor, screen.refreshRates),
     };
@@ -600,7 +597,9 @@ export class RefreshService {
   // --- The bus ----------------------------------------------------------------------------------
 
   /**
-   * One event, filtered to the bound screen's own entity types and resolved scope (AD-13).
+   * One event, filtered by `screenShowsEntity` -- the one predicate that answers "does the bound
+   * screen show this entity" (AD-13, AD-14). The toast store asks the same question, so a change
+   * either highlights a row here or raises a toast there, never both and never neither.
    *
    * **A `changed` event re-fetches, never patches** (AD-14): the entity's id is marked changed in
    * the store and the bound read runs once, through `readNow()`, which is the one re-fetch.
@@ -608,11 +607,15 @@ export class RefreshService {
   private onBusEvent(event: ChangeEvent): void {
     const bound = this.bound;
     if (bound === null) return;
-    if (!bound.entityTypes.includes(event.type)) return;
-    if (event.scope !== scopeFor(bound.declaredScope, this.namespace())) return;
+    if (!screenShowsEntity(bound.screen, event, this.namespace())) return;
 
     if (event.kind === 'changed') {
-      bound.store.markChanged(event.id);
+      bound.store.markChanged(event.id, event.action);
+      // AD-14's action, and the one thing it decides here: a row that did not exist before is
+      // selected as soon as the re-fetch returns it, because it is the one row the user has not
+      // seen. An update leaves the caret where the user put it; a delete is `reconcile`'s, which
+      // clears a selection whose key has left the view.
+      if (event.action === 'created') bound.store.setPendingSelection(event.id);
       void this.readNow();
       return;
     }

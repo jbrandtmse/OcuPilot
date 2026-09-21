@@ -25,6 +25,7 @@ import {
 import { Router } from '@angular/router';
 
 import { encodeEntityId } from '../core/entity-id';
+import { normalizeEntityId } from '../core/entity-ref';
 import { isBannerFault } from '../core/fault';
 import { childListFor, detailScreenFor, documentScreenFor, editorScreenFor, hasIdRoute, screenForRoute, withQuery } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
@@ -35,6 +36,7 @@ import { applyView, textOf } from '../core/screen-read';
 import type { ScreenStore } from '../core/screen-store';
 import type { ScreenDeclaration, TableColumn } from '../core/screens.generated';
 import { STRINGS, stringFor } from '../core/strings';
+import { formatChangeAnnouncement } from '../core/toasts';
 import {
   type CellView,
   cellView,
@@ -142,6 +144,9 @@ interface HeaderModel {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CdkVirtualScrollViewport, CdkFixedSizeVirtualScroll, CdkVirtualForOf],
   template: `<div class="ocu-data-table-frame" [attr.aria-busy]="busy">
+      <span class="ocu-visually-hidden ocu-data-table-announcement" role="status">{{
+        announcementText
+      }}</span>
       @if (showSkeleton) {
         <div class="ocu-data-table-skeleton" aria-hidden="true">
           @for (bar of skeletonRows; track bar) {
@@ -412,6 +417,16 @@ export class DataTable implements OnInit {
   /** Changed keys already scrolled into view once. */
   private readonly scrolledChanged = new Set<string>();
 
+  /**
+   * Each marked key to the action already announced for it, so one mark is announced once and a
+   * second change to a row that is still marked -- which `ScreenStore.markChanged` re-notifies
+   * whenever the action differs -- is announced again rather than swallowed.
+   */
+  private readonly announcedChanged = new Map<string, string>();
+
+  /** The last change announcement, or `''` before any. */
+  private readonly announcement = signal('');
+
   private readonly view = computed(() => {
     this.generation();
     const store = this.store();
@@ -435,6 +450,7 @@ export class DataTable implements OnInit {
     const active = store.active();
     const selected = store.selection()[0] ?? '';
     const changed = store.changed();
+    const markedKeys = new Set([...changed].map((key) => this.viewKeyFor(key)));
     const activeColumn = this.activeColumn();
     const menuKey = this.menuIsOpen() ? this.menuKey() : null;
     // The name cell opens the entity's own surface: a declared rowTarget first (Story 6.10's
@@ -468,7 +484,7 @@ export class DataTable implements OnInit {
       const key = rowKey(row, screen);
       const id = `${this.tableId}-row-${index}`;
       const isActive = key !== '' && key === active;
-      const isChanged = changed.has(key);
+      const isChanged = key !== '' && markedKeys.has(key);
       const linkValue = rowTargetScreen !== null ? textOf(fieldOf(row, rowTargetField)) : key;
       const url = linkable && linkValue !== '' ? withQuery(`${linkRoute}/${encodeEntityId(linkValue)}`, currentUrl) : '';
       const classicHref = rowLinked ? classicRowHref(row, screen) : '';
@@ -884,6 +900,19 @@ export class DataTable implements OnInit {
     return active === '' ? -1 : this.lastKeys.indexOf(active);
   }
 
+  /**
+   * The polite sentence a screen reader hears when a change event marks a row (EXPERIENCE.md's
+   * accessibility floor: status messages are announced politely).
+   *
+   * **Only a change is announced.** The refresh stamp and every silent tick stay unannounced --
+   * that is what makes auto-refresh silent -- so this slot is written by `announceChanged` alone
+   * and holds the last change, once per marked row and action.
+   */
+  protected get announcementText(): string {
+    this.generation();
+    return this.announcement();
+  }
+
   /** Follow the store and the framework, and reconcile when the view's keys moved (DW-18). */
   private sync(): void {
     this.bump();
@@ -919,7 +948,74 @@ export class DataTable implements OnInit {
         this.focusFilter.emit();
       }
     }
+    this.applyPendingSelection();
     this.scrollChangedIntoView();
+    this.announceChanged();
+  }
+
+  /**
+   * Select the row a `created` change asked for, once a read has brought it into the view.
+   *
+   * It does not go through `select()`, which clears the row's changed mark on the way: a created
+   * row is both highlighted and selected, and a selection that erased the highlight would answer
+   * half the question. The request is consumed before the selection is written, so the store
+   * notification this causes re-enters here and finds nothing to do.
+   */
+  private applyPendingSelection(): void {
+    const store = this.store();
+    const key = this.viewKeyFor(store.pendingSelection());
+    if (key === '') return;
+    store.clearPendingSelection();
+    if (key !== store.active()) this.activeColumn.set(-1);
+    store.setActive(key);
+    store.setSelection([key]);
+  }
+
+  /**
+   * Announce each newly marked row once, and forget a mark that has been cleared.
+   *
+   * "Newly" is the (key, action) pair rather than the key alone: two writes to one row, with the
+   * user never moving onto it in between, leave the mark standing, and a record keyed by the row
+   * would announce the first and silence the second. An identical re-mark announces nothing,
+   * because the store itself swallows one and never notifies.
+   *
+   * The sentence names the key the view carries, which is the spelling on screen.
+   */
+  private announceChanged(): void {
+    const store = this.store();
+    const changed = store.changed();
+    for (const key of [...this.announcedChanged.keys()]) {
+      if (!changed.has(key)) this.announcedChanged.delete(key);
+    }
+    for (const key of changed) {
+      const action = store.changedAction(key);
+      if (this.announcedChanged.get(key) === action) continue;
+      const row = this.viewKeyFor(key);
+      if (row === '') continue;
+      this.announcedChanged.set(key, action);
+      this.announcement.set(formatChangeAnnouncement(STRINGS.tableChangeAnnouncement, row, action));
+    }
+  }
+
+  /**
+   * The row key this view carries for the id a bus event named, or `''` when no row holds it.
+   *
+   * A change event carries the **canonical** id: `Propose.TargetRef` is built through
+   * `EntityRef.Key`, which folds it per the entity type's declared rule (AD-13), and
+   * `TurnStore.decideProposal` publishes that spelling. A row key is the text of the name column
+   * as the instance returns it, and `Security.Applications` keeps a web application's name as it
+   * was created -- so a write to `/csp/MyApp` publishes `/csp/myapp` and an exact match marks a key
+   * no row holds, leaving the write with no highlight, no scroll, no announcement and no toast.
+   *
+   * `rowKey` itself stays unfolded: it is the selection, link and locator key, and folding it
+   * would change route segments.
+   */
+  private viewKeyFor(id: string): string {
+    if (id === '') return '';
+    if (this.lastKeys.includes(id)) return id;
+    const type = this.screen().entityType;
+    const canonical = normalizeEntityId(type, id);
+    return this.lastKeys.find((key) => normalizeEntityId(type, key) === canonical) ?? '';
   }
 
   private scrollChangedIntoView(): void {
@@ -929,7 +1025,7 @@ export class DataTable implements OnInit {
     }
     for (const key of changed) {
       if (this.scrolledChanged.has(key)) continue;
-      const index = this.lastKeys.indexOf(key);
+      const index = this.lastKeys.indexOf(this.viewKeyFor(key));
       if (index < 0) continue;
       this.scrolledChanged.add(key);
       this.scrollIntoRange(index);

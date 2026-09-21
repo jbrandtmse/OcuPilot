@@ -48,6 +48,7 @@ export const AREA_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Area.cl
 export const ARCHETYPE_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Archetype.cls');
 export const DESCRIPTOR_DIR = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Descriptor');
 export const ENTITY_TYPE_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'EntityType.cls');
+export const ENTITY_REF_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'EntityRef.cls');
 export const SCOPE_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Kernel', 'Scope.cls');
 export const MIRROR_PATH = join(REPO_ROOT, 'ui', 'src', 'app', 'core', 'screens.generated.ts');
 export const TOOL_FIELDS_SOURCE = join(REPO_ROOT, 'src', 'OcuPilot', 'Screen', 'Tool', 'ToolFields.cls');
@@ -58,6 +59,8 @@ const BASE_FILE = 'Base.cls';
 const CLASS_RE = /^Class\s+([A-Za-z0-9_.%]+)/m;
 const XDATA_RE = /^XData\s+([A-Za-z0-9_%]+)/;
 const TYPES_PARAM_RE = /^Parameter\s+TYPES\s*=\s*"([^"]*)"\s*;/m;
+const IDRULES_PARAM_RE = /^Parameter\s+IDRULES\s*=\s*"([^"]*)"\s*;/m;
+const IDRULENAMES_PARAM_RE = /^Parameter\s+IDRULENAMES\s*=\s*"([^"]*)"\s*;/m;
 const SCOPE_PARAM_RE = /^Parameter\s+(SCOPEINSTANCE|SCOPENAMESPACE)\s*=\s*"([^"]*)"\s*;/gm;
 
 /**
@@ -134,6 +137,50 @@ export function extractClassName(text) {
 /** The closed entity-type vocabulary, from the kernel's own `TYPES` parameter. */
 export function parseEntityTypes(text) {
   const match = TYPES_PARAM_RE.exec(text);
+  if (match === null) return null;
+  return match[1]
+    .split(',')
+    .map((value) => value.trim())
+    .filter((value) => value !== '');
+}
+
+/**
+ * The rule names this generator knows a client implementation exists for -- the roster
+ * `ui/src/app/core/entity-ref.ts` is pinned equal to by `ui/tools/entity-ref.test.mjs`, in both
+ * directions.
+ *
+ * It is the reason a kernel rule cannot reach the client as a silent identity function: a rule
+ * declared in `OcuPilot.Kernel.EntityRef.IDRULES` and absent here fails `npm run build` at
+ * `prebuild`, naming the rule, rather than being mirrored into a key builder that does nothing
+ * with it (AD-5, AD-13 as amended by DW-1359).
+ */
+export const IMPLEMENTED_ID_RULES = ['foldcase-striptrailingslash'];
+
+/**
+ * The per-type canonical id rules, from the kernel's own `IDRULES` parameter: `[[type, rule],
+ * ...]` in declaration order, or `null` when the parameter is missing -- the same "reported, not
+ * read as empty" discipline `parseEntityTypes` follows, because an absent table and a table that
+ * declares nothing are different facts and only one of them is a source this generator can trust.
+ *
+ * A pair with no colon, or with an empty half, is kept as it was written so `buildMirror` can
+ * refuse it by name rather than silently dropping it.
+ */
+export function parseIdRules(text) {
+  const match = IDRULES_PARAM_RE.exec(text);
+  if (match === null) return null;
+  return match[1]
+    .split(',')
+    .map((pair) => pair.trim())
+    .filter((pair) => pair !== '')
+    .map((pair) => {
+      const cut = pair.indexOf(':');
+      return cut < 0 ? [pair, ''] : [pair.slice(0, cut).trim(), pair.slice(cut + 1).trim()];
+    });
+}
+
+/** The kernel's own closed rule vocabulary, from its `IDRULENAMES` parameter; `null` when absent. */
+export function parseIdRuleNames(text) {
+  const match = IDRULENAMES_PARAM_RE.exec(text);
   if (match === null) return null;
   return match[1]
     .split(',')
@@ -228,6 +275,16 @@ export function readSources({ descriptorDir = DESCRIPTOR_DIR, areaSource = AREA_
     throw new Error(`${ENTITY_TYPE_SOURCE} declares no 'Parameter TYPES'`);
   }
 
+  const entityRefText = readFileSync(ENTITY_REF_SOURCE, 'utf8');
+  const idRules = parseIdRules(entityRefText);
+  if (idRules === null) {
+    throw new Error(`${ENTITY_REF_SOURCE} declares no 'Parameter IDRULES'`);
+  }
+  const idRuleNames = parseIdRuleNames(entityRefText);
+  if (idRuleNames === null) {
+    throw new Error(`${ENTITY_REF_SOURCE} declares no 'Parameter IDRULENAMES'`);
+  }
+
   const scopeWords = parseScopeWords(readFileSync(SCOPE_SOURCE, 'utf8'));
   if (scopeWords === null) {
     throw new Error(`${SCOPE_SOURCE} declares no 'Parameter SCOPEINSTANCE'/'SCOPENAMESPACE' pair`);
@@ -262,7 +319,7 @@ export function readSources({ descriptorDir = DESCRIPTOR_DIR, areaSource = AREA_
   if (toolFieldsBody === null) throw new Error(`${TOOL_FIELDS_SOURCE} carries no 'XData Tools' block`);
   const toolFields = parseXDataJson(toolFieldsBody, TOOL_FIELDS_SOURCE, 'Tools');
 
-  return { entityTypes, scopeWords, archetypes, areas, screens, toolFields };
+  return { entityTypes, idRules, idRuleNames, scopeWords, archetypes, areas, screens, toolFields };
 }
 
 /**
@@ -1862,8 +1919,64 @@ export function declaredStringKeys(declaration) {
   return keys.filter((key) => typeof key === 'string' && key !== '');
 }
 
-export function buildMirror({ entityTypes, scopeWords, archetypes, areas, screens, toolFields = {} }) {
+/**
+ * The declared `type -> rule` map, refused by name when a pair names something no reader can
+ * apply (AD-13 as amended by DW-1359, AD-5).
+ *
+ * Three refusals, all of which would otherwise ship as a silent identity function on the client
+ * while the kernel folded the same id -- which is exactly the divergence DW-1364 was:
+ *
+ * - a type outside `OcuPilot.Kernel.EntityType.TYPES`, so the pair names no entity at all;
+ * - a rule outside the kernel's own `IDRULENAMES`, so the kernel itself cannot apply it;
+ * - a rule outside `IMPLEMENTED_ID_RULES`, so `ui/src/app/core/entity-ref.ts` cannot.
+ *
+ * It is the same shape the unknown-entity-type refusal below uses, and for the same reason: a
+ * build failure is the only thing that stops a kernel rule reaching the client as a no-op.
+ */
+function checkedIdRules(idRules, idRuleNames, knownTypes) {
+  const declaredRules = new Set(idRuleNames);
+  const implemented = new Set(IMPLEMENTED_ID_RULES);
+  const emitted = {};
+  for (const [type, rule] of idRules) {
+    if (!knownTypes.has(type)) {
+      throw new Error(
+        `src/OcuPilot/Kernel/EntityRef.cls: IDRULES declares a rule for entity type "${type}", ` +
+          `which is not in src/OcuPilot/Kernel/EntityType.cls; add it there or use a declared ` +
+          `value (AD-13, AD-14)`
+      );
+    }
+    if (!declaredRules.has(rule)) {
+      throw new Error(
+        `src/OcuPilot/Kernel/EntityRef.cls: IDRULES names id rule "${rule}" for "${type}", which ` +
+          `IDRULENAMES does not declare; the kernel itself would canonicalize that type to ` +
+          `itself (AD-13)`
+      );
+    }
+    if (!implemented.has(rule)) {
+      throw new Error(
+        `src/OcuPilot/Kernel/EntityRef.cls: IDRULES names id rule "${rule}" for "${type}", which ` +
+          `ui/tools/screen-mirror.mjs cannot implement on the client (it knows ` +
+          `${IMPLEMENTED_ID_RULES.join(', ')}); implement it in ui/src/app/core/entity-ref.ts and ` +
+          `add it to IMPLEMENTED_ID_RULES, or the two key builders disagree (AD-13, AD-5)`
+      );
+    }
+    emitted[type] = rule;
+  }
+  return emitted;
+}
+
+export function buildMirror({
+  entityTypes,
+  idRules = [],
+  idRuleNames = [],
+  scopeWords,
+  archetypes,
+  areas,
+  screens,
+  toolFields = {},
+}) {
   const known = new Set(entityTypes);
+  const entityIdRules = checkedIdRules(idRules, idRuleNames, known);
   const knownScopes = new Set(scopeWords ?? []);
   const archetypeKeys = (archetypes ?? []).map((archetype) => archetype.key);
   const knownArchetypes = new Set(archetypeKeys);
@@ -2391,6 +2504,19 @@ export interface ScreenRowTarget {
 
 /** The closed entity-type vocabulary, mirrored from OcuPilot.Kernel.EntityType. */
 export const ENTITY_TYPES: readonly EntityTypeKey[] = ${JSON.stringify(entityTypes, null, 2)};
+
+/**
+ * The per-entity-type canonical id rules, mirrored from OcuPilot.Kernel.EntityRef's IDRULES
+ * table (AD-13). Only the types that declare one appear; every other type canonicalizes to
+ * itself. \`entity-ref.ts\` holds the implementation of each rule name, pinned equal to
+ * \`screen-mirror.mjs\`'s own roster, so a rule the client cannot apply fails the build rather
+ * than mirroring as a no-op.
+ */
+export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> = ${JSON.stringify(
+    entityIdRules,
+    null,
+    2
+  )};
 
 /** The eight areas, in rail order. */
 export const AREAS: readonly AreaDeclaration[] = ${JSON.stringify(areas, null, 2)};

@@ -1361,7 +1361,7 @@ test('cancelProposal posts the cancel route and records the row the instance clo
   assert.equal(posted[0].path, proposalCancelPath('p1'));
 });
 
-test('a confirm closes the AD-43 pause on the same transition the card renders', async () => {
+test('a confirm closes the AD-43 pause and then publishes the write, in that order', async () => {
   const bus = recordingBus();
   const api = fakeApi({
     [conversationReadPath('c1')]: [
@@ -1392,8 +1392,66 @@ test('a confirm closes the AD-43 pause on the same transition the card renders',
   await turn.confirmProposal('p1');
   assert.deepEqual(
     bus.events.map((event) => event.kind),
-    ['proposal-open', 'proposal-closed'],
-    'the pause lifts on the confirm rather than waiting for a poll that will not come'
+    ['proposal-open', 'proposal-closed', 'changed'],
+    'the pause lifts on the confirm rather than waiting for a poll that will not come, and the ' +
+      'write is published after it so the re-fetch it asks for is not issued into a paused screen'
+  );
+  const changed = bus.events[2];
+  assert.equal(changed.type, 'web-application', "the proposal's own canonical triple, not a re-derived one");
+  assert.equal(changed.scope, 'instance');
+  assert.equal(changed.id, '/csp/myapp');
+  assert.equal(changed.action, 'updated', 'every shipped write tool is a PUT against an object that exists');
+});
+
+test('a confirm the instance refused publishes no change, and neither does a cancel', async () => {
+  // Mutation (Rule 19): publish whenever `result.kind === 'ok'` rather than on
+  // `state === 'confirmed'` -> the cancel leg goes red, and a canceled proposal would re-fetch
+  // every screen showing its entity as though the instance had changed.
+  const bus = recordingBus();
+  const api = fakeApi({
+    [conversationReadPath('c1')]: [
+      ok({ turns: [{ seq: 1, message: 'do it', state: 'completed', proposals: [wireProposal()] }] }),
+    ],
+    [turnProgressPath('turn-1')]: [
+      ok({ state: 'completed', steps: [], stepsDropped: 0, reply: 'done', error: null, proposals: [wireProposal()] }),
+    ],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+    [CONVERSATION_PATH]: [ok({ conversationId: 'c1' }, 201)],
+    [proposalConfirmPath('p1')]: [
+      err(403, 'PROHIBITED.GRANT'),
+    ],
+    [proposalCancelPath('p1')]: [ok({ proposalId: 'p1', state: 'canceled', closedReason: 'you', confirmedAt: '' })],
+  });
+  const { schedule, scheduled } = fakeSchedule();
+  const turn = new TurnStore({
+    api,
+    storage: memoryStorage(),
+    navigationType: freshTab(),
+    schedule,
+    now: () => NOW_MS,
+    bus,
+  });
+  await turn.send('do it');
+  await settle();
+  scheduled.shift()?.run();
+  await settle();
+
+  await turn.confirmProposal('p1');
+  assert.equal(
+    bus.events.filter((event) => event.kind === 'changed').length,
+    0,
+    'a refusal that left the row live changed nothing on the instance'
+  );
+
+  await turn.cancelProposal('p1');
+  assert.equal(
+    bus.events.filter((event) => event.kind === 'changed').length,
+    0,
+    'and a cancel closes the row without writing'
+  );
+  assert.ok(
+    bus.events.some((event) => event.kind === 'proposal-closed'),
+    'the pause still lifts, because the row is no longer live'
   );
 });
 

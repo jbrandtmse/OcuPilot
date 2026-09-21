@@ -54,6 +54,9 @@ const {
   formatDeniedScreen,
   formatRequires,
   firstAllowedScreen,
+  screenForChange,
+  screenForEntityType,
+  screenShowsEntity,
   withQuery,
 } = await import(corePath('navigation.ts'));
 const { AREAS, SCREENS } = await import(corePath('screens.generated.ts'));
@@ -826,4 +829,71 @@ test("firstAllowedScreen over the shipped mirror: Home's own area opens Home", (
   const home = builtScreensForArea('home');
   assert.equal(firstAllowedScreen(home, () => UNGATED)?.route, home[0]?.route);
   assert.equal(firstAllowedScreen(home, () => ({ allowed: false, failedPair: 'R:USE' })), null);
+});
+
+// AD-13, AD-14: the one predicate `RefreshService` and the toast store both call. Two inline
+// copies would be two answers, and a change that both highlighted a row and raised a toast -- or
+// did neither -- is the divergence AD-14's last sentence is about.
+//
+// Mutation (Rule 19): drop the scope test from `screenShowsEntity` -> the two scope rows below go
+// red, and a change in `USER` would re-fetch a list scoped to `HSCUSTOM`.
+test('screenShowsEntity answers the type half and the scope half, and both have to hold', () => {
+  const list = screenForRoute('web-applications/list');
+  assert.ok(list !== null && list.entityType === 'web-application');
+  assert.equal(list.scope, 'instance', 'a web application has no namespace, so its scope is the literal');
+
+  assert.equal(screenShowsEntity(list, { type: 'web-application', scope: 'instance' }, 'HSCUSTOM'), true);
+  assert.equal(
+    screenShowsEntity(list, { type: 'task', scope: 'instance' }, 'HSCUSTOM'),
+    false,
+    'a type the screen does not show'
+  );
+  assert.equal(
+    screenShowsEntity(list, { type: 'web-application', scope: 'HSCUSTOM' }, 'HSCUSTOM'),
+    false,
+    'the right type in the wrong scope is a different entity (AD-13)'
+  );
+
+  // A namespace-scoped screen resolves its scope from the namespace the shell is in, which is
+  // what makes the same event mine in one namespace and not in another.
+  const restApis = screenForRoute('web-applications/rest-apis');
+  assert.ok(restApis !== null && restApis.scope === 'namespace');
+  assert.equal(screenShowsEntity(restApis, { type: 'rest-service', scope: 'HSCUSTOM' }, 'HSCUSTOM'), true);
+  assert.equal(
+    screenShowsEntity(restApis, { type: 'rest-service', scope: 'HSCUSTOM' }, 'USER'),
+    false,
+    'the shell has moved, so the event is about another namespace'
+  );
+
+  // A secondary type counts: the OAuth 2.0 tab shows three, and a change to any of them is its.
+  const oauth = screenForRoute('security/oauth');
+  assert.ok(oauth !== null && oauth.secondaryEntityTypes.length > 0);
+  assert.equal(
+    screenShowsEntity(oauth, { type: oauth.secondaryEntityTypes[0], scope: 'instance' }, 'HSCUSTOM'),
+    true
+  );
+});
+
+// The toast's action. Mutation (Rule 19): build the route without `encodeEntityId` -> the
+// encoded-segment assertion goes red for the id carrying a slash, and the toast would open a URL
+// the route table does not hold.
+test('screenForChange resolves the screen a change opens and the route that names the entity', () => {
+  const target = screenForChange({ type: 'web-application', id: '/csp/myapp' });
+  assert.ok(target !== null);
+  assert.equal(target.screen.route, 'web-applications/list');
+  assert.equal(target.screen, screenForEntityType('web-application'), 'the same lookup, not a second one');
+  assert.equal(target.route, `web-applications/list/${encodeEntityId('/csp/myapp')}`);
+  assert.ok(!target.route.includes('/csp/myapp'), 'the id is one encoded segment, never raw path (AD-13)');
+
+  // A type no built screen shows is not a fault: the toast still says what changed, with nothing
+  // to open. `audit-event` is the one declared type the shipped roster shows on no screen.
+  assert.equal(screenForEntityType('audit-event'), null, 'no built screen shows an audit event');
+  assert.equal(screenForChange({ type: 'audit-event', id: 'x' }), null);
+  assert.equal(screenForChange({ type: 'not-an-entity-type', id: 'x' }), null);
+
+  // A screen whose descriptor declares no id route takes the bare route: there is no segment for
+  // the entity, and appending one would be a URL the route table does not hold.
+  const switches = SCREENS.find((screen) => screen.entityType === 'agent-switch' && screen.built);
+  assert.ok(switches !== undefined && !hasIdRoute(switches));
+  assert.equal(screenForChange({ type: 'agent-switch', id: 'instance' })?.route, switches.route);
 });

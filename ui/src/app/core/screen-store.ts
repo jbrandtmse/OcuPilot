@@ -65,6 +65,8 @@ export class ScreenStore {
   private selected: readonly string[] = [];
   private activeKey = '';
   private changedKeys: ReadonlySet<string> = new Set();
+  private changedActions: ReadonlyMap<string, string> = new Map();
+  private pendingSelectionKey = '';
   private scrollTop = 0;
   private sortBy = '';
   private sortDirection: SortDirection = '';
@@ -177,6 +179,8 @@ export class ScreenStore {
     this.selected = [];
     this.activeKey = '';
     this.changedKeys = new Set();
+    this.changedActions = new Map();
+    this.pendingSelectionKey = '';
     this.scrollTop = 0;
     this.notify();
   }
@@ -208,10 +212,25 @@ export class ScreenStore {
     return this.changedKeys;
   }
 
-  markChanged(key: string): void {
-    if (key === '' || this.changedKeys.has(key)) return;
+  /**
+   * Mark `key` changed, recording what the event said happened to it (AD-14's closed action set).
+   *
+   * `action` is kept beside the mark rather than inside it because `changed()` answers a question
+   * the table asks per row -- "is this one highlighted" -- and widening its return type would make
+   * every reader unpack a pair to ask it. The action has exactly one reader: the polite
+   * announcement, which names what happened.
+   */
+  markChanged(key: string, action: string = ''): void {
+    if (key === '') return;
+    if (this.changedKeys.has(key) && (this.changedActions.get(key) ?? '') === action) return;
     this.changedKeys = new Set([...this.changedKeys, key]);
+    this.changedActions = new Map([...this.changedActions, [key, action]]);
     this.notify();
+  }
+
+  /** What the change event that marked `key` said happened, or `''`. */
+  changedAction(key: string): string {
+    return this.changedActions.get(key) ?? '';
   }
 
   clearChanged(key: string): void {
@@ -219,6 +238,37 @@ export class ScreenStore {
     const next = new Set(this.changedKeys);
     next.delete(key);
     this.changedKeys = next;
+    const actions = new Map(this.changedActions);
+    actions.delete(key);
+    this.changedActions = actions;
+    this.notify();
+  }
+
+  /**
+   * The key of a row that is to become the selection as soon as a read returns it, or `''`.
+   *
+   * **Only a `created` change writes it** (AD-14): a row that did not exist a moment ago is the
+   * one thing a re-fetch can bring that the user has not seen, so the screen puts the caret on
+   * it. An `updated` or `deleted` change writes nothing here -- the row is already where the user
+   * left it, or it is gone and `reconcile` clears the selection.
+   *
+   * It is a request, not a selection: the key is not in the row set yet, and the table consumes
+   * it on the tick that brings it. A read that never brings it leaves it standing until the next
+   * `clearAnswers`, which is correct -- a create the instance has not finished is still a create.
+   */
+  pendingSelection(): string {
+    return this.pendingSelectionKey;
+  }
+
+  setPendingSelection(key: string): void {
+    if (key === '' || key === this.pendingSelectionKey) return;
+    this.pendingSelectionKey = key;
+    this.notify();
+  }
+
+  clearPendingSelection(): void {
+    if (this.pendingSelectionKey === '') return;
+    this.pendingSelectionKey = '';
     this.notify();
   }
 

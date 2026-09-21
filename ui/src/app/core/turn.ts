@@ -153,6 +153,12 @@ export const PROPOSAL_LIVE_STATE = 'live';
  */
 export const PROPOSAL_EXPIRED_STATE = 'expired';
 
+/**
+ * The state a confirmed row reaches (`OcuPilot.Kernel.State.Propose`'s `STATECONFIRMED`), and the
+ * one this store publishes a `changed` event on. It is the wire's word, never a client decision.
+ */
+export const PROPOSAL_CONFIRMED_STATE = 'confirmed';
+
 /** A proposal's scoped target (AD-13), as the instance minted it. */
 export interface TurnProposalTarget {
   readonly type: string;
@@ -895,16 +901,34 @@ export class TurnStore {
    * refusal that closed the row on the instance is recorded the same way, from its `detail`.
    */
   async confirmProposal(id: string, secrets: Record<string, string> = {}): Promise<ProposalOutcome> {
-    return this.decideProposal(proposalConfirmPath(id), id, JSON.stringify(secrets));
+    return this.decideProposal(proposalConfirmPath(id), id, JSON.stringify(secrets), 'confirm');
   }
 
   /** Cancel proposal `id`: the user's own decision not to apply it. */
   async cancelProposal(id: string): Promise<ProposalOutcome> {
-    return this.decideProposal(proposalCancelPath(id), id, '{}');
+    return this.decideProposal(proposalCancelPath(id), id, '{}', 'cancel');
   }
 
-  /** The one request both decisions make, and the one place either answer is recorded. */
-  private async decideProposal(path: string, id: string, body: string): Promise<ProposalOutcome> {
+  /**
+   * The one request both decisions make, and the one place either answer is recorded.
+   *
+   * **A confirmed write is where `changed` is published** (AD-14). There is no server-to-client
+   * push channel, and there does not need to be one: this store already holds the proposal's
+   * canonical target -- the instance minted `targetRef` through `EntityRef.Key` and
+   * `Propose.WireRow` handed the triple back -- so the moment the confirm answers is the moment
+   * the screens can be told, with no new wire field and no new route.
+   *
+   * The order is `proposal-closed` then `changed`: `recordProposalState` republishes first, so the
+   * AD-43 pause has lifted by the time the re-fetch the change event asks for is issued. A
+   * refusal, a cancel and a confirm whose row did not reach `confirmed` publish nothing -- the
+   * instance did not change.
+   */
+  private async decideProposal(
+    path: string,
+    id: string,
+    body: string,
+    decision: 'confirm' | 'cancel'
+  ): Promise<ProposalOutcome> {
     if (id === '') return NO_OUTCOME;
     const result = await this.api.requestJson<Record<string, unknown>>(path, {
       method: 'POST',
@@ -921,8 +945,23 @@ export class TurnStore {
         reason: '',
         auditMarked: boolAt(result.body, 'auditMarked'),
       };
+      const target = this.targetOf(id);
       this.recordProposalState(id, outcome);
       this.recordProposalRefusal(id, null);
+      if (decision === 'confirm' && outcome.state === PROPOSAL_CONFIRMED_STATE && target !== null) {
+        // `updated` because every shipped write tool is a PUT against an object that already
+        // exists: `Confirm.WRITETYPE` is `"PUT"` and the fingerprint re-read requires the target
+        // to be readable now. The created and deleted branches are declared on the bus because
+        // AD-14 names them and a later story is their first producer, not because this path can
+        // reach them.
+        this.bus?.publish({
+          kind: 'changed',
+          type: target.type,
+          scope: target.scope,
+          id: target.id,
+          action: 'updated',
+        });
+      }
       return outcome;
     }
     if (result.kind !== 'error') return NO_OUTCOME;
@@ -983,6 +1022,17 @@ export class TurnStore {
     }
     this.notify();
     this.publishProposals(this.everyProposal());
+  }
+
+  /**
+   * The canonical target triple of proposal `id`, or `null` when this store no longer holds it.
+   *
+   * It is the spelling `OcuPilot.Kernel.Proposal.Mint` stored, not the one the agent typed
+   * (AD-13 as amended by DW-1359), because `Propose.WireRow` hands the panel the triple it read
+   * back off `targetRef`.
+   */
+  private targetOf(id: string): TurnProposal['target'] | null {
+    return this.everyProposal().find((proposal) => proposal.proposalId === id)?.target ?? null;
   }
 
   /** Every proposal this store holds, live entry included. */

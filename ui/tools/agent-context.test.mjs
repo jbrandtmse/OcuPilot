@@ -267,13 +267,13 @@ test('AD-14: both an `agent-switch` and an `agent-definition` `changed` event re
   await context.load();
   assert.equal(api.calls.length, 1);
 
-  bus.publish({ kind: 'changed', type: AGENT_DEFINITION_ENTITY, scope: AGENT_DEFINITION_SCOPE, id: '1' });
+  bus.publish({ kind: 'changed', type: AGENT_DEFINITION_ENTITY, scope: AGENT_DEFINITION_SCOPE, id: '1', action: 'updated' });
   await SETTLE();
   assert.equal(api.calls.length, 2, 'a moved default marker or a saved endpoint is');
   assert.equal(context.endpointHost(), '192.168.1.10', 'and the chip follows it');
   assert.equal(context.leavesInstance(), false);
 
-  bus.publish({ kind: 'changed', type: AGENT_SWITCH_ENTITY, scope: AGENT_DEFINITION_SCOPE, id: 'instance' });
+  bus.publish({ kind: 'changed', type: AGENT_SWITCH_ENTITY, scope: AGENT_DEFINITION_SCOPE, id: 'instance', action: 'updated' });
   await SETTLE();
   assert.equal(api.calls.length, 3, 'a changed row cap or sharing default is too');
   assert.equal(context.contextRowCap(), 400);

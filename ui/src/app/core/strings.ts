@@ -1137,6 +1137,23 @@ export const STRINGS = {
   /** EXPERIENCE.md:382 */
   proposalAuditWarning: 'Agent writes will no longer be marked in the audit database.',
 
+  // Story 5.7's six. The first three are AD-14's closed action set as published sentences: the
+  // off-screen toast renders one, and the panel appends the same one to a confirmed write's reply
+  // so the record outlives a toast that expired or was never raised. `<entity>` resolves to the
+  // entity's own id; the noun is on the toast's own link, which names the screen.
+  /** EXPERIENCE.md:384 */
+  tableChangeCreated: '<entity> was created',
+  /** EXPERIENCE.md:384 */
+  tableChangeUpdated: '<entity> was updated',
+  /** EXPERIENCE.md:384 */
+  tableChangeDeleted: '<entity> was deleted',
+  /** EXPERIENCE.md:385 */
+  tableChangeToastRegion: 'Changes',
+  /** EXPERIENCE.md:385 */
+  tableChangeToastDismiss: 'Dismiss',
+  /** EXPERIENCE.md:386 */
+  tableChangeAnnouncement: 'Updated: <entity> <action>',
+
 } as const;
 
 /**
