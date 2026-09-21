@@ -1121,13 +1121,31 @@ describe('Home', () => {
     // product would plausibly use, and `vi.getTimerCount()` makes "registers no timer" an
     // observation rather than an absence of evidence -- `log-viewer.spec.ts`'s idiom.
     //
-    // The count is environment-global, so the environment has to be quiescent before it is read:
-    // `advanceTimersByTimeAsync` yields to the real event loop between steps, and a timer an
-    // earlier row in this file left running can fire inside the window and schedule onto the fake
-    // clock, which the count then reports as this component's. Three real `Timeout` handles are
-    // pending when this row begins; draining the real clock first is what makes the assertion
-    // below measure only the second HomePage.
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    // The count is environment-global, so what it reports has to be made this component's, in two
+    // steps. **Real timers are still pending when this row begins** -- earlier rows in this file
+    // leave them -- and `advanceTimersByTimeAsync` yields to the real event loop between its
+    // steps, so one of them can fire inside the measurement window and schedule onto the fake
+    // clock, where the count reports it as the second HomePage's. Observed as `4` on node 26 and
+    // `1` on node 24 while node 22 stayed green, which is the shape of contamination rather than
+    // of a timer the component registers: a component's own count would not vary by band.
+    //
+    // So: wait for the real loop to be **verifiably** empty rather than for a guessed duration (a
+    // fixed 100 ms held on node 26 and did not on node 24), and then advance the window
+    // **synchronously**, which yields to the real loop not at all. A repeating timer still fires
+    // and still re-registers under a synchronous advance, and a read it issues still lands in
+    // `systemInfo.calls`, so neither assertion below loses any of its reach.
+    //
+    // The synchronous advance is what makes the measurement sound; the drain only narrows the one
+    // remaining yield, the `advanceTimersByTimeAsync(0)` settle. So the drain is best-effort and
+    // is deliberately not asserted on: a real timer still pending is the environment's business,
+    // and failing here for it would report an earlier row's leak as this component's defect.
+    const pendingRealTimers = () =>
+      (process as unknown as { getActiveResourcesInfo(): string[] })
+        .getActiveResourcesInfo()
+        .filter((resource) => resource === 'Timeout').length;
+    for (let attempt = 0; attempt < 50 && pendingRealTimers() > 0; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
     vi.useFakeTimers();
     let second: ReturnType<typeof TestBed.createComponent<HomePage>> | null = null;
     try {
@@ -1136,7 +1154,7 @@ describe('Home', () => {
       await vi.advanceTimersByTimeAsync(0);
       const issued = systemInfo.calls.length;
 
-      await vi.advanceTimersByTimeAsync(10 * 60 * 1000);
+      vi.advanceTimersByTime(10 * 60 * 1000);
       expect(systemInfo.calls.length).toBe(issued);
       expect(vi.getTimerCount()).toBe(0);
     } finally {
