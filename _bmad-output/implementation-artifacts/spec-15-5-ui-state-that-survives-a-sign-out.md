@@ -2,7 +2,7 @@
 title: 'Story 15.5: UI state that survives a sign-out'
 type: 'feature'
 created: '2026-09-20'
-status: 'blocked'
+status: 'done'
 baseline_revision: 'a3cee61f04f8c74a9364b862813ad3416ece403a'
 baseline_commit: '42dd2018caacb38fe15f4b1485530734cda87430'
 review_loop_iteration: 0
@@ -128,6 +128,7 @@ deferred:
 ## Spec Change Log
 
 - 2026-09-20 (lead, after the orchestrator's ruling): unblocked. `panel-resize-handle*` is released from Epic 5's carve and treated as trunk, so the three `PANEL_WIDTH_KEY` assertions in `ui/src/app/shell/panel-resize-handle.spec.ts` are re-pointed at the account store; the file is reported under `footprint_extensions:` against `origin/OCU-1-epic5` at `b04e2a1`. Frontmatter `status` reset `blocked` -> `ready-for-dev`.
+- 2026-09-21 (lead, resuming after the weekly limit): the three-tier browser-spec grant was given in full, so the second `blocked` is resolved and `status` is set `done`. `[CI]` `gates (node 26.0.0)` was red on `3fc688b` at `home.page.spec.ts`'s AD-43 row (`expected 4 to be +0`) and green on the other two bands: diagnosed as environment contamination, not a timer this story added -- `vi.getTimerCount()` is environment-global, and three real `Timeout` handles are pending when that row begins, which `advanceTimersByTimeAsync`'s yields to the real loop can let fire inside the measurement window. Fixed by draining the real clock before the fake one is installed; the assertion stays `toBe(0)` and AD-43's promise is unchanged.
 
 ## Review Triage Log
 
@@ -183,6 +184,8 @@ deferred:
 - mutation: `ScreenStores.reset` drops the `release()` loop -> `screen-store.test.mjs`'s released-store row went red.
 - mutation: `PanelState.endSession` keeps the departed width -> `panel-layout.test.mjs`'s sign-out row went red.
 - mutation (server): the arms added to `Api/Error.ReasonForViolation` are the ones `Test/PreferencesWire.TestTheValueRefusalsCarryTheirPublishedSentences` asserts a non-empty `reason` on.
+- mutation: `ShellState.endSession` keeps the departed principal's open state -> `shell-state.test.mjs`'s sign-out row went red (AC2; the side bar's half of the width's `PanelState.endSession`).
+- mutation: HomePage registers one bare 30-minute `setTimeout` -> `home.page.spec.ts`'s AD-43 row went red with `expected 1 to be +0`, confirming the row still catches a timer that issues no read; reverted, `home.page.ts` byte-identical.
 
 **Manual checks:**
 
@@ -193,8 +196,16 @@ deferred:
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: footprint - this story cannot be implemented without editing `ui/src/app/shell/panel.spec.ts`, which is inside Epic 5's carve, and 37 existing `ui/browser/*.browser-spec.mjs` files, 8 of which Epic 5 has modified on `origin/OCU-1-epic5`. Rule 11 makes a contended path a Clarification, never a judgment call, so the implementation is complete and verified but unauthorized.
+Status: done
+Blocking condition: none
+
+**The footprint clarification that blocked this spec was granted in full on 2026-09-20** - all
+three tiers (`ui/src/app/shell/panel.spec.ts`, the 8 `ui/browser/` specs Epic 5 has also modified,
+and the 29 no live epic has touched), with the settled reading that a `ui/browser/` file no live
+epic has touched is trunk. Both additions the grant required were made: `ui/tools/browser-reset.mjs`
+(wired into `prebuild`, `prestart` and `.githooks/pre-commit`) and the correction of
+`panel.browser-spec.mjs:9`'s false claim at its origin. The blocking condition below is retained as
+the record of what was asked; it is resolved, not outstanding.
 
 **The implementation is done and green.** `Kernel/State/Pref` gained a `Value` column, the `view`,
 `refresh` and `shell` kinds, a closed shell-member set and `GuardedSetValue`; `Kernel/State/Base`

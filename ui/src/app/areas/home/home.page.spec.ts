@@ -1120,6 +1120,14 @@ describe('Home', () => {
     // to a fake one installed afterwards; ten minutes of fake time then outruns any period the
     // product would plausibly use, and `vi.getTimerCount()` makes "registers no timer" an
     // observation rather than an absence of evidence -- `log-viewer.spec.ts`'s idiom.
+    //
+    // The count is environment-global, so the environment has to be quiescent before it is read:
+    // `advanceTimersByTimeAsync` yields to the real event loop between steps, and a timer an
+    // earlier row in this file left running can fire inside the window and schedule onto the fake
+    // clock, which the count then reports as this component's. Three real `Timeout` handles are
+    // pending when this row begins; draining the real clock first is what makes the assertion
+    // below measure only the second HomePage.
+    await new Promise((resolve) => setTimeout(resolve, 100));
     vi.useFakeTimers();
     let second: ReturnType<typeof TestBed.createComponent<HomePage>> | null = null;
     try {

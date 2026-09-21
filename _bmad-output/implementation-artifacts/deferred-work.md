@@ -4641,3 +4641,13 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-15-4-home-s-system-information-panel.md | severity: med | fix-risk: med | footprint: out-of-footprint
 - evidence: EXPERIENCE.md:520 specifies role=alert plus both actions; about-dialog.ts:83 (Story 15.3) and home.page.ts:327 both render a bare p, and About.failed()/SystemInfo.failed() are booleans that discard result.kind, which panel.ts:606 and fault-banner.ts:148 do use
 - 2026-09-20T21:40:34Z status=routed owner=range-end-cleanup by=cr note=about-dialog is the house precedent this story followed; fixing one surface alone would split the pattern
+
+### DW-1410: A view or refresh row whose route no longer names a built screen is never read and no surface clears it; only clear on the kind removes it
+- source: spec-15-5-ui-state-that-survives-a-sign-out.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: AD-37 degrade is met (the row never renders); Home's Remembered block reports the stored count so the row is visible as a number
+- 2026-09-21T02:04:52Z status=wontfix-accepted owner=15-5-ui-state-that-survives-a-sign-out by=harvest note=reopen_if=a user reports a stale remembered view they cannot remove without clearing the whole kind
+
+### DW-1411: A serialized view longer than Pref.VALUEMAXLENGTH (256) is not sent, so a filter of roughly 200+ characters is in force on screen but not remembered
+- source: spec-15-5-ui-state-that-survives-a-sign-out.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: the refusal is client-side before the write; the screen still filters, only the memory of it is dropped
+- 2026-09-21T02:04:52Z status=wontfix-accepted owner=15-5-ui-state-that-survives-a-sign-out by=harvest note=reopen_if=a screen ships a filter whose ordinary use exceeds 256 characters
