@@ -351,6 +351,19 @@ OcuPilot's state lives in the separate protected database, which neither role re
 AD-21). The authenticated API carries no matching role at all, so a request there runs with
 exactly the privileges its own account holds (AD-8).
 
+**An API account needs that same read, as a prerequisite.** Because database READ is
+routine-execution permission, an account calling `/api/ocupilot` must hold read on the install
+namespace's code database — the resource `OcuPilot.Install.Installer.CodeDatabaseResource` derives
+from `SYS.Database`, which is `%DB_HSCUSTOM` on this repository's container — on top of whatever a
+screen's own privilege set requires. Without it the framework's own access check refuses the
+request before any OcuPilot code runs, and the caller is answered **`403` with an empty body**:
+`%CSP.REST.Page()` sets that status inline rather than through OcuPilot's response writer, so
+there is no envelope to read and nothing names the missing grant. Measured on a throwaway
+container, 2026-09-21, for an account granted `%Admin_Secure:USE` and `%DB_IRISSYS:READ` and no
+read on that database; `POST /api/ocupilot/login` still answers `200`, because the JWT token
+endpoints are the framework's own and reach no OcuPilot class. Grant the read and the refusal
+becomes whichever of OcuPilot's own gates actually applies, with the envelope that names it.
+
 **The list of applications is one declaration.** Each is a single entry in the `XData Manifest`
 block of [src/OcuPilot/Install/Roster.cls](src/OcuPilot/Install/Roster.cls), carrying its path,
 its description, the name of its one matching role, the properties `module.xml` states and the

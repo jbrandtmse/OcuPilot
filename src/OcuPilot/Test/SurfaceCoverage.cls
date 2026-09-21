@@ -42,11 +42,11 @@ Parameter WRITEKIND = "write";
 /// <file>ui/tools/ci-runner.mjs</file>'s on-disk-versus-instance check, which compares CLASS
 /// lists -- so deleting the named test METHOD from any of them left every gate green. These rows
 /// put those methods under the same <method>PinProblem</method> the coverage table uses.</p>
-/// <p><b>The write half has one member.</b> Story 5.5 landed the first tool the registry
+/// <p><b>The write half has two members.</b> Story 5.5 landed the first tool the registry
 /// classifies <code>write</code>, <code>webapp.list.update</code>, and with it the explicit zero
-/// this block used to assert -- which was written to be deleted in exactly that pass. The derived
-/// side is <method>ListTools</method>, so a second write tool binds itself and reddens here until
-/// it declares its row.</p>
+/// this block used to assert -- which was written to be deleted in exactly that pass. Story 5.9
+/// landed <code>permissions.users.update</code>. The derived side is <method>ListTools</method>, so
+/// a further write tool binds itself and reddens here until it declares its row.</p>
 XData Coverage
 {
 <coverage>
@@ -90,6 +90,7 @@ XData Coverage
 <screen name="WalletSecretList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="WebAppList" class="OcuPilot.Test.Descriptor" method="TestTheWebApplicationsListValidatesAndNamesItsClassicPageInItsOwnCase"/>
 <screen name="X509CredentialList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
+<tool name="permissions.users.update" class="OcuPilot.Test.ToolWrite" method="TestTheUserWriteToolAdvertisesEnabledAndRolesWithTheScreensOwnPairs"/>
 <tool name="webapp.list.update" class="OcuPilot.Test.ToolWrite" method="TestTheRegistryAdvertisesItAsAWriteToolFulfilledOnTheInstance"/>
 <member name="state-protection" class="OcuPilot.Test.State" method="TestDeniedUserCannotReachAnyStateClass"/>
 <member name="audit-round-trip-record" class="OcuPilot.Test.AuditRecord" method="TestACreateRecordsTheFieldsItCreatedAtTheirDefaults"/>

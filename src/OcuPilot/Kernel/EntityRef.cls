@@ -56,15 +56,20 @@ Parameter TYPEWEBAPPLICATION = "web-application";
 /// <parameter>OcuPilot.Kernel.EntityType.TYPES</parameter>, or a rule the generator cannot
 /// implement, fails <code>npm run build</code> rather than reaching the client as a silent
 /// no-op. A later write-tool story adds one pair here, never a branch in two languages.</p>
-Parameter IDRULES = "web-application:foldcase-striptrailingslash";
+Parameter IDRULES = "web-application:foldcase-striptrailingslash,user:foldcase";
 
 /// <p>The closed rule vocabulary <parameter>IDRULES</parameter> selects from. A rule named there
 /// and absent here is a declaration error, pinned by
 /// <class>OcuPilot.Test.EntityRef</class>.</p>
-Parameter IDRULENAMES = "foldcase-striptrailingslash";
+Parameter IDRULENAMES = "foldcase-striptrailingslash,foldcase";
 
-/// <p>The one rule Release 1 declares: fold to lower case, then strip every trailing slash.</p>
+/// <p>The web-application rule: fold to lower case, then strip every trailing slash.</p>
 Parameter RULEFOLDCASESTRIPTRAILINGSLASH = "foldcase-striptrailingslash";
+
+/// <p>The user rule: fold to lower case, and nothing else. An account name is an IRIS identifier
+/// with no path grammar, so there is no slash to strip and a trailing one is part of no name the
+/// instance resolves.</p>
+Parameter RULEFOLDCASE = "foldcase";
 
 /// <p>Build the reference key for <var>pType</var> / <var>pScope</var> / <var>pId</var>.
 /// Refuses a type the kernel vocabulary does not hold, and an empty scope or id -- a reference
@@ -167,10 +172,10 @@ ClassMethod ScopeFor(pDeclaredScope As %String) As %String
 /// carries. Two ids that answer alike here name one entity and so build one key.</p>
 /// <p><b>The rule is per entity type and declared as data</b>, in
 /// <parameter>IDRULES</parameter>, because the instance's own resolution is per type: a web
-/// application's path resolves case-insensitively and with trailing slashes ignored, while a user
-/// name, a role name and a task name are the instance's own strings. A type the table holds no
-/// pair for is answered verbatim. This method applies the named rule; it does not decide which
-/// types have one.</p>
+/// application's path resolves case-insensitively and with trailing slashes ignored, an account
+/// name resolves case-insensitively and has no path grammar to strip, and a role name and a task
+/// name are the instance's own strings. A type the table holds no pair for is answered verbatim.
+/// This method applies the named rule; it does not decide which types have one.</p>
 /// <p><b>Probed on this build, not assumed</b> (<code>ocupilot-ci</code>, 2026-09-20):
 /// <code>Security.Applications</code> keeps a name's case as created
 /// (<code>/csp/OcuPilotProbeCase</code> reads back verbatim) and resolves either spelling, and the
@@ -180,12 +185,19 @@ ClassMethod ScopeFor(pDeclaredScope As %String) As %String
 /// <code>/api/ocupilot/.</code> or a trailing space -- so the rule goes exactly this far.
 /// <method>OcuPilot.Test.ProhibitedRoute.TestTheSetNormalizesAPathTheWayTheInstanceResolvesIt</method>
 /// compares it with the port's own answers rather than with this sentence.</p>
+/// <p><b>The user rule was probed the same way</b> (<code>ocupilot-slot-a</code>, 2026-09-21): the
+/// vendor <code>Security.User</code> <code>GET</code> answers the same account for
+/// <code>_SYSTEM</code>, <code>_system</code> and <code>_System</code> and nothing for a trailing
+/// space, so folding case is the whole of it.
+/// <method>OcuPilot.Test.UserUpdate.TestTheUserRuleFoldsCaseTheWayTheInstanceResolvesIt</method>
+/// compares it with the port's own answers.</p>
 /// <p>The canonical form is not the instance's own spelling of the object, which is why a caller
 /// addressing a target by a canonical id relies on that case-insensitive resolution.</p>
 ClassMethod NormalizedId(pType As %String, pId As %String) As %String
 {
     Set tRule = ..IdRuleFor(pType)
     If tRule = "" Quit pId
+    If tRule = ..#RULEFOLDCASE Quit $ZConvert(pId, "L")
     If tRule '= ..#RULEFOLDCASESTRIPTRAILINGSLASH Quit pId
     Set tId = $ZConvert(pId, "L")
     While (tId '= "") && ($Extract(tId, $Length(tId)) = "/") {

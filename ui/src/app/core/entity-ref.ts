@@ -67,6 +67,7 @@ const ID_RULES: Readonly<Record<string, (id: string) => string>> = {
     while (value !== '' && value.endsWith('/')) value = value.slice(0, -1);
     return value;
   },
+  foldcase: (id) => id.toLowerCase(),
 };
 
 /**

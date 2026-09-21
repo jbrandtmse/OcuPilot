@@ -155,7 +155,7 @@ export function parseEntityTypes(text) {
  * `prebuild`, naming the rule, rather than being mirrored into a key builder that does nothing
  * with it (AD-5, AD-13 as amended by DW-1359).
  */
-export const IMPLEMENTED_ID_RULES = ['foldcase-striptrailingslash'];
+export const IMPLEMENTED_ID_RULES = ['foldcase-striptrailingslash', 'foldcase'];
 
 /**
  * The per-type canonical id rules, from the kernel's own `IDRULES` parameter: `[[type, rule],

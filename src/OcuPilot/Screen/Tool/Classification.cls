@@ -30,9 +30,38 @@ Class OcuPilot.Screen.Tool.Classification Extends %RegisteredObject
 /// path may be carried; which paths a write tool advertises is that tool's own positive list
 /// (<parameter>OcuPilot.Screen.Tool.WebAppUpdate.PERMITTEDFIELDS</parameter>, four of these rows),
 /// and <code>DispatchClass</code> and the rest stay <code>ordinary</code> and unadvertised.</p>
+/// <p><b><code>permissions.users.update</code></b> classifies <code>Security.User</code>'s fourteen
+/// literals <code>ordinary</code> and its two arrays -- <code>Roles</code> and
+/// <code>EscalationRoles</code> -- <code>opaque</code>: the endpoint's template answers
+/// <code>[]</code> for both, which types no member, and AD-3 names this endpoint's empty
+/// <code>Roles</code> as its own <code>opaque</code> example. The generator refuses
+/// <code>ordinary</code> on a member-less array, so <code>opaque</code> is also the only class
+/// either row can carry. The tool's one authored array argument is its semantic half
+/// (<class>OcuPilot.Screen.Tool.UserUpdate</class>), not a derived field.</p>
 XData Entries
 {
 {
+  "permissions.users.update": {
+    "fieldList": "Security.User",
+    "classification": {
+      "AccountNeverExpires": "ordinary",
+      "AutheEnabled": "ordinary",
+      "ChangePassword": "ordinary",
+      "Comment": "ordinary",
+      "EmailAddress": "ordinary",
+      "Enabled": "ordinary",
+      "ExpirationDate": "ordinary",
+      "FullName": "ordinary",
+      "HOTPKeyDisplay": "ordinary",
+      "NameSpace": "ordinary",
+      "PasswordNeverExpires": "ordinary",
+      "PhoneNumber": "ordinary",
+      "PhoneProvider": "ordinary",
+      "Roles": "opaque",
+      "EscalationRoles": "opaque",
+      "Routine": "ordinary"
+    }
+  },
   "webapp.list.update": {
     "fieldList": "WebApp.App",
     "classification": {

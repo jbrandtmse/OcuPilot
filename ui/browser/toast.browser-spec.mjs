@@ -174,14 +174,11 @@ async function sendAndConfirm(page, tag, enabled, replyText, toolUseId) {
     { timeout: config.navigationTimeoutMs }
   );
   await page.type('#ocu-panel-composer', `set the probe application's Enabled to ${enabled}`);
-  // Enter, not a click on `.ocu-panel-send` (`panel.ts`'s own documented Enter-sends behavior):
-  // a toast already standing from an earlier turn in this same test sits directly over the send
-  // button at this viewport size (confirmed by `elementFromPoint` on the button's own center
-  // landing on `.ocu-toast-message`, not the button) -- a REAL finding this browser tier turned
-  // up that a click-based send could not get past on the second of two turns. Keyboard input goes
-  // to the focused element regardless of what is drawn on top of it, which is what a user pressing
-  // Enter would also get.
-  await page.keyboard.press('Enter');
+  // A real click on the send button, not a keypress. A toast standing from an earlier turn used to
+  // sit over this button at this viewport size, so this file sent with Enter instead; DW-1412 moved
+  // the stack into the content area and out from over the panel, and clicking here is what keeps
+  // that true for the second of two turns (`hitTestSend` below pins the hit test itself).
+  await page.click('.ocu-panel-send');
   await page.waitForSelector('app-proposal-card .ocu-proposal-card-confirm', {
     timeout: config.navigationTimeoutMs,
   });
@@ -216,6 +213,8 @@ function toastGeometry() {
     return { top: rect.top, right: rect.right, bottom: rect.bottom, left: rect.left, width: rect.width, height: rect.height };
   }
   const host = document.querySelector('app-toast-host');
+  const panel = document.querySelector('app-panel aside.ocu-panel');
+  const shell = document.querySelector('.ocu-shell');
   const toasts = [...document.querySelectorAll('.ocu-toast')];
   const root = getComputedStyle(document.documentElement);
   const space3 = Number.parseFloat(root.getPropertyValue('--ocu-space-3'));
@@ -231,7 +230,28 @@ function toastGeometry() {
     toastRects: toasts.map((toast) => plainRect(toast.getBoundingClientRect())),
     toastIds: toasts.map((toast) => toast.getAttribute('data-ocu-toast')),
     tokens: { space3, space4, statusBar },
+    // DW-1412: the offset is the panel's own live width, published on `.ocu-shell` by `app.ts` and
+    // read by `:host`'s `right` calculation. Both halves travel so the assertion can say which one
+    // disagreed.
+    panelWidth: panel === null ? null : panel.getBoundingClientRect().width,
+    publishedPanelWidth: shell === null ? null : getComputedStyle(shell).getPropertyValue('--ocu-panel-live-width').trim(),
     viewport: { width: window.innerWidth, height: window.innerHeight },
+  };
+}
+
+/**
+ * What Chrome's own hit-testing finds at the panel Send button's centre, and the button's own
+ * selector for comparison. Runs inside the page for `toastGeometry`'s reason: `elementFromPoint`
+ * answers a live node, which does not cross `page.evaluate`'s serialization boundary.
+ */
+function hitTestSend() {
+  const send = document.querySelector('.ocu-panel-send');
+  if (send === null) return { found: '', isSend: false };
+  const rect = send.getBoundingClientRect();
+  const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+  return {
+    found: hit === null ? '' : hit.className || hit.tagName.toLowerCase(),
+    isSend: hit === send || (hit !== null && send.contains(hit)),
   };
 }
 
@@ -269,10 +289,26 @@ test(
         `the rendered width is DESIGN.md's own 360px, padding included: ${toastRect.width}`
       );
       assert.ok(space3 > 0, 'and the padding token the border-box absorbs is a real value');
+      // DW-1412: bottom-right of the CONTENT area, not of the viewport. The published rule offsets
+      // the stack from the right edge by the panel's live width, so no toast ever overlays the
+      // panel -- and it is the live width rather than a token because the panel is resizable.
+      //
+      // Mutation (Rule 19): put `right: var(--ocu-space-4)` back on `:host` in `toast-host.ts`
+      // (rebuilt and redeployed) -> both offset assertions here go red, and so does the send-button
+      // hit test below.
       assert.ok(
-        Math.abs(toastRect.right - (viewportWidth - space4)) <= 1,
-        `the stack's right edge sits ${space4}px from the viewport's, per :host's own right offset: ` +
-          `right=${toastRect.right}, viewport=${viewportWidth}`
+        firstOnly.panelWidth > 0,
+        `the panel is docked at a real width, so there is an offset to measure: ${firstOnly.panelWidth}`
+      );
+      assert.ok(
+        Math.abs(Number.parseFloat(firstOnly.publishedPanelWidth) - firstOnly.panelWidth) < 0.5,
+        `the width app.ts publishes on .ocu-shell is the width the panel renders at: ` +
+          `published=${firstOnly.publishedPanelWidth}, rendered=${firstOnly.panelWidth}`
+      );
+      assert.ok(
+        Math.abs(toastRect.right - (viewportWidth - firstOnly.panelWidth - space4)) <= 1,
+        `the stack's right edge sits ${space4}px from the content area's, clear of the panel: ` +
+          `right=${toastRect.right}, viewport=${viewportWidth}, panel=${firstOnly.panelWidth}`
       );
       assert.ok(
         Math.abs(firstOnly.host.rect.bottom - (viewportHeight - statusBar - space4)) <= 1,
@@ -318,6 +354,125 @@ test(
     }
   }
 );
+
+/**
+ * DW-1412's own three claims, measured: the stack's offset tracks the panel's width through a live
+ * resize, the panel's Send button is hit-testable with a toast standing, and no toast is placed
+ * while the panel is full screen.
+ *
+ * **The resize is driven, not defaulted.** The published rule says the offset tracks the panel's
+ * *live* width, so measuring only at the width the panel happens to open at would pass for a
+ * hard-coded token too. The handle is driven the way `panel.browser-spec.mjs` drives it -- focus
+ * the separator, press ArrowLeft -- and the offset is re-measured after the panel has actually
+ * moved.
+ *
+ * **The hit test is the pinning test for the defect itself.** DW-1412 was found because a toast
+ * standing from an earlier turn covered `.ocu-panel-send`, and this file worked around it by
+ * pressing Enter. `elementFromPoint` at the button's own centre is what the workaround was hiding.
+ *
+ * Mutations (Rule 19): revert `:host`'s `right` to `var(--ocu-space-4)` in `toast-host.ts`, or drop
+ * the `[style.--ocu-panel-live-width]` binding from `app.ts`'s `.ocu-shell` -- either way the
+ * offset assertions and the hit test go red. Drop the `panel.fullScreen()` guard from
+ * `ToastHost.visible` -> the full-screen leg goes red. All three need a rebuild and a redeploy of
+ * the bundle before they mean anything.
+ */
+test('DW-1412: the stack tracks the panel\'s live width, clears the Send button, and is not placed in full screen', async () => {
+  const { context, page } = await signedInAt(browser, config, HOME_URL);
+  const tag = nextTag();
+  setTag(tag);
+  try {
+    await sendAndConfirm(page, tag, false, 'offset-live', 'toolu_toast_4');
+    await page.waitForSelector('.ocu-toast-region', { timeout: config.navigationTimeoutMs });
+    const docked = await page.evaluate(toastGeometry);
+    assert.equal(docked.toastRects.length, 1, 'one toast stands');
+    assert.ok(docked.panelWidth > 0, `the panel is docked at a real width: ${docked.panelWidth}`);
+
+    await page.focus('app-panel [role="separator"]');
+    for (let press = 0; press < 6; press += 1) await page.keyboard.press('ArrowLeft');
+    // The panel's width transitions, so "wider than it was" is true mid-animation while the
+    // rendered box and the published property still disagree. Settle on both: wider than it was,
+    // and the rendered width equal to what `.ocu-shell` publishes.
+    await page.waitForFunction(
+      (was) => {
+        const panel = document.querySelector('app-panel aside.ocu-panel');
+        const shell = document.querySelector('.ocu-shell');
+        if (panel === null || shell === null) return false;
+        const rendered = panel.getBoundingClientRect().width;
+        const published = Number.parseFloat(getComputedStyle(shell).getPropertyValue('--ocu-panel-live-width'));
+        return rendered > was + 1 && Math.abs(rendered - published) < 0.5;
+      },
+      { timeout: config.navigationTimeoutMs },
+      docked.panelWidth
+    );
+
+    const widened = await page.evaluate(toastGeometry);
+    assert.ok(
+      widened.panelWidth > docked.panelWidth,
+      `the panel really widened: ${docked.panelWidth} -> ${widened.panelWidth}`
+    );
+    assert.ok(
+      Math.abs(Number.parseFloat(widened.publishedPanelWidth) - widened.panelWidth) < 0.5,
+      `and the published property followed it: published=${widened.publishedPanelWidth}, rendered=${widened.panelWidth}`
+    );
+    const [moved] = widened.toastRects;
+    assert.ok(
+      Math.abs(moved.right - (widened.viewport.width - widened.panelWidth - widened.tokens.space4)) <= 1,
+      `the stack's right edge tracked the panel's new edge: right=${moved.right}, ` +
+        `viewport=${widened.viewport.width}, panel=${widened.panelWidth}`
+    );
+    assert.ok(
+      moved.right < docked.toastRects[0].right - 1,
+      `and it moved left rather than staying where a fixed token would have put it: ` +
+        `${docked.toastRects[0].right} -> ${moved.right}`
+    );
+
+    const hit = await page.evaluate(hitTestSend);
+    assert.ok(
+      hit.isSend,
+      `elementFromPoint at the Send button's centre returns the button, not a toast: found ${hit.found}`
+    );
+
+    // And a real click at those coordinates sends, which is the half a hit test alone cannot say.
+    scriptReply(tag, 0, textReply('clicked-through'));
+    await page.waitForFunction(
+      () => !document.querySelector('#ocu-panel-composer').hasAttribute('aria-disabled'),
+      { timeout: config.navigationTimeoutMs }
+    );
+    await page.type('#ocu-panel-composer', 'send this by clicking the button');
+    await page.click('.ocu-panel-send');
+    await page.waitForFunction(
+      (want) => {
+        const replies = document.querySelectorAll('.ocu-panel-message-agent-text');
+        return (replies[replies.length - 1]?.textContent ?? '').startsWith(want);
+      },
+      { timeout: config.navigationTimeoutMs },
+      'clicked-through'
+    );
+
+    // Full screen: the panel covers the content area, the published invariant admits no offset
+    // there, and the reply already carries the change sentence -- so nothing is placed.
+    assert.notEqual(await page.$('.ocu-toast-region'), null, 'the toast is still standing before full screen');
+    await page.click('.ocu-panel-full-screen-toggle');
+    await page.waitForFunction(
+      () => document.querySelector('.ocu-panel-full-screen') !== null,
+      { timeout: config.navigationTimeoutMs }
+    );
+    await page.waitForFunction(() => document.querySelector('.ocu-toast-region') === null, {
+      timeout: config.navigationTimeoutMs,
+    });
+
+    // Leaving full screen places the standing toast again: suppression is about placement, never
+    // about dropping the change.
+    await page.click('.ocu-panel-full-screen-toggle');
+    await page.waitForFunction(() => document.querySelector('.ocu-toast-region') !== null, {
+      timeout: config.navigationTimeoutMs,
+    });
+  } finally {
+    await context.close();
+    forgetTag(tag);
+    dropProposals();
+  }
+});
 
 /**
  * `toast-host.spec.ts`'s own "Integration AC" row already pins, under jsdom with a stub

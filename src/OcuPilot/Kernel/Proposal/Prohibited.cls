@@ -23,12 +23,16 @@
 /// <parameter>UNCOVERED</parameter>. A target the port cannot read is an error status, which the
 /// confirm renders 500 and no write follows. Only a target the instance no longer holds is "not
 /// prohibited": that is the fingerprint gate's refusal a few lines later, not this one's.</p>
-/// <p><b>The two fields whose every change is prohibited are absent from the tool set as well</b>
+/// <p><b>The fields whose every change is prohibited are absent from the tool set as well</b>
 /// (<method>AlwaysProhibitedFields</method>), and so is every field outside the reviewed few: a
 /// write tool advertises the reviewed names and nothing else, so the model cannot author the rest,
 /// and this class refuses them at the write so no other route can either.</p>
-/// <p>Seams a subclass overrides: <method>PortClass</method> and <method>RegistryClass</method>.
-/// Production overrides neither.</p>
+/// <p><b>Two types are covered</b> (<parameter>COVEREDTYPES</parameter>): a web application, whose
+/// predicates are <method>WebApplication</method>'s, and a user account, whose predicates are
+/// <method>User</method>'s. Each later write-tool story adds its own type here, and a type listed
+/// with no branch is refused <parameter>UNCOVERED</parameter> at every write.</p>
+/// <p>Seams a subclass overrides: <method>PortClass</method>, <method>RegistryClass</method> and
+/// <method>LastAllHolder</method>. Production overrides none of them.</p>
 Class OcuPilot.Kernel.Proposal.Prohibited Extends %RegisteredObject
 {
 
@@ -49,9 +53,18 @@ Parameter AUTHORIZATION = "PROHIBITED.AUTHORIZATION";
 /// <p>The write would change which compiled code answers at the target's URL.</p>
 Parameter DISPATCH = "PROHIBITED.DISPATCH";
 
-/// <p>The write would change the roles the target grants, which is a privilege grant through a
-/// path (AD-10).</p>
+/// <p>The write would change the roles the target grants or holds, which is a privilege grant
+/// through a path (AD-10).</p>
 Parameter PRIVILEGEGRANT = "PROHIBITED.PRIVILEGEGRANT";
+
+/// <p>The write would disable the account the caller is signed in as.</p>
+Parameter CURRENTUSER = "PROHIBITED.CURRENTUSER";
+
+/// <p>The write would disable the only account on this instance that holds <code>%All</code>.</p>
+Parameter LASTALLHOLDER = "PROHIBITED.LASTALLHOLDER";
+
+/// <p>The write would disable <code>_SYSTEM</code>, the instance's own predefined account.</p>
+Parameter SYSTEMACCOUNT = "PROHIBITED.SYSTEMACCOUNT";
 
 /// <p>The write would change a setting of a covered type that this release has not reviewed. It is
 /// the shape that covers a vendor property nobody has classified yet, rather than the names that
@@ -66,10 +79,29 @@ Parameter UNCOVERED = "PROHIBITED.UNCOVERED";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "web-application";
+Parameter COVEREDTYPES = "web-application,user";
 
-/// <p>The one covered type, named once so the dispatch and the list cannot drift apart.</p>
+/// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
+
+Parameter TYPEUSER = "user";
+
+/// <p>The instance's own predefined account, whose disablement AD-10 forbids. Compared through
+/// <method>NormalizedUser</method>, so every spelling the instance resolves to it is refused.</p>
+Parameter SYSTEMACCOUNTNAME = "_SYSTEM";
+
+/// <p>The role that holds every privilege, and the prefix of every role that holds an
+/// administrative one. Adding either to an account is a privilege grant (AD-10).</p>
+Parameter ALLROLE = "%All";
+
+Parameter ADMINROLEPREFIX = "%Admin_";
+
+/// <p>The two <code>Security.User</code> payload fields the user predicates read, named once.</p>
+Parameter FIELDENABLED = "Enabled";
+
+Parameter FIELDROLES = "Roles";
+
+Parameter FIELDESCALATIONROLES = "EscalationRoles";
 
 /// <p>The <code>AutheEnabled</code> bit that lets an application be reached without signing in, and
 /// the only bit <method>ClearsUnauthenticatedOnly</method> permits a payload to change
@@ -81,12 +113,13 @@ Parameter UNAUTHENTICATEDBIT As %Integer = 64;
 /// the same one the fingerprint re-read uses.</p>
 Parameter READTYPE = "GET";
 
-/// <p>Every <code>PROHIBITED.*</code> code this class declares, as a <class>%List</class>, in the
-/// order the predicates are evaluated (<method>WebApplication</method>), with the wholesale refusal
+/// <p>Every <code>PROHIBITED.*</code> code this class declares, as a <class>%List</class>: the
+/// web-application predicates in the order <method>WebApplication</method> evaluates them, then the
+/// three <method>User</method> adds, then the two both types share, with the wholesale refusal
 /// last.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#PRIVILEGEGRANT, ..#UNCOVEREDFIELD, ..#UNCOVERED)
+    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#UNCOVEREDFIELD, ..#UNCOVERED)
 }
 
 /// <p>The written sentence a <code>PROHIBITED.*</code> code carries, or <code>""</code> for any
@@ -97,9 +130,12 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#UNAUTHENTICATED Quit "The only change to how a web application is authenticated that the agent can propose is removing the option of reaching it without signing in."
     If pCode = ..#AUTHORIZATION Quit "Removing the resource that guards a web application is not something the agent can propose."
     If pCode = ..#DISPATCH Quit "Changing which code answers at a web application's address is not something the agent can propose."
-    If pCode = ..#PRIVILEGEGRANT Quit "Changing the roles a web application grants is not something the agent can propose."
+    If pCode = ..#PRIVILEGEGRANT Quit "Granting a role is not something the agent can propose, whether the role is granted by a web application or held by an account."
     If pCode = ..#SERVINGPATH Quit "Changing a web application that serves OcuPilot itself is not something the agent can propose."
-    If pCode = ..#UNCOVEREDFIELD Quit "Only a few of a web application's settings are ones the agent may propose changing, and that is not one of them."
+    If pCode = ..#SYSTEMACCOUNT Quit "Disabling the instance's own _SYSTEM account is not something the agent can propose."
+    If pCode = ..#CURRENTUSER Quit "Disabling the account you are signed in as is not something the agent can propose."
+    If pCode = ..#LASTALLHOLDER Quit "Disabling the only account on this instance that holds %All is not something the agent can propose."
+    If pCode = ..#UNCOVEREDFIELD Quit "Only a few of this kind of object's settings are ones the agent may propose changing, and that is not one of them."
     If pCode = ..#UNCOVERED Quit "This release does not check writes to that kind of object against its prohibited set, so none is proposable yet."
     Quit ""
 }
@@ -128,24 +164,33 @@ ClassMethod CoveredTypes() As %List
 /// already-declared configuration on and off rather than changing any of it, and the applications
 /// AD-38 protects are refused every change by the serving-path predicate; <code>Description</code>
 /// because it is display text no request is routed or authorized by.</p>
+/// <p>An account's two are <code>Enabled</code> and <code>Roles</code>. <code>Enabled</code> carries
+/// the asymmetric predicate: enabling an account is a change AD-10 does not forbid, while disabling
+/// one is refused for the current user, the last <code>%All</code> holder and
+/// <parameter>SYSTEMACCOUNTNAME</parameter>. <code>Roles</code> is permitted except where the delta
+/// grants privilege, which is the same asymmetry read over a list.</p>
 /// <p>A write tool advertises no field outside this list, which is the other half of AD-10; the
 /// tool states its own admitted names and a test asserts the two agree, so the tool layer never
 /// reads the kernel.</p>
 ClassMethod PermittedChangeFields(pType As %String) As %List
 {
     If pType = ..#TYPEWEBAPPLICATION Quit $ListBuild("AutheEnabled", "Description", "Enabled", "Resource")
+    If pType = ..#TYPEUSER Quit $ListBuild(..#FIELDENABLED, ..#FIELDROLES)
     Quit ""
 }
 
 /// <p>The payload field names of entity type <var>pType</var> whose <b>every</b> change is
 /// prohibited by a named predicate, as a <class>%List</class>; <code>""</code> for a type with
 /// none.</p>
-/// <p>They are a subset of the fields outside <method>PermittedChangeFields</method> -- the two
-/// DW-1207 names whose refusal carries a sentence of its own rather than the reviewed-few one, so
-/// the user is told which effect was refused.</p>
+/// <p>They are a subset of the fields outside <method>PermittedChangeFields</method> -- the names
+/// whose refusal carries a sentence of its own rather than the reviewed-few one, so the user is
+/// told which effect was refused. A web application's roles and dispatch class are two; an
+/// account's escalation roles are the third, and that one is a privilege grant through a path
+/// however it changes.</p>
 ClassMethod AlwaysProhibitedFields(pType As %String) As %List
 {
     If pType = ..#TYPEWEBAPPLICATION Quit $ListBuild("MatchRoles", "DispatchClass")
+    If pType = ..#TYPEUSER Quit $ListBuild(..#FIELDESCALATIONROLES)
     Quit ""
 }
 
@@ -187,16 +232,19 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If tType '= ..#TYPEWEBAPPLICATION {
+        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
 
-        ; AD-9: the escalated state read runs to completion before the port is entered. Its frame
-        ; has unwound by the time Target() calls the port, so the two are never nested.
-        Set tSC = ..ServesOcuPilot(tId, .tServes)
-        If $$$ISERR(tSC) Quit
+        Set tServes = 0
+        If tType = ..#TYPEWEBAPPLICATION {
+            ; AD-9: the escalated state read runs to completion before the port is entered. Its
+            ; frame has unwound by the time Target() calls the port, so the two are never nested.
+            Set tSC = ..ServesOcuPilot(tId, .tServes)
+            If $$$ISERR(tSC) Quit
+        }
 
         Set tSC = ..Target(pToolName, tId, .tTarget, .tPresent)
         If $$$ISERR(tSC) Quit
@@ -208,6 +256,10 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         Set tSC = ..Changed(pDiff, tPayloadObject, tTarget, .tChanged)
         If $$$ISERR(tSC) Quit
 
+        If tType = ..#TYPEUSER {
+            Set tSC = ..User(tId, tPayloadObject, tTarget, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
         Set tSC = ..WebApplication(tPayloadObject, tTarget, tServes, .tChanged, .pProhibits, .pCode)
     } Catch ex {
         Set tSC = ex.AsStatus()
@@ -300,6 +352,296 @@ ClassMethod WebApplication(pPayload As %DynamicObject, pTarget As %DynamicObject
     } Catch ex {
         Set pProhibits = 0
         Set pCode = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The user predicates, in declared order, first hit wins: a disable of
+/// <parameter>SYSTEMACCOUNTNAME</parameter>, of the signed-in account, or of the last
+/// <code>%All</code> holder; an escalation-role change; a role delta that grants privilege; and any
+/// other changed field the release has not reviewed.</p>
+/// <p><var>pId</var> is the target's id as the reference carries it -- already canonical, and
+/// compared through <method>NormalizedUser</method> anyway so an account addressed in another case
+/// earns the same verdict. <var>pChanged</var> is <method>Changed</method>'s answer: the fields this
+/// proposal changes, and the only fields any predicate here looks at.</p>
+/// <p><b>The three disable refusals are scoped to a disable, by effect.</b> AD-10 forbids deleting
+/// or disabling those three accounts, so enabling one, or renaming its full name, is not this
+/// predicate's business -- and <method>PermittedChangeFields</method> is what refuses every field
+/// beyond the reviewed two in the first place.</p>
+ClassMethod User(pId As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tSC = $$$OK
+    Try {
+        If $Data(pChanged(..#FIELDENABLED)) && ..IsOff(..Rendered(pPayload, ..#FIELDENABLED)) {
+            Set tCanonical = ..NormalizedUser(pId)
+            If tCanonical = ..NormalizedUser(..#SYSTEMACCOUNTNAME) {
+                Do ..Refuse(..#SYSTEMACCOUNT, .pProhibits, .pCode)
+                Quit
+            }
+            If tCanonical = ..NormalizedUser($Username) {
+                Do ..Refuse(..#CURRENTUSER, .pProhibits, .pCode)
+                Quit
+            }
+            Set tSC = ..LastAllHolder(pId, .tLast)
+            If $$$ISERR(tSC) Quit
+            If tLast {
+                Do ..Refuse(..#LASTALLHOLDER, .pProhibits, .pCode)
+                Quit
+            }
+        }
+        If $Data(pChanged(..#FIELDESCALATIONROLES)) {
+            Do ..Refuse(..#PRIVILEGEGRANT, .pProhibits, .pCode)
+            Quit
+        }
+        If $Data(pChanged(..#FIELDROLES)) {
+            Set tSC = ..GrantsPrivilege(pPayload, pTarget, .tGrants)
+            If $$$ISERR(tSC) Quit
+            If tGrants {
+                Do ..Refuse(..#PRIVILEGEGRANT, .pProhibits, .pCode)
+                Quit
+            }
+        }
+        Set tPermitted = ..PermittedChangeFields(..#TYPEUSER)
+        Set tField = ""
+        For {
+            Set tField = $Order(pChanged(tField))
+            If tField = "" Quit
+            If '$ListFind(tPermitted, tField) {
+                Do ..Refuse(..#UNCOVEREDFIELD, .pProhibits, .pCode)
+                Quit
+            }
+        }
+    } Catch ex {
+        Set pProhibits = 0
+        Set pCode = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Whether the rendered value <var>pValue</var> reads as off. The instance answers
+/// <code>Enabled</code> as a boolean on its <code>GET</code> and the template types it boolean, so
+/// <method>OcuPilot.Kernel.Proposal.Mint.Display</method> renders it <code>true</code> or
+/// <code>false</code>.</p>
+/// <p><b>Only <code>true</code> reads as on.</b> A numeric spelling is read for its value, and
+/// every other rendering -- an absent member, and any spelling this method does not know -- is read
+/// as off, because a value the predicate cannot read as on must not be treated as leaving the
+/// account enabled: the three disable refusals behind this guard would then be skipped. An
+/// unreadable payload renders every member <code>""</code>
+/// (<method>ParsedObject</method>), which is the reachable case.</p>
+ClassMethod IsOff(pValue As %String) As %Boolean [ Private ]
+{
+    If pValue = "true" Quit 0
+    If pValue = "false" Quit 1
+    If pValue = "" Quit 1
+    If $IsValidNum(pValue) Quit (+pValue = 0)
+    Quit 1
+}
+
+/// <p><var>pName</var> in the one spelling a reference to an account carries. The rule is the
+/// identity layer's, not this class's -- <method>NormalizedPath</method>'s counterpart for
+/// accounts, and for the same reason: the same rule decides which reference key a proposal's target
+/// gets and so which lock and which siblings a confirm of it takes (AD-34).</p>
+ClassMethod NormalizedUser(pName As %String) As %String
+{
+    Quit ##class(OcuPilot.Kernel.EntityRef).NormalizedId(..#TYPEUSER, pName)
+}
+
+/// <p>Whether the role delta between <var>pTarget</var>'s live roles and <var>pPayload</var>'s
+/// would grant privilege, in <var>pGrants</var> (AD-10): an added role that is
+/// <parameter>ALLROLE</parameter>, carries the <parameter>ADMINROLEPREFIX</parameter> prefix, or
+/// whose own recursed set holds either.</p>
+/// <p><b>It is a delta, not a match on the payload.</b> AD-4 makes the payload the complete
+/// property set, so an account that already holds <code>%All</code> sends it back on every write;
+/// reading the payload alone would refuse every change to such an account. A role the write
+/// <i>removes</i> grants nothing and is not this predicate's business.</p>
+/// <p><b>The recursed set is what makes it "through any path".</b> A custom role that grants
+/// <code>%All</code> is a grant of <code>%All</code>, so the question is asked of the instance
+/// rather than of the role's name. A name the instance holds no role for recurses to nothing and
+/// grants nothing here; the vendor's own validation is what refuses it.</p>
+ClassMethod GrantsPrivilege(pPayload As %DynamicObject, pTarget As %DynamicObject, Output pGrants As %Boolean) As %Status [ Private ]
+{
+    Set pGrants = 0
+    Set tSC = $$$OK
+    Try {
+        Kill tHeld
+        Kill tWanted
+        Do ..RoleNames(pTarget, .tHeld)
+        Do ..RoleNames(pPayload, .tWanted)
+        Set tKey = ""
+        For {
+            Set tKey = $Order(tWanted(tKey))
+            If tKey = "" Quit
+            If $Data(tHeld(tKey)) Continue
+            Set tSC = ..RoleEscalates(tWanted(tKey), .tEscalates)
+            If $$$ISERR(tSC) Quit
+            If tEscalates {
+                Set pGrants = 1
+                Quit
+            }
+        }
+    } Catch ex {
+        Set pGrants = 0
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The role names <var>pObject</var>'s <code>Roles</code> member carries, as
+/// <var>pNames(&lt;upper-cased name&gt;) = &lt;name as written&gt;</var>. An IRIS role name is
+/// case-insensitive, so the key is folded and the value keeps the spelling a recursed lookup is
+/// made with.</p>
+/// <p>The member is an array on the vendor's own <code>GET</code> and in a payload the merge built
+/// from one; a comma-separated string is read too, because that is how the same property reaches
+/// <class>Security.Users</class>, and a member carrying neither names no role.</p>
+ClassMethod RoleNames(pObject As %DynamicObject, Output pNames) [ Private ]
+{
+    Kill pNames
+    If '$IsObject(pObject) Quit
+    If pObject.%GetTypeOf(..#FIELDROLES) = "array" {
+        Set tValue = pObject.%Get(..#FIELDROLES)
+        If '$IsObject(tValue) Quit
+        Set tIterator = tValue.%GetIterator()
+        While tIterator.%GetNext(.tIndex, .tItem) {
+            If $IsObject(tItem) Continue
+            Set tOne = $ZStrip(tItem, "<>W")
+            If tOne = "" Continue
+            Set pNames($ZConvert(tOne, "U")) = tOne
+        }
+        Quit
+    }
+    Set tRaw = ..Rendered(pObject, ..#FIELDROLES)
+    For tI = 1:1:$Length(tRaw, ",") {
+        Set tOne = $ZStrip($Piece(tRaw, ",", tI), "<>W")
+        If tOne = "" Continue
+        Set pNames($ZConvert(tOne, "U")) = tOne
+    }
+}
+
+/// <p>Whether granting <var>pRole</var> grants <code>%All</code> or an administrative role, in
+/// <var>pEscalates</var>: the name itself, or anything in the set the instance says it recurses
+/// to.</p>
+ClassMethod RoleEscalates(pRole As %String, Output pEscalates As %Boolean) As %Status [ Private ]
+{
+    Set pEscalates = 0
+    Set tSC = $$$OK
+    Try {
+        If ..IsPrivilegedRole(pRole) {
+            Set pEscalates = 1
+            Quit
+        }
+        Set tRecursed = ""
+        Set tSC = $SYSTEM.Security.GetRecursedRoleSet(pRole, .tRecursed)
+        If $$$ISERR(tSC) Quit
+        For tI = 1:1:$Length(tRecursed, ",") {
+            If ..IsPrivilegedRole($Piece(tRecursed, ",", tI)) Set pEscalates = 1
+        }
+    } Catch ex {
+        Set pEscalates = 0
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Whether <var>pRole</var> is <parameter>ALLROLE</parameter> or carries
+/// <parameter>ADMINROLEPREFIX</parameter>, compared case-insensitively because IRIS resolves a role
+/// name that way.</p>
+ClassMethod IsPrivilegedRole(pRole As %String) As %Boolean [ Private ]
+{
+    Set tName = $ZConvert($ZStrip(pRole, "<>W"), "U")
+    If tName = "" Quit 0
+    If tName = $ZConvert(..#ALLROLE, "U") Quit 1
+    Quit $Extract(tName, 1, $Length(..#ADMINROLEPREFIX)) = $ZConvert(..#ADMINROLEPREFIX, "U")
+}
+
+/// <p>Whether <var>pId</var> is the only account on this instance that holds <code>%All</code>, in
+/// <var>pLast</var> (AD-10).</p>
+/// <p><b>It is a query over the whole population, and it asks the instance.</b> Every account the
+/// instance holds is listed and each is asked for its <i>recursed</i> role set, so an account that
+/// holds <code>%All</code> only through a custom role is counted -- a substring match on a declared
+/// <code>Roles</code> list would miss it and the predicate would then permit the write that locks
+/// the instance out.</p>
+/// <p><b>Only an account that can sign in counts as another holder.</b> A disabled holder cannot
+/// use the privilege, so counting it would let the last usable one be disabled, and the row's
+/// enabled column must read positively for the account to count -- a value this method cannot read
+/// as enabled leaves the target looking more like the last holder, which refuses rather than
+/// writes.</p>
+/// <p><b>Overridable seam.</b> A test drives the refusal by answering here, so no suite has to
+/// strip <code>%All</code> from a real account to make an instance have one holder. Production
+/// never overrides it; <method>HoldsAll</method> is the half a test exercises directly.</p>
+ClassMethod LastAllHolder(pId As %String, Output pLast As %Boolean) As %Status
+{
+    Set pLast = 0
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tSC = ..HoldsAll(pId, .tTargetHolds)
+        If $$$ISERR(tSC) Quit
+        If 'tTargetHolds Quit
+        Set tCanonical = ..NormalizedUser(pId)
+        ; The population is read inside %SYS and nothing else happens there: normalizing a name
+        ; reaches OcuPilot's own identity class, which is not visible in %SYS, so the filter below
+        ; runs after the restore (AD-16).
+        Set tNames = ""
+        Set $NAMESPACE = "%SYS"
+        Set tRS = ##class(%ResultSet).%New("Security.Users:List")
+        Set tSC = tRS.Execute("*", "*")
+        If $$$ISOK(tSC) {
+            While tRS.Next() {
+                Set tName = tRS.GetData(1)
+                If tName = "" Continue
+                Set tEnabled = tRS.GetData(2)
+                If ($ZConvert(tEnabled, "U") '= "YES") && (tEnabled '= 1) Continue
+                Set tNames = tNames _ $ListBuild(tName)
+            }
+            Do tRS.Close()
+        }
+        Set tRS = ""
+        Set $NAMESPACE = tOrigNS
+        If $$$ISERR(tSC) Quit
+        Set pLast = 1
+        For tI = 1:1:$ListLength(tNames) {
+            Set tName = $List(tNames, tI)
+            If ..NormalizedUser(tName) = tCanonical Continue
+            Set tSC = ..HoldsAll(tName, .tHolds)
+            If $$$ISERR(tSC) Quit
+            If tHolds {
+                Set pLast = 0
+                Quit
+            }
+        }
+        If $$$ISERR(tSC) Set pLast = 0
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pLast = 0
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Whether account <var>pUser</var> would hold <code>%All</code> if it signed in, in
+/// <var>pHolds</var>.</p>
+/// <p>It asks <method>%SYSTEM.Security.GetUserRecursedRoleSet</method>, which answers the whole set
+/// a login would grant -- roles a role grants included -- so a custom role that grants
+/// <code>%All</code> counts. That method needs <code>%Admin_Secure:USE</code> for an account other
+/// than the caller's own, which is a pair every write reaching this class already holds (AD-8).</p>
+ClassMethod HoldsAll(pUser As %String, Output pHolds As %Boolean) As %Status
+{
+    Set pHolds = 0
+    Set tSC = $$$OK
+    Try {
+        If pUser = "" Quit
+        Set tRoles = ""
+        Set tSC = $SYSTEM.Security.GetUserRecursedRoleSet(pUser, .tRoles)
+        If $$$ISERR(tSC) Quit
+        For tI = 1:1:$Length(tRoles, ",") {
+            If $ZConvert($ZStrip($Piece(tRoles, ",", tI), "<>W"), "U") = $ZConvert(..#ALLROLE, "U") Set pHolds = 1
+        }
+    } Catch ex {
+        Set pHolds = 0
         Set tSC = ex.AsStatus()
     }
     Quit tSC

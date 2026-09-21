@@ -3,14 +3,29 @@ import { Router } from '@angular/router';
 
 import { ChangeBus } from '../core/change-bus';
 import { screenForEntityType, withQuery } from '../core/navigation';
+import { PanelState } from '../core/panel-layout';
 import { ScopeService } from '../core/scope';
 import { ShellState } from '../core/shell-state';
 import { stringFor, STRINGS } from '../core/strings';
 import { ToastStore, type ToastEntry, changeSentenceTemplate, formatChangeSentence, formatChangeToastLink } from '../core/toasts';
 
 /**
- * The off-screen change toast stack (AD-14): bottom right, above the status bar, at most three,
+ * The off-screen change toast stack (AD-14): bottom right of the **content area**, `spacing.4`
+ * above the status bar and offset from the right edge by the panel's live width, at most three,
  * newest on top.
+ *
+ * **The offset is the panel's own width, read live** (DW-1412). This host is a child of
+ * `.ocu-shell`, which is `position: relative` and ends at the top of the status bar, so
+ * `position: absolute` with `bottom: {spacing.4}` is the published bottom and
+ * `right: calc(var(--ocu-panel-live-width) + {spacing.4})` is the published right edge. `app.ts`
+ * publishes that custom property from the one getter that already binds the panel's width, because
+ * the width is resolved in a framework-free store and a fixed token would not track a drag.
+ *
+ * **In panel full screen no toast is placed.** The published invariant is that no toast ever
+ * overlays the panel, and in full screen the panel covers the whole content area, so there is no
+ * offset that satisfies it. Nothing is lost: `panel.ts`'s reply already carries the change
+ * sentence the user is reading. Toasts are still raised and still expire, so one standing when
+ * full screen ends is placed then.
  *
  * **It exists for the change the user cannot see.** A confirmed write on a screen that is open
  * highlights its row; one on a screen that is not would otherwise leave no trace at all until the
@@ -43,7 +58,7 @@ import { ToastStore, type ToastEntry, changeSentenceTemplate, formatChangeSenten
   selector: 'app-toast-host',
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: [
-    ':host { position: fixed; right: var(--ocu-space-4); bottom: calc(var(--ocu-status-bar-height) + var(--ocu-space-4)); z-index: 5; pointer-events: none; }',
+    ':host { position: absolute; right: calc(var(--ocu-panel-live-width, 0px) + var(--ocu-space-4)); bottom: var(--ocu-space-4); z-index: 5; pointer-events: none; }',
     '.ocu-toast-region { display: flex; flex-direction: column; gap: var(--ocu-space-2); align-items: flex-end; pointer-events: auto; }',
     '.ocu-toast { display: flex; align-items: center; gap: var(--ocu-space-3); box-sizing: border-box; width: 360px; padding: var(--ocu-space-3); border-radius: var(--ocu-radius-md); background: var(--ocu-inverse-surface); color: var(--ocu-inverse-on-surface); box-shadow: var(--ocu-elevation-3); font-size: 0.875rem; }',
     '.ocu-toast-message { flex: 1 1 auto; }',
@@ -84,6 +99,7 @@ import { ToastStore, type ToastEntry, changeSentenceTemplate, formatChangeSenten
 })
 export class ToastHost {
   private readonly bus = inject(ChangeBus);
+  private readonly panel = inject(PanelState);
   private readonly router = inject(Router);
   private readonly scope = inject(ScopeService);
   private readonly shell = inject(ShellState);
@@ -113,9 +129,13 @@ export class ToastHost {
   constructor() {
     const stopBus = this.store.attach(this.bus);
     const stopStore = this.store.subscribe(() => this.generation.update((value) => value + 1));
+    // Full screen decides whether a toast is placed at all, so this region re-reads the panel for
+    // the same reason `app.ts`'s row does.
+    const stopPanel = this.panel.subscribe(() => this.generation.update((value) => value + 1));
     inject(DestroyRef).onDestroy(() => {
       stopBus();
       stopStore();
+      stopPanel();
       // The armed sweep is a timer of up to thirty seconds; nothing should outlive the region
       // that raised it.
       this.store.dispose();
@@ -127,7 +147,14 @@ export class ToastHost {
     return this.store.toasts();
   }
 
+  /**
+   * Whether the region is placed. Full screen is a decision rather than a geometry: the panel
+   * covers the content area, the published invariant admits no offset there, and the reply already
+   * carries the change sentence (DW-1412).
+   */
   protected get visible(): boolean {
+    this.generation();
+    if (this.panel.fullScreen()) return false;
     return this.toastList.length > 0;
   }
 

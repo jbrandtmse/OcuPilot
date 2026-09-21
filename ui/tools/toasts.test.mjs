@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -304,4 +305,55 @@ test('the published copy resolves its placeholders, and each action has its own 
   ]) {
     assert.ok(!value.includes('<'), value);
   }
+});
+
+// DW-1412: the stack's offset is a two-file contract -- `app.ts` publishes the panel's live width
+// on `.ocu-shell` and `toast-host.ts`'s `:host` consumes it -- and the geometry it produces can
+// only be measured where layout is computed, which is `ui/browser/toast.browser-spec.mjs`. jsdom
+// computes none, so without this row deleting either half reddens nothing in the `gates` job and
+// only the `instance` job's browser leg reports it. Pinned here as a source-text roster, the way
+// `ci.test.mjs` pins its arming rosters and `compose.test.mjs` its ports.
+//
+// Mutations (Rule 19): drop the `[style.--ocu-panel-live-width]` binding from `app.ts`'s
+// `.ocu-shell` row, or put `right: var(--ocu-space-4)` back on `:host` in `toast-host.ts` -> the
+// matching assertion below goes red.
+test('DW-1412: the panel-width custom property has a publisher and a consumer, and both name it', () => {
+  const PROPERTY = '--ocu-panel-live-width';
+  const app = readFileSync(join(uiRoot, 'src', 'app', 'app.ts'), 'utf8');
+  const host = readFileSync(join(uiRoot, 'src', 'app', 'shell', 'toast-host.ts'), 'utf8');
+
+  // The publisher: bound on the element that is the toast host's containing block, from the getter
+  // that already re-reads the width, never from a token.
+  assert.match(
+    app,
+    new RegExp(`\\[style\\.${PROPERTY}\\]="panelLiveWidth"`),
+    `app.ts publishes ${PROPERTY} from its panelLiveWidth getter`
+  );
+  assert.match(app, /class="ocu-shell"/, 'on the .ocu-shell element');
+  assert.match(
+    app,
+    /get panelLiveWidth\(\): string \{[^}]*this\.panelWidth/s,
+    'and that getter reads the same panelWidth the docked panel is sized by'
+  );
+
+  // The consumer: positioned inside that containing block and offset by the property, not by the
+  // viewport edge. The `right` declaration must mention the property and must not be the bare
+  // spacing token the defect shipped.
+  const hostRule = /:host \{([^}]*)\}/.exec(host);
+  assert.ok(hostRule !== null, 'toast-host.ts declares a :host rule');
+  const [, declarations] = hostRule;
+  assert.match(declarations, /position: absolute/, ':host is positioned inside the shell, not the viewport');
+  assert.match(
+    declarations,
+    new RegExp(`right: calc\\(var\\(${PROPERTY}[^)]*\\)[^;]*\\)`),
+    `and its right offset is calculated from ${PROPERTY}: ${declarations}`
+  );
+  assert.ok(
+    !/right: var\(--ocu-space-4\)/.test(declarations),
+    `and never the fixed token DW-1412 was: ${declarations}`
+  );
+
+  // A property nobody publishes, or nobody reads, is the failure this row exists for.
+  assert.ok(app.includes(PROPERTY), `${PROPERTY} is named by the publisher`);
+  assert.ok(host.includes(PROPERTY), `${PROPERTY} is named by the consumer`);
 });

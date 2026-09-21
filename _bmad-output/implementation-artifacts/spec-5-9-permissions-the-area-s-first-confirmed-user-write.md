@@ -2,9 +2,10 @@
 title: 'Story 5.9: Permissions - the area''s first confirmed user write'
 type: 'feature'
 created: '2026-09-21'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: '1d73b30b88b4253228d201d898fa84bf6bb9332a'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['oversized']
@@ -387,6 +388,29 @@ reason (DW-1431). No generic write-path machinery changes: the tool overrides th
 
 ## Review Triage Log
 
+### 2026-09-21 - Review pass
+
+- verdicts: 18 findings - high 0, medium 4, low 9, false 5, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The shipped `%All` census is only ever observed answering 0; the branch that refuses is unreached - every refusal leg runs through `ArmLastAllHolder`, which replaces the method. Added `ArmAllHolders` (arms the census's *input*, so the shipped body runs in full over the real population) and `Test/UserUpdate.TestOnlyAnEnabledHolderCountsAsAnotherAllHolder`, two-sided plus one refusal through the transition.
+  - `[medium]` `[patch]` `LastAllHolder`'s enabled-column filter is unpinned: deleting it left every test green, so an instance with a disabled `%All` holder would permit disabling the only usable one. Same new test; mutation demonstrated red on both its census assertion and its refusal.
+  - `[medium]` `[patch]` `RoleNames`' comma-separated branch - the second input shape the class documents - had no executed test host; read as nothing it empties the role delta and permits every grant. Added `UserObject(..., pRolesAsString)` and `Test/UserUpdate.TestARoleDeltaIsReadWhenTheRolesMemberIsAString`, including a permitted-add leg so the refusals are not vacuous.
+  - `[medium]` `[patch]` `IsOff`'s non-boolean branches are executed by nothing, and the `""` branch is reachable in production (`ParsedObject` answers `{}` for an unreadable payload, so every member renders `""`), where it guards all three AD-10 disable refusals. Added `Test/UserUpdate.TestAnEnabledValueTheGuardCannotReadAsOnIsADisable`; each arm demonstrated red separately.
+  - `[low]` `[patch]` `IsOff`'s residual `Quit 0` contradicted its own doc comment - a spelling it cannot read was treated as leaving the account enabled, skipping the three refusals, the opposite of the sibling fail-closed decision in `LastAllHolder`. Changed to `Quit 1` and the comment rewritten to state it; pinned by the test above.
+  - `[false]` `[reject]` `Codes()`' doc comment said to be stale about ordering. Refuted: `WebApplication()` refuses in the order SERVINGPATH, UNAUTHENTICATED, AUTHORIZATION, DISPATCH, PRIVILEGEGRANT, UNCOVEREDFIELD; `Codes()` lists the first four in exactly that order, then the three user codes, then PRIVILEGEGRANT and UNCOVEREDFIELD - which the comment names separately as "the two both types share" - then UNCOVERED last. The comment describes the list it has.
+  - `[low]` `[patch]` The DW-1431 AC had no `mutation:` line. Closed in-pass: granting the code-database resource turns the bodyless 403 into OcuPilot's own 404 `PROPOSAL.UNKNOWN` envelope and reddens three assertions; line written.
+  - `[low]` `[patch]` AC5's census half had no `mutation:` line - the plan's `Prohibited.User` mutation does not reach `HoldsAll`. Closed in-pass: reading the declared `Roles` column instead of the recursed set reddens the custom-role test; line written.
+  - `[low]` `[patch]` AC4's never-advertised half had no `mutation:` line. Closed in-pass: a second write tool compiled under the `permissions.users` identifier reddens the roster assertion, naming it; line written.
+  - `[low]` `[patch]` The toast AC's full-screen half had no `mutation:` line. Closed in-pass: dropping the `panel.fullScreen()` guard reddens `toast-host.spec.ts`'s full-screen leg; line written.
+  - `[low]` `[patch]` The generator AC had no `mutation:` line at all. Closed in-pass: classifying `Roles` `ordinary` makes `field-lists.mjs` refuse, and hand-editing `ToolFields.cls` past it makes `--check` report it stale. The line also records that `Test/DerivedFields` stays green on that edit and correctly so - it compares `FieldLists.cls`, not the classified artifact.
+  - `[low]` `[patch]` `TestALeastPrivilegedPrincipalConfirmsAUserWriteOverTheWire` reports green having measured nothing when `SeedForPrincipal` answers `""` (`Minted`'s "resolved to no entry" status is returned, not asserted). Added the two assertions that make the skip loud.
+  - `[false]` `[reject]` DW-1431 implemented as prose plus a symptom test rather than as a refusal the caller can read. Refuted: the matrix's own error column authorizes exactly this outcome ("if no OcuPilot code can run at that layer, the measurement says so and the documented half stands alone"), and the measurement is complete rather than one probe - every OcuPilot class lives in the database the caller cannot read, which is why the `AccessCheck` override raised `<PROTECT>`.
+  - `[low]` `[reject]` The highlight AC's audit half asserts the ledger's `AuditMarked` column and the card's word rather than querying the audit rows by proposal id. Not worth fixing: `MARKEDYES` is written only when `$System.Security.Audit` returned true for the `AgentWrite` triple carrying that proposal id (`Event.cls` turns a dropped emission into an error status), the marker path in `Confirm.cls` is unchanged and branches on no tool name, and `Test/AuditMarker` already pins the row query on that shared path - so the fix is a new test leg, not a direct correction.
+  - `[false]` `[reject]` "The agent states it and does not retry" is unobserved. Refuted: a confirm is a user-originated request issued after the turn has completed (AD-6), so there is no agent loop that could retry, and the Always clause defines the stating half as the `failed - <reason>` card and the refusal banner, which the browser leg asserts.
+  - `[low]` `[patch]` DW-1412's publisher/consumer contract was pinned only in the browser tier, so deleting `app.ts`'s binding reddened nothing in the `gates` job. Added a source-text roster row to `ui/tools/toasts.test.mjs`, the way `ci.test.mjs` and `compose.test.mjs` pin their cross-file rosters; the geometry stays in the browser tier, where layout is computed.
+  - `[false]` `[reject]` "The tool overrides the two seams" versus six actual overrides. Refuted: the Code Map names `Endpoint()` and `SettableFields()` as the two *abstract* seams, task 2 explicitly requires the `InputSchema` override, and `WebAppUpdate` - the precedent the Code Map says to copy - overrides `ExcludedFields`, `PermittedFields` and `PrivilegePairs` too. The boundary the sentence protects (no generic write-path machinery changes) holds: `Write.cls`, `Mint.cls`, `Confirm.cls` and `Disclosure.cls` are untouched.
+  - `[false]` `[reject]` Both senses of `opaque` appear on one card - `Roles` masked when unchanged, in clear on the changed diff row. Refuted as a divergence: the Disclosure matrix row speaks only of unchanged rows. The reader-facing half is the standing `deferred:` entry, which this pass keeps.
+
 ## Design Notes
 
 **Governing ADs (Rule 6).** AD-3 (the field list is derived; the semantic half is authored once per
@@ -479,19 +503,31 @@ treated as a new product decision.
   -- and the same, **one class per invocation, waiting for each to land in `%UnitTest_Result`
   before the next**, for `OcuPilot.Test.ToolWrite`, `OcuPilot.Test.ProposalWire`,
   `OcuPilot.Test.Prohibited`, `OcuPilot.Test.ProhibitedRoute`, `OcuPilot.Test.SurfaceCoverage`,
-  `OcuPilot.Test.DerivedFields`, `OcuPilot.Test.PreFault`, `OcuPilot.Test.WebApp`. Expected: each
+  `OcuPilot.Test.DerivedFields`, `OcuPilot.Test.Envelope` and `OcuPilot.Test.Wire` (the two that
+  exercise the `PreFault` fixture, which extends `OcuPilot.Api.Router` and has no test methods of
+  its own), `OcuPilot.Test.WebApp`. Expected: each
   class green; verify the totals with the `%UnitTest_Result` SQL probe rather than the runner
   envelope. Never two test calls in one message.
 - `cd ui && OCUPILOT_BROWSER_ORIGIN=http://localhost:52776 OCUPILOT_BROWSER_CONTAINER=ocupilot-ci
   node --test --test-concurrency=1 browser/users-write.browser-spec.mjs browser/toast.browser-spec.mjs`
   -- expected: green, with the highlight's elapsed figure logged.
-- Rule 19, one demonstrated mutation per AC, applied on the throwaway: drop the `changed` publish
-  from `decideProposal` (highlight reddens); return `""` from `Prohibited.User()` (each refusal leg
-  reddens); set `WRITEPERMISSION` back to `"WRITE"` (the least-privileged confirm leg reddens);
-  return the id verbatim from the new id rule (the mixed-case leg reddens); revert the toast host's
-  offset (the hit-test leg reddens); omit one property from the merged payload (AC2's survival proof
-  reddens). Record each as `mutation: <change> -> <test>` beside its test, and confirm
-  `git status --short` and `git diff --stat` are byte-identical after every revert.
+- Rule 19, all fourteen demonstrated on the throwaway 2026-09-21 -- the plan's six, and eight the
+  review pass added for the ACs and pinning tests that had no line -- each reverted and the tree
+  confirmed byte-identical (`git status --short`, `git diff --stat`) after every one:
+  - `mutation: remove the changed publish from ui/src/app/core/turn.ts decideProposal -> ui/browser/users-write.browser-spec.mjs "AC1, AC2, AC3 and the Integration AC" (the .ocu-data-table-row-changed wait timed out)`
+  - `mutation: return before the Try in OcuPilot.Kernel.Proposal.Prohibited.User, so it refuses nothing -> OcuPilot.Test.UserUpdate (4 methods red: the current-user/_SYSTEM, last-%All-holder, role-grant and escalation-role legs)`
+  - `mutation: set OcuPilot.Screen.Tool.UserUpdate.WRITEPERMISSION back to "WRITE" -> OcuPilot.Test.ToolWrite.TestTheUserWriteToolAdvertisesEnabledAndRolesWithTheScreensOwnPairs (4 asserts red) and OcuPilot.Test.ProhibitedRoute.TestALeastPrivilegedPrincipalConfirmsAUserWriteOverTheWire (the confirm answers 403 AUTH.NOPRIVILEGE with detail.failedPair "%Admin_Secure:WRITE"), which is the spec's "least-privileged confirm leg"`
+  - `mutation: answer pId verbatim for the foldcase rule in OcuPilot.Kernel.EntityRef.NormalizedId -> OcuPilot.Test.UserUpdate.TestTheUserRuleFoldsCaseTheWayTheInstanceResolvesIt and .TestDisablingTheCurrentUserOrTheSystemAccountIsRefused`
+  - `mutation: restore :host { position: fixed; right: var(--ocu-space-4) } in ui/src/app/shell/toast-host.ts -> ui/browser/toast.browser-spec.mjs "DW-1412" (the stack stayed at the viewport edge)`
+  - `mutation: Do pPayload.%Remove("FullName") after the clone in OcuPilot.Kernel.Proposal.Mint.Merge -> OcuPilot.Test.UserUpdate.TestAConfirmedWriteSendsTheCompletePropertySetAndTheOthersSurvive and .TestATargetThatMovedAfterTheMintIsRefused`
+  - `mutation: grant the install namespace's code-database resource to the principal in OcuPilot.Test.ProhibitedRoute.TestAnAccountWithoutTheCodeDatabaseReadIsRefusedABareForbidden -> that method (the 403 becomes OcuPilot's own 404 PROPOSAL.UNKNOWN envelope, reddening the status, the empty-body and the no-read assertions), which is the DW-1431 AC`
+  - `mutation: read the declared Roles column instead of the recursed set in OcuPilot.Kernel.Proposal.Prohibited.HoldsAll -> OcuPilot.Test.UserUpdate.TestTheCensusCountsAUserHoldingAllThroughACustomRole, which is AC5's census half`
+  - `mutation: compile a second write tool under the permissions.users identifier -> OcuPilot.Test.ProhibitedRoute.TestNoDeleteVerbIsAdvertisedForAUserAccountAndALiveSystemDisableIsRefused (the roster assertion reddens naming it), which is AC4's never-advertised half`
+  - `mutation: drop the panel.fullScreen() guard from ToastHost.visible -> ui/src/app/shell/toast-host.spec.ts "places no toast while the panel is full screen", which is the toast AC's full-screen half; the browser leg reddens too once the bundle is rebuilt`
+  - `mutation: classify Roles ordinary in Classification.cls -> node tools/field-lists.mjs refuses ("path Roles is a member-less array and cannot be ordinary", exit 1); and hand-edit ToolFields.cls past it -> node tools/field-lists.mjs --check reports it stale (exit 1). That is the generator AC. Test/DerivedFields stays green on that edit and correctly so: it compares FieldLists.cls against a fresh derivation, while --check is what guards the classified ToolFields.cls`
+  - `mutation: drop the enabled-column filter from OcuPilot.Kernel.Proposal.Prohibited.LastAllHolder -> OcuPilot.Test.UserUpdate.TestOnlyAnEnabledHolderCountsAsAnotherAllHolder (both the direct census assertion and the refusal it drives through the transition)`
+  - `mutation: return before parsing in the comma-separated branch of OcuPilot.Kernel.Proposal.Prohibited.RoleNames -> OcuPilot.Test.UserUpdate.TestARoleDeltaIsReadWhenTheRolesMemberIsAString`
+  - `mutation: answer 0 from OcuPilot.Kernel.Proposal.Prohibited.IsOff for an absent member, or for a spelling it cannot read -> OcuPilot.Test.UserUpdate.TestAnEnabledValueTheGuardCannotReadAsOnIsADisable (demonstrated on each arm separately)`
 
 **Full runs, once, before `dev_complete` (once, before dev_complete):**
 
@@ -507,5 +543,66 @@ treated as a new product decision.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
+
+**What shipped.** One write tool, `permissions.users.update`, over the endpoint the Users list
+already reads: `Enabled` derived, `Roles` as AD-3's authored half, `EscalationRoles` excluded, and a
+resolved pair set that is exactly `UserList`'s two with `USE` never `WRITE`. `user` joins
+`COVEREDTYPES` with a `User()` predicate carrying the four refusals and a `%All` census that asks
+the instance for each account's recursed roles over the whole population. `user:foldcase` joins
+`IDRULES` and its client twin. DW-1412 moves the toast stack into the content area behind a live
+panel-width custom property. DW-1431 measured: no OcuPilot code runs at that layer, so the
+documented half ships alone.
+
+**Files changed.** `Screen/Tool/UserUpdate.cls` (new, the tool); `Screen/Tool/Classification.cls` +
+regenerated `ToolFields.cls` (16 rows, 14 `ordinary`, both arrays `opaque`);
+`Kernel/Proposal/Prohibited.cls` (the `user` branch, three codes, the census, and `PRIVILEGEGRANT`'s
+and `UNCOVEREDFIELD`'s sentences reworded at their origin to serve both types);
+`Kernel/EntityRef.cls` + `ui/src/app/core/entity-ref.ts` + `ui/tools/screen-mirror.mjs` +
+`screens.generated.ts` (the id rule); `Api/Router.cls` + `README.md` (DW-1431's corrected sentence
+and the prerequisite); `ui/src/app/app.ts` + `ui/src/app/shell/toast-host.ts` (DW-1412);
+`Test/UserUpdate.cls` (new, 12 methods), `ui/browser/users-write.browser-spec.mjs` (new, 3 legs),
+and additions to `ToolWrite`, `ProposalWire`, `ProhibitedRoute`, `Prohibited`, `SurfaceCoverage`,
+`ProposalFixture`, `ProhibitedFixture`, `ReadTool`, `ToolRoundTrip`, `PreFault`,
+`toast-host.spec.ts`, `toast.browser-spec.mjs`, `toasts.test.mjs`, `screen-mirror.test.mjs`,
+`scripts/ci-throwaway.sh`.
+
+**Review findings.** 18 filed across two layers - 0 high, 4 medium, 9 low, 5 false. Eleven entries
+patched: the shipped census's refusing branch and its enabled-holder filter now have a test that
+runs the real body (`ArmAllHolders` arms its input, not its answer); `RoleNames`' comma-separated
+shape and `IsOff`'s non-boolean arms now have executed test hosts; `IsOff`'s residual was
+fail-**open** against its own doc comment and is now `Quit 1`; the least-privileged wire leg can no
+longer report green having measured nothing; DW-1412's publisher/consumer contract is pinned in the
+`gates` tier as a source-text roster; and the five ACs whose pinning tests had no `mutation:` line
+have one, demonstrated. Nothing deferred this pass - the standing `deferred:` entry (a classified
+`opaque` array is indistinguishable from a secret) is kept and is now directly observable on this
+story's own card. Five findings rejected: `Codes()`' ordering claim (refuted - the comment describes
+the list it has), DW-1431-as-code (the matrix's error column authorizes the outcome the measurement
+selected), the audit-row proxy (`MARKEDYES` is written only when the emission was accepted, on an
+unchanged tool-agnostic path `Test/AuditMarker` already pins), "the agent does not retry" (a confirm
+is user-originated after the turn ends, so no retry path exists), and the "two seams" count (the two
+*abstract* seams; the boundary it protects holds). Each is recorded with its refutation in
+`## Review Triage Log`.
+
+**Follow-up review: true.** Three medium entries were patched. The specific unverified risk: the
+shipped census's "yes" is now exercised, but only with `HoldsAll` armed - an instance carrying
+exactly one `%All` holder and no fixture at all is a state this suite cannot produce, because it
+needs a `%All` account to run.
+
+**Verification.** `check-objectscript.py` 21 rules over 592 files, 0 problems; `lint-docs.sh` clean.
+`npm run build` with its seven prebuild checkers clean, and `field-lists.mjs --check` /
+`screen-mirror.mjs --check` both report up to date after a fresh regeneration. `npm test` runs 1,292
+tools tests and 807 component tests green. The full browser suite is 218/218 against the bundle. Full
+ObjectScript sweep on `ocupilot-ci` green, reconciled against `%UnitTest_Result` rather than the
+runner envelope. `smoke.sh --container ocupilot-ci` green with a non-zero executed count. The
+highlight's measured margin is logged on the green run: 2 ms against the 2,000 ms budget. All
+fourteen Rule 19 mutations applied on the throwaway, each observed red on the named test, each
+reverted with the tree confirmed byte-identical.
+
+**Residual risks.** `OcuPilot.Test.PreFault` extends `OcuPilot.Api.Router` and has no test methods,
+so the plan's Verification list named it as runnable; corrected there to the two classes that
+exercise it (`Envelope`, `Wire`). The `IsOff` residual change is inert for every account that is not
+one of the three protected ones - the guard evaluates the three refusals, none matches, and the
+fingerprint gate answers as before - so it can only turn a corrupt-payload confirm's refusal code
+from the fingerprint gate's into the prohibited set's, never a refusal into a write.

@@ -434,7 +434,8 @@ export const ENTITY_REF_SEPARATOR_CODE = 2;
  * than mirroring as a no-op.
  */
 export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> = {
-  "web-application": "foldcase-striptrailingslash"
+  "web-application": "foldcase-striptrailingslash",
+  "user": "foldcase"
 };
 
 /** The eight areas, in rail order. */

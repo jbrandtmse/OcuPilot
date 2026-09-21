@@ -32,6 +32,15 @@ Parameter WIREKEYS = "proposalId,target,expiresAt,tool,changed,unchangedCount,un
 /// the classified one, so the masking tests below name the shipped tool's entry.</p>
 Parameter CLASSIFIEDTOOL = "webapp.list.update";
 
+/// <p>Story 5.9's write tool, whose field list classifies its two arrays <code>opaque</code>. It
+/// is the only classified entry with an <code>opaque</code> row, so it is the only one that can
+/// show a classified array masked rather than a merely unnamed one.</p>
+Parameter USERTOOL = "permissions.users.update";
+
+/// <p>A fresh <code>Security.User</code> read carrying one <code>ordinary</code> literal, the two
+/// <code>opaque</code> arrays, and the <code>ordinary</code> literal the proposal changes.</p>
+Parameter FRESHUSER = "{""FullName"":""before"",""Roles"":[""%EnsRole_Operator""],""EscalationRoles"":[""%EnsRole_Administrator""],""Enabled"":false}";
+
 /// <p>A fresh read carrying one <code>ordinary</code> literal, one <code>ordinary</code>
 /// <b>array</b> of literals (<code>CorsAllowlist</code>, declared <code>CorsAllowlist[]</code>),
 /// one subtree the classification describes only member by member (<code>MatchRoles</code>), and
@@ -233,6 +242,43 @@ Method TestAnOrdinaryLiteralIsDisclosedWithItsValue()
     ; application's CorsAllowlist and CorsHeadersList would disclose masked.
     Do $$$AssertEquals($Get(tValue("CorsAllowlist")), "[""https://a.example"",""https://b.example""]", "an ordinary array of literals carries its own value, not the mask")
     Do $$$AssertNotEquals($Get(tValue("CorsAllowlist")), ##class(OcuPilot.Kernel.Proposal.Disclosure).Mask(), "and is not masked as though nobody had classified it")
+}
+
+/// <p>Story 5.9, DW-1223, AD-3: the users write tool's disclosure. Its rows equal
+/// <code>unchangedCount</code>, an <code>ordinary</code> literal carries its value, and both role
+/// arrays carry the mask because the reviewed classification calls them <code>opaque</code> -- the
+/// endpoint's template answers <code>[]</code> for each, so nothing types a member and
+/// <code>ordinary</code> is a class neither row can carry.</p>
+/// <p>Mutation (Rule 19): classify <code>Roles</code> <code>ordinary</code> in
+/// <class>OcuPilot.Screen.Tool.Classification</class> -- <code>node tools/field-lists.mjs</code>
+/// refuses it, which is the generator half; reaching past that by hand-editing
+/// <class>OcuPilot.Screen.Tool.ToolFields</class> reddens the masking assertion here and
+/// <method>OcuPilot.Test.DerivedFields</method>'s drift check.</p>
+Method TestTheUserToolsDisclosureMasksBothRoleArrays()
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).SeedTurn(..#PROBEUSER, "completed", .tTurn), "a turn is seeded")
+    Do ##class(OcuPilot.Test.ProposalFixture).Arm(..#FRESHUSER)
+    Set tArgs = {"Name": "OcuPilotProbeWireUser", "Enabled": true}
+    Set tSC = $ClassMethod(..#MINT, "Mint", ..#SCREEN, ..#USERTOOL, ..#PROBEUSER, "probe-conv", tTurn, tArgs, ..#LIMITS, .tProposal, .tHttp, .tFault, "Security.User", "name", "OcuPilotProbeWireUser", "Name", $ListBuild("Enabled", "Roles"))
+    Do $$$AssertStatusOK(tSC, "a proposal enabling the account is minted: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Set tSC = ##class(OcuPilot.Kernel.State.Propose).GuardedRowsForTurn(tTurn, ..#PROBEUSER, .tRows)
+    Do $$$AssertStatusOK(tSC, "the turn's proposals are read")
+    Set tRow = tRows.%Get(0)
+    Set tUnchangedRows = tRow.%Get("unchanged")
+    Do $$$AssertEquals(tRow.%Get("unchangedCount"), 3, "three of the four properties are sent unchanged")
+    Do $$$AssertEquals(tUnchangedRows.%Size(), tRow.%Get("unchangedCount"), "and the disclosure has exactly that many rows")
+    Kill tValue
+    Set tIterator = tUnchangedRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tUnchanged) {
+        Set tValue(tUnchanged.%Get("field")) = tUnchanged.%Get("value")
+    }
+    Set tMask = ##class(OcuPilot.Kernel.Proposal.Disclosure).Mask()
+    Do $$$AssertEquals($Get(tValue("FullName")), "before", "the ordinary literal carries its own value")
+    Do $$$AssertEquals($Get(tValue("Roles")), tMask, "the roles array is disclosed masked because it is classified opaque")
+    Do $$$AssertEquals($Get(tValue("EscalationRoles")), tMask, "and so is the escalation array")
+    Set tJson = tRows.%ToJSON()
+    Do $$$AssertEquals(tJson [ "%EnsRole", 0, "no role name from either array reaches the wire")
 }
 
 /// <p>AD-33: a poll for a turn the caller does not own answers nothing, and the store's own

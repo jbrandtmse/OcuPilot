@@ -198,7 +198,7 @@ services:
       # classes: Disabled, ErrorLogDenial, LedgerWire, LogSourceDenial, MgmntPortDenial, OAuthTabs
       # classes: ProhibitedRoute, ProposalFixture, ProposalSpelling, State, Token, ToolSetFull
       # classes: ToolWire, TurnContext, TurnConversation, TurnLong, TurnProviderFault, TurnWire
-      # classes: TurnWireFixture, UnexpireScope, Version, Wire, WireOAuthRead, WireSecurityRead
+      # classes: TurnWireFixture, UnexpireScope, UserUpdate, Version, Wire, WireOAuthRead, WireSecurityRead
       OCUPILOT_ALLOW_PRINCIPALS: "1"
       # Writes an application error to a namespace's own ^ERRORS. Same reasoning again, and one
       # degree worse: an application error cannot be un-logged, so a runner pointed elsewhere

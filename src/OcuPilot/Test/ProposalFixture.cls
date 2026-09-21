@@ -571,6 +571,228 @@ ClassMethod RemoveMixedCaseWriteTarget() As %Status
     Quit tSC
 }
 
+/// <p>Whether <method>OcuPilot.Test.ProhibitedFixture.LastAllHolder</method> answers "yes" --
+/// <code>1</code> arms it, <code>""</code> disarms it. The census the shipped set runs is a query
+/// over the whole user population, and an instance with several <code>%All</code> holders has no
+/// last one; arming the seam drives the refusal without stripping <code>%All</code> from a real
+/// account. The census's own logic is exercised directly by
+/// <method>OcuPilot.Test.UserUpdate.TestTheCensusCountsAUserHoldingAllThroughACustomRole</method>.</p>
+ClassMethod ArmLastAllHolder(pArmed As %String = "")
+{
+    If pArmed = "" {
+        Kill ^||OcuPilotProposalFixture("lastallholder")
+        Quit
+    }
+    Set ^||OcuPilotProposalFixture("lastallholder") = 1
+}
+
+/// <p>Which accounts <method>OcuPilot.Test.ProhibitedFixture.HoldsAll</method> answers "yes" for:
+/// the comma-separated <var>pNames</var>, or <code>""</code> to disarm and let the shipped
+/// <code>%SYS</code> lookup answer.</p>
+/// <p><b>This arms the census's input, not its answer.</b> Unlike
+/// <method>ArmLastAllHolder</method>, which replaces
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.LastAllHolder</method> outright, arming this leaves
+/// the shipped census body running in full -- the <code>%SYS</code> population query, its enabled
+/// filter, the canonical self-skip and the loop -- and only makes "does this account hold
+/// <code>%All</code>" deterministic. It is what lets the branch where no other <i>enabled</i>
+/// holder is found be reached on an instance that really has several, without stripping the role
+/// from a real account.</p>
+ClassMethod ArmAllHolders(pNames As %String = "")
+{
+    Kill ^||OcuPilotProposalFixture("allholders")
+    For tI = 1:1:$Length(pNames, ",") {
+        Set tOne = $ZStrip($Piece(pNames, ",", tI), "<>W")
+        If tOne = "" Continue
+        Set ^||OcuPilotProposalFixture("allholders", $ZConvert(tOne, "U")) = 1
+    }
+}
+
+/// <p>Whether <method>ArmAllHolders</method> is armed, and if so whether it names
+/// <var>pName</var>, in <var>pHolds</var>.</p>
+ClassMethod AllHoldersArmed(pName As %String, Output pHolds As %Boolean) As %Boolean
+{
+    Set pHolds = 0
+    If '$Data(^||OcuPilotProposalFixture("allholders")) Quit 0
+    Set pHolds = ''$Data(^||OcuPilotProposalFixture("allholders", $ZConvert($ZStrip(pName, "<>W"), "U")))
+    Quit 1
+}
+
+/// <p>Whether <method>ArmLastAllHolder</method> last armed the census seam.</p>
+ClassMethod LastAllHolderArmed() As %Boolean
+{
+    Quit +$Get(^||OcuPilotProposalFixture("lastallholder"))
+}
+
+/// <p>The canonical probe account the users write tool is driven against, the mixed-case one that
+/// proves a second spelling is one target, the one that holds <code>%All</code> only through
+/// <parameter>USERALLROLE</parameter>, and the ordinary role a permitted change adds.</p>
+/// <p>Every name carries the <code>OcuPilotProbe</code> prefix (AD-25), and
+/// <method>EnsureUser</method> refuses to adopt an account it did not create.</p>
+Parameter USERTARGET = "OcuPilotProbeUserTarget";
+
+Parameter USERTARGETMIXEDCASE = "OcuPilotProbeUserMixedCase";
+
+Parameter USERALLHOLDER = "OcuPilotProbeUserAllHolder";
+
+/// <p>A second enabled <code>%All</code> holder and a <b>disabled</b> one. They exist so the
+/// census's "only an account that can sign in counts as another holder" filter is measured against
+/// a population where the difference decides the answer, rather than asserted in prose.</p>
+Parameter USERALLHOLDERSECOND = "OcuPilotProbeUserAllHolderSecond";
+
+Parameter USERALLHOLDERDISABLED = "OcuPilotProbeUserAllHolderOff";
+
+Parameter USERALLROLE = "OcuPilotProbeUserAllRole";
+
+/// <p>The two ordinary roles a permitted role change moves between: standard IRIS roles, never new
+/// ones, each of which the instance says recurses to itself alone, so AD-10 reads neither as a
+/// privilege grant.</p>
+Parameter USERINITIALROLE = "%SQL";
+
+Parameter USERORDINARYROLE = "%Developer";
+
+/// <p>The Comment <method>EnsureUser</method> stamps its own accounts with, and the only one
+/// <method>RemoveUser</method> will delete. The two calls run in different sessions, so nothing
+/// process-private can carry the ownership mark between them.</p>
+Parameter USERMARKER = "OcuPilot users write probe";
+
+/// <p>A fixed throwaway password for every probe account: each is created at the start of the class
+/// that uses it and removed at the end, so nothing about this value needs to be secret or unique
+/// across runs -- only long and mixed enough to satisfy the instance's own password policy.</p>
+Parameter USERPASSWORD = "OcuPilotAc5ProbePassword9Aa";
+
+/// <p>Create the probe account <var>pName</var> with roles <var>pRoles</var> (comma-separated) and
+/// enabled state <var>pEnabled</var>, stamped <parameter>USERMARKER</parameter>.</p>
+/// <p><b>Its own account, never one the instance had.</b> An account that already exists under the
+/// name is a <b>refusal</b>, not a silent adoption, because <method>RemoveUser</method> would then
+/// delete it.</p>
+/// <p><b>Throwaway only, enforced.</b> This changes the instance's user table, so it refuses unless
+/// <parameter>ARMINGVARIABLE</parameter> reads <code>1</code> -- set only by
+/// <file>scripts/ci-throwaway.sh</file>.</p>
+ClassMethod EnsureUser(pName As %String, pRoles As %String = "", pEnabled As %Boolean = 1, Output pCreated As %Boolean) As %Status
+{
+    Set pCreated = 0
+    Set tSC = $$$OK
+    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
+        Quit $$$ERROR($$$GeneralError, "EnsureUser creates a user account on this instance and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was created. Bring one up with scripts/ci-throwaway.sh, which sets it.")
+    }
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If ##class(Security.Users).Exists(pName) {
+            Set $NAMESPACE = tOrigNS
+            Set tSC = $$$ERROR($$$GeneralError, "the probe account " _ pName _ " already exists on this instance; this fixture creates its own and will not adopt one it did not make")
+            Quit
+        }
+        Set tSC = ##class(Security.Users).Create(pName, pRoles, ..#USERPASSWORD, pName _ " probe", "", "", "", 0, ''pEnabled, ..#USERMARKER)
+        Set $NAMESPACE = tOrigNS
+        If $$$ISERR(tSC) Quit
+        Set pCreated = 1
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Remove the probe account <var>pName</var> again, and only if it carries
+/// <parameter>USERMARKER</parameter>. An account that is not there is not an error.</p>
+ClassMethod RemoveUser(pName As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If ##class(Security.Users).Exists(pName) {
+            Kill tProps
+            Set tGetSC = ##class(Security.Users).Get(pName, .tProps)
+            If $$$ISOK(tGetSC) && ($Get(tProps("Comment")) = ..#USERMARKER) {
+                Set tSC = ##class(Security.Users).Delete(pName)
+            } Else {
+                Set tSC = $$$ERROR($$$GeneralError, "the account " _ pName _ " is not this fixture's own, so it was left alone")
+            }
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>A stored property of the probe account <var>pName</var>, as
+/// <class>Security.Users</class> answers it; <code>""</code> for an account the instance does not
+/// carry. What a confirmed write is read back through, beside the screen the user would look at.</p>
+ClassMethod UserField(pName As %String, pField As %String = "Enabled") As %String
+{
+    Set tValue = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Kill tProps
+        If $$$ISOK(##class(Security.Users).Get(pName, .tProps)) Set tValue = $Get(tProps(pField))
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tValue = ""
+    }
+    Quit tValue
+}
+
+/// <p>Create <parameter>USERALLROLE</parameter>, a role whose only grant is <code>%All</code>, so
+/// the census can be shown counting an account that holds <code>%All</code> through no declared
+/// role of its own. Same throwaway-only gate and same never-adopt refusal as
+/// <method>EnsureUser</method>.</p>
+ClassMethod EnsureAllRole(Output pCreated As %Boolean) As %Status
+{
+    Set pCreated = 0
+    Set tSC = $$$OK
+    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
+        Quit $$$ERROR($$$GeneralError, "EnsureAllRole creates a role on this instance and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was created. Bring one up with scripts/ci-throwaway.sh, which sets it.")
+    }
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If ##class(Security.Roles).Exists(..#USERALLROLE) {
+            Set $NAMESPACE = tOrigNS
+            Set tSC = $$$ERROR($$$GeneralError, "the probe role " _ ..#USERALLROLE _ " already exists on this instance; this fixture creates its own and will not adopt one it did not make")
+            Quit
+        }
+        Set tSC = ##class(Security.Roles).Create(..#USERALLROLE, ..#USERMARKER, "", "%All")
+        Set $NAMESPACE = tOrigNS
+        If $$$ISERR(tSC) Quit
+        Set pCreated = 1
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Remove <parameter>USERALLROLE</parameter> again, and only if it carries
+/// <parameter>USERMARKER</parameter> as its description.</p>
+ClassMethod RemoveAllRole() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If ##class(Security.Roles).Exists(..#USERALLROLE) {
+            Kill tProps
+            Set tGetSC = ##class(Security.Roles).Get(..#USERALLROLE, .tProps)
+            If $$$ISOK(tGetSC) && ($Get(tProps("Description")) = ..#USERMARKER) {
+                Set tSC = ##class(Security.Roles).Delete(..#USERALLROLE)
+            } Else {
+                Set tSC = $$$ERROR($$$GeneralError, "the role " _ ..#USERALLROLE _ " is not this fixture's own, so it was left alone")
+            }
+        }
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>Run <var>pSql</var> with one or two bound values.</p>
 ClassMethod Update(pSql As %String, pFirst As %String, pSecond As %String = "") As %Status [ Private ]
 {

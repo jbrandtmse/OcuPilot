@@ -18,6 +18,12 @@ Parameter TOOL = "webapp.list.update";
 
 Parameter TOOLCLASS = "OcuPilot.Screen.Tool.WebAppUpdate";
 
+/// <p>Story 5.9's write tool, pinned here beside Story 5.5's because both questions are "what does
+/// the registry advertise, with which pairs".</p>
+Parameter USERTOOL = "permissions.users.update";
+
+Parameter USERTOOLCLASS = "OcuPilot.Screen.Tool.UserUpdate";
+
 Parameter WRITEBASE = "OcuPilot.Screen.Tool.Write";
 
 Parameter REGISTRY = "OcuPilot.Screen.Tool.Registry";
@@ -306,6 +312,76 @@ Method TestWithNothingRestrainingItTheCallMintsAProposal()
     Do $$$AssertNotEquals(tPayload.%GetTypeOf("MatchRoles"), "unassigned", "the payload still carries a MatchRoles the schema never admitted")
     If tPayload.%GetTypeOf("MatchRoles") = "unassigned" Quit
     Do $$$AssertEquals(tPayload.%Get("MatchRoles").%ToJSON(), tFresh.%Get("MatchRoles").%ToJSON(), "unchanged from the fresh read")
+}
+
+/// <p>Story 5.9, AD-3, AD-8, AD-10: the Users write tool. Its resolved set is the Users screen's
+/// own two pairs, each once; it advertises <code>Enabled</code> and the one authored
+/// <code>Roles</code> argument and nothing else; and every other key -- <code>EscalationRoles</code>
+/// among them -- is refused under <code>additionalProperties: false</code>.</p>
+/// <p>Mutations: set <parameter>OcuPilot.Screen.Tool.UserUpdate.WRITEPERMISSION</parameter> back to
+/// <code>"WRITE"</code> (the pair assertions redden), drop the <code>Roles</code> property from
+/// <method>OcuPilot.Screen.Tool.UserUpdate.InputSchema</method> (the advertised-fields assertions
+/// redden), or remove <code>EscalationRoles</code> from
+/// <method>OcuPilot.Screen.Tool.UserUpdate.ExcludedFields</method> (the exclusion assertion
+/// reddens; the schema still refuses the key, because the classification calls it
+/// <code>opaque</code>).</p>
+Method TestTheUserWriteToolAdvertisesEnabledAndRolesWithTheScreensOwnPairs()
+{
+    Set tSC = $ClassMethod(..#REGISTRY, "Resolve", ..#USERTOOL, .tTool)
+    Do $$$AssertStatusOK(tSC, "the registry resolves the users write tool by name")
+    Do $$$AssertTrue($IsObject(tTool), "and finds it")
+    If '$IsObject(tTool) Quit
+    Do $$$AssertEquals(tTool.%Get("kind"), "write", "it is a write tool")
+    Do $$$AssertEquals(tTool.%Get("class"), ..#USERTOOLCLASS, "answered by its own class")
+    Do $$$AssertEquals($ClassMethod(..#REGISTRY, "FulfilmentOf", tTool), "instance", "fulfilled on the instance, never in the browser")
+
+    Set tPairs = $ClassMethod(..#USERTOOLCLASS, "PrivilegePairs", "", .tResolved)
+    Do $$$AssertEquals(tResolved, 1, "its pairs resolve")
+    Set tSpelled = ""
+    Kill tSeen
+    For tI = 1:1:$ListLength(tPairs) {
+        Set tResource = $List($List(tPairs, tI), 1)
+        Set tPermission = $List($List(tPairs, tI), 2)
+        Set tSpelled = tSpelled _ $Select(tI = 1: "", 1: ",") _ tResource _ ":" _ tPermission
+        Set tSeen(tResource _ ":" _ tPermission) = +$Get(tSeen(tResource _ ":" _ tPermission)) + 1
+        If $ListFind($ListFromString($Parameter("OcuPilot.Screen.Gate", "ADMINRESOURCES")), tResource) {
+            Do $$$AssertEquals(tPermission, $Parameter("OcuPilot.Screen.Gate", "ADMINPERMISSION"), tResource _ " is required at the one permission a shipped role grants it at")
+        }
+    }
+    Do $$$AssertEquals($ListLength(tPairs), 2, "the resolved set is exactly two pairs: " _ tSpelled)
+    Do $$$AssertEquals(+$Get(tSeen("%Admin_Secure:USE")), 1, "the screen's own use pair is required once: " _ tSpelled)
+    Do $$$AssertEquals(+$Get(tSeen("%DB_IRISSYS:READ")), 1, "and its database read once: " _ tSpelled)
+    Do $$$AssertEquals(+$Get(tSeen("%Admin_Secure:WRITE")), 0, "and no pair asks for a write permission on an administrative resource: " _ tSpelled)
+    Set tDeclared = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(..#USERTOOLCLASS, "DESCRIPTORCLASS"), .tDeclaredResolved)
+    Do $$$AssertEquals(tDeclaredResolved, 1, "the screen's own declared set resolves")
+    Do $$$AssertEquals(tPairs, tDeclared, "and the write's set is that set, not a superset of it")
+
+    Set tFields = $ClassMethod(..#USERTOOLCLASS, "SettableFields")
+    Do $$$AssertEquals($ListToString(tFields), "Enabled,Roles", "the settable fields are the one derived literal and the one authored array")
+    Set tPermittedByTheSet = ##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedChangeFields("user")
+    Do $$$AssertEquals($ListLength(tPermittedByTheSet), $ListLength(tFields), "and the kernel has reviewed exactly as many fields as the tool advertises")
+    For tI = 1:1:$ListLength(tFields) {
+        Do $$$AssertTrue($ListFind(tPermittedByTheSet, $List(tFields, tI)) > 0, $List(tFields, tI) _ " is a field AD-10's set has reviewed for a user")
+    }
+
+    Set tProperties = $ClassMethod(..#USERTOOLCLASS, "InputSchema").%Get("properties")
+    Do $$$AssertEquals(tProperties.%Get("Enabled").%Get("type"), "boolean", "Enabled is advertised with its derived JSON type")
+    Do $$$AssertEquals(tProperties.%Get("Roles").%Get("type"), "array", "Roles is advertised as an array")
+    Do $$$AssertEquals(tProperties.%Get("Roles").%Get("items").%Get("type"), "string", "of role names")
+    Do $$$AssertNotEquals(tProperties.%Get("Roles").%Get("description"), "", "carrying the reviewed description AD-3 requires")
+    Do $$$AssertEquals(tProperties.%GetTypeOf("EscalationRoles"), "unassigned", "EscalationRoles is not advertised")
+    Do $$$AssertEquals(tProperties.%GetTypeOf("FullName"), "unassigned", "and neither is an ordinary literal the set has not reviewed")
+    Do $$$AssertTrue($ListFind($ClassMethod(..#USERTOOLCLASS, "ExcludedFields"), "EscalationRoles") > 0, "the tool excludes the escalation subtree by name as well")
+
+    Set tSchema = $ClassMethod(..#USERTOOLCLASS, "InputSchema")
+    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Name": "OcuPilotProbeSchema", "EscalationRoles": ["%All"]}, .tProblem)
+    Do $$$AssertStatusNotOK(tSC, "a call carrying EscalationRoles is refused")
+    Do $$$AssertTrue(tProblem [ "EscalationRoles", "naming the argument: " _ tProblem)
+    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Name": "OcuPilotProbeSchema", "FullName": "renamed"}, .tProblem)
+    Do $$$AssertStatusNotOK(tSC, "and so is an unreviewed ordinary literal")
+    Do $$$AssertTrue(tProblem [ "FullName", "naming that argument too: " _ tProblem)
+    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Name": "OcuPilotProbeSchema", "Roles": ["%Developer"], "Enabled": true}, .tProblem)
+    Do $$$AssertStatusOK(tSC, "while the two advertised fields together validate: " _ tProblem)
 }
 
 /// <p>The class <var>pClass</var> inherits method <var>pName</var> from, or <code>""</code>.</p>

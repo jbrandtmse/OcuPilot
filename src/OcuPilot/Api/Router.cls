@@ -573,10 +573,17 @@ ClassMethod CanonicalNamespace(pNamespace As %String) As %String
 /// (<method>HoldsAdminResource</method>, against the closed
 /// <parameter>ADMINRESOURCES</parameter> list); otherwise 403 with the machine code
 /// <code>AUTH.NOADMIN</code>. <b>A caller who lacks read on the install namespace's
-/// database never reaches this method at all</b> — IRIS cannot load this class for that
-/// request, and the framework answers a bare 403 with no envelope, which is why README.md
-/// states the read requirement rather than leaving it to be discovered from a
-/// response.</li>
+/// database never reaches this method at all</b>: the framework's own
+/// <method>%CSP.REST.AccessCheck</method> requires that read and, when it fails, sets 403
+/// <i>inline</i> in <code>%CSP.REST.Page()</code> rather than through
+/// <method>ReportHttpStatusCode</method>, so the caller is answered 403 with an empty body
+/// and no OcuPilot-resident method has run. Overriding <code>AccessCheck</code> to render
+/// the envelope there does not help and makes it worse: the override itself is compiled
+/// into the install namespace's database, so dispatching to it raises
+/// <code>&lt;PROTECT&gt;</code> and the caller is answered a vendor 500 error page instead
+/// (measured on a throwaway container, 2026-09-21). Database READ is routine-execution
+/// permission (AD-9, AD-21), so this is a prerequisite rather than a gate OcuPilot can
+/// answer for, and README.md's roles section states it.</li>
 /// <li><b>Namespace.</b> The <code>?ns=</code> query parameter, defaulting to the
 /// namespace already in effect when the request begins (the web application's configured,
 /// installed namespace) and validated with <code>##class(%SYS.Namespace).Exists()</code> —

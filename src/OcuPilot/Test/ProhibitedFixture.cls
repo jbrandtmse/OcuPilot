@@ -14,9 +14,87 @@ Class OcuPilot.Test.ProhibitedFixture Extends OcuPilot.Kernel.Proposal.Prohibite
 /// <p>The write tool both suites drive the set through.</p>
 Parameter TOOL = "webapp.list.update";
 
+/// <p>Story 5.9's write tool, for the callers that drive the user predicates.</p>
+Parameter USERTOOL = "permissions.users.update";
+
 ClassMethod PortClass() As %String
 {
     Quit "OcuPilot.Test.ProposalFixture"
+}
+
+/// <p>The shipped census, except that <method>OcuPilot.Test.ProposalFixture.ArmLastAllHolder</method>
+/// can answer "yes" for it -- so AD-10's last-<code>%All</code>-holder refusal is driven on an
+/// instance that has several holders, without stripping the role from a real account. Disarmed, the
+/// shipped query over the whole population answers.</p>
+ClassMethod LastAllHolder(pId As %String, Output pLast As %Boolean) As %Status
+{
+    If ##class(OcuPilot.Test.ProposalFixture).LastAllHolderArmed() {
+        Set pLast = 1
+        Quit $$$OK
+    }
+    Quit ##super(pId, .pLast)
+}
+
+/// <p>The shipped answer, except that <method>OcuPilot.Test.ProposalFixture.ArmAllHolders</method>
+/// can name which accounts hold <code>%All</code> -- so the shipped census body runs in full over
+/// the real population while the answer it asks of each account is deterministic. Disarmed, the
+/// shipped <code>%SYS</code> lookup answers.</p>
+ClassMethod HoldsAll(pUser As %String, Output pHolds As %Boolean) As %Status
+{
+    If ##class(OcuPilot.Test.ProposalFixture).AllHoldersArmed(pUser, .tHolds) {
+        Set pHolds = tHolds
+        Quit $$$OK
+    }
+    Quit ##super(pUser, .pHolds)
+}
+
+/// <p>One user account as the vendor's own <code>Security.User</code> <code>GET</code> shapes it,
+/// as compact JSON: all sixteen properties that endpoint answers on this build, in the types it
+/// answers them in, with <var>pEnabled</var>, <var>pRoles</var> and <var>pEscalationRoles</var>
+/// (each a comma-separated list of names) supplied and the rest left at probe defaults.</p>
+/// <p>The full property set matters because AD-4 makes the payload the complete one: a builder that
+/// answered a subset would let a merge look complete against a target that was not.</p>
+/// <p><var>pRolesAsString</var> sends <code>Roles</code> as the comma-separated string
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.RoleNames</method> declares as its second input
+/// shape, instead of the array the vendor <code>GET</code> answers. It exists so that branch has an
+/// executed test host: read as nothing, it would empty the role delta and permit every grant.</p>
+ClassMethod UserObject(pName As %String, pEnabled As %Boolean = 1, pRoles As %String = "", pEscalationRoles As %String = "", pFullName As %String = "before", pRolesAsString As %Boolean = 0) As %String
+{
+    Set tObject = {}
+    Do tObject.%Set("AccountNeverExpires", 1, "boolean")
+    Do tObject.%Set("AutheEnabled", 32, "number")
+    Do tObject.%Set("ChangePassword", 0, "boolean")
+    Do tObject.%Set("Comment", "probe", "string")
+    Do tObject.%Set("EmailAddress", "", "string")
+    Do tObject.%Set("Enabled", ''pEnabled, "boolean")
+    Do tObject.%Set("ExpirationDate", "", "string")
+    Do tObject.%Set("FullName", pFullName, "string")
+    Do tObject.%Set("HOTPKeyDisplay", 0, "boolean")
+    Do tObject.%Set("NameSpace", "", "string")
+    Do tObject.%Set("PasswordNeverExpires", 1, "boolean")
+    Do tObject.%Set("PhoneNumber", "", "string")
+    Do tObject.%Set("PhoneProvider", "", "string")
+    If pRolesAsString {
+        Do tObject.%Set("Roles", pRoles, "string")
+    } Else {
+        Do tObject.%Set("Roles", ..Names(pRoles))
+    }
+    Do tObject.%Set("EscalationRoles", ..Names(pEscalationRoles))
+    Do tObject.%Set("Routine", "", "string")
+    Quit tObject.%ToJSON()
+}
+
+/// <p>The comma-separated <var>pNames</var> as a JSON array of strings, which is the shape the
+/// vendor's <code>GET</code> answers a role list in.</p>
+ClassMethod Names(pNames As %String) As %DynamicArray
+{
+    Set tArray = []
+    For tI = 1:1:$Length(pNames, ",") {
+        Set tOne = $Piece(pNames, ",", tI)
+        If tOne = "" Continue
+        Do tArray.%Push(tOne)
+    }
+    Quit tArray
 }
 
 /// <p>One web application as the vendor's own <code>GET</code> shapes it, as compact JSON: the six
@@ -77,11 +155,11 @@ ClassMethod Reference(pPath As %String, pType As %String = "web-application") As
 /// tool's own descriptor exclusions, through the same methods
 /// <method>OcuPilot.Kernel.Proposal.Confirm.FingerprintMatches</method> calls. <code>""</code> when
 /// any of them refuses.</p>
-ClassMethod Digest(pFresh As %String) As %String
+ClassMethod Digest(pFresh As %String, pTool As %String = {..#TOOL}) As %String
 {
     Set tDigest = ""
     Try {
-        Set tSC = $ClassMethod(..RegistryClass(), "Resolve", ..#TOOL, .tTool)
+        Set tSC = $ClassMethod(..RegistryClass(), "Resolve", pTool, .tTool)
         If $$$ISERR(tSC) || '$IsObject(tTool) Quit
         Set tClass = tTool.%Get("class")
         Set tSC = ##class(OcuPilot.Kernel.Proposal.Mint).Merge(##class(%DynamicAbstractObject).%FromJSON(pFresh), {}, $ClassMethod(tClass, "IdArgument"), $ClassMethod(tClass, "SettableFields"), .tPayload, .tDiff, .tUnchanged, .tProblem)
@@ -99,10 +177,10 @@ ClassMethod Digest(pFresh As %String) As %String
 
 /// <p>Ask this set about <var>pPayload</var> and <var>pDiff</var> against the armed target
 /// <var>pFresh</var>, for the target <var>pPath</var> of type <var>pType</var>.</p>
-ClassMethod Ask(pFresh As %String, pPayload As %String, pDiff As %String, pPath As %String, pType As %String = "web-application", Output pProhibits As %Boolean, Output pCode As %String) As %Status
+ClassMethod Ask(pFresh As %String, pPayload As %String, pDiff As %String, pPath As %String, pType As %String = "web-application", Output pProhibits As %Boolean, Output pCode As %String, pTool As %String = {..#TOOL}) As %Status
 {
     Do ##class(OcuPilot.Test.ProposalFixture).Arm(pFresh)
-    Quit ..Prohibits(..#TOOL, ..Reference(pPath, pType), pPayload, pDiff, .pProhibits, .pCode)
+    Quit ..Prohibits(pTool, ..Reference(pPath, pType), pPayload, pDiff, .pProhibits, .pCode)
 }
 
 }
