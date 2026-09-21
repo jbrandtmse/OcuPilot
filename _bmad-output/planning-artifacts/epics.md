@@ -3700,6 +3700,11 @@ So that the safety model is demonstrated rather than described.
 - **Then** its field list is derived from the underlying class and pinned by a test, and a body sent against a target deleted since the read would create a stub rather than fail - which is what the fresh read plus fingerprint covers.
 
 - DW-1171: a dropped `SecurityChange` audit emission is logged as a configuration change (ledger; routed by merge_gate 2026-09-18)
+- DW-1206: a `secretArguments` entry that names nothing is accepted, so the field it meant to protect stays settable and reachable by the model. **Decided 2026-09-21:** the set is the write tool's settable fields union everything the screen's read declares (read fields and declared flag criteria); it is extracted **once** and consumed by both this validator and `fingerprintExcludes`, never derived twice, and `screen-mirror.mjs` reads it from the kernel's declaration rather than re-implementing it. Falsified both ways: a misspelled entry fails, a read-only screen's criterion-as-secret still passes (ledger; routed by merge_gate 2026-09-21)
+- DW-1226: `Mint.WarnsAuditingOff` answers false for a non-boolean auditing argument, so `0`, `false` or a null would mint an auditing-off write carrying no in-card warning - the one thing this story's first acceptance criterion promises (ledger; routed by cr 2026-09-19)
+- DW-1244: `Mint`'s audit-warning constants name a tool and a field that do not exist until this story, and the only test that reads them asserts the constants against themselves (ledger; routed by cr 2026-09-19)
+- DW-1251: the panel hands the confirm request an empty secrets map, so AD-35's client half has no data path (ledger; routed by cr 2026-09-19)
+- DW-1278: `ChannelProblem`'s accept arm and its structured-secret guard are executed by no test, because no shipped descriptor declares a secret - this is the story that ships one (ledger; routed by cr 2026-09-19)
 
 ### Story 5.11: Tasks - resume a task suspended after an error
 
