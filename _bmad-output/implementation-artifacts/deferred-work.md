@@ -4432,6 +4432,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: proposal-card.ts renders the warning role=status beside the countdown announcement and the terminal status line, all three inserting with the reply block; switches.page, definition-form.page, list-page and panel.ts's send-error banner all use role=alert, panel.ts's secret warning uses role=status, so the convention is not one-sided. Whether the safety sentence is spoken is not observable in jsdom or in a browser spec - only a screen reader answers it.
 - 2026-09-19T18:48:42Z status=routed owner=5-10-security-and-secrets-disable-and-re-enable-auditing by=cr note=5.10 ships the first proposal that trips the warning, which is when a screen-reader pass has something to hear
+- 2026-09-21T23:13:31Z occurrence=5-10-security-and-secrets-disable-and-re-enable-auditing
 
 ### DW-1247: GuardedRowsForConvo drops every proposal in the conversation when one row's values or wire projection fails, where an unopenable row only skips that row
 - source: spec-5-2-the-proposal-card-the-diff-the-user-reviews.md | severity: low | fix-risk: low | footprint: in-story
@@ -4458,6 +4459,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: med | fix-risk: low | footprint: in-epic
 - evidence: Panel.secretsFor answers an empty map; no shipped descriptor declares a secret argument until the first real one. Location: ui/src/app/shell/panel.ts
 - 2026-09-19T22:43:49Z status=routed owner=5-10-security-and-secrets-disable-and-re-enable-auditing by=harvest note=downstream-blocking (Rule 27): 5.10 ships the first real secret field, which is what gives this a data path
+- 2026-09-21T23:13:31Z occurrence=5-10-security-and-secrets-disable-and-re-enable-auditing
 
 ### DW-1252: A confirm refusal that leaves the row live gives the card no reason anywhere
 - source: spec-5-3-confirm-is-a-user-originated-request-and-the-write-is-one-at.md | severity: med | fix-risk: low | footprint: in-epic
@@ -5731,3 +5733,38 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - evidence: resetProblem counts occurrences of createBrowserContext( and browser.newPage( and returns null when the count is 0. users-write.browser-spec.mjs gets its page from signedInAt() in panel-spec.mjs, so the checker scores it 0 contexts and requires no reset; suggested-view.browser-spec.mjs wraps the same helper and its uncalled import is invisible for the same reason. The checker reports clean: 39 contexts, 37 resets, 2 exemptions - it never counted either file.
 - 2026-09-21T17:45:36Z status=routed owner=burndown by=lead note=THIRD under-detection in this one checker: DW-1435 was the call-without-import case, and the predecessor tightened it then. A gate that enumerates spellings will keep missing the next indirection - counting what the helpers return, or requiring the reset per signed-in entry point rather than per literal call, is the shape that stops recurring.
 - 2026-09-21T19:49:53Z status=routed owner=burndown by=merge_gate note=DECIDED downstream-blocking, WITH A RULING ON THE CHECKER ITSELF: this is the THIRD under-detection in browser-reset.mjs - first the call without the import, now two literal spellings letting any spec that takes its page from a helper escape entirely. A checker that has missed three times is becoming the very thing it was required to replace: correct only while someone keeps it in step. So when the burn-down takes it, RE-KEY IT ON CONTEXT CREATION WHEREVER THAT OCCURS, INCLUDING INSIDE A HELPER, rather than on literal call-site spellings. That is the actual invariant; the spellings are a proxy for it.
+
+### DW-1449: The auditing-off banner clears only when an OcuPilot write emits a marker, so auditing re-enabled outside OcuPilot leaves the banner standing
+- source: spec-5-10-security-and-secrets-disable-and-re-enable-auditing.md | severity: med | fix-risk: med | footprint: src/OcuPilot/Kernel/Audit/Event.cls:293
+- evidence: writesMarked is a recorded fact read from Kernel/State/Switch, written only by Confirm.cls:402 after an attempted emission and by Installer.cls:3118. No producer exists for a manual re-enable. Probe: re-enable auditing by hand, re-read /agent/restraint.
+- 2026-09-21T23:13:31Z status=routed owner=burndown by=harvest note=The banner is the product's one standing signal that accountability is off, and an operator who re-enables auditing in the portal is told nothing changed. Nothing later in Epic 5 owns agent-status, so it goes to the burn-down.
+
+### DW-1450: A secretArguments entry may still name a derived field the write tool does not permit, and WithSecrets would set it into the body at write time
+- source: spec-5-10-security-and-secrets-disable-and-re-enable-auditing.md | severity: med | fix-risk: med | footprint: src/OcuPilot/Screen/Registry.cls:2065
+- evidence: DeclaredNames' settable projection is the field list's ordinary top-level literals, not Write.FieldRows' output, which also applies PermittedFields and drops declared secrets - narrowing to it would reject every declared secret. Probe: declare secretArguments Timeout on webapp.list.update's screen and confirm with a Timeout key.
+- 2026-09-21T23:13:31Z status=routed owner=burndown by=harvest note=DW-1206's RESIDUAL and a different claim to it: the decided union stops a name that matches NOTHING, this is a name that matches the wrong thing. Naming the obvious narrower set would reject every legitimate declared secret, which is why it is not a one-line follow-on.
+
+### DW-1451: The destructive-test gate cannot see a class that turns auditing off through the shipped confirm path, so such a class is guarded by its author's decision rather than by the gate
+- source: spec-5-10-security-and-secrets-disable-and-re-enable-auditing.md | severity: med | fix-risk: med | footprint: scripts/check-objectscript.py:1324
+- evidence: check_destructive_test_guard matches call-shaped regexes over one file and cannot follow a confirm; the tool's class name is no proxy - several classes read its parameters without writing, and an arm on it reddened the shipped tree (tried and reverted by the implement stage). Probe: write a Test class that mints and confirms an auditing proposal with no OnBeforeAllTests refusal.
+- 2026-09-21T23:13:31Z status=routed owner=burndown by=harvest note=Same family as DW-1448: a checker whose detection is call-shaped regexes over one file cannot see an effect reached through an indirection. The limit is at least now stated in the rule's own prose rather than implied.
+
+### DW-1452: OcuPilot.Test.ProhibitedRoute is now armed class-wide, so on a throwaway predating OCUPILOT_ALLOW_AUDIT_TOGGLE its nine pre-existing least-privileged legs no longer run
+- source: spec-5-10-security-and-secrets-disable-and-re-enable-auditing.md | severity: med | fix-risk: low | footprint: src/OcuPilot/Test/ProhibitedRoute.cls
+- evidence: OnBeforeAllTests refuses on both arming variables, the project's class-level convention (ProviderSsl); %UnitTest offers no per-method skip. ci-throwaway.sh sets the variable, but the RUNNING ocupilot-ci predates it, so ci-runner refuses both classes there.
+- 2026-09-21T23:13:31Z status=routed owner=burndown by=harvest note=IT COSTS COVERAGE ON A REUSED CONTAINER RATHER THAN IN CI, which is the class of thing that reads as green. Nine legs that used to run now do not, on any throwaway started before this commit - including the one this epic has been reusing all day. CI brings its own up fresh so it is unaffected.
+
+### DW-1453: SurfaceCoverage's screen roster covers built screens only, so the tree's first built:false descriptor sits on no coverage roster
+- source: spec-5-10-security-and-secrets-disable-and-re-enable-auditing.md | severity: low | fix-risk: low | footprint: src/OcuPilot/Test/SurfaceCoverage.cls:53
+- evidence: The roster derives its screen half from registry-declared BUILT screens, so AuditingConfig has a dedicated test only because this story wrote one; a later unbuilt descriptor with no test passes the surface floor silently. Stories 5.11-5.13 add more unbuilt descriptors.
+- 2026-09-21T23:13:31Z status=routed owner=5-11-tasks-resume-a-task-suspended-after-an-error by=harvest note=Routed to 5.11 rather than the burn-down BECAUSE 5.11-5.13 each add unbuilt descriptors: fixing it at the next story stops the silent gap widening three more times. A two-way door - extend the roster to unbuilt descriptors.
+
+### DW-1454: payloadSecrets asks only for the names this proposal's payload carries, so a wrapper-body secret that is not a payload field would never be asked for and never reach the write
+- source: spec-5-10-security-and-secrets-disable-and-re-enable-auditing.md | severity: low | fix-risk: low | footprint: ui/src/app/core/proposal-view.ts:321
+- evidence: Confirm.cls:601-608 sets every declared name the body supplied, including one the payload lacks, so the narrowing is the client's choice; AD-3 names Security.User's POST {User, Password} and its change-password {NewPassword}.
+- 2026-09-21T23:13:31Z status=wontfix-accepted owner=burndown by=harvest note=reopen_if=a shipped descriptor declares a secretArguments name that is not a top-level payload field - the first wrapper-body secret makes it real, and none exists today
+
+### DW-1455: Another user's tab learns the auditing-off banner only on its next /agent/restraint read, so 'immediately for every user' is bounded by that cadence
+- source: spec-5-10-security-and-secrets-disable-and-re-enable-auditing.md | severity: low | fix-risk: low | footprint: ui/src/app/core/agent-status.ts:450
+- evidence: agent-status re-reads only on a changed event of type agent-definition or agent-switch; app.ts:541 loads on each signed-in pass; no setInterval touches /agent/restraint. The product has no push channel.
+- 2026-09-21T23:13:31Z status=wontfix-accepted owner=burndown by=harvest note=reopen_if=a story adds a push or polling channel for restraint state, or the epics wording 'immediately for every user' is read as a measurable NFR rather than as prose
