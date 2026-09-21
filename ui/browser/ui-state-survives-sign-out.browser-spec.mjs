@@ -50,6 +50,13 @@ const SORT_ITEM = '.ocu-command-bar-sort-item';
 const CAP = 7;
 const FILTER = 'IRIS';
 
+/**
+ * The only two keys AC2 lets the browser hold: the per-tab token pair and the nonce that scopes
+ * it to this tab (`core/token-store.ts`, Story 1.6). Anything else in `sessionStorage` is state
+ * this story moved to the instance leaking back into the browser.
+ */
+const ALLOWED_SESSION_KEYS = ['ocupilot.tab-nonce', 'ocupilot.token-pair'];
+
 let browser = null;
 
 before(async () => {
@@ -247,13 +254,18 @@ test('Integration AC: all six remembered things return after a real sign-out and
     // AC2's other half, read in the context that did the writing: a client that mirrored any of
     // this to browser storage on write would leave it here, and the second context -- which only
     // reads -- would show nothing either way.
+    //
+    // Asserted as the KEY SET rather than by searching the stored values for the figures this
+    // spec set. Those values are a JWT and a random per-tab nonce, and a needle as short as
+    // `432` turns up inside random material often enough to redden this row on an otherwise
+    // green run -- which is what CI did on 2026-09-21 while the same tree passed locally. The
+    // key set is also what AC2 actually claims ("the browser holding only the per-tab token
+    // pair"), and it catches a seventh key whatever its value happens to contain.
     const wrote = await clientStorageEntries(first.page);
-    const carriesState = (entries) =>
-      entries.some(([key, value]) =>
-        [key, value].some((text) => text.includes(FILTER) || text.includes('432') || text.includes('sideBar') || text.includes('panel.width'))
-      );
+    const unexpectedSession = (entries) =>
+      entries.map(([key]) => key).filter((key) => !ALLOWED_SESSION_KEYS.includes(key)).sort();
     assert.equal(wrote.local.length, 0, `nothing at all is in localStorage: ${JSON.stringify(wrote.local)}`);
-    assert.equal(carriesState(wrote.session), false, `and none of the six is in sessionStorage: ${JSON.stringify(wrote.session)}`);
+    assert.deepEqual(unexpectedSession(wrote.session), [], `sessionStorage holds only the per-tab token pair: ${JSON.stringify(wrote.session)}`);
 
     // The instance is where they went. Read over the shipped route, as the account itself.
     const held = await preferences();
@@ -304,7 +316,7 @@ test('Integration AC: all six remembered things return after a real sign-out and
     // And this context's own storage, which never held the first one's token pair either.
     const storage = await clientStorageEntries(second.page);
     assert.equal(storage.local.length, 0, `nothing reached localStorage: ${JSON.stringify(storage.local)}`);
-    assert.equal(carriesState(storage.session), false, `nor sessionStorage: ${JSON.stringify(storage.session)}`);
+    assert.deepEqual(unexpectedSession(storage.session), [], `nor does the signed-in second context: ${JSON.stringify(storage.session)}`);
   } finally {
     if (first !== null) await first.context.close();
     if (second !== null) await second.context.close();
