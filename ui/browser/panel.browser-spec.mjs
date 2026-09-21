@@ -5,8 +5,9 @@
  * minimum measured at the narrowest supported viewport.
  *
  * jsdom computes no layout and has no pointer, focus order or reload, so each of these is only
- * observable here. Every test opens its own browser context, so a width one test stores is never
- * another's starting point, and the stored preference dies with the context.
+ * observable here. The width a test stores now lives on the instance under the one account every
+ * spec signs in as (AD-50), so a new browser context does not reset it: each test here starts from
+ * the slate `preferences-reset.mjs` restores where the context is created.
  *
  * It refuses the live container. The draft test enables a probe definition (created over the
  * shipped route, flagged through `OcuPilot.Test.AgentFixture.SetFlags` inside the container) and

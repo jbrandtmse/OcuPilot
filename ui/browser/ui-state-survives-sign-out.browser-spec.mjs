@@ -4,6 +4,8 @@
  * state and the panel's width -- set in one browser context, and rendered unchanged after a real
  * sign-out and a sign-in in a **brand-new** one.
  *
+ * preferences-reset-exempt: it is about state surviving a sign-out, so it sets and clears its own rows.
+ *
  * **Why this file.** Each link has its own pinning test -- `OcuPilot.Test.PreferencesWire` proves
  * the instance keeps the rows, `ui/tools/api.test.mjs` bans `localStorage` everywhere under
  * `ui/src`, and the component specs prove each store reads `AccountPreferences` -- but nothing

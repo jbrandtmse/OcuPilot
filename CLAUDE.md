@@ -122,9 +122,9 @@ above and the container detail below this block are the operational essentials.
   `npx markdownlint-cli2` lints nothing: the config carries rules only, and the document set lives
   in `scripts/check-prose.py`. The `.githooks/pre-commit` hook runs both on staged files once you
   have run `git config core.hooksPath .githooks` in the clone.
-- Build and test the client from `ui/`: `npm run build` (its `prebuild` chains six checkers —
+- Build and test the client from `ui/`: `npm run build` (its `prebuild` chains seven checkers —
   version guard, `client-lint.mjs`, `screen-mirror.mjs --check`, `classic-links.mjs`,
-  `ipm-manifest.mjs --check`, `field-lists.mjs --check`) and `npm test`
+  `ipm-manifest.mjs --check`, `field-lists.mjs --check`, `browser-reset.mjs`) and `npm test`
   (`node --test tools/*.test.mjs` then the Angular component runner on vitest+jsdom). `npm run test:browser` drives a pinned headless Chrome — jsdom
   computes no layout, so anything about geometry belongs there. The spine pins Angular 22.1.x,
   TypeScript 6.0.x exactly, and Node `^22.22.3 || ^24.15.0 || ^26.0.0`; Node 20 and TypeScript 5.9

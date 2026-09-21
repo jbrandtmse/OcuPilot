@@ -3,6 +3,8 @@
  * favorites and recents held before a sign-out render unchanged after signing back in in a new
  * tab, because the state was read from the instance and no browser storage holds it.
  *
+ * preferences-reset-exempt: it is about remembered state surviving, so it arranges and clears its own rows.
+ *
  * **Why this file, and why it was missing.** Every link in the chain has its own pinning test --
  * `OcuPilot.Test.PreferencesWire` proves the instance keeps the rows, `ui/tools/api.test.mjs`
  * bans `localStorage` everywhere under `ui/src`, and the component specs prove the locator
