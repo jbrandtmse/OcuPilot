@@ -51,8 +51,8 @@ Parameter EXCLUDEDFIELD = "EscalationRoles";
 /// vendor endpoint's own <code>ResourcesOR()</code> resource and the classic Users page's resource,
 /// and exactly the pair <class>OcuPilot.Screen.Descriptor.UserList</class> already declares for its
 /// own read. So the resolved set is the screen's two pairs and nothing else, which is what makes
-/// "the same 403 the editor would give" true by construction; no permission a shipped role does not
-/// grant appears on the path (AD-8 as amended 2026-09-21).</p>
+/// "the same 403 the editor would give" true by construction; no permission an IRIS-shipped role
+/// does not grant appears on the path (AD-8 as amended 2026-09-21).</p>
 Parameter WRITERESOURCE = "%Admin_Secure";
 
 Parameter WRITEPERMISSION = "USE";
@@ -96,7 +96,7 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
     Set tSchema = ##super(pDescriptor)
     If '$IsObject(tSchema) Quit tSchema
     If tSchema.%GetTypeOf("properties") '= "object" Quit tSchema
-    Set tRoles = {"type": "array", "description": "The complete list of roles this account is to hold after the change, each named exactly as this instance's own roles list reports it. It replaces the account's current roles rather than adding to them, so a role left out is a role removed. Adding a role that grants %All or any %Admin_ role is refused."}
+    Set tRoles = {"type": "array", "description": "The complete list of roles this account is to hold after the change, each named exactly as this instance's own roles list reports it. It replaces the account's current roles rather than adding to them, so a role left out is a role removed. Adding a role that would grant an administrative privilege is refused, whether it grants it by name, through another role, or as a resource it carries -- %All, %Manager, %Operator and %SecurityAdministrator are all refused."}
     Do tRoles.%Set("items", {"type": "string"})
     Do tSchema.%Get("properties").%Set(..#ROLESARGUMENT, tRoles)
     Quit tSchema

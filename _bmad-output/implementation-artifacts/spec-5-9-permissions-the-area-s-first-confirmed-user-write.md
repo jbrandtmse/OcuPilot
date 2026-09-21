@@ -350,6 +350,64 @@ reason (DW-1431). No generic write-path machinery changes: the tool overrides th
     with Confirm still pressable, and the mixed-case probe user proving the read-back and the
     highlighted row take the instance's spelling. Refuse to run against `ocupilot`.
 
+### Review Findings
+
+Code review 2026-09-21 (second review, five layers, full-opus). Entries after grouping: high 1, med 9,
+low 20; 14 patched in-pass, 10 ledgered. Detail in `## Review Triage Log`.
+
+1. `[high]` `[patched]` The privilege-grant predicate tested role **names** and the recursed **role**
+   set only, never the **resources** a role carries. Measured on `ocupilot-slot-a` and `ocupilot-ci`:
+   `%Manager`, `%Operator`, `%SecurityAdministrator`, `%HS_CCR_Deployer` and OcuPilot's own
+   `OcuPilotIdentity` each recurse to themselves alone and each carries `%Admin_Secure:U` or
+   `%Admin_Operate:U` as a resource, so an agent could propose granting one and the set answered
+   `prohibits=0`. `%Manager` confers exactly the pair this write tool gates on plus `%DB_IRISSYS:RW`.
+   IRIS ships no role whose name carries the `%Admin_` prefix, so the shipped name test was dead on a
+   stock instance. `RoleEscalates` now reads each role in the recursed set for its resource list
+   (`RoleGrantsPrivilege`, `%SYS` save/restore) and refuses on `%All` or the `%Admin_` prefix at any
+   permission; `%Developer`, `%SQL` and `%EnsRole_Operator` carry none and stay permitted.
+2. `[med]` `[patched]` The census counted the unauthenticated placeholders. `Security.Users:List`
+   answers `UnknownUser` enabled, and AD-21 records it holding `%All` on a Minimal-security instance,
+   so the last usable holder's disable would be permitted. Extracted `CountsAsHolder`, which reads
+   `Gate.ANONYMOUSPRINCIPALS` — AD-21's one home for that list — and is now directly pinned.
+3. `[med]` `[patched]` AC1's least-privileged leg confirmed only a flag flip, so neither the role add
+   AC1 names nor the census's own `%Admin_Secure:USE` demand was measured by a non-`%All` principal.
+   Both now are, and the declared pair set is measured sufficient for a role-assigning PUT.
+4. `[med]` `[patched]` AC6's client half was unpinned in the `gates` tier and its recorded mutation
+   named only the server rule; the client fold could be an identity function with the whole job green.
+5. `[med]` `[patched]` The DW-1431 documented half named the wrong derivation (`AccessCheck` tests the
+   **default global** database's resource, not the routine database's) and left the wrong mechanism at
+   a second origin in `README.md`. Both corrected at origin.
+6. `[med]` `[patched]` The browser AC4 leg is named for the current-user predicate but, with
+   `config.username` defaulting to `_SYSTEM`, measures the `_SYSTEM` one; its `'disabl'` substring
+   could not tell the two sentences apart. Assertion made discriminating and the comment says which.
+7. `[med]` `[ledgered]` DW-1437 AD-10's user set is enumerated by verb and role name, so stripping
+   `%All` from the last holder, and a service account counting as a holder, are both permitted.
+8. `[med]` `[ledgered]` DW-1438 no account-side analogue of the serving-path predicate: disabling
+   `CSPSystem` is permitted and would break OcuPilot's own serving path.
+9. `[med]` `[ledgered]` DW-1439 three project statements give two mechanisms for the missing database
+   read (403 bodyless vs 500 `<PROTECT>`); the anonymous half is spine surface, not a review patch.
+10. `[med]` `[ledgered]` DW-1440 the installer derives the anonymous applications' matching role from
+    the routine database's resource while `AccessCheck` tests the global database's.
+11. `[low]` `[patched]` Twelve corrections at their origins: the seam list omitted `HoldsAll`; the
+    `FIELD*` block said "two" and declared three; the fixture header said "one replaced seam" and has
+    three; `ReasonFor(PRIVILEGEGRANT)` said "granting a role" while an ordinary add is permitted; the
+    tool's model-facing `Roles` description stated the old name-only rule; "a shipped role" was
+    ambiguous; `IsOff`'s numeric arm had no executed host; the disclosure browser assertion ANDed two
+    facts instead of asserting the mask on that row; the `gates` toast roster did not pin the
+    containing block it depends on; `OnBeforeAllTests` orphaned its population on a partial failure;
+    the census read a vendor query positionally with no cited ROWSPEC; `$Username` as an implicit
+    input was unexplained. Plus the spec's own method count and one overstated sentence.
+12. `[low]` `[ledgered]` DW-1441 test-class size, DW-1442 `RoleNames` drops unreadable members,
+    DW-1443 the remove paths lack the arming gate, DW-1444 a deleted account mid-census answers 500,
+    DW-1445 cycle-log note prose, DW-1446 `DECLAREDPAIRSONLY` duplication. DW-1433 gained an
+    occurrence.
+
+Rejected, with reasons in the triage log: the `Codes()` ordering claim (the reworded comment describes
+the list it has), `ToolFields`' `AutheEnabled` template type (AD-3 records the **template**'s type,
+not the GET's), `SettableFields`' missing duplicate guard, an AD-9 ordering asymmetry in the user
+branch (that path opens no escalated frame), `baseline_commit`'s shape, and the toast spec's click as
+a silent canary (its comment already names `hitTestSend`).
+
 ### Acceptance Criteria
 
 - Given a principal holding the Users screen's own two pairs and **not** `%All`, when it confirms an
@@ -411,6 +469,32 @@ reason (DW-1431). No generic write-path machinery changes: the tool overrides th
   - `[low]` `[patch]` DW-1412's publisher/consumer contract was pinned only in the browser tier, so deleting `app.ts`'s binding reddened nothing in the `gates` job. Added a source-text roster row to `ui/tools/toasts.test.mjs`, the way `ci.test.mjs` and `compose.test.mjs` pin their cross-file rosters; the geometry stays in the browser tier, where layout is computed.
   - `[false]` `[reject]` "The tool overrides the two seams" versus six actual overrides. Refuted: the Code Map names `Endpoint()` and `SettableFields()` as the two *abstract* seams, task 2 explicitly requires the `InputSchema` override, and `WebAppUpdate` - the precedent the Code Map says to copy - overrides `ExcludedFields`, `PermittedFields` and `PrivilegePairs` too. The boundary the sentence protects (no generic write-path machinery changes) holds: `Write.cls`, `Mint.cls`, `Confirm.cls` and `Disclosure.cls` are untouched.
   - `[false]` `[reject]` Both senses of `opaque` appear on one card - `Roles` masked when unchanged, in clear on the changed diff row. Refuted as a divergence: the Disclosure matrix row speaks only of unchanged rows. The reader-facing half is the standing `deferred:` entry, which this pass keeps.
+
+### 2026-09-21 - Code review (second pass)
+
+- verdicts: 49 rows from five layers -> 30 entries: high 1, med 9, low 20. 14 patched, 10 ledgered,
+  6 rejected. Unresolved high/med after patching: 0.
+- The high was the fifth instance of this story's own reviewed pattern -- a safety predicate whose
+  refusing branch had never been executed against the real population. Four layers found it
+  independently and two measured it against the shipped class: `+%Manager` and
+  `+%SecurityAdministrator` answered `prohibits=0`. The four pre-existing privilege-grant legs all
+  sent `%All`, an `%Admin_`-named role, or a role granting `%All` **as a role**, so the recursed-role
+  test satisfied every one of them and the resource dimension was never asked. Fixed in
+  `RoleEscalates`; the new leg reddens alone (run 3497) while the other fourteen stay green, which is
+  the same "%All passes every gate" shape DW-1208 was.
+- The census patch had a second half nobody had reached: `CountsAsHolder` reaching
+  `OcuPilot.Screen.Gate` from inside the `%SYS` block raised `<CLASS DOES NOT EXIST>` on the first
+  run, which is the trap `LastAllHolder`'s own comment already warned about. The population is now
+  carried out of `%SYS` verbatim and judged after the restore.
+- Five mutations demonstrated this pass (runs 3497-3499, 3510, plus the client fold), each reverted
+  with the tree confirmed byte-identical; lines in `## Verification`.
+- Verified after patching: `check-objectscript` 0 problems over 592 files; `lint-docs` clean;
+  `npm run build` with its seven prebuild checkers clean; `npm test` 1,293 tools and 807 component
+  tests green; `users-write` and `toast` browser specs green against a rebuilt and redeployed bundle
+  (highlight margin 1 ms against 2,000 ms); `UserUpdate` 15/15 (run 3512), `ProhibitedRoute` 9/9,
+  `Prohibited` 11/11, `ToolWrite` 12/12 (run 3511), `ProposalWire` 15/15, `WebApp` 25/25,
+  `Envelope` 15/15, `Wire` 20/20, `EntityRef` 9/9, `SurfaceCoverage`, `ReadTool`, `DerivedFields`,
+  `ToolRoundTrip`; `smoke.sh --container ocupilot-ci` 47 executed, 47 passed, 0 pending.
 
 ## Design Notes
 
@@ -529,6 +613,14 @@ treated as a new product decision.
   - `mutation: drop the enabled-column filter from OcuPilot.Kernel.Proposal.Prohibited.LastAllHolder -> OcuPilot.Test.UserUpdate.TestOnlyAnEnabledHolderCountsAsAnotherAllHolder (both the direct census assertion and the refusal it drives through the transition)`
   - `mutation: return before parsing in the comma-separated branch of OcuPilot.Kernel.Proposal.Prohibited.RoleNames -> OcuPilot.Test.UserUpdate.TestARoleDeltaIsReadWhenTheRolesMemberIsAString`
   - `mutation: answer 0 from OcuPilot.Kernel.Proposal.Prohibited.IsOff for an absent member, or for a spelling it cannot read -> OcuPilot.Test.UserUpdate.TestAnEnabledValueTheGuardCannotReadAsOnIsADisable (demonstrated on each arm separately)`
+  - `(QA) mutation: drop the case fold in OcuPilot.Kernel.Proposal.Prohibited.IsPrivilegedRole (compare pRole against ALLROLE and ADMINROLEPREFIX without $ZConvert(...,"U")) -> OcuPilot.Test.UserUpdate.TestARoleAddedInADifferentCaseIsStillRecognizedAsPrivileged (both legs red, run 3480; the other 12 methods in the class stayed green, so the fold was otherwise unproven -- every other privilege-grant leg sends the canonical spelling); reverted, tree confirmed byte-identical (run 3481 green)`
+  - `(QA) file: src/OcuPilot/Test/UserUpdate.cls -- one method added, TestARoleAddedInADifferentCaseIsStillRecognizedAsPrivileged`
+  - `(CR) mutation: drop the RoleGrantsPrivilege call from OcuPilot.Kernel.Proposal.Prohibited.RoleEscalates -> OcuPilot.Test.UserUpdate.TestARoleCarryingAnAdministrativeResourceIsRefusedThoughItsNameSaysNothing (run 3497, that method alone; the other 14 stayed green, which is how the hole shipped); reverted, tree byte-identical`
+  - `(CR) mutation: drop the OcuPilot.Screen.Gate.IsAuthenticatedPrincipal call from OcuPilot.Kernel.Proposal.Prohibited.CountsAsHolder -> OcuPilot.Test.UserUpdate.TestAnUnauthenticatedPlaceholderNeverCountsAsAnAllHolder (run 3498, that method alone); reverted, tree byte-identical`
+  - `(CR) mutation: answer 0 from OcuPilot.Kernel.Proposal.Prohibited.IsOff's $IsValidNum arm -> OcuPilot.Test.UserUpdate.TestAnEnabledValueTheGuardCannotReadAsOnIsADisable (run 3499, its two new numeric legs); reverted, tree byte-identical, class green at run 3500`
+  - `(CR) mutation: make ID_RULES.foldcase answer its id verbatim in ui/src/app/core/entity-ref.ts -> ui/tools/entity-ref.test.mjs "AD-13: three spellings of one account build the one key the instance builds" (the gates tier was green without it, which is AC6's client half); reverted, tree byte-identical`
+  - `(CR) mutation: append the write's own pair unconditionally in OcuPilot.Screen.Tool.UserUpdate.PrivilegePairs -> OcuPilot.Test.ToolWrite.TestTheUserWriteToolAdvertisesEnabledAndRolesWithTheScreensOwnPairs (run 3510), which is AC1's "each once" half; reverted, tree byte-identical, class green at run 3511`
+  - `(CR) file: src/OcuPilot/Kernel/Proposal/Prohibited.cls, src/OcuPilot/Screen/Tool/UserUpdate.cls, src/OcuPilot/Test/{UserUpdate,ProhibitedRoute,ProposalFixture,ProhibitedFixture}.cls, README.md, src/OcuPilot/Api/Router.cls, ui/tools/{entity-ref,toasts}.test.mjs, ui/browser/users-write.browser-spec.mjs -- see ## Review Triage Log`
 
 **Full runs, once, before `dev_complete` (once, before dev_complete):**
 
@@ -563,7 +655,7 @@ and `UNCOVEREDFIELD`'s sentences reworded at their origin to serve both types);
 `Kernel/EntityRef.cls` + `ui/src/app/core/entity-ref.ts` + `ui/tools/screen-mirror.mjs` +
 `screens.generated.ts` (the id rule); `Api/Router.cls` + `README.md` (DW-1431's corrected sentence
 and the prerequisite); `ui/src/app/app.ts` + `ui/src/app/shell/toast-host.ts` (DW-1412);
-`Test/UserUpdate.cls` (new, 12 methods), `ui/browser/users-write.browser-spec.mjs` (new, 3 legs),
+`Test/UserUpdate.cls` (new, 16 methods), `ui/browser/users-write.browser-spec.mjs` (new, 3 legs),
 and additions to `ToolWrite`, `ProposalWire`, `ProhibitedRoute`, `Prohibited`, `SurfaceCoverage`,
 `ProposalFixture`, `ProhibitedFixture`, `ReadTool`, `ToolRoundTrip`, `PreFault`,
 `toast-host.spec.ts`, `toast.browser-spec.mjs`, `toasts.test.mjs`, `screen-mirror.test.mjs`,
@@ -574,8 +666,9 @@ patched: the shipped census's refusing branch and its enabled-holder filter now 
 runs the real body (`ArmAllHolders` arms its input, not its answer); `RoleNames`' comma-separated
 shape and `IsOff`'s non-boolean arms now have executed test hosts; `IsOff`'s residual was
 fail-**open** against its own doc comment and is now `Quit 1`; the least-privileged wire leg can no
-longer report green having measured nothing; DW-1412's publisher/consumer contract is pinned in the
-`gates` tier as a source-text roster; and the five ACs whose pinning tests had no `mutation:` line
+longer report green having measured nothing; DW-1412's two-file contract is named in the `gates`
+tier as a source-text roster, the geometry staying in the browser tier where layout is computed;
+and the five ACs whose pinning tests had no `mutation:` line
 have one, demonstrated. Nothing deferred this pass - the standing `deferred:` entry (a classified
 `opaque` array is indistinguishable from a secret) is kept and is now directly observable on this
 story's own card. Five findings rejected: `Codes()`' ordering claim (refuted - the comment describes

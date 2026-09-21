@@ -1,8 +1,14 @@
-/// <p>Test-only <class>OcuPilot.Kernel.Proposal.Prohibited</class> subclass with one replaced seam:
-/// the live read goes to <class>OcuPilot.Test.ProposalFixture</class>'s armed object instead of the
-/// admin port, so the <b>shipped</b> predicates run against a target a test composed.</p>
-/// <p>Everything else -- the covered-type refusal, the predicate order, the rendered comparison, the
-/// diff scoping and the serving-path read -- is the shipped code.</p>
+/// <p>Test-only <class>OcuPilot.Kernel.Proposal.Prohibited</class> subclass with three replaced
+/// seams: the live read goes to <class>OcuPilot.Test.ProposalFixture</class>'s armed object instead
+/// of the admin port, so the <b>shipped</b> predicates run against a target a test composed; and
+/// the two census seams below can be armed.</p>
+/// <p><b>Which of the three replaces a body matters, because a seam that replaces a safety
+/// predicate makes every test through it vacuous.</b> <method>PortClass</method> redirects a read
+/// and replaces no predicate. <method>LastAllHolder</method> armed replaces the census outright.
+/// <method>HoldsAll</method> armed replaces only the census's per-account input, so the census body
+/// still runs in full. Everything else -- the covered-type refusal, the predicate order, the
+/// rendered comparison, the diff scoping, the role and resource escalation reads and the
+/// serving-path read -- is the shipped code.</p>
 /// <p>It also holds the builders the two prohibited suites share: one web application as the
 /// vendor's <code>GET</code> shapes it, one stored diff, one target reference, the digest the
 /// shipped confirm re-computes for a target, and one direct question to the set. They are here

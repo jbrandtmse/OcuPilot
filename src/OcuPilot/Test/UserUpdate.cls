@@ -57,17 +57,27 @@ Method OnBeforeAllTests() As %Status
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
         Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.UserUpdate creates and deletes user accounts and a role on this instance and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was created. Bring one up with scripts/ci-throwaway.sh, which sets it.")
     }
-    Set tSC = $ClassMethod(..#FIXTURE, "EnsureAllRole", .tCreated)
-    If $$$ISERR(tSC) Quit tSC
-    Set tSC = $ClassMethod(..#FIXTURE, "EnsureUser", $Parameter(..#FIXTURE, "USERTARGET"), $Parameter(..#FIXTURE, "USERINITIALROLE"), 0, .tCreated)
-    If $$$ISERR(tSC) Quit tSC
-    Set tSC = $ClassMethod(..#FIXTURE, "EnsureUser", $Parameter(..#FIXTURE, "USERTARGETMIXEDCASE"), "", 1, .tCreated)
-    If $$$ISERR(tSC) Quit tSC
-    Set tSC = $ClassMethod(..#FIXTURE, "EnsureUser", $Parameter(..#FIXTURE, "USERALLHOLDERSECOND"), $Parameter(..#FIXTURE, "USERALLROLE"), 1, .tCreated)
-    If $$$ISERR(tSC) Quit tSC
-    Set tSC = $ClassMethod(..#FIXTURE, "EnsureUser", $Parameter(..#FIXTURE, "USERALLHOLDERDISABLED"), $Parameter(..#FIXTURE, "USERALLROLE"), 0, .tCreated)
-    If $$$ISERR(tSC) Quit tSC
-    Quit $ClassMethod(..#FIXTURE, "EnsureUser", $Parameter(..#FIXTURE, "USERALLHOLDER"), $Parameter(..#FIXTURE, "USERALLROLE"), 1, .tCreated)
+    ; Six creates, and a failure part way through must not leave the earlier ones behind: every
+    ; Ensure* refuses to adopt an account it did not create, so a partial setup makes every later
+    ; run of this class refuse at this method until someone cleans up by hand.
+    Set tSC = $$$OK
+    Try {
+        Set tSC = $ClassMethod(..#FIXTURE, "EnsureAllRole", .tCreated)
+        If $$$ISERR(tSC) Quit
+        Set tSC = $ClassMethod(..#FIXTURE, "EnsureUser", $Parameter(..#FIXTURE, "USERTARGET"), $Parameter(..#FIXTURE, "USERINITIALROLE"), 0, .tCreated)
+        If $$$ISERR(tSC) Quit
+        Set tSC = $ClassMethod(..#FIXTURE, "EnsureUser", $Parameter(..#FIXTURE, "USERTARGETMIXEDCASE"), "", 1, .tCreated)
+        If $$$ISERR(tSC) Quit
+        Set tSC = $ClassMethod(..#FIXTURE, "EnsureUser", $Parameter(..#FIXTURE, "USERALLHOLDERSECOND"), $Parameter(..#FIXTURE, "USERALLROLE"), 1, .tCreated)
+        If $$$ISERR(tSC) Quit
+        Set tSC = $ClassMethod(..#FIXTURE, "EnsureUser", $Parameter(..#FIXTURE, "USERALLHOLDERDISABLED"), $Parameter(..#FIXTURE, "USERALLROLE"), 0, .tCreated)
+        If $$$ISERR(tSC) Quit
+        Set tSC = $ClassMethod(..#FIXTURE, "EnsureUser", $Parameter(..#FIXTURE, "USERALLHOLDER"), $Parameter(..#FIXTURE, "USERALLROLE"), 1, .tCreated)
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    If $$$ISERR(tSC) Do ..OnAfterAllTests()
+    Quit tSC
 }
 
 Method OnAfterAllTests() As %Status
@@ -419,6 +429,25 @@ Method TestARoleDeltaThatGrantsPrivilegeIsRefused()
     Do $$$AssertEquals(tProhibits, 0, "and sending back the roles the account holds changes nothing, code was '" _ tOut _ "'")
 }
 
+/// <p>AD-10: the privileged-role match is case-insensitive, the way the instance itself resolves a
+/// role name -- every other leg in this class adds <code>%All</code> or <code>%Admin_Secure</code>
+/// in their own already-canonical spelling, so none of them would notice if the fold were lost.</p>
+/// <p>Mutation: in <method>OcuPilot.Kernel.Proposal.Prohibited.IsPrivilegedRole</method>, compare
+/// <var>pRole</var> against <parameter>ALLROLE</parameter> and <parameter>ADMINROLEPREFIX</parameter>
+/// without folding case (drop both <code>$ZConvert(...,"U")</code> calls on the compared side) --
+/// this goes red, because every other privilege-grant leg here sends the canonical spelling and
+/// would stay green.</p>
+Method TestARoleAddedInADifferentCaseIsStillRecognizedAsPrivileged()
+{
+    Set tName = ..Target()
+    Set tOrdinary = $Parameter(..#FIXTURE, "USERINITIALROLE")
+    Set tFresh = $ClassMethod(..#SET, "UserObject", tName, 1, tOrdinary)
+    Set tCode = $Parameter(..#SHIPPEDSET, "PRIVILEGEGRANT")
+
+    Do ..Refused(tName, tFresh, $ClassMethod(..#SET, "UserObject", tName, 1, tOrdinary _ ",%all"), "Roles", tCode)
+    Do ..Refused(tName, tFresh, $ClassMethod(..#SET, "UserObject", tName, 1, tOrdinary _ ",%ADMIN_secure"), "Roles", tCode)
+}
+
 /// <p>AC4, AD-10: every change to <code>EscalationRoles</code> is refused, and a field outside the
 /// reviewed two is refused as unreviewed even though no tool can author one.</p>
 /// <p>Mutation: remove <code>EscalationRoles</code> from
@@ -563,6 +592,96 @@ Method TestAnEnabledValueTheGuardCannotReadAsOnIsADisable()
     Do tOdd.%Set("Enabled", "Yes", "string")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Mint).Display(tOdd.%Get("Enabled"), tOdd.%GetTypeOf("Enabled")), "Yes", "the odd spelling renders as itself, not as an empty member")
     Do ..Refused(tSystem, tFresh, tOdd.%ToJSON(), "Enabled", tExpected)
+
+    ; The numeric arm, the third shape the guard's own doc comment declares. Both sides, and each
+    ; asserted to render as a digit first so neither can pass by taking one of the arms above.
+    Set tZero = ##class(%DynamicAbstractObject).%FromJSON(tFresh)
+    Do tZero.%Set("Enabled", 0, "number")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Mint).Display(tZero.%Get("Enabled"), tZero.%GetTypeOf("Enabled")), 0, "a numeric off renders as its digit")
+    Do ..Refused(tSystem, tFresh, tZero.%ToJSON(), "Enabled", tExpected)
+
+    Set tOne = ##class(%DynamicAbstractObject).%FromJSON($ClassMethod(..#SET, "UserObject", ..Target(), 0))
+    Do tOne.%Set("Enabled", 1, "number")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Mint).Display(tOne.%Get("Enabled"), tOne.%GetTypeOf("Enabled")), 1, "and a numeric on renders as its digit")
+    Do $ClassMethod(..#FIXTURE, "ArmProhibited", ..#SET)
+    Set tSC = $ClassMethod(..#SET, "Ask", $ClassMethod(..#SET, "UserObject", ..Target(), 0), tOne.%ToJSON(), $ClassMethod(..#SET, "Diff", "Enabled"), ..Target(), "user", .tProhibits, .tOut, ..#TOOL)
+    Do $$$AssertStatusOK(tSC, "the set answers a numeric enable")
+    Do $$$AssertEquals(tProhibits, 0, "a numeric on is read as on, so the disable refusals do not apply, code was '" _ tOut _ "'")
+}
+
+/// <p>AD-10: a role whose <b>name</b> says nothing can still carry an administrative resource, and
+/// granting it is a privilege grant through a path. Every other privilege-grant leg here adds
+/// <code>%All</code>, an <code>%Admin_</code>-named role or a role that grants <code>%All</code> as
+/// a role, so the recursed-role test alone satisfied all of them -- and IRIS ships no role whose
+/// name carries the prefix at all.</p>
+/// <p>The roles are read off the instance first, so neither half rests on a remembered fact:
+/// <code>%Manager</code> must recurse to no privileged <i>name</i> and must carry a privileged
+/// <i>resource</i>, and the ordinary role must carry none.</p>
+/// <p>Mutation: drop the <method>OcuPilot.Kernel.Proposal.Prohibited.RoleGrantsPrivilege</method>
+/// call from <method>OcuPilot.Kernel.Proposal.Prohibited.RoleEscalates</method> -- this goes red and
+/// nothing else in the class does.</p>
+Method TestARoleCarryingAnAdministrativeResourceIsRefusedThoughItsNameSaysNothing()
+{
+    Set tName = ..Target()
+    Set tOrdinary = $Parameter(..#FIXTURE, "USERINITIALROLE")
+    Set tFresh = $ClassMethod(..#SET, "UserObject", tName, 1, tOrdinary)
+    Set tCode = $Parameter(..#SHIPPEDSET, "PRIVILEGEGRANT")
+    Set tAdminPrefix = $Parameter(..#SHIPPEDSET, "ADMINROLEPREFIX")
+
+    Set tManagerRoles = ""
+    Do $SYSTEM.Security.GetRecursedRoleSet("%Manager", .tManagerRoles)
+    Do $$$AssertEquals(tManagerRoles [ tAdminPrefix, 0, "%Manager's recursed role set names no " _ tAdminPrefix _ " role: " _ tManagerRoles)
+    Do $$$AssertEquals(tManagerRoles [ "%All", 0, "and no %All either, so the name tests cannot be what refuses it: " _ tManagerRoles)
+    Set tManagerResources = $ClassMethod(..#FIXTURE, "RoleResources", "%Manager")
+    Do $$$AssertTrue(tManagerResources [ tAdminPrefix, "%Manager carries an " _ tAdminPrefix _ " resource: " _ tManagerResources)
+
+    Do ..Refused(tName, tFresh, $ClassMethod(..#SET, "UserObject", tName, 1, tOrdinary _ ",%Manager"), "Roles", tCode)
+
+    ; The other side: the ordinary role this suite adds carries no administrative resource, so the
+    ; resource test must not turn every role add into a refusal.
+    Set tOrdinaryAdd = $Parameter(..#FIXTURE, "USERORDINARYROLE")
+    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "RoleResources", tOrdinaryAdd) [ tAdminPrefix, 0, tOrdinaryAdd _ " carries no administrative resource")
+    Do $ClassMethod(..#FIXTURE, "ArmProhibited", ..#SET)
+    Set tSC = $ClassMethod(..#SET, "Ask", tFresh, $ClassMethod(..#SET, "UserObject", tName, 1, tOrdinary _ "," _ tOrdinaryAdd), $ClassMethod(..#SET, "Diff", "Roles"), tName, "user", .tProhibits, .tOut, ..#TOOL)
+    Do $$$AssertStatusOK(tSC, "the set answers the ordinary add")
+    Do $$$AssertEquals(tProhibits, 0, "adding a role that carries no administrative resource is still permitted, code was '" _ tOut _ "'")
+}
+
+/// <p>AD-10, AD-21: which population rows the census may count. An unauthenticated placeholder is
+/// answered <code>enabled</code> by the instance's own user list and holds <code>%All</code> on a
+/// Minimal-security instance, so counting one would say "some other account still holds
+/// <code>%All</code>" about an account nobody can sign in as -- and the last usable holder could
+/// then be disabled. The list of placeholders has one home
+/// (<parameter>OcuPilot.Screen.Gate.ANONYMOUSPRINCIPALS</parameter>) and this is a third reader of
+/// it, not a second copy.</p>
+/// <p>The placeholders are read off the instance's own population first, so the leg cannot pass
+/// against names the instance does not carry.</p>
+/// <p>Mutation: drop the
+/// <method>OcuPilot.Screen.Gate.IsAuthenticatedPrincipal</method> call from
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.CountsAsHolder</method> -- the placeholder
+/// assertions go red.</p>
+Method TestAnUnauthenticatedPlaceholderNeverCountsAsAnAllHolder()
+{
+    Set tAnonymous = $Parameter("OcuPilot.Screen.Gate", "ANONYMOUSPRINCIPALS")
+    Do $$$AssertNotEquals(tAnonymous, "", "the one home for the placeholder names answers")
+    Set tSeen = 0
+    For tI = 1:1:$Length(tAnonymous, ",") {
+        Set tOne = $Piece(tAnonymous, ",", tI)
+        If tOne = "" Continue
+        ; Enabled is passed as the instance's own affirmative spelling, so the refusal below can
+        ; only come from the name and never from the enabled filter.
+        Do $$$AssertEquals($ClassMethod(..#SHIPPEDSET, "CountsAsHolder", tOne, "Yes"), 0, tOne _ " never counts as another %All holder, however the list answers its enabled column")
+        Set tSeen = tSeen + 1
+    }
+    Do $$$AssertTrue(tSeen > 0, "the placeholder list carried names, so the loop above ran over something")
+    Do $$$AssertEquals($ClassMethod(..#FIXTURE, "UserField", "UnknownUser", "Enabled"), 1, "and the instance really does answer UnknownUser enabled, which is what makes the filter load-bearing")
+
+    ; The rest of the predicate, so the guard above cannot be the only thing it does.
+    Do $$$AssertEquals($ClassMethod(..#SHIPPEDSET, "CountsAsHolder", ..Target(), "Yes"), 1, "an ordinary enabled account counts")
+    Do $$$AssertEquals($ClassMethod(..#SHIPPEDSET, "CountsAsHolder", ..Target(), 1), 1, "and so does one whose enabled column reads 1")
+    Do $$$AssertEquals($ClassMethod(..#SHIPPEDSET, "CountsAsHolder", ..Target(), "No"), 0, "a disabled account does not")
+    Do $$$AssertEquals($ClassMethod(..#SHIPPEDSET, "CountsAsHolder", ..Target(), "maybe"), 0, "and neither does one whose enabled column cannot be read as enabled")
+    Do $$$AssertEquals($ClassMethod(..#SHIPPEDSET, "CountsAsHolder", "", "Yes"), 0, "an empty name does not")
 }
 
 /// <p>AC6, AD-13 as amended: the user id rule folds case the way the instance resolves an account

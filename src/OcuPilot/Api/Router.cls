@@ -592,9 +592,9 @@ ClassMethod CanonicalNamespace(pNamespace As %String) As %String
 /// (<method>MayEnterNamespace</method>, AD-21, AD-48); the check is skipped when the
 /// request's namespace is the one already in effect, because refusing entry to the namespace
 /// the web application is configured in would leave no request this class could answer, and
-/// IRIS's own protection on that namespace's globals applies to the request either way. (The
-/// privilege note above is about the <i>code</i> database IRIS loads this class from; the
-/// entry check tests the <i>global</i> database's resource, which is a different grant.) The
+/// IRIS's own protection on that namespace's globals applies to the request either way. (This
+/// check is per <i>requested</i> namespace; the framework's own check above tests only the
+/// namespace the web application is configured in, so neither stands in for the other.) The
 /// name is canonicalised first (<method>CanonicalNamespace</method>), so one namespace is one
 /// scope. <b>The survivor is stashed in <class>OcuPilot.Kernel.Scope</class></b>, which is
 /// what makes the route's scope a value the request carries rather than something each

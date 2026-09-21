@@ -338,7 +338,7 @@ Method RemoveLeastPrivilegedPrincipal() As %Status
 /// <p><b>Mint-shaped only:</b> unlike <method>Seed</method>, there is no hand-seeded fallback for a
 /// field the tool cannot set -- every caller here passes a field the tool's settable list carries,
 /// so <method>Minted</method> always answers a real diff row.</p>
-Method SeedForPrincipal(pUser As %String, pTarget As %String, pFresh As %DynamicObject, pField As %String, pValue As %RawString, pType As %String, pTool As %String = {..#TOOL}, pEntityType As %String = "web-application") As %String
+Method SeedForPrincipal(pUser As %String, pTarget As %String, pFresh As %DynamicObject, pField As %String, pValue As %RawString, pType As %String, pTool As %String = {..#TOOL}, pEntityType As %String = "web-application", pExtraArgs As %DynamicObject = "") As %String
 {
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn(pUser, "completed", .tTurnKey)
     Do $$$AssertStatusOK(tSC, "a probe turn is seeded for the least-privileged principal")
@@ -349,6 +349,14 @@ Method SeedForPrincipal(pUser As %String, pTarget As %String, pFresh As %Dynamic
 
     Set tArgs = {}
     Do tArgs.%Set(pField, pValue, pType)
+    ; A second argument the one (field, value, type) triple cannot express -- an array, or simply a
+    ; second field, so a caller can seed the multi-field change an acceptance criterion names.
+    If $IsObject(pExtraArgs) {
+        Set tExtra = pExtraArgs.%GetIterator()
+        While tExtra.%GetNext(.tExtraKey, .tExtraValue) {
+            Do tArgs.%Set(tExtraKey, tExtraValue)
+        }
+    }
     Set tSC = ..Minted(pFresh, tArgs, .tPayload, .tDiff, .tFingerprint, .tUnchanged, pTool)
     If $$$ISERR(tSC) Quit ""
 
@@ -622,7 +630,13 @@ Method TestALeastPrivilegedPrincipalConfirmsAUserWriteOverTheWire()
         Do $$$AssertStatusOK(tReadSC, "it reads fresh through the shipped port")
         Do $$$AssertTrue($IsObject(tFresh), "the port answered the account, so the assertions below run over something")
         If $IsObject(tFresh) {
-            Set tKey = ..SeedForPrincipal(..#PRINCIPALUSER, ..#USERACCOUNT, tFresh, "Enabled", 1, "boolean", ..#USERTOOL, "user")
+            ; AC1's own change: an enable PLUS an ordinary role add. The role half matters on its
+            ; own -- assigning a role is the operation most likely to need a privilege beyond
+            ; %Admin_Secure:USE on the vendor side, and a flag flip would not find that out.
+            Set tRoleAdd = {}
+            Do tRoleAdd.%Set("Roles", [])
+            Do tRoleAdd.%Get("Roles").%Push($Parameter("OcuPilot.Test.ProposalFixture", "USERORDINARYROLE"))
+            Set tKey = ..SeedForPrincipal(..#PRINCIPALUSER, ..#USERACCOUNT, tFresh, "Enabled", 1, "boolean", ..#USERTOOL, "user", tRoleAdd)
             ; Without this the leg reports green having measured nothing on any path that answers
             ; "" -- Minted's "resolved to no entry" status is returned, not asserted.
             Do $$$AssertNotEquals(tKey, "", "a proposal was seeded for the least-privileged principal")
@@ -633,10 +647,30 @@ Method TestALeastPrivilegedPrincipalConfirmsAUserWriteOverTheWire()
                 Set tEnvelope = ##class(%DynamicObject).%FromJSON(tBody)
                 Do $$$AssertEquals(tEnvelope.%Get("state"), $Parameter("OcuPilot.Kernel.State.Propose", "STATECONFIRMED"), "the row is confirmed: " _ tBody)
                 Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).UserField(..#USERACCOUNT, "Enabled"), 1, "and the account is enabled on the instance")
+                Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).UserField(..#USERACCOUNT, "Roles"), $Parameter("OcuPilot.Test.ProposalFixture", "USERORDINARYROLE"), "and holds the role the same confirm added, so the declared set is sufficient for a role assignment and not only for a flag")
                 Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT RequiredPairs, Status FROM OcuPilot_Kernel_State.Ledger WHERE %EXACT(UserName) = ? AND %EXACT(Kind) = ?", ..#PRINCIPALUSER, $Parameter("OcuPilot.Kernel.State.Ledger", "KINDWRITE"))
                 Do $$$AssertTrue(tRS.%Next(), "the confirmed write left a ledger row for that principal")
                 Do $$$AssertEquals(tRS.%Get("Status"), "ok", "recorded ok")
                 Do $$$AssertEquals(tRS.%Get("RequiredPairs"), ##class(OcuPilot.Kernel.Audit.Ledger).PairsToString($ClassMethod("OcuPilot.Screen.Tool.UserUpdate", "PrivilegePairs", "", .tResolved), .tTruncated), "carrying the pairs it exercised")
+
+                ; A second confirm, a DISABLE, because that is the only path that enters the %All
+                ; census -- and the census asks the instance for another account's recursed role
+                ; set, which is the heaviest privilege this story's kernel code demands. Asserted
+                ; rather than inferred from a doc comment: if the declared pair set cannot run it,
+                ; the status propagates and the confirm answers 500 for every disable an operator
+                ; attempts, while every %All-run leg stays green.
+                Set tReadSC = ##class(OcuPilot.Port.AdminPort).Invoke("Security.User", "GET", .tQuery, "", .tAfter, .tHttp, .tFault)
+                Do $$$AssertStatusOK(tReadSC, "the enabled account reads fresh again")
+                If $IsObject(tAfter) {
+                    Set tOffKey = ..SeedForPrincipal(..#PRINCIPALUSER, ..#USERACCOUNT, tAfter, "Enabled", 0, "boolean", ..#USERTOOL, "user")
+                    Do $$$AssertNotEquals(tOffKey, "", "a disable proposal was seeded for the same principal")
+                    If tOffKey '= "" {
+                        Set tSC = ..CallAs(tOffKey, ..#PRINCIPALUSER, ..#PRINCIPALPASSWORD, .tOffStatus, .tOffBody, .tOffHeaders)
+                        Do $$$AssertStatusOK(tSC, "the disable confirm request completes")
+                        Do $$$AssertEquals(tOffStatus, 200, "and the census ran to completion under the declared pair set -- no 500: " _ tOffBody)
+                        Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).UserField(..#USERACCOUNT, "Enabled"), 0, "the account is disabled on the instance")
+                    }
+                }
             }
         }
     } Catch ex {

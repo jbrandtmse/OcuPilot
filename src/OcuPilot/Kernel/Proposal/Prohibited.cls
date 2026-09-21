@@ -31,8 +31,12 @@
 /// predicates are <method>WebApplication</method>'s, and a user account, whose predicates are
 /// <method>User</method>'s. Each later write-tool story adds its own type here, and a type listed
 /// with no branch is refused <parameter>UNCOVERED</parameter> at every write.</p>
-/// <p>Seams a subclass overrides: <method>PortClass</method>, <method>RegistryClass</method> and
-/// <method>LastAllHolder</method>. Production overrides none of them.</p>
+/// <p>Seams a subclass overrides: <method>PortClass</method>, <method>RegistryClass</method>,
+/// <method>LastAllHolder</method> and <method>HoldsAll</method>. Production overrides none of them.
+/// The last two are the census, and the difference between them matters to a reader auditing it:
+/// replacing <method>LastAllHolder</method> replaces the census, while replacing
+/// <method>HoldsAll</method> only makes its input deterministic and leaves the census body
+/// running.</p>
 Class OcuPilot.Kernel.Proposal.Prohibited Extends %RegisteredObject
 {
 
@@ -96,7 +100,7 @@ Parameter ALLROLE = "%All";
 
 Parameter ADMINROLEPREFIX = "%Admin_";
 
-/// <p>The two <code>Security.User</code> payload fields the user predicates read, named once.</p>
+/// <p>The three <code>Security.User</code> payload fields the user predicates read, named once.</p>
 Parameter FIELDENABLED = "Enabled";
 
 Parameter FIELDROLES = "Roles";
@@ -130,7 +134,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#UNAUTHENTICATED Quit "The only change to how a web application is authenticated that the agent can propose is removing the option of reaching it without signing in."
     If pCode = ..#AUTHORIZATION Quit "Removing the resource that guards a web application is not something the agent can propose."
     If pCode = ..#DISPATCH Quit "Changing which code answers at a web application's address is not something the agent can propose."
-    If pCode = ..#PRIVILEGEGRANT Quit "Granting a role is not something the agent can propose, whether the role is granted by a web application or held by an account."
+    If pCode = ..#PRIVILEGEGRANT Quit "Granting an administrative privilege is not something the agent can propose, whether it is granted by a web application or held by an account."
     If pCode = ..#SERVINGPATH Quit "Changing a web application that serves OcuPilot itself is not something the agent can propose."
     If pCode = ..#SYSTEMACCOUNT Quit "Disabling the instance's own _SYSTEM account is not something the agent can propose."
     If pCode = ..#CURRENTUSER Quit "Disabling the account you are signed in as is not something the agent can propose."
@@ -365,6 +369,11 @@ ClassMethod WebApplication(pPayload As %DynamicObject, pTarget As %DynamicObject
 /// compared through <method>NormalizedUser</method> anyway so an account addressed in another case
 /// earns the same verdict. <var>pChanged</var> is <method>Changed</method>'s answer: the fields this
 /// proposal changes, and the only fields any predicate here looks at.</p>
+/// <p><b><code>$Username</code> is the one thing read from process state rather than from the stored
+/// row</b>, and it is the right source: a confirm is a user-originated foreground request executing
+/// as the caller (AD-40), confirmable only by the user who minted the proposal (AD-6), so the
+/// process's user is the row's owner and is the person the refusal protects from signing themselves
+/// out.</p>
 /// <p><b>The three disable refusals are scoped to a disable, by effect.</b> AD-10 forbids deleting
 /// or disabling those three accounts, so enabling one, or renaming its full name, is not this
 /// predicate's business -- and <method>PermittedChangeFields</method> is what refuses every field
@@ -452,16 +461,18 @@ ClassMethod NormalizedUser(pName As %String) As %String
 
 /// <p>Whether the role delta between <var>pTarget</var>'s live roles and <var>pPayload</var>'s
 /// would grant privilege, in <var>pGrants</var> (AD-10): an added role that is
-/// <parameter>ALLROLE</parameter>, carries the <parameter>ADMINROLEPREFIX</parameter> prefix, or
-/// whose own recursed set holds either.</p>
+/// <parameter>ALLROLE</parameter>, carries the <parameter>ADMINROLEPREFIX</parameter> prefix, holds
+/// a role that does, or carries such a name as a <b>resource</b>
+/// (<method>RoleEscalates</method>).</p>
 /// <p><b>It is a delta, not a match on the payload.</b> AD-4 makes the payload the complete
 /// property set, so an account that already holds <code>%All</code> sends it back on every write;
 /// reading the payload alone would refuse every change to such an account. A role the write
 /// <i>removes</i> grants nothing and is not this predicate's business.</p>
-/// <p><b>The recursed set is what makes it "through any path".</b> A custom role that grants
-/// <code>%All</code> is a grant of <code>%All</code>, so the question is asked of the instance
-/// rather than of the role's name. A name the instance holds no role for recurses to nothing and
-/// grants nothing here; the vendor's own validation is what refuses it.</p>
+/// <p><b>Asking the instance is what makes it "through any path".</b> A custom role that grants
+/// <code>%All</code>, and a stock role that carries <code>%Admin_Secure</code> as a resource under
+/// a name saying nothing, are both grants of that privilege, so the question is asked of the
+/// instance rather than of the role's name. A name the instance holds no role for grants nothing
+/// here; the vendor's own validation is what refuses it.</p>
 ClassMethod GrantsPrivilege(pPayload As %DynamicObject, pTarget As %DynamicObject, Output pGrants As %Boolean) As %Status [ Private ]
 {
     Set pGrants = 0
@@ -521,9 +532,18 @@ ClassMethod RoleNames(pObject As %DynamicObject, Output pNames) [ Private ]
     }
 }
 
-/// <p>Whether granting <var>pRole</var> grants <code>%All</code> or an administrative role, in
-/// <var>pEscalates</var>: the name itself, or anything in the set the instance says it recurses
-/// to.</p>
+/// <p>Whether granting <var>pRole</var> grants <code>%All</code> or an administrative privilege, in
+/// <var>pEscalates</var>: the name itself, or any name in the set the instance says it recurses to,
+/// or any <b>resource</b> one of those roles carries.</p>
+/// <p><b>A role's name says almost nothing about what it grants, so the resources are what the
+/// question is really about.</b> IRIS ships no role whose name begins
+/// <parameter>ADMINROLEPREFIX</parameter> -- the prefix names <i>resources</i> -- and a role grants
+/// a resource directly rather than through another role, so the recursed role set alone answers
+/// nothing about administrative privilege. Measured on this build: <code>%Manager</code>,
+/// <code>%Operator</code> and <code>%SecurityAdministrator</code> each recurse to themselves alone
+/// and each carries <code>%Admin_Secure:U</code> or <code>%Admin_Operate:U</code> as a resource, so
+/// granting one is a grant of exactly the privilege this write tool itself gates on. Each role in
+/// the recursed set is therefore read for its resource list as well as its name.</p>
 ClassMethod RoleEscalates(pRole As %String, Output pEscalates As %Boolean) As %Status [ Private ]
 {
     Set pEscalates = 0
@@ -537,7 +557,25 @@ ClassMethod RoleEscalates(pRole As %String, Output pEscalates As %Boolean) As %S
         Set tSC = $SYSTEM.Security.GetRecursedRoleSet(pRole, .tRecursed)
         If $$$ISERR(tSC) Quit
         For tI = 1:1:$Length(tRecursed, ",") {
-            If ..IsPrivilegedRole($Piece(tRecursed, ",", tI)) Set pEscalates = 1
+            Set tOne = $Piece(tRecursed, ",", tI)
+            If ..IsPrivilegedRole(tOne) {
+                Set pEscalates = 1
+                Quit
+            }
+            Set tSC = ..RoleGrantsPrivilege(tOne, .tGrants)
+            If $$$ISERR(tSC) Quit
+            If tGrants {
+                Set pEscalates = 1
+                Quit
+            }
+        }
+        If $$$ISERR(tSC) Quit
+        ; A name the instance holds no role for recurses to nothing, so the loop above saw no
+        ; member: ask for the name's own resources before answering that it grants nothing.
+        If 'pEscalates && (tRecursed = "") {
+            Set tSC = ..RoleGrantsPrivilege(pRole, .tGrants)
+            If $$$ISERR(tSC) Quit
+            Set pEscalates = ''tGrants
         }
     } Catch ex {
         Set pEscalates = 0
@@ -546,9 +584,48 @@ ClassMethod RoleEscalates(pRole As %String, Output pEscalates As %Boolean) As %S
     Quit tSC
 }
 
+/// <p>Whether role <var>pRole</var> carries a privileged <b>resource</b>, in <var>pGrants</var>:
+/// one named <parameter>ALLROLE</parameter> or carrying <parameter>ADMINROLEPREFIX</parameter>, at
+/// any permission.</p>
+/// <p>The resource list is the instance's own (<class>Security.Roles</class>, read in
+/// <code>%SYS</code> and restored, AD-16). A name the instance holds no role for carries nothing,
+/// which is the same answer <method>RoleEscalates</method> gives it: the vendor's own validation is
+/// what refuses an unknown role.</p>
+/// <p><b>The prefix, not a list.</b> Matching the resource-name prefix rather than a roster of
+/// today's administrative resources is a rule a later build's new <code>%Admin_*</code> resource
+/// cannot outgrow. It admits every resource outside that prefix, which is what keeps an ordinary
+/// role add permitted -- measured on this build, <code>%Developer</code>, <code>%SQL</code> and
+/// <code>%EnsRole_Operator</code> carry none.</p>
+ClassMethod RoleGrantsPrivilege(pRole As %String, Output pGrants As %Boolean) As %Status [ Private ]
+{
+    Set pGrants = 0
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        If $ZStrip(pRole, "<>W") = "" Quit
+        Set $NAMESPACE = "%SYS"
+        Kill tProps
+        Set tGetSC = ##class(Security.Roles).Get(pRole, .tProps)
+        Set tResources = ""
+        If $$$ISOK(tGetSC) Set tResources = $Get(tProps("Resources"))
+        Set $NAMESPACE = tOrigNS
+        For tI = 1:1:$Length(tResources, ",") {
+            If ..IsPrivilegedRole($Piece($Piece(tResources, ",", tI), ":", 1)) Set pGrants = 1
+        }
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set pGrants = 0
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
 /// <p>Whether <var>pRole</var> is <parameter>ALLROLE</parameter> or carries
 /// <parameter>ADMINROLEPREFIX</parameter>, compared case-insensitively because IRIS resolves a role
 /// name that way.</p>
+/// <p>It serves a role name and a <b>resource</b> name alike (<method>RoleGrantsPrivilege</method>):
+/// the two patterns AD-10 names are the same strings in either vocabulary, and one test for both is
+/// what keeps them from drifting apart.</p>
 ClassMethod IsPrivilegedRole(pRole As %String) As %Boolean [ Private ]
 {
     Set tName = $ZConvert($ZStrip(pRole, "<>W"), "U")
@@ -564,11 +641,9 @@ ClassMethod IsPrivilegedRole(pRole As %String) As %Boolean [ Private ]
 /// holds <code>%All</code> only through a custom role is counted -- a substring match on a declared
 /// <code>Roles</code> list would miss it and the predicate would then permit the write that locks
 /// the instance out.</p>
-/// <p><b>Only an account that can sign in counts as another holder.</b> A disabled holder cannot
-/// use the privilege, so counting it would let the last usable one be disabled, and the row's
-/// enabled column must read positively for the account to count -- a value this method cannot read
-/// as enabled leaves the target looking more like the last holder, which refuses rather than
-/// writes.</p>
+/// <p><b>Which rows count is <method>CountsAsHolder</method>'s question</b>, asked of each row
+/// before <method>HoldsAll</method> is asked about it: only an account a person can sign in as
+/// counts, because counting one that cannot would let the last usable holder be disabled.</p>
 /// <p><b>Overridable seam.</b> A test drives the refusal by answering here, so no suite has to
 /// strip <code>%All</code> from a real account to make an instance have one holder. Production
 /// never overrides it; <method>HoldsAll</method> is the half a test exercises directly.</p>
@@ -582,26 +657,30 @@ ClassMethod LastAllHolder(pId As %String, Output pLast As %Boolean) As %Status
         If $$$ISERR(tSC) Quit
         If 'tTargetHolds Quit
         Set tCanonical = ..NormalizedUser(pId)
-        ; The population is read inside %SYS and nothing else happens there: normalizing a name
-        ; reaches OcuPilot's own identity class, which is not visible in %SYS, so the filter below
-        ; runs after the restore (AD-16).
-        Set tNames = ""
+        ; The population is read inside %SYS and nothing else happens there: both judging a row
+        ; and normalizing a name reach OcuPilot's own classes, which are not visible in %SYS, so
+        ; the rows are carried out verbatim and filtered after the restore (AD-16). Columns 1 and 2
+        ; are Name and Enabled (irissys/Security/Users.cls:663's ROWSPEC
+        ; "Name,Enabled,Roles,LastLoginTime,Flags").
+        Set tRows = ""
         Set $NAMESPACE = "%SYS"
         Set tRS = ##class(%ResultSet).%New("Security.Users:List")
         Set tSC = tRS.Execute("*", "*")
         If $$$ISOK(tSC) {
             While tRS.Next() {
-                Set tName = tRS.GetData(1)
-                If tName = "" Continue
-                Set tEnabled = tRS.GetData(2)
-                If ($ZConvert(tEnabled, "U") '= "YES") && (tEnabled '= 1) Continue
-                Set tNames = tNames _ $ListBuild(tName)
+                Set tRows = tRows _ $ListBuild($ListBuild(tRS.GetData(1), tRS.GetData(2)))
             }
             Do tRS.Close()
         }
         Set tRS = ""
         Set $NAMESPACE = tOrigNS
         If $$$ISERR(tSC) Quit
+        Set tNames = ""
+        For tI = 1:1:$ListLength(tRows) {
+            Set tRow = $List(tRows, tI)
+            If '..CountsAsHolder($List(tRow, 1), $List(tRow, 2)) Continue
+            Set tNames = tNames _ $ListBuild($List(tRow, 1))
+        }
         Set pLast = 1
         For tI = 1:1:$ListLength(tNames) {
             Set tName = $List(tNames, tI)
@@ -620,6 +699,25 @@ ClassMethod LastAllHolder(pId As %String, Output pLast As %Boolean) As %Status
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>Whether the population row <var>pName</var> / <var>pEnabled</var> can count as another
+/// <code>%All</code> holder at all, before <method>HoldsAll</method> is asked about it. The two
+/// arguments are columns 1 and 2 of <code>Security.Users:List</code>
+/// (<file>irissys/Security/Users.cls</file>:663).</p>
+/// <p><b>Only an account a person can sign in as counts.</b> Two reasons a row cannot be one: its
+/// enabled column does not read positively, and it is one of the unauthenticated placeholders
+/// <parameter>OcuPilot.Screen.Gate.ANONYMOUSPRINCIPALS</parameter> names -- which the list answers
+/// enabled, and which AD-21 records as holding <code>%All</code> on a Minimal-security instance.
+/// Counting either would let the last account an operator can actually use be disabled. The list of
+/// placeholders has one home and this is not it (AD-21); a value this method cannot read as enabled
+/// leaves the target looking more like the last holder, which refuses rather than writes.</p>
+ClassMethod CountsAsHolder(pName As %String, pEnabled As %String) As %Boolean
+{
+    If $ZStrip(pName, "<>W") = "" Quit 0
+    If '##class(OcuPilot.Screen.Gate).IsAuthenticatedPrincipal(pName) Quit 0
+    If $ZConvert(pEnabled, "U") = "YES" Quit 1
+    Quit (pEnabled = 1)
 }
 
 /// <p>Whether account <var>pUser</var> would hold <code>%All</code> if it signed in, in

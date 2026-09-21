@@ -172,6 +172,30 @@ test('DW-1364: three spellings of one web application build the one key the inst
   assert.equal(entityRefKey('web-application', INSTANCE_SCOPE, '/'), null);
 });
 
+// Story 5.9's `user:foldcase`. The roster test below asserts the rule name has *an*
+// implementation; it cannot tell a fold from an identity function, and the only other check on
+// this half is `ui/browser/users-write.browser-spec.mjs`'s AC6 leg, which needs a rebuilt bundle
+// and runs in the `instance` job. Without this row, replacing the fold with `(id) => id` leaves
+// the whole `gates` job green — DW-1364's defect shape, re-openable for the new type.
+test('AD-13: three spellings of one account build the one key the instance builds', () => {
+  // Spelled out rather than read back out of the subject, the way the DW-1364 row above is, and
+  // the same string `OcuPilot.Test.UserUpdate.TestTheUserRuleFoldsCaseTheWayTheInstanceResolvesIt`
+  // pins on the instance.
+  const expected = ['user', INSTANCE_SCOPE, 'ocupilotprobeusermixedcase'].join(REF_SEPARATOR);
+  for (const spelling of ['OcuPilotProbeUserMixedCase', 'ocupilotprobeusermixedcase', 'OCUPILOTPROBEUSERMIXEDCASE']) {
+    assert.equal(
+      entityRefKey('user', INSTANCE_SCOPE, spelling),
+      expected,
+      `${JSON.stringify(spelling)} builds the canonical key`
+    );
+  }
+
+  // The rule goes exactly this far: an account name has no path grammar, so a trailing slash or
+  // space is part of the name and is not stripped — which is what the server rule does too.
+  assert.equal(normalizeEntityId('user', '_SYSTEM'), '_system');
+  assert.equal(normalizeEntityId('user', '_System/'), '_system/', 'no trailing slash is stripped for an account');
+});
+
 test('the id rules are mirrored from the kernel, and every declared rule has an implementation here', () => {
   // Both directions. One direction alone would let the generator mirror a rule this module does
   // not implement (a silent identity function on the client), or let this module grow a rule the

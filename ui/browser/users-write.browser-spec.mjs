@@ -299,6 +299,9 @@ test(
           caption,
           masked: rows.filter((row) => row.includes(mask)).length,
           escalation: rows.find((row) => row.includes('EscalationRoles')) ?? '',
+          // Whether the mask is on THAT row, judged where the mask value already lives so
+          // there is no second copy of it in this file.
+          escalationMasked: (rows.find((row) => row.includes('EscalationRoles')) ?? '').includes(mask),
           fullName: rows.find((row) => row.includes('FullName')) ?? '',
         };
       }, '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022');
@@ -313,9 +316,11 @@ test(
         disclosed.fullName.includes(TARGET),
         `an ordinary literal carries its own value in clear: ${disclosed.fullName}`
       );
+      // The mask has to be on THAT row. Two facts ANDed -- an escalation row exists, and some row
+      // is masked -- would be satisfied by any other masked row.
       assert.ok(
-        disclosed.escalation !== '' && disclosed.masked > 0,
-        `and the opaque escalation array carries the published mask: ${disclosed.escalation}`
+        disclosed.escalationMasked,
+        `and the opaque escalation array carries the published mask on its own row: ${disclosed.escalation}`
       );
 
       const before = await page.evaluate(rowTextFor, ROW_SELECTOR, TARGET);
@@ -409,6 +414,15 @@ test(
 test('AC4: a disable of the signed-in account is refused at the confirm, explained on the card, and not retried', async () => {
   // Mutation (Rule 19): return `pProhibits = 0` from `OcuPilot.Kernel.Proposal.Prohibited.User`
   // (recompiled) -> the confirm succeeds and every assertion below goes red.
+  //
+  // WHICH of AC4's three refusals this measures depends on the harness account. The predicates are
+  // first-hit-wins and `_SYSTEM` is tested before the signed-in account, so when `config.username`
+  // is `_SYSTEM` -- its default -- the code earned is `PROHIBITED.SYSTEMACCOUNT`, not
+  // `PROHIBITED.CURRENTUSER`. Both are AC4 refusals and both render the same way, which is what
+  // this tier is for; separating the two predicates is
+  // `OcuPilot.Test.UserUpdate.TestDisablingTheCurrentUserOrTheSystemAccountIsRefused`'s, and it
+  // asserts up front that the two names do not collapse. The reason assertion below names the
+  // account rather than matching "disabl", which both sentences share.
   const { context, page, tag } = await withLiveCard(
     [disableReply(config.username, 'toolu_usr_self'), textReply('proposed a disable')],
     'disable my own account'
@@ -435,8 +449,9 @@ test('AC4: a disable of the signed-in account is refused at the confirm, explain
     }, STRINGS.toolCallStatusFailed.split('<reason>')[0].trim());
     assert.ok(refused.reason !== '', 'the card carries a written reason for the refusal');
     assert.ok(
-      refused.reason.toLowerCase().includes('disabl'),
-      `and it names the cause rather than a generic failure: ${refused.reason}`
+      refused.reason.toLowerCase().includes('disabl') &&
+        refused.reason.toLowerCase().includes(config.username.toLowerCase()),
+      `and it names the account whose disable was refused, not just a generic failure: ${refused.reason}`
     );
     assert.equal(refused.role, 'alert', 'announced as an alert, because the user pressed Confirm and it did not happen');
     assert.ok(

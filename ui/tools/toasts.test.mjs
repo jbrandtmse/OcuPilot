@@ -356,4 +356,18 @@ test('DW-1412: the panel-width custom property has a publisher and a consumer, a
   // A property nobody publishes, or nobody reads, is the failure this row exists for.
   assert.ok(app.includes(PROPERTY), `${PROPERTY} is named by the publisher`);
   assert.ok(host.includes(PROPERTY), `${PROPERTY} is named by the consumer`);
+
+  // `position: absolute` only resolves against `.ocu-shell` because that element establishes the
+  // containing block and the host is its child. Both halves are as load-bearing as the property
+  // itself: remove either and the stack goes back to the viewport edge with the assertions above
+  // still green.
+  assert.match(app, /<app-toast-host \/>/, 'app-toast-host is placed by the shell row');
+  const components = readFileSync(join(uiRoot, 'src', 'styles', '_components.scss'), 'utf8');
+  const shellRule = /\.ocu-shell \{([^}]*)\}/.exec(components);
+  assert.ok(shellRule !== null, '_components.scss declares a .ocu-shell rule');
+  assert.match(
+    shellRule[1],
+    /position: relative/,
+    `.ocu-shell is the containing block the host offsets against: ${shellRule[1]}`
+  );
 });

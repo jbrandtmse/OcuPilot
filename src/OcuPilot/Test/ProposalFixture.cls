@@ -738,6 +738,26 @@ ClassMethod UserField(pName As %String, pField As %String = "Enabled") As %Strin
     Quit tValue
 }
 
+/// <p>The resources role <var>pRole</var> carries, as the instance holds them
+/// (<code>&lt;resource&gt;:&lt;permission&gt;</code>, comma-separated); <code>""</code> for a role
+/// the instance does not carry. What a test reads to show that a role's name says nothing about the
+/// privilege it grants.</p>
+ClassMethod RoleResources(pRole As %String) As %String
+{
+    Set tValue = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Kill tProps
+        If $$$ISOK(##class(Security.Roles).Get(pRole, .tProps)) Set tValue = $Get(tProps("Resources"))
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tValue = ""
+    }
+    Quit tValue
+}
+
 /// <p>Create <parameter>USERALLROLE</parameter>, a role whose only grant is <code>%All</code>, so
 /// the census can be shown counting an account that holds <code>%All</code> through no declared
 /// role of its own. Same throwaway-only gate and same never-adopt refusal as
