@@ -6,7 +6,7 @@ status: 'done'
 baseline_revision: '24b6091b0e8138cf705de8cc83248c3efb708239'
 baseline_commit: '24b6091'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['oversized', 'multiple-goals']
@@ -388,13 +388,107 @@ are banners) and none for a change on the screen the user is looking at. No cros
 - Given `bash scripts/smoke.sh`, when it runs against a throwaway with OcuPilot installed, then it
   still passes and the executed-check count is non-zero.
 
+### Review Findings
+
+Code review, 2026-09-21 (full-opus; blind-hunter, edge-case-hunter, verification-gap,
+acceptance-auditor). 13 root-cause entries from 55 reported rows: high 1, med 6, low 6;
+10 rejected groups. Six patched in-pass, leaving two high/med entries unresolved, each with an
+owner in `deferred-work.md`.
+
+- [x] [Review][Patch] `DefinitionForm` publishes `updated` on a create, so no shipped publisher
+  could ever emit AD-14's `created` [ui/src/app/areas/agent/definition-form.store.ts:707] --
+  **high**, DW-1404. `publishChange()` is reached from `save()` with `creating` true and from the
+  test-connection gate's own create branch; the created row was therefore never pending-selected
+  and an off-screen toast read "was updated" for a row that had just appeared. `publishChange`
+  now takes the action. Pinned by `definition-form.page.spec.ts` on all three paths.
+- [x] [Review][Patch] The changed mark is written under the canonical bus id and cleared under
+  the view's row key, so a non-canonically-spelled row's highlight never clears
+  [ui/src/app/shell/data-table.ts:1063] -- **med**. `viewKeyFor` resolved the mark onto the row;
+  `select()` and the reconcile branch still passed the row's own spelling to `clearChanged`, a
+  no-op against the stored key, on exactly the rows this story's own HIGH fix was written for.
+  Closed with `changedKeyFor`, the inverse resolution; pinned in `data-table.spec.ts`.
+- [x] [Review][Patch] Dismissing one of several toasts strands the focus hold, after which no
+  toast ever expires again [ui/src/app/core/toasts.ts:229] -- **med**. The emptied-stack case was
+  closed at implement; the same mechanism (no `focusout` is owed for an element removed while it
+  holds focus) leaks whenever a survivor keeps the region mounted. The hold is now held by named
+  source, and `dismiss` lets go of `focus` alone -- the pointer's `pointerleave` is still owed.
+- [x] [Review][Patch] The generator and the kernel parse `IDRULES` by different grammars
+  [ui/tools/screen-mirror.mjs:176] -- **med**. `parseIdRules` trimmed both halves and split at the
+  first colon; `IdRuleFor` uses `$Piece` and compares verbatim, so `"a:r, b:r"` -- the natural way
+  to write the second pair every later write-tool story adds -- mirrors `b` to the client while the
+  instance matches no type at all. The reader is now byte-identical to the kernel's, so the stray
+  space fails the build by name, and two pairs for one type are refused (the kernel takes the
+  first, the generator took the last).
+- [x] [Review][Patch] `REF_SEPARATOR` was hand-copied from `Parameter REFSEPARATOR` with no build
+  gate [ui/src/app/core/entity-ref.ts:44] -- **med**, DW-1403. The id-rule table got a generator
+  gate in this story and the separator did not, which is AD-5's Rule unmet on the other half of the
+  same key. `screen-mirror.mjs` now emits `ENTITY_REF_SEPARATOR_CODE` and `entity-ref.ts` derives
+  the character from it.
+- [x] [Review][Patch] The toast renders 24px wider than DESIGN.md's recipe, and the browser leg
+  pinned the deviation [ui/src/app/shell/toast-host.ts:48] -- **low**. `width: 360px` sits beside
+  its own `padding` entry, as the confirm-dialog's 440px sits beside `{spacing.6}`: a box width.
+  `box-sizing: border-box` added; `toast.browser-spec.mjs` now asserts the published 360.
+- [ ] [Review][Defer] AC4's "with the entity selected" is unimplemented and both tests restate it
+  as "named" [ui/src/app/shell/list-page.ts] -- **med**, DW-1419, `routed owner=5-11-...`. Not
+  patchable here: `ListPage` reads no route id at all, and 5.11's own navigation target is the
+  Task schedule list with the task selected.
+- [x] [Review][Defer] `IDRULENAMES` has no gate against what `NormalizedId` dispatches on -- low,
+  DW-1420, `wontfix-accepted reopen_if=IDRULENAMES declares a second rule name`.
+- [x] [Review][Defer] A `changed` event for a screen bound with a null read marks and announces
+  but never re-fetches -- low, DW-1421, `wontfix-accepted`. Unreachable today: no shipped
+  publisher emits a type `tasks/history` or `logs/audit` declares.
+- [x] [Review][Defer] The bus id is folded by the screen's primary entity type only -- low,
+  DW-1422, `wontfix-accepted`. Latent: no secondary entity type declares an `IDRULES` pair.
+- [x] [Review][Defer] `Updated: <entity> <action>` contradicts itself for `created`/`deleted` --
+  low, DW-1423, `decision-pending` (published copy; audible from this pass, since DW-1404's fix
+  makes `created` a shipped action).
+- [x] [Review][Defer] `ToastEntry.entityLabel` is computed and rendered nowhere -- low, DW-1424,
+  `wontfix-accepted`.
+- [x] [Review][Defer] A toast standing from an earlier turn covers the panel's Send button --
+  DW-1412, `decision-pending owner=burndown`. DESIGN.md:1209 puts the toast bottom-right of the
+  viewport, which is over the panel: offsetting it is a UX call, not a code call.
+
+**Rejected.**
+
+- `false` -- "two rows marked before one `sync()` leave only the second announced". `markChanged`
+  notifies synchronously and `DataTable` subscribes synchronously (`ngOnInit`), so each mark gets
+  its own `sync()` and its own announcement.
+- `false` -- "`buildMirror` defaults `idRules`/`idRuleNames` to `[]`, so a caller could emit an
+  empty table". `readSources` throws on either missing parameter and is the only production
+  caller; `refSeparator` is now required outright.
+- `low` -- `markedKeys` re-normalises the changed set inside `rowModels`. `viewKeyFor`
+  short-circuits on an exact hit, the row cap bounds the scan, and the measured budget leg reports
+  2-3 ms against 2,000 ms.
+- `low` -- ~95 duplicated lines in `ProposalFixture`'s mixed-case trio and ~130 of shared browser
+  scaffolding. The fixture duplication is what keeps the two applications from colliding; the fix
+  is larger than a fix-pack item either way.
+- `low` -- `replyWithChangeSentence` appends on a 200 while the bus publish gates on
+  `state === 'confirmed'`. Re-filed from the implement pass; still no reachable case, and
+  `Confirm.Answer` reads `state` back off the row after the write.
+- `low` -- `markChanged`'s `action` defaults to `''`. Only the table harness calls it with one
+  argument; `ChangeBus.publish` refuses a `changed` event carrying no action.
+- `low` -- the change-toast region is a `role="status"` live region containing focusable controls.
+  Spec-bound: EXPERIENCE.md:414 declares `role="status"` on the toast with a dismiss on every one.
+- `low` -- the toast and the panel's reply sentence render the folded id rather than the row's own
+  spelling. Spec-bound: AD-13's DW-1359 amendment accepts exactly this ("the recorded `TargetRef`
+  a proposal, the ledger and the panel show is the canonical spelling").
+- `low` -- a browser spec header and two comments narrate review history. The surrounding text is
+  the mechanism a reader needs, and the correction would be longer than the claim.
+- Spec bookkeeping -- rejected under the rule that a finding whose fix is to edit the spec under
+  review is not a code-review finding, and reported to the lead instead. Closed by the lead at the
+  adjudication gate: the two tallies now match the bullets they head, the file count is labeled as
+  this stage's, the superseded `Residual risks` block is gone and `followup_review_recommended` is
+  `false`. DW-1412 stays out of the frontmatter `deferred:` list deliberately -- that list is the
+  implement stage's own record and DW-1412 was born at QA, so adding it there would misattribute it;
+  it lives in the ledger and in the `QA follow-up` note.
+
 ## Spec Change Log
 
 ## Review Triage Log
 
 ### 2026-09-21 - Review pass
 
-- verdicts: 16 findings - high 1, medium 4, low 8, false 0, maybe-false 3
+- verdicts: 17 findings - high 2, medium 5, low 8, false 0, maybe-false 2
 - findings:
   - `[medium]` `[patch]` Off-screen-toast suppression fails on every id route, so a change the open
     screen is already highlighting also raises a toast - verified: `openScreenShows` used
@@ -727,6 +821,29 @@ redeployed before the run.
   `'Yes' !== 'No'` while the highlight still landed in 6 ms and every assertion above it stayed
   green -- which is what the new written-value assertion exists to catch. (AC2, AC8)
 
+**Code-review pass mutations (2026-09-21)** -- each applied, observed red, reverted, tree
+byte-identical afterwards.
+
+- mutation: `publishChange` hard-codes `action: 'updated'` again -> `definition-form.page.spec.ts`
+  *DW-1404: a create publishes `created`...* reddened alone (713 of 714 green). (AC7, AD-14)
+- mutation: `select()` clears with the row key (`store.clearChanged(key)`) ->
+  `data-table.spec.ts` *Story 5.7: moving onto a row the instance spells otherwise clears the mark
+  the change named* reddened alone. (AC2, AC3)
+- mutation: `dismiss` keeps the focus hold while entries remain -> `ui/tools/toasts.test.mjs`
+  *dismissing one of two forgets the focus hold, so the survivor still expires* reddened alone
+  (11 of 12 green). (AC5)
+- mutation: `parseIdRules` trims its halves again -> `ui/tools/screen-mirror.test.mjs` *AD-13:
+  IDRULES is read exactly as `IdRuleFor` reads it...* reddened alone (47 of 48 green). (AC1)
+- mutation: `box-sizing: border-box` removed from `.ocu-toast` -> after a rebuild and a
+  `docker cp`, `browser/toast.browser-spec.mjs`'s geometry leg reddened on
+  `the rendered width is DESIGN.md's own 360px, padding included: 384`, the action leg staying
+  green. (DW-1405's leg)
+- mutation: `refSeparator` dropped from `readSources`' return -> `screen-mirror.test.mjs`
+  *DW-1403: the reference separator is read from the kernel and emitted, never copied* reddened,
+  as does every fixture that omits it -- which is what makes the parameter required rather than
+  defaulted. (AC1, DW-1403)
+
+
 **QA follow-up (stage: qa, 2026-09-20-21).** Closed the two highest-priority residual-risk gaps
 against a real browser; `OcuPilot.Test.ProposalFixture` gained a paired mixed-case fixture
 (`EnsureMixedCaseWriteTarget` / `MixedCaseWriteTargetField` / `RemoveMixedCaseWriteTarget`,
@@ -780,7 +897,7 @@ re-fetch filter and the toast gate both call. The one unbuilt surface -- the off
 store, stack, two lifetimes, counted hover/focus hold, dismiss and "Open in <screen>" -- is built,
 framework-free in `core/` with a component-scoped host mounted after the panel.
 
-**Files changed** (39):
+**Files changed** (39 at this stage; QA and the code review added more -- see `## Verification`):
 
 - `src/OcuPilot/Kernel/EntityRef.cls` -- `IDRULES` / `IDRULENAMES` / `IdRuleFor` replace the
   hard-coded single-type branch in `NormalizedId`; behavior for `web-application` unchanged, no
@@ -808,8 +925,8 @@ framework-free in `core/` with a component-scoped host mounted after the panel.
 - `ui/browser/change-highlight.browser-spec.mjs` (new), plus the tools- and component-tier suites and
   the three agent publish sites.
 
-**Review findings.** 16 findings from two layers plus this stage's own reading; one high, four
-medium, eight low, three maybe-false. **Patched: 13** (1 high, 4 medium, 8 low). **Deferred: 6.**
+**Review findings.** 17 findings from two layers plus this stage's own reading; two high, five
+medium, eight low, two maybe-false. **Patched: 12** (2 high, 5 medium, 5 low). **Deferred: 3** (low).
 **Rejected: 2** -- `replyWithChangeSentence` gating on a 200 where the bus gates on
 `state === 'confirmed'` (no reachable case constructed, and low if true) and a publish skipped when
 `targetOf` is null (a confirm originates from a card the store holds). Every row is in the
@@ -844,17 +961,12 @@ removes its probe tasks, but a task's history outlives it). `TaskHistoryList` re
 so the three install-time rows now sort behind 40 newer ones and fall outside the virtual scroll
 viewport's rendered window. Every other Task screen -- schedule, on-demand, upcoming, details --
 passes, so row rendering is not implicated, and this diff touches no part of the Task history read,
-its search, its sort or its cap. Confirming it on a throwaway without the residue needs a container
-this stage is not permitted to recreate.
+its search, its sort or its cap. **Settled, not inferred:** CI run 35552263340's `instance` job
+builds its throwaway fresh, so `%SYS_Task.History` holds no probe rows there -- and both legs pass.
+A failure on a fresh throwaway would therefore be real; on a reused one it is this. The durable fix,
+that the probe fixture purge its own history as well as its tasks, is DW-1425.
 
 **Residual risks.**
 
-- `viewKeyFor` is pinned at the component tier with a mixed-case row key, but **no browser leg
-  exercises a confirmed write against a non-canonically-spelled web application**: the fixture's
-  target is `/csp/ocupilotprobeconfirm`, already canonical. The end-to-end path for the defect that
-  was found is therefore still unexercised in a real browser. This is what
-  `followup_review_recommended: true` names.
-- The toast is the one surface built from scratch and has no browser-tier coverage, so its geometry
-  and stacking rest on inspection against DESIGN.md rather than on a test (deferred).
 - `created` and `deleted` have no shipped producer -- `Confirm.WRITETYPE` is `"PUT"` -- so both
   branches are pinned by publishing the event by hand, as the spec's Design Notes state.

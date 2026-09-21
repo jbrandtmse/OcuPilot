@@ -259,14 +259,16 @@ test(
       const { width: viewportWidth, height: viewportHeight } = firstOnly.viewport;
       const { space3, space4, statusBar } = firstOnly.tokens;
       const [toastRect] = firstOnly.toastRects;
-      // The card's declared 360px is a content-box width with no box-sizing override, so the
-      // rendered border-box is 360 plus the padding on both sides -- measured, not assumed:
-      // asserting raw 360 here would be the CSS author's intent, not what a real layout produces.
+      // DESIGN.md's toast recipe names `width: 360px` beside its own `padding: {spacing.3}`, the
+      // way the confirm-dialog names 440px beside `{spacing.6}` -- a box width with the padding
+      // inside it. `box-sizing: border-box` is what makes the rendered box that width, so this
+      // asserts the published number rather than whatever the padding adds to it.
       assert.equal(
         Math.round(toastRect.width),
-        360 + space3 * 2,
-        `the rendered width is the declared content width plus both sides' padding: ${toastRect.width}`
+        360,
+        `the rendered width is DESIGN.md's own 360px, padding included: ${toastRect.width}`
       );
+      assert.ok(space3 > 0, 'and the padding token the border-box absorbs is a real value');
       assert.ok(
         Math.abs(toastRect.right - (viewportWidth - space4)) <= 1,
         `the stack's right edge sits ${space4}px from the viewport's, per :host's own right offset: ` +

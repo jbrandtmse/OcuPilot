@@ -36,6 +36,14 @@ import {
 } from './navigation.ts';
 import { STRINGS, stringFor } from './strings.ts';
 
+/**
+ * What can hold the countdowns. Two independent sources, named rather than counted, because they
+ * differ in one way that matters: a `pointerleave` is always owed, while a `focusout` is not owed
+ * for an element removed while it held focus -- which is the feature's own primary path, since
+ * acting on a toast focuses its control and then dismisses it.
+ */
+export type ToastHoldSource = 'pointer' | 'focus';
+
 /** DESIGN.md's `max-stack: 3`. A fourth toast drops the oldest rather than growing the column. */
 export const TOAST_STACK_MAX = 3;
 
@@ -111,8 +119,8 @@ export class ToastStore {
   /** Newest first, at most `TOAST_STACK_MAX`. */
   private entries: readonly ToastEntry[] = [];
 
-  /** How many pointers or focused elements are holding the stack; 0 means the clocks run. */
-  private holds = 0;
+  /** Which sources are holding the stack; empty means the clocks run. */
+  private readonly heldBy = new Set<ToastHoldSource>();
 
   /** When the current hold started, so release shifts every deadline by exactly that long. */
   private heldSince = 0;
@@ -149,7 +157,14 @@ export class ToastStore {
 
   /** Whether a pointer or focus is holding the countdowns. */
   holding(): boolean {
-    return this.holds > 0;
+    return this.heldBy.size > 0;
+  }
+
+  /** Drop the armed sweep. A host calls it on destroy so no timer outlives the region. */
+  dispose(): void {
+    this.cancelSweep?.();
+    this.cancelSweep = null;
+    this.listeners.clear();
   }
 
   /**
@@ -198,17 +213,22 @@ export class ToastStore {
   /**
    * Drop one toast. The others keep the time they had left.
    *
-   * **An emptied stack forgets every hold.** The region unmounts with its last entry, and a
-   * browser does not reliably fire `focusout` for an element removed while it holds focus -- which
-   * is the feature's primary path, since acting on a toast focuses its own button and then
-   * dismisses it. A hold left counted there would stop every later toast from ever expiring. A
-   * release taken while entries remain is still counted, because both sources are still live.
+   * **A dismissed toast takes the focus hold with it.** A browser does not reliably fire
+   * `focusout` for an element removed while it holds focus, and the control that was clicked is
+   * inside the toast being removed -- so the focus hold it took is owed a release nobody will
+   * send. Left standing it would stop this stack, and every later one, from ever expiring. The
+   * pointer hold is untouched: the region is still under the pointer and its `pointerleave` is
+   * still owed. An emptied stack forgets both, because the region unmounts with its last entry.
    */
   dismiss(id: string): void {
     const next = this.entries.filter((entry) => entry.id !== id);
     if (next.length === this.entries.length) return;
     this.entries = next;
-    if (next.length === 0) this.holds = 0;
+    if (next.length === 0) {
+      this.heldBy.clear();
+    } else {
+      this.letGo('focus');
+    }
     this.arm();
     this.notify();
   }
@@ -216,12 +236,14 @@ export class ToastStore {
   /**
    * Hold every countdown: a pointer entered the stack, or focus did.
    *
-   * Counted rather than flagged, because pointer and focus are two independent sources and a
-   * `pointerleave` while the dismiss control still holds focus must not start the clocks again.
+   * Held by source rather than by a count, because pointer and focus are two independent sources
+   * -- a `pointerleave` while the dismiss control still holds focus must not start the clocks
+   * again -- and because `dismiss` has to let go of exactly one of them.
    */
-  holdTimers(): void {
-    this.holds += 1;
-    if (this.holds > 1) return;
+  holdTimers(source: ToastHoldSource = 'pointer'): void {
+    if (this.heldBy.has(source)) return;
+    this.heldBy.add(source);
+    if (this.heldBy.size > 1) return;
     this.heldSince = this.nowMs();
     this.cancelSweep?.();
     this.cancelSweep = null;
@@ -229,16 +251,25 @@ export class ToastStore {
   }
 
   /** Let the countdowns run again, every deadline moved forward by however long the hold lasted. */
-  releaseTimers(): void {
-    if (this.holds === 0) return;
-    this.holds -= 1;
-    if (this.holds > 0) return;
+  releaseTimers(source: ToastHoldSource = 'pointer'): void {
+    if (!this.letGo(source)) return;
+    this.arm();
+    this.notify();
+  }
+
+  /**
+   * Forget `source`'s hold, shifting every deadline forward by the whole hold when it was the
+   * last one. Answers whether anything changed, so a caller knows whether to re-arm and notify.
+   */
+  private letGo(source: ToastHoldSource): boolean {
+    if (!this.heldBy.has(source)) return false;
+    this.heldBy.delete(source);
+    if (this.heldBy.size > 0) return true;
     const held = this.nowMs() - this.heldSince;
     if (held > 0) {
       this.entries = this.entries.map((entry) => ({ ...entry, expiresAt: entry.expiresAt + held }));
     }
-    this.arm();
-    this.notify();
+    return true;
   }
 
   /**
@@ -264,7 +295,7 @@ export class ToastStore {
   private arm(): void {
     this.cancelSweep?.();
     this.cancelSweep = null;
-    if (this.holds > 0 || this.entries.length === 0) return;
+    if (this.heldBy.size > 0 || this.entries.length === 0) return;
     const now = this.nowMs();
     const soonest = Math.min(...this.entries.map((entry) => entry.expiresAt));
     this.cancelSweep = this.scheduleSweep(() => this.sweep(), Math.max(0, soonest - now));
@@ -273,7 +304,7 @@ export class ToastStore {
   /** Drop every toast whose deadline has passed, then re-arm for whatever is left. */
   private sweep(): void {
     this.cancelSweep = null;
-    if (this.holds > 0) return;
+    if (this.heldBy.size > 0) return;
     const now = this.nowMs();
     const next = this.entries.filter((entry) => entry.expiresAt > now);
     const changed = next.length !== this.entries.length;

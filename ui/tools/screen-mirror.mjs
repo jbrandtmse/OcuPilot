@@ -60,6 +60,7 @@ const CLASS_RE = /^Class\s+([A-Za-z0-9_.%]+)/m;
 const XDATA_RE = /^XData\s+([A-Za-z0-9_%]+)/;
 const TYPES_PARAM_RE = /^Parameter\s+TYPES\s*=\s*"([^"]*)"\s*;/m;
 const IDRULES_PARAM_RE = /^Parameter\s+IDRULES\s*=\s*"([^"]*)"\s*;/m;
+const REFSEPARATOR_PARAM_RE = /^Parameter\s+REFSEPARATOR\s*=\s*(\d+)\s*;/m;
 const IDRULENAMES_PARAM_RE = /^Parameter\s+IDRULENAMES\s*=\s*"([^"]*)"\s*;/m;
 const SCOPE_PARAM_RE = /^Parameter\s+(SCOPEINSTANCE|SCOPENAMESPACE)\s*=\s*"([^"]*)"\s*;/gm;
 
@@ -164,28 +165,52 @@ export const IMPLEMENTED_ID_RULES = ['foldcase-striptrailingslash'];
  *
  * A pair with no colon, or with an empty half, is kept as it was written so `buildMirror` can
  * refuse it by name rather than silently dropping it.
+ *
+ * **Nothing here is trimmed, deliberately.** `OcuPilot.Kernel.EntityRef.IdRuleFor` splits the
+ * same string with `$Piece` and compares the halves verbatim, so a pair written the natural way
+ * -- `"web-application:r, task:r"` -- names the type `" task"` to the kernel and matches no type
+ * at all, while a trimming reader here would mirror `task` and make the client fold an id the
+ * instance leaves alone: DW-1364 in mirror image, with the build green. Reading it exactly as the
+ * kernel does sends the stray space to `buildMirror`, which refuses the unknown type by name.
+ * `$Piece(pair, ":", 2)` also stops at the second colon, which is why the rule half does too.
  */
 export function parseIdRules(text) {
   const match = IDRULES_PARAM_RE.exec(text);
   if (match === null) return null;
   return match[1]
     .split(',')
-    .map((pair) => pair.trim())
-    .filter((pair) => pair !== '')
+    .filter((pair) => pair.trim() !== '')
     .map((pair) => {
-      const cut = pair.indexOf(':');
-      return cut < 0 ? [pair, ''] : [pair.slice(0, cut).trim(), pair.slice(cut + 1).trim()];
+      const pieces = pair.split(':');
+      return pieces.length < 2 ? [pair, ''] : [pieces[0], pieces[1]];
     });
 }
 
-/** The kernel's own closed rule vocabulary, from its `IDRULENAMES` parameter; `null` when absent. */
+/**
+ * The code point joining the three parts of a reference key, from the kernel's own
+ * `REFSEPARATOR` parameter; `null` when the parameter is missing or is not a whole number.
+ *
+ * **It is mirrored for the reason the id-rule table is** (AD-5): `entity-ref.ts` held the
+ * character as a hand-copied `'\u0002'` literal beside `Parameter REFSEPARATOR = 2`, with
+ * nothing comparing the two, so moving one of them shipped two key builders that agree on every
+ * part of a key except the joins -- DW-1364's defect class with no gate at all (DW-1403).
+ */
+export function parseRefSeparator(text) {
+  const match = REFSEPARATOR_PARAM_RE.exec(text);
+  if (match === null) return null;
+  const code = Number(match[1]);
+  return Number.isSafeInteger(code) && code > 0 ? code : null;
+}
+
+/**
+ * The kernel's own closed rule vocabulary, from its `IDRULENAMES` parameter; `null` when absent.
+ * Untrimmed for `parseIdRules`' reason: the two parameters are one declaration, and a name that
+ * reads differently on the two sides of it is a declaration error the build should name.
+ */
 export function parseIdRuleNames(text) {
   const match = IDRULENAMES_PARAM_RE.exec(text);
   if (match === null) return null;
-  return match[1]
-    .split(',')
-    .map((value) => value.trim())
-    .filter((value) => value !== '');
+  return match[1].split(',').filter((value) => value.trim() !== '');
 }
 
 /**
@@ -284,6 +309,10 @@ export function readSources({ descriptorDir = DESCRIPTOR_DIR, areaSource = AREA_
   if (idRuleNames === null) {
     throw new Error(`${ENTITY_REF_SOURCE} declares no 'Parameter IDRULENAMES'`);
   }
+  const refSeparator = parseRefSeparator(entityRefText);
+  if (refSeparator === null) {
+    throw new Error(`${ENTITY_REF_SOURCE} declares no whole-number 'Parameter REFSEPARATOR'`);
+  }
 
   const scopeWords = parseScopeWords(readFileSync(SCOPE_SOURCE, 'utf8'));
   if (scopeWords === null) {
@@ -319,7 +348,7 @@ export function readSources({ descriptorDir = DESCRIPTOR_DIR, areaSource = AREA_
   if (toolFieldsBody === null) throw new Error(`${TOOL_FIELDS_SOURCE} carries no 'XData Tools' block`);
   const toolFields = parseXDataJson(toolFieldsBody, TOOL_FIELDS_SOURCE, 'Tools');
 
-  return { entityTypes, idRules, idRuleNames, scopeWords, archetypes, areas, screens, toolFields };
+  return { entityTypes, idRules, idRuleNames, refSeparator, scopeWords, archetypes, areas, screens, toolFields };
 }
 
 /**
@@ -1928,7 +1957,8 @@ export function declaredStringKeys(declaration) {
  *
  * - a type outside `OcuPilot.Kernel.EntityType.TYPES`, so the pair names no entity at all;
  * - a rule outside the kernel's own `IDRULENAMES`, so the kernel itself cannot apply it;
- * - a rule outside `IMPLEMENTED_ID_RULES`, so `ui/src/app/core/entity-ref.ts` cannot.
+ * - a rule outside `IMPLEMENTED_ID_RULES`, so `ui/src/app/core/entity-ref.ts` cannot;
+ * - two pairs for one type, which the kernel resolves to the first and this generator to the last.
  *
  * It is the same shape the unknown-entity-type refusal below uses, and for the same reason: a
  * build failure is the only thing that stops a kernel rule reaching the client as a no-op.
@@ -1960,6 +1990,14 @@ function checkedIdRules(idRules, idRuleNames, knownTypes) {
           `add it to IMPLEMENTED_ID_RULES, or the two key builders disagree (AD-13, AD-5)`
       );
     }
+    if (Object.prototype.hasOwnProperty.call(emitted, type)) {
+      throw new Error(
+        `src/OcuPilot/Kernel/EntityRef.cls: IDRULES declares two rules for entity type "${type}" ` +
+          `("${emitted[type]}" and "${rule}"); OcuPilot.Kernel.EntityRef.IdRuleFor stops at the ` +
+          `first pair and this generator would emit the last, so the two key builders disagree ` +
+          `(AD-13, AD-5)`
+      );
+    }
     emitted[type] = rule;
   }
   return emitted;
@@ -1969,6 +2007,7 @@ export function buildMirror({
   entityTypes,
   idRules = [],
   idRuleNames = [],
+  refSeparator,
   scopeWords,
   archetypes,
   areas,
@@ -1977,6 +2016,13 @@ export function buildMirror({
 }) {
   const known = new Set(entityTypes);
   const entityIdRules = checkedIdRules(idRules, idRuleNames, known);
+  if (!Number.isSafeInteger(refSeparator) || refSeparator <= 0) {
+    throw new Error(
+      `src/OcuPilot/Kernel/EntityRef.cls: REFSEPARATOR must be a whole number above zero, the ` +
+        `code point the key's three parts are joined with; ui/src/app/core/entity-ref.ts builds ` +
+        `the same key and would join them with something else (AD-13, AD-5)`
+    );
+  }
   const knownScopes = new Set(scopeWords ?? []);
   const archetypeKeys = (archetypes ?? []).map((archetype) => archetype.key);
   const knownArchetypes = new Set(archetypeKeys);
@@ -2504,6 +2550,14 @@ export interface ScreenRowTarget {
 
 /** The closed entity-type vocabulary, mirrored from OcuPilot.Kernel.EntityType. */
 export const ENTITY_TYPES: readonly EntityTypeKey[] = ${JSON.stringify(entityTypes, null, 2)};
+
+/**
+ * The code point joining the three parts of a reference key, mirrored from
+ * OcuPilot.Kernel.EntityRef's REFSEPARATOR (AD-13). \`entity-ref.ts\` builds its separator from
+ * this rather than from a literal of its own, so the two key builders cannot join one entity's
+ * parts with different characters (DW-1403).
+ */
+export const ENTITY_REF_SEPARATOR_CODE = ${refSeparator};
 
 /**
  * The per-entity-type canonical id rules, mirrored from OcuPilot.Kernel.EntityRef's IDRULES

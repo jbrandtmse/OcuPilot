@@ -637,6 +637,31 @@ describe('the data table', () => {
     expect(wired.store.selection()).toEqual(['/csp/app02']);
   });
 
+  it('Story 5.7: moving onto a row the instance spells otherwise clears the mark the change named', async () => {
+    // The mark lands under the canonical id and the row carries the instance's own spelling, so
+    // `clearChanged(rowKey)` clears nothing -- on exactly the rows `viewKeyFor` was written for.
+    //
+    // Mutation (Rule 19): clear with the row key again (`store.clearChanged(key)` in `select()`)
+    // -> both assertions below go red and the row reads "Changed" for the life of the store,
+    // while the canonical-key row above stays green.
+    const spelled = [
+      { Name: '/csp/App01', NameSpace: 'USER', Count: 0, Enabled: true, Note: null },
+      { Name: '/csp/other', NameSpace: 'USER', Count: 1, Enabled: false, Note: 'note' },
+    ];
+    const wired = await wire(tableDeclaration(), ok(spelled));
+    await wired.refresh.readNow();
+    wired.store.markChanged('/csp/app01', 'updated');
+    await settle(wired.fixture);
+    expect(wired.host().querySelector('.ocu-data-table-row-changed')).not.toBeNull();
+
+    const grid = wired.host().querySelector('[role="grid"]') as HTMLElement;
+    grid.focus();
+    grid.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    await settle(wired.fixture);
+    expect(wired.store.changed().size).toBe(0);
+    expect(wired.host().querySelector('.ocu-data-table-row-changed')).toBeNull();
+  });
+
   it('moving onto a changed row clears its mark', async () => {
     const wired = await wire(tableDeclaration(), ok(rows(3)));
     await wired.refresh.readNow();

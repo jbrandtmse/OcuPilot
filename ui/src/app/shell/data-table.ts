@@ -939,7 +939,7 @@ export class DataTable implements OnInit {
       if (result.active !== store.active()) {
         this.activeColumn.set(-1);
         store.setActive(result.active);
-        store.clearChanged(result.active);
+        store.clearChanged(this.changedKeyFor(result.active));
       }
       if (result.selected !== selected) store.setSelection(result.selected === '' ? [] : [result.selected]);
       if (result.focus === 'empty') {
@@ -1018,6 +1018,27 @@ export class DataTable implements OnInit {
     return this.lastKeys.find((key) => normalizeEntityId(type, key) === canonical) ?? '';
   }
 
+  /**
+   * The key the mark covering row `rowKey` was stored under, or `''` when no mark covers it.
+   *
+   * The inverse of `viewKeyFor`, and needed for the same reason: a change event marks the
+   * **canonical** id (AD-13) while a row key is the instance's own spelling, so clearing a mark
+   * by the row key clears nothing on exactly the rows `viewKeyFor` exists for -- the row would
+   * read "Changed" for the life of the screen's store while the user worked on it.
+   * `ScreenStore.clearChanged('')` is a no-op, so an unmarked row costs one set lookup here.
+   */
+  private changedKeyFor(rowKey: string): string {
+    if (rowKey === '') return '';
+    const changed = this.store().changed();
+    if (changed.has(rowKey)) return rowKey;
+    const type = this.screen().entityType;
+    const canonical = normalizeEntityId(type, rowKey);
+    for (const key of changed) {
+      if (normalizeEntityId(type, key) === canonical) return key;
+    }
+    return '';
+  }
+
   private scrollChangedIntoView(): void {
     const changed = this.store().changed();
     for (const key of [...this.scrolledChanged]) {
@@ -1039,7 +1060,7 @@ export class DataTable implements OnInit {
     if (key !== store.active()) this.activeColumn.set(-1);
     store.setActive(key);
     store.setSelection([key]);
-    store.clearChanged(key);
+    store.clearChanged(this.changedKeyFor(key));
   }
 
   /** Move the active row to `index`, select it, and bring it into the rendered range. */

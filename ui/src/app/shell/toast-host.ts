@@ -45,7 +45,7 @@ import { ToastStore, type ToastEntry, changeSentenceTemplate, formatChangeSenten
   styles: [
     ':host { position: fixed; right: var(--ocu-space-4); bottom: calc(var(--ocu-status-bar-height) + var(--ocu-space-4)); z-index: 5; pointer-events: none; }',
     '.ocu-toast-region { display: flex; flex-direction: column; gap: var(--ocu-space-2); align-items: flex-end; pointer-events: auto; }',
-    '.ocu-toast { display: flex; align-items: center; gap: var(--ocu-space-3); width: 360px; padding: var(--ocu-space-3); border-radius: var(--ocu-radius-md); background: var(--ocu-inverse-surface); color: var(--ocu-inverse-on-surface); box-shadow: var(--ocu-elevation-3); font-size: 0.875rem; }',
+    '.ocu-toast { display: flex; align-items: center; gap: var(--ocu-space-3); box-sizing: border-box; width: 360px; padding: var(--ocu-space-3); border-radius: var(--ocu-radius-md); background: var(--ocu-inverse-surface); color: var(--ocu-inverse-on-surface); box-shadow: var(--ocu-elevation-3); font-size: 0.875rem; }',
     '.ocu-toast-message { flex: 1 1 auto; }',
     '.ocu-toast-action { flex: 0 0 auto; background: none; border: 0; padding: 0; font: inherit; color: var(--ocu-secondary-dark); cursor: pointer; text-decoration: underline; }',
     '.ocu-toast-dismiss { flex: 0 0 auto; background: none; border: 0; padding: 0 var(--ocu-space-1); font: inherit; line-height: 1; color: inherit; cursor: pointer; }',
@@ -56,10 +56,10 @@ import { ToastStore, type ToastEntry, changeSentenceTemplate, formatChangeSenten
       role="status"
       [attr.aria-label]="STRINGS.tableChangeToastRegion"
       [attr.data-ocu-holding]="held"
-      (pointerenter)="hold()"
-      (pointerleave)="release()"
-      (focusin)="hold()"
-      (focusout)="release()"
+      (pointerenter)="holdPointer()"
+      (pointerleave)="releasePointer()"
+      (focusin)="holdFocus()"
+      (focusout)="releaseFocus()"
     >
       @for (toast of toastList; track toast.id) {
         <div class="ocu-toast" [attr.data-ocu-toast]="toast.id">
@@ -116,6 +116,9 @@ export class ToastHost {
     inject(DestroyRef).onDestroy(() => {
       stopBus();
       stopStore();
+      // The armed sweep is a timer of up to thirty seconds; nothing should outlive the region
+      // that raised it.
+      this.store.dispose();
     });
   }
 
@@ -172,12 +175,20 @@ export class ToastHost {
     this.store.dismiss(toast.id);
   }
 
-  protected hold(): void {
-    this.store.holdTimers();
+  protected holdPointer(): void {
+    this.store.holdTimers('pointer');
   }
 
-  protected release(): void {
-    this.store.releaseTimers();
+  protected releasePointer(): void {
+    this.store.releaseTimers('pointer');
+  }
+
+  protected holdFocus(): void {
+    this.store.holdTimers('focus');
+  }
+
+  protected releaseFocus(): void {
+    this.store.releaseTimers('focus');
   }
 
   /** The target screen's own published title, or `''` while no built screen shows the type. */

@@ -6,7 +6,7 @@ import {
   AGENT_DEFINITION_SCOPE,
 } from '../../core/agent-status';
 import { ApiService, type JsonResult } from '../../core/api';
-import { ChangeBus } from '../../core/change-bus';
+import { ChangeBus, type ChangeAction } from '../../core/change-bus';
 import { FormDirty } from '../../core/form-dirty';
 import { STRINGS } from '../../core/strings';
 import {
@@ -586,7 +586,7 @@ export class DefinitionForm {
     // save that succeeds leaves it unstored, and clearing the dirty flag over it would let the
     // leave guard wave them off the page and drop it without a word (DW-340, AC2).
     this.formDirty.setDirty(this.keyValue !== '');
-    this.publishChange();
+    this.publishChange(creating ? 'created' : 'updated');
     this.notify();
     return true;
   }
@@ -634,7 +634,7 @@ export class DefinitionForm {
       // EXPERIENCE.md's sticky-bar row). Save on the editor this replaces the route with runs
       // with `creating` false and no longer clears it.
       this.firstSaveValue = this.instanceWasEmpty;
-      this.publishChange();
+      this.publishChange('created');
     }
 
     if (this.keyValue !== '') {
@@ -697,14 +697,21 @@ export class DefinitionForm {
     this.violationList = this.violationList.filter((entry) => entry.field !== field);
   }
 
-  private publishChange(): void {
+  /**
+   * Publish this form's own Save on the change bus (AD-14), naming what it did.
+   *
+   * `action` is the caller's because this one publisher serves both routes: a create POSTs, an
+   * edit PUTs, and AD-14's vocabulary is what the subscribers act on -- `created` is the only
+   * action that puts the caret on the new row, and it is the word the off-screen toast reads.
+   */
+  private publishChange(action: ChangeAction): void {
     if (this.idValue === '') return;
     this.injector.get(ChangeBus).publish({
       kind: 'changed',
       type: AGENT_DEFINITION_ENTITY,
       scope: AGENT_DEFINITION_SCOPE,
       id: this.idValue,
-      action: 'updated',
+      action,
     });
   }
 

@@ -25,6 +25,8 @@ import { dirname, join } from 'node:path';
 //   goes red, and every change after a toast was acted on would report itself twice.
 // - keep the hold count across an emptied stack -> the emptied-stack row goes red, and no toast
 //   raised after one was acted on would ever expire.
+// - have `dismiss` keep the focus hold while entries remain -> the dismiss-with-a-survivor row
+//   goes red, and acting on one of two toasts would stop every later one from ever expiring.
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const corePath = (name) => join(uiRoot, 'src', 'app', 'core', name);
@@ -205,18 +207,18 @@ test('a hover or a focus holds every countdown, and releasing gives back exactly
   harness.store.publish(changed({ type: 'audit-event', id: '42' }));
   const deadline = harness.store.toasts()[0].expiresAt;
 
-  harness.store.holdTimers();
+  harness.store.holdTimers('pointer');
   assert.equal(harness.store.holding(), true);
   harness.advance(TOAST_LIFETIME_MS * 3);
   harness.fire();
   assert.equal(harness.store.toasts().length, 1, 'a toast being read does not expire under the reader');
 
-  // Pointer and focus are independent sources, so the hold is counted: a `pointerleave` while the
-  // dismiss control still holds focus must not start the clocks again.
-  harness.store.holdTimers();
-  harness.store.releaseTimers();
+  // Pointer and focus are independent sources: a `pointerleave` while the dismiss control still
+  // holds focus must not start the clocks again.
+  harness.store.holdTimers('focus');
+  harness.store.releaseTimers('pointer');
   assert.equal(harness.store.holding(), true, 'one source let go, the other has not');
-  harness.store.releaseTimers();
+  harness.store.releaseTimers('focus');
   assert.equal(harness.store.holding(), false);
 
   assert.equal(
@@ -243,6 +245,39 @@ test('an emptied stack forgets the hold it was under, so the next toast still ex
   harness.advance(TOAST_LIFETIME_MS);
   harness.fire();
   assert.deepEqual(harness.store.toasts(), [], 'and the next toast leaves on its own deadline');
+});
+
+test('dismissing one of two forgets the focus hold, so the survivor still expires', () => {
+  const harness = wired();
+  harness.store.publish(changed({ type: 'audit-event', id: '42' }));
+  harness.store.publish(changed({ type: 'audit-event', id: '43' }));
+  assert.equal(harness.store.toasts().length, 2);
+
+  // Acting on a toast focuses its own control and then removes it. No `focusout` is owed for an
+  // element that is gone, and the region is still mounted, so the emptied-stack rule above never
+  // fires -- the hold would stand for the life of the session.
+  harness.store.holdTimers('focus');
+  harness.store.dismiss(harness.store.toasts()[0].id);
+  assert.equal(harness.store.toasts().length, 1);
+  assert.equal(harness.store.holding(), false, 'the hold left with the element that took it');
+
+  harness.advance(TOAST_LIFETIME_MS);
+  harness.fire();
+  assert.deepEqual(harness.store.toasts(), [], 'and the survivor leaves on its own deadline');
+});
+
+test('a pointer that is still over the region keeps holding after a dismiss', () => {
+  const harness = wired();
+  harness.store.publish(changed({ type: 'audit-event', id: '42' }));
+  harness.store.publish(changed({ type: 'audit-event', id: '43' }));
+
+  // The pointer never left, so its `pointerleave` is still owed and the clocks stay stopped.
+  harness.store.holdTimers('pointer');
+  harness.store.dismiss(harness.store.toasts()[0].id);
+  assert.equal(harness.store.holding(), true);
+  harness.advance(TOAST_LIFETIME_MS * 3);
+  harness.fire();
+  assert.equal(harness.store.toasts().length, 1, 'a toast being read does not expire under the reader');
 });
 
 test('the published copy resolves its placeholders, and each action has its own sentence', () => {

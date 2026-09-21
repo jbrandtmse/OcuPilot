@@ -4975,6 +4975,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-5-prohibited-actions-are-absent-from-the-tool-set.md | severity: med | fix-risk: low | footprint: ui/src/app/core/entity-ref.ts
 - evidence: entityRefKey concatenates the id verbatim and change-bus.ts:106 keys AD-14's change bus on it, while the server now folds a web-application id. Nothing diverges today because every id the client keys on comes from a read whose spelling the server did not alter, and no shipped path publishes a change event on a proposal's target
 - 2026-09-20T16:01:03Z status=routed owner=5-7-the-screen-shows-the-change by=harvest note=DOWNSTREAM-BLOCKING judgment recorded per Rule 27: Story 5.7 IS the reopen_if -- a confirmed write publishing its proposal's target on AD-14's change bus, whose id is now canonical while the client's key is not. The divergence is latent only until 5.7 ships, so it is not re-ownable to range-end-cleanup. The fix is a client change, which Story 5.5's intent contract excluded. reopen_if=a confirmed write publishes its proposal's target on the change bus, or a screen highlights a row from a server-built key
+- 2026-09-21T03:19:01Z status=resolved-by:5-7-the-screen-shows-the-change owner=5-7-the-screen-shows-the-change by=adjudication note=closed the way the spec required and NOT the way that would have recreated it. EntityRef.cls declares IDRULES/IDRULENAMES, screen-mirror.mjs mirrors them and THROWS on an undeclared rule, an unknown type, a rule the client cannot implement, and now a duplicate type - no second rule hand-written in TypeScript, which is the second source AD-5 forbids and is how the divergence arose. The lead re-proved the gate at the AD gate: IDRULES naming task:trimwhitespace exited npm run build 1 at prebuild. The review then found the generator TRIMMED where IdRuleFor pieces verbatim, so the natural second pair would have mirrored while the instance matched no type - reader made byte-identical
 
 ### DW-1365: Kernel.State.WebApp.GuardedRecord stores a path verbatim, so the prohibited set's single remaining record lookup rests on a convention nothing enforces
 - source: spec-5-5-prohibited-actions-are-absent-from-the-tool-set.md | severity: low | fix-risk: low | footprint: src/OcuPilot/Kernel/State/WebApp.cls
@@ -5241,21 +5242,27 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-7-the-screen-shows-the-change.md | severity: med | fix-risk: low | footprint: ui/src/app/core/entity-ref.ts,src/OcuPilot/Kernel/EntityRef.cls
 - evidence: The IDRULES mirror closed the identity RULES, but the separator and the key SHAPE remain two hand-copied literals with no gate between them
 - 2026-09-21T01:30:50Z status=open owner=5-7-the-screen-shows-the-change by=harvest note=IN-STORY and re-graded from the stage's med-as-deferrable. This is the SAME DEFECT CLASS the story exists to close, one field over: DW-1364 was a second source drifting, AD-5 forbids the second source, and leaving the separator ungated reproduces the defect in a neighbouring place while appearing to have fixed it. The mechanism is already built -- screen-mirror.mjs mirrors IDRULES and throws -- so putting the separator and the key shape under the same authority is cheap. Prefer the structure that cannot silently diverge over the one that is correct only while someone keeps two copies in step
+- 2026-09-21T03:04:10Z status=resolved-by:5-7-the-screen-shows-the-change owner=5-7-the-screen-shows-the-change by=cr note=REFSEPARATOR is mirrored as ENTITY_REF_SEPARATOR_CODE; entity-ref.ts derives REF_SEPARATOR from it, build refuses a bad value
 
 ### DW-1404: DefinitionForm publishes action updated on a create, because its one publishChange() is called from both the save and the gate's create path
 - source: spec-5-7-the-screen-shows-the-change.md | severity: med | fix-risk: low | footprint: ui/src/app/areas/agent/definition-form.store.ts
 - evidence: definition-form.store.ts:704 -- a single publishChange() serves both paths, so a created definition is announced as updated
 - 2026-09-21T01:30:50Z status=open owner=5-7-the-screen-shows-the-change by=harvest note=IN-STORY: the action is what THIS story added, and AD-14's closed set exists precisely to tell created from updated. This story's own acceptance criterion says a created row appears highlighted AND SELECTED, which the updated path does not do, so a shipped caller emitting the wrong action defeats an AC of the story that introduced it
+- 2026-09-21T03:04:10Z status=resolved-by:5-7-the-screen-shows-the-change owner=5-7-the-screen-shows-the-change by=cr note=publishChange takes the action; both create paths now publish created, pinned in definition-form.page.spec.ts
 
 ### DW-1405: The toast is the one surface this story built from scratch and it has no browser-tier coverage, so its geometry, stacking and pointer-events handoff are asserted nowhere
 - source: spec-5-7-the-screen-shows-the-change.md | severity: med | fix-risk: low | footprint: ui/src/app/shell/toast-host.ts
 - evidence: jsdom computes no layout, and this project's own rule puts anything about geometry in a browser spec; the stack of three, the hover hold and the pointer-events handoff are all geometric or interactive
 - 2026-09-21T01:30:50Z status=open owner=5-7-the-screen-shows-the-change by=harvest note=IN-STORY under Rule 3: a user-facing surface built from scratch and approved with no real-runtime test is the case that rule names. The component tier cannot assert any of the three properties that make a toast stack work
+- 2026-09-21T03:04:10Z status=open owner=5-7-the-screen-shows-the-change by=cr note=leg verified load-bearing: removing box-sizing reddened the width assertion alone; awaiting lead adjudication
+- 2026-09-21T03:19:01Z status=resolved-by:5-7-the-screen-shows-the-change owner=5-7-the-screen-shows-the-change by=adjudication note=ui/browser/toast.browser-spec.mjs pins position and width against the runtime-read custom properties, z-index, two-toast stacking with the newest visually on top, and a real click's pointer-events handoff through the toast region - all of it layout, which is exactly what jsdom cannot compute and why the gap existed. Load-bearing twice over: QA reddened it by removing pointer-events auto, the review again by removing box-sizing border-box. It also PAID OFF while being written, surfacing DW-1412
 
 ### DW-1406: No browser leg confirms a confirmed write against a NON-canonically-spelled web application, which is the end-to-end path of the HIGH this story just fixed
 - source: spec-5-7-the-screen-shows-the-change.md | severity: med | fix-risk: low | footprint: ui/browser
 - evidence: viewKeyFor is pinned at the component tier with a mixed-case row key, but every browser fixture target is already canonical, so the path where Mint stores a folded targetRef and Security.Applications returns the name as created is unexercised in a real browser
 - 2026-09-21T01:30:50Z status=open owner=5-7-the-screen-shows-the-change by=harvest note=IN-STORY under Rule 19, and named by the implement stage itself as its followup risk. The defect was invisible to the whole suite precisely BECAUSE every fixture id was canonical -- a fix whose end-to-end path is still only exercised by canonical fixtures is pinned against the same blind spot that hid it
+- 2026-09-21T03:04:10Z status=open owner=5-7-the-screen-shows-the-change by=cr note=leg verified load-bearing by QA's recorded viewKeyFor revert; awaiting lead adjudication
+- 2026-09-21T03:19:01Z status=resolved-by:5-7-the-screen-shows-the-change owner=5-7-the-screen-shows-the-change by=adjudication note=the followup_review_recommended gap, and the one that mattered most because THE DEFECT IT CONCERNS WAS FOUND WITH THE SUITE GREEN. change-highlight-noncanonical.browser-spec.mjs now drives a confirmed write against a case-preserved web application end to end, its name READ FROM THE INSTANCE rather than assumed. Proven load-bearing: reverting DataTable.viewKeyFor to an exact lastKeys match timed the highlight wait out. The review then found the SAME class one step on - the mark written under the canonical bus id and cleared under the row key, so a non-canonical row's highlight never cleared - and closed it with changedKeyFor
 
 ### DW-1407: DESIGN.md gives the toast's Open in screen link a dark-mode colour, which cannot be honoured because no dark-mode mechanism exists in the stylesheets yet
 - source: spec-5-7-the-screen-shows-the-change.md | severity: low | fix-risk: low | footprint: ui/src/app/shell/toast-host.ts
@@ -5276,3 +5283,39 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-7-the-screen-shows-the-change.md | severity: med | fix-risk: low | footprint: in-story
 - evidence: QA's toast.browser-spec.mjs reached it with two turns in one tab; elementFromPoint on the Send button's centre returns .ocu-toast-message, not the button. Worked around in the test by sending with Enter (panel.ts's own documented path), not fixed.
 - 2026-09-21T02:34:35Z status=open owner=5-7-the-screen-shows-the-change by=qa note=Found while BUILDING the toast's first browser coverage, which is the point of DW-1405: jsdom computes no layout, so nothing below the browser tier could have seen it. The toast is 5.7's own new surface and the panel is Epic 5's, so it is in-story rather than routed.
+- 2026-09-21T03:04:10Z status=decision-pending owner=burndown by=cr note=human=DESIGN.md:1209 puts the toast bottom-right of the viewport, which is over the panel; offset it or accept
+
+### DW-1419: AC4's "with the entity selected" is unimplemented: the toast's route names the entity and nothing selects it
+- source: spec-5-7-the-screen-shows-the-change.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: ToastHost.open navigates <list route>/<encoded id>; list-page.ts injects no ActivatedRoute and never reads the id segment, and screen-outlet.ts:257 uses the route only for setActiveArea. Both pinning tests assert the URL string only and the component one is titled 'with the entity named'.
+- 2026-09-21T03:04:20Z status=routed owner=5-11-tasks-resume-a-task-suspended-after-an-error by=cr note=5.11's own navigation target is the Task schedule list with the task selected, so it is where the second clause lands
+
+### DW-1420: IDRULENAMES has no gate against the rules NormalizedId actually dispatches on, so the kernel half of the id-rule vocabulary can go unimplemented
+- source: spec-5-7-the-screen-shows-the-change.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: NormalizedId quits verbatim on any rule but RULEFOLDCASESTRIPTRAILINGSLASH; screen-mirror.mjs checks only its own roster, and OcuPilot.Test.EntityRef pins web-application's literal, so a second declared rule folds on the client and no-ops on the instance with every gate green.
+- 2026-09-21T03:04:20Z status=wontfix-accepted owner=5-7-the-screen-shows-the-change by=cr note=reopen_if=IDRULENAMES declares a second rule name
+
+### DW-1421: A changed event for a screen bound with a null read marks and announces the row but never re-fetches, so it shows a stale value under a Changed tag
+- source: spec-5-7-the-screen-shows-the-change.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: refresh.ts:613 marks before readNow(), and readNow() returns at once when bound.read is null (refresh.ts:403). tasks/history.page.ts and logs/audit.page.ts bind null before a search. The toast is suppressed too, because openScreenShows answers on the router URL, so the change is neither highlighted truthfully nor reported.
+- 2026-09-21T03:04:36Z status=wontfix-accepted owner=5-7-the-screen-shows-the-change by=cr note=reopen_if=a shipped publisher emits a change for an entity type a null-read screen declares
+
+### DW-1422: DataTable folds a bus id by the screen's PRIMARY entity type only, so a secondary type with its own id rule re-creates DW-1364 one field over
+- source: spec-5-7-the-screen-shows-the-change.md | severity: low | fix-risk: med | footprint: in-story
+- evidence: viewKeyFor and changedKeyFor both read this.screen().entityType; AD-5 says secondary types participate in AD-14 routing and screenShowsEntity accepts them. Latent today: the four screens with secondaryEntityTypes are the OAuth tabs and none of those types declares an IDRULES pair.
+- 2026-09-21T03:04:36Z status=wontfix-accepted owner=5-7-the-screen-shows-the-change by=cr note=reopen_if=IDRULES declares a pair for a type that appears only as a secondaryEntityType
+
+### DW-1423: The change announcement reads 'Updated: <id> created' and 'Updated: <id> deleted' -- its fixed prefix contradicts two of AD-14's three actions
+- source: spec-5-7-the-screen-shows-the-change.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: STRINGS.tableChangeAnnouncement is published copy (EXPERIENCE.md:386) and data-table.spec.ts asserts both strings verbatim. It became audible in this review pass: DW-1404's fix makes created a shipped action on the Definitions list.
+- 2026-09-21T03:04:36Z status=decision-pending owner=burndown by=cr note=human=published copy; amending EXPERIENCE.md's Fixed-strings row is a UX call
+
+### DW-1424: ToastEntry.entityLabel is computed on every publish and rendered nowhere
+- source: spec-5-7-the-screen-shows-the-change.md | severity: low | fix-risk: low | footprint: in-story
+- evidence: toasts.ts:186 sets it from stringFor(target.screen.entityLabelKey); ToastHost resolves the link text independently through screenForEntityType, and the only reader in src/ or tools/ is one assertion that it equals ''.
+- 2026-09-21T03:04:36Z status=wontfix-accepted owner=5-7-the-screen-shows-the-change by=cr note=reopen_if=a toast surface needs the entity's singular noun
+
+### DW-1425: The ObjectScript suite removes its probe tasks but not their history, so a reused throwaway drifts until Task-screen browser legs fail on residue alone
+- source: cycle-log-epic-5.md | severity: med | fix-risk: low | footprint: src/OcuPilot/Test/**
+- evidence: MEASURED, not inferred: tasks.browser-spec.mjs's two Story 6.6 legs fail on the reused ocupilot-ci (%SYS_Task.History holds ~46 OcuPilotDemoProbe* rows against 3 genuine ones) and PASS in CI run 35552263340's instance job, which builds its throwaway fresh.
+- 2026-09-21T03:18:33Z status=routed owner=range-end-cleanup by=lead note=A task's history outlives the task, so an uninstall that removes the task leaves its history rows behind; TaskHistoryList reads LogDatetime desc with paging cap and a DOM-only scan, so the genuine rows sort behind the residue and fall outside the virtual-scroll window. The durable fix is for the probe fixture to purge its own history as well as its tasks. Filed rather than fixed in 5.7 per the orchestrator: 5.7's diff touches no part of that read. The discriminating test is now known - a failure on a FRESH throwaway is real, on a reused one it is this.

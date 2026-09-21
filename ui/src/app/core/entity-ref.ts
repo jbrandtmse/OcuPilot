@@ -16,7 +16,12 @@
  * the client checks a type against one vocabulary rather than inventing a second.
  */
 
-import { ENTITY_ID_RULES, ENTITY_TYPES, type EntityTypeKey } from './screens.generated.ts';
+import {
+  ENTITY_ID_RULES,
+  ENTITY_REF_SEPARATOR_CODE,
+  ENTITY_TYPES,
+  type EntityTypeKey,
+} from './screens.generated.ts';
 
 /**
  * The literal scope of a configuration object that has no namespace, mirroring
@@ -33,10 +38,16 @@ export const INSTANCE_SCOPE = 'instance';
 export const NAMESPACE_SCOPE = 'namespace';
 
 /**
- * The character joining the three parts of a reference key. Authored as an escape, never a
- * literal byte (Rule 14).
+ * The character joining the three parts of a reference key.
+ *
+ * **Built from the mirrored code point, not from a literal of its own** (AD-5, DW-1403). It was
+ * a hand-copied escape beside `OcuPilot.Kernel.EntityRef`'s `Parameter REFSEPARATOR = 2`, with
+ * nothing comparing the two, so moving either would have shipped two key builders that agree on
+ * every part of a key except the joins. `ui/tools/screen-mirror.mjs` reads the kernel's parameter
+ * and emits it, the way it emits the entity-type enum and the id-rule table, so there is one
+ * source and no literal byte in a source file either (Rule 14).
  */
-export const REF_SEPARATOR = '\u0002';
+export const REF_SEPARATOR = String.fromCharCode(ENTITY_REF_SEPARATOR_CODE);
 
 /**
  * One rule name to the spelling it canonicalizes an id to.

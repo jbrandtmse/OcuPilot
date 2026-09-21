@@ -3726,6 +3726,7 @@ So that a question becomes a fix without me navigating anywhere myself.
 - **Then** the agent's follow-up cites that history row by name rather than claiming success.
 
 - DW-269: the vendor tasks LIST coerces every task's `Suspended` to false, so a suspended task cannot be told from a running one in a list read - declare the `INFO` `rowGet` AD-36 names, or state why this story does not need it (ledger; routed by x0 2026-09-19, first routed by spec_gate 2026-09-14)
+- DW-1419: AC4's "with the entity selected" is unimplemented - the toast's route names the entity and nothing selects it, because `list-page.ts` injects no `ActivatedRoute` and never reads the id segment. This story's own navigation target is the Task schedule list **with that task selected**, so the second clause lands here (ledger; routed by cr 2026-09-21)
 
 ### Story 5.12: OS management - suspend and resume a process
 

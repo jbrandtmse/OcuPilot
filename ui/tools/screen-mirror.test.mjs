@@ -28,6 +28,7 @@ import {
   parseEntityTypes,
   parseIdRuleNames,
   parseIdRules,
+  parseRefSeparator,
   parseScopeWords,
   readCheckedInMirror,
   declaredStringKeys,
@@ -165,8 +166,10 @@ test('every string key a table or banner declaration names is one the key check 
 // A declaration the client cannot honour must fail the BUILD -- mirroring it as a rule name
 // nothing implements is exactly the silent divergence the amendment exists to close.
 //
-// Mutation (Rule 19): return the pairs unchecked from `checkedIdRules` -> all three refusals below
+// Mutation (Rule 19): return the pairs unchecked from `checkedIdRules` -> all four refusals below
 // go red, and a rule named in `IDRULES` would reach `screens.generated.ts` with no implementation.
+// Mutation (Rule 19): trim the halves in `parseIdRules` again -> the whitespace row goes red,
+// because a spaced pair would mirror cleanly while `IdRuleFor`'s `$Piece` matched no type.
 test('AD-13: the id-rule table is read from the kernel and is what the mirror emits', () => {
   const text = readFileSync(ENTITY_REF_SOURCE, 'utf8');
   const rules = parseIdRules(text);
@@ -177,6 +180,52 @@ test('AD-13: the id-rule table is read from the kernel and is what the mirror em
   assert.equal(parseIdRules('Class X { }'), null);
   assert.equal(parseIdRuleNames('Class X { }'), null);
   assert.match(generate(), /export const ENTITY_ID_RULES/, 'and the emission carries it');
+});
+
+test('DW-1403: the reference separator is read from the kernel and emitted, never copied', () => {
+  // `entity-ref.ts` held the joining character as a hand-copied escape beside
+  // `Parameter REFSEPARATOR = 2` with nothing comparing the two. It is now mirrored like the
+  // entity-type enum and the id-rule table, so there is one source (AD-5).
+  //
+  // Mutation (Rule 19): drop `refSeparator` from `readSources`' return -> `buildMirror` refuses
+  // it and this row goes red; emit a literal 2 instead of the parsed value -> the declared-code
+  // assertion below goes red once the kernel's own parameter moves.
+  const text = readFileSync(ENTITY_REF_SOURCE, 'utf8');
+  const declared = parseRefSeparator(text);
+  assert.equal(typeof declared, 'number');
+  assert.ok(declared > 0, 'a code point, not a flag');
+  assert.equal(parseRefSeparator('Class X { }'), null, 'reported, never read as a default');
+  assert.equal(parseRefSeparator('Parameter REFSEPARATOR = "two";'), null, 'and never read as text');
+  assert.match(
+    generate(),
+    new RegExp(`export const ENTITY_REF_SEPARATOR_CODE = ${declared};`),
+    'the emission carries the kernel\'s own value'
+  );
+  assert.throws(
+    () => buildMirror({ ...readSources(), refSeparator: 0 }),
+    /REFSEPARATOR must be a whole number above zero/,
+    'and a separator no key could be built from fails the build'
+  );
+});
+
+test('AD-13: IDRULES is read exactly as `IdRuleFor` reads it, so a stray space fails the build', () => {
+  // `OcuPilot.Kernel.EntityRef.IdRuleFor` splits with `$Piece` and compares verbatim, so the
+  // natural spelling of a second pair -- a space after the comma -- names a type the kernel
+  // matches nothing for. A trimming reader here would mirror the rule anyway and the client would
+  // fold an id the instance leaves alone: DW-1364 in mirror image, with the build green.
+  const spaced = 'Parameter IDRULES = "web-application:foldcase-striptrailingslash, task:foldcase-striptrailingslash";';
+  assert.deepEqual(parseIdRules(spaced), [
+    ['web-application', 'foldcase-striptrailingslash'],
+    [' task', 'foldcase-striptrailingslash'],
+  ]);
+  assert.throws(
+    () => buildMirror({ ...readSources(), idRules: parseIdRules(spaced), idRuleNames: ['foldcase-striptrailingslash'] }),
+    /entity type " task"/,
+    'and the build names the stray space rather than mirroring past it'
+  );
+
+  // The rule half stops at the second colon, as `$Piece(pair, ":", 2)` does.
+  assert.deepEqual(parseIdRules('Parameter IDRULES = "task:a:b";'), [['task', 'a']]);
 });
 
 test('AD-13: the generator refuses an id rule no reader can apply, naming the rule and the file', () => {
@@ -199,6 +248,15 @@ test('AD-13: the generator refuses an id rule no reader can apply, naming the ru
       idRuleNames: ['foldcase-striptrailingslash', 'trim-whitespace'],
       pattern: /cannot implement on the client/,
       why: 'a rule this generator has no client implementation for',
+    },
+    {
+      idRules: [
+        ['web-application', 'foldcase-striptrailingslash'],
+        ['web-application', 'foldcase-striptrailingslash'],
+      ],
+      idRuleNames: ['foldcase-striptrailingslash'],
+      pattern: /declares two rules for entity type/,
+      why: 'two pairs for one type, which the kernel resolves to the first and this to the last',
     },
   ];
   for (const { idRules, idRuleNames, pattern, why } of refusals) {
@@ -1496,7 +1554,9 @@ test('the build refuses a privilege pair missing a half, in an area and in a des
   assert.equal(malformedPair([{ resource: '%Admin_Secure', permission: '' }]), '#1', 'an empty permission');
   assert.equal(malformedPair([{ resource: 'a', permission: 'USE' }, 'not-an-object']), '#2', 'and the position is named');
 
-  const sound = { entityTypes: ['user'], areas: [], screens: [] };
+  // `refSeparator` is what a real source set carries; a synthetic one declares it too, or the
+  // generator refuses it before it reaches the refusal under test.
+  const sound = { entityTypes: ['user'], refSeparator: 2, areas: [], screens: [] };
 
   assert.throws(
     () =>
@@ -1525,7 +1585,9 @@ test('the build refuses a privilege pair missing a half, in an area and in a des
   );
 
   const { areas, screens } = readSources();
-  assert.doesNotThrow(() => buildMirror({ entityTypes: parseEntityTypes('Parameter TYPES = "user";'), areas, screens: [] }));
+  assert.doesNotThrow(() =>
+    buildMirror({ entityTypes: parseEntityTypes('Parameter TYPES = "user";'), refSeparator: 2, areas, screens: [] })
+  );
   for (const screen of screens) assert.equal(malformedPair(screen.declaration.privileges), null, screen.file);
   for (const area of areas) assert.equal(malformedPair(area.privileges), null, area.key);
 });
@@ -1878,6 +1940,7 @@ test('entityLabelProblem returns the instance-side sentences, and every shipped 
     () =>
       buildMirror({
         entityTypes,
+        refSeparator: 2,
         scopeWords,
         archetypes,
         areas,

@@ -419,6 +419,14 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
 ];
 
 /**
+ * The code point joining the three parts of a reference key, mirrored from
+ * OcuPilot.Kernel.EntityRef's REFSEPARATOR (AD-13). `entity-ref.ts` builds its separator from
+ * this rather than from a literal of its own, so the two key builders cannot join one entity's
+ * parts with different characters (DW-1403).
+ */
+export const ENTITY_REF_SEPARATOR_CODE = 2;
+
+/**
  * The per-entity-type canonical id rules, mirrored from OcuPilot.Kernel.EntityRef's IDRULES
  * table (AD-13). Only the types that declare one appear; every other type canonicalizes to
  * itself. `entity-ref.ts` holds the implementation of each rule name, pinned equal to
