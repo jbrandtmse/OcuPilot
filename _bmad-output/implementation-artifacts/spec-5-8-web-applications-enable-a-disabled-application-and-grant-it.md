@@ -12,13 +12,16 @@ context:
 warnings: ['oversized']
 deferred:
   - summary: >-
-      The demo card discloses the target's own Name as the secret mask, because
-      webapp.list.update's generated field list carries no row for it.
+      REFUTED 2026-09-21: the demo card does not disclose Name at all, because the payload the
+      disclosure iterates has no Name key. A classified-opaque array is the real residual.
     evidence: |-
       Measured in the checkout: src/OcuPilot/Screen/Tool/ToolFields.cls declares 47 rows for
       webapp.list.update, 45 of them ordinary+literal top level, and Name is not among them; a
-      WebApp.App GET answers 46 keys. So on UJ-3's own card Name reads as eight bullets under the
-      disclosure while the card header shows /csp/myapp in clear. This is AD-3's fail-closed rule
+      WebApp.App GET answers 46 keys, none of them Name. The inference drawn from that -- that Name
+      therefore reads as eight bullets on the card -- was WRONG: Disclosure.cls:55-66 iterates the
+      PAYLOAD's keys, not the field list's rows, and Mint.cls:234 clones the fresh GET as the
+      payload, so a key the endpoint never returns has no row to mask. Re-measured on
+      ocupilot-slot-a 2026-09-21: the GET answers 46 keys and hasName=0. This is AD-3's fail-closed rule
       applied exactly as this spec's matrix requires, so it is spec-bound rather than a code
       defect - but it makes an unclassified field indistinguishable from a real secret on the one
       card the demo is built around. Settling it is a choice between classifying Name in Story
@@ -437,7 +440,7 @@ through fixtures and pin block order only.
   - `[low]` `[patch]` Every automated test of the two new smoke checks runs through `Test/SmokeWriteProbe`'s overrides, and the one test that runs the real list passes demo `"0"` and skips before reaching them — so the shipped `WriteTarget`/`WriteTargetOwned` bodies were asserted nowhere. Added `TestTheShippedCheckNamesTheDemoFixture`; mutation applied, red, reverted.
   - `[low]` `[patch]` (same root cause as the `applyCriterion` row) The instance's criterion channel is generic — `Base.FlagCriteria` admits any well-formed flag on any descriptor — while the client's is one screen wide, so a flag declared on a second screen would pass the instance gate, ride the directive and apply nothing. Closed by the same `AUDIT_DESCRIPTOR` guard and its foreign-declaration leg, which makes the decline explicit rather than incidental.
   - `[low]` `[patch]` (same root cause as the restraint-precedence row) The reorder makes AC5's named `PROHIBITED.SERVINGPATH` caller-dependent: a caller lacking `%Admin_Secure:USE` who proposes disabling `/ocupilot` is now answered `AUTH.NOPRIVILEGE`. The matrix row's own error-handling cell ("Refused on the instance whatever the caller") still holds, and the precedence is now stated and pinned rather than incidental.
-  - `[low]` `[defer]` The demo card discloses the target's own `Name` as the secret mask — confirmed against `ToolFields.cls` (47 rows, 45 ordinary+literal top level, no `Name` row). Spec-bound: it is exactly the fail-closed rule the frozen matrix requires, so it is recorded rather than changed; settling it is a choice between classifying `Name` in Story 2.2's derivation and excluding the id field.
+  - `[low]` `[defer]` The demo card discloses the target's own `Name` as the secret mask. **REFUTED at Story 5.9's plan gate, 2026-09-21, and closed `dropped` as DW-1429:** the disclosure iterates the payload's keys (`Disclosure.cls:55-66`) and the `WebApp.App` GET answers 46 keys with no `Name` (re-measured on `ocupilot-slot-a`), so there is no `Name` row. The row counts here are right; the conclusion drawn from them was an inference, not an observation.
   - `[medium]` `[defer]` The disclosure's rows are unbounded in total size and re-projected on every poll, and `OrdinaryPaths` opens the `ToolFields` XData on every `WireRow`. AD-24's per-field bound does not cover the proposal wire, and bounding a disclosed value changes what the card shows — not settled by this spec.
   - `[medium]` `[defer]` `AdminPort.Invoke` silently no-ops on a `%String` body for a mutating type — measured both ways on `ocupilot-ci` during implementation: a `WebApp.App` PUT given JSON text answers 200 with the target unchanged and writes nothing. Out of this story's footprint; the fix is to refuse a non-object `pBody`.
   - `[low]` `[reject]` Two of `CheckAgentWrite`'s four skip arms ("the record could not be read", "a turn of this user is already running") are undriven. The spec's fourth AC and its matrix name the absent and unowned fixture, both of which are driven; the arms behave correctly and exercising them needs new injection machinery, which is more than a direct correction for a defect no user would meet.
@@ -749,6 +752,6 @@ second reader should take, not one this pass could make.
 
 The three deferred items carry the rest: the disclosure's unbounded row size on a once-a-second poll
 and its per-`WireRow` XData read (medium), `AdminPort.Invoke` silently no-opping on a `%String` body
-for a mutating type (medium, measured both ways), and the demo card disclosing the target's own
-`Name` as the mask because `ToolFields` carries no row for it (low, spec-bound by the frozen
-matrix's fail-closed rule). The last is demo-visible and worth the owner's eye before the freeze.
+for a mutating type (medium, measured both ways), and a claim that the demo card discloses the
+target's own `Name` as the mask (low) that Story 5.9's plan gate REFUTED by measurement and closed
+`dropped` — the disclosure iterates the payload, which carries no `Name`.

@@ -3661,7 +3661,6 @@ So that the most common daily administration task is reachable through the agent
 - **When** the list re-fetches
 - **Then** the row highlights within two seconds and the audit database carries the marked event.
 - DW-1431: a principal holding exactly the pairs the descriptor declares still cannot reach the confirm endpoint - it needs `READ` on the install namespace's own code database, a lower IRIS access-control layer beneath the AD-8 pairs, and the resulting 403 arrives before any dispatch code runs so it carries **no error envelope and therefore no reason** (measured on `ocupilot-ci`). Either the install grants it or the prerequisite is documented; either way the refusal must carry a reason (ledger; routed by qa 2026-09-21)
-- DW-1429: `webapp.list.update`'s generated field list carries no row for the target's own `Name`, so AD-3's fail-closed rule masks it as `••••••••` on the one card the demo is built around, while the card header shows the same value in clear. Classify `Name` in Story 2.2's derivation. **Floor-blocking** (ledger; routed by merge_gate 2026-09-21)
 - DW-1412: the change toast is placed bottom-right of the *content area* and offset by the panel's live width, so it never overlays the panel's Send button; DESIGN.md:1211 and its token are amended to match (ledger; routed by merge_gate 2026-09-21)
 
 ### Story 5.10: Security and secrets - disable and re-enable auditing
