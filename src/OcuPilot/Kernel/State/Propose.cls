@@ -121,6 +121,15 @@ Property State As %String(MAXLEN = 16);
 /// different once a newer OcuPilot reads it.</p>
 Property AuditWarning As %Boolean [ InitialExpression = 0 ];
 
+/// <p>Whether the write this proposal carries is <b>destructive</b>, as the tool's own
+/// <method>OcuPilot.Screen.Tool.Write.Destructive</method> declared it at mint time (DESIGN.md's
+/// proposal-card rows). The card draws its left-edge bar and its Confirm in the destructive
+/// treatment; the tool owns the declaration.</p>
+/// <p><b>Added with no <code>SCHEMAVERSION</code> move</b>, for the reason
+/// <property>AuditWarning</property> records: every pre-existing row reads 0, which is what the
+/// declaration answers for every tool that shipped before this property existed.</p>
+Property Destructive As %Boolean [ InitialExpression = 0 ];
+
 /// <p>When the confirmed write was committed, ISO-8601 UTC; <code>""</code> while the row is not
 /// <parameter>STATECONFIRMED</parameter>. Written inside the claim's own transition and read by the
 /// card's confirmed status line.</p>
@@ -210,6 +219,7 @@ ClassMethod GuardedMint(ByRef pValues, pLimitsClass As %String, Output pKey As %
         Set tRow.ExpectedImpact = ..Cut($Get(pValues("expectedImpact")), tSummaryMax)
         Set tRow.Reverse = ..Cut($Get(pValues("reverse")), tSummaryMax)
         Set tRow.AuditWarning = ''$Get(pValues("auditWarning"))
+        Set tRow.Destructive = ''$Get(pValues("destructive"))
         Set tRow.DefinitionId = ..Cut($Get(pValues("definitionId")), 64)
         Set tRow.DefinitionVersion = ..Cut($Get(pValues("definitionVersion")), 32)
         Set tRow.CreatedAt = ..Stamp(tStamp)
@@ -596,6 +606,7 @@ ClassMethod RowValues(pRow As OcuPilot.Kernel.State.Propose, Output pValues) As 
     Set pValues("definitionId") = ..Text(pRow.DefinitionId)
     Set pValues("definitionVersion") = ..Text(pRow.DefinitionVersion)
     Set pValues("auditWarning") = ''pRow.AuditWarning
+    Set pValues("destructive") = ''pRow.Destructive
     Set tSC = ..GuardedStreamText(pRow, "Arguments", .tArguments)
     If $$$ISERR(tSC) Quit tSC
     Set pValues("arguments") = tArguments
@@ -638,6 +649,7 @@ ClassMethod WireRow(ByRef pValues, Output pOut As %DynamicObject) As %Status [ P
     Do tOut.%Set("closedReason", $Get(pValues("closedReason")), "string")
     Do tOut.%Set("confirmedAt", $Get(pValues("confirmedAt")), "string")
     Do tOut.%Set("auditWarning", ''$Get(pValues("auditWarning")), "boolean")
+    Do tOut.%Set("destructive", ''$Get(pValues("destructive")), "boolean")
     Set pOut = tOut
     Quit $$$OK
 }

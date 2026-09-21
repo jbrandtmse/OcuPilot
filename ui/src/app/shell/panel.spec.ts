@@ -3105,6 +3105,49 @@ describe('Story 5.3: confirming, cancelling and re-proposing a card', () => {
     expect((host.querySelector('.ocu-panel-send') as HTMLElement).classList.contains('ocu-button-primary')).toBe(true);
   });
 
+  it("DW-1227: the card's screen facts come from the proposal's own tool, not from its entity type", async () => {
+    // The auditing write's screen is `built: false`, so `screenForEntityType` answers `null` for it
+    // and the card would carry no singular noun at all -- while `screenForToolName` resolves the one
+    // screen whose `toolIdentifier` claims that tool name. The noun is what makes the difference
+    // observable here; the secret names travel the same lookup.
+    //
+    // Mutation (Rule 19): key `Panel.proposalView` back on `proposal.target.type` -> the title loses
+    // its noun and this goes red.
+    const { host } = await mountDecidable({}, [
+      wireProposal({
+        proposalId: 'p1',
+        tool: 'security.auditing.update',
+        target: { type: 'auditing-configuration', scope: 'instance', id: 'SYSTEM' },
+        changed: [{ field: 'Enabled', before: 'Yes', after: 'No' }],
+      }),
+    ]);
+    const title = (host.querySelector('.ocu-proposal-card-title')?.textContent ?? '').trim();
+    expect(title).toContain(STRINGS.auditingConfigurationLink);
+    expect(title).toContain('SYSTEM');
+  });
+
+  it("AC1: the tool's destructive declaration reaches the card off the wire, through this panel", async () => {
+    // The whole client path for AC1: the wire row's `destructive`, the panel's view mapping, and
+    // the card's treatment. The declaration is the write tool's own -- nothing in this client holds
+    // a list of destructive tool names.
+    //
+    // Mutation (Rule 19): drop `destructive` from `parseProposal` or from `toCardView` -> this goes
+    // red; the instance half is `OcuPilot.Test.ToolWrite`'s and `OcuPilot.Test.ProposalWire`'s.
+    const { host } = await mountDecidable({}, [wireProposal({ destructive: true })]);
+    const card = host.querySelector('.ocu-proposal-card') as HTMLElement;
+    expect(card.classList.contains('ocu-proposal-card-destructive')).toBe(true);
+    expect(
+      host.querySelector('.ocu-proposal-card-confirm')?.classList.contains('ocu-button-destructive')
+    ).toBe(true);
+
+    const plain = await mountDecidable({}, [wireProposal()]);
+    expect(
+      (plain.host.querySelector('.ocu-proposal-card') as HTMLElement).classList.contains(
+        'ocu-proposal-card-destructive'
+      )
+    ).toBe(false);
+  });
+
   it('AC4: a fingerprint refusal closes the card target-changed and offers only Re-propose', async () => {
     const { host, fixture } = await mountDecidable({
       [proposalConfirmPath('p1')]: [

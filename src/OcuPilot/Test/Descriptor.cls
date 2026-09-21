@@ -111,11 +111,52 @@ Method TestTheConfirmChannelRefusesACredentialNamedFieldItDoesNotDeclare()
     Do tBad.%Set("fingerprintExcludes", [(tSound.%Get("read").%Get("fields").%Get(0))])
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "", "and so is one naming a field this screen's own read declares (DW-1205)")
 
+    ; DW-1206, the refusing direction: secretArguments is read as a whitelist by the confirm channel
+    ; and by the tool's own schema, both by exact name, so an entry naming nothing left the real
+    ; field advertised and the channel closed to the spelling nobody sends. Both keys are now
+    ; checked against one set.
+    Set tBad = ##class(%DynamicAbstractObject).%FromJSON(tSound.%ToJSON())
+    Do tBad.%Set("secretArguments", ["Pasword"])
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "secretArguments names 'Pasword', which is neither a settable field of this screen's write tool nor one its read declares (AD-6)", "a secretArguments entry naming nothing is refused")
+    Do tBad.%Set("secretArguments", ["Timeout"])
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "", "while one naming a settable field of that tool is sound")
+    Do tBad.%Set("secretArguments", [(tSound.%Get("read").%Get("fields").%Get(0))])
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "", "and so is one naming a field this screen's own read declares")
+
+    ; The two spellings the one set carries, because their consumers honour different ones: the
+    ; schema drops a declared secret by the []-stripped name, while an exclusion of an array reaches
+    ; the fingerprint as <path>[].
+    Set tBad = ##class(%DynamicAbstractObject).%FromJSON(tSound.%ToJSON())
+    Do tBad.%Set("secretArguments", ["CorsAllowlist"])
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "", "a secret named in the spelling the tool's schema honours is sound")
+    Set tBad = ##class(%DynamicAbstractObject).%FromJSON(tSound.%ToJSON())
+    Do tBad.%Set("fingerprintExcludes", ["CorsAllowlist[]"])
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "", "and an exclusion named in the spelling the fingerprint honours is sound")
+
+    ; The tightening half: any row of the entry was accepted before, a secret-classified subtree
+    ; included. An exclusion covering a field the tool cannot set is nameable through the read half.
+    Set tBad = ##class(%DynamicAbstractObject).%FromJSON(tSound.%ToJSON())
+    Do tBad.%Set("fingerprintExcludes", ["MatchRoles[].MatchRole"])
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "fingerprintExcludes names 'MatchRoles[].MatchRole', which is neither a field of this screen's write tool nor one its read declares (AD-6)", "a row the write tool cannot set is no longer nameable through the tool half")
+
     Set tBad = ##class(%DynamicAbstractObject).%FromJSON(tSound.%ToJSON())
     Do tBad.%Get("read").%Set("criteria", {"fields": [{"param": "apiKey", "labelKey": "tableColumnName", "kind": "text", "maxLength": 64}]})
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "read.criteria names 'apiKey', whose name matches the credential pattern and which secretArguments does not declare (AD-3)", "a credential-named criterion the declaration does not hold is refused")
     Do tBad.%Set("secretArguments", ["apiKey"])
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "", "and declaring it is what admits it")
+
+    ; The loosening half: a declared criterion is one of the names the read declares, so it is a
+    ; nameable exclusion where it was refused before -- including a FLAG criterion, whose value is
+    ; the descriptor's own and which DeclaredCriterionParams missed until DW-1206.
+    Set tSC = $ClassMethod("OcuPilot.Screen.Descriptor.AuditList", "DeclarationJson", .tAudit)
+    Do $$$AssertStatusOK(tSC, "the audit viewer's declaration parses")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tAudit), "", "and is sound as it ships")
+    Set tFlags = $ClassMethod("OcuPilot.Screen.Descriptor.AuditList", "FlagCriteria")
+    Do $$$AssertTrue($ListLength(tFlags) > 0, "it declares at least one flag criterion")
+    Do tAudit.%Set("fingerprintExcludes", [(tAudit.%Get("read").%Get("criteria").%Get("fields").%Get(0).%Get("param"))])
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tAudit), "", "a typed criterion's parameter is a nameable exclusion")
+    Do tAudit.%Set("fingerprintExcludes", [(tAudit.%Get("read").%Get("criteria").%Get($List(tFlags, 1)).%Get("param"))])
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tAudit), "", "and so is a flag criterion's, which the builder missed before")
 
     Set tSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tAll)
     Do $$$AssertStatusOK(tSC, "every shipped descriptor enumerates")
@@ -124,6 +165,47 @@ Method TestTheConfirmChannelRefusesACredentialNamedFieldItDoesNotDeclare()
         Do $ClassMethod(tClass, "DeclarationJson", .tOne)
         Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tOne), "", tClass _ ": passes the confirm-channel rule")
     }
+}
+
+/// <p>Story 5.10's descriptor: the first <code>built: false</code> screen in this tree. It
+/// validates, its route and its tool identifier resolve to it, it declares the security area's own
+/// pairs, and it is absent from every surface a <b>built</b> screen appears on -- which is what lets
+/// the agent's write tool ship before Story 7.4 builds the screen.</p>
+/// <p>Mutation (Rule 19): flip its <code>"built"</code> key to true and recompile -- the mirror's
+/// own <code>BuiltArchetypeKey</code> gate would then require an Angular page for
+/// <code>form-page</code> (it has one, Story 4.2's), so what reddens here is the unbuilt
+/// assertions below and <class>OcuPilot.Test.SurfaceCoverage</class>'s screen roster.</p>
+Method TestTheAuditingConfigurationDescriptorIsDeclaredUnbuiltAndOwnsTheWriteTool()
+{
+    Set tClass = "OcuPilot.Screen.Descriptor.AuditingConfig"
+    Set tSC = $ClassMethod(tClass, "DeclarationJson", .tDeclaration)
+    Do $$$AssertStatusOK(tSC, "the declaration parses")
+    If $$$ISERR(tSC) Quit
+
+    Set tKeys = ""
+    Set tIterator = tDeclaration.%GetIterator()
+    While tIterator.%GetNext(.tKey, .tValue) {
+        Set tKeys = tKeys _ $Select(tKeys = "": "", 1: ",") _ tKey
+    }
+    Do $$$AssertEquals(tKeys, "route,area,labelKey,sideBarPosition,archetype,built,refreshes,refreshRates,privileges,entityType,entityLabelKey,secondaryEntityTypes,scope,parentScope,id,primaryAction,rowActions,context,emptyStateKey,commandAliases,classicPage,classicLinkExemption,toolIdentifier", "the declared keys, with no read, table, banner or criteria among them: " _ tKeys)
+
+    Do $$$AssertEquals($ClassMethod(tClass, "IsBuilt"), 0, "it is declared unbuilt")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).SideBarPositionProblem(tDeclaration), "", "so its side-bar position says nothing yet")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ReadProblem(tDeclaration), "", "a declaration with no read is a supported shape")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tDeclaration), "", "and it declares no secret and no exclusion")
+    Do $$$AssertEquals($IsObject($ClassMethod(tClass, "Read")), 0, "the accessor answers no read at all")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForRoute("security/auditing"), tClass, "the route resolves to it")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).DescriptorForTool("security.auditing"), tClass, "and so does the tool identifier its write tool's name opens with")
+    Do $$$AssertEquals($ClassMethod(tClass, "PrimaryEntityType"), "auditing-configuration", "its entity type is the instance's auditing configuration")
+    Do $$$AssertEquals($ClassMethod(tClass, "Scope"), "instance", "scoped to the instance, which has one of them")
+    Do $$$AssertEquals($ClassMethod(tClass, "Archetype"), "form-page", "it is a form page, as Story 7.4 will build it")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Archetype).LinkOutClass("form-page"), "detail", "whose link-out class permits a classic link it does not declare")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ClassicLinkProblem(tDeclaration), "", "and its classic-page declaration is sound")
+    Do $$$AssertNotEquals(tDeclaration.%Get("classicPage"), "", "it names the classic page it replaces (AD-44)")
+
+    Do $$$AssertEquals(tDeclaration.privileges.%ToJSON(), "[{""resource"":""%Admin_Secure"",""permission"":""USE""},{""resource"":""%DB_IRISSYS"",""permission"":""READ""}]", "two declared pairs: the endpoint's own resource at USE, and read on the database the port runs it from")
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("security", $ClassMethod(tClass, "PrivilegePairs")), "", "and the security area covers both")
+    Do $$$AssertEquals(''$ClassMethod(tClass, "Refreshes"), 0, "it never auto-refreshes: a form whose fields moved under the cursor is what refresh must not do")
 }
 
 /// <p>Story 6.1 -- the REST API explorer and the OpenAPI document viewer pass the read, criteria and
@@ -1187,7 +1269,7 @@ Method TestTheEntityTypeVocabularyIsClosed()
     Do $$$AssertTrue('##class(OcuPilot.Kernel.EntityType).IsKnown(""), "and neither is the empty string")
     ; Pinned to a literal. Comparing Count() with $ListLength(List()) restates Count()'s own
     ; definition and cannot fail, so a value dropped from TYPES would go unnoticed.
-    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 28, "the closed vocabulary holds twenty-eight values; adding one is a deliberate edit here and in Kernel.EntityType")
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityType).Count(), 29, "the closed vocabulary holds twenty-nine values; adding one is a deliberate edit here and in Kernel.EntityType")
     Do $$$AssertEquals($ClassMethod("OcuPilot.Screen.Descriptor.Home", "PrimaryEntityType"), "", "Home administers nothing and says so")
     Do $$$AssertEquals($ListLength($ClassMethod("OcuPilot.Screen.Descriptor.Home", "EntityTypes")), 0, "so it contributes no key to validate")
 }

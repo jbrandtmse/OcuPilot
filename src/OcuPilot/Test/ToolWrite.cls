@@ -24,6 +24,12 @@ Parameter USERTOOL = "permissions.users.update";
 
 Parameter USERTOOLCLASS = "OcuPilot.Screen.Tool.UserUpdate";
 
+/// <p>Story 5.10's write tool and its class: the first destructive one, and the first whose screen
+/// is not built.</p>
+Parameter AUDITTOOL = "security.auditing.update";
+
+Parameter AUDITTOOLCLASS = "OcuPilot.Screen.Tool.AuditingUpdate";
+
 Parameter WRITEBASE = "OcuPilot.Screen.Tool.Write";
 
 Parameter REGISTRY = "OcuPilot.Screen.Tool.Registry";
@@ -382,6 +388,65 @@ Method TestTheUserWriteToolAdvertisesEnabledAndRolesWithTheScreensOwnPairs()
     Do $$$AssertTrue(tProblem [ "FullName", "naming that argument too: " _ tProblem)
     Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Name": "OcuPilotProbeSchema", "Roles": ["%Developer"], "Enabled": true}, .tProblem)
     Do $$$AssertStatusOK(tSC, "while the two advertised fields together validate: " _ tProblem)
+}
+
+/// <p>AC1, AC4 (Story 5.10): the auditing write tool advertises its one derived field, requires its
+/// screen's own pairs at <code>USE</code>, and declares its write destructive -- from the tool
+/// rather than from a kernel list naming tools.</p>
+/// <p>It is also the first registered write tool whose descriptor is <code>built: false</code>, so
+/// the registry is asserted to list it: a tool is registered by being compiled, and a screen that
+/// is not built yet is no reason for its operation to be absent.</p>
+/// <p>Mutation (Rule 19): set <parameter>OcuPilot.Screen.Tool.AuditingUpdate.WRITEPERMISSION</parameter>
+/// back to <code>"WRITE"</code> -- the administrative-permission assertion goes red; answer 0 from
+/// <method>OcuPilot.Screen.Tool.Write.Destructive</method> -- the destructive assertion goes red.</p>
+Method TestTheAuditingWriteToolAdvertisesEnabledAloneAndDeclaresItsWriteDestructive()
+{
+    Set tSC = $ClassMethod(..#REGISTRY, "Resolve", ..#AUDITTOOL, .tTool)
+    Do $$$AssertStatusOK(tSC, "the registry resolves the auditing write tool by name")
+    Do $$$AssertTrue($IsObject(tTool), "and finds it, though its screen is not built")
+    If '$IsObject(tTool) Quit
+    Do $$$AssertEquals(tTool.%Get("kind"), "write", "it is a write tool")
+    Do $$$AssertEquals(tTool.%Get("class"), ..#AUDITTOOLCLASS, "answered by its own class")
+    Do $$$AssertEquals($ClassMethod(..#REGISTRY, "FulfilmentOf", tTool), "instance", "fulfilled on the instance, never in the browser")
+    Do $$$AssertEquals($ClassMethod($Parameter(..#AUDITTOOLCLASS, "DESCRIPTORCLASS"), "IsBuilt"), 0, "its descriptor is declared built: false")
+
+    Set tPairs = $ClassMethod(..#AUDITTOOLCLASS, "PrivilegePairs", "", .tResolved)
+    Do $$$AssertEquals(tResolved, 1, "its pairs resolve")
+    Set tSpelled = ""
+    Kill tSeen
+    For tI = 1:1:$ListLength(tPairs) {
+        Set tResource = $List($List(tPairs, tI), 1)
+        Set tPermission = $List($List(tPairs, tI), 2)
+        Set tSpelled = tSpelled _ $Select(tI = 1: "", 1: ",") _ tResource _ ":" _ tPermission
+        Set tSeen(tResource _ ":" _ tPermission) = +$Get(tSeen(tResource _ ":" _ tPermission)) + 1
+        If $ListFind($ListFromString($Parameter("OcuPilot.Screen.Gate", "ADMINRESOURCES")), tResource) {
+            Do $$$AssertEquals(tPermission, $Parameter("OcuPilot.Screen.Gate", "ADMINPERMISSION"), tResource _ " is required at the one permission a shipped role grants it at")
+        }
+    }
+    Do $$$AssertEquals($ListLength(tPairs), 2, "the resolved set is exactly two pairs: " _ tSpelled)
+    Do $$$AssertEquals(+$Get(tSeen("%Admin_Secure:USE")), 1, "the screen's own use pair is required once: " _ tSpelled)
+    Do $$$AssertEquals(+$Get(tSeen("%Admin_Secure:WRITE")), 0, "and no pair asks for a write permission on an administrative resource: " _ tSpelled)
+    Set tDeclared = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(..#AUDITTOOLCLASS, "DESCRIPTORCLASS"), .tDeclaredResolved)
+    Do $$$AssertEquals(tDeclaredResolved, 1, "the screen's own declared set resolves")
+    Do $$$AssertEquals(tPairs, tDeclared, "and the write's set is that set, not a superset of it")
+
+    Do $$$AssertEquals($ClassMethod(..#AUDITTOOLCLASS, "Destructive"), 1, "the tool declares its write destructive")
+    Do $$$AssertEquals($ClassMethod(..#USERTOOLCLASS, "Destructive"), 0, "while a tool that is not says so")
+
+    Set tFields = $ClassMethod(..#AUDITTOOLCLASS, "SettableFields")
+    Do $$$AssertEquals($ListToString(tFields), "Enabled", "the one settable field is the one derived literal")
+    Set tPermittedByTheSet = ##class(OcuPilot.Kernel.Proposal.Prohibited).PermittedChangeFields("auditing-configuration")
+    Do $$$AssertEquals($ListToString(tPermittedByTheSet), $ListToString(tFields), "and the kernel has reviewed exactly the field the tool advertises")
+
+    Set tSchema = $ClassMethod(..#AUDITTOOLCLASS, "InputSchema")
+    Set tProperties = tSchema.%Get("properties")
+    Do $$$AssertEquals(tProperties.%Get("Enabled").%Get("type"), "boolean", "Enabled is advertised with its derived JSON type")
+    Do $$$AssertEquals(tProperties.%GetTypeOf("AuditEncrypt"), "unassigned", "and no other property of the endpoint's shape is advertised")
+    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Name": "SYSTEM", "Enabled": false}, .tProblem)
+    Do $$$AssertStatusOK(tSC, "the id and the flag together validate: " _ tProblem)
+    Set tSC = $ClassMethod(..#REGISTRY, "ValidateArguments", tSchema, {"Name": "SYSTEM", "AuditEncrypt": false}, .tProblem)
+    Do $$$AssertStatusNotOK(tSC, "while an unadvertised property is refused")
+    Do $$$AssertTrue(tProblem [ "AuditEncrypt", "naming the argument: " _ tProblem)
 }
 
 /// <p>The class <var>pClass</var> inherits method <var>pName</var> from, or <code>""</code>.</p>

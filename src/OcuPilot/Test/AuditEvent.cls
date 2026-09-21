@@ -319,6 +319,45 @@ Method TestADeletedRegistrationDropsTheRowAndReportsIt()
 }
 
 
+/// <p>DW-1171: a dropped emission reports the sentence its own <b>kind</b> earns -- the
+/// security-relevant one for a security change, the configuration one otherwise, and the ledger-read
+/// one for that read. A security change reported as a configuration one sends an operator looking
+/// in the wrong place for the row that is missing, and this log line is the only trace the drop
+/// leaves.</p>
+/// <p>The drop is forced by an entity type <method>OcuPilot.Kernel.EntityRef.Wire</method> refuses,
+/// so all three arms run <b>without</b> deleting a registration: nothing on this instance stops
+/// being audited to observe which sentence is chosen, and the three cases differ only in the
+/// arguments they were called with.</p>
+/// <p>Mutation (Rule 19): drop the <code>+pSecurityChange</code> arm from
+/// <method>OcuPilot.Kernel.Audit.Event.Record</method>'s report selection -- the security leg goes
+/// red while the other two still pass, which is what says the arm is load-bearing rather than the
+/// selection as a whole.</p>
+Method TestADroppedEmissionReportsTheSentenceItsOwnKindEarns()
+{
+    Set tUnwireable = "not-an-entity-type"
+    Do $$$AssertTrue('##class(OcuPilot.Kernel.EntityType).IsKnown(tUnwireable), "the probe type is outside the kernel vocabulary, so the emission fails before the audit call")
+
+    Do ##class(OcuPilot.Test.EventProbe).Clear()
+    Set tSC = ##class(OcuPilot.Test.EventProbe).Record("update", tUnwireable, "probe-id", {}, 1)
+    Do $$$AssertStatusNotOK(tSC, "a security-relevant change whose emission fails returns an error status")
+    Do $$$AssertEquals(##class(OcuPilot.Test.EventProbe).Captured("calls"), 1, "and reports the drop once")
+    Do $$$AssertEquals(##class(OcuPilot.Test.EventProbe).Captured("message"), ##class(OcuPilot.Kernel.Audit.Event).#DROPPEDSECURITY, "with the security-relevant sentence")
+
+    Do ##class(OcuPilot.Test.EventProbe).Clear()
+    Set tSC = ##class(OcuPilot.Test.EventProbe).Record("update", tUnwireable, "probe-id", {}, 0)
+    Do $$$AssertStatusNotOK(tSC, "a configuration change whose emission fails returns an error status")
+    Do $$$AssertEquals(##class(OcuPilot.Test.EventProbe).Captured("message"), ##class(OcuPilot.Kernel.Audit.Event).#DROPPEDCONFIG, "with the configuration sentence")
+
+    Do ##class(OcuPilot.Test.EventProbe).Clear()
+    Set tSC = ##class(OcuPilot.Test.EventProbe).Record("read", tUnwireable, "probe-id", {}, 1, "", ##class(OcuPilot.Kernel.Audit.Event).#EVENTLEDGERREAD)
+    Do $$$AssertStatusNotOK(tSC, "a ledger read whose emission fails returns an error status")
+    Do $$$AssertEquals(##class(OcuPilot.Test.EventProbe).Captured("message"), ##class(OcuPilot.Kernel.Audit.Event).#DROPPEDLEDGERREAD, "with the read sentence, which wins over the security flag it was called with")
+
+    Do $$$AssertNotEquals(##class(OcuPilot.Kernel.Audit.Event).#DROPPEDSECURITY, ##class(OcuPilot.Kernel.Audit.Event).#DROPPEDCONFIG, "the three sentences are three sentences")
+    Do $$$AssertNotEquals(##class(OcuPilot.Kernel.Audit.Event).#DROPPEDSECURITY, ##class(OcuPilot.Kernel.Audit.Event).#DROPPEDLEDGERREAD, "and none is another's spelling")
+    Do ##class(OcuPilot.Test.EventProbe).Clear()
+}
+
 /// <p>Put back any registration a method deleted, remove any definition it created, and report a
 /// survivor of either as a failure. The restore is here as well as inside each method: a method
 /// that aborted between its <code>Security.Events.Delete</code> and its re-install would otherwise

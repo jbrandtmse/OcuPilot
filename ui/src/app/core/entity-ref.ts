@@ -19,6 +19,7 @@
 import {
   ENTITY_ID_RULES,
   ENTITY_REF_SEPARATOR_CODE,
+  ENTITY_SINGLETON_ID,
   ENTITY_TYPES,
   type EntityTypeKey,
 } from './screens.generated.ts';
@@ -68,6 +69,11 @@ const ID_RULES: Readonly<Record<string, (id: string) => string>> = {
     return value;
   },
   foldcase: (id) => id.toLowerCase(),
+  // A configuration object with exactly one instance has no name to fold, so every spelling --
+  // an empty id included -- answers the one canonical id. The value is mirrored from the kernel's
+  // own `RULESINGLETONID` rather than written here, so the two key builders cannot disagree about
+  // what that id is (DW-1403's defect class).
+  singleton: () => ENTITY_SINGLETON_ID,
 };
 
 /**

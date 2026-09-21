@@ -35,11 +35,30 @@ Parameter DESCRIPTORCLASS = "";
 /// <p>The generated field lists every write tool's schema is derived from.</p>
 Parameter TOOLFIELDSCLASS = "OcuPilot.Screen.Tool.ToolFields";
 
+/// <p>Whether this tool's write is <b>destructive</b>: a change whose effect the user cannot
+/// simply undo by proposing the opposite, and which the card therefore draws in the destructive
+/// treatment (DESIGN.md's proposal-card rows). <code>0</code> here; a concrete tool that is one
+/// declares <code>1</code> and says why.</p>
+/// <p><b>The declaration is the tool's, not a kernel list naming tools.</b> A second constant
+/// enumerating destructive tool names would have to be kept in step with the tool set by hand, and
+/// a tool added outside it would ship undeclared -- so the tool that knows its own effect states
+/// it, and <class>OcuPilot.Kernel.Proposal.Mint</class> reads it through
+/// <method>Destructive</method>.</p>
+Parameter DESTRUCTIVE As BOOLEAN = 0;
+
 /// <p>The class a minted proposal is built by. Overridable so a test can observe what a tool
 /// asked for; production never overrides it.</p>
 ClassMethod MintClass() As %String
 {
     Quit "OcuPilot.Kernel.Proposal.Mint"
+}
+
+/// <p><parameter>DESTRUCTIVE</parameter> as a boolean, for the mint that carries it onto the wire.
+/// A method rather than a bare parameter read because the mint resolves the tool by name and holds
+/// only its class.</p>
+ClassMethod Destructive() As %Boolean
+{
+    Quit ''..#DESTRUCTIVE
 }
 
 /// <p>The admin endpoint this tool's target is read from and written to.</p>

@@ -27,10 +27,12 @@
 /// (<method>AlwaysProhibitedFields</method>), and so is every field outside the reviewed few: a
 /// write tool advertises the reviewed names and nothing else, so the model cannot author the rest,
 /// and this class refuses them at the write so no other route can either.</p>
-/// <p><b>Two types are covered</b> (<parameter>COVEREDTYPES</parameter>): a web application, whose
-/// predicates are <method>WebApplication</method>'s, and a user account, whose predicates are
-/// <method>User</method>'s. Each later write-tool story adds its own type here, and a type listed
-/// with no branch is refused <parameter>UNCOVERED</parameter> at every write.</p>
+/// <p><b>Three types are covered</b> (<parameter>COVEREDTYPES</parameter>): a web application,
+/// whose predicates are <method>WebApplication</method>'s, a user account, whose predicates are
+/// <method>User</method>'s, and the instance's auditing configuration, whose predicate is
+/// <method>Auditing</method>'s -- the reviewed-few sweep alone, because AD-10 forbids no change to
+/// it. Each later write-tool story adds its own type here, and a type listed with no branch is
+/// refused <parameter>UNCOVERED</parameter> at every write.</p>
 /// <p>Seams a subclass overrides: <method>PortClass</method>, <method>RegistryClass</method>,
 /// <method>LastAllHolder</method> and <method>HoldsAll</method>. Production overrides none of them.
 /// The last two are the census, and the difference between them matters to a reader auditing it:
@@ -83,12 +85,14 @@ Parameter UNCOVERED = "PROHIBITED.UNCOVERED";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "web-application,user";
+Parameter COVEREDTYPES = "web-application,user,auditing-configuration";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
 
 Parameter TYPEUSER = "user";
+
+Parameter TYPEAUDITING = "auditing-configuration";
 
 /// <p>The instance's own predefined account, whose disablement AD-10 forbids. Compared through
 /// <method>NormalizedUser</method>, so every spelling the instance resolves to it is refused.</p>
@@ -173,6 +177,11 @@ ClassMethod CoveredTypes() As %List
 /// one is refused for the current user, the last <code>%All</code> holder and
 /// <parameter>SYSTEMACCOUNTNAME</parameter>. <code>Roles</code> is permitted except where the delta
 /// grants privilege, which is the same asymmetry read over a list.</p>
+/// <p>The auditing configuration's one is <code>Enabled</code>, and it carries <b>no</b> asymmetric
+/// predicate: AD-10 does not forbid turning auditing off, and the product's answer to it is the
+/// card's warning, the recorded drop and the banner rather than a refusal (AD-15 as amended
+/// 2026-09-21). Every other property of that object -- the audit-database location, encryption --
+/// is refused by the reviewed-few rule.</p>
 /// <p>A write tool advertises no field outside this list, which is the other half of AD-10; the
 /// tool states its own admitted names and a test asserts the two agree, so the tool layer never
 /// reads the kernel.</p>
@@ -180,6 +189,7 @@ ClassMethod PermittedChangeFields(pType As %String) As %List
 {
     If pType = ..#TYPEWEBAPPLICATION Quit $ListBuild("AutheEnabled", "Description", "Enabled", "Resource")
     If pType = ..#TYPEUSER Quit $ListBuild(..#FIELDENABLED, ..#FIELDROLES)
+    If pType = ..#TYPEAUDITING Quit $ListBuild(..#FIELDENABLED)
     Quit ""
 }
 
@@ -236,7 +246,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) {
+        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -262,6 +272,10 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
 
         If tType = ..#TYPEUSER {
             Set tSC = ..User(tId, tPayloadObject, tTarget, .tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        If tType = ..#TYPEAUDITING {
+            Set tSC = ..Auditing(.tChanged, .pProhibits, .pCode)
             Quit
         }
         Set tSC = ..WebApplication(tPayloadObject, tTarget, tServes, .tChanged, .pProhibits, .pCode)
@@ -414,6 +428,42 @@ ClassMethod User(pId As %String, pPayload As %DynamicObject, pTarget As %Dynamic
             }
         }
         Set tPermitted = ..PermittedChangeFields(..#TYPEUSER)
+        Set tField = ""
+        For {
+            Set tField = $Order(pChanged(tField))
+            If tField = "" Quit
+            If '$ListFind(tPermitted, tField) {
+                Do ..Refuse(..#UNCOVEREDFIELD, .pProhibits, .pCode)
+                Quit
+            }
+        }
+    } Catch ex {
+        Set pProhibits = 0
+        Set pCode = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The auditing-configuration predicate: the reviewed-few sweep and nothing else.</p>
+/// <p><var>pChanged</var> is <method>Changed</method>'s answer -- the fields this proposal changes.
+/// A change to <code>Enabled</code> is permitted in <b>both</b> directions, because AD-10's set is
+/// by effect and neither turning auditing on nor turning it off is an effect it forbids; every
+/// other property of the object is refused <parameter>UNCOVEREDFIELD</parameter>, which is what
+/// keeps a vendor property a later IRIS build adds to this endpoint's template out of a payload
+/// until somebody reviews it.</p>
+/// <p><b>Turning auditing off is not prohibited, and that is the decision rather than an
+/// omission</b>: the product answers it with the card's warning, the recorded drop of the marker
+/// and the panel banner (AD-15 as amended 2026-09-21). Refusing it would mean an operator could
+/// not do through OcuPilot what the classic portal lets them do in two clicks, while leaving the
+/// window unrecorded either way.</p>
+ClassMethod Auditing(ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tSC = $$$OK
+    Try {
+        Set tPermitted = ..PermittedChangeFields(..#TYPEAUDITING)
         Set tField = ""
         For {
             Set tField = $Order(pChanged(tField))

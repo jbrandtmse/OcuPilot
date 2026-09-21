@@ -78,6 +78,12 @@ export interface ProposalCardView {
   /** Whether this write would stop the instance marking agent writes (AD-15). */
   readonly auditWarning?: boolean;
   /**
+   * Whether the tool declared its write destructive, which the card reads for its left-edge bar
+   * and its Confirm (DESIGN.md's `button-destructive`). It is the wire's own value, projected the
+   * way `auditWarning` is: the declaration is the tool's and no list of tool names exists here.
+   */
+  readonly destructive?: boolean;
+  /**
    * The written `reason` of the refusal this proposal's last decision met, or `''` (DW-1348).
    *
    * It is the server's own sentence, carried through unchanged (AD-39): a prohibited or restrained
@@ -259,7 +265,9 @@ function maskedRow(row: ProposalDiffRow): ProposalDiffRow {
  * declares, `secretArguments` the names that screen declares secret, and everything else is
  * `proposal`'s own -- the instance-computed diff with every declared secret masked on both sides,
  * the unchanged count and the instance's own already-masked unchanged rows, the agent's two
- * blocks, the reversal, the expiry and the audit warning.
+ * blocks, the reversal, the expiry, the audit warning and the tool's destructive declaration.
+ * `maskedFields` is `secretArguments` narrowed to the names this proposal's own payload carries
+ * (`payloadSecrets`).
  * `refusalReason` is the envelope's own sentence for a decision the instance refused on a row it
  * left live (DW-1348), passed in for the same reason the screen's two facts are: it is the
  * caller's to hold, and nothing here writes it.
@@ -288,8 +296,35 @@ export function toCardView(
     expectedImpact: proposal.expectedImpact,
     reverse: proposal.reverse,
     expiresAt: proposal.expiresAt,
-    maskedFields: secretArguments,
+    maskedFields: payloadSecrets(proposal, secretArguments),
     auditWarning: proposal.auditWarning,
+    destructive: proposal.destructive,
     refusalReason,
   };
+}
+
+/**
+ * The declared secret names **this proposal's own payload carries** (DW-1227), which is what the
+ * card asks the user to fill.
+ *
+ * A screen declares the secrets of every write its tool can make, and one proposal sends one
+ * body: a field the payload does not carry is a field the confirm body must not carry either
+ * (AD-6's channel is closed to the tool's declared names), so asking for it would leave Confirm
+ * `aria-disabled` on a value this write has no field for. The narrowing is this function's own
+ * restriction rather than a consequence of the merge: `Confirm.WithSecrets` calls `%Set` for every
+ * declared name the body supplied, which **adds** one the payload does not carry.
+ * The payload's own field names are its diff rows and its unchanged rows -- together the
+ * projection of the stored body the instance published (AD-4); a secret is never a diff row,
+ * because the mint refuses a secret argument outright, so in practice it is the unchanged half
+ * that names one.
+ */
+function payloadSecrets(
+  proposal: TurnProposal,
+  secretArguments: readonly string[]
+): readonly string[] {
+  if (secretArguments.length === 0) return secretArguments;
+  const carried = new Set<string>();
+  for (const row of proposal.changed) carried.add(row.field);
+  for (const row of proposal.unchanged) carried.add(row.field);
+  return secretArguments.filter((name) => carried.has(name));
 }

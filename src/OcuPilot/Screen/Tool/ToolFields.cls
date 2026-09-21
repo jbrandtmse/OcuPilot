@@ -28,6 +28,9 @@ XData Tools
   {"path":"EscalationRoles","shape":"array","templateType":"array","itemType":"","class":"opaque"},
   {"path":"Routine","shape":"literal","templateType":"string","itemType":"","class":"ordinary"}
 ]},
+"security.auditing.update": {"fieldList":"Security.Audit.Enabled","fields":[
+  {"path":"Enabled","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"}
+]},
 "webapp.list.update": {"fieldList":"WebApp.App","fields":[
   {"path":"AutheEnabled","shape":"literal","templateType":"string","itemType":"","class":"ordinary"},
   {"path":"AutoCompile","shape":"literal","templateType":"boolean","itemType":"","class":"ordinary"},

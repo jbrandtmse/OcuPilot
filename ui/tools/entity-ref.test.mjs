@@ -43,7 +43,7 @@ const {
   scopeFor,
 } = await import(corePath('entity-ref.ts'));
 const { IMPLEMENTED_ID_RULES } = await import(join(uiRoot, 'tools', 'screen-mirror.mjs'));
-const { ENTITY_ID_RULES } = await import(corePath('screens.generated.ts'));
+const { ENTITY_ID_RULES, ENTITY_SINGLETON_ID } = await import(corePath('screens.generated.ts'));
 const { COMPOSITE_SEPARATOR, joinCompositeId, splitCompositeId, encodeEntityId } = await import(
   corePath('entity-id.ts')
 );
@@ -218,4 +218,29 @@ test('the scope half resolves from the declared scope, and a third spelling reso
   assert.equal(scopeFor('namespace', 'USER'), 'USER');
   assert.equal(scopeFor(INSTANCE_SCOPE, 'USER'), INSTANCE_SCOPE, 'a configuration object does not move with the route');
   assert.equal(scopeFor('cluster', 'USER'), '', 'a value the server registry refuses resolves to no scope at all');
+});
+
+// Story 5.10, AD-13: a configuration object with exactly one instance has no name to fold, so the
+// `singleton` rule answers the mirrored constant for every spelling -- and the client answers the
+// same constant the kernel does, because both read `RULESINGLETONID` rather than a literal of their
+// own (DW-1403's defect class).
+//
+// Mutation (Rule 19): implement `singleton` as `(id) => id` in `entity-ref.ts` -> every row below
+// goes red; emit a literal in `screen-mirror.mjs` instead of the parsed parameter -> the key
+// assertion goes red the moment the kernel's parameter moves.
+test('AD-13: the singleton rule answers one id for every spelling, from the mirrored constant', () => {
+  const type = 'auditing-configuration';
+  assert.equal(ENTITY_ID_RULES[type], 'singleton', 'the mirrored table declares the rule');
+  assert.equal(typeof ENTITY_SINGLETON_ID, 'string');
+  assert.notEqual(ENTITY_SINGLETON_ID, '', 'and the mirrored constant is a real id');
+  for (const spelling of [ENTITY_SINGLETON_ID, 'system', 'System', 'anything at all', '']) {
+    assert.equal(normalizeEntityId(type, spelling), ENTITY_SINGLETON_ID, `'${spelling}' folds to it`);
+  }
+  assert.equal(
+    entityRefKey(type, 'instance', 'system'),
+    entityRefKey(type, 'instance', ENTITY_SINGLETON_ID),
+    'so two spellings build one key'
+  );
+  // The rule is per type: an id of another type is untouched by it.
+  assert.equal(normalizeEntityId('task', 'Nightly Purge'), 'Nightly Purge');
 });

@@ -10,7 +10,7 @@
  * declarations disagree.
  */
 
-export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch';
+export type EntityTypeKey = 'web-application' | 'rest-service' | 'user' | 'role' | 'resource' | 'service' | 'ssl-configuration' | 'x509-credential' | 'ldap-configuration' | 'wallet-collection' | 'wallet-secret' | 'oauth2-client-configuration' | 'oauth2-server-definition' | 'oauth2-resource-server' | 'oauth2-server' | 'oauth2-server-client' | 'audit-event' | 'auditing-configuration' | 'task' | 'task-history-entry' | 'process' | 'lock' | 'database' | 'device' | 'audit-record' | 'application-error' | 'log-entry' | 'agent-definition' | 'agent-switch';
 
 /**
  * The closed archetype vocabulary, mirrored from OcuPilot.Screen.Archetype. A screen's
@@ -405,6 +405,7 @@ export const ENTITY_TYPES: readonly EntityTypeKey[] = [
   "oauth2-server",
   "oauth2-server-client",
   "audit-event",
+  "auditing-configuration",
   "task",
   "task-history-entry",
   "process",
@@ -435,8 +436,16 @@ export const ENTITY_REF_SEPARATOR_CODE = 2;
  */
 export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> = {
   "web-application": "foldcase-striptrailingslash",
-  "user": "foldcase"
+  "user": "foldcase",
+  "auditing-configuration": "singleton"
 };
+
+/**
+ * The one id every `singleton`-ruled entity type's reference carries, mirrored from
+ * OcuPilot.Kernel.EntityRef's RULESINGLETONID (AD-13). `entity-ref.ts` builds that rule from this
+ * rather than from a literal of its own, for the reason the separator above is mirrored.
+ */
+export const ENTITY_SINGLETON_ID = "SYSTEM";
 
 /** The eight areas, in rail order. */
 export const AREAS: readonly AreaDeclaration[] = [
@@ -1105,6 +1114,62 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "secretArguments": [],
     "fingerprintExcludes": [],
     "entityLabelKey": ""
+  },
+  {
+    "descriptor": "OcuPilot.Screen.Descriptor.AuditingConfig",
+    "route": "security/auditing",
+    "area": "security",
+    "labelKey": "auditingConfigurationLink",
+    "sideBarPosition": 0,
+    "archetype": "form-page",
+    "built": false,
+    "refreshes": false,
+    "refreshRates": [],
+    "privileges": [
+      {
+        "resource": "%Admin_Secure",
+        "permission": "USE"
+      },
+      {
+        "resource": "%DB_IRISSYS",
+        "permission": "READ"
+      }
+    ],
+    "entityType": "auditing-configuration",
+    "entityLabelKey": "auditingConfigurationLink",
+    "secondaryEntityTypes": [],
+    "scope": "instance",
+    "parentScope": "",
+    "id": {
+      "kind": "single",
+      "parts": []
+    },
+    "primaryAction": {
+      "id": "",
+      "selfProtection": ""
+    },
+    "rowActions": [],
+    "context": {
+      "fields": [],
+      "secretFields": []
+    },
+    "emptyStateKey": "",
+    "commandAliases": [],
+    "classicPage": "%CSP.UI.Portal.Audit.SystemEvents",
+    "classicLinkExemption": {
+      "exempt": false,
+      "reason": "",
+      "label": "",
+      "href": ""
+    },
+    "toolIdentifier": "security.auditing",
+    "read": null,
+    "table": null,
+    "banner": null,
+    "tab": null,
+    "rowTarget": null,
+    "secretArguments": [],
+    "fingerprintExcludes": []
   },
   {
     "descriptor": "OcuPilot.Screen.Descriptor.DatabaseDetails",

@@ -125,6 +125,40 @@ test('the audit warning travels off the wire rather than being decided here', ()
   assert.equal(toCardView(parsedProposal({ auditWarning: false }), 'x').auditWarning, false);
 });
 
+// AC1 (Story 5.10): the declaration is the write tool's own and reaches the card on the wire, so no
+// list of destructive tool names exists in this client to fall out of step with the tool set.
+//
+// Mutation (Rule 19): drop `destructive` from `toCardView`'s result, or from `parseProposal` ->
+// these go red.
+test('the destructive declaration travels off the wire, like the audit warning', () => {
+  assert.equal(toCardView(parsedProposal({ destructive: true }), 'x').destructive, true);
+  assert.equal(toCardView(parsedProposal({ destructive: false }), 'x').destructive, false);
+  assert.equal(toCardView(parsedProposal(), 'x').destructive, false, 'a wire row that omits it is not destructive');
+});
+
+// DW-1227: a screen declares the secrets of every write its tool can make, and one proposal sends
+// one body. A name the payload does not carry reaches nothing, so asking the user to fill it would
+// leave Confirm `aria-disabled` for ever.
+//
+// Mutation (Rule 19): pass `secretArguments` straight through as `maskedFields` again -> the second
+// assertion goes red.
+test("maskedFields is the declared set narrowed to this proposal's own payload", () => {
+  const carried = toCardView(parsedProposal(), 'x', ['Password']);
+  assert.deepEqual([...carried.maskedFields], ['Password'], 'a declared secret the payload carries is asked for');
+  const absent = toCardView(parsedProposal(), 'x', ['PrivateKeyPassword']);
+  assert.deepEqual([...absent.maskedFields], [], 'and one it does not is not');
+  const unchangedOnly = toCardView(
+    parsedProposal({ changed: [{ field: 'Enabled', before: 'false', after: 'true' }], unchanged: [{ field: 'Password', value: MASKED_VALUE }] }),
+    'x',
+    ['Password']
+  );
+  assert.deepEqual(
+    [...unchangedOnly.maskedFields],
+    ['Password'],
+    'the unchanged half counts too: a secret is never a changed row, because the mint refuses it as an argument'
+  );
+});
+
 test('a delete proposal carries no reversal, so the card has no Reverse line to draw', () => {
   const view = toCardView(parsedProposal({ reverse: '' }), 'x');
   assert.equal(view.reverse, '');

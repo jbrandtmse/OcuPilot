@@ -14,8 +14,8 @@
 /// list: the payload's property names are exactly the ones the instance answered with, so a
 /// published schema that carries a property this instance's GET does not cannot add one, and a
 /// property the read returned and the arguments did not name travels unchanged.</p>
-/// <p>Seams a subclass overrides: <method>PortClass</method> and <method>StoreClass</method>.
-/// Production overrides neither.</p>
+/// <p>Seams a subclass overrides: <method>PortClass</method>, <method>StoreClass</method> and
+/// <method>RegistryClass</method>. Production overrides none of them.</p>
 Class OcuPilot.Kernel.Proposal.Mint Extends %RegisteredObject
 {
 
@@ -31,6 +31,11 @@ Parameter AUDITINGTOOL = "security.auditing.update";
 /// <p>The body property that write carries the auditing flag in.</p>
 Parameter AUDITINGFIELD = "Enabled";
 
+/// <p>The JSON type name <method>Representable</method> and <method>Coerced</method> answer the
+/// boolean question under, spelled once so <method>WarnsAuditingOff</method> and the merge cannot
+/// ask two different questions.</p>
+Parameter TYPEBOOLEAN = "boolean";
+
 /// <p>The port the fresh read goes through. Overridable so a fixture can answer a known object;
 /// production never overrides it.</p>
 ClassMethod PortClass() As %String
@@ -43,6 +48,15 @@ ClassMethod PortClass() As %String
 ClassMethod StoreClass() As %String
 {
     Quit "OcuPilot.Kernel.State.Propose"
+}
+
+/// <p>The tool registry a proposed tool's own declarations are resolved through -- today its
+/// <method>OcuPilot.Screen.Tool.Write.Destructive</method> answer. The kernel may read the
+/// registry; the registry never reads the kernel. Overridable for the reason
+/// <method>PortClass</method> is.</p>
+ClassMethod RegistryClass() As %String
+{
+    Quit "OcuPilot.Screen.Tool.Registry"
 }
 
 /// <p>Mint one proposal for tool <var>pToolName</var> of screen <var>pDescriptor</var>, called by
@@ -146,6 +160,7 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
             Quit
         }
         Set tValues("auditWarning") = ..WarnsAuditingOff(pToolName, tType, tScope, pArgs)
+        Set tValues("destructive") = ..DestructiveTool(pToolName)
         ; FR-17's definition condition is answered at confirm against the definition that was in
         ; force here. Read, never written: the definition store is Epic 10's.
         Set tDefinitionSC = ..DefinitionInForce(.tDefinitionId, .tDefinitionVersion)
@@ -191,10 +206,19 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
 /// through none of them and decides nothing about whether the write may happen -- a refusal is
 /// <method>OcuPilot.Kernel.Proposal.Write.Claim</method>'s, inside the atomic transition (AD-34,
 /// AD-40).</p>
-/// <p>It answers true for exactly one shape: the auditing write, against an
-/// <code>instance</code>-scoped target, whose <parameter>AUDITINGFIELD</parameter> argument is
-/// boolean false. Every tool that ships today answers false, and Story 5.10 is the first write
-/// that trips it.</p>
+/// <p>It answers true for one shape: the auditing write, against an <code>instance</code>-scoped
+/// target, whose <parameter>AUDITINGFIELD</parameter> argument does not leave auditing on.
+/// <class>OcuPilot.Screen.Tool.AuditingUpdate</class> is the only tool that can trip it; every
+/// other tool that ships answers false on its name alone.</p>
+/// <p><b>It reads the argument through the two methods the payload reads it through</b> --
+/// <method>Representable</method> then <method>Coerced</method>, in <method>Merge</method>'s own
+/// order -- so the warning and the body cannot answer different questions about one value. A
+/// <code>%GetTypeOf</code> gate of its own would make <code>0</code> and <code>"false"</code>
+/// coerce to false in the payload while the card said nothing, which is the one combination this
+/// predicate exists to prevent: a write that turns auditing off with no warning above it.</p>
+/// <p>A value <method>Representable</method> rejects -- JSON <code>null</code> is the reachable
+/// one -- warns, because the payload will not carry it as "auditing stays on": the merge refuses
+/// it and the proposal is never minted, so the warning is fail-safe rather than noise.</p>
 ClassMethod WarnsAuditingOff(pToolName As %String, pTargetType As %String, pTargetScope As %String, pArgs As %DynamicObject) As %Boolean
 {
     Set tWarns = 0
@@ -203,12 +227,40 @@ ClassMethod WarnsAuditingOff(pToolName As %String, pTargetType As %String, pTarg
         If pTargetScope '= ##class(OcuPilot.Kernel.Scope).#SCOPEINSTANCE Quit
         If pTargetType = "" Quit
         If '$IsObject(pArgs) Quit
-        If pArgs.%GetTypeOf(..#AUDITINGFIELD) '= "boolean" Quit
-        Set tWarns = 'pArgs.%Get(..#AUDITINGFIELD)
+        If pArgs.%GetTypeOf(..#AUDITINGFIELD) = "unassigned" Quit
+        Set tValue = pArgs.%Get(..#AUDITINGFIELD)
+        If '..Representable(tValue, ..#TYPEBOOLEAN) {
+            Set tWarns = 1
+            Quit
+        }
+        Set tWarns = '..Coerced(tValue, ..#TYPEBOOLEAN)
     } Catch {
         Set tWarns = 0
     }
     Quit tWarns
+}
+
+/// <p>Whether the tool named <var>pToolName</var> declares its write destructive
+/// (<method>OcuPilot.Screen.Tool.Write.Destructive</method>), for the wire key the card's
+/// treatment reads.</p>
+/// <p><b>The declaration is the tool's own.</b> This resolves it through the registry rather than
+/// holding a list of destructive tool names here: such a list would have to be kept in step with
+/// the tool set by hand, and a tool added outside it would ship undeclared. A name the registry
+/// does not carry, or a class that answers nothing, is not destructive -- the fail-closed direction
+/// for a <i>styling</i> declaration, whose failure mode is a card drawn plainly rather than a write
+/// permitted.</p>
+ClassMethod DestructiveTool(pToolName As %String) As %Boolean [ Private ]
+{
+    Set tDestructive = 0
+    Try {
+        If $$$ISERR($ClassMethod(..RegistryClass(), "Resolve", pToolName, .tTool)) Quit
+        If '$IsObject(tTool) Quit
+        If tTool.%Get("class") = "" Quit
+        Set tDestructive = ''$ClassMethod(tTool.%Get("class"), "Destructive")
+    } Catch {
+        Set tDestructive = 0
+    }
+    Quit tDestructive
 }
 
 /// <p>The merged payload and the diff for a fresh read <var>pFresh</var> and arguments

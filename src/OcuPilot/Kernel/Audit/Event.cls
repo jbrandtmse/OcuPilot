@@ -83,6 +83,11 @@ Parameter DROPPEDANSWER = "$System.Security.Audit answered 0 and wrote no row";
 /// never happened.</p>
 Parameter DROPPEDLEDGERREAD = "the agent ledger read was answered and no audit row was written";
 
+/// <p>The log message a dropped <parameter>EVENTSECURITY</parameter> emission reports (DW-1171). A
+/// security-relevant change reported as a configuration one sends an operator looking in the wrong
+/// place for the row that is missing, and this is the only trace such a drop leaves.</p>
+Parameter DROPPEDSECURITY = "the security-relevant change was made and no audit row was written";
+
 /// <p>The verb a confirmed agent write's marker records.</p>
 Parameter VERBWRITE = "write";
 
@@ -211,7 +216,7 @@ ClassMethod Record(pVerb As %String, pType As %String, pId As %String, pChanges 
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
-    If $$$ISERR(tSC) Do ..LogFailure(pVerb, pType, pId, tSC, $Select(pEventName = ..#EVENTLEDGERREAD: ..#DROPPEDLEDGERREAD, 1: ..#DROPPEDCONFIG))
+    If $$$ISERR(tSC) Do ..LogFailure(pVerb, pType, pId, tSC, $Select(pEventName = ..#EVENTLEDGERREAD: ..#DROPPEDLEDGERREAD, +pSecurityChange: ..#DROPPEDSECURITY, 1: ..#DROPPEDCONFIG))
     Quit tSC
 }
 

@@ -19,6 +19,15 @@ Parameter MINT = "OcuPilot.Test.ProposalMint";
 
 Parameter CONFIRM = "OcuPilot.Test.ConfirmFixture";
 
+/// <p>The same fixture with one seam moved: its tool registry is
+/// <class>OcuPilot.Test.SecretTool.Registry</class>, so the shipped channel check resolves a tool
+/// whose descriptor really declares a secret argument (DW-1278).</p>
+Parameter SECRETCONFIRM = "OcuPilot.Test.SecretConfirmFixture";
+
+Parameter SECRETTOOL = "probe.secret.update";
+
+Parameter SECRETSCREEN = "OcuPilot.Test.ProposalScreen";
+
 Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
 
 /// <p>The target the fixture answers for. Nothing on the instance carries this path, and nothing
@@ -81,6 +90,95 @@ Method Seed(pDescription As %String = "after", pConvKey As %String = "") As %Str
 Method Confirm(pKey As %String, pBody As %DynamicObject = "", Output pHttp As %Integer, Output pCode As %String, Output pResult, Output pDetail) As %Status
 {
     Quit $ClassMethod(..#CONFIRM, "Confirm", pKey, pBody, $Username, .pResult, .pHttp, .pCode, .pDetail)
+}
+
+/// <p>Mint one live proposal under <parameter>SECRETTOOL</parameter>, whose screen declares a
+/// secret argument, and answer its id.</p>
+Method SeedSecret() As %String
+{
+    Do ##class(OcuPilot.Test.ProposalFixture).Arm(..#FRESH)
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurnKey)
+    Do $$$AssertStatusOK(tSC, "the probe turn is seeded")
+    If $$$ISERR(tSC) Quit ""
+    Set tArgs = {}
+    Do tArgs.%Set("Name", ..#TARGET, "string")
+    Do tArgs.%Set("Description", "after", "string")
+    Set tSC = $ClassMethod(..#MINT, "Mint", ..#SECRETSCREEN, ..#SECRETTOOL, $Username, "", tTurnKey, tArgs, ..#LIMITS, .tProposal, .tHttp, .tFault, "WebApp.App", "name", ..#TARGET, "Name", $ClassMethod("OcuPilot.Test.SecretTool.Probe", "SettableFields"))
+    Do $$$AssertStatusOK(tSC, "the probe proposal mints: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit ""
+    Quit tProposal.%Get("proposalId")
+}
+
+/// <p>DW-1278, AD-6, AD-35: a <b>structured</b> value for a declared secret is refused before the
+/// claim, so the row stays live and its token unspent -- and so is a key the declaration does not
+/// name, including a misspelling of the one it does.</p>
+/// <p>The accepted names come from the probe screen's <b>own</b> declaration, resolved through the
+/// shipped <method>OcuPilot.Kernel.Proposal.Confirm.ChannelProblem</method>: the only thing the
+/// fixture moves is which tool registry answers, so the resolution, the declared-list read, the
+/// membership test and the type guard are all the shipped body.</p>
+/// <p>Mutation (Rule 19): accept an object at that method's type guard -- the structured-value leg
+/// goes red and the row is found claimed and burned.</p>
+Method TestAStructuredSecretIsRefusedBeforeTheClaim()
+{
+    Set tDeclared = $ClassMethod(..#SECRETSCREEN, "SecretArguments")
+    Do $$$AssertEquals($ListLength(tDeclared), 1, "the probe screen declares exactly one secret argument")
+    Set tName = $List(tDeclared, 1)
+
+    Set tKey = ..SeedSecret()
+    If tKey = "" Quit
+    Set tVersion = ##class(OcuPilot.Test.ProposalFixture).Field(tKey, "RowVersion")
+
+    Set tBody = {}
+    Do tBody.%Set(tName, {"value": "hunter2"})
+    Set tSC = $ClassMethod(..#SECRETCONFIRM, "Confirm", tKey, tBody, $Username, .tResult, .tHttp, .tCode, .tDetail)
+    Do $$$AssertStatusNotOK(tSC, "a structured value for the declared secret is refused")
+    Do $$$AssertEquals(tCode, ##class(OcuPilot.Kernel.Proposal.Write).#CLOSEDCHANNEL, "with the closed-channel code")
+    Do $$$AssertEquals(tHttp, 400, "at 400")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "State"), "live", "the row is still live")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "Burned"), 0, "its token unspent")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "RowVersion"), tVersion, "and at the version it was read at")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 0, "and nothing reached the port")
+
+    ; A misspelling of the declared name is a key the declaration does not hold, which is DW-1206's
+    ; defect seen from the confirm side: the channel is closed to it and the real field stays secret.
+    Set tMisspelt = {}
+    Do tMisspelt.%Set($Extract(tName, 1, $Length(tName) - 1), "hunter2")
+    Set tSC = $ClassMethod(..#SECRETCONFIRM, "Confirm", tKey, tMisspelt, $Username, .tResult, .tHttp, .tCode, .tDetail)
+    Do $$$AssertStatusNotOK(tSC, "a misspelt secret name is refused too")
+    Do $$$AssertEquals(tCode, ##class(OcuPilot.Kernel.Proposal.Write).#CLOSEDCHANNEL, "with the same code")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "Burned"), 0, "and the token is still unspent")
+}
+
+/// <p>DW-1278's accept arm, AD-35: the declared secret is accepted by the closed channel, the names
+/// the channel opens to are the screen's own declaration, and the value reaches the body at write
+/// time alone -- never the stored payload.</p>
+/// <p>Mutation (Rule 19): invert the <code>$ListFind</code> in
+/// <method>OcuPilot.Kernel.Proposal.Confirm.ChannelProblem</method> -- the accept leg goes red;
+/// drop the <code>%Set</code> from
+/// <method>OcuPilot.Kernel.Proposal.Confirm.WithSecrets</method> -- the merge leg does.</p>
+Method TestADeclaredSecretIsAcceptedFromTheScreensOwnDeclaration()
+{
+    Set tKey = ..SeedSecret()
+    If tKey = "" Quit
+    Set tName = $List($ClassMethod(..#SECRETSCREEN, "SecretArguments"), 1)
+
+    Set tBody = {}
+    Do tBody.%Set(tName, "hunter2", "string")
+    Set tSC = $ClassMethod(..#SECRETCONFIRM, "ChannelProblem", ..#SECRETTOOL, tBody, .tNames, .tProblem)
+    Do $$$AssertStatusOK(tSC, "the channel check runs")
+    Do $$$AssertEquals(tProblem, 0, "and accepts the declared secret")
+    Do $$$AssertEquals($ListToString(tNames), $ListToString($ClassMethod(..#SECRETSCREEN, "SecretArguments")), "the names it opens to are the screen's own declaration, not a list this test supplied")
+
+    Set tStoredSC = ##class(OcuPilot.Kernel.State.Propose).GuardedByKey(tKey, .tFound, .tStored)
+    Do $$$AssertStatusOK(tStoredSC, "the stored row reads back")
+    Do $$$AssertEquals($Get(tStored("payload")) [ tName, 0, "and the stored payload carries no secret field at all")
+    Do $$$AssertEquals($Get(tStored("arguments")) [ "hunter2", 0, "nor do the stored arguments carry the value")
+
+    Set tMerged = $ClassMethod(..#SECRETCONFIRM, "MergeSecrets", $Get(tStored("payload")), tBody, tNames)
+    Do $$$AssertTrue($IsObject(tMerged), "the merge answers an object")
+    Do $$$AssertEquals(tMerged.%Get(tName), "hunter2", "the declared secret reaches the body at write time")
+    Do $$$AssertEquals(tMerged.%Get("Description"), "after", "while the stored fields are untouched")
+    Do $$$AssertEquals($ListFind($ClassMethod(..#SECRETCONFIRM, "FieldNamesOf", tMerged, tNames), tName), 0, "and the ledger's field names exclude it (AD-3)")
 }
 
 /// <p>AC3, AD-6: the port receives the stored payload with nothing of the request in it, the row is

@@ -20,10 +20,12 @@ Parameter PROBEPREFIX = "OcuPilotProbeAgent";
 /// <p>Epic 6's six detail reads join the list at the merge: each names the one row it is about,
 /// so an empty argument object has nothing to read. Three refuse at the descriptor's own criterion
 /// check (<code>READ.CRITERION</code>) and three at the port's (<code>PORT.VALIDATION</code>).</p>
-/// <p>Story 5.1's write tool refuses <code>{}</code> too, and before any port is touched: a
-/// proposal is about one named target, so <code>Name</code> is required by its input schema and an
-/// empty argument object has nothing to read fresh.</p>
-Parameter REFUSEEMPTY = "logs.applicationerrors.read:TOOL.ARGUMENTS,shell.screen.open:NAV.NOTINSTANCE,osmgmt.databasedetails.read:READ.CRITERION,osmgmt.processdetails.read:READ.CRITERION,tasks.taskdetails.read:READ.CRITERION,osmgmt.databasevolumes.read:PORT.VALIDATION,security.secrets.read:PORT.VALIDATION,webapp.openapi.read:PORT.VALIDATION,webapp.list.update:TOOL.ARGUMENTS,permissions.users.update:TOOL.ARGUMENTS";
+/// <p>Every write tool refuses <code>{}</code> too, and before any port is touched: a proposal is
+/// about one target, so <code>Name</code> is required by its input schema and an empty argument
+/// object has nothing to read fresh. That holds for the auditing write as well, whose target is a
+/// singleton: the id names nothing the vendor reads, but it is what keys the lock, so the schema
+/// still requires it (AD-13, AD-34).</p>
+Parameter REFUSEEMPTY = "logs.applicationerrors.read:TOOL.ARGUMENTS,shell.screen.open:NAV.NOTINSTANCE,osmgmt.databasedetails.read:READ.CRITERION,osmgmt.processdetails.read:READ.CRITERION,tasks.taskdetails.read:READ.CRITERION,osmgmt.databasevolumes.read:PORT.VALIDATION,security.secrets.read:PORT.VALIDATION,webapp.openapi.read:PORT.VALIDATION,webapp.list.update:TOOL.ARGUMENTS,permissions.users.update:TOOL.ARGUMENTS,security.auditing.update:TOOL.ARGUMENTS";
 
 Method OnBeforeOneTest() As %Status
 {

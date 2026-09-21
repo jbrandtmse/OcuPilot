@@ -25,7 +25,7 @@ Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
 Parameter FRESH = "{""Enabled"":false,""Description"":""before"",""Resource"":""""}";
 
 /// <p>The keys the progress payload's <code>proposals[]</code> entry carries, comma-separated.</p>
-Parameter WIREKEYS = "proposalId,target,expiresAt,tool,changed,unchangedCount,unchanged,rationale,expectedImpact,reverse,state,closedReason,confirmedAt,auditWarning";
+Parameter WIREKEYS = "proposalId,target,expiresAt,tool,changed,unchangedCount,unchanged,rationale,expectedImpact,reverse,state,closedReason,confirmedAt,auditWarning,destructive";
 
 /// <p>The write tool whose generated field list the disclosure's masking is driven against
 /// (DW-1223). The probe descriptor owns no field-list entry, which is the fail-closed case and not
@@ -319,13 +319,20 @@ Method TestTheTurnsProposalsComeBackOldestFirst()
 /// <p>AD-10, AD-15: the in-card audit warning is the kernel's own predicate, projected on the wire
 /// row -- true for the auditing write turning auditing off, false for every tool that ships
 /// today.</p>
+/// <p>AC3, DW-1244: the tool the predicate is keyed on is asserted to be the <b>shipped</b> tool's
+/// own <parameter>OcuPilot.Screen.Tool.AuditingUpdate.TOOLNAME</parameter>, and the field it reads
+/// one of that tool's settable fields -- so the pin is not the kernel's two constants compared with
+/// themselves.</p>
 /// <p>Mutation: make <method>OcuPilot.Kernel.Proposal.Mint.WarnsAuditingOff</method> answer 0
 /// unconditionally -- the first half goes red; make it answer 1 unconditionally -- the second
-/// half does.</p>
+/// half does. Set <parameter>OcuPilot.Kernel.Proposal.Mint.AUDITINGTOOL</parameter> to a different
+/// name -- the equality below goes red.</p>
 Method TestTheAuditWarningIsTheKernelsPredicateOnTheWire()
 {
     Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).SeedTurn(..#PROBEUSER, "completed", .tTurn), "a turn is seeded")
     Set tAuditTool = $Parameter("OcuPilot.Kernel.Proposal.Mint", "AUDITINGTOOL")
+    Do $$$AssertEquals(tAuditTool, $Parameter("OcuPilot.Screen.Tool.AuditingUpdate", "TOOLNAME"), "the predicate is keyed on the shipped tool's own name")
+    Do $$$AssertTrue($ListFind(##class(OcuPilot.Screen.Tool.AuditingUpdate).SettableFields(), $Parameter("OcuPilot.Kernel.Proposal.Mint", "AUDITINGFIELD")) > 0, "and the field it reads is one of that tool's settable fields")
     Do $$$AssertStatusOK(..SeedIn(..#PROBEUSER, "probe-conv", tTurn, "after", tAuditTool, 0, .tWarned), "the auditing write is minted with auditing off")
     Do $$$AssertStatusOK(..SeedIn(..#PROBEUSER, "probe-conv", tTurn, "other", "probe.proposal.update", "", .tQuiet), "and an ordinary write beside it")
 

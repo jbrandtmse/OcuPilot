@@ -1967,6 +1967,19 @@ ClassMethod NameArrayProblem(pParent As %DynamicObject, pKey As %String, pAllowe
 /// redactor read one list; the string-placeholder qualification is the generator's own
 /// (<file>ui/tools/field-lists.mjs</file>), so a boolean named <code>CSRFToken</code> is not a
 /// credential here either.</p>
+/// <p><b>A <code>secretArguments</code> entry the screen knows no name for is refused too</b>
+/// (DW-1206). <code>secretArguments</code> reached only the shape rules and was then read as a
+/// <i>whitelist</i> by <method>OcuPilot.Kernel.Proposal.Confirm.ChannelProblem</method> and by
+/// <method>OcuPilot.Screen.Tool.Write.FieldRows</method>, both matching by exact name -- so a
+/// misspelt entry left the real field advertised to the model and the channel closed to the
+/// spelling nobody sends. Both entries are now checked against one set,
+/// <method>DeclaredNames</method>'s, so the two sibling declarations cannot be validated against
+/// different sets, which is the cause rather than the symptom.</p>
+/// <p><b>Both directions moved, and both are pinned.</b> Folding the declared criteria into the
+/// set <b>loosens</b> <code>fingerprintExcludes</code> -- a criterion name was refused before and
+/// is a name the read declares. Scoping the tool half to the rows a write tool may actually set
+/// <b>tightens</b> it -- any row of the entry was accepted before, a <code>secret</code> or
+/// <code>opaque</code> one included, and such a field is still nameable through the read half.</p>
 ClassMethod ConfirmChannelProblem(pDeclaration As %DynamicObject) As %String
 {
     Set tProblem = ""
@@ -1984,37 +1997,110 @@ ClassMethod ConfirmChannelProblem(pDeclaration As %DynamicObject) As %String
         If pDeclaration.%GetTypeOf("toolIdentifier") = "string" Set tIdentifier = pDeclaration.%Get("toolIdentifier")
         Set tProblem = ..ToolFieldRows(tIdentifier, .tRows)
         If tProblem '= "" Quit
-        Set tReadFields = ..DeclaredReadFields(pDeclaration)
+        Do ..DeclaredNames(pDeclaration, .tRows, .tNames)
 
         For tI = 1:1:$ListLength(tExcludes) {
             Set tPath = $List(tExcludes, tI)
-            If '$Data(tRows(tPath)) && '$ListFind(tReadFields, tPath) {
+            If '$ListFind(tNames("path"), tPath) && '$ListFind(tNames("read"), tPath) {
                 Set tProblem = "fingerprintExcludes names '" _ tPath _ "', which is neither a field of this screen's write tool nor one its read declares (AD-6)"
                 Quit
             }
         }
         If tProblem '= "" Quit
 
-        Set tProblem = ..CredentialNameProblem(..DeclaredCriterionParams(pDeclaration), tSecrets, "read.criteria")
-        If tProblem '= "" Quit
-        Set tSettable = ""
-        Set tPath = ""
-        For {
-            Set tPath = $Order(tRows(tPath))
-            If tPath = "" Quit
-            If tRows(tPath) Set tSettable = tSettable _ $ListBuild(tPath)
+        For tI = 1:1:$ListLength(tSecrets) {
+            Set tName = $List(tSecrets, tI)
+            If '$ListFind(tNames("settable"), tName) && '$ListFind(tNames("read"), tName) {
+                Set tProblem = "secretArguments names '" _ tName _ "', which is neither a settable field of this screen's write tool nor one its read declares (AD-6)"
+                Quit
+            }
         }
-        Set tProblem = ..CredentialNameProblem(tSettable, tSecrets, "the write tool's settable fields")
+        If tProblem '= "" Quit
+
+        Set tProblem = ..CredentialNameProblem(tNames("criteria"), tSecrets, "read.criteria")
+        If tProblem '= "" Quit
+        Set tProblem = ..CredentialNameProblem(tNames("credential"), tSecrets, "the write tool's settable fields")
     } Catch ex {
         Set tProblem = "the confirm channel could not be validated: " _ ex.DisplayString()
     }
     Quit tProblem
 }
 
+/// <p>The projections <method>DeclaredNames</method> fills, comma-separated. Declared as data
+/// because a generator reads it: <file>ui/tools/screen-mirror.mjs</file> parses this parameter and
+/// fails <code>npm run build</code> when its own builder answers a different set, so the mirror
+/// cannot consume a projection this class does not fill, or miss one it does -- the discipline
+/// <parameter>OcuPilot.Kernel.EntityRef.IDRULENAMES</parameter> already follows for its own closed
+/// vocabulary. What each projection means is <method>DeclaredNames</method>'s doc comment.</p>
+Parameter DECLAREDNAMEKINDS = "settable,path,criteria,read,credential";
+
+/// <p>The one set of names <var>pDeclaration</var>'s two confirm-channel keys are validated
+/// against (DW-1206), built once from its write tool's classified rows <var>pRows</var> and from
+/// its own declared read. <var>pNames</var> carries five <class>%List</class> projections of that
+/// one traversal:</p>
+/// <ul>
+/// <li><code>settable</code> -- the write tool's settable field names in the
+/// <code>[]</code>-stripped spelling <method>OcuPilot.Screen.Tool.Write.FieldRows</method> matches
+/// a declared secret by, which is the spelling <code>secretArguments</code> is checked in;</li>
+/// <li><code>path</code> -- the same rows in the spelling they are written in,
+/// <code>[]</code> included, which is the spelling
+/// <method>OcuPilot.Kernel.Proposal.Fingerprint.Canonical</method> matches an exclusion by and so
+/// the spelling <code>fingerprintExcludes</code> is checked in;</li>
+/// <li><code>criteria</code> -- the declared criterion parameter names and the
+/// <code>FlagCriteria</code> names, de-duplicated;</li>
+/// <li><code>read</code> -- <code>read.fields</code>, the <code>rowGet</code> detail fields, the
+/// derived field names and <code>criteria</code>, de-duplicated;</li>
+/// <li><code>credential</code> -- the rows the credential-name rule qualifies, which is
+/// <code>path</code> narrowed to a string placeholder (<file>ui/tools/field-lists.mjs</file>'s own
+/// qualification, so a boolean named <code>CSRFToken</code> is not a credential).</li>
+/// </ul>
+/// <p><b>The two keys are checked in two spellings and that is not two sets.</b> One traversal
+/// answers both, because their consumers honour different spellings:
+/// <method>OcuPilot.Screen.Tool.Write.FieldRows</method> drops a declared secret by its stripped
+/// name, while an exclusion of an array reaches the fingerprint as <code>&lt;path&gt;[]</code>. A
+/// single spelling would admit the entry one consumer ignores -- which is the defect this method
+/// exists to close, in a new place.</p>
+/// <p>Read leniently: a malformed read contributes no names rather than a second refusal, because
+/// <method>ReadProblem</method> has already refused it by the time this runs.</p>
+ClassMethod DeclaredNames(pDeclaration As %DynamicObject, ByRef pRows, Output pNames) [ Private ]
+{
+    Kill pNames
+    Set pNames("settable") = ""
+    Set pNames("path") = ""
+    Set pNames("credential") = ""
+    Set pNames("criteria") = ..DeclaredCriterionParams(pDeclaration)
+    Set pNames("read") = ..DeclaredReadFields(pDeclaration)
+    Try {
+        Set tPath = ""
+        For {
+            Set tPath = $Order(pRows(tPath))
+            If tPath = "" Quit
+            Set tRow = pRows(tPath)
+            If '$ListValid(tRow) Continue
+            If $List(tRow, 3) Set pNames("credential") = pNames("credential") _ $ListBuild(tPath)
+            If '$List(tRow, 1) Continue
+            If '$ListFind(pNames("path"), tPath) Set pNames("path") = pNames("path") _ $ListBuild(tPath)
+            Set tName = $List(tRow, 2)
+            If tName = "" Continue
+            If $ListFind(pNames("settable"), tName) Continue
+            Set pNames("settable") = pNames("settable") _ $ListBuild(tName)
+        }
+        For tI = 1:1:$ListLength(pNames("criteria")) {
+            Set tName = $List(pNames("criteria"), tI)
+            If $ListFind(pNames("read"), tName) Continue
+            Set pNames("read") = pNames("read") _ $ListBuild(tName)
+        }
+    } Catch {
+        ; Deliberately empty: the projections filled before the raise are kept. This runs after
+        ; ReadProblem has already refused a malformed declaration, so a partial set can only make
+        ; this validator more permissive, never wrongly refusing a sound name.
+    }
+}
+
 /// <p>The field names <var>pDeclaration</var>'s read declares, as a <class>%List</class>: its
 /// <code>read.fields</code>, its <code>read.source.rowGet.fields</code> and the
 /// <code>field</code> of each <code>read.source.rowGet.derived</code> entry.</p>
-/// <p>Read for <method>ConfirmChannelProblem</method> alone, and read leniently: a malformed read
+/// <p>Read for <method>DeclaredNames</method> alone, and read leniently: a malformed read
 /// contributes no names here rather than a second refusal, because
 /// <method>ReadProblem</method> has already refused it by the time this runs.</p>
 ClassMethod DeclaredReadFields(pDeclaration As %DynamicObject) As %List [ Private ]
@@ -2083,8 +2169,17 @@ ClassMethod StringListProblem(pDeclaration As %DynamicObject, pKey As %String, O
     Quit tProblem
 }
 
-/// <p>The parameter names <var>pDeclaration</var>'s read declares as server-search criteria, as a
-/// <class>%List</class>; empty for a read that declares none.</p>
+/// <p>The criterion names <var>pDeclaration</var>'s read declares, as a <class>%List</class>;
+/// empty for a read that declares none.</p>
+/// <p>Both halves of <code>criteria</code>: the <code>param</code> of each
+/// <code>criteria.fields</code> entry, whose value a person types, and each <b>flag</b> criterion
+/// -- a member of <code>criteria</code> other than <code>fields</code> declaring both a
+/// <code>param</code> and a <code>value</code>, which is the descriptor's own value and is what
+/// <method>OcuPilot.Screen.Descriptor.Base.FlagCriteria</method> enumerates. A half-declared flag
+/// is not a criterion and is not named here.</p>
+/// <p>De-duplicated: a flag may send its value under the same vendor parameter a typed criterion
+/// uses (the audit viewer's <code>marker</code> and its <code>eventSources</code> field are one
+/// such pair), and a name twice in this list would make one refusal read as two.</p>
 ClassMethod DeclaredCriterionParams(pDeclaration As %DynamicObject) As %List [ Private ]
 {
     Set tParams = ""
@@ -2093,15 +2188,29 @@ ClassMethod DeclaredCriterionParams(pDeclaration As %DynamicObject) As %List [ P
         Set tRead = pDeclaration.%Get("read")
         If tRead.%GetTypeOf("criteria") '= "object" Quit
         Set tCriteria = tRead.%Get("criteria")
-        If tCriteria.%GetTypeOf("fields") '= "array" Quit
-        Set tIterator = tCriteria.%Get("fields").%GetIterator()
-        While tIterator.%GetNext(.tIndex, .tField) {
-            If '$IsObject(tField) Continue
-            If tField.%GetTypeOf("param") '= "string" Continue
-            If tField.%Get("param") '= "" Set tParams = tParams _ $ListBuild(tField.%Get("param"))
+        If tCriteria.%GetTypeOf("fields") = "array" {
+            Set tIterator = tCriteria.%Get("fields").%GetIterator()
+            While tIterator.%GetNext(.tIndex, .tField) {
+                If '$IsObject(tField) Continue
+                If tField.%GetTypeOf("param") '= "string" Continue
+                If tField.%Get("param") = "" Continue
+                If $ListFind(tParams, tField.%Get("param")) Continue
+                Set tParams = tParams _ $ListBuild(tField.%Get("param"))
+            }
+        }
+        Set tFlags = tCriteria.%GetIterator()
+        While tFlags.%GetNext(.tName, .tFlag) {
+            If tName = "fields" Continue
+            If '$IsObject(tFlag) || 'tFlag.%IsA("%Library.DynamicObject") Continue
+            If tFlag.%GetTypeOf("param") '= "string" Continue
+            If tFlag.%Get("param") = "" Continue
+            If tFlag.%GetTypeOf("value") = "unassigned" Continue
+            If $ListFind(tParams, tFlag.%Get("param")) Continue
+            Set tParams = tParams _ $ListBuild(tFlag.%Get("param"))
         }
     } Catch {
-        Set tParams = ""
+        ; Deliberately empty, and a change from the reset this replaced: the names collected before
+        ; the raise are kept, for the reason <method>DeclaredNames</method>'s own catch gives.
     }
     Quit tParams
 }
@@ -2133,9 +2242,22 @@ ClassMethod LastSegment(pPath As %String) As %String [ Private ]
 }
 
 /// <p>The classified field rows of the write tool <var>pIdentifier</var> owns, as
-/// <code>pRows(path) = &lt;is a settable string literal&gt;</code>; empty when the identifier owns
-/// no <class>OcuPilot.Screen.Tool.ToolFields</class> entry. A refusal is returned when that
-/// generated block cannot be read, because an unreadable field list is not a negative result.</p>
+/// <code>pRows(path) = $ListBuild(isSettable, strippedName, isSettableStringLiteral)</code>;
+/// empty when the identifier owns no <class>OcuPilot.Screen.Tool.ToolFields</class> entry. A
+/// refusal is returned when that generated block cannot be read, because an unreadable field list
+/// is not a negative result.</p>
+/// <p><b>Settable here means the field-list shape a write tool can send</b>: an
+/// <code>ordinary</code> literal at the top level, whose name is the path with any trailing
+/// <code>[]</code> removed and which carries no interior <code>[</code>. It is deliberately
+/// <i>not</i> <method>OcuPilot.Screen.Tool.Write.FieldRows</method>'s output, which narrows the
+/// same rows further by <method>PermittedFields</method> and <method>ExcludedFields</method> and
+/// <b>drops every name the descriptor declares secret</b> -- so validating
+/// <code>secretArguments</code> against that output would reject every entry for being declared,
+/// which is the circularity this shape avoids. The consequence is stated rather than hidden: a
+/// derived field the tool does not permit is still a nameable secret here, and closing that is
+/// this spec's <code>deferred:</code> item. The third element narrows the rows to a string
+/// placeholder, which is the credential-name rule's own qualification and nothing else's. One
+/// reader of the generated block, three questions asked of its rows.</p>
 ClassMethod ToolFieldRows(pIdentifier As %String, Output pRows) As %String [ Private ]
 {
     Kill pRows
@@ -2161,7 +2283,11 @@ ClassMethod ToolFieldRows(pIdentifier As %String, Output pRows) As %String [ Pri
             Set tFields = tEntry.%Get("fields").%GetIterator()
             While tFields.%GetNext(.tIndex, .tField) {
                 If '$IsObject(tField) Continue
-                Set pRows(tField.%Get("path")) = (tField.%Get("class") = "ordinary") && (tField.%Get("shape") = "literal") && (tField.%Get("templateType") = "string")
+                Set tPath = tField.%Get("path")
+                Set tLiteral = (tField.%Get("class") = "ordinary") && (tField.%Get("shape") = "literal")
+                Set tName = $Select($Extract(tPath, *-1, *) = "[]": $Extract(tPath, 1, *-2), 1: tPath)
+                If (tPath [ ".") || (tName [ "[") Set tName = ""
+                Set pRows(tPath) = $ListBuild((tLiteral && (tName '= "")), tName, (tLiteral && (tField.%Get("templateType") = "string")))
             }
         }
     } Catch ex {

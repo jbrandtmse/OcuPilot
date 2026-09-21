@@ -347,6 +347,28 @@ export function screenForEntityType(type: string): ScreenDeclaration | null {
 }
 
 /**
+ * The screen whose declared `toolIdentifier` owns the tool named `tool`, or `null` (AD-5).
+ *
+ * A tool's canonical name is `<area>.<screen>.<verb>` and its screen's identifier is the first two
+ * segments, which is how `OcuPilot.Screen.Tool.Registry` resolves a tool to its descriptor and how
+ * `OcuPilot.Screen.Registry.ConfirmChannelProblem` finds a tool's field list. A tool name is
+ * claimed by exactly one source -- the registry refuses a second claimant -- so this answers one
+ * screen or none, which `screenForEntityType` cannot: two screens may declare one entity type.
+ *
+ * **Unbuilt screens are included, and that is the point.** A write tool's declarations -- its
+ * screen's singular noun and its secret argument names -- are properties of the operation, not of
+ * a rendered surface, and an operation may ship before its screen does
+ * (`OcuPilot.Screen.Descriptor.AuditingConfig`). Keying the card's lookup on the entity type
+ * instead would answer `null` for such a proposal and silently ask for no secret at all.
+ */
+export function screenForToolName(tool: string): ScreenDeclaration | null {
+  const parts = tool.split('.');
+  if (parts.length < 2) return null;
+  const identifier = parts.slice(0, 2).join('.');
+  return SCREENS.find((screen) => screen.toolIdentifier === identifier) ?? null;
+}
+
+/**
  * The two halves of a reference a caller tests a screen against: the entity type and the resolved
  * scope (AD-13). Structural, so a `ChangeEvent` and a toast entry both satisfy it without either
  * module importing the other.

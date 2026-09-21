@@ -533,6 +533,83 @@ describe('the proposal card', () => {
     expect(mount(liveView(), { phase: 'live' }).card.querySelector('.ocu-proposal-card-warning')).toBeNull();
   });
 
+  it('the in-card warning is a status region, the convention for an advisory', () => {
+    // DW-1246, corrected: four warning banners in this shell are already `role="status"`. The
+    // convention is `alert` for a fault or a refusal and `status` for an advisory, and this is an
+    // advisory: the write is still offered.
+    //
+    // Mutation (Rule 19): change the role to `alert` -> this goes red.
+    const { card } = mount(liveView({ auditWarning: true }), { phase: 'live' });
+    expect(card.querySelector('.ocu-proposal-card-warning')?.getAttribute('role')).toBe('status');
+  });
+
+  it('AC1: a destructive proposal draws its left-edge bar and its Confirm in the destructive treatment', () => {
+    // The declaration is the write tool's own and arrives on the wire (DESIGN.md `:1176`, `:1243`).
+    // The typed-name field DESIGN.md pairs with `button-destructive` is Story 14.7's: shipping it
+    // here would leave Confirm permanently `aria-disabled`.
+    //
+    // Mutation (Rule 19): answer 0 from `OcuPilot.Screen.Tool.Write.Destructive` for the auditing
+    // tool, or drop `destructive` from `toCardView` -> these go red.
+    const { card } = mount(liveView({ destructive: true, maskedFields: [] }), { phase: 'live' });
+    expect(card.classList.contains('ocu-proposal-card-destructive')).toBe(true);
+    const confirm = card.querySelector('.ocu-proposal-card-confirm') as HTMLButtonElement;
+    expect(confirm.classList.contains('ocu-button-destructive')).toBe(true);
+    expect(confirm.classList.contains('ocu-button-primary')).toBe(false);
+
+    const plain = mount(liveView({ maskedFields: [] }), { phase: 'live' });
+    expect(plain.card.classList.contains('ocu-proposal-card-destructive')).toBe(false);
+    const plainConfirm = plain.card.querySelector('.ocu-proposal-card-confirm') as HTMLButtonElement;
+    expect(plainConfirm.classList.contains('ocu-button-primary')).toBe(true);
+    expect(plainConfirm.classList.contains('ocu-button-destructive')).toBe(false);
+  });
+
+  it('DW-1232: an unfilled masked field gives Confirm a published reason through aria-describedby', () => {
+    // A control that refuses and says nothing is the gap: `aria-disabled` says the press will not
+    // work and the published sentence says why.
+    //
+    // Mutation (Rule 19): return `null` from `confirmReasonId` unconditionally -> this goes red.
+    const view = liveView({
+      maskedFields: ['Password'],
+      changed: [{ field: 'Password', before: MASKED_VALUE, after: MASKED_VALUE }],
+    });
+    const { fixture, card } = mount(view, { phase: 'live' });
+    const confirm = card.querySelector('.ocu-proposal-card-confirm') as HTMLButtonElement;
+    const reasonId = confirm.getAttribute('aria-describedby');
+    expect(reasonId).not.toBeNull();
+    const reason = card.querySelector('#' + reasonId) as HTMLElement;
+    expect(reason.textContent?.trim()).toBe(STRINGS.proposalSecretsRequired);
+
+    const field = card.querySelector('.ocu-proposal-card-secret') as HTMLInputElement;
+    field.value = 'a secret';
+    field.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(card.querySelector('.ocu-proposal-card-confirm')?.hasAttribute('aria-describedby')).toBe(false);
+  });
+
+  it('AC9: Confirm carries the typed secret values with the press, and nothing else holds them', () => {
+    // The card is the only thing that ever holds a typed secret: it is not in the panel's state,
+    // not in the turn store and not in the view model (AD-35). The values travel with the press.
+    //
+    // Mutation (Rule 19): emit the proposal id alone again -> this goes red. It is the only tier
+    // that can redden: no shipped descriptor declares a secret, so the panel builds no masked field
+    // and the posted confirm body is empty either way.
+    const view = liveView({
+      maskedFields: ['Password'],
+      changed: [{ field: 'Password', before: MASKED_VALUE, after: MASKED_VALUE }],
+    });
+    const { fixture, card } = mount(view, { phase: 'live' });
+    const seen: { proposalId: string; secrets: Record<string, string> }[] = [];
+    fixture.componentRef.instance.confirm.subscribe((request) => seen.push(request));
+    const field = card.querySelector('.ocu-proposal-card-secret') as HTMLInputElement;
+    field.value = 'hunter2';
+    field.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    (card.querySelector('.ocu-proposal-card-confirm') as HTMLButtonElement).click();
+    expect(seen).toEqual([{ proposalId: 'p1', secrets: { Password: 'hunter2' } }]);
+    // The value is never rendered anywhere but its own password input.
+    expect(card.textContent).not.toContain('hunter2');
+  });
+
   /**
    * DW-1348 (Story 5.6). A confirm refused 403 `PROHIBITED.*`, or by the restraint verdict, leaves
    * the row **live** on purpose -- the condition can clear -- so nothing about the row says the
@@ -698,11 +775,15 @@ describe('the proposal card', () => {
   it('Confirm, Cancel and Re-propose each emit the proposal they are about', () => {
     const { fixture, card } = mount(liveView({ maskedFields: [] }), { phase: 'live' });
     const seen: string[] = [];
-    fixture.componentRef.instance.confirm.subscribe((id) => seen.push('confirm:' + id));
+    fixture.componentRef.instance.confirm.subscribe((request) =>
+      seen.push('confirm:' + request.proposalId + ':' + JSON.stringify(request.secrets))
+    );
     fixture.componentRef.instance.cancel.subscribe((id) => seen.push('cancel:' + id));
     (card.querySelector('.ocu-proposal-card-confirm') as HTMLButtonElement).click();
     (card.querySelector('.ocu-proposal-card-cancel') as HTMLButtonElement).click();
-    expect(seen).toEqual(['confirm:p1', 'cancel:p1']);
+    // Confirm carries the values typed into its masked fields with the press (Story 5.10, AD-35):
+    // this card declares none, so the map is empty and the id is all there is.
+    expect(seen).toEqual(['confirm:p1:{}', 'cancel:p1']);
 
     const expired = mount(liveView(), { phase: 'expired' });
     const reproposed: string[] = [];

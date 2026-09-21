@@ -56,12 +56,12 @@ Parameter TYPEWEBAPPLICATION = "web-application";
 /// <parameter>OcuPilot.Kernel.EntityType.TYPES</parameter>, or a rule the generator cannot
 /// implement, fails <code>npm run build</code> rather than reaching the client as a silent
 /// no-op. A later write-tool story adds one pair here, never a branch in two languages.</p>
-Parameter IDRULES = "web-application:foldcase-striptrailingslash,user:foldcase";
+Parameter IDRULES = "web-application:foldcase-striptrailingslash,user:foldcase,auditing-configuration:singleton";
 
 /// <p>The closed rule vocabulary <parameter>IDRULES</parameter> selects from. A rule named there
 /// and absent here is a declaration error, pinned by
 /// <class>OcuPilot.Test.EntityRef</class>.</p>
-Parameter IDRULENAMES = "foldcase-striptrailingslash,foldcase";
+Parameter IDRULENAMES = "foldcase-striptrailingslash,foldcase,singleton";
 
 /// <p>The web-application rule: fold to lower case, then strip every trailing slash.</p>
 Parameter RULEFOLDCASESTRIPTRAILINGSLASH = "foldcase-striptrailingslash";
@@ -70,6 +70,25 @@ Parameter RULEFOLDCASESTRIPTRAILINGSLASH = "foldcase-striptrailingslash";
 /// with no path grammar, so there is no slash to strip and a trailing one is part of no name the
 /// instance resolves.</p>
 Parameter RULEFOLDCASE = "foldcase";
+
+/// <p>The auditing-configuration rule: answer <parameter>RULESINGLETONID</parameter> whatever the
+/// caller sent. A configuration object with exactly one instance has no name to fold -- the
+/// caller-supplied id is a required schema property of every write tool
+/// (<method>OcuPilot.Screen.Tool.Write.View</method> is <code>Final</code>), so without this rule
+/// the target key would be whatever the model typed and two spellings would be two targets,
+/// defeating AD-34's per-target lock and its sibling cancel.</p>
+Parameter RULESINGLETON = "singleton";
+
+/// <p>The one id a <parameter>RULESINGLETON</parameter> type's reference carries.
+/// <code>SYSTEM</code> is <class>Security.System</class>'s own row id, which
+/// <code>%Api.Admin.Endpoints.Security.Audit.Enabled</code>'s <code>RunPut</code> opens, rather
+/// than an invention of this class.</p>
+/// <p><b>Mirrored, not copied.</b> <file>ui/tools/screen-mirror.mjs</file> reads this parameter and
+/// emits it as <code>ENTITY_SINGLETON_ID</code>, and
+/// <file>ui/src/app/core/entity-ref.ts</file> builds the rule from that rather than from a literal
+/// of its own -- the discipline <parameter>REFSEPARATOR</parameter> already follows, because a
+/// hand-copied second spelling is two key builders that agree on everything but the id.</p>
+Parameter RULESINGLETONID = "SYSTEM";
 
 /// <p>Build the reference key for <var>pType</var> / <var>pScope</var> / <var>pId</var>.
 /// Refuses a type the kernel vocabulary does not hold, and an empty scope or id -- a reference
@@ -191,12 +210,21 @@ ClassMethod ScopeFor(pDeclaredScope As %String) As %String
 /// space, so folding case is the whole of it.
 /// <method>OcuPilot.Test.UserUpdate.TestTheUserRuleFoldsCaseTheWayTheInstanceResolvesIt</method>
 /// compares it with the port's own answers.</p>
+/// <p><b>The auditing-configuration rule is not a fold at all</b>: the type names one
+/// configuration object, so every id answers <parameter>RULESINGLETONID</parameter> and an empty
+/// id answers it too -- which is why <method>Key</method> can never refuse this type's id as
+/// empty. Probed on <code>ocupilot-ci</code>, 2026-09-21: the vendor
+/// <code>Security.Audit.Enabled</code> <code>GET</code> answers
+/// <code>{"Enabled":true}</code> with <code>name=SYSTEM</code>, with no query parameter and with a
+/// bogus one, so the endpoint identifies its target by nothing the caller sends and the id exists
+/// to key the lock rather than to address the object.</p>
 /// <p>The canonical form is not the instance's own spelling of the object, which is why a caller
 /// addressing a target by a canonical id relies on that case-insensitive resolution.</p>
 ClassMethod NormalizedId(pType As %String, pId As %String) As %String
 {
     Set tRule = ..IdRuleFor(pType)
     If tRule = "" Quit pId
+    If tRule = ..#RULESINGLETON Quit ..#RULESINGLETONID
     If tRule = ..#RULEFOLDCASE Quit $ZConvert(pId, "L")
     If tRule '= ..#RULEFOLDCASESTRIPTRAILINGSLASH Quit pId
     Set tId = $ZConvert(pId, "L")

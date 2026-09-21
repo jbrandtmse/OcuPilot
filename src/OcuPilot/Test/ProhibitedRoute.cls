@@ -5,12 +5,17 @@
 /// <p>It also pins the set's idea of which spellings of a path name one application against the
 /// instance's own resolution (DW-1352), which is the one claim in that predicate that no fixture
 /// can answer.</p>
+/// <p>It is also where AD-29's second half is measured -- a <b>real least-privileged principal</b>
+/// rather than the <code>%All</code> account every other run uses -- for the write tools whose pair
+/// sets an <code>%All</code> run cannot establish: Story 5.9's user write and Story 5.10's auditing
+/// write, each in both directions.</p>
 /// <p><b>What it needs from the environment:</b> the OcuPilot web application reachable on this
 /// instance's own web-server port, the applications the install roster declares, an account
-/// holding <code>%All</code>, and
-/// <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>.
-/// <method>OnBeforeAllTests</method> refuses anywhere it does not, because this class creates and
-/// deletes a web application; only <file>scripts/ci-throwaway.sh</file> sets it.</p>
+/// holding <code>%All</code>, and <b>both</b> <parameter>ARMINGVARIABLE</parameter> and
+/// <parameter>AUDITVARIABLE</parameter> reading <code>1</code>.
+/// <method>OnBeforeAllTests</method> refuses anywhere either does not, because this class creates
+/// and deletes a web application and turns this instance's auditing off for one leg; only
+/// <file>scripts/ci-throwaway.sh</file> sets them.</p>
 /// <p><b>It writes nothing it did not create.</b> The probe application is
 /// <method>OcuPilot.Test.ProposalFixture.EnsureWriteTarget</method>'s, which refuses to adopt one
 /// it did not make, and every test here asserts that the confirm left it byte for byte as it
@@ -22,6 +27,14 @@ Class OcuPilot.Test.ProhibitedRoute Extends %UnitTest.TestCase
 /// alone.</p>
 Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_PRINCIPALS";
 
+/// <p>The second variable this class needs, for the same reason
+/// <class>OcuPilot.Test.AuditingUpdate</class> declares it:
+/// <method>TestALeastPrivilegedPrincipalConfirmsTheAuditingWriteOverTheWire</method> confirms a
+/// real disable, so while that leg runs nothing on this instance is audited at all.
+/// <method>OnBeforeAllTests</method> refuses on both, so the whole class runs on a throwaway
+/// container only.</p>
+Parameter AUDITVARIABLE = "OCUPILOT_ALLOW_AUDIT_TOGGLE";
+
 /// <p>The REST application's path from the origin root.</p>
 Parameter APIBASE = "/api/ocupilot";
 
@@ -31,6 +44,21 @@ Parameter TOOL = "webapp.list.update";
 Parameter USERTOOL = "permissions.users.update";
 
 Parameter USERSCREEN = "OcuPilot.Screen.Descriptor.UserList";
+
+/// <p>Story 5.10's write tool and the screen that owns it, for the auditing legs below. The tool's
+/// name, its one settable field and the screen's entity type are all read off these classes rather
+/// than spelled again here.</p>
+Parameter AUDITINGTOOLCLASS = "OcuPilot.Screen.Tool.AuditingUpdate";
+
+Parameter AUDITINGSCREEN = "OcuPilot.Screen.Descriptor.AuditingConfig";
+
+/// <p>An administrative resource that is <b>not</b> <code>%Admin_Secure</code>, granted to the
+/// principal of <method>TestAnAccountShortOfTheAuditingPairIsRefusedTheNamedPair</method>.
+/// <method>OcuPilot.Api.Router.HoldsAdminResource</method> refuses a caller holding no
+/// <code>%Admin_*</code> resource at all with <code>AUTH.NOADMIN</code> before any route runs, so
+/// without this the leg would measure the router's floor instead of the screen's own pair
+/// set.</p>
+Parameter NONSECUREADMIN = "%Admin_Operate";
 
 /// <p>The predefined account the live user refusal is driven against. Read-only throughout: the
 /// set is asked directly, so no proposal exists and no write is issued.</p>
@@ -79,6 +107,9 @@ Method OnBeforeAllTests() As %Status
     If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
         Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.ProhibitedRoute creates and deletes a web application on this instance and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was created. Bring one up with scripts/ci-throwaway.sh, which sets it.")
     }
+    If $System.Util.GetEnviron(..#AUDITVARIABLE) '= 1 {
+        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.ProhibitedRoute turns this instance's auditing off for one leg and runs on a throwaway container only. " _ ..#AUDITVARIABLE _ " does not read 1 here, so nothing was changed. Bring one up with scripts/ci-throwaway.sh, which sets it.")
+    }
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).EnsureWriteTarget($Namespace, .tCreated)
     If $$$ISERR(tSC) Quit tSC
     Quit ..Guard(..#GUARDRESOURCE)
@@ -89,8 +120,20 @@ Method OnAfterAllTests() As %Status
     Quit ##class(OcuPilot.Test.ProposalFixture).RemoveWriteTarget()
 }
 
+/// <p>Restore this instance's auditing whatever a method did, and <b>report a failed restore as a
+/// failure of this teardown</b> rather than of the next class to run
+/// (<method>OcuPilot.Test.AuditingUpdate.OnAfterOneTest</method>'s own contract, whose helpers this
+/// calls rather than copying). The auditing leg restores in a frame of its own as well, because a
+/// raise skips a method's tail; this is the net under it.</p>
 Method OnAfterOneTest() As %Status
 {
+    Set tEnabled = ##class(OcuPilot.Test.AuditingUpdate).AuditEnabled()
+    If tEnabled '= 1 {
+        Do ##class(OcuPilot.Test.AuditingUpdate).RestoreAuditing()
+        Set tEnabled = ##class(OcuPilot.Test.AuditingUpdate).AuditEnabled()
+    }
+    If tEnabled '= 1 Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.ProhibitedRoute left this instance's auditing off (AuditEnabled = " _ tEnabled _ ")")
+    Do $$$AssertEquals(tEnabled, 1, "this instance is audited after the test")
     Do ..RemoveLeastPrivilegedPrincipal()
     ; Defensive: TestOcuPilotsOwnServingPathRefusesALeastPrivilegedPrincipal removes this record
     ; itself, but a failure between writing it and removing it would otherwise leave TARGET marked
@@ -678,6 +721,134 @@ Method TestALeastPrivilegedPrincipalConfirmsAUserWriteOverTheWire()
     }
     Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).RemoveUser(..#USERACCOUNT), "the probe account is removed")
     Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForUser(..#PRINCIPALUSER), "and so is the ledger row this leg wrote")
+}
+
+/// <p>The auditing configuration as the shipped port answers it now, in <var>pFresh</var>, with
+/// <code>1</code> when it answered an object at all. The endpoint's one-property read, taken
+/// through the same port the confirm re-reads it with, so the seeded row's fingerprint is the one
+/// that confirm recomputes.</p>
+Method AuditingFresh(Output pFresh As %DynamicObject) As %Boolean
+{
+    Set pFresh = ""
+    Kill tQuery
+    Set tQuery($ClassMethod(..#AUDITINGTOOLCLASS, "IdParam")) = ##class(OcuPilot.Kernel.EntityRef).#RULESINGLETONID
+    Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke($ClassMethod(..#AUDITINGTOOLCLASS, "Endpoint"), "GET", .tQuery, "", .tFresh, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the auditing configuration reads fresh through the shipped port: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) || '$IsObject(tFresh) Quit 0
+    Set pFresh = tFresh
+    Quit 1
+}
+
+/// <p>Seed one auditing proposal owned by <parameter>PRINCIPALUSER</parameter> setting
+/// <code>Enabled</code> to <var>pEnabled</var> over <var>pFresh</var>, and answer its id.</p>
+Method SeedAuditing(pFresh As %DynamicObject, pEnabled As %Boolean) As %String
+{
+    Quit ..SeedForPrincipal(..#PRINCIPALUSER, ##class(OcuPilot.Kernel.EntityRef).#RULESINGLETONID, pFresh, $Parameter(..#AUDITINGTOOLCLASS, "PERMITTEDFIELDS"), ''pEnabled, "boolean", $Parameter(..#AUDITINGTOOLCLASS, "TOOLNAME"), $ClassMethod(..#AUDITINGSCREEN, "PrimaryEntityType"))
+}
+
+/// <p>AC4, AD-8 as amended and AD-29: a <b>real least-privileged principal</b> -- holding the
+/// auditing screen's own two pairs plus the code-database read the router's floor needs, and
+/// <b>not</b> <code>%All</code> -- confirms the auditing write over HTTP, and this instance's
+/// auditing is off on the instance afterwards.</p>
+/// <p><b>Why this leg exists rather than a <code>%All</code> one.</b> AD-29 requires a screen's
+/// declared pair set to be established two ways together: the backing class's own check, and a real
+/// least-privileged principal on a throwaway. Everything else that confirms this write runs as the
+/// suite's own <code>%All</code> account, which passes every gate, so a set one pair short of what
+/// the vendor <code>Security.Audit.Enabled</code> <code>PUT</code> needs would read green. This is
+/// the one measurement that says the declared set is sufficient for that <code>PUT</code> and not
+/// merely for its <code>GET</code>.</p>
+/// <p><b>It turns this instance's auditing off for real</b>, which is why
+/// <parameter>AUDITVARIABLE</parameter> arms the class. Auditing is restored in a frame of its own
+/// after <code>Try</code>/<code>Catch</code> -- a raise skips a method's tail -- and again in
+/// <method>OnAfterOneTest</method>, which asserts the restore worked.</p>
+/// <p>Mutation (Rule 19): set
+/// <parameter>OcuPilot.Screen.Tool.AuditingUpdate.WRITEPERMISSION</parameter> back to
+/// <code>"WRITE"</code> and recompile the package -- no IRIS-shipped role grants an administrative
+/// resource at <code>WRITE</code>, so the confirm answers 403 and the auditing-off assertion goes
+/// red, which is what separates "this account may do it" from "some account may".</p>
+Method TestALeastPrivilegedPrincipalConfirmsTheAuditingWriteOverTheWire()
+{
+    Set tCodeResource = ..CodeDatabaseResource()
+    Do $$$AssertNotEquals(tCodeResource, "", "the install namespace's code database resource resolves")
+    If tCodeResource = "" Quit
+    Set tSC = ..EnsureLeastPrivilegedPrincipal(..#PRINCIPALPASSWORD, ..#DECLAREDPAIRSONLY _ "," _ tCodeResource _ ":R")
+    Do $$$AssertStatusOK(tSC, "the least-privileged principal is created: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+
+    ; Measured off the instance, not assumed from the role's resource string.
+    Do $$$AssertEquals($SYSTEM.Security.CheckUserPermission(..#PRINCIPALUSER, "%Admin_Secure", "USE"), 1, "it holds the auditing screen's administrative pair")
+    Do $$$AssertEquals($SYSTEM.Security.CheckUserPermission(..#PRINCIPALUSER, "%DB_IRISSYS", "READ"), 1, "and its database read")
+    Do $$$AssertEquals($SYSTEM.Security.CheckUserPermission(..#PRINCIPALUSER, "%Admin_Secure", "WRITE"), 0, "and not the WRITE permission AD-8's amendment replaced")
+    Set tRoles = ""
+    Do $SYSTEM.Security.GetUserRecursedRoleSet(..#PRINCIPALUSER, .tRoles)
+    Do $$$AssertEquals(tRoles [ "%All", 0, "and holds no %All by any path: " _ tRoles)
+
+    Do $$$AssertEquals(##class(OcuPilot.Test.AuditingUpdate).AuditEnabled(), 1, "this instance starts audited, so the confirm below has something to change")
+    Try {
+        If ..AuditingFresh(.tFresh) {
+            Set tKey = ..SeedAuditing(tFresh, 0)
+            Do $$$AssertNotEquals(tKey, "", "a disable proposal was seeded for the least-privileged principal")
+            If tKey '= "" {
+                Set tSC = ..CallAs(tKey, ..#PRINCIPALUSER, ..#PRINCIPALPASSWORD, .tStatus, .tBody, .tHeaders)
+                Do $$$AssertStatusOK(tSC, "the confirm request completes")
+                Do $$$AssertEquals(tStatus, 200, "and the write is allowed -- the declared set is sufficient for the vendor PUT: " _ tBody)
+                Set tEnvelope = ##class(%DynamicObject).%FromJSON(tBody)
+                Do $$$AssertEquals(tEnvelope.%Get("state"), $Parameter("OcuPilot.Kernel.State.Propose", "STATECONFIRMED"), "the row is confirmed: " _ tBody)
+                Do $$$AssertEquals(##class(OcuPilot.Test.AuditingUpdate).AuditEnabled(), 0, "and this instance's auditing is off on the instance, not merely reported off")
+            }
+        }
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the leg completes without raising")
+    }
+    ; Its own frame: a raise above skips the method's tail, and this instance must not be left
+    ; unaudited for the rest of the sweep whatever happened (AC7).
+    Do ##class(OcuPilot.Test.AuditingUpdate).RestoreAuditing()
+    Do $$$AssertEquals(##class(OcuPilot.Test.AuditingUpdate).AuditEnabled(), 1, "and this instance is audited again")
+    Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForUser(..#PRINCIPALUSER)
+}
+
+/// <p>AC4's second half, AD-8: a caller holding an administrative resource but <b>not</b>
+/// <code>%Admin_Secure:USE</code> is refused the auditing write 403
+/// <code>AUTH.NOPRIVILEGE</code> naming that pair, and this instance's auditing does not
+/// move.</p>
+/// <p>The principal deliberately holds <parameter>NONSECUREADMIN</parameter> at <code>USE</code>
+/// and the security database read, so the only pair it is short of is the one the refusal must
+/// name: without the first it would be refused <code>AUTH.NOADMIN</code> by the router's floor
+/// before the screen's own gate ran, which is a different refusal about a different thing.</p>
+/// <p>Mutation (Rule 19): remove the <code>%Admin_Secure:USE</code> pair from
+/// <class>OcuPilot.Screen.Descriptor.AuditingConfig</class>'s declared privileges and recompile --
+/// the confirm answers 200, the failed-pair and auditing-unmoved assertions go red, and the write
+/// this account may not make lands.</p>
+Method TestAnAccountShortOfTheAuditingPairIsRefusedTheNamedPair()
+{
+    Set tCodeResource = ..CodeDatabaseResource()
+    Do $$$AssertNotEquals(tCodeResource, "", "the install namespace's code database resource resolves")
+    If tCodeResource = "" Quit
+    Set tSC = ..EnsureLeastPrivilegedPrincipal(..#PRINCIPALPASSWORD, ..#NONSECUREADMIN _ ":U,%DB_IRISSYS:R," _ tCodeResource _ ":R")
+    Do $$$AssertStatusOK(tSC, "a principal short of only the administrative pair is created: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+
+    Do $$$AssertEquals($SYSTEM.Security.CheckUserPermission(..#PRINCIPALUSER, "%Admin_Secure", "USE"), 0, "it holds no %Admin_Secure:USE, which is the pair this write requires")
+    Do $$$AssertEquals($SYSTEM.Security.CheckUserPermission(..#PRINCIPALUSER, ..#NONSECUREADMIN, "USE"), 1, "it does hold an administrative resource, so the router's own floor is cleared")
+    Do $$$AssertEquals($SYSTEM.Security.CheckUserPermission(..#PRINCIPALUSER, "%DB_IRISSYS", "READ"), 1, "and the security database read, so the administrative pair is the only one it is short of")
+
+    Set tBefore = ##class(OcuPilot.Test.AuditingUpdate).AuditEnabled()
+    Do $$$AssertEquals(tBefore, 1, "this instance is audited before the refusal")
+    If '..AuditingFresh(.tFresh) Quit
+    Set tKey = ..SeedAuditing(tFresh, 0)
+    Do $$$AssertNotEquals(tKey, "", "a disable proposal was seeded for that principal")
+    If tKey = "" Quit
+
+    Set tSC = ..CallAs(tKey, ..#PRINCIPALUSER, ..#PRINCIPALPASSWORD, .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the confirm request completes")
+    Do $$$AssertEquals(tStatus, 403, "and is refused -- not 200, not the router's 403 with no body: " _ tBody)
+    Set tEnvelope = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tEnvelope.%Get("code"), ##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE, "with the screen-privilege code, not AUTH.NOADMIN")
+    Do $$$AssertEquals(tEnvelope.%Get("error"), ##class(OcuPilot.Api.Error).#FORBIDDEN, "under the forbidden slug")
+    Do $$$AssertEquals($Select($IsObject(tEnvelope.%Get("detail")): tEnvelope.%Get("detail").%Get("failedPair"), 1: ""), "%Admin_Secure:USE", "naming the pair that failed")
+    Do $$$AssertEquals(##class(OcuPilot.Test.AuditingUpdate).AuditEnabled(), tBefore, "and this instance's auditing did not move")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "State"), "live", "the row was not claimed")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "Burned"), 0, "and the token is unspent")
 }
 
 /// <p>DW-1431, AD-9, AD-21: what a principal holding the write's two declared pairs and <b>no</b>

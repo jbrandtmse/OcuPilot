@@ -1292,6 +1292,13 @@ export const STRINGS = {
   /** EXPERIENCE.md:392 */
   proposalDiffUnchanged: 'unchanged',
 
+  // Story 5.10's one (DW-1232). Confirm was `aria-disabled` while a declared secret the write
+  // sends was still empty, with nothing saying so: the reason is published here and wired through
+  // `aria-describedby`, so a screen reader is told why the button refuses rather than only that it
+  // does.
+  /** EXPERIENCE.md:393 */
+  proposalSecretsRequired: 'Fill in every masked field to confirm.',
+
 } as const;
 
 /**

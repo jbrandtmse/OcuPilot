@@ -37,6 +37,8 @@ const {
   AGENT_RESTRAINT_PATH,
   AGENT_DEFINITION_ENTITY,
   AGENT_SWITCH_ENTITY,
+  AUDITING_CONFIG_ENTITY,
+  RESTRAINT_ENTITIES,
   AGENT_DEFINITION_SCOPE,
   FOOTER_KEYS,
   UNRESTRAINED,
@@ -324,6 +326,37 @@ test("AD-14: a definition's `changed` event re-reads, and nothing else on the bu
   await SETTLE();
   assert.equal(api.calls.length, 4, 'an Enable is');
   assert.equal(status.configured(), true, 'and the answer moved with it');
+});
+
+// Story 5.10: the auditing configuration feeds `writesMarked`, so a confirmed change to it costs a
+// re-read -- without which the writing user's own tab carries the stale answer, and the banner
+// either does not appear or does not clear, until its next signed-in pass.
+//
+// Mutation (Rule 19): drop `AUDITING_CONFIG_ENTITY` from `RESTRAINT_ENTITIES` -> the re-read
+// assertion goes red; the end-to-end half is `ui/browser/auditing-write.browser-spec.mjs`'s banner.
+test('a confirmed change to the auditing configuration is a re-read, and the roster says which types are', async () => {
+  assert.deepEqual(
+    [...RESTRAINT_ENTITIES].sort(),
+    [AGENT_DEFINITION_ENTITY, AGENT_SWITCH_ENTITY, AUDITING_CONFIG_ENTITY].sort(),
+    'the roster is exactly the three types this payload is computed from'
+  );
+
+  const api = stubApi([ok(rows(true)), ok(rows(true))]);
+  const bus = new ChangeBus();
+  const status = new AgentStatus({ api, bus });
+  await status.load();
+  const before = api.calls.length;
+
+  bus.publish({
+    kind: 'changed',
+    type: AUDITING_CONFIG_ENTITY,
+    scope: AGENT_DEFINITION_SCOPE,
+    id: 'SYSTEM',
+    action: 'updated',
+  });
+  await SETTLE();
+  await SETTLE();
+  assert.ok(api.calls.length > before, `the change costs a re-read: ${JSON.stringify(api.calls)}`);
 });
 
 // --- Story 3.7: the restraint fact -------------------------------------------------------------

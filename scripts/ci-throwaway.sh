@@ -233,6 +233,16 @@ services:
       # otherwise add a security object to it.
       # classes: ProviderSsl
       OCUPILOT_ALLOW_SSL_CONFIG: "1"
+      # Turns the instance's own auditing OFF and back on through the shipped confirm path, which
+      # is the widest effect any class here has: while it is off nothing on this instance is
+      # audited at all, not only OcuPilot's own events. Its own variable rather than riding on
+      # OCUPILOT_ALLOW_AUDIT_EVENTS, which deletes a registration and leaves the channel open.
+      # Each class restores auditing in an in-method frame and asserts the restore in its
+      # teardown, so a run that aborts mid-sequence still leaves this instance audited.
+      # ProhibitedRoute confirms one real disable as a least-privileged principal (AD-29), so it
+      # declares this variable as well as OCUPILOT_ALLOW_PRINCIPALS.
+      # classes: AuditingUpdate, ProhibitedRoute
+      OCUPILOT_ALLOW_AUDIT_TOGGLE: "1"
       # Arms the turnprobe provider row OcuPilot.Kernel.Provider.Catalog resolves only under it,
       # and with it the classes that spawn turn jobs against that row's scripted adapter. A turn
       # job is a separate process no in-process stub reaches, so the row is armed by the

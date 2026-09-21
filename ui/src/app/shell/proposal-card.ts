@@ -30,6 +30,17 @@ import {
 } from './example-proposal';
 
 /**
+ * One Confirm press: the proposal's id and the values typed into its masked fields.
+ *
+ * The values are the card's own and reach the confirm body through this one channel (AD-6's
+ * closed channel, AD-35); nothing stores them and nothing else reads them.
+ */
+export interface ProposalConfirmRequest {
+  readonly proposalId: string;
+  readonly secrets: Record<string, string>;
+}
+
+/**
  * The proposal card: the one thing in the transcript that asks for a decision.
  *
  * **Its live half is driven by three inputs and nothing else.** `view` is what the instance
@@ -71,7 +82,11 @@ import {
 @Component({
   selector: 'app-proposal-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<article class="ocu-proposal-card" [class.ocu-proposal-card-restrained]="restrained">
+  template: `<article
+    class="ocu-proposal-card"
+    [class.ocu-proposal-card-destructive]="destructive"
+    [class.ocu-proposal-card-restrained]="restrained"
+  >
     <div class="ocu-proposal-card-header">
       <span class="ocu-proposal-card-title">{{ title }}</span>
       <ng-content select="[card-countdown]" />
@@ -164,6 +179,9 @@ import {
             (input)="onSecret(field, $event)"
           />
         }
+        <p class="ocu-proposal-card-secrets-reason" [id]="secretsReasonId">
+          {{ STRINGS.proposalSecretsRequired }}
+        </p>
       </div>
     }
 
@@ -216,9 +234,12 @@ import {
           <p class="ocu-proposal-card-runs-as">{{ runsAsCaption }}</p>
           <button
             type="button"
-            class="ocu-button-primary ocu-proposal-card-confirm"
+            class="ocu-proposal-card-confirm"
+            [class.ocu-button-primary]="!destructive"
+            [class.ocu-button-destructive]="destructive"
             [class.ocu-proposal-card-confirm-busy]="confirming"
             [attr.aria-disabled]="confirmAriaDisabled"
+            [attr.aria-describedby]="confirmReasonId"
             (click)="onConfirm()"
           >
             @if (confirming) {
@@ -272,8 +293,15 @@ export class ProposalCard {
   /** The moment a confirmed write landed, as `hh:mm:ss`, from the instance's own stamp. */
   readonly confirmedAt = input<string>('');
 
-  /** Confirm was pressed. The panel makes the request; the terminal phase comes back on `phase`. */
-  readonly confirm = output<string>();
+  /**
+   * Confirm was pressed: the proposal's id and the values typed into its masked fields (AD-6,
+   * AD-35).
+   *
+   * The values travel with the press rather than being read out of this component, because the
+   * card is the only thing that ever holds them: they are never in an input, never in the store
+   * and never in the view model. The panel posts them as the confirm body and keeps no copy.
+   */
+  readonly confirm = output<ProposalConfirmRequest>();
 
   /** Cancel was pressed. The panel makes the request, and the instance closes the row. */
   readonly cancel = output<string>();
@@ -469,6 +497,35 @@ export class ProposalCard {
     return this.phase() !== null && this.view().auditWarning === true;
   }
 
+  /**
+   * Whether the tool declared this write destructive, which turns the card's left-edge bar and its
+   * Confirm to the destructive treatment (DESIGN.md `:1176`, `:1243`).
+   *
+   * **The styling ships without the typed-name field.** `button-destructive` is published as
+   * appearing only once a typed name matches, and that field is Story 14.7's: shipping it here
+   * would leave Confirm permanently `aria-disabled`, since nothing yet compares what was typed.
+   * The declaration on the wire is what 14.7 then reads, from one place.
+   */
+  protected get destructive(): boolean {
+    return this.view().destructive === true;
+  }
+
+  /** The published reason's own id, which Confirm names while a masked field is still empty. */
+  protected get secretsReasonId(): string {
+    return 'ocu-proposal-secrets-reason-' + (this.view().proposalId ?? '');
+  }
+
+  /**
+   * The id of whatever reason Confirm currently has, or `null` when it has none (DW-1232).
+   *
+   * A control that refuses and says nothing is the gap: `aria-disabled` states that the press will
+   * not work and the published sentence states why, so the reason is announced rather than left to
+   * the reader to infer from an unfilled field they may not have found.
+   */
+  protected get confirmReasonId(): string | null {
+    return this.secretsVisible && !this.secretsFilled ? this.secretsReasonId : null;
+  }
+
   /** The envelope's own written reason for a decision the instance refused (DW-1348). */
   protected get refusalReason(): string {
     return this.view().refusalReason ?? '';
@@ -620,7 +677,9 @@ export class ProposalCard {
 
   protected onConfirm(): void {
     if (this.confirmAriaDisabled !== null) return;
-    this.confirm.emit(this.view().proposalId ?? '');
+    const secrets: Record<string, string> = {};
+    for (const field of this.maskedFields) secrets[field] = this.secretValue(field);
+    this.confirm.emit({ proposalId: this.view().proposalId ?? '', secrets });
   }
 
   protected onCancel(): void {

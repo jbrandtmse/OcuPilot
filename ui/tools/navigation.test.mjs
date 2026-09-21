@@ -56,6 +56,7 @@ const {
   firstAllowedScreen,
   screenForChange,
   screenForEntityType,
+  screenForToolName,
   screenShowsEntity,
   withQuery,
 } = await import(corePath('navigation.ts'));
@@ -896,4 +897,27 @@ test('screenForChange resolves the screen a change opens and the route that name
   const switches = SCREENS.find((screen) => screen.entityType === 'agent-switch' && screen.built);
   assert.ok(switches !== undefined && !hasIdRoute(switches));
   assert.equal(screenForChange({ type: 'agent-switch', id: 'instance' })?.route, switches.route);
+});
+
+// DW-1227: a proposal card's masked-field lookup is keyed on the proposal's own tool, not on its
+// entity type. A tool name is claimed by exactly one screen, while two screens may declare one
+// entity type -- and the auditing write's screen is not built at all, so the entity-type lookup
+// answers `null` for it and would silently ask for no secret.
+//
+// Mutation (Rule 19): filter `screenForToolName` to built screens -> the auditing row goes red.
+test('screenForToolName resolves a write tool to its own screen, built or not', () => {
+  const auditing = screenForToolName('security.auditing.update');
+  assert.ok(auditing !== null, 'the auditing write resolves');
+  assert.equal(auditing.toolIdentifier, 'security.auditing', "to the screen whose identifier its name opens with");
+  assert.equal(auditing.built, false, 'which is not built yet');
+  assert.equal(
+    screenForEntityType(auditing.entityType),
+    null,
+    'and which the entity-type lookup cannot reach, because that one answers built screens only'
+  );
+
+  const webApp = screenForToolName('webapp.list.update');
+  assert.ok(webApp !== null && webApp.toolIdentifier === 'webapp.list', 'a built screen resolves the same way');
+  assert.equal(screenForToolName('nosuch.screen.update'), null, 'a tool no screen owns resolves to nothing');
+  assert.equal(screenForToolName('single'), null, 'and so does a name with no screen segment');
 });

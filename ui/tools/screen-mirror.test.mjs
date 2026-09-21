@@ -16,6 +16,9 @@ import {
   braceDelta,
   buildMirror,
   confirmChannelProblem,
+  declaredNames,
+  parseDeclaredNameKinds,
+  IMPLEMENTED_DECLARED_NAME_KINDS,
   criteriaProblem,
   entityTypesIn,
   ENTITY_REF_SOURCE,
@@ -176,8 +179,9 @@ test('AD-13: the id-rule table is read from the kernel and is what the mirror em
   assert.deepEqual(rules, [
     ['web-application', 'foldcase-striptrailingslash'],
     ['user', 'foldcase'],
+    ['auditing-configuration', 'singleton'],
   ]);
-  assert.deepEqual(parseIdRuleNames(text), ['foldcase-striptrailingslash', 'foldcase']);
+  assert.deepEqual(parseIdRuleNames(text), ['foldcase-striptrailingslash', 'foldcase', 'singleton']);
   // `null`, never `[]`, when the parameter is missing: an absent table and a table that declares
   // nothing are different facts, and only one of them is a source to build from.
   assert.equal(parseIdRules('Class X { }'), null);
@@ -276,7 +280,7 @@ test('AD-13: the generator refuses an id rule no reader can apply, naming the ru
 
   // The roster the third refusal is judged against is the one `entity-ref.ts` is pinned equal to
   // by `ui/tools/entity-ref.test.mjs`, so neither side can grow a rule alone.
-  assert.deepEqual(IMPLEMENTED_ID_RULES, ['foldcase-striptrailingslash', 'foldcase']);
+  assert.deepEqual(IMPLEMENTED_ID_RULES, ['foldcase-striptrailingslash', 'foldcase', 'singleton']);
 });
 
 test('AD-14: the generator refuses an entity type the kernel enum does not hold, naming both', () => {
@@ -1875,6 +1879,43 @@ test('confirmChannelProblem returns the instance-side sentences, and every shipp
     'and so is one naming a field the screen\'s own read declares'
   );
 
+  // DW-1206's refusing direction: both keys are checked against one set, so an entry naming
+  // nothing is refused rather than left to be read as a whitelist by two consumers.
+  assert.equal(
+    confirmChannelProblem(of({ secretArguments: ['Pasword'] }), toolFields),
+    "secretArguments names 'Pasword', which is neither a settable field of this screen's write " +
+      'tool nor one its read declares (AD-6)'
+  );
+  assert.equal(
+    confirmChannelProblem(of({ secretArguments: ['Timeout'] }), toolFields),
+    null,
+    'while one naming a settable field of that tool is sound'
+  );
+  assert.equal(
+    confirmChannelProblem(of({ secretArguments: [webApp.declaration.read.fields[0]] }), toolFields),
+    null,
+    "and so is one naming a field the screen's own read declares"
+  );
+  // The two spellings the one set carries: the schema drops a declared secret by the []-stripped
+  // name, while an exclusion of an array reaches the fingerprint as <path>[].
+  assert.equal(
+    confirmChannelProblem(of({ secretArguments: ['CorsAllowlist'] }), toolFields),
+    null,
+    'a secret named in the spelling the schema honours is sound'
+  );
+  assert.equal(
+    confirmChannelProblem(of({ fingerprintExcludes: ['CorsAllowlist[]'] }), toolFields),
+    null,
+    'and an exclusion named in the spelling the fingerprint honours is sound'
+  );
+  // The tightening direction: any row of the entry was accepted before, a secret-classified
+  // subtree included.
+  assert.equal(
+    confirmChannelProblem(of({ fingerprintExcludes: ['MatchRoles[].MatchRole'] }), toolFields),
+    "fingerprintExcludes names 'MatchRoles[].MatchRole', which is neither a field of this " +
+      "screen's write tool nor one its read declares (AD-6)"
+  );
+
   const withCriterion = of({
     read: {
       ...webApp.declaration.read,
@@ -1883,6 +1924,25 @@ test('confirmChannelProblem returns the instance-side sentences, and every shipp
       },
     },
   });
+  // The loosening direction, and the flag half the builder missed: a criterion is one of the names
+  // the read declares, so its parameter is a nameable exclusion.
+  assert.equal(
+    confirmChannelProblem({ ...withCriterion, secretArguments: ['apiKey'], fingerprintExcludes: ['apiKey'] }, toolFields),
+    null,
+    "a typed criterion's parameter is a nameable exclusion"
+  );
+  const withFlag = of({
+    read: {
+      ...webApp.declaration.read,
+      criteria: { fields: [], marker: { param: 'eventSources', value: 'OcuPilot', labelKey: 'auditMarkerFilterLabel' } },
+    },
+    fingerprintExcludes: ['eventSources'],
+  });
+  assert.equal(
+    confirmChannelProblem(withFlag, toolFields),
+    null,
+    "and so is a flag criterion's, which DeclaredCriterionParams missed before DW-1206"
+  );
   assert.equal(
     confirmChannelProblem(withCriterion, toolFields),
     "read.criteria names 'apiKey', whose name matches the credential pattern and which " +
@@ -1904,6 +1964,49 @@ test('confirmChannelProblem returns the instance-side sentences, and every shipp
       }),
     /read\.criteria names 'apiKey'/
   );
+});
+
+// DW-1206's own cause was two sibling declarations validated against different sets, so the roster
+// of projections this generator builds is held against the kernel's own `DECLAREDNAMEKINDS` -- the
+// shape `checkedIdRules` uses for id rules, and for the same reason: a mirror validating a
+// confirm-channel key against a set the instance does not build would refuse a sound declaration at
+// `prebuild`, or admit one the instance refuses at install.
+//
+// Mutation (Rule 19): drop a name from `IMPLEMENTED_DECLARED_NAME_KINDS`, or from the kernel's
+// `Parameter DECLAREDNAMEKINDS` -> the throw below fires on the real sources and the first
+// assertion goes red.
+test('DW-1206: the projection roster is the kernel\'s, and a mismatch fails the build', () => {
+  const sources = readSources();
+  assert.deepEqual(
+    [...sources.declaredNameKinds].sort(),
+    [...IMPLEMENTED_DECLARED_NAME_KINDS].sort(),
+    'the kernel declares exactly the projections this generator builds'
+  );
+  assert.equal(parseDeclaredNameKinds('Class X { }'), null, 'reported, never read as an empty set');
+  assert.throws(
+    () => buildMirror({ ...sources, declaredNameKinds: ['settable', 'read'] }),
+    (error) => {
+      assert.match(error.message, /Screen\/Registry\.cls/, 'the refusal names the source class');
+      assert.match(error.message, /DECLAREDNAMEKINDS/, 'and the parameter');
+      return true;
+    },
+    'a roster the two sides do not share fails the build'
+  );
+});
+
+// The one builder, asserted as one: both confirm-channel keys read `declaredNames`' projections, so
+// the set cannot be built twice and drift.
+test('DW-1206: declaredNames answers one union in the two spellings its consumers honour', () => {
+  const { screens, toolFields } = readSources();
+  const webApp = screens.find((screen) => screen.className === 'OcuPilot.Screen.Descriptor.WebAppList');
+  const names = declaredNames(webApp.declaration, toolFields);
+  assert.ok(names.settable.includes('CorsAllowlist'), 'the []-stripped spelling the schema honours');
+  assert.ok(names.path.includes('CorsAllowlist[]'), 'and the written spelling the fingerprint honours');
+  assert.ok(!names.settable.includes('CorsAllowlist[]'), 'never the other way round');
+  assert.ok(!names.path.includes('MatchRoles[].MatchRole'), 'a row the tool cannot set is in neither');
+  assert.ok(names.read.includes('Name'), "the read's own declared fields are in the union");
+  assert.deepEqual(names.criteria, [], 'the web applications list declares no criterion');
+  assert.ok(names.credential.includes('Timeout'), 'and the credential half is the string-placeholder rows');
 });
 
 // The entity-label rule's two engines (AD-5, AD-14). `OcuPilot.Test.Descriptor` holds the same

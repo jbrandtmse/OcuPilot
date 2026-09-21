@@ -129,9 +129,11 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST";
 /// <p><b>Synchronous on the endpoints that ship today.</b> The vendor's base
 /// <code>ShouldRunAsync()</code> answers false and <code>Security.Applications</code>'s endpoint
 /// does not override it, so a <code>PUT</code> runs in the caller's job and its answer is the
-/// endpoint's own. An endpoint that does queue would be reported by <method>AwaitTask</method>,
-/// which consults no pair table -- that is a gap to close when the first queueing write ships,
-/// not one this list reaches today.</p>
+/// endpoint's own. An endpoint that <i>did</i> queue a mutating request is refused by
+/// <method>Sequence</method> before the vendor's task row is written, because that row would carry
+/// a supplied secret from the body (AD-35, DW-1279). <method>Sequence</method> reads
+/// <code>%request.Method</code>, which <method>HttpMethodFor</method> has already set to the
+/// mutating suffix itself.</p>
 Parameter MUTATINGTYPES = "PUT";
 
 /// <p>The pair set the <b>backing query or class</b> of an endpoint requires, beyond the
@@ -889,6 +891,17 @@ ClassMethod Sequence(pEndpoint As %RegisteredObject, pBody As %DynamicAbstractOb
         If $$$ISERR(tSC) Quit
 
         If pEndpoint.ShouldRunAsync() {
+            ; AD-35, DW-1279: a mutating request's body can carry a supplied secret, and
+            ; SaveRequestBody writes it into the vendor's own task row
+            ; (^|"^^:ds:IRISLOCALDATA"|Api.Admin.Util.AsyncTaskD), which is a surface OcuPilot
+            ; neither owns nor purges. Neither Release 1 async entry is mutating, so this refuses a
+            ; combination no shipped path reaches -- before the row is written rather than after,
+            ; because a secret written there cannot be taken back.
+            Set tMethod = %request.Method
+            If $ListFind($ListFromString(..#MUTATINGTYPES), tMethod) {
+                Set tSC = $$$ERROR($$$GeneralError, "the admin API would queue this " _ tMethod _ " request, and a mutating request's body is never written to the vendor's task row (AD-35)")
+                Quit
+            }
             Set tTask = $ClassMethod(..#ASYNCTASKENDPOINTCLASS, "%New", %request, pEndpoint)
             Set tSC = $$$ADDSC(tSC, tTask.SaveRequestBody(pBody))
             Set tSC = $$$ADDSC(tSC, tTask.AddToAsyncQueue())

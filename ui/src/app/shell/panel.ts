@@ -17,8 +17,8 @@ import {
   formatNavigationAnnouncement,
   formatRequires,
   screenForDescriptor,
-  screenForEntityType,
   screenForRoute,
+  screenForToolName,
   screenForUrl,
   withQuery,
 } from '../core/navigation';
@@ -54,7 +54,7 @@ import { isApplePlatform } from './command-box';
 import { ContextChip } from './context-chip';
 import { EXAMPLE_PROPOSAL } from './example-proposal';
 import { PanelResizeHandle } from './panel-resize-handle';
-import { ProposalCard } from './proposal-card';
+import { ProposalCard, type ProposalConfirmRequest } from './proposal-card';
 import { Reply } from './reply';
 import { ToolCallCard } from './tool-call-card';
 
@@ -829,13 +829,18 @@ export class Panel {
   /**
    * One proposal's card view: the mapped content, and the phase this panel resolves for it.
    *
-   * The singular entity noun and the declared secret argument names are the target screen's own
-   * (AD-5, AD-14), resolved through the generated mirror by the reference triple's entity type and
-   * passed to the mapper as data -- which is what keeps the mapper testable before any descriptor
-   * declares a secret argument.
+   * The singular entity noun and the declared secret argument names are the proposal's own tool's
+   * screen (AD-5), resolved through the generated mirror by the tool name and passed to the mapper
+   * as data -- which is what keeps the mapper testable before any shipped descriptor declares a
+   * secret argument.
+   *
+   * **Keyed on the tool, not on the entity type** (DW-1227). A tool name is claimed by exactly one
+   * screen, while two screens may declare one entity type and `screenForEntityType` answers the
+   * first built one -- so a write whose own screen is not built yet would be asked for the other
+   * screen's secrets, or for none at all.
    */
   private proposalView(proposal: TurnProposal): PanelProposalView {
-    const screen = screenForEntityType(proposal.target.type);
+    const screen = screenForToolName(proposal.tool);
     return {
       proposalId: proposal.proposalId,
       view: toCardView(
@@ -1052,12 +1057,13 @@ export class Panel {
    * A refusal that left the row live drops back to `live` the same way, with Confirm offered
    * again.
    */
-  protected async onCardConfirm(proposalId: string): Promise<void> {
+  protected async onCardConfirm(request: ProposalConfirmRequest): Promise<void> {
+    const proposalId = request.proposalId;
     if (proposalId === '') return;
     this.setCardPhase(proposalId, 'confirming');
     let outcome: ProposalOutcome | null = null;
     try {
-      outcome = await this.turn.confirmProposal(proposalId, this.secretsFor(proposalId));
+      outcome = await this.turn.confirmProposal(proposalId, this.secretsFor(request));
     } finally {
       // The answer was discarded here until Story 5.6, which is why a confirmed write left no card
       // and a refusal that kept the row live left no trace at all: dropping this panel's own
@@ -1152,15 +1158,33 @@ export class Panel {
   }
 
   /**
-   * The declared secret values one card holds, for the confirm body.
+   * The declared secret values the pressed card handed over, for the confirm body (AD-6, AD-35).
    *
-   * Empty today, and deliberately: no shipped descriptor declares a secret argument, so the card
-   * renders no masked field and there is nothing for it to hand over. The seam is here so the
-   * first descriptor that declares one has a caller rather than a second mechanism.
+   * **They come from the press and nowhere else.** The card is the only thing that ever holds a
+   * typed secret -- it is not in this panel's state, not in the turn store and not in the view
+   * model -- so this narrows what arrived to the names that card was actually asked for and hands
+   * it straight to the request. A key outside the tool's declared set is refused by the instance
+   * before the claim (`Confirm.ChannelProblem`), so the narrowing is belt and braces rather than
+   * the gate.
    */
-  private secretsFor(proposalId: string): Record<string, string> {
-    void proposalId;
-    return {};
+  private secretsFor(request: ProposalConfirmRequest): Record<string, string> {
+    const body: Record<string, string> = {};
+    for (const name of this.maskedFieldsOf(request.proposalId)) {
+      const value = request.secrets[name];
+      if (typeof value === 'string') body[name] = value;
+    }
+    return body;
+  }
+
+  /** The masked field names the card for `proposalId` was asked to fill, or none. */
+  private maskedFieldsOf(proposalId: string): readonly string[] {
+    for (const entry of this.turn.entries()) {
+      for (const proposal of entry.proposals) {
+        if (proposal.proposalId !== proposalId) continue;
+        return this.proposalView(proposal).view.maskedFields ?? [];
+      }
+    }
+    return [];
   }
 
   /** Arm the one-second ticker while a card is live, and disarm it when none is. */

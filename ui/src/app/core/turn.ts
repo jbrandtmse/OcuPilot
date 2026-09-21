@@ -216,6 +216,13 @@ export interface TurnProposal {
   readonly confirmedAt: string;
   /** Whether this write would stop the instance marking agent writes (AD-10, AD-15). */
   readonly auditWarning: boolean;
+  /**
+   * Whether the tool declared its write destructive, which is what the card's left-edge bar and
+   * its Confirm read (`OcuPilot.Screen.Tool.Write.DESTRUCTIVE`). The declaration is the tool's and
+   * reaches the client on the wire, so no client-side list of destructive tool names exists to
+   * fall out of step.
+   */
+  readonly destructive: boolean;
 }
 
 /**
@@ -456,6 +463,7 @@ function parseProposal(value: unknown): TurnProposal | null {
     closedReason: textAt(row, 'closedReason'),
     confirmedAt: textAt(row, 'confirmedAt'),
     auditWarning: boolAt(row, 'auditWarning'),
+    destructive: boolAt(row, 'destructive'),
   };
 }
 

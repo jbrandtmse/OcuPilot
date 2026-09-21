@@ -2,7 +2,8 @@
 title: 'Story 5.10: Security and secrets - disable and re-enable auditing'
 type: 'feature'
 created: '2026-09-21'
-status: 'in-progress'
+status: 'done'
+baseline_revision: '8f0cdde6e5b9ab5b228f74aa20d585d225e9437b'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -19,6 +20,15 @@ deferred:
     location: 'src/OcuPilot/Kernel/Audit/Event.cls:293'
     severity: 'med'
   - summary: >-
+      payloadSecrets asks only for the names this proposal's payload carries, so a wrapper-body
+      secret that is not a payload field would never be asked for and never reach the write.
+    evidence: |-
+      Confirm.cls:601-608 %Sets every declared name the body supplied, adding one the payload
+      lacks, so the narrowing is the client's choice; AD-3 names Security.User's POST
+      {User, Password} and its change-password {NewPassword}. Probe: declare one, confirm.
+    location: 'ui/src/app/core/proposal-view.ts:321'
+    severity: 'low'
+  - summary: >-
       Another user's tab learns the banner only on its next /agent/restraint read; the product has
       no push channel, so "immediately for every user" is bounded by that cadence.
     evidence: |-
@@ -28,6 +38,15 @@ deferred:
     location: 'ui/src/app/core/agent-status.ts:450'
     severity: 'low'
   - summary: >-
+      The panel-tier secrets data path has no shipped declaration to run against, so
+      panel.secretsFor's narrowing is unfalsifiable until the first secret-bearing write tool.
+    evidence: |-
+      No shipped descriptor declares secretArguments (WebAppList.cls:60 is the only one that
+      declares the key, empty), so screenForToolName answers a screen with none and the posted
+      confirm body is {} either way. Arms with FR-43's X.509 or FR-46's wallet editor.
+    location: 'ui/src/app/shell/panel.ts:1170'
+    severity: 'low'
+  - summary: >-
       Whether the in-card audit warning is spoken beside the countdown and terminal live regions is
       answerable only by a screen reader, which no gate in this pipeline runs.
     evidence: |-
@@ -35,6 +54,44 @@ deferred:
       computes no announcements and a browser spec reads the DOM, not the accessibility output.
       Human check: VoiceOver over a live destructive auditing card. DW-1246's residual half.
     location: 'ui/src/app/shell/proposal-card.ts:171'
+    severity: 'low'
+  - summary: >-
+      A secretArguments entry may still name a derived field the write tool does not permit, and
+      WithSecrets would %Set it into the body at write time.
+    evidence: |-
+      DeclaredNames' settable projection is the field list's ordinary top-level literals, not
+      Write.FieldRows' output, which also applies PermittedFields and drops declared secrets --
+      narrowing to it would reject every declared secret. Probe: declare secretArguments ["Timeout"]
+      on webapp.list.update's screen and confirm with a Timeout key.
+    location: 'src/OcuPilot/Screen/Registry.cls:2065'
+    severity: 'med'
+  - summary: >-
+      The destructive-test gate cannot see a class that turns auditing off through the shipped
+      confirm path, so such a class is guarded by its author's decision rather than by the gate.
+    evidence: |-
+      check_destructive_test_guard matches call-shaped regexes over one file and cannot follow a
+      confirm; the tool's class name is no proxy (several classes read its parameters without
+      writing). The limit is now stated in the rule's prose. Probe: write a Test class that mints
+      and confirms an auditing proposal with no OnBeforeAllTests refusal.
+    location: 'scripts/check-objectscript.py:1324'
+    severity: 'med'
+  - summary: >-
+      SurfaceCoverage's screen roster covers built screens only, so this tree's first built:false
+      descriptor sits on no coverage roster.
+    evidence: |-
+      Test/SurfaceCoverage.cls derives its screen half from registry-declared built screens, so
+      AuditingConfig has a dedicated test only because this story wrote one; a later unbuilt
+      descriptor with no test passes the surface floor silently. Stories 5.11-5.13 add more.
+    location: 'src/OcuPilot/Test/SurfaceCoverage.cls:53'
+    severity: 'low'
+  - summary: >-
+      OcuPilot.Test.ProhibitedRoute is now armed class-wide, so on a throwaway predating
+      OCUPILOT_ALLOW_AUDIT_TOGGLE its nine pre-existing least-privileged legs no longer run.
+    evidence: |-
+      OnBeforeAllTests refuses on both arming variables, which is the project's class-level
+      convention (ProviderSsl); %UnitTest offers no per-method skip. ci-throwaway.sh sets the
+      variable, so a fresh throwaway and CI run all eleven. Probe: run the class unarmed.
+    location: 'src/OcuPilot/Test/ProhibitedRoute.cls:257'
     severity: 'low'
 ---
 
@@ -523,6 +580,42 @@ Line anchors were read in this checkout on 2026-09-21. Measured facts carry thei
   appear, then confirms the re-enable and observes it clear — the observable effect of this story's
   write, read through a consumer rather than through the tool's own state.
 
+**Open items (implement-stage Matrix Test Audit, 2026-09-21).** Two I/O matrix rows had no
+covering test; both are now covered, and the two mutation lines in `## Verification` name the
+tests.
+
+23. **The least-privileged confirm row has no test for this tool.** The matrix's *Least-privileged
+    confirm* row and AC4's second half -- a caller holding neither `%Admin_Secure:USE` nor the code
+    database read is refused 403 `AUTH.NOPRIVILEGE` naming the failed pair, with auditing unchanged
+    -- are unexercised: `src/OcuPilot/Test/ProhibitedRoute.cls` drives the web-application and user
+    tools only. AD-29 requires a screen's pair set to be established **two ways together**, the
+    backing class's own check *and* a real least-privileged principal on a throwaway, and
+    `AuditingConfig`'s set is established one way. Add both legs on
+    `ProhibitedRoute.EnsureLeastPrivilegedPrincipal`'s existing harness (`:287`, and Story 5.9's
+    `:602` and `:698` as the two precedents): the declared pair set is **sufficient** to confirm the
+    auditing write over the wire, and an account short of it is refused with the failed pair named
+    and `AuditEnabled` unmoved. The sufficient leg turns auditing off for real, so it carries
+    `OcuPilot.Test.AuditingUpdate`'s restore discipline -- an in-method frame after `Try`/`Catch`
+    **and** a teardown that asserts the restore -- and its own arming variable if it runs outside
+    that class.
+24. **The vendor's own audit rows are unpinned.** The matrix's *Disable confirmed* and *Re-enable
+    confirmed* rows name `SystemChange` and `AuditChange` "stopped" written **while auditing is
+    still on**, and `AuditChange` "started" after; nothing in the tree asserts any of them (grep over
+    `src/`, `ui/`: zero references outside `Kernel/Audit/Event.cls`). That is the one direction AD-15
+    as amended says survives -- *ledger to audit by timestamp* -- so leaving it unasserted makes the
+    amendment's surviving half the unfalsifiable claim the amendment exists to remove. Assert, over
+    the real confirmed sequence, that `%SYS.Audit` holds those rows for the window and that their
+    timestamps bracket the not-marked ledger row.
+
+**Correction to apply at its origin (prose).** `ui/src/app/core/proposal-view.ts`'s `payloadSecrets`
+doc comment justifies the narrowing with "`WithSecrets` merges only into the stored payload". That is
+wrong: `OcuPilot.Kernel.Proposal.Confirm.WithSecrets` (`:601-608`) calls `tPayload.%Set(tName, ...)`,
+which **adds** a declared name the payload does not carry. Replace the wrong sentence. The narrowing
+itself is AC9's and stays; its consequence -- a wrapper-body secret that is not a payload field
+(AD-3 names `Security.User`'s POST `{User, Password}` and its change-password `{NewPassword}`) would
+never be asked for -- belongs in the frontmatter `deferred:` list, owned by the first
+secret-bearing write tool.
+
 ## Spec Change Log
 
 - **2026-09-21, lead, orchestrator-authorised option (a).** The Rule 5 intent gap is closed by amending
@@ -534,6 +627,31 @@ Line anchors were read in this checkout on 2026-09-21. Measured facts carry thei
   drop's *recording* must be falsifiable, and the bracketing must be pinned as a pair.
 
 ## Review Triage Log
+
+### 2026-09-21 — Review pass
+
+- verdicts: 20 findings — high 0, medium 4, low 11, false 5, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The `Security.System.Modify` arm this story added to `DESTRUCTIVE_TEST_RE` had no case in `scripts/test_check_objectscript.py` — confirmed: zero `Security.System` references in the harness, and the rule only appends problems for *unguarded* classes, so removing the arm left every gate green. Patched: two harness cases (unguarded reported by name, guarded clean); mutation demonstrated — removing the arm reddens `test_turning_the_instances_auditing_off_is_in_the_population` alone.
+  - `[low]` `[patch]` The gate cannot see a class that turns auditing off through the shipped confirm path. Confirmed, and the reviewer's proposed fix was wrong in two ways: `RestoreAuditing` only ever turns auditing *back on*, and an arm on the tool's class name flags the several classes that merely read its parameters (tried, reddened the shipped-tree case, reverted). Patched the rule's prose to state the limit; the residual is deferred.
+  - `[medium]` `[defer]` `Panel.secretsFor` has no executed test: every one of the 41 mirror rows declares `secretArguments: []`, so both loop bodies never run. Grouped with the intent layer's (c). Already recorded in `deferred:` by the implement pass (`panel.ts:1170`); nothing added.
+  - `[low]` `[patch]` `proposal-card.spec.ts` named "the confirm-body leg of `ui/browser/auditing-write.browser-spec.mjs`" as a second mutation witness — confirmed absent: that spec contains the string "secret" zero times. Patched: the clause is replaced by what is true, that the card tier is the only one that can redden.
+  - `[low]` `[patch]` `ToolFieldRows`' doc comment claimed "Settable means what `Write.FieldRows` admits" — false: `FieldRows` also applies `PermittedFields`/`ExcludedFields` and drops declared secrets. Patched the sentence, which now says why the projection deliberately is *not* that output (narrowing to it would reject every declared secret — the circularity).
+  - `[medium]` `[defer]` The same looseness is real behavior: `secretArguments: ["Timeout"]` is accepted though `webapp.list.update` never sends `Timeout`, and `WithSecrets` would `%Set` it into the body. Not caused by this change (the key was previously accepted with *any* spelling) and the correct narrowing interacts with the circularity above, so deferred `med` rather than patched. No shipped descriptor declares a secret; `WebAppList` declares both keys empty.
+  - `[low]` `[patch]` `Set pNames("settable") = pNames("settable")` and `Set tParams = tParams` are no-ops, and the second silently replaced a real reset with keep-partial. Patched: both removed, and each catch now states that the partial set is kept deliberately and why it can only be more permissive.
+  - `[low]` `[defer]` `SurfaceCoverage`'s screen roster is built-only, so this tree's first `built: false` descriptor is on no roster. Pre-existing scope of that gate (the spec's Code Map says so); deferred with the note that 5.11–5.13 add more unbuilt descriptors.
+  - `[low]` `[patch]` `MintedWarning` answered `0` on a failed `SeedTurn`, a failed mint and a failed row read alike, so the JSON-null leg could pass for the wrong reason. Patched: arrangement failures now answer `-1` and assert their own cause, so `0` means the merge's refusal and nothing else.
+  - `[low]` `[reject]` The mirror re-implements the union traversal in JS rather than consuming a kernel-emitted set. Rejected: `screen-mirror.mjs` runs at prebuild with no instance, so it cannot call the kernel; the shipped shape is exactly the `IDRULES` precedent this story was told to follow (derive the roster, throw on mismatch, implement the rule client-side), and the rules are held equal by sentence-for-sentence twin tests. The fix is far more than a direct correction.
+  - `[false]` `[reject]` DW-1226's matrix row is unreachable through the shipped tool. Refuted: the tool types `Enabled` boolean, so `0`/`"false"` are refused before any mint — strictly stronger than the row asks. The row's property (a value that turns auditing off never reaches an unwarned card) holds on every reachable path, and both the predicate agreement and the schema refusal are pinned.
+  - `[medium]` `[defer]` Intent layer (c): the panel→HTTP half of AC9 is unexercised and unexerciseable today. Same root cause as the third row; shares its defer.
+  - `[low]` `[reject]` DW-1227's secrets half is observed through the card title's noun rather than the secret names. Rejected: the tool-keying itself is directly pinned by `screenForToolName` in `navigation.test.mjs`, and the noun is the only observable difference a screen with an empty secret list can produce.
+  - `[false]` `[reject]` The singleton row's "one lock, one cancel, loser refused with the terminal state" is not asserted here. Refuted: that mechanism is pinned type-independently by `ProposalRace.TestTheSiblingsOnTheSameTargetCloseWithTheClaim` (Story 5.3); this story's contribution — that two spellings fold to one key, so the two proposals *are* siblings — is asserted.
+  - `[low]` `[reject]` DW-1171's "the change still succeeds" has no witness for the security kind. Rejected: AD-15's never-fails-the-write is Story 5.6's, pinned by `AuditMarker`; what this story added is the sentence selection, and that is falsified with the other two arms still passing.
+  - `[false]` `[reject]` DW-1279's ordering is asserted only by construction. Refuted: the `savedBody` assertion *does* discriminate the ordering — a guard moved after `SaveRequestBody` makes it 1 and reddens. What it cannot discriminate is the guard being absent entirely, which the two log assertions cover; the test's own comment says so.
+  - `[low]` `[reject]` DW-1278's digest and log-line absence are not asserted. Rejected: `WithSecrets` runs after the fingerprint comparison and the test asserts the stored payload carries no secret, so the digest cannot; log-line absence is `OcuPilot.Test.SecretLeak`'s standing gate. Adding both is more than a direct correction.
+  - `[false]` `[reject]` "A single demo sequence" shipped as two test sequences rather than a product artifact. Refuted: the intent's own Never list forbids a screen or page and no task names a demo fixture, so the verification reading is the only one the contract supports; AC7's round trip is the sequence.
+  - `[false]` `[reject]` `Confirm.ToolRegistryClass` is a new seam whose only caller is a fixture. Refuted: it is the established `PortClass`/`StoreClass` pattern already on that class, production overrides none of them, and it *arms* the shipped `ChannelProblem` body rather than standing in for it — which is what the spec's Design Notes required.
+  - `[low]` `[defer]` `ProhibitedRoute` is now armed class-wide, so on a throwaway predating the new variable its nine pre-existing legs no longer run. Class-level refusal is the project's convention and `%UnitTest` offers no per-method skip; deferred with the operational note.
 
 ## Design Notes
 
@@ -668,21 +786,23 @@ alone would leave Confirm permanently `aria-disabled` and AC7's round trip unrea
   DW-1448).
 - **Rule 19 — one mutation per AC, applied on the throwaway, reverted, tree confirmed byte-identical
   (`git status --short`, `git diff --stat`) after each:**
-  - `mutation: restore the '%GetTypeOf(Enabled) = "boolean"' gate in Mint.WarnsAuditingOff -> OcuPilot.Test.AuditingUpdate (the 0/"false"/null warning legs) and ui/browser/auditing-write.browser-spec.mjs (AC2)`
-  - `mutation: set Mint's AUDITINGTOOL to a different name -> OcuPilot.Test.ProposalWire (the equality against the shipped tool's TOOLNAME), which is AC3`
-  - `mutation: answer 0 from Write.Destructive on the auditing tool -> the destructive bar and Confirm styling assertions in ui/browser/auditing-write.browser-spec.mjs and proposal-card.spec.ts (AC1)`
-  - `mutation: set AuditingUpdate.WRITEPERMISSION back to "WRITE" -> OcuPilot.Test.ToolWrite and the least-privileged confirm leg in OcuPilot.Test.ProhibitedRoute (AC4)`
-  - `mutation: answer the id verbatim for the singleton rule in EntityRef.NormalizedId -> OcuPilot.Test.AuditingUpdate's two-spellings sibling-cancel leg (AC4's one-lock half)`
-  - `mutation: remove the auditing type from Prohibited.COVEREDTYPES -> OcuPilot.Test.Prohibited (the zero-uncovered-write-tools assertion) and every confirm leg in OcuPilot.Test.AuditingUpdate (PROHIBITED.UNCOVERED)`
-  - `mutation: skip RecordMarking in Confirm.Transition -> the banner legs of ui/browser/auditing-write.browser-spec.mjs (AC6) and OcuPilot.Test.AuditingUpdate's recorded-fact leg`
-  - `mutation (AC5, REQUIRED - the drop's RECORDING, not the drop): with Audit() answering 0, suppress the recording - no not-marked ledger row, no "done | audit not marked" line, no banner -> OcuPilot.Test.AuditingUpdate's drop-is-recorded leg and ui/browser/auditing-write.browser-spec.mjs. The gate here is not that the marker drops; it is that the drop is VISIBLE, which is the whole substance of the amendment and would otherwise be an unfalsifiable claim`
-  - `mutation (AC5, REQUIRED - the BRACKETING as a pair): make the re-enable's marker drop too -> the paired leg asserting exactly ONE unmarked ledger row between two marked ones. Pin the pair, never each half alone: one marked row plus one unmarked row does not distinguish a one-write gap from an unbounded one`
-  - `mutation: misspell the probe screen's secretArguments entry -> OcuPilot.Test.Descriptor and ui/tools/screen-mirror.test.mjs (AC8's refusing direction); and separately, remove the criteria half from the shared builder -> the planted apiKey assertions in both files (AC8's accepting direction)`
-  - `mutation: accept an object at Confirm.ChannelProblem's type guard -> OcuPilot.Test.ProposalConfirm's structured-secret leg, with the row asserted still live and the token unburned (AC9)`
-  - `mutation: return an empty map from panel.secretsFor -> the confirm-body leg of ui/browser/auditing-write.browser-spec.mjs or panel.spec.ts (AC9's data path)`
-  - `mutation: key the masked-field lookup back on the entity type -> proposal-view/panel tests over a tool whose screen shares its entity type (AC9's tool-keyed half)`
-  - `mutation: drop the +pSecurityChange arm from Event.cls:214 -> OcuPilot.Test.AuditEvent's new security-sentence method (AC10)`
-  - `mutation: remove the mutating-and-async refusal from AdminPort.Sequence -> OcuPilot.Test.AdminPortAsync's new refusal method, armed by a fixture endpoint whose ShouldRunAsync answers 1 (AC10)`
+  - `mutation: restore the '%GetTypeOf(Enabled) = "boolean"' gate in Mint.WarnsAuditingOff -> OcuPilot.Test.AuditingUpdate's five 0/"false"/null legs (AC2). DEMONSTRATED 2026-09-21. Corrected: the browser spec cannot redden on it -- the tool's schema types Enabled boolean, so only a JSON boolean ever reaches the mint through View(); the browser's AC2 leg pins that refusal instead`
+  - `mutation: set Mint's AUDITINGTOOL to a different name -> OcuPilot.Test.ProposalWire (the equality against the shipped tool's TOOLNAME), which is AC3. DEMONSTRATED 2026-09-21`
+  - `mutation: answer 0 from Write.Destructive on the auditing tool -> OcuPilot.Test.ToolWrite's destructive assertion and the bar/Confirm assertions in ui/browser/auditing-write.browser-spec.mjs (AC1). DEMONSTRATED 2026-09-21`
+  - `mutation: set AuditingUpdate.WRITEPERMISSION back to "WRITE" -> OcuPilot.Test.ToolWrite's four pair assertions and OcuPilot.Test.ProhibitedRoute.TestALeastPrivilegedPrincipalConfirmsTheAuditingWriteOverTheWire, whose confirm answers 403 because no IRIS-shipped role grants an administrative resource at WRITE (AC4, AD-29's sufficiency half). DEMONSTRATED 2026-09-21`
+  - `mutation (item 23): remove the %Admin_Secure:USE pair from Screen/Descriptor/AuditingConfig.cls's declared privileges -> OcuPilot.Test.ProhibitedRoute.TestAnAccountShortOfTheAuditingPairIsRefusedTheNamedPair, which reads 200 with auditing moved instead of 403 AUTH.NOPRIVILEGE naming the pair (AC4's refusal half). DEMONSTRATED 2026-09-21`
+  - `mutation (item 24): take tSince after the confirmed sequence rather than before it -> OcuPilot.Test.AuditingUpdate.TestTheVendorsOwnRowsRecordTheChangeTheMarkerCouldNot's three row counts read 0 and its bracketing legs go red. The claim is about the vendor's own rows, so the falsification is on the window (AC5, AD-15's surviving direction). DEMONSTRATED 2026-09-21`
+  - `mutation: answer the id verbatim for the singleton rule in EntityRef.NormalizedId -> OcuPilot.Test.AuditingUpdate's two-spellings one-key leg (AC4's one-lock half). DEMONSTRATED 2026-09-21`
+  - `mutation: remove the auditing type from Prohibited.COVEREDTYPES -> OcuPilot.Test.Prohibited (the zero-uncovered-write-tools assertion and the covered-types roster) and two of OcuPilot.Test.AuditingUpdate's five methods. DEMONSTRATED 2026-09-21`
+  - `mutation: skip RecordMarking in Confirm.Transition -> the banner legs of ui/browser/auditing-write.browser-spec.mjs (AC6) and OcuPilot.Test.AuditingUpdate's recorded-fact leg. DEMONSTRATED 2026-09-21`
+  - `mutation (AC5, REQUIRED - the drop's RECORDING, not the drop): with Audit() answering 0, suppress the recording - the ledger finalize always MARKEDYES and no RecordMarking -> OcuPilot.Test.AuditingUpdate's recorded-fact leg, its four-row ledger leg ('marked,marked,marked,marked') and its bracketing leg. DEMONSTRATED 2026-09-21. The gate is not that the marker drops; it is that the drop is VISIBLE`
+  - `mutation (AC5, REQUIRED - the BRACKETING as a pair): make the re-enable's marker drop too (tMarked = 0 in Confirm.Transition) -> OcuPilot.Test.AuditingUpdate's paired leg, which answers -1 for 'not-marked x4' rather than 1. DEMONSTRATED 2026-09-21, and the disable's own single-row legs still PASSED under it, which is what says the pair rather than either half is what bounds the gap`
+  - `mutation: remove the secretArguments membership refusal from Screen/Registry.cls's ConfirmChannelProblem and from screen-mirror.mjs's confirmChannelProblem -> OcuPilot.Test.Descriptor and ui/tools/screen-mirror.test.mjs (AC8's refusing direction); and separately, remove the criteria half from the shared builder -> the planted apiKey assertions in both files (AC8's accepting direction). BOTH DEMONSTRATED 2026-09-21. Also demonstrated: misspelling the probe screen's own secretArguments entry reddens OcuPilot.Test.Proposal's fixture-declaration guard, which is the shipped rule meeting the test tree's own declaration`
+  - `mutation: accept an object at Confirm.ChannelProblem's type guard -> OcuPilot.Test.ProposalConfirm's structured-secret leg, with the row asserted still live and the token unburned (AC9). DEMONSTRATED 2026-09-21, against the probe screen's own declaration through OcuPilot.Test.SecretConfirmFixture's registry seam`
+  - `mutation: return an empty map from panel.secretsFor -> NOT FALSIFIABLE and corrected 2026-09-21. No SHIPPED descriptor declares a secret argument (this story's own write has one boolean field), so no proposal the panel can build asks for a masked field and the posted body is {} either way. What is falsifiable, and demonstrated: emitting the proposal id alone from ProposalCard.confirm -> proposal-card.spec.ts's typed-values leg. The panel-tier leg arrives with the first secret-bearing write tool (FR-43, FR-46) and is in this spec's deferred: list`
+  - `mutation: key the masked-field lookup back on the entity type in Panel.proposalView -> panel.spec.ts's DW-1227 leg over the auditing proposal, whose screen is built: false and so resolves to null by entity type. DEMONSTRATED 2026-09-21`
+  - `mutation: drop the +pSecurityChange arm from Event.cls's report selection -> OcuPilot.Test.AuditEvent's security-sentence leg, while its configuration and ledger-read legs still pass (AC10). DEMONSTRATED 2026-09-21`
+  - `mutation: remove the mutating-and-async refusal from AdminPort.Sequence -> OcuPilot.Test.AdminPortAsync's refusal method, armed by OcuPilot.Test.EndpointFixture's async mode (AC10). DEMONSTRATED 2026-09-21. The load-bearing assertion is the log line naming the refused method: the savedBody assertion reads the same either way, because without the guard the vendor's own AsyncTaskEndpoint constructor fails on a class that is not one of its endpoints`
 
 **Full runs, once, before `dev_complete` (once, before dev_complete):**
 
@@ -699,46 +819,64 @@ alone would leave Confirm permanently `aria-disabled` and AC7's round trip unrea
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap
+Status: done
+Blocking condition: none
 
-**The AC.** Story 5.10's fifth acceptance block in
-`_bmad-output/planning-artifacts/epics.md:3694-3696`: "**Given** the disable write itself / **When**
-its marker is emitted / **Then** it is marked while auditing is still on, and the re-enable write's
-marker lands once auditing is back - the gap being visible on the ledger rows rather than silent."
+**What shipped.** One write tool, `security.auditing.update`, over the vendor's
+`Security.Audit.Enabled` PUT at `%Admin_Secure:USE`, on `Screen/Descriptor/AuditingConfig.cls` --
+this tree's first `built: false` descriptor, which every gate accepted, so the `built: true`
+fallback was not needed. With it: the `auditing-configuration` entity type and its `singleton` id
+rule (the canonical id mirrored to the client as `ENTITY_SINGLETON_ID`, not hand-copied);
+`Parameter DESTRUCTIVE` on the write base, carried to the card on the wire; `Prohibited`'s third
+covered type and its reviewed-few `Auditing()` sweep; `WarnsAuditingOff` rewritten to ask the
+question the payload asks; **one** `DeclaredNames` union in `Screen/Registry.cls` consumed by both
+confirm-channel keys, with `DECLAREDNAMEKINDS` derived by the mirror and throwing on mismatch;
+`Event.DROPPEDSECURITY`; `AdminPort`'s mutating-and-async refusal before the vendor task row; the
+card's destructive treatment, its typed secrets travelling with the press, and its published
+unfilled-secret reason; the panel's tool-keyed screen lookup.
 
-**Why it is unreachable as worded.** AD-15 and Story 5.6 put the agent marker at one site in
-`Confirm.Transition`, after the vendor write reads OK (`src/OcuPilot/Kernel/Proposal/Confirm.cls:365`
-then `:386-392`) — and the write in this story is the one that turns auditing off. Measured on the
-throwaway `ocupilot-ci` on 2026-09-21: `$System.Security.Audit("OcuPilot","Security","AgentWrite",…)`
-returns 1 with auditing on, **0** in the same process immediately after
-`Security.System.Modify("SYSTEM", AuditEnabled=0)`, and 1 again after the restore; `%SYS.Audit` holds
-the before and after probe rows and **no** row for the emission between them. So the disable write's
-own marker cannot land, and the clause is also internally at odds with its own purpose clause: if
-both markers landed there would be no gap on the ledger rows to be visible. Satisfying it literally
-would need either a second emission site or the marker moved ahead of the write for every write —
-both re-decide what Story 5.6 settled and what AD-15 means, which is not this story's to change.
+**Files changed** (55). Kernel: `EntityType`, `EntityRef` (+`singleton`), `Proposal/Mint`
+(warning predicate, destructive carry), `Proposal/Prohibited` (third type), `Proposal/Confirm`
+(registry seam), `State/Propose` (`Destructive` property and wire key), `Audit/Event` (security
+sentence). Port: `AdminPort` (the refusal). Screen: `Descriptor/AuditingConfig` (new),
+`Tool/AuditingUpdate` (new), `Tool/Write` (`DESTRUCTIVE`), `Tool/Classification` + generated
+`Tool/ToolFields`, `Registry` (the union). Client: `entity-ref`, `navigation`
+(`screenForToolName`), `turn`, `proposal-view`, `agent-status`, `shell/proposal-card`,
+`shell/panel`, `strings`, `_components.scss`, generated `screens.generated.ts`, and
+`ui/tools/screen-mirror.mjs`. Tests: `Test/AuditingUpdate` (new), `Test/SecretTool/*` and
+`Test/SecretConfirmFixture` (new), `ui/browser/auditing-write.browser-spec.mjs` (new), plus twelve
+amended ObjectScript classes, five `ui/tools/*.test.mjs` and both component specs. Scripts:
+`ci-throwaway.sh` (the new arming variable), `check-objectscript.py` and its harness.
+Docs: one appended `EXPERIENCE.md` Fixed-strings row.
 
-**Recommended amendment (one block, no scope change).** Replace that Then clause with the reachable
-observable, which is stronger rather than weaker:
+**Review findings.** 20 findings over two layers — high 0, medium 4, low 11, false 5. Six patched
+(one medium: the new destructive-test arm had no harness case; five low: a false cross-reference to
+a browser leg that does not exist, an overclaiming doc comment, two no-op catch assignments, and a
+helper that answered `0` for both a refusal and a breakage). Five deferred, four of them newly
+recorded in `deferred:`. Nine rejected; each rejection's refutation is its row in
+`## Review Triage Log`. Two of the rejections turned on measurement rather than judgement: the
+reviewer's proposed destructive-test arm was tried, reddened the shipped-tree case and was
+reverted, and DW-1279's ordering claim *is* discriminated by the `savedBody` assertion.
 
-> **Then** its marker is emitted at the one site after the write reads OK, is dropped because
-> auditing is already off, and **the drop is recorded** — the ledger row reads not-marked, the
-> collapsed tool-call line reads "done · audit not marked", and the panel banner turns on — while
-> the audit database's own record of the change is the vendor's `SystemChange` and `AuditChange`
-> "stopped" rows, written before auditing stopped; **and** the re-enable write's marker lands once
-> auditing is back, so the unaudited window is one write wide and visible on the ledger rows rather
-> than silent.
+**Follow-up review recommended: false.** One medium was patched, not two, and no high; the two
+Matrix Test Audit gaps this stage found were closed with tests before review rather than patched
+after it.
 
-Measured support for the amendment: the disable writes `SystemChange` ("Modify System: SYSTEM /
-Audit enabled modified") and `AuditChange` ("Auditing to database … stopped") while auditing is
-still on, and the re-enable writes `AuditChange` ("Auditing started to database …") — so the window
-is bracketed on the audit database as well as on the ledger. A consequence worth recording in
-`## Design Notes` at the same time: for the disable write AD-15's "either record locates the other"
-degrades to one direction, because the vendor's rows carry no proposal id.
+**Verification.** All against the throwaway `ocupilot-ci`; the live `ocupilot` was never written
+to. Full ObjectScript sweep 174 classes / 1581 tests / 0 failed, no overlaps and no foreign runs,
+plus `AuditingUpdate` 6/6 and `ProhibitedRoute` 11/11 through an armed session (the running
+throwaway predates `OCUPILOT_ALLOW_AUDIT_TOGGLE`) -- 175 classes, 1589 tests, 0 failed. Full
+browser suite 221/221. `npm run build` (seven prebuild checkers) and `npm test` (1300 + 813).
+`check-objectscript.py` 0 problems over 598 files and its harness 128/128. `lint-docs.sh` clean.
+`smoke.sh` PASSED, 46 executed, 0 failed, 0 pending, `agentwrite` and `auditmarker` both pass.
+Both generators re-run with no drift. Seventeen Rule 19 mutations demonstrated and reverted;
+`panel.secretsFor`'s is recorded NOT FALSIFIABLE with the reason, and its line says so.
+**`AuditEnabled` reads 1 on `ocupilot-ci` and on `ocupilot`, confirmed after every destructive
+run and again last.**
 
-**Everything else is planned.** This spec is otherwise complete — Code Map, Tasks, ACs, all ten
-ledger dispositions, and Verification — and its I/O matrix, AC5 placeholder and Verification are
-already written to the recommended wording, so the re-dispatch after the amendment is a re-read
-rather than a re-plan. Auditing on `ocupilot-ci` was left enabled (`AuditEnabled = 1`, verified
-after the probe); `ocupilot` was never touched.
+**Residual risks.** Nine `deferred:` items carry the rest; the two that matter to the next reader
+are the `secretArguments` looseness (a declared secret may still name a field the tool does not
+permit) and the panel-tier secrets path, which has no shipped declaration to run against until
+FR-43 or FR-46. One operational note: `docker cp` adds rather than replaces, so a stale
+differently-hashed bundle file accumulates in the deployed directory and fails the build-identity
+spec against the wrong file -- cleared here, and worth a line in the deploy procedure.

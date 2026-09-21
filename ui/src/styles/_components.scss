@@ -281,6 +281,38 @@
   border: 1px solid var(--ocu-outline);
 }
 
+// `button-destructive` (`:1243`): filled `destructive` with `on-destructive`, its state layer
+// `on-destructive`. Same height and radius as the primary, so the two are interchangeable in the
+// proposal card's footer row.
+.ocu-button-destructive {
+  @include typo.ocu-type('body');
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: var(--ocu-control-height);
+  padding: 0 var(--ocu-space-4);
+  border: none;
+  border-radius: var(--ocu-radius-full);
+  background: var(--ocu-destructive);
+  color: var(--ocu-on-destructive);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ocu-button-destructive:hover {
+  background: color-mix(in srgb, var(--ocu-on-destructive) 8%, var(--ocu-destructive));
+}
+
+.ocu-button-destructive:active {
+  background: color-mix(in srgb, var(--ocu-on-destructive) 12%, var(--ocu-destructive));
+}
+
+.ocu-button-destructive:focus-visible {
+  @include ocu-focus-ring;
+}
+
 .ocu-button-text {
   border: 1px solid transparent;
 }
@@ -4346,6 +4378,22 @@ app-data-table {
   .ocu-proposal-card-confirm-spinner {
     animation: none;
   }
+}
+
+// The destructive card (DESIGN.md `:1176`, `:1243`): the 4px left-edge bar in `destructive`, and
+// Confirm as `button-destructive`. The declaration is the write tool's own and arrives on the
+// wire; the typed-name field that DESIGN.md pairs with the button is Story 14.7's.
+.ocu-proposal-card-destructive {
+  border-left-color: var(--ocu-destructive);
+}
+
+// The published reason Confirm names while a masked field is still empty (DW-1232). A caption, not
+// a banner: it is the control's reason rather than a condition of the screen.
+.ocu-proposal-card-secrets-reason {
+  @include typo.ocu-type('caption');
+
+  margin: 0;
+  color: var(--ocu-on-surface-variant);
 }
 
 // The restrained card: expired, canceled, confirmed-and-spent or kill-switched. **By role, at

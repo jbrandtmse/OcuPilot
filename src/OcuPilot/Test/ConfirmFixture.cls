@@ -43,6 +43,15 @@ ClassMethod MergeSecrets(pPayloadJson As %String, pBody As %DynamicObject, pName
     Quit ..WithSecrets(pPayloadJson, pBody, pNames)
 }
 
+/// <p><method>OcuPilot.Kernel.Proposal.Confirm.FieldNames</method> as a test can reach it: the
+/// field names a ledger row records for <var>pBody</var>, with <var>pNames</var>'s secrets excluded
+/// at write time (AD-3). A visibility passthrough, like <method>MergeSecrets</method>; nothing but a
+/// test calls it.</p>
+ClassMethod FieldNamesOf(pBody As %DynamicObject, pNames As %List) As %List
+{
+    Quit ..FieldNames(pBody, pNames)
+}
+
 /// <p><method>OcuPilot.Kernel.Proposal.Confirm.Answer</method> as a test can reach it, so the
 /// read-back's own refusal can be driven with an id no row carries -- the state a row deleted
 /// between the transition and the read-back leaves behind. Nothing but a test calls this.</p>

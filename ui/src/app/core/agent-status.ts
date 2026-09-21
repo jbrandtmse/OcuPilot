@@ -51,6 +51,30 @@ export const AGENT_DEFINITION_ENTITY = 'agent-definition';
 export const AGENT_SWITCH_ENTITY = 'agent-switch';
 
 /**
+ * The entity type the instance's auditing configuration travels under (AD-13, AD-14).
+ *
+ * It is here because `writesMarked` is computed from it: turning auditing off is what makes the
+ * panel's "agent writes are not being marked" banner true, and the confirm that does it publishes
+ * a change event on this type. Without it the writing user's own tab would carry the stale answer
+ * until its next signed-in pass.
+ */
+export const AUDITING_CONFIG_ENTITY = 'auditing-configuration';
+
+/**
+ * The entity types a change to which can move this payload's own answer, so a `changed` event on
+ * one costs a re-read and an event on anything else costs nothing.
+ *
+ * It is a roster rather than a chain of comparisons because the next entity that feeds a restraint
+ * fact is added by naming it here, and because `ui/tools/agent-status.test.mjs` can then hold the
+ * roster rather than re-deriving which types matter.
+ */
+export const RESTRAINT_ENTITIES: readonly string[] = [
+  AGENT_DEFINITION_ENTITY,
+  AGENT_SWITCH_ENTITY,
+  AUDITING_CONFIG_ENTITY,
+];
+
+/**
  * OcuPilot's own agent configuration -- definitions and the instance switches alike -- is instance
  * configuration, so its references carry AD-13's instance scope. Both entity types' change events
  * travel under it, and the switches, being one row per instance, use it as their id as well: there
@@ -441,7 +465,8 @@ export class AgentStatus {
   }
 
   /**
-   * A definition or a switch changed: re-read (AD-14 -- consumers re-fetch, they never patch).
+   * An entity this restraint payload is computed from changed: re-read (AD-14 -- consumers
+   * re-fetch, they never patch).
    *
    * `changed` only. The bus also carries `proposal-open` and `proposal-closed`, which say a
    * proposal against that entity is live rather than that the instance moved, so neither can
@@ -449,7 +474,7 @@ export class AgentStatus {
    */
   private onChange(event: ChangeEvent): void {
     if (event.kind !== 'changed') return;
-    if (event.type !== AGENT_DEFINITION_ENTITY && event.type !== AGENT_SWITCH_ENTITY) return;
+    if (!RESTRAINT_ENTITIES.includes(event.type)) return;
     void this.load();
   }
 
