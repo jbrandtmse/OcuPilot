@@ -83,6 +83,7 @@ const NO_OUTCOME: ProposalOutcome = {
   status: 0,
   code: '',
   reason: '',
+  failedPair: '',
   auditMarked: false,
 };
 
@@ -174,6 +175,16 @@ export interface TurnProposalDiffRow {
 }
 
 /**
+ * One field the payload sends unchanged (AD-4, FR-17), as the instance projected it: the field
+ * name and the one value, already masked on the instance where the tool's own classification does
+ * not admit it (AD-3). There is no before and no after -- an unchanged row has no direction.
+ */
+export interface TurnProposalUnchangedRow {
+  readonly field: string;
+  readonly value: string;
+}
+
+/**
  * One proposal the turn minted (AD-6), read off the progress payload.
  *
  * **Every value here came from the instance.** The client authors no proposal, no diff and no
@@ -189,6 +200,12 @@ export interface TurnProposal {
   readonly tool: string;
   readonly changed: readonly TurnProposalDiffRow[];
   readonly unchangedCount: number;
+  /**
+   * The fields the payload also sends unchanged, one `{field, value}` each and `unchangedCount` of
+   * them. Every value is the instance's own projection of the stored payload, masked there where
+   * the classification does not admit it -- nothing here renders or unmasks one.
+   */
+  readonly unchanged: readonly TurnProposalUnchangedRow[];
   readonly rationale: string;
   readonly expectedImpact: string;
   readonly reverse: string;
@@ -211,6 +228,12 @@ export interface TurnNavigation {
   readonly seq: number;
   readonly route: string;
   readonly entityId: string;
+  /**
+   * The name of a filter the arriving screen's own descriptor declares, or `''` (Story 5.8,
+   * AD-21). A name only: the value the read sends is the descriptor's, so nothing on this side --
+   * and no caller anywhere -- supplies one.
+   */
+  readonly criterion: string;
 }
 
 /** One turn, restored from the conversation or held live while it runs. */
@@ -256,6 +279,13 @@ export interface ProposalOutcome {
   readonly status: number;
   readonly code: string;
   readonly reason: string;
+  /**
+   * The `(resource, permission)` pair a privilege refusal named (AD-8), off the envelope's own
+   * `detail.failedPair`; `''` on every other answer. It is what the refused write's tool-call card
+   * reads as its `failed` detail, because the pair says which privilege the user has to be granted
+   * and the generic reason only says that one is missing.
+   */
+  readonly failedPair: string;
   /**
    * Whether the confirmed write's audit marker landed a row (AD-15). `false` on every answer that
    * is not a confirmed write, including a cancel and every refusal -- the instance sends the key
@@ -365,6 +395,7 @@ function parseNavigation(value: unknown, steps: readonly TurnStep[]): TurnNaviga
     seq,
     route: textAt(row, 'route'),
     entityId: typeof entityIdRaw === 'string' ? entityIdRaw : '',
+    criterion: textAt(row, 'criterion'),
   };
 }
 
@@ -381,6 +412,17 @@ function parseProposalDiff(value: unknown): TurnProposalDiffRow[] {
     const row = asRecord(raw);
     if (row === null) continue;
     rows.push({ field: textAt(row, 'field'), before: textAt(row, 'before'), after: textAt(row, 'after') });
+  }
+  return rows;
+}
+
+function parseProposalUnchanged(value: unknown): TurnProposalUnchangedRow[] {
+  if (!Array.isArray(value)) return [];
+  const rows: TurnProposalUnchangedRow[] = [];
+  for (const raw of value) {
+    const row = asRecord(raw);
+    if (row === null) continue;
+    rows.push({ field: textAt(row, 'field'), value: textAt(row, 'value') });
   }
   return rows;
 }
@@ -406,6 +448,7 @@ function parseProposal(value: unknown): TurnProposal | null {
     tool: textAt(row, 'tool'),
     changed: parseProposalDiff(row['changed']),
     unchangedCount: numberAt(row, 'unchangedCount'),
+    unchanged: parseProposalUnchanged(row['unchanged']),
     rationale: textAt(row, 'rationale'),
     expectedImpact: textAt(row, 'expectedImpact'),
     reverse: textAt(row, 'reverse'),
@@ -532,6 +575,44 @@ export function confirmedWriteStep(
     reason: '',
     failedPair: '',
     auditMarked,
+  };
+}
+
+/**
+ * The tool-call card a **refused** confirm leaves in the transcript (DW-1426, AD-8, AD-39).
+ *
+ * It is the sibling of `confirmedWriteStep` and exists for the same reason: the instance sends no
+ * step for a confirm, so the card is composed from the proposal the user pressed and the answer
+ * the instance gave. `status` is `'error'`, which is what makes the collapsed line read
+ * `failed - <reason>`; `failedPair` is preferred over `reason` by the card itself, because the pair
+ * names the privilege the user has to be granted.
+ *
+ * **A refused write still gets a card.** Until Story 5.8 a refusal recorded nothing, so nothing in
+ * the transcript said the write had been attempted at all -- the proposal card's refusal banner
+ * said why the row was still live, and the record that a write was tried and failed did not exist.
+ * `auditMarked` is `null` because no write happened and so no marker was ever due (AD-15).
+ */
+export function refusedWriteStep(
+  proposal: Pick<TurnProposal, 'tool' | 'target'>,
+  reason: string,
+  failedPair: string,
+  seq: number
+): TurnStep {
+  return {
+    seq,
+    kind: 'tool',
+    name: proposal.tool,
+    status: 'error',
+    summary: '',
+    text: '',
+    code: '',
+    truncated: false,
+    target: proposal.target.id,
+    arguments: '',
+    result: null,
+    reason,
+    failedPair,
+    auditMarked: null,
   };
 }
 
@@ -943,6 +1024,7 @@ export class TurnStore {
         status: 200,
         code: '',
         reason: '',
+        failedPair: '',
         auditMarked: boolAt(result.body, 'auditMarked'),
       };
       const target = this.targetOf(id);
@@ -976,6 +1058,7 @@ export class TurnStore {
       status: result.status,
       code: result.code ?? '',
       reason: result.reason ?? '',
+      failedPair: detail === null ? '' : textAt(detail, 'failedPair'),
       auditMarked: false,
     };
     if (outcome.state !== '') this.recordProposalState(id, outcome);

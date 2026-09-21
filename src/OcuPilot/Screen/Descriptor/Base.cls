@@ -532,6 +532,37 @@ ClassMethod CopyOf(pValue As %RawString) As %RawString [ Private ]
     Quit ##class(%DynamicAbstractObject).%FromJSON(pValue.%ToJSON())
 }
 
+/// <p>The names of the <b>flag</b> criteria this screen's declared read carries: a criterion whose
+/// value is the descriptor's own, not a caller's, and which is therefore nameable by an agent
+/// navigation (AD-21, Story 5.8). The audit database viewer's <code>marker</code> is the one such
+/// criterion in Release 1.</p>
+/// <p>A flag is well-formed only when it declares both the query parameter it sends and the value
+/// it sends under it; a half-declared one is not a flag and is not named here, so a caller can
+/// never reach a criterion whose value nobody declared. The <code>fields</code> half of
+/// <code>criteria</code> is deliberately absent: those take the value a person typed, and naming
+/// one would be a caller value reaching a read.</p>
+ClassMethod FlagCriteria() As %List
+{
+    Set tNames = ""
+    Try {
+        Set tRead = ..Read()
+        If '$IsObject(tRead) Quit
+        Set tCriteria = tRead.%Get("criteria")
+        If '$IsObject(tCriteria) || 'tCriteria.%IsA("%Library.DynamicObject") Quit
+        Set tIterator = tCriteria.%GetIterator()
+        While tIterator.%GetNext(.tName, .tValue) {
+            If tName = "fields" Continue
+            If '$IsObject(tValue) || 'tValue.%IsA("%Library.DynamicObject") Continue
+            If tValue.%Get("param") = "" Continue
+            If tValue.%GetTypeOf("value") = "unassigned" Continue
+            Set tNames = tNames _ $ListBuild(tName)
+        }
+    } Catch {
+        Set tNames = ""
+    }
+    Quit tNames
+}
+
 /// <p>A declared array of strings as a <class>%List</class>, with empties dropped.</p>
 ClassMethod StringList(pName As %String) As %List [ Private ]
 {

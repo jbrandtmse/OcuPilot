@@ -31,7 +31,11 @@ Parameter FRESH = "{""Name"":""/csp/ocupilotprobeconfirm"",""Description"":""bef
 
 /// <p>The pair the privilege refusal is driven with, refused through the fixture rather than
 /// revoked on the instance.</p>
-Parameter DENIEDPAIR = "%Admin_Secure:WRITE";
+/// <p><b>It must be a pair the tool actually requires</b> (DW-1208): a pair outside the resolved
+/// set leaves <method>MissingPair</method> with nothing to fail on, the confirm succeeds, and the
+/// refusal test below passes without ever reaching the assertion it exists for. Since the write's
+/// set is the screen's own two pairs, this is the first of them.</p>
+Parameter DENIEDPAIR = "%Admin_Secure:USE";
 
 Method OnBeforeOneTest() As %Status
 {
@@ -232,6 +236,45 @@ Method TestARestraintTurnedOnAfterTheMintRefuses()
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "State"), "live", "the row is untouched")
 }
 
+/// <p>Story 5.8: <b>the privilege gate answers before the restraint verdict too</b>, which is the
+/// other half of the reorder that put the pairs gate first. It is pinned rather than left to the
+/// order of the lines: before this story the restraint was evaluated above the pairs, and nothing
+/// in either direction would have reddened if it flipped back -- which is how the pairs-versus-
+/// prohibited defect this story fixed stayed hidden.</p>
+/// <p>AD-30's Rule requires that a confirm re-evaluate read-only and refuse a proposal minted
+/// before the switch; it does not say the restraint must be the gate that <i>names</i> the
+/// refusal, and AD-8's Rule does say a denial names the pair that failed. So a caller who is both
+/// under read-only and short of a pair is told about the pair. <b>Either way the write is refused
+/// and nothing reaches the port</b>, which is what both ADs actually require.</p>
+/// <p>Driven with <b>both</b> armed, the only shape that can say which answers. Mutation (Rule 19):
+/// move the pairs block back below the restraint block in
+/// <method>OcuPilot.Kernel.Proposal.Confirm.Transition</method> -- this goes red naming a restraint
+/// code.</p>
+Method TestThePrivilegeGateAnswersBeforeTheRestraintVerdict()
+{
+    Set tKey = ..Seed()
+    If tKey = "" Quit
+    Kill tValues
+    Set tValues("enforcedReadOnly") = 1
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Switch).SetGuarded(.tValues), "enforced read-only is turned on after the mint")
+    Do ##class(OcuPilot.Test.ProposalFixture).DenyPair(..#DENIEDPAIR)
+
+    Set tSC = ..Confirm(tKey, "", .tHttp, .tCode, .tResult, .tDetail)
+    Do ##class(OcuPilot.Test.ProposalFixture).DenyPair("")
+    Kill tRestore
+    Set tRestore("enforcedReadOnly") = 0
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Switch).SetGuarded(.tRestore), "and is turned off again")
+
+    Do $$$AssertStatusNotOK(tSC, "the confirm is refused")
+    Do $$$AssertEquals(tCode, ##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE, "with the privilege code, not a restraint one")
+    Do $$$AssertEquals($ListFind(##class(OcuPilot.Api.Error).RestraintCodes(), tCode), 0, "and the code is not in the restraint family: " _ tCode)
+    Do $$$AssertTrue($IsObject(tDetail), "carrying a detail object")
+    If $IsObject(tDetail) Do $$$AssertEquals(tDetail.%Get("failedPair"), ..#DENIEDPAIR, "that names the pair the caller needs")
+    ; The half both ADs require whichever gate speaks first.
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 0, "and no request reached the port")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "State"), "live", "the row is untouched")
+}
+
 /// <p>AC4 and AC7, AD-8: a declared pair the caller no longer holds refuses, naming it.</p>
 Method TestARevokedPrivilegePairRefusesNamingIt()
 {
@@ -246,6 +289,34 @@ Method TestARevokedPrivilegePairRefusesNamingIt()
     Do $$$AssertEquals(tHttp, 403, "at 403")
     Do $$$AssertTrue($IsObject(tDetail), "carrying a detail object")
     Do $$$AssertEquals(tDetail.%Get("failedPair"), ..#DENIEDPAIR, "that names the pair that failed")
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 0, "and no request reached the port")
+}
+
+/// <p>DW-1208, AD-8: <b>the privilege gate answers before the prohibited set</b>, so a caller that
+/// has lost a required pair is told which one rather than a generic failure. The set reads live
+/// state through the port (AD-10) and the port's own gate requires that same pair, so a caller
+/// refused it reached that read first and was answered <code>SERVERERROR</code> -- measured in a
+/// browser as a real least-privileged principal, where every unit test stayed green because the
+/// suite runs as <code>%All</code> and the fixture's <code>HoldsPair</code> seam never touches the
+/// port.</p>
+/// <p>Driven with <b>both</b> gates armed to refuse, which is the only shape that can say which
+/// one answers. Mutation (Rule 19): put the pairs block back below the prohibited block in
+/// <method>OcuPilot.Kernel.Proposal.Confirm.Transition</method> -- this goes red naming the
+/// prohibited code, and the refusal the user sees stops naming the privilege they need.</p>
+Method TestThePrivilegeGateAnswersBeforeTheProhibitedSet()
+{
+    Set tKey = ..Seed()
+    If tKey = "" Quit
+    Do ##class(OcuPilot.Test.ProposalFixture).ArmProhibited("OcuPilot.Test.ProposalFixture")
+    Do ##class(OcuPilot.Test.ProposalFixture).DenyPair(..#DENIEDPAIR)
+    Set tSC = ..Confirm(tKey, "", .tHttp, .tCode, .tResult, .tDetail)
+    Do ##class(OcuPilot.Test.ProposalFixture).DenyPair("")
+    Do ##class(OcuPilot.Test.ProposalFixture).ArmProhibited("")
+
+    Do $$$AssertStatusNotOK(tSC, "the confirm is refused")
+    Do $$$AssertEquals(tCode, ##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE, "with the privilege code, not the prohibited one")
+    Do $$$AssertTrue($IsObject(tDetail), "carrying a detail object")
+    If $IsObject(tDetail) Do $$$AssertEquals(tDetail.%Get("failedPair"), ..#DENIEDPAIR, "that names the pair the caller needs")
     Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).WriteCount(), 0, "and no request reached the port")
 }
 

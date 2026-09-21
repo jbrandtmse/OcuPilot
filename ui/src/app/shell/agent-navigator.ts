@@ -1,8 +1,10 @@
 import { DestroyRef, Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
 
+import { AuditSearch } from '../areas/logs/audit.store';
 import { encodeEntityId } from '../core/entity-id';
 import { formatNavigationHeading, screenForRoute, withQuery } from '../core/navigation';
+import type { ScreenDeclaration } from '../core/screens.generated';
 import { ShellState } from '../core/shell-state';
 import { STRINGS, stringFor } from '../core/strings';
 import { NAV_REFUSED_UNSAVED_CODE, TurnStore, type TurnNavigation } from '../core/turn';
@@ -44,6 +46,7 @@ export class AgentNavigator {
   private readonly turn = inject(TurnStore);
   private readonly router = inject(Router);
   private readonly shell = inject(ShellState);
+  private readonly audit = inject(AuditSearch);
 
   /**
    * The directive `seq` already scheduled or acted on for the turn currently in flight, or `0`
@@ -95,6 +98,7 @@ export class AgentNavigator {
     if (navigated) {
       const screen = screenForRoute(directive.route);
       const title = screen === null ? '' : stringFor(screen.labelKey);
+      this.applyCriterion(directive, screen);
       this.shell.announceArrival(
         directive.route,
         formatNavigationHeading(STRINGS.agentNavigationHeadingAnnouncement, title)
@@ -103,5 +107,29 @@ export class AgentNavigator {
     } else {
       await this.turn.settleNavigation('refused', NAV_REFUSED_UNSAVED_CODE);
     }
+  }
+
+  /**
+   * Apply the directive's criterion on the screen that has just been arrived at (Story 5.8,
+   * AD-21), through that screen's own store seam, and run its declared read.
+   *
+   * **The criterion is a name, and the value is the descriptor's.** The instance refused anything
+   * but a flag the target declares before this navigation was ever announced
+   * (`NAV.CRITERIONUNKNOWN`), and the store resolves the value from the declaration -- so no
+   * caller value reaches a read and `withQuery` stays `ns`-only, which is what keeps a criterion
+   * off the URL entirely.
+   *
+   * **Applied after the move, never before.** The arriving screen is the one whose filter this is;
+   * applying it to a screen the browser has not reached would filter a screen nobody asked about,
+   * and a guard that then declined the move would leave that filter standing.
+   *
+   * **The store is the shell's one reach into an area, and deliberately so.** The alternative is a
+   * registry every area store registers itself with, which cannot work here: the store that would
+   * register is constructed by the page, and the page does not exist until after this navigation.
+   * The stores are root-provided for exactly that reason (`AuditSearch`'s own header).
+   */
+  private applyCriterion(directive: TurnNavigation, screen: ScreenDeclaration | null): void {
+    if (directive.criterion === '' || screen === null) return;
+    this.audit.openWith(screen, directive.criterion);
   }
 }

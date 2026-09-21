@@ -259,13 +259,10 @@ Method TestEveryBuiltScreenHasACoverageRowAndBack()
 
 /// <p>AC3 -- the write-tool set and the coverage table are equal in both directions, through the
 /// same <method>Drift</method> the screen half uses, which
-/// <method>TestTheBothDirectionsComparisonNamesTheMemberInEachDirection</method> exercises: both
-/// sets are empty here, so the comparison itself runs zero times on this branch. The set has
-/// <b>no members on this branch</b> and that zero is asserted explicitly, beside a non-zero total
-/// from the same enumeration, so a derivation that returned nothing cannot read as a pass.</p>
-/// <p>Mutation: declare <code>KIND = "write"</code> on any tool class and recompile the package ->
-/// red naming the tool. That is how the derived side binds at the integrate-forward; the zero
-/// below is deleted in the same pass.</p>
+/// <method>TestTheBothDirectionsComparisonNamesTheMemberInEachDirection</method> exercises.</p>
+/// <p>The write half has members: Story 5.5 landed <code>webapp.list.update</code>, which tripped
+/// the tripwire the assertion below replaced. Both sizes are asserted non-zero, so neither a
+/// derivation nor a table that silently returned nothing can read as a pass.</p>
 Method TestEveryWriteToolHasACoverageRowAndBack()
 {
     Set tSC = ..DeriveWriteTools(.tTools, .tTotal)
@@ -282,8 +279,8 @@ Method TestEveryWriteToolHasACoverageRowAndBack()
 }
 
 /// <p>AC3 -- the both-directions comparison itself, over synthetic sets. Both halves above call
-/// <method>Drift</method>, and on this branch the write half's two sets are empty, so its loops
-/// run zero times and nothing there could redden. This is where the comparison is driven.</p>
+/// <method>Drift</method> against the sets the instance derives; this is where the comparison's
+/// own two directions are driven, over sets a real branch cannot be put into.</p>
 /// <p>Mutation: invert either <code>$Data</code> test in <method>Drift</method>, or delete either
 /// loop -> red.</p>
 Method TestTheBothDirectionsComparisonNamesTheMemberInEachDirection()

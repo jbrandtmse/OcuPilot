@@ -238,6 +238,32 @@ Method Weakened(pField As %String, pValue As %RawString, pType As %String, pExpe
 /// either mutation carries it past the fingerprint gate and into the vendor write: the 403, the
 /// code, the row's live state, the unspent token <b>and</b> the untouched-application clause all
 /// redden together.</p>
+/// <p>AC5 (Story 5.8), AD-10: <b>the registry advertises no delete verb for a web application at
+/// all.</b> A prohibited action is absent from the tool set, not gated within it, so the question
+/// is what is registered -- deleting a web application is never proposable because there is
+/// nothing to propose it with.</p>
+/// <p>Asked of every registered tool rather than of one name: a delete could arrive under any
+/// verb, and the shape that would make it reachable is a <code>write</code>-kind tool on this
+/// screen's identifier that is not the one update this release reviewed.</p>
+/// <p>Mutation (Rule 19): add a second <code>write</code> tool under the
+/// <code>webapp.list</code> identifier and recompile the package -- this goes red naming it.</p>
+Method TestNoDeleteVerbIsAdvertisedForAWebApplication()
+{
+    Set tSC = ##class(OcuPilot.Screen.Tool.Registry).ListTools(.tTools)
+    Do $$$AssertStatusOK(tSC, "the tool registry lists its tools")
+    Set tIdentifier = $ClassMethod("OcuPilot.Screen.Descriptor.WebAppList", "ToolIdentifier")
+    Do $$$AssertNotEquals(tIdentifier, "", "the web applications screen declares a tool identifier")
+    Set tSeen = 0
+    Set tIterator = tTools.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tTool) {
+        If $Piece(tTool.%Get("name"), ".", 1, 2) '= tIdentifier Continue
+        Set tSeen = tSeen + 1
+        If tTool.%Get("kind") '= "write" Continue
+        Do $$$AssertEquals(tTool.%Get("name"), ..#TOOL, "the only write verb on " _ tIdentifier _ " is the reviewed update, not '" _ tTool.%Get("name") _ "'")
+    }
+    Do $$$AssertTrue(tSeen > 0, "the registry carries tools on " _ tIdentifier _ " at all, so this assertion ran over something")
+}
+
 Method TestADroppedResourceIsRefusedOverTheWire()
 {
     Do ..Weakened("Resource", "", "string", $Parameter("OcuPilot.Kernel.Proposal.Prohibited", "AUTHORIZATION"))

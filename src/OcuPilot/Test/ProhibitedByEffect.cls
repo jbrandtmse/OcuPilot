@@ -318,6 +318,18 @@ Method OwnPath(pPath As %String, pExpected As %String)
     Set tFresh = ##class(OcuPilot.Test.ProhibitedFixture).App(pPath, 32, "", "OcuPilot.Api.Router", "", 1)
     Set tCases = $ListBuild($ListBuild("Enabled", ##class(OcuPilot.Test.ProhibitedFixture).App(pPath, 32, "", "OcuPilot.Api.Router", "", 0)))
     Set tCases = tCases _ $ListBuild($ListBuild("Description", ##class(OcuPilot.Test.ProhibitedFixture).App(pPath, 32, "", "OcuPilot.Api.Router", "", 1, "after")))
+    ; AC5 (Story 5.8): clearing the resource of a serving path is refused for the same reason
+    ; disabling it is, and under the same code -- the serving-path predicate runs before the
+    ; resource one, so the refusal names what is actually wrong with the proposal. It needs its own
+    ; fresh read, because the one above already carries no resource and clearing it would be no
+    ; change at all.
+    Set tResourced = ##class(OcuPilot.Test.ProhibitedFixture).App(pPath, 32, "%Development", "OcuPilot.Api.Router", "", 1)
+    Set tCleared = ##class(OcuPilot.Test.ProhibitedFixture).App(pPath, 32, "", "OcuPilot.Api.Router", "", 1)
+    Set tSC = ..Ask(tResourced, tCleared, "Resource", .tProhibits, .tCode, pPath)
+    Do $$$AssertStatusOK(tSC, "the set answers Resource on " _ pPath)
+    Do $$$AssertEquals(tProhibits, 1, pPath _ " is one of OcuPilot's own, so clearing its resource is not proposable")
+    Do $$$AssertEquals(tCode, pExpected, "with the serving-path code, not the resource one")
+
     Kill tNamespace, tPath
     Set tNamespace("NameSpace") = $ListBuild("USER", "string")
     Set tPath("Path") = $ListBuild("/usr/elsewhere/", "string")

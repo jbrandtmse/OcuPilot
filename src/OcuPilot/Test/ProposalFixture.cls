@@ -489,7 +489,13 @@ Parameter WRITEMARKERMIXEDCASE = "OcuPilot confirm probe (mixed case)";
 /// <p>Create <parameter>WRITETARGETMIXEDCASE</parameter> in <var>pNamespace</var>, mirroring
 /// <method>EnsureWriteTarget</method> in every respect but the path's case, which is deliberate --
 /// see the parameter's own doc comment. Same throwaway-only gate, same never-adopt refusal.</p>
-ClassMethod EnsureMixedCaseWriteTarget(pNamespace As %String = {$Namespace}, Output pCreated As %Boolean) As %Status
+/// <p><var>pEnabled</var> is the state the application is <b>created</b> in, 1 by default so every
+/// caller written before it is unchanged. It is a create-time argument rather than something a
+/// caller sets afterwards because <class>Security.Applications</class> hands back an application
+/// this process has already opened (the <code>%OpenId</code> trap in
+/// <file>.claude/rules/objectscript-basics.md</file>), so a <code>Modify</code> made in the same
+/// process as the <code>Create</code> is not reliably visible to the next reader of it.</p>
+ClassMethod EnsureMixedCaseWriteTarget(pNamespace As %String = {$Namespace}, Output pCreated As %Boolean, pEnabled As %Boolean = 1) As %Status
 {
     Set pCreated = 0
     Set tSC = $$$OK
@@ -507,7 +513,7 @@ ClassMethod EnsureMixedCaseWriteTarget(pNamespace As %String = {$Namespace}, Out
         Kill tProps
         Set tProps("NameSpace") = pNamespace
         Set tProps("Description") = ..#WRITEMARKERMIXEDCASE
-        Set tProps("Enabled") = 1
+        Set tProps("Enabled") = ''pEnabled
         Set tProps("AutheEnabled") = 32
         Set tSC = ##class(Security.Applications).Create(..#WRITETARGETMIXEDCASE, .tProps)
         Set $NAMESPACE = tOrigNS

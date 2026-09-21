@@ -200,18 +200,37 @@ Method TestNoPathFromAWriteToolsViewReachesTheClaimGate()
     }
 }
 
-/// <p>AD-8: the write requires what the screen requires plus the write permission.</p>
-Method TestThePairsAddTheWritePermission()
+/// <p>AD-8, DW-1208: the write's resolved set is exactly the pair set the screen's own read
+/// declares -- <code>%Admin_Secure:USE</code> and <code>%DB_IRISSYS:READ</code>, each once -- and
+/// no pair on it carries a permission no shipped role grants. The write's own pair is one the
+/// screen already declares, so the set it resolves to must not carry it twice.</p>
+/// <p>The "no shipped role grants it" half is asked of the vocabulary rather than of a principal:
+/// <parameter>OcuPilot.Screen.Gate.ADMINRESOURCES</parameter> is required at
+/// <parameter>OcuPilot.Screen.Gate.ADMINPERMISSION</parameter> throughout, so an administrative
+/// resource on this set at any other permission is a requirement nothing on the instance can
+/// satisfy.</p>
+Method TestTheResolvedPairsAreTheScreensOwnSetEachOnce()
 {
     Set tPairs = $ClassMethod(..#TOOLCLASS, "PrivilegePairs", "", .tResolved)
     Do $$$AssertEquals(tResolved, 1, "the pairs resolve")
     Set tSpelled = ""
+    Kill tSeen
     For tI = 1:1:$ListLength(tPairs) {
-        Set tSpelled = tSpelled _ $Select(tI = 1: "", 1: ",") _ $List($List(tPairs, tI), 1) _ ":" _ $List($List(tPairs, tI), 2)
+        Set tResource = $List($List(tPairs, tI), 1)
+        Set tPermission = $List($List(tPairs, tI), 2)
+        Set tSpelled = tSpelled _ $Select(tI = 1: "", 1: ",") _ tResource _ ":" _ tPermission
+        Set tSeen(tResource _ ":" _ tPermission) = +$Get(tSeen(tResource _ ":" _ tPermission)) + 1
+        If $ListFind($ListFromString($Parameter("OcuPilot.Screen.Gate", "ADMINRESOURCES")), tResource) {
+            Do $$$AssertEquals(tPermission, $Parameter("OcuPilot.Screen.Gate", "ADMINPERMISSION"), tResource _ " is required at the one permission a shipped role grants it at")
+        }
     }
-    Do $$$AssertTrue(tSpelled [ "%Admin_Secure:USE", "the screen's own use pair is required")
-    Do $$$AssertTrue(tSpelled [ "%DB_IRISSYS:READ", "and its database read")
-    Do $$$AssertTrue(tSpelled [ "%Admin_Secure:WRITE", "and the write adds its own permission")
+    Do $$$AssertEquals($ListLength(tPairs), 2, "the resolved set is exactly two pairs: " _ tSpelled)
+    Do $$$AssertEquals(+$Get(tSeen("%Admin_Secure:USE")), 1, "the screen's own use pair is required once: " _ tSpelled)
+    Do $$$AssertEquals(+$Get(tSeen("%DB_IRISSYS:READ")), 1, "and its database read once: " _ tSpelled)
+    Do $$$AssertEquals(+$Get(tSeen("%Admin_Secure:WRITE")), 0, "and no pair asks for a write permission on an administrative resource: " _ tSpelled)
+    Set tDeclared = ##class(OcuPilot.Screen.Gate).RequiredPairs($Parameter(..#TOOLCLASS, "DESCRIPTORCLASS"), .tDeclaredResolved)
+    Do $$$AssertEquals(tDeclaredResolved, 1, "the screen's own declared set resolves")
+    Do $$$AssertEquals(tPairs, tDeclared, "and the write's set is that set, not a superset of it")
 }
 
 /// <p>AD-3: a write tool declares which of its arguments are secret, and takes the answer from its

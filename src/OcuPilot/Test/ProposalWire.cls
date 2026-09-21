@@ -25,7 +25,25 @@ Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
 Parameter FRESH = "{""Enabled"":false,""Description"":""before"",""Resource"":""""}";
 
 /// <p>The keys the progress payload's <code>proposals[]</code> entry carries, comma-separated.</p>
-Parameter WIREKEYS = "proposalId,target,expiresAt,tool,changed,unchangedCount,rationale,expectedImpact,reverse,state,closedReason,confirmedAt,auditWarning";
+Parameter WIREKEYS = "proposalId,target,expiresAt,tool,changed,unchangedCount,unchanged,rationale,expectedImpact,reverse,state,closedReason,confirmedAt,auditWarning";
+
+/// <p>The write tool whose generated field list the disclosure's masking is driven against
+/// (DW-1223). The probe descriptor owns no field-list entry, which is the fail-closed case and not
+/// the classified one, so the masking tests below name the shipped tool's entry.</p>
+Parameter CLASSIFIEDTOOL = "webapp.list.update";
+
+/// <p>A fresh read carrying one <code>ordinary</code> literal, one <code>ordinary</code>
+/// <b>array</b> of literals (<code>CorsAllowlist</code>, declared <code>CorsAllowlist[]</code>),
+/// one subtree the classification describes only member by member (<code>MatchRoles</code>), and
+/// one property with no row in the field list at all -- the four ways a path reaches the
+/// disclosure.</p>
+/// <p>The array is not decoration: <code>webapp.list.update</code>'s field list declares
+/// <code>CorsAllowlist[]</code> and <code>CorsHeadersList[]</code> as <code>ordinary</code>
+/// literals, and they reach the disclosure only through
+/// <method>OcuPilot.Kernel.Proposal.Disclosure.OrdinaryPaths</method>'s <code>[]</code>-stripping
+/// branch. Without a payload that uses it, that branch could be deleted and both fields would
+/// silently disclose masked -- indistinguishable from the intended fail-closed behaviour.</p>
+Parameter FRESHCLASSIFIED = "{""Description"":""before"",""CorsAllowlist"":[""https://a.example"",""https://b.example""],""MatchRoles"":[{""MatchRole"":""secretrole""}],""Nonsense"":""unclassifiedvalue""}";
 
 Method OnBeforeOneTest() As %Status
 {
@@ -61,6 +79,20 @@ Method SeedIn(pUser As %String, pConvKey As %String, pTurnKey As %String, pDescr
     If $$$ISERR(tSC) Quit tSC
     Set pKey = tProposal.%Get("proposalId")
     Quit $$$OK
+}
+
+/// <p>Mint one proposal on turn <var>pTurnKey</var> over <parameter>FRESHCLASSIFIED</parameter>
+/// under <parameter>CLASSIFIEDTOOL</parameter>, changing <code>Description</code>.</p>
+/// <p>It arms and mints here rather than through <method>SeedIn</method> because that method arms
+/// <parameter>FRESH</parameter> itself, and the disclosure's masking needs a fresh read carrying
+/// the three classification cases.</p>
+Method SeedClassified(pTurnKey As %String, Output pKey As %String) As %Status
+{
+    Do ##class(OcuPilot.Test.ProposalFixture).Arm(..#FRESHCLASSIFIED)
+    Set tArgs = {"Name": "/csp/probe", "Description": "after"}
+    Set tSC = $ClassMethod(..#MINT, "Mint", ..#SCREEN, ..#CLASSIFIEDTOOL, ..#PROBEUSER, "probe-conv", pTurnKey, tArgs, ..#LIMITS, .tProposal, .tHttp, .tFault, "WebApp.App", "name", "/csp/probe", "Name", $ListBuild("Description"))
+    Set pKey = $Select($IsObject($Get(tProposal)): tProposal.%Get("proposalId"), 1: "")
+    Quit tSC
 }
 
 /// <p>The wire row carries the triple, the diff, the counts and the agent's words, and nothing
@@ -100,18 +132,107 @@ Method TestTheWireRowCarriesTheTripleTheDiffAndTheState()
     Do $$$AssertNotEquals(tRow.%Get("expiresAt"), "", "and the row says when it stops being confirmable")
 }
 
-/// <p>AD-6: the card renders the diff and the unchanged count; the body the write will send is
-/// never on the wire.</p>
-Method TestTheStoredBodyIsNotOnTheWire()
+/// <p>AD-6: the stored body reaches the wire only as the disclosure's masked
+/// <code>{field, value}</code> projection. The payload, the fingerprint and the token are absent
+/// as keys, and the row carries no value the tool's own classification does not admit.</p>
+Method TestTheStoredBodyReachesTheWireOnlyAsTheDisclosure()
 {
     Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).SeedTurn(..#PROBEUSER, "completed", .tTurn), "a turn is seeded")
     Do $$$AssertStatusOK(..Seed(..#PROBEUSER, tTurn, "after", .tKey), "and one proposal is minted on it")
     Set tSC = ##class(OcuPilot.Kernel.State.Propose).GuardedRowsForTurn(tTurn, ..#PROBEUSER, .tRows)
     Do $$$AssertStatusOK(tSC, "the turn's proposals are read")
+    Set tRow = tRows.%Get(0)
+    Set tMasked = 0
+    Do $$$AssertEquals(tRow.%GetTypeOf("payload"), "unassigned", "the payload is not a key of the wire row")
+    Do $$$AssertEquals(tRow.%GetTypeOf("arguments"), "unassigned", "nor the stored arguments")
+    Do $$$AssertEquals(tRow.%GetTypeOf("fingerprint"), "unassigned", "nor the fingerprint")
+    Do $$$AssertEquals(tRow.%GetTypeOf("token"), "unassigned", "and certainly not the token")
+    ; The probe tool owns no field-list entry, which is the fail-closed case: every disclosed row
+    ; carries the mask and no stored value travels at all.
+    Set tIterator = tRow.%Get("unchanged").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tUnchanged) {
+        Do $$$AssertEquals(tUnchanged.%Get("value"), ##class(OcuPilot.Kernel.Proposal.Disclosure).Mask(), "an unreadable field list discloses " _ tUnchanged.%Get("field") _ " masked")
+        Set tMasked = tMasked + 1
+    }
+    Do $$$AssertEquals(tMasked, tRow.%Get("unchangedCount"), "every one of them, so no stored value travels at all")
+}
+
+/// <p>DW-1223: the disclosure's rows are the payload's top-level properties minus the changed
+/// ones, in the payload's own order, and there are exactly <code>unchangedCount</code> of them.</p>
+/// <p>Mutation (Rule 19): drop the <code>If $Data(tChanged(tKey)) Continue</code> line from
+/// <method>OcuPilot.Kernel.Proposal.Disclosure.Rows</method> -- the length assertion goes red.</p>
+Method TestTheUnchangedRowsAreThePayloadMinusTheChangedFields()
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).SeedTurn(..#PROBEUSER, "completed", .tTurn), "a turn is seeded")
+    Do $$$AssertStatusOK(..SeedClassified(tTurn, .tKey), "and one proposal changing Description is minted on it")
+    Set tSC = ##class(OcuPilot.Kernel.State.Propose).GuardedRowsForTurn(tTurn, ..#PROBEUSER, .tRows)
+    Do $$$AssertStatusOK(tSC, "the turn's proposals are read")
+    Set tRow = tRows.%Get(0)
+    Set tUnchangedRows = tRow.%Get("unchanged")
+    Do $$$AssertEquals(tRow.%Get("unchangedCount"), 3, "three of the four properties are sent unchanged")
+    Do $$$AssertEquals(tUnchangedRows.%Size(), tRow.%Get("unchangedCount"), "and the disclosure has exactly that many rows")
+    Do $$$AssertEquals(tUnchangedRows.%Get(0).%Get("field"), "CorsAllowlist", "in the payload's own order, the changed field skipped")
+    Do $$$AssertEquals(tUnchangedRows.%Get(1).%Get("field"), "MatchRoles", "and the rest following it")
+    Do $$$AssertEquals(tUnchangedRows.%Get(2).%Get("field"), "Nonsense", "to the last of them")
+    Do $$$AssertEquals(tRow.%Get("changed").%Get(0).%Get("field"), "Description", "the one changed field is on the diff and nowhere else")
+}
+
+/// <p>DW-1223, AD-3's fail-closed rule: a subtree the classification describes only member by
+/// member, and a property it does not name at all, are both disclosed with the published mask, and
+/// neither raw value appears anywhere in the wire row.</p>
+/// <p>Mutation (Rule 19): drop the <code>If tPath [ "." Continue</code> line from
+/// <method>OcuPilot.Kernel.Proposal.Disclosure.OrdinaryPaths</method>, so the
+/// <code>MatchRoles[].MatchRole</code> row admits <code>MatchRoles</code> -- the secret-role
+/// assertion goes red.</p>
+Method TestASecretOrUnclassifiedPropertyIsDisclosedMasked()
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).SeedTurn(..#PROBEUSER, "completed", .tTurn), "a turn is seeded")
+    Do $$$AssertStatusOK(..SeedClassified(tTurn, .tKey), "and one proposal changing Description is minted on it")
+    Set tSC = ##class(OcuPilot.Kernel.State.Propose).GuardedRowsForTurn(tTurn, ..#PROBEUSER, .tRows)
+    Do $$$AssertStatusOK(tSC, "the turn's proposals are read")
+    Set tRow = tRows.%Get(0)
+    Set tMask = ##class(OcuPilot.Kernel.Proposal.Disclosure).Mask()
+    Kill tValue
+    Set tIterator = tRow.%Get("unchanged").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tUnchanged) {
+        Set tValue(tUnchanged.%Get("field")) = tUnchanged.%Get("value")
+    }
+    Do $$$AssertEquals($Get(tValue("MatchRoles")), tMask, "the role subtree is disclosed masked, not dropped")
+    Do $$$AssertEquals($Get(tValue("Nonsense")), tMask, "and so is a property the classification does not name")
     Set tJson = tRows.%ToJSON()
-    Do $$$AssertEquals(tJson [ "Resource", 0, "no payload property reaches the wire")
-    Do $$$AssertEquals(tJson [ "fingerprint", 0, "nor the fingerprint")
-    Do $$$AssertEquals(tJson [ "token", 0, "and certainly not the token")
+    Do $$$AssertEquals(tJson [ "secretrole", 0, "no role value reaches the wire")
+    Do $$$AssertEquals(tJson [ "unclassifiedvalue", 0, "and no unclassified value either")
+}
+
+/// <p>DW-1223: an <code>ordinary</code> literal is disclosed with its value, rendered the way the
+/// diff renders one, so the disclosure and the diff cannot read one value two ways.</p>
+Method TestAnOrdinaryLiteralIsDisclosedWithItsValue()
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).SeedTurn(..#PROBEUSER, "completed", .tTurn), "a turn is seeded")
+    Do ##class(OcuPilot.Test.ProposalFixture).Arm(..#FRESHCLASSIFIED)
+    ; "Nonsense" is the changed field here, so Description -- the one classified ordinary literal
+    ; -- is among the unchanged and is the row this asserts.
+    Set tArgs = {"Name": "/csp/probe", "Nonsense": "after"}
+    Set tSC = $ClassMethod(..#MINT, "Mint", ..#SCREEN, ..#CLASSIFIEDTOOL, ..#PROBEUSER, "probe-conv", tTurn, tArgs, ..#LIMITS, .tProposal, .tHttp, .tFault, "WebApp.App", "name", "/csp/probe", "Name", $ListBuild("Nonsense"))
+    Do $$$AssertStatusOK(tSC, "a proposal changing the unclassified property is minted")
+    If $$$ISERR(tSC) Quit
+    Set tSC = ##class(OcuPilot.Kernel.State.Propose).GuardedRowsForTurn(tTurn, ..#PROBEUSER, .tRows)
+    Do $$$AssertStatusOK(tSC, "the turn's proposals are read")
+    Kill tValue
+    Set tIterator = tRows.%Get(0).%Get("unchanged").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tUnchanged) {
+        Set tValue(tUnchanged.%Get("field")) = tUnchanged.%Get("value")
+    }
+    Do $$$AssertEquals($Get(tValue("Description")), "before", "the ordinary literal carries its own value")
+    ; The array-of-literals branch: the field list declares this path as `CorsAllowlist[]`, and the
+    ; property is admitted by stripping that suffix. Rendered by Mint.Display, which answers compact
+    ; JSON for an array, so the disclosure and the diff read one value the same way.
+    ;
+    ; Mutation (Rule 19): drop the `If $Extract(tPath, *-1, *) = "[]"` line from
+    ; OcuPilot.Kernel.Proposal.Disclosure.OrdinaryPaths -- this goes red, and every web
+    ; application's CorsAllowlist and CorsHeadersList would disclose masked.
+    Do $$$AssertEquals($Get(tValue("CorsAllowlist")), "[""https://a.example"",""https://b.example""]", "an ordinary array of literals carries its own value, not the mask")
+    Do $$$AssertNotEquals($Get(tValue("CorsAllowlist")), ##class(OcuPilot.Kernel.Proposal.Disclosure).Mask(), "and is not masked as though nobody had classified it")
 }
 
 /// <p>AD-33: a poll for a turn the caller does not own answers nothing, and the store's own

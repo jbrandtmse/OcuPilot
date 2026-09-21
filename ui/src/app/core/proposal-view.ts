@@ -23,13 +23,22 @@
  */
 
 import { STRINGS } from './strings.ts';
-import type { TurnProposal } from './turn.ts';
+import type { TurnProposal, TurnProposalUnchangedRow } from './turn.ts';
 
 /** One changed field, as the card draws it: the label, the before value and the after value. */
 export interface ProposalDiffRow {
   readonly field: string;
   readonly before: string;
   readonly after: string;
+}
+
+/**
+ * One unchanged field, as the card draws it: the label and the one value. No direction, because
+ * the payload sends this field exactly as the instance holds it (FR-17).
+ */
+export interface ProposalUnchangedRow {
+  readonly field: string;
+  readonly value: string;
 }
 
 /**
@@ -58,11 +67,12 @@ export interface ProposalCardView {
   readonly expiresAt?: number;
   /**
    * The fields the payload also sends unchanged, one value each and no arrow, listed when the
-   * disclosure is open. The progress payload carries the count alone (AD-4), so a live card's list
-   * is empty until an instance change publishes the rows; the disclosure is a button exactly when
-   * there is something behind it.
+   * disclosure is open (DW-1223). The instance projects them from the payload it stored and masks
+   * every value its tool's own classification does not admit, so nothing here renders or unmasks
+   * one; the disclosure is a button exactly when there is something behind it, which is why the
+   * static example -- which is not a proposal and carries no rows -- has none.
    */
-  readonly unchanged?: readonly ProposalDiffRow[];
+  readonly unchanged?: readonly ProposalUnchangedRow[];
   /** The secret argument names the user fills before Confirm (AD-3, AD-6). */
   readonly maskedFields?: readonly string[];
   /** Whether this write would stop the instance marking agent writes (AD-15). */
@@ -248,7 +258,8 @@ function maskedRow(row: ProposalDiffRow): ProposalDiffRow {
  * One live proposal as its card renders it: `entityLabel` is the singular noun the target's screen
  * declares, `secretArguments` the names that screen declares secret, and everything else is
  * `proposal`'s own -- the instance-computed diff with every declared secret masked on both sides,
- * the unchanged count, the agent's two blocks, the reversal, the expiry and the audit warning.
+ * the unchanged count and the instance's own already-masked unchanged rows, the agent's two
+ * blocks, the reversal, the expiry and the audit warning.
  * `refusalReason` is the envelope's own sentence for a decision the instance refused on a row it
  * left live (DW-1348), passed in for the same reason the screen's two facts are: it is the
  * caller's to hold, and nothing here writes it.
@@ -272,6 +283,7 @@ export function toCardView(
     name: proposal.target.id,
     changed: proposal.changed.map((row) => (secrets.has(row.field) ? maskedRow(row) : row)),
     unchangedCount: proposal.unchangedCount,
+    unchanged: proposal.unchanged,
     rationale: proposal.rationale,
     expectedImpact: proposal.expectedImpact,
     reverse: proposal.reverse,

@@ -45,6 +45,17 @@ Parameter REQUESTTIMEOUT As %Integer = 20;
 /// <code>webapplications</code> check issues.</p>
 Parameter WEBAPPLISTTOOL = "webapp.list";
 
+/// <p>The write tool the <code>agentwrite</code> and <code>auditmarker</code> checks drive
+/// (AD-45): the one shipped write, aimed at AD-25's own demo fixture.</p>
+Parameter WEBAPPUPDATETOOL = "webapp.list.update";
+
+/// <p>The resource that write grants: setting one where none was set, the one authorization
+/// change AD-10 permits, and the change UJ-3 itself makes.</p>
+Parameter WRITERESOURCE = "%Development";
+
+/// <p>The limits class the mint and the turn row are bounded by, the same one the API uses.</p>
+Parameter LIMITS = "OcuPilot.Kernel.Agent.Limits";
+
 /// <p>The tool identifier of the users list, whose screen read the <code>users</code> check
 /// issues.</p>
 Parameter USERLISTTOOL = "permissions.users";
@@ -242,7 +253,7 @@ ClassMethod Run(pUsername As %String = "", pPassword As %String = "", pDemo As %
         Do ..CheckAuditEvent(.tChecks)
         Do ..CheckAgentSwitches(.tChecks)
         Do ..CheckDemoFixture(.tChecks, pDemo)
-        Do ..AddPending(.tChecks)
+        Do ..CheckAgentWrite(.tChecks, pDemo)
     } Catch ex {
         Do ..Note(.tChecks, "smoke", "fail", "the smoke run raised " _ ex.DisplayString())
     }
@@ -1171,13 +1182,264 @@ ClassMethod CheckDemoFixture(ByRef pChecks, pDemo As %String = "") [ Private ]
     Do ..Note(.pChecks, "demofixture", "pass")
 }
 
-/// <p>The checks this instance cannot make yet, each naming the epic that makes it real. They
-/// are listed rather than omitted so the report is honest about its own coverage, and they
-/// never move the verdict.</p>
-ClassMethod AddPending(ByRef pChecks) [ Private ]
+/// <p>AD-45's two remaining checks, driven as one sequence because they are one event: a proposal
+/// minted and confirmed through the shipped path against AD-25's demo fixture
+/// (<code>agentwrite</code>), and the <code>AgentWrite</code> row that write leaves in the audit
+/// database (<code>auditmarker</code>).</p>
+/// <p><b>The only check that writes to the instance, so it restores what it changed.</b> The
+/// fixture is created disabled with no resource and AD-25 forbids modifying one this install did
+/// not make, so a run that left it enabled would contradict
+/// <class>OcuPilot.Install.Fixture</class>'s own created-state contract and make a second run
+/// assert against a target in a state no install produced. The restore sends the instance's own
+/// record of the application with those two fields put back to the state the install creates, not
+/// the state this run found: a run interrupted between the write and the restore would otherwise
+/// have its own drift restored by every run after it.</p>
+/// <p><b>A fixture not in that state is a <code>fail</code>, not a pass.</b> A write over an
+/// application already enabled with the resource changes nothing, and every assertion after it
+/// would hold of a write that did nothing -- so the mint's own diff is checked to name both
+/// fields, and the fixture is put back either way.</p>
+/// <p><b>Every read, the write and the restore are keyed by one resolution</b>:
+/// <method>ApplicationName</method>'s reading of <class>Security.Applications</class>, which
+/// answers the spelling the instance stores. The proposal's <code>TargetRef</code> is never used
+/// as an id here -- <method>OcuPilot.Kernel.EntityRef.Key</method> folds it (AD-13's canonical
+/// form), and a check that took its id from there would be reporting on an application it
+/// resolved by a name the instance does not hold. <b>Measured on this build, and the reason this
+/// is a correctness property rather than a refusal:</b> both
+/// <method>Security.Applications.Exists</method> and the vendor's <code>WebApp.App</code>
+/// <code>GET</code> resolve a web-application name case-insensitively, so a folded id would find
+/// the same application and answer plausibly. <class>OcuPilot.Test.Smoke</class> drives the whole
+/// check against an application the instance spells in mixed case, and pins that resolution
+/// directly.</p>
+/// <p><b><code>skipped</code>, never <code>fail</code>, where the environment cannot carry it</b>
+/// -- no demo opt-in, no fixture, a fixture this install did not create, or a turn of this user
+/// already running. The reason travels even where the assertion cannot (DW-1402), so
+/// <code>executed=</code> stays honest.</p>
+/// <p><b><code>OcuPilot.PKG</code> classes only</b> (this class's own scope wall): the turn row
+/// comes from <class>OcuPilot.Kernel.State.Turn</class>'s guarded reserve, begin and finish, and
+/// the write target is AD-25's fixture rather than a probe application a test class would make.</p>
+ClassMethod CheckAgentWrite(ByRef pChecks, pDemo As %String = "") [ Private ]
 {
-    Do ..Note(.pChecks, "agentwrite", "pending", "a confirmed agent write, proposed, reviewed and applied -- Epic 3")
-    Do ..Note(.pChecks, "auditmarker", "pending", "the audit row that write leaves behind -- Epic 3")
+    Set tSkip = ""
+    Set tTurnKey = ""
+    Try {
+        Set tWanted = $Select(pDemo '= "": pDemo, 1: $System.Util.GetEnviron("OCUPILOT_DEMO"))
+        If tWanted '= "1" {
+            Set tSkip = "the demo opt-in flag is not set for this instance, so the " _ ..WriteTarget() _ " fixture a confirmed write needs was never created (AD-25)"
+            Quit
+        }
+        If '..WriteTargetOwned() {
+            Set tSkip = ..WriteTarget() _ " is absent, or carries an application this install did not create, which AD-25 forbids modifying"
+            Quit
+        }
+        Set tSpelling = ..ApplicationName(..WriteTarget())
+        If tSpelling = "" {
+            Set tSkip = "this instance's own record of " _ ..WriteTarget() _ " could not be read, so there is no application to write to"
+            Quit
+        }
+
+        Kill tQuery
+        Set tQuery(##class(OcuPilot.Screen.Tool.Write).IdParam()) = tSpelling
+        Set tReadSC = ##class(OcuPilot.Port.AdminPort).Invoke("WebApp.App", "GET", .tQuery, "", .tBefore, .tReadHttp, .tReadFault)
+        If $$$ISERR(tReadSC) || '$IsObject($Get(tBefore)) {
+            Do ..Note(.pChecks, "agentwrite", "fail", "the fixture could not be read fresh before the write (HTTP " _ +$Get(tReadHttp) _ ")")
+            Do ..Note(.pChecks, "auditmarker", "fail", "no write was made, so no audit row could be looked for")
+            Quit
+        }
+        ; The body the restore sends: the instance's own record of the application with the two
+        ; fields this write changes put back to the state Fixture.CreateWebApp creates -- not the
+        ; state this run happened to find. A run interrupted between the write and the restore
+        ; would otherwise have its own drift restored by the next one, forever.
+        Set tRestoreBody = ##class(%DynamicAbstractObject).%FromJSON(tBefore.%ToJSON())
+        Do tRestoreBody.%Set("Enabled", 0, "boolean")
+        Do tRestoreBody.%Set("Resource", "", "string")
+
+        Set tReserveSC = ##class(OcuPilot.Kernel.State.Turn).GuardedReserve($Username, "", ##class(OcuPilot.Api.Error).#TURNABANDONEDJOBLOST, ..#LIMITS, .tTurnKey, .tBusy, .tSweepSC)
+        If $$$ISERR(tReserveSC) || tBusy || (tTurnKey = "") {
+            Set tSkip = "a turn of " _ $Username _ " is already running on this instance, so this check would race it for the one turn slot"
+            Set tTurnKey = ""
+            Quit
+        }
+        Do ##class(OcuPilot.Kernel.State.Turn).GuardedBegin(tTurnKey, $Username, ..#LIMITS, .tBegun, .tStarted)
+        Do ##class(OcuPilot.Kernel.State.Turn).GuardedFinish(tTurnKey, $Username, "completed", "", "", "", 0, ..#LIMITS)
+
+        Set tArgs = {}
+        Do tArgs.%Set(##class(OcuPilot.Screen.Tool.Write).IdArgument(), tSpelling, "string")
+        Do tArgs.%Set("Enabled", 1, "boolean")
+        Do tArgs.%Set("Resource", ..#WRITERESOURCE, "string")
+        Set tMintSC = ##class(OcuPilot.Kernel.Proposal.Mint).Mint($Parameter("OcuPilot.Screen.Tool.WebAppUpdate", "DESCRIPTORCLASS"), ..#WEBAPPUPDATETOOL, $Username, "", tTurnKey, tArgs, ..#LIMITS, .tProposal, .tMintHttp, .tMintFault, ##class(OcuPilot.Screen.Tool.WebAppUpdate).Endpoint(), ##class(OcuPilot.Screen.Tool.Write).IdParam(), tSpelling, ##class(OcuPilot.Screen.Tool.Write).IdArgument(), ##class(OcuPilot.Screen.Tool.WebAppUpdate).SettableFields())
+        If $$$ISERR(tMintSC) || '$IsObject($Get(tProposal)) {
+            Do ..Note(.pChecks, "agentwrite", "fail", "the proposal could not be minted: " _ $System.Status.GetErrorText(tMintSC))
+            Do ..Note(.pChecks, "auditmarker", "fail", "no write was made, so no audit row could be looked for")
+            Quit
+        }
+        Set tProposalId = tProposal.%Get("proposalId")
+        ; A fixture already enabled with the resource yields a diff with no rows, and every
+        ; assertion below would then hold of a write that changed nothing. The state is asserted
+        ; through the mint's own diff rather than through a second read, because the diff is what
+        ; the user would have reviewed.
+        Set tChanged = ""
+        Set tChangedIterator = tProposal.%Get("changed").%GetIterator()
+        While tChangedIterator.%GetNext(.tChangedIndex, .tChangedRow) {
+            Set tChanged = tChanged _ $Select(tChanged = "": "", 1: ",") _ tChangedRow.%Get("field")
+        }
+        If (tChanged '= "Enabled,Resource") && (tChanged '= "Resource,Enabled") {
+            Do ..Note(.pChecks, "agentwrite", "fail", ..WriteTarget() _ " was not in the disabled, no-resource state its install creates, so this write would have changed '" _ tChanged _ "' rather than both fields; it is put back and the next run asserts against it")
+            Do ..Note(.pChecks, "auditmarker", "fail", "the write this row would account for changed nothing")
+            Quit
+        }
+        Set tSince = ..AuditNow()
+        Set tConfirmSC = ##class(OcuPilot.Kernel.Proposal.Confirm).Confirm(tProposalId, "", $Username, .tResult, .tConfirmHttp, .tConfirmCode, .tConfirmDetail)
+        If $$$ISERR(tConfirmSC) {
+            Do ..Note(.pChecks, "agentwrite", "fail", "the confirm was refused at HTTP " _ +$Get(tConfirmHttp) _ " with " _ $Get(tConfirmCode))
+            Do ..Note(.pChecks, "auditmarker", "fail", "no write was made, so no audit row could be looked for")
+            Quit
+        }
+
+        Kill tQuery
+        Set tQuery(##class(OcuPilot.Screen.Tool.Write).IdParam()) = tSpelling
+        Set tBackSC = ##class(OcuPilot.Port.AdminPort).Invoke("WebApp.App", "GET", .tQuery, "", .tAfter, .tBackHttp, .tBackFault)
+        Set tProblem = ""
+        If $$$ISERR(tBackSC) || '$IsObject($Get(tAfter)) {
+            Set tProblem = "the target could not be read back after the write (HTTP " _ +$Get(tBackHttp) _ ")"
+        } ElseIf ''tAfter.%Get("Enabled") '= 1 {
+            Set tProblem = "the confirmed write did not enable " _ tSpelling
+        } ElseIf tAfter.%Get("Resource") '= ..#WRITERESOURCE {
+            Set tProblem = "the confirmed write left the resource '" _ tAfter.%Get("Resource") _ "' rather than " _ ..#WRITERESOURCE
+        }
+        If tProblem = "" {
+            Do ..Note(.pChecks, "agentwrite", "pass")
+        } Else {
+            Do ..Note(.pChecks, "agentwrite", "fail", tProblem)
+        }
+
+        Set tRows = ..MarkerRows(tSince, tProposalId)
+        If tRows = 1 {
+            Do ..Note(.pChecks, "auditmarker", "pass")
+        } ElseIf tRows < 0 {
+            Do ..Note(.pChecks, "auditmarker", "fail", "the audit database could not be read, so whether the write was marked is unknown")
+        } Else {
+            Do ..Note(.pChecks, "auditmarker", "fail", tRows _ " audit row(s) carry this write's proposal id; the marker AD-15 requires is one")
+        }
+    } Catch ex {
+        Do ..Note(.pChecks, "agentwrite", "fail", "the agent-write check raised " _ ex.DisplayString())
+        Do ..Note(.pChecks, "auditmarker", "fail", "no write could be accounted for")
+        Set tSkip = ""
+    }
+    ; Its own frame: the fixture is restored and the turn row removed whatever the checks above
+    ; decided, including on the raise, so a failed run leaves nothing behind for the next one.
+    Do ..RestoreWriteTarget($Get(tSpelling), $Get(tRestoreBody), tTurnKey)
+    If tSkip '= "" {
+        Do ..Note(.pChecks, "agentwrite", "skipped", tSkip)
+        Do ..Note(.pChecks, "auditmarker", "skipped", tSkip)
+    }
+}
+
+/// <p>The web application AD-25's demo fixture creates and the <code>agentwrite</code> check
+/// writes to. Overridable so <class>OcuPilot.Test.Smoke</class> can drive the same check against
+/// an application whose spelling is not its own fold; production never overrides it.</p>
+ClassMethod WriteTarget() As %String
+{
+    Quit ##class(OcuPilot.Install.Fixture).#APPPATH
+}
+
+/// <p>Whether this install's own inventory records <method>WriteTarget</method> as a fixture it
+/// created (AD-25). Overridable beside <method>WriteTarget</method>, for the same reason.</p>
+ClassMethod WriteTargetOwned() As %Boolean
+{
+    Quit ##class(OcuPilot.Install.Fixture).WebAppOwnedByProfile("")
+}
+
+/// <p>The name <var>pPath</var>'s web application carries on this instance, <b>case-preserved</b>,
+/// or <code>""</code> when the instance holds none. <class>Security.Applications</class> resolves
+/// a name case-insensitively and answers the spelling it stores, which is the spelling every read
+/// and every write this check makes is keyed by.</p>
+/// <p>Switches to <code>%SYS</code> and restores, restoring first on the error path (AD-16).</p>
+/// <p><b>Public, not <code>[ Private ]</code></b> -- the same documented deviation
+/// <method>Note</method> and <method>Render</method> carry: it is the one place this class decides
+/// what a web application is called, and <class>OcuPilot.Test.Smoke</class> asserts its answer
+/// against an application the instance spells in mixed case. It resolves nothing and writes
+/// nothing.</p>
+ClassMethod ApplicationName(pPath As %String) As %String
+{
+    Set tName = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If ##class(Security.Applications).Exists(pPath, .tApp, .tSC), $IsObject(tApp) Set tName = tApp.Name
+        Set tApp = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tName = ""
+    }
+    Quit tName
+}
+
+/// <p>Put <var>pBody</var> back on <var>pName</var>, and remove the turn row <var>pTurnKey</var>
+/// and its proposals. <var>pBody</var> is the instance's own record of the application with the two
+/// fields this check changes returned to the state <method>OcuPilot.Install.Fixture.CreateWebApp</method>
+/// creates -- <b>a <class>%DynamicObject</class>, never its JSON text</b>: the port's body is
+/// parsed by the vendor endpoint, which reads a string as carrying no properties at all and
+/// answers 200 having written nothing.</p>
+/// <p><b>Best effort, and silent.</b> It reports nothing of its own: a restore that failed does
+/// not change what the checks above observed, and the next run reads a fixture that is not in its
+/// created state and fails naming that, which is where a failed restore surfaces.</p>
+ClassMethod RestoreWriteTarget(pName As %String = "", pBody As %DynamicObject = "", pTurnKey As %String = "") [ Private ]
+{
+    Try {
+        If (pName '= "") && $IsObject(pBody) {
+            Kill tQuery
+            Set tQuery(##class(OcuPilot.Screen.Tool.Write).IdParam()) = pName
+            Do ##class(OcuPilot.Port.AdminPort).Invoke("WebApp.App", "PUT", .tQuery, pBody, .tWritten, .tHttp, .tFault)
+        }
+    } Catch {
+    }
+    Try {
+        If pTurnKey '= "" {
+            Do ##class(OcuPilot.Kernel.State.Propose).GuardedDeleteForTurn(pTurnKey)
+            Do ##class(OcuPilot.Kernel.State.Turn).GuardedDelete(pTurnKey)
+        }
+    } Catch {
+    }
+}
+
+/// <p>The audit database's own clock, in the form <code>%SYS.Audit.UTCTimeStamp</code> carries --
+/// the lower bound the marker read below is bounded by.</p>
+ClassMethod AuditNow() As %String [ Private ]
+{
+    Quit $ZDateTime($ZTimeStamp, 3, , 3)
+}
+
+/// <p>How many <code>AgentWrite</code> rows the audit database holds since <var>pSince</var>
+/// carrying <var>pProposalId</var>, or <code>-1</code> when the read itself failed.</p>
+/// <p><b>Bounded by <code>UTCTimeStamp</code> and <code>%NOINDEX</code> on the event predicates</b>
+/// (DW-85): the table's event indexes are brought up to date by a background pass, so a row this
+/// process has just written is not yet in them, and an indexed read would answer zero for a marker
+/// that landed.</p>
+ClassMethod MarkerRows(pSince As %String, pProposalId As %String) As %Integer [ Private ]
+{
+    If pProposalId = "" Quit -1
+    Set tSource = ##class(OcuPilot.Kernel.Audit.Event).Source()
+    Set tType = ##class(OcuPilot.Kernel.Audit.Event).Type()
+    Set tEvent = ##class(OcuPilot.Kernel.Audit.Event).#EVENTAGENTWRITE
+    Set tRows = -1
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT EventData FROM %SYS.Audit WHERE UTCTimeStamp >= ? AND %NOINDEX EventSource = ? AND %NOINDEX EventType = ? AND %NOINDEX Event = ?", pSince, tSource, tType, tEvent)
+        If tRS.%SQLCODE >= 0 {
+            Set tRows = 0
+            While tRS.%Next() {
+                If tRS.%Get("EventData") [ pProposalId Set tRows = tRows + 1
+            }
+        }
+        Set tRS = ""
+        Set $NAMESPACE = tOrigNS
+    } Catch {
+        Set $NAMESPACE = tOrigNS
+        Set tRows = -1
+    }
+    Quit tRows
 }
 
 /// <p>Render the report and decide the verdict. One line per check, the counts last, and the

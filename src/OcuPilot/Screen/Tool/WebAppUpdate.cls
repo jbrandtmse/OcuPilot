@@ -50,11 +50,16 @@ Parameter EXCLUDEDDISPATCH = "DispatchClass";
 /// two agree; the kernel is never read from here.</p>
 Parameter PERMITTEDFIELDS = "AutheEnabled,Description,Enabled,Resource";
 
-/// <p>The permission a change to a web application requires beyond the screen's own read set: the
-/// vendor's endpoint gates on <code>%Admin_Secure</code>, and writing needs more than using it.</p>
+/// <p>The pair a change to a web application requires: <code>%Admin_Secure:USE</code>, which is
+/// exactly what <method>%CSP.Portal.Application.CheckSecurity</method> checks before the classic
+/// editor saves, and exactly the pair
+/// <class>OcuPilot.Screen.Descriptor.WebAppList</class> already declares for its own read. So the
+/// resolved set is the screen's two pairs and nothing else, which is what makes "the same 403 the
+/// editor would give" true by construction; no permission a shipped role does not grant appears on
+/// the path (DW-1208).</p>
 Parameter WRITERESOURCE = "%Admin_Secure";
 
-Parameter WRITEPERMISSION = "WRITE";
+Parameter WRITEPERMISSION = "USE";
 
 ClassMethod Endpoint() As %String
 {
@@ -85,15 +90,20 @@ ClassMethod PermittedFields() As %List
 
 /// <p>What the caller must hold: the screen's own pairs
 /// (<method>OcuPilot.Screen.Gate.RequiredPairs</method>, which unions the declared set with the
-/// classic page's custom resource) plus
+/// classic page's custom resource) together with
 /// <parameter>WRITERESOURCE</parameter>:<parameter>WRITEPERMISSION</parameter>. The pairs are
 /// checked against the caller's current grants by the dispatcher before this tool runs, and again
 /// at the write (AD-8, AD-40).</p>
+/// <p><b>Each pair once.</b> The write's own pair is one the screen already declares, so appending
+/// it unconditionally would put <code>%Admin_Secure:USE</code> in the resolved set twice and the
+/// ledger row's pair column would record one check as two (DW-1208).</p>
 ClassMethod PrivilegePairs(pDescriptor As %String = "", Output pResolved As %Boolean) As %List
 {
     Set tPairs = ##class(OcuPilot.Screen.Gate).RequiredPairs(..#DESCRIPTORCLASS, .pResolved)
     If 'pResolved Quit ""
-    Quit tPairs _ $ListBuild($ListBuild(..#WRITERESOURCE, ..#WRITEPERMISSION))
+    Set tOwn = $ListBuild(..#WRITERESOURCE, ..#WRITEPERMISSION)
+    If $ListFind(tPairs, tOwn) Quit tPairs
+    Quit tPairs _ $ListBuild(tOwn)
 }
 
 }

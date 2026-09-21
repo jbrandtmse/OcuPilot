@@ -428,7 +428,8 @@ ClassMethod GuardedForOwner(pKey As %String, pUser As %String, Output pFound As 
 /// when the turn ended with a code, else <code>null</code>; the caller adds its <code>reason</code>.
 /// Ownership is <method>GuardedForOwner</method>'s answer, so there is one predicate that decides
 /// it.</p>
-/// <p><code>navigation</code> (Story 4.7, AD-11 rule 3) is <code>{seq, route, entityId}</code>
+/// <p><code>navigation</code> (Story 4.7, AD-11 rule 3) is
+/// <code>{seq, route, entityId, criterion}</code>
 /// carried only while <class>OcuPilot.Kernel.State.Nav</class> holds an unsettled directive for
 /// this turn <b>and</b> the announce step it names is present in this same <var>pView</var>'s own
 /// <code>steps</code> -- the pairing that makes it impossible for a reader to observe a directive
@@ -471,7 +472,7 @@ ClassMethod GuardedView(pKey As %String, pUser As %String, Output pFound As %Boo
     }
     Set tRow = ""
 
-    Set tNavSC = ##class(OcuPilot.Kernel.State.Nav).GuardedPending(pKey, .tNavSeq, .tNavRoute, .tNavEntity, .tNavSettled, .tNavOutcome, .tNavCode)
+    Set tNavSC = ##class(OcuPilot.Kernel.State.Nav).GuardedPending(pKey, .tNavSeq, .tNavRoute, .tNavEntity, .tNavSettled, .tNavOutcome, .tNavCode, .tNavCriterion)
     If $$$ISOK(tNavSC) && (+tNavSeq > 0) && 'tNavSettled {
         Set tHasAnnounce = 0
         Set tStepIterator = tSteps.%GetIterator()
@@ -490,6 +491,7 @@ ClassMethod GuardedView(pKey As %String, pUser As %String, Output pFound As %Boo
             } Else {
                 Do tNav.%Set("entityId", tNavEntity, "string")
             }
+            Do tNav.%Set("criterion", $Get(tNavCriterion), "string")
             Do tView.%Set("navigation", tNav)
         }
     }

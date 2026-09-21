@@ -19,6 +19,16 @@
 /// target's <code>id.kind</code> is <code>single</code>; a screen whose id is <code>none</code> or
 /// <code>composite</code> is openable only without one, refused <code>NAV.ENTITYNOTALLOWED</code>
 /// otherwise rather than inventing a way to select a composite row.</p>
+/// <p><b><code>criterion</code> names a filter; it never carries one</b> (AD-21, Story 5.8). It is
+/// accepted only when the target descriptor declares a criterion of that name as a <b>flag</b> --
+/// one whose query parameter and value are both the descriptor's own
+/// (<method>OcuPilot.Screen.Descriptor.Base.FlagCriteria</method>) -- so the value that reaches the
+/// read is the screen's, never the caller's. A name the target does not declare as a flag, a
+/// criterion field whose value a person types, and a name carrying a value are each refused
+/// <code>NAV.CRITERIONUNKNOWN</code> before any announcement exists. The criterion travels on the
+/// directive, not as a query parameter: <code>withQuery</code> in
+/// <file>ui/src/app/core/navigation.ts</file> carries only <code>ns</code>, by documented
+/// intent.</p>
 Class OcuPilot.Screen.Tool.Navigate Extends OcuPilot.Screen.Tool.Base
 {
 
@@ -74,6 +84,11 @@ ClassMethod InputSchema(pDescriptor As %String = "") As %DynamicObject
                 "type": "string",
                 "maxLength": 256,
                 "description": "The row to select, once resolved from the row's own identifying value. Refused on a screen whose id is none or composite."
+            },
+            "criterion": {
+                "type": "string",
+                "maxLength": 64,
+                "description": "The name of a filter the target screen itself declares, applied on arrival. Name it only; its value is the screen's own and is never supplied here. A name the screen does not declare is refused."
             }
         },
         "required": ["route"],
@@ -154,11 +169,14 @@ ClassMethod ArgumentPairs(pDescriptor As %String = "", pArgs As %DynamicObject, 
 /// resolves to a built screen -- the enum and the registry have disagreed, which the enum
 /// construction at advertise time (AC1) makes rare rather than impossible between one turn's
 /// advertisement and the next. Refuses <code>NAV.ENTITYNOTALLOWED</code> when <code>entityId</code>
-/// is supplied against a screen whose <code>id.kind</code> is not <code>single</code> (AD-5).</p>
-ClassMethod Directive(pDescriptor As %String, pArgs As %DynamicAbstractObject, Output pRoute As %String, Output pEntityId As %String, Output pFault As %DynamicObject) As %Status
+/// is supplied against a screen whose <code>id.kind</code> is not <code>single</code> (AD-5), and
+/// <code>NAV.CRITERIONUNKNOWN</code> when <code>criterion</code> names anything but a flag
+/// criterion that screen declares (AD-21).</p>
+ClassMethod Directive(pDescriptor As %String, pArgs As %DynamicAbstractObject, Output pRoute As %String, Output pEntityId As %String, Output pFault As %DynamicObject, Output pCriterion As %String) As %Status
 {
     Set pRoute = ""
     Set pEntityId = ""
+    Set pCriterion = ""
     Set pFault = ""
     Set tSC = $$$OK
     Try {
@@ -177,8 +195,20 @@ ClassMethod Directive(pDescriptor As %String, pArgs As %DynamicAbstractObject, O
             Set tSC = $$$ERROR($$$GeneralError, ##class(OcuPilot.Api.Error).#NAVENTITYNOTALLOWED)
             Quit
         }
+        Set tCriterion = ""
+        If tArgs.%IsDefined("criterion") && (tArgs.%GetTypeOf("criterion") = "string") Set tCriterion = tArgs.%Get("criterion")
+        If (tCriterion '= "") && '$ListFind($ClassMethod(tTargetDescriptor, "FlagCriteria"), tCriterion) {
+            ; One refusal for three shapes, and deliberately so: a name the screen declares nothing
+            ; under, a criterion field whose value a person types, and a name carrying a value
+            ; ("marker=OcuPilot") are all "this screen declares no such flag". Matching the
+            ; declared name exactly is what keeps a caller's value out of a read (AD-21).
+            Set pFault = ..RefusalFault(##class(OcuPilot.Api.Error).#NAVCRITERIONUNKNOWN)
+            Set tSC = $$$ERROR($$$GeneralError, ##class(OcuPilot.Api.Error).#NAVCRITERIONUNKNOWN)
+            Quit
+        }
         Set pRoute = tRoute
         Set pEntityId = tEntityId
+        Set pCriterion = tCriterion
     } Catch ex {
         Set pFault = ""
         Set tSC = ex.AsStatus()

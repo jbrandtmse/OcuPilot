@@ -134,7 +134,7 @@ describe('the proposal card', () => {
   it("resolves the published unchanged caption to the payload's own count", () => {
     const { card } = mount(EXAMPLE_PROPOSAL);
     const line = card.querySelector('.ocu-proposal-card-unchanged') as HTMLElement;
-    expect(line.textContent).toContain('38 unchanged fields');
+    expect(line.textContent).toContain('44 unchanged fields');
     expect(line.querySelector('.ocu-proposal-card-chevron')?.getAttribute('aria-hidden')).toBe('true');
   });
 
@@ -142,8 +142,9 @@ describe('the proposal card', () => {
     // Mutation (Rule 19): render the disclosure as a button whatever the view carries -> the
     // example's "nothing focusable" assertion goes red. Drop the open panel -> this goes red.
     const unchanged = [
-      { field: 'DispatchClass', before: '', after: 'Demo.Dispatch' },
-      { field: 'Timeout', before: '', after: '28800' },
+      { field: 'DispatchClass', value: 'Demo.Dispatch' },
+      { field: 'Timeout', value: '28800' },
+      { field: 'ErrorPage', value: '' },
     ];
     const { fixture, card } = mount(liveView({ unchanged }), { phase: 'live' });
     const toggle = card.querySelector('.ocu-proposal-card-disclosure') as HTMLButtonElement;
@@ -158,11 +159,58 @@ describe('the proposal card', () => {
     const rows = Array.from(
       card.querySelectorAll('.ocu-proposal-card-unchanged-rows .ocu-diff-row-unchanged')
     ) as HTMLElement[];
-    expect(rows).toHaveLength(2);
+    expect(rows).toHaveLength(3);
     expect(rows[0].textContent).toContain('DispatchClass');
     expect(rows[0].textContent).toContain('Demo.Dispatch');
-    // One value, no arrow: an unchanged field has no direction to carry.
+    // One value, no arrow: an unchanged field has no before and no after to point between.
     expect(rows[0].querySelector('.ocu-diff-arrow')).toBeNull();
+    // Story 5.8: the direction the arrow does not carry is carried by a word, the same way the
+    // changed row's "was" and "now" are, so a reader who is not looking at the layout still hears
+    // that the payload sends this field as the instance holds it.
+    //
+    // mutation: drop the `.ocu-diff-direction` span from the unchanged row -> this goes red.
+    expect(rows[0].querySelector('.ocu-diff-direction')?.textContent?.trim()).toBe(
+      STRINGS.proposalDiffUnchanged
+    );
+    // An empty value reads the published word on an unchanged row, as it does on a changed one.
+    //
+    // mutation: render `row.value` instead of `shown(row.value)` -> this goes red, and the row
+    // reads as a field with nothing beside it.
+    expect(rows[2].querySelector('.ocu-diff-value')?.textContent?.trim()).toBe(
+      STRINGS.tableEmptyValue
+    );
+  });
+
+  it("renders an empty value as the published empty word on either half of a changed row", () => {
+    // EXPERIENCE.md's diff-row rule: "empty values read" the published word, and UJ-3's second row
+    // is `Resource: (none) -> %Development`. The rule is the row's and not the half's, so both
+    // directions are asserted: a grant leaves the Before empty and a clear leaves the After empty,
+    // and clearing a resource is proposable on any application that is not one of OcuPilot's own.
+    //
+    // mutation: render `row.before` instead of `shown(row.before)` -> the first pair goes red;
+    // render `row.after` instead of `shown(row.after)` -> the second pair goes red.
+    const { card } = mount(
+      liveView({
+        changed: [
+          { field: 'Resource', before: '', after: '%Development' },
+          { field: 'Description', before: 'a demo fixture', after: '' },
+        ],
+      }),
+      { phase: 'live' }
+    );
+    const rows = Array.from(card.querySelectorAll('.ocu-diff-row')) as HTMLElement[];
+    expect(rows[0].querySelector('.ocu-diff-before .ocu-diff-value')?.textContent?.trim()).toBe(
+      STRINGS.tableEmptyValue
+    );
+    expect(rows[0].querySelector('.ocu-diff-after .ocu-diff-value')?.textContent?.trim()).toBe(
+      '%Development'
+    );
+    expect(rows[1].querySelector('.ocu-diff-before .ocu-diff-value')?.textContent?.trim()).toBe(
+      'a demo fixture'
+    );
+    expect(rows[1].querySelector('.ocu-diff-after .ocu-diff-value')?.textContent?.trim()).toBe(
+      STRINGS.tableEmptyValue
+    );
   });
 
   it("renders the agent's two blocks under their published headings, and the Reverse line", () => {

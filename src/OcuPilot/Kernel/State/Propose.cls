@@ -482,12 +482,15 @@ ClassMethod ProjectedState(pStored As %String, pExpiresAt As %String) As %String
 /// <p>Turn <var>pTurnKey</var>'s proposals owned by <var>pUser</var>, oldest first, as the wire
 /// array the turn's progress payload carries:
 /// <code>{proposalId, target: {type, scope, id}, expiresAt, tool, changed, unchangedCount,
-/// rationale, expectedImpact, reverse, state, auditWarning}</code>.</p>
+/// unchanged, rationale, expectedImpact, reverse, state, auditWarning}</code>.</p>
 /// <p><b>Every value is the row's own.</b> The target triple is
 /// <method>OcuPilot.Kernel.EntityRef.Parse</method>'s reading of the stored key, so a reader
 /// cannot be handed a triple this store never wrote; <code>changed</code> is the stored diff,
-/// parsed, and the stored payload is not on the wire at all -- the card renders the diff and the
-/// unchanged count, never the body.</p>
+/// parsed, and <code>unchanged</code> is a projection of the stored payload -- one
+/// <code>{field, value}</code> per top-level property the diff does not name, every path that is
+/// not <code>ordinary</code> and literal in its tool's field list carrying the published mask
+/// instead of its value (AD-3's fail-closed rule). The payload itself never travels: no other
+/// key of it reaches the wire, and no secret value reaches it at all.</p>
 ClassMethod GuardedRowsForTurn(pTurnKey As %String, pUser As %String, Output pRows As %DynamicArray) As %Status
 {
     Set pRows = []
@@ -608,8 +611,11 @@ ClassMethod RowValues(pRow As OcuPilot.Kernel.State.Propose, Output pValues) As 
 /// <p>One row's wire object from the values <method>RowValues</method> read: the whole
 /// <code>proposals[]</code> entry, and the only place that shape is written.</p>
 /// <p>The target triple is <method>OcuPilot.Kernel.EntityRef.Parse</method>'s reading of the
-/// stored key, so a reader cannot be handed a triple this store never wrote, and the stored
-/// payload, fingerprint and token are absent by construction rather than by omission.</p>
+/// stored key, so a reader cannot be handed a triple this store never wrote; the fingerprint and
+/// the token are absent by construction rather than by omission, and the stored payload reaches
+/// the wire only as <method>OcuPilot.Kernel.Proposal.Disclosure.Rows</method>'s masked
+/// <code>{field, value}</code> projection -- never as itself, and never carrying a value its
+/// tool's field list does not classify <code>ordinary</code>.</p>
 ClassMethod WireRow(ByRef pValues, Output pOut As %DynamicObject) As %Status [ Private ]
 {
     Set pOut = ""
@@ -624,6 +630,7 @@ ClassMethod WireRow(ByRef pValues, Output pOut As %DynamicObject) As %Status [ P
     Do tOut.%Set("tool", $Get(pValues("toolName")), "string")
     Do tOut.%Set("changed", ..ParsedArray($Get(pValues("diff"))))
     Do tOut.%Set("unchangedCount", +$Get(pValues("unchangedCount")), "number")
+    Do tOut.%Set("unchanged", ##class(OcuPilot.Kernel.Proposal.Disclosure).Rows($Get(pValues("toolName")), $Get(pValues("payload")), $Get(pValues("diff"))))
     Do tOut.%Set("rationale", $Get(pValues("rationale")), "string")
     Do tOut.%Set("expectedImpact", $Get(pValues("expectedImpact")), "string")
     Do tOut.%Set("reverse", $Get(pValues("reverse")), "string")

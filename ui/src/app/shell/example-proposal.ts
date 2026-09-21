@@ -23,7 +23,7 @@ import type { ProposalCardView } from '../core/proposal-view';
  * one from a wire proposal, and are re-exported here so every call site written before that module
  * existed still names them from the file that first declared them.
  */
-export type { ProposalCardView, ProposalDiffRow } from '../core/proposal-view';
+export type { ProposalCardView, ProposalDiffRow, ProposalUnchangedRow } from '../core/proposal-view';
 
 /** The placeholders the published card title leaves for the target's two halves. */
 export const ENTITY_TYPE_PLACEHOLDER = '<entity type>';
@@ -67,7 +67,7 @@ export const EXAMPLE_PROPOSAL: ProposalCardView = {
     { field: 'Enabled', before: 'No', after: 'Yes' },
     { field: 'Resource', before: '(none)', after: '%Development' },
   ],
-  unchangedCount: 38,
+  unchangedCount: 44,
   rationale: 'The application is disabled and carries no resource, so nobody can reach it.',
   expectedImpact: 'users holding %Development can reach the application',
   reverse: 'disable /csp/myapp and clear its resource',

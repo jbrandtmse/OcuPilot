@@ -47,6 +47,7 @@ import {
   type TurnProposal,
   type TurnStep,
   confirmedWriteStep,
+  refusedWriteStep,
   turnErrorBanner,
 } from '../core/turn';
 import { isApplePlatform } from './command-box';
@@ -121,6 +122,18 @@ function clockOf(stamp: string): string {
   const time = stamp.split('T')[1] ?? '';
   const clock = time.slice(0, 8);
   return /^\d{2}:\d{2}:\d{2}$/.test(clock) ? clock : '';
+}
+
+/**
+ * What one Confirm produced, as the transcript's own record of it (AD-15, DW-1426): whether the
+ * write happened, whether its marker landed, and the refusal's own words where it did not. Every
+ * value is the instance's answer; the panel composes no reason of its own.
+ */
+interface PanelWriteCard {
+  readonly ok: boolean;
+  readonly auditMarked: boolean;
+  readonly reason: string;
+  readonly failedPair: string;
 }
 
 /**
@@ -543,12 +556,13 @@ export class Panel {
   private readonly cardPhases = signal<ReadonlyMap<string, ProposalPhase>>(new Map());
 
   /**
-   * The confirmed write each card produced, by proposal id, and whether its audit marker landed
-   * (AD-15). Written by `onCardConfirm` from the instance's own answer -- the confirm is a
-   * foreground request and the turn's progress carries no step for it, so this is the only place
-   * the transcript can learn that the write happened at all.
+   * What each Confirm produced, by proposal id: whether the write happened, whether its audit
+   * marker landed (AD-15), and the refusal's own words where it did not. Written by
+   * `onCardConfirm` from the instance's own answer -- the confirm is a foreground request and the
+   * turn's progress carries no step for it, so this is the only place the transcript can learn
+   * that a write was attempted at all.
    */
-  private readonly writeCards = signal<ReadonlyMap<string, boolean>>(new Map());
+  private readonly writeCards = signal<ReadonlyMap<string, PanelWriteCard>>(new Map());
 
   constructor() {
     this.lastConversationId = this.turn.conversationId();
@@ -789,9 +803,12 @@ export class Panel {
         // independent, so the exclusion is decided here rather than in a template condition.
         reply:
           errorBanner === null
-            ? this.replyWithMarkerSentence(
-                this.replyWithChangeSentence(
-                  this.replyWithConfirmSentence(entry.reply, proposals),
+            ? this.replyWithAuditOfferSentence(
+                this.replyWithMarkerSentence(
+                  this.replyWithChangeSentence(
+                    this.replyWithConfirmSentence(entry.reply, proposals),
+                    entry.proposals
+                  ),
                   entry.proposals
                 ),
                 entry.proposals
@@ -886,7 +903,8 @@ export class Panel {
     const cards = this.writeCards();
     let text = reply;
     for (const proposal of proposals) {
-      if (!cards.has(proposal.proposalId)) continue;
+      // A refused confirm changed nothing, so it names no change (DW-1426).
+      if (cards.get(proposal.proposalId)?.ok !== true) continue;
       const sentence = formatChangeSentence(STRINGS.tableChangeUpdated, proposal.target.id);
       if (text.includes(sentence)) continue;
       text = text + '\n\n' + sentence;
@@ -906,10 +924,16 @@ export class Panel {
    */
   private writeSteps(proposals: readonly TurnProposal[]): readonly TurnStep[] {
     const cards = this.writeCards();
-    const written = proposals.filter((proposal) => cards.has(proposal.proposalId));
-    return written.map((proposal, index) =>
-      confirmedWriteStep(proposal, cards.get(proposal.proposalId) === true, WRITE_STEP_SEQ_BASE + index)
-    );
+    return proposals.flatMap((proposal, index) => {
+      const card = cards.get(proposal.proposalId);
+      if (card === undefined) return [];
+      const seq = WRITE_STEP_SEQ_BASE + index;
+      return [
+        card.ok
+          ? confirmedWriteStep(proposal, card.auditMarked, seq)
+          : refusedWriteStep(proposal, card.reason, card.failedPair, seq),
+      ];
+    });
   }
 
   /**
@@ -927,9 +951,42 @@ export class Panel {
   ): string | null {
     if (reply === null) return null;
     const cards = this.writeCards();
-    if (!proposals.some((proposal) => cards.get(proposal.proposalId) === false)) return reply;
+    const dropped = (proposal: TurnProposal): boolean => {
+      const card = cards.get(proposal.proposalId);
+      return card !== undefined && card.ok && !card.auditMarked;
+    };
+    if (!proposals.some(dropped)) return reply;
     if (reply.trimEnd().endsWith(STRINGS.auditMarkerReplySentence)) return reply;
     return reply + '\n\n' + STRINGS.auditMarkerReplySentence;
+  }
+
+  /**
+   * `reply` with the published audit-entry offer at its end when a confirmed write of this turn was
+   * applied, else `reply` unchanged (AD-15, AD-46, FR-22).
+   *
+   * Appended for the reason the other three sentences are: "the agent states what it verified and
+   * ends with the offer" is not assertable against model-authored prose, so the offer is the
+   * panel's own published copy and is there whatever the model wrote. Answering it is the user's
+   * next message, and the navigation that follows is the model choosing to call
+   * `shell.screen.open` -- what this makes deterministic is that the offer is on the reply.
+   *
+   * **Only for a write that happened.** A refused confirm has no audit entry to show, and a card
+   * whose marker was dropped has none either -- `replyWithMarkerSentence` is what that case reads,
+   * and offering to show a row that was never written would be the panel inventing a fact.
+   */
+  private replyWithAuditOfferSentence(
+    reply: string | null,
+    proposals: readonly TurnProposal[]
+  ): string | null {
+    if (reply === null) return null;
+    const cards = this.writeCards();
+    const applied = (proposal: TurnProposal): boolean => {
+      const card = cards.get(proposal.proposalId);
+      return card !== undefined && card.ok && card.auditMarked;
+    };
+    if (!proposals.some(applied)) return reply;
+    if (reply.trimEnd().endsWith(STRINGS.agentAuditFollowUpQuestion)) return reply;
+    return reply + '\n\n' + STRINGS.agentAuditFollowUpQuestion;
   }
 
   /** The moment the cards read, from the panel's one ticker. */
@@ -1006,13 +1063,27 @@ export class Panel {
   }
 
   /**
-   * Record, from the instance's own answer, that this press applied a write and what became of its
-   * audit marker (AD-15). A refusal records nothing: there is no write to show a card for.
+   * Record, from the instance's own answer, what this press produced: a write and what became of
+   * its audit marker (AD-15), or the refusal that stopped it (DW-1426).
+   *
+   * **A refusal is a card too.** A write the instance refused is a write that was attempted, and
+   * the transcript is where an attempt is recorded -- the proposal card's refusal banner says why
+   * the row is still live, and this card is the record that the write was tried and failed. The
+   * card reads `failed - <reason>`, whose detail is the pair a privilege refusal named (AD-8) and
+   * the envelope's written reason otherwise. A request that never reached the instance -- `null`,
+   * which is `onCardConfirm`'s `finally` on a thrown transport -- records nothing, because nothing
+   * is known about whether a write happened.
    */
   private recordWriteCard(proposalId: string, outcome: ProposalOutcome | null): void {
-    if (outcome === null || !outcome.ok) return;
+    if (outcome === null) return;
+    if (!outcome.ok && outcome.status === 0) return;
     const next = new Map(this.writeCards());
-    next.set(proposalId, outcome.auditMarked);
+    next.set(proposalId, {
+      ok: outcome.ok,
+      auditMarked: outcome.auditMarked,
+      reason: outcome.reason,
+      failedPair: outcome.failedPair,
+    });
     this.writeCards.set(next);
     this.bump();
   }

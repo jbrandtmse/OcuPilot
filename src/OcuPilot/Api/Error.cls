@@ -739,6 +739,13 @@ Parameter NAVROUTEUNKNOWN = "NAV.ROUTEUNKNOWN";
 /// id grammar (AD-5).</p>
 Parameter NAVENTITYNOTALLOWED = "NAV.ENTITYNOTALLOWED";
 
+/// <p>Tool-result code (Story 5.8, AD-21): the call named a <code>criterion</code> the target
+/// screen's own descriptor does not declare as a flag -- a name it declares nothing under, a
+/// criterion field whose value a person types, or a name carrying a value the caller supplied.
+/// Refused by the tool body before any announcement exists, because a navigation names a declared
+/// criterion and never supplies its value.</p>
+Parameter NAVCRITERIONUNKNOWN = "NAV.CRITERIONUNKNOWN";
+
 /// <p>Terminal tool-result code for the navigation announce step (Story 4.7, AD-11 invariant 3):
 /// the departing <code>form-page</code> was dirty and the operator declined "Leave without
 /// saving?". The announcement is withdrawn, and the call's own <code>tool_result</code> is an
@@ -841,6 +848,9 @@ Parameter REASONNAVROUTEUNKNOWN = "That route is not one this instance's screens
 /// <p>Written sentence for <parameter>NAVENTITYNOTALLOWED</parameter>.</p>
 Parameter REASONNAVENTITYNOTALLOWED = "This screen does not take a selected row.";
 
+/// <p>Written sentence for <parameter>NAVCRITERIONUNKNOWN</parameter>.</p>
+Parameter REASONNAVCRITERIONUNKNOWN = "This screen declares no such filter.";
+
 /// <p>Written sentence for <parameter>NAVREFUSEDUNSAVED</parameter>.</p>
 Parameter REASONNAVREFUSEDUNSAVED = "The screen was left with unsaved changes, so the move was not made.";
 
@@ -909,7 +919,7 @@ ClassMethod ReasonForLedger(pCode As %String) As %String
 /// <method>ReasonForNav</method> to the vocabulary.</p>
 ClassMethod NavCodes() As %List
 {
-    Quit $ListBuild(..#NAVROUTEUNKNOWN, ..#NAVENTITYNOTALLOWED, ..#NAVREFUSEDUNSAVED, ..#NAVUNAVAILABLE, ..#NAVNOTINSTANCE)
+    Quit $ListBuild(..#NAVROUTEUNKNOWN, ..#NAVENTITYNOTALLOWED, ..#NAVCRITERIONUNKNOWN, ..#NAVREFUSEDUNSAVED, ..#NAVUNAVAILABLE, ..#NAVNOTINSTANCE)
 }
 
 /// <p>The written sentence a <code>NAV.*</code> code carries, or <code>""</code> for any other
@@ -918,6 +928,7 @@ ClassMethod ReasonForNav(pCode As %String) As %String
 {
     If pCode = ..#NAVROUTEUNKNOWN Quit ..#REASONNAVROUTEUNKNOWN
     If pCode = ..#NAVENTITYNOTALLOWED Quit ..#REASONNAVENTITYNOTALLOWED
+    If pCode = ..#NAVCRITERIONUNKNOWN Quit ..#REASONNAVCRITERIONUNKNOWN
     If pCode = ..#NAVREFUSEDUNSAVED Quit ..#REASONNAVREFUSEDUNSAVED
     If pCode = ..#NAVUNAVAILABLE Quit ..#REASONNAVUNAVAILABLE
     If pCode = ..#NAVNOTINSTANCE Quit ..#REASONNAVNOTINSTANCE

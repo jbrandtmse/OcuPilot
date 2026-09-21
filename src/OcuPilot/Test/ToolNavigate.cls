@@ -101,6 +101,73 @@ Method TestSingleIdAcceptsEntityAndNoneAcceptsAbsent()
     Do $$$AssertEquals(tEntityId2, "", "no entity id")
 }
 
+/// <p>AC3 (Story 5.8), AD-21: a criterion the target descriptor declares as a <b>flag</b> is
+/// accepted and travels on the directive. <code>logs/audit</code> declares exactly one --
+/// <code>marker</code>, whose query parameter and value are both the descriptor's own -- and that
+/// is the criterion this story's audit hand-off carries.</p>
+Method TestADeclaredFlagCriterionIsAcceptedAndTravels()
+{
+    Do $$$AssertEquals($ListToString($ClassMethod("OcuPilot.Screen.Descriptor.AuditList", "FlagCriteria"), ","), "marker", "the audit screen declares one flag criterion")
+    Set tArgs = {"route": "logs/audit", "criterion": "marker"}
+    Set tSC = $ClassMethod(..#TOOL, "Directive", "", tArgs, .tRoute, .tEntityId, .tFault, .tCriterion)
+    Do $$$AssertStatusOK(tSC, "the directive validates")
+    Do $$$AssertEquals(tFault, "", "with no fault")
+    Do $$$AssertEquals(tRoute, "logs/audit", "the route is answered")
+    Do $$$AssertEquals(tCriterion, "marker", "and the criterion travels on the directive")
+
+    Set tArgs2 = {"route": "logs/audit"}
+    Set tSC2 = $ClassMethod(..#TOOL, "Directive", "", tArgs2, .tRoute2, .tEntityId2, .tFault2, .tCriterion2)
+    Do $$$AssertStatusOK(tSC2, "naming no criterion validates too")
+    Do $$$AssertEquals(tCriterion2, "", "and carries none")
+}
+
+/// <p>AC3 (Story 5.8), AD-21: three shapes are one refusal, <code>NAV.CRITERIONUNKNOWN</code>,
+/// answered before any announcement exists -- a name the target declares nothing under, a
+/// criterion <b>field</b> whose value a person types, and a name carrying a caller-supplied
+/// value. The last is the one that matters most: a navigation may <b>name</b> a filter and may
+/// never carry one, because no caller value reaches a read.</p>
+/// <p>Mutation (Rule 19): drop the <code>$ListFind(... "FlagCriteria" ...)</code> guard from
+/// <method>OcuPilot.Screen.Tool.Navigate.Directive</method> -- all three go red, and a caller's
+/// own <code>eventSources</code> value would reach the audit read.</p>
+Method TestAnUndeclaredOrValuedCriterionIsRefused()
+{
+    For tCriterion = "nosuchthing", "eventSources", "marker=OcuPilot" {
+        Set tArgs = {"route": "logs/audit"}
+        Do tArgs.%Set("criterion", tCriterion, "string")
+        Set tSC = $ClassMethod(..#TOOL, "Directive", "", tArgs, .tRoute, .tEntityId, .tFault, .tAnswered)
+        Do $$$AssertStatusNotOK(tSC, "'" _ tCriterion _ "' is refused")
+        Do $$$AssertTrue($IsObject(tFault), "'" _ tCriterion _ "' is refused with a fault")
+        If $IsObject(tFault) Do $$$AssertEquals(tFault.code, ##class(OcuPilot.Api.Error).#NAVCRITERIONUNKNOWN, "'" _ tCriterion _ "' names the code")
+        Do $$$AssertEquals(tRoute, "", "'" _ tCriterion _ "': no route is validated, so no announcement can exist")
+        Do $$$AssertEquals($Get(tAnswered), "", "'" _ tCriterion _ "': and no criterion is answered")
+    }
+    ; A screen that declares no flag criterion at all refuses every name, including the one another
+    ; screen declares -- the allow-list is the TARGET descriptor's, never the registry's union.
+    Set tArgs = {"route": "web-applications/list", "criterion": "marker"}
+    Set tSC = $ClassMethod(..#TOOL, "Directive", "", tArgs, .tRoute, .tEntityId, .tFault, .tAnswered)
+    Do $$$AssertStatusNotOK(tSC, "a screen that declares no flag refuses one another screen declares")
+    If $IsObject(tFault) Do $$$AssertEquals(tFault.code, ##class(OcuPilot.Api.Error).#NAVCRITERIONUNKNOWN, "naming the code")
+}
+
+/// <p>AD-21: the schema admits <code>criterion</code> as a bounded string and closes the object,
+/// so no other argument is representable at all.</p>
+Method TestTheSchemaAdmitsCriterionAndNothingElse()
+{
+    Set tSchema = $ClassMethod(..#TOOL, "InputSchema", "")
+    Set tProperties = tSchema.%Get("properties")
+    Do $$$AssertEquals(tSchema.%Get("additionalProperties"), 0, "the object is closed")
+    Do $$$AssertTrue($IsObject(tProperties.%Get("criterion")), "criterion is declared")
+    Do $$$AssertEquals(tProperties.%Get("criterion").%Get("type"), "string", "as a string")
+    Do $$$AssertTrue(+tProperties.%Get("criterion").%Get("maxLength") > 0, "with a bound")
+    Set tCount = 0
+    Set tIterator = tProperties.%GetIterator()
+    While tIterator.%GetNext(.tName, .tValue) {
+        Do $$$AssertTrue($ListFind($ListBuild("route", "entityId", "criterion"), tName) > 0, "the schema declares only route, entityId and criterion, not '" _ tName _ "'")
+        Set tCount = tCount + 1
+    }
+    Do $$$AssertEquals(tCount, 3, "and all three of them")
+}
+
 /// <p>Defensive re-check: a route <code>Directive</code> cannot resolve to a built descriptor is
 /// refused <code>NAV.ROUTEUNKNOWN</code> -- the disagreement case the enum construction at
 /// advertise time (AC1) makes rare rather than impossible.</p>
@@ -202,7 +269,7 @@ Method TestAdvertisedInProduction()
 Method TestEveryNavCodeHasAWrittenSentence()
 {
     Set tCodes = ##class(OcuPilot.Api.Error).NavCodes()
-    Do $$$AssertEquals($ListLength(tCodes), 5, "the vocabulary holds five NAV codes; adding one is a deliberate edit in OcuPilot.Api.Error")
+    Do $$$AssertEquals($ListLength(tCodes), 6, "the vocabulary holds six NAV codes; adding one is a deliberate edit in OcuPilot.Api.Error")
     For tI = 1:1:$ListLength(tCodes) {
         Set tCode = $List(tCodes, tI)
         Set tReason = ##class(OcuPilot.Api.Error).ReasonForNav(tCode)

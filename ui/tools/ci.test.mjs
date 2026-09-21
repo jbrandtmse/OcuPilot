@@ -1551,7 +1551,8 @@ test('the throwaway start path is the one docker-compose.yml ships', () => {
   // so CI's only real-instance job could validate a start path the repository no longer ships.
   //
   // Mutation (Rule 19): change the healthcheck interval, the restart policy, the command, the
-  // depends_on condition or any durable-init key in either file alone -> this goes red naming it.
+  // depends_on condition, the demo opt-in flag or any durable-init key in either file alone ->
+  // this goes red naming it.
   const throwaway = withoutShellComments(readFileSync(join(REPO_ROOT, 'scripts', 'ci-throwaway.sh'), 'utf8'));
   const compose = readFileSync(join(REPO_ROOT, 'docker-compose.yml'), 'utf8');
   const service = (text, name) => {
@@ -1572,6 +1573,13 @@ test('the throwaway start path is the one docker-compose.yml ships', () => {
     ['durable-init entrypoint', 'durable-init', /entrypoint:\s*(\[.*\])/],
     ['durable-init restart', 'durable-init', /restart:\s*(\S+)/],
     ['durable-init scripts mount', 'durable-init', /-\s*\S+(\/scripts:\/opt\/ocupilot\/scripts:ro)/],
+    // Story 5.8: the `instance` job's smoke run now executes two checks that exist only where the
+    // demo fixture does (`agentwrite`, `auditmarker`), so the flag that creates `/csp/myapp` is
+    // load-bearing for the gate and not only for the walkthrough. It was pinned by nothing --
+    // this comparison reads the service blocks and skipped the `environment:` block entirely --
+    // so dropping it from the throwaway would have turned two executed checks into two skips with
+    // every other gate green.
+    ['demo opt-in flag', 'iris', /OCUPILOT_DEMO:\s*(\S+)/],
   ]) {
     const fromCompose = pattern.exec(service(compose, name));
     const fromThrowaway = pattern.exec(service(throwaway, name));

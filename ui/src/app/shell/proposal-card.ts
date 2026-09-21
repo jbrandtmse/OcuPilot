@@ -24,6 +24,7 @@ import { STRINGS } from '../core/strings';
 import {
   type ProposalCardView,
   type ProposalDiffRow,
+  type ProposalUnchangedRow,
   formatProposalTitle,
   formatUnchangedCaption,
 } from './example-proposal';
@@ -95,12 +96,12 @@ import {
           <span class="ocu-diff-field">{{ row.field }}</span>
           <span class="ocu-diff-before">
             <span class="ocu-diff-direction">{{ STRINGS.proposalDiffWas }}</span>
-            <span class="ocu-diff-value">{{ row.before }}</span>
+            <span class="ocu-diff-value">{{ shown(row.before) }}</span>
           </span>
           <span class="ocu-diff-arrow" aria-hidden="true">{{ arrowGlyph }}</span>
           <span class="ocu-diff-after">
             <span class="ocu-diff-direction">{{ STRINGS.proposalDiffNow }}</span>
-            <span class="ocu-diff-value">{{ row.after }}</span>
+            <span class="ocu-diff-value">{{ shown(row.after) }}</span>
           </span>
         </p>
       }
@@ -119,7 +120,8 @@ import {
             @for (row of unchangedRows; track row.field) {
               <p class="ocu-diff-row ocu-diff-row-unchanged">
                 <span class="ocu-diff-field">{{ row.field }}</span>
-                <span class="ocu-diff-value">{{ row.after }}</span>
+                <span class="ocu-diff-value">{{ shown(row.value) }}</span>
+                <span class="ocu-diff-direction">{{ STRINGS.proposalDiffUnchanged }}</span>
               </p>
             }
           </div>
@@ -378,8 +380,20 @@ export class ProposalCard {
     return this.view().changed;
   }
 
-  protected get unchangedRows(): readonly ProposalDiffRow[] {
+  protected get unchangedRows(): readonly ProposalUnchangedRow[] {
     return this.view().unchanged ?? [];
+  }
+
+  /**
+   * `value` as the card shows it: the published empty-value word where the instance sent nothing
+   * (EXPERIENCE.md's diff-row rule, "empty values read"), else the value itself.
+   *
+   * One function for both halves of a changed row and for an unchanged row, because the rule is
+   * the row's and not the half's -- UJ-3's own diff reads `Resource: (none) -> %Development`, and
+   * a field the payload sends empty reads the same word under the disclosure.
+   */
+  protected shown(value: string): string {
+    return value === '' ? STRINGS.tableEmptyValue : value;
   }
 
   /** The disclosure is a button exactly when there is something behind it (see the class header). */

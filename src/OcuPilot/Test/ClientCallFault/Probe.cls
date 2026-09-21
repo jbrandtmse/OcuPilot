@@ -31,11 +31,16 @@ ClassMethod ResultSchema(pDescriptor As %String = "") As %DynamicObject
     Quit {"type": "object", "properties": {"navigated": {"type": "boolean"}}, "required": ["navigated"], "additionalProperties": false}
 }
 
+/// <p><b>The signature mirrors <method>OcuPilot.Screen.Tool.Navigate.Directive</method> exactly</b>,
+/// trailing <var>pCriterion</var> included: <class>OcuPilot.Kernel.Agent.Dispatch</class> calls it
+/// positionally by name, and a near-miss compiles and answers <code>TOOL.UNAVAILABLE</code> rather
+/// than failing where it was written (Story 5.8).</p>
 /// <p>The whole point of the fixture: an error status with no fault object at all, so the resolver
 /// takes its <code>Else</code> leg -- log the failure, normalise the status, answer the generic
 /// unavailable result.</p>
-ClassMethod Directive(pDescriptor As %String, pArgs As %DynamicAbstractObject, Output pRoute As %String, Output pEntityId As %String, Output pFault As %DynamicObject) As %Status
+ClassMethod Directive(pDescriptor As %String, pArgs As %DynamicAbstractObject, Output pRoute As %String, Output pEntityId As %String, Output pFault As %DynamicObject, Output pCriterion As %String) As %Status
 {
+    Set pCriterion = ""
     Set pRoute = ""
     Set pEntityId = ""
     Set pFault = ""

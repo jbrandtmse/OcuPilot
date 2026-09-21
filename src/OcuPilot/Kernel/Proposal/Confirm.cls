@@ -214,13 +214,47 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
             Quit
         }
 
+        ; AD-8: the declared pairs, re-checked at the moment of the call rather than at the mint.
+        ;
+        ; **First of the three gates, and that order is load-bearing.** The prohibited set below
+        ; reads live state through the port (AD-10), and the port's own gate requires the very pair
+        ; this check names -- so a caller who has lost it reached that read first and was answered
+        ; a generic internal failure, which is the one thing AD-8 forbids: "a denial names the pair
+        ; that failed, so the UX can say which privilege is missing". Asked here, the caller is
+        ; told which privilege it needs, and the instance spends no live read deciding whether a
+        ; change it may not make at all is also prohibited (DW-1208, Story 5.8).
+        ;
+        ; It is therefore also above the restraint verdict below, which is a deliberate consequence
+        ; and not an accident of the move: AD-30 requires a confirm to re-evaluate read-only and
+        ; refuse, which it does either way, while AD-8 requires a denial to name the pair that
+        ; failed. So a caller who is both under read-only and short of a pair is told about the
+        ; pair. Both orders refuse and neither reaches the port; the order is pinned in both
+        ; directions by ProposalConfirm's TestThePrivilegeGateAnswersBeforeTheProhibitedSet and
+        ; TestThePrivilegeGateAnswersBeforeTheRestraintVerdict, so it cannot drift back silently.
+        Set tPairs = ##class(OcuPilot.Screen.Tool.Registry).RequiredPairs(tTool, .tPairsResolved)
+        If 'tPairsResolved {
+            Set tSC = ..Internal("the privilege pairs of " _ $Get(pRow("toolName")) _ " could not be read", .pHttpStatus, .pCode)
+            Quit
+        }
+        Set tFailedPair = ..MissingPair(pUser, tPairs)
+        If tFailedPair '= "" {
+            Set tSC = ..Refuse(403, ##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE, .pHttpStatus, .pCode)
+            Set pDetail = {}
+            Do pDetail.%Set("failedPair", tFailedPair, "string")
+            Quit
+        }
+
         ; AD-10's single call site: asked inside the transition and before the port call. The set
         ; is handed the stored row's tool, target, payload and diff, and nothing of the request's.
         Set tProhibited = ..ProhibitedClassName()
         If tProhibited '= "" {
             Set tProhibitSC = $ClassMethod(tProhibited, "Prohibits", $Get(pRow("toolName")), $Get(pRow("targetRef")), $Get(pRow("payload")), $Get(pRow("diff")), .tProhibits, .tProhibitCode)
             If $$$ISERR(tProhibitSC) {
-                Set tSC = ..Internal("the prohibited set could not be read", .pHttpStatus, .pCode)
+                ; The underlying text, not just "could not be read": the set reads live state, so
+                ; the cause is a property of the instance at this moment and is the only thing a
+                ; reader of the log can act on. Internal() renders a generic reason to the caller
+                ; and logs the detail (AD-12), so this reaches the log and never the client.
+                Set tSC = ..Internal("the prohibited set could not be read: " _ $System.Status.GetErrorText(tProhibitSC), .pHttpStatus, .pCode)
                 Quit
             }
             If tProhibits {
@@ -243,20 +277,6 @@ ClassMethod Transition(pProposalId As %String, pUser As %String, ByRef pRow, pSu
                 Quit
             }
             Set tSC = ..Refuse(403, tVerdict("code"), .pHttpStatus, .pCode)
-            Quit
-        }
-
-        ; AD-8: the declared pairs, re-checked at the moment of the call rather than at the mint.
-        Set tPairs = ##class(OcuPilot.Screen.Tool.Registry).RequiredPairs(tTool, .tPairsResolved)
-        If 'tPairsResolved {
-            Set tSC = ..Internal("the privilege pairs of " _ $Get(pRow("toolName")) _ " could not be read", .pHttpStatus, .pCode)
-            Quit
-        }
-        Set tFailedPair = ..MissingPair(pUser, tPairs)
-        If tFailedPair '= "" {
-            Set tSC = ..Refuse(403, ##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE, .pHttpStatus, .pCode)
-            Set pDetail = {}
-            Do pDetail.%Set("failedPair", tFailedPair, "string")
             Quit
         }
 

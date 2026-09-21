@@ -2,13 +2,55 @@
 title: 'Story 5.8: Web applications - enable a disabled application and grant it a resource'
 type: 'feature'
 created: '2026-09-20'
-status: 'ready-for-dev'
+status: 'done'
+baseline_revision: 'b92c9326421f84ab65111df4550c72239c44028e'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      The demo card discloses the target's own Name as the secret mask, because
+      webapp.list.update's generated field list carries no row for it.
+    evidence: |-
+      Measured in the checkout: src/OcuPilot/Screen/Tool/ToolFields.cls declares 47 rows for
+      webapp.list.update, 45 of them ordinary+literal top level, and Name is not among them; a
+      WebApp.App GET answers 46 keys. So on UJ-3's own card Name reads as eight bullets under the
+      disclosure while the card header shows /csp/myapp in clear. This is AD-3's fail-closed rule
+      applied exactly as this spec's matrix requires, so it is spec-bound rather than a code
+      defect - but it makes an unclassified field indistinguishable from a real secret on the one
+      card the demo is built around. Settling it is a choice between classifying Name in Story
+      2.2's derivation and excluding the id field from the disclosure.
+    location: >-
+      src/OcuPilot/Screen/Tool/ToolFields.cls (webapp.list.update rows)
+    severity: low
+  - summary: >-
+      The disclosure's rows are unbounded in total size and are re-projected on every poll of a
+      live proposal.
+    evidence: |-
+      Kernel/Proposal/Disclosure.Rows renders each value verbatim through Mint.Display, so a
+      proposal now carries ~44 field values on each once-a-second poll where the diff carried two;
+      a long Description or a large CorsAllowlist travels every time. OrdinaryPaths also opens
+      %Dictionary.XDataDefinition for ToolFields on every WireRow. AD-24's per-field bound covers
+      context and tool results, not the proposal wire, so no existing limit applies. Applying
+      Limits.FIELDMAXLENGTH to each disclosed value would bound it, but truncating a disclosed
+      value changes what the card shows and this spec does not settle that.
+    location: >-
+      src/OcuPilot/Kernel/Proposal/Disclosure.cls:63
+    severity: medium
+  - summary: >-
+      OcuPilot.Port.AdminPort.Invoke silently no-ops on a %String body for a mutating type.
+    evidence: |-
+      Measured both ways on ocupilot-ci during this story: its signature says
+      %DynamicAbstractObject, ObjectScript does not enforce method-argument types, and the vendor's
+      MergeJsonAndProperties reads a string as carrying no properties - so a WebApp.App PUT given
+      JSON text answers HTTP 200 with the target's unchanged object and writes nothing. Nothing
+      refuses it, and the caller cannot tell the write from a no-op. Refusing a non-object pBody for
+      a mutating type would close it.
+    location: >-
+      src/OcuPilot/Port/AdminPort.cls:359
+    severity: medium
 ---
 
 <intent-contract>
@@ -215,6 +257,36 @@ Do not write `deferred-work.md`.
   `WebAppList.cls:50` already declares `[{"resource": "%Admin_Secure", "permission": "USE"}, ...]`,
   so the write requires **exactly the pair the screen's own read already declares** -- not merely a
   satisfiable pair, but the one already on the descriptor. That belongs in the spec's rationale.
+- **2026-09-21, implement.** Task 22's two `EXPERIENCE.md:756` amendments applied (Rule 5
+  apply-and-report). The count is **44**, with its population in the same sentence: the top-level
+  property count of a `WebApp.App` `GET` for `/csp/myapp`, measured on `ocupilot-ci` (46 keys),
+  less the two the demo changes. `EXAMPLE_PROPOSAL.unchangedCount` and `proposal-card.spec.ts`'s
+  caption literal follow it. The trailing "the list's auto-refresh chip reads paused" clause is
+  deleted at this origin, for the reason the `epics.md:3606` amendment gives.
+- **2026-09-21, implement.** Task 10 adds **one** string, not two: `proposalDiffUnchanged`. The
+  audit-entry offer is already published as `agentAuditFollowUpQuestion` (the Fixed-strings row at
+  `EXPERIENCE.md:282`), and adding a second key with the same value is what
+  `strings.test.mjs`'s uniqueness assertion refuses. The panel appends the existing key.
+- **2026-09-21, implement.** Task 5's projection lives in a new
+  `OcuPilot.Kernel.Proposal.Disclosure`, not in `Propose.WireRow` as planned:
+  `scripts/check-objectscript.py`'s AD-9 rule forbids any reference to `OcuPilot.Screen` under
+  `Kernel/State/`, and the masking has to read `Screen/Tool/ToolFields`. `WireRow` calls it and
+  stays the one place the wire shape is written.
+- **2026-09-21, implement.** `Kernel/Proposal/Confirm.Transition` now evaluates the **privilege
+  pairs before the prohibited set**. Measured in a browser as a real least-privileged principal:
+  the prohibited set reads live state through the port (AD-10), the port's own gate requires the
+  same `%Admin_Secure:USE` the pairs gate names, so a caller that had lost it was answered
+  `An internal error occurred` instead of `failed - %Admin_Secure:USE` -- which is what AC4 names
+  and what AD-8 requires. Every unit test stayed green because the suite runs as `%All` and the
+  fixture's `HoldsPair` seam never reaches the port. Pinned by
+  `ProposalConfirm.TestThePrivilegeGateAnswersBeforeTheProhibitedSet`, with both gates armed.
+- **2026-09-21, implement.** The `criterion` argument travels on the directive, which meant a
+  trailing `Output pCriterion` on `Screen/Tool/Navigate.Directive` -- and therefore on the two
+  test probe classes that override it (`Test/LedgerClientTool/Probe`, `Test/ClientCallFault/Probe`).
+  `OcuPilot.Kernel.Agent.Dispatch` calls `Directive` positionally by name, so a near-miss signature
+  compiles and answers `TOOL.UNAVAILABLE`: the full sweep caught it as four failures in
+  `LedgerClientRows` and `LedgerRedaction`, and both probes now mirror the signature with a note
+  saying why.
 - **2026-09-21, plan (pass 2).** Re-planned against the amended `epics.md`. Four changes carry into
   the mutable sections; the `<intent-contract>` block is preserved verbatim, so its two `DW-1252`
   labels name the entry that has since been dropped and are read as `DW-1426`. (1) `DW-1426`
@@ -228,6 +300,29 @@ Do not write `deferred-work.md`.
   covers the navigation tool; the names the first pass used do not exist.
 
 ## Review Triage Log
+
+### 2026-09-21 — Review pass
+
+- verdicts: 17 findings — high 0, medium 4, low 10, false 3, maybe-false 0
+- findings:
+  - `[low]` `[patch]` `recordWriteCard`'s new `status === 0` exclusion had no test, so a Confirm whose request never reached the instance could ship a `failed - ` card with no reason — added `panel.spec.ts`'s "a Confirm whose request never reached the instance records no card at all", with `ApiService`'s own aborted-fetch shape; mutation applied, red, reverted. Writing it found my first fixture omitted `detail`, which is not optional on the error variant — the fixture now matches `core/api.ts:346`.
+  - `[medium]` `[patch]` `TestAWriteThatWouldChangeNothingFailsNamingIt` asserted nothing about the fixture's state, so narrowing the restore to the success path reddened nothing while the check's own reason still promised "it is put back" — added the two left-disabled assertions. The mutation I first named (guard on `tProblem = ""`) proved to be a no-op, because `tProblem` is unset on every early `Quit`; the mutation line now names the form that does falsify it (move the call inside the `Try`), observed red.
+  - `[medium]` `[patch]` `Disclosure.OrdinaryPaths`' `[]`-stripping branch was untested although `webapp.list.update` declares `CorsAllowlist[]` and `CorsHeadersList[]` as ordinary literals (verified in `ToolFields.cls`), so deleting it would mask two real fields on every web-application proposal with nothing red — extended `FRESHCLASSIFIED` with an array of literals and asserted its value; mutation applied, red, reverted.
+  - `[medium]` `[patch]` The gate reorder also moved the pairs check above AD-30's restraint verdict, and no test pinned that precedence either way — so a read-only instance now names a missing privilege, and the order could flip back with the suite green. AD-30's Rule requires a confirm to re-evaluate read-only and refuse (it still does, and nothing reaches the port); it does not fix which gate names the refusal, while AD-8's Rule does require a denial to name the pair. Pinned as implemented by `TestThePrivilegeGateAnswersBeforeTheRestraintVerdict` and stated in `Transition`'s own comment; both directions observed red.
+  - `[low]` `[patch]` `shown()` was applied to both halves of a changed row but only the `before` half was asserted against an empty value, so reverting `shown(row.after)` reddened nothing — the empty-value test now carries a clearing row and asserts both halves; mutation applied, red, reverted.
+  - `[low]` `[patch]` `AgentNavigator.applyCriterion` handed `AuditSearch` whichever screen arrived, and `openWith` declined only by inspecting the declaration — so a second screen declaring `marker` (a field on the shared generated `ReadCriteria`) would have the audit store set its own filter and bind that other screen's declaration into `RefreshService`. Guarded `openWith` on `AUDIT_DESCRIPTOR` at its origin and gave the method its first direct test in `audit.page.spec.ts` (it was covered only by a stub); mutation applied, red, reverted.
+  - `[low]` `[patch]` The `### Rule 19 mutations` line labeled **AC2** named a `Disclosure.Rows` mutation, which pins the disclosure and not AC2 — AC2's real pinning tests are `ProposalConfirm.TestTheConfirmedWriteSendsTheStoredPayload` and `Proposal.TestThePayloadCarriesEveryPropertyTheFreshReadReturned`, neither of which that mutation would redden. Relabeled, AC2 given its own line naming its real mutation, and `OcuPilot.Test.Proposal` added to the targeted run list (Rule 19's sanctioned tracking-section correction).
+  - `[low]` `[patch]` Every automated test of the two new smoke checks runs through `Test/SmokeWriteProbe`'s overrides, and the one test that runs the real list passes demo `"0"` and skips before reaching them — so the shipped `WriteTarget`/`WriteTargetOwned` bodies were asserted nowhere. Added `TestTheShippedCheckNamesTheDemoFixture`; mutation applied, red, reverted.
+  - `[low]` `[patch]` (same root cause as the `applyCriterion` row) The instance's criterion channel is generic — `Base.FlagCriteria` admits any well-formed flag on any descriptor — while the client's is one screen wide, so a flag declared on a second screen would pass the instance gate, ride the directive and apply nothing. Closed by the same `AUDIT_DESCRIPTOR` guard and its foreign-declaration leg, which makes the decline explicit rather than incidental.
+  - `[low]` `[patch]` (same root cause as the restraint-precedence row) The reorder makes AC5's named `PROHIBITED.SERVINGPATH` caller-dependent: a caller lacking `%Admin_Secure:USE` who proposes disabling `/ocupilot` is now answered `AUTH.NOPRIVILEGE`. The matrix row's own error-handling cell ("Refused on the instance whatever the caller") still holds, and the precedence is now stated and pinned rather than incidental.
+  - `[low]` `[defer]` The demo card discloses the target's own `Name` as the secret mask — confirmed against `ToolFields.cls` (47 rows, 45 ordinary+literal top level, no `Name` row). Spec-bound: it is exactly the fail-closed rule the frozen matrix requires, so it is recorded rather than changed; settling it is a choice between classifying `Name` in Story 2.2's derivation and excluding the id field.
+  - `[medium]` `[defer]` The disclosure's rows are unbounded in total size and re-projected on every poll, and `OrdinaryPaths` opens the `ToolFields` XData on every `WireRow`. AD-24's per-field bound does not cover the proposal wire, and bounding a disclosed value changes what the card shows — not settled by this spec.
+  - `[medium]` `[defer]` `AdminPort.Invoke` silently no-ops on a `%String` body for a mutating type — measured both ways on `ocupilot-ci` during implementation: a `WebApp.App` PUT given JSON text answers 200 with the target unchanged and writes nothing. Out of this story's footprint; the fix is to refuse a non-object `pBody`.
+  - `[low]` `[reject]` Two of `CheckAgentWrite`'s four skip arms ("the record could not be read", "a turn of this user is already running") are undriven. The spec's fourth AC and its matrix name the absent and unowned fixture, both of which are driven; the arms behave correctly and exercising them needs new injection machinery, which is more than a direct correction for a defect no user would meet.
+  - `[low]` `[reject]` `ToolWrite`'s "no shipped role grants it" half is a proxy over a subset (it checks only `ADMINRESOURCES` members carry `USE`, leaving `%DB_IRISSYS:READ` unchecked) and never reads `%CSP.Portal.Application`. The test also asserts the resolved set *equals* the screen's declared set, which is the stronger property the Boundaries name, and the non-`%All` claim is exercised on a real principal at the browser tier; reading vendor source from a test is more than a direct correction.
+  - `[false]` `[reject]` "`Test.Smoke`'s probe tests assert nothing off an armed throwaway." Refuted: `OCUPILOT_ALLOW_PRINCIPALS=1` on `ocupilot-ci`, and in run 2337 the four probe-driven methods recorded 9, 8, 6 and 9 assertions respectively — they ran for real where CI runs them, and `ArmMixedCase` logs the case where it declines.
+  - `[false]` `[reject]` "`RestoreWriteTarget` is a new ungated write path in shipped code." Refuted: `AdminPort.Invoke` calls the endpoint **as the calling process's user** with no port elevation (its own header: AD-1, AD-2, AD-26; "Must not be called from an escalated frame"), so the vendor endpoint's own `%Admin_Secure:USE` check applies to the restore as to any caller. AD-34 binds the proposal transition and AD-10 the agent write path; the method is `[ Private ]` with one caller and a target fixed by `WriteTarget()`.
+  - `[false]` `[reject]` "The matrix requires the agent's reply to state the refusal, and it does not." The same matrix row's error-handling cell reads "Rendered on both cards, never swallowed", which is what was built — the `failed - %Admin_Secure:USE` card and the proposal card's refusal banner. A confirm is a foreground press after the reply was composed, so no reply sentence is mechanically available without a new published string the spec does not ask for; the user is told either way.
 
 ## Design Notes
 
@@ -298,7 +393,7 @@ DW-1208 by tasks 1-4 and the first AC. DW-1223 by tasks 5-11 and two matrix rows
 - `(loop)` `uv run scripts/check-objectscript.py src/OcuPilot/Screen/Tool/WebAppUpdate.cls src/OcuPilot/Kernel/State/Propose.cls src/OcuPilot/Screen/Tool/Navigate.cls src/OcuPilot/Install/Smoke.cls src/OcuPilot/Api/Error.cls` -- expected: clean.
 - `(loop)` `cd ui && npm run test:tools` -- expected: green, including `proposal.test.mjs`, `proposal-view.test.mjs`, `turn.test.mjs`, `example-proposal.test.mjs`, `ci.test.mjs` and `strings.test.mjs`.
 - `(loop)` `cd ui && npm run test:components` -- expected: green, including `proposal-card.spec.ts`, `panel.spec.ts`, `audit.page.spec.ts` and `agent-navigator.spec.ts`.
-- `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class <one class>` -- one class per call, landed in `%UnitTest_Result` before the next, never two test calls in one message: `OcuPilot.Test.ToolWrite`, `OcuPilot.Test.ToolEmit`, `OcuPilot.Test.ProposalConfirm`, `OcuPilot.Test.ProposalWire`, `OcuPilot.Test.ProposalSpelling`, `OcuPilot.Test.ProhibitedRoute`, `OcuPilot.Test.ToolNavigate`, `OcuPilot.Test.Smoke`, `OcuPilot.Test.SurfaceCoverage`.
+- `(loop)` `cd ui && node tools/ci-runner.mjs --container ocupilot-ci --class <one class>` -- one class per call, landed in `%UnitTest_Result` before the next, never two test calls in one message: `OcuPilot.Test.ToolWrite`, `OcuPilot.Test.ToolEmit`, `OcuPilot.Test.ProposalConfirm`, `OcuPilot.Test.ProposalWire`, `OcuPilot.Test.ProposalSpelling`, `OcuPilot.Test.ProhibitedRoute`, `OcuPilot.Test.ProhibitedByEffect`, `OcuPilot.Test.ToolNavigate`, `OcuPilot.Test.Smoke`, `OcuPilot.Test.SurfaceCoverage`, `OcuPilot.Test.Proposal` (AC2's pinning test lives there and this story does not change the class).
 - `(loop)` `bash scripts/smoke.sh --container ocupilot-ci --user _SYSTEM --password SYS` -- expected: PASSED, `executed=` up by two and `pending=` down by two against the pre-story run; read the skip lines, not the number (DW-1402). Run it twice and confirm the second is identical and leaves `/csp/myapp` disabled with no resource.
 - `(loop)` the browser legs, bundle redeployed first or the spec reads the old bundle:
 
@@ -322,11 +417,162 @@ DW-1208 by tasks 1-4 and the first AC. DW-1223 by tasks 5-11 and two matrix rows
 
 ### Rule 19 mutations
 
-One per AC, each applied, observed red, reverted, with `git status --short` and `git diff --stat` unchanged afterwards; the ObjectScript ones run on `ocupilot-ci`, never the shared dev instance (DW-1185); every client mutation whose subject is a browser spec is rebuilt and redeployed before the run; and a mutation to an inherited ObjectScript method is read only after the package is recompiled.
+Each applied on `ocupilot-ci`, observed red, reverted; `git status --short` identical afterwards and
+`git diff --stat` differing only by the AC5 fix the pass itself produced (below). The browser-tier
+one was rebuilt and redeployed before the run and again after the revert.
+
+- **AC1** -- `mutation:` drop the `$ListFind(tPairs, tOwn)` guard from
+  `Screen/Tool/WebAppUpdate.PrivilegePairs()`, so the write's own pair is appended unconditionally
+  -> `OcuPilot.Test.ToolWrite.TestTheResolvedPairsAreTheScreensOwnSetEachOnce` red on three
+  assertions, naming `%Admin_Secure:USE,%DB_IRISSYS:READ,%Admin_Secure:USE`.
+- **AC2** -- pinned by `OcuPilot.Test.ProposalConfirm.TestTheConfirmedWriteSendsTheStoredPayload`
+  (the port receives the stored payload verbatim) together with
+  `OcuPilot.Test.Proposal.TestThePayloadCarriesEveryPropertyTheFreshReadReturned` (the stored
+  payload is the whole fresh read with the diff applied). `mutation:` take the payload from the
+  request instead of the stored row in `Kernel/Proposal/Confirm.Transition` -> the first goes red on
+  its body assertion. Both classes are pre-existing and this story does not change them, so the
+  run list adds `OcuPilot.Test.Proposal`.
+- **DW-1223 (rows)** -- `mutation:` drop `If $Data(tChanged(tKey)) Continue` from
+  `Kernel/Proposal/Disclosure.Rows` -> `OcuPilot.Test.ProposalWire`'s length and order assertions
+  red; the disclosure would carry the two rows the diff already shows.
+- **DW-1223 (arrays)** -- `mutation:` drop the `If $Extract(tPath, *-1, *) = "[]"` line from
+  `Kernel/Proposal/Disclosure.OrdinaryPaths` ->
+  `ProposalWire.TestAnOrdinaryLiteralIsDisclosedWithItsValue` red on `CorsAllowlist`, the branch
+  `webapp.list.update`'s two declared arrays of literals reach the disclosure through.
+- **AC3** -- `mutation:` drop the restore's `PUT` from `Install/Smoke.RestoreWriteTarget` ->
+  `OcuPilot.Test.Smoke.TestARepeatRunExecutesAgainAndLeavesTheFixtureDisabled` red on the second
+  run and on both left-disabled assertions.
+- **AC4** -- `mutation:` note `fail` instead of `skipped` on both arms of
+  `Install/Smoke.CheckAgentWrite`'s skip -> `TestTheWriteChecksSkipWhereTheEnvironmentCannotCarryThem`
+  red, and `smoke.sh --demo 0` flips from `PASSED` to `FAILED` naming both checks.
+- **AC5** -- `mutation:` have `Install/Smoke.ApplicationName` answer `pPath` instead of the
+  instance's own `Name` -> `TestTheAgentWriteCheckRunsOnACasePreservedTarget` red.
+  **This mutation is why that assertion changed in this pass:** asked with the fixture's own
+  literal it compared the argument against itself and stayed green, so it is now asked with the
+  **folded** path -- the spelling `EntityRef.Key` stores and the one a check keyed off the
+  proposal's `TargetRef` would carry.
+- **AC6** -- `mutation:` drop the `applyCriterion` call from `shell/agent-navigator.ts`'s `act()`
+  -> `agent-navigator.spec.ts`'s arrival assertion red at the component tier, and (rebuilt and
+  redeployed) `browser/proposal-demo.browser-spec.mjs`'s AC3 leg red at the browser tier.
+- **AC7** -- `mutation:` drop the `FlagCriteria` guard from `Screen/Tool/Navigate.Directive` ->
+  `OcuPilot.Test.ToolNavigate.TestAnUndeclaredOrValuedCriterionIsRefused` red on all three shapes.
+- **DW-1426** -- `mutation:` restore `Panel.recordWriteCard`'s `if (!outcome.ok) return;` ->
+  both refused-confirm assertions in `panel.spec.ts` red.
+- **DW-1223 (client)** -- `mutation:` drop `unchanged: proposal.unchanged` from `toCardView` ->
+  `proposal-view.test.mjs`'s pass-through pin red.
+- **Task 20** -- `mutation:` change `ci-throwaway.sh`'s `OCUPILOT_DEMO` to `"0"` ->
+  `ci.test.mjs` red naming the drifted demo opt-in flag.
+- **The gate order** (the `## Spec Change Log` entry names why it moved) -- `mutation:` put the
+  pairs block back below the prohibited block in
+  `Kernel/Proposal/Confirm.Transition` -> `TestThePrivilegeGateAnswersBeforeTheProhibitedSet` red
+  naming the prohibited code. And below the **restraint** block ->
+  `TestThePrivilegeGateAnswersBeforeTheRestraintVerdict` red naming a restraint code. Both
+  directions are pinned, because before this story the restraint was evaluated above the pairs and
+  a flip back would otherwise have reddened nothing.
+- **DW-1426 (the boundary)** -- `mutation:` drop the `outcome.status === 0` clause from
+  `Panel.recordWriteCard` -> `panel.spec.ts`'s "a Confirm whose request never reached the instance
+  records no card at all" red; a thrown or aborted fetch would put `failed - ` in the transcript
+  for a write the instance never received.
+- **AC6 (the recipient)** -- `mutation:` drop the `declaration.descriptor !== AUDIT_DESCRIPTOR`
+  guard from `areas/logs/audit.store.ts`'s `openWith` -> `audit.page.spec.ts`'s foreign-declaration
+  leg red; the audit store would set its own filter and bind another screen's declaration.
+- **DW-1382 (the shipped seams)** -- `mutation:` have `Install/Smoke.WriteTarget` answer any other
+  path -> `OcuPilot.Test.Smoke.TestTheShippedCheckNamesTheDemoFixture` red. Every other test of
+  these checks runs through `Test/SmokeWriteProbe`'s overrides, so without this the shipped bodies
+  were asserted nowhere.
+- **DW-1382 (the restore on the failure path)** -- `mutation:` move `CheckAgentWrite`'s
+  `RestoreWriteTarget` call inside the `Try`, after its last `Note` ->
+  `TestAWriteThatWouldChangeNothingFailsNamingIt` red on its two left-disabled assertions, and
+  nothing else in the class. The coarser AC3 mutation (dropping the restore's `PUT` outright) does
+  not catch that narrowing, which is the case a drifted container actually hits. Guarding the call
+  on `tProblem = ""` was tried first and is **not** a mutation: `tProblem` is unset on every path
+  that `Quit`s early, so `$Get` answers `""` and the restore still runs.
 
 ## Auto Run Result
 
-Status: ready-for-dev
+Status: done
 Blocking condition: none
 
-This pass re-planned the `draft` spec against the amended `epics.md` with the `<intent-contract>` block preserved verbatim. What changed: `DW-1426` replaces the dropped `DW-1252` throughout the mutable sections; `EXPERIENCE.md:756` gains a second apply-and-report correction (the auto-refresh-chip clause, at its origin) beside the unchanged-field count, which is stated with its population; a case-preserved read-back is planned and pinned at tasks 18, 19, 23 and the fifth AC, because `/csp/myapp` folds to itself; and the verification class names are corrected to `OcuPilot.Test.ProposalWire` and `OcuPilot.Test.ToolNavigate`. Verified this pass against the instance and the tree: `WebAppList.cls:50`'s declared pair set, `WebAppUpdate.cls:57`'s `WRITEPERMISSION`, `ToolWrite.cls:214` and `ProposalConfirm.cls:34,248`, `panel.ts:1012-1013`'s early return and `panel.spec.ts:3156`'s zero-card assertion, the ledger states of `DW-1252` (`dropped`) and `DW-1426` (`routed`, this story), the existence of `Test/ProposalWire.cls`, `Test/ToolNavigate.cls` and `Test/ProposalSpelling.cls`, and a second `WebApp.App` `GET` property count (`/csp/user` = 46, matching `/api/ocupilot`) on `ocupilot-slot-a`.
+Story 5.8 is implemented: the write's gate is now `%Admin_Secure:USE` and `%DB_IRISSYS:READ` --
+exactly the pair set `WebAppList.cls:50` already declares, deduped so the ledger records one check
+once; the "N unchanged fields" disclosure has rows, projected on the instance from the payload the
+mint stored and masked wherever the tool's own classification does not admit a value; a refused
+confirm leaves a `failed - <pair>` card; the navigation tool takes a **named** flag criterion and
+the audit hand-off's published sentence is appended by the panel; and `smoke.sh`'s last two
+`pending` checks are real, driving a mint-and-confirm against AD-25's `/csp/myapp` and restoring it.
+
+### Files changed
+
+- `Screen/Tool/WebAppUpdate.cls` -- `WRITEPERMISSION` `WRITE` -> `USE`, `PrivilegePairs()` dedupes.
+- `Kernel/Proposal/Disclosure.cls` (new) -- the `{field, value}` projection and its fail-closed mask.
+  It is its own class because `check-objectscript.py`'s AD-9 rule forbids `OcuPilot.Screen`
+  references under `Kernel/State/`, and the masking must read `ToolFields`.
+- `Kernel/State/Propose.cls` -- `WireRow` gains `unchanged[]`; the two "not on the wire at all"
+  sentences rewritten at their origin.
+- `Kernel/Proposal/Confirm.cls` -- the privilege pairs now evaluate **first**, above the prohibited
+  set and above the restraint verdict, with the precedence stated in the method's own comment.
+- `Screen/Tool/Navigate.cls`, `Screen/Descriptor/Base.cls`, `Api/Error.cls`, `Kernel/State/Nav.cls`,
+  `Kernel/State/Turn.cls`, `Kernel/Agent/{Dispatch,Loop}.cls` -- the `criterion` argument, its
+  `FlagCriteria` allow-list, `NAV.CRITERIONUNKNOWN`, and the directive it travels on.
+- `Install/Smoke.cls` -- `AddPending` replaced by `CheckAgentWrite`; `ApplicationName` resolves by
+  the spelling the instance stores, never the proposal's folded `TargetRef`.
+- Client: `core/turn.ts`, `core/proposal-view.ts`, `core/strings.ts` (one key,
+  `proposalDiffUnchanged`), `shell/proposal-card.ts`, `shell/panel.ts`, `shell/agent-navigator.ts`,
+  `areas/logs/audit.store.ts`, `shell/example-proposal.ts`.
+- Tests: `Test/{ToolWrite,ToolEmit,ProposalConfirm,ProposalWire,Smoke,SurfaceCoverage,ToolNavigate,
+  ProhibitedRoute,ProhibitedByEffect,ProposalFixture}.cls`, two new probe classes, four client specs,
+  and `ui/browser/proposal-demo.browser-spec.mjs` (new, three legs).
+- `EXPERIENCE.md` -- task 22's two apply-and-report amendments, plus the Fixed-strings row at the tail.
+
+### Review findings
+
+Two layers ran (`verification-gap`, `intent-alignment`; `blind-hunter` and `edge-case-hunter` are
+disabled in `bmad-build-auto.toml`). 17 findings: 0 high, 4 medium, 10 low, 3 false. **8 entries
+patched** (3 medium, 5 low), **3 deferred** (frontmatter `deferred:`), **2 rejected low**, **3
+rejected on refutation**. Every row, with its evidence, is in `## Review Triage Log`. No
+`intent_gap` and no `bad_spec`, so no loopback.
+
+Two of the patches are worth naming because they changed what the tests can catch rather than
+adding coverage: `TestAWriteThatWouldChangeNothingFailsNamingIt` now asserts the fixture is restored
+on the **failure** path, and the privilege/restraint precedence is pinned in both directions. In
+writing the first I found the mutation I had named for it was a no-op (`tProblem` is unset on every
+early `Quit`, so `$Get` answers `""`); the line now names the mutation that does falsify it.
+
+### Verification
+
+- `uv run scripts/check-objectscript.py` -- 574 files, 21 rules, 0 problems.
+- `bash scripts/lint-docs.sh` -- 0 issues, 103 files; `check-prose` 0 problems.
+- `cd ui && npm run build` -- the six prebuild checkers pass. `npm test` -- 1200 tool tests + 722
+  component tests, 0 failed, no unhandled errors.
+- Full ObjectScript sweep on `ocupilot-ci`: **166 classes, 1482 tests, 0 failed**, 0 probe
+  leftovers, 0 overlaps, 0 foreign runs.
+- Full browser suite on `ocupilot-ci`: **200 tests, 198 pass**. The two failures are
+  `tasks.browser-spec.mjs`'s Story 6.6 legs on a reused throwaway (DW-1425, `%SYS_Task.History`
+  probe residue); no third, distinct failure. `proposal-demo`'s budget leg logged **15 ms** against
+  NFR-1's 2,000.
+- `smoke.sh --container ocupilot-ci` twice: `executed=47 passed=47 failed=0 pending=0 skipped=0`,
+  PASSED both times, and `/csp/myapp` left `Enabled 0` with no resource. With `--demo 0`: both new
+  checks `skipped` naming the absent fixture, `executed=44`, verdict unchanged.
+- Rule 19: 7 mutations applied, observed red and reverted this pass (3 client, 4 ObjectScript), on
+  top of the 11 from implementation. Each ObjectScript mutation was recompiled over the whole tree
+  before reading the result; the tree is byte-identical after each revert.
+- AC5 was checked rather than assumed: `OCUPILOT_ALLOW_PRINCIPALS=1` on `ocupilot-ci` and the four
+  probe-driven `Test.Smoke` methods recorded 9, 8, 6 and 9 assertions, so the case-preserved
+  read-back genuinely executed and did not take `ArmMixedCase`'s zero-assertion path.
+
+### Residual risks
+
+Follow-up review is recommended (`true`) because three medium entries were patched. The specific
+unverified risk is the **gate precedence**: pairs now answer before AD-30's restraint verdict, so a
+caller on a read-only instance who is also short a pair is told to acquire a privilege that would
+not by itself help. AD-30's Rule requires only that the confirm re-evaluate read-only and refuse --
+which it does, with nothing reaching the port -- and AD-8's Rule requires a denial to name the failed
+pair, so both orders are defensible and the spec settles neither. It is pinned as implemented and
+stated in the method's comment; whether that is the precedence the product wants is a judgment a
+second reader should take, not one this pass could make.
+
+The three deferred items carry the rest: the disclosure's unbounded row size on a once-a-second poll
+and its per-`WireRow` XData read (medium), `AdminPort.Invoke` silently no-opping on a `%String` body
+for a mutating type (medium, measured both ways), and the demo card disclosing the target's own
+`Name` as the mask because `ToolFields` carries no row for it (low, spec-bound by the frozen
+matrix's fail-closed rule). The last is demo-visible and worth the owner's eye before the freeze.

@@ -49,6 +49,7 @@ const { PROPOSAL_EXPIRED_STATE, PROPOSAL_LIVE_STATE, parseProposals, restoredPro
 const { STRINGS } = await import(corePath('strings.ts'));
 
 const PROPOSE_CLS = join(uiRoot, '..', 'src', 'OcuPilot', 'Kernel', 'State', 'Propose.cls');
+const DISCLOSURE_CLS = join(uiRoot, '..', 'src', 'OcuPilot', 'Kernel', 'Proposal', 'Disclosure.cls');
 
 /** One wire proposal, in the shape `OcuPilot.Kernel.State.Propose.WireRow` writes. */
 function wireProposal(overrides = {}) {
@@ -225,6 +226,51 @@ test("phaseForState reads the store's own vocabulary, and an unknown state reads
   assert.equal(phaseForState(stateOf('STATEEXPIRED')), 'expired');
   assert.equal(phaseForState('something this client has never heard of'), 'expired');
   assert.equal(PROPOSAL_EXPIRED_STATE, stateOf('STATEEXPIRED'), 'the client mirrors the same word');
+});
+
+test("the instance's own mask is the mask this module publishes", () => {
+  // DW-1223 moved the masking of an unchanged value onto the instance, so the value never travels
+  // rather than travelling and being hidden -- and the client kept `MASKED_VALUE` for the diff
+  // row's declared secrets. Two constants for one published string is a drift nothing else would
+  // catch: a card would then show eight bullets on one row and six on another, and neither tier
+  // would be wrong on its own.
+  const disclosure = readFileSync(DISCLOSURE_CLS, 'utf8');
+  const parameterOf = (name) => {
+    const match = new RegExp(`Parameter ${name} As %Integer = (\\d+);`).exec(disclosure);
+    assert.ok(match, `${DISCLOSURE_CLS} declares Parameter ${name}`);
+    return Number(match[1]);
+  };
+  assert.equal(
+    String.fromCodePoint(parameterOf('MASKCODEPOINT')).repeat(parameterOf('MASKWIDTH')),
+    MASKED_VALUE,
+    "the instance's Disclosure.Mask() and this module's MASKED_VALUE are the same published string"
+  );
+});
+
+test("toCardView passes the instance's unchanged rows through, authoring no value of its own", () => {
+  // DW-1223. Mutation (Rule 19): drop the `unchanged` line from `toCardView` -> this goes red, and
+  // the disclosure would render as a `<p>` with nothing behind its own count.
+  const unchanged = [
+    { field: 'Description', value: 'a demo fixture' },
+    { field: 'MatchRoles', value: MASKED_VALUE },
+  ];
+  const view = toCardView(wireProposal({ unchanged }), 'Web application', ['Password']);
+  assert.deepEqual(view.unchanged, unchanged);
+  // The secret masking on the diff is the client's; the masking under the disclosure is the
+  // instance's, and this module does not apply a second one.
+  assert.deepEqual(view.changed[1], { field: 'Password', before: MASKED_VALUE, after: MASKED_VALUE });
+});
+
+test('a wire row with no unchanged array parses to no rows rather than to undefined', () => {
+  const [parsed] = parseProposals([wireProposal()]);
+  assert.deepEqual(parsed.unchanged, []);
+  const [withRows] = parseProposals([
+    wireProposal({ unchanged: [{ field: 'Timeout', value: '900' }, 'not an object', { field: 'Path' }] }),
+  ]);
+  assert.deepEqual(withRows.unchanged, [
+    { field: 'Timeout', value: '900' },
+    { field: 'Path', value: '' },
+  ]);
 });
 
 // --- The restore path (DW-1213) -----------------------------------------------------------------

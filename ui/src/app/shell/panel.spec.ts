@@ -13,6 +13,7 @@ import { ScreenStores } from '../core/screen-store';
 import { ShellState } from '../core/shell-state';
 import { STRINGS } from '../core/strings';
 import { SOURCES, SWITCHES_DESCRIPTOR, SuggestedView, type Source } from '../core/suggested-view';
+import { formatChangeSentence } from '../core/toasts';
 import { TokenStore } from '../core/token-store';
 import {
   CONVERSATION_PATH,
@@ -3127,9 +3128,13 @@ describe('Story 5.3: confirming, cancelling and re-proposing a card', () => {
     expect(host.querySelector('.ocu-proposal-card-repropose')).not.toBeNull();
   });
 
-  it('a refusal that left the row live gives the card its Confirm back, and says it was refused', async () => {
-    // DW-1348 (Story 5.6). The Confirm coming back is the pre-existing half; what this adds is
-    // that the press is no longer invisible -- the envelope's own written reason is on the card.
+  it('a refusal that left the row live gives the card its Confirm back, says it was refused, and records the refused write -- 5.6 pinned the absence only because nothing produced one', async () => {
+    // DW-1348 (Story 5.6). The Confirm coming back is the pre-existing half; what that story added
+    // is that the press is no longer invisible -- the envelope's own written reason is on the card.
+    // DW-1426 (Story 5.8) adds the other half: the write was attempted, so the transcript records
+    // it as a `failed` tool-call card. Story 5.6 asserted zero cards here, which was true of the
+    // code and not of the contract: `recordWriteCard` returned early on every refusal, so there was
+    // no card to find.
     //
     // mutation: drop the `recordProposalRefusal` call from `decideProposal`'s error path in
     // `core/turn.ts` -> the reason assertions go red while the Confirm one stays green, which is
@@ -3153,8 +3158,73 @@ describe('Story 5.3: confirming, cancelling and re-proposing a card', () => {
     const refusal = host.querySelector('[data-slot="refusal"]') as HTMLElement;
     expect(refusal).not.toBeNull();
     expect(refusal.textContent).toContain('Read-only mode is enforced on this instance.');
-    // No card was appended for a write that never happened.
+    // The write that was attempted and refused has its own card, reading the published failed
+    // line with the envelope's own reason -- and the reply gains no change sentence, because
+    // nothing changed.
+    //
+    // mutation: restore `recordWriteCard`'s `if (!outcome.ok) return;` -> this goes red.
+    const cards = host.querySelectorAll('app-tool-call-card');
+    expect(cards).toHaveLength(1);
+    const word = cards[0].querySelector('.ocu-tool-call-status-word') as HTMLElement;
+    expect(word.textContent?.trim()).toBe(
+      STRINGS.toolCallStatusFailed.split('<reason>').join('Read-only mode is enforced on this instance.')
+    );
+    const reply = host.querySelector('.ocu-panel-message-agent-text')?.textContent ?? '';
+    expect(reply).not.toContain(formatChangeSentence(STRINGS.tableChangeUpdated, '/csp/myapp'));
+    expect(reply).not.toContain(STRINGS.agentAuditFollowUpQuestion);
+  });
+
+  it('a Confirm whose request never reached the instance records no card at all', async () => {
+    // DW-1426's boundary. `recordWriteCard` now records a card for a refusal, which is the point of
+    // this story -- but an answer with `status` 0 is not a refusal: it is what `ApiService` produces
+    // for a thrown or aborted fetch, so the instance never said anything about this write. Recording
+    // it would put `failed - ` in the transcript, with no reason and no pair, for a write the
+    // instance never received.
+    //
+    // mutation: drop the `!outcome.ok && outcome.status === 0` guard from `recordWriteCard` -> a
+    // card is appended and this goes red.
+    // The answer shape is `ApiService`'s own for a thrown or aborted fetch, verbatim from
+    // `core/api.ts`: status 0 with a null code, reason and detail. `detail` is not optional on the
+    // error variant, so a fixture that omitted it would not be a `JsonResult` at all.
+    const { host, fixture } = await mountDecidable({
+      [proposalConfirmPath('p1')]: [{ kind: 'error', status: 0, code: null, reason: null, detail: null }],
+    });
+    (host.querySelector('.ocu-proposal-card-confirm') as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
     expect(host.querySelectorAll('app-tool-call-card')).toHaveLength(0);
+    // The row is untouched, so the card keeps its Confirm and gains no terminal status line.
+    expect(host.querySelector('.ocu-proposal-card-confirm')).not.toBeNull();
+    expect(host.querySelector('.ocu-proposal-card-status')).toBeNull();
+  });
+
+  it('AC: a confirm refused for a missing privilege pair names the pair on the failed card, not the generic reason', async () => {
+    // DW-1426 with AD-8: a 403 on confirm reads "failed - <resource>" and the detail is the pair
+    // the instance named, because the pair is what the user has to be granted.
+    //
+    // mutation: stop reading `detail.failedPair` in `decideProposal`'s refusal branch -> the card
+    // falls back to the written reason and this goes red.
+    const { host, fixture } = await mountDecidable({
+      [proposalConfirmPath('p1')]: [
+        {
+          kind: 'error',
+          status: 403,
+          code: 'AUTH.NOPRIVILEGE',
+          reason: 'A privilege this action requires is missing.',
+          detail: { failedPair: '%Admin_Secure:USE' },
+        },
+      ],
+    });
+    (host.querySelector('.ocu-proposal-card-confirm') as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+    const word = host.querySelector('.ocu-tool-call-status-word') as HTMLElement;
+    expect(word.textContent?.trim()).toBe(
+      STRINGS.toolCallStatusFailed.split('<reason>').join('%Admin_Secure:USE')
+    );
+    // The card the refusal was about keeps its Confirm and its banner: the row is still live.
+    expect(host.querySelector('.ocu-proposal-card-confirm')).not.toBeNull();
+    expect(host.querySelector('[data-slot="refusal"]')).not.toBeNull();
   });
 
   /**
@@ -3204,6 +3274,9 @@ describe('Story 5.3: confirming, cancelling and re-proposing a card', () => {
     expect(reply).toContain(STRINGS.auditMarkerReplySentence);
     // The write happened: nothing calls it a failure (AD-15).
     expect(reply).not.toContain(STRINGS.toolCallStatusFailed.split(' <reason>')[0]);
+    // Story 5.8: and there is no audit entry to offer, because the marker was dropped. Offering
+    // one would be the panel inventing a row the user could go and fail to find.
+    expect(reply).not.toContain(STRINGS.agentAuditFollowUpQuestion);
   });
 
   it('AC: a confirmed write that was marked reads done \u00b7 audit marked, and the reply gains no sentence', async () => {
@@ -3232,6 +3305,38 @@ describe('Story 5.3: confirming, cancelling and re-proposing a card', () => {
     expect(word.classList.contains('ocu-tool-call-status-warning')).toBe(false);
     const reply = host.querySelector('.ocu-panel-message-agent-text')?.textContent ?? '';
     expect(reply).not.toContain(STRINGS.auditMarkerReplySentence);
+    // AC3 (Story 5.8): the reply ends with the published audit-entry offer, appended by this panel
+    // the way the confirm, change and marker sentences are -- "the agent ends with an offer" is
+    // not assertable against model-authored prose.
+    //
+    // mutation: drop the `replyWithAuditOfferSentence` call from `Panel.turns` -> this goes red.
+    expect(reply.trimEnd().endsWith(STRINGS.agentAuditFollowUpQuestion)).toBe(true);
+  });
+
+  it('AC: the audit-entry offer is appended once, however many polls land', async () => {
+    // Idempotent like the other three appenders: the reply is recomposed on every notification
+    // while a turn is live, and a sentence appended each time would grow without bound.
+    const { host, fixture } = await mountDecidable({
+      [proposalConfirmPath('p1')]: [
+        {
+          kind: 'ok',
+          status: 200,
+          body: {
+            proposalId: 'p1',
+            state: 'confirmed',
+            closedReason: '',
+            confirmedAt: '2026-09-19T10:31:04Z',
+            auditMarked: true,
+          },
+        },
+      ],
+    });
+    (host.querySelector('.ocu-proposal-card-confirm') as HTMLButtonElement).click();
+    await turnSettle();
+    fixture.detectChanges();
+    fixture.detectChanges();
+    const reply = host.querySelector('.ocu-panel-message-agent-text')?.textContent ?? '';
+    expect(reply.split(STRINGS.agentAuditFollowUpQuestion)).toHaveLength(2);
   });
 
   it('Story 5.7: a confirmed write names its change in the reply, once, so an expired toast loses nothing', async () => {

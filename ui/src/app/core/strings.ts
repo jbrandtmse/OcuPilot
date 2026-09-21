@@ -1154,6 +1154,13 @@ export const STRINGS = {
   /** EXPERIENCE.md:386 */
   tableChangeAnnouncement: 'Updated: <entity> <action>',
 
+  // Story 5.8's one. The direction word completes the pair "was"/"now" carries on a changed row:
+  // an unchanged row has one value and no arrow, so the word is what says the payload sends the
+  // field as the instance holds it. The audit-entry offer the panel appends needs no new key --
+  // `agentAuditFollowUpQuestion` above is that published sentence already.
+  /** EXPERIENCE.md:387 */
+  proposalDiffUnchanged: 'unchanged',
+
 } as const;
 
 /**

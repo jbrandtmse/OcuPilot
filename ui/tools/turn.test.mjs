@@ -954,7 +954,49 @@ test('navigation() is null with no announce step to pair it with, and exposed on
 
   scheduled.shift().run();
   await settle();
-  assert.deepEqual(turn.navigation(), { seq: 2, route: 'permissions/users', entityId: '' });
+  assert.deepEqual(turn.navigation(), { seq: 2, route: 'permissions/users', entityId: '', criterion: '' });
+
+  scheduled.shift().run();
+  await settle();
+});
+
+test("navigation() carries the directive's declared criterion, and none where the wire sends none (Story 5.8)", async () => {
+  // AD-21: the criterion is a NAME the target screen declares, applied on arrival through that
+  // screen's own store. It travels on the directive rather than as a query parameter, which is
+  // why it is read here and not by `withQuery`.
+  //
+  // Mutation (Rule 19): drop the `criterion` line from `parseNavigation` -> this goes red, and an
+  // arriving audit screen would render an unsearched criteria form.
+  const { schedule, scheduled } = fakeSchedule();
+  const body = () =>
+    ok({
+      turnId: 'turn-1',
+      state: 'running',
+      steps: [step({ seq: 2, kind: 'announce', name: 'shell.screen.open', status: 'running', target: 'logs/audit' })],
+      stepsDropped: 0,
+      reply: null,
+      error: null,
+      navigation: { seq: 2, route: 'logs/audit', entityId: null, criterion: 'marker' },
+    });
+  const api = fakeApi({
+    [CONVERSATION_PATH]: [ok({ conversationId: 'convo-1' }, 201)],
+    [TURN_PATH]: [ok({ turnId: 'turn-1' }, 202)],
+    [turnProgressPath('turn-1')]: [body(), ok({ turnId: 'turn-1', state: 'completed', steps: [], stepsDropped: 0, reply: 'done', error: null })],
+  });
+  const turn = new TurnStore({ api, storage: memoryStorage(), navigationType: freshTab(), schedule });
+  void turn.send('show the audit entry');
+  await settle();
+  await settle();
+  await settle();
+
+  scheduled.shift().run();
+  await settle();
+  assert.deepEqual(turn.navigation(), {
+    seq: 2,
+    route: 'logs/audit',
+    entityId: '',
+    criterion: 'marker',
+  });
 
   scheduled.shift().run();
   await settle();
@@ -988,7 +1030,7 @@ test('settleNavigation posts opened with no code key, and the directive is acted
 
   scheduled.shift().run();
   await settle();
-  assert.deepEqual(turn.navigation(), { seq: 2, route: 'permissions/users', entityId: '_SYSTEM' });
+  assert.deepEqual(turn.navigation(), { seq: 2, route: 'permissions/users', entityId: '_SYSTEM', criterion: '' });
 
   const settled = await turn.settleNavigation('opened');
   assert.equal(settled, true);
@@ -1101,7 +1143,7 @@ test('a fresh send() drops the previous turn\'s acted-on guard, so the next turn
   await settle();
   // Mutation (Rule 19): stop resetting `actedNavigationSeq` in `send()` -> this reads `null`,
   // since seq 1 from the first turn is still recorded as acted on.
-  assert.deepEqual(turn.navigation(), { seq: 1, route: 'permissions/users', entityId: '' });
+  assert.deepEqual(turn.navigation(), { seq: 1, route: 'permissions/users', entityId: '', criterion: '' });
   scheduled.shift().run();
   await settle();
 });
