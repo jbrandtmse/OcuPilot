@@ -734,6 +734,8 @@ Every UX Design Requirement is owned by at least one story. Where a UX-DR is a *
 
 **Owner amendment, 2026-09-20 (contest field).** Story 11.8 adds the privilege line to the proposal card from the endpoint's `ResourcesOR()` list and the shell's privilege map; Story 17.6 also ships the walkthrough as a static no-credentials page; Story 7.6 records the 2026.2 task-list `Suspended` quirk. No dependency changes.
 
+**Owner re-sequence, 2026-09-21.** Epic 12 is ranked ahead of Epic 11 in the polish week. At the pace measured through Story 5.8, two of Epics 9, 11 and 12 finish before the submission deadline, not three, and the OAuth 2.0 editors are what the task statement names; Epic 11's refinements can land in the voting week, where improvements are allowed. Dispatch after the floor follows the dependency graph: Epic 9 when Epic 8 merges, Epic 12 once Epic 7 has merged too, and Epic 11 on the next free slot. Epic 14 stays out of the run.
+
 **Orchestrator amendment, 2026-09-19.** Two consequences of the amendment above, settled on the owner's
 instruction. Story 13.3's acceptance criteria are rewritten so none of them can be closed by publishing:
 the archive is proven by a dry-run build and a local install, and a third criterion forbids touching the
@@ -830,7 +832,7 @@ An operator runs the agent on OpenAI, Google Gemini or a local model on their ow
 
 ### Epic 11: The agent explains itself, cites its work, and streams
 
-During the voting week a user can ask what any screen or log entry means in one click, follow a citation chip straight to the row the agent used, see on every turn whether their screen data leaves the instance, and watch a reply arrive token by token. Polish week, ranked first after any step-7 leftovers, because these are what voters see. The data-egress line and the agent audit viewer moved to Epic 16 (16.15, 16.16) on 2026-09-17.
+During the voting week a user can ask what any screen or log entry means in one click, follow a citation chip straight to the row the agent used, see on every turn whether their screen data leaves the instance, and watch a reply arrive token by token. Polish week, ranked after the OAuth 2.0 editors (Epic 12) by the owner's re-sequence of 2026-09-21, because these are what voters see and improvements are allowed through the voting week. The data-egress line and the agent audit viewer moved to Epic 16 (16.15, 16.16) on 2026-09-17.
 
 **FRs covered:** FR-70, FR-71, NFR-2 (token streaming)
 
@@ -838,7 +840,7 @@ During the voting week a user can ask what any screen or log entry means in one 
 
 ### Epic 12: The OAuth 2.0 editors and the security-area tests
 
-A user completes the area the contest names most specifically: five OAuth 2.0 editors that round-trip create, edit and delete, plus the test and detail actions that make SSL/TLS, X.509 and LDAP administration self-checking. Polish week, ranked next, because the task statement names OAuth setup.
+A user completes the area the contest names most specifically: five OAuth 2.0 editors that round-trip create, edit and delete, plus the test and detail actions that make SSL/TLS, X.509 and LDAP administration self-checking. Polish week, ranked first by the owner's re-sequence of 2026-09-21, because the task statement names OAuth setup.
 
 **FRs covered:** FR-75
 
@@ -4801,7 +4803,7 @@ So that screen data and log text never leave the instance at all.
 
 ## Epic 11: The agent explains itself, cites its work, and streams
 
-During the voting week a user can ask what any screen or log entry means in one click, follow a citation chip straight to the row the agent used, see on every turn whether their screen data leaves the instance, and watch a reply arrive token by token. Polish week, ranked first after any step-7 leftovers, because these are what voters see. The data-egress line and the agent audit viewer moved to Epic 16 (16.15, 16.16) on 2026-09-17.
+During the voting week a user can ask what any screen or log entry means in one click, follow a citation chip straight to the row the agent used, see on every turn whether their screen data leaves the instance, and watch a reply arrive token by token. Polish week, ranked after the OAuth 2.0 editors (Epic 12) by the owner's re-sequence of 2026-09-21, because these are what voters see and improvements are allowed through the voting week. The data-egress line and the agent audit viewer moved to Epic 16 (16.15, 16.16) on 2026-09-17.
 
 **Applies to every story in this epic.** All of these modify the same panel transcript render path, which is why they are one epic rather than three. Nothing here may break a Release 1 screen or a Release 1 agent write; anything that risks either waits for Stage 2. Every new tool declares `read` or `write` at definition time or the build fails, and every new write key is added to the governance baseline in Epic 14 rather than left to default.
 
@@ -4958,7 +4960,7 @@ So that a refusal is predictable before Confirm rather than discovered after it.
 
 ## Epic 12: The OAuth 2.0 editors and the security-area tests
 
-A user completes the area the contest names most specifically: five OAuth 2.0 editors that round-trip create, edit and delete, plus the test and detail actions that make SSL/TLS, X.509 and LDAP administration self-checking. Polish week, ranked next, because the task statement names OAuth setup.
+A user completes the area the contest names most specifically: five OAuth 2.0 editors that round-trip create, edit and delete, plus the test and detail actions that make SSL/TLS, X.509 and LDAP administration self-checking. Polish week, ranked first by the owner's re-sequence of 2026-09-21, because the task statement names OAuth setup.
 
 **Applies to every story in this epic.** All four `Security.OAuth2.*` endpoints and `Security.X509Credential` are among the 28 that do **not** merge, so every save here reads fresh, applies the diff and sends the **complete property set**. Each editor is a full-page route on the `form-page` contract with tabs mirroring the classic editor, ships with its agent write tool over the derived field list, and publishes to the change-event bus. Every secret - a client secret, a private key, an initial access token - is write-only end to end and never returned by any read. The four OAuth 2.0 editors derive their `Metadata.*` field sets from the published spec (`mainspec_v2.json`), which enumerates 30 to 70 members each where the derived lists carry `Metadata` as one opaque object; `ClientId`, `JWTInterval` and `ServerDefinition` are in the template lists and absent from the spec's PUT, which names the last `OAuth2ServerDefinition`; verified on the instance on 2026-09-16, the endpoint reads and returns all three under the template's names and rejects an unrecognized key, so the derived list is the wire contract and the spec supplies only `Metadata.*`. Each editor declares its suggested prompts in its descriptor per Story 11.3's contract, and the tabbed `form-page` behavior is UX-DR32 and UX-DR33's, so whichever of Story 9.1 and Story 12.4 lands first sets the shared tab component and the other adopts it at its merge; this epic therefore depends on Epics 6, 7 and 8 only and runs beside Epic 9. These are not restated per story.
 
