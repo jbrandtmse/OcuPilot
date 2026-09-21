@@ -353,6 +353,13 @@ ClassMethod VerifyInstance(Output pVersion As %Integer, Output pDetail As %Strin
 /// outside <parameter>TYPESUFFIXES</parameter>, a suffix the class declares no
 /// <code>TYPE&lt;suffix&gt;</code> parameter for, or a read the class leaves to the vendor base
 /// class (<method>ImplementsRead</method>).</p>
+/// <p><b>A <parameter>MUTATINGTYPES</parameter> call must carry an object body.</b> ObjectScript
+/// does not enforce a method argument's declared type, and a non-object <var>pBody</var> becomes
+/// <code>{}</code> in <method>RunSequence</method> -- which the vendor's
+/// <code>MergeJsonAndProperties</code> reads as carrying no properties, so a <code>PUT</code> given
+/// JSON <i>text</i> answers 2xx with the target unchanged and writes nothing, and the caller cannot
+/// tell that from a write. It is refused here instead, as an internal failure with the generic
+/// reason (AD-12) and the cause in the log (DW-1427).</p>
 /// <p>Must not be called from an escalated frame (AD-9). The caller's namespace,
 /// <code>%request</code>, <code>%response</code> and <code>%session</code> are unchanged on
 /// return.</p>
@@ -384,6 +391,18 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         If tClass '= "" Set tType = ..EndpointType(pEndpoint, tClass, pType)
         If tType = "" {
             Set tSC = ..Refuse(501, ##class(OcuPilot.Api.Error).#NOTIMPLEMENTED, ##class(OcuPilot.Api.Error).#PORTNOTIMPLEMENTED, "This instance does not implement that operation", .pHttpStatus, .pFault)
+            Quit
+        }
+
+        ; DW-1427. A mutating call with a non-object body is refused rather than run: RunSequence
+        ; substitutes {} for it, the vendor reads that as no properties, and the endpoint answers
+        ; 2xx having written nothing. A write that reports success and changed nothing is the one
+        ; failure a confirmed proposal must not be able to produce, so the port refuses the call
+        ; instead of issuing it. Asked only for a mutating type, so no read's omitted body is
+        ; affected.
+        If $ListFind($ListFromString(..#MUTATINGTYPES), pType) && '$IsObject(pBody) {
+            Set tSC = ..Refuse(500, ##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#INTERNAL, ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON, .pHttpStatus, .pFault)
+            Do ..LogFault(pEndpoint _ " " _ pType _ " was given a body that is not an object, which the vendor reads as carrying no properties", $$$ERROR($$$GeneralError, "a mutating call's body must be a %DynamicAbstractObject, never its JSON text"), pFault.code)
             Quit
         }
 

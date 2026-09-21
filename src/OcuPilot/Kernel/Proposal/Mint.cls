@@ -378,9 +378,12 @@ ClassMethod FirstNamed(pArgs As %DynamicObject, pNames As %List) As %String [ Pr
 /// <p>One value as the diff shows it and as the fingerprint's own comparison reads it: a string
 /// verbatim, a boolean as <code>true</code>/<code>false</code>, a null as <code>""</code>, and an
 /// object or an array as its compact JSON.</p>
-/// <p>Not <code>Private</code>, because <class>OcuPilot.Kernel.Proposal.Prohibited</class>'s
-/// predicates compare a payload against a live read and must read "changed" exactly as the diff
-/// the user reviewed does. One rendering, not two.</p>
+/// <p>Not <code>Private</code>, because two other callers must read a value exactly as the diff
+/// the user reviewed does. One rendering, not three:
+/// <class>OcuPilot.Kernel.Proposal.Prohibited</class>'s predicates compare a payload against a
+/// live read and must agree with the diff about what "changed" means, and
+/// <class>OcuPilot.Kernel.Proposal.Disclosure</class> renders the unchanged rows beside it on the
+/// same card.</p>
 ClassMethod Display(pValue As %RawString, pType As %String) As %String
 {
     If (pType = "null") || (pType = "unassigned") Quit ""

@@ -395,14 +395,20 @@ Method TestNoDeleteVerbIsAdvertisedForAWebApplication()
     Set tIdentifier = $ClassMethod("OcuPilot.Screen.Descriptor.WebAppList", "ToolIdentifier")
     Do $$$AssertNotEquals(tIdentifier, "", "the web applications screen declares a tool identifier")
     Set tSeen = 0
+    Set tWrites = 0
     Set tIterator = tTools.%GetIterator()
     While tIterator.%GetNext(.tIndex, .tTool) {
         If $Piece(tTool.%Get("name"), ".", 1, 2) '= tIdentifier Continue
         Set tSeen = tSeen + 1
         If tTool.%Get("kind") '= "write" Continue
+        Set tWrites = tWrites + 1
         Do $$$AssertEquals(tTool.%Get("name"), ..#TOOL, "the only write verb on " _ tIdentifier _ " is the reviewed update, not '" _ tTool.%Get("name") _ "'")
     }
     Do $$$AssertTrue(tSeen > 0, "the registry carries tools on " _ tIdentifier _ " at all, so this assertion ran over something")
+    ; The write-kind count, not only the tool count: the read tool alone satisfies tSeen, so a
+    ; registry that advertised no write verb at all would pass the loop above having never entered
+    ; the branch that carries the claim.
+    Do $$$AssertEquals(tWrites, 1, "and exactly one of them is write-kind, so the assertion inside that branch ran")
 }
 
 /// <p>Story 5.8's residual: the pairs-before-prohibited reorder that fixed DW-1208 (a caller short

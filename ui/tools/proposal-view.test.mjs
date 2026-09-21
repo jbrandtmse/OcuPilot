@@ -50,6 +50,21 @@ const { STRINGS } = await import(corePath('strings.ts'));
 
 const PROPOSE_CLS = join(uiRoot, '..', 'src', 'OcuPilot', 'Kernel', 'State', 'Propose.cls');
 const DISCLOSURE_CLS = join(uiRoot, '..', 'src', 'OcuPilot', 'Kernel', 'Proposal', 'Disclosure.cls');
+const TOOLFIELDS_CLS = join(uiRoot, '..', 'src', 'OcuPilot', 'Screen', 'Tool', 'ToolFields.cls');
+
+/** `ToolFields.cls`'s generated `Tools` block, parsed. */
+function toolFields() {
+  const lines = readFileSync(TOOLFIELDS_CLS, 'utf8').split('\n');
+  const start = lines.indexOf('XData Tools') + 2;
+  let depth = 0;
+  const body = [];
+  for (const line of lines.slice(start)) {
+    body.push(line);
+    depth += (line.match(/\{/g) ?? []).length - (line.match(/\}/g) ?? []).length;
+    if (depth === 0) break;
+  }
+  return JSON.parse(body.join('\n'));
+}
 
 /** One wire proposal, in the shape `OcuPilot.Kernel.State.Propose.WireRow` writes. */
 function wireProposal(overrides = {}) {
@@ -271,6 +286,43 @@ test('a wire row with no unchanged array parses to no rows rather than to undefi
     { field: 'Timeout', value: '900' },
     { field: 'Path', value: '' },
   ]);
+});
+
+test('no generated field list makes a container disclosable while classifying a member secret', () => {
+  // The one fail-OPEN shape `Kernel/Proposal/Disclosure.OrdinaryPaths` has. It admits a top-level
+  // property by a row whose path is the name itself or the name with `[]`, and skips every dotted
+  // path -- so a row for `MatchRoles[]` classified `ordinary`+`literal` would put the whole
+  // subtree through `Mint.Display`, which `%ToJSON()`s it, while the rows that classify
+  // `MatchRoles[].MatchRole` as `secret` would have no say. Nothing would be red: `MatchRoles` is
+  // the only such subtree `webapp.list.update` has, and the disclosure test asserts it masked
+  // because today no container row exists at all.
+  //
+  // Asserted rather than assumed, because the block is GENERATED (AD-3) and the generator's leaf
+  // shape is what makes this unreachable -- a property of Story 2.2's derivation, which this file
+  // does not own. A generator that started emitting container rows would land the leak here
+  // instead of on a card.
+  //
+  // Mutation (Rule 19): add {"path":"MatchRoles[]","shape":"literal","class":"ordinary"} to
+  // `webapp.list.update` -> this goes red naming it.
+  const tools = toolFields();
+  const names = Object.keys(tools);
+  assert.ok(names.length > 0, 'the generated block declares at least one tool, so this sweep reads something');
+  const offenders = [];
+  for (const [tool, entry] of Object.entries(tools)) {
+    const fields = entry.fields ?? [];
+    assert.ok(fields.length > 0, `${tool} declares fields`);
+    const paths = new Set(fields.map((field) => field.path));
+    for (const field of fields) {
+      const base = field.path.endsWith('[]') ? field.path.slice(0, -2) : field.path;
+      if (base.includes('.') || base.includes('[')) continue;
+      if (field.class !== 'ordinary' || field.shape !== 'literal') continue;
+      const deeper = [...paths].filter(
+        (path) => path !== field.path && (path.startsWith(`${base}.`) || path.startsWith(`${base}[].`))
+      );
+      if (deeper.length > 0) offenders.push(`${tool}: ${field.path} is disclosable and also carries ${deeper.join(', ')}`);
+    }
+  }
+  assert.deepEqual(offenders, [], 'no disclosable top-level row has member rows under it');
 });
 
 // --- The restore path (DW-1213) -----------------------------------------------------------------

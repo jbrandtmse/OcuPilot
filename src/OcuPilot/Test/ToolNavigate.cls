@@ -331,4 +331,36 @@ Method TestSettledResultEmitsOnlyDeclaredKeysWithDeclaredTypes()
     }
 }
 
+/// <p>Story 5.8, AD-21: <b>exactly one built descriptor declares a flag criterion, and it is the
+/// audit database viewer's <code>marker</code></b>. A roster equality, in this project's own
+/// idiom, because the two halves of the criterion channel are not symmetric:
+/// <method>OcuPilot.Screen.Descriptor.Base.FlagCriteria</method> <i>derives</i> a flag from any
+/// well-formed <code>{param, value}</code> criteria entry on <i>any</i> descriptor, so
+/// <method>OcuPilot.Screen.Tool.Navigate.Directive</method> would accept a second one and
+/// <class>OcuPilot.Kernel.State.Nav</class> would carry it -- while the client's
+/// <file>ui/src/app/shell/agent-navigator.ts</file> hands every arrival to one screen's store,
+/// which declines anything else. A flag declared on a second screen would therefore be advertised
+/// to the model, accepted, announced, and then silently applied to nothing.</p>
+/// <p><b>Read this before deleting it.</b> It is not a claim that one flag is the right number: it
+/// is a tripwire aimed at whichever story declares the second. The fix is to give the client a way
+/// to reach that screen's store -- not to widen this assertion -- and until that exists the
+/// refusal this pins is the honest answer.</p>
+/// <p>Mutation (Rule 19): declare a second <code>{param, value}</code> criterion on any other
+/// built descriptor's read -&gt; this goes red naming that descriptor.</p>
+Method TestTheAuditScreenIsTheOnlyDeclarerOfAFlagCriterion()
+{
+    Set tSC = ##class(OcuPilot.Screen.Registry).Descriptors(.tDescriptors)
+    Do $$$AssertStatusOK(tSC, "the descriptor roster reads")
+    Do $$$AssertTrue($ListLength(tDescriptors) > 0, "and is not empty, so this sweep asserts something")
+    Set tDeclarers = ""
+    For tI = 1:1:$ListLength(tDescriptors) {
+        Set tDescriptor = $List(tDescriptors, tI)
+        If '$ClassMethod(tDescriptor, "IsBuilt") Continue
+        Set tFlags = $ClassMethod(tDescriptor, "FlagCriteria")
+        If tFlags = "" Continue
+        Set tDeclarers = tDeclarers _ $ListBuild(tDescriptor _ " -> " _ $ListToString(tFlags, ","))
+    }
+    Do $$$AssertEquals($ListToString(tDeclarers, " | "), "OcuPilot.Screen.Descriptor.AuditList -> marker", "exactly one built descriptor declares a flag criterion, and the client can reach its store")
+}
+
 }

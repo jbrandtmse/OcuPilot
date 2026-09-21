@@ -399,6 +399,28 @@ test("AC1: UJ-3's own journey, as a non-%All holder of the screen's two pairs, i
     const roles = unchanged.find((row) => row.field === 'MatchRoles');
     assert.ok(roles, `MatchRoles is disclosed rather than dropped: ${JSON.stringify(unchanged.map((r) => r.field))}`);
     assert.equal(roles.value, '\u2022'.repeat(8), `and carries the published mask: ${roles.value}`);
+    // And a field the tool's own list DOES classify `ordinary` carries its value, which is the
+    // half every other assertion here holds of a card that masked everything. `OrdinaryPaths`
+    // reads `ToolFields`' generated block out of the class dictionary -- a code-database read --
+    // and answers "nothing is ordinary" on any failure, deliberately, so a reader who cannot make
+    // that read sees 44 rows of bullets under a caption that still says 44. The count, the field
+    // names, the direction word and the masked subtree are all identical in that state, so
+    // without this the leg cannot tell a read classification from a fail-closed one. This is the
+    // one non-`%All` rendering of a real disclosure anywhere in the suite.
+    const described = unchanged.find((row) => row.field === 'Description');
+    assert.ok(
+      described,
+      `Description is disclosed: ${JSON.stringify(unchanged.map((r) => r.field))}`
+    );
+    assert.notEqual(
+      described.value,
+      '\u2022'.repeat(8),
+      'an ordinary literal carries its value rather than the mask, so the classification was read'
+    );
+    assert.ok(
+      described.value.startsWith('OcuPilot demo fixture'),
+      `and the value is the fixture's own, off the payload the mint stored: ${described.value}`
+    );
     // Neither of the two the card changed is under the disclosure as well.
     assert.equal(unchanged.filter((row) => row.field === 'Enabled' || row.field === 'Resource').length, 0);
 
@@ -611,6 +633,11 @@ test('AC3: the audit hand-off -- shell.screen.open with the declared marker crit
     }
   } finally {
     await context.close();
+    // `tag` is forgotten above, as soon as the confirm has landed, so the second turn arms a clean
+    // slot -- and again here, because that call sits after an assertion: a failure there would
+    // otherwise leave this leg's scripted reply armed for whichever spec runs next. Forgetting a
+    // tag twice is a no-op; not forgetting it once is not.
+    forgetTag(tag);
     dropProposals();
     restoreTarget();
   }

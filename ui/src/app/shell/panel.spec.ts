@@ -2647,7 +2647,7 @@ function wireProposal(overrides: Record<string, unknown> = {}) {
 }
 
 /** A completed progress answer carrying `proposals`, as `OcuPilot.Api.Turn.HandleProgress` writes it. */
-function progressWith(proposals: unknown[], state = 'completed') {
+function progressWith(proposals: unknown[], state = 'completed', reply = 'I have prepared the change.') {
   return {
     kind: 'ok',
     status: 200,
@@ -2661,7 +2661,7 @@ function progressWith(proposals: unknown[], state = 'completed') {
       limit: null,
       steps: [],
       stepsDropped: 0,
-      reply: state === 'completed' ? 'I have prepared the change.' : null,
+      reply: state === 'completed' ? reply : null,
       error: null,
       proposals,
     },
@@ -3012,13 +3012,14 @@ describe('Story 5.3: confirming, cancelling and re-proposing a card', () => {
   /** A panel with one live card, and the two decision routes answering `answers`. */
   async function mountDecidable(
     answers: Record<string, unknown[]>,
-    proposals: unknown[] = [wireProposal()]
+    proposals: unknown[] = [wireProposal()],
+    reply = 'I have prepared the change.'
   ) {
     const { schedule, scheduled } = fakeTurnSchedule();
     const api = fakeTurnApi({
       [CONVERSATION_PATH]: [{ kind: 'ok', status: 201, body: { conversationId: 'convo-1' } }],
       [TURN_PATH]: [{ kind: 'ok', status: 202, body: { turnId: 'turn-1' } }],
-      [turnProgressPath('turn-1')]: [progressWith(proposals)],
+      [turnProgressPath('turn-1')]: [progressWith(proposals, 'completed', reply)],
       ...answers,
     });
     const turn = stubTurnStore({ api: api as never, schedule });
@@ -3313,24 +3314,35 @@ describe('Story 5.3: confirming, cancelling and re-proposing a card', () => {
     expect(reply.trimEnd().endsWith(STRINGS.agentAuditFollowUpQuestion)).toBe(true);
   });
 
-  it('AC: the audit-entry offer is appended once, however many polls land', async () => {
-    // Idempotent like the other three appenders: the reply is recomposed on every notification
-    // while a turn is live, and a sentence appended each time would grow without bound.
-    const { host, fixture } = await mountDecidable({
-      [proposalConfirmPath('p1')]: [
-        {
-          kind: 'ok',
-          status: 200,
-          body: {
-            proposalId: 'p1',
-            state: 'confirmed',
-            closedReason: '',
-            confirmedAt: '2026-09-19T10:31:04Z',
-            auditMarked: true,
+  it('AC: the audit-entry offer is appended once, even to a reply that already ends with it', async () => {
+    // Idempotent like the other three appenders. **Driven against a MODEL-AUTHORED reply that
+    // already carries the sentence**, which is the only shape the guard can be observed in:
+    // `Panel.turns` is a getter that recomposes from the store's pristine `entry.reply` on every
+    // read, so repeated renders each append to text that never carries the sentence yet and would
+    // read "appended once" whether the guard existed or not. A model that ends its own reply with
+    // the published question is the case the guard is for, and the one that doubles it without.
+    //
+    // mutation: drop the `endsWith(STRINGS.agentAuditFollowUpQuestion)` early return from
+    // `Panel.replyWithAuditOfferSentence` -> this goes red at length 3.
+    const { host, fixture } = await mountDecidable(
+      {
+        [proposalConfirmPath('p1')]: [
+          {
+            kind: 'ok',
+            status: 200,
+            body: {
+              proposalId: 'p1',
+              state: 'confirmed',
+              closedReason: '',
+              confirmedAt: '2026-09-19T10:31:04Z',
+              auditMarked: true,
+            },
           },
-        },
-      ],
-    });
+        ],
+      },
+      [wireProposal()],
+      'I enabled it and granted the resource. ' + STRINGS.agentAuditFollowUpQuestion
+    );
     (host.querySelector('.ocu-proposal-card-confirm') as HTMLButtonElement).click();
     await turnSettle();
     fixture.detectChanges();

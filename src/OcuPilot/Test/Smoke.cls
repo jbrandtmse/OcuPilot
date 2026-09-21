@@ -113,8 +113,8 @@ Method TestTheCountsArePrintedOnEveryRun()
 }
 
 /// <p>The real check list, against the instance this suite is executing inside: it executes
-/// more than zero checks, it names the endpoint it addressed, and it carries the three pending
-/// items with the epics that make them real.</p>
+/// more than zero checks, it names the endpoint it addressed, and nothing in it is
+/// <code>pending</code> -- Story 5.8 landed the last two, so the outcome has no producer left.</p>
 /// <p><b>The verdict is deliberately not asserted here.</b> Whether this instance passes is a
 /// property of the instance -- this repository's own long-lived container was created before
 /// the start hook existed and carries no demo fixtures -- and asserting it would make this
@@ -137,7 +137,11 @@ Method TestTheRealListExecutesSomething()
     ; container carrying the demo fixture and skipped where it is absent, so nothing in the real
     ; list is `pending` any more.
     Do $$$AssertTrue(tCounts [ "pending=0", "no check in the real list is pending: " _ tCounts)
-    Do $$$AssertTrue(tReport '[ "  pending  ", "and no line reports one")
+    ; Asked per line rather than as a substring of the whole report: the outcome column is
+    ; right-padded to a fixed width by Render, so a scan for the padded word would go vacuously
+    ; true the moment that width changed rather than red.
+    Do $$$AssertTrue(..Line(tReport, "agentwrite") '[ "pending", "and the agentwrite line reports no pending outcome: " _ ..Line(tReport, "agentwrite"))
+    Do $$$AssertTrue(..Line(tReport, "auditmarker") '[ "pending", "nor the auditmarker line: " _ ..Line(tReport, "auditmarker"))
 }
 
 /// <p>Story 5.8, DW-1382, and the fifth AC: the whole <code>agentwrite</code> and
@@ -201,6 +205,9 @@ Method TestARepeatRunExecutesAgainAndLeavesTheFixtureDisabled()
 /// <p>Story 5.8, the fourth AC: no demo opt-in and an unowned fixture are each <code>skipped</code>
 /// with the reason naming the cause -- never <code>pending</code>, never <code>fail</code>, and
 /// never a write. DW-1402's rule: the reason travels even where the count cannot.</p>
+/// <p>Both arms here return before the target is resolved, so "never a write" is free of them.
+/// The arm where it is not is the turn slot's, pinned by
+/// <method>TestASkippedWriteCheckLeavesTheInstanceAlone</method>.</p>
 /// <p>Mutation (Rule 19): note <code>fail</code> instead of <code>skipped</code> on either arm of
 /// <method>OcuPilot.Install.Smoke.CheckAgentWrite</method>'s skip -- this goes red and the
 /// verdict of every container without the fixture flips.</p>
@@ -888,6 +895,46 @@ Method TestNoCredentialsSkipsRatherThanPasses()
         Do $$$AssertTrue(tReport [ ("  skipped  " _ tName _ " -- "), tName _ " is skipped: " _ ..Line(tReport, tName))
     }
     Do $$$AssertTrue(tReport [ "no credentials were supplied", "and the report says why")
+}
+
+/// <p>Story 5.8: <b>a skipped check does not touch the instance.</b> The sibling method's doc
+/// promises "never a write" of every skip arm; this is the arm where that is not free. The demo
+/// and ownership arms return before the target has even been resolved, but the turn-slot arm is
+/// reached after the fresh read and after the restore body has been built, so the check has an
+/// object in hand that would put the fixture back -- and putting it back would be normalising a
+/// state this run did not cause, on a run that reports it did nothing.</p>
+/// <p>Driven with the probe armed <b>enabled</b>, because that is the only state in which a
+/// restore is observable at all: against an application already disabled with no resource, the
+/// restore's own PUT and no PUT leave exactly the same row.</p>
+/// <p>Mutation (Rule 19): drop the <code>Set tRestoreBody = ""</code> line from
+/// <method>OcuPilot.Install.Smoke.CheckAgentWrite</method>'s turn-slot arm -- the still-enabled
+/// assertion goes red, and the two outcome assertions stay green, which is the point: the outcome
+/// was always right and the side effect was not.</p>
+Method TestASkippedWriteCheckLeavesTheInstanceAlone()
+{
+    If '..ArmMixedCase(1) Quit
+    Set tTurnKey = ""
+    Try {
+        Set tReserveSC = ##class(OcuPilot.Kernel.State.Turn).GuardedReserve($Username, "", ##class(OcuPilot.Api.Error).#TURNABANDONEDJOBLOST, ##class(OcuPilot.Install.Smoke).#LIMITS, .tTurnKey, .tBusy, .tSweepSC)
+        If $$$ISERR(tReserveSC) || tBusy || (tTurnKey = "") {
+            ; Said out loud rather than returned silently, as ArmMixedCase does: the one turn slot
+            ; is instance-wide, so a run beside a live turn cannot take it and this method would
+            ; otherwise read as a pass having asserted nothing.
+            Do ..LogMessage("the one turn slot of " _ $Username _ " was already taken, so this test asserted nothing")
+            Quit
+        }
+        Kill tChecks
+        Do ##class(OcuPilot.Test.SmokeWriteProbe).RunWriteChecks(.tChecks, "1")
+        For tName = "agentwrite", "auditmarker" {
+            Do $$$AssertEquals(..Outcome(.tChecks, tName), "skipped", tName _ " is skipped when the one turn slot is already taken")
+            Do $$$AssertTrue(..Reason(.tChecks, tName) [ "turn", tName _ "'s reason names the cause: " _ ..Reason(.tChecks, tName))
+        }
+        Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).MixedCaseWriteTargetField("Enabled"), 1, "and the fixture is left exactly as the skip found it, because a check that did not run wrote nothing")
+    } Catch ex {
+        Do $$$AssertEquals(ex.DisplayString(), "", "the probe run raised")
+    }
+    If tTurnKey '= "" Do ##class(OcuPilot.Kernel.State.Turn).GuardedDelete(tTurnKey)
+    Do ##class(OcuPilot.Test.ProposalFixture).RemoveMixedCaseWriteTarget()
 }
 
 }

@@ -204,6 +204,13 @@ export class AuditSearch {
    * the declaration. A name the declaration does not carry applies nothing and searches nothing,
    * because there is no filter to arrive with.
    *
+   * **The form is cleared, so the arrival runs the screen's declared read and not the user's last
+   * one.** This store is root-provided and outlives every visit to the screen, so whatever the
+   * user last typed into the criteria form is still held here -- and `criteria()` sends every
+   * declared criterion the form holds a value for. An arrival that kept them would run the
+   * marker filter narrowed by a username or a pid the user typed some visits ago, which is how a
+   * hand-off that found the right row for the agent finds none for the user.
+   *
    * **It binds and reads rather than leaving that to the page.** The archetype renders nothing
    * until Search has run, and the page instance the router is about to create binds only when
    * Search is pressed -- so a navigation that set the flag and stopped there would land on an
@@ -219,6 +226,7 @@ export class AuditSearch {
     if (declaration.descriptor !== AUDIT_DESCRIPTOR) return;
     const marker = declaration.read?.criteria?.marker ?? null;
     if (marker === null || criterion !== MARKER_CRITERION) return;
+    this.values = {};
     this.markerOn = true;
     this.searchedOnce = true;
     this.notify();

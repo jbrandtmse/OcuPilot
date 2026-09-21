@@ -801,6 +801,13 @@ export class Panel {
         // emits whatever the row stored, and the job records the loop's reply alongside a `failed`
         // state -- so the pair does reach the client on a reload. The two template blocks are
         // independent, so the exclusion is decided here rather than in a template condition.
+        //
+        // Each appender asks whether its own sentence is ALREADY PRESENT, not whether the reply
+        // ends with it: an appender nested outside another receives text that inner one has
+        // already extended, so an `endsWith` test there is false for a model reply that carried
+        // the sentence itself and the sentence is published twice. Containment makes the four
+        // idempotent whatever order they compose in, which is the property the nesting below
+        // otherwise has to be read to establish.
         reply:
           errorBanner === null
             ? this.replyWithAuditOfferSentence(
@@ -879,7 +886,7 @@ export class Panel {
   ): string | null {
     if (reply === null) return null;
     if (!proposals.some((proposal) => !isTerminalPhase(proposal.phase))) return reply;
-    if (reply.trimEnd().endsWith(STRINGS.proposalConfirmSentence)) return reply;
+    if (reply.includes(STRINGS.proposalConfirmSentence)) return reply;
     return reply + '\n\n' + STRINGS.proposalConfirmSentence;
   }
 
@@ -956,7 +963,7 @@ export class Panel {
       return card !== undefined && card.ok && !card.auditMarked;
     };
     if (!proposals.some(dropped)) return reply;
-    if (reply.trimEnd().endsWith(STRINGS.auditMarkerReplySentence)) return reply;
+    if (reply.includes(STRINGS.auditMarkerReplySentence)) return reply;
     return reply + '\n\n' + STRINGS.auditMarkerReplySentence;
   }
 
@@ -985,7 +992,7 @@ export class Panel {
       return card !== undefined && card.ok && card.auditMarked;
     };
     if (!proposals.some(applied)) return reply;
-    if (reply.trimEnd().endsWith(STRINGS.agentAuditFollowUpQuestion)) return reply;
+    if (reply.includes(STRINGS.agentAuditFollowUpQuestion)) return reply;
     return reply + '\n\n' + STRINGS.agentAuditFollowUpQuestion;
   }
 

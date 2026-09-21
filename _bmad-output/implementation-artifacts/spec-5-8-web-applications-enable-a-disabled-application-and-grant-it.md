@@ -240,6 +240,127 @@ Do not write `deferred-work.md`.
 - Given the audit screen reached by an agent navigation carrying the marker criterion, when it arrives, then the marker filter is on, the screen has run its declared read, and the `AgentWrite` row for that proposal is rendered under the confirming user's own name.
 - Given an agent navigation naming a criterion the target descriptor does not declare, or supplying a value for one it does, when the directive is resolved, then it is refused with `NAV.CRITERIONUNKNOWN` and no arrival is announced.
 
+### Review Findings
+
+Code review 2026-09-21, `full-opus` tier, four layers (`blind-hunter`, `edge-case-hunter`,
+`verification-gap`, `acceptance-auditor`). 67 raw rows grouped to 29 entries: high 0, med 8, low 21,
+plus 9 refuted. 27 patched or closed in-pass; 2 left with an owner.
+
+#### Medium
+
+- `[patch]` **`DW-1427`.** `AdminPort.Invoke` now refuses a `MUTATINGTYPES` call whose `pBody` is not
+  an object, as an internal failure with the generic reason and the cause in the log. `RunSequence`
+  substituted `{}` for it and the vendor answered 2xx having written nothing. Pinned by
+  `OcuPilot.Test.AdminPortSync.TestAMutatingCallWithANonObjectBodyIsRefused`.
+- `[patch]` **A `skipped` write check wrote to the instance.** `CheckAgentWrite`'s turn-slot arm is
+  reached after the restore body has been built, so a run that reported doing nothing issued a PUT
+  putting `/csp/myapp` back -- normalising a drift it did not cause. The body is dropped on that arm,
+  and the skip's reason now names a reserve error instead of reporting one as a busy slot (DW-1402).
+  Pinned by `Test.Smoke.TestASkippedWriteCheckLeavesTheInstanceAlone`.
+- `[patch]` **The reply appenders' idempotency guards did not hold.** `replyWithMarkerSentence` and
+  `replyWithAuditOfferSentence` tested `endsWith` against text an appender nested inside them had
+  already extended, so a model reply that itself ended with the published question was given it
+  twice. All four now test containment, which is `replyWithChangeSentence`'s own idiom and is
+  order-independent. The new `panel.spec.ts` leg was red before the fix and is the pin.
+- `[patch]` **An agent arrival ran the user's last search, not the screen's declared read.**
+  `AuditSearch` is root-provided and keeps the criteria form across visits, and `criteria()` sends
+  every declared criterion the form holds, so an arrival inherited a `usernames` value typed visits
+  earlier and rendered no row for the write just made -- against AC3's and AC6's own matrix rows.
+  `openWith` clears the form. Pinned in `audit.page.spec.ts`; mutation red.
+- `[patch]` **The disclosure's "an ordinary value travels in clear" half was only ever asserted as
+  `%All`.** `Disclosure.OrdinaryPaths` reads `ToolFields` out of the class dictionary -- a
+  code-database read -- and answers fail-closed on any failure, so a real non-`%All` operator could
+  see all 44 rows as bullets with the caption still correct: `unchanged.length === count`, the field
+  names, the direction word and the masked `MatchRoles` all hold in that state. The AC1 browser leg
+  now asserts an `ordinary` literal carries its value. Measured: mutating `OrdinaryPaths` to answer 0
+  reddens that assertion and nothing else in the file.
+- `[patch]` **The criterion channel is descriptor-generic on the instance and one screen wide in the
+  client.** `Base.FlagCriteria` derives a flag from any well-formed entry on any descriptor, so a
+  second declarer would be advertised, accepted, announced and then applied to nothing.
+  `Test.ToolNavigate.TestTheAuditScreenIsTheOnlyDeclarerOfAFlagCriterion` is the roster tripwire; the
+  fix when it trips is a client seam for that screen's store, not a wider assertion.
+- `[defer]` **`DW-1428`** is `decision-pending owner=burndown`: whether a disclosed value may be
+  truncated is the product question `EXPERIENCE.md`'s "every field stays available" bears on. The
+  cost half is **declined at review with evidence**, not carried: a cross-request cache of the
+  classification is fail-**open** on a security decision (a worker recompiled under load would
+  disclose a value newly classified secret), and an in-call cache saves nothing while a turn mints
+  one proposal. The per-poll projection is inherent to the wire shape.
+- `[route]` **`DW-1432`** (new, `routed owner=burndown`): DW-1208's standing rule -- an `%Admin_*`
+  write tool gates on `USE` -- is recorded in a tool parameter's doc comment and a ledger trailer
+  only. This spec's own `Consumed-by` says every later `%Admin_*` write tool takes it as standing,
+  which is Rule 20's threshold. The lead's write: one AD-8 amendment or one Conventions row.
+
+#### Low, patched
+
+- `AuditNow` truncated to whole seconds, matching `Test/UninstallSurvival.Now()`'s documented
+  rationale: `%SYS.Audit.UTCTimeStamp` is a `%String`, so `>=` is lexicographic. **Measured on the
+  build: it stores three fractional digits, so the widths agree today** -- a measurement, not a
+  contract, and the proposal id is what identifies the row.
+- `Test.Smoke`'s stale "carries the three pending items" doc corrected at its origin, and its
+  `pending` scan moved off `Render`'s pad width onto the two named lines, so widening that width
+  cannot make it vacuous.
+- `Mint.Display`'s "not `Private` because" comment names its second caller.
+- `Install/Smoke` resolves the descriptor class by `##class(...).#DESCRIPTORCLASS`, not a late-bound
+  `$Parameter` string.
+- `ProhibitedRoute` counts write-kind tools, so the assertion inside that branch is known to have run.
+- `proposal-demo.browser-spec.mjs`'s AC3 leg forgets its tag in the outer `finally` as well.
+- `proposal-view.test.mjs` gains the one fail-**open** tripwire `Disclosure.OrdinaryPaths` has: a
+  generated container row classified `ordinary`+`literal` with member rows under it would put a
+  secret subtree through `Mint.Display`. Zero such rows today; asserted rather than assumed, because
+  the block is generated by Story 2.2's derivation and the leaf shape is what makes it unreachable.
+- `### Integration ACs` names the module the implement stage created after that section was written
+  (Rule 1).
+
+#### Low, closed at emission
+
+`wontfix-accepted`, each with its probe: `smoke.sh`'s header and `CLAUDE.md`'s run line do not say
+the smoke now writes on a demo-armed container (`reopen_if` an operator reports `/csp/myapp` changing
+unexpectedly); `ToolEmit`'s pair sweep mirrors `PrivilegePairs` line for line and is tautological --
+`ToolWrite:233`'s list equality is the pin (`reopen_if` a write tool ships whose pair set `ToolWrite`
+does not cover); `Test.Smoke`'s four probe methods assert nothing on a container without
+`OCUPILOT_ALLOW_PRINCIPALS` (`reopen_if` a green run reports zero assertions for them); AC6's browser
+leg asserts "an `AgentWrite` row under this user" rather than "for this proposal", which
+`Install/Smoke.MarkerRows` correlates by id at the other tier (`reopen_if` a second proposal's row
+can reach that screen in one run); AC1's "the ledger records the pairs exercised" holds by
+construction through one call site and is unread by any test (`reopen_if` a ledger row's pair column
+differs from `Registry.RequiredPairs`); the discarded statuses and the after-`Catch` namespace
+restores in the new test helpers; the browser spec's third copy of the mask literal.
+
+`wontfix-theoretical`: `Disclosure.Rows` answering `[]` on an unparseable payload would leave the
+caption with nothing behind it -- reachable only from a stored payload `Mint` did not write; the
+`Catch` arm's second `Note` for a check already noted; a bare `failed - ` from an answer carrying
+neither reason nor code, which no OcuPilot envelope produces (AD-12); `Nav.Criterion`'s `MAXLEN 64`
+against a longer declared flag name, which `InputSchema`'s own `maxLength` makes unnameable.
+
+`by-design`: a successful re-press replaces the refused card in `writeCards`; the transcript is a
+live view and the ledger is the record (AD-41). `failedPair` as the `failed - <reason>` detail is
+what AC4's matrix row names.
+
+#### Refuted by measurement
+
+Nine, the load-bearing ones: `AuditNow`'s bound is **not** systematically wider than the stored value
+(the build stores three fractional digits, probed); no `ToolFields` row is a disclosable container
+with member rows (zero, swept); `MarkerRows` cannot over-count on a substring (ids are fixed-length
+32-hex from `GenCryptRand`); `ProhibitedRoute` leaving its role is what its own doc says it does,
+deliberately, and its guarded early returns are each preceded by a failing assertion; the unchanged
+row's direction word is after the value because `EXPERIENCE.md:415` publishes it there; `shell`
+importing an area store has precedent in `shell/screen-outlet.ts` and AD-19's target is state in a
+component field; `executed=44` reconciles once the third skip (`demofixture`) is counted.
+
+#### Adjudicated, as the spawn prompt asked
+
+The identity of the write's pair set and the screen's declared read set is a **structural
+guarantee**, not a present-tense coincidence: `ToolWrite.cls:233` asserts `PrivilegePairs()` equals
+`Gate.RequiredPairs(DESCRIPTORCLASS)` as lists, and since `PrivilegePairs()` appends its own pair
+only when absent, that equality holds exactly when the write's pair is already declared. Both sides
+read the same `Gate.RequiredPairs`, so the classic-page union moves both and cannot fake agreement.
+QA's "no new test needed" therefore holds. Two corrections to the record: the permission is
+discriminated at **two** tiers, not one -- the AC1 browser leg's principal holds
+`Resources(1)` + `%Admin_Secure:U` + `%DB_IRISSYS:R` and never sees a card under `WRITEPERMISSION =
+"WRITE"` -- and the real-principal evidence for the DW-1208 defect is the AC4 browser leg plus QA's
+`ProhibitedRoute` test, not the two `ProposalConfirm` order tests, both of which drive the gates
+through fixtures and pin block order only.
+
 ## Spec Change Log
 
 - **2026-09-21, lead.** The `intent gap` this spec halted on is resolved. `epics.md:3606` is amended
@@ -370,6 +491,8 @@ The same defect was filed twice - from spec 5.5 as DW-1348 and from spec 5.3 as 
 ### Integration ACs (Rule 1)
 
 Two, both at the browser tier against observable DOM: the Web applications list consumes the confirmed write's `changed` event and shows `Enabled Yes` with `%Development` on the re-fetched row inside the budget; and the Audit database screen consumes the navigation criterion and renders the `AgentWrite` row for that proposal under the confirming user's name.
+
+A third, added at code review for the module the implement stage created after this section was written (`Kernel/Proposal/Disclosure`, see the `## Spec Change Log`): the proposal card consumes its `{field, value}` rows through `Propose.WireRow` and renders the disclosure to `unchangedCount` rows, each carrying the published direction word, with a secret-classified path masked and an `ordinary` literal in clear -- asserted at the browser tier in `ui/browser/proposal-demo.browser-spec.mjs`'s AC1 leg, against a non-`%All` principal.
 
 ### Consumes (Rule 2)
 
@@ -509,6 +632,37 @@ one was rebuilt and redeployed before the run and again after the revert.
   prohibited order (`ProposalConfirm.TestThePrivilegeGateAnswersBeforeTheProhibitedSet` does, and
   this principal holds the pair `Target`'s own read requires regardless of gate order) -- it pins
   that the order's fix generalizes to AC5's own refusal for a caller who is not `%All`.
+- **(CR) DW-1427, a mutating call's body.** `mutation:` drop the `'$IsObject(pBody)` guard from
+  `Port/AdminPort.Invoke` -> `OcuPilot.Test.AdminPortSync.TestAMutatingCallWithANonObjectBodyIsRefused`
+  red on four assertions, answering OK at HTTP 200 for a `PUT` that wrote nothing. Run 2566 green,
+  2567 red, reverted, 7/7 green again; tree byte-identical.
+- **(CR) A skip must not write.** `mutation:` drop `Set tRestoreBody = ""` from `CheckAgentWrite`'s
+  turn-slot arm -> `Test.Smoke.TestASkippedWriteCheckLeavesTheInstanceAlone` red on its
+  left-as-found assertion **alone**, with the two outcome assertions still green -- which is the
+  point: the outcome was always right and the side effect was not. Run 2571 green, 2572 red, 2573
+  green after the revert.
+- **(CR) The disclosure discriminates a read classification from a fail-closed one.** `mutation:`
+  have `Kernel/Proposal/Disclosure.OrdinaryPaths` answer `0` -> `proposal-demo.browser-spec.mjs`'s
+  AC1 leg red on the new `Description` assertion and on nothing else in the file (AC4 and AC3 both
+  still green), which is what the leg could not previously tell apart. Server-side only, so
+  recompiled rather than rebuilt; reverted and 3/3 green again.
+- **(CR) The audit arrival's own read.** `mutation:` drop `this.values = {}` from
+  `areas/logs/audit.store.openWith` -> `audit.page.spec.ts`'s stale-criterion assertion red,
+  carrying `&usernames=someone-else` into the arrival's read. **The first form of this assertion was
+  itself vacuous** -- it set `Username`, and the declared parameter is `usernames`, so nothing was
+  ever sent; the mutation is what found that, not review of the test.
+- **(CR) The appenders' idempotency.** `mutation:` restore `endsWith` in
+  `Panel.replyWithAuditOfferSentence` -> `panel.spec.ts`'s "appended once, even to a reply that
+  already ends with it" red at length 3. Observed as the natural red before the fix: the guard was
+  broken, and the test that claimed to pin it could not fail because `Panel.turns` recomposes from
+  the store's pristine reply on every read.
+- **(CR) The flag-criterion roster.** `mutation:` add a second `{param, value}` criterion to any
+  other built descriptor's read -> `Test.ToolNavigate.TestTheAuditScreenIsTheOnlyDeclarerOfAFlagCriterion`
+  red naming that descriptor.
+- **(CR) The disclosable-container tripwire.** `mutation:` add
+  `{"path":"MatchRoles[]","shape":"literal","class":"ordinary"}` to `webapp.list.update` in
+  `ToolFields.cls` -> `proposal-view.test.mjs`'s container sweep red naming it and the two member
+  rows it would have overridden. Applied, observed red, reverted.
 
 ## Auto Run Result
 

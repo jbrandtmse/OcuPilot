@@ -288,6 +288,28 @@ describe('the audit database viewer', () => {
     expect(paths[0]).toContain('&eventSources=OcuPilot');
     expect(rowNames(host)).toEqual(['RoleGranted']);
 
+    // The arrival runs the screen's DECLARED read, not the user's last one. This store is
+    // root-provided and outlives the screen, so a criterion the user typed on an earlier visit is
+    // still held -- and `criteria()` sends every declared criterion the form holds a value for, so
+    // an arrival that kept it would narrow the marker filter by a username nobody asked about and
+    // show no row for the write the agent just made.
+    //
+    // `usernames` deliberately, and not `eventSources`: the marker overrides its own parameter
+    // (see `criteria`), so a stale value there would be replaced whatever this does. The stale
+    // value that survives is one on a criterion the marker does not name, and narrowing by it is
+    // what loses the row.
+    //
+    // Mutation (Rule 19): drop the `this.values = {}` line from `openWith` -> the second assertion
+    // goes red, carrying `&usernames=someone-else` into the arrival's own read.
+    const stale = await mount();
+    const store2 = TestBed.inject(AuditSearch);
+    store2.setValue('usernames', 'someone-else');
+    store2.openWith(AUDIT, MARKER_CRITERION);
+    await settle(stale.fixture);
+    expect(stale.paths[0]).toContain('&eventSources=OcuPilot');
+    expect(stale.paths[0]).not.toContain('someone-else');
+    expect(rowNames(stale.host)).toEqual(['RoleGranted']);
+
     // A criterion name this screen does not declare applies nothing: there is no filter to arrive
     // with, and nothing may invent one.
     const fresh = await mount();

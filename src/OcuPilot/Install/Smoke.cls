@@ -1213,7 +1213,11 @@ ClassMethod CheckDemoFixture(ByRef pChecks, pDemo As %String = "") [ Private ]
 /// <p><b><code>skipped</code>, never <code>fail</code>, where the environment cannot carry it</b>
 /// -- no demo opt-in, no fixture, a fixture this install did not create, or a turn of this user
 /// already running. The reason travels even where the assertion cannot (DW-1402), so
-/// <code>executed=</code> stays honest.</p>
+/// <code>executed=</code> stays honest, and it names the cause it actually met rather than the
+/// likeliest one. <b>No skip writes.</b> A skipped check did not run, so it has nothing to put
+/// back, and a restore on that path would be normalising a drift this run did not cause. The
+/// restore on a <code>fail</code> is the opposite case and is deliberate: there the state was
+/// asserted against and found wrong, and the next run has to be able to assert against it again.</p>
 /// <p><b><code>OcuPilot.PKG</code> classes only</b> (this class's own scope wall): the turn row
 /// comes from <class>OcuPilot.Kernel.State.Turn</class>'s guarded reserve, begin and finish, and
 /// the write target is AD-25's fixture rather than a probe application a test class would make.</p>
@@ -1255,8 +1259,14 @@ ClassMethod CheckAgentWrite(ByRef pChecks, pDemo As %String = "") [ Private ]
 
         Set tReserveSC = ##class(OcuPilot.Kernel.State.Turn).GuardedReserve($Username, "", ##class(OcuPilot.Api.Error).#TURNABANDONEDJOBLOST, ..#LIMITS, .tTurnKey, .tBusy, .tSweepSC)
         If $$$ISERR(tReserveSC) || tBusy || (tTurnKey = "") {
-            Set tSkip = "a turn of " _ $Username _ " is already running on this instance, so this check would race it for the one turn slot"
+            ; The reason names the cause rather than the likeliest cause (DW-1402): a reserve that
+            ; errored is not a busy slot, and reporting it as one sends the reader at the wrong
+            ; thing. And the restore body is dropped: this arm has written nothing, so putting the
+            ; fixture back would be restoring a state this run did not cause -- a skip means the
+            ; check did not run, and a check that did not run touches the instance not at all.
+            Set tSkip = $Select($$$ISERR(tReserveSC): "a turn row could not be reserved for this check: " _ $System.Status.GetErrorText(tReserveSC), 1: "a turn of " _ $Username _ " is already running on this instance, so this check would race it for the one turn slot")
             Set tTurnKey = ""
+            Set tRestoreBody = ""
             Quit
         }
         Do ##class(OcuPilot.Kernel.State.Turn).GuardedBegin(tTurnKey, $Username, ..#LIMITS, .tBegun, .tStarted)
@@ -1266,7 +1276,7 @@ ClassMethod CheckAgentWrite(ByRef pChecks, pDemo As %String = "") [ Private ]
         Do tArgs.%Set(##class(OcuPilot.Screen.Tool.Write).IdArgument(), tSpelling, "string")
         Do tArgs.%Set("Enabled", 1, "boolean")
         Do tArgs.%Set("Resource", ..#WRITERESOURCE, "string")
-        Set tMintSC = ##class(OcuPilot.Kernel.Proposal.Mint).Mint($Parameter("OcuPilot.Screen.Tool.WebAppUpdate", "DESCRIPTORCLASS"), ..#WEBAPPUPDATETOOL, $Username, "", tTurnKey, tArgs, ..#LIMITS, .tProposal, .tMintHttp, .tMintFault, ##class(OcuPilot.Screen.Tool.WebAppUpdate).Endpoint(), ##class(OcuPilot.Screen.Tool.Write).IdParam(), tSpelling, ##class(OcuPilot.Screen.Tool.Write).IdArgument(), ##class(OcuPilot.Screen.Tool.WebAppUpdate).SettableFields())
+        Set tMintSC = ##class(OcuPilot.Kernel.Proposal.Mint).Mint(##class(OcuPilot.Screen.Tool.WebAppUpdate).#DESCRIPTORCLASS, ..#WEBAPPUPDATETOOL, $Username, "", tTurnKey, tArgs, ..#LIMITS, .tProposal, .tMintHttp, .tMintFault, ##class(OcuPilot.Screen.Tool.WebAppUpdate).Endpoint(), ##class(OcuPilot.Screen.Tool.Write).IdParam(), tSpelling, ##class(OcuPilot.Screen.Tool.Write).IdArgument(), ##class(OcuPilot.Screen.Tool.WebAppUpdate).SettableFields())
         If $$$ISERR(tMintSC) || '$IsObject($Get(tProposal)) {
             Do ..Note(.pChecks, "agentwrite", "fail", "the proposal could not be minted: " _ $System.Status.GetErrorText(tMintSC))
             Do ..Note(.pChecks, "auditmarker", "fail", "no write was made, so no audit row could be looked for")
@@ -1405,9 +1415,15 @@ ClassMethod RestoreWriteTarget(pName As %String = "", pBody As %DynamicObject = 
 
 /// <p>The audit database's own clock, in the form <code>%SYS.Audit.UTCTimeStamp</code> carries --
 /// the lower bound the marker read below is bounded by.</p>
+/// <p><b>Truncated to whole seconds deliberately.</b> That column is <class>%String</class>
+/// (<code>%SYS.Audit.cls</code>), so <code>&gt;=</code> compares lexicographically, and a bound
+/// carrying more fractional digits than the stored value sorts <i>after</i> the very row it must
+/// include. This build writes three fractional digits, so the widths happen to agree today --
+/// which is a measurement, not a contract, and widening the bound costs nothing because the
+/// proposal id and not the time is what identifies the row.</p>
 ClassMethod AuditNow() As %String [ Private ]
 {
-    Quit $ZDateTime($ZTimeStamp, 3, , 3)
+    Quit $ZDateTime($ZTimeStamp, 3, , 0)
 }
 
 /// <p>How many <code>AgentWrite</code> rows the audit database holds since <var>pSince</var>
