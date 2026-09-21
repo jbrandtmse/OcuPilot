@@ -24,7 +24,6 @@ import type { Fault, FaultKind } from './core/fault';
 import { InstanceService, type InstanceStatus } from './core/instance';
 import { NavigationService, type Verdict } from './core/navigation';
 import { OverlayStack } from './core/overlay-stack';
-import { PreferenceStore } from './core/preferences';
 import { RefreshService } from './core/refresh';
 import { ScopeService, type NamespaceEntry, type UnresolvedScope } from './core/scope';
 import { ScreenActions } from './core/screen-actions';
@@ -404,7 +403,7 @@ describe('the shell frame', () => {
     connectivity = new StubConnectivity();
     // The real framework, timer seam neutralized: the frame mounts the chip and the stamp, and
     // this file is about the frame. `refresh.test.mjs` and the two bar specs drive the framework.
-    const screenStores = new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
+    const screenStores = new ScreenStores({ account: stubAccountPreferences() });
     refresh = new RefreshService({
       stores: screenStores,
       connectivity: connectivity as unknown as ConnectivityService,
@@ -412,9 +411,9 @@ describe('the shell frame', () => {
       schedule: () => {},
     });
     overlays = new OverlayStack();
-    const shellPreferences = new PreferenceStore({ storage: memoryStorage() });
-    const shellState = new ShellState({ preferences: shellPreferences });
-    panelState = new PanelState({ preferences: shellPreferences, shell: shellState });
+    const shellPreferences = stubAccountPreferences();
+    const shellState = new ShellState({ account: shellPreferences });
+    panelState = new PanelState({ account: shellPreferences, shell: shellState });
     // A reload-adopted id, so the sign-out test below can observe `App` dropping it -- the same
     // shape the real `readNavigationKind`/`readSessionStorage` pair produces in `main.ts`.
     turnStorage = new Map([['ocupilot.conversation', 'convo-1']]);
@@ -705,7 +704,7 @@ describe('the shell frame', () => {
     expect(document.activeElement).toBe(toggle);
   });
 
-  it('leaving the signed-in state clears the draft and full screen, and keeps the remembered width', async () => {
+  it('leaving the signed-in state clears the draft, full screen and the departed width', async () => {
     // Mutation (Rule 19): delete `this.panel.endSession()` from `App.verifyWhenSignedIn` -> the draft
     // and full-screen assertions go red.
     panelState.setViewport(1920);
@@ -749,7 +748,7 @@ describe('the shell frame', () => {
 
     expect(panelState.draft()).toBe('');
     expect(panelState.fullScreen()).toBe(false);
-    expect(panelState.remembered()).toBe(416);
+    expect(panelState.remembered()).toBe(400);
     // Mutation (Rule 19): delete `this.turn.endSession()` from the same branch -> this goes red,
     // and the next principal to sign in on this tab would adopt a departed principal's
     // conversation (AD-8).

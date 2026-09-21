@@ -13,7 +13,6 @@ import { FormDirty } from './core/form-dirty';
 import { InstanceService, type InstanceStatus } from './core/instance';
 import { NavigationService } from './core/navigation';
 import { OverlayStack } from './core/overlay-stack';
-import { PreferenceStore } from './core/preferences';
 import { RefreshService } from './core/refresh';
 import { ScopeService, type NamespaceEntry, type UnresolvedScope } from './core/scope';
 import { ScreenActions } from './core/screen-actions';
@@ -245,7 +244,7 @@ describe('the real shell, routed to the real Home screen, sharing one real Refre
     scheduled = [];
     bus = new ChangeBus();
     const connectivity = new StubConnectivity() as unknown as ConnectivityService;
-    const screenStores = new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
+    const screenStores = new ScreenStores({ account: stubAccountPreferences() });
     refresh = new RefreshService({
       stores: screenStores,
       connectivity,
@@ -261,8 +260,8 @@ describe('the real shell, routed to the real Home screen, sharing one real Refre
     } as unknown as ApiService;
     const navigation = new NavigationService({ api, connectivity, namespace: () => 'HSCUSTOM' });
 
-    const shellPreferences = new PreferenceStore({ storage: memoryStorage() });
-    const shellState = new ShellState({ preferences: shellPreferences });
+    const shellPreferences = stubAccountPreferences();
+    const shellState = new ShellState({ account: shellPreferences });
     TestBed.configureTestingModule({
       providers: [
         { provide: About, useValue: stubAbout() },
@@ -278,7 +277,7 @@ describe('the real shell, routed to the real Home screen, sharing one real Refre
         { provide: RefreshService, useValue: refresh },
         { provide: ScreenStores, useValue: screenStores },
         { provide: ShellState, useValue: shellState },
-        { provide: PanelState, useValue: new PanelState({ preferences: shellPreferences, shell: shellState }) },
+        { provide: PanelState, useValue: new PanelState({ account: shellPreferences, shell: shellState }) },
         { provide: TurnStore, useValue: stubTurnStore() },
         { provide: OverlayStack, useValue: new OverlayStack() },
         { provide: ScreenActions, useValue: new ScreenActions() },

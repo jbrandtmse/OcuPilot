@@ -24,6 +24,7 @@ import puppeteer from 'puppeteer';
 
 import { browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
+import { resetRememberedState } from './preferences-reset.mjs';
 
 const config = browserConfig();
 const strings = loadStrings();
@@ -115,6 +116,10 @@ after(async () => {
 async function openHarness({ total = 1000, delayMs = 0, reducedMotion = false } = {}) {
   dataset.total = total;
   dataset.delayMs = delayMs;
+  // Story 15.5: the remembered screen and shell state lives on the instance now, keyed by the
+  // one account every spec signs in as, so a fresh context is no longer a fresh slate on its
+  // own -- see `preferences-reset.mjs`.
+  await resetRememberedState();
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
   if (reducedMotion) await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]);
@@ -141,6 +146,7 @@ function tokenColor(page, token) {
 test('AC1 (NFR-1): a thousand rows put a body row in the grid within 2,000 ms, with fewer than 100 row elements', async () => {
   dataset.total = 1000;
   dataset.delayMs = 0;
+  await resetRememberedState();
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
   try {

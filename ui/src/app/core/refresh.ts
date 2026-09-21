@@ -238,7 +238,7 @@ export class RefreshService {
       ),
       declaredScope: screen.scope,
       read,
-      store: this.stores.for(screen.descriptor, screen.refreshRates),
+      store: this.stores.for(screen.descriptor, screen.refreshRates, screen.route),
     };
     this.lastFault = null;
     this.loadedOnce = false;

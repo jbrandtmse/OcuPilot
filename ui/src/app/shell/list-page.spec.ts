@@ -7,7 +7,6 @@ import { ChangeBus } from '../core/change-bus';
 import type { ConnectivityService } from '../core/connectivity';
 import { NavigationService } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
-import { PreferenceStore } from '../core/preferences';
 import { RefreshService } from '../core/refresh';
 import { ScopeService } from '../core/scope';
 import { REFRESH_ACTION_ID, ScreenActions } from '../core/screen-actions';
@@ -16,6 +15,7 @@ import type { ScreenDeclaration } from '../core/screens.generated';
 import { STRINGS } from '../core/strings';
 import { tableDeclaration } from '../testing/table-declaration';
 import { ListPage } from './list-page';
+import { stubAccountPreferences } from '../testing/account-preferences';
 
 /**
  * The list page wired end to end over stubs of the two things an instance supplies -- the URL's
@@ -66,7 +66,7 @@ async function mount(
   };
   const scheduled: (() => void)[] = [];
   const bus = new ChangeBus();
-  const stores = new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
+  const stores = new ScreenStores({ account: stubAccountPreferences() });
   const refresh = new RefreshService({
     stores,
     connectivity: { retryWhenReachable: () => {} } as unknown as ConnectivityService,

@@ -92,8 +92,8 @@ export function isSideBarChord(event: KeyboardEvent): boolean {
  * `ShellState.collapse()`; Ctrl/Cmd+B is the user answering the question, so it keeps
  * `toggleOpen()`, which persists.
  *
- * Open state is remembered per browser through `PreferenceStore`, the one module permitted to
- * touch persistent storage.
+ * Open state is remembered per user on the instance through `AccountPreferences` (Story 15.5,
+ * AD-50); the browser holds nothing of it.
  */
 @Component({
   selector: 'app-side-bar',

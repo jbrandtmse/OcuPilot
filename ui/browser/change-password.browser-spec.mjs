@@ -28,6 +28,7 @@ import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '..
 import { loadStrings } from '../tools/strings.mjs';
 import { parseMarkers } from './iris-session.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
+import { resetRememberedState } from './preferences-reset.mjs';
 
 const STRINGS = loadStrings();
 
@@ -115,6 +116,10 @@ function authHeader(user, password) {
 
 /** A fresh context signed in through the form as the throwaway principal, standing on Home. */
 async function signedInAsProbe(password) {
+  // Story 15.5: the remembered screen and shell state lives on the instance now, keyed by the
+  // one account every spec signs in as, so a fresh context is no longer a fresh slate on its
+  // own -- see `preferences-reset.mjs`.
+  await resetRememberedState();
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
   page.setDefaultNavigationTimeout(config.navigationTimeoutMs);

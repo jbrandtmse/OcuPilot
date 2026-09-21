@@ -311,7 +311,7 @@ A user sees the panel on every screen and can resize it or expand it to full scr
 
 **Consequences (testable):**
 
-- The panel has a minimum width and a remembered width per browser; screen content reflows to the remaining width.
+- The panel has a minimum width and a width remembered per user, on the instance; screen content reflows to the remaining width.
 - Route changes keep the panel and its conversation.
 - There is no close control in Release 1. Narrow-viewport behavior below about 900 px is a UX decision, not a requirement here.
 

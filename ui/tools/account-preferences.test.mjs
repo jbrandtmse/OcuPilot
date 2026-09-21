@@ -238,3 +238,248 @@ test('formatNamed resolves the <name> placeholder, and a template without one is
   assert.equal(formatNamed('Remove <name> from favorites', 'Alerts'), 'Remove Alerts from favorites');
   assert.equal(formatNamed('Clear favorites', 'Alerts'), 'Clear favorites');
 });
+
+// --- Story 15.5: the three value kinds, and the refusal a write leaves behind ------------------
+//
+// Mutations (Rule 19):
+// - drop `views` from `valuesOf`'s call in `settle` -> "the widened read" goes red.
+// - drop the fault assignment from `settle`'s non-ok branch -> "a refusal records" goes red, and
+//   a refused preference would again be surfaced nowhere at all (DW-1326).
+// - make `loaded()` return `answeredValue` -> "a write's answer is not a read's" goes red, and a
+//   dismissal the user made before the first read settled would be undone by the next write.
+
+const { VIEW_KIND, REFRESH_KIND, SHELL_KIND, SHELL_SIDE_BAR_OPEN } = await import(
+  join(uiRoot, 'src', 'app', 'core', 'account-preferences.ts')
+);
+
+/** An answer carrying all five members the widened route publishes. */
+function wholeBody(seed = {}) {
+  return {
+    favorites: (seed.favorites ?? []).map((route) => ({ route })),
+    recents: (seed.recents ?? []).map((route) => ({ route })),
+    views: Object.entries(seed.views ?? {}).map(([route, value]) => ({ route, value })),
+    refreshRates: Object.entries(seed.refreshRates ?? {}).map(([route, value]) => ({ route, value })),
+    shell: Object.entries(seed.shell ?? {}).map(([name, value]) => ({ name, value })),
+  };
+}
+
+test('the widened read exposes the three value kinds, keyed by route and by shell member', async () => {
+  const api = stubApi([
+    ok(
+      wholeBody({
+        favorites: ['logs/alerts'],
+        views: { 'permissions/users': '{"sort":"Name"}' },
+        refreshRates: { 'os-management/processes': '10' },
+        shell: { sideBarOpen: '0', panelWidth: '512' },
+      })
+    ),
+  ]);
+  const store = new AccountPreferences({ api });
+  await store.load();
+
+  assert.deepEqual(store.favorites(), ['logs/alerts']);
+  assert.equal(store.views().get('permissions/users'), '{"sort":"Name"}');
+  assert.equal(store.refreshRates().get('os-management/processes'), '10');
+  assert.equal(store.shell().get(SHELL_SIDE_BAR_OPEN), '0');
+  assert.equal(store.shell().get('panelWidth'), '512');
+  assert.equal(store.views().get('no-such-screen'), undefined, 'a route nothing was stored for is absent');
+});
+
+test('an answer from an instance that predates the value kinds reads as three empty maps', async () => {
+  const api = stubApi([ok(body(['logs/alerts'], []))]);
+  const store = new AccountPreferences({ api });
+  await store.load();
+  assert.equal(store.views().size, 0);
+  assert.equal(store.refreshRates().size, 0);
+  assert.equal(store.shell().size, 0);
+});
+
+test('an entry whose key or value is not a non-empty string is dropped, never rendered', async () => {
+  const api = stubApi([
+    ok({
+      favorites: [],
+      recents: [],
+      views: [{ route: 'a', value: 'kept' }, { route: '', value: 'x' }, { route: 'b' }, { route: 'c', value: 3 }, 'nope'],
+      refreshRates: [],
+      shell: [],
+    }),
+  ]);
+  const store = new AccountPreferences({ api });
+  await store.load();
+  assert.deepEqual([...store.views()], [['a', 'kept']]);
+});
+
+test('setValue sends the key under the member its kind uses, and an empty one is never sent', async () => {
+  const api = stubApi([ok(wholeBody({ shell: { sideBarOpen: '0' } }))]);
+  const store = new AccountPreferences({ api });
+  await store.load();
+
+  await store.setValue(VIEW_KIND, 'permissions/users', '{"sort":"Name"}');
+  assert.deepEqual(JSON.parse(api.calls[1].body), {
+    kind: VIEW_KIND,
+    action: 'set',
+    route: 'permissions/users',
+    value: '{"sort":"Name"}',
+  });
+
+  await store.setValue(SHELL_KIND, SHELL_SIDE_BAR_OPEN, '1');
+  assert.deepEqual(JSON.parse(api.calls[2].body), {
+    kind: SHELL_KIND,
+    action: 'set',
+    name: SHELL_SIDE_BAR_OPEN,
+    value: '1',
+  });
+
+  const before = api.calls.length;
+  await store.setValue(REFRESH_KIND, '', '10');
+  await store.setValue(REFRESH_KIND, 'logs/alerts', '');
+  assert.equal(api.calls.length, before, 'neither an empty key nor an empty value reaches the instance');
+});
+
+test('a refusal records the instance\'s own sentence and leaves the lists standing (DW-1326)', async () => {
+  const api = stubApi([
+    ok(wholeBody({ favorites: ['logs/alerts'] })),
+    { kind: 'error', status: 422, code: 'PREFERENCES.LIMIT', reason: 'This account already holds as many favorites as the instance keeps.', detail: null },
+  ]);
+  const store = new AccountPreferences({ api });
+  await store.load();
+  assert.equal(store.fault(), '', 'nothing has been refused yet');
+
+  await store.add(FAVORITE_KIND, 'permissions/users');
+  assert.equal(store.fault(), 'This account already holds as many favorites as the instance keeps.');
+  assert.deepEqual(store.favorites(), ['logs/alerts'], 'and the list the instance last answered still stands');
+
+  store.clearFault();
+  assert.equal(store.fault(), '', 'a surface that has announced it drops it');
+});
+
+test('a transport failure records no sentence, because it has none to record', async () => {
+  const api = stubApi([
+    ok(wholeBody({ favorites: ['logs/alerts'] })),
+    { kind: 'error', status: 0, code: null, reason: null, detail: null },
+  ]);
+  const store = new AccountPreferences({ api });
+  await store.load();
+  await store.add(FAVORITE_KIND, 'permissions/users');
+  assert.equal(store.fault(), '', 'the connectivity banner is already saying this');
+  assert.deepEqual(store.favorites(), ['logs/alerts']);
+});
+
+test("a write's answer before any read does not settle the read, so `loaded` stays false", async () => {
+  const api = stubApi([ok(wholeBody({ shell: { sideBarOpen: '0' } }))]);
+  const store = new AccountPreferences({ api });
+  assert.equal(store.loaded(), false);
+  assert.equal(store.answered(), false);
+
+  await store.setValue(SHELL_KIND, SHELL_SIDE_BAR_OPEN, '1');
+  assert.equal(store.answered(), true, 'the instance has answered something');
+  assert.equal(store.loaded(), false, 'but nothing has read this account yet');
+
+  await store.load();
+  assert.equal(store.loaded(), true);
+});
+
+test('a write that overtakes the read still settles it, so the stores are not left on the defaults', async () => {
+  // Mutation (Rule 19): key `loadedValue` on the read's own settle rather than on the read having
+  // been asked for -> this goes red, and a reloaded tab renders the published defaults with the
+  // instance's answer already in hand (`recents-recorder.ts` registers a visit just after the
+  // read, and its answer supersedes it).
+  const answers = [
+    ok(wholeBody({ shell: { sideBarOpen: '0' } })),
+    ok(wholeBody({ shell: { sideBarOpen: '0' }, recents: ['permissions/users'] })),
+  ];
+  const calls = [];
+  let resolveRead = null;
+  const api = {
+    calls,
+    requestJson(path, init = {}) {
+      calls.push({ path, method: init.method ?? 'GET', body: init.body ?? null });
+      if ((init.method ?? 'GET') === 'GET') {
+        return new Promise((resolve) => {
+          resolveRead = () => resolve(answers[0]);
+        });
+      }
+      return Promise.resolve(answers[1]);
+    },
+  };
+  const store = new AccountPreferences({ api });
+  let notified = 0;
+  store.subscribe(() => (notified += 1));
+
+  const read = store.load();
+  const write = store.add(RECENT_KIND, 'permissions/users');
+  await write;
+  assert.equal(store.loaded(), true, "the write's answer settles the read this shell asked for");
+  assert.equal(store.shell().get(SHELL_SIDE_BAR_OPEN), '0', 'and carries the same whole body');
+  assert.ok(notified > 0, 'and the stores waiting on it are told');
+
+  resolveRead();
+  await read;
+  assert.equal(store.loaded(), true, 'and the overtaken read changes nothing when it lands');
+});
+
+test('reset drops the value maps and the standing refusal as well as the lists', async () => {
+  const api = stubApi([
+    ok(wholeBody({ favorites: ['logs/alerts'], shell: { sideBarOpen: '0' } })),
+    { kind: 'error', status: 422, code: 'PREFERENCES.NAME', reason: 'refused', detail: null },
+  ]);
+  const store = new AccountPreferences({ api });
+  await store.load();
+  await store.setValue(SHELL_KIND, 'sideBarOpen', '1');
+  assert.equal(store.fault(), 'refused');
+
+  store.reset();
+  assert.deepEqual(store.favorites(), []);
+  assert.equal(store.shell().size, 0);
+  assert.equal(store.views().size, 0);
+  assert.equal(store.refreshRates().size, 0);
+  assert.equal(store.fault(), '');
+  assert.equal(store.loaded(), false);
+  assert.equal(store.answered(), false);
+});
+
+test('rapid writes to one key are serialized and collapsed to the latest value', async () => {
+  // Mutation (Rule 19): send from `setValue` directly instead of through `drain` -> the ordering
+  // assertion goes red, and a panel stepped 416, 432, 448 can be left holding 432 because the
+  // last request landed first (measured in the browser tier).
+  const sent = [];
+  let release = null;
+  const api = {
+    requestJson(path, init = {}) {
+      sent.push(JSON.parse(init.body ?? '{}').value ?? 'GET');
+      if (release === null) {
+        return new Promise((resolve) => {
+          release = () => resolve(ok(wholeBody()));
+        });
+      }
+      return Promise.resolve(ok(wholeBody()));
+    },
+  };
+  const store = new AccountPreferences({ api });
+
+  void store.setValue(SHELL_KIND, SHELL_SIDE_BAR_OPEN, '1');
+  void store.setValue(SHELL_KIND, SHELL_SIDE_BAR_OPEN, '0');
+  const last = store.setValue(SHELL_KIND, SHELL_SIDE_BAR_OPEN, '1');
+  assert.deepEqual(sent, ['1'], 'only the first is in flight');
+
+  release();
+  await last;
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.deepEqual(sent, ['1', '1'], 'and the burst collapses to its latest value, sent after it');
+});
+
+test('writes to different keys do not queue behind one another', async () => {
+  const sent = [];
+  const api = {
+    requestJson(path, init = {}) {
+      const body = JSON.parse(init.body ?? '{}');
+      sent.push(`${body.kind}:${body.name ?? body.route}`);
+      return new Promise(() => {});
+    },
+  };
+  const store = new AccountPreferences({ api });
+  void store.setValue(SHELL_KIND, SHELL_SIDE_BAR_OPEN, '1');
+  void store.setValue(SHELL_KIND, 'panelWidth', '512');
+  void store.setValue(VIEW_KIND, 'logs/alerts', '{}');
+  assert.deepEqual(sent, ['shell:sideBarOpen', 'shell:panelWidth', 'view:logs/alerts']);
+});

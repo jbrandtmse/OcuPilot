@@ -13,8 +13,8 @@
  * - `visibleArea` -- the area whose side bar is listed. A rail click sets it **without
  *   navigating**, which is the whole point of the rail: you can look at one area's screens
  *   while another area's screen is open.
- * - `open` -- whether the side bar is showing. Remembered per browser through
- *   `PreferenceStore`, which is the only module that touches persistent storage.
+ * - `open` -- whether the side bar is showing. Remembered per user on the instance through
+ *   `AccountPreferences` (Story 15.5, AD-50); the browser holds nothing of it.
  *
  * The fourth is `holdScreen`/`screenHeld`, which is about the routed screen rather than the chrome
  * around it: while the shell is still deciding where this browser belongs, `ScreenOutlet` mounts
@@ -25,21 +25,35 @@
 
 // The `.ts` extension is what lets `node --test` resolve this at runtime; see
 // `tsconfig.json`'s `allowImportingTsExtensions`.
-import { PreferenceStore } from './preferences.ts';
+import { AccountPreferences, SHELL_KIND, SHELL_SIDE_BAR_OPEN } from './account-preferences.ts';
 
 /** The side bar starts open, so a first-time visitor sees the screen list exists. */
 export const SIDE_BAR_OPEN_DEFAULT = true;
 
+/** The two values the remembered open state is stored as; the wire carries strings. */
+const OPEN_STORED = '1';
+const CLOSED_STORED = '0';
+
 export interface ShellStateOptions {
-  readonly preferences: PreferenceStore;
+  readonly account: AccountPreferences;
 }
 
 export class ShellState {
-  private readonly preferences: PreferenceStore;
+  private readonly account: AccountPreferences;
 
   private currentActiveArea = '';
   private currentVisibleArea = '';
   private currentOpen: boolean;
+
+  /**
+   * Whether the instance's own answer has been adopted since the last sign-in.
+   *
+   * **The published default renders until the read settles, and the remembered state applies
+   * once, on the answer.** A later notification -- another preference being written -- must not
+   * re-apply it over a toggle the user has made since, and a `reset()` on sign-out drops it so the
+   * next principal's answer is adopted in its turn.
+   */
+  private adopted = false;
 
   /** How many holds are outstanding on the routed screen; see `holdScreen`. */
   private holds = 0;
@@ -62,8 +76,29 @@ export class ShellState {
   private readonly listeners = new Set<() => void>();
 
   constructor(options: ShellStateOptions) {
-    this.preferences = options.preferences;
-    this.currentOpen = this.preferences.sideBarOpen(SIDE_BAR_OPEN_DEFAULT);
+    this.account = options.account;
+    this.currentOpen = SIDE_BAR_OPEN_DEFAULT;
+    this.account.subscribe(() => this.adoptRemembered());
+    this.adoptRemembered();
+  }
+
+  /**
+   * Take the instance's remembered open state, once, on the first answer that carries it. A read
+   * that has not settled leaves the published default standing, and a read that failed never
+   * clears anything.
+   */
+  private adoptRemembered(): void {
+    if (!this.account.loaded()) {
+      this.adopted = false;
+      return;
+    }
+    if (this.adopted) return;
+    this.adopted = true;
+    const stored = this.account.shell().get(SHELL_SIDE_BAR_OPEN);
+    const next = stored === undefined ? SIDE_BAR_OPEN_DEFAULT : stored === OPEN_STORED;
+    if (next === this.currentOpen) return;
+    this.currentOpen = next;
+    this.notify();
   }
 
   subscribe(listener: () => void): () => void {
@@ -170,9 +205,9 @@ export class ShellState {
    *
    * **Home's collapse is not the user's preference (DW-134).** Home has no screen list, so
    * the bar goes away because there is nothing to show -- the user never asked for it to be
-   * closed. Writing that through to storage made the next area they opened start collapsed,
-   * which is why this branch moves the visible state without touching `PreferenceStore`,
-   * while `toggleOpen()`, where the user did ask, still persists.
+   * closed. Writing that through made the next area they opened start collapsed, which is why
+   * this branch moves the visible state without touching the remembered one, while
+   * `toggleOpen()`, where the user did ask, still persists.
    *
    * Returns whether the caller should navigate, so the routing half stays in the component
    * that has a `Router` and this class stays framework-free.
@@ -215,10 +250,10 @@ export class ShellState {
    * Collapse the side bar **without** remembering it (**DW-144**).
    *
    * Escape is a dismissal, not an answer: it says "not this, now", where Ctrl/Cmd+B says "keep
-   * it closed". Routing Escape through `toggleOpen()` wrote the dismissal into
-   * `PreferenceStore`, so the next area the user opened -- and the next tab they loaded --
-   * started collapsed against a preference they had set to open and never changed. This moves
-   * the visible state alone, the way `activateArea`'s Home branch already does.
+   * it closed". Routing Escape through `toggleOpen()` wrote the dismissal to the instance, so the
+   * next area the user opened -- and the next tab they loaded -- started collapsed against a
+   * preference they had set to open and never changed. This moves the visible state alone, the
+   * way `activateArea`'s Home branch already does.
    */
   collapse(): void {
     if (!this.currentOpen) return;
@@ -235,7 +270,10 @@ export class ShellState {
 
   private setOpen(next: boolean): void {
     this.currentOpen = next;
-    this.preferences.setSideBarOpen(next);
+    // Never awaited: the bar has already moved, and the instance's answer re-settles the store
+    // rather than deciding what is on screen. A refusal is recorded as a fault the shell's own
+    // surfaces announce (DW-1326).
+    void this.account.setValue(SHELL_KIND, SHELL_SIDE_BAR_OPEN, next ? OPEN_STORED : CLOSED_STORED);
   }
 
   private notify(): void {

@@ -87,6 +87,16 @@ interface RememberedBlock {
   /** The polite sentence clearing the block announces. */
   readonly clearedLabel: string;
   readonly rows: readonly RememberedRow[];
+  /**
+   * Whether the instance holds any row for this block at all, before `rowsFor` drops the ones
+   * naming no screen this build serves (DW-1328).
+   *
+   * **It is not `rows.length`.** A block whose every stored row names a screen that is gone still
+   * holds rows, and rendering the ordinary empty state with no Clear control would make them
+   * invisible and unclearable -- a weak reference rendered as absent rather than as no longer
+   * present, which AD-37 refuses.
+   */
+  readonly hasStored: boolean;
 }
 
 /** One shortcut, resolved for rendering in the fixed Shortcuts block. */
@@ -274,11 +284,13 @@ interface LineSegment {
                 </span>
               }
             </div>
+          } @else {
+            <p class="ocu-home-block-empty">{{ block.emptyLabel }}</p>
+          }
+          @if (block.hasStored) {
             <button type="button" class="ocu-home-block-clear" (click)="clearRemembered(block)">
               {{ block.clearLabel }}
             </button>
-          } @else {
-            <p class="ocu-home-block-empty">{{ block.emptyLabel }}</p>
           }
         </section>
       }
@@ -344,6 +356,7 @@ interface LineSegment {
       </section>
     </div>
     <span class="ocu-home-status ocu-visually-hidden" role="status">{{ announcement }}</span>
+    <span class="ocu-home-status ocu-visually-hidden" role="alert">{{ refusal }}</span>
     <div class="ocu-area-tile-grid" role="list">
       @for (tile of tiles; track tile.key) {
         <span class="ocu-area-tile-slot" role="listitem">
@@ -510,21 +523,23 @@ export class HomePage {
         key: 'favorites',
         kind: FAVORITE_KIND,
         heading: STRINGS.favoritesHeading,
-        emptyLabel: STRINGS.favoritesEmpty,
+        emptyLabel: this.emptyLabelFor(this.preferences.favorites(), STRINGS.favoritesEmpty),
         clearLabel: STRINGS.favoritesClear,
         removedLabel: STRINGS.favoritesRemoved,
         clearedLabel: STRINGS.favoritesCleared,
         rows: this.rowsFor(this.preferences.favorites(), STRINGS.favoritesRemoveNamed),
+        hasStored: this.preferences.favorites().length > 0,
       },
       {
         key: 'recents',
         kind: RECENT_KIND,
         heading: STRINGS.recentsHeading,
-        emptyLabel: STRINGS.recentsEmpty,
+        emptyLabel: this.emptyLabelFor(this.preferences.recents(), STRINGS.recentsEmpty),
         clearLabel: STRINGS.recentsClear,
         removedLabel: STRINGS.recentsRemoved,
         clearedLabel: STRINGS.recentsCleared,
         rows: this.rowsFor(this.preferences.recents(), STRINGS.recentsRemoveNamed),
+        hasStored: this.preferences.recents().length > 0,
       },
     ];
   });
@@ -720,6 +735,19 @@ export class HomePage {
     return this.announcementValue();
   }
 
+  /**
+   * The instance's own sentence for a refused preference write, `''` for none (DW-1326).
+   *
+   * It is announced assertively rather than politely, because it says a thing the user asked for
+   * did not happen (EXPERIENCE.md "Status messages (WCAG 4.1.3)"). The text is the server's
+   * (AD-39); this page publishes none of it. It is cleared before each write, so a refusal about
+   * the last action is never left standing beside the next.
+   */
+  protected get refusal(): string {
+    this.preferenceGeneration();
+    return this.preferences.fault();
+  }
+
   protected get instanceLine(): readonly LineSegment[] {
     return this.resolvedLine();
   }
@@ -805,6 +833,7 @@ export class HomePage {
   private announceOnChange(kind: PreferenceKind, label: string, write: () => Promise<void>): void {
     const held = [...this.stored(kind)];
     this.announcementValue.set('');
+    this.preferences.clearFault();
     void write().then(() => {
       const now = this.stored(kind);
       if (held.every((route) => now.includes(route)) && held.length === now.length) return;
@@ -815,6 +844,15 @@ export class HomePage {
   /** The routes the store holds for one kind, whatever this page renders of them. */
   private stored(kind: PreferenceKind): readonly string[] {
     return kind === FAVORITE_KIND ? this.preferences.favorites() : this.preferences.recents();
+  }
+
+  /**
+   * The empty state a block shows: its own wording when the instance holds nothing for it, and
+   * DW-1328's when it holds rows that all name screens this build does not serve. The second says
+   * the rows exist rather than claiming the block is empty, and the Clear control stands beside it.
+   */
+  private emptyLabelFor(routes: readonly string[], ownLabel: string): string {
+    return routes.length === 0 ? ownLabel : STRINGS.rememberedNoScreensHere;
   }
 
   /**

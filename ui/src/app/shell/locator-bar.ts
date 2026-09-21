@@ -212,6 +212,7 @@ const UNGATED_SEGMENT = {
     <span class="ocu-locator-status ocu-visually-hidden" role="status">{{
       favoriteAnnouncement
     }}</span>
+    <span class="ocu-locator-status ocu-visually-hidden" role="alert">{{ favoriteRefusal }}</span>
   </nav>`,
 })
 export class LocatorBar {
@@ -399,8 +400,9 @@ export class LocatorBar {
       // This bar lives for the shell, so a confirmation left standing would sit in the
       // accessibility tree beside every screen the user opened afterwards, readable by a virtual
       // cursor as text about a screen they have left. It announced once, on the screen it was
-      // about; leaving it is a second, stale claim.
+      // about; leaving it is a second, stale claim. A refusal is dropped on the same terms.
       this.announcement.set('');
+      this.preferences.clearFault();
     });
     const stopNavigation = this.navigation.subscribe(() => this.bump());
     const stopShell = this.shell.subscribe(() => this.bump());
@@ -452,6 +454,19 @@ export class LocatorBar {
   }
 
   /**
+   * The instance's own sentence for a refused preference write, `''` for none (DW-1326).
+   *
+   * Assertive rather than polite, because it says the pin the user asked for did not happen
+   * (EXPERIENCE.md "Status messages (WCAG 4.1.3)"); the text is the server's (AD-39) and this
+   * component publishes none of it. Cleared before each toggle, so a refusal about one screen is
+   * never left standing beside the next.
+   */
+  protected get favoriteRefusal(): string {
+    this.generation();
+    return this.preferences.fault();
+  }
+
+  /**
    * Whether this screen offers a Help control: the instance resolved a documentation address for
    * it.
    *
@@ -476,16 +491,17 @@ export class LocatorBar {
    *
    * The navigation is never awaited on this, but the announcement is: the store re-settles from
    * the instance's own answer, so a refusal -- an unknown route, the favorites cap, an instance
-   * that did not reply -- leaves the toggle unpressed and says nothing, rather than confirming a
-   * change that was refused. Surfacing the refusal itself needs a published string (DW-1326).
+   * that did not reply -- leaves the toggle unpressed and confirms nothing. What it does leave is
+   * the instance's own sentence, which `favoriteRefusal` announces assertively (DW-1326).
    */
   protected toggleFavorite(): void {
     const route = this.favoriteRoute();
     if (route === '') return;
     const pinned = this.preferences.isFavorite(route);
-    // Cleared first, so pinning a second screen has a change to announce rather than re-writing
-    // the sentence already standing, which a live region does not read out again.
+    // Both regions cleared first, so a second toggle has a change to announce rather than
+    // re-writing a sentence already standing, which a live region does not read out again.
     this.announcement.set('');
+    this.preferences.clearFault();
     const pending = pinned
       ? this.preferences.remove(FAVORITE_KIND, route)
       : this.preferences.add(FAVORITE_KIND, route);

@@ -1224,6 +1224,12 @@ export const STRINGS = {
   /** EXPERIENCE.md:384 */
   systemInfoNotReported: 'Not reported',
 
+  // Story 15.5's one: the empty state a Home block shows when every row the instance holds for it
+  // names a screen this build does not serve (DW-1328). One value for both blocks, so neither
+  // republishes it, and the block keeps its Clear control beside it.
+  /** EXPERIENCE.md:385 */
+  rememberedNoScreensHere: 'No screens this instance still serves.',
+
   // Two connectivity sentences EXPERIENCE.md publishes outside the Fixed strings table, each
   // authorized by its own targeted extractor in `ui/tools/strings.test.mjs`, never by being
   // added to REQUIRED_ALONGSIDE_TABLE, whose own comment calls that the bypass it must not

@@ -7,13 +7,13 @@ import { ChangeBus } from '../../core/change-bus';
 import type { ConnectivityService } from '../../core/connectivity';
 import { NavigationService, screenForUrl } from '../../core/navigation';
 import { OverlayStack } from '../../core/overlay-stack';
-import { PreferenceStore } from '../../core/preferences';
 import { RefreshService } from '../../core/refresh';
 import { ScopeService } from '../../core/scope';
 import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
 import { ScreenStores } from '../../core/screen-store';
 import { STRINGS } from '../../core/strings';
 import { DatabaseDetailsPage } from './database-details.page';
+import { stubAccountPreferences } from '../../testing/account-preferences';
 
 /**
  * Database details (Story 6.11), wired end to end over a stub of the HTTP answer, with the real
@@ -114,7 +114,7 @@ async function mount(
     },
   };
   volumesFailing = volumesRefused;
-  const stores = new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
+  const stores = new ScreenStores({ account: stubAccountPreferences() });
   const refresh = new RefreshService({
     stores,
     connectivity: { retryWhenReachable: () => {} } as unknown as ConnectivityService,

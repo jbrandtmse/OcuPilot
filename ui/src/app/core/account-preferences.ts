@@ -1,12 +1,12 @@
 /**
- * The caller's own favorites and recent items, over `/api/ocupilot/account/preferences`
- * (Story 15.2, AD-50).
+ * Everything OcuPilot remembers about this user, over `/api/ocupilot/account/preferences`
+ * (Stories 15.2 and 15.5, AD-50).
  *
- * **Named `account-preferences.ts` and not `preferences.ts`.** That name is taken by the
- * browser-storage store, which holds the side bar's remembered open state and nothing else and is
- * the one module `ui/tools/api.test.mjs` exempts from the `localStorage` ban. This state lives on
- * the instance (AD-50, AD-28): it survives a sign-out, it follows the user to another tab and
- * another machine, and browser storage could deliver none of that.
+ * **Every preference the product keeps is here, and none is in browser storage.** Favorites and
+ * recent items are set membership; a screen's table view, a screen's auto-refresh rate and the two
+ * pieces of shell chrome the user can move are values, keyed by route or by shell member. All of
+ * it lives on the instance (AD-50, AD-28, AD-47): it survives a sign-out, it follows the user to
+ * another tab and another machine, and the browser holds only the per-tab token pair.
  *
  * **A transport failure never clears what is on screen.** A read that does not answer leaves the
  * previous lists standing and `answered()` where it was, so Home renders what the instance last
@@ -35,8 +35,26 @@ export const FAVORITE_KIND = 'favorite';
 /** The `kind` value naming the visited-screens list. */
 export const RECENT_KIND = 'recent';
 
-/** The two lists, as the wire names them. */
+/** The `kind` value naming one screen's remembered table view, keyed by route. */
+export const VIEW_KIND = 'view';
+
+/** The `kind` value naming one screen's remembered auto-refresh rate, keyed by route. */
+export const REFRESH_KIND = 'refresh';
+
+/** The `kind` value naming a remembered piece of shell chrome, keyed by shell member. */
+export const SHELL_KIND = 'shell';
+
+/** The `shell` member holding the side bar's open state, as `'1'` or `'0'`. */
+export const SHELL_SIDE_BAR_OPEN = 'sideBarOpen';
+
+/** The `shell` member holding the agent co-pilot panel's width in px. */
+export const SHELL_PANEL_WIDTH = 'panelWidth';
+
+/** The two membership lists, as the wire names them. */
 export type PreferenceKind = typeof FAVORITE_KIND | typeof RECENT_KIND;
+
+/** The three value kinds, as the wire names them. */
+export type PreferenceValueKind = typeof VIEW_KIND | typeof REFRESH_KIND | typeof SHELL_KIND;
 
 /** The placeholder the two `*RemoveNamed` strings leave for the screen a row removes. */
 export const NAME_PLACEHOLDER = '<name>';
@@ -56,10 +74,57 @@ export interface AccountPreferencesOptions {
   readonly api: ApiService;
 }
 
-/** The body member each list arrives under, and the member a write names a screen with. */
+/** The body member each list arrives under, and the members a write names a key and a value with. */
 const FAVORITES_MEMBER = 'favorites';
 const RECENTS_MEMBER = 'recents';
+const VIEWS_MEMBER = 'views';
+const REFRESH_RATES_MEMBER = 'refreshRates';
+const SHELL_MEMBER = 'shell';
 const ROUTE_MEMBER = 'route';
+const NAME_MEMBER = 'name';
+const VALUE_MEMBER = 'value';
+
+/**
+ * Which body member a value kind's key arrives under: a screen-scoped kind is keyed by `route`, a
+ * shell one by `name`. Held here so the write and the read read one answer.
+ */
+function keyMemberFor(kind: PreferenceValueKind): string {
+  return kind === SHELL_KIND ? NAME_MEMBER : ROUTE_MEMBER;
+}
+
+/**
+ * One value list of the answered body, as a key-to-value map.
+ *
+ * Narrowed rather than cast, the way `routesOf` narrows a membership list: an entry that is not an
+ * object, or whose key or value is not a non-empty string, is dropped rather than becoming a
+ * preference nothing can mean. An answer carrying no such member reads as an empty map, which is
+ * what a body from an instance that predates Story 15.5 looks like.
+ */
+function valuesOf(body: unknown, member: string, keyMember: string): ReadonlyMap<string, string> {
+  const out = new Map<string, string>();
+  if (typeof body !== 'object' || body === null) return out;
+  const raw = (body as Record<string, unknown>)[member];
+  if (!Array.isArray(raw)) return out;
+  for (const entry of raw) {
+    if (entry === null || typeof entry !== 'object' || Array.isArray(entry)) continue;
+    const row = entry as Record<string, unknown>;
+    const key = row[keyMember];
+    const value = row[VALUE_MEMBER];
+    if (typeof key !== 'string' || key === '') continue;
+    if (typeof value !== 'string' || value === '') continue;
+    out.set(key, value);
+  }
+  return out;
+}
+
+/** Whether two maps say the same thing, so a re-read that confirms one re-renders nothing. */
+function sameMap(a: ReadonlyMap<string, string>, b: ReadonlyMap<string, string>): boolean {
+  if (a.size !== b.size) return false;
+  for (const [key, value] of a) {
+    if (b.get(key) !== value) return false;
+  }
+  return true;
+}
 
 /**
  * The routes one list of the answered body carries.
@@ -94,7 +159,61 @@ export class AccountPreferences {
 
   private recentsValue: readonly string[] = [];
 
+  private viewsValue: ReadonlyMap<string, string> = new Map();
+
+  private refreshRatesValue: ReadonlyMap<string, string> = new Map();
+
+  private shellValue: ReadonlyMap<string, string> = new Map();
+
   private answeredValue = false;
+
+  /**
+   * Whether an answer has settled **since a read was asked for**, which is what the three stores
+   * that adopt a remembered value key off.
+   *
+   * **Not `answeredValue`.** Every write answers the whole body too, so a store whose first answer
+   * is a write's would look settled -- and the stores would take a remembered value from a body
+   * that arrived after the user had already moved the thing it describes. A dismissal that
+   * deliberately persists nothing (`ShellState.collapse`) is exactly the state that would be
+   * undone.
+   *
+   * **And not "the read itself settled".** A read and a write issued together race, and only the
+   * newest answer wins (`request`): on a reloaded tab the visit `recents-recorder.ts` registers is
+   * issued just after the read and its answer supersedes it. That answer carries the same whole
+   * body, so it settles the question the read asked -- which is why this turns on the read having
+   * been *asked for*, not on which answer happened to land. Keying it on the read's own settle
+   * left a reloaded tab on the published defaults with the instance's answer already in hand.
+   */
+  private loadedValue = false;
+
+  /** Whether `load()` has been called since the last `reset()`; see `loadedValue`. */
+  private readIssued = false;
+
+  /**
+   * The latest value each key is waiting to send, and the keys with a write already in flight.
+   *
+   * **One write per key at a time, and only the latest value.** A width gesture sends a value per
+   * 16 px step and a filter one per keystroke, and three requests issued a few milliseconds apart
+   * do not have to arrive in that order -- measured: a panel stepped 416, 432, 448 was left
+   * holding 432, because the last write landed first. Serializing per key makes the order the
+   * user's, and collapsing a burst to its latest value makes a typed filter one request rather
+   * than one per character.
+   */
+  private readonly pendingValues = new Map<string, string>();
+
+  private readonly writingKeys = new Set<string>();
+
+  /**
+   * The published reason the instance last refused a preference write with, `''` for none
+   * (DW-1326).
+   *
+   * **Server text, never client copy** (AD-39): the envelope's own `reason`, which the two
+   * surfaces that write preferences announce as `role="alert"` rather than as the polite
+   * confirmation a success takes (EXPERIENCE.md "Status messages (WCAG 4.1.3)"). A refusal that
+   * carries no reason -- an instance that did not answer at all -- records none, because the
+   * connectivity banner is already saying that and a second, wordless alert says nothing.
+   */
+  private faultValue = '';
 
   /**
    * Bumped by `reset()`, read across the await. An answer about the account a departed principal
@@ -119,9 +238,18 @@ export class AccountPreferences {
     this.api = options.api;
   }
 
-  /** Whether a read has ever settled, so a caller can tell "no rows" from "not asked yet". */
+  /** Whether the instance has ever answered, so a caller can tell "no rows" from "not asked yet". */
   answered(): boolean {
     return this.answeredValue;
+  }
+
+  /**
+   * Whether the read this shell asked for has been answered, which is what the stores that adopt
+   * a remembered value key off (Story 15.5). A write's answer before any read is not one: see
+   * `loadedValue`.
+   */
+  loaded(): boolean {
+    return this.loadedValue;
   }
 
   /** The pinned screens' routes, oldest first, as the instance ordered them. */
@@ -132,6 +260,33 @@ export class AccountPreferences {
   /** The visited screens' routes, newest first, as the instance ordered them. */
   recents(): readonly string[] {
     return this.recentsValue;
+  }
+
+  /** Each screen's remembered table view, keyed by route. The value is opaque to this store. */
+  views(): ReadonlyMap<string, string> {
+    return this.viewsValue;
+  }
+
+  /** Each screen's remembered auto-refresh rate in whole seconds, keyed by route. */
+  refreshRates(): ReadonlyMap<string, string> {
+    return this.refreshRatesValue;
+  }
+
+  /** The remembered pieces of shell chrome, keyed by shell member. */
+  shell(): ReadonlyMap<string, string> {
+    return this.shellValue;
+  }
+
+  /** The instance's own sentence for the last refused write, `''` for none (DW-1326). */
+  fault(): string {
+    return this.faultValue;
+  }
+
+  /** Drop the standing refusal, so a surface that has announced one does not announce it twice. */
+  clearFault(): void {
+    if (this.faultValue === '') return;
+    this.faultValue = '';
+    this.notify();
   }
 
   /** Whether `route` is pinned. The locator bar's toggle reads this for `aria-pressed`. */
@@ -148,6 +303,7 @@ export class AccountPreferences {
 
   /** Read both lists. A read that does not answer leaves the previous ones standing. */
   load(): Promise<void> {
+    this.readIssued = true;
     return this.settle(this.api.requestJson<unknown>(ACCOUNT_PREFERENCES_PATH));
   }
 
@@ -164,6 +320,46 @@ export class AccountPreferences {
   /** Empty one list. */
   clear(kind: PreferenceKind): Promise<void> {
     return this.settle(this.write(kind, 'clear', null));
+  }
+
+  /**
+   * Remember `value` for `key` under `kind` -- a route for a screen-scoped kind, a shell member
+   * for `shell`.
+   *
+   * An empty value is never sent: the instance refuses one (an empty `%String` stores as SQL
+   * `NULL`), so a caller with nothing to remember is a caller with nothing to write.
+   */
+  setValue(kind: PreferenceValueKind, key: string, value: string): Promise<void> {
+    if (key === '' || value === '') return Promise.resolve();
+    const slot = `${kind}\u0000${key}`;
+    this.pendingValues.set(slot, value);
+    // A call that joins a write already in flight resolves when it is queued, not when it lands:
+    // every caller here is fire and forget, and what it is promised is that the instance ends up
+    // holding this value, which `drain` is what guarantees.
+    if (this.writingKeys.has(slot)) return Promise.resolve();
+    this.writingKeys.add(slot);
+    return this.drain(kind, key, slot);
+  }
+
+  /** Send this key's pending value, and whatever replaced it while that was in flight. */
+  private async drain(kind: PreferenceValueKind, key: string, slot: string): Promise<void> {
+    try {
+      while (this.pendingValues.has(slot)) {
+        const value = this.pendingValues.get(slot) ?? '';
+        this.pendingValues.delete(slot);
+        const body: Record<string, string> = { kind, action: 'set' };
+        body[keyMemberFor(kind)] = key;
+        body[VALUE_MEMBER] = value;
+        await this.settle(
+          this.api.requestJson<unknown>(ACCOUNT_PREFERENCES_PATH, {
+            method: 'POST',
+            body: JSON.stringify(body),
+          })
+        );
+      }
+    } finally {
+      this.writingKeys.delete(slot);
+    }
   }
 
   /**
@@ -187,7 +383,14 @@ export class AccountPreferences {
     this.request += 1;
     this.favoritesValue = [];
     this.recentsValue = [];
+    this.viewsValue = new Map();
+    this.refreshRatesValue = new Map();
+    this.shellValue = new Map();
+    this.faultValue = '';
     this.answeredValue = false;
+    this.loadedValue = false;
+    this.readIssued = false;
+    this.pendingValues.clear();
     this.notify();
   }
 
@@ -206,16 +409,45 @@ export class AccountPreferences {
     const result = await pending;
     if (generation !== this.generation) return;
     if (request !== this.request) return;
-    // Parked. A refusal is not an answer about what the account holds, and neither is an instance
-    // that did not reply: both leave the previous lists standing rather than emptying the blocks.
-    if (result.kind !== 'ok') return;
+    // A refusal is not an answer about what the account holds, and neither is an instance that did
+    // not reply: both leave the previous lists standing rather than emptying the blocks. What the
+    // refusal does now leave is its published sentence (DW-1326), which the two writing surfaces
+    // announce; it used to leave nothing at all, so a refused write looked like a write that had
+    // not happened yet.
+    if (result.kind !== 'ok') {
+      const reason = result.kind === 'error' && typeof result.reason === 'string' ? result.reason : '';
+      if (reason !== this.faultValue) {
+        this.faultValue = reason;
+        this.notify();
+      }
+      return;
+    }
     const favorites = routesOf(result.body, FAVORITES_MEMBER);
     const recents = routesOf(result.body, RECENTS_MEMBER);
+    const views = valuesOf(result.body, VIEWS_MEMBER, ROUTE_MEMBER);
+    const refreshRates = valuesOf(result.body, REFRESH_RATES_MEMBER, ROUTE_MEMBER);
+    const shell = valuesOf(result.body, SHELL_MEMBER, NAME_MEMBER);
+    // The answer that settles the read this store was asked for always notifies, even when it
+    // says exactly what the store already held: the stores that adopt a remembered value are
+    // waiting on that notification and there is nothing else to wake them.
+    const settlesTheRead = this.readIssued && !this.loadedValue;
     const moved =
-      !this.answeredValue || !same(this.favoritesValue, favorites) || !same(this.recentsValue, recents);
+      !this.answeredValue ||
+      settlesTheRead ||
+      this.faultValue !== '' ||
+      !same(this.favoritesValue, favorites) ||
+      !same(this.recentsValue, recents) ||
+      !sameMap(this.viewsValue, views) ||
+      !sameMap(this.refreshRatesValue, refreshRates) ||
+      !sameMap(this.shellValue, shell);
     this.favoritesValue = favorites;
     this.recentsValue = recents;
+    this.viewsValue = views;
+    this.refreshRatesValue = refreshRates;
+    this.shellValue = shell;
+    this.faultValue = '';
     this.answeredValue = true;
+    if (this.readIssued) this.loadedValue = true;
     if (moved) this.notify();
   }
 

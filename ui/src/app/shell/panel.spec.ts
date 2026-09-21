@@ -6,7 +6,6 @@ import { AGENT_CONTEXT_PATH, AgentContext, NO_CONTEXT_INFO, type AgentContextInf
 import { AgentStatus, type Restraint, formatKillSwitch } from '../core/agent-status';
 import { NavigationService, UNGATED, type Verdict } from '../core/navigation';
 import { PanelState } from '../core/panel-layout';
-import { PreferenceStore } from '../core/preferences';
 import { ScopeService } from '../core/scope';
 import { ScreenStores } from '../core/screen-store';
 import { ShellState } from '../core/shell-state';
@@ -17,6 +16,7 @@ import { stubAgentContext } from '../testing/agent-context';
 import { stubAgentStatus } from '../testing/agent-status';
 import { stubTurnStore } from '../testing/turn';
 import { Panel } from './panel';
+import { stubAccountPreferences } from '../testing/account-preferences';
 
 /**
  * The panel on every signed-in route, asserted against the DOM: its anatomy and banner order, the
@@ -148,11 +148,11 @@ async function mount(
   const scope = new StubScope();
   scope.value = options.namespace ?? 'HSCUSTOM';
   const screenStores =
-    options.screenStores ?? new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
-  const preferences = new PreferenceStore({ storage: memoryStorage() });
-  const shell = new ShellState({ preferences });
+    options.screenStores ?? new ScreenStores({ account: stubAccountPreferences() });
+  const preferences = stubAccountPreferences();
+  const shell = new ShellState({ account: preferences });
   if (options.area !== undefined) shell.setActiveArea(options.area);
-  const panelState = options.panelState ?? new PanelState({ preferences, shell });
+  const panelState = options.panelState ?? new PanelState({ account: preferences, shell });
   const turn = options.turn ?? stubTurnStore();
   const suggested = new SuggestedView({
     api: (options.suggestedApi ?? {
@@ -989,8 +989,8 @@ describe('Story 4.5: Send/Stop, the lock banner, Enter vs Shift+Enter, cards, an
       [TURN_PATH]: [{ kind: 'ok', status: 202, body: { turnId: 'turn-1' } }],
     });
     const turn = stubTurnStore({ api: api as never });
-    const preferences = new PreferenceStore({ storage: memoryStorage() });
-    const panelState = new PanelState({ preferences, shell: new ShellState({ preferences }) });
+    const preferences = stubAccountPreferences();
+    const panelState = new PanelState({ account: preferences, shell: new ShellState({ account: preferences }) });
     panelState.setDraft('typed before the kill switch came on');
     const { host } = await mount({
       restraint: { killSwitch: true, killSwitchAudience: 'everyone', killSwitchReason: 'off', blocked: true },

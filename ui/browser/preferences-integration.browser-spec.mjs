@@ -5,7 +5,7 @@
  *
  * **Why this file, and why it was missing.** Every link in the chain has its own pinning test --
  * `OcuPilot.Test.PreferencesWire` proves the instance keeps the rows, `ui/tools/api.test.mjs`
- * bans `localStorage` outside `core/preferences.ts`, and the component specs prove the locator
+ * bans `localStorage` everywhere under `ui/src`, and the component specs prove the locator
  * toggle and Home's two blocks read `AccountPreferences` correctly -- but nothing drove the real
  * deployed client through a genuine second session and asked whether the *composition* holds.
  * jsdom has no second tab and no real `sessionStorage`/`localStorage`/cookie jar, so this claim
@@ -199,9 +199,9 @@ test('DW-1329 (Integration AC): favorites and recents held before sign-out rende
     // The writing context's own storage, read before the sign-out clears anything. This is the
     // half that matters: the second context only ever *read* the lists, so a client that mirrored
     // them to browser storage **on write** would leave nothing there and the assertion at the end
-    // of this test would pass anyway. `api.test.mjs` bans `localStorage` outside
-    // `core/preferences.ts` by source scan, but it scores `sessionStorage` as no violation, so
-    // that ban does not cover this on its own.
+    // of this test would pass anyway. `api.test.mjs` bans `localStorage` everywhere under
+    // `ui/src` by source scan, but it scores `sessionStorage` as no violation, so that ban does
+    // not cover this on its own.
     const wroteStorage = await clientStorageEntries(first.page);
     const holdsRoute = (entries) =>
       entries.some(([, value]) => value.includes('permissions/users') || value.includes('logs/alerts'));

@@ -13,8 +13,15 @@
 /// data, never foreign keys. A user the instance no longer holds, and a route no screen declares
 /// any more, both read back verbatim; dropping an unresolvable one from a rendered list is the
 /// caller's job, never this store's.</p>
-/// <p><b>This store holds set membership, not values.</b> There is no value column: a row exists
-/// or it does not. A later <property>Kind</property> that needs one adds it.</p>
+/// <p><b>Two shapes of row, told apart by <property>Kind</property>.</b> A membership kind --
+/// <parameter>KINDFAVORITE</parameter>, <parameter>KINDRECENT</parameter> -- is a row that exists
+/// or does not, and ignores <property>Value</property>. A value kind --
+/// <parameter>KINDSCREENVIEW</parameter>, <parameter>KINDREFRESH</parameter>,
+/// <parameter>KINDSHELL</parameter> -- keeps exactly one row per key and carries what the user
+/// chose in <property>Value</property> (Story 15.5).</p>
+/// <p><b>The three value kinds are never trimmed.</b> Each holds one row per key rather than a
+/// bounded list, so <method>GuardedTrim</method>'s ordering warning does not reach them and
+/// nothing calls it for them.</p>
 /// <p>Named scalars only -- no <code>list Of</code> -- per the persistent-storage rule, and no
 /// hand-written Storage.</p>
 Class OcuPilot.Kernel.State.Pref Extends OcuPilot.Kernel.State.Base
@@ -35,6 +42,18 @@ Property Kind As %String(MAXLEN = 16);
 /// two are the same number.</p>
 Property Name As %String(MAXLEN = 512);
 
+/// <p>What the user chose, for a value kind; <code>""</code> for a membership kind, which
+/// ignores it. Read through <method>Text</method> like every other column.</p>
+/// <p><b>This did not move <parameter>OcuPilot.Kernel.State.Base.SCHEMAVERSION</parameter></b>
+/// (Consistency Conventions: when <code>SCHEMAVERSION</code> moves). Every row written before it
+/// existed holds no value at all, which reads back as the safe default <code>""</code>, and the
+/// two membership kinds never consult it -- so no older OcuPilot reads a newer row wrongly and no
+/// newer one needs a migration step, exactly as <property>RowVersion</property> reaching all eight
+/// subclasses moved nothing.</p>
+/// <p>Outside <index>PrefUserKindNameIdx</index> deliberately: the key is what the row is about,
+/// and the value is what it says.</p>
+Property Value As %String(MAXLEN = 256);
+
 /// <p>When this row was last written, ISO-8601 UTC to the microsecond
 /// (<method>Stamp</method>). It is what orders the recents list, and it is the one column a
 /// repeat visit moves.</p>
@@ -48,6 +67,37 @@ Parameter KINDFAVORITE As %String = "favorite";
 /// <p>The <property>Kind</property> value for a screen the user visited.</p>
 Parameter KINDRECENT As %String = "recent";
 
+/// <p>The <property>Kind</property> value for one screen's remembered table view -- its sort,
+/// direction, filter and max rows, as the client serializes them into
+/// <property>Value</property> (Story 15.5). Keyed by route, so
+/// <method>OcuPilot.Api.Preferences.IsBuiltRoute</method> gates it exactly as it gates a
+/// favorite.</p>
+Parameter KINDSCREENVIEW As %String = "view";
+
+/// <p>The <property>Kind</property> value for one screen's remembered auto-refresh rate, in whole
+/// seconds. Keyed by route. AD-43's roster is untouched by this: which screens may refresh is the
+/// descriptor's, and this is only the rate one of them remembers.</p>
+Parameter KINDREFRESH As %String = "refresh";
+
+/// <p>The <property>Kind</property> value for a piece of shell chrome the user moved. Keyed by a
+/// member name from the closed set <method>IsShellMember</method> answers, never by a route.</p>
+Parameter KINDSHELL As %String = "shell";
+
+/// <p>The <parameter>KINDSHELL</parameter> member holding the side bar's open state, as
+/// <code>1</code> or <code>0</code>.</p>
+Parameter SHELLSIDEBAROPEN As %String = "sideBarOpen";
+
+/// <p>The <parameter>KINDSHELL</parameter> member holding the agent co-pilot panel's width in
+/// px.</p>
+Parameter SHELLPANELWIDTH As %String = "panelWidth";
+
+/// <p>The longest <property>Value</property> this store holds, equal to that property's own
+/// <code>MAXLEN</code>, which a property cannot read from a parameter.
+/// <class>OcuPilot.Test.PrefState</class> asserts the two are the same number, the idiom
+/// <parameter>OcuPilot.Kernel.State.Base.ROUTEMAXLENGTH</parameter> established. The handler
+/// refuses a longer value rather than letting the save fail on datatype validation.</p>
+Parameter VALUEMAXLENGTH As %Integer = 256;
+
 /// <p>How many favorites one user may hold. A twenty-first is refused by the instance rather than
 /// by the client alone.</p>
 Parameter FAVORITEMAX As %Integer = 20;
@@ -56,8 +106,16 @@ Parameter FAVORITEMAX As %Integer = 20;
 /// <method>GuardedTrim</method> after every visit.</p>
 Parameter RECENTMAX As %Integer = 10;
 
+/// <p>The whole SQL literal <method>GuardedAdd</method> counts a bounded list with, inside the
+/// critical section <method>OcuPilot.Kernel.State.Base.GuardedSaveWithinCap</method> holds. Held
+/// here as a parameter because a statement assembled at the call site is a statement a caller
+/// value could reach (AD-21); the two key values bind.</p>
+Parameter COUNTFORUSERSQL As %String = "SELECT COUNT(*) FROM OcuPilot_Kernel_State.Pref WHERE UserName = ? AND Kind = ?";
+
 /// <p><var>pUserName</var>'s rows of <var>pKind</var>, as a <class>%DynamicArray</class> of
-/// <code>{route, updatedAt}</code> objects.</p>
+/// <code>{route, value, updatedAt}</code> objects. <code>route</code> is the
+/// <property>Name</property> column whatever the kind keys by; <code>value</code> is
+/// <code>""</code> for a membership kind.</p>
 /// <p><b>Ordered by kind, because the two lists mean different things.</b> Favorites read
 /// oldest-first, which is the order they were pinned in and is stable as long as they are held;
 /// recents read newest-first, which is what "recent" means. Both orders are declared in their own
@@ -78,6 +136,7 @@ ClassMethod GuardedListForUser(pUserName As %String, pKind As %String, Output pR
             If $$$ISERR(tOpenSC) || '$IsObject(tRow) Continue
             Set tEntry = {}
             Do tEntry.%Set("route", ..Text(tRow.Name), "string")
+            Do tEntry.%Set("value", ..Text(tRow.Value), "string")
             Do tEntry.%Set("updatedAt", ..Text(tRow.UpdatedAt), "string")
             Do pRows.%Push(tEntry)
             Set tRow = ""
@@ -95,6 +154,11 @@ ClassMethod GuardedListForUser(pUserName As %String, pKind As %String, Output pR
 /// <var>pMax</var> rows and <var>pName</var> is not one of them -- the refusal the handler turns
 /// into 422. A second add of a row already held is a no-op that answers <var>pAtLimit</var> 0:
 /// the outcome the caller asked for is already true.</p>
+/// <p><b>Neither race this loses is a failure</b> (DW-1327). The count is taken inside
+/// <method>OcuPilot.Kernel.State.Base.GuardedSaveWithinCap</method>'s critical section rather than
+/// here, so two adds of different routes cannot both read the bound as not-yet-reached; and an add
+/// whose key another writer inserted between the look-up and the save answers the documented no-op
+/// rather than propagating the unique-index violation as a 500.</p>
 ClassMethod GuardedAdd(pUserName As %String, pKind As %String, pName As %String, pMax As %Integer, Output pAtLimit As %Boolean) As %Status
 {
     Set pAtLimit = 0
@@ -106,19 +170,17 @@ ClassMethod GuardedAdd(pUserName As %String, pKind As %String, pName As %String,
             Set tRow = ""
             Quit
         }
-        Set tSC = ..IdsForUser(pUserName, pKind, .tIds)
-        If $$$ISERR(tSC) Quit
-        If +$Get(tIds) >= +pMax {
-            Set pAtLimit = 1
-            Quit
-        }
         Set tRow = ..%New()
         Set tRow.UserName = pUserName
         Set tRow.Kind = pKind
         Set tRow.Name = pName
         Set tRow.UpdatedAt = ..Stamp()
-        Set tSC = ..GuardedSave(tRow)
+        Set tSC = ..GuardedSaveWithinCap(tRow, pUserName, pKind, ..#COUNTFORUSERSQL, pMax, .pAtLimit)
         Set tRow = ""
+        If $$$ISERR(tSC) && ..IsDuplicateKey(tSC) {
+            Set pAtLimit = 0
+            Set tSC = $$$OK
+        }
     } Catch ex {
         Set tSC = ex.AsStatus()
     }
@@ -165,9 +227,9 @@ ClassMethod GuardedClear(pUserName As %String, pKind As %String) As %Status
 /// <p><b>A lost race is not a failure.</b> The refresh is conditional on the version just read
 /// (<method>OcuPilot.Kernel.State.Base.GuardedSaveIfCurrent</method>), and a stale save means
 /// another tab registered the same visit -- so the caller's outcome is already true and the
-/// refusal is swallowed, on <class>OcuPilot.Kernel.State.Nav</class>'s precedent. It is the one
-/// read-modify-write in this store; add and remove are a create and a delete by key and have no
-/// conflict window at all.</p>
+/// refusal is swallowed, on <class>OcuPilot.Kernel.State.Nav</class>'s precedent. The create
+/// branch loses its own race the same way: a duplicate key means another tab created the row
+/// first (DW-1327).</p>
 ClassMethod GuardedTouch(pUserName As %String, pKind As %String, pName As %String) As %Status
 {
     Set tSC = $$$OK
@@ -182,6 +244,10 @@ ClassMethod GuardedTouch(pUserName As %String, pKind As %String, pName As %Strin
             Set tRow.UpdatedAt = ..Stamp()
             Set tSC = ..GuardedSave(tRow)
             Set tRow = ""
+            ; DW-1327. Another tab registered the same first visit between the look-up and the
+            ; save, so the row the caller asked for exists and the violation is the no-op this
+            ; method documents rather than a 500.
+            If $$$ISERR(tSC) && ..IsDuplicateKey(tSC) Set tSC = $$$OK
             Quit
         }
         Set tExpected = +tRow.RowVersion
@@ -193,6 +259,59 @@ ClassMethod GuardedTouch(pUserName As %String, pKind As %String, pName As %Strin
         Set tSC = ex.AsStatus()
     }
     Quit tSC
+}
+
+/// <p>Store <var>pValue</var> at <code>(pUserName, pKind, pName)</code> for a value kind,
+/// creating the row when the user has none (Story 15.5).</p>
+/// <p><b>One guarded frame, and one refusal that is not swallowed.</b> An existing row is updated
+/// through <method>OcuPilot.Kernel.State.Base.GuardedSaveIfCurrent</method>, conditional on the
+/// version just read, and a stale save is returned so the handler renders
+/// <parameter>OcuPilot.Api.Error.STATECONFLICT</parameter> (Consistency Conventions: concurrent
+/// writes). It is not <method>GuardedTouch</method>'s case: a lost visit leaves the caller's
+/// outcome already true, while a lost value write leaves a value the caller did not ask for.</p>
+/// <p><b>The create race answers by updating</b> (DW-1327): a key another writer inserted between
+/// the look-up and the save is re-read and written, so the value the caller sent is the value
+/// stored rather than a 500.</p>
+ClassMethod GuardedSetValue(pUserName As %String, pKind As %String, pName As %String, pValue As %String) As %Status
+{
+    Set tSC = $$$OK
+    Try {
+        Set tSC = ..OpenByKey(pUserName, pKind, pName, .tRow)
+        If $$$ISERR(tSC) Quit
+        If '$IsObject(tRow) {
+            Set tRow = ..%New()
+            Set tRow.UserName = pUserName
+            Set tRow.Kind = pKind
+            Set tRow.Name = pName
+            Set tRow.Value = pValue
+            Set tRow.UpdatedAt = ..Stamp()
+            Set tSC = ..GuardedSave(tRow)
+            Set tRow = ""
+            If $$$ISOK(tSC) Quit
+            If '..IsDuplicateKey(tSC) Quit
+            Set tSC = ..OpenByKey(pUserName, pKind, pName, .tRow)
+            If $$$ISERR(tSC) Quit
+            If '$IsObject(tRow) Quit
+        }
+        Set tExpected = +tRow.RowVersion
+        Set tRow.Value = pValue
+        Set tRow.UpdatedAt = ..Stamp()
+        Set tSC = ..GuardedSaveIfCurrent(tRow, tExpected)
+        Set tRow = ""
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>Whether <var>pName</var> is one of the closed set of shell members
+/// <parameter>KINDSHELL</parameter> keys by. Declared here beside the two member names rather than
+/// in the handler, so the store and the route read one vocabulary.</p>
+ClassMethod IsShellMember(pName As %String) As %Boolean
+{
+    If pName = ..#SHELLSIDEBAROPEN Quit 1
+    If pName = ..#SHELLPANELWIDTH Quit 1
+    Quit 0
 }
 
 /// <p>Keep the first <var>pKeep</var> rows <method>IdsForUser</method> answers for

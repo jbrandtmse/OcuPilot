@@ -8,7 +8,6 @@ import { routes } from '../app.routes';
 import { encodeEntityId } from '../core/entity-id';
 import { InstanceService } from '../core/instance';
 import { NavigationService, type Verdict } from '../core/navigation';
-import { PreferenceStore } from '../core/preferences';
 import { ScopeService } from '../core/scope';
 import { Session } from '../core/session';
 import { ShellState } from '../core/shell-state';
@@ -138,7 +137,7 @@ describe('the routed screen outlet', () => {
   beforeEach(() => {
     TestBed.resetTestingModule();
     navigation = new StubNavigation();
-    shell = new ShellState({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
+    shell = new ShellState({ account: stubAccountPreferences() });
     TestBed.configureTestingModule({
       providers: [
         { provide: About, useValue: stubAbout() },

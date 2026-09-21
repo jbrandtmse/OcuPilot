@@ -28,6 +28,9 @@ Method OnAfterOneTest() As %Status
     Do $$$AssertStatusOK(..Clear(), "both of the calling account's lists are cleared")
     Do $$$AssertEquals(..Count("favorites"), 0, "and no favorite this class wrote survives")
     Do $$$AssertEquals(..Count("recents"), 0, "nor a recent item")
+    Do $$$AssertEquals(..Count("views"), 0, "nor a remembered table view")
+    Do $$$AssertEquals(..Count("refreshRates"), 0, "nor a remembered refresh rate")
+    Do $$$AssertEquals(..Count("shell"), 0, "nor a remembered piece of shell chrome")
     Quit $$$OK
 }
 
@@ -38,9 +41,13 @@ Method OnAfterOneTest() As %Status
 ClassMethod Clear() As %Status
 {
     Set tUser = ##class(OcuPilot.Test.Http).GetTestUsername()
-    Set tSC = ##class(OcuPilot.Kernel.State.Pref).GuardedClear(tUser, "favorite")
-    If $$$ISERR(tSC) Quit tSC
-    Quit ##class(OcuPilot.Kernel.State.Pref).GuardedClear(tUser, "recent")
+    Set tKinds = $ListBuild("favorite", "recent", ##class(OcuPilot.Kernel.State.Pref).#KINDSCREENVIEW, ##class(OcuPilot.Kernel.State.Pref).#KINDREFRESH, ##class(OcuPilot.Kernel.State.Pref).#KINDSHELL)
+    Set tSC = $$$OK
+    For tI = 1:1:$ListLength(tKinds) {
+        Set tSC = ##class(OcuPilot.Kernel.State.Pref).GuardedClear(tUser, $List(tKinds, tI))
+        If $$$ISERR(tSC) Quit
+    }
+    Quit tSC
 }
 
 /// <p>How many entries <var>pList</var> holds, read over the wire, or <code>-1</code> when the
@@ -78,8 +85,8 @@ ClassMethod Call(pMethod As %String, pBody As %String, Output pStatus As %Intege
     Quit ##class(OcuPilot.Test.Http).AbsoluteRequest(pMethod, ..#PREFERENCESPATH, ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .pStatus, .pBodyText, .pHeaders, pBody, "application/json")
 }
 
-/// <p>The JSON body for one write. Built here so no test method spells the three member names
-/// twice.</p>
+/// <p>The JSON body for one membership write. Built here so no test method spells the three member
+/// names twice.</p>
 ClassMethod Payload(pKind As %String, pAction As %String, pRoute As %String = "") As %String
 {
     Set tBody = {}
@@ -87,6 +94,33 @@ ClassMethod Payload(pKind As %String, pAction As %String, pRoute As %String = ""
     Do tBody.%Set("action", pAction, "string")
     If pAction '= "clear" Do tBody.%Set("route", pRoute, "string")
     Quit tBody.%ToJSON()
+}
+
+/// <p>The JSON body for one value write: <var>pKeyMember</var> is <code>route</code> for a
+/// screen-scoped kind and <code>name</code> for a shell one.</p>
+ClassMethod ValuePayload(pKind As %String, pKeyMember As %String, pKey As %String, pValue As %String) As %String
+{
+    Set tBody = {}
+    Do tBody.%Set("kind", pKind, "string")
+    Do tBody.%Set("action", "set", "string")
+    Do tBody.%Set(pKeyMember, pKey, "string")
+    Do tBody.%Set("value", pValue, "string")
+    Quit tBody.%ToJSON()
+}
+
+/// <p>The one entry <var>pList</var> carries for <var>pKey</var> under <var>pKeyMember</var>, as
+/// its <code>value</code>; <code>""</code> when the list holds no such entry.</p>
+ClassMethod ValueFor(pAnswer As %DynamicObject, pList As %String, pKeyMember As %String, pKey As %String) As %String
+{
+    Set tOut = ""
+    If '$IsObject(pAnswer) Quit tOut
+    Set tArray = pAnswer.%Get(pList)
+    If '$IsObject(tArray) Quit tOut
+    Set tIterator = tArray.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tEntry) {
+        If tEntry.%Get(pKeyMember) = pKey Set tOut = tEntry.value
+    }
+    Quit tOut
 }
 
 /// <p>The routes <var>pList</var> carries, comma-joined in the order the instance answered.</p>
@@ -113,8 +147,14 @@ Method TestTheReadAnswersTwoEmptyListsOnACleanAccount()
     Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
     Do $$$AssertEquals(tAnswer.%GetTypeOf("favorites"), "array", "carrying a favorites array")
     Do $$$AssertEquals(tAnswer.%GetTypeOf("recents"), "array", "and a recents array")
-    Do $$$AssertEquals(tAnswer.favorites.%Size(), 0, "both empty")
+    Do $$$AssertEquals(tAnswer.%GetTypeOf("views"), "array", "and a views array")
+    Do $$$AssertEquals(tAnswer.%GetTypeOf("refreshRates"), "array", "and a refreshRates array")
+    Do $$$AssertEquals(tAnswer.%GetTypeOf("shell"), "array", "and a shell array")
+    Do $$$AssertEquals(tAnswer.favorites.%Size(), 0, "all empty")
     Do $$$AssertEquals(tAnswer.recents.%Size(), 0, "on a clean account")
+    Do $$$AssertEquals(tAnswer.views.%Size(), 0, "including the three Story 15.5 added")
+    Do $$$AssertEquals(tAnswer.refreshRates.%Size(), 0, "each of which answers an empty array")
+    Do $$$AssertEquals(tAnswer.shell.%Size(), 0, "rather than being absent")
 }
 
 /// <p><b>Adding, re-adding, removing and clearing a favorite</b> each answer 200 with the body the
@@ -293,6 +333,161 @@ Method TestAMalformedBodyIsOneRefusalNamingNoValue()
     }
     Do $$$AssertEquals(..Count("favorites"), 0, "and nothing was written")
     Do $$$AssertEquals(..Count("recents"), 0, "on either list")
+}
+
+/// <p><b>The three value kinds round-trip over the wire</b> (Story 15.5): a set answers 200 with
+/// the body the read would answer, a second set of the same key replaces the value rather than
+/// adding an entry, and a screen-scoped kind carries <code>route</code> while a shell one carries
+/// <code>name</code>.</p>
+/// <p>Mutation: drop the <code>set</code> arm from
+/// <method>OcuPilot.Api.Preferences.Apply</method> -- every value assertion goes red. Drop
+/// <code>views</code> from <method>OcuPilot.Api.Preferences.Body</method> -- the first one
+/// does.</p>
+Method TestAValuePreferenceRoundTripsOverTheWire()
+{
+    Set tRoutes = ..BuiltRoutes()
+    Do $$$AssertTrue($ListLength(tRoutes) >= 1, "the instance declares a built screen")
+    If $ListLength(tRoutes) < 1 Quit
+    Set tRoute = $List(tRoutes, 1)
+    Set tView = ##class(OcuPilot.Kernel.State.Pref).#KINDSCREENVIEW
+    Set tRate = ##class(OcuPilot.Kernel.State.Pref).#KINDREFRESH
+    Set tShell = ##class(OcuPilot.Kernel.State.Pref).#KINDSHELL
+    Set tMember = ##class(OcuPilot.Kernel.State.Pref).#SHELLPANELWIDTH
+
+    Set tSC = ..Call("POST", ..ValuePayload(tView, "route", tRoute, "{""sort"":""Name""}"), .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the set completes")
+    Do $$$AssertEquals(tStatus, 200, "and is applied: " _ tBody)
+    Do $$$AssertTrue($ZConvert($Get(tHeaders("CONTENT-TYPE")), "L") [ "application/json", "as application/json")
+    Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(..ValueFor(tAnswer, "views", "route", tRoute), "{""sort"":""Name""}", "answering the value the read would answer")
+
+    Set tSC = ..Call("POST", ..ValuePayload(tView, "route", tRoute, "{""sort"":""Time""}"), .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "a second set replaces it")
+    Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tAnswer.views.%Size(), 1, "without adding an entry")
+    Do $$$AssertEquals(..ValueFor(tAnswer, "views", "route", tRoute), "{""sort"":""Time""}", "and answers the newer value")
+
+    Set tSC = ..Call("POST", ..ValuePayload(tRate, "route", tRoute, "30"), .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "a rate is remembered for the same screen")
+    Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(..ValueFor(tAnswer, "refreshRates", "route", tRoute), "30", "under its own kind")
+    Do $$$AssertEquals(tAnswer.views.%Size(), 1, "leaving the view alone")
+
+    Set tSC = ..Call("POST", ..ValuePayload(tShell, "name", tMember, "432"), .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "a shell member is remembered: " _ tBody)
+    Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(..ValueFor(tAnswer, "shell", "name", tMember), "432", "keyed by name rather than by route")
+    Do $$$AssertEquals(tAnswer.favorites.%Size(), 0, "and no membership list moved")
+    Do $$$AssertEquals(tAnswer.recents.%Size(), 0, "on either kind")
+}
+
+/// <p><b>The three Story 15.5 refusals each answer 422 with a published sentence</b> (AD-39): a
+/// value that is empty or over-long, a shell member outside the closed set, and a screen-scoped
+/// value naming a route no built screen declares.</p>
+/// <p>Mutation: delete either arm added to
+/// <method>OcuPilot.Api.Error.ReasonForViolation</method> -- the <code>reason</code> serializes
+/// empty and the matching leg goes red.</p>
+Method TestTheValueRefusalsCarryTheirPublishedSentences()
+{
+    Set tRoutes = ..BuiltRoutes()
+    Do $$$AssertTrue($ListLength(tRoutes) >= 1, "the instance declares a built screen")
+    If $ListLength(tRoutes) < 1 Quit
+    Set tRoute = $List(tRoutes, 1)
+    Set tView = ##class(OcuPilot.Kernel.State.Pref).#KINDSCREENVIEW
+    Set tShell = ##class(OcuPilot.Kernel.State.Pref).#KINDSHELL
+    Set tLong = ""
+    For tI = 1:1:(##class(OcuPilot.Kernel.State.Pref).#VALUEMAXLENGTH + 10) {
+        Set tLong = tLong _ "x"
+    }
+
+    Set tCases = 4
+    Set tCases(1) = $ListBuild(..ValuePayload(tView, "route", tRoute, ""), ##class(OcuPilot.Api.Error).#PREFERENCESVALUE, "value", ##class(OcuPilot.Api.Error).#REASONPREFERENCESVALUE)
+    Set tCases(2) = $ListBuild(..ValuePayload(tView, "route", tRoute, tLong), ##class(OcuPilot.Api.Error).#PREFERENCESVALUE, "value", ##class(OcuPilot.Api.Error).#REASONPREFERENCESVALUE)
+    Set tCases(3) = $ListBuild(..ValuePayload(tShell, "name", "anything", "1"), ##class(OcuPilot.Api.Error).#PREFERENCESNAME, "name", ##class(OcuPilot.Api.Error).#REASONPREFERENCESNAME)
+    Set tCases(4) = $ListBuild(..ValuePayload(tView, "route", "no-such-area/no-such-screen", "1"), ##class(OcuPilot.Api.Error).#PREFERENCESROUTE, "route", ##class(OcuPilot.Api.Error).#REASONPREFERENCESROUTE)
+
+    For tI = 1:1:tCases {
+        Set tSent = $List(tCases(tI), 1)
+        Set tCode = $List(tCases(tI), 2)
+        Set tField = $List(tCases(tI), 3)
+        Set tReason = $List(tCases(tI), 4)
+        Set tSC = ..Call("POST", tSent, .tStatus, .tBody, .tHeaders)
+        Do $$$AssertStatusOK(tSC, "the request completes for case " _ tI)
+        Do $$$AssertEquals(tStatus, 422, "and is refused for case " _ tI _ ": " _ tBody)
+        Do $$$AssertTrue($ZConvert($Get(tHeaders("CONTENT-TYPE")), "L") [ "application/json", "as application/json for case " _ tI)
+        Do $$$AssertEquals((tBody [ "}{"), 0, "exactly one envelope for case " _ tI)
+        Set tFault = ##class(%DynamicObject).%FromJSON(tBody)
+        Do $$$AssertEquals(tFault.error, "validation_failed", "on the validation slug for case " _ tI)
+        Do $$$AssertEquals(tFault.code, tCode, "with the published code for case " _ tI)
+        Do $$$AssertNotEquals(tFault.reason, "", "and a non-empty reason for case " _ tI)
+        Do $$$AssertEquals(tFault.reason, tReason, "the sentence written once on the server for case " _ tI)
+        Do $$$AssertEquals(tFault.detail.violations.%Get(0).field, tField, "on the field the caller can correct for case " _ tI)
+        Do $$$AssertEquals(tFault.detail.violations.%Get(0).reason, tReason, "carried on the violation too for case " _ tI)
+    }
+    Do $$$AssertEquals(..Count("views"), 0, "and nothing was written")
+    Do $$$AssertEquals(..Count("shell"), 0, "on either kind")
+}
+
+/// <p><b>The widened grammar still refuses everything outside it</b>, 422 before anything is
+/// written: a membership kind carrying a value or a name, a value kind carrying an add or a
+/// remove, a value-kind clear carrying a key, a shell kind carrying a route, a screen-scoped kind carrying a name, and a set with no
+/// value at all.</p>
+/// <p>Mutation: delete any one of the kind-and-action checks in
+/// <method>OcuPilot.Api.Preferences.HandleUpdate</method> -- the matching leg goes red.</p>
+Method TestTheWidenedGrammarRefusesAMemberTheKindDoesNotTake()
+{
+    Set tRoutes = ..BuiltRoutes()
+    Do $$$AssertTrue($ListLength(tRoutes) >= 1, "the instance declares a built screen")
+    If $ListLength(tRoutes) < 1 Quit
+    Set tRoute = $List(tRoutes, 1)
+    Set tBodies = $ListBuild("{""kind"":""favorite"",""action"":""add"",""route"":""" _ tRoute _ """,""value"":""1""}", "{""kind"":""favorite"",""action"":""add"",""name"":""sideBarOpen""}", "{""kind"":""favorite"",""action"":""set"",""route"":""" _ tRoute _ """,""value"":""1""}", "{""kind"":""view"",""action"":""add"",""route"":""" _ tRoute _ """}", "{""kind"":""view"",""action"":""set"",""route"":""" _ tRoute _ """}", "{""kind"":""view"",""action"":""set"",""name"":""sideBarOpen"",""value"":""1""}", "{""kind"":""shell"",""action"":""set"",""route"":""" _ tRoute _ """,""value"":""1""}", "{""kind"":""view"",""action"":""clear"",""route"":""" _ tRoute _ """}", "{""kind"":""shell"",""action"":""set"",""name"":""sideBarOpen"",""value"":1}")
+    For tI = 1:1:$ListLength(tBodies) {
+        Set tSent = $List(tBodies, tI)
+        Set tSC = ..Call("POST", tSent, .tStatus, .tBody, .tHeaders)
+        Do $$$AssertStatusOK(tSC, "the request completes: " _ tSent)
+        Do $$$AssertEquals(tStatus, 422, "refused: " _ tSent _ " -> " _ tBody)
+        Set tFault = ##class(%DynamicObject).%FromJSON(tBody)
+        Do $$$AssertEquals(tFault.code, ##class(OcuPilot.Api.Error).#PREFERENCESBODY, "with the body code: " _ tSent)
+        Do $$$AssertEquals(tFault.%IsDefined("detail"), 0, "and no violations list, because no field was reached: " _ tSent)
+    }
+    Do $$$AssertEquals(..Count("favorites"), 0, "and nothing was written")
+    Do $$$AssertEquals(..Count("views"), 0, "on any kind")
+    Do $$$AssertEquals(..Count("shell"), 0, "at all")
+}
+
+/// <p><b>A clear empties any kind</b>, including the three that keep one row per key: forgetting
+/// everything a kind remembers is the same operation whatever the rows mean, and it is the one
+/// action a value kind takes beside <code>set</code>.</p>
+/// <p>Mutation: refuse <code>clear</code> for a value kind in
+/// <method>OcuPilot.Api.Preferences.HandleUpdate</method> -- the clear answers 422 and this goes
+/// red.</p>
+Method TestAClearEmptiesAValueKindToo()
+{
+    Set tRoutes = ..BuiltRoutes()
+    Do $$$AssertTrue($ListLength(tRoutes) >= 1, "the instance declares a built screen")
+    If $ListLength(tRoutes) < 1 Quit
+    Set tRoute = $List(tRoutes, 1)
+    Set tView = ##class(OcuPilot.Kernel.State.Pref).#KINDSCREENVIEW
+    Set tShell = ##class(OcuPilot.Kernel.State.Pref).#KINDSHELL
+
+    Do ..Call("POST", ..ValuePayload(tView, "route", tRoute, "{""sort"":""Name""}"), .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "a view is remembered: " _ tBody)
+    Do ..Call("POST", ..ValuePayload(tShell, "name", ##class(OcuPilot.Kernel.State.Pref).#SHELLSIDEBAROPEN, "0"), .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "and a shell member: " _ tBody)
+    Do $$$AssertEquals(..Count("views"), 1, "both are held")
+    Do $$$AssertEquals(..Count("shell"), 1, "on their own kinds")
+
+    Set tSC = ..Call("POST", ..Payload(tView, "clear"), .tStatus, .tBody, .tHeaders)
+    Do $$$AssertStatusOK(tSC, "the clear completes")
+    Do $$$AssertEquals(tStatus, 200, "and empties the views: " _ tBody)
+    Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tAnswer.views.%Size(), 0, "leaving none")
+    Do $$$AssertEquals(tAnswer.shell.%Size(), 1, "and the other kind alone")
+
+    Set tSC = ..Call("POST", ..Payload(tShell, "clear"), .tStatus, .tBody, .tHeaders)
+    Do $$$AssertEquals(tStatus, 200, "the shell kind clears too: " _ tBody)
+    Set tAnswer = ##class(%DynamicObject).%FromJSON(tBody)
+    Do $$$AssertEquals(tAnswer.shell.%Size(), 0, "leaving nothing")
 }
 
 }

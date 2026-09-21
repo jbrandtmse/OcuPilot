@@ -6,7 +6,6 @@ import { ConnectivityService } from '../core/connectivity';
 import type { Fault, FaultKind } from '../core/fault';
 import { InstanceService, type InstanceStatus } from '../core/instance';
 import { OverlayStack } from '../core/overlay-stack';
-import { PreferenceStore } from '../core/preferences';
 import { RefreshService } from '../core/refresh';
 import { ScreenStores } from '../core/screen-store';
 import type { ScreenDeclaration } from '../core/screens.generated';
@@ -16,6 +15,7 @@ import { screenDeclaration } from '../testing/screen-declaration';
 import { StatusBar } from './status-bar';
 import { About } from '../core/about';
 import { stubAbout } from '../testing/about';
+import { stubAccountPreferences } from '../testing/account-preferences';
 
 /**
  * The status bar's rendered contract (DESIGN.md `:1021`, `:1025`; EXPERIENCE.md "server · instance · user ▾", "`{spacing.status-bar-height}` band",
@@ -185,7 +185,7 @@ describe('the status bar', () => {
     readAt = new Date(2026, 8, 12, 9, 5, 3);
     bus = new ChangeBus();
     refresh = new RefreshService({
-      stores: new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) }),
+      stores: new ScreenStores({ account: stubAccountPreferences() }),
       connectivity: connectivity as unknown as ConnectivityService,
       bus,
       namespace: () => 'HSCUSTOM',

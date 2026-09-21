@@ -23,6 +23,7 @@ import puppeteer from 'puppeteer';
 import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
 import { leaveFirstLoginGate, pathOf } from './shell-entry.mjs';
+import { resetRememberedState } from './preferences-reset.mjs';
 
 const config = browserConfig();
 const STRINGS = loadStrings();
@@ -118,6 +119,10 @@ async function enabledProbeDefinition() {
 
 /** A fresh context signed in through the form, standing on `url` with the frame and the panel laid out. */
 async function signedInAt(url, viewport = config.viewport) {
+  // Story 15.5: the remembered screen and shell state lives on the instance now, keyed by the
+  // one account every spec signs in as, so a fresh context is no longer a fresh slate on its
+  // own -- see `preferences-reset.mjs`.
+  await resetRememberedState();
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
   page.setDefaultNavigationTimeout(config.navigationTimeoutMs);
@@ -209,13 +214,27 @@ function geometry(page) {
   });
 }
 
-/** Wait for the panel's width transition to settle at `width`. */
+/**
+ * Wait for the panel's width transition to settle at `width`.
+ *
+ * **Polled from the runner, not with `waitForFunction`.** Since Story 15.5 the remembered width
+ * arrives from the instance after the first paint, so on a reloaded tab this waits on a change
+ * that lands after the navigation settles -- and a `waitForFunction` issued straight after
+ * `page.reload` sat through it, reporting a timeout on a panel that had been at the right width
+ * for seconds. Each `page.evaluate` binds to the live execution context, which is what makes the
+ * poll see the page the reload produced.
+ */
 async function panelSettlesAt(page, width) {
-  await page.waitForFunction(
-    (wanted) => Math.abs(document.querySelector('app-panel aside.ocu-panel').getBoundingClientRect().width - wanted) < 0.01,
-    { timeout: config.navigationTimeoutMs },
-    width
-  );
+  const deadline = Date.now() + config.navigationTimeoutMs;
+  let seen = null;
+  while (Date.now() < deadline) {
+    seen = await page.evaluate(
+      () => document.querySelector('app-panel aside.ocu-panel')?.getBoundingClientRect().width ?? null
+    );
+    if (seen !== null && Math.abs(seen - width) < 0.01) return;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  assert.fail(`the panel never settled at ${width}; it last measured ${JSON.stringify(seen)}`);
 }
 
 async function pressOnHandle(page, key, times) {
@@ -260,7 +279,10 @@ test('AC3: the handle resizes by keyboard and pointer between 320 and the 640px 
     let shown = await geometry(page);
     assert.equal(shown.valueNow, 432, 'Left widens by 16px a press');
     assert.equal(shown.atStop, false);
-    assert.equal(await page.evaluate(() => localStorage.getItem('ocupilot.panel.width')), '432', 'the stored width updates');
+    // Story 15.5: the width is remembered on the instance, not in the browser. That it comes back
+    // is the AC2 reload test below and `ui-state-survives-sign-out.browser-spec.mjs`; what this
+    // asserts is the other half -- nothing about it reaches browser storage (AD-28, AD-47).
+    assert.equal(await page.evaluate(() => localStorage.getItem('ocupilot.panel.width')), null, 'no width reaches browser storage');
 
     // Drag the edge far past the maximum, then far past the minimum.
     const edge = await page.$eval('app-panel [role="separator"]', (node) => {
@@ -281,7 +303,7 @@ test('AC3: the handle resizes by keyboard and pointer between 320 and the 640px 
     shown = await geometry(page);
     assert.equal(shown.valueNow, 320, 'never below the minimum');
     assert.equal(shown.atStop, true, 'restrained at the minimum as well');
-    assert.equal(await page.evaluate(() => localStorage.getItem('ocupilot.panel.width')), '320');
+    assert.equal(await page.evaluate(() => localStorage.getItem('ocupilot.panel.width')), null);
 
     const cursor = await page.$eval('app-panel [role="separator"]', (node) => getComputedStyle(node).cursor);
     assert.equal(cursor, 'col-resize');
@@ -296,7 +318,7 @@ test('AC3: the handle resizes by keyboard and pointer between 320 and the 640px 
 });
 
 test('AC2: the same panel element, draft and width survive navigation, and the width survives a reload', async () => {
-  // Mutation (Rule 19): make `PreferenceStore.setPanelWidth` write nothing -> this goes red on the
+  // Mutation (Rule 19): make `PanelState.rememberWidth` send nothing -> this goes red on the
   // width after the reload.
   // DW-1048: both inside the try, with the context hoisted, so a throw between creating the probe
   // definition and signing in still reaches the `finally` that removes it. Left outside, a failed

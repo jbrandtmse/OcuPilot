@@ -18,7 +18,6 @@ import { InstanceService } from './app/core/instance';
 import { NavigationService } from './app/core/navigation';
 import { OverlayStack } from './app/core/overlay-stack';
 import { PanelState } from './app/core/panel-layout';
-import { PreferenceStore, readPreferenceStorage } from './app/core/preferences';
 import { RefreshService } from './app/core/refresh';
 import { ScopeService, onScopeChange } from './app/core/scope';
 import { ScreenActions } from './app/core/screen-actions';
@@ -133,17 +132,18 @@ onScopeChange(scope, () => {
   refresh.noteScopeChanged();
 });
 
-// The one module permitted to touch persistent storage, and the shell state it backs. Read
-// through `readPreferenceStorage()` rather than `localStorage` directly, for the reason
-// `readSessionStorage()` exists: in a browser with site data blocked the property access
-// itself throws, and at module scope that would abort the bootstrap before anything painted.
-const preferences = new PreferenceStore({ storage: readPreferenceStorage() });
-const shell = new ShellState({ preferences });
+// Everything this user's account remembers (Stories 15.2 and 15.5, AD-50): favorites, recent
+// items, each screen's table view and refresh rate, and the two pieces of shell chrome the user
+// can move. Built here, before the three stores that read it, so the locator bar's toggle, Home's
+// blocks, the command box's ranking, the side bar and the panel all read one answer -- and so that
+// nothing of it is in browser storage (AD-28, AD-47).
+const accountPreferences = new AccountPreferences({ api });
+const shell = new ShellState({ account: accountPreferences });
 
 // The row's width budget and the panel's own state (Story 4.3): the remembered width, the draft,
-// full screen and the yield order, over the same preferences and the same shell. `App` feeds it the
-// viewport width; the side bar, the rail and the panel read the layout it resolves.
-const panel = new PanelState({ preferences, shell });
+// full screen and the yield order, over the same account store and the same shell. `App` feeds it
+// the viewport width; the side bar, the rail and the panel read the layout it resolves.
+const panel = new PanelState({ account: accountPreferences, shell });
 
 // The turn store (Story 4.5): send, poll, stop, restore and New conversation, over the same API
 // service and the same per-tab `sessionStorage` the token pair uses (a second, independent read
@@ -162,7 +162,7 @@ void turn.restore();
 // bar's chip, the status bar's stamp and whatever screen binds all reach the same instance --
 // three of any of them would be three timers.
 const bus = new ChangeBus();
-const screenStores = new ScreenStores({ preferences });
+const screenStores = new ScreenStores({ account: accountPreferences });
 const refresh = new RefreshService({
   stores: screenStores,
   connectivity,
@@ -186,11 +186,6 @@ const suggested = new SuggestedView({ api, agentStatus, scope, connectivity });
 // the chip and the Send path both read one answer, and the bus is what keeps a changed row cap
 // or default definition from going stale.
 const agentContext = new AgentContext({ api, bus, connectivity });
-
-// The caller's own favorites and recent items (Story 15.2, AD-50). Built here like every other
-// core service so the locator bar's toggle, Home's two blocks and the command box's ranking all
-// read one answer -- three would be three reads and three disagreeing views of the same account.
-const accountPreferences = new AccountPreferences({ api });
 
 // The instance overview (Story 15.3): the About dialog and Home's links panel both read it, so one
 // store means one request and one answer rather than two that can disagree about where this
@@ -236,7 +231,6 @@ bootstrapApplication(App, {
     { provide: InstanceService, useValue: instance },
     { provide: NavigationService, useValue: navigation },
     { provide: ScopeService, useValue: scope },
-    { provide: PreferenceStore, useValue: preferences },
     { provide: ShellState, useValue: shell },
     { provide: PanelState, useValue: panel },
     { provide: TurnStore, useValue: turn },

@@ -25,7 +25,8 @@ const { applyView, createScreenRead, criteriaParams, screenReadPath, textOf, NO_
 const { RefreshService } = await import(corePath('refresh.ts'));
 const { ChangeBus } = await import(corePath('change-bus.ts'));
 const { ScreenStores } = await import(corePath('screen-store.ts'));
-const { PreferenceStore } = await import(corePath('preferences.ts'));
+const { stubAccountPreferences, settledAccountPreferences, lastRemembered, SHELL_SIDE_BAR_OPEN, SHELL_PANEL_WIDTH } =
+  await import(new URL('../src/app/testing/account-preferences.ts', import.meta.url).href);
 const { ApiService } = await import(corePath('api.ts'));
 const { Session } = await import(corePath('session.ts'));
 const { TokenStore } = await import(corePath('token-store.ts'));
@@ -89,7 +90,7 @@ function wired(respond) {
   const tokens = new TokenStore({ storage: memoryStorage(), navigationType: () => 'navigate' });
   const session = new Session({ fetch: fetchImpl, tokens, now: () => NOW_MS, schedule: () => {} });
   const api = new ApiService({ fetch: fetchImpl, tokens, session, scope: () => 'HSCUSTOM' });
-  const stores = new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
+  const stores = new ScreenStores({ account: stubAccountPreferences() });
   const refresh = new RefreshService({
     stores,
     connectivity: {

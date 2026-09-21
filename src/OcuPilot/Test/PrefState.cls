@@ -36,19 +36,40 @@ Method OnAfterOneTest() As %Status
     Do $$$AssertEquals(..Rows(..#PROBEUSER, "recent"), 0, "nor a recent of it")
     Do $$$AssertEquals(..Rows(..#PROBEUSERTWO, "favorite"), 0, "nor a favorite of the second")
     Do $$$AssertEquals(..Rows(..#PROBEUSERTWO, "recent"), 0, "nor a recent of it")
+    Do $$$AssertEquals(..Rows(..#PROBEUSER, ##class(OcuPilot.Kernel.State.Pref).#KINDSCREENVIEW), 0, "nor a remembered table view")
+    Do $$$AssertEquals(..Rows(..#PROBEUSER, ##class(OcuPilot.Kernel.State.Pref).#KINDREFRESH), 0, "nor a remembered refresh rate")
+    Do $$$AssertEquals(..Rows(..#PROBEUSER, ##class(OcuPilot.Kernel.State.Pref).#KINDSHELL), 0, "nor a remembered piece of shell chrome")
     Quit $$$OK
 }
 
-/// <p>Remove both probe users' rows of both kinds.</p>
+/// <p>Remove both probe users' rows of every kind this store holds.</p>
 ClassMethod Reset() As %Status
 {
-    Set tSC = ##class(OcuPilot.Kernel.State.Pref).GuardedClear(..#PROBEUSER, "favorite")
-    If $$$ISERR(tSC) Quit tSC
-    Set tSC = ##class(OcuPilot.Kernel.State.Pref).GuardedClear(..#PROBEUSER, "recent")
-    If $$$ISERR(tSC) Quit tSC
-    Set tSC = ##class(OcuPilot.Kernel.State.Pref).GuardedClear(..#PROBEUSERTWO, "favorite")
-    If $$$ISERR(tSC) Quit tSC
-    Quit ##class(OcuPilot.Kernel.State.Pref).GuardedClear(..#PROBEUSERTWO, "recent")
+    Set tKinds = $ListBuild("favorite", "recent", ##class(OcuPilot.Kernel.State.Pref).#KINDSCREENVIEW, ##class(OcuPilot.Kernel.State.Pref).#KINDREFRESH, ##class(OcuPilot.Kernel.State.Pref).#KINDSHELL)
+    Set tUsers = $ListBuild(..#PROBEUSER, ..#PROBEUSERTWO)
+    Set tSC = $$$OK
+    For tU = 1:1:$ListLength(tUsers) {
+        For tK = 1:1:$ListLength(tKinds) {
+            Set tSC = ##class(OcuPilot.Kernel.State.Pref).GuardedClear($List(tUsers, tU), $List(tKinds, tK))
+            If $$$ISERR(tSC) Quit
+        }
+        If $$$ISERR(tSC) Quit
+    }
+    Quit tSC
+}
+
+/// <p>The values <var>pUser</var>'s <var>pKind</var> rows answer, comma-joined as
+/// <code>key=value</code> in the order the store returned them.</p>
+ClassMethod ValueList(pUser As %String, pKind As %String) As %String
+{
+    Set tSC = ##class(OcuPilot.Kernel.State.Pref).GuardedListForUser(pUser, pKind, .tRows)
+    If $$$ISERR(tSC) Quit "<error>"
+    Set tOut = ""
+    Set tIterator = tRows.%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        Set tOut = tOut _ $Select(tOut = "": "", 1: ",") _ tRow.route _ "=" _ tRow.value
+    }
+    Quit tOut
 }
 
 /// <p>How many rows <var>pUser</var> holds of <var>pKind</var>, or -1 when the count failed.</p>
@@ -262,6 +283,134 @@ Method TestALostVisitRaceIsSwallowedRatherThanRaised()
     Set tHeld = ""
     Do $$$AssertStatusOK(tRaced, "the losing visit answers success, because the outcome it asked for is already true")
     Do $$$AssertEquals(..Rows(..#PROBEUSER, "recent"), 1, "and no second row was written")
+}
+
+/// <p><b>The value column holds a value of the declared length</b>, the way the route column holds
+/// a route: a property's <code>MAXLEN</code> cannot read a parameter, so the two numbers are held
+/// equal here.</p>
+Method TestTheValueColumnMatchesTheDeclaredValueCap()
+{
+    Set tProperty = ##class(%Dictionary.CompiledProperty).%OpenId("OcuPilot.Kernel.State.Pref||Value")
+    Do $$$AssertTrue($IsObject(tProperty), "the Value property is compiled")
+    If '$IsObject(tProperty) Quit
+    Do $$$AssertEquals(+tProperty.Parameters.GetAt("MAXLEN"), ##class(OcuPilot.Kernel.State.Pref).#VALUEMAXLENGTH, "and its MAXLEN is the declared value cap")
+}
+
+/// <p><b>A value round-trips through <method>Text</method> and is keyed by the same triple.</b> A
+/// second set of the same key replaces the value rather than adding a row, and the same key under
+/// another kind is a different row.</p>
+/// <p>Mutation: make <method>OcuPilot.Kernel.State.Pref.GuardedSetValue</method> skip the
+/// assignment to <property>Value</property> -- the value reads back empty and this goes red.</p>
+Method TestAValueRoundTripsAndIsKeyedByTheSameTriple()
+{
+    Set tView = ##class(OcuPilot.Kernel.State.Pref).#KINDSCREENVIEW
+    Set tRate = ##class(OcuPilot.Kernel.State.Pref).#KINDREFRESH
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Pref).GuardedSetValue(..#PROBEUSER, tView, "logs/alerts", "sort=Name"), "a view is remembered")
+    Do $$$AssertEquals(..ValueList(..#PROBEUSER, tView), "logs/alerts=sort=Name", "and reads back verbatim")
+    Do $$$AssertEquals(..Rows(..#PROBEUSER, tView), 1, "as one row")
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Pref).GuardedSetValue(..#PROBEUSER, tView, "logs/alerts", "sort=Time"), "setting it again replaces the value")
+    Do $$$AssertEquals(..Rows(..#PROBEUSER, tView), 1, "without adding a row")
+    Do $$$AssertEquals(..ValueList(..#PROBEUSER, tView), "logs/alerts=sort=Time", "and answers the newer value")
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Pref).GuardedSetValue(..#PROBEUSER, tRate, "logs/alerts", "30"), "the same route under another kind is a row of its own")
+    Do $$$AssertEquals(..Rows(..#PROBEUSER, tRate), 1, "which exists")
+    Do $$$AssertEquals(..Rows(..#PROBEUSER, tView), 1, "and leaves the view alone")
+    Do $$$AssertEquals(..RouteList(..#PROBEUSER, "favorite"), "", "no membership row was written")
+}
+
+/// <p><b>A membership row reads its value as the safe default.</b> The two membership kinds never
+/// write <property>Value</property>, so a favorite reads back with an empty one -- which is also
+/// what every row written before the column existed reads, the reason this did not move
+/// <code>SCHEMAVERSION</code>.</p>
+Method TestAMembershipRowReadsAnEmptyValue()
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Pref).GuardedAdd(..#PROBEUSER, "favorite", "logs/alerts", 20, .tAtLimit), "a screen is pinned")
+    Do $$$AssertEquals(..ValueList(..#PROBEUSER, "favorite"), "logs/alerts=", "and its value reads empty")
+}
+
+/// <p><b>The three value kinds are never trimmed.</b> Each holds one row per key rather than a
+/// bounded list, so more rows than <parameter>OcuPilot.Kernel.State.Pref.RECENTMAX</parameter>
+/// survive, and trimming the recents list leaves them untouched.</p>
+Method TestTheValueKindsAreNotTrimmed()
+{
+    Set tView = ##class(OcuPilot.Kernel.State.Pref).#KINDSCREENVIEW
+    Set tKeep = ##class(OcuPilot.Kernel.State.Pref).#RECENTMAX
+    Set tRows = tKeep + 2
+    For tI = 1:1:tRows {
+        Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Pref).GuardedSetValue(..#PROBEUSER, tView, "probe/view" _ tI, "maxRows=" _ tI), "view " _ tI _ " is remembered")
+    }
+    Do $$$AssertEquals(..Rows(..#PROBEUSER, tView), tRows, "every one is held")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Pref).GuardedTrim(..#PROBEUSER, "recent", tKeep), "trimming the recents list")
+    Do $$$AssertEquals(..Rows(..#PROBEUSER, tView), tRows, "leaves the views where they are")
+}
+
+/// <p><b>A unique-index violation is recognized as one</b> (DW-1327), which is what lets the three
+/// create paths answer their documented outcome instead of a 500. The violation is produced here
+/// by saving a second row on a key the store already holds -- the same status a create losing the
+/// race receives.</p>
+/// <p>The interleaving itself is not reproducible inside one process; what is pinned is the
+/// detector against the real error and the outcome the caller sees.</p>
+/// <p>Mutation: make <method>OcuPilot.Kernel.State.Base.IsDuplicateKey</method> answer 0 -- the
+/// first assertion goes red.</p>
+Method TestADuplicateKeyIsRecognizedAndAnswersTheDocumentedOutcome()
+{
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Pref).GuardedAdd(..#PROBEUSER, "favorite", "logs/alerts", 20, .tAtLimit), "the row is created once")
+
+    Set tClash = ##class(OcuPilot.Kernel.State.Pref).%New()
+    Set tClash.UserName = ..#PROBEUSER
+    Set tClash.Kind = "favorite"
+    Set tClash.Name = "logs/alerts"
+    Set tClash.UpdatedAt = "2026-09-20T00:00:00.000000Z"
+    Set tSaved = ##class(OcuPilot.Kernel.State.Pref).GuardedSave(tClash)
+    Set tClash = ""
+    Do $$$AssertStatusNotOK(tSaved, "a second row on the same key is refused by the unique index")
+    Do $$$AssertTrue(##class(OcuPilot.Kernel.State.Base).IsDuplicateKey(tSaved), "and is recognized as a duplicate key rather than as a write failure")
+    Do $$$AssertTrue('##class(OcuPilot.Kernel.State.Base).IsDuplicateKey($$$OK), "success is never a duplicate key")
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Pref).GuardedAdd(..#PROBEUSER, "favorite", "logs/alerts", 20, .tAgain), "and the caller's own add answers the documented no-op")
+    Do $$$AssertEquals(tAgain, 0, "without reporting the limit")
+    Do $$$AssertEquals(..Rows(..#PROBEUSER, "favorite"), 1, "leaving one row")
+}
+
+/// <p><b>A value write that loses the conditional save is refused, not swallowed.</b> A lost visit
+/// leaves the caller's outcome already true (<method>GuardedTouch</method>); a lost value write
+/// leaves a value the caller did not ask for, so the refusal reaches the handler, which renders
+/// <parameter>OcuPilot.Api.Error.STATECONFLICT</parameter>.</p>
+/// <p>The race is produced without a second process, on
+/// <method>TestALostVisitRaceIsSwallowedRatherThanRaised</method>'s mechanism: a reference held
+/// here carries a <property>RowVersion</property> the stored row does not, so the conditional
+/// <code>UPDATE</code> matches nothing.</p>
+/// <p>Mutation: swallow the stale save in
+/// <method>OcuPilot.Kernel.State.Pref.GuardedSetValue</method> -- this goes red.</p>
+Method TestALostValueWriteIsRefusedRatherThanSwallowed()
+{
+    Set tShell = ##class(OcuPilot.Kernel.State.Pref).#KINDSHELL
+    Set tMember = ##class(OcuPilot.Kernel.State.Pref).#SHELLSIDEBAROPEN
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Pref).GuardedSetValue(..#PROBEUSER, tShell, tMember, "1"), "the member is remembered once")
+
+    Set tId = ..RowId(..#PROBEUSER, tShell, tMember)
+    Do $$$AssertNotEquals(tId, "", "and its id is found")
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.Pref).GuardedOpenId(tId, .tHeld), "the row opens")
+    Do $$$AssertTrue($IsObject(tHeld), "as an object")
+    If '$IsObject(tHeld) Quit
+    Set tHeld.RowVersion = 9999
+
+    Set tRaced = ##class(OcuPilot.Kernel.State.Pref).GuardedSetValue(..#PROBEUSER, tShell, tMember, "0")
+    Set tHeld = ""
+    Do $$$AssertStatusNotOK(tRaced, "the losing write is refused")
+    Do $$$AssertTrue(##class(OcuPilot.Kernel.State.Base).IsStaleSave(tRaced), "as a stale save, which the handler renders as a conflict")
+    Do $$$AssertEquals(..Rows(..#PROBEUSER, tShell), 1, "and no second row was written")
+}
+
+/// <p><b>A shell member is one of a closed set.</b> The store owns that vocabulary, so the handler
+/// and the store cannot disagree about what shell chrome this instance remembers.</p>
+Method TestTheShellMemberSetIsClosed()
+{
+    Do $$$AssertTrue(##class(OcuPilot.Kernel.State.Pref).IsShellMember(##class(OcuPilot.Kernel.State.Pref).#SHELLSIDEBAROPEN), "the side bar's open state is a member")
+    Do $$$AssertTrue(##class(OcuPilot.Kernel.State.Pref).IsShellMember(##class(OcuPilot.Kernel.State.Pref).#SHELLPANELWIDTH), "so is the panel's width")
+    Do $$$AssertTrue('##class(OcuPilot.Kernel.State.Pref).IsShellMember("anything"), "and nothing else is")
+    Do $$$AssertTrue('##class(OcuPilot.Kernel.State.Pref).IsShellMember(""), "including the empty name")
 }
 
 }

@@ -7,7 +7,6 @@ import { ChangeBus } from '../../core/change-bus';
 import type { ConnectivityService } from '../../core/connectivity';
 import { NavigationService } from '../../core/navigation';
 import { OverlayStack } from '../../core/overlay-stack';
-import { PreferenceStore } from '../../core/preferences';
 import { RefreshService } from '../../core/refresh';
 import { ScopeService } from '../../core/scope';
 import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
@@ -16,6 +15,7 @@ import { SCREENS } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
 import { UpcomingPage } from './upcoming.page';
 import { localDateText } from './upcoming.store';
+import { stubAccountPreferences } from '../../testing/account-preferences';
 
 /**
  * The Upcoming tasks page over the generated declaration and a stub of the HTTP answers: the real
@@ -66,7 +66,7 @@ async function mount(held: Promise<void> | null = null) {
     },
   };
   const bus = new ChangeBus();
-  const stores = new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
+  const stores = new ScreenStores({ account: stubAccountPreferences() });
   const refresh = new RefreshService({
     stores,
     connectivity: { retryWhenReachable: () => {} } as unknown as ConnectivityService,

@@ -4,7 +4,6 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { NavigationService, type Verdict } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
-import { PreferenceStore } from '../core/preferences';
 import { ScreenActions } from '../core/screen-actions';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { ShellState } from '../core/shell-state';
@@ -12,7 +11,12 @@ import { STRINGS } from '../core/strings';
 import { screenDeclaration } from '../testing/screen-declaration';
 import { COMMAND_BOX_OVERLAY_ID, CommandBox } from './command-box';
 import { AccountPreferences } from '../core/account-preferences';
-import { stubAccountPreferences } from '../testing/account-preferences';
+import {
+  SHELL_SIDE_BAR_OPEN,
+  type StubbedAccountPreferences,
+  lastRemembered,
+  stubAccountPreferences,
+} from '../testing/account-preferences';
 
 /**
  * The command box's rendered contract (EXPERIENCE.md "Opens on click or Ctrl/Cmd+K; typing", "*Header, center.* Opens on click"; DESIGN.md `:1017`),
@@ -87,8 +91,7 @@ describe('the command box', () => {
   let fixture: ComponentFixture<CommandBox>;
   let navigation: StubNavigation;
   let shell: ShellState;
-  let preferences: PreferenceStore;
-  let accountPreferences: AccountPreferences;
+  let accountPreferences: StubbedAccountPreferences;
   let overlays: OverlayStack;
   let actions: ScreenActions;
   let creates: number;
@@ -115,14 +118,13 @@ describe('the command box', () => {
 
   beforeEach(() => {
     navigation = new StubNavigation();
-    preferences = new PreferenceStore({ storage: memoryStorage() });
-    shell = new ShellState({ preferences });
+    accountPreferences = stubAccountPreferences();
+    shell = new ShellState({ account: accountPreferences });
     overlays = new OverlayStack();
     // USERS' primary action has a registered handler, as it would once a screen runs it.
     actions = new ScreenActions();
     creates = 0;
     unregisterCreate = actions.register(USERS.descriptor, 'create', () => (creates += 1));
-    accountPreferences = stubAccountPreferences();
     TestBed.configureTestingModule({
       providers: [
         { provide: AccountPreferences, useValue: accountPreferences },
@@ -272,7 +274,7 @@ describe('the command box', () => {
 
     expect(router.url).toBe('/permissions/users');
     expect(shell.open()).toBe(false);
-    expect(preferences.sideBarOpen(true)).toBe(false);
+    expect(lastRemembered(accountPreferences.calls, SHELL_SIDE_BAR_OPEN)).toBe('0');
   });
 
   it('choosing a screen whose area navigates (Home) leaves the side bar where it was', async () => {

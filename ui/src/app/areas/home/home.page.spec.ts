@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { InstanceService } from '../../core/instance';
 import { NavigationService, orderedAreas, screenForRoute, type Verdict } from '../../core/navigation';
-import { PreferenceStore, SIDE_BAR_OPEN_KEY } from '../../core/preferences';
 import { ScopeService } from '../../core/scope';
 import type { AreaDeclaration, ScreenDeclaration } from '../../core/screens.generated';
 import { Session } from '../../core/session';
@@ -175,7 +174,7 @@ describe('Home', () => {
   let shell: ShellState;
   let storage: ReturnType<typeof memoryStorage>;
   let router: Router;
-  let preferences: AccountPreferences;
+  let preferences: ReturnType<typeof stubAccountPreferences>;
   let about: StubbedAbout;
   let systemInfo: StubbedSystemInfo;
 
@@ -235,29 +234,18 @@ describe('Home', () => {
       )
     );
 
-  beforeEach(() => {
-    TestBed.resetTestingModule();
-    navigation = new StubNavigation();
-    instance = new StubInstance();
-    scope = new StubScope();
-    session = new StubSession();
-    storage = memoryStorage();
-    shell = new ShellState({ preferences: new PreferenceStore({ storage }) });
-    // Two built screens the shipped mirror declares, plus one route it does not: the AD-37
-    // degrade row needs a stored route that resolves to nothing.
-    about = stubAbout();
-    systemInfo = stubSystemInfo();
-    preferences = stubAccountPreferences({
-      favorites: ['logs/alerts', 'no-such-area/no-such-screen'],
-      // `agent/definitions/edit` is built but unlisted (sideBarPosition 0) and keyed by an entity
-      // id, so a row for it would open the Definition form with no definition.
-      recents: ['permissions/users', 'agent/definitions/edit'],
-    });
+  /**
+   * Mount Home over one account store. Split out of `beforeEach` so a spec about what the
+   * instance remembers can mount over its own seed -- `AccountPreferences` is read at
+   * construction, so swapping it afterwards would leave the component on the first one.
+   */
+  const buildWith = (account: ReturnType<typeof stubAccountPreferences>) => {
+    preferences = account;
     TestBed.configureTestingModule({
       providers: [
         { provide: About, useValue: about },
         { provide: SystemInfo, useValue: systemInfo },
-        { provide: AccountPreferences, useValue: preferences },
+        { provide: AccountPreferences, useValue: account },
         provideRouter([
           { path: '', children: [] },
           { path: 'os-management/processes', children: [] },
@@ -286,6 +274,27 @@ describe('Home', () => {
     fixture = TestBed.createComponent(HomePage);
     router = TestBed.inject(Router);
     fixture.detectChanges();
+  };
+
+  beforeEach(() => {
+    TestBed.resetTestingModule();
+    navigation = new StubNavigation();
+    instance = new StubInstance();
+    scope = new StubScope();
+    session = new StubSession();
+    storage = memoryStorage();
+    shell = new ShellState({ account: stubAccountPreferences() });
+    // Two built screens the shipped mirror declares, plus one route it does not: the AD-37
+    // degrade row needs a stored route that resolves to nothing.
+    about = stubAbout();
+    systemInfo = stubSystemInfo();
+    preferences = stubAccountPreferences({
+      favorites: ['logs/alerts', 'no-such-area/no-such-screen'],
+      // `agent/definitions/edit` is built but unlisted (sideBarPosition 0) and keyed by an entity
+      // id, so a row for it would open the Definition form with no definition.
+      recents: ['permissions/users', 'agent/definitions/edit'],
+    });
+    buildWith(preferences);
   });
 
   it('renders one tile per area in rail order, with Home and Agent co-pilot absent', () => {
@@ -506,7 +515,6 @@ describe('Home', () => {
     await fixture.whenStable();
     expect(shell.open()).toBe(true);
     expect(shell.visibleArea()).toBe('logs');
-    expect(storage.map.get(SIDE_BAR_OPEN_KEY)).toBe('true');
   });
 
   it('Enter and Space activate exactly as a click does, because the tile is a native button', () => {
@@ -662,6 +670,67 @@ describe('Home', () => {
       STRINGS.favoritesClear,
       STRINGS.recentsClear,
     ]);
+  });
+
+  it('Story 15.5 (DW-1328): a block whose every stored row names no screen here still says so, and keeps Clear', async () => {
+    // Mutation (Rule 19): make `RememberedBlock.hasStored` read `rows.length` -> the Clear control
+    // disappears and the first two assertions go red, leaving rows the instance holds invisible
+    // and unclearable (AD-37: no longer present, never absent).
+    TestBed.resetTestingModule();
+    const ghosts = stubAccountPreferences({
+      favorites: ['no-such-area/no-such-screen', 'another/ghost'],
+      recents: [],
+    });
+    await ghosts.load();
+    buildWith(ghosts);
+
+    const favorites = blocks()[0];
+    expect(favorites.querySelector('.ocu-home-block-list')).toBeNull();
+    expect(favorites.querySelector('.ocu-home-block-empty')?.textContent?.trim()).toBe(
+      STRINGS.rememberedNoScreensHere
+    );
+    expect(favorites.querySelector('.ocu-home-block-clear')).not.toBeNull();
+    expect(ghosts.favorites()).toHaveLength(2);
+
+    // The block that genuinely holds nothing keeps its own wording and offers no Clear.
+    const recents = blocks()[1];
+    expect(recents.querySelector('.ocu-home-block-empty')?.textContent?.trim()).toBe(
+      STRINGS.recentsEmpty
+    );
+    expect(recents.querySelector('.ocu-home-block-clear')).toBeNull();
+
+    (favorites.querySelector('.ocu-home-block-clear') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(ghosts.favorites()).toEqual([]);
+  });
+
+  it('Story 15.5 (DW-1326): a refused preference write is announced assertively, with the instance\'s own sentence', async () => {
+    // Mutation (Rule 19): drop the `role="alert"` region, or make `refusal` read `''` -> this goes
+    // red, and a refused write would again be surfaced nowhere at all.
+    TestBed.resetTestingModule();
+    const refusing = stubAccountPreferences({
+      favorites: ['logs/alerts'],
+      writeAnswer: 'refused',
+      refusalReason: 'That is not a screen this instance serves, so it cannot be remembered.',
+    });
+    await refusing.load();
+    buildWith(refusing);
+
+    const alert = (): HTMLElement => fixture.nativeElement.querySelector('[role="alert"]');
+    expect(alert().textContent?.trim()).toBe('');
+
+    (blocks()[0].querySelector('.ocu-home-block-clear') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(alert().textContent?.trim()).toBe(
+      'That is not a screen this instance serves, so it cannot be remembered.'
+    );
+    // The polite region says nothing: the clear the user asked for did not happen.
+    const polite: HTMLElement = fixture.nativeElement.querySelector('[role="status"]');
+    expect(polite.textContent?.trim()).toBe('');
+    expect(refusing.favorites()).toEqual(['logs/alerts']);
   });
 
   it('Story 15.2 (AD-37): a stored route that names no built screen is dropped from the rendering, not from the store', async () => {

@@ -5,7 +5,6 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { NavigationService, type Verdict } from '../core/navigation';
 import { OverlayStack } from '../core/overlay-stack';
-import { PreferenceStore } from '../core/preferences';
 import { ScopeService, type NamespaceEntry, type UnresolvedScope } from '../core/scope';
 import { ScreenActions } from '../core/screen-actions';
 import type { ScreenDeclaration } from '../core/screens.generated';
@@ -113,7 +112,7 @@ describe('the header', () => {
         { provide: ScopeService, useValue: new StubScope() as unknown as ScopeService },
         { provide: OverlayStack, useValue: new OverlayStack() },
         { provide: ScreenActions, useValue: new ScreenActions() },
-        { provide: ShellState, useValue: new ShellState({ preferences: new PreferenceStore({ storage: null }) }) },
+        { provide: ShellState, useValue: new ShellState({ account: stubAccountPreferences() }) },
       ],
     });
     fixture = TestBed.createComponent(Header);
@@ -233,7 +232,7 @@ describe('the header', () => {
         { provide: ScopeService, useValue: new StubScopeNamed() as unknown as ScopeService },
         { provide: OverlayStack, useValue: new OverlayStack() },
         { provide: ScreenActions, useValue: new ScreenActions() },
-        { provide: ShellState, useValue: new ShellState({ preferences: new PreferenceStore({ storage: null }) }) },
+        { provide: ShellState, useValue: new ShellState({ account: stubAccountPreferences() }) },
       ],
     });
     const named = TestBed.createComponent(Header);

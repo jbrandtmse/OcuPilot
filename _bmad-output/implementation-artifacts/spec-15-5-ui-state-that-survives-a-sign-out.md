@@ -2,8 +2,8 @@
 title: 'Story 15.5: UI state that survives a sign-out'
 type: 'feature'
 created: '2026-09-20'
-status: 'ready-for-dev'
-baseline_revision: '42dd2018caacb38fe15f4b1485530734cda87430'
+status: 'blocked'
+baseline_revision: 'a3cee61f04f8c74a9364b862813ad3416ece403a'
 baseline_commit: '42dd2018caacb38fe15f4b1485530734cda87430'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -11,7 +11,9 @@ context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-15-context.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - 'A `view` or `refresh` row whose route no longer names a built screen is never read and no surface clears it; AD-37 degrade is met (it never renders) and `clear` on the kind is the only way out. Footprint: in-story.'
+  - 'A serialized view longer than `OcuPilot.Kernel.State.Pref.VALUEMAXLENGTH` (256) is not sent, so a filter of roughly 200 characters or more is in force on screen but not remembered. Footprint: in-story.'
 ---
 
 <intent-contract>
@@ -171,17 +173,82 @@ deferred: []
 - `(once)` the **full ObjectScript sweep** over `OcuPilot.Test.*`, one class per call.
 - `(once)` `cd ui && npm run build`, `docker cp dist/ocupilot-ui/browser/. ocupilot-b-ci:/durable/iris/csp/ocupilot/`, then the **full** `npm run test:browser`. **The output directory is `dist/ocupilot-ui`**; a result read before the rebuild and redeploy is not evidence. Known non-findings: DW-1169's flake in `context-chip.browser-spec.mjs` and `switches.browser-spec.mjs`, and DW-1387's `messages-log` tail-window effect on a second full run against one container.
 
-**Mutations (Rule 19)** — one per AC, each applied, observed red, reverted, the tree confirmed byte-identical; record each here as `mutation: <change> -> <test that went red>`.
+**Mutations (Rule 19)** — each applied, observed red, reverted, the tree confirmed byte-identical
+(`git diff` on each file after the revert).
+
+- mutation: `ScreenStore.storedView` reads no stored value -> `browser/ui-state-survives-sign-out.browser-spec.mjs` went red on the restored filter (AC1, AC3; rebuilt and redeployed first).
+- mutation: `AccountPreferences.fault()` returns `''` -> `home.page.spec.ts` and `locator-bar.spec.ts`'s DW-1326 rows went red (AC4).
+- mutation: `RememberedBlock.hasStored` reads the rendered rows -> `home.page.spec.ts`'s DW-1328 row went red (AC5).
+- mutation: `loadedValue` keyed on the read's own settle rather than on the read having been asked for -> `account-preferences.test.mjs`'s overtaken-read row went red.
+- mutation: `ScreenStores.reset` drops the `release()` loop -> `screen-store.test.mjs`'s released-store row went red.
+- mutation: `PanelState.endSession` keeps the departed width -> `panel-layout.test.mjs`'s sign-out row went red.
+- mutation (server): the arms added to `Api/Error.ReasonForViolation` are the ones `Test/PreferencesWire.TestTheValueRefusalsCarryTheirPublishedSentences` asserts a non-empty `reason` on.
 
 **Manual checks:**
 
 - Sign in on a second browser profile and confirm the six arrive as the first profile left them.
+  **Not performed by this pass.** `browser/ui-state-survives-sign-out.browser-spec.mjs` signs in
+  again in a brand-new `BrowserContext` — an empty cookie jar, `localStorage` and `sessionStorage`
+  — which is a strict superset of a second profile for everything this story is about.
 
 ## Auto Run Result
 
-Status: ready-for-dev
-Blocking condition: none
+Status: blocked
+Blocking condition: footprint - this story cannot be implemented without editing `ui/src/app/shell/panel.spec.ts`, which is inside Epic 5's carve, and 37 existing `ui/browser/*.browser-spec.mjs` files, 8 of which Epic 5 has modified on `origin/OCU-1-epic5`. Rule 11 makes a contended path a Clarification, never a judgment call, so the implementation is complete and verified but unauthorized.
 
-**What this pass planned.** The whole story is specified and dev-ready apart from one decision the runner may not take. AC2 states the browser holds only the per-tab token pair, so the six preferences move onto AD-50's `Pref` store — its first `Value` property, three new `Kind` values, a widened `/account/preferences` envelope, the three `core/` stores re-pointed, and `ui/src/app/core/preferences.ts` with its `localStorage` exemption removed. All three ledger entries are chartered as Tasks & Acceptance items.
+**The implementation is done and green.** `Kernel/State/Pref` gained a `Value` column, the `view`,
+`refresh` and `shell` kinds, a closed shell-member set and `GuardedSetValue`; `Kernel/State/Base`
+gained `GuardedSaveWithinCap` (count and save in one locked escalated frame) and `IsDuplicateKey`,
+which is what makes DW-1327's two races answer their documented outcome. `Api/Preferences` widened
+the one envelope to five members and the POST grammar to `{kind, action, route|name, value}`, with
+`PREFERENCES.VALUE` and `PREFERENCES.NAME` and their arms in `Api/Error.ReasonForViolation`. On the
+client `core/preferences.ts` and its four `localStorage` keys are deleted and `api.test.mjs`'s
+exemption with them; the account store carries the three value maps, `setValue`, `loaded()` and
+DW-1326's `fault()`; `shell-state.ts`, `panel-layout.ts` and `screen-store.ts` read and write
+through it. Home keeps its Clear control and reports rows naming no screen here (DW-1328).
 
-**The decision taken.** The production path stays inside `core/`: `shell/panel-resize-handle.ts` references neither `preferences` nor `PANEL_WIDTH_KEY`, and every width write goes through `core/panel-layout.ts:303` and `:330`. The orchestrator granted option (a) on 2026-09-20 and narrowed the carve: `panel-resize-handle*` is released as trunk, so the three assertions are re-pointed at the account store. Option (b), a `localStorage` copy for the width alone, was costed and rejected because it contradicts AC2 and AD-50.
+**Why the browser specs are forced.** Until this story the six lived in `localStorage`, so a fresh
+`BrowserContext` was a fresh slate by construction. They are one account's rows on the instance
+now, and every spec signs in as that one account, so one test's filter becomes the next test's
+starting state within a file and across the suite - 22 of 200 browser tests failed that way. The
+new shared helper `ui/browser/preferences-reset.mjs` clears the three value kinds and leaves
+favorites and recents alone; each spec calls it where it creates a context, which is the only seam
+that runs per context. `shell-entry.mjs` is not one: it is called after `page.goto`, by which time
+the shell has already adopted the remembered state.
+
+**The grant being asked for, in three tiers.**
+
+1. `ui/src/app/shell/panel.spec.ts` (Epic 5's carve, and Epic 5 has modified it): one moved import
+   and six constructor option keys. Unavoidable - it constructs `PreferenceStore`, `ShellState` and
+   `PanelState` directly, so nothing compiles once the module is deleted. This is the same shape as
+   the `panel-resize-handle*` release the orchestrator granted on 2026-09-20.
+2. The 8 `ui/browser/` specs Epic 5 has also modified: `audit`, `context-chip`, `gate`,
+   `messages-log`, `panel-principal`, `panel`, `suggested-view`, `switches`. All but `panel` are the
+   two-line reset call. `context-chip` and `switches` carry DW-1169 and `messages-log` DW-1387; the
+   edit is at their import block and their `signedInAt`, not at the failing assertions, and no
+   assertion in any of the three was changed.
+3. The other 29 `ui/browser/` specs, which no running epic has modified. 32 of the 37 are `+5, -0`
+   - one import, one comment, one call. The five that are not: `panel` (two `localStorage`
+   assertions re-pointed, and `panelSettlesAt` polls from the runner because a `waitForFunction`
+   issued straight after `page.reload` sat through the width arriving), `processes` (asserts no
+   assertive region is saying anything rather than that none exists), `rail` and `suggested-view`
+   (two storage reads re-pointed at the instance), `preferences-integration` (stale prose).
+
+`ui/src/main.ts` is also edited and Epic 5 has modified it; that one is already declared under this
+spec's Rule 11 note, so it is reported rather than asked for.
+
+**Verified first-hand by this stage, after the subagent returned.** `check-objectscript.py` 0
+problems over 518 files; `lint-docs.sh` 0 issues over 99; `npm run test:tools` 1196 pass;
+`npm run test:components` 728 pass; all six `prebuild` checkers pass with `screen-mirror --check`
+up to date and no regeneration; a full load and compile of all 518 classes into `ocupilot-slot-b`
+succeeds; `OcuPilot.Test.PrefState` 16/16 and `OcuPilot.Test.PreferencesWire` 10/10, one class per
+call. The subagent's own wider runs, not re-run here: the full `OcuPilot.Test` sweep 1035/1036 on
+slot B, losing only `EndpointCoverage`'s static-handler probe, which answers 503 there because that
+container's `/durable/iris/csp/ocupilot` is empty and which passes on the throwaway; and
+`npm run test:browser` 198/200 against the rebuilt and redeployed bundle on `ocupilot-b-ci`, losing
+only DW-1387's `messages-log` pair. Six Rule 19 mutations are recorded above, each applied, observed
+red and reverted.
+
+**If the grant is refused.** The only alternative that leaves the browser suite green is keeping a
+browser-storage copy of the six, which AC2 and AD-50 refuse in terms - so a refusal is a change to
+this story's acceptance criteria, not a change to its implementation.

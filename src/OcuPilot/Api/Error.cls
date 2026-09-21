@@ -1065,6 +1065,8 @@ ClassMethod ReasonForViolation(pCode As %String) As %String
     If pCode = ..#PREFERENCESROUTE Quit ..#REASONPREFERENCESROUTE
     If pCode = ..#PREFERENCESLIMIT Quit ..#REASONPREFERENCESLIMIT
     If pCode = ..#HELPROUTE Quit ..#REASONHELPROUTE
+    If pCode = ..#PREFERENCESVALUE Quit ..#REASONPREFERENCESVALUE
+    If pCode = ..#PREFERENCESNAME Quit ..#REASONPREFERENCESNAME
     Quit ""
 }
 
@@ -1233,7 +1235,7 @@ Parameter PREFERENCESBODY = "PREFERENCES.BODY";
 
 /// <p>The envelope's <code>reason</code> for <parameter>PREFERENCESBODY</parameter>. It names the
 /// members and their vocabularies, never a value the caller sent.</p>
-Parameter REASONPREFERENCESBODY = "The body must carry the strings kind (favorite or recent) and action (add, remove or clear), and route only when the action is add or remove.";
+Parameter REASONPREFERENCESBODY = "The body must carry the strings kind (favorite, recent, view, refresh or shell) and action (add or remove for a list, set for a remembered value, clear for either); route names the screen, name names the shell member, and value is carried by a set alone.";
 
 /// <p>Machine code (Story 15.2): the submitted route is not a built screen's route, or is longer
 /// than <parameter>OcuPilot.Kernel.State.Base.ROUTEMAXLENGTH</parameter>. Rendered on the
@@ -1261,6 +1263,28 @@ Parameter HELPROUTE = "HELP.ROUTE";
 
 /// <p>Refusal sentence for <parameter>HELPROUTE</parameter>. It names no route the caller sent.</p>
 Parameter REASONHELPROUTE = "That is not a screen this instance serves, so there is no help address for it.";
+
+/// <p>Machine code (Story 15.5, AD-50): a preference write carried no usable <code>value</code> --
+/// absent, empty, or longer than
+/// <parameter>OcuPilot.Kernel.State.Pref.VALUEMAXLENGTH</parameter>. Rendered on the
+/// <parameter>VALIDATIONFAILED</parameter> slug with one violation on <code>value</code>.</p>
+/// <p>An empty one is refused rather than stored because IRIS stores an empty <code>%String</code>
+/// as SQL <code>NULL</code>, which the key look-up never matches again.</p>
+Parameter PREFERENCESVALUE = "PREFERENCES.VALUE";
+
+/// <p>Refusal sentence for <parameter>PREFERENCESVALUE</parameter>. It names no number and no
+/// value the caller sent: the bound is declared once where it is enforced.</p>
+Parameter REASONPREFERENCESVALUE = "That preference needs a value, and one short enough for the instance to keep.";
+
+/// <p>Machine code (Story 15.5, AD-50): the <code>name</code> a shell preference write carried is
+/// outside the closed set <method>OcuPilot.Kernel.State.Pref.IsShellMember</method> answers.
+/// Rendered on the <parameter>VALIDATIONFAILED</parameter> slug with one violation on
+/// <code>name</code>.</p>
+Parameter PREFERENCESNAME = "PREFERENCES.NAME";
+
+/// <p>Refusal sentence for <parameter>PREFERENCESNAME</parameter>. It names no value the caller
+/// sent (AD-35).</p>
+Parameter REASONPREFERENCESNAME = "That is not a piece of shell state this instance remembers.";
 
 /// <p>The shape every machine code has: one or more dotted segments, each starting with a
 /// letter and continuing with capitals and digits. No lower case, no underscore, no leading

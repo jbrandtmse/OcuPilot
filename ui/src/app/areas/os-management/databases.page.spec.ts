@@ -5,7 +5,6 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { ApiService, type JsonResult } from '../../core/api';
 import { NavigationService, screenForUrl } from '../../core/navigation';
 import { OverlayStack } from '../../core/overlay-stack';
-import { PreferenceStore } from '../../core/preferences';
 import { RefreshService } from '../../core/refresh';
 import { ScopeService } from '../../core/scope';
 import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
@@ -13,6 +12,7 @@ import { ScreenStores } from '../../core/screen-store';
 import { STRINGS } from '../../core/strings';
 import { ViewOptions } from '../../core/view-options';
 import { DatabasesPage } from './databases.page';
+import { stubAccountPreferences } from '../../testing/account-preferences';
 
 /**
  * The Databases screen's registration with the command bar's View control (Story 6.11): the page
@@ -69,7 +69,7 @@ describe('the Databases page\u2019s View control', () => {
         return { kind: 'ok', status: 200, body: { fields: [], rows: [], truncated: false, banner: '' } as T };
       },
     };
-    const stores = new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
+    const stores = new ScreenStores({ account: stubAccountPreferences() });
     viewOptions = new ViewOptions();
     TestBed.configureTestingModule({
       providers: [
@@ -181,7 +181,7 @@ describe('the Databases page\u2019s View control', () => {
         return { kind: 'ok', status: 200, body: { fields: [], rows: [GENERAL_ROW], truncated: false, banner: '' } as T };
       },
     };
-    const stores = new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
+    const stores = new ScreenStores({ account: stubAccountPreferences() });
     TestBed.configureTestingModule({
       providers: [
         provideRouter([{ path: '**', children: [] }]),
@@ -245,7 +245,7 @@ describe('the Databases page\u2019s View control', () => {
         return { kind: 'ok', status: 200, body: { fields: [], rows: [GENERAL_ROW], truncated: false, banner: '' } as T };
       },
     };
-    const stores = new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
+    const stores = new ScreenStores({ account: stubAccountPreferences() });
     TestBed.configureTestingModule({
       providers: [
         provideRouter([{ path: '**', children: [] }]),

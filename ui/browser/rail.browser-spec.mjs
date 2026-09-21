@@ -19,6 +19,7 @@ import puppeteer from 'puppeteer';
 import { READINESS_PATH, browserConfig, launchOptions } from '../browser.config.mjs';
 import { loadStrings } from '../tools/strings.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
+import { rememberedShellMember, resetRememberedState } from './preferences-reset.mjs';
 
 const config = browserConfig();
 const STRINGS = loadStrings();
@@ -50,6 +51,10 @@ function tooltipState(page) {
 test('DW-381: with the attention dot lit, hover and keyboard focus both reveal the tooltip, and the dot does not take the pointer', async () => {
   // Mutation (Rule 19): drop `pointer-events: none` from `.ocu-rail-dot` -> the hit-test goes red;
   // change the focus reveal's `~` to `+` -> the keyboard leg goes red.
+  // Story 15.5: the remembered screen and shell state lives on the instance now, keyed by the
+  // one account every spec signs in as, so a fresh context is no longer a fresh slate on its
+  // own -- see `preferences-reset.mjs`.
+  await resetRememberedState();
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
   page.setDefaultNavigationTimeout(config.navigationTimeoutMs);
@@ -108,6 +113,7 @@ test('Yield order: clicking the visible area\'s rail item reopens a yielded side
   // Mutation (Rule 19, QA): drop the `sideBarReopened()` branch from `Rail.activate` -> the second
   // click falls through to `activateArea`, which stores "false" for the visible, already-open
   // area, and this goes red.
+  await resetRememberedState();
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
   page.setDefaultNavigationTimeout(config.navigationTimeoutMs);
@@ -134,14 +140,19 @@ test('Yield order: clicking the visible area\'s rail item reopens a yielded side
     const label = STRINGS.navAreaPermissions;
     await page.click(`.ocu-rail-item[aria-label="${label}"]`);
     await page.waitForSelector('app-side-bar nav.ocu-side-bar', { timeout: config.navigationTimeoutMs });
-    const afterReopen = await page.evaluate(() => localStorage.getItem('ocupilot.side-bar.open'));
-    assert.equal(afterReopen, 'true', 'the reopen records the bar as open');
+    // Story 15.5: the open state is the instance's, not the browser's, so the baseline is read
+    // back over the shipped route. It settles after the click, so this waits for it.
+    await page.waitForFunction(() => true, { polling: 100, timeout: 1000 }).catch(() => {});
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const afterReopen = await rememberedShellMember('sideBarOpen');
+    assert.equal(afterReopen, '1', 'the reopen records the bar as open');
 
     await page.click(`.ocu-rail-item[aria-label="${label}"]`);
     await page.waitForFunction(() => document.querySelector('app-side-bar nav.ocu-side-bar') === null, {
       timeout: config.navigationTimeoutMs,
     });
-    const afterRelease = await page.evaluate(() => localStorage.getItem('ocupilot.side-bar.open'));
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const afterRelease = await rememberedShellMember('sideBarOpen');
     assert.equal(afterRelease, afterReopen, 'releasing the reopened bar back to the yield does not rewrite the preference');
   } finally {
     await context.close();

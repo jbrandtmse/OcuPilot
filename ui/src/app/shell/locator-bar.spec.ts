@@ -3,7 +3,6 @@ import { Router, provideRouter } from '@angular/router';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { NavigationService, screenForRoute, type Verdict } from '../core/navigation';
-import { PreferenceStore } from '../core/preferences';
 import { ScreenStores } from '../core/screen-store';
 import type { ScreenDeclaration } from '../core/screens.generated';
 import { ShellState } from '../core/shell-state';
@@ -92,7 +91,7 @@ describe('the locator bar', () => {
   let router: Router;
   let navigation: StubNavigation;
   let shell: ShellState;
-  let preferences: AccountPreferences;
+  let preferences: ReturnType<typeof stubAccountPreferences>;
   let help: StubbedHelpLinks;
   let helpHrefs: Record<string, string>;
 
@@ -113,12 +112,12 @@ describe('the locator bar', () => {
     fixture.detectChanges();
   };
 
-  beforeEach(() => {
-    navigation = new StubNavigation();
-    shell = new ShellState({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
-    preferences = stubAccountPreferences();
-    helpHrefs = {};
-    help = stubHelpLinks(helpHrefs);
+  /**
+   * Mount the bar over whatever `preferences` currently holds. Split out of `beforeEach` so a
+   * spec about a refused write can seed its own store first: `AccountPreferences` is read at
+   * construction, so swapping it afterwards would leave the component on the first one.
+   */
+  const build = () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: HelpLinks, useValue: help },
@@ -142,12 +141,21 @@ describe('the locator bar', () => {
         { provide: ShellState, useValue: shell },
         // Story 6.7: the locator injects ScreenStores to read a parent-scoped detail screen's
         // loaded row for its entity label.
-        { provide: ScreenStores, useValue: new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) }) },
+        { provide: ScreenStores, useValue: new ScreenStores({ account: stubAccountPreferences() }) },
       ],
     });
     fixture = TestBed.createComponent(LocatorBar);
     router = TestBed.inject(Router);
     fixture.detectChanges();
+  };
+
+  beforeEach(() => {
+    navigation = new StubNavigation();
+    shell = new ShellState({ account: stubAccountPreferences() });
+    preferences = stubAccountPreferences();
+    helpHrefs = {};
+    help = stubHelpLinks(helpHrefs);
+    build();
   });
 
   it('is a nav named Breadcrumb, with the area navigating and the screen current', async () => {
@@ -554,6 +562,35 @@ describe('the locator bar', () => {
     expect(
       fixture.nativeElement.querySelector('.ocu-locator-status').textContent?.trim()
     ).toBe(STRINGS.favoritesRemoved);
+  });
+
+  it("Story 15.5 (DW-1326): a refused pin is announced assertively, in the instance's own words", async () => {
+    // Mutation (Rule 19): drop the `role="alert"` region, or make `favoriteRefusal` read `''` ->
+    // this goes red, and the cap's refusal would again be surfaced nowhere at all.
+    TestBed.resetTestingModule();
+    preferences = stubAccountPreferences({
+      writeAnswer: 'refused',
+      refusalReason: 'This account already holds as many favorites as the instance keeps.',
+    });
+    build();
+
+    await go('/permissions/users');
+    toggle()?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const regions: HTMLElement[] = Array.from(
+      fixture.nativeElement.querySelectorAll('.ocu-locator-status')
+    );
+    const alert = regions.find((region) => region.getAttribute('role') === 'alert');
+    const polite = regions.find((region) => region.getAttribute('role') === 'status');
+    expect(alert?.textContent?.trim()).toBe(
+      'This account already holds as many favorites as the instance keeps.'
+    );
+    // The pin did not happen, so nothing confirms it politely.
+    expect(polite?.textContent?.trim()).toBe('');
+    expect(preferences.favorites()).toEqual([]);
+    expect(toggle()?.getAttribute('aria-pressed')).toBe('false');
   });
 
   it('Story 15.2: the toggle reads pressed on return to a screen pinned elsewhere', async () => {

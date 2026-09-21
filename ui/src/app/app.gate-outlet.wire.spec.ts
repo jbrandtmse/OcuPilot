@@ -13,7 +13,6 @@ import { FormDirty } from './core/form-dirty';
 import { InstanceService, type InstanceStatus } from './core/instance';
 import { NavigationService } from './core/navigation';
 import { OverlayStack } from './core/overlay-stack';
-import { PreferenceStore } from './core/preferences';
 import { RefreshService } from './core/refresh';
 import { ScopeService, type NamespaceEntry, type UnresolvedScope } from './core/scope';
 import { ScreenActions } from './core/screen-actions';
@@ -287,9 +286,9 @@ describe('the first-login gate and the requested screen it may move off', () => 
     paths = stub.paths;
     release = stub.release;
     const connectivity = new StubConnectivity() as unknown as ConnectivityService;
-    const preferences = new PreferenceStore({ storage: memoryStorage() });
-    const screenStores = new ScreenStores({ preferences });
-    const shellState = new ShellState({ preferences });
+    const preferences = stubAccountPreferences();
+    const screenStores = new ScreenStores({ account: preferences });
+    const shellState = new ShellState({ account: preferences });
     TestBed.configureTestingModule({
       providers: [
         { provide: About, useValue: stubAbout() },
@@ -319,9 +318,8 @@ describe('the first-login gate and the requested screen it may move off', () => 
           }),
         },
         { provide: ScreenStores, useValue: screenStores },
-        { provide: PreferenceStore, useValue: preferences },
         { provide: ShellState, useValue: shellState },
-        { provide: PanelState, useValue: new PanelState({ preferences, shell: shellState }) },
+        { provide: PanelState, useValue: new PanelState({ account: preferences, shell: shellState }) },
         { provide: TurnStore, useValue: stubTurnStore() },
         { provide: OverlayStack, useValue: new OverlayStack() },
         { provide: ScreenActions, useValue: new ScreenActions() },

@@ -42,6 +42,7 @@ import { LIVE_CONTAINER, READINESS_PATH, browserConfig, launchOptions } from '..
 import { parseMarkers } from './iris-session.mjs';
 import { ROW_SELECTOR, clearFilter, clickRowCentre, filterToSubset, viewCount, waitForRows } from './list-spec.mjs';
 import { leaveFirstLoginGate } from './shell-entry.mjs';
+import { resetRememberedState } from './preferences-reset.mjs';
 
 const uiRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const { STRINGS } = await import(join(uiRoot, 'src', 'app', 'core', 'strings.ts'));
@@ -127,6 +128,10 @@ after(async () => {
  * named, reads counted.
  */
 async function signedInAtList(user, password, url = LIST_URL) {
+  // Story 15.5: the remembered screen and shell state lives on the instance now, keyed by the
+  // one account every spec signs in as, so a fresh context is no longer a fresh slate on its
+  // own -- see `preferences-reset.mjs`.
+  await resetRememberedState();
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
   page.setDefaultNavigationTimeout(config.navigationTimeoutMs);
@@ -691,7 +696,13 @@ test('Story 6.8 AC4: a cold deep link to an exited pid shows "This process no lo
       STRINGS.processDetailsGone
     );
     assert.equal(await page.$('.ocu-data-table-skeleton'), null, 'no skeleton is left showing');
-    assert.equal(await page.$('[role="alert"]'), null, 'and this is not read as a refusal');
+    // The shell keeps two empty assertive regions standing (the locator bar's and Home's, Story
+    // 15.5): a live region has to be in the document before its text arrives to be announced at
+    // all. So the claim is that none of them is saying anything, not that none exists.
+    const announced = await page.$$eval('[role="alert"]', (nodes) =>
+      nodes.map((node) => node.textContent.trim()).filter((text) => text !== '')
+    );
+    assert.deepEqual(announced, [], 'and this is not read as a refusal');
   } finally {
     await context.close();
   }

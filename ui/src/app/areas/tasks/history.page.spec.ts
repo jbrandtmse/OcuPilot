@@ -9,7 +9,6 @@ import type { ConnectivityService } from '../../core/connectivity';
 import { joinCompositeId } from '../../core/entity-id';
 import { NavigationService } from '../../core/navigation';
 import { OverlayStack } from '../../core/overlay-stack';
-import { PreferenceStore } from '../../core/preferences';
 import { RefreshService } from '../../core/refresh';
 import { ScopeService } from '../../core/scope';
 import { REFRESH_ACTION_ID, ScreenActions } from '../../core/screen-actions';
@@ -17,6 +16,7 @@ import { ScreenStores } from '../../core/screen-store';
 import { SCREENS, type ScreenDeclaration } from '../../core/screens.generated';
 import { STRINGS } from '../../core/strings';
 import { HistoryPage } from './history.page';
+import { stubAccountPreferences } from '../../testing/account-preferences';
 
 /**
  * Task history, across every task, wired end to end over stubs of the URL's screen and the HTTP
@@ -93,7 +93,7 @@ async function mount(initialRows: unknown[] = [row('OcuPilotDemoTask')]) {
   };
   const scheduled: (() => void)[] = [];
   const params = new BehaviorSubject(convertToParamMap({}));
-  const stores = new ScreenStores({ preferences: new PreferenceStore({ storage: memoryStorage() }) });
+  const stores = new ScreenStores({ account: stubAccountPreferences() });
   const refresh = new RefreshService({
     stores,
     connectivity: { retryWhenReachable: () => {} } as unknown as ConnectivityService,
