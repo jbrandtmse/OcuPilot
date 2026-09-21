@@ -5236,3 +5236,38 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: cycle-log-epic-5.md | severity: med | fix-risk: low | footprint: src/OcuPilot/Install/Smoke.cls,scripts/smoke.sh
 - evidence: Measured on ocupilot-ci 2026-09-20: executed=45 passed=45 skipped=0 on a clean instance, and executed=44 passed=44 skipped=1 immediately after npm run test:browser, because switches.browser-spec.mjs writes the switch row that the agentswitches check reads and the check then declines to assert
 - 2026-09-20T22:31:39Z status=routed owner=range-end-cleanup by=harvest note=NOT blocking, judgment recorded per Rule 27: nothing about the product is wrong and the check's own skip is well designed -- it declines to assert rather than asserting falsely, and its line already SAYS why ('the agent switches have been written on this instance, last at <ts>, so whether the install wrote none cannot be told here'). The gap is narrower than it first looks and worth stating exactly: the REASON travels, the HEADLINE COUNT does not. CLAUDE.md's guarantee that zero executed checks is a failure and never a pass is weaker than it reads while executed= varies with test ORDERING, because a reader who remembers 45 reads 44 as a regression. The durable fix is for a run's verdict line to carry the skip count and its causes alongside the total, so the one quotable line is self-describing; until then a reader must read the skip lines rather than the number. This runner was saved only by a note in the story's own spec, which does not travel to the next story or the next epic
+
+### DW-1403: The client's reference key and the kernel's are pinned against the same hand-copied literal on each side rather than by anything that compares them, and REF_SEPARATOR carries no build gate at all
+- source: spec-5-7-the-screen-shows-the-change.md | severity: med | fix-risk: low | footprint: ui/src/app/core/entity-ref.ts,src/OcuPilot/Kernel/EntityRef.cls
+- evidence: The IDRULES mirror closed the identity RULES, but the separator and the key SHAPE remain two hand-copied literals with no gate between them
+- 2026-09-21T01:30:50Z status=open owner=5-7-the-screen-shows-the-change by=harvest note=IN-STORY and re-graded from the stage's med-as-deferrable. This is the SAME DEFECT CLASS the story exists to close, one field over: DW-1364 was a second source drifting, AD-5 forbids the second source, and leaving the separator ungated reproduces the defect in a neighbouring place while appearing to have fixed it. The mechanism is already built -- screen-mirror.mjs mirrors IDRULES and throws -- so putting the separator and the key shape under the same authority is cheap. Prefer the structure that cannot silently diverge over the one that is correct only while someone keeps two copies in step
+
+### DW-1404: DefinitionForm publishes action updated on a create, because its one publishChange() is called from both the save and the gate's create path
+- source: spec-5-7-the-screen-shows-the-change.md | severity: med | fix-risk: low | footprint: ui/src/app/areas/agent/definition-form.store.ts
+- evidence: definition-form.store.ts:704 -- a single publishChange() serves both paths, so a created definition is announced as updated
+- 2026-09-21T01:30:50Z status=open owner=5-7-the-screen-shows-the-change by=harvest note=IN-STORY: the action is what THIS story added, and AD-14's closed set exists precisely to tell created from updated. This story's own acceptance criterion says a created row appears highlighted AND SELECTED, which the updated path does not do, so a shipped caller emitting the wrong action defeats an AC of the story that introduced it
+
+### DW-1405: The toast is the one surface this story built from scratch and it has no browser-tier coverage, so its geometry, stacking and pointer-events handoff are asserted nowhere
+- source: spec-5-7-the-screen-shows-the-change.md | severity: med | fix-risk: low | footprint: ui/src/app/shell/toast-host.ts
+- evidence: jsdom computes no layout, and this project's own rule puts anything about geometry in a browser spec; the stack of three, the hover hold and the pointer-events handoff are all geometric or interactive
+- 2026-09-21T01:30:50Z status=open owner=5-7-the-screen-shows-the-change by=harvest note=IN-STORY under Rule 3: a user-facing surface built from scratch and approved with no real-runtime test is the case that rule names. The component tier cannot assert any of the three properties that make a toast stack work
+
+### DW-1406: No browser leg confirms a confirmed write against a NON-canonically-spelled web application, which is the end-to-end path of the HIGH this story just fixed
+- source: spec-5-7-the-screen-shows-the-change.md | severity: med | fix-risk: low | footprint: ui/browser
+- evidence: viewKeyFor is pinned at the component tier with a mixed-case row key, but every browser fixture target is already canonical, so the path where Mint stores a folded targetRef and Security.Applications returns the name as created is unexercised in a real browser
+- 2026-09-21T01:30:50Z status=open owner=5-7-the-screen-shows-the-change by=harvest note=IN-STORY under Rule 19, and named by the implement stage itself as its followup risk. The defect was invisible to the whole suite precisely BECAUSE every fixture id was canonical -- a fix whose end-to-end path is still only exercised by canonical fixtures is pinned against the same blind spot that hid it
+
+### DW-1407: DESIGN.md gives the toast's Open in screen link a dark-mode colour, which cannot be honoured because no dark-mode mechanism exists in the stylesheets yet
+- source: spec-5-7-the-screen-shows-the-change.md | severity: low | fix-risk: low | footprint: ui/src/app/shell/toast-host.ts
+- evidence: The .ocu-toast-action rule has no dark-mode counterpart to attach to; every other surface has the same gap
+- 2026-09-21T01:31:03Z status=routed owner=range-end-cleanup by=harvest note=NOT blocking, judgment recorded per Rule 27: the gap is the whole stylesheet's, not this toast's, and honouring one rule in isolation would be the second source this epic keeps closing. reopen_if=a dark-mode mechanism lands
+
+### DW-1408: The deleted-row criterion's clause about the locator's entity segment clearing is vacuous on a list and has no producer on a detail route
+- source: spec-5-7-the-screen-shows-the-change.md | severity: low | fix-risk: med | footprint: ui/src/app/shell/locator-bar.ts
+- evidence: locator-bar.ts:204 -- a list has no entity segment to clear, and no shipped path deletes from a detail route
+- 2026-09-21T01:31:03Z status=routed owner=range-end-cleanup by=harvest note=NOT blocking, judgment recorded per Rule 27: the only write tool issues a PUT, so nothing in this range produces a delete at all. reopen_if=a delete-capable write tool ships
+
+### DW-1409: Four change-bus matrix rows are carried by construction or by pre-existing tests rather than by a pin this story added, and one new leg cannot separate the two halves of its row
+- source: spec-5-7-the-screen-shows-the-change.md | severity: low | fix-risk: low | footprint: ui/tools/turn.test.mjs,ui/src/app/shell/panel.spec.ts
+- evidence: The rows are true, and the tests that make them true predate this story; the gap is attribution rather than coverage
+- 2026-09-21T01:31:03Z status=routed owner=range-end-cleanup by=harvest note=NOT blocking, judgment recorded per Rule 27: the behaviour is pinned, just not by this story's own tests, so nothing is unasserted. reopen_if=one of the four rows changes without a test reddening
