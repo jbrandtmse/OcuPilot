@@ -3624,6 +3624,9 @@ So that the product's central claim is visible in under a minute.
 - **Then** it is refused on the instance and was never advertised as a tool.
 
 - DW-1223: the card's "N unchanged fields" disclosure has no rows behind it - `WireRow` emits only `unchangedCount`, so this story's own "remaining fields collapsed" clause has nothing to collapse; exclude secret-typed fields from whatever is added (ledger; routed by cr 2026-09-19)
+- DW-1208: the write tool must require `%Admin_Secure:USE`, not `:WRITE` - no shipped role grants WRITE on a built-in `%Admin_*` resource, so a WRITE pair is a gate only `%All` can pass, and USE is exactly what the classic editor's `%CSP.Portal.Application.CheckSecurity` checks, which is what makes this story's "the same 403 the editor would give" satisfiable (ledger; decided by merge_gate 2026-09-21)
+- DW-1252: a confirm refusal that leaves the row live gives the card no reason anywhere - the refusal must reach the card as a stated reason rather than a silent non-event (ledger; routed by cr 2026-09-19)
+- DW-1382: `smoke.sh`'s `agentwrite` and `auditmarker` checks are still `pending`, and AD-45's Rule names one confirmed agent write and its audit marker as part of the one smoke path - this story is the first end-to-end confirmed write in a real area, so it is where they stop being pending (ledger; routed by harvest 2026-09-20)
 
 ### Story 5.9: Permissions - the area's first confirmed user write
 
