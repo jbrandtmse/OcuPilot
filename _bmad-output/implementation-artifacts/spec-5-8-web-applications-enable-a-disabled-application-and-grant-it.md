@@ -4,6 +4,7 @@ type: 'feature'
 created: '2026-09-20'
 status: 'done'
 baseline_revision: 'b92c9326421f84ab65111df4550c72239c44028e'
+baseline_commit: 'b92c932'
 review_loop_iteration: 0
 followup_review_recommended: true
 context:
@@ -487,6 +488,27 @@ one was rebuilt and redeployed before the run and again after the revert.
   not catch that narrowing, which is the case a drifted container actually hits. Guarding the call
   on `tProblem = ""` was tried first and is **not** a mutation: `tProblem` is unset on every path
   that `Quit`s early, so `$Get` answers `""` and the restore still runs.
+- **(QA) AC5, least-privileged.** Every over-the-wire AC5 leg in `OcuPilot.Test.ProhibitedRoute`
+  ran as `%All`, and `OcuPilot.Test.ProhibitedByEffect`'s own-application leg replaces the port with
+  a fixture, so nobody had measured that a caller holding exactly `%Admin_Secure:USE` and
+  `%DB_IRISSYS:READ` -- the write's own pairs, DW-1208 -- reaches `PROHIBITED.SERVINGPATH` for one
+  of OcuPilot's own applications rather than an internal error, the same shape DW-1208's own defect
+  took for the pairs gate. Added `OcuPilot.Test.ProhibitedRoute.TestOcuPilotsOwnServingPathRefusesALeastPrivilegedPrincipal`,
+  which creates a dedicated least-privileged principal (measured on the instance, not assumed),
+  discovers that reaching the confirm route at all also requires the install namespace's code
+  database read resource (independent of and beneath DW-1208's pairs -- undocumented before this
+  pass), and drives a real HTTP confirm against this class's own probe application, recorded as
+  OcuPilot's own for the leg's duration only (`OcuPilot.Kernel.State.WebApp.GuardedRecord`), so
+  nothing touches the instance's real API or shell applications. `mutation:` `Prohibited.WebApplication`'s
+  `If pServes && +$Get(pChanged)` -> `If 0 && pServes && +$Get(pChanged)` -> the proposal actually
+  confirmed and wrote (`"state":"confirmed","auditMarked":true`) instead of being refused; the other
+  five tests in the class were unaffected (the mutation only disables the `pServes` branch, and
+  nothing else in the class records a path as OcuPilot's own). Reverted; recompiled;
+  `OcuPilot.Test.ProhibitedRoute` green again at 6/6 (run 2563); `git status --short` / `git diff
+  --stat` confirmed unchanged by the mutation-and-revert. This test does not pin the pairs-before-
+  prohibited order (`ProposalConfirm.TestThePrivilegeGateAnswersBeforeTheProhibitedSet` does, and
+  this principal holds the pair `Target`'s own read requires regardless of gate order) -- it pins
+  that the order's fix generalizes to AC5's own refusal for a caller who is not `%All`.
 
 ## Auto Run Result
 

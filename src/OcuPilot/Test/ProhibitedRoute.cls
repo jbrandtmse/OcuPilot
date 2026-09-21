@@ -34,6 +34,22 @@ Parameter TARGET = "/csp/ocupilotprobeconfirm";
 /// authorization predicate has something to drop. A standard IRIS resource, never a new one.</p>
 Parameter GUARDRESOURCE = "%Development";
 
+/// <p>A fixed throwaway password for <parameter>PRINCIPALUSER</parameter>: the account is
+/// recreated by <method>EnsureLeastPrivilegedPrincipal</method> at the start of the one test that
+/// uses it and removed at the end, so nothing about this value needs to be secret or unique across
+/// runs -- only long and mixed enough to satisfy the instance's own password policy.</p>
+Parameter PRINCIPALPASSWORD = "OcuPilotAc5ProbePassword9Aa";
+
+/// <p>The role, and the user holding only it, that
+/// <method>TestOcuPilotsOwnServingPathRefusesALeastPrivilegedPrincipal</method> creates and
+/// removes: exactly the write's two required pairs (<class>OcuPilot.Screen.Descriptor.WebAppList</class>'s
+/// own, DW-1208) and nothing else. Dedicated names, never <class>OcuPilot.Test.TurnWireFixture</class>'s
+/// shared role -- that role's resources are that fixture's own concern, and overwriting them here
+/// would leave a later class in the sweep holding the wrong grant.</p>
+Parameter PRINCIPALROLE = "OcuPilotProbeProhibitedRouteRole";
+
+Parameter PRINCIPALUSER = "OcuPilotProbeProhibitedRouteUser";
+
 /// <p>Create the probe application and guard it, or refuse to run at all.</p>
 Method OnBeforeAllTests() As %Status
 {
@@ -52,6 +68,11 @@ Method OnAfterAllTests() As %Status
 
 Method OnAfterOneTest() As %Status
 {
+    Do ..RemoveLeastPrivilegedPrincipal()
+    ; Defensive: TestOcuPilotsOwnServingPathRefusesALeastPrivilegedPrincipal removes this record
+    ; itself, but a failure between writing it and removing it would otherwise leave TARGET marked
+    ; OcuPilot's own for every later test in this class.
+    Do ##class(OcuPilot.Kernel.State.WebApp).DeleteByPath(..#TARGET)
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining)
     Do $$$AssertStatusOK(tSC, "the probe proposals and turns are removed")
     Do $$$AssertEquals(tRemaining, 0, "and none survives the removal")
@@ -205,6 +226,126 @@ Method Call(pKey As %String, Output pStatus As %Integer, Output pBody As %String
     Quit ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", ..#APIBASE _ "/proposal/" _ pKey _ "/confirm", ##class(OcuPilot.Test.Http).GetTestUsername(), ##class(OcuPilot.Test.Http).GetTestPassword(), .pStatus, .pBody, .pHeaders, "", "application/json")
 }
 
+/// <p>POST the confirm route for <var>pKey</var> as <var>pUser</var> -- the least-privileged leg's
+/// own confirming call, never the test account.</p>
+Method CallAs(pKey As %String, pUser As %String, pPassword As %String, Output pStatus As %Integer, Output pBody As %String, Output pHeaders) As %Status
+{
+    Quit ##class(OcuPilot.Test.Http).AbsoluteRequest("POST", ..#APIBASE _ "/proposal/" _ pKey _ "/confirm", pUser, pPassword, .pStatus, .pBody, .pHeaders, "", "application/json")
+}
+
+/// <p>The resource that guards read access to the install namespace's own code database --
+/// <class>OcuPilot.Test.TurnWireFixture.Resources</class>'s "clears the router's floor" resource,
+/// needed here for the same underlying reason: reaching <class>OcuPilot.Api.Router</class> at all
+/// over HTTP requires it, independently of and beneath <method>OcuPilot.Kernel.Proposal.Confirm</method>'s
+/// own declared pairs. A principal that holds DW-1208's two pairs but not this one is refused a
+/// bare 403 with no envelope before the confirm route's own code ever runs -- measured while
+/// writing this test, which is why it is granted explicitly rather than assumed to come free with
+/// the write's own pairs.</p>
+Method CodeDatabaseResource() As %String
+{
+    Set tResource = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set tNs = ##class(OcuPilot.Install.Installer).ResolveNamespace()
+        Set $NAMESPACE = "%SYS"
+        Set tNsObj = ##class(Config.Namespaces).Open(tNs)
+        Set tResource = ##class(SYS.Database).%OpenId(##class(Config.Databases).Open(tNsObj.Routines).Directory).ResourceName
+    } Catch ex {
+        Set tResource = ""
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tResource
+}
+
+/// <p>Create or reset <parameter>PRINCIPALUSER</parameter> holding <parameter>PRINCIPALROLE</parameter>
+/// with exactly <var>pResources</var>, and <var>pPassword</var>. A dedicated principal rather than
+/// <class>OcuPilot.Test.TurnWireFixture</class>'s, per <parameter>PRINCIPALROLE</parameter>'s own
+/// doc comment.</p>
+Method EnsureLeastPrivilegedPrincipal(pPassword As %String, pResources As %String) As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If ##class(Security.Roles).Exists(..#PRINCIPALROLE, .tR, .tRS) {
+            Kill tProps
+            Set tProps("Resources") = pResources
+            Set tProps("GrantedRoles") = ""
+            Set tSC = ##class(Security.Roles).Modify(..#PRINCIPALROLE, .tProps)
+        } Else {
+            Set tSC = ##class(Security.Roles).Create(..#PRINCIPALROLE, "OcuPilot AC5 least-privileged probe (throwaway)", pResources, "")
+        }
+        If $$$ISERR(tSC) Quit
+        If ##class(Security.Users).Exists(..#PRINCIPALUSER, .tU, .tUS) {
+            Set tSC = ##class(Security.Users).Delete(..#PRINCIPALUSER)
+            If $$$ISERR(tSC) Quit
+        }
+        Set tSC = ##class(Security.Users).Create(..#PRINCIPALUSER, ..#PRINCIPALROLE, pPassword, "OcuPilot AC5 least-privileged probe (throwaway)", "", "", "", 0, 1, "Created by OcuPilot.Test.ProhibitedRoute")
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Remove <parameter>PRINCIPALUSER</parameter> when the instance holds it. The role is left in
+/// place, the same convention <class>OcuPilot.Test.TurnWireFixture.DeletePrincipal</class> follows
+/// for its own role.</p>
+Method RemoveLeastPrivilegedPrincipal() As %Status
+{
+    Set tSC = $$$OK
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        If ##class(Security.Users).Exists(..#PRINCIPALUSER, .tU, .tUS) {
+            Set tSC = ##class(Security.Users).Delete(..#PRINCIPALUSER)
+        }
+    } Catch ex {
+        Set tSC = ex.AsStatus()
+    }
+    Set $NAMESPACE = tOrigNS
+    Quit tSC
+}
+
+/// <p>Seed one completed turn and one live proposal owned by <var>pUser</var> against
+/// <var>pTarget</var>, exactly as <method>Seed</method> does for <parameter>TARGET</parameter> and
+/// the test account -- the two are parameterized here so the least-privileged leg can mint and
+/// confirm as the same principal (<method>OcuPilot.Kernel.Proposal.Write.ClaimById</method> refuses
+/// a confirm from anyone but the row's own minting user).</p>
+/// <p><b>Mint-shaped only:</b> unlike <method>Seed</method>, there is no hand-seeded fallback for a
+/// field the tool cannot set -- every caller here passes a field the tool's settable list carries,
+/// so <method>Minted</method> always answers a real diff row.</p>
+Method SeedForPrincipal(pUser As %String, pTarget As %String, pFresh As %DynamicObject, pField As %String, pValue As %RawString, pType As %String) As %String
+{
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn(pUser, "completed", .tTurnKey)
+    Do $$$AssertStatusOK(tSC, "a probe turn is seeded for the least-privileged principal")
+    If $$$ISERR(tSC) Quit ""
+    Set tSC = ##class(OcuPilot.Kernel.EntityRef).Key("web-application", "instance", pTarget, .tRef)
+    Do $$$AssertStatusOK(tSC, "the target reference is built")
+    If $$$ISERR(tSC) Quit ""
+
+    Set tArgs = {}
+    Do tArgs.%Set(pField, pValue, pType)
+    Set tSC = ..Minted(pFresh, tArgs, .tPayload, .tDiff, .tFingerprint, .tUnchanged)
+    If $$$ISERR(tSC) Quit ""
+
+    Kill tValues
+    Set tValues("user") = pUser
+    Set tValues("convKey") = ""
+    Set tValues("turnKey") = tTurnKey
+    Set tValues("toolName") = ..#TOOL
+    Set tValues("targetRef") = tRef
+    Set tValues("fingerprint") = tFingerprint
+    Set tValues("arguments") = tArgs.%ToJSON()
+    Set tValues("payload") = tPayload
+    Set tValues("diff") = tDiff
+    Set tValues("unchangedCount") = tUnchanged
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedProposal(.tValues, .tKey, .tToken)
+    Do $$$AssertStatusOK(tSC, "a probe proposal is seeded for the least-privileged principal")
+    If $$$ISERR(tSC) Quit ""
+    Quit tKey
+}
+
 /// <p>Seed a proposal weakening <var>pField</var>, confirm it over HTTP, and assert the 403 it
 /// earns, the sentence beside the code, and that the application on the instance did not move.</p>
 Method Weakened(pField As %String, pValue As %RawString, pType As %String, pExpected As %String)
@@ -262,6 +403,78 @@ Method TestNoDeleteVerbIsAdvertisedForAWebApplication()
         Do $$$AssertEquals(tTool.%Get("name"), ..#TOOL, "the only write verb on " _ tIdentifier _ " is the reviewed update, not '" _ tTool.%Get("name") _ "'")
     }
     Do $$$AssertTrue(tSeen > 0, "the registry carries tools on " _ tIdentifier _ " at all, so this assertion ran over something")
+}
+
+/// <p>Story 5.8's residual: the pairs-before-prohibited reorder that fixed DW-1208 (a caller short
+/// a pair reaching <method>Prohibited.Target</method>'s live port read and being answered a generic
+/// internal error instead of <code>AUTH.NOPRIVILEGE</code>) is pinned as <code>%All</code> at the
+/// unit tier (<class>OcuPilot.Test.ProposalConfirm</class>'s two
+/// <method>TestThePrivilegeGateAnswersBefore...</method> methods) and as a real least-privileged
+/// principal at the browser tier, but only against <code>/csp/myapp</code>
+/// (<file>ui/browser/proposal-demo.browser-spec.mjs</file>'s AC4 leg). AC5's own serving-path
+/// refusal reads live state through that same <method>Target</method> call, and had never been
+/// measured for a caller who is not <code>%All</code>: the over-the-wire legs in this class run
+/// as <code>%All</code> (this class's own header), and
+/// <method>OcuPilot.Test.ProhibitedByEffect.TestAChangeToOcuPilotsOwnApplicationIsRefused</method>
+/// replaces the port with a fixture and never asks a real privilege question at all. So nobody had
+/// proven that a holder of exactly the write's two pairs reaches
+/// <code>PROHIBITED.SERVINGPATH</code> for one of OcuPilot's own applications, rather than the same
+/// internal error DW-1208 named for a different gate.</p>
+/// <p><b>Drives this class's own probe application, not the instance's real API or shell
+/// application.</b> Install's own "recorded" table -- the same mechanism
+/// <method>OcuPilot.Test.ProhibitedByEffect.TestAChangeToOcuPilotsOwnApplicationIsRefused</method>
+/// exercises for its <parameter>RECORDEDPATH</parameter> leg -- marks <parameter>TARGET</parameter>
+/// as OcuPilot's own for exactly the span of this test, so the serving-path predicate fires over
+/// the real HTTP/port path (needed to reach the privilege gate this test is actually about) without
+/// any write ever reaching the instance's own live-serving applications. The record is removed
+/// before this method returns and again, defensively, in <method>OnAfterOneTest</method>.</p>
+/// <p>Reads only past the record itself: disabling the (recorded) probe application is refused
+/// before the port <code>PUT</code> is ever reached, so nothing here writes to it, and the
+/// application is read back afterwards to confirm that. The principal's grant is checked on the
+/// instance rather than assumed (Rule 19).</p>
+/// <p>Mutation (Rule 19): drop the <method>DeleteByPath</method>/<method>GuardedRecord</method>
+/// pair -- with <parameter>TARGET</parameter> never recorded, this leg's own proposal reaches the
+/// same <code>AUTHORIZATION</code>/<code>UNAUTHENTICATED</code>/<code>DISPATCH</code> family
+/// <method>Weakened</method>'s legs pin instead of <code>SERVINGPATH</code>, which reddens the code
+/// assertion. The order fix itself is pinned by
+/// <method>OcuPilot.Test.ProposalConfirm.TestThePrivilegeGateAnswersBeforeTheProhibitedSet</method>
+/// and is <b>not</b> what this test falsifies: this principal holds the pair
+/// <method>Target</method>'s own read requires, so that read succeeds regardless of gate order, and
+/// this test pins that the fix generalizes to AC5's refusal for a caller who is not
+/// <code>%All</code>, not the order itself.</p>
+Method TestOcuPilotsOwnServingPathRefusesALeastPrivilegedPrincipal()
+{
+    Set tCodeResource = ..CodeDatabaseResource()
+    Do $$$AssertNotEquals(tCodeResource, "", "the install namespace's code database resource resolves")
+    If tCodeResource = "" Quit
+    Set tSC = ..EnsureLeastPrivilegedPrincipal(..#PRINCIPALPASSWORD, "%Admin_Secure:U,%DB_IRISSYS:R," _ tCodeResource _ ":R")
+    Do $$$AssertStatusOK(tSC, "the least-privileged principal is created")
+    If $$$ISERR(tSC) Quit
+
+    ; Measured, not assumed: the principal holds exactly the write's two pairs and not the
+    ; permission DW-1208 replaced.
+    Do $$$AssertEquals($SYSTEM.Security.CheckUserPermission(..#PRINCIPALUSER, "%Admin_Secure", "USE"), 1, "the principal holds %Admin_Secure:USE")
+    Do $$$AssertEquals($SYSTEM.Security.CheckUserPermission(..#PRINCIPALUSER, "%DB_IRISSYS", "READ"), 1, "and %DB_IRISSYS:READ")
+    Do $$$AssertEquals($SYSTEM.Security.CheckUserPermission(..#PRINCIPALUSER, "%Admin_Secure", "WRITE"), 0, "and not the WRITE permission DW-1208 replaced")
+
+    Do ##class(OcuPilot.Kernel.State.WebApp).DeleteByPath(..#TARGET)
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.WebApp).GuardedRecord("probe", ..#TARGET, "created"), "the probe application is recorded as OcuPilot's own for this leg")
+
+    Set tBefore = ..Snapshot(.tFresh)
+    If tBefore '= "" {
+        Set tKey = ..SeedForPrincipal(..#PRINCIPALUSER, ..#TARGET, tFresh, "Enabled", 0, "boolean")
+        If tKey '= "" {
+            Set tSC = ..CallAs(tKey, ..#PRINCIPALUSER, ..#PRINCIPALPASSWORD, .tStatus, .tBody, .tHeaders)
+            Do $$$AssertStatusOK(tSC, "the request completes")
+            Do $$$AssertEquals(tStatus, 403, "and is refused -- not a 500 from the live read, not a 401: " _ tBody)
+            Set tEnvelope = ##class(%DynamicObject).%FromJSON(tBody)
+            Do $$$AssertEquals(tEnvelope.%Get("code"), $Parameter("OcuPilot.Kernel.Proposal.Prohibited", "SERVINGPATH"), "with the serving-path code, not AUTH.NOPRIVILEGE and not an internal error")
+            Do $$$AssertEquals(tEnvelope.%Get("error"), ##class(OcuPilot.Api.Error).#FORBIDDEN, "under the forbidden slug")
+            Do $$$AssertEquals(..Snapshot(.tAfter), tBefore, "the probe application on the instance is what it was")
+        }
+    }
+
+    Do $$$AssertStatusOK(##class(OcuPilot.Kernel.State.WebApp).DeleteByPath(..#TARGET), "the temporary record is removed")
 }
 
 Method TestADroppedResourceIsRefusedOverTheWire()
