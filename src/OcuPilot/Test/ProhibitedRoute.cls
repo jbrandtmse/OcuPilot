@@ -14,7 +14,8 @@
 /// holding <code>%All</code>, and <b>both</b> <parameter>ARMINGVARIABLE</parameter> and
 /// <parameter>AUDITVARIABLE</parameter> reading <code>1</code>.
 /// <method>OnBeforeAllTests</method> refuses anywhere either does not, because this class creates
-/// and deletes a web application and turns this instance's auditing off for one leg; only
+/// and deletes a web application and an IRIS account, starts and terminates a process of its own,
+/// and turns this instance's auditing off for one leg; only
 /// <file>scripts/ci-throwaway.sh</file> sets them.</p>
 /// <p><b>It writes nothing it did not create.</b> The probe application is
 /// <method>OcuPilot.Test.ProposalFixture.EnsureWriteTarget</method>'s, which refuses to adopt one

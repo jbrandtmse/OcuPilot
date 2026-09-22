@@ -5806,6 +5806,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-11-tasks-resume-a-task-suspended-after-an-error.md | severity: low | fix-risk: low | footprint: in-epic
 - evidence: task-resume.browser-spec.mjs asserts /-ci$/ on OCUPILOT_BROWSER_CONTAINER in both hooks; TaskResume.cls has no equivalent gate, so iris_execute_tests pointed at a live instance would create and resume a task there
 - 2026-09-22T04:54:00Z status=routed owner=5-12-os-management-suspend-and-resume-a-process by=harvest note=ROUTED_TO_5.12_RATHER_THAN_PATCHED_HERE_BECAUSE_5.12_IS_WHERE_THE_HAZARD_GETS_SERIOUS:_it_suspends_and_resumes_a_PROCESS,_and_an_unarmed_test_class_pointed_at_a_live_instance_would_suspend_a_real_one._The_established_pattern_is_an_arming_variable_(OCUPILOT_ALLOW_AUDIT_TOGGLE,_read_by_ProhibitedRoute)_plus_roster_rows_in_ci-throwaway.sh_and_ci.test.mjs,_which_is_more_than_a_patch_-_so_5.12_adds_it_once_and_applies_it_to_both_classes._Bounded_harm_meanwhile:_TaskResume_creates_and_deletes_its_OWN_probe_task_and_never_touches_the_demo_fixtures
+- 2026-09-22T09:29:32Z status=resolved-by:5-12-os-management-suspend-and-resume-a-process by=adjudication note=ci-throwaway.sh:253,259 ship both arming vars; TaskResume gained an OnBeforeAllTests guard too
 
 ### DW-1459: AC1's 'the tasks.schedule read tool's view carries Suspended' is asserted as the declaration plus the screen read, never through the tool view's own projection
 - source: spec-5-11-tasks-resume-a-task-suspended-after-an-error.md | severity: med | fix-risk: low | footprint: in-story
@@ -5839,6 +5840,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-11-tasks-resume-a-task-suspended-after-an-error.md | severity: med | fix-risk: med | footprint: in-epic
 - evidence: MUTATINGTYPES is 'PUT,RESUME' and BODYLESSTYPES is 'RESUME', both matched by suffix alone, so a second endpoint declaring a TYPERESUME that does read a body loses the object-body refusal at AdminPort:405 (DW-1279's silent-success guard) with no error. No such endpoint exists today, which is why this is a grammar question rather than a defect; ToolWrite's agreement test relates a tool's SendsBody to the roster but says nothing about endpoint scoping.
 - 2026-09-22T05:20:34Z status=routed owner=5-12-os-management-suspend-and-resume-a-process by=cr note=5.12 adds the second action write and is where the grammar is either widened to Endpoint/TYPE or declined
+- 2026-09-22T09:29:32Z status=resolved-by:5-12-os-management-suspend-and-resume-a-process by=adjudication note=BODYLESSTYPES reads Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME - keyed by pair, not bare name
 
 ### DW-1465: A proposal card names its target by id, so a task write reads 'Task 1002' where every earlier target type read as a name
 - source: spec-5-11-tasks-resume-a-task-suspended-after-an-error.md | severity: med | fix-risk: med | footprint: out-of-footprint
@@ -5865,6 +5867,7 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-12-os-management-suspend-and-resume-a-process.md | severity: low | fix-risk: low | footprint: in-story
 - evidence: the Verification list records eleven mutations; AC1's write half, AC2's two wrong-state refusals, AC4's absent-request-type half, AC5, AC6, AC7, AC8 and AC9 name theirs in ProcessControl.cls:206-210, ToolWrite.cls:706-716 and ProhibitedRoute.cls:2118-2121 instead
 - 2026-09-22T09:03:03Z status=open owner=5-12-os-management-suspend-and-resume-a-process by=harvest note=KEPT_OPEN_ON_THIS_STORY_AND_FLAGGED_TO_THE_REVIEWER_RATHER_THAN_ROUTED,_because_Rule_19_gives_the_code_review_an_EXPLICIT_EXEMPTION_to_write_a_missing_or_stale_mutation_line_inside_its_own_pass_-_that_is_precisely_this_shape._The_mutations_were_demonstrated;_what_is_missing_is_the_line_that_records_them_where_the_next_reader_looks,_which_is_the_difference_between_evidence_and_a_claim
+- 2026-09-22T09:28:08Z status=resolved-by:5-12-os-management-suspend-and-resume-a-process owner=5-12-os-management-suspend-and-resume-a-process by=cr note=all eight now carry a mutation line in the spec Verification: five written out, AC9 folded into AC4's, AC5 and AC7 inherited
 
 ### DW-1470: Test.ProhibitedFixture.Digest still computes the confirm digest with the three-argument Fingerprint.Of, so a seeded action-style proposal would carry a digest no confirm can match
 - source: spec-5-12-os-management-suspend-and-resume-a-process.md | severity: med | fix-risk: low | footprint: in-epic
@@ -5880,3 +5883,30 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: spec-5-12-os-management-suspend-and-resume-a-process.md | severity: med | fix-risk: med | footprint: in-story
 - evidence: Prohibited.OwnedByCaller refuses any process whose UserName is the confirming user; measured on ocupilot-ci as 40 empty-owner daemons, 4 CSPSYSTEM, 1 TASKMGR and 1 IRISOWNER, so the suite had to create a second principal to have any proposable target at all
 - 2026-09-22T09:03:03Z status=escalated owner=burndown by=harvest note=FOR_THE_DECISION_SHEET_AND_I_AM_NOT_DECIDING_IT:_the_broad_reading_was_the_ORCHESTRATORS_OWN_CALL_and_it_asked_me_to_check_exactly_this_consequence_before_implementing._I_ANSWERED_THE_QUESTION_IT_ASKED_-_no_DEMO_target_falls_inside_the_prohibition,_because_the_fixture_seeds_a_suspended_TASK_and_not_a_process_-_and_the_implement_stage_then_measured_the_half_I_had_only_estimated:_on_a_single-user_instance_the_prohibition_removes_essentially_every_non-daemon_candidate,_so_the_SUITE_needs_a_second_principal_to_have_a_target_at_all._Spec-bound_so_it_is_not_a_defect,_but_it_bears_on_the_DEMO_rather_than_only_the_tests,_and_the_narrow_
+- 2026-09-22T09:28:08Z status=escalated owner=burndown by=cr note=prior trailer's note is truncated mid-word and over budget; disposition unchanged, decision-sheet question about the demo, not a defect
+- 2026-09-22T09:29:23Z note=recommended: keep the broad reading; the narrow $JOB reading remains available
+
+### DW-1473: AdminPort.MUTATINGTYPES still admits a request type by bare suffix, so admitting Process/SUSPEND also opens Task.CRUD/SUSPEND
+- source: spec-5-12-os-management-suspend-and-resume-a-process.md | severity: med | fix-risk: high | footprint: in-story
+- evidence: MUTATINGTYPES is PUT,RESUME,SUSPEND and EndpointType (AdminPort.cls:813) admits any member on any endpoint; Task.CRUD declares TYPESUSPEND 15 and overrides Run, so Invoke(Task.CRUD,SUSPEND) answered 501 before this story and reaches the vendor after it. No advertised tool declares that pair, so it is a latent widening, not an exposure.
+- 2026-09-22T09:27:56Z status=escalated owner=burndown by=cr note=Sibling of DW-1464, which this story fixed on BODYLESSTYPES only; keying PUT by pair touches every merge write.
+
+### DW-1474: A fingerprint subject name a descriptor's fingerprintExcludes also names collapses the digest to the empty object, and the registration guard relates the two in none of its conditions
+- source: spec-5-12-os-management-suspend-and-resume-a-process.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: Fingerprint.Of applies Projection(pSubject) and then Canonical(..,pExcludes), so an overlapping name is hashed out of the very set it is the whole of. Registry.FingerprintSubjectProblem holds four conditions and checks the subject against fingerprintExcludes in none. No descriptor declares fingerprintExcludes today, so nothing is wrong in the tree; the guard is what AD-51's adequacy condition rests on.
+- 2026-09-22T09:28:00Z status=routed owner=5-13-logs-delete-application-errors-by-namespace by=cr note=Guard is about eight lines; pinning it needs a probe descriptor, which 5.13's own action write can carry safely.
+
+### DW-1475: The fingerprint-subject registration guard validates names against the screen's declared read, so a name the tool's own READTYPE read does not answer passes install and fails at every mint
+- source: spec-5-12-os-management-suspend-and-resume-a-process.md | severity: med | fix-risk: med | footprint: in-story
+- evidence: FingerprintSubjectProblem resolves DESCRIPTORCLASS and checks tNames(read) = ProcessList.read.fields, the LIST spellings Pid,Username,Nspace,Routine,State,Commands,Globals, while the tools' READTYPE GET spells them UserName,NameSpace,CommandsExecuted. A subject of Pid,State,Username registers and then fails Fingerprint.Projection at every mint as a 500. Both shipped tools declare Pid,State, which both sets carry, so nothing is wrong today.
+- 2026-09-22T09:28:00Z status=routed owner=5-13-logs-delete-application-errors-by-namespace by=cr note=AD-51 as adopted words the check against the same extraction; the overclaim was Write.cls's doc, corrected by this review.
+
+### DW-1476: An action-style write that declares no fingerprint subject silently keeps AD-6's whole-read digest, and Mint.FingerprintSubjectOf answers empty on any exception
+- source: spec-5-12-os-management-suspend-and-resume-a-process.md | severity: med | fix-risk: med | footprint: in-epic
+- evidence: AD-51 as amended says an action write declares its subject, without condition. Registry.FingerprintSubjectProblem only checks a subject that is declared; Screen/Tool/TaskResume.cls (Story 5.11) declares neither FINGERPRINTSUBJECT nor PRECONDITIONFIELD, and Mint.FingerprintSubjectOf catches every exception into an empty subject. Harmless for TaskResume, whose Task INFO read carries no moving counters, but the seam still admits the dead path the amendment exists to remove.
+- 2026-09-22T09:28:04Z status=routed owner=5-13-logs-delete-application-errors-by-namespace by=cr note=Spec task 3 sanctioned the empty default; the spine's amended wording does not, so the two now disagree.
+
+### DW-1477: Prohibited.ProcessJobTypes admits APPMODE 2, a background job type, so one user's OcuPilot turn job is proposable for suspension by another
+- source: spec-5-12-os-management-suspend-and-resume-a-process.md | severity: med | fix-risk: low | footprint: in-story
+- evidence: %syPidtab.inc:128 defines INTERACTIVEJOB as FOREJOB 1 or FORAPPJOB 3 only; APPMODE, IDIRECTSRV, CSPSRV, ODBCSRV and CALLINTYPE are all BACKGROUNDJOB at :132. The allow-list was approved on the words 'the interactive and client job types', which this review corrected at their origin. A JOBed turn job (AD-7) carries APPMODE, and OwnedByCaller refuses only the confirming user's own.
+- 2026-09-22T09:28:04Z status=escalated owner=burndown by=cr note=Spec task 4 enumerated the seven values, so narrowing the list is a product call for the decision sheet.

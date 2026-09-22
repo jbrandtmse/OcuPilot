@@ -608,6 +608,111 @@ other task stands as written.
   the other does not, **then** the port's bodyless exemption applies to the `(endpoint, type)` pair
   and not to the name. (DW-1464)
 
+### Review Findings
+
+**2026-09-22 — full code review** (Tier 1, `review_tier: full-opus`; blind-hunter, edge-case-hunter,
+verification-gap and acceptance-auditor all ran and all returned). 0 decision-needed, 5 patch (all
+applied), 5 defer, 13 rejected. No HIGH. Every patch is a correction at its origin; none adds a
+branch, so no new pinning test was required and none of the story's mutations moved.
+
+- [x] [Review][Patch] Three amended doc comments in `Prohibited.cls` state what the code and the
+  vendor's own include file do not [src/OcuPilot/Kernel/Proposal/Prohibited.cls] — `ProcessJobTypes`
+  called its seven values "the interactive and client job types `%syPidtab.inc` names", where
+  `:128` makes only `FOREJOB` 1 and `FORAPPJOB` 3 interactive and groups the other five under
+  `BACKGROUNDJOB` at `:132`; `Codes()` accounted for eleven of twelve codes, omitting
+  `PRIVILEGEGRANT`; and `OwnedByCaller` claimed it fails closed "as its sibling does", where it
+  fails closed only when both `Pid` and `UserName` are absent. All three corrected at their origin.
+- [x] [Review][Patch] `FINGERPRINTSUBJECT`'s doc claims the registration guard checks names against
+  the tool's own read [src/OcuPilot/Screen/Tool/Write.cls:84] — `FingerprintSubjectProblem` checks
+  them against the screen's declaration, which for `ProcessList` is the `LIST` spellings. The claim
+  is corrected and the consequence named; the behavioural residue is DW-1475.
+- [x] [Review][Patch] The `TERMINATE`/`DELETE` absence leg aimed the call at the test's own process
+  [src/OcuPilot/Test/ToolWrite.cls:732] — `tQuery("id") = $Job`. The 501 lands before the id is
+  read, so an absent pid proves the same refusal, and the Rule 19 mutation this method's own doc
+  names (admitting `TERMINATE`) no longer reaches the vendor against the process running the test.
+  `ToolWrite` 19/19 after the change (run 5181).
+- [x] [Review][Patch] `ReadTool`'s roster sentence says nine where the roster it describes is eleven
+  [src/OcuPilot/Test/ReadTool.cls:94] — 1 + 3 + 1 + 6. `ReadTool` 27/27 after (run 5182).
+- [x] [Review][Patch] `ProhibitedRoute`'s environment header does not name what it now does
+  [src/OcuPilot/Test/ProhibitedRoute.cls:13] — the class now also creates an account and starts and
+  terminates a process of its own. The `# classes:` roster in `scripts/ci-throwaway.sh` is left
+  alone: `ui/tools/ci.test.mjs` derives both sides from the classes that structurally declare each
+  variable, so the class cannot be listed there without declaring the variable.
+
+- [x] [Review][Defer] `AdminPort.MUTATINGTYPES` still admits a request type by bare suffix
+  [src/OcuPilot/Port/AdminPort.cls:150] — deferred: **DW-1473**, `escalated owner=burndown`. Sibling
+  of DW-1464, which this story fixed on `BODYLESSTYPES` only; admitting `SUSPEND` also opens
+  `Task.CRUD/SUSPEND` at the port. No advertised tool declares that pair, so it is a latent
+  widening; keying `PUT` by pair touches every merge write, which is the fix-risk.
+- [x] [Review][Defer] A subject name a descriptor's `fingerprintExcludes` also names collapses the
+  digest to `{}` [src/OcuPilot/Screen/Registry.cls:2054] — deferred: **DW-1474**,
+  `routed owner=5-13-…`. `Fingerprint.Of` projects and then excludes; the guard relates the two in
+  none of its four conditions. No descriptor declares `fingerprintExcludes` today. The guard is
+  eight lines; pinning it needs a probe descriptor, which 5.13's own action write can carry safely.
+- [x] [Review][Defer] The subject guard validates against the screen's declared read, not the tool's
+  `READTYPE` read [src/OcuPilot/Screen/Registry.cls:2102] — deferred: **DW-1475**,
+  `routed owner=5-13-…`. A subject of `Pid,State,Username` registers and then fails
+  `Fingerprint.Projection` at every mint as a 500. Both shipped tools declare `Pid,State`, which
+  both sets carry. AD-51 as adopted words the check against the same extraction, so the code matches
+  the spine; the overclaim was the doc, patched above. This also retires the earlier triage's ground
+  for rejecting `Mint.cls:175-179` as unreachable.
+- [x] [Review][Defer] Nothing requires an action-style write to declare a subject
+  [src/OcuPilot/Screen/Tool/TaskResume.cls:46] — deferred: **DW-1476**, `routed owner=5-13-…`.
+  5.11's action write declares none and keeps AD-6's whole-read digest; `Mint.FingerprintSubjectOf`
+  answers empty on any exception. Harmless for a `Task` `INFO` read, which carries no moving
+  counters, but spec task 3 sanctioned the empty default and the amended AD-51 does not.
+- [x] [Review][Defer] `ProcessJobTypes` admits `APPMODE` 2, a background job type
+  [src/OcuPilot/Kernel/Proposal/Prohibited.cls:579] — deferred: **DW-1477**,
+  `escalated owner=burndown`. A `JOB`ed turn job (AD-7) carries it, and `OwnedByCaller` refuses only
+  the confirming user's own, so one user's turn job is proposable by another. Spec task 4 enumerated
+  the seven values, so narrowing the list is a product call for the decision sheet.
+
+**Rejected.**
+
+- `ProcessResume.StateDiff` answers "this instance reports that process as not suspended" for a read
+  that answered no `State` at all, where `ProcessSuspend` distinguishes the two — `low`,
+  `wontfix-accepted`. The refusal is correct and fails closed; only the sentence is imprecise, on a
+  path a live `Process` `GET` does not produce (a vanished process 404s). The fix adds a branch.
+  `reopen_if=` a `Process` `GET` is observed answering no `State` for a process that exists, or a
+  user reports a resume refusal naming a state the instance did not report.
+- The own-process and system-process refusals surface at confirm, where `epics.md`'s AC says
+  "proposed" — `by-design`. AD-40 requires every write gate to be evaluated at the write inside
+  AD-34's transition; a check made only at the mint is a check against state that has since moved.
+  The tools' `DESCRIPTION` listing the three refusals alike follows from that and is rejected with
+  it. The consequence on a single-user instance is already DW-1472.
+- `Fingerprint.Projection` passes a `%GetTypeOf` result to `%Set` as a type hint, which an object or
+  array member would refuse — `wontfix-theoretical`. No declared subject names a non-scalar, and the
+  refusal is an error status, not a wrong digest. Real when an action write first declares an object
+  member in its subject.
+- `Confirm.FingerprintMatches` answers 500 rather than 409 when the confirm-time read omits a subject
+  member — covered by DW-1475, which owns the projection-failure surface.
+- `ProcessDetails` gained `JobType` in `read.fields` and `context.fields` but not in `filter` or
+  `sort.fields` — `false`. `NameArrayProblem` is a subset check and task 7 asked for the two lists
+  it changed.
+- The `Pid` half of the declared subject cannot move between mint and confirm — true and `by-design`.
+  AD-51 puts the scoped identity in the subject; pid reuse is caught by `Prohibited.Process`'s own
+  fresh re-read, which names that as its reason.
+- `ProcessControl.ProbeWait` swallows a failed `$System.Security.Login` — `low`. A failed sign-in
+  leaves the probe owned by the run's own account, which the ownership predicate then refuses, so
+  the legs redden rather than reading green.
+- `SubjectProbe.Registry` does not exclude its own package and the refused class is decided by
+  `ORDER BY Name` — `low`, `wontfix-accepted`. `reopen_if=` a probe sorting before `BodyTaking` is
+  added and the registration assertion names a class the test did not intend.
+- `StartProbeProcess` and `EnsureProbeOwner` carry no arming check of their own, and `ProhibitedRoute`
+  reaches them — `low`, rejected on the same ground as the previous pass: that class cannot run
+  unarmed under either of the two variables it does declare.
+- The browser spec's helper closes its context only inside the card wait — `low`, test hygiene on a
+  spec that already refuses outside a `-ci` throwaway.
+- Suspending a process inside an open transaction or holding locks is not surfaced on the card —
+  `by-design`. The card shows the state row the read answers, and the vendor's own `CanBeSuspended`
+  is the guard for what it will not suspend.
+- The `destructive` decision reads `EXPERIENCE.md`'s `confirm-dialog` row as governing a process
+  suspend when its named example is the Task Manager's — out of scope; the flag was decided before
+  this pass and the sibling inconsistency is DW-1467.
+- The spec is `oversized` and this story's passes added to it; the ledger's `note=` lines run well
+  over the grammar's budget — rejected here because the fix edits the spec under review and the
+  agent-context files. DW-1472's truncated trailer was repaired by appending a conforming line.
+
 ## Spec Change Log
 
 - **2026-09-22, lead — matrix ambiguity resolved, `destructive` is `false` for the suspend.** Not a
@@ -851,6 +956,39 @@ answers `%Admin_Operate` alone while `AllowToOpen` and `VariableByPidExecute` as
     `OCUPILOT_ALLOW_TASK_CONTROL`.
   - The marker emission and `ui/src/app/core/refresh.ts`'s `proposal-open` subscription are pinned
     by `TaskResume` and `task-resume.browser-spec.mjs`, which this story did not change.
+
+  **DW-1469 -- closed 2026-09-22 (QA).** The eight mutations that were demonstrated but recorded
+  only in a test method's own doc comment, re-applied on `ocupilot-ci`, the whole `OcuPilot`
+  package recompiled, the named class run, and each reverted and the tree confirmed
+  byte-identical:
+
+  - `mutation:` (AC1's write half) make `OcuPilot.Kernel.Proposal.Confirm.ToolSendsBody` answer
+    `1` unconditionally -> `ProcessControl` 1/10 failed
+    (`TestTheConfirmedWriteIsABodylessSuspendCarryingTheId`, the empty-body and no-field-name
+    assertions).
+  - `mutation:` (AC2's wrong-state refusals) drop the already-suspended arm from
+    `ProcessSuspend.StateDiff` -> `ProcessControl` 1/10 failed
+    (`TestEachDirectionRefusesTheWrongStateAtTheMint`, the already-suspended leg).
+  - `mutation:` (AC4's absent-request-type half, and AC9's roster-equality floor) add `TERMINATE`
+    to `AdminPort.MUTATINGTYPES` -> `ToolWrite` 1/19 failed
+    (`TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster`, the absence leg).
+  - `mutation:` (AC6) skip the marker emission in `OcuPilot.Kernel.Proposal.Confirm.Transition`
+    (`RecordAgentWrite`) -> `ProcessControl` 1/10 failed
+    (`TestTheRealSuspendAndResumeAreMarkedAndAttributedToTheCaller`, the marker-landed, marked-
+    ledger-row and audit-database assertions); the probe process was still resumed and no residue
+    was left by the failing run (confirmed by a clean 10/10 re-run immediately after).
+  - `mutation:` (AC8) answer `$ListBuild($ListBuild("%DB_IRISSYS", "READ"))` from
+    `ProcessSuspend.PrivilegePairs` -> `ProhibitedRoute` 1/13 failed
+    (`TestAnAccountShortOfTheProcessPairIsRefusedTheNamedPair`: the screen gate no longer refuses
+    and the caller gets a 500 `INTERNAL` instead of the expected 403 naming `%Admin_Operate:USE`).
+
+  **AC5 and AC7 own no new mutation.** AC5's "no settable field, no hand-typed field list" is the
+  bodyless-tool machinery `Write.AdmittedFields()`/`FieldRows()` derives (AD-3), already Rule-19
+  tested against `TaskResume` in Story 5.11; these two tools add no override for it to falsify.
+  AC7's auto-refresh pause is the shared `Registry.cls:412` `RefreshProblem()` roster mechanism
+  (AD-43), already Rule-19 tested end to end by `task-resume.browser-spec.mjs:483`; this story
+  changes neither the mechanism nor either descriptor's `refreshes` declaration. Both are inherited
+  coverage, not gaps.
 
 **Full runs, once, before `dev_complete` (once, before dev_complete):**
 

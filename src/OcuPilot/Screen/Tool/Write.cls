@@ -82,9 +82,14 @@ Parameter STATEFIELD = "";
 /// an action exists to act on. The subject is what the user reviewed: this target, in this state.</p>
 /// <p><b>Adequacy is structural.</b> A declared subject carries the scoped target identity
 /// (<method>IdArgument</method>) and <parameter>PRECONDITIONFIELD</parameter>, and every name in it
-/// is one the tool's own read declares; <method>OcuPilot.Screen.Registry.FingerprintSubjectProblem</method>
-/// refuses anything else at registration, through the extraction that validates
+/// is one <b>this screen's own declaration</b> knows -- a field of its write tool or one its
+/// declared read names; <method>OcuPilot.Screen.Registry.FingerprintSubjectProblem</method> refuses
+/// anything else at registration, through the extraction that validates
 /// <code>fingerprintExcludes</code>.</p>
+/// <p>That set is <b>not</b> the key set of this tool's own <parameter>READTYPE</parameter> read.
+/// Where a screen's list and the endpoint's single-object read spell a field differently, a name
+/// the screen declares under the list's spelling passes registration and is refused at the mint
+/// instead, by <method>OcuPilot.Kernel.Proposal.Fingerprint.Projection</method>.</p>
 Parameter FINGERPRINTSUBJECT = "";
 
 /// <p>The read field this tool's own precondition reads -- the field whose movement between the

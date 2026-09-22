@@ -729,7 +729,10 @@ Method TestEveryWriteToolsRequestTypeAgreesWithThePortsBodylessRoster()
     For tAbsent = "TERMINATE", "DELETE" {
         Do $$$AssertEquals($ListFind(tMutating, tAbsent), 0, "'" _ tAbsent _ "' is not a request type this port admits")
         Kill tQuery
-        Set tQuery("id") = $Job
+        ; A pid no process carries. The 501 lands before the id is read, so an absent one proves the
+        ; same refusal -- and the mutation this method's doc names (admitting TERMINATE) then reaches
+        ; the vendor against nothing, rather than against the process running this test.
+        Set tQuery("id") = 999999999
         Set tSC = ##class(OcuPilot.Port.AdminPort).Invoke("Process", tAbsent, .tQuery, "", .tAnswer, .tHttp, .tFault)
         Do $$$AssertStatusNotOK(tSC, "and the port refuses a Process " _ tAbsent _ " outright")
         Do $$$AssertEquals(+$Get(tHttp), 501, "at 501, before the vendor endpoint is entered")

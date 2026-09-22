@@ -150,9 +150,10 @@ Parameter UNAUTHENTICATEDBIT As %Integer = 64;
 Parameter READTYPE = "GET";
 
 /// <p>Every <code>PROHIBITED.*</code> code this class declares, as a <class>%List</class>: the
-/// web-application predicates in the order <method>WebApplication</method> evaluates them, then the
-/// three <method>User</method> adds, then the two <method>Process</method> adds, then the one every
-/// covered type shares, with the wholesale refusal last.</p>
+/// four web-application predicates in the order <method>WebApplication</method> evaluates them,
+/// then the three <method>User</method> adds, then <parameter>PRIVILEGEGRANT</parameter>, which
+/// both those types reach, then the two <method>Process</method> adds, then the one every covered
+/// type shares, with the wholesale refusal last -- twelve in all.</p>
 ClassMethod Codes() As %List
 {
     Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OWNPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED)
@@ -566,10 +567,14 @@ ClassMethod Process(pTarget As %DynamicObject, ByRef pChanged, Output pProhibits
 }
 
 /// <p>The <code>JobType</code> values a process this release lets the agent act on carries, as a
-/// <class>%List</class> of integers: the interactive and client job types
-/// <file>%syPidtab.inc</file> names -- <code>FOREJOB</code> 1, <code>APPMODE</code> 2,
+/// <class>%List</class> of integers: <code>FOREJOB</code> 1, <code>APPMODE</code> 2,
 /// <code>FORAPPJOB</code> 3, <code>IDIRECTSRV</code> 26, <code>CSPSRV</code> 27,
 /// <code>ODBCSRV</code> 28 and <code>CALLINTYPE</code> 47.</p>
+/// <p><b>Only 1 and 3 are interactive.</b> <file>%syPidtab.inc</file>:128 defines
+/// <code>INTERACTIVEJOB</code> as <code>FOREJOB</code> or <code>FORAPPJOB</code>; the other five
+/// here it groups under <code>BACKGROUNDJOB</code> at :132, alongside the Work Queue workers this
+/// list refuses. So the set is a user's own session plus the client servers that answer for one,
+/// and it admits a <code>JOB</code>ed background process -- OcuPilot's own turn job among them.</p>
 /// <p><b>An allow-list rather than a deny-list</b>, so a value a later IRIS build adds to that
 /// include file is refused until somebody reviews it. The daemons, the Task Manager
 /// (<code>TASKTYPE</code> 36) and the Work Queue workers (<code>WORKQUEUESRV</code> 59) are all
@@ -595,8 +600,10 @@ ClassMethod IsActionableJobType(pTarget As %DynamicObject) As %Boolean
 /// <p>Whether <var>pTarget</var> is a process the confirming user owns: its <code>UserName</code>
 /// is <code>$Username</code> under the identity rule accounts are compared by
 /// (<method>NormalizedUser</method>), or its <code>Pid</code> is this job's own.</p>
-/// <p>A read that answered neither property is owned: the predicate fails closed, as its sibling
-/// does.</p>
+/// <p>A read that answered <b>neither</b> property is owned, so the predicate fails closed there.
+/// It does not fail closed on one of the two alone: an empty <code>UserName</code> is what this
+/// instance's own daemons carry, and refusing them here would give them the wrong reason --
+/// <method>IsActionableJobType</method> is the predicate that refuses a daemon.</p>
 ClassMethod OwnedByCaller(pTarget As %DynamicObject) As %Boolean
 {
     If '$IsObject(pTarget) Quit 1
