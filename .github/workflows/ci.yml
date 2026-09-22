@@ -80,6 +80,15 @@ jobs:
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
         with:
           version: "0.12.9"
+          # Off deliberately, not by oversight. Every Python script this workflow runs imports
+          # the standard library only -- check-objectscript.py and its harness, resolve_config.py
+          # -- and the repository carries no pyproject.toml, uv.lock or requirements file, so the
+          # cache holds nothing and setup-uv warned on every run that it "will never get
+          # invalidated". That warning is harmless today and a trap tomorrow: the first dependency
+          # anyone adds would not change the key, so CI could serve a stale environment while
+          # every local run was correct. Whoever adds one turns this on and sets
+          # cache-dependency-glob to whatever declares it.
+          enable-cache: false
       - name: install client dependencies
         working-directory: ui
         run: npm ci
