@@ -3,6 +3,7 @@ title: 'Story 5.14: Epic 5 burn-down'
 type: 'bugfix'
 created: '2026-09-22'
 baseline_revision: 'fc425bed4a35223eba8a2dbf4c337243ab66ce9a'
+baseline_commit: 'fc425bed4a35223eba8a2dbf4c337243ab66ce9a'
 status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: true

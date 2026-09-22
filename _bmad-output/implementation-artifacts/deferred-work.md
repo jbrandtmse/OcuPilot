@@ -5877,6 +5877,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - 2026-09-22T15:27:23Z occurrence=5-13-logs-delete-application-errors-by-namespace
 - 2026-09-22T15:27:23Z note=2nd surface: tasks.browser-spec Story 6.6 AC1/AC3 at 239 rows, under the cap - displacement not truncation. CI fresh is green
 - 2026-09-22T15:30:15Z status=routed owner=range-end-cleanup by=burndown note=Rule 27: real but neither floor- nor downstream-blocking, so not chartered
+- 2026-09-22T19:09:30Z occurrence=5-14-epic-5-burn-down
+- 2026-09-22T19:09:30Z note=root cause named: OcuPilotDemoProbe* history rows, purged only on a passing run's path, so one failure is self-reinforcing. Deleting 42 took the spec 12/14 to 14/14
 
 ### DW-1469: Eight of Story 5.12's acceptance criteria carry their Rule 19 mutation only in the test method's doc comment, not as a mutation line in the spec's Verification list
 - source: spec-5-12-os-management-suspend-and-resume-a-process.md | severity: low | fix-risk: low | footprint: in-story
@@ -5974,3 +5976,8 @@ See _bmad/custom/skill-rules.md Rule 15 (entry grammar) and Rule 17 (the drain).
 - source: bmad-code-review of spec-5-13 | severity: low | fix-risk: med | footprint: in-story
 - evidence: objectscript-testing.md: 'keep a test class to roughly 500 lines; split larger suites into several classes'. The class carries nine tests plus principal setup, seeding and teardown helpers; this review added two tests. Splitting means a second armed class and a second entry in every place the sweep names classes.
 - 2026-09-22T14:47:26Z status=wontfix-accepted owner=5-13-logs-delete-application-errors-by-namespace by=cr note=reopen_if=Story 7.10 adds the by-date and by-error scopes to this class rather than its own
+
+### DW-1485: spec-5-12's remaining eight Rule 19 recipes carry stale denominators from the class sizes when each was measured
+- source: spec-5-14-epic-5-burn-down.md | severity: low | fix-risk: low | footprint: in-epic
+- evidence: Story 5.14 re-measured only the two its task list names; ProcessControl now holds 11 methods, read back from %UnitTest_Result run 6059
+- 2026-09-22T19:09:31Z status=routed owner=range-end-cleanup by=harvest note=a stale denominator does not make a recipe unrunnable, only imprecise, so it is not blocking - but a recipe whose count no longer matches is the shape that reads as evidence and is not
