@@ -502,7 +502,7 @@ Method TestTheProhibitedBranchPermitsEnabledAndRefusesEveryOtherField()
 {
     Set tType = $ClassMethod(..#SCREEN, "PrimaryEntityType")
     Do $$$AssertTrue($ListFind(##class(OcuPilot.Kernel.Proposal.Prohibited).CoveredTypes(), tType) > 0, "the set covers this entity type")
-    Do $$$AssertEquals($ListLength(##class(OcuPilot.Kernel.Proposal.Prohibited).Codes()), 10, "and adds no code: this write is permitted")
+    Do $$$AssertEquals($ListLength(##class(OcuPilot.Kernel.Proposal.Prohibited).Codes()), 12, "the set declares twelve codes, and this write earned none of them: Story 5.10 added no code and Story 5.12's two are a process's")
 
     ; The SHIPPED set, so its target is re-read through the shipped port from the real endpoint --
     ; no fixture stands in for the object the predicate judges.

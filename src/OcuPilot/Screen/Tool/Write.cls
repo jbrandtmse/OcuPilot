@@ -20,8 +20,9 @@
 /// <method>Endpoint</method> and <method>SettableFields</method>, and adds the pairs its write
 /// requires beyond its screen's own. An <b>action-style</b> write declares its own request types
 /// and sends no body (AD-51): <parameter>READTYPE</parameter>, <parameter>WRITETYPE</parameter>,
-/// <parameter>SENDSBODY</parameter> and <method>StateDiff</method>, which are the merge write's
-/// own behavior by default.</p>
+/// <parameter>SENDSBODY</parameter>, <method>StateDiff</method> and the fingerprint subject
+/// <parameter>FINGERPRINTSUBJECT</parameter> names, which are the merge write's own behavior by
+/// default.</p>
 Class OcuPilot.Screen.Tool.Write Extends OcuPilot.Screen.Tool.Base [ Abstract ]
 {
 
@@ -72,6 +73,28 @@ Parameter SENDSBODY As BOOLEAN = 1;
 /// that property's live value (AD-10, AD-51).</p>
 Parameter STATEFIELD = "";
 
+/// <p>The <b>subject</b> the proposal's fingerprint covers, as comma-separated top-level names of
+/// this tool's own fresh read, or <code>""</code> for a write whose fingerprint is the descriptor's
+/// exclusions over the whole payload. <code>""</code> here, which is every merge write (AD-6).</p>
+/// <p><b>Only an action-style write declares one</b> (AD-51 as amended 2026-09-22). It sends no
+/// payload, so there is no property set to exclude from, and a digest over the whole of a live
+/// read refuses every confirm whose target moved a counter -- hardest for exactly the targets such
+/// an action exists to act on. The subject is what the user reviewed: this target, in this state.</p>
+/// <p><b>Adequacy is structural.</b> A declared subject carries the scoped target identity
+/// (<method>IdArgument</method>) and <parameter>PRECONDITIONFIELD</parameter>, and every name in it
+/// is one the tool's own read declares; <method>OcuPilot.Screen.Registry.FingerprintSubjectProblem</method>
+/// refuses anything else at registration, through the extraction that validates
+/// <code>fingerprintExcludes</code>.</p>
+Parameter FINGERPRINTSUBJECT = "";
+
+/// <p>The read field this tool's own precondition reads -- the field whose movement between the
+/// mint and the confirm invalidates the reviewed intent -- or <code>""</code> for a write with no
+/// precondition of its own. <code>""</code> here.</p>
+/// <p>It is the second name a declared <parameter>FINGERPRINTSUBJECT</parameter> must carry: a
+/// subject of the identity alone would let a confirm succeed against a target somebody else had
+/// already moved into the state the action was going to move it to (AD-51).</p>
+Parameter PRECONDITIONFIELD = "";
+
 /// <p>This tool's own class, which <method>View</method> hands the mint so
 /// <method>ReadType</method>, <method>SendsBody</method> and <method>StateDiff</method> are read
 /// from the concrete tool rather than from this base (AD-51).</p>
@@ -109,6 +132,25 @@ ClassMethod SendsBody() As %Boolean
 ClassMethod StateField() As %String
 {
     Quit ..#STATEFIELD
+}
+
+/// <p><parameter>FINGERPRINTSUBJECT</parameter> as a <class>%List</class>, for the mint and the
+/// confirm, which resolve a tool by name and hold only its class (AD-51).</p>
+ClassMethod FingerprintSubject() As %List
+{
+    Set tNames = ""
+    For tI = 1:1:$Length(..#FINGERPRINTSUBJECT, ",") {
+        Set tName = $ZStrip($Piece(..#FINGERPRINTSUBJECT, ",", tI), "<>W")
+        If (tName '= "") && '$ListFind(tNames, tName) Set tNames = tNames _ $ListBuild(tName)
+    }
+    Quit tNames
+}
+
+/// <p><parameter>PRECONDITIONFIELD</parameter>, read by the registration-time guard that holds a
+/// declared subject adequate.</p>
+ClassMethod PreconditionField() As %String
+{
+    Quit ..#PRECONDITIONFIELD
 }
 
 /// <p>The <b>state</b> rows this tool's proposal shows, given the fresh read <var>pFresh</var>:

@@ -107,8 +107,18 @@ Method TestTheDeclarationValidatesAndIsDeclaredAsProcessDetails()
         Set tNeedle = """" _ tField _ """"
         Do $$$AssertTrue(tAllNames '[ tNeedle, tField _ " is named nowhere: " _ tAllNames)
     }
-    ; Nor is any CanBe* control field -- this screen ships no process control (Stories 5.12, 7.8, 16.6).
+    ; Nor is any CanBe* control field -- this screen ships no process control (Stories 7.8, 16.6),
+    ; and CanBeSuspended is not the suspended-state discriminator in any case.
     Do $$$AssertEquals((tAllNames [ "CanBe"), 0, "no CanBe* field is named either")
+
+    ; JobType is declared because OcuPilot.Kernel.Proposal.Prohibited.Process refuses a suspend or
+    ; a resume on it, so the operator is shown the field the refusal reads. It is a GET-only key;
+    ; the LIST row behind the parent list has no such column, which is why it is declared here and
+    ; not there.
+    ; Mutation: drop JobType from read.fields -> this goes red, and so does the live-row loop below.
+    Do $$$AssertTrue(tDeclaration.read.fields.%ToJSON() [ """JobType""", "JobType is a declared read field")
+    Do $$$AssertTrue(tDeclaration.context.fields.%ToJSON() [ """JobType""", "and reaches the agent's screen context")
+    Do $$$AssertEquals((tDeclaration.table.%ToJSON() [ "JobType"), 0, "while no table column shows it")
 
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).AreaCoverageProblem("os-management", $ClassMethod(tClass, "PrivilegePairs")), "", "and the OS management area covers its pair set")
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).RouteEntityType(tClass), "process", "its route id names a process, resolved through its parent")

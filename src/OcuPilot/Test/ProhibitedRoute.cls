@@ -7,8 +7,8 @@
 /// can answer.</p>
 /// <p>It is also where AD-29's second half is measured -- a <b>real least-privileged principal</b>
 /// rather than the <code>%All</code> account every other run uses -- for the write tools whose pair
-/// sets an <code>%All</code> run cannot establish: Story 5.9's user write and Story 5.10's auditing
-/// write, each in both directions.</p>
+/// sets an <code>%All</code> run cannot establish: Story 5.9's user write, Story 5.10's auditing
+/// write, Story 5.11's task resume and Story 5.12's two process writes.</p>
 /// <p><b>What it needs from the environment:</b> the OcuPilot web application reachable on this
 /// instance's own web-server port, the applications the install roster declares, an account
 /// holding <code>%All</code>, and <b>both</b> <parameter>ARMINGVARIABLE</parameter> and
@@ -57,6 +57,21 @@ Parameter AUDITINGSCREEN = "OcuPilot.Screen.Descriptor.AuditingConfig";
 Parameter TASKTOOLCLASS = "OcuPilot.Screen.Tool.TaskResume";
 
 Parameter TASKSCREEN = "OcuPilot.Screen.Descriptor.TaskScheduleList";
+
+/// <p>Story 5.12's two write tools and their screen: the action-style suspend and resume, whose
+/// declared pair set is the processes list's own three.</p>
+Parameter SUSPENDTOOLCLASS = "OcuPilot.Screen.Tool.ProcessSuspend";
+
+Parameter PROCESSRESUMETOOLCLASS = "OcuPilot.Screen.Tool.ProcessResume";
+
+Parameter PROCESSSCREEN = "OcuPilot.Screen.Descriptor.ProcessList";
+
+/// <p>The pair a principal short of the process write's own resource is missing, and the
+/// administrative resource it does hold so the router's floor is cleared before the screen's gate
+/// runs.</p>
+Parameter PROCESSPAIR = "%Admin_Operate:USE";
+
+Parameter PROCESSFLOORADMIN = "%Admin_Manage";
 
 /// <p>An administrative resource that is <b>not</b> <code>%Admin_Secure</code>, granted to the
 /// principal of <method>TestAnAccountShortOfTheAuditingPairIsRefusedTheNamedPair</method>.
@@ -275,7 +290,15 @@ Method Minted(pFresh As %DynamicObject, pArgs As %DynamicObject, Output pPayload
     Set tExcludes = ""
     Set tDescriptor = $Parameter(tClass, "DESCRIPTORCLASS")
     If tDescriptor '= "" Set tExcludes = $ClassMethod(tDescriptor, "FingerprintExcludes")
-    Set tSC = ##class(OcuPilot.Kernel.Proposal.Fingerprint).Of(tMerged, tExcludes, .pFingerprint)
+    ; AD-51: an action-style write's digest covers the subject its tool declares, and the stored
+    ; payload is that subject -- so a row seeded here is the row a real mint would have stored.
+    Set tSubject = ##class(OcuPilot.Kernel.Proposal.Mint).FingerprintSubjectOf(tClass)
+    If tSubject '= "" {
+        Set tSC = ##class(OcuPilot.Kernel.Proposal.Fingerprint).Projection(tMerged, tSubject, .tMerged)
+        Do $$$AssertStatusOK(tSC, "the declared fingerprint subject projects out of the fresh read")
+        If $$$ISERR(tSC) Quit tSC
+    }
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Fingerprint).Of(tMerged, tExcludes, .pFingerprint, tSubject)
     Do $$$AssertStatusOK(tSC, "and the digest is taken")
     If $$$ISERR(tSC) Quit tSC
     Do $$$AssertNotEquals(pFingerprint, "", "which is not empty")
@@ -930,6 +953,72 @@ Method TestAnAccountShortOfTheTaskPairIsRefusedTheNamedPair()
     ; Its own frame: this class does not own the probe task's lifetime, so it leaves the instance
     ; without one whatever happened above.
     Do ##class(OcuPilot.Test.TaskResume).DeleteProbeTask(tTaskId)
+    Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForUser(..#PRINCIPALUSER)
+}
+
+/// <p>AD-29's second half for Story 5.12's two writes, over the wire as a <b>real</b>
+/// least-privileged principal: an account holding every declared pair but
+/// <parameter>PROCESSPAIR</parameter> is refused 403 naming it, for the suspend and for the resume
+/// alike, and the target process is still running afterwards.</p>
+/// <p>The principal holds <parameter>PROCESSFLOORADMIN</parameter> at <code>USE</code> so the
+/// router's own floor is cleared before the screen's gate runs -- without it the leg would measure
+/// <code>AUTH.NOADMIN</code> instead of the pair set -- plus the security database read and the
+/// install namespace's code database read.</p>
+/// <p>The target is a process this method starts through
+/// <class>OcuPilot.Test.ProcessControl</class> and stops in a frame of its own: never a daemon, the
+/// Task Manager, a Work Queue worker or the confirming job.</p>
+/// <p>Mutation (Rule 19): answer
+/// <code>$ListBuild($ListBuild("%DB_IRISSYS", "READ"))</code> from
+/// <method>OcuPilot.Screen.Tool.ProcessSuspend.PrivilegePairs</method> and recompile -- the screen
+/// gate no longer refuses and the code and failed-pair assertions go red.</p>
+Method TestAnAccountShortOfTheProcessPairIsRefusedTheNamedPair()
+{
+    Set tCodeResource = ..CodeDatabaseResource()
+    Do $$$AssertNotEquals(tCodeResource, "", "the install namespace's code database resource resolves")
+    If tCodeResource = "" Quit
+    Set tSC = ..EnsureLeastPrivilegedPrincipal(..#PRINCIPALPASSWORD, ..#PROCESSFLOORADMIN _ ":U,%DB_IRISSYS:R," _ tCodeResource _ ":R")
+    Do $$$AssertStatusOK(tSC, "a principal short of only the process pair is created: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+
+    Do $$$AssertEquals($SYSTEM.Security.CheckUserPermission(..#PRINCIPALUSER, $Piece(..#PROCESSPAIR, ":", 1), "USE"), 0, "it holds no " _ ..#PROCESSPAIR _ ", which is the pair these writes require")
+    Do $$$AssertEquals($SYSTEM.Security.CheckUserPermission(..#PRINCIPALUSER, ..#PROCESSFLOORADMIN, "USE"), 1, "it does hold an administrative resource, so the router's own floor is cleared")
+    Do $$$AssertEquals($SYSTEM.Security.CheckUserPermission(..#PRINCIPALUSER, "%DB_IRISSYS", "READ"), 1, "and the security database read, so the process pair is the only one it is short of")
+
+    Set tSC = ##class(OcuPilot.Test.ProcessControl).EnsureProbeOwner()
+    Do $$$AssertStatusOK(tSC, "the probe process's owner account exists: " _ $System.Status.GetErrorText(tSC))
+    Set tPid = ##class(OcuPilot.Test.ProcessControl).StartProbeProcess()
+    Do $$$AssertNotEquals(tPid, "", "a probe process of this suite's own is running")
+    If tPid = "" Quit
+    Try {
+        Kill tQuery
+        Set tQuery($ClassMethod(..#SUSPENDTOOLCLASS, "IdParam")) = tPid
+        Set tReadSC = ##class(OcuPilot.Port.AdminPort).Invoke($ClassMethod(..#SUSPENDTOOLCLASS, "Endpoint"), $ClassMethod(..#SUSPENDTOOLCLASS, "ReadType"), .tQuery, "", .tFresh, .tHttp, .tFault)
+        Do $$$AssertStatusOK(tReadSC, "the process reads fresh through the shipped port with the tool's own request type")
+        If $$$ISERR(tReadSC) || '$IsObject(tFresh) Quit
+
+        For tTool = ..#SUSPENDTOOLCLASS, ..#PROCESSRESUMETOOLCLASS {
+            Set tName = $Parameter(tTool, "TOOLNAME")
+            Set tKey = ..SeedForPrincipal(..#PRINCIPALUSER, tPid, tFresh, $ClassMethod(tTool, "IdArgument"), tPid, "string", tName, $ClassMethod(..#PROCESSSCREEN, "PrimaryEntityType"))
+            Do $$$AssertNotEquals(tKey, "", tName _ ": a proposal was seeded for that principal")
+            If tKey = "" Continue
+            Set tSC = ..CallAs(tKey, ..#PRINCIPALUSER, ..#PRINCIPALPASSWORD, .tStatus, .tBody, .tHeaders)
+            Do $$$AssertStatusOK(tSC, tName _ ": the confirm request completes")
+            Do $$$AssertEquals(tStatus, 403, tName _ ": and is refused -- not 200, not the router's 403 with no body: " _ tBody)
+            Set tEnvelope = ##class(%DynamicObject).%FromJSON(tBody)
+            Do $$$AssertEquals(tEnvelope.%Get("code"), ##class(OcuPilot.Api.Error).#AUTHNOPRIVILEGE, tName _ ": with the screen-privilege code, not AUTH.NOADMIN")
+            Do $$$AssertEquals($Select($IsObject(tEnvelope.%Get("detail")): tEnvelope.%Get("detail").%Get("failedPair"), 1: ""), ..#PROCESSPAIR, tName _ ": naming the pair that failed")
+            Do $$$AssertTrue('(##class(OcuPilot.Test.ProcessControl).ProcessState(tPid) [ "SUSP"), tName _ ": and the process is still running on the instance")
+            Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "State"), "live", tName _ ": the row was not claimed")
+            Do $$$AssertEquals(##class(OcuPilot.Test.ProposalFixture).Field(tKey, "Burned"), 0, tName _ ": and the token is unspent")
+        }
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the leg completes without raising")
+    }
+    ; Its own frame: this class does not own the probe process's lifetime, so it leaves the
+    ; instance without one whatever happened above.
+    Do ##class(OcuPilot.Test.ProcessControl).StopProbeProcess(tPid)
+    Do ##class(OcuPilot.Test.ProcessControl).RemoveProbeOwner()
+    Do $$$AssertEquals(##class(OcuPilot.Test.ProcessControl).ProcessState(tPid), "", "and the probe process this leg started is gone")
     Do ##class(OcuPilot.Kernel.State.Ledger).GuardedDeleteForUser(..#PRINCIPALUSER)
 }
 

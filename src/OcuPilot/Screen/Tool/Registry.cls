@@ -128,6 +128,17 @@ ClassMethod ListTools(Output pTools As %DynamicArray) As %Status
                 Set tSC = $$$ERROR($$$GeneralError, tClass _ ": TOOLNAME '" _ tName _ "' is not <area>.<screen>.<verb> in lower case")
                 Quit
             }
+            ; AD-51: the build-time guard over an action-style write's declared fingerprint
+            ; subject. It runs here because a tool this refuses must not be registered at all --
+            ; the mint reads the subject off the class, so an inadequate one would otherwise be
+            ; discovered at a confirm rather than at install.
+            If tKind = "write" {
+                Set tProblem = $ClassMethod(..ScreenRegistryClass(), "FingerprintSubjectProblem", tClass)
+                If tProblem '= "" {
+                    Set tSC = $$$ERROR($$$GeneralError, tClass _ ": " _ tProblem)
+                    Quit
+                }
+            }
             Set tSC = ..Claim(.tByName, tName, tKind, tClass, "", tFulfilment)
             If $$$ISERR(tSC) Quit
         }

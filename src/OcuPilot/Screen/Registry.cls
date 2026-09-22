@@ -2028,6 +2028,91 @@ ClassMethod ConfirmChannelProblem(pDeclaration As %DynamicObject) As %String
     Quit tProblem
 }
 
+/// <p>The class an action-style write's declarations live on, which is what makes
+/// <method>FingerprintSubjectProblem</method> a question about a tool at all.</p>
+Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
+
+/// <p>What is wrong with write tool <var>pToolClass</var>'s declared fingerprint subject, or
+/// <code>""</code> (AD-51 as amended 2026-09-22). A tool that declares none has nothing wrong with
+/// it: its fingerprint is the descriptor's exclusions over the whole payload, which is AD-6's own
+/// rule and every merge write's behavior.</p>
+/// <p><b>Caller contract:</b> <method>OcuPilot.Screen.Tool.Registry.ListTools</method> calls it for
+/// every write tool it lists, so a tool whose subject this refuses cannot be registered, reached by
+/// the model, or minted from.</p>
+/// <p>Four things are held. The declaration belongs to an action-style write alone, because the
+/// inversion is that kind's and a merge write declaring one would send a body narrowed to it. The
+/// other three are the structural half of adequacy: the subject carries the scoped target identity
+/// (<method>OcuPilot.Screen.Tool.Write.IdArgument</method>), it carries the field the tool's own
+/// precondition reads (<parameter>OcuPilot.Screen.Tool.Write.PRECONDITIONFIELD</parameter>), and
+/// every name in it is one the screen already knows. A subject of the identity alone would let a
+/// confirm succeed against a target somebody else had already moved, and an empty one would
+/// fingerprint nothing at all.</p>
+/// <p><b>The name check runs through <method>DeclaredNames</method></b>, the same extraction
+/// <method>ConfirmChannelProblem</method> validates <code>fingerprintExcludes</code> against.
+/// Validating two sibling declarations against two sets is DW-1206's defect, and one set is its
+/// fix.</p>
+ClassMethod FingerprintSubjectProblem(pToolClass As %String) As %String
+{
+    Set tProblem = ""
+    Try {
+        If pToolClass = "" Quit
+        ; The declaration lives on OcuPilot.Screen.Tool.Write, so a tool that classifies itself
+        ; `write` without extending it has no subject to hold -- a fixture registry that widens
+        ; the excluded package lists such classes, and asking them would raise rather than refuse.
+        If '$ClassMethod(pToolClass, "%Extends", ..#WRITETOOLBASE) Quit
+        Set tSubject = $ClassMethod(pToolClass, "FingerprintSubject")
+        If (tSubject '= "") && $ClassMethod(pToolClass, "SendsBody") {
+            Set tProblem = "FINGERPRINTSUBJECT is declared on a write that sends a body, and the inversion is the action-style kind's alone -- a merge write's fingerprint is the descriptor's exclusions over the whole payload (AD-6, AD-51)"
+            Quit
+        }
+        If tSubject = "" {
+            If $Parameter(pToolClass, "FINGERPRINTSUBJECT") '= "" {
+                Set tProblem = "FINGERPRINTSUBJECT is declared and names no field, and a subject that covers nothing is no fingerprint at all (AD-51)"
+            }
+            Quit
+        }
+        Set tIdentity = $ClassMethod(pToolClass, "IdArgument")
+        If '$ListFind(tSubject, tIdentity) {
+            Set tProblem = "the declared fingerprint subject omits '" _ tIdentity _ "', which is this tool's scoped target identity (AD-13, AD-51)"
+            Quit
+        }
+        Set tPrecondition = $ClassMethod(pToolClass, "PreconditionField")
+        If tPrecondition = "" {
+            Set tProblem = "a declared fingerprint subject names the field its action's precondition reads, and PRECONDITIONFIELD is empty (AD-51)"
+            Quit
+        }
+        If '$ListFind(tSubject, tPrecondition) {
+            Set tProblem = "the declared fingerprint subject omits '" _ tPrecondition _ "', which is the field this tool's own precondition reads (AD-51)"
+            Quit
+        }
+        Set tDescriptor = $Parameter(pToolClass, "DESCRIPTORCLASS")
+        If tDescriptor = "" {
+            Set tProblem = "a declared fingerprint subject is checked against the screen's own declared names, and this tool names no descriptor class (AD-5)"
+            Quit
+        }
+        Set tSC = $ClassMethod(tDescriptor, "DeclarationJson", .tDeclaration)
+        If $$$ISERR(tSC) || '$IsObject(tDeclaration) {
+            Set tProblem = "the declaration of " _ tDescriptor _ " could not be read, so the declared fingerprint subject could not be checked against it"
+            Quit
+        }
+        Set tIdentifier = ""
+        If tDeclaration.%GetTypeOf("toolIdentifier") = "string" Set tIdentifier = tDeclaration.%Get("toolIdentifier")
+        Set tProblem = ..ToolFieldRows(tIdentifier, .tRows)
+        If tProblem '= "" Quit
+        Do ..DeclaredNames(tDeclaration, .tRows, .tNames)
+        For tI = 1:1:$ListLength(tSubject) {
+            Set tName = $List(tSubject, tI)
+            If '$ListFind(tNames("path"), tName) && '$ListFind(tNames("read"), tName) {
+                Set tProblem = "the declared fingerprint subject names '" _ tName _ "', which is neither a field of this screen's write tool nor one its read declares (AD-51)"
+                Quit
+            }
+        }
+    } Catch ex {
+        Set tProblem = "the declared fingerprint subject could not be validated: " _ ex.DisplayString()
+    }
+    Quit tProblem
+}
+
 /// <p>The projections <method>DeclaredNames</method> fills, comma-separated. Declared as data
 /// because a generator reads it: <file>ui/tools/screen-mirror.mjs</file> parses this parameter and
 /// fails <code>npm run build</code> when its own builder answers a different set, so the mirror

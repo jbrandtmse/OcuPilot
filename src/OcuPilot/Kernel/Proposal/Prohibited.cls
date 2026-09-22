@@ -27,12 +27,13 @@
 /// (<method>AlwaysProhibitedFields</method>), and so is every field outside the reviewed few: a
 /// write tool advertises the reviewed names and nothing else, so the model cannot author the rest,
 /// and this class refuses them at the write so no other route can either.</p>
-/// <p><b>Three types are covered</b> (<parameter>COVEREDTYPES</parameter>): a web application,
-/// whose predicates are <method>WebApplication</method>'s, a user account, whose predicates are
-/// <method>User</method>'s, and the instance's auditing configuration, whose predicate is
-/// <method>Auditing</method>'s -- the reviewed-few sweep alone, because AD-10 forbids no change to
-/// it. Each later write-tool story adds its own type here, and a type listed with no branch is
-/// refused <parameter>UNCOVERED</parameter> at every write.</p>
+/// <p><b>Five types are covered</b> (<parameter>COVEREDTYPES</parameter>): a web application
+/// (<method>WebApplication</method>), a user account (<method>User</method>), the instance's
+/// auditing configuration (<method>Auditing</method>) and a task (<method>Task</method>) -- the
+/// last two the reviewed-few sweep alone, because AD-10 forbids no change to either -- and a
+/// process (<method>Process</method>), which adds AD-10's two target predicates. Each later
+/// write-tool story adds its own type here, and a type listed with no branch is refused
+/// <parameter>UNCOVERED</parameter> at every write.</p>
 /// <p>Seams a subclass overrides: <method>PortClass</method>, <method>RegistryClass</method>,
 /// <method>LastAllHolder</method> and <method>HoldsAll</method>. Production overrides none of them.
 /// The last two are the census, and the difference between them matters to a reader auditing it:
@@ -72,6 +73,16 @@ Parameter LASTALLHOLDER = "PROHIBITED.LASTALLHOLDER";
 /// <p>The write would disable <code>_SYSTEM</code>, the instance's own predefined account.</p>
 Parameter SYSTEMACCOUNT = "PROHIBITED.SYSTEMACCOUNT";
 
+/// <p>The write would suspend or resume a process the confirming user owns. AD-10 defines the set
+/// by effect, and the effect prevented is the agent stopping the person driving it from working --
+/// which the confirm request's own job does not exhaust, because the operator's other interactive
+/// session locks them out just as completely.</p>
+Parameter OWNPROCESS = "PROHIBITED.OWNPROCESS";
+
+/// <p>The write would suspend or resume an IRIS system process: one whose <code>JobType</code> is
+/// outside <method>ProcessJobTypes</method>'s allow-list, an unnamed value included.</p>
+Parameter SYSTEMPROCESS = "PROHIBITED.SYSTEMPROCESS";
+
 /// <p>The write would change a setting of a covered type that this release has not reviewed. It is
 /// the shape that covers a vendor property nobody has classified yet, rather than the names that
 /// happen to exist on this build.</p>
@@ -85,7 +96,7 @@ Parameter UNCOVERED = "PROHIBITED.UNCOVERED";
 /// <p>The entity types this release evaluates predicates for, comma-separated
 /// (<class>OcuPilot.Kernel.EntityType</class>'s spelling). A type outside this list is
 /// <parameter>UNCOVERED</parameter>.</p>
-Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task";
+Parameter COVEREDTYPES = "web-application,user,auditing-configuration,task,process";
 
 /// <p>The covered types, each named once so the dispatch and the list cannot drift apart.</p>
 Parameter TYPEWEBAPPLICATION = "web-application";
@@ -96,6 +107,8 @@ Parameter TYPEAUDITING = "auditing-configuration";
 
 Parameter TYPETASK = "task";
 
+Parameter TYPEPROCESS = "process";
+
 /// <p>The instance's own predefined account, whose disablement AD-10 forbids. Compared through
 /// <method>NormalizedUser</method>, so every spelling the instance resolves to it is refused.</p>
 Parameter SYSTEMACCOUNTNAME = "_SYSTEM";
@@ -105,6 +118,14 @@ Parameter SYSTEMACCOUNTNAME = "_SYSTEM";
 Parameter ALLROLE = "%All";
 
 Parameter ADMINROLEPREFIX = "%Admin_";
+
+/// <p>The three <code>Process</code> <code>GET</code> properties the process predicates read,
+/// named once.</p>
+Parameter FIELDJOBTYPE = "JobType";
+
+Parameter FIELDUSERNAME = "UserName";
+
+Parameter FIELDPID = "Pid";
 
 /// <p>The three <code>Security.User</code> payload fields the user predicates read, named once.</p>
 Parameter FIELDENABLED = "Enabled";
@@ -130,11 +151,11 @@ Parameter READTYPE = "GET";
 
 /// <p>Every <code>PROHIBITED.*</code> code this class declares, as a <class>%List</class>: the
 /// web-application predicates in the order <method>WebApplication</method> evaluates them, then the
-/// three <method>User</method> adds, then the two both types share, with the wholesale refusal
-/// last.</p>
+/// three <method>User</method> adds, then the two <method>Process</method> adds, then the one every
+/// covered type shares, with the wholesale refusal last.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#UNCOVEREDFIELD, ..#UNCOVERED)
+    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OWNPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED)
 }
 
 /// <p>The written sentence a <code>PROHIBITED.*</code> code carries, or <code>""</code> for any
@@ -150,6 +171,8 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#SYSTEMACCOUNT Quit "Disabling the instance's own _SYSTEM account is not something the agent can propose."
     If pCode = ..#CURRENTUSER Quit "Disabling the account you are signed in as is not something the agent can propose."
     If pCode = ..#LASTALLHOLDER Quit "Disabling the only account on this instance that holds %All is not something the agent can propose."
+    If pCode = ..#OWNPROCESS Quit "Suspending or resuming a process you own is not something the agent can propose."
+    If pCode = ..#SYSTEMPROCESS Quit "Suspending or resuming an IRIS system process is not something the agent can propose."
     If pCode = ..#UNCOVEREDFIELD Quit "Only a few of this kind of object's settings are ones the agent may propose changing, and that is not one of them."
     If pCode = ..#UNCOVERED Quit "This release does not check writes to that kind of object against its prohibited set, so none is proposable yet."
     Quit ""
@@ -184,6 +207,9 @@ ClassMethod CoveredTypes() As %List
 /// one is refused for the current user, the last <code>%All</code> holder and
 /// <parameter>SYSTEMACCOUNTNAME</parameter>. <code>Roles</code> is permitted except where the delta
 /// grants privilege, which is the same asymmetry read over a list.</p>
+/// <p>A process's is <b>none</b>, for the reason a task's is: both of its writes are bodyless
+/// (AD-51), so every changed field a <code>process</code> proposal could carry is one nobody has
+/// reviewed.</p>
 /// <p>A task's is <b>none</b>. Its one write is the bodyless resume (AD-51), which sets no field
 /// at all, so every changed field a <code>task</code> proposal could carry is one nobody has
 /// reviewed. AD-10's Release 1 set names no task effect, and this story invents none.</p>
@@ -256,7 +282,7 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
         }
-        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) {
+        If (tType '= ..#TYPEWEBAPPLICATION) && (tType '= ..#TYPEUSER) && (tType '= ..#TYPEAUDITING) && (tType '= ..#TYPETASK) && (tType '= ..#TYPEPROCESS) {
             ; A type COVEREDTYPES lists and no branch evaluates. Fail closed rather than write.
             Do ..Refuse(..#UNCOVERED, .pProhibits, .pCode)
             Quit
@@ -290,6 +316,10 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
         }
         If tType = ..#TYPETASK {
             Set tSC = ..Task(.tChanged, .pProhibits, .pCode)
+            Quit
+        }
+        If tType = ..#TYPEPROCESS {
+            Set tSC = ..Process(tTarget, .tChanged, .pProhibits, .pCode)
             Quit
         }
         Set tSC = ..WebApplication(tPayloadObject, tTarget, tServes, .tChanged, .pProhibits, .pCode)
@@ -493,6 +523,89 @@ ClassMethod Auditing(ByRef pChanged, Output pProhibits As %Boolean, Output pCode
 ClassMethod Task(ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
 {
     Quit ..ReviewedFewOnly(..#TYPETASK, .pChanged, .pProhibits, .pCode)
+}
+
+/// <p>The process predicates, in declared order, first hit wins: a process the confirming user
+/// owns, an IRIS system process, then the reviewed-few sweep over an empty permitted list.</p>
+/// <p><var>pTarget</var> is the <b>fresh</b> read <method>Target</method> took inside the confirm
+/// transition, so both predicates read the instance rather than the stored payload -- a pid is
+/// reusable once its process has ended, and the fingerprint's declared subject does not cover
+/// <code>JobType</code> or <code>UserName</code>.</p>
+/// <p><b>Ownership takes the broad reading</b> (AD-10, effect not verb): any process whose
+/// <code>UserName</code> is the confirming user, of which the confirm request's own job
+/// (<code>$Job</code>) is a strict subset. <code>$Job</code> alone would leave the operator's other
+/// interactive session suspendable, and suspending that locks them out as completely as suspending
+/// this one.</p>
+/// <p><b>System processes are an allow-list</b> (<method>ProcessJobTypes</method>) and fail closed
+/// on a <code>JobType</code> the table does not name. Measured over the whole 31-process population
+/// on this build, <code>CanBeSuspended</code> and <code>CanBeTerminated</code> are both 1 for the
+/// Task Manager and for every Work Queue worker, so a refusal resting on the vendor's own booleans
+/// would let the agent suspend the Task Manager; <code>NameSpace</code> separates nothing, being
+/// empty for the core daemons and <code>%SYS</code> for an operator's own session.</p>
+ClassMethod Process(pTarget As %DynamicObject, ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
+{
+    Set pProhibits = 0
+    Set pCode = ""
+    Set tSC = $$$OK
+    Try {
+        If ..OwnedByCaller(pTarget) {
+            Do ..Refuse(..#OWNPROCESS, .pProhibits, .pCode)
+            Quit
+        }
+        If '..IsActionableJobType(pTarget) {
+            Do ..Refuse(..#SYSTEMPROCESS, .pProhibits, .pCode)
+            Quit
+        }
+        Set tSC = ..ReviewedFewOnly(..#TYPEPROCESS, .pChanged, .pProhibits, .pCode)
+    } Catch ex {
+        Set pProhibits = 0
+        Set pCode = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p>The <code>JobType</code> values a process this release lets the agent act on carries, as a
+/// <class>%List</class> of integers: the interactive and client job types
+/// <file>%syPidtab.inc</file> names -- <code>FOREJOB</code> 1, <code>APPMODE</code> 2,
+/// <code>FORAPPJOB</code> 3, <code>IDIRECTSRV</code> 26, <code>CSPSRV</code> 27,
+/// <code>ODBCSRV</code> 28 and <code>CALLINTYPE</code> 47.</p>
+/// <p><b>An allow-list rather than a deny-list</b>, so a value a later IRIS build adds to that
+/// include file is refused until somebody reviews it. The daemons, the Task Manager
+/// (<code>TASKTYPE</code> 36) and the Work Queue workers (<code>WORKQUEUESRV</code> 59) are all
+/// outside it.</p>
+ClassMethod ProcessJobTypes() As %List
+{
+    Quit $ListBuild(1, 2, 3, 26, 27, 28, 47)
+}
+
+/// <p>Whether <var>pTarget</var>'s <code>JobType</code> is one <method>ProcessJobTypes</method>
+/// admits. A read that answered no <code>JobType</code>, or one this method cannot read as a whole
+/// number, is <b>not</b> actionable: a process whose kind nobody established is a system process
+/// as far as this predicate is concerned.</p>
+ClassMethod IsActionableJobType(pTarget As %DynamicObject) As %Boolean
+{
+    If '$IsObject(pTarget) Quit 0
+    Set tType = ..Rendered(pTarget, ..#FIELDJOBTYPE)
+    If tType = "" Quit 0
+    If '$Match(tType, "^[0-9]+$") Quit 0
+    Quit ''$ListFind(..ProcessJobTypes(), +tType)
+}
+
+/// <p>Whether <var>pTarget</var> is a process the confirming user owns: its <code>UserName</code>
+/// is <code>$Username</code> under the identity rule accounts are compared by
+/// (<method>NormalizedUser</method>), or its <code>Pid</code> is this job's own.</p>
+/// <p>A read that answered neither property is owned: the predicate fails closed, as its sibling
+/// does.</p>
+ClassMethod OwnedByCaller(pTarget As %DynamicObject) As %Boolean
+{
+    If '$IsObject(pTarget) Quit 1
+    Set tPid = ..Rendered(pTarget, ..#FIELDPID)
+    Set tUser = ..Rendered(pTarget, ..#FIELDUSERNAME)
+    If (tPid = "") && (tUser = "") Quit 1
+    If (tPid '= "") && (##class(OcuPilot.Kernel.EntityRef).NormalizedId(..#TYPEPROCESS, tPid) = ##class(OcuPilot.Kernel.EntityRef).NormalizedId(..#TYPEPROCESS, $Job)) Quit 1
+    If (tUser '= "") && (..NormalizedUser(tUser) = ..NormalizedUser($Username)) Quit 1
+    Quit 0
 }
 
 /// <p>The reviewed-few sweep for entity type <var>pType</var>: every field <var>pChanged</var>

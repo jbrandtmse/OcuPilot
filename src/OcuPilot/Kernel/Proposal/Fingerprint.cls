@@ -5,6 +5,13 @@
 /// never chooses which fields the fingerprint covers -- only which ones it does not -- so the
 /// default is everything else. That is what makes "the target moved under the diff" a question the
 /// instance can answer rather than one each write tool answers for itself.</p>
+/// <p><b>An action-style write inverts that selection, and only that kind does</b> (AD-51 as
+/// amended 2026-09-22). Such a write sends no payload, so its diff is over state the read can see
+/// rather than over a property set, and the tool declares the <b>subject</b> the digest covers:
+/// <var>pSubject</var>, a <class>%List</class> of top-level names. A digest over the whole of a
+/// live process's read would refuse every confirm whose target executed a command in between,
+/// which is not protection but a dead path. An empty <var>pSubject</var> is the merge write's own
+/// behavior, exclusions and all.</p>
 /// <p><b>Canonical means key insertion order cannot change the answer.</b> An object's members are
 /// emitted in <code>$Order</code> collation of their names -- one fixed order, whatever order they
 /// were inserted in, with canonical numbers ahead of other strings; an array's elements keep their
@@ -24,7 +31,12 @@ Parameter SHABITS As %Integer = 256;
 /// <var>pDigest</var>. An error status leaves it <code>""</code>.</p>
 /// <p><var>pPayload</var> is a <class>%DynamicObject</class>; anything else is refused rather than
 /// hashed, because a digest over a value nobody can reproduce is worse than no digest.</p>
-ClassMethod Of(pPayload As %DynamicObject, pExcludes As %List = "", Output pDigest As %String) As %Status
+/// <p><var>pSubject</var>, where the tool declares one (AD-51), narrows the digest to those
+/// top-level members of <var>pPayload</var> before the exclusions are applied. A declared name the
+/// payload does not carry is refused rather than hashed as absent: the subject is the whole of
+/// what the confirm compares, so a name that reached it by a spelling the endpoint does not answer
+/// would make the digest stable whatever the target did.</p>
+ClassMethod Of(pPayload As %DynamicObject, pExcludes As %List = "", Output pDigest As %String, pSubject As %List = "") As %Status
 {
     Set pDigest = ""
     Set tSC = $$$OK
@@ -33,10 +45,42 @@ ClassMethod Of(pPayload As %DynamicObject, pExcludes As %List = "", Output pDige
             Set tSC = $$$ERROR($$$GeneralError, "a fingerprint is taken over an object")
             Quit
         }
-        Set tCanonical = ..Canonical(pPayload, "", pExcludes)
+        Set tSubject = pPayload
+        If pSubject '= "" {
+            Set tSC = ..Projection(pPayload, pSubject, .tSubject)
+            If $$$ISERR(tSC) Quit
+        }
+        Set tCanonical = ..Canonical(tSubject, "", pExcludes)
         Set pDigest = $ZConvert(##class(%xsd.hexBinary).LogicalToXSD($System.Encryption.SHAHash(..#SHABITS, $ZConvert(tCanonical, "O", "UTF8"))), "L")
     } Catch ex {
         Set pDigest = ""
+        Set tSC = ex.AsStatus()
+    }
+    Quit tSC
+}
+
+/// <p><var>pPayload</var> narrowed to the top-level names <var>pSubject</var> declares, in
+/// <var>pProjection</var>, each member keeping its own JSON type. A declared name the payload does
+/// not carry is an error.</p>
+ClassMethod Projection(pPayload As %DynamicObject, pSubject As %List, Output pProjection As %DynamicObject) As %Status
+{
+    Set pProjection = ""
+    Set tSC = $$$OK
+    Try {
+        Set tProjection = {}
+        For tI = 1:1:$ListLength(pSubject) {
+            Set tName = $List(pSubject, tI)
+            Set tType = pPayload.%GetTypeOf(tName)
+            If tType = "unassigned" {
+                Set tSC = $$$ERROR($$$GeneralError, "the fingerprint subject names '" _ tName _ "', which this read does not answer")
+                Quit
+            }
+            Do tProjection.%Set(tName, pPayload.%Get(tName), tType)
+        }
+        If $$$ISERR(tSC) Quit
+        Set pProjection = tProjection
+    } Catch ex {
+        Set pProjection = ""
         Set tSC = ex.AsStatus()
     }
     Quit tSC

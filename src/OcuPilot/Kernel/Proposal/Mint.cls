@@ -166,7 +166,19 @@ ClassMethod Mint(pDescriptor As %String, pToolName As %String, pUser As %String,
             If '$ClassMethod(pToolClass, "SendsBody") Set tUnchanged = 0
         }
 
-        Set tSC = ##class(OcuPilot.Kernel.Proposal.Fingerprint).Of(tPayload, $ClassMethod(pDescriptor, "FingerprintExcludes"), .tFingerprint)
+        ; AD-51 as amended. A tool that declares a fingerprint subject is fingerprinted over that
+        ; subject alone, and the stored payload is narrowed to it: nothing is sent, so the rest of
+        ; the fresh read has no consumer, and a process's variable table is not a payload to keep
+        ; (AD-35).
+        Set tSubject = ..FingerprintSubjectOf(pToolClass)
+        If tSubject '= "" {
+            Set tProjectSC = ##class(OcuPilot.Kernel.Proposal.Fingerprint).Projection(tPayload, tSubject, .tPayload)
+            If $$$ISERR(tProjectSC) {
+                Set tSC = ..Internal("the proposal's fingerprint subject could not be read: " _ $System.Status.GetErrorText(tProjectSC), .pHttpStatus, .pFault)
+                Quit
+            }
+        }
+        Set tSC = ##class(OcuPilot.Kernel.Proposal.Fingerprint).Of(tPayload, $ClassMethod(pDescriptor, "FingerprintExcludes"), .tFingerprint, tSubject)
         If $$$ISERR(tSC) {
             Set tSC = ..Internal("the proposal's fingerprint could not be taken: " _ $System.Status.GetErrorText(tSC), .pHttpStatus, .pFault)
             Quit
@@ -403,6 +415,20 @@ ClassMethod ReadTypeOf(pToolClass As %String) As %String
     }
     If tType = "" Quit ..#READTYPE
     Quit tType
+}
+
+/// <p>The fingerprint subject <var>pToolClass</var> declares (AD-51), or <code>""</code> when the
+/// call named no tool class or the class declares none -- which is the descriptor's exclusions
+/// over the whole payload, every merge write's own behavior.</p>
+ClassMethod FingerprintSubjectOf(pToolClass As %String) As %List
+{
+    Set tSubject = ""
+    Try {
+        If pToolClass '= "" Set tSubject = $ClassMethod(pToolClass, "FingerprintSubject")
+    } Catch {
+        Set tSubject = ""
+    }
+    Quit tSubject
 }
 
 /// <p>The admin endpoint <var>pDescriptor</var>'s own declared read lists through, or

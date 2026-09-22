@@ -26,8 +26,8 @@ Parameter PROBEPREFIX = "OcuPilotProbeAgent";
 /// singleton: the id names nothing the vendor reads, but it is what keys the lock, so the schema
 /// still requires it (AD-13, AD-34). It holds for the task resume as well, which admits no field
 /// at all and whose schema is therefore the identifying property and the agent's own words
-/// (AD-51).</p>
-Parameter REFUSEEMPTY = "logs.applicationerrors.read:TOOL.ARGUMENTS,shell.screen.open:NAV.NOTINSTANCE,osmgmt.databasedetails.read:READ.CRITERION,osmgmt.processdetails.read:READ.CRITERION,tasks.taskdetails.read:READ.CRITERION,osmgmt.databasevolumes.read:PORT.VALIDATION,security.secrets.read:PORT.VALIDATION,webapp.openapi.read:PORT.VALIDATION,webapp.list.update:TOOL.ARGUMENTS,permissions.users.update:TOOL.ARGUMENTS,security.auditing.update:TOOL.ARGUMENTS,tasks.schedule.resume:TOOL.ARGUMENTS";
+/// (AD-51), and for the two process writes, whose schemas are the pid and those same words.</p>
+Parameter REFUSEEMPTY = "logs.applicationerrors.read:TOOL.ARGUMENTS,shell.screen.open:NAV.NOTINSTANCE,osmgmt.databasedetails.read:READ.CRITERION,osmgmt.processdetails.read:READ.CRITERION,tasks.taskdetails.read:READ.CRITERION,osmgmt.databasevolumes.read:PORT.VALIDATION,security.secrets.read:PORT.VALIDATION,webapp.openapi.read:PORT.VALIDATION,webapp.list.update:TOOL.ARGUMENTS,permissions.users.update:TOOL.ARGUMENTS,security.auditing.update:TOOL.ARGUMENTS,tasks.schedule.resume:TOOL.ARGUMENTS,osmgmt.processes.suspend:TOOL.ARGUMENTS,osmgmt.processes.resume:TOOL.ARGUMENTS";
 
 Method OnBeforeOneTest() As %Status
 {

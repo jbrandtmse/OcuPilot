@@ -50,8 +50,8 @@ Parameter WRITEKIND = "write";
 /// put those methods under the same <method>PinProblem</method> the coverage table uses.</p>
 /// <p><b>The write half has members.</b> Story 5.5 landed the first tool the registry classifies
 /// <code>write</code>, <code>webapp.list.update</code>, and with it the explicit zero this block
-/// used to assert -- which was written to be deleted in exactly that pass. Stories 5.9, 5.10 and
-/// 5.11 landed the rest. The derived side is <method>ListTools</method>, so a further write tool
+/// used to assert -- which was written to be deleted in exactly that pass. Stories 5.9, 5.10, 5.11 and
+/// 5.12 landed the rest. The derived side is <method>ListTools</method>, so a further write tool
 /// binds itself and reddens here until it declares its row.</p>
 XData Coverage
 {
@@ -97,6 +97,8 @@ XData Coverage
 <screen name="WalletSecretList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
 <screen name="WebAppList" class="OcuPilot.Test.Descriptor" method="TestTheWebApplicationsListValidatesAndNamesItsClassicPageInItsOwnCase"/>
 <screen name="X509CredentialList" class="OcuPilot.Test.ReadTool" method="TestTheRegistryListsDescriptorReadsAndInheritedKinds" corpus="named inside the production read-tool roster, which asserts every descriptor-derived read in one loop"/>
+<tool name="osmgmt.processes.resume" class="OcuPilot.Test.ToolWrite" method="TestTheProcessResumeToolIsAnActionWriteOverTheScreensOwnPairs"/>
+<tool name="osmgmt.processes.suspend" class="OcuPilot.Test.ToolWrite" method="TestTheProcessSuspendToolIsAnActionWriteOverTheScreensOwnPairs"/>
 <tool name="permissions.users.update" class="OcuPilot.Test.ToolWrite" method="TestTheUserWriteToolAdvertisesEnabledAndRolesWithTheScreensOwnPairs"/>
 <tool name="security.auditing.update" class="OcuPilot.Test.ToolWrite" method="TestTheAuditingWriteToolAdvertisesEnabledAloneAndDeclaresItsWriteDestructive"/>
 <tool name="tasks.schedule.resume" class="OcuPilot.Test.ToolWrite" method="TestTheTaskResumeToolIsAnActionWriteOverTheScreensOwnPairs"/>

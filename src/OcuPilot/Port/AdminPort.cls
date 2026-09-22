@@ -136,21 +136,34 @@ Parameter TYPESUFFIXES = "GET,LIST,INFO,CERTINFO,UPCOMING,HISTORY,VOLUMELIST";
 /// mutating suffix itself -- for <code>RESUME</code> that value is the vendor's request-type
 /// suffix rather than an HTTP verb, since the vendor exposes the operation only as a request
 /// type.</p>
-/// <p><code>RESUME</code> is <code>Task.CRUD</code>'s bodyless resume (AD-51, Story 5.11): the
-/// vendor's <code>NeedsRequestBody()</code> excludes it, its <code>ValidateQueryParams</code>
-/// requires the <code>id</code> query parameter, and its <code>ResourcesOR()</code> answers
-/// <code>%Admin_Task</code> alone. It is listed in <parameter>BODYLESSTYPES</parameter> as well,
-/// which is what exempts it from the object-body refusal below.</p>
-Parameter MUTATINGTYPES = "PUT,RESUME";
+/// <p><code>RESUME</code> is <code>Task.CRUD</code>'s bodyless resume and <code>Process</code>'s
+/// own (AD-51, Stories 5.11 and 5.12), and <code>SUSPEND</code> is <code>Process</code>'s
+/// suspend. Each vendor <code>NeedsRequestBody()</code> excludes them, each
+/// <code>ValidateQueryParams</code> requires the <code>id</code> query parameter, and each is
+/// listed in <parameter>BODYLESSTYPES</parameter> under its own endpoint, which is what exempts
+/// it from the object-body refusal below.</p>
+/// <p><code>TERMINATE</code> and <code>DELETE</code> are deliberately absent. The vendor exposes
+/// terminating a process through both -- <code>Process</code>'s <code>RunDelete</code> is a
+/// one-line delegate to <code>RunTerminate</code> -- and AD-10 names terminating an IRIS system
+/// process in the Release 1 prohibited set, so neither suffix resolves here and
+/// <method>EndpointType</method> answers <code>""</code> for it.</p>
+Parameter MUTATINGTYPES = "PUT,RESUME,SUSPEND";
 
 /// <p>The <parameter>MUTATINGTYPES</parameter> entries the vendor declares need no request body,
-/// so <method>Invoke</method>'s object-body refusal does not apply to them (AD-51).</p>
+/// so <method>Invoke</method>'s object-body refusal does not apply to them (AD-51). Comma-separated
+/// <code>&lt;endpoint&gt;/&lt;type&gt;</code> entries, the grammar
+/// <parameter>QUERYPAIRS</parameter> and <parameter>BARETYPES</parameter> already key by.</p>
 /// <p><b>It is a declaration about the vendor, not a relaxation.</b> The refusal exists because a
 /// body-taking write given a non-object body writes nothing and answers 2xx (DW-1427); a request
 /// type whose own <code>NeedsRequestBody()</code> excludes it never reads a body at all, so there
 /// is no silent success to prevent and requiring one would refuse the only call the vendor
 /// offers.</p>
-Parameter BODYLESSTYPES = "RESUME";
+/// <p><b>It keys on the pair rather than on the suffix</b> (DW-1464). <code>RESUME</code> is
+/// declared by two endpoints on this build, and whether a request type reads a body is a fact
+/// about the endpoint that declares it: a suffix-only exemption would carry one endpoint's
+/// <code>NeedsRequestBody()</code> answer onto another endpoint's type of the same name, which is
+/// the silent success this refusal exists to prevent.</p>
+Parameter BODYLESSTYPES = "Task.CRUD/RESUME,Process/SUSPEND,Process/RESUME";
 
 /// <p>The pair set the <b>backing query or class</b> of an endpoint requires, beyond the
 /// endpoint's own <code>ResourcesOR()</code> gate (AD-29). Comma-separated entries of the form
@@ -418,8 +431,10 @@ ClassMethod Invoke(pEndpoint As %String, pType As %String, ByRef pQuery, pBody A
         ; 2xx having written nothing. A write that reports success and changed nothing is the one
         ; failure a confirmed proposal must not be able to produce, so the port refuses the call
         ; instead of issuing it. Asked only for a body-taking mutating type, so neither a read's
-        ; omitted body nor a BODYLESSTYPES write is affected.
-        If $ListFind($ListFromString(..#MUTATINGTYPES), pType) && '$ListFind($ListFromString(..#BODYLESSTYPES), pType) && '$IsObject(pBody) {
+        ; omitted body nor a BODYLESSTYPES write is affected. The exemption is read for the
+        ; (endpoint, type) pair, so one endpoint's bodyless type does not exempt another
+        ; endpoint's type of the same name (DW-1464).
+        If $ListFind($ListFromString(..#MUTATINGTYPES), pType) && '..IsBodyless(pEndpoint, pType) && '$IsObject(pBody) {
             Set tSC = ..Refuse(500, ##class(OcuPilot.Api.Error).#SERVERERROR, ##class(OcuPilot.Api.Error).#INTERNAL, ##class(OcuPilot.Kernel.Fault).#DEFAULTREASON, .pHttpStatus, .pFault)
             Do ..LogFault(pEndpoint _ " " _ pType _ " was given a body that is not an object, which the vendor reads as carrying no properties", $$$ERROR($$$GeneralError, "a mutating call's body must be a %DynamicAbstractObject, never its JSON text"), pFault.code)
             Quit
@@ -758,6 +773,13 @@ ClassMethod AsyncTimeout() As %Numeric
 ClassMethod LogFault(pMessage As %String, pStatus As %Status, pCode As %String = "")
 {
     Do ##class(OcuPilot.Kernel.Fault).LogRaw("adminport", pMessage, pStatus, pCode)
+}
+
+/// <p>Whether <var>pEndpoint</var>'s request type <var>pSuffix</var> is one
+/// <parameter>BODYLESSTYPES</parameter> exempts from the object-body refusal (AD-51, DW-1464).</p>
+ClassMethod IsBodyless(pEndpoint As %String, pSuffix As %String) As %Boolean
+{
+    Quit ''$ListFind($ListFromString(..#BODYLESSTYPES), pEndpoint _ "/" _ pSuffix)
 }
 
 /// <p>The HTTP method the request stub carries for the suffix <var>pSuffix</var>: the suffix itself

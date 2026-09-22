@@ -56,7 +56,7 @@ Parameter TYPEWEBAPPLICATION = "web-application";
 /// <parameter>OcuPilot.Kernel.EntityType.TYPES</parameter>, or a rule the generator cannot
 /// implement, fails <code>npm run build</code> rather than reaching the client as a silent
 /// no-op. A later write-tool story adds one pair here, never a branch in two languages.</p>
-Parameter IDRULES = "web-application:foldcase-striptrailingslash,user:foldcase,auditing-configuration:singleton,task:integer";
+Parameter IDRULES = "web-application:foldcase-striptrailingslash,user:foldcase,auditing-configuration:singleton,task:integer,process:integer";
 
 /// <p>The closed rule vocabulary <parameter>IDRULES</parameter> selects from. A rule named there
 /// and absent here is a declaration error, pinned by
@@ -79,11 +79,13 @@ Parameter RULEFOLDCASE = "foldcase";
 /// defeating AD-34's per-target lock and its sibling cancel.</p>
 Parameter RULESINGLETON = "singleton";
 
-/// <p>The task rule: a numeric id in its plain decimal spelling. The vendor's task id is an
-/// integer the model supplies as a string through <method>OcuPilot.Screen.Tool.Write.View</method>,
-/// so <code>"007"</code>, <code>"+7"</code> and <code>" 7 "</code> are spellings of one target and
-/// would otherwise be three keys. A value this rule cannot read as an integer is answered
-/// verbatim, as a type with no rule is.</p>
+/// <p>The task and process rule: a numeric id in its plain decimal spelling. Both vendor ids are
+/// integers the model supplies as strings through
+/// <method>OcuPilot.Screen.Tool.Write.View</method>, so <code>"007"</code>, <code>"+7"</code> and
+/// <code>" 7 "</code> are spellings of one target and would otherwise be three keys. Measured on
+/// this build against <code>Process</code>'s own <code>GET</code>, <code>"837"</code>,
+/// <code>"0837"</code>, <code>"+837"</code> and <code>"837 "</code> all answer pid 837. A value
+/// this rule cannot read as an integer is answered verbatim, as a type with no rule is.</p>
 Parameter RULEINTEGER = "integer";
 
 /// <p>The one id a <parameter>RULESINGLETON</parameter> type's reference carries.

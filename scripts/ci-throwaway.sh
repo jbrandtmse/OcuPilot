@@ -196,7 +196,8 @@ services:
       # population.
       # classes: AccountPasswordWire, AgentWireSecurity, AuditMarker, ConfigGate, CredentialPrivilege, DenialParity
       # classes: Disabled, ErrorLogDenial, LedgerWire, LogSourceDenial, MgmntPortDenial, OAuthTabs
-      # classes: ProhibitedRoute, ProposalFixture, ProposalSpelling, State, Token, ToolSetFull
+      # classes: ProcessControl, ProhibitedRoute, ProposalFixture, ProposalSpelling, State, Token
+      # classes: ToolSetFull
       # classes: ToolWire, TurnContext, TurnConversation, TurnLong, TurnProviderFault, TurnWire
       # classes: TurnWireFixture, UnexpireScope, UserUpdate, Version, Wire, WireOAuthRead, WireSecurityRead
       OCUPILOT_ALLOW_PRINCIPALS: "1"
@@ -243,6 +244,19 @@ services:
       # declares this variable as well as OCUPILOT_ALLOW_PRINCIPALS.
       # classes: AuditingUpdate, ProhibitedRoute
       OCUPILOT_ALLOW_AUDIT_TOGGLE: "1"
+      # Suspends and resumes a REAL process on this instance through the shipped confirm path.
+      # A suspended process holds every lock and open transaction it had, so a runner pointed at
+      # an instance someone cares about could stop work nobody there asked to stop. The class
+      # JOBs its own probe process, never a daemon, the Task Manager, a Work Queue worker or
+      # WRTDMN, and halts it on every exit path.
+      # classes: ProcessControl
+      OCUPILOT_ALLOW_PROCESS_CONTROL: "1"
+      # Creates a task in this instance's Task Manager and resumes it. Same reasoning as the
+      # block above, one degree narrower: the effect is a task that runs where nobody scheduled
+      # one. OcuPilot.Test.TaskResume shipped in Story 5.11 without a guard (DW-1458); this is
+      # that guard's home.
+      # classes: TaskResume
+      OCUPILOT_ALLOW_TASK_CONTROL: "1"
       # Arms the turnprobe provider row OcuPilot.Kernel.Provider.Catalog resolves only under it,
       # and with it the classes that spawn turn jobs against that row's scripted adapter. A turn
       # job is a separate process no in-process stub reaches, so the row is armed by the

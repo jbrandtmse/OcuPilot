@@ -181,6 +181,7 @@ test('AD-13: the id-rule table is read from the kernel and is what the mirror em
     ['user', 'foldcase'],
     ['auditing-configuration', 'singleton'],
     ['task', 'integer'],
+    ['process', 'integer'],
   ]);
   assert.deepEqual(parseIdRuleNames(text), ['foldcase-striptrailingslash', 'foldcase', 'singleton', 'integer']);
   // `null`, never `[]`, when the parameter is missing: an absent table and a table that declares

@@ -2,7 +2,10 @@
 /// a bodyless <code>RESUME</code> whose diff comes from the read, whose target is a task suspended
 /// after an error, and whose every other gate is where it already was.</p>
 /// <p><b>What it needs from the environment:</b> OcuPilot installed, <code>%Admin_Task:USE</code>
-/// and <code>%DB_IRISSYS:READ</code>, and a Task Manager it may create one task in. It creates its
+/// and <code>%DB_IRISSYS:READ</code>, a Task Manager it may create one task in, and
+/// <parameter>ARMINGVARIABLE</parameter> reading <code>1</code>.
+/// <method>OnBeforeAllTests</method> refuses anywhere it does not, because this class creates and
+/// resumes a real task; only <file>scripts/ci-throwaway.sh</file> sets it. It creates its
 /// own suspended task (<parameter>PROBETASKNAME</parameter>) and resumes only that one; the demo
 /// fixture's task is read and never written, because a resumed demo task is the demo path gone.</p>
 /// <p><b>The probe task is left suspended on every exit path</b>: each method that resumes it
@@ -12,6 +15,10 @@
 /// that is no longer suspended. <method>OnAfterAllTests</method> deletes it.</p>
 Class OcuPilot.Test.TaskResume Extends %UnitTest.TestCase
 {
+
+/// <p>The environment variable that arms this class, set by <file>scripts/ci-throwaway.sh</file>
+/// alone.</p>
+Parameter ARMINGVARIABLE = "OCUPILOT_ALLOW_TASK_CONTROL";
 
 Parameter TOOL = "OcuPilot.Screen.Tool.TaskResume";
 
@@ -49,6 +56,9 @@ Property PreparedTaskId As %String;
 
 Method OnBeforeAllTests() As %Status
 {
+    If $System.Util.GetEnviron(..#ARMINGVARIABLE) '= 1 {
+        Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.TaskResume creates and resumes a task in this instance's Task Manager and runs on a throwaway container only. " _ ..#ARMINGVARIABLE _ " does not read 1 here, so nothing was created. Bring one up with scripts/ci-throwaway.sh, which sets it.")
+    }
     Set tSC = ..EnsureProbeTask(.tId)
     If $$$ISERR(tSC) Quit tSC
     Set ..PreparedTaskId = tId

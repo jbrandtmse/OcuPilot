@@ -596,10 +596,13 @@ ClassMethod FingerprintMatches(pTool As %DynamicObject, ByRef pRow, Output pMatc
         If tProblem '= "" Quit
         Set tExcludes = ""
         If tDescriptor '= "" Set tExcludes = $ClassMethod(tDescriptor, "FingerprintExcludes")
-        Set tSC = ##class(OcuPilot.Kernel.Proposal.Fingerprint).Of(tPayload, tExcludes, .tDigest)
+        ; AD-51 as amended: an action-style write's digest covers the subject its tool declares,
+        ; which is the same selection the mint made.
+        Set tSubject = ##class(OcuPilot.Kernel.Proposal.Mint).FingerprintSubjectOf(tClass)
+        Set tSC = ##class(OcuPilot.Kernel.Proposal.Fingerprint).Of(tPayload, tExcludes, .tDigest, tSubject)
         If $$$ISERR(tSC) Quit
         If tDigest '= $Get(pRow("fingerprint")) Quit
-        Set tSC = ##class(OcuPilot.Kernel.Proposal.Fingerprint).Of(..ParsedObject($Get(pRow("payload"))), tExcludes, .tStoredDigest)
+        Set tSC = ##class(OcuPilot.Kernel.Proposal.Fingerprint).Of(..ParsedObject($Get(pRow("payload"))), tExcludes, .tStoredDigest, tSubject)
         If $$$ISERR(tSC) Quit
         Set pMatches = (tStoredDigest = $Get(pRow("fingerprint")))
     } Catch ex {

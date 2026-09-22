@@ -438,7 +438,8 @@ export const ENTITY_ID_RULES: Readonly<Partial<Record<EntityTypeKey, string>>> =
   "web-application": "foldcase-striptrailingslash",
   "user": "foldcase",
   "auditing-configuration": "singleton",
-  "task": "integer"
+  "task": "integer",
+  "process": "integer"
 };
 
 /**
@@ -3404,6 +3405,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
     "context": {
       "fields": [
         "Pid",
+        "JobType",
         "ParentPid",
         "UserName",
         "LoginRoles",
@@ -3452,6 +3454,7 @@ export const SCREENS: readonly ScreenDeclaration[] = [
       },
       "fields": [
         "Pid",
+        "JobType",
         "ParentPid",
         "UserName",
         "LoginRoles",

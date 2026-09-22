@@ -159,12 +159,13 @@ Method TestAChangedRoleGrantIsRefused()
 /// is a reference that cannot be parsed at all. A type whose predicates have landed leaves this
 /// list in the story that lands them -- <code>user</code> in Story 5.9
 /// (<class>OcuPilot.Test.UserUpdate</class>), <code>task</code> in Story 5.11
-/// (<class>OcuPilot.Test.TaskResume</class>).</p>
+/// (<class>OcuPilot.Test.TaskResume</class>), <code>process</code> in Story 5.12
+/// (<class>OcuPilot.Test.ProcessControl</class>).</p>
 /// <p>Mutation: answer <code>pProhibits = 0</code> in the uncovered arm of
 /// <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method> -- this goes red.</p>
 Method TestAnUncoveredEntityTypeIsRefusedWholesale()
 {
-    Set tUncovered = $ListBuild("process", "role", "resource", "service", "database")
+    Set tUncovered = $ListBuild("role", "resource", "service", "database")
     For tI = 1:1:$ListLength(tUncovered) {
         Set tType = $List(tUncovered, tI)
         Set tSC = ..Ask(..Target(), ..Payload(), "Description", .tProhibits, .tCode, "probe-id", tType)
@@ -176,10 +177,10 @@ Method TestAnUncoveredEntityTypeIsRefusedWholesale()
     Do $$$AssertStatusOK(tSC, "an unparseable reference is answered, not raised")
     Do $$$AssertEquals(tProhibits, 1, "and refused")
     Do $$$AssertEquals(tCode, $Parameter(..#SHIPPEDSET, "UNCOVERED"), "as uncovered")
-    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).CoveredTypes()), "web-application,user,auditing-configuration,task", "Release 1 covers exactly four entity types")
+    Do $$$AssertEquals($ListToString(##class(OcuPilot.Kernel.Proposal.Prohibited).CoveredTypes()), "web-application,user,auditing-configuration,task,process", "Release 1 covers exactly five entity types")
 
     ; The refusal reaches a caller as a 403 with the set's own code, not as an error.
-    Set tKey = ..Seed(..Payload(), "Description", "probe-id", "process")
+    Set tKey = ..Seed(..Payload(), "Description", "probe-id", "role")
     If tKey = "" Quit
     Do ##class(OcuPilot.Test.ProposalFixture).Arm(..Target())
     Set tSC = ..Confirm(tKey, .tHttp, .tCode)
@@ -450,7 +451,7 @@ Method TestTheSetHasOneHomeAndOneSentencePerCode()
     Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Prohibited).RegistryClass(), "OcuPilot.Screen.Tool.Registry", "and resolves the tool through the shipped registry")
 
     Set tCodes = ##class(OcuPilot.Kernel.Proposal.Prohibited).Codes()
-    Do $$$AssertEquals($ListLength(tCodes), 10, "the set declares ten codes")
+    Do $$$AssertEquals($ListLength(tCodes), 12, "the set declares twelve codes")
     For tI = 1:1:$ListLength(tCodes) {
         Set tCode = $List(tCodes, tI)
         Do $$$AssertTrue(##class(OcuPilot.Api.Error).IsValidCode(tCode), tCode _ " matches the machine-code pattern")
