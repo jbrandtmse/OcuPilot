@@ -4523,6 +4523,10 @@ So that outbound TLS and signed exchanges can be configured here.
 - **Then** it sends the complete property set from a fresh read
 - **And** the edit body is the PUT contract - `OwnerList`, `CAFile` and `PeerNames` only (published spec, 2026-09-16); the certificate, private key and password travel only in the import body, which is a different request.
 
+**Routed from the deferred-work ledger** - must be addressed in this story or declined with a reason:
+
+- DW-1456: the union's settable spelling is never bound to `Write.FieldRows`' own drop, so a divergence between the three copies of the `[]`-stripping rule would accept a declared secret the tool still advertises; this story ships the first non-empty `secretArguments` (AD-3 names `X509Credential`'s `PrivateKeyPassword` a template credential field), so it is the first that can redden a test for it (ledger; routed by adjudication 2026-09-22)
+
 ### Story 8.6: The wallet secret form
 
 As a developer-administrator,
