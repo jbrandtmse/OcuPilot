@@ -21,12 +21,13 @@
 /// (AD-36). It stays out of the table, the filter and the sort: <file>EXPERIENCE.md</file>
 /// declares this screen's columns as "name, namespace, type, last run, next run" and this story
 /// adds none.</p>
-/// <p>The read declares no <code>fingerprintExcludes</code>. Measured on
-/// <code>ocupilot-ci</code>, 2026-09-21: none of the eight fields <code>INFO</code> answers moves
-/// while a task is suspended -- a suspended task does not run, so its last-run figures, its
-/// <code>Status</code> and its stale <code>NextScheduled</code> all stand -- so every one of them
-/// is inside the fingerprint and a task another party resumed under a live proposal is refused
-/// (AD-6, AD-51).</p>
+/// <p>The read declares no <code>fingerprintExcludes</code>. Measured on <code>ocupilot-ci</code>,
+/// 2026-09-21 over a 20-second window: none of the eight fields <code>INFO</code> answers moved
+/// while a task was suspended. The reason it generalizes past that window <b>(inference)</b> is
+/// that a suspended task does not run, so its last-run figures, its <code>Status</code> and its
+/// stale <code>NextScheduled</code> all stand -- so every one of them is inside the fingerprint and
+/// a task another party resumed under a live proposal is refused (AD-6, AD-51). A field that did
+/// move would refuse every confirm of a ten-minute-old proposal, which fails closed.</p>
 /// <p><code>context.secretFields</code> is empty because the read carries no secret to strip
 /// (AD-24, AD-35).</p>
 /// <p><b>It declares a <code>banner</code></b>, the first screen to: a second

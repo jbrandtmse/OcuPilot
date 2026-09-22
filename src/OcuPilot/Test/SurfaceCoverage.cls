@@ -259,7 +259,7 @@ ClassMethod Drift(ByRef pDerived, ByRef pRows, pKind As %String, pDerivedNoun As
 Method TestEveryDeclaredScreenHasACoverageRowAndBack()
 {
     Set tSC = ..DeriveScreens(.tScreens)
-    Do $$$AssertStatusOK(tSC, "the built-screen set derives from the screen registry")
+    Do $$$AssertStatusOK(tSC, "the declared-screen set derives from the screen registry, built and unbuilt alike")
     Set tStoredSC = ..Stored(.tRows)
     Do $$$AssertStatusOK(tStoredSC, "the coverage table parses")
 

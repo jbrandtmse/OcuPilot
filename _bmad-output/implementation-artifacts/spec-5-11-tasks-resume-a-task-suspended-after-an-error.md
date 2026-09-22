@@ -459,6 +459,63 @@ Line anchors read in this checkout on 2026-09-21. Vendor facts carry the probe t
   descriptors as well as built ones, `AuditingConfig` has its row, `tasks.schedule.resume` has its
   row, and `UncoveredWriteTools` is empty. (DW-1453)
 
+### Review Findings
+
+Code review 2026-09-22, four layers on the full-opus tier. 44 raw findings grouped to 15 entries:
+high 0, med 6, low 9. Three mediums patched in-pass, three ledgered with owners; none blocking.
+
+**Patched.**
+
+- `Prohibited.Changed` read an action write's state-row label as a payload field. The label is
+  `Status`, which `Task.CRUD` also answers as the last run's result, and the stored payload of a
+  bodyless write is its fresh read -- so a task another party resumed *and that then ran* inside the
+  ten-minute window was refused 403 `PROHIBITED.UNCOVEREDFIELD` with the row left live, where AC6
+  requires 409 `TARGETCHANGED` with the row closed and only Re-propose offered. Fail-closed, and
+  invisible to the suite because the fixture's two reads differ only in `Suspended`. Fixed by a
+  fourth per-tool declaration on the write base, `StateField()`, which `Changed` skips; merge writes
+  answer `""` and are unmoved. `Prohibited.Task`'s doc comment asserted the opposite and now states
+  the rule. New leg in `TestAChangedFieldOnATaskProposalIsRefused` arms the collision; mutation
+  applied, red on that method alone, reverted.
+- `ListPage`'s new router subscription re-asserted the route id as the selection on *every*
+  navigation resolving to the screen, not only one that changes the id -- and a namespace switch
+  keeps the path and rewrites only `?ns=`. On every non-parent-scoped list (which had no
+  subscription at all before this story) that replaced a row the user had selected by hand.
+  `selectFromRoute` now leaves an unchanged id alone and clears the request when the id goes away.
+  New `list-page.spec.ts` case; mutation applied, red read `expected [ 'C' ] to deeply equal [ 'A' ]`,
+  reverted.
+- `Navigate.AcceptsEntityId`'s widening changed the answer for **seven** composite-of-one screens
+  and was asserted on one. `TestAC2EntityNotAllowedOnACompositeOfMoreThanOnePart` now sweeps every
+  route the tool serves, deciding acceptance from id kind and part count alone. Mutation applied
+  (accept only `TaskScheduleList`'s composite), red named all six other screens while both examples
+  stayed green, reverted. What `entityId` *means* on the four parent-scoped ones is DW-1462.
+- Five low direct corrections: `proposal-card`'s `discloses` comment and spec name (the guard is
+  over the count, not over whether a body is sent, and its example is a body-sending proposal);
+  `Test/EntityRef`'s integer corpus, which was a strict subset of the client twin's; a
+  `SurfaceCoverage` assertion message the rename left wrong; `TaskScheduleList`'s no-exclusions
+  justification, which dropped its 20-second measurement window at the document boundary; and
+  `ProhibitedRoute`'s header, which called the state read-back load-bearing when the vendor's own
+  `ResourcesOR()` stands behind it.
+- Rule 19 recording, closed in-pass: AC2's and AC3's `mutation:` lines both describe a mount (both
+  callers arrive at a list that is not open), so the subscription line is relabelled as the
+  already-open case; AC4's no-caption half carried no line and now does, named, applied, red,
+  reverted.
+
+**Ledgered.** DW-1462 (what `entityId` means on a parent-scoped screen -- `decision-pending`, the
+`followup_review_recommended` risk, now pinned but unratified), DW-1463 (AC7's "names the next run"
+is unimplemented and `epics.md:3737`'s fifth clause reached no spec AC, deferral or marker),
+DW-1464 (`BODYLESSTYPES` matches a type name globally, not an endpoint pair -- routed to 5.12),
+DW-1465 (the card titles a task write by its integer id -- routed, `proposal-view.ts` is
+out-of-footprint).
+
+**Verified, not defects.** DW-1459's QA leg does call `OcuPilot.Screen.Tool.Read.View` for the
+suspended probe task; the class now runs **9** methods, 9/9 green (run 4559), against the 8/8
+recorded before QA added it. Closed at emission: the absent `Suspended` column (spec-bound), the
+empty field-list artifact (`FieldLists.cls:466`'s shape, pinned by `ToolWrite`), the resolvers'
+unreachable catch arms, `ProhibitedRoute` borrowing `TaskResume`'s probe fixture (safe under the
+one-run-at-a-time rule; reopen if two classes ever run concurrently), and `shell.screen.open` not
+canonicalising `entityId` through the new integer rule (the agent reads ids from the read, which
+answers the canonical spelling).
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -633,10 +690,15 @@ neither is inferable from the source, and the schedule list auto-refreshes at fi
   (`git status --short`, `git diff --stat`) after each. Write the `mutation:` line here as each is
   demonstrated:**
   - `mutation: dropped the INFO rowGet from TaskScheduleList's read -> red: OcuPilot.Test.TaskResume.TestTheScheduleReadAnswersSuspendedTruthfully and OcuPilot.Test.Descriptor's task-schedule read assertions (AC1)`
+  - `(QA) mutation: dropped the same INFO rowGet -> red: OcuPilot.Test.TaskResume.TestTheReadToolsViewAnswersSuspendedTruthfully, which calls OcuPilot.Screen.Tool.Read.View for TaskScheduleList directly -- closes DW-1459 (AC1's tool-view projection, "the tasks.schedule read tool's view", was previously pinned only by the declaration and the screen's own read, never by the tool the model actually calls)`
   - `mutation: restored Navigate.Directive's 'IdKind() = single' guard -> red: OcuPilot.Test.ToolNavigate.TestAC2EntityNotAllowedOnACompositeOfMoreThanOnePart's acceptance half, which reads NAV.ENTITYNOTALLOWED (AC2)`
   - `mutation: widened the same guard to every composite (refuse only 'none') -> red: the same method's three-part refusal (AC2's other direction)`
-  - `mutation: ignored the route's own id segment in ListPage.selectFromRoute -> red: list-page.spec.ts's aria-selected assertion (AC2)`
-  - `mutation: dropped the selectFromRoute call in ListPage's router subscription -> red: list-page.spec.ts's DW-1419 navigation half, "expected 'B' to be 'C'" -- the row the previous id named stays selected (AC3, the toast's caller, which reaches an open list by navigation rather than by mount)`
+  - `mutation: ignored the route's own id segment in ListPage.selectFromRoute -> red: list-page.spec.ts's aria-selected assertion (AC2 and AC3 -- both callers arrive at a list that is not open, so both select on mount)`
+  - `mutation: dropped the selectFromRoute call in ListPage's router subscription -> red: list-page.spec.ts's DW-1419 navigation half, "expected 'B' to be 'C'" -- the row the previous id named stays selected (the already-open list, which neither AC names and which serves both callers once the screen is up)`
+  - `(CR) mutation: dropped the 'id === previous' early return in ListPage.selectFromRoute -> red: list-page.spec.ts's "leaves a hand-made selection alone when a navigation keeps the route id", "expected [ 'C' ] to deeply equal [ 'A' ]", that test alone -- a namespace switch keeps the path and rewrites only ?ns=, and re-asserting the route id there replaced the user's own selection on every non-parent-scoped list`
+  - `(CR) mutation: accepted a composite of one part only for TaskScheduleList in Navigate.AcceptsEntityId -> red: OcuPilot.Test.ToolNavigate.TestAC2EntityNotAllowedOnACompositeOfMoreThanOnePart's registry sweep, 1 of 20, naming all six other composite-of-one screens (agent/definitions, os-management/databases/details, os-management/databases/volumes, os-management/locks, os-management/processes/details, tasks/schedule/details) -- the two examples stay green, which is what the sweep adds`
+  - `(CR) mutation: dropped the state-field skip from Prohibited.Changed -> red: OcuPilot.Test.TaskResume.TestAChangedFieldOnATaskProposalIsRefused's moved-property leg, 1 of 9, reading PROHIBITED.UNCOVEREDFIELD for a resume whose only diff row is its state label`
+  - `(CR) mutation: dropped Mint's "If 'SendsBody() Set tUnchanged = 0" -> red: TestTheMintAnswersOneStateRowFromTheInfoRead's "and no field is sent unchanged, because no body is sent at all", 1 of 9 (AC4's no-caption half, which carried no line)`
   - `mutation: dropped the parentScope guard from navigation.ts ownIdSegment -> red: navigation.test.mjs's parent-scoped rows, which read a sub-resource list's parent id as a row key of its own`
   - `mutation: dropped the pRows.%Push in TaskResume.StateDiff -> red: OcuPilot.Test.TaskResume.TestTheMintAnswersOneStateRowFromTheInfoRead's one-row assertion (AC4)`
   - `mutation: dropped Username from TaskHistoryList's read fields, filter, sort and table together -> red: TestTheRealResumeIsMarkedAndAttributedToTheCaller's shipped-read leg alone (AC9); removing it from read.fields by itself reddens six methods on a roster the registry then refuses, and attributes nothing`

@@ -64,6 +64,14 @@ Parameter WRITETYPE = "PUT";
 /// disclosed as unchanged, and the ledger records no field names (AD-51).</p>
 Parameter SENDSBODY As BOOLEAN = 1;
 
+/// <p>The one field name an action-style write's state row carries, or <code>""</code> for a write
+/// that sends a body. <code>""</code> here.</p>
+/// <p>A state row's <code>field</code> is the product's <b>label</b> for the state the action
+/// moves, not a property of the payload, so the prohibited set must not read it as one: a label
+/// that happens to spell a property the endpoint also answers would otherwise be compared against
+/// that property's live value (AD-10, AD-51).</p>
+Parameter STATEFIELD = "";
+
 /// <p>This tool's own class, which <method>View</method> hands the mint so
 /// <method>ReadType</method>, <method>SendsBody</method> and <method>StateDiff</method> are read
 /// from the concrete tool rather than from this base (AD-51).</p>
@@ -94,6 +102,13 @@ ClassMethod WriteType() As %String
 ClassMethod SendsBody() As %Boolean
 {
     Quit ''..#SENDSBODY
+}
+
+/// <p><parameter>STATEFIELD</parameter>, read by <class>OcuPilot.Kernel.Proposal.Prohibited</class>
+/// so it can tell a state row's label from a payload field.</p>
+ClassMethod StateField() As %String
+{
+    Quit ..#STATEFIELD
 }
 
 /// <p>The <b>state</b> rows this tool's proposal shows, given the fresh read <var>pFresh</var>:

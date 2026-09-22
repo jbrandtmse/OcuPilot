@@ -230,7 +230,9 @@ Method TestTwoSpellingsOfOneTaskIdAreOneTarget()
 /// 5.10's lesson about a safety predicate whose refusing branch never runs).</p>
 /// <p>Mutation (Rule 19): remove <code>task</code> from
 /// <parameter>OcuPilot.Kernel.Proposal.Prohibited.COVEREDTYPES</parameter> -- the refusal becomes
-/// <code>UNCOVERED</code> and the resume's own no-change leg is refused wholesale.</p>
+/// <code>UNCOVERED</code> and the resume's own no-change leg is refused wholesale. Drop the
+/// state-field skip from <method>OcuPilot.Kernel.Proposal.Prohibited.Changed</method> -- the
+/// moved-property leg is refused <code>UNCOVEREDFIELD</code> over a row nobody proposed.</p>
 Method TestAChangedFieldOnATaskProposalIsRefused()
 {
     Set tId = ..PreparedTaskId
@@ -266,6 +268,18 @@ Method TestAChangedFieldOnATaskProposalIsRefused()
     Do $$$AssertStatusOK(tSC, "the set answers the armed input")
     Do $$$AssertEquals(tProhibits, 1, "a changed field on a task proposal is refused")
     Do $$$AssertEquals($Get(tCode), $Parameter(..#SET, "UNCOVEREDFIELD"), "as a field nobody has reviewed")
+
+    ; The state row's label spells a property Task.CRUD answers for its own reasons -- Status is
+    ; the last run's result -- so the label and a moved property are armed together here: the one
+    ; input on which reading the label as a field would refuse a change nobody proposed, ahead of
+    ; the fingerprint gate that owns the moved-target answer.
+    Do $$$AssertEquals($ClassMethod(..#TOOL, "StateField"), $Parameter(..#TOOL, "STATEFIELD"), "the tool declares its state row's label")
+    Do $$$AssertTrue(tFresh.%IsDefined($ClassMethod(..#TOOL, "StateField")), "and the endpoint answers a property of that name, which is what makes the collision reachable")
+    Set tMovedState = ##class(%DynamicAbstractObject).%FromJSON(tFresh.%ToJSON())
+    Do tMovedState.%Set($ClassMethod(..#TOOL, "StateField"), "OcuPilotProbeMovedStatus", "string")
+    Set tSC = ##class(OcuPilot.Kernel.Proposal.Prohibited).Prohibits($Parameter(..#TOOL, "TOOLNAME"), tRef, tMovedState.%ToJSON(), tDiff, .tProhibits, .tCode)
+    Do $$$AssertStatusOK(tSC, "the set answers the resume's own row over a moved property of the same name")
+    Do $$$AssertEquals(tProhibits, 0, "which is prohibited by nothing -- the row is a label, not a field, code was '" _ $Get(tCode) _ "'")
 }
 
 /// <p>AC7, AC8, AC9 -- the whole write against this instance, through the shipped mint, port,
@@ -381,6 +395,42 @@ Method TestTheScheduleReadAnswersSuspendedTruthfully()
         Set tCoerced = ##class(OcuPilot.Kernel.Proposal.Mint).Display(tListRow.%Get("Suspended"), tListRow.%GetTypeOf("Suspended"))
     }
     Do $$$AssertEquals(tCoerced, "false", "while the vendor's own LIST answers false for that same task, which is the coercion the detail call exists for")
+}
+
+/// <p>AC1, DW-269, DW-1459 -- the model's own <code>tasks.schedule.read</code> tool, not only the
+/// screen's declared read, answers the probe task's <code>Suspended</code> as true.</p>
+/// <p>Before this method, no leg anywhere in the tree called
+/// <method>OcuPilot.Screen.Tool.Read.View</method> for this descriptor at all: the declaration was
+/// pinned by <class>OcuPilot.Test.Descriptor</class>'s <code>ContextFields</code> assertion and the
+/// screen's own rows by <method>TestTheScheduleReadAnswersSuspendedTruthfully</method> above, but
+/// the tool the agent actually calls ran the projection for no suspended task anywhere. This closes
+/// that gap directly, through the same tool method <class>OcuPilot.Test.TaskDetails</class> and
+/// <class>OcuPilot.Test.TaskHistory</class> already use for their own screens.</p>
+/// <p>Mutation (Rule 19): drop the <code>rowGet</code> from
+/// <class>OcuPilot.Screen.Descriptor.TaskScheduleList</class> -- the tool's view answers the
+/// vendor's coerced <code>false</code> for every row and this goes red, the same way
+/// <method>TestTheScheduleReadAnswersSuspendedTruthfully</method>'s does, this time through the
+/// tool's own <method>View</method> rather than the executor directly (AC1).</p>
+Method TestTheReadToolsViewAnswersSuspendedTruthfully()
+{
+    Set tId = ..PreparedTaskId
+    Do $$$AssertEquals(..TaskSuspended(tId), ..#SUSPENDLEAVE, "the probe task is suspended")
+
+    Set tSC = ##class(OcuPilot.Screen.Tool.Read).View(..#SCREEN, {}, 1000, .tView, .tHttp, .tFault)
+    Do $$$AssertStatusOK(tSC, "the tasks.schedule.read tool's view answers: " _ $System.Status.GetErrorText(tSC))
+    If $$$ISERR(tSC) Quit
+    Do $$$AssertEquals(+tHttp, 200, "at 200")
+
+    Set tFound = ""
+    Set tIterator = tView.%Get("rows").%GetIterator()
+    While tIterator.%GetNext(.tIndex, .tRow) {
+        If '$IsObject(tRow) Continue
+        If tRow.%Get("Id") '= tId Continue
+        Set tFound = tRow
+    }
+    Do $$$AssertTrue($IsObject(tFound), "the probe task is one of the tool's own rows")
+    If '$IsObject(tFound) Quit
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.Proposal.Mint).Display(tFound.%Get("Suspended"), tFound.%GetTypeOf("Suspended")), "true", "and the tasks.schedule.read tool's own view -- the projection the model actually calls -- answers Suspended true for it, not only the screen's declared read")
 }
 
 /// <p>Mint one <code>tasks.schedule.resume</code> proposal for <var>pId</var> through

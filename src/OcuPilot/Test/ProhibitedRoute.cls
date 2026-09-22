@@ -870,10 +870,14 @@ Method TestAnAccountShortOfTheAuditingPairIsRefusedTheNamedPair()
 /// and the security database read, so the only pair it is short of is the one the refusal must
 /// name: without the first it would be refused <code>AUTH.NOADMIN</code> by the router's floor
 /// before the screen's own gate ran.</p>
-/// <p><b>The state assertion is the point, not the status.</b> A bodyless write leaves nothing
-/// in a payload to inspect, so "refused" means the task is still suspended on the instance --
-/// which is read back through <method>OcuPilot.Test.TaskResume.TaskSuspended</method>, not from
-/// the envelope.</p>
+/// <p><b>The state is asserted as well as the status, and only the status is load-bearing here.</b>
+/// A bodyless write leaves nothing in a payload to inspect, so the task's own suspended state is
+/// read back through <method>OcuPilot.Test.TaskResume.TaskSuspended</method> rather than from the
+/// envelope. That read-back cannot fail under the mutation below -- the vendor's own
+/// <code>ResourcesOR()</code> for <code>%Admin_Task</code> still stands behind both OcuPilot gates,
+/// so a principal holding neither pair never reaches the write whatever this screen declares. It
+/// is there as the belt to the status's braces, and the code and failed-pair assertions are what
+/// the mutation reddens.</p>
 /// <p>Mutation (Rule 19): answer
 /// <code>$ListBuild($ListBuild("%DB_IRISSYS", "READ"))</code> from
 /// <method>OcuPilot.Screen.Tool.TaskResume.PrivilegePairs</method> -- the one pair this principal

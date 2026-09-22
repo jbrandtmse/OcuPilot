@@ -109,7 +109,7 @@ export class ListPage {
     this.refresh.bind(screen, createScreenRead(this.api, screen, criteria));
     // Requested before the first read, so the table consumes it on the tick that brings the row in
     // rather than on a second pass (DW-1419).
-    this.selectFromRoute(screen, store);
+    let selectedFor = this.selectFromRoute(screen, store, null);
     if (this.scope.loaded()) void this.refresh.readNow();
     let readFor = JSON.stringify(criteria());
     const stopIdChange = this.router.events.subscribe((event) => {
@@ -117,7 +117,7 @@ export class ListPage {
       if (this.navigation.screenForUrl(this.router.url)?.descriptor !== screen.descriptor) return;
       // A navigation that keeps this screen and changes its id names another row, which is the
       // toast's "Open in <screen>" while the screen is already open.
-      this.selectFromRoute(screen, store);
+      selectedFor = this.selectFromRoute(screen, store, selectedFor);
       if (screen.parentScope === '') return;
       const next = JSON.stringify(criteria());
       if (next === readFor) return;
@@ -142,15 +142,29 @@ export class ListPage {
   }
 
   /**
-   * Ask the store to select the row this screen's own route id names (AD-13, DW-1419).
+   * Ask the store to select the row this screen's own route id names (AD-13, DW-1419), and answer
+   * the id now in force.
    *
    * The request is the store's existing pending selection, which the table consumes once a read
    * brings the row in -- so it is the same path a `created` change takes, and an id no row carries
    * selects nothing rather than raising.
+   *
+   * `previous` is the id this page last acted on, or `null` on mount, and **an unchanged id is left
+   * alone**. A navigation may keep this screen's id and change something else -- a namespace switch
+   * keeps the path and rewrites only `?ns=` -- and re-asserting the route's id there would replace
+   * a row the user had since selected by hand. A navigation that drops the id clears the request
+   * instead of leaving the row the old id named standing.
    */
-  private selectFromRoute(screen: ScreenDeclaration, store: ScreenStore): void {
+  private selectFromRoute(
+    screen: ScreenDeclaration,
+    store: ScreenStore,
+    previous: string | null
+  ): string {
     const id = ownIdSegment(screen, this.router.url);
+    if (id === previous) return id;
     if (id !== '') store.setPendingSelection(id);
+    else if (previous !== null) store.clearPendingSelection();
+    return id;
   }
 
   /**

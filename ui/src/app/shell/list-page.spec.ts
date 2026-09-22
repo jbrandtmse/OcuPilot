@@ -201,6 +201,32 @@ describe('the list page', () => {
     expect(absent.host().querySelector('[role="alert"]')).toBeNull();
   });
 
+  // Story 5.11 code review: the subscription above runs on every navigation that resolves to this
+  // screen, not only on one that changes the id -- a namespace switch keeps the path and rewrites
+  // only `?ns=`. Re-asserting the route's id there would replace a row the user had selected by
+  // hand, on every list screen, which before this story had no such subscription at all.
+  //
+  // Mutation (Rule 19): drop the `id === previous` early return in `ListPage.selectFromRoute` ->
+  // the first expectation below goes red, reading `['C']` for `['A']`; drop the
+  // `clearPendingSelection` arm -> the second goes red, keeping C selected on the bare route.
+  it('leaves a hand-made selection alone when a navigation keeps the route id, and clears it when the id goes away', async () => {
+    const declaration = tableDeclaration();
+    const page = await mount(declaration, named('A', 'B', 'C'), true, '/web-applications/probe/C?ns=HSCUSTOM');
+    const store = page.stores.for(declaration.descriptor, declaration.refreshRates);
+    expect(store.selection()).toEqual(['C']);
+
+    store.setSelection(['A']);
+    await settle(page.fixture);
+    await TestBed.inject(Router).navigateByUrl('/web-applications/probe/C?ns=USER');
+    await settle(page.fixture);
+    expect(store.pendingSelection()).toBe('');
+    expect(store.selection()).toEqual(['A']);
+
+    await TestBed.inject(Router).navigateByUrl('/web-applications/probe?ns=USER');
+    await settle(page.fixture);
+    expect(store.pendingSelection()).toBe('');
+  });
+
   it('AC8: a changed event for the list entity type and scope issues one read and the row renders changed', async () => {
     const declaration = tableDeclaration();
     const page = await mount(declaration, named('A', 'B'));

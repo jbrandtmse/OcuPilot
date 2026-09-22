@@ -80,9 +80,17 @@ Method TestAC2EntityNotAllowedOnNoneId()
 /// route segment a <code>single</code> id does (DW-1419, Story 5.11).</p>
 /// <p><b>Both directions, deliberately.</b> A fix that admits a composite of one part and also
 /// admits a composite of three is not a fix.</p>
+/// <p><b>Swept over the registry, not over two examples.</b> The widening moved the answer for
+/// every composite-of-one screen in the tree, so the partition is asserted for every route the tool
+/// serves: an id kind and a part count decide it, and nothing else may. Four of those screens are
+/// parent-scoped, where the segment the accepted id occupies is read as the <b>parent's</b> id --
+/// pinned here as the answer that stands, so moving it is a deliberate change rather than a silent
+/// one.</p>
 /// <p>Mutation (Rule 19): restore <method>OcuPilot.Screen.Tool.Navigate.AcceptsEntityId</method>'s
 /// answer to <code>IdKind() = "single"</code> -- the acceptance below goes red; widen it to every
-/// composite -- the three-part refusal goes red.</p>
+/// composite -- the three-part refusal goes red; narrow it to a composite of one whose
+/// <code>parentScope</code> is empty -- the sweep goes red on the four parent-scoped screens, which
+/// the two examples alone leave free.</p>
 Method TestAC2EntityNotAllowedOnACompositeOfMoreThanOnePart()
 {
     Set tArgs = {"route": "logs/audit", "entityId": "x"}
@@ -98,6 +106,35 @@ Method TestAC2EntityNotAllowedOnACompositeOfMoreThanOnePart()
     Do $$$AssertEquals(tOneEntityId, "7", "and the entity id")
     Do $$$AssertEquals(tOneFault, "", "no fault")
     Do $$$AssertEquals($ListLength($ClassMethod(##class(OcuPilot.Screen.Registry).DescriptorForRoute("tasks/schedule"), "IdParts")), 1, "that screen's composite really has one part")
+
+    ; The widening moved the answer for every composite-of-one screen in the tree, not only this
+    ; story's, so the partition is asserted over the registry rather than over the two examples
+    ; above: an id kind and a part count decide it, and nothing else may.
+    Set tSweptAccept = 0
+    Set tSweptRefuse = 0
+    Set tRoutes = $ClassMethod(..#TOOL, "BuiltRoutes")
+    Do $$$AssertTrue($ListLength(tRoutes) > 0, "the tool enumerates the routes it serves")
+    Set tPointer = 0
+    While $ListNext(tRoutes, tPointer, tRoute) {
+        If tRoute = "" Continue
+        Set tDescriptor = ##class(OcuPilot.Screen.Registry).DescriptorForRoute(tRoute)
+        If tDescriptor = "" Continue
+        Set tKind = $ClassMethod(tDescriptor, "IdKind")
+        Set tParts = $ListLength($ClassMethod(tDescriptor, "IdParts"))
+        Set tExpected = ((tKind = "single") || ((tKind = "composite") && (tParts = 1)))
+        Set tSweepArgs = {"route": (tRoute), "entityId": "1"}
+        Set tSweepSC = $ClassMethod(..#TOOL, "Directive", "", tSweepArgs, .tSweepRoute, .tSweepEntityId, .tSweepFault)
+        If tExpected {
+            Set tSweptAccept = tSweptAccept + 1
+            Do $$$AssertStatusOK(tSweepSC, tRoute _ " (" _ tKind _ ", " _ tParts _ " part(s)) accepts an entityId")
+        } Else {
+            Set tSweptRefuse = tSweptRefuse + 1
+            Do $$$AssertStatusNotOK(tSweepSC, tRoute _ " (" _ tKind _ ", " _ tParts _ " part(s)) refuses an entityId")
+            Do $$$AssertEquals($Select($IsObject($Get(tSweepFault)):tSweepFault.code, 1:""), "NAV.ENTITYNOTALLOWED", "and names the code")
+        }
+    }
+    Do $$$AssertTrue(tSweptAccept > 1, "more than one built screen accepts an entityId, so the sweep is not the two examples again (" _ tSweptAccept _ ")")
+    Do $$$AssertTrue(tSweptRefuse > 0, "and some built screen refuses one, so a sweep over acceptances alone cannot pass (" _ tSweptRefuse _ ")")
 }
 
 /// <p>A <code>single</code>-id screen (<code>permissions/users</code>) accepts an

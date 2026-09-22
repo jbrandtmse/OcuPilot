@@ -270,14 +270,14 @@ ClassMethod Prohibits(pToolName As %String, pTargetRef As %String, pPayload As %
             If $$$ISERR(tSC) Quit
         }
 
-        Set tSC = ..Target(pToolName, tId, .tTarget, .tPresent)
+        Set tSC = ..Target(pToolName, tId, .tTarget, .tPresent, .tToolClass)
         If $$$ISERR(tSC) Quit
         ; A target the instance no longer holds is not prohibited: the fingerprint re-read refuses
         ; it TARGETCHANGED a few lines later and closes the row, which is the answer the user sees.
         If 'tPresent Quit
 
         Set tPayloadObject = ..ParsedObject(pPayload)
-        Set tSC = ..Changed(pDiff, tPayloadObject, tTarget, .tChanged)
+        Set tSC = ..Changed(pDiff, tPayloadObject, tTarget, ..StateFieldOf($Get(tToolClass)), .tChanged)
         If $$$ISERR(tSC) Quit
 
         If tType = ..#TYPEUSER {
@@ -483,10 +483,13 @@ ClassMethod Auditing(ByRef pChanged, Output pProhibits As %Boolean, Output pCode
 /// that does carry one is refused <parameter>UNCOVEREDFIELD</parameter>, because
 /// <method>PermittedChangeFields</method> names no task field anybody has reviewed.</p>
 /// <p><b>The state row the card shows is not a changed field.</b> An action-style write's diff
-/// names the state its action moves -- a resume's is labelled <code>Status</code> -- while
-/// <method>Changed</method> keeps only the diff's fields whose payload value differs from the
-/// target's as the instance holds it now. Nothing is sent, so nothing differs, and the verdict is
-/// over effects rather than over a row's label (AD-10).</p>
+/// names the state its action moves -- a resume's is labelled <code>Status</code> -- and
+/// <method>Changed</method> skips the row naming the tool's declared
+/// <method>OcuPilot.Screen.Tool.Write.StateField</method>, so the verdict is over effects rather
+/// than over a row's label (AD-10). Skipping it is what the label needs, not the empty body: the
+/// payload a bodyless write stores is its fresh read, and <code>Task.CRUD</code> answers a
+/// <code>Status</code> property of its own -- the last run's result -- which moves whenever the
+/// task runs.</p>
 ClassMethod Task(ByRef pChanged, Output pProhibits As %Boolean, Output pCode As %String) As %Status [ Private ]
 {
     Quit ..ReviewedFewOnly(..#TYPETASK, .pChanged, .pProhibits, .pCode)
@@ -844,7 +847,15 @@ ClassMethod HoldsAll(pUser As %String, Output pHolds As %Boolean) As %Status
 /// set, which also closes the row, rather than 403 for a change nobody proposed. The live
 /// comparison is what makes a verdict an effect rather than a match on a stored field (AD-10): a
 /// field the diff names whose value the instance already holds changes nothing.</p>
-ClassMethod Changed(pDiff As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, Output pChanged) As %Status [ Private ]
+/// <p><var>pStateField</var> is the tool's declared state-row label, or <code>""</code> for a
+/// write that sends a body, and a row naming it is skipped. An action-style write's row names the
+/// state its action moves rather than a payload field (AD-51), and a label may spell a property
+/// the endpoint also answers for its own reasons -- a resume's row is labelled <code>Status</code>
+/// while <code>Task.CRUD</code>'s <code>Status</code> is the last run's result. Reading the label
+/// as a field would compare that unrelated property's live value and refuse
+/// <parameter>UNCOVEREDFIELD</parameter> a change nobody proposed, ahead of the fingerprint gate
+/// that owns the moved-target answer.</p>
+ClassMethod Changed(pDiff As %String, pPayload As %DynamicObject, pTarget As %DynamicObject, pStateField As %String, Output pChanged) As %Status [ Private ]
 {
     Kill pChanged
     Set pChanged = 0
@@ -856,6 +867,7 @@ ClassMethod Changed(pDiff As %String, pPayload As %DynamicObject, pTarget As %Dy
             If '$IsObject(tRow) Continue
             Set tField = tRow.%Get("field")
             If tField = "" Continue
+            If (pStateField '= "") && (tField = pStateField) Continue
             If $Data(pChanged(tField)) Continue
             If ..Rendered(pPayload, tField) = ..Rendered(pTarget, tField) Continue
             Set pChanged(tField) = ""
@@ -870,15 +882,18 @@ ClassMethod Changed(pDiff As %String, pPayload As %DynamicObject, pTarget As %Dy
 }
 
 /// <p>The target at <var>pId</var> as <var>pToolName</var>'s own endpoint answers it now, in
-/// <var>pTarget</var>, with <var>pPresent</var> 0 for a target the instance no longer holds.</p>
+/// <var>pTarget</var>, with <var>pPresent</var> 0 for a target the instance no longer holds and
+/// the resolved tool class in <var>pToolClass</var>.</p>
 /// <p>The endpoint and the identifying parameter come from the tool the proposal names, through
 /// the registry, so this class names no endpoint of its own. A 404 is absence; any other refusal,
 /// and a success that carried no object, are error statuses, because a target that could not be
-/// read is not a target that was checked.</p>
-ClassMethod Target(pToolName As %String, pId As %String, Output pTarget As %DynamicObject, Output pPresent As %Boolean) As %Status [ Private ]
+/// read is not a target that was checked. <var>pToolClass</var> is answered from the same single
+/// resolve, so the caller reads the tool's declarations without a second registry lookup.</p>
+ClassMethod Target(pToolName As %String, pId As %String, Output pTarget As %DynamicObject, Output pPresent As %Boolean, Output pToolClass As %String) As %Status [ Private ]
 {
     Set pTarget = ""
     Set pPresent = 0
+    Set pToolClass = ""
     Set tSC = $$$OK
     Try {
         Set tSC = $ClassMethod(..RegistryClass(), "Resolve", pToolName, .tTool)
@@ -888,6 +903,7 @@ ClassMethod Target(pToolName As %String, pId As %String, Output pTarget As %Dyna
             Quit
         }
         Set tClass = tTool.%Get("class")
+        Set pToolClass = tClass
         Set tEndpoint = $ClassMethod(tClass, "Endpoint")
         Set tIdParam = $ClassMethod(tClass, "IdParam")
         If (tEndpoint = "") || (tIdParam = "") || (pId = "") {
@@ -911,6 +927,7 @@ ClassMethod Target(pToolName As %String, pId As %String, Output pTarget As %Dyna
     } Catch ex {
         Set pTarget = ""
         Set pPresent = 0
+        Set pToolClass = ""
         Set tSC = ex.AsStatus()
     }
     Quit tSC
@@ -928,6 +945,21 @@ ClassMethod ReadTypeOf(pToolClass As %String) As %String [ Private ]
     }
     If tType = "" Quit ..#READTYPE
     Quit tType
+}
+
+/// <p>The state-row label <var>pToolClass</var> declares (AD-51), or <code>""</code> for a merge
+/// write and for a class that cannot be asked -- which is the answer that leaves
+/// <method>Changed</method> reading every diff row, so an unaskable class never narrows the
+/// set.</p>
+ClassMethod StateFieldOf(pToolClass As %String) As %String [ Private ]
+{
+    Set tField = ""
+    Try {
+        If pToolClass '= "" Set tField = $ClassMethod(pToolClass, "StateField")
+    } Catch {
+        Set tField = ""
+    }
+    Quit tField
 }
 
 /// <p>Whether the web application at <var>pPath</var> is one OcuPilot is served by, in

@@ -241,9 +241,13 @@ Method TestTheIdRuleTableIsDeclaredAndIsWhatNormalizationApplies()
     }
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("task", "-0"), "0", "a negative zero is zero")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("task", "-007"), "-7", "and a negative id keeps its sign")
-    For tVerbatim = "7.0", "abc", "7a", "0x7" {
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("task", $Char(9) _ "7"), "7", "a tab folds like the space does")
+    ; The same corpus the client twin folds and refuses (ui/tools/entity-ref.test.mjs): a rule whose
+    ; point is that two languages agree is only pinned where both sides answer the same inputs.
+    For tVerbatim = "7.0", "abc", "7a", "0x7", "1 2" {
         Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("task", tVerbatim), tVerbatim, "'" _ tVerbatim _ "' is not an integer and is answered verbatim")
     }
+    Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("task", ""), "", "and an empty id is answered verbatim rather than folded to a number")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId(..#KNOWNTYPE, "/API/OcuPilot/"), "/API/OcuPilot/", "so its ids are the instance's own strings")
     Do $$$AssertEquals(##class(OcuPilot.Kernel.EntityRef).NormalizedId("role", "%All"), "%All", "and so are a role's")
 

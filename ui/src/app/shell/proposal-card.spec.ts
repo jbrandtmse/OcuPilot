@@ -138,9 +138,11 @@ describe('the proposal card', () => {
     expect(line.querySelector('.ocu-proposal-card-chevron')?.getAttribute('aria-hidden')).toBe('true');
   });
 
-  it('AD-51: a proposal that sends no body carries no unchanged-fields line at all', () => {
-    // An action-style write's card has one state row and nothing else: nothing is sent, so
-    // "0 unchanged fields" would be a line about a payload that does not exist.
+  it('carries no unchanged-fields line at all when the proposal reports none', () => {
+    // AD-51's action-style write is the case that made this reachable -- nothing is sent, so
+    // "0 unchanged fields" would be a line about a payload that does not exist -- but the guard is
+    // over the count, so a merge write that moved every field it sends renders no line either, and
+    // the example below is such a proposal carrying `unchangedCount` 0.
     //
     // Mutation (Rule 19): drop the `discloses` guard in `proposal-card.ts` -> this goes red.
     const { card } = mount({ ...DELETE_PROPOSAL, unchangedCount: 0, unchanged: [] });

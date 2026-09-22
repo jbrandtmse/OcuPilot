@@ -429,11 +429,13 @@ export class ProposalCard {
   }
 
   /**
-   * Whether the card carries an unchanged-fields line at all.
+   * Whether the card carries an unchanged-fields line at all: exactly when the proposal reports
+   * unchanged fields.
    *
-   * A write that sends no body has no unchanged fields to disclose (AD-51), and its proposal
-   * carries `unchangedCount` 0 -- "0 unchanged fields" under an action's one state row is a line
-   * that says nothing about anything the confirm will do.
+   * The count is what this reads, not whether a body is sent -- a card cannot know that, and does
+   * not need to. A write that sends no body reports `unchangedCount` 0 (AD-51), so "0 unchanged
+   * fields" under an action's one state row never renders; a merge write that moved every field it
+   * sends reports 0 too, and the line says nothing there either.
    */
   protected get discloses(): boolean {
     return this.view().unchangedCount > 0;
