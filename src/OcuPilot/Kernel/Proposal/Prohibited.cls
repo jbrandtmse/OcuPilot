@@ -27,11 +27,13 @@
 /// (<method>AlwaysProhibitedFields</method>), and so is every field outside the reviewed few: a
 /// write tool advertises the reviewed names and nothing else, so the model cannot author the rest,
 /// and this class refuses them at the write so no other route can either.</p>
-/// <p><b>Five types are covered</b> (<parameter>COVEREDTYPES</parameter>): a web application
+/// <p><b>Six types are covered</b> (<parameter>COVEREDTYPES</parameter>): a web application
 /// (<method>WebApplication</method>), a user account (<method>User</method>), the instance's
-/// auditing configuration (<method>Auditing</method>) and a task (<method>Task</method>) -- the
-/// last two the reviewed-few sweep alone, because AD-10 forbids no change to either -- and a
-/// process (<method>Process</method>), which adds AD-10's two target predicates. Each later
+/// auditing configuration (<method>Auditing</method>), a task (<method>Task</method>) and an
+/// application error (<method>ApplicationError</method>) -- the last three the reviewed-few sweep
+/// alone, because AD-10 forbids no change to any of them -- and a process
+/// (<method>Process</method>), which adds two target predicates -- a process OcuPilot is itself
+/// running in (AD-7, and AD-10's serving path) and an IRIS system process (AD-10). Each later
 /// write-tool story adds its own type here, and a type listed with no branch is refused
 /// <parameter>UNCOVERED</parameter> at every write.</p>
 /// <p>Seams a subclass overrides: <method>PortClass</method>, <method>RegistryClass</method>,
@@ -73,11 +75,16 @@ Parameter LASTALLHOLDER = "PROHIBITED.LASTALLHOLDER";
 /// <p>The write would disable <code>_SYSTEM</code>, the instance's own predefined account.</p>
 Parameter SYSTEMACCOUNT = "PROHIBITED.SYSTEMACCOUNT";
 
-/// <p>The write would suspend or resume a process the confirming user owns. AD-10 defines the set
-/// by effect, and the effect prevented is the agent stopping the person driving it from working --
-/// which the confirm request's own job does not exhaust, because the operator's other interactive
-/// session locks them out just as completely.</p>
-Parameter OWNPROCESS = "PROHIBITED.OWNPROCESS";
+/// <p>The write would suspend or resume a process OcuPilot is itself running in: the job serving
+/// this confirmation, or any job running an agent turn (AD-7). Both harms are irrecoverable from
+/// inside the product -- suspending the serving job kills the write inside AD-34's transition, and
+/// suspending a turn job strands a turn whose owner may be another user.</p>
+/// <p><b>Ownership is not the predicate</b> [narrowed 2026-09-22, Story 5.13, orchestrator-decided].
+/// AD-10's self-protection items are accounts, the serving path and IRIS system processes, and it
+/// nowhere names process ownership, so refusing every process the confirming user owns was a rule
+/// of its own borrowing AD-10's authority -- and it prohibited the feature's most likely legitimate
+/// use, an administrator suspending their own runaway job, which signing in again recovers.</p>
+Parameter OCUPILOTPROCESS = "PROHIBITED.OCUPILOTPROCESS";
 
 /// <p>The write would suspend or resume an IRIS system process: one whose <code>JobType</code> is
 /// outside <method>ProcessJobTypes</method>'s allow-list, an unnamed value included.</p>
@@ -125,11 +132,9 @@ Parameter ALLROLE = "%All";
 
 Parameter ADMINROLEPREFIX = "%Admin_";
 
-/// <p>The three <code>Process</code> <code>GET</code> properties the process predicates read,
-/// named once.</p>
+/// <p>The two <code>Process</code> <code>GET</code> properties the process predicates read, named
+/// once.</p>
 Parameter FIELDJOBTYPE = "JobType";
-
-Parameter FIELDUSERNAME = "UserName";
 
 Parameter FIELDPID = "Pid";
 
@@ -162,7 +167,7 @@ Parameter READTYPE = "GET";
 /// type shares, with the wholesale refusal last -- twelve in all.</p>
 ClassMethod Codes() As %List
 {
-    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OWNPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED)
+    Quit $ListBuild(..#SERVINGPATH, ..#UNAUTHENTICATED, ..#AUTHORIZATION, ..#DISPATCH, ..#SYSTEMACCOUNT, ..#CURRENTUSER, ..#LASTALLHOLDER, ..#PRIVILEGEGRANT, ..#OCUPILOTPROCESS, ..#SYSTEMPROCESS, ..#UNCOVEREDFIELD, ..#UNCOVERED)
 }
 
 /// <p>The written sentence a <code>PROHIBITED.*</code> code carries, or <code>""</code> for any
@@ -178,7 +183,7 @@ ClassMethod ReasonFor(pCode As %String) As %String
     If pCode = ..#SYSTEMACCOUNT Quit "Disabling the instance's own _SYSTEM account is not something the agent can propose."
     If pCode = ..#CURRENTUSER Quit "Disabling the account you are signed in as is not something the agent can propose."
     If pCode = ..#LASTALLHOLDER Quit "Disabling the only account on this instance that holds %All is not something the agent can propose."
-    If pCode = ..#OWNPROCESS Quit "Suspending or resuming a process you own is not something the agent can propose."
+    If pCode = ..#OCUPILOTPROCESS Quit "Suspending or resuming a process OcuPilot is itself running in -- this confirmation, or an agent turn -- is not something the agent can propose."
     If pCode = ..#SYSTEMPROCESS Quit "Suspending or resuming an IRIS system process is not something the agent can propose."
     If pCode = ..#UNCOVEREDFIELD Quit "Only a few of this kind of object's settings are ones the agent may propose changing, and that is not one of them."
     If pCode = ..#UNCOVERED Quit "This release does not check writes to that kind of object against its prohibited set, so none is proposable yet."
@@ -572,17 +577,16 @@ ClassMethod ApplicationError(ByRef pChanged, Output pProhibits As %Boolean, Outp
     Quit ..ReviewedFewOnly(..#TYPEAPPLICATIONERROR, .pChanged, .pProhibits, .pCode)
 }
 
-/// <p>The process predicates, in declared order, first hit wins: a process the confirming user
-/// owns, an IRIS system process, then the reviewed-few sweep over an empty permitted list.</p>
+/// <p>The process predicates, in declared order, first hit wins: a process OcuPilot is itself
+/// running in, an IRIS system process, then the reviewed-few sweep over an empty permitted list.</p>
 /// <p><var>pTarget</var> is the <b>fresh</b> read <method>Target</method> took inside the confirm
 /// transition, so both predicates read the instance rather than the stored payload -- a pid is
 /// reusable once its process has ended, and the fingerprint's declared subject does not cover
-/// <code>JobType</code> or <code>UserName</code>.</p>
-/// <p><b>Ownership takes the broad reading</b> (AD-10, effect not verb): any process whose
-/// <code>UserName</code> is the confirming user, of which the confirm request's own job
-/// (<code>$Job</code>) is a strict subset. <code>$Job</code> alone would leave the operator's other
-/// interactive session suspendable, and suspending that locks them out as completely as suspending
-/// this one.</p>
+/// <code>JobType</code>.</p>
+/// <p><b>The first predicate is one rule for two harms</b> (<method>IsOcuPilotProcess</method>):
+/// the job serving this confirmation and any job running a turn, whoever owns either. A process
+/// the confirming user owns which is neither is <b>permitted</b> -- that is the narrowing of
+/// 2026-09-22, and the reason is at <parameter>OCUPILOTPROCESS</parameter>.</p>
 /// <p><b>System processes are an allow-list</b> (<method>ProcessJobTypes</method>) and fail closed
 /// on a <code>JobType</code> the table does not name. Measured over the whole 31-process population
 /// on this build, <code>CanBeSuspended</code> and <code>CanBeTerminated</code> are both 1 for the
@@ -595,8 +599,8 @@ ClassMethod Process(pTarget As %DynamicObject, ByRef pChanged, Output pProhibits
     Set pCode = ""
     Set tSC = $$$OK
     Try {
-        If ..OwnedByCaller(pTarget) {
-            Do ..Refuse(..#OWNPROCESS, .pProhibits, .pCode)
+        If ..IsOcuPilotProcess(pTarget) {
+            Do ..Refuse(..#OCUPILOTPROCESS, .pProhibits, .pCode)
             Quit
         }
         If '..IsActionableJobType(pTarget) {
@@ -643,22 +647,27 @@ ClassMethod IsActionableJobType(pTarget As %DynamicObject) As %Boolean
     Quit ''$ListFind(..ProcessJobTypes(), +tType)
 }
 
-/// <p>Whether <var>pTarget</var> is a process the confirming user owns: its <code>UserName</code>
-/// is <code>$Username</code> under the identity rule accounts are compared by
-/// (<method>NormalizedUser</method>), or its <code>Pid</code> is this job's own.</p>
-/// <p>A read that answered <b>neither</b> property is owned, so the predicate fails closed there.
-/// It does not fail closed on one of the two alone: an empty <code>UserName</code> is what this
-/// instance's own daemons carry, and refusing them here would give them the wrong reason --
-/// <method>IsActionableJobType</method> is the predicate that refuses a daemon.</p>
-ClassMethod OwnedByCaller(pTarget As %DynamicObject) As %Boolean
+/// <p>Whether <var>pTarget</var> is a process OcuPilot is itself running in: its <code>Pid</code>
+/// is this job's own -- the job serving the confirmation, which suspending would kill the write
+/// inside AD-34's transition -- or it is the job of a turn this instance is running (AD-7),
+/// whoever started it.</p>
+/// <p>A turn job is identified from OcuPilot's own record rather than from the process: a running
+/// turn's row carries the pid of the job that began it
+/// (<method>OcuPilot.Kernel.State.Turn.GuardedIsTurnJob</method>). Only a <b>running</b> turn
+/// counts, so a finished turn's pid, once the instance reuses it, does not refuse an unrelated
+/// process.</p>
+/// <p><b>It fails closed</b> on a read that carries no <code>Pid</code> and on a state read that
+/// errors: a process whose identity nobody established, and a question OcuPilot could not answer
+/// about itself, are both refused rather than proposed.</p>
+ClassMethod IsOcuPilotProcess(pTarget As %DynamicObject) As %Boolean
 {
     If '$IsObject(pTarget) Quit 1
     Set tPid = ..Rendered(pTarget, ..#FIELDPID)
-    Set tUser = ..Rendered(pTarget, ..#FIELDUSERNAME)
-    If (tPid = "") && (tUser = "") Quit 1
-    If (tPid '= "") && (##class(OcuPilot.Kernel.EntityRef).NormalizedId(..#TYPEPROCESS, tPid) = ##class(OcuPilot.Kernel.EntityRef).NormalizedId(..#TYPEPROCESS, $Job)) Quit 1
-    If (tUser '= "") && (..NormalizedUser(tUser) = ..NormalizedUser($Username)) Quit 1
-    Quit 0
+    If tPid = "" Quit 1
+    If ##class(OcuPilot.Kernel.EntityRef).NormalizedId(..#TYPEPROCESS, tPid) = ##class(OcuPilot.Kernel.EntityRef).NormalizedId(..#TYPEPROCESS, $Job) Quit 1
+    Set tSC = ##class(OcuPilot.Kernel.State.Turn).GuardedIsTurnJob(tPid, .tTurnJob)
+    If $$$ISERR(tSC) Quit 1
+    Quit ''tTurnJob
 }
 
 /// <p>The reviewed-few sweep for entity type <var>pType</var>: every field <var>pChanged</var>

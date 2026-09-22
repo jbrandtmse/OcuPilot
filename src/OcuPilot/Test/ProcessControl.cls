@@ -331,39 +331,56 @@ Method TestAChangedFieldOnAProcessProposalIsRefused()
     Do $$$AssertEquals($Get(tCode), $Parameter(..#SET, "UNCOVEREDFIELD"), "as a field nobody has reviewed")
 }
 
-/// <p>AC3 -- a process the confirming user owns is refused, on both readings: the confirm
-/// request's own job, and any other process whose <code>UserName</code> is that user. The probe
-/// process, which a different account owns, is not.</p>
+/// <p>AC3 as narrowed 2026-09-22 (AD-7, AD-10) -- one predicate, both arms: the job serving the
+/// confirmation and the job of a <b>running</b> turn, whoever owns it. A process the confirming
+/// user owns which is neither is <b>permitted</b>, which is the half the broad reading refused and
+/// the half an administrator suspending their own runaway job depends on.</p>
+/// <p>The turn arm is armed at its input -- a running turn row whose <code>JobId</code> is the pid
+/// under test and whose owner is another account -- not by replacing the predicate.</p>
 /// <p>Mutation (Rule 19): make
-/// <method>OcuPilot.Kernel.Proposal.Prohibited.OwnedByCaller</method> answer 0 -- both refusals go
-/// red while the probe's own leg stays green.</p>
-Method TestTheCallersOwnProcessIsRefused()
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.IsOcuPilotProcess</method> answer 0 -- the three
+/// refusing legs go red while the two permitted legs stay green. Drop the
+/// <code>State = 'running'</code> clause from
+/// <method>OcuPilot.Kernel.State.Turn.GuardedIsTurnJob</method> -- the finished-turn leg goes
+/// red.</p>
+Method TestOcuPilotsOwnProcessesAreRefusedAndTheUsersOthersAreNot()
 {
     Set tOwnJob = {}
     Do tOwnJob.%Set("Pid", $Job, "string")
     Do tOwnJob.%Set("State", "RUN", "string")
     Do tOwnJob.%Set("JobType", ..#PROBEJOBTYPE, "number")
     Do tOwnJob.%Set("UserName", "OcuPilotProbeSomebodyElse", "string")
-    Do $$$AssertEquals(..Verdict(tOwnJob), $Parameter(..#SET, "OWNPROCESS"), "the confirming job's own process is refused")
+    Do $$$AssertEquals(..Verdict(tOwnJob), $Parameter(..#SET, "OCUPILOTPROCESS"), "the job serving the confirmation is refused, whoever owns it")
 
+    ; A turn another account is running, in the job whose pid this read carries.
+    Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn(..#PRINCIPALUSER, "running", .tRunning, ..#ABSENTPID)
+    Do $$$AssertStatusOK(tSC, "a running turn is seeded against that pid")
+    If $$$ISERR(tSC) Quit
+    Set tTurnJob = {}
+    Do tTurnJob.%Set("Pid", ..#ABSENTPID, "string")
+    Do tTurnJob.%Set("State", "RUN", "string")
+    Do tTurnJob.%Set("JobType", ..#PROBEJOBTYPE, "number")
+    Do tTurnJob.%Set("UserName", ..#PRINCIPALUSER, "string")
+    Do $$$AssertEquals(..Verdict(tTurnJob), $Parameter(..#SET, "OCUPILOTPROCESS"), "and so is another user's turn job, which $Job alone would miss (DW-1477)")
+
+    ; The same pid once that turn has ended: a pid is reusable, so only a running turn refuses.
+    Do $$$AssertStatusOK(##class(OcuPilot.Test.ProposalFixture).SetTurnState(tRunning, "completed"), "the turn is moved to a terminal state")
+    Do $$$AssertEquals(..Verdict(tTurnJob), "", "a finished turn's pid refuses nothing, so a reused pid is not somebody else's turn")
+
+    ; The half the narrowing restores: a live process the confirming user owns, which is neither.
     Set tOwnUser = {}
-    Do tOwnUser.%Set("Pid", ..#ABSENTPID, "string")
+    Do tOwnUser.%Set("Pid", ..PreparedPid, "string")
     Do tOwnUser.%Set("State", "RUN", "string")
     Do tOwnUser.%Set("JobType", ..#PROBEJOBTYPE, "number")
     Do tOwnUser.%Set("UserName", $Username, "string")
-    Do $$$AssertEquals(..Verdict(tOwnUser), $Parameter(..#SET, "OWNPROCESS"), "and so is another process the same user owns, which $Job alone would miss")
+    Do $$$AssertTrue(..PreparedPid '= $Job, "the probe process is not this job, which is what makes the leg below about ownership alone")
+    Do $$$AssertEquals(..Verdict(tOwnUser), "", "a process the confirming user owns, which is neither this job nor a turn job, is permitted")
 
-    Set tOther = {}
-    Do tOther.%Set("Pid", ..#ABSENTPID, "string")
-    Do tOther.%Set("State", "RUN", "string")
-    Do tOther.%Set("JobType", ..#PROBEJOBTYPE, "number")
-    Do tOther.%Set("UserName", ..#PRINCIPALUSER, "string")
-    Do $$$AssertEquals(..Verdict(tOther), "", "while a process another account owns is not refused by this predicate")
-
-    Set tNeither = {}
-    Do tNeither.%Set("State", "RUN", "string")
-    Do tNeither.%Set("JobType", ..#PROBEJOBTYPE, "number")
-    Do $$$AssertEquals(..Verdict(tNeither), $Parameter(..#SET, "OWNPROCESS"), "and a read answering neither property fails closed")
+    Set tNoPid = {}
+    Do tNoPid.%Set("State", "RUN", "string")
+    Do tNoPid.%Set("JobType", ..#PROBEJOBTYPE, "number")
+    Do tNoPid.%Set("UserName", ..#PRINCIPALUSER, "string")
+    Do $$$AssertEquals(..Verdict(tNoPid), $Parameter(..#SET, "OCUPILOTPROCESS"), "and a read answering no pid fails closed")
 }
 
 /// <p>AC4 -- an IRIS system process is refused, by an allow-list over <code>JobType</code> that
@@ -407,6 +424,53 @@ Method TestAnIrisSystemProcessIsRefused()
     Do $$$AssertEquals(..Verdict(tAdmitted), "", "and a process of that kind is not refused")
 }
 
+/// <p>AC3 as narrowed 2026-09-22 -- the <b>permitted</b> half through the shipped entry point:
+/// a live process the confirming user owns, which is neither this job nor a turn job, is not
+/// refused by <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method>. That is the use the
+/// narrowing exists to restore, and the predicate-level leg above cannot see a refusal added
+/// elsewhere in the process branch.</p>
+/// <p>The target is a second probe process this method starts and stops in its own frame. It does
+/// <b>not</b> sign in, so it inherits the confirming user, which the leg reads back from the
+/// instance rather than assuming -- a probe owned by anybody else would make the assertion vacuous.
+/// Nothing is suspended: the set only reads and answers.</p>
+/// <p>Mutation (Rule 19): re-add the ownership arm to
+/// <method>OcuPilot.Kernel.Proposal.Prohibited.IsOcuPilotProcess</method> (refuse a target whose
+/// <code>UserName</code> is <code>$Username</code>) -- this goes red while every refusing leg in
+/// the class stays green.</p>
+Method TestTheShippedProhibitsPermitsAProcessTheConfirmingUserOwns()
+{
+    Set tPid = ..StartOwnedProbeProcess()
+    Do $$$AssertNotEquals(tPid, "", "a second probe process, started without signing in, is running")
+    If tPid = "" Quit
+    Try {
+        Do $$$AssertEquals(..UserNameOf(tPid), $Username, "the instance reports it as owned by the confirming user, which is what this leg is about")
+        Do $$$AssertNotEquals(tPid, $Job, "and it is not this job, so the permitted answer cannot come from that arm")
+        Set tSC = ##class(OcuPilot.Kernel.State.Turn).GuardedIsTurnJob(tPid, .tTurnJob)
+        Do $$$AssertStatusOK(tSC, "the turn-state read answers for it")
+        Do $$$AssertEquals(+$Get(tTurnJob), 0, "and no running turn claims that pid, so it is not a turn job either")
+        Do $$$AssertTrue($ListFind($ClassMethod(..#SET, "ProcessJobTypes"), ..JobTypeOf(tPid)) > 0, "its JobType is one the allow-list admits, so a refusal here could only be the ownership one")
+
+        Set tSC = ##class(OcuPilot.Kernel.EntityRef).Key("process", ##class(OcuPilot.Kernel.Scope).#SCOPEINSTANCE, tPid, .tRef)
+        Do $$$AssertStatusOK(tSC, "the reference to pid " _ tPid _ " builds")
+        If $$$ISERR(tSC) Quit
+        Set tFresh = ..FreshRead(tPid)
+        Do $$$AssertTrue($IsObject(tFresh), "and it reads fresh through the shipped port")
+        If '$IsObject(tFresh) Quit
+        Set tStateDiff = "[{""field"":""State"",""before"":""Running"",""after"":""Suspended""}]"
+        Set tSC = $ClassMethod(..#SET, "Prohibits", $Parameter(..#SUSPENDTOOL, "TOOLNAME"), tRef, tFresh.%ToJSON(), tStateDiff, .tProhibits, .tCode)
+        Do $$$AssertStatusOK(tSC, "the set answers for it: " _ $System.Status.GetErrorText(tSC))
+        Do $$$AssertEquals(tProhibits, 0, "a process the confirming user owns which is neither is permitted, code was '" _ $Get(tCode) _ "'")
+        Do $$$AssertEquals($Get(tCode), "", "and carries no refusal code")
+        Do $$$AssertTrue('(..ProcessState(tPid) [ "SUSP"), "and asking the question suspended nothing: pid " _ tPid _ " reads '" _ ..ProcessState(tPid) _ "'")
+    } Catch ex {
+        Do $$$AssertStatusOK(ex.AsStatus(), "the permitted leg raised")
+    }
+    ; Its own frame: a raise above skips the method's tail, and a probe left running would outlive
+    ; the class that started it.
+    Do ..StopProbeProcess(tPid)
+    Do $$$AssertEquals(..ProcessState(tPid), "", "and the second probe process is gone")
+}
+
 /// <p>AC3 -- both AD-10 refusals through the <b>shipped</b> entry point, which is what the write
 /// transition calls: <method>OcuPilot.Kernel.Proposal.Prohibited.Prohibits</method> parses the
 /// reference, re-reads the target through the port and dispatches to the process branch, so the
@@ -431,7 +495,7 @@ Method TestTheShippedProhibitsRefusesTheOwnJobAndASystemProcess()
     Set tSC = $ClassMethod(..#SET, "Prohibits", tTool, tOwnRef, tOwnFresh.%ToJSON(), tStateDiff, .tProhibits, .tCode)
     Do $$$AssertStatusOK(tSC, "the set answers for it: " _ $System.Status.GetErrorText(tSC))
     Do $$$AssertEquals(tProhibits, 1, "suspending the confirming caller's own process is refused")
-    Do $$$AssertEquals($Get(tCode), $Parameter(..#SET, "OWNPROCESS"), "as its own process")
+    Do $$$AssertEquals($Get(tCode), $Parameter(..#SET, "OCUPILOTPROCESS"), "as a process OcuPilot is itself running in")
 
     Set tSystemPid = ..SystemPid()
     Do $$$AssertNotEquals(tSystemPid, "", "this instance carries a process whose JobType the allow-list does not admit and whose owner is not the confirming user")
@@ -513,7 +577,7 @@ Method TestTheRealSuspendAndResumeAreMarkedAndAttributedToTheCaller()
 /// methods that read them, so the predicate under test is the shipped one.</p>
 ClassMethod Verdict(pRead As %DynamicObject) As %String
 {
-    If $ClassMethod(..#SET, "OwnedByCaller", pRead) Quit $Parameter(..#SET, "OWNPROCESS")
+    If $ClassMethod(..#SET, "IsOcuPilotProcess", pRead) Quit $Parameter(..#SET, "OCUPILOTPROCESS")
     If '$ClassMethod(..#SET, "IsActionableJobType", pRead) Quit $Parameter(..#SET, "SYSTEMPROCESS")
     Quit ""
 }
@@ -653,6 +717,62 @@ ClassMethod ProcessState(pPid As %String) As %String
         Set tState = ""
     }
     Quit tState
+}
+
+/// <p><code>JOB</code> a probe process that signs in as nobody, so it inherits the confirming
+/// user, and answer its pid or <code>""</code>. The caller stops it with
+/// <method>StopProbeProcess</method>.</p>
+ClassMethod StartOwnedProbeProcess() As %String
+{
+    Set tPid = ""
+    Try {
+        Job ##class(OcuPilot.Test.ProcessControl).OwnedProbeWait()
+        Set tPid = $ZChild
+        If 'tPid Set tPid = ""
+        If tPid = "" Quit
+        For tI = 1:1:50 {
+            If ..ProcessState(tPid) '= "" Quit
+            Hang 0.1
+        }
+        Hang 2
+        If ..ProcessState(tPid) = "" Set tPid = ""
+    } Catch ex {
+        Set tPid = ""
+    }
+    Quit tPid
+}
+
+/// <p>The owned probe's body: wait, and nothing else. It signs in as nobody, which is what leaves
+/// the process owned by the user that <code>JOB</code>ed it.</p>
+/// <p><b>Caller contract:</b> <code>JOB</code>ed by <method>StartOwnedProbeProcess</method> and by
+/// nothing else. It ends on its own after <parameter>PROBESECONDS</parameter>, so a run that
+/// aborted cannot leave a process waiting for ever.</p>
+ClassMethod OwnedProbeWait()
+{
+    Try {
+        Hang ..#PROBESECONDS
+    } Catch ex {
+    }
+    Quit
+}
+
+/// <p>Process <var>pPid</var>'s <code>UserName</code> as <class>%SYS.ProcessQuery</class> holds
+/// it, or <code>""</code> when the instance carries no such process.</p>
+ClassMethod UserNameOf(pPid As %String) As %String
+{
+    If pPid = "" Quit ""
+    Set tUser = ""
+    Set tOrigNS = $NAMESPACE
+    Try {
+        Set $NAMESPACE = "%SYS"
+        Set tRS = ##class(%SQL.Statement).%ExecDirect(, "SELECT UserName FROM %SYS.ProcessQuery WHERE Pid = ?", pPid)
+        If tRS.%Next() Set tUser = tRS.%Get("UserName")
+        Set $NAMESPACE = tOrigNS
+    } Catch ex {
+        Set $NAMESPACE = tOrigNS
+        Set tUser = ""
+    }
+    Quit tUser
 }
 
 /// <p>Process <var>pPid</var>'s <code>JobType</code>, or <code>-1</code> when the instance carries

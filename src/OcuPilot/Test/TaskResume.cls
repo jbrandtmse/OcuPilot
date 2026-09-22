@@ -180,12 +180,13 @@ Method TestTheConfirmedWriteIsABodylessResumeCarryingTheId()
 
 /// <p>AC6 -- a task another party resumed between the mint and the confirm is refused by the
 /// fingerprint, the row closes, and nothing reaches the port.</p>
-/// <p><code>Suspended</code> is inside the fingerprint because the descriptor excludes nothing:
-/// no <code>INFO</code> field moves while a task is suspended (measured on
-/// <code>ocupilot-ci</code>, 2026-09-21).</p>
-/// <p>Mutation (Rule 19): declare <code>"fingerprintExcludes": ["Suspended"]</code> on
-/// <class>OcuPilot.Screen.Descriptor.TaskScheduleList</class> -- this goes red, the confirm
-/// succeeds and the resume is issued against a task already running.</p>
+/// <p><code>Suspended</code> is the fingerprint's whole subject: the tool declares it, because it
+/// is the field its own precondition reads (AD-51 as amended 2026-09-22, DW-1476).</p>
+/// <p>Mutation (Rule 19): declare <code>FINGERPRINTSUBJECT</code> and
+/// <code>PRECONDITIONFIELD</code> as <code>NextScheduled</code> on
+/// <class>OcuPilot.Screen.Tool.TaskResume</class> -- a name the screen also declares, so the
+/// registration guard still admits the tool -- and this goes red, the confirm succeeds and the
+/// resume is issued against a task already running.</p>
 Method TestATaskResumedUnderALiveProposalIsRefused()
 {
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).SeedTurn($Username, "completed", .tTurn)

@@ -81,12 +81,15 @@ Parameter STATEFIELD = "";
 /// payload, so there is no property set to exclude from, and a digest over the whole of a live
 /// read refuses every confirm whose target moved a counter -- hardest for exactly the targets such
 /// an action exists to act on. The subject is what the user reviewed: this target, in this state.</p>
-/// <p><b>Adequacy is structural.</b> A declared subject carries the scoped target identity
-/// (<method>IdArgument</method>) and <parameter>PRECONDITIONFIELD</parameter>, names nothing the
-/// descriptor's <code>fingerprintExcludes</code> also names, and every name in it is one the
-/// screen's own declaration knows <b>or</b> one <parameter>READANSWERS</parameter> declares;
+/// <p><b>Adequacy is structural.</b> Every action-style write declares one; a declared subject
+/// carries <parameter>PRECONDITIONFIELD</parameter>, names nothing the descriptor's
+/// <code>fingerprintExcludes</code> also names, and every name in it is one the screen's own
+/// declaration knows <b>or</b> one <parameter>READANSWERS</parameter> declares;
 /// <method>OcuPilot.Screen.Registry.FingerprintSubjectProblem</method> refuses anything else at
-/// registration, through the extraction that validates <code>fingerprintExcludes</code>.</p>
+/// registration, through the extraction that validates <code>fingerprintExcludes</code>. The
+/// target identity is <b>not</b> required and may be named: the fingerprint asks whether the
+/// reviewed state moved, and which object this is is the proposal's <code>TargetRef</code>
+/// (AD-13, AD-51 as amended 2026-09-22).</p>
 /// <p>A screen's declared read and this tool's own <parameter>READTYPE</parameter> read are not the
 /// same set: where a list and a single-object read spell a field differently, the name the mint
 /// projects is the tool read's, so a tool whose two sets differ declares its own through
@@ -96,9 +99,9 @@ Parameter FINGERPRINTSUBJECT = "";
 /// <p>The read field this tool's own precondition reads -- the field whose movement between the
 /// mint and the confirm invalidates the reviewed intent -- or <code>""</code> for a write with no
 /// precondition of its own. <code>""</code> here.</p>
-/// <p>It is the second name a declared <parameter>FINGERPRINTSUBJECT</parameter> must carry: a
-/// subject of the identity alone would let a confirm succeed against a target somebody else had
-/// already moved into the state the action was going to move it to (AD-51).</p>
+/// <p>It is the name a declared <parameter>FINGERPRINTSUBJECT</parameter> must carry: a subject
+/// without it would let a confirm succeed against a target somebody else had already moved into
+/// the state the action was going to move it to (AD-51).</p>
 Parameter PRECONDITIONFIELD = "";
 
 /// <p>The port this tool reaches its target through (AD-52). <code>OcuPilot.Port.AdminPort</code>

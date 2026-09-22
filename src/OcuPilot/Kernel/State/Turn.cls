@@ -384,6 +384,29 @@ ClassMethod GuardedAbandonForUser(pUser As %String, Output pCount As %Integer) A
     Quit tSC
 }
 
+/// <p>Whether job <var>pJobId</var> is running a turn: <var>pIsTurnJob</var> is 1 when a
+/// <code>running</code> row carries that <property>JobId</property>, which
+/// <method>GuardedBegin</method> stamps from the job's own <code>$JOB</code>.</p>
+/// <p><b>Only a running turn counts.</b> A pid is reusable once its process has ended, so a
+/// terminal row's <property>JobId</property> would answer for whatever process the instance next
+/// gave that pid to. The cost of the narrowing is named rather than hidden: a job that died
+/// without finishing its turn leaves the row <code>running</code> until a reserve or a poll
+/// reconciles it, so that pid answers 1 until then. The converse window is a <code>queued</code>
+/// row, whose <property>JobId</property> <method>GuardedBegin</method> has not stamped yet: that
+/// job answers 0 until its turn begins, and no record identifies it before then.</p>
+/// <p><b>Caller contract:</b> <class>OcuPilot.Kernel.Proposal.Prohibited</class> asks it inside
+/// the confirm transition to refuse a write against a turn job (AD-7, AD-10). It reads and never
+/// writes.</p>
+ClassMethod GuardedIsTurnJob(pJobId As %String, Output pIsTurnJob As %Boolean) As %Status
+{
+    Set pIsTurnJob = 0
+    If pJobId = "" Quit $$$OK
+    Set tSC = ..GuardedIdsWhere("SELECT ID FROM OcuPilot_Kernel_State.Turn WHERE %EXACT(JobId) = ? AND State = 'running' ORDER BY ID", pJobId, .tIds)
+    If $$$ISERR(tSC) Quit tSC
+    Set pIsTurnJob = ($Get(tIds(1)) '= "")
+    Quit $$$OK
+}
+
 /// <p>Turn <var>pKey</var>'s signals: the stop and abandon flags, and the lease's last renewal in
 /// <method>NowSeconds</method> units (<code>""</code> when never set).</p>
 ClassMethod GuardedSignals(pKey As %String, Output pStop As %Boolean, Output pAbandon As %Boolean, Output pRenewedAt As %String) As %Status

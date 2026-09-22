@@ -3752,9 +3752,10 @@ So that the area's most consequential actions carry the same confirmation as eve
 - **When** the user asks the agent to suspend that process
 - **Then** a proposal is minted naming the process id, and confirming it suspends the process as that user through the same endpoint the screen uses.
 
-- **Given** the target is the user's **own** process
+- **Given** the target is a process **OcuPilot is itself running in** - the job serving the confirmation, or a job running an agent turn
 - **When** the action is proposed
-- **Then** it is refused with an explanation.
+- **Then** it is refused with an explanation, whoever owns that process [AMENDED 2026-09-22, Epic 5 runner, Rule 5 tier-1 (orchestrator-decided): the clause read "the target is the user's **own** process". AD-10's self-protection items are accounts, the serving path and IRIS system processes and it nowhere names process ownership, so the broad reading was a new rule borrowing AD-10's authority - and it prohibited the feature's most likely legitimate use, an administrator quieting their own runaway job, which signing in again recovers. Suspending the confirming job kills the write inside AD-34's transition and suspending a turn job strands another user's turn, so one predicate now refuses exactly those two]
+- **And** a process the user owns which is neither is proposable like any other.
 
 - **Given** the target is an IRIS system process
 - **When** a terminate is proposed

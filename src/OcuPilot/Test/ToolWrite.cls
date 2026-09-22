@@ -497,6 +497,8 @@ Method TestTheTaskResumeToolIsAnActionWriteOverTheScreensOwnPairs()
     Do $$$AssertEquals($ClassMethod(..#RESUMETOOLCLASS, "Endpoint"), "Task.CRUD", "over the task endpoint")
     Do $$$AssertEquals($ClassMethod(..#RESUMETOOLCLASS, "IdParam"), "id", "identified by the vendor's own query parameter")
     Do $$$AssertEquals($ListLength($ClassMethod(..#RESUMETOOLCLASS, "SettableFields")), 0, "and it admits no settable field at all")
+    Do $$$AssertEquals($ListToString($ClassMethod(..#RESUMETOOLCLASS, "FingerprintSubject")), "Suspended", "its fingerprint covers the one INFO field its own precondition reads (AD-51, DW-1476)")
+    Do $$$AssertEquals($ClassMethod(..#RESUMETOOLCLASS, "PreconditionField"), "Suspended", "which is that precondition field")
 
     ; The merge writes still send one: the seam defaults to today's behavior rather than
     ; changing it, which is the half no action-tool assertion can see.
@@ -686,8 +688,11 @@ Method AssertActionWrite(pName As %String, pClass As %String, pWriteType As %Str
 }
 
 /// <p>AD-51's structural adequacy rule, in both directions: the shipped subjects pass and each of
-/// the five ways one can be wrong is refused by name, through the same builder
+/// the six ways one can be wrong is refused by name, through the same builder
 /// <code>fingerprintExcludes</code> is validated by.</p>
+/// <p>The six are: no subject on an action-style write, a subject that parses empty, no
+/// precondition field, a name neither the screen nor the tool's own read answers, a name the
+/// descriptor also excludes, and a subject declared on a write that sends a body.</p>
 /// <p><b>The probes never register.</b> They sit in
 /// <parameter>OcuPilot.Screen.Tool.Registry.EXCLUDEDPACKAGE</parameter>, so the guard is asked
 /// about them directly rather than by making the instance's own tool list refuse to build.</p>
@@ -698,11 +703,17 @@ Method TestAnInadequateFingerprintSubjectIsRefusedAtRegistration()
 {
     Set tRegistry = "OcuPilot.Screen.Registry"
     Do $$$AssertEquals($ClassMethod(tRegistry, "FingerprintSubjectProblem", ..#SUSPENDTOOLCLASS), "", "the shipped suspend subject is adequate, so a guard refusing everything would not read green here")
-    Do $$$AssertEquals($ClassMethod(tRegistry, "FingerprintSubjectProblem", ..#TOOLCLASS), "", "and a merge write, which declares no subject, is not asked to")
+    Do $$$AssertEquals($ClassMethod(tRegistry, "FingerprintSubjectProblem", ..#TOOLCLASS), "", "and a merge write, which declares no subject, is not asked to -- AD-6's exclusions cover the body it does send")
 
-    Set tMissingIdentity = $ClassMethod(tRegistry, "FingerprintSubjectProblem", "OcuPilot.Test.SubjectProbe.MissingIdentity")
-    Do $$$AssertNotEquals(tMissingIdentity, "", "a subject without the scoped target identity is refused")
-    Do $$$AssertTrue(tMissingIdentity [ "Pid", "naming the missing name: " _ tMissingIdentity)
+    ; DW-1476. An action-style write that declares none at all is refused, which is what makes the
+    ; declaration compulsory for the kind rather than optional.
+    Set tNoSubject = $ClassMethod(tRegistry, "FingerprintSubjectProblem", "OcuPilot.Test.SubjectProbe.NoSubject")
+    Do $$$AssertNotEquals(tNoSubject, "", "an action-style write declaring no subject at all is refused")
+    Do $$$AssertTrue(tNoSubject [ "FINGERPRINTSUBJECT", "naming the missing declaration: " _ tNoSubject)
+    ; AD-51 as amended 2026-09-22: identity is not part of the subject, so a subject of the
+    ; precondition field alone is adequate -- TargetRef answers which object this is (AD-13).
+    Do $$$AssertEquals($ClassMethod(tRegistry, "FingerprintSubjectProblem", ..#RESUMETOOLCLASS), "", "a subject naming no identity is adequate, which is what makes the task resume registrable at all")
+    Do $$$AssertTrue('$ListFind($ClassMethod(..#RESUMETOOLCLASS, "FingerprintSubject"), $ClassMethod(..#RESUMETOOLCLASS, "IdArgument")), "and that tool's subject really does omit its identity, so the leg above is not vacuous")
 
     Set tMissingPrecondition = $ClassMethod(tRegistry, "FingerprintSubjectProblem", "OcuPilot.Test.SubjectProbe.MissingPrecondition")
     Do $$$AssertNotEquals(tMissingPrecondition, "", "a tool declaring a subject and no precondition field is refused")

@@ -2,8 +2,8 @@
 title: 'Story 5.13: Logs - delete application errors by namespace'
 type: 'feature'
 created: '2026-09-22'
-status: 'in-progress'
-baseline_revision: '64abadd0680c1c1e13eb12103ceb5798dc839ef6'
+status: 'done'
+baseline_revision: '9f6b481ad6b3009e23bc0645db006d31f588344d'
 baseline_commit: '64abadd0680c1c1e13eb12103ceb5798dc839ef6'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -11,9 +11,23 @@ context:
   - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-OcuPilot-2026-09-08/ARCHITECTURE-SPINE.md'
 warnings: ['oversized']
 deferred:
+  - summary: >-
+      The narrowed process-ownership rule is corrected in the code and in Story 5.12's AC2, and
+      nine other places still state the broad reading.
+    evidence: |-
+      Verified 2026-09-22 after the narrowing landed. epics.md:153 (FR-55), :807 (Epic 7 preamble),
+      :3506-3508 (Story 5.5's worked example, which uses "act on the user's own process" to
+      illustrate a rule "the instance refuses on the write path regardless of what the UI does" -
+      now false) and :5636; EXPERIENCE.md:93, :220 and :414 (published self-protection copy Epic 7's
+      row actions will read); prd.md:806; SPEC.md:99. Also spec-5-12-*.md:53, :623, :666, whose
+      ## Verification mutation recipes at :928 and :943 name OwnedByCaller, a method that no longer
+      exists, so 5.12's Rule 19 evidence is not re-runnable as written. Not patched here: Rule 5
+      reserves planning-artifact amendments to the lead, and EXPERIENCE.md's list is published copy
+      a UX call governs.
+    location: >-
+      _bmad-output/planning-artifacts/epics.md:153
+    severity: medium
   - 'DW-1423, measured and not fixed. No reachable path emits the change announcement with action deleted: its one shipped call site is announceChanged() in shell/data-table.ts, and application-error is declared by exactly one descriptor (LogErrorList), a drill-down that renders its own grid and is not a DataTable. Story 5.13 therefore does not execute the branch either, so the premise the entry was routed on does not hold. The fixed Updated prefix is left unreworded, because that half is a UX call on the entry. Re-own it to a story whose screen is a DataTable and that can redden it.'
-  - 'DW-1472, raised as an intent gap and not worked around. The demo fixture creates no process at all: src/OcuPilot/Install/Fixture.cls creates the /csp/myapp web application and the suspended OcuPilotDemo nightly purge task, which is Story 5.12 demo target, and nothing else. It therefore has no target process to create under a second account, and giving it one means a long-lived process owned by an account the fixture would have to create and then assume - IRIS JOB inherits the spawning process username, and only a Login or a task RunAsUser changes it - which is a durable side effect on an operator instance that AD-25 forbids the fixture to leave. Per the entry own merge-gate note this is a Clarification.'
-  - 'DW-1476, half closed. Mint.FingerprintSubjectOf no longer swallows an unaskable tool class into an empty subject; it refuses. The registration refusal of an action-style write that declares no subject at all is NOT added, and TaskResume still declares none. See the intent gap in Auto Run Result for the measurement and the recommended amendment.'
 ---
 
 <intent-contract>
@@ -34,10 +48,9 @@ ordinary write rather than a special case, give the proposal card its removal-ro
 error-log drill-down its change-event handling. Four of the seven inbox entries harden AD-51's seam,
 and 5.13 is its first consumer.
 
-**This story is blocked at planning on three intent gaps, set out in `## Blocking Condition`.** Two
-are published copy EXPERIENCE.md does not carry, and one is a contradiction between two of the
-story's own acceptance criteria. Everything else is planned and measured, so a re-dispatch after the
-amendments starts from this file rather than from scratch.
+**The three planning gaps are resolved** (`## Blocking Condition`), and so are the two the first
+implement pass raised: AD-51's identity clause is corrected in the spine and AC2's ownership
+prohibition is narrowed to one predicate (`## Spec Change Log`, 2026-09-22).
 
 ## Boundaries & Constraints
 
@@ -358,11 +371,11 @@ them; every probe below was read-only and ran with `server: "ocupilot-slot-a"`.
   `SENDSBODY` `:42`, `DESTRUCTIVE` `:47`, `WRITERESOURCE`/`WRITEPERMISSION` `:53`/`:55`,
   `PRECONDITIONFIELD` `:62`, `FINGERPRINTSUBJECT` `:66`, `STATEFIELD` `:76`, `Endpoint()` `:82`,
   `IdArgument()` `:89`, `PrivilegePairs()` `:126`, `StateDiff()` `:143`; `ProcessResume.cls` mirrors
-  it. **`Screen/Tool/TaskResume.cls` declares neither `PRECONDITIONFIELD` nor
-  `FINGERPRINTSUBJECT`** - DW-1476's live instance.
+  it. **`Screen/Tool/TaskResume.cls` now declares both as `Suspended`** - DW-1476, closed by this
+  story.
 - `Test/ToolWrite.cls`: `AssertActionWrite` `:562-613` (subject `:580`, precondition `:581`, guard
   answers `""` `:582`), the roster-equality test `:685-740`, the guard tests `:624-649` and
-  `:658-666`. `Test/SubjectProbe/` - five probes (`BodyTaking`, `EmptySubject`, `MissingIdentity`,
+  `:658-666`. `Test/SubjectProbe/` - six probes (`BodyTaking`, `EmptySubject`, `ExcludedName`, `NoSubject`,
   `MissingPrecondition`, `UnknownName`) over `ProcessList`, admitted by a probe registry overriding
   `ToolPackage()` `:11-14` and `ExcludedPackage()` `:16-19`.
 - `Test/SurfaceCoverage.cls`: `XData Coverage` `:56`, `<tool>` rows `:100-105`;
@@ -431,27 +444,29 @@ them; every probe below was read-only and ran with `server: "ocupilot-slot-a"`.
 
 ## Tasks & Acceptance
 
-- [ ] [Review] Narrow the ownership prohibition to **one predicate**: refuse the confirm's own
+- [x] [Review] Narrow the ownership prohibition to **one predicate**: refuse the confirm's own
   `$JOB` and any OcuPilot turn job (AD-7), whoever owns it. Remove the broad owned-by-caller
   refusal from Story 5.12's `Prohibited` branch. Pin both arms, and pin that a process the
   confirming user owns which is neither is **permitted**. Closes DW-1472 and DW-1477 together.
-- [ ] [Review] `TaskResume` declares `FINGERPRINTSUBJECT = "Suspended"` and DW-1476's refusal is
+- [x] [Review] `TaskResume` declares `FINGERPRINTSUBJECT = "Suspended"` and DW-1476's refusal is
   enforced: an action-style write that declares no subject fails registration. AD-51's corrected
   clause requires precondition fields the tool's own read answers - **not** identity.
-- [ ] [Review] Record the demo script's target in `## Design Notes`: a second portal session's
+- [x] [Review] Record the demo script's target in `## Design Notes`: a second portal session's
   process, permitted by the narrow reading.
 
-- [ ] [Review] Execute the delete as `DeleteByError(ns, date, <ids>)` once per enumerated date,
+- [x] [Review] Execute the delete as `DeleteByError(ns, date, <ids>)` once per enumerated date,
   removing exactly the enumerated ids (amended `epics.md:3791`). Scope stays by-namespace.
-- [ ] [Review] Render the authorised residue string on the card:
+- [x] [Review] Render the authorised residue string on the card:
   `"Removes exactly the <n> errors listed here. Any logged since the proposal will remain."`
   Both facts must survive any tightening for width.
-- [ ] [Review] DW-1423: measure whether any reachable path emits the change announcement with
+- [x] [Review] DW-1423: measure whether any reachable path emits the change announcement with
   action `deleted`. Fix and pin it if one does; record the finding and route the entry out if none
   does. Do not choose new copy - that half is a UX call.
-- [ ] [Review] DW-1472: the demo fixture creates its target process under an account other than the
+- [x] [Review] DW-1472: the demo fixture creates its target process under an account other than the
   confirming user. If that cannot be done on the demo instance, HALT with an `intent gap`.
-- [ ] [Review] Declare the port per write tool, defaulting to `AdminPort` (AD-52), and resolve the
+  **Superseded by the first item**: the narrow reading needs no fixture change (Spec Change Log,
+  2026-09-22).
+- [x] [Review] Declare the port per write tool, defaulting to `AdminPort` (AD-52), and resolve the
   mint's fresh read, the confirm's re-read, the prohibited-set evaluation and the write through it.
 
 **Execution:**
@@ -634,6 +649,60 @@ them; every probe below was read-only and ran with `server: "ocupilot-slot-a"`.
 
 ## Review Triage Log
 
+### 2026-09-22 - Review pass
+
+- verdicts: 15 findings - high 0, medium 5, low 6, false 4, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` the newly-permitted arm was asserted only through `ProcessControl.Verdict`,
+    a test-local re-implementation of the branch order, never through the shipped `Prohibits` -
+    verified: `Verdict` `:531` enumerates the two predicates itself, and the only `Prohibits` legs
+    assert refusals. Patched: `TestTheShippedProhibitsPermitsAProcessTheConfirmingUserOwns` drives
+    the shipped set against a second probe process started without a `Login`, reading its owner back
+    from `%SYS.ProcessQuery` so the leg is not vacuous; mutation recorded and demonstrated.
+  - `[medium]` `[patch]` (same root cause) the arms are pinned at the predicate, not at the shipped
+    dispatch - closed by the leg above.
+  - `[medium]` `[patch]` (same root cause) the permitted leg's `UserName` is inert because the
+    predicate no longer reads it, and no recorded mutation reddened it - closed by the leg above and
+    its `mutation:` line (re-add the ownership arm -> that leg red, every refusing leg green).
+  - `[low]` `[patch]` `Test/ToolWrite.cls` said "the five ways one can be wrong" while the method
+    asserts six and the paragraph this pass added enumerated six - verified against the body; both
+    counts corrected.
+  - `[low]` `[patch]` `Screen/Registry.cls`'s opening sentence still said a tool that declares no
+    subject "has nothing wrong with it", which the new condition contradicts - the wrong sentence is
+    replaced, not annotated, and the duplicated "One further condition:" opener is gone.
+  - `[low]` `[patch]` `Kernel/Proposal/Prohibited.cls`'s class header still attributed both process
+    predicates to AD-10 after the first one's authority became AD-7 plus AD-10's serving path -
+    corrected at origin.
+  - `[low]` `[patch]` `Turn.GuardedIsTurnJob`'s doc named the over-refusal window (a crashed job's
+    `running` row) and not the under-refusal one (a `queued` row carries no `JobId` yet) - the
+    converse is now named in the same paragraph.
+  - `[low]` `[reject]` the fail-closed branch on a `GuardedIsTurnJob` error has no test and no seam -
+    verified real, but it fails **closed**, is reachable only when the Turn table is unreadable, and
+    the fix adds a `TurnStateClass()` seam: new public surface for one branch, which the low bar
+    rejects.
+  - `[low]` `[reject]` the spec's own Code Map still described `TaskResume` as declaring neither
+    parameter and `SubjectProbe/` as five probes - real, but the fix edits this build's spec, which
+    triage rejects; both sentences were corrected as bookkeeping instead.
+  - `[medium]` `[defer]` superseded process-ownership claims survive outside this story's files -
+    verified at `epics.md:153` (FR-55), `:807`, `:3506-3508`, `:5636`, `EXPERIENCE.md:93`, `:220`,
+    `:414`, `prd.md:806`, `SPEC.md:99`, and `spec-5-12-*.md:53`, `:623`, `:666`, `:928`, `:943`.
+    Deferred rather than patched: Rule 5 reserves planning-artifact amendments to the lead, and
+    `EXPERIENCE.md`'s self-protection list is published copy a UX call governs.
+  - `[medium]` `[defer]` (same root cause) 5.12's `## Verification` mutation recipes name
+    `OwnedByCaller`, a method that no longer exists, so that story's Rule 19 evidence is no longer
+    re-runnable as written.
+  - `[false]` `[reject]` "5.13's own surface is absent from the diff" - descriptive and correct for a
+    scoped rework: the tool, port, card and their tests were built in earlier passes and re-ran green
+    in this pass's sweep.
+  - `[false]` `[reject]` `ErrorDelete`'s subject framing is superseded - the amended AD-51 permits
+    naming the id where the read answers one, so `namespace,entries` and its wording are both still
+    accurate.
+  - `[false]` `[reject]` the ledger is not written by this pass - Rule 15(a): build-auto records in
+    the spec's `deferred:` list and the lead harvests.
+  - `[false]` `[reject]` `GuardedIsTurnJob` spells `'running'` as a SQL literal rather than
+    `..#STATERUNNING` - the class's own sibling queries at `:213` and `:373` use the same literal
+    form, so this is the file's idiom, not a drift this pass introduced.
+
 ## Design Notes
 
 **Governing ADs (Rule 6).** AD-48 (this story, whole), AD-51 **as amended 2026-09-22** and AD-6 **as
@@ -674,6 +743,15 @@ that AD-48 answers the fingerprint differently -- would leave this tool outside 
 guard, which is exactly the "declared but unchecked" state DW-1476 files against `TaskResume`, and
 would make AD-51's amendment apply to no story that needed it. The decision is recorded here because
 the spawn prompt is right that it would otherwise be taken by default.
+
+**The demo script's process target, recorded rather than rediscovered.** The suspend demo acts on
+**a second portal session's process** -- the operator signs in to the classic portal in another
+browser and the demo suspends that session's job. The narrow ownership predicate permits it (it is
+neither the confirming job nor a turn job) and the broad one refused it, which is why the target is
+written down here. The demo fixture creates no process and needs no change: `Install/Fixture.cls`
+creates the `/csp/myapp` application, the SSL configuration, the X.509 credential, the wallet
+collection, the suspended `OcuPilotDemo nightly purge` task and one application error, and AD-25
+forbids it to leave a long-lived process owned by an account it would have to create and assume.
 
 **Why the fresh read is a new port method and not a fifth drill level.** `Errors`' four levels are
 route-bound (`Api/Router.cls:95-98`); the enumeration is reached only through the write path and
@@ -790,6 +868,19 @@ EXPERIENCE.md's roster of seven.
   `FingerprintSubjectProblem` condition in turn; revert `ProhibitedFixture.Digest` to the
   three-argument `Fingerprint.Of`; run `OcuPilot.Test.ErrorDelete` with no
   `OCUPILOT_ALLOW_ERROR_DELETE`.
+  Recorded by this pass, for the three pinning tests it changed -- each applied on `ocupilot-ci`
+  with the whole package reloaded there, observed red, reverted and re-run green:
+  `mutation: OcuPilot.Kernel.Proposal.Prohibited.IsOcuPilotProcess answers 0 ->
+  OcuPilot.Test.ProcessControl, 2 methods red (the predicate legs and the shipped-Prohibits leg)`;
+  `mutation: drop AND State = 'running' from OcuPilot.Kernel.State.Turn.GuardedIsTurnJob ->
+  OcuPilot.Test.ProcessControl, 1 method red (the finished-turn leg)`;
+  `mutation: delete the no-subject condition from OcuPilot.Screen.Registry.FingerprintSubjectProblem
+  -> OcuPilot.Test.ToolWrite, 1 method red (TestAnInadequateFingerprintSubjectIsRefusedAtRegistration)`;
+  `mutation: empty OcuPilot.Screen.Tool.TaskResume.FINGERPRINTSUBJECT -> OcuPilot.Test.ToolWrite,
+  11 methods red -- the guard refuses the tool at registration, so it is no longer a tool`;
+  `mutation: re-add the ownership arm to OcuPilot.Kernel.Proposal.Prohibited.IsOcuPilotProcess
+  (refuse a target whose UserName is $Username) -> OcuPilot.Test.ProcessControl,
+  TestTheShippedProhibitsPermitsAProcessTheConfirmingUserOwns red, every refusing leg green`.
 
 **Full runs, once, before `dev_complete` (once, before dev_complete):**
 
@@ -807,76 +898,71 @@ EXPERIENCE.md's roster of seven.
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap
+Status: done
+Blocking condition: none
 
-**Two intent gaps (Rule 5), raised rather than worked around. Everything else is built and verified.**
+**This pass closed the three items the 2026-09-22 decisions re-opened, and nothing else.**
 
-**1. DW-1472 -- the demo fixture has no process to create under a second account.** Measured:
-`src/OcuPilot/Install/Fixture.cls` creates a web application, an SSL configuration, an X.509
-credential, a wallet collection, the suspended `OcuPilotDemo nightly purge` task and one application
-error. It contains no `JOB` and creates **no process at all**, so Story 5.12's broad ownership
-prohibition leaves that story with no demo target on an instance running as `_SYSTEM`. Giving the
-fixture one means a long-lived process owned by an account it would have to create and then assume
--- `JOB` inherits the spawning process's username, and only a `Login` or a task `RunAsUser` changes
-it -- which is a durable side effect on an operator instance AD-25 forbids the fixture to leave.
-**The orchestrator's own HALT condition is met**; the narrow/broad ownership choice reopens with
-this evidence.
+**AC2's ownership prohibition is one predicate over two harms** (AD-7, AD-10).
+`Prohibited.IsOcuPilotProcess` refuses the job serving the confirmation (`$Job`) and any job running
+a turn, whoever owns it; a process the confirming user owns which is neither is now **permitted**.
+A turn job is identified from OcuPilot's own record -- `Turn.GuardedIsTurnJob`, `running` rows only,
+so a finished turn's pid cannot refuse the process the instance next gives that pid to -- rather
+than from anything the process read carries, and the predicate fails closed on a read with no `Pid`
+and on a state read that errors. The refusal code moved with the rule (`PROHIBITED.OWNPROCESS` ->
+`PROHIBITED.OCUPILOTPROCESS`; still twelve codes, one sentence each), `FIELDUSERNAME` and
+`OwnedByCaller` are gone, and both process tools' model-facing `DESCRIPTION` was corrected at its
+origin. `epics.md`'s Story 5.12 AC2 carries the amendment marker.
 
-**2. AD-51's identity clause cannot bind `TaskResume`.** The spec asks for a registration refusal of
-an action-style write declaring no fingerprint subject, with `TaskResume` declaring its own.
-`Task.CRUD`'s `INFO` -- the only request type that answers `Suspended` truthfully -- answers `Type`,
-`Status`, `Error`, `LastSchedule`, `LastStarted`, `LastFinished`, `NextScheduled`, `Suspended` and
-**no `Id`** (Story 5.11's live-pinned `OcuPilot.Test.TaskResume:47` records the same set), so
-`Fingerprint.Projection` refuses `Id` at every mint and no request type answers that tool's identity
-and its precondition field together. Applied, the refusal made a shipped tool unregistrable and
-reddened `OcuPilot.Test.TaskResume` (five methods) and `OcuPilot.Test.ProhibitedRoute` (one). Both
-halves are reverted and `TaskResume.cls` is byte-identical to Story 5.11's. **Recommended
-amendment:** amend AD-51 so the identity clause binds a subject the tool's own read type can answer,
-and say what carries identity where it cannot -- the proposal's `TargetRef`, which AD-13 scopes.
+**DW-1476 is enforced, and AD-51's corrected clause is what enforces it.**
+`Screen.Registry.FingerprintSubjectProblem` refuses an action-style write that declares **no**
+subject, and its identity condition is deleted -- identity is the proposal's `TargetRef` (AD-13),
+not the digest's job. `TaskResume` declares `PRECONDITIONFIELD` and `FINGERPRINTSUBJECT` as
+`Suspended`; its `SUSPENDEDFIELD` parameter became that precondition declaration rather than a
+second name for the same field. `SubjectProbe/MissingIdentity` is replaced by `SubjectProbe/NoSubject`.
 
-**Four defects found and fixed, each with a test that reddens without the fix.** A least-privileged
-confirm was answered **HTTP 500 `INTERNAL` naming no pair**: the AD-8 gate checked only the screen's
-instance pairs, so the caller fell through to the prohibited set's live read and the port's 403
-surfaced as a generic internal failure -- the one outcome AD-8 exists to prevent. `Transition` now
-unions the tool's `ArgumentPairs`, resolved from the stored arguments, and answers 403
-`AUTH.NOPRIVILEGE` with `detail.failedPair` (only `ErrorDelete` overrides `ArgumentPairs`, so the
-other six writes are unchanged). `Fingerprint.Projection` raised `<ILLEGAL VALUE>` on an object or
-array member, so no action write could declare a collection as its subject. The confirm's
-fingerprint re-read enumerated afresh, so every error logged between mint and confirm refused the
-confirm -- AD-48's residue clause backwards; AD-52's per-tool `PortQuery` now has the re-read ask
-which of the **stored** ids survive. And the client hard-coded `action: 'updated'`, so the `deleted`
-event this story's screen listens for was never published; the tool declares `CHANGEACTION` and the
-confirm's answer carries it.
+**The demo script's target is recorded** in `## Design Notes`: a second portal session's process,
+which the narrow reading permits and the broad one refused. The fixture needs no change, so DW-1472
+closes without one.
 
-**DW-1423, measured and routed out.** No reachable path emits the change announcement with action
-`deleted`: its one shipped call site is `announceChanged()` in `shell/data-table.ts`, and
-`application-error` is declared by exactly one descriptor -- `LogErrorList`, a drill-down that
-renders its own grid and is not a `DataTable`. This story does not execute the branch either, so the
-premise it was routed on does not hold, and the fixed `Updated:` prefix is left unreworded because
-that half is a UX call. Re-own it to a story whose screen is a `DataTable` and that can redden it.
+**Files changed.** `Kernel/Proposal/Prohibited.cls`; `Kernel/State/Turn.cls` (`GuardedIsTurnJob`);
+`Screen/Registry.cls`; `Screen/Tool/Write.cls` (the adequacy contract at its origin);
+`Screen/Tool/TaskResume.cls`; `Screen/Tool/ProcessSuspend.cls` and `ProcessResume.cls`;
+`Test/ProcessControl.cls`; `Test/ProposalFixture.cls` (`SeedTurn` takes a `JobId`; `SetTurnState`
+added); `Test/ToolWrite.cls`; `Test/TaskResume.cls`; `Test/SubjectProbe/NoSubject.cls` replacing
+`MissingIdentity.cls`; `epics.md`.
+
+**Review findings.** 15 filed across the two active layers (`blind-hunter` and `edge-case-hunter`
+are disabled in `_bmad/custom/bmad-build-auto.toml`). Five entries patched -- one `medium` (the
+newly-permitted arm was pinned only through a test-local re-implementation of the branch order, now
+driven through the shipped `Prohibits` against a probe process the confirming user owns) and four
+`low` doc corrections at their origin (`ToolWrite`'s five-versus-six count, `Registry`'s superseded
+opening sentence, `Prohibited`'s AD attribution, `GuardedIsTurnJob`'s unnamed `queued` window). One
+`medium` deferred: nine other documents still state the broad ownership reading, and Rule 5 reserves
+that amendment to the lead. Four rejected as `false` and two as `low`, each with its reason in
+`## Review Triage Log`. Follow-up review: `false` -- no `high` was patched on this follow-up pass.
 
 **Verified.** `check-objectscript` 612 files / 21 rules / 0; `npm run test:tools` 1306/0;
 `npm run test:components` 822/0; `npm run build` (seven prebuild checkers) clean; `lint-docs` clean.
-On `ocupilot-ci`, source synced and the package recompiled before every run: `ErrorDelete` (7),
-`ToolWrite`, `Prohibited`, `ProhibitedByEffect`, `ProhibitedRoute`, `ConfirmRoute`, `SurfaceCoverage`,
-`EndpointCoverage`, `Descriptor`, `EntityRef`, `TaskResume`, `ProcessControl`, `Proposal`,
-`ProposalConfirm`, `ProposalSpelling`, `AuditMarker`, `MarkerConfirm`, `AuditingUpdate`, `ErrorLog`,
-`ErrorLogWire`, `ErrorLogDenial`, `WireSecurityRead` -- each green, totals reconciled against
-`%UnitTest_Result`. Bundle rebuilt, redeployed and the installer re-run, then
-`error-log-delete`, `error-log` and `change-highlight` browser specs -- green. Nine Rule 19
-mutations applied, observed red, reverted and re-run green (listed under `## Verification`).
+On `ocupilot-ci`, the mounted source byte-identical to the worktree and the package reloaded before
+every run: **the full ObjectScript sweep, 178 classes one at a time, 1,625 methods, 0 failures**,
+reconciled against `%UnitTest_Result` rather than the runner envelope. Full browser suite 227 tests,
+226 pass -- the one failure was the reused throwaway's shell directory holding three `main-*.js`
+from successive `docker cp`s, so the stamp named the lexicographically greatest while the page
+loaded another; refreshing the mounted bundle and re-running `Install` with its bundle source left
+one `main`, and that spec re-ran 6/6. `smoke.sh --container ocupilot-ci` executed 46, passed 46,
+failed 0, pending 0, `agentwrite` and `auditmarker` both passing, one environmental skip
+(`agentswitches`). Five Rule 19 mutations applied on `ocupilot-ci` with the package reloaded there,
+observed red, reverted in both the worktree and the container, and re-run green (`## Verification`).
+The changed classes are loaded and compiled on `ocupilot-slot-a` too.
 
-**Not run, because this run terminates blocked:** the full `npm run test:browser` suite and the full
-ObjectScript sweep. Both are owed before `dev_complete` on the re-dispatch.
+**One matrix row still names a mechanism the instance does not use**, unchanged from the previous
+pass and for the lead: "Namespace with no errors" expects `StateDiff` to answer `pProblem`, while
+`NamespaceList` answers only namespaces that hold errors, so the port refuses `LOG.NAMESPACE` 404
+before `StateDiff` runs. The row's behavior column holds and is pinned (`Test/ErrorDelete.cls:263`).
 
-**One matrix row diverges from the code and needs the lead's eye.** "Namespace with no errors"
-expects `StateDiff` to answer `pProblem`. Measured: `NamespaceList` answers only namespaces that
-hold errors, so such a namespace is refused 404 `LOG.NAMESPACE` at the port and the mint refuses
-before `StateDiff` runs. The row's behavior column holds -- refused at the mint, no proposal row,
-no card -- while its error column names a mechanism the instance does not use.
-
-**Left as it was found.** `OcuPilotDemo nightly purge` reads `Suspended=1`; the throwaway's `USER`
-namespace holds no application errors and `HSCUSTOM`'s own are untouched; no probe principal
-survives; no process left suspended; no container stopped, recreated or torn down; nothing deleted
-on `ocupilot` or any slot instance. Slot A carries the same 612 compiled classes.
+**Left as it was found.** No process suspended on either instance and no probe process or probe
+principal surviving (read back on `ocupilot-ci`: 0, 0, 0); `OcuPilotDemo nightly purge` still reads
+`Suspended=1`; the throwaway's only namespace holding application errors is `HSCUSTOM`, so the
+seeded `USER` errors are gone; `ocupilot` still holds its 6 dates and 211 errors, unchanged; no
+container stopped, recreated or torn down.

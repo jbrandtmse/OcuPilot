@@ -2033,20 +2033,24 @@ ClassMethod ConfirmChannelProblem(pDeclaration As %DynamicObject) As %String
 Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 
 /// <p>What is wrong with write tool <var>pToolClass</var>'s declared fingerprint subject, or
-/// <code>""</code> (AD-51 as amended 2026-09-22). A tool that declares none has nothing wrong with
-/// it: its fingerprint is the descriptor's exclusions over the whole payload, which is AD-6's own
-/// rule and every merge write's behavior.</p>
+/// <code>""</code> (AD-51 as amended 2026-09-22). A <b>merge</b> write declares none and has
+/// nothing wrong with it: its fingerprint is the descriptor's exclusions over the payload it
+/// sends, which is AD-6's own rule. An action-style write sends none, so it must declare one.</p>
 /// <p><b>Caller contract:</b> <method>OcuPilot.Screen.Tool.Registry.ListTools</method> calls it for
 /// every write tool it lists, so a tool whose subject this refuses cannot be registered, reached by
 /// the model, or minted from.</p>
-/// <p>Four things are held. The declaration belongs to an action-style write alone, because the
-/// inversion is that kind's and a merge write declaring one would send a body narrowed to it. The
-/// other three are the structural half of adequacy: the subject carries the scoped target identity
-/// (<method>OcuPilot.Screen.Tool.Write.IdArgument</method>), it carries the field the tool's own
-/// precondition reads (<parameter>OcuPilot.Screen.Tool.Write.PRECONDITIONFIELD</parameter>), and
-/// every name in it is one the screen already knows. A subject of the identity alone would let a
-/// confirm succeed against a target somebody else had already moved, and an empty one would
-/// fingerprint nothing at all.</p>
+/// <p>Three things are held. An action-style write <b>declares</b> one, and a body-sending write
+/// does not, because the inversion is that kind's and a merge write declaring one would send a
+/// body narrowed to it. The other two are the structural half of adequacy: the subject carries
+/// the field the tool's own precondition reads
+/// (<parameter>OcuPilot.Screen.Tool.Write.PRECONDITIONFIELD</parameter>), and every name in it is
+/// one the screen or the tool's own read already knows. An empty subject fingerprints nothing at
+/// all, and one without the precondition field would let a confirm succeed against a target
+/// somebody else had already moved.</p>
+/// <p><b>Identity is not required</b> (AD-51 as amended 2026-09-22): the fingerprint asks whether
+/// the reviewed state moved, while which object this is is already answered by the proposal's
+/// <code>TargetRef</code> (AD-13). Naming the id is permitted where the read answers one, since
+/// it cannot move for a fixed target.</p>
 /// <p><b>The name check runs through <method>DeclaredNames</method></b>, the same extraction
 /// <method>ConfirmChannelProblem</method> validates <code>fingerprintExcludes</code> against, given
 /// this tool's class so its <code>toolRead</code> projection carries the names the tool's own read
@@ -2055,14 +2059,9 @@ Parameter WRITETOOLBASE = "OcuPilot.Screen.Tool.Write";
 /// <p>One further condition: a subject name the descriptor's <code>fingerprintExcludes</code> also
 /// names is refused, because <method>OcuPilot.Kernel.Proposal.Fingerprint.Of</method> projects
 /// before it excludes, so the digest would cover nothing.</p>
-/// <p><b>An action-style write that declares no subject at all is not refused here</b> (DW-1476,
-/// which stays open). Measured 2026-09-22: <code>Task.CRUD</code>'s <code>INFO</code> answers
-/// <code>Type, Status, Error, LastSchedule, LastStarted, LastFinished, NextScheduled,
-/// Suspended</code> and no <code>Id</code>, so
-/// <class>OcuPilot.Screen.Tool.TaskResume</class> cannot declare a subject carrying its own
-/// identity and no <code>Task.CRUD</code> request type answers that identity and
-/// <code>Suspended</code> together. Refusing here would make a shipped tool unregistrable, so the
-/// condition is raised rather than added.</p>
+/// <p>And one last: an action-style write that declares no subject at all is refused (DW-1476).
+/// Such a tool sends no payload, so leaving the subject undeclared would fall back to AD-6's
+/// exclusion model over a body it never sends -- a fingerprint over nothing.</p>
 ClassMethod FingerprintSubjectProblem(pToolClass As %String) As %String
 {
     Set tProblem = ""
@@ -2080,12 +2079,11 @@ ClassMethod FingerprintSubjectProblem(pToolClass As %String) As %String
         If tSubject = "" {
             If $Parameter(pToolClass, "FINGERPRINTSUBJECT") '= "" {
                 Set tProblem = "FINGERPRINTSUBJECT is declared and names no field, and a subject that covers nothing is no fingerprint at all (AD-51)"
+                Quit
             }
-            Quit
-        }
-        Set tIdentity = $ClassMethod(pToolClass, "IdArgument")
-        If '$ListFind(tSubject, tIdentity) {
-            Set tProblem = "the declared fingerprint subject omits '" _ tIdentity _ "', which is this tool's scoped target identity (AD-13, AD-51)"
+            If '$ClassMethod(pToolClass, "SendsBody") {
+                Set tProblem = "an action-style write declares the subject its fingerprint covers, and this one declares no FINGERPRINTSUBJECT -- it sends no payload, so there is nothing for AD-6's exclusion model to cover (AD-51)"
+            }
             Quit
         }
         Set tPrecondition = $ClassMethod(pToolClass, "PreconditionField")

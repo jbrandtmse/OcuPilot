@@ -249,7 +249,11 @@ ClassMethod SeedProposal(ByRef pValues, Output pKey As %String, Output pToken As
 
 /// <p>Insert a turn row for <var>pUser</var> in <var>pState</var>, as a job that has already
 /// finished would have left it, and answer its key in <var>pKey</var>.</p>
-ClassMethod SeedTurn(pUser As %String, pState As %String, Output pKey As %String) As %Status
+/// <p><var>pJobId</var> is the pid the row records as the job that began the turn, which
+/// <method>OcuPilot.Kernel.State.Turn.GuardedBegin</method> stamps from <code>$JOB</code> in
+/// production. Trailing and optional, because only a test about a <b>running</b> turn's job needs
+/// a pid other than none, and it must be one this process is not.</p>
+ClassMethod SeedTurn(pUser As %String, pState As %String, Output pKey As %String, pJobId As %String = "") As %Status
 {
     Set pKey = $ZConvert(##class(%xsd.hexBinary).LogicalToXSD($System.Encryption.GenCryptRand(16)), "L")
     ; Recorded so a class whose rows name the running account rather than PROBEPREFIX -- every
@@ -257,9 +261,16 @@ ClassMethod SeedTurn(pUser As %String, pState As %String, Output pKey As %String
     ; remove exactly what it wrote (RemoveSeeded).
     Set ^||OcuPilotProposalFixtureTurns(pKey) = ""
     Set tNow = ##class(OcuPilot.Kernel.State.Turn).Timestamp()
-    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "INSERT INTO OcuPilot_Kernel_State.Turn (TurnKey, UserName, State, QueuedAt, StartedAt, EndedAt, RowVersion) VALUES (?, ?, ?, ?, ?, ?, 1)", pKey, pUser, pState, tNow, tNow, tNow)
+    Set tRS = ##class(%SQL.Statement).%ExecDirect(, "INSERT INTO OcuPilot_Kernel_State.Turn (TurnKey, UserName, State, QueuedAt, StartedAt, EndedAt, JobId, RowVersion) VALUES (?, ?, ?, ?, ?, ?, ?, 1)", pKey, pUser, pState, tNow, tNow, tNow, pJobId)
     If tRS.%SQLCODE < 0 Quit $$$ERROR($$$GeneralError, "the probe turn could not be seeded: SQLCODE=" _ tRS.%SQLCODE _ " " _ tRS.%Message)
     Quit $$$OK
+}
+
+/// <p>Force turn <var>pKey</var>'s stored <code>State</code>, for a test that needs a seeded turn
+/// to reach a terminal state without a job having run it.</p>
+ClassMethod SetTurnState(pKey As %String, pState As %String) As %Status
+{
+    Quit ..Update("UPDATE OcuPilot_Kernel_State.Turn SET State = ? WHERE %EXACT(TurnKey) = ?", pState, pKey)
 }
 
 /// <p>Force proposal <var>pKey</var>'s stored <code>Burned</code> flag.</p>

@@ -54,8 +54,20 @@ Parameter WRITERESOURCE = "%Admin_Task";
 
 Parameter WRITEPERMISSION = "USE";
 
-/// <p>The <code>INFO</code> property the not-suspended refusal reads.</p>
-Parameter SUSPENDEDFIELD = "Suspended";
+/// <p>The <code>INFO</code> property the not-suspended refusal reads, which is by construction the
+/// field this tool's own precondition reads (AD-51).</p>
+Parameter PRECONDITIONFIELD = "Suspended";
+
+/// <p>The subject the fingerprint covers: the one <code>INFO</code> field whose movement between
+/// the mint and the confirm invalidates the reviewed intent. A task somebody else resumed in that
+/// window is refused <code>PROPOSAL.TARGETCHANGED</code>, while the counters and timestamps
+/// <code>INFO</code> also answers -- <code>Status</code>, <code>LastStarted</code>,
+/// <code>NextScheduled</code> -- move whenever the task runs and are not the diff moving
+/// (AD-51).</p>
+/// <p><b>The identity is absent deliberately</b>: <code>Task.CRUD</code>'s <code>INFO</code>
+/// answers no <code>Id</code>, and the proposal's <code>TargetRef</code> is what says which task
+/// this is (AD-13, AD-51 as amended 2026-09-22).</p>
+Parameter FINGERPRINTSUBJECT = "Suspended";
 
 /// <p>The state row's label and its two values. The label is the product's word for the state,
 /// which <file>epics.md</file> and UJ-6 both write as
@@ -137,7 +149,7 @@ ClassMethod StateDiff(pFresh As %DynamicObject, Output pRows As %DynamicArray, O
     Try {
         Set tRendered = ""
         If $IsObject(pFresh) {
-            Set tRendered = ##class(OcuPilot.Kernel.Proposal.Mint).Display(pFresh.%Get(..#SUSPENDEDFIELD), pFresh.%GetTypeOf(..#SUSPENDEDFIELD))
+            Set tRendered = ##class(OcuPilot.Kernel.Proposal.Mint).Display(pFresh.%Get(..#PRECONDITIONFIELD), pFresh.%GetTypeOf(..#PRECONDITIONFIELD))
         }
         If '..ReadsSuspended(tRendered) {
             Set pProblem = "this instance reports that task as not suspended, and only a suspended task can be resumed"

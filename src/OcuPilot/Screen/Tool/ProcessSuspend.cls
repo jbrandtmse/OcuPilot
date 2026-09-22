@@ -22,7 +22,7 @@ Parameter TOOLNAME = "osmgmt.processes.suspend";
 
 Parameter DESCRIPTORCLASS = "OcuPilot.Screen.Descriptor.ProcessList";
 
-Parameter DESCRIPTION = "Propose suspending one process this instance is running. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the process by the numeric process id the processes list reports for it. A process that is already suspended, a process the signed-in user owns, and an IRIS system process are all refused.";
+Parameter DESCRIPTION = "Propose suspending one process this instance is running. It changes nothing by itself: it answers a proposal the user reviews and confirms. Name the process by the numeric process id the processes list reports for it. A process that is already suspended, a process OcuPilot is itself running in -- this request, or an agent turn -- and an IRIS system process are all refused.";
 
 /// <p>The state read: <code>Process</code>'s <code>GET</code>, the endpoint's one single-object
 /// read. Its <code>LIST</code> answers an array and there is no <code>TYPEINFO</code> on the
