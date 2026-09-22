@@ -450,8 +450,9 @@ ClassMethod User(pId As %String, pPayload As %DynamicObject, pTarget As %Dynamic
 /// A change to <code>Enabled</code> is permitted in <b>both</b> directions, because AD-10's set is
 /// by effect and neither turning auditing on nor turning it off is an effect it forbids; every
 /// other property of the object is refused <parameter>UNCOVEREDFIELD</parameter>, which is what
-/// keeps a vendor property a later IRIS build adds to this endpoint's template out of a payload
-/// until somebody reviews it.</p>
+/// keeps a vendor property a later IRIS build adds to this endpoint's template out of the
+/// <b>changed</b> set until somebody reviews it. The payload still carries it, unchanged, as the
+/// complete body over the fresh read (AD-4); what this refuses is a proposal that moves it.</p>
 /// <p><b>Turning auditing off is not prohibited, and that is the decision rather than an
 /// omission</b>: the product answers it with the card's warning, the recorded drop of the marker
 /// and the panel banner (AD-15 as amended 2026-09-21). Refusing it would mean an operator could

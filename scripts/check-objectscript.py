@@ -1289,8 +1289,9 @@ def check_test_class_properties(problems: list[str]) -> None:
 # name is no proxy for it -- several classes read that class's parameters without ever issuing a
 # write. So the confirm route is outside the population, and a class that takes it carries its own
 # `OnBeforeAllTests` refusal by its author's decision rather than by this gate
-# (`OcuPilot.Test.ProhibitedRoute` is the first). The restore helper is outside it too, because it
-# only ever turns auditing back on.
+# (`OcuPilot.Test.ProhibitedRoute` is the first). A class holding only the restore helper is not
+# exempt: `RestoreAuditing` reaches `Security.System.Modify` like any other caller, so the rule
+# reads it as in the population and asks for a guard it does not need.
 #
 # Deleting a role was outside the rule until DW-396, on the ground that it is the tail of an
 # install probe rather than a principal this suite brought into being. It is inside it now: the

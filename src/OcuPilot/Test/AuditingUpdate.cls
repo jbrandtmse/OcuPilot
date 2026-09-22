@@ -50,17 +50,27 @@ Method OnBeforeOneTest() As %Status
 
 /// <p>Restore auditing and the recorded marking fact whatever a method did, then report a failed
 /// restore as a failure of this teardown rather than of the next class to run.</p>
+/// <p><b>The assertion is on the reading taken BEFORE this teardown repairs anything</b> (AC7).
+/// A method that turns auditing off restores it in a frame of its own, so a reading of 0 here says
+/// that frame did not run -- and a reading taken after the repair would be 1 whether it ran or not,
+/// which is the assertion that cannot fail. The repair still happens, because the next class must
+/// not inherit an unaudited instance; what is asserted is that it had nothing to do.</p>
+/// <p>A failed repair is held rather than returned at once, so the fixture removal below runs on
+/// that path too: an unaudited instance and a leaked probe proposal in the same teardown would
+/// otherwise reach every later method.</p>
 Method OnAfterOneTest() As %Status
 {
     Do ##class(OcuPilot.Kernel.Proposal.Caller).Clear()
+    Set tBefore = ..AuditEnabled()
     Do ..RestoreAuditing()
     Set tEnabled = ..AuditEnabled()
-    If tEnabled '= 1 Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.AuditingUpdate left this instance's auditing off (AuditEnabled = " _ tEnabled _ ")")
-    Do $$$AssertEquals(tEnabled, 1, "auditing is on again after the test")
+    Set tResult = $$$OK
+    If tEnabled '= 1 Set tResult = $$$ERROR($$$GeneralError, "OcuPilot.Test.AuditingUpdate left this instance's auditing off (AuditEnabled = " _ tEnabled _ ")")
+    Do $$$AssertEquals(tBefore, 1, "the method restored auditing itself, so this teardown had nothing to repair")
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining)
     Do $$$AssertStatusOK(tSC, "the probe proposals and turns are removed")
     Do $$$AssertEquals(tRemaining, 0, "and none survives the removal")
-    Quit $$$OK
+    Quit tResult
 }
 
 /// <p>The instance-wide <code>AuditEnabled</code> setting, or <code>-1</code> when it could not be
@@ -363,11 +373,13 @@ Method TestTheWarningAsksTheQuestionThePayloadAsks()
 /// <p>Mint <var>pArgs</var> through the fixture port directly (not through the tool's schema, which
 /// admits a JSON boolean alone) and answer 1 when a row was stored, with its stored
 /// <code>auditWarning</code> in <var>pWarning</var>.</p>
-/// <p><b><code>0</code> means the mint refused, and nothing else.</b> An arrangement that failed --
-/// the turn not seeded, the stored row not readable -- answers <code>-1</code>, so a caller
-/// asserting <code>0</code> is asserting the merge's own refusal rather than accepting any
+/// <p><b><code>0</code> means the mint refused.</b> An arrangement that failed -- the turn not
+/// seeded, the stored row not readable -- answers <code>-1</code> and asserts its own cause, so a
+/// caller asserting <code>0</code> is asserting the merge's own refusal rather than accepting any
 /// breakage as one. The two are the same value in the obvious spelling, which is what makes a leg
-/// that expects a refusal pass for the wrong reason.</p>
+/// that expects a refusal pass for the wrong reason. The one residue is a mint that reports OK
+/// and whose row then reads back absent, which answers <code>0</code> as well; no path in this
+/// class reaches it, because the key comes from that same mint.</p>
 Method MintedWarning(pArgs As %DynamicObject, Output pWarning As %Boolean) As %Integer
 {
     Set pWarning = 0

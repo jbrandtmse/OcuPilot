@@ -13,6 +13,10 @@
 /// descriptor. The same edit is what arms
 /// <method>OcuPilot.Kernel.Proposal.Confirm.ChannelProblem</method>'s accept arm against a real
 /// declaration instead of a name list a test supplies.</p>
+/// <p><b>Its read declaration is a fixture, not a description of <code>WebApp.App</code>.</b>
+/// That endpoint's <code>LIST</code> answers no <code>Password</code>; the field is in
+/// <code>read.fields</code> because that is where the sound declaration above has to name it, and
+/// this screen mints no read. Do not mine these field names as a claim about the vendor endpoint.</p>
 /// <p>It lives under <package>OcuPilot.Test</package>, which
 /// <parameter>OcuPilot.Screen.Registry.DESCRIPTORPACKAGE</parameter> does not enumerate, so it
 /// reaches no roster, no route table and no read tool. Nothing but a test names it.</p>

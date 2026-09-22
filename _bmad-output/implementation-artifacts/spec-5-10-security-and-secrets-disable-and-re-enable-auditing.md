@@ -608,6 +608,87 @@ tests.
     the real confirmed sequence, that `%SYS.Audit` holds those rows for the window and that their
     timestamps bracket the not-marked ledger row.
 
+### Review Findings
+
+**2026-09-22 — code review, iteration 1.** Four layers on Opus (`review_tier: full-opus`):
+blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor. 40 rows, 5 rejected, the
+rest grouped to 25 root-cause entries — high 0, med 7, low 18. Eighteen patched in-pass (6 med, 12
+low), four closed at emission, two ledgered, one med routed. Every patch verified: `npm run test:tools` 1300/1300, `npm run test:components`
+813/813, `check-objectscript.py` 0/598 and its harness 128/128, `lint-docs.sh` clean, `npm run build`,
+and on `ocupilot-ci` AuditingUpdate 6/6, ProhibitedRoute 11/11, AdminPortAsync 3/3, Descriptor 48/48,
+Proposal 14/14, ProposalConfirm 20/20, ReadTool 27/27, ToolWrite 13/13, plus
+`auditing-write.browser-spec.mjs` 3/3 against a rebuilt bundle. Five mutations demonstrated and
+reverted (`## Verification`).
+
+**Medium — six patched, one ledgered (DW-1456, below).**
+
+1. **AC10's `savedBody` assertion could not fail, and the triage log recorded the opposite as
+   measured.** `AdminPort.Sequence:906` calls `SaveRequestBody` on the vendor's own
+   `ASYNCTASKENDPOINTCLASS` instance, never on `pEndpoint`, so `EndpointFixture.SaveRequestBody` had
+   no caller anywhere and `Recorded("savedBody")` read `""` under every mutation in both directions.
+   Removed the assertion, the dead fixture method and its `Recorded()` doc clause; the method's doc
+   comment and the `## Verification` line now say the log line is the only witness and that the
+   ordering is pinned by construction.
+2. **AC7's teardown assertion could not fail.** Both teardowns read `AuditEnabled` *after* their own
+   repair and asserted it behind a guard that had already returned on any other value. They now
+   assert the reading taken before the repair, which reddens on exactly the failure path AC7 names.
+3. **A failed restore skipped the rest of both teardowns.** The `$$$ERROR` returned before
+   `RemoveSeeded` — and in `ProhibitedRoute` before `RemoveLeastPrivilegedPrincipal` and the `TARGET`
+   delete — so the one case the guard exists for also leaked a principal, a web-application row and
+   seeded proposals into every later method. The error is now held and returned last.
+4. **`destructive` joined the proposal wire without joining the gate that keeps the client from
+   authoring one.** `ui/tools/proposal.test.mjs`'s two alternations carry `auditWarning` and
+   `unchanged` for this reason; `destructive` is now in both.
+5. **The browser spec's only blast-radius guard was the live container's name.** `ocupilot-slot-b`
+   and `ocupilot-slot-c` passed `notEqual(LIVE_CONTAINER)`, and this spec's effect is instance-wide.
+   It now refuses any container whose name is not a throwaway, in `before` and in `after`.
+6. **The card's unfilled-secret reason rendered unconditionally.** "Fill in every masked field to
+   confirm." stayed visible once every field was filled; only `aria-describedby` cleared. Gated on
+   the same condition, and the DW-1232 spec leg now pins the sentence as well as the attribute.
+
+**Low — patched.** `Confirm`'s AD-10 doc block had been separated from `ProhibitedClassName` by the
+new `ToolRegistryClass`, and the class header claimed a name-for-name mirror of `Mint`'s seams;
+`Registry.cls:2128` still carried the third `Set x = x` no-op the triage log recorded as removed;
+`buildMirror`'s `singletonId = 'SYSTEM'` default made its own non-empty throw unreachable (removed,
+with the two literal test call sites supplying it, as `parseSingletonId`'s doc requires);
+`AUDITING_CONFIG_ENTITY` was a hand-written literal pinned only against itself (now held against the
+mirrored `ENTITY_TYPES`); `EXPERIENCE.md`'s new row cited `:426`, the `typed-name-field` row this
+story does not ship, rather than `:427`; `check-objectscript.py`'s new prose claimed the restore
+helper is outside the rule's population, which its own `Security.System.Modify` arm contradicts;
+`MintedWarning`'s doc claimed `0` means the refusal "and nothing else"; `Prohibited.Auditing`'s doc
+claimed the sweep keeps a new vendor property out of the payload rather than out of the changed set
+(AD-4 carries it unchanged); `ProposalScreen` now says its `Password` read field is a fixture, not a
+claim about `WebApp.App`; and `fingerprintExcludes`' doc claimed a nested path is "still nameable
+through the read half", which it is not.
+
+**Closed at emission.**
+
+- `by-design` — AC10's refusal leaves `%response.Status` unset so it renders 500: the matrix row's
+  own error handling for this case is "port fault, logged". The `fingerprintExcludes` tightening and
+  `ProposalScreen`'s fabricated read field are Tasks 11 and 13 as written.
+- `wontfix-accepted` — AC3's "driven through the tool's own `View()`" is not implemented; the
+  non-circular equality DW-1244 asked for is, and `View()` is on the real path in the browser spec's
+  `tool_use`. `reopen_if=AC3's equality stops being asserted against the shipped tool's own
+  parameters`.
+- `wontfix-theoretical` — `DeclaredNames`' and `DeclaredCriterionParams`' catches changed a reset to
+  keep-partial with no test driving a raise through either loop; reachable only behind a declaration
+  `ReadProblem` has already refused. Real if `ReadProblem` ever stops running first.
+
+**Ledgered.** DW-1456 (med, `routed owner=burndown`): the union's `settable` spelling is never bound
+to `Write.FieldRows`' own drop, so a divergence between the three copies of the `[]`-stripping rule
+would accept a declared secret the tool still advertises — DW-1206 closed the two *validators*'
+divergence, this is the validator-to-*consumer* one. DW-1457 (low, `wontfix-accepted`): a
+credential-named array row is an unsatisfiable `secretArguments` declaration. Occurrence on DW-1447
+(`browser-reset.mjs` cannot see this story's spec either). Evidence corrected in place on DW-1455
+(the re-read filter is now a three-type roster) and DW-1171 (the case is a dropped `SecurityChange`,
+not `DESCRIPTIONGRANT`).
+
+**Rejected.** Three `## Auto Run Result` count discrepancies (files changed 55 vs 56, "twelve amended
+ObjectScript classes" vs 14, and the 175/1589 reconciliation against DW-1452) — real, but the fix is
+to edit this spec, which a review may not do. Two low findings whose fix adds complexity for a case
+not shown reachable: the two `declaredNames` twins iterate in different orders so with two offenders
+they could quote different names, and `MintedWarning` conflates a vanished row with a refusal.
+
 **Correction to apply at its origin (prose).** `ui/src/app/core/proposal-view.ts`'s `payloadSecrets`
 doc comment justifies the narrowing with "`WithSecrets` merges only into the stored payload". That is
 wrong: `OcuPilot.Kernel.Proposal.Confirm.WithSecrets` (`:601-608`) calls `tPayload.%Set(tName, ...)`,
@@ -803,7 +884,15 @@ alone would leave Confirm permanently `aria-disabled` and AC7's round trip unrea
   - `mutation: return an empty map from panel.secretsFor -> NOT FALSIFIABLE and corrected 2026-09-21. No SHIPPED descriptor declares a secret argument (this story's own write has one boolean field), so no proposal the panel can build asks for a masked field and the posted body is {} either way. What is falsifiable, and demonstrated: emitting the proposal id alone from ProposalCard.confirm -> proposal-card.spec.ts's typed-values leg. The panel-tier leg arrives with the first secret-bearing write tool (FR-43, FR-46) and is in this spec's deferred: list`
   - `mutation: key the masked-field lookup back on the entity type in Panel.proposalView -> panel.spec.ts's DW-1227 leg over the auditing proposal, whose screen is built: false and so resolves to null by entity type. DEMONSTRATED 2026-09-21`
   - `mutation: drop the +pSecurityChange arm from Event.cls's report selection -> OcuPilot.Test.AuditEvent's security-sentence leg, while its configuration and ledger-read legs still pass (AC10). DEMONSTRATED 2026-09-21`
-  - `mutation: remove the mutating-and-async refusal from AdminPort.Sequence -> OcuPilot.Test.AdminPortAsync's refusal method, armed by OcuPilot.Test.EndpointFixture's async mode (AC10). DEMONSTRATED 2026-09-21. The load-bearing assertion is the log line naming the refused method: the savedBody assertion reads the same either way, because without the guard the vendor's own AsyncTaskEndpoint constructor fails on a class that is not one of its endpoints`
+  - `mutation: remove the mutating-and-async refusal from AdminPort.Sequence -> OcuPilot.Test.AdminPortAsync's refusal method, armed by OcuPilot.Test.EndpointFixture's async mode (AC10). DEMONSTRATED 2026-09-21. The log line naming the refused method is the ONLY witness, and AC10's ordering half is pinned by construction rather than asserted: the port calls SaveRequestBody on the vendor's own ASYNCTASKENDPOINTCLASS instance and never on the endpoint, so no fixture method can observe it. The savedBody assertion and the fixture method behind it were removed at code review 2026-09-22 as unfalsifiable`
+  - `(QA) mutation: in OcuPilot.Screen.Registry.DeclaredNames, require the credential/string bit (the third list element) before adding a name to the "settable" projection -> OcuPilot.Test.Descriptor.TestTheConfirmChannelRefusesACredentialNamedFieldItDoesNotDeclare's new leg (run 4107, that method alone; the other 47 stayed green); the mirror twin -- gating declaredNames' settable push on row.credential in ui/tools/screen-mirror.mjs -> the new leg of screen-mirror.test.mjs's "confirmChannelProblem returns the instance-side sentences" test. AC8's existing positive example ("Timeout") is a string field and cannot tell the membership check's type-independent "settable" set apart from the credential heuristic's string-only one; "AutoCompile" (webapp.list.update, boolean) can. Both reverted, both trees confirmed byte-identical (`git status --short`, `git diff --stat`), both green again (ObjectScript run 4108 48/48; node --test 51/51)`
+  - `(QA) file: src/OcuPilot/Test/Descriptor.cls -- one assertion added to TestTheConfirmChannelRefusesACredentialNamedFieldItDoesNotDeclare (a non-string settable field is a sound secretArguments entry)`
+  - `(QA) file: ui/tools/screen-mirror.test.mjs -- the same assertion added to the twin test`
+  - `(CR) mutation (AC7, the failure path): remove OcuPilot.Test.AuditingUpdate's own in-method RestoreAuditing frame with a raise injected between the disable and the re-enable -> OnAfterOneTest's new "the method restored auditing itself, so this teardown had nothing to repair" assertion goes red (run 4113). Restoring the frame with the raise still injected leaves only the injected raise red (run 4114), which is the pair that says the frame is what the assertion pins. The assertion it replaced read AuditEnabled AFTER the teardown's own repair and so could not fail at all. Arrangement reverted, AuditingUpdate 6/6 green again (run 4115), ProhibitedRoute 11/11 (run 4111), tree byte-identical`
+  - `(CR) mutation (AC1, the declaration stays on the instance): plant "destructive: true" in a shipped client module -> ui/tools/proposal.test.mjs's "nothing shipped in the client authors a proposal value" goes red naming the file. DEMONSTRATED 2026-09-22 and reverted; destructive was on the wire without being in either alternation, which auditWarning and unchanged both are`
+  - `(CR) mutation (AC6, the re-read filter): misspell AUDITING_CONFIG_ENTITY -> ui/tools/agent-status.test.mjs's new "the kernel's own closed enum declares it" assertion goes red. DEMONSTRATED 2026-09-22 and reverted. The roster assertion beside it compares the constants with themselves; the browser spec's banner leg is the end-to-end witness`
+  - `(CR) mutation (AC9, the reason is an instruction): render the secrets-reason paragraph unconditionally again -> proposal-card.spec.ts's DW-1232 leg goes red on the new "the sentence goes with the aria-describedby" assertion. DEMONSTRATED 2026-09-22 and reverted; the caption stayed visible after every masked field was filled`
+  - `(CR) mutation (the spec's own blast radius): OCUPILOT_BROWSER_CONTAINER=<a non "-ci" name> with a matching origin -> ui/browser/auditing-write.browser-spec.mjs refuses in before(), naming the container, before any docker exec runs. DEMONSTRATED 2026-09-22. notEqual(LIVE_CONTAINER) alone let an owner-managed ocupilot-slot-* name through, and this spec's effect is instance-wide`
 
 **Full runs, once, before `dev_complete` (once, before dev_complete):**
 

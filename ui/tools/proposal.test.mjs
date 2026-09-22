@@ -425,8 +425,13 @@ test('nothing shipped in the client authors a proposal value, and nothing posts 
   // `unchanged` joined the wire in Story 5.8 -- the disclosure's own rows, projected and masked on
   // the instance (DW-1223). A shipped literal there would put a value the classification never
   // admitted under the caption, so it belongs in the alternation like every other proposal field.
+  // `destructive` joined the wire in Story 5.10, declared by the write tool's own `DESTRUCTIVE`
+  // parameter. A shipped literal there would draw the destructive treatment -- or withhold it --
+  // from the client rather than from the tool, which is the safety signal the declaration exists
+  // to keep on the instance, so it is in the alternation with `auditWarning` and admits the two
+  // boolean spellings for the same reason.
   const authoring =
-    /\b(before|after|unchanged|unchangedCount|rationale|expectedImpact|reverse|fingerprint|auditWarning)\s*:\s*('|"|\d|`|true\b|false\b)/;
+    /\b(before|after|unchanged|unchangedCount|rationale|expectedImpact|reverse|fingerprint|auditWarning|destructive)\s*:\s*('|"|\d|`|true\b|false\b)/;
   // Since Story 5.3 the client does POST to a proposal route -- the id in the path and, in the
   // body, only the fields the target screen declares secret-typed. What it still may not do is
   // post a proposal's own content, so the scan is for a request body that names one.
@@ -434,7 +439,7 @@ test('nothing shipped in the client authors a proposal value, and nothing posts 
   // off the answer to that same POST, within the scan's own window, so naming them here would
   // flag the reader rather than an author.
   const posting =
-    /method:\s*'(POST|PUT)'[\s\S]{0,200}\b(payload|fingerprint|changed|diff|unchanged|unchangedCount|targetRef|rationale|expectedImpact|reverse|auditWarning)\b/i;
+    /method:\s*'(POST|PUT)'[\s\S]{0,200}\b(payload|fingerprint|changed|diff|unchanged|unchangedCount|targetRef|rationale|expectedImpact|reverse|auditWarning|destructive)\b/i;
   const offenders = [];
   for (const path of clientSources()) {
     if (path === EXAMPLE_PROPOSAL || path.endsWith('.spec.ts') || path.includes(`${join('app', 'testing')}`)) {

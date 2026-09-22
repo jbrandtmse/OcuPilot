@@ -2146,7 +2146,7 @@ export function buildMirror({
   idRules = [],
   idRuleNames = [],
   refSeparator,
-  singletonId = 'SYSTEM',
+  singletonId,
   declaredNameKinds = IMPLEMENTED_DECLARED_NAME_KINDS,
   scopeWords,
   archetypes,

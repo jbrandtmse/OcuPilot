@@ -27,8 +27,12 @@
 /// transaction, and the vendor's own endpoints run transactions of their own, so a rollback could
 /// leave a vendor write half-undone. Single-use survives either way -- a claim that commits and a
 /// write that then fails leaves the proposal burned and confirmed, refused on any re-attempt.</p>
-/// <p>Seams a subclass overrides: <method>PortClass</method>, <method>StoreClass</method> and
-/// <method>ToolRegistryClass</method>, mirroring <class>OcuPilot.Kernel.Proposal.Mint</class>'s.
+/// <p>Seams a subclass overrides: <method>PortClass</method>, <method>StoreClass</method>,
+/// <method>LedgerClass</method>, <method>EventClass</method>, <method>LimitsClass</method>,
+/// <method>ToolRegistryClass</method> and <method>ProhibitedClassName</method>. The first two are
+/// <class>OcuPilot.Kernel.Proposal.Mint</class>'s own; <method>ToolRegistryClass</method> answers
+/// the same class <method>OcuPilot.Kernel.Proposal.Mint.RegistryClass</method> does, named for the
+/// registry it resolves because this class carries five other <code>*Class</code> seams beside it.
 /// Production overrides none of them.</p>
 Class OcuPilot.Kernel.Proposal.Confirm Extends %RegisteredObject
 {
@@ -79,12 +83,6 @@ ClassMethod LimitsClass() As %String
     Quit "OcuPilot.Kernel.Agent.Limits"
 }
 
-/// <p>AD-10's prohibited set, as <method>OcuPilot.Kernel.Proposal.Write.ProhibitedClass</method>
-/// answers it -- <class>OcuPilot.Kernel.Proposal.Prohibited</class>.</p>
-/// <p>Overridable for the reason <method>PortClass</method> and <method>StoreClass</method> are: a
-/// fixture answers with the set reading an armed target, so the refusal branch is driven without
-/// the instance's own. Production never overrides it, and the set itself is still named in exactly
-/// one place (AD-10).</p>
 /// <p>The tool registry <method>ChannelProblem</method> resolves a proposal's tool through, to ask
 /// that tool what its descriptor declares secret. Overridable so a test can arm the closed
 /// channel's accept arm against a probe screen's <b>real</b> declaration rather than against a name
@@ -94,6 +92,12 @@ ClassMethod ToolRegistryClass() As %String
     Quit "OcuPilot.Screen.Tool.Registry"
 }
 
+/// <p>AD-10's prohibited set, as <method>OcuPilot.Kernel.Proposal.Write.ProhibitedClass</method>
+/// answers it -- <class>OcuPilot.Kernel.Proposal.Prohibited</class>.</p>
+/// <p>Overridable for the reason <method>PortClass</method> and <method>StoreClass</method> are: a
+/// fixture answers with the set reading an armed target, so the refusal branch is driven without
+/// the instance's own. Production never overrides it, and the set itself is still named in exactly
+/// one place (AD-10).</p>
 ClassMethod ProhibitedClassName() As %String
 {
     Quit ##class(OcuPilot.Kernel.Proposal.Write).ProhibitedClass()

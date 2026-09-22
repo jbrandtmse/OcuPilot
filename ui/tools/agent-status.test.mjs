@@ -48,6 +48,7 @@ const {
   restraintSentence,
 } = await import(corePath('agent-status.ts'));
 const { STRINGS } = await import(corePath('strings.ts'));
+const { ENTITY_TYPES } = await import(corePath('screens.generated.ts'));
 const { ChangeBus } = await import(corePath('change-bus.ts'));
 
 const SETTLE = () => new Promise((resolve) => setImmediate(resolve));
@@ -340,6 +341,15 @@ test('a confirmed change to the auditing configuration is a re-read, and the ros
     [AGENT_DEFINITION_ENTITY, AGENT_SWITCH_ENTITY, AUDITING_CONFIG_ENTITY].sort(),
     'the roster is exactly the three types this payload is computed from'
   );
+  // The roster above compares the constants with themselves, so it cannot see a misspelling. The
+  // enum is the kernel's and mirrored (AD-14), so the constants are held against it instead: a
+  // typo here would leave the re-read filter matching an event type no instance ever publishes.
+  for (const type of RESTRAINT_ENTITIES) {
+    assert.ok(
+      ENTITY_TYPES.includes(type),
+      `${type} is a type the kernel's own closed enum declares, not a hand-written spelling`
+    );
+  }
 
   const api = stubApi([ok(rows(true)), ok(rows(true))]);
   const bus = new ChangeBus();

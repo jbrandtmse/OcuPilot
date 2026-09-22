@@ -1979,7 +1979,9 @@ ClassMethod NameArrayProblem(pParent As %DynamicObject, pKey As %String, pAllowe
 /// set <b>loosens</b> <code>fingerprintExcludes</code> -- a criterion name was refused before and
 /// is a name the read declares. Scoping the tool half to the rows a write tool may actually set
 /// <b>tightens</b> it -- any row of the entry was accepted before, a <code>secret</code> or
-/// <code>opaque</code> one included, and such a field is still nameable through the read half.</p>
+/// <code>opaque</code> one included. A row the write tool cannot set -- a nested or
+/// array-element path -- is no longer nameable as an exclusion at all, which is the tightening
+/// this key trades for the typo the union catches.</p>
 ClassMethod ConfirmChannelProblem(pDeclaration As %DynamicObject) As %String
 {
     Set tProblem = ""
@@ -2125,7 +2127,8 @@ ClassMethod DeclaredReadFields(pDeclaration As %DynamicObject) As %List [ Privat
             Set tFields = tFields _ $ListBuild(tEntry.%Get("field"))
         }
     } Catch {
-        Set tFields = tFields
+        ; Deliberately empty: the names collected before the raise are kept, for the reason
+        ; <method>DeclaredNames</method>'s own catch gives.
     }
     Quit tFields
 }

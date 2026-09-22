@@ -123,6 +123,12 @@ Method TestTheConfirmChannelRefusesACredentialNamedFieldItDoesNotDeclare()
     Do tBad.%Set("secretArguments", [(tSound.%Get("read").%Get("fields").%Get(0))])
     Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "", "and so is one naming a field this screen's own read declares")
 
+    ; "Timeout" above is a string field, so it cannot tell the membership check's "settable" set
+    ; apart from the credential heuristic's string-only one; "AutoCompile" is a boolean field of
+    ; the same tool and is sound here too.
+    Do tBad.%Set("secretArguments", ["AutoCompile"])
+    Do $$$AssertEquals(##class(OcuPilot.Screen.Registry).ConfirmChannelProblem(tBad), "", "and so is a non-string settable field")
+
     ; The two spellings the one set carries, because their consumers honour different ones: the
     ; schema drops a declared secret by the []-stripped name, while an exclusion of an array reaches
     ; the fingerprint as <path>[].

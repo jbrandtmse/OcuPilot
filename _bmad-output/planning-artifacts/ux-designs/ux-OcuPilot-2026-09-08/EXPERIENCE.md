@@ -390,7 +390,7 @@ Microcopy. Brand voice and aesthetic posture live in `DESIGN.md`.
 | "Changes" · "Dismiss" | the change toast region's accessible name (`role="status"`, bottom right, reached with Tab after the panel) and the accessible name of each toast's dismiss control (Story 5.7) |
 | "Updated: <entity> <action>" | the polite announcement a data table makes once when a change event marks one of its rows (Story 5.7, `:664`); `<entity>` is the row's own id and `<action>` is AD-14's closed action word, which is machine vocabulary rendered as reported rather than translated copy |
 | "unchanged" | the visually hidden direction word on an unchanged diff row under the "N unchanged fields" disclosure, the pair to "was" and "now" on a changed row (Story 5.8, `:415`): the row carries one value and no arrow, so the word is what says the payload sends the field as the instance holds it |
-| "Fill in every masked field to confirm." | the published reason a proposal card's Confirm is `aria-disabled` while a secret the write sends is still empty (Story 5.10, `:426`), reached through `aria-describedby` so the reason is announced rather than left to the disabled state to imply |
+| "Fill in every masked field to confirm." | the published reason a proposal card's Confirm is `aria-disabled` while a secret the write sends is still empty (Story 5.10, `:427`), reached through `aria-describedby` so the reason is announced rather than left to the disabled state to imply |
 
 ## Component Patterns
 

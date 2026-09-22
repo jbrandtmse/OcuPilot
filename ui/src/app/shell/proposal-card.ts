@@ -179,9 +179,11 @@ export interface ProposalConfirmRequest {
             (input)="onSecret(field, $event)"
           />
         }
-        <p class="ocu-proposal-card-secrets-reason" [id]="secretsReasonId">
-          {{ STRINGS.proposalSecretsRequired }}
-        </p>
+        @if (confirmReasonId !== null) {
+          <p class="ocu-proposal-card-secrets-reason" [id]="secretsReasonId">
+            {{ STRINGS.proposalSecretsRequired }}
+          </p>
+        }
       </div>
     }
 
@@ -510,7 +512,13 @@ export class ProposalCard {
     return this.view().destructive === true;
   }
 
-  /** The published reason's own id, which Confirm names while a masked field is still empty. */
+  /**
+   * The published reason's own id, which Confirm names while a masked field is still empty.
+   *
+   * The paragraph it identifies is rendered on the same condition, `confirmReasonId`: the sentence
+   * is an instruction for a field that is still empty, so leaving it up once every field is filled
+   * would leave a caption telling the reader to do what they have just done.
+   */
   protected get secretsReasonId(): string {
     return 'ocu-proposal-secrets-reason-' + (this.view().proposalId ?? '');
   }

@@ -1563,7 +1563,7 @@ test('the build refuses a privilege pair missing a half, in an area and in a des
 
   // `refSeparator` is what a real source set carries; a synthetic one declares it too, or the
   // generator refuses it before it reaches the refusal under test.
-  const sound = { entityTypes: ['user'], refSeparator: 2, areas: [], screens: [] };
+  const sound = { entityTypes: ['user'], refSeparator: 2, singletonId: 'SYSTEM', areas: [], screens: [] };
 
   assert.throws(
     () =>
@@ -1593,7 +1593,7 @@ test('the build refuses a privilege pair missing a half, in an area and in a des
 
   const { areas, screens } = readSources();
   assert.doesNotThrow(() =>
-    buildMirror({ entityTypes: parseEntityTypes('Parameter TYPES = "user";'), refSeparator: 2, areas, screens: [] })
+    buildMirror({ entityTypes: parseEntityTypes('Parameter TYPES = "user";'), refSeparator: 2, singletonId: 'SYSTEM', areas, screens: [] })
   );
   for (const screen of screens) assert.equal(malformedPair(screen.declaration.privileges), null, screen.file);
   for (const area of areas) assert.equal(malformedPair(area.privileges), null, area.key);
@@ -1896,6 +1896,14 @@ test('confirmChannelProblem returns the instance-side sentences, and every shipp
     null,
     "and so is one naming a field the screen's own read declares"
   );
+  // 'Timeout' above is a string field, so it cannot tell the membership check's 'settable' set
+  // apart from the credential heuristic's string-only one; 'AutoCompile' is a boolean field of
+  // the same tool and is sound here too.
+  assert.equal(
+    confirmChannelProblem(of({ secretArguments: ['AutoCompile'] }), toolFields),
+    null,
+    'and so is a non-string settable field'
+  );
   // The two spellings the one set carries: the schema drops a declared secret by the []-stripped
   // name, while an exclusion of an array reaches the fingerprint as <path>[].
   assert.equal(
@@ -2047,6 +2055,7 @@ test('entityLabelProblem returns the instance-side sentences, and every shipped 
       buildMirror({
         entityTypes,
         refSeparator: 2,
+        singletonId: 'SYSTEM',
         scopeWords,
         archetypes,
         areas,

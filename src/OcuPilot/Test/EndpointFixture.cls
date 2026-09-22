@@ -94,9 +94,7 @@ ClassMethod Clear()
 /// <code>maxRows</code> (the seeded <code>maxRows</code> query parameter, kept across a call that
 /// seeds none) or <code>getNames</code> (the names the <code>list</code> mode's
 /// <code>TYPEGET</code> calls asked for, comma-separated, in order) or <code>getCount</code> (how
-/// many <code>TYPEGET</code> calls it answered) or <code>savedBody</code> (1 once the port asked
-/// for the request body to be written into a vendor task row). <code>""</code> when never
-/// recorded.</p>
+/// many <code>TYPEGET</code> calls it answered). <code>""</code> when never recorded.</p>
 ClassMethod Recorded(pKey As %String) As %String
 {
     Quit $Get(^||OcuPilotEndpointFixture(pKey), "")
@@ -171,16 +169,6 @@ Method ShouldRunAsync() As %Boolean
 {
     Do ..Note("ShouldRunAsync")
     Quit $Get(^||OcuPilotEndpointFixture("mode")) = "async"
-}
-
-/// <p>Records that the port asked for the request body to be written into the vendor's task row.
-/// A test asserts it was never called for a mutating request, which is that refusal's whole point:
-/// a secret written into that row cannot be taken back (AD-35).</p>
-Method SaveRequestBody(pBody As %DynamicAbstractObject) As %Status
-{
-    Do ..Note("SaveRequestBody")
-    Set ^||OcuPilotEndpointFixture("savedBody") = 1
-    Quit $$$OK
 }
 
 Method Run(ByRef pSC As %Status, pBody As %DynamicAbstractObject) As %DynamicAbstractObject

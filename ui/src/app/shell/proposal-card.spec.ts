@@ -584,6 +584,9 @@ describe('the proposal card', () => {
     field.dispatchEvent(new Event('input'));
     fixture.detectChanges();
     expect(card.querySelector('.ocu-proposal-card-confirm')?.hasAttribute('aria-describedby')).toBe(false);
+    // And the sentence itself goes with it: it instructs the reader to fill a field that is now
+    // filled, so leaving it rendered would leave a stale instruction on an enabled card.
+    expect(card.querySelector('.ocu-proposal-card-secrets-reason')).toBeNull();
   });
 
   it('AC9: Confirm carries the typed secret values with the press, and nothing else holds them', () => {

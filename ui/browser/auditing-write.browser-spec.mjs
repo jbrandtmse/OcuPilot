@@ -60,6 +60,17 @@ before(async () => {
     LIVE_CONTAINER,
     "this spec turns the instance's auditing off, so it never runs inside the live container"
   );
+  // And never inside an owner-managed slot instance either. Every other spec's blast radius is a
+  // probe application or a preference row, so `notEqual(LIVE_CONTAINER)` is enough for them;
+  // this one turns instance-wide accountability off, and `ocupilot-slot-b` / `ocupilot-slot-c`
+  // pass that comparison. Throwaways are the only containers whose names end `-ci`
+  // (`scripts/ci-throwaway.sh`), which is what the ObjectScript twin gets from its own
+  // `OCUPILOT_ALLOW_AUDIT_TOGGLE` refusal.
+  assert.match(
+    config.container,
+    /-ci$/,
+    `this spec disables instance-wide auditing, so it runs only in a throwaway; ${config.container} is not one`
+  );
   const ready = await (await fetch(`${config.origin}${READINESS_PATH}`)).json();
   assert.equal(ready.state, 'installed', `the throwaway must be installed, not ${JSON.stringify(ready)}`);
   await requireFreeSlot(config);
@@ -75,7 +86,9 @@ before(async () => {
 
 after(async () => {
   if (browser !== null) await browser.close();
-  if (config.container === LIVE_CONTAINER) return;
+  // The same test the `before` guard applies, in the same direction: a run refused there must not
+  // have this hook write `AuditEnabled` into a container the spec never touched.
+  if (!/-ci$/.test(config.container)) return;
   // Unconditional, and before anything else: auditing off is instance-wide, so a spec that failed
   // between the disable and the re-enable would leave every later spec's instance unaudited.
   restoreAuditing();

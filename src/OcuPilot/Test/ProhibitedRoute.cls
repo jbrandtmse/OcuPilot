@@ -125,15 +125,21 @@ Method OnAfterAllTests() As %Status
 /// (<method>OcuPilot.Test.AuditingUpdate.OnAfterOneTest</method>'s own contract, whose helpers this
 /// calls rather than copying). The auditing leg restores in a frame of its own as well, because a
 /// raise skips a method's tail; this is the net under it.</p>
+/// <p><b>The assertion is on the reading taken BEFORE this teardown repairs anything</b> (AC7): a
+/// reading taken after the repair is 1 whether the method's own frame ran or not. A failed repair
+/// is held rather than returned at once, so the principal, the <parameter>TARGET</parameter> row
+/// and the seeded proposals below are still removed on that path.</p>
 Method OnAfterOneTest() As %Status
 {
-    Set tEnabled = ##class(OcuPilot.Test.AuditingUpdate).AuditEnabled()
+    Set tBefore = ##class(OcuPilot.Test.AuditingUpdate).AuditEnabled()
+    Set tEnabled = tBefore
     If tEnabled '= 1 {
         Do ##class(OcuPilot.Test.AuditingUpdate).RestoreAuditing()
         Set tEnabled = ##class(OcuPilot.Test.AuditingUpdate).AuditEnabled()
     }
-    If tEnabled '= 1 Quit $$$ERROR($$$GeneralError, "OcuPilot.Test.ProhibitedRoute left this instance's auditing off (AuditEnabled = " _ tEnabled _ ")")
-    Do $$$AssertEquals(tEnabled, 1, "this instance is audited after the test")
+    Set tResult = $$$OK
+    If tEnabled '= 1 Set tResult = $$$ERROR($$$GeneralError, "OcuPilot.Test.ProhibitedRoute left this instance's auditing off (AuditEnabled = " _ tEnabled _ ")")
+    Do $$$AssertEquals(tBefore, 1, "the method restored auditing itself, so this teardown had nothing to repair")
     Do ..RemoveLeastPrivilegedPrincipal()
     ; Defensive: TestOcuPilotsOwnServingPathRefusesALeastPrivilegedPrincipal removes this record
     ; itself, but a failure between writing it and removing it would otherwise leave TARGET marked
@@ -142,7 +148,7 @@ Method OnAfterOneTest() As %Status
     Set tSC = ##class(OcuPilot.Test.ProposalFixture).RemoveSeeded(.tRemaining)
     Do $$$AssertStatusOK(tSC, "the probe proposals and turns are removed")
     Do $$$AssertEquals(tRemaining, 0, "and none survives the removal")
-    Quit $$$OK
+    Quit tResult
 }
 
 /// <p>Set the probe application's guarding resource to <var>pResource</var>. Only ever called for

@@ -31,8 +31,9 @@ Method OnAfterOneTest() As %Status
 }
 
 /// <p>AD-35, DW-1279: a mutating request against an endpoint that would queue is refused
-/// <b>before</b> the vendor's task row is written, and a read against the same endpoint still
-/// queues -- so the refusal is the mutating half and not the async branch.</p>
+/// <b>before</b> the vendor's task row is written, and a read against the same endpoint reaches
+/// the vendor's own handoff instead -- so the refusal is the mutating half and not the async
+/// branch.</p>
 /// <p>It is driven through <class>OcuPilot.Test.EndpointFixture</class>, whose
 /// <code>ShouldRunAsync()</code> answers 1 under its <code>async</code> mode, because no vendor
 /// endpoint queues a <code>PUT</code>: of AD-26's two Release 1 async entries neither is mutating,
@@ -40,10 +41,11 @@ Method OnAfterOneTest() As %Status
 /// it a real body to refuse.</p>
 /// <p>Mutation (Rule 19): remove the <parameter>OcuPilot.Port.AdminPort.MUTATINGTYPES</parameter>
 /// check from <method>OcuPilot.Port.AdminPort.Sequence</method>'s async branch -- the two log
-/// assertions go red. The <code>savedBody</code> assertion is <b>not</b> what bites: without the
-/// guard the vendor's own <code>AsyncTaskEndpoint</code> constructor fails on a class that is not
-/// one of its endpoints, so the body is not written either way and that assertion reads the same.
-/// The log line is the load-bearing one.</p>
+/// assertions go red. <b>The log line is the only witness, and the ordering is not asserted
+/// here.</b> The port calls <code>SaveRequestBody</code> on the vendor's own
+/// <parameter>OcuPilot.Port.AdminPort.ASYNCTASKENDPOINTCLASS</parameter> instance and never on the
+/// endpoint, so no fixture method of this class can observe whether the guard ran before or after
+/// it; a guard moved after that call would leave every assertion below green.</p>
 Method TestAMutatingRequestThatWouldQueueIsRefusedBeforeTheTaskRowIsWritten()
 {
     Do ##class(OcuPilot.Test.PortFixture).SetEndpointClass("OcuPilot.Test.EndpointFixture")
@@ -53,7 +55,6 @@ Method TestAMutatingRequestThatWouldQueueIsRefusedBeforeTheTaskRowIsWritten()
 
     Set tSC = ##class(OcuPilot.Test.PortFixture).Invoke("OcuPilotProbeAsyncWrite", "PUT", , {"Password": "hunter2"}, .tResult, .tHttp, .tFault)
     Do $$$AssertStatusNotOK(tSC, "the port refuses the mutating async combination")
-    Do $$$AssertEquals(##class(OcuPilot.Test.EndpointFixture).Recorded("savedBody"), "", "and never asked for the request body to be written into a task row")
     Do $$$AssertTrue(##class(OcuPilot.Test.EndpointFixture).Recorded("trace") [ "ShouldRunAsync", "the async branch was reached: " _ ##class(OcuPilot.Test.EndpointFixture).Recorded("trace"))
     ; The reason is the port's own, kept for the log rather than put on the wire (AD-39), so this is
     ; where it names the method it refused.
