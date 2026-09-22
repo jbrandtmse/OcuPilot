@@ -2,7 +2,7 @@
 title: 'Story 5.12: OS management - suspend and resume a process'
 type: 'feature'
 created: '2026-09-21'
-status: 'blocked'
+status: 'in-progress'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -93,10 +93,31 @@ re-dispatch after the spine is amended starts from this file rather than from sc
 
 </intent-contract>
 
-## Blocking Condition
+## Blocking Condition - RESOLVED 2026-09-22
 
-**`intent gap` - AD-6's fingerprint rule is unsatisfiable for `%Api.Admin.Endpoints.Process`, so
-AC1's "confirming it suspends the process" is unreachable as the spine is worded today.**
+**Resolved by a spine amendment, orchestrator-approved; the measurement below stands and is what
+carried it.** AD-51 now gives an action-style write a **declared fingerprint subject**, and AD-6's
+selection sentence was corrected at its origin in the same commit so the two do not disagree. The
+approved ground is sharper than "AD-6 is unsatisfiable here": its mechanism answers the **wrong
+question** for an action write. A digest over the whole of a live process's read refuses the confirm
+whenever the target has executed a command between mint and confirm, so it fires hardest for exactly
+the processes this story exists to suspend and never for an idle one nobody wants to touch. AD-6's
+purpose survives intact, because what it prevents is a write against state that *moved under the
+diff*, and for an action write there is no payload - the reviewed intent is this target, in this
+state, with this verb, and a counter advancing is the process doing its job.
+
+**Adequacy is structural, not a review convention.** The subject must carry the scoped target
+identity (AD-13) **and every field the action's own precondition reads** - `State` here - because a
+subject of `{Pid}` alone would let a confirm succeed against a process somebody else had already
+suspended. An empty subject is refused, and that is necessary but nowhere near sufficient. The
+subject is validated by the **same builder** that validates `fingerprintExcludes`, through one
+extraction consumed by both: a second validator beside the first is DW-1206's defect in new
+clothing.
+
+**AC2's "the user's own process" takes the broad reading** (orchestrator-decided): any process
+owned by the confirming user, not merely `$JOB`. AD-10 defines the prohibited set by **effect, not
+verb**, and `$JOB` alone would catch the confirm request's own job while missing the user's
+interactive portal session, whose suspension locks them out just as completely.
 
 ### The measurement
 
@@ -113,9 +134,11 @@ AC1's "confirming it suspends the process" is unreachable as the spine is worded
 3. That `GET` answers **50 keys** (measured, enumerated in the Code Map). Between two reads three
    seconds apart on a working process, **nine** moved: `CommandsExecuted`, `GlobalReferences`,
    `GlobalUpdates`, `GlobalBlocks`, `DataBlockWrites`, `MemoryUsed`, `PrivateGlobalBlockCount`,
-   `PrivateGlobalReferences`, `PrivateGlobalUpdates`. Over five seconds on the **idle** `CONTROL`
-   daemon, `CPUTime` moved (106950 to 106960). So the digest moves for any target, busy or idle -
-   this is not a property of how runaway the process is.
+   `PrivateGlobalReferences`, `PrivateGlobalUpdates`. The **idle** `CONTROL` daemon, by contrast, held
+   still: the lead re-measured `CommandsExecuted`, `CPUTime` and `GlobalReferences` over twenty
+   seconds and none moved. So the digest is unstable for a **working** process specifically - which
+   is the whole target population this story exists to act on, since a runaway process is the one
+   whose counters move fastest.
 4. An exclusion must be a name the screen already knows. `Registry.cls:2007` refuses any other:
    *"fingerprintExcludes names '<path>', which is neither a field of this screen's write tool nor
    one its read declares (AD-6)"*, where the read half is `read.fields`, the `rowGet` detail fields,
@@ -529,6 +552,17 @@ other task stands as written.
   and not to the name. (DW-1464)
 
 ## Spec Change Log
+
+- **2026-09-22, lead, orchestrator-approved.** The `intent gap` is resolved by a spine amendment
+  rather than by re-planning: AD-51 gains a declared **fingerprint subject** for action-style writes
+  and AD-6's selection sentence is corrected at its origin so the two do not disagree. Five
+  conditions bind the implementation - scope it to action writes only; correct AD-6 (done, in the
+  same commit); the subject must carry the scoped target identity **and** the action's precondition
+  field (`State`), enforced by a build-time guard rather than by review; validate it through the
+  **same** builder that validates `fingerprintExcludes`, never a second one; and falsify **both**
+  directions, a subject field moving must still refuse and a non-subject counter moving must not.
+  AC2 takes the broad reading of "the user's own process": any process the confirming user owns.
+  The measurement in `## Blocking Condition` stands, with its idle-daemon claim corrected there.
 
 ## Review Triage Log
 
